@@ -30,7 +30,7 @@
   import { dropOffersBut } from './host/offered.svelte';
   import { forgetRecipients, recipientsOf } from './host/tilecardpicks.svelte';
   import {
-    anywayLabel, answerRow, asked, ddWaits, doneStep, escBounce, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx,
+    anywayLabel, answerRow, asked, ddWaits, doneStep, escBounce, finalWaits, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx,
     type GoPanel, type PartnerNow, type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
   } from './host/goon';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
@@ -2856,6 +2856,17 @@
     scoreCard: (key) => void applyScoreCard(game, session, app.live, key, { tile: info && tileToolUp(app.live, info.clue) ? info.clue.id : undefined }),
     focusOn: (sel) => flashTo(sel),
     ddShow: () => ddGo(),
+    finalShow: () => finalShowQuestion(),
+    finalOn: () => {
+      finalNextStep(session, game);
+      finalStep();
+    },
+    finalNext: () => {
+      if (!finalWaiting()) finalRevealNext();
+    },
+    judge: (id, right) => judge(id, right),
+    tbBack: () => tiebreakerDone(),
+    tbWin: (id) => tiebreakWin(1, [id]),
   };
 
   /**
@@ -2964,6 +2975,7 @@
       wagerLimitsOff,
       ddPhone: !!session.dd?.playerId && wagerPhones.includes(session.dd.playerId),
       partner: partnerNow,
+      final: null,
       act: goActs,
     };
   });
@@ -3300,6 +3312,29 @@
     if (app.pregame || (session.phase !== 'board' && session.phase !== 'end') || session.intro) return;
     untrack(boardFocus);
   });
+
+  /**
+   * The Final's typed values (goon.ts finalWaits): a wager missing, not a whole number or over the max (or, in the
+   * reveals, the spotlit player's): the keys go to the first box to fill, its row flashes, and the status line says
+   * whose and what to do. True: it waits.
+   */
+  function finalWaiting(): boolean {
+    const w = finalWaits(go);
+    if (!w) return false;
+    flashTo(w.at, w.row);
+    hint(w.say);
+    return true;
+  }
+
+  /** Show question ▶ from the Final's wagers (one missing: the keys go to its box). Ctrl+Z goes back to the wagers. */
+  function finalShowQuestion(): void {
+    if (finalWaiting()) return;
+    // (The wager being typed is a step of its own first: its box's blur takes it.)
+    const a = document.activeElement;
+    if (a instanceof HTMLInputElement && a.matches('[data-wager]')) a.blur();
+    finalNextStep(session, game);
+    finalStep();
+  }
 
   /** N in the Final's wagers with some still to type (or over the max): say whose, and go to the first of them. */
   function wagersWaiting(): void {

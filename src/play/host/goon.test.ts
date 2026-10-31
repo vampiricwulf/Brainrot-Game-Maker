@@ -2,15 +2,15 @@
 // the check.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from '../../lib/testgame';
-import { newSlidesRound, setSlideText, type BoardRound, type Game, type Session, type WheelSegment } from '../../lib/model';
-import { newSession, openClue } from '../../lib/session';
+import { newSlidesRound, setSlideText, textSlide, type BoardRound, type FinalRound, type Game, type Session, type WheelSegment } from '../../lib/model';
+import { applyScore, goToRound, newSession, openClue, startTiebreaker } from '../../lib/session';
 import { buzzArm, buzzClueOpened, buzzDone, buzzTake, newBuzz } from '../../lib/buzz';
 import { newLive } from '../../lib/live';
 import { draftPick, openDice, openWheel, quickDice, scoreCards, spinWheel, toggleScoreboard } from '../../lib/overlay';
 import { newWheel } from '../../lib/tools';
 import {
-  anywayLabel, CHECK_GUARD_MS, ddWaits, doneStep, enterQuick, escBounce, goOnDecision, headingOf, inside, leftNow, mainQuick, mainStep, mergeItems, quietKinds, ringOf, swallowSay,
-  teachLine, todo, type Check, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
+  anywayLabel, CHECK_GUARD_MS, ddWaits, doneStep, enterQuick, escBounce, finalWaits, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
+  quietKinds, ringOf, swallowSay, teachLine, todo, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
 } from './goon';
 import { FLOW } from './verbs';
 
@@ -56,6 +56,12 @@ const act: GoActs = {
   scoreCard: (key) => did.push(`score ${key}`),
   focusOn: (sel) => did.push(`focus ${sel}`),
   ddShow: () => did.push('ddshow'),
+  finalShow: () => did.push('finalshow'),
+  finalOn: () => did.push('finalon'),
+  finalNext: () => did.push('finalnext'),
+  judge: (id, right) => did.push(`judge ${id} ${right ? 'right' : 'wrong'}`),
+  tbBack: () => did.push('tbback'),
+  tbWin: (id) => did.push(`tbwin ${id}`),
 };
 
 /** Ann, Bob and Cat; a board, then the Final. */
@@ -92,6 +98,7 @@ function ctx(g: Game, s: Session, over: Partial<GoCtx> = {}): GoCtx {
     wagerLimitsOff: true,
     ddPhone: false,
     partner: null,
+    final: null,
     act,
     ...over,
   };
@@ -168,6 +175,7 @@ describe('the blue button in every moment (1.3)', () => {
 
   it('moments whose part hasn’t moved yet keep their own main button: no step', () => {
     const { g, s } = setup();
+    // (The Final and the tiebreaker without their part's state given: their old main button, as a stop-gap.)
     for (const phase of ['final', 'tiebreaker', 'end', 'rpg', 'boardgame'] as const) {
       s.phase = phase;
       expect(mainStep(ctx(g, s)), phase).toBeNull();
@@ -826,5 +834,196 @@ describe('wheels, dice, the scores and pop-ups over the stage (3.4 F, G, M)', ()
     expect(JSON.stringify(ddWaits(ctx(g, s, { wagerLimitsOff: false })))).not.toContain('5,000');
     s.dd!.draft = 400;
     expect(ddWaits(ctx(g, s, { wagerLimitsOff: false }))).toBeNull();
+  });
+});
+
+describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
+  const FIN: FinalNow = { teams: false, wagerPhones: [] };
+  /** Into the Final (everyone plays it), at `step`: the wagers in (Ann $100, Bob $50, Cat $0) past the wagers. */
+  function final(step: NonNullable<Session['finalStep']> = 'wagers') {
+    const { g, s } = setup();
+    goToRound(s, g, 1);
+    s.intro = null;
+    const f = s.final!;
+    if (step !== 'wagers') Object.assign(f.wagers, { a: 100, b: 50, c: 0 });
+    s.finalStep = step;
+    if (step === 'reveal') f.current = f.order[0];
+    return { g, s, f };
+  }
+
+  it('the Final’s blue button: Show question ▶ (Enter is Next), its slides, Reveal answer ▶, Start player reveals ▶, from FLOW only', () => {
+    const { g, s, f } = final();
+    // (Its part's state not given: the old main button, as a stop-gap.)
+    expect(mainStep(ctx(g, s))).toBeNull();
+    const c = () => ctx(g, s, { final: FIN });
+    expect([said(mainStep(c())), mainStep(c())!.id]).toEqual(['Show question ▶ · N · enterIsNext', 'finalshow']);
+    // Nobody plays it: on past it.
+    f.players = [];
+    expect(said(mainStep(c()))).toBe('Finish game ▶ · N · enterIsNext');
+    f.players = ['a', 'b', 'c'];
+    s.finalStep = 'question';
+    const fr = g.rounds[1] as FinalRound;
+    fr.extraSlides = [{ ...fr.questionSlide, id: 'q2' }];
+    expect(said(mainStep(c()))).toBe('Next slide ▶ · N');
+    s.slide = 1;
+    const reveal = mainStep(c())!;
+    expect([said(reveal), reveal.id, reveal.flow]).toEqual(['Reveal answer ▶ · N · reveals', 'finalreveal', 'reveal']);
+    s.finalStep = 'answer';
+    expect(said(mainStep(c()))).toBe('Start player reveals ▶ · N');
+    expect(said(mainStep(ctx(g, s, { final: { ...FIN, teams: true } })))).toBe('Start team reveals ▶ · N');
+    expect(leftNow(c(), mainStep(c())!)).toEqual([]);
+    mainStep(c())!.run();
+    expect(did).toEqual(['finalon']);
+    const flow = new Set<string>([...Object.values(FLOW).flatMap((v) => (typeof v === 'function' ? [] : [v.label])), FLOW.nextPlayer('player').label]);
+    for (const st of ['wagers', 'question', 'reveal'] as const) {
+      s.finalStep = st;
+      expect(flow.has(mainStep(c())!.verb.label), st).toBe(true);
+    }
+  });
+
+  it('the wagers are typed: the keys go to the first box to fill, never a check; with them in, a 🤫 card not sent asks first', () => {
+    const { g, s, f } = final();
+    f.wagers = { a: 100 };
+    const c = (over: Partial<GoCtx> = {}) => ctx(g, s, { final: { ...FIN, wagerPhones: ['b'] }, ...over });
+    const cards = [{ id: 'k', name: 'Card “Hint”', to: ['a'] }];
+    expect(finalWaits(c())).toEqual({
+      say: 'Waiting on Bob’s phone & Cat: type their wagers, or Sits out',
+      at: '.play .panel input[data-wager="b"]',
+      row: '.play .panel .wrow[data-player="b"]',
+    });
+    // (The blue button is never greyed, and no check opens while a wager is missing, a card or not.)
+    const st = mainStep(c({ cards }))!;
+    expect([st.busy, leftNow(c({ cards }), st)]).toEqual([undefined, []]);
+    f.phonesLocked = true;
+    expect(finalWaits(c())!.say).toBe('Waiting on Bob & Cat: type their wagers, or Sits out');
+    f.wagers = { a: 100, b: 50, c: 2.5 };
+    expect(finalWaits(c())!.say).toBe('Not a whole number: Cat (type a whole number, 0 or more)');
+    applyScore(s, g, ['a'], 300, 'x');
+    f.wagers = { a: 5000, b: 0, c: 0 };
+    expect([finalWaits(c()), finalWaits(c({ wagerLimitsOff: false }))!.say]).toEqual([null, 'Over Ann’s max ($300): type less, or tick Ignore the limits']);
+    // All in: the Final's card not sent yet ("First:", ⏎ sends it), its name and who it's for, never its words.
+    const items = leftNow(c({ cards }), st);
+    expect(lines(items)).toEqual([['first: The Final’s card “Hint” hasn’t gone to Ann yet.', '📤 Send it ⏎ · close']]);
+    expect([anywayLabel(open(st, items)), items[0].box, items[0].quick[0].after]).toEqual(['Show question anyway', 'card:k', 'Sent… then Show question ▶ (N)']);
+  });
+
+  it('typed answers still coming at Reveal answer ▶: ⏱ 10 more seconds (⇧T ⏎); R reveals anyway, never N; names and counts only', () => {
+    const { g, s, f } = final('question');
+    f.answers = { a: { text: 'Paris', n: 1 } };
+    const c = ctx(g, s, { final: FIN, phones: ['a', 'b'], clockUp: true });
+    const st = mainStep(c)!;
+    const items = leftNow(c, st);
+    expect(lines(items)).toEqual([['first: 1 of 2 answers are in (Bob’s isn’t).', '⏱ 10 more seconds [⇧T] ⏎ · close']]);
+    expect(JSON.stringify(items)).not.toContain('Paris');
+    const ck = open(st, items);
+    expect([anywayLabel(ck), inside({ key: 'n' }, ck, after).do, inside({ key: 'r' }, ck, after).do, quietKinds(items)]).toEqual(['Reveal anyway: the answers lock', 'flash', 'anyway', ['answers']]);
+    // In, or locked: nothing.
+    f.answers.b = { text: 'Rome', n: 2 };
+    expect(leftNow(c, st)).toEqual([]);
+  });
+
+  it('the reveals: Show answer ▶, Show wager ▶, Next player ▶; the spotlit player’s verdict is a must at Next player ▶ (✔ C / ✘ X close it, no ⏎)', () => {
+    const { g, s, f } = final('reveal');
+    const [first, second, third] = f.order;
+    f.answers = { [first]: { text: 'Paris', n: 1 } };
+    const c = (over: Partial<GoCtx> = {}) => ctx(g, s, { final: FIN, ...over });
+    expect([said(mainStep(c())), mainStep(c())!.id, leftNow(c(), mainStep(c())!)]).toEqual(['Show answer ▶ · N', 'spot', []]);
+    // Their answer up: the verdict is due, at Next player ▶. N opens the check (must: no anyway), C judges and closes it,
+    // then N goes on: N, C, N.
+    f.answerShown = { [first]: true };
+    const st = mainStep(c())!;
+    const items = leftNow(c(), st);
+    const who = s.players.find((p) => p.id === first)!.name;
+    expect(said(st)).toBe('Next player ▶ · N');
+    expect(lines(items)).toEqual([[`first must: ${who} isn’t judged yet: judge them, then Next player ▶.`, '✔ Right [C] · close', '✘ Wrong [X] · close']]);
+    expect(JSON.stringify(items)).not.toMatch(/Paris|\$100|\$50/);
+    const ck = open(st, items);
+    expect([goOnDecision('n', st, items, false, false), goOnDecision('shift', st, items, false, false), goOnDecision('n', st, items, true, false)]).toEqual(['open', 'open', 'hold']);
+    expect([inside({ key: 'Enter' }, ck, after), inside({ key: 'n' }, ck, after).do, teachLine(ck), ringOf(items)]).toEqual([{ do: 'flash', say: 'C: right · X: wrong' }, 'flash', '', null]);
+    const cKey = inside({ key: 'c' }, ck, after);
+    expect(cKey).toMatchObject({ do: 'quick', quick: { label: '✔ Right', then: 'close' } });
+    if (cKey.do === 'quick') cKey.quick.run();
+    expect(did).toEqual([`judge ${first} right`]);
+    f.results[first] = 'right';
+    expect([said(mainStep(c())), leftNow(c(), mainStep(c())!)]).toEqual(['Next player ▶ · N', []]);
+    mainStep(c())!.run();
+    expect(did.at(-1)).toBe('finalnext');
+    // The next one, no typed answer: Show wager ▶; none in yet, it's typed in their row (no check).
+    f.current = second;
+    expect([said(mainStep(c())), leftNow(c(), mainStep(c())!)]).toEqual(['Show wager ▶ · N', []]);
+    expect(finalWaits(c())).toBeNull();
+    delete f.wagers[second];
+    expect(finalWaits(c())).toEqual({
+      say: `${s.players.find((p) => p.id === second)!.name} has no wager yet: type it in their row (it’s never taken as 0)`,
+      at: `.play .panel input[data-reveal-wager="${second}"]`,
+      row: `.play .panel .pl[data-row="${second}"]`,
+    });
+    // Teams: Next team ▶.
+    f.wagers[second] = 50;
+    f.shown[second] = true;
+    expect(said(mainStep(c({ final: { ...FIN, teams: true } })))).toBe('Next team ▶ · N');
+    // The last one left to judge: their verdict at Finish game ▶ (a round after the Final: its name).
+    f.results[third] = 'wrong';
+    const last = mainStep(c())!;
+    expect([said(last), last.id, leftNow(c(), last)[0].text]).toEqual(['Finish game ▶ · N', 'finish', `${s.players.find((p) => p.id === second)!.name} isn’t judged yet: judge them, then Finish game ▶.`]);
+    g.rounds.push(newSlidesRound('Outro'));
+    expect(said(mainStep(c()))).toBe('Next: Outro ▶ · N');
+    f.results[second] = 'right';
+    expect([said(mainStep(c())), leftNow(c(), mainStep(c())!)]).toEqual(['Next: Outro ▶ · N', []]);
+  });
+
+  it('a multiple choice’s likely verdict wears the ring, in the row and in the check; in one window only once the answer is up', () => {
+    const { g, s, f } = final('reveal');
+    const id = f.order[0];
+    Object.assign(g.rounds[1], { choices: [{ id: 'x', text: 'Rome' }, { id: 'y', text: 'Paris', right: true }] });
+    f.answers = { [id]: { text: 'Rome', n: 1, pick: 'x' } };
+    expect([likelyVerdict(ctx(g, s), id), likelyVerdict(ctx(g, s, { dual: true }), id)]).toEqual([null, 'wrong']);
+    f.answerShown = { [id]: true };
+    const c = ctx(g, s, { final: FIN });
+    const items = leftNow(c, mainStep(c)!);
+    expect([ringOf(items), items[0].quick.map((q) => !!q.ring)]).toEqual(['verdict:wrong', [false, true]]);
+    f.answers[id].pick = 'y';
+    expect(ringOf(leftNow(c, mainStep(c)!))).toBe('verdict:right');
+  });
+
+  it('the tiebreaker: its slides, 👁 Reveal answer, then 🏁 Back to results, which asks while they’re still tied (🏆 each tied player, the one picked ⏎)', () => {
+    const { g, s } = setup();
+    g.tiebreaker = { questionSlide: textSlide('Q'), extraSlides: [{ ...textSlide('Q2'), id: 'q2' }], answerSlide: textSlide('A') };
+    applyScore(s, g, ['a', 'b'], 500, 'x');
+    startTiebreaker(s);
+    const c = (over: Partial<GoCtx> = {}) => ctx(g, s, { final: FIN, ...over });
+    expect(mainStep(ctx(g, s))).toBeNull();
+    expect(said(mainStep(c()))).toBe('Next slide ▶ · N');
+    s.slide = 1;
+    const reveal = mainStep(c())!;
+    expect([said(reveal), reveal.id, leftNow(c(), reveal)]).toEqual(['👁 Reveal answer · N · reveals', 'reveal', []]);
+    // (Its row's 🏁 Back to results, a skip while the blue button reveals: it asks as the blue one would.)
+    expect(doneStep(c())!.id).toBe('results');
+    s.tiebreakerRevealed = true;
+    const back = mainStep(c())!;
+    expect([said(back), back.id, back.flow]).toEqual(['🏁 Back to results · N', 'results', 'done']);
+    const items = leftNow(c(), back);
+    expect(lines(items)).toEqual([['loss: Nobody has won the tiebreaker: Ann & Bob are still tied.', '🏆 Ann won ▶ results · go', '🏆 Bob won ▶ results · go']]);
+    const ck = open(back, items);
+    expect([anywayLabel(ck), inside({ key: 'Enter' }, ck, after), inside({ key: 'n' }, ck, after)]).toEqual([
+      '🏁 Back to results, still tied',
+      { do: 'flash', say: 'Who won? Click their 🏆, or press their number then Enter' },
+      { do: 'anyway' },
+    ]);
+    // Bob picked (2): his 🏆 takes Enter.
+    const bob = leftNow(c({ selected: ['b'] }), back);
+    expect(lines(bob)[0]).toEqual(['loss: Nobody has won the tiebreaker: Ann & Bob are still tied.', '🏆 Ann won ▶ results · go', '🏆 Bob won ▶ results ⏎ · go']);
+    enterQuick(bob)!.run();
+    expect(did).toEqual(['tbwin b']);
+    // Settled (or no longer tied): nothing left.
+    Object.assign(s, { rollOffWinner: 'b', tieAmong: ['a', 'b'], tiebreakClue: true });
+    expect(leftNow(c(), back)).toEqual([]);
+  });
+
+  it('the end screen has no blue button, tie or not', () => {
+    const { g, s } = setup();
+    applyScore(s, g, ['a', 'b'], 500, 'x');
+    s.phase = 'end';
+    expect(mainStep(ctx(g, s, { final: FIN }))).toBeNull();
   });
 });

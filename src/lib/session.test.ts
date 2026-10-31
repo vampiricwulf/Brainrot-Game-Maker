@@ -10,7 +10,7 @@ import {
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
   finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
   blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown, finalTakeNewcomers, finalReached, reveal, unreveal,
-  finalShowAnswer, typedAnswer,
+  finalShowAnswer, typedAnswer, finalRevealNow,
 } from './session';
 import { finalNextStep, redoAction, revealStep, undoAction } from './toolset';
 import { newRpgRound } from './rpg';
@@ -644,6 +644,35 @@ describe('final reveal with N', () => {
     finalJudge(session, game, b, true);
     expect(finalAdvance(session)).toBe('done');
     expect(session.phase).toBe('final');
+  });
+
+  it('says what N does next, as finalAdvance would do it: the answer, the wager, the verdict, the next one, done', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a], 300, 'x');
+    applyScore(session, game, [b], 200, 'x');
+    applyScore(session, game, [c], 100, 'x');
+    goToRound(session, game, 1);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    const f = session.final!;
+    f.wagers[a] = 100;
+    f.wagers[b] = 50;
+    f.answers = { [c]: { text: 'Paris', n: 1 } };
+    // C is spotlit first (lowest score): their typed answer, then their verdict (no wager: typed in their row first).
+    expect(finalRevealNow(session)).toEqual({ at: 'answer', id: c, last: false });
+    finalAdvance(session);
+    expect(finalRevealNow(session)).toEqual({ at: 'wager', id: c, last: false });
+    f.wagers[c] = 0;
+    expect(finalRevealNow(session)).toEqual({ at: 'judge', id: c, last: false });
+    finalJudge(session, game, c, true);
+    expect(finalRevealNow(session)).toEqual({ at: 'next', id: c });
+    finalAdvance(session);
+    expect(finalRevealNow(session)).toEqual({ at: 'wager', id: b, last: false });
+    finalJudge(session, game, a, false);
+    finalAdvance(session);
+    // The last one left: their verdict ends the reveals.
+    expect(finalRevealNow(session)).toEqual({ at: 'judge', id: b, last: true });
+    finalJudge(session, game, b, true);
+    expect(finalRevealNow(session)).toEqual({ at: 'done', id: b });
   });
 
   it('goes back one player with Shift+N, their wager as it was', () => {

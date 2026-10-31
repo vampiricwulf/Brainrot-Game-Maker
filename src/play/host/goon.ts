@@ -7,14 +7,18 @@
  * never a box's, so it works with the host panel hidden too.
  *
  * Moments whose part hasn't moved over yet give no step here (null): the panel's old main button does them, as before,
- * with no check (the Final, the tiebreaker, the end screen, board games and a board game's own roll).
+ * with no check (board games and a board game's own roll). The end screen has no blue button: a tie is settled in its box.
  */
 import { buzzNeverOpened, type BuzzState } from '../../lib/buzz';
 import { overlayDoneAt, tileToolUp, type Live, type Overlay } from '../../lib/live';
+import { pickOf, rightChoice, usableChoices } from '../../lib/choices';
 import { formatPoints, isBoard, isBoardGame, isFinal, roundName, type Game, type Id, type Session } from '../../lib/model';
 import { cardDone, draftDeltas, scoreCards, scoreDraft, wheelSpentUp, type ScoreCard } from '../../lib/overlay';
 import { partnerCandidates, partnerPickStep } from '../../lib/partner';
-import { answerShowing, currentClueInfo, ddCap, nameList, playerName, roundComplete, slidePosition, toolOnlyClue } from '../../lib/session';
+import {
+  answerShowing, coWinnersHold, currentClueInfo, currentFinal, ddCap, finalRevealNow, finalWagerCap, finalWagerProblems, nameList, playerName, roundComplete, slidePosition,
+  tiebreakHolds, tiedForFirst, toolOnlyClue, typedAnswer,
+} from '../../lib/session';
 import { describeAction, isRespin, needsSource, sliceLabel } from '../../lib/tools';
 import { CHECK_GUARD_MS } from './guard';
 import type { FlowPlace } from './slots.svelte';
@@ -46,6 +50,8 @@ export type Quick = {
   aria?: string;
   /** One of several players' lines (several picked): whose. */
   line?: string;
+  /** It wears the ring (the Final's likely verdict): the box's own ring, carried into the check. */
+  ring?: boolean;
 };
 
 /** One thing left. */
@@ -60,7 +66,8 @@ export type LeftItem = {
   quick: Quick[];
   /**
    * The box button that does it (it wears the ring while it's due): 'buzzers', 'rolltie', 'judgeall', 'card:<id>', the
-   * 🤝 box's 'partnerspin', 'describerspin' and 'handout', a wheel's or dice's 'toolslot' (Spin! / Roll!).
+   * 🤝 box's 'partnerspin', 'describerspin' and 'handout', a wheel's or dice's 'toolslot' (Spin! / Roll!), the Final's
+   * spotlit row's likely verdict ('verdict:right' / 'verdict:wrong').
    */
   box?: string;
   /** It can be silenced for the game. */
@@ -81,9 +88,27 @@ export type LeftItem = {
 
 /**
  * 'close': the 🤝 partner wheel's Next ▶; 'tool': what's over the stage goes (a tile's own wheel or dice: its question,
- * or the board); 'popreveal': a question pop-up's answer; 'ddshow': a Daily Double's question.
+ * or the board); 'popreveal': a question pop-up's answer; 'ddshow': a Daily Double's question. The Final: 'finalshow',
+ * its question (from the wagers); 'finalreveal', its answer; 'reveals', the reveals start; 'spot', the spotlit player's
+ * answer or wager, or the next player; 'finish', on past the Final. The tiebreaker's 'results': back to them.
  */
-export type StepId = 'intro' | 'slide' | 'nextround' | 'reveal' | 'done' | 'question' | 'close' | 'tool' | 'popreveal' | 'ddshow';
+export type StepId =
+  | 'intro'
+  | 'slide'
+  | 'nextround'
+  | 'reveal'
+  | 'done'
+  | 'question'
+  | 'close'
+  | 'tool'
+  | 'popreveal'
+  | 'ddshow'
+  | 'finalshow'
+  | 'finalreveal'
+  | 'reveals'
+  | 'spot'
+  | 'finish'
+  | 'results';
 
 /** The blue button's step: its words (FLOW only), what it does, and how its keys go. */
 export type Step = {
@@ -164,6 +189,27 @@ export type GoActs = {
   focusOn: (sel: string) => void;
   /** A Daily Double's question, with its wager; typed values missing, the keys stay in the Wager box (ddWaits). */
   ddShow: () => void;
+  // The Final, the tiebreaker.
+  /** The Final's question, from the wagers (a wager missing: the keys go to its box, finalWaits). */
+  finalShow: () => void;
+  /** The Final's next step: the reveals start, or on past it (the next round, or the results). */
+  finalOn: () => void;
+  /** The reveals' N: the spotlit player's answer or wager (none in: the keys go to their row), or the next player. */
+  finalNext: () => void;
+  /** ✔ Right or ✘ Wrong for this player (their answer and wager go up with it), as C and X do. */
+  judge: (id: Id, right: boolean) => void;
+  /** 🏁 Back to results, from the tiebreaker. */
+  tbBack: () => void;
+  /** 🏆 This player won the tiebreaker (no points: as ＋ Award with 0). */
+  tbWin: (id: Id) => void;
+};
+
+/** The Final, the tiebreaker: what they read beyond the session (their parts' state, never a box's). */
+export type FinalNow = {
+  /** Phone buzzer teams: "Next team ▶". */
+  teams: boolean;
+  /** Who can send their wager from a phone now (the wagers: "Waiting on Bob’s phone"). */
+  wagerPhones: Id[];
 };
 
 /**
@@ -240,6 +286,8 @@ export type GoCtx = {
   ddPhone: boolean;
   /** The open 🤝 partner clue (null: none). */
   partner: PartnerNow | null;
+  /** The Final's and the tiebreaker's (null: not given, their parts have their own main button). */
+  final: FinalNow | null;
   act: GoActs;
 };
 
@@ -334,7 +382,56 @@ export function mainStep(c: GoCtx): Step | null {
   // A board played out goes on only from a click (N mashed after the last clue mustn't jump on stream).
   if (s.phase === 'board') return roundComplete(s, c.game) ? { id: 'nextround', verb: nextRoundVerb(c.game, s.currentRound), run: c.act.nextRound, clickOnly: true } : null;
   if (s.phase === 'clue') return clueStep(c);
+  if (s.phase === 'final') return finalStepOf(c);
+  if (s.phase === 'tiebreaker') return tiebreakerStep(c);
+  // (The end screen has none: a tie is settled in its box. N says so.)
   return null;
+}
+
+/** On past the Final: the next round by its name, or Finish game ▶. */
+function finishVerb(c: GoCtx): FlowVerb {
+  const at = c.session.currentRound + 1;
+  const after = c.game.rounds[at];
+  return after ? FLOW.nextNamed(roundName(after, at)) : FLOW.finishGame;
+}
+
+/**
+ * The Final's step: Show question ▶ (the wagers; nobody plays: on past it), its question slides, Reveal answer ▶, Start
+ * player reveals ▶, then the reveals one by one (Show answer ▶, Show wager ▶, Next player ▶) and Finish game ▶ (or the
+ * next round's name). With the spotlit player's verdict due, it's what comes after it: Next player ▶, or for the last
+ * one Finish game ▶ (it asks for the verdict first).
+ */
+function finalStepOf(c: GoCtx): Step | null {
+  const s = c.session;
+  const f = s.final;
+  if (!f || !c.final) return null;
+  const noun = c.final.teams ? 'team' : 'player';
+  const step = s.finalStep ?? 'wagers';
+  if (step === 'wagers')
+    return f.players.length
+      ? n({ ...FLOW.showQuestion, title: 'The question goes on screen, for the wagers in' }, 'finalshow', c.act.finalShow, { enterIsNext: true })
+      : n({ ...finishVerb(c), title: 'Nobody plays this Final: on past it' }, 'finalshow', c.act.finalShow, { enterIsNext: true });
+  if (step === 'question') {
+    const pos = slidePosition(s, c.game);
+    if (pos && pos.at < pos.of) return n(FLOW.nextSlide(pos.at, pos.of), 'slide', c.act.slide, { flow: 'pager' });
+    return n({ ...FLOW.finalReveal, title: 'The answer goes on screen (R shows or hides it at once) · or click the question' }, 'finalreveal', c.act.reveal, { reveals: true, flow: 'reveal' });
+  }
+  if (step === 'answer') return n(FLOW.startReveals(noun), 'reveals', c.act.finalOn);
+  const r = finalRevealNow(s);
+  if (r.at === 'answer') return n(FLOW.showAnswer, 'spot', c.act.finalNext);
+  if (r.at === 'wager') return n(FLOW.showWager, 'spot', c.act.finalNext);
+  if (r.at === 'next' || (r.at === 'judge' && !r.last)) return n(FLOW.nextPlayer(noun), 'spot', c.act.finalNext);
+  return n(finishVerb(c), 'finish', c.act.finalOn);
+}
+
+/** The tiebreaker clue's step: its slides, 👁 Reveal answer, then 🏁 Back to results. */
+function tiebreakerStep(c: GoCtx): Step | null {
+  const s = c.session;
+  if (!c.final) return null;
+  const pos = slidePosition(s, c.game);
+  if (pos && !answerShowing(s) && pos.at < pos.of) return n(FLOW.nextSlide(pos.at, pos.of), 'slide', c.act.slide, { flow: 'pager' });
+  if (!answerShowing(s)) return n(FLOW.reveal, 'reveal', c.act.reveal, { reveals: true, flow: 'reveal' });
+  return n(FLOW.backToResults, 'results', c.act.tbBack, { flow: 'done' });
 }
 
 /** An open clue's step: PARTNER UP!'s, its question slides, the answer, then back to the board. */
@@ -360,11 +457,18 @@ function clueStep(c: GoCtx, done = false): Step | null {
   return doneStep;
 }
 
-/** A step the check can ask before (the others never do: an intro, a slide, the next round, a Daily Double's question). */
-export const mayAsk = (st: Step): boolean => st.id === 'reveal' || st.id === 'done' || st.id === 'tool';
+/**
+ * A step the check can ask before (the others never do: an intro, a slide, the next round, a Daily Double's question,
+ * the Final's reveals starting).
+ */
+export const mayAsk = (st: Step): boolean => ['reveal', 'done', 'tool', 'finalshow', 'finalreveal', 'spot', 'finish', 'results'].includes(st.id);
 
-/** ▦ Done ▶ board as a skip (the clue's row, while the blue button is 👁 Reveal answer): it asks as the blue one would. */
-export const doneStep = (c: GoCtx): Step | null => clueStep(c, true);
+/**
+ * ▦ Done ▶ board as a skip (the clue's row, while the blue button is 👁 Reveal answer), or the tiebreaker's 🏁 Back to
+ * results there: it asks as the blue one would.
+ */
+export const doneStep = (c: GoCtx): Step | null =>
+  c.session.phase === 'tiebreaker' ? (c.final ? n(FLOW.backToResults, 'results', c.act.tbBack, { flow: 'done' }) : null) : clueStep(c, true);
 
 // ---------- What's left ----------
 
@@ -484,8 +588,24 @@ function judgeItems(c: GoCtx): LeftItem[] {
 function answersItems(c: GoCtx): LeftItem[] {
   const ans = c.answers;
   if (!c.everyone || !ans || ans.locked || c.session.revealed) return [];
-  const can = c.session.players.filter((p) => c.phones.includes(p.id) || ans.seats[p.id]);
-  const missing = can.filter((p) => !ans.seats[p.id]);
+  return comingItems(c, (id) => !!ans.seats[id], c.session.players.map((p) => p.id), FLOW.reveal.label);
+}
+
+/** The Final's typed answers still coming in, at Reveal answer ▶ (3.4 I): those playing it with a phone here. */
+function finalAnswersItems(c: GoCtx): LeftItem[] {
+  const f = c.session.final;
+  const ans = f?.answers;
+  if (!f || !ans || f.answersLocked || c.session.finalStep !== 'question') return [];
+  return comingItems(c, (id) => !!ans[id], f.players, FLOW.finalReveal.label);
+}
+
+/**
+ * Answers still coming from phones, of `ids` (those with a phone here, or whose answer is in): ⏱ 10 more seconds (or a
+ * countdown). Names and counts only, never the words.
+ */
+function comingItems(c: GoCtx, sent: (id: Id) => boolean, ids: Id[], step: string): LeftItem[] {
+  const can = c.session.players.filter((p) => ids.includes(p.id) && (c.phones.includes(p.id) || sent(p.id)));
+  const missing = can.filter((p) => !sent(p.id));
   if (!missing.length) return [];
   const verb = c.clockUp ? '⏱ 10 more seconds' : '⏱ Start the countdown';
   return [
@@ -502,7 +622,7 @@ function answersItems(c: GoCtx): LeftItem[] {
           enter: true,
           then: 'close',
           run: () => c.act.clock(c.clockUp),
-          after: `${c.clockUp ? '10 more seconds' : 'The countdown is on'}… then ${FLOW.reveal.label} (N)`,
+          after: `${c.clockUp ? '10 more seconds' : 'The countdown is on'}… then ${step} (N)`,
         },
       ],
     },
@@ -543,14 +663,18 @@ function buzzItems(c: GoCtx): LeftItem[] {
   return [];
 }
 
-/** A tile's 🤫 cards not sent, at 👁 Reveal answer (3.4 D): the card's name and who it's for, never its words. */
-function cardItems(c: GoCtx): LeftItem[] {
+/**
+ * A tile's 🤫 cards not sent, at 👁 Reveal answer (3.4 D), or the Final's at Show question ▶ (3.4 I): the card's name and
+ * who it's for, never its words.
+ */
+function cardItems(c: GoCtx, final = false): LeftItem[] {
+  const then = final ? FLOW.showQuestion.label : FLOW.reveal.label;
   return c.cards.map((k) => ({
     id: `card:${k.id}`,
     kind: 'first',
     box: `card:${k.id}`,
-    text: `${k.name} hasn’t gone to ${named(c, k.to)} yet.`,
-    quick: [{ label: '📤 Send it', enter: true, then: 'close', run: () => c.act.sendCard(k.id), after: `Sent… then ${FLOW.reveal.label} (N)`, ...(k.full ? { why: k.full } : {}), aria: `Send ${k.name} to ${named(c, k.to)}` }],
+    text: `${final ? `The Final’s ${k.name.charAt(0).toLowerCase()}${k.name.slice(1)}` : k.name} hasn’t gone to ${named(c, k.to)} yet.`,
+    quick: [{ label: '📤 Send it', enter: true, then: 'close', run: () => c.act.sendCard(k.id), after: `Sent… then ${then} (N)`, ...(k.full ? { why: k.full } : {}), aria: `Send ${k.name} to ${named(c, k.to)}` }],
   }));
 }
 
@@ -904,6 +1028,105 @@ export function ddWaits(c: GoCtx): { say: string; at: 'names' | 'wager' } | null
   return null;
 }
 
+/**
+ * The Final's typed values (3.1, 3.4 I): a wager missing, not a whole number or over the max, at Show question ▶; the
+ * spotlit player with no wager, at Show wager ▶. No check opens: the keys go to the first box to fill (`at`), its row
+ * flashes (`row`), and the status line says what to do. Null: it can go. In one window a phone's wager is never said.
+ */
+export function finalWaits(c: GoCtx): { say: string; at: string; row: string } | null {
+  const s = c.session;
+  const f = s.final;
+  if (s.phase !== 'final' || !f) return null;
+  const box = (id: Id) => ({ at: `.play .panel input[data-wager="${id}"]`, row: `.play .panel .wrow[data-player="${id}"]` });
+  if ((s.finalStep ?? 'wagers') === 'wagers') {
+    const { missing, whole, over } = finalWagerProblems(s, c.wagerLimitsOff);
+    const rows = s.players.map((p) => p.id).filter((id) => f.players.includes(id));
+    const first = rows.find((id) => missing.includes(id) || whole.includes(id) || over.includes(id));
+    if (!first) return null;
+    const phones = c.final?.wagerPhones ?? [];
+    if (missing.length) {
+      const who = nameList(rows.filter((id) => missing.includes(id)).map((id) => (phones.includes(id) && !f.phonesLocked ? `${name(c, id)}’s phone` : name(c, id))));
+      return { say: `Waiting on ${who}: type ${missing.length === 1 ? 'their wager' : 'their wagers'}, or Sits out`, ...box(first) };
+    }
+    if (whole.length) return { say: `Not a whole number: ${named(c, whole)} (type a whole number, 0 or more)`, ...box(first) };
+    if (over.length === 1) return { say: `Over ${name(c, over[0])}’s max (${formatPoints(finalWagerCap(s, over[0]), sym(c))}): type less, or tick Ignore the limits`, ...box(first) };
+    return { say: `Over the max: ${named(c, over)} (type less, or tick Ignore the limits)`, ...box(first) };
+  }
+  const r = s.finalStep === 'reveal' ? finalRevealNow(s) : null;
+  if (r?.at !== 'wager' || !r.id || typeof f.wagers[r.id] === 'number') return null;
+  return { say: `${name(c, r.id)} has no wager yet: type it in their row (it’s never taken as 0)`, at: `.play .panel input[data-reveal-wager="${r.id}"]`, row: `.play .panel .pl[data-row="${r.id}"]` };
+}
+
+/**
+ * The Final's spotlit player not judged yet, at Next player ▶ or Finish game ▶ (3.4 I): a must, ✔ Right (C) or ✘ Wrong
+ * (X), each closing the check, so the verdict, the wager and the new score land on stream before N goes on. The likely
+ * one (a multiple choice's pick) wears the ring. No answer words, no wager.
+ */
+function verdictItems(c: GoCtx, step: Step): LeftItem[] {
+  const r = finalRevealNow(c.session);
+  if (r.at !== 'judge' || !r.id) return [];
+  const id = r.id;
+  const who = name(c, id);
+  const likely = likelyVerdict(c, id);
+  const next = `${step.verb.label} (N) next`;
+  return [
+    {
+      id: 'verdict',
+      kind: 'first',
+      must: true,
+      text: `${who} isn’t judged yet: judge them, then ${step.verb.label}.`,
+      enterSay: 'C: right · X: wrong',
+      ...(likely ? { box: `verdict:${likely}` } : {}),
+      quick: [
+        { label: VERBS.right(who).label, key: 'C', then: 'close', tone: 'good', run: () => c.act.judge(id, true), after: `${who} judged · ${next}`, aria: `${who} is right`, ...(likely === 'right' ? { ring: true } : {}) },
+        { label: VERBS.wrong(who).label, key: 'X', then: 'close', tone: 'bad', run: () => c.act.judge(id, false), after: `${who} judged · ${next}`, aria: `${who} is wrong`, ...(likely === 'wrong' ? { ring: true } : {}) },
+      ],
+    },
+  ];
+}
+
+/**
+ * The verdict a multiple choice's pick points to (one choice marked ✔ Right): right or wrong, for the ring on it. Only
+ * once their answer is on screen in one window (viewers see the panel). Null otherwise.
+ */
+export function likelyVerdict(c: Pick<GoCtx, 'session' | 'game' | 'dual'>, id: Id): 'right' | 'wrong' | null {
+  const f = c.session.final;
+  const choices = usableChoices(currentFinal(c.session, c.game)?.choices);
+  const right = rightChoice(choices);
+  if (!f || !right || (!c.dual && !f.answerShown?.[id])) return null;
+  const a = typedAnswer(f, id);
+  const picked = a ? pickOf(a, choices) : null;
+  return picked ? (picked === right.id ? 'right' : 'wrong') : null;
+}
+
+/**
+ * The tiebreaker with nobody its winner while they're still tied, at 🏁 Back to results (3.4 J): 🏆 each tied player
+ * won it (the one picked shows ⏎: "1, Enter").
+ */
+function tieItems(c: GoCtx): LeftItem[] {
+  const s = c.session;
+  const tied = tiedForFirst(s);
+  if (s.phase !== 'tiebreaker' || tied.length < 2 || tiebreakHolds(s, tied.map((p) => p.id)) || coWinnersHold(s)) return [];
+  const one = c.selected.length === 1 ? c.selected[0] : null;
+  return [
+    {
+      id: 'tie',
+      kind: 'loss',
+      text: `Nobody has won the tiebreaker: ${nameList(tied.map((p) => p.name))} are still tied.`,
+      enterSay: 'Who won? Click their 🏆, or press their number then Enter',
+      quick: tied.map((p): Quick => ({
+        label: `🏆 ${p.name} won ▶ results`,
+        // (No number cap: their number picks them, then Enter, as outside.)
+        ...(p.id === one ? { enter: true } : {}),
+        then: 'go',
+        tone: 'good',
+        run: () => c.act.tbWin(p.id),
+        aria: `${p.name} won the tiebreaker, then back to the results`,
+      })),
+    },
+  ];
+}
+
 /** What going on by `step` would skip or lose now, but the kinds silenced this game. */
 export function leftNow(c: GoCtx, step: Step): LeftItem[] {
   const all =
@@ -915,7 +1138,17 @@ export function leftNow(c: GoCtx, step: Step): LeftItem[] {
           ? pickItems(c)
           : step.id === 'tool'
             ? toolItems(c)
-            : [];
+            : step.id === 'finalshow'
+              ? finalWaits(c) || !c.session.final?.players.length
+                ? []
+                : cardItems(c, true)
+              : step.id === 'finalreveal'
+                ? finalAnswersItems(c)
+                : step.id === 'spot' || step.id === 'finish'
+                  ? verdictItems(c, step)
+                  : step.id === 'results'
+                    ? tieItems(c)
+                    : [];
   const quiet = c.session.goonQuiet ?? [];
   return all.filter((i) => !i.quiet || !quiet.includes(i.quiet));
 }

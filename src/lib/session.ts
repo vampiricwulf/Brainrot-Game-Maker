@@ -1112,6 +1112,24 @@ export function finalAdvance(session: Session): 'answer' | 'shown' | 'next' | 'w
   return 'next';
 }
 
+/**
+ * What N does next in the reveals (finalAdvance's rules, without doing it), as the blue button and the rows read it:
+ * 'answer', the spotlit player's typed answer goes on screen; 'wager', their wager (none in yet: it's typed in their
+ * row first, never taken as 0); 'judge', their answer or wager is up and they're not judged yet; 'next', the next player
+ * still to judge; 'done', everyone is judged. `id`: the spotlit player; `last`: they're the only one left to judge.
+ */
+export function finalRevealNow(session: Session): { at: 'answer' | 'wager' | 'judge' | 'next' | 'done'; id?: Id; last?: boolean } {
+  const f = session.final;
+  const cur = f?.current && f.order.includes(f.current) ? f.current : undefined;
+  const left = f ? f.order.filter((id) => !f.results[id]) : [];
+  if (!f || !left.length) return { at: 'done', ...(cur ? { id: cur } : {}) };
+  if (!cur || f.results[cur]) return { at: 'next', ...(cur ? { id: cur } : {}) };
+  const last = left.length === 1;
+  if (typedAnswer(f, cur) && !f.answerShown?.[cur]) return { at: 'answer', id: cur, last };
+  if (hasWager(f, cur) && (f.shown[cur] || f.answerShown?.[cur])) return { at: 'judge', id: cur, last };
+  return { at: 'wager', id: cur, last };
+}
+
 /** Shift+N during the reveal: spotlight the player before the spotlit one (their wager stays as it is). */
 export function finalBack(session: Session): boolean {
   const f = session.final;
