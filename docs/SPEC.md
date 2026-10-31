@@ -378,7 +378,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
    right-click or Shift+F10 on it or on the player's 📱 row: ✎ Rename F2 · 🎨 Color… · 🖼 Picture… · ± Start score… ·
    ▲ Move up · ▼ Move down · 🗑 Delete player), ⚖ Game rules, 📱 Phone
    buzzers (with Teams) and On stream options, all saved with the game, and choose **Single window** or **📺 Separate
-   audience window**. A game in progress is picked up from the editor with **Resume game**. While the buzzer room is
+   audience window** (with 📺 picked, a line under the cards: "not open yet" [📺 Open it now], or "open ✓" [Bring it
+   forward] … [Close it], which asks first; `A` / `Shift+A` open the audience and scores windows here too). A game in
+   progress is picked up from the editor with **Resume game**. While the buzzer room is
    up, each 👥 row says how its phone is in words where the name's chip was (📱 in, 📱 waiting, 📵 lost 0:12, ⛔ kicked
    1:40, 🔒 locked out), and the sticky Start bar has the room's live line, one line high: who's asking to join with ✔ Add / ✕ No (two or
    more: how many, and Show ↓ to the 📱 card's list), else the code, who's in and who it's waiting for, plain until

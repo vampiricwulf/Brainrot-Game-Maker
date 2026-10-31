@@ -163,7 +163,11 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
   board's arrow keys). While a box they can read is up (a partner clue's, a tile's 🤫 cards, a Daily Double's wager, a
   ✍ clue's answers), the status line says so with a **⚠ Viewers see this** chip: point at it for what they can see.
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
-  notes and controls, and its board marks the Daily Doubles (⭐), 🤝 partner and ✍ tiles still to play.
+  notes and controls, and its board marks the Daily Doubles (⭐), 🤝 partner and ✍ tiles still to play. Before the
+  game a line under the two cards says whether it's open: "not open yet" with **📺 Open it now** (Start opens it too),
+  or "open ✓" with **Bring it forward** and **Close it** at the far end, which asks first (your stream capture goes
+  black); right under it, the reminder to click the window once for sound. `A` opens it or brings it forward, and `Shift+A` opens the scores
+  window, before the game as in it.
 
 Nothing turns blue when you click, double-click or drag, nor with `Ctrl+A`, so nothing shows selected on stream: only
 the boxes you type in, links, the room code (one click takes all of it), error lines, ℹ About's version and folders and

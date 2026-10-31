@@ -4460,12 +4460,18 @@
 
   /** The display picked (🖥 Display, remembered from the last game): the audience window opens on Start if it isn't yet. */
   const wantAudience = $derived(dual || prefs.display === 'audience');
+  /** 📺 picked opens the audience window, or brings it forward when it's open; 🖥 closes it. */
   function pickDisplay(audienceWindow: boolean): void {
     prefs.display = audienceWindow ? 'audience' : 'single';
     savePrefs();
     if (!audienceWindow && dual) closeAudienceWindow();
-    else if (audienceWindow && !dual) void openAudience();
+    else if (audienceWindow) void openAudience();
   }
+  /** The audience window line's Close it asks first, as the host panel's 📺 does (it's usually the stream capture). */
+  let askCloseAud = $state(false);
+  $effect(() => {
+    if (!dual) askCloseAud = false;
+  });
 
   /** Buzzer mode is on and the room is up: its code, and the players whose phones are in. */
   const roomUp = $derived(phonesOn && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
@@ -4905,6 +4911,15 @@
       if (showSound || showSettings || shrinkDialog.open || t?.closest('input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable], [role="dialog"], [role="menu"]')) return;
       e.preventDefault();
       showKeys = true;
+      return;
+    }
+    // A and Shift+A, as in the game: the audience window (opened, or brought forward; never closed) and the scores window.
+    if (e.key.toLowerCase() === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && !e.defaultPrevented) {
+      const t = e.target instanceof Element ? e.target : null;
+      if (showSound || showSettings || shrinkDialog.open || t?.closest('input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable], [role="dialog"], [role="menu"]')) return;
+      e.preventDefault();
+      if (e.shiftKey) openScores();
+      else void openAudience();
       return;
     }
     // Ctrl+Enter starts the game from wherever the focus is on the page (not in a window over it).
@@ -5999,9 +6014,34 @@
         <section class="part" aria-labelledby="pregame-display">
           <h2 id="pregame-display">🖥 Display</h2>
           <ModeCards dual={wantAudience} onsingle={() => pickDisplay(false)} onaudience={() => pickDisplay(true)} />
-          {#if wantAudience && !dual}
-            <p class="muted small" data-note="audience-on-start">📺 The audience window opens when you press Start (or click its card now).</p>
+          <!-- The audience window's own buttons, under the cards: open it now (Start opens it too), bring it forward (A),
+               or close it, apart and asking first. Right under it, what may keep it quiet (click it once for sound), or
+               that it was closed by accident, with Reopen. -->
+          {#if dual}
+            <div class="row aud-line small" data-audience-line>
+              {#if askCloseAud}
+                <InlineAsk
+                  text="Close the audience window? Your stream capture goes black."
+                  ok="Close it"
+                  cancel="Keep it"
+                  danger
+                  focusCancel
+                  onok={() => ((askCloseAud = false), closeAudienceWindow())}
+                  oncancel={() => (askCloseAud = false)}
+                />
+              {:else}
+                <span class="good-ink">📺 Audience window open ✓</span>
+                <button class="small" onclick={() => void openAudience()} title="Bring it to the front (A)">Bring it forward</button>
+                <button class="small ghost aud-close" onclick={() => (askCloseAud = true)} title="Close it (asks first: your stream capture goes black)">Close it</button>
+              {/if}
+            </div>
+          {:else if wantAudience && !audience.lost}
+            <div class="row aud-line small" data-audience-line>
+              <span class="muted">📺 Audience window: not open yet (Start opens it)</span>
+              <button class="small" onclick={() => void openAudience()} title="Open it now, to set up its capture in OBS or Discord (A)">📺 Open it now</button>
+            </div>
           {/if}
+          <SoundWarnings {dual} onhelp={() => (showSound = true)} />
           {#if !prefs.liveChecklist}
             <button class="ghost small" onclick={() => ((prefs.liveChecklist = true), savePrefs())}>✅ Show the “Going live?” checklist</button>
           {/if}
@@ -6011,7 +6051,6 @@
               and hidden objects shown in the controls. To keep those secret, use the audience window.
             </p>
           {/if}
-          <SoundWarnings {dual} onhelp={() => (showSound = true)} />
         </section>
 
         <section class="part" data-place="play:stream" aria-labelledby="pregame-stream">
@@ -6672,6 +6711,16 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  /* 🖥 Display: the audience window's line under the cards (Close it apart, at the right). */
+  .aud-line {
+    min-height: 28px;
+  }
+  .aud-line .aud-close {
+    margin-left: auto;
+  }
+  .good-ink {
+    color: var(--good, var(--text));
   }
   .room-note.ok {
     color: var(--good, var(--text));

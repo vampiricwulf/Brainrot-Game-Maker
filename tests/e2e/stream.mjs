@@ -960,8 +960,31 @@ try {
   assert(titlePx >= 100, `a short game title on the Starting soon card is big, not shrunk to the smallest size (${titlePx}px)`);
   assert(/^[12]:\d\d$/.test(await aud.locator('.soon-count').innerText()), 'and counts down to the start');
   assert(!(await page.locator('.pregame .exposed').count()), 'with the audience window open, no single-window warning');
-  await page.locator('.mode', { hasText: 'Single window' }).click();
+  // 🖥 Display's line for the audience window: open, with Bring it forward, and Close it apart, asking first.
+  const audLine = page.locator('[data-audience-line]');
+  await audLine.getByText('📺 Audience window open ✓').waitFor();
+  assert((await audLine.getByRole('button', { name: 'Bring it forward' }).count()) === 1, 'with the audience window open, 🖥 Display says so, with Bring it forward');
+  await audLine.getByRole('button', { name: 'Close it' }).click();
+  await audLine.getByText('Close the audience window? Your stream capture goes black.').waitFor();
+  // (A question's buttons ignore a click right after it shows.)
+  await page.waitForTimeout(450);
+  await audLine.getByRole('button', { name: 'Keep it' }).click();
+  await audLine.getByRole('button', { name: 'Bring it forward' }).waitFor();
+  assert(!aud.isClosed(), 'its Close it asks first, and Keep it keeps it open');
+  await audLine.getByRole('button', { name: 'Close it' }).click();
+  await page.waitForTimeout(450);
+  await audLine.getByRole('button', { name: 'Close it' }).click();
   if (!aud.isClosed()) await aud.waitForEvent('close', { timeout: 3000 });
+  await audLine.getByText('📺 Audience window: not open yet (Start opens it)').waitFor();
+  assert((await audLine.getByRole('button', { name: '📺 Open it now' }).count()) === 1, 'closed, the line says it isn’t open yet, with 📺 Open it now');
+  // A opens it again before the game, as in the game.
+  await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+  const [aud2] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
+  await aud2.waitForLoadState('domcontentloaded');
+  await audLine.getByText('📺 Audience window open ✓').waitFor();
+  assert(true, 'A opens the audience window before the game too');
+  await page.locator('.mode', { hasText: 'Single window' }).click();
+  if (!aud2.isClosed()) await aud2.waitForEvent('close', { timeout: 3000 });
 
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
