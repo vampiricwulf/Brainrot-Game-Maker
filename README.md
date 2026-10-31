@@ -207,11 +207,17 @@ the boxes you type in, links, the room code (one click takes all of it), error l
 A right-click where the app has no menu of its own shows nothing, in every window (the browser's menu, with its Reload,
 would be on stream): boxes you type in, links and selected words keep it. Windows only for reading (ℹ About, the keys,
 🔊 Sound help, ⚖ Rules in the game) close on `Enter` as well as `Esc`, unless the keys are in a box or on a button there.
-A player's menu (Select, ★ Make the picker, ✎ Set the score…, their round's extras) opens with a right-click on them
-anywhere on the host screen: their score chip or plate, their row in the 📱 phones list, and their button in any box (who picked a 🤝 partner clue, who
-found a Daily Double, who gets a 🤫 card or a 🎭 part, the Final's rows, a shop's buyer…), headed by their name only.
-`Shift+F10` or the menu key on their button, or a long press on a touch screen, opens it too, and each item shows its
-key.
+A player's menu opens with a right-click on them anywhere on the host screen: their score chip or plate, their row in
+the 📱 phones list, and their button in any box (who picked a 🤝 partner clue, who found a Daily Double, who gets a 🤫
+card or a 🎭 part, the Final's rows, a shop's buyer…), headed by their name only. It goes in one order: first this
+moment's verbs for them (in a clue **✔ Right +$400** `Enter` / **✘ Wrong −$400** `Shift+Enter`, a 🤝 partner clue's ✔ Got
+it / ✘ Missed with their share; on PARTNER UP! ★ Ann picked it / 🤝 Make Ann the partner; on a Daily Double ⭐ Ann found
+it; from 🤫 Send a card… 📤 Send to Ann only / ＋ Add Ann; in the Final's wagers Plays / Sits out this Final and ✎ Set
+wager…; in its reveals 🔦 Spotlight, Show answer, Show wager, ✔ Right `C`, ✘ Wrong `X`), one that doesn't fit them greyed
+so the rest keeps its place; a line, then Select, ★ Make the picker and ✎ Set the score…; their round's extras and 🗂 Open
+their card; while the buzzer room is up, 📱 Free seat (new phone) and ↩ Let back; and last, in red, ⛔ Kick from phone (2
+min)… and 🗑 Delete player…, both asking first. `Shift+F10` or the menu key on their button, or a long press on a touch
+screen, opens it too, and each item shows its key.
 A right-click on the stage (or `Shift+F10` on the main button, or a long press) gives the moment's own menu. Its first
 item, on its own, is the blue button's step (Show question ▶ `N`, 👁 Reveal answer `N`, ▦ Done ▶ board `N`, Next turn ▶
 `N`…), and like the blue button it asks first when something's left. Then come the moment's own actions, each with its

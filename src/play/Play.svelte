@@ -39,10 +39,10 @@
     teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
-  import { clip, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
+  import { clip, KICK_BLOCK_MS, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
   import {
     acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, forgetCardFiles, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomCardSeen, onRoomColor, onRoomQueue,
-    onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomHasAnswers, roomHasCards, roomHasChoices, roomHasFiles, roomHasWagers, roomLink, roomMembers, roomStillOpen, sendHostState, startRoom,
+    onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomCanFree, roomHasAnswers, roomHasCards, roomHasChoices, roomHasFiles, roomHasWagers, roomLink, roomMembers, roomStillOpen, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { judgeAllPlan, usableChoices } from '../lib/choices';
   import { clearRoom, debounce, saveRoom, type SavedRoom } from '../lib/persist';
@@ -69,7 +69,7 @@
   import InlineAsk from './host/InlineAsk.svelte';
   import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
-  import type { HostAsk } from './host/slots.svelte';
+  import type { HostAsk, PlayerVerbs } from './host/slots.svelte';
   import { selectItems, stageMenuOf, type Moment, type StageItem } from './host/stagemenu';
   import { CHECK, FLOW, VERBS } from './host/verbs';
   import { CHECK_GUARD_MS, KEY_GUARD_MS } from './host/guard';
@@ -103,7 +103,7 @@
   import { ensureWorld, focusRef, refindPositions } from '../lib/rpg';
   import { boardNow, isMover, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
-  import { playerMenu } from './playermenu';
+  import { partnerUpVerbs, playerMenu, revealVerbs, type SeatPhone } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
   import { boxNext, dragDone, dragGhost, dropHover, itemDrag } from './dragdrop.svelte';
   import Avatar from '../lib/rpg/Avatar.svelte';
@@ -3998,10 +3998,11 @@
    */
   function playerMenuAt(e: MouseEvent): void {
     if (e.defaultPrevented || browserMenuFits(e.target, getSelection())) return;
-    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-player-id]')?.dataset.playerId;
+    const at = e.target instanceof Element ? e.target : null;
+    const id = at?.closest<HTMLElement>('[data-player-id]')?.dataset.playerId;
     if (!id || !session.players.some((p) => p.id === id)) return;
     // What it asks of the host panel brings the controls back when they're hidden.
-    const [heading, ...rest] = playerMenu(
+    const items = playerMenu(
       {
         game,
         session,
@@ -4010,29 +4011,65 @@
         setScore: (who) => ((hideControls = false), (editingScore = who)),
         sendTo: (players, label) => ((hideControls = false), (rpgMapSend = { players, label }), (rpgMap = true)),
         openCard: (who) => ((hideControls = false), (playerCards.open = true), (playerCards.flash = who)),
+        verbs: (who) => momentVerbs(who, at),
+        phone: seatPhone,
+        remove: (who) => ((hideControls = false), openPlayers(), (removing = who)),
       },
       id,
     );
-    // The Final reveals: judging them comes first (their score plate on the stage, their chip in the host panel).
-    const f = session.final;
-    const reveal: MenuEntry[] =
-      session.phase === 'final' && session.finalStep === 'reveal' && f?.order.includes(id)
-        ? [
-            { label: '🔦 Spotlight', disabled: f.current === id, keys: spot(id), onclick: () => spotlight(id) },
-            ...(f.answers ? [{ label: 'Show answer', disabled: !typedAnswer(f, id) || !!f.answerShown?.[id], onclick: () => showAnswer(id) }] : []),
-            { label: 'Show wager', disabled: !!f.shown[id], onclick: () => finalShow(session, id) },
-            { label: '✔ Right', keys: f.current === id ? 'C' : undefined, onclick: () => judge(id, true) },
-            { label: '✘ Wrong', keys: f.current === id ? 'X' : undefined, onclick: () => judge(id, false) },
-            { sep: true },
-          ]
-        : [];
-    showMenu(e, heading ? [heading, ...reveal, ...rest] : []);
+    showMenu(e, items);
   }
-  /** The number that spotlights a player in the Final's reveals (the first nine). */
-  const spot = (id: string): string | undefined => {
-    const n = session.players.findIndex((p) => p.id === id) + 1;
-    return n && n <= 9 ? String(n) : undefined;
-  };
+
+  /** What the host panel's boxes add to a player's menu (read back from it: see slots.svelte.ts offerPlayerVerbs). */
+  let boxVerbs = $state<PlayerVerbs | null>(null);
+
+  /**
+   * This moment's verbs for a player, first in their menu: the boxes' own (🤫 Send a card…'s from inside it, the clue's ✔
+   * / ✘, who found a Daily Double, the Final's wagers), PARTNER UP!'s who picked it and the partner, the Final's reveals.
+   * One that works in the panel (a box to type in) brings the controls back first.
+   */
+  function momentVerbs(id: string, at: Element | null): MenuEntry[] {
+    const fromBoxes = (boxVerbs?.(id, at) ?? []).map(({ panel, ...v }): MenuEntry => (panel ? { ...v, onclick: () => ((hideControls = false), void tick().then(v.onclick)) } : v));
+    return [
+      ...fromBoxes,
+      ...partnerUpVerbs(session, id, { picked: partnerPicker, partner: partnerChoose, spinning: toolGoing() }),
+      ...revealVerbs(session, id, { spotlight, showAnswer, showWager: (who) => finalShow(session, who), judge }),
+    ];
+  }
+
+  /** A player's seat in the buzzer room, for their menu (none with no room up, or with Teams: their 📱 rows are people). */
+  function seatPhone(id: string): SeatPhone | null {
+    if (!roomUp || teamsOn(game.settings)) return null;
+    const on = remote.phones.some((p) => p.seatId === id);
+    return {
+      down: remote.status !== 'online',
+      on,
+      canFree: roomCanFree(),
+      letBack: !on && roomCanFree() && Date.now() - (remote.kicked[id] ?? -Infinity) < KICK_BLOCK_MS,
+      free: () => kickPhone(id, true),
+      letIn: () => kickPhone(id, true),
+      kick: () => ((hideControls = false), (keepAsk = null), (kickAsk = id)),
+    };
+  }
+  /** ⛔ Kick from phone asked from a player's menu: it asks first, in the panel's strip (null: not asking). */
+  let kickAsk = $state<string | null>(null);
+  // (One question at a time in the strip: putting a tile back asked since puts this one away.)
+  $effect(() => {
+    if (keepAsk) untrack(() => (kickAsk = null));
+  });
+  const kickQuestion = $derived.by<HostAsk | null>(() => {
+    const id = kickAsk;
+    if (!id || !session.players.some((p) => p.id === id)) return null;
+    const name = playerName(session, id);
+    return {
+      text: `Kick ${name} from their phone? That phone (and any on the same Wi-Fi) can’t take ${name}’s seat for 2 minutes.`,
+      ok: '⛔ Kick',
+      cancel: 'Keep them',
+      danger: true,
+      onok: () => ((kickAsk = null), kickPhone(id)),
+      oncancel: () => (kickAsk = null),
+    };
+  });
 
   /**
    * Shift+F10 or the menu key: the menu of what has the keys, under it, as a right-click on it opens: a player's button
@@ -6504,7 +6541,7 @@
         onslide={slideStep}
         onback={() => back()}
         oncancelclue={cancelClue}
-        askcancel={keepQuestion}
+        askcancel={keepQuestion ?? kickQuestion}
         onreopen={toggleTile}
         onundo={doUndo}
         onredo={doRedo}
@@ -6551,6 +6588,7 @@
         oncloseoverlay={() => closeOverlay()}
         onopenbuzzers={openBuzzers}
         bind:boxMenu
+        bind:playerVerbs={boxVerbs}
         {markSince}
         goon={goPanel}
         clicknote={clickNote}

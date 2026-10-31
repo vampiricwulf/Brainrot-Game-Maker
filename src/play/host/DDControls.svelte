@@ -9,7 +9,7 @@
   import { textOn } from '../../lib/colors';
   import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
-  import { offerExposed, offerMenu } from './slots.svelte';
+  import { offerExposed, offerMenu, offerPlayerVerbs } from './slots.svelte';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
 
@@ -118,6 +118,13 @@
       onclick: () => pick(p.id),
     })),
   );
+
+  // A player's menu starts with it too: ⭐ Bob found it (greyed for the one picked).
+  offerPlayerVerbs('dd', (id) => {
+    const i = session.players.findIndex((p) => p.id === id);
+    if (i < 0) return [];
+    return [{ label: `⭐ ${session.players[i].name} found it`, disabled: playerId === id, keys: !playerId && i < 9 ? String(i + 1) : undefined, onclick: () => pick(id) }];
+  });
 
   // The keys in the Wager box, the box at its top: the heading and the names stay in view (focus would scroll it down to
   // the box, in one window where the panel keeps the board's height).

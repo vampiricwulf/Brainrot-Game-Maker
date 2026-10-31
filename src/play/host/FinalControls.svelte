@@ -20,7 +20,7 @@
   } from '../../lib/session';
   import { finalNextStep, logged } from '../../lib/toolset';
   import { letter, pickLabel, pickOf, rightChoice, usableChoices } from '../../lib/choices';
-  import { hostAsk, offerExposed, offerMenu } from './slots.svelte';
+  import { hostAsk, offerExposed, offerMenu, offerPlayerVerbs } from './slots.svelte';
   import type { StageItem } from './stagemenu';
   import { wagersLine } from './goon';
   import { FLOW } from './verbs';
@@ -385,6 +385,27 @@
    */
   const finishEarly = $derived(session.finalStep === 'reveal' && !!unjudged && !askFinish && !blueFinishes);
   const FINISH_NOW = 'Finish now…';
+
+  // A player's menu at the wagers starts with their row's own: plays or sits out this Final, and ✎ Set wager… (the keys in
+  // their wager box: in one window it keeps a phone's amount hidden, as ever).
+  offerPlayerVerbs('final', (id) => {
+    if (!f || session.finalStep !== 'wagers' || !byId[id]) return [];
+    const plays = f.players.includes(id);
+    return [
+      { label: plays ? 'Sits out this Final' : 'Plays this Final', onclick: () => toggleIn(id) },
+      {
+        label: '✎ Set wager…',
+        panel: true,
+        disabled: !plays,
+        ...(plays ? {} : { hint: `${byId[id].name} sits out this Final` }),
+        onclick: () => {
+          const box = wagerBox(id);
+          box?.focus();
+          box?.select();
+        },
+      },
+    ];
+  });
 
   // The stage's menu: the box's own way back, 🙈 Hide answer, or finishing early (the steps are the blue button's).
   offerMenu('final', () => {

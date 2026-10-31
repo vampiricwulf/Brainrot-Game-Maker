@@ -621,7 +621,19 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   or a part's). `Shift+F10` or the menu key on the button opens it under it, and `Esc` gives the button the keys back;
   a long press on a touch screen opens it too, and the tap that ends the press is dropped (longpress.ts). In a box over
   the panel (🤫 Send a card…, 🎭 Deal…) the menu opens over the box, which stays open. A box to type in keeps the
-  browser's menu. Its items show their keys (Select `2`, ★ Make the picker `P, 2`, the Final's ✔ Right `C`).
+  browser's menu. Its items show their keys (Select `2`, ★ Make the picker `P, 2`, the Final's ✔ Right `C`). One order
+  everywhere: (1) this moment's verbs for them, each a box's own action (slots.svelte.ts `offerPlayerVerbs`, and Play's
+  own for PARTNER UP! and the Final's reveals): a clue's ✔ Right +$400 / ✘ Wrong −$400 as their chip's ✔ / ✘ give them
+  (`⏎` / `⇧⏎` when they're the one selected; a 🤝 partner clue's ✔ Got it / ✘ Missed with their share, a steal's ✔ Stole
+  it; in one window a phone's Daily Double wager stays "+ the wager"), PARTNER UP!'s ★ Ann picked it / 🤝 Make Ann the
+  partner, a Daily Double's ⭐ Ann found it, 🤫 Send a card…'s 📤 Send to Ann only / ＋ Add Ann (opened from inside it),
+  the Final's wagers' Plays / Sits out this Final and ✎ Set wager… (the keys in their wager box, which in one window
+  keeps a phone's amount hidden), its reveals' 🔦 Spotlight, Show answer, Show wager, ✔ Right `C`, ✘ Wrong `X`; the same
+  list for every player in a moment, one that doesn't fit them greyed with why, so the next group starts at the same
+  depth; (2) a line, Select · ★ Make the picker · ✎ Set the score…; (3) the round's extras (their sheet, party, turn,
+  zones), then 🗂 Open their card; (4) while the buzzer room is up (not with Teams, whose 📱 rows are people), 📱 Free
+  seat (new phone) · ↩ Let back, greyed where they don't apply; (5) red and last, ⛔ Kick from phone (2 min)…, asked in
+  the panel's strip, and 🗑 Delete player…, which asks in 👥 Players as its − does. Groups with nothing are left out.
 - **The stage's menu** (host/stagemenu.ts): a right-click on the host's stage (not on a player, a tile or a board-game
   space, which have their own), `Shift+F10` or the menu key on the main button (or a box's step button, or with nothing
   focused), and a long press open the moment's menu: a heading naming the moment ("🤝 Partner clue · Movies $400"), the

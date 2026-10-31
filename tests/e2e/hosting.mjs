@@ -243,6 +243,8 @@ try {
   await ddChip.click({ button: 'right' });
   const chipMenu = await menuLines(page);
   assert(chipMenu[0] === `# ${ddName}` && chipMenu.includes('✎ Set the score…') && chipMenu.some((l) => /^(Select|Deselect) · 2/.test(l)), `a right-click on a Daily Double chip opens ${ddName}’s menu, keys shown (${chipMenu.join(' | ')})`);
+  // It starts with the moment's verb (who found it: greyed for the one picked), then a line, then Select.
+  assert(chipMenu[1].startsWith(`⭐ ${ddName} found it`) && chipMenu[2] === '—' && /^(Select|Deselect)/.test(chipMenu[3]), `the Daily Double's ⭐ ${ddName} found it comes first, then a line (${chipMenu.join(' | ')})`);
   await page.keyboard.press('Escape');
   await ddChip.focus();
   await page.keyboard.press('Shift+F10');

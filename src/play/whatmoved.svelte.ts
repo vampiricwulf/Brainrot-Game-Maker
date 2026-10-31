@@ -30,6 +30,7 @@ export const WHAT_MOVED: Record<MovedPart, readonly string[]> = {
     'The Final: finishing early is Finish now… at the left of the box’s foot, beside “2 still to judge” (it was a second Finish game ▶ at the right, by the verdicts). The reveal rows are in straight columns, ✔ Right and ✘ Wrong at the right end; the wager screen’s first line says whose wager it waits on.',
     'The results screen: ▶ Next game… and 🔁 Rematch are on the left now, after 📋 Copy standings (they were at the far right), 🔁 Rematch last and set apart.',
     'The tiebreaker clue: Who won? 🏆 Ann 🏆 Bob (the tied players only) settles it in one click; the Amount row is behind ± Also give points… (a number, then Enter, still picks the winner).',
+    'A player’s menu starts with this moment’s verbs for them (✔ Right / ✘ Wrong in a clue, ★ Ann picked it and 🤝 Make Ann the partner on PARTNER UP!, ⭐ Ann found it, the Final’s), then a line and Select, ★ Make the picker, ✎ Set the score… (they were first); with the buzzer room up 📱 Free seat and ↩ Let back, then ⛔ Kick from phone and 🗑 Delete player, red and last.',
     '🎭 Deal…: its button says how the deal stands (“🎭 Spy night · sent”, “· on screen” while Who was who is up), orange when a phone missed its card. Inside, by purpose: On phones (↻ Send again, ↩ Take the cards back), On stream (🎭 Show who was who), and apart, This deal (🎭 Deal a new one, 🗑 End this deal).',
     'The wheel edit’s and a shop’s questions: Cancel first, the answer last (💾 Save, Replace, Sell anyway, Set). The wheel edit’s Overwrite is 💾 Replace “…”….',
   ],

@@ -43,6 +43,7 @@
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
   import { leftLine, slowKinds, slowLine } from './cardrow';
   import ShrinkButton from './ShrinkButton.svelte';
+  import { offerPlayerVerbs } from './slots.svelte';
   import { libraryMedia } from '../../lib/phonecopies';
 
   let {
@@ -419,6 +420,35 @@
     if (!openCardWindow(seat)) toast(popupBlocked(), 5000);
   }
   const nameOf = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
+  // A player's menu from a name here starts with this box's own: 📤 Send to Bob only (the card, to them alone, now), and
+  // ＋ Add Bob (or − Leave Bob out). Only from inside it: elsewhere the moment's are other.
+  offerPlayerVerbs('card', (id, at) => {
+    if (!box || !at || !box.contains(at) || !session.players.some((p) => p.id === id)) return [];
+    const name = nameOf(id);
+    const why = !cardsOn
+      ? 'The phones don’t get cards here: 📋 copy it to them, or show it in the 🪟 card window'
+      : full
+        ? cardsFullText(game, session)
+        : !hasSomething
+          ? kind === 'stage'
+            ? 'Nothing on screen to send now'
+            : 'Put something on the card first'
+          : '';
+    return [
+      {
+        label: `📤 Send to ${name} only`,
+        disabled: !!why,
+        ...(why ? { hint: why } : {}),
+        onclick: () => {
+          to = [{ seat: id }];
+          // (Out to them already, say: it says why, as the greyed 📤 Send would.)
+          if (!canSend) return void toast(cant, 4000);
+          send();
+        },
+      },
+      seatOn(id) ? { label: `− Leave ${name} out`, onclick: () => toggleSeat(id) } : { label: `＋ Add ${name}`, onclick: () => toggleSeat(id) },
+    ];
+  });
   /** The first player chosen as a whole seat (the card window shows a seat's cards). */
   const firstSeat = $derived(to.find((t) => !t.member && !t.except?.length)?.seat);
 </script>

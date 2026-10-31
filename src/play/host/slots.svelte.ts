@@ -11,6 +11,7 @@
 import { getContext, onDestroy, setContext, untrack } from 'svelte';
 import { ask as askDialog } from '../../lib/ask.svelte';
 import { clickGuard, type ClickGuard } from './guard';
+import type { MenuEntry } from '../../lib/menustate.svelte';
 import type { StageItem } from './stagemenu';
 import type { Verb } from './verbs';
 
@@ -62,9 +63,25 @@ export type HostAsk = {
 export type MenuFrom = 'turn' | 'board' | 'tool' | 'dd' | 'partner' | 'final' | 'end' | 'flow';
 const MENU_ORDER: MenuFrom[] = ['tool', 'flow', 'dd', 'partner', 'final', 'end', 'turn', 'board'];
 
+/**
+ * Who adds this moment's verbs to a player's menu (see offerPlayerVerbs): 🤫 Send a card… (only in its own box), the
+ * panel's own row (a clue's ✔ / ✘, as the chips give them), the Daily Double's box, the Final's.
+ */
+export type VerbsFrom = 'card' | 'flow' | 'dd' | 'final';
+const VERBS_ORDER: VerbsFrom[] = ['card', 'flow', 'dd', 'final'];
+
+/**
+ * A box's verbs for one player: what its own buttons do for them. `at`: where the menu was opened (a box offers some only
+ * from inside it). `panel`: it works in the host panel (a box to type in), so the controls come back first if hidden.
+ */
+export type PlayerVerb = Extract<MenuEntry, { label: string }> & { panel?: boolean };
+export type PlayerVerbs = (id: string, at: Element | null) => PlayerVerb[];
+
 type Slots = {
   /** What each box adds to the stage's menu (see offerMenu). */
   menus: Partial<Record<MenuFrom, () => StageItem[]>>;
+  /** What each box adds to a player's menu (see offerPlayerVerbs): a list, as two 🤫 Send a card… boxes can be up. */
+  verbs: Partial<Record<VerbsFrom, PlayerVerbs[]>>;
   ask: HostAsk | null;
   /** What the boxes on screen say viewers can read of them (see offerExposed). */
   exposed: (() => string | null)[];
@@ -77,8 +94,8 @@ const GUARD = Symbol('host-guard');
  * The host panel: make the places (its parts find them), and its one click guard (see guard.ts: panelGuard), for the
  * main button, the boxes' step buttons and their player buttons.
  */
-export function hostSlots(): Slots & { viewersSee: () => string[]; menu: () => StageItem[] } {
-  const s = $state<Slots>({ menus: {}, ask: null, exposed: [] });
+export function hostSlots(): Slots & { viewersSee: () => string[]; menu: () => StageItem[]; playerVerbs: PlayerVerbs } {
+  const s = $state<Slots>({ menus: {}, verbs: {}, ask: null, exposed: [] });
   setContext(KEY, s);
   setContext(GUARD, clickGuard());
   return Object.assign(s, {
@@ -86,6 +103,8 @@ export function hostSlots(): Slots & { viewersSee: () => string[]; menu: () => S
     viewersSee: () => [...new Set(s.exposed.map((get) => get()).filter((x): x is string => !!x))],
     /** What the boxes on screen add to the stage's menu, in the main button's order. */
     menu: () => MENU_ORDER.flatMap((k) => s.menus[k]?.() ?? []),
+    /** What the boxes on screen add to a player's menu, first in it. */
+    playerVerbs: (id: string, at: Element | null) => VERBS_ORDER.flatMap((k) => (s.verbs[k] ?? []).flatMap((get) => get(id, at))),
   });
 }
 
@@ -110,6 +129,20 @@ export function offerMenu(from: MenuFrom, get: () => StageItem[]): void {
   $effect(() => {
     untrack(() => (s.menus[from] = get));
     return () => untrack(() => s.menus[from] === get && delete s.menus[from]);
+  });
+}
+
+/**
+ * A box's own actions for one player, first in that player's menu (this moment's verbs: who found a Daily Double, plays
+ * or sits out the Final…), offered while the box is on screen. The same list for every player (one that doesn't fit them
+ * greyed), so the menu's next group starts at the same depth. Only what the box shows: in one window, never a wager.
+ */
+export function offerPlayerVerbs(from: VerbsFrom, get: PlayerVerbs): void {
+  const s = getContext<Slots | undefined>(KEY);
+  if (!s) return;
+  $effect(() => {
+    untrack(() => (s.verbs[from] = [...(s.verbs[from] ?? []), get]));
+    return () => untrack(() => (s.verbs[from] = (s.verbs[from] ?? []).filter((g) => g !== get)));
   });
 }
 

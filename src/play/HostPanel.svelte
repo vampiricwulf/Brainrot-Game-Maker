@@ -9,7 +9,8 @@
 <script lang="ts">
   import { announce, announceChanges } from '../lib/announce';
   import { textOn } from '../lib/colors';
-  import { hostSlots, offerMenu, panelGuard, type HostAsk, type NextAction } from './host/slots.svelte';
+  import { hostSlots, offerMenu, panelGuard, type HostAsk, type NextAction, type PlayerVerb, type PlayerVerbs } from './host/slots.svelte';
+  import { verdictVerbs } from './playermenu';
   import type { StageItem } from './host/stagemenu';
   import { VERBS } from './host/verbs';
   import { justShown } from './host/guard';
@@ -132,6 +133,7 @@
     buzzExtra,
     phoneChip,
     boxMenu = $bindable(null),
+    playerVerbs = $bindable(null),
     markSince = 0,
     goon = null,
     clicknote = null,
@@ -276,6 +278,8 @@
     phoneChip?: Snippet;
     /** What the boxes open here add to the stage's menu (read back by the play screen: see stagemenu.ts). */
     boxMenu?: (() => StageItem[]) | null;
+    /** What the boxes open here add to a player's menu, first in it (read back by the play screen: see playermenu.ts). */
+    playerVerbs?: PlayerVerbs | null;
     /** When the open clue opened (Play's: 0 after a reload): its players' marks count from then (a reopened tile starts afresh). */
     markSince?: number;
     /** The blue button's step and the check before going on (Play's: see goon.ts). */
@@ -811,6 +815,44 @@
   });
   $effect(() => {
     boxMenu = slots.menu;
+  });
+
+  /**
+   * The open clue's ✔ / ✘ for one player, first in their menu: as their chip's (their share in a partner clue, a steal's
+   * words), whether or not the chips show quick buttons (a menu item is no slip of the mouse); greyed for one the clue
+   * isn't theirs to judge, or the verdict they already have.
+   */
+  function verdictsFor(id: string): PlayerVerb[] {
+    if (session.phase !== 'clue' || !info || toolOnly || session.dd?.stage === 'splash' || partner?.stage === 'pick') return [];
+    const p = session.players.find((x) => x.id === id);
+    if (!p) return [];
+    const ddFor = session.dd?.stage === 'question' ? session.dd.playerId : undefined;
+    const notTheirs =
+      ddFor && ddFor !== id
+        ? `Only ${session.players.find((x) => x.id === ddFor)?.name ?? '?'} plays this Daily Double`
+        : steal?.out.includes(id)
+          ? `${p.name} already had their go at it`
+          : partner && !steal && quickShare(id, true) === null
+            ? `${p.name} isn’t in this partner clue`
+            : '';
+    const gets = quickShare(id, true) ?? (ddHidden ? '+ the wager' : `+${formatPoints(quickValue, sym)}`);
+    const loses = quickShare(id, false) ?? (ddHidden ? '− the wager' : `−${formatPoints(quickValue, sym)}`);
+    // (Enter and Shift+Enter do these for the one selected, at the clue's value: a partner clue's Enter judges the pair.)
+    const enter = selected.length === 1 && selected[0] === id && (!partner || !!steal) && (amount ?? quickValue) === quickValue;
+    return verdictVerbs(p.name, {
+      kind: partner && !steal ? 'partner' : steal ? 'steal' : 'clue',
+      gets: notTheirs ? null : gets,
+      loses: notTheirs ? null : loses,
+      ...(notTheirs ? { why: notTheirs } : {}),
+      marked: marks[id]?.right,
+      enter,
+      right: () => onright(id),
+      wrong: () => onwrong(id),
+    }) as PlayerVerb[];
+  }
+  $effect(() => {
+    slots.verbs.flow = [verdictsFor];
+    playerVerbs = slots.playerVerbs;
   });
 </script>
 
