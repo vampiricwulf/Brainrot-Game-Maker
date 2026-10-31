@@ -94,8 +94,23 @@
       {:else if 'heading' in item}
         <div class="heading">{item.heading}</div>
       {:else}
-        <button role="menuitem" class:danger={item.danger} disabled={item.disabled} title={item.hint} onclick={() => run(item.onclick)}>
-          <span class="label">{item.label}</span>{#if item.keys}<kbd aria-hidden="true">{keysText(item.keys)}</kbd>{/if}
+        <!-- (A second line says what it does: read after its name, not as part of it.) -->
+        <button
+          role="menuitem"
+          class:danger={item.danger}
+          class:detailed={!!item.detail}
+          disabled={item.disabled}
+          title={item.hint}
+          aria-label={item.detail ? item.label : undefined}
+          aria-describedby={item.detail ? `cm-detail-${i}` : undefined}
+          onclick={() => run(item.onclick)}
+        >
+          {#if item.detail}
+            <span class="line"><span class="label">{item.label}</span>{#if item.keys}<kbd aria-hidden="true">{keysText(item.keys)}</kbd>{/if}</span>
+            <span class="detail" id="cm-detail-{i}">{item.detail}</span>
+          {:else}
+            <span class="label">{item.label}</span>{#if item.keys}<kbd aria-hidden="true">{keysText(item.keys)}</kbd>{/if}
+          {/if}
         </button>
       {/if}
     {/each}
@@ -132,6 +147,22 @@
   .label {
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  /* An item with its explanation under it: the name and key on one line, the words wrapping below, muted. */
+  button.detailed {
+    flex-direction: column;
+    align-items: stretch;
+    white-space: normal;
+  }
+  .line {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .detail {
+    font-size: 12px;
+    line-height: 1.3;
+    color: var(--muted);
   }
   kbd {
     margin-left: auto;

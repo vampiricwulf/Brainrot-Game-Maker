@@ -107,7 +107,7 @@ export async function pickOtherGame(): Promise<Game | null> {
   }
 }
 
-/** The ＋ Add round menu: the blank modes, the templates, then a round from elsewhere. */
+/** The ＋ Add round menu: the blank modes, the templates (each with its explanation under it), then a round from elsewhere. */
 export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) => void, shown: (at: number) => void, importRounds: () => void, sample?: () => void): MenuEntry[] {
   const b = clipboard.round;
   // (Its introduction comes only in an empty game: see addSampleGame.)
@@ -118,8 +118,8 @@ export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) 
     ...Object.entries(ROUND_MODES).map(([mode, m]) => ({ label: `${m.icon} ${m.label}`, hint: m.hint, onclick: () => add(mode as keyof typeof ROUND_MODES) })),
     { sep: true },
     { heading: 'Start from a template' },
-    ...TEMPLATES.map((t) => ({ label: `${ROUND_MODES[t.mode].icon} ${t.label}`, hint: t.hint, onclick: () => shown(addTemplate(game, t)) })),
-    ...(sample ? [{ label: '✨ The sample game', hint: sampleHint, onclick: sample }] : []),
+    ...TEMPLATES.map((t) => ({ label: `${ROUND_MODES[t.mode].icon} ${t.label}`, detail: t.hint, onclick: () => shown(addTemplate(game, t)) })),
+    ...(sample ? [{ label: '✨ The sample game', detail: sampleHint, onclick: sample }] : []),
     { sep: true },
     { label: '📂 Import rounds…', hint: 'From another game’s .brainrot file (or its exported web page), with their worlds, wheels, items and files', onclick: importRounds },
     {
