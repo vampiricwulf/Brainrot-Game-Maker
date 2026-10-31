@@ -229,7 +229,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   Shown as and Who sees it; a die How many and Sides (with "1d6"); a deal part How many get it and Their card also shows.
   🔊 Sounds' rows, Checklist lines and the Tiebreaker's entry have menus too (off, the entry reads **＋ Add tiebreaker
   (optional)** and a click turns it on, one step, with the keys in its question; its page's ☑ Include a tiebreaker clue
-  turns it off), and an RPG world's ⋯ has ✎ Rename world,
+  turns it off; its menu starts with what a click does, ❓ Open it or ＋ Add tiebreaker, and ends, red, with 🗑 Turn it
+  off while it's on), and an RPG world's ⋯ has ✎ Rename world,
   ⧉ Duplicate world (this round plays the copy: worldedit `duplicateWorld`) and 🗑 Delete world.
 
 ### 5.2 Board editor

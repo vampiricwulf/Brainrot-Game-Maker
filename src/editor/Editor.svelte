@@ -406,17 +406,18 @@
       .then(() => document.querySelector<HTMLElement>('main [data-field="q"]')?.focus());
   }
 
-  /** The Tiebreaker's tab menu (a right-click on it, or Shift+F10): open it, or turn it on or off. */
+  /**
+   * The Tiebreaker's tab menu (a right-click on it, or Shift+F10): first what a click on it does (open it, or add it
+   * while it's off), then, red at its end, turning it off (that takes its question, answer and notes away).
+   */
   function tiebreakerMenu(): MenuEntry[] {
     const on = !!game.tiebreaker;
     return menuOf({
       heading: 'Tiebreaker clue',
-      open: [{ label: '❓ Open it', onclick: () => (tab = 'tiebreaker') }],
-      verbs: [
-        on
-          ? { label: 'Turn it off', onclick: () => setTiebreaker(false), hint: 'Takes the tiebreaker clue out of the game (Undo brings it back)' }
-          : { label: '＋ Add tiebreaker', onclick: addTiebreaker },
-      ],
+      open: [on ? { label: '❓ Open it', onclick: () => (tab = 'tiebreaker') } : { label: '＋ Add tiebreaker', onclick: addTiebreaker }],
+      delete: on
+        ? { label: '🗑 Turn it off', onclick: () => setTiebreaker(false), hint: 'Takes the tiebreaker clue out of the game, its question, answer and notes too (Undo brings it back)' }
+        : undefined,
     });
   }
 

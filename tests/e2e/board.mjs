@@ -328,10 +328,22 @@ try {
   await key('Delete');
   assert((await roundNames()).length === 2 && (await page.locator('.canvas .hit').count()) === slideItems && (await undoTitle()).startsWith('Undo: Deleted round'), 'Delete on a round tab deletes the round, not the selected slide item too');
   await key('Control+z');
+  // Off, the tiebreaker's menu starts with what a click on it does: ＋ Add tiebreaker (no ❓ Open it, no Turn it off).
+  const tbMenu = async () => {
+    await page.locator('nav').getByRole('button', { name: /tiebreaker/i }).click({ button: 'right' });
+    const items = await page.getByRole('menu').getByRole('menuitem').evaluateAll((els) => els.map((e) => `${e.innerText.split('\n')[0]}${e.classList.contains('danger') ? ' (red)' : ''}`));
+    await page.keyboard.press('Escape');
+    return items;
+  };
+  const tbOff = await tbMenu();
+  assert(tbOff.join('|') === '＋ Add tiebreaker', `off, the tiebreaker's menu is ＋ Add tiebreaker, as a click (${tbOff.join(' · ')})`);
   // ＋ Add tiebreaker (optional) turns it on in one named step, with the keys in its question box.
   await page.getByRole('button', { name: 'Add tiebreaker (optional)' }).click();
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'), null, { timeout: 3000 });
   assert((await page.getByLabel('Include a tiebreaker clue').isChecked()) && (await undoTitle()).startsWith('Undo: Tiebreaker on'), `＋ Add tiebreaker turns it on, one step (${await undoTitle()})`);
+  // On, it opens it, and 🗑 Turn it off (it takes the clue away) is last and red.
+  const tbOn = await tbMenu();
+  assert(tbOn.join('|') === '❓ Open it|🗑 Turn it off (red)', `on, its menu is ❓ Open it, then 🗑 Turn it off last in red (${tbOn.join(' · ')})`);
   // Its tick box turns it off again: the empty page.
   await page.getByLabel('Include a tiebreaker clue').uncheck();
   assert((await page.locator('.empty .ic').innerText()) === '❓', 'the tiebreaker’s empty page shows ❓, as in play (🤝 is a partner clue)');
