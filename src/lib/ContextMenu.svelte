@@ -2,12 +2,12 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { placePopup } from './anchored';
-  import { closeMenu, contextMenu } from './menustate.svelte';
+  import { closeMenu, contextMenu, menuKeys } from './menustate.svelte';
 
   let box = $state<HTMLDivElement>();
-  /** "Ctrl+" reads "⌘" on a Mac. */
+  /** "Ctrl+" reads "⌘" on a Mac, "Alt+" "⌥" and "Shift+" "⇧". */
   const mac = /Mac|iPhone|iPad/.test(navigator.platform);
-  const keysText = (k: string) => (mac ? k.replaceAll('Ctrl+', '⌘') : k);
+  const keysText = (k: string) => menuKeys(k, mac);
   let pos = $state<{ x: number; y: number; maxHeight?: number }>({ x: 0, y: 0 });
 
   $effect(() => {
