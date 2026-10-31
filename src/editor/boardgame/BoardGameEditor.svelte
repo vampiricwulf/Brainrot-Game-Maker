@@ -13,7 +13,8 @@
   import { adoptUsedBy, clipboard, holdUsedBy } from '../../lib/clipboard.svelte';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { clearOffset, copyActions, copySpaces, copyZone, moveTo } from '../../lib/listedit';
-  import { menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
+  import { menuItem, menuOf, showMenu, type MenuEntry } from '../../lib/menustate.svelte';
+  import RowTools from '../RowTools.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
   import { addFork, allNamesLabel, applySpaceKind, clampToBoard, closeUpOver, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, moverWheelNoNumbers, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, linkAfter, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
@@ -717,19 +718,18 @@
     step(`Duplicated zone “${z.name}”`, () => round.zones.splice(round.zones.indexOf(z) + 1, 0, copy));
   }
 
-  /** Right-click a zone (not in its text boxes, which keep the browser's own menu). */
+  /** A zone's menu: its ⋯, a right-click on it (not in its text boxes, which keep the browser's own), Shift+F10 in it. */
+  function zoneItems(z: BoardZone, i: number): MenuEntry[] {
+    return menuOf({
+      heading: z.name,
+      open: [{ label: '✎ Edit its screen…', onclick: () => (zoneSlide = z.id) }],
+      duplicate: menuItem.duplicate(() => duplicateZone(z)),
+      move: [menuItem.up(() => moveZone(i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveZone(i, i + 1), { disabled: i === round.zones.length - 1 })],
+      delete: menuItem.delete('zone', () => removeZone(z), { keys: false }),
+    });
+  }
   function zoneMenu(e: MouseEvent, z: BoardZone, i: number): void {
-    if (isTextField(e.target)) return;
-    showMenu(
-      e,
-      menuOf({
-        heading: z.name,
-        open: [{ label: '✎ Edit its screen…', onclick: () => (zoneSlide = z.id) }],
-        duplicate: menuItem.duplicate(() => duplicateZone(z)),
-        move: [menuItem.up(() => moveZone(i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveZone(i, i + 1), { disabled: i === round.zones.length - 1 })],
-        delete: menuItem.delete('zone', () => removeZone(z), { keys: false }),
-      }),
-    );
+    if (!isTextField(e.target)) showMenu(e, zoneItems(z, i));
   }
 </script>
 
@@ -1096,7 +1096,7 @@
               if (m) moveZone(m.from, m.to);
             }}
             oncontextmenu={(e) => zoneMenu(e, z, i)}
-            use:rowKeys={{ move: (d) => moveZone(i, i + d), duplicate: () => duplicateZone(z) }}
+            use:rowKeys={{ move: (d) => moveZone(i, i + d), duplicate: () => duplicateZone(z), menu: () => zoneItems(z, i) }}
           >
             <span
               class="drag-grip"
@@ -1109,8 +1109,7 @@
             <input bind:value={z.name} aria-label="Zone name" />
             <input class="grow" bind:value={z.hostNotes} placeholder="Host notes (how to escape…)" aria-label="{z.name} notes" />
             <button class="small" onclick={() => (zoneSlide = z.id)}>Edit its screen…</button>
-            <button class="ghost small" onclick={() => duplicateZone(z)} aria-label="Duplicate zone {z.name}" title="Duplicate, with its screen (Ctrl+D)">⧉</button>
-            <button class="ghost small" onclick={() => removeZone(z)} aria-label="Delete zone {z.name}" title="Delete zone">🗑</button>
+            <RowTools menu={() => zoneItems(z, i)} name="zone {z.name}" remove={() => removeZone(z)} deleteLabel="Delete zone {z.name}" />
           </div>
         {/each}
       </div>
