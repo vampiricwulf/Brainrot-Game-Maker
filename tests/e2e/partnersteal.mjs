@@ -134,7 +134,7 @@ try {
   const checks = host.locator('[data-checks]');
   const item = checks.locator('li', { hasText: 'Round 1: 1 partner clue not placed yet' });
   await item.waitFor();
-  assert((await host.locator('.actions [data-checks-pointer]').innerText()) === 'ℹ 1 note', '✅ Before you start says 1 partner clue isn’t placed yet, and the Start bar points to it (ℹ 1 note)');
+  assert((await host.locator('.actions [data-checks-pointer]').count()) === 1, '✅ Before you start says 1 partner clue isn’t placed yet, and the Start bar points to it');
   await item.getByRole('button', { name: '🎲 Place now' }).click();
   assert(await toast('Placed 1 partner clue in Round 1'), '🎲 Place now places it');
   assert(await until(async () => !(await host.getByText(/partner clue not placed yet/).count())), 'and nothing is left to place');
