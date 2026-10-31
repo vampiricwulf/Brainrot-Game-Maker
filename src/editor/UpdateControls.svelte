@@ -1,10 +1,11 @@
 <!--
   A newer version is out: what this copy can do about it. The desktop app updates itself in place (it downloads the
   new .exe, checks its signature, saves everything and restarts into it); a copy that can't (no signing key built in)
-  or the HTML file offers the new file to download. Shown in the editor's notice (`notice`) and in ℹ About.
+  or the HTML file offers the new file to download. Shown in the editor's notice (`notice`) and in ℹ About. Once the HTML
+  file's download is open in a new tab, both say what to do with it (the page itself can't change the file).
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { ask, tell } from '../lib/ask.svelte';
   import { canSelfUpdate, installUpdate, openLink, restartIntoUpdate } from '../lib/desktop.svelte';
@@ -66,6 +67,18 @@
     }
   }
   const ready = $derived(update.installed === release.version);
+
+  /** The HTML file: the new one opens in a new tab, and the steps from there show here (and in the other place). */
+  let doneBtn = $state<HTMLButtonElement>();
+  function download(): void {
+    open(html ?? release.page);
+    update.downloading = release.version;
+    // (Its button gives way to the steps: the keys go to Done.)
+    void tick().then(() => doneBtn?.focus());
+  }
+  const steps = $derived(
+    `${html ? `Downloading ${release.version} in a new tab.` : `${release.version}'s page is open in a new tab: download its .html file there.`} Then save it over your old Brainrot file (same name, same folder) and open it. Your games come along.`,
+  );
 </script>
 
 {#if desktopApp && selfUpdate && exe && sig}
@@ -74,12 +87,27 @@
   </button>
 {:else if desktopApp}
   <button class="small primary" onclick={() => open(exe ?? release.page)} title="Put the downloaded .exe in place of this one">⬇ Download {release.version}</button>
+{:else if notice && update.downloading === release.version}
+  <!-- The notice: the steps, then What's new and Done (back to the notice). -->
+  <span class="steps">{steps}</span>
 {:else}
-  <button class="small primary" onclick={() => open(html ?? release.page)} title="Save it in place of this file (same name and folder) and open that: your games carry over">
+  <button class="small primary" onclick={download} title="Save it in place of this file (same name and folder) and open that: your games carry over">
     ⬇ Download {release.version}
   </button>
 {/if}
 <button class="small ghost" onclick={() => open(release.page)}>What’s new</button>
-{#if notice}
+{#if notice && !desktopApp && update.downloading === release.version}
+  <button class="small" bind:this={doneBtn} onclick={() => (update.downloading = '')} title="Put these steps away">Done</button>
+{:else if notice}
   <button class="small ghost" onclick={() => skipVersion(release.version)} title="Hide this until a newer version is out">Not now</button>
 {/if}
+{#if !notice && !desktopApp && update.downloading === release.version}
+  <!-- ℹ About: the steps on a line of their own, under its buttons (its own Done closes it). -->
+  <span class="steps own-line">{steps}</span>
+{/if}
+
+<style>
+  .own-line {
+    flex-basis: 100%;
+  }
+</style>

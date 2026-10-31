@@ -1053,8 +1053,9 @@
   {/if}
   {#if (update.status === 'available' || update.status === 'installing') && update.latest && update.latest.version !== update.skipped}
     {@const latest = update.latest}
+    <!-- (Once its download is open, the notice says what to do with it instead: see UpdateControls.) -->
     <div class="data-notice" role="status">
-      <span>⬆ <b>Brainrot Games Maker {latest.version}</b> is out (this is {__APP_VERSION__}).</span>
+      <span>⬆{#if update.downloading !== latest.version}{' '}<b>Brainrot Games Maker {latest.version}</b> is out (this is {__APP_VERSION__}).{/if}</span>
       <UpdateControls release={latest} notice />
     </div>
   {/if}

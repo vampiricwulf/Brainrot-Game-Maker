@@ -24,7 +24,8 @@ Get it from the **[Latest release](../../releases/latest)** (every push to `main
   It asks first while a ✎ / 🗜 / 🔄 job runs, and once a game has started it doesn't restart by itself: **⟳ Restart
   into …** in the editor finishes it (if it failed, the editor says why).
 - The HTML file offers the new file: save it in place of the old one (same name and folder) and open it. Your games
-  carry over: they're kept in the browser, not in the file.
+  carry over: they're kept in the browser, not in the file. Once **⬇ Download** has opened it in a new tab, the editor's
+  notice and ℹ About say these steps on the page.
 
 ℹ About shows which version you have.
 

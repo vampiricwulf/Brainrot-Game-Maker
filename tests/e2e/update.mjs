@@ -1,5 +1,6 @@
 // Is a newer version out? GitHub's "latest release" answer is faked here: the editor says when one is out (with the
-// new file to download, for the HTML file), "Not now" puts it away for that version, and ℹ About checks on demand.
+// new file to download, for the HTML file, then says on the page what to do with it), "Not now" puts it away for that
+// version, and ℹ About checks on demand.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -51,6 +52,23 @@ try {
   await notice.getByRole('button', { name: '⬇ Download 99.0.0' }).click();
   const opened = await page.evaluate(() => window.__opened);
   assert(/\/v99\.0\.0\/brainrot-game-maker\.html$/.test(opened), `Download opens the new HTML file’s link (${opened})`);
+  // Then the notice says what to do with the file, on the page (the page can't change its own file), and so does ℹ About.
+  const steps = page.locator('.data-notice', { hasText: 'Downloading 99.0.0 in a new tab' });
+  await steps.waitFor();
+  assert(
+    (await steps.innerText()).includes('Then save it over your old Brainrot file (same name, same folder) and open it. Your games come along.') &&
+      (await steps.getByRole('button', { name: 'What’s new' }).count()) === 1 &&
+      (await steps.getByRole('button', { name: 'Done' }).evaluate((b) => b === document.activeElement)),
+    `after ⬇ Download the notice says what to do with the new file, with What’s new and Done, the keys on Done (${(await steps.innerText()).replace(/\s+/g, ' ')})`,
+  );
+  await page.getByRole('button', { name: /^More:/ }).click();
+  await page.getByRole('menuitem', { name: /About/ }).click();
+  await page.getByRole('dialog', { name: 'About Brainrot Games Maker' }).getByText('Downloading 99.0.0 in a new tab').waitFor();
+  assert(true, 'ℹ About says the steps too');
+  await page.keyboard.press('Escape');
+  await steps.getByRole('button', { name: 'Done' }).click();
+  await notice.waitFor();
+  assert(true, 'Done puts the steps away: the notice is back, with Not now');
 
   // Not now: put away for this version, also after a reload (which uses what it heard, without asking again).
   await notice.getByRole('button', { name: 'Not now' }).click();

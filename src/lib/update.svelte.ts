@@ -35,7 +35,9 @@ export const update = $state<{
   installed: string;
   /** Why ⬆ Update failed during a game: said back in the editor (nothing pops up over the stage). */
   failed: string;
-}>({ status: 'idle', latest: null, error: '', skipped: readSkip(), checkedAt: 0, installed: '', failed: '' });
+  /** The HTML file: the version whose ⬇ Download was just opened in a new tab (the notice and ℹ About say what's next). */
+  downloading: string;
+}>({ status: 'idle', latest: null, error: '', skipped: readSkip(), checkedAt: 0, installed: '', failed: '', downloading: '' });
 
 function storedFlag(key: string): boolean {
   try {
