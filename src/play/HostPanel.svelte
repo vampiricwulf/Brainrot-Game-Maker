@@ -21,7 +21,7 @@
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { endLine, tiebreakLine } from './host/endlines';
   import { movedNew } from './whatmoved.svelte';
-  import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isBoardGame, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
@@ -40,6 +40,7 @@
   import RpgHost from './rpg/RpgHost.svelte';
   import type { RpgAsk } from './rpg/hostops';
   import BoardHost from './boardgame/BoardHost.svelte';
+  import { isMover } from './boardgame/bgops';
   import type { LogTab } from './ScoreLog.svelte';
   import { app, hint, toast } from '../lib/app.svelte';
   import { dropMenu } from '../lib/menustate.svelte';
@@ -303,6 +304,8 @@
   const info = $derived(currentClueInfo(session, game));
   const sym = $derived(game.settings.currencySymbol);
   const round = $derived(game.rounds[session.currentRound]);
+  /** A board game's own dice or movement wheel is up: its box goes under the turn box (BoardHost), not on top. */
+  const moverUp = $derived(session.phase === 'boardgame' && isBoardGame(round) && isMover(round, app.live.overlay));
   const finalRound = $derived(currentFinal(session, game));
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
@@ -1222,10 +1225,14 @@
   {/snippet}
 
   <!-- What this moment needs (it changes) on the left; the one main button in the NEXT cell on the right. -->
+  <!-- The tool on the stage's box (its spin or roll, what it came to, its score cards): on top, but a board game's own
+       dice or wheel under its turn box. -->
+  {#snippet toolBox()}<ToolsControls {game} {session} {selected} onclose={oncloseoverlay} ring={goon?.ring === 'toolslot'} />{/snippet}
+
   <div class="act">
     <div class="action">
-      {#if app.live.overlay}
-        <div class="mode-host tools"><ToolsControls {game} {session} {selected} onclose={oncloseoverlay} ring={goon?.ring === 'toolslot'} /></div>
+      {#if app.live.overlay && !moverUp}
+        <div class="mode-host tools">{@render toolBox()}</div>
       {/if}
 
       <!-- 🤫 Cards an action's button offered: each goes only when you press its 📤 Send. -->
@@ -1317,8 +1324,8 @@
       {/if}
 
       {#if session.phase === 'boardgame'}
-        <div class="mode-host">
-          <BoardHost {game} {session} bind:selected bind:steps={bgSteps} bind:space={bgSpace} {dual} ring={goon?.ring} onhistory={() => onlog('history')} />
+        <div class="mode-host bgame">
+          <BoardHost {game} {session} bind:selected bind:steps={bgSteps} bind:space={bgSpace} {dual} {side} ring={goon?.ring} mover={moverUp ? toolBox : undefined} onhistory={() => onlog('history')} />
         </div>
       {/if}
 
@@ -2149,6 +2156,12 @@
       clip-path: inset(50%);
       white-space: nowrap;
     }
+  }
+  /* Beside the stage, a board game's box takes the column's height: its turn part sits at the foot, by the blue button. */
+  .side .mode-host.bgame {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
   }
   /* The player cards (RPG and board games) take the column's width and height: the round's box scrolls instead. */
   .side .mode-host :global(.cards) {

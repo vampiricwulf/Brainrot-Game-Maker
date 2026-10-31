@@ -198,7 +198,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['Enter', 'With nobody selected: move the steps (on a one-space board, the only way on)'],
       ['N / Shift+N', 'Title card: start the round (N); then Next turn ▶ (asking first while the turn isn’t played: N again goes on) / the previous player’s turn'],
       ['I', 'The selected player’s sheet on screen'],
-      ['Alt+← / → on a name', 'Move them earlier / later in the turn order (or drag the chip)'],
+      ['Alt+← / → on a name', 'Move them earlier / later in the turn order (✎ Change opens it; or drag the chip)'],
       ['← ↑ → ↓ on the board', 'Tab to the board, then go from space to space; Enter or Space opens its card, Shift+F10 its menu (a click on the board lets the space go: Enter moves the steps again)'],
       ['E', '✎ Edit board: add, move, delete and connect spaces while you play (E or Esc again: back to playing)'],
       ['Delete / F2 while editing', 'Delete the picked space or link / rename the picked space'],

@@ -569,18 +569,26 @@ hidden objects. Use the separate audience window when that matters.
 strip, so no space is ever under it; the turn banner does go over the board's top edge, and the editor's checklist
 notes a space up there):
 
+- The host panel's board-game box starts with the turn: the turn box (its first line, the one slot, the Steps box, ◀
+  Back and **📍 Send … to…**), the round's own dice (or movement wheel) under it once rolled, a fork's ways, then the
+  **landing box**, framed: the spaces passed and landed on, their buttons and 👁 Reveal space. Beside the stage (a wide
+  window) that part sits at the column's foot, by the blue button, in sight as the rest scrolls. Under it: a space's
+  card, then the turn order in one line, “Turn order: Ann → **Bob** → Cat ✎ Change” (✎ Change opens its chips: drag one,
+  or `Alt+←/→` on a name, to move them in the order, click a name for their turn, 🔀 Shuffle; this computer remembers
+  it open), then ✎ Edit board, 🗂 Spaces…, 📺 The board and 🛒 Shop…, with the last step and ▸ Players at its end.
 - Roll (or spin the movement wheel) and move, picking the way at each fork: in the turn box, **🎲 Roll** (`D`) becomes
   **▶ Move** (`Enter`, or a click on the landed dice) in the same place, then **Next turn ▶** (`N`) is the blue button;
   it asks first while the turn isn't played (see the check above). A wheel's slice or a die's own face moves
   as far as the number it names ("3", "Move 3"; "Back 2", "Go back 2" or "◀ 2" move back). Moving back goes back the
   way the player came.
-- Send players to any space.
+- Send players to any space (📍 Send … to… in the turn box: the selected players, else whoever's turn it is; in one
+  window a secret space not revealed yet is “? (secret)” there and in 🗂 Spaces…).
 - Each space's actions, for the player they're for (the one who landed there, or the ones picked on its card).
 - The board from the keyboard: it's one `Tab` stop (the space the keys were last on, else where the turn player
   stands), the arrows go to the nearest space that way, `Enter` (or `Space`) opens its card and `Shift+F10` its menu
   (📍 Put them here, ▶ Run its landing actions…). Only once the keys took them there: a click on the board lets the
-  space go, so `D`, a click, then `Enter` still moves the token. `Shift+F10` on a name in the turn order opens their
-  menu (🎲 Make it their turn…).
+  space go, so `D`, a click, then `Enter` still moves the token. `Shift+F10` on a name in the turn order (✎ Change
+  opens it) opens their menu (🎲 Make it their turn…).
 - **✎ Edit board** (`E`) while you play: add, move, connect, rename and delete spaces (players on a deleted space go to
   the one before it); **✓ Done editing**, `E` or `Esc` goes back to playing. In a single window a secret space not revealed yet is
   “? (secret)” there too (its Name box shows its name only after 👁 Show, and its ⚙ Buttons… its buttons and notes only

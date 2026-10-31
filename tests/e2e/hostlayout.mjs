@@ -6,7 +6,8 @@
 // Sound with 📺 Audience and ▭ Scores window ●, at 1280×720 and 1093×526). A Daily Double with three question slides keeps Next slide ▶
 // the main button until its last slide (viewers see where it is: ● ● ○) and its flow row keeps its places (↩ Put back
 // (keep tile) first, ▦ Done ▶ board last, 🙈 Hide answer in Done's place once the answer is up), a board game's own
-// roll makes its turn box's slot ▶ Move while the blue button stays Next turn ▶ (and its check sits in the panel), a box
+// roll makes its turn box's slot ▶ Move while the blue button stays Next turn ▶ (the slot within 96 px of it, under the
+// stage and beside it, where the dice's box goes under the turn box; its check sits in the panel), a box
 // drawn on the RPG stage in one window leaves the stage its size, a confirmation leaves one main button (its own), ✔ / ✘
 // hand the focus to the main button, and
 // on a narrow window the fixed bar stays on one line (🚪 Exit at the right; ❔ Help as its sign up to 1040px, its word
@@ -366,6 +367,17 @@ try {
     (await mainLabel(page)) === 'Next turn ▶' && (await slotSays()).startsWith('🎲 Roll') && (await turnSlot.evaluate((b) => b.classList.contains('ring'))),
     `a board-game turn: the blue button is Next turn ▶, the turn box's one slot 🎲 Roll, ringed (${await mainLabel(page)} · ${await slotSays()})`,
   );
+  // The turn first in the round's box, its slot within reach of the blue button (from the slot's foot to the blue
+  // button's top: 96 px at most), as the 🤝 foot's and a wheel tile's are.
+  const turnReach = (p) =>
+    p.evaluate(() => {
+      const slot = document.querySelector('.bh [data-step]').getBoundingClientRect();
+      const main = document.querySelector('.panel [data-next]').getBoundingClientRect();
+      return Math.round(main.top - slot.bottom);
+    });
+  const reachUnder = await turnReach(page);
+  console.log(`    (under the stage at 1280×900: the turn box's slot is ${reachUnder} px above the blue button)`);
+  assert(reachUnder <= 96, `under the stage, the turn box's slot is within 96 px of the blue button (${reachUnder} px)`);
   // Its own roll (D) is the round's: the slot reads ▶ Move (Enter) in its place, and the blue button stays Next turn ▶.
   await page.keyboard.press('d');
   await page.locator('.panel [data-tool-controls]').waitFor();
@@ -565,6 +577,10 @@ try {
   const inRpg = await exitIn();
   await p2Next('Board game');
   const inBg = await exitIn();
+  // Beside the stage the turn's part sits at the column's foot, by the blue button.
+  const reachSide = await turnReach(p2);
+  console.log(`    (beside the stage at 1280×720: the turn box's slot is ${reachSide} px above the blue button)`);
+  assert(reachSide <= 96 && reachSide >= -40, `beside the stage at 1280×720, the turn box's slot is within 96 px of the blue button, above it (${reachSide} px)`);
   assert(inRpg.x === inBg.x && inRpg.y === inBg.y, `🚪 Exit is in the same place in RPG and board-game rounds (${inRpg.x},${inRpg.y})`);
   assert(inBg.right - inBg.x < 4 && inBg.bottom - inBg.y < 4, 'in the fixed bar’s bottom-right cell');
   // The bar beside the stage, the scores window open (its ●), at 1280×720 and 1093×526: ↶ Undo and ↷ Redo keep their
@@ -615,13 +631,16 @@ try {
   await p2.waitForTimeout(500);
   assert((await p2.locator('.panel .status', { hasText: 'Adventure' }).count()) === 1, 'a double-click on ◀ Previous round goes back one round (Adventure), not two');
   await p2Next('Board game');
-  // A roll on a short window (1366×768 at 125% zoom: the panel still beside the stage): the round's own box keeps a few
-  // rows in sight under the dice's box (the column scrolls instead).
+  // A roll on a short window (1366×768 at 125% zoom: the panel still beside the stage): the dice's box goes under the
+  // turn box, at the column's foot, and the slot (▶ Move) stays in sight, where a click reaches it (the rest scrolls).
   await p2.setViewportSize({ width: 1093, height: 526 });
   await p2.keyboard.press('d');
-  await p2.locator('.panel [data-tool-controls] .result').waitFor();
-  const bgBox = await p2.locator('.panel .mode-host:not(.tools)').evaluate((e) => Math.round(e.getBoundingClientRect().height));
-  assert(bgBox >= 100, `at 1093×526 a roll leaves the board game's own box ${bgBox}px tall (the column scrolls)`);
+  await p2.locator('.panel .bh [data-turn-part] [data-tool-controls] .result').waitFor();
+  const slotSeen = await p2.locator('.bh [data-step]').evaluate((b) => {
+    const r = b.getBoundingClientRect();
+    return r.bottom <= innerHeight && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  });
+  assert(slotSeen, 'at 1093×526 a roll puts the dice’s box under the turn box, the slot still in sight where a click reaches it');
   await p2.keyboard.press('Escape');
   await p2.setViewportSize({ width: 1280, height: 720 });
   await p2Next('Final');

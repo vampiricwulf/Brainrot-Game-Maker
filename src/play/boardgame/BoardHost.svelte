@@ -1,12 +1,14 @@
 <!--
-  The host's controls for a board-game round: whose turn it is and the turn order (drag to reorder, click a name for
-  their turn), the turn box (its first line says what to do; one slot, 🎲 Roll then ▶ Move in the same place, beside
-  the Steps box and ◀ Back), forks, the passed and landed spaces' action buttons, the card of a space clicked on the
-  stage, sending players to spaces and zones, what's on screen, and each player's stats and inventory. Next turn ▶ is
-  the panel's blue button (the play screen's, goon.ts), never here.
+  The host's controls for a board-game round, the turn first: the turn box (its first line says what to do; one slot,
+  🎲 Roll then ▶ Move in the same place, beside the Steps box, ◀ Back and 📍 Send to…), the round's own dice or wheel
+  under it, a fork's ways, then the landing box (the passed and landed spaces' buttons). Beside the stage that part
+  sits at the column's foot, by the blue button. Then the card of a space clicked on the stage; the turn order in one
+  line (✎ Change unfolds it: drag to reorder, click a name for their turn, 🔀 Shuffle); ✎ Edit board, the spaces' cards,
+  what's on screen and the shops; and each player's stats and inventory. Next turn ▶ is the panel's blue button (the
+  play screen's, goon.ts), never here.
 -->
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, type Snippet } from 'svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
@@ -28,6 +30,8 @@
   import { offerIn } from '../host/offered.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
   import BoardEditPanel from './BoardEditPanel.svelte';
+  import { RememberedFold } from '../../lib/fold.svelte';
+  import { oneShot } from '../../lib/oneshot';
 
   let {
     game,
@@ -37,6 +41,8 @@
     space = $bindable(null),
     dual,
     ring = null,
+    side = false,
+    mover,
     onhistory,
   }: {
     game: Game;
@@ -49,6 +55,10 @@
     dual: boolean;
     /** The box button that wears the ring (the check's first thing left): 'turnslot', the slot or the only way on. */
     ring?: string | null;
+    /** Beside the stage (a wide window): the turn box and the landing go at the column's foot, by the blue button. */
+    side?: boolean;
+    /** The round's own dice or movement wheel's box, once rolled or spun: it goes under the turn box. */
+    mover?: Snippet;
     /** Open the 📜 Log's history. */
     onhistory?: () => void;
   } = $props();
@@ -212,6 +222,16 @@
 
   let orderEl = $state<HTMLElement>();
   const turnDrag = new DragOrder(true);
+  /** The turn order's chips (✎ Change): folded to one line until the host opens them, and remembered. */
+  const orderFold = new RememberedFold('jb.turnOrderOpen');
+  /** Whose turns, in order, for the folded line (and its tooltip): skips and Roll again marked. */
+  const orderLine = $derived(
+    (bs?.order ?? []).map((id) => {
+      const p = session.players.find((x) => x.id === id);
+      const skips = bs?.skips?.[id];
+      return { id, name: p?.name ?? '?', marks: `${skips ? `⏭${skips > 1 ? skips : ''}` : ''}${bs?.again === id ? '🔁' : ''}` };
+    }),
+  );
 
   function shuffle(): void {
     if (!bs) return;
@@ -250,58 +270,96 @@
 </script>
 
 {#if round && bs}
-  <div class="bh">
-    <div class="row">
+  <div class="bh" class:side>
+    {#if boardEdit.on}
+      <BoardEditPanel {game} {session} {round} {bs} {dual} />
+    {:else if !side}
+      {@render turnPart()}
+    {/if}
+
+    {#if card && !boardEdit.on}
+      <div bind:this={cardEl} {@attach (el) => el.scrollIntoView({ block: 'nearest' })}>
+        {#key card.id}
+          <SpaceCard {game} {session} space={card} {round} {bs} {selected} {turnId} {dual} onclose={() => (space = null)} />
+        {/key}
+      </div>
+    {/if}
+
+    <!-- The turn order, one line: ✎ Change opens its chips (drag, Alt+←/→ or ◀ ▶ to reorder, a click for their turn)
+         and 🔀 Shuffle, remembered. ✎ Change stays at the line's end on its first row, so a second click never lands on
+         a chip. -->
+    <div class="row order-row" data-turn-order>
       <span class="muted small">Turn order:</span>
-      <span class="order" role="list" aria-label="Turn order" bind:this={orderEl}>
-        {#each bs.order as id, i (id)}
-          {@const p = session.players.find((x) => x.id === id)}
-          {#if p}
-            {@const line = turnDrag.lineAt(id)}
-            <span
-              class="ord"
-              class:cur={id === turnId}
-              class:drop-before={line === 'before'}
-              class:drop-after={line === 'after'}
-              class:dragging={turnDrag.dragging === id}
-              style:border-color={p.color}
-              data-player-id={id}
-              role="listitem"
-              draggable="true"
-              ondragstart={(e) => turnDrag.start(e, id)}
-              ondragover={(e) => turnDrag.over(e, id)}
-              ondrop={(e) => {
-                const m = turnDrag.drop(e, bs.order);
-                if (m) reorderTurns(game, session, m.from, m.to);
-              }}
-              ondragend={() => turnDrag.end()}
-            >
-              <span class="grip" aria-hidden="true">⋮⋮</span>
-              <button class="ghost tiny earlier" onclick={() => reorder(i, -1, '.earlier')} disabled={i === 0} aria-label="{p.name} earlier in the turn order">◀</button>
-              <button
-                class="nm"
-                style:background={id === turnId ? p.color : undefined}
-                style:color={id === turnId ? textOn(p.color) : undefined}
-                aria-current={id === turnId ? 'true' : undefined}
-                onclick={() => setTurn(game, session, id)}
-                onkeydown={(e) => {
-                  // Alt+←/→ moves them in the order.
-                  if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  reorder(i, e.key === 'ArrowLeft' ? -1 : 1);
+      {#if orderFold.open}
+        <span class="body">
+        <span class="order" role="list" aria-label="Turn order" bind:this={orderEl}>
+          {#each bs.order as id, i (id)}
+            {@const p = session.players.find((x) => x.id === id)}
+            {#if p}
+              {@const line = turnDrag.lineAt(id)}
+              <span
+                class="ord"
+                class:cur={id === turnId}
+                class:drop-before={line === 'before'}
+                class:drop-after={line === 'after'}
+                class:dragging={turnDrag.dragging === id}
+                style:border-color={p.color}
+                data-player-id={id}
+                role="listitem"
+                draggable="true"
+                ondragstart={(e) => turnDrag.start(e, id)}
+                ondragover={(e) => turnDrag.over(e, id)}
+                ondrop={(e) => {
+                  const m = turnDrag.drop(e, bs.order);
+                  if (m) reorderTurns(game, session, m.from, m.to);
                 }}
-                title={id === turnId ? `${p.name}’s turn · drag (or Alt+←/→) to move them in the order` : `Click: ${p.name}’s turn · drag (or Alt+←/→) to move them in the order`}
-              >{p.name}</button>
-              {#if bs.skips?.[id]}<span class="mark" role="img" aria-label="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}" title="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}">⏭{bs.skips[id] > 1 ? bs.skips[id] : ''}</span>{/if}
-              {#if bs.again === id}<span class="mark" role="img" aria-label="Rolls again" title="Rolls again: Next turn comes back to them">🔁</span>{/if}
-              <button class="ghost tiny later" onclick={() => reorder(i, 1, '.later')} disabled={i === bs.order.length - 1} aria-label="{p.name} later in the turn order">▶</button>
-            </span>
-          {/if}
-        {/each}
-      </span>
-      <button class="ghost small" onclick={shuffle}>🔀 Shuffle</button>
-      <span class="spacer"></span>
+                ondragend={() => turnDrag.end()}
+              >
+                <span class="grip" aria-hidden="true">⋮⋮</span>
+                <button class="ghost tiny earlier" onclick={() => reorder(i, -1, '.earlier')} disabled={i === 0} aria-label="{p.name} earlier in the turn order">◀</button>
+                <button
+                  class="nm"
+                  style:background={id === turnId ? p.color : undefined}
+                  style:color={id === turnId ? textOn(p.color) : undefined}
+                  aria-current={id === turnId ? 'true' : undefined}
+                  onclick={() => setTurn(game, session, id)}
+                  onkeydown={(e) => {
+                    // Alt+←/→ moves them in the order.
+                    if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    reorder(i, e.key === 'ArrowLeft' ? -1 : 1);
+                  }}
+                  title={id === turnId ? `${p.name}’s turn · drag (or Alt+←/→) to move them in the order` : `Click: ${p.name}’s turn · drag (or Alt+←/→) to move them in the order`}
+                >{p.name}</button>
+                {#if bs.skips?.[id]}<span class="mark" role="img" aria-label="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}" title="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}">⏭{bs.skips[id] > 1 ? bs.skips[id] : ''}</span>{/if}
+                {#if bs.again === id}<span class="mark" role="img" aria-label="Rolls again" title="Rolls again: Next turn comes back to them">🔁</span>{/if}
+                <button class="ghost tiny later" onclick={() => reorder(i, 1, '.later')} disabled={i === bs.order.length - 1} aria-label="{p.name} later in the turn order">▶</button>
+              </span>
+            {/if}
+          {/each}
+        </span>
+        <button class="ghost small" onclick={shuffle} title="The turn order, shuffled (whose turn it is stays theirs)">🔀 Shuffle</button>
+        </span>
+      {:else}
+        {@const said = orderLine.map((o) => `${o.name}${o.marks ? ` ${o.marks}` : ''}`).join(' → ')}
+        <!-- (Cut short where narrow: its tooltip has it whole. Whose turn it is, in bold.) -->
+        <span class="seq" title={said}
+          >{#each orderLine as o, i (o.id)}{i ? ' → ' : ''}{#if o.id === turnId}<b>{o.name}</b>{:else}{o.name}{/if}{o.marks ? ` ${o.marks}` : ''}{/each}</span
+        >
+      {/if}
+      <button
+        class="ghost small change"
+        class:on={orderFold.open}
+        aria-expanded={orderFold.open}
+        use:oneShot
+        onclick={() => orderFold.set(!orderFold.open)}
+        title={orderFold.open ? 'Fold the turn order back to one line' : 'Change the turn order: drag a name, or 🔀 Shuffle; click a name for their turn'}>✎ Change</button
+      >
+    </div>
+
+    <!-- The rest: ✎ Edit board, the spaces' cards, what's on screen and the shops; then the last step and the players. -->
+    <div class="row more">
       <button
         class="small"
         class:on={boardEdit.on}
@@ -309,161 +367,63 @@
         onclick={() => setEditing(!boardEdit.on)}
         title={boardEdit.on ? 'E or Esc: back to playing' : 'E: add, move, delete and connect spaces while you play (this game only, unless you keep it)'}
       >✎ Edit board <kbd aria-hidden="true">E</kbd></button>
-    </div>
-
-    {#if boardEdit.on}
-      <BoardEditPanel {game} {session} {round} {bs} {dual} />
-    {:else}
-    <div class="row move">
-      <!-- The first line: what to do next (one line, cut short where narrow: the whole of it in its tooltip). -->
-      <span class="first" title={firstLine} data-turn-next>{firstLine}</span>
-      {#if round.mover.kind === 'step'}
-        <!-- One space per turn: the player picks which way. -->
-        {#if !fork && stepWays.length}
-          {#each stepWays as w (w)}
-            <!-- (The only way on is Enter's, until they've moved.) -->
-            <button class="good" class:ring={ring === 'turnslot' && stepWays.length === 1} onclick={() => move(1, w, turnId)}
-              >→ {shown(w)}{#if stepWays.length === 1 && !moved} <kbd aria-hidden="true">⏎</kbd>{/if}</button
-            >
-          {/each}
-        {/if}
-      {:else if slot}
-      <!-- The one slot: 🎲 Roll, then ▶ Move in the same place (ringed while it's what's next). -->
-      <StepButton step={slot} ring={ring === 'turnslot'} />
-      <label class="small">
-        Steps
-        <input
-          type="number"
-          class="n"
-          bind:value={steps}
-          aria-label="Steps"
-          min={-MAX_STEPS}
-          max={MAX_STEPS}
-          step="1"
-          onkeydown={(e) => {
-            if (e.key !== 'Enter') return;
-            // At a fork the move goes on with the steps it has left: these would replace them.
-            if (fork) return void hint(`${playerName(session, fork.playerId)} is at a fork: pick the way first`);
-            move(steps);
-            e.currentTarget.blur();
-          }}
-        />
-      </label>
-      <!-- (A negative count, typed or a wheel's "Back 2", moves back: the buttons say which way they go.) -->
-      <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>{steps && steps < 0 ? '▶ Forward' : '◀ Back'} {steps ? Math.abs(steps) : ''}</button>
-      {/if}
-      <span class="spacer"></span>
-      <select
-        class="small"
-        aria-label="Send to"
-        onchange={(e) => {
-          const v = e.currentTarget.value;
-          e.currentTarget.value = '';
-          e.currentTarget.blur();
-          send(v);
-        }}
-        title="Teleport the selected players (or whoever's turn it is)"
-      >
-        <option value="">📍 Send {selected.length ? `selected (${selected.length})` : turnName} to…</option>
-        {#each round.spaces as s (s.id)}<option value="s:{s.id}">{listNames.get(s.id)}</option>{/each}
-        {#each round.zones as z (z.id)}<option value="z:{z.id}">🌀 {z.name}</option>{/each}
-      </select>
-      <!-- A space's card (its actions, Put … here, Reveal) without the mouse: the same as clicking it on the stage. -->
-      <select
-        class="small"
-        aria-label="Open a space's card"
-        onchange={(e) => {
-          const v = e.currentTarget.value;
-          e.currentTarget.value = '';
-          if (v) openCard(v);
-        }}
-      >
-        <option value="">🗂 Spaces…</option>
-        {#each round.spaces as s (s.id)}<option value={s.id}>{listNames.get(s.id)}{dual && unrevealed(bs, s) ? ' (secret)' : ''}</option>{/each}
-      </select>
-      <select
-        class="small"
-        aria-label="On screen"
-        value={bs.zoneShown ?? ''}
-        onchange={(e) => {
-          const v = e.currentTarget.value;
-          e.currentTarget.blur();
-          bs.zoneShown = v || null;
-        }}
-      >
-        <option value="">📺 The board</option>
-        {#each round.zones as z (z.id)}<option value={z.id}>📺 {z.name}</option>{/each}
-      </select>
-      {#if game.shops?.length}
+      {#if !boardEdit.on}
+        <!-- A space's card (its actions, Put … here, Reveal) without the mouse: the same as clicking it on the stage. -->
         <select
           class="small"
-          aria-label="Open a shop"
+          aria-label="Open a space's card"
           onchange={(e) => {
-            const id = e.currentTarget.value;
+            const v = e.currentTarget.value;
             e.currentTarget.value = '';
-            e.currentTarget.blur();
-            if (id) app.live.overlay = { kind: 'shop', nonce: newId(), shopId: id, buyer: selected[0] ?? turnId };
+            if (v) openCard(v);
           }}
         >
-          <option value="">🛒 Shop…</option>
-          {#each game.shops as sh (sh.id)}<option value={sh.id}>{sh.name}</option>{/each}
+          <option value="">🗂 Spaces…</option>
+          {#each round.spaces as s (s.id)}<option value={s.id}>{listNames.get(s.id)}{dual && unrevealed(bs, s) ? ' (secret)' : ''}</option>{/each}
         </select>
-      {/if}
-    </div>
-
-    {/if}
-
-    {#if card && !boardEdit.on}
-      <div bind:this={cardEl}>
-        {#key card.id}
-          <SpaceCard {game} {session} space={card} {round} {bs} {selected} {turnId} {dual} onclose={() => (space = null)} />
-        {/key}
-      </div>
-    {/if}
-
-    {#if fork && forkSpace && !boardEdit.on}
-      <div class="row fork" role="alert" bind:this={forkEl}>
-        <b>{playerName(session, fork.playerId)} is at {shown(forkSpace.id)}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
-        <span class="muted small">(or click the space on the stage)</span>
-        {#each forkWays as n (n)}
-          <button class="good" onclick={() => move(fork.stepsLeft, n)}>→ {shown(n)}</button>
-        {/each}
-      </div>
-    {/if}
-
-    {#if last && (passed.length || landed) && !boardEdit.on}
-      <!-- (In sight after each move: in one window under the stage the panel keeps one height, and this part scrolls.) -->
-      <div class="row acts" {@attach (el) => (void last, el.scrollIntoView({ block: 'nearest' }))}>
-        {#each passed as s (s.id)}
-          <span class="muted small">Passed {shown(s.id)}:</span>
-          {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(s, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
-        {/each}
-        {#if landed}
-          <!-- Landing on a space counts as passing it too (landing on Start still pays), unless sent back onto it
-               (passed on the way there this turn, it's still owed). -->
-          {@const passOn = last.back && !last.passed.includes(landed.id) ? [] : (landed.onPass ?? [])}
-          <span class="muted small"
-            >Landed on <b>{shown(landed.id)}</b>{!dual && unrevealed(bs, landed) ? ' (secret)' : ''}{passOn.length ? ' (counts as passing)' : ''}{landed.onLand?.length || passOn.length ? ':' : '.'}</span
+        <select
+          class="small"
+          aria-label="On screen"
+          value={bs.zoneShown ?? ''}
+          onchange={(e) => {
+            const v = e.currentTarget.value;
+            e.currentTarget.blur();
+            bs.zoneShown = v || null;
+          }}
+        >
+          <option value="">📺 The board</option>
+          {#each round.zones as z (z.id)}<option value={z.id}>📺 {z.name}</option>{/each}
+        </select>
+        {#if game.shops?.length}
+          <select
+            class="small"
+            aria-label="Open a shop"
+            onchange={(e) => {
+              const id = e.currentTarget.value;
+              e.currentTarget.value = '';
+              e.currentTarget.blur();
+              if (id) app.live.overlay = { kind: 'shop', nonce: newId(), shopId: id, buyer: selected[0] ?? turnId };
+            }}
           >
-          {#each passOn as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
-          {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'land')}>{actText(a, 'land')}</button>{/each}
-          {#if unrevealed(bs, landed)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
-          <!-- (One window: a secret space's note waits for 👁 Reveal space, as its name does.) -->
-          {#if landed.hostNotes && !dual && !unrevealed(bs, landed)}<span class="notes">📝 {landed.hostNotes}</span>{/if}
+            <option value="">🛒 Shop…</option>
+            {#each game.shops as sh (sh.id)}<option value={sh.id}>{sh.name}</option>{/each}
+          </select>
         {/if}
-      </div>
-    {/if}
-
-    <div class="row">
-      {#if round.winNotes}<span class="notes" title={round.winPublic ? 'Shown on the board' : dual ? 'Only you see this' : 'Not on the board (viewers can see it here, in this window)'}>🏆 {round.winNotes}{round.winPublic ? '' : dual ? ' (secret)' : ' (not on the board)'}</span>{/if}
-      {#if round.hostNotes && !dual}<span class="notes">📝 {round.hostNotes}</span>{/if}
-      {#if !dual}
-        {#each zones.filter((z) => z.hostNotes) as z (z.id)}<span class="notes">🌀 {z.name}: 📝 {z.hostNotes}</span>{/each}
       {/if}
       <span class="spacer"></span>
       {#if recent}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {stepText(recent, !dual)}</button>{/if}
       <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>{showPlayers ? '▾' : '▸'} {ctx.teams ? 'Teams' : 'Players'}</button>
     </div>
+
+    {#if round.winNotes || (round.hostNotes && !dual) || (!dual && zones.some((z) => z.hostNotes))}
+      <div class="row">
+        {#if round.winNotes}<span class="notes" title={round.winPublic ? 'Shown on the board' : dual ? 'Only you see this' : 'Not on the board (viewers can see it here, in this window)'}>🏆 {round.winNotes}{round.winPublic ? '' : dual ? ' (secret)' : ' (not on the board)'}</span>{/if}
+        {#if round.hostNotes && !dual}<span class="notes">📝 {round.hostNotes}</span>{/if}
+        {#if !dual}
+          {#each zones.filter((z) => z.hostNotes) as z (z.id)}<span class="notes">🌀 {z.name}: 📝 {z.hostNotes}</span>{/each}
+        {/if}
+      </div>
+    {/if}
     {#if showPlayers}
       <div class="cards">
         {#each session.players as pl (pl.id)}
@@ -480,14 +440,169 @@
         {/each}
       </div>
     {/if}
+
+    <!-- Beside the stage: the turn's part at the column's foot, by the blue button (it stays in sight as the rest scrolls). -->
+    {#if side && !boardEdit.on}
+      {@render turnPart()}
+    {/if}
   </div>
 {/if}
+
+<!-- The turn: its box (first line, the one slot or the ways, Steps, ◀ Back, 📍 Send to…), the round's own dice or wheel
+     once rolled, a fork's ways, then the landing box. -->
+{#snippet turnPart()}
+  {#if round && bs}
+    <div class="turn" data-turn-part>
+      <div class="row move" data-turn-box>
+        <!-- The first line: what to do next (one line, cut short where narrow: the whole of it in its tooltip). -->
+        <span class="first" title={firstLine} data-turn-next>{firstLine}</span>
+        {#if round.mover.kind === 'step'}
+          <!-- One space per turn: the player picks which way. -->
+          {#if !fork && stepWays.length}
+            {#each stepWays as w (w)}
+              <!-- (The only way on is Enter's, until they've moved.) -->
+              <button class="good" class:ring={ring === 'turnslot' && stepWays.length === 1} onclick={() => move(1, w, turnId)}
+                >→ {shown(w)}{#if stepWays.length === 1 && !moved} <kbd aria-hidden="true">⏎</kbd>{/if}</button
+              >
+            {/each}
+          {/if}
+        {:else if slot}
+          <!-- The one slot: 🎲 Roll, then ▶ Move in the same place (ringed while it's what's next). -->
+          <StepButton step={slot} ring={ring === 'turnslot'} />
+          <label class="small">
+            Steps
+            <input
+              type="number"
+              class="n"
+              bind:value={steps}
+              aria-label="Steps"
+              min={-MAX_STEPS}
+              max={MAX_STEPS}
+              step="1"
+              onkeydown={(e) => {
+                if (e.key !== 'Enter') return;
+                // At a fork the move goes on with the steps it has left: these would replace them.
+                if (fork) return void hint(`${playerName(session, fork.playerId)} is at a fork: pick the way first`);
+                move(steps);
+                e.currentTarget.blur();
+              }}
+            />
+          </label>
+          <!-- (A negative count, typed or a wheel's "Back 2", moves back: the buttons say which way they go.) -->
+          <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>{steps && steps < 0 ? '▶ Forward' : '◀ Back'} {steps ? Math.abs(steps) : ''}</button>
+        {/if}
+        <span class="spacer"></span>
+        <select
+          class="small"
+          aria-label="Send to"
+          onchange={(e) => {
+            const v = e.currentTarget.value;
+            e.currentTarget.value = '';
+            e.currentTarget.blur();
+            send(v);
+          }}
+          title="Teleport the selected players (or whoever's turn it is)"
+        >
+          <option value="">📍 Send {selected.length ? `selected (${selected.length})` : turnName} to…</option>
+          {#each round.spaces as s (s.id)}<option value="s:{s.id}">{listNames.get(s.id)}</option>{/each}
+          {#each round.zones as z (z.id)}<option value="z:{z.id}">🌀 {z.name}</option>{/each}
+        </select>
+      </div>
+
+      <!-- The round's own dice or wheel, once rolled or spun: what they came to, under the turn they're for. -->
+      {@render mover?.()}
+
+      {#if fork && forkSpace}
+        <div class="row fork" role="alert" bind:this={forkEl}>
+          <b>{playerName(session, fork.playerId)} is at {shown(forkSpace.id)}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
+          <span class="muted small">(or click the space on the stage)</span>
+          {#each forkWays as n (n)}
+            <button class="good" onclick={() => move(fork.stepsLeft, n)}>→ {shown(n)}</button>
+          {/each}
+        </div>
+      {/if}
+
+      {#if last && (passed.length || landed)}
+        <!-- The landing box: the spaces passed and landed on, their buttons (in sight after each move: in one window under
+             the stage the panel keeps one height, and this part scrolls). -->
+        <div class="row acts" data-landing {@attach (el) => (void last, el.scrollIntoView({ block: 'nearest' }))}>
+          {#each passed as s (s.id)}
+            <span class="muted small">Passed {shown(s.id)}:</span>
+            {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(s, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
+          {/each}
+          {#if landed}
+            <!-- Landing on a space counts as passing it too (landing on Start still pays), unless sent back onto it
+                 (passed on the way there this turn, it's still owed). -->
+            {@const passOn = last.back && !last.passed.includes(landed.id) ? [] : (landed.onPass ?? [])}
+            <span class="small"
+              >Landed on <b>{shown(landed.id)}</b>{!dual && unrevealed(bs, landed) ? ' (secret)' : ''}{passOn.length ? ' (counts as passing)' : ''}{landed.onLand?.length || passOn.length ? ':' : '.'}</span
+            >
+            {#each passOn as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
+            {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'land')}>{actText(a, 'land')}</button>{/each}
+            {#if unrevealed(bs, landed)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
+            <!-- (One window: a secret space's note waits for 👁 Reveal space, as its name does.) -->
+            {#if landed.hostNotes && !dual && !unrevealed(bs, landed)}<span class="notes">📝 {landed.hostNotes}</span>{/if}
+          {/if}
+        </div>
+      {/if}
+    </div>
+  {/if}
+{/snippet}
 
 <style>
   .bh {
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  .turn {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  /* Beside the stage: the box fills the column, its turn part at the foot, by the blue button, in sight as the rest
+     scrolls (on the panel's own background, so what scrolls under it doesn't show through). */
+  .bh.side {
+    flex: 1 0 auto;
+  }
+  .bh.side > .turn {
+    margin-top: auto;
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding-top: 6px;
+    background: var(--panel);
+    box-shadow: 0 -6px 6px -6px rgba(0, 0, 0, 0.6);
+  }
+  /* The turn order: one line, ✎ Change at its end on the first row whatever the chips do. */
+  .order-row {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+  .order-row > .muted {
+    flex-shrink: 0;
+    line-height: 24px;
+  }
+  .order-row .body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .seq {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 12px;
+    line-height: 24px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .change {
+    flex-shrink: 0;
+    margin-left: auto;
   }
   .row {
     display: flex;
@@ -563,8 +678,10 @@
     border: 1px solid var(--warn);
     border-radius: 8px;
   }
+  /* The landing box. */
   .acts {
     padding: 4px 8px;
+    border: 1px solid var(--accent);
     border-radius: 8px;
     background: rgba(79, 124, 255, 0.08);
   }

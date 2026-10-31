@@ -36,4 +36,13 @@ describe('a remembered fold', () => {
     expect(f.open).toBe(false);
     expect(new RememberedFold('jb.test.fold3').open).toBe(true);
   });
+
+  it('can start open, until the host first folds it (then remembered folded)', () => {
+    const f = new RememberedFold('jb.test.fold4', true);
+    expect(f.open).toBe(true);
+    f.set(false);
+    expect(new RememberedFold('jb.test.fold4', true).open).toBe(false);
+    f.set(true);
+    expect(new RememberedFold('jb.test.fold4', true).open).toBe(true);
+  });
 });

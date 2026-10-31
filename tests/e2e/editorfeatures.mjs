@@ -501,7 +501,8 @@ try {
   await page.getByLabel('Steps').fill('8');
   await page.getByRole('button', { name: /^▶ Move Bob/ }).click();
   await page.locator('.bh .acts').getByRole('button', { name: 'Skip next turn' }).click();
-  assert((await page.locator('.bh .ord', { hasText: 'Bob' }).innerText()).includes('⏭'), 'the turn order shows Bob skips');
+  // (The turn order's one line, folded: its marks are there too.)
+  assert((await page.locator('.bh [data-turn-order]').innerText()).includes('Bob ⏭'), `the turn order shows Bob skips (${await page.locator('.bh [data-turn-order]').innerText()})`);
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-skip.png` });
   // His landing ran: N goes on. Cat hasn't rolled: N asks, and “Don't ask about rolling again this game” turns that off,
   // leaving nothing to ask; then N goes on, and on again from Ann's turn not rolled, passing over Bob.

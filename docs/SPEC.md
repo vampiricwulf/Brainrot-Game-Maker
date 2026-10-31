@@ -668,6 +668,16 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   moves the token. In one window a secret space not revealed yet is named "? (secret)" there too. The host's RPG stage
   is a Tab stop as well: `Shift+F10` there opens the first selected player's menu, else the selected object's, else the
   round's own. `Shift+F10` on a name in the turn order or a player button in the RPG panel opens their menu.
+- **A board game's box** (BoardHost) starts with the turn: the turn box (first line, the one slot, Steps, ◀ Back,
+  📍 Send … to…), the round's own dice or movement wheel's box under it (HostPanel hands its ToolsControls in as the
+  `mover` snippet: never at the panel's top), a fork's ways, the framed landing box (`.acts`: the spaces passed and
+  landed on, their buttons, 👁 Reveal space). Beside the stage that part is the column's foot (sticky, the box filling
+  the column), so its slot is within 96 px of the blue button there and under the stage. Then a space's card, the turn
+  order in one line with ✎ Change (a RememberedFold, `jb.turnOrderOpen`, closed at first; the chips, their drag and
+  `Alt+←/→`, and 🔀 Shuffle inside), and a line with ✎ Edit board (`E`), 🗂 Spaces…, 📺 The board, 🛒 Shop…, the Last:
+  step and ▸ Players. In one window 📍 Send … to… and 🗂 Spaces… name a secret space not revealed yet “? (secret)”
+  (spaceListShown), and every step, point and card offer its buttons make keeps a quiet text that says it so
+  (ActionEvent.quiet, ScoreEvent.quiet, CardOffer.quiet), whichever window it was made in.
 - **An RPG stage's box select** (RpgStage, `caughtBy` in layers.ts): a left-button press that moves 4 px (a finger 10,
   `STILL_PX`, which also stops the long press's menu) draws a box: on an empty part of a screen, on a 🔒 locked object or
   one as big as its screen (a click there still opens its card), anywhere with `Alt` (its keyup kept in the page, for

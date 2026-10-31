@@ -328,6 +328,28 @@ try {
   await page.locator('.bh').waitFor();
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'Player 1 goes first');
   assert((await page.locator('.stage .on-board').count()) === 2, 'both tokens are on the board');
+  // The round's box, the turn first: the turn box, then the turn order folded to one line (“Turn order: Player 1 → Player
+  // 2 ✎ Change”), then ✎ Edit board, 🗂 Spaces… and 📺 The board on a line of their own. Beside the stage (this window is
+  // 3:2) the turn's part is at the column's foot instead, by the blue button.
+  const besideStage = (await page.locator('.play.side').count()) > 0;
+  const boxParts = await page.locator('.bh').evaluate((b) =>
+    [...b.children].flatMap((c) => ('turnPart' in c.dataset ? ['turn'] : 'turnOrder' in c.dataset ? ['order'] : c.classList.contains('more') ? ['more'] : [])),
+  );
+  const orderRow = page.locator('.bh [data-turn-order]');
+  const orderSays = async () => (await orderRow.innerText()).replace(/\s+/g, ' ').trim();
+  assert(
+    boxParts.join() === (besideStage ? 'order,more,turn' : 'turn,order,more') && (await orderSays()) === 'Turn order: Player 1 → Player 2 ✎ Change' && !(await page.locator('.bh .ord').count()),
+    `the round's box: the turn (${besideStage ? 'at its foot, beside the stage' : 'first'}), the turn order in one line (${boxParts.join()} · ${await orderSays()})`,
+  );
+  assert(
+    (await page.locator('.bh .more').getByRole('button', { name: /✎ Edit board/ }).count()) === 1 && (await page.locator('.bh .more').getByLabel("Open a space's card").count()) === 1 && (await page.locator('.bh .move').getByLabel('Send to').count()) === 1,
+    '✎ Edit board and 🗂 Spaces… are on the line after it; 📍 Send to… is in the turn box',
+  );
+  await orderRow.getByRole('button', { name: '✎ Change' }).click();
+  assert(
+    (await page.locator('.bh .ord').count()) === 2 && (await orderRow.getByRole('button', { name: '🔀 Shuffle' }).count()) === 1 && (await orderRow.getByRole('button', { name: '✎ Change' }).getAttribute('aria-expanded')) === 'true',
+    '✎ Change opens its chips and 🔀 Shuffle (this computer remembers it open)',
+  );
   const stageNames = await page.locator('.stage .space .label').allInnerTexts();
   assert(stageNames.join() === 'Start', `one window: the stage shows only the names ticked to show (${stageNames.join()})`);
 
@@ -803,9 +825,9 @@ try {
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/boardgame-crowd-zone.png` });
   await ctx2.close();
 
-  // Twelve long names in one window at 1280×720: the turn order wraps onto many rows, and a move that stops at the fork
-  // brings its "which way?" row into view (the host panel scrolls to it; the stage doesn't move). (A second board after
-  // it, for the Steps box going into another round.)
+  // Twelve long names in one window at 1280×720 (beside the stage): the turn order, opened, wraps onto many rows, and a
+  // move that stops at the fork has its "which way?" row in view (the turn's part is at the column's foot; the stage
+  // doesn't move). (A second board after it, for the Steps box going into another round.)
   console.log('A fork under a long turn order, one window at 1280×720:');
   const longNames = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
   const long = {
@@ -844,6 +866,8 @@ try {
   await one.locator('.stage [data-space="b9"] .label').waitFor();
   const lavaStage = await lavaIn('.stage .play-area | .stage [data-space="b9"] .label');
   assert(lavaStage.right >= 0 && lavaStage.left >= 0, `and on the stage (${JSON.stringify(lavaStage)})`);
+  await one.locator('.bh [data-turn-order]').getByRole('button', { name: '✎ Change' }).click();
+  await one.locator('.bh .ord').first().waitFor();
   const stageAt = () => one.evaluate(() => ({ stage: Math.round(document.querySelector('.stage-box').getBoundingClientRect().top), scrolled: document.querySelector('main.play').scrollTop }));
   const stageBefore = await stageAt();
   // 3 from Start: through Space 2 onto the Fork, with 1 to go.
