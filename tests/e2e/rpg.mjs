@@ -407,6 +407,8 @@ async function boxSelect() {
         shape('el_spawn', 'Arrival point', 700, 560, 120, 120, { class: 'spawn' }),
         shape('el_gold', 'Gold pile', 1500, 250, 140, 140, { class: 'currency', field: 'f_gold', amount: 5 }),
         shape('el_chest', 'Chest', 1600, 700, 140, 100, { class: 'item', item: 'i_sword', qty: 1 }, { secret: true }),
+        // (Out of every box drawn: its button reveals the secret Chest.)
+        shape('el_lever', 'Lever', 1780, 0, 100, 80, { class: 'interactable', actions: [{ id: 'a_peek', do: 'reveal', object: 'el_chest' }] }),
       ],
     },
   };
@@ -563,6 +565,11 @@ async function boxSelect() {
     const hiddenMenu = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
     await host.keyboard.press('Escape');
     assert(hiddenMenu.includes('🗂 Open its card') && !hiddenMenu.includes('✎ Edit'), `one window: the secret object's menu has no ✎ Edit (${hiddenMenu.join(' | ')})`);
+    // A visible Lever whose button reveals it: its menu calls it what Objects here does, never the Chest.
+    await host.locator('.rh .objs').getByRole('button', { name: /^Lever/ }).click({ button: 'right' });
+    const leverMenu = await host.getByRole('menu').innerText();
+    await host.keyboard.press('Escape');
+    assert(leverMenu.includes('Reveal 🙈 Hidden object 1 (Start)') && !leverMenu.includes('Chest'), `one window: the Lever's Reveal names no secret object (${leverMenu.replace(/\s+/g, ' ')})`);
     // Pressing one of a selected group outlines it all before it moves; one Ctrl+Z puts the whole move back.
     await again(host).click();
     await says(host, 'Selected: Ann, Bob —');
