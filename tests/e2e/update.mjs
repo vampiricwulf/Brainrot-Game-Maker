@@ -66,9 +66,14 @@ try {
   await page.getByRole('dialog', { name: 'About Brainrot Games Maker' }).getByText('Downloading 99.0.0 in a new tab').waitFor();
   assert(true, 'ℹ About says the steps too');
   await page.keyboard.press('Escape');
-  await steps.getByRole('button', { name: 'Done' }).click();
+  // (A double-click on Done is one click: Not now, come up where Done was, isn't pressed too.)
+  await steps.getByRole('button', { name: 'Done' }).dblclick();
   await notice.waitFor();
-  assert(true, 'Done puts the steps away: the notice is back, with Not now');
+  await page.waitForTimeout(300);
+  assert(
+    (await notice.isVisible()) && (await page.evaluate(() => localStorage.getItem('jb.updateSkip'))) === null,
+    'Done puts the steps away: the notice is back, with Not now (a double-click on Done doesn’t press Not now)',
+  );
 
   // Not now: put away for this version, also after a reload (which uses what it heard, without asking again). It's the
   // notice's ✕, its last button, its tooltip saying what it does (every notice under the header ends so).

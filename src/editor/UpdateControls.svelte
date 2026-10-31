@@ -10,6 +10,7 @@
   import { ask, tell } from '../lib/ask.svelte';
   import { canSelfUpdate, installUpdate, openLink, restartIntoUpdate } from '../lib/desktop.svelte';
   import { inTauri } from '../lib/platform';
+  import { oneShot } from '../lib/oneshot';
   import { jobAsk, jobLine, stopAll } from '../lib/shrink/jobs.svelte';
   import { ASSETS, skipVersion, update, type Release } from '../lib/update.svelte';
 
@@ -96,9 +97,10 @@
   </button>
 {/if}
 <button class="small ghost" onclick={() => open(release.page)}>What’s new</button>
-<!-- The notice's ✕, at its far right (named for what it does: Done puts the steps away, Not now hides the notice). -->
+<!-- The notice's ✕, at its far right (named for what it does: Done puts the steps away, Not now hides the notice).
+     (Not now comes up where Done was: a double-click on Done is one click, never Not now too.) -->
 {#if notice && !desktopApp && update.downloading === release.version}
-  <button class="small ghost notice-x" bind:this={doneBtn} onclick={() => (update.downloading = '')} aria-label="Done" title="Done: put these steps away">✕</button>
+  <button class="small ghost notice-x" bind:this={doneBtn} use:oneShot onclick={() => (update.downloading = '')} aria-label="Done" title="Done: put these steps away">✕</button>
 {:else if notice}
   <button class="small ghost notice-x" onclick={() => skipVersion(release.version)} aria-label="Not now" title="Hide until a newer version is out">✕</button>
 {/if}
