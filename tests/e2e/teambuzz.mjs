@@ -350,21 +350,39 @@ try {
   await host.waitForTimeout(500);
   assert((await small(ann).innerText()) === 'Your team already answered this one', 'a locked-out team stays out: "Your team already answered this one"');
 
-  // ↺ Reset: Ann and Bea tie; 🎲 Roll for it. The team that rolled 2nd reads "Tie — your team rolled 2nd" (Al too,
-  // who didn't buzz: never "you rolled").
-  await host.getByRole('button', { name: '↺ Reset buzzers' }).click();
-  await big(ann).getByText('BUZZ!').waitFor();
-  await big(bea).getByText('BUZZ!').waitFor();
-  tieThem([taps.get(ann), taps.get(bea)]);
-  await press(ann);
-  await press(bea);
+  // ↺ Reset: Al and Bea tie; 🎲 Roll for it. The team that rolled 2nd reads "Tie — your team rolled 2nd" (Ann too,
+  // who didn't buzz: never "you rolled"). (Not Ann: her press above, while the buzzers were closed, counts as early, and
+  // her phone lights up again by its own reckoning of the room's clock: a press the moment it does could still reach the
+  // room inside her wait.) The tie is the two buzzes held, then sent at once with the same reaction time; on a busy
+  // machine one can still reach the room so late that its fair-timing rule ranks it behind ("🔔 Al (Player 1) buzzed",
+  // "+0.16 s"): then the buzzers are reset and the two press again, three times at most.
+  for (let tries = 1; ; tries++) {
+    await host.getByRole('button', { name: '↺ Reset buzzers' }).click();
+    await big(al).getByText('BUZZ!').waitFor();
+    await big(bea).getByText('BUZZ!').waitFor();
+    tieThem([taps.get(al), taps.get(bea)]);
+    await press(al);
+    await press(bea);
+    const outcome = await (
+      await host.waitForFunction(() => {
+        const row = document.querySelector('.panel [data-buzzrow]');
+        return row?.querySelector('button[data-box="rolltie"]') ? 'tie' : /🔔 .+ buzzed/.test(row?.textContent ?? '') ? 'ranked' : null;
+      })
+    ).jsonValue();
+    if (outcome === 'tie') break;
+    const order = (await host.getByRole('list', { name: 'Buzz order' }).innerText()).replace(/\s+/g, ' ');
+    if (tries === 3) throw new Error(`Al's and Bea's buzzes never tied in 3 tries (last: ${order})`);
+    console.log(`  - try ${tries}: the room ranked the held buzzes apart (${order}); pressing again`);
+    // (Both phones off that arm's BUZZ! first, so the next presses go with the next arm.)
+    for (const p of [al, bea]) await big(p).getByText('BUZZ!').waitFor({ state: 'detached' });
+  }
   // (🎲 Roll for it is in the buzzers' row, beside the tie: O does it too.)
   await host.locator('.panel [data-buzzrow] button[data-box="rolltie"]').click();
-  const won = await Promise.race([ann, bea].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
-  const rolledSecond = won === 0 ? bea : ann;
+  const won = await Promise.race([al, bea].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
+  const rolledSecond = won === 0 ? bea : al;
   await small(rolledSecond).getByText('Tie — your team rolled 2nd').waitFor();
-  if (won === 1) await small(al).getByText('Ann buzzed for your team · Tie — your team rolled 2nd').waitFor();
-  assert((await big(rolledSecond).innerText()) === 'Your team is 2nd', `a tie rolled: the team that rolled 2nd reads “Your team is 2nd · Tie — your team rolled 2nd”${won === 1 ? ' (Al too, after “Ann buzzed for your team”)' : ''}`);
+  if (won === 1) await small(ann).getByText('Al buzzed for your team · Tie — your team rolled 2nd').waitFor();
+  assert((await big(rolledSecond).innerText()) === 'Your team is 2nd', `a tie rolled: the team that rolled 2nd reads “Your team is 2nd · Tie — your team rolled 2nd”${won === 1 ? ' (Ann too, after “Al buzzed for your team”)' : ''}`);
   await host.keyboard.press('Escape');
   await host.locator('.stage-box').getByText('Tie! Roll for it').waitFor({ state: 'detached' });
 
