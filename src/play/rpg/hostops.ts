@@ -165,6 +165,14 @@ export function moveChoices(session: Session, st: WorldState, selected: string[]
 export type AvatarDrop = { spot: { x: number; y: number } } | { to: ScreenRef; at?: { x: number; y: number }; via?: Dir8 | null } | { party: string };
 
 /**
+ * A box drawn on the RPG stage (by the host): the players and objects inside it now, whether it adds to what was
+ * selected when the press began (Shift, Ctrl or ⌘ held, or a touch), and how far it's got: 'move' while it's drawn,
+ * 'end' when let go (a click on an empty spot is an 'end' with nothing in it), 'cancel' (Esc, or the browser took the
+ * pointer): the selection goes back to what it was.
+ */
+export type BandPick = { players: string[]; objects: string[]; add: boolean; phase: 'move' | 'end' | 'cancel' };
+
+/**
  * An avatar dropped past an edge of its screen (at x, y on it): the way out on that side, when there's one (an open
  * side, or a way sent somewhere else), as the pad would take it.
  */

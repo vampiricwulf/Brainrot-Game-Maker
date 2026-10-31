@@ -17,6 +17,12 @@ export const dragGhost = $state<{ now: { x: number; y: number; player: { name: s
  */
 export const itemDrag = $state<{ now: { from: string; entryId: string; n: number } | null }>({ now: null });
 
+/**
+ * The RPG stage's menu's ▭ Select in a box: the next press-and-drag on a screen draws a box, even from a player or an
+ * object, with no key held (Esc puts it away).
+ */
+export const boxNext = $state<{ on: boolean }>({ on: false });
+
 /** A drag is over (dropped, or let go anywhere): nothing is lit up any more. */
 export function dragDone(): void {
   itemDrag.now = null;

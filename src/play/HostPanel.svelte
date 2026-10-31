@@ -54,6 +54,8 @@
     amount = $bindable(),
     rpgObject = $bindable(null),
     rpgSelObjects = $bindable([]),
+    rpgAgain = null,
+    onrpgclear,
     rpgMap = $bindable(false),
     rpgAsk = $bindable(null),
     rpgMapSend = $bindable(null),
@@ -138,6 +140,10 @@
     rpgObject?: string | null;
     /** RPG rounds: the objects selected on the stage (they drag with the selected players). */
     rpgSelObjects?: string[];
+    /** RPG rounds: ↩ Select them again, while a selection just cleared or replaced can come back (5 s). */
+    rpgAgain?: (() => void) | null;
+    /** RPG rounds: the selection line's ✕ (players and objects; ↩ Select them again brings them back). */
+    onrpgclear?: () => void;
     /** RPG rounds: the full map (jump anywhere) is open. */
     rpgMap?: boolean;
     /** RPG rounds: a name or text being asked for (text right-clicked onto the stage too). */
@@ -870,7 +876,7 @@
       <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
-      <span class="muted hint">Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars</span>
+      <span class="muted hint">Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars · drag a box to select several</span>
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
       <span class="muted hint">
@@ -1191,6 +1197,8 @@
             bind:selected
             bind:object={rpgObject}
             bind:selectedObjects={rpgSelObjects}
+            again={rpgAgain}
+            onclear={onrpgclear}
             bind:mapOpen={rpgMap}
             bind:mapSend={rpgMapSend}
             bind:ask={rpgAsk}
@@ -1358,10 +1366,13 @@
           </button>
           <!-- (Buzzer mode: the buzzers' own things are on their row, above.) -->
           {#if selected.length && !buzzing}
-            <!-- (Just ✕ on a narrow window, so the row stays one line: see the media query.) -->
-            <button class="ghost clear" onclick={() => (selected = [])} title="Clear selection (Esc)" aria-label="Clear selection"
-              ><span class="word">Clear selection</span><span class="x" aria-hidden="true">✕</span></button
-            >
+            <!-- (Just ✕ on a narrow window, so the row stays one line: see the media query. An RPG round's is the RPG box's
+                 selection line's ✕, for players and objects at once: not two.) -->
+            {#if session.phase !== 'rpg'}
+              <button class="ghost clear" onclick={() => (selected = [])} title="Clear selection (Esc)" aria-label="Clear selection"
+                ><span class="word">Clear selection</span><span class="x" aria-hidden="true">✕</span></button
+              >
+            {/if}
           {:else if session.phase === 'board'}
             <button class="ghost" onclick={() => (adjust = false)}>Done</button>
           {:else if !toolOnly && !buzzing}

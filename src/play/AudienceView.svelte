@@ -30,7 +30,7 @@
   import RpgStage from './rpg/RpgStage.svelte';
   import BoardGameStage from './boardgame/BoardGameStage.svelte';
   import DecorLayer from './DecorLayer.svelte';
-  import type { AvatarDrop } from './rpg/hostops';
+  import type { AvatarDrop, BandPick } from './rpg/hostops';
   import { boardLayout, presetTheme, rightFill, splashColors, STAGE_KEYS, themeStyle } from '../lib/theme';
   import AnsweringPlate from './AnsweringPlate.svelte';
   import QrCode from '../lib/QrCode.svelte';
@@ -55,6 +55,7 @@
     onobjectmove,
     onpickup,
     ongroupmove,
+    onband,
     ontoken,
     onspace,
     onspacecard,
@@ -90,6 +91,8 @@
     onpickup?: (elId: string, playerId: string) => void;
     /** RPG rounds, host only: selected players and objects were dragged together to new spots. */
     ongroupmove?: (players: Record<string, { x: number; y: number }>, objects: Record<string, { x: number; y: number }>) => void;
+    /** RPG rounds, host only: a box drawn on a screen (what's in it), or a click on an empty spot. */
+    onband?: (b: BandPick) => void;
     /** Board-game rounds, host only: a token was clicked, or dragged onto a space or a zone. */
     ontoken?: (playerId: string, to?: { space?: string; zone?: string }) => void;
     /** Board-game rounds, host only: a space was clicked. */
@@ -721,7 +724,7 @@
     </div>
   {/key}
 {:else if session.phase === 'rpg'}
-  <RpgStage {game} {session} {role} {selected} {selectedObjects} {onobject} {onavatar} {onobjectmove} {onpickup} {ongroupmove} />
+  <RpgStage {game} {session} {role} {selected} {selectedObjects} {onobject} {onavatar} {onobjectmove} {onpickup} {ongroupmove} {onband} />
 {:else if session.phase === 'boardgame'}
   <BoardGameStage {game} {session} {role} {selected} {ontoken} {onspace} {onspacecard} />
 {:else if session.phase === 'slides' && slidesRound(session, game)}

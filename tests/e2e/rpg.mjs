@@ -818,7 +818,11 @@ try {
     await hit.click({ modifiers: ['Shift'] });
     assert(!(await page.getByRole('dialog', { name: 'Object: Lava' }).count()), 'Shift+click on an object selects it (no card)');
     const inList = page.locator('.rh .objs').getByRole('button', { name: /Lava/ });
-    assert((await inList.getAttribute('aria-pressed')) === 'true' && (await page.locator('.rh .side').innerText()).includes('1 selected'), 'the host panel’s list shows it selected');
+    const selLine = page.locator('.rh [data-rpg-sel]');
+    assert(
+      (await inList.getAttribute('aria-pressed')) === 'true' && (await selLine.innerText()).includes('Selected: Player 1, Player 2 · Lava'),
+      `the host panel’s list shows it selected, and the RPG box’s one line says what is (${await selLine.innerText()})`,
+    );
     // Hovering it on the stage only outlines it: no button colour over it (viewers see this stage in one window).
     await hit.hover();
     assert((await hit.evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgba(0, 0, 0, 0)', 'hovering an object doesn’t cover it');
@@ -838,10 +842,11 @@ try {
     assert((await toast()).includes('Undid Move Player 1, Player 2 & Lava'), `one step moved them all (${await toast()})`);
     const back = moved(start, await boxes());
     assert(back.every(([x, y]) => Math.abs(x) <= 2 && Math.abs(y) <= 2), `one Ctrl+Z puts them all back (${JSON.stringify(back)})`);
-    // Esc takes off the selected objects, then the players. An avatar that isn't selected drags on its own, even with
-    // other things selected.
+    // One Esc clears the players and the object selected at once (↩ Select them again in the line instead). An avatar
+    // that isn't selected drags on its own, even with other things selected.
     await page.keyboard.press('Escape');
-    await page.keyboard.press('Escape');
+    await selLine.getByRole('button', { name: '↩ Select them again' }).waitFor();
+    assert(!(await selLine.innerText()).includes('Selected:') && (await inList.getAttribute('aria-pressed')) === 'false', 'one Esc clears the players and the objects selected');
     await av.nth(0).click();
     await hit.click({ modifiers: ['Shift'] });
     const start2 = await boxes();
@@ -851,7 +856,6 @@ try {
     assert(Math.abs(d2[1][0]) > 10 && d2[0].every((v) => Math.abs(v) <= 2) && d2[2].every((v) => Math.abs(v) <= 2), `an unselected avatar dragged moves on its own (${JSON.stringify(d2)})`);
     await page.keyboard.press('Control+z');
     // Nothing selected again for what follows.
-    await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
   }

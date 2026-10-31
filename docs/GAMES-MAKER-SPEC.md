@@ -747,6 +747,9 @@ It is laid out around the stage the host already has:
 - **Stage (host copy):**
   - Click an object to open its action card.
   - Drag avatars to move them.
+  - Drag a box on an empty spot to select the players and the things that move in play inside it (`Shift` adds; `Alt`
+    from anywhere; the stage menu's ▭ Select in a box), then drag any one of them to move them all (docs/SPEC.md has
+    the details).
   - Right-click the empty stage for "Drop item here", "Add object…", "Paste image", "Pop-up text".
   - Hidden objects appear ghosted.
 - **Movement:** the 8-way pad, Regroup, Split, the party chips (click to focus, drag players between them), and a

@@ -444,8 +444,18 @@ hidden objects. Use the separate audience window when that matters.
 - Player cards with stats and inventory.
 - Shops.
 - Live improvising: edit the screen, add text, or draw objects on a drawpad.
-- Select several players and objects (click avatars, `Shift`+click objects) and drag them together: the group keeps
-  its shape, and one drag is one undo step.
+- Select several players and objects and drag them together: the group keeps its shape, and one drag is one undo
+  step. **Drag a box** on an empty part of the stage: the players, and the things they can pick up or use (items,
+  money, characters, things to use), inside it are selected. A box replaces what's selected; `Shift`, `Ctrl` or `⌘`
+  adds to it (so does a box on a touch screen), and so does `Shift`+click on one avatar or object. Doors, zones, shops,
+  hazards, scenery and 🔒 locked things stay out of a box (a press on a locked one, or on a picture as big as its
+  screen, draws a box too): `Shift`+click adds one of them. `Alt`+drag always draws a box, even from a player or an
+  object; on some Linux desktops `Alt`+drag moves the window, so the stage's menu has **▭ Select in a box** (and
+  **Select everything here**). `Esc` while drawing puts back what was selected. A click on an empty spot clears the
+  selection, as `Esc` and the ✕ do, and **↩ Select them again** brings it back for 5 seconds. One line at the top of
+  the RPG box says what's selected (in one window a secret object is "1 hidden object", and Objects here numbers the
+  secret ones, never naming them). In one window the stage shows the box and dashed outlines while you hold the
+  button, and for a moment after; pressing one of a selected group outlines the whole group before it moves.
 - The stage is a `Tab` stop: `Shift+F10` there opens the selected player's menu (their first, with several), else the
   selected object's, else the round's own (🗺 Full map, the map for viewers, 🤝 Regroup).
 

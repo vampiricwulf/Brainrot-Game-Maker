@@ -555,8 +555,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   dice, pop-up, the scores or a shop (the spin or roll, ✎ Edit wheel, ＋ Spin another wheel too…); the Final (its slide
   before, Reveal answer ▶ `R`, the reveals' player before, ✔ Right `C` / ✘ Wrong `X`, finishing early); the tiebreaker;
   a tie at the end (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off `O`, 🤝 Declare co-winners, then the end screen's
-  buttons); a board game's turn (🎲 Roll `D`, ▶ Move `Enter`, ◀ Previous turn, ✎ Edit board `E`); an RPG round (＋ Text
-  here…, 🗺 Full map `J`, the map for viewers `V`, 🤝 Regroup `G`). While the check is open, a right-click on the stage
+  buttons); a board game's turn (🎲 Roll `D`, ▶ Move `Enter`, ◀ Previous turn, ✎ Edit board `E`); an RPG round (▭ Select
+  in a box `Alt+drag`, Select everything here, ＋ Text here…, 🗺 Full map `J`, the map for viewers `V`, 🤝 Regroup `G`). While the check is open, a right-click on the stage
   doesn't open it: the check flashes, as a click does. In one window (on stream) it shows only words the panel shows:
   names and steps, never a card's words, a part, a wager or a typed answer, and ↶ Undo without its step's name. A
   tile's menu shows its keys too (▶ Open `Enter`, ⏸ Cover the screen `K`).
@@ -568,6 +568,28 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   moves the token. In one window a secret space not revealed yet is named "? (secret)" there too. The host's RPG stage
   is a Tab stop as well: `Shift+F10` there opens the first selected player's menu, else the selected object's, else the
   round's own. `Shift+F10` on a name in the turn order or a player button in the RPG panel opens their menu.
+- **An RPG stage's box select** (RpgStage, `caughtBy` in layers.ts): a left-button press that moves 4 px (a finger 10,
+  `STILL_PX`, which also stops the long press's menu) draws a box: on an empty part of a screen, on a 🔒 locked object or
+  one as big as its screen (a click there still opens its card), anywhere with `Alt` (its keyup kept in the page, for
+  Firefox's menu bar), or after the stage menu's ▭ Select in a box (`Esc` puts that away). Never on the stats strip, the
+  map on stream, a tool or the title card (they're over the screens), under ⏸ Cover, nor with ✎ Edit screen or a window
+  open. It catches the drawn targets (`.avatar` tokens, `.hit` click targets) whose middle is inside it: players, and
+  objects of class item, currency, npc or interactable, unless bigger than the box all round; never doorways, shops,
+  zones, hazards, role-less scenery, anything locked or `neverShown` (in two windows too), and in one window nothing
+  viewers don't see (it has no target). A box replaces the selection (`selected` and the objects), live as it's drawn;
+  `Shift`, `Ctrl`, `⌘` or a touch adds to what was selected when the press began; `Esc` or `pointercancel` puts that
+  back (before the game screen's own `Esc`). A click on an empty spot (not with those keys) clears it, as an empty box
+  does; after a clear or a replace (a click, a box, `Esc`, the line's ✕, a drag of one not selected), ↩ Select them
+  again brings it back for 5 s. Locked and screen-sized objects stay put when their group is dragged. Two windows: the
+  host's copy draws a yellow dashed box with a faint fill and lights the rings live. One window: a thin dashed box and
+  dashed outlines while it's held and 1.5 s after, and on the whole group while one of it is pressed; nothing at rest.
+  The RPG box has one selection line near its top, always there (one height), with one ✕ for players and objects (the
+  award row has no Clear selection of its own in an RPG round), and one `Esc` clears both, after an open card. In one
+  window it counts a secret object ("1 hidden object"), Objects here numbers them ("🙈 Hidden object 1": its card keeps
+  the name and buttons behind 👁 Show; what the host added during the show keeps its name), and steps that move or
+  remove one carry a quiet label ("Move Ann & a hidden object"). No step is recorded for a move that moves nothing;
+  long labels read "Move Ann, Bob, Cy & 5 more". A big object (a quarter of its screen) dragged alone says once a game
+  how to lock it or box over it.
 - **A double-click counts once** on a button that changes the screen (the first screen's cards and ✨ Try a sample game,
   ▶ Play, Start game ▶ and ▶ Resume it, the exported file's ▶ Play, Resume game and View results, the status bar's Resume
   game and View results, Open…'s Recent games, a tile opening its clue editor): the rest of that press (its second

@@ -33,8 +33,8 @@
   import PlayerCard, { cardsShown, playerCards } from './PlayerCard.svelte';
   import InlineAsk from '../host/InlineAsk.svelte';
   import {
-    addLive, centredOn, focusParty, hiddenNames, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, regroupAll, rpgNow, sendPartiesOn, splitOff, START_FIRST, stepParty,
-    toggleMap, type RpgAsk, type StagePoint,
+    addLive, centredOn, focusParty, hiddenNames, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, regroupAll, rpgNow, selectionWords, sendPartiesOn, splitOff, START_FIRST,
+    stepParty, toggleMap, type RpgAsk, type StagePoint,
   } from './hostops';
   import { dropHover } from '../dragdrop.svelte';
 
@@ -44,6 +44,8 @@
     selected = $bindable(),
     object = $bindable(),
     selectedObjects = $bindable([]),
+    again = null,
+    onclear,
     mapOpen = $bindable(false),
     mapSend = $bindable(null),
     ask = $bindable(null),
@@ -54,8 +56,12 @@
     session: Session;
     selected: string[];
     object: string | null;
-    /** The objects selected on the stage (Shift/Ctrl+click there or in the list here): they drag with the selected players. */
+    /** The objects selected on the stage (Shift/Ctrl+click there or in the list here, or a box): they drag with the selected players. */
     selectedObjects?: string[];
+    /** ↩ Select them again: while a selection just cleared or replaced can come back (5 s). */
+    again?: (() => void) | null;
+    /** The selection line's ✕: nobody and nothing selected. */
+    onclear?: () => void;
     mapOpen?: boolean;
     /** The full map was opened to send these players somewhere (from their menu or their party's). */
     mapSend?: { players: string[]; label: string } | null;
@@ -154,7 +160,8 @@
   function toggleObject(id: string): void {
     selectedObjects = selectedObjects.includes(id) ? selectedObjects.filter((x) => x !== id) : [...selectedObjects, id];
   }
-  const objectsPicked = $derived(objects.filter((el) => selectedObjects.includes(el.id)).length);
+  /** Who and what is selected, in words (one window counts a secret object, never names it). */
+  const selWords = $derived(selectionWords(game, session, selected, selectedObjects, !dual));
 
   /** The live editor on the screen an object is on (its current look). */
   function editObject(screen: Screen): void {
@@ -399,6 +406,20 @@
       <button class="small" class:on={st.mapShown} aria-pressed={!!st.mapShown} onclick={() => toggleMap(game, session)} title="V: show the map to viewers (on the audience's screen), or hide it">🗺 Map on stream</button>
     </div>
 
+    <!-- What's selected, players and objects, with one ✕ for both: one line (the stage keeps its size as it changes),
+         in sight with a card open too. ↩ Select them again sits apart from the ✕, so a double-click can't undo a clear. -->
+    <div class="row sel" data-rpg-sel>
+      {#if again}<button class="link again" onclick={again} title="Bring back what was selected">↩ Select them again</button>{/if}
+      {#if selWords}
+        <span class="words" title="{selWords} · drag one on the stage to move them all · Esc clears"
+          ><b>Selected:</b> {selWords} <span class="muted">— drag one on the stage to move them all · Esc clears</span></span
+        >
+        <button class="ghost small x" onclick={() => onclear?.()} title="Clear the selection (Esc)" aria-label="Clear the selection">✕</button>
+      {:else if !again}
+        <span class="muted words">Nothing selected · click players, or drag a box on the stage to select several</span>
+      {/if}
+    </div>
+
     <!-- (On a short window it goes under the pad and the map: see the style.) -->
     <div class="improv-box">
     <div class="row improv">
@@ -551,14 +572,7 @@
             </div>
           {/key}
         {:else}
-          <div class="muted small">
-            {#if objectsPicked}
-              {objectsPicked} selected: {objectsPicked > 1 ? 'they drag' : 'it drags'} with the selected players ·
-              <button class="link" onclick={() => (selectedObjects = [])}>Clear</button>
-            {:else}
-              Objects here (or click one on the stage):
-            {/if}
-          </div>
+          <div class="muted small">Objects here (or click one on the stage):</div>
           <div class="objs">
             {#each objects as el (el.id)}
               {@const on = selectedObjects.includes(el.id)}
@@ -832,6 +846,27 @@
     color: var(--accent);
     font-size: inherit;
     text-decoration: underline;
+  }
+  /* One line whatever it says (a long selection is cut short; its tooltip has it all), one height with or without ✕. */
+  .sel {
+    flex-wrap: nowrap;
+    min-height: 24px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .sel .words {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sel .again {
+    flex-shrink: 0;
+  }
+  .sel .x {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0 8px;
   }
   .last {
     display: block;

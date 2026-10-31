@@ -69,7 +69,7 @@
   import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
   import type { HostAsk } from './host/slots.svelte';
-  import { stageMenuOf, type Moment, type StageItem } from './host/stagemenu';
+  import { selectItems, stageMenuOf, type Moment, type StageItem } from './host/stagemenu';
   import { CHECK, FLOW, VERBS } from './host/verbs';
   import { CHECK_GUARD_MS, KEY_GUARD_MS } from './host/guard';
   import { focusedQuietly, focusMain, focusQuiet } from './host/focus';
@@ -86,8 +86,9 @@
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
-    addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, moveGroup, moveObject, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, START_FIRST, stepParty, toggleMap,
-    type AvatarDrop, type RpgAsk, type StagePoint,
+    addLive, bigObject, droppedFile, dropEntry, everythingOn, giveEntry, joinPartyNow, moveGroup, moveObject, objectAt, objectMenu, objectName, pickUp, regroupAll, removeObject, rpgNow, selectionWords,
+    sendPlayers, START_FIRST, stepParty, toggleMap,
+    type AvatarDrop, type BandPick, type RpgAsk, type StagePoint,
   } from './rpg/hostops';
   import { isMenuKey, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { browserMenuFits } from '../lib/nomenu';
@@ -98,7 +99,7 @@
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
-  import { dragDone, dragGhost, dropHover, itemDrag } from './dragdrop.svelte';
+  import { boxNext, dragDone, dragGhost, dropHover, itemDrag } from './dragdrop.svelte';
   import Avatar from '../lib/rpg/Avatar.svelte';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
@@ -215,8 +216,13 @@
   let timerSeconds = $state<number | null>(null);
   /** RPG rounds: the object whose card is open in the host panel. */
   let rpgObject = $state<string | null>(null);
-  /** RPG rounds: the objects selected on the stage (Shift/Ctrl+click): they drag with the selected players. */
+  /** RPG rounds: the objects selected on the stage (Shift/Ctrl+click, or a box): they drag with the selected players. */
   let rpgSelObjects = $state<string[]>([]);
+  /**
+   * RPG rounds: the selection a click on an empty spot, a box, Esc or ✕ just cleared or replaced: “↩ Select them again”
+   * brings it back, for 5 s (a selection is never an undo step, so Ctrl+Z can't).
+   */
+  let rpgAgain = $state<{ players: string[]; objects: string[] } | null>(null);
   /** RPG rounds: the host's full map is open (J). */
   let rpgMap = $state(false);
   /** RPG rounds: a name or text the host panel is asking for (right-clicking the stage asks for text there). */
@@ -693,6 +699,8 @@
     rpgAsk = null;
     rpgObject = null;
     rpgSelObjects = [];
+    rpgAgain = null;
+    boxNext.on = false;
     bgSpace = null;
     untrack(() => {
       // ✎ Edit board is for the board on screen: another round starts without it.
@@ -3704,11 +3712,102 @@
     }
   }
 
-  /** An object on the stage was dragged on its own: it stays there (undoable), and it's what's selected now. */
+  /**
+   * An object on the stage was dragged on its own: it stays there (undoable), and it's what's selected now. A big one,
+   * the first time in a game, says how to draw a box over it instead.
+   */
   function objectMoved(id: string, at: { x: number; y: number }): void {
-    moveObject(game, session, id, at);
-    if (!rpgSelObjects.includes(id)) [selected, rpgSelObjects] = [[], [id]];
+    const el = objectAt(game, session, id)?.el;
+    const moved = moveObject(game, session, id, at);
+    if (!rpgSelObjects.includes(id)) replaceSelection([], [id]);
+    if (moved && el && bigObject(el) && !bigHinted) {
+      bigHinted = true;
+      toast(`Moved ${objectName(el)} · 🔒 Lock it in the editor, or Alt+drag to draw a box over it (↶ Undo puts it back)`, 6000);
+    }
   }
+  /** The big-object hint (see objectMoved) was said this game. */
+  let bigHinted = false;
+
+  // ---------- RPG rounds: selecting with a box ----------
+
+  /** The selection when the box being drawn began (Esc puts it back; Shift, Ctrl, ⌘ or a touch adds to it). */
+  let bandFrom: { players: string[]; objects: string[] } | null = null;
+  let againTimer: ReturnType<typeof setTimeout> | undefined;
+  const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+
+  /** Remember a selection that's going away, for “↩ Select them again” (5 s). Nothing selected: nothing to bring back. */
+  function remember(players: string[], objects: string[]): void {
+    if (!players.length && !objects.length) return;
+    rpgAgain = { players: [...players], objects: [...objects] };
+    clearTimeout(againTimer);
+    againTimer = setTimeout(() => (rpgAgain = null), 5000);
+  }
+  /** The stage's selection is now these: what was selected, unless all of it still is, can be brought back. */
+  function replaceSelection(players: string[], objects: string[]): void {
+    if (!selected.every((id) => players.includes(id)) || !rpgSelObjects.every((id) => objects.includes(id))) remember(selected, rpgSelObjects);
+    selected = players;
+    rpgSelObjects = objects;
+  }
+  /** ✕, Esc or a click on an empty spot: nobody and nothing is selected (“↩ Select them again” for 5 s). */
+  function clearRpgSelection(): void {
+    replaceSelection([], []);
+  }
+  /** ↩ Select them again: the selection as it was (who's still playing, and what's still on the stage). */
+  function selectAgain(): void {
+    const s = rpgAgain;
+    if (!s) return;
+    rpgAgain = null;
+    clearTimeout(againTimer);
+    selected = s.players.filter((id) => session.players.some((p) => p.id === id));
+    rpgSelObjects = s.objects.filter((id) => objectAt(game, session, id) && !rpgNow(game, session).st?.objects[id]?.taken);
+  }
+
+  /**
+   * A box on the stage: the selection follows it as it's drawn (replaced by what's in it, or added to with Shift, Ctrl,
+   * ⌘ or a touch); let go, it stays (an empty box or a click on an empty spot clears it); Esc puts back what was selected.
+   */
+  function bandPicked(b: BandPick): void {
+    // (One window with the controls hidden: a touch screen's first tap only shows Show controls, as elsewhere.)
+    if (!bandFrom && b.phase === 'end' && swallowTap) return;
+    bandFrom ??= { players: [...selected], objects: [...rpgSelObjects] };
+    const from = bandFrom;
+    if (b.phase === 'cancel') {
+      bandFrom = null;
+      [selected, rpgSelObjects] = [from.players, from.objects];
+      return;
+    }
+    const players = b.add ? [...from.players, ...b.players.filter((id) => !from.players.includes(id))] : b.players;
+    const objects = b.add ? [...from.objects, ...b.objects.filter((id) => !from.objects.includes(id))] : b.objects;
+    if (!sameIds(selected, players)) selected = players;
+    if (!sameIds(rpgSelObjects, objects)) rpgSelObjects = objects;
+    if (b.phase !== 'end') return;
+    bandFrom = null;
+    if (sameIds(from.players, players) && sameIds(from.objects, objects)) return;
+    if (!from.players.every((id) => players.includes(id)) || !from.objects.every((id) => objects.includes(id))) remember(from.players, from.objects);
+    // (Screen readers hear what's selected now; one window never names a secret object.)
+    const said = selectionWords(game, session, players, objects, !dual);
+    announce(said ? `Selected: ${said}` : 'Nothing selected');
+  }
+
+  /** The stage menu's ▭ Select in a box: the next drag on a screen draws one, even from a player or an object. */
+  function boxNextDrag(): void {
+    boxNext.on = true;
+    hint('Drag on the stage to draw a box, even from a player or an object (Esc: no box)');
+  }
+
+  /** The stage menu's Select everything here: the players and the things a box would catch on that screen (Shift adds). */
+  function selectAllHere(at?: StagePoint): void {
+    const { st } = rpgNow(game, session);
+    const ref = at?.screen ?? (st && focusRef(st));
+    if (!ref) return;
+    const all = everythingOn(game, session, ref, !dual);
+    if (menuShift) {
+      selected = [...selected, ...all.players.filter((id) => !selected.includes(id))];
+      rpgSelObjects = [...rpgSelObjects, ...all.objects.filter((id) => !rpgSelObjects.includes(id))];
+    } else replaceSelection(all.players, all.objects);
+  }
+  /** Shift was held at the last press or key (a menu's item has no event of its own to say). */
+  let menuShift = false;
 
   /** An object on the stage was clicked: its card, or with Shift or Ctrl, in or out of the selection. */
   function objectClicked(id: string, toggle?: boolean): void {
@@ -4063,7 +4162,10 @@
   function rpgItems(at?: StagePoint): StageItem[] {
     const { st } = rpgNow(game, session);
     if (!st) return [];
+    const ref = at?.screen ?? focusRef(st);
+    const here = ref ? everythingOn(game, session, ref, !dual) : { players: [], objects: [] };
     return [
+      ...selectItems({ players: here.players.length, objects: here.objects.length }, boxNextDrag, () => selectAllHere(at)),
       // The host panel asks for the text (with the controls hidden, they come back for it).
       ...(at ? [{ label: '＋ Text here…', onclick: () => ((hideControls = false), (rpgAsk = { what: 'text', at })) }] : []),
       { label: '🗺 Full map (jump anywhere)', keys: 'J', onclick: () => (rpgMap = true) },
@@ -4260,7 +4362,7 @@
           return pos && pos.map === at.map && pos.screen === at.screen && ('party' in drop || party(x) === party(id));
         })
       : [id];
-    if (!selected.includes(id)) [selected, rpgSelObjects] = [[id], []];
+    if (!selected.includes(id)) replaceSelection([id], []);
     if ('spot' in drop) return logged(session, `Move ${playerName(session, id)}`, () => Object.assign(st.positions[id], drop.spot));
     const said = 'party' in drop ? joinPartyNow(game, session, who, drop.party) : sendPlayers(game, session, who, drop.to, drop);
     if (said) toast(said, 3000);
@@ -5434,8 +5536,13 @@
         else if (app.live.overlay && e.shiftKey && session.phase === 'clue' && info && tileToolUp(app.live, info.clue)) cancelClue();
         else if (app.live.overlay) closeOverlay();
         else if (session.deal?.shown) whoWasWhoOff();
-        else if (rpgObject) rpgObject = null;
-        else if (rpgSelObjects.length) rpgSelObjects = [];
+        // (▭ Select in a box waiting for its drag: no box.)
+        else if (boxNext.on) {
+          boxNext.on = false;
+          hint('No box');
+        } else if (rpgObject) rpgObject = null;
+        // One Esc clears the whole selection, players and objects (↩ Select them again brings it back).
+        else if (session.phase === 'rpg' && (selected.length || rpgSelObjects.length)) clearRpgSelection();
         else if (bgSpace) bgSpace = null;
         // Shift+Esc cancels: back to the board without using up the tile.
         else if (session.phase === 'clue' && e.shiftKey) cancelClue();
@@ -5661,6 +5768,7 @@
   onkeydown={onkey}
   onpointermove={pointerMove}
   onkeydowncapture={(e) => {
+    menuShift = e.shiftKey;
     tabbing = e.key === 'Tab';
     viaKeys = true;
     if (tabbing || (e.key.startsWith('Arrow') && e.target instanceof Element && e.target.closest('.board, [data-space]'))) ringOff = false;
@@ -5678,6 +5786,7 @@
     e.stopPropagation();
   }}
   onpointerdowncapture={(e) => {
+    menuShift = e.shiftKey;
     touchDown(e);
     tabbing = false;
     viaKeys = false;
@@ -6099,6 +6208,7 @@
             onobjectmove={objectMoved}
             onpickup={objectPicked}
             ongroupmove={(players, objects) => moveGroup(game, session, players, objects)}
+            onband={bandPicked}
             selectedObjects={rpgSelObjects}
             ontoken={tokenAct}
             onspace={spaceAct}
@@ -6142,6 +6252,8 @@
         bind:amount
         bind:rpgObject
         bind:rpgSelObjects
+        rpgAgain={rpgAgain ? selectAgain : null}
+        onrpgclear={clearRpgSelection}
         bind:rpgMap
         bind:rpgAsk
         bind:rpgMapSend

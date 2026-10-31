@@ -2,20 +2,24 @@
   What an RPG round shows (games-maker spec §10): the focused screen (or a 2×2 split view of every party), avatars,
   the stats strip and the map overlay, with a flip-screen transition when the party moves. The host's copy can click
   objects (Shift+click selects them) and drag avatars and objects, the selected ones together (avatars to another
-  screen or party too); viewers never get secret objects, hotspots or host notes drawn.
+  screen or party too), or drag a box on a screen to select the players and things inside it; viewers never get secret
+  objects, hotspots or host notes drawn.
 -->
 <script lang="ts">
   import { getContext, onDestroy } from 'svelte';
+  import { app } from '../../lib/app.svelte';
+  import { caughtBy, type Catchable } from '../../lib/layers';
+  import { STILL_PX } from '../../lib/longpress';
   import { fade, fly } from '../../lib/motion.svelte';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import { isRpg, SLIDE_H, SLIDE_W, type Game, type Position, type Screen, type ScreenRef, type Session, type SlideElement } from '../../lib/model';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import AvatarToken from '../../lib/rpg/AvatarToken.svelte';
-  import { activeParty, DIR_VEC, findIn, focusRef, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
+  import { activeParty, DIR_VEC, findIn, focusRef, neverShown, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { wornItems } from '../../lib/toolset';
-  import { dragGhost, dropHover, dropTarget } from '../dragdrop.svelte';
-  import { avatarRange, avatarSpot, groupDelta, objectName, objectRange, wayOffEdge, type AvatarDrop, type GroupItem } from './hostops';
+  import { boxNext, dragGhost, dropHover, dropTarget } from '../dragdrop.svelte';
+  import { avatarRange, avatarSpot, fillsScreen, groupDelta, objectName, objectRange, wayOffEdge, type AvatarDrop, type BandPick, type GroupItem } from './hostops';
   import MapView from './MapView.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
   import StatsStrip from './StatsStrip.svelte';
@@ -32,6 +36,7 @@
     onobjectmove,
     onpickup,
     ongroupmove,
+    onband,
   }: {
     game: Game;
     session: Session;
@@ -50,6 +55,8 @@
     onpickup?: (elId: string, playerId: string) => void;
     /** Host: selected players and objects were dragged together to new spots on their screen (by id). */
     ongroupmove?: (players: Record<string, { x: number; y: number }>, objects: Record<string, { x: number; y: number }>) => void;
+    /** Host: a box drawn on a screen, as it's drawn and when let go (a click on an empty spot: an empty one). */
+    onband?: (b: BandPick) => void;
   } = $props();
 
   const round = $derived.by(() => {
@@ -128,6 +135,9 @@
   onDestroy(() => {
     dragGhost.now = null;
     dropHover.at = null;
+    boxNext.on = false;
+    clearTimeout(flashTimer);
+    removeEventListener('keyup', altUp, true);
   });
 
   /** The dragged thing keeps the pointer, even over the host panel (a screen on the minimap, a party's chip). */
@@ -180,12 +190,16 @@
     if (!inSel) return kind === 'avatar' ? { players: [id], objects: [] } : { players: [], objects: [id] };
     const shown = new Set(panes.map((r) => r.screen));
     const players = selected.filter((p) => shown.has(st?.positions[p]?.screen ?? '') && !st?.positions[p].hidden);
-    return { players, objects: selectedObjects.filter((o) => stageObject(o)) };
+    // (Not one that can't move: 🔒 locked, or as big as its screen. It stays, as a locked item does in the editors.)
+    return { players, objects: selectedObjects.filter((o) => movable(stageObject(o)?.el)) };
   }
+  const movable = (el: SlideElement | undefined) => !!el && !el.locked && !fillsScreen(el);
 
   function avatarDown(e: PointerEvent, id: string, pos: Position): void {
     if (!onavatar || e.button !== 0) return;
     e.stopPropagation();
+    // Alt (or the menu's ▭ Select in a box): a box, even from a player. (A click is still a click on them.)
+    if ((e.altKey || boxNext.on) && boxOK(e) && pressOn(e, { kind: 'avatar', id })) return;
     capture(e);
     drag = { kind: 'avatar', id, sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y, x: pos.x, y: pos.y, moved: false, pick: false, ...withGroup('avatar', id) };
   }
@@ -300,6 +314,9 @@
   function objDown(e: PointerEvent, el: SlideElement): void {
     e.stopPropagation();
     if (e.button !== 0) return;
+    // Alt, the menu's ▭ Select in a box, or an object that doesn't move (🔒 locked, or as big as its screen): a box, as
+    // on an empty spot. A click still opens its card (Shift or Ctrl: in or out of the selection).
+    if ((!movable(el) || ((e.altKey || boxNext.on) && boxOK(e))) && pressOn(e, { kind: 'object', id: el.id })) return;
     capture(e);
     const group = withGroup('object', el.id);
     const pick = !!onpickup && (el.role?.class === 'item' || el.role?.class === 'currency') && group.players.length + group.objects.length === 1;
@@ -330,7 +347,139 @@
     } else onobject?.(d.id, e.shiftKey || e.ctrlKey || e.metaKey);
   }
 
+  // ---------- A box drawn on a screen: the players and the things that move in play inside it are selected ----------
+
+  /**
+   * A press that becomes a box once it moves (4 px; a finger 10, which also stops the long press's menu): on an empty
+   * spot (`from` null), or on an avatar or object (Alt, ▭ Select in a box, or one that doesn't move) where it's a click
+   * when it doesn't. `keys`: Shift, Ctrl or ⌘ held; `add`: the box adds to the selection (those keys, or a touch).
+   */
+  type Press = { id: number; sx: number; sy: number; touch: boolean; keys: boolean; add: boolean; box: boolean; from: { kind: 'avatar' | 'object'; id: string } | null };
+  let press: Press | null = null;
+  /** The box being drawn, in the window's coordinates, and what it can catch (the drawn targets, as they were when it began). */
+  let band = $state<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  let targets: (Catchable & { id: string })[] = [];
+  /** One window: the selection outlined on the stage while a box is drawn, and a moment after (nothing stays at rest). */
+  let flash = $state(false);
+  let flashTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** A box starts on a screen, never on the stats strip or the map on stream, under ⏸ Cover, nor while ✎ Edit screen or a window is open over the game. */
+  const boxOK = (e: PointerEvent) => !app.live.cover && !app.editGame && !document.querySelector('.modal[role="dialog"]') && !!(e.target as Element).closest?.('.pane');
+
+  /** A press that may become a box (or stays a click). False when it isn't the host's left button. */
+  function pressOn(e: PointerEvent, from: Press['from']): boolean {
+    if (!onband || e.button !== 0 || !e.isPrimary) return false;
+    const box = boxOK(e);
+    if (box) boxNext.on = false;
+    const touch = e.pointerType === 'touch';
+    const keys = e.shiftKey || e.ctrlKey || e.metaKey;
+    press = { id: e.pointerId, sx: e.clientX, sy: e.clientY, touch, keys, add: keys || touch, box, from };
+    // Firefox opens its menu bar when Alt is let go: not after an Alt+drag here.
+    if (e.altKey) addEventListener('keyup', altUp, true);
+    return true;
+  }
+  function altUp(e: KeyboardEvent): void {
+    if (e.key !== 'Alt') return;
+    e.preventDefault();
+    removeEventListener('keyup', altUp, true);
+  }
+
+  /** A press on an empty part of a screen (avatars and objects take their own; the stats strip and the map aren't one). */
+  function screenDown(e: PointerEvent): void {
+    if ((e.target as Element).closest?.('.pane')) pressOn(e, null);
+  }
+
+  /** The players' tokens and the objects' click targets drawn on the screens now, with what a box needs to know of each. */
+  function drawnTargets(): (Catchable & { id: string })[] {
+    const out: (Catchable & { id: string })[] = [];
+    const box = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.left, y: r.top, w: r.width, h: r.height };
+    };
+    for (const a of rpgEl?.querySelectorAll<HTMLElement>('.pane .avatar[data-player-id]') ?? [])
+      out.push({ id: `p:${a.dataset.playerId}`, avatar: true, rect: box(a.querySelector('.body') ?? a) });
+    for (const h of rpgEl?.querySelectorAll<HTMLElement>('.pane .hit[data-object]') ?? []) {
+      const el = stageObject(h.dataset.object ?? '')?.el;
+      if (el) out.push({ id: `o:${el.id}`, class: el.role?.class, locked: el.locked, neverShown: neverShown(el), rect: box(h) });
+    }
+    return out;
+  }
+
+  function tell(phase: BandPick['phase']): void {
+    const b = band;
+    const got = b ? caughtBy(targets, { x: b.x0, y: b.y0 }, { x: b.x1, y: b.y1 }).map((t) => t.id) : [];
+    onband?.({ players: got.filter((t) => t.startsWith('p:')).map((t) => t.slice(2)), objects: got.filter((t) => t.startsWith('o:')).map((t) => t.slice(2)), add: !!press?.add, phase });
+  }
+
+  function bandMove(e: PointerEvent): void {
+    const p = press;
+    if (!p || e.pointerId !== p.id || !p.box) return;
+    if (!band) {
+      const dx = e.clientX - p.sx;
+      const dy = e.clientY - p.sy;
+      if (p.touch ? Math.hypot(dx, dy) <= STILL_PX : Math.abs(dx) + Math.abs(dy) <= 4) return;
+      targets = drawnTargets();
+      try {
+        rpgEl?.setPointerCapture(e.pointerId);
+      } catch {
+        // (A synthetic pointer: the box still follows it over the stage.)
+      }
+      clearTimeout(flashTimer);
+      flash = true;
+    }
+    band = { x0: p.sx, y0: p.sy, x1: e.clientX, y1: e.clientY };
+    tell('move');
+  }
+
+  /** Let go: the box's last say; or, with no box, a click (an object's card, an avatar in or out, an empty spot clears). */
+  function bandUp(e: PointerEvent): void {
+    const p = press;
+    if (!p || e.pointerId !== p.id) return;
+    if (band) {
+      tell('end');
+      band = null;
+      press = null;
+      flashTimer = setTimeout(() => (flash = false), 1500);
+      return;
+    }
+    press = null;
+    if (p.from?.kind === 'object') onobject?.(p.from.id, p.keys);
+    else if (p.from?.kind === 'avatar') onavatar?.(p.from.id);
+    // (A tap clears too; Shift, Ctrl or ⌘ with a click keeps what's selected.)
+    else if (p.touch || !p.keys) onband?.({ players: [], objects: [], add: false, phase: 'end' });
+  }
+
+  /** Esc (or the browser taking the pointer, or a menu opening) while a box is drawn: no box, the selection as it was. */
+  function bandCancel(): void {
+    const drawn = !!band;
+    press = null;
+    band = null;
+    if (!drawn) return;
+    clearTimeout(flashTimer);
+    flash = false;
+    onband?.({ players: [], objects: [], add: false, phase: 'cancel' });
+  }
+  function bandKey(e: KeyboardEvent): void {
+    if (!band || e.key !== 'Escape') return;
+    // (Before the game screen's own Esc: it would clear the selection, or close the card.)
+    e.preventDefault();
+    e.stopPropagation();
+    bandCancel();
+  }
+
+  /** The box on the stage, in the stage's own pixels. */
+  const bandBox = $derived.by(() => {
+    if (!band || !rpgEl) return null;
+    const r = rpgEl.getBoundingClientRect();
+    const k = r.width ? rpgEl.offsetWidth / r.width : 1;
+    return { left: (Math.min(band.x0, band.x1) - r.left) * k, top: (Math.min(band.y0, band.y1) - r.top) * k, width: Math.abs(band.x1 - band.x0) * k, height: Math.abs(band.y1 - band.y0) * k };
+  });
+  /** One window: outlined on the stage (the box's catch while it's drawn and a moment after, or the group a pressed member drags). */
+  const outlined = (kind: 'players' | 'objects', id: string) =>
+    !hostCopy && ((flash && (kind === 'players' ? selected : selectedObjects).includes(id)) || (!!drag && groupOf(drag) > 1 && drag[kind].includes(id)));
 </script>
+
+<svelte:window onkeydowncapture={onband ? bandKey : undefined} />
 
 {#snippet screenPane(ref: ScreenRef, screen: Screen)}
   {@const els = screenElements(st, screen, !hostCopy)}
@@ -351,6 +500,7 @@
         class="hit"
         class:dragging={!!d?.moved}
         class:picked={hostCopy && selectedObjects.includes(el.id)}
+        class:outlined={outlined('objects', el.id)}
         style:left="{el.x + (d ? dx : 0)}px"
         style:top="{el.y + (d ? dy : 0)}px"
         style:width="{el.w}px"
@@ -368,7 +518,9 @@
         }}
         aria-pressed={hostCopy ? selectedObjects.includes(el.id) : undefined}
         aria-label="Object: {objectName(el)}"
-        title="{objectName(el)}: click for its card, Shift+click to select it (selected players and objects drag together), drag to move it{el.role?.class === 'item' || el.role?.class === 'currency' ? ' (onto a player: they pick it up)' : ''}"
+        title="{objectName(el)}: click for its card, Shift+click to select it (selected players and objects drag together), {movable(el)
+          ? `drag to move it${el.role?.class === 'item' || el.role?.class === 'currency' ? ' (onto a player: they pick it up)' : ''}`
+          : 'drag on it to draw a box'}"
       ></button>
     {/each}
   {/if}
@@ -382,6 +534,7 @@
       class:draggable={!!onavatar}
       class:dragging={!!d?.moved}
       class:picked={hostCopy && selected.includes(p.id)}
+      class:outlined={outlined('players', p.id)}
       class:drop-on={dropHover.at === `player:${p.id}`}
       style:left="{pos.x + (d ? dx : 0)}px"
       style:top="{pos.y + (d ? dy : 0)}px"
@@ -397,18 +550,24 @@
 {/snippet}
 
 <!-- The host's copy is one Tab stop (its objects each another): Shift+F10 on it opens the selected player's or object's
-     menu, or the round's own. A click on the screen itself leaves the keys where they were. -->
+     menu, or the round's own. A click on the screen itself leaves the keys where they were. A press on an empty spot
+     there draws a box (see pressOn). -->
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   class="rpg"
   class:split
+  class:host={!!onavatar}
   bind:this={rpgEl}
   tabindex={onavatar ? 0 : undefined}
   role={onavatar ? 'group' : undefined}
   aria-label={onavatar ? 'Stage (Shift+F10: its menu)' : undefined}
   onpointerdowncapture={onavatar ? () => (pressing = true) : undefined}
-  onpointerup={onavatar ? pressDone : undefined}
+  onpointerdown={onavatar ? screenDown : undefined}
+  onpointermove={onavatar ? bandMove : undefined}
+  onpointerup={onavatar ? (e) => (bandUp(e), pressDone()) : undefined}
+  onpointercancel={onavatar ? bandCancel : undefined}
+  oncontextmenucapture={onavatar ? bandCancel : undefined}
   ondragend={onavatar ? pressDone : undefined}
   onfocus={onavatar ? stageFocus : undefined}
 >
@@ -441,6 +600,9 @@
       {/if}
     {/each}
     </div>
+    {#if bandBox}
+      <div class="band" class:mirror={hostCopy} style:left="{bandBox.left}px" style:top="{bandBox.top}px" style:width="{bandBox.width}px" style:height="{bandBox.height}px" aria-hidden="true"></div>
+    {/if}
     {#if bar !== 'hidden'}
       <div class="strip bar-{bar}" bind:this={stripEl} bind:clientHeight={stripH}><StatsStrip {game} {session} players={stripPlayers} host={!!onavatar} draggable={!!onavatar} /></div>
     {/if}
@@ -517,6 +679,26 @@
     background: transparent;
     cursor: pointer;
     z-index: 5000;
+    /* (A finger's drag is the host's, never the page's scroll.) */
+    touch-action: none;
+  }
+  .host .pane {
+    touch-action: none;
+  }
+  /* A box being drawn. One window (on stream): thin and dashed. The host's own copy (two windows): yellow, a faint fill. */
+  .band {
+    position: absolute;
+    z-index: 6800;
+    border: 4px dashed rgba(255, 255, 255, 0.9);
+    pointer-events: none;
+  }
+  .band.mirror {
+    border: 6px dashed #ffcc00;
+    background: rgba(255, 204, 0, 0.12);
+  }
+  /* One window: what the box caught, or the group a pressed one drags, outlined a moment (nothing stays at rest). */
+  .hit.outlined {
+    outline: 4px dashed #ffcc00;
   }
   .hit.dragging {
     outline: 3px dashed #ffcc00;
@@ -578,6 +760,7 @@
   }
   /* Selected (the host's copy in dual mode only), or what a dragged item would go to. */
   .avatar.picked::before,
+  .avatar.outlined::before,
   .avatar.drop-on::before {
     content: '';
     position: absolute;
@@ -590,6 +773,11 @@
     border: 8px solid #ffcc00;
     box-shadow: 0 0 24px #ffcc00;
     pointer-events: none;
+  }
+  .avatar.outlined::before {
+    border-width: 6px;
+    border-style: dashed;
+    box-shadow: none;
   }
   .avatar.drop-on::before {
     border-style: dashed;
