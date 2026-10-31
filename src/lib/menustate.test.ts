@@ -179,11 +179,16 @@ describe('a right-click in a name box', () => {
     expect(typingIn(on(name), false, null)).toBe(false);
     // It had the keys before the click: the browser's cut, copy and paste.
     expect(typingIn(on(name), false, name as unknown as Element)).toBe(true);
-    expect(typingIn(on(box(0, 4)), false, null)).toBe(true);
-    // A menu just gave it the keys back: not typing yet.
+    // Words selected in a box that didn't have the keys: the right-click selected them (a Mac selects the word under
+    // it, any browser a misspelled one), so it's the thing's menu.
+    expect(typingIn(on(box(0, 4)), false, null)).toBe(false);
+    expect(typingIn(on(box(0, 4)), false, box(3, 3) as unknown as Element)).toBe(false);
+    // A menu just gave it the keys back: not typing yet, unless words were selected in it since.
     expect(typingIn(on(name), false, name as unknown as Element, name as unknown as Element)).toBe(false);
+    const sel = box(0, 4);
+    expect(typingIn(on(sel), false, sel as unknown as Element, sel as unknown as Element)).toBe(true);
     // Words it selected itself when it got the keys (a made-up name) don't count.
-    expect(typingIn(on(box(0, 4)), true, null)).toBe(false);
+    expect(typingIn(on(sel), true, sel as unknown as Element, sel as unknown as Element)).toBe(false);
     // Not a box to type in (a tile, a button).
     expect(typingIn(on({ tagName: 'BUTTON' }), false, null)).toBe(false);
   });

@@ -142,14 +142,17 @@ export function gaveBack(el: Element): void {
 
 /**
  * A right-click in a name box (a category's, a row's value) keeps the browser's own menu, for cut, copy and paste, while
- * the box is being typed in (it had the keys before the click, not just from a menu closing) or has words selected;
- * otherwise it opens the thing's menu. `picked`: a selection the box made itself when it got the keys (a made-up
- * name, selected to type over), which doesn't count. Shift+F10 in it always opens the thing's menu.
+ * the box is being typed in (it had the keys before the click, not just from a menu closing) or, given back by a menu,
+ * has words selected; otherwise it opens the thing's menu. `picked`: a selection the box made itself when it got the
+ * keys (a made-up name, selected to type over), which doesn't count. Shift+F10 in it always opens the thing's menu.
  */
 export function typingIn(e: MouseEvent, picked = false, before: Element | null = focusAtPress, back: Element | null = handedBack): boolean {
   const t = e.target;
   if (!isTextField(t)) return false;
   if (t === before && t !== back) return true;
+  // (In a box that didn't have the keys, what's selected the right-click selected: a Mac selects the word under it, and
+  // any browser a word marked misspelled.)
+  if (t !== before) return false;
   let from: number | null = null;
   let to: number | null = null;
   try {
