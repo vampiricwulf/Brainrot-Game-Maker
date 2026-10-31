@@ -276,10 +276,12 @@ try {
   await row('Player 1').getByText('📱 waiting…').waitFor();
   assert(!(await host.evaluate(() => !!document.activeElement?.matches('input[data-wager]'))), 'phones send the wagers: no wager box takes the focus (the keys stay the host’s)');
   // The blue Show question ▶ is never greyed: N with wagers still to come puts the keys in the first box to fill (no
-  // check opens: they're typed), and the status line says whose, a phone's on its way.
+  // check opens: they're typed), and the status line says whose, a phone's on its way. (Only Player 1's: Players 2 and
+  // 3 have nothing to wager, so theirs is a 0 filled in.)
   assert(await mainButton(host, 'Show question ▶').isEnabled(), 'the Final’s wagers: the blue Show question ▶ is not greyed while some are missing');
   await host.keyboard.press('n');
-  await host.locator('.toast', { hasText: 'Waiting on Player 1’s phone & Player 3: type their wagers, or Sits out' }).waitFor();
+  await host.locator('.toast', { hasText: 'Waiting on Player 1’s phone: type their wager, or Sits out' }).waitFor();
+  assert((await box('Player 3').inputValue()) === '0', 'Player 3, with nothing to wager, has a 0 filled in: not waited on');
   await host.waitForFunction(() => document.activeElement?.closest('.wrow')?.textContent?.includes('Player 1'));
   assert((await goOnCheck(host).count()) === 0 && (await host.locator('.panel .status').innerText()).includes('taking wagers'), 'N there: the keys in Player 1’s wager box, no check, the question not up');
   // (The keys back to the host, as phones send.)
@@ -456,7 +458,8 @@ try {
   await host2.locator('nav > button.round-tab').nth(1).click();
   await host2.getByRole('button', { name: '＋ Multiple choice' }).click();
   await host2.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choice A');
-  for (const [i, words] of CHOICES.entries()) await host2.getByLabel(`Choice ${'ABCD'[i]}`, { exact: true }).fill(words);
+  // (Its box: the row around it is named for it too.)
+  for (const [i, words] of CHOICES.entries()) await host2.getByRole('textbox', { name: `Choice ${'ABCD'[i]}`, exact: true }).fill(words);
   await host2.locator('[data-choice-row]').nth(1).getByRole('button', { name: 'Mark right' }).click();
   await host2.locator('[data-choice-row]').nth(1).locator('button[aria-pressed="true"]').waitFor();
   const choiceUndo = await host2.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
@@ -737,7 +740,12 @@ try {
   await cy.locator('#clue-cap').getByText('Final Jeopardy!').waitFor();
   await small(cy).getByText('Your team isn’t in this one').waitFor();
   assert((await big(cy).innerText()) === 'You sit this one out', 'a team out of the Final: under the question (the Final’s name over it), its phone says “Your team isn’t in this one”, not the Final’s name again');
+  // (The team in it typed no answer: 👁 Reveal answer asks first, and R reveals anyway.)
   await mainButton(host2).filter({ hasText: '👁 Reveal answer' }).click();
+  await checkItem(host2, 'answers').waitFor();
+  assert((await checkItem(host2, 'answers').innerText()).includes('0 of 1 answers are in (Player 1’s isn’t)'), '👁 Reveal answer with the one team in it yet to answer asks first: “0 of 1 answers are in (Player 1’s isn’t)”');
+  await goOnCheck(host2, { ready: true }).waitFor();
+  await host2.keyboard.press('r');
   await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();
   // (The reveals change nothing there: the same two lines as under the question.)
   await host2.locator('.fj .pl').first().waitFor();
