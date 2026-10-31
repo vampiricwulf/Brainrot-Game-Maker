@@ -209,8 +209,8 @@ click opens it, and it opens by itself when a player a card goes to has no phone
 phones), and the box's foot, always in view, has ✔ Got it / ✘ Missed and, while the cards are handed out, at its right
 end a 📋 for each card you copy by hand and **📤 Send and start** or **⏱ Start the clock** (`Enter`). The action due now
 wears a ring. The blue button there is the show's next step only: **Show question ▶** on PARTNER UP! (`N` or `Enter`;
-**Next ▶** while the partner wheel is up, which puts it away and shows the pair), then 👁 Reveal answer and ▦ Done ▶
-board; PARTNER UP!'s ↩ Put back (keep tile) shows its key, `Shift+Esc` (`Esc` there does it too). A click on a box's
+**Next ▶** while the partner wheel is up, which puts it away and shows the pair, as `Esc` does: the wheel's own box has
+no ✕ Close then), then 👁 Reveal answer and ▦ Done ▶ board; PARTNER UP!'s ↩ Put back (keep tile) shows its key, `Shift+Esc` (`Esc` there does it too). A click on a box's
 button leaves `Enter` and `W` where they were. A wheel's or
 dice's box keeps its buttons in their places: **Spin!** `W` (or **Roll!** `D`) first, **Spin again** there once it
 lands, then ✎ Edit wheel and ＋ Spin another wheel too…, the result, and the way to close it last (**✕ Close** `Esc`, or
