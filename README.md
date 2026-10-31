@@ -723,10 +723,12 @@ dot until you've seen it). The filter finds a renamed button by its old name too
 | `?` | Every key, with a filter (❔ Help does the same), and what the check doesn't ask about this game, each with **Ask again** |
 
 **In the check** (the card the blue button opens when something's left): `Enter` does the fix that shows ⏎ (never
-"… anyway" nor Not yet; with nothing left, the step), `Shift+Enter` the one that shows ⇧⏎, `N` is "… anyway" except
+"… anyway" nor Not yet; with nothing left, the step, or, with players selected where `Enter` awards, ＋ Award as outside:
+`2` then `Enter` gives Bob the points, never the answer), `Shift+Enter` the one that shows ⇧⏎, `N` is "… anyway" except
 into an answer (`R` there), `Esc` is Not yet (a second `Esc` right after does nothing), and `W` `D` `U` `O` `C` `X` `T`
-the fix that shows that key. `1`–`9`, `K`, `B`, `M`, `Space`, `←` `→` and `F` work as outside, the check staying open;
-`?`, `L`, `A`, `H` and `Ctrl+Z` close it as Not yet first. For its first 0.6 s it takes no key or click (`Esc` aside),
+the fix that shows that key. `1`–`9`, `K`, `B`, `M`, `Space`, `←` `→` and `F` work as outside, the check staying open
+(a number a fix shows, a tie's "Ann answers `1`" or a steal's, presses that fix); `?`, `L`, `A`, `H` and `Ctrl+Z` close
+it as Not yet first. For its first 0.6 s it takes no key or click (`Esc` aside),
 so a double press never skips it. Its "Don't ask about … again this game" turns one kind off for the game (landings,
 rolling, opening the buzzers, spinning a tile's wheel, typed answers still coming); the keys window lists what's turned
 off, each with **Ask again**.

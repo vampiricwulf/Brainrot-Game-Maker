@@ -1565,7 +1565,11 @@ export function teachLine(check: Pick<Check, 'step' | 'items'>): string {
 }
 
 /** A key pressed while the check is open. */
-export type KeyIn = { key: string; shift?: boolean; ctrl?: boolean; repeat?: boolean };
+/**
+ * A key pressed in the check. `awards`: Enter outside it would ＋ Award the players selected now (someone selected, the
+ * award row up), as "1–9 then Enter" does.
+ */
+export type KeyIn = { key: string; shift?: boolean; ctrl?: boolean; repeat?: boolean; awards?: boolean };
 
 /** What a key does in the open check (3.6). */
 export type Inside =
@@ -1606,7 +1610,9 @@ export function inside(k: KeyIn, check: Pick<Check, 'step' | 'items' | 'at'>, no
   switch (key) {
     case 'Enter': {
       if (k.shift) return pressed(byKey(check.items, '⇧⏎')) ?? { do: 'flash', say: left[0]?.enterSay ?? 'Shift+Enter: nothing to take here' };
-      if (nothing) return { do: 'step' };
+      // (Nothing left once a number key picked someone, the buzzers never opened or a tie: "2, Enter" awards Bob, as
+      // outside, never 👁 Reveal answer. N, R and a click still take the step.)
+      if (nothing) return k.awards && !check.step.enterIsNext ? { do: 'leave' } : { do: 'step' };
       if (enter) return { do: 'quick', quick: enter };
       return { do: 'flash', say: left[0]?.enterSay ?? `Click a button in the check, or Esc` };
     }
@@ -1645,7 +1651,12 @@ export function inside(k: KeyIn, check: Pick<Check, 'step' | 'items' | 'at'>, no
     case 'h':
       return { do: 'leave' };
   }
-  if (/^[0-9]$/.test(key)) return { do: 'pass' };
+  // A player's number: a fix that closes the check and wears it as its key cap presses (a tie's “Ann answers 1”, a
+  // steal's, a partner's), as its cap says; else as outside, the check staying open.
+  if (/^[0-9]$/.test(key)) {
+    const q = byKey(check.items, key);
+    return q?.then === 'close' ? { do: 'quick', quick: q } : { do: 'pass' };
+  }
   return { do: 'ignore' };
 }
 

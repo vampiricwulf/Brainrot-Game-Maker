@@ -310,8 +310,30 @@ describe('what’s left (3.4)', () => {
     expect(lines(items)).toEqual([['first: Ann & Cat buzzed at the same moment.', '🎲 Roll for it [O] ⏎ · close', 'Ann answers [1] · close', 'Cat answers [3] · close']]);
     expect(ringOf(items)).toBe('rolltie');
     expect(inside({ key: 'o' }, open(mainStep(c)!, items), after)).toMatchObject({ do: 'quick', quick: { label: '🎲 Roll for it' } });
-    // (The numbers still pick, as outside.)
-    expect(inside({ key: '3' }, open(mainStep(c)!, items), after)).toEqual({ do: 'pass' });
+    // A number presses the fix that wears it, as its cap says: Cat answers, and the check closes.
+    expect(inside({ key: '3' }, open(mainStep(c)!, items), after)).toMatchObject({ do: 'quick', quick: { label: 'Cat answers', then: 'close' } });
+    // (Bob's isn't there: it picks him, as outside.)
+    expect(inside({ key: '2' }, open(mainStep(c)!, items), after)).toEqual({ do: 'pass' });
+  });
+
+  it('B: "2, Enter" with the buzzers never opened awards Bob, as outside: never 👁 Reveal answer', () => {
+    const { g, s } = setup();
+    openClue(s, REF, g);
+    const closed = buzzClueOpened(newBuzz(3), false);
+    const c = ctx(g, s, { buzzing: true, buzz: closed });
+    const st = mainStep(c)!;
+    const items = leftNow(c, st);
+    // 2 picks Bob (as outside, the check open): nothing's left then.
+    expect(inside({ key: '2' }, open(st, items), after)).toEqual({ do: 'pass' });
+    const picked = ctx(g, s, { buzzing: true, buzz: closed, selected: ['b'] });
+    const nothing = open(st, mergeItems(items, leftNow(picked, st), (id) => doneSay(picked, id)));
+    expect(todo(nothing.items)).toEqual([]);
+    // Enter, with Bob selected and the award row up, leaves the check as Not yet and ＋ Awards him outside.
+    expect(inside({ key: 'Enter', awards: true }, nothing, after)).toEqual({ do: 'leave' });
+    // N and R still take its step (👁 Reveal answer); so does Enter with nobody to award.
+    expect([inside({ key: 'n', awards: true }, nothing, after), inside({ key: 'r', awards: true }, nothing, after), inside({ key: 'Enter' }, nothing, after)]).toEqual([{ do: 'step' }, { do: 'step' }, { do: 'step' }]);
+    // Where Enter is the step's own key (the intro, PARTNER UP!…), it stays the step.
+    expect(inside({ key: 'Enter', awards: true }, open({ ...st, enterIsNext: true }, nothing.items), after)).toEqual({ do: 'step' });
   });
 
   it('C: ✍ answers still coming in at the reveal; at Done, the ones not judged (names and counts, never the words)', () => {
@@ -646,6 +668,8 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     // Judged, a steal open: who steals it (their number); one picked: right or wrong.
     const steal = leftNow(ctx(g, s, { partner: pnow({ judged: true, stealers: ['c'] }) }), st);
     expect([lines(steal), anywayLabel(open(st, steal))]).toEqual([[['first: A steal is open: Cat can still steal it.', 'Cat steals it [3] · close']], '👁 Reveal anyway: nobody steals it']);
+    // (3 presses it, as its cap says.)
+    expect(inside({ key: '3' }, open(st, steal), after)).toMatchObject({ do: 'quick', quick: { label: 'Cat steals it' } });
     const on = leftNow(ctx(g, s, { partner: pnow({ judged: true, stealers: ['c'] }), selected: ['c'], amount: 400 }), st);
     expect(lines(on)).toEqual([['first: Cat is stealing it: right or wrong?', '＋ Award Cat $400 ▶ reveal ⏎ · go', '− Deduct Cat $400 [⇧⏎] · keep']]);
     expect(leftNow(ctx(g, s, { partner: pnow({ judged: true }) }), st)).toEqual([]);

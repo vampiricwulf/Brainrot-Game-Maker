@@ -3355,7 +3355,7 @@
     }
     // Enter or Space on one of its buttons reached with Tab presses that button.
     if ((e.key === ' ' || e.key === 'Enter') && !e.shiftKey && t && t === tabbedTo && t.closest('[data-goon] :is(button, input)')) return true;
-    const k = { key: e.key, shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey, repeat: e.repeat };
+    const k = { key: e.key, shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey, repeat: e.repeat, awards: selected.length > 0 && awardOpen(session) };
     const r = inside(k, ck, Date.now());
     if (r.do === 'pass') return false;
     if (r.do === 'native') return true;

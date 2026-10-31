@@ -415,6 +415,23 @@ try {
     await quick(page, '🔔 Open the buzzers').click();
     await goOnCheck(page).waitFor({ state: 'detached' });
     assert((await page.locator('.stage-box [data-slide="answer"]').count()) === 0, 'its 🔔 Open the buzzers opens them and closes it, the answer still hidden');
+    // The expert's "2, Enter" in it (Bob shouted it out, the buzzers never opened on this clue): Bob gets the points, as
+    // outside, never 👁 Reveal answer (2 picks him and leaves nothing to do; Enter then awards, the check closing).
+    await page.keyboard.press('Escape');
+    await page.locator('.stage-box .board').waitFor();
+    await openTile(page, 1);
+    await page.locator('.panel button[data-box="buzzers"].ring').waitFor();
+    await page.keyboard.press('n');
+    await checkItem(page, 'buzzers').waitFor();
+    await goOnCheck(page, { ready: true }).waitFor();
+    await page.keyboard.press('2');
+    await page.keyboard.press('Enter');
+    await goOnCheck(page).waitFor({ state: 'detached' });
+    await page.locator('.panel .p').nth(1).locator('.score', { hasText: '$200' }).waitFor();
+    assert(
+      (await page.locator('.stage-box [data-slide="answer"]').count()) === 0 && (await page.locator('.panel .p').nth(0).locator('.score').innerText()) === '$0',
+      'the buzzers never opened: 2 then Enter in the check gives Bob $200 and closes it, the answer still hidden',
+    );
     await ctx.close();
   }
   {
