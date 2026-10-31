@@ -183,7 +183,7 @@
           onchange={(e) => (t.min > t.max && ([t.min, t.max] = [t.max, t.min]), shown(e, t.max))}
         />
         <OutcomeEditor outcome={t.outcome} placeholder="What happens" dice />
-        <RowTools menu={() => totalItems(t, i)} name={rangeName(t)} remove={() => removeTotal(t, i)} deleteLabel="Delete this total" />
+        <RowTools menu={() => totalItems(t, i)} name={rangeName(t)} remove={() => removeTotal(t, i)} deleteLabel="Delete range {i + 1}" />
       </div>
     {/each}
     <div>

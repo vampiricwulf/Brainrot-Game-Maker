@@ -281,6 +281,16 @@ try {
   await page.getByRole('button', { name: 'Fill and make it a d4' }).click();
   const faces = page.locator('.face input.label');
   assert((await values(faces)).join() === 'Sip,Dare,Sing,Dance', 'the pasted lines fill the faces, and the die gets as many sides');
+  // A range of totals has one name: “range” on its 🗑 as in its menu (🗑 Delete range).
+  await page.getByRole('button', { name: '＋ Add range' }).click();
+  const range = page.getByRole('group', { name: 'Total 1' });
+  const rangeDel = range.getByRole('button', { name: 'Delete range 1' });
+  await range.getByRole('button', { name: 'More for Total 1' }).click();
+  const rangeMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
+  await page.keyboard.press('Escape');
+  assert((await rangeDel.count()) === 1 && (await rangeDel.getAttribute('title')).startsWith('Delete range 1') && rangeMenu.includes('🗑 Delete range'), `a range's 🗑 is “Delete range”, as its menu's (${rangeMenu.join(', ')})`);
+  await rangeDel.click();
+  assert((await page.getByRole('group', { name: 'Total 1' }).count()) === 0, 'and deletes it');
   assert(!dialogs.length, 'nothing asked with a browser dialog');
 
   // ---------- Players (on the pre-game screen) ----------
