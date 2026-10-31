@@ -1066,13 +1066,17 @@
 
   /**
    * Ctrl+S out of habit where there's no 💾 Save (a game being played, an exported file): not the browser's own Save
-   * page (a copy of the app, not the game). It says what keeps the game instead. (The editor has its own.)
+   * page (a copy of the app, not the game). It says what keeps the game instead. Ctrl+O there says where Open… is. (The
+   * editor has its own.)
    */
   function saveKey(e: KeyboardEvent): void {
-    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 's' || e.defaultPrevented) return;
+    const k = e.key.toLowerCase();
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || (k !== 's' && k !== 'o') || e.defaultPrevented) return;
     if (app.screen !== 'play' && !playerOnly) return;
     e.preventDefault();
     if (e.repeat) return;
+    // Ctrl+O, as in the editor: never the browser's own Open (a file picked there would take this tab, show and all).
+    if (k === 'o') return void toast(playerOnly ? 'This file plays its own game: open others in Brainrot Games Maker' : 'Open… is in the editor, not on the game screen', 5000);
     if (playerOnly)
       toast(
         !app.storageOk

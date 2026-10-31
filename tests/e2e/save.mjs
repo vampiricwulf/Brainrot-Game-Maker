@@ -132,6 +132,17 @@ try {
   await player.keyboard.press('Control+s');
   await player.locator('.toast', { hasText: 'This game keeps its progress in this browser by itself' }).waitFor();
   assert(true, 'Ctrl+S on its start screen says the file keeps its progress by itself');
+  // Ctrl+O there: never the browser's own Open (what's picked would take the tab).
+  const ctrlO = async (p) => {
+    await p.evaluate(() => {
+      window.__ctrlO = undefined;
+      window.addEventListener('keydown', (e) => e.key.toLowerCase() === 'o' && (window.__ctrlO = e.defaultPrevented));
+    });
+    await p.keyboard.press('Control+o');
+    return p.evaluate(() => window.__ctrlO);
+  };
+  assert((await ctrlO(player)) === true, 'Ctrl+O in the player file is not the browser’s Open');
+  await player.locator('.toast', { hasText: 'This file plays its own game: open others in Brainrot Games Maker' }).waitFor();
 
   // The builder's audience window (OBS's capture) stays up while the player file, opened from disk beside it, resumes
   // its game in one window: that closes only the player file's own audience window.
@@ -140,6 +151,8 @@ try {
   await a.keyboard.press('Control+s');
   await a.locator('.toast', { hasText: 'The game saves itself as you play (💾 Save is in the editor)' }).waitFor();
   assert(true, 'Ctrl+S on the pre-game screen says the game saves itself (Save is in the editor)');
+  assert((await ctrlO(a)) === true, 'Ctrl+O on the pre-game screen is not the browser’s Open');
+  await a.locator('.toast', { hasText: 'Open… is in the editor, not on the game screen' }).waitFor();
   await a.getByRole('button', { name: '◀ Back to editor' }).click();
   await audA.locator('.soon-text').waitFor();
   await playWithPlayers(player, 2);
