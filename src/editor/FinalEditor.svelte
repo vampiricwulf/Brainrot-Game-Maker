@@ -292,6 +292,7 @@
       quickfield={shown}
       placeholder={shown === 'card' ? 'Click to type what they’ll see' : side === 'q' ? 'Click to type the final question' : 'Click to type the final answer'}
       badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 16).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : side === 'a' ? 'ANSWER' : undefined}
+      tabbed
     />
   {/key}
   <!-- (No clue: a Final's card has no role or hint line, and is each player's own, as sessionCards sends it.) -->

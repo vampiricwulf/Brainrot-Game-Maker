@@ -126,6 +126,7 @@
       quickfield={tbSide}
       placeholder={tbSide === 'q' ? 'Click to type the tiebreaker question' : 'Click to type the tiebreaker answer'}
       badge={tbSide === 'a' ? 'ANSWER' : undefined}
+      tabbed
     />
   {/key}
 {/if}

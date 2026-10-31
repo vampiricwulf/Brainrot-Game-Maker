@@ -842,6 +842,7 @@
               placeholder={shown === 'card' ? 'Click to type what they’ll see' : shown === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
               badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 16).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : shown === 'a' ? 'ANSWER' : undefined}
               fill
+              tabbed
             />
           {/key}
           {#if shown === 'card' && card && phoneView}<PhoneCardPreview game={app.game} {clue} {card} />{/if}

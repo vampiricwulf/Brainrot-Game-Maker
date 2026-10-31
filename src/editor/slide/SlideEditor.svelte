@@ -85,6 +85,7 @@
     menuextras,
     hotspots = false,
     fallbackBg = 'var(--tile)',
+    tabbed = false,
   }: {
     slide: Slide;
     /** The main text elements "Use this style elsewhere" restyles for a scope (the host knows the round). */
@@ -116,6 +117,8 @@
     menuextras?: (el: SlideElement) => { label: string; title?: string; onclick: () => void }[];
     /** What shows with no background set: the theme's tile color, or the color a board game or RPG screen has on stage. */
     fallbackBg?: string;
+    /** It has slide tabs (a clue's, a Final's, the tiebreaker's, a slides round's), with their 📋 Paste slide. */
+    tabbed?: boolean;
   } = $props();
   let editingImage = $state<string | null>(null);
   const imageEl = $derived(slide.elements.find((e) => e.id === editingImage && e.kind === 'image') as ImageEl | undefined);
@@ -683,10 +686,17 @@
     tell(`Style applied to ${slides}`, undoApi.top !== top ? undoApi.undo : undefined);
   }
 
-  /** 📋 Copy slide (the slide's menu): the slide tabs' 📋 Paste slide puts it in as a new slide, or over another. */
+  /**
+   * 📋 Copy slide (the slide's menu): 📋 Paste over this slide on another one puts it there, and (where there are
+   * slide tabs) their 📋 Paste slide puts it in as a new slide.
+   */
   function copySlide(): void {
     copyWholeSlide(game, slide);
-    toast('Slide copied: 📋 Paste over this slide (right-click an empty spot) or 📋 Paste slide by the slide tabs');
+    toast(
+      tabbed
+        ? 'Slide copied: 📋 Paste over this slide (right-click an empty spot) or 📋 Paste slide by the slide tabs'
+        : 'Slide copied: on another one, right-click an empty spot › 📋 Paste over this slide',
+    );
   }
 
   // Replace everything on this slide with the copied one. It's one undo step, so the canvas offers Undo
