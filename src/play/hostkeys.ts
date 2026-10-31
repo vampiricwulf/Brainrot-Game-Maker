@@ -34,7 +34,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ...(playerOnly ? [] : [['Ctrl+Z / Ctrl+Y', 'Undo / redo the changes made here (players, rules, buzzers, On stream)'] as [string, string]]),
       ['Enter in a player’s name', 'Add the next player (as ＋ Add player does), typing in their name'],
       ['F2 in a player’s row', 'Rename them: the keys go to their name, ready to type over (on their 📱 Phone buzzers row too)'],
-      ['Shift+F10 in a player’s row', 'Their menu, as a right-click on the row: ✎ Rename, 🎨 Color…, 🖼 Picture…, ± Start score…, ▲ ▼ Move, 🗑 Delete'],
+      ['Shift+F10 in a player’s row', 'Their menu, as a right-click on the row: 🎨 Color…, 🖼 Picture…, ± Start score…, ✎ Rename, ▲ ▼ Move, 🗑 Delete'],
       ['F2 on the game’s title', 'Rename the game, as ✎ Rename or a double-click on it does (its name shows on stream)'],
       ['A', 'Open the audience window, or bring it to the front (never closes it), as in the game'],
       ['Shift+A', 'Open ▭ Scores window (the score plates only, for a lower third in OBS), as in the game'],
