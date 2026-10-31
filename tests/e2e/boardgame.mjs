@@ -53,6 +53,14 @@ try {
   await page.getByRole('menu').getByRole('menuitem', { name: '＋ Add a space after it' }).click();
   assert((await spaces.count()) === 13, 'right-click a space: add a space after it');
   await space('Space 13').click({ button: 'right' });
+  {
+    // The editors' one order: what it can do (🏁 Make it the start), Make it a…, Rename · Duplicate · Copy · Paste,
+    // ＋ Add, then 🗑 Delete space last.
+    const order = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+    const at = (x) => order.findIndex((t) => t.startsWith(x));
+    const want = ['🔗 Connect to…', '🏁 Make it the start', '✎ Rename', '⧉ Duplicate space', '📋 Copy space', '📋 Paste', '＋ Add a space after it', '🗑 Delete space'].map(at);
+    assert(want.every((n, i) => n >= 0 && (i === 0 || n > want[i - 1])) && order.at(-1).startsWith('🗑 Delete space'), `a space's menu goes in the one order (${order.join(' | ')})`);
+  }
   await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete space' }).click();
   assert((await spaces.count()) === 12, 'and delete it');
   // A fork: Space 3 can also go straight to Space 7.

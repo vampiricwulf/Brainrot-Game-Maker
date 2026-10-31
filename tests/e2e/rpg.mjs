@@ -705,6 +705,20 @@ try {
   // Ctrl+C on it copies the screen, though the round's name is still selected from when the round was added.
   await page.keyboard.press('Control+c');
   assert((await toast()).startsWith('Copied Screen B1'), `Ctrl+C right after adding the round copies the screen (${await toast()})`);
+  {
+    // Its menu, in the editors' one order: ✎ Edit, ✎ Rename, the moves, its column's and row's own groups, 🗑 Delete last.
+    await page.getByRole('button', { name: 'Screen Screen B1' }).click({ button: 'right' });
+    const menu = page.getByRole('menu');
+    const items = (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+    const heads = await menu.locator('.heading').allInnerTexts();
+    const at = (x) => items.findIndex((t) => t.startsWith(x));
+    const want = ['✎ Edit screen', '✎ Rename', '⧉ Duplicate', '📋 Copy screen', '◀ Move left', '＋ Insert left', '🗑 Delete column B', '＋ Insert above', '🗑 Delete row 1', '🗑 Delete screen'].map(at);
+    assert(
+      want.every((n, i) => n >= 0 && (i === 0 || n > want[i - 1])) && items.at(-1).startsWith('🗑 Delete screen') && heads.includes('Column B') && heads.includes('Row 1'),
+      `a screen's menu: its column's and row's own groups, its own delete last (${items.join(' | ')})`,
+    );
+    await page.keyboard.press('Escape');
+  }
   // Enter on an empty cell adds a screen there, and the focus stays on the map.
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
