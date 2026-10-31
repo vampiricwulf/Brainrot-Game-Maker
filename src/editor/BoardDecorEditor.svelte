@@ -373,6 +373,9 @@
     } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
       const up = e.code === 'BracketRight';
       edit(() => restack(decor, selected, e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward'));
+    } else if (k === 'enter' && onCanvas && !mod && !e.altKey && !e.shiftKey && selected.length === 1 && decor.find((d) => d.id === selected[0])?.kind === 'image') {
+      // Enter on a picture: ✎ Edit image, as a double-click.
+      editingImage = selected[0];
     } else if (k === 'escape') {
       if (selected.length) selected = [];
       else onclose();

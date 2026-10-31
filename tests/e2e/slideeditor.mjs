@@ -273,6 +273,44 @@ try {
   assert((await mediaCount()) === before + 1 && (await toast.innerText()).includes('already in 🖼 Media'), 'the same picture dropped again isn’t stored twice (the toast says it’s already in 🖼 Media)');
   await page.keyboard.press('Delete');
 
+  // ---------- Double-click or Enter opens an item's editor; F2 renames it; the keys stay on the slide after adding ----------
+  // A picture picked in 🖼 Image: the keys are on the slide (not the 🖼 Image button), so Enter opens ✎ Edit image.
+  await clue.getByRole('button', { name: '🖼 Image', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Choose image' }).getByRole('button', { name: /big\.png/ }).click();
+  await page.waitForFunction(() => !!document.activeElement?.closest('.canvas'), null, { timeout: 3000 });
+  assert(true, 'after a picture is added from 🖼 Image, the keys are on the slide');
+  await page.keyboard.press('Enter');
+  const enterIe = page.getByRole('dialog', { name: 'Edit image' });
+  await enterIe.waitFor();
+  assert(true, 'Enter on a selected picture opens ✎ Edit image, as a double-click does');
+  await page.keyboard.press('Escape');
+  await enterIe.waitFor({ state: 'detached' });
+  // F2 on anything but a text box renames it, in the Layers list.
+  await canvas.focus();
+  await page.keyboard.press('F2');
+  const layerName = page.locator('.layers input');
+  await layerName.waitFor();
+  await layerName.fill('Red block');
+  await layerName.press('Enter');
+  assert((await page.locator('.layers').innerText()).includes('Red block'), 'F2 on a picture renames it in the Layers list');
+  // (Both taken back, its name and the picture: the slide is as it was.)
+  await canvas.focus();
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.querySelectorAll('.canvas .slide .el img').length === 1, null, { timeout: 3000 });
+  // A shape: a double-click puts the keys on its Fill, and its menu's ✎ Edit fill says so.
+  await addRect(100, 800, 200, 100);
+  const shapeAt = await at(200, 850);
+  await page.mouse.dblclick(shapeAt.x, shapeAt.y);
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Fill color', null, { timeout: 3000 });
+  assert(true, 'a double-click on a shape puts the keys on its Fill');
+  await page.mouse.click(shapeAt.x, shapeAt.y, { button: 'right' });
+  const editFill = page.getByRole('menuitem', { name: /✎ Edit fill/ });
+  assert((await editFill.innerText()).includes('Double-click / Enter'), 'its menu’s ✎ Edit fill shows Double-click / Enter');
+  await page.keyboard.press('Escape');
+  await canvas.focus();
+  await page.keyboard.press('Delete');
+
   // ---------- 🎨 Edit image › Apply after a turn keeps the picture in its box ----------
   const editPic = (await drawn()).find((e) => e.img);
   await click(editPic.x + editPic.w / 2, editPic.y + editPic.h / 2);

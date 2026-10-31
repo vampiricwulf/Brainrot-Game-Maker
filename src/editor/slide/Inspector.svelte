@@ -326,7 +326,8 @@
           <label class="field">
             Fill
             <div class="row">
-              <ColorBox value={el.fill === 'transparent' ? '#000000' : el.fill} oninput={(e) => (el.fill = e.currentTarget.value)} aria-label="Fill color" />
+              <!-- (data-opens: where a double-click or Enter on the item puts the keys.) -->
+              <ColorBox value={el.fill === 'transparent' ? '#000000' : el.fill} oninput={(e) => (el.fill = e.currentTarget.value)} aria-label="Fill color" data-opens />
               <label class="check small"><input type="checkbox" checked={el.fill === 'transparent'} onchange={(e) => (el.fill = e.currentTarget.checked ? 'transparent' : '#ffcc00')} />none</label>
             </div>
           </label>
@@ -336,7 +337,7 @@
       {#if !el.hotspot}
         {@const line = el.shape === 'line' || el.shape === 'arrow' || el.shape === 'path'}
         <div class="grid2">
-          <label class="field">{line ? 'Color' : 'Border'}<ColorBox bind:value={el.stroke} aria-label={line ? 'Line color' : 'Border color'} /></label>
+          <label class="field">{line ? 'Color' : 'Border'}<ColorBox bind:value={el.stroke} aria-label={line ? 'Line color' : 'Border color'} data-opens={line || undefined} /></label>
           <label class="field">Thickness<NumField min={0} max={100} bind:value={el.strokeWidth} /></label>
         </div>
       {/if}
@@ -347,7 +348,7 @@
         {el.kind === 'video' ? 'Video' : el.kind === 'audio' ? 'Audio' : el.embedKind === 'remoteImage' || el.embedKind === 'remoteVideo' || el.embedKind === 'remoteAudio' ? 'Online media' : embedName(el.embedKind, el.url)}
       </h4>
       {#if el.kind === 'embed'}
-        <label class="field">Link<input bind:value={el.url} /></label>
+        <label class="field">Link<input bind:value={el.url} data-opens /></label>
         {#if sitePlayer}
           <p class="hint">
             🌐 Needs internet during the game. It plays in the audience window (or on the stage in single-window mode): click ▶
@@ -411,7 +412,7 @@
           </label>
         {/if}
         <div class="grid2">
-          <label class="field">Start at (s)<input type="number" min="0" step="0.1" value={el.startAt ?? ''} oninput={(e) => (el.startAt = seconds(e.currentTarget.value))} /></label>
+          <label class="field">Start at (s)<input type="number" min="0" step="0.1" value={el.startAt ?? ''} oninput={(e) => (el.startAt = seconds(e.currentTarget.value))} data-opens /></label>
           <label class="field">Stop at (s)<input type="number" min="0" step="0.1" value={el.endAt ?? ''} oninput={(e) => (el.endAt = seconds(e.currentTarget.value))} /></label>
         </div>
         {#if el.endAt !== undefined && el.endAt <= (el.startAt ?? 0)}

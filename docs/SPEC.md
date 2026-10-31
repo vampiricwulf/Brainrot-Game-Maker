@@ -240,6 +240,11 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - 16:9 canvas with snapping guides, grid, and alignment tools (left/center/right, distribute).
 - Insert: Text, Image, Video, Audio, Shape. Drag-drop files onto the canvas.
 - Transform: move, resize, rotate, z-order, lock, duplicate, delete, multi-select, and copy/paste between slides.
+- **Opening an item**: a double-click, or Enter with one item selected, opens its editor: a text box its Text field, a
+  picture ✎ Edit image, a video or sound ✎ Edit video / sound (or its Start at box when its file can't be edited
+  there), a link its Link box, a shape its Fill (a line its Color); the item menu's ✎ Edit shows the keys for every
+  kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼 Image,
+  🎬 Video, 🔊 Audio, 🌐 Link, a drop or a paste) the keys are on the slide.
 - **Text controls**: font (bundled + uploaded), size, auto-fit, weight/italic/underline, color, alignment
   (horizontal + vertical), line height, letter spacing, outline/stroke, drop shadow, glow, background
   box, and inline rich text (per-word color and bold).

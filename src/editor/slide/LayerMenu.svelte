@@ -57,6 +57,19 @@
     const offer = editOffer(game.media.find((m) => m.id === el.media));
     return offer ? { kind: el.kind, offer } : null;
   });
+  /**
+   * ✎ Edit for one item of another kind, in the slide editor (what a double-click or Enter opens): a text box's text, a
+   * link, a shape's fill or a line's color, or where a video or sound starts when its file doesn't ✎ edit here.
+   */
+  const editWhat = $derived.by(() => {
+    const el = selected.length === 1 && slideExtras ? selected[0] : null;
+    if (!el || el.kind === 'image' || oneMedia) return null;
+    if (el.kind === 'text') return '✎ Edit text';
+    if (el.kind === 'embed') return '✎ Edit link';
+    if (el.kind === 'video' || el.kind === 'audio') return '✎ Edit start and stop';
+    if (el.hotspot) return null;
+    return el.shape === 'line' || el.shape === 'arrow' || (el.shape === 'path' && !el.closed) ? '✎ Edit color' : '✎ Edit fill';
+  });
   const ALIGNS: [Align, string][] = [['left', 'Left'], ['hcenter', 'Center'], ['right', 'Right'], ['top', 'Top'], ['vcenter', 'Middle'], ['bottom', 'Bottom']];
   /** Align ▸ is open. */
   let aligning = $state(false);
@@ -112,15 +125,16 @@
     <button role="menuitem" onclick={() => act('back')}>Send to back<kbd>{mod}Shift+[</kbd></button>
     <hr />
     <button role="menuitem" onclick={() => act('duplicate')}>Duplicate<kbd>{mod}D</kbd></button>
-    {#if oneImage}<button role="menuitem" onclick={() => act('edit-image')}>✎ Edit image…<kbd>Double-click</kbd></button>{/if}
+    {#if oneImage}<button role="menuitem" onclick={() => act('edit-image')}>✎ Edit image…<kbd>Double-click / Enter</kbd></button>{/if}
     {#if oneMedia}
       <button
         role="menuitem"
         onclick={() => act('edit-media')}
         disabled={oneMedia.offer === 'busy'}
-        title={oneMedia.offer === 'busy' ? 'Wait for it to finish (the header shows how far it got)' : undefined}>{oneMedia.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…'}</button
+        title={oneMedia.offer === 'busy' ? 'Wait for it to finish (the header shows how far it got)' : undefined}>{oneMedia.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…'}<kbd>Double-click / Enter</kbd></button
       >
     {/if}
+    {#if editWhat}<button role="menuitem" onclick={() => act('edit')}>{editWhat}<kbd>Double-click / Enter</kbd></button>{/if}
     <button role="menuitem" aria-haspopup="true" aria-expanded={aligning} onclick={() => (aligning = !aligning)} disabled={!anyUnlocked}>
       Align<kbd>{aligning ? '▾' : '▸'}</kbd>
     </button>

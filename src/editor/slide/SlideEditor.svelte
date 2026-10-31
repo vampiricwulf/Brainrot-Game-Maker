@@ -42,6 +42,7 @@
   import { isGameDrop } from '../../lib/mediadrop';
   import { checkAdded } from '../../lib/shrink/checks.svelte';
   import { openMediaDialog } from '../../lib/shrink/dialog.svelte';
+  import { editOffer } from '../../lib/shrink/apply';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
@@ -270,8 +271,13 @@
   const named = (els: SlideElement[]) => itemsNamed(els, game);
 
   // ---------- Adding elements ----------
-  /** `also`: more changes in the same undo step (moving the question's text out of a new picture's way). */
-  function add(el: SlideElement, at?: { x: number; y: number }, also?: () => void): void {
+  /**
+   * `also`: more changes in the same undo step (moving the question's text out of a new picture's way). `keys`: the
+   * keyboard goes on from the slide even when a button has it (a file picked from 🖼 Image, 🎬 Video, 🔊 Audio or 🌐 Link,
+   * whose button takes the focus back as its picker closes, or a file dropped or pasted), so Delete, the arrows and
+   * Enter work on the new item.
+   */
+  function add(el: SlideElement, at?: { x: number; y: number }, also?: () => void, keys = false): void {
     edit(() => {
       el.zIndex = topZ();
       if (at) {
@@ -287,7 +293,7 @@
     // Added from a menu (which has closed) or a button that's gone: the keyboard carries on from the canvas, not the page.
     void tick().then(() => {
       const a = document.activeElement;
-      if (!a || a === document.body) canvasEl?.focus({ preventScroll: true });
+      if (!a || a === document.body || (keys && !a.closest('input, textarea, select, [contenteditable]'))) canvasEl?.focus({ preventScroll: true });
     });
   }
 
@@ -311,6 +317,27 @@
     focusText(true);
   }
 
+  /**
+   * Double-click or Enter on one item opens its editor: a text box its Text field, a picture ✎ Edit image, a video or
+   * sound ✎ Edit video / sound (its Start at box when its file can't be edited here), a link its Link box, a shape its
+   * Fill (a line its Color). The panel's box is marked data-opens.
+   */
+  function openEditor(el: SlideElement): void {
+    if (el.kind === 'text') return focusText(false);
+    if (el.kind === 'image') return void (editingImage = el.id);
+    if ((el.kind === 'video' || el.kind === 'audio') && editOffer(game.media.find((m) => m.id === el.media)) === 'on') return openMediaDialog({ mode: 'edit', id: el.media, item: el });
+    selected = [el.id];
+    void tick().then(() => root?.querySelector<HTMLElement>('.insp [data-opens]')?.focus());
+  }
+
+  /** The Layers row being renamed (F2 on an item that isn't a text box, as in the Layers list). */
+  let renaming = $state<string | null>(null);
+  function renameInLayers(el: SlideElement): void {
+    const box = root?.querySelector<HTMLDetailsElement>('details.layers-box');
+    if (box) box.open = true;
+    renaming = el.id;
+  }
+
   /** Put the cursor in the Inspector's text field (after the canvas selection has rendered it). */
   function focusText(selectAll: boolean): void {
     tick().then(() => {
@@ -327,14 +354,14 @@
       const { w, h } = await slideImageSize(id);
       const el = newImageEl(id, w, h);
       // Not dropped somewhere: clear of the text (a question alone moves into a band under the picture, the same step).
-      add(el, at, at ? undefined : () => placeNewPicture(slide.elements, el));
+      add(el, at, at ? undefined : () => placeNewPicture(slide.elements, el), true);
     } else if (kind === 'video') {
       const v = newVideoEl(id);
       if (gif) Object.assign(v, { loop: true, muted: true });
       // Clear of the text, as a picture is.
-      add(v, at, at ? undefined : () => placeNewPicture(slide.elements, v));
+      add(v, at, at ? undefined : () => placeNewPicture(slide.elements, v), true);
     }
-    else if (kind === 'audio') add(newAudioEl(id), at);
+    else if (kind === 'audio') add(newAudioEl(id), at, undefined, true);
     else if (kind === 'font') {
       await registerGameFonts(game);
       if (single?.kind === 'text') single.font = `'${uploadedFamily(id)}', sans-serif`;
@@ -399,7 +426,7 @@
     const el = newEmbedEl(url, kind);
     if (kind === 'youtube') el.startAt = youtubeStart(url);
     // Clear of the text, as a picture is (a sound's speaker stays in its corner).
-    add(el, at, at || kind === 'remoteAudio' ? undefined : () => placeNewPicture(slide.elements, el));
+    add(el, at, at || kind === 'remoteAudio' ? undefined : () => placeNewPicture(slide.elements, el), true);
   }
 
   /** The link box turned a link into a file (downloaded, or a live link): put it on the slide. */
@@ -555,6 +582,7 @@
       picker = 'image';
     } else if (a === 'edit-image' && single?.kind === 'image') editingImage = single.id;
     else if (a === 'edit-media' && (single?.kind === 'video' || single?.kind === 'audio')) openMediaDialog({ mode: 'edit', id: single.media, item: single });
+    else if (a === 'edit' && single) openEditor(single);
   }
 
   /** Ctrl+A: every item that isn't locked or hidden. */
@@ -808,6 +836,14 @@
       e.preventDefault();
       if (e.key.length === 1) single.text += e.key;
       focusText(false);
+    } else if (single && k === 'enter' && !mod && !e.altKey && !e.shiftKey && !onControl(e)) {
+      // Enter on any other item opens its editor, as a double-click does.
+      e.preventDefault();
+      openEditor(single);
+    } else if (single && k === 'f2' && !mod && !e.altKey && !e.shiftKey && !onControl(e)) {
+      // F2 renames it, in the Layers list.
+      e.preventDefault();
+      renameInLayers(single);
     } else if ((k === 'delete' || k === 'backspace') && selected.length && deletesItems()) {
       e.preventDefault();
       remove();
@@ -1198,7 +1234,7 @@
                 endDrag?.();
                 endDrag = null;
               }}
-              ondblclick={(el) => (el.kind === 'text' ? focusText(false) : el.kind === 'image' && (editingImage = el.id))}
+              ondblclick={openEditor}
             />
             {#if drawing}<DrawLayer ondone={addDrawing} oncancel={() => (drawing = false)} />{/if}
           {/if}
@@ -1235,7 +1271,7 @@
       {#if !previewing && slide.elements.length}
         <details class="layers-box" open>
           <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
-          <LayersPanel elements={slide.elements} {game} bind:selected bind:hidden bind:hovered onedit={edit} />
+          <LayersPanel elements={slide.elements} {game} bind:selected bind:hidden bind:hovered bind:renaming onedit={edit} />
         </details>
       {/if}
       {#if previewing}

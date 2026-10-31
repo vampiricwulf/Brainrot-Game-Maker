@@ -17,6 +17,7 @@
     selected = $bindable(),
     hidden = $bindable([]),
     hovered = $bindable(null),
+    renaming = $bindable(null),
     onedit,
   }: {
     elements: SlideElement[];
@@ -26,6 +27,8 @@
     hidden?: string[];
     /** Item under the mouse in this list (the canvas outlines it). */
     hovered?: string | null;
+    /** The item whose row is being renamed (F2 on the slide renames it here too). */
+    renaming?: string | null;
     /**
      * Makes each discrete change (restack, lock) by calling `change`, so an undo history can record it
      * as one step (`label`: its name, when the change alone can't say it). Hiding while editing isn't a change to the
@@ -116,7 +119,6 @@
   }
 
   // ---------- Renaming in place (double-click or F2): Enter saves, Esc cancels, empty goes back to the automatic label ----------
-  let renaming = $state<string | null>(null);
   /**
    * Its row takes the focus back (Enter, Esc, a click on nothing), but not from a field or another row clicked: the next
    * key goes there, not to the row, where Backspace would delete the item.
