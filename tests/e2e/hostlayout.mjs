@@ -6,8 +6,9 @@
 // Sound with 📺 Audience and ▭ Scores window ●, at 1280×720 and 1093×526). A Daily Double with three question slides keeps Next slide ▶
 // the main button until its last slide (viewers see where it is: ● ● ○) and its flow row keeps its places (↩ Put back
 // (keep tile) first, ▦ Done ▶ board last, 🙈 Hide answer in Done's place once the answer is up), a board game's own
-// roll makes its turn box's slot ▶ Move while the blue button stays Next turn ▶ (the slot within 96 px of it, under the
-// stage and beside it, where the dice's box goes under the turn box; its check sits in the panel), a box
+// roll makes its turn box's slot ▶ Move while the blue button stays Next turn ▶ (the turn first in the box under the
+// stage; beside it the slot within 96 px of it, where the dice's box goes under the turn box; its check sits in the
+// panel), a box
 // drawn on the RPG stage in one window leaves the stage its size, a confirmation leaves one main button (its own), ✔ / ✘
 // hand the focus to the main button, and
 // on a narrow window the fixed bar stays on one line (🚪 Exit at the right; ❔ Help as its sign up to 1040px, its word
@@ -368,7 +369,10 @@ try {
     `a board-game turn: the blue button is Next turn ▶, the turn box's one slot 🎲 Roll, ringed (${await mainLabel(page)} · ${await slotSays()})`,
   );
   // The turn first in the round's box, its slot within reach of the blue button (from the slot's foot to the blue
-  // button's top: 96 px at most), as the 🤝 foot's and a wheel tile's are.
+  // button's top: 96 px at most), as the 🤝 foot's and a wheel tile's are: beside the stage, where the turn's part sits at
+  // the column's foot (at 1280×720, below). Under the stage the box starts with the turn (the turn order, ✎ Edit board's
+  // line and, on a window 900 px tall or more, the players' cards after it), its slot in sight where a click reaches it;
+  // its distance to the blue button is logged.
   const turnReach = (p) =>
     p.evaluate(() => {
       const slot = document.querySelector('.bh [data-step]').getBoundingClientRect();
@@ -377,13 +381,24 @@ try {
     });
   const reachUnder = await turnReach(page);
   console.log(`    (under the stage at 1280×900: the turn box's slot is ${reachUnder} px above the blue button)`);
-  assert(reachUnder <= 96, `under the stage, the turn box's slot is within 96 px of the blue button (${reachUnder} px)`);
+  const underParts = await page.locator('.bh').evaluate((b) =>
+    [...b.children].flatMap((c) => ('turnPart' in c.dataset ? ['turn'] : 'turnOrder' in c.dataset ? ['order'] : c.classList.contains('more') ? ['more'] : c.classList.contains('cards') ? ['cards'] : [])),
+  );
+  const slotInSight = await turnSlot.evaluate((b) => {
+    const r = b.getBoundingClientRect();
+    return r.bottom <= innerHeight && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  });
+  assert(
+    underParts.join() === 'turn,order,more,cards' && slotInSight,
+    `under the stage the round's box starts with the turn, its slot in sight, the players' cards after ✎ Edit board's line (${underParts.join()})`,
+  );
   // Its own roll (D) is the round's: the slot reads ▶ Move (Enter) in its place, and the blue button stays Next turn ▶.
+  // (The rings that say what's next are on buttons: a player's avatar on their card has a ring of their color.)
   await page.keyboard.press('d');
   await page.locator('.panel [data-tool-controls]').waitFor();
   await page.waitForFunction(() => document.querySelector('.bh [data-step]')?.textContent?.trim().startsWith('▶ Move'), null, { timeout: 8000 });
   assert(
-    /^▶ Move .+: \d+$/.test(await slotSays()) && (await mainLabel(page)) === 'Next turn ▶' && (await page.locator('.panel .ring:visible').count()) === 1,
+    /^▶ Move .+: \d+$/.test(await slotSays()) && (await mainLabel(page)) === 'Next turn ▶' && (await page.locator('.panel button.ring:visible').count()) === 1,
     `the round’s own roll makes the slot ▶ Move (ringed, the one ring), the blue button still Next turn ▶ (${await slotSays()})`,
   );
   // N with the move not made (the dice put away, the count kept): the check walks the turn, in the panel, the stage its
@@ -403,7 +418,7 @@ try {
       offStage: !meets(card, rect(document.querySelector('.stage-box'))),
       offBar: !meets(card, rect(document.querySelector('.panel .fixed'))),
       onMain: [...document.querySelectorAll('.panel [data-goon] :is(button, input, label)')].filter((b) => meets(rect(b), mr)).length,
-      rings: [...document.querySelectorAll('.panel .ring')].filter((b) => b.checkVisibility()).length,
+      rings: [...document.querySelectorAll('.panel button.ring')].filter((b) => b.checkVisibility()).length,
     };
   }, bgMain);
   assert(
@@ -1120,7 +1135,8 @@ try {
     for (const [w, h] of count === 4 ? [[1280, 720], [1920, 1080]] : [[1280, 720]]) {
       const at = `${count} players at ${w}×${h}, the check`;
       await pb.setViewportSize({ width: w, height: h });
-      await pb.locator('.stage-box .board .tile[data-cat="2"]:not([disabled])').first().click();
+      // (A played tile isn't disabled while it has a menu: it's marked .used.)
+      await pb.locator('.stage-box .board .tile[data-cat="2"]:not(.used)').first().click();
       await pb.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
       await pb.keyboard.press('1');
       if (count === 8) await pb.keyboard.press('2');
@@ -1162,6 +1178,7 @@ try {
       await notYet(pb).click();
       await goOnCheck(pb).waitFor({ state: 'detached' });
       // (Esc closes at once, as before: the expert's way.)
+      await pb.waitForTimeout(700); // past Not yet's bounce guard: an Esc right after it does nothing
       await pb.keyboard.press('Escape');
       await pb.locator('.stage-box .board').waitFor();
     }
