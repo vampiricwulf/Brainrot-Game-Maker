@@ -428,7 +428,7 @@ try {
     { polling: 100 },
   );
   await tile(3).click({ button: 'right', force: true });
-  await page.getByRole('menuitem', { name: /Put it back on the board/ }).click();
+  await page.getByRole('menuitem', { name: /Reopen this tile/ }).click();
   await tile(3).click();
   await page.locator('.dd input[type=number]').waitFor();
   await page.waitForTimeout(100);

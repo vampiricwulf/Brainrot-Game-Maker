@@ -845,7 +845,7 @@
           class="small ghost"
           aria-haspopup="menu"
           title="Put a used tile back on the board (or right-click it on the board)"
-          onclick={(e) => dropMenu(e, [{ heading: 'Put back on the board' }, ...used.map((t) => ({ label: clueName(game, t.ref), onclick: () => reopenPicked(t.id) }))])}
+          onclick={(e) => dropMenu(e, [{ heading: 'Reopen a tile (back on the board)' }, ...used.map((t) => ({ label: clueName(game, t.ref), onclick: () => reopenPicked(t.id) }))])}
         >
           ↶ Reopen a tile… ▾
         </button>
@@ -1673,6 +1673,12 @@
   /* (PARTNER UP!'s shows its key, ⇧Esc.) */
   .pbslot.keyed {
     max-width: 16.5em;
+  }
+  /* (Never wider than its place: in a font wider than these sizes allow for, its words are cut short.) */
+  .putback {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   @container pb (width < 8.2em) {
     .pbslot:not(.keyed) .w1 {

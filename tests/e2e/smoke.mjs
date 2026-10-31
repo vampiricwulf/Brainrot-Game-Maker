@@ -870,7 +870,7 @@ assert(await isUsed(0), 'tile marked used after returning to board');
 // A used tile can be put back: right-click it on the host's board (its own menu, which says who scored it), then play it again.
 await tile(0).click({ button: 'right', force: true });
 assert((await page.getByRole('menu').innerText()).includes('Player 1 +$350, Player 2 +$350, Player 3 −$200'), 'right-clicking a used tile says who scored it');
-await page.getByRole('menuitem', { name: '↶ Put it back on the board' }).click();
+await page.getByRole('menuitem', { name: '↶ Reopen this tile' }).click();
 assert(!(await isUsed(0)), 'its menu puts a used tile back on the board');
 assert((await page.locator('.toast').innerText()).includes('Memes $200 is back on the board'), 'reopening says which tile came back');
 await tile(0).click();
@@ -1589,7 +1589,7 @@ await page.getByRole('button', { name: '◀ Back to editor' }).click();
 await page.getByRole('button', { name: 'Resume game' }).click();
 await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
 await tile(0).click({ button: 'right', force: true });
-await page.getByRole('menuitem', { name: '↶ Put it back on the board' }).click();
+await page.getByRole('menuitem', { name: '↶ Reopen this tile' }).click();
 await tile(0).click();
 await page.locator('.full img').waitFor();
 assert((await page.locator('.full .missing').count()) === 0, 'New keeps the media of the game waiting to be resumed');

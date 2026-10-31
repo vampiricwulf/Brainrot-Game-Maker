@@ -3445,7 +3445,7 @@
     showMenu(e, [
       { heading: clueName(game, ref) },
       { heading: scored.length ? scored.map((x) => `${playerName(session, x.playerId)} ${x.delta < 0 ? '' : '+'}${formatPoints(x.delta, sym)}`).join(', ') : 'No points given' },
-      { label: '↶ Put it back on the board', onclick: () => toggleTile(clue.id) },
+      { label: '↶ Reopen this tile', onclick: () => toggleTile(clue.id) },
       { sep: true },
       cover,
     ]);
