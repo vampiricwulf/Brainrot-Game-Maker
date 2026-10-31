@@ -55,6 +55,7 @@
   import type { DicePreset } from '../lib/model';
   import { isRespin, tileDice } from '../lib/tools';
   import { dailyDoublesShort, partnerTilesShort, phoneUses, phoneUsesLine, validate } from '../lib/validate';
+  import type { Place } from '../lib/historylabel';
   import { isColorTaken, nextFreeColor, obsKeyed, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { keyedRoundColors, keyedThemeColors, otherStageKey, roundStageColors, STAGE_KEYS } from '../lib/theme';
@@ -161,9 +162,10 @@
     onresume?: (withEdits: boolean, room: SavedRoom['remote'] | null) => void;
     /**
      * Pre-game "Back to editor" ("Back" to the start screen in a player-only file): nothing was played, so nothing is
-     * saved or cleared. ◀ Fix in editor's `fix`: the editor tab of the first thing to check (a round's id, 'media'…).
+     * saved or cleared. ◀ Fix in editor's `fix`: the editor tab of the first thing to check (a round's id, 'media'…);
+     * a check's own Fix ›, its tab and `at`, the place on it.
      */
-    oncancel: (fix?: string) => void;
+    oncancel: (fix?: string, at?: Place) => void;
     /**
      * Game over › ▶ Next game…: back to the editor to open the stream's next game (Open… / Recent games). The buzzer
      * room (and its players) and the audience window stay up for it.
@@ -321,7 +323,7 @@
    */
   const panelWindow = $derived(!dual && (showKeys || showPlayers || showRules || showLog || showSound || !!shrinkDialog.open || rpgMap || !!boardEdit.buttons));
   /** The pre-game screen's "things to check" box (the bar at the foot brings it into view). */
-  let checksEl = $state<HTMLDetailsElement>();
+  let checksEl = $state<HTMLElement>();
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
   const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
   // RPG and board-game rounds have a tall host panel (the player cards, the round's own controls): on a wide window it
@@ -1778,7 +1780,7 @@
    * ◀ Back to editor (pre-game): the room stays open, its phones told the host is setting up; ▶ Play goes back into it.
    * Only Exit / End game, ⏹ Close the room… or turning Buzzer mode off close it.
    */
-  function backToEditor(fix?: string): void {
+  function backToEditor(fix?: string, at?: Place): void {
     // (A room started here that no phone is in, while the kept game's phones wait in its own: it closes, as with
     // ▶ Resume it, so Resume game goes back to theirs. Nobody is in it to be told.)
     if (app.pregame && keptRoom && session.remote) {
@@ -1788,7 +1790,7 @@
       void clearRoom();
       toast(`📱 Room ${code} closed (no phone had joined it): Resume game goes back to room ${keptRoom}`, 5000);
     } else if (app.pregame) keepRoomInEditor();
-    oncancel(fix);
+    oncancel(fix, at);
   }
 
   /**
@@ -4770,12 +4772,22 @@
    * its proxies on every key of a player's name made typing lag in big games, and held up ▶ Play itself.
    */
   let checks = $state.raw<ReturnType<typeof gameChecks>>([]);
+  /** The checks have been worked out once (until then, ✅ Before you start doesn't say there's nothing to check). */
+  let checksReady = $state(false);
+  /** The bar's ⚠ 2 to check: the card's checks, in sight, with the keys on them. */
+  function toChecks(): void {
+    checksEl?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    checksEl?.focus({ preventScroll: true });
+  }
   /** Of the checks, the warnings (the rest are notes Start takes care of, such as Daily Doubles not placed yet). */
   const warnings = $derived(checks.filter((c) => c.level === 'warn').length);
   /** Where ◀ Fix in editor goes: the first warning's tab (else the first note's). */
   const fixAt = $derived((checks.find((c) => c.level === 'warn' && c.fix) ?? checks.find((c) => c.fix))?.fix);
   const recheck = debounce(() => {
-    if (!left && app.pregame) checks = gameChecks(gameCopy?.() ?? $state.snapshot(game));
+    if (!left && app.pregame) {
+      checks = gameChecks(gameCopy?.() ?? $state.snapshot(game));
+      checksReady = true;
+    }
   }, 300);
   /** At once (the screen just up, 🎲 Place now). Never from inside an effect (the watcher's copy). */
   function recheckNow(): void {
@@ -4813,6 +4825,8 @@
           ddRound: dd ? (p.tab as number) : undefined,
           ptRound: pt ? (p.tab as number) : undefined,
           shrink: p.shrink,
+          // (Its own Fix › goes there.)
+          place: p.place,
         };
       })
       .filter((p) => p.level === 'warn' || p.ddRound !== undefined || p.ptRound !== undefined);
@@ -4892,22 +4906,6 @@
     if (tell) toast(`Placed ${n} partner clue${n === 1 ? '' : 's'} in ${r.name}`);
     return n;
   }
-
-  /** Partner clues the boards want (their 🤝 Partner clues box) but haven't got: Start game places them at random. */
-  const unplacedPartners = $derived(
-    game.rounds.reduce((n, r) => {
-      const short = isBoard(r) ? partnerTilesShort(r) : null;
-      return n + (short ? Math.max(0, short.want - short.placed) : 0);
-    }, 0),
-  );
-
-  /** Daily Doubles the boards want (their ⭐ Daily Doubles box) but haven't got: Start game places them at random. */
-  const unplacedDDs = $derived(
-    game.rounds.reduce((n, r) => {
-      const short = isBoard(r) ? dailyDoublesShort(r) : null;
-      return n + (short ? short.want - short.placed : 0);
-    }, 0),
-  );
 
   // ---------- The game's players and rules (pre-game) ----------
 
@@ -5071,7 +5069,7 @@
     const key = undoKeyOf(e);
     if (!key || e.defaultPrevented || fields.native(e, key)) return;
     e.preventDefault();
-    // A window over the screen (🔊 Sound for Discord / OBS, ⚙ Settings, 🗜) isn't about the game.
+    // A window over the screen (🔊 Test the sound…, ⚙ Settings, 🗜) isn't about the game.
     if (showSound || showSettings || shrinkDialog.open) return;
     if (!editorHasIt()) return void toast(app.playerOnly ? 'Nothing to undo here' : 'Undo works for the game open in the editor');
     commit();
@@ -6148,9 +6146,7 @@
             uses={phoneUsesNow}
           />
         </div>
-        {#if prefs.liveChecklist}
-          {@render goingLive()}
-        {/if}
+        {@render beforeStart()}
       </div>
       <div class="col">
         <GameRules s={game.settings} players={session.players.length} teams={pregameTeams} />
@@ -6186,9 +6182,6 @@
             </div>
           {/if}
           <SoundWarnings {dual} onhelp={() => (showSound = true)} />
-          {#if !prefs.liveChecklist}
-            <button class="ghost small" onclick={() => ((prefs.liveChecklist = true), savePrefs())}>✅ Show the “Going live?” checklist</button>
-          {/if}
           {#if !wantAudience}
             <p class="warn small exposed">
               ⚠ In single-window mode viewers see everything on screen: the wagers as you type them, and the answers, host notes
@@ -6268,59 +6261,8 @@
             </label>
           </div>
 
-          <div class="row">
-            <button class="small" onclick={() => (showSound = true)}>🔊 Sound for Discord / OBS…</button>
-            <span class="muted small">Test the sound, pick where it plays, and see how to stream it.</span>
-          </div>
         </section>
 
-        {#if checks.length}
-          <details class="checks" bind:this={checksEl}>
-            <summary
-              >{#if warnings}⚠ {warnings} thing{warnings === 1 ? '' : 's'} to check{:else}ℹ {checks.length} note{checks.length === 1 ? '' : 's'}{/if}</summary
-            >
-            <ul>
-              {#each checks as c}
-                <li>
-                  {c.level === 'warn' ? '' : 'ℹ '}{c.text}
-                  {#if c.ddRound !== undefined}
-                    {@const ri = c.ddRound}
-                    <button
-                      class="small"
-                      onclick={() => {
-                        placeDailyDoubles(ri);
-                        recheckNow();
-                      }}>🎲 Place now</button
-                    >
-                  {/if}
-                  {#if c.ptRound !== undefined}
-                    {@const ri = c.ptRound}
-                    <button
-                      class="small"
-                      onclick={() => {
-                        placePartnerTiles(ri);
-                        recheckNow();
-                      }}>🎲 Place now</button
-                    >
-                  {/if}
-                  {#if c.shrink}
-                    {@const id = c.shrink}
-                    {@const job = jobFor(id)}
-                    {@const pct = job ? progressText(job) : ''}
-                    <!-- (Names no file: in one window this screen is on stream. While its copy is made, how far it got.) -->
-                    <button class="small" data-checklist-shrink onclick={() => openShrinkDialog(id)} title="Make smaller copies of these files for phones"
-                      >{#if job}🗜 Making smaller…{#if pct}{' '}<span aria-hidden="true">{pct}</span>{/if}{:else}🗜 Make smaller{/if}</button
-                    >
-                  {/if}
-                </li>
-              {/each}
-            </ul>
-            <div class="row">
-              {#if !app.playerOnly}<button class="small" onclick={() => backToEditor(fixAt)}>◀ Fix in editor</button>{/if}
-              <span class="muted small">{warnings ? 'These are only warnings: you can still start.' : 'Start takes care of these.'}</span>
-            </div>
-          </details>
-        {/if}
       </div>
     </div>
 
@@ -6395,31 +6337,11 @@
           <span class="muted small" data-kept-note title={keptLoses ? 'Start game asks before replacing it; ▶ Resume it (at the top) plays on with it' : 'Start game replaces it; ▶ Resume it (at the top) plays on with it'}>⏸ A game in progress is kept</span>
         {/if}
         {#if !session.players.length}<span class="muted small">Add {pregameTeams ? 'teams' : 'players'} to start</span>{/if}
-        {#if warnings}
-          <!-- The checks can be below the fold (a 720-high window): this brings them up, open. (Not for notes alone: the
-               ⭐ and 🤝 lines beside it say those.) -->
-          <button
-            class="ghost small"
-            onclick={() => {
-              if (!checksEl) return;
-              checksEl.open = true;
-              checksEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            }}>⚠ {warnings} thing{warnings === 1 ? '' : 's'} to check</button
+        {#if checks.length}
+          <!-- One pointer to the ✅ Before you start card's checks, which can be out of sight (a 720-high window). -->
+          <button class="ghost small" data-checks-pointer onclick={toChecks} title="Show them in ✅ Before you start"
+            >{warnings ? `⚠ ${warnings} to check` : `ℹ ${checks.length} note${checks.length === 1 ? '' : 's'}`}</button
           >
-        {/if}
-        {#if unplacedDDs}
-          <!-- Said here, not only in the folded checks: Start places them, so the round never plays without one. -->
-          <span class="muted small" title={app.playerOnly ? 'Place them with 🎲 Place now in the checks above' : 'Place them yourself in the editor, or with 🎲 Place now in the checks above'}>
-            ⭐ {unplacedDDs} Daily Double{unplacedDDs === 1 ? '' : 's'} not placed yet: Start puts {unplacedDDs === 1 ? 'it' : 'them'} on the board at random
-          </span>
-        {/if}
-        {#if unplacedPartners}
-          <span
-            class="muted small"
-            title={app.playerOnly ? 'Place them with 🎲 Place now in the checks above' : 'Place them yourself in the editor (🔀 Randomize by the board), or with 🎲 Place now in the checks above'}
-          >
-            🤝 {unplacedPartners} partner clue{unplacedPartners === 1 ? '' : 's'} not placed yet: Start puts {unplacedPartners === 1 ? 'it' : 'them'} on the board at random
-          </span>
         {/if}
       </span>
       <button
@@ -6752,42 +6674,112 @@
     </div>
   </div>
 {/if}
-<!-- Before the game too (from the display settings) and during it (🔊 Sound in the host panel). -->
-<!-- Before going live: the few things worth a look, ticked as they're done. Short, and ✕ hides it (for good, until it's
-     shown again from 🖥 Display). -->
-{#snippet goingLive()}
-  <section class="part live-check" aria-labelledby="pregame-live">
-    <div class="row live-head">
-      <h2 id="pregame-live">✅ Going live?</h2>
-      <button
-        class="ghost small"
-        onclick={() => ((prefs.liveChecklist = false), savePrefs())}
-        aria-label="Hide the Going live checklist"
-        title="Hide this checklist (🖥 Display can show it again)">✕</button
-      >
+<!-- ✅ Before you start, under 👥 Players: On stream, what viewers will see and hear (✕ folds these tips, and the line
+     left offers them again), then The game, the checks, each with its own Fix › (never folded: they're warnings). -->
+{#snippet beforeStart()}
+  <section class="part before-start" aria-labelledby="pregame-before">
+    <h2 id="pregame-before">✅ Before you start</h2>
+    {#if prefs.liveChecklist}
+      <div class="live-check" role="group" aria-labelledby="pregame-live">
+        <div class="row live-head">
+          <h3 id="pregame-live">On stream</h3>
+          <button
+            class="ghost small"
+            onclick={() => ((prefs.liveChecklist = false), savePrefs())}
+            aria-label="Hide the On stream tips"
+            title="Hide these tips (the game's checks stay)">✕</button
+          >
+        </div>
+        <ul>
+          {#if !wantAudience}
+            <li class="lead">🖥 Viewers see this page now (one window): everything on it is on stream. In the game, H hides the controls.</li>
+          {:else}
+            <li class:done={dual}>
+              {dual
+                ? '📺 Audience window open: share it in Discord or capture it in OBS (Window capture).'
+                : '📺 The audience window opens when you press Start: share it in Discord or capture it in OBS.'}
+            </li>
+          {/if}
+          {#if phonesOn}
+            <li class:done={roomUp && remote.status === 'online' && phonesIn > 0}>
+              {#if !roomUp && keptRoom}📱 The phones of the game in progress wait in room {keptRoom}: ▶ Resume it goes back to them.
+              {:else if !roomUp}📱 Phone buzzers are on: <button class="link-btn" onclick={startRoomHere}>start the room</button> so players can join.
+              {:else if remote.status !== 'online'}📱 Room {remote.code}: {joinedText}
+              {:else}📱 Room {remote.code} open: {joinedText}.{/if}
+            </li>
+          {/if}
+          {#if wantAudience}
+            <li class:done={dual && audience.activated} data-check="sound-click">
+              {dual && audience.activated ? '🔊 The audience window can play sound.' : '🔊 Sound in the audience window: click it once (browsers keep it quiet until then).'}
+            </li>
+          {/if}
+          <li class="tip">🔊 Streaming on Discord or OBS? {@render testSound()}</li>
+        </ul>
+      </div>
+    {:else}
+      <div class="row small live-off">
+        <span class="muted">On stream tips hidden.</span>
+        <button class="ghost small" onclick={() => ((prefs.liveChecklist = true), savePrefs())}>Show them</button>
+        {@render testSound()}
+      </div>
+    {/if}
+    <!-- (The bar's ⚠ 2 to check brings these into sight, with the keys on them.) -->
+    <div class="checks" role="group" aria-labelledby="pregame-game" tabindex="-1" bind:this={checksEl} data-checks>
+      <h3 id="pregame-game">The game</h3>
+      {#if checks.length}
+        <ul>
+          {#each checks as c}
+            <li class:warn-line={c.level === 'warn'}>
+              <span>{c.level === 'warn' ? '' : 'ℹ '}{c.text}</span>
+              {#if c.ddRound !== undefined}
+                {@const ri = c.ddRound}
+                <button
+                  class="small"
+                  onclick={() => {
+                    placeDailyDoubles(ri);
+                    recheckNow();
+                  }}>🎲 Place now</button
+                >
+              {/if}
+              {#if c.ptRound !== undefined}
+                {@const ri = c.ptRound}
+                <button
+                  class="small"
+                  onclick={() => {
+                    placePartnerTiles(ri);
+                    recheckNow();
+                  }}>🎲 Place now</button
+                >
+              {/if}
+              {#if c.shrink}
+                {@const id = c.shrink}
+                {@const job = jobFor(id)}
+                {@const pct = job ? progressText(job) : ''}
+                <!-- (Names no file: in one window this screen is on stream. While its copy is made, how far it got.) -->
+                <button class="small" data-checklist-shrink onclick={() => openShrinkDialog(id)} title="Make smaller copies of these files for phones"
+                  >{#if job}🗜 Making smaller…{#if pct}{' '}<span aria-hidden="true">{pct}</span>{/if}{:else}🗜 Make smaller{/if}</button
+                >
+              {/if}
+              {#if c.fix && !app.playerOnly && c.ddRound === undefined && c.ptRound === undefined}
+                <!-- Its own place in the editor (◀ Fix in editor, below, goes to the first one). -->
+                <button class="small ghost fix" data-check-fix onclick={() => backToEditor(c.fix, c.place)} title="Fix it in the editor">Fix ›</button>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+        <div class="row">
+          {#if !app.playerOnly && fixAt}<button class="small" onclick={() => backToEditor(fixAt)}>◀ Fix in editor</button>{/if}
+          <span class="muted small">{warnings ? 'These are only warnings: you can still start.' : 'Start takes care of these.'}</span>
+        </div>
+      {:else if checksReady}
+        <p class="muted small">✓ Nothing to check: the game is ready to play.</p>
+      {/if}
     </div>
-    <ul>
-      <li class:done={dual || !wantAudience}>
-        {#if dual}📺 Audience window open: share it in Discord or capture it in OBS (Window capture).
-        {:else if wantAudience}📺 The audience window opens when you press Start: share it in Discord or capture it in OBS.
-        {:else}🖥 Single window: viewers see this window. Press H in the game to hide the controls.{/if}
-      </li>
-      {#if phonesOn}
-        <li class:done={roomUp && remote.status === 'online' && phonesIn > 0}>
-          {#if !roomUp && keptRoom}📱 The phones of the game in progress wait in room {keptRoom}: ▶ Resume it goes back to them.
-          {:else if !roomUp}📱 Buzzer mode is on: <button class="link-btn" onclick={startRoomHere}>start the room</button> so players can join.
-          {:else if remote.status !== 'online'}📱 Room {remote.code}: {joinedText}
-          {:else}📱 Room {remote.code} open: {joinedText}.{/if}
-        </li>
-      {/if}
-      {#if wantAudience}
-        <li class:done={dual && audience.activated} data-check="sound-click">
-          {dual && audience.activated ? '🔊 The audience window can play sound.' : '🔊 Sound in the audience window: click it once (browsers keep it quiet until then).'}
-        </li>
-      {/if}
-      <li class="tip">🔊 Streaming on Discord or OBS? <button class="link-btn" onclick={() => (showSound = true)}>Test the sound</button>.</li>
-    </ul>
   </section>
+{/snippet}
+{#snippet testSound()}
+  <!-- The sound window, one name (before the game too, from 🖥 Display's notes; during it, 🔊 Sound in the host panel). -->
+  <button class="small" onclick={() => (showSound = true)} title="Test the sound, pick where it plays, and see how to stream it">🔊 Test the sound…</button>
 {/snippet}
 
 {#if showSettings}
@@ -6916,8 +6908,23 @@
   .live-head {
     justify-content: space-between;
   }
-  .live-head h2 {
+  /* ✅ Before you start: its two groups, On stream and The game, each under a small heading. */
+  .before-start h3 {
     margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .before-start .live-check,
+  .before-start .checks {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  /* (One window: the first tip says the page is on stream.) */
+  .live-check li.lead::before {
+    content: '⚠ ';
+    color: var(--warn);
   }
   .link-btn {
     padding: 0;
@@ -7004,22 +7011,22 @@
   .mins {
     width: 70px;
   }
-  .checks {
-    border: 1px solid var(--warn);
-    border-radius: 8px;
-    padding: 8px 12px;
-  }
-  .checks summary {
-    cursor: pointer;
-    color: var(--warn);
-    font-weight: 600;
+  .checks:focus {
+    outline: none;
   }
   .checks ul {
-    margin: 8px 0;
+    margin: 0;
     padding-left: 20px;
     display: flex;
     flex-direction: column;
     gap: 4px;
+    font-size: 13px;
+  }
+  .checks li.warn-line {
+    color: var(--warn);
+  }
+  .checks li button {
+    margin-left: 6px;
   }
   /* The way out and Start: stuck to the foot of the window, however long the page above (an open ⚖ Game rules). */
   .actions {

@@ -304,7 +304,7 @@
   {/if}
   <!-- Browsers block sound until the window is clicked once: a small chip in the corner says so until then (the host
        sees it in the window and the OBS preview, without the stage dimmed); the click takes it away, and the host is
-       told (✓ in Going live?). Top left: the join code is in the bottom right as players join. -->
+       told (✓ in ✅ Before you start). Top left: the join code is in the bottom right as players join. -->
   {#if (!activated || blockedSince) && !scores && status === 'connected'}
     <div class="activate" role="status" title="Browsers keep this window quiet until it's clicked once">🔊 Click to enable sound</div>
   {/if}

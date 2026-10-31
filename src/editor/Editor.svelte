@@ -115,8 +115,11 @@
     checklist: ChecklistLine[];
     /** The tab to open on: a round's id (back from testing it), or a tab such as 'theme' (back from ▶ Play). */
     startRound?: string | null;
-    /** Go on to the first thing to fix on that tab, as its checklist line does (◀ Fix in editor); `onfixed` says it did. */
-    startFix?: boolean;
+    /**
+     * Go on to the first thing to fix on that tab, as its checklist line does (◀ Fix in editor), or to this place in it
+     * (a ▶ Play check's own Fix ›); `onfixed` says it did.
+     */
+    startFix?: boolean | Place;
     onfixed?: () => void;
     /** Open… right away (Game over › ▶ Next game…); `onopened` says it was. */
     startOpen?: boolean;
@@ -479,7 +482,7 @@
    * A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile, an RPG's screen, a
    * board game's space, a Final's question or answer, a Slides round's empty slide has the focus).
    */
-  function goFix(line: ChecklistLine): void {
+  function goFix(line: ChecklistLine, exact?: Place): void {
     // The game's name: its box at the top, selected to type over.
     if (line.place?.tab === 'title') return void document.querySelector<HTMLInputElement>('[data-place="title"]')?.select();
     // Players are set on the ▶ Play screen.
@@ -493,7 +496,7 @@
     if (line.round && at < 0) return;
     tab = line.round ? at : line.tab;
     const round = line.round ? game.rounds[at] : undefined;
-    const place = (round && isBoard(round) && boardPlace(game, round)) || line.place;
+    const place = exact ?? ((round && isBoard(round) && boardPlace(game, round)) || line.place);
     // A stat, an item or a shop in 📊 Stats & Items, a wheel or dice in 🎡 Wheels, Dice & Deals, a card in 🤫 Cards: it
     // flashes there.
     if (place?.tab === 'stats' || place?.tab === 'tools' || place?.tab === 'cards') return void goTo(place);
@@ -532,13 +535,18 @@
       });
   }
 
-  // ◀ Fix in editor on the ▶ Play screen: on to the first thing to fix on the tab it opened, as its checklist line goes.
+  // ◀ Fix in editor on the ▶ Play screen: on to the first thing to fix on the tab it opened, as its checklist line goes
+  // (a check's own Fix ›: to its place there).
   onMount(() => {
-    if (!untrack(() => startFix)) return;
+    const fix = untrack(() => startFix);
+    if (!fix) return;
     onfixed?.();
     const id = untrack(() => startRound);
-    const line = untrack(() => checklist).find((l) => (typeof tab === 'number' ? l.round === id : !l.round && l.tab === tab));
-    if (line) goFix(line);
+    const exact = typeof fix === 'object' ? fix : undefined;
+    const line =
+      untrack(() => checklist).find((l) => (typeof tab === 'number' ? l.round === id : !l.round && l.tab === tab)) ??
+      (exact && id ? { text: '', level: 'warn', tab: typeof tab === 'number' ? tab : (tab as ChecklistLine['tab']), details: [], round: typeof tab === 'number' ? id : undefined } : undefined);
+    if (line) goFix(line, exact);
   });
 
   // ---------- New, Open… and recent games ----------

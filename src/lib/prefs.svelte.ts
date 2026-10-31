@@ -21,7 +21,7 @@ export interface Prefs {
   checkUpdates: boolean;
   /** How the last game was shown (the pre-game screen's 🖥 Display): one window, or a separate audience window. */
   display: 'single' | 'audience';
-  /** The pre-game screen's short "Going live?" checklist shows (✕ hides it). */
+  /** The pre-game ✅ Before you start card shows its On stream tips (its ✕ folds them). */
   liveChecklist: boolean;
   /** How the color picker shows a color to type: one Hex box (#rrggbb) or three RGB boxes (ColorPicker.svelte). */
   colorFormat: 'hex' | 'rgb';

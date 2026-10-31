@@ -173,7 +173,13 @@ open **⚖ Game rules** for scoring, the most players, timers and the round intr
 **📱 Phone buzzers** card (all saved with the game too). `Ctrl+Z` / `Ctrl+Y` undo and redo the changes made there (the
 same steps as the editor's 🕘 History, where **Go there** brings you back to this screen). Then pick one of two modes.
 Viewers see a "Starting soon…" card until you press **Start game**, which stays at the foot of the window however long
-the page gets (on a wide screen the page is two columns). A **🔁 Rematch** keeps the players, their colors and pictures.
+the page gets (on a wide screen the page is two columns). **✅ Before you start**, in the players' column, has two
+groups: **On stream** (in one window it leads with "Viewers see this page now"; then the audience window, the room and
+who's in, the sound, with **🔊 Test the sound…**; ✕ folds these tips, and **Show them** brings them back) and **The
+game**, the things worth fixing before you go live, each with its own **Fix ›** (to that place in the editor),
+🎲 Place now or 🗜 Make smaller where they apply, and ◀ Fix in editor (to the first one); they're only warnings, and
+never folded. The bar by Start game keeps one pointer to them, "⚠ 2 to check" (or "ℹ 1 note" for what Start takes care
+of, such as a Daily Double not placed yet). A **🔁 Rematch** keeps the players, their colors and pictures.
 A game kept to resume (Exit › Keep & leave, or a reload mid-game) shows at the top with where it got to and its scores
 ("⏸ Game in progress: Meme Night · Jeopardy! (round 2 of 5) · Ann $400, Bob $200 · saved 2:41 AM") and **▶ Resume it**.
 Once it has points, a tile played or a roll, Start game asks first, in its bar: "Start a new game? The game in progress
@@ -737,7 +743,7 @@ To build the address into your own releases too (so nobody has to paste it), add
   Media's **🗜 2 files are big for phones** makes copies of all of them at once. A .mov or MKV that plays here but phones
   can't open is repackaged for them with **↻** instead (in its place, for the show too, nothing lost; Ctrl+Z undoes it),
   and a video or sound phones can't play that can't be repackaged (a FLAC, say) can get a copy they can (🗜). During the
-  game too: the host panel's line about a card's big files, the pre-game checklist's and the host column's have
+  game too: the host panel's line about a card's big files, the pre-game ✅ Before you start card's and the host column's have
   **🗜 Make smaller**, for the game being played (the editor's game keeps the copy as well; a card already out switches
   over to it). In one window its window names no file and shows no preview, and mid-game it opens in the host panel,
   never over the stage. A copy that still comes out too big for the server (an encoder can go over on a busy picture)
@@ -756,8 +762,9 @@ More about how the server works (fair timing, limits, local testing) is in [`buz
 
 ## Streaming the sound (Discord, OBS)
 
-In dual-window mode, the sound plays from the **audience window**. **🔊 Sound** in the host panel has a **Test sound**
-button, a speaker picker (e.g. for a virtual cable into OBS), and step-by-step help.
+In dual-window mode, the sound plays from the **audience window**. **🔊 Sound** in the host panel (and **🔊 Test the
+sound…** before the game, in ✅ Before you start) has a **Test sound** button, a speaker picker (e.g. for a virtual cable
+into OBS), and step-by-step help.
 
 **Discord:**
 

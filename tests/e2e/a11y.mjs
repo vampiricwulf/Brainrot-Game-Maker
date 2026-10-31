@@ -328,10 +328,10 @@ try {
   assert((await names.count()) === before - 1 && (await undoNote.innerText()).includes('Deleted Player 2'), 'deleting a player before the game says so');
   await undoNote.getByRole('button', { name: '↶ Undo' }).click();
   assert((await names.count()) === before, 'and its Undo brings them back');
-  // Small text in the accent color, and Start game's key chip, read at 4.5:1.
-  const testSound = await inkOn(page.getByRole('button', { name: 'Test the sound' }));
+  // Small text (✅ Before you start's 🔊 Test the sound…), and Start game's key chip, read at 4.5:1.
+  const testSound = await inkOn(page.getByRole('button', { name: '🔊 Test the sound…' }));
   const startKey = await inkOn(page.locator('.start-key'));
-  assert(testSound >= 4.5 && startKey >= 4.5, `“Test the sound” reads at ${testSound.toFixed(2)}:1, and Start game’s Ctrl+⏎ at ${startKey.toFixed(2)}:1`);
+  assert(testSound >= 4.5 && startKey >= 4.5, `“🔊 Test the sound…” reads at ${testSound.toFixed(2)}:1, and Start game’s Ctrl+⏎ at ${startKey.toFixed(2)}:1`);
 
   const startedAt = await page.evaluate(() => Date.now());
   await page.getByRole('button', { name: 'Start game ▶' }).click();

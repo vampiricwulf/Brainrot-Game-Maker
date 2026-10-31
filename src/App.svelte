@@ -36,6 +36,7 @@
   import { claimEditor, markBusy, watchEditor, type Busy } from './lib/editorlock';
   import { hasWork } from './lib/recent';
   import { validate } from './lib/validate';
+  import type { Place } from './lib/historylabel';
   import { shrinkMaybe } from './lib/shrink/probe';
   import { shrinkable, shrinksFurther } from './lib/shrink/apply';
   import { checks, knownVerdict } from './lib/shrink/checks.svelte';
@@ -791,13 +792,19 @@
   let backTo = $state<string | null>(null);
   /** The editor's tab when ▶ Play was pressed. */
   let playFrom: string | null = null;
-  /** ◀ Fix in editor: the editor goes on to the first thing to fix on that tab, as its checklist line does. */
-  let fixOnArrival = $state(false);
+  /**
+   * ◀ Fix in editor: the editor goes on to the first thing to fix on that tab, as its checklist line does (a check's own
+   * Fix ›: to its place there).
+   */
+  let fixOnArrival = $state<boolean | Place>(false);
 
-  /** The pre-game's ◀ Back to editor: the tab the host left. ◀ Fix in editor (`fix`: the tab of the first warning) goes there. */
-  function cancelPlay(fix?: string): void {
+  /**
+   * The pre-game's ◀ Back to editor: the tab the host left. ◀ Fix in editor (`fix`: the tab of the first warning) goes
+   * there; a check's own Fix ›, to `at` on its tab.
+   */
+  function cancelPlay(fix?: string, at?: Place): void {
     backTo = app.test ?? fix ?? playFrom;
-    fixOnArrival = !app.test && !!fix;
+    fixOnArrival = !app.test && !!fix && (at ?? true);
     leavePlay();
   }
 

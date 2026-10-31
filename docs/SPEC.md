@@ -423,7 +423,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
    line says each as set; remembered on this computer; it opens by itself only for an option this buzzer server can't
    do); and a foot row, 🔒 Lock seats left and ⏹ Close the room… right, which asks while any phone is in. With phone
    buzzers off it says what the game uses phones for (🤝 partner cards, 🤫 cards, 🎭 deals, ✍ multiple choice) and what
-   the host does without them.
+   the host does without them. **✅ Before you start**, in the players' column, is one card in two groups: *On stream*
+   (one window: "Viewers see this page now" first; the audience window, the room and who's in, the sound and its
+   🔊 Test the sound…; ✕ folds only these tips, "Show them" brings them back) and *The game*, validate()'s warnings
+   (and the notes Start takes care of), each line with its own Fix › (that problem's place in the editor), 🎲 Place now
+   and 🗜 Make smaller where they apply, and ◀ Fix in editor to the first; never folded. The Start bar keeps one pointer,
+   "⚠ 2 to check" ("ℹ 1 note" for notes alone), which scrolls to it with the keys on it.
 3. Start. The board is shown. The host can immediately run a **roll-off** (§6.6) to decide who picks first, or
    set the current picker by hand.
 

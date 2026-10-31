@@ -126,7 +126,7 @@ try {
     return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('button') === b;
   });
   assert(startBox.y + startBox.height <= 720 && onTop, 'Start game ▶ is in view at the foot of the window with the rules open');
-  // The notes beside it (a Daily Double not placed yet) wrap in their own room: Start stays at the right, on Back's line.
+  // The notes beside it (the checks' ℹ pointer, a room's line) wrap in their own room: Start stays at the right, on Back's line.
   const backBox = await back.boundingBox();
   assert(Math.abs(backBox.y + backBox.height / 2 - (startBox.y + startBox.height / 2)) < 4 && startBox.x + startBox.width > 1280 - 40, 'Start game ▶ stays at the right end of the bar, level with ◀ Back');
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways scrolling');
@@ -330,13 +330,19 @@ try {
   await titleBox.press('Escape');
   await page.screenshot({ path: 'test-results/pregame-golive.png' });
 
-  // ---------- Going live? A short checklist, hidden with ✕ (and shown again from 🖥 Display) ----------
-  const live = page.locator('.live-check');
-  assert((await live.innerText()).includes('Single window') && (await live.getByRole('button', { name: 'Test the sound' }).count()) === 1, 'the “Going live?” checklist says the display and links the sound help');
-  await live.getByRole('button', { name: 'Hide the Going live checklist' }).click();
-  assert((await live.count()) === 0, '✕ hides it');
-  await page.getByRole('button', { name: '✅ Show the “Going live?” checklist' }).click();
-  assert((await live.count()) === 1, 'and 🖥 Display shows it again');
+  // ---------- ✅ Before you start: its On stream tips (✕ folds them, and only them), then the game's checks ----------
+  const before = page.locator('section.before-start');
+  const live = before.locator('.live-check');
+  assert(
+    (await live.locator('li').first().innerText()).startsWith('🖥 Viewers see this page now') && (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1,
+    'in one window, ✅ Before you start leads with “Viewers see this page now”, and has the one 🔊 Test the sound… on the screen',
+  );
+  const playersBox = await page.locator('[data-place="play:players"]').boundingBox();
+  assert((await before.boundingBox()).y > playersBox.y && (await before.locator('[data-checks]').count()) === 1, 'the card is in the players’ column, under 👥 Players, with its The game group');
+  await live.getByRole('button', { name: 'Hide the On stream tips' }).click();
+  assert((await live.count()) === 0 && (await before.locator('[data-checks]').count()) === 1 && (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1, '✕ folds the On stream tips only (the game’s checks and 🔊 Test the sound… stay)');
+  await before.getByRole('button', { name: 'Show them' }).click();
+  assert((await live.count()) === 1, 'and Show them brings them back');
 
   // ---------- The display picked is remembered: the audience window opens with Start ----------
   const [aud1] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
@@ -586,11 +592,10 @@ try {
   const tabShown = () => p2.locator('nav button[aria-current="page"]').innerText();
   await p2.getByRole('button', { name: '🎨 Theme' }).click();
   await p2.getByRole('button', { name: '▶ Play', exact: true }).click();
-  const summary = p2.locator('details.checks summary');
-  await summary.getByText('ℹ 1 note').waitFor();
-  assert((await p2.getByRole('button', { name: /thing.* to check/ }).count()) === 0, 'a Daily Double Start places is a note (ℹ 1 note), not “⚠ 1 thing to check” at the foot');
-  await summary.click();
-  assert((await p2.locator('details.checks li').first().innerText()).startsWith('ℹ Jeopardy!: 1 Daily Double not placed yet'), 'its line says ℹ, as the editor does');
+  const pointer = p2.locator('.actions [data-checks-pointer]');
+  await pointer.getByText('ℹ 1 note').waitFor();
+  assert((await p2.getByRole('button', { name: /to check/ }).count()) === 0, 'a Daily Double Start places is a note (the bar’s pointer: ℹ 1 note), not “⚠ 1 to check”');
+  assert((await p2.locator('[data-checks] li').first().innerText()).startsWith('ℹ Jeopardy!: 1 Daily Double not placed yet'), 'its line in ✅ Before you start says ℹ, as the editor does');
   await p2.getByRole('button', { name: '◀ Back to editor' }).click();
   await p2.getByRole('button', { name: '▶ Play', exact: true }).waitFor();
   assert((await tabShown()).includes('Theme'), '◀ Back to editor opens the tab ▶ Play was pressed on (🎨 Theme)');
@@ -599,7 +604,12 @@ try {
   await p2.locator('main [data-field="a"]').fill('');
   await p2.getByRole('button', { name: '🎨 Theme' }).click();
   await p2.getByRole('button', { name: '▶ Play', exact: true }).click();
-  await p2.getByRole('button', { name: '⚠ 1 thing to check' }).click();
+  // The bar's one pointer brings the card's checks into sight, the keys on them.
+  await p2.getByRole('button', { name: '⚠ 1 to check' }).click();
+  await p2.waitForFunction(() => document.activeElement?.matches('[data-checks]'));
+  // Each line has its own Fix › (not the 🎲 Place now notes), and ◀ Fix in editor stays.
+  const finalLine = p2.locator('[data-checks] li', { hasText: 'Final Jeopardy!' });
+  assert((await finalLine.getByRole('button', { name: 'Fix ›' }).count()) === 1 && (await p2.locator('[data-checks] li', { hasText: 'Daily Double not placed yet' }).getByRole('button', { name: 'Fix ›' }).count()) === 0, 'a warning’s line has its own Fix ›; a note Start takes care of has 🎲 Place now instead');
   await p2.getByRole('button', { name: '◀ Fix in editor' }).click();
   await p2.waitForFunction(() => document.activeElement?.matches('main [data-field="a"]'), null, { timeout: 3000 }).catch(() => {});
   assert(

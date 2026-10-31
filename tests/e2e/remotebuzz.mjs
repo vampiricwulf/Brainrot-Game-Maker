@@ -230,7 +230,7 @@ try {
   assert(true, 'two asking: the bar says “📱 2 want to join [Show ↓]”, and Show ↓ takes the keys to the card’s list');
   await say({ t: 'phones', phones: [c1, zedAsks] });
   await barLine.getByText('Zed wants to join').waitFor();
-  assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF open: 1 of 3 joined' }).count()) === 1, '“Going live?” ticks the room off once a phone has joined');
+  assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF open: 1 of 3 joined' }).count()) === 1, '✅ Before you start ticks the room off once a phone has joined');
   assert((await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'a joined player shows ✔ joined');
   assert((await page.locator('.pregame [data-phone-word]').allInnerTexts()).join('|') === '📱 in|📱 waiting|📱 waiting', 'and their 👥 row says 📱 in');
   // A 📱 row opens the 👥 row's menu (the same one), and F2 there renames them.
@@ -248,7 +248,7 @@ try {
   });
   await card.getByText('⚠ Reconnecting to the buzzer room…').waitFor();
   assert((await page.locator('.actions .room-note').innerText()).includes('Room BCDF · ⚠ reconnecting'), 'reconnecting: the Start bar says so instead of “1 of 3 joined”');
-  assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF' }).count()) === 0, '“Going live?” no longer ticks the room off');
+  assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF' }).count()) === 0, '✅ Before you start no longer ticks the room off');
   assert(!(await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'and Player 1 isn’t shown as ✔ joined from the stale list');
   assert((await page.locator('.pregame [data-phone-word]').allInnerTexts()).every((w) => w === '📱 out of reach'), 'and the 👥 rows say 📱 out of reach');
   const p2Row = await card.locator('li', { hasText: 'Player 2' }).innerText();
@@ -870,7 +870,7 @@ try {
   await page.locator('.live-check li', { hasText: 'start the room' }).waitFor();
   assert(
     (await resumeCard.getByText('Its phones wait in room').count()) === 0 && (await page.locator('.live-check li', { hasText: 'wait in room BCDF' }).count()) === 0,
-    'a kept game whose room has ended: the pre-game screen doesn’t say its phones wait there, and Going live says to start the room',
+    'a kept game whose room has ended: the pre-game screen doesn’t say its phones wait there, and ✅ Before you start says to start the room',
   );
   await page.evaluate(() => (window.__room.code = 'PQRS'));
   await card.getByRole('button', { name: '▶ Start the room' }).click();

@@ -263,7 +263,7 @@ try {
     const roomCard = page.getByRole('region', { name: 'Phone buzzers' });
     const code = await startRoomOn(roomCard);
     // The pre-game list keeps the warnings only: the 25 MB video, never the 17 MB one's note.
-    const checks = page.locator('details.checks');
+    const checks = page.locator('[data-checks]');
     await checks.locator('li', { hasText: '🤫 Card “Tip” has a video too big to send to phones' }).waitFor({ state: 'attached' });
     const pregame = (await checks.locator('li').allTextContents()).filter((t) => t.includes('🤫 Card “'));
     assert(pregame.length === 1 && pregame[0].includes('“Tip”') && !pregame.some((t) => t.includes('may wait')), `the pre-game list: the one too big, not the note (${pregame.join(' | ')})`);

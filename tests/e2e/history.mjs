@@ -365,8 +365,7 @@ try {
   await page.getByLabel('How many Daily Doubles').fill('1');
   await page.getByLabel('How many Daily Doubles').press('Tab');
   await page.getByRole('button', { name: '▶ Play' }).click();
-  await page.locator('.checks summary').click();
-  await page.getByRole('button', { name: '🎲 Place now' }).first().click();
+  await page.locator('[data-checks]').getByRole('button', { name: '🎲 Place now' }).first().click();
   await page.getByRole('button', { name: '◀ Back to editor' }).click();
   await historyTab.click();
   const played = rows.first();

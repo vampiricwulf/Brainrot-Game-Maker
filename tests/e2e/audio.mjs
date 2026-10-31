@@ -93,7 +93,7 @@ try {
     const page = watch(await context.newPage(), 'host');
     await toPregame(page, fileUrl);
 
-    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     await dialog(page).waitFor();
     assert(true, 'the sound help opens from the pre-game display settings');
     const sections = await dialog(page).locator('summary').allInnerTexts();
@@ -243,7 +243,7 @@ try {
       'a modifier key in the audience window keeps the warning',
     );
 
-    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     await testSound(page, 'Blocked: click the audience window once');
     assert(true, 'Test sound reports a blocked audience window');
 
@@ -317,7 +317,7 @@ try {
     await context.addInitScript(() => delete HTMLMediaElement.prototype.setSinkId);
     const page = watch(await context.newPage(), 'no-sink');
     await toPregame(page, fileUrl);
-    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     await dialog(page).waitFor();
     assert(
       (await dialog(page).getByRole('combobox').count()) === 0 && (await dialog(page).getByRole('button', { name: /speaker/ }).count()) === 0,
@@ -337,7 +337,7 @@ try {
     await toPregame(page, fileUrl);
     await page.locator('.mode', { hasText: 'Separate audience window' }).click();
     await page.getByRole('button', { name: '📺 Open audience window & start' }).waitFor();
-    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     await dialog(page).waitFor();
     assert(
       (await dialog(page).getByText('plays in this window').count()) === 1 && (await dialog(page).getByText('Open the audience window, click once inside it').count()) === 1,
@@ -489,7 +489,7 @@ try {
       'only the host window listens for the fix being switched off from outside',
     );
 
-    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     const help = dialog(page);
     assert((await help.getByRole('alert').filter({ hasText: 'running as administrator' }).count()) === 1, 'the help repeats the administrator warning');
     const sections = await help.locator('summary').allInnerTexts();
@@ -531,7 +531,7 @@ try {
     assert((await fixWarning(page, 'Discord audio fix').count()) === 0, 'switched off by the host: no fix warning');
     const created = await createdAudience(page, /Separate audience window/);
     assert(!('additionalBrowserArgs' in created), 'with the fix off, the fallback window keeps the default switches');
-    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     const help = dialog(page);
     const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
     assert(!(await fix.isChecked()), 'with the setting off, the Discord audio fix box is unticked');
@@ -558,7 +558,7 @@ try {
     assert((await fixWarning(page, 'Discord audio fix').count()) === 0, 'no fix warning: the sound still reaches Discord');
     const created = await createdAudience(page, /Separate audience window/);
     assert(created.additionalBrowserArgs === ARGS, 'running with the switches: the fallback audience window gets them too');
-    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     const help = dialog(page);
     assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows the saved setting (off)');
     assert(
@@ -652,7 +652,7 @@ try {
     assert((await emit(page, 'audio-fix-off', false)) === 1, 'the host page listens for the fix being switched off from outside');
     await fixWarning(page, CRASHED_WARNING).waitFor({ state: 'detached' });
     assert(true, 'the crash warning goes away');
-    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     const help = dialog(page);
     assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows it as off');
     assert(
@@ -669,7 +669,7 @@ try {
     const page = watch(await context.newPage(), 'desktop (switched off from outside, restarting)');
     await toPregame(page, httpUrl);
     await emit(page, 'audio-fix-off', true);
-    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     const help = dialog(page);
     await help.getByText('Restart Brainrot Games Maker to turn it off.').waitFor();
     assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows it as off');

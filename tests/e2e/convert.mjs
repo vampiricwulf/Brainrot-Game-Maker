@@ -340,10 +340,9 @@ try {
   assert(true, 'the checklist’s line says ↻ too');
   // Before the game there's no ↻: its line there offers 🗜, a copy phones can play.
   await page.getByRole('button', { name: '▶ Play' }).click();
-  const preChecks = page.locator('details.checks');
+  const preChecks = page.locator('[data-checks]');
   const kindLine = preChecks.locator('li', { hasText: 'has a video phones can\'t play: make a copy they can play (🗜)' });
   await kindLine.waitFor({ state: 'attached', timeout: 30_000 });
-  if (!(await preChecks.evaluate((d) => d.open))) await preChecks.locator('summary').click();
   assert(
     (await kindLine.getByRole('button', { name: '🗜 Make smaller' }).count()) === 1 && !(await preChecks.innerText()).includes('↻'),
     `before the game: “${(await kindLine.innerText()).replace(/\s+/g, ' ').trim()}”, and no ↻`,

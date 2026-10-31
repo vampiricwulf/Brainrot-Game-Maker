@@ -146,7 +146,8 @@ try {
   // ---------- The pre-game: steals on, as a game rule; the room; four phones ----------
   await host.getByRole('button', { name: '▶ Play' }).click();
   await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
-  assert(await host.getByText('🤝 1 partner clue not placed yet: Start puts it on the board at random').isVisible(), 'the Start bar says 1 partner clue isn’t placed yet');
+  await host.locator('[data-checks] li', { hasText: '1 partner clue not placed yet (Start game puts it on the board at random)' }).waitFor();
+  assert(true, '✅ Before you start says 1 partner clue isn’t placed yet');
   const rules = await openRules(host);
   const stealRule = rules.getByRole('checkbox', { name: 'A miss on a partner clue lets the others steal it' });
   assert(!(await stealRule.isChecked()), '⚖ Game rules: steals start off');

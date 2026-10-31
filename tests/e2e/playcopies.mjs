@@ -175,19 +175,18 @@ try {
   await roomCard.waitFor();
   // (The editor named the files: from here on, in one window, nothing may.)
   await forgetSeen(page);
-  const checks = page.locator('details.checks');
+  const checks = page.locator('[data-checks]');
   const tipLine = checks.locator('li', { hasText: '🤫 Card “Tip” has a GIF too big to send to phones' });
   await tipLine.waitFor({ state: 'attached' });
-  if (!(await checks.evaluate((d) => d.open))) await checks.locator('summary').click();
   const said = (await tipLine.innerText()).replace(/\s+/g, ' ');
   assert(
-    /^🤫 Card “Tip” has a GIF too big to send to phones \(2\.\d MB; this buzzer server takes files up to 1\.0 MB\): make a smaller copy for phones \(🗜\) or add it from a link 🗜 Make smaller$/.test(said),
-    `its line offers 🗜 Make smaller (${said})`,
+    /^🤫 Card “Tip” has a GIF too big to send to phones \(2\.\d MB; this buzzer server takes files up to 1\.0 MB\): make a smaller copy for phones \(🗜\) or add it from a link 🗜 Make smaller Fix ›$/.test(said),
+    `its line offers 🗜 Make smaller, then its own Fix › (${said})`,
   );
   const soundLines = await Promise.all(['Hum', 'Drone'].map(async (c) => (await checks.locator('li', { hasText: `🤫 Card “${c}” has a sound` }).innerText()).replace(/\s+/g, ' ')));
   assert(
-    soundLines[0].endsWith('(1.2 MB; this buzzer server takes files up to 1.0 MB): make a smaller copy for phones (🗜) or add it from a link 🗜 Make smaller') &&
-      soundLines[1].endsWith('(1.2 MB; this buzzer server takes files up to 1.0 MB): add it from a link instead'),
+    soundLines[0].endsWith('(1.2 MB; this buzzer server takes files up to 1.0 MB): make a smaller copy for phones (🗜) or add it from a link 🗜 Make smaller Fix ›') &&
+      soundLines[1].endsWith('(1.2 MB; this buzzer server takes files up to 1.0 MB): add it from a link instead Fix ›'),
     `a copy too big: 🗜 Make smaller only where a smaller one can be made (${soundLines.join(' | ')})`,
   );
   const tipButton = tipLine.getByRole('button', { name: '🗜 Make smaller' });
