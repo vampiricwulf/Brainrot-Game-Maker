@@ -140,7 +140,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
     keys: [
       ['D', 'Roll the round’s dice (or spin its wheel): the result fills in the steps'],
       ['Enter', 'With nobody selected: move the steps (on a one-space board, the only way on)'],
-      ['N / Shift+N', 'Title card: start the round (N); then the next / previous player’s turn'],
+      ['N / Shift+N', 'Title card: start the round (N); then Next turn ▶ (asking first while the turn isn’t played: N again goes on) / the previous player’s turn'],
       ['I', 'The selected player’s sheet on screen'],
       ['Alt+← / → on a name', 'Move them earlier / later in the turn order (or drag the chip)'],
       ['← ↑ → ↓ on the board', 'Tab to the board, then go from space to space; Enter or Space opens its card, Shift+F10 its menu (a click on the board lets the space go: Enter moves the steps again)'],

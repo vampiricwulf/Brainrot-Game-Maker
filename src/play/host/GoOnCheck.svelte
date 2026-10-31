@@ -168,7 +168,7 @@
   style:--pad-bottom={place && side ? `${place.pad}px` : '0px'}
 >
   <div class="scroll">
-    <h3 id="goon-head">{heading === 'loss' ? CHECK.loss : heading === 'nothing' ? CHECK.nothing : CHECK.first}</h3>
+    <h3 id="goon-head">{heading === 'loss' ? CHECK.loss : heading === 'nothing' ? (check.step.nothing ?? CHECK.nothing) : CHECK.first}</h3>
     <div id="goon-items" class="items">
       {#each check.items as item (item.id)}
         <div class="item" class:done={!!item.done} data-goon-item={item.id}>

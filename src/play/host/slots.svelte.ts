@@ -1,9 +1,8 @@
 /**
  * The host panel's shared places, filled by the parts inside it:
  * - NEXT: the one main button of the moment, always in the same cell at the right of the action row, with its key: the
- *   blue button, the show's next step from Play (goon.ts: Show board ▶, 👁 Reveal answer, ▦ Done ▶ board…). While the
- *   parts move over to it, a part not moved yet still offers its own main button (offerNext, a stop-gap): the blue
- *   button's step first, then the parts' offers by priority.
+ *   blue button, the show's next step from Play (goon.ts: Show board ▶, 👁 Reveal answer, ▦ Done ▶ board, Next turn ▶…),
+ *   never a part's own action.
  * - The confirmation strip: a question (Leave this game? Next round with clues left?) as one full-width strip above the
  *   panel's fixed bar, never squeezed into a row of buttons.
  * - The status line's "⚠ Viewers see this" chip, in one window: what each box on screen says viewers can read of it.
@@ -54,18 +53,15 @@ export type HostAsk = {
   oncancel: () => void;
 };
 
-/** Who offers the main button (the parts not moved to the blue button's step yet): the first with an offer wins, in this order. */
-export type NextFrom = 'turn' | 'board';
-const ORDER: NextFrom[] = ['turn', 'board'];
 /**
  * Who adds to the stage's menu: the boxes (a tool's, a Daily Double's, a 🤝 partner clue's, the Final's, the end
- * screen's too), and the panel's own row (its flow: the clue's buttons), in the main button's order.
+ * screen's, a board game's turn box, the round's own row too), and the panel's own row (its flow: the clue's buttons),
+ * in the main button's order.
  */
-export type MenuFrom = NextFrom | 'tool' | 'dd' | 'partner' | 'final' | 'end' | 'flow';
+export type MenuFrom = 'turn' | 'board' | 'tool' | 'dd' | 'partner' | 'final' | 'end' | 'flow';
 const MENU_ORDER: MenuFrom[] = ['tool', 'flow', 'dd', 'partner', 'final', 'end', 'turn', 'board'];
 
 type Slots = {
-  offers: Partial<Record<NextFrom, () => NextAction | null>>;
   /** What each box adds to the stage's menu (see offerMenu). */
   menus: Partial<Record<MenuFrom, () => StageItem[]>>;
   ask: HostAsk | null;
@@ -80,8 +76,8 @@ const GUARD = Symbol('host-guard');
  * The host panel: make the places (its parts find them), and its one click guard (see guard.ts: panelGuard), for the
  * main button, the boxes' step buttons and their player buttons.
  */
-export function hostSlots(): Slots & { next: () => NextAction | null; viewersSee: () => string[]; menu: () => StageItem[] } {
-  const s = $state<Slots>({ offers: {}, menus: {}, ask: null, exposed: [] });
+export function hostSlots(): Slots & { viewersSee: () => string[]; menu: () => StageItem[] } {
+  const s = $state<Slots>({ menus: {}, ask: null, exposed: [] });
   setContext(KEY, s);
   setContext(GUARD, clickGuard());
   return Object.assign(s, {
@@ -89,13 +85,6 @@ export function hostSlots(): Slots & { next: () => NextAction | null; viewersSee
     viewersSee: () => [...new Set(s.exposed.map((get) => get()).filter((x): x is string => !!x))],
     /** What the boxes on screen add to the stage's menu, in the main button's order. */
     menu: () => MENU_ORDER.flatMap((k) => s.menus[k]?.() ?? []),
-    next: () => {
-      for (const k of ORDER) {
-        const a = s.offers[k]?.();
-        if (a) return a;
-      }
-      return null;
-    },
   });
 }
 
@@ -110,19 +99,6 @@ export function step(v: Verb, run: () => void, more: Partial<NextAction> = {}): 
 /** The host panel's click guard, for the panel and its parts (outside a panel, one of its own). */
 export function panelGuard(): ClickGuard {
   return getContext<ClickGuard | undefined>(GUARD) ?? clickGuard();
-}
-
-/**
- * A part's main button (what `get` returns, null for none), offered while the part is on screen: a stop-gap for the
- * moments whose part hasn't moved to the blue button's step yet (goon.ts mainStep), which comes first.
- */
-export function offerNext(from: NextFrom, get: () => NextAction | null): void {
-  const s = getContext<Slots | undefined>(KEY);
-  if (!s) return;
-  $effect(() => {
-    untrack(() => (s.offers[from] = get));
-    return () => untrack(() => s.offers[from] === get && delete s.offers[from]);
-  });
 }
 
 /**

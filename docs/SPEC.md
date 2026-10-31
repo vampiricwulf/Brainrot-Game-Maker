@@ -431,14 +431,18 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   a tile with no question), over a question pop-up 👁 Reveal answer then Next ▶, over any other tool, the scores, a sheet
   or a roll-off Next ▶, which only puts it away; the Final's Show question ▶, Reveal answer ▶, Start player reveals ▶,
   Show answer ▶ / Show wager ▶ / Next player ▶ and Finish game ▶ (or the next round's name), never greyed; the
-  tiebreaker clue's slides, 👁 Reveal answer and 🏁 Back to results; greyed only while a wheel turns or dice roll), `N`
+  tiebreaker clue's slides, 👁 Reveal answer and 🏁 Back to results; a board game's Next turn ▶, ◀ Previous turn quiet
+  beside it, none while ✎ Edit board is open (its ✓ Done editing `Esc` is in the edit panel); greyed only while a wheel turns or dice roll), `N`
   its key in every round (`Enter` too where it's Next: an intro, a slides round, PARTNER UP!, a Daily Double's Wager box,
   the Final's wager boxes); a played-out board's Next round ▶ goes on only from a click. The end screen has none: a tie
   for first is settled in its tie box (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off `O`, 🤝 Declare co-winners), and `N`
   there says so and flashes it. ＋ Award is green, never blue; 🔔 Open the buzzers (`U`) and a tie's
   🎲 Roll for it (`O`) are in the buzzers' row, a partner clue's 🎡 Spin for a partner (`W`) and 📤 Send and start
-  (`Enter`) in its 🤝 box, and a wheel's Spin! (`W`) or dice's Roll! (`D`) in the tool's box. A part that hasn't moved to
-  this yet keeps its own main button (a board game's turn and its own roll). **The check before going on** (`src/play/host/goon.ts`,
+  (`Enter`) in its 🤝 box, a wheel's Spin! (`W`) or dice's Roll! (`D`) in the tool's box, and a board game's roll and move
+  in its turn box: one slot, 🎲 Roll (`D`), then ▶ Move Ann: 3 (`Enter`) in the same place once there's a count (greyed
+  while the dice roll and at a fork), the Steps box and ◀ Back beside it, under a first line saying what to do (“Ann's
+  turn: 🎲 Roll (D), then ▶ Move (Enter, or click the dice once they land)”); a click on the landed dice (or movement
+  wheel) moves the token, with `Enter`'s checks. **The check before going on** (`src/play/host/goon.ts`,
   `GoOnCheck.svelte`): the blue button pressed (a click, `N`, `Enter` where it's Next, a click on the stage, the clue
   row's ▦ Done) with something left opens a card in the panel instead, anchored at its bottom right over the panel's
   buttons (never the stage, the status line or the fixed bar), with a button-free spot over the blue button. Its
@@ -448,11 +452,21 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   still playing, a steal open; a wheel or dice tile's own tool not spun or rolled, or landed on “Spin again”; the
   Final's own 🤫 card not sent at Show question ▶, its typed answers still coming at Reveal answer ▶, and the spotlit
   player not judged yet at Next player ▶ or Finish game ▶, a must whose ✔ Right `C` / ✘ Wrong `X` close the check, so
-  the verdict lands on stream before `N` goes on, with no `Enter` and the likely one ringed) or “Before you go on” (a
+  the verdict lands on stream before `N` goes on, with no `Enter` and the likely one ringed; a board game's turn at Next
+  turn ▶, where one check walks it: its roll (🎲 Roll `D`, `Enter`), “Rolling…” while the dice go, its move (▶ Move
+  `Enter`, or at a fork its ways, with no key: the numbers still pick players), “Moving…” while the token goes, then its
+  landing's actions not run: all instant (points, a stat, an item, a sound, a skip, a roll again, with nobody to choose)
+  **▶ Run Lucky's actions ▶ next turn**; a roll, spin or question deciding the rest, **▶ Start Lucky**; anything that
+  puts something up or asks who, **▶ Run Lucky's actions**, which closes the check to let it play out; each line ticked
+  as it's done (“✓ Ann rolled 4”), ending on “✓ Ann's turn is played” with Next turn ▶ (`N` or `Enter`); nothing for a
+  turn that ends without a move: off the board or in a zone, a slice naming no number, nowhere to go. The landing's run
+  is marked (`BoardGameState.last.ran`) by one helper whichever way it runs (its landing row, its space's card and ▶ Run
+  all / ▶ Start, the stage's menu, the check: bgops `runLanding`), and an Undo of what ran it takes the mark back) or “Before you go on” (a
   loss: a player picked or a Daily Double's player with no points, ✍ answers not judged, a partner clue not judged, at ▦
   Done; a wheel's or dice's score effect not given, before it goes; a question pop-up's player picked with no points, at
   its Next ▶; the tiebreaker clue with nobody its winner while they're still tied, at 🏁 Back to results or its row's
-  skip: 🏆 Ann won ▶ results for each tied player, `Enter` on the one picked). A tool from the tools row never asks
+  skip: 🏆 Ann won ▶ results for each tied player, `Enter` on the one picked; a board game's question worth points that
+  came up this turn with nobody given any, at Next turn ▶: ＋ Award Ann $200 ▶ next turn). A tool from the tools row never asks
   whether it spun. A Daily Double's who found it and wager, and the Final's wagers, are typed, so they never open it:
   `N`, `Enter` in the wager box or a click on Show question ▶ with one missing (or over the max) keeps the keys in the
   box (the Final's: the first to fill; in its reveals, Show wager ▶ with none in goes to that player's row), flashes the
@@ -471,7 +485,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   `B`, `M`, `Space`, `←`/`→` and `F` pass through. Shift+click on the blue button goes on asking only what must be done;
   the keys go back to what opened it. What's left also rings its own button in the panel (one ring at a time), and
   “Don't ask about … again this game” silences a kind (`session.goonQuiet`). With the controls hidden in one window a
-  loss that can wait goes on (a tile's tool not spun too), and a reveal, a must or a score effect left is held (nothing changes on stream, the stage keeps its
+  loss that can wait goes on (a tile's tool not spun, a board game's turn not rolled, too), and a reveal, a must, a score
+  effect left or a fork's way to pick is held (nothing changes on stream, the stage keeps its
   size, the Show controls pill pulses, `H` shows the panel with it open); in two windows the controls come back while
   it's open and hide again after, and a click on the stage that opened it says “See the panel ↘ first” there. Its
   words never carry what players typed, picked or wagered, nor a 🤫 card's words. The stage (and the editor's previews)

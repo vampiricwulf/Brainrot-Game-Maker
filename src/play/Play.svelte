@@ -30,10 +30,10 @@
   import { dropOffersBut } from './host/offered.svelte';
   import { forgetRecipients, recipientsOf } from './host/tilecardpicks.svelte';
   import {
-    anywayLabel, answerRow, asked, ddWaits, doneStep, escBounce, finalWaits, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx,
+    anywayLabel, answerRow, asked, ddWaits, doneSay, doneStep, escBounce, finalWaits, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx,
     type GoPanel, type PartnerNow, type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
   } from './host/goon';
-  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type Overlay, type StageAction, type TimerState } from '../lib/live';
   import {
     answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
@@ -92,9 +92,9 @@
   import { isMenuKey, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { browserMenuFits } from '../lib/nomenu';
   import { longPress } from '../lib/longpress';
-  import { currentPlayer, ensureBoard, spaceSaid, waysNow, waysOn } from '../lib/boardgame';
+  import { currentPlayer, ensureBoard, HOP_MS, spaceSaid, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, focusRef, override, refindPositions } from '../lib/rpg';
-  import { boardNow, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
+  import { boardNow, isMover, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
@@ -2137,7 +2137,11 @@
     } else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
     // (The blue button's step: Next ▶, Show question ▶ or ▦ Done ▶ board, through the check.)
     else if (mainNow?.id === 'close' || mainNow?.id === 'tool') goOn('stage', mainNow);
-    else closeOverlay();
+    // A board game's own dice (or movement wheel), landed: the token moves, with Enter's checks (a fork, a zone, the
+    // count typed over it). Esc still only puts them away.
+    else if (session.phase === 'boardgame' && boardMover(o)) {
+      if (!boardEnter()) closeOverlay();
+    } else closeOverlay();
   }
 
   /**
@@ -2904,6 +2908,17 @@
     return () => clearTimeout(t);
   });
 
+  /** Goes up once a board game's token has stepped to where its move ends: the check's “Moving…” follows. */
+  let hopTick = $state(0);
+  $effect(() => {
+    const h = boardNow(game, session).bs?.hop;
+    if (!h) return;
+    const wait = h.at + HOP_MS * (h.path.length - 1) - Date.now();
+    if (wait <= 0) return;
+    const t = setTimeout(() => hopTick++, wait + 20);
+    return () => clearTimeout(t);
+  });
+
   /** Goes up while a partner clue's check counts its seconds down, or its wheel turns: the check and the blue button follow. */
   let partnerTick = $state(0);
   const partnerTicks = $derived.by(() => {
@@ -2979,7 +2994,7 @@
       dual,
       live: app.live,
       // (Read again once a spin or a roll lands, or what's over the stage changes: the blue button wakes.)
-      now: (void toolTick, void partnerTick, void app.live.overlay, Date.now()),
+      now: (void toolTick, void partnerTick, void hopTick, void app.live.overlay, Date.now()),
       selected,
       amount,
       marks: session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {},
@@ -2997,8 +3012,7 @@
       ddPhone: !!session.dd?.playerId && wagerPhones.includes(session.dd.playerId),
       partner: partnerNow,
       final: { teams: pregameTeams, wagerPhones },
-      // (Not yet: the turn box still offers its own main button.)
-      board: null,
+      board: session.phase === 'boardgame' ? { editing: boardEdit.on, steps: bgSteps, noNumber: bgNoNumber, question: bgQuestion?.turn === bgAmountKey ? bgQuestion : null } : null,
       act: goActs,
     };
   });
@@ -3021,9 +3035,14 @@
   /** Where the check was when it went by itself (its moment went): a click there waits a moment, not landing on a box. */
   let checkGone: { r: DOMRect; at: number } | null = null;
   /** The moment on screen, as the check knows it: it closes by itself when this changes (Ctrl+Z out of the clue…). */
-  const momentNow = $derived(
-    `${session.phase}|${session.currentRound}|${openClueKey ?? ''}|${session.revealed}|${session.slide ?? 0}|${session.intro?.stage ?? ''}|${session.dd?.stage ?? ''}|${app.live.overlay?.nonce ?? ''}|${session.finalStep ?? ''}|${session.final?.current ?? ''}|${!!session.tiebreakerRevealed}`,
-  );
+  const momentNow = $derived.by(() => {
+    // (A board game's turn: its own dice or movement wheel are part of it, as the check walks it; the turn changing isn't.)
+    const { round: bg, bs } = boardNow(game, session);
+    const o = app.live.overlay;
+    const over = bg && isMover(bg, toolOverlay(app.live)) ? '' : (o?.nonce ?? '');
+    const turn = bs ? `${bs.turn}.${bs.turns ?? 0}` : '';
+    return `${session.phase}|${session.currentRound}|${openClueKey ?? ''}|${session.revealed}|${session.slide ?? 0}|${session.intro?.stage ?? ''}|${session.dd?.stage ?? ''}|${over}|${session.finalStep ?? ''}|${session.final?.current ?? ''}|${!!session.tiebreakerRevealed}|${turn}`;
+  });
   /** What the check's items say (to redraw it only when that changes: a number key moving its ⏎ too). */
   const itemsSaid = (items: LeftItem[]) => JSON.stringify(items.map((i) => [i.id, i.done ?? '', i.text, i.quick.map((q) => [q.label, q.why ?? '', !!q.enter, !!q.ring])]));
   // What's left follows what happens meanwhile: an item done elsewhere keeps its line, ticked; new ones join at the end.
@@ -3031,9 +3050,10 @@
     const ck = check;
     if (!ck) return;
     const now = asked(ck.openedBy, leftNow(go, ck.step));
+    const c = go;
     untrack(() => {
       if (check !== ck) return;
-      const items = mergeItems(ck.items, now);
+      const items = mergeItems(ck.items, now, (id) => doneSay(c, id));
       if (itemsSaid(items) === itemsSaid(ck.items)) return;
       check = { ...ck, items, ...(!todo(items).length && todo(ck.items).length ? { nothingAt: Date.now() } : {}) };
     });
@@ -3115,7 +3135,7 @@
     }
     if (q.then !== 'go') return;
     // Then the step, once nothing's left: a fix that couldn't (it said why), or another item still to do, keeps it open.
-    const now = mergeItems(ck.items, asked(ck.openedBy, leftNow(go, ck.step)));
+    const now = mergeItems(ck.items, asked(ck.openedBy, leftNow(go, ck.step)), (id) => doneSay(go, id));
     if (todo(now).length) return void (check = { ...(check ?? ck), items: now });
     takeStep();
   }
@@ -4901,12 +4921,15 @@
   let popupNonce = '';
   /** The board-game turn the question came up on (Enter judges it on that turn only: see boardEnter). */
   let popupTurn = '';
+  /** A board game: the question worth points that came up this turn (a space's, a slice's), for the check before Next turn ▶. */
+  let bgQuestion = $state<{ value: number; at: number; turn: string } | null>(null);
   $effect(() => {
     const o = app.live.overlay;
     if (o?.kind !== 'popup' || o.nonce === popupNonce) return;
     popupNonce = o.nonce;
     popupTurn = untrack(() => bgAmountKey);
     if (typeof o.value === 'number') untrack(() => (amount = o.value!));
+    if (session.phase === 'boardgame' && typeof o.value === 'number' && o.value > 0 && o.answer) bgQuestion = { value: o.value, at: o.at ?? Date.now(), turn: popupTurn };
   });
 
   /** G / Numpad 5: everyone back together (with one party there's nothing to do: it says so). */
@@ -5086,6 +5109,12 @@
     app.live.overlay = null;
     bgSteps = null;
     return true;
+  }
+
+  /** The round's own dice or movement wheel (on stream, over the board). */
+  function boardMover(o: Overlay | null): boolean {
+    const { round } = boardNow(game, session);
+    return !!round && isMover(round, o);
   }
 
   /** Next turn ▶ (◀ Previous turn: -1): a skip or a Roll again is said, it isn't simply the next player's turn. */
@@ -5583,13 +5612,10 @@
         else intro();
       }
     } else if (session.phase === 'boardgame') {
-      // At a fork, N doesn't drop the steps left (the host panel's Next turn ▶ does, on purpose).
-      const fork = session.boardgames?.[game.rounds[session.currentRound]?.id ?? '']?.fork;
-      if (fork && !e.shiftKey) hint(`Pick which way first (${Math.abs(fork.stepsLeft)} to go), or click Next turn ▶ to drop the steps left`);
-      else {
-        const t = turnNow(game, session, e.shiftKey ? -1 : 1);
-        if (t) toast(t, 4000);
-      }
+      // A board game's turn: N is Next turn ▶, asking first while the turn isn't played (not rolled, not moved, a way
+      // to pick at a fork, its landing not run: one check walks it). Shift+N: the turn before, never asking.
+      if (e.shiftKey) boardTurn(-1);
+      else if (mainNow) goOn('n', mainNow);
     }
     else if (session.phase === 'final' && session.finalStep === 'reveal') {
       // The reveals: N the blue button (the spotlit one's answer or wager, the next player), asking for the spotlit one's

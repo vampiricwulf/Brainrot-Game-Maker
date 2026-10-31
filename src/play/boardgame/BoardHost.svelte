@@ -1,8 +1,9 @@
 <!--
   The host's controls for a board-game round: whose turn it is and the turn order (drag to reorder, click a name for
-  their turn), roll or spin to move (the host confirms or edits the count), forks, the passed and landed spaces' action
-  buttons, the card of a space clicked on the stage, sending players to spaces and zones, what's on screen, and each
-  player's stats and inventory.
+  their turn), the turn box (its first line says what to do; one slot, 🎲 Roll then ▶ Move in the same place, beside
+  the Steps box and ◀ Back), forks, the passed and landed spaces' action buttons, the card of a space clicked on the
+  stage, sending players to spaces and zones, what's on screen, and each player's stats and inventory. Next turn ▶ is
+  the panel's blue button (the play screen's, goon.ts), never here.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -17,11 +18,12 @@
   import { lastAction, logged, stepText } from '../../lib/toolset';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, moveNow, moverDiceName, offBoard, playerName, reorderTurns, rollMover, runLanding, sendNow, setTurn, stepWaysHint, turnNow, turnOrder } from './bgops';
+  import { boardNow, busyZones, isMover, landingRan, moveNow, moverDiceName, offBoard, playerName, reorderTurns, rollMover, runLanding, sendNow, setTurn, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { START_FIRST } from '../rpg/hostops';
-  import { offerMenu, offerNext, step as nextStep, type NextAction } from '../host/slots.svelte';
+  import { offerMenu, step as nextStep, type NextAction } from '../host/slots.svelte';
   import { stepItem, type StageItem } from '../host/stagemenu';
+  import StepButton from '../host/StepButton.svelte';
   import { VERBS } from '../host/verbs';
   import { offerIn } from '../host/offered.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
@@ -34,6 +36,7 @@
     steps = $bindable(null),
     space = $bindable(null),
     dual,
+    ring = null,
     onhistory,
   }: {
     game: Game;
@@ -44,6 +47,8 @@
     /** The space whose card is open (clicked on the stage). */
     space?: string | null;
     dual: boolean;
+    /** The box button that wears the ring (the check's first thing left): 'turnslot', the slot or the only way on. */
+    ring?: string | null;
     /** Open the 📜 Log's history. */
     onhistory?: () => void;
   } = $props();
@@ -79,53 +84,62 @@
   const shown = (id: string | undefined) => (round && bs ? spaceShown(round, bs, id, !dual) : '?');
   /** A passed or landed space's button (a Send to a secret space says “? (secret)” in one window, as its toast does). */
   const actText = (a: Action, on: 'land' | 'pass') => describeAction(game, a, on, ctx.teams, dual ? undefined : bs);
+  /** Goes up once the round's own dice (or movement wheel) land: the slot wakes. */
+  let landedTick = $state(0);
+  $effect(() => {
+    const o = toolOverlay(app.live);
+    if (o?.kind !== 'dice' && o?.kind !== 'wheel') return;
+    const wait = overlayDoneAt(o) - Date.now();
+    if (wait <= 0) return;
+    const t = setTimeout(() => landedTick++, wait + 20);
+    return () => clearTimeout(t);
+  });
+  /** The round's own dice (or movement wheel) still going on stream (under the scores too). */
+  const rolling = $derived.by(() => {
+    void landedTick;
+    const o = toolOverlay(app.live);
+    return !!round && !!o && isMover(round, o) && Date.now() < overlayDoneAt(o);
+  });
+  const rollWords = $derived(round?.mover.kind === 'wheel' ? '🎡 Spin to move' : `🎲 Roll ${round ? moverDiceName(game, round) : ''}`);
   /**
-   * The round's main button, in the host panel's main cell: 🎲 Roll (D), then ▶ Move (Enter), then Next turn ▶ (N), with
-   * ◀ Previous turn (Shift+N) right beside it (and Next turn ▶ too while the main button rolls or moves). A one-space
-   * board starts with its way on (→ Space 2, Enter) or 🔀 Pick a way. While the board is being edited: ✓ Done editing (Esc).
+   * The turn box's one slot: 🎲 Roll (D), then ▶ Move (Enter) once there's a count, in the same place; greyed while the
+   * dice roll and at a fork (the way first). A one-space board has its ways instead.
    */
-  /** The turn's step now (the panel's main button's, and the stage's menu's). */
-  const turnStep = (): NextAction | null => {
-    if (!bs || !round) return null;
-    if (boardEdit.on) return nextStep(VERBS.doneEditing, () => setEditing(false));
-    const prev = nextStep(VERBS.prevTurn, () => turnTold(-1));
-    const next = nextStep(VERBS.nextTurn, () => turnTold(1));
-    // At a fork the way is picked first (Next turn ▶ beside it drops the steps left).
-    if (bs.fork)
-      return {
-        label: VERBS.pickWay.label,
-        title: `Pick which way ${turnName} goes: the buttons under “which way?”, or ${dual ? 'a marked space' : 'the space'} on the stage`,
-        run: () => {
-          forkEl?.scrollIntoView({ block: 'nearest' });
-          hint(`Pick which way first (${Math.abs(bs.fork?.stepsLeft ?? 0)} to go): the buttons under “which way?”, or ${dual ? 'a marked space' : 'click the space on the stage'}`);
-        },
-        also: [prev, next],
-      };
-    if (moved) return { ...next, also: [prev] };
-    const also = [prev, next];
-    // One space a turn: the way on is the move (Enter); at a fork, the way is picked first; nowhere to go, the next turn.
-    if (round.mover.kind === 'step') {
-      const [w] = stepWays;
-      if (stepWays.length === 1) return nextStep(VERBS.stepTo(shown(w)), () => move(1, w, turnId), { title: `Enter: ${turnName} moves to ${shown(w)}`, also });
-      if (stepWays.length) return nextStep(VERBS.pickWay, () => hint(stepWaysHint(round, bs, stepWays, dual)), { title: stepWaysHint(round, bs, stepWays, dual), also });
-      return { ...next, also: [prev] };
+  const slot = $derived.by((): NextAction | null => {
+    if (!round || round.mover.kind === 'step') return null;
+    const what = round.mover.kind === 'dice' ? moverDiceName(game, round) : 'the movement wheel';
+    if (fork) return nextStep({ label: rollWords, key: 'D' }, roll, { disabled: true, title: 'Pick the way first: below, or the space on the stage' });
+    if (rolling) return nextStep({ label: rollWords, key: 'D' }, roll, { disabled: true, title: `Still ${round.mover.kind === 'wheel' ? 'spinning' : 'rolling'}…` });
+    if (steps) {
+      const n = steps;
+      return nextStep({ label: `${n < 0 ? '◀ Back' : '▶ Move'} ${turnName}: ${Math.abs(n)}`, key: '⏎' }, () => move(n), { title: `Enter: move ${turnName} ${n < 0 ? 'back ' : ''}${Math.abs(n)} space${Math.abs(n) === 1 ? '' : 's'}` });
     }
-    // (In a zone, a count is no move: the next turn, unless the host sends them out first.)
-    if (steps && turnId && !bs.positions[turnId]?.space) return { ...next, also: [prev] };
-    if (steps) return nextStep(VERBS.move(steps), () => move(steps), { title: `Enter: move ${turnName} ${steps < 0 ? 'back ' : ''}${Math.abs(steps)} space${Math.abs(steps) === 1 ? '' : 's'}`, also });
-    const wheel = round.mover.kind === 'wheel';
-    return nextStep(wheel ? VERBS.boardSpin : VERBS.boardRoll, roll, { title: `D: ${wheel ? 'spin the movement wheel' : `roll ${moverDiceName(game, round)}`}`, also });
-  };
-  offerNext('turn', turnStep);
-  // The stage's menu: the turn's step as the main button has it (the roll, the move, the way on), Next turn ▶ and
-  // ◀ Previous turn, then ✎ Edit board and 🔀 Shuffle.
+    return nextStep({ label: rollWords, key: 'D' }, roll, { title: `D: ${what}` });
+  });
+  /** The turn box's first line: what to do next, in words a mouse host can follow. */
+  const firstLine = $derived.by(() => {
+    if (!round || !bs) return '';
+    if (fork) return `${playerName(session, fork.playerId)} is at a fork: pick the way below first, or click the space on the stage.`;
+    const off = turnId ? offBoard(session, round, bs, turnId) : null;
+    if (off) return `${off}.`;
+    if (moved) {
+      // (The landing's actions not run yet: its buttons are below. Next turn ▶ asks first, while they aren't.)
+      const left = !!landed?.onLand?.length && !!last && !landingRan(session, last);
+      return left && landed ? `${turnName} landed on ${shown(landed.id)}: its buttons are below, then Next turn ▶ (N).` : `${turnName}’s turn is played: Next turn ▶ (N).`;
+    }
+    if (round.mover.kind === 'step') return stepWays.length ? `${turnName}’s turn: → the way on (Enter, or click the space on the stage).` : `${turnName}’s turn: no way on from here.`;
+    return round.mover.kind === 'wheel'
+      ? `${turnName}’s turn: 🎡 Spin (D), then ▶ Move (Enter, or click the wheel once it lands).`
+      : `${turnName}’s turn: 🎲 Roll (D), then ▶ Move (Enter, or click the dice once they land).`;
+  });
+  // The stage's menu: the turn box's own actions (its slot, or the one way on), then ✎ Edit board and 🔀 Shuffle. (Next
+  // turn ▶ is the blue button's step: the moment's own.)
   offerMenu('turn', () => {
-    const n = turnStep();
-    if (!n || !bs || !round) return [];
-    if (boardEdit.on) return [stepItem(n, 'edit')];
-    const kind = n.label === VERBS.nextTurn.label ? 'turn+' : n.key === 'D' ? 'roll' : 'move';
-    const out: StageItem[] = [stepItem(n, kind)];
-    for (const a of n.also ?? []) out.push(stepItem(a, a.label === VERBS.nextTurn.label ? 'turn+' : 'turn-'));
+    if (!bs || !round) return [];
+    if (boardEdit.on) return [stepItem(nextStep(VERBS.doneEditing, () => setEditing(false)), 'edit')];
+    const out: StageItem[] = [];
+    if (slot) out.push(stepItem(slot, steps ? 'move' : 'roll'));
+    else if (stepWays.length === 1 && !moved && !fork) out.push(stepItem(nextStep(VERBS.stepTo(shown(stepWays[0])), () => move(1, stepWays[0], turnId)), 'move'));
     out.push({ id: 'edit', label: '✎ Edit board', keys: 'E', onclick: () => setEditing(true) }, { label: '🔀 Shuffle', hint: 'The turn order, shuffled (whose turn it is stays theirs)', onclick: shuffle });
     return out;
   });
@@ -133,12 +147,6 @@
   const card = $derived(round && space ? spaceById(round, space) : undefined);
   /** The spaces' names in the lists below (a name that repeats says where it is: “Bonus (after Space 6)”). */
   const listNames = $derived(round ? spaceListNames(round) : new Map<string, string>());
-
-  /** Next turn ▶ / ◀ Previous turn: a skip or a Roll again is said (it isn't the next player's turn). */
-  function turnTold(delta: number): void {
-    const t = turnNow(game, session, delta);
-    if (t) toast(t, 4000);
-  }
 
   function roll(): void {
     // (As D: under the round's title card nobody would see it.)
@@ -170,6 +178,8 @@
   /** A passed or landed space's button: logged with the space's name, as from its card. */
   function run(s: BoardSpace, a: Action, who: string, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who) return void hint('Pick who it’s for first');
+    // (For the players picked: nobody picked, it does nothing, and the landing isn't run.)
+    if ('who' in a && a.who === 'selected' && !selected.length) return void hint('Pick who it’s for first (1–9)');
     const where = bs ? spaceSaid(bs, s, !dual) : s.name;
     const go = () => runAction({ ...ctx, chosen: [who] }, a, `${where}: ${actText(a, on)}`);
     // (The landing's own: it counts as run, for the check before Next turn ▶.)
@@ -305,24 +315,21 @@
       <BoardEditPanel {game} {session} {round} {bs} {dual} />
     {:else}
     <div class="row move">
-      <b>🎲 {turnName}’s turn</b>
+      <!-- The first line: what to do next (one line, cut short where narrow: the whole of it in its tooltip). -->
+      <span class="first" title={firstLine} data-turn-next>{firstLine}</span>
       {#if round.mover.kind === 'step'}
         <!-- One space per turn: the player picks which way. -->
-        {#if fork}
-          <!-- (A move that stopped at a fork goes on with its own steps: its ways are below.) -->
-          <span class="muted small">{playerName(session, fork.playerId)} is at a fork: pick the way below first.</span>
-        {:else if !stepWays.length}
-          <span class="muted small">{turnSpace ? 'No way on from here.' : `${turnName} isn’t on the board.`}</span>
-        {:else}
-          <span class="muted small">{stepWays.length > 1 ? 'Which way?' : 'Move to:'}</span>
+        {#if !fork && stepWays.length}
           {#each stepWays as w (w)}
-            <button class="good" onclick={() => move(1, w, turnId)}>→ {shown(w)}</button>
+            <!-- (The only way on is Enter's, until they've moved.) -->
+            <button class="good" class:ring={ring === 'turnslot' && stepWays.length === 1} onclick={() => move(1, w, turnId)}
+              >→ {shown(w)}{#if stepWays.length === 1 && !moved} <kbd aria-hidden="true">⏎</kbd>{/if}</button
+            >
           {/each}
         {/if}
-      {:else}
-      <button onclick={roll} title="D: {round.mover.kind === 'dice' ? moverDiceName(game, round) : 'the movement wheel'}">
-        {round.mover.kind === 'wheel' ? '🎡 Spin to move' : `🎲 Roll ${moverDiceName(game, round)}`}
-      </button>
+      {:else if slot}
+      <!-- The one slot: 🎲 Roll, then ▶ Move in the same place (ringed while it's what's next). -->
+      <StepButton step={slot} ring={ring === 'turnslot'} />
       <label class="small">
         Steps
         <input
@@ -343,7 +350,6 @@
         />
       </label>
       <!-- (A negative count, typed or a wheel's "Back 2", moves back: the buttons say which way they go.) -->
-      <button disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter">{steps && steps < 0 ? '◀ Back' : '▶ Move'} {turnName}{steps ? `: ${Math.abs(steps)}` : ''}</button>
       <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>{steps && steps < 0 ? '▶ Forward' : '◀ Back'} {steps ? Math.abs(steps) : ''}</button>
       {/if}
       <span class="spacer"></span>
@@ -542,6 +548,15 @@
   }
   .n {
     width: 64px;
+  }
+  /* The turn box's first line: the row's whole width, one line (cut short where narrow). */
+  .first {
+    flex: 1 0 100%;
+    min-width: 0;
+    font-weight: 600;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .fork {
     padding: 6px 8px;

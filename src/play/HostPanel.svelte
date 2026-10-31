@@ -743,10 +743,11 @@
     if (!st) return null;
     const keys = st.key ? `N${st.enterIsNext ? ' or Enter' : ''}` : 'Click it (N says so)';
     const title = st.busy ?? [st.verb.title, keys, mayAsk(st) ? CHECK.shiftClick : '', goon?.first ? `first: ${goon.first}` : ''].filter(Boolean).join(' · ');
-    return { label: st.verb.label, ...(st.key ? { key: st.key } : {}), title, disabled: !!st.busy, ...(st.flow ? { flow: st.flow } : {}), goes: true, run: () => goon?.main('main') };
+    // (◀ Previous turn beside Next turn ▶: another flow step, quiet, never asking.)
+    const also = st.also?.map((a): NextAction => ({ label: a.verb.label, ...(a.verb.key ? { key: a.verb.key } : {}), ...(a.verb.title ? { title: a.verb.title } : {}), run: a.run }));
+    return { label: st.verb.label, ...(st.key ? { key: st.key } : {}), title, disabled: !!st.busy, ...(st.flow ? { flow: st.flow } : {}), ...(also?.length ? { also } : {}), goes: true, run: () => goon?.main('main') };
   });
-  // The blue button's step; then the old main buttons of the moments not moved yet (the boxes' offers).
-  const next = $derived(blue ?? slots.next());
+  const next = $derived(blue);
   $effect(() => {
     nextAction = next;
   });
@@ -1198,7 +1199,7 @@
 
       {#if session.phase === 'boardgame'}
         <div class="mode-host">
-          <BoardHost {game} {session} bind:selected bind:steps={bgSteps} bind:space={bgSpace} {dual} onhistory={() => onlog('history')} />
+          <BoardHost {game} {session} bind:selected bind:steps={bgSteps} bind:space={bgSpace} {dual} ring={goon?.ring} onhistory={() => onlog('history')} />
         </div>
       {/if}
 
@@ -1431,7 +1432,7 @@
       <span class="spacer"></span>
       <!-- Fresh per round, so its click guard also covers the second half of a double-click on "Yes". -->
       {#key session.currentRound}
-        <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} ongoto={ongotoround} {onslide} />
+        <RoundNav {game} {session} onprev={onprevround} onnext={onnextround} ongoto={ongotoround} />
       {/key}
     {/if}
   </div>

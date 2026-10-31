@@ -163,13 +163,12 @@ export const VERBS = {
   goToRound: (round: string): Verb => ({ label: `Go to ${round} ▶` }),
   endGame: { label: 'End game ▶' },
 
-  // ---------- A board game's turn ----------
+  // ---------- A board game's turn (its box's: Next turn ▶ is the blue button's, FLOW) ----------
   boardRoll: { label: '🎲 Roll', key: 'D' },
   boardSpin: { label: '🎡 Spin', key: 'D' },
   move: (steps: number): Verb => ({ label: `${steps < 0 ? '◀ Back' : '▶ Move'} ${Math.abs(steps)}`, key: '⏎' }),
   /** One space a turn: the one way on. */
   stepTo: (space: string): Verb => ({ label: `→ ${space}`, key: '⏎' }),
-  pickWay: { label: '🔀 Pick a way' },
   nextTurn: { label: 'Next turn ▶', key: 'N', title: 'N: the next player’s turn' },
   prevTurn: { label: '◀ Previous turn', key: '⇧N', title: 'Shift+N: back to the turn before' },
   doneEditing: { label: '✓ Done editing', key: 'Esc', title: 'Esc: back to playing (the changes stay in this game)' },

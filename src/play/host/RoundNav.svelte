@@ -3,14 +3,14 @@
   Leaving a round always asks first, in the panel's confirmation strip, its answers saying what they do ("12 clues are
   left in Jeopardy!. Go to Double Jeopardy!? Keep playing / Go to Double Jeopardy! ▶"; an RPG or board-game round:
   "Leave Adventure for Board game?"), so a stray click or a double-click never jumps ahead on stream. Only a board
-  played out goes on at once: then its Next round ▶ is the panel's main button.
+  played out goes on at once (the panel's blue button is Next round ▶ then, goon.ts).
 -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { isBoard, isFinal, isSlides, playableClues, roundName, type Game, type Session } from '../../lib/model';
   import { slidePosition } from '../../lib/session';
   import { ROUND_MODES } from '../../lib/modes';
-  import { hostAsk, offerMenu, offerNext } from './slots.svelte';
+  import { hostAsk, offerMenu } from './slots.svelte';
   import { justShown } from './guard';
   import { secondClick } from '../../lib/oneshot';
   import { VERBS } from './verbs';
@@ -22,8 +22,7 @@
     onprev,
     onnext,
     ongoto,
-    onslide,
-  }: { game: Game; session: Session; onprev: () => void; onnext: () => void; ongoto?: (index: number) => void; onslide?: (d: 1 | -1) => void } = $props();
+  }: { game: Game; session: Session; onprev: () => void; onnext: () => void; ongoto?: (index: number) => void } = $props();
 
   const round = $derived(game.rounds[session.currentRound]);
   const board = $derived(!!round && isBoard(round));
@@ -53,16 +52,6 @@
     clearTimeout(timer);
     if (asking !== null) setAsk(null);
   });
-
-  // A played-out board: going on is the moment's main button.
-  // A slides round: the next slide, then (on the last) the next round.
-  offerNext('board', () =>
-    slides && !lastSlide && onslide
-      ? { label: VERBS.nextSlide.label, key: VERBS.nextSlide.key, run: () => onslide(1), flow: 'pager' }
-      : done
-        ? { label: nextLabel, ...(slides ? { key: 'N' } : {}), run: next }
-        : null,
-  );
 
   // The stage's menu: back, and going on (asking first unless the round is played out), as in this row.
   offerMenu('board', () => [

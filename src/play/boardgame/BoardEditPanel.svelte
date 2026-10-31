@@ -12,7 +12,8 @@
   import type { BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
   import BoardSpaceButtons from './BoardSpaceButtons.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
-  import { boardEdit, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editKeep, editReverse, editShowName, editSpace, editStart } from './boardedit.svelte';
+  import { boardEdit, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editKeep, editReverse, editShowName, editSpace, editStart, setEditing } from './boardedit.svelte';
+  import { VERBS } from '../host/verbs';
 
   let { game, session, round, bs, dual }: { game: Game; session: Session; round: BoardGameRound; bs: BoardGameState; dual: boolean } = $props();
 
@@ -54,6 +55,8 @@
       {dual ? 'Hidden names show dimmed, here only.' : 'Hidden names show dimmed while you edit (on the stage too), and go again when you’re done.'}
       The changes last for this game only{app.playerOnly ? '' : ', unless you press 💾 Keep in game'}. Each one is a step: Ctrl+Z takes it back.
     </span>
+    <!-- Back to playing (the panel's main cell is empty while editing: no Next turn ▶ under the edits). -->
+    <button class="small done" onclick={() => setEditing(false)} title={VERBS.doneEditing.title}>{VERBS.doneEditing.label} <kbd aria-hidden="true">{VERBS.doneEditing.key}</kbd></button>
   </div>
   {#if bs.zoneShown}
     <div class="row">
@@ -259,5 +262,16 @@
   }
   .warn {
     color: var(--warn);
+  }
+  .done {
+    margin-left: auto;
+  }
+  kbd {
+    font: 10px/1 ui-monospace, monospace;
+    padding: 1px 3px;
+    margin-left: 3px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    opacity: 0.7;
   }
 </style>

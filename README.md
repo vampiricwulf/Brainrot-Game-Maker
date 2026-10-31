@@ -239,7 +239,13 @@ theirs, to show a player out of turn), and the quiet Finish game ▶ for finishi
 blue button is Finish game ▶ itself. A tie for first on the results screen is settled in its box, which holds every way:
 **❓ Tiebreaker clue**, **🎲 Tiebreaker roll-off** `O`, **🤝 Declare co-winners**; that screen has no blue button (`N`
 says to settle the tie there, and the box flashes). The tiebreaker clue's blue button is its slides, 👁 Reveal answer,
-then **🏁 Back to results**. While a partner clue's cards are handed out, `T` (or the status line's ⏱
+then **🏁 Back to results**. In a board game the blue button is **Next turn ▶** (`N`), ◀ Previous turn (`Shift+N`)
+quiet beside it; the roll and the move are the turn box's, in one slot under a first line saying what to do (“Ann's
+turn: 🎲 Roll (D), then ▶ Move (Enter, or click the dice once they land)”): **🎲 Roll** (`D`), then **▶ Move Ann: 3**
+(`Enter`) in the same place once the dice land (greyed while they roll, ringed while it's what's next), the Steps box and
+◀ Back beside it. A click on the landed dice (or movement wheel) moves the token too, with `Enter`'s checks; `Esc` only
+puts them away. While ✎ Edit board is open there's no blue button: **✓ Done editing** (`Esc`) is in the edit panel.
+While a partner clue's cards are handed out, `T` (or the status line's ⏱
 Start) starts the clock: with no card waiting for a phone the clue goes live, as **⏱ Start the clock (45 s)** does, and the
 first `Enter` after it only says so; with phone cards still to send it's the clock only, and **📤 Send the cards (clock
 running)** (`Enter`) sends them.
@@ -257,7 +263,17 @@ still playing (✔ Got it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`) or a st
 not judged (✔ Got it ▶ board / ✘ Missed ▶ board). In the Final: its own 🤫 card not sent at Show question ▶ (📤 Send it),
 typed answers still coming at Reveal answer ▶ (⏱ 10 more seconds `Shift+T`), and at Next player ▶ or Finish game ▶ the
 spotlit player not judged yet (**✔ Right** `C` / **✘ Wrong** `X`, to be done first: each closes the check, so the verdict,
-the wager and the new score land on stream, then `N` goes on). At the tiebreaker's 🏁 Back to results with nobody its
+the wager and the new score land on stream, then `N` goes on). In a board game, Next turn ▶ asks while the turn isn't
+played, and one check walks it: **First:** 🎲 Roll (`D` or `Enter`), “Rolling…”, then ▶ Move Ann: 3 (`Enter`) or, at a
+fork, the ways (click them: the numbers still pick players), “Moving…”, then the landing's actions not run yet:
+**▶ Run Lucky's actions ▶ next turn** when they're all done at once (points, a stat, an item, a sound, a skip, a roll
+again), **▶ Start Lucky** when a roll, spin or question decides the rest, or **▶ Run Lucky's actions** when one puts
+something up or asks who (it closes the check while that plays out). Each line ticks as it's done (“✓ Ann rolled 4”),
+ending on **✓ Ann's turn is played** with Next turn ▶ (`N` or `Enter`). **Before you go on:** a question worth points
+that came up this turn with nobody given any (＋ Award Ann $200 ▶ next turn). However the landing's actions run (its
+row's buttons, its space's card, ▶ Run all, the stage's menu), it counts, and an Undo of them asks again. Nothing asks
+for a turn that ends without a move: in a zone or off the board, a wheel slice naming no number, nowhere to go. `D`,
+`Enter`, then `N` never ask. At the tiebreaker's 🏁 Back to results with nobody its
 winner yet, **Before you go on**: **🏆 Ann won ▶ results** for each tied player (the one picked with their number takes
 `Enter`), or 🏁 Back to results, still tied. Card names and who they're for, never their words. A quiet **▦ Done anyway: no points** (or **👁 Reveal anyway**, `R`) and **Not yet**
 (`Esc`) are at its foot; `N` again is "anyway" (not at a reveal, where `N` only says to press `R`). For its first 0.6 s
@@ -434,7 +450,9 @@ hidden objects. Use the separate audience window when that matters.
 strip, so no space is ever under it; the turn banner does go over the board's top edge, and the editor's checklist
 notes a space up there):
 
-- Roll (or spin the movement wheel) and move, picking the way at each fork. A wheel's slice or a die's own face moves
+- Roll (or spin the movement wheel) and move, picking the way at each fork: in the turn box, **🎲 Roll** (`D`) becomes
+  **▶ Move** (`Enter`, or a click on the landed dice) in the same place, then **Next turn ▶** (`N`) is the blue button;
+  it asks first while the turn isn't played (see the check above). A wheel's slice or a die's own face moves
   as far as the number it names ("3", "Move 3"; "Back 2", "Go back 2" or "◀ 2" move back). Moving back goes back the
   way the player came.
 - Send players to any space.
@@ -445,7 +463,7 @@ notes a space up there):
   space go, so `D`, a click, then `Enter` still moves the token. `Shift+F10` on a name in the turn order opens their
   menu (🎲 Make it their turn…).
 - **✎ Edit board** (`E`) while you play: add, move, connect, rename and delete spaces (players on a deleted space go to
-  the one before it); `E` or `Esc` again goes back to playing. In a single window a secret space not revealed yet is
+  the one before it); **✓ Done editing**, `E` or `Esc` goes back to playing. In a single window a secret space not revealed yet is
   “? (secret)” there too (its Name box shows its name only after 👁 Show, and its ⚙ Buttons… its buttons and notes only
   after 👁 Show its buttons).
 
