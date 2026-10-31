@@ -643,7 +643,7 @@ try {
   const soonShadow = await soon.locator('.soon-text').evaluate((e) => getComputedStyle(e).textShadow);
   const negShadow = await host.locator('.preview .score.neg').first().evaluate((e) => getComputedStyle(e).textShadow);
   assert(soonShadow.startsWith('rgba(255, 255, 255, 0.75)') && negShadow.startsWith('rgb(0, 0, 0)'), `on Pastel: the Starting soon words' shadow is light (${soonShadow}), a score below zero's black (${negShadow})`);
-  // A wide banner: on the card too, and its thumbnail leaves Change… and ✕ in the settings column (not under the preview).
+  // A wide banner: on the card too, and its thumbnail leaves Change… and ⌫ Clear in the settings column (not under the preview).
   const bannerRow = host.locator('.row.pop', { hasText: 'Banner above the board' });
   const wide = await host.evaluateHandle((b64) => {
     const d = new DataTransfer();
@@ -657,8 +657,8 @@ try {
   const column = await host.locator('.controls').evaluate((e) => e.getBoundingClientRect().right);
   const thumb = await bannerRow.locator('img').boundingBox();
   const change = await bannerRow.getByRole('button', { name: 'Change the banner above the board' }).boundingBox();
-  const remove = await bannerRow.getByRole('button', { name: 'Remove banner' }).boundingBox();
-  assert(thumb.x + thumb.width <= change.x && remove.x + remove.width <= column + 0.5, `a wide banner's thumbnail shrinks: Change… and ✕ stay in the settings column (✕ ends at ${Math.round(remove.x + remove.width)}, the column at ${Math.round(column)})`);
+  const remove = await bannerRow.getByRole('button', { name: '⌫ Clear banner', exact: true }).boundingBox();
+  assert(thumb.x + thumb.width <= change.x && remove.x + remove.width <= column + 0.5, `a wide banner's thumbnail shrinks: Change… and ⌫ Clear stay in the settings column (⌫ Clear ends at ${Math.round(remove.x + remove.width)}, the column at ${Math.round(column)})`);
   // Its file replaced in 🖼 Media (the same id, new bytes): the card shows the new picture.
   const firstSrc = await cardImg.getAttribute('src');
   await host.getByRole('button', { name: /^🖼 Media/ }).click();
