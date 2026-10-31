@@ -216,13 +216,13 @@ try {
   await page.keyboard.press('Enter');
   assert((await toast()).startsWith('Alice: Landed on'), 'Enter with nobody selected moves the rolled steps');
   await page.keyboard.press('n');
-  // 🎲 Roll reached with Tab, then Enter: it turns off while the dice roll and the keys go to a button near it (a
-  // player's chip), but Enter still moves once they land (it doesn't press that button).
-  const roll = page.locator('.panel [data-next]', { hasText: '🎲 Roll' });
+  // The turn box's 🎲 Roll reached with Tab, then Enter: it greys while the dice roll and the keys go back to the blue
+  // button (Next turn ▶), but Enter still moves once they land (it doesn't press that button).
+  const roll = page.locator('.bh [data-step]', { hasText: '🎲 Roll' });
   await roll.focus();
   await page.keyboard.press('Tab');
   await page.keyboard.press('Shift+Tab');
-  await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]') && document.activeElement.textContent?.includes('🎲 Roll'));
+  await page.waitForFunction(() => document.activeElement?.matches('.bh [data-step]') && document.activeElement.textContent?.includes('🎲 Roll'));
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   await page.keyboard.press('Enter');

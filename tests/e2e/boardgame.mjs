@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, dragBy, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -315,7 +315,8 @@ try {
   // The round opens on its title card (the host's status line says so): clicking it goes on.
   await page.locator('.stage-box .title-card').waitFor();
   assert((await page.locator('.status').first().innerText()).includes('Title card'), 'the host panel says the title card is up');
-  // Under it the panel's 🎲 Roll and ▶ Move wait, as D and Enter do (nobody would see the dice or the move).
+  // Under it the turn box's one slot waits, 🎲 Roll and (a count typed) ▶ Move, as D and Enter do (nobody would see the
+  // dice or the move).
   const startFirst = 'Start the round first (N, or click the title card)';
   await page.locator('.bh .move').getByRole('button', { name: /^🎲 Roll/ }).click();
   assert((await toast()) === startFirst && !(await page.locator('.stage-box .ov').count()), `under the title card, 🎲 Roll says to start the round first (${await toast()})`);
@@ -459,6 +460,34 @@ try {
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(300);
 
+  // One check walks a turn (N, D, Enter, N). Shift+click on Next turn ▶ goes on without asking, to Player 1; then N with
+  // the turn not played asks first, D rolls in it, Enter moves, and N takes Next turn ▶ once it says the turn is played.
+  await mainButton(page, 'Next turn ▶').click({ modifiers: ['Shift'] });
+  await page.locator('.stage .turn-banner', { hasText: 'Player 1' }).waitFor();
+  assert(!(await goOnCheck(page).count()), 'Shift+click on Next turn ▶ goes on without asking');
+  // (Player 1 off the fork, on a straight run with no buttons: Space 4 on.)
+  await page.getByLabel('Send to').selectOption({ label: 'Space 4' });
+  assert(
+    (await stepButton(page, '🎲 Roll d6').evaluate((b) => b.classList.contains('ring'))) && (await mainLabel(page)) === 'Next turn ▶',
+    'the turn box’s one slot is 🎲 Roll, ringed while it’s due; the blue button stays Next turn ▶',
+  );
+  await page.keyboard.press('n');
+  await checkItem(page, 'roll').waitFor();
+  assert(
+    (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await checkItem(page, 'roll').innerText()).includes('Player 1’s turn: 🎲 roll, then ▶ move.'),
+    'N with the turn not played asks first: roll, then move',
+  );
+  await goOnCheck(page, { ready: true }).waitFor();
+  await page.keyboard.press('d');
+  await checkItem(page, 'move').waitFor();
+  assert((await checkItem(page, 'roll').innerText()).startsWith('✓ Player 1 rolled'), `D rolls in it, and its line ticks, saying the roll (${await checkItem(page, 'roll').innerText()})`);
+  await page.keyboard.press('Enter');
+  await page.locator('.panel [data-goon="nothing"]').waitFor();
+  assert((await goOnCheck(page).locator('h3').innerText()) === '✓ Player 1’s turn is played', 'Enter moves them in it, and it says the turn is played (no buttons where they landed)');
+  await page.keyboard.press('n');
+  await page.locator('.stage .turn-banner', { hasText: 'Player 2' }).waitFor();
+  assert(!(await goOnCheck(page).count()), 'then N is Next turn ▶: four presses for the whole turn, D, Enter, N doing it in three');
+
   // The Shadow Realm.
   await page.getByLabel('Send to').selectOption({ label: '🌀 Shadow Realm' });
   await page.locator('.stage .zones').waitFor();
@@ -509,15 +538,25 @@ try {
   assert(spaceMenu[0] === `# ${arrowed}` && spaceMenu.some((l) => l.startsWith('📍 Put ')), `Shift+F10 on it opens its menu (${spaceMenu.join(' | ')})`);
   await page.keyboard.press('Escape');
   await openMenu(page).waitFor({ state: 'detached' });
-  // A click on the board lets the space go: D, a click, then Enter still moves the token (it never opens a card).
+  // A click on the board lets the space go: then D and Enter move the token (Enter never opens a card).
   const moved = await page.locator('.last').innerText();
-  await page.keyboard.press('d');
-  await page.waitForFunction(() => document.querySelector('[aria-label="Steps"]')?.value !== '');
   await page.locator('.stage-box').click({ position: { x: 12, y: 12 } });
   assert(!(await focusedSpace()), 'a click on the board takes the keys off the space');
+  await page.keyboard.press('d');
+  await page.waitForFunction(() => document.querySelector('[aria-label="Steps"]')?.value !== '');
   await page.keyboard.press('Enter');
   await page.waitForFunction((was) => document.querySelector('.last')?.textContent !== was, moved);
-  assert((await page.getByRole('dialog', { name: /^Space: / }).count()) === 0, `D, a click on the board, then Enter moves the token, and opens no card (${await page.locator('.last').innerText()})`);
+  assert((await page.getByRole('dialog', { name: /^Space: / }).count()) === 0, `a click on the board, then D and Enter move the token, and open no card (${await page.locator('.last').innerText()})`);
+  await page.keyboard.press('Control+z');
+  // A click on the landed dice moves the token too, with Enter's checks (Esc only puts them away).
+  await page.waitForFunction((was) => document.querySelector('.last')?.textContent === was, moved);
+  await page.getByLabel('Steps').fill('');
+  await page.evaluate(() => document.activeElement?.blur?.());
+  await page.keyboard.press('d');
+  await page.waitForFunction(() => document.querySelector('[aria-label="Steps"]')?.value !== '');
+  await page.locator('.stage-box .ov').click();
+  await page.waitForFunction((was) => document.querySelector('.last')?.textContent !== was, moved);
+  assert((await toast()).includes('Landed on') && !(await page.locator('.stage-box .ov').count()), `a click on the landed dice moves the token (${await toast()})`);
   await page.keyboard.press('Control+z');
   // The turn order: a click on a name makes it their turn; a chip dragged before another moves it there (one undo step).
   await page.locator('.bh .ord .nm', { hasText: 'Player 1' }).click();
@@ -546,21 +585,32 @@ try {
   // Its title card has a Skip intro too.
   await page.getByRole('button', { name: 'Skip intro' }).click();
   assert(!(await page.getByRole('button', { name: /Roll/ }).count()), 'one-space boards have no dice');
-  assert((await mainLabel(page)) === '→ Space 2', `until the move is made, the main button is the way on (${await mainLabel(page)})`);
-  await page.locator('.bh .move').getByRole('button', { name: '→ Space 2' }).click();
+  const way2 = page.locator('.bh .move').getByRole('button', { name: '→ Space 2' });
+  assert(
+    (await mainLabel(page)) === 'Next turn ▶' && (await way2.evaluate((b) => b.classList.contains('ring') && b.textContent.includes('⏎'))),
+    `the main button is Next turn ▶; the way on is the turn box's, ringed, Enter's (${await mainLabel(page)})`,
+  );
+  await way2.click();
   assert((await toast()).includes('Landed on Space 2'), 'a player moves one space');
   assert((await mainLabel(page)) === 'Next turn ▶', `then it's Next turn ▶ (${await mainLabel(page)})`);
   // Enter then doesn't walk them on in the same turn (the → buttons still can, on purpose).
   await page.evaluate(() => document.activeElement?.blur?.());
   await page.keyboard.press('Enter');
   assert((await toast()).includes('Moved this turn: N for the next turn') && (await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).count()) === 1, `one space a turn: Enter after the move doesn't move them again (${await toast()})`);
+  // N, and Player 2's turn not played: Shift+click on Next turn ▶ passes it without asking.
   await page.keyboard.press('n');
-  await page.keyboard.press('n');
+  await mainButton(page, 'Next turn ▶').click({ modifiers: ['Shift'] });
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).click();
-  // Their next turn starts on the fork: the main button and Enter say to pick the way.
+  // Their next turn starts on the fork. N, N: Player 2 hasn't moved, so the second asks first (→ Space 2, Enter's); N
+  // again after its first moment goes on anyway. Then Enter on the fork says which ways there are.
   await page.keyboard.press('n');
   await page.keyboard.press('n');
-  assert((await mainLabel(page)) === '🔀 Pick a way', `a turn on a fork: 🔀 Pick a way (${await mainLabel(page)})`);
+  await checkItem(page, 'move').waitFor();
+  assert((await checkItem(page, 'move').innerText()).includes('Player 2 hasn’t moved: → Space 2.'), `N with Player 2 not moved asks first (${await checkItem(page, 'move').innerText()})`);
+  await goOnCheck(page, { ready: true }).waitFor();
+  await page.keyboard.press('n');
+  await page.locator('.stage .turn-banner', { hasText: 'Player 1' }).waitFor();
+  assert(!(await goOnCheck(page).count()), 'N again after its first moment goes on anyway');
   await page.keyboard.press('Enter');
   assert((await toast()) === 'Which way? → Space 4 or → Space 7 (or click the space)', `and Enter says which ways there are (${await toast()})`);
   const ways = await page.locator('.bh .move button.good').allInnerTexts();
@@ -685,9 +735,9 @@ try {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Enter');
   assert((await toast()).includes('Bob is at a fork: pick the way first'), 'Enter at a fork says to pick the way');
-  // One window marks no ways on the stage: 🔀 Pick a way says to click the space there.
-  await mainButton(page).click();
-  assert((await toast()).includes('or click the space on the stage'), `one window: 🔀 Pick a way doesn't point at a “marked space” (${await toast()})`);
+  // One window marks no ways on the stage: the turn box's first line says to click the space there.
+  const firstLine = await page.locator('.bh [data-turn-next]').innerText();
+  assert(firstLine.includes('Bob is at a fork') && firstLine.includes('or click the space on the stage'), `one window: the fork doesn't point at a “marked space” (${firstLine})`);
   await page.locator('.fork').getByRole('button', { name: '→ Merge' }).click();
   assert((await toast()).includes('Landed on Merge'), 'the fork’s other way leads to where the ways meet');
   // Back 1 from where the ways meet goes back the way Bob came (the Fork), not along the other way.
@@ -836,9 +886,12 @@ try {
   const emptied = await one
     .waitForFunction(() => document.querySelector('.bh input[aria-label="Steps"]')?.value === '', null, { timeout: 3000 })
     .then(() => true, () => false);
-  assert(emptied && (await mainLabel(one)) === '🎡 Spin', `the next board starts with an empty Steps box and 🎡 Spin (${await stepsBox.inputValue()}, ${await mainLabel(one)})`);
+  assert(
+    emptied && (await stepButton(one, '🎡 Spin to move').count()) === 1 && (await mainLabel(one)) === 'Next turn ▶',
+    `the next board starts with an empty Steps box and the slot's 🎡 Spin to move (${await stepsBox.inputValue()}, ${await mainLabel(one)})`,
+  );
   // Its wheel's slices are words: once it lands, the host is told to type the steps (it used to say nothing).
-  await mainButton(one).click();
+  await stepButton(one, '🎡 Spin to move').click();
   const typeSteps = one.locator('.toast', { hasText: 'No number on “' });
   await typeSteps.waitFor({ timeout: 8000 });
   assert(/No number on “(One|Two|Three)”: type the steps/.test(await typeSteps.innerText()) && (await stepsBox.inputValue()) === '', `a wheel of words: “${await typeSteps.innerText()}”, the Steps box left empty`);

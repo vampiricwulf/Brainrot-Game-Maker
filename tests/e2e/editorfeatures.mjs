@@ -7,7 +7,7 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openRules, leaveAnswer } from './helpers.mjs';
+import { checkItem, goOnCheck, openRules, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -479,17 +479,31 @@ try {
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(200);
   assert((await page.locator('.bh .acts').innerText()).includes('Landed on Go back'), 'Ctrl+Z undoes the move back');
-  // Bob: Start + 8 is Nap time: he misses his next turn.
+  // Its button undone, Go back's landing is left again: N asks first, and N again (once it takes keys) goes on anyway.
   await page.keyboard.press('n');
+  await checkItem(page, 'landing').waitFor();
+  assert((await checkItem(page, 'landing').innerText()).includes('Ann landed on Go back: its actions haven’t run.'), 'N after its button was undone asks first: Go back’s actions haven’t run');
+  await goOnCheck(page, { ready: true }).waitFor();
+  await page.keyboard.press('n');
+  await goOnCheck(page).waitFor({ state: 'detached' });
+  // Bob: Start + 8 is Nap time: he misses his next turn.
   await page.getByLabel('Steps').fill('8');
   await page.getByRole('button', { name: /^▶ Move Bob/ }).click();
   await page.locator('.bh .acts').getByRole('button', { name: 'Skip next turn' }).click();
   assert((await page.locator('.bh .ord', { hasText: 'Bob' }).innerText()).includes('⏭'), 'the turn order shows Bob skips');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-skip.png` });
+  // His landing ran: N goes on. Cat hasn't rolled: N asks, and “Don't ask about rolling again this game” turns that off,
+  // leaving nothing to ask; then N goes on, and on again from Ann's turn not rolled, passing over Bob.
   await page.keyboard.press('n');
+  await page.locator('.stage .turn-banner', { hasText: 'Cat' }).waitFor();
   await page.keyboard.press('n');
+  await goOnCheck(page, { ready: true }).waitFor();
+  await goOnCheck(page).getByLabel('Don’t ask about rolling again this game').check();
+  await page.locator('.panel [data-goon="nothing"]').waitFor();
   await page.keyboard.press('n');
-  assert((await page.locator('.stage .turn-banner').innerText()).includes('Cat'), 'Next turn passes over Bob (Ann → Cat)');
+  await page.locator('.stage .turn-banner', { hasText: 'Ann' }).waitFor();
+  await page.keyboard.press('n');
+  assert((await page.locator('.stage .turn-banner').innerText()).includes('Cat') && !(await goOnCheck(page).count()), 'Next turn passes over Bob (Ann → Cat), rolling no longer asked about');
   // Cat: Start + 10 is Roll again.
   await page.getByLabel('Steps').fill('10');
   await page.getByRole('button', { name: /^▶ Move Cat/ }).click();

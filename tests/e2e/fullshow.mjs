@@ -412,19 +412,25 @@ async function show(how) {
   }
 
   // ---------- A board-game turn (roll, move, next turn), then on to the Final ----------
+  // (The roll and the move are the turn box's one slot, 🎲 Roll then ▶ Move in its place; the blue button is Next turn ▶.)
   await begin('A board-game turn, then leaving the round');
-  const rolled = async () => (await label()).startsWith('▶ Move');
+  const turnSlot = () => stepButton(host.locator('.bh'));
+  const turnSlotSays = async (l) => (await turnSlot().count()) === 1 && (await turnSlot().innerText()).startsWith(l);
+  const toRoll = async () => (await turnSlotSays('🎲 Roll')) && (await mainIs('Next turn ▶')());
+  const rolled = async () => (await turnSlotSays('▶ Move')) && (await mainIs('Next turn ▶')());
+  const moved = async () => (await host.locator('.bh .acts').count()) > 0 && (await toRoll());
+  const bobs = async () => (await host.locator('.stage .turn-banner').innerText()).includes('Bob') && (await toRoll());
   if (byKeys) {
-    await key('n', 'the board', mainIs('🎲 Roll'));
+    await key('n', 'the board', toRoll);
     await key('d', 'the dice landing', rolled);
-    await key('Enter', 'Ann’s token moving', mainIs('Next turn ▶'));
-    await key('n', 'Bob’s turn', mainIs('🎲 Roll'));
+    await key('Enter', 'Ann’s token moving', moved);
+    await key('n', 'Bob’s turn', bobs);
   } else {
-    await stageClick('the board', mainIs('🎲 Roll'));
-    await main('🎲 Roll', 'the dice rolling', async () => !(await mainIs('🎲 Roll')()));
+    await stageClick('the board', toRoll);
+    await click(turnSlot(), 'the dice rolling', async () => (await turnSlot().isDisabled()) || (await rolled()));
     await until('the dice landing', rolled);
-    await click(mainButton(host), 'Ann’s token moving', mainIs('Next turn ▶'));
-    await main('Next turn ▶', 'Bob’s turn', mainIs('🎲 Roll'));
+    await click(turnSlot(), 'Ann’s token moving', moved);
+    await main('Next turn ▶', 'Bob’s turn', bobs);
   }
   await sleep(NEW_ROW);
   await click(host.locator('.rn button.next'), 'leaving asks first', async () => (await confirmStrip(host).count()) > 0);

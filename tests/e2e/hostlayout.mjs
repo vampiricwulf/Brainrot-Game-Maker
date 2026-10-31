@@ -3,8 +3,8 @@
 // (.primary) button, and one where the moment has a next step; a confirmation is one strip above the fixed bar (the
 // panel grows by that strip, nothing overlaps); and beside the stage (RPG and board-game rounds on a wide window) the
 // fixed bar is a grid with 🚪 Exit in its bottom-right cell. A Daily Double with three question slides keeps Next slide ▶
-// the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll doesn't take the main
-// button from the round, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
+// the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll makes its turn box's
+// slot ▶ Move while the blue button stays Next turn ▶ (and its check sits in the panel), a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
 // on a narrow window the fixed bar stays on one line (🚪 Exit at the right; ❔ Help as its sign up to 1040px, its word
 // above, which opens the keys on During the game, where 💡 Show all tips again brings 🙈 Hide's note back). With six
 // players in a single window (at
@@ -276,13 +276,46 @@ try {
   await nextRound();
   await page.locator('.panel .status', { hasText: 'Board game' }).waitFor();
   states.boardgame = await look();
-  assert((await mainLabel(page)) === '🎲 Roll', `a board-game turn’s main button is 🎲 Roll first (${await mainLabel(page)})`);
-  // Its own roll (D) is the round's: ▶ Move (Enter) is next, so its dice don't take the main button with a Close.
+  const turnSlot = page.locator('.bh [data-step]');
+  const slotSays = () => turnSlot.evaluate((b) => [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim());
+  assert(
+    (await mainLabel(page)) === 'Next turn ▶' && (await slotSays()).startsWith('🎲 Roll') && (await turnSlot.evaluate((b) => b.classList.contains('ring'))),
+    `a board-game turn: the blue button is Next turn ▶, the turn box's one slot 🎲 Roll, ringed (${await mainLabel(page)} · ${await slotSays()})`,
+  );
+  // Its own roll (D) is the round's: the slot reads ▶ Move (Enter) in its place, and the blue button stays Next turn ▶.
   await page.keyboard.press('d');
   await page.locator('.panel [data-tool-controls]').waitFor();
-  await page.waitForTimeout(1500);
-  assert(/^▶ Move -?\d+$/.test(await mainLabel(page)), `the round’s own roll makes ▶ Move the main button, not the dice’s Close (${await mainLabel(page)})`);
+  await page.waitForFunction(() => document.querySelector('.bh [data-step]')?.textContent?.trim().startsWith('▶ Move'), null, { timeout: 8000 });
+  assert(
+    /^▶ Move .+: \d+$/.test(await slotSays()) && (await mainLabel(page)) === 'Next turn ▶' && (await page.locator('.panel .ring:visible').count()) === 1,
+    `the round’s own roll makes the slot ▶ Move (ringed, the one ring), the blue button still Next turn ▶ (${await slotSays()})`,
+  );
+  // N with the move not made (the dice put away, the count kept): the check walks the turn, in the panel, the stage its
+  // size, none of its buttons on the blue button's spot.
   await page.keyboard.press('Escape');
+  await page.locator('.panel [data-tool-controls]').waitFor({ state: 'detached' });
+  const bgStage = Math.round((await page.locator('.stage-box').boundingBox()).height);
+  const bgMain = await mainButton(page).boundingBox();
+  await page.keyboard.press('n');
+  await goOnCheck(page).locator('[data-goon-item="move"]').waitFor();
+  const bgCheck = await page.evaluate((m) => {
+    const rect = (el) => el.getBoundingClientRect();
+    const meets = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const card = rect(document.querySelector('.panel [data-goon]'));
+    const mr = { left: m.x, right: m.x + m.width, top: m.y, bottom: m.y + m.height };
+    return {
+      offStage: !meets(card, rect(document.querySelector('.stage-box'))),
+      offBar: !meets(card, rect(document.querySelector('.panel .fixed'))),
+      onMain: [...document.querySelectorAll('.panel [data-goon] :is(button, input, label)')].filter((b) => meets(rect(b), mr)).length,
+      rings: [...document.querySelectorAll('.panel .ring')].filter((b) => b.checkVisibility()).length,
+    };
+  }, bgMain);
+  assert(
+    bgCheck.offStage && bgCheck.offBar && !bgCheck.onMain && bgCheck.rings === 1 && Math.round((await page.locator('.stage-box').boundingBox()).height) === bgStage,
+    `a board-game turn's check: off the stage and the fixed bar, nothing of it on the blue button's spot, one ring (its ▶ Move), the stage its size (${JSON.stringify(bgCheck)})`,
+  );
+  await page.keyboard.press('Escape');
+  await goOnCheck(page).waitFor({ state: 'detached' });
   // Leaving an RPG or board-game round always asks (nothing to count there), quietly.
   await page.waitForTimeout(450);
   const leave = page.locator('.rn button', { hasText: '▶' });

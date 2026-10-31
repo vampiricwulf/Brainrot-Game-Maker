@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { exportHtml, mainButton, mainLabel, openGameFile } from './helpers.mjs';
+import { checkItem, exportHtml, goOnCheck, mainButton, mainLabel, openGameFile, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -89,16 +89,17 @@ async function besideMain(page, what) {
 }
 
 const last = (page) => page.locator('.bh .last').innerText();
-/** Wait for the main button to say `want` (as mainLabel reads it). */
-const labelIs = (page, want) =>
-  page.waitForFunction(
-    (w) => {
-      const b = document.querySelector('.panel [data-next]');
-      return !!b && [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim() === w;
-    },
-    want,
-    { timeout: 5000 },
-  );
+/** The turn box's one slot (🎲 Roll d6, then ▶ Move Ann: 2), waited for while it says `want`. */
+const slot = (page, want) => stepButton(page, want).waitFor({ timeout: 5000 });
+/** Next turn ▶ with the turn not played: N asks first (the check), and N again once it takes keys goes on anyway. */
+async function nextAnyway(page) {
+  await page.keyboard.press('n');
+  await goOnCheck(page, { ready: true }).waitFor();
+  await page.keyboard.press('n');
+  await goOnCheck(page).waitFor({ state: 'detached' });
+}
+/** Next turn ▶ without asking, whatever's left: Shift+click on the blue button. */
+const skipTurn = (page) => mainButton(page, 'Next turn ▶').click({ modifiers: ['Shift'] });
 const stageSpaces = (page) => page.locator('.stage-box [data-space]');
 /** After a resize: the stage's box stays put for a few frames (it follows the window a moment later). */
 const settled = (page) =>
@@ -127,79 +128,94 @@ try {
   const toast = () => page.locator('.toast').innerText();
   const turn = () => page.locator('.stage .turn-banner').innerText();
   assert(!(await page.locator('.bh').getByRole('button', { name: '◀ Previous turn' }).count()), 'Previous turn is no longer up in the round’s box');
-  assert((await mainLabel(page)) === '🎲 Roll', `a turn starts with 🎲 Roll as the main button (${await mainLabel(page)})`);
-  assert((await page.locator('.panel [data-next-also]').allInnerTexts()).map((t) => t.split(' ')[0] + ' ' + t.split(' ')[1]).join() === '◀ Previous,Next turn', 'with ◀ Previous turn and Next turn ▶ beside it');
+  assert(
+    (await mainLabel(page)) === 'Next turn ▶' && (await stepButton(page, '🎲 Roll d6').count()) === 1,
+    `the blue button is Next turn ▶; the turn box's one slot is 🎲 Roll (${await mainLabel(page)})`,
+  );
+  assert((await page.locator('.panel [data-next-also]').allInnerTexts()).map((t) => t.split(' ')[0] + ' ' + t.split(' ')[1]).join() === '◀ Previous', 'with ◀ Previous turn quiet beside it');
   await besideMain(page, 'rolling');
   await page.getByLabel('Steps').fill('2');
   await page.getByLabel('Steps').blur();
-  assert((await mainLabel(page)) === '▶ Move 2', `steps typed: ▶ Move is the main button (${await mainLabel(page)})`);
+  await slot(page, '▶ Move Ann: 2');
+  assert((await mainLabel(page)) === 'Next turn ▶' && (await stepButton(page, '🎲 Roll d6').count()) === 0, 'steps typed: the slot reads ▶ Move Ann: 2, in 🎲 Roll’s place; the blue button stays Next turn ▶');
   // (One window, the panel under the stage: it keeps one height through the turns, the landing row coming and going.)
   const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
   const turnSizes = [await stageH()];
-  await mainButton(page).click();
+  await stepButton(page, '▶ Move Ann: 2').click();
   assert((await toast()).includes('Landed on Space 3'), 'it moves');
   await page.locator('.acts', { hasText: 'Landed on Space 3' }).waitFor();
   turnSizes.push(await stageH());
-  assert((await mainLabel(page)) === 'Next turn ▶', `moved: Next turn ▶ is the main button (${await mainLabel(page)})`);
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(200);
-  assert((await mainLabel(page)) === '▶ Move 2', `Ctrl+Z: the move is undone and its count is back (${await mainLabel(page)})`);
+  await slot(page, '▶ Move Ann: 2');
+  assert((await page.locator('.acts').count()) === 0, 'Ctrl+Z: the move is undone and its count is back in the slot');
   await page.keyboard.press('Control+Shift+z');
-  await page.waitForTimeout(200);
+  await page.locator('.acts', { hasText: 'Landed on Space 3' }).waitFor();
   assert((await mainLabel(page)) === 'Next turn ▶', `Ctrl+Shift+Z: moved again (${await mainLabel(page)})`);
   const { p, m } = await besideMain(page, 'next turn');
   assert(m.x - (p.x + p.width) < 14, 'Previous turn sits right beside Next turn');
   if (shots) await page.screenshot({ path: `${shots}/under-stage-next-turn.png` });
+  // Space 3's Back 3 spaces not run: N asks first (it puts something on the move: ▶ Run, which leaves it to play out);
+  // N again once it takes keys goes on anyway.
   await page.keyboard.press('n');
-  assert((await turn()).includes('Bob'), 'N: Bob’s turn');
+  await checkItem(page, 'landing').waitFor();
+  assert((await checkItem(page, 'landing').innerText()).includes('Ann landed on Space 3: its actions haven’t run.'), `N with her landing not run asks first (${await checkItem(page, 'landing').innerText()})`);
+  await goOnCheck(page, { ready: true }).waitFor();
+  await page.keyboard.press('n');
+  await goOnCheck(page).waitFor({ state: 'detached' });
+  assert((await turn()).includes('Bob'), 'N again: Bob’s turn');
   await page.locator('.acts').waitFor({ state: 'detached' });
   turnSizes.push(await stageH());
-  assert(turnSizes.every((x) => x === turnSizes[0]), `under the stage, the stage keeps one size through a turn: the move (its landing row up) and the next turn (${turnSizes.join(' / ')})`);
+  assert(turnSizes.every((x) => x === turnSizes[0]), `under the stage, the stage keeps one size through a turn: the move (its landing row up), the check and the next turn (${turnSizes.join(' / ')})`);
   await page.keyboard.press('Shift+N');
   assert((await turn()).includes('Ann'), 'Shift+N: back to Ann');
-  assert((await mainLabel(page)) === 'Next turn ▶', `her turn as it was: her move is made (${await mainLabel(page)})`);
+  await page.locator('.acts', { hasText: 'Landed on Space 3' }).waitFor();
+  assert((await mainLabel(page)) === 'Next turn ▶', 'her turn as it was: her move is made, its landing row back');
   await page.keyboard.press('d');
   await page.waitForTimeout(300);
   assert((await toast()).includes('Ann already moved this turn'), `D doesn't roll a second move for her (${await toast()})`);
-  // Round to a fresh turn of hers. (That's a hint: N, as it says, puts it away rather than leaving it up on Bob's turn.)
-  await page.keyboard.press('n');
-  assert((await page.locator('.toast', { hasText: 'already moved' }).count()) === 0, 'N puts D’s “Ann already moved this turn” away');
-  await page.keyboard.press('n');
-  assert((await turn()).includes('Ann') && (await mainLabel(page)) === '🎲 Roll', 'N, N: Ann’s next turn starts with 🎲 Roll');
+  // Round to a fresh turn of hers. (That's a hint: going on, as it says, puts it away rather than leaving it up on Bob's
+  // turn.) Her landing and Bob's turn not played: N, then N again, each time.
+  await nextAnyway(page);
+  assert((await page.locator('.toast', { hasText: 'already moved' }).count()) === 0, 'going on puts D’s “Ann already moved this turn” away');
+  await nextAnyway(page);
+  await slot(page, '🎲 Roll d6');
+  assert((await turn()).includes('Ann'), 'Ann’s next turn starts with 🎲 Roll in the slot');
   await page.keyboard.press('d');
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   await page.waitForTimeout(1500);
-  assert(/^▶ Move \d$/.test(await mainLabel(page)), `D rolls, and the main button moves that many (${await mainLabel(page)})`);
+  const rolledMove = await stepButton(page).evaluate((b) => [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim());
+  assert(/^▶ Move Ann: \d$/.test(rolledMove), `D rolls, and the slot moves that many (${rolledMove})`);
   // Enter moves them (the keys, not a button), and Ctrl+Z puts that count back too.
-  const rolledMove = await mainLabel(page);
   await page.evaluate(() => document.activeElement?.blur?.());
   await page.keyboard.press('Enter');
-  await labelIs(page, 'Next turn ▶');
+  await slot(page, '🎲 Roll d6');
   await page.keyboard.press('Control+z');
-  await labelIs(page, rolledMove);
+  await slot(page, rolledMove);
   assert((await page.getByLabel('Steps').inputValue()) === rolledMove.slice(-1), `Ctrl+Z of a move made with Enter puts its count back (${rolledMove})`);
-  // Moved again, then ◀ Previous turn and Next turn ▶: her turn as it was, her move made and its landing row back (the
-  // count is spent, not back for a second move).
+  // Moved again, then ◀ Previous turn and Next turn ▶ (Bob's turn not played: it asks, N again goes on): her turn as it
+  // was, her move made and its landing row back (the count is spent, not back for a second move).
   await page.keyboard.press('Enter');
-  await labelIs(page, 'Next turn ▶');
+  await page.locator('.acts').waitFor();
   const landedOn = await page.locator('.acts').innerText();
   await page.keyboard.press('Shift+N');
   await page.locator('.acts').waitFor({ state: 'detached' });
-  await page.keyboard.press('n');
-  await labelIs(page, 'Next turn ▶');
+  await nextAnyway(page);
+  await page.locator('.acts').waitFor();
   assert(
     (await turn()).includes('Ann') && (await page.getByLabel('Steps').inputValue()) === '' && (await page.locator('.acts').innerText()) === landedOn,
-    `Shift+N then N: her turn as it was, moved (${landedOn}), and her used count isn’t back`,
+    `Shift+N then Next turn ▶: her turn as it was, moved (${landedOn}), and her used count isn’t back`,
   );
-  // On to her next turn.
-  await page.keyboard.press('n');
-  await page.keyboard.press('n');
-  await labelIs(page, '🎲 Roll');
+  // On to her next turn (whatever her landing was: Shift+click on Next turn ▶ never asks).
+  await skipTurn(page);
+  await page.locator('.stage .turn-banner', { hasText: 'Bob' }).waitFor();
+  await skipTurn(page);
+  await page.locator('.stage .turn-banner', { hasText: 'Ann' }).waitFor();
+  await slot(page, '🎲 Roll d6');
   // A smaller window, the panel under the stage holding less (its part scrolls): a move's landing row comes into view.
   await page.setViewportSize({ width: 1024, height: 700 });
   await page.getByLabel('Steps').fill('1');
   await page.getByLabel('Steps').blur();
-  await mainButton(page).click();
+  await stepButton(page, '▶ Move Ann: 1').click();
   await page.locator('.acts').waitFor();
   const actsInSight = await page
     .waitForFunction(
@@ -217,13 +233,14 @@ try {
     .then(() => true, () => false);
   assert(actsInSight, 'at 1024×700, after a move the landing row is in sight in the host panel (it scrolls there)');
   await page.keyboard.press('Control+z');
-  await labelIs(page, '▶ Move 1');
+  await slot(page, '▶ Move Ann: 1');
   await page.setViewportSize({ width: 1400, height: 1000 });
-  // A count going back (typed, or a wheel's "Back 2"): the buttons say which way they go.
+  // A count going back (typed, or a wheel's "Back 2"): the slot and ◀ Back say which way they go.
   await page.getByLabel('Steps').fill('-2');
   await page.getByLabel('Steps').blur();
+  await slot(page, '◀ Back Ann: 2');
   const stepButtons = await page.locator('.bh .move button').allInnerTexts();
-  assert((await mainLabel(page)) === '◀ Back 2' && stepButtons.includes('◀ Back Ann: 2') && stepButtons.includes('▶ Forward 2'), `-2 steps: ◀ Back 2, and the other button goes forward (${stepButtons.join(' | ')})`);
+  assert((await mainLabel(page)) === 'Next turn ▶' && stepButtons.includes('▶ Forward 2'), `-2 steps: the slot reads ◀ Back Ann: 2, and the other button goes forward (${stepButtons.join(' | ')})`);
   await page.getByLabel('Steps').fill('');
   await page.getByLabel('Steps').blur();
   // Controls hidden (H): D rolls, and once the dice have landed Enter moves her (no host panel to hold the count). The
@@ -254,13 +271,16 @@ try {
   // there Enter with a player picked and a count waiting moves them, as the main button says.
   const amountBox = page.locator('.panel .award').getByLabel('Amount');
   const card = (name) => page.locator('.bh .pc', { hasText: name }).innerText();
-  await page.keyboard.press('n');
+  await skipTurn(page);
+  await page.locator('.stage .turn-banner', { hasText: 'Bob' }).waitFor();
   await amountBox.fill('200');
   await amountBox.blur();
   await page.keyboard.press('2');
   await page.keyboard.press('Enter');
   assert((await card('Bob')).includes('$200') && (await amountBox.inputValue()) === '200', `Amount 200, 2, Enter: Bob gets it, and it stays for another (${await amountBox.inputValue()})`);
-  await page.keyboard.press('n');
+  // (Bob's turn not played: Shift+click on Next turn ▶ goes on without asking.)
+  await skipTurn(page);
+  await page.locator('.stage .turn-banner', { hasText: 'Ann' }).waitFor();
   assert((await amountBox.inputValue()) === '', `the next turn starts with an empty Amount box (${await amountBox.inputValue()})`);
   await page.getByLabel('Send to').selectOption({ label: 'Nap time' });
   await page.keyboard.press('1');
@@ -282,7 +302,8 @@ try {
   assert((await card('Ann')).includes('$100'), 'then 1, Enter: Ann gets the 100');
   // A secret space, in one window (the panel is on stream): the panel and the toast say “?” until it's revealed, and its
   // buttons are logged with its name (as from its card) once it is. Ann's question still up: N is its blue button, 👁 Reveal
-  // answer, then Next ▶, which puts it away (Ann has her points: nothing asks); then N is Bob's turn, and Enter moves him.
+  // answer, then Next ▶, which puts it away (Ann has her points: nothing asks); then N is Bob's turn (her landing ran, and
+  // its question gave her points: nothing asks either), and Enter moves him.
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.trim().startsWith('Next ▶'));
   await page.keyboard.press('n');
@@ -299,6 +320,16 @@ try {
     `landing on the secret space: “? (secret)” in the toast and the panel, and not its note (${(await acts.innerText()).replace(/\s+/g, ' ')})`,
   );
   await page.locator('.stage-box .ov').waitFor({ state: 'detached' });
+  // N with its button not pressed: the check asks first, saying “?” too, never its name or note (one window: on stream).
+  await page.keyboard.press('n');
+  await checkItem(page, 'landing').waitFor();
+  const asked = await goOnCheck(page).innerText();
+  assert(
+    asked.includes('Bob landed on ?: its actions haven’t run (+$100 to Bob).') && asked.includes('▶ Run its actions ▶ next turn') && !asked.includes('Trap Door') && !asked.includes('lava pit'),
+    `one window: the check before Next turn ▶ says “?” for the secret space, never its name or note (${asked.replace(/\s+/g, ' ')})`,
+  );
+  await page.keyboard.press('Escape');
+  await goOnCheck(page).waitFor({ state: 'detached' });
   await acts.getByRole('button', { name: '+$100' }).click();
   assert((await toast()) === '? (secret): +$100: Bob', `its button, still secret: “${await toast()}”`);
   // Sent there by a button (Space 3's Back 3 spaces), the same.
@@ -332,8 +363,12 @@ try {
   assert((await acts.innerText()).includes('Landed on Trap Door:') && (await acts.innerText()).includes('📝 lava pit'), 'revealed: the panel names it, and shows its note');
   await acts.getByRole('button', { name: '+$100' }).click();
   assert((await toast()) === 'Trap Door: +$100: Ann', `and its button says whose it is: “${await toast()}”`);
+  // Its landing run (its button): N goes on, asking nothing. Bob's turn not played: Shift+click, back to Ann.
   await page.keyboard.press('n');
-  await page.keyboard.press('n');
+  await page.locator('.stage .turn-banner', { hasText: 'Bob' }).waitFor();
+  assert(!(await goOnCheck(page).count()), 'her landing’s button ran: Next turn ▶ asks nothing');
+  await skipTurn(page);
+  await page.locator('.stage .turn-banner', { hasText: 'Ann' }).waitFor();
   await page.getByLabel('Send to').selectOption({ label: 'Nap time' });
 
   // ---------- ✎ Edit board ----------
@@ -343,7 +378,10 @@ try {
   await page.keyboard.press('e');
   await page.locator('[data-board-editing]').waitFor();
   assert((await page.locator('.stage-box .space .label[data-name-hidden]').count()) === 6, 'editing: the host sees every name, the hidden ones dimmed');
-  assert((await mainLabel(page)) === '✓ Done editing', 'E edits the board: ✓ Done editing is the main button');
+  assert(
+    !(await mainButton(page).count()) && (await page.locator('[data-board-editing]').getByRole('button', { name: '✓ Done editing' }).count()) === 1,
+    'E edits the board: no blue button under the edits, ✓ Done editing in the edit panel',
+  );
   assert((await page.locator('[data-board-editing]').innerText()).includes('Viewers see this'), 'one window: the panel says viewers see it');
   assert((await page.locator('[data-board-editing]').innerText()).includes('this game only'), 'and that the changes last for this game only');
   await page.waitForTimeout(800);
@@ -552,7 +590,7 @@ try {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.locator('[data-board-editing]').waitFor({ state: 'detached' });
-  assert(!(await layer.count()) && (await mainLabel(page)) !== '✓ Done editing', 'Esc (again) ends editing');
+  assert(!(await layer.count()) && (await mainLabel(page)) === 'Next turn ▶', 'Esc (again) ends editing: Next turn ▶ is back');
   assert((await page.locator('.stage-box .space .label').allInnerTexts()).join() === 'Nap time', 'playing: the stage shows only the name ticked to show');
   if (shots) await page.screenshot({ path: `${shots}/names-playing.png` });
   await page.keyboard.press('Control+z');
