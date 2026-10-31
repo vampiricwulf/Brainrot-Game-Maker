@@ -13,7 +13,7 @@
   import { adoptUsedBy, clipboard, holdUsedBy } from '../../lib/clipboard.svelte';
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { clearOffset, copyActions, copySpaces, copyZone, moveTo } from '../../lib/listedit';
-  import { showMenu } from '../../lib/menustate.svelte';
+  import { menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
   import { addFork, allNamesLabel, applySpaceKind, clampToBoard, closeUpOver, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, moverWheelNoNumbers, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, linkAfter, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
@@ -416,13 +416,17 @@
     const both = b.next.includes(a.id);
     linkPick = { from: a.id, to: b.id };
     selIds = [];
-    showMenu(e, [
-      { heading: linkName(round, a.id, b.id) },
-      { label: both ? `→ One way only (${a.name} → ${b.name})` : '⇄ Both ways', onclick: () => bothWays(a.id, b.id) },
-      { label: '↺ Reverse', disabled: both, onclick: () => reverse(a.id, b.id) },
-      { sep: true },
-      { label: '✂ Disconnect', danger: true, onclick: () => disconnect(a.id, b.id), keys: 'Delete' },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: linkName(round, a.id, b.id),
+        verbs: [
+          { label: both ? `→ One way only (${a.name} → ${b.name})` : '⇄ Both ways', onclick: () => bothWays(a.id, b.id) },
+          { label: '↺ Reverse', disabled: both, onclick: () => reverse(a.id, b.id) },
+        ],
+        delete: { label: '✂ Disconnect', onclick: () => disconnect(a.id, b.id), keys: 'Delete' },
+      }),
+    );
   }
 
   /** Right-click: a space's menu, or the board's (add a space there). */
@@ -433,68 +437,78 @@
     const link = target.closest<Element>('[data-link]')?.getAttribute('data-link')?.split('>');
     const [la, lb] = link ? [spaceById(round, link[0]), spaceById(round, link[1])] : [];
     const at = toBoard(e as PointerEvent);
-    const pasteItem = {
+    const pasteItem = menuItem.paste(() => pasteSpaces(at), {
       label: clipboard.spaces.length > 1 ? `📋 Paste ${clipboard.spaces.length} spaces here` : clipboard.spaces.length ? `📋 Paste “${clipboard.spaces[0].name}” here` : '📋 Paste here',
-      onclick: () => pasteSpaces(at),
       disabled: !clipboard.spaces.length,
       hint: clipboard.spaces.length ? undefined : 'Copy a space first (right-click it, or Ctrl+C)',
-      keys: 'Ctrl+V',
-    };
+    });
     if (s && picked.length > 1 && selIds.includes(s.id)) {
       const list = picked;
-      showMenu(e, [
-        { heading: `${list.length} spaces` },
-        { label: '⧉ Duplicate them', onclick: () => duplicateSpaces(list), keys: 'Ctrl+D' },
-        { label: `📋 Copy ${list.length} spaces`, onclick: () => copySpacesToClipboard(list), keys: 'Ctrl+C' },
-        {
-          label: list.every((x) => x.secret) ? '👁 Not secret' : '❓ Make them secret',
-          onclick: () => {
-            const on = !list.every((x) => x.secret);
-            setAll(on ? 'Secret' : 'Not secret', (x) => (x.secret = on || undefined));
-          },
-        },
-        {
-          label: list.every(nameShown) ? '⊘ Hide their names' : '👁 Show their names',
-          onclick: () => {
-            const on = !list.every(nameShown);
-            namesOf(list, on);
-          },
-        },
-        { sep: true },
-        { label: `🗑 Delete ${list.length} spaces`, danger: true, onclick: () => removeSpaces(list), keys: 'Delete' },
-      ]);
+      showMenu(
+        e,
+        menuOf({
+          heading: `${list.length} spaces`,
+          verbs: [
+            {
+              label: list.every((x) => x.secret) ? '👁 Not secret' : '❓ Make them secret',
+              onclick: () => {
+                const on = !list.every((x) => x.secret);
+                setAll(on ? 'Secret' : 'Not secret', (x) => (x.secret = on || undefined));
+              },
+            },
+            {
+              label: list.every(nameShown) ? '⊘ Hide their names' : '👁 Show their names',
+              onclick: () => {
+                const on = !list.every(nameShown);
+                namesOf(list, on);
+              },
+            },
+          ],
+          duplicate: menuItem.duplicate(() => duplicateSpaces(list), { label: '⧉ Duplicate them' }),
+          copy: menuItem.copy(() => copySpacesToClipboard(list), { label: `📋 Copy ${list.length} spaces` }),
+          delete: menuItem.delete(`${list.length} spaces`, () => removeSpaces(list)),
+        }),
+      );
     } else if (s) {
       selectOnly(s.id);
-      showMenu(e, [
-        { heading: s.name },
-        { label: '✎ Rename', onclick: () => openPanel(true), keys: 'F2' },
-        { label: '🔗 Connect to…', onclick: () => (linking = true), hint: 'Then click the space it leads to (or Alt+drag from it)' },
-        { label: '🏁 Make it Start', onclick: () => makeStart(s), disabled: (round.start ?? round.spaces[0]?.id) === s.id },
-        nameShown(s)
-          ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => showName(s, false) }
-          : { label: '👁 Show name', hint: 'Viewers see its name under it', onclick: () => showName(s, true) },
-        { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
-        { label: '⑂ Add a fork here', onclick: () => fork(s), hint: 'A second way on from it: the host picks the way in play' },
-        { label: '⧉ Duplicate space', onclick: () => duplicateSpace(s), keys: 'Ctrl+D' },
-        { label: '📋 Copy space', onclick: () => copySpacesToClipboard([s]), keys: 'Ctrl+C' },
-        { sep: true },
-        { heading: 'Make it a…' },
-        ...SPACE_KINDS.map((k) => ({ label: k.label, hint: k.hint, onclick: () => makeKind(s, k.kind) })),
-        { sep: true },
-        { label: '🗑 Delete space', danger: true, onclick: () => removeSpace(s), keys: 'Delete' },
-      ]);
+      showMenu(
+        e,
+        menuOf({
+          heading: s.name,
+          verbs: [
+            { label: '🔗 Connect to…', onclick: () => (linking = true), hint: 'Then click the space it leads to (or Alt+drag from it)' },
+            { label: '🏁 Make it the start', onclick: () => makeStart(s), disabled: (round.start ?? round.spaces[0]?.id) === s.id },
+            nameShown(s)
+              ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => showName(s, false) }
+              : { label: '👁 Show name', hint: 'Viewers see its name under it', onclick: () => showName(s, true) },
+          ],
+          kinds: { heading: 'Make it a…', items: SPACE_KINDS.map((k) => ({ label: k.label, hint: k.hint, onclick: () => makeKind(s, k.kind) })) },
+          rename: menuItem.rename(() => openPanel(true)),
+          duplicate: menuItem.duplicate(() => duplicateSpace(s), { label: '⧉ Duplicate space' }),
+          copy: menuItem.copy(() => copySpacesToClipboard([s]), { label: '📋 Copy space' }),
+          paste: pasteItem,
+          insert: [
+            { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
+            { label: '⑂ Add a fork here', onclick: () => fork(s), hint: 'A second way on from it: the host picks the way in play' },
+          ],
+          delete: menuItem.delete('space', () => removeSpace(s)),
+        }),
+      );
     } else if (la && lb) linkMenu(e, la, lb);
     else
-      showMenu(e, [
-        { label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => addSpaceAt(at) },
-        pasteItem,
-        { sep: true },
-        { label: '👁 Show all space names', disabled: round.spaces.every(nameShown), onclick: () => allNames(true) },
-        { label: '⊘ Hide all space names', disabled: !round.spaces.some(nameShown), onclick: () => allNames(false) },
-        { sep: true },
-        { label: 'Select all', onclick: () => (selIds = round.spaces.map((x) => x.id)), keys: 'Ctrl+A' },
-        { label: 'Deselect', onclick: () => selectOnly(null), disabled: !selIds.length, keys: 'Esc' },
-      ]);
+      showMenu(
+        e,
+        menuOf({
+          verbs: [{ label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => addSpaceAt(at) }],
+          paste: pasteItem,
+          extras: [
+            { label: '👁 Show all space names', disabled: round.spaces.every(nameShown), onclick: () => allNames(true) },
+            { label: '⊘ Hide all space names', disabled: !round.spaces.some(nameShown), onclick: () => allNames(false) },
+            { label: 'Select all', onclick: () => (selIds = round.spaces.map((x) => x.id)), keys: 'Ctrl+A' },
+            { label: 'Deselect', onclick: () => selectOnly(null), disabled: !selIds.length, keys: 'Esc' },
+          ],
+        }),
+      );
   }
 
   const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
@@ -706,15 +720,16 @@
   /** Right-click a zone (not in its text boxes, which keep the browser's own menu). */
   function zoneMenu(e: MouseEvent, z: BoardZone, i: number): void {
     if (isTextField(e.target)) return;
-    showMenu(e, [
-      { heading: z.name },
-      { label: '✎ Edit its screen…', onclick: () => (zoneSlide = z.id) },
-      { label: '⧉ Duplicate', onclick: () => duplicateZone(z), keys: 'Ctrl+D' },
-      { label: '▲ Move up', onclick: () => moveZone(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => moveZone(i, i + 1), disabled: i === round.zones.length - 1, keys: 'Alt+↓' },
-      { sep: true },
-      { label: '🗑 Delete zone', danger: true, onclick: () => removeZone(z) },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: z.name,
+        open: [{ label: '✎ Edit its screen…', onclick: () => (zoneSlide = z.id) }],
+        duplicate: menuItem.duplicate(() => duplicateZone(z)),
+        move: [menuItem.up(() => moveZone(i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveZone(i, i + 1), { disabled: i === round.zones.length - 1 })],
+        delete: menuItem.delete('zone', () => removeZone(z), { keys: false }),
+      }),
+    );
   }
 </script>
 
@@ -1024,7 +1039,7 @@
           <label class="check small"><input type="checkbox" bind:checked={sel.secret} /> Secret (viewers see “?” until you reveal it)</label>
           <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
           <div class="row">
-            <button class="small" onclick={() => makeStart(sel)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it Start</button>
+            <button class="small" onclick={() => makeStart(sel)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it the start</button>
             <button class="small" onclick={() => duplicateSpace(sel)} title="A copy of this space after it on the path (Ctrl+D)">⧉ Duplicate</button>
             <span class="spacer"></span>
             <button class="ghost small danger" onclick={() => removeSpace(sel)} title="Delete this space (Undo brings it back)">🗑 Delete space</button>

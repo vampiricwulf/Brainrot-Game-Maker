@@ -160,7 +160,7 @@
         {/each}
       </select>
       <button class="small" onclick={() => (boardEdit.buttons = s.id)} title="What it does when passed or landed on, and its host notes">⚙ Buttons ({(s.onPass?.length ?? 0) + (s.onLand?.length ?? 0)})…</button>
-      <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id)}>🏁 Make it Start</button>
+      <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id)}>🏁 Make it the start</button>
       <span class="spacer"></span>
       <button class="ghost small danger" onclick={() => editDelete(game, session, s.id, hide)} title="Delete (Ctrl+Z brings it back){here.length ? `: ${here.map((p) => p.name).join(', ')} move to the space before it` : ''}">🗑 Delete space</button>
     </div>

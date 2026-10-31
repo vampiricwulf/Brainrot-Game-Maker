@@ -101,7 +101,7 @@
         { heading: said(s) },
         { label: '✎ Rename', keys: 'F2', onclick: () => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select() },
         { label: '🔗 Connect to…', hint: 'Then click the space it leads to (or Shift+click it)', onclick: () => (boardEdit.connecting = true) },
-        { label: '🏁 Make it Start', disabled: (round.start ?? round.spaces[0]?.id) === s.id, onclick: () => editStart(game, session, s.id) },
+        { label: '🏁 Make it the start', disabled: (round.start ?? round.spaces[0]?.id) === s.id, onclick: () => editStart(game, session, s.id) },
         nameShown(s)
           ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => editShowName(game, session, s.id, false) }
           : { label: '👁 Show name', hint: 'Viewers see its name under it', onclick: () => editShowName(game, session, s.id, true) },
