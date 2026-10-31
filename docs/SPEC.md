@@ -420,6 +420,23 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     size only as they start and end. What scrolls in there comes into view as it comes (a board-game move's landing
     row, a tool's outcome), and at the end and in the tiebreaker clue the score chips stay whole while the part under
     them scrolls.
+- **The host panel's rules** (everything below follows them):
+  1. **Each action has one place: its situation's box**, beside the manual choices it's an alternative to (🤝 a partner
+     clue, ⭐ a Daily Double, 🎡 / 🎲 a wheel or dice, the Final's wagers and reveals, a tie at the end, the buzzers' row,
+     a board-game turn). 🎡 Spin for a partner comes in front of the players; a run of actions uses one slot (🎲 Roll,
+     then ▶ Move; Spin!, then ↻ Spin again), greyed while it plays out. The box's first line says what to do next, and
+     names the blue button when the next thing is the show's step. The action due now wears a ring (`.ring`, one at a
+     time). No action shows twice: not in the main cell, not beside it, not in the clue's row, not in the stage's menu.
+  2. **The main button is the show's next step: Next or Reveal.** One blue button, always in the same cell at the right,
+     `N` its key, in FLOW's words only (goon.ts `mainStep`). It never spins, rolls, sends cards, starts the clock, opens
+     the buzzers, gives points or judges; it's never greyed for something the host can do (pressed with something left,
+     it opens the check), only while a wheel turns or dice roll. With no next step the cell is empty (a board with tiles
+     left, an RPG round, the end screen, ✎ Edit board), except for **Next ▶** while something is over the stage. Nothing
+     else in the panel is blue but a pop-up the host opened (🎲 Dice…, 🤫 Send a card…, 🎭 Deal…) and a question asked
+     in the strip.
+  3. **A click on the stage does the moment's safe step.** Where that's the blue button's step it goes through the check
+     (`goOn('stage')`), so a click never loses anything; where it's what the stage itself shows, the click does it (a
+     wheel spins, landed dice move the token). While the check is open a click on the stage only flashes it.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ❔ Help,
