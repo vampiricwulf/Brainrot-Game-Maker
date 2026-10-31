@@ -11,7 +11,11 @@
   import { countText, dealSetupProblems, newDealPart, partName } from '../../lib/deals';
   import { DEAL_PART_MAX, DEAL_PARTS_MAX, MAX_PLAYERS, setSlideText, slideText, type DealPart, type DealPreset } from '../../lib/model';
   import { cardSummary } from '../../lib/partner';
-  import { moveTo } from '../../lib/listedit';
+  import { copyDealPart, moveTo } from '../../lib/listedit';
+  import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
+  import { menuItem, menuOf, showMenu, type MenuEntry } from '../../lib/menustate.svelte';
+  import { isTextField } from '../../lib/undokeys';
+  import RowTools from '../RowTools.svelte';
   import DealCardWindow from './DealCardWindow.svelte';
 
   let { deal }: { deal: DealPreset } = $props();
@@ -25,11 +29,21 @@
   function focusName(id: string): void {
     void tick().then(() => partsEl?.querySelector<HTMLInputElement>(`[data-part="${id}"] input.pname`)?.focus());
   }
-  function add(): void {
+  /** A new part (after `at`: Enter in a part's name, `blank`), its name ready to type. */
+  function add(at = deal.parts.length - 1, blank = false): void {
     if (deal.parts.length >= DEAL_PARTS_MAX) return;
-    const p = newDealPart(deal.parts.length + 1);
-    step(`Added part “${p.name}”`, () => deal.parts.push(p));
+    // (From Enter in a name, as a wheel's next slice: no name yet, its place's shows until one's typed.)
+    const p = { ...newDealPart(deal.parts.length + 1), ...(blank ? { name: '' } : {}) };
+    step(`Added part “${p.name}”`, () => deal.parts.splice(at + 1, 0, p));
     focusName(p.id);
+  }
+  /** A copy right after it, its card too. */
+  function duplicate(i: number): void {
+    const p = deal.parts[i];
+    if (!p || deal.parts.length >= DEAL_PARTS_MAX) return;
+    const copy = copyDealPart(p, deal.parts.map((x) => x.name));
+    step(`Duplicated part “${partName(p, i)}”`, () => deal.parts.splice(i + 1, 0, copy));
+    focusName(copy.id);
   }
   // Deleting is done at once: the note at the bottom offers Undo.
   function remove(i: number): void {
@@ -43,6 +57,39 @@
     step(`Moved part “${partName(p, i)}” ${j < i ? 'up' : 'down'}`, () => moveTo(deal.parts, i, j));
     announce(`Part “${partName(p, i)}” moved to ${j + 1} of ${deal.parts.length}`);
   }
+
+  /** In a part's name, as in a wheel's slices: Enter adds the next part, Backspace in an empty one deletes it. */
+  function nameKey(e: KeyboardEvent, i: number): void {
+    if (e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (deal.parts.length < DEAL_PARTS_MAX) add(i, true);
+      else focusName((deal.parts[i + 1] ?? deal.parts[0]).id);
+    } else if (e.key === 'Backspace' && !deal.parts[i].name && deal.parts.length > 1) {
+      e.preventDefault();
+      const back = deal.parts[i - 1] ?? deal.parts[i + 1];
+      remove(i);
+      focusName(back.id);
+    }
+  }
+
+  /** A part's menu: its ⋯, a right-click on it (not in its text boxes, which keep the browser's own), Shift+F10 in it. */
+  function partItems(i: number): MenuEntry[] {
+    const p = deal.parts[i];
+    const n = deal.parts.length;
+    return menuOf({
+      heading: partName(p, i),
+      open: [{ label: '✎ Edit card…', onclick: () => (editing = p) }],
+      duplicate: menuItem.duplicate(() => duplicate(i), { disabled: n >= DEAL_PARTS_MAX }),
+      move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === n - 1 })],
+      delete: menuItem.delete('part', () => remove(i), { disabled: n < 2, keys: false, hint: n < 2 ? 'A deal needs a part' : undefined }),
+    });
+  }
+  function partMenu(e: MouseEvent, i: number): void {
+    if (!isTextField(e.target)) showMenu(e, partItems(i));
+  }
+
+  const rows = new DragOrder();
   // Each choice is one named step ("How many get Wolf in “Secret roles”: ×2"), as adding and moving a part are.
   function setCount(p: DealPart, i: number, to: string): void {
     const n = to === 'rest' ? 'rest' : Number(to);
@@ -73,31 +120,65 @@
 
   <div class="parts" role="list" aria-label="Parts" bind:this={partsEl}>
     {#each deal.parts as part, i (part.id)}
-      <div class="part" role="listitem" data-part={part.id}>
+      {@const line = rows.lineAt(part.id)}
+      <div
+        class="part drag-row"
+        class:drop-before={line === 'before'}
+        class:drop-after={line === 'after'}
+        class:dragging={rows.dragging === part.id}
+        role="listitem"
+        data-part={part.id}
+        ondragover={(e) => rows.over(e, part.id)}
+        ondrop={(e) => {
+          const m = rows.drop(e, deal.parts.map((x) => x.id));
+          if (m) move(m.from, m.to);
+        }}
+        oncontextmenu={(e) => partMenu(e, i)}
+        use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(i), menu: () => partItems(i) }}
+      >
         <div class="row">
-          <input class="pname" value={part.name} maxlength={DEAL_PART_MAX} placeholder="Part {i + 1}" aria-label="Part {i + 1}’s name" title="On their phone: “You’re the {partName(part, i)}”, and on screen in Who was who" oninput={(e) => (part.name = e.currentTarget.value)} />
-          <select aria-label="How many get {partName(part, i)}" value={String(part.count)} onchange={(e) => setCount(part, i, e.currentTarget.value)}>
-            {#each COUNTS as n (n)}<option value={String(n)}>{countText(n)}</option>{/each}
-            <option value="rest">{countText('rest')}</option>
-          </select>
-          <button class="ghost small" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move {partName(part, i)} up">▲</button>
-          <button class="ghost small" onclick={() => move(i, i + 1)} disabled={i === deal.parts.length - 1} aria-label="Move {partName(part, i)} down">▼</button>
-          <button class="ghost small" onclick={() => remove(i)} disabled={deal.parts.length < 2} aria-label="Delete {partName(part, i)}" title={deal.parts.length < 2 ? 'A deal needs a part' : 'Delete part'}>🗑</button>
+          <span
+            class="drag-grip"
+            draggable="true"
+            ondragstart={(e) => rows.start(e, part.id, (e.currentTarget as HTMLElement).closest('.part'))}
+            ondragend={() => rows.end()}
+            aria-hidden="true"
+            title="Drag to reorder (or Alt+↑/↓) · right-click for more">⋮⋮</span
+          >
+          <input
+            class="pname"
+            value={part.name}
+            maxlength={DEAL_PART_MAX}
+            placeholder="Part {i + 1}"
+            aria-label="Part {i + 1}’s name"
+            title="On their phone: “You’re the {partName(part, i)}”, and on screen in Who was who · Enter: the next part"
+            oninput={(e) => (part.name = e.currentTarget.value)}
+            onkeydown={(e) => nameKey(e, i)}
+          />
+          <label class="inline"
+            >How many get it<select aria-label="How many get {partName(part, i)}" value={String(part.count)} onchange={(e) => setCount(part, i, e.currentTarget.value)}>
+              {#each COUNTS as n (n)}<option value={String(n)}>{countText(n)}</option>{/each}
+              <option value="rest">{countText('rest')}</option>
+            </select></label
+          >
+          <RowTools menu={() => partItems(i)} name={partName(part, i)} remove={() => remove(i)} deleteLabel="Delete {partName(part, i)}" off={deal.parts.length < 2 ? 'A deal needs a part' : undefined} />
         </div>
         <div class="row">
           <input class="grow" value={slideText(part.card)} placeholder="What its card says (only its players see it)" aria-label="{partName(part, i)}’s card words" oninput={(e) => setSlideText(part.card, e.currentTarget.value)} />
           <button class="small" onclick={() => (editing = part)} title="Pictures, videos, sounds, links: on their phones under the words. 📱 On their phone shows the card as they get it">Edit card…</button>
-          <select aria-label="{partName(part, i)}’s card draws from the wheel" value={part.draw ?? ''} onchange={(e) => setDraw(part, i, e.currentTarget.value)}>
-            <option value="">no wheel</option>
-            <option value="shared">+ the slice they all share</option>
-            <option value="own">+ a slice each</option>
-          </select>
+          <label class="inline"
+            >Their card also shows<select aria-label="{partName(part, i)}’s card draws from the wheel" value={part.draw ?? ''} onchange={(e) => setDraw(part, i, e.currentTarget.value)}>
+              <option value="">nothing from the wheel</option>
+              <option value="shared">the slice they all share</option>
+              <option value="own">a slice each</option>
+            </select></label
+          >
         </div>
         <div class="muted small">Card: {cardSummary(game, part.card)}{part.draw === 'shared' ? ', then the slice drawn for everyone who shares it' : part.draw === 'own' ? ', then their own slice of the wheel' : ''}</div>
       </div>
     {/each}
   </div>
-  {#if deal.parts.length < DEAL_PARTS_MAX}<div class="row"><button onclick={add}>＋ Add part</button></div>{/if}
+  {#if deal.parts.length < DEAL_PARTS_MAX}<div class="row"><button onclick={() => add()}>＋ Add part</button></div>{/if}
 
   {#if draws}
     <label class="field">🎡 Wheel its cards draw from
@@ -141,6 +222,17 @@
   .grow {
     flex: 1;
     min-width: 0;
+  }
+  /* A dropdown with its name before it, on the row's line. */
+  .inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .inline select {
+    color: var(--text);
   }
   p {
     margin: 0;

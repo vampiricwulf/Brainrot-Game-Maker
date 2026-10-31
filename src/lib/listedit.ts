@@ -2,7 +2,7 @@
 // (action lists), dice faces, a board game's zones, 🤫 cards made ahead. Pure: the editors wrap each change in a history
 // step.
 import { clampToBoard, nextSpaceName } from './boardgame';
-import { CARD_NAME_MAX, newId, type Action, type BoardGameRound, type BoardSpace, type BoardZone, type ItemDef, type SavedCard, type Shop, type Slide, type StatField, type WheelSegment } from './model';
+import { CARD_NAME_MAX, DEAL_PART_MAX, newId, type Action, type BoardGameRound, type BoardSpace, type BoardZone, type DealPart, type DicePreset, type Die, type ItemDef, type SavedCard, type Shop, type Slide, type StatField, type WheelSegment } from './model';
 import { clone } from './ops';
 
 /** Move the entry at `from` to `to` (the others close up). False when that's no move. */
@@ -140,6 +140,29 @@ export function copySegment(seg: WheelSegment): WheelSegment {
   const copy = clone(seg);
   copy.id = newId();
   if (seg.actions) copy.actions = copyActions(seg.actions);
+  return copy;
+}
+
+/** A copy of a 🎭 deal's part: its card too, and a name of its own that fits ("Wolf (copy)"). */
+export function copyDealPart(p: DealPart, taken: readonly string[]): DealPart {
+  const copy = clone(p);
+  copy.id = newId();
+  reSlide(copy.card);
+  copy.name = copyName(p.name.trim() || 'Part', taken).slice(0, DEAL_PART_MAX);
+  return copy;
+}
+
+/** A copy of a die (its faces' buttons too), or of a range of totals. */
+export function copyDie(d: Die): Die {
+  const copy = clone(d);
+  copy.id = newId();
+  for (const f of copy.customFaces ?? []) if (f.actions) f.actions = copyActions(f.actions);
+  return copy;
+}
+export function copyTotal(t: NonNullable<DicePreset['totalOutcomes']>[number]): NonNullable<DicePreset['totalOutcomes']>[number] {
+  const copy = clone(t);
+  copy.id = newId();
+  if (copy.outcome.actions) copy.outcome.actions = copyActions(copy.outcome.actions);
   return copy;
 }
 

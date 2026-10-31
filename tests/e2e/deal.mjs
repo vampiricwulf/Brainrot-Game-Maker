@@ -141,8 +141,34 @@ try {
   await host.getByRole('menuitem', { name: /Secret roles/ }).click();
   assert(await until(async () => (await deals.getByRole('button').allInnerTexts()).map((t) => t.trim()).join('|') === 'Odd one out|Secret roles'), 'a ready-made deal goes in: Secret roles');
   assert((await editor.getByLabel('Part 3’s name').inputValue()) === 'Villager' && (await editor.getByLabel('Part 1’s name').inputValue()) === 'Wolf', 'with a wolf, a seer and villagers');
-  // A part's choices are steps named after the part, not "Changed count of deal".
+  // A part's row, as the other lists': Alt+↑/↓ and Ctrl+D in it, Enter in its name for the next part, Backspace in an
+  // empty one, and ⋯ for its menu (the same as a right-click on it).
   const undoTitle = () => host.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  const headerUndo = () => host.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  const partNames = () => editor.locator('input.pname').evaluateAll((els) => els.map((e) => e.value).join());
+  await editor.getByLabel('Part 1’s name').focus();
+  await host.keyboard.press('Alt+ArrowDown');
+  assert(await until(async () => (await partNames()) === 'Seer,Wolf,Villager'), `Alt+↓ in a part's name moves it down (${await partNames()})`);
+  await headerUndo();
+  await editor.getByLabel('Part 1’s name').focus();
+  await host.keyboard.press('Control+d');
+  assert(await until(async () => (await partNames()) === 'Wolf,Wolf (copy),Seer,Villager'), `Ctrl+D duplicates it, right after it (${await partNames()})`);
+  await headerUndo();
+  await editor.getByLabel('Part 1’s name').focus();
+  await host.keyboard.press('End');
+  await host.keyboard.press('Enter');
+  assert(await until(async () => (await partNames()) === 'Wolf,,Seer,Villager'), `Enter in a part's name adds the next part (${await partNames()})`);
+  assert(await editor.getByLabel('Part 2’s name').evaluate((e) => e === document.activeElement), 'and types in it');
+  await host.keyboard.press('Backspace');
+  assert(await until(async () => (await partNames()) === 'Wolf,Seer,Villager'), 'Backspace in an empty one takes it out again');
+  await headerUndo();
+  await headerUndo();
+  assert(await until(async () => (await partNames()) === 'Wolf,Seer,Villager'), `and both undo (${await partNames()})`);
+  await editor.getByRole('button', { name: 'More for Seer' }).click();
+  const partMenu = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(['✎ Edit card…', '⧉ Duplicate', '▲ Move up', '▼ Move down', '🗑 Delete part'].every((x) => partMenu.some((t) => t.startsWith(x))), `a part's ⋯: its menu (${partMenu.join(', ')})`);
+  await host.keyboard.press('Escape');
+  // A part's choices are steps named after the part, not "Changed count of deal".
   await editor.getByLabel('How many get Wolf').selectOption('2');
   assert(await until(async () => (await undoTitle()).startsWith('Undo: How many get Wolf in “Secret roles”: ×2')), `how many get a part is a step named after it (${await undoTitle()})`);
   await editor.getByLabel('Wolf’s card draws from the wheel').selectOption('shared');

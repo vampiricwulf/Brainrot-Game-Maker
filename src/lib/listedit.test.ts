@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clearOffset, copyActions, copyItem, copyName, copySavedCard, copySegment, copyShop, copySpaces, copyStat, copyZone, faceLines, moveTo } from './listedit';
+import { clearOffset, copyActions, copyDealPart, copyDie, copyItem, copyName, copySavedCard, copySegment, copyShop, copySpaces, copyStat, copyTotal, copyZone, faceLines, moveTo } from './listedit';
 import { newBoardGameRound } from './boardgame';
 import { CARD_NAME_MAX, newImageEl, slideText, textSlide, type Action, type ItemDef, type SavedCard, type WheelSegment } from './model';
 
@@ -163,5 +163,31 @@ describe('copying board spaces', () => {
     expect(clearOffset(round, [s])).toBe(40);
     round.spaces.push({ ...s, id: 'c1', x: s.x + 40, y: s.y + 40 });
     expect(clearOffset(round, [s])).toBe(80);
+  });
+});
+
+describe('copying a deal’s part and a die', () => {
+  it('a part: its own id and card, a name that fits', () => {
+    const part = { id: 'p1', name: 'Wolf', count: 2, card: textSlide('You eat a villager each night'), draw: 'own' as const };
+    const copy = copyDealPart(part, ['Wolf', 'Villager']);
+    expect(copy).toMatchObject({ name: 'Wolf (copy)', count: 2, draw: 'own' });
+    expect(copy.id).not.toBe('p1');
+    expect(copy.card.elements[0].id).not.toBe(part.card.elements[0].id);
+    expect(slideText(copy.card)).toBe('You eat a villager each night');
+    expect(copyDealPart({ ...part, name: 'Wolf (copy)' }, ['Wolf', 'Wolf (copy)']).name).toBe('Wolf (copy 2)');
+    expect(copyDealPart({ ...part, name: 'A very long part name here' }, []).name.length).toBeLessThanOrEqual(24);
+  });
+
+  it('a die and a range of totals: their own ids, their buttons copied', () => {
+    const btn: Action = { id: 'a1', do: 'note', text: 'Sing' } as Action;
+    const die = { id: 'd1', sides: 2, count: 1, customFaces: [{ label: 'Sip', actions: [btn] }, { label: 'Dare' }] };
+    const copy = copyDie(die);
+    expect(copy.id).not.toBe('d1');
+    expect(copy.customFaces?.[0].actions?.[0].id).not.toBe('a1');
+    expect(copy.customFaces?.map((f) => f.label)).toEqual(['Sip', 'Dare']);
+    const total = copyTotal({ id: 't1', min: 2, max: 4, outcome: { label: 'Take a sip', actions: [btn] } });
+    expect(total).toMatchObject({ min: 2, max: 4, outcome: { label: 'Take a sip' } });
+    expect(total.id).not.toBe('t1');
+    expect(total.outcome.actions?.[0].id).not.toBe('a1');
   });
 });
