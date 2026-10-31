@@ -18,7 +18,9 @@
 <script lang="ts">
   import Tips from '../Tips.svelte';
   import { tick, untrack } from 'svelte';
-  import { menuItem, menuOf, showMenu, type MenuItem, type MenuLine } from '../../lib/menustate.svelte';
+  import { menuItem, menuOf, showMenu, type MenuEntry, type MenuItem, type MenuLine } from '../../lib/menustate.svelte';
+  import { rowKeys } from '../../lib/dragorder.svelte';
+  import RowTools from '../RowTools.svelte';
   import { take } from '../../lib/nav.svelte';
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
@@ -585,22 +587,25 @@
     if (lookId === v.id) lookId = null;
   }
 
-  function lookMenu(e: MouseEvent, s: Screen, v: ScreenVariant, i: number): void {
+  const shiftLook = (s: Screen, v: ScreenVariant, i: number, to: number) => {
+    if (to < 0 || to >= (s.variants?.length ?? 0)) return;
+    step(`Moved look “${v.name}” ${to < i ? 'earlier' : 'later'}`, () => moveLook(s, i, to));
+  };
+  const copyLook = (s: Screen, v: ScreenVariant) => step(`Duplicated look “${v.name}” of ${s.name}`, () => duplicateLook(s, v));
+  /** A look's menu: its ⋯, a right-click on it (not in its name box), Shift+F10 in it. */
+  function lookItems(s: Screen, v: ScreenVariant, i: number): MenuEntry[] {
     const n = s.variants?.length ?? 0;
-    showMenu(
-      e,
-      menuOf({
-        heading: v.name,
-        open: [{ label: '✎ Edit this look', onclick: () => ((lookId = v.id), (editing = true)) }],
-        verbs: [{ label: '⇄ Make it the main look', onclick: () => step(`Made “${v.name}” the main look of ${s.name}`, () => makeMainLook(s, v, world)), hint: 'Its own picture takes its place' }],
-        duplicate: menuItem.duplicate(() => step(`Duplicated look “${v.name}” of ${s.name}`, () => duplicateLook(s, v)), { label: '⧉ Duplicate this look', keys: false }),
-        move: [
-          menuItem.left(() => step(`Moved look “${v.name}” earlier`, () => moveLook(s, i, i - 1)), { disabled: i === 0, keys: false }),
-          menuItem.right(() => step(`Moved look “${v.name}” later`, () => moveLook(s, i, i + 1)), { disabled: i === n - 1, keys: false }),
-        ],
-        delete: menuItem.delete('look', () => removeLook(s, v), { keys: false }),
-      }),
-    );
+    return menuOf({
+      heading: v.name,
+      open: [{ label: '✎ Edit this look', onclick: () => ((lookId = v.id), (editing = true)) }],
+      verbs: [{ label: '⇄ Make it the main look', onclick: () => step(`Made “${v.name}” the main look of ${s.name}`, () => makeMainLook(s, v, world)), hint: 'Its own picture takes its place' }],
+      duplicate: menuItem.duplicate(() => copyLook(s, v), { label: '⧉ Duplicate this look' }),
+      move: [menuItem.left(() => shiftLook(s, v, i, i - 1), { disabled: i === 0 }), menuItem.right(() => shiftLook(s, v, i, i + 1), { disabled: i === n - 1 })],
+      delete: menuItem.delete('look', () => removeLook(s, v), { keys: false }),
+    });
+  }
+  function lookMenu(e: MouseEvent, s: Screen, v: ScreenVariant, i: number): void {
+    if (!(e.target instanceof HTMLInputElement)) showMenu(e, lookItems(s, v, i));
   }
 
   // Looks drag to reorder by their grip.
@@ -1316,22 +1321,23 @@
                   oncontextmenu={(e) => lookMenu(e, sel, v, i)}
                   ondragover={(e) => lookOver(e, v)}
                   ondrop={(e) => lookDropped(e, sel)}
+                  use:rowKeys={{ move: (d) => shiftLook(sel, v, i, i + d), across: true, duplicate: () => copyLook(sel, v), menu: () => lookItems(sel, v, i) }}
                 >
                   <span
-                    class="grip"
+                    class="drag-grip"
                     draggable="true"
                     role="presentation"
-                    title="Drag to reorder"
+                    title="Drag to reorder (or Alt+←/→ in its name)"
                     ondragstart={(e) => {
                       lookDrag = v.id;
                       e.dataTransfer?.setData('text/x-look', v.id);
                       if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
                     }}
-                    ondragend={() => ((lookDrag = null), (lookDrop = null))}>⠿</span
+                    ondragend={() => ((lookDrag = null), (lookDrop = null))}>⋮⋮</span
                   >
                   <input bind:value={v.name} aria-label="Look name" />
                   <button class="small" onclick={() => ((lookId = v.id), (editing = true))} aria-label="Edit look {v.name}" title="Edit this look">✎</button>
-                  <button class="ghost small" onclick={(e) => lookMenu(e, sel, v, i)} aria-label="More for look {v.name}" aria-haspopup="menu" title="Duplicate, make it the main look, move, delete">⋯</button>
+                  <RowTools menu={() => lookItems(sel, v, i)} name="look {v.name}" remove={() => removeLook(sel, v)} deleteLabel="Delete look {v.name}" />
                 </span>
               {/each}
               <button class="small" onclick={() => addLook(sel)}>＋ Add look (a copy)</button>
@@ -1478,12 +1484,6 @@
   .look.drop-after::after,
   .tabs button.drop-after::after {
     right: -3px;
-  }
-  .grip {
-    cursor: grab;
-    color: var(--muted);
-    font-size: 12px;
-    padding: 0 2px;
   }
   .we {
     display: flex;

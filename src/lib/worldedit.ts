@@ -215,6 +215,44 @@ export function duplicateMap(world: World, m: WorldMap): WorldMap {
   return copy;
 }
 
+/**
+ * A copy of a whole world (to play in another round, or to change without changing this one's): fresh ids for it, its
+ * maps, screens, looks and objects. Its ways out, doorways and 'move' buttons that led inside it lead to the copies.
+ * `taken`: the game's world names, so the copy's says it is one.
+ */
+export function duplicateWorld(world: World, taken: readonly string[] = []): World {
+  const copy = clone(world);
+  copy.id = newId();
+  let name = `${world.name} (copy)`;
+  for (let n = 2; taken.includes(name); n++) name = `${world.name} (copy ${n})`;
+  copy.name = name;
+  const maps = new Map<string, string>();
+  const screens = new Map<string, string>();
+  for (const m of copy.maps) {
+    maps.set(m.id, newId());
+    m.id = maps.get(m.id)!;
+    for (const s of m.screens) {
+      screens.set(s.id, newId());
+      s.id = screens.get(s.id)!;
+      for (const v of s.variants ?? []) v.id = newId();
+    }
+  }
+  const objects = freshObjectIds(copy.maps.flatMap((m) => m.screens.flatMap((s) => [s.slide, ...(s.variants ?? []).map((v) => v.slide)])));
+  const repoint = (r: ScreenRef): boolean => {
+    if (!maps.has(r.map) || !screens.has(r.screen)) return false;
+    r.map = maps.get(r.map)!;
+    r.screen = screens.get(r.screen)!;
+    return true;
+  };
+  for (const m of copy.maps) for (const s of m.screens) for (const d of DIRS) if (s.exits?.[d]?.kind === 'warp') repoint(s.exits[d].to);
+  for (const el of worldObjects(copy)) {
+    const role = el.role;
+    if (role?.class === 'doorway' && role.to && repoint(role.to) && role.arrive) role.arrive = objects.get(role.arrive) ?? role.arrive;
+    for (const a of role?.actions ?? []) if (a.do === 'move') repoint(a.to);
+  }
+  return copy;
+}
+
 /** A copy of one of a screen's looks, right after it (its objects get fresh ids). */
 export function duplicateLook(s: Screen, v: ScreenVariant): ScreenVariant {
   const copy: ScreenVariant = { id: newId(), name: `${v.name} (copy)`, slide: clone(v.slide) };

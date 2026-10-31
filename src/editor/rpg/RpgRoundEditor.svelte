@@ -5,6 +5,8 @@
   import { dropMenu, menuItem, menuOf } from '../../lib/menustate.svelte';
   import type { RpgRound, World } from '../../lib/model';
   import { newWorld, rpgRounds, startRef, worldById } from '../../lib/rpg';
+  import { duplicateWorld } from '../../lib/worldedit';
+  import { tick } from 'svelte';
   import ScreenPicker from './ScreenPicker.svelte';
   import WorldEditor from './WorldEditor.svelte';
 
@@ -26,6 +28,28 @@
     round.world = w.id;
     round.start = undefined;
   }
+
+  /**
+   * A copy of the world, played by this round from now on (the other rounds that played it keep the original): its
+   * party starts where it did, on the copy's screen.
+   */
+  function copyWorld(w: World): void {
+    const at = round.start;
+    step(`Duplicated world “${w.name}”`, () => {
+      const copy = duplicateWorld(w, (game.worlds ?? []).map((x) => x.name));
+      const list = game.worlds ?? [];
+      list.splice(list.indexOf(w) + 1, 0, copy);
+      game.worlds = list;
+      round.world = copy.id;
+      // (The same screen in the copy: the maps and screens are in the same places.)
+      const m = at ? w.maps.findIndex((x) => x.id === at.map) : -1;
+      const sc = at && m >= 0 ? w.maps[m].screens.findIndex((x) => x.id === at.screen) : -1;
+      round.start = m >= 0 && sc >= 0 ? { map: copy.maps[m].id, screen: copy.maps[m].screens[sc].id } : undefined;
+    });
+  }
+  let worldName = $state<HTMLInputElement>();
+  /** ✎ Rename: the World name box, its name selected to type over. */
+  const renameWorld = () => void tick().then(() => (worldName?.focus(), worldName?.select()));
 
   /** Done at once, with its maps and screens: the note at the bottom offers Undo. */
   function deleteWorld(w: World): void {
@@ -99,7 +123,7 @@
         </label>
         {#if world}
           <label class="field" title="A world (its maps and screens) can be played by several rounds: the adventure carries on in the next one">
-            World name<input bind:value={world.name} />
+            World name<input bind:value={world.name} bind:this={worldName} />
           </label>
         {/if}
         <button onclick={createWorld} title="An empty world for this round (the other one stays in the game)">＋ New world</button>
@@ -108,12 +132,14 @@
             class="ghost"
             aria-haspopup="menu"
             aria-label="More for this world"
-            title="More for this world"
+            title="Rename, duplicate or delete this world"
             onclick={(e) =>
               dropMenu(
                 e,
                 menuOf({
                   heading: world.name,
+                  rename: menuItem.rename(renameWorld, { label: '✎ Rename world', keys: false }),
+                  duplicate: menuItem.duplicate(() => copyWorld(world), { label: '⧉ Duplicate world', keys: false, hint: 'This round plays the copy; another round can keep the original' }),
                   delete: menuItem.delete('world', () => deleteWorld(world), {
                     disabled: sharing > 0,
                     hint: sharing ? 'Another round plays this world' : 'With all its maps and screens',

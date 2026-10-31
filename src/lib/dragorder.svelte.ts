@@ -61,8 +61,9 @@ export class DragOrder {
 
 /** What a row's keys do (see rowKeys). */
 export interface RowKeys {
-  /** Alt+↑/↓: one place up (−1) or down. */
+  /** Alt+↑/↓: one place up (−1) or down (Alt+←/→ in a row of chips, `across`). */
   move?: (d: -1 | 1) => void;
+  across?: boolean;
   /** Ctrl+D (⌘+D). */
   duplicate?: () => void;
   /** Shift+F10 or the menu key: the row's menu (its ⋯'s), in a name box too. */
@@ -79,12 +80,15 @@ export function rowKeys(node: HTMLElement, keys: RowKeys): { update: (k: RowKeys
   function key(e: KeyboardEvent): void {
     if (e.defaultPrevented) return;
     const mod = e.ctrlKey || e.metaKey;
-    if (k.move && e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    const [back, on] = k.across ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
+    // (Not ←/→ in a text box on a Mac, where Option+arrows move the caret by word.)
+    const words = k.across && /Mac|iPhone|iPad/.test(navigator.platform) && e.target instanceof HTMLInputElement;
+    if (k.move && e.altKey && !mod && !e.shiftKey && !words && (e.key === back || e.key === on)) {
       e.preventDefault();
       e.stopPropagation();
       // (Moving a row takes it out of the page and back, which drops the focus.)
       const had = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      k.move(e.key === 'ArrowUp' ? -1 : 1);
+      k.move(e.key === back ? -1 : 1);
       void tick().then(() => {
         // A ▼ (or ▲) that is off now the row is at the end can't keep it: the other one next to it takes it.
         const to = had?.matches(':disabled')

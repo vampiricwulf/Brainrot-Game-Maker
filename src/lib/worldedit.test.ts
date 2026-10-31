@@ -6,6 +6,7 @@ import {
   deleteLine,
   duplicateLook,
   duplicateMap,
+  duplicateWorld,
   freeCells,
   insertLine,
   makeMainLook,
@@ -208,5 +209,32 @@ describe('world editor: walls and looks', () => {
     const { world, over, cave, round } = setup();
     over.screens = [];
     expect(startRef(world, round)).toEqual({ map: cave.id, screen: cave.screens[0].id });
+  });
+});
+
+describe('world editor: a copy of a whole world', () => {
+  it('gets fresh ids everywhere, and its ways in and out of its own screens lead to the copies', () => {
+    const { world, over, cave } = setup();
+    const a1 = named(over, 'A1');
+    const spawn = newShapeEl('ellipse');
+    spawn.role = { class: 'spawn' };
+    cave.screens[0].slide.elements.push(spawn);
+    const door = newShapeEl('rect');
+    door.role = { class: 'doorway', to: { map: cave.id, screen: cave.screens[0].id }, arrive: spawn.id };
+    a1.slide.elements.push(door);
+    a1.exits = { n: { kind: 'warp', to: { map: cave.id, screen: cave.screens[0].id } } };
+    const copy = duplicateWorld(world, ['Land', 'Land (copy)']);
+    expect(copy.name).toBe('Land (copy 2)');
+    expect(copy.id).not.toBe(world.id);
+    const [cOver, cCave] = copy.maps;
+    expect([cOver.id, cCave.id]).not.toContain(over.id);
+    const ca1 = named(cOver, 'A1');
+    const cdoor = ca1.slide.elements.at(-1)!;
+    expect(cdoor.id).not.toBe(door.id);
+    expect(cdoor.role).toMatchObject({ to: { map: cCave.id, screen: cCave.screens[0].id }, arrive: cCave.screens[0].slide.elements.at(-1)!.id });
+    expect(ca1.exits?.n).toEqual({ kind: 'warp', to: { map: cCave.id, screen: cCave.screens[0].id } });
+    // The original is untouched.
+    expect(door.role.to).toEqual({ map: cave.id, screen: cave.screens[0].id });
+    expect(world.maps[0].id).toBe(over.id);
   });
 });
