@@ -119,6 +119,14 @@ try {
   await undo();
   await tabs.getByRole('tab', { name: 'Question 3' }).click();
   assert((await q.inputValue()) === 'Toilets with heads', 'the slide came back with its text');
+  // A double-click on 🗑 Delete slide deletes one: the slide opened in its place, under the same 🗑, stays.
+  await tabs.getByRole('tab', { name: 'Question 2' }).click();
+  await dialog.getByRole('button', { name: '🗑 Delete slide' }).dblclick();
+  assert((await tabs.getByRole('tab').count()) === 3, `a double-click on 🗑 Delete slide deletes one slide (${await tabNames()})`);
+  await away();
+  await undo();
+  assert((await tabs.getByRole('tab').count()) === 4 && (await opens('Question 2')) && (await q.inputValue()) === 'It is a YouTube series', 'and Ctrl+Z brings it back');
+  await tabs.getByRole('tab', { name: 'Question 3' }).click();
 
   // ---------- The tabs' keys ----------
   const selected = () => tabs.locator('[role="tab"][aria-selected="true"]');

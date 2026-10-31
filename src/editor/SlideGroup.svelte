@@ -7,6 +7,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { dropMenu } from '../lib/menustate.svelte';
+  import { oneShot } from '../lib/oneshot';
 
   let {
     tab,
@@ -109,8 +110,10 @@
     title="Move this {kind} one place later (Alt+→ on its tab)">▶</button
   >
   <span class="spacer"></span>
+  <!-- (A double-click deletes once: the slide opened in its place, under the same 🗑, stays.) -->
   <button
     class="ghost small danger"
+    use:oneShot
     onclick={ondelete}
     disabled={tab === 'a' || (tab === 'q' && count < 2)}
     title={tab === 'a' ? 'The answer slide stays (empty it instead)' : tab === 'q' && count < 2 ? `The only ${kind} stays (empty it instead)` : `Delete this ${kind} (Ctrl+Z brings it back)`}

@@ -1,6 +1,7 @@
-// A double-click counts once on a button that replaces the screen (▶ Play, the first screen's cards, Resume game…):
-// `use:oneShot` drops the rest of its press (a double-click's second click, a triple-click's third), wherever it lands
-// on the new screen, so it never picks or adds something there. Only the rest of that press: a fresh click always goes
+// A double-click counts once on a button that replaces the screen (▶ Play, the first screen's cards, Resume game…), or
+// that redraws its box under the pointer (a list row's 🗑, 🗑 Delete slide): `use:oneShot` drops the rest of its press
+// (a double-click's second click, a triple-click's third), wherever it lands on the new screen, so it never picks, adds
+// or deletes something there. Only the rest of that press: a fresh click always goes
 // through. The host panel's click guard (play/host/guard.ts) and a score plate's are the same test.
 
 /** How long after a click the rest of its press can come (about the browser's double-click time). */
@@ -60,7 +61,7 @@ if (typeof window !== 'undefined') {
   for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick'] as const) window.addEventListener(type, part, true);
 }
 
-/** `use:oneShot` on a button that replaces the screen: the rest of a double-click on it is dropped. */
+/** `use:oneShot` on a button that replaces the screen or redraws under the pointer: the rest of a double-click on it is dropped. */
 export function oneShot(node: HTMLElement): { destroy: () => void } {
   // (A click by the keys, detail 0, has no press to drop.)
   const arm = (e: MouseEvent) => {

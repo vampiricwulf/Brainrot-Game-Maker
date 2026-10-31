@@ -200,6 +200,11 @@ try {
   assert((await labels.count()) === 5 && (await notice.innerText()).startsWith('Deleted slice “Dance”'), '🗑 deletes a slice, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   assert((await labels.count()) === 6, 'and Undo brings it back');
+  // A double-click on 🗑 deletes one slice: the next one, moved up under the pointer, stays.
+  await page.getByRole('button', { name: 'Delete slice' }).first().dblclick();
+  assert((await values(labels)).join() === 'Dance,Option 1,Option 2,Option 3,Option 4', `a double-click on 🗑 deletes one slice (${await values(labels)})`);
+  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  assert((await labels.count()) === 6, 'and Undo brings it back');
   await page.locator('.seg .pct').nth(2).click({ button: 'right' });
   await page.getByRole('menuitem', { name: '▲ Move up' }).click();
   assert((await values(labels)).slice(0, 3).join() === 'Dance,Option 1,Dance', `a slice's right-click menu moves it (${await values(labels)})`);
