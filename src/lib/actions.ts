@@ -45,6 +45,8 @@ export interface RunContext {
 export interface CardOffer {
   /** What offered it, as the log says it ("Goblin: 🤫 Card for whoever set it off"): never what's on the card. */
   from: string;
+  /** `from` with a secret board-game space not revealed yet as “? (secret)”, where that differs: what one window says. */
+  quiet?: string;
   /** A copy of the card. */
   slide: Slide;
   /** Who it starts with (the host can change it): players' ids. */
@@ -200,10 +202,18 @@ export function describeAction(game: Game, a: Action, on?: ActionOn, teams = fal
   }
 }
 
-/** Run one action. Returns a message for the host (what happened, or why not). */
-export function runAction(ctx: RunContext, a: Action, label?: string): string {
+/**
+ * Run one action. Returns a message for the host (what happened, or why not). `quiet`: the label with a secret board-game
+ * space not revealed yet as “? (secret)”, where that differs: its steps, points and card offer keep both, and a single
+ * window (`ctx.hide`) says the quiet one, whichever window it was run in.
+ */
+export function runAction(ctx: RunContext, a: Action, label?: string, quiet?: string): string {
   const { game, session, live } = ctx;
   const text = label ?? describeAction(game, a, undefined, !!ctx.teams);
+  /** What the host is told (on stream in one window). */
+  const said = ctx.hide && quiet ? quiet : text;
+  /** A step's two texts, with who it was for. */
+  const step = (who: string) => [`${text}${who}`, quiet && `${quiet}${who}`] as const;
   // What it points at was deleted (or never chosen): say so instead of doing something odd.
   const gone = actionProblem(game, a, ctx);
   if (gone) return gone;
@@ -214,30 +224,45 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       if (!f) return 'That stat no longer exists';
       if (!who.length) return 'Pick who it’s for first';
       let moved = 0;
-      logged(session, `${text} (${names(ctx, who)})`, () => {
-        for (const id of who) {
-          if (a.op === 'add') moved += Math.abs(addStat(game, session, id, f, a.amount));
-          // (Not for a player already there: storing a start value would count as a change, and an item used up for nothing.)
-          else if (JSON.stringify(statValue(game, session, id, f)) !== JSON.stringify(clampStat(f, a.amount))) setStat(session, id, f, a.amount);
-        }
-      });
+      const [t, q] = step(` (${names(ctx, who)})`);
+      logged(
+        session,
+        t,
+        () => {
+          for (const id of who) {
+            if (a.op === 'add') moved += Math.abs(addStat(game, session, id, f, a.amount));
+            // (Not for a player already there: storing a start value would count as a change, and an item used up for nothing.)
+            else if (JSON.stringify(statValue(game, session, id, f)) !== JSON.stringify(clampStat(f, a.amount))) setStat(session, id, f, a.amount);
+          }
+        },
+        undefined,
+        q || undefined,
+      );
       // Damage (HP down…), not money spent; not when nobody lost any (all at their min).
       if (moved && a.amount < 0 && !f.currency) blip(live, 'hurt');
-      return `${text}: ${names(ctx, who)}`;
+      return `${said}: ${names(ctx, who)}`;
     }
     case 'item': {
       const who = targets(ctx, a.who);
       if (!who.length) return 'Pick who it’s for first';
-      logged(session, `${text} (${names(ctx, who)})`, () => {
-        for (const id of who) a.op === 'give' ? giveItem(game, session, id, a.item, a.qty) : takeItem(session, id, a.item, a.qty);
-      });
-      return `${text}: ${names(ctx, who)}`;
+      const [t, q] = step(` (${names(ctx, who)})`);
+      logged(
+        session,
+        t,
+        () => {
+          for (const id of who) a.op === 'give' ? giveItem(game, session, id, a.item, a.qty) : takeItem(session, id, a.item, a.qty);
+        },
+        undefined,
+        q || undefined,
+      );
+      return `${said}: ${names(ctx, who)}`;
     }
     case 'score': {
       const who = targets(ctx, a.who);
       if (!who.length) return 'Pick who it’s for first';
-      applyScore(session, game, who, a.amount, label ?? 'Adventure');
-      return `${text}: ${names(ctx, who)}`;
+      // (Its quiet reason too: the 📜 Log and Undo say it in one window.)
+      for (const e of applyScore(session, game, who, a.amount, label ?? 'Adventure')) if (label && quiet && quiet !== label) e.quiet = quiet;
+      return `${said}: ${names(ctx, who)}`;
     }
     case 'wheel': {
       if (a.wheel === PLAYER_WHEEL) openPlayerWheel(live, session, !!ctx.teams);
@@ -247,7 +272,7 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
         openWheel(live, session, w);
       }
       for (const id of a.also ?? []) addWheel(live, session, game, id, !!ctx.teams);
-      return text;
+      return said;
     }
     case 'dice': {
       const preset = game.dice.find((d) => d.id === a.dice || d.name === a.dice);
@@ -257,11 +282,11 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
         if (!d) return `“${a.dice}” isn’t dice (try d20 or 2d6)`;
         rollDice(live, session, quickDice(d.sides, d.count, a.dice));
       }
-      return text;
+      return said;
     }
     case 'popup':
       live.overlay = { kind: 'popup', nonce: newId(), slide: JSON.parse(JSON.stringify(a.slide)) };
-      return text;
+      return said;
     case 'question':
       live.overlay = {
         kind: 'popup',
@@ -272,11 +297,11 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
         value: a.value,
         at: Date.now(),
       };
-      return text;
+      return said;
     case 'sound':
       if (!a.media) return 'No sound chosen';
       playSound(live, a.media);
-      return text;
+      return said;
     case 'move': {
       if (!ctx.world || !ctx.st) return 'Moves only work in RPG rounds';
       // The party: the one standing where the object is (only another one than the followed party needs naming).
@@ -285,25 +310,26 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       const who = a.who === 'party' || !a.who ? other : targets(ctx, a.who);
       const st = ctx.st;
       const world = ctx.world;
-      logged(session, `${text} (${who ? names(ctx, who) : 'party'})`, () => moveTo(game, st, world, a.to, { players: who }));
-      return text;
+      const [t, q] = step(` (${who ? names(ctx, who) : 'party'})`);
+      logged(session, t, () => moveTo(game, st, world, a.to, { players: who }), undefined, q || undefined);
+      return said;
     }
     case 'reveal':
     case 'hide': {
       if (!ctx.st || !a.object) return 'Nothing to reveal';
       const st = ctx.st;
       const id = a.object;
-      logged(session, text, () => (override(st, id).shown = a.do === 'reveal'));
-      return text;
+      logged(session, text, () => (override(st, id).shown = a.do === 'reveal'), undefined, quiet);
+      return said;
     }
     case 'shop':
       if (!game.shops?.some((s) => s.id === a.shop)) return 'That shop no longer exists';
       // The player it's for does the buying (the host can switch the buyer in the shop).
       live.overlay = { kind: 'shop', nonce: newId(), shopId: a.shop, buyer: targets(ctx, 'ask')[0] ?? targets(ctx, 'party')[0] };
-      return text;
+      return said;
     case 'timer':
       startTimer(live, a.seconds);
-      return text;
+      return said;
     case 'note':
       return a.text;
     case 'goto': {
@@ -311,8 +337,9 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       const who = targets(ctx, a.who);
       if (!who.length) return 'Pick who it’s for first';
       const bs = ctx.bs;
-      logged(session, `${text} (${names(ctx, who)})`, () => sendTo(bs, who, { space: a.space, zone: a.zone }));
-      return `${text}: ${names(ctx, who)}`;
+      const [t, q] = step(` (${names(ctx, who)})`);
+      logged(session, t, () => sendTo(bs, who, { space: a.space, zone: a.zone }), undefined, q || undefined);
+      return `${said}: ${names(ctx, who)}`;
     }
     case 'steps':
     case 'skip':
@@ -322,22 +349,29 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       const who = targets(ctx, a.who ?? 'party');
       if (!who.length) return 'Pick who it’s for first';
       const { board, bs } = ctx;
-      let said = '';
-      logged(session, `${text} (${names(ctx, who)})`, () => {
-        if (a.do === 'steps') said = moveEach(board, bs, who, Math.round(a.steps) || 0, !!ctx.hide);
-        else if (a.do === 'skip') skipTurns(bs, who, a.turns ?? 1);
-        else bs.again = who[0];
-      });
-      return `${text}: ${names(ctx, who)}${said ? ` · ${said}` : ''}`;
+      let moved = '';
+      const [t, q] = step(` (${names(ctx, who)})`);
+      logged(
+        session,
+        t,
+        () => {
+          if (a.do === 'steps') moved = moveEach(board, bs, who, Math.round(a.steps) || 0, !!ctx.hide);
+          else if (a.do === 'skip') skipTurns(bs, who, a.turns ?? 1);
+          else bs.again = who[0];
+        },
+        undefined,
+        q || undefined,
+      );
+      return `${said}: ${names(ctx, who)}${moved ? ` · ${moved}` : ''}`;
     }
     case 'card': {
       // Only offered: the host checks who gets it and presses 📤 Send in the panel (the owner's rule: nothing goes to a
       // phone but by the host's press). A copy, so editing the button later doesn't change a card already offered.
       if (!ctx.offerCard) return 'Cards can’t be sent from here';
       const to = cardTargets(ctx, a.to);
-      ctx.offerCard({ from: text, slide: JSON.parse(JSON.stringify(a.slide)), to, until: a.until === 'host' ? 'host' : 'round' });
+      ctx.offerCard({ from: text, ...(quiet && quiet !== text ? { quiet } : {}), slide: JSON.parse(JSON.stringify(a.slide)), to, until: a.until === 'host' ? 'host' : 'round' });
       // (Short: the offer in the panel says the rest, and a long toast would sit over it.)
-      return text;
+      return said;
     }
   }
 }

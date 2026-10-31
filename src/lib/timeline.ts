@@ -102,7 +102,7 @@ export function timelineRows(session: Session, game: Game, sym: string, hide = f
   for (const [id, events] of byStep) {
     const state: TimelineState = events.some((e) => !e.undone) ? 'done' : events.some((e) => redoIds.has(e.id)) ? 'redo' : 'off';
     const ts = Math.max(...events.map((e) => e.ts));
-    rows.push({ kind: 'score', id, ts, text: describeStep(session, events, sym) + judged(events[0]), events, state, clueId: events[0].clueId, round: roundOf(game, events[0]) });
+    rows.push({ kind: 'score', id, ts, text: describeStep(session, events, sym, hide) + judged(events[0]), events, state, clueId: events[0].clueId, round: roundOf(game, events[0]) });
   }
   for (const a of session.actionLog ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: stepText(a, hide), round: a.round, state: 'done' });
   for (const a of session.actionRedo ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: stepText(a, hide), round: a.round, state: 'redo' });

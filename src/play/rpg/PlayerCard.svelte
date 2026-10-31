@@ -161,7 +161,8 @@
     // One undoable step: what it does, and using it up (only when it did something: "Pick who it's for first" keeps it).
     logged(session, `${name} uses ${def.name}`, () => {
       const before = JSON.stringify([session, app.live]);
-      said = actions.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a, 'use', teams, hide ? bs : undefined)}`));
+      // (A board game's: its step says a Send to a secret space both ways, for one window.)
+      said = actions.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a, 'use', teams)}`, bs ? `${name} uses ${def.name}: ${describeAction(game, a, 'use', teams, bs)}` : undefined));
       did = offered || JSON.stringify([session, app.live]) !== before;
       if (did && !def.wearable) change(entryId, `used ${def.name}`, (list, i) => (list[i].qty > 1 ? list[i].qty-- : list.splice(i, 1)));
     });

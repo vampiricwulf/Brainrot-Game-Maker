@@ -12,8 +12,7 @@
   import type { Action, BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
   import { spaceSaid, spaceShown } from '../../lib/boardgame';
   import { nameList } from '../../lib/session';
-  import { logged } from '../../lib/toolset';
-  import { decidingAction, playerName, runLanding, runSpace, sendNow } from './bgops';
+  import { decidingAction, playerName, revealSpace, runLanding, runSpace, sendNow, spaceActText } from './bgops';
   import { offerIn } from '../host/offered.svelte';
 
   let {
@@ -57,14 +56,13 @@
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
     // (For the players picked: nobody picked, it does nothing, and a landing isn't run.)
     if ('who' in a && a.who === 'selected' && !selected.length) return void toast('Pick who it’s for first (1–9)');
-    const label = `${spaceSaid(bs, space, !dual)}: ${actText(a, on)}`;
-    const go = () => runAction({ game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session) }, a, label);
+    const go = () => runAction({ game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session) }, a, ...spaceActText(game, bs, space, a, on, teams));
     // (Where the turn's move landed: its landing counts as run.)
     toast(on === 'land' ? runLanding(game, session, space, go) : go(), 3000);
   }
 
   function reveal(): void {
-    logged(session, `Reveal ${space.name}`, () => (bs.revealed = [...(bs.revealed ?? []), space.id]));
+    revealSpace(session, bs, space);
   }
 </script>
 

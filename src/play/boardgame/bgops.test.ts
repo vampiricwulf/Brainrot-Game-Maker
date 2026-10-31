@@ -5,12 +5,12 @@ import { newLive } from '../../lib/live';
 import { ensureBoard, movePlayer, newBoardGameRound } from '../../lib/boardgame';
 import { goToRound, newSession } from '../../lib/session';
 import { newWheel } from '../../lib/tools';
-import { forgetGameParts, redoAction, undoAction } from '../../lib/toolset';
-import { runAction } from '../../lib/actions';
-import { PLAYER_WHEEL, type Action } from '../../lib/model';
+import { forgetGameParts, redoAction, stepText, undoAction } from '../../lib/toolset';
+import { runAction, type CardOffer } from '../../lib/actions';
+import { PLAYER_WHEEL, textSlide, type Action } from '../../lib/model';
 import { prefs } from '../../lib/prefs.svelte';
-import { landingRan, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, reorderTurns, rollMover, runLanding, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './bgops';
-import { undo } from '../../lib/session';
+import { landingRan, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, reorderTurns, revealSpace, rollMover, runLanding, runSpace, sendNow, setTurn, spaceActText, stepWaysHint, turnNow } from './bgops';
+import { describeStep, undo } from '../../lib/session';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
 // (What screen readers are told.)
@@ -236,7 +236,7 @@ describe('board game: the host’s moves on the stage', () => {
     // A Send to there: the button, its toast and the log.
     s5.onLand = [{ id: 'g', do: 'goto', space: trap.id, who: 'ask' }];
     expect(runSpace(game, session, newLive(), s5, ['c'], 'onLand', true)).toBe('Space 5: Send to ? (secret): Cat');
-    expect(session.actionLog?.at(-1)?.text).toBe('Space 5: Send to ? (secret)');
+    expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Space 5: Send to ? (secret)');
     // A token dropped on it (or 📍 Send to).
     sendNow(game, session, ['a'], { space: s5.id });
     expect(sendNow(game, session, ['a'], { space: trap.id }, true)).toBe('Ann → ? (secret)');
@@ -244,6 +244,36 @@ describe('board game: the host’s moves on the stage', () => {
     sendNow(game, session, ['a', 'b', 'c'], { space: s5.id });
     expect(runSpace(game, session, newLive(), s5, ['c'])).toBe('Space 5: Send to Trap Door: Cat');
     expect(sendNow(game, session, ['a'], { space: trap.id })).toBe('Ann → Trap Door');
+  });
+
+  it('a step, points or a card offer made with the audience window open still say “? (secret)” once one window is left', () => {
+    const { game, session, round, bs } = playing();
+    const trap = Object.assign(round.spaces[2], { name: 'Trap Door', secret: true, onLand: [{ id: 'p', do: 'score', amount: 100, who: 'party' }] as Action[] });
+    const s5 = round.spaces[4];
+    s5.onLand = [{ id: 'g', do: 'goto', space: trap.id, who: 'ask' }];
+    // Two windows: the host is told the names…
+    sendNow(game, session, ['a', 'b', 'c'], { space: s5.id });
+    expect(runSpace(game, session, newLive(), s5, ['c'])).toBe('Space 5: Send to Trap Door: Cat');
+    const sent = session.actionLog!.at(-1)!;
+    expect([stepText(sent, false), stepText(sent, true)]).toEqual(['Space 5: Send to Trap Door', 'Space 5: Send to ? (secret)']);
+    expect(sendNow(game, session, ['a'], { space: trap.id })).toBe('Ann → Trap Door');
+    expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Ann → ? (secret)');
+    // …and the points its landing gives: the 📜 Log and Undo say it the quiet way in one window.
+    runSpace(game, session, newLive(), trap, ['a']);
+    const points = session.scoreLog.filter((e) => !e.undone).slice(-1);
+    expect(describeStep(session, points, '$')).toBe('+$100 (Ann) · Trap Door: +$100');
+    expect(describeStep(session, points, '$', true)).toBe('+$100 (Ann) · ? (secret): +$100');
+    // A space's button run from the landing row or its card (runAction with both words).
+    const card: Action = { id: 'c', do: 'card', slide: textSlide('Psst'), to: 'trigger' };
+    const offers: CardOffer[] = [];
+    const ctx = { game, session, live: newLive(), board: round, bs: bs(), selected: [], chosen: ['b'], offerCard: (o: CardOffer) => offers.push(o) };
+    expect(runAction(ctx, card, ...spaceActText(game, bs(), trap, card, 'land', false))).toBe('Trap Door: 🤫 Card for whoever landed there');
+    expect(offers[0]).toMatchObject({ from: 'Trap Door: 🤫 Card for whoever landed there', quiet: '? (secret): 🤫 Card for whoever landed there' });
+    expect(runAction({ ...ctx, hide: true }, card, ...spaceActText(game, bs(), trap, card, 'land', false))).toBe('? (secret): 🤫 Card for whoever landed there');
+    // Revealing it: its step says so without the name (an Undo hides it again).
+    revealSpace(session, bs(), trap);
+    expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Reveal ? (secret)');
+    expect(bs().revealed).toEqual([trap.id]);
   });
 
   it('says whose turn it is in the history, going on or back', () => {

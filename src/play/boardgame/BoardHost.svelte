@@ -12,13 +12,13 @@
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
-  import { clampSteps, currentPlayer, MAX_STEPS, spaceById, spaceListNames, spaceSaid, spaceShown, unrevealed, waysOn } from '../../lib/boardgame';
+  import { clampSteps, currentPlayer, MAX_STEPS, spaceById, spaceListShown, spaceShown, unrevealed, waysOn } from '../../lib/boardgame';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged, stepText } from '../../lib/toolset';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, isMover, landingRan, moveNow, moverDiceName, offBoard, playerName, reorderTurns, rollMover, runLanding, sendNow, setTurn, turnOrder } from './bgops';
+  import { boardNow, busyZones, isMover, landingRan, moveNow, moverDiceName, offBoard, playerName, reorderTurns, revealSpace, rollMover, runLanding, sendNow, setTurn, spaceActText, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { START_FIRST } from '../rpg/hostops';
   import { offerMenu, step as nextStep, type NextAction } from '../host/slots.svelte';
@@ -145,8 +145,11 @@
   });
 
   const card = $derived(round && space ? spaceById(round, space) : undefined);
-  /** The spaces' names in the lists below (a name that repeats says where it is: “Bonus (after Space 6)”). */
-  const listNames = $derived(round ? spaceListNames(round) : new Map<string, string>());
+  /**
+   * The spaces' names in the lists below (a name that repeats says where it is: “Bonus (after Space 6)”). In one window
+   * (on stream) a secret one not revealed yet is “? (secret)”, as on the board.
+   */
+  const listNames = $derived(round && bs ? spaceListShown(round, bs, !dual) : new Map<string, string>());
 
   function roll(): void {
     // (As D: under the round's title card nobody would see it.)
@@ -180,8 +183,7 @@
     if (needsPlayers(a) && !who) return void hint('Pick who it’s for first');
     // (For the players picked: nobody picked, it does nothing, and the landing isn't run.)
     if ('who' in a && a.who === 'selected' && !selected.length) return void hint('Pick who it’s for first (1–9)');
-    const where = bs ? spaceSaid(bs, s, !dual) : s.name;
-    const go = () => runAction({ ...ctx, chosen: [who] }, a, `${where}: ${actText(a, on)}`);
+    const go = () => runAction({ ...ctx, chosen: [who] }, a, ...(bs ? spaceActText(game, bs, s, a, on, !!ctx.teams) : [`${s.name}: ${actText(a, on)}`]));
     // (The landing's own: it counts as run, for the check before Next turn ▶.)
     toast(on === 'land' ? runLanding(game, session, s, go) : go(), 3000);
   }
@@ -243,9 +245,7 @@
   }
 
   function reveal(s: BoardSpace): void {
-    if (!bs) return;
-    const b = bs;
-    logged(session, `Reveal ${s.name}`, () => (b.revealed = [...(b.revealed ?? []), s.id]));
+    if (bs) revealSpace(session, bs, s);
   }
 </script>
 
@@ -379,7 +379,7 @@
         }}
       >
         <option value="">🗂 Spaces…</option>
-        {#each round.spaces as s (s.id)}<option value={s.id}>{listNames.get(s.id)}{s.secret && !bs.revealed?.includes(s.id) ? ' (secret)' : ''}</option>{/each}
+        {#each round.spaces as s (s.id)}<option value={s.id}>{listNames.get(s.id)}{dual && unrevealed(bs, s) ? ' (secret)' : ''}</option>{/each}
       </select>
       <select
         class="small"

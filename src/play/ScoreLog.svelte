@@ -5,7 +5,7 @@
 <script lang="ts">
   import { formatPoints, roundName, type Game, type RollEvent, type ScoreEvent, type Session } from '../lib/model';
   import { ROUND_MODES } from '../lib/modes';
-  import { nameList, stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
+  import { nameList, reasonText, stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
   import { timelineRows, type TimelineRow } from '../lib/timeline';
   import InlineAsk from './host/InlineAsk.svelte';
   import { onMount } from 'svelte';
@@ -273,7 +273,7 @@
             <span class="dot" style:background={p?.color ?? '#666'}></span>
             <span class="who">{name(first.playerId)}</span>
             <span class="delta" class:neg={first.delta < 0}>{amount(first.delta)}</span>
-            <span class="why muted" class:selectable={!hide}>{first.reason}{judged(first)} · {time(first.ts)}</span>
+            <span class="why muted" class:selectable={!hide}>{reasonText(first, hide)}{judged(first)} · {time(first.ts)}</span>
             {#if inStep.has(first.id)}
               <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
             {:else}
@@ -289,7 +289,7 @@
               {expanded[step.key] ? '▾' : '▸'} {step.events.length} players
             </button>
             <span class="delta" class:neg={first.delta < 0}>{stepAmount(step.events, sym)}</span>
-            <span class="why muted" class:selectable={!hide}>{nameList(step.events.map((e) => name(e.playerId)))} · {first.reason} · {time(first.ts)}</span>
+            <span class="why muted" class:selectable={!hide}>{nameList(step.events.map((e) => name(e.playerId)))} · {reasonText(first, hide)} · {time(first.ts)}</span>
             {#if step.events.some((e) => inStep.has(e.id))}
               <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
             {:else}

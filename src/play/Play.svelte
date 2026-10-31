@@ -101,7 +101,7 @@
   import { longPress } from '../lib/longpress';
   import { currentPlayer, ensureBoard, HOP_MS, spaceSaid, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, focusRef, refindPositions } from '../lib/rpg';
-  import { boardNow, isMover, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
+  import { boardNow, isMover, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, revealSpace, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { partnerUpVerbs, playerMenu, revealVerbs, type SeatPhone } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
@@ -3682,14 +3682,14 @@
       return `${stepText(a, !dual)}${inRound(a)}`;
     }
     const here = (e: ScoreEvent) => !e.undone && stepOf(e) === next?.id && session.players.some((p) => p.id === e.playerId);
-    return next ? describeStep(session, session.scoreLog.filter(here), sym) : null;
+    return next ? describeStep(session, session.scoreLog.filter(here), sym, !dual) : null;
   });
   const redoText = $derived.by(() => {
     const from = redoFrom(session, [...undone]);
     const a = session.actionRedo?.at(-1);
     if (from === 'action' && a) return `${stepText(a, !dual)}${inRound(a)}`;
     const top = session.scoreLog.find((e) => e.id === session.redoStack.at(-1));
-    return top ? describeStep(session, session.scoreLog.filter((e) => e.undone && stepOf(e) === stepOf(top) && session.redoStack.includes(e.id)), sym) : null;
+    return top ? describeStep(session, session.scoreLog.filter((e) => e.undone && stepOf(e) === stepOf(top) && session.redoStack.includes(e.id)), sym, !dual) : null;
   });
 
   /**
@@ -3742,7 +3742,7 @@
     stealFollow(events);
     buzzFollow(events, true);
     timerFollow(events, true);
-    return describeStep(session, events, sym);
+    return describeStep(session, events, sym, !dual);
   }
 
   /** One Redo, back the way the Undos went. Returns what it brought back, or null with nothing to redo. */
@@ -3769,7 +3769,7 @@
     stealFollow(events);
     buzzFollow(events, false);
     timerFollow(events, false);
-    return after(events.length ? describeStep(session, events, sym) : null);
+    return after(events.length ? describeStep(session, events, sym, !dual) : null);
   }
 
   function doUndo(): void {
@@ -4485,7 +4485,7 @@
           {
             label: '👁 Reveal this space',
             disabled: !sp.secret || !!bs.revealed?.includes(sp.id),
-            onclick: () => logged(session, `Reveal ${sp.name}`, () => (bs.revealed = [...(bs.revealed ?? []), sp.id])),
+            onclick: () => revealSpace(session, bs, sp),
           },
         ]);
       }

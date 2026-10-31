@@ -81,12 +81,27 @@ export const moveCounts = new Map<string, number>();
 export function sendNow(game: Game, session: Session, who: string[], to: { space?: string; zone?: string }, hide = false): string | null {
   const { round, bs } = boardNow(game, session);
   const space = round && !to.zone ? spaceById(round, to.space) : undefined;
-  const where = to.zone ? round?.zones.find((z) => z.id === to.zone)?.name : space && bs && spaceSaid(bs, space, hide);
+  const zone = to.zone ? round?.zones.find((z) => z.id === to.zone)?.name : undefined;
   const moving = who.filter((id) => (to.zone ? bs?.positions[id]?.zone !== to.zone : bs?.positions[id]?.space !== to.space));
-  if (!bs || !where || !moving.length) return null;
-  const text = `${nameList(moving.map((w) => playerName(session, w)))} → ${where}`;
-  logged(session, text, () => sendTo(bs, moving, to));
-  return text;
+  if (!bs || !(zone || space) || !moving.length) return null;
+  // (Its step says it both ways: one window shows the quiet one, whichever window sent them.)
+  const [text, quiet] = [false, true].map((h) => `${nameList(moving.map((w) => playerName(session, w)))} → ${zone ?? spaceSaid(bs, space, h)}`);
+  logged(session, text, () => sendTo(bs, moving, to), undefined, quiet);
+  return hide ? quiet : text;
+}
+
+/**
+ * A space's action button as its step and points say it ("Trap Door: Send to Treasure"), and again with a secret space
+ * not revealed yet as “? (secret)”, for one window (runAction keeps both).
+ */
+export function spaceActText(game: Game, bs: BoardGameState, s: BoardSpace, a: Action, on: 'land' | 'pass', teams: boolean): [text: string, quiet: string] {
+  return [`${s.name}: ${describeAction(game, a, on, teams)}`, `${spaceSaid(bs, s, true)}: ${describeAction(game, a, on, teams, bs)}`];
+}
+
+/** Reveal a secret space to viewers, as one step (its quiet text doesn't name it: an Undo hides it again). */
+export function revealSpace(session: Session, bs: BoardGameState, s: BoardSpace): void {
+  if (bs.revealed?.includes(s.id)) return;
+  logged(session, `Reveal ${s.name}`, () => (bs.revealed = [...(bs.revealed ?? []), s.id]), undefined, `Reveal ${spaceSaid(bs, s, true)}`);
 }
 
 /** Make it a player's turn (a way to pick at a fork, and a pending Roll again, are dropped). */
@@ -129,12 +144,18 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
   let said: string[] = [];
   const ctx = { game, session, live, board: round, bs, hide, selected: who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session) };
   const on = which === 'onPass' ? 'pass' : 'land';
-  const where = spaceSaid(bs, space, hide);
-  const what = (a: Action) => describeAction(game, a, on, ctx.teams, hide ? bs : undefined);
+  // (Its step says it both ways: one window shows the quiet one, whichever window ran it.)
+  const [text, quiet] = [false, true].map((h) => `${spaceSaid(bs, space, h)}: ${run.map((a) => describeAction(game, a, on, ctx.teams, h ? bs : undefined)).join(', ')}`);
   const go = () =>
-    logged(session, `${where}: ${run.map(what).join(', ')}`, () => {
-      said = run.map((a) => runAction(ctx, a, `${where}: ${what(a)}`));
-    });
+    logged(
+      session,
+      text,
+      () => {
+        said = run.map((a) => runAction(ctx, a, ...spaceActText(game, bs, space, a, on, ctx.teams)));
+      },
+      undefined,
+      quiet,
+    );
   if (which === 'onLand') runLanding(game, session, space, go);
   else go();
   return decides ? `${said.join(' · ')}: then press the outcome` : said.join(' · ');

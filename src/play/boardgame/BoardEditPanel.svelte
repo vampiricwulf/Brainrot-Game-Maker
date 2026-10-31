@@ -7,7 +7,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
-  import { applySpaceKind, nameShown, SPACE_KINDS, spaceById, spaceListNames, spaceSaid, unrevealed } from '../../lib/boardgame';
+  import { applySpaceKind, nameShown, SPACE_KINDS, spaceById, spaceListShown, spaceSaid, unrevealed } from '../../lib/boardgame';
   import { numberStat } from '../../lib/rpgpresets';
   import type { BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
   import BoardSpaceButtons from './BoardSpaceButtons.svelte';
@@ -44,7 +44,7 @@
   });
   const masked = $derived(!!sel && quiet(sel) && shownFor !== sel.id);
   /** The spaces' names in Connect to… (a name that repeats says where it is: “Bonus (after Space 6)”). */
-  const listNames = $derived(spaceListNames(hide ? { ...round, spaces: round.spaces.map((x) => (unrevealed(bs, x) ? { ...x, name: '? (secret)' } : x)) } : round));
+  const listNames = $derived(spaceListShown(round, bs, hide));
 </script>
 
 <div class="be" data-board-editing>

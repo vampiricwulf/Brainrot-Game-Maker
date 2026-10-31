@@ -895,6 +895,8 @@ export interface ScoreEvent {
   playerId: Id;
   delta: number;
   reason: string;
+  /** The reason with a secret board-game space not revealed yet as “? (secret)”, where that differs: what one window says. */
+  quiet?: string;
   clueId?: Id;
   /**
    * Given by a wheel or dice tile's own wheel or dice (a score card, a slice's points): that tile's clue id. (Not clueId:

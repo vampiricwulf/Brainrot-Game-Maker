@@ -195,11 +195,18 @@ export function stepAmount(events: ScoreEvent[], sym: string): string {
   return `${d > 0 ? '+' : ''}${formatPoints(d, sym)}${events.length > 1 ? ` × ${events.length}` : ''}`;
 }
 
-/** "+$200 × 3 (Alex, Sam & Jo) · Jeopardy! · Memes $200": what one undo step changed. */
-export function describeStep(session: Session, events: ScoreEvent[], sym: string): string {
+/** A score event's reason as the host is told it: in a single window (`hide`), its quiet one (see ScoreEvent.quiet). */
+export const reasonText = (e: Pick<ScoreEvent, 'reason' | 'quiet'>, hide: boolean): string => (hide && e.quiet) || e.reason;
+
+/**
+ * "+$200 × 3 (Alex, Sam & Jo) · Jeopardy! · Memes $200": what one undo step changed. `hide`: a single window, where a
+ * reason says its quiet text.
+ */
+export function describeStep(session: Session, events: ScoreEvent[], sym: string, hide = false): string {
   if (!events.length) return '';
   const names = nameList(events.map((e) => playerName(session, e.playerId)));
-  return `${stepAmount(events, sym)} (${names})${events[0].reason ? ` · ${events[0].reason}` : ''}`;
+  const why = reasonText(events[0], hide);
+  return `${stepAmount(events, sym)} (${names})${why ? ` · ${why}` : ''}`;
 }
 
 /** Undo (or restore, if it's fully undone) a whole step from the score log. */

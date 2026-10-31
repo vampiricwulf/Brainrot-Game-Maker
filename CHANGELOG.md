@@ -79,6 +79,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - RPG rounds on the game screen: an object dropped where it was, or a group held back at the stage's edge, no longer leaves an undo step that changes nothing, and a move of many reads “Move Ann, Bob, Cy & 5 more”. In one window (viewers see the host panel) a secret object is never named: Objects here lists it as “🙈 Hidden object 1”, its card keeps its name and buttons behind 👁 Show, and its menu, the Remove toast, Undo, the 📜 Log and the panel's Last: line say “a hidden object”, for steps made with the audience window open too.
 - A click on a Daily Double's splash no longer takes the keys out of its Wager box, where the next digits typed picked players instead of the wager.
+- ♟ Board games in one window (viewers see the host panel): a secret space not revealed yet is “? (secret)” in the turn box's **📍 Send to…** and **🗂 Spaces…** lists too (they named it), and the undo steps, 📜 Log lines, points and 🤫 card offers its buttons make say “? (secret)” even when they were made with the audience window open (they kept its name once that window closed). Revealing it is “Reveal ? (secret)” in the history, so an Undo that hides it again doesn't leave its name there.
 ## 2026-10-30
 
 ### Added

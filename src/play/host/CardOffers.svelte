@@ -30,9 +30,11 @@
 </script>
 
 {#each list as o (o.key)}
-  <div class="offer" role="group" aria-label="Card offered: {o.from}" data-card-offer {@attach arrive}>
+  <!-- (One window: what offered it, a secret space not revealed yet as “? (secret)”, as its step says it.) -->
+  {@const from = !dual && o.quiet ? o.quiet : o.from}
+  <div class="offer" role="group" aria-label="Card offered: {from}" data-card-offer {@attach arrive}>
     <div class="row">
-      <b class="small">{o.from}</b>
+      <b class="small">{from}</b>
       <span class="muted small">(only if you send it)</span>
       <span class="spacer"></span>
       <button class="ghost small" onclick={() => dropOffer(o.key)} title="Close it without sending the card (once you’ve copied it, say)">Skip</button>

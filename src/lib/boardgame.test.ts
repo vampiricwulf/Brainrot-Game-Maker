@@ -4,7 +4,7 @@ import { goToRound, newSession, rebaseSession } from './session';
 import { newWheel } from './tools';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, closeUpOver, moverPreset, moverWheelNoNumbers, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, stepsIn, MAX_STEPS, placeTokens, tokenRadius,
+  boardGameProblems, closeUpOver, moverPreset, moverWheelNoNumbers, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, stepsIn, MAX_STEPS, placeTokens, tokenRadius, spaceListShown,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -604,5 +604,22 @@ describe('board game: space names', () => {
     expect(nameShownLabel({ name: 'Nap time' }, false)).toBe('Hid the name of “Nap time”');
     expect(allNamesLabel(true)).toBe('Showed all space names');
     expect(allNamesLabel(false)).toBe('Hid all space names');
+  });
+});
+
+describe('the host’s lists of spaces', () => {
+  it('in one window say “? (secret)” for a secret space not revealed yet, and where it is when there are more', () => {
+    const round = newBoardGameRound('Board');
+    Object.assign(round.spaces[2], { name: 'Trap Door', secret: true });
+    Object.assign(round.spaces[7], { name: 'Treasure', secret: true });
+    const bs: BoardGameState = { order: [], turn: 0, positions: {} };
+    const hidden = spaceListShown(round, bs, true);
+    expect([hidden.get(round.spaces[2].id), hidden.get(round.spaces[7].id), hidden.get(round.spaces[3].id)]).toEqual(['? (secret) (after Space 2)', '? (secret) (after Space 7)', 'Space 4']);
+    expect([...hidden.values()].join()).not.toMatch(/Trap Door|Treasure/);
+    // With an audience window, or once revealed: the names.
+    expect(spaceListShown(round, bs, false).get(round.spaces[2].id)).toBe('Trap Door');
+    bs.revealed = [round.spaces[2].id];
+    expect(spaceListShown(round, bs, true).get(round.spaces[2].id)).toBe('Trap Door');
+    expect(spaceListShown(round, bs, true).get(round.spaces[7].id)).toBe('? (secret)');
   });
 });

@@ -140,6 +140,14 @@ export function spaceListNames(round: BoardGameRound): Map<Id, string> {
 }
 
 /**
+ * The spaces' names in the host's lists (see spaceListNames). `hide`: one window (the panel is on stream), so a secret
+ * one not revealed yet is “? (secret)”, saying where it is when there are more (“? (secret) (after Space 6)”).
+ */
+export function spaceListShown(round: BoardGameRound, bs: BoardGameState, hide: boolean): Map<Id, string> {
+  return spaceListNames(hide ? { ...round, spaces: round.spaces.map((x) => (unrevealed(bs, x) ? { ...x, name: '? (secret)' } : x)) } : round);
+}
+
+/**
  * A space about to be deleted: the spaces that led to it lead everywhere it led instead, not back to themselves (a
  * space in the middle of a both-ways path, A ⇄ B ⇄ C, leaves A ⇄ C; a deleted fork moves back one space). True
  * when any of them leads somewhere new.
