@@ -764,10 +764,11 @@
   {@const tbAt = clueSlideIndex(session, tb)}
   {@const tbOf = questionSlides(tb).length}
   {#key `${session.tiebreakerRevealed}-${tbAt}`}
+    <!-- (Its answer up, a click goes back to the results, through the check: “Nobody has won the tiebreaker…”.) -->
     <div
       class="full"
-      class:clickable={!!onact && !session.tiebreakerRevealed}
-      onclick={() => !session.tiebreakerRevealed && act('reveal')}
+      class:clickable={!!onact}
+      onclick={() => act(session.tiebreakerRevealed ? 'back' : 'reveal')}
       role="presentation"
       data-slide={session.tiebreakerRevealed ? 'answer' : tbAt + 1}
       in:fade|global={{ duration: 300 }}

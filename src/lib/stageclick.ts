@@ -108,6 +108,8 @@ export function stageClick(c: ClickNow): Click {
     case 'overlay':
       return overClick(c);
     case 'back':
+      // (The tiebreaker's answer: back to the results, through the check, which asks who won first.)
+      if (c.phase === 'tiebreaker') return st?.id === 'results' ? GO : NONE;
       if (c.phase !== 'clue') return NONE;
       return st?.id === 'done' ? GO : act('back');
     case 'final-next':

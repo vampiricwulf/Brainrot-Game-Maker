@@ -265,6 +265,15 @@ try {
   await s2.locator('[data-slide="answer"]').getByText('Forty-two').waitFor();
   await p2.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('🏁 Back to results'));
   assert((await mainButton(p2).locator('kbd').innerText()) === 'N', 'N reveals the answer, then 🏁 Back to results is the main button, with N on it');
+  // A click on its answer goes back to the results as the blue button does, through the check: nobody has won it yet,
+  // so it asks (🏆 each tied player); Not yet leaves the tiebreaker up.
+  await p2.waitForTimeout(500);
+  await s2.locator('[data-slide="answer"]').click();
+  await checkItem(p2, 'tie').waitFor();
+  assert((await goOnCheck(p2).locator('[data-quick]').count()) === 2 && (await p2.locator('.panel .status b').innerText()) === 'Tiebreaker', 'a click on the tiebreaker’s answer asks first, as 🏁 Back to results does: 🏆 each tied player');
+  await goOnCheck(p2, { ready: true }).waitFor();
+  await p2.keyboard.press('Escape');
+  await goOnCheck(p2).waitFor({ state: 'detached' });
   // A tied player picked (1) and no winner given: N asks first, in the check (🏆 each tied player, Ann's taking Enter
   // since she's picked), and the tiebreaker stays up; N again (after its first moment) goes back to the results, tied.
   await p2.keyboard.press('1');

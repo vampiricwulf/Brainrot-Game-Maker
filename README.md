@@ -299,7 +299,8 @@ on the clue. A player's chip has a quick ✔ / ✘ (“Right: Ann +$200”, “W
 the same ✔ / ✘, the same look and words.
 
 **A click on the stage** runs the show for a host who drives from it. Where it's the blue button's step (the round's
-intro, the next slide, the answer, back to the board), it asks first when something's left, as the blue button does;
+intro, the next slide, the answer, back to the board, the tiebreaker's answer back to the results), it asks first when
+something's left, as the blue button does;
 where it's what the stage shows, it does it (a wheel spins, dice roll, a board game's landed dice move the token, a
 pop-up shows its answer). On PARTNER UP! (its "?" too) it's Show question ▶, asking first for who picked it and the
 partner. On a Daily Double's splash it's its Show question ▶ for the wager typed; with who found it or the wager missing

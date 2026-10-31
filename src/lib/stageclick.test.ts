@@ -84,6 +84,10 @@ describe('a click on the stage', () => {
     ['everyone judged: finishing takes a second click', { on: 'spotlight', phase: 'final', step: step('finish', 'Finish game ▶') }, { do: 'say', say: CLICK.finish('Finish game ▶'), arm: true }],
     ['everyone judged, clicked again: on', { on: 'spotlight', phase: 'final', step: step('finish', 'Finish game ▶'), armed: true }, { do: 'go' }],
     ['the spotlight card on another step: nothing', { on: 'spotlight', phase: 'final', step: step('finalshow') }, { do: 'none' }],
+    // ❓ The tiebreaker clue.
+    ['the tiebreaker’s question: its answer', { phase: 'tiebreaker', step: step('reveal', '👁 Reveal answer') }, { do: 'go' }],
+    ['the tiebreaker’s answer: back to the results, through the check (who won)', { on: 'back', phase: 'tiebreaker', step: step('results', '🏁 Back to results', true) }, { do: 'go' }],
+    ['the tiebreaker’s answer with no blue button: nothing', { on: 'back', phase: 'tiebreaker' }, { do: 'none' }],
     // What's over the stage.
     ['a wheel not spun: it spins', { on: 'overlay', over: over({ wheel: 'fresh' }), step: step('tool', 'Show question ▶', true) }, { do: 'act', act: 'spin' }],
     ['a wheel with every slice landed: it says so', { on: 'overlay', over: over({ wheel: 'spent' }) }, { do: 'say', say: CLICK.spent }],

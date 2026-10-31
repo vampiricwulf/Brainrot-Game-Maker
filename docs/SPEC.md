@@ -612,7 +612,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      that's the blue button's step it goes through the check (`goOn('stage')`), so a click never loses anything:
      PARTNER UP! (Show question ▶), a Daily Double's splash (its question; who found it or the wager missing, the status
      line says so and the keys stay in the Wager box: the click never takes them), the spotlit Final player's card
-     (Show answer ▶, Show wager ▶, Next player ▶; never a verdict). Where it's what the stage itself shows, the click
+     (Show answer ▶, Show wager ▶, Next player ▶; never a verdict), the tiebreaker's answer (🏁 Back to results, asking
+     who won). Where it's what the stage itself shows, the click
      does it: a title card, a wheel spins, dice roll, landed board-game dice move the token, a pop-up's answer, and a
      partner clue's clock while its cards are handed out with none for a phone (the status line: “Clock started” with
      ↶ Undo a few seconds, which takes it back while nothing has happened since). Where no Next is involved it only
