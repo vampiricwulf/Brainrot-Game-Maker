@@ -260,7 +260,11 @@ try {
   assert((await spot()) === first && (await revealMain()).startsWith('Next player'), 'C in the check judges them and closes it, the spotlight staying on them');
   await page.keyboard.press('n');
   await page.waitForFunction((f) => document.querySelector('.fj .pl.cur .name')?.textContent !== f, first);
+  assert((await page.locator('.fj [data-finish-early]').count()) === 1, 'the next one’s wager not up yet: the quiet Finish game ▶ for finishing early is there');
   await page.keyboard.press('n');
+  // (The last verdict due: the blue button is Finish game ▶ itself, so the quiet one for finishing early is gone.)
+  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game') && !document.querySelector('.fj [data-finish-early]'));
+  assert(true, 'the last verdict due: the blue button is Finish game ▶, and the quiet one for finishing early is gone (one way to finish)');
   await page.keyboard.press('x');
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game'));
   assert((await page.locator('.fj').innerText()).includes('still to judge') === false, 'with both judged, nobody is left to judge and the main button is Finish game');
