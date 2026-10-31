@@ -421,8 +421,17 @@ try {
   const catColor = await stage('[data-partner-card] .pc-cat').evaluate((e) => getComputedStyle(e).color);
   assert(catColor === 'rgb(255, 224, 102)', `its category is in the theme's text color, as a slide's text is (it was always white, faint on a light theme) (${catColor})`);
   assert((await mainLabel(page)) === '👁 Reveal answer', 'with no cards to hand out, the question is all: the answer is next');
-  // Dan taken out mid-question (👥 Players), then Ctrl+Z: the pair and its question come back with their countdown.
+  // N asks first: the clock hasn't started. Its ⏱ Start the clock shows T, and T there does what T does outside: the
+  // countdown starts, the check closed.
+  await page.keyboard.press('n');
+  await checkItem(page, 'handout').waitFor();
+  assert((await quick(page, '⏱ Start the clock (45 s)').locator('kbd').allInnerTexts()).join(' ') === 'T ⏎', 'N with the clock not started asks first: its ⏱ Start the clock shows T and ⏎');
+  await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('t');
+  await goOnCheck(page).waitFor({ state: 'detached' });
+  await stage('.timer').waitFor();
+  assert((await stage('[data-slide="answer"]').count()) === 0, 'T in the check starts the countdown and closes it, the answer still hidden');
+  // Dan taken out mid-question (👥 Players), then Ctrl+Z: the pair and its question come back with their countdown.
   // (A second or two in, so a countdown started afresh would show.)
   await page.waitForFunction(() => Number(document.querySelector('.stage-box .timer .num')?.textContent) <= 43);
   const left = Number(await stage('.timer .num').innerText());

@@ -881,7 +881,8 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
       },
     ];
   }
-  const clockQ = (): Quick => ({ label: VERBS.startClock(p.secs).label, enter: true, then: 'close', run: c.act.partnerClock, after: `Clock running: ${PLAYING}` });
+  // (T too, as outside: it starts the clock and makes the clue live. Never on 📤 Send and start: T there isn't a send.)
+  const clockQ = (): Quick => ({ label: VERBS.startClock(p.secs).label, key: 'T', enter: true, then: 'close', run: c.act.partnerClock, after: `Clock running: ${PLAYING}` });
   // (A ✓ once it was copied, for who gets it now.)
   const copyQ = p.copy.flatMap((k): Quick[] =>
     k.what ? [{ label: `📋 Copy ${k.name}’s ${k.what}${k.copied ? ' ✓' : ''}`, then: 'keep', run: () => c.act.copyCard(k.id), aria: `Copy ${k.name}’s ${k.what}, to paste to ${named(c, k.to)}${k.copied ? ' (copied)' : ''}` }] : [],

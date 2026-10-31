@@ -2999,7 +2999,9 @@
     putBack: () => cancelClue(),
     partnerShow: () => partnerShow(),
     closeWheel: () => closeOverlay(),
-    partnerClock: () => partnerHandOut(!!quickKey),
+    // (T on the check's ⏱ Start the clock does what T does outside: the clue goes live, and its first Enter after only
+    // says the clock is running.)
+    partnerClock: () => (quickKey && !quickKey.shiftKey && quickKey.key.toLowerCase() === 't' ? clockKey(false) : partnerHandOut(!!quickKey)),
     copyCard: partnerCopy,
     partnerJudge: checkJudge,
     closeTool: () => closeOverlay(true),

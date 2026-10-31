@@ -639,7 +639,7 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     const copy = [{ id: 'k1', name: 'Card 1', to: ['c'], phoneless: true, what: 'words' as const }];
     const c = ctx(g, s, { partner: pnow({ copy }) });
     const items = leftNow(c, mainStep(c)!);
-    expect(lines(items)).toEqual([['first: Card 1 is for Cat (no phone here): copy it to them, then start the clock.', '⏱ Start the clock (45 s) ⏎ · close', '📋 Copy Card 1’s words · keep']]);
+    expect(lines(items)).toEqual([['first: Card 1 is for Cat (no phone here): copy it to them, then start the clock.', '⏱ Start the clock (45 s) [T] ⏎ · close', '📋 Copy Card 1’s words · keep']]);
     items[0].quick[1].run();
     expect(did).toEqual(['copy k1']);
     // Copied (for who gets it now): its quick button says so.
@@ -650,7 +650,10 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     expect(lines(both)).toEqual([
       ['first: Card 2 hasn’t gone to Ann’s phone, and the clock hasn’t started: they haven’t played yet. Card 1 is to copy by hand for Cat (no phone here).', '📤 Send and start ⏎ · close', '📋 Copy Card 1’s words · keep'],
     ]);
-    expect(lines(leftNow(ctx(g, s, { partner: pnow() }), mainStep(c)!))).toEqual([['first: The clock hasn’t started: they haven’t played yet.', '⏱ Start the clock (45 s) ⏎ · close']]);
+    expect(lines(leftNow(ctx(g, s, { partner: pnow() }), mainStep(c)!))).toEqual([['first: The clock hasn’t started: they haven’t played yet.', '⏱ Start the clock (45 s) [T] ⏎ · close']]);
+    // T presses it, as outside (Shift+T is nothing here).
+    const clock = open(mainStep(c)!, leftNow(ctx(g, s, { partner: pnow() }), mainStep(c)!));
+    expect([inside({ key: 't' }, clock, after), inside({ key: 'T', shift: true }, clock, after)]).toMatchObject([{ do: 'quick', quick: { label: '⏱ Start the clock (45 s)' } }, { do: 'ignore' }]);
   });
 
   it('live: still playing (✔ Got it ⏎ / ✘ Missed ⇧⏎ then the answer); time up, revealing doesn’t ask; a steal', () => {
@@ -664,7 +667,7 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     expect(lines(leftNow(ctx(g, s, { partner: pnow({ clock: { left: 23, running: true }, stealOn: true }) }), st))[0][2]).toBe('✘ Missed: a steal opens [⇧⏎] · close');
     expect(leftNow(ctx(g, s, { partner: pnow({ clock: 'out' }) }), st)).toEqual([]);
     expect(lines(leftNow(ctx(g, s, { partner: pnow() }), st))[0][0]).toBe('first: Not judged yet: did Bob & Ann get it?');
-    expect(lines(leftNow(ctx(g, s, { partner: pnow({ cards: 0 }) }), st))).toEqual([['first: The clock hasn’t started: they haven’t played yet.', '⏱ Start the clock (45 s) ⏎ · close']]);
+    expect(lines(leftNow(ctx(g, s, { partner: pnow({ cards: 0 }) }), st))).toEqual([['first: The clock hasn’t started: they haven’t played yet.', '⏱ Start the clock (45 s) [T] ⏎ · close']]);
     // Judged, a steal open: who steals it (their number); one picked: right or wrong.
     const steal = leftNow(ctx(g, s, { partner: pnow({ judged: true, stealers: ['c'] }) }), st);
     expect([lines(steal), anywayLabel(open(st, steal))]).toEqual([[['first: A steal is open: Cat can still steal it.', 'Cat steals it [3] · close']], '👁 Reveal anyway: nobody steals it']);
