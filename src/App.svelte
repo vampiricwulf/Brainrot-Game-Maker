@@ -1175,7 +1175,7 @@
     <span>
       <b>How is it shown?</b>
       <span class="muted small">Enter picks the one you used last.</span>
-      {#if app.resumable?.cover} <span class="muted small">It comes back with the screen covered (⏸ Cover).</span>{/if}
+      {#if app.resumable?.cover}<span class="muted small">It comes back with the screen covered (⏸ Cover).</span>{/if}
     </span>
     <ModeCards dual={audience.open || prefs.display === 'audience'} onsingle={() => resumeIn(false)} onaudience={() => resumeIn(true)} />
     <button class="ghost" onclick={() => (resuming = null)}>Cancel</button>

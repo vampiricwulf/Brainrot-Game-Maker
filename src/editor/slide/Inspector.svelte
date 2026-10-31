@@ -214,7 +214,7 @@
       </label>
       <div class="grid2">
         <label class="field">
-          <span>{el.autoFit ? 'Max size' : 'Size'}{#if el.autoFit && fit && fit.size < el.size}<span class="fitted"> · showing {fit.size}</span>{/if}</span>
+          <span>{el.autoFit ? 'Max size' : 'Size'}{#if el.autoFit && fit && fit.size < el.size}<span class="fitted">{' '}· showing {fit.size}</span>{/if}</span>
           <NumField min={8} max={600} bind:value={el.size} fallback={110} />
         </label>
         <!-- (↺ outside the label: a click on it, gone as it's done, would open the colour picker.) -->

@@ -619,11 +619,11 @@
             <button class="used" data-used onclick={(e) => dropMenu(e, usedItems(m))} aria-haspopup="menu" title="Where it’s used: click one to go there">used {n}× ▾</button>
           {:else}unused{/if}
           <!-- (Worked out from what's inside it once it's been checked; till then, or when the app can't read it, its type says.) -->
-          {#if typeof v === 'object' && v.is === 'fails'}<span class="warn" title={whyLine(v)}> · ⚠ won’t play here</span>
-          {:else if typeof v === 'object' && v.is === 'silent'}<span class="warn" title={whyLine(v)}> · ⚠ plays without its sound here</span>
+          {#if typeof v === 'object' && v.is === 'fails'}<span class="warn" title={whyLine(v)}>{' '}· ⚠ won’t play here</span>
+          {:else if typeof v === 'object' && v.is === 'silent'}<span class="warn" title={whyLine(v)}>{' '}· ⚠ plays without its sound here</span>
           {:else if !m.url && (m.kind === 'video' || m.kind === 'audio') && (typeof v !== 'object' || v.is === 'unknown') && !canPlay(m.mime)}<span
               class="warn"
-              title={m.mime}> · may not play</span
+              title={m.mime}>{' '}· may not play</span
             >{/if}
         </div>
         {#if job}

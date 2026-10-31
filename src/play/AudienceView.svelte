@@ -488,7 +488,7 @@
         <ul class="lineup" class:small={live.lineup.length > 6}>
           {#each live.lineup as p, i (i)}
             <li style:--c={p.color}>
-              <span class="lineup-name">{#if p.phone}<span class="lineup-phone" title="Phone buzzer connected">📱 </span>{/if}{p.name}</span>
+              <span class="lineup-name">{#if p.phone}<span class="lineup-phone" title="Phone buzzer connected">📱</span>{' '}{/if}{p.name}</span>
               {#if p.members?.length}<span class="lineup-members">{p.members.join(', ')}</span>{/if}
             </li>
           {/each}

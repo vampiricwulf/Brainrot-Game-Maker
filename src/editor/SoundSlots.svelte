@@ -139,7 +139,7 @@
       </div>
       <span class="spacer"></span>
       {#if off}
-        <span class="muted small">Off{#if v} <span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span>
+        <span class="muted small">Off{#if v}{' '}<span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span>
       {:else if v && missing}
         {@const instead = builtin ? 'plays the built-in sound' : key === 'partner' ? 'the tile-open sound plays' : 'plays nothing'}
         <!-- Its file isn't here, or (an online link) the site says its link has expired, as 🖼 Media shows it; or it was
