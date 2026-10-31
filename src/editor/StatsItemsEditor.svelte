@@ -578,7 +578,7 @@
             onclick={() => (openItem = openItem === it.id ? null : it.id)}
             aria-expanded={openItem === it.id}
             title={inMore(it) ? `Its ${inMore(it)}` : 'Its description, host notes, what Use does and its worn look'}
-            >{openItem === it.id ? '▾' : '▸'} More{#if inMore(it) && openItem !== it.id}<span class="muted"> · {inMore(it)}</span>{/if}</button
+            >{openItem === it.id ? '▾' : '▸'} More{#if inMore(it) && openItem !== it.id}<span class="muted">{' '}· {inMore(it)}</span>{/if}</button
           >
           <RowTools menu={() => rowItems('item', it, i)} name={it.name} remove={() => removeItem(it)} deleteLabel="Delete {it.name}" />
         </div>

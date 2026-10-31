@@ -566,7 +566,7 @@
     <div class="improv-box" data-improvise>
     <div class="row improv">
       <button class="ghost small fold" aria-expanded={improvise.open} onclick={() => improvise.set(!improvise.open)} title={improvise.open ? 'Fold the improvising tools away (this computer remembers)' : 'Change this screen while the game runs: edit it, add a screen or a look, text, a drawing'}
-        >{improvise.open ? '▾' : '▸'} ✎ Improvise{#if !improvise.open && variantName}<span class="muted"> · 🎭 {variantName}</span>{/if}</button
+        >{improvise.open ? '▾' : '▸'} ✎ Improvise{#if !improvise.open && variantName}<span class="muted">{' '}· 🎭 {variantName}</span>{/if}</button
       >
       {#if improvise.open}
       <button class="small" onclick={editLive} title="Change this screen while the game runs">✎ Edit screen</button>

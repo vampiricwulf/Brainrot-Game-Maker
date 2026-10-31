@@ -1117,7 +1117,7 @@
       data-changed={fileState.changed || undefined}
       title={`${fileState.said ? `${fileState.said} · Ctrl+S\n` : ''}${inTauri() ? 'Save a .brainrot game pack (the game and all its media) into BrainrotSaves' : 'Download a .brainrot game pack (the game and all its media)'}${fileState.said ? '' : ' · Ctrl+S'}`}
     >
-      <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}{#if fileState.changed && !saving}<span class="dot" aria-hidden="true"> •<span class="unsaved"> not saved as a file</span></span>{/if}
+      <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}{#if fileState.changed && !saving}<span class="dot" aria-hidden="true">{' '}•<span class="unsaved">{' '}not saved as a file</span></span>{/if}
     </button>
     <span class="spacer"></span>
     {#if exporting}
@@ -1133,7 +1133,7 @@
         class="muted autosave saved"
         title={`Every change is autosaved ${keptHere()}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : inTauri() ? '' : ' 💾 Save makes a file of it, to keep, move or share.'}`}
       >
-        {#if inTauri()}✓ Autosaved{app.fileAutosave ? ` · file ${clock(app.fileAutosave.at)}` : ''}{:else}✓ Kept in this browser<span class="wide"> (💾 Save makes a file)</span>{/if}
+        {#if inTauri()}✓ Autosaved{app.fileAutosave ? ` · file ${clock(app.fileAutosave.at)}` : ''}{:else}✓ Kept in this browser<span class="wide">{' '}(💾 Save makes a file)</span>{/if}
       </span>
     {:else}
       <span class="autosave warn" title={`Changes can't be kept ${keptHere()} right now (storage is blocked or full). Use Save often.`}>

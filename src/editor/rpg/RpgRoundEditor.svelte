@@ -110,7 +110,7 @@
     <!-- Open by itself only when it matters here: another round plays this world, or this round has none. -->
     <details class="adv" open={adv.open} ontoggle={(e) => adv.set(e.currentTarget.open)}>
       <summary
-        >{adv.open ? '▾' : '▸'} Advanced: carry this adventure into another round{#if !adv.open && world}<span class="muted"> · World “{world.name}”</span>{/if}</summary
+        >{adv.open ? '▾' : '▸'} Advanced: carry this adventure into another round{#if !adv.open && world}<span class="muted">{' '}· World “{world.name}”</span>{/if}</summary
       >
       <p class="muted small">
         The maps and screens belong to a “world”. Another RPG round can play the same world, so the adventure carries on where it was left; or

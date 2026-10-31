@@ -164,7 +164,7 @@
       data-more-rules
       onclick={() => more.set(!more.open)}
       title="The picker on the wheel, a typed guess, a steal after a miss, the points and the part words">{more.open ? '▾' : '▸'} More rules{#if moreSet && !more.open}<span
-          class="muted"> · {moreSet}</span
+          class="muted">{' '}· {moreSet}</span
         >{/if}</button
     >
   </div>
