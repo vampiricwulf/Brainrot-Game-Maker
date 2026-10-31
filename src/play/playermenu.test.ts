@@ -4,7 +4,7 @@ import { newBoardGameRound } from '../lib/boardgame';
 import { newRpgRound, splitParty } from '../lib/rpg';
 import { goToRound, newSession } from '../lib/session';
 import type { MenuEntry } from '../lib/menustate.svelte';
-import { playerMenu, type PlayerMenuHost } from './playermenu';
+import { playerMenu, rosterMenu, type PlayerMenuHost } from './playermenu';
 
 /** A game of three players on the round `make` makes, being played, and what the menu asked the host's screen to do. */
 function playing(make: (game: Game) => Game['rounds'][number], selected: string[] = []) {
@@ -85,5 +85,35 @@ describe('a player’s right-click menu', () => {
     const bs = session.boardgames![round.id];
     expect(bs.order[bs.turn]).toBe('c');
     expect(bs.positions.c).toEqual({ zone: 'shadow' });
+  });
+});
+
+describe('a ▶ Play row’s menu (before the game)', () => {
+  const asked: string[] = [];
+  const acts = {
+    rename: () => asked.push('rename'),
+    color: () => asked.push('color'),
+    picture: () => asked.push('picture'),
+    startScore: () => asked.push('score'),
+    move: (d: -1 | 1) => asked.push(`move ${d}`),
+    remove: () => asked.push('remove'),
+  };
+  const keys = (items: MenuEntry[]) => items.map((i) => ('label' in i ? (i.keys ?? '') : ''));
+
+  it('renames (F2), colors, picture, start score, moves (Alt+↑/↓), then deletes, last and red', () => {
+    const items = rosterMenu('Bob', 1, 3, 'player', acts);
+    expect(labels(items)).toEqual(['Bob', '✎ Rename', '🎨 Color…', '🖼 Picture…', '± Start score…', '▲ Move up', '▼ Move down', '—', '🗑 Delete player']);
+    expect(keys(items)).toEqual(['', 'F2', '', '', '', 'Alt+↑', 'Alt+↓', '', '']);
+    expect(items.at(-1)).toMatchObject({ danger: true });
+    for (const l of ['✎ Rename', '🎨 Color…', '🖼 Picture…', '± Start score…', '▲ Move up', '▼ Move down', '🗑 Delete player']) click(items, l);
+    expect(asked).toEqual(['rename', 'color', 'picture', 'score', 'move -1', 'move 1', 'remove']);
+  });
+
+  it('greys the way it can’t move at an end, and leaves out what this list has none of', () => {
+    const top = rosterMenu('Ann', 0, 2, 'team', { ...acts, picture: undefined, startScore: undefined });
+    expect(labels(top)).toEqual(['Ann', '✎ Rename', '🎨 Color…', '▲ Move up', '▼ Move down', '—', '🗑 Delete team']);
+    expect(top.find((i) => 'label' in i && i.label === '▲ Move up')).toMatchObject({ disabled: true });
+    expect(top.find((i) => 'label' in i && i.label === '▼ Move down')).toMatchObject({ disabled: false });
+    expect(rosterMenu('Cat', 1, 2, 'player', acts).find((i) => 'label' in i && i.label === '▼ Move down')).toMatchObject({ disabled: true });
   });
 });

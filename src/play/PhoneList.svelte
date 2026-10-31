@@ -1,6 +1,7 @@
 <!--
   Phone buzzers: each player and their phone (joined, gone quiet, or not yet), and people asking to join from theirs.
-  Teams: each team and the people on it (move one to another team, or take them off).
+  Teams: each team and the people on it (move one to another team, or take them off). A player's row opens their menu
+  (a right-click, Shift+F10; before the game the 👥 list's, in the game the host's) and F2 renames them before the game.
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
@@ -9,6 +10,7 @@
   import { KICK_BLOCK_MS, MAX_PHONES } from '../lib/buzzproto';
   import { awayFor, phoneAwaySince } from './host/phoneaway.svelte';
   import JoinAsk, { joinAsks } from './JoinAsk.svelte';
+  import { isMenuKey } from '../lib/menustate.svelte';
 
   let {
     session,
@@ -20,6 +22,8 @@
     teams = false,
     onkickmember,
     onmove,
+    onmenu,
+    onrename,
   }: {
     session: Session;
     /** Most players the game takes (⚖ Game rules). */
@@ -40,7 +44,26 @@
     onkickmember?: (seatId: string, member: string, name: string) => void;
     /** Teams: put one person on another team. */
     onmove?: (member: string, seatId: string, name: string) => void;
+    /**
+     * Before the game: a player's row opens the 👥 list's menu for them, and F2 there renames them. (In the game the
+     * host's own player menu opens on their row, as on their chip.)
+     */
+    onmenu?: (e: MouseEvent, id: string) => void;
+    onrename?: (id: string) => void;
   } = $props();
+
+  /** Shift+F10 (or the menu key) on a row's button: its player's menu, under it; F2: rename them. */
+  function rowKey(e: KeyboardEvent, id: string): void {
+    if (e.defaultPrevented || !(e.target instanceof HTMLElement)) return;
+    if (onmenu && isMenuKey(e)) {
+      const r = e.target.getBoundingClientRect();
+      e.preventDefault();
+      onmenu(new MouseEvent('contextmenu', { clientX: r.left + 8, clientY: r.bottom + 2 }), id);
+    } else if (onrename && e.key === 'F2' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      onrename(id);
+    }
+  }
 
   // "Room full" shows for a while after the room last turned a phone away.
   let now = $state(Date.now());
@@ -74,7 +97,8 @@
     {@const ph = phoneOf(p.id)}
     {#if teams}
       {@const ms = membersOf(p.id)}
-      <li style:--c={p.color} class="team">
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <li style:--c={p.color} class="team" data-player-id={p.id} oncontextmenu={(e) => onmenu?.(e, p.id)} onkeydown={(e) => rowKey(e, p.id)}>
         <span class="dot" aria-hidden="true"></span>
         <span class="name" dir="auto">{p.name}</span>
         {#if !down && !ms.length && locked}
@@ -119,7 +143,8 @@
         </li>
       {/each}
     {:else}
-    <li style:--c={p.color}>
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <li style:--c={p.color} data-player-id={p.id} oncontextmenu={(e) => onmenu?.(e, p.id)} onkeydown={(e) => rowKey(e, p.id)}>
       <span class="dot" aria-hidden="true"></span>
       <span class="name" dir="auto">{p.name}</span>
       {#if down}

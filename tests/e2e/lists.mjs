@@ -281,7 +281,12 @@ try {
   const playerNames = () => values(page.getByLabel(/^Player \d name$/));
   await page.locator('[data-place^="player:"] .num').first().click({ button: 'right' });
   const playerMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
-  assert(['✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player'].every((x) => playerMenu.some((t) => t.startsWith(x))), `right-click a player: rename, move, delete (${playerMenu.join(', ')})`);
+  const order = ['✎ Rename', '🎨 Color…', '🖼 Picture…', '± Start score…', '▲ Move up', '▼ Move down', '🗑 Delete player'];
+  assert(playerMenu.length === order.length && order.every((x, i) => playerMenu[i].startsWith(x)), `right-click a player: rename, color, picture, start score, move, delete (${playerMenu.join(', ')})`);
+  await page.getByRole('menu').getByRole('menuitem', { name: '± Start score…' }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('input.score') && document.activeElement.getAttribute('aria-label') === 'Zed\'s start score');
+  assert(true, 'its ± Start score… puts the keys in their start score');
+  await page.locator('[data-place^="player:"] .num').first().click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: /▼ Move down/ }).click();
   assert((await playerNames()).join() === 'Player 1,Zed', 'its ▼ Move down moves them');
   await page.locator('[data-place^="player:"] .num').nth(1).click({ button: 'right' });

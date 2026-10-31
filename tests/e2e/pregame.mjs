@@ -88,6 +88,13 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Move Bo down');
   assert((await names()).join() === 'Bo,Cy', 'and Enter there moves Bo back up');
+  // F2 in a row renames it: the keys go to its name, all of it selected to type over.
+  await page.keyboard.press('F2');
+  await page.waitForFunction(() => {
+    const a = document.activeElement;
+    return a?.getAttribute('aria-label') === 'Player 1 name' && a.selectionStart === 0 && a.selectionEnd === a.value.length;
+  });
+  assert(true, 'F2 in a player’s row (on its ▼) renames them: the keys go to their name, ready to type over');
   // Wide windows put the rules beside the players: a player's row still fits on one line there.
   for (const [width, height] of [[1280, 720], [1366, 768], [1400, 900], [1920, 1080]]) {
     await page.setViewportSize({ width, height });

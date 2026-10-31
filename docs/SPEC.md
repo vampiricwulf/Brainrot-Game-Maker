@@ -374,10 +374,13 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 6.1 Launch
 1. Open a game (`.brainrot` or the embedded game in a standalone HTML).
-2. **Pre-game screen**: confirm or edit players (names, colors, pictures, starting scores), ⚖ Game rules, 📱 Phone
+2. **Pre-game screen**: confirm or edit players (names, colors, pictures, starting scores; a row's menu, from a
+   right-click or Shift+F10 on it or on the player's 📱 row: ✎ Rename F2 · 🎨 Color… · 🖼 Picture… · ± Start score… ·
+   ▲ Move up · ▼ Move down · 🗑 Delete player), ⚖ Game rules, 📱 Phone
    buzzers (with Teams) and On stream options, all saved with the game, and choose **Single window** or **📺 Separate
    audience window**. A game in progress is picked up from the editor with **Resume game**. While the buzzer room is
-   up, the sticky Start bar has the room's live line, one line high: who's asking to join with ✔ Add / ✕ No (two or
+   up, each 👥 row says how its phone is in words where the name's chip was (📱 in, 📱 waiting, 📵 lost 0:12, ⛔ kicked
+   1:40, 🔒 locked out), and the sticky Start bar has the room's live line, one line high: who's asking to join with ✔ Add / ✕ No (two or
    more: how many, and Show ↓ to the 📱 card's list), else the code, who's in and who it's waiting for, plain until
    everyone is in, then green.
 3. Start. The board is shown. The host can immediately run a **roll-off** (§6.6) to decide who picks first, or

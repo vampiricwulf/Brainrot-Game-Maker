@@ -147,7 +147,10 @@ any point; it survives a reload (⚙ Settings sets how many changes it keeps, 30
 ## Hosting
 
 Press **▶ Play** (or **👥 Players & rules ▶** in the editor's list) to get to the pre-game screen. Add the players there (rename, recolor, pick a picture, drag ⋮⋮ or
-`Alt`+arrows to reorder; type a name and press `Enter` for the next one; they're kept with the game for next time),
+`Alt`+arrows to reorder; type a name and press `Enter` for the next one; `F2` in a row renames it; a right-click on a
+row, or `Shift+F10`, gives its menu: ✎ Rename, 🎨 Color…, 🖼 Picture…, ± Start score…, ▲ ▼ Move and 🗑 Delete player,
+from the player's 📱 Phone buzzers row too; while the buzzer room is up each row says how its phone is, where the name's
+chip was: 📱 in, 📱 waiting, 📵 lost 0:12, ⛔ kicked 1:40; they're kept with the game for next time),
 open **⚖ Game rules** for scoring, the most players, timers and the round intro, and turn on phone buzzers on the
 **📱 Phone buzzers** card (all saved with the game too). `Ctrl+Z` / `Ctrl+Y` undo and redo the changes made there (the
 same steps as the editor's 🕘 History, where **Go there** brings you back to this screen). Then pick one of two modes.
@@ -169,7 +172,7 @@ A right-click where the app has no menu of its own shows nothing, in every windo
 would be on stream): boxes you type in, links and selected words keep it. Windows only for reading (ℹ About, the keys,
 🔊 Sound help, ⚖ Rules in the game) close on `Enter` as well as `Esc`, unless the keys are in a box or on a button there.
 A player's menu (Select, ★ Make the picker, ✎ Set the score…, their round's extras) opens with a right-click on them
-anywhere on the host screen: their score chip or plate, and their button in any box (who picked a 🤝 partner clue, who
+anywhere on the host screen: their score chip or plate, their row in the 📱 phones list, and their button in any box (who picked a 🤝 partner clue, who
 found a Daily Double, who gets a 🤫 card or a 🎭 part, the Final's rows, a shop's buyer…), headed by their name only.
 `Shift+F10` or the menu key on their button, or a long press on a touch screen, opens it too, and each item shows its
 key.

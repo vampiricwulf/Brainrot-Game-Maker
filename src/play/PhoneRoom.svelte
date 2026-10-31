@@ -26,6 +26,8 @@
     onkickmember,
     onmove,
     onsetup,
+    onmenu,
+    onrename,
   }: {
     session: Session;
     settings: GameSettings;
@@ -43,6 +45,9 @@
     onmove: (member: string, seatId: string, name: string) => void;
     /** ⚙ Set up phone buzzers… (no buzzer server yet): ⚙ Settings, at the phone buzzers. None in a player-only file. */
     onsetup?: () => void;
+    /** A player's row: the 👥 list's menu for them, and F2 renaming them there. */
+    onmenu?: (e: MouseEvent, id: string) => void;
+    onrename?: (id: string) => void;
   } = $props();
   /** Phones in the room with a seat: closing it (or turning Buzzer mode off, or Teams on or off) asks first. */
   const seatedPhones = $derived(remote.phones.filter((p) => p.seatId).length);
@@ -176,7 +181,7 @@
         ⚠ This buzzer server doesn't know teams yet (it needs updating): phones join as players, one each.
       </p>
     {/if}
-    <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} teams={!!settings.buzzTeams} {onkickmember} {onmove} />
+    <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} teams={!!settings.buzzTeams} {onkickmember} {onmove} {onmenu} {onrename} />
   {/if}
   {#if closing}
     <div class="ask" role="alertdialog" aria-label="Close the room?">

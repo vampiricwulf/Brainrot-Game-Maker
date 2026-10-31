@@ -176,6 +176,11 @@ try {
     const bar = await page.locator('.pregame .actions').boundingBox();
     assert(code.y >= 0 && code.y + code.height <= bar.y, `at 1280×720 the room code scrolls into sight above the Start bar (${Math.round(code.y)}–${Math.round(code.y + code.height)}, the bar at ${Math.round(bar.y)})`);
     assert((await page.locator('.actions .room-note').innerText()).includes('Room BCDF · 0 of 3 joined'), 'and the Start bar shows the code and who has joined');
+    // Each 👥 row says how its phone is, in its name chip's place: the row keeps its one line at 1280.
+    const words = await page.locator('.pregame [data-phone-word]').allInnerTexts();
+    const nameBox = await page.getByLabel('Player 1 name').boundingBox();
+    const del = await page.getByRole('button', { name: 'Delete Player 1' }).boundingBox();
+    assert(words.join('|') === '📱 waiting|📱 waiting|📱 waiting' && del.y < nameBox.y + nameBox.height, `with the room up each 👥 row says how its phone is (${words.join(', ')}), on its one line at 1280`);
   }
   await page.setViewportSize({ width: 1400, height: 900 });
   assert((await page.evaluate(() => window.__room.posts)) === 2, 'Start the room asks the server for a room');
@@ -215,6 +220,13 @@ try {
   await barLine.getByText('Zed wants to join').waitFor();
   assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF open: 1 of 3 joined' }).count()) === 1, '“Going live?” ticks the room off once a phone has joined');
   assert((await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'a joined player shows ✔ joined');
+  assert((await page.locator('.pregame [data-phone-word]').allInnerTexts()).join('|') === '📱 in|📱 waiting|📱 waiting', 'and their 👥 row says 📱 in');
+  // A 📱 row opens the 👥 row's menu (the same one), and F2 there renames them.
+  await card.locator('li', { hasText: 'Player 2' }).click({ button: 'right' });
+  const rowMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0].trim());
+  assert(rowMenu[0].startsWith('✎ Rename') && rowMenu.at(-1).startsWith('🗑 Delete player'), `right-click a player's 📱 row: their menu (${rowMenu.join(', ')})`);
+  await page.keyboard.press('Escape');
+  await page.getByRole('menu').waitFor({ state: 'detached' });
   assert((await card.locator('li', { hasText: 'Player 2' }).innerText()).includes('waiting'), 'the others are waiting');
   // The room out of reach for a moment: its last list of phones is stale (no count, no ✔ joined), and what would tell it
   // something is greyed out (it wouldn't get there: Zed would wait to be let in for good).
@@ -226,6 +238,7 @@ try {
   assert((await page.locator('.actions .room-note').innerText()).includes('Room BCDF · ⚠ reconnecting'), 'reconnecting: the Start bar says so instead of “1 of 3 joined”');
   assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF' }).count()) === 0, '“Going live?” no longer ticks the room off');
   assert(!(await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'and Player 1 isn’t shown as ✔ joined from the stale list');
+  assert((await page.locator('.pregame [data-phone-word]').allInnerTexts()).every((w) => w === '📱 out of reach'), 'and the 👥 rows say 📱 out of reach');
   const p2Row = await card.locator('li', { hasText: 'Player 2' }).innerText();
   assert(p2Row.includes('room out of reach') && !p2Row.includes('waiting'), 'nor Player 2 as waiting for a phone: the room is out of reach');
   assert(

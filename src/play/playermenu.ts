@@ -88,3 +88,31 @@ function boardItems(h: PlayerMenuHost, id: string): MenuEntry[] {
     { label: '🏁 Send to Start', onclick: () => sendNow(game, session, [id], { space: round.start ?? round.spaces[0]?.id }) },
   ];
 }
+
+/** What a ▶ Play row's menu can do (the pre-game list of players, or teams). Left out: not on this list. */
+export interface RosterActs {
+  rename: () => void;
+  color: () => void;
+  picture?: () => void;
+  startScore?: () => void;
+  move: (d: -1 | 1) => void;
+  remove: () => void;
+}
+
+/**
+ * A ▶ Play row's menu (its 👥 row or its 📱 row): the plan's order, with their keys. `at`: the row's place in `count`;
+ * `noun`: "player", or "team" with Teams on.
+ */
+export function rosterMenu(name: string, at: number, count: number, noun: 'player' | 'team', acts: RosterActs): MenuEntry[] {
+  return [
+    { heading: name },
+    { label: '✎ Rename', keys: 'F2', onclick: acts.rename },
+    { label: '🎨 Color…', onclick: acts.color },
+    ...(acts.picture ? [{ label: '🖼 Picture…', onclick: acts.picture }] : []),
+    ...(acts.startScore ? [{ label: '± Start score…', onclick: acts.startScore }] : []),
+    { label: '▲ Move up', keys: 'Alt+↑', disabled: at === 0, onclick: () => acts.move(-1) },
+    { label: '▼ Move down', keys: 'Alt+↓', disabled: at === count - 1, onclick: () => acts.move(1) },
+    { sep: true },
+    { label: `🗑 Delete ${noun}`, danger: true, onclick: acts.remove },
+  ];
+}

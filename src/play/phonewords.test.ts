@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { waitingFor, whoJoined } from './phonewords';
+import { KICK_BLOCK_MS } from '../lib/buzzproto';
+import { phoneWord, waitingFor, whoJoined } from './phonewords';
 
 const players = [
   { id: 'a', name: 'Ann' },
@@ -36,5 +37,32 @@ describe('the ▶ Play bar’s room line', () => {
     expect(waitingFor(['Bob', 'Cat'])).toBe('waiting for Bob, Cat');
     expect(waitingFor(['Ann', 'Bob', 'Cat'])).toBe('waiting for Ann, Bob, Cat');
     expect(waitingFor(['Ann', 'Bob', 'Cat', 'Dee', 'Eve'])).toBe('waiting for Ann, Bob, Cat +2 more');
+  });
+});
+
+describe('a 👥 row’s phone, in words', () => {
+  const now = 1_000_000;
+  const word = (s: Parameters<typeof phoneWord>[0]) => phoneWord(s, now).text;
+
+  it('says in, waiting, lost and since when, or kicked and how long ago', () => {
+    expect(word({ online: true, phone: 'in' })).toBe('📱 in');
+    expect(phoneWord({ online: true, phone: 'in' }, now).tone).toBe('good');
+    expect(word({ online: true, phone: null })).toBe('📱 waiting');
+    expect(word({ online: true, phone: 'away', awaySince: now - 12_000 })).toBe('📵 lost 0:12');
+    expect(word({ online: true, phone: 'away' })).toBe('📵 lost');
+    expect(phoneWord({ online: true, phone: 'away', awaySince: now - 12_000 }, now).tone).toBe('warn');
+    expect(word({ online: true, phone: null, kickedAt: now - 100_000 })).toBe('⛔ kicked 1:40');
+    expect(phoneWord({ online: true, phone: null, kickedAt: now - 100_000 }, now).title).toContain('for another 0:20');
+  });
+
+  it('a kick is over after its block (their seat waits again), and a phone back in is in', () => {
+    expect(word({ online: true, phone: null, kickedAt: now - KICK_BLOCK_MS })).toBe('📱 waiting');
+    expect(word({ online: true, phone: 'in', kickedAt: now - 1000 })).toBe('📱 in');
+  });
+
+  it('with seats locked a seat no phone has is locked out; with the room out of reach it says so', () => {
+    expect(word({ online: true, phone: null, locked: true })).toBe('🔒 locked out');
+    expect(word({ online: true, phone: 'in', locked: true })).toBe('📱 in');
+    expect(word({ online: false, phone: 'in' })).toBe('📱 out of reach');
   });
 });

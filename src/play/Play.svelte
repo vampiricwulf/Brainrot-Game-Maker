@@ -76,7 +76,7 @@
   import HostPanel from './HostPanel.svelte';
   import ModeCards from './ModeCards.svelte';
   import JoinAsk, { joinAsks } from './JoinAsk.svelte';
-  import { waitingFor, whoJoined } from './phonewords';
+  import { phoneWord, waitingFor, whoJoined, type PhoneWord } from './phonewords';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
@@ -133,7 +133,7 @@
   import { NEXT_GAME } from './host/nextgame';
   import { PANEL_AREA, type PanelPlace } from './host/panelarea';
   import { MediaQuery } from 'svelte/reactivity';
-  import { watchPhonesAway } from './host/phoneaway.svelte';
+  import { phoneAwaySince, watchPhonesAway } from './host/phoneaway.svelte';
   import { knownVerdict } from '../lib/shrink/checks.svelte';
   import ShrinkDialog from '../editor/ShrinkDialog.svelte';
   import { openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
@@ -4492,6 +4492,27 @@
     fn();
     if (inside) void tick().then(() => roomLine?.focus({ preventScroll: true }));
   }
+  /** The 👥 list (its rows' menu and F2 work from the 📱 card's rows too). */
+  let roster = $state<ReturnType<typeof PlayerList>>();
+  /** Each second while the room is up before the game, for the 👥 rows' "📵 lost 0:12" and "⛔ kicked 1:40". */
+  let phoneNow = $state(Date.now());
+  $effect(() => {
+    if (!app.pregame || !roomUp) return;
+    const id = setInterval(() => (phoneNow = Date.now()), 1000);
+    return () => clearInterval(id);
+  });
+  /** Each 👥 row's phone in words while the room is up (not with Teams: a team's row says who's on it). */
+  const rowPhone = $derived.by(() => {
+    if (!roomUp || pregameTeams) return undefined;
+    const now = phoneNow;
+    const online = remote.status === 'online';
+    const locked = !!session.remote?.locked;
+    return (id: string): PhoneWord => {
+      const mine = remote.phones.filter((ph) => ph.seatId === id);
+      const phone = mine.some((ph) => ph.connected) ? 'in' : mine.length ? 'away' : null;
+      return phoneWord({ online, phone, awaySince: phoneAwaySince(id), kickedAt: remote.kicked[id], locked }, now);
+    };
+  });
   /** The bar's Show ↓: the 📱 card's list of who's asking, in sight with the keys on it. */
   function showAsks(): void {
     const list = document.querySelector<HTMLElement>('[data-place="play:buzzers"] [data-join-asks]');
@@ -5909,11 +5930,13 @@
           {/if}
           <!-- Deleting is done at once: the note under the list offers Undo. -->
           <PlayerList
+            bind:this={roster}
             bind:players={session.players}
             max={game.settings.maxPlayers}
             showScores
             avatars={!app.playerOnly}
             rowMenu
+            phone={rowPhone}
             teams={pregameTeams}
             members={pregameTeams && session.remote ? teamMembers : undefined}
             onraise={game.settings.maxPlayers < MAX_PLAYERS ? raiseMost : undefined}
@@ -5962,6 +5985,8 @@
             onkickmember={kickTeamMember}
             onmove={moveTeamMember}
             onsetup={app.playerOnly ? undefined : () => (showSettings = true)}
+            onmenu={(e, id) => roster?.openMenu(e, id)}
+            onrename={(id) => roster?.rename(id)}
           />
         </div>
         {#if prefs.liveChecklist}

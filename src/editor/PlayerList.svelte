@@ -1,7 +1,8 @@
 <!--
   Editable player roster with enforced unique colors. Used on the pre-game screen (the game's players) and in the in-game Players
   dialog. Rows reorder by dragging their ⋮⋮ grip, with ▲▼ or Alt+↑/↓; ＋ Add player and Enter in a name add the next
-  player, typing in their name. Before the game a row has a right-click menu (in play, the host's own player menu is the one).
+  player, typing in their name; F2 in a row renames it. Before the game a row has a right-click menu (Shift+F10 too; in
+  play, the host's own player menu is the one), and the 📱 card's rows open the same one (openMenu).
 -->
 <script lang="ts">
   import { isColorTaken, nextFreeColor, textOn } from '../lib/colors';
@@ -10,7 +11,9 @@
   import { newId, wholePoints } from '../lib/model';
   import { toast } from '../lib/app.svelte';
   import { announce } from '../lib/announce';
-  import { showMenu } from '../lib/menustate.svelte';
+  import { isMenuKey, keyMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { rosterMenu } from '../play/playermenu';
+  import type { PhoneWord } from '../play/phonewords';
   import { isTextField } from '../lib/undokeys';
   import { commit, joinTyping } from '../lib/history.svelte';
   import Avatar from '../lib/rpg/Avatar.svelte';
@@ -37,6 +40,7 @@
     onraise,
     teams = false,
     members,
+    phone,
   }: {
     players: P[];
     max?: number;
@@ -57,6 +61,8 @@
     teams?: boolean;
     /** Teams: the people on a team (joined from their phones), shown under its row. */
     members?: (id: string) => string[];
+    /** While the buzzer room is up: each row's phone in words ("📱 in", "📵 lost 0:12"), where the name's chip was. */
+    phone?: (id: string) => PhoneWord;
   } = $props();
   /** "Player" or "Team" (each row is a team when phone buzzer teams are on). */
   const noun = $derived(teams ? 'Team' : 'Player');
@@ -141,17 +147,53 @@
     undone = null;
   }
 
+  /** The row's own box (its color, its start score), to open or type in from its menu. */
+  const rowBox = <T extends HTMLElement>(p: P, sel: string) => list?.querySelector<T>(`[data-place="player:${p.id}"] ${sel}`) ?? undefined;
+
+  /** A row's menu: rename, color, picture, start score, move, delete. */
+  function items(p: P, i: number): MenuEntry[] {
+    return rosterMenu(p.name || `${noun} ${i + 1}`, i, players.length, teams ? 'team' : 'player', {
+      rename: () => void editName(p),
+      // (Its color box opens the app's color picker on a click.)
+      color: () => rowBox<HTMLInputElement>(p, 'input[type="color"]')?.click(),
+      picture: avatars ? () => (picking = p.id) : undefined,
+      startScore: showScores
+        ? () => {
+            const box = rowBox<HTMLInputElement>(p, 'input.score');
+            box?.focus();
+            box?.select();
+          }
+        : undefined,
+      move: (d) => move(i, d),
+      remove: () => remove(p),
+    });
+  }
+
   /** A row's right-click menu (not in its name box, which keeps the browser's own). */
   function menu(e: MouseEvent, p: P, i: number): void {
     if (!rowMenu || isTextField(e.target)) return;
-    showMenu(e, [
-      { heading: p.name || `${noun} ${i + 1}` },
-      { label: '✎ Rename', onclick: () => void editName(p) },
-      { label: '▲ Move up', onclick: () => move(i, -1), disabled: i === 0, keys: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => move(i, 1), disabled: i === players.length - 1, keys: 'Alt+↓' },
-      { sep: true },
-      { label: `🗑 ${removeWord} ${lower}`, danger: true, onclick: () => remove(p) },
-    ]);
+    showMenu(e, items(p, i));
+  }
+
+  /** In a row: F2 renames it; with its menu, Shift+F10 (or the menu key) opens it, in its name box too. */
+  function rowKey(e: KeyboardEvent, p: P, i: number): void {
+    if (e.defaultPrevented) return;
+    if (rowMenu && isMenuKey(e)) return void keyMenu(e, items(p, i), e.target instanceof HTMLElement ? e.target : undefined);
+    if (e.key !== 'F2' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    void editName(p);
+  }
+
+  /** A player's menu from elsewhere on the screen (their 📱 row), as a right-click on their row opens it. */
+  export function openMenu(e: MouseEvent, id: string): void {
+    const i = players.findIndex((x) => x.id === id);
+    if (rowMenu && i >= 0) showMenu(e, items(players[i], i));
+  }
+
+  /** F2 from elsewhere (their 📱 row): their name, ready to type over. */
+  export function rename(id: string): void {
+    const p = players.find((x) => x.id === id);
+    if (p) void editName(p).then((box) => box?.scrollIntoView({ block: 'nearest' }));
   }
 
   function setColor(p: P, color: string, input: HTMLInputElement): void {
@@ -220,6 +262,8 @@
   <div class="rows" role="list" aria-label="{noun}s">
   {#each players as p, i (p.id)}
     {@const line = rows.lineAt(p.id)}
+    <!-- (Its keys come from the boxes and buttons in it: F2, Shift+F10, Alt+↑/↓.) -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="player"
       data-place="player:{p.id}"
@@ -233,6 +277,7 @@
         if (m) move(m.from, m.to - m.from);
       }}
       oncontextmenu={(e) => menu(e, p, i)}
+      onkeydown={(e) => rowKey(e, p, i)}
       use:rowKeys={{ move: (d) => move(i, d) }}
     >
       <!-- Only the grip drags (dragging over a name box selects its text). -->
@@ -278,7 +323,13 @@
         style:border-color={p.color}
         onkeydown={nameKey}
       />
-      <span class="chip" dir="auto" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
+      {#if phone}
+        <!-- (In the chip's place, at its width: the row keeps its one line.) -->
+        {@const w = phone(p.id)}
+        <span class="chip phone {w.tone}" title={w.title} data-phone-word={p.id}>{w.text}</span>
+      {:else}
+        <span class="chip" dir="auto" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
+      {/if}
       {#if showScores}
         <!-- (Whole points, within what reads on screen: made so once it's typed, not while the box is cleared to retype.) -->
         <input
@@ -424,6 +475,19 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* A row's phone, in words, while the buzzer room is up. */
+  .chip.phone {
+    padding-inline: 6px;
+    border: 1px solid var(--border);
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .chip.phone.good {
+    color: var(--good);
+  }
+  .chip.phone.warn {
+    color: var(--warn);
   }
   .unpic {
     position: absolute;
