@@ -4,7 +4,8 @@
 // panel grows by that strip, nothing overlaps); and beside the stage (RPG and board-game rounds on a wide window) the
 // fixed bar is a grid with 🚪 Exit in its bottom-right cell. A Daily Double with three question slides keeps Next slide ▶
 // the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll makes its turn box's
-// slot ▶ Move while the blue button stays Next turn ▶ (and its check sits in the panel), a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
+// slot ▶ Move while the blue button stays Next turn ▶ (and its check sits in the panel), a box drawn on the RPG stage
+// in one window leaves the stage its size, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
 // on a narrow window the fixed bar stays on one line (🚪 Exit at the right; ❔ Help as its sign up to 1040px, its word
 // above, which opens the keys on During the game, where 💡 Show all tips again brings 🙈 Hide's note back). With six
 // players in a single window (at
@@ -278,6 +279,29 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('.panel .mode-host button'));
   assert(true, `Yes into an Adventure round puts the keys on its own controls (${await page.evaluate(() => document.activeElement?.textContent?.trim())})`);
   states.rpg = await look();
+  // One window: the stage keeps its size while a box is drawn on the RPG stage, when it's let go (the RPG box's one
+  // selection line says who) and after a click on an empty spot clears it (↩ Select them again in that line).
+  {
+    const stageH = async () => Math.round((await page.locator('.stage-box').boundingBox()).height);
+    const before = await stageH();
+    const pane = await page.locator('.stage-box .rpg .pane').first().boundingBox();
+    const [a, b] = [[0.04, 0.05], [0.96, 0.9]].map(([fx, fy]) => ({ x: pane.x + pane.width * fx, y: pane.y + pane.height * fy }));
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 8 });
+    await page.locator('.stage-box .rpg .band').waitFor();
+    const held = await stageH();
+    await page.mouse.up();
+    await page.locator('.rh [data-rpg-sel]', { hasText: 'Selected: Ann, Bob, Cy' }).waitFor();
+    const letGo = await stageH();
+    await page.mouse.click(a.x, a.y);
+    await page.locator('.rh [data-rpg-sel]').getByRole('button', { name: '↩ Select them again' }).waitFor();
+    const cleared = await stageH();
+    assert(
+      held === before && letGo === before && cleared === before,
+      `one window: the RPG stage keeps its size while a box is drawn, let go and cleared (${before}, ${held}, ${letGo}, ${cleared})`,
+    );
+  }
   await nextRound();
   await page.locator('.panel .status', { hasText: 'Board game' }).waitFor();
   states.boardgame = await look();

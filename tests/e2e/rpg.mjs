@@ -1,11 +1,12 @@
 // RPG rounds: build a tiny world (two screens, an item, stats), then play it: move with the pad and the keys, pick
 // the item up, change a stat, undo and redo, show the map, and check viewers never see secret objects. The editor
-// shows a screen with its background reset in the color viewers see.
+// shows a screen with its background reset in the color viewers see. A box drawn on the stage selects players and
+// the things that move in play, in two windows, one, and on a touch screen.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, dragBy, editorReady, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -194,6 +195,7 @@ async function bigWorld() {
   await keyList.waitFor();
   const rpgKeys = await keyList.locator('section').filter({ has: host.getByRole('heading', { name: 'RPG', exact: true }) }).innerText();
   assert(rpgKeys.includes('← ↑ → ↓'), 'the ? list has the arrow keys among the RPG keys');
+  assert(rpgKeys.includes('Drag on an empty spot') && rpgKeys.includes('Alt+drag') && rpgKeys.includes('▭ Select in a box instead'), 'and the box: drag on an empty spot, Alt+drag, and the stage menu’s way for Linux desktops');
   const firstGroup = await keyList.locator('h3').first().innerText();
   assert(firstGroup === 'RPG', `in an RPG round the ? list starts with the RPG keys (${firstGroup})`);
   await host.keyboard.press('Escape');
@@ -351,6 +353,269 @@ async function bigWorld() {
   assert((await aud.locator('.map-ov').innerText()).includes('This map is hidden from viewers') && !(await aud.locator('.map-ov .cell').count()), 'on a hidden map, the viewers’ map says it’s hidden');
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/rpg-big-hidden.png` });
   await ctx.close();
+}
+
+/**
+ * A box drawn on the stage (a world from a file: Ann and Bob on a 🔒 locked rug on the Lava, the Sword, a door and the
+ * arrival point beside them, a pile of gold, a secret Chest, and a screen-sized picture on the Meadow next door): two
+ * windows, then one, then a touch screen.
+ */
+async function boxSelect() {
+  console.log('A box on the RPG stage:');
+  const shape = (id, name, x, y, w, h, role, more = {}) => ({
+    id, name, kind: 'shape', shape: 'rect', x, y, w, h, rotation: 0, opacity: 1, zIndex: 1, fill: '#887755', stroke: '#000', strokeWidth: 0, radius: 0, ...(role ? { role } : {}), ...more,
+  });
+  const start = {
+    id: 's_start', name: 'Start', col: 0, row: 0,
+    slide: {
+      background: { color: '#2f6b3a' },
+      elements: [
+        shape('el_lava', 'Lava', 60, 520, 1100, 500, { class: 'hazard' }),
+        shape('el_rug', 'Rug', 560, 620, 400, 200, null, { locked: true }),
+        shape('el_sword', 'Sword', 900, 300, 140, 140, { class: 'item', item: 'i_sword', qty: 1 }),
+        shape('el_door', 'Door', 1200, 600, 160, 260, { class: 'doorway', to: { map: 'm1', screen: 's_meadow' } }),
+        shape('el_spawn', 'Arrival point', 700, 560, 120, 120, { class: 'spawn' }),
+        shape('el_gold', 'Gold pile', 1500, 250, 140, 140, { class: 'currency', field: 'f_gold', amount: 5 }),
+        shape('el_chest', 'Chest', 1600, 700, 140, 100, { class: 'item', item: 'i_sword', qty: 1 }, { secret: true }),
+      ],
+    },
+  };
+  const meadow = { id: 's_meadow', name: 'Meadow', col: 1, row: 0, slide: { background: { color: '#3a6b2f' }, elements: [shape('el_bg', 'Meadow picture', 0, 0, 1920, 1080, null)] } };
+  const game = {
+    id: 'g_box_select', version: 2, title: 'Box select',
+    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+    players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b'][i] })),
+    rounds: [{ id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' }],
+    media: [], audio: {}, wheels: [], dice: [], theme: {},
+    statFields: [{ id: 'f_gold', name: 'Gold', type: 'number', start: 0, min: 0, currency: true, symbol: '🪙', audience: 'hud', display: 'counter' }],
+    items: [{ id: 'i_sword', name: 'Sword', stackable: false }],
+    worlds: [{ id: 'w1', name: 'World', maps: [{ id: 'm1', name: 'Overworld', cols: 2, rows: 1, screens: [start, meadow], visibility: 'discovered', showExits: true, revealNeighbors: true, diagonals: false, wrap: false, transition: 'cut' }] }],
+  };
+  mkdirSync(resolve('test-results'), { recursive: true });
+  const gameFile = resolve('test-results/rpg-box-select.json');
+  writeFileSync(gameFile, JSON.stringify(game));
+
+  /** A game screen on the round, from the file (`aud`: with the audience window open). */
+  async function playIt(ctx, two) {
+    const p = await ctx.newPage();
+    p.on('pageerror', (e) => errors.push(`[box select] ${e.message}`));
+    await p.goto(pathToFileURL(file).href);
+    await openGameFile(p, gameFile);
+    await p.getByText(/^Opened “/).waitFor();
+    await editorReady(p);
+    await p.getByRole('button', { name: '▶ Play' }).click();
+    await p.getByRole('button', { name: 'Start game ▶' }).waitFor();
+    let aud = null;
+    if (two) {
+      [aud] = await Promise.all([p.waitForEvent('popup'), p.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+      await aud.waitForLoadState('domcontentloaded');
+    }
+    await p.getByRole('button', { name: 'Start game ▶' }).click();
+    await p.locator('.stage-box .rpg .avatar[data-player-id="p2"]').waitFor();
+    return { p, aud };
+  }
+  /** A point of the screen on the stage (1920×1080) in the window. */
+  const at = async (p, x, y) => {
+    const r = await p.locator('.stage-box .rpg .pane').first().boundingBox();
+    return { x: r.x + (x * r.width) / 1920, y: r.y + (y * r.height) / 1080 };
+  };
+  /** Press at one point of the screen, move to another, and (unless `hold`) let go. */
+  async function box(p, a, b, { hold = false } = {}) {
+    const [from, to] = [await at(p, ...a), await at(p, ...b)];
+    await p.mouse.move(from.x, from.y);
+    await p.mouse.down();
+    await p.mouse.move(to.x, to.y, { steps: 8 });
+    if (!hold) await p.mouse.up();
+  }
+  const line = (p) => p.locator('.rh [data-rpg-sel]');
+  const says = (p, words) => line(p).filter({ hasText: words }).waitFor();
+  const again = (p) => line(p).getByRole('button', { name: '↩ Select them again' });
+  const av = (p, id) => p.locator(`.stage-box .rpg .avatar[data-player-id="${id}"]`);
+  const hitBox = (p, id) => p.locator(`.stage-box .rpg .hit[data-object="${id}"]`).boundingBox();
+  const undoSays = (p) => p.locator('.panel .fixed').getByRole('button', { name: '↶ Undo' }).getAttribute('title');
+  /** Ann (p1) and Bob (p2) stand on the rug, side by side, done gliding there. */
+  const RUG = [['p1', 680], ['p2', 840]];
+  async function settled(p) {
+    for (const [id, x] of RUG) {
+      const to = await at(p, x, 720);
+      await p.waitForFunction(([sel, tx, ty]) => {
+        const r = document.querySelector(sel)?.getBoundingClientRect();
+        return !!r && Math.abs(r.x + r.width / 2 - tx) < 3 && Math.abs(r.y + r.height / 2 - ty) < 3;
+      }, [`.stage-box .rpg .avatar[data-player-id="${id}"]`, to.x, to.y]);
+    }
+  }
+  /** Ann and Bob dragged onto the rug (where they arrive depends on the room there), nothing selected after. */
+  async function standOnRug(p) {
+    for (const [id, x] of RUG) await dragBy(p, av(p, id), await at(p, x, 720));
+    await settled(p);
+    await p.keyboard.press('Escape');
+    await again(p).waitFor();
+  }
+
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  try {
+    // ---- Two windows ----
+    const { p: host, aud } = await playIt(ctx, true);
+    await standOnRug(host);
+    assert((await host.locator('.stage-box .rpg .hit[data-object="el_spawn"]').count()) === 1, 'two windows: the host’s copy draws the arrival point (viewers never see it)');
+    await box(host, [560, 280], [1420, 900], { hold: true });
+    // Live: the rings light up as it's drawn, on the host's copy only.
+    await host.locator('.stage-box .rpg .hit.picked[data-object="el_sword"]').waitFor();
+    const mid = { band: await host.locator('.stage-box .rpg .band.mirror').count(), rings: await host.locator('.stage-box .rpg .avatar.picked').count(), viewers: await aud.locator('.band, .picked, .outlined').count() };
+    await host.mouse.up();
+    await says(host, 'Selected: Ann, Bob · Sword —');
+    const ringed = await host.locator('.stage-box .rpg .hit.picked').evaluateAll((l) => l.map((e) => e.dataset.object));
+    assert(
+      mid.band === 1 && mid.rings === 2 && !mid.viewers && ringed.join() === 'el_sword',
+      `two windows: a box picks Ann, Bob and the Sword, not the Lava under them, the door beside them or the arrival point; a yellow box and live rings on the host’s copy, nothing for viewers (${JSON.stringify(mid)}, ${ringed})`,
+    );
+    // Shift+drag from an empty spot adds (the Gold pile); Shift+click adds what a box never catches (the door).
+    await host.keyboard.down('Shift');
+    await box(host, [1450, 200], [1700, 450]);
+    await host.locator('.stage-box .rpg .hit[data-object="el_door"]').click();
+    await host.keyboard.up('Shift');
+    await says(host, 'Selected: Ann, Bob · Sword, Gold pile, Door —');
+    assert(true, 'Shift+drag from an empty spot adds to what’s selected, and Shift+click adds the door a box leaves out');
+    // A click on an empty spot clears it all; ↩ Select them again brings it back.
+    const empty = await at(host, 1750, 120);
+    await host.mouse.click(empty.x, empty.y);
+    await again(host).waitFor();
+    assert(!(await line(host).innerText()).includes('Selected:'), 'a click on an empty spot clears the selection');
+    await again(host).click();
+    await says(host, 'Selected: Ann, Bob · Sword, Gold pile, Door —');
+    assert(true, '↩ Select them again brings it all back');
+    // Esc while drawing: the box replaced the selection as it went; the selection is as it was.
+    await box(host, [1450, 150], [1800, 450], { hold: true });
+    await line(host).filter({ hasText: /^Selected: Gold pile —/ }).waitFor();
+    await host.keyboard.press('Escape');
+    await host.mouse.up();
+    await says(host, 'Selected: Ann, Bob · Sword, Gold pile, Door —');
+    assert((await host.locator('.stage-box .rpg .band').count()) === 0, 'Esc while drawing a box puts back what was selected (the box had replaced it live)');
+
+    // ---- One window ----
+    await aud.close();
+    await host.locator('.play:not(.dual)').waitFor();
+    await host.keyboard.press('Escape');
+    await again(host).waitFor();
+    await box(host, [560, 280], [1420, 900], { hold: true });
+    await host.locator('.stage-box .rpg .hit.outlined[data-object="el_sword"]').waitFor();
+    const held = { band: await host.locator('.stage-box .rpg .band:not(.mirror)').count(), outlined: await host.locator('.stage-box .rpg .outlined').count(), rings: await host.locator('.stage-box .rpg .picked').count() };
+    // (From the moment it's let go: how long the outlines stay.)
+    await host.evaluate(() => {
+      const t0 = performance.now();
+      window.__outlinesGone = new Promise((done) => {
+        const tick = () => (document.querySelector('.stage-box .rpg .outlined') ? requestAnimationFrame(tick) : done(performance.now() - t0));
+        requestAnimationFrame(tick);
+      });
+    });
+    await host.mouse.up();
+    await says(host, 'Selected: Ann, Bob · Sword —');
+    const stayed = await host.evaluate(() => window.__outlinesGone);
+    assert(
+      held.band === 1 && held.outlined === 3 && !held.rings && stayed >= 1200,
+      `one window: the same box picks Ann, Bob and the Sword; a thin dashed box and outlines while held, kept ${Math.round(stayed)} ms after (about 1.5 s), then nothing (${JSON.stringify(held)})`,
+    );
+    // A press on the 🔒 locked rug under them draws a box (the rug doesn't move, no card opens).
+    const rug = await hitBox(host, 'el_rug');
+    await box(host, [570, 800], [900, 640]);
+    await says(host, 'Selected: Ann, Bob —');
+    assert(JSON.stringify(await hitBox(host, 'el_rug')) === JSON.stringify(rug) && !(await host.getByRole('dialog', { name: 'Object: Rug' }).count()), 'a press on the 🔒 locked rug under the players draws a box: Ann and Bob, the rug left where it is');
+    // A box over the secret Chest catches nothing (it isn't on the stage), and Objects here numbers it.
+    await box(host, [1550, 650], [1800, 850]);
+    await again(host).waitFor();
+    const objs = await host.locator('.rh .objs').innerText();
+    assert(!(await line(host).innerText()).includes('Selected:') && !objs.includes('Chest') && objs.includes('🙈 Hidden object 1'), `one window: a box over the secret Chest catches nothing, and Objects here doesn’t name it (${objs.replace(/\s+/g, ' ')})`);
+    // Pressing one of a selected group outlines it all before it moves; one Ctrl+Z puts the whole move back.
+    await again(host).click();
+    await says(host, 'Selected: Ann, Bob —');
+    await host.locator('.stage-box .rpg .hit[data-object="el_sword"]').click({ modifiers: ['Shift'] });
+    await says(host, 'Selected: Ann, Bob · Sword —');
+    const sword = await hitBox(host, 'el_sword');
+    const ann = await av(host, 'p1').boundingBox();
+    await host.mouse.move(ann.x + ann.width / 2, ann.y + ann.height / 2);
+    await host.mouse.down();
+    await host.locator('.stage-box .rpg .outlined').nth(2).waitFor();
+    const pressed = await host.locator('.stage-box .rpg .outlined').count();
+    await host.mouse.move(ann.x + ann.width / 2 + 60, ann.y + ann.height / 2 - 40, { steps: 6 });
+    await host.mouse.up();
+    await host.waitForFunction(() => document.querySelector('.panel .fixed button[title^="Undo: Move Ann, Bob & Sword"]'));
+    assert(pressed === 3 && JSON.stringify(await hitBox(host, 'el_sword')) !== JSON.stringify(sword), `one window: pressing Ann outlines the whole group (${pressed}), and they move together`);
+    await host.keyboard.press('Control+z');
+    await host.waitForFunction(([sx, sy]) => {
+      const r = document.querySelector('.stage-box .rpg .hit[data-object="el_sword"]')?.getBoundingClientRect();
+      return !!r && Math.abs(r.x - sx) < 2 && Math.abs(r.y - sy) < 2;
+    }, [sword.x, sword.y]);
+    await settled(host);
+    assert(true, 'one Ctrl+Z puts the group move back');
+    // Alt+drag from a player draws a box (Bob stays put), and Alt's keyup stays in the page (Firefox's menu bar).
+    await host.keyboard.press('Escape');
+    await host.evaluate(() => addEventListener('keyup', (e) => e.key === 'Alt' && (window.__altKept = e.defaultPrevented)));
+    const bob = await av(host, 'p2').boundingBox();
+    await host.keyboard.down('Alt');
+    await box(host, [875, 680], [600, 780]);
+    await host.keyboard.up('Alt');
+    await says(host, 'Selected: Ann, Bob —');
+    assert(JSON.stringify(await av(host, 'p2').boundingBox()) === JSON.stringify(bob) && (await host.evaluate(() => window.__altKept)) === true, 'Alt+drag from a player draws a box (Bob isn’t dragged), and Alt’s keyup stays in the page');
+    // The stage menu's ▭ Select in a box: the next drag draws one even from a player, with no key held.
+    await host.keyboard.press('Escape');
+    const menuAt = await at(host, 1750, 120);
+    await host.mouse.click(menuAt.x, menuAt.y, { button: 'right' });
+    const items = await menuLines(host);
+    assert(items.includes('▭ Select in a box · Alt+drag') && items.includes('Select everything here'), `the stage’s menu has ▭ Select in a box and Select everything here (${items.join(' | ')})`);
+    await openMenu(host).getByRole('menuitem', { name: '▭ Select in a box' }).click();
+    const annNow = await av(host, 'p1').boundingBox();
+    await box(host, [650, 680], [900, 780]);
+    await says(host, 'Selected: Ann, Bob —');
+    assert(JSON.stringify(await av(host, 'p1').boundingBox()) === JSON.stringify(annNow), '▭ Select in a box: the next drag from Ann draws a box instead of moving her');
+    // A big object dragged alone says, once a game, how to lock it or box over it.
+    await host.keyboard.press('Escape');
+    await box(host, [200, 900], [260, 900]);
+    await host.locator('.toast', { hasText: 'Moved Lava · 🔒 Lock it in the editor, or Alt+drag to draw a box over it' }).waitFor();
+    await host.keyboard.press('Control+z');
+    await host.locator('.toast', { hasText: 'Undid Move Lava' }).waitFor();
+    await box(host, [200, 900], [260, 900]);
+    await host.waitForFunction(() => document.querySelector('.panel .fixed button[title^="Undo: Move Lava"]'));
+    assert(!(await host.locator('.toast', { hasText: 'Lock it' }).count()), 'the big-object hint shows the first time only');
+    await host.keyboard.press('Control+z');
+    // On the Meadow, a drag on its screen-sized picture draws a box, moves nothing and leaves no step.
+    await host.getByRole('button', { name: 'Go East', exact: true }).click();
+    await host.locator('.rh .where', { hasText: 'Meadow' }).waitFor();
+    const step = await undoSays(host);
+    const pic = await hitBox(host, 'el_bg');
+    await box(host, [1200, 300], [1600, 600], { hold: true });
+    const drawn = await host.locator('.stage-box .rpg .band').count();
+    await host.mouse.up();
+    assert(
+      drawn === 1 && (await undoSays(host)) === step && JSON.stringify(await hitBox(host, 'el_bg')) === JSON.stringify(pic) && !(await host.getByRole('dialog', { name: 'Object: Meadow picture' }).count()),
+      `a drag on a picture as big as its screen draws a box and records no step (${step})`,
+    );
+    await host.close();
+  } finally {
+    await ctx.close();
+  }
+
+  // ---- A touch screen: a box adds to what's selected; a tap on an empty spot clears it ----
+  const tctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, hasTouch: true });
+  try {
+    const { p: tp } = await playIt(tctx, false);
+    const cdp = await tctx.newCDPSession(tp);
+    const touch = async (pts) => {
+      const [a, ...rest] = await Promise.all(pts.map(([x, y]) => at(tp, x, y)));
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [a] });
+      for (const b of rest) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [b] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    await tp.keyboard.press('1');
+    await says(tp, 'Selected: Ann —');
+    await touch([[880, 280], [940, 330], [1000, 400], [1060, 460]]);
+    await says(tp, 'Selected: Ann · Sword —');
+    assert(true, 'a touch screen: a box adds to what’s selected (Ann, then the Sword)');
+    await touch([[1750, 120]]);
+    await again(tp).waitFor();
+    assert(!(await line(tp).innerText()).includes('Selected:'), 'a tap on an empty spot clears the selection, with ↩ Select them again');
+  } finally {
+    await tctx.close();
+  }
 }
 
 try {
@@ -1087,6 +1352,7 @@ try {
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
 
   await bigWorld();
+  await boxSelect();
   console.log('rpg: all passed');
 } catch (e) {
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-failure.png` }).catch(() => {});
