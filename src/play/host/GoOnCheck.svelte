@@ -197,6 +197,11 @@
         </div>
       {/each}
     </div>
+    <!-- (Under what's left, not in the pinned foot: in a short panel the first fix stays in sight above the foot.) -->
+    {#if teach && left.length}<p class="teach">{teach}</p>{/if}
+    {#each ticks as kind (kind)}
+      <label class="check tick-row"><input type="checkbox" onchange={(e) => e.currentTarget.checked && onquiet(kind)} /> {CHECK.dontAsk(CHECK.quiet[kind])}</label>
+    {/each}
   </div>
   <div class="foot">
     <div class="row">
@@ -212,10 +217,6 @@
         >
       {/if}
     </div>
-    {#if teach && left.length}<p class="teach">{teach}</p>{/if}
-    {#each ticks as kind (kind)}
-      <label class="check tick-row"><input type="checkbox" onchange={(e) => e.currentTarget.checked && onquiet(kind)} /> {CHECK.dontAsk(CHECK.quiet[kind])}</label>
-    {/each}
   </div>
   {#if place?.spot}
     <!-- Where the blue button was: its step's name, never a button. -->
@@ -236,9 +237,11 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
-    padding: 10px 12px;
+    /* (Tight: in one window the panel's room for it is about 137px, and heading, what's left, its first fixes and the
+       foot fit in that, the fixes in sight.) */
+    padding: 8px 12px;
     box-sizing: border-box;
-    gap: 8px;
+    gap: 4px;
   }
   .goon.loss {
     border-color: var(--warn);
@@ -255,16 +258,27 @@
     min-height: 0;
     overflow: auto;
   }
+  /* (Its foot fades out: a line cut off by the room's end, the teach line most often, reads as "more below", not as
+     text half under the foot.) */
+  .scroll::after {
+    content: '';
+    display: block;
+    position: sticky;
+    bottom: 0;
+    height: 6px;
+    background: linear-gradient(to bottom, transparent, var(--panel));
+    pointer-events: none;
+  }
   .foot {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     gap: 4px;
     border-top: 1px solid var(--border);
-    padding-top: 8px;
+    padding-top: 6px;
   }
   h3 {
-    margin: 0 0 6px;
+    margin: 0 0 2px;
     font-size: 14px;
   }
   .loss h3 {
@@ -276,7 +290,7 @@
     gap: 8px;
   }
   .text {
-    margin: 0 0 4px;
+    margin: 0 0 2px;
   }
   .item.done {
     opacity: 0.55;
@@ -296,11 +310,12 @@
     min-width: 6em;
   }
   .teach {
-    margin: 0;
+    margin: 6px 0 0;
     font-size: 12px;
     color: var(--muted);
   }
   .tick-row {
+    margin-top: 4px;
     font-size: 12px;
   }
   kbd {

@@ -277,6 +277,22 @@ export const quick = (page, words) => goOnCheck(page).locator('[data-quick]').fi
 export const anyway = (page) => goOnCheck(page).locator('[data-anyway]');
 /** Its Not yet (Esc). */
 export const notYet = (page) => goOnCheck(page).locator('[data-notyet]');
+/**
+ * Whether a fix in the open check is in sight as it opened, scrolled nowhere: all of it inside the check's scrolling
+ * part above its faded foot, and a click at its middle lands on it (not on the pinned foot). Playwright's own click
+ * scrolls a hidden button into view first, so a test that only clicks it can't tell. '' when it is, else what's wrong.
+ */
+export async function quickInSight(page, words) {
+  return quick(page, words).evaluate((b) => {
+    const r = b.getBoundingClientRect();
+    const scroll = b.closest('.scroll');
+    const s = scroll.getBoundingClientRect();
+    const fade = parseFloat(getComputedStyle(scroll, '::after').height) || 0;
+    const at = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+    const inside = r.top >= s.top - 0.5 && r.bottom <= s.bottom - fade + 0.5;
+    return inside && b.contains(at) ? '' : `“${b.innerText.replace(/\s+/g, ' ').trim()}” at ${Math.round(r.top)}–${Math.round(r.bottom)}, the scrolling part ${Math.round(s.top)}–${Math.round(s.bottom)} (its last ${fade}px faded), the middle on ${at?.tagName}.${at?.className}`;
+  });
+}
 
 /** The app's own right-click menu, while it's open. */
 export const openMenu = (page) => page.locator('.cm[role="menu"]');

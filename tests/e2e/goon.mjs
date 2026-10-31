@@ -19,7 +19,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openBuzzerOptions, openGameFile, quick, startBuzzer, startRoomOn, stepButton } from './helpers.mjs';
+import { anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openBuzzerOptions, openGameFile, quick, quickInSight, startBuzzer, startRoomOn, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -172,6 +172,11 @@ try {
       c.inside && c.offStage && c.offBar && !c.onMain.length && (await stageSize(page)) === stageWas,
       `its place: inside the panel, off the stage and the fixed bar, none of its buttons on the blue button's spot, the stage its size (${JSON.stringify({ ...c, stageWas, stage: await stageSize(page) })})`,
     );
+    // (Its fixes in sight as it opens, not under its pinned foot while “▦ Done anyway: no points” shows.)
+    for (const fix of ['＋ Award Ann $200 ▶ board', '− Deduct Ann $200 ▶ board']) {
+      const hid = await quickInSight(page, fix);
+      assert(!hid, `its ${fix} is in sight as it opens, nothing scrolled (${hid})`);
+    }
     await goOnCheck(page, { ready: true }).waitFor();
     await page.keyboard.press('n');
     await goOnCheck(page).waitFor({ state: 'detached' });
@@ -362,6 +367,11 @@ try {
     await page.locator('.play > .panel').waitFor();
     await checkItem(page, 'buzzers').waitFor();
     assert((await goOnCheck(page).getAttribute('data-goon')) === 'first', 'H shows the panel with the check open in it (“First:” 🔔 Open the buzzers)');
+    {
+      const hid = await quickInSight(page, '🔔 Open the buzzers');
+      const tick = await goOnCheck(page).locator('label:has(input[type="checkbox"])').allInnerTexts();
+      assert(!hid && tick.length === 1 && tick[0].includes('Don’t ask about opening the buzzers'), `its 🔔 Open the buzzers is in sight, nothing scrolled, its “Don’t ask” tick there too, under it (${hid}; ${JSON.stringify(tick)})`);
+    }
     await goOnCheck(page, { ready: true }).waitFor();
     await quick(page, '🔔 Open the buzzers').click();
     await goOnCheck(page).waitFor({ state: 'detached' });

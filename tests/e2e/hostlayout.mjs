@@ -38,7 +38,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, selectedWords, stepButton, leaveAnswer } from './helpers.mjs';
+import { boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, quickInSight, selectedWords, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -1175,6 +1175,9 @@ try {
         `${at}: inside the panel, off the stage, the status line and the fixed bar, nothing of it on the blue button's spot, its foot in view, one blue, at most one ring, the stage its size (${JSON.stringify({ ...c, stageWas, stage: await stageH() })})`,
       );
       if (count === 8) assert(c.lines === 4, `${at}: two picked, a line each (＋ / − for each: ${c.lines} buttons)`);
+      // (The first fix, its main one, is in sight as it opens, not scrolled under its pinned foot.)
+      const hid = await quickInSight(pb, '＋ Award');
+      assert(!hid, `${at}: its first ＋ Award is in sight as it opens, nothing scrolled (${hid})`);
       await notYet(pb).click();
       await goOnCheck(pb).waitFor({ state: 'detached' });
       // (Esc closes at once, as before: the expert's way.)
