@@ -1,6 +1,6 @@
 // The RPG host's moves, shared by the host panel and the keyboard shortcuts. Every change is one undoable step.
 import {
-  isRpg, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Dir8, type Game, type InventoryEntry, type Position, type Screen, type ScreenRef, type Session,
+  isRpg, newId, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Action, type Dir8, type Game, type InventoryEntry, type Position, type Screen, type ScreenRef, type Session,
   type SlideElement, type World, type WorldState,
 } from '../../lib/model';
 import {
@@ -11,7 +11,9 @@ import { bounds, catchable, type Box } from '../../lib/layers';
 import { nameList } from '../../lib/session';
 import { addStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, statFields, statRoom, transferEntry } from '../../lib/toolset';
 import { addMediaFile } from '../../lib/media.svelte';
-import { app } from '../../lib/app.svelte';
+import { app, toast } from '../../lib/app.svelte';
+import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
+import { offerIn } from '../host/offered.svelte';
 import { blip } from '../../lib/live';
 import { announce } from '../../lib/announce';
 import type { MenuEntry } from '../../lib/menustate.svelte';
@@ -368,30 +370,216 @@ export function removeObject(game: Game, session: Session, elId: string, oneWind
 }
 
 /**
- * An object's right-click menu, on the stage or in the host panel's list: open its card, reveal or hide it, remove it
- * (`removed` gets what to tell the host). `oneWindow`: viewers see the menu, so a secret object with an `alias` (see
- * hiddenNames: "🙈 Hidden object 1") is headed by that, never its name.
+ * An object whose name one window never says (see hiddenNames): a secret one, made in the editor, viewers don't see. Not
+ * what viewers never see anyway, nor what the host put there during the show (they made it in front of viewers).
+ */
+export function nameSecret(st: WorldState, screen: Screen, el: SlideElement): boolean {
+  return !audienceSees(el, st.objects[el.id]) && !neverShown(el) && !(st.added[screen.id] ?? []).some((e) => e.id === el.id);
+}
+
+/**
+ * A step about an object, said two ways: with its name, and for one window ("a hidden object") while its name is a
+ * secret (`secret`: nameSecret), so a step made with the audience window open never names it there later
+ * (ActionEvent.quiet).
+ */
+export function objectSay(el: SlideElement, secret: boolean, say: (name: string) => string): [text: string, quiet: string | undefined] {
+  const quiet = say(hiddenCount(1));
+  return [say(objectName(el)), secret ? quiet.charAt(0).toUpperCase() + quiet.slice(1) : undefined];
+}
+
+/** Show or hide an object for viewers, as one step (a Reveal never names a secret one in one window's history). */
+export function setObjectShown(game: Game, session: Session, elId: string, shown: boolean): void {
+  const found = objectAt(game, session, elId);
+  if (!found) return;
+  const { st, screen, el } = found;
+  const [text, quiet] = objectSay(el, nameSecret(st, screen, el), (n) => `${shown ? 'Reveal' : 'Hide'} ${n}`);
+  logged(session, text, () => (override(st, elId).shown = shown), undefined, quiet);
+}
+
+/** What an object's card's buttons run with (the round's run context, without who they're for). */
+export type ObjectRun = Pick<RunContext, 'live' | 'selected' | 'teams'>;
+
+/**
+ * One of an object's card's buttons, in the card's words and order: its card and its menu show the same list. `run`
+ * does it and says what to tell the host (`close`: the card closes after). `asks`: it asks something first, so its
+ * menu item opens the card instead ('who': nobody to run it for; 'locked': a locked doorway asks before going through).
+ */
+export interface ObjectAct {
+  id: string;
+  label: string;
+  run: () => { text?: string; close?: boolean };
+  asks?: 'who' | 'locked';
+  disabled?: boolean;
+  title?: string;
+  /** A small button on its card (🔒 Lock, ▶ Run all). */
+  small?: boolean;
+}
+
+/**
+ * An object's card's buttons (ObjectCard draws them; its menu lists them first). `picked`: the players picked on the
+ * card (or selected), null for nobody, so they're for everyone standing there.
+ */
+export function objectActs(game: Game, session: Session, elId: string, run: ObjectRun, picked: string[] | null): ObjectAct[] {
+  const found = objectAt(game, session, elId);
+  if (!found) return [];
+  const { world, st, screen, el } = found;
+  const o = st.objects[el.id];
+  const role = el.role;
+  const secret = nameSecret(st, screen, el);
+  const title = objectName(el);
+  const here = session.players.filter((p) => st.positions[p.id]?.screen === screen.id).map((p) => p.id);
+  const who = picked ?? here;
+  const whoNames = names(session, who) || 'nobody';
+  const teams = !!run.teams;
+  const ctx: RunContext = { game, session, live: run.live, world, st, selected: run.selected, teams, chosen: who, at: screen.id, offerCard: offerIn(session, `object:${el.id}`) };
+  const said = (a: Action) => objectSay(el, secret, (n) => `${n}: ${describeAction(game, a, undefined, teams)}`);
+  const acts: ObjectAct[] = [];
+  if (role?.class === 'doorway') {
+    const locked = o?.locked ?? role.locked ?? false;
+    const through = (players?: string[]) => () => goThrough(game, session, el.id, players, here);
+    acts.push({ id: 'go', label: '🚪 Go through (party)', run: through(), ...(locked ? { asks: 'locked' as const } : {}) });
+    if (picked?.length) acts.push({ id: 'go-only', label: `🚪 Only ${whoNames}`, run: through(who), ...(locked ? { asks: 'locked' as const } : {}) });
+    acts.push({
+      id: 'lock',
+      label: locked ? '🔓 Unlock' : '🔒 Lock',
+      small: true,
+      run: () => {
+        const [text, quiet] = objectSay(el, secret, (n) => `${locked ? 'Unlock' : 'Lock'} ${n}`);
+        logged(session, text, () => (override(st, el.id).locked = !locked), undefined, quiet);
+        return {};
+      },
+    });
+  } else if (role?.class === 'item' || role?.class === 'currency') {
+    // Who picks it up: the first one picked (it goes to one player); with nobody picked, a pile goes to the first one here
+    // with room for it.
+    const f = role.class === 'currency' ? (statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]) : undefined;
+    const picker = !picked && f ? (who.find((id) => statRoom(game, session, id, f) > 0) ?? who[0]) : who[0];
+    const pickerName = session.players.find((p) => p.id === picker)?.name ?? 'Nobody';
+    const left = pileAmount(st, el);
+    // (Only what fits under their max, "🪙15 of 🪙30"; the rest stays on the screen.)
+    const fits = f && picker ? Math.min(left, statRoom(game, session, picker, f)) : left;
+    const what =
+      role.class === 'item' ? count(role.qty ?? 1, itemDef(game, role.item)?.name ?? title) : f ? (fits > 0 && fits < left ? `${formatStat(f, fits)} of ${formatStat(f, left)}` : formatStat(f, left)) : String(left);
+    acts.push({
+      id: 'pick',
+      label: `✋ ${pickerName} picks up ${what}`,
+      ...(role.class === 'currency' && !f ? { disabled: true, title: 'Add a currency in 📊 Stats & Items first' } : {}),
+      run: () => {
+        if (!picker) return { text: 'Pick who picks it up' };
+        const before = session.actionLog?.at(-1)?.id;
+        const text = pickUp(game, session, st, el, picker);
+        // (Only once it was picked up: "can't carry any more" keeps the card open to pick someone else.)
+        return { text, close: session.actionLog?.at(-1)?.id !== before };
+      },
+    });
+  }
+  if (role?.dialogue) {
+    const dialogue = role.dialogue;
+    acts.push({ id: 'talk', label: '💬 Talk', run: () => ((run.live.overlay = { kind: 'popup', nonce: newId(), slide: JSON.parse(JSON.stringify(dialogue)), title }), {}) });
+  }
+  if (role?.shop) {
+    const id = role.shop;
+    const exists = !!game.shops?.some((x) => x.id === id);
+    acts.push({
+      id: 'shop',
+      label: '🛒 Shop',
+      ...(exists ? {} : { disabled: true, title: 'That shop no longer exists: pick another with ✎ Edit' }),
+      run: () => (exists ? ((run.live.overlay = { kind: 'shop', nonce: newId(), shopId: id, buyer: who[0] }), {}) : { text: 'That shop no longer exists: pick another with ✎ Edit' }),
+    });
+  }
+  const list = role?.actions ?? [];
+  for (const a of list)
+    acts.push({
+      id: `a:${a.id}`,
+      label: describeAction(game, a, undefined, teams),
+      ...(needsPlayers(a) && !who.length ? { asks: 'who' as const } : {}),
+      run: () => (needsPlayers(a) && !who.length ? { text: 'Pick who it’s for first' } : { text: runAction(ctx, a, ...said(a)) }),
+    });
+  if (list.length > 1)
+    acts.push({
+      id: 'all',
+      label: '▶ Run all',
+      small: true,
+      title: 'Every action above, in order',
+      ...(list.some(needsPlayers) && !who.length ? { asks: 'who' as const } : {}),
+      run: () => {
+        if (list.some(needsPlayers) && !who.length) return { text: 'Pick who it’s for first' };
+        let out: string[] = [];
+        // One undoable step for all of them.
+        const [text, quiet] = objectSay(el, secret, (n) => `${n}: ${list.map((a) => describeAction(game, a, undefined, teams)).join(', ')}`);
+        logged(session, text, () => (out = list.map((a) => runAction(ctx, a, ...said(a)))), undefined, quiet);
+        return { text: out.join(' · ') };
+      },
+    });
+  return acts;
+}
+
+/**
+ * Go through a doorway object (the party standing at it, or `players`), as one step: they arrive where it leads. `here`:
+ * the players on its screen. Returns what to tell the host, and closes its card.
+ */
+export function goThrough(game: Game, session: Session, elId: string, players: string[] | undefined, here: string[]): { text?: string; close?: boolean } {
+  const found = objectAt(game, session, elId);
+  const role = found?.el.role;
+  const to = role?.to;
+  if (!found || !to || !findIn(found.world, to)) return { text: 'This doorway leads nowhere yet' };
+  const { world, st, screen, el } = found;
+  // "The party" is whoever stands at this doorway (the followed party may be somewhere else).
+  const active = activeParty(st)?.members ?? [];
+  const partyHere = active.some((m) => here.includes(m));
+  const movers = players ?? (partyHere ? undefined : here);
+  const label = players ? names(session, players) : 'Party';
+  const [text, quiet] = objectSay(el, nameSecret(st, screen, el), (n) => `${label} through ${n}`);
+  logged(session, text, () => moveTo(game, st, world, to, { players: movers, arriveAt: role?.arrive }), undefined, quiet);
+  blip(app.live, 'doorway');
+  announce(`${label} went through ${objectName(el)} to ${findIn(world, to)?.screen.name}`);
+  return { close: true };
+}
+
+/**
+ * An object's right-click menu, on the stage or in the host panel's list: its card's buttons first, in the card's words
+ * and order (one that asks something first opens the card), then 🗂 Open its card, ✎ Edit, reveal or hide it, then
+ * remove it (`removed` gets what to tell the host; `closed` closes its card once a button says so). `oneWindow`: viewers
+ * see the menu, so a secret object with an `alias` (see hiddenNames: "🙈 Hidden object 1") is headed by that, never its
+ * name, and its buttons wait on its card (behind 👁 Show, as there).
  */
 export function objectMenu(
   game: Game,
   session: Session,
   elId: string,
-  { open, removed, oneWindow = false, alias }: { open: () => void; removed: (text: string) => void; oneWindow?: boolean; alias?: string },
+  {
+    open,
+    removed,
+    closed,
+    edit,
+    run,
+    oneWindow = false,
+    alias,
+  }: { open: () => void; removed: (text: string) => void; closed?: () => void; edit?: () => void; run?: ObjectRun; oneWindow?: boolean; alias?: string },
 ): MenuEntry[] {
   const found = objectAt(game, session, elId);
   if (!found) return [];
   const { st, el } = found;
   const name = objectName(el);
   const shown = audienceSees(el, st.objects[elId]);
+  const masked = oneWindow && !shown && !!alias;
+  const acts = run && !masked ? objectActs(game, session, elId, run, run.selected.length ? run.selected : null) : [];
+  const press = (a: ObjectAct) => () => {
+    if (a.asks) return open();
+    const r = a.run();
+    if (r.text) toast(r.text, 3000);
+    if (r.close) closed?.();
+  };
   return [
-    { heading: oneWindow && !shown && alias ? alias : name },
+    { heading: masked ? alias : name },
+    ...acts.map((a): MenuEntry => ({ label: a.label, disabled: a.disabled, hint: a.asks === 'who' ? 'Pick who it’s for on its card' : a.asks === 'locked' ? 'It’s locked: its card asks first' : a.title, onclick: press(a) })),
+    ...(acts.length ? [{ sep: true } as const] : []),
     { label: '🗂 Open its card', onclick: open },
+    ...(edit ? [{ label: '✎ Edit', hint: 'Its screen in the live editor: move, resize, restyle, or give it actions and dialogue', onclick: edit }] : []),
     // (Not for hotspots, arrival points and no-go areas: viewers never see them, so a Reveal would do nothing.)
-    ...(neverShown(el)
-      ? []
-      : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => logged(session, `${shown ? 'Hide' : 'Reveal'} ${name}`, () => (override(st, elId).shown = !shown)) }]),
+    ...(neverShown(el) ? [] : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => setObjectShown(game, session, elId, !shown) }]),
     { sep: true },
-    { label: '🗑 Remove', danger: true, onclick: () => removed(removeObject(game, session, elId, oneWindow) ?? '') },
+    { label: '🗑 Remove', keys: 'Delete', danger: true, onclick: () => removed(removeObject(game, session, elId, oneWindow) ?? '') },
   ];
 }
 

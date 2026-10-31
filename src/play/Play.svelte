@@ -105,9 +105,11 @@
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { partnerUpVerbs, playerMenu, revealVerbs, type SeatPhone } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
+  import { editScreen } from './rpg/screenedit.svelte';
   import { boxNext, dragDone, dragGhost, dropHover, itemDrag } from './dragdrop.svelte';
   import Avatar from '../lib/rpg/Avatar.svelte';
-  import { shopBuy } from './host/shopops';
+  import { shopBuy, wareMenu } from './host/shopops';
+  import { stockAsk } from './host/shopask.svelte';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import { clone, randomizePartnerTiles } from '../lib/ops';
   import type { ActionEvent, Clue, ClueCard, Dir8, FinalRound, Game, GameSettings, MediaRef, Player, ScoreEvent, SentCard, Session } from '../lib/model';
@@ -4449,13 +4451,29 @@
     const playerId = t.closest<HTMLElement>('[data-player-id]')?.dataset.playerId;
     const spaceId = t.closest<HTMLElement>('[data-space]')?.dataset.space;
     if (playerId && session.players.some((p) => p.id === playerId)) return playerMenuAt(e);
+    // A ware in the shop on the stage: buy it for someone, or change its stock (asked in the shop's box).
+    const ware = t.closest<HTMLElement>('[data-ware]')?.dataset.ware;
+    const shop = app.live.overlay?.kind === 'shop' ? app.live.overlay : undefined;
+    if (ware && shop) return showMenu(e, wareMenu(game, session, shop, selected, ware, { stock: () => ((hideControls = false), (stockAsk.item = ware)) }));
     if (session.phase === 'rpg') {
       const { st } = rpgNow(game, session);
       if (!st) return;
       if (objId) {
-        // Removed: its card closes, as with the Delete key.
-        const removed = (text: string) => (toast(text, 3000), rpgObject === objId && (rpgObject = null));
-        return showMenu(e, objectMenu(game, session, objId, { oneWindow: !dual, open: () => ((hideControls = false), (rpgObject = objId)), removed }));
+        // Removed: its card closes, as with the Delete key. Its card's buttons come first, run as from its card.
+        const closed = () => rpgObject === objId && (rpgObject = null);
+        const removed = (text: string) => (toast(text, 3000), closed());
+        const found = objectAt(game, session, objId);
+        return showMenu(
+          e,
+          objectMenu(game, session, objId, {
+            oneWindow: !dual,
+            run: { live: app.live, selected, teams: buzzerOn(game.settings) && teamsOn(game.settings) },
+            open: () => ((hideControls = false), (rpgObject = objId)),
+            edit: found ? () => ((hideControls = false), editScreen(found.st, found.screen)) : undefined,
+            closed,
+            removed,
+          }),
+        );
       }
       return momentMenuAt(e, byMenuKey ? undefined : stagePoint(e));
     }

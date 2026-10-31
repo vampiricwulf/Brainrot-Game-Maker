@@ -1,14 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { announce } from '../../lib/announce';
-import { newGame, newShapeEl, type Game, type Session, type SlideElement, type WorldState } from '../../lib/model';
+import { newGame, newShapeEl, textSlide, type Game, type Session, type SlideElement, type WorldState } from '../../lib/model';
 import { addScreenBeside, ensureWorld, newRpgRound, splitParty } from '../../lib/rpg';
 import { goToRound, newSession, score } from '../../lib/session';
 import { currencyFields, inventory, newStatField, statNumber, undoAction } from '../../lib/toolset';
 import {
   addLive, avatarRange, avatarSpot, bigObject, centredOn, droppedObject, dropEntry, everythingOn, fillsScreen, giveEntry, groupDelta, hiddenNames, joinPartyNow, liveText, moveChoices, moveGroup,
-  moveObject, objectMenu, objectRange, partyOn, pickUp, regroupAll, removeObject, selectionWords, sendPartiesOn, sendPlayers, shortList, splitOff, START_FIRST, staysWords, stepParty,
-  wayOffEdge,
+  moveObject, nameSecret, objectActs, objectMenu, objectRange, objectSay, partyOn, pickUp, regroupAll, removeObject, selectionWords, sendPartiesOn, sendPlayers, setObjectShown, shortList, splitOff, START_FIRST,
+  staysWords, stepParty, wayOffEdge,
 } from './hostops';
+import { newLive } from '../../lib/live';
+import type { MenuEntry } from '../../lib/menustate.svelte';
 import { stepText } from '../../lib/toolset';
 
 // (What screen readers are told.)
@@ -228,6 +230,97 @@ describe('objects and items on the RPG stage', () => {
     undoAction(session, game);
     expect(Object.values(session.worlds!)[0].objects[potion.id]).toEqual({ shown: false });
     expect(removeObject(game, session, 'nothing')).toBeNull();
+  });
+
+  /** A menu's lines, as the host reads them ("—" for a line between groups). */
+  const lines = (items: MenuEntry[]) => items.map((i) => ('label' in i ? i.label : 'heading' in i ? i.heading : '—'));
+
+  it('lists its card’s buttons first in its menu, in the card’s words and order, then its card, ✎ Edit, Hide and Remove', () => {
+    const { game, session, st, potion } = withLoot();
+    const run = { live: newLive(), selected: [] };
+    expect(objectActs(game, session, potion.id, run, null).map((a) => a.label)).toEqual(['✋ Ann picks up Potion']);
+    const closed: string[] = [];
+    const items = objectMenu(game, session, potion.id, { run, open: () => closed.push('open'), edit: () => closed.push('edit'), closed: () => closed.push('closed'), removed: () => {} });
+    expect(lines(items)).toEqual(['Potion', '✋ Ann picks up Potion', '—', '🗂 Open its card', '✎ Edit', '🙈 Hide from viewers', '—', '🗑 Remove']);
+    expect(items.at(-1)).toMatchObject({ keys: 'Delete', danger: true });
+    // Pressed from the menu: as from its card (she picks it up, and its card closes).
+    (items[1] as { onclick: () => void }).onclick();
+    expect(inventory(session, 'p0').map((e) => e.item)).toEqual(['potion']);
+    expect([st.objects[potion.id]?.taken, closed]).toEqual([true, ['closed']]);
+    // Bob selected: it's his.
+    expect(objectActs(game, session, potion.id, { ...run, selected: ['p1'] }, ['p1'])[0].label).toBe('✋ Bob picks up Potion');
+  });
+
+  it('a character’s buttons: 💬 Talk, 🛒 Shop and its actions, ▶ Run all; one that needs someone with nobody here opens its card', () => {
+    const { game, session, st } = setup();
+    const screen = game.worlds![0].maps[0].screens[0];
+    game.statFields = [{ ...newStatField('HP'), id: 'hp' }];
+    game.shops = [{ id: 'shop1', name: 'Shop 1', currency: 'gold', stock: [] }];
+    const cat = {
+      ...newShapeEl('rect'),
+      name: 'Old Man',
+      role: {
+        class: 'npc' as const,
+        dialogue: textSlide('Hello'),
+        shop: 'shop1',
+        actions: [{ id: 'h', do: 'stat' as const, field: 'hp', op: 'add' as const, amount: -1, who: 'ask' as const }, { id: 's', do: 'score' as const, amount: 500, who: 'ask' as const }],
+      },
+    };
+    screen.slide.elements.push(cat);
+    const live = newLive();
+    const acts = objectActs(game, session, cat.id, { live, selected: [] }, null);
+    expect(acts.map((a) => a.label)).toEqual(['💬 Talk', '🛒 Shop', 'HP −1', '+$500', '▶ Run all']);
+    expect(acts.some((a) => a.asks)).toBe(false);
+    acts[0].run();
+    expect(live.overlay).toMatchObject({ kind: 'popup', title: 'Old Man' });
+    // Everyone gone from its screen and nobody picked: its actions ask who first (the menu opens its card).
+    for (const p of Object.values(st.positions)) p.screen = 'elsewhere';
+    const away = objectActs(game, session, cat.id, { live, selected: [] }, null);
+    expect(away.filter((a) => a.asks === 'who').map((a) => a.label)).toEqual(['HP −1', '+$500', '▶ Run all']);
+    const opened: string[] = [];
+    const menu = objectMenu(game, session, cat.id, { run: { live, selected: [] }, open: () => opened.push('card'), removed: () => {} });
+    (menu.find((i) => 'label' in i && i.label === 'HP −1') as { onclick: () => void }).onclick();
+    expect(opened).toEqual(['card']);
+  });
+
+  it('a locked doorway’s Go through asks first (its menu opens its card); its Lock is a small button', () => {
+    const { game, session } = setup();
+    const map = game.worlds![0].maps[0];
+    const door = { ...newShapeEl('rect'), name: 'Gate', role: { class: 'doorway' as const, to: { map: map.id, screen: map.screens[0].id }, locked: true } };
+    map.screens[0].slide.elements.push(door);
+    const acts = objectActs(game, session, door.id, { live: newLive(), selected: [] }, null);
+    expect(acts.map((a) => [a.label, a.asks ?? '', !!a.small])).toEqual([
+      ['🚪 Go through (party)', 'locked', false],
+      ['🔓 Unlock', '', true],
+    ]);
+    acts[1].run();
+    expect(objectActs(game, session, door.id, { live: newLive(), selected: [] }, null)[0].asks).toBeUndefined();
+  });
+
+  it('a secret object’s steps never name it in one window, whichever window they were taken in; its menu there waits on its card', () => {
+    const { game, session, st } = setup();
+    const screen = game.worlds![0].maps[0].screens[0];
+    game.statFields = [{ ...newStatField('HP'), id: 'hp' }];
+    const trap = { ...newShapeEl('rect'), name: 'Trap', secret: true, role: { class: 'hazard' as const, actions: [{ id: 'h', do: 'stat' as const, field: 'hp', op: 'add' as const, amount: -1, who: 'all' as const }] } };
+    screen.slide.elements.push(trap);
+    expect(nameSecret(st, screen, trap)).toBe(true);
+    expect(objectSay(trap, true, (n) => `${n}: Zone`)).toEqual(['Trap: Zone', 'A hidden object: Zone']);
+    expect(objectSay(trap, false, (n) => `${n}: Zone`)).toEqual(['Trap: Zone', undefined]);
+    // What the host made during the show keeps its name (it was made in front of viewers).
+    const drawn = { ...newShapeEl('rect'), name: 'Drawing', secret: true };
+    addLive(game, session, drawn, 'Add a drawing');
+    expect(nameSecret(st, screen, drawn)).toBe(false);
+    objectActs(game, session, trap.id, { live: newLive(), selected: [] }, null)[0].run();
+    expect([stepText(session.actionLog!.at(-1)!, false), stepText(session.actionLog!.at(-1)!, true)]).toEqual(['Trap: HP −1 (Ann, Bob & Cat)', 'A hidden object: HP −1 (Ann, Bob & Cat)']);
+    setObjectShown(game, session, trap.id, true);
+    expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Reveal a hidden object');
+    expect(st.objects[trap.id]?.shown).toBe(true);
+    // Hidden again: it was seen when hidden, so that step may name it.
+    setObjectShown(game, session, trap.id, false);
+    expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Hide Trap');
+    // One window, its card masked: its menu has no buttons of its card's (they're behind its card's 👁 Show).
+    const menu = objectMenu(game, session, trap.id, { run: { live: newLive(), selected: [] }, oneWindow: true, alias: '🙈 Hidden object 1', open: () => {}, removed: () => {} });
+    expect(lines(menu)).toEqual(['🙈 Hidden object 1', '🗂 Open its card', '👁 Reveal to viewers', '—', '🗑 Remove']);
   });
 
   it('offers no Reveal for what viewers never see (a no-go area, an arrival point, a hotspot)', () => {

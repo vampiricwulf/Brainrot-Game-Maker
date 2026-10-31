@@ -13,6 +13,8 @@
   import { playerName } from '../../lib/session';
   import InlineAsk from './InlineAsk.svelte';
   import { shopBuy, shopBuyer } from './shopops';
+  import { stockAsk } from './shopask.svelte';
+  import { untrack } from 'svelte';
 
   let { game, session, selected }: { game: Game; session: Session; selected: string[] } = $props();
   const o = $derived(app.live.overlay?.kind === 'shop' ? app.live.overlay : undefined);
@@ -57,6 +59,14 @@
     const left = stockLeft(session, shop, item, game);
     asking = { what: 'stock', item, start: left === null ? '' : String(left) };
   }
+
+  // A ware's 📦 Change the stock… from its menu on the stage: asked here, as by its 📦.
+  $effect(() => {
+    const item = stockAsk.item;
+    if (!item) return;
+    stockAsk.item = null;
+    untrack(() => restock(item));
+  });
 
   /** Sell at the price typed, or set the stock left (blank = unlimited). */
   function answer(typed: string): void {

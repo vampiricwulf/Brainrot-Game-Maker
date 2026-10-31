@@ -5,7 +5,7 @@
   new screens and looks, text, drawing), folded once the host folds it; then each player's stats and inventory.
 -->
 <script lang="ts">
-  import { tick, untrack, type Snippet } from 'svelte';
+  import { onDestroy, tick, untrack, type Snippet } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
@@ -15,7 +15,7 @@
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
   import { offerIn } from '../host/offered.svelte';
-  import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
+  import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session } from '../../lib/model';
   import {
     activeParty, addScreenBeside, classLabel, DIAGONALS_OFF, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, carryObjects, copyLook, screenElements, screenAt,
     screenSlide,
@@ -40,6 +40,7 @@
     staysWords, stepParty, toggleMap, type RpgAsk, type StagePoint,
   } from './hostops';
   import { dropHover } from '../dragdrop.svelte';
+  import { editScreen, screenEdit } from './screenedit.svelte';
   import { RememberedFold } from '../../lib/fold.svelte';
 
   let {
@@ -115,8 +116,7 @@
   let picked = $state<ScreenRef | null>(null);
   const pickedFound = $derived(picked && world ? findIn(world, picked) : null);
 
-  /** The screen (and which of its looks) open in the live editor. */
-  let live = $state<{ screen: Screen; slide: Slide; title: string } | null>(null);
+
   const variantId = $derived(here && st?.variant?.[here.screen.id]);
   /** The look on now when it isn't the screen's own (✎ Improvise's folded line says it). */
   const variantName = $derived(here?.screen.variants?.find((v) => v.id === variantId)?.name);
@@ -178,15 +178,12 @@
   const selWords = $derived(selectionWords(game, session, selected, selectedObjects, !dual));
 
   /** The live editor on the screen an object is on (its current look). */
-  function editObject(screen: Screen): void {
-    const v = screen.variants?.find((x) => x.id === st?.variant?.[screen.id]);
-    live = { screen, slide: v?.slide ?? screen.slide, title: `${screen.name}${v ? ` (${v.name})` : ''}` };
-  }
+  const editObject = (screen: Screen) => editScreen(st, screen);
+  // (It goes with this box: hiding the controls, or another round.)
+  onDestroy(() => (screenEdit.open = null));
 
   function editLive(): void {
-    if (!here) return;
-    const v = here.screen.variants?.find((x) => x.id === variantId);
-    live = { screen: here.screen, slide: v?.slide ?? here.screen.slide, title: `${here.screen.name}${v ? ` (${v.name})` : ''}` };
+    if (here) editScreen(st, here.screen);
   }
 
   function addScreen(d: Dir8, name: string): void {
@@ -200,7 +197,7 @@
     if (!s) return void toast('There’s already a screen that way');
     const way = DIR_NAME[d].toLowerCase();
     toast(`Added “${s.name}”${exitOf(map, screen, d).kind === 'open' ? `: the party can go ${way} now` : `, but the party can’t go ${way} from here`}`, 3000);
-    live = { screen: s, slide: s.slide, title: s.name };
+    screenEdit.open = { screen: s, slide: s.slide, title: s.name };
   }
 
   /** A copy of this screen's look, under a new name: it's put on, and opens in the live editor. */
@@ -221,7 +218,7 @@
       },
       game,
     );
-    live = { screen, slide: screen.variants!.at(-1)!.slide, title: `${screen.name} (${name})` };
+    screenEdit.open = { screen, slide: screen.variants!.at(-1)!.slide, title: `${screen.name} (${name})` };
   }
 
   function setLook(v: string): void {
@@ -534,7 +531,10 @@
                     objectMenu(game, session, el.id, {
                       oneWindow: !dual,
                       alias: aliases.get(el.id),
+                      run: ctx,
                       open: () => (object = el.id),
+                      edit: () => editObject(here!.screen),
+                      closed: () => object === el.id && (object = null),
                       removed: (text) => {
                         toast(text, 3000);
                         if (object === el.id) object = null;
@@ -700,8 +700,9 @@
   {#if mapOpen}
     <MapJump {game} {session} {world} {st} {selected} send={mapSend} stays={staysWords(game, session, selectedObjects, !dual)} onclose={() => ((mapOpen = false), (mapSend = null))} />
   {/if}
-  {#if live}
-    <LiveScreenEditor {world} {st} {dual} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />
+  {#if screenEdit.open}
+    {@const live = screenEdit.open}
+    <LiveScreenEditor {world} {st} {dual} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (screenEdit.open = null)} />
   {/if}
 {:else if world}
   <div class="muted">{world.name} has no screen to start on: add one to its map in the editor.</div>

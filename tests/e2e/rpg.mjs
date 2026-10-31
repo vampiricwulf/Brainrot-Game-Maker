@@ -265,6 +265,16 @@ async function bigWorld() {
   await host.keyboard.press('Escape');
   await heap.waitFor({ state: 'detached' });
 
+  // Its menu (a right-click in the list, or on the stage) starts with its card's buttons, in the card's words: then 🗂 Open
+  // its card, ✎ Edit, Hide or Reveal, and 🗑 Remove (Delete) last.
+  await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click({ button: 'right' });
+  const catMenu = await menuLines(host);
+  assert(
+    catMenu[0] === '# Riddle cat' && catMenu[1] === 'Ask the question' && catMenu.includes('🗂 Open its card') && catMenu.includes('✎ Edit') && catMenu.at(-1) === '🗑 Remove · Delete',
+    `an object's menu starts with its card's buttons (${catMenu.join(' | ')})`,
+  );
+  await host.keyboard.press('Escape');
+  await openMenu(host).waitFor({ state: 'detached' });
   // A question pop-up (the Riddle cat's): the host sees its answer before it's revealed, viewers don't.
   await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click();
   await host.getByRole('dialog', { name: 'Object: Riddle cat' }).getByRole('button', { name: 'Ask the question' }).click();
@@ -1238,6 +1248,17 @@ try {
   await page.getByLabel('Open a shop').selectOption({ index: 1 });
   await page.locator('.shop').waitFor();
   const shopTc = page.locator('.tc', { hasText: 'Buyer:' });
+  // A right-click on a ware on the stage: 🛒 Buy for each player, then 📦 Change the stock… (asked in the shop's box).
+  await page.locator('.shop [data-ware]').first().click({ button: 'right' });
+  const wareLines = await menuLines(page);
+  assert(
+    wareLines[0].startsWith('# ') && wareLines.filter((l) => l.startsWith('🛒 Buy for ')).length === (await page.locator('.rpg .strip .card').count()) && wareLines.at(-1) === '📦 Change the stock…',
+    `a ware's menu in the shop on the stage: 🛒 Buy for each player, then 📦 Change the stock… (${wareLines.join(' | ')})`,
+  );
+  await openMenu(page).getByRole('menuitem', { name: '📦 Change the stock…' }).click();
+  await shopTc.getByRole('spinbutton', { name: 'Stock left' }).waitFor();
+  await answerAsk(shopTc.getByRole('group', { name: /How many .+ left\?/ }).getByRole('button', { name: 'Cancel' }));
+  await shopTc.getByRole('spinbutton', { name: 'Stock left' }).waitFor({ state: 'detached' });
   const potions = async () =>
     (await firstCard.locator('.it .nm').allInnerTexts()).filter((t) => t.startsWith('Potion')).reduce((n, t) => n + Number(t.match(/×(\d+)/)?.[1] ?? 1), 0);
   await shopTc.getByRole('button', { name: /^Potion ·/ }).click();

@@ -552,7 +552,14 @@ box has no blue button of its own (an object's card and the full map's buttons a
   hidden from them.
 - Split and regroup parties. An object's "the party" buttons act on the party standing at that object.
 - Player cards with stats and inventory.
-- Shops.
+- An object's card (a click on it on the stage, or in Objects here) and its menu (a right-click there, or `Shift+F10`)
+  hold the same buttons, in the same words and order: ✋ Ann picks up 🪙5, 🚪 Go through, 💬 Talk, 🛒 Shop, its
+  actions (🎲 Roll d6, HP −1, +$500…) and ▶ Run all; the menu then has 🗂 Open its card, ✎ Edit, 🙈 Hide from viewers and
+  🗑 Remove (`Delete`). A button that asks something first (who it's for, with nobody there; a locked door) opens its
+  card. In one window a secret object's buttons wait on its card, behind 👁 Show, and its steps say “a hidden object”
+  even when they were taken with the audience window open.
+- Shops. A right-click on a ware in the shop on the stage: **🛒 Buy for** each player, or **📦 Change the stock…**
+  (asked in the shop's box).
 - Live improvising, under **✎ Improvise** (open until you fold it; this computer remembers): ✎ Edit screen, ＋ Screen…,
   another look for the screen, ＋ Text, ✏ Draw objects on a drawpad, 💾 Keep in game. Dropping a picture on the stage
   and the stage menu's ＋ Text here… work with it folded too.

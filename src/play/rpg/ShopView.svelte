@@ -1,6 +1,7 @@
 <!--
   A shop for the audience: its wares, prices, what's sold out, and who's shopping. In the host's window a ware can be
-  clicked to buy it for the buyer.
+  clicked to buy it for the buyer, and right-clicked for its menu (🛒 Buy for each player, 📦 Change the stock…:
+  the game screen's, through data-ware).
 -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
@@ -43,6 +44,7 @@
             disabled={onbuy ? out : undefined}
             onclick={onbuy ? (e: MouseEvent) => (e.stopPropagation(), onbuy(s.item)) : undefined}
             aria-label={onbuy ? `Buy ${def.name}` : undefined}
+            data-ware={onbuy ? s.item : undefined}
             role={onbuy ? undefined : 'listitem'}
           >
             {#if def.icon && mediaUrls[def.icon]}<img src={mediaUrls[def.icon]} alt="" draggable="false" />{:else}<span class="ic">📦</span>{/if}

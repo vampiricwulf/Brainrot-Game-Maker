@@ -4,17 +4,13 @@
 -->
 <script lang="ts">
   import { toast } from '../../lib/app.svelte';
-  import { announce } from '../../lib/announce';
   import { textOn } from '../../lib/colors';
-  import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
-  import { newId, type ObjectClass, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
-  import { activeParty, audienceSees, classLabel, findIn, moveTo, neverShown, OBJECT_CLASSES, override } from '../../lib/rpg';
-  import { nameList } from '../../lib/session';
-  import { blip } from '../../lib/live';
-  import { currencyFields, formatStat, itemDef, logged, statFields, statNumber, statRoom } from '../../lib/toolset';
+  import type { RunContext } from '../../lib/actions';
+  import type { ObjectClass, Screen, SlideElement, World, WorldState } from '../../lib/model';
+  import { audienceSees, classLabel, neverShown, OBJECT_CLASSES, override } from '../../lib/rpg';
+  import { logged, statFields, statNumber } from '../../lib/toolset';
   import InlineAsk from '../host/InlineAsk.svelte';
-  import { offerIn } from '../host/offered.svelte';
-  import { count, objectName, pickUp as pickUpNow, pileAmount, removeObject } from './hostops';
+  import { nameSecret, objectActs, objectName, objectSay, removeObject, setObjectShown, type ObjectAct } from './hostops';
 
   let {
     el,
@@ -48,21 +44,14 @@
   const o = $derived(st.objects[el.id]);
   const role = $derived(el.role);
   const seen = $derived(audienceSees(el, o));
+  /** Its name is a secret in one window (a step about it says “a hidden object” there: objectSay). */
+  const secretName = $derived(nameSecret(st, screen, el));
   // Who the buttons apply to: the players picked on this card, else the host's selected players, else everyone here.
   let chosen = $state<string[] | null>(null);
   const here = $derived(session.players.filter((p) => st.positions[p.id]?.screen === screen.id).map((p) => p.id));
   /** Picked by the host (on this card, or selected): null means nobody was, so it's for everyone here. */
   const picked = $derived(chosen ?? (ctx.selected.length ? ctx.selected : null));
   const who = $derived(picked ?? here);
-  const whoNames = $derived(nameList(who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?')) || 'nobody');
-  /** A pile of currency: the stat it adds to. */
-  const pileField = $derived(role?.class === 'currency' ? (statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]) : undefined);
-  /**
-   * Who picks it up: the first one picked (a pick-up goes to one player, and the button names them). With nobody
-   * picked, a pile of currency goes to the first one here with room for it.
-   */
-  const picker = $derived(!picked && pileField ? (who.find((id) => statRoom(game, session, id, pileField) > 0) ?? who[0]) : who[0]);
-  const pickerName = $derived(session.players.find((p) => p.id === picker)?.name ?? 'Nobody');
   const title = $derived(objectName(el));
   /** 👁 Show pressed: its name and buttons here (in one window viewers see them too). */
   let unmasked = $state(false);
@@ -82,31 +71,35 @@
   const cf = $derived(numberFields.find((f) => f.id === cmpField) ?? shared.find((f) => !/^(hp|health|life|lives)$/i.test(f.name.trim())) ?? shared[0] ?? numberFields[0]);
   const ns = $derived(cmpStat ?? Math.max(0, npcStats.findIndex((s) => s.name === cf?.name)));
 
-  function runAll(): void {
-    const list = role?.actions ?? [];
-    if (list.some(needsPlayers) && !who.length) return void toast('Pick who it’s for first');
-    let said: string[] = [];
-    // One undoable step for all of them.
-    logged(session, `${title}: ${list.map((a) => describeAction(game, a, undefined, ctx.teams)).join(', ')}`, () => {
-      said = list.map((a) => runAction({ ...ctx, chosen: who, world, st, at: screen.id, offerCard: offerHere }, a, `${title}: ${describeAction(game, a, undefined, ctx.teams)}`));
-    });
-    toast(said.join(' · '), 4000);
+  /** Its buttons, in the order (and the words) its menu lists them too. */
+  const acts = $derived(objectActs(game, session, el.id, ctx, picked));
+
+  /** A button pressed: it runs (a locked doorway asks first, here), says what it did, and the card closes when it's done with. */
+  function press(a: ObjectAct, anyway = false): void {
+    if (a.asks === 'locked' && !anyway) return void (lockedAsk = { act: a.id });
+    const r = a.run();
+    if (r.text) toast(r.text, 3000);
+    if (r.close) onclose();
   }
 
-  // Renaming or reclassing an object drawn on the screen changes the game being played: the undo puts it back.
+  // Renaming or reclassing an object drawn on the screen changes the game being played: the undo puts it back. (A secret
+  // one's steps never name it in one window: objectSay.)
   function rename(name: string): void {
-    logged(session, `Rename ${title} to ${name}`, () => (el.name = name || undefined), game);
+    // (Its new name is the secret's too.)
+    logged(session, `Rename ${title} to ${name}`, () => (el.name = name || undefined), game, secretName ? 'Rename a hidden object' : undefined);
   }
 
   /** Make it an item, a zone, a hazard…: the rest (actions, dialogue) is set up in the live editor. */
   function setClass(c: string): void {
+    const [text, quiet] = objectSay(el, secretName, (n) => `${n}: ${classLabel(c as ObjectClass | '')}`);
     logged(
       session,
-      `${title}: ${classLabel(c as ObjectClass | '')}`,
+      text,
       () => {
         el.role = c ? { ...(el.role ?? {}), class: c as NonNullable<SlideElement['role']>['class'] } : undefined;
       },
       game,
+      quiet,
     );
   }
 
@@ -115,68 +108,19 @@
     chosen = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
   }
 
-  function run(a: NonNullable<typeof role>['actions'] extends (infer T)[] | undefined ? T : never): void {
-    if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
-    toast(runAction({ ...ctx, chosen: who, world, st, at: screen.id, offerCard: offerHere }, a, `${title}: ${describeAction(game, a, undefined, ctx.teams)}`), 3000);
-  }
-
-  function setShown(v: boolean): void {
-    logged(session, `${v ? 'Reveal' : 'Hide'} ${title}`, () => (override(st, el.id).shown = v));
-  }
-
   function take(): void {
     const said = removeObject(game, session, el.id, !dual);
     if (said) toast(said, 3000);
     onclose();
   }
 
-  /** Going through while it's locked asks first, inline (a browser dialog would show on stream): who'd go. */
-  let lockedAsk = $state<{ players?: string[] } | null>(null);
-
-  function goThrough(players?: string[], anyway = false): void {
-    const to = role?.to;
-    if (!to || !findIn(world, to)) return void toast('This doorway leads nowhere yet');
-    if (locked && !anyway) return void (lockedAsk = { players });
-    // "The party" is whoever stands at this doorway (the followed party may be somewhere else).
-    const active = activeParty(st)?.members ?? [];
-    const partyHere = active.some((m) => here.includes(m));
-    const movers = players ?? (partyHere ? undefined : here);
-    const label = players ? whoNames : 'Party';
-    logged(session, `${label} through ${title}`, () => moveTo(game, st, world, to, { players: movers, arriveAt: role?.arrive }));
-    blip(ctx.live, 'doorway');
-    announce(`${label} went through ${title} to ${findIn(world, to)?.screen.name}`);
-    onclose();
-  }
-
-  function pickUp(): void {
-    if (!picker) return void toast('Pick who picks it up');
-    const lastStep = session.actionLog?.at(-1)?.id;
-    toast(pickUpNow(game, session, st, el, picker), 3000);
-    // Only once it was picked up: "can't carry any more" keeps the card open to pick someone else.
-    if (session.actionLog?.at(-1)?.id !== lastStep) onclose();
-  }
+  /** A locked doorway's Go through asks first, inline (a browser dialog would show on stream). */
+  let lockedAsk = $state<{ act: string } | null>(null);
 
   function npcStat(i: number, delta: number): void {
     const next = npcStats.map((s, j) => (j === i ? { ...s, value: s.value + delta } : { ...s }));
-    logged(session, `${title}: ${next[i].name} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`, () => (override(st, el.id).stats = next));
-  }
-
-  /** A 🤫 card its buttons offer shows under this card (RpgHost's CardOffers for it). */
-  const offerHere = $derived(offerIn(session, `object:${el.id}`));
-
-  const shopExists = $derived(!!role?.shop && !!game.shops?.some((s) => s.id === role.shop));
-
-  /** The character's shop, unless it was deleted (the editor's checklist warns; here a blank shop would go on stream). */
-  function openShop(): void {
-    const id = role?.shop;
-    if (!id) return;
-    if (!shopExists) return void toast('That shop no longer exists: pick another with ✎ Edit');
-    ctx.live.overlay = { kind: 'shop', nonce: newId(), shopId: id, buyer: who[0] };
-  }
-
-  function talk(): void {
-    if (!role?.dialogue) return;
-    ctx.live.overlay = { kind: 'popup', nonce: newId(), slide: JSON.parse(JSON.stringify(role.dialogue)), title };
+    const [text, quiet] = objectSay(el, secretName, (n) => `${n}: ${next[i].name} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`);
+    logged(session, text, () => (override(st, el.id).stats = next), undefined, quiet);
   }
 </script>
 
@@ -239,33 +183,15 @@
       {/each}
     </div>
     <div class="row btns">
-      {#if role?.class === 'doorway'}
-        <button onclick={() => goThrough()}>🚪 Go through (party)</button>
-        {#if picked?.length}<button onclick={() => goThrough(who)}>🚪 Only {whoNames}</button>{/if}
-        <button class="small" onclick={() => logged(session, `${locked ? 'Unlock' : 'Lock'} ${title}`, () => (override(st, el.id).locked = !locked))}>
-          {locked ? '🔓 Unlock' : '🔒 Lock'}
-        </button>
-      {:else if role?.class === 'item'}
-        <button onclick={pickUp}>✋ {pickerName} picks up {count(role.qty ?? 1, itemDef(game, role.item)?.name ?? title)}</button>
-      {:else if role?.class === 'currency'}
-        {@const f = statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]}
-        {@const left = pileAmount(st, el)}
-        <!-- Only what fits under their max ("🪙15 of 🪙30"); the rest stays on the screen. -->
-        {@const fits = f && picker ? Math.min(left, statRoom(game, session, picker, f)) : left}
-        <button onclick={pickUp} disabled={!f} title={f ? undefined : 'Add a currency in 📊 Stats & Items first'}
-          >✋ {pickerName} picks up {f ? (fits > 0 && fits < left ? `${formatStat(f, fits)} of ${formatStat(f, left)}` : formatStat(f, left)) : left}</button
-        >
-      {/if}
-      {#if role?.dialogue}<button onclick={talk}>💬 Talk</button>{/if}
-      {#if role?.shop}<button onclick={openShop} disabled={!shopExists} title={shopExists ? undefined : 'That shop no longer exists: pick another with ✎ Edit'}>🛒 Shop</button>{/if}
-      {#each role?.actions ?? [] as a (a.id)}
-        <button onclick={() => run(a)}>{describeAction(game, a, undefined, ctx.teams)}</button>
+      {#each acts as a (a.id)}
+        <button class:small={a.small} disabled={a.disabled} title={a.title} onclick={() => press(a)}>{a.label}</button>
       {/each}
-      {#if (role?.actions?.length ?? 0) > 1}<button class="small" onclick={runAll} title="Every action above, in order">▶ Run all</button>{/if}
     </div>
     {#if lockedAsk && locked}
-      {@const a = lockedAsk}
-      <InlineAsk text="{title} is locked. Go through anyway?" ok="🚪 Go through" onok={() => goThrough(a.players, true)} oncancel={() => (lockedAsk = null)} />
+      {@const a = acts.find((x) => x.id === lockedAsk?.act)}
+      {#if a}
+        <InlineAsk text="{title} is locked. Go through anyway?" ok="🚪 Go through" onok={() => ((lockedAsk = null), press(a, true))} oncancel={() => (lockedAsk = null)} />
+      {/if}
     {/if}
     {#if npcStats.length}
       <div class="row">
@@ -305,7 +231,7 @@
     {#if neverShown(el)}
       <span class="muted small">Never shown to viewers</span>
     {:else}
-      <button class="small" onclick={() => setShown(!seen)}>{seen ? '🙈 Hide from viewers' : '👁 Reveal to viewers'}</button>
+      <button class="small" onclick={() => setObjectShown(game, session, el.id, !seen)}>{seen ? '🙈 Hide from viewers' : '👁 Reveal to viewers'}</button>
     {/if}
     <button class="small ghost" onclick={take} title="Take it off the screen (Delete; undoable)">🗑 Remove</button>
     <span class="muted small">Drag avatars on the stage to move them{role?.class === 'item' || role?.class === 'currency' ? ', or this onto one to pick it up' : ''}.</span>

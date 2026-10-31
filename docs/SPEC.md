@@ -686,7 +686,16 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   the minimap beside the `tools` snippet (HostPanel's ToolsControls: in an RPG round a tool's box goes here, never at
   the panel's top) and the object's card or Objects here, then **✎ Improvise** (a RememberedFold, `jb.improviseOpen`,
   open until first folded; its questions show under it either way), then the players. It has no `.primary` button:
-  an object's card, the minimap's Move … here and the full map's are plain.
+  an object's card, the minimap's Move … here and the full map's are plain. An object's card and its menu (hostops
+  `objectMenu`, in the list and on the stage) draw one list, `objectActs` (✋ … picks up, 🚪 Go through / Only …, 🔒 Lock,
+  💬 Talk, 🛒 Shop, each action, ▶ Run all), in the card's words and order; in the menu, one that asks first (`asks`:
+  nobody to run it for, a locked door) opens the card, and after them come 🗂 Open its card, ✎ Edit (the live editor,
+  `screenedit.svelte.ts`, so the stage's menu opens it too), 🙈 Hide / 👁 Reveal, 🗑 Remove (`Delete`). In one window a
+  masked secret's menu has none of its card's buttons. Steps about an authored secret object (`nameSecret`) keep a
+  quiet text, “a hidden object” (objectSay: its card's buttons, rename, class, Lock, NPC stats, Reveal, Go through).
+  A ware in the shop on the stage (`data-ware`, the host's copy) has a right-click menu (shopops `wareMenu`): 🛒 Buy
+  for each player (the buyer changes to them), greyed when sold out, then 📦 Change the stock… (the shop's box asks,
+  through `shopask.svelte.ts`).
 - **An RPG stage's box select** (RpgStage, `caughtBy` in layers.ts): a left-button press that moves 4 px (a finger 10,
   `STILL_PX`, which also stops the long press's menu) draws a box: on an empty part of a screen, on a 🔒 locked object or
   one as big as its screen (a click there still opens its card), anywhere with `Alt` (its keyup kept in the page, for
