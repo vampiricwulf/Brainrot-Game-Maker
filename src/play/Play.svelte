@@ -6212,74 +6212,74 @@
                itself while the countdown runs). -->
           <details class="fold" bind:open={() => streamFold.open, (v) => streamFold.set(v)} data-stream-fold>
             <summary><h2 id="pregame-stream">📺 On stream</h2> <span class="muted small">· {streamGistNow}</span></summary>
-          <div class="stream-opts">
-            <label class="field">
-              “Starting soon” card
-              <input
-                value={stream.soonText ?? ''}
-                placeholder="Starting soon…"
-                onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, cardLabel('Starting soon', e.currentTarget.value))}
-              />
-            </label>
-            <div class="field" role="group" aria-labelledby="pregame-soon">
-              <span id="pregame-soon">Countdown on the “Starting soon” card</span>
-              <div class="row">
-              {#if app.live.soonAt}
-                <span class="small soon-left" role="timer">{soonLeft ? `Starting in ${Math.floor(soonLeft / 60)}:${String(soonLeft % 60).padStart(2, '0')}` : 'Starting now!'}</span>
-                <button onclick={() => (app.live.soonAt = undefined)} aria-label="Stop countdown">■ Stop</button>
-              {:else}
-                <label class="check small">
-                  <input type="number" min="1" max="120" class="mins" bind:value={soonMinutes} aria-label="Countdown minutes" /> min
-                </label>
-                <button disabled={!soonMinutes || soonMinutes < 0} onclick={() => (app.live.soonAt = Date.now() + soonMinutes * 60_000)}>
-                  ▶ Start countdown
-                </button>
-              {/if}
+            <div class="stream-opts">
+              <label class="field">
+                “Starting soon” card
+                <input
+                  value={stream.soonText ?? ''}
+                  placeholder="Starting soon…"
+                  onchange={(e) => setStream('soonText', e.currentTarget.value.trim() || undefined, cardLabel('Starting soon', e.currentTarget.value))}
+                />
+              </label>
+              <div class="field" role="group" aria-labelledby="pregame-soon">
+                <span id="pregame-soon">Countdown on the “Starting soon” card</span>
+                <div class="row">
+                {#if app.live.soonAt}
+                  <span class="small soon-left" role="timer">{soonLeft ? `Starting in ${Math.floor(soonLeft / 60)}:${String(soonLeft % 60).padStart(2, '0')}` : 'Starting now!'}</span>
+                  <button onclick={() => (app.live.soonAt = undefined)} aria-label="Stop countdown">■ Stop</button>
+                {:else}
+                  <label class="check small">
+                    <input type="number" min="1" max="120" class="mins" bind:value={soonMinutes} aria-label="Countdown minutes" /> min
+                  </label>
+                  <button disabled={!soonMinutes || soonMinutes < 0} onclick={() => (app.live.soonAt = Date.now() + soonMinutes * 60_000)}>
+                    ▶ Start countdown
+                  </button>
+                {/if}
+                </div>
+                {#if !dual}<span class="hint small">The card and its countdown show in the 📺 audience window (in one window, viewers see this screen).</span>{/if}
               </div>
-              {#if !dual}<span class="hint small">The card and its countdown show in the 📺 audience window (in one window, viewers see this screen).</span>{/if}
+              <label class="field">
+                Cover card (K)
+                <input
+                  value={stream.coverText ?? ''}
+                  placeholder="Be right back"
+                  onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, cardLabel('Cover', e.currentTarget.value))}
+                />
+              </label>
+              <span class="hint">The theme's banner picture shows on both cards, when there is one.</span>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  checked={!!stream.clueCaption}
+                  onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, `Category and value caption on clues ${e.currentTarget.checked ? 'on' : 'off'}`)}
+                />
+                Show the category and value on clue screens (“MEMES · $400”)
+              </label>
+              {#if game.rounds.some(isRpg)}
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    checked={!!stream.placeCaption}
+                    onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, `Screen name caption in RPG rounds ${e.currentTarget.checked ? 'on' : 'off'}`)}
+                  />
+                  Show the screen's name in RPG rounds
+                </label>
+              {/if}
+              {#if phonesOn}
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    checked={!stream.hideJoinCode}
+                    onchange={(e) => setStream('hideJoinCode', e.currentTarget.checked ? undefined : true, `Join code in a corner of the stream ${e.currentTarget.checked ? 'on' : 'off'}`)}
+                  />
+                  Show the phone buzzers' join code in a corner during the game (and on the cover card), while the room is open
+                </label>
+              {/if}
+              <label class="check" title={app.playerOnly ? 'Kept on this computer' : 'The same as ⚙ Settings › Reduce motion on stream (kept on this computer)'}>
+                <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
+                Reduce motion on stream (no pop-ins, fly-ins or confetti)
+              </label>
             </div>
-            <label class="field">
-              Cover card (K)
-              <input
-                value={stream.coverText ?? ''}
-                placeholder="Be right back"
-                onchange={(e) => setStream('coverText', e.currentTarget.value.trim() || undefined, cardLabel('Cover', e.currentTarget.value))}
-              />
-            </label>
-            <span class="hint">The theme's banner picture shows on both cards, when there is one.</span>
-            <label class="check">
-              <input
-                type="checkbox"
-                checked={!!stream.clueCaption}
-                onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, `Category and value caption on clues ${e.currentTarget.checked ? 'on' : 'off'}`)}
-              />
-              Show the category and value on clue screens (“MEMES · $400”)
-            </label>
-            {#if game.rounds.some(isRpg)}
-              <label class="check">
-                <input
-                  type="checkbox"
-                  checked={!!stream.placeCaption}
-                  onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, `Screen name caption in RPG rounds ${e.currentTarget.checked ? 'on' : 'off'}`)}
-                />
-                Show the screen's name in RPG rounds
-              </label>
-            {/if}
-            {#if phonesOn}
-              <label class="check">
-                <input
-                  type="checkbox"
-                  checked={!stream.hideJoinCode}
-                  onchange={(e) => setStream('hideJoinCode', e.currentTarget.checked ? undefined : true, `Join code in a corner of the stream ${e.currentTarget.checked ? 'on' : 'off'}`)}
-                />
-                Show the phone buzzers' join code in a corner during the game (and on the cover card), while the room is open
-              </label>
-            {/if}
-            <label class="check" title={app.playerOnly ? 'Kept on this computer' : 'The same as ⚙ Settings › Reduce motion on stream (kept on this computer)'}>
-              <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
-              Reduce motion on stream (no pop-ins, fly-ins or confetti)
-            </label>
-          </div>
           </details>
         </section>
 

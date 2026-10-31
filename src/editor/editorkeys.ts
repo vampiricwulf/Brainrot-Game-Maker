@@ -169,7 +169,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
   {
     title: '▶ Play, before the game',
     keys: [
-      ['Ctrl+Enter', 'Start the game (from anywhere on the pre-game screen)'],
+      ['Ctrl+Enter', 'Start the game (from anywhere on the pre-game screen). With a game in progress it would throw away, it asks first: Ctrl+Enter again a moment later answers Start new game'],
       ['Ctrl+Z / Ctrl+Y', 'Undo / redo the changes made there (players, rules, buzzers, On stream)'],
       ['Enter in a player’s name', 'Add the next player (as ＋ Add player does), typing in their name'],
     ],
