@@ -59,7 +59,7 @@
   }
 </script>
 
-<!-- (Esc while Back to the defaults asks: Not now, the window stays.) -->
+<!-- (Esc while Back to the defaults asks is Cancel: the window stays.) -->
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (resetting ? askDone() : close())} />
 
 <div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && close()}>

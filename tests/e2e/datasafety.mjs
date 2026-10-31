@@ -149,7 +149,7 @@ try {
   assert(pack.suggestedFilename() === 'Safe-Game.brainrot' && (await page.locator('input.title').inputValue()) === 'Safe Game', 'the first Save of an untitled game asks for its name, and names the file after it');
   const packPath = resolve('test-results/datasafety.brainrot');
   await pack.saveAs(packPath);
-  await page.waitForFunction(() => !document.querySelector('header button.save[data-changed]'));
+  await page.waitForFunction(() => !document.querySelector('header button.save-file[data-changed]'));
   assert(/^Last saved as a file at \d/.test(await saveBtn.getAttribute('title')), `saved: 💾 Save has no dot, and its tooltip says when (${await saveBtn.getAttribute('title')})`);
 
   // ---------- New keeps the game it replaces ----------
@@ -169,7 +169,7 @@ try {
   // A change not saved to a file: New asks, and Cancel keeps the game.
   await page.locator('.cat textarea').first().fill('Unsaved');
   await page.locator('.cat textarea').nth(1).click();
-  await page.waitForFunction(() => !!document.querySelector('header button.save[data-changed]'));
+  await page.waitForFunction(() => !!document.querySelector('header button.save-file[data-changed]'));
   assert((await saveBtn.innerText()).includes('•') && (await saveBtn.getAttribute('title')).includes(', changed since'), 'a change no file has yet: 💾 Save •');
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.getByRole('dialog', { name: 'Start a new game?' }).waitFor();

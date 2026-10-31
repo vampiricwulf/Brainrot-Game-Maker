@@ -1111,7 +1111,7 @@
     <button onclick={open} disabled={!!opening} bind:this={openBtn} title="Recent games{inTauri() ? ', your saves' : ''} or a game file · Ctrl+O"><span aria-hidden="true">📂</span> Open…</button>
     <!-- (Its name stays Save; the dot and its words say how the file stands, as its tooltip does.) -->
     <button
-      class="save"
+      class="save-file"
       onclick={save}
       disabled={saving}
       data-changed={fileState.changed || undefined}
@@ -1662,16 +1662,16 @@
     white-space: nowrap;
   }
   /* 💾 Save •: changed since its last save as a file. Its words only where the header has room. */
-  .save .dot {
+  .save-file .dot {
     color: var(--accent);
     font-weight: 700;
   }
-  .save .unsaved {
+  .save-file .unsaved {
     font-weight: 400;
     color: var(--muted);
   }
   @media (max-width: 1499px) {
-    .save .unsaved {
+    .save-file .unsaved {
       display: none;
     }
   }
