@@ -361,8 +361,25 @@ try {
   await ie.getByRole('button', { name: '⇋ Flip H' }).click();
   await page.waitForTimeout(300);
   assert((await preview()) === loaded, `a caption font picked from the list shows once it has loaded (${fresh})`);
+  // Its side panel says what it changes: This caption, then Whole picture with Straighten and Picture size.
+  const panelHeads = await ie.locator('aside h4').allInnerTexts();
+  assert(
+    panelHeads.includes('This caption') && panelHeads.includes('Whole picture') && (await ie.getByLabel(/^Straighten/).count()) === 1 && (await ie.getByLabel(/^Picture size/).count()) === 1,
+    `the caption's own sliders under This caption, the picture's under Whole picture: Straighten, Picture size (${panelHeads.join(' | ')})`,
+  );
+  // A caption's right-click menu: ✎ Edit text puts the cursor in its words; ⧉ Duplicate makes a second one.
+  const capAt = await ie.locator('.sel').boundingBox();
+  await page.mouse.click(capAt.x + capAt.width / 2, capAt.y + capAt.height / 2, { button: 'right' });
+  const capMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(['✎ Edit text', '⧉ Duplicate', '🗑 Delete'].every((x) => capMenu.includes(x)), `a caption's menu: ✎ Edit text, ⧉ Duplicate, 🗑 Delete (${capMenu.join(' | ')})`);
+  await page.getByRole('menuitem', { name: /✎ Edit text/ }).click();
+  await page.waitForFunction(() => document.activeElement?.id === 'ie-text', null, { timeout: 3000 });
+  assert(true, '✎ Edit text puts the cursor in the caption’s words');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('m');
+  assert((await ie.getByRole('button', { name: '✋ Select' }).getAttribute('aria-pressed')) === 'true', 'M picks ✋ Select');
   await ie.getByRole('button', { name: '🗑 Delete text' }).click();
-  await ie.getByRole('button', { name: '✋ Move' }).click();
+  await ie.getByRole('button', { name: '✋ Select' }).click();
   await page.getByRole('button', { name: '⟳ 90°' }).click();
   await page.getByRole('button', { name: 'Apply', exact: true }).click();
   await page.waitForTimeout(500);

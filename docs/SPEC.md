@@ -256,7 +256,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 ### 5.4 Image editor (modal; non-destructive; original kept)
 - Crop (free / 16:9 / 1:1 / 4:3), rotate 90° and free, flip H/V, and resize.
 - Filters: brightness, contrast, saturation, hue, blur, grayscale, sepia, and invert.
-- Text overlays (meme style: Impact-like font, stroke) and **stickers/emoji**.
+- Text overlays (meme style: Impact-like font, stroke) and **stickers/emoji**. The side panel says what it changes: This
+  caption / This sticker (its own Size and Rotation) and Whole picture (⟲ ⟳ 90°, flips, Straighten, Picture size). ✋
+  Select (M) selects and moves them; a right-click (or Shift+F10) on one gives ✎ Edit text · ⧉ Duplicate · 🗑 Delete,
+  and a double-click on a caption puts the cursor in its words.
 - Brush / annotate: color, size, eraser, and undo.
 - Output: edits are stored as parameters and baked into a rendered PNG (JPEG for a photo with no see-through parts) cached with the pack; a moving GIF stays a moving GIF, every frame edited, each with its own colours (`src/lib/gifedit.ts`, `gifwrite.ts`). "Reset to original" is always available.
 

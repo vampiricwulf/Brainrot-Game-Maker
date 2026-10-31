@@ -17,6 +17,7 @@
   import ColorBox from '../../lib/ColorBox.svelte';
   import { colorPicker } from '../../lib/pickerstate.svelte';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
+  import { isMenuKey, showMenu } from '../../lib/menustate.svelte';
   import {
     angleToOutput, angleToSource, defaultEdits, fitCrop, itemAt, loadImage, migrateEdits, orientedSize, outputSize, placedOverlays,
     renderEdited, sizeToOutput, STICKERS, toOutput, toSource, turnCrop,
@@ -211,7 +212,7 @@
   }
 
   // ---------- Pointer interactions (in fractions of the displayed image) ----------
-  function frac(e: PointerEvent): { x: number; y: number } {
+  function frac(e: MouseEvent): { x: number; y: number } {
     const r = box!.getBoundingClientRect();
     return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
   }
@@ -364,6 +365,50 @@
     selectedId = null;
   }
 
+  /** ⧉ Duplicate the selected caption or sticker: a copy a little down and to the right, selected. */
+  function duplicateSelected(): void {
+    const t = edits.texts.find((x) => x.id === selectedId);
+    const it = t ?? edits.stickers.find((x) => x.id === selectedId);
+    if (!it) return;
+    commit();
+    const o = shown(it);
+    const copy = { ...JSON.parse(JSON.stringify(it)), id: newId(), ...onSource({ x: Math.min(1, o.x + 0.04), y: Math.min(1, o.y + 0.04) }) };
+    if (t) edits.texts.push(copy);
+    else edits.stickers.push(copy);
+    selectedId = copy.id;
+  }
+
+  /** The cursor in the selected caption's words (This caption's box). */
+  const editCaption = () => void tick().then(() => (document.getElementById('ie-text') as HTMLTextAreaElement | null)?.focus());
+
+  /** A caption's or sticker's menu (a right-click on it, or Shift+F10 with it selected). */
+  function itemMenu(e: MouseEvent, id: string): void {
+    selectedId = id;
+    const caption = edits.texts.some((t) => t.id === id);
+    showMenu(e, [
+      { heading: caption ? 'This caption' : 'This sticker' },
+      ...(caption ? [{ label: '✎ Edit text', onclick: editCaption, keys: 'Double-click' }] : []),
+      { label: '⧉ Duplicate', onclick: duplicateSelected },
+      { sep: true },
+      { label: '🗑 Delete', danger: true, onclick: removeSelected, keys: 'Delete' },
+    ]);
+  }
+
+  function context(e: MouseEvent): void {
+    if (!box || tool === 'crop' || saving) return;
+    const id = hit(frac(e));
+    if (id) itemMenu(e, id);
+  }
+
+  /** A double-click on a caption puts the cursor in its words. */
+  function dblclick(e: MouseEvent): void {
+    if (!box || tool === 'crop' || tool === 'draw') return;
+    const id = hit(frac(e));
+    if (!id || !edits.texts.some((t) => t.id === id)) return;
+    selectedId = id;
+    editCaption();
+  }
+
   // The crop box gone (↺ Reset all, or undone past the crop): out of the Crop tool, so clicks on the picture work again.
   $effect(() => {
     if (tool === 'crop' && !edits.crop) tool = 'move';
@@ -470,6 +515,16 @@
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !inField) {
       e.stopImmediatePropagation();
       if (!saving) removeSelected();
+    } else if (isMenuKey(e) && selectedId && !inField && !saving) {
+      // Shift+F10 or the menu key: the selected caption's or sticker's menu, at it.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const r = box?.querySelector('.sel')?.getBoundingClientRect();
+      if (r) itemMenu(new MouseEvent('contextmenu', { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }), selectedId);
+    } else if (k === 'm' && !mod && !e.altKey && !inField && !saving) {
+      // M: ✋ Select (select and move captions and stickers).
+      e.stopImmediatePropagation();
+      pickTool('move');
     }
   }
 </script>
@@ -511,8 +566,8 @@
 
     <!-- (Nothing changes while it saves.) -->
     <div class="tools row" inert={saving}>
-      {#each [['move', '✋ Move'], ['crop', '✂ Crop'], ['draw', '🖌 Draw'], ['text', '🅣 Text'], ['sticker', '😂 Sticker']] as [k, l]}
-        <button class:on={tool === k} aria-pressed={tool === k} onclick={() => pickTool(k as typeof tool)}>{l}</button>
+      {#each [['move', '✋ Select', 'Select and move captions and stickers (M)'], ['crop', '✂ Crop'], ['draw', '🖌 Draw'], ['text', '🅣 Text'], ['sticker', '😂 Sticker']] as [k, l, hint]}
+        <button class:on={tool === k} aria-pressed={tool === k} onclick={() => pickTool(k as typeof tool)} title={hint}>{l}</button>
       {/each}
     </div>
 
@@ -526,6 +581,8 @@
           onpointermove={move}
           onpointerup={up}
           onpointercancel={up}
+          oncontextmenu={context}
+          ondblclick={dblclick}
           role="presentation"
         >
           <div class="canvas-host" bind:this={host}></div>
@@ -595,7 +652,7 @@
         {/if}
 
         {#if selText}
-          <h4>Text</h4>
+          <h4>This caption</h4>
           <textarea id="ie-text" rows="2" bind:value={selText.text} aria-label="Caption text" dir="auto"></textarea>
           <select bind:value={selText.font} aria-label="Caption font">
             <option value="Impact, Anton, sans-serif">Impact (meme)</option>
@@ -611,23 +668,23 @@
           <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selText!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
           <button class="small danger" onclick={removeSelected}>🗑 Delete text</button>
         {:else if selSticker}
-          <h4>Sticker {selSticker.emoji}</h4>
+          <h4>This sticker {selSticker.emoji}</h4>
           <label class="field">Size<input type="range" min="0.03" max="0.6" step="0.01" value={selSticker.size * sizeK} oninput={(e) => (selSticker!.size = +e.currentTarget.value / sizeK)} /></label>
           {@const turn = Math.round(angleToOutput(selSticker.rotation, edits))}
           <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selSticker!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
           <button class="small danger" onclick={removeSelected}>🗑 Delete sticker</button>
         {/if}
 
-        <h4>Rotate & flip</h4>
+        <h4>Whole picture</h4>
         <div class="row">
           <button class="small" onclick={() => rotateBy(-90)}>⟲ 90°</button>
           <button class="small" onclick={() => rotateBy(90)}>⟳ 90°</button>
           <button class="small" class:on={edits.flipH} aria-pressed={!!edits.flipH} onclick={() => (commit(), (edits.flipH = !edits.flipH))}>⇋ Flip H</button>
           <button class="small" class:on={edits.flipV} aria-pressed={!!edits.flipV} onclick={() => (commit(), (edits.flipV = !edits.flipV))}>⇵ Flip V</button>
         </div>
-        <label class="field">Angle {edits.rotate}°<input type="range" min="-180" max="180" step="1" bind:value={edits.rotate} /></label>
+        <label class="field">Straighten {edits.rotate}°<input type="range" min="-180" max="180" step="1" bind:value={edits.rotate} /></label>
         <label class="field">
-          Size {Math.round(edits.scale * 100)}% ({out.w}×{out.h})
+          Picture size {Math.round(edits.scale * 100)}% ({out.w}×{out.h})
           <input type="range" min="0.1" max="2" step="0.05" bind:value={edits.scale} />
         </label>
 

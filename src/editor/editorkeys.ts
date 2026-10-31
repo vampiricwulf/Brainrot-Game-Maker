@@ -99,6 +99,9 @@ export const EDITOR_KEYS: KeyGroup[] = [
     keys: [
       ['Ctrl+Enter', 'Apply the image edits'],
       ['Ctrl+Z / Ctrl+Y', 'Undo / redo inside the image editor or the drawing'],
+      ['M', 'Image editor: ✋ Select, to select and move captions and stickers'],
+      ['Double-click a caption', 'Image editor: the cursor in its words'],
+      ['Right-click or Shift+F10 a caption or sticker', 'Image editor: ✎ Edit text, ⧉ Duplicate, 🗑 Delete'],
       ['Delete', 'Delete the selected sticker or text from the image'],
       ['B or P / F / E', 'Drawing: pen / fill / eraser'],
       ['Esc', 'Cancel (it asks first when there are changes)'],

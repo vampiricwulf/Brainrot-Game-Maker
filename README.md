@@ -92,7 +92,9 @@ they belong in (a picture dropped on a tile asks: in the question, or as the til
 **Slide editor:** a double-click on an item (or Enter, with it selected) opens its editor: a text box's text, a
 picture's ✎ Edit image, a video's or sound's ✎ Edit video / sound (or its Start at), a link's Link box, a shape's
 Fill. F2 renames an item in the Layers list (on a text box it edits the text), and after you add a picture, video,
-sound or link the keys stay on the slide. Drag a box on an empty spot to select several items. Beside a text box's words counts as empty (until
+sound or link the keys stay on the slide. In ✎ Edit image, ✋ Select (`M`) picks captions and stickers, a right-click on
+one duplicates or deletes it, and its side panel says This caption / This sticker or Whole picture (Straighten,
+Picture size). Drag a box on an empty spot to select several items. Beside a text box's words counts as empty (until
 it's selected), so a full-slide question doesn't move when you meant to select; `Alt`+drag always draws a box. Items
 snap to the slide and to each other while moving and resizing (`Alt` turns it off). With several selected, Left /
 Center / Right / Top / Middle / Bottom line them up with each other, and **Space evenly** spreads three or more. The
