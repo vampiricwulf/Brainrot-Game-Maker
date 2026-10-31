@@ -1335,10 +1335,12 @@ try {
       });
     const endOut = await scoresOut();
     assert(endOut.length === 0, `1024×768, seven tied: every score is in sight on the results${endOut.length ? ` (not: ${endOut.join(', ')})` : ''}`);
-    await mainButton(p7).click();
+    // (No blue button on the results: the tiebreaker clue is the tie box's.)
+    await p7.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' }).click();
     await p7.locator('.panel .status', { hasText: 'Tiebreaker' }).waitFor();
     const clueOut = await scoresOut();
-    assert(clueOut.length === 0, `and in the tiebreaker clue, where the winner is picked from them${clueOut.length ? ` (not: ${clueOut.join(', ')})` : ''}`);
+    const whoWon = await p7.locator('.panel [data-tb-who] button').count();
+    assert(clueOut.length === 0 && whoWon === 7, `and in the tiebreaker clue, where the winner is picked from them (a 🏆 each: ${whoWon})${clueOut.length ? ` (not: ${clueOut.join(', ')})` : ''}`);
     await ctx.close();
   }
   // The Final's reveal rows at 1280×720 in one window, long team names: straight columns (✔ Right, ✘ Wrong and Show
