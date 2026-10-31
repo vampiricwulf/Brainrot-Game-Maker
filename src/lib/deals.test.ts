@@ -38,6 +38,7 @@ import {
   DEAL_TEMPLATES,
   dropGonePhones,
   handSlide,
+  partOnPhone,
   repairDeal,
   sendDeal,
   sendDealAgain,
@@ -197,6 +198,25 @@ describe('🎭 dealing: random, in the deal’s numbers, never two parts for one
 });
 
 describe('🎡 cards drawn from a saved wheel', () => {
+  it('the editor’s 📱 On their phone: a part that draws shows a sample slice, under its words; one that doesn’t, its card', () => {
+    const { g, places, tpl } = setup();
+    const deal = tpl('spy', places.id);
+    const villager = deal.parts.find((p) => p.draw === 'shared')!;
+    const spy = deal.parts.find((p) => !p.draw)!;
+    const first = places.segments[0].label;
+    const v = partOnPhone(g, deal, villager);
+    expect(v.sample).toBe(`+ a slice of ${places.name}: ${first}`);
+    expect(phoneCard(g, v.slide, { fileBytes: FILE_BYTES, files: {} })).toMatchObject({ title: first, text: 'The location:' });
+    // (A copy: the part's own card is left as it is.)
+    expect(JSON.stringify(villager.card)).not.toContain(first);
+    expect(partOnPhone(g, deal, spy)).toEqual({ slide: spy.card });
+    // No wheel chosen, or one with nothing to draw: the card alone.
+    expect(partOnPhone(g, { ...deal, wheel: undefined }, villager)).toEqual({ slide: villager.card });
+    const empty = { ...places, id: 'w_empty', segments: [] };
+    g.wheels.push(empty);
+    expect(partOnPhone(g, { ...deal, wheel: 'w_empty' }, villager)).toEqual({ slide: villager.card });
+  });
+
   it('Odd one out: everyone but the spy gets the same location; the spy gets none', () => {
     const { g, pool, places, tpl } = setup();
     const deal = tpl('spy', places.id);

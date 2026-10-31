@@ -12,7 +12,7 @@
   import { DEAL_PART_MAX, DEAL_PARTS_MAX, MAX_PLAYERS, setSlideText, slideText, type DealPart, type DealPreset } from '../../lib/model';
   import { cardSummary } from '../../lib/partner';
   import { moveTo } from '../../lib/listedit';
-  import SlideModal from '../rpg/SlideModal.svelte';
+  import DealCardWindow from './DealCardWindow.svelte';
 
   let { deal }: { deal: DealPreset } = $props();
   const game = $derived(app.game);
@@ -86,7 +86,7 @@
         </div>
         <div class="row">
           <input class="grow" value={slideText(part.card)} placeholder="What its card says (only its players see it)" aria-label="{partName(part, i)}’s card words" oninput={(e) => setSlideText(part.card, e.currentTarget.value)} />
-          <button class="small" onclick={() => (editing = part)} title="Pictures, videos, sounds, links: on their phones under the words">Edit card…</button>
+          <button class="small" onclick={() => (editing = part)} title="Pictures, videos, sounds, links: on their phones under the words. 📱 On their phone shows the card as they get it">Edit card…</button>
           <select aria-label="{partName(part, i)}’s card draws from the wheel" value={part.draw ?? ''} onchange={(e) => setDraw(part, i, e.currentTarget.value)}>
             <option value="">no wheel</option>
             <option value="shared">+ the slice they all share</option>
@@ -114,7 +114,7 @@
 </div>
 
 {#if editing}
-  <SlideModal slide={editing.card} title="🎭 {partName(editing, deal.parts.indexOf(editing))}’s card (on its players’ phones)" onclose={() => (editing = null)} />
+  <DealCardWindow {deal} part={editing} onclose={() => (editing = null)} />
 {/if}
 
 <style>

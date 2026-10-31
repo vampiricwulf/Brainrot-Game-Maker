@@ -5,7 +5,8 @@
   a file big enough that phones on mobile data may wait for it gets a note. A GIF, video or sound there gets 🗜 Make a
   smaller copy for phones (one phones can't play: a copy they can), and one with a copy says so, or why phones get the
   file itself (its copy holds another part of it). The editor isn't on stream, so items are named here. A card from the
-  editor's 🤫 Cards (no `clue`) has no role or hint line, and is only theirs, as a phone gets it.
+  editor's 🤫 Cards (no `clue`) has no role or hint line, and is only theirs, as a phone gets it. A 🎭 deal part's card
+  has its part as the role line, as its phone shows it, and a note naming the sample slice it shows.
 -->
 <script lang="ts">
   import { bigWords } from '../lib/buzzproto';
@@ -23,7 +24,21 @@
   import { clockTenths, typeWord } from '../lib/shrink/plan';
   import { shrinkMaybe } from '../lib/shrink/probe';
 
-  let { game, clue, card }: { game: Game; clue?: Clue; card: Slide & Partial<Pick<ClueCard, 'to' | 'hint'>> } = $props();
+  let {
+    game,
+    clue,
+    card,
+    role,
+    sample,
+  }: {
+    game: Game;
+    clue?: Clue;
+    card: Slide & Partial<Pick<ClueCard, 'to' | 'hint'>>;
+    /** A 🎭 deal part's name: its phone says “You’re the Wolf”. */
+    role?: string;
+    /** The sample slice of the deal's wheel it shows (“+ a slice of Locations: Beach”). */
+    sample?: string;
+  } = $props();
 
   /** What card files the buzzer server takes, as it said (its room's welcome, or its answer before a room is open). */
   const limits = $derived(fileLimitsNow());
@@ -42,6 +57,7 @@
    * the names. A card on any other tile has none, nor does one from 🤫 Cards.
    */
   const lines = $derived.by((): { role?: string; hint?: string } => {
+    if (role) return { role };
     if (!clue || clue.type !== 'partner') return {};
     const rules = partnerRules(clue);
     const s = { pickerId: 'picker', partnerId: 'partner', giver: rules.giver };
@@ -140,6 +156,7 @@
     {#if !pc.title && !pc.text && !pc.items.length}<div class="box missing">Nothing on this card yet</div>{/if}
   </div>
   <ul class="notes">
+    {#if sample}<li data-sample>{sample} (a sample: each deal draws its own)</li>{/if}
     {#if server === 'none'}
       <li>This copy has no buzzer server: you copy the cards to the players (📋).</li>
     {:else if server === 'older'}

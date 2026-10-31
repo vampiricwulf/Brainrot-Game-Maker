@@ -226,6 +226,19 @@ export function handSlide(game: Pick<Game, 'media'>, card: Slide, slice?: Pick<W
   return out;
 }
 
+/**
+ * A part's card as the editor's 📱 On their phone shows it: the card, and for a part that draws from the deal's wheel,
+ * its first slice as a sample, as handSlide adds it (`sample`: "+ a slice of Locations: Beach"; each deal draws its
+ * own). The card alone, and no sample, when it draws none or the wheel has no slices.
+ */
+export function partOnPhone(game: Pick<Game, 'wheels' | 'media'>, deal: Pick<DealPreset, 'wheel'>, part: Pick<DealPart, 'card' | 'draw'>): { slide: Slide; sample?: string } {
+  const wheel = part.draw && deal.wheel ? game.wheels.find((w) => w.id === deal.wheel) : undefined;
+  const first = wheel ? drawable(game, deal)[0] : undefined;
+  if (!wheel || !first) return { slide: part.card };
+  const label = first.label.trim() || 'Slice 1';
+  return { slide: handSlide(game, part.card, { ...first, label }), sample: `+ a slice of ${wheel.name.trim() || 'the wheel'}: ${label}` };
+}
+
 /** A recipient as a deal keeps it (a seat, or a person on a team: their id and name only). */
 const plainTo = (t: CardTo): CardTo => (t.member ? { seat: t.seat, member: { id: t.member.id, name: t.member.name } } : { seat: t.seat });
 

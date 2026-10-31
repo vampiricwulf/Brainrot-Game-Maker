@@ -125,6 +125,18 @@ try {
   await editor.waitFor();
   assert((await editor.getByLabel('Part 1’s name').inputValue()) === 'Spy' && (await editor.getByLabel('Part 2’s name').inputValue()) === 'Villager', 'the saved deal’s parts: Spy and Villager');
   assert((await editor.getByLabel('How many get Villager').inputValue()) === 'rest' && (await editor.getByLabel('Villager’s card draws from the wheel').inputValue()) === 'shared', 'the Villagers are the rest, and share a slice of the wheel');
+  // Edit card… opens it as the 🤫 Cards are laid out, 📱 On their phone beside it: its part, its words, a sample slice.
+  await editor.locator('[data-part]').nth(1).getByRole('button', { name: 'Edit card…' }).click();
+  const cardWin = host.getByRole('dialog', { name: '🎭 Villager’s card (only its players see it)' });
+  await cardWin.waitFor();
+  const onPhone = cardWin.locator('.phone-preview');
+  const sample = (await onPhone.locator('[data-sample]').innerText()).trim();
+  assert(
+    (await cardWin.getByRole('button', { name: '📱 On their phone' }).getAttribute('aria-pressed')) === 'true' && (await onPhone.innerText()).includes('You’re the Villager') && PLACES.some((p) => sample.startsWith('+ a slice of ') && sample.includes(`: ${p}`)),
+    `a part's Edit card… shows it on their phone, with its part and a sample slice (${sample})`,
+  );
+  await cardWin.getByRole('button', { name: 'Done' }).click();
+  await cardWin.waitFor({ state: 'detached' });
   await host.getByRole('button', { name: '📋 Ready-made deal…' }).click();
   await host.getByRole('menuitem', { name: /Secret roles/ }).click();
   assert(await until(async () => (await deals.getByRole('button').allInnerTexts()).map((t) => t.trim()).join('|') === 'Odd one out|Secret roles'), 'a ready-made deal goes in: Secret roles');

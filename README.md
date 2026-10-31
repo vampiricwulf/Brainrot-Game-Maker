@@ -410,7 +410,8 @@ share only the game window.
 **🎭 Deal…** next to it hands everyone a secret part, each on their own phone: 🕵 Odd one out (one spy, everyone else
 gets the same location from a wheel), 🐺 Secret roles (a wolf, a seer, villagers), 🧢 Team captain (one on each team)
 or 🧠 Everyone's own prompt (a slice of a wheel each), or a deal of your own made in the editor's 🎡 Wheels, Dice & Deals tab (parts with a
-card each and how many get it). 🎭 Deal shuffles the parts (with the audience window open you can choose who gets one,
+card each and how many get it; a part's **Edit card…** shows its card with 📱 On their phone beside it, as its players
+get it, with a sample slice when it draws from the wheel). 🎭 Deal shuffles the parts (with the audience window open you can choose who gets one,
 and the column beside the stage shows who got which); nothing goes until you press 📤 Send, which sends each player's
 card on its own, their part ("You're the Spy") on it behind Tap to see. In one window the panel only counts the parts
 ("Spy ×1, Villager ×4") and lists everyone dealt in alike, a part or not (with the phones getting the cards, those with
