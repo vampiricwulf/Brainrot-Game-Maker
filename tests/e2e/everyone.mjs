@@ -217,7 +217,7 @@ try {
       const r = b.getBoundingClientRect();
       return r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
     });
-  const sightLines = [row('Player 1').getByRole('button', { name: 'Player 1 is right' }), row('Player 2').getByRole('button', { name: 'Player 2 is right' }), host.locator('.panel .award button', { hasText: 'Award' })];
+  const sightLines = [row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }), row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }), host.locator('.panel .award button', { hasText: 'Award' })];
   let seen = [];
   for (let i = 0; i < 20; i++) {
     seen = await Promise.all(sightLines.map(inSight));
@@ -227,9 +227,9 @@ try {
   assert(!seen.includes(false), `at 911×438 both answers' ✔ and ＋ Award are in sight (${seen})`);
   await host.setViewportSize({ width: 1400, height: 900 });
 
-  await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).click();
+  await row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }).click();
   await row('Player 1').getByText('✔ Right').waitFor();
-  await row('Player 2').getByRole('button', { name: 'Player 2 is wrong' }).click();
+  await row('Player 2').getByRole('button', { name: /^Wrong: Player 2( |$)/ }).click();
   await row('Player 2').getByText('✘ Wrong').waitFor();
   await p1.locator('#me').getByText(/\$[1-9]/).waitFor();
   assert(true, '✔ / ✘ on each: Player 1 gets the clue’s points');
@@ -260,17 +260,17 @@ try {
   await row('Player 2').getByText('“Bulldog”').waitFor();
   assert(
     (await answersBox.getByRole('status').innerText()).includes('only you see them') &&
-      (await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).count()) === 1 &&
-      (await row('Player 2').getByRole('button', { name: 'Player 2 is wrong' }).count()) === 1,
+      (await row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }).count()) === 1 &&
+      (await row('Player 2').getByRole('button', { name: /^Wrong: Player 2( |$)/ }).count()) === 1,
     'with an audience window, the host sees the words with ✔ / ✘ while answers are still open',
   );
   // By keyboard: ✔ reached with Tab, pressed with Enter (the keys then go to the next answer's ✔).
-  await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).focus();
+  await row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }).focus();
   await host.keyboard.press('Tab');
   await host.keyboard.press('Shift+Tab');
   await host.keyboard.press('Enter');
   await row('Player 1').getByText('✔ Right').waitFor();
-  await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Player 2 is right');
+  await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('Right: Player 2 '));
   // Judged, Player 1's answer is final: the phone says it's locked, while Player 2 can still change theirs.
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
   assert(
@@ -294,12 +294,12 @@ try {
     'an answer changed after Ctrl+Z took its ✔ back: ↷ Redo doesn’t put that ✔ beside the new words, and the answer stays open',
   );
   // (Judged again, by keyboard as before: the keys go on to Player 2's ✔.)
-  await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).focus();
+  await row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }).focus();
   await host.keyboard.press('Tab');
   await host.keyboard.press('Shift+Tab');
   await host.keyboard.press('Enter');
   await row('Player 1').getByText('✔ Right').waitFor();
-  await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Player 2 is right');
+  await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('Right: Player 2 '));
   await host.keyboard.press('Enter');
   await row('Player 2').getByText('✔ Right').waitFor();
   assert(true, '✔ reached with Tab and pressed with Enter: the keys go to the next ✔, and Enter marks Player 2 right (not “Select a player first”)');
@@ -411,8 +411,8 @@ try {
   await row('Player 2').getByText('✔ Right').waitFor();
   await picker('Player 2').waitFor();
   await host.keyboard.press('Control+z');
-  await row('Player 1').getByRole('button', { name: 'Player 1 is wrong' }).waitFor();
-  await row('Player 2').getByRole('button', { name: 'Player 2 is right' }).waitFor();
+  await row('Player 1').getByRole('button', { name: /^Wrong: Player 1( |$)/ }).waitFor();
+  await row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }).waitFor();
   await picker('Player 1').waitFor();
   assert(true, 'Enter with nobody picked does ✔ Judge all (Player 2 right, Player 1 wrong), and one Ctrl+Z un-judges both');
   await judgeAll.click();
@@ -438,8 +438,8 @@ try {
     `✔ Judge all marks Player 2 right and Player 1 wrong, as one step that names no pick, and Player 2 (the first right) picks next (${judgedUndo})`,
   );
   await host.getByRole('button', { name: '↶ Undo' }).click();
-  await row('Player 1').getByRole('button', { name: 'Player 1 is wrong' }).waitFor();
-  await row('Player 2').getByRole('button', { name: 'Player 2 is right' }).waitFor();
+  await row('Player 1').getByRole('button', { name: /^Wrong: Player 1( |$)/ }).waitFor();
+  await row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }).waitFor();
   await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).waitFor();
   await p2.locator('#me').getByText(before).waitFor();
   await picker('Player 1').waitFor();

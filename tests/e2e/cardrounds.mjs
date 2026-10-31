@@ -539,8 +539,8 @@ try {
   await host.getByRole('button', { name: 'Whisper wheel', exact: true }).click();
   const tc = host.locator('[data-tool-controls]');
   // (Its box's Spin!: the blue button over a tool from the tools row is Next ▶, which only puts it away.)
-  await stepButton(tc, 'Spin!').click();
-  await tc.getByText('This was for').waitFor({ timeout: 20000 });
+  await stepButton(tc, '🎡 Spin!').click();
+  await tc.getByText('Who was it for?').waitFor({ timeout: 20000 });
   await tc.getByRole('button', { name: 'Ann', exact: true }).click();
   const slice = tc.getByRole('button', { name: '🤫 Card for whoever set it off' });
   await slice.click();

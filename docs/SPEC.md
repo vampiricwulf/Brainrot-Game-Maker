@@ -479,7 +479,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   1. **Each action has one place: its situation's box**, beside the manual choices it's an alternative to (🤝 a partner
      clue, ⭐ a Daily Double, 🎡 / 🎲 a wheel or dice, the Final's wagers and reveals, a tie at the end, the buzzers' row,
      a board-game turn). 🎡 Spin for a partner comes in front of the players; a run of actions uses one slot (🎲 Roll,
-     then ▶ Move; Spin!, then ↻ Spin again), greyed while it plays out. The box's first line says what to do next, and
+     then ▶ Move; 🎡 Spin!, then ↻ Spin again), greyed while it plays out. The box's first line says what to do next, and
      names the blue button when the next thing is the show's step. The action due now wears a ring (`.ring`, one at a
      time). No action shows twice: not in the main cell, not beside it, not in the clue's row, not in the stage's menu.
   2. **The main button is the show's next step: Next or Reveal.** One blue button, always in the same cell at the right,
@@ -534,7 +534,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   for first is settled in its tie box (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off `O`, 🤝 Declare co-winners), and `N`
   there says so and flashes it. ＋ Award is green, never blue; 🔔 Open the buzzers (`U`) and a tie's
   🎲 Roll for it (`O`) are in the buzzers' row, a partner clue's 🎡 Spin for a partner (`W`) and 📤 Send and start
-  (`Enter`) in its 🤝 box, a wheel's Spin! (`W`) or dice's Roll! (`D`) in the tool's box, and a board game's roll and move
+  (`Enter`) in its 🤝 box, a wheel's 🎡 Spin! (`W`) or dice's 🎲 Roll! (`D`) in the tool's box, and a board game's roll and move
   in its turn box: one slot, 🎲 Roll (`D`), then ▶ Move Ann: 3 (`Enter`) in the same place once there's a count (greyed
   while the dice roll and at a fork), the Steps box and ◀ Back beside it, under a first line saying what to do (“Ann's
   turn: 🎲 Roll (D), then ▶ Move (Enter, or click the dice once they land)”); a click on the landed dice (or movement
@@ -571,7 +571,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   `Shift+Enter`, 🔔 Open the buzzers `U`, 🎲 Roll for it `O`, ⏱ Start the countdown `T`, ✔ Judge all ▶ board, ✍ Judge
   them, ✘ The rest are wrong, 📤 Send it; a partner clue's 🎡 Spin for a partner `W`, the players by number, Solo, ↩ Put
   back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the clock, 📋 Copy, ✔ Got
-  it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`, who steals it; a tile's Spin! `W` / Roll! `D` / ↻ Spin again `W`, ✔ Give
+  it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`, who steals it; a tile's 🎡 Spin! `W` / 🎲 Roll! `D` / ↻ Spin again `W`, ✔ Give
   Ann +$100 ▶ question, or Choose in the box for a steal, a swap or nobody chosen (who a score effect is for is the game
   screen's, `Live.scoreDrafts`, given by `applyScoreCard` there and in its box alike), ＋ Award Ann $200 and close it),
   then the foot's Not yet (`Esc`) and a quiet “… anyway” (▦ Done anyway: no
@@ -607,7 +607,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **A player's menu wherever they show** (playermenu.ts): a right-click on a player anywhere on the host screen (their
   avatar or token, their plate or card on the stats strip, their score chip, their chip in the turn order, and their
   button in every box: who picked a 🤝 partner clue and the people on a team, who found a Daily Double, who gets a 🤫
-  card or a 🎭 part and who's dealt in, the Final's wager and reveal rows, ✍ answers' rows, a wheel's "This was for", a
+  card or a 🎭 part and who's dealt in, the Final's wager and reveal rows, ✍ answers' rows, a wheel's "Who was it for?", a
   score card's players, a shop's buyer) opens the same menu (`data-player-id`), headed by the name only (never a card's
   or a part's). `Shift+F10` or the menu key on the button opens it under it, and `Esc` gives the button the keys back;
   a long press on a touch screen opens it too, and the tap that ends the press is dropped (longpress.ts). In a box over
@@ -837,14 +837,15 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   won't spin, one only for show). With the controls hidden, `N` there does what a click on the tool does: spin or roll
   it, then close it (through the check, as a click does).
 - **The tool's box** in the host panel keeps its places in every state: on its first row the tool's name, its spin or
-  roll in one slot (**Spin!** `W`, greyed while it turns, then **Spin again**; ↻ Spin again on a "Spin again" slice;
-  **Roll!** `D`, then **Roll again**; ringed while it's what's left first, a tile's own tool not spun yet), ✎ Edit wheel
+  roll in one slot (**🎡 Spin!** `W`, then **↻ Spin again** in its place, greyed while it turns; **🎲 Roll!** `D`, then
+  **↻ Roll again**; ringed while it's what's left first, a tile's own tool not spun yet or landed on a "Spin again"
+  slice), ✎ Edit wheel
   and ＋ Spin another wheel too…, and the result. It has no Close: putting it away is the blue button's step (a wheel or
   dice tile's own: Show question ▶, or ▦ Done ▶ board with no question; anything else: Next ▶), or `Esc`. A question
   pop-up keeps **✕ Close** `Esc` until its answer is up (it puts the question away unseen; the blue button reveals
   it); a shop keeps 🚪 Leave shop. A click on the box's slot gives the keys back to the blue button. The partner wheel
   and a board game's own roll leave spinning again to their own box (the 🤝 box's ↻ Spin again, the turn's 🎲 Roll), and
-  a board game's own roll goes in the roll log as the turn player's (no "This was for" to tick). `Esc` with a score
+  a board game's own roll goes in the roll log as the turn player's (no "Who was it for?" to tick). `Esc` with a score
   effect not given says so first (`Esc` again closes without it); the blue button and a click on the stage ask in the
   check. While an outcome's score
   card waits, it's what's in view there; the first row comes back once it's confirmed or skipped. A box's step button

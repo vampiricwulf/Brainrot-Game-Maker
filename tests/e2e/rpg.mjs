@@ -986,7 +986,7 @@ try {
   await page.getByRole('button', { name: 'Edit Pick a player for this spin' }).click();
   // (From the tools row: its box's Spin!; the blue button over it is Next ▶, which only puts it away.)
   assert(await flowIs(page, 'Next ▶'), 'a wheel from the tools row in an RPG round: the blue button is Next ▶');
-  await stepButton(page.locator('.panel [data-tool-controls]'), 'Spin!').click();
+  await stepButton(page.locator('.panel [data-tool-controls]'), '🎡 Spin!').click();
   await page.waitForFunction(() => document.querySelectorAll('.stage .many .chip').length === 2, null, { timeout: 12000 });
   assert(true, 'both wheels land, each showing its result');
   assert((await page.locator('.tc .result').innerText()).includes(' · '), 'the host sees both results');

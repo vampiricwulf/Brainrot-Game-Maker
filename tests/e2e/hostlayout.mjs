@@ -14,7 +14,7 @@
 // players in a single window (at
 // 1366×768, 1200×720, 1024×768 and 960×900, and a long Final name) the stage keeps one size from the board to a clue and
 // with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), and
-// through a 🤝 partner clue from PARTNER UP! (the wheel, 📤 Distribute) to ✔ Got it, its ✔ / ✘ in sight (the wheel's own
+// through a 🤝 partner clue from PARTNER UP! (the wheel, 📤 Hand out the cards) to ✔ Got it, its ✔ / ✘ in sight (the wheel's own
 // bar too, and the players' chips where they fit), up to 1240px wide 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭
 // (named in full), 🔊 Sound opens in the host panel, and every Final wager box is in sight (the Final's own 🤫 cards
 // under them: below the panel's foot, 🤫 1 card ↓ in the step's sticky row goes to them). A three-round game keeps the
@@ -595,12 +595,12 @@ try {
     tb.y >= sideStatus.y + sideStatus.height - 1 && tb.x >= sidePanel.x - 1,
     `beside the stage a toast shows under the status line, over the panel (it starts at ${Math.round(tb.y)}, the status line ends at ${Math.round(sideStatus.y + sideStatus.height)})`,
   );
-  // A double-click on ◀ Prev round goes back one round, not two (its second click lands on the new ◀ Prev round).
+  // A double-click on ◀ Previous round goes back one round, not two (its second click lands on the new one).
   await p2.waitForTimeout(450);
-  await p2.getByRole('button', { name: '◀ Prev round' }).dblclick();
+  await p2.getByRole('button', { name: '◀ Previous round' }).dblclick();
   await p2.locator('.panel .status', { hasText: 'Adventure' }).waitFor();
   await p2.waitForTimeout(500);
-  assert((await p2.locator('.panel .status', { hasText: 'Adventure' }).count()) === 1, 'a double-click on ◀ Prev round goes back one round (Adventure), not two');
+  assert((await p2.locator('.panel .status', { hasText: 'Adventure' }).count()) === 1, 'a double-click on ◀ Previous round goes back one round (Adventure), not two');
   await p2Next('Board game');
   // A roll on a short window (1366×768 at 125% zoom: the panel still beside the stage): the round's own box keeps a few
   // rows in sight under the dice's box (the column scrolls instead).
@@ -691,7 +691,7 @@ try {
 
   // A crowded single window (six players, longer names): the stage keeps one size from the board to a clue and with a
   // player picked (a $200 clue, then a $1,000 one), and through a 🤝 partner clue from PARTNER UP! (the wheel, the
-  // question and its 📤 Distribute list) to ✔ Got it, with the wheel's bar (✎ Edit wheel…), ✔ Got it / ✘ Missed, the
+  // question and its 📤 Hand out the cards list) to ✔ Got it, with the wheel's bar (✎ Edit wheel…), ✔ Got it / ✘ Missed, the
   // main button and the players' chips in sight; 🔊 Sound opens in the host panel (not over the stage), and every Final
   // wager box is in sight. (A long Final name, so the board's tools row holds a wide ▶ beside 🤫 Send a card… and
   // 🎭 Deal…: it still fits on one line, as in a clue.)
@@ -841,7 +841,7 @@ try {
     const judgeOut = await outOfSight('.panel [data-partner-judge] button, .panel [data-next]');
     assert(
       judgeOut.length === 0 && (await p4.locator('.panel [data-flow="reveal"]').count()) === 1 && (await p4.locator('.panel [data-flow="done"]').count()) === 1 && (await p4.locator('.panel .flowbeside').count()) === 0,
-      `${w}×${h}, a partner clue's 📤 Distribute: ✔ Got it, ✘ Missed and the blue 👁 Reveal answer are in sight (one 👁 Reveal answer, one ▦ Done ▶ board, nothing above the blue button)${judgeOut.length ? ` (not: ${judgeOut.join(', ')})` : ''}`,
+      `${w}×${h}, a partner clue's 📤 Hand out the cards: ✔ Got it, ✘ Missed and the blue 👁 Reveal answer are in sight (one 👁 Reveal answer, one ▦ Done ▶ board, nothing above the blue button)${judgeOut.length ? ` (not: ${judgeOut.join(', ')})` : ''}`,
     );
     // (The status line's ⚠ Viewers see this chip keeps it one line: as tall as on the board.)
     const statusH = Math.round((await p4.locator('.panel .status').boundingBox()).height);
@@ -850,7 +850,7 @@ try {
     // fit with it, and the last scrolls.)
     if (w !== 1024) {
       const chipsOut = await outOfSight('.panel .players .p');
-      assert(chipsOut.length === 0, `${w}×${h}, a partner clue's 📤 Distribute: every player's chip is in sight above it${chipsOut.length ? ` (not: ${chipsOut.join(', ')})` : ''}`);
+      assert(chipsOut.length === 0, `${w}×${h}, a partner clue's 📤 Hand out the cards: every player's chip is in sight above it${chipsOut.length ? ` (not: ${chipsOut.join(', ')})` : ''}`);
     }
     await partner.getByRole('button', { name: /✔ Got it/ }).click();
     await partner.locator('[data-judged]').waitFor();
@@ -1170,25 +1170,25 @@ try {
         });
       await pb.getByRole('button', { name: '🎡 Wheel' }).click();
       await pb.getByRole('button', { name: '🎯 Pick a player', exact: true }).click();
-      await stepButton(tools, 'Spin!').waitFor();
+      await stepButton(tools, '🎡 Spin!').waitFor();
       let b = await bar();
       assert(
-        b.line && b.first === 'Spin!' && !b.close.length && (await blueInSight('Next ▶')) && (await boxHasAction(tools, 'Spin!')) === '',
-        `8 players at 1280×720: a tools-row wheel's bar is one row, Spin! first (in sight, once), no Close; the blue button is Next ▶ (${JSON.stringify(b)})`,
+        b.line && b.first === '🎡 Spin!' && !b.close.length && (await blueInSight('Next ▶')) && (await boxHasAction(tools, '🎡 Spin!')) === '',
+        `8 players at 1280×720: a tools-row wheel's bar is one row, 🎡 Spin! first (in sight, once), no Close; the blue button is Next ▶ (${JSON.stringify(b)})`,
       );
-      await stepButton(tools, 'Spin!').click();
+      await stepButton(tools, '🎡 Spin!').click();
       await tools.getByRole('button', { name: /^★ Make .+ the picker$/ }).waitFor({ timeout: 10000 });
       b = await bar();
       const out = await hidden('.panel [data-tool-controls] > .row:first-child :is(button, select)');
       assert(
-        b.line && b.first === 'Spin again' && !b.close.length && out.length === 0 && (await blueInSight('Next ▶')),
-        `8 players at 1280×720: landed, the bar is still one row and in sight, Spin again first, no Close, ★ Make … the picker under it, the blue Next ▶ in sight (${JSON.stringify(b)}${out.length ? `; not in sight: ${out.join(', ')}` : ''})`,
+        b.line && b.first === '↻ Spin again' && !b.close.length && out.length === 0 && (await blueInSight('Next ▶')),
+        `8 players at 1280×720: landed, the bar is still one row and in sight, ↻ Spin again first, no Close, ★ Make … the picker under it, the blue Next ▶ in sight (${JSON.stringify(b)}${out.length ? `; not in sight: ${out.join(', ')}` : ''})`,
       );
       await mainButton(pb, 'Next ▶').click();
       await tools.waitFor({ state: 'detached' });
       // A wheel tile: Spin! first and ringed, no Close; the blue button is Show question ▶, within reach of Spin!.
       await pb.locator('.stage-box .board .tile[data-cat="4"][data-row="4"]').click();
-      await stepButton(tools, 'Spin!').waitFor();
+      await stepButton(tools, '🎡 Spin!').waitFor();
       b = await bar();
       const reach = await pb.evaluate(() => {
         const slot = document.querySelector('.panel [data-tool-controls] [data-step]').getBoundingClientRect();
@@ -1197,11 +1197,11 @@ try {
       console.log(`    (8 players at 1280×720: a wheel tile's Spin! is ${reach} px above the blue button)`);
       const putBackOut = await hidden('.panel [data-flow="putback"]');
       assert(
-        b.line && b.first === 'Spin!' && !b.close.length && (await stepButton(tools, 'Spin!').evaluate((x) => x.classList.contains('ring'))) && (await blueInSight('Show question ▶')) && reach <= 96 && !putBackOut.length,
-        `8 players at 1280×720: a wheel tile's bar is one row, Spin! first and ringed, no Close; the blue Show question ▶ in sight, within 96 px of Spin!; ↩ Put back (keep tile) in sight at the flow row's start (${JSON.stringify({ ...b, reach, putBackOut })})`,
+        b.line && b.first === '🎡 Spin!' && !b.close.length && (await stepButton(tools, '🎡 Spin!').evaluate((x) => x.classList.contains('ring'))) && (await blueInSight('Show question ▶')) && reach <= 96 && !putBackOut.length,
+        `8 players at 1280×720: a wheel tile's bar is one row, 🎡 Spin! first and ringed, no Close; the blue Show question ▶ in sight, within 96 px of 🎡 Spin!; ↩ Put back (keep tile) in sight at the flow row's start (${JSON.stringify({ ...b, reach, putBackOut })})`,
       );
       await pb.keyboard.press('w');
-      await stepButton(tools, 'Spin again').waitFor({ timeout: 10000 });
+      await stepButton(tools, '↻ Spin again').waitFor({ timeout: 10000 });
       await pb.locator('.panel [data-next]:not(:disabled)').waitFor();
       await pb.keyboard.press('n');
       await tools.waitFor({ state: 'detached' });
@@ -1256,7 +1256,7 @@ try {
       // (On a laptop with 4 players, Card 1's row too, as before the box had its foot: its first line stays one line.)
       if (count === 4 && w === 1280) {
         const row = await hidden('.panel [data-card="1"] button, .panel [data-partner-panel] [aria-haspopup="menu"]');
-        assert(row.length === 0, `${at}: Card 1's row (who gets it, 📋 Copy words) and change partner ▾ are in sight too${row.length ? ` (not: ${row.join(', ')})` : ''}`);
+        assert(row.length === 0, `${at}: Card 1's row (who gets it, 📋 Copy words) and Another partner ▾ are in sight too${row.length ? ` (not: ${row.join(', ')})` : ''}`);
       }
       // No copies above the blue button: it is 👁 Reveal answer itself (the clue row's quiet ▦ Done ▶ board may scroll away).
       assert((await pb.locator('.panel .flowbeside').count()) === 0 && (await pb.locator('.panel [data-flow="reveal"]').count()) === 1, `${at}: one 👁 Reveal answer (the blue button), no pair above it`);
@@ -1442,16 +1442,16 @@ try {
       await p5.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: '✖ Close the card window' }).click();
       await tools.locator('[data-card-window-warn]').waitFor({ state: 'detached' });
       onBoard['🔇 and 🤫 1'] = await stageH();
-      const named = await Promise.all(['🔇 Stop sounds', '🤫 1 card out', '◀ Prev round', '📊 Scores', next].map((name) => tools.getByRole('button', { name, exact: true }).count()));
-      assert(named.every((c) => c === 1), `${at}: with both there, 🔇 Stop sounds, the cards out, ◀ Prev round, 📊 Scores and ${next} are still named in full`);
+      const named = await Promise.all(['🔇 Stop sounds', '🤫 1 card out', '◀ Previous round', '📊 Scoreboard', next].map((name) => tools.getByRole('button', { name, exact: true }).count()));
+      assert(named.every((c) => c === 1), `${at}: with both there, 🔇 Stop sounds, the cards out, ◀ Previous round, 📊 Scoreboard and ${next} are still named in full`);
       if (round === 'Double Jeopardy!') {
         const tip = await tools.getByRole('button', { name: next, exact: true }).getAttribute('title');
         assert(tip.startsWith('Final Jeopardy: Internet Legends · '), `${at}: ${next}'s tooltip names the Final in full (${tip})`);
       }
       if (w > 1520) {
         // A wide window has room for their words, both there or not.
-        const widths = await Promise.all(['🔇 Stop sounds', '🤫 1 card out', '◀ Prev round'].map(async (name) => Math.round((await tools.getByRole('button', { name, exact: true }).boundingBox()).width)));
-        assert(widths.every((x) => x > 80), `${at}: with both there, 🔇 Stop sounds, the cards out and ◀ Prev round keep their words (${widths.join(' / ')}px wide)`);
+        const widths = await Promise.all(['🔇 Stop sounds', '🤫 1 card out', '◀ Previous round'].map(async (name) => Math.round((await tools.getByRole('button', { name, exact: true }).boundingBox()).width)));
+        assert(widths.every((x) => x > 80), `${at}: with both there, 🔇 Stop sounds, the cards out and ◀ Previous round keep their words (${widths.join(' / ')}px wide)`);
       }
       await stop.click();
       await stop.waitFor({ state: 'detached' });

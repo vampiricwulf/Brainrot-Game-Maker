@@ -482,7 +482,7 @@
           {#if dealDraft.dealt === d.id}
             <button class="small" onclick={() => deal()} disabled={!!problem || !work} title="Deals it again, the same way (nothing was sent)">↻ Deal again</button>
           {/if}
-          <button class="ghost small" onclick={() => (fresh = true)}>✎ Change it</button>
+          <button class="ghost small" onclick={() => (fresh = true)}>✎ Edit deal</button>
           <button class="ghost small" onclick={() => putAway()}>✖ Put it away</button>
         </div>
       </div>

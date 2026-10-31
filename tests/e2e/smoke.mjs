@@ -1008,14 +1008,14 @@ const toolBar = () =>
   );
 let bar = await toolBar();
 assert(
-  bar[0] === 'Spin! W' && !bar.some((b) => b.includes('Close')) && (await flowIs(page, '▦ Done ▶ board')) && (await stepButton(toolBox, 'Spin!').evaluate((b) => b.classList.contains('ring'))),
+  bar[0] === '🎡 Spin! W' && !bar.some((b) => b.includes('Close')) && (await flowIs(page, '▦ Done ▶ board')) && (await stepButton(toolBox, 'Spin!').evaluate((b) => b.classList.contains('ring'))),
   `a wheel tile's box: Spin! first, ringed, no Close; the blue button is ▦ Done ▶ board (${bar.join(' | ')})`,
 );
 // The blue button before it's spun asks first: Spin! (W), or closing without it, the tile staying on the board.
 await mainButton(page, '▦ Done ▶ board').click();
 await checkItem(page, 'tool').waitFor();
 assert(
-  (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await quick(page, 'Spin!').isVisible()) && (await anyway(page).innerText()).includes('Close without spinning (the tile stays on the board)'),
+  (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await quick(page, '🎡 Spin!').isVisible()) && (await anyway(page).innerText()).includes('Close without spinning (the tile stays on the board)'),
   'the blue button on a wheel tile not spun yet asks first (“First:”), with Spin! and a way to close it unspun',
 );
 await goOnCheck(page, { ready: true }).waitFor();
@@ -1026,14 +1026,14 @@ await page.locator('.board .tile').nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 await page.waitForTimeout(500); // past the double-click guard (a double-click on the tile doesn't spin it too)
 // The box's Spin!: landed, the keys are on the blue button (▦ Done ▶ board), as after W.
-await stepButton(toolBox, 'Spin!').click();
+await stepButton(toolBox, '🎡 Spin!').click();
 await page.locator('.tc .result').waitFor({ timeout: 8000 });
 assert((await page.locator('.tc .result').innerText()).includes('Bankrupt'), 'weighted spin lands on the heavy slice');
 await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
 bar = await toolBar();
 assert(
-  (await mainLabel(page)) === '▦ Done ▶ board' && bar[0] === 'Spin again W' && !bar.some((b) => b.includes('Close')),
-  `the box's Spin! spins it; landed, Spin again in its place, no Close; the blue ▦ Done ▶ board has the keys (${bar.join(' | ')})`,
+  (await mainLabel(page)) === '▦ Done ▶ board' && bar[0] === '↻ Spin again W' && !bar.some((b) => b.includes('Close')),
+  `the box's 🎡 Spin! spins it; landed, ↻ Spin again in its place, no Close; the blue ▦ Done ▶ board has the keys (${bar.join(' | ')})`,
 );
 await page.locator('.ov .card').waitFor();
 assert((await page.locator('.ov .card .label').innerText()) === 'Bankrupt', 'result card revealed on screen');
@@ -1284,7 +1284,7 @@ await page.locator('.tl textarea').fill('');
 await page.getByRole('button', { name: 'Punishment Wheel', exact: true }).click();
 // (From the tools row: its box's Spin!, and the blue button is Next ▶, which only puts it away.)
 assert(await flowIs(page, 'Next ▶'), 'a wheel from the tools row: the blue button is Next ▶');
-await stepButton(toolBox, 'Spin!').click();
+await stepButton(toolBox, '🎡 Spin!').click();
 await page.locator('.ac').waitFor({ timeout: 8000 });
 const deltaText = await page.locator('.ac .delta').first().innerText();
 const allScores = async () => (await page.locator('.panel .p .score').allInnerTexts()).join();
@@ -1315,7 +1315,7 @@ assert((await page.locator('.ac').count()) === 0, 'score effect is undoable like
 await page.reload();
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 await page.getByRole('button', { name: 'View results' }).click();
-await page.getByText('This was for (optional, goes in the roll log):').waitFor();
+await page.getByText('Who was it for? (optional, kept in 📜 Log)').waitFor();
 await scoresAre(unbankrupt);
 assert((await page.locator('.ac').count()) === 0, 'after a reload the landed wheel is back and its skipped card stays hidden');
 await page.keyboard.press('Escape');
@@ -1332,7 +1332,7 @@ await page.getByRole('button', { name: '🎡 Wheel' }).click();
 await page.getByRole('button', { name: '🎯 Pick a player' }).click();
 const slices = await page.locator('.stage-box svg text').allTextContents();
 assert(slices.join() === 'Player 1,Player 2,Player 3', `the player wheel has a slice per player (${slices.join(', ')})`);
-await stepButton(toolBox, 'Spin!').click();
+await stepButton(toolBox, '🎡 Spin!').click();
 const makePicker = page.getByRole('button', { name: /^★ Make .+ the picker$/ });
 const pickedWheel = page.getByText(/^★ .+ picks the next clue\.$/);
 await makePicker.or(pickedWheel).waitFor({ timeout: 10000 });
@@ -1354,7 +1354,7 @@ const editBox = page.getByRole('group', { name: 'Edit this wheel' });
 await editBox.getByLabel('Include Player 1').uncheck();
 await editBox.getByLabel('Include Player 3').uncheck();
 assert((await sliceTexts()).join() === 'Player 2' && (await editBox.locator('.pct').allInnerTexts()).join() === '—,100%,—', 'unticking players takes them off the wheel, and the chances follow');
-await stepButton(toolBox, 'Spin!').click();
+await stepButton(toolBox, '🎡 Spin!').click();
 await page.getByText('★ Player 2 picks the next clue.').or(page.getByRole('button', { name: '★ Make Player 2 the picker' })).waitFor({ timeout: 10000 });
 assert(true, 'the edited player wheel can only land on the players left on it');
 await page.keyboard.press('Escape');
@@ -1409,10 +1409,10 @@ const rollsText = await page.locator('aside .list').innerText();
 assert(rollsText.includes('goes first') && rollsText.includes('Punishment Wheel') && rollsText.includes('2d6') && rollsText.includes('Pick a player'), 'roll log lists the wheels, dice and roll-off');
 assert(rollsText.includes('For: Player 3'), 'roll log keeps the "who it was for" tag');
 await page.keyboard.press('Escape');
-await page.getByRole('button', { name: '📊 Scores' }).click();
+await page.getByRole('button', { name: '📊 Scoreboard' }).click();
 await page.locator('.ov .sb').waitFor();
 assert(true, 'scoreboard overlay toggles on');
-await page.getByRole('button', { name: '📊 Scores' }).click();
+await page.getByRole('button', { name: '📊 Scoreboard' }).click();
 await page.waitForTimeout(300);
 const pickerName = await page.evaluate(
   () =>

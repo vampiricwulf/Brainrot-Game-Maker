@@ -53,7 +53,7 @@
   import PhoneChip from './host/PhoneChip.svelte';
   import { applyScoreCard, openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
-  import { isRespin, tileDice } from '../lib/tools';
+  import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, partnerTilesShort, phoneUses, phoneUsesLine, validate } from '../lib/validate';
   import type { Place } from '../lib/historylabel';
   import { isColorTaken, nextFreeColor, obsKeyed, PLAYER_PALETTE } from '../lib/colors';
@@ -2385,7 +2385,7 @@
     const s = partner;
     if (!s || s.stage !== 'pick') return;
     if (!s.pickerId) return hint(`${pregameTeams ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})`);
-    if (!partnerCandidates(session, s).length) return hint(`Nobody to partner with: tick “${playerName(session, s.pickerId)} can be on the wheel” to play it Solo, or press Esc`);
+    if (!partnerCandidates(session, s).length) return hint(`Nobody to partner with: tick “${playerName(session, s.pickerId)} can be on the wheel” to play it Solo, or ${VERBS.putBack.label} · Esc`);
     if (toolBusy()) return;
     // (The scores over it: the wheel comes back first.)
     if (app.live.overlay?.kind === 'scoreboard') app.live.overlay = app.live.overlay.under ?? null;
@@ -4120,10 +4120,9 @@
     if (o.kind === 'wheel') {
       heading = `🎡 ${o.name}`;
       const spent = wheelSpentUp(o, session, game);
-      const again = !busy && !!o.spin && o.result !== null && isRespin(o.segments[o.result]);
       steps.push({
         id: 'spin',
-        label: (!o.spin ? VERBS.spin : again ? VERBS.spinAgain : VERBS.spinning).label,
+        label: (!o.spin ? VERBS.spin : VERBS.spinAgain).label,
         keys: 'W',
         disabled: busy || spent,
         ...(spent ? { hint: 'Every slice has landed: Restore them to spin again' } : {}),

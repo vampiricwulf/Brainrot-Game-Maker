@@ -776,7 +776,7 @@ try {
     const shown = Date.now();
     await stateIs((st) => st.status?.text === '🤝 Green Team describes → Red Team guesses');
     assert((await state()).status.seatsText === '🗣 Your team is describing!', 'the question up: Green Team’s phones say the team is describing');
-    assert((await rp.getByText('📤 Distribute', { exact: true }).getAttribute('title')).includes('Copy each card to its teams'), 'the panel copies the cards to teams (its 📤 Distribute heading says so)');
+    assert((await rp.getByText('📤 Hand out the cards', { exact: true }).getAttribute('title')).includes('Copy each card to its teams'), 'the panel copies the cards to teams (its 📤 Hand out the cards heading says so)');
     await p.waitForTimeout(Math.max(0, shown + 1100 - Date.now()));
     await p.keyboard.press('Enter');
     await rs('.timer').waitFor();

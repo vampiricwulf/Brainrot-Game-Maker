@@ -468,8 +468,8 @@ try {
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
   await sleep(450); // the round buttons ignore clicks right after they appear
-  await host.locator('.rn button', { hasText: 'Prev round' }).click();
-  assert(await until(async () => (await stored(host))?.session?.currentRound === 0), '◀ Prev round: back in Round 1');
+  await host.locator('.rn button', { hasText: 'Previous round' }).click();
+  assert(await until(async () => (await stored(host))?.session?.currentRound === 0), '◀ Previous round: back in Round 1');
   await openDeal();
   assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards went when that round ended: 📤 Send puts them out again for this round'), 'back in that round, its cards still went when that round ended (not “taken back”)');
   await dialog.locator('[data-deal-reveal]').click();

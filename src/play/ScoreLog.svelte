@@ -181,7 +181,7 @@
   {#if tab === 'history'}
     <p class="muted small intro">
       Newest first. <b>↶ Back to here</b> undoes everything after a step, <b>↷ Redo to here</b> brings undone steps back. Ctrl+Z and
-      Ctrl+Shift+Z go one at a time.
+      Ctrl+Y (or Ctrl+Shift+Z) go one at a time.
     </p>
     <div class="list tl" role="list">
       {#each items as it, i (it.kind === 'row' ? `${it.row.kind}:${it.row.id}` : `${it.kind}:${i}`)}
@@ -277,7 +277,7 @@
             {#if inStep.has(first.id)}
               <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
             {:else}
-              <button class="small ghost" onclick={() => toggleEvent(session, first.id)}>{first.undone ? 'Restore' : 'Undo'}</button>
+              <button class="small ghost" onclick={() => toggleEvent(session, first.id)}>{first.undone ? '↷ Restore' : '↶ Undo'}</button>
             {/if}
           </div>
         {:else}
@@ -293,7 +293,7 @@
             {#if step.events.some((e) => inStep.has(e.id))}
               <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
             {:else}
-              <button class="small ghost" onclick={() => toggleStep(session, step.key)}>{allUndone ? 'Restore all' : 'Undo all'}</button>
+              <button class="small ghost" onclick={() => toggleStep(session, step.key)}>{allUndone ? '↷ Restore all' : '↶ Undo all'}</button>
             {/if}
           </div>
           {#if expanded[step.key]}
@@ -303,7 +303,7 @@
                 <span class="dot" style:background={p?.color ?? '#666'}></span>
                 <span class="who">{name(e.playerId)}</span>
                 <span class="delta" class:neg={e.delta < 0}>{amount(e.delta)}</span>
-                {#if !inStep.has(e.id)}<button class="small ghost" onclick={() => toggleEvent(session, e.id)}>{e.undone ? 'Restore' : 'Undo'}</button>{/if}
+                {#if !inStep.has(e.id)}<button class="small ghost" onclick={() => toggleEvent(session, e.id)}>{e.undone ? '↷ Restore' : '↶ Undo'}</button>{/if}
               </div>
             {/each}
           {/if}

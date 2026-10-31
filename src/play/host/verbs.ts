@@ -113,13 +113,11 @@ export const VERBS = {
   rollForIt: { label: '🎲 Roll for it', key: 'O', title: 'The tied players roll: the order they roll in is the order they answer in' },
 
   // ---------- Wheels and dice ----------
-  spin: { label: 'Spin!', key: 'W' },
-  /** While it spins (again: once it lands). */
-  spinning: { label: 'Spin again', key: 'W' },
-  /** Landed on "Spin again". */
+  spin: { label: '🎡 Spin!', key: 'W' },
+  /** Once it's spun, in the same place (greyed while it turns; ringed when it landed on "Spin again"). */
   spinAgain: { label: '↻ Spin again', key: 'W' },
-  roll: { label: 'Roll!', key: 'D' },
-  rollAgain: { label: 'Roll again', key: 'D' },
+  roll: { label: '🎲 Roll!', key: 'D' },
+  rollAgain: { label: '↻ Roll again', key: 'D' },
   /**
    * A question pop-up's own way out before its answer (it goes unseen; the blue button reveals it), and Esc's in the
    * stage's menu. (Putting a tool away is the blue button's: Show question ▶, ▦ Done ▶ board, Next ▶.)
@@ -135,11 +133,11 @@ export const VERBS = {
   /** The partner was the only one there could be: the wheel can spin all the same. */
   spinAnyway: { label: '🎡 Spin anyway', key: 'W' },
   /** Who picked it, another player (a menu). */
-  pickerChange: { label: 'change ▾', title: 'Someone else picked it (click: the number keys choose the partner)' },
+  pickerChange: { label: 'Someone else picked it ▾', title: 'Choose who picked it instead (the number keys choose the partner now)' },
   /** The partner, another player (a menu), once the question is up. */
-  partnerChange: { label: 'change partner ▾', title: 'Choose another partner (the cards that follow a part go with it)' },
+  partnerChange: { label: 'Another partner ▾', title: 'Choose another partner (the cards that follow a part go with it)' },
   /** The step after the question, its box's heading: who gets each card. */
-  handOut: { label: '📤 Distribute' },
+  handOut: { label: '📤 Hand out the cards' },
   sendAndStart: { label: '📤 Send and start', key: '⏎', title: 'Enter: the cards not sent yet go to their phones, and the countdown starts' },
   /** The clock started already (T) with cards still to send: Enter sends them, the clock going on. */
   sendCards: { label: '📤 Send the cards (clock running)', key: '⏎', title: 'Enter: the cards not sent yet go to their phones (the countdown goes on)' },

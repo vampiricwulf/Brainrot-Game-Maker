@@ -216,7 +216,7 @@ A right-click on the stage (or `Shift+F10` on the main button, or a long press) 
 item, on its own, is the blue button's step (Show question ▶ `N`, 👁 Reveal answer `N`, ▦ Done ▶ board `N`, Next turn ▶
 `N`…), and like the blue button it asks first when something's left. Then come the moment's own actions, each with its
 key and never a second copy of that step (on PARTNER UP!, 🎡 Spin for a partner `W`, Make Bob the partner `2`…; in a
-clue, 👁 Reveal answer `R` while the blue button is still on a slide, ⏱ Start the countdown `T`; a wheel's Spin! `W`, ✎
+clue, 👁 Reveal answer `R` while the blue button is still on a slide, ⏱ Start the countdown `T`; a wheel's 🎡 Spin! `W`, ✎
 Edit wheel; a Daily Double's who found it; the Final's ✔ Right `C` / ✘ Wrong `X`; a tie's ways to settle it), what its
 box adds (⇄ Swap, ± Adjust score…), the way out (▦ Done ▶ board `Esc` before the answer, asking first as the clue row's
 does; ↩ Put back (keep tile)), ↶ Undo and ⏸ Cover the screen `K`. It works with the controls hidden too (an item that
@@ -235,8 +235,10 @@ lead-in, then more: **＋ Add slide** in the clue editor): the main button goes 
 through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`, green,
 never the blue button) or **− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
 selected (pick them with `1`–`9`, then `Enter` takes the keys to the Amount box: type the points, then `Enter`, and the
-keys are back on the tile). In a 🤝 partner clue, where ✔ Got it / ✘ Missed give the points, it folds behind **± Other
-points…**, and opens by itself once you pick a player (`1`–`9`) or give points by hand on the clue.
+keys are back on the tile; its **✕ Close** folds it again). In a 🤝 partner clue, where ✔ Got it / ✘ Missed give the
+points, it folds behind **± Other points…**, and opens by itself once you pick a player (`1`–`9`) or give points by hand
+on the clue. A player's chip has a quick ✔ / ✘ (“Right: Ann +$200”, “Wrong: Ann −$200”); a ✍ clue's answer rows have
+the same ✔ / ✘, the same look and words.
 
 **A click on the stage** runs the show for a host who drives from it. Where it's the blue button's step (the round's
 intro, the next slide, the answer, back to the board), it asks first when something's left, as the blue button does;
@@ -267,8 +269,9 @@ quiet skip that closes the clue without its answer (asking first, as the blue bu
 crowded row their words go (their signs stay, still named in full) rather than the row wrapping; and the row stays in
 view at the panel's foot as the rows above it scroll (in a 🤝 partner clue in one window the box's own foot holds that
 place). The tiebreaker's row is the same, with 🏁 Back to results. On a played-out board, Next round ▶ is the blue
-button and its place in the round navigation stays empty, so ◀ Prev round keeps its. Under the row come the tools
-(🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right,
+button and its place in the round navigation stays empty, so ◀ Previous round keeps its. Under the row come the tools
+(🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal…, 📊 Scoreboard, pressed while it's on screen) with
+the round navigation (◀ Previous round, as ◀ on a narrow window, the round list, Next round ▶) at the right,
 then a fixed bar that never moves, in groups by what they're for: **↶ Undo ↷ Redo · 📜 Log 👥 Players ⚖ Rules · ⏸
 Cover 🙈 Hide · 🔊 Sound 📺 Audience ▭ Scores window · ❔ Help 🚪 Exit** (on a narrow window, as their signs only: ▭
 Scores window as ▭ up to 1340 px wide; beside the stage in RPG and board-game rounds ↶ Undo and ↷ Redo keep their
@@ -285,15 +288,15 @@ wears a ring. The blue button there is the show's next step only: **Show questio
 **Next ▶** while the partner wheel is up, which puts it away and shows the pair, as `Esc` does: the wheel's own box has
 no ✕ Close then), then 👁 Reveal answer and ▦ Done ▶ board; PARTNER UP!'s ↩ Put back (keep tile) shows its key, `Shift+Esc` (`Esc` there does it too). A click on a box's
 button leaves `Enter` and `W` where they were. A wheel's or
-dice's box keeps its buttons in their places: **Spin!** `W` (or **Roll!** `D`) first, greyed while it turns, **Spin
-again** there once it lands (**↻ Spin again** on a "Spin again" slice), then ✎ Edit wheel and ＋ Spin another wheel
-too…, and the result; it has no Close: putting it away is the blue button's. On a wheel or dice tile that's **Show
-question ▶** (**▦ Done ▶ board** on a tile with no question), greyed while it turns, and Spin! wears a ring until it's
-spun; over anything else (a wheel or dice from the tools row, 📊 Scores, a player's sheet, a roll-off) it's **Next ▶**,
+dice's box keeps its buttons in their places: **🎡 Spin!** `W` (or **🎲 Roll!** `D`) first, then **↻ Spin again** (or
+**↻ Roll again**) in its place once it's spun, greyed while it turns (ringed when it lands on a "Spin again" slice), then
+✎ Edit wheel and ＋ Spin another wheel too…, the result, and “Who was it for? (optional, kept in 📜 Log)”; it has no Close: putting it away is the blue button's. On a wheel or dice tile that's **Show
+question ▶** (**▦ Done ▶ board** on a tile with no question), greyed while it turns, and 🎡 Spin! wears a ring until it's
+spun; over anything else (a wheel or dice from the tools row, 📊 Scoreboard, a player's sheet, a roll-off) it's **Next ▶**,
 which only puts it away (the moment's own step is the next press). A question pop-up's blue button is **👁 Reveal
 answer**, then **Next ▶**; its box keeps **✕ Close** until the answer is up, to put it away unseen. `Esc` closes any of
 them at once (with a score effect not given, it says so first: `Esc` again closes without it). Pressed with something left, the blue button (or a click on the stage) asks first in the check below: a
-wheel or dice tile not spun or rolled yet (**First:** Spin! `W`, `Enter`; a tile with no question can close without it,
+wheel or dice tile not spun or rolled yet (**First:** 🎡 Spin! `W`, `Enter`; a tile with no question can close without it,
 staying on the board), landed on "Spin again" (↻ Spin again), a score effect not given (**✔ Give Ann +$100 ▶
 question**, or **Choose in the box** for a steal, a swap or nobody chosen), or a question pop-up's player picked with no
 points (＋ Award Ann $200 and close it). A tool from the tools row never asks about spinning. A Daily Double's box opens
@@ -385,7 +388,7 @@ at (📜 Log's ↶ Back to here, 🕘 History's Go there ›, the ⛔ between sc
 - 🎲 Dice
 - 🎡 Wheels, including a built-in **Pick a player** wheel (**Pick a team** with phone buzzer Teams). Several wheels can spin at once.
 - 🏁 Who goes first
-- 📊 Scores (with 📋 Copy standings for chat)
+- 📊 Scoreboard (with 📋 Copy standings for chat)
 
 **Phone buzzers** (Buzzer mode, on the pre-game screen's 📱 Phone buzzers card, saved with the game): tick **Phone
 buzzers on** (with **Teams** beside it), press **▶ Start the room** right under it and share the code, link or QR code

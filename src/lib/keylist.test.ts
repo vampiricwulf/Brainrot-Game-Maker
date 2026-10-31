@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterKeys, macKeys, rowCount, type KeyGroup } from './keylist';
+import { filterKeys, macKeys, RENAMED, rowCount, type KeyGroup } from './keylist';
 import { BLUE, hostKeys, silencedRows } from '../play/hostkeys';
 
 const groups: KeyGroup[] = [
@@ -55,6 +55,21 @@ describe('the keys filter', () => {
     expect(filterKeys(groups, 'distribute', false, renamed)[0].rows[0].was).toBeUndefined();
     // (An old name alone doesn't find rows that never had it.)
     expect(rowCount(filterKeys(groups, 'hand out', false, []))).toBe(0);
+  });
+
+  it('knows the game screen’s renamed buttons by their old names, each once, the new name different', () => {
+    const olds = RENAMED.map(([, was]) => was);
+    expect(olds.filter((w, i) => olds.indexOf(w) !== i)).toEqual([]);
+    expect(RENAMED.filter(([now, was]) => !now.trim() || !was.trim() || now === was)).toEqual([]);
+    expect(Object.fromEntries(RENAMED.map(([now, was]) => [was, now]))).toMatchObject({
+      '↩ Cancel (keep tile)': '↩ Put back (keep tile)',
+      '📊 Scores': '📊 Scoreboard',
+      '📤 Distribute': '📤 Hand out the cards',
+      '◀ Prev round': '◀ Previous round',
+    });
+    // The game's keys: S is found by "scores", and says it was 📊 Scores.
+    const s = filterKeys(hostKeys(false), 'scores').flatMap((g) => g.rows).find((r) => r.keys === 'S');
+    expect(s).toMatchObject({ words: '📊 Scoreboard on screen, or off it again', was: '📊 Scores' });
   });
 });
 

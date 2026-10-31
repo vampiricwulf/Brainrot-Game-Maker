@@ -8,7 +8,21 @@ export type KeyGroup = { title: string; keys: [string, string][] };
  * Buttons renamed lately, as [the name now, the name before]: for a release or two the filter finds a row by the old
  * name too, so a host who knows a button by its old name still finds it. Each rename adds its line here.
  */
-export const RENAMED: [string, string][] = [['↩ Put back (keep tile)', '↩ Cancel (keep tile)']];
+export const RENAMED: [string, string][] = [
+  ['↩ Put back (keep tile)', '↩ Cancel (keep tile)'],
+  ['🎡 Spin!', 'Spin!'],
+  ['🎲 Roll!', 'Roll!'],
+  ['↻ Roll again', 'Roll again'],
+  ['📊 Scoreboard', '📊 Scores'],
+  ['▭ Scores window', '▭'],
+  ['📤 Hand out the cards', '📤 Distribute'],
+  ['Someone else picked it ▾', 'change ▾'],
+  ['Another partner ▾', 'change partner ▾'],
+  ['◀ Previous round', '◀ Prev round'],
+  ['↺ Reset slices', '↺ Undo edits'],
+  ['✎ Edit deal', '✎ Change it'],
+  ['Who was it for?', 'This was for'],
+];
 
 /** "Ctrl+" reads "⌘" on a Mac. */
 export const macKeys = (k: string, mac: boolean): string => (mac ? k.replaceAll('Ctrl+', '⌘') : k);

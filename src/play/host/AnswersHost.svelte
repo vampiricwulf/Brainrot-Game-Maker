@@ -31,6 +31,7 @@
     onjudgeall,
     enterJudges = false,
     ring = false,
+    worth = '',
   }: {
     session: Session;
     /** Who answers (ids), in the players' order. */
@@ -58,6 +59,8 @@
     onjudgeall?: () => void;
     /** Nobody is selected: Enter is ✔ Judge all (its button shows ⏎). */
     enterJudges?: boolean;
+    /** What a ✔ gives and a ✘ takes ("$200"), for their words: the same as the score chips' quick ✔ / ✘. */
+    worth?: string;
     /** ✔ Judge all is the next thing to do before ▦ Done ▶ board: it wears the ring. */
     ring?: boolean;
   } = $props();
@@ -161,8 +164,11 @@
             {#if j}
               <span class="mark" class:right={j > 0} class:wrong={j < 0}>{j > 0 ? '✔ Right' : '✘ Wrong'}</span>
             {:else if onjudge}
-              <button class="good small" onclick={() => onjudge(p.id, 1)} aria-label="{p.name} is right" title="Right: + the clue's value">✔</button>
-              <button class="bad small" onclick={() => onjudge(p.id, -1)} aria-label="{p.name} is wrong" title="Wrong: − the clue's value (if the rules take points)">✘</button>
+              <!-- (One look and one name with the score chips' quick ✔ / ✘: "Right: Ann +$200".) -->
+              {@const right = `Right: ${p.name}${worth ? ` +${worth}` : ''}`}
+              {@const wrong = `Wrong: ${p.name}${worth ? ` −${worth}` : ''}`}
+              <button class="small verdict right" onclick={() => onjudge(p.id, 1)} aria-label={right} title={right}>✔</button>
+              <button class="small verdict wrong" onclick={() => onjudge(p.id, -1)} aria-label={wrong} title={wrong}>✘</button>
             {/if}
           </li>
         {/if}
@@ -298,10 +304,12 @@
   .counts {
     font-weight: 600;
   }
-  .mark.right {
+  .mark.right,
+  .verdict.right {
     color: var(--good);
   }
-  .mark.wrong {
+  .mark.wrong,
+  .verdict.wrong {
     color: var(--bad);
   }
 </style>

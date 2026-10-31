@@ -360,7 +360,7 @@ try {
   const catSeat = last().seats.find((x) => x.name === 'Cat').id;
   assert(await until(async () => JSON.stringify((await stored(host))?.session?.partner?.deal?.c2) === JSON.stringify([{ seat: catSeat }])), 'autosave holds card 2 given to Cat');
 
-  // ---------- A host reload in the Distribute step, nothing sent or got ready: no upload, the list as it was ----------
+  // ---------- A host reload in the 📤 Hand out the cards step, nothing sent or got ready: no upload, the list as it was ----------
   /** The host reloads and resumes in one window (`reloaded` runs once the page is back, before Resume game). */
   const resume = async (reloaded = () => {}) => {
     await host.reload();
@@ -373,8 +373,8 @@ try {
   let n = states.length;
   await resume();
   assert(await until(() => states.length > n), 'reloaded: the host is back in the room');
-  assert((await chip('Card 2 to Cat').getAttribute('aria-pressed')) === 'true' && (await stepButton(panel, '📤 Send and start').count()) === 1, 'a reload in the Distribute step: the list as it was (card 2 to Cat), nothing sent');
-  await nothingSent('reloaded in the Distribute step');
+  assert((await chip('Card 2 to Cat').getAttribute('aria-pressed')) === 'true' && (await stepButton(panel, '📤 Send and start').count()) === 1, 'a reload in the 📤 Hand out the cards step: the list as it was (card 2 to Cat), nothing sent');
+  await nothingSent('reloaded in the 📤 Hand out the cards step');
   [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
   await aud.locator('[data-partner-badge]').waitFor();

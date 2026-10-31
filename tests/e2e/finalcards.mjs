@@ -387,9 +387,9 @@ try {
   await toFinal();
   await host.locator('.panel .status', { hasText: 'Title card' }).waitFor();
   await noneFromEditor('the Final’s title card');
-  // ◀ Prev round from its title card: its category never went on screen.
+  // ◀ Previous round from its title card: its category never went on screen.
   await sleep(450);
-  await host.locator('.rn button', { hasText: 'Prev round' }).click();
+  await host.locator('.rn button', { hasText: 'Previous round' }).click();
   await host.locator('.stage-box .board').waitFor();
   await noneFromEditor('back on the board from its title card');
   const named = await shownOf(host, ['Leader hint']);

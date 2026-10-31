@@ -1,6 +1,6 @@
 <!--
   🤝 A partner clue's part of the host panel (partner-clues spec §6.10): PARTNER UP! (who picked it, the partner by the
-  wheel or by hand, ⇄ Swap), then 📤 Distribute (who gets each card: 📤 Send to their phones, ✓ seen, ↻ Send again,
+  wheel or by hand, ⇄ Swap), then 📤 Hand out the cards (who gets each card: 📤 Send to their phones, ✓ seen, ↻ Send again,
   📤 Send changes, ✖ Take back, ⇡ Get it ready, or 📋 copying it to them, or 🪟 showing it in the card window open for
   one of them when no phone gets cards), and ✔ Got it / ✘ Missed with what each gives (then, with steal on a miss, who
   steals it: the others buzz in, or the host picks one). Nothing goes to a phone or the buzzer server but by those

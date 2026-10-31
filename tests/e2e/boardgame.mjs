@@ -373,7 +373,7 @@ try {
   assert(diceTip.includes('round’s own dice'), `and the 🎲 Dice button’s tooltip says D rolls the round’s own dice (${diceTip})`);
   // The dice don't stay on stream into another round.
   assert((await page.locator('.stage-box .ov').count()) === 1, 'the dice are on the stage');
-  await page.getByRole('button', { name: '◀ Prev round' }).click();
+  await page.getByRole('button', { name: '◀ Previous round' }).click();
   await page.waitForTimeout(450);
   assert((await page.locator('.stage-box .ov').count()) === 0, 'and gone once the round changes');
   await page.getByRole('button', { name: 'Next round ▶' }).click();
@@ -882,7 +882,7 @@ try {
     await leaveAnswer(one).click();
     await leave.waitFor({ state: 'detached', timeout: 1000 }).catch(() => {});
   }
-  await one.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === '◀ Prev round' && !b.disabled));
+  await one.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === '◀ Previous round' && !b.disabled));
   await one.locator('.bh').waitFor();
   const emptied = await one
     .waitForFunction(() => document.querySelector('.bh input[aria-label="Steps"]')?.value === '', null, { timeout: 3000 })

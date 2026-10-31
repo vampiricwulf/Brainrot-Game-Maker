@@ -150,7 +150,7 @@
       <button class="small" onclick={() => ((rows = [...rows, newSegment(`Option ${rows.length + 1}`, rows.length)]), apply())}>＋ Add slice</button>
     {/if}
     <button class="small" onclick={() => ((rows = rows.map((s) => ({ ...s, weight: 1 }))), apply())}>Even chances</button>
-    <button class="small ghost" onclick={reset}>↺ Undo edits</button>
+    <button class="small ghost" onclick={reset} title="The wheel's slices as they were before these edits">↺ Reset slices</button>
     <span class="spacer"></span>
     <button class="small" onclick={() => ask('save')}>💾 Save as new wheel…</button>
     {#if preset}

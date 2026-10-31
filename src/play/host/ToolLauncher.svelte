@@ -50,6 +50,8 @@
   let menu = $state<'dice' | 'wheel' | 'rolloff' | 'card' | 'deal' | 'out' | 'win' | null>(null);
   /** Whose cards the 🪟 card window shows (names only). */
   const winName = $derived(cardWindow.open ? session.players.find((p) => p.id === cardWindow.seat)?.name : undefined);
+  /** 📊 Scoreboard is on screen. */
+  const scoreboardUp = $derived(app.live.overlay?.kind === 'scoreboard');
   /**
    * The 🤫 cards out now (sent with Send a card… or from a tile's panel): the tools row says how many, never what. A 🎭
    * deal's are under 🎭 Deal….
@@ -341,7 +343,13 @@
       {/if}
     </div>
   {/if}
-  <button onclick={() => ((menu = null), toggleScoreboard(app.live))} title="Scores (S)">📊 <span class="name">Scores</span></button>
+  <!-- (Pressed while it's on screen: S, or this, puts it away.) -->
+  <button
+    onclick={() => ((menu = null), toggleScoreboard(app.live))}
+    class:on={scoreboardUp}
+    aria-pressed={scoreboardUp}
+    title={scoreboardUp ? 'The scoreboard is on screen: click to put it away (S)' : 'The scoreboard on screen, everyone’s scores (S)'}>📊 <span class="name">Scoreboard</span></button
+  >
   {#if onstopsounds}
     <button class="stop" onclick={() => ((menu = null), onstopsounds())} title="🔇 Stop sounds (Shift+M): the game's sounds on stream, like the round intro's music or the Final's think music">🔇 <span class="word">Stop sounds</span></button>
   {/if}
@@ -394,7 +402,7 @@
       white-space: nowrap;
     }
   }
-  /* (And up to 1000px wide 📊 Scores as 📊: room for 🔇 and 🤫 2 beside a Go to round with a long round name in it.) */
+  /* (And up to 1000px wide 📊 Scoreboard as 📊: room for 🔇 and 🤫 2 beside a Go to round with a long round name in it.) */
   @media (max-width: 1000px) {
     .tl .name {
       position: absolute;

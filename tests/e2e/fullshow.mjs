@@ -193,15 +193,15 @@ async function show(how) {
   const statusHas = (t) => async () => (await host.locator('.panel .status').innerText()).includes(t);
   const stageHas = (sel) => async () => (await host.locator(`.stage-box ${sel}`).count()) > 0;
   const marked = async () => (await host.locator('.panel .mark.right').count()) === 1;
-  /** The tool's own Spin! / Spin again (its box's slot: the blue button only puts it away). */
+  /** The tool's own 🎡 Spin! / ↻ Spin again (its box's slot: the blue button only puts it away). */
   const slot = () => stepButton(host.locator('.panel [data-tool-controls]'));
   const slotSays = async (l) => (await slot().count()) === 1 && (await slot().innerText()).startsWith(l);
-  /** A wheel tile's wheel up, not spun: its box's Spin!, and the blue button Show question ▶. */
-  const toolUp = async () => (await slotSays('Spin!')) && (await mainIs('Show question ▶')());
-  /** A wheel spinning (its slot greyed), or landed already (Spin again in its place). */
-  const spun = async () => (await slot().count()) === 1 && ((await slot().isDisabled()) || (await slotSays('Spin again')));
-  /** A wheel tile's wheel landed: Spin again in its slot, and the blue Show question ▶ awake. */
-  const toolLanded = async () => (await slotSays('Spin again')) && !(await slot().isDisabled()) && (await mainIs('Show question ▶')()) && !(await mainButton(host).isDisabled());
+  /** A wheel tile's wheel up, not spun: its box's 🎡 Spin!, and the blue button Show question ▶. */
+  const toolUp = async () => (await slotSays('🎡 Spin!')) && (await mainIs('Show question ▶')());
+  /** A wheel spinning (its slot greyed), or landed already (↻ Spin again in its place). */
+  const spun = async () => (await slot().count()) === 1 && ((await slot().isDisabled()) || (await slotSays('↻ Spin again')));
+  /** A wheel tile's wheel landed: ↻ Spin again in its slot, and the blue Show question ▶ awake. */
+  const toolLanded = async () => (await slotSays('↻ Spin again')) && !(await slot().isDisabled()) && (await mainIs('Show question ▶')()) && !(await mainButton(host).isDisabled());
   /** A key, then the state it brings. */
   const key = async (k, what, check) => {
     took[part].keys++;

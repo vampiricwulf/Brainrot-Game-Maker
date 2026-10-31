@@ -1091,8 +1091,8 @@ try {
   await page.keyboard.press('h');
   assert((await page.locator('.panel .status').innerText()).includes('Pick a tile'), 'controls hidden, a tap on the touch screen shows Show controls, and the tile it landed on stays shut');
 
-  // 📊 Scores: copy the standings.
-  await page.getByRole('button', { name: '📊 Scores' }).click();
+  // 📊 Scoreboard: copy the standings.
+  await page.getByRole('button', { name: '📊 Scoreboard' }).click();
   await page.getByRole('button', { name: '📋 Copy standings' }).click();
   await page.waitForTimeout(200);
   const clip = await page.evaluate(() => navigator.clipboard.readText());

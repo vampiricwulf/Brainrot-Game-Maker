@@ -1037,9 +1037,8 @@
             <!-- Pressed once on this clue, the same one is off (＋ Award / − Deduct still give or take more on purpose). -->
             {@const was = marks[p.id]?.right}
             <!-- (A partner clue: each of the two's own share, a ✘ often 0 for the partner.) -->
-            {@const gets = quickShare(p.id, true) ?? (ddHidden ? 'the wager' : `+${formatPoints(quickValue, sym)}`)}
-            {@const loses = quickShare(p.id, false) ?? (ddHidden ? 'the wager' : `−${formatPoints(quickValue, sym)}`)}
-            {@const worth = ddHidden ? 'the wager' : formatPoints(quickValue, sym)}
+            {@const gets = quickShare(p.id, true) ?? (ddHidden ? '+ the wager' : `+${formatPoints(quickValue, sym)}`)}
+            {@const loses = quickShare(p.id, false) ?? (ddHidden ? '− the wager' : `−${formatPoints(quickValue, sym)}`)}
             <button
               class="small quick right"
               onclick={() => (onright(p.id), judged())}
@@ -1049,7 +1048,9 @@
                 ? `${p.name} is marked right on this clue (＋ Award gives more)`
                 : partner && !steal
                   ? `Got it: ${p.name} only, ${gets} (their share)`
-                  : `${steal ? 'Stole it' : 'Correct'}: award ${worth} to ${p.name} only`}
+                  : steal
+                    ? `Stole it: ${p.name} ${gets}`
+                    : `Right: ${p.name} ${gets}`}
               >✔</button
             >
             <button
@@ -1061,7 +1062,7 @@
                 ? `${p.name} is marked wrong on this clue (− Deduct takes more)`
                 : partner && !steal
                   ? `Missed: ${p.name} only, ${loses} (their share)`
-                  : `Wrong: deduct ${worth} from ${p.name}`}
+                  : `Wrong: ${p.name} ${loses}`}
               >✘</button
             >
           {:else if chipSlots && game.settings.deductOnWrong}
@@ -1194,7 +1195,7 @@
         {/key}
       {/if}
 
-      <!-- A tile's own 🤫 cards (any tile but a partner clue, whose Distribute list has them): sent only by a press. -->
+      <!-- A tile's own 🤫 cards (any tile but a partner clue, whose 📤 Hand out the cards list has them): sent only by a press. -->
       {#if session.phase === 'clue' && info && !partner && cardSlides(info.clue).length}
         {#key info.clue.id}
           <TileCards {game} {session} clue={info.clue} ontakeback={oncardtakeback} ring={goon?.ring} />
@@ -1217,6 +1218,7 @@
             onjudgeall={onanswerjudgeall}
             enterJudges={!selected.length}
             ring={goon?.ring === 'judgeall'}
+            worth={formatPoints(Math.abs(amount ?? info.value ?? 0), sym)}
           />
         </div>
       {/if}
@@ -1427,7 +1429,8 @@
               >
             {/if}
           {:else if session.phase === 'board'}
-            <button class="ghost" onclick={() => (adjust = false)}>Done</button>
+            <!-- (It folds the row back: ± Adjust score.) -->
+            <button class="ghost" onclick={() => (adjust = false)} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
           {:else if !toolOnly && !buzzing}
             <!-- (The tiebreaker takes one of the tied players.) -->
             {@const pickHint =
@@ -1814,9 +1817,28 @@
   .toolsrow:empty {
     display: none;
   }
-  /* Under the stage, with 🔇 Stop sounds or cards out in the tools row (they come and go on the board), ◀ Prev round as
-     ◀ (still read out by name, its tooltip says it): the board's tools and the round's ◀ / picker / ▶ stay on one line,
-     as in a clue, so the stage keeps one size. (Up to 1520px wide: on a wider window it fits in full.) */
+  /* Under the stage, with 🔇 Stop sounds or cards out in the tools row (they come and go on the board), ◀ Previous round
+     as ◀ (still read out by name, its tooltip says it): the board's tools and the round's ◀ / picker / ▶ stay on one
+     line, as in a clue, so the stage keeps one size. (Up to 1520px wide: on a wider window it fits in full.) Up to 1100px
+     wide, and beside the stage, it's ◀ anyway. */
+  .side > .toolsrow :global(.rn .word) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  @media (max-width: 1100px) {
+    .panel:not(.side) > .toolsrow :global(.rn .word) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
   @media (max-width: 1520px) {
     .panel:not(.side) > .toolsrow:has(:global(.tl :is(.stop, .cardsout))) :global(.rn .word) {
       position: absolute;

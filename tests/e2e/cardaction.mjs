@@ -195,8 +195,8 @@ try {
   const tc = host.locator('[data-tool-controls]');
   // (A wheel from the tools row: its box's Spin!; the blue button is Next ▶, which only puts it away.)
   assert(await flowIs(host, 'Next ▶'), 'a wheel from the tools row: the blue button is Next ▶');
-  await stepButton(tc, 'Spin!').click();
-  await tc.getByText('This was for').waitFor({ timeout: 10000 });
+  await stepButton(tc, '🎡 Spin!').click();
+  await tc.getByText('Who was it for?').waitFor({ timeout: 10000 });
   await tc.getByRole('button', { name: 'Bob', exact: true }).click();
   const slice = tc.getByRole('button', { name: '🤫 Card for everyone else' });
   await slice.click();
@@ -444,7 +444,7 @@ try {
   assert((await pRow.getByRole('button', { name: 'Card 1 to Cat', exact: true }).getAttribute('aria-pressed')) === 'true', 'the partner clue’s card goes to Cat, the describer');
   await pRow.getByRole('button', { name: 'Show card 1 to Cat' }).click();
   await win2.getByText(DESCRIBE).waitFor();
-  assert((await pRow.innerText()).includes('in the 🪟 card window'), 'from the Distribute row, 🪟 Show puts it in Cat’s card window, and the row says so');
+  assert((await pRow.innerText()).includes('in the 🪟 card window'), 'from the 📤 Hand out the cards row, 🪟 Show puts it in Cat’s card window, and the row says so');
   assert(!(await shownOf(solo, SECRETS)).length && sockets === 0, 'the host page holds none of its words, and nothing went anywhere else');
   await win2.getByText('You’re the Describer').waitFor();
   assert(await win2.getByText('Describe it to Ann: don’t say what’s on it!').isVisible(), 'the card window says Cat’s part and what to do, as a phone does');

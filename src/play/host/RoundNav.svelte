@@ -56,7 +56,7 @@
   // The stage's menu: back, and going on early (it asks first), as in this row. Played out, going on is the blue
   // button's step, first in the menu.
   offerMenu('board', () => [
-    ...(app.test ? [] : [{ label: '◀ Prev round', disabled: session.currentRound === 0, onclick: onprev }]),
+    ...(app.test ? [] : [{ label: '◀ Previous round', disabled: session.currentRound === 0, onclick: onprev }]),
     ...(done ? [] : [{ id: 'nextround', label: nextLabel, hint: 'Asks first', onclick: next }]),
   ]);
 
@@ -66,7 +66,7 @@
     ask('next');
   }
 
-  /** ◀ Prev round goes at once: the second click of a double-click (on the new round's ◀ Prev round) isn't a second step. */
+  /** ◀ Previous round goes at once: the second click of a double-click (on the new round's) isn't a second step. */
   function prev(e: MouseEvent): void {
     if (secondClick(e) || justShown(shownAt, Date.now(), e.detail)) return;
     onprev();
@@ -136,7 +136,8 @@
     <!-- ▶ Test this round: one round, nothing kept (🚪 Exit goes back to the editor). -->
     <span class="test" title="Only this round plays, and nothing is kept: 🚪 Exit goes back to the editor">🧪 Testing this round</span>
   {:else}
-    <button class="ghost" onclick={prev} disabled={session.currentRound === 0} title="Prev round">◀ <span class="word">Prev round</span></button>
+    <!-- (◀ alone on a narrow window and beside the stage, named in full: see HostPanel's .rn .word.) -->
+    <button class="ghost" onclick={prev} disabled={session.currentRound === 0} title="Previous round">◀ <span class="word">Previous round</span></button>
   {/if}
   {#if ongoto && game.rounds.length > 2}
     <!-- Rounds can be played out of order: jump to any of them. -->
@@ -154,8 +155,8 @@
       {/each}
     </select>
   {/if}
-  <!-- Played out, it's the blue button instead (one of them, not two): its room stays here, unseen, so ◀ Prev round and
-       Go to round keep their places. (A final round's long name is cut short, never its ▶: in full in its tooltip.) -->
+  <!-- Played out, it's the blue button instead (one of them, not two): its room stays here, unseen, so ◀ Previous round
+       and Go to round keep their places. (A final round's long name is cut short, never its ▶: in full in its tooltip.) -->
   {#if !done}
     <button class="ghost next" onclick={next} title={`${nextName} · ${board ? `${left} clue${left === 1 ? '' : 's'} not played yet` : 'asks first'}`}><span class="nm">{nextName}</span> ▶</button>
   {:else}

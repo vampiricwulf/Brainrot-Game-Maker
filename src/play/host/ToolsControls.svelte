@@ -1,6 +1,6 @@
 <!--
   Host controls for whatever tool overlay is on screen, in fixed places on its first row: its name, the spin or roll in
-  one slot (Spin!, greyed while it turns, then Spin again; Roll!, then Roll again), ✎ Edit wheel and ＋ Spin another
+  one slot (🎡 Spin!, then ↻ Spin again, greyed while it turns; 🎲 Roll!, then ↻ Roll again), ✎ Edit wheel and ＋ Spin another
   wheel too…, the result. Putting it away is the blue button's step (a tile's own: Show question ▶ or ▦ Done ▶ board;
   any other: Next ▶), or Esc, so there's no Close here; a question pop-up keeps ✕ Close until its answer is up. Then the
   result's actions and score cards.
@@ -98,7 +98,7 @@
   /** This spin's roll-log entries (one per wheel spun together: a spent one, or one added since, didn't spin). */
   const spunExtras = $derived(o?.kind === 'wheel' && o.spin ? (o.extra ?? []).filter((w) => w.spin && w.spin.startedAt >= o.spin!.startedAt).length : 0);
   const spinRolls = $derived(spunExtras ? (session.rollLog ?? []).slice(-(1 + spunExtras)) : lastRoll ? [lastRoll] : []);
-  /** The spin's entry the "This was for" chips show and set (not a 🎯 Pick a player wheel's, whose result is a player). */
+  /** The spin's entry the "Who was it for?" chips show and set (not a 🎯 Pick a player wheel's, whose result is a player). */
   const tagRoll = $derived([...spinRolls].reverse().find((r) => !r.picked) ?? lastRoll);
   /** The other dice whose faces have effects (the first one's is `outcome`): each gets its buttons and score card. */
   const otherFaces = $derived(o?.kind === 'dice' && o.roll ? rollOutcome(o.roll).others : []);
@@ -158,8 +158,6 @@
     if (landedSaid) announce(landedSaid);
   });
 
-  /** The wheel landed on a "Spin again" slice: its slot reads ↻ Spin again. */
-  const again = $derived(o?.kind === 'wheel' && !!o.spin && o.result !== null && isRespin(o.segments[o.result]));
   /** The wheel landed or the dice came up. */
   const landed = $derived(!busy && ((o?.kind === 'wheel' && !!o.spin) || (o?.kind === 'dice' && !!o.roll)));
   /**
@@ -192,6 +190,9 @@
   });
   onDestroy(keysToMain);
 
+  /** The wheel landed on a "Spin again" slice: its line says so (its slot, ↻ Spin again, wears the ring). */
+  const again = $derived(o?.kind === 'wheel' && !!o.spin && o.result !== null && isRespin(o.segments[o.result]));
+
   /** A wheel/dice tile with nothing to ask, showing its own tool: closing it goes back to the board (the tile is done). */
   const tileDone = $derived.by(() => {
     const info = session.phase === 'clue' ? currentClueInfo(session, game) : undefined;
@@ -200,7 +201,7 @@
 
   /**
    * A board game's own roll (or its movement wheel): its turn box rolls again (🎲 Roll), and it's the turn player's, so
-   * the box here has no Roll again nor "This was for".
+   * the box here has no ↻ Roll again nor "Who was it for?".
    */
   const boardMover = $derived.by(() => {
     const { round } = boardNow(game, session);
@@ -210,15 +211,15 @@
   const roll = () => o?.kind === 'dice' && rollDice(app.live, session, o.preset, o.mover);
 
   /**
-   * The spin or roll's place in the box, after its name, its one slot: Spin! (greyed while it turns, then Spin again in
-   * its place; ↻ Spin again on a "Spin again" slice), Roll! then Roll again (W, D). It wears the ring while it's what's
-   * left first (a tile's own tool not spun yet). None for the partner's wheel (the 🤝 box spins it again) or a board
+   * The spin or roll's place in the box, after its name, its one slot: 🎡 Spin! (then ↻ Spin again in its place, greyed
+   * while it turns), 🎲 Roll! then ↻ Roll again (W, D). It wears the ring while it's what's left first (a tile's own tool
+   * not spun yet, or landed on a "Spin again" slice). None for the partner's wheel (the 🤝 box spins it again) or a board
    * game's own roll. Closing it is the blue button's (Show question ▶, ▦ Done ▶ board, Next ▶), or Esc.
    */
   const spinPlace = $derived.by((): NextAction | null => {
     if (o?.kind === 'wheel' && !o.partnerFor && !boardMover) {
       const why = spent && !busy ? { title: 'Every slice has landed: Restore them to spin again' } : {};
-      return step(!o.spin ? VERBS.spin : again && !busy ? VERBS.spinAgain : VERBS.spinning, spin, { disabled: busy || spent, ...why });
+      return step(!o.spin ? VERBS.spin : VERBS.spinAgain, spin, { disabled: busy || spent, ...why });
     }
     if (o?.kind === 'dice' && !boardMover) return step(o.roll ? VERBS.rollAgain : VERBS.roll, roll, { disabled: busy });
     return null;
@@ -442,7 +443,7 @@
       {#if !boardMover || outcome?.timerSeconds}
         <div class="row">
           {#if !boardMover}
-            <span class="muted small">This was for (optional, goes in the roll log):</span>
+            <span class="muted small">Who was it for? (optional, kept in 📜 Log)</span>
             {#each session.players as p (p.id)}
               {@const on = tagRoll?.playerIds?.includes(p.id)}
               <button

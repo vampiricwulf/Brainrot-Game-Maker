@@ -198,12 +198,12 @@ try {
   await picker.selectOption({ label: '🏆 Final Jeopardy!' });
   await page.waitForTimeout(450);
   await leaveAnswer(page).click();
-  // Its title card, by mistake: ◀ Prev round goes back without starting it (its category never on stream).
+  // Its title card, by mistake: ◀ Previous round goes back without starting it (its category never on stream).
   await page.locator('.title-card .round-name').filter({ hasText: 'Final Jeopardy!' }).waitFor();
   await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
-  await page.getByRole('button', { name: '◀ Prev round' }).click();
+  await page.getByRole('button', { name: '◀ Previous round' }).click();
   await page.locator('.stage-box .board').waitFor();
-  assert((await page.locator('.fj').count()) === 0, 'the Final’s title card has ◀ Prev round: back to Double Jeopardy! without starting the Final');
+  assert((await page.locator('.fj').count()) === 0, 'the Final’s title card has ◀ Previous round: back to Double Jeopardy! without starting the Final');
   await page.waitForTimeout(450);
   await picker.selectOption({ label: '🏆 Final Jeopardy!' });
   await page.waitForTimeout(450);

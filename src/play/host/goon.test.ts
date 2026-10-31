@@ -688,21 +688,21 @@ describe('wheels, dice, the scores and pop-ups over the stage (3.4 F, G, M)', ()
     const none = wheelTile(false);
     const done = mainStep(ctx(none.g, none.s, { live: none.live }))!;
     expect([said(done), done.flow]).toEqual(['▦ Done ▶ board · N', 'done']);
-    // Dice: Roll! (D ⏎), greyed "Still rolling" while they roll; a roll-off from the tools row too.
+    // Dice: 🎲 Roll! (D ⏎), greyed "Still rolling" while they roll; a roll-off from the tools row too.
     board(g).categories[0].clues[1].type = 'dice';
     openDice(live, quickDice(6, 1, 'd6'));
     const dc = ctx(g, s, { live });
-    expect([mainStep(dc)!.tool, lines(leftNow(dc, mainStep(dc)!))]).toEqual(['roll', [['first: The dice haven’t been rolled yet: the question comes after.', 'Roll! [D] ⏎ · close']]]);
+    expect([mainStep(dc)!.tool, lines(leftNow(dc, mainStep(dc)!))]).toEqual(['roll', [['first: The dice haven’t been rolled yet: the question comes after.', '🎲 Roll! [D] ⏎ · close']]]);
     live.overlay = { kind: 'rolloff', nonce: 'r', sides: 20, rounds: [], ranking: ['a'], winner: 'a', startedAt: 10, roundMs: 1000 };
     expect([mainStep(ctx(g, s, { live, now: 11 }))!.busy, said(mainStep(ctx(g, s, { live, now: 99999 })))]).toEqual(['Still rolling: wait for it to land', 'Next ▶ · N']);
   });
 
-  it('a tile’s own wheel not spun: "First:", Spin! (W ⏎), ringed, silenced by its tick; no question: closing keeps the tile', () => {
+  it('a tile’s own wheel not spun: "First:", 🎡 Spin! (W ⏎), ringed, silenced by its tick; no question: closing keeps the tile', () => {
     const { g, s, live } = wheelTile();
     const c = ctx(g, s, { live });
     const st = mainStep(c)!;
     const items = leftNow(c, st);
-    expect(lines(items)).toEqual([['first: The wheel hasn’t spun yet: its question comes after.', 'Spin! [W] ⏎ · close']]);
+    expect(lines(items)).toEqual([['first: The wheel hasn’t spun yet: its question comes after.', '🎡 Spin! [W] ⏎ · close']]);
     const ck = open(st, items);
     expect([ringOf(items), quietKinds(items), items[0].quick[0].after, anywayLabel(ck), teachLine(ck)]).toEqual([
       'toolslot',
