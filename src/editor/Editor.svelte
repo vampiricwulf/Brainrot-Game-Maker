@@ -1,7 +1,7 @@
 <script lang="ts">
   import { focusRescue } from '../lib/focusrescue';
   import { inertWhile } from '../lib/modal';
-  import { dropMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { dropMenu, menuItem, menuOf, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, onOpenedFile, readSave, type SaveEntry } from '../lib/desktop.svelte';
@@ -375,27 +375,22 @@
    */
   function roundMenu(i: number): MenuEntry[] {
     const round = game.rounds[i];
-    return [
-      { heading: roundName(round, i) },
-      ...(ontest ? [{ label: '▶ Test this round', onclick: () => ontest(i), hint: 'Play just this round (nothing kept)' }, { sep: true } as const] : []),
-      { label: '✎ Rename', onclick: () => (renamingRound = round.id), keys: 'F2' },
-      { label: '⧉ Duplicate', onclick: () => duplicateRound(i), keys: 'Ctrl+D' },
-      { label: '📋 Copy round', onclick: () => copyRoundOf(game, i), hint: 'To paste in this game or another', keys: 'Ctrl+C' },
-      {
-        label: clipboard.round ? `📋 Paste round “${bundleName(clipboard.round)}” after it` : '📋 Paste round after it',
-        disabled: !clipboard.round,
-        onclick: () => {
+    return menuOf({
+      heading: roundName(round, i),
+      verbs: ontest ? [{ label: '▶ Test this round', onclick: () => ontest(i), hint: 'Play just this round (nothing kept)' }] : [],
+      rename: menuItem.rename(() => (renamingRound = round.id)),
+      duplicate: menuItem.duplicate(() => duplicateRound(i)),
+      copy: menuItem.copy(() => copyRoundOf(game, i), { label: '📋 Copy round', hint: 'To paste in this game or another' }),
+      paste: menuItem.paste(
+        () => {
           const at = pasteRound(game, i);
           if (at !== null) showNew(at);
         },
-        keys: 'Ctrl+V',
-      },
-      { sep: true },
-      { label: '▲ Move up', onclick: () => moveRound(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, keys: 'Alt+↓' },
-      { sep: true },
-      { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i), keys: 'Delete' },
-    ];
+        { label: clipboard.round ? `📋 Paste round “${bundleName(clipboard.round)}” after it` : '📋 Paste round after it', disabled: !clipboard.round },
+      ),
+      move: [menuItem.up(() => moveRound(i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveRound(i, i + 1), { disabled: i === game.rounds.length - 1 })],
+      delete: menuItem.delete('round', () => removeRound(i)),
+    });
   }
 
   /**
