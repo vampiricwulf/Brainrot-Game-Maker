@@ -441,7 +441,8 @@ try {
   await page.waitForTimeout(300);
   assert((await preview()) === loaded, `a caption font picked from the list shows once it has loaded (${fresh})`);
   // Its side panel says what it changes: This caption, then Whole picture with Straighten and Picture size.
-  const panelHeads = await ie.locator('aside h4').allInnerTexts();
+  // (Its headings are drawn in capitals; their words are what the panel says.)
+  const panelHeads = (await ie.locator('aside h4').allTextContents()).map((t) => t.trim());
   assert(
     panelHeads.includes('This caption') && panelHeads.includes('Whole picture') && (await ie.getByLabel(/^Straighten/).count()) === 1 && (await ie.getByLabel(/^Picture size/).count()) === 1,
     `the caption's own sliders under This caption, the picture's under Whole picture: Straighten, Picture size (${panelHeads.join(' | ')})`,
