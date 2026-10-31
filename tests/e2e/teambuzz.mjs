@@ -167,7 +167,7 @@ try {
   assert(bar.includes(`Room ${code} · 3 people on 2 of 2 teams`), `the bar by Start game counts them as the card does (${bar})`);
   const list = card.locator('ul.phones');
   const listed = (await list.innerText()).replace(/\s+/g, ' ');
-  assert(/Player 1 2 on it.*Ann ✔ joined.*Al ✔ joined.*Player 2 1 on it.*Bea ✔ joined/.test(listed), `two phones on one team, one on the other: the host sees who is on which team (${listed})`);
+  assert(/Player 1 2 on it.*Ann 📱 in.*Al 📱 in.*Player 2 1 on it.*Bea 📱 in/.test(listed), `two phones on one team, one on the other: the host sees who is on which team (${listed})`);
   // The pre-game list is of teams now: its words say so, and who joined shows under each team.
   const roster = host.locator('[data-place="play:players"]');
   assert((await roster.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams' && (await roster.getByRole('button', { name: '＋ Add team' }).isVisible()), 'with Teams on, the pre-game card is 👥 Teams, with ＋ Add team');
@@ -204,10 +204,10 @@ try {
   await zed.getByRole('button', { name: 'Join the team' }).click();
   await zed.locator('#me').getByText('Zed · Player 2').waitFor();
 
-  // The ✕ that takes a whole team off reads differently from each person's ✕ under it.
+  // The ⛔ that takes a whole team off reads differently from each person's ⛔ under it.
   assert(
-    (await card.getByRole('button', { name: 'Take everyone off Player 2' }).innerText()).trim() === '✕ All' && (await card.getByRole('button', { name: 'Take Zed off Player 2' }).innerText()).trim() === '✕',
-    'a team’s row: “✕ All” takes everyone off; each person’s ✕ under it, only them',
+    (await card.getByRole('button', { name: 'Take everyone off Player 2' }).innerText()).trim() === '⛔ Kick all' && (await card.getByRole('button', { name: 'Take Zed off Player 2' }).innerText()).trim() === '⛔',
+    'a team’s row: “⛔ Kick all” takes everyone off; each person’s ⛔ under it, only them',
   );
   // The host moves Al to Player 2 and back, and takes Zed off.
   await card.getByLabel('Move Al to another team').selectOption({ label: 'Player 2' });

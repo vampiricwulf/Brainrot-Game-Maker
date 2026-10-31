@@ -1,7 +1,7 @@
 <!--
-  Phone buzzers: people asking to join from their phone first, then each player and their phone (joined, gone quiet, or
-  not yet), with 📱 Free seat (new phone) and, apart at the row's end, ⛔ Kick.
-  Teams: each team and the people on it (move one to another team, or take them off). A player's row opens their menu
+  Phone buzzers: people asking to join from their phone first, then each player and their phone in the 👥 rows' words
+  (📱 in, 📵 lost 0:12, 📱 waiting, ⛔ kicked 1:40…), with 📱 Free seat (new phone) and, apart at the row's end, ⛔ Kick.
+  Teams: each team and the people on it (move one to another team, or ⛔ take them off). A player's row opens their menu
   (a right-click, Shift+F10; before the game the 👥 list's, in the game the host's) and F2 renames them before the game.
 -->
 <script lang="ts">
@@ -10,6 +10,7 @@
   import { FULL_SHOWN_MS, remote, roomCanFree } from '../lib/remote.svelte';
   import { KICK_BLOCK_MS, MAX_PHONES } from '../lib/buzzproto';
   import { awayFor, phoneAwaySince } from './host/phoneaway.svelte';
+  import { phoneWord } from './phonewords';
   import JoinAsk, { joinAsks } from './JoinAsk.svelte';
   import { isMenuKey } from '../lib/menustate.svelte';
 
@@ -69,7 +70,7 @@
   // "Room full" shows for a while after the room last turned a phone away.
   let now = $state(Date.now());
   onMount(() => {
-    // (Every second: "offline 0:12" counts up.)
+    // (Every second: "lost 0:12" counts up.)
     const id = setInterval(() => (now = Date.now()), 1000);
     return () => clearInterval(id);
   });
@@ -85,9 +86,13 @@
   const full = $derived(session.players.length >= max);
   /**
    * The room can't be reached right now: nothing these buttons say would get to it (they're greyed out), and its last
-   * list of phones is stale or gone (no ✔ joined from it, and no "waiting" or "nobody yet" either).
+   * list of phones is stale or gone (no 📱 in from it, and no "waiting" or "nobody yet" either).
    */
   const down = $derived(remote.status !== 'online');
+  /** A player's phone in the 👥 rows' words (one word per state, the same on ▶ Play's rows and here). */
+  const wordOf = (id: string, ph: ReturnType<typeof phoneOf>) =>
+    phoneWord({ online: !down, phone: ph ? (ph.connected ? 'in' : 'away') : null, awaySince: phoneAwaySince(id), kickedAt: remote.kicked[id], locked }, now);
+  const TONE = { good: 'ok', warn: 'away', plain: 'muted' } as const;
   const downTitle = 'The buzzer room isn’t reachable right now';
   /** Phones open on the join screen that haven't picked a name (teams: a team) yet. */
   const picking = $derived(remote.phones.filter((p) => !p.seatId && !p.pendingName && p.connected).length);
@@ -113,21 +118,21 @@
         {#if !down && !ms.length && locked}
           <span class="muted" title={LOCKED_OUT}>🔒 locked out</span>
         {:else}
-          <span class="muted">{down ? 'room out of reach' : ms.length ? `${ms.length} on it` : 'nobody yet'}</span>
+          <span class="muted">{down ? '📱 out of reach' : ms.length ? `${ms.length} on it` : 'nobody yet'}</span>
         {/if}
         {#if phoneAwaySince(p.id) !== null}
           {@const at = phoneAwaySince(p.id) ?? now}
-          <span class="away" data-phone-offline={p.id}>📵 offline {awayFor(at, now)}</span>
+          <span class="away" data-phone-offline={p.id}>📵 lost {awayFor(at, now)}</span>
         {/if}
         {#if ms.length}
-          <!-- (Its words set it apart from each person's ✕ right under it.) -->
-          <button class="ghost small x" onclick={() => onkick(p.id)} disabled={down} aria-label="Take everyone off {p.name}" title={down ? downTitle : "Take everyone off this team: those phones can't join it again for 2 minutes"}>✕ All</button>
+          <!-- (Its words set it apart from each person's ⛔ right under it.) -->
+          <button class="ghost small x danger" onclick={() => onkick(p.id)} disabled={down} aria-label="Take everyone off {p.name}" title={down ? downTitle : "Take everyone off this team: those phones can't join it again for 2 minutes"}>⛔ Kick all</button>
         {/if}
       </li>
       {#each ms as m (m.member)}
         <li class="member" style:--c={p.color}>
           <span class="name" dir="auto">{m.name}</span>
-          {#if down}<span class="muted">room out of reach</span>{:else if m.connected}<span class="ok">✔ joined</span>{:else}<span class="away">… phone away</span>{/if}
+          {#if down}<span class="muted">📱 out of reach</span>{:else if m.connected}<span class="ok">📱 in</span>{:else}<span class="away" title="Their phone dropped out: it comes back by itself">📵 lost</span>{/if}
           {#if onmove && session.players.length > 1}
             <select
               class="small move"
@@ -147,28 +152,18 @@
             </select>
           {/if}
           {#if onkickmember}
-            <button class="ghost small x" onclick={() => m.member && onkickmember(p.id, m.member, m.name ?? '')} disabled={down} aria-label="Take {m.name} off {p.name}" title={down ? downTitle : "Take them off the team: that phone can't join it again for 2 minutes"}>✕</button>
+            <button class="ghost small x" onclick={() => m.member && onkickmember(p.id, m.member, m.name ?? '')} disabled={down} aria-label="Take {m.name} off {p.name}" title={down ? downTitle : "Take them off the team: that phone can't join it again for 2 minutes"}>⛔</button>
           {/if}
         </li>
       {/each}
     {:else}
+    {@const w = wordOf(p.id, ph)}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <li style:--c={p.color} data-player-id={p.id} oncontextmenu={(e) => onmenu?.(e, p.id)} onkeydown={(e) => rowKey(e, p.id)}>
       <span class="dot" aria-hidden="true"></span>
       <span class="name" dir="auto">{p.name}</span>
-      {#if down}
-        <span class="muted">phone: room out of reach</span>
-      {:else if ph?.connected}
-        <span class="ok">✔ joined</span>
-      {:else if ph}
-        {@const at = phoneAwaySince(p.id)}
-        <span class="away" data-phone-offline={p.id}>📵 offline{at !== null ? ` ${awayFor(at, now)}` : ''}</span>
-      {:else if locked}
-        <!-- (No phone has its seat: Lock seats keeps any new one out, so they couldn't take it.) -->
-        <span class="muted" title={LOCKED_OUT}>🔒 locked out</span>
-      {:else}
-        <span class="muted">waiting</span>
-      {/if}
+      <!-- (🔒 locked out: no phone has its seat, and Lock seats keeps any new one out, so they couldn't take it.) -->
+      <span class={TONE[w.tone]} title={w.title} data-phone-offline={ph && !ph.connected && !down ? p.id : undefined}>{w.text}</span>
       {#if !ph && roomCanFree() && now - (remote.kicked[p.id] ?? -Infinity) < KICK_BLOCK_MS}
         <!-- Kicked a moment ago (by mistake, the wrong row): that phone can be let back before its 2 minutes are up. -->
         <button class="small ghost" onclick={() => onkick(p.id, true)} disabled={down} aria-label="Let back: {p.name}’s phone" title={down ? downTitle : 'Let the phone you kicked take this seat again now'}>↩ Let back</button>
@@ -247,7 +242,7 @@
   .ok {
     color: var(--good, #4caf50);
   }
-  /* (A row's status on one line: "✔ joined", "📵 offline 0:03".) */
+  /* (A row's status on one line: "📱 in", "📵 lost 0:03".) */
   li .ok,
   li .away,
   li .muted {

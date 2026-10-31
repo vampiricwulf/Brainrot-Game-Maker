@@ -231,7 +231,7 @@ try {
   await say({ t: 'phones', phones: [c1, zedAsks] });
   await barLine.getByText('Zed wants to join').waitFor();
   assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF open: 1 of 3 joined' }).count()) === 1, '✅ Before you start ticks the room off once a phone has joined');
-  assert((await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'a joined player shows ✔ joined');
+  assert((await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('📱 in'), 'a joined player shows 📱 in (the 👥 rows’ word)');
   assert((await page.locator('.pregame [data-phone-word]').allInnerTexts()).join('|') === '📱 in|📱 waiting|📱 waiting', 'and their 👥 row says 📱 in');
   // A 📱 row opens the 👥 row's menu (the same one), and F2 there renames them.
   await card.locator('li', { hasText: 'Player 2' }).click({ button: 'right' });
@@ -239,8 +239,8 @@ try {
   assert(rowMenu[0].startsWith('✎ Rename') && rowMenu.at(-1).startsWith('🗑 Delete player'), `right-click a player's 📱 row: their menu (${rowMenu.join(', ')})`);
   await page.keyboard.press('Escape');
   await page.getByRole('menu').waitFor({ state: 'detached' });
-  assert((await card.locator('li', { hasText: 'Player 2' }).innerText()).includes('waiting'), 'the others are waiting');
-  // The room out of reach for a moment: its last list of phones is stale (no count, no ✔ joined), and what would tell it
+  assert((await card.locator('li', { hasText: 'Player 2' }).innerText()).includes('📱 waiting'), 'the others are 📱 waiting');
+  // The room out of reach for a moment: its last list of phones is stale (no count, no 📱 in), and what would tell it
   // something is greyed out (it wouldn't get there: Zed would wait to be let in for good).
   await page.evaluate(() => {
     window.__room.offline = true;
@@ -249,10 +249,10 @@ try {
   await card.getByText('⚠ Reconnecting to the buzzer room…').waitFor();
   assert((await page.locator('.actions .room-note').innerText()).includes('Room BCDF · ⚠ reconnecting'), 'reconnecting: the Start bar says so instead of “1 of 3 joined”');
   assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF' }).count()) === 0, '✅ Before you start no longer ticks the room off');
-  assert(!(await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'and Player 1 isn’t shown as ✔ joined from the stale list');
+  assert(!(await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('📱 in'), 'and Player 1 isn’t shown as 📱 in from the stale list');
   assert((await page.locator('.pregame [data-phone-word]').allInnerTexts()).every((w) => w === '📱 out of reach'), 'and the 👥 rows say 📱 out of reach');
   const p2Row = await card.locator('li', { hasText: 'Player 2' }).innerText();
-  assert(p2Row.includes('room out of reach') && !p2Row.includes('waiting'), 'nor Player 2 as waiting for a phone: the room is out of reach');
+  assert(p2Row.includes('📱 out of reach') && !p2Row.includes('waiting'), 'nor Player 2 as waiting for a phone: the room is out of reach');
   assert(
     (await card.getByRole('button', { name: '✔ Add' }).isDisabled()) &&
       (await card.getByRole('button', { name: 'Turn Zed away' }).isDisabled()) &&
@@ -450,7 +450,7 @@ try {
   await page.locator(`.panel .p [data-phone-away="${seats[1].id}"]`).waitFor();
   assert((await page.locator('.panel .p [data-phone-away]').count()) === 1, 'a dropped phone: 📵 on that player’s chip (only theirs)');
   await pop.locator(`[data-phone-offline="${seats[1].id}"]`).waitFor();
-  assert(/^📵 offline \d+:\d\d$/.test(await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()), `and the phones list says “📵 offline 0:01” (${await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()})`);
+  assert(/^📵 lost \d+:\d\d$/.test(await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()), `and the phones list says “📵 lost 0:01”, the 👥 rows’ word (${await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()})`);
   await say({ t: 'phones', phones: [{ conn: 'c2', seatId: seats[1].id, connected: true }, { conn: 'c3', seatId: seats[2].id, connected: true }] });
   await page.locator('.panel .p [data-phone-away]').waitFor({ state: 'detached' });
   assert(true, 'back online, the 📵 goes');
