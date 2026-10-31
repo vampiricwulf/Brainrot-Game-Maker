@@ -166,6 +166,18 @@ try {
   await page.waitForTimeout(450);
   await page.locator('aside .ia').getByRole('button', { name: 'Redo 4 steps' }).click();
   assert((await scores()) === '$300 $400 $400' && (await names()).startsWith('Alice'), 'Redo to here brings them all back');
+  // A row's right-click menu: headed by its own words (all the log shows), Back to here, and for a score just that one.
+  const award = page.locator('aside .item', { hasText: '+$100 × 2' }).first();
+  await award.click({ button: 'right' });
+  const logMenu = page.getByRole('menu');
+  assert((await logMenu.locator('.heading').innerText()) === (await award.locator('.text').innerText()), 'a row’s menu is headed by its own words, nothing more');
+  const logItems = (await logMenu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(['↶ Back to here', '↶ Undo just this score'].every((x) => logItems.includes(x)), `a score row's menu: ↶ Back to here, ↶ Undo just this score (${logItems.join(' | ')})`);
+  await logMenu.getByRole('menuitem', { name: '↶ Undo just this score' }).click();
+  assert((await scores()) === '$300 $300 $300' && (await names()).startsWith('Alice'), 'Undo just this score takes back that award only, the steps after it stay');
+  await award.click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '↷ Restore' }).click();
+  assert((await scores()) === '$300 $400 $400', 'and ↷ Restore brings it back');
   await page.keyboard.press('Escape');
 
   // K covers the screen in any round, and the fixed bar's ⏸ Cover shows it (filled, saying ▶ Uncover).

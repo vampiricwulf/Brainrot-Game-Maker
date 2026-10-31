@@ -14,6 +14,8 @@ if (!existsSync(file)) throw new Error('Run `npm run build` first');
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const browser = await chromium.launch({ executablePath });
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+// (A step's 📋 Copy step name, read back.)
+await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
@@ -146,7 +148,10 @@ try {
   assert((await page.locator('.cat').count()) === 6 && (await page.locator('.cat textarea').nth(3).inputValue()) === 'Category 4', 'and its ↶ Undo puts it back in place');
 
   // ---------- The History tab ----------
-  await historyTab.click();
+  // A right-click on the header's ↶ Undo opens it, as on the game screen.
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click({ button: 'right' });
+  await page.locator('.hist').waitFor({ timeout: 3000 });
+  assert(true, 'a right-click on ↶ Undo opens 🕘 History');
   const rows = page.locator('.hist .hr');
   assert((await page.locator('.hist .head').count()) >= 1, 'steps are grouped under the minute they were made');
   assert(
@@ -171,6 +176,22 @@ try {
   assert(true, 'and so is Ctrl+Z on the History tab');
   await key('Control+y');
   await saidHas(/^Redid Renamed round “Round of memes”\.$/);
+  // A step's right-click menu: what a click on it and its Go there › do, and copying its name.
+  await rows.nth(0).click({ button: 'right' });
+  const stepItems = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(['↷ Redo up to here', 'Go there ›', '📋 Copy step name'].every((x) => stepItems.includes(x)), `an undone step's menu redoes up to it, goes there and copies its name (${stepItems.join(' | ')})`);
+  await page.getByRole('menuitem', { name: '📋 Copy step name' }).click();
+  await page.locator('.toast', { hasText: 'Copied the step’s name' }).waitFor();
+  assert((await page.evaluate(() => navigator.clipboard.readText())) === 'Deleted category “Category 4”', '📋 Copy step name copies its name');
+  await rows.nth(1).click({ button: 'right' });
+  assert(await page.getByRole('menuitem', { name: '↶ Go back to just after this' }).isDisabled(), 'the step the game is at: Go back to just after this is greyed');
+  await page.keyboard.press('Escape');
+  await rows.nth(2).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '↶ Go back to just after this' }).click();
+  await page.waitForTimeout(250);
+  assert((await page.locator('.hist .hr.undone').count()) === 2, 'a done step’s menu goes back to just after it');
+  await key('Control+y');
+  await page.waitForFunction(() => document.querySelectorAll('.hist .hr.undone').length === 1, null, { timeout: 3000 });
   // The filter shows only the steps whose names (or places) have its words.
   const allSteps = await page.locator('.hist .hr:not(.origin)').count();
   const filter = page.getByLabel('Filter the steps');

@@ -360,6 +360,12 @@
     });
   const focusRoundTab = (id: string | undefined) => void tick().then(() => id && document.querySelector<HTMLElement>(`nav [data-place="round:${id}"]`)?.focus());
 
+  /** A right-click on ↶ Undo or ↷ Redo opens 🕘 History (every step, to go back to any of them), as on the game screen. */
+  function historyMenu(e: MouseEvent): void {
+    e.preventDefault();
+    tab = 'history';
+  }
+
   /**
    * A round's menu, the same from its tab (right-click, Shift+F10) and its page's header (⋯, or a right-click on it), with
    * the keys its tab takes.
@@ -1036,8 +1042,9 @@
   <header use:inertWhile={replacing}>
     <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
     <!-- (Three groups, apart: the title, undo and redo, the game's file.) -->
-    <button class="ghost group" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
-    <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
+    <!-- Right-click either one for 🕘 History, as on the game screen. -->
+    <button class="ghost group" onclick={() => undo()} oncontextmenu={historyMenu} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
+    <button class="ghost" onclick={() => redo()} oncontextmenu={historyMenu} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
     <button class="group" onclick={newFile} disabled={!!opening}><span aria-hidden="true">📄</span> New</button>
     <button onclick={open} disabled={!!opening} bind:this={openBtn}><span aria-hidden="true">📂</span> Open…</button>
     <button

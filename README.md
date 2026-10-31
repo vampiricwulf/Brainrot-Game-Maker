@@ -149,7 +149,11 @@ another window cancels). The color it was sits beside the new one, and a click o
 
 **Undo** (`Ctrl+Z`, `Ctrl+Y` to redo) covers every change in the editor and takes you to where it happened. Deleting
 doesn't ask first: a "Deleted … · Undo" note brings it back. The **🕘 History** tab lists every change and jumps back to
-any point; it survives a reload (⚙ Settings sets how many changes it keeps, 300 by default).
+any point; it survives a reload (⚙ Settings sets how many changes it keeps, 300 by default). A right-click on a step
+goes back to just after it (or redoes up to it), goes there, or copies its name, and a right-click on the header's
+↶ Undo or ↷ Redo opens 🕘 History, as on the game screen. During the game, a right-click on a row of the 📜 Log's
+🕘 History has ↶ Back to here, ↶ Reopen tile and, for a score, ↶ Undo just this score (or ↷ Restore), under the row's
+own words.
 
 ![The History tab](docs/screenshots/history.png)
 

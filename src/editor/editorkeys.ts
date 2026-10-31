@@ -8,6 +8,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
     keys: [
       ['Ctrl+Z', 'Undo (every change to the game, one step at a time; 🕘 History goes back further)'],
       ['Ctrl+Y / Ctrl+Shift+Z', 'Redo'],
+      ['Right-click ↶ Undo or ↷ Redo', '🕘 History: every step, to go back to any of them'],
       ['Ctrl+S', 'Save the game'],
       ['Ctrl+F', 'Find: clues, screens, spaces, items, wheels… anywhere in the game (↑ / ↓ and Enter go there)'],
       ['Esc', 'Close the window, picker or menu that’s open'],
@@ -182,6 +183,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Delete', 'Wheels, Dice & Deals and 🤫 Cards: delete the wheel, dice, card or deal in focus'],
       ['Enter / Backspace', 'Wheel slices: add the next slice / delete an empty one'],
       ['↑ / ↓, G', '🕘 History: move through the steps, show where one changed things'],
+      ['Right-click a step', '🕘 History: go back to just after it (or redo up to it), go there, or copy its name'],
       ['Click / Ctrl+click / Shift+click', '🖼 Media: select files (Delete removes them, Esc deselects)'],
       ['Double-click or F2 a name', '🖼 Media: rename the file'],
       ['Drop a file on a card', '🖼 Media: replace it (everything that uses it follows)'],

@@ -10,6 +10,8 @@
   import { clear, heldMedia, history, jumpTo, maxSteps, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
   import { formatBytes, getBlob } from '../lib/media.svelte';
   import { focusPlace, goTo, placeKey } from '../lib/nav.svelte';
+  import { showMenu } from '../lib/menustate.svelte';
+  import { copyText } from '../play/standings';
   import InlineAsk from '../play/host/InlineAsk.svelte';
 
   const ICON: Record<Origin['kind'], string> = {
@@ -165,6 +167,21 @@
     if (to) focusPlace(placeKey(to), list);
   }
 
+  /** A step's right-click menu (Shift+F10 on it too): what a click and its Go there › do, and copying its name. */
+  function stepMenu(ev: MouseEvent, e: HistoryEntry, i: number): void {
+    const applied = i < history.index;
+    const current = i === history.index - 1;
+    showMenu(ev, [
+      { heading: e.label },
+      applied
+        ? { label: '↶ Go back to just after this', onclick: () => pick(i + 1), disabled: current, keys: 'Enter', hint: current ? 'The game is here now' : undefined }
+        : { label: '↷ Redo up to here', onclick: () => pick(i + 1), keys: 'Enter' },
+      { label: 'Go there ›', onclick: () => goThere(e, applied), disabled: !(applied ? e.place : e.undoPlace), keys: 'G' },
+      { sep: true },
+      { label: '📋 Copy step name', onclick: () => void copyText(e.label, 'Copied the step’s name') },
+    ]);
+  }
+
   let list = $state<HTMLDivElement>();
   /** ↑/↓ move between steps, G shows where the focused one changed things (Enter picks it, as a click). */
   function onkey(e: KeyboardEvent): void {
@@ -251,7 +268,8 @@
         {@const e = r.e}
         {@const applied = r.i < history.index}
         {@const current = r.i === history.index - 1}
-        <div class="hr" class:undone={!applied} class:current>
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="hr" class:undone={!applied} class:current oncontextmenu={(ev) => stepMenu(ev, e, r.i)}>
           <!-- (One Tab stop for the list, on the step the game is at: ↑/↓ move between them.) -->
           <button
             class="pick"

@@ -55,7 +55,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],
       ['Right-click a player', 'Their menu: on the stage (avatar, token, strip, score plate) or in the host panel (their score chip, their button in any box). Shift+F10 on their button, or a long press, opens it too'],
       ['Right-click the stage', 'The moment’s menu: first the blue button’s step (N, asking first as N does), then the moment’s own actions with their keys, what its box adds, the way out, Undo and Cover. Shift+F10 on the main button (or a long press) opens it too'],
-      ['L', 'Log: the history (go back to any point), scores and rolls'],
+      ['L', 'Log: the history (go back to any point), scores and rolls; right-click a row of its 🕘 History: ↶ Back to here, ↶ Reopen tile, undo or restore just that score'],
       ['A', 'Open / focus the audience window (never closes it)'],
       ['Shift+A', 'Open / focus the scores window: only the score plates and the countdown, for a lower third in OBS'],
       ['H', 'Hide / show the host controls'],

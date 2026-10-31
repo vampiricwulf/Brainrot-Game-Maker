@@ -10,6 +10,8 @@
   import InlineAsk from './host/InlineAsk.svelte';
   import { onMount } from 'svelte';
   import { announce } from '../lib/announce';
+  import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { browserMenuFits } from '../lib/nomenu';
 
   let {
     game,
@@ -117,6 +119,30 @@
     else onback(row);
   }
 
+  /**
+   * A History row's right-click menu (Shift+F10 on its buttons too): its own words as the heading, all a viewer could
+   * read on it (in one window the quiet ones), then what its buttons do and, for a score, undoing or restoring just
+   * that one. Words selected to copy keep the browser's Copy.
+   */
+  function rowMenu(e: MouseEvent, row: TimelineRow, reopen: string | undefined): void {
+    if (browserMenuFits(e.target, window.getSelection())) return;
+    const items: MenuEntry[] = [
+      { heading: rowText(row) },
+      undone(row)
+        ? { label: '↷ Redo to here', onclick: () => jump(row) }
+        : { label: '↶ Back to here', onclick: () => jump(row), disabled: row.steps === 0, hint: row.steps ? `Undo the ${row.steps} step${row.steps === 1 ? '' : 's'} after this` : 'Nothing after it' },
+    ];
+    if (row.kind === 'score') {
+      if (row.clueId && onreopen) items.push({ label: '↶ Reopen tile', onclick: () => onreopen(row.clueId!), disabled: !reopen, hint: 'Put this tile back on the board' });
+      items.push(
+        row.state === 'done'
+          ? { label: '↶ Undo just this score', onclick: () => toggleStep(session, row.id), hint: 'Only this one: the steps after it stay' }
+          : { label: '↷ Restore', onclick: () => toggleStep(session, row.id), hint: 'Only this one' },
+      );
+    }
+    showMenu(e, items);
+  }
+
   // In the host panel (one window) it covers the panel: the keys go into it, the panel under it is out of reach
   // meanwhile, and closed, the keys go back to what opened it (📜 Log).
   let box = $state<HTMLElement>();
@@ -176,6 +202,7 @@
             class:asked={asking?.kind === row.kind && asking.id === row.id}
             role="listitem"
             aria-current={it.current ? 'step' : undefined}
+            oncontextmenu={(e) => rowMenu(e, row, reopen)}
           >
             <span class="time muted">{time(row.ts)}</span>
             <span class="icon" aria-hidden="true">
