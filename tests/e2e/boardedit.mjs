@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkItem, exportHtml, goOnCheck, mainButton, mainLabel, openGameFile, stepButton } from './helpers.mjs';
+import { checkItem, exportHtml, goOnCheck, mainButton, mainLabel, openGameFile, quick, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -58,10 +58,10 @@ mkdirSync(resolve('test-results'), { recursive: true });
 const gameFile = resolve('test-results/boardedit.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
-/** Open the game and play it (with an audience window when `dual`). */
-async function start(page, dual = false) {
+/** Open the game (`from`: another file) and play it (with an audience window when `dual`). */
+async function start(page, dual = false, from = gameFile) {
   await page.goto(pathToFileURL(file).href);
-  await openGameFile(page, gameFile);
+  await openGameFile(page, from);
   await page.getByText(/^Opened “/).waitFor();
   await page.getByRole('button', { name: '▶ Play' }).click();
   const fresh = page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' });
@@ -742,6 +742,36 @@ try {
   assert((await host.locator('.canvas .label:not([data-name-hidden])').allInnerTexts()).join() === 'Start', 'and Start’s name shown');
   if (shots) await host.screenshot({ path: `${shots}/names-editor.png` });
   await ctx2.close();
+
+  // ---------- The check's ▶ Run, for a landing whose action is for the players picked ----------
+  // (Thief takes $100 from the players picked, as the landing box's own −$100 button does: the check waits for a pick,
+  // then gives it to them, not to whoever landed.)
+  console.log('A landing for the players picked:');
+  const thief = { ...game, id: 'g_boardedit_thief', rounds: [{ ...board, spaces: board.spaces.map((x) => (x.id === 'b2' ? { ...x, name: 'Thief', onLand: [{ id: 't1', do: 'score', amount: -100, who: 'selected' }] } : x)) }] };
+  const thiefFile = resolve('test-results/boardedit-thief.json');
+  writeFileSync(thiefFile, JSON.stringify(thief));
+  const ctx3 = await browser.newContext({ viewport: { width: 1400, height: 1000 } });
+  const tp = await ctx3.newPage();
+  tp.on('pageerror', (e) => errors.push(`[thief] ${e.message}`));
+  await start(tp, false, thiefFile);
+  await tp.getByLabel('Steps').fill('1');
+  await tp.getByLabel('Steps').blur();
+  await stepButton(tp, '▶ Move Ann: 1').click();
+  await tp.locator('.acts', { hasText: 'Landed on Thief' }).waitFor();
+  await tp.keyboard.press('n');
+  await landed(tp);
+  const runThief = quick(tp, '▶ Run Thief’s actions');
+  assert(await runThief.isDisabled(), `N with Thief's landing not run: its ▶ Run waits for a pick (${await checkItem(tp, 'landing').innerText()})`);
+  // (Past the check's first moment, which keys don't reach: then 2 picks Bob there, as outside.)
+  await goOnCheck(tp, { ready: true }).waitFor();
+  await tp.keyboard.press('2');
+  await tp.waitForFunction(() => [...document.querySelectorAll('.panel [data-goon] [data-quick]')].some((b) => b.textContent.includes('Run Thief') && !b.disabled));
+  await runThief.click();
+  await goOnCheck(tp).waitFor({ state: 'detached' });
+  const owes = async (name) => (await tp.locator('.panel .p', { hasText: name }).first().locator('.score').innerText()).replace('−', '-').replace(/\s+/g, '');
+  await tp.waitForFunction(() => /[-−]\$100/.test(document.querySelector('.panel .p[aria-label="Bob"] .score')?.textContent ?? ''));
+  assert((await owes('Bob')) === '-$100' && (await owes('Ann')) === '$0', `Bob picked (2): the check's ▶ Run takes the $100 from Bob, not from Ann who landed (Ann ${await owes('Ann')}, Bob ${await owes('Bob')})`);
+  await ctx3.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('boardedit: all passed');
