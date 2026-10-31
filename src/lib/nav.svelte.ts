@@ -28,16 +28,16 @@ let seq = 0;
 
 /**
  * Show a place: the tab, what's open in it and the thing itself, flashed (with `items`, the slide items changed with
- * it, selected together). What was deleted since is left out: returns the place it went to (`place` itself when all
- * of it is there), or null when nothing of it is.
+ * it, selected together; `unfold`: out of a fold it's in). What was deleted since is left out: returns the place it went
+ * to (`place` itself when all of it is there), or null when nothing of it is.
  */
-export function goTo(place: Place, items: string[] = []): Place | null {
+export function goTo(place: Place, items: string[] = [], { unfold = false } = {}): Place | null {
   const found = resolve(app.game, place);
   if (!found) return null;
   nav.request = { place: found, items, seq: ++seq, at: Date.now() };
   endOnNextInput();
   const key = placeKey(found);
-  if (key) flash(key);
+  if (key) flash(key, { unfold });
   return found;
 }
 
@@ -89,6 +89,10 @@ export function placeKey(p: Place): string | null {
   switch (p.tab) {
     case 'title':
       return 'title';
+    case 'sounds':
+      return p.cue ? `sound:${p.cue}` : null;
+    case 'theme':
+      return p.field ? `theme:${p.field}` : null;
     case 'tools':
       return p.wheel ? `wheel:${p.wheel}` : p.dice ? `dice:${p.dice}` : p.deal ? `deal:${p.deal}` : null;
     case 'cards':
@@ -113,10 +117,15 @@ export function placeKey(p: Place): string | null {
   }
 }
 
-/** Once what a request opens is on screen, scroll the [data-place] thing into view and flash it. */
-export function flash(key: string): void {
+/**
+ * Once what a request opens is on screen, scroll the [data-place] thing into view and flash it. `unfold`: a fold it's
+ * in opens first (it was asked for by name, as 🖼 Media's "used 3× ▾" does).
+ */
+export function flash(key: string, { unfold = false } = {}): void {
   void settled().then(() => {
     const els = document.querySelectorAll<HTMLElement>(`[data-place="${CSS.escape(key)}"]`);
+    if (unfold)
+      for (let d = els[0]?.closest('details:not([open])'); d; d = d.parentElement?.closest('details:not([open])') ?? null) (d as HTMLDetailsElement).open = true;
     els[0]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     for (const el of els) {
       el.classList.remove('flash');

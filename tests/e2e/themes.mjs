@@ -621,7 +621,7 @@ try {
   // Its file replaced in 🖼 Media (the same id, new bytes): the card shows the new picture.
   const firstSrc = await cardImg.getAttribute('src');
   await host.getByRole('button', { name: /^🖼 Media/ }).click();
-  const [replacing] = await Promise.all([host.waitForEvent('filechooser'), host.locator('.card').first().getByRole('button', { name: 'Replace…' }).click()]);
+  const [replacing] = await Promise.all([host.waitForEvent('filechooser'), host.locator('.card').first().getByRole('button', { name: 'Replace everywhere…' }).click()]);
   await replacing.setFiles({ name: 'logo2.png', mimeType: 'image/png', buffer: png(0, 0, 255, 160, 16) });
   await soon.waitForFunction((was) => document.querySelector('.soon .card-img')?.getAttribute('src') !== was, firstSrc, { timeout: 10000 }).catch(() => {});
   const pixel = await cardImg.evaluate(async (img) => {

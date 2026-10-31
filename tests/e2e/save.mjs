@@ -235,7 +235,7 @@ try {
     return page.locator('.card img').first().evaluate((i) => new Promise((r) => (i.complete && i.naturalWidth ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
   };
   await a.getByRole('button', { name: /Media \(/ }).click();
-  const [swap] = await Promise.all([a.waitForEvent('filechooser'), a.locator('.card', { has: a.locator('img') }).getByRole('button', { name: 'Replace…' }).click()]);
+  const [swap] = await Promise.all([a.waitForEvent('filechooser'), a.locator('.card', { has: a.locator('img') }).getByRole('button', { name: 'Replace everywhere…' }).click()]);
   await swap.setFiles([{ name: 'pic.png', mimeType: 'image/png', buffer: png(0, 0, 255, 8, 8) }]);
   await a.waitForTimeout(800);
   assert((await picWidth()) === 8, 'the picture is replaced after the save');

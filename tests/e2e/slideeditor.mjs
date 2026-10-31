@@ -532,11 +532,11 @@ try {
   await page.keyboard.press('Control+z');
   await clue.getByRole('button', { name: 'Close' }).click();
 
-  // ---------- 🖼 Media › Replace redoes the edited picture's edits on the new file ----------
+  // ---------- 🖼 Media › Replace everywhere… redoes the edited picture's edits on the new file ----------
   await page.getByRole('button', { name: /^🖼 Media/ }).click();
   const card = page.locator('.card', { hasText: 'big.png' }).first();
   const chooser = page.waitForEvent('filechooser');
-  await card.getByRole('button', { name: 'Replace…' }).click();
+  await card.getByRole('button', { name: 'Replace everywhere…' }).click();
   const blue = await page.evaluate(async () => {
     const c = new OffscreenCanvas(400, 300);
     const g = c.getContext('2d');
@@ -879,11 +879,11 @@ try {
     r.width === 30 && r.height === 40 && delays.join() === '10,20,30' && r.loopCount() === 0 && middles.every((c, i) => c.every((v, k) => Math.abs(v - colours[i][k]) <= 2)),
     `Apply makes a GIF again, every frame turned, each as long as before, looping (${r.width}×${r.height}, ${r.numFrames()} frames of ${delays.join(', ')} hundredths)`,
   );
-  // 🖼 Media › Replace with another moving GIF: its frames are turned too.
+  // 🖼 Media › Replace everywhere… with another moving GIF: its frames are turned too.
   await clue.getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: /^🖼 Media/ }).click();
   const gifChooser = page.waitForEvent('filechooser');
-  await page.locator('.card', { hasText: 'moving.gif' }).first().getByRole('button', { name: 'Replace…' }).click();
+  await page.locator('.card', { hasText: 'moving.gif' }).first().getByRole('button', { name: 'Replace everywhere…' }).click();
   await (await gifChooser).setFiles({ name: 'moving2.gif', mimeType: 'image/gif', buffer: gif(40, 30, [1, 2].map((i) => ({ px: new Uint8Array(40 * 30).fill(i), delay: 50 }))) });
   await toast.filter({ hasText: 'edits of 1 edited picture done again' }).waitFor();
   await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();

@@ -5,16 +5,19 @@
   import { app, toast } from '../lib/app.svelte';
   import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
   import { attachBlobSwap, nameStep, step, stepAsync } from '../lib/history.svelte';
-  import { flash } from '../lib/nav.svelte';
+  import { flash, focusPlace, goTo, placeKey } from '../lib/nav.svelte';
+  import { filePlaces, type Place } from '../lib/historylabel';
+  import { dropMenu, isMenuKey, menuItem, menuOf, showMenu, typingIn, type MenuEntry, type MenuItem } from '../lib/menustate.svelte';
+  import { longPress } from '../lib/longpress';
   import { uniqueMediaName } from '../lib/medianame';
   import { hasFiles, notMedia } from '../lib/mediadrop';
-  import { allCardSlides, allEmbeds, allSlides, mediaUsage, slideMediaIds } from '../lib/usage';
+  import { allCardSlides, allEmbeds, mediaUsage, slideMediaIds } from '../lib/usage';
   import { redoEdits } from '../lib/reedit';
   import { recentMedia } from '../lib/recent';
   import { openMediaPopup } from '../lib/mediactl.svelte';
   import { probeLink } from '../lib/download';
   import { embedName, embedOpenUrl, formatWhen, linkHost, linkLifetime } from '../lib/links';
-  import { categoryLabel, isBoard, roundName, type MediaRef } from '../lib/model';
+  import type { MediaRef } from '../lib/model';
   import LinkField from './LinkField.svelte';
   import SaveCopyButton from './SaveCopyButton.svelte';
   import { SLOW_FILE_BYTES } from '../lib/buzzproto';
@@ -60,46 +63,150 @@
     return `${clockTenths(p.from ?? 0)}–${p.to === undefined || p.to === null ? 'the end' : clockTenths(p.to)}`;
   };
   const embeds = $derived(allEmbeds(game));
-  /** The slides each file shows on ("Jeopardy! · Memes #2 (question)"), for its "used 3×" tooltip. */
-  const places = $derived.by(() => {
-    const at = new Map<string, string[]>();
-    const put = (id: string | undefined, where: string) => {
-      if (!id) return;
-      const list = at.get(id) ?? [];
-      if (!list.includes(where)) list.push(where);
-      at.set(id, list);
-    };
-    for (const { slide, where } of allSlides(game, { empty: true })) {
-      put(slide.background.image, `${where}, background`);
-      for (const el of slide.elements)
-        if (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio') {
-          put(el.media, where);
-          if (el.kind === 'image') put(el.editedMedia, where);
-        }
+  /**
+   * "used 3× ▾": the places that use the file, each going there (its tab, the clue or the slide item, a sound's row…)
+   * and flashing it. Worked out when it opens.
+   */
+  function usedItems(m: MediaRef): MenuEntry[] {
+    const list = filePlaces(game, m.id);
+    return [
+      { heading: `Where “${m.name}” is used` },
+      ...(list.length
+        ? list.map((u) => ({ label: u.where, onclick: () => goThere(u.place), disabled: !u.place }))
+        : [{ label: 'Nowhere this list can open', onclick: () => {}, disabled: true }]),
+    ];
+  }
+  function goThere(place: Place | null): void {
+    if (!place) return;
+    const to = goTo(place, [], { unfold: true });
+    // The keys go there too (this page is gone once its tab is).
+    if (to) focusPlace(placeKey(to), library);
+  }
+  /** 🔍 Show where it's used ▸ (the card's menu): the list, dropped from its card's "used 3× ▾". */
+  function showUsed(m: MediaRef): void {
+    const from = library?.querySelector<HTMLElement>(`[data-place="media:${CSS.escape(m.id)}"] [data-used]`);
+    if (!from) return;
+    const r = from.getBoundingClientRect();
+    showMenu(new MouseEvent('click', { clientX: r.left, clientY: r.bottom + 2 }), usedItems(m), from);
+  }
+
+  /** The one fix a file's card offers, in its foot and its menu: 🔄 Convert… first, else ↻ Make it a…, else 🗜. */
+  function fixOf(m: MediaRef, v: ReturnType<typeof verdictOf> | undefined, copy: MediaRef | undefined): (MenuItem & { kind: 'convert' | 'repack' | 'shrink'; strong: boolean }) | null {
+    const busy = !!jobFor(m.id);
+    if (typeof v === 'object' && (v.is === 'fails' || v.is === 'silent') && v.fix)
+      return {
+        kind: 'convert',
+        label: '🔄 Convert…',
+        onclick: () => convertNow(game, m.id),
+        disabled: busy,
+        strong: v.is === 'fails',
+        hint: "Put a copy that plays here in its place, everywhere it's used (Ctrl+Z puts the old one back)",
+      };
+    if (typeof v === 'object' && v.is === 'plays' && v.repack && onCards.has(m.id)) {
+      const to = fixBoxName(v.repack.box);
+      return {
+        kind: 'repack',
+        label: `↻ Make it ${aOrAn(to)}`,
+        onclick: () => convertNow(game, m.id),
+        disabled: busy,
+        strong: false,
+        hint: `Phones' 🤫 cards can't open ${typeName(m) || 'these'} files: this puts the same ${tracksOf(v.repack)} in ${aOrAn(to)}, in seconds, with nothing lost. The show uses it too. Ctrl+Z puts the old one back.`,
+      };
     }
-    // The commonest places off the slides (the count has them all).
-    for (const id of Object.values(game.audio ?? {})) put(id ?? undefined, '🔊 Sounds');
-    put(game.theme?.boardImage, '🎨 Theme: background picture');
-    put(game.theme?.banner, '🎨 Theme: banner');
-    game.rounds.forEach((r, ri) => {
-      if (!isBoard(r)) return;
-      const name = roundName(r, ri);
-      for (const c of r.categories) {
-        put(c.image, `${name} · ${categoryLabel(c)} (category picture)`);
-        c.clues.forEach((cl, i) => put(cl.tileFace?.image, `${name} · ${categoryLabel(c)} #${i + 1} (tile picture)`));
-      }
-      for (const d of r.decor ?? []) {
-        put(d.media, `${name} (board image)`);
-        put(d.editedMedia, `${name} (board image)`);
-      }
+    if (!copy && offerShrink(m) && !(typeof v === 'object' && v.is === 'plays' && v.repack && !phonesTake(m))) {
+      const plays = phonesTake(m);
+      return {
+        kind: 'shrink',
+        label: plays ? '🗜 Make smaller…' : '🗜 Make a copy for phones…',
+        onclick: () => openShrinkDialog(m.id),
+        disabled: busy,
+        strong: m.size > SLOW_FILE_BYTES || !plays,
+        hint: plays
+          ? 'Make a smaller copy for phones: they get it on 🤫 cards, and the show keeps this file as it is'
+          : 'Phones can’t play this kind of file: make a copy they can (they get it on 🤫 cards, and the show keeps this file as it is)',
+      };
+    }
+    return null;
+  }
+  /** Why Replace everywhere… waits (a job on the file), or what it does. */
+  function replaceHint(m: MediaRef): string {
+    const job = jobFor(m.id);
+    if (!job) return "Swap in another file: every place it's used follows, on stream too";
+    return job.kind === 'convert'
+      ? 'Wait for it to be converted (or Stop it)'
+      : job.kind === 'edit'
+        ? 'Wait for its edit to be saved (or Stop it)'
+        : 'Wait for its copy for phones to be made (or Stop it)';
+  }
+  /** ✎ Edit…'s tooltip. */
+  const editHint = (m: MediaRef): string =>
+    editOffer(m) === 'busy'
+      ? 'Wait for it to finish (the header shows how far it got)'
+      : m.kind === 'video'
+        ? 'Trim, crop or resize this video: every place that uses it gets the edited one, on stream too (Ctrl+Z puts the old one back)'
+        : 'Trim this sound: every place that uses it gets the trimmed one (Ctrl+Z puts the old one back). Sounds in 🔊 Sounds, wheels, dice and RPG music have no Start/Stop of their own: trimming the file is how to trim them.';
+
+  /** A file's menu: its card's own buttons, then where it's used, then 🗑 Delete file. */
+  function oneMenu(m: MediaRef): MenuEntry[] {
+    const n = usage.get(m.id) ?? 0;
+    const v = !m.url && (m.kind === 'video' || m.kind === 'audio') ? verdictOf(m.id) : undefined;
+    const fix = fixOf(m, v, phoneCopyOf(game, m));
+    const missingFile = !m.url && !mediaUrls[m.id];
+    const offer = editOffer(m);
+    return menuOf({
+      heading: m.name,
+      open: offer ? [{ label: '✎ Edit…', onclick: () => openMediaDialog({ mode: 'edit', id: m.id }), disabled: offer === 'busy', hint: editHint(m) }] : undefined,
+      verbs: [
+        missingFile
+          ? { label: '🔗 Replace file…', onclick: () => void replace(m), hint: "Pick the file again (or another one) to fix every place it's used" }
+          : { label: 'Replace everywhere…', onclick: () => void replace(m), disabled: !!jobFor(m.id), hint: replaceHint(m) },
+        ...(fix ? [fix] : []),
+      ],
+      rename: menuItem.rename(() => (renaming = m.id)),
+      extras: [
+        { label: '🔍 Show where it’s used ▸', onclick: () => showUsed(m), disabled: !n, hint: n ? undefined : 'Nothing uses it' },
+        ...(m.url ? [{ label: '🌐 Check it still loads', onclick: () => void check(m), disabled: checks[m.id] === 'checking' }] : []),
+      ],
+      delete: menuItem.delete('file', () => remove([m.id], `Deleted file “${m.name}”${n ? ` (used ${n}×)` : ''}`), { hint: 'Undo brings it back' }),
     });
-    return at;
-  });
-  function usedWhere(m: MediaRef): string | undefined {
-    const list = places.get(m.id);
-    if (!list?.length) return undefined;
-    const more = list.length > 10 ? `\n…and ${list.length - 10} more` : '';
-    return `Used in:\n${list.slice(0, 10).join('\n')}${more}`;
+  }
+  /** Several files selected: copies for phones of the ones that can have one, and 🗑 Delete them. */
+  function manyMenu(): MenuEntry[] {
+    const refs = pickedRefs;
+    const copiable = refs.filter((m) => shrinkable(m) && !!mediaUrls[m.id] && !phonesGetLink(m) && !phoneCopyOf(game, m) && !jobFor(m.id));
+    return menuOf({
+      heading: `${refs.length} files selected`,
+      verbs: [
+        {
+          label: `🗜 Phone copies for ${copiable.length}…`,
+          onclick: () => openShrinkDialog(copiable.map((m) => m.id)),
+          disabled: !copiable.length,
+          hint: copiable.length ? 'Smaller copies phones get on 🤫 cards (the show keeps the files as they are)' : 'None of them is a video, sound or GIF without a copy yet',
+        },
+      ],
+      delete: { label: `🗑 Delete ${refs.length} files`, onclick: removePicked, keys: 'Delete', hint: 'Undo brings them back' },
+    });
+  }
+  /**
+   * A right-click on a card (or Shift+F10 in it, a long press, its ⋯): a card not among those selected is selected
+   * alone, so the menu, Delete and Esc all act on what's selected; with several, theirs.
+   */
+  function cardMenu(e: MouseEvent, m: MediaRef, from?: HTMLElement): void {
+    // (A name being typed keeps the browser's cut, copy and paste.)
+    if (typingIn(e)) return;
+    if (!picked.includes(m.id)) {
+      picked = [m.id];
+      anchor = m.id;
+    }
+    showMenu(e, picked.length > 1 ? manyMenu() : oneMenu(m), from);
+  }
+  function cardKey(e: KeyboardEvent, m: MediaRef): void {
+    if (!isMenuKey(e) || e.defaultPrevented) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const at = e.target instanceof HTMLElement ? e.target : (e.currentTarget as HTMLElement);
+    const r = at.getBoundingClientRect();
+    cardMenu(new MouseEvent('contextmenu', { clientX: r.left + 8, clientY: r.bottom + 2 }), m, at);
   }
   const missing = $derived(missingMedia(game));
   /** The filter box: files whose name (or kind: "audio", "font"…) has every word typed. */
@@ -111,7 +218,7 @@
   const icon = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
   const EMBED_ICON: Record<string, string> = { youtube: '▶️', drive: '🎞', streamable: '🎞' };
 
-  /** "Check link" results by media id. */
+  /** 🌐 Check it still loads: the results by media id. */
   let checks = $state<Record<string, 'checking' | 'ok' | 'failed'>>({});
   async function check(m: MediaRef): Promise<void> {
     if (!m.url) return;
@@ -233,7 +340,7 @@
     if (f) await replaceWith(m, f);
   }
 
-  /** Replace…, or a file dropped on the card. A file of another kind is refused (a toast says why). */
+  /** Replace everywhere…, or a file dropped on the card. A file of another kind is refused (a toast says why). */
   async function replaceWith(m: MediaRef, f: File): Promise<void> {
     try {
       let edited = { redone: 0, plain: 0 };
@@ -394,8 +501,8 @@
         <button class="small ghost" onclick={() => (picked = [])} title="Esc">Clear selection</button>
       {:else}
         <span class="hint">
-          Click a card to select it, Ctrl+click or Shift+click for more. Double-click a name (or F2) to rename it. Drop a file on a card to
-          replace it everywhere it's used.
+          Click a card to select it, Ctrl+click or Shift+click for more, right-click it (or ⋯) for its menu. Double-click a name (or F2) to
+          rename it. Drop a file on a card to replace it everywhere it's used.
         </span>
       {/if}
       <span class="spacer"></span>
@@ -411,12 +518,14 @@
     </div>
   {/if}
 
-  <div class="grid">
+  <!-- (A long press on a touch screen is a right-click: each card's menu.) -->
+  <div class="grid" use:longPress>
     {#each shown as m (m.id)}
       {@const n = usage.get(m.id) ?? 0}
       {@const copy = phoneCopyOf(game, m)}
       {@const job = jobFor(m.id)}
       {@const v = !m.url && (m.kind === 'video' || m.kind === 'audio') ? verdictOf(m.id) : undefined}
+      {@const fix = fixOf(m, v, copy)}
       <!-- The keyboard selects with the checkbox. -->
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
       <div
@@ -426,6 +535,8 @@
         class:media-drop={dropOn === m.id}
         data-place="media:{m.id}"
         onclick={(e) => pick(e, m)}
+        oncontextmenu={(e) => cardMenu(e, m)}
+        onkeydown={(e) => cardKey(e, m)}
         ondragover={(e) => cardOver(e, m)}
         ondragleave={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && dropOn === m.id && (dropOn = null)}
         ondrop={(e) => cardDrop(e, m)}
@@ -469,6 +580,7 @@
             onblur={(e) => renaming === m.id && rename(m, e.currentTarget.value, !e.relatedTarget)}
           />
         {:else}
+          <!-- Its name, ⋯ (its menu), and 🗑 apart at the right end: the same place on every card. -->
           <div class="name-row">
             <input
               type="checkbox"
@@ -483,10 +595,29 @@
               ondblclick={() => (renaming = m.id)}
               onkeydown={(e) => e.key === 'F2' && (e.preventDefault(), (renaming = m.id))}
             >{m.name}</button>
+            <button
+              class="ghost small more"
+              onclick={(e) => {
+                if (!picked.includes(m.id)) ((picked = [m.id]), (anchor = m.id));
+                dropMenu(e, picked.length > 1 ? manyMenu() : oneMenu(m));
+              }}
+              aria-haspopup="menu"
+              aria-label="More for {m.name}"
+              title="Its menu: the same as a right-click on the card (Shift+F10)">⋯</button
+            >
+            <button
+              class="ghost small danger del"
+              onclick={() => remove([m.id], `Deleted file “${m.name}”${n ? ` (used ${n}×)` : ''}`)}
+              aria-label="Delete {m.name}"
+              title="Delete this file (Undo brings it back)">🗑</button
+            >
           </div>
         {/if}
         <div class="meta muted" data-verdict={typeof v === 'object' ? v.is : v}>
-          {m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)} · <span class:where={!!usedWhere(m)} title={usedWhere(m)}>{n ? `used ${n}×` : 'unused'}</span>
+          {m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)} ·
+          {#if n}
+            <button class="used" data-used onclick={(e) => dropMenu(e, usedItems(m))} aria-haspopup="menu" title="Where it’s used: click one to go there">used {n}× ▾</button>
+          {:else}unused{/if}
           <!-- (Worked out from what's inside it once it's been checked; till then, or when the app can't read it, its type says.) -->
           {#if typeof v === 'object' && v.is === 'fails'}<span class="warn" title={whyLine(v)}> · ⚠ won’t play here</span>
           {:else if typeof v === 'object' && v.is === 'silent'}<span class="warn" title={whyLine(v)}> · ⚠ plays without its sound here</span>
@@ -529,7 +660,7 @@
           <div class="acts">
             <SaveCopyButton id={m.id} />
             <button class="ghost small" onclick={() => check(m)} disabled={checks[m.id] === 'checking'} title="Does the link still play?">
-              {checks[m.id] === 'checking' ? 'Checking…' : 'Check link'}
+              {checks[m.id] === 'checking' ? 'Checking…' : '🌐 Check it still loads'}
             </button>
           </div>
           {#if checks[m.id] === 'ok'}<div class="meta good">✓ The link works</div>{/if}
@@ -537,77 +668,31 @@
         {:else if m.source}
           <div class="meta muted" title={m.source}>Saved from {linkHost(m.source)}</div>
         {/if}
-        <div class="acts">
-          {#if !m.url && !mediaUrls[m.id]}
-            <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
-          {:else}
-            <button
-              class="ghost small"
-              onclick={() => replace(m)}
-              disabled={!!job}
-              title={job
-                ? job.kind === 'convert'
-                  ? 'Wait for it to be converted (or Stop it)'
-                  : job.kind === 'edit'
-                    ? 'Wait for its edit to be saved (or Stop it)'
-                    : 'Wait for its copy for phones to be made (or Stop it)'
-                : "Swap in another file; every place it's used follows"}
-              >Replace…</button
-            >
-          {/if}
+        <!-- The card's foot, in fixed places: ✎ Edit… · Replace everywhere… · the one fix that applies. -->
+        <div class="acts foot">
           {#if editOffer(m)}
-            <button
-              class="ghost small"
-              data-edit-media
-              onclick={() => openMediaDialog({ mode: 'edit', id: m.id })}
-              disabled={editOffer(m) === 'busy'}
-              title={editOffer(m) === 'busy'
-                ? 'Wait for it to finish (the header shows how far it got)'
-                : m.kind === 'video'
-                  ? 'Trim, crop or resize this video: every place that uses it gets the edited one, on stream too (Ctrl+Z puts the old one back)'
-                  : 'Trim this sound: every place that uses it gets the trimmed one (Ctrl+Z puts the old one back). Sounds in 🔊 Sounds, wheels, dice and RPG music have no Start/Stop of their own: trimming the file is how to trim them.'}
+            <button class="ghost small" data-edit-media onclick={() => openMediaDialog({ mode: 'edit', id: m.id })} disabled={editOffer(m) === 'busy'} title={editHint(m)}
               >✎ Edit…</button
             >
           {/if}
-          <!-- 🔄 one that won't play here (or plays without its sound); ↻ one on a 🤫 card that phones can't open. -->
-          {#if typeof v === 'object' && (v.is === 'fails' || v.is === 'silent') && v.fix}
+          {#if !m.url && !mediaUrls[m.id]}
+            <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
+          {:else}
+            <button class="ghost small" onclick={() => replace(m)} disabled={!!job} title={replaceHint(m)}>Replace everywhere…</button>
+          {/if}
+          <!-- 🔄 one that won't play here (or plays without its sound); ↻ one on a 🤫 card that phones can't open; 🗜 a copy
+               for phones. -->
+          {#if fix}
             <button
-              class="small {v.is === 'fails' ? 'primary' : 'ghost'}"
-              data-convert
-              onclick={() => convertNow(game, m.id)}
-              disabled={!!job}
-              title="Put a copy that plays here in its place, everywhere it's used (Ctrl+Z puts the old one back)">🔄 Convert…</button
-            >
-          {:else if typeof v === 'object' && v.is === 'plays' && v.repack && onCards.has(m.id)}
-            {@const to = fixBoxName(v.repack.box)}
-            <button
-              class="small ghost"
-              data-repack
-              onclick={() => convertNow(game, m.id)}
-              disabled={!!job}
-              title="Phones' 🤫 cards can't open {typeName(m) || 'these'} files: this puts the same {tracksOf(v.repack)} in {aOrAn(to)}, in seconds, with nothing lost. The show uses it too. Ctrl+Z puts the old one back."
-              >↻ Make it {aOrAn(to)}</button
+              class="small {fix.strong ? 'primary' : 'ghost'}"
+              data-convert={fix.kind === 'convert' || undefined}
+              data-repack={fix.kind === 'repack' || undefined}
+              data-shrink={fix.kind === 'shrink' || undefined}
+              onclick={fix.onclick}
+              disabled={fix.disabled}
+              title={fix.hint}>{fix.label}</button
             >
           {/if}
-          {#if !copy && offerShrink(m) && !(typeof v === 'object' && v.is === 'plays' && v.repack && !phonesTake(m))}
-            {@const plays = phonesTake(m)}
-            <button
-              class="small {m.size > SLOW_FILE_BYTES || !plays ? 'primary' : 'ghost'}"
-              data-shrink
-              onclick={() => openShrinkDialog(m.id)}
-              disabled={!!job}
-              title={plays
-                ? 'Make a smaller copy for phones: they get it on 🤫 cards, and the show keeps this file as it is'
-                : 'Phones can’t play this kind of file: make a copy they can (they get it on 🤫 cards, and the show keeps this file as it is)'}
-              >{plays ? '🗜 Make smaller…' : '🗜 Make a copy for phones…'}</button
-            >
-          {/if}
-          <button
-            class="ghost small danger"
-            onclick={() => remove([m.id], `Deleted file “${m.name}”${n ? ` (used ${n}×)` : ''}`)}
-            aria-label="Delete {m.name}"
-            title="Delete this file (Undo brings it back)">🗑 Delete</button
-          >
         </div>
       </div>
     {/each}
@@ -687,7 +772,7 @@
   .grid {
     margin-top: 14px;
     display: grid;
-    /* Wide enough for Replace… and 🗑 Delete side by side. */
+    /* Wide enough for ✎ Edit… and Replace everywhere… side by side. */
     grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
     gap: 10px;
   }
@@ -782,11 +867,28 @@
     align-items: center;
     gap: 4px;
   }
-  /* "used 3×": the tooltip says where. */
-  .where {
+  /* "used 3× ▾": a list of the places, each going there. */
+  .used {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
     text-decoration: underline dotted;
     text-underline-offset: 2px;
-    cursor: help;
+    cursor: pointer;
+  }
+  .name-row .more {
+    flex: none;
+    align-self: center;
+    padding: 0 6px;
+  }
+  /* 🗑 apart, at the right end of the name row: the same place on every card. */
+  .name-row .del {
+    flex: none;
+    align-self: center;
+    margin-left: 6px;
+    padding: 0 6px;
   }
   .small {
     font-size: 12px;

@@ -320,10 +320,10 @@ try {
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.waitForTimeout(300);
   assert((await imageWidth()) === 40, 'its ↶ Undo brings the file back, showing');
-  const [picker] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.card').getByRole('button', { name: 'Replace…' }).click()]);
+  const [picker] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.card').getByRole('button', { name: 'Replace everywhere…' }).click()]);
   await picker.setFiles([{ name: 'wide.png', mimeType: 'image/png', buffer: png(0, 0, 255, 80, 40) }]);
   await page.waitForTimeout(400);
-  assert((await imageWidth()) === 80, 'Replace… puts the new picture in');
+  assert((await imageWidth()) === 80, 'Replace everywhere… puts the new picture in');
   await clickAway();
   await key('Control+z');
   assert((await imageWidth()) === 40 && (await page.locator('.card .nm').innerText()) === 'tiny.png', 'Ctrl+Z puts the old picture back');

@@ -11,6 +11,7 @@ import { PRESETS, type ThemePreset } from './theme';
 import { cueName, hasBuiltin, type CueKey } from './sounds';
 import { letter } from './choices';
 import { fontLabel } from './fonts';
+import { mediaPaths } from './usage';
 
 export type Side = 'q' | 'a';
 /** A board clue's or a Final's tabs: a question slide, the answer, or one of its 🤫 cards (its id in `slide`). */
@@ -19,8 +20,10 @@ export type ClueSide = Side | 'card';
 /** A place in the editor: the tab, and what's open or selected in it. */
 export type Place =
   | { tab: 'title' }
-  | { tab: 'sounds' }
-  | { tab: 'theme' }
+  /** `cue`: one sound's row (its key). */
+  | { tab: 'sounds'; cue?: string }
+  /** `field`: one of its pictures' rows (the board's background picture, the banner). */
+  | { tab: 'theme'; field?: 'boardImage' | 'banner' }
   | { tab: 'tools'; wheel?: string; dice?: string; deal?: string }
   /** The editor's 🤫 Cards: `card`, the one open (its id). */
   | { tab: 'cards'; card?: string; element?: string }
@@ -341,7 +344,8 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     case 'soundVolume':
       at.crumbs.push('Sounds');
       at.icon = '🔊';
-      go({ tab: 'sounds' });
+      // (One sound's: its row flashes.)
+      go(typeof path[1] === 'string' ? { tab: 'sounds', cue: path[1] } : { tab: 'sounds' });
       break;
     case 'players': {
       at.crumbs.push('Play', 'Players');
@@ -438,7 +442,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     case 'theme':
       at.crumbs.push('Theme');
       at.icon = '🎨';
-      go({ tab: 'theme' });
+      go(path[1] === 'boardImage' || path[1] === 'banner' ? { tab: 'theme', field: path[1] } : { tab: 'theme' });
       break;
     case 'tiebreaker': {
       at.crumbs.push('Tiebreaker');
@@ -468,6 +472,48 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     }
   }
   return at;
+}
+
+/** What a use of a file is, beyond the place it's on ("background", "tile picture"), from its path. */
+function useWord(path: readonly Seg[], at: At): string | null {
+  const k = path[path.length - 1];
+  if (path[0] === 'audio' && typeof k === 'string') {
+    const name = cueName(k) ?? k;
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
+  if (k === 'boardImage') return 'background picture';
+  if (k === 'banner') return 'banner';
+  if (path.includes('background')) return 'background';
+  if (path.includes('tileFace')) return 'tile picture';
+  if (k === 'image' && path[path.length - 3] === 'categories') return 'category picture';
+  if (path.includes('wearable')) return 'worn look';
+  if (k === 'avatar') return 'picture';
+  if (k === 'icon') return 'icon';
+  if (k === 'music') return 'music';
+  if (at.noun === 'slice') return `slice “${at.name}”`;
+  if (path.includes('customFaces')) return 'a face';
+  if (path.includes('totalOutcomes')) return 'a total';
+  if (at.noun === 'button') return 'a button';
+  return null;
+}
+
+/**
+ * 🖼 Media's "used 3× ▾": each place in `game` that uses file `id`, in the History's words ("Jeopardy! › Memes › $200 ›
+ * Question", "Theme › background picture", "Sounds › Round intro"), and the place it goes to (null: nowhere to open).
+ * An item named after the file isn't named again; the same words twice are one line.
+ */
+export function filePlaces(game: Game, id: string): { where: string; place: Place | null }[] {
+  const file = game.media.find((m) => m.id === id)?.name;
+  const out: { where: string; place: Place | null }[] = [];
+  for (const path of mediaPaths(game, id)) {
+    const at = placeAt(game, path);
+    const crumbs = [...at.crumbs];
+    if (crumbs.length > 1 && crumbs[crumbs.length - 1] === file) crumbs.pop();
+    const what = useWord(path, at);
+    const where = [...crumbs, ...(what ? [what] : [])].join(' › ');
+    if (where && !out.some((u) => u.where === where)) out.push({ where, place: at.place });
+  }
+  return out;
 }
 
 /**

@@ -1,6 +1,7 @@
 // Editor media and keys: files dropped on media slots and into an open picker (and pasted into it), the Media page
-// (rename, drop to replace, select several to remove), the slide's right-click menus, renaming layers, board images
-// on the slides' clipboard, and the ⌨ Shortcuts sheet.
+// (rename, drop to replace, select several to remove; a card's foot in fixed places and 🗑 in the same spot on every
+// card, "used 1× ▾" listing where and going there, a card's menu by a right-click and by Shift+F10), the slide's
+// right-click menus, renaming layers, board images on the slides' clipboard, and the ⌨ Shortcuts sheet.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -127,11 +128,35 @@ try {
   assert(true, 'renamed, then the filter box clicked: the typing goes there');
   await filterBox.fill('');
   await page.waitForFunction(() => document.querySelectorAll('.card').length === 3);
-  // A card's buttons sit on one line, and its "used 1×" says where.
-  const [replaceBox, deleteBox] = [await cards.nth(0).getByRole('button', { name: 'Replace…' }).boundingBox(), await cards.nth(0).getByRole('button', { name: /^Delete / }).boundingBox()];
-  assert(Math.abs(replaceBox.y - deleteBox.y) < 2, "a card's Replace… and 🗑 Delete sit side by side");
-  const where = (await cards.nth(0).locator('.meta .where').getAttribute('title')) ?? '';
-  assert(where.includes('Theme: background picture'), `its "used 1×" tooltip says where (${where.replace(/\n/g, ' / ')})`);
+  // A card's foot has its buttons in fixed places (a picture with nothing to fix: Replace everywhere… alone), and 🗑 is at
+  // the right end of its name row, the same spot on every card.
+  const foot0 = (await cards.nth(0).locator('.foot button').allInnerTexts()).map((t) => t.trim());
+  assert(foot0.join(' | ') === 'Replace everywhere…', `a picture's card foot: Replace everywhere… (${foot0.join(' | ')})`);
+  const delAt = await cards.evaluateAll((cs) => cs.map((c) => Math.round(c.getBoundingClientRect().right - c.querySelector('.name-row .del').getBoundingClientRect().right)));
+  assert(new Set(delAt).size === 1, `🗑 is in the same spot on every card (${delAt.join(', ')} px from the right)`);
+  // "used 1× ▾" lists where it's used; a click on one goes there and flashes it.
+  await cards.nth(0).getByRole('button', { name: 'used 1× ▾' }).click();
+  const usedAt = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(usedAt.join(' | ') === 'Theme › background picture', `its "used 1× ▾" lists where (${usedAt.join(' | ')})`);
+  await page.getByRole('menuitem', { name: 'Theme › background picture' }).click();
+  await page.locator('[data-place="theme:boardImage"].flash').waitFor();
+  assert(true, 'a place in the list opens 🎨 Theme and flashes the background picture there');
+  await page.getByRole('button', { name: /^🖼 Media/ }).click();
+  // A card's menu (a right-click on it, or Shift+F10 on its name): its foot's buttons, ✎ Rename, where it's used, and 🗑
+  // Delete file last. It selects the card.
+  await cards.nth(0).locator('.thumb').click({ button: 'right' });
+  const items0 = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(
+    items0.join(' | ') === 'Replace everywhere… | ✎ Rename | 🔍 Show where it’s used ▸ | 🗑 Delete file' && (await page.locator('.card.picked').count()) === 1,
+    `a card's menu: ${items0.join(' | ')} (and the card is selected)`,
+  );
+  await page.keyboard.press('Escape');
+  await cards.nth(2).locator('button.nm').focus();
+  await page.keyboard.press('Shift+F10');
+  await page.getByRole('menu').getByRole('menuitem', { name: '✎ Rename' }).click();
+  await nameBox.press('Escape');
+  assert((await names())[2] === 'pasted.png', 'Shift+F10 on a name opens its menu, and its ✎ Rename renames it');
+  await page.getByRole('button', { name: 'Clear selection' }).click();
 
   await drop(cards.nth(0), [['song.mp3', 'audio/mpeg']]);
   assert((await toast.innerText()).includes('song.mp3') && (await names())[0] === 'wall.png', 'a sound dropped on a picture card is refused with a toast');
@@ -140,17 +165,17 @@ try {
   await page.keyboard.press('Control+z');
   assert((await names())[0] === 'wall.png', 'Ctrl+Z puts the old file back');
 
-  await cards.nth(0).locator('.meta').click();
-  await cards.nth(2).locator('.meta').click({ modifiers: ['Shift'] });
+  await cards.nth(0).locator('.thumb').click();
+  await cards.nth(2).locator('.thumb').click({ modifiers: ['Shift'] });
   assert((await page.locator('.card.picked').count()) === 3, 'click, then Shift+click selects the run');
   // A filter's hidden cards are never taken into a Shift+click run.
-  await cards.nth(0).locator('.meta').click();
+  await cards.nth(0).locator('.thumb').click();
   await page.getByRole('searchbox', { name: 'Filter files' }).fill('pasted');
-  await cards.nth(0).locator('.meta').click({ modifiers: ['Shift'] });
+  await cards.nth(0).locator('.thumb').click({ modifiers: ['Shift'] });
   await page.getByRole('searchbox', { name: 'Filter files' }).fill('');
   assert((await page.locator('.card.picked').count()) === 1, 'a Shift+click with a filter on picks no hidden card');
   // A filter that hides a selected card takes it out of the selection: Delete selected never takes a file not on show.
-  await cards.nth(0).locator('.meta').click();
+  await cards.nth(0).locator('.thumb').click();
   await page.getByRole('searchbox', { name: 'Filter files' }).fill('pasted');
   await cards.nth(0).getByRole('checkbox').check();
   await page.getByRole('button', { name: '🗑 Delete selected (1)' }).waitFor();
@@ -159,9 +184,9 @@ try {
     (await page.locator('.card.picked').count()) === 1 && (await page.locator('.card.picked .nm').innerText()) === 'pasted.png',
     'a card hidden by the filter leaves the selection (only the one ticked with the filter on stays selected)',
   );
-  await cards.nth(0).locator('.meta').click();
-  await cards.nth(2).locator('.meta').click({ modifiers: ['Shift'] });
-  await cards.nth(1).locator('.meta').click({ modifiers: ['Control'] });
+  await cards.nth(0).locator('.thumb').click();
+  await cards.nth(2).locator('.thumb').click({ modifiers: ['Shift'] });
+  await cards.nth(1).locator('.thumb').click({ modifiers: ['Control'] });
   assert((await page.locator('.card.picked').count()) === 2, 'Ctrl+click takes one away');
   await shot('em-2-media');
   await page.getByRole('button', { name: '🗑 Delete selected (2)' }).click();
@@ -171,7 +196,7 @@ try {
   );
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   assert((await cards.count()) === 3 && (await page.locator('.card img').count()) === 3, 'Undo brings them back, pictures and all');
-  await cards.nth(2).locator('.meta').click();
+  await cards.nth(2).locator('.thumb').click();
   await page.keyboard.press('Delete');
   assert((await cards.count()) === 2, 'Delete removes the selected file');
   await page.keyboard.press('Control+z');

@@ -337,7 +337,8 @@
     <details class="sec" open data-sec="board">
     <summary>Board</summary>
     <div class="pics">
-      <div class="row pop">
+      <!-- (data-place: 🖼 Media's "used 3× ▾" and the History's Go there flash them.) -->
+      <div class="row pop" data-place="theme:boardImage">
         <span>Background image</span>
         {#if t.boardImage && mediaUrls[t.boardImage]}<img src={mediaUrls[t.boardImage]} alt="" onerror={imgFallback} draggable="false" />{/if}
         <button
@@ -348,7 +349,7 @@
         {#if t.boardImage}<button class="ghost tiny" onclick={() => (t.boardImage = undefined)} title="Remove the background image" aria-label="Remove background image">✕</button>{/if}
         {#if picking === 'bg'}<MediaPicker kind="image" onpick={(id) => ((t.boardImage = id), (picking = null))} onclose={() => (picking = null)} />{/if}
       </div>
-      <div class="row pop">
+      <div class="row pop" data-place="theme:banner">
         <span title="A logo or show title across the top of the board">Banner above the board</span>
         {#if t.banner && mediaUrls[t.banner]}<img src={mediaUrls[t.banner]} alt="" onerror={imgFallback} draggable="false" />{/if}
         <button

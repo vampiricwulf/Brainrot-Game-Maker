@@ -296,9 +296,11 @@ try {
   await unusedBtn.waitFor();
   assert((await unusedBtn.innerText()).trim() === '🗑 Delete unused (0)' && (await unusedBtn.isDisabled()), '🖼 Media: 🗑 Delete unused (0), off');
   const tipFile = host.locator('[data-place="media:tip"]');
-  const usedSpan = tipFile.locator('.meta span', { hasText: 'used 1×' });
-  await usedSpan.waitFor();
-  assert((await usedSpan.getAttribute('title')).includes('Card: Tip A'), `zfnqj-tip.png is used 1×, on Card: Tip A (${await usedSpan.getAttribute('title')})`);
+  const usedBtn = tipFile.locator('[data-used]');
+  await usedBtn.click();
+  const usedAt = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert((await usedBtn.innerText()).trim() === 'used 1× ▾' && usedAt.some((t) => t.startsWith('Cards › Tip A')), `zfnqj-tip.png is used 1×, on the 🤫 card Tip A (${usedAt.join(' | ')})`);
+  await host.keyboard.press('Escape');
   await host.locator('nav .problem', { hasText: '1 file is used only on 🤫 cards' }).waitFor();
   assert(true, 'the checklist notes a file used only on 🤫 cards');
 

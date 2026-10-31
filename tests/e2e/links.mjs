@@ -265,9 +265,9 @@ assert(
   (await page.getByText(/Files stored with this game: 1 ·/).count()) === 1 && (await card('frog2.png').count()) === 0,
   'a link to a file already in the game adds nothing, and the toast says it reused that file (not "Stored in your game")',
 );
-await card('beep1.wav').getByRole('button', { name: 'Check link' }).click();
+await card('beep1.wav').getByRole('button', { name: '🌐 Check it still loads' }).click();
 await card('beep1.wav').getByText('✓ The link works').waitFor();
-assert(true, 'Check link plays the link to see that it works');
+assert(true, '🌐 Check it still loads plays the link to see that it works');
 await card('beep1.wav').getByRole('button', { name: '💾 Store in game' }).click();
 await page.locator('.toast', { hasText: "files.catbox.moe doesn't let the game save a copy." }).waitFor();
 assert((await card('beep1.wav').getByText('🌐 files.catbox.moe').count()) === 1, "Save a copy explains when the site refuses, and the link keeps working");

@@ -368,7 +368,17 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   for phones goes (it can be made again at once). Save as a new file keeps both; Only this item (from a slide item
   whose file is used elsewhere) gives that item an edited copy of its own. Toasts and History name no file. Nothing is
   edited in play.
-- A media library panel lists everything in the game with its size and usage count. "Remove unused" is available.
+- A media library panel (🖼 Media) lists everything in the game with its size and usage count. "🗑 Delete unused" is
+  available. Each card keeps its buttons in fixed places: the name row (☐ Select, the name, ⋯ for its menu, then 🗑
+  apart at the right end), and the foot (✎ Edit… for a video or sound · **Replace everywhere…** · the one fix that
+  applies: 🔄 Convert…, else ↻ Make it a…, else 🗜 Make smaller…). A link's card adds 💾 Store in game and 🌐 Check it
+  still loads. **used 3× ▾** (plain "unused" when nothing uses it) drops the list of places, in the History's words
+  ("Jeopardy! › Memes › $400 › Question", "Theme › background picture", "Sounds › Round intro"; `filePlaces` in
+  historylabel.ts, from `mediaPaths` in usage.ts), each going there with goTo and flashing it (a sound's row, the
+  theme's picture row, a slide item, out of any fold it's in). A right-click on a card (Shift+F10 in it, a long press,
+  its ⋯) selects it and gives its menu in the editors' one order: ✎ Edit… · Replace everywhere… · the fix · ✎ Rename
+  (F2) · 🔍 Show where it's used ▸ · 🌐 Check it still loads (links) · 🗑 Delete file (Delete); with several selected, 🗜
+  Phone copies for N… and 🗑 Delete N files.
 - Per-element playback settings: autoplay, loop, muted, start/end trim, and volume.
 - **Online links (optional)**: every file picker (except fonts) has *Paste a link*, and the slide editor has *🌐 Link* (and
   takes pasted or dropped links). One parser (`links.ts`) turns share pages into file addresses (Dropbox, GitHub, Imgur,
@@ -383,7 +393,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
     `source`.
   - Otherwise, if the link plays in a plain `<img>`/`<video>` (no permission needed), it's added as a **live link**
     (`MediaRef.url`): it plays from the internet during the show, from both windows. The Media tab marks it 🌐 with the site,
-    *Save a copy* (downloads it later under the same id) and *Check link*; the checklist counts what plays from the internet
+    *💾 Store in game* (downloads it later under the same id) and *🌐 Check it still loads*; the checklist counts what plays from the internet
     and warns about temporary or expired links. Pages send no referrer (`<meta name="referrer" content="no-referrer">`,
     YouTube and site players ask for theirs explicitly).
   - **Google Drive** refuses its files to web pages (403 for any other site, `file://` and the desktop webview included).

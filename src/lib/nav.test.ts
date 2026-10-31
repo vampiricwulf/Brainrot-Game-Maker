@@ -22,6 +22,9 @@ describe('places', () => {
   it('names what flashes there', () => {
     expect(placeKey({ tab: 'title' })).toBe('title');
     expect(placeKey({ tab: 'sounds' })).toBeNull();
+    // (One sound's row, one of the theme's pictures: 🖼 Media's "used 3× ▾" flashes them.)
+    expect(placeKey({ tab: 'sounds', cue: 'buzz' })).toBe('sound:buzz');
+    expect(placeKey({ tab: 'theme', field: 'banner' })).toBe('theme:banner');
     expect(placeKey({ tab: 'tools', dice: 'd1' })).toBe('dice:d1');
     expect(placeKey({ tab: 'stats', shop: 's1' })).toBe('shop:s1');
     expect(placeKey({ tab: 'media', media: 'm1' })).toBe('media:m1');

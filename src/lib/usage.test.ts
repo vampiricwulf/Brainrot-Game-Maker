@@ -3,7 +3,7 @@ import { uploadedFamily } from './fonts';
 import { defaultEdits } from './imageedit';
 import { isBoard, isFinal, newImageEl, newVideoEl, textSlide, type Action, type MediaRef, type Slide } from './model';
 import { jeopardyGame } from './testgame';
-import { allCardSlides, allSlides, mediaUsage } from './usage';
+import { allCardSlides, allSlides, mediaPath, mediaPaths, mediaUsage } from './usage';
 import { cardUses } from './phonecopies';
 import { newBoardGameRound, newBoardSpace } from './boardgame';
 import { newDeal } from './deals';
@@ -144,5 +144,43 @@ describe('every 🤫 card in the game (allCardSlides)', () => {
       { id: 'b', name: 'B', background: {}, elements: [newVideoEl('clip')] },
     ];
     expect(cardUses(game, 'clip')).toEqual([{ start: 12, end: 20 }, {}]);
+  });
+});
+
+describe('where a file is used (🖼 Media’s “used 3× ▾”)', () => {
+  it('finds every place, 🔊 Sounds too, never the library itself; mediaPath still the first, without the sounds', () => {
+    const game = jeopardyGame();
+    const round = game.rounds[0];
+    if (!isBoard(round)) throw new Error('not a board');
+    game.media.push({ id: 'pic', name: 'pic.png', mime: 'image/png', size: 1, kind: 'image' });
+    const [cat, clue] = [round.categories[0], round.categories[0].clues[0]];
+    const el = newImageEl('pic');
+    clue.questionSlide.elements.push(el);
+    clue.answerSlide.background.image = 'pic';
+    cat.image = 'pic';
+    game.theme.banner = 'pic';
+    game.audio = { roundIntro: 'pic' };
+    const paths = mediaPaths(game, 'pic').map((p) => p.join('/'));
+    expect(paths).toHaveLength(5);
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        `rounds/${round.id}/categories/${cat.id}/clues/${clue.id}/questionSlide/elements/${el.id}/media`,
+        `rounds/${round.id}/categories/${cat.id}/clues/${clue.id}/answerSlide/background/image`,
+        `rounds/${round.id}/categories/${cat.id}/image`,
+        'theme/banner',
+        'audio/roundIntro',
+      ]),
+    );
+    expect(mediaPath(game, 'pic')?.[0]).toBe('rounds');
+    game.rounds = [];
+    delete game.theme.banner;
+    expect([mediaPaths(game, 'pic').map((p) => p.join('/')), mediaPath(game, 'pic')]).toEqual([['audio/roundIntro'], null]);
+  });
+
+  it('a font’s are the texts in it', () => {
+    const game = jeopardyGame();
+    game.media.push(font('face0001'));
+    game.theme.clueFont = css('face0001');
+    expect(mediaPaths(game, 'face0001').map((p) => p.join('/'))).toEqual(['theme/clueFont']);
   });
 });

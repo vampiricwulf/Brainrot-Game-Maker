@@ -7,30 +7,51 @@ export interface SlideRef {
   where: string;
 }
 
+type Path = (string | number)[];
+
 /**
- * The path to the first place in the game that uses file `id` (a slide's item or background, a tile's face…), as the
- * history writes paths (a list of things with ids by the id), for historylabel's placeAt. Null: none.
+ * The paths to the places in `game` where `uses(key, value)` holds, as the history writes paths (a list of things with
+ * ids by the id): every one, or the first (`first`). Never the library itself; the sounds only with `sounds`.
  */
-export function mediaPath(game: Game, id: string): (string | number)[] | null {
-  const walk = (node: unknown, path: (string | number)[]): (string | number)[] | null => {
+function pathsWhere(game: Game, uses: (k: string, v: unknown) => boolean, { sounds = false, first = false } = {}): Path[] {
+  const out: Path[] = [];
+  /** True: the first is found, stop. */
+  const walk = (node: unknown, path: Path): boolean => {
     if (Array.isArray(node)) {
       const items = node as { id?: unknown }[];
       const ids = items.every((x) => typeof x?.id === 'string') && new Set(items.map((x) => x.id)).size === items.length;
-      for (const [i, x] of items.entries()) {
-        const found = walk(x, [...path, ids ? (x.id as string) : i]);
-        if (found) return found;
-      }
+      for (const [i, x] of items.entries()) if (walk(x, [...path, ids ? (x.id as string) : i])) return true;
     } else if (node && typeof node === 'object')
       for (const [k, v] of Object.entries(node)) {
-        // (Not the library itself, nor the sounds: 🔊 Sounds says those.)
-        if (!path.length && (k === 'media' || k === 'audio')) continue;
-        if (v === id && k !== 'id') return [...path, k];
-        const found = typeof v === 'object' ? walk(v, [...path, k]) : null;
-        if (found) return found;
+        if (!path.length && (k === 'media' || (k === 'audio' && !sounds))) continue;
+        if (k !== 'id' && uses(k, v)) {
+          out.push([...path, k]);
+          if (first) return true;
+        } else if (typeof v === 'object' && walk(v, [...path, k])) return true;
       }
-    return null;
+    return false;
   };
-  return walk(game, []);
+  walk(game, []);
+  return out;
+}
+
+/**
+ * The path to the first place in the game that uses file `id` (a slide's item or background, a tile's face…), as the
+ * history writes paths (a list of things with ids by the id), for historylabel's placeAt. Null: none. (Not the sounds:
+ * 🔊 Sounds says those.)
+ */
+export function mediaPath(game: Game, id: string): Path | null {
+  return pathsWhere(game, (_k, v) => v === id, { first: true })[0] ?? null;
+}
+
+/**
+ * Every place in the game that uses file `id`, as mediaPath's paths, for 🖼 Media's "used 3× ▾": slides' items and
+ * backgrounds, tiles' and categories' pictures, 🔊 Sounds, the theme, wheels, dice, RPG avatars, icons and music… A
+ * font's are the texts in it (slides', pictures' captions, the theme's).
+ */
+export function mediaPaths(game: Game, id: string): Path[] {
+  const font = game.media.find((m) => m.id === id)?.kind === 'font' ? uploadedFamily(id) : null;
+  return pathsWhere(game, font ? (_k, v) => typeof v === 'string' && v.includes(font) : (_k, v) => v === id, { sounds: true });
 }
 
 /** `empty`: empty tiles' slides too (kept for when the tile is used again: their files are still in use). */

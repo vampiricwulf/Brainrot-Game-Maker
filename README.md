@@ -743,7 +743,14 @@ spun yet, `Enter` says to spin first (`W`, or `D` for dice).
 - Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **＋ Add files…**. A video or
   sound this browser can't play is offered a fix as soon as it's added (🔄 Convert: repackaged in seconds with nothing
   lost when only its file type is the problem, as with an MKV, or an .mts whose sound plays here; a camcorder's .mts
-  usually loses its Dolby Digital sound), and Ctrl+Z puts the old file back.
+  usually loses its Dolby Digital sound), and Ctrl+Z puts the old file back. Each file's card has its buttons in the
+  same places: its name with ⋯ (its menu) and 🗑 at the right end, then at its foot ✎ Edit… (a video or sound),
+  **Replace everywhere…** (every place it's used follows, on stream too) and the one fix that applies (🔄 Convert…, ↻
+  Make it a…, 🗜 Make smaller…). **used 3× ▾** lists where it's used (slides, the theme, 🔊 Sounds, tile and category
+  pictures, wheels, RPG and board-game things), and a click on one goes there and flashes it. A right-click on a card
+  (or Shift+F10, or a long press) gives its menu: ✎ Edit…, Replace everywhere…, the fix, ✎ Rename (F2), 🔍 Show where
+  it's used ▸, 🌐 Check it still loads (a link's), 🗑 Delete file; with several selected, 🗜 Phone copies for N… and 🗑
+  Delete N files.
 - **⚙ Settings** (in the header's ⋯ menu, with Export as a web page, Export JSON, ⌨ Keyboard shortcuts, 📖 How to host
   (this guide) and ℹ About) has these options:
   - **Reduce motion on stream** (the editor, the host controls and your own copy of the stage beside the audience

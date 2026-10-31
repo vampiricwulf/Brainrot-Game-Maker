@@ -304,9 +304,11 @@ try {
   const unusedBtn = main.getByRole('button', { name: /^🗑 Delete unused/ });
   await unusedBtn.waitFor();
   assert((await unusedBtn.innerText()).trim() === '🗑 Delete unused (0)' && (await unusedBtn.isDisabled()), '🖼 Media: 🗑 Delete unused (0), off');
-  const usedSpan = host.locator('[data-place="media:hint"] .meta span', { hasText: 'used 1×' });
-  await usedSpan.waitFor();
-  assert((await usedSpan.getAttribute('title')).includes('Final Jeopardy! (card “Leader hint”)'), `zfnqj-hint.png is used 1×, on the Final’s card (${await usedSpan.getAttribute('title')})`);
+  const usedBtn = host.locator('[data-place="media:hint"] [data-used]');
+  await usedBtn.click();
+  const usedAt = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert((await usedBtn.innerText()).trim() === 'used 1× ▾' && usedAt.some((t) => t.startsWith('Final Jeopardy! › Leader hint')), `zfnqj-hint.png is used 1×, on the Final’s card (${usedAt.join(' | ')})`);
+  await host.keyboard.press('Escape');
 
   // =====================================================================================================================
   // B. Play, one window, against the real buzzer room

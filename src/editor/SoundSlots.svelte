@@ -98,7 +98,7 @@
       if ((e as { name?: string } | null)?.name === 'AbortError') return;
       const name = nameOf(audio[key]);
       toast(
-        `${name ? `“${name}”` : 'This sound'} didn't play: its file or link may no longer work (🖼 Media › Check link).${hasBuiltin(key) ? ' In the game the built-in sound plays instead.' : ''}`,
+        `${name ? `“${name}”` : 'This sound'} didn't play: its file or link may no longer work (🖼 Media › 🌐 Check it still loads).${hasBuiltin(key) ? ' In the game the built-in sound plays instead.' : ''}`,
       );
     });
   }
@@ -124,7 +124,8 @@
     {@const ref = v ? app.game.media.find((m) => m.id === v) : undefined}
     {@const vol = cueVolume(app.game, key)}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="sound" class:off oncontextmenu={(e) => showMenu(e, items(key, label))} use:rowKeys={{ menu: () => items(key, label) }}>
+    <!-- (data-place: 🖼 Media's "used 3× ▾" and the History's Go there flash it.) -->
+    <div class="sound" class:off data-place="sound:{key}" oncontextmenu={(e) => showMenu(e, items(key, label))} use:rowKeys={{ menu: () => items(key, label) }}>
       {#if builtin}
         <input type="checkbox" id="cue-{key}" checked={!off} onchange={(e) => setOn(key, e.currentTarget.checked)} aria-label="Play the {label} sound" />
       {:else}

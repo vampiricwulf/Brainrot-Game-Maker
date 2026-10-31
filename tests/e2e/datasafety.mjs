@@ -312,11 +312,11 @@ try {
   await html.saveAs(exported);
   const cardId = () => page.locator('.card [data-media-name]').getAttribute('data-media-name');
   const red = await cardId();
-  const [replace] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.card').getByRole('button', { name: 'Replace…' }).click()]);
+  const [replace] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.card').getByRole('button', { name: 'Replace everywhere…' }).click()]);
   await replace.setFiles([{ name: 'blue.png', mimeType: 'image/png', buffer: png(0, 0, 255, 80, 40) }]);
   // The games kept in Recent games have this file too (the same pack, opened again): they keep the old picture.
   await page.waitForFunction((id) => document.querySelector('.card [data-media-name]')?.getAttribute('data-media-name') !== id, red);
-  assert((await storedWidth(red)) === 40 && (await storedWidth(await cardId())) === 80, 'Replace… on a file games in Recent games share gives this game the new one as a file of its own: theirs is unchanged');
+  assert((await storedWidth(red)) === 40 && (await storedWidth(await cardId())) === 80, 'Replace everywhere… on a file games in Recent games share gives this game the new one as a file of its own: theirs is unchanged');
   await page.waitForTimeout(800);
   const player = await context.newPage();
   player.on('pageerror', (e) => errors.push(`[player] ${e.message}`));

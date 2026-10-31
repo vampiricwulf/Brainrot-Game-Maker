@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { diff } from './historyops';
-import { describe as describeStep, itemPlace, placeAt, placeWhere, short } from './historylabel';
+import { describe as describeStep, filePlaces, itemPlace, placeAt, placeWhere, short } from './historylabel';
 import {
   gameRules, newAudioEl, newImageEl, newSavedCard, newShapeEl, newTextEl, newVideoEl,
   type AudioEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type ShapeEl, type SlideElement, type TextEl, type VideoEl,
@@ -527,6 +527,49 @@ describe('placeAt', () => {
     }
     expect(placeWhere({ tab: 'theme' })).toBe('Theme');
     expect(placeWhere({ tab: 'round', round: g.rounds[0].id })).toBeNull();
+  });
+});
+
+describe('🖼 Media’s “used 3× ▾”', () => {
+  it('names each place a file is used in the History’s words, once each, with where it goes', () => {
+    const g = sample();
+    const b = board(g);
+    const [cat, clue] = [b.categories[0], b.categories[0].clues[0]];
+    // (Named after its file: the file isn't named again. Named itself: it is.)
+    const pic = newImageEl('m1');
+    const logo = newImageEl('m1');
+    logo.name = 'Logo';
+    clue.questionSlide.elements.push(pic, newImageEl('m1'));
+    clue.answerSlide.elements.push(logo);
+    clue.answerSlide.background.image = 'm1';
+    cat.image = 'm1';
+    b.categories[1].clues[0].tileFace = { image: 'm1' };
+    g.theme.boardImage = 'm1';
+    g.audio = { roundIntro: 'm1' };
+    const list = filePlaces(g, 'm1');
+    const where = list.map((u) => u.where);
+    const tile = 'Jeopardy! › Category 1 › $200';
+    expect(where).toEqual(
+      expect.arrayContaining([
+        `${tile} › Question`,
+        `${tile} › Answer › Logo`,
+        `${tile} › Answer › background`,
+        'Jeopardy! › Category 1 › category picture',
+        'Jeopardy! › Category 2 › $200 › tile picture',
+        'Theme › background picture',
+        'Sounds › Round intro',
+        'Adventure › Overworld › Town › Old Man',
+      ]),
+    );
+    // Two items in one place are one line; the tile's face says so.
+    expect(where.filter((w) => w === `${tile} › Question`)).toHaveLength(1);
+    expect(where.some((w) => w.endsWith('› tile picture'))).toBe(true);
+    // Each goes to its place: the item on its slide, the sound's row, the theme's picture.
+    expect(list.find((u) => u.where === `${tile} › Question`)?.place).toEqual({ tab: 'round', round: b.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'q', element: pic.id } });
+    expect(list.find((u) => u.where === 'Sounds › Round intro')?.place).toEqual({ tab: 'sounds', cue: 'roundIntro' });
+    expect(list.find((u) => u.where === 'Theme › background picture')?.place).toEqual({ tab: 'theme', field: 'boardImage' });
+    // (Not the library's own entry.)
+    expect(where.some((w) => w.startsWith('Media'))).toBe(false);
   });
 });
 
