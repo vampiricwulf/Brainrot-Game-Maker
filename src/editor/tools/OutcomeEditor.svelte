@@ -14,6 +14,7 @@
     placeholder = 'Label',
     labelkey,
     dice = false,
+    respin,
   }: {
     outcome: Outcome;
     placeholder?: string;
@@ -21,6 +22,11 @@
     labelkey?: (e: KeyboardEvent) => void;
     /** A die face or a dice total: "+ dice total × N" means something (a wheel has no roll). */
     dice?: boolean;
+    /**
+     * A wheel's slice: whether landing on it spins again, and switching that. On, a "↻ again" tag after its label (a
+     * click turns it off); in ▸ More, its tick.
+     */
+    respin?: { on: boolean; toggle: () => void; note?: string };
   } = $props();
   let open = $state(false);
   let picking = $state<MediaKind | null>(null);
@@ -54,12 +60,18 @@
 <div class="oe">
   <div class="row">
     <input class="label" bind:value={outcome.label} {placeholder} aria-label={placeholder} onkeydown={labelkey} />
+    {#if respin?.on}
+      <button class="ghost tiny again" aria-pressed="true" onclick={respin.toggle} title="Landing here spins the wheel again{respin.note ?? ''}: a click stops that">↻ again</button>
+    {/if}
     <button class="ghost small" class:has={extras} onclick={() => (open = !open)} title="Details, media, timer, score effect">
       {open ? '▾' : '▸'} More{extras ? ' •' : ''}
     </button>
   </div>
   {#if open}
     <div class="more">
+      {#if respin}
+        <label class="check small" title={respin.note ? `It never gets used up${respin.note}` : undefined}><input type="checkbox" checked={respin.on} onchange={respin.toggle} /> Spin again when it lands here</label>
+      {/if}
       <label class="field">
         Details shown on reveal
         <textarea rows="2" value={outcome.details ?? ''} oninput={(e) => (outcome.details = e.currentTarget.value || undefined)}
@@ -150,9 +162,14 @@
     flex: 1;
     min-width: 0;
   }
+  /* The words get the room: about 18 letters before anything else on the row wraps. */
   .label {
     flex: 1;
-    min-width: 80px;
+    min-width: 18ch;
+  }
+  .again {
+    color: var(--accent);
+    flex: none;
   }
   .has {
     color: var(--accent);

@@ -168,28 +168,34 @@ try {
   assert((await labels.count()) === 5 && (await labels.nth(4).evaluate((e) => e === document.activeElement)), 'Backspace in an empty label deletes that slice');
   await labels.nth(4).press('Alt+ArrowUp');
   assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Dance,Option 4', 'Alt+↑ moves a slice');
-  // ▼ pressed with the keys: the keys stay on that row's arrows (▲ once ▼ is off at the end), and the move is said.
-  await page.locator('.seg').nth(3).getByRole('button', { name: 'Move down' }).focus();
-  await page.keyboard.press('Enter');
-  await page.waitForFunction(() => document.activeElement?.matches('.seg:last-child button[aria-label="Move up"]'));
-  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Option 4,Dance', '▼ by the keys moves a slice, the keys going on to its ▲ (▼ is off at the end)');
+  // The words get the room: ▲ ▼ ⧉ ↻ are in the slice's ⋯ (and its keys), so a laptop's row shows a whole label.
+  const seg4 = page.locator('.seg').nth(3);
+  assert((await seg4.getByRole('button', { name: /^(Move (up|down)|Duplicate slice|Spin again)$/ }).count()) === 0, 'a slice row has no ▲ ▼ ⧉ ↻ of its own: they are in its ⋯');
+  const labelW = (await labels.nth(3).boundingBox()).width;
+  assert(labelW >= 150, `a slice's label has the room for its words (${Math.round(labelW)} px)`);
+  // Its ⋯: the menu a right-click gives, with ▼ Move down; the move is said, and the keys go back to that ⋯.
+  await seg4.getByRole('button', { name: /^More for slice / }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: /▼ Move down/ }).click();
+  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Option 4,Dance', `⋯ → ▼ Move down moves a slice (${await values(labels)})`);
   await page.waitForFunction(() => /Slice “Dance” moved to 5 of 5/.test(document.getElementById('live-region')?.dataset.said ?? ''));
   assert(true, 'and the move is said');
-  await page.keyboard.press('Enter');
-  await page.waitForFunction(() => document.activeElement?.matches('.seg:nth-child(4) button[aria-label="Move up"]'));
-  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Dance,Option 4', 'Enter there moves it back up, the keys still on its ▲');
-  // Alt+↓ on that ▼ does the same: the keys go on to its ▲ rather than dropping to the page.
-  await page.locator('.seg').nth(3).getByRole('button', { name: 'Move down' }).focus();
-  await page.keyboard.press('Alt+ArrowDown');
-  await page.waitForFunction(() => document.activeElement?.matches('.seg:last-child button[aria-label="Move up"]'));
-  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Option 4,Dance', 'Alt+↓ on ▼ moves a slice, the keys going on to its ▲ (▼ is off at the end)');
-  await page.keyboard.press('Alt+ArrowUp');
-  await page.waitForFunction(() => document.activeElement?.matches('.seg:nth-child(4) button[aria-label="Move up"]'));
-  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Dance,Option 4', 'Alt+↑ there moves it back up');
+  // Alt+↑ in its label moves it back, the typing staying in that label.
+  await labels.nth(4).press('Alt+ArrowUp');
+  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Dance,Option 4' && (await labels.nth(3).evaluate((e) => e === document.activeElement)), 'Alt+↑ in its label moves it back, the keys staying in the label');
+  // Shift+F10 in the label: the slice's menu, ↻ Spin again ticked once it's on, and a "↻ again" tag after its label.
+  await labels.nth(3).press('Shift+F10');
+  await page.getByRole('menu').getByRole('menuitem', { name: '↻ Spin again' }).click();
+  assert((await seg4.getByRole('button', { name: '↻ again' }).count()) === 1, 'Shift+F10 → ↻ Spin again: the slice shows “↻ again” after its label');
+  await labels.nth(3).press('Shift+F10');
+  assert((await page.getByRole('menu').getByRole('menuitem', { name: '✓ ↻ Spin again' }).count()) === 1, 'and its menu ticks ↻ Spin again');
+  await page.keyboard.press('Escape');
+  await seg4.getByRole('button', { name: '↻ again' }).click();
+  assert((await seg4.getByRole('button', { name: '↻ again' }).count()) === 0, 'a click on the tag turns it off');
   await dragBy(page, page.locator('.seg .drag-grip').nth(3), labels.first());
   assert((await values(labels)).join() === 'Dance,Option 1,Option 2,Option 3,Option 4', 'dragging ⋮⋮ moves a slice');
-  await page.getByRole('button', { name: 'Duplicate slice' }).first().click();
-  assert((await values(labels)).slice(0, 2).join() === 'Dance,Dance', '⧉ duplicates a slice');
+  await labels.first().focus();
+  await page.keyboard.press('Control+d');
+  assert((await values(labels)).slice(0, 2).join() === 'Dance,Dance', 'Ctrl+D duplicates a slice');
   await page.getByRole('button', { name: 'Delete slice' }).first().click();
   assert((await labels.count()) === 5 && (await notice.innerText()).startsWith('Deleted slice “Dance”'), '🗑 deletes a slice, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();

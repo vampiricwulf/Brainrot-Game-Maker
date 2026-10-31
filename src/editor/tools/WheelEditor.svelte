@@ -12,7 +12,8 @@
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { step } from '../../lib/history.svelte';
   import { copySegment, moveTo } from '../../lib/listedit';
-  import { menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
+  import { menuItem, menuOf, showMenu, type MenuEntry } from '../../lib/menustate.svelte';
+  import RowTools from '../RowTools.svelte';
   import { flash } from '../../lib/nav.svelte';
   import { announce } from '../../lib/announce';
   import { isTextField } from '../../lib/undokeys';
@@ -44,17 +45,11 @@
   const blank = $derived(wheel.segments.flatMap((s, i) => (s.label.trim() ? [] : [i + 1])));
 
   /** Move the slice at `i` to `j` (▲▼, Alt+↑/↓ or a drag: one step). */
-  function move(i: number, j: number, btn?: HTMLButtonElement): void {
+  function move(i: number, j: number): void {
     const s = wheel.segments[i];
     if (!s || j < 0 || j >= wheel.segments.length || i === j) return;
     step(`Moved slice “${name(s)}” ${j < i ? 'up' : 'down'}`, () => moveTo(wheel.segments, i, j));
     announce(`Slice “${name(s)}” moved to ${j + 1} of ${wheel.segments.length}`);
-    // (A row moved down is taken out of the page and back, which drops the focus: it goes back to the ▲/▼ pressed, or
-    // the other one once that's off at the end.)
-    if (btn)
-      void tick().then(() =>
-        (btn.isConnected && !btn.disabled ? btn : btn.closest('[data-seg]')?.querySelector<HTMLElement>('.move:not(:disabled)'))?.focus(),
-      );
   }
 
   let segsEl = $state<HTMLElement>();
@@ -93,19 +88,23 @@
 
   const rows = new DragOrder();
 
-  /** A slice's right-click menu (not in its text fields, which keep the browser's own). */
-  function rowMenu(e: MouseEvent, i: number): void {
-    if (isTextField(e.target)) return;
+  /**
+   * A slice's menu: its ⋯, a right-click on it (not in its text fields, which keep the browser's own), Shift+F10 in it.
+   * ↻ Spin again is ticked when it's on.
+   */
+  function rowItems(i: number): MenuEntry[] {
     const n = wheel.segments.length;
-    showMenu(
-      e,
-      menuOf({
-        heading: name(wheel.segments[i]),
-        duplicate: menuItem.duplicate(() => duplicate(i)),
-        move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === n - 1 })],
-        delete: menuItem.delete('slice', () => remove(i), { disabled: n <= 2, keys: false }),
-      }),
-    );
+    const seg = wheel.segments[i];
+    return menuOf({
+      heading: name(seg),
+      verbs: [{ label: `${isRespin(seg) ? '✓ ' : ''}↻ Spin again`, onclick: () => toggleRespin(seg), hint: 'Landing on this slice spins the wheel again' }],
+      duplicate: menuItem.duplicate(() => duplicate(i)),
+      move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === n - 1 })],
+      delete: menuItem.delete('slice', () => remove(i), { disabled: n <= 2, keys: false, hint: n <= 2 ? 'A wheel needs two slices' : undefined }),
+    });
+  }
+  function rowMenu(e: MouseEvent, i: number): void {
+    if (!isTextField(e.target)) showMenu(e, rowItems(i));
   }
 
   /** ↻: landing on this slice spins again (left unset when that's what its name already says). */
@@ -171,7 +170,7 @@
             if (m) move(m.from, m.to);
           }}
           oncontextmenu={(e) => rowMenu(e, i)}
-          use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(i) }}
+          use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(i), menu: () => rowItems(i) }}
         >
           <span
             class="drag-grip"
@@ -182,7 +181,12 @@
             title="Drag to reorder (or Alt+↑/↓)">⋮⋮</span
           >
           <ColorBox bind:value={seg.color} aria-label="Color of {seg.label.trim() || `slice ${i + 1}`}" />
-          <OutcomeEditor outcome={seg} placeholder="Slice label" labelkey={(e) => labelKey(e, i)} />
+          <OutcomeEditor
+            outcome={seg}
+            placeholder="Slice label"
+            labelkey={(e) => labelKey(e, i)}
+            respin={{ on: isRespin(seg), toggle: () => toggleRespin(seg), note: wheel.removeAfterLanding ? ' (it never gets used up)' : undefined }}
+          />
           <label class="w" title="Weight: how big the slice is, and how likely (at least {MIN_WEIGHT}; delete a slice to take it off)">
             ×<input
               type="number"
@@ -202,18 +206,7 @@
             />
           </label>
           <span class="pct muted">{pct[i]?.toFixed(0)}%</span>
-          <button
-            class="ghost small"
-            class:on={isRespin(seg)}
-            aria-pressed={isRespin(seg)}
-            onclick={() => toggleRespin(seg)}
-            aria-label="Spin again"
-            title="Spin again: landing on this slice spins the wheel again{wheel.removeAfterLanding ? ' (it never gets used up)' : ''}">↻</button
-          >
-          <button class="ghost small move" onclick={(e) => move(i, i - 1, e.currentTarget)} disabled={i === 0} aria-label="Move up">▲</button>
-          <button class="ghost small move" onclick={(e) => move(i, i + 1, e.currentTarget)} disabled={i === wheel.segments.length - 1} aria-label="Move down">▼</button>
-          <button class="ghost small" onclick={() => duplicate(i)} aria-label="Duplicate slice" title="Duplicate slice (Ctrl+D)">⧉</button>
-          <button class="ghost small" onclick={() => remove(i)} disabled={wheel.segments.length <= 2} aria-label="Delete slice" title={wheel.segments.length <= 2 ? 'A wheel needs two slices' : 'Delete slice'}>🗑</button>
+          <RowTools menu={() => rowItems(i)} name="slice {name(seg)}" remove={() => remove(i)} deleteLabel="Delete slice" off={wheel.segments.length <= 2 ? 'A wheel needs two slices' : undefined} />
         </div>
       {/each}
     </div>
@@ -222,7 +215,7 @@
         ⚠ No label on slice{blank.length > 1 ? 's' : ''} {blank.join(', ')}: {blank.length > 1 ? 'they land' : 'it lands'} as {blank.map((n) => `“Slice ${n}”`).join(', ')}.
       </p>
     {/if}
-    <p class="muted small">Enter in a label adds the next slice · drag ⋮⋮ or Alt+↑/↓ to reorder · click a slice on the wheel to find it</p>
+    <p class="muted small">Enter in a label adds the next slice · drag ⋮⋮ or Alt+↑/↓ to reorder · ⋯ for more (↻ Spin again, ⧉ Duplicate) · click a slice on the wheel to find it</p>
     <div class="row">
       <button onclick={() => wheel.segments.push(newSegment(`Option ${wheel.segments.length + 1}`, wheel.segments.length))}>＋ Add slice</button>
       <button
@@ -257,10 +250,6 @@
 </div>
 
 <style>
-  .seg button.on {
-    border-color: var(--accent);
-    background: rgba(79, 124, 255, 0.25);
-  }
   /* The preview gives way on a narrow window, so a slice's row fits on one line. */
   .we {
     display: grid;
@@ -303,7 +292,7 @@
     color: var(--muted);
   }
   .w input {
-    width: 60px;
+    width: 3.5em;
   }
   .pct {
     width: 36px;
