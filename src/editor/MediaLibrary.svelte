@@ -209,11 +209,12 @@
     cardMenu(new MouseEvent('contextmenu', { clientX: r.left + 8, clientY: r.bottom + 2 }), m, at);
   }
   const missing = $derived(missingMedia(game));
-  /** The filter box: files whose name (or kind: "audio", "font"…) has every word typed. */
+  /** The filter box: files whose name (or kind: "audio", "font"…, or the editor's word for it, "sound", "picture") has every word typed. */
   let filter = $state('');
+  const KIND_WORD: Partial<Record<MediaRef['kind'], string>> = { image: 'picture', audio: 'sound' };
   const shown = $derived.by(() => {
     const words = filter.toLowerCase().split(/\s+/).filter(Boolean);
-    return words.length ? files.filter((m) => words.every((w) => `${m.name} ${m.kind}`.toLowerCase().includes(w))) : files;
+    return words.length ? files.filter((m) => words.every((w) => `${m.name} ${m.kind} ${KIND_WORD[m.kind] ?? ''}`.toLowerCase().includes(w))) : files;
   });
   const icon = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
   const EMBED_ICON: Record<string, string> = { youtube: '▶️', drive: '🎞', streamable: '🎞' };

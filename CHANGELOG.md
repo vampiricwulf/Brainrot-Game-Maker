@@ -119,6 +119,7 @@ in plain words for the people who make and host games. Anything committed but no
 - RPG rounds in one window: steps about a secret object (renaming it, its class, its card's buttons, Lock, an NPC's stats, Reveal) say “a hidden object” in the history and Undo, even when they were taken with the audience window open (they named it). A button on another object that reveals or hides a secret one doesn't name it either, nor its picture's file name: on that object's card and in its menu it reads “Reveal 🙈 Hidden object 1 (Start)” (as Objects here calls it), and its toast, the 📜 Log, Undo and Redo say “a hidden object” (they said “Reveal Golden Idol (Start)”).
 - A few words that ran into the one before them have their space back: 🖼 Media's “· ⚠ won't play here”, “· ⚠ plays without its sound here” and “· may not play”, a text box's “Max size · showing 24”, a sound switched off “Off (keeps intro.wav)”, a Final wager sent from a phone “$500 📱”, and the 📱 before a name on the audience window's Starting soon lineup.
 - RPG and ♟ board-game rounds: the screen no longer shrinks into place as the round comes on screen (it eases only when the stats strip changes), so viewers see it still and a host's first drag lands where it's let go.
+- 🖼 Media's “Filter by name or kind” finds pictures by “picture” and sounds by “sound”, the editor's words (only “image” and “audio” worked).
 ## 2026-10-30
 
 ### Added

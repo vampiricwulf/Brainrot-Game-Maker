@@ -128,6 +128,14 @@ try {
   assert(true, 'renamed, then the filter box clicked: the typing goes there');
   await filterBox.fill('');
   await page.waitForFunction(() => document.querySelectorAll('.card').length === 3);
+  // The filter knows the words the editor uses for a kind: “picture” finds the pictures, “sound” none of them.
+  await filterBox.fill('picture');
+  await page.waitForFunction(() => document.querySelectorAll('.card').length === 3);
+  await filterBox.fill('sound');
+  await page.waitForFunction(() => document.querySelectorAll('.card').length === 0);
+  assert(true, 'the filter finds the pictures by “picture” (and no sound by “sound”)');
+  await filterBox.fill('');
+  await page.waitForFunction(() => document.querySelectorAll('.card').length === 3);
   // A card's foot has its buttons in fixed places (a picture with nothing to fix: Replace everywhere… alone), and 🗑 is at
   // the right end of its name row, the same spot on every card.
   const foot0 = (await cards.nth(0).locator('.foot button').allInnerTexts()).map((t) => t.trim());
