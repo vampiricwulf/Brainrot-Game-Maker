@@ -2,7 +2,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { placePopup } from './anchored';
-  import { closeMenu, contextMenu, menuKeys } from './menustate.svelte';
+  import { closeMenu, contextMenu, gaveBack, menuKeys } from './menustate.svelte';
 
   let box = $state<HTMLDivElement>();
   /** "Ctrl+" reads "⌘" on a Mac, "Alt+" "⌥" and "Shift+" "⇧". */
@@ -33,17 +33,23 @@
     });
   });
 
+  /** The keys back where they were (a name box given them so isn't being typed in: its next right-click is its menu). */
+  function giveBack(el: HTMLElement): void {
+    el.focus({ preventScroll: true });
+    gaveBack(el);
+  }
+
   function run(fn: () => void): void {
     // The focus goes back first (a dropped menu's button, else what had it or was right-clicked), so a window the item
     // opens returns it there on close, and the keys go on working there after.
     const back = contextMenu.open?.back;
     closeMenu();
-    if (back?.isConnected) back.focus({ preventScroll: true });
+    if (back?.isConnected) giveBack(back);
     fn();
     // A move to a later place (▶ Move right, ▼ Move down) takes that button out of the page and back, which drops the
     // focus: it goes back again once drawn (unless the item put it somewhere, a window it opened).
     void tick().then(() => {
-      if (back?.isConnected && (!document.activeElement || document.activeElement === document.body)) back.focus({ preventScroll: true });
+      if (back?.isConnected && (!document.activeElement || document.activeElement === document.body)) giveBack(back);
     });
   }
 
@@ -56,7 +62,7 @@
       const back = contextMenu.open.back;
       closeMenu();
       // The focus goes back (to a dropped menu's button, or what had it or was right-clicked).
-      if (back?.isConnected) back.focus({ preventScroll: true });
+      if (back?.isConnected) giveBack(back);
       return;
     }
     // Every other key is the menu's too: Delete, Ctrl+Z and the like never reach what's under it (the arrows aren't a

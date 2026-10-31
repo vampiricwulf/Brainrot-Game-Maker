@@ -1,7 +1,7 @@
 <script lang="ts">
   import Tips from './Tips.svelte';
   import { tick, untrack } from 'svelte';
-  import { dropMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { dropMenu, isMenuKey, keyMenu, menuItem, menuOf, showMenu, typingIn, type MenuEntry, type MenuLine } from '../lib/menustate.svelte';
   import { take, type Place } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
   import { announce } from '../lib/announce';
@@ -266,12 +266,6 @@
     dropTarget = key;
   }
 
-  /** A right-click in a field with text selected keeps the browser's own menu (Copy, Paste…). */
-  function textSelected(e: MouseEvent): boolean {
-    const t = e.target;
-    return t instanceof HTMLTextAreaElement && t.selectionStart !== t.selectionEnd;
-  }
-
   // ---------- Tiles ----------
 
   /** A tile's type, as its name says it to a screen reader (its badge on the board). */
@@ -463,6 +457,8 @@
    */
   function catNameKey(e: KeyboardEvent, ci: number): void {
     const t = e.currentTarget as HTMLTextAreaElement;
+    // (Shift+F10 in the name: the category's menu, under it.)
+    if (isMenuKey(e)) return void keyMenu(e, catItems(ci));
     const mac = /Mac|iPhone|iPad/.test(navigator.platform);
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !mac) {
       e.preventDefault();
@@ -540,42 +536,47 @@
     const clue = round.categories[p.cat].clues[p.row];
     const on = (yes: boolean, label: string) => `${yes ? '✓ ' : ''}${label}`;
     cursor = p;
-    showMenu(e, [
-      { heading: tileName(p) },
-      { label: '✎ Edit clue', onclick: () => openAt(p.cat, p.row), keys: 'Enter' },
-      { sep: true },
-      { heading: 'Make it a…' },
-      ...KINDS.map((k) => ({ label: on(clue.type === k.type, k.label), disabled: clue.empty, onclick: () => makeKind(p, k.type) })),
-      {
-        label: on(!!clue.everyone && clue.type === 'standard', '✍ Everyone answers'),
-        disabled: clue.empty || clue.type !== 'standard',
-        hint: clue.type === 'standard' ? 'Every player types an answer on their phone, in secret' : 'For a standard tile',
-        onclick: () =>
-          step(
-            clue.everyone ? `Took ✍ Everyone answers off ${tileName(p)}` : `Made ${tileName(p)} ✍ Everyone answers`,
-            () => (clue.everyone ? delete clue.everyone : (clue.everyone = true)),
-            { place: tilePlace(p.cat, clue.id) },
-          ),
-      },
-      {
-        label: on(!!clue.empty, '⬚ Empty tile'),
-        hint: clue.empty ? 'Make it playable again' : 'Not played: the board shows a blank there',
-        onclick: () =>
-          step(
-            clue.empty ? `Made ${tileName(p)} playable again` : `Left ${tileName(p)} empty`,
-            () => {
-              clue.empty = !clue.empty;
-              followDailyDoubles(round);
+    showMenu(
+      e,
+      menuOf({
+        heading: tileName(p),
+        open: [menuItem.edit(() => openAt(p.cat, p.row), { label: '✎ Edit clue' })],
+        kinds: {
+          heading: 'Make it a…',
+          items: [
+            ...KINDS.map((k) => ({ label: on(clue.type === k.type, k.label), disabled: clue.empty, onclick: () => makeKind(p, k.type) })),
+            {
+              label: on(!!clue.everyone && clue.type === 'standard', '✍ Everyone answers'),
+              disabled: clue.empty || clue.type !== 'standard',
+              hint: clue.type === 'standard' ? 'Every player types an answer on their phone, in secret' : 'For a standard tile',
+              onclick: () =>
+                step(
+                  clue.everyone ? `Took ✍ Everyone answers off ${tileName(p)}` : `Made ${tileName(p)} ✍ Everyone answers`,
+                  () => (clue.everyone ? delete clue.everyone : (clue.everyone = true)),
+                  { place: tilePlace(p.cat, clue.id) },
+                ),
             },
-            { place: tilePlace(p.cat, clue.id) },
-          ),
-      },
-      { sep: true },
-      { label: '📋 Copy clue', onclick: () => copyTile(p), keys: 'Ctrl+C' },
-      { label: '📋 Paste clue here', onclick: () => pasteTile(p), disabled: !clipboard.clue, keys: 'Ctrl+V' },
-      { label: '⌫ Clear clue', onclick: () => clearTile(p), disabled: !clueClearable(clue), keys: 'Delete' },
-      ...rowItems(p.row, true),
-    ]);
+            {
+              label: on(!!clue.empty, '⬚ Empty tile'),
+              hint: clue.empty ? 'Make it playable again' : 'Not played: the board shows a blank there',
+              onclick: () =>
+                step(
+                  clue.empty ? `Made ${tileName(p)} playable again` : `Left ${tileName(p)} empty`,
+                  () => {
+                    clue.empty = !clue.empty;
+                    followDailyDoubles(round);
+                  },
+                  { place: tilePlace(p.cat, clue.id) },
+                ),
+            },
+          ],
+        },
+        copy: menuItem.copy(() => copyTile(p), { label: '📋 Copy clue' }),
+        paste: menuItem.paste(() => pasteTile(p), { label: '📋 Paste clue here', disabled: !clipboard.clue }),
+        lines: [rowLine(p.row, true)],
+        clear: menuItem.clear(() => clearTile(p), { label: '⌫ Clear clue', disabled: !clueClearable(clue) }),
+      }),
+    );
   }
 
   // ---------- Categories ----------
@@ -641,25 +642,32 @@
     step(`Cleared the clues of “${categoryLabel(cat)}”`, () => cat.clues.forEach(clearClue), { notify: true, place });
   }
 
-  /** Right-click on a category, or its ⋯ button (`button`: the menu drops from it). */
-  function catMenu(e: MouseEvent, ci: number, button = false): void {
-    // (Not a made-up name, which the app selected itself when the right-click put the keys in it.)
-    if (textSelected(e) && !(e.target instanceof HTMLTextAreaElement && madeUpCategoryName(e.target.value))) return;
+  /** A category's menu: its image, a copy, moves and inserts, then clearing and deleting it. */
+  function catItems(ci: number): MenuEntry[] {
     const cat = round.categories[ci];
     const n = round.categories.length;
-    (button ? dropMenu : showMenu)(e, [
-      { heading: categoryLabel(cat) },
-      { label: '◀ Move left', onclick: () => moveCat(ci, ci - 1), disabled: ci === 0, keys: 'Alt+←' },
-      { label: '▶ Move right', onclick: () => moveCat(ci, ci + 1), disabled: ci === n - 1, keys: 'Alt+→' },
-      { sep: true },
-      { label: '＋ Insert category left', onclick: () => insertCat(ci), disabled: n >= 10 },
-      { label: '＋ Insert category right', onclick: () => insertCat(ci + 1), disabled: n >= 10 },
-      { label: '⧉ Duplicate', onclick: () => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))), disabled: n >= 10 },
-      { label: '🖼 Image…', onclick: () => (catPicker = ci) },
-      { label: '⌫ Clear its clues', onclick: () => clearCat(ci), disabled: !cat.clues.some(clueClearable) },
-      { sep: true },
-      { label: '🗑 Delete category', danger: true, onclick: () => deleteCat(ci), disabled: n <= 1 },
-    ]);
+    return menuOf({
+      heading: categoryLabel(cat),
+      verbs: [{ label: '🖼 Image…', onclick: () => (catPicker = ci) }],
+      duplicate: menuItem.duplicate(() => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))), { disabled: n >= 10, keys: false }),
+      move: [menuItem.left(() => moveCat(ci, ci - 1), { disabled: ci === 0 }), menuItem.right(() => moveCat(ci, ci + 1), { disabled: ci === n - 1 })],
+      insert: [
+        { label: '＋ Insert category left', onclick: () => insertCat(ci), disabled: n >= 10 },
+        { label: '＋ Insert category right', onclick: () => insertCat(ci + 1), disabled: n >= 10 },
+      ],
+      clear: menuItem.clear(() => clearCat(ci), { label: '⌫ Clear its clues', disabled: !cat.clues.some(clueClearable), keys: false }),
+      delete: menuItem.delete('category', () => deleteCat(ci), { disabled: n <= 1, keys: false }),
+    });
+  }
+
+  /**
+   * Right-click on a category, or its ⋯ button (`button`: the menu drops from it). In its name box only when the box
+   * isn't being typed in and has nothing selected (a made-up name it selected itself doesn't count): otherwise that's
+   * the browser's cut, copy and paste.
+   */
+  function catMenu(e: MouseEvent, ci: number, button = false): void {
+    if (!button && typingIn(e, e.target instanceof HTMLTextAreaElement && madeUpCategoryName(e.target.value))) return;
+    (button ? dropMenu : showMenu)(e, catItems(ci));
   }
 
   // Category headers drag to reorder (a line shows where it goes), from anywhere but their fields and buttons, so
@@ -727,21 +735,25 @@
     }
   }
 
-  /** A row's items (`keys`: from a tile, where Alt+↑/↓ moves it). */
-  function rowItems(row: number, keys = false): MenuEntry[] {
+  /** A row's own group in a menu, headed by it (`keys`: from a tile, where Alt+↑/↓ moves it). */
+  function rowLine(row: number, keys = false): MenuLine {
     const n = round.values.length;
-    return [
-      { sep: true },
-      { label: '＋ Insert row above', onclick: () => addRow(row), disabled: n >= 10 },
-      { label: '＋ Insert row below', onclick: () => addRow(row + 1), disabled: n >= 10 },
-      { label: '▲ Move row up', onclick: () => shiftRow(row, row - 1), disabled: row === 0, keys: keys ? 'Alt+↑' : undefined },
-      { label: '▼ Move row down', onclick: () => shiftRow(row, row + 1), disabled: row === n - 1, keys: keys ? 'Alt+↓' : undefined },
-      { label: `🗑 Delete row ${row + 1}`, danger: true, onclick: () => removeRow(row), disabled: n <= 1 },
-    ];
+    const k = keys ? {} : { keys: false as const };
+    return {
+      heading: `Row ${row + 1} · ${formatPoints(round.values[row], sym)}`,
+      move: [menuItem.up(() => shiftRow(row, row - 1), { disabled: row === 0, ...k }), menuItem.down(() => shiftRow(row, row + 1), { disabled: row === n - 1, ...k })],
+      insert: [
+        { label: '＋ Insert row above', onclick: () => addRow(row), disabled: n >= 10 },
+        { label: '＋ Insert row below', onclick: () => addRow(row + 1), disabled: n >= 10 },
+      ],
+      delete: menuItem.delete(`row ${row + 1}`, () => removeRow(row), { disabled: n <= 1, keys: false }),
+    };
   }
 
+  /** A row value box's right-click (not while it's typed in), and Shift+F10 in it. */
+  const rowItems = (row: number): MenuEntry[] => menuOf({ lines: [rowLine(row)] });
   function rowMenu(e: MouseEvent, row: number): void {
-    showMenu(e, [{ heading: `Row ${row + 1} · ${formatPoints(round.values[row], sym)}` }, ...rowItems(row)]);
+    if (!typingIn(e)) showMenu(e, rowItems(row));
   }
 </script>
 
@@ -821,7 +833,8 @@
       onchange={(e) => (e.currentTarget.value = String(round.values[i]))}
       aria-label="Row {i + 1} value"
       oncontextmenu={(e) => rowMenu(e, i)}
-      title="Right-click to insert, move or delete this row"
+      onkeydown={(e) => isMenuKey(e) && keyMenu(e, rowItems(i))}
+      title="Right-click (or Shift+F10) to insert, move or delete this row"
     />
   {/each}
   <!-- (×2 and ÷2 wrap to the next line together.) -->

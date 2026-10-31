@@ -180,6 +180,8 @@ describe('a right-click in a name box', () => {
     // It had the keys before the click: the browser's cut, copy and paste.
     expect(typingIn(on(name), false, name as unknown as Element)).toBe(true);
     expect(typingIn(on(box(0, 4)), false, null)).toBe(true);
+    // A menu just gave it the keys back: not typing yet.
+    expect(typingIn(on(name), false, name as unknown as Element, name as unknown as Element)).toBe(false);
     // Words it selected itself when it got the keys (a made-up name) don't count.
     expect(typingIn(on(box(0, 4)), true, null)).toBe(false);
     // Not a box to type in (a tile, a button).

@@ -116,20 +116,39 @@ export const menuItem = {
 /** A menu's keys as this computer writes them: on a Mac, Ctrl+ is ⌘, Alt+ is ⌥ and Shift+ is ⇧. */
 export const menuKeys = (k: string, mac: boolean): string => (mac ? k.replaceAll('Ctrl+', '⌘').replaceAll('Alt+', '⌥').replaceAll('Shift+', '⇧') : k);
 
-/** What had the keys when the last press began (the press may have moved them into a name box). */
+/**
+ * What had the keys when the last press began (the press may have moved them into a name box), and a box a menu gave
+ * the keys back to (see gaveBack) that hasn't been typed or clicked in since.
+ */
 let focusAtPress: Element | null = null;
-if (typeof addEventListener !== 'undefined') addEventListener('pointerdown', () => (focusAtPress = document.activeElement), true);
+let handedBack: Element | null = null;
+if (typeof addEventListener !== 'undefined') {
+  addEventListener(
+    'pointerdown',
+    (e) => {
+      focusAtPress = document.activeElement;
+      if (e.button !== 2) handedBack = null;
+    },
+    true,
+  );
+  addEventListener('keydown', () => (handedBack = null), true);
+}
+
+/** A menu closed and gave the keys back to `el` (the name box it was opened on): that isn't typing in it. */
+export function gaveBack(el: Element): void {
+  handedBack = el;
+}
 
 /**
  * A right-click in a name box (a category's, a row's value) keeps the browser's own menu, for cut, copy and paste, while
- * the box is being typed in (it had the keys before the click) or has words selected; otherwise it opens the thing's
- * menu. `picked`: a selection the box made itself when it got the keys (a made-up name, selected to type over), which
- * doesn't count. Shift+F10 in it always opens the thing's menu.
+ * the box is being typed in (it had the keys before the click, not just from a menu closing) or has words selected;
+ * otherwise it opens the thing's menu. `picked`: a selection the box made itself when it got the keys (a made-up
+ * name, selected to type over), which doesn't count. Shift+F10 in it always opens the thing's menu.
  */
-export function typingIn(e: MouseEvent, picked = false, before: Element | null = focusAtPress): boolean {
+export function typingIn(e: MouseEvent, picked = false, before: Element | null = focusAtPress, back: Element | null = handedBack): boolean {
   const t = e.target;
   if (!isTextField(t)) return false;
-  if (t === before) return true;
+  if (t === before && t !== back) return true;
   let from: number | null = null;
   let to: number | null = null;
   try {

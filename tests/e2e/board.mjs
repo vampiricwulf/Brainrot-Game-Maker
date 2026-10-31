@@ -114,7 +114,14 @@ try {
   await tile(2, 1).click({ button: 'right' });
   const menu = page.getByRole('menu');
   const items = await menu.getByRole('menuitem').allInnerTexts();
-  assert(['Copy clue', 'Paste clue here', 'Clear clue', 'Insert row above', 'Delete row 2'].every((x) => items.some((i) => i.includes(x))), 'the tile menu copies, pastes, clears and does rows');
+  assert(['Copy clue', 'Paste clue here', 'Clear clue', 'Insert above', 'Delete row 2'].every((x) => items.some((i) => i.includes(x))), 'the tile menu copies, pastes, clears and does rows');
+  {
+    // The menus' one order: Edit, Make it a…, Copy / Paste, the row's own group (headed, its delete at its end), Clear last.
+    const at = (x) => items.findIndex((i) => i.includes(x));
+    const order = ['Edit clue', 'Standard', 'Copy clue', 'Paste clue here', 'Move up', 'Insert above', 'Delete row 2', 'Clear clue'].map(at);
+    const heads = await menu.locator('.heading').allInnerTexts();
+    assert(order.every((n, i) => n >= 0 && (i === 0 || n > order[i - 1])) && items.at(-1).includes('Clear clue') && heads.includes('Row 2 · $400'), `the tile menu goes in the one order (${items.join(' | ')})`);
+  }
   await menu.getByRole('menuitem', { name: /Clear clue/ }).click();
   assert(!(await tileText(2, 1)).includes('Who is Pepe?'), 'Clear clue from the menu');
   assert(await tile(2, 1).evaluate((el) => el === document.activeElement), 'the focus goes back to the tile after its menu (its keys go on working)');
@@ -184,17 +191,25 @@ try {
   const catMenuShown = await menu.getByRole('menuitem', { name: /Delete category/ }).waitFor({ timeout: 3000 }).then(() => true, () => false);
   assert(catMenuShown, 'right-clicking a made-up category name opens the category menu');
   await page.keyboard.press('Escape');
+  // Typing in the name: a right-click there is the browser's cut, copy and paste (no menu of ours); Shift+F10 is still the category's.
+  await page.getByLabel('Category 3 name').click();
+  await page.keyboard.press('End');
+  await page.getByLabel('Category 3 name').click({ button: 'right' });
+  assert((await menu.count()) === 0, 'a right-click in a category name being typed in leaves it to the browser’s Cut / Copy / Paste');
+  await page.keyboard.press('Shift+F10');
+  assert(await menu.getByRole('menuitem', { name: /Delete category/ }).waitFor({ timeout: 3000 }).then(() => true, () => false), 'Shift+F10 in the name still opens the category menu');
+  await page.keyboard.press('Escape');
   await page.locator('main').click({ position: { x: 4, y: 4 } });
 
   // ---------- ED-20: rows anywhere ----------
   await page.getByLabel('Row 1 value').click({ button: 'right' });
-  await menu.getByRole('menuitem', { name: /Insert row above/ }).click();
+  await menu.getByRole('menuitem', { name: /Insert above/ }).click();
   await page.waitForTimeout(200);
   const values = () => page.locator('.values input[aria-label^="Row"]').evaluateAll((els) => els.map((e) => e.value).join(','));
-  assert((await values()) === '200,400,600,800,1000,1200' && (await tileText(0, 1)).includes('Who is Pepe?'), `Insert row above: the clues move down, the values stay (${await values()})`);
+  assert((await values()) === '200,400,600,800,1000,1200' && (await tileText(0, 1)).includes('Who is Pepe?'), `Insert above: the clues move down, the values stay (${await values()})`);
   await page.getByLabel('Row 2 value').click({ button: 'right' });
-  await menu.getByRole('menuitem', { name: /Move row up/ }).click();
-  assert((await tileText(0, 0)).includes('Who is Pepe?') && (await undoTitle()).startsWith('Undo: Moved row 2 up'), 'Move row up moves its clues, one step');
+  await menu.getByRole('menuitem', { name: /Move up/ }).click();
+  assert((await tileText(0, 0)).includes('Who is Pepe?') && (await undoTitle()).startsWith('Undo: Moved row 2 up'), '▲ Move up in the row’s menu moves its clues, one step');
   await tile(0, 1).click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Delete row 2/ }).click();
   assert((await values()) === '200,400,600,800,1000' && (await notice.innerText()).startsWith('Deleted row 2'), 'Delete row, with a note');
@@ -210,8 +225,8 @@ try {
   await page.getByLabel('Row 5 value', { exact: true }).waitFor({ timeout: 3000 });
   assert((await values()) === '200,400,600,800,1000', 'Undo brings the last row back');
   await tile(0, 0).click({ button: 'right' });
-  await menu.getByRole('menuitem', { name: /Move row down/ }).click();
-  assert((await focusComes('0,1')) && (await tileText(0, 1)).includes('Who is Pepe?'), `after Move row down from a tile's menu, the focus goes with the tile (${await focused()})`);
+  await menu.getByRole('menuitem', { name: /Move down/ }).click();
+  assert((await focusComes('0,1')) && (await tileText(0, 1)).includes('Who is Pepe?'), `after ▼ Move down from a tile's menu, the focus goes with the tile (${await focused()})`);
   await key('ArrowUp');
   assert((await focused()) === '0,0', 'and the arrows go on from there');
   // Alt+arrows on a tile move its row or its category, and on a category's name the category; the keys go with them.
