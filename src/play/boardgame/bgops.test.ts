@@ -490,6 +490,23 @@ describe('board game: the host’s moves on the stage', () => {
     expect(bs().last).toBeUndefined();
   });
 
+  it('the check’s ▶ Run gives an action for the players picked to those picked, and one for whoever landed to them', () => {
+    const { game, session, round } = playing();
+    const thief = Object.assign(round.spaces[1], {
+      name: 'Thief',
+      onLand: [{ id: 't', do: 'score', amount: -100, who: 'selected' }, { id: 'g', do: 'score', amount: 50, who: 'ask' }] as Action[],
+    });
+    moveNow(game, session, 1);
+    // Ann landed; the host picked Bob (2), as the landing box's own −$100 button would take it from Bob.
+    expect(runSpace(game, session, newLive(), thief, ['a'], 'onLand', false, ['b'])).toBe('Thief: −$100: Bob · Thief: +$50: Ann');
+    const got = (id: string) => session.scoreLog.filter((e) => !e.undone && e.playerId === id).reduce((n, e) => n + e.delta, 0);
+    expect([got('a'), got('b')]).toEqual([50, -100]);
+    // ▶ Run all on its card: nobody else picked, so whoever it's for gets both.
+    undoAction(session, game);
+    runSpace(game, session, newLive(), thief, ['a']);
+    expect([got('a'), got('b')]).toEqual([-50, 0]);
+  });
+
   it('a landing action that moves them on leaves the new landing still to run (and its Undo the old one)', () => {
     const { game, session, round, bs } = playing();
     const sp = round.spaces[2];

@@ -5527,12 +5527,15 @@
     bgSteps = null;
   }
 
-  /** The check's ▶ Run (or ▶ Start): the turn's landing actions, for whoever landed, as the space's ▶ Run all does. */
+  /**
+   * The check's ▶ Run (or ▶ Start): the turn's landing actions, for whoever landed, as the space's ▶ Run all does; an
+   * action for the players picked goes to those picked, as the landing box's own button does (the check waits for a pick).
+   */
   function boardLanding(): void {
     const { round, bs } = boardNow(game, session);
     const last = bs?.last;
     const sp = round && last?.landed ? round.spaces.find((x) => x.id === last.landed) : undefined;
-    if (sp && last) toast(runSpace(game, session, app.live, sp, [last.playerId], 'onLand', !dual), 3000);
+    if (sp && last) toast(runSpace(game, session, app.live, sp, [last.playerId], 'onLand', !dual, selected), 3000);
   }
 
   /**

@@ -141,9 +141,11 @@ export function reorderTurns(game: Game, session: Session, from: number, to: num
 /**
  * Run a space's landing (or passing) actions for some players, as one step, as if they'd just landed there. Returns
  * what to tell the host (`hide`: one window, a secret space not revealed yet is “? (secret)” in it, and in the log). A
- * 🤫 card it offers shows under the landing box when it's where the turn landed, else under the space's card.
+ * 🤫 card it offers shows under the landing box when it's where the turn landed, else under the space's card. `picked`:
+ * the players the host picked, when they aren't `who` (the check runs the turn's landing for whoever landed, and an
+ * action “for the players picked” goes to those picked, as the landing box's own button does).
  */
-export function runSpace(game: Game, session: Session, live: Live, space: BoardSpace, who: string[], which: 'onLand' | 'onPass' = 'onLand', hide = false): string {
+export function runSpace(game: Game, session: Session, live: Live, space: BoardSpace, who: string[], which: 'onLand' | 'onPass' = 'onLand', hide = false, picked?: string[]): string {
   const { round, bs } = boardNow(game, session);
   const list = space[which] ?? [];
   if (!round || !bs || !list.length) return `${space.name} has no actions`;
@@ -153,7 +155,7 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
   const decides = list.find(decidingAction);
   const run = decides ? [decides] : list;
   let said: string[] = [];
-  const ctx = { game, session, live, board: round, bs, hide, selected: who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session, at) };
+  const ctx = { game, session, live, board: round, bs, hide, selected: picked ?? who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session, at) };
   const on = which === 'onPass' ? 'pass' : 'land';
   // (Its step says it both ways: one window shows the quiet one, whichever window ran it. Neither that nor what one
   // window tells the host says a 📝 note of a secret space not revealed yet: see actsShown.)
