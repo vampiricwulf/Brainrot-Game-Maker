@@ -46,7 +46,12 @@
   let editingImage = $state<string | null>(null);
   let canvasEl = $state<HTMLDivElement>();
   let windowEl = $state<HTMLDivElement>();
-  let menu = $state<{ x: number; y: number; at: Pt; stack: SlideElement[] } | null>(null);
+  /** `from`: a Layers row's name, opened from it (the keys go back there after). */
+  let menu = $state<{ x: number; y: number; at: Pt; stack: SlideElement[]; from?: HTMLElement } | null>(null);
+  /** The Layers row being renamed (F2 on a selected image, or ✎ Rename in its menu). */
+  let renaming = $state<string | null>(null);
+  /** F2 or ✎ Rename: its name in the Layers list. */
+  const rename = (id: string) => (renaming = id);
   const single = $derived(selected.length === 1 ? decor.find((d) => d.id === selected[0]) : undefined);
   const imageEl = $derived(decor.find((d) => d.id === editingImage) as ImageEl | undefined);
   const others = $derived(boardRounds(game).filter((r) => r.id !== round.id));
@@ -253,6 +258,12 @@
     else if (a === 'paste') pasteItems(at);
     else if (a === 'select-all') selectAll();
     else if (a === 'edit-image' && single) editingImage = single.id;
+    else if (a === 'rename' && single) rename(single.id);
+    else if (a === 'replace' && single) {
+      // As the panel's Replace… does (its picker drops from there).
+      replaceFrom = windowEl?.querySelector<HTMLElement>('.insp [data-replace]') ?? undefined;
+      picking = 'replace';
+    }
   }
 
   function selectAll(): void {
@@ -338,9 +349,11 @@
     return !!(e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');
   }
 
-  /** A menu choice made with the keys: they go back to the preview first (not to the window's first button). */
+  /** A menu choice made with the keys: they go back to the preview first (not to the window's first button), or to the Layers row it was opened from. */
   function menuKeysHome(): void {
-    if (document.activeElement?.closest('[role="menu"]')) canvasEl?.focus({ preventScroll: true });
+    if (!document.activeElement?.closest('[role="menu"]')) return;
+    if (menu?.from?.isConnected) menu.from.focus({ preventScroll: true });
+    else canvasEl?.focus({ preventScroll: true });
   }
 
   function keyMenu(): void {
@@ -376,6 +389,9 @@
     } else if (k === 'enter' && onCanvas && !mod && !e.altKey && !e.shiftKey && selected.length === 1 && decor.find((d) => d.id === selected[0])?.kind === 'image') {
       // Enter on a picture: ✎ Edit image, as a double-click.
       editingImage = selected[0];
+    } else if (k === 'f2' && onCanvas && !mod && !e.altKey && !e.shiftKey && selected.length === 1) {
+      // F2: rename it in the Layers list, as on a slide.
+      rename(selected[0]);
     } else if (k === 'escape') {
       if (selected.length) selected = [];
       else onclose();
@@ -426,6 +442,8 @@
     {game}
     bind:hovered
     canPaste={clipboard.elements.some((x) => x.kind === 'image')}
+    canReplace
+    where="The board"
     onpick={(id) => (selected = [id])}
     onaction={(a) => (menuKeysHome(), menuAction(a, at))}
     onclose={() => {
@@ -529,7 +547,19 @@
         </section>
         <section>
           <h4>Layers <span class="muted">(top first)</span></h4>
-          <LayersPanel elements={decor} {game} bind:selected bind:hidden bind:hovered onedit={edit} />
+          <LayersPanel
+            elements={decor}
+            {game}
+            bind:selected
+            bind:hidden
+            bind:hovered
+            bind:renaming
+            onedit={edit}
+            onmenu={(m) => {
+              const d = decor.find((x) => x.id === selected[selected.length - 1]);
+              menu = { x: m.x, y: m.y, at: d ? { x: d.x + d.w / 2, y: d.y + d.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 }, stack: [], from: m.from };
+            }}
+          />
         </section>
         {#if single}
           <section class="board-opts">

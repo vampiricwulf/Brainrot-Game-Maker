@@ -299,7 +299,7 @@
       <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
       <div class="row">
         {#if oneditimage}<button onclick={oneditimage}>✎ Edit image…</button>{/if}
-        <button onclick={(e) => onreplace(e.currentTarget)}>Replace…</button>
+        <button onclick={(e) => onreplace(e.currentTarget)} data-replace>Replace…</button>
       </div>
       {@render liveNote()}
     </section>
@@ -374,7 +374,7 @@
         {/if}
       {:else}
         <div class="row">
-          <button class="small" onclick={(e) => onreplace(e.currentTarget)}>Replace file…</button>
+          <button class="small" onclick={(e) => onreplace(e.currentTarget)} data-replace>Replace file…</button>
           {#if el.kind === 'video' || el.kind === 'audio'}
             {@const offer = editOffer(game.media.find((m) => m.id === el.media))}
             {#if offer}

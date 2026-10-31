@@ -8,12 +8,12 @@ export type Align = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom' 
 
 /**
  * What the right-click menu (and its shortcuts) can do: to the selection, or on an empty spot (paste there, select
- * all, and in the slide editor a whole slide, a text box there and the background).
+ * all, and in the slide editor a text box there, the whole slide copied or pasted over, and the background).
  */
 export type LayerAction =
   | 'front' | 'forward' | 'backward' | 'back' | 'duplicate' | 'lock' | 'unlock' | 'hide' | 'delete'
-  | 'cut' | 'copy' | 'paste' | 'edit' | 'edit-image' | 'edit-media' | `align-${Align}`
-  | 'select-all' | 'paste-slide' | 'add-text' | 'background';
+  | 'cut' | 'copy' | 'paste' | 'edit' | 'edit-image' | 'edit-media' | 'rename' | 'replace' | `align-${Align}`
+  | 'select-all' | 'copy-slide' | 'paste-over' | 'add-text' | 'background';
 
 /** The one notice for an action that left locked items alone (delete, cut, align, nudge). */
 export function lockedNote(n: number, noun = 'item'): string {
@@ -64,5 +64,28 @@ export function layerLabel(el: SlideElement, game: Game): string {
       return el.hotspot ? 'Hotspot' : SHAPES[el.shape];
     case 'embed':
       return embedName(el.embedKind, el.url);
+  }
+}
+
+/**
+ * What opens one item's editor, as its menu and the panel's bar say it (a double-click or Enter does the same): a
+ * picture's ✎ Edit image…, a video's or sound's ✎ Edit video… / sound… (`media`: its file can be edited here, see
+ * editOffer; else its Start at), a text box's text, a link's Link box, a shape's Fill or a line's Color. None for a
+ * hotspot.
+ */
+export function editWords(el: SlideElement, media: 'on' | 'busy' | null = null): string | null {
+  switch (el.kind) {
+    case 'text':
+      return '✎ Edit text';
+    case 'image':
+      return '✎ Edit image…';
+    case 'video':
+    case 'audio':
+      return media ? (el.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…') : '✎ Edit start and stop';
+    case 'embed':
+      return '✎ Edit link';
+    case 'shape':
+      if (el.hotspot) return null;
+      return el.shape === 'line' || el.shape === 'arrow' || (el.shape === 'path' && !el.closed) ? '✎ Edit color' : '✎ Edit fill';
   }
 }

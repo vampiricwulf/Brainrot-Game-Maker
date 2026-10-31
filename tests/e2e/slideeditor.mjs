@@ -119,6 +119,35 @@ try {
   assert((await page.getByLabel('Slide background color').inputValue()) === '#ffd6e7', "the background color shows the Pastel theme's tile color, not the Classic blue");
   await page.getByLabel('Slide background color').press('Escape');
 
+  // ---------- A right-click beside the question's words: the slide's own menu ----------
+  {
+    const menu = page.getByRole('menu', { name: 'Slide item menu' });
+    const items = async () => (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0].trim());
+    const p = await at(200, 150);
+    await page.mouse.click(p.x, p.y, { button: 'right' });
+    await menu.waitFor();
+    const slideMenu = await items();
+    const slideWant = ['✎ Edit text', 'Align', '＋ Text here', '📋 Paste here', '📋 Copy slide', '📋 Paste over this slide', '🎨 Background…', 'Select all'];
+    assert(
+      (await menu.locator('.head').innerText()).trim() === 'This slide' && (await menu.locator('.pick').count()) === 1 && JSON.stringify(slideMenu) === JSON.stringify(slideWant),
+      `beside the full-slide question's words, a right-click gives the slide's menu, the text box to pick in it and its ✎ Edit text and Align first (${slideMenu.join(' | ')})`,
+    );
+    // 🎨 Background… opens the toolbar's Background box where the menu was.
+    await menu.getByRole('menuitem', { name: '🎨 Background…' }).click();
+    const bgBox = await page.getByRole('group', { name: 'Background' }).boundingBox();
+    assert(!!bgBox && Math.abs(bgBox.x - p.x) < 40 && Math.abs(bgBox.y - p.y) < 40, `🎨 Background… opens the Background box at the pointer (${Math.round(bgBox?.x ?? 0)},${Math.round(bgBox?.y ?? 0)} for ${Math.round(p.x)},${Math.round(p.y)})`);
+    await page.keyboard.press('Escape');
+    // On its words, the text box's own menu, in the editors' one order.
+    const q = await at(960, 540);
+    await page.mouse.click(q.x, q.y, { button: 'right' });
+    await menu.waitFor();
+    const itemMenu = await items();
+    const itemWant = ['✎ Edit text', '✎ Rename', '⧉ Duplicate', '✂ Cut', '📋 Copy', '📋 Paste', 'Bring to front', 'Bring forward', 'Send backward', 'Send to back', 'Align', '🔒 Lock', '👁 Hide while editing', '🗑 Delete'];
+    assert(JSON.stringify(itemMenu) === JSON.stringify(itemWant), `on its words, the text box's menu in one order (${itemMenu.join(' | ')})`);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+  }
+
   // ---------- The main text box ----------
   await click(960, 540);
   await insp.locator('textarea').fill('Hi');

@@ -264,6 +264,15 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   there), a link its Link box, a shape its Fill (a line its Color); the item menu's ✎ Edit shows the keys for every
   kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼 Image,
   🎬 Video, 🔊 Audio, 🌐 Link, a drop or a paste) the keys are on the slide.
+- **Right-click menus** (LayerMenu, its own component, in the editors' one order; Shift+F10 on the canvas or a Layers
+  row too, and 🖼 Board images the same): an item's is headed by its name, then the items stacked there to pick from,
+  ✎ Edit… (Double-click / Enter) · 🔁 Use another file… (a picture, video or sound: only this item) · ✎ Rename (F2 where
+  it renames) · ⧉ Duplicate · ✂ Cut · 📋 Copy · 📋 Paste · Bring to front · Bring forward · Send backward · Send to back
+  · Align ▸ · 🔒 Lock · 👁 Hide while editing (an RPG object's 🤫 Secret and ＋ Add button…) · 🗑 Delete. A right-click
+  follows a left click's rule: beside the words of a text box that isn't selected it's an empty spot, so a full-slide
+  question gives the slide's menu (its "Select an item here" lists the text box): ＋ Text here · 📋 Paste here · 📋 Copy
+  slide · 📋 Paste over this slide · 🎨 Background… (the toolbar's Background box, at the pointer) · Select all, led by
+  the item's ✎ Edit and Align ▸ when the slide holds only one.
 - **Text controls**: font (bundled + uploaded), size, auto-fit, weight/italic/underline, color, alignment
   (horizontal + vertical), line height, letter spacing, outline/stroke, drop shadow, glow, background
   box, and inline rich text (per-word color and bold).

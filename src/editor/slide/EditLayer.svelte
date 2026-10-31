@@ -3,7 +3,8 @@
   resize (rotation-aware) and rotate elements. Works in 1920×1080 stage coordinates.
   Double-click an element to edit it. Drag on an empty spot to select with a box (a text box's empty area counts,
   away from its letters, until it's selected; Alt+drag always draws a box); Alt+click walks down through stacked
-  items; right-click opens a menu of everything under the pointer. Locked items let clicks through to what's under them.
+  items; right-click opens a menu of everything under the pointer (beside a text box's letters, the slide's own). Locked
+  items let clicks through to what's under them.
 -->
 <script lang="ts">
   import { getContext } from 'svelte';
@@ -100,7 +101,7 @@
    * Is the pointer on what a text box draws: its letters (or the hint shown while it's empty), with a little room
    * around them, or its background box? The rest of a big text box is "empty" for pressing and dragging.
    */
-  function onDrawnText(el: SlideElement, e: PointerEvent): boolean {
+  function onDrawnText(el: SlideElement, e: MouseEvent): boolean {
     if (el.kind !== 'text' || el.background) return true;
     const inner = layerEl.parentElement?.querySelector(`[data-el="${CSS.escape(el.id)}"] .inner`);
     if (!inner) return true;
@@ -340,9 +341,12 @@
     if (!onmenu || drag) return;
     const at = toStage(e, layerEl);
     const stack = elementsAt(visible, at);
-    // Right-clicking something that isn't selected selects it first (the top unlocked item there).
+    // Right-clicking something that isn't selected selects it first (the top unlocked item there). As a left click
+    // does, a text box not selected yet counts only on its words: beside them, a full-slide question gives the slide's
+    // menu (whose "Select an item here" still lists the text box).
     if (!stack.some((x) => selected.includes(x.id))) {
-      const top = stack.find((x) => !x.locked) ?? stack[0];
+      const hit = stack.filter((x) => x.kind !== 'text' || onDrawnText(x, e));
+      const top = hit.find((x) => !x.locked) ?? hit[0];
       selected = top ? [top.id] : [];
     }
     onmenu({ x: e.clientX, y: e.clientY, at, stack });

@@ -320,6 +320,19 @@ try {
   await layers.first().getByRole('button', { name: /^Unlock: / }).click();
   assert(!(await page.locator('.insp').getByLabel('Lock', { exact: true }).isChecked()), 'and unlocks it from there');
 
+  // A Layers row has the item's menu too: a right-click on it, or Shift+F10 with the keys on it (Esc gives them back).
+  await layers.first().locator('.name').click({ button: 'right' });
+  await menu.waitFor();
+  assert((await menu.locator('.head').innerText()).trim() === label && (await menu.getByRole('menuitem', { name: '✎ Rename' }).count()) === 1, `a right-click on a Layers row opens its item's menu, headed by its name (${label})`);
+  await page.keyboard.press('Escape');
+  await menu.waitFor({ state: 'detached' });
+  await layers.first().locator('.name').focus();
+  await page.keyboard.press('Shift+F10');
+  await menu.waitFor();
+  await page.keyboard.press('Escape');
+  await menu.waitFor({ state: 'detached' });
+  assert(await layers.first().locator('.name').evaluate((b) => b === document.activeElement), 'Shift+F10 on the row opens it as well, and Esc gives the row the keys back');
+
   // A choice in the keyboard's menu (Shift+F10, arrows, Enter) leaves the keys on the slide. In the clue editor they
   // went to 🅣 Text: Delete then did nothing, and Enter added a text box.
   /** Let the page's own timers (set off by what was just done) run first. */

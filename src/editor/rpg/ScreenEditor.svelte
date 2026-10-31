@@ -87,6 +87,31 @@
   }
 
   /**
+   * An object's own items in its right-click menu: 🤫 Secret (ticked when it is), and ＋ Add button… (the kinds, under
+   * its panel's ＋ Add button) for one that has buttons.
+   */
+  function menuextras(el: SlideElement): { label: string; title?: string; onclick: () => void }[] {
+    const buttons = !!el.role && el.role.class !== 'spawn' && el.role.class !== 'blocker';
+    return [
+      { label: `${el.secret ? '✓ ' : ''}🤫 Secret`, title: 'Viewers don’t see it until you reveal it in play', onclick: () => (el.secret = el.secret ? undefined : true) },
+      ...(buttons
+        ? [
+            {
+              label: '＋ Add button…',
+              title: 'A button on its card in play (you always confirm it)',
+              onclick: () =>
+                void tick().then(() => {
+                  const add = document.querySelector<HTMLButtonElement>('.insp .obj [data-add-action]');
+                  add?.focus();
+                  add?.click();
+                }),
+            },
+          ]
+        : []),
+    ];
+  }
+
+  /**
    * The catalog's items, under the button (a second click, Esc or a click elsewhere closes it). With none yet, it
    * makes one here, or goes to 📊 Stats & Items.
    */
@@ -109,7 +134,7 @@
   }
 </script>
 
-<SlideEditor slide={slide ?? screen.slide} placeholder="Click to type" fill fallbackBg="#2f6b3a">
+<SlideEditor slide={slide ?? screen.slide} placeholder="Click to type" fill fallbackBg="#2f6b3a" {menuextras}>
   {#snippet objectsection(el: SlideElement)}
     <ObjectPanel {el} {world} slide={slide ?? screen.slide} />
   {/snippet}

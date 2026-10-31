@@ -1,7 +1,8 @@
 <!--
   Layers list for a slide (or the board's images): top-most first. Click to select (Shift/Ctrl adds),
   drag to restack, 👁 hides an item while editing (never in the game), 🔒 locks it in place, and
-  double-click or F2 renames an item.
+  double-click or F2 renames an item. A right-click on a row (or Shift+F10 on it) selects it and opens the item's menu,
+  the same as on the slide.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -10,6 +11,7 @@
   import { itemsNamed, layerIcon, layerLabel } from '../../lib/layerlabel';
   import { offStage } from '../../lib/layers';
   import { announce } from '../../lib/announce';
+  import { isMenuKey } from '../../lib/menustate.svelte';
 
   let {
     elements,
@@ -19,6 +21,7 @@
     hovered = $bindable(null),
     renaming = $bindable(null),
     onedit,
+    onmenu,
   }: {
     elements: SlideElement[];
     game: Game;
@@ -35,6 +38,8 @@
      * slide and never goes through here.
      */
     onedit?: (change: () => void, label?: string) => void;
+    /** A row's menu (right-click, Shift+F10): at x/y in the window, `from` the row's name, which gets the keys back. */
+    onmenu?: (m: { x: number; y: number; from: HTMLElement }) => void;
   } = $props();
   const edit = (change: () => void, label?: string) => (onedit ? onedit(change, label) : change());
 
@@ -136,7 +141,20 @@
     input.select();
   };
 
+  /** A row's menu: the item it's for is selected first (one already among several selected keeps them all). */
+  function menuAt(el: SlideElement, x: number, y: number, from: HTMLElement): void {
+    if (!onmenu) return;
+    if (!selected.includes(el.id)) selected = [el.id];
+    onmenu({ x, y, from });
+  }
+
   function rowKey(e: KeyboardEvent, el: SlideElement): void {
+    if (isMenuKey(e) && onmenu) {
+      e.preventDefault();
+      e.stopPropagation();
+      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      return menuAt(el, r.left + 8, r.bottom + 2, e.currentTarget as HTMLElement);
+    }
     if (e.key === 'F2') {
       e.preventDefault();
       renaming = el.id;
@@ -187,6 +205,13 @@
       ondragend={() => ((dragId = null), (dropAt = null))}
       onpointerenter={() => (hovered = el.id)}
       onpointerleave={() => hovered === el.id && (hovered = null)}
+      oncontextmenu={(e) => {
+        if (!onmenu || renaming === el.id) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const name = (e.currentTarget as HTMLElement).querySelector<HTMLElement>('.name');
+        if (name) menuAt(el, e.clientX, e.clientY, name);
+      }}
     >
       <span class="grip" aria-hidden="true">⋮⋮</span>
       {#if renaming === el.id}
@@ -216,7 +241,7 @@
           ondblclick={() => (renaming = el.id)}
           onkeydown={(e) => rowKey(e, el)}
           aria-pressed={isSel}
-          title="Click to select (Shift/Ctrl adds). Double-click or F2 to rename. Drag to restack; Alt+↑/↓ moves it up or down."
+          title="Click to select (Shift/Ctrl adds). Double-click or F2 to rename. Drag to restack; Alt+↑/↓ moves it up or down. Right-click or Shift+F10: its menu."
         >
           {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
           <span class="txt">{layerLabel(el, game)}</span>

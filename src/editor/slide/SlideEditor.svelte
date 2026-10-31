@@ -81,6 +81,7 @@
     fill = false,
     objectsection,
     tools,
+    menuextras,
     fallbackBg = 'var(--tile)',
   }: {
     slide: Slide;
@@ -107,6 +108,8 @@
     objectsection?: Snippet<[SlideElement]>;
     /** Extra toolbar buttons (RPG screens: spawn point, items). `add` puts an element on the slide. */
     tools?: Snippet<[(el: SlideElement) => void]>;
+    /** The selected item's own extras in its right-click menu (an RPG object's 🤫 Secret and ＋ Add button…). */
+    menuextras?: (el: SlideElement) => { label: string; title?: string; onclick: () => void }[];
     /** What shows with no background set: the theme's tile color, or the color a board game or RPG screen has on stage. */
     fallbackBg?: string;
   } = $props();
@@ -123,8 +126,10 @@
   /** The Inspector button (Replace…, font ＋) its picker drops from. */
   let pickerFrom = $state<HTMLElement>();
   let shapeMenu = $state(false);
-  /** The Background ▾ box: the slide's color, picture and reset. */
+  /** The Background ▾ box: the slide's color, picture and reset. `bgAt`: opened from the slide's menu, at the pointer. */
   let bgMenu = $state(false);
+  let bgAt = $state<{ x: number; y: number } | null>(null);
+  let bgAnchor = $state<HTMLElement>();
   /** ✏ Draw is on: the next drag on the canvas draws a line. */
   let drawing = $state(false);
   /** The drawpad is open: a whole drawing, inserted as one picture. */
@@ -159,7 +164,8 @@
   // mouse, and the right-click menu.
   let hidden = $state<string[]>([]);
   let hovered = $state<string | null>(null);
-  let menu = $state<{ x: number; y: number; at: Pt; stack: SlideElement[] } | null>(null);
+  /** `from`: a Layers row's name, opened from it (the keys go back there after). */
+  let menu = $state<{ x: number; y: number; at: Pt; stack: SlideElement[]; from?: HTMLElement } | null>(null);
   const editView = $derived(hidden.length ? { ...slide, elements: slide.elements.filter((e) => !hidden.includes(e.id)) } : slide);
 
   const single = $derived(selected.length === 1 ? slide.elements.find((e) => e.id === selected[0]) : undefined);
@@ -551,11 +557,14 @@
    * nearest button, 🅣 Text, so Delete did nothing and Enter added a text box.
    */
   function menuKeysHome(): void {
-    if (document.activeElement?.closest('[role="menu"]')) canvasEl?.focus({ preventScroll: true });
+    if (!document.activeElement?.closest('[role="menu"]')) return;
+    const from = menu?.from;
+    if (from?.isConnected) from.focus({ preventScroll: true });
+    else canvasEl?.focus({ preventScroll: true });
   }
 
-  /** A right-click menu choice (`at`: where on the slide the menu was opened). */
-  function menuAction(a: LayerAction, at?: Pt): void {
+  /** A right-click menu choice (`at`: where on the slide the menu was opened; `client`: and in the window). */
+  function menuAction(a: LayerAction, at?: Pt, client?: { x: number; y: number }): void {
     if (a.startsWith('align-')) align(a.slice(6) as Align);
     else if (a === 'front' || a === 'forward' || a === 'backward' || a === 'back') restackSelected(a);
     else if (a === 'duplicate') duplicate();
@@ -574,12 +583,21 @@
     else if (a === 'copy') copyFromMenu((data) => toast(`Copied ${copied(data)}`));
     else if (a === 'cut') cut(null);
     else if (a === 'paste') pasteItems(at);
-    else if (a === 'paste-slide') pasteSlide();
+    else if (a === 'copy-slide') copySlide();
+    else if (a === 'paste-over') pasteSlide();
     else if (a === 'select-all') selectAll();
     else if (a === 'add-text') addText(at);
     else if (a === 'background') {
-      replacing = 'bg';
-      picker = 'image';
+      // The toolbar's Background box, at the pointer, the keys in it.
+      bgAt = client ?? null;
+      bgMenu = true;
+      void tick().then(() => root?.querySelector<HTMLElement>('.bg-menu input, .bg-menu button:not(:disabled)')?.focus());
+    } else if (a === 'rename' && single) renameInLayers(single);
+    else if (a === 'replace' && (single?.kind === 'image' || single?.kind === 'video' || single?.kind === 'audio')) {
+      // As the panel's Replace… does (its picker drops from there).
+      pickerFrom = root?.querySelector<HTMLElement>('.insp [data-replace]') ?? undefined;
+      replacing = single.id;
+      picker = single.kind;
     } else if (a === 'edit-image' && single?.kind === 'image') editingImage = single.id;
     else if (a === 'edit-media' && (single?.kind === 'video' || single?.kind === 'audio')) openMediaDialog({ mode: 'edit', id: single.media, item: single });
     else if (a === 'edit' && single) openEditor(single);
@@ -1005,6 +1023,7 @@
 {/if}
 {#if menu}
   {@const at = menu.at}
+  {@const client = { x: menu.x, y: menu.y }}
   <LayerMenu
     x={menu.x}
     y={menu.y}
@@ -1013,11 +1032,13 @@
     {game}
     bind:hovered
     canPaste={clipboard.elements.length > 0}
-    slideExtras={{ canPasteSlide: !!clipboard.slide }}
+    canReplace
+    slideExtras={{ canPasteSlide: !!clipboard.slide, only: editView.elements.length === 1 ? editView.elements[0] : undefined }}
+    extras={single && menuextras ? menuextras(single) : []}
     onpick={(id) => (selected = [id])}
     onaction={(a) => {
       menuKeysHome();
-      menuAction(a, at);
+      menuAction(a, at, client);
     }}
     onclose={() => {
       menuKeysHome();
@@ -1030,6 +1051,10 @@
       });
     }}
   />
+{/if}
+{#if bgMenu && bgAt}
+  <!-- (Where the slide's menu was opened: the Background box drops from here.) -->
+  <span class="bg-at" style:left="{bgAt.x}px" style:top="{bgAt.y}px" bind:this={bgAnchor}></span>
 {/if}
 
 <div class="se" class:fill bind:this={root} onpointerdowncapture={activate} onfocusin={activate}>
@@ -1118,7 +1143,7 @@
       {#if tools}{@render tools((el: SlideElement) => add(el))}{/if}
       <span class="sep"></span>
       <div class="pop">
-        <button onclick={() => (bgMenu = !bgMenu)} aria-expanded={bgMenu} title="The slide's background: a color or a picture">
+        <button onclick={() => ((bgAt = null), (bgMenu = !bgMenu))} aria-expanded={bgMenu} title="The slide's background: a color or a picture">
           <span class="swatch" aria-hidden="true" style:background={slide.background.color ?? plainBg}></span> Background ▾
         </button>
         {#if bgMenu}
@@ -1127,7 +1152,7 @@
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
           <div
             class="menu bg-menu"
-            use:anchored
+            use:anchored={{ anchor: bgAt ? bgAnchor : undefined }}
             role="group"
             aria-label="Background"
             onkeydown={(e) => {
@@ -1271,7 +1296,19 @@
       {#if !previewing && slide.elements.length}
         <details class="layers-box" open>
           <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
-          <LayersPanel elements={slide.elements} {game} bind:selected bind:hidden bind:hovered bind:renaming onedit={edit} />
+          <LayersPanel
+            elements={slide.elements}
+            {game}
+            bind:selected
+            bind:hidden
+            bind:hovered
+            bind:renaming
+            onedit={edit}
+            onmenu={(m) => {
+              const el = slide.elements.find((e) => e.id === selected[selected.length - 1]);
+              menu = { x: m.x, y: m.y, at: el ? { x: el.x + el.w / 2, y: el.y + el.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 }, stack: [], from: m.from };
+            }}
+          />
         </details>
       {/if}
       {#if previewing}
@@ -1486,6 +1523,12 @@
   .bg-menu {
     min-width: 200px;
     gap: 4px;
+  }
+  .bg-at {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
   }
   .bg-menu .check {
     padding: 2px 4px;

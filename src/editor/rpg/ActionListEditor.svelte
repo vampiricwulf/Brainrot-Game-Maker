@@ -474,7 +474,7 @@
     </div>
   {/each}
   <div class="row">
-    <button class="small" onclick={openMenu} aria-haspopup="menu">{addLabel}</button>
+    <button class="small" onclick={openMenu} aria-haspopup="menu" data-add-action>{addLabel}</button>
     <span class="spacer"></span>
     {#if actions?.length}
       <button class="ghost small" onclick={copyAll} title="Copy these buttons, to paste them on another object, item, space or slice (in any game)">📋 Copy buttons</button>

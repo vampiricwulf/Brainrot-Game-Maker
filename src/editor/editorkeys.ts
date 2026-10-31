@@ -76,7 +76,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Double-click or Enter', 'Open the item’s editor: a text box’s text, a picture’s ✎ Edit image, a video’s or sound’s ✎ Edit video / sound (or its Start at), a link’s Link box, a shape’s Fill (a line’s Color)'],
       ['Type, or F2', 'Edit the selected text box’s text'],
       ['F2 on another item', 'Rename it, in the Layers list'],
-      ['Right-click or Shift+F10', 'Cut, copy, paste, restack, align, lock, hide or delete; on an empty spot: paste there, select all, add text, background'],
+      ['Right-click or Shift+F10', 'The item’s menu: ✎ Edit, use another file, rename, duplicate, cut, copy, paste, restack, align, lock, hide or delete. On an empty spot (or beside a text box’s words): the slide’s, to add text or paste there, copy the slide or paste over it, its 🎨 Background… and Select all'],
       ['Arrows / Shift+arrows', 'Nudge the selection 1 / 10 pixels'],
       ['Ctrl+arrows / Ctrl+Shift+arrows', 'Resize the selection 1 / 10 pixels (→ ↓ bigger, ← ↑ smaller; pictures keep their shape)'],
       ['Shift while dragging', 'Move along one axis only (while rotating: snap to 15°)'],
@@ -97,6 +97,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['↑ / ↓', 'Select the item above / below'],
       ['Alt+↑ / ↓', 'Move the item up / down the stack (or drag the row)'],
       ['Double-click or F2', 'Rename it (Enter saves, Esc cancels, empty goes back to the automatic name)'],
+      ['Right-click a row, or Shift+F10 on it', 'Select it and open its menu, the same as on the slide'],
     ],
   },
   {
