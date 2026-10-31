@@ -37,7 +37,8 @@ Old Jeopardy Builder games (`.jbr` packs and exported HTML files) still open.
    clue.
 3. Press **▶ Play**, then add the players (and set the game rules) on the pre-game screen.
 
-New here? **Try a sample game** on the first screen, or start from a template in **＋ Add round**. **📥 Import clues…**
+New here? **Try a sample game** on the first screen, or start from a template in **＋ Add round**. **❔ Help**, at the
+top right, has the keys, the hosting guide and 💡 Show all tips again. **📥 Import clues…**
 on a board takes a sheet pasted from Google Sheets or Excel (or a CSV or TSV file chosen or dropped on it), and **Find**
 (`Ctrl+F`) searches the whole game.
 
@@ -76,8 +77,8 @@ Every clue or screen is a **slide**: text, images, GIFs, video, audio or YouTube
 
 **Keyboard and drag:** round tabs, clue tiles, categories, rows, list items and map screens can be dragged and have
 right-click menus; `Delete`, `F2`, `Ctrl+D` and `Ctrl+C` / `Ctrl+V` work on what's selected. Files drop onto the slot
-they belong in (a picture dropped on a tile asks: in the question, or as the tile's face). Press `?` (or ⌨ in the ⋯
-menu) for every editor shortcut, and beside them, one click away, the host's during the game, with a filter for both. The longer help on the board, a slide, the RPG map and the board game page sits in a
+they belong in (a picture dropped on a tile asks: in the question, or as the tile's face). Press `?` (or **❔ Help** ›
+⌨ Keyboard shortcuts) for every editor shortcut, and beside them, one click away, the host's during the game, with a filter for both. The longer help on the board, a slide, the RPG map and the board game page sits in a
 **💡 Tips** fold that stays as you left it.
 
 **Slide editor:** drag a box on an empty spot to select several items. Beside a text box's words counts as empty (until

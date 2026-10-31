@@ -823,7 +823,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 The full list, by round, is the keys window (`src/play/KeysHelp.svelte`; the lists are `src/play/hostkeys.ts` and
 `src/editor/editorkeys.ts`): one window for the editor's keys and the host's, a switch at its top, **[ Editor | During
 the game ]**, and a filter for both (a key looked up in the other part is a click away; a renamed button is found by its
-old name too, for a release or two: `RENAMED` in `src/lib/keylist.ts`). `?` in the editor opens it on Editor; `?` and
+old name too, for a release or two: `RENAMED` in `src/lib/keylist.ts`). `?` in the editor opens it on Editor (so does ❔ Help ›
+⌨ Keyboard shortcuts in the editor's header; its 🎮 Keys during the game opens it on During the game); `?` and
 ❔ Help on the game screen on During the game, the round being played's keys first (on the pre-game screen its own keys
 first), over the host panel in a single window. In its filter `?` types; `Esc` clears the filter, then closes it. Its
 foot has 📖 How to host ↗ and 💡 Show all tips again (the editor's 💡 Tips open again the next time, and the game

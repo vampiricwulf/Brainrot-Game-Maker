@@ -106,6 +106,19 @@ try {
   );
   await page.keyboard.press('Escape');
   assert((await page.getByRole('dialog').count()) === 0 && (await more.evaluate((b) => b === document.activeElement)), 'Esc on ℹ About gives the focus back too');
+  // ❔ Help, between 🔍 Find and ⋯: the keys, the game's keys, the tips, the guide and ℹ About, in that order.
+  const help = page.getByRole('button', { name: /^Help:/ });
+  await help.click();
+  const helpText = (await page.getByRole('menu').innerText()).replace(/\s+/g, ' ');
+  const helpAt = ['Keyboard shortcuts', 'Keys during the game', 'Show all tips again', 'How to host (guide)', 'About'].map((w) => helpText.indexOf(w));
+  assert(helpAt.every((n, i) => n >= 0 && (i === 0 || n > helpAt[i - 1])), `❔ Help lists the keys, the game's keys, the tips, the guide and ℹ About (${helpText})`);
+  await page.getByRole('menuitem', { name: /Keys during the game/ }).click();
+  const gameKeys = page.getByRole('dialog', { name: /keyboard shortcuts/i });
+  await gameKeys.waitFor();
+  assert((await gameKeys.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true', '❔ Help › 🎮 Keys during the game opens the keys window on During the game');
+  await page.keyboard.press('Escape');
+  await gameKeys.waitFor({ state: 'detached' });
+  assert(await help.evaluate((b) => b === document.activeElement), 'closing it gives the focus back to ❔ Help');
   // A window only for reading closes on Enter too, as its Done does (not from a link or a button in it).
   await more.click();
   await page.getByRole('menuitem', { name: 'ℹ About' }).click();
@@ -450,15 +463,22 @@ try {
   const motion = await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).reduceMotion);
   assert(motion === true, 'and is remembered');
 
-  // ---------- The header at 150% zoom ----------
+  // ---------- The header at 150% zoom (912 px: a 1366 laptop; 853 px: 1280) ----------
+  /** The header's overflow, ▶ Play's and ❔ Help's right edges, and how many lines its buttons take. */
+  const headerFit = () =>
+    page.evaluate(async () => {
+      await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+      const h = document.querySelector('header');
+      const buttons = [...h.querySelectorAll('button')];
+      const right = (name) => buttons.find((b) => (b.getAttribute('aria-label') ?? b.textContent).startsWith(name)).getBoundingClientRect().right;
+      return { over: h.scrollWidth - h.clientWidth, play: right('▶ Play'), help: right('Help'), lines: new Set(buttons.map((b) => Math.round(b.getBoundingClientRect().top))).size };
+    });
+  await page.setViewportSize({ width: 912, height: 513 });
+  const fit912 = await headerFit();
+  assert(fit912.over <= 0 && fit912.lines === 1 && fit912.play <= 912 && fit912.help <= 912, `at 912px the header is one line, ❔ Help and ▶ Play in it (${JSON.stringify(fit912)})`);
   await page.setViewportSize({ width: 853, height: 480 });
-  await page.waitForTimeout(100);
-  const fit = await page.evaluate(() => {
-    const h = document.querySelector('header');
-    const p = [...h.querySelectorAll('button')].find((b) => b.textContent.includes('Play')).getBoundingClientRect();
-    return { over: h.scrollWidth - h.clientWidth, right: p.right };
-  });
-  assert(fit.over <= 0 && fit.right <= 853, `at 150% zoom (853px) the header fits and ▶ Play shows (${JSON.stringify(fit)})`);
+  const fit = await headerFit();
+  assert(fit.over <= 0 && fit.play <= 853 && fit.help <= 853, `at 150% zoom (853px) the header fits and ❔ Help and ▶ Play show (${JSON.stringify(fit)})`);
 
   // ---------- 200% zoom on a laptop (720 CSS px): the header wraps, nothing runs off the side ----------
   await page.setViewportSize({ width: 720, height: 450 });

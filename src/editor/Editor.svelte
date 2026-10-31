@@ -92,6 +92,7 @@
   import { bundleName, sameContent } from '../lib/roundcopy';
   import { addRoundItems, addSample, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
   import { HOSTING_GUIDE, openSite } from '../lib/sitelinks';
+  import { showTipsAgain } from '../lib/tips';
   import { oneShot } from '../lib/oneshot';
 
   /** `checklist`: worked out by the app a moment after changes stop (one line a round). */
@@ -747,7 +748,7 @@
     if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.defaultPrevented && !shortcuts) {
       if ((e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]') || document.querySelector('[role="dialog"], [role="menu"]')) return;
       e.preventDefault();
-      shortcuts = true;
+      shortcuts = 'editor';
       return;
     }
     // Ctrl+F: 🔍 Find, over the whole game (not in a window open over the editor).
@@ -862,7 +863,8 @@
   }
 
   let about = $state(false);
-  let shortcuts = $state(false);
+  /** The keys window, open on the editor's keys or the game's (❔ Help › 🎮 Keys during the game). */
+  let shortcuts = $state<false | 'editor' | 'game'>(false);
   let finding = $state(false);
   let settings = $state(false);
 
@@ -883,10 +885,30 @@
         hint: `${inTauri() ? 'Autosaves, how Save names files, how much undo to remember' : 'How much undo to remember'}, motion on stream, update checks, the phone buzzer server`,
         onclick: () => (settings = true),
       },
-      { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves, and the host's during the game", keys: '?', onclick: () => (shortcuts = true) },
+      { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves, and the host's during the game", keys: '?', onclick: () => (shortcuts = 'editor') },
       { label: '📖 How to host (guide) ↗', hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams', onclick: () => openSite(HOSTING_GUIDE) },
-      { label: 'ℹ About', hint: 'Version, links, and where your data is saved', onclick: () => (about = true) },
+      { label: 'ℹ About', hint: 'Version, updates, links, and where your data is saved', onclick: () => (about = true) },
     ]);
+  }
+
+  /**
+   * ❔ Help, in the header: where to find the keys, the tips and the guide (⋯ keeps them too, where they always were).
+   */
+  function helpMenu(e: MouseEvent): void {
+    dropMenu(e, [
+      { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves, with a filter", keys: '?', onclick: () => (shortcuts = 'editor') },
+      { label: '🎮 Keys during the game', hint: "The host's keys while a game is played, round by round", onclick: () => (shortcuts = 'game') },
+      { label: '💡 Show all tips again', hint: 'The 💡 Tips folds open again, and the game screen’s first-time notes show again', onclick: tipsAgain },
+      { label: '📖 How to host (guide) ↗', hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams', onclick: () => openSite(HOSTING_GUIDE) },
+      { label: 'ℹ About', hint: 'Version, updates, links, and where your data is saved', onclick: () => (about = true) },
+    ]);
+  }
+
+  /** 💡 Show all tips again: the ones on this page open now, the rest the next time their page comes up. */
+  function tipsAgain(): void {
+    showTipsAgain();
+    for (const d of document.querySelectorAll<HTMLDetailsElement>('main details.tips')) d.open = true;
+    toast('💡 Every tip shows again, as the first time');
   }
 
   async function exportJson(): Promise<void> {
@@ -937,9 +959,10 @@
 <div class="editor" aria-busy={replacing || !!opening}>
   <header use:inertWhile={replacing}>
     <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
-    <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
+    <!-- (Three groups, apart: the title, undo and redo, the game's file.) -->
+    <button class="ghost group" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
     <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
-    <button onclick={newFile} disabled={!!opening}><span aria-hidden="true">📄</span> New</button>
+    <button class="group" onclick={newFile} disabled={!!opening}><span aria-hidden="true">📄</span> New</button>
     <button onclick={open} disabled={!!opening} bind:this={openBtn}><span aria-hidden="true">📂</span> Open…</button>
     <button
       onclick={save}
@@ -969,6 +992,13 @@
       </span>
     {/if}
     <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
+    <button
+      class="ghost"
+      onclick={helpMenu}
+      aria-haspopup="menu"
+      aria-label="Help: Keyboard shortcuts, Keys during the game, Show all tips again, How to host (guide), About"
+      title="⌨ Keyboard shortcuts (?), 🎮 Keys during the game, 💡 Show all tips again, 📖 How to host (guide), ℹ About"><span aria-hidden="true">❔</span><span class="word">Help</span></button
+    >
     <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
     <button class="primary play" use:oneShot onclick={play} disabled={!game.rounds.length || !!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
@@ -994,7 +1024,7 @@
   {/if}
   <ConvertNotice onshow={() => (tab = 'media')} />
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
-  {#if shortcuts}<KeysHelp from="editor" onclose={() => (shortcuts = false)} />{/if}
+  {#if shortcuts}<KeysHelp from="editor" start={shortcuts} onclose={() => (shortcuts = false)} />{/if}
   {#if finding}<FindDialog onclose={() => (finding = false)} />{/if}
   {#if shrinkDialog.open}
     {#key shrinkDialog.open}<ShrinkDialog ids={shrinkDialog.open} onclose={() => (shrinkDialog.open = null)} />{/key}
@@ -1264,6 +1294,7 @@
           <div class="first-round">
             <h2>Add your first round</h2>
             <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
+            <p class="muted small">New here? <b>✨ Try the sample</b>, then <b>▶ Play</b> it as a host. <b>❔ Help</b> (top right, or ?) has the keys and the guide.</p>
             {#if !inTauri()}
               <!-- The one thing a first-time browser user can lose: the game lives in this browser until it's saved as a file. -->
               {#if app.storageOk}
@@ -1391,6 +1422,10 @@
   .more {
     font-weight: 700;
     letter-spacing: 1px;
+  }
+  /* The start of a group of buttons: a wider gap before it. */
+  header > .group {
+    margin-left: 6px;
   }
   .word {
     margin-left: 0.3em;
