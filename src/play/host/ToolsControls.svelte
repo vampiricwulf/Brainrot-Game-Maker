@@ -312,7 +312,7 @@
               aria-label="Edit {w.name} for this spin"
               title="Turn slices off or change their chances for this spin">✎</button
             >
-            <button class="ghost tiny" disabled={busy} onclick={() => removeWheel(app.live, w.key)} aria-label="Stop spinning {w.name}">✕</button>
+            <button class="ghost tiny danger" disabled={busy} onclick={() => removeWheel(app.live, w.key)} aria-label="Stop spinning {w.name}" title="Take {w.name} off this spin">🗑</button>
           </span>
         {/each}
         <select

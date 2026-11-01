@@ -136,7 +136,7 @@
             <td class="pct">{#if used.has(s.id) && !s.off}<span class="muted small" title="It already landed: Restore brings it back">landed</span>{:else}{chance(s)}{/if}</td>
             <td>
               {#if !o.players}
-                <button class="ghost small" aria-label={`Remove ${s.label}`} title="Remove" onclick={() => ((rows = rows.filter((x) => x !== s)), apply())}>−</button>
+                <button class="ghost small danger" aria-label={`Remove ${s.label}`} title="Remove this slice from this spin (↺ Reset slices brings it back)" onclick={() => ((rows = rows.filter((x) => x !== s)), apply())}>🗑</button>
               {/if}
             </td>
           </tr>
