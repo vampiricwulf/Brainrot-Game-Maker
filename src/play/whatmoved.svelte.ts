@@ -12,13 +12,11 @@ export const MOVED_SINCE = '2.38.0';
 /** What moved, by the keys window's part, one line each. */
 export const WHAT_MOVED: Record<MovedPart, readonly string[]> = {
   game: [
-    'The blue button is only Next or Reveal now (Show question ▶, 👁 Reveal answer, ▦ Done ▶ board, Next turn ▶…): it never spins, rolls, sends cards, opens the buzzers, gives points or judges.',
+    'The blue button is only Next or Reveal now (Show question ▶, 👁 Reveal answer, ▦ Done ▶ board, Next turn ▶…): it never spins, rolls, sends cards, opens the buzzers, gives points or judges. ＋ Award is green, never blue.',
     'Those are in their boxes, once each, ringed when they’re due: 🎡 Spin for a partner (W) in front of the players, 📤 Send and start or ⏱ Start the clock (Enter) at the 🤝 box’s foot, 🎡 Spin! or 🎲 Roll! (W, D) in the tool’s box, 🎲 Roll then ▶ Move (D, Enter) in one place in a board game’s turn box, 🔔 Open the buzzers (U) and 🎲 Roll for it (O) in the buzzers’ row, ✔ Right and ✘ Wrong (C, X) in the Final’s rows, ❓ Tiebreaker clue in the tie box.',
     'The check: the blue button with something left asks first, “First:” (a box’s step not done) or “Before you go on” (points, answers or a tie would be lost), with a button for each fix, Not yet (Esc) and a quiet “… anyway” (N again; R at an answer).',
     'Shift+click on the blue button goes on without asking. “Don’t ask about … again this game” turns one kind off: this window lists them, with Ask again.',
-    'O rolls for a buzzer tie (🎲 Roll for it). ＋ Award is green, never blue.',
-    'A tool’s box has no ✕ Close: the blue button (Show question ▶, ▦ Done ▶ board, Next ▶) or Esc puts it away. A question pop-up keeps ✕ Close until its answer is up.',
-    'A Daily Double’s Show question ▶ is the blue button only (Enter in the Wager box too). The partner wheel: Next ▶ puts it away and shows the pair.',
+    'A tool’s box has no ✕ Close: the blue button (Show question ▶, ▦ Done ▶ board, Next ▶) or Esc puts it away. A question pop-up keeps ✕ Close until its answer is up. The partner wheel’s Next ▶ puts it away and shows the pair.',
     'The stage’s right-click menu starts with the blue button’s step (N), then the moment’s own actions.',
     'In one window, the quiet 👁 Reveal answer and ▦ Done ▶ board over a partner clue’s blue button are gone: the blue button is that step, always in view.',
     'A click on the stage does the moment’s safe step (PARTNER UP!, a Daily Double’s splash, the Final’s spotlit card, a partner clue’s clock), or says what to do in the status line at the panel’s top.',
