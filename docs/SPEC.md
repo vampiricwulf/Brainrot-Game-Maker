@@ -1037,7 +1037,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   roll in one slot (**🎡 Spin!** `W`, then **↻ Spin again** in its place, greyed while it turns; **🎲 Roll!** `D`, then
   **↻ Roll again**; ringed while it's what's left first, a tile's own tool not spun yet or landed on a "Spin again"
   slice), ✎ Edit wheel
-  and ＋ Spin another wheel too…, and the result. It has no Close: putting it away is the blue button's step (a wheel or
+  and ＋ Spin another wheel too… (each wheel added shows ＋ its name, its ✎ and a red 🗑 that takes it off this spin;
+  in ✎ Edit wheel a slice's 🗑 takes it off, ↺ Reset slices brings them back), and the result. It has no Close: putting it away is the blue button's step (a wheel or
   dice tile's own: Show question ▶, or ▦ Done ▶ board with no question; anything else: Next ▶), or `Esc`. A question
   pop-up keeps **✕ Close** `Esc` until its answer is up (it puts the question away unseen; the blue button reveals
   it); a shop keeps 🚪 Leave shop. A click on the box's slot gives the keys back to the blue button. The partner wheel
@@ -1212,7 +1213,9 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   thing (from the game, or Remove: off something, kept in the game); ⌫ empties a slot (⌫ Clear, the picture staying
   in 🖼 Media); ✕ only closes (✕ Close); ✘ is Wrong; − is only for numbers; ↩ takes back (↩ Take back, ↩ Put back);
   ⛔ kicks a phone. Every ✕, ✘ and ⌫ button carries its word, but for a window's, a notice's or the timer box's corner ✕, the
-  green and red ✔ / ✘ pair on a player's chip and an answer's row, and ⌫ on a player's picture corner.
+  green and red ✔ / ✘ pair on a player's chip and an answer's row, ⌫ on a player's picture corner, and the award row's
+  Clear selection, which shrinks to ✕ where the row is narrow (under the stage up to 1280px, or 1500px on a clue with
+  several question slides).
 - **Security**: all content is local. Uploaded SVG is sanitized, and rich text is escaped/sanitized.
 
 ---

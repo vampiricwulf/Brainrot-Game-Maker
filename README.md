@@ -270,7 +270,7 @@ so the rest keeps its place; a line, then Select, ★ Make the picker and ✎ Se
 their card; while the buzzer room is up, 📱 Free seat (new phone) and ↩ Let back; and last, in red, ⛔ Kick from phone (2
 min)… and 🗑 Remove player… (Remove team… with phone buzzer teams; greyed for the last one left), both asking first. `Shift+F10` or the menu key on their button, or a long press on a touch
 screen, opens it too, and each item shows its key.
-A right-click on the stage (or `Shift+F10` on the main button, or a long press) gives the moment's own menu. Its first
+A right-click on the stage (or `Shift+F10` on the blue button, or a long press) gives the moment's own menu. Its first
 item, on its own, is the blue button's step (Show question ▶ `N`, 👁 Reveal answer `N`, ▦ Done ▶ board `N`, Next turn ▶
 `N`…), and like the blue button it asks first when something's left. Then come the moment's own actions, each with its
 key and never a second copy of that step (on PARTNER UP!, 🎡 Spin for a partner `W`, Make Bob the partner `2`…; in a
@@ -289,7 +289,7 @@ Click a tile to open its clue, then reveal the answer with `R` or a click (a dou
 shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click never shows the answer
 before the pair has had their go, judged or out of time, and during a steal says how it goes on, while `R` shows it any
 time). A clue can have several question slides (a
-lead-in, then more: **＋ Add slide** in the clue editor): the main button goes **Next slide ▶** (`N`, `Shift+N` back)
+lead-in, then more: **＋ Add slide** in the clue editor): the blue button goes **Next slide ▶** (`N`, `Shift+N` back)
 through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`, green,
 never the blue button) or **− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
 selected (pick them with `1`–`9`, then `Enter` takes the keys to the Amount box: type the points, then `Enter`, and the
@@ -432,7 +432,7 @@ pulses and `H` shows the panel with the check open; in two windows the controls 
 again after.
 Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
 above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
-(then **Next round ▶** is the main button), and says what leaving does, its answers too: “7 clues are left in
+(then **Next round ▶** is the blue button), and says what leaving does, its answers too: “7 clues are left in
 Jeopardy!. Go to Double Jeopardy!?” **Keep playing** / **Go to Double Jeopardy! ▶**, or “End the game now? 7 clues are
 left.” **Keep playing** / **End game ▶**. It stays while you read it (the pointer on it or the keys in it). In RPG and board-game rounds on a wide window the panel is a column beside
 the stage, with the same parts and 🚪 Exit in the bottom-right corner.
@@ -720,7 +720,7 @@ dot until you've seen it). The filter finds a renamed button by its old name too
 | `I` (RPG, board game) | Player sheet |
 | Arrows, numpad or `Alt`+arrows (RPG) | Move the party |
 | `E` (board game) | ✎ Edit board while you play |
-| Right-click, `Shift+F10` or the menu key | The menu of what you point at, or what has the keys: a player (anywhere), a tile, a board-game space, or the moment's own on the stage and the main button |
+| Right-click, `Shift+F10` or the menu key | The menu of what you point at, or what has the keys: a player (anywhere), a tile, a board-game space, or the moment's own on the stage and the blue button |
 | `?` | Every key, with a filter (❔ Help does the same), and what the check doesn't ask about this game, each with **Ask again** |
 
 **In the check** (the card the blue button opens when something's left): `Enter` does the fix that shows ⏎ (never
@@ -734,7 +734,7 @@ so a double press never skips it. Its "Don't ask about … again this game" turn
 rolling, opening the buzzers, a tile's wheel or dice, typed answers still coming); the keys window lists what's turned
 off, each with **Ask again**.
 
-A key held down counts once (only the arrows repeat). With the keys on the main button in a slides round, or on a
+A key held down counts once (only the arrows repeat). With the keys on the blue button in a slides round, or on a
 round's title card, `Enter` does what the button says, as `N` does; on a 🤝 partner clue's PARTNER UP! it's Show
 question ▶ wherever the keys are, and once the question is up it's 📤 Send and start (or ⏱ Start the clock), then ✔ Got
 it. `W` spins for a partner; `N` never spins, sends or judges. `Enter` in a Daily Double's Wager box is Show question
