@@ -2756,6 +2756,11 @@ Commits whose titles don't say what they contain:
 
 | Commit | Title | What it is |
 |---|---|---|
+| 4356683 | Tests: the spaces check parses only the components' markup, and has room on a busy machine | The spaces check is src/lib/spaces.test.ts, which finds words run into the one before them (“▸ More rules· …”); it now reads only the components' markup, not their scripts, and may take 30 s |
+| 2f87f2a | The timer box keeps its corner ✕ (a word there could wrap the status line and shrink the one-window stage) | Takes back the timer box's ✕ Close from ab07118: its ✕ is bare again, as in v2.38.0, and SPEC lists it among the corner ✕s |
+| f09c3c2 | The tools row steps back while a situation's box is open; the tiebreaker's 🏆 winner and the host panel's last blues in the one look | “The host panel's last blues”: the check's lit key is tinted and a media link's ▶ Open ↗ is plain, so the panel's one solid blue is its blue button; the tiebreaker's pressed 🏆 takes the selected look (it was green) |
+| 98bbb5f | Game screen state for the check before going on: buzzers' first opening, a tile's card choices, marks since the clue | Groundwork with no change on screen: the game screen keeps when the buzzers were first opened for a clue, a tile's 🤫 card choices and when the clue opened, so they hold with the controls hidden |
+| b5d906c | Host screen, nothing changes on screen: a tool's ✕ Close and the leaving question's answers in the list of words | “The list of words” is src/play/host/verbs.ts, where the host screen's button words live; a tool's ✕ Close and Keep playing / Go to … ▶ / End game ▶ moved there, so a rename is made in one place |
 | c058619 | 🔄 A video or sound this browser can't play is offered a fix as soon as it's added… | Its example of a quick fix with nothing lost, "a camcorder's .mts", holds only for an .mts whose sound plays here: a camcorder's is usually Dolby Digital, and loses its sound in the fix |
 | bbb1495 | Merge 2 | Merge of the play timeline and undo for the host's choices (d2c21f8, 5f079cc) |
 | d83cd7b | Revert "Undo covers tiles…" | Takes back fb07abe (Ctrl+Z reopening a closed tile). Tiles can still be put back with ↶ Reopen or a right-click, and closing a tile is an undoable step since d2c21f8. |
