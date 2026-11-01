@@ -108,7 +108,7 @@ tab (or Shift+F10 on it) gives its menu, and Ctrl+C / Ctrl+V on a tab copy the s
 Shape ▾ is in sections (Shapes, then Draw: ✏ Freehand line…, 🖌 Drawpad…; ⬚ Hotspot on an RPG screen only), and
 **Background ▾** shows the picture as a thumbnail, with Change… and ⌫ Clear picture (the color stays) beside the Color
 and ↺ Theme color, and ↺ Reset background apart. A double-click on an item (or Enter, with it selected) opens its editor: a text box's text, a
-picture's ✎ Edit image, a video's or sound's ✎ Edit video / sound (or its Plays from), a link's Link box, a shape's
+picture's ✎ Edit image, a video's or sound's ✎ Edit video / sound (or ✎ Edit the part it plays, its Plays from), a link's Link box, a shape's
 Fill. F2 renames an item in the Layers list (on a text box it edits the text), and after you add a picture, video,
 sound or link the keys stay on the slide. ✎ Edit image, 🖌 Drawpad and ✎ Edit video / sound work alike: ↶ Undo, ↷
 Redo, Reset apart, then Cancel, Apply (Insert drawing) and ✕ along the top (a video's Cancel is at its foot, by its

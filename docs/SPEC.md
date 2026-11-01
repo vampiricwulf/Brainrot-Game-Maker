@@ -283,8 +283,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   step.
 - Transform: move, resize, rotate, z-order, lock, duplicate, delete, multi-select, and copy/paste between slides.
 - **Opening an item**: a double-click, or Enter with one item selected, opens its editor: a text box its Text field, a
-  picture ✎ Edit image, a video or sound ✎ Edit video / sound (or its Plays from box when its file can't be edited
-  there), a link its Link box, a shape its Fill (a line its Color); the item menu's ✎ Edit shows the keys for every
+  picture ✎ Edit image, a video or sound ✎ Edit video / sound (or its Plays from box, as ✎ Edit the part it plays,
+  when its file can't be edited there), a link its Link box, a shape its Fill (a line its Color); the item menu's ✎ Edit shows the keys for every
   kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼 Image,
   🎬 Video, 🔊 Sound, 🌐 Link, a drop or a paste) the keys are on the slide.
 - **Slide tabs** (a clue's, the tiebreaker's, a Final's, a slides round's): right after them, one group for the open

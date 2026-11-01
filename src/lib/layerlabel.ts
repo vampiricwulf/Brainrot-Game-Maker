@@ -82,7 +82,7 @@ export function editWords(el: SlideElement, media: 'on' | 'busy' | null = null):
       return '✎ Edit image…';
     case 'video':
     case 'audio':
-      return media ? (el.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…') : '✎ Edit start and stop';
+      return media ? (el.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…') : '✎ Edit the part it plays';
     case 'embed':
       return '✎ Edit link';
     case 'shape':

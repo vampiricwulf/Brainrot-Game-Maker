@@ -31,7 +31,7 @@ describe('editWords', () => {
     expect(editWords(newImageEl('m1', 100, 100))).toBe('✎ Edit image…');
     expect(editWords(newVideoEl('v1'), 'on')).toBe('✎ Edit video…');
     expect(editWords(newAudioEl('a1'), 'busy')).toBe('✎ Edit sound…');
-    expect(editWords(newVideoEl('v1'))).toBe('✎ Edit start and stop');
+    expect(editWords(newVideoEl('v1'))).toBe('✎ Edit the part it plays');
     expect(editWords(newEmbedEl('https://youtu.be/x', 'youtube'))).toBe('✎ Edit link');
     expect(editWords(newShapeEl('rect'))).toBe('✎ Edit fill');
     expect(editWords(newShapeEl('arrow'))).toBe('✎ Edit color');
