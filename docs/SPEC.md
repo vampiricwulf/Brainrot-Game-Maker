@@ -843,7 +843,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   viewers don't see (it has no target). A box replaces the selection (`selected` and the objects), live as it's drawn;
   `Shift`, `Ctrl`, `⌘` or a touch adds to what was selected when the press began; `Esc` or `pointercancel` puts that
   back (before the game screen's own `Esc`). A click on an empty spot (not with those keys) clears it, as an empty box
-  does; after a clear or a replace (a click, a box, `Esc`, the line's ✕, a drag of one not selected), ↩ Select them
+  does; after a clear or a replace (a click, a box, `Esc`, the line's Clear selection, a drag of one not selected), ↩ Select them
   again brings it back for 5 s. Locked and screen-sized objects stay put when their group is dragged. Two windows: the
   host's copy draws a yellow dashed box with a faint fill and lights the rings live. One window: a thin dashed box and
   dashed outlines while it's held and 1.5 s after, and on the whole group while one of it is pressed; nothing at rest.

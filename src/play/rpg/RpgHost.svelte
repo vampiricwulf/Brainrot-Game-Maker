@@ -66,7 +66,7 @@
     selectedObjects?: string[];
     /** ↩ Select them again: while a selection just cleared or replaced can come back (5 s). */
     again?: (() => void) | null;
-    /** The selection line's ✕: nobody and nothing selected. */
+    /** The selection line's Clear selection: nobody and nothing selected. */
     onclear?: () => void;
     mapOpen?: boolean;
     /** The full map was opened to send these players somewhere (from their menu or their party's). */
