@@ -12,6 +12,7 @@ export const RENAMED: [string, string][] = [
   ['↩ Put back (keep tile)', '↩ Cancel (keep tile)'],
   ['🎡 Spin!', 'Spin!'],
   ['🎲 Roll!', 'Roll!'],
+  ['↻ Spin again', 'Spin again'],
   ['↻ Roll again', 'Roll again'],
   ['📊 Scoreboard', '📊 Scores'],
   ['▭ Scores window', '▭'],
@@ -30,6 +31,12 @@ export const RENAMED: [string, string][] = [
   ['↩ Take back', '✖ Take back'],
   ['✕ Close the card window', '✖ Close the card window'],
   ['🗑 End this deal', '✖ Put it away'],
+  ['✕ Close (± Adjust score)', 'Done (± Adjust score)'],
+  ['Finish now…', 'Finish game ▶ (finish early)'],
+  ['⛔ Kick all', '✕ All'],
+  ['❔ Help', '⌨'],
+  ['🔊 Test the sound…', '🔊 Sound for Discord / OBS…'],
+  ['⏹ Close the room…', '✕ Close the room'],
 ];
 
 /** "Ctrl+" reads "⌘" on a Mac. */
