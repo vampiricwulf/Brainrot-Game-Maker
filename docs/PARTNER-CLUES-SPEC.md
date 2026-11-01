@@ -10,6 +10,11 @@ files included. Nothing here is built yet. This extends [`SPEC.md`](SPEC.md) (th
 removed: Daily Doubles, wheel and dice tiles, ✍ Everyone answers, phone buzzers, wagers and the audience window keep
 working as they do today.
 
+Its names for buttons and steps are the ones it was written with, and some have changed since: the 📤 Distribute step's
+button is **📤 Hand out the cards**, change ▾ and change partner ▾ are **Someone else picked it ▾** and **Another partner
+▾**, ✖ Take back is **↩ Take back**, and ↩ Cancel (keep tile) is **↩ Put back (keep tile)**. [`SPEC.md`](SPEC.md) and the
+app have today's names.
+
 ## At a glance
 
 - **What it is:** 🤝 **Partner clue**, a new tile type like ⭐ Daily Double. Nobody buzzes. The player who picked it

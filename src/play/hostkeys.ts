@@ -131,7 +131,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['T while a partner clue’s cards are handed out', 'Start the clock: with no card waiting for a phone the clue goes live (the first Enter after it only says so); with cards to send, Enter still sends them'],
       ['Esc on a partner clue before the question', 'Back to the board: the tile stays playable'],
       ['1–9, then Enter, in a partner clue’s steal', 'After ✘ Missed with steals on: who steals it, then right (Shift+Enter: wrong), as on any clue'],
-      ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back'],
+      ['Right-click a tile', '▶ Open it, ✓ Mark as played (skip it) without opening it, or ↶ Reopen this tile once it’s used'],
     ],
   },
   {
