@@ -29,8 +29,9 @@ const nextRound = async () => {
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: /▶$/ }).filter({ hasText: /Next round|Adventure|Board game|Final/ }).last().click();
   await page.waitForTimeout(450);
-  const yes = page.getByRole('button', { name: 'Yes', exact: true });
-  if (await yes.isVisible()) await yes.click();
+  // (Clues left: the leaving question's answer names the round it goes to, “Go to Adventure ▶”.)
+  const go = page.getByRole('button', { name: /^Go to .* ▶$/ });
+  if (await go.isVisible()) await go.click();
 };
 
 try {
@@ -113,7 +114,7 @@ try {
   await page.getByRole('button', { name: '🎡 Wheel' }).click();
   await page.getByRole('button', { name: '🎯 Pick a player', exact: true }).click();
   await page.getByLabel('Spin another wheel too').selectOption({ label: '🎯 Pick a player' });
-  await page.getByRole('button', { name: /^Spin!/ }).click();
+  await page.getByRole('button', { name: '🎡 Spin!', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('.stage .many .chip').length === 2, null, { timeout: 15000 });
   await shot('wheels');
   await page.keyboard.press('Escape');
