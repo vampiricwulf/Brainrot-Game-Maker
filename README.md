@@ -965,7 +965,8 @@ npm run check          # type-check
 npm test               # unit tests
 (cd buzzer && npm ci)  # once: the buzzer server's packages (its e2e tests run it)
 npm run test:quick     # the quick end-to-end test (about a minute; CI waits for it before releasing)
-npm run test:e2e       # the full end-to-end suite (about 25 minutes in CI; CI runs it alongside the release)
+npm run test:e2e       # the full end-to-end suite, going on past a failure (CI runs it in six shards alongside the release)
+node scripts/e2e-shard.mjs 3   # one CI shard (1–5 or rest; scripts/e2e-shard.mjs lists them)
 npm run test:buzzer    # only the phone-buzzer end-to-end files (they start a local buzzer server)
 npm run screenshots    # regenerate docs/screenshots (build first)
 npm run desktop:build  # Windows app (needs Rust + Tauri prerequisites)

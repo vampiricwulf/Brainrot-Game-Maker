@@ -63,6 +63,8 @@ jobs:
         working-directory: buzzer
       # The tests drive a build with no buzzer server baked in, so they behave the same whether or not the repository
       # has one; the tests that need a server set it themselves. The release file is rebuilt with it below.
+      - name: Every end-to-end file is in one e2e shard
+        run: node scripts/e2e-shard.mjs --check
       - run: npm run build
       - name: Install Chromium (headless shell) for the end-to-end test
         run: npx playwright-core install --with-deps --only-shell chromium
@@ -93,12 +95,18 @@ jobs:
           path: out/brainrot-game-maker.html
 
   e2e:
-    # The full end-to-end suite (about 25 minutes). It doesn't hold up the release (which only waits for the quick
-    # test): a failure here marks the run red, so it's still heard about, and gets fixed in the next push. (Room for a
-    # slow browser install too: one took 10 minutes, and ran the suite out of a 30-minute limit.)
+    # The full end-to-end suite, split into shards that run side by side (scripts/e2e-shard.mjs says which files each
+    # runs; rest takes any file the others don't list, and the build job's --check proves every file runs once).
+    # About six minutes of tests per shard. It doesn't hold up the release (which only waits for the quick test): a
+    # failure here marks the run red, so it's still heard about, and gets fixed in the next push.
+    name: e2e (${{ matrix.shard }})
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, rest]
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -111,16 +119,18 @@ jobs:
         working-directory: buzzer
       - run: npm run build
       - name: Install Chromium (headless shell)
-        run: npx playwright-core install --with-deps --only-shell chromium
-      - name: Full end-to-end test (drives the built file from file://)
-        run: npm run test:e2e
+        # One try can hang on the package mirror (one did for 50 minutes): each gets 5 minutes, and a second goes after.
+        timeout-minutes: 12
+        run: timeout 300 npx playwright-core install --with-deps --only-shell chromium || timeout 300 npx playwright-core install --with-deps --only-shell chromium
+      - name: End-to-end tests, shard ${{ matrix.shard }} (drives the built file from file://)
+        run: node scripts/e2e-shard.mjs ${{ matrix.shard }}
         env:
           SCREENSHOTS: test-results/screenshots
       - name: Upload E2E debug output (screenshots + Playwright trace)
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: e2e-debug
+          name: e2e-debug-${{ matrix.shard }}
           path: test-results/
           if-no-files-found: ignore
 
