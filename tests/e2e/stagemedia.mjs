@@ -285,6 +285,7 @@ try {
   // Turned down to 20% and set to 🔁 Loop: the answer shown and hidden again (R, R), it comes back so (not at 100%, once).
   await soundRow.getByRole('slider', { name: 'Volume' }).fill('0.2');
   await page.waitForFunction((s) => Math.abs(document.querySelector(s).volume - 0.2) < 0.01, cut);
+  await soundRow.getByRole('slider', { name: 'Volume' }).and(page.locator('[aria-valuetext="20%"]')).waitFor({ timeout: 5000 }).catch(() => {});
   // A screen reader hears which row is which, and the sliders' values as people say them.
   const rowNames = await page.locator('.mc .item').evaluateAll((els) => els.map((e) => `${e.getAttribute('role')} ${e.getAttribute('aria-label')}`).sort());
   const said = { volume: await soundRow.getByRole('slider', { name: 'Volume' }).getAttribute('aria-valuetext'), seek: await soundRow.getByRole('slider', { name: 'Seek' }).getAttribute('aria-valuetext') };
