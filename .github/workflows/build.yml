@@ -106,7 +106,7 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, rest]
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -119,9 +119,15 @@ jobs:
         working-directory: buzzer
       - run: npm run build
       - name: Install Chromium (headless shell)
-        # One try can hang on the package mirror (one did for 50 minutes): each gets 5 minutes, and a second goes after.
-        timeout-minutes: 12
-        run: timeout 300 npx playwright-core install --with-deps --only-shell chromium || timeout 300 npx playwright-core install --with-deps --only-shell chromium
+        # One try can hang on the package mirror (one did for 50 minutes): each gets 8 minutes. A stopped try can leave
+        # its apt-get running and holding the package lock, so the second one stops it and repairs dpkg first.
+        timeout-minutes: 20
+        run: |
+          timeout 480 npx playwright-core install --with-deps --only-shell chromium && exit 0
+          sudo pkill -9 -f 'apt-get|dpkg' || true
+          sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock /var/lib/apt/lists/lock
+          sudo dpkg --configure -a
+          timeout 480 npx playwright-core install --with-deps --only-shell chromium
       - name: End-to-end tests, shard ${{ matrix.shard }} (drives the built file from file://)
         run: node scripts/e2e-shard.mjs ${{ matrix.shard }}
         env:

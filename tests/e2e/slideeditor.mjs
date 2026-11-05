@@ -938,7 +938,12 @@ try {
   const idsBefore = new Set((await drawn()).map((e) => e.id));
   await page.keyboard.press('Control+Enter');
   await pad.waitFor({ state: 'detached' });
-  const drawing = (await drawn()).find((e) => !idsBefore.has(e.id));
+  // The drawing reaches the slide a moment after the pad closes (it's made into a picture first): wait for it.
+  let drawing;
+  for (let i = 0; i < 50 && !drawing; i++) {
+    drawing = (await drawn()).find((e) => !idsBefore.has(e.id));
+    if (!drawing) await page.waitForTimeout(100);
+  }
   assert(!!drawing && drawing.y + drawing.h >= 1070, `drawn along the pad's bottom edge, it sits at the slide's bottom (${drawing?.y} + ${drawing?.h})`);
   await page.setViewportSize({ width: 1400, height: 900 });
 
