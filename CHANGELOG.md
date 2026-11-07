@@ -11,17 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Changed
-
-- The guides in `docs/` are rewritten short and plain (hosting went from about 10,000 words to 2,500), and the keys have their own page, Keyboard shortcuts.
-
 ## 2026-11-06
 
 ### Changed
 
 - The README is short again: what the app does, how to get it and start, with pictures. The long explanations moved into guides in `docs/` (making games, hosting, saving, the buzzer server, streaming the sound), and ❔ Help's “How to host” and the buzzer server link open those guides. (97795cd)
+- The guides in `docs/` are rewritten short and plain (hosting went from about 10,000 words to 2,500), and the keys have their own page, Keyboard shortcuts. (390431e)
 
 ## 2026-10-31
 
