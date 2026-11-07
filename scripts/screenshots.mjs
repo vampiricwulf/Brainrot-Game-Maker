@@ -1,4 +1,4 @@
-// Takes the README's screenshots (docs/screenshots/*.png) by building a small sample game in the built app.
+// Takes the README's and guides' screenshots (docs/screenshots/*.png) by building a small sample game in the built app.
 // Run: npm run build && node scripts/screenshots.mjs
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';

@@ -65,7 +65,7 @@
       <dt>Build</dt>
       <dd class="selectable">{__BUILD_COMMIT__ ? `${__BUILD_COMMIT__}, ` : ''}{__BUILD_DATE__}</dd>
       <dt>Guide</dt>
-      <dd><a href={HOSTING_GUIDE} target="_blank" rel="noreferrer" onclick={link} title="The README on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams">📖 How to host (the guide)</a></dd>
+      <dd><a href={HOSTING_GUIDE} target="_blank" rel="noreferrer" onclick={link} title="The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams">📖 How to host (the guide)</a></dd>
       <dt>Source</dt>
       <dd><a href={REPO} target="_blank" rel="noreferrer" onclick={link}>GitHub: vampiricwulf/Brainrot-Game-Maker</a></dd>
       <dt>Updates</dt>

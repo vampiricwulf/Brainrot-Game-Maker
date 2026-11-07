@@ -1,7 +1,7 @@
 # Changelog
 
 What changed in Brainrot Games Maker, newest first. Every push to `main` is released as a numbered version
-(`vX.Y.Z`, from 1.0.0 on: see "Versions and releases" in README.md), whose release notes are the lines it adds here;
+(`vX.Y.Z`, from 1.0.0 on: see "Versions and releases" in docs/development.md), whose release notes are the lines it adds here;
 entries are grouped by the day they were pushed (Pacific time, PST/PDT). Each entry names the commits
 it covers, so it also serves as the readable record where a commit title says little (see
 [Notes on the history](#notes-on-the-history)).
@@ -10,6 +10,12 @@ How to add to it: put a line in the same commit as the change (or the merge that
 the day it's pushed (Pacific time; start the heading on the day's first push) and Added / Changed / Fixed / Removed,
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
+
+## Unreleased
+
+### Changed
+
+- The README is short again: what the app does, how to get it and start, with pictures. The long explanations moved into guides in `docs/` (making games, hosting, saving, the buzzer server, streaming the sound), and ❔ Help's “How to host” and the buzzer server link open those guides.
 
 ## 2026-10-31
 

@@ -90,14 +90,14 @@ try {
   await context.route('https://github.com/**', (r) => r.fulfill({ contentType: 'text/html', body: '<title>Guide</title>' }));
   await more.click();
   const [guide] = await Promise.all([context.waitForEvent('page'), page.getByRole('menuitem', { name: /How to host/ }).click()]);
-  await guide.waitForURL('https://github.com/vampiricwulf/Brainrot-Game-Maker#hosting');
+  await guide.waitForURL('https://github.com/vampiricwulf/Brainrot-Game-Maker/blob/main/docs/hosting.md');
   await guide.close();
   await more.click();
   await page.getByRole('menuitem', { name: 'ℹ About' }).click();
   const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
   await about.waitFor();
   assert(
-    (await about.getByRole('link', { name: /How to host/ }).getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker#hosting',
+    (await about.getByRole('link', { name: /How to host/ }).getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker/blob/main/docs/hosting.md',
     'the ⋯ menu’s 📖 How to host opens the hosting guide in a new tab, and ℹ About links to it',
   );
   assert(
