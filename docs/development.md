@@ -2,6 +2,11 @@
 
 [← Back to the README](../README.md)
 
+The app is built with Svelte 5, TypeScript and Vite, bundled into a single HTML file. The desktop app uses
+[Tauri](https://tauri.app) (`src-tauri/`).
+
+## Commands
+
 ```sh
 npm install
 npm run dev            # dev server
@@ -17,9 +22,7 @@ npm run screenshots    # regenerate docs/screenshots (build first)
 npm run desktop:build  # Windows app (needs Rust + Tauri prerequisites)
 ```
 
-The stack is Svelte 5, TypeScript and Vite, bundled into a single file. The desktop app is [Tauri](https://tauri.app)
-(`src-tauri/`). Specs are in [`docs/SPEC.md`](docs/SPEC.md) and
-[`docs/GAMES-MAKER-SPEC.md`](docs/GAMES-MAKER-SPEC.md).
+## Where things are
 
 | Path | What's there |
 |---|---|
@@ -30,26 +33,40 @@ The stack is Svelte 5, TypeScript and Vite, bundled into a single file. The desk
 | `src-tauri/` | The desktop app |
 | `tests/e2e/`, `scripts/` | Browser tests, the screenshot script and the version script |
 
+The specs are in [`SPEC.md`](SPEC.md) and [`GAMES-MAKER-SPEC.md`](GAMES-MAKER-SPEC.md).
+
 ## Versions and releases
 
-Versions follow [Semantic Versioning](https://semver.org). Every push to `main` is released by CI as `vX.Y.Z`
-(`.github/workflows/build.yml`), numbered by `scripts/version.mjs` from the last release and the `CHANGELOG.md`
+Versions follow [Semantic Versioning](https://semver.org). CI releases every push to `main` as `vX.Y.Z`
+(`.github/workflows/build.yml`). `scripts/version.mjs` picks the number from the last release and the `CHANGELOG.md`
 lines the push adds:
 
-- only lines under **Fixed** → a patch (1.4.2 → 1.4.3);
-- anything under **Added**, **Changed** or **Removed** → a minor (1.4.2 → 1.5.0);
-- a line marked **Breaking** (e.g. saves older versions can't open) → a major (1.4.2 → 2.0.0).
+| Changelog lines added | Version step |
+|---|---|
+| Only under **Fixed** | patch (1.4.2 → 1.4.3) |
+| Anything under **Added**, **Changed** or **Removed** | minor (1.4.2 → 1.5.0) |
+| A line marked **Breaking** (for example, saves older versions can't open) | major (1.4.2 → 2.0.0) |
 
-`package.json`'s version is a floor: raise it by hand (`node scripts/version.mjs set 2.0.0`) for a deliberate step.
-`node scripts/version.mjs check` makes sure `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`,
-`Cargo.toml` and `Cargo.lock` agree. The release notes are the changelog lines added since the last release.
+The release notes are the changelog lines added since the last release.
 
-**Signing the desktop app's updates** (once): the desktop app only installs an update signed with the project's key.
+- `package.json`'s version is a floor. To make a deliberate jump, set it by hand: `node scripts/version.mjs set 2.0.0`.
+- `node scripts/version.mjs check` makes sure `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`,
+  `Cargo.toml` and `Cargo.lock` agree.
 
-1. `npx @tauri-apps/cli signer generate -w ~/.tauri/brainrot-update.key` (works from any folder; pick a password;
-   keep the key file private and backed up: without it, installed copies can't update themselves any more).
-2. In the repository's Settings › Secrets and variables › Actions: secret **`UPDATE_SIGNING_KEY`** = the key file's
-   contents, secret **`UPDATE_SIGNING_KEY_PASSWORD`** = its password, variable **`UPDATE_PUBKEY`** = the public key
-   it printed (also in `brainrot-update.key.pub`).
+### Signing the desktop app's updates
 
-Without them CI still releases, unsigned, and the desktop app offers the download instead of updating itself.
+The desktop app only installs updates signed with the project's key. To set this up once:
+
+1. Generate a key (from any folder) and pick a password:
+
+   ```sh
+   npx @tauri-apps/cli signer generate -w ~/.tauri/brainrot-update.key
+   ```
+
+   Keep the key file private and backed up. Without it, installed copies can't update themselves any more.
+2. In the repository's **Settings › Secrets and variables › Actions**, add:
+   - secret `UPDATE_SIGNING_KEY`: the key file's contents
+   - secret `UPDATE_SIGNING_KEY_PASSWORD`: its password
+   - variable `UPDATE_PUBKEY`: the public key it printed (also in `brainrot-update.key.pub`)
+
+Without them, CI still releases, but unsigned, and the desktop app offers the download instead of updating itself.

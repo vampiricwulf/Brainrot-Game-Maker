@@ -79,7 +79,8 @@ You can also click the board itself to pick tiles.
 ## Documentation
 
 - [Making games](docs/making-games.md): rounds, slides and the editor
-- [Hosting a game](docs/hosting.md): the host screen, phones, secret cards and keyboard shortcuts
+- [Hosting a game](docs/hosting.md): the host screen, phones and secret cards
+- [Keyboard shortcuts](docs/keyboard-shortcuts.md)
 - [Saving and updating](docs/saving.md)
 - [Set up your own buzzer server](docs/buzzer-server.md)
 - [Streaming the sound to Discord or OBS](docs/streaming-sound.md)
