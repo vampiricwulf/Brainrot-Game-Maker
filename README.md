@@ -14,6 +14,26 @@
 
 </div>
 
+## Thanks
+
+This app was made with AI coding tools, and it stands entirely on the work of people who wrote real, careful software
+and made it free for everyone. Thank you to:
+
+- [Svelte](https://svelte.dev) by Rich Harris and the Svelte team, which the whole app is built with
+- [Vite](https://vite.dev) by Evan You and the Vite team, and [vite-plugin-singlefile](https://github.com/richardtallent/vite-plugin-singlefile) by Richard Tallent, which turn it into one HTML file
+- [Tauri](https://tauri.app) by the Tauri Programme, which makes the Windows desktop app
+- [Mediabunny](https://github.com/Vanilagy/mediabunny) by Vanilagy, which reads, converts and edits videos and sounds
+- [omggif](https://github.com/deanm/omggif) by Dean McNamee, which reads GIFs
+- [JSZip](https://github.com/Stuk/jszip) by Stuart Knightley, which packs games into files
+- [idb-keyval](https://github.com/jakearchibald/idb-keyval) by Jake Archibald, which stores games in the browser
+- [QR Code Generator](https://github.com/kazuhikoarase/qrcode-generator) by Kazuhiko Arase, which makes the join codes for phones
+- [Cloudflare Workers](https://workers.cloudflare.com) and [Wrangler](https://github.com/cloudflare/workers-sdk), which run the phone buzzer server
+- [Playwright](https://playwright.dev) by Microsoft and [Vitest](https://vitest.dev) by the Vitest team, which test it
+- [TypeScript](https://www.typescriptlang.org) by Microsoft
+- The fonts, through [Fontsource](https://fontsource.org): [Inter](https://rsms.me/inter/) by Rasmus Andersson, Anton, Bangers and Oswald by Vernon Adams, Bebas Neue by Ryoichi Tsunekawa, Comic Neue by Craig Rozynski, Libre Baskerville by Impallari Type, Permanent Marker by Font Diner and Press Start 2P by CodeMan38
+
+See [third-party code](docs/third-party.md) for licenses.
+
 ## Features
 
 - **Jeopardy boards** with Daily Doubles, partner clues, wheels and dice
