@@ -18,7 +18,20 @@
     type MediaRole,
   } from '../mediactl.svelte';
 
-  let { el, mode, role, label }: { el: EmbedEl; mode: 'edit' | 'play'; role: MediaRole; label: string } = $props();
+  let {
+    el,
+    mode,
+    role,
+    label,
+    card = false,
+  }: {
+    el: EmbedEl;
+    mode: 'edit' | 'play';
+    role: MediaRole;
+    label: string;
+    /** On a 🤫 card: Sound only isn't used (a phone plays a card's YouTube video in YouTube's own player). */
+    card?: boolean;
+  } = $props();
 
   const vid = $derived(youtubeId(el.url) ?? '');
   // (A Stop at that isn't after the start is no stop: it plays to the end.)
@@ -26,7 +39,7 @@
   const startAt = $derived(range.start);
   const watchUrl = $derived(youtubeWatchUrl(vid, startAt));
 
-  const soundOnly = $derived(isSoundOnly(el));
+  const soundOnly = $derived(isSoundOnly(el) && !card);
   const shows = $derived(soundShows(el));
   /** Seen only by the host (the editor, or the host's copy of the stage), never by viewers. */
   const hostView = $derived(mode === 'edit' || role === 'mirror');
@@ -162,14 +175,18 @@
         }
         autoplay();
       }
-      if (data.event === 'infoDelivery' && data.info && typeof data.info === 'object') {
+      // YouTube's first message (initialDelivery) holds all it knows, the video's length too; each later infoDelivery
+      // holds only what changed since. Both are read.
+      const first = data.event === 'initialDelivery';
+      if ((first || data.event === 'infoDelivery') && data.info && typeof data.info === 'object') {
         ready = true;
         autoplay();
         const info = data.info;
         const patch: Record<string, unknown> = {};
         if (typeof info.currentTime === 'number') patch.time = lastTime = info.currentTime;
         if (typeof info.duration === 'number' && info.duration > 0) patch.duration = duration = info.duration;
-        if (typeof info.volume === 'number') patch.volume = info.volume / 100;
+        // (The first one's volume is from before the setVolume just sent: the next infoDelivery says the new one.)
+        if (typeof info.volume === 'number' && !first) patch.volume = info.volume / 100;
         if (typeof info.muted === 'boolean') patch.muted = info.muted;
         if (typeof info.playerState === 'number') {
           patch.paused = info.playerState !== 1 && info.playerState !== 3;

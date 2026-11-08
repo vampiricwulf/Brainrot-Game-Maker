@@ -893,6 +893,8 @@ const ITEM_FIELDS: Record<string, string> = {
   stroke: 'border',
   radius: 'corners',
   shape: 'type',
+  // (A YouTube video's Sound only choice: Players see.)
+  soundShows: 'what players see',
 };
 const ITEM_NOUNS = new Set(['shape', 'hotspot', 'video', 'sound', 'image', 'link']);
 
@@ -904,6 +906,8 @@ function itemChange(op: Op & { t: 'set' }, at: At, game: Game): string | null {
   if (path.length !== at.depth + 1 || typeof field !== 'string') return null;
   // (Its Plays from [ ] to [ ].)
   if (field === 'startAt' || field === 'endAt') return `Changed where ${what(at)} plays ${field === 'startAt' ? 'from' : 'to'}`;
+  // (A YouTube video's Sound only (hide the video) checkbox.)
+  if (field === 'soundOnly') return `Turned Sound only ${op.a ? 'on' : 'off'} for ${what(at).replace(' (sound only)”', '”')}`;
   if (!ITEM_FIELDS[field]) return null;
   let el: unknown = game;
   for (const s of path.slice(0, at.depth)) el = Array.isArray(el) ? (byId(el, s) ?? el[s as number]) : (el as Obj | undefined)?.[s];

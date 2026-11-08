@@ -20,12 +20,13 @@ export const SOUND_SHOWS: [SoundShows, string][] = [
 
 /**
  * How far into the part it plays it is (`start` to `end`, see playRange), and how long that part is, in seconds; `frac`
- * from 0 to 1 for the bar. Null until the video's length is known (`duration` 0), or when the part is empty. A Plays to
- * past the video's end counts to its end.
+ * from 0 to 1 for the bar. A part with a Plays to is known from the start; with none, it waits for the video's length
+ * (`duration` 0: null). Null too when the part is empty. A Plays to past the video's end (once that is known) counts to
+ * its end.
  */
 export function rangeProgress(time: number, duration: number, start: number, end?: number): { at: number; length: number; frac: number } | null {
-  if (!Number.isFinite(duration) || duration <= 0) return null;
-  const stop = end !== undefined && end > start ? Math.min(end, duration) : duration;
+  const known = Number.isFinite(duration) && duration > 0;
+  const stop = end !== undefined && end > start ? (known ? Math.min(end, duration) : end) : known ? duration : 0;
   const length = stop - start;
   if (!(length > 0)) return null;
   const at = Math.max(0, Math.min(length, (Number.isFinite(time) ? time : 0) - start));

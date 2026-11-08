@@ -22,6 +22,7 @@
     onlock,
     ondelete,
     onmenu,
+    card = false,
   }: {
     /** The selected items. */
     items: SlideElement[];
@@ -38,6 +39,8 @@
     ondelete: () => void;
     /** ⋯: the item's menu (none selected: the slide's), dropping from the button. */
     onmenu: (from: HTMLElement) => void;
+    /** On a 🤫 card (Sound only isn't used there). */
+    card?: boolean;
   } = $props();
 
   const one = $derived(items.length === 1 ? items[0] : undefined);
@@ -73,10 +76,10 @@
   );
 </script>
 
-<div class="itembar" role="group" aria-label={one ? `Selected: ${layerLabel(one, game)}` : items.length ? `${items.length} items selected` : 'Nothing selected'}>
+<div class="itembar" role="group" aria-label={one ? `Selected: ${layerLabel(one, game, card)}` : items.length ? `${items.length} items selected` : 'Nothing selected'}>
   <div class="what">
     {#if one}
-      <span class="ic" aria-hidden="true">{layerIcon(one)}</span><span class="name" title={layerLabel(one, game)}>{layerLabel(one, game)}</span>
+      <span class="ic" aria-hidden="true">{layerIcon(one)}</span><span class="name" title={layerLabel(one, game, card)}>{layerLabel(one, game, card)}</span>
     {:else if items.length}
       <span class="ic" aria-hidden="true">▦</span><span class="name">{items.length} items selected</span>
     {:else}
@@ -87,7 +90,7 @@
       class="ghost small more"
       onclick={(e) => onmenu(e.currentTarget)}
       aria-haspopup="menu"
-      aria-label={one ? `More for ${layerLabel(one, game)}` : items.length ? 'More for the selected items' : 'More for this slide'}
+      aria-label={one ? `More for ${layerLabel(one, game, card)}` : items.length ? 'More for the selected items' : 'More for this slide'}
       title={items.length ? 'Its menu: the same as a right-click on it (Shift+F10)' : 'The slide’s menu: the same as a right-click on an empty spot'}>⋯</button
     >
   </div>

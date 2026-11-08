@@ -47,12 +47,13 @@ const NOUNS: Record<SlideElement['kind'], [string, string]> = {
  * Items as the History names a step done to them: shape “Ellipse”, 3 shapes, or 3 items when they're of different
  * kinds (named from the changes alone, a paste of a text box and two shapes was "Added 3 text boxes").
  */
-export function itemsNamed(els: SlideElement[], game: Game): string {
-  if (els.length === 1) return `${NOUNS[els[0].kind][0]} “${short(layerLabel(els[0], game))}”`;
+export function itemsNamed(els: SlideElement[], game: Game, onCard = false): string {
+  if (els.length === 1) return `${NOUNS[els[0].kind][0]} “${short(layerLabel(els[0], game, onCard))}”`;
   return `${els.length} ${new Set(els.map((e) => e.kind)).size === 1 ? NOUNS[els[0].kind][1] : 'items'}`;
 }
 
-export function layerLabel(el: SlideElement, game: Game): string {
+/** `onCard`: it's on a 🤫 card, where Sound only isn't used (a card's YouTube video plays in YouTube's own player). */
+export function layerLabel(el: SlideElement, game: Game, onCard = false): string {
   if (el.name?.trim()) return el.name.trim();
   switch (el.kind) {
     case 'text':
@@ -65,7 +66,7 @@ export function layerLabel(el: SlideElement, game: Game): string {
       // (A line drawn by hand with ✏ Freehand line; closed with Shift, a shape. A 🖌 Drawpad drawing is a picture.)
       return el.hotspot ? 'Hotspot' : el.shape === 'path' ? (el.closed ? 'Freehand shape' : 'Freehand line') : SHAPES[el.shape];
     case 'embed':
-      return embedName(el.embedKind, el.url) + (isSoundOnly(el) ? ' (sound only)' : '');
+      return embedName(el.embedKind, el.url) + (isSoundOnly(el) && !onCard ? ' (sound only)' : '');
   }
 }
 

@@ -173,6 +173,8 @@
   let hovered = $state<string | null>(null);
   /** `from`: a Layers row's name, opened from it (the keys go back there after). */
   let menu = $state<{ x: number; y: number; at: Pt; stack: SlideElement[]; from?: HTMLElement } | null>(null);
+  /** A 🤫 card's editor (saved cards, partner clue cards, deal part cards): Sound only isn't used there. */
+  const onCard = $derived(quickfield === 'card');
   const editView = $derived(hidden.length ? { ...slide, elements: slide.elements.filter((e) => !hidden.includes(e.id)) } : slide);
 
   const single = $derived(selected.length === 1 ? slide.elements.find((e) => e.id === selected[0]) : undefined);
@@ -281,7 +283,7 @@
   const NAMES: Record<SlideElement['kind'], string> = { text: 'text box', image: 'image', video: 'video', audio: 'sound', shape: 'shape', embed: 'link' };
   const describe = (els: SlideElement[]) => (els.length === 1 ? NAMES[els[0].kind] : `${els.length} items`);
   /** The items as the History names a step done to them: shape “Ellipse”, 3 shapes, 3 items. */
-  const named = (els: SlideElement[]) => itemsNamed(els, game);
+  const named = (els: SlideElement[]) => itemsNamed(els, game, onCard);
 
   // ---------- Adding elements ----------
   /**
@@ -628,7 +630,7 @@
     selected = j < 0 ? [] : [list[j].id];
     // Screen readers hear which item it is: "Rectangle, 2 of 5, locked".
     if (j < 0) announce('Nothing selected');
-    else announce(`${layerLabel(list[j], game)}, ${j + 1} of ${list.length}${list[j].locked ? ', locked' : ''}`);
+    else announce(`${layerLabel(list[j], game, onCard)}, ${j + 1} of ${list.length}${list[j].locked ? ', locked' : ''}`);
     return true;
   }
 
@@ -973,7 +975,7 @@
     copies.sort((a, b) => a.zIndex - b.zIndex).forEach((c, i) => (c.zIndex = z + i));
     // (Their files, wheels and dice from another game come in the same step: one Ctrl+Z takes them out too. They're
     // named by those files, not in this game yet.)
-    undoApi.step(`Pasted ${itemsNamed(copies, { ...game, media: [...game.media, ...clipboard.media] })}`, () => {
+    undoApi.step(`Pasted ${itemsNamed(copies, { ...game, media: [...game.media, ...clipboard.media] }, onCard)}`, () => {
       adoptMedia(game, elementMediaIds(copies));
       adoptUsedBy(game, copies);
       slide.elements.push(...copies);
@@ -1288,10 +1290,10 @@
           {#if previewing}
             {#key previewKey}
               <!-- 'single' is the audible role Play uses in a single window; 'mirror' is muted. -->
-              <SlideView {slide} mode="play" role={previewMuted ? 'mirror' : 'single'} {fallbackBg} />
+              <SlideView {slide} mode="play" role={previewMuted ? 'mirror' : 'single'} {fallbackBg} card={onCard} />
             {/key}
           {:else}
-            <SlideView slide={editView} mode="edit" {placeholder} {fallbackBg} onfit={(id, r) => (fits[id] = r)} />
+            <SlideView slide={editView} mode="edit" {placeholder} {fallbackBg} card={onCard} onfit={(id, r) => (fits[id] = r)} />
             <EditLayer
               {slide}
               bind:selected
@@ -1346,6 +1348,7 @@
           items={slide.elements.filter((e) => selected.includes(e.id))}
           all={slide.elements}
           {game}
+          card={onCard}
           onedit={openEditor}
           onduplicate={duplicate}
           onlock={(on) => menuAction(on ? 'lock' : 'unlock')}
@@ -1360,6 +1363,7 @@
           <LayersPanel
             elements={slide.elements}
             {game}
+            card={onCard}
             bind:selected
             bind:hidden
             bind:hovered
@@ -1378,6 +1382,7 @@
         <Inspector
           el={single}
           {game}
+          card={onCard}
           onTile={themedBg && !slide.background.color && !slide.background.gradient && !slide.background.image}
           fit={fits[single.id]}
           bind:textArea
@@ -1473,7 +1478,7 @@
 
 {#if drawpad}
   <DrawPad oninsert={insertDrawing} oncancel={() => (drawpad = false)}>
-    {#snippet backdrop()}<Stage><SlideView {slide} mode="edit" {fallbackBg} /></Stage>{/snippet}
+    {#snippet backdrop()}<Stage><SlideView {slide} mode="edit" {fallbackBg} card={onCard} /></Stage>{/snippet}
   </DrawPad>
 {/if}
 

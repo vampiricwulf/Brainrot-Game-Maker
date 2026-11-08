@@ -16,6 +16,7 @@
   let {
     elements,
     game,
+    card = false,
     selected = $bindable(),
     hidden = $bindable([]),
     hovered = $bindable(null),
@@ -25,6 +26,8 @@
   }: {
     elements: SlideElement[];
     game: Game;
+    /** On a 🤫 card (Sound only isn't used there). */
+    card?: boolean;
     selected: string[];
     /** Items hidden in the editor only. */
     hidden?: string[];
@@ -88,8 +91,8 @@
     const j = i + dir;
     if (j < 0 || j >= order.length) return;
     [order[i], order[j]] = [order[j], order[i]];
-    apply(order, `${dir < 0 ? 'Brought' : 'Sent'} ${itemsNamed([el], game)} ${dir < 0 ? 'forward' : 'backward'}`);
-    announce(`${layerLabel(el, game)} moved to ${j + 1} of ${order.length} in Layers`);
+    apply(order, `${dir < 0 ? 'Brought' : 'Sent'} ${itemsNamed([el], game, card)} ${dir < 0 ? 'forward' : 'backward'}`);
+    announce(`${layerLabel(el, game, card)} moved to ${j + 1} of ${order.length} in Layers`);
     tick().then(() => {
       const row = listEl?.querySelector(`[data-layer="${el.id}"]`);
       const target = row?.querySelector<HTMLButtonElement>(refocus);
@@ -116,7 +119,7 @@
       const at = order.findIndex((x) => x.id === dropAt!.id);
       order.splice(at + (dropAt.after ? 1 : 0), 0, moving);
       const up = order.indexOf(moving) < top.indexOf(moving);
-      apply(order, `${up ? 'Brought' : 'Sent'} ${itemsNamed([moving], game)} ${up ? 'forward' : 'backward'}`);
+      apply(order, `${up ? 'Brought' : 'Sent'} ${itemsNamed([moving], game, card)} ${up ? 'forward' : 'backward'}`);
       selected = [moving.id];
     }
     dragId = null;
@@ -132,7 +135,7 @@
     renaming = null;
     const want = name?.trim() || undefined;
     // The box opens on the label shown: left as it was, an unnamed item keeps following its text or file (no step).
-    const unchanged = want === el.name || (el.name === undefined && want === layerLabel(el, game));
+    const unchanged = want === el.name || (el.name === undefined && want === layerLabel(el, game, card));
     if (name !== null && !unchanged) edit(() => (el.name = want));
     if (refocus) tick().then(() => listEl?.querySelector<HTMLElement>(`[data-layer="${el.id}"] .name`)?.focus());
   }
@@ -182,7 +185,7 @@
     {@const isSel = selected.includes(el.id)}
     {@const isHidden = hidden.includes(el.id)}
     {@const thumb = el.kind === 'image' ? mediaUrls[el.editedMedia ?? el.media] : undefined}
-    {@const name = layerLabel(el, game)}
+    {@const name = layerLabel(el, game, card)}
     <div
       class="row"
       class:sel={isSel}
@@ -218,7 +221,7 @@
         <span class="name">
           {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
           <input
-            value={el.name ?? layerLabel(el, game)}
+            value={el.name ?? layerLabel(el, game, card)}
             aria-label="Layer name"
             title="Enter saves, Esc cancels. Empty goes back to the automatic name."
             use:focusAll
@@ -244,7 +247,7 @@
           title="Click to select (Shift/Ctrl adds). Double-click or F2 to rename. Drag to restack; Alt+↑/↓ moves it up or down. Right-click or Shift+F10: its menu."
         >
           {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
-          <span class="txt">{layerLabel(el, game)}</span>
+          <span class="txt">{layerLabel(el, game, card)}</span>
           <!-- (Nowhere on the slide: this list is the only way to find it.) -->
           {#if offStage(el)}<span class="off-slide" title="Off the slide: players won't see it. Move it back with the X and Y fields.">⚠ off the slide</span>{/if}
         </button>

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { diff } from './historyops';
 import { describe as describeStep, filePlaces, itemPlace, placeAt, placeWhere, short } from './historylabel';
 import {
-  gameRules, newAudioEl, newImageEl, newSavedCard, newShapeEl, newTextEl, newVideoEl,
-  type AudioEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type ShapeEl, type SlideElement, type TextEl, type VideoEl,
+  gameRules, newAudioEl, newEmbedEl, newImageEl, newSavedCard, newShapeEl, newTextEl, newVideoEl,
+  type AudioEl, type BoardGameRound, type BoardRound, type EmbedEl, type FinalRound, type Game, type ImageEl, type ShapeEl, type SlideElement, type TextEl, type VideoEl,
 } from './model';
 import { jeopardyGame } from './testgame';
 import { addSampleGame } from './samples';
@@ -221,6 +221,12 @@ describe('step labels', () => {
     expect(label((e) => ((e[5] as ShapeEl).stroke = '#ff0000'))).toBe('Changed color of shape “Freehand line”');
     expect(label((e) => ((e[5] as ShapeEl).strokeWidth = 9))).toBe('Changed thickness of shape “Freehand line”');
     expect(label((e) => ((e[0] as TextEl).uppercase = false))).toMatch(/^Changed all caps of text box/);
+    // A YouTube video's Sound only (hide the video), and its Players see.
+    q(base).elements.push(newEmbedEl('https://youtu.be/dQw4w9WgXcQ', 'youtube'));
+    expect(label((e) => ((e[6] as EmbedEl).soundOnly = true))).toBe('Turned Sound only on for link “YouTube”');
+    q(base).elements[6] = { ...(q(base).elements[6] as EmbedEl), soundOnly: true };
+    expect(label((e) => delete (e[6] as EmbedEl).soundOnly)).toBe('Turned Sound only off for link “YouTube”');
+    expect(label((e) => ((e[6] as EmbedEl).soundShows = 'time'))).toBe('Changed what players see of link “YouTube (sound only)”');
   });
 
   it('names moves, resizes and restacks of slide items', () => {

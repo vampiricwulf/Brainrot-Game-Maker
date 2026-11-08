@@ -22,6 +22,7 @@
     fallbackBg = 'var(--tile)',
     placeholder,
     onfit,
+    card = false,
   }: {
     slide: Slide;
     mode?: 'edit' | 'play';
@@ -31,6 +32,8 @@
     placeholder?: string;
     /** Edit mode: told each text element's fitted font size. */
     onfit?: (id: string, r: FitResult) => void;
+    /** A 🤫 card's (the card editors'): a YouTube video's Sound only isn't used there, as phones show the video. */
+    card?: boolean;
   } = $props();
 
   /** Seen only by the host (the editor, or the host's copy of the stage), never by viewers. */
@@ -117,7 +120,7 @@
         {/if}
       {:else if el.kind === 'embed'}
         {#if el.embedKind === 'youtube'}
-          <YouTubeEmbed {el} {mode} {role} label={label(el)} />
+          <YouTubeEmbed {el} {mode} {role} {card} label={label(el)} />
         {:else if el.embedKind === 'drive' || el.embedKind === 'streamable'}
           <PlayerEmbed {el} {mode} {role} label={label(el)} />
         {:else if el.embedKind === 'remoteImage'}

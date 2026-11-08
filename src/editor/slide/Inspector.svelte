@@ -34,6 +34,7 @@
     onuploadfont,
     objectsection,
     aligns,
+    card = false,
   }: {
     el: SlideElement;
     game: Game;
@@ -59,6 +60,8 @@
     objectsection?: Snippet<[SlideElement]>;
     /** Move it to the slide's edges or middle: shown with X and Y. */
     aligns?: Snippet;
+    /** A 🤫 card's item: Sound only isn't offered (a phone plays a card's YouTube video in YouTube's own player). */
+    card?: boolean;
   } = $props();
   /** The selected image/video/audio file, when it plays from the internet (a live link). */
   const liveRef = $derived('media' in el ? game.media.find((m) => m.id === el.media && m.url) : undefined);
@@ -414,7 +417,9 @@
         {:else}
           <p class="hint">🌐 Needs internet during the game. The host can always open the link in its own window if it won't play.</p>
         {/if}
-        {#if el.embedKind === 'youtube'}
+        {#if el.embedKind === 'youtube' && card}
+          <p class="hint">On a 🤫 card it plays in YouTube’s own player, so the player sees the video (Sound only is for slides).</p>
+        {:else if el.embedKind === 'youtube'}
           <!-- Sound only: the video plays unseen; the host's play, pause and volume work as ever. -->
           <label class="check"
             ><input type="checkbox" bind:checked={() => !!el.soundOnly, (v) => ((el as EmbedEl).soundOnly = v || undefined)} /> Sound only (hide the video)</label
@@ -428,7 +433,7 @@
             </label>
             <p class="hint">
               Players hear it but never see the video. You still play, pause and turn it up or down from your media controls (or by
-              clicking its speaker on your stage).
+              clicking its speaker or time bar on your stage, when players see one).
             </p>
           {/if}
         {/if}

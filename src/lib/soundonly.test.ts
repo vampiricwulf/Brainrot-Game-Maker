@@ -21,9 +21,14 @@ describe('Sound only YouTube items', () => {
 });
 
 describe('rangeProgress', () => {
-  it('is nothing until the length is known', () => {
+  it('is nothing until the length is known, with no Plays to', () => {
     expect(rangeProgress(0, 0, 0)).toBeNull();
-    expect(rangeProgress(5, NaN, 0, 30)).toBeNull();
+    expect(rangeProgress(40, NaN, 30)).toBeNull();
+  });
+
+  it('knows a part with a Plays to before the video’s length is known', () => {
+    expect(rangeProgress(0, 0, 30, 60)).toEqual({ at: 0, length: 30, frac: 0 });
+    expect(rangeProgress(5, NaN, 0, 30)).toMatchObject({ at: 5, length: 30 });
   });
 
   it('runs over the whole video with no part set', () => {

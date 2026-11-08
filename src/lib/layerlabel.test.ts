@@ -31,6 +31,8 @@ describe('a YouTube video set to Sound only', () => {
     const yt = newEmbedEl('https://youtu.be/dQw4w9WgXcQ', 'youtube');
     expect(layerLabel(yt, game)).toBe('YouTube');
     expect(layerLabel({ ...yt, soundOnly: true }, game)).toBe('YouTube (sound only)');
+    // On a 🤫 card it isn't used (a phone plays it in YouTube's own player), so it doesn't say so there.
+    expect(layerLabel({ ...yt, soundOnly: true }, game, true)).toBe('YouTube');
   });
 });
 
