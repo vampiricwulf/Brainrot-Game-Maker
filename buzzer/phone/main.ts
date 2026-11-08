@@ -23,6 +23,8 @@
  */
 import { isRoomCode, MAX_PHONES, ROOM_ALPHABET, SETTING_UP, STARTS_SOON, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
+import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type Hsv } from '../../src/lib/colormath';
+import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
 import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
 
@@ -139,6 +141,13 @@ let seatsKey = '';
 /** The colour picker is open; the colours it was last drawn with (redrawn only when they change, so focus stays). */
 let colorsOpen = false;
 let colorsKey = '';
+/**
+ * ＋ Pick any color, open (see openAny): the color being picked (shown on the buzzer, not sent yet), and the Hex box as
+ * typed (null: showing the color).
+ */
+let anyColor: { hsv: Hsv; hexText: string | null; hexBad: boolean } | null = null;
+/** A color OK sent: the buzzer keeps it until the room's view has it (or a few seconds, if the host didn't take it). */
+let colorSent: { color: string; until: number } | null = null;
 /** What the last press on the page was made with (a PointerEvent's pointerType: 'mouse', 'touch', 'pen'). */
 let pointerKind = '';
 /** A press on the buzzer that began with a pointerdown (it buzzed then): the click that ends it doesn't, however long it was held. */
@@ -793,6 +802,8 @@ async function wake(): Promise<void> {
 let wasBoxUp = false;
 
 function show(id: ScreenId): void {
+  // (Off the buzz screen: ＋ Pick any color goes, nothing sent.)
+  if (id !== 's-buzz' && anyColor) closeAny('drop');
   for (const s of screens) $(s).hidden = s !== id;
   // (Every drawing of the buzz screen ends here, before it's painted: the question fits what's around it.)
   if (id === 's-buzz') fitClue();
@@ -1257,8 +1268,10 @@ function renderBuzz(v: PhoneView): void {
   const you = v.you!;
   $('title').textContent = v.title || 'Brainrot Buzzer';
   const b = $('buzz');
-  b.style.setProperty('--seat', you.color);
-  b.style.setProperty('--seat-ink', textOn(you.color));
+  if (colorSent && (colorSent.color === you.color.toLowerCase() || performance.now() > colorSent.until)) colorSent = null;
+  const seat = anyColor ? hsvToHex(anyColor.hsv) : (colorSent?.color ?? you.color);
+  b.style.setProperty('--seat', seat);
+  b.style.setProperty('--seat-ink', textOn(seat));
   const sym = v.currency ?? '';
   // Wagers: the player's own box instead of the buzzer (or what's locked in; someone else wagering; sitting out).
   const wager = v.phase === 'lobby' && v.wager ? v.wager : null;
@@ -1538,6 +1551,9 @@ function renderColors(v: PhoneView): void {
   const btn = $<HTMLButtonElement>('color-btn');
   btn.hidden = !pick;
   if (!pick) colorsOpen = false;
+  // (The host turned picking off, or left: ＋ Pick any color shuts too, and the buzzer has the player's color again.)
+  if (anyColor && !pick) closeAny('drop');
+  else if (anyColor) drawAny();
   btn.setAttribute('aria-expanded', String(colorsOpen));
   const box = $('colors');
   box.hidden = !colorsOpen;
@@ -1546,7 +1562,9 @@ function renderColors(v: PhoneView): void {
   const key = `${mine} ${pick.taken.join(',')}`;
   if (key === colorsKey && box.childElementCount) return;
   colorsKey = key;
-  const had = document.activeElement instanceof HTMLElement && box.contains(document.activeElement) ? document.activeElement.dataset.color : undefined;
+  const at = document.activeElement instanceof HTMLElement && box.contains(document.activeElement) ? document.activeElement : null;
+  // (The swatch with the keys, or '' for ＋: the keys stay on it as they're drawn again.)
+  const had = at ? (at.dataset.own !== undefined ? '' : at.dataset.color) : undefined;
   box.replaceChildren(
     ...PLAYER_PALETTE.map((c, i) => {
       const b = document.createElement('button');
@@ -1564,30 +1582,187 @@ function renderColors(v: PhoneView): void {
       return b;
     }),
   );
-  // Any other color: the phone's own color picker. Ringed when the player's color isn't one of the palette's.
+  // Any other color: the page's own picker (openAny). Ringed when the player's color isn't one of the palette's.
   const custom = !PLAYER_PALETTE.includes(mine);
-  const own = document.createElement('label');
+  const own = document.createElement('button');
+  own.type = 'button';
   own.className = 'swatch own';
+  own.dataset.own = '';
+  own.setAttribute('aria-haspopup', 'dialog');
+  own.setAttribute('aria-label', custom ? `Pick any color (yours now: ${mine})` : 'Pick any color');
   own.title = 'Pick any color';
   own.setAttribute('aria-pressed', String(custom));
   own.style.background = custom ? mine : 'conic-gradient(#f44, #fd4, #4d4, #4cf, #48f, #c4f, #f44)';
   own.style.color = textOn(custom ? mine : '#888888');
   own.textContent = custom ? '✔' : '＋';
-  const input = document.createElement('input');
-  input.type = 'color';
-  input.value = mine;
-  input.setAttribute('aria-label', 'Pick any color');
-  input.addEventListener('change', () => {
-    const c = input.value.toLowerCase();
-    if (c === mine) return;
-    if (pick.taken.includes(c)) return;
-    send({ t: 'color', color: c });
-    colorsOpen = false;
-    renderColors(v);
-  });
-  own.append(input);
   box.append(own);
-  if (had) box.querySelector<HTMLElement>(`[data-color="${had}"]`)?.focus();
+  if (had !== undefined) box.querySelector<HTMLElement>(had ? `[data-color="${had}"]` : '[data-own]')?.focus();
+}
+
+// ---- ＋ Pick any color: the page's own picker (the browser's has no OK, and shows nothing until it's shut) ----
+
+/** Opens it on the player's color: the buzzer shows what's picked as it moves; nothing is sent until OK. */
+function openAny(): void {
+  const you = view?.you;
+  if (!you || anyColor) return;
+  anyColor = { hsv: hexToHsv(you.color) ?? { h: 0, s: 0, v: 0 }, hexText: null, hexBad: false };
+  $('any-back').hidden = false;
+  $('any').hidden = false;
+  drawAny();
+  // (The square takes the keys, not the Hex box: that would bring a phone's keyboard up over it.)
+  $('any-sq').focus({ preventScroll: true });
+}
+
+/** The picker as anyColor has it, and the buzzer in its color; OK only for a color no one else has. */
+function drawAny(): void {
+  const a = anyColor;
+  if (!a) return;
+  const hex = hsvToHex(a.hsv);
+  const pick = view?.colorPick;
+  const verdict = anyVerdict(hex, view?.you?.color ?? '', pick?.taken ?? []);
+  $('any').style.setProperty('--hue', `hsl(${a.hsv.h} 100% 50%)`);
+  const now = $('any-now');
+  now.style.background = hex;
+  now.setAttribute('aria-label', `New color: ${colorWords(a.hsv)}, ${hex}`);
+  const sq = $('any-sq');
+  const at = squareAt(a.hsv);
+  const dot = sq.firstElementChild as HTMLElement;
+  dot.style.left = `${at.x * 100}%`;
+  dot.style.top = `${at.y * 100}%`;
+  dot.style.background = hex;
+  sq.setAttribute('aria-valuenow', String(Math.round(a.hsv.s * 100)));
+  sq.setAttribute('aria-valuetext', squareText(a.hsv));
+  const hue = $('any-hue');
+  (hue.firstElementChild as HTMLElement).style.left = `${barAt(a.hsv) * 100}%`;
+  hue.setAttribute('aria-valuenow', String(Math.round(a.hsv.h)));
+  hue.setAttribute('aria-valuetext', hueText(a.hsv));
+  const field = $<HTMLInputElement>('any-hex');
+  const shown = a.hexText ?? hex;
+  if (field.value !== shown) field.value = shown;
+  field.setAttribute('aria-invalid', String(a.hexBad));
+  const note = a.hexBad ? 'Not a color (like #ff00e6)' : verdict === 'taken' ? 'Another player has this color' : '';
+  if ($('any-note').textContent !== note) $('any-note').textContent = note;
+  $<HTMLButtonElement>('any-ok').disabled = verdict === 'taken';
+  const b = $('buzz');
+  b.style.setProperty('--seat', hex);
+  b.style.setProperty('--seat-ink', textOn(hex));
+}
+
+/** A new color from the square, the strip, the keys or the Hex box. */
+function setAny(hsv: Hsv, hexText: string | null = null, hexBad = false): void {
+  if (!anyColor) return;
+  anyColor = { hsv, hexText, hexBad };
+  drawAny();
+}
+
+/**
+ * Shuts it. 'ok' (OK, Enter, a tap off it): sends the color, unless it's theirs already, or (a tap off it) another
+ * player's, when it just shuts. 'back' (Cancel, Esc): the color they had. 'drop': the host stopped it (nothing to
+ * focus). Returns false when OK can't take it (taken).
+ */
+function closeAny(how: 'ok' | 'tapoff' | 'back' | 'drop', byKeys = false): boolean {
+  const a = anyColor;
+  if (!a) return true;
+  const hex = hsvToHex(a.hsv);
+  const pick = view?.colorPick;
+  const verdict = anyVerdict(hex, view?.you?.color ?? '', pick?.taken ?? []);
+  if (how === 'ok' && verdict === 'taken') return false;
+  const sent = (how === 'ok' || how === 'tapoff') && verdict === 'send' && !!pick;
+  if (sent) {
+    send({ t: 'color', color: hex });
+    colorSent = { color: hex, until: performance.now() + 4000 };
+    window.setTimeout(render, 4100);
+  }
+  anyColor = null;
+  $('any').hidden = true;
+  $('any-back').hidden = true;
+  const inside = document.activeElement instanceof Node && $('any').contains(document.activeElement);
+  const you = view?.you;
+  if (you) {
+    const seat = colorSent?.color ?? you.color;
+    $('buzz').style.setProperty('--seat', seat);
+    $('buzz').style.setProperty('--seat-ink', textOn(seat));
+  }
+  if (how === 'ok' || how === 'tapoff') {
+    colorsOpen = false;
+    if (view?.you) renderColors(view);
+  }
+  if (how === 'drop') {
+    if (inside) $('buzz').focus({ preventScroll: true });
+    return true;
+  }
+  if (how === 'back') {
+    // Back to ＋, the palette still open.
+    $('colors').querySelector<HTMLElement>('[data-own]')?.focus({ preventScroll: true });
+    return true;
+  }
+  // As a swatch picked does: the keys on to the buzzer on a computer; on a phone, back to 🎨.
+  if (byKeys && fine.matches) $('buzz').focus({ preventScroll: true });
+  else if (byKeys || pointerKind === 'touch') $('color-btn').focus({ preventScroll: true });
+  else (document.activeElement as HTMLElement | null)?.blur();
+  return true;
+}
+
+/** The square or the strip, at a pointer. */
+function anyAt(el: HTMLElement, e: PointerEvent): void {
+  if (!anyColor) return;
+  const r = el.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width;
+  setAny(el.id === 'any-sq' ? fromSquare(anyColor.hsv, x, (e.clientY - r.top) / r.height) : fromBar(anyColor.hsv, x));
+}
+
+/** The picker's keys (it's a window over the page: no key gets past it, not Space to buzz). */
+function anyKey(e: KeyboardEvent): void {
+  const t = e.target as HTMLElement;
+  const box = $('any');
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (!e.repeat) closeAny('back', true);
+    return;
+  }
+  if (e.key === 'Tab') {
+    // Round and round inside it.
+    const list = [...box.querySelectorAll<HTMLElement>('[tabindex="0"], input, button:not(:disabled)')];
+    const i = list.indexOf(t);
+    const next = e.shiftKey ? (i <= 0 ? list.length - 1 : i - 1) : i < 0 || i === list.length - 1 ? 0 : i + 1;
+    e.preventDefault();
+    list[next]?.focus();
+    return;
+  }
+  if (t.id === 'any-sq' || t.id === 'any-hue') {
+    const next = anyColor && nudge(anyColor.hsv, t.id === 'any-sq' ? 'square' : 'bar', e.key, e.shiftKey);
+    if (next) {
+      e.preventDefault();
+      setAny(next);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!e.repeat) closeAny('ok', true);
+    } else if (e.key === ' ') e.preventDefault();
+    else if (/^[#0-9a-f]$/i.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // A hex typed on the square or the strip goes in the Hex box (its text selected, so this one takes its place).
+      const field = $<HTMLInputElement>('any-hex');
+      field.focus();
+      field.select();
+    }
+    return;
+  }
+  if (t.id === 'any-hex' && e.key === 'Enter') {
+    e.preventDefault();
+    if (!e.repeat && hexDone()) closeAny('ok', true);
+    return;
+  }
+  // (Space and Enter on Cancel and OK press them, as on any button.)
+  if (!(t instanceof HTMLButtonElement || t instanceof HTMLInputElement) && (e.key === ' ' || e.key === 'Enter')) e.preventDefault();
+}
+
+/** The Hex box left (or Enter): a color typed goes in; anything else is shown as a mistake. False if it's not a color. */
+function hexDone(): boolean {
+  const a = anyColor;
+  if (!a || a.hexText === null) return true;
+  const h = typedHex(a.hexText, true).use;
+  if (h) setAny(hexToHsv(h, a.hsv) ?? a.hsv);
+  else setAny(a.hsv, a.hexText, true);
+  return !!h;
 }
 
 /** The player's wager box: their score and max, what's in, and why the last one wasn't taken. */
@@ -1925,6 +2100,10 @@ function escape(e: KeyboardEvent): void {
 document.addEventListener('keydown', (e) => {
   if (e.key === ' ' && !e.repeat) spaceFrom = e.target;
   if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (anyColor && !$('any').hidden) {
+    anyKey(e);
+    return;
+  }
   if (e.key === 'Escape') {
     if (!e.repeat) escape(e);
     return;
@@ -2060,6 +2239,7 @@ $('color-btn').addEventListener('click', () => {
 });
 $('colors').addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.swatch');
+  if (b?.dataset.own !== undefined) return openAny();
   if (!b || b.disabled || !b.dataset.color) return;
   if (b.getAttribute('aria-pressed') !== 'true') send({ t: 'color', color: b.dataset.color });
   // Shut; the buzzer turns the new colour when the host has it. Picked with the keys on a computer, they go on to the
@@ -2069,6 +2249,41 @@ $('colors').addEventListener('click', (e) => {
   if (e.detail === 0 && fine.matches) $('buzz').focus();
   else if (e.detail === 0 || pointerKind === 'touch') $('color-btn').focus();
   if (view?.you) renderColors(view);
+});
+for (const el of [$('any-sq'), $('any-hue')]) {
+  let dragging = false;
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    el.focus({ preventScroll: true });
+    el.setPointerCapture?.(e.pointerId);
+    dragging = true;
+    anyAt(el, e);
+  });
+  el.addEventListener('pointermove', (e) => dragging && anyAt(el, e));
+  for (const end of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(end, () => (dragging = false));
+}
+$('any-hex').addEventListener('input', (e) => {
+  const a = anyColor;
+  if (!a) return;
+  const text = (e.target as HTMLInputElement).value;
+  const { use, bad } = typedHex(text, e instanceof InputEvent && e.inputType === 'insertFromPaste');
+  if (use) setAny(hexToHsv(use, a.hsv) ?? a.hsv, text);
+  else setAny(a.hsv, text, bad);
+});
+$('any-hex').addEventListener('focus', (e) => (e.target as HTMLInputElement).select());
+$('any-hex').addEventListener('blur', () => {
+  // (Typed, then tapped elsewhere in it: what's typed goes in, or shows it's not a color.)
+  if (anyColor) hexDone();
+});
+$('any-ok').addEventListener('click', (e) => {
+  if (hexDone()) closeAny('ok', e.detail === 0);
+});
+$('any-cancel').addEventListener('click', (e) => closeAny('back', e.detail === 0));
+// A tap off it keeps the color, as the browser's picker does (one another player has: it just shuts).
+$('any-back').addEventListener('click', () => {
+  hexDone();
+  closeAny('tapoff');
 });
 $('wait-cancel').addEventListener('click', (e) => {
   // Not waiting for the host any more: back to the list (the keys onto ＋ I'm new, when they pressed it). Not the name

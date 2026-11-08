@@ -1596,7 +1596,7 @@
   function roomColor({ seatId, color }: { seatId: string; color: string }): void {
     if (!phonesOn || game.settings.phoneColorsOff || teamsOn(game.settings)) return;
     const p = session.players.find((x) => x.id === seatId);
-    // (Any color: a palette one, or one picked with the phone's own color picker.)
+    // (Any color: a palette one, or any other, from the phone's ＋ Pick any color.)
     if (!p || p.color.toLowerCase() === color || !/^#[0-9a-f]{6}$/.test(color)) return;
     if (isColorTaken(color, session.players.filter((x) => x.id !== seatId).map((x) => x.color))) return;
     // (Not an undo step: Ctrl+Z is the host's, for what they did.)

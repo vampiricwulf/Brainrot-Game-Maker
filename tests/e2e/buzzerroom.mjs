@@ -624,6 +624,81 @@ try {
   setState({ answers: null, clue: null });
   await big(kim).getByText('Kim').waitFor();
 
+  // ＋ Pick any color with the keys alone: the arrows move the square and the hue strip, the buzzer shows it, and nothing
+  // is sent (nor buzzed) until Enter. It stays open, the colour kept, as the room's view comes and goes.
+  const anyBox = kim.getByRole('dialog', { name: 'Pick any color' });
+  const kimBuzzColour = () => kim.evaluate(() => getComputedStyle(document.getElementById('buzz')).getPropertyValue('--seat').trim());
+  const kimHex = () => kim.locator('#any-hex').inputValue();
+  const openKimAny = async () => {
+    await kim.locator('#color-btn').focus();
+    await kim.keyboard.press('Enter');
+    await colours.waitFor();
+    await colours.locator('[data-own]').focus();
+    await kim.keyboard.press('Enter');
+    await anyBox.waitFor();
+    await kim.waitForFunction(() => document.activeElement?.id === 'any-sq');
+  };
+  const kimColour = (await kimBuzzColour()).toLowerCase();
+  let colourFrom = host.got.length;
+  const coloursSent = () => host.got.slice(colourFrom).filter((m) => m.t === 'color');
+  n = await kimBuzzes();
+  await openKimAny();
+  for (let i = 0; i < 3; i++) await kim.keyboard.press('ArrowUp');
+  await kim.keyboard.press('Space');
+  await kim.keyboard.press('Tab');
+  await kim.waitForFunction(() => document.activeElement?.id === 'any-hue');
+  await kim.keyboard.press('Shift+ArrowLeft');
+  const draft = await kimHex();
+  await sleep(300);
+  assert(
+    draft !== kimColour && (await kimBuzzColour()) === draft && coloursSent().length === 0 && (await kimBuzzes()) === n,
+    `keys only: 🎨, ＋, then ↑ on the square and Shift+← on the hue strip: the buzzer is ${draft}, nothing sent, Space buzzed nothing`,
+  );
+  // Ann takes that very colour (the view drawn again): OK is off and says why; the picker stays, the colour kept.
+  const annColour = hs.seats.find((x) => x.id === 'a').color;
+  setState({ seats: hs.seats.map((x) => (x.id === 'a' ? { ...x, color: draft } : x)) });
+  await anyBox.getByText('Another player has this color').waitFor();
+  await kim.keyboard.press('Enter');
+  await sleep(300);
+  assert(
+    (await anyBox.isVisible()) && (await kimHex()) === draft && (await anyBox.getByRole('button', { name: 'OK' }).isDisabled()) && coloursSent().length === 0,
+    'another player takes it while it’s open: the picker stays, the colour kept, OK off ("Another player has this color"), Enter sends nothing',
+  );
+  await kim.keyboard.press('ArrowRight');
+  await kim.waitForFunction(() => !document.getElementById('any-ok').disabled);
+  const anyPicked = await kimHex();
+  await kim.keyboard.press('Enter');
+  await host.wait((m) => host.got.indexOf(m) >= colourFrom && m.t === 'color' && m.seatId === 'k', 'Kim’s colour from ＋');
+  await anyBox.waitFor({ state: 'hidden' });
+  await kim.waitForFunction(() => document.activeElement?.id === 'buzz');
+  assert(
+    coloursSent().length === 1 && coloursSent()[0].color === anyPicked && (await kimBuzzColour()) === anyPicked && (await colours.isHidden()),
+    `→ makes it free again, Enter sends it (once: ${anyPicked}), the picker and the palette shut, the keys on the buzzer`,
+  );
+  setState({ seats: hs.seats.map((x) => (x.id === 'a' ? { ...x, color: annColour } : x.id === 'k' ? { ...x, color: anyPicked } : x)) });
+  // Esc: the colour it was, back on ＋ in the palette.
+  colourFrom = host.got.length;
+  await openKimAny();
+  await kim.keyboard.press('ArrowDown');
+  assert((await kimBuzzColour()) !== anyPicked, 'moved again: the buzzer shows it');
+  await kim.keyboard.press('Escape');
+  await anyBox.waitFor({ state: 'hidden' });
+  await kim.waitForFunction(() => document.activeElement?.dataset.own === '');
+  assert((await kimBuzzColour()) === anyPicked && (await colours.isVisible()) && coloursSent().length === 0, 'Esc puts the colour back, nothing sent, the keys on ＋ in the palette');
+  // The host turns colour picking off while it's open: it shuts, the colour it was back, nothing sent.
+  await kim.keyboard.press('Enter');
+  await anyBox.waitFor();
+  await kim.keyboard.press('ArrowDown');
+  setState({ colorPick: undefined });
+  await anyBox.waitFor({ state: 'hidden' });
+  await sleep(300);
+  assert(
+    (await kimBuzzColour()) === anyPicked && coloursSent().length === 0 && (await kim.locator('#color-btn').isHidden()),
+    'the host turns colour picking off while it’s open: it shuts, the colour it was back on the buzzer, nothing sent',
+  );
+  setState({ colorPick: true });
+  await kim.locator('#color-btn').waitFor();
+
   // Another window has the keyboard (the stream): the page says Space goes there, and to click here first.
   await kim.evaluate(() => dispatchEvent(new Event('blur')));
   await keysHint.getByText('Space goes to another window: click here first').waitFor();

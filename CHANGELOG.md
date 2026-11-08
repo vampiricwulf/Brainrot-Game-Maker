@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- **＋ Pick any color** on a player's phone opens a picker on the page itself, with an **OK** button: the buzzer shows the color as they drag it or type it, and it's sent when they press OK or tap off the picker. **Cancel** keeps the color they had, and a color another player has can't be picked. Before, the phone's own picker showed nothing until it was closed.
+
 ## 2026-11-08
 
 ### Added

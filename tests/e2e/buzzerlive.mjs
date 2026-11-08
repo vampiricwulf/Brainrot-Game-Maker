@@ -155,16 +155,6 @@ try {
   await colours.getByRole('button', { name: 'yellow', exact: true }).click();
   await p1.waitForFunction(() => getComputedStyle(document.getElementById('buzz')).getPropertyValue('--seat').trim() === '#f0e442');
   assert(await colours.isHidden(), 'picking one shuts the picker, and the phone’s buzzer turns that colour');
-  // Any other colour, from the phone's own colour picker.
-  await p1.getByRole('button', { name: '🎨 Change your color' }).click();
-  await colours.getByLabel('Pick any color').evaluate((i) => {
-    i.value = '#123456';
-    i.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-  await p1.waitForFunction(() => getComputedStyle(document.getElementById('buzz')).getPropertyValue('--seat').trim() === '#123456');
-  await p1.getByRole('button', { name: '🎨 Change your color' }).click();
-  assert((await colours.locator('label.own[aria-pressed="true"]').count()) === 1, 'a colour of their own: the buzzer turns it, and the picker ticks Pick any color');
-  await p1.getByRole('button', { name: '🎨 Change your color' }).click();
 
   // ---------- A clue: closed, then opened with U ----------
   await host.getByRole('button', { name: 'Start game ▶' }).click();
@@ -183,10 +173,93 @@ try {
   if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-live-board.png` });
   assert((await badge.innerText()).includes(code) && clash === 0, 'the join code shows in a corner of the stream during the game, over no tile or score plate');
   const plate1 = host.locator('.stage-box .plate', { hasText: 'Player 1' });
+
+  // ---------- Any other colour, from the page's own picker: on the phone's buzzer as it moves, to the host with OK ----------
+  const plateColour = () => plate1.locator('.name').evaluate((e) => getComputedStyle(e).backgroundColor);
+  const seatOf = (p) => p.evaluate(() => getComputedStyle(document.getElementById('buzz')).getPropertyValue('--seat').trim());
+  const plateIs = (rgb) => host.waitForFunction((rgb) => [...document.querySelectorAll('.stage-box .plate')].some((p) => p.textContent.includes('Player 1') && getComputedStyle(p.querySelector('.name')).backgroundColor === rgb), rgb);
+  const picker = p1.getByRole('dialog', { name: 'Pick any color' });
+  const hexBox = picker.getByLabel('Hex');
+  const okBtn = picker.getByRole('button', { name: 'OK' });
+  const openAny = async () => {
+    await p1.getByRole('button', { name: '🎨 Change your color' }).click();
+    await colours.getByRole('button', { name: /^Pick any color/ }).click();
+    await picker.waitFor();
+  };
+  assert((await plateColour()) === 'rgb(240, 228, 66)', 'Player 1’s plate on the stream is the yellow the phone picked');
+  await openAny();
   assert(
-    (await plate1.locator('.name').evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(18, 52, 86)',
-    'the host has the colour the phone picked: Player 1’s plate on the stream is their own #123456',
+    (await hexBox.inputValue()) === '#f0e442' && (await p1.evaluate(() => document.activeElement?.id)) === 'any-sq',
+    '＋ Pick any color opens the page’s own picker on the player’s colour, the keys on its square',
   );
+  // A drag on the square (a finger or the mouse): the buzzer follows as it moves, nothing sent.
+  const sq = picker.getByRole('slider', { name: 'Color and brightness' });
+  const box = await sq.boundingBox();
+  await p1.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.1);
+  await p1.mouse.down();
+  await p1.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5, { steps: 4 });
+  const midDrag = await seatOf(p1);
+  await p1.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.7, { steps: 4 });
+  await p1.mouse.up();
+  const afterDrag = await seatOf(p1);
+  assert(
+    midDrag !== '#f0e442' && afterDrag !== midDrag && (await hexBox.inputValue()) === afterDrag && Math.abs(Number(/^Color (\d+)%/.exec(await sq.getAttribute('aria-valuetext'))?.[1]) - 80) <= 1,
+    `dragging the square shows on the phone’s buzzer as it moves (${midDrag}, then ${afterDrag}), and in the Hex box`,
+  );
+  if (process.env.SCREENSHOTS) {
+    // A phone's size, then on its side.
+    await p1.setViewportSize({ width: 390, height: 844 });
+    await p1.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-any-color.png` });
+    await p1.setViewportSize({ width: 844, height: 390 });
+    await p1.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-any-color-landscape.png` });
+    await p1.setViewportSize({ width: 390, height: 760 });
+  }
+  // The arrow keys on the hue strip.
+  const hue = picker.getByRole('slider', { name: 'Hue' });
+  const h0 = Number(await hue.getAttribute('aria-valuenow'));
+  await hue.focus();
+  await p1.keyboard.press('Shift+ArrowRight');
+  await p1.keyboard.press('ArrowRight');
+  assert(Number(await hue.getAttribute('aria-valuenow')) === Math.min(360, h0 + 11) && (await seatOf(p1)) !== afterDrag, 'the arrow keys move the hue strip (Shift: ten at a time), the buzzer with it');
+  await sleep(400);
+  assert((await plateColour()) === 'rgb(240, 228, 66)', 'nothing is sent while it moves: the plate on the stream is still yellow');
+  // Cancel: the colour they had, the palette still open.
+  await picker.getByRole('button', { name: 'Cancel' }).click();
+  await picker.waitFor({ state: 'hidden' });
+  assert(
+    (await seatOf(p1)) === '#f0e442' && (await colours.isVisible()) && (await p1.evaluate(() => document.activeElement?.dataset.own)) === '',
+    'Cancel puts the yellow back on the buzzer, the palette still open and the keys back on ＋',
+  );
+  await p1.getByRole('button', { name: '🎨 Change your color' }).click();
+  // Another player's colour can't be had: OK is off, says why; a tap off it just shuts.
+  await openAny();
+  await hexBox.fill('#56B4E9');
+  await picker.getByText('Another player has this color').waitFor();
+  assert((await okBtn.isDisabled()) && (await seatOf(p1)) === '#56b4e9', 'Player 2’s sky blue typed in: shown on the buzzer, but OK is off: "Another player has this color"');
+  await p1.touchscreen.tap(195, 40);
+  await picker.waitFor({ state: 'hidden' });
+  await sleep(400);
+  assert((await seatOf(p1)) === '#f0e442' && (await plateColour()) === 'rgb(240, 228, 66)', 'a tap off it just shuts it: still yellow, on the phone and the stream');
+  // A tap off it keeps a free colour, as the browser's own picker did.
+  await openAny();
+  await hexBox.fill('abcdef');
+  assert((await seatOf(p1)) === '#abcdef', 'six digits typed show at once');
+  await p1.touchscreen.tap(195, 40);
+  await picker.waitFor({ state: 'hidden' });
+  await plateIs('rgb(171, 205, 239)');
+  assert(await colours.isHidden(), 'a tap off it keeps the colour: the host has #abcdef, and the palette shuts');
+  // OK: on the phone at once, on the stream only once it's pressed.
+  await openAny();
+  await hexBox.fill('#123456');
+  await sleep(400);
+  assert((await seatOf(p1)) === '#123456' && (await plateColour()) === 'rgb(171, 205, 239)', '#123456 typed: on the phone’s buzzer, not yet on the stream');
+  await okBtn.click();
+  await picker.waitFor({ state: 'hidden' });
+  await plateIs('rgb(18, 52, 86)');
+  assert((await seatOf(p1)) === '#123456', 'OK: the host has the colour the phone picked: Player 1’s plate on the stream is their own #123456');
+  await p1.getByRole('button', { name: '🎨 Change your color' }).click();
+  assert((await colours.locator('button.own[aria-pressed="true"]').count()) === 1, 'a colour of their own: the palette ticks Pick any color');
+  await p1.getByRole('button', { name: '🎨 Change your color' }).click();
   assert((await host.locator('.stage-box .plate .phone').count()) === 2, 'both plates show 📱: their phones are connected');
   await host.keyboard.press('k');
   await host.locator('.stage-box .cover-join').getByText(code).waitFor();

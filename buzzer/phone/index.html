@@ -135,6 +135,25 @@
           <div id="colors" role="group" aria-label="Pick your color" hidden></div>
           <button id="leave" type="button" class="link">Not you? Change player</button>
         </div>
+        <!--
+          ＋ Pick any color (main.ts, openAny): the square and the hue strip (dragged, or the arrow keys) and a Hex box.
+          The buzzer shows the color as it moves; OK, or a tap off it (on #any-back), sends it; Cancel or Esc doesn't.
+        -->
+        <div id="any-back" hidden></div>
+        <div id="any" role="dialog" aria-modal="true" aria-labelledby="any-title" hidden>
+          <div class="any-head">
+            <h2 id="any-title">Pick any color</h2>
+            <span id="any-now" role="img"></span>
+          </div>
+          <div id="any-sq" class="any-slide" role="slider" tabindex="0" aria-label="Color and brightness" aria-valuemin="0" aria-valuemax="100"><span class="any-dot"></span></div>
+          <div id="any-hue" class="any-slide" role="slider" tabindex="0" aria-label="Hue" aria-valuemin="0" aria-valuemax="360"><span class="any-knob"></span></div>
+          <label class="any-hex"><span>Hex</span><input id="any-hex" type="text" maxlength="12" spellcheck="false" autocomplete="off" autocapitalize="off" enterkeyhint="done" /></label>
+          <p id="any-note" aria-live="polite"></p>
+          <div class="any-btns">
+            <button id="any-cancel" type="button" class="plain">Cancel</button>
+            <button id="any-ok" type="button" class="primary">OK</button>
+          </div>
+        </div>
       </section>
     </main>
     <div id="overlay" hidden><p id="overlay-text" tabindex="-1">Reconnecting…</p><button id="overlay-retry" type="button" class="primary" hidden>Try again now</button></div>
