@@ -392,6 +392,7 @@ try {
     (await answers.locator('[data-answer-row] .text bdi').first().innerText()) === 'Alexander\nFleming\n(penicillin)',
     `the host's answers list shows its lines (${JSON.stringify(await answers.locator('[data-answer-row] .text bdi').first().innerText())})`,
   );
+  await shot('pw-6-answers-host-lines', host);
   // Two windows: the host can select the typed answer, to paste it in chat.
   await answers.locator('[data-answer-row] .text', { hasText: 'Fleming' }).dblclick({ position: { x: 12, y: 8 } });
   assert((await selectedWords(host)) === 'Alexander', `two windows: the host's copy of a typed answer selects (${await selectedWords(host)})`);
