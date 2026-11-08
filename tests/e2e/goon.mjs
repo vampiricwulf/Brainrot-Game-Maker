@@ -131,6 +131,17 @@ const stageSize = (page) =>
     const r = s.getBoundingClientRect();
     return `${Math.round(r.width)}x${Math.round(r.height)}`;
   });
+// The stage's size once it has stopped changing (it grows to the window a frame or two after the panel goes).
+async function settledStageSize(page) {
+  let was = '';
+  for (let i = 0; i < 40; i++) {
+    const now = await stageSize(page);
+    if (now === was) return now;
+    was = now;
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  }
+  throw new Error(`the stage never settled at one size (last ${was})`);
+}
 const rectOf = (loc) => loc.evaluate((b) => (({ left, right, top, bottom }) => ({ left, right, top, bottom }))(b.getBoundingClientRect()));
 const boardUp = async (page) => (await page.locator('.stage-box .board').count()) === 1 && (await page.locator('.stage-box [data-slide]').count()) === 0;
 
@@ -394,7 +405,7 @@ try {
     assert(await flowIs(page, '👁 Reveal answer'), 'the buzzers never opened: the blue button is still 👁 Reveal answer, 🔔 Open the buzzers in the buzzers’ row has the ring');
     await page.keyboard.press('h');
     await page.locator('.play > .panel').waitFor({ state: 'detached' });
-    const hiddenSize = await stageSize(page);
+    const hiddenSize = await settledStageSize(page);
     await page.keyboard.press('n');
     await page.locator('.show-controls.pulse').waitFor();
     await page.locator('[data-goon-held]').waitFor();
