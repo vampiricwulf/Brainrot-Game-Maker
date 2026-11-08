@@ -940,7 +940,10 @@ function refitClue(sec: HTMLElement): void {
   // (Multiple choice: which ones, as their buttons take the room a box would.)
   const box = ['wager-form', 'answer-form'].find((id) => !$(id).hidden) ?? '';
   const up = box === 'answer-form' && !$('answer-choices').hidden ? `choices ${choicesKey}` : box;
-  let key = JSON.stringify([asked, innerWidth, innerHeight, Math.round(seenHeight()), fine.matches, kbd, up, $('buzz').hidden]);
+  // (With the keyboard up, the answer box's height too: a line typed that grows it fits them again, the box's last line
+  // kept above the keyboard.)
+  const grown = kbd ? Math.round($('answer-in').getBoundingClientRect().height) : 0;
+  let key = JSON.stringify([asked, innerWidth, innerHeight, Math.round(seenHeight()), fine.matches, kbd, up, $('buzz').hidden, grown]);
   if (!clue.textContent?.trim()) {
     if (key === fitKey) return;
     fitKey = key;
