@@ -237,7 +237,7 @@ try {
   await ann.getByLabel(/Your answer/).waitFor();
   assert(!(await bob.getByLabel(/Your answer/).isVisible()), 'the guesser’s phone has a ✍ box for their guess, the describer’s none');
   await ann.getByLabel(/Your answer/).fill('Shrek-ish');
-  await ann.getByLabel(/Your answer/).press('Enter');
+  await ann.getByRole('button', { name: 'Send answer' }).click();
   await ann.locator('#answer-state').getByText('✔ Sent').waitFor();
   const guessLine = panel.locator('[data-partner-guess]');
   await guessLine.waitFor();

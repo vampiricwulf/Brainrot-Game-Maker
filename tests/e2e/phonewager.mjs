@@ -368,13 +368,33 @@ try {
   await ann.locator('#answer-in').fill('Fleming');
   await ann.locator('#answer-in').dblclick();
   assert((await ann.locator('#answer-in').evaluate((e) => e.value.slice(e.selectionStart, e.selectionEnd))) === 'Fleming', 'its answer box still selects what’s typed');
-  await sendAnswer(ann, 'Fleming');
-  await ann.locator('#answer-state').getByText('✔ Sent: “Fleming”').waitFor();
+  // Two lines: on a phone (a touch screen) its keyboard's Enter starts a new line, and Send answer sends. The box grows
+  // with them.
+  const ansBox = ann.locator('#answer-in');
+  const boxH = () => ansBox.evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  await ansBox.fill('Alexander');
+  const oneLineH = await boxH();
+  await ansBox.press('Enter');
+  await ann.keyboard.insertText('Fleming');
+  await ansBox.press('Enter');
+  await ann.keyboard.insertText('(penicillin)');
+  assert(
+    (await ansBox.inputValue()) === 'Alexander\nFleming\n(penicillin)' && (await boxH()) > oneLineH && (await ansBox.getAttribute('enterkeyhint')) === 'enter' && (await ann.locator('#answer-keys').isHidden()),
+    `a phone's Enter starts a new line (nothing sent: its keyboard's Enter key says so), no keys hint, and the box grows with the lines (${oneLineH}px, then ${await boxH()}px)`,
+  );
+  await shot('pw-6-answer-lines', ann);
+  await ann.locator('#answer-send').click();
+  await ann.locator('#answer-state').getByText('✔ Sent: “Alexander Fleming (penicillin)”').waitFor();
+  assert((await ann.locator('#answer-state').innerText()).startsWith('✔ Sent: “Alexander\nFleming\n(penicillin)”'), `the phone's ✔ Sent line shows the lines (${await ann.locator('#answer-state').innerText()})`);
   const answers = host.locator('.fj [aria-label="Answers from phones"]');
-  await answers.locator('[data-answer-row]', { hasText: '“Fleming”' }).waitFor();
+  await answers.locator('[data-answer-row]', { hasText: 'Fleming' }).waitFor();
+  assert(
+    (await answers.locator('[data-answer-row] .text bdi').first().innerText()) === 'Alexander\nFleming\n(penicillin)',
+    `the host's answers list shows its lines (${JSON.stringify(await answers.locator('[data-answer-row] .text bdi').first().innerText())})`,
+  );
   // Two windows: the host can select the typed answer, to paste it in chat.
   await answers.locator('[data-answer-row] .text', { hasText: 'Fleming' }).dblclick({ position: { x: 12, y: 8 } });
-  assert((await selectedWords(host)) === 'Fleming', `two windows: the host's copy of a typed answer selects (${await selectedWords(host)})`);
+  assert((await selectedWords(host)) === 'Alexander', `two windows: the host's copy of a typed answer selects (${await selectedWords(host)})`);
   assert((await answers.getByRole('status').innerText()).startsWith('1 of 3 in · only you see them'), 'Player 1 types “Fleming” and sends it: the host’s panel has it (only the host sees it)');
   await aud.waitForFunction(() => document.querySelector('[data-everyone] [role="img"]')?.getAttribute('aria-label') === '1 of 3 answers in');
   assert(!(await text(aud)).includes('Fleming') && !(await text(bo)).includes('Fleming'), 'the stream says 1 of 3 in, never the words; nor does the other phone have them');
@@ -392,9 +412,9 @@ try {
   assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'back at the wagers after a trip to the round before, the phones stay locked (the question was seen)');
   // The question again: her answer came back with the Final, on her phone and in the host's panel.
   await mainButton(host).filter({ hasText: 'Show question ▶' }).click();
-  await ann.locator('#answer-state').getByText('✔ Sent: “Fleming”').waitFor();
-  await answers.locator('[data-answer-row]', { hasText: '“Fleming”' }).waitFor();
-  assert(true, 'Show question again: Player 1’s phone still says “✔ Sent: “Fleming””, and the host still has it');
+  await ann.locator('#answer-state').getByText('✔ Sent: “Alexander Fleming (penicillin)”').waitFor();
+  await answers.locator('[data-answer-row]', { hasText: 'Fleming' }).waitFor();
+  assert(true, 'Show question again: Player 1’s phone still says “✔ Sent: …”, and the host still has it');
   // The answer on screen: answers lock, each phone keeping its own (after the wager it was locked with). Player 2's
   // phone sent none: 👁 Reveal answer asks first (⏱ 10 more seconds), and R reveals anyway.
   await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
@@ -403,7 +423,7 @@ try {
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('r');
   await big(ann).getByText('Answers locked').waitFor();
-  assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Fleming”', `the answer shows: “Answers locked”, with her wager and her answer (${await small(ann).innerText()})`);
+  assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Alexander / Fleming / (penicillin)”', `the answer shows: “Answers locked”, with her wager and her answer (${await small(ann).innerText()})`);
   await big(bo).getByText('Answers locked').waitFor();
   assert((await small(bo).innerText()) === 'Your wager: $2,000 · None sent', 'and one who sent none: “None sent”');
   await answers.locator('[data-answer-row]', { hasText: 'Player 2' }).getByText('no answer', { exact: true }).waitFor();
@@ -414,14 +434,24 @@ try {
   const rev = (name) => host.locator('.fj .pl', { hasText: name });
   await rev('Player 1').locator('[data-typed]').waitFor();
   assert(
-    (await rev('Player 1').locator('[data-typed]').innerText()) === '“Fleming”' && (await rev('Player 2').innerText()).includes('no typed answer'),
-    'the reveal rows: Player 1’s typed answer (two windows: in sight), Player 2 “no typed answer”',
+    (await rev('Player 1').locator('[data-typed]').innerText()) === '“Alexander / Fleming / (penicillin)”' && (await rev('Player 2').innerText()).includes('no typed answer'),
+    'the reveal rows: Player 1’s typed answer on one line (two windows: in sight), Player 2 “no typed answer”',
   );
   await rev('Player 1').locator('button.name').click();
   await mainButton(host).filter({ hasText: 'Show answer ▶' }).waitFor();
   await host.keyboard.press('n');
-  await aud.locator('.spot-answer', { hasText: '“Fleming”' }).waitFor();
-  assert((await aud.locator('.spot-wager').innerText()).includes('???'), 'N on Player 1: her answer goes on the audience window (“Fleming”), her wager not yet');
+  await aud.locator('.spot-answer', { hasText: 'Fleming' }).waitFor();
+  assert((await aud.locator('.spot-wager').innerText()).includes('???'), 'N on Player 1: her answer goes on the audience window, her wager not yet');
+  const spotLines = await aud.locator('.spot-answer').evaluate((e) => {
+    const r = e.getBoundingClientRect();
+    const t = e.querySelector('.lines').getBoundingClientRect();
+    return { text: e.innerText, fits: t.height <= r.height + 1 && t.width <= r.width + 1, h: Math.round(r.height) };
+  });
+  assert(
+    spotLines.text === '“Alexander\nFleming\n(penicillin)”' && spotLines.fits,
+    `the reveal card shows its three lines, fitted in the answer's line (${JSON.stringify(spotLines)})`,
+  );
+  await shot('pw-6c-reveal-lines', aud);
   // N again: her verdict first (the check, with no “anyway”); C there judges her and closes it, the spotlight staying.
   await host.keyboard.press('n');
   await checkItem(host, 'verdict').waitFor();
@@ -436,7 +466,7 @@ try {
   await aud.locator('.spot-result', { hasText: '✔ CORRECT' }).waitFor();
   assert((await aud.locator('.spot-wager').innerText()).includes('$1,300'), 'C: CORRECT, and her wager ($1,300) goes up with it');
   await ann.waitForFunction((was) => document.getElementById('me').innerText !== was, scoreWas);
-  assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Fleming”', `through the reveals her phone keeps her wager with her answer (${await small(ann).innerText()})`);
+  assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Alexander / Fleming / (penicillin)”', `through the reveals her phone keeps her wager with her answer (${await small(ann).innerText()})`);
   // (Its fly-in done:) the card, with the answer's line, still fits above the scores.
   await aud.waitForFunction(() => document.querySelector('.spot')?.getBoundingClientRect().bottom <= document.querySelector('.score-area')?.getBoundingClientRect().top);
   assert(true, 'the spotlight card, answer line and all, fits above the scores');

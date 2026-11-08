@@ -160,15 +160,25 @@ try {
   await pill.waitFor();
   assert((await pill.getByRole('img').getAttribute('aria-label')) === '0 of 2 answers in', 'the stream says everyone answers (0 of 2 in)');
 
+  // (On a phone, its keyboard's Enter starts a new line: Send answer sends. The room drops a blank last line.)
   await p1.getByLabel(/Your answer/).fill('Shiba Inu');
   await p1.getByLabel(/Your answer/).press('Enter');
-  await p1.locator('#answer-state').getByText('✔ Sent').waitFor();
-  // (Player 2 types a long one: in a single window the words go up in the room the box kept for them, scrolling.)
-  const long = 'Corgi, the short-legged herding dog from Wales with a fox face, big ears and a fluffy bottom, kept by the Queen';
-  await p2.getByLabel(/Your answer/).fill(long);
+  await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
+  assert((await p1.getByLabel(/Your answer/).inputValue()) === 'Shiba Inu\n', 'on a phone, Enter in the answer box starts a new line (it sends nothing)');
+  await p1.getByRole('button', { name: 'Send answer' }).click();
+  await p1.locator('#answer-state').getByText('✔ Sent: “Shiba Inu”').waitFor();
+  // (Player 2 types a long one over three lines: in a single window the words go up in the room the box kept for them,
+  // scrolling.)
+  const longLines = ['Corgi, the short-legged herding dog from Wales', 'with a fox face, big ears and a fluffy bottom', 'kept by the Queen'];
+  const long = longLines.join('\n');
+  await p2.getByLabel(/Your answer/).fill(longLines[0]);
+  for (const line of longLines.slice(1)) {
+    await p2.getByLabel(/Your answer/).press('Enter');
+    await p2.keyboard.insertText(line);
+  }
   await p2.getByRole('button', { name: 'Send answer' }).click();
   await p2.locator('#answer-state').getByText('✔ Sent').waitFor();
-  assert((await p1.getByRole('button', { name: 'Change answer' }).count()) === 1, 'a phone sends its answer (Enter or the button) and can change it');
+  assert((await p1.getByRole('button', { name: 'Change answer' }).count()) === 1, 'a phone sends its answer (the button) and can change it');
   // Edited and not sent: it says so (not "✔ Sent"), and back as it was, it's sent again.
   await p1.getByLabel(/Your answer/).fill('Shiba Inu dog');
   await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
@@ -204,13 +214,18 @@ try {
   assert((await p1.locator('#buzz-small').innerText()) === 'Yours: “Shiba Inu”', 'showing the answer locks them: the phone keeps its own in sight');
   const row = (id) => answersBox.locator('li', { hasText: id });
   await row('Player 1').getByText('“Shiba Inu”').waitFor();
-  await row('Player 2').getByText('“Corgi, the short-legged').waitFor();
+  await row('Player 2').getByText('Corgi, the short-legged').waitFor();
   const rows = await answersBox.locator('ul').evaluate((e, long) => ({ scrolls: e.scrollHeight > e.clientHeight + 1, all: e.textContent.includes(long) }), long);
   const typedShownH = await stageH();
   if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-host-shown.png` });
   assert(
-    typedShownH === typedH && rows.scrolls && rows.all,
-    `then the host sees each player’s answer, a long one whole (the rows scroll), and the stage keeps its size (${typedH}px, then ${typedShownH}px)`,
+    typedShownH === typedH && rows.scrolls && rows.all && (await row('Player 2').locator('bdi').innerText()) === long,
+    `then the host sees each player’s answer, a long one whole and on its three lines (the rows scroll), and the stage keeps its size (${typedH}px, then ${typedShownH}px)`,
+  );
+  await p2.locator('#buzz-big').getByText('Answers locked').waitFor();
+  assert(
+    (await p2.locator('#buzz-small').innerText()) === `Yours: “${longLines.join(' / ')}”`,
+    `a phone's own locked answer is on one line (" / " between its lines: ${await p2.locator('#buzz-small').innerText()})`,
   );
   // On a short window (a 1366×768 laptop at 150% zoom) the answers box keeps its rows in sight: each ✔, and ＋ Award.
   await host.setViewportSize({ width: 911, height: 438 });
@@ -255,9 +270,9 @@ try {
   await host.keyboard.press('t');
   await aud.locator('.timer').waitFor();
   await p1.getByLabel(/Your answer/).fill('Siamese');
-  await p1.getByLabel(/Your answer/).press('Enter');
+  await p1.getByRole('button', { name: 'Send answer' }).click();
   await p2.getByLabel(/Your answer/).fill('Bulldog');
-  await p2.getByLabel(/Your answer/).press('Enter');
+  await p2.getByRole('button', { name: 'Send answer' }).click();
   await row('Player 1').getByText('“Siamese”').waitFor();
   await row('Player 2').getByText('“Bulldog”').waitFor();
   assert(
@@ -287,7 +302,7 @@ try {
   await host.keyboard.press('Control+z');
   await p1.getByLabel(/Your answer/).waitFor();
   await p1.getByLabel(/Your answer/).fill('Persian');
-  await p1.getByLabel(/Your answer/).press('Enter');
+  await p1.getByRole('button', { name: /^(Send|Change) answer$/ }).click();
   await row('Player 1').getByText('“Persian”').waitFor();
   await host.locator('button[title="Nothing to redo"]').waitFor();
   await host.keyboard.press('Control+Shift+z');

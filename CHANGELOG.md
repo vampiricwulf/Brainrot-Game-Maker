@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Added
+
+- Players can type an answer over a few lines on their phone: the phone keyboard's Enter key starts a new line and **Send answer** sends it (with a computer keyboard, Enter still sends and Shift+Enter starts a line). The box grows with the lines; your answers list, the phone's “✔ Sent” line and the Final's reveal card show them, and one-line places (the Final's reveal rows, the phone's “Answers locked” line) put “ / ” between them. A buzzer server from before puts them on one line.
+
 ## 2026-11-08
 
 ### Added

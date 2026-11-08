@@ -816,13 +816,34 @@ try {
     c.scrollTop = Math.round(c.scrollHeight / 3);
     return c.scrollTop;
   });
-  await ann.locator('#answer-in').fill('Fleming');
-  await ann.locator('#answer-in').press('Enter');
+  // Three lines (a phone's Enter starts one; Send answer sends): the box grows to show them, Send stays in sight.
+  const ansBox = ann.locator('#answer-in');
+  await ansBox.fill('Alexander Fleming');
+  for (const line of ['found it in 1928', '(penicillin)']) {
+    await ansBox.press('Enter');
+    await ann.keyboard.insertText(line);
+  }
+  const grown = await ann.evaluate(() => {
+    const b = document.getElementById('answer-in');
+    const s = document.getElementById('answer-send').getBoundingClientRect();
+    return { lines: b.value.split('\n').length, whole: b.scrollHeight <= b.clientHeight + 1, h: Math.round(b.getBoundingClientRect().height), send: s.bottom <= innerHeight && s.top >= 0 };
+  });
+  await ann.locator('#answer-send').tap();
   await ann.locator('#answer-state').getByText('✔ Sent').waitFor();
+  assert(
+    grown.lines === 3 && grown.whole && grown.send,
+    `three lines typed (Enter on a phone starts a line): the box shows them all and Send answer stays in sight (${JSON.stringify(grown)})`,
+  );
   assert(
     send.y >= 0 && send.y + send.height <= 640 && spot > 0 && (await clueAt(ann)) === spot && !(await more.isHidden()),
     `with the answer box: Send answer in sight, and “✔ Sent” leaves the place in the question (${spot} → ${await clueAt(ann)})`,
   );
+  if (process.env.SCREENSHOTS) {
+    await ann.setViewportSize({ width: 390, height: 844 });
+    await ann.locator('#answer-in').fill('Alexander Fleming\nfound it in 1928\n(penicillin), or so');
+    await ann.screenshot({ path: `${process.env.SCREENSHOTS}/phone-answer-3-lines.png` });
+    await ann.setViewportSize({ width: 390, height: 760 });
+  }
   // Multiple choice under it: the line a tap brings (“✔ Sent: B…”) never fits the question again, so the buttons stay
   // under the finger for the next tap.
   hostState({ answers: { id: 'long2', open: true, seats: [{ id: 'a' }], choices: ['Penicillin', 'Aspirin', 'Insulin', 'Quinine'].map((text, i) => ({ id: `m${i}`, text })) } });
