@@ -16,6 +16,7 @@
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { foldLines } from '../../lib/buzzproto';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
@@ -987,7 +988,7 @@
     {#if guess}
       <div class="row small" data-partner-guess>
         ✍ {name(guess.seat)}{guess.by ? ` (${guess.by})` : ''}
-        {#if dual || session.revealed}guessed: <b dir="auto" class:selectable={dual}>“{guess.text}”</b>{:else}sent a guess (viewers can see this window: it shows here once the answer is up){/if}
+        {#if dual || session.revealed}guessed: <b dir="auto" class:selectable={dual}>“{foldLines(guess.text)}”</b>{:else}sent a guess (viewers can see this window: it shows here once the answer is up){/if}
       </div>
     {/if}
     <!-- The box's foot, in view as the rows above scroll: ✔ Got it / ✘ Missed, quiet until the clock runs, with what each

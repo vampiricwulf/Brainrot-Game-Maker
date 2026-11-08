@@ -38,6 +38,7 @@
   import { soundUrl } from './cues';
   import { choiceStrip, JOIN_ROOM, PILL_BAND, slideFit, TIMER_BAND, TIMER_ROOM } from './stagefit';
   import { letter, pickOf, rightChoice, usableChoices, type UsableChoice } from '../lib/choices';
+  import { foldLines } from '../lib/buzzproto';
 
   let {
     game,
@@ -713,11 +714,13 @@
               <div class="spot" class:typed={!!f.answers} in:fly|global={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
                 <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
                 {#if f.answers}
-                  <!-- What they typed on their phone, once the host puts it up (its room kept: the card doesn't jump). -->
-                  <div class="spot-answer" dir="auto" data-spot-answer use:autofit={{ size: 72, min: 28, enabled: true, text: pickAt >= 0 ? `${pickAt} ${usable[pickAt].text}` : (shown?.text ?? '') }}>
+                  <!-- What they typed on their phone, once the host puts it up (its room kept: the card doesn't jump). Typed over
+                       a few lines: three at most (more go on the third, " / " between), each line its own. -->
+                  {@const typedLines = shown ? foldLines(shown.text, 3) : ''}
+                  <div class="spot-answer" dir="auto" data-spot-answer use:autofit={{ size: 72, min: 28, enabled: true, text: pickAt >= 0 ? `${pickAt} ${usable[pickAt].text}` : typedLines }}>
                     {#if shown && pickAt >= 0}
                       <span><span class="pick-letter" style:background={chipBg} style:color={chipInk}>{letter(pickAt)}</span> {usable[pickAt].text}</span>
-                    {:else if shown}<span>“{shown.text}”</span>{:else}<span class="hold" aria-hidden="true">&nbsp;</span>{/if}
+                    {:else if shown}<span class="lines">“{typedLines}”</span>{:else}<span class="hold" aria-hidden="true">&nbsp;</span>{/if}
                   </div>
                 {/if}
                 <div class="spot-wager">
@@ -1661,6 +1664,9 @@
     line-height: 1.1;
     text-align: center;
     overflow: hidden;
+  }
+  .spot-answer .lines {
+    white-space: pre-line;
   }
   /* A multiple choice's letter, in a circle before its words (it scales with them). */
   .pick-letter {

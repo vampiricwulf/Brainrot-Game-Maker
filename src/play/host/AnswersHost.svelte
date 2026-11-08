@@ -279,6 +279,10 @@
     min-width: 8em;
     overflow-wrap: anywhere;
   }
+  /* An answer typed over a few lines shows them (one window: in the rows' room, which scrolls). */
+  .text bdi {
+    white-space: pre-line;
+  }
   .mark {
     font-weight: 700;
   }

@@ -20,6 +20,7 @@
   } from '../../lib/session';
   import { finalNextStep, logged } from '../../lib/toolset';
   import { letter, pickLabel, pickOf, rightChoice, usableChoices } from '../../lib/choices';
+  import { foldLines } from '../../lib/buzzproto';
   import { hostAsk, offerExposed, offerMenu, offerPlayerVerbs } from './slots.svelte';
   import type { StageItem } from './stagemenu';
   import { wagersLine } from './goon';
@@ -617,11 +618,11 @@
                 <span class="muted small typed">no typed answer</span>
               {:else if dual || shownA}
                 <!-- Multiple choice: the pick by its letter ("B · Stockholm"), or typed words with the choice they name ("= B");
-                     with one marked ✔ Right, whether it's that one. -->
+                     with one marked ✔ Right, whether it's that one. Typed lines on one (" / "), all of them in its title. -->
                 {@const picked = choices.length ? pickLabel(choices, a.pick) : undefined}
                 {@const named = choices.length ? pickOf(a, choices) : null}
                 <span class="typed" class:muted={!!a.pick && !picked} class:selectable={dual} dir="auto" title="{picked ?? a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}" data-typed={id}
-                  >{#if picked}<b>{picked}</b>{:else}“{a.text}”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}</span
+                  >{#if picked}<b>{picked}</b>{:else}“{foldLines(a.text)}”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}</span
                 >
                 {#if rightOne && named}
                   {#if named === rightOne.id}<span class="small pick-right" data-pick-hint={id}>✔ right choice</span>
