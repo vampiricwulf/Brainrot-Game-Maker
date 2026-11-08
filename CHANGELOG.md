@@ -15,7 +15,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Added
 
-- A YouTube video on a slide can be **Sound only (hide the video)**: the players hear it but never see the video or its picture, and you still play, pause, seek and turn it up or down as before. **Players see** picks what goes in its place: nothing, a 🔊 speaker, or the speaker with a time bar showing how far it has played and how long it is (just the part it plays, if you set one).
+- A YouTube video on a slide can be **Sound only (hide the video)**: on the slide, the players hear it but never see the video or its picture, and you still play, pause, seek and turn it up or down as before. **Players see** picks what goes in its place: nothing, a 🔊 speaker, or the speaker with a time bar showing how far it has played and how long it is (just the part it plays, if you set one). It's for slides only: on a 🤫 card the video still shows.
 
 ## 2026-11-08
 

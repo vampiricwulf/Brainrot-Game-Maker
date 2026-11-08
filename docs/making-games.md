@@ -66,7 +66,8 @@ video, audio or YouTube, arranged freely.
 - **When it plays** holds Autoplay, Loop, Start muted and Volume.
 - A YouTube video can be **Sound only (hide the video)**: players hear it but never see it. **Players see** picks what
   goes in its place: nothing, a 🔊 speaker, or the speaker with a time bar that shows how long it plays. In the editor
-  it shows dimmed, with a **🔊 Sound only** badge. On a 🤫 card's phone it still plays in YouTube's own player.
+  it shows dimmed, with a **🔊 Sound only** badge. It's for slides only: on a 🤫 card a YouTube video plays in YouTube's
+  own player, so the player sees it.
 - **🔁 Use another picture…** (or video, sound) swaps the file for this item only. To replace a file everywhere, use
   Replace everywhere… in **🖼 Media**.
 - In these editors, `Ctrl+Enter` applies and `Esc` asks before throwing changes away.

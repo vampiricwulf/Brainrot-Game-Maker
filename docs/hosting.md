@@ -105,8 +105,8 @@ Right-click (or `Shift+F10`, or a long press) for a menu.
 5. Press **▦ Done ▶ board** to go back.
 
 A video or sound on the slide gets a row in the panel: play and pause (`Space`), seek, mute (`M`) and volume. A YouTube
-video set to Sound only works the same, but viewers never see the video; click its speaker on your stage to play or
-pause it. If it won't play, viewers see nothing there, and the row's **▶ Open on YouTube ↗** opens it for you.
+video set to Sound only works the same, but viewers never see the video; if they see a speaker or time bar in its
+place, you can also click that on your stage to play or pause it. If it won't play, viewers see nothing there, and the row's **▶ Open on YouTube ↗** opens it for you.
 
 **± Adjust score** gives a different amount. **↩ Put back (keep tile)** (`Shift+Esc`) closes the clue but keeps the
 tile playable.
