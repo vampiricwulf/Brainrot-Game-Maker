@@ -271,6 +271,15 @@ try {
   // "−$200" reads; and the wager row shows that score (not the $0 they can wager). (Forced: the plate is a button that's
   // off while nothing is done by clicking it, and its right-click menu still comes up.)
   const plate3 = page.locator('.stage-box .plate', { hasText: 'Player 3' });
+  // (The plates take their new places after the undo, a transform easing in: a forced click goes where the plate is
+  // then, so wait for it to stand still first.)
+  await page.waitForFunction(() => document.querySelectorAll('.stage-box .plate').length === 3);
+  for (let was = '', i = 0; i < 40; i++) {
+    const box = JSON.stringify(await plate3.boundingBox());
+    if (box === was) break;
+    was = box;
+    await page.waitForTimeout(50);
+  }
   await plate3.click({ button: 'right', force: true });
   await page.getByRole('menuitem', { name: '✎ Set the score…' }).click();
   const scoreAsk = page.getByRole('group', { name: 'Player 3’s score:' });
