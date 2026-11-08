@@ -23,7 +23,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - **½ Halve** and **0 Nullify** beside each player's wager in the Final's reveals: halve a wager (rounded down) or make it 0, for a house rule or a penalty. If the player is already judged, their points change with it, and `Ctrl+Z` puts it back. (8e18ae9)
 - Players can pick any color on their phone, not just one of the swatches: the **＋** swatch at the end opens a color picker. A color another player already has is still taken. (8e18ae9)
-- A YouTube video on a slide can be **Sound only (hide the video)**: on the slide, the players hear it but never see the video or its picture, and you still play, pause, seek and turn it up or down as before. **Players see** picks what goes in its place: nothing, a 🔊 speaker, or the speaker with a time bar showing how far it has played and how long it is (just the part it plays, if you set one). It's for slides only: on a 🤫 card the video still shows. (715a10a, 27522d2)
+- A YouTube video on a slide can be **Sound only (hide the video)**: on the slide, the players hear it but never see the video or its picture, and you still play, pause, seek and turn it up or down as before. **Players see** picks what goes in its place: nothing, a 🔊 speaker, or the speaker with a time bar showing how far it has played and how long it is (just the part it plays, if you set one). It's for slides only: on a 🤫 card the video still shows. (d27c76c, 9abf331, 1225e13, 715a10a, d5d85c3, db9c013, 27522d2)
 
 ## 2026-11-06
 
