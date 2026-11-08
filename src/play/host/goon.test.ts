@@ -104,7 +104,7 @@ function ctx(g: Game, s: Session, over: Partial<GoCtx> = {}): GoCtx {
     clockUp: false,
     cards: [],
     ddHidden: false,
-    wagerLimitsOff: true,
+    wagerLimitsOff: false,
     ddPhone: false,
     partner: null,
     final: { teams: false, wagerPhones: [] },
@@ -900,12 +900,21 @@ describe('wheels, dice, the scores and pop-ups over the stage (3.4 F, G, M)', ()
     s.dd!.playerId = undefined;
     expect(ddWaits(ctx(g, s))).toEqual({ say: 'Who found it? Click their name (the keys stay in the Wager box)', at: 'names' });
     s.dd!.playerId = 'a';
-    expect(ddWaits(ctx(g, s))).toEqual({ say: 'Type a wager (Ann can wager up to $1,000), or True Daily Double', at: 'wager' });
+    // Up to their score, or $2,000 if they have less (not the round's top value).
+    expect(ddWaits(ctx(g, s))).toEqual({ say: 'Type a wager (Ann can wager up to $2,000), or True Daily Double', at: 'wager' });
     expect(ddWaits(ctx(g, s, { ddPhone: true }))!.say).toBe('Waiting on Ann’s phone: type their wager here if it doesn’t come');
     s.dd!.draft = -5;
     expect(ddWaits(ctx(g, s))!.say).toBe('A wager can’t be below 0: type 0 or more');
     s.dd!.draft = 5000;
-    expect([ddWaits(ctx(g, s)), ddWaits(ctx(g, s, { wagerLimitsOff: false }))!.say]).toEqual([null, 'Over Ann’s max ($1,000): type less, or tick Ignore the limit']);
+    expect([ddWaits(ctx(g, s, { wagerLimitsOff: true })), ddWaits(ctx(g, s))!.say]).toEqual([null, 'Over Ann’s max ($2,000): type less, or tick Ignore the limit']);
+    s.dd!.draft = 2000;
+    expect(ddWaits(ctx(g, s))).toBeNull();
+    // Over $2,000: up to their whole score.
+    applyScore(s, g, ['a'], 3500, 'x');
+    expect(ddWaits(ctx(g, s))).toBeNull();
+    s.dd!.draft = 3501;
+    expect(ddWaits(ctx(g, s))!.say).toBe('Over Ann’s max ($3,500): type less, or tick Ignore the limit');
+    s.dd!.draft = 5000;
     // A phone's wager in: the words never say it.
     s.dd!.draftFrom = 'phone';
     expect(JSON.stringify(ddWaits(ctx(g, s, { wagerLimitsOff: false })))).not.toContain('5,000');
@@ -975,7 +984,10 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect(finalWaits(c())!.say).toBe('Not a whole number: Cat (type a whole number, 0 or more)');
     applyScore(s, g, ['a'], 300, 'x');
     f.wagers = { a: 5000, b: 0, c: 0 };
-    expect([finalWaits(c()), finalWaits(c({ wagerLimitsOff: false }))!.say]).toEqual([null, 'Over Ann’s max ($300): type less, or tick Ignore the limits']);
+    expect([finalWaits(c({ wagerLimitsOff: true })), finalWaits(c())!.say]).toEqual([null, 'Over Ann’s max ($2,000): type less, or tick Ignore the limits']);
+    // Cat at $0 can wager up to $2,000 too.
+    f.wagers = { a: 2000, b: 0, c: 2000 };
+    expect(finalWaits(c())).toBeNull();
     // All in: the Final's card not sent yet ("First:", ⏎ sends it), its name and who it's for, never its words.
     const items = leftNow(c({ cards }), st);
     expect(lines(items)).toEqual([['first: The Final’s card “Hint” hasn’t gone to Ann yet.', '📤 Send it ⏎ · close']]);
@@ -985,23 +997,23 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
   it('the wager box’s first line: whose wager it waits on (a phone that can send it says so), then the blue button; names only', () => {
     const { g, s, f } = final();
     f.wagers = { a: 100 };
-    expect(wagersLine(s, ['b'], true)).toEqual({ text: 'Waiting on Bob’s phone & Cat', ok: false });
+    expect(wagersLine(s, g, ['b'], true)).toEqual({ text: 'Waiting on Bob’s phone & Cat', ok: false });
     f.phonesLocked = true;
-    expect(wagersLine(s, ['b'], true)!.text).toBe('Waiting on Bob & Cat');
+    expect(wagersLine(s, g, ['b'], true)!.text).toBe('Waiting on Bob & Cat');
     f.wagers = { a: 100, b: 50, c: 2.5 };
-    expect(wagersLine(s, [], true)!.text).toBe('Not a whole number: Cat');
+    expect(wagersLine(s, g, [], true)!.text).toBe('Not a whole number: Cat');
     applyScore(s, g, ['a'], 300, 'x');
     f.wagers = { a: 5000, b: 0, c: 0 };
-    expect([wagersLine(s, [], false)!.text, wagersLine(s, [], true)]).toEqual(['Over the max: Ann', { text: '✓ All 3 wagers in: Show question ▶ (N)', ok: true }]);
-    expect(JSON.stringify(wagersLine(s, [], false))).not.toContain('5000');
+    expect([wagersLine(s, g, [], false)!.text, wagersLine(s, g, [], true)]).toEqual(['Over the max: Ann', { text: '✓ All 3 wagers in: Show question ▶ (N)', ok: true }]);
+    expect(JSON.stringify(wagersLine(s, g, [], false))).not.toContain('5000');
     f.players = ['a'];
-    expect(wagersLine(s, [], true)!.text).toBe('✓ The wager is in: Show question ▶ (N)');
+    expect(wagersLine(s, g, [], true)!.text).toBe('✓ The wager is in: Show question ▶ (N)');
     // Nobody playing (the box says so itself), or past the wagers: none.
     f.players = [];
-    expect(wagersLine(s, [], true)).toBeNull();
+    expect(wagersLine(s, g, [], true)).toBeNull();
     f.players = ['a', 'b', 'c'];
     s.finalStep = 'question';
-    expect(wagersLine(s, [], true)).toBeNull();
+    expect(wagersLine(s, g, [], true)).toBeNull();
   });
 
   it('typed answers still coming at 👁 Reveal answer: ⏱ 10 more seconds (⇧T ⏎); R reveals anyway, never N; names and counts only', () => {

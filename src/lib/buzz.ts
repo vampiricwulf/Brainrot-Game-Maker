@@ -650,7 +650,8 @@ function ddMark(game: Game, session: Session): boolean | undefined {
  * The wagers phones may send now (HostState.wager), or null: a Daily Double's player before the question shows (locked
  * once it's up, until they're marked), the Final's players on its wager screen (locked through the question, the
  * answer and the reveals). Each with their
- * max (held to it only when the host turned the limits on: `limitsOff` false), the wager the host has for them, and
+ * max (their score, or the game's wager floor if that's more; held to it unless the host ticked Ignore the limit(s):
+ * `limitsOff`), the wager the host has for them, and
  * `got`: the last phone wager the host took for each (Session.remote.wagerGot), `gotAmounts` how much it was.
  */
 export function wagerAsk(
@@ -685,7 +686,7 @@ export function wagerAsk(
     const ids = f.players.filter(here);
     // A phone's wager put back by an Undo (not the last one it sent): the host's, as the phone should say.
     const host = (id: Id) => !wagerFromPhone(f, id) || (gotAmounts[id] !== undefined && f.wagers[id] !== gotAmounts[id]);
-    return { id: `final:${r.id}`, kind: 'final', open: step === 'wagers' && !f.phonesLocked, ...limit, seats: ids.map((id) => seat(id, finalWagerCap(session, id), f.wagers[id], host(id))) };
+    return { id: `final:${r.id}`, kind: 'final', open: step === 'wagers' && !f.phonesLocked, ...limit, seats: ids.map((id) => seat(id, finalWagerCap(session, game, id), f.wagers[id], host(id))) };
   }
   return null;
 }

@@ -5,7 +5,7 @@
   of it in step (an undoable change in its history).
 -->
 <script lang="ts">
-  import { countdownSeconds, MAX_PLAYERS, mostPlayers, type GameSettings } from '../lib/model';
+  import { countdownSeconds, formatPoints, MAX_PLAYERS, MAX_POINTS, mostPlayers, WAGER_FLOOR, wagerFloor, type GameSettings } from '../lib/model';
   import { app } from '../lib/app.svelte';
 
   let {
@@ -75,6 +75,27 @@
       <label class="field">
         Points symbol
         <input bind:value={s.currencySymbol} placeholder="$, pts, 🧠, or blank" maxlength="6" title="A word (pts, coins) goes after the number: 200 pts. $, € or 🧠 goes in front: $200" />
+      </label>
+      <label class="field" title="Daily Doubles and the Final: {nouns} can wager up to their score, or up to this much when they have less (0 or negative too). Blank: {WAGER_FLOOR}. While hosting, Ignore the limits lets you take any wager.">
+        Wagers go up to their score, or at least
+        <input
+          type="number"
+          min="0"
+          step="1"
+          value={wagerFloor(s)}
+          onchange={(e) => {
+            // A whole number, 0 or more (blank: back to the default, which a game leaves out); anything else keeps the last.
+            const t = e.currentTarget.value.trim();
+            const v = t === '' ? WAGER_FLOOR : +t;
+            const n = Number.isSafeInteger(v) && v >= 0 && v <= MAX_POINTS ? v : wagerFloor(s);
+            if (n === WAGER_FLOOR) {
+              if (s.wagerFloor !== undefined) delete s.wagerFloor;
+            } else if (n !== s.wagerFloor) s.wagerFloor = n;
+            e.currentTarget.value = String(wagerFloor(s));
+          }}
+          data-wager-floor
+        />
+        <span class="muted small">{formatPoints(wagerFloor(s), s.currencySymbol)} for a {teams ? 'team' : 'player'} with less</span>
       </label>
       <label class="field">
         Most {nouns}

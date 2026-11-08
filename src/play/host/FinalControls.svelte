@@ -13,7 +13,7 @@
   import { buzzerOn } from '../../lib/remote.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
-  import { cardSlides, finalName, formatPoints, MAX_POINTS, roundName, type Game, type Id, type Session, type WagerSource } from '../../lib/model';
+  import { cardSlides, finalName, formatPoints, MAX_POINTS, roundName, wagerFloor, type Game, type Id, type Session, type WagerSource } from '../../lib/model';
   import {
     currentFinal, finalAdjustWager, finalChoose, finalRevealNow, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused,
     finalWagersOk, hasWager, score, slidePosition, typedAnswer, wagerFromPhone, wagerSentBy,
@@ -56,7 +56,7 @@
     dual?: boolean;
     /** Everyone is judged and N was pressed once: the next N finishes. */
     armed?: boolean;
-    /** "Ignore the limits" is ticked (the default; bound, so N follows it too). */
+    /** "Ignore the limits" is ticked (unticked as each Final starts; bound, so N follows it too). */
     override?: boolean;
     /** Players (teams) with a phone in the buzzer room: they can send their wager from it. */
     phones?: string[];
@@ -93,11 +93,13 @@
   const moreSlides = $derived(!!slidePos && slidePos.at < slidePos.of);
   const f = $derived(session.final);
   const sym = $derived(game.settings.currencySymbol);
+  /** The wager rule, in words: "their score, or $2,000 if they have less". */
+  const rule = $derived(`their score, or ${formatPoints(wagerFloor(game.settings), sym)} if they have less`);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   /** Phone buzzer teams: each row is a team, and the buttons say so ("Next team ▶"). */
   const noun = $derived(buzzerOn(game.settings) && teamsOn(game.settings) ? 'team' : 'player');
-  const problems = $derived(finalWagerProblems(session, override));
-  const wagersOk = $derived(finalWagersOk(session, override));
+  const problems = $derived(finalWagerProblems(session, game, override));
+  const wagersOk = $derived(finalWagersOk(session, game, override));
   /** The number key that spotlights them in the reveals (1–9, in the players' order), if they have one. */
   const keyOf = (id: string): number | null => {
     const i = session.players.findIndex((p) => p.id === id);
@@ -115,7 +117,7 @@
   /** Their wager still has to be typed, or fixed (not a whole number, or over the max). */
   const needsWager = (id: string) => problems.missing.includes(id) || problems.whole.includes(id) || problems.over.includes(id);
   /** The wager box's first line: whose wager it waits on, or that every wager is in and Show question ▶ is next. */
-  const waitLine = $derived(wagersLine(session, phones, override));
+  const waitLine = $derived(wagersLine(session, game, phones, override));
   // One window: viewers see the wager boxes as they're typed (the status line's ⚠ chip says so, the box's first line
   // says what it waits on).
   offerExposed(() =>
@@ -159,7 +161,7 @@
     const fs = f;
     if (!fs) return;
     const out = fs.players.includes(id);
-    logged(session, `${byId[id]?.name ?? '?'} ${out ? 'sits out' : 'plays'} ${title}`, () => finalChoose(session, id, !out));
+    logged(session, `${byId[id]?.name ?? '?'} ${out ? 'sits out' : 'plays'} ${title}`, () => finalChoose(session, game, id, !out));
   }
 
   /** Move a player `d` places up (−) or down the reveal order (the others close up). */
@@ -302,10 +304,10 @@
     if (typed > MAX_POINTS) toast(`At most ${formatPoints(MAX_POINTS, sym)}`, 3000);
     // (Already the most: the box goes back to it, not the digits typed on past it.)
     if (v === was) return void (typed !== v && back());
-    const why = finalWagerRefused(session, id, v, override);
+    const why = finalWagerRefused(session, game, id, v, override);
     if (why) back();
     if (why === 'whole') return toast('A wager is a whole number, 0 or more', 3000);
-    if (why === 'over') return toast(`Over ${byId[id]?.name ?? '?'}’s max of ${formatPoints(finalWagerCap(session, id), sym)}`, 3000);
+    if (why === 'over') return toast(`Over ${byId[id]?.name ?? '?'}’s max of ${formatPoints(finalWagerCap(session, game, id), sym)}`, 3000);
     logged(session, wagerText(id, was, v, wagerFromPhone(fs, id)), () => finalSetWager(session, id, v));
   }
 
@@ -444,7 +446,7 @@
       <div class="wagers" role="list" aria-label="Who plays and their wagers" tabindex="-1" bind:this={wagersEl}>
         {#each session.players as p (p.id)}
           {@const plays = f.players.includes(p.id)}
-          {@const cap = finalWagerCap(session, p.id)}
+          {@const cap = finalWagerCap(session, game, p.id)}
           {@const w = f.wagers[p.id]}
           {@const phone = plays && wagerFromPhone(f, p.id)}
           {@const hide = !dual && phone}
@@ -464,7 +466,7 @@
                 value={hide ? '' : (w ?? '')}
                 placeholder={hide ? 'hidden' : 'wager'}
                 aria-label="{p.name}’s wager"
-                title={override ? `No limit now (their score: ${formatPoints(score(session, p.id), sym)})` : cap ? `Max ${formatPoints(cap, sym)}` : `Can only wager ${formatPoints(0, sym)}`}
+                title={override ? `No max now (their score: ${formatPoints(score(session, p.id), sym)})` : cap ? `Max ${formatPoints(cap, sym)} (${rule})` : `Can only wager ${formatPoints(0, sym)}`}
                 class:bad={typeof w === 'number' && ((!override && w > cap) || !Number.isInteger(w))}
                 oninput={(e) => {
                   const box = e.currentTarget;
@@ -515,7 +517,7 @@
               {/if}
             {:else}
               <!-- (Left out for their score, not by the host: say so, they can still be ticked in.) -->
-              <span class="muted small">{f.chosen?.[p.id] === false || score(session, p.id) > 0 ? 'sits out' : 'sits out: no points to wager (tick to let them play)'}</span>
+              <span class="muted small">{f.chosen?.[p.id] === false || score(session, p.id) > 0 ? 'sits out' : `sits out: no points (tick to let them play${cap ? `, up to ${formatPoints(cap, sym)}` : ''})`}</span>
             {/if}
           </div>
         {/each}
@@ -527,7 +529,7 @@
       {:else if phoneNote}
         <span class="muted small">{phoneNote}</span>
       {/if}
-      <label class="check small" title="Ticked, a wager can be more than the {noun}'s score. Untick to hold wagers to it (max: their score).">
+      <label class="check small" title="Ticked, any wager is taken. Unticked (as each Final starts), a wager goes up to the {noun}'s max: {rule}.">
         <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && ongo('enter')} data-limits /> Ignore the limits
       </label>
     {:else if session.finalStep === 'reveal'}
@@ -648,7 +650,7 @@
             {#if finalWagerEditable(session, id)}
               <!-- Until it's shown (or they're judged) the wager can still be changed here; with none in (it's never taken as
                    0) it's asked for here before they can be judged. -->
-              {@const cap = finalWagerCap(session, id)}
+              {@const cap = finalWagerCap(session, game, id)}
               <!-- (One window: a phone's amount stays hidden until it's shown, as on the wager screen.) -->
               {@const hideW = !dual && wagerFromPhone(f, id)}
               <span class="cell sw">

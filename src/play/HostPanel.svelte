@@ -65,7 +65,7 @@
     rpgMapSend = $bindable(null),
     bgSpace = $bindable(null),
     editingScore = $bindable(null),
-    wagerLimitsOff = $bindable(true),
+    wagerLimitsOff = $bindable(false),
     wagerPhones = [],
     wagerNote = '',
     finalTyped = false,
@@ -161,7 +161,7 @@
     bgSpace?: string | null;
     /** The player whose score is being set (clicked here, or ✎ Set the score… in their menu). */
     editingScore?: string | null;
-    /** Final wagers: "Ignore the limits" is ticked (the default). */
+    /** Wagers: "Ignore the limit(s)" is ticked (unticked by default: a wager is held to its max). */
     wagerLimitsOff?: boolean;
     /** Players (teams) with a phone in the buzzer room that can send their wager from it. */
     wagerPhones?: string[];

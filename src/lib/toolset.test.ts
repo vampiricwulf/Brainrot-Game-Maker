@@ -604,6 +604,8 @@ describe('the host’s own choices', () => {
 
   it('a player an Undo brings back from before the Final stays out of it, so a Redo leaves no wager it waits on', () => {
     const { game, session } = show();
+    // (Wagers up to their score only: the players at $0 get a 0 filled in, so only a missing player's wager could wait.)
+    game.settings.wagerFloor = 0;
     session.players.push({ id: 'c', name: 'Cat', color: '#4363d8', startScore: 0 });
     applyScore(session, game, ['c'], 500, 'x');
     logged(session, 'Removed Cat', () => removePlayer(session, 'c'));
@@ -613,16 +615,16 @@ describe('the host’s own choices', () => {
     expect(f.players).toEqual(['a', 'b']);
     // Ctrl+Z on the wager screen: Cat is back in the game; the round's catch-up after it adds nobody to the Final.
     undoAction(session, game);
-    finalTakeNewcomers(session, round, []);
+    finalTakeNewcomers(session, game, round, []);
     expect([session.players.map((p) => p.id), f.players]).toEqual([['a', 'b', 'c'], ['a', 'b']]);
     // Ctrl+Shift+Z: out again, and the Final waits on nobody's wager but its players'.
     redoAction(session, game);
     expect([session.players.map((p) => p.id), f.players, f.order]).toEqual([['a', 'b'], ['a', 'b'], ['a', 'b']]);
-    expect(finalWagersOk(session)).toBe(true);
+    expect(finalWagersOk(session, game)).toBe(true);
     // One added on the wager screen comes in with the step that adds them: its Undo takes them out of both, its Redo back.
     logged(session, 'Added Dee', () => {
       session.players.push({ id: 'd', name: 'Dee', color: '#f58231', startScore: 0 });
-      finalTakeNewcomers(session, round, ['d']);
+      finalTakeNewcomers(session, game, round, ['d']);
     });
     expect([f.players, f.wagers.d]).toEqual([['a', 'b', 'd'], 0]);
     undoAction(session, game);

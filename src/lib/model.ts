@@ -314,6 +314,11 @@ export interface GameSettings {
   /** Phone buzzers: seconds a phone that buzzes before the buzzers open has to wait once they do (default 1; 0: none). */
   earlyBuzzLock?: number;
   /**
+   * Wagers (Daily Doubles and the Final) go up to the player's score, or up to this much when their score is less (0
+   * or negative too). Left out: WAGER_FLOOR. The host can tick Ignore the limits for the wagers being entered.
+   */
+  wagerFloor?: number;
+  /**
    * 🤝 Partner clues: a miss lets everyone else steal it (each clue can say otherwise: PartnerRules.steal). Left out: no
    * steals.
    */
@@ -1884,6 +1889,15 @@ export function clueCountdown(text: string): number | null {
 /** Most points the host can give or set at once (either way): past it, numbers lose their last digits. */
 export const MAX_POINTS = 1_000_000_000_000;
 
+/** A wager goes up to the player's score, or at least this much (games that don't say: GameSettings.wagerFloor). */
+export const WAGER_FLOOR = 2000;
+
+/** The game's wager rule: the most a player whose score is less can wager (GameSettings.wagerFloor). */
+export function wagerFloor(s: GameSettings): number {
+  const n = s.wagerFloor;
+  return typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 && n <= MAX_POINTS ? n : WAGER_FLOOR;
+}
+
 /** An amount of points typed by the host: whole, within ±MAX_POINTS; null when it isn't a number. */
 export function wholePoints(n: number | null | undefined): number | null {
   if (typeof n !== 'number' || !Number.isFinite(n)) return null;
@@ -2132,6 +2146,8 @@ function repairGame(g: Game): void {
   }
   if (g.settings.partnerSteal !== undefined && typeof g.settings.partnerSteal !== 'boolean') delete g.settings.partnerSteal;
   if (typeof g.settings.currencySymbol !== 'string') g.settings.currencySymbol = '$';
+  // (Left out, the game's wagers go up to at least WAGER_FLOOR.)
+  if (g.settings.wagerFloor !== undefined && g.settings.wagerFloor !== wagerFloor(g.settings)) delete g.settings.wagerFloor;
   const players = objects<PlayerTemplate>(g.players);
   if (players !== g.players) g.players = players;
   const playerIds = new Set<Id>();

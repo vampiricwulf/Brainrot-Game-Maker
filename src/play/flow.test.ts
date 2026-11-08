@@ -192,8 +192,8 @@ describe('Final wagers', () => {
     for (const [i, id] of ids.entries()) applyScore(session, game, [id], 300 - i * 100, 'x');
     goToRound(session, game, 1);
     const order = [...session.final!.order];
-    logged(session, 'out', () => finalChoose(session, ids[1], false));
-    logged(session, 'in', () => finalChoose(session, ids[1], true));
+    logged(session, 'out', () => finalChoose(session, game, ids[1], false));
+    logged(session, 'in', () => finalChoose(session, game, ids[1], true));
     // Back in its place (lowest score first), not last.
     expect(session.final!.order).toEqual(order);
     undoAction(session, game);

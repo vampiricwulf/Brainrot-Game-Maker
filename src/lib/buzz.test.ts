@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { finalName, newImageEl, newTextEl, playableClues, setSlideText, textSlide, PARTNER_GAMES, type BoardRound, type FinalRound, type PartnerGame, type SavedCard } from './model';
-import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, undo } from './session';
+import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, setScore, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
   answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
@@ -433,19 +433,19 @@ describe('wagerAsk (the wagers phones may send)', () => {
     applyScore(session, game, ['a'], 500, 'x');
     goToRound(session, game, 1);
     session.intro = null;
-    finalChoose(session, 'b', false);
-    finalChoose(session, 'c', false);
+    finalChoose(session, game, 'b', false);
+    finalChoose(session, game, 'c', false);
     // The phone sent $300, then $400 (its count 2): the host took both, then undid the second.
     finalSetWager(session, 'a', 300, 'phone');
     const view = () => {
       const st = hostState(game, session, newBuzz(), 0, { wager: wagerAsk(game, session, true, { a: 2 }, { a: 400 }) });
       return phoneView(st, 'a', null, null, { amount: 400, n: 2 }).wager;
     };
-    expect(wagerAsk(game, session, true, { a: 2 }, { a: 400 })!.seats).toEqual([{ id: 'a', max: 500, amount: 300, fromHost: true, got: 2 }]);
+    expect(wagerAsk(game, session, true, { a: 2 }, { a: 400 })!.seats).toEqual([{ id: 'a', max: 2000, amount: 300, fromHost: true, got: 2 }]);
     expect(view()).toMatchObject({ amount: 300, host: true });
     // Redo: the one it sent last is in again.
     finalSetWager(session, 'a', 400, 'phone');
-    expect(wagerAsk(game, session, true, { a: 2 }, { a: 400 })!.seats).toEqual([{ id: 'a', max: 500, amount: 400, got: 2 }]);
+    expect(wagerAsk(game, session, true, { a: 2 }, { a: 400 })!.seats).toEqual([{ id: 'a', max: 2000, amount: 400, got: 2 }]);
     expect(view()).toMatchObject({ amount: 400, sent: true });
     expect(view()).not.toHaveProperty('host');
   });
@@ -455,8 +455,8 @@ describe('wagerAsk (the wagers phones may send)', () => {
     applyScore(session, game, ['a'], 500, 'x');
     goToRound(session, game, 1);
     session.intro = null;
-    finalChoose(session, 'b', false);
-    finalChoose(session, 'c', false);
+    finalChoose(session, game, 'b', false);
+    finalChoose(session, game, 'c', false);
     // The host took the phone's $300 (its count 1); its $400 (count 2) reached the room, not the host, in time.
     finalSetWager(session, 'a', 300, 'phone');
     const view = (sent: { amount: number; n: number }, late = false) => {
@@ -496,13 +496,25 @@ describe('wagerAsk (the wagers phones may send)', () => {
     session.dd!.playerId = 'b';
     const ask = wagerAsk(game, session, true)!;
     const clue = (game.rounds[0] as BoardRound).categories[0].clues[0].id;
-    expect(ask).toEqual({ id: `dd:${clue}:b`, kind: 'dd', open: true, seats: [{ id: 'b', max: 1500 }] });
-    // The limit on: phones are held to it. The host typed 300: it's the host's.
+    // $1,500: up to $2,000 (their score, or $2,000 if they have less). Ignoring the limit: no `limit`.
+    expect(ask).toEqual({ id: `dd:${clue}:b`, kind: 'dd', open: true, seats: [{ id: 'b', max: 2000 }] });
+    // The limit on (the default): phones are held to it. The host typed 300: it's the host's.
     session.dd!.draft = 300;
-    expect(wagerAsk(game, session, false)).toMatchObject({ limit: true, seats: [{ id: 'b', max: 1500, amount: 300, fromHost: true }] });
+    expect(wagerAsk(game, session, false)).toMatchObject({ limit: true, seats: [{ id: 'b', max: 2000, amount: 300, fromHost: true }] });
+    // Below 0: still up to $2,000. Over $2,000: their whole score.
+    setScore(session, 'b', -500);
+    expect(wagerAsk(game, session, false)).toMatchObject({ limit: true, seats: [{ id: 'b', max: 2000 }] });
+    setScore(session, 'b', 3500);
+    expect(wagerAsk(game, session, false)).toMatchObject({ limit: true, seats: [{ id: 'b', max: 3500 }] });
+    // A game with its own floor.
+    game.settings.wagerFloor = 50;
+    setScore(session, 'b', 0);
+    expect(wagerAsk(game, session, false)).toMatchObject({ limit: true, seats: [{ id: 'b', max: 50 }] });
+    delete game.settings.wagerFloor;
+    setScore(session, 'b', 1500);
     // From the phone (taken as count 2): not the host's.
     Object.assign(session.dd!, { draft: 400, draftFrom: 'phone' });
-    expect(wagerAsk(game, session, true, { b: 2 })!.seats).toEqual([{ id: 'b', max: 1500, amount: 400, got: 2 }]);
+    expect(wagerAsk(game, session, true, { b: 2 })!.seats).toEqual([{ id: 'b', max: 2000, amount: 400, got: 2 }]);
     ddShowQuestion(session, 'b', 400);
     expect(wagerAsk(game, session, true)).toMatchObject({ open: false, seats: [{ id: 'b', amount: 400 }] });
     // Marked: no wager to show (the phones say how it went); an Undo of the mark brings it back.
@@ -521,12 +533,12 @@ describe('wagerAsk (the wagers phones may send)', () => {
 
   it('a Final: the players in it on the wager screen; locked through the question, the answer and the reveals', () => {
     const { game, session } = setup();
-    applyScore(session, game, ['a'], 500, 'x');
+    applyScore(session, game, ['a'], 3500, 'x');
     applyScore(session, game, ['b'], 200, 'x');
     goToRound(session, game, 1);
     session.intro = null;
     // Cy (0) sits out under the TV rule unless the round lets them play; tick them out to be sure.
-    finalChoose(session, 'c', false);
+    finalChoose(session, game, 'c', false);
     finalSetWager(session, 'a', 100, 'phone');
     finalSetWager(session, 'b', 50);
     const id = `final:${game.rounds[1].id}`;
@@ -535,10 +547,14 @@ describe('wagerAsk (the wagers phones may send)', () => {
       kind: 'final',
       open: true,
       seats: [
-        { id: 'a', max: 500, amount: 100 },
-        { id: 'b', max: 200, amount: 50, fromHost: true },
+        { id: 'a', max: 3500, amount: 100 },
+        { id: 'b', max: 2000, amount: 50, fromHost: true },
       ],
     });
+    // The limits on (the default): held to them. Cy, ticked in at $0, can wager up to $2,000 too.
+    finalChoose(session, game, 'c', true);
+    expect(wagerAsk(game, session, false)).toMatchObject({ limit: true, seats: [{ id: 'a', max: 3500 }, { id: 'b', max: 2000 }, { id: 'c', max: 2000 }] });
+    finalChoose(session, game, 'c', false);
     finalNext(session, game);
     expect(wagerAsk(game, session, true)).toMatchObject({ id, open: false });
     finalNext(session, game);
@@ -554,7 +570,7 @@ describe('wagerAsk (the wagers phones may send)', () => {
     applyScore(session, game, ['a', 'b'], 500, 'x');
     goToRound(session, game, 1);
     session.intro = null;
-    finalChoose(session, 'c', false);
+    finalChoose(session, game, 'c', false);
     finalSetWager(session, 'a', 4321);
     finalSetWager(session, 'b', 1234);
     const st = hostState(game, session, newBuzz(), 0, { wager: wagerAsk(game, session, true) });
@@ -726,7 +742,7 @@ describe('the Final’s typed answers (finalAnswerAsk, and its question in hostS
     applyScore(session, game, ['a', 'b'], 500, 'x');
     goToRound(session, game, fi);
     session.intro = null;
-    finalChoose(session, 'c', false);
+    finalChoose(session, game, 'c', false);
     finalSetWager(session, 'a', 100);
     finalSetWager(session, 'b', 50);
     return { game, session, round, id: `final:${round.id}@k1234567` };

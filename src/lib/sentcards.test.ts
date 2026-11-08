@@ -460,12 +460,12 @@ describe('a Final’s own cards', () => {
   });
 
   it('start with everyone playing it, in the players’ order, following the ticks; or nobody', () => {
-    const { session, hint, side } = atFinal();
+    const { g, session, hint, side } = atFinal();
     expect(session.phase).toBe('final');
     expect(finalRecipients(session, hint)).toEqual([{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }]);
-    finalChoose(session, 'b', false);
+    finalChoose(session, g, 'b', false);
     expect(finalRecipients(session, hint)).toEqual([{ seat: 'a' }, { seat: 'c' }]);
-    finalChoose(session, 'b', true);
+    finalChoose(session, g, 'b', true);
     expect(finalRecipients(session, hint)).toEqual([{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }]);
     expect(finalRecipients(session, side)).toEqual([]);
     expect(finalRecipients({ players: session.players }, hint)).toEqual([]);

@@ -199,7 +199,7 @@
     <input type="checkbox" checked={!round.phoneAnswersOff} onchange={(e) => setPhoneAnswers(e.currentTarget.checked)} data-final-typed />
     ✍ Players type their answers on their phones
   </label>
-  <!-- (How wagers are held to a player's score is said on the wager screen, by its Ignore the limits.) -->
+  <!-- (Wagers go up to their score, or the game's floor in ⚖ Game rules; the wager screen says so, by its Ignore the limits.) -->
   <span class="hint">
     While the category is up you tick who plays and enter each wager in private (with phone buzzers, players send
     theirs from their phone), then they're revealed player by player.

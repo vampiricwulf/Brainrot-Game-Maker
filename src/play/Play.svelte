@@ -218,10 +218,10 @@
   /** Everyone in the final reveal is judged and N was pressed once: the next N finishes the game. */
   let finishArmed = $state(false);
   /**
-   * Final wagers: "Ignore the limits" is ticked (the default: the host turns the limits on), so a wager over its cap
-   * doesn't hold up N / Show question.
+   * Wagers (a Daily Double's, the Final's): "Ignore the limit(s)" is ticked, so a wager over its max (their score, or the
+   * game's wager floor if that's more) doesn't hold up N / Show question. Unticked by default: the max holds.
    */
-  let wagerLimitsOff = $state(true);
+  let wagerLimitsOff = $state(false);
   /** Seconds typed in the host panel's timer box: T starts that countdown, like its Start button. */
   let timerSeconds = $state<number | null>(null);
   /** RPG rounds: the object whose card is open in the host panel. */
@@ -652,15 +652,16 @@
       coverHeld.timer = app.live.timer;
     });
   });
-  // "Ignore the limits" is for the wagers being entered now: the next Final starts with them off again (the default).
+  // "Ignore the limit(s)" is for the wagers being entered now: the next Daily Double or Final starts with the max held
+  // again (the default).
   $effect(() => {
     void session.phase;
     void session.currentRound; // a Final straight after another Final
-    wagerLimitsOff = true;
+    wagerLimitsOff = false;
   });
   // An undo back to a step saved before the category and the wagers were one screen: it's the wager screen.
   $effect(() => {
-    if (session.phase === 'final' && (session.finalStep as string) === 'category') untrack(() => finalStepFix(session));
+    if (session.phase === 'final' && (session.finalStep as string) === 'category') untrack(() => finalStepFix(session, game));
   });
   /** Controls hidden: the "Show controls" button shows for a moment only after the mouse moves (else it's on stream). */
   let pointerMoved = $state(false);
@@ -753,7 +754,7 @@
     // (After an Undo a party can be back on a screen deleted since: it goes to one that's there.)
     if (session.phase === 'rpg' && isRpg(round)) (ensureWorld(session, game, round), refindPositions(session, game));
     else if (session.phase === 'boardgame' && isBoardGame(round)) ensureBoard(session, game, round);
-    else if (session.phase === 'final' && isFinal(round)) finalTakeNewcomers(session, round, added);
+    else if (session.phase === 'final' && isFinal(round)) finalTakeNewcomers(session, game, round, added);
   }
   // Players added or removed mid-round (👥 Players), or a round's state put back by Undo: its party or turn order
   // catches up at once, not only when the round is next visited. (Nobody comes into a Final here: a player an Undo
@@ -1635,10 +1636,10 @@
     // (The amount stays out of the step's name, as it stays out of the wager box in one window, where viewers see ↶ Undo's
     // toast and the 📜 Log too. A step keeps its name, so it stays out with the audience window open as well: closed, or
     // after a reload in one window, the steps taken before would show it.)
-    const waiting = finalWagerProblems(session).missing.length;
+    const waiting = finalWagerProblems(session, game).missing.length;
     logged(session, `${name}’s wager (${from})`, () => finalSetWager(session, w.seatId, w.amount, 'phone', by || undefined));
     announce(`${name}’s wager is in (${from})`);
-    if (waiting && !finalWagerProblems(session).missing.length) announce('All wagers are in');
+    if (waiting && !finalWagerProblems(session, game).missing.length) announce('All wagers are in');
   }
 
   /**

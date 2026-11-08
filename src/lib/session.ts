@@ -5,7 +5,7 @@ import { ensureBoard, refindSpaces } from './boardgame';
 import { cardSlides, describer, dropFromSends, pairOnly, partnerPlayers, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, stealOn, takeBack } from './partner';
 import { dropOverCards, repairSentCards } from './sentcards';
 import { dealForViewers, repairDeal } from './deals';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalAnswer, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalAnswer, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource, wagerFloor } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -747,18 +747,9 @@ export function slidesRound(session: Session, game: Game): SlidesRound | undefin
 
 // ---------- Daily Double ----------
 
-/** Highest value on the current round's board (TV cap for a Daily Double wager). */
-export function roundMaxValue(game: Game, roundIndex: number): number {
-  const round = game.rounds[roundIndex];
-  if (!isBoard(round)) return 0;
-  let max = 0;
-  round.categories.forEach((c) => c.clues.forEach((cl, row) => !cl.empty && (max = Math.max(max, clueValue(round, row, cl)))));
-  return max;
-}
-
-/** TV rule: wager up to your score, or the round's top value if that's more. */
+/** A Daily Double's max: their score, or the game's wager floor if that's more (wagerFloor). */
 export function ddCap(session: Session, game: Game, playerId: string): number {
-  return Math.max(score(session, playerId), roundMaxValue(game, session.currentRound));
+  return Math.max(score(session, playerId), wagerFloor(game.settings));
 }
 
 export function ddShowQuestion(session: Session, playerId: string, wager: number): void {
@@ -886,23 +877,23 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
   // A 0 filled in for nothing to wager goes when there's something to wager now (points given since, in a round before).
   const f = session.final;
   for (const id of eligible)
-    if (f.wagerFrom?.[id] === 'auto' && finalWagerCap(session, id) > 0) {
+    if (f.wagerFrom?.[id] === 'auto' && finalWagerCap(session, game, id) > 0) {
       delete f.wagers[id];
       const { [id]: _, ...rest } = f.wagerFrom;
       f.wagerFrom = rest;
     }
-  fillNothingToWager(session);
+  fillNothingToWager(session, game);
 }
 
 /**
- * A player with nothing to wager (a score of 0 or less, playing as the round allows) gets a wager of 0 filled in (the
- * host can still type more: the limits are off unless the host turns them on).
+ * A player with nothing to wager (a max of 0: a score of 0 or less in a game whose wagers go up to at least 0) gets a
+ * wager of 0 filled in (the host can still type more with Ignore the limits ticked).
  */
-function fillNothingToWager(session: Session): void {
+function fillNothingToWager(session: Session, game: Game): void {
   const f = session.final;
   if (f)
     for (const id of f.players)
-      if (typeof f.wagers[id] !== 'number' && finalWagerCap(session, id) === 0) {
+      if (typeof f.wagers[id] !== 'number' && finalWagerCap(session, game, id) === 0) {
         f.wagers[id] = 0;
         f.wagerFrom = { ...f.wagerFrom, [id]: 'auto' };
       }
@@ -912,14 +903,14 @@ function fillNothingToWager(session: Session): void {
  * A session saved (or a step undone) from before the category and the wagers were one screen: its 'category' step
  * is the wager screen now.
  */
-export function finalStepFix(session: Session): void {
+export function finalStepFix(session: Session, game: Game): void {
   if ((session.finalStep as string) !== 'category') return;
   session.finalStep = 'wagers';
-  fillNothingToWager(session);
+  fillNothingToWager(session, game);
 }
 
 /** Tick a player in or out of the Final (on the wager screen): the reveal order stays lowest score first. */
-export function finalChoose(session: Session, playerId: string, plays: boolean): void {
+export function finalChoose(session: Session, game: Game, playerId: string, plays: boolean): void {
   const f = session.final;
   if (!f) return;
   f.chosen = { ...f.chosen, [playerId]: plays };
@@ -929,7 +920,7 @@ export function finalChoose(session: Session, playerId: string, plays: boolean):
   } else if (!f.players.includes(playerId)) {
     f.players = [...f.players, playerId];
     f.order = [...f.order, playerId].sort((x, y) => score(session, x) - score(session, y));
-    fillNothingToWager(session);
+    fillNothingToWager(session, game);
   }
 }
 
@@ -939,7 +930,7 @@ export function finalChoose(session: Session, playerId: string, plays: boolean):
  * to the Final; never anyone the host ticked in or out. Only those: a player already in the game isn't taken in at
  * some other change (a score set since, an Undo or a Redo).
  */
-export function finalTakeNewcomers(session: Session, round: FinalRound, ids: string[]): void {
+export function finalTakeNewcomers(session: Session, game: Game, round: FinalRound, ids: string[]): void {
   const f = session.final;
   if (!f || session.phase !== 'final' || session.finalStep !== 'wagers' || f.roundId !== round.id) return;
   const add = session.players
@@ -948,7 +939,7 @@ export function finalTakeNewcomers(session: Session, round: FinalRound, ids: str
   if (!add.length) return;
   f.players = [...f.players, ...add];
   f.order = [...f.order, ...add].sort((x, y) => score(session, x) - score(session, y));
-  fillNothingToWager(session);
+  fillNothingToWager(session, game);
 }
 
 /**
@@ -1030,20 +1021,21 @@ export function finalWagerEditable(session: Session, playerId: string): boolean 
   return session.finalStep === 'reveal' && !f.results[playerId] && (!f.shown[playerId] || typeof f.wagers[playerId] !== 'number');
 }
 
-export function finalWagerCap(session: Session, playerId: string): number {
-  return Math.max(0, score(session, playerId));
+/** A Final wager's max: their score, or the game's wager floor if that's more (wagerFloor). */
+export function finalWagerCap(session: Session, game: Game, playerId: string): number {
+  return Math.max(0, score(session, playerId), wagerFloor(game.settings));
 }
 
 /**
  * Players in the Final still without a wager (0 or more), those whose wager isn't a whole number, and those over their
  * cap (unless the limits are ignored).
  */
-export function finalWagerProblems(session: Session, ignoreLimits = false): { missing: string[]; over: string[]; whole: string[] } {
+export function finalWagerProblems(session: Session, game: Game, ignoreLimits = false): { missing: string[]; over: string[]; whole: string[] } {
   const wagers = session.final?.wagers ?? {};
   const ids = session.final?.players ?? [];
   const missing = ids.filter((id) => !(typeof wagers[id] === 'number' && wagers[id] >= 0));
   const whole = ids.filter((id) => !missing.includes(id) && !Number.isInteger(wagers[id]));
-  const over = ids.filter((id) => !ignoreLimits && !missing.includes(id) && wagers[id] > finalWagerCap(session, id));
+  const over = ids.filter((id) => !ignoreLimits && !missing.includes(id) && wagers[id] > finalWagerCap(session, game, id));
   return { missing, over, whole };
 }
 
@@ -1051,21 +1043,21 @@ export function finalWagerProblems(session: Session, ignoreLimits = false): { mi
  * A wager typed in for a player during the reveals: why it can't be taken ('' when it can). Whole numbers, 0 or more,
  * up to their cap unless the limits are ignored.
  */
-export function finalWagerRefused(session: Session, playerId: string, v: number, ignoreLimits = false): '' | 'whole' | 'over' {
+export function finalWagerRefused(session: Session, game: Game, playerId: string, v: number, ignoreLimits = false): '' | 'whole' | 'over' {
   if (!Number.isInteger(v) || v < 0) return 'whole';
-  return !ignoreLimits && v > finalWagerCap(session, playerId) ? 'over' : '';
+  return !ignoreLimits && v > finalWagerCap(session, game, playerId) ? 'over' : '';
 }
 
 /** Every wager is in (and within its cap, unless the limits are ignored): the question can be shown. */
-export function finalWagersOk(session: Session, ignoreLimits = false): boolean {
-  const { missing, over, whole } = finalWagerProblems(session, ignoreLimits);
+export function finalWagersOk(session: Session, game: Game, ignoreLimits = false): boolean {
+  const { missing, over, whole } = finalWagerProblems(session, game, ignoreLimits);
   return !!session.final && !missing.length && !over.length && !whole.length;
 }
 
 /** The Final's next step. After the reveals: the next round, or the end screen if this Final was the last round. */
 export function finalNext(session: Session, game: Game): void {
   const f = session.final;
-  finalStepFix(session);
+  finalStepFix(session, game);
   switch (session.finalStep) {
     case 'wagers':
       // Everyone sat out: nothing to wager or reveal, so on to the next round (or the end).
@@ -1414,7 +1406,7 @@ function rebase(session: Session, from: Game, to: Game): void {
  * and score events are tagged with it. The rounds already on screen are counted as introduced (seedIntroduced).
  */
 export function migrateSession(session: Session, game: Game): Session {
-  finalStepFix(session);
+  finalStepFix(session, game);
   repairPartnerState(session);
   repairSentCards(session);
   repairDeal(session);

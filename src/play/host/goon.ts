@@ -314,7 +314,7 @@ export type GoCtx = {
   cards: { id: Id; name: string; to: Id[]; full?: string }[];
   /** One window: a Daily Double wager sent from a phone, not on screen yet. */
   ddHidden: boolean;
-  /** "Ignore the limit" is ticked: a Daily Double's wager may be over the max. */
+  /** "Ignore the limit(s)" is ticked: a Daily Double's or the Final's wager may be over the max. */
   wagerLimitsOff: boolean;
   /** Who found the Daily Double has a phone here that can send their wager. */
   ddPhone: boolean;
@@ -1107,13 +1107,13 @@ export function finalWaits(c: GoCtx): { say: string; at: string; row: string } |
   if (s.phase !== 'final' || !f) return null;
   const box = (id: Id) => ({ at: `.play .panel input[data-wager="${id}"]`, row: `.play .panel .wrow[data-player="${id}"]` });
   if ((s.finalStep ?? 'wagers') === 'wagers') {
-    const { missing, whole, over } = finalWagerProblems(s, c.wagerLimitsOff);
+    const { missing, whole, over } = finalWagerProblems(s, c.game, c.wagerLimitsOff);
     const rows = s.players.map((p) => p.id).filter((id) => f.players.includes(id));
     const first = rows.find((id) => missing.includes(id) || whole.includes(id) || over.includes(id));
     if (!first) return null;
     if (missing.length) return { say: `Waiting on ${waitingOn(s, missing, c.final.wagerPhones)}: type ${missing.length === 1 ? 'their wager' : 'their wagers'}, or Sits out`, ...box(first) };
     if (whole.length) return { say: `Not a whole number: ${named(c, whole)} (type a whole number, 0 or more)`, ...box(first) };
-    if (over.length === 1) return { say: `Over ${name(c, over[0])}’s max (${formatPoints(finalWagerCap(s, over[0]), sym(c))}): type less, or tick Ignore the limits`, ...box(first) };
+    if (over.length === 1) return { say: `Over ${name(c, over[0])}’s max (${formatPoints(finalWagerCap(s, c.game, over[0]), sym(c))}): type less, or tick Ignore the limits`, ...box(first) };
     return { say: `Over the max: ${named(c, over)} (type less, or tick Ignore the limits)`, ...box(first) };
   }
   const r = s.finalStep === 'reveal' ? finalRevealNow(s) : null;
@@ -1135,10 +1135,10 @@ function waitingOn(s: Session, missing: Id[], phones: readonly Id[]): string {
  * whole number or is over the max, or with every wager in, that the blue button is next ("✓ All 3 wagers in: Show
  * question ▶ (N)"). Names only, never an amount. Null outside the wagers, or with nobody playing.
  */
-export function wagersLine(s: Session, phones: readonly Id[], limitsOff: boolean): { text: string; ok: boolean } | null {
+export function wagersLine(s: Session, game: Game, phones: readonly Id[], limitsOff: boolean): { text: string; ok: boolean } | null {
   const f = s.final;
   if (s.phase !== 'final' || !f || (s.finalStep ?? 'wagers') !== 'wagers' || !f.players.length) return null;
-  const { missing, whole, over } = finalWagerProblems(s, limitsOff);
+  const { missing, whole, over } = finalWagerProblems(s, game, limitsOff);
   const names = (ids: Id[]) => nameList(s.players.filter((p) => ids.includes(p.id)).map((p) => p.name));
   if (missing.length) return { text: `Waiting on ${waitingOn(s, missing, phones)}`, ok: false };
   if (whole.length) return { text: `Not a whole number: ${names(whole)}`, ok: false };

@@ -7,7 +7,7 @@
 <script lang="ts">
   import { onMount, untrack, type Snippet } from 'svelte';
   import { textOn } from '../../lib/colors';
-  import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
+  import { formatPoints, wagerFloor, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
   import { offerExposed, offerMenu, offerPlayerVerbs } from './slots.svelte';
   import { teamsOn } from '../../lib/buzz';
@@ -17,7 +17,7 @@
     game,
     session,
     dual = false,
-    override = $bindable(true),
+    override = $bindable(false),
     phones = [],
     phoneNote = '',
     onshow,
@@ -28,7 +28,7 @@
     session: Session;
     /** An audience window is open: viewers don't see this window. */
     dual?: boolean;
-    /** "Ignore the limit" is ticked (the default; bound, so a wager sent from a phone is held to the max only when it's off). */
+    /** "Ignore the limit" is ticked (unticked by default; bound, so a wager sent from a phone is held to the max only when it's off). */
     override?: boolean;
     /** Players (teams) with a phone in the buzzer room: theirs can send the wager from it. */
     phones?: string[];
@@ -183,7 +183,8 @@
       >True Daily Double{playerId ? ` (${formatPoints(cap, sym)})` : ''}</button
     >
     {#if playerId}
-      {@const max = `${override ? 'TV max' : 'Max'} ${formatPoints(cap, sym)} (their score or the round's top value)${override ? ': not enforced' : ''}`}
+      {@const rule = `their score, or ${formatPoints(wagerFloor(game.settings), sym)} if they have less`}
+      {@const max = override ? `No max now (it would be ${formatPoints(cap, sym)}: ${rule})` : `Max ${formatPoints(cap, sym)} (${rule})`}
       <span class="muted small max" title={max}>{max}</span>
     {/if}
   </div>

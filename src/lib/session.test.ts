@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { MAX_POINTS, migrateGame, newFinalRound, newGame, newId, newRound, textSlide, type BoardRound, type FinalRound, type Game } from './model';
+import { MAX_POINTS, migrateGame, WAGER_FLOOR, wagerFloor, newFinalRound, newGame, newId, newRound, textSlide, type BoardRound, type FinalRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { setRowCount, addCategory, removeCategory, clone } from './ops';
@@ -154,7 +154,8 @@ describe('flow', () => {
     // c has $0 and sits out; reveal order is lowest score first.
     expect(session.final!.players).toEqual([a, b]);
     expect(session.final!.order).toEqual([b, a]);
-    expect(finalWagerCap(session, b)).toBe(400);
+    // Up to their score, or $2,000 if they have less.
+    expect([finalWagerCap(session, game, a), finalWagerCap(session, game, b)]).toEqual([2000, 2000]);
     session.final!.wagers[a] = 600;
     session.final!.wagers[b] = 400;
     finalNext(session, game); // question
@@ -172,11 +173,50 @@ describe('flow', () => {
     expect(session.phase).toBe('end');
   });
 
-  it('caps Daily Double wagers TV-style', () => {
+  it('caps wagers at their score, or $2,000 when they have less (Daily Doubles and the Final alike)', () => {
     const { game, session, a } = setup();
-    expect(ddCap(session, game, a)).toBe(1000);
-    applyScore(session, game, [a], 2500, 'x');
-    expect(ddCap(session, game, a)).toBe(2500);
+    const caps = (): number[] => [ddCap(session, game, a), finalWagerCap(session, game, a)];
+    const at = (n: number): number[] => (setScore(session, a, n), caps());
+    expect([at(-500), at(0), at(1500), at(2000), at(3500)]).toEqual([
+      [2000, 2000],
+      [2000, 2000],
+      [2000, 2000],
+      [2000, 2000],
+      [3500, 3500],
+    ]);
+    // Not the round's top value any more: the board's $1,000 doesn't come into it.
+    expect(game.settings.wagerFloor).toBeUndefined();
+    // The game's own floor (another point scale).
+    game.settings.wagerFloor = 50;
+    expect([at(-500), at(0), at(30), at(80)]).toEqual([
+      [50, 50],
+      [50, 50],
+      [50, 50],
+      [80, 80],
+    ]);
+    // A floor of 0: their score only, and nothing to wager at 0 or less.
+    game.settings.wagerFloor = 0;
+    expect([at(-500), at(0), at(700)]).toEqual([
+      [0, 0],
+      [0, 0],
+      [700, 700],
+    ]);
+  });
+
+  it('gives an older game without the setting the $2,000 floor, and drops a broken one', () => {
+    const old = jeopardyGame();
+    delete old.settings.wagerFloor;
+    expect(wagerFloor(migrateGame(JSON.parse(JSON.stringify(old))).settings)).toBe(WAGER_FLOOR);
+    expect(WAGER_FLOOR).toBe(2000);
+    for (const bad of [-5, 2.5, 'lots', null, Number.NaN]) {
+      const g = JSON.parse(JSON.stringify(old));
+      g.settings.wagerFloor = bad;
+      const fixed = migrateGame(g);
+      expect([fixed.settings.wagerFloor, wagerFloor(fixed.settings)]).toEqual([undefined, 2000]);
+    }
+    const kept = JSON.parse(JSON.stringify(old));
+    kept.settings.wagerFloor = 500;
+    expect(migrateGame(kept).settings.wagerFloor).toBe(500);
   });
 
   it('places Daily Doubles at most one per category, skipping empty tiles', () => {
@@ -782,13 +822,16 @@ describe('final wagers', () => {
     applyScore(session, game, [b], 400, 'x');
     goToRound(session, game, 1);
     session.final!.wagers[a] = 600;
-    expect(finalWagerProblems(session)).toEqual({ missing: [b], over: [], whole: [] });
-    expect(finalWagersOk(session)).toBe(false);
-    session.final!.wagers[b] = 500;
-    expect(finalWagerProblems(session)).toEqual({ missing: [], over: [b], whole: [] });
-    expect([finalWagersOk(session), finalWagersOk(session, true)]).toEqual([false, true]);
+    expect(finalWagerProblems(session, game)).toEqual({ missing: [b], over: [], whole: [] });
+    expect(finalWagersOk(session, game)).toBe(false);
+    // b has $400: up to $2,000.
+    session.final!.wagers[b] = 2000;
+    expect(finalWagersOk(session, game)).toBe(true);
+    session.final!.wagers[b] = 2001;
+    expect(finalWagerProblems(session, game)).toEqual({ missing: [], over: [b], whole: [] });
+    expect([finalWagersOk(session, game), finalWagersOk(session, game, true)]).toEqual([false, true]);
     session.final!.wagers[b] = 0;
-    expect(finalWagersOk(session)).toBe(true);
+    expect(finalWagersOk(session, game)).toBe(true);
   });
 
   it('takes whole wagers only', () => {
@@ -796,18 +839,23 @@ describe('final wagers', () => {
     applyScore(session, game, [a, b], 1000, 'x');
     goToRound(session, game, 1);
     Object.assign(session.final!.wagers, { [a]: 100.5, [b]: 0 });
-    expect(finalWagerProblems(session)).toEqual({ missing: [], over: [], whole: [a] });
-    expect(finalWagersOk(session, true)).toBe(false);
+    expect(finalWagerProblems(session, game)).toEqual({ missing: [], over: [], whole: [a] });
+    expect(finalWagersOk(session, game, true)).toBe(false);
     session.final!.wagers[a] = 100;
-    expect(finalWagersOk(session)).toBe(true);
+    expect(finalWagersOk(session, game)).toBe(true);
   });
 
   it('checks a wager typed during the reveals against the max, unless the limits are ignored', () => {
     const { game, session, a } = setup();
     applyScore(session, game, [a], 500, 'x');
     goToRound(session, game, 1);
-    expect([500, 501, 2.5, -1].map((v) => finalWagerRefused(session, a, v))).toEqual(['', 'over', 'whole', 'whole']);
-    expect(finalWagerRefused(session, a, 900, true)).toBe('');
+    // $500: up to $2,000.
+    expect([2000, 2001, 2.5, -1].map((v) => finalWagerRefused(session, game, a, v))).toEqual(['', 'over', 'whole', 'whole']);
+    expect(finalWagerRefused(session, game, a, 9000, true)).toBe('');
+    // Over $2,000: up to their whole score.
+    setScore(session, a, 3500);
+    expect([3500, 3501].map((v) => finalWagerRefused(session, game, a, v))).toEqual(['', 'over']);
+    expect([3501, 2.5].map((v) => finalWagerRefused(session, game, a, v, true))).toEqual(['', 'whole']);
   });
 
   it('keeps who the host sat out or let in when the Final is left and come back to', () => {
@@ -816,7 +864,7 @@ describe('final wagers', () => {
     applyScore(session, game, [b], 400, 'x');
     goToRound(session, game, 1);
     expect(session.final!.players).toEqual([a, b]);
-    finalChoose(session, a, false);
+    finalChoose(session, game, a, false);
     goToRound(session, game, 0);
     // c is new to the Final: they play now their score lets them.
     applyScore(session, game, [c], 200, 'x');
@@ -825,7 +873,7 @@ describe('final wagers', () => {
     expect(session.final!.order).toEqual([c, b]);
     // A player let in at $0 stays in too.
     applyScore(session, game, [c], -200, 'x');
-    finalChoose(session, c, true);
+    finalChoose(session, game, c, true);
     goToRound(session, game, 0);
     goToRound(session, game, 1);
     expect(session.final!.players).toEqual([b, c]);
@@ -837,8 +885,8 @@ describe('final wagers', () => {
     applyScore(session, game, [b], 200, 'x');
     applyScore(session, game, [c], 100, 'x');
     goToRound(session, game, 1);
-    finalChoose(session, b, false);
-    finalChoose(session, b, true);
+    finalChoose(session, game, b, false);
+    finalChoose(session, game, b, true);
     expect(session.final!.order).toEqual([c, b, a]);
   });
 
@@ -846,7 +894,7 @@ describe('final wagers', () => {
     const { game, session, a } = setup();
     applyScore(session, game, [a], 300, 'x');
     goToRound(session, game, 1);
-    finalChoose(session, a, false);
+    finalChoose(session, game, a, false);
     finalNext(session, game);
     expect(session.phase).toBe(game.rounds.length > 2 ? 'board' : 'end');
   });
@@ -860,19 +908,33 @@ describe('final wagers', () => {
     expect([...session.final!.players].sort()).toEqual([a, b, c].sort());
   });
 
-  it('fills in a wager of 0 for players who have nothing to wager', () => {
+  it('fills in nothing for players at 0 or less: they can wager up to $2,000', () => {
     const { game, session, a, b, c } = setup();
     for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = true;
     applyScore(session, game, [a], 1000, 'x');
     applyScore(session, game, [b], -200, 'x');
     goToRound(session, game, 1);
+    expect(session.final!.wagers).toEqual({});
+    Object.assign(session.final!.wagers, { [a]: 1000, [b]: 2000, [c]: 1500 });
+    expect(finalWagersOk(session, game)).toBe(true);
+    session.final!.wagers[b] = 2500;
+    expect([finalWagerProblems(session, game).over, finalWagersOk(session, game, true)]).toEqual([[b], true]);
+  });
+
+  it('fills in a wager of 0 for players who have nothing to wager (a game whose wagers go up to their score only)', () => {
+    const { game, session, a, b, c } = setup();
+    game.settings.wagerFloor = 0;
+    for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = true;
+    applyScore(session, game, [a], 1000, 'x');
+    applyScore(session, game, [b], -200, 'x');
+    goToRound(session, game, 1);
     expect(session.final!.wagers).toEqual({ [b]: 0, [c]: 0 });
-    expect(finalWagerProblems(session)).toEqual({ missing: [a], over: [], whole: [] });
+    expect(finalWagerProblems(session, game)).toEqual({ missing: [a], over: [], whole: [] });
     session.final!.wagers[a] = 1000;
-    expect(finalWagersOk(session)).toBe(true);
+    expect(finalWagersOk(session, game)).toBe(true);
     // Ignoring the limits, the host can still type more for them.
     session.final!.wagers[c] = 300;
-    expect([finalWagersOk(session), finalWagersOk(session, true)]).toEqual([false, true]);
+    expect([finalWagersOk(session, game), finalWagersOk(session, game, true)]).toEqual([false, true]);
   });
 
   it('leaves a wager that is already in (typed before going back to the round before)', () => {
@@ -887,6 +949,7 @@ describe('final wagers', () => {
 
   it('drops a filled-in 0 when the player has something to wager after going back a round; keeps who sent a wager', () => {
     const { game, session, a, b, c } = setup();
+    game.settings.wagerFloor = 0;
     for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = true;
     applyScore(session, game, [a], 1000, 'x');
     goToRound(session, game, 1);
@@ -918,22 +981,23 @@ describe('final wagers', () => {
     for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = true;
     applyScore(session, game, [a], 500, 'x');
     goToRound(session, game, 1);
-    finalChoose(session, c, false);
+    finalChoose(session, game, c, false);
     const d = newId();
     session.players.push({ id: d, name: 'P4', color: '#000004', startScore: 0 });
-    finalTakeNewcomers(session, game.rounds[1] as FinalRound, [c, d]);
+    finalTakeNewcomers(session, game, game.rounds[1] as FinalRound, [c, d]);
     expect(session.final!.players).toEqual([a, b, d]);
-    expect([session.final!.wagers[d], session.final!.wagerFrom?.[d]]).toEqual([0, 'auto']);
+    // (At $0 they can wager up to $2,000: nothing is filled in.)
+    expect([session.final!.wagers[d], session.final!.wagerFrom?.[d], finalWagerCap(session, game, d)]).toEqual([undefined, undefined, 2000]);
     expect(session.final!.order.indexOf(d)).toBeLessThan(session.final!.order.indexOf(a));
     // Under the TV rule a newcomer at $0 sits out; nobody comes in once the question is up.
     (game.rounds[1] as FinalRound).allowNonPositive = false;
     const e = newId();
     session.players.push({ id: e, name: 'P5', color: '#000005', startScore: 0 });
-    finalTakeNewcomers(session, game.rounds[1] as FinalRound, [e]);
+    finalTakeNewcomers(session, game, game.rounds[1] as FinalRound, [e]);
     expect(session.final!.players).toEqual([a, b, d]);
     applyScore(session, game, [e], 100, 'x');
     session.finalStep = 'question';
-    finalTakeNewcomers(session, game.rounds[1] as FinalRound, [e]);
+    finalTakeNewcomers(session, game, game.rounds[1] as FinalRound, [e]);
     expect(session.final!.players).toEqual([a, b, d]);
   });
 
@@ -947,22 +1011,30 @@ describe('final wagers', () => {
     // …nor does a later change that adds someone else (a rename, a newcomer).
     const d = newId();
     session.players.push({ id: d, name: 'P4', color: '#000004', startScore: 0 });
-    finalTakeNewcomers(session, game.rounds[1] as FinalRound, [d]);
-    finalTakeNewcomers(session, game.rounds[1] as FinalRound, []);
+    finalTakeNewcomers(session, game, game.rounds[1] as FinalRound, [d]);
+    finalTakeNewcomers(session, game, game.rounds[1] as FinalRound, []);
     expect(session.final!.players).toEqual([a, b]);
   });
 
-  it('fills in 0 for a player at $0 ticked in on the wager screen', () => {
+  it('a player at $0 ticked in on the wager screen can wager up to $2,000 (0 filled in when the game says up to their score)', () => {
     const { game, session, a, c } = setup();
     applyScore(session, game, [a], 500, 'x');
     goToRound(session, game, 1);
     expect(session.final!.players).toEqual([a]);
-    finalChoose(session, c, true);
+    finalChoose(session, game, c, true);
+    expect([session.final!.wagers[c], finalWagerCap(session, game, c)]).toEqual([undefined, 2000]);
+    finalSetWager(session, c, 2000);
+    expect(finalWagerRefused(session, game, c, 2000)).toBe('');
+    finalChoose(session, game, c, false);
+    session.final!.wagers = {};
+    game.settings.wagerFloor = 0;
+    finalChoose(session, game, c, true);
     expect(session.final!.wagers[c]).toBe(0);
   });
 
   it('reads a session saved on the old category step as the wager screen', () => {
     const { game, session, a, c } = setup();
+    game.settings.wagerFloor = 0;
     for (const r of game.rounds) if (r.mode === 'final') r.allowNonPositive = true;
     applyScore(session, game, [a], 500, 'x');
     goToRound(session, game, 1);
@@ -976,7 +1048,7 @@ describe('final wagers', () => {
     finalNext(session, game);
     expect(session.finalStep).toBe('question');
     (session as { finalStep?: string }).finalStep = 'category';
-    finalStepFix(session);
+    finalStepFix(session, game);
     expect(session.finalStep).toBe('wagers');
   });
 
@@ -1000,7 +1072,7 @@ describe('final wagers', () => {
     finalSetWager(session, a, 1e20);
     finalSetWager(session, b, 2.5);
     expect([session.final!.wagers[a], session.final!.wagers[b]]).toEqual([MAX_POINTS, 2.5]);
-    expect(finalWagerProblems(session, true).whole).toEqual([b]);
+    expect(finalWagerProblems(session, game, true).whole).toEqual([b]);
   });
 
   it('teams: says who sent a wager from their phone, until the host changes it', () => {
