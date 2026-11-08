@@ -64,6 +64,9 @@ video, audio or YouTube, arranged freely.
 - **Plays from … to …** sets the part this one item plays. Type times like `83`, `1:23` or `1:23.5`, and press
   **▶ Try it** to hear it.
 - **When it plays** holds Autoplay, Loop, Start muted and Volume.
+- A YouTube video can be **Sound only (hide the video)**: players hear it but never see it. **Players see** picks what
+  goes in its place: nothing, a 🔊 speaker, or the speaker with a time bar that shows how long it plays. In the editor
+  it shows dimmed, with a **🔊 Sound only** badge. On a 🤫 card's phone it still plays in YouTube's own player.
 - **🔁 Use another picture…** (or video, sound) swaps the file for this item only. To replace a file everywhere, use
   Replace everywhere… in **🖼 Media**.
 - In these editors, `Ctrl+Enter` applies and `Esc` asks before throwing changes away.
