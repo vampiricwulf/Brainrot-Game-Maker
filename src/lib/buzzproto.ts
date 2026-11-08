@@ -146,8 +146,10 @@ export function fileType(raw: string | null | undefined): (typeof FILE_TYPES)[nu
 
 /** The biggest wager a phone may send (and a seat's max the room passes on). */
 export const WAGER_MAX = 1_000_000_000;
-/** The longest answer a phone may type (characters). */
+/** The longest answer a phone may type (characters, a line break counting as one). */
 export const ANSWER_MAX = 200;
+/** The most lines a typed answer keeps (cleanAnswer): the rest join its last one. */
+export const ANSWER_LINES = 8;
 /** A ✍ round's multiple choices: at most CHOICES_MAX (2 at least), each at most CHOICE_MAX characters. */
 export const CHOICES_MAX = 6;
 export const CHOICE_MAX = 80;
@@ -647,6 +649,33 @@ export function cleanName(raw: string, max: number): string {
     if (!invisible.test(c) || (c === '\u200d' && pic.test(chars[i - 1] ?? '') && pic.test(chars[i + 1] ?? ''))) kept.push(c);
   });
   return clip(kept.join('').replace(/\s+/g, ' ').trim(), max);
+}
+
+/**
+ * An answer typed on a phone made safe to show, its line breaks kept: each line as cleanName makes a name (tabs are
+ * spaces), "\r\n" and the other line ends as "\n", no blank lines at either end and never two in a row, at most
+ * ANSWER_LINES lines (the rest join the last one), at most `max` characters in all.
+ */
+export function cleanAnswer(raw: string, max: number = ANSWER_MAX): string {
+  const lines: string[] = [];
+  for (const line of raw.split(/\r\n?|[\n\u0085\u2028\u2029]/)) {
+    const words = cleanName(line.replace(/[\t\v\f]/g, ' '), max);
+    // (A blank line only between two with words, and one at most.)
+    if (words || lines.at(-1)) lines.push(words);
+  }
+  while (lines.length && !lines.at(-1)) lines.pop();
+  const kept = lines.length > ANSWER_LINES ? [...lines.slice(0, ANSWER_LINES - 1), lines.slice(ANSWER_LINES - 1).filter(Boolean).join(' ')] : lines;
+  return clip(kept.join('\n'), max);
+}
+
+/**
+ * A typed answer in at most `most` lines (a stage card, a phone's line): its first ones as they are, the rest on the
+ * last, " / " between them. foldLines(text, 1) is the answer on one line (lists, status lines, labels).
+ */
+export function foldLines(text: string, most = 1): string {
+  const lines = text.split('\n').filter((l) => l.trim());
+  const n = Math.max(1, most);
+  return lines.length <= n ? lines.join('\n') : [...lines.slice(0, n - 1), lines.slice(n - 1).join(' / ')].join('\n');
 }
 
 const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;

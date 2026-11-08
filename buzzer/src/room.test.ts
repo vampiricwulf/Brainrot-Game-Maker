@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HostCard, HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
-import { CARDS_BYTES, CARDS_MAX, clip, cleanName, MAX_PHONES, OLD_FILE_LIMITS, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
+import { ANSWER_LINES, ANSWER_MAX, CARDS_BYTES, CARDS_MAX, cleanAnswer, clip, cleanName, foldLines, MAX_PHONES, OLD_FILE_LIMITS, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
 import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS, FILE_MAX_AGE_MS } from './limits';
 
 /** The limits these tests run with (the room's caps). */
@@ -1983,9 +1983,10 @@ describe('answers (everyone answers on their phone)', () => {
     expect(said(g.hostAll('phones'))).not.toContain('Shiba');
     g.pa.send({ t: 'answer', id: 'clue1', text: 'Doge' });
     expect(g.hostLast('answer')).toMatchObject({ text: 'Doge', n: 2 });
-    // A new line typed on the phone is a space.
-    g.pa.send({ t: 'answer', id: 'clue1', text: 'George\nWashington' });
-    expect(g.hostLast('answer')).toMatchObject({ text: 'George Washington' });
+    // Lines typed on the phone stay lines (each cleaned, "\r\n" as "\n"); the phone sees them as the host does.
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'George  \r\nWashington\t ' });
+    expect(g.hostLast('answer')).toMatchObject({ text: 'George\nWashington' });
+    expect(g.pa.last('view')!.view.answer).toMatchObject({ text: 'George\nWashington' });
   });
 
   it('refuses one when none is asked, for another clue, from a seat not in it, empty, or once locked', () => {
@@ -3101,5 +3102,48 @@ describe('card files', () => {
     g.room.hostClose();
     g.room.hostOpen();
     expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F1] });
+  });
+});
+
+describe('typed answers over several lines (cleanAnswer, foldLines)', () => {
+  it('keeps line breaks, cleaning each line', () => {
+    expect(cleanAnswer('Roses are red\r\nViolets are blue')).toBe('Roses are red\nViolets are blue');
+    expect(cleanAnswer('a\rb\u2028c\u2029d\u0085e')).toBe('a\nb\nc\nd\ne');
+    // Trailing (and leading) spaces of each line go, tabs and runs of spaces are one space, invisible characters go.
+    expect(cleanAnswer('  one \t two  \n\u200bthree\u202e  ')).toBe('one two\nthree');
+    // Other control characters (a vertical tab, a form feed) are spaces, not line breaks.
+    expect(cleanAnswer('a\vb\fc')).toBe('a b c');
+  });
+
+  it('drops blank lines at either end and keeps one blank line at most between two', () => {
+    expect(cleanAnswer('\n\n  \nfirst\n\n\n \n\nsecond\n \n')).toBe('first\n\nsecond');
+    expect(cleanAnswer('\n \n\t\n')).toBe('');
+  });
+
+  it('keeps at most ANSWER_LINES lines: the rest join the last one', () => {
+    const many = Array.from({ length: ANSWER_LINES + 3 }, (_, i) => `L${i + 1}`).join('\n');
+    const out = cleanAnswer(many).split('\n');
+    expect(out).toHaveLength(ANSWER_LINES);
+    expect(out.at(-1)).toBe(`L${ANSWER_LINES} L${ANSWER_LINES + 1} L${ANSWER_LINES + 2} L${ANSWER_LINES + 3}`);
+  });
+
+  it('is at most ANSWER_MAX characters in all, a line break counting as one', () => {
+    const long = cleanAnswer(`${'x'.repeat(150)}\n${'y'.repeat(150)}`);
+    expect(Array.from(long)).toHaveLength(ANSWER_MAX);
+    expect(long.endsWith('…')).toBe(true);
+    expect(long.split('\n')).toHaveLength(2);
+    // (Cut right after a line break: no line break left before the "…".)
+    expect(cleanAnswer(`${'x'.repeat(10)}\n${'y'.repeat(20)}`, 12)).toBe(`${'x'.repeat(10)}…`);
+  });
+
+  it('a one-line answer is as cleanName makes it', () => {
+    for (const s of ['  What is   a Shiba Inu?  ', 'Ünïcödé 👨‍👩‍👧 🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'a\u200bb']) expect(cleanAnswer(s)).toBe(cleanName(s, ANSWER_MAX));
+  });
+
+  it('foldLines: one line for lists and labels, a few for a stage card', () => {
+    expect(foldLines('Roses\nViolets\n\nSugar')).toBe('Roses / Violets / Sugar');
+    expect(foldLines('one line')).toBe('one line');
+    expect(foldLines('a\nb\nc\nd\ne', 3)).toBe('a\nb\nc / d / e');
+    expect(foldLines('a\nb', 3)).toBe('a\nb');
   });
 });

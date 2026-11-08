@@ -105,6 +105,7 @@ import {
   TIE_MS,
   clip,
   clipUnits,
+  cleanAnswer,
   cleanName,
   CLUE_TEXT_MAX,
   KICK_BLOCK_MS,
@@ -1602,8 +1603,8 @@ export class Room {
     if (!this.allow((p.answerRate ??= { start: 0, count: 0 }), ANSWER_RATE, ANSWER_WINDOW_MS)) return no('slow');
     const choice = pick === undefined ? undefined : ask.choices?.find((c) => c.id === pick);
     if (pick !== undefined && !choice) return no('bad');
-    // (Line breaks are spaces: "George⏎Washington" stays two words.)
-    const words = choice ? choice.text : typeof text === 'string' ? cleanName(text.replace(/[\t\r\n]+/g, ' '), ANSWER_MAX) : '';
+    // (Its line breaks stay, a few lines at most: cleanAnswer. A host from before shows them as spaces.)
+    const words = choice ? choice.text : typeof text === 'string' ? cleanAnswer(text, ANSWER_MAX) : '';
     if (!words) return no('bad');
     const now = this.deps.now();
     const sent = this.s.answers?.id === id ? this.s.answers : (this.s.answers = { id, seats: {}, at: now });
