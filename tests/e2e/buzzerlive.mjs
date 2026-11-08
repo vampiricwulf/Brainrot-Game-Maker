@@ -206,6 +206,14 @@ try {
     midDrag !== '#f0e442' && afterDrag !== midDrag && (await hexBox.inputValue()) === afterDrag && Math.abs(Number(/^Color (\d+)%/.exec(await sq.getAttribute('aria-valuetext'))?.[1]) - 80) <= 1,
     `dragging the square shows on the phone’s buzzer as it moves (${midDrag}, then ${afterDrag}), and in the Hex box`,
   );
+  // A small phone held upright: the sheet leaves the top of the buzzer in sight, so the colour shows there as it moves.
+  for (const [width, height] of [[320, 568], [360, 640]]) {
+    await p1.setViewportSize({ width, height });
+    const seen = await p1.evaluate(() => document.getElementById('any').getBoundingClientRect().top - Math.max(0, document.getElementById('buzz').getBoundingClientRect().top));
+    if (process.env.SCREENSHOTS) await p1.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-any-color-${width}x${height}.png` });
+    assert(seen >= 60, `at ${width}x${height} the picker leaves ${Math.round(seen)}px of the buzzer in sight above it`);
+  }
+  await p1.setViewportSize({ width: 390, height: 760 });
   if (process.env.SCREENSHOTS) {
     // A phone's size, then on its side.
     await p1.setViewportSize({ width: 390, height: 844 });

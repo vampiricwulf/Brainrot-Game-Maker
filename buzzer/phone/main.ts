@@ -148,6 +148,11 @@ let colorsKey = '';
 let anyColor: { hsv: Hsv; hexText: string | null; hexBad: boolean } | null = null;
 /** A color OK sent: the buzzer keeps it until the room's view has it (or a few seconds, if the host didn't take it). */
 let colorSent: { color: string; until: number } | null = null;
+/** The player's color as the buzzer shows it: a color OK sent and the room hasn't had yet, or the room's. */
+function shownColor(you: { color: string }): string {
+  if (colorSent && (colorSent.color === you.color.toLowerCase() || performance.now() > colorSent.until)) colorSent = null;
+  return colorSent?.color ?? you.color;
+}
 /** What the last press on the page was made with (a PointerEvent's pointerType: 'mouse', 'touch', 'pen'). */
 let pointerKind = '';
 /** A press on the buzzer that began with a pointerdown (it buzzed then): the click that ends it doesn't, however long it was held. */
@@ -1268,8 +1273,7 @@ function renderBuzz(v: PhoneView): void {
   const you = v.you!;
   $('title').textContent = v.title || 'Brainrot Buzzer';
   const b = $('buzz');
-  if (colorSent && (colorSent.color === you.color.toLowerCase() || performance.now() > colorSent.until)) colorSent = null;
-  const seat = anyColor ? hsvToHex(anyColor.hsv) : (colorSent?.color ?? you.color);
+  const seat = anyColor ? hsvToHex(anyColor.hsv) : shownColor(you);
   b.style.setProperty('--seat', seat);
   b.style.setProperty('--seat-ink', textOn(seat));
   const sym = v.currency ?? '';
@@ -1601,11 +1605,11 @@ function renderColors(v: PhoneView): void {
 
 // ---- ＋ Pick any color: the page's own picker (the browser's has no OK, and shows nothing until it's shut) ----
 
-/** Opens it on the player's color: the buzzer shows what's picked as it moves; nothing is sent until OK. */
+/** Opens it on the player's color (one OK just sent, if the room hasn't had it yet): the buzzer shows what's picked as it moves; nothing is sent until OK. */
 function openAny(): void {
   const you = view?.you;
   if (!you || anyColor) return;
-  anyColor = { hsv: hexToHsv(you.color) ?? { h: 0, s: 0, v: 0 }, hexText: null, hexBad: false };
+  anyColor = { hsv: hexToHsv(shownColor(you)) ?? { h: 0, s: 0, v: 0 }, hexText: null, hexBad: false };
   $('any-back').hidden = false;
   $('any').hidden = false;
   drawAny();
@@ -1619,7 +1623,7 @@ function drawAny(): void {
   if (!a) return;
   const hex = hsvToHex(a.hsv);
   const pick = view?.colorPick;
-  const verdict = anyVerdict(hex, view?.you?.color ?? '', pick?.taken ?? []);
+  const verdict = anyVerdict(hex, view?.you ? shownColor(view.you) : '', pick?.taken ?? []);
   $('any').style.setProperty('--hue', `hsl(${a.hsv.h} 100% 50%)`);
   const now = $('any-now');
   now.style.background = hex;
@@ -1665,7 +1669,7 @@ function closeAny(how: 'ok' | 'tapoff' | 'back' | 'drop', byKeys = false): boole
   if (!a) return true;
   const hex = hsvToHex(a.hsv);
   const pick = view?.colorPick;
-  const verdict = anyVerdict(hex, view?.you?.color ?? '', pick?.taken ?? []);
+  const verdict = anyVerdict(hex, view?.you ? shownColor(view.you) : '', pick?.taken ?? []);
   if (how === 'ok' && verdict === 'taken') return false;
   const sent = (how === 'ok' || how === 'tapoff') && verdict === 'send' && !!pick;
   if (sent) {
@@ -1679,7 +1683,7 @@ function closeAny(how: 'ok' | 'tapoff' | 'back' | 'drop', byKeys = false): boole
   const inside = document.activeElement instanceof Node && $('any').contains(document.activeElement);
   const you = view?.you;
   if (you) {
-    const seat = colorSent?.color ?? you.color;
+    const seat = shownColor(you);
     $('buzz').style.setProperty('--seat', seat);
     $('buzz').style.setProperty('--seat-ink', textOn(seat));
   }

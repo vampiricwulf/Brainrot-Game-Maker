@@ -294,6 +294,13 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   #any-note { grid-area: note; margin: 0; }
   .any-btns { grid-area: btns; }
 }
+/* A short phone held upright: a smaller sheet, so the top of the buzzer, in the color being picked, stays in sight. */
+@media (max-aspect-ratio: 3/4) and (max-height: 700px) {
+  #any { gap: 8px; padding-top: 10px; }
+  #any-title { font-size: 18px; }
+  #any-sq { height: clamp(90px, 16dvh, 140px); }
+  #any-note:empty { min-height: 0; }
+}
 .warn-note { margin: 0; color: #ffd27a; text-align: center; font-size: 16px; }
 .link {
   border: 0;
