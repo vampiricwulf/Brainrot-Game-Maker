@@ -178,7 +178,17 @@ export interface EmbedEl extends ElementBase, Playback {
   /** 'remoteImage': how the picture fills its box, and its rounded corners (as a picture's). */
   fit?: Fit;
   radius?: number;
+  /**
+   * 'youtube': Sound only. The player still loads and plays (the host's controls work as ever), but viewers never see
+   * the video, its picture or YouTube's "Open on YouTube" card. Missing (older games): off.
+   */
+  soundOnly?: boolean;
+  /** With soundOnly, what viewers see in its place: nothing, a 🔊 speaker, or the speaker with a time bar. Missing: 'speaker'. */
+  soundShows?: SoundShows;
 }
+
+/** What a Sound only YouTube item shows viewers (see EmbedEl.soundOnly). */
+export type SoundShows = 'nothing' | 'speaker' | 'time';
 
 export type SlideElement = TextEl | ImageEl | VideoEl | AudioEl | ShapeEl | EmbedEl;
 export type ElementKind = SlideElement['kind'];

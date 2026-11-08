@@ -5,7 +5,8 @@
   import { fontChoices } from '../../lib/fonts';
   import { playRange, playsAt, playsStep, playsText } from '../../lib/editing';
   import { mediaUrls } from '../../lib/media.svelte';
-  import type { AudioEl, EmbedEl, EntranceType, Fit, Game, SlideElement, TextEl, VideoEl } from '../../lib/model';
+  import type { AudioEl, EmbedEl, EntranceType, Fit, Game, SlideElement, SoundShows, TextEl, VideoEl } from '../../lib/model';
+  import { SOUND_SHOWS, soundShows } from '../../lib/soundonly';
   import { DRIVE_SHARE_HINT, embedName, formatWhen, linkHost } from '../../lib/links';
   import { stageText } from '../../lib/theme';
   import { toHex } from '../../lib/colors';
@@ -412,6 +413,24 @@
           <p class="hint">Try it here with ▶ Preview (sound on).</p>
         {:else}
           <p class="hint">🌐 Needs internet during the game. The host can always open the link in its own window if it won't play.</p>
+        {/if}
+        {#if el.embedKind === 'youtube'}
+          <!-- Sound only: the video plays unseen; the host's play, pause and volume work as ever. -->
+          <label class="check"
+            ><input type="checkbox" bind:checked={() => !!el.soundOnly, (v) => ((el as EmbedEl).soundOnly = v || undefined)} /> Sound only (hide the video)</label
+          >
+          {#if el.soundOnly}
+            <label class="field">
+              Players see
+              <select value={soundShows(el)} onchange={(e) => ((el as EmbedEl).soundShows = e.currentTarget.value as SoundShows)}>
+                {#each SOUND_SHOWS as [v, l] (v)}<option value={v}>{l}</option>{/each}
+              </select>
+            </label>
+            <p class="hint">
+              Players hear it but never see the video. You still play, pause and turn it up or down from your media controls (or by
+              clicking its speaker on your stage).
+            </p>
+          {/if}
         {/if}
         <!-- (Test link ↗ is the bar's at the top of the panel.) -->
         {#if el.embedKind === 'remoteImage'}
