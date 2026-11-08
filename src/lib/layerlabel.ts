@@ -1,5 +1,6 @@
 // How the layers list, the right-click menu, the editors' notices and the undo history name slide items.
 import { embedName } from './links';
+import { isSoundOnly } from './soundonly';
 import type { Game, SlideElement } from './model';
 import { classIcon } from './rpg';
 
@@ -64,7 +65,7 @@ export function layerLabel(el: SlideElement, game: Game): string {
       // (A line drawn by hand with ✏ Freehand line; closed with Shift, a shape. A 🖌 Drawpad drawing is a picture.)
       return el.hotspot ? 'Hotspot' : el.shape === 'path' ? (el.closed ? 'Freehand shape' : 'Freehand line') : SHAPES[el.shape];
     case 'embed':
-      return embedName(el.embedKind, el.url);
+      return embedName(el.embedKind, el.url) + (isSoundOnly(el) ? ' (sound only)' : '');
   }
 }
 

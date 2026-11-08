@@ -23,6 +23,7 @@
   import { openShrinkDialog } from '../lib/shrink/dialog.svelte';
   import { clockTenths, typeWord } from '../lib/shrink/plan';
   import { shrinkMaybe } from '../lib/shrink/probe';
+  import { isSoundOnly } from '../lib/soundonly';
 
   let {
     game,
@@ -166,6 +167,11 @@
     {/if}
     {#each pc.items as it (it.el)}
       {@const copy = copyOf(it)}
+      {@const cardEl = card.elements.find((e) => e.id === it.el)}
+      {#if it.kind === 'embed' && !it.why && cardEl && isSoundOnly(cardEl)}
+        <!-- (A phone plays a card's YouTube video in YouTube's own player: it can't hide the picture.) -->
+        <li data-sound-only-note>▶ Sound only is for the slide: on a phone it plays in YouTube’s own player, so the player sees the video.</li>
+      {/if}
       {#if it.why}<li class="warn">{why(it, it.why)}{@render shrinkButton(it)}</li>
       {:else if it.slow}<li class="slow">
           {isSize(it)}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).{@render shrinkButton(it)}

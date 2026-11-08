@@ -16,6 +16,7 @@
   import { recentMedia } from '../lib/recent';
   import { openMediaPopup } from '../lib/mediactl.svelte';
   import { probeLink } from '../lib/download';
+  import { isSoundOnly } from '../lib/soundonly';
   import { embedName, embedOpenUrl, formatWhen, linkHost, linkLifetime } from '../lib/links';
   import type { MediaRef } from '../lib/model';
   import LinkField from './LinkField.svelte';
@@ -710,7 +711,7 @@
         {#each embeds as { el, where }}
           <tr>
             <td>{EMBED_ICON[el.embedKind] ?? '🌐'}</td>
-            <td>{embedName(el.embedKind, el.url)}</td>
+            <td>{embedName(el.embedKind, el.url)}{isSoundOnly(el) ? ' · 🔊 sound only' : ''}</td>
             <td class="url" title={el.url}>{el.url}</td>
             <td class="muted">{where}</td>
             <!-- (One name with the slide editor's: it opens the link in its own window.) -->

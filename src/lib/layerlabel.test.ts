@@ -25,6 +25,15 @@ describe('a freehand line', () => {
   });
 });
 
+describe('a YouTube video set to Sound only', () => {
+  it('says so in its layer name', () => {
+    const game = newGame();
+    const yt = newEmbedEl('https://youtu.be/dQw4w9WgXcQ', 'youtube');
+    expect(layerLabel(yt, game)).toBe('YouTube');
+    expect(layerLabel({ ...yt, soundOnly: true }, game)).toBe('YouTube (sound only)');
+  });
+});
+
 describe('editWords', () => {
   it('names what opens each kind of item, as the menu and the bar say it', () => {
     expect(editWords(newTextEl('Hi'))).toBe('✎ Edit text');
