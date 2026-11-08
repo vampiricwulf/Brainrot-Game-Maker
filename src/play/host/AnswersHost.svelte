@@ -152,7 +152,7 @@
           <!-- Multiple choice: a pick by its letter ("B · Stockholm"); typed words with the choice they name ("= B"), if any. -->
           {@const picked = a && choices.length ? pickLabel(choices, a.pick) : undefined}
           {@const named = a && choices.length && !picked ? matchChoice(a.text, choices) : null}
-          <li data-answer-row={p.id} data-player-id={p.id}>
+          <li data-answer-row={p.id} data-player-id={p.id} class:lines={!!a && !picked && a.text.includes('\n')}>
             <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
             <!-- (Each answer keeps its own direction in a <bdi>: a right-to-left one sits by the name, not at the row's far end.
                  The spaces go before the spans: one inside a span's start would be dropped.) -->
@@ -240,7 +240,8 @@
     overflow-y: auto;
     align-items: start;
   }
-  ul.capped li {
+  ul.capped li,
+  li.lines {
     align-items: flex-start;
   }
   .in {
