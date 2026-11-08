@@ -510,10 +510,11 @@
                   >{w === undefined ? '📱 waiting…' : '📱 can still send'}</span
                 >
               {/if}
-              <!-- The max only while the limits apply: ignored, their score is beside their name already and the ticked box
-                   says so (the row stays short: on a short window more wager boxes fit in sight). -->
-              {#if !override}
-                <span class="muted small">{cap ? `max ${formatPoints(cap, sym)}` : `can only wager ${formatPoints(0, sym)}`}</span>
+              <!-- (Each one's max is their score, beside their name, or the game's floor: Ignore the limits' line says so once,
+                   so the row stays short and on a short window more wager boxes fit in sight. Its tooltip has the number.
+                   Only a max of 0, in a game whose floor is 0, is said here.) -->
+              {#if !override && !cap}
+                <span class="muted small">can only wager {formatPoints(0, sym)}</span>
               {/if}
             {:else}
               <!-- (Left out for their score, not by the host: say so, they can still be ticked in.) -->
@@ -531,6 +532,7 @@
       {/if}
       <label class="check small" title="Ticked, any wager is taken. Unticked (as each Final starts), a wager goes up to the {noun}'s max: {rule}.">
         <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && ongo('enter')} data-limits /> Ignore the limits
+        <span class="muted" data-wager-rule>{override ? '(any wager goes)' : `(max: their score, or ${formatPoints(wagerFloor(game.settings), sym)})`}</span>
       </label>
     {:else if session.finalStep === 'reveal'}
       <!-- The how-to folds away: the rows (and the stage) keep the room. -->
