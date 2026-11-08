@@ -15,7 +15,7 @@
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { cardSlides, finalName, formatPoints, MAX_POINTS, roundName, type Game, type Id, type Session, type WagerSource } from '../../lib/model';
   import {
-    currentFinal, finalChoose, finalRevealNow, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused,
+    currentFinal, finalAdjustWager, finalChoose, finalRevealNow, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused,
     finalWagersOk, hasWager, score, slidePosition, typedAnswer, wagerFromPhone, wagerSentBy,
   } from '../../lib/session';
   import { finalNextStep, logged } from '../../lib/toolset';
@@ -306,6 +306,12 @@
     if (why === 'whole') return toast('A wager is a whole number, 0 or more', 3000);
     if (why === 'over') return toast(`Over ${byId[id]?.name ?? '?'}’s max of ${formatPoints(finalWagerCap(session, id), sym)}`, 3000);
     logged(session, wagerText(id, was, v, wagerFromPhone(fs, id)), () => finalSetWager(session, id, v));
+  }
+
+  /** ½ Halve / 0 Nullify in a reveal row: any time in the reveals; a judged player's points follow. */
+  function adjustWager(id: string, how: 'half' | 'zero'): void {
+    const name = byId[id]?.name ?? '?';
+    logged(session, how === 'half' ? `${name}’s wager halved` : `${name}’s wager made 0`, () => void finalAdjustWager(session, game, id, how), game);
   }
 
   // ---------- Its 🤫 cards, out of sight ----------
@@ -663,6 +669,10 @@
                 {#if wagerFromPhone(f, id)}<span class="phone" title="Sent from their phone. You can still change it until it's shown.">📱</span>{/if}
                 {#if !override}<span class="muted">max {formatPoints(cap, sym)}</span>{/if}
               </label>
+              {#if session.finalStep === 'reveal' && hasWager(f, id) && (f.wagers[id] ?? 0) > 0}
+                <button class="small" onclick={() => adjustWager(id, 'half')} aria-label="Halve wager: {p?.name ?? '?'}" title="Halve their wager, rounded down. If they're already judged, their points change with it.">½ Halve</button>
+                <button class="small" onclick={() => adjustWager(id, 'zero')} aria-label="Nullify wager: {p?.name ?? '?'}" title="Make their wager 0. If they're already judged, their points change with it.">0 Nullify</button>
+              {/if}
               </span>
               <span class="cell">
                 {#if hasWager(f, id)}<button class="small" class:slot={blue === 'wager'} onclick={() => finalShow(session, id)} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>{/if}
@@ -671,6 +681,10 @@
               <span class="cell sw">
                 <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
                 <span class="muted small">wager {formatPoints(f.wagers[id], sym)}</span>
+              {#if session.finalStep === 'reveal' && hasWager(f, id) && (f.wagers[id] ?? 0) > 0}
+                <button class="small" onclick={() => adjustWager(id, 'half')} aria-label="Halve wager: {p?.name ?? '?'}" title="Halve their wager, rounded down. If they're already judged, their points change with it.">½ Halve</button>
+                <button class="small" onclick={() => adjustWager(id, 'zero')} aria-label="Nullify wager: {p?.name ?? '?'}" title="Make their wager 0. If they're already judged, their points change with it.">0 Nullify</button>
+              {/if}
               </span>
               <span class="cell">
                 <button class="small" class:slot={blue === 'wager'} onclick={() => finalShow(session, id)} disabled={f.shown[id]} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>

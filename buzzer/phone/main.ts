@@ -1564,6 +1564,29 @@ function renderColors(v: PhoneView): void {
       return b;
     }),
   );
+  // Any other color: the phone's own color picker. Ringed when the player's color isn't one of the palette's.
+  const custom = !PLAYER_PALETTE.includes(mine);
+  const own = document.createElement('label');
+  own.className = 'swatch own';
+  own.title = 'Pick any color';
+  own.setAttribute('aria-pressed', String(custom));
+  own.style.background = custom ? mine : 'conic-gradient(#f44, #fd4, #4d4, #4cf, #48f, #c4f, #f44)';
+  own.style.color = textOn(custom ? mine : '#888888');
+  own.textContent = custom ? '✔' : '＋';
+  const input = document.createElement('input');
+  input.type = 'color';
+  input.value = mine;
+  input.setAttribute('aria-label', 'Pick any color');
+  input.addEventListener('change', () => {
+    const c = input.value.toLowerCase();
+    if (c === mine) return;
+    if (pick.taken.includes(c)) return;
+    send({ t: 'color', color: c });
+    colorsOpen = false;
+    renderColors(v);
+  });
+  own.append(input);
+  box.append(own);
   if (had) box.querySelector<HTMLElement>(`[data-color="${had}"]`)?.focus();
 }
 

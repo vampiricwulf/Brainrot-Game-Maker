@@ -134,6 +134,9 @@ with no points sit out until you tick them). Then the blue button walks through 
 **Next player ▶**, and finally **Finish game ▶**. Judge each player with **✔ Right** (`C`) or **✘ Wrong** (`X`).
 **Finish now…** ends early.
 
+In the reveals, **½ Halve** and **0 Nullify** beside a player's wager halve it (rounded down) or make it 0. If
+they're already judged, their points change with it. `Ctrl+Z` undoes it.
+
 ### Ties
 
 A tie for first isn't called a win on stream until you settle it in the tie box on the results screen:
@@ -194,6 +197,11 @@ locks out the whole team. A room holds up to 24 phones.
 
 On a Daily Double or Final, players type their wager on their phone; it fills your wager box (marked 📱) and only you
 see it. In a Final they type their answer too.
+
+### Colors on phones
+
+With **Players can pick their color on their phone** on, players tap their color on the phone and pick a swatch, or
+**＋** for any color they like. A color another player already has is taken.
 
 ### Seats
 

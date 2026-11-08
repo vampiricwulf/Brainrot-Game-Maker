@@ -11,6 +11,13 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Added
+
+- **½ Halve** and **0 Nullify** beside each player's wager in the Final's reveals: halve a wager (rounded down) or make it 0, for a house rule or a penalty. If the player is already judged, their points change with it, and `Ctrl+Z` puts it back.
+- Players can pick any color on their phone, not just one of the swatches: the **＋** swatch at the end opens a color picker. A color another player already has is still taken.
+
 ## 2026-11-06
 
 ### Changed

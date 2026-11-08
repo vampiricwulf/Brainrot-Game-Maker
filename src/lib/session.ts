@@ -1207,6 +1207,26 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
   return true;
 }
 
+/**
+ * The host halves a player's Final wager (rounded down) or makes it 0, at any point in the reveals. Once they're
+ * judged, their points follow: the verdict is given again with the new wager (one score change, replacing the old).
+ */
+export function finalAdjustWager(session: Session, game: Game, playerId: string, how: 'half' | 'zero'): boolean {
+  const f = session.final;
+  if (!f || session.finalStep !== 'reveal' || !hasWager(f, playerId)) return false;
+  const was = f.wagers[playerId]!;
+  const now = how === 'half' ? Math.floor(was / 2) : 0;
+  if (now === was) return false;
+  const shown = f.shown[playerId];
+  // (A phone's wager stays marked as one, so in one window its amount stays hidden until it's shown.)
+  finalSetWager(session, playerId, now, wagerFromPhone(f, playerId) ? 'phone' : 'host', f.wagerBy?.[playerId]);
+  // (A shown wager stays shown: the new amount is what viewers see.)
+  if (shown) f.shown[playerId] = true;
+  const result = f.results[playerId];
+  if (result) finalJudge(session, game, playerId, result === 'right');
+  return true;
+}
+
 // ---------- End of game ----------
 
 /** Players tied for the lead (empty if there's a single leader). */

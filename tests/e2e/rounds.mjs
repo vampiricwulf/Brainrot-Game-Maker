@@ -282,6 +282,24 @@ try {
   await page.keyboard.press('c');
   await goOnCheck(page).waitFor({ state: 'detached' });
   assert((await spot()) === first && (await revealMain()).startsWith('Next player'), 'C in the check judges them and closes it, the spotlight staying on them');
+  // Already judged, their wager can still be halved or made 0 in their row, and their points follow.
+  const row = page.locator('.fj .pl.cur');
+  const wagerOf = async () => Number((await row.locator('.cell.sw').innerText()).match(/wager\D*([\d,]+)/)[1].replace(/,/g, ''));
+  const plate = page.locator('.stage-box .plate', { hasText: first }).locator('.score');
+  const pts = async () => Number((await plate.innerText()).replace(/[^\d-]/g, ''));
+  const [w0, s0] = [await wagerOf(), await pts()];
+  await row.getByRole('button', { name: `Halve wager: ${first}` }).click();
+  const [w1, s1] = [await wagerOf(), await pts()];
+  await row.getByRole('button', { name: `Nullify wager: ${first}` }).click();
+  const [w2, s2] = [await wagerOf(), await pts()];
+  assert(
+    w1 === Math.floor(w0 / 2) && s1 === s0 - (w0 - w1) && w2 === 0 && s2 === s0 - w0 && (await row.getByRole('button', { name: `Halve wager: ${first}` }).count()) === 0,
+    `½ Halve and 0 Nullify change a judged player's wager and points (${w0}/${s0} → ${w1}/${s1} → ${w2}/${s2})`,
+  );
+  // Two Ctrl+Z put back their wager and their points.
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(([p, n]) => [...document.querySelectorAll('.stage-box .plate')].find((x) => x.textContent.includes(p))?.querySelector('.score')?.textContent.replace(/[^\d-]/g, '') === String(n), [first, s0]);
   await page.keyboard.press('n');
   await page.waitForFunction((f) => document.querySelector('.fj .pl.cur .name')?.textContent !== f, first);
   assert((await page.locator('.fj [data-finish-early]').count()) === 1, 'the next one’s wager not up yet: the quiet Finish now… for finishing early is there');

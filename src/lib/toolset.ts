@@ -632,6 +632,8 @@ export function undoAction(session: Session, game?: Game): ActionEvent | null {
   if (ids.size) {
     session.scoreLog = session.scoreLog.filter((x) => !ids.has(x.id));
     session.redoStack = session.redoStack.filter((id) => !ids.has(id));
+    // A change that replaced an earlier one (a Final verdict given again) brings that one back.
+    for (const x of score) if (x.replaces) for (const y of session.scoreLog) if (y.id === x.replaces) y.undone = false;
   }
   session.actionRedo ??= [];
   session.actionRedo.push({ ...e, after, score: score.length ? score : undefined });
@@ -643,7 +645,11 @@ export function redoAction(session: Session, game?: Game): ActionEvent | null {
   if (!e?.after) return null;
   const before = partsOf(capture(session, game), Object.keys(JSON.parse(e.after)));
   restore(session, e.after, game);
-  if (e.score?.length) session.scoreLog.push(...e.score.map((x) => ({ ...x })));
+  if (e.score?.length) {
+    // (What they replaced stops counting again.)
+    for (const x of e.score) if (x.replaces) for (const y of session.scoreLog) if (y.id === x.replaces) y.undone = true;
+    session.scoreLog.push(...e.score.map((x) => ({ ...x })));
+  }
   session.actionLog ??= [];
   session.actionLog.push({ ...e, before, after: undefined });
   return e;

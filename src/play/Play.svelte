@@ -56,7 +56,7 @@
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, partnerTilesShort, phoneUses, phoneUsesLine, validate } from '../lib/validate';
   import type { Place } from '../lib/historylabel';
-  import { isColorTaken, nextFreeColor, obsKeyed, PLAYER_PALETTE } from '../lib/colors';
+  import { isColorTaken, nextFreeColor, obsKeyed } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { keyedRoundColors, keyedThemeColors, otherStageKey, roundStageColors, STAGE_KEYS } from '../lib/theme';
   import ToolLauncher from './host/ToolLauncher.svelte';
@@ -1596,7 +1596,8 @@
   function roomColor({ seatId, color }: { seatId: string; color: string }): void {
     if (!phonesOn || game.settings.phoneColorsOff || teamsOn(game.settings)) return;
     const p = session.players.find((x) => x.id === seatId);
-    if (!p || p.color.toLowerCase() === color || !PLAYER_PALETTE.includes(color)) return;
+    // (Any color: a palette one, or one picked with the phone's own color picker.)
+    if (!p || p.color.toLowerCase() === color || !/^#[0-9a-f]{6}$/.test(color)) return;
     if (isColorTaken(color, session.players.filter((x) => x.id !== seatId).map((x) => x.color))) return;
     // (Not an undo step: Ctrl+Z is the host's, for what they did.)
     p.color = color;

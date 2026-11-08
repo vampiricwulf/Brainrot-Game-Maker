@@ -5,14 +5,14 @@ import { MAX_POINTS, migrateGame, newFinalRound, newGame, newId, newRound, textS
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
-  applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, forgetRedo, roundComplete, score, setScore, toggleEvent, undo,
+  applyScore, answerShowing, backToBoard, ddCap, finalAdjustWager, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, forgetRedo, roundComplete, score, setScore, toggleEvent, undo,
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
   finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
   blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown, finalTakeNewcomers, finalReached, reveal, unreveal,
   finalShowAnswer, typedAnswer, finalRevealNow,
 } from './session';
-import { finalNextStep, redoAction, revealStep, undoAction } from './toolset';
+import { finalNextStep, logged, redoAction, revealStep, undoAction } from './toolset';
 import { newRpgRound } from './rpg';
 import { applyAction } from './tools';
 
@@ -108,6 +108,41 @@ describe('flow', () => {
     game.rounds.splice(1); // no Final round
     goToRound(session, game, 1);
     expect(session.phase).toBe('end');
+  });
+
+  it('halves or zeroes a Final wager in the reveals, and the points of a player already judged follow', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a], 1000, 'x');
+    applyScore(session, game, [b], 400, 'x');
+    goToRound(session, game, 1);
+    session.final!.wagers[a] = 601;
+    session.final!.wagers[b] = 400;
+    expect(finalAdjustWager(session, game, a, 'half')).toBe(false); // not in the reveals yet
+    finalNext(session, game);
+    finalNext(session, game);
+    finalNext(session, game);
+    expect(finalAdjustWager(session, game, a, 'half')).toBe(true);
+    expect(session.final!.wagers[a]).toBe(300);
+    session.final!.wagerFrom = { [b]: 'phone' };
+    finalAdjustWager(session, game, b, 'half');
+    expect([session.final!.wagers[b], session.final!.wagerFrom?.[b]]).toEqual([200, 'phone']);
+    session.final!.wagers[b] = 400;
+    finalJudge(session, game, a, true);
+    finalJudge(session, game, b, false);
+    expect([score(session, a), score(session, b)]).toEqual([1300, 0]);
+    expect(finalAdjustWager(session, game, b, 'zero')).toBe(true);
+    expect(score(session, b)).toBe(400);
+    expect(session.final!.results[b]).toBe('wrong');
+    expect(finalAdjustWager(session, game, b, 'zero')).toBe(false); // already 0
+    expect(finalAdjustWager(session, game, a, 'half')).toBe(true);
+    expect(score(session, a)).toBe(1150);
+    // Undo puts back the wager and the points it had; redo halves them again.
+    logged(session, 'halve', () => void finalAdjustWager(session, game, a, 'half'), game);
+    expect([session.final!.wagers[a], score(session, a)]).toEqual([75, 1075]);
+    undoAction(session, game);
+    expect([session.final!.wagers[a], score(session, a)]).toEqual([150, 1150]);
+    redoAction(session, game);
+    expect([session.final!.wagers[a], score(session, a)]).toEqual([75, 1075]);
   });
 
   it('goes through Final Jeopardy with wagers and a per-player reveal', () => {
