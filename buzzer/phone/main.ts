@@ -12,7 +12,9 @@
  *
  * Wagers: while the host takes them (a Daily Double, a Final), the player's own box replaces the buzzer; what they send
  * goes to the host only. Their view says what's in (and once locked, what was locked in). The same for a ✍ clue's
- * answer box, or its multiple choices (a button each, sent as soon as one is tapped).
+ * answer box, or its multiple choices (a button each, sent as soon as one is tapped). An answer may take a few lines:
+ * on a phone the keyboard's Enter starts a new one and Send answer sends; with a keyboard (`fine`) Enter sends and
+ * Shift+Enter starts a line (Ctrl+Enter sends everywhere). The box grows with them, then scrolls.
  *
  * Private cards (cardpanel.ts): a card the host sent to this phone takes the buzzer's place while nobody buzzes (a
  * partner clue greys every phone's button, status.off), behind "Tap to see". The page tells the room once it was seen.
@@ -21,7 +23,7 @@
  * in or another button Tab took the keys to, the number keys pick a seat, Esc goes back, and the page shows those keys
  * (and says when another window has them). A phone works as it always has.
  */
-import { isRoomCode, MAX_PHONES, ROOM_ALPHABET, SETTING_UP, STARTS_SOON, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
+import { foldLines, isRoomCode, MAX_PHONES, ROOM_ALPHABET, SETTING_UP, STARTS_SOON, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
 import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type Hsv } from '../../src/lib/colormath';
 import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
@@ -828,6 +830,26 @@ function seenHeight(): number {
   return vv && Math.abs(vv.scale - 1) < 0.01 ? vv.height : innerHeight;
 }
 
+/**
+ * The answer box grows with what's typed: two lines at first, up to five (fewer above an on-screen keyboard: a third
+ * of what's in sight at most), then it scrolls.
+ */
+function growAnswer(): void {
+  const el = $<HTMLTextAreaElement>('answer-in');
+  if (el.hidden || $('answer-form').hidden) return;
+  const cs = getComputedStyle(el);
+  const line = parseFloat(cs.lineHeight) || 28;
+  const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  const border = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+  const most = Math.max(2, Math.min(5, Math.floor((seenHeight() / 3 - pad - border) / line)));
+  el.style.height = '';
+  // (scrollHeight: its lines and padding, never under its two rows; the box's height takes in the border too.)
+  const want = Math.max(el.scrollHeight, 2 * line + pad) + border;
+  const h = Math.min(want, most * line + pad + border);
+  el.style.height = `${Math.ceil(h)}px`;
+  el.style.overflowY = want > h + 1 ? 'auto' : 'hidden';
+}
+
 /** The on-screen keyboard is up over the answer box. */
 function keyboardUp(): boolean {
   return document.activeElement === $('answer-in') && seenHeight() < innerHeight - 150;
@@ -1389,16 +1411,17 @@ function renderBuzz(v: PhoneView): void {
   if (ans && !ans.open && v.statusOff && v.status) {
     // A partner clue's guess, locked (judged, or the answer is up): how it went, over what this seat sent.
     greyed = v.phase === 'lobby';
-    [cls, big, small] = ['off', v.status, ans.text ? `${team ? 'Your team’s guess' : 'Your guess'}: “${ans.text}”` : (v.statusSub ?? '')];
+    [cls, big, small] = ['off', v.status, ans.text ? `${team ? 'Your team’s guess' : 'Your guess'}: “${foldLines(ans.text)}”` : (v.statusSub ?? '')];
   } else if (ans && !ans.open) {
     // A ✍ clue whose answer is on screen: what this seat sent stays in sight (or that one is in, as for wagers). In the
-    // Final, the wager locked in first: the line shows 3 lines at most, so a long answer is what gets cut.
+    // Final, the wager locked in first: the line shows 3 lines at most, so a long answer is what gets cut (its own
+    // lines on one, " / " between them).
     const staked = wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
     const picked = pickLine(ans);
     [cls, big, small] = [
       'off',
       'Answers locked',
-      staked + (ans.text ? `${team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${ans.text}”`}` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent'),
+      staked + (ans.text ? `${team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${foldLines(ans.text)}”`}` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent'),
     ];
   } else if (wager?.mine) {
     // Locked: the question is up.
@@ -1828,10 +1851,26 @@ function drawState(id: 'answer-state' | 'wager-state', state: string, sending: b
   $(id).classList.toggle('unsent', !sending && state.startsWith('Not sent yet'));
 }
 
+/** Words on one line, spaces squeezed (whether anything is typed). */
+const flat = (s: string): string => s.replace(/\s+/g, ' ').trim();
+
+/**
+ * What's typed is what's in: the same lines, as the room keeps them (each trimmed, blank ones aside). From a room that
+ * puts an answer on one line (one from before), the same words.
+ */
+function sameAnswer(typed: string, sent: string): boolean {
+  const lines = (x: string) => x.split(/\r\n?|\n/).map(flat).filter(Boolean).join('\n');
+  return lines(typed) === lines(sent) || (!sent.includes('\n') && flat(typed) === flat(sent));
+}
+
+/** An answer sent, in its line: in quotes, its first lines as typed (three at most: the box under has them all). */
+const quoted = (text: string): string => `“${foldLines(text, 3)}”`;
+
 /** What's in with the host, or that the box holds something not sent yet (an edit not sent would read as sent). */
 function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string {
   const choices = !!a.choices?.length;
-  const typed = $<HTMLTextAreaElement>('answer-in').value.replace(/\s+/g, ' ').trim();
+  const box = $<HTMLTextAreaElement>('answer-in').value;
+  const typed = flat(box);
   if (!a.text) {
     // Typed, none sent yet (typing alone sends nothing). Seated after the answers began: one is in, but this phone isn't
     // shown it (as for wagers).
@@ -1841,7 +1880,7 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
       : '';
     return [unsent, hidden].filter(Boolean).join(' ');
   }
-  if (!choices && typed && typed !== a.text) return `${tap('Not sent yet: tap Change answer to send it.')} What the host has: “${a.text}”`;
+  if (!choices && typed && !sameAnswer(box, a.text)) return `${tap('Not sent yet: tap Change answer to send it.')} What the host has: ${quoted(a.text)}`;
   // (A partner clue's guess, nobody buzzing, is locked once the host judges it too.)
   const until = view?.statusOff ? 'judges it or shows the answer' : 'shows the answer';
   // Multiple choice: by its letter alone ("✔ Sent: B", "✔ Ann picked B for your team"): the lit button has its words,
@@ -1849,7 +1888,7 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
   const at = a.pick ? (a.choices ?? []).findIndex((c) => c.id === a.pick) : -1;
   if (at >= 0 && team && a.by) return `✔ ${a.byYou ? 'You' : a.by} picked ${letter(at)} for your team. You can change it until the host ${until}.`;
   if (at >= 0) return `✔ Sent: ${letter(at)}. You can change it until the host ${until}.`;
-  return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: “${a.text}”. You can change it until the host ${until}.`;
+  return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: ${quoted(a.text)}. You can change it until the host ${until}.`;
 }
 
 /** The letter of the choice at place `i`: A, B, C… */
@@ -1939,12 +1978,13 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   const key = `${a.id} ${a.text ?? ''}`;
   if (key !== answerFor) {
     const was = answerFor.startsWith(`${a.id} `) ? answerFor.slice(a.id.length + 1) : null;
-    if (was === null || document.activeElement !== inp || inp.value.replace(/\s+/g, ' ').trim() === was) inp.value = a.text ?? '';
+    if (was === null || document.activeElement !== inp || sameAnswer(inp.value, was)) inp.value = a.text ?? '';
     // (Back after a reload: what was typed and not sent.)
     const d = was === null && !choices ? loadDraft('answer', a.id) : '';
-    if (d && d.replace(/\s+/g, ' ').trim() !== a.text) inp.value = d;
+    if (d && !sameAnswer(d, a.text ?? '')) inp.value = d;
     answerFor = key;
   }
+  growAnswer();
   const state = answerState(a, team);
   drawState('answer-state', state, answerSending);
   // Green for what's in and shown; plain for "not shown here".
@@ -2192,6 +2232,8 @@ function drawDesk(): void {
   for (const id of ['answer-in', 'answer-choices'])
     if (fine.matches) $(id).setAttribute('aria-describedby', 'answer-keys');
     else $(id).removeAttribute('aria-describedby');
+  // A phone's keyboard: its Enter key starts a new line (Send answer sends). With a keyboard, Enter sends.
+  $('answer-in').setAttribute('enterkeyhint', fine.matches ? 'send' : 'enter');
 }
 drawDesk();
 // A tablet that gets a mouse, a laptop folded into a tablet: the words and hints follow.
@@ -2308,12 +2350,13 @@ $('clue-more').addEventListener('click', () => {
 $('clue').addEventListener('scroll', drawMore, { passive: true });
 // The screen turning or resized, and what's around the question changing size (a card opening, a box's notes): see
 // whether it still fits as it is (fitClue).
-addEventListener('resize', () => fitClue());
+addEventListener('resize', () => (growAnswer(), fitClue()));
 const aroundClue = new ResizeObserver(() => fitClue());
 for (const el of [$('cards'), $('wager-form'), $('answer-form'), document.querySelector('.side.foot')!]) aroundClue.observe(el);
 // The on-screen keyboard opening (or the phone turning): the answer box and its question fit what's in sight above it
 // (fitClue). Another box in use (a wager has no question above it) stays in the middle of it.
 window.visualViewport?.addEventListener('resize', () => {
+  growAnswer();
   fitClue();
   const el = document.activeElement;
   if (el === $('answer-in')) {
@@ -2372,9 +2415,10 @@ $('answer-choices').addEventListener('click', (e) => {
   send({ t: 'answer', id: a.id, pick });
   render();
 });
-// Enter sends (Shift+Enter: a new line).
+// With a keyboard Enter sends (Shift+Enter: a new line). On a phone its keyboard's Enter is a new line, and Send answer
+// sends. Ctrl+Enter (⌘+Enter) sends on either (a tablet with a keyboard).
 $('answer-in').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && (fine.matches || e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     $<HTMLFormElement>('answer-form').requestSubmit();
   }
@@ -2421,6 +2465,7 @@ $('new-back').addEventListener('click', (e) => {
 $('answer-in').addEventListener('input', () => {
   const a = view?.answer;
   if (a?.mine && a.open) saveDraft('answer', a.id, $<HTMLTextAreaElement>('answer-in').value);
+  growAnswer();
   if (a && !answerSending) drawState('answer-state', answerState(a, !!view?.teams), false);
 });
 $('wager-in').addEventListener('input', () => {

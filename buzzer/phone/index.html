@@ -120,7 +120,8 @@
             the label above while they're up (renderAnswer).
           -->
           <div id="answer-choices" role="group" hidden></div>
-          <textarea id="answer-in" rows="2" maxlength="200" autocomplete="off" enterkeyhint="send" dir="auto"></textarea>
+          <!-- (Lines: a phone keyboard's Enter key starts one, Send answer sends; with a keyboard Enter sends: main.ts drawDesk.) -->
+          <textarea id="answer-in" rows="2" maxlength="200" autocomplete="off" enterkeyhint="enter" dir="auto"></textarea>
           <button type="submit" class="primary" id="answer-send">Send answer</button>
           <!-- Desktop only (the hints with the "desk" class): the keys. -->
           <p id="answer-keys" class="note desk">Enter sends · Shift+Enter for a new line</p>
