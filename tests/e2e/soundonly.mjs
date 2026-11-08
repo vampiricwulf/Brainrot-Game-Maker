@@ -3,7 +3,8 @@
 // unseen, in one window and in the audience window; the host's media row plays, pauses and turns it up or down through
 // it as for any YouTube video. Players see the chosen stand-in: a time bar that runs over the part it plays ("0:12 /
 // 0:30", once its length is known), or nothing at all. A player that fails shows no card to viewers (the host's own
-// copy still offers it).
+// copy still offers it). Before YouTube says how long a video is, players see just the speaker. On a 🤫 card Sound only
+// isn't offered (a phone plays it in YouTube's own player).
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -32,25 +33,27 @@ async function back() {
   await guard();
 }
 
-// A stand-in YouTube player (tests have no internet): a 100 s video. It answers the app, keeps the commands it was
-// sent, and plays from 0:42 when told to. The video "failfail123" refuses to play (onError).
+// A stand-in YouTube player (tests have no internet): a 100 s video. As YouTube's own, it says everything it knows
+// (the video's length too) only in its first message, initialDelivery; each infoDelivery after holds only what changed.
+// It keeps the commands it was sent, and plays from 0:42 when told to. The video "failfail123" refuses to play
+// (onError); "nolength123" doesn't know its length until it plays.
 const YT = `<!doctype html><body style="margin:0;background:#c00"><script>
   const q = new URLSearchParams(location.search);
   const fails = location.pathname.endsWith('/failfail123');
+  const late = location.pathname.endsWith('/nolength123');
   window.__yt = { cmds: [] };
   const say = (m) => parent.postMessage(JSON.stringify(m), '*');
   addEventListener('message', (e) => {
     const d = JSON.parse(e.data);
     if (d.event === 'listening') {
       if (fails) return say({ event: 'onError', info: 153 });
-      const info = { playerState: 5, currentTime: Number(q.get('start') || 0), duration: 100, volume: 100, muted: false };
-      say({ event: 'initialDelivery', info });
+      say({ event: 'initialDelivery', info: { playerState: -1, currentTime: Number(q.get('start') || 0), duration: late ? 0 : 100, volume: 100, muted: false } });
       say({ event: 'onReady' });
-      say({ event: 'infoDelivery', info });
+      say({ event: 'infoDelivery', info: { playerState: 5 } });
     }
     if (d.event !== 'command' || d.func === 'addEventListener') return;
     window.__yt.cmds.push([d.func, ...(d.args || [])]);
-    if (d.func === 'playVideo') say({ event: 'infoDelivery', info: { playerState: 1, currentTime: 42 } });
+    if (d.func === 'playVideo') say({ event: 'infoDelivery', info: { playerState: 1, currentTime: 42, ...(late ? { duration: 100 } : {}) } });
     if (d.func === 'pauseVideo') say({ event: 'infoDelivery', info: { playerState: 2 } });
     if (d.func === 'setVolume') say({ event: 'infoDelivery', info: { volume: d.args[0] } });
   });
@@ -109,6 +112,12 @@ try {
   await canvasCard.locator('.badge', { hasText: '🔊 Sound only' }).waitFor();
   assert((await canvasCard.locator('.bar .t').innerText()) === '0:00 / 0:30', 'the editor shows it dimmed, badged Sound only, with the time bar players will see (the part it plays: 0:30)');
   assert((await page.locator('.layers').getByText('YouTube (sound only)').count()) >= 1 || (await page.getByText('YouTube (sound only)').count()) >= 1, 'its layer says sound only');
+  // (A copy of it, for a 🤫 card below.)
+  {
+    const r = await canvasCard.boundingBox();
+    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+  }
+  await page.keyboard.press('Control+c');
   await page.getByRole('button', { name: 'Done' }).click();
 
   // Clue 2: sound only, and players see nothing.
@@ -123,6 +132,31 @@ try {
   await page.locator('.tile').nth(2).click();
   await addYouTube('https://www.youtube.com/watch?v=failfail123');
   await insp.getByLabel('Sound only (hide the video)').check();
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  // Clue 4: sound only with a time bar, the whole of a video whose length YouTube says only once it plays.
+  await page.locator('.tile').nth(3).click();
+  await addYouTube('https://www.youtube.com/watch?v=nolength123');
+  await insp.getByLabel('Sound only (hide the video)').check();
+  await insp.getByLabel('Players see').selectOption('time');
+  assert((await page.locator('.canvas .card.dim .bar .t').innerText()) === '0:00 / –:––', 'the editor: a time bar with no Plays to shows its length unknown yet');
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  // A 🤫 card: Sound only is for slides (a phone plays a card's YouTube video in YouTube's own player), so it isn't
+  // offered there, and a sound only item pasted onto one shows as the video it is there.
+  await page.locator('.tile').nth(4).click();
+  const clueDialog = page.getByRole('dialog', { name: 'Edit clue' });
+  await clueDialog.locator('select').first().selectOption('partner');
+  await clueDialog.getByRole('tab', { name: '🤫 Card 1' }).click();
+  await clueDialog.getByText('🤫 CARD 1 · ONLY WHO YOU SEND IT TO SEES IT').waitFor();
+  await page.locator('.canvas').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Control+v');
+  await page.locator('.canvas .card').waitFor();
+  assert((await page.locator('.canvas .card.dim, .canvas .badge').count()) === 0, 'a card: a sound only item pasted on it shows no Sound only badge');
+  assert((await insp.getByLabel('Sound only (hide the video)').count()) === 0 && (await insp.getByLabel('Players see').count()) === 0, 'its Inspector offers no Sound only');
+  assert((await insp.getByText('On a 🤫 card it plays in YouTube’s own player').count()) === 1, 'and says a card’s YouTube video plays in YouTube’s own player');
+  assert((await page.getByText('YouTube (sound only)').count()) === 0, 'and its layer and the item bar call it just YouTube');
+  await clueDialog.locator('select').first().selectOption('standard');
   await page.getByRole('button', { name: 'Done' }).click();
 
   await playWithPlayers(page, 1);
@@ -156,6 +190,21 @@ try {
   assert((await page.locator('.mc').getByRole('button', { name: /Open on YouTube/ }).count()) === 1, "the host's media row offers it on YouTube");
   await back();
 
+  // Its length not known yet: players see just the speaker (never "0:00 / 0:00"); once it plays, the bar.
+  await page.locator('.board .tile').nth(3).click();
+  await page.locator(`${one} iframe`).waitFor({ state: 'attached' });
+  await page.locator(`${one} .spk`).waitFor();
+  await page.waitForTimeout(300);
+  assert(
+    (await page.locator(`${one} .bar`).count()) === 0 && !(await page.locator(one).innerText()).includes('0:00'),
+    'its length not known yet: players see just the speaker, no time bar',
+  );
+  await page.locator('.mc').getByRole('button', { name: 'Play' }).click();
+  await page.locator(`${one} .bar .t`, { hasText: '0:42 / 1:40' }).waitFor();
+  assert(true, 'once YouTube says how long it is, the time bar (0:42 / 1:40)');
+  await page.locator('.mc').getByRole('button', { name: 'Pause' }).click();
+  await back();
+
   // Dual-window mode: the audience window plays it unseen; the host's copy is silent.
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
   aud.on('pageerror', (e) => errors.push('[audience] ' + e.message));
@@ -178,8 +227,8 @@ try {
   assert(!(await cmds(page, one)).includes('unMute'), "the host's copy stays silent");
   // The host's copy: its speaker bar plays and pauses it too (as a sound's speaker does).
   await guard();
-  await page.locator(`${one} button.bar`).click();
   const before = (await cmds(aud, full)).filter((c) => c === 'playVideo').length;
+  await page.locator(`${one} button.bar`).click();
   assert(
     await (await player(aud, full)).waitForFunction((n) => window.__yt.cmds.filter((c) => c[0] === 'playVideo').length > n, before, { timeout: 5000 }).then(() => true, () => false),
     "clicking the time bar on the host's stage plays it in the audience window",
