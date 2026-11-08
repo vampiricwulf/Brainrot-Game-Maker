@@ -18,7 +18,7 @@ Press **▶ Play** to open the pre-game screen. Everything you set here is saved
 
 ### Rules
 
-**⚖ Game rules** holds scoring, the most players, timers and the round intro. Mid-game, open it from **⚖ Rules** in the
+**⚖ Game rules** holds scoring, the wager limit, the most players, timers and the round intro. Mid-game, open it from **⚖ Rules** in the
 host panel.
 
 ### Before you start
@@ -113,7 +113,9 @@ tile playable.
 
 ### Daily Doubles
 
-Pick who found it, type the wager (or press **True Daily Double**), then `Enter` or **Show question ▶**.
+Pick who found it, type the wager (or press **True Daily Double**), then `Enter` or **Show question ▶**. A wager goes
+up to the player's score, or up to $2,000 if they have less (at $0 or below too; the $2,000 is set in ⚖ Game rules).
+Tick **Ignore the limit** to take any wager this time.
 
 ### Partner clues
 
@@ -133,7 +135,8 @@ Everyone types an answer on their phone (or taps a multiple choice); only you se
 ### Final Jeopardy
 
 First the wagers: players send theirs from their phone, or you type them in. Untick a player who sits out (players
-with no points sit out until you tick them). Then the blue button walks through it: **Show question ▶**,
+with no points sit out until you tick them). Wagers go up to the player's score, or $2,000 if they have less, as on
+a Daily Double; **Ignore the limits** takes any wager for this Final. Then the blue button walks through it: **Show question ▶**,
 **👁 Reveal answer**, **Start player reveals ▶**, then for each player **Show answer ▶**, **Show wager ▶** and
 **Next player ▶**, and finally **Finish game ▶**. Judge each player with **✔ Right** (`C`) or **✘ Wrong** (`X`).
 **Finish now…** ends early.
@@ -200,7 +203,7 @@ locks out the whole team. A room holds up to 24 phones.
 ### Wagers and answers on phones
 
 On a Daily Double or Final, players type their wager on their phone; it fills your wager box (marked 📱) and only you
-see it. In a Final they type their answer too.
+see it. The phone shows their max and won't send more (unless you ticked Ignore the limit). In a Final they type their answer too.
 
 A typed answer can take a few lines (8 at most): on a phone the keyboard's Enter key starts a new line and **Send
 answer** sends it; on a computer Enter sends and Shift+Enter starts a new line. The answers list and the Final's reveal

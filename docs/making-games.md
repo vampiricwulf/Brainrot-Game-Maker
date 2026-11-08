@@ -43,6 +43,8 @@ video, audio or YouTube, arranged freely.
   answers, or Empty tile.
 - **Partner clues** are for two players without buzzers, with an optional steal on a miss. Place them by hand or at
   random. Their less common settings are under **▸ More rules**.
+- **Wagers** (Daily Doubles and the Final) go up to the player's score, or up to $2,000 if they have less. Change the
+  $2,000 to suit your point values in **⚖ Game rules** on the play screen: “Wagers go up to their score, or at least”.
 
 ## The slide editor
 

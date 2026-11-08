@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- Wagers have a limit again by default: on a Daily Double or in the Final a player can wager up to their score, or up to $2,000 if they have less (at $0 or below too). A player with $3,500 can wager $3,500; one with $500 or −$300 can wager $2,000. The $2,000 is a game setting in **⚖ Game rules** (“Wagers go up to their score, or at least”), for games with other point values; older games get $2,000. A Daily Double no longer goes by the round's top value. **Ignore the limit(s)** still lets you take any wager, but starts unticked on each Daily Double and Final, and phones show each player's max and refuse more.
+
 ## 2026-11-08
 
 ### Added

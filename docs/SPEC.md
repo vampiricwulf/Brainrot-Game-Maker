@@ -872,11 +872,11 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 2. Host clicks a tile. It zoom-transitions to the **Question slide**. A clue can have several question slides (a
    lead-in, then more): `N` / **Next slide ▶** goes through them before the answer, and viewers see small dots for
    where they are.
-   - *Daily Double*: DD splash, then a wager input for the chosen player (not limited by default; the host can turn on the max(score, highest round value) limit), then the question.
+   - *Daily Double*: DD splash, then a wager input for the chosen player (up to max(score, the game's wager floor, $2,000 by default); Ignore the limit, unticked on each Daily Double, takes any wager), then the question.
      The ⭐ box's first row is “Daily Double! Who found it?” and the players; its Wager row holds the Wager box, Ignore the
      limit and True Daily Double, then the max's words, cut short where the row is narrow. **Show question ▶** is the
      blue button's (`N`, or `Enter` in the Wager box), never greyed: with who found it or the wager missing, below 0 or
-     over the max, it keeps the keys in the Wager box and says what to do (“Type a wager (Ann can wager up to $1,000), or
+     over the max, it keeps the keys in the Wager box and says what to do (“Type a wager (Ann can wager up to $2,000), or
      True Daily Double”; “Waiting on Ann's phone: type their wager here if it doesn't come”). It opens at its top, the
      keys in the Wager box: in one window on a laptop the heading, the players and the Wager row are in view while the
      panel keeps the board's height.
@@ -1301,7 +1301,7 @@ checked by Vitest; **manual** = not automated yet.
 | Display | Dual-window and single-window, toggleable live |
 | Rounds | Any number of rounds + optional Final |
 | Mechanics | Daily Doubles, negative scores/deductions, Final wagers, timers |
-| Daily Double cap | TV rules (max(score, highest board value)), host can override |
+| Wager cap | Daily Doubles and the Final: max(score, the game's wager floor, $2,000 unless ⚖ Game rules says otherwise), held by default; the host can tick Ignore the limit(s) |
 | Wheel/dice results | General-purpose outcomes (punishments, dares, prompts, numbers) with optional details/media/timer. Score actions are a rare, optional extra, always host-confirmed. |
 | Who goes first | One-click roll-off (a die per player, in their color; ties re-roll). The winner becomes the current picker. |
 | Punishment tracking | Roll log only (optional player tag). No on-stream tally or active-effect badges. |
