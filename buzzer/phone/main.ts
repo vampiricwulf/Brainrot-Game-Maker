@@ -23,7 +23,7 @@
  * in or another button Tab took the keys to, the number keys pick a seat, Esc goes back, and the page shows those keys
  * (and says when another window has them). A phone works as it always has.
  */
-import { foldLines, isRoomCode, MAX_PHONES, ROOM_ALPHABET, SETTING_UP, STARTS_SOON, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
+import { ANSWER_LINES, cleanAnswer, foldLines, isRoomCode, MAX_PHONES, ROOM_ALPHABET, SETTING_UP, STARTS_SOON, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
 import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type Hsv } from '../../src/lib/colormath';
 import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
@@ -1858,13 +1858,18 @@ function drawState(id: 'answer-state' | 'wager-state', state: string, sending: b
 const flat = (s: string): string => s.replace(/\s+/g, ' ').trim();
 
 /**
- * What's typed is what's in: the same lines, as the room keeps them (each trimmed, blank ones aside). From a room that
- * puts an answer on one line (one from before), the same words.
+ * What's typed is what's in: the same lines, as the room keeps them (cleaned as the room cleans them, so lines past
+ * ANSWER_LINES joined and invisible characters gone; blank ones aside). From a room that puts an answer on one line
+ * (one from before), the same words.
  */
 function sameAnswer(typed: string, sent: string): boolean {
   const lines = (x: string) => x.split(/\r\n?|\n/).map(flat).filter(Boolean).join('\n');
-  return lines(typed) === lines(sent) || (!sent.includes('\n') && flat(typed) === flat(sent));
+  const kept = cleanAnswer(typed);
+  return lines(kept) === lines(sent) || (!sent.includes('\n') && flat(kept) === flat(sent));
 }
+
+/** The box holds as many lines as the room keeps (ANSWER_LINES): one more would only be joined onto the last. */
+const answerFull = (box: HTMLTextAreaElement): boolean => cleanAnswer(box.value).split('\n').length >= ANSWER_LINES;
 
 /** An answer sent, in its line: in quotes, its first lines as typed (three at most: the box under has them all). */
 const quoted = (text: string): string => `“${foldLines(text, 3)}”`;
@@ -2424,6 +2429,9 @@ $('answer-in').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && (fine.matches || e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     $<HTMLFormElement>('answer-form').requestSubmit();
+  } else if (e.key === 'Enter' && !e.isComposing && answerFull(e.currentTarget as HTMLTextAreaElement)) {
+    // (No line past the last the host gets: what's typed is what's sent.)
+    e.preventDefault();
   }
 });
 $('sound').addEventListener('click', () => {

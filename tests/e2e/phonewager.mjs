@@ -372,6 +372,19 @@ try {
   // with them.
   const ansBox = ann.locator('#answer-in');
   const boxH = () => ansBox.evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  // As many lines as the host gets (8) and no more: Enter there makes none. Nine pasted in send as the room keeps
+  // them (the last two on one line), and the phone says ✔ Sent, not “Not sent yet”, though the box still has nine.
+  await ansBox.fill('1\n2\n3\n4\n5\n6\n7\n8');
+  await ansBox.press('End');
+  await ansBox.press('Enter');
+  assert((await ansBox.inputValue()) === '1\n2\n3\n4\n5\n6\n7\n8', `at 8 lines a phone's Enter makes no 9th (${JSON.stringify(await ansBox.inputValue())})`);
+  await ansBox.fill('1\n2\n3\n4\n5\n6\n7\n8\n9');
+  await ansBox.press('Control+Enter');
+  await ann.locator('#answer-state').getByText('✔ Sent:').waitFor();
+  assert(
+    (await ansBox.evaluate((e) => document.activeElement === e)) && !(await ann.locator('#answer-state').innerText()).includes('Not sent yet'),
+    `nine lines sent from the box (still in it): ✔ Sent, not “Not sent yet” (${await ann.locator('#answer-state').innerText()})`,
+  );
   await ansBox.fill('Alexander');
   const oneLineH = await boxH();
   await ansBox.press('Enter');
