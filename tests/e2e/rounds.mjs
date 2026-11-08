@@ -214,35 +214,43 @@ try {
   // No "Lock category, take wagers" step: the category is up and the wager screen with it, who plays on the same screen.
   assert((await page.getByRole('button', { name: /Lock category|take wagers/ }).count()) === 0, 'the Final opens straight on its wager screen (no lock step)');
   assert((await page.locator('.panel .status').innerText()).includes('Category on screen · taking wagers'), 'the status line says the category is up and wagers are being taken');
-  // This Final lets players with $0 play: a wager of $0 is filled in for them, and Show question waits on no one else.
+  // This Final lets players with $0 play: they can wager up to $2,000 (their score, or $2,000 if they have less), so
+  // nothing is filled in for them and Show question waits on them too.
   const wagerBoxes = page.locator('.fj .wagers input[data-wager]');
   const plays = page.locator('.fj .wagers input[data-plays]');
   const showQuestion = mainButton(page, 'Show question ▶');
   const limits = page.getByLabel('Ignore the limits');
-  const zeroes = page.locator('.fj .wagers .chip').filter({ hasText: 'can only wager $0' });
   /** The wager screen's own line saying whose wager it waits on (none: every wager is fine). */
   const waiting = page.locator('.fj .row .muted', { hasText: /^(Waiting on|Not a whole number|Over the max)/ });
-  assert(await limits.isChecked(), 'the limits are ignored by default');
+  assert(!(await limits.isChecked()), 'the limits hold by default (Ignore the limits unticked)');
   assert(
-    (await plays.count()) === 2 && (await Promise.all([0, 1].map((i) => wagerBoxes.nth(i).inputValue()))).join('|') === '|0',
-    'each player’s row has its plays tick and its wager box; a player at $0 gets $0 filled in',
+    (await plays.count()) === 2 && (await Promise.all([0, 1].map((i) => wagerBoxes.nth(i).inputValue()))).join('|') === '|',
+    'each player’s row has its plays tick and its wager box; a player at $0 gets nothing filled in',
+  );
+  const tips = await Promise.all([0, 1].map((i) => wagerBoxes.nth(i).getAttribute('title')));
+  assert(
+    tips.every((t) => t === 'Max $2,000 (their score, or $2,000 if they have less)') && (await page.locator('.fj [data-wager-rule]').innerText()) === '(max: their score, or $2,000)',
+    `both can wager up to $2,000 (one has less, one is at $0): their boxes say so, and the line by Ignore the limits says the rule (${tips.join(' | ')})`,
   );
   // Show question ▶ is never greyed: pressed with a wager missing, the keys go to its box and the status line says whose.
-  assert((await showQuestion.isEnabled()) && (await waiting.count()) === 1, 'Show question still waits for the player who can wager more, never greyed');
+  assert((await showQuestion.isEnabled()) && (await waiting.count()) === 1, 'Show question waits for the wagers, never greyed');
   await showQuestion.click();
-  await page.locator('.toast', { hasText: /Waiting on .+: type their wager, or Sits out/ }).waitFor();
+  await page.locator('.toast', { hasText: /Waiting on .+: type their wagers, or Sits out/ }).waitFor();
   assert(
     (await wagerBoxes.first().evaluate((b) => b === document.activeElement)) && (await page.locator('.panel .status').innerText()).includes('taking wagers') && (await goOnCheck(page).count()) === 0,
     'pressed with a wager missing: the keys go to its box, no check, the question not up',
   );
   await wagerBoxes.first().fill('100');
-  assert((await waiting.count()) === 0, 'and nobody at $0 holds it up');
+  assert((await waiting.count()) === 1, 'the player at $0 still holds it up: they have something to wager');
   await wagerBoxes.nth(1).fill('50');
-  assert((await waiting.count()) === 0, 'more than a player’s score is fine while the limits are ignored (the default)');
-  await limits.uncheck();
-  assert((await zeroes.count()) === 1 && (await waiting.count()) === 1, 'with the limits on, a player at $0 can only wager $0 and $50 is over their max');
+  assert((await waiting.count()) === 0, 'a player at $0 can wager $50 (up to $2,000)');
+  await wagerBoxes.nth(1).fill('2001');
+  assert((await waiting.count()) === 1 && (await waiting.innerText()).startsWith('Over the max'), 'over $2,000 is over their max with the limits on');
   await limits.check();
-  assert((await waiting.count()) === 0, 'and ignored again, it goes');
+  assert((await waiting.count()) === 0 && (await page.locator('.fj [data-wager-rule]').innerText()) === '(any wager goes)', 'ticking Ignore the limits lets it go (“any wager goes”)');
+  await limits.uncheck();
+  await wagerBoxes.nth(1).fill('50');
+  assert((await waiting.count()) === 0, 'and back within the max, it goes with the limits on');
   // Ticking a player out on the wager screen drops their box (they sit out); ticked back in, their wager is still there.
   await plays.nth(1).uncheck();
   assert((await wagerBoxes.count()) === 1 && (await page.locator('.fj .wagers .wrow.out').innerText()).includes('sits out'), 'a player ticked out sits out: no wager box');

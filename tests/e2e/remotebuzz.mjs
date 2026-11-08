@@ -725,6 +725,8 @@ try {
   await plays.first().waitFor();
   // One player plays it, with a phone in a room too old for answers: the panel says they answer out loud.
   for (let i = 1; i < (await plays.count()); i++) await plays.nth(i).uncheck();
+  // (On $0 they could wager up to $2,000: the host types their $0.)
+  await page.locator('.fj .wagers input[data-wager]').first().fill('0');
   await say({ t: 'phones', phones: [{ conn: 'c1', seatId: (await state()).seats[0].id, connected: true }] });
   const outLoud = page.locator('.fj').getByText('This buzzer server can’t take answers from phones (it’s an older one): players answer out loud.');
   await mainButton(page, 'Show question ▶').click();

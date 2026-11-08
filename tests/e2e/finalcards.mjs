@@ -453,13 +453,10 @@ try {
   await ann.locator('#wager-in').fill('300');
   await ann.locator('#wager-send').click();
   await host.locator('[data-phone-wager="p1"]', { hasText: 'from phone' }).waitFor();
-  // (Bob and Cat, on $0, have nothing to wager: each has a 0 filled in, which their phone can still replace. The host
-  // clears both, so the wagers wait on them.)
+  // (Bob and Cat, on $0, can wager up to $2,000: nothing is filled in for them, so the wagers wait on them.)
   const bobBox = host.locator('.fj input[data-wager="p2"]');
   const catBox = host.locator('.fj input[data-wager="p3"]');
-  assert((await bobBox.inputValue()) === '0' && (await catBox.inputValue()) === '0', 'Bob and Cat, with nothing to wager on $0, each have a 0 filled in');
-  await bobBox.fill('');
-  await catBox.fill('');
+  assert((await bobBox.inputValue()) === '' && (await catBox.inputValue()) === '', 'Bob and Cat on $0 have no 0 filled in: they can wager up to $2,000');
   await host.locator('.fj [data-wagers-line]', { hasText: 'Waiting on Bob’s phone & Cat’s phone' }).waitFor();
   // A click on the stage never shows the Final's question: the status line says who it waits on (names only).
   const note = host.locator('.panel .status [data-click-note]');

@@ -1091,10 +1091,10 @@ await page.locator('.dd input[type=number]').fill('99999');
 const ddLimit = page.locator('.dd').getByLabel('Ignore the limit');
 // (Show question ▶ is the blue button only: the box's Wager row ends with True Daily Double.)
 assert(
-  (await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()) && (await stepButton(page.locator('.panel .dd')).count()) === 0,
-  'the limit is ignored by default: a wager over the cap goes (Show question ▶ only on the blue button)',
+  !(await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()) && (await stepButton(page.locator('.panel .dd')).count()) === 0,
+  'the limit holds by default: Ignore the limit unticked (Show question ▶ only on the blue button)',
 );
-await ddLimit.uncheck();
+assert(/^Max \$[\d,]+ \(their score, or \$2,000 if they have less\)$/.test(await page.locator('.dd .max').innerText()), `the box says the max and the rule (${await page.locator('.dd .max').innerText()})`);
 // With the limit on, a wager over the cap stays: the blue button is never greyed; pressed, the keys stay in the Wager box
 // and the status line says why.
 assert(await mainButton(page, 'Show question ▶').isEnabled(), 'with the limit on, the blue Show question ▶ is still not greyed');

@@ -292,8 +292,13 @@ try {
   await scoreAsk.waitFor({ state: 'detached' });
   assert((await plate3.locator('.score').innerText()) === '−$200', 'a score typed as “−$200” reads (a symbol and a minus sign around the number)');
   const row3 = page.locator('.fj .wagers .wrow', { hasText: 'Player 3' });
-  const tip3 = await row3.locator('input[data-wager]').getAttribute('title');
-  assert(tip3 === 'No limit now (their score: −$200)', `the wager box of a player below 0 says their real score in its tooltip (${tip3})`);
+  const tip = () => row3.locator('input[data-wager]').getAttribute('title');
+  const tip3 = await tip();
+  assert(tip3 === 'Max $2,000 (their score, or $2,000 if they have less)', `the wager box of a player below 0 says they can wager up to $2,000 (${tip3})`);
+  await page.getByLabel('Ignore the limits').check();
+  const tip3off = await tip();
+  assert(tip3off === 'No max now (their score: −$200)', `with the limits ignored, it says their real score in its tooltip (${tip3off})`);
+  await page.getByLabel('Ignore the limits').uncheck();
   // (Back to $400 the same way, before the wagers.)
   await plate3.click({ button: 'right', force: true });
   await page.getByRole('menuitem', { name: '✎ Set the score…' }).click();
@@ -318,6 +323,8 @@ try {
     `a wager typed is a step, a change says from what to what (${wagerSteps.slice(0, 2).join(' | ')})`,
   );
   await page.keyboard.press('Escape');
+  // (The limits ignored for this Final: below, the reveals take a wager up to the most points. They stay so through it.)
+  await page.getByLabel('Ignore the limits').check();
   await mainButton(page, 'Show question ▶').click();
   await mainButton(page, '👁 Reveal answer').click();
   await mainButton(page, 'Start player reveals ▶').click();
@@ -437,11 +444,12 @@ try {
   assert((await wagerBoxes.count()) === 2 && (await wrows.filter({ hasText: 'Player 3' }).locator('input[data-wager]').count()) === 0, '↶ Undo on the wager screen brings Player 3 back into the game, not into the Final');
   await p2.getByRole('button', { name: '↷ Redo' }).click();
   await p2.waitForFunction(() => document.querySelectorAll('.fj .wagers .wrow').length === 2);
-  // (Players 1 and 2 at $0 wager 0, filled in: every wager is in. The blue Show question ▶ is never greyed: what would
-  // wait is the wager screen's own “Waiting on …” line.)
+  // (Players 1 and 2 at $0 can wager up to $2,000: their wagers are still to come. The blue Show question ▶ is never
+  // greyed: what waits is the wager screen's own “Waiting on …” line, and it names only them.)
+  const waitLine = p2.locator('.fj .row .muted', { hasText: /^Waiting on/ });
   assert(
-    (await mainButton(p2, 'Show question ▶').isEnabled()) && (await wagerBoxes.count()) === 2 && (await p2.locator('.fj .row .muted', { hasText: /^Waiting on/ }).count()) === 0,
-    '↷ Redo takes them out again, and Show question ▶ is there to press (nothing waits on Player 3)',
+    (await mainButton(p2, 'Show question ▶').isEnabled()) && (await wagerBoxes.count()) === 2 && (await waitLine.innerText()) === 'Waiting on Player 1 & Player 2',
+    `↷ Redo takes them out again, and Show question ▶ is there to press (nothing waits on Player 3: ${await waitLine.innerText()})`,
   );
   await ctx2.close();
 

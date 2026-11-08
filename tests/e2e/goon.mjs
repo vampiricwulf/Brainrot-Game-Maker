@@ -355,7 +355,10 @@ try {
     if (await page.locator('.stage-box .title-card').count()) await page.keyboard.press('n');
     await page.locator('.fj .wagers').waitFor();
     const status = (t) => page.locator('.panel .status', { hasText: t }).waitFor();
-    // (Their $0 wagers are in: N shows the question, the answer, the reveals, then the first one's wager.)
+    // (Everyone on $0 could wager up to $2,000; each wagers $0 here: N shows the question, the answer, the reveals,
+    // then the first one's wager.)
+    const zeroBoxes = page.locator('.fj .wagers input[data-wager]');
+    for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill('0');
     await page.keyboard.press('n');
     await status('Question on screen');
     await page.keyboard.press('n');

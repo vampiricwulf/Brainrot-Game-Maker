@@ -1014,7 +1014,7 @@ try {
           .map((el) => el.getAttribute('aria-label') ?? 'Ignore the limits'),
       );
       assert(hidden.length === 0, `${w}×${h}: every wager box and “Ignore the limits” are in sight on the Final's wager screen${hidden.length ? ` (not: ${hidden.join(', ')})` : ''}`);
-      assert((await p4.locator('.fj input[data-wager]').first().getAttribute('title')).startsWith('No limit now'), 'with the limits ignored, a wager box says so in its tooltip');
+      assert((await p4.locator('.fj input[data-wager]').first().getAttribute('title')).startsWith('Max $'), 'with the limits on (the default), a wager box says its max in its tooltip');
       // The Final's own 🤫 cards come after every wager row; gone to, they're in sight, the step's sticky row too.
       const finalCards = p4.locator('[data-final-cards]');
       const lastRow = await p4.locator('.fj .wagers .wrow').last().boundingBox();
@@ -1414,7 +1414,10 @@ try {
     await pl.getByRole('button', { name: '▶ Play' }).click();
     await pl.getByRole('button', { name: 'Start game ▶' }).click();
     await pl.locator('.fj .wagers').waitFor();
-    // (Everyone on $0 plays, their $0 wagers in: N shows the question, the answer, the reveals, then the first one's wager.)
+    // (Everyone on $0 plays and could wager up to $2,000; each wagers $0 here: N shows the question, the answer, the
+    // reveals, then the first one's wager.)
+    const zeroBoxes = pl.locator('.fj .wagers input[data-wager]');
+    for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill('0');
     for (const step of ['Question on screen', 'Answer on screen', 'Player reveals']) {
       await pl.keyboard.press('n');
       await pl.locator('.panel .status', { hasText: step }).waitFor();

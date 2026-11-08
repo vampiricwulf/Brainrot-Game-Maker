@@ -1,6 +1,7 @@
 // Wagers from phones, end to end: the built app hosts a game against the real buzzer room (buzzer/ under `wrangler dev`,
 // local), with the audience window open, and players send their wagers from the real phone page. A Daily Double: its
-// player's phone sends the wager (refused over the max once the host turns the limit on), the host's box fills in
+// player's phone sends the wager (refused over the max: their score, or $2,000 if less; not once the host ticks Ignore
+// the limit), the host's box fills in
 // marked 📱, the others see who is wagering, and it locks when the question shows. A Final: two phones wager, change
 // their minds, one reloads, the host changes one, and Show question locks them; the audience window never has an
 // amount on it. Then a team: anyone on it sends the team's wager, and the host sees who; that host keeps one window
@@ -186,7 +187,7 @@ try {
   await form(ann).waitFor();
   assert(await key1.isHidden(), 'picked: the number keys go from the chips (they type the wager now)');
   assert((await ann.locator('#wager-head').innerText()) === 'Your wager', 'the player who found it gets a wager box on their phone (“Your wager”, under “Daily Double — you’re up!”)');
-  assert((await ann.locator('#wager-info').innerText()) === 'Score $0 · No limit', `with their score, and no max while the host ignores the limit (${await ann.locator('#wager-info').innerText()})`);
+  assert((await ann.locator('#wager-info').innerText()) === 'Score $0 · Max $2,000', `with their score and their max: $2,000 at $0 (${await ann.locator('#wager-info').innerText()})`);
   await big(bo).getByText('Player 1 is wagering…').waitFor();
   assert(true, 'the other phones see "Player 1 is wagering…"');
   await dd.getByText('📱 waiting…').waitFor();
@@ -197,12 +198,18 @@ try {
   await host.waitForFunction(() => document.activeElement?.matches('.dd input[type=number]'));
   assert((await dd.count()) === 1 && (await mainButton(host, 'Show question ▶').isEnabled()), 'Show question ▶ with the wager to come: the question waits, the keys in the Wager box (never greyed)');
 
-  // The host turns the limit on: over the max is refused, with a clear message, and nothing reaches the host.
-  await dd.getByLabel('Ignore the limit').uncheck();
-  await ann.waitForFunction(() => document.getElementById('wager-info').textContent === 'Score $0 · Max $1,000');
+  // The limit is on (the default): over the max is refused, with a clear message, and nothing reaches the host.
+  assert(!(await dd.getByLabel('Ignore the limit').isChecked()), 'a Daily Double starts with Ignore the limit unticked');
+  assert((await dd.locator('.max').innerText()) === 'Max $2,000 (their score, or $2,000 if they have less)', `the box says the max and the rule (${await dd.locator('.max').innerText()})`);
   await sendWager(ann, 5000);
-  await ann.locator('#wager-err').getByText('over your max of $1,000').waitFor();
-  assert((await dd.locator('input[type=number]').inputValue()) === '', 'the limit on: a wager over the max is refused on the phone ("That’s over your max of $1,000")');
+  await ann.locator('#wager-err').getByText('over your max of $2,000').waitFor();
+  assert((await dd.locator('input[type=number]').inputValue()) === '', 'the limit on: a wager over the max is refused on the phone ("That’s over your max of $2,000")');
+  // Ticked, the phone has no max; unticked again, it's back.
+  await dd.getByLabel('Ignore the limit').check();
+  await ann.waitForFunction(() => document.getElementById('wager-info').textContent === 'Score $0 · No limit');
+  assert((await dd.locator('.max').innerText()).startsWith('No max now (it would be $2,000'), 'Ignore the limit ticked: the phone says “No limit”, the box “No max now”');
+  await dd.getByLabel('Ignore the limit').uncheck();
+  await ann.waitForFunction(() => document.getElementById('wager-info').textContent === 'Score $0 · Max $2,000');
   // Within it: the host's box fills in, marked 📱.
   await sendWager(ann, 777);
   await ann.locator('#wager-state').getByText('✔ Sent: $777').waitFor();
@@ -270,25 +277,29 @@ try {
   await form(bo).waitFor();
   assert((await ann.locator('#wager-head').innerText()) === 'Your wager', 'the Final’s wager screen (“Your wager”, under the Final’s name): every phone in it gets its wager box');
   assert(
-    (await bo.locator('#wager-info').innerText()) === 'Score $0 · No limit',
-    `a player with nothing to wager isn't told "Max $0" while the host ignores the limits (${await bo.locator('#wager-info').innerText()})`,
+    (await bo.locator('#wager-info').innerText()) === 'Score $0 · Max $2,000',
+    `a player at $0 can wager up to $2,000, and their phone says so (${await bo.locator('#wager-info').innerText()})`,
   );
   await row('Player 1').getByText('📱 waiting…').waitFor();
   assert(!(await host.evaluate(() => !!document.activeElement?.matches('input[data-wager]'))), 'phones send the wagers: no wager box takes the focus (the keys stay the host’s)');
   // The blue Show question ▶ is never greyed: N with wagers still to come puts the keys in the first box to fill (no
-  // check opens: they're typed), and the status line says whose, a phone's on its way. (Only Player 1's: Players 2 and
-  // 3 have nothing to wager, so theirs is a 0 filled in.)
+  // check opens: they're typed), and the status line says whose, a phone's on its way. (Players 2 and 3 at $0 can wager
+  // up to $2,000: nothing is filled in for them.)
   assert(await mainButton(host, 'Show question ▶').isEnabled(), 'the Final’s wagers: the blue Show question ▶ is not greyed while some are missing');
   await host.keyboard.press('n');
-  await host.locator('.toast', { hasText: 'Waiting on Player 1’s phone: type their wager, or Sits out' }).waitFor();
-  assert((await box('Player 3').inputValue()) === '0', 'Player 3, with nothing to wager, has a 0 filled in: not waited on');
+  await host.locator('.toast', { hasText: 'Waiting on Player 1’s phone, Player 2’s phone & Player 3: type their wagers, or Sits out' }).waitFor();
+  assert(
+    (await box('Player 3').inputValue()) === '' && (await box('Player 3').getAttribute('title')) === 'Max $2,000 (their score, or $2,000 if they have less)',
+    'Player 3 at $0 has no 0 filled in: waited on, up to $2,000',
+  );
+  assert(!(await host.getByLabel('Ignore the limits').isChecked()), 'the Final starts with Ignore the limits unticked');
   await host.waitForFunction(() => document.activeElement?.closest('.wrow')?.textContent?.includes('Player 1'));
   assert((await goOnCheck(host).count()) === 0 && (await host.locator('.panel .status').innerText()).includes('taking wagers'), 'N there: the keys in Player 1’s wager box, no check, the question not up');
   // (The keys back to the host, as phones send.)
   await host.locator('.panel .status').click();
   assert(
-    (await row('Player 2').getByText('📱 can still send').count()) === 1 && (await row('Player 3').getByText('📱').count()) === 0,
-    'the host sees whose phone can send one (“📱 waiting…”, or “📱 can still send” over the 0 filled in for nothing to wager); a player without a phone has no 📱',
+    (await row('Player 2').getByText('📱 waiting…').count()) === 1 && (await row('Player 3').getByText('📱').count()) === 0,
+    'the host sees whose phone can send one (“📱 waiting…”); a player without a phone has no 📱',
   );
 
   // Ticked out: their phone says so; back in, the box is back.
@@ -300,12 +311,16 @@ try {
   await sendWager(ann, 1234);
   await row('Player 1').getByText('📱 $1,234 from phone ✔').waitFor();
   assert((await box('Player 1').inputValue()) === '1234', 'Player 1’s wager comes in from their phone: “📱 $1,234 from phone ✔”, in their box');
+  // Over Player 2's max ($2,000 at $0): refused on the phone.
   await sendWager(bo, 2222);
-  await row('Player 2').getByText('📱 $2,222 from phone ✔').waitFor();
-  assert(!/2,?222/.test(await said('Player 2')), 'and in the Final too');
+  await bo.locator('#wager-err').getByText('over your max of $2,000').waitFor();
+  assert((await box('Player 2').inputValue()) === '', 'over the max: refused on the phone, nothing reaches the host');
+  await sendWager(bo, 1999);
+  await row('Player 2').getByText('📱 $1,999 from phone ✔').waitFor();
+  assert(!/1,?999/.test(await said('Player 2')), 'and in the Final too');
   await host.waitForTimeout(300);
-  assert(await noneOf(aud, [1234, 2222]), 'the audience window never has the amounts (only the ✔ that a wager is in)');
-  assert((await noneOf(ann, [2222])) && (await noneOf(bo, [1234])), 'each phone has its own amount only');
+  assert(await noneOf(aud, [1234, 1999]), 'the audience window never has the amounts (only the ✔ that a wager is in)');
+  assert((await noneOf(ann, [1999])) && (await noneOf(bo, [1234])), 'each phone has its own amount only');
   await shot('pw-3-final-host', host);
   await shot('pw-4-final-audience', aud);
 
@@ -353,7 +368,7 @@ try {
   );
   assert((await bo.locator('#answer-sub').innerText()) === 'Your wager: $2,000 (locked)', 'the host’s change is what was locked in');
   assert((await ann.locator('#clue-cap').innerText()) === 'Final Jeopardy!', `over the question, what’s on (${await ann.locator('#clue-cap').innerText()})`);
-  assert(await noneOf(aud, [1234, 1300, 2000, 2222]), 'the audience window still has no amount once the question is up');
+  assert(await noneOf(aud, [1234, 1300, 2000, 1999]), 'the audience window still has no amount once the question is up');
   // The stream: ✍ and who has answered (the Final's three players), never what.
   const pill = aud.locator('[data-everyone]');
   await pill.waitFor();
@@ -778,6 +793,11 @@ try {
   if ((await host2.locator('.panel .status').innerText()).includes('Title card')) await host2.keyboard.press('n');
   await rows2.locator('.wrow', { hasText: 'Player 2' }).locator('input[data-plays]').uncheck();
   await big(cy).getByText('You sit this one out').waitFor();
+  // Player 1 is at $0 after the rematch: they can still wager up to $2,000, so their phone sends one.
+  await form(al).waitFor();
+  assert((await al.locator('#wager-info').innerText()).endsWith('Max $2,000'), `a team at $0 can wager up to $2,000 (${await al.locator('#wager-info').innerText()})`);
+  await sendWager(al, 2000);
+  await rows2.locator('.wrow', { hasText: 'Player 1' }).getByText('📱 from phone ✔ · sent by Al').waitFor();
   // (Every wager in first: the blue button is never greyed, so wait for that.)
   await host2.waitForFunction(() => ![...document.querySelectorAll('.fj .row .muted')].some((e) => /^(Waiting on|Not a whole number|Over the max)/.test(e.textContent ?? '')));
   await mainButton(host2).filter({ hasText: 'Show question ▶' }).click();
