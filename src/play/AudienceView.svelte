@@ -149,6 +149,11 @@
   /** The Final's players whose wager is in (a ✔ on their score plate while wagers are taken). */
   const ticks = $derived(wagersIn(session));
   const stream = $derived(game.settings.stream);
+  /**
+   * A typed Final answer whose lines don't fit the spotlight's answer line even at its smallest size (a long last line
+   * under short ones): it goes on as one paragraph instead, which any answer fits, rather than cut off at top and bottom.
+   */
+  let flatAnswer = $state<string | null>(null);
   /** The "Starting soon" countdown's clock (ticks only while there's one). */
   let clock = $state(Date.now());
   onMount(() => {
@@ -715,9 +720,22 @@
                 <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
                 {#if f.answers}
                   <!-- What they typed on their phone, once the host puts it up (its room kept: the card doesn't jump). Typed over
-                       a few lines: three at most (more go on the third, " / " between), each line its own. -->
-                  {@const typedLines = shown ? foldLines(shown.text, 3) : ''}
-                  <div class="spot-answer" dir="auto" data-spot-answer use:autofit={{ size: 72, min: 28, enabled: true, text: pickAt >= 0 ? `${pickAt} ${usable[pickAt].text}` : typedLines }}>
+                       a few lines: three at most (more go on the third, " / " between), each line its own; one paragraph if they don't fit. -->
+                  {@const typedLines = shown ? foldLines(shown.text, flatAnswer === shown.text ? 1 : 3) : ''}
+                  <div
+                    class="spot-answer"
+                    dir="auto"
+                    data-spot-answer
+                    use:autofit={{
+                      size: 72,
+                      min: 28,
+                      enabled: true,
+                      text: pickAt >= 0 ? `${pickAt} ${usable[pickAt].text}` : typedLines,
+                      onfit: (r) => {
+                        if (r.overflow && shown && pickAt < 0 && typedLines.includes('\n')) flatAnswer = shown.text;
+                      },
+                    }}
+                  >
                     {#if shown && pickAt >= 0}
                       <span><span class="pick-letter" style:background={chipBg} style:color={chipInk}>{letter(pickAt)}</span> {usable[pickAt].text}</span>
                     {:else if shown}<span class="lines">“{typedLines}”</span>{:else}<span class="hold" aria-hidden="true">&nbsp;</span>{/if}

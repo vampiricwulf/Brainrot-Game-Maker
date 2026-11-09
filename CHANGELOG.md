@@ -15,7 +15,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Added
 
-- Players can type an answer over a few lines on their phone: the phone keyboard's Enter key starts a new line and **Send answer** sends it (with a computer keyboard, Enter still sends and Shift+Enter starts a line). The box grows with the lines; your answers list, the phone's “✔ Sent” line and the Final's reveal card show them, and one-line places (the Final's reveal rows, the phone's “Answers locked” line) put “ / ” between them. A buzzer server from before puts them on one line.
+- Players can type an answer over a few lines on their phone: the phone keyboard's Enter key starts a new line and **Send answer** sends it (with a computer keyboard, Enter still sends and Shift+Enter starts a line). The box grows with the lines; your answers list, the phone's “✔ Sent” line and the Final's reveal card show them (the card as one paragraph, “ / ” between the lines, when short lines over a long one don't fit its answer line, rather than cut off at the top and bottom), and one-line places (the Final's reveal rows, the phone's “Answers locked” line) put “ / ” between them. A buzzer server from before puts them on one line.
 
 ## 2026-11-08
 
