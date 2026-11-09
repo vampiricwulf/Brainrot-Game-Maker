@@ -250,6 +250,13 @@ describe('step labels', () => {
     expect(step((g) => (g.settings.stream = { soonText: 'Soon!' }))).toMatchObject({ where: 'Play › On stream', icon: '📺', place: { tab: 'play', part: 'stream' } });
     expect(step((g) => (g.settings.currencySymbol = 'pts')).label).toBe('Rule: Points symbol = pts');
     expect(step((g) => (g.settings.roundIntro.titleCard = false)).label).toBe('Rule: Round title card off');
+    // The wager floor: left out (back at the default), it reads as the default amount, not off.
+    expect(step((g) => (g.settings.wagerFloor = 500))).toMatchObject({ label: 'Rule: Wagers go up to at least = 500', where: 'Play › Game rules' });
+    const floored = sample();
+    floored.settings.wagerFloor = 500;
+    const unfloored = structuredClone(floored);
+    delete unfloored.settings.wagerFloor;
+    expect(describeStep(diff(floored, unfloored), floored, unfloored).label).toBe('Rule: Wagers go up to at least = 2000');
     // A choice in the words on the control.
     expect(step((g) => (g.settings.roundIntro.categoryReveal = 'off')).label).toBe('Reveal categories: all at once');
     expect(step((g) => (g.settings.roundIntro.categoryReveal = 'auto')).label).toBe('Reveal categories: one at a time automatically');

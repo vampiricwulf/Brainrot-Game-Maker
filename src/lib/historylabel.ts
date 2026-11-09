@@ -3,7 +3,7 @@
 // historylabel.test.ts.
 import { opPath, type Json, type Op, type Seg } from './historyops';
 import { LAYER_ICON, layerLabel, short } from './layerlabel';
-import { categoryLabel, clueCardName, clueValue, formatPoints, roundName, savedCardName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
+import { categoryLabel, clueCardName, clueValue, formatPoints, roundName, savedCardName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement, WAGER_FLOOR } from './model';
 import { describeAction } from './actions';
 import { ROUND_MODES } from './modes';
 import { OBJECT_CLASSES } from './rpg';
@@ -593,6 +593,7 @@ const RULES: Record<string, string> = {
   rollOffDie: 'Roll-off die',
   pickerFollowsAward: 'Scorer picks next',
   partnerSteal: 'Steals on partner clues',
+  wagerFloor: 'Wagers go up to at least',
   maxPlayers: 'Most players',
   timerAutoStart: 'Countdown starts itself',
   titleCard: 'Round title card',
@@ -955,6 +956,8 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   if (top === 'settings') {
     if (k === 'categoryReveal') return `Reveal categories: ${REVEALS[v as string] ?? v}`;
     const rule = RULES[k] ?? fieldName(k);
+    // Left out, the wager floor is the default amount, not off.
+    if (k === 'wagerFloor') return `Rule: ${rule} = ${v ?? WAGER_FLOOR}`;
     return typeof v === 'boolean' ? `Rule: ${rule} ${v ? 'on' : 'off'}` : `Rule: ${rule} = ${v ?? 'off'}`;
   }
   if (top === 'soundsOff') {
