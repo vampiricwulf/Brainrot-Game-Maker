@@ -11,12 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Changed
-
-- Wagers have a limit again by default: on a Daily Double or in the Final a player can wager up to their score, or up to $2,000 if they have less (at $0 or below too). A player with $3,500 can wager $3,500; one with $500 or −$300 can wager $2,000. The $2,000 is a game setting in **⚖ Game rules** (“Wagers go up to their score, or at least”), for games with other point values; older games get $2,000. A Daily Double no longer goes by the round's top value. **Ignore the limit(s)** still lets you take any wager, but starts unticked on each Daily Double and Final, and phones show each player's max and refuse more.
-
 ## 2026-11-08
 
 ### Added
@@ -29,6 +23,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 
 - **＋ Pick any color** on a player's phone opens a picker on the page itself, with an **OK** button: the buzzer shows the color as they drag it or type it, and it's sent when they press OK or tap off the picker. **Cancel** keeps the color they had, and a color another player has can't be picked. Before, the phone's own picker showed nothing until it was closed. (8aef41b, 014d81f)
+- Wagers have a limit again by default: on a Daily Double or in the Final a player can wager up to their score, or up to $2,000 if they have less (at $0 or below too). A player with $3,500 can wager $3,500; one with $500 or −$300 can wager $2,000. The $2,000 is a game setting in **⚖ Game rules** (“Wagers go up to their score, or at least”), for games with other point values; older games get $2,000. A Daily Double no longer goes by the round's top value. **Ignore the limit(s)** still lets you take any wager, but starts unticked on each Daily Double and Final, and phones show each player's max and refuse more. (334b75b, 7d7ab0e, 87822a3, 8fb445e, 036ff59)
 
 ## 2026-11-06
 
