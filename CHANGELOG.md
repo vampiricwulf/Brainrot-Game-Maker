@@ -11,12 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Added
-
-- Players can type an answer over a few lines on their phone: the phone keyboard's Enter key starts a new line and **Send answer** sends it (with a computer keyboard, Enter still sends and Shift+Enter starts a line). The box grows with the lines; your answers list, the phone's “✔ Sent” line and the Final's reveal card show them (the card as one paragraph, “ / ” between the lines, when short lines over a long one don't fit its answer line, rather than cut off at the top and bottom), and one-line places (the Final's reveal rows, the phone's “Answers locked” line) put “ / ” between them. A buzzer server from before puts them on one line.
-
 ## 2026-11-08
 
 ### Added
@@ -24,6 +18,7 @@ in plain words for the people who make and host games. Anything committed but no
 - **½ Halve** and **0 Nullify** beside each player's wager in the Final's reveals: halve a wager (rounded down) or make it 0, for a house rule or a penalty. If the player is already judged, their points change with it, and `Ctrl+Z` puts it back. (8e18ae9)
 - Players can pick any color on their phone, not just one of the swatches: the **＋** swatch at the end opens a color picker. A color another player already has is still taken. (8e18ae9)
 - A YouTube video on a slide can be **Sound only (hide the video)**: on the slide, the players hear it but never see the video or its picture, and you still play, pause, seek and turn it up or down as before. **Players see** picks what goes in its place: nothing, a 🔊 speaker, or the speaker with a time bar showing how far it has played and how long it is (just the part it plays, if you set one). It's for slides only: on a 🤫 card the video still shows. (d27c76c, 9abf331, 1225e13, 715a10a, d5d85c3, db9c013, 27522d2)
+- Players can type an answer over a few lines on their phone: the phone keyboard's Enter key starts a new line and **Send answer** sends it (with a computer keyboard, Enter still sends and Shift+Enter starts a line). The box grows with the lines; your answers list, the phone's “✔ Sent” line and the Final's reveal card show them (the card as one paragraph, “ / ” between the lines, when short lines over a long one don't fit its answer line, rather than cut off at the top and bottom), and one-line places (the Final's reveal rows, the phone's “Answers locked” line) put “ / ” between them. A buzzer server from before puts them on one line. (2ab46f4, 5570d54, 3e4ba01, c10bd53, 98fddbd, 7de32ec, 8f03042, ce1de6c)
 
 ### Changed
 
