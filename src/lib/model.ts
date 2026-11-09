@@ -758,8 +758,8 @@ export interface FinalRound {
   cards?: ClueCard[];
   timerSeconds: number;
   /**
-   * Players with a score of 0 or less can play it too (a wager of 0 is filled in for them; the host can type more, as
-   * wagers aren't held to their max unless the host turns the limits on).
+   * Players with a score of 0 or less can play it too. They can wager up to the game's wager floor; a 0 is filled in
+   * only when that floor is 0.
    */
   allowNonPositive?: boolean;
   /**

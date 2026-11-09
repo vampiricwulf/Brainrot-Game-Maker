@@ -286,8 +286,8 @@
 
   /**
    * The reveals: a wager typed (or changed) in a player's row until it's shown, as a step. A player with no wager
-   * (never taken as 0) gets one here before they can be judged. A whole number, up to their max only if the host
-   * turned the limits on. Refused, the box goes back to the wager as it was.
+   * (never taken as 0) gets one here before they can be judged. A whole number, up to their max unless the host
+   * ticked Ignore the limits. Refused, the box goes back to the wager as it was.
    */
   function setWager(id: string, box: HTMLInputElement): void {
     const fs = f;

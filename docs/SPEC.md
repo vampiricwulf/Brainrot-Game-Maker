@@ -954,7 +954,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 ### 6.4 Final Jeopardy (optional)
 1. Category slide and wager entry together: on one screen the host ticks who plays (players with ≤ 0 can be excluded or
    allowed, a setting of the round) and enters each player's wager in the host view only. Wagers are whole numbers,
-   0 or more; the max(score, 0) limit is off by default and the host can turn it on. A wager stays editable until it's
+   0 or more, up to their score, or the game's wager floor ($2,000 unless ⚖ Game rules says otherwise) if they have
+   less. The limit holds by default; Ignore the limits, unticked as each Final starts, takes any wager. A wager stays editable until it's
    revealed, and remembers whether the host or the player's phone entered it. With phone buzzers, each player in it (a
    team: anyone on it) can send their wager from their phone until the question is shown; the amount goes to the host
    only (never to the audience window or other phones), and the host can still change it. A Daily Double's player can
