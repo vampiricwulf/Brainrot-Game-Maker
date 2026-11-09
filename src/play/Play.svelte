@@ -5034,7 +5034,7 @@
   /** The settings ⚖ Game rules sets. */
   const RULES = [
     'allowNegativeScores', 'deductOnWrong', 'pickerFollowsAward', 'currencySymbol', 'maxPlayers', 'defaultTimerSeconds', 'timerAutoStart',
-    'roundIntro', 'partnerSteal',
+    'roundIntro', 'partnerSteal', 'wagerFloor',
   ] as const satisfies readonly (keyof GameSettings)[];
   // ⚖ Game rules changes the game being played (before it, or mid-game from the host panel); the editor's copy of
   // the game keeps each change (undoable there).

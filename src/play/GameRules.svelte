@@ -85,6 +85,7 @@
           value={wagerFloor(s)}
           onchange={(e) => {
             // A whole number, 0 or more (blank: back to the default, which a game leaves out); anything else keeps the last.
+            if (e.currentTarget.validity.badInput) return void (e.currentTarget.value = String(wagerFloor(s)));
             const t = e.currentTarget.value.trim();
             const v = t === '' ? WAGER_FLOOR : +t;
             const n = Number.isSafeInteger(v) && v >= 0 && v <= MAX_POINTS ? v : wagerFloor(s);

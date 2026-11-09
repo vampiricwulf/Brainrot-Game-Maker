@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerAsk, answerReplace, anyway, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
+import { addClassicRounds, answerAsk, answerReplace, anyway, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -770,6 +770,34 @@ for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '＋ Add play
 assert((await page.locator('.player').count()) === 3, 'added 3 players');
 const colors = await page.locator('.player input[type=color]').evaluateAll((els) => els.map((e) => e.value));
 assert(new Set(colors).size === 3, 'players got unique colors');
+// ⚖ Game rules › Wagers go up to their score, or at least: 2000 unless set; a bad entry keeps the last; blank is 2000.
+await openRules(page);
+const floorBox = page.locator('[data-wager-floor]');
+const floorLine = floorBox.locator('xpath=following-sibling::span');
+assert((await floorBox.inputValue()) === '2000' && (await floorLine.innerText()) === '$2,000 for a player with less', 'the wager floor starts at 2000, said with the points symbol');
+await floorBox.fill('500');
+await floorBox.press('Tab');
+assert((await floorLine.innerText()) === '$500 for a player with less', `set to 500, its line says $500 (${await floorLine.innerText()})`);
+for (const bad of ['-5', '12.5']) {
+  await floorBox.fill(bad);
+  await floorBox.press('Tab');
+  assert((await floorBox.inputValue()) === '500', `${bad} is refused: the floor stays 500`);
+}
+await floorBox.focus();
+await floorBox.press('Control+a');
+await page.keyboard.type('e');
+await floorBox.press('Tab');
+assert((await floorBox.inputValue()) === '500', 'a non-number typed in (e) keeps 500, not the default');
+await floorBox.fill('');
+await floorBox.press('Tab');
+assert((await floorBox.inputValue()) === '2000' && (await floorLine.innerText()) === '$2,000 for a player with less', 'blank goes back to 2000');
+await floorBox.fill('500');
+await floorBox.press('Tab');
+// Kept with the game in the editor: ◀ Back to editor, then ▶ Play again, still 500.
+await page.getByRole('button', { name: '◀ Back to editor' }).click();
+await page.getByRole('button', { name: '▶ Play' }).click();
+await openRules(page);
+assert((await page.locator('[data-wager-floor]').inputValue()) === '500', 'the wager floor set in ⚖ Game rules is kept with the game in the editor');
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 // Round intro: title card → tiles fill in → categories revealed on N.
 await page.locator('.round-name').waitFor();
@@ -1094,7 +1122,8 @@ assert(
   !(await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()) && (await stepButton(page.locator('.panel .dd')).count()) === 0,
   'the limit holds by default: Ignore the limit unticked (Show question ▶ only on the blue button)',
 );
-assert(/^Max \$[\d,]+ \(their score, or \$2,000 if they have less\)$/.test(await page.locator('.dd .max').innerText()), `the box says the max and the rule (${await page.locator('.dd .max').innerText()})`);
+// (Player 2 has $350: the game's wager floor, set to 500 in ⚖ Game rules, is their max.)
+assert((await page.locator('.dd .max').innerText()) === 'Max $500 (their score, or $500 if they have less)', `the box says the max and the rule, from the game's floor (${await page.locator('.dd .max').innerText()})`);
 // With the limit on, a wager over the cap stays: the blue button is never greyed; pressed, the keys stay in the Wager box
 // and the status line says why.
 assert(await mainButton(page, 'Show question ▶').isEnabled(), 'with the limit on, the blue Show question ▶ is still not greyed');
