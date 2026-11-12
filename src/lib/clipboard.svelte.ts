@@ -7,6 +7,7 @@ import {
   newId,
   type Action,
   type BoardSpace,
+  type Category,
   type Clue,
   type DicePreset,
   type Game,
@@ -53,6 +54,8 @@ export const clipboard = $state<{
   screen: Screen | null;
   /** A board clue: both slides and its settings. */
   clue: Clue | null;
+  /** A board's category: its name, picture and clues. */
+  category: Category | null;
   /** Board-game spaces, with their buttons and the links between them. */
   spaces: BoardSpace[];
   /** Buttons (actions) of an object, item, space or wheel slice. */
@@ -72,7 +75,7 @@ export const clipboard = $state<{
   token: string;
   /** The readable text/plain part of that copy. */
   text: string;
-}>({ elements: [], slide: null, slideNewest: false, screen: null, clue: null, spaces: [], actions: [], round: null, media: [], wheels: [], dice: [], items: [], shops: [], statFields: [], token: '', text: '' });
+}>({ elements: [], slide: null, slideNewest: false, screen: null, clue: null, category: null, spaces: [], actions: [], round: null, media: [], wheels: [], dice: [], items: [], shops: [], statFields: [], token: '', text: '' });
 
 /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
 const CLIP_TYPE = 'application/x-brainrot-slide-items';

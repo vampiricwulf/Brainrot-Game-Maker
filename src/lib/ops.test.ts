@@ -17,6 +17,7 @@ import {
   deleteRow,
   insertRow,
   moveRow,
+  pasteCategory,
   neighbourClue,
   ownTextTargets,
   reidRound,
@@ -450,3 +451,46 @@ describe('a Final’s 🤫 cards', () => {
     expect(mainText(card).font).toBe('Comic Neue');
   });
 });
+
+describe('a category copied and pasted', () => {
+  it('takes its name, picture and clues, with ids of their own, the column keeping its place and id', () => {
+    const g = jeopardyGame();
+    const r = board(g);
+    const from = clone(r.categories[0]);
+    from.title = 'Memes';
+    from.image = 'img1';
+    from.clues[0].value = 250;
+    setSlideText(from.clues[0].questionSlide, 'Who is Pepe?');
+    const target = r.categories[2];
+    target.imageFit = 'cover';
+    const id = target.id;
+    expect(pasteCategory(r, 2, from)).toBe(0);
+    const cat = r.categories[2];
+    expect(cat.id).toBe(id);
+    expect(cat.title).toBe('Memes');
+    expect(cat.image).toBe('img1');
+    expect(cat.imageFit).toBeUndefined();
+    expect(cat.clues).toHaveLength(r.values.length);
+    expect(slideText(cat.clues[0].questionSlide)).toBe('Who is Pepe?');
+    expect(cat.clues[0].value).toBe(250);
+    expect(cat.clues.map((c) => c.id).some((x) => from.clues.some((c) => c.id === x))).toBe(false);
+    // (The copy is its own: changing it later leaves what was pasted.)
+    setSlideText(from.clues[0].questionSlide, 'Changed');
+    expect(slideText(cat.clues[0].questionSlide)).toBe('Who is Pepe?');
+  });
+  it('fills a taller board with empty tiles, and says how many of a taller category didn’t fit', () => {
+    const g = jeopardyGame();
+    const r = board(g);
+    const rows = r.values.length;
+    const short = clone(r.categories[0]);
+    short.clues = short.clues.slice(0, 2);
+    expect(pasteCategory(r, 1, short)).toBe(0);
+    expect(r.categories[1].clues).toHaveLength(rows);
+    expect(r.categories[1].clues.slice(2).every((c) => !clueHasContent(c))).toBe(true);
+    const tall = clone(r.categories[0]);
+    for (let i = 0; i < 3; i++) tall.clues.push(copyClue(tall.clues[0]));
+    expect(pasteCategory(r, 1, tall)).toBe(3);
+    expect(r.categories[1].clues).toHaveLength(rows);
+  });
+});
+

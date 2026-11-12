@@ -484,6 +484,25 @@ export function duplicateCategory(round: BoardRound, index: number): void {
   round.categories.splice(index + 1, 0, copy);
 }
 
+/**
+ * A copied category pasted over column `ci`: its name, picture and clues (each with ids of its own), the column keeping
+ * its place and its id. A row it has no clue for is left empty. Returns how many of its clues didn't fit (it had more
+ * rows than this board).
+ */
+export function pasteCategory(round: BoardRound, ci: number, from: Category): number {
+  const cat = round.categories[ci];
+  if (!cat) return 0;
+  const copy = clone(from);
+  cat.title = copy.title;
+  for (const k of ['image', 'imageFit', 'showTitleOverImage'] as const) {
+    if (copy[k] === undefined) delete cat[k];
+    else (cat as Record<typeof k, unknown>)[k] = copy[k];
+  }
+  const rows = round.values.length;
+  cat.clues = Array.from({ length: rows }, (_, i) => (copy.clues[i] ? copyClue(copy.clues[i]) : newClue()));
+  return Math.max(0, copy.clues.length - rows);
+}
+
 /** Multiply all row values of a round (e.g. ×2 for Double Jeopardy). */
 export function scaleValues(round: BoardRound, factor: number): void {
   round.values = round.values.map((v) => Math.round(v * factor));

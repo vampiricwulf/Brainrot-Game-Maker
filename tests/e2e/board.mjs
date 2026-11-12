@@ -209,6 +209,34 @@ try {
   await page.locator('main').click({ position: { x: 4, y: 4 } });
   await key('Control+z');
   assert((await catNames()).slice(0, 3).join('|') === 'Category 1|Category 2|Category 3', 'Ctrl+Z moves it back');
+  // BOARD-7: 📋 Copy category / 📋 Paste category here, after ⧉ Duplicate; Ctrl+C / Ctrl+V on its ⋯ do the same.
+  {
+    await page.locator('.cat').nth(0).locator('.grip').click({ button: 'right' });
+    const items = await menu.getByRole('menuitem').allInnerTexts();
+    const at = (x) => items.findIndex((i) => i.includes(x));
+    const order = ['Duplicate', 'Copy category', 'Paste category here', 'Move left'].map(at);
+    assert(order.every((n, i) => n >= 0 && (i === 0 || n > order[i - 1])) && (await menu.getByRole('menuitem', { name: /Paste category here/ }).isDisabled()), `the category menu: ⧉ Duplicate · 📋 Copy category · 📋 Paste category here (greyed until one is copied) (${items.join(' | ')})`);
+    await menu.getByRole('menuitem', { name: /Copy category/ }).click();
+    const first = await tileText(0, 0);
+    const before6 = await tileText(5, 0);
+    const more6 = page.getByRole('button', { name: /^More for category 6/ });
+    await more6.focus();
+    await page.keyboard.press('Control+v');
+    await page.waitForTimeout(200);
+    assert((await catNames())[5] === 'Category 1' && (await tileText(5, 0)) === first && (await undoTitle()).startsWith('Undo: Pasted category “Category 1” over “Category 6”'), `Ctrl+V on a category's ⋯ pastes the copied one over it, name and clues, as one named step (${(await catNames())[5]}, ${await undoTitle()})`);
+    await page.locator('main').click({ position: { x: 4, y: 4 } });
+    await key('Control+z');
+    assert((await catNames())[5] === 'Category 6' && (await tileText(5, 0)) === before6, 'Ctrl+Z puts it back');
+    // Ctrl+C on a ⋯, then its menu's Paste.
+    await page.getByRole('button', { name: /^More for category 2/ }).focus();
+    await page.keyboard.press('Control+c');
+    await page.locator('.cat').nth(5).locator('.grip').click({ button: 'right' });
+    await menu.getByRole('menuitem', { name: /Paste category here/ }).click();
+    assert((await catNames())[5] === 'Category 2' && (await tileText(5, 0)) === (await tileText(1, 0)), 'Ctrl+C on a category’s ⋯ copies it, its menu’s Paste puts it over another');
+    await page.locator('main').click({ position: { x: 4, y: 4 } });
+    await key('Control+z');
+    assert((await catNames())[5] === 'Category 6', 'and Ctrl+Z puts that back too');
+  }
   // The checklist notes names still made up (they show on stream as they are); its line's tooltip lists it.
   const roundLine = page.locator('nav .problem', { hasText: 'Jeopardy!: ' }).first();
   assert(

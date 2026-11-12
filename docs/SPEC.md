@@ -210,6 +210,11 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   right-click on that bar: ▶ Test this round · ✎ Rename (F2) · ⧉ Duplicate (Ctrl+D) · 📋 Copy round (Ctrl+C) · 📋 Paste
   round after it (Ctrl+V) · ▲ Move up (Alt+↑) · ▼ Move down (Alt+↓) · 🗑 Delete round (Delete). The keys work on its tab;
   text selected on the page still copies as text.
+- **A category's menu** (a right-click on it, its ⋯, or Shift+F10 in its name): 🖼 Image… · ⧉ Duplicate · 📋 Copy category ·
+  📋 Paste category here (its name, picture and clues over this column, with the files, wheels and dice they use from
+  another game; one step, with the bottom note's Undo when the column had anything in it; clues past this board's rows
+  don't fit, and a toast says how many) · ◀ ▶ moves · ＋ Insert… · ⌫ Clear its clues · 🗑 Delete category. Ctrl+C / Ctrl+V
+  on its ⋯ copy and paste it; in its name box they stay the browser's text copy and paste.
 - **Every editor menu, one order** (menustate.svelte.ts `menuOf`, with `menuItem`'s standard items, unit-tested): a heading
   naming the thing, then ✎ Edit / ▶ Open (what a click does), what it can do or be set to and its kinds (Make it a…),
   ✎ Rename F2 · ⧉ Duplicate Ctrl+D · ✂ Cut · 📋 Copy Ctrl+C · 📋 Paste Ctrl+V, ▲ ▼ (Alt+↑/↓) or ◀ ▶ (Alt+←/→) and

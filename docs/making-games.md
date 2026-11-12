@@ -41,6 +41,8 @@ video, audio or YouTube, arranged freely.
 
 - Drag tiles, categories and rows to move them, or use `Alt`+arrows: `Alt`+`←`/`→` moves a category, `Alt`+`↑`/`↓`
   moves a row.
+- A category's menu (right-click it, or its ⋯) has **📋 Copy category** and **📋 Paste category here**, to reuse a
+  whole category (name, picture and clues) in another round or game; `Ctrl+C` / `Ctrl+V` on its ⋯ do the same.
 - A tile's right-click menu has **Make it a…**: Standard, Daily Double, Partner clue, Wheel tile, Dice tile, Everyone
   answers, or Empty tile.
 - **Partner clues** are for two players without buzzers, with an optional steal on a miss. Place them by hand or at

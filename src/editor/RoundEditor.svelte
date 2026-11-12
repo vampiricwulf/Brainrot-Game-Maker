@@ -46,6 +46,7 @@
     madeUpCategoryName,
     moveCategory,
     moveRow,
+    pasteCategory,
     pastedCardDue,
     pastedPartnerCard,
     randomizePartnerTiles,
@@ -664,6 +665,46 @@
     step(`Cleared the clues of “${categoryLabel(cat)}”`, () => cat.clues.forEach(clearClue), { notify: true, place });
   }
 
+  /** Copy a whole category (its name, picture and clues) with its files, so it pastes into another round or game. */
+  function copyCat(ci: number): void {
+    const cat = round.categories[ci];
+    clipboard.category = clone(cat);
+    holdUsedBy(app.game, clipboard.category);
+    toast(`Copied category “${categoryLabel(cat)}”: paste it over any category (Ctrl+V on its ⋯)`);
+  }
+
+  /**
+   * Paste the copied category over this one: its name, picture and clues, with ids of their own (and the files, wheels
+   * and dice they use, when it came from another game). What was there goes at once: the note at the bottom offers Undo.
+   */
+  function pasteCat(ci: number): void {
+    const from = clipboard.category;
+    if (!from) return void toast('Copy a category first (its ⋯ menu, or Ctrl+C on its ⋯)');
+    const cat = round.categories[ci];
+    const game = app.game;
+    const place: Place = { tab: 'round', round: round.id, part: { kind: 'category', category: cat.id } };
+    const left = step(
+      `Pasted category “${categoryLabel(from)}” over “${categoryLabel(cat)}”`,
+      () => {
+        const left = pasteCategory(round, ci, from);
+        adoptUsedBy(game, cat);
+        for (const c of cat.clues) pastedPartnerCard(round, c);
+        followDailyDoubles(round);
+        return left;
+      },
+      { notify: categoryHasContent(cat), place },
+    );
+    if (left) toast(`${left} of its clue${left === 1 ? '' : 's'} didn’t fit: add rows first`);
+  }
+
+  /** Ctrl+C / Ctrl+V on a category's ⋯: copy or paste the whole category. */
+  function catToolKey(e: KeyboardEvent, ci: number): void {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+    const k = e.key.toLowerCase();
+    if (k === 'c') (e.preventDefault(), copyCat(ci));
+    else if (k === 'v') (e.preventDefault(), pasteCat(ci));
+  }
+
   /** A category's menu: its image, a copy, moves and inserts, then clearing and deleting it. */
   function catItems(ci: number): MenuEntry[] {
     const cat = round.categories[ci];
@@ -672,6 +713,8 @@
       heading: categoryLabel(cat),
       verbs: [{ label: '🖼 Image…', onclick: () => (catPicker = ci) }],
       duplicate: menuItem.duplicate(() => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))), { disabled: n >= 10, keys: false }),
+      copy: menuItem.copy(() => copyCat(ci), { label: '📋 Copy category' }),
+      paste: menuItem.paste(() => pasteCat(ci), { label: '📋 Paste category here', disabled: !clipboard.category }),
       move: [menuItem.left(() => moveCat(ci, ci - 1), { disabled: ci === 0 }), menuItem.right(() => moveCat(ci, ci + 1), { disabled: ci === n - 1 })],
       insert: [
         { label: '＋ Insert category left', onclick: () => insertCat(ci), disabled: n >= 10 },
@@ -1053,7 +1096,7 @@
         <!-- Moving, duplicating and deleting are in its menu (⋯, or a right-click), so the row fits a narrow column. -->
         <div class="cat-tools">
           <span class="grip" aria-hidden="true" title="Drag to move the category · right-click it for more">⋮⋮</span>
-          <button class="ghost small" aria-haspopup="menu" onclick={(e) => catMenu(e, ci, true)} title="Move, duplicate, delete…" aria-label="More for category {ci + 1}{cat.title.trim() ? `: ${cat.title.trim()}` : ''}">⋯</button>
+          <button class="ghost small" aria-haspopup="menu" onclick={(e) => catMenu(e, ci, true)} onkeydown={(e) => catToolKey(e, ci)} title="Move, duplicate, copy, delete… (Ctrl+C / Ctrl+V copy and paste the category)" aria-label="More for category {ci + 1}{cat.title.trim() ? `: ${cat.title.trim()}` : ''}">⋯</button>
           <span class="pop">
             <button class="ghost small" onclick={() => (catPicker = ci)} title="Use an image for this category (or drop one here)" aria-label="Image for {categoryLabel(cat)}">🖼</button>
             {#if catPicker === ci}

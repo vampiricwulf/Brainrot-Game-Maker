@@ -13,6 +13,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+
+- A board's category can be copied and pasted whole: **📋 Copy category** and **📋 Paste category here** in its menu (after ⧉ Duplicate), or `Ctrl+C` / `Ctrl+V` on its ⋯. Its name, picture and clues go over the column you paste on, into another round or another game, with the pictures, sounds, wheels and dice they use; Undo takes it back.
+
 ### Changed
 
 - The editor's **Checklist** is pinned to the foot of the sidebar, its heading counting what's left (“Checklist · ⚠ 1 · ℹ 1”), so it stays in view on a 1280- or 1366-wide laptop however many rounds the game has; a long list scrolls in its own box. Until the game has a round it leaves out “No rounds yet”, “No players yet” and the untitled game's note (the first screen already says what to do), so a new game has no checklist.
