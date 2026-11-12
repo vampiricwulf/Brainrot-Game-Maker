@@ -178,6 +178,19 @@ assert(
   'a files.catbox.moe sound becomes a live link, and the toast says so',
 );
 assert((await page.locator('.insp').getByText('🌐 Plays from files.catbox.moe during the show').count()) === 1, 'the inspector marks the item as playing from the internet');
+{
+  // A second sound goes beside the first, not on top of it (only one of them could be clicked); Ctrl+Z takes it off.
+  // (The same link: no second file in 🖼 Media.)
+  const speakers = () => page.locator('.canvas .hit').evaluateAll((hs) => hs.filter((h) => h.style.width === '140px' && h.style.height === '140px').map((h) => `${h.style.left},${h.style.top}`));
+  await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
+  await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/beep1.wav');
+  await page.locator('.picker').getByLabel('Paste a link').press('Enter');
+  await page.waitForFunction(() => [...document.querySelectorAll('.canvas .hit')].filter((h) => h.style.width === '140px').length === 2);
+  const two = await speakers();
+  assert(two.length === 2 && two[0] !== two[1], `a second 🔊 Sound goes beside the first, not on top of it (${two.join(' · ')})`);
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => [...document.querySelectorAll('.canvas .hit')].filter((h) => h.style.width === '140px').length === 1);
+}
 await shot('links-1-editor');
 await page.getByRole('button', { name: 'Done' }).click();
 

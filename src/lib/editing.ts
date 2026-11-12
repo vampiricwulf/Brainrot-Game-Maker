@@ -235,6 +235,26 @@ export function placeNewPicture(elements: SlideElement[], pic: Box): void {
   Object.assign(t, text!.box);
 }
 
+/**
+ * Where a new 🔊 speaker goes (it shows only while editing): along the bottom edge from the right corner, in 160 steps
+ * leftward, then up the right edge, at the first spot that covers no other speaker and no text box; else the first
+ * that covers no other speaker (on top of text: a full-slide question leaves no spot); else the corner.
+ */
+export function placeSpeaker(elements: Pick<SlideElement, 'kind' | 'x' | 'y' | 'w' | 'h'>[], speaker: Box, W = SLIDE_W, H = SLIDE_H): void {
+  const STEP = 160;
+  const M = 80;
+  const x0 = W - M - speaker.w;
+  const y0 = H - M - speaker.h;
+  const spots: { x: number; y: number }[] = [];
+  for (let x = x0; x >= M; x -= STEP) spots.push({ x, y: y0 });
+  for (let y = y0 - STEP; y >= M; y -= STEP) spots.push({ x: x0, y });
+  const over = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const covers = (spot: { x: number; y: number }, kind: string) => elements.some((e) => e.kind === kind && over({ ...spot, w: speaker.w, h: speaker.h }, e));
+  const spot = spots.find((p) => !covers(p, 'audio') && !covers(p, 'text')) ?? spots.find((p) => !covers(p, 'audio')) ?? spots[0];
+  speaker.x = spot.x;
+  speaker.y = spot.y;
+}
+
 // ---------- Links ----------
 
 const MEDIA_EXT = /\.(png|jpe?g|gif|webp|svg|avif|bmp|mp3|wav|ogg|oga|m4a|aac|flac|opus|mp4|webm|mov|m4v|ogv|mkv)$/i;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { aspectCrop, freeOffset, freeSpot, isMediaLink, knobPlacement, knobPoint, moreSpot, officeTextPaste, placeNewPicture, placePicture, playRange, playsAt, playsStep, playsText, SnapshotHistory } from './editing';
-import { newImageEl, newTextEl, newVideoEl } from './model';
+import { aspectCrop, freeOffset, freeSpot, isMediaLink, knobPlacement, knobPoint, moreSpot, officeTextPaste, placeNewPicture, placePicture, placeSpeaker, playRange, playsAt, playsStep, playsText, SnapshotHistory } from './editing';
+import { newAudioEl, newImageEl, newTextEl, newVideoEl } from './model';
 
 describe('slide undo history', () => {
   it('undoes a change made a moment ago (before its debounce committed it)', () => {
@@ -261,5 +261,32 @@ describe('placing a new picture', () => {
     // The free strip left of the hero (x 40..1150) is the biggest.
     expect(pic).toEqual({ x: 115, y: 270, w: 960, h: 540 });
     expect([hero.x, hero.y, hero.w, hero.h]).toEqual([1180, 600, 260, 300]);
+  });
+});
+
+describe('a new 🔊 speaker’s place', () => {
+  const add = (els: ReturnType<typeof newAudioEl | typeof newTextEl>[]) => {
+    const a = newAudioEl('s');
+    placeSpeaker(els, a);
+    els.push(a);
+    return [a.x, a.y];
+  };
+  it('steps left along the bottom past the speakers there, clear of a text box where it can', () => {
+    // A question in the top half: the bottom-right corner, then one step left each time.
+    const text = Object.assign(newTextEl('Q'), { x: 100, y: 100, w: 1720, h: 500 });
+    const els: ReturnType<typeof newAudioEl | typeof newTextEl>[] = [text];
+    expect(add(els)).toEqual([1700, 860]);
+    expect(add(els)).toEqual([1540, 860]);
+    expect(add(els)).toEqual([1380, 860]);
+  });
+  it('goes past the text to a free spot, and on top of the text only when nothing is free', () => {
+    // A box over the bottom right: the first spot left of it.
+    const corner = Object.assign(newTextEl('WINS!'), { x: 1200, y: 700, w: 640, h: 300 });
+    expect(add([corner])).toEqual([1060, 860]);
+    // A full-slide question: no spot is clear of it, so the speakers still don't pile up.
+    const full = newTextEl('Q');
+    const els: ReturnType<typeof newAudioEl | typeof newTextEl>[] = [full];
+    expect(add(els)).toEqual([1700, 860]);
+    expect(add(els)).toEqual([1540, 860]);
   });
 });

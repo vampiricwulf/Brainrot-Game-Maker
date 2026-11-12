@@ -1,6 +1,6 @@
 <!-- Freeform 16:9 slide editor (spec §5.3): toolbar, canvas with handles, and an inspector. -->
 <script module lang="ts">
-  import { freeOffset, freeSpot, isMediaLink, officeTextPaste, placeNewPicture } from '../../lib/editing';
+  import { freeOffset, freeSpot, isMediaLink, officeTextPaste, placeNewPicture, placeSpeaker } from '../../lib/editing';
   import { topModal } from '../../lib/modal';
 
   // The Final tab shows two slide editors at once. Only the one the user last clicked or focused
@@ -377,7 +377,11 @@
       // Clear of the text, as a picture is.
       add(v, at, at ? undefined : () => placeNewPicture(slide.elements, v), true);
     }
-    else if (kind === 'audio') add(newAudioEl(id), at, undefined, true);
+    else if (kind === 'audio') {
+      const a = newAudioEl(id);
+      // Beside the speakers already there, clear of the text where there's room (never on top of the last one).
+      add(a, at, at ? undefined : () => placeSpeaker(slide.elements, a), true);
+    }
     else if (kind === 'font') {
       await registerGameFonts(game);
       if (single?.kind === 'text') single.font = `'${uploadedFamily(id)}', sans-serif`;
