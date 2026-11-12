@@ -4,7 +4,7 @@
 //    until it's taken back; the host sees "Passed: Ann" in the buzzers' row; once everyone still able to buzz passed (a
 //    wrong answer counts as out), the host's row says "Everyone passed" and 👁 Reveal answer wears the ring; Cat takes
 //    the pass back with P; ↺ Reset buzzers (0) starts the passes over; the answer up, Pass can't be pressed.
-// 2. No Pass on a clue ticked Everyone must play (no Pass) in the editor, nor on a ✍ clue.
+// 2. No Pass on a clue ticked Everyone must play (no Pass) in the editor, nor on a ✍ clue (whose tick is fixed on).
 // 3. Teams: a pass counts for the team (a teammate's phone says who passed, and can take it back).
 // Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
@@ -137,7 +137,7 @@ async function openTile(page, id) {
 try {
   // ---------- 1. An ordinary clue: Pass, the buzz it blocks, everyone passed ----------
   console.log('An ordinary buzz-in clue:');
-  // In the editor: Rizz's first tile is ticked Everyone must play (no Pass); Lore's ✍ one has no such tick.
+  // In the editor: Rizz's first tile is ticked Everyone must play (no Pass); Lore's ✍ one shows it ticked and fixed.
   const { page, card, code } = await host(gameFile, async (page) => {
     await page.locator('.tile[data-place="clue:c1_0"]').click();
     const editor = page.getByRole('dialog', { name: 'Edit clue' });
@@ -146,7 +146,22 @@ try {
     await must.check();
     await editor.getByRole('button', { name: /Done/ }).click();
     await page.locator('.tile[data-place="clue:c2_0"]').click();
-    assert((await editor.getByLabel('Everyone must play (no Pass)').count()) === 0, 'a ✍ clue has none (everyone answers it anyway)');
+    const fixed = editor.getByLabel('Everyone must play (no Pass)');
+    assert((await fixed.isChecked()) && (await fixed.isDisabled()), 'a ✍ clue shows it ticked and fixed (everyone answers it anyway)');
+    await editor.getByRole('button', { name: /Done/ }).click();
+    // A Daily Double and a partner clue: the same, ticked and fixed; back to Standard, it's the author's again (off).
+    await page.locator('.tile[data-place="clue:c0_1"]').click();
+    for (const type of ['dailyDouble', 'partner']) {
+      await editor.getByRole('combobox', { name: /^Type/ }).selectOption(type);
+      assert((await fixed.isChecked()) && (await fixed.isDisabled()), `a ${type === 'partner' ? 'partner clue' : 'Daily Double'} shows it ticked and fixed`);
+    }
+    await editor.getByRole('combobox', { name: /^Type/ }).selectOption('standard');
+    assert(!(await fixed.isChecked()) && (await fixed.isEnabled()), 'made Standard again, the tick is the author’s to set (off)');
+    await editor.getByRole('button', { name: /Done/ }).click();
+    // (Undo the three type changes, so the game played below is the one written above: a partner clue leaves its card.)
+    for (let i = 0; i < 3; i++) await page.keyboard.press('Control+z');
+    await page.locator('.tile[data-place="clue:c0_1"]').click();
+    assert((await editor.getByRole('combobox', { name: /^Type/ }).inputValue()) === 'standard', 'Ctrl+Z ×3 takes the type changes back');
     await editor.getByRole('button', { name: /Done/ }).click();
   });
   const ann = await phone('ann', code);
@@ -166,7 +181,24 @@ try {
     'an ordinary clue: every phone has Pass under BUZZ!, "I won’t buzz on this one"',
   );
   assert((await cat.locator('#keys').innerText()) === 'Press Space to buzz · P to pass', `a desktop phone page says its key: P (${await cat.locator('#keys').innerText()})`);
-  const at = await ann.locator('#buzz').boundingBox();
+  // (Its layout box, without the armed pulse's scale: the button grows and shrinks while it waits for a buzz;
+  // taken once the page has settled, the same twice 200ms apart.)
+  const layoutBox = (loc) => loc.evaluate((el) => {
+    let y = 0;
+    for (let e = el; e; e = e.offsetParent) y += e.offsetTop;
+    return { y, height: el.offsetHeight };
+  });
+  const settledBox = async (loc) => {
+    let last = await layoutBox(loc);
+    for (let i = 0; i < 25; i++) {
+      await sleep(200);
+      const b = await layoutBox(loc);
+      if (b.y === last.y && b.height === last.height) return b;
+      last = b;
+    }
+    return last;
+  };
+  const at = await settledBox(ann.locator('#buzz'));
   const size0 = await settledStageSize(page);
   await shot(ann, 'ann-390-armed');
   await shot(bob, 'bob-360-armed');
@@ -177,8 +209,8 @@ try {
   await ann.locator('#pass.passed').waitFor();
   await sleep(800);
   assert((await big(ann)) === 'You passed' && (await passBtn(ann).innerText()) === 'Take back my pass', 'Ann passes (a double tap passes once): her buzzer says You passed, Pass says Take back my pass');
-  const at2 = await ann.locator('#buzz').boundingBox();
-  assert(at && at2 && Math.abs(at.y - at2.y) < 1 && Math.abs(at.height - at2.height) < 1, 'and BUZZ! stays where it was');
+  const at2 = await settledBox(ann.locator('#buzz'));
+  assert(at && at2 && Math.abs(at.y - at2.y) < 1 && Math.abs(at.height - at2.height) < 1, `and BUZZ! stays where it was (${JSON.stringify([at, at2])})`);
   await row(page).getByText('Passed: Ann').waitFor();
   assert(true, 'the host sees "Passed: Ann" in the buzzers’ row');
   await shot(ann, 'ann-390-passed');
