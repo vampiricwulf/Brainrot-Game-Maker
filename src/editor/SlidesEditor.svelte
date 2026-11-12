@@ -42,15 +42,6 @@
     <textarea rows="1" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
   </label>
 </div>
-<p class="muted small">
-  Viewers see these slides one after another: N (or a click on the stage) shows the next, Shift+N the one before, and after
-  the last one N goes on to the next round. Nothing to answer, no scores.
-</p>
-<!-- Quick text: the slide's main text, so a plain slide never needs the canvas. -->
-<label class="field quick">
-  {slides.length > 1 ? `Text (slide ${at + 1} of ${slides.length})` : 'Text'}
-  <textarea bind:this={qField} rows="2" data-field="q" placeholder="Type what the slide says…" value={slideText(slide)} oninput={(e) => setSlideText(slide, e.currentTarget.value) && followClueText(app.game, [slide])}></textarea>
-</label>
 <SlideTabs
   holder={round}
   bind:side
@@ -60,8 +51,14 @@
   place={(_, slide) => ({ tab: 'round', round: round.id, part: { kind: 'slides', slide } })}
   onadded={() => void tick().then(() => qField?.focus())}
 />
+<!-- Quick text: the slide's main text, so a plain slide never needs the canvas. Under the slide tabs, with the slide it
+     edits. -->
+<label class="field quick">
+  {slides.length > 1 ? `Text (slide ${at + 1} of ${slides.length})` : 'Text'}
+  <textarea bind:this={qField} rows="2" data-field="q" placeholder="Type what the slide says…" value={slideText(slide)} oninput={(e) => setSlideText(slide, e.currentTarget.value) && followClueText(app.game, [slide])}></textarea>
+</label>
 {#key `${round.id}-${slideKeyOf(slide)}`}
-  <SlideEditor {slide} styletargets={styleTargets} styleslides quickfield="q" placeholder="Click to type on the slide" tabbed />
+  <SlideEditor {slide} styletargets={styleTargets} styleslides quickfield="q" placeholder="Click to type on the slide" tabbed fitheight />
 {/key}
 
 <style>

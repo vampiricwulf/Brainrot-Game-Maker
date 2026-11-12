@@ -236,6 +236,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   what's left to fix and the notes ("Checklist · ⚠ 2 · ℹ 1") and stays in view however long the list is (a long list
   scrolls in its own box, at most about a third of the height). Until the game has a round it leaves out a new game's own lines (no title, players or rounds yet: `Problem.starter`), as the first screen says what to do. No
   label is cut to "…": a long one goes on two lines, and "(optional)" sits on a small line under its name.
+- **A slides round's page** says how it plays in its header's line, and its slide is no taller than the window has
+  room for below the round name, notes, slide tabs and Text box, so the whole slide shows on a laptop screen. The Text
+  box (the slide's main text) comes under the slide tabs that pick the slide.
 
 ### 5.2 Board editor
 - A grid view of the round that mirrors the play board. Click a category header or tile to edit it.

@@ -30,6 +30,7 @@
   import Tips from '../Tips.svelte';
   import { pathShape } from '../../lib/draw';
   import { anchored } from '../../lib/anchored';
+  import { fitSlideWidth } from '../../lib/slidefit';
   import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
@@ -81,6 +82,7 @@
     placeholder,
     badge,
     fill = false,
+    fitheight = false,
     objectsection,
     tools,
     menuextras,
@@ -108,6 +110,11 @@
     badge?: string;
     /** Fill the parent's height and fit the canvas to both width and height (the clue editor). */
     fill?: boolean;
+    /**
+     * No taller than the window has room for below what's above it on the page (a slides round's), so the whole slide
+     * shows without scrolling.
+     */
+    fitheight?: boolean;
     /** Extra inspector settings for the selected item (RPG screens: class, secret, host notes). */
     objectsection?: Snippet<[SlideElement]>;
     /** Extra toolbar buttons (RPG screens: spawn point, items). `add` puts an element on the slide. */
@@ -166,6 +173,26 @@
   let textArea = $state<HTMLTextAreaElement>();
   let canvasEl = $state<HTMLDivElement>();
   let root = $state<HTMLDivElement>();
+  /** With `fitheight`: the slide's widest, for its whole height to show with the page at its top. */
+  let fitW = $state<number | null>(null);
+  $effect(() => {
+    if (!fitheight || !root || !canvasEl) return;
+    const canvas = canvasEl;
+    const page = root.parentElement;
+    let scroller = page;
+    while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
+    const measure = () => {
+      const bottom = scroller ? scroller.getBoundingClientRect().bottom : innerHeight;
+      // (Where the slide's box starts with the page scrolled to its top.)
+      const w = fitSlideWidth(canvas.getBoundingClientRect().top + (scroller?.scrollTop ?? 0), bottom);
+      if (w !== fitW) fitW = w;
+    };
+    measure();
+    // (What's above it changes height as it's typed in, or as the window does.)
+    const watch = new ResizeObserver(measure);
+    for (const el of [page, scroller]) if (el) watch.observe(el);
+    return () => watch.disconnect();
+  });
   /** Fitted font size of each text element, as drawn on the canvas. */
   let fits = $state<Record<string, FitResult>>({});
   // Layers: items hidden while editing (editor-only, never saved or undone), the item under the
@@ -1082,7 +1109,7 @@
   <span class="bg-at" style:left="{bgAt.x}px" style:top="{bgAt.y}px" bind:this={bgAnchor}></span>
 {/if}
 
-<div class="se" class:fill bind:this={root} onpointerdowncapture={activate} onfocusin={activate}>
+<div class="se" class:fill class:fit={fitW !== null} style:--fit-w={fitW === null ? undefined : `${fitW}px`} bind:this={root} onpointerdowncapture={activate} onfocusin={activate}>
   <div class="toolbar">
     <!-- Preview is look-only: everything that edits the slide is off until it stops. -->
     <fieldset class="tools" disabled={previewing}>
@@ -1754,6 +1781,15 @@
   }
   .fill .side {
     max-height: none;
+  }
+  /* A slides round's: no taller than the window has room for (the inspector takes the width it leaves). */
+  .fit .canvas {
+    width: min(calc(100% - 2 * var(--pb)), var(--fit-w));
+  }
+  @media (min-width: 901px) {
+    .fit .body {
+      grid-template-columns: minmax(0, calc(var(--fit-w) + 30px)) minmax(300px, 1fr);
+    }
   }
   @media (max-width: 900px) {
     .body {

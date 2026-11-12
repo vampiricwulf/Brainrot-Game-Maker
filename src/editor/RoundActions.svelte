@@ -29,11 +29,14 @@
     menu?: () => MenuEntry[];
   } = $props();
   const mode = $derived(ROUND_MODES[round.mode]);
+  // (A slides round says how it plays here, in the header's line, so its slide has the height below.)
+  const SLIDES_NOTE =
+    ' · Viewers see these slides one after another: N (or a click on the stage) shows the next, Shift+N the one before, and after the last one N goes on to the next round. Nothing to answer, no scores.';
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="ra" oncontextmenu={(e) => menu && showMenu(e, menu())}>
-  <PageHeader title={roundName(round, index)} chip="{mode.icon} {mode.label}" chipTitle={mode.hint} sub="Round {index + 1} of {count}">
+  <PageHeader title={roundName(round, index)} chip="{mode.icon} {mode.label}" chipTitle={mode.hint} sub="Round {index + 1} of {count}{round.mode === 'slides' ? SLIDES_NOTE : ''}">
     {#snippet actions()}
       {#if ontest}
         <button
@@ -62,5 +65,14 @@
   .ra :global(.page-header) {
     padding-bottom: 12px;
     border-bottom: 1px solid var(--border);
+  }
+  /* On a phone the buttons go under the name and its line, which keep the width. */
+  @media (max-width: 700px) {
+    .ra :global(.page-header) {
+      flex-wrap: wrap;
+    }
+    .ra :global(.page-header .titles) {
+      flex-basis: 100%;
+    }
   }
 </style>

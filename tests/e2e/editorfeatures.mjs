@@ -43,6 +43,20 @@ try {
     const moved = fp.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).locator('[data-what-moved]');
     await moved.waitFor();
     assert((await moved.getAttribute('open')) === null, 'and its keys window keeps “What moved in this version” folded, there to open');
+    await fp.keyboard.press('Escape');
+    // The sample opens on its slides round with the whole slide in the window, at 1280×720 and 1366×768: how the round
+    // plays is said in the header's line, and the slide's Text box sits under the slide tabs that pick it.
+    await fp.getByRole('button', { name: /Try a sample game/ }).click();
+    await fp.locator('.canvas').waitFor();
+    for (const [w, h] of [[1280, 720], [1366, 768]]) {
+      await fp.setViewportSize({ width: w, height: h });
+      await fp.waitForTimeout(300);
+      const box = await fp.locator('main .canvas').evaluate((c) => { const r = c.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width), scrolled: c.closest('main').scrollTop }; });
+      assert(box.scrolled === 0 && box.bottom <= h && box.width >= 500, `${w}×${h}: the sample's first slide shows whole (${JSON.stringify(box)})`);
+    }
+    assert((await fp.locator('.page-header .sub').innerText()).includes('Viewers see these slides one after another'), 'a slides round says how it plays in its header line');
+    const order = await fp.evaluate(() => { const tabs = document.querySelector('main [role="tablist"]'); const q = document.querySelector('main [data-field="q"]'); return !!tabs && !!q && !!(tabs.compareDocumentPosition(q) & Node.DOCUMENT_POSITION_FOLLOWING); });
+    assert(order, 'and its Text (slide 1 of 2) box comes after the slide tabs');
     await fresh.close();
   }
 
