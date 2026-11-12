@@ -32,7 +32,9 @@
   // What the edits were when the editor opened: closing with anything else asks first. (Opening the
   // Crop tool adds a full-image crop, which isn't an edit.)
   const snapshot = (e: ImageEdits) => JSON.stringify({ ...e, crop: e.crop && (e.crop.x || e.crop.y || e.crop.w < 1 || e.crop.h < 1) ? e.crop : undefined });
-  let opened = snapshot(untrack(() => edits));
+  let opened = $state(snapshot(untrack(() => edits)));
+  // Nothing changed since it opened: Apply has nothing to save (no new file, no undo step), as in ✎ Edit video / sound.
+  const unchanged = $derived(snapshot(edits) === opened);
   let img = $state<HTMLImageElement | null>(null);
   let tool = $state<'move' | 'crop' | 'draw' | 'text' | 'sticker'>('move');
   let selectedId = $state<string | null>(null);
@@ -504,7 +506,9 @@
     if (mod && k === 'enter') {
       e.preventDefault();
       e.stopImmediatePropagation();
-      if (!saving && img) apply();
+      // (With nothing changed, Ctrl+Enter just closes it.)
+      if (unchanged) onclose();
+      else if (!saving && img) apply();
     } else if (mod && ((k === 'z' && e.shiftKey) || k === 'y') && !typing) {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -573,7 +577,7 @@
       <button class="ghost apart" onclick={resetAll} disabled={saving} title="Take every edit off (Ctrl+Z puts them back)">Reset</button>
       {#if el.editedMedia}<button class="ghost" onclick={revert} title="Show the picture as it was, without its edits, and close">Use original</button>{/if}
       <button class="ghost apart" onclick={cancel} title="Esc">Cancel</button>
-      <button class="primary" onclick={apply} disabled={saving || !img} title="Ctrl+Enter">{saving ? `Saving…${progress === null ? '' : ` ${Math.round(progress * 100)}%`}` : 'Apply'}</button>
+      <button class="primary" onclick={apply} disabled={saving || !img || unchanged} title={unchanged ? 'Nothing changed yet: crop, draw, add text or a sticker' : 'Ctrl+Enter'}>{saving ? `Saving…${progress === null ? '' : ` ${Math.round(progress * 100)}%`}` : 'Apply'}</button>
       <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
 

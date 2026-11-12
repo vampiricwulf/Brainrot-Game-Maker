@@ -16,6 +16,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Fixed
 
 - On a 1280- or 1366-wide laptop, the Final's and the tiebreaker's slide buttons (＋ Add slide to 🗑 Delete slide) drop under the slide tabs when they don't fit beside them, instead of running off the right edge and making the editor scroll sideways.
+- **✎ Edit image**'s **Apply** is greyed until you change something (“Nothing changed yet”), and `Ctrl+Enter` with nothing changed just closes the window, as in ✎ Edit video / sound. Before, it saved a copy of the picture anyway (a new “-edited” file in 🖼 Media, and a JPEG lost a little quality each time).
 
 ## 2026-11-08
 

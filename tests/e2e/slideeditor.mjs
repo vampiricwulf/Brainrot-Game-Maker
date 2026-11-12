@@ -478,12 +478,22 @@ try {
     Math.abs(turned.w - editPic.h) <= 1 && Math.abs(turned.h - editPic.w) <= 1 && Math.abs(turned.x + turned.w / 2 - (editPic.x + editPic.w / 2)) <= 1,
     `the turned picture swaps its width and height, centred where it was (${editPic.w}×${editPic.h} → ${turned.w}×${turned.h})`,
   );
-  // Apply again (nothing changed): it doesn't shrink.
+  // Opened again with nothing changed, Apply is greyed (nothing to save), and Ctrl+Enter just closes it: no new file, no
+  // undo step, and the picture keeps its size.
+  const filesBefore = await mediaCount();
+  const undoBefore = await undoTitle();
   await bar.getByRole('button', { name: '✎ Edit image…' }).click();
-  await page.getByRole('button', { name: 'Apply', exact: true }).click();
-  await page.waitForTimeout(500);
+  const applyBtn = page.getByRole('dialog', { name: 'Edit image' }).getByRole('button', { name: 'Apply', exact: true });
+  await page.waitForTimeout(300);
+  assert((await applyBtn.isDisabled()) && (await applyBtn.getAttribute('title')).startsWith('Nothing changed yet'), `with nothing changed, Apply is greyed: “${await applyBtn.getAttribute('title')}”`);
+  await page.keyboard.press('Control+Enter');
+  await page.getByRole('dialog', { name: 'Edit image' }).waitFor({ state: 'detached', timeout: 3000 });
+  await page.waitForTimeout(300);
   const again = (await drawn()).find((e) => e.id === editPic.id);
-  assert(Math.abs(again.w - turned.w) <= 1 && Math.abs(again.h - turned.h) <= 1, `applying again keeps its size (${again.w}×${again.h})`);
+  assert(
+    Math.abs(again.w - turned.w) <= 1 && Math.abs(again.h - turned.h) <= 1 && (await mediaCount()) === filesBefore && (await undoTitle()) === undoBefore,
+    `and Ctrl+Enter just closes it: no new file, no undo step, the same size (${again.w}×${again.h})`,
+  );
   // Use original goes back to the box it had before it was edited.
   await bar.getByRole('button', { name: '✎ Edit image…' }).click();
   await page.getByRole('button', { name: 'Use original' }).click();
@@ -845,12 +855,15 @@ try {
   const gifEditor = page.getByRole('dialog', { name: 'Edit image' });
   await gifEditor.getByText('A moving GIF: the edits go on every frame, so it keeps moving.').waitFor();
   assert(true, 'the image editor says a moving GIF keeps moving');
-  // Apply, and the window closed as it starts saving (Esc with nothing changed closes it at once): the save stops.
+  // Apply, and the window closed as it starts saving (Discard, asked by Esc a moment before): the save stops.
   const gifsBefore = await mediaCount();
+  await gifEditor.getByRole('button', { name: '⟳ 90°' }).click();
   await page.waitForFunction(() => document.querySelector('[aria-label="Edit image"] header button.primary')?.disabled === false);
+  await page.keyboard.press('Escape');
+  await gifEditor.locator('[data-ask][data-ready]').waitFor();
   await gifEditor.evaluate((d) => {
     d.querySelector('header button.primary').click();
-    d.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    [...d.querySelectorAll('header button')].find((b) => b.textContent.trim() === 'Discard').click();
   });
   await gifEditor.waitFor({ state: 'detached' });
   await bar.getByRole('button', { name: '✎ Edit image…' }).click();
