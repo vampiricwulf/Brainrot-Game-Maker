@@ -267,6 +267,9 @@ try {
       await tops(['Text at the top of the box', 'Text in the middle of the box', 'Text at the bottom of the box']),
     ];
     assert(rows.every((r) => r < 8), `the text style buttons wrap by whole groups (each group's spread up and down: ${rows.join(', ')} px)`);
+    // One meaning per sign in the panel: ⤒ ⤓ are only the layer order's (named as the item's menu names them).
+    const signs = await page.locator('.insp button').evaluateAll((bs) => bs.filter((b) => /[⤒⤓↕]/.test(b.textContent)).map((b) => `${b.textContent.trim()}=${b.getAttribute('aria-label')}`));
+    assert(signs.join('|') === '⤒ To front=Bring to front|⤓ To back=Send to back', `⤒ and ⤓ mean only Bring to front and Send to back in the panel (${signs.join(', ')})`);
   }
 
   // Resize a picture, then drag it straight away. The resize used to leave a text selection on the page,
@@ -355,7 +358,7 @@ try {
   await menuPick(/🔓 Unlock/);
   await page.keyboard.press('Tab');
   assert((await inspectorKind()) === 'text', 'Tab picks the question under the rectangle');
-  await menuPick(/^Bring to front/);
+  await menuPick(/^⤒ Bring to front/);
   await page.keyboard.press('Delete');
   await layers.filter({ hasText: label }).waitFor({ state: 'detached' });
   assert((await layers.count()) === 1, 'after Bring to front from the keyboard menu, Delete deletes the item');

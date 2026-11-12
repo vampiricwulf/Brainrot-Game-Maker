@@ -147,7 +147,7 @@ try {
     await page.mouse.click(q.x, q.y, { button: 'right' });
     await menu.waitFor();
     const itemMenu = await items();
-    const itemWant = ['✎ Edit text', '✎ Rename', '⧉ Duplicate', '✂ Cut', '📋 Copy', '📋 Paste', 'Bring to front', 'Bring forward', 'Send backward', 'Send to back', 'Align', '🔒 Lock', '👁 Hide while editing', '🗑 Delete'];
+    const itemWant = ['✎ Edit text', '✎ Rename', '⧉ Duplicate', '✂ Cut', '📋 Copy', '📋 Paste', '⤒ Bring to front', '↑ Bring forward', '↓ Send backward', '⤓ Send to back', 'Align', '🔒 Lock', '👁 Hide while editing', '🗑 Delete'];
     assert(JSON.stringify(itemMenu) === JSON.stringify(itemWant), `on its words, the text box's menu in one order (${itemMenu.join(' | ')})`);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
@@ -301,8 +301,8 @@ try {
   assert((await undoTitle()).startsWith('Undo: Spaced 4 shapes evenly across'), `the History names it “Spaced 4 shapes evenly across” (${await undoTitle()})`);
   // Several selected: the same Front / Back as one item has, and the bar's 🔒 Lock.
   const multi = page.locator('.side .multi');
-  await multi.getByRole('button', { name: '⤓ Back' }).click();
-  assert((await undoTitle()).startsWith('Undo: Sent 4 shapes to the back'), `⤓ Back sends the four to the back, named so (${await undoTitle()})`);
+  await multi.getByRole('button', { name: 'Send to back' }).click();
+  assert((await undoTitle()).startsWith('Undo: Sent 4 shapes to the back'), `⤓ To back sends the four to the back, named so (${await undoTitle()})`);
   assert((await bar.innerText()).includes('4 items selected'), 'the bar says how many are selected');
   await lockBtn.click();
   assert((await page.locator('.layers .row').getByRole('button', { name: /^Unlock: / }).count()) === 5, 'Lock locks all four (and the text box stays locked)');

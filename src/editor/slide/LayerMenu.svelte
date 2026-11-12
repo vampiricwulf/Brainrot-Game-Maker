@@ -173,10 +173,10 @@
     <button role="menuitem" onclick={() => act('copy')}>📋 Copy<kbd>{key('Ctrl+C')}</kbd></button>
     <button role="menuitem" onclick={() => act('paste')} disabled={!canPaste}>📋 Paste<kbd>{key('Ctrl+V')}</kbd></button>
     <hr />
-    <button role="menuitem" onclick={() => act('front')}>Bring to front<kbd>{key('Ctrl+Shift+]')}</kbd></button>
-    <button role="menuitem" onclick={() => act('forward')}>Bring forward<kbd>{key('Ctrl+]')}</kbd></button>
-    <button role="menuitem" onclick={() => act('backward')}>Send backward<kbd>{key('Ctrl+[')}</kbd></button>
-    <button role="menuitem" onclick={() => act('back')}>Send to back<kbd>{key('Ctrl+Shift+[')}</kbd></button>
+    <button role="menuitem" onclick={() => act('front')}>⤒ Bring to front<kbd>{key('Ctrl+Shift+]')}</kbd></button>
+    <button role="menuitem" onclick={() => act('forward')}>↑ Bring forward<kbd>{key('Ctrl+]')}</kbd></button>
+    <button role="menuitem" onclick={() => act('backward')}>↓ Send backward<kbd>{key('Ctrl+[')}</kbd></button>
+    <button role="menuitem" onclick={() => act('back')}>⤓ Send to back<kbd>{key('Ctrl+Shift+[')}</kbd></button>
     <hr />
     {@render alignItem(act, !anyUnlocked, selected.length > 1)}
     {#if anyUnlocked}<button role="menuitem" onclick={() => act('lock')}>🔒 Lock</button>{/if}

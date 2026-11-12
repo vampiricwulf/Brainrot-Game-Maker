@@ -148,7 +148,8 @@
   const ownOnTile = $derived(el.kind === 'text' && onTile && !el.background && !themedText && !WHITE.test(themeText));
 
   const ALIGN = { left: ['⇤', 'Align text left'], center: ['↔', 'Center the text'], right: ['⇥', 'Align text right'] } as const;
-  const VALIGN = { top: ['⤒', 'Text at the top of the box'], middle: ['↕', 'Text in the middle of the box'], bottom: ['⤓', 'Text at the bottom of the box'] } as const;
+  // (Bars where the text sits: ⤒ ⤓ are the layer order's signs, and ↕ is Space evenly's.)
+  const VALIGN = { top: ['▔', 'Text at the top of the box'], middle: ['▬', 'Text in the middle of the box'], bottom: ['▁', 'Text at the bottom of the box'] } as const;
 
   const fonts = $derived(fontChoices(game));
   const ENTRANCES: [EntranceType | '', string][] = $derived([
@@ -556,10 +557,10 @@
     </div>
     <!-- (🔒 Lock, ⧉ Duplicate and 🗑 Delete are the bar's at the top of the panel.) -->
     <div class="row">
-      <button class="small" onclick={() => onorder('front')} title="Bring to front">⤒ Front</button>
+      <button class="small" onclick={() => onorder('front')} aria-label="Bring to front" title="Bring to front">⤒ To front</button>
       <button class="small" onclick={() => onorder('up')} aria-label="Bring forward" title="Bring forward">↑</button>
       <button class="small" onclick={() => onorder('down')} aria-label="Send backward" title="Send backward">↓</button>
-      <button class="small" onclick={() => onorder('back')} title="Send to back">⤓ Back</button>
+      <button class="small" onclick={() => onorder('back')} aria-label="Send to back" title="Send to back">⤓ To back</button>
     </div>
   </section>
 </div>

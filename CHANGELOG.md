@@ -26,6 +26,7 @@ in plain words for the people who make and host games. Anything committed but no
 - In a browser, **⚙ Settings › Saving** now says where the game is kept (in this browser as you work, a replaced game in 📂 Open… → Recent games, 💾 Save for a file to move or share) instead of naming Resume game and desktop-only settings, and the buzzer line says plainly when this version has no buzzer server set. The game's title box shows **Untitled Game** when it's empty, and its tooltip says the title shows on stream and names the saved file.
 - In the wheel and dice editors the preview stays in view beside a long list of slices or faces, so **🎡 Test spin** and **🎲 Test roll** play where you can see them (as on 🎨 Theme).
 - The checklist notes a board's categories still under a made-up name like “Category 5” (the names show on stream as they are), the way it notes a game still called “Untitled Game”; its line goes to the first such name. A new board still says only its clues to finish.
+- In the slide editor, ⤒ and ⤓ now only mean the layer order: a text's place in its box is ▔ ▬ ▁ (top, middle, bottom), and the order buttons read **⤒ To front** and **⤓ To back**, with the same signs in front of the item menu's **⤒ Bring to front**, **↑ Bring forward**, **↓ Send backward** and **⤓ Send to back**.
 
 ## 2026-11-08
 

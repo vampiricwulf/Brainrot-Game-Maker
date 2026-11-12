@@ -316,7 +316,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **Right-click menus** (LayerMenu, its own component, in the editors' one order; Shift+F10 on the canvas or a Layers
   row too, and 🖼 Board images the same): an item's is headed by its name, then the items stacked there to pick from,
   ✎ Edit… (Double-click / Enter) · 🔁 Use another picture… / video… / sound… (only this item) · ✎ Rename (F2 where
-  it renames) · ⧉ Duplicate · ✂ Cut · 📋 Copy · 📋 Paste · Bring to front · Bring forward · Send backward · Send to back
+  it renames) · ⧉ Duplicate · ✂ Cut · 📋 Copy · 📋 Paste · ⤒ Bring to front · ↑ Bring forward · ↓ Send backward · ⤓ Send to back
   · Align ▸ · 🔒 Lock · 👁 Hide while editing (an RPG object's 🤫 Secret and ＋ Add button…) · 🗑 Delete. A right-click
   follows a left click's rule: beside the words of a text box that isn't selected it's an empty spot, so a full-slide
   question gives the slide's menu (its "Select an item here" lists the text box): ＋ Text here · 📋 Paste here · 📋 Copy

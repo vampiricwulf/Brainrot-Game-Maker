@@ -1416,10 +1416,10 @@
         <section class="multi">
           {@render lineUp()}
           <div class="row">
-            <button class="small" onclick={() => order('front')} title="Bring them to the front (Ctrl+Shift+])">⤒ Front</button>
+            <button class="small" onclick={() => order('front')} aria-label="Bring to front" title="Bring them to the front (Ctrl+Shift+])">⤒ To front</button>
             <button class="small" onclick={() => order('up')} aria-label="Bring forward" title="Bring forward (Ctrl+])">↑</button>
             <button class="small" onclick={() => order('down')} aria-label="Send backward" title="Send backward (Ctrl+[)">↓</button>
-            <button class="small" onclick={() => order('back')} title="Send them to the back (Ctrl+Shift+[)">⤓ Back</button>
+            <button class="small" onclick={() => order('back')} aria-label="Send to back" title="Send them to the back (Ctrl+Shift+[)">⤓ To back</button>
           </div>
         </section>
       {:else}
