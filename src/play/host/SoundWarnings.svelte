@@ -7,7 +7,8 @@
   import { captureProblem, desktop, RESTART_ASK, restartApp } from '../../lib/desktop.svelte';
   import InlineAsk from './InlineAsk.svelte';
 
-  let { dual, onhelp }: { dual: boolean; onhelp: () => void } = $props();
+  /** clickOnce false: "click the audience window once" is said elsewhere (the pre-game checklist's own line). */
+  let { dual, onhelp, clickOnce = true }: { dual: boolean; onhelp: () => void; clickOnce?: boolean } = $props();
 
   const capture = captureProblem();
   const missing = $derived(dual ? sound.outputMissing : audioOut.missing);
@@ -60,7 +61,7 @@
     <button class="small" onclick={reopen} title="Open the audience window again (A)">Reopen (A)</button>
   </div>
 {/if}
-{#if dual && (!audience.activated || sound.cueBlocked)}
+{#if clickOnce && dual && (!audience.activated || sound.cueBlocked)}
   <div class="w" role="status">
     ⚠ {sound.cueBlocked ? 'The audience window blocked a sound: click' : 'Click'} the audience window once so it can play sound.
   </div>

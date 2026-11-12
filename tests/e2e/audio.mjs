@@ -225,8 +225,13 @@ try {
     const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: /Separate audience window/ }).click()]);
     watch(aud, 'audience');
     await aud.getByText('🔊 Click to enable sound').waitFor();
-    await page.getByText('Click the audience window once so it can play sound').waitFor();
-    assert(true, "dual mode: the host warns that the audience window can't play sound yet, with no slide media");
+    // (On the pre-game screen it's said once, in ✅ Before you start's On stream tips.)
+    const clickLine = page.locator('.live-check li[data-check="sound-click"]');
+    await clickLine.getByText('click it once').waitFor();
+    assert(
+      (await page.getByText('Click the audience window once so it can play sound').count()) === 0,
+      "dual mode: the host warns that the audience window can't play sound yet, with no slide media, once (the checklist's line)",
+    );
     // Pre-game: viewers see a "Starting soon" card, not the board (it would give the categories away).
     assert((await aud.locator('.soon-text').count()) === 1 && (await aud.locator('.board').count()) === 0, 'pre-game: the audience window holds on a "Starting soon" card');
     // The "Click to enable sound" overlay stays until the window is clicked, the mouse still or not.
@@ -239,7 +244,7 @@ try {
     await aud.keyboard.press('Alt');
     await page.waitForTimeout(300);
     assert(
-      (await page.getByText('Click the audience window once so it can play sound').count()) === 1 && (await aud.locator('.activate').count()) === 1,
+      !(await clickLine.getAttribute('class'))?.split(' ').includes('done') && (await clickLine.getByText('click it once').count()) === 1 && (await aud.locator('.activate').count()) === 1,
       'a modifier key in the audience window keeps the warning',
     );
 

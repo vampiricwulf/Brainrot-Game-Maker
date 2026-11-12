@@ -566,9 +566,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
    do); and a foot row, 🔒 Lock seats left and ⏹ Close the room… right, which asks while any phone is in. With phone
    buzzers off it says what the game uses phones for (🤝 partner cards, 🤫 cards, 🎭 deals, ✍ multiple choice) and what
    the host does without them. **✅ Before you start** (at the foot of the right column on a wide window, after the
-   players' cards on a narrow one) is one card in two groups: *On stream*
-   (one window: "Viewers see this page now" first; the audience window, the room and who's in, the sound and its
-   🔊 Test the sound…; ✕ folds only these tips, "Show them" brings them back) and *The game*, validate()'s warnings
+   players' cards on a narrow one) is one card in two groups: *On stream* (one window: "Viewers see this page now", with
+   what they see in the game, first; the audience window, the room and who's in, the sound and its 🔊 Test the sound…;
+   ✕ folds only these tips, "Show them" brings them back), the warnings about stream sound and a closed audience window
+   above them (never folded; 🖥 Display says none of these again), and *The game*, validate()'s warnings
    (and the notes Start takes care of), each line with its own Fix › (that problem's place in the editor), 🎲 Place now
    and 🗜 Make smaller where they apply, and ◀ Fix in editor to the first; never folded. The Start bar keeps one pointer,
    "⚠ 2 to check" ("ℹ 1 note" for notes alone), which scrolls to it with the keys on it. The page is at least as tall

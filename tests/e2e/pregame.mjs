@@ -354,6 +354,14 @@ try {
     beforeBox.x > playersBox.x + playersBox.width && beforeBox.y > streamBox.y + streamBox.height && (await beforeCard.locator('[data-checks]').count()) === 1,
     'two columns (1280 wide): the card is at the foot of the right column, under 📺 On stream, with its The game group',
   );
+  // What viewers see in one window is said once, in the card: 🖥 Display has only its choice of mode.
+  const display = page.locator('section[aria-labelledby="pregame-display"]');
+  assert(
+    (await display.locator('.exposed').count()) === 0 &&
+      !(await display.innerText()).includes('viewers see everything') &&
+      (await live.locator('li.exposed').innerText()).includes('wagers as you type them'),
+    'one window: 🖥 Display no longer repeats the warning; the card’s first line says what viewers see in the game',
+  );
   // One column (a narrow window): the card is back under the players' cards, before ⚖ Game rules.
   await page.setViewportSize({ width: 1000, height: 720 });
   const narrowBefore = await beforeCard.boundingBox();

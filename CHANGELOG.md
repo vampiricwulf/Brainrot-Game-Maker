@@ -30,6 +30,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 
 - **▶ Play**: on a wide window **✅ Before you start** sits at the foot of the right column, under **📺 On stream**, so the game's checks stay in view beside Start while the 📱 Phone buzzers card makes the left column long. On a narrow window it stays under the players.
+- **▶ Play** says each stream warning once, in **✅ Before you start**: what viewers see in one window (now with what they see in the game: the wagers as you type them, answers and host notes), the audience window's sound, and a closed audience window. **🖥 Display** keeps only the choice of mode.
 - **▶ Play** on a tall screen (1920×1080) keeps the Start bar at the foot of the window, instead of right under the last card with empty space below.
 - In one window, **❔ Help**, **📜 Log**, **👥 Players** and **⚖ Rules** opened during the game scroll inside the host panel's own space: the stage viewers see keeps its size (it shrank to make room for them).
 - The Final's spotlight card on stream gives a typed answer more room: three lines show at about 53px on the 1920 stage (they were 28px), with the name, wager, verdict and score a little smaller so the card keeps its height.

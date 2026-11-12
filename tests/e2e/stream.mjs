@@ -946,7 +946,10 @@ try {
 
   // Pre-game: single window says what viewers see, and the audience window is recommended.
   const warn = await page.locator('.pregame .exposed').innerText();
-  assert(warn.includes('viewers see everything on screen') && warn.includes('wagers as you type them'), 'single-window mode warns that viewers see everything');
+  assert(
+    (await page.locator('.pregame .exposed').count()) === 1 && warn.includes('everything on it is on stream') && warn.includes('wagers as you type them'),
+    'single-window mode warns once (in ✅ Before you start) that viewers see everything',
+  );
   assert(!(await page.locator('.modes').innerText()).includes('Recommended'), 'neither display mode is tagged “Recommended” (single window is the default)');
 
   // The stream cards' words, the caption, and a countdown on the Starting soon card (in the audience window), all under

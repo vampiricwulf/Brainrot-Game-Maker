@@ -123,6 +123,7 @@
     hideFromViewers,
     openScoresWindow,
     scoresWindow,
+    sound,
     mediaCommand,
     onAudienceKey,
     openAudienceWindow,
@@ -6281,8 +6282,8 @@
           <h2 id="pregame-display">🖥 Display</h2>
           <ModeCards dual={wantAudience} onsingle={() => pickDisplay(false)} onaudience={() => pickDisplay(true)} />
           <!-- The audience window's own buttons, under the cards: open it now (Start opens it too), bring it forward (A),
-               or close it, apart and asking first. Right under it, what may keep it quiet (click it once for sound), or
-               that it was closed by accident, with Reopen. -->
+               or close it, apart and asking first. (What viewers see in one window, the sound and a window closed by
+               accident are said once, in ✅ Before you start.) -->
           {#if dual}
             <div class="row aud-line small" data-audience-line>
               {#if askCloseAud}
@@ -6306,13 +6307,6 @@
               <span class="muted">📺 Audience window: not open yet (Start opens it)</span>
               <button class="small" onclick={() => void openAudience()} title="Open it now, to set up its capture in OBS or Discord (A)">📺 Open it now</button>
             </div>
-          {/if}
-          <SoundWarnings {dual} onhelp={() => (showSound = true)} />
-          {#if !wantAudience}
-            <p class="warn small exposed">
-              ⚠ In single-window mode viewers see everything on screen: the wagers as you type them, and the answers, host notes
-              and hidden objects shown in the controls. To keep those secret, use the audience window.
-            </p>
           {/if}
         </section>
 
@@ -6816,6 +6810,8 @@
 {#snippet beforeStart()}
   <section class="part before-start" aria-labelledby="pregame-before">
     <h2 id="pregame-before">✅ Before you start</h2>
+    <!-- What may keep the stream quiet, or a closed audience window, with Reopen (never folded: they're warnings). -->
+    <SoundWarnings {dual} clickOnce={!prefs.liveChecklist} onhelp={() => (showSound = true)} />
     {#if prefs.liveChecklist}
       <div class="live-check" role="group" aria-labelledby="pregame-live">
         <div class="row live-head">
@@ -6829,7 +6825,11 @@
         </div>
         <ul>
           {#if !wantAudience}
-            <li class="lead">🖥 Viewers see this page now (one window): everything on it is on stream. In the game, H hides the controls.</li>
+            <li class="lead exposed">
+              🖥 Viewers see this page now (one window): everything on it is on stream. In the game they see the wagers as you type
+              them, and the answers, host notes and hidden objects in the controls. H hides the controls; the 📺 audience window
+              keeps them secret.
+            </li>
           {:else}
             <li class:done={dual}>
               {dual
@@ -6847,7 +6847,11 @@
           {/if}
           {#if wantAudience}
             <li class:done={dual && audience.activated} data-check="sound-click">
-              {dual && audience.activated ? '🔊 The audience window can play sound.' : '🔊 Sound in the audience window: click it once (browsers keep it quiet until then).'}
+              {dual && audience.activated && !sound.cueBlocked
+                ? '🔊 The audience window can play sound.'
+                : dual && sound.cueBlocked
+                  ? '🔊 The audience window blocked a sound: click it once so it can play sound.'
+                  : '🔊 Sound in the audience window: click it once (browsers keep it quiet until then).'}
             </li>
           {/if}
           <li class="tip">🔊 Streaming on Discord or OBS? {@render testSound()}</li>
@@ -6855,7 +6859,7 @@
       </div>
     {:else}
       <div class="row small live-off">
-        <span class="muted">On stream tips hidden.</span>
+        <span class="muted">On stream tips hidden{wantAudience ? '' : ' (one window: viewers see this page)'}.</span>
         <button class="ghost small" onclick={() => ((prefs.liveChecklist = true), savePrefs())}>Show them</button>
         {@render testSound()}
       </div>
