@@ -265,7 +265,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   guess, After a miss, Points ("As in Describe it", No penalty, The guesser loses it all, Custom) with its table, ☑ The
   partner never loses points, and the part words. Under them, one sentence says how it plays; what the buzzer server
   keeps of a card is in 📱 On their phone's tooltip. Both hints read alike: "2 on the board · Start places 1 at random", or
-  "· all placed".
+  "· all placed", or, short with nothing more to place, why the rest can't go ("· 3 can't go yet: write a question and
+  answer on more tiles first"; 🔀 Randomize partner clues is greyed while no tile is written).
 - **Tile face**: by default a tile shows its value. Optionally, show custom text or an image instead ("???", an emoji,
   a meme face). The value still drives the prefilled score.
 - Validation panel: empty clues, missing answers, broken media, and duplicate player colors.
@@ -1110,8 +1111,9 @@ foot has 📖 How to host ↗ and 💡 Show all tips again (the editor's 💡 Ti
 screen's first-time notes show again). Each part starts with **🆕 What moved in this version** (`src/play/whatmoved.svelte.ts`:
 `WHAT_MOVED` by part, one line per change that moved something, since `MOVED_SINCE`, then the renames from `RENAMED`),
 a fold open while it's new on this computer (`jb.whatMovedSeen.<part>`), folded after; it's hidden while the filter has
-words. ❔ Help on the game screen has a dot while the During the game part's list is new. Each change that moves
-something adds its line there. The main keys:
+words. ❔ Help on the game screen has a dot while the During the game part's list is new. A first run (no `jb.` setting
+kept and no game from before: `firstRunSeen`) counts both lists as seen, so someone new gets no dot. Each change that
+moves something adds its line there. The main keys:
 
 | Key | Action |
 |---|---|
