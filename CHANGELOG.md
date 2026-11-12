@@ -28,6 +28,7 @@ in plain words for the people who make and host games. Anything committed but no
 - The checklist notes a board's categories still under a made-up name like “Category 5” (the names show on stream as they are), the way it notes a game still called “Untitled Game”; its line goes to the first such name. A new board still says only its clues to finish.
 - In the slide editor, ⤒ and ⤓ now only mean the layer order: a text's place in its box is ▔ ▬ ▁ (top, middle, bottom), and the order buttons read **⤒ To front** and **⤓ To back**, with the same signs in front of the item menu's **⤒ Bring to front**, **↑ Bring forward**, **↓ Send backward** and **⤓ Send to back**.
 - A new **🔊 Sound** on a slide goes beside the speakers already there (along the bottom, then up the right edge) and clear of the text where there's room, instead of landing exactly on the last one, where only the top speaker could be clicked.
+- In **🖼 Media** every card has its buttons at the same height: a sound's player sits inside its box, and the foot gives each button a row of its own (✎ Edit…, then **Replace everywhere…**, then the one fix), with ✎ Edit…'s place kept empty on a picture.
 
 ## 2026-11-08
 

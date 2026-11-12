@@ -140,6 +140,12 @@ try {
   // the right end of its name row, the same spot on every card.
   const foot0 = (await cards.nth(0).locator('.foot button').allInnerTexts()).map((t) => t.trim());
   assert(foot0.join(' | ') === 'Replace everywhere…', `a picture's card foot: Replace everywhere… (${foot0.join(' | ')})`);
+  // (Under an empty place as high as ✎ Edit…, so it's at the height a video's or a sound's is.)
+  const slot = await cards.nth(0).locator('.foot').evaluate((f) => {
+    const [first, replace] = [f.children[0], [...f.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Replace everywhere…')];
+    return { hidden: getComputedStyle(first).visibility === 'hidden', h: Math.round(first.getBoundingClientRect().height), rh: Math.round(replace.getBoundingClientRect().height), below: replace.getBoundingClientRect().top > first.getBoundingClientRect().bottom };
+  });
+  assert(slot.hidden && slot.h === slot.rh && slot.below, `a picture's Replace everywhere… sits under ✎ Edit…'s empty place (${JSON.stringify(slot)})`);
   const delAt = await cards.evaluateAll((cs) => cs.map((c) => Math.round(c.getBoundingClientRect().right - c.querySelector('.name-row .del').getBoundingClientRect().right)));
   assert(new Set(delAt).size === 1, `🗑 is in the same spot on every card (${delAt.join(', ')} px from the right)`);
   // "used 1× ▾" lists where it's used; a click on one goes there and flashes it.

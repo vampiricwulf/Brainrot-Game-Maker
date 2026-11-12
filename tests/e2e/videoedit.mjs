@@ -227,6 +227,18 @@ try {
   // ---------- 1. clip.mp4, used by two items, trimmed to 1.2–3.0 ----------
   console.log('1. An MP4 trimmed, nothing re-encoded:');
   const hue12 = (await hueAt(fx, files.clip, 1.2)).hue;
+  {
+    // 🖼 Media's cards: a sound's player sits in its box, so its name row and Replace everywhere… are where a video's are.
+    await media();
+    const at = (name) =>
+      card(name).evaluate((c) => {
+        const top = c.getBoundingClientRect().top;
+        const replace = [...c.querySelectorAll('.foot button')].find((b) => b.textContent.trim() === 'Replace everywhere…');
+        return [c.querySelector('.name-row').getBoundingClientRect().top - top, replace.getBoundingClientRect().top - top].map(Math.round);
+      });
+    const [video, sound] = [await at('clip.mp4'), await at('tone.wav')];
+    assert(video.join() === sound.join(), `a sound's card has its name row and Replace everywhere… where a video's has them (video ${video.join(', ')} · sound ${sound.join(', ')} px down)`);
+  }
   await editFromMedia('clip.mp4');
   assert((await dialog.locator('.modal-title').innerText()) === '✎ Edit video', 'the window: ✎ Edit video');
   const hint = await dialog.locator('[data-edit-hint]').innerText();

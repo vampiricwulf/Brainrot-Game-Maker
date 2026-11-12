@@ -545,7 +545,8 @@
         role="group"
         aria-label={m.name}
       >
-        <div class="thumb">
+        <!-- (A sound's player sits inside the box, so every card's name row is at the same height.) -->
+        <div class="thumb" class:sound={m.kind === 'audio' && !!mediaUrls[m.id] && !(watching === m.id && copy && mediaUrls[copy.id])}>
           {#if watching === m.id && copy && mediaUrls[copy.id]}
             {#if copy.kind === 'audio'}
               <audio src={mediaUrls[copy.id]} autoplay controls aria-label="Its smaller copy for phones"></audio>
@@ -562,13 +563,13 @@
             <video src={mediaUrls[m.id]} preload="metadata" controls></video>
           {:else}
             <span class="ic">{icon[m.kind]}</span>
+            {#if m.kind === 'audio' && mediaUrls[m.id]}
+              <audio class="listen" src={mediaUrls[m.id]} preload="none" controls aria-label="Play {m.name}"></audio>
+            {/if}
           {/if}
           {#if !mediaUrls[m.id]}<span class="missing">missing</span>{/if}
           {#if m.url}<span class="badge" title="Plays from the internet: {m.url}">🌐</span>{/if}
         </div>
-        {#if m.kind === 'audio' && mediaUrls[m.id]}
-          <audio class="listen" src={mediaUrls[m.id]} preload="none" controls aria-label="Play {m.name}"></audio>
-        {/if}
         {#if renaming === m.id}
           <input
             class="nm"
@@ -670,12 +671,15 @@
         {:else if m.source}
           <div class="meta muted" title={m.source}>Saved from {linkHost(m.source)}</div>
         {/if}
-        <!-- The card's foot, in fixed places: ✎ Edit… · Replace everywhere… · the one fix that applies. -->
-        <div class="acts foot">
+        <!-- The card's foot, in fixed places, a row each: ✎ Edit… (its place kept empty on a picture) · Replace everywhere…
+             · the one fix that applies. -->
+        <div class="foot">
           {#if editOffer(m)}
             <button class="ghost small" data-edit-media onclick={() => openMediaDialog({ mode: 'edit', id: m.id })} disabled={editOffer(m) === 'busy'} title={editHint(m)}
               >✎ Edit…</button
             >
+          {:else}
+            <span class="ghost small slot" aria-hidden="true">✎ Edit…</span>
           {/if}
           {#if !m.url && !mediaUrls[m.id]}
             <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
@@ -772,10 +776,20 @@
     gap: 4px;
     flex-wrap: wrap;
   }
+  /* A row each, so Replace everywhere… is at the same height on every card (an empty ✎ Edit… place on a picture's). */
+  .foot {
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+  }
+  .foot .slot {
+    visibility: hidden;
+    border: 1px solid transparent;
+    padding: 2px 8px;
+  }
   .grid {
     margin-top: 14px;
     display: grid;
-    /* Wide enough for ✎ Edit… and Replace everywhere… side by side. */
     grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
     gap: 10px;
   }
@@ -828,8 +842,15 @@
     object-fit: contain;
   }
   .listen {
+    position: absolute;
+    left: 0;
+    bottom: 2px;
     width: 100%;
     height: 32px;
+  }
+  /* (Its 🔊 above the player.) */
+  .thumb.sound {
+    padding-bottom: 36px;
   }
   .ic {
     font-size: 40px;
