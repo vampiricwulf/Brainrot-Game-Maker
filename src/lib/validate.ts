@@ -1,5 +1,6 @@
 // Pre-game checklist for the editor (spec §5.2 validation panel).
 import { canPlay, formatBytes, mediaUrls } from './media.svelte';
+import { madeUpCategoryName } from './ops';
 import { article, linkLifetime } from './links';
 import { normalizeColor } from './colors';
 import {
@@ -138,6 +139,9 @@ export function phoneUsesLine(u: ReturnType<typeof phoneUses>): string {
 }
 
 /** "1 clue", "3 clues" ("category" → "categories"). */
+/** A category still under the made-up name it started with ("Category 5", "New category"), drawn as text. */
+export const defaultNamed = (c: { title: string; image?: unknown }): boolean => !c.image && madeUpCategoryName(c.title);
+
 function plural(n: number, word: string): string {
   return `${n} ${n === 1 ? word : word.endsWith('y') ? `${word.slice(0, -1)}ies` : `${word}s`}`;
 }
@@ -334,6 +338,18 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
     if (!playable.length) out.push({ text: `${r.name}: no playable tiles`, tab: i, level: 'warn' });
     const unnamed = r.categories.filter((c) => !c.title.trim() && !c.image).length;
     if (unnamed) out.push({ text: `${r.name}: ${plural(unnamed, 'category')} with no name`, tab: i, level: 'warn' });
+    // A new board's names ("Category 5") look finished but show on stream as they are: a note, as for the game's title.
+    const leftover = r.categories.filter(defaultNamed);
+    if (leftover.length)
+      out.push({
+        text:
+          leftover.length === 1
+            ? `${r.name}: “${leftover[0].title.trim()}” is still a made-up category name (the names show on stream)`
+            : `${r.name}: ${leftover.length} categories still have made-up names like “${leftover[0].title.trim()}” (the names show on stream)`,
+        tab: i,
+        level: 'info',
+        place: { tab: 'round', round: round.id, part: { kind: 'category', category: leftover[0].id } },
+      });
     // Only a name drawn as text (an image category's caption is smaller and optional).
     const long = r.categories.filter((c) => !c.image && categoryTooLong(c.title, r.categories.length, r.values.length, game.theme));
     if (long.length)

@@ -25,6 +25,7 @@ in plain words for the people who make and host games. Anything committed but no
 - On a 1280-wide laptop the clue editor's Type row stays on one line with **🖼 Tile image** on it, so the slide below gets its height back: the Value, Countdown and Tile shows boxes are narrower, and under 1300px the two ticks read **⬚ Empty tile** and **✍ Everyone answers** (their tooltips keep the rest).
 - In a browser, **⚙ Settings › Saving** now says where the game is kept (in this browser as you work, a replaced game in 📂 Open… → Recent games, 💾 Save for a file to move or share) instead of naming Resume game and desktop-only settings, and the buzzer line says plainly when this version has no buzzer server set. The game's title box shows **Untitled Game** when it's empty, and its tooltip says the title shows on stream and names the saved file.
 - In the wheel and dice editors the preview stays in view beside a long list of slices or faces, so **🎡 Test spin** and **🎲 Test roll** play where you can see them (as on 🎨 Theme).
+- The checklist notes a board's categories still under a made-up name like “Category 5” (the names show on stream as they are), the way it notes a game still called “Untitled Game”; its line goes to the first such name. A new board still says only its clues to finish.
 
 ## 2026-11-08
 

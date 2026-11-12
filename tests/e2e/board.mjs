@@ -175,6 +175,12 @@ try {
   await page.locator('main').click({ position: { x: 4, y: 4 } });
   await key('Control+z');
   assert((await catNames()).slice(0, 3).join('|') === 'Category 1|Category 2|Category 3', 'Ctrl+Z moves it back');
+  // The checklist notes names still made up (they show on stream as they are); its line's tooltip lists it.
+  const roundLine = page.locator('nav .problem', { hasText: 'Jeopardy!: ' }).first();
+  assert(
+    /: \d+ categories still have made-up names like “Category \d+” \(the names show on stream\)/.test((await roundLine.getAttribute('title')) ?? ''),
+    `the checklist notes the categories still called “Category N” (${await roundLine.getAttribute('title')})`,
+  );
   // A made-up name ("Category 3") is selected by a click in it, to type over; a name of your own isn't.
   await page.getByLabel('Category 3 name').click();
   await page.keyboard.type('Snacks');

@@ -10,7 +10,9 @@ import { FACTORY_FONT, followClueText, setClueText, setTheme } from './cluetext'
 import { setClueType } from './ops';
 import { addCard } from './partner';
 
-const fill = (r: BoardRound) => r.categories.forEach((c) => c.clues.forEach((cl) => (setSlideText(cl.questionSlide, 'Q?'), setSlideText(cl.answerSlide, 'A'))));
+// (Its categories named too, as a finished board's are: a default "Category N" is a note of its own.)
+const fill = (r: BoardRound) =>
+  r.categories.forEach((c, i) => ((c.title = `Topic ${i + 1}`), c.clues.forEach((cl) => (setSlideText(cl.questionSlide, 'Q?'), setSlideText(cl.answerSlide, 'A')))));
 
 describe('the checklist in the sidebar', () => {
   it('says one line a round, and goes to its first unfinished tile', () => {
@@ -38,6 +40,29 @@ describe('the checklist in the sidebar', () => {
     const only = lines().find((l) => l.tab === 0)!;
     expect(only.text).toBe('Jeopardy!: 1 category with no name');
     expect(only.place).toEqual({ tab: 'round', round: board.id, part: { kind: 'category', category: board.categories[4].id } });
+  });
+});
+
+describe('a board still under its default category names', () => {
+  it('is a note going to the first made-up name, not counted on a new board, said once its clues are done', () => {
+    const game = jeopardyGame();
+    const board = game.rounds[0] as BoardRound;
+    board.dailyDoubleCount = 0;
+    board.categories.forEach((c, i) => (c.title = `Category ${i + 1}`));
+    const lines = () => checklistLines(game, validate(game)).filter((l) => l.tab === 0);
+    // A new board: its clues to write, nothing more.
+    expect(lines().map((l) => l.text)).toEqual(['Jeopardy!: 30 clues to finish']);
+    fill(board);
+    board.categories[4].title = 'Category 5';
+    board.categories[5].title = ' Category 6 ';
+    expect(lines().map((l) => [l.text, l.level])).toEqual([['Jeopardy!: 2 categories still have made-up names like “Category 5” (the names show on stream)', 'info']]);
+    expect(lines()[0].place).toEqual({ tab: 'round', round: board.id, part: { kind: 'category', category: board.categories[4].id } });
+    // One: said by its name. A picture category, or a name of the author's own that starts the same, isn't one.
+    board.categories[5].image = 'm1';
+    board.categories[4].title = 'Category 5 memes';
+    expect(lines()).toEqual([]);
+    board.categories[4].title = 'New category';
+    expect(lines().map((l) => l.text)).toEqual(['Jeopardy!: “New category” is still a made-up category name (the names show on stream)']);
   });
 });
 

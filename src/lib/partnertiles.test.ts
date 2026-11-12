@@ -28,6 +28,8 @@ function board(): { g: Game; r: BoardRound } {
       setSlideText(cl.answerSlide, `A ${ci}.${row}`);
     }),
   );
+  // (Named, as a finished board is: a default "Category N" is a note of its own.)
+  r.categories.forEach((c, ci) => (c.title = `Topic ${ci + 1}`));
   return { g, r };
 }
 

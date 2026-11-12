@@ -4,7 +4,7 @@ import type { Place } from './historylabel';
 import { toolChosen } from './tools';
 import { cardSlides, cardsToFinish } from './partner';
 import { slideHasContent } from './usage';
-import type { Problem } from './validate';
+import { defaultNamed, type Problem } from './validate';
 
 export interface ChecklistLine {
   text: string;
@@ -66,10 +66,13 @@ function unfinished(game: Game, round: BoardRound, firstOnly = false) {
   return out;
 }
 
-/** Where a board's checklist line goes: its first unfinished tile, else its first nameless category (none: undefined). */
+/**
+ * Where a board's checklist line goes: its first unfinished tile, else its first nameless category, else its first still
+ * under a made-up name ("Category 5"; none: undefined).
+ */
 export function boardPlace(game: Game, round: BoardRound): Place | undefined {
   const first = unfinished(game, round, true)[0];
-  const nameless = round.categories.find((c) => !c.title.trim() && !c.image);
+  const nameless = round.categories.find((c) => !c.title.trim() && !c.image) ?? round.categories.find(defaultNamed);
   if (first) return { tab: 'round', round: round.id, part: { kind: 'clue', ...first, onBoard: true } };
   if (nameless) return { tab: 'round', round: round.id, part: { kind: 'category', category: nameless.id } };
 }
@@ -121,7 +124,7 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
         const others =
           line.details.length -
           line.details.filter((d) =>
-            /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet|partner clues? not placed yet|a written question and answer for one|: card (\d+|“.*”) is empty:|partner clue with no card:/.test(d),
+            /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet|partner clues? not placed yet|a written question and answer for one|: card (\d+|“.*”) is empty:|partner clue with no card:|still (?:a made-up category name|have made-up names)/.test(d),
           ).length;
         // (What Start game places: said as it is, not "0 things to fix", with a count of the notes besides, e.g. 🤝 Partner
         // clues asking for more than fits.)
