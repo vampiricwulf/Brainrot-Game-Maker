@@ -7,13 +7,15 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer } from './helpers.mjs';
+import { checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer, returningHost } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const browser = await chromium.launch({ executablePath });
 const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
+// (A host who used it before: the keys window opens on what moved.)
+await returningHost(context);
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
@@ -26,6 +28,24 @@ const tabs = () => page.locator('nav > button.round-tab').allInnerTexts();
 const toast = () => page.locator('.toast').last().innerText();
 
 try {
+  // ---------- A first run: nothing moved for a new user ----------
+  {
+    // No ❔ Help dot, in the editor or the game, and the keys window keeps “What moved in this version” folded.
+    const fresh = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const fp = await fresh.newPage();
+    fp.on('pageerror', (e) => errors.push(e.message));
+    await fp.goto(pathToFileURL(file).href);
+    await fp.getByRole('button', { name: 'Open…' }).waitFor();
+    await fp.waitForTimeout(300);
+    const seen = await fp.evaluate(() => [localStorage.getItem('jb.whatMovedSeen.editor'), localStorage.getItem('jb.whatMovedSeen.game')]);
+    assert((await fp.locator('[data-moved-dot]').count()) === 0 && seen.every((v) => v), `a first run has no ❔ Help dot, in the editor or the game (${seen.join(', ')})`);
+    await fp.keyboard.press('?');
+    const moved = fp.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).locator('[data-what-moved]');
+    await moved.waitFor();
+    assert((await moved.getAttribute('open')) === null, 'and its keys window keeps “What moved in this version” folded, there to open');
+    await fresh.close();
+  }
+
   await page.goto(pathToFileURL(file).href);
   await page.getByRole('button', { name: 'Open…' }).waitFor();
 

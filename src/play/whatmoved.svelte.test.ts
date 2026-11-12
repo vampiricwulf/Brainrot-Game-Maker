@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RENAMED } from '../lib/keylist';
-import { markMovedSeen, MOVED_SINCE, movedNew, movedSeen, renames, WHAT_MOVED } from './whatmoved.svelte';
+import { firstRunSeen, markMovedSeen, MOVED_SINCE, movedNew, movedSeen, noSettings, renames, WHAT_MOVED } from './whatmoved.svelte';
 
 describe('what moved in this version', () => {
   it('is new until its part’s list was shown, and again for a later list', () => {
@@ -26,4 +26,20 @@ describe('what moved in this version', () => {
       expect(editor).toContain(w);
     expect(movedNew('editor', null)).toBe(true);
   });
+
+  it('counts as seen on a first run only: no settings kept and no game from before', () => {
+    const store = (...keys: string[]) => ({ length: keys.length, key: (i: number) => keys[i] ?? null });
+    expect(noSettings(store())).toBe(true);
+    expect(noSettings(store('other.site'))).toBe(true);
+    expect(noSettings(store('other.site', 'jb.prefs'))).toBe(false);
+    expect(noSettings(null)).toBe(false);
+    movedSeen.game = movedSeen.editor = null;
+    // A host coming back (a setting kept, or a game kept from before) still gets the dot and the list.
+    firstRunSeen(false, false);
+    firstRunSeen(true, true);
+    expect([movedNew('game'), movedNew('editor')]).toEqual([true, true]);
+    firstRunSeen(false, true);
+    expect([movedNew('game'), movedNew('editor')]).toEqual([false, false]);
+  });
 });
+

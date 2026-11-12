@@ -38,7 +38,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, quickInSight, selectedWords, stepButton, leaveAnswer } from './helpers.mjs';
+import { boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, quickInSight, selectedWords, stepButton, leaveAnswer, returningHost } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -91,6 +91,8 @@ writeFileSync(gameFile, JSON.stringify(game));
 try {
   // 1280×900: not wide for its height, so the panel stays under the stage in every round.
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  // (A host who used it before: ❔ Help's dot for what moved shows.)
+  await returningHost(context);
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('dialog', (d) => (errors.push('dialog: ' + d.message()), d.accept()));

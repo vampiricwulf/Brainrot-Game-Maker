@@ -789,3 +789,16 @@ export function stored(page, key = 'playSession') {
     key,
   );
 }
+
+/**
+ * The context's pages are a host's who used the app before (a setting is kept): a first run counts “What moved in this
+ * version” as seen (no ❔ Help dot), so a test of the dot and the open list starts as a returning host.
+ */
+export const returningHost = (context) =>
+  context.addInitScript(() => {
+    try {
+      localStorage.setItem('jb.e2e.returningHost', '1');
+    } catch {
+      // (A page with no storage of its own.)
+    }
+  });

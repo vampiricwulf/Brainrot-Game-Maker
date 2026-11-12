@@ -74,6 +74,21 @@ function read(part: MovedPart): string | null {
   }
 }
 
+/**
+ * Nothing of this app was ever kept on this computer (no `jb.` setting at all): read once, before anything is written.
+ * With no game kept either (App's start-up), it's a first run, and there is nothing that moved for this person.
+ */
+export function noSettings(storage: Pick<Storage, 'length' | 'key'> | null = typeof localStorage === 'undefined' ? null : localStorage): boolean {
+  try {
+    if (!storage) return false;
+    for (let i = 0; i < storage.length; i++) if (storage.key(i)?.startsWith('jb.')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+const firstVisit = noSettings();
+
 /** The list each part was last shown on this computer (its MOVED_SINCE), null for never. */
 export const movedSeen = $state<Record<MovedPart, string | null>>({ game: read('game'), editor: read('editor') });
 
@@ -90,4 +105,14 @@ export function markMovedSeen(part: MovedPart): void {
   } catch {
     // Storage is off (private mode): the dot shows again next time.
   }
+}
+
+/**
+ * A first run (no settings when the page loaded, and `keptGame`: no game kept from before, nor recent games): what moved
+ * is for hosts who knew the old places, so both parts count as seen (no ❔ Help dot, the list folded in the keys window).
+ */
+export function firstRunSeen(keptGame: boolean, first = firstVisit): void {
+  if (!first || keptGame) return;
+  markMovedSeen('game');
+  markMovedSeen('editor');
 }

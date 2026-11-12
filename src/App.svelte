@@ -34,7 +34,8 @@
   import PlayerHome from './PlayerHome.svelte';
   import { holdOpenLock, keepInMemory, loadGameMedia, mediaUrls, pruneMedia, storePlayFiles } from './lib/media.svelte';
   import { claimEditor, markBusy, watchEditor, type Busy } from './lib/editorlock';
-  import { hasWork } from './lib/recent';
+  import { hasWork, listRecent } from './lib/recent';
+  import { firstRunSeen } from './play/whatmoved.svelte';
   import { validate } from './lib/validate';
   import type { Place } from './lib/historylabel';
   import { shrinkMaybe } from './lib/shrink/probe';
@@ -182,6 +183,7 @@
         app.storageOk = await testStorage();
         const play = await loadPlay();
         if (play) app.resumable = resumed(play);
+        firstRunSeen(!!play);
       } catch (e) {
         loadError = (e as Error).message;
       }
@@ -202,6 +204,8 @@
     void checkForUpdate();
     const [editor, play, ok] = await Promise.all([loadEditor(), loadPlay(), testStorage()]);
     app.storageOk = ok;
+    // (A first run: nothing moved for this person, so ❔ Help has no dot.)
+    firstRunSeen(!!editor.draft || !!play || (await listRecent()).length > 0);
     /** Removed files the undo history can bring back. */
     let held = new Set<string>();
     if (editor.draft) {
