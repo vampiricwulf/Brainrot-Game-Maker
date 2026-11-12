@@ -11,6 +11,13 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- The editor's **Checklist** is pinned to the foot of the sidebar, its heading counting what's left (“Checklist · ⚠ 1 · ℹ 1”), so it stays in view on a 1280- or 1366-wide laptop however many rounds the game has; a long list scrolls in its own box. Until the game has a round it leaves out “No rounds yet”, “No players yet” and the untitled game's note (the first screen already says what to do), so a new game has no checklist.
+- Sidebar buttons are no longer cut to “…”: **＋ Add tiebreaker** and **📊 Stats & Items** show “(optional)” on a small line under their name.
+
 ## 2026-11-12
 
 ### Fixed

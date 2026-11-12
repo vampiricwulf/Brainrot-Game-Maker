@@ -119,6 +119,29 @@ try {
   // about those two rows at most.)
   const navOver = await page.locator('nav').evaluate((n) => n.scrollHeight - n.clientHeight);
   assert(navOver <= 80 && (await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)), `with three boards the sidebar fits at 720p, or scrolls in its box by two rows at most (${navOver}px)`);
+  // No sidebar label is cut to "…": "(optional)" sits on a small line of its own.
+  const cut = await page.locator('nav > button').evaluateAll((bs) => bs.filter((b) => b.scrollWidth > b.clientWidth).map((b) => b.textContent.trim()));
+  assert(cut.length === 0, `no sidebar label is cut short (${cut.join(' | ')})`);
+  const opt = await page.locator('nav > button.optional .opt').evaluateAll((os) => os.map((o) => getComputedStyle(o).display));
+  assert(opt.length === 2 && opt.every((d) => d === 'block'), `“(optional)” goes on a line of its own under ＋ Add tiebreaker and 📊 Stats & Items (${opt})`);
+  // The checklist is pinned to the bottom of the sidebar, its heading counting what's left, in view however the
+  // sidebar is scrolled; a button Tab reaches isn't hidden under it.
+  const pinned = async () =>
+    page.locator('nav .problems').evaluate((p) => {
+      const r = p.getBoundingClientRect();
+      const first = p.querySelector('.problem').getBoundingClientRect();
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom), first: Math.round(first.bottom), head: p.querySelector('.navlabel').textContent };
+    });
+  for (const to of [0, 9999]) {
+    await page.locator('nav').evaluate((n, to) => (n.scrollTop = to), to);
+    const at = await pinned();
+    assert(at.bottom <= 720 && at.first <= 720 && /^Checklist · ⚠ \d+/.test(at.head), `the checklist's heading and first line stay in view (nav scrolled to ${to}: ${JSON.stringify(at)})`);
+  }
+  await page.locator('nav').evaluate((n) => (n.scrollTop = 0));
+  await page.locator('nav > button', { hasText: '🖼 Media' }).focus();
+  await page.keyboard.press('Tab');
+  const hist = await page.evaluate(() => { const a = document.activeElement; return { text: a?.textContent.trim(), bottom: Math.round(a.getBoundingClientRect().bottom), check: Math.round(document.querySelector('nav .problems').getBoundingClientRect().top) }; });
+  assert(hist.text.startsWith('🕘 History') && hist.bottom <= hist.check, `Tab to 🕘 History scrolls it into view above the pinned checklist (${JSON.stringify(hist)})`);
 
   // Write the first clue, then the checklist goes to the second one (the first unfinished tile).
   await page.locator('.tile').first().click();

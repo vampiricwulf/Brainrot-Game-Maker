@@ -478,6 +478,12 @@
    * field or another tab clicked: the next key goes there, not to the tab, where Backspace would delete the round.
    */
   let renamingRound = $state<string | null>(null);
+  /** The pinned checklist's height: a button Tab reaches in the sidebar scrolls into view above it, not under it. */
+  let checkH = $state(0);
+  /** With no rounds yet the first screen says what to do: the checklist only has what else there is (a file that won't play). */
+  const lines = $derived(game.rounds.length ? checklist : checklist.filter((l) => !l.starter));
+  const warns = $derived(lines.filter((l) => l.level === 'warn').length);
+  const notes = $derived(lines.length - warns);
   function renameRound(round: Round, name: string, refocus = true): void {
     renamingRound = null;
     const n = name.trim();
@@ -1222,7 +1228,7 @@
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
   <div class="body" use:inertWhile={replacing || !!opening} use:focusRescue>
-    <nav aria-label="Editor">
+    <nav aria-label="Editor" style:scroll-padding-bottom="{checkH}px">
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
         {#if renamingRound === round.id}
@@ -1328,44 +1334,50 @@
         🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
       </button>
 
-      {#if checklist.length}
-        <!-- Orange only when something needs fixing (notes alone are grey). -->
-        <div class="problems" class:warn={checklist.some((l) => l.level === 'warn')}>
-          <div class="navlabel">Checklist</div>
-          {#each checklist as line}
-            <!-- (The fix it offers beside it: ⧉ for an empty card, 🔄 or ↻ to convert, 🗜 a smaller copy; never naming a
-                 file, as the line doesn't.) -->
-            {@const repack = !!line.convert?.length && line.convert.every((id) => (v => typeof v === 'object' && v.is === 'plays')(verdictOf(id)))}
-            {@const same = line.answerCard && answerCardAt(game, line.answerCard)}
-            <div class="problem-row">
-              <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
-                {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
-              </button>
-              {#if same}
-                <button
-                  class="small ghost"
-                  data-checklist-same
-                  onclick={() => sameAsAnswer(line)}
-                  title="⧉ Same as the answer: a copy of the answer on {same.name}"
-                  aria-label="Same as the answer: a copy of the answer on {same.name}">⧉</button
-                >
-              {/if}
-              {#if line.convert?.length}
-                <button
-                  class="small ghost"
-                  data-checklist-convert
-                  onclick={() => openMediaDialog({ mode: 'convert', ids: line.convert! })}
-                  title={repack ? 'Repackage it so phones can open it (nothing lost)' : 'Convert them so they play in this browser'}
-                  aria-label={repack ? 'Repackage it so phones can open it' : 'Convert them so they play in this browser'}>{repack ? '↻' : '🔄'}</button
-                >
-              {:else if line.shrink?.length}
-                <button class="small ghost" data-checklist-shrink onclick={() => openShrinkDialog(line.shrink![0])} title="Make a smaller copy for phones" aria-label="Make a smaller copy for phones">🗜</button>
-              {/if}
+      <!-- Pinned to the bottom of the sidebar, its heading always in view however many rounds there are (a long list
+           scrolls in its own box). None for a new game with no rounds: the page itself says what to do. Orange only when
+           something needs fixing (notes alone are grey). -->
+      {#if game.rounds.length || lines.length}
+        <div class="problems" class:warn={warns > 0} class:ok={!lines.length} bind:offsetHeight={checkH}>
+          {#if lines.length}
+            <div class="navlabel">Checklist{#if warns}{' · '}⚠ {warns}{/if}{#if notes}{' · '}ℹ {notes}{/if}</div>
+            <div class="problem-list">
+              {#each lines as line}
+                <!-- (The fix it offers beside it: ⧉ for an empty card, 🔄 or ↻ to convert, 🗜 a smaller copy; never naming a
+                     file, as the line doesn't.) -->
+                {@const repack = !!line.convert?.length && line.convert.every((id) => (v => typeof v === 'object' && v.is === 'plays')(verdictOf(id)))}
+                {@const same = line.answerCard && answerCardAt(game, line.answerCard)}
+                <div class="problem-row">
+                  <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
+                    {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
+                  </button>
+                  {#if same}
+                    <button
+                      class="small ghost"
+                      data-checklist-same
+                      onclick={() => sameAsAnswer(line)}
+                      title="⧉ Same as the answer: a copy of the answer on {same.name}"
+                      aria-label="Same as the answer: a copy of the answer on {same.name}">⧉</button
+                    >
+                  {/if}
+                  {#if line.convert?.length}
+                    <button
+                      class="small ghost"
+                      data-checklist-convert
+                      onclick={() => openMediaDialog({ mode: 'convert', ids: line.convert! })}
+                      title={repack ? 'Repackage it so phones can open it (nothing lost)' : 'Convert them so they play in this browser'}
+                      aria-label={repack ? 'Repackage it so phones can open it' : 'Convert them so they play in this browser'}>{repack ? '↻' : '🔄'}</button
+                    >
+                  {:else if line.shrink?.length}
+                    <button class="small ghost" data-checklist-shrink onclick={() => openShrinkDialog(line.shrink![0])} title="Make a smaller copy for phones" aria-label="Make a smaller copy for phones">🗜</button>
+                  {/if}
+                </div>
+              {/each}
             </div>
-          {/each}
+          {:else}
+            ✓ Ready to play
+          {/if}
         </div>
-      {:else}
-        <div class="problems ok">✓ Ready to play</div>
       {/if}
     </nav>
 
@@ -1738,8 +1750,11 @@
     border-style: dashed;
     color: var(--muted);
   }
+  /* "(optional)" on a small second line of its own, so neither it nor the name is cut to "…". */
   nav > button .opt {
+    display: block;
     font-size: 12px;
+    line-height: 1.2;
   }
   .round-tab.lifted {
     opacity: 0.5;
@@ -1757,10 +1772,28 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
+  /* (At the foot of the sidebar even when the buttons leave room; over them, and scrolling on its own, when they don't.) */
   .problems {
-    margin-top: 8px;
+    position: sticky;
+    bottom: -12px;
+    z-index: 1;
+    margin-top: auto;
+    margin-bottom: -12px;
+    padding: 8px 0 12px;
+    display: flex;
+    flex-direction: column;
+    max-height: 35vh;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
     font-size: 12px;
     color: var(--muted);
+  }
+  .problems > .navlabel {
+    margin-top: 0;
+  }
+  .problem-list {
+    min-height: 0;
+    overflow-y: auto;
   }
   .problems.warn {
     color: var(--warn);

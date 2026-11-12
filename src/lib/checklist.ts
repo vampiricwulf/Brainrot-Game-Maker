@@ -10,6 +10,8 @@ export interface ChecklistLine {
   text: string;
   level: 'warn' | 'info';
   tab: Problem['tab'];
+  /** Problem.starter: a new game's own line, left out of the editor's checklist until there's a round. */
+  starter?: boolean;
   /** Every problem it stands for (its tooltip). */
   details: string[];
   /** A round's line: the round's id (it's found by that, as rounds may have moved since the line was worked out). */
@@ -94,7 +96,7 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
       ...(p.sameAsAnswer && p.place ? { answerCard: p.place } : {}),
     };
     if (!round) {
-      lines.push({ text: p.text, level: p.level, tab: p.tab, details: [p.text], place: p.place, ...shrink });
+      lines.push({ text: p.text, level: p.level, tab: p.tab, details: [p.text], place: p.place, ...(p.starter ? { starter: true } : {}), ...shrink });
       continue;
     }
     const line = byRound.get(p.tab as number);

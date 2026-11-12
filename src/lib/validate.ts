@@ -58,6 +58,11 @@ export interface Problem {
    */
   tab: 'play' | 'tiebreaker' | 'media' | 'sounds' | 'tools' | 'cards' | 'stats' | number;
   level: 'warn' | 'info';
+  /**
+   * A new game's own line (no title, players or rounds yet): the first screen says what to do, so the editor's
+   * checklist leaves these out until the game has a round.
+   */
+  starter?: boolean;
   /** Where in the round it is (the screen, the space…), for the checklist to go to. */
   place?: Place;
   /** What it means in a player-only file, which can't add or swap files (none: the same text). */
@@ -266,14 +271,14 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   const out: Problem[] = [];
   // Its title shows on stream (the title card, the audience window): a game never named says "Untitled Game" there.
   if (!game.title.trim() || game.title.trim() === 'Untitled Game')
-    out.push({ text: 'The game is still called “Untitled Game”: name it (the title shows on stream)', tab: 'play', level: 'info', place: { tab: 'title' } });
+    out.push({ text: 'The game is still called “Untitled Game”: name it (the title shows on stream)', tab: 'play', level: 'info', place: { tab: 'title' }, starter: true });
   // (Phone buzzer teams: each one is a team.)
   const who = game.settings.buzzer && game.settings.buzzTeams ? 'teams' : 'players';
-  if (!game.players.length) out.push({ text: `No ${who} yet: add them when you press Play`, tab: 'play', level: 'info' });
+  if (!game.players.length) out.push({ text: `No ${who} yet: add them when you press Play`, tab: 'play', level: 'info', starter: true });
   const colors = game.players.map((p) => normalizeColor(p.color));
   if (new Set(colors).size !== colors.length) out.push({ text: `Two ${who} share a color`, tab: 'play', level: 'warn' });
 
-  if (!game.rounds.length) out.push({ text: 'No rounds yet: add one to play', tab: 0, level: 'warn' });
+  if (!game.rounds.length) out.push({ text: 'No rounds yet: add one to play', tab: 0, level: 'warn', starter: true });
   game.rounds.forEach((round, i) => {
     const name = roundName(round, i);
     if (isFinal(round)) {

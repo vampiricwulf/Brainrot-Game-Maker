@@ -602,9 +602,11 @@ try {
   p2.on('pageerror', (e) => errors.push('[sample] ' + e.message));
   await p2.goto(pathToFileURL(file).href);
   const onSample = () => p2.evaluate(() => !!document.activeElement?.matches('.first-round .sample'));
-  await p2.locator('nav .problem', { hasText: 'No rounds yet' }).click();
-  await p2.waitForFunction(() => document.activeElement?.matches('.first-round .sample'), null, { timeout: 3000 }).catch(() => {});
-  assert(await onSample(), '“No rounds yet” in the checklist puts the keys on ✨ Try a sample game');
+  // (A new game's sidebar has no checklist: the first screen says what to do, ✨ Try a sample game first.)
+  await p2.locator('.first-round .sample').waitFor();
+  assert((await p2.locator('nav .problems').count()) === 0, 'an empty game’s sidebar has no checklist (no “No rounds yet”): the first screen says what to do');
+  await p2.locator('.first-round .sample').focus();
+  assert(await onSample(), 'and ✨ Try a sample game takes the keys');
   await p2.keyboard.press('Enter');
   await p2.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
   await p2.getByLabel('How many Daily Doubles').fill('2');

@@ -232,6 +232,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   turns it off; its menu starts with what a click does, ❓ Open it or ＋ Add tiebreaker, and ends, red, with 🗑 Turn it
   off while it's on), and an RPG world's ⋯ has ✎ Rename world,
   ⧉ Duplicate world (this round plays the copy: worldedit `duplicateWorld`) and 🗑 Delete world.
+- **The sidebar** lists the rounds, then the Game pages, with the **Checklist** pinned at its foot: its heading counts
+  what's left to fix and the notes ("Checklist · ⚠ 2 · ℹ 1") and stays in view however long the list is (a long list
+  scrolls in its own box, at most about a third of the height). Until the game has a round it leaves out a new game's own lines (no title, players or rounds yet: `Problem.starter`), as the first screen says what to do. No
+  label is cut to "…": a long one goes on two lines, and "(optional)" sits on a small line under its name.
 
 ### 5.2 Board editor
 - A grid view of the round that mirrors the play board. Click a category header or tile to edit it.

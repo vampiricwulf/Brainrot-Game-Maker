@@ -34,6 +34,8 @@ video, audio or YouTube, arranged freely.
   wheels, dice, stats, items, shops and files a round uses come along with it. If something with the same name
   already exists but differs, it comes in as a copy (for example "Potion (copy)").
 - **＋ Add tiebreaker (optional)**, at the end of the round list, adds a tiebreaker clue.
+- The **Checklist** at the foot of the list on the left says what's left to do before ▶ Play (⚠, counted in its
+  heading) and notes worth a look (ℹ). It stays in view however many rounds there are; click a line to go and fix it.
 
 ## Jeopardy boards
 
