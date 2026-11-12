@@ -1105,7 +1105,7 @@
 
 <div class="editor" aria-busy={replacing || !!opening}>
   <header use:inertWhile={replacing}>
-    <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
+    <input class="title" bind:value={game.title} aria-label="Game title" placeholder="Untitled Game" title="Game title: shows on stream and names the saved file" data-place="title" />
     <!-- (Three groups, apart: the title, undo and redo, the game's file.) -->
     <!-- Right-click either one for 🕘 History, as on the game screen. -->
     <button class="ghost group" onclick={() => undo()} oncontextmenu={historyMenu} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
@@ -1370,7 +1370,7 @@
     </nav>
 
     <main>
-      <h1 class="sr-only">{game.title || 'Untitled game'}</h1>
+      <h1 class="sr-only">{game.title || 'Untitled Game'}</h1>
       <!-- A game that's opened or new starts every editor afresh: no undo history carries over from the last one
            (another save of the same game has the same round ids). -->
       {#key game}
