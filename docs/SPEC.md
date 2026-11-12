@@ -252,8 +252,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **Daily Doubles**: toggle any tile as a DD by hand, or press **Randomize Daily Doubles** to place `dailyDoubleCount`
   of them at random, one a category (asked for more, it places what fits, says “Placed 6 of 8 Daily Doubles: one a
   category”, and the box then says 6; at 0 it's greyed). Placement is weighted toward the lower (higher-value) rows like
-  on TV, and it never picks empty or wheel/dice tiles. The hint beside it says how many are on the board and how many
-  Start game places, by the checklist's rule. Pressing it again re-rolls the placement. The DD positions are visible only in the editor and the host view.
+  on TV, and it never picks empty or wheel/dice tiles. The hint under it says how many are on the board and how many
+  Start game places, by the checklist's rule. ⭐ Daily Doubles and 🤝 Partner clues sit on a line of their own under the
+  row values, as two fixed columns (one on a phone), each hint under its box, so a box never moves while you type. Pressing it again re-rolls the placement. The DD positions are visible only in the editor and the host view.
 - **🤝 Partner clues** (PARTNER-CLUES-SPEC.md §21, P4): make any tile one by hand, or set how many next to ⭐ Daily
   Doubles and press **🔀 Randomize** to place `partnerCount` of them at random, spread over the categories, only on
   tiles with a written question and answer and never on a Daily Double. A tile that was a partner clue keeps its own

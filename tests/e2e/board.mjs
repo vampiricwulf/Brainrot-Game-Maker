@@ -59,6 +59,38 @@ try {
   await addClassicRounds(page);
   await page.waitForTimeout(300);
 
+  // ---------- BOARD-2: ⭐ Daily Doubles and 🤝 Partner clues keep their places while you type ----------
+  {
+    const at = async () => {
+      const [d, p] = [await page.getByLabel('How many Daily Doubles').boundingBox(), await page.getByLabel('How many partner clues').boundingBox()];
+      return `${Math.round(d.x)},${Math.round(d.y)} ${Math.round(p.x)},${Math.round(p.y)}`;
+    };
+    const first = await at();
+    const seen = [];
+    const dd = page.getByLabel('How many Daily Doubles');
+    await dd.fill('');
+    for (const k of ['3', '0']) (await dd.press(k), seen.push(await at()));
+    await dd.press('Tab');
+    const pt = page.getByLabel('How many partner clues');
+    await pt.fill('3');
+    await pt.press('Tab');
+    seen.push(await at());
+    const rows = page.getByLabel('Rows (questions per category)');
+    await rows.fill('2');
+    await rows.press('Tab');
+    seen.push(await at());
+    await rows.fill('5');
+    await rows.press('Tab');
+    seen.push(await at());
+    assert(seen.every((x) => x === first), `the two boxes never move as their hints grow, partner clues turn on or the rows change (${first} → ${seen.join(' / ')})`);
+    const values = await page.getByLabel('Row 1 value').boundingBox();
+    assert((await page.getByLabel('How many Daily Doubles').boundingBox()).y > values.y + values.height, 'they sit on a line of their own under the row values');
+    await pt.fill('0');
+    await pt.press('Tab');
+    await dd.fill('0');
+    await dd.press('Tab');
+  }
+
   // ---------- ED-18: the board is one tab stop, the arrows walk it ----------
   await writeClue(0, 0, 'Who is Pepe?', 'A frog');
   await writeClue(1, 0, 'What is skibidi?', 'A toilet');
@@ -128,6 +160,8 @@ try {
   await shot('board-1280');
 
   // ---------- ED-16: drag a tile onto another ----------
+  // (Clear of the toasts at the window's foot.)
+  await tile(3, 2).evaluate((e) => e.scrollIntoView({ block: 'center' }));
   await dragBy(page, tile(0, 0), tile(3, 2));
   assert((await tileText(3, 2)).includes('Who is Pepe?') && (await tileText(0, 0)).includes('No question yet'), 'dragging a tile onto another swaps them');
   assert((await undoTitle()).startsWith('Undo: Swapped Category 1 $200 and Category 4 $600'), `one named step (${await undoTitle()})`);

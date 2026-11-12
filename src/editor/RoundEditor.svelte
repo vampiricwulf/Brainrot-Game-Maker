@@ -866,7 +866,8 @@
   </span>
     </div>
   </div>
-  <span class="spacer"></span>
+  <!-- Two fixed columns under the row values: a box never moves while its hint grows (it grows downward). -->
+  <div class="extras">
   <div class="group" role="group" aria-labelledby="dd-{round.id}">
     <span class="lbl" id="dd-{round.id}">⭐ Daily Doubles</span>
     <div class="inputs">
@@ -900,8 +901,8 @@
       ? 'Say how many first'
       : 'Scatter Daily Doubles at random, one a category (more often in the bottom rows). The ones on the board move. To make one by hand, right-click a tile → Make it a… ⭐ Daily Double (or pick it as the clue’s Type).'}>🔀 Randomize</button
   >
-  <span class="hint">{ddHint}</span>
     </div>
+    <span class="hint">{ddHint}</span>
   </div>
   <div class="group" role="group" aria-labelledby="pt-{round.id}" data-partner-count>
     <span class="lbl" id="pt-{round.id}">🤝 Partner clues</span>
@@ -950,10 +951,9 @@
       <option value="empty">🤫 Card: empty, to fill in</option>
     </select>
   {/if}
-  {#if round.partnerCount || ptPlaced}
-    <span class="hint">{partnersLine(round)}</span>
-  {/if}
     </div>
+    <span class="hint">{round.partnerCount || ptPlaced ? partnersLine(round) : ''}</span>
+  </div>
   </div>
 </div>
 
@@ -1187,10 +1187,24 @@
   }
   .values {
     display: flex;
+    flex-direction: column;
     gap: 12px;
-    align-items: flex-end;
-    flex-wrap: wrap;
     margin-bottom: 16px;
+  }
+  .values .extras {
+    display: grid;
+    /* Two columns on a laptop, one on a phone: set by the page's width, never by what's typed. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 12px 24px;
+    align-items: start;
+  }
+  .values .extras .inputs {
+    /* (Partner clues' selects, taller than a box, would nudge it down a pixel.) */
+    align-items: flex-start;
+  }
+  .values .hint {
+    display: block;
+    min-height: 2lh;
   }
   .values .group {
     display: flex;
