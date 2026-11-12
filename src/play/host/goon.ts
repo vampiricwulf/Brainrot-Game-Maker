@@ -134,6 +134,8 @@ export type Step = {
   flow?: FlowPlace;
   /** A tile's own wheel or dice not spun or rolled yet (Enter says so: "Spin the wheel first: W"). */
   tool?: 'spin' | 'roll';
+  /** What's over the stage, in words, where the step puts it away ("question" for a pop-up): the teach line's Esc. */
+  what?: string;
   /** Quiet buttons beside it, another flow step and not a copy: ◀ Previous turn beside Next turn ▶. */
   also?: { verb: Verb; run: () => void }[];
   /** The check's heading once nothing's left, where it isn't "✓ Nothing left": "✓ Ann’s turn is played". */
@@ -372,6 +374,9 @@ export function toolOf(c: GoCtx): { o: Overlay; own: boolean; question: boolean;
   return { o, own, question: own && !!info && !toolOnlyClue(info.clue), busy: turns && c.now < overlayDoneAt(o) };
 }
 
+/** What's over the stage, in the teach line's words ("Esc on the question goes on without asking"). */
+const TOOL_WORD: Record<Overlay['kind'], string> = { wheel: 'wheel', dice: 'dice', rolloff: 'roll-off', scoreboard: 'scores', popup: 'question', sheet: 'sheet', shop: 'shop' };
+
 /**
  * The blue button over what's over the stage: a tile's own wheel or dice, Show question ▶ (a tile with no question:
  * ▦ Done ▶ board); a question pop-up, 👁 Reveal answer, then Next ▶; anything else (a tool from the tools row, the
@@ -382,11 +387,12 @@ function toolStep(c: GoCtx, t: NonNullable<ReturnType<typeof toolOf>>): Step {
   if (o.kind === 'popup' && o.answer && !o.revealed) return n({ ...FLOW.reveal, title: 'Its answer goes on screen (R shows or hides it at once) · or click it' }, 'popreveal', c.act.revealPopup, { reveals: true });
   const dice = o.kind === 'dice';
   const busy = t.busy ? { busy: `Still ${dice || o.kind === 'rolloff' ? 'rolling' : 'spinning'}: wait for it to land` } : {};
-  if (!t.own) return n(FLOW.next, 'tool', c.act.closeTool, busy);
+  const what = { what: TOOL_WORD[o.kind] };
+  if (!t.own) return n(FLOW.next, 'tool', c.act.closeTool, { ...busy, ...what });
   const fresh = (o.kind === 'wheel' && !o.spin && !wheelSpentUp(o, c.session, c.game)) || (o.kind === 'dice' && !o.roll);
   const word = dice ? 'dice go' : 'wheel goes';
   const verb = t.question ? { ...FLOW.showQuestion, title: `The ${word}, and the question goes on screen` } : { ...FLOW.done, title: `The ${word}: back to the board, the tile used` };
-  return n(verb, 'tool', c.act.closeTool, { ...busy, ...(t.question ? {} : { flow: 'done' as const }), ...(fresh && !t.busy ? { tool: dice ? ('roll' as const) : ('spin' as const) } : {}) });
+  return n(verb, 'tool', c.act.closeTool, { ...busy, ...what, ...(t.question ? {} : { flow: 'done' as const }), ...(fresh && !t.busy ? { tool: dice ? ('roll' as const) : ('spin' as const) } : {}) });
 }
 
 /** A Daily Double's splash: Show question ▶, never greyed (who found it and the wager are typed: see ddWaits). */
@@ -1559,10 +1565,10 @@ export function teachLine(check: Pick<Check, 'step' | 'items'>): string {
   const parts: string[] = [];
   if (check.step.reveals) parts.push('R reveals at once');
   // (Not with a score effect left: Esc asks once about it too.)
-  // (Esc on the clue or the tile's wheel, with no card open: on this card Esc is Not yet.)
+  // (Esc on the clue or on what's over the stage, with no card open: on this card Esc is Not yet.)
   if (check.step.id === 'done') parts.push('Esc on the clue closes it without asking');
   else if (check.step.id === 'tool' && !todo(check.items).some((i) => i.hold))
-    parts.push(`Esc on the ${check.step.verb.title?.includes('dice') ? 'dice' : 'wheel'} goes on without asking`);
+    parts.push(`Esc on the ${check.step.what ?? 'stage'} goes on without asking`);
   // (Only with a roll or a move left: neither key runs a landing.)
   if (check.step.id === 'turn' && todo(check.items).some((i) => i.id === 'roll' || i.id === 'move')) parts.push('D rolls and Enter moves at once');
   if (!todo(check.items).every((i) => i.must)) parts.push('Shift+click on the blue button skips this');

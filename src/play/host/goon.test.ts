@@ -864,6 +864,8 @@ describe('wheels, dice, the scores and pop-ups over the stage (3.4 F, G, M)', ()
     // Dice from the tools row, not rolled: nothing to ask. A shop has its 🚪 Leave shop: no blue button.
     openDice(live, quickDice(6, 1, 'd6'));
     expect([said(mainStep(ctx(g, s, { live }))), leftNow(ctx(g, s, { live }), st)]).toEqual(['Next ▶ · N', []]);
+    // (The teach line's Esc names what's up: the dice, not "the wheel".)
+    expect(teachLine(open(mainStep(ctx(g, s, { live }))!, []))).toBe('Next time: Esc on the dice goes on without asking');
     live.overlay = { kind: 'shop', nonce: 'y', shopId: 'z' };
     expect(mainStep(ctx(g, s, { live }))).toBeNull();
   });
@@ -882,7 +884,10 @@ describe('wheels, dice, the scores and pop-ups over the stage (3.4 F, G, M)', ()
     const next = mainStep(c)!;
     const items = leftNow(c, next);
     expect([said(next), lines(items)]).toEqual(['Next ▶ · N', [['loss: Ann is picked and has no points for this question.', '＋ Award Ann $200 and close it ⏎ · go', '− Deduct Ann $200 and close it [⇧⏎] · go']]]);
-    expect(anywayLabel(open(next, items))).toBe('Next anyway: no points');
+    expect([anywayLabel(open(next, items)), teachLine(open(next, items))]).toEqual([
+      'Next anyway: no points',
+      'Next time: Esc on the question goes on without asking · Shift+click on the blue button skips this',
+    ]);
     items[0].quick[1].run();
     expect(did).toEqual(['revealpopup', '-200 a']);
     // Points given since it came up: nothing left. Nobody picked, or a sign with no answer: nothing either.
