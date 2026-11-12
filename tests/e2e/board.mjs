@@ -320,6 +320,24 @@ try {
     const fit = await rowFits();
     assert(fit.right <= fit.width && !fit.sideways, `at ${width}, the Final's slide row fits: 🗑 Delete slide whole (right edge ${Math.round(fit.right)}), no sideways scroll`);
   }
+  // On a wide screen, many slides scroll their tabs: the group stays on the tabs' line rather than wrap under them.
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  for (let n = 3; n <= 10; n++) {
+    await page.getByRole('button', { name: '＋ Add slide' }).click();
+    await page.getByRole('tab', { name: new RegExp(`^Q(uestion )?${n}$`) }).waitFor({ timeout: 3000 });
+  }
+  const wide = await page.evaluate(() => {
+    const list = document.querySelector('main .tabs .tablist');
+    const group = list.parentElement.querySelector('.group');
+    return { list: list.getBoundingClientRect().top, group: group.getBoundingClientRect().top, del: group.querySelector('.danger').getBoundingClientRect().right, width: innerWidth };
+  });
+  assert(Math.abs(wide.group - wide.list) < 8 && wide.del <= wide.width, `at 1920 with 10 slides, the slide's group stays beside the tabs (tabs' top ${wide.list}, group's ${wide.group})`);
+  for (let n = 10; n >= 3; n--) {
+    await page.getByRole('tab', { name: new RegExp(`^Q(uestion )?${n}$`) }).click();
+    await page.getByRole('button', { name: '🗑 Delete slide' }).click();
+    await page.getByRole('tab', { name: new RegExp(`^Q(uestion )?${n}$`) }).waitFor({ state: 'detached', timeout: 3000 });
+  }
+  await page.getByRole('tab', { name: 'Question 2' }).click();
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByPlaceholder('Type the final question…').fill('Then the real question');
   assert(await slideShows('Then the real question'), "the Final's quick field writes on its second question slide");

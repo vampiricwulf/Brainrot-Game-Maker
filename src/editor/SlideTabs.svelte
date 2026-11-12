@@ -376,7 +376,8 @@
 </div>
 
 <style>
-  /* One line where it fits; where it doesn't (a laptop beside the sidebar), the slide's group drops under the tabs. */
+  /* One line where it fits; where the group can't sit beside 320px of tabs (a laptop beside the sidebar), it drops
+     under them. Many slides on a wide screen scroll the tabs instead, the group staying on their line. */
   .tabs {
     display: flex;
     flex-wrap: wrap;
@@ -386,10 +387,11 @@
     margin: 12px 0;
   }
   .tablist {
-    flex: 0 1 auto;
+    flex: 1000 1 320px;
+    max-width: max-content;
     display: flex;
     gap: 4px;
-    min-width: min(100%, 320px);
+    min-width: 0;
     overflow-x: auto;
     scrollbar-width: thin;
   }
