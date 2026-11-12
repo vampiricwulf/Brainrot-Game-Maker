@@ -1431,6 +1431,8 @@ function renderBuzz(v: PhoneView): void {
   // Words not sent are kept for their round only.
   if (!ansUp) saveDraft('answer');
   if (!boxUp) saveDraft('wager');
+  // (A box in the buzzer's place: no Pass under it.)
+  if (boxUp || ansUp) $('pass').hidden = true;
   if (boxUp) return renderWager(v, wager!, sym);
   if (ansUp) return renderAnswer(v, ans!, sym);
   if (!ans) ((answerFor = ''), (answerErr = ''));
