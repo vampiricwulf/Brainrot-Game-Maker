@@ -166,9 +166,22 @@ try {
   // Bob types the code in, at 320px wide.
   const bob = await phone('bob', 320);
   await bob.goto(base);
+  // A code with no game first: back in the box to fix, with the code kept, and nothing in the header or address.
+  const wrong = room.code === 'ZZZZ' ? 'ZZZX' : 'ZZZZ';
+  await bob.getByLabel('Room code').fill(wrong);
+  await bob.getByRole('button', { name: 'Join' }).click();
+  await bob.locator('#code-err').getByText(`No game ${wrong}: check the code on the stream (it may have ended).`).waitFor();
+  assert(
+    (await bob.getByLabel('Room code').inputValue()) === wrong &&
+      (await bob.getByLabel('Room code').evaluate((e) => document.activeElement === e && e.selectionStart === 0 && e.selectionEnd === 4)) &&
+      (await bob.locator('#code').innerText()) === '' &&
+      new URL(bob.url()).pathname === '/',
+    'a typed code with no game stays in the box (selected) with the reason under it; no code in the header or address',
+  );
   await bob.getByLabel('Room code').fill(room.code.toLowerCase());
   await bob.getByRole('button', { name: 'Join' }).click();
   await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
+  assert((await bob.locator('#code-err').innerText()) === '', 'the right code clears the reason');
   await shot(bob, 'seats');
   assert(await bob.getByRole('button', { name: /Ann/ }).isDisabled(), "Ann's seat is greyed out for Bob");
   await bob.getByRole('button', { name: 'Bob' }).click();
