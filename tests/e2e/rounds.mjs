@@ -55,12 +55,31 @@ try {
   await page.getByLabel('Players with a score of 0 or less can play it').uncheck();
   // Answers on paper for this one: a step named so (↶ Undo says it), and Ctrl+Z ticks it again.
   const typed = page.getByLabel('✍ Players type their answers on their phones');
+  // (BOARD-9: with no choices, nothing of them shows unticked; with some, they stay in sight, dimmed and out of reach.)
+  await typed.uncheck();
+  assert((await page.locator('[data-choices-off]').count()) === 0 && (await page.getByRole('button', { name: '＋ Multiple choice' }).count()) === 0, 'unticked with no choices: no ＋ Multiple choice, nothing dimmed');
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.querySelector('input[data-final-typed]')?.checked === true);
+  await page.getByRole('button', { name: '＋ Multiple choice' }).click();
+  await page.getByRole('textbox', { name: 'Choice A', exact: true }).fill('Crisps');
   await typed.uncheck();
   const undoTitle = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert(undoTitle === 'Undo: Midgame Wager: players answer out loud or on paper (Ctrl+Z)', `unticking “✍ Players type their answers on their phones” is a step with its own name (${undoTitle})`);
+  const off = page.locator('[data-choices-off]');
+  const offState = await off.evaluate((el) => ({
+    note: el.querySelector('.hint')?.textContent?.trim(),
+    inert: !!el.querySelector('[inert]'),
+    dim: +getComputedStyle(el.querySelector('[inert]')).opacity,
+    a: el.querySelector('[data-field="choice-0"]')?.value,
+  }));
+  assert(
+    offState.note === 'Off while players don’t type their answers: tick ✍ above to use these choices (they’re kept).' && offState.inert && offState.dim < 1 && offState.a === 'Crisps',
+    `unticked, the choices stay in sight, dimmed and out of reach, with a line that says why (${JSON.stringify(offState)})`,
+  );
   await page.keyboard.press('Control+z');
   await page.waitForFunction(() => document.querySelector('input[data-final-typed]')?.checked === true);
-  assert(true, 'Ctrl+Z: it is ticked again');
+  assert((await off.count()) === 0 && (await page.getByRole('textbox', { name: 'Choice A', exact: true }).inputValue()) === 'Crisps', 'Ctrl+Z: it is ticked again, its choices back in reach');
+  await page.getByRole('button', { name: 'Take the choices off' }).click();
   await page.getByLabel('Category').fill('Snacks');
   await page.getByRole('button', { name: '▲ Move round up' }).click();
   await page.getByRole('button', { name: '▲ Move round up' }).click();

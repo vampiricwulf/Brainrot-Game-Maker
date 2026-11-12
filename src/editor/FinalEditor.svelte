@@ -205,8 +205,14 @@
     theirs from their phone), then they're revealed player by player.
   </span>
   {#if !round.phoneAnswersOff}
-    <!-- Its multiple choices, used while players type their answers on their phones (kept, unused, when unticked). -->
+    <!-- Its multiple choices, used while players type their answers on their phones. -->
     <div class="choices"><ChoicesEditor owner={round} where={() => finalName(round)} place={{ tab: 'round', round: round.id }} final /></div>
+  {:else if round.choices?.length}
+    <!-- Unticked, they're kept but unused: shown dimmed and out of reach, saying so (with none, nothing shows). -->
+    <div class="choices off" data-choices-off>
+      <span class="hint">Off while players don’t type their answers: tick ✍ above to use these choices (they’re kept).</span>
+      <div class="dim" inert><ChoicesEditor owner={round} where={() => finalName(round)} place={{ tab: 'round', round: round.id }} final /></div>
+    </div>
   {/if}
 </div>
 <!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->
@@ -364,5 +370,12 @@
   .grid .choices {
     flex-basis: 100%;
     max-width: 960px;
+  }
+  .choices.off .hint {
+    display: block;
+    margin-bottom: 4px;
+  }
+  .choices.off .dim {
+    opacity: 0.5;
   }
 </style>
