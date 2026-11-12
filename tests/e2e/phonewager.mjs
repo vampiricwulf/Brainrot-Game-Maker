@@ -201,15 +201,29 @@ try {
   // The limit is on (the default): over the max is refused, with a clear message, and nothing reaches the host.
   assert(!(await dd.getByLabel('Ignore the limit').isChecked()), 'a Daily Double starts with Ignore the limit unticked');
   assert((await dd.locator('.max').innerText()) === 'Max $2,000 (their score, or $2,000 if they have less)', `the box says the max and the rule (${await dd.locator('.max').innerText()})`);
-  await sendWager(ann, 5000);
-  await ann.locator('#wager-err').getByText('over your max of $2,000').waitFor();
-  assert((await dd.locator('input[type=number]').inputValue()) === '', 'the limit on: a wager over the max is refused on the phone ("That’s over your max of $2,000")');
+  // Typed, the line under the box already says what to type instead; tapped, it's refused with that one line (no red
+  // “over your max” beside it).
+  await ann.locator('#wager-in').fill('5000');
+  await ann.locator('#wager-state').getByText(/^Type \$2,000 or less, then (tap|click) Send wager\.$/).waitFor();
+  await ann.locator('#wager-send').click();
+  await sleep(300);
+  assert(
+    (await dd.locator('input[type=number]').inputValue()) === '' &&
+      /^Type \$2,000 or less, then (tap|click) Send wager\.$/.test(await ann.locator('#wager-state').innerText()) &&
+      (await ann.locator('#wager-err').innerText()) === '',
+    `the limit on: a wager over the max is refused on the phone, one line says what to type (${await ann.locator('#wager-state').innerText()} | ${await ann.locator('#wager-err').innerText()})`,
+  );
   // Ticked, the phone has no max; unticked again, it's back.
   await dd.getByLabel('Ignore the limit').check();
   await ann.waitForFunction(() => document.getElementById('wager-info').textContent === 'Score $0 · No limit');
   assert((await dd.locator('.max').innerText()).startsWith('No max now (it would be $2,000'), 'Ignore the limit ticked: the phone says “No limit”, the box “No max now”');
   await dd.getByLabel('Ignore the limit').uncheck();
   await ann.waitForFunction(() => document.getElementById('wager-info').textContent === 'Score $0 · Max $2,000');
+  // A refusal of what was typed goes as soon as the box is fixed.
+  await sendWager(ann, '');
+  await ann.locator('#wager-err').getByText('Type a whole number, 0 or more.').waitFor();
+  await ann.locator('#wager-in').fill('777');
+  assert((await ann.locator('#wager-err').innerText()) === '', 'the red “Type a whole number” goes once an amount is typed');
   // Within it: the host's box fills in, marked 📱.
   await sendWager(ann, 777);
   await ann.locator('#wager-state').getByText('✔ Sent: $777').waitFor();
@@ -313,7 +327,7 @@ try {
   assert((await box('Player 1').inputValue()) === '1234', 'Player 1’s wager comes in from their phone: “📱 $1,234 from phone ✔”, in their box');
   // Over Player 2's max ($2,000 at $0): refused on the phone.
   await sendWager(bo, 2222);
-  await bo.locator('#wager-err').getByText('over your max of $2,000').waitFor();
+  await bo.locator('#wager-state').getByText(/^Type \$2,000 or less/).waitFor();
   assert((await box('Player 2').inputValue()) === '', 'over the max: refused on the phone, nothing reaches the host');
   await sendWager(bo, 1999);
   await row('Player 2').getByText('📱 $1,999 from phone ✔').waitFor();
@@ -380,7 +394,11 @@ try {
   // the word typed.
   await ann.locator('#clue').dblclick();
   assert(await noSelection(ann), `a double-click on the phone's question selects nothing (${await selectedWords(ann)})`);
+  // Nothing typed: refused, and the red line goes once there's an answer in the box.
+  await ann.locator('#answer-send').click();
+  await ann.locator('#answer-err').getByText('Type an answer first.').waitFor();
   await ann.locator('#answer-in').fill('Fleming');
+  assert((await ann.locator('#answer-err').innerText()) === '', 'the red “Type an answer first.” goes once something is typed');
   await ann.locator('#answer-in').dblclick();
   assert((await ann.locator('#answer-in').evaluate((e) => e.value.slice(e.selectionStart, e.selectionEnd))) === 'Fleming', 'its answer box still selects what’s typed');
   // Two lines: on a phone (a touch screen) its keyboard's Enter starts a new line, and Send answer sends. The box grows

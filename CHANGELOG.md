@@ -30,6 +30,8 @@ in plain words for the people who make and host games. Anything committed but no
 - A new **🔊 Sound** on a slide goes beside the speakers already there (along the bottom, then up the right edge) and clear of the text where there's room, instead of landing exactly on the last one, where only the top speaker could be clicked.
 - In **🖼 Media** every card has its buttons at the same height: a sound's player sits inside its box, and the foot gives each button a row of its own (✎ Edit…, then **Replace everywhere…**, then the one fix), with ✎ Edit…'s place kept empty on a picture.
 - **🎨 Theme**'s preview of **❓ A clue** or the Final no longer shows an empty blue box while nothing is written yet: it shows sample words (“This is how a clue looks on stream”, and a sample category for the Final) in the clue text's font and color, and a click on them finds Clue text. The game itself isn't changed.
+- On a phone, a wager over the max now says what to type as soon as it's typed ("Type $2,000 or less, then tap Send wager."), in one line instead of a red refusal beside a "tap Send wager" line. A red "Type a whole number" or "Type an answer first." goes as soon as the box is fixed.
+- A room code typed on the phone page with no game behind it stays in the box, selected, with "No game ZZZZ: check the code on the stream" under it, so one wrong letter is one letter to change (a link to a game that has ended still shows its own screen). The code box's example is now one that could be a real code (BKTZ: codes have no vowels).
 
 ## 2026-11-08
 

@@ -254,7 +254,8 @@ function send(m: object): void {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(m));
 }
 
-async function start(c: string): Promise<void> {
+/** Joins room c (fromForm: typed in the code box, which a code with no game goes back to). */
+async function start(c: string, fromForm = false): Promise<void> {
   code = c;
   $('code').textContent = code;
   history.replaceState(null, '', `/${code}`);
@@ -262,11 +263,24 @@ async function start(c: string): Promise<void> {
   render();
   try {
     const r = await fetch(`/api/rooms/${code}`, { cache: 'no-store' });
-    if (r.status === 404) return noRoom();
+    if (r.status === 404) return fromForm ? backToCode(c) : noRoom();
   } catch {
     // offline for a moment: the socket retries
   }
   connect();
+}
+
+/** A code typed in with no game: back in the code box to fix (one wrong letter is one letter to change). */
+function backToCode(c: string): void {
+  code = '';
+  $('code').textContent = '';
+  history.replaceState(null, '', '/');
+  render();
+  const box = $<HTMLInputElement>('code-in');
+  box.value = c;
+  $('code-err').textContent = `No game ${c}: check the code on the stream (it may have ended).`;
+  box.focus();
+  box.select();
 }
 
 function noRoom(): void {
@@ -1834,25 +1848,34 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
 /** What's in with the host, or that the box holds an amount not sent yet (one not sent would read as sent). */
 function wagerState(w: PhoneWager, team: boolean, sym: string): string {
   const typed = $<HTMLInputElement>('wager-in').value.trim();
+  // Over the max: what to type instead (as it's typed; tapping Send wager wouldn't take it).
+  const over = typed !== '' && overMax(w, Number(typed)) ? tap(`Type ${money(w.max!, sym)} or less, then tap ${w.amount !== undefined && !w.host ? 'Change' : 'Send'} wager.`) : '';
   if (w.amount === undefined) {
     // Typed, none sent yet (typing alone sends nothing). Seated after the wagers began: one is in, but this phone isn't
     // shown it.
-    const unsent = typed ? tap('Not sent yet: tap Send wager to send it.') : '';
+    const unsent = over || (typed ? tap('Not sent yet: tap Send wager to send it.') : '');
     const hidden = w.hidden ? `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.` : '';
     return [unsent, hidden].filter(Boolean).join(' ');
   }
   const amt = money(w.amount, sym);
   // (As numbers: "00" typed after the 0 the host put in for a player with nothing to wager is the same wager.)
+  if (over) return `${over} What the host has: ${amt}`;
   if (typed && Number(typed) !== w.amount) return `${tap(`Not sent yet: tap ${w.host ? 'Send' : 'Change'} wager to send it.`)} What the host has: ${amt}`;
   const what = w.host ? `The host has ${team ? 'your team’s' : 'your'} wager as ${amt}` : team && w.by ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team` : w.sent ? `✔ Sent: ${amt}` : '';
   return `${what}. You can change it until the question shows.`;
 }
 
+/** Held to a max the amount is over. */
+const overMax = (w: PhoneWager, amount: number): boolean => !!w.limit && w.max !== undefined && amount > w.max;
+
 /** A box's state line: "Sending…", what's in (green), or an edit not sent yet (amber: it isn't in). */
 function drawState(id: 'answer-state' | 'wager-state', state: string, sending: boolean): void {
   $(id).textContent = sending ? 'Sending…' : state;
-  $(id).classList.toggle('unsent', !sending && state.startsWith('Not sent yet'));
+  $(id).classList.toggle('unsent', !sending && /^(Not sent yet|Type .* or less)/.test(state));
 }
+
+/** A refusal of what was typed (not of the connection): it goes once the box changes. */
+const typedErr = (err: string): boolean => /^(Type |That's over your max)/.test(err);
 
 /** Words on one line, spaces squeezed (whether anything is typed). */
 const flat = (s: string): string => s.replace(/\s+/g, ' ').trim();
@@ -2382,9 +2405,11 @@ $('wager-form').addEventListener('submit', (e) => {
     wagerErr = 'Type a whole number, 0 or more.';
     return render();
   }
-  if (w.limit && w.max !== undefined && amount > w.max) {
-    wagerErr = `That's over your max of ${money(w.max, view?.currency ?? '')}.`;
-    return render();
+  if (overMax(w, amount)) {
+    // (The line under the box already says what to type: "Type $2,000 or less, then tap Send wager.")
+    wagerErr = '';
+    render();
+    return void $<HTMLInputElement>('wager-in').select();
   }
   wagerErr = '';
   wagerSending = connected;
@@ -2451,8 +2476,10 @@ $('code-form').addEventListener('submit', (e) => {
   // (Joined with the keys alone: the page may play sound from now on.)
   unlockAudio();
   const c = $<HTMLInputElement>('code-in').value.trim().toUpperCase();
-  if (isRoomCode(c)) void start(c);
-  else
+  if (isRoomCode(c)) {
+    $('code-err').textContent = '';
+    void start(c, true);
+  } else
     $('code-err').textContent = /^[A-Z]{4}$/.test(c)
       ? `Room codes have no vowels (${[...c].filter((x) => !ROOM_ALPHABET.includes(x)).join(', ')}): check the code on the stream.`
       : 'A room code is 4 letters (no vowels), like on the stream.';
@@ -2477,11 +2504,13 @@ $('answer-in').addEventListener('input', () => {
   const a = view?.answer;
   if (a?.mine && a.open) saveDraft('answer', a.id, $<HTMLTextAreaElement>('answer-in').value);
   growAnswer();
+  if (typedErr(answerErr)) $('answer-err').textContent = answerErr = '';
   if (a && !answerSending) drawState('answer-state', answerState(a, !!view?.teams), false);
 });
 $('wager-in').addEventListener('input', () => {
   const w = view?.wager;
   if (w?.mine && w.open) saveDraft('wager', w.id, $<HTMLInputElement>('wager-in').value);
+  if (typedErr(wagerErr)) $('wager-err').textContent = wagerErr = '';
   if (w?.mine && !wagerSending) drawState('wager-state', wagerState(w, !!view?.teams, view?.currency ?? ''), false);
 });
 $('new-form').addEventListener('submit', (e) => {
