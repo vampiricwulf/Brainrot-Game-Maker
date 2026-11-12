@@ -1500,6 +1500,42 @@ try {
   assert(!dialogs.length, 'no browser dialog showed during the game' + (dialogs.length ? `: ${dialogs.join('; ')}` : ''));
 
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg.png` });
+
+  // SLIDES-10: on a 1280-wide laptop, a screen opened with the page scrolled down to the map never shows the round's
+  // title cut in half (back to the top when the screen fits, else its toolbar just under the header), and Background ▾
+  // sits with ▶ Preview at the right (the add buttons wrap instead).
+  for (const height of [720, 600]) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height } });
+    const p = await ctx.newPage();
+    p.on('pageerror', (e) => errors.push(`[1280 screen] ${e.message}`));
+    await p.goto(pathToFileURL(file).href);
+    await p.getByRole('button', { name: /Try a sample game/ }).first().click();
+    await p.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
+    // (Map settings unfolded, so the map is further down the page.)
+    await p.locator('summary', { hasText: 'Map settings' }).click();
+    const scrolled = await p.locator('main').evaluate((m) => ((m.scrollTop = 220), m.scrollTop));
+    assert(scrolled > 50, `the page scrolled down to the map (${scrolled}px)`);
+    await p.getByRole('button', { name: 'Screen Village' }).dblclick();
+    await p.locator('.screen-edit .toolbar').waitFor();
+    await p.waitForTimeout(300);
+    const at = await p.evaluate(() => {
+      const box = (el) => el.getBoundingClientRect();
+      const tb = document.querySelector('.screen-edit .toolbar');
+      const top = box(document.querySelector('main')).top;
+      const btn = (t) => [...tb.querySelectorAll('button')].find((b) => b.textContent.includes(t));
+      return {
+        title: Math.round(box(document.querySelector('main h2')).top - top),
+        toolbar: Math.round(box(tb).top - top),
+        bgRight: !!btn('Background')?.closest('.right'),
+        bgY: Math.round(box(btn('Background')).top),
+        previewY: Math.round(box(btn('Preview')).top),
+        textY: Math.round(box(btn('Text')).top),
+      };
+    });
+    assert(at.title >= 0 || (at.toolbar >= 0 && at.toolbar <= 4), `1280×${height}: the round's title is whole, or the toolbar is just under the header (${JSON.stringify(at)})`);
+    assert(at.bgRight && at.bgY === at.previewY && at.bgY === at.textY, `1280×${height}: Background ▾ sits beside ▶ Preview on the toolbar's first line`);
+    await ctx.close();
+  }
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
 
   await bigWorld();

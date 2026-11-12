@@ -943,6 +943,15 @@
   $effect(() => {
     if (!screenEl) return;
     void tick().then(() => {
+      // Opened with the page scrolled down (to the map): never the round's title cut in half above it. Back to the top
+      // when the screen fits from there, else its toolbar comes up just under the header.
+      const main = screenEl?.closest('main');
+      const canvas = screenEl?.querySelector('.canvas');
+      if (main && canvas && main.scrollTop > 0) {
+        const bottom = canvas.getBoundingClientRect().bottom - main.getBoundingClientRect().top + main.scrollTop;
+        if (bottom <= main.clientHeight) main.scrollTop = 0;
+        else screenEl?.querySelector('.toolbar')?.scrollIntoView({ block: 'start' });
+      }
       const a = document.activeElement;
       if (!a || a === document.body || !a.isConnected) screenEl?.querySelector<HTMLElement>('[data-keys-home]')?.focus({ preventScroll: true });
     });
@@ -1616,6 +1625,12 @@
     grid-template-columns: minmax(0, 1100px) 330px;
     gap: 14px;
     align-items: start;
+  }
+  /* On a phone, the settings go under the map (beside it, the map had no room left). */
+  @media (max-width: 760px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
   .grid-wrap {
     position: relative;

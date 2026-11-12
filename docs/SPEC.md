@@ -290,7 +290,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   Draw (✏ Freehand line…, one stroke, named "Freehand line" in Layers and the History, "Freehand shape" closed with
   Shift; 🖌 Drawpad…, a whole drawing inserted as a picture named "Drawing"), and on an RPG screen only ⬚ Hotspot (one
   already on another slide keeps showing).
-- **Background ▾** (on the toolbar, its swatch the background as it is: the picture's thumbnail when it has one): Color
+- **Background ▾** (on the toolbar, its swatch the background as it is: the picture's thumbnail when it has one; on an RPG
+  screen, whose objects fill the row, it leads the right-hand group before ▶ Preview, and the add buttons wrap instead): Color
   with ↺ Theme color (↺ Default color on a board game's or RPG screen's slide); the picture as a thumbnail with Change…
   and ⌫ Clear picture (the color stays), or 🖼 Add a picture…; then ↺ Reset background apart, for both. Every button is
   always there, greyed when it can't act, so the box keeps its size while the color changes. Each change is one undo

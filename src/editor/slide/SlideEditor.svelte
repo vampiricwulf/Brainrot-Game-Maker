@@ -1109,10 +1109,85 @@
   <span class="bg-at" style:left="{bgAt.x}px" style:top="{bgAt.y}px" bind:this={bgAnchor}></span>
 {/if}
 
+{#snippet bgBox()}
+      <div class="pop">
+        <!-- (Its swatch shows the background as it is: the picture's thumbnail when it has one.) -->
+        <button onclick={() => ((bgAt = null), (bgMenu = !bgMenu))} aria-expanded={bgMenu} disabled={previewing} title="The slide's background: a color or a picture">
+          <span
+            class="swatch"
+            aria-hidden="true"
+            style:background-color={slide.background.color ?? plainBg}
+            style:background-image={slide.background.image && mediaUrls[slide.background.image] ? `url("${mediaUrls[slide.background.image]}")` : undefined}
+          ></span> Background ▾
+        </button>
+        {#if bgMenu}
+          <div class="backdrop" onclick={() => (bgMenu = false)} role="presentation"></div>
+          <!-- (Not a menu that takes Tab: the color box in it is a field.) -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <div
+            class="menu bg-menu"
+            use:anchored={{ anchor: bgAt ? bgAnchor : undefined }}
+            role="group"
+            aria-label="Background"
+            onkeydown={(e) => {
+              if (e.key !== 'Escape') return;
+              e.stopPropagation();
+              bgMenu = false;
+            }}
+          >
+            <!-- (Every button is always there, greyed when there's nothing to do, so the box keeps its size while the
+                 color changes: a button coming in closed the color picker mid-typing.) -->
+            <div class="bg-row">
+              <label class="check">
+                <ColorBox
+                  aria-label="Slide background color"
+                  value={slide.background.color ?? plainBg}
+                  oninput={(e) => (slide.background.color = e.currentTarget.value)}
+                />
+                Color
+              </label>
+              <button
+                class="small"
+                onclick={() => edit(() => delete slide.background.color)}
+                disabled={!slide.background.color}
+                title={themedBg ? "Back to the theme's color (it follows the theme when that changes)" : 'Back to the default color'}>↺ {themedBg ? 'Theme color' : 'Default color'}</button
+              >
+            </div>
+            <div class="bg-row">
+              {#if slide.background.image}
+                <img class="bg-thumb" src={mediaUrls[slide.background.image]} alt="The slide’s background" draggable="false" />
+                <button class="small" onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="Another picture behind everything on the slide">Change…</button>
+                <button class="small" onclick={() => edit(() => delete slide.background.image)} title="Take the picture off (the color stays; the file stays in 🖼 Media)">⌫ Clear picture</button>
+              {:else}
+                <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the slide">🖼 Add a picture…</button>
+              {/if}
+            </div>
+            <hr />
+            <button
+              onclick={() => ((bgMenu = false), edit(() => (slide.background = {}), 'Reset the slide background'))}
+              disabled={!slide.background.image && !slide.background.color}
+              title={themedBg ? "Back to the theme's background" : 'Back to the default background'}>↺ Reset background</button
+            >
+          </div>
+        {/if}
+        {#if picker === 'image' && replacing === 'bg'}
+          <MediaPicker
+            kind="image"
+            onpick={(id) => {
+              edit(() => (slide.background.image = id));
+              picker = null;
+              replacing = null;
+            }}
+            onclose={() => ((picker = null), (replacing = null))}
+          />
+        {/if}
+      </div>
+{/snippet}
+
 <div class="se" class:fill class:fit={fitW !== null} style:--fit-w={fitW === null ? undefined : `${fitW}px`} bind:this={root} onpointerdowncapture={activate} onfocusin={activate}>
   <div class="toolbar">
     <!-- Preview is look-only: everything that edits the slide is off until it stops. -->
-    <fieldset class="tools" disabled={previewing}>
+    <fieldset class="tools" class:wraps={!!tools} disabled={previewing}>
       <button onclick={() => addText()} title="Add a text box">🅣 Text</button>
       <div class="pop">
         <button onclick={() => (picker = 'image')} title="Add a picture: upload one, link to one online, or reuse one from this game">🖼 Image</button>
@@ -1199,85 +1274,18 @@
         {/if}
       </div>
       {#if tools}{@render tools((el: SlideElement) => add(el))}{/if}
-      <span class="sep"></span>
-      <div class="pop">
-        <!-- (Its swatch shows the background as it is: the picture's thumbnail when it has one.) -->
-        <button onclick={() => ((bgAt = null), (bgMenu = !bgMenu))} aria-expanded={bgMenu} title="The slide's background: a color or a picture">
-          <span
-            class="swatch"
-            aria-hidden="true"
-            style:background-color={slide.background.color ?? plainBg}
-            style:background-image={slide.background.image && mediaUrls[slide.background.image] ? `url("${mediaUrls[slide.background.image]}")` : undefined}
-          ></span> Background ▾
-        </button>
-        {#if bgMenu}
-          <div class="backdrop" onclick={() => (bgMenu = false)} role="presentation"></div>
-          <!-- (Not a menu that takes Tab: the color box in it is a field.) -->
-          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <div
-            class="menu bg-menu"
-            use:anchored={{ anchor: bgAt ? bgAnchor : undefined }}
-            role="group"
-            aria-label="Background"
-            onkeydown={(e) => {
-              if (e.key !== 'Escape') return;
-              e.stopPropagation();
-              bgMenu = false;
-            }}
-          >
-            <!-- (Every button is always there, greyed when there's nothing to do, so the box keeps its size while the
-                 color changes: a button coming in closed the color picker mid-typing.) -->
-            <div class="bg-row">
-              <label class="check">
-                <ColorBox
-                  aria-label="Slide background color"
-                  value={slide.background.color ?? plainBg}
-                  oninput={(e) => (slide.background.color = e.currentTarget.value)}
-                />
-                Color
-              </label>
-              <button
-                class="small"
-                onclick={() => edit(() => delete slide.background.color)}
-                disabled={!slide.background.color}
-                title={themedBg ? "Back to the theme's color (it follows the theme when that changes)" : 'Back to the default color'}>↺ {themedBg ? 'Theme color' : 'Default color'}</button
-              >
-            </div>
-            <div class="bg-row">
-              {#if slide.background.image}
-                <img class="bg-thumb" src={mediaUrls[slide.background.image]} alt="The slide’s background" draggable="false" />
-                <button class="small" onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="Another picture behind everything on the slide">Change…</button>
-                <button class="small" onclick={() => edit(() => delete slide.background.image)} title="Take the picture off (the color stays; the file stays in 🖼 Media)">⌫ Clear picture</button>
-              {:else}
-                <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the slide">🖼 Add a picture…</button>
-              {/if}
-            </div>
-            <hr />
-            <button
-              onclick={() => ((bgMenu = false), edit(() => (slide.background = {}), 'Reset the slide background'))}
-              disabled={!slide.background.image && !slide.background.color}
-              title={themedBg ? "Back to the theme's background" : 'Back to the default background'}>↺ Reset background</button
-            >
-          </div>
-        {/if}
-        {#if picker === 'image' && replacing === 'bg'}
-          <MediaPicker
-            kind="image"
-            onpick={(id) => {
-              edit(() => (slide.background.image = id));
-              picker = null;
-              replacing = null;
-            }}
-            onclose={() => ((picker = null), (replacing = null))}
-          />
-        {/if}
-      </div>
+      {#if !tools}
+        <span class="sep"></span>
+        {@render bgBox()}
+      {/if}
     </fieldset>
     <!-- One group that keeps to the right and wraps as a whole, so 🔈 ↶ ↷ never end up alone on a line.
          Starting a preview doesn't change its width (which could wrap it and shrink the slide): ↻ Replay
          is always there, hidden until then, and the Preview button has room for both of its labels. (The whole
          slide's 📋 Copy and Paste are by the slide tabs, and in the slide's right-click menu.) -->
     <div class="right">
+      <!-- (On an RPG screen, whose own objects fill the row, Background ▾ leads this group: the add buttons wrap instead.) -->
+      {#if tools}{@render bgBox()}{/if}
       <button class="ghost small" class:hide={!previewing} onclick={() => previewKey++} title="Play the animations again">↻ Replay</button>
       <button class="small swap" class:primary={previewing} onclick={togglePreview} title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}>
         <span class:hide={previewing}>▶ Preview</span>
@@ -1670,6 +1678,21 @@
   }
   .tools {
     display: contents;
+  }
+  /* An RPG screen's: its buttons wrap inside it, so the group at the right (Background ▾, ▶ Preview) keeps the first line. */
+  .tools.wraps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    flex: 1 1 320px;
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .tools.wraps ~ .right {
+    align-self: flex-start;
   }
   .canvas.previewing {
     cursor: pointer;
