@@ -447,6 +447,14 @@ try {
   await tile(2, 2).click();
   const clueDlg = page.getByRole('dialog', { name: 'Edit clue' });
   const secs = clueDlg.locator('input.secs');
+  // At 1280×720 the Type row is one line, 🖼 Tile image on it (on a second line it took the slide's height).
+  const typeRow = await clueDlg.evaluate((d) => {
+    const top = (e) => Math.round(e.getBoundingClientRect().top);
+    const type = [...d.querySelectorAll('.opts > *')].find((e) => e.textContent.trim().startsWith('Type'));
+    const image = [...d.querySelectorAll('.opts button')].find((b) => b.textContent.includes('Tile image'));
+    return { type: type.getBoundingClientRect().bottom, image: top(image) };
+  });
+  assert(typeRow.image < typeRow.type, `at 1280, 🖼 Tile image is on the Type row (its top ${typeRow.image}, the row's foot ${Math.round(typeRow.type)})`);
   const typed = async (field, text) => {
     await field.fill(text);
     await field.press('Tab');

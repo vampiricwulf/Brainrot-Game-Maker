@@ -593,16 +593,23 @@
             <button disabled={clue.empty} onclick={() => (tool = { kind: 'dice', id: clue.diceId! })} title="Change these dice">✎ Edit dice</button>
           {/if}
         {/if}
-        <label class="check"><input
+        <!-- (Under 1300px its words in brackets go, so 🖼 Tile image keeps the row: its name and tooltip keep them.) -->
+        <label class="check" title="⬚ Empty tile (not played): the board shows a blank here"><input
             type="checkbox"
             bind:this={emptyBox}
+            aria-label="⬚ Empty tile (not played)"
             bind:checked={() => !!clue.empty, (v) => ((clue.empty = v), !v && followDailyDoubles(round))}
-          /> ⬚ Empty tile (not played)</label>
+          /> ⬚ Empty tile<span class="more-words">{' '}(not played)</span></label>
         {#if clue.type === 'standard'}
           <label
             class="check"
-            title="With phone buzzers: nobody buzzes; every player types an answer on their phone, only you see them, and you mark each right or wrong. Without phones it plays as usual."
-            ><input type="checkbox" disabled={clue.empty} bind:checked={() => !!clue.everyone, (v) => (v ? (clue.everyone = true) : delete clue.everyone)} /> ✍ Everyone answers (in secret, on their phones)</label
+            title="✍ Everyone answers (in secret, on their phones). With phone buzzers: nobody buzzes; every player types an answer on their phone, only you see them, and you mark each right or wrong. Without phones it plays as usual."
+            ><input
+              type="checkbox"
+              disabled={clue.empty}
+              aria-label="✍ Everyone answers (in secret, on their phones)"
+              bind:checked={() => !!clue.everyone, (v) => (v ? (clue.everyone = true) : delete clue.everyone)}
+            /> ✍ Everyone answers<span class="more-words">{' '}(in secret, on their phones)</span></label
           >
         {/if}
         <label class="field">
@@ -889,8 +896,9 @@
   .opts .check {
     min-height: 31px;
   }
+  /* (Narrow enough that the Type row, 🖼 Tile image included, is one line on a 1280 laptop.) */
   .opts input[type='number'] {
-    width: 100px;
+    width: 9ch;
   }
   /* An empty tile has no type, value, timer or face. */
   .opts :is(input, select):disabled {
@@ -904,7 +912,12 @@
     width: 70px;
   }
   .face {
-    width: 140px;
+    width: 12ch;
+  }
+  @media (max-width: 1300px) {
+    .more-words {
+      display: none;
+    }
   }
   .pop {
     position: relative;
