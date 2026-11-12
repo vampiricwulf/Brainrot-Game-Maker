@@ -364,6 +364,8 @@ try {
   );
   // One column (a narrow window): the card is back under the players' cards, before ⚖ Game rules.
   await page.setViewportSize({ width: 1000, height: 720 });
+  // (The page moves the card once it sees the new width: wait for that before measuring.)
+  await page.waitForFunction(() => document.querySelector('[data-place="play:buzzers"]')?.parentElement?.querySelector(':scope > section.before-start'));
   const narrowBefore = await beforeCard.boundingBox();
   const narrowPhones = await page.locator('[data-place="play:buzzers"]').boundingBox();
   const narrowRules = await page.locator('details.rules').first().boundingBox();
