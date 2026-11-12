@@ -19,6 +19,7 @@ in plain words for the people who make and host games. Anything committed but no
 - **✎ Edit image**'s **Apply** is greyed until you change something (“Nothing changed yet”), and `Ctrl+Enter` with nothing changed just closes the window, as in ✎ Edit video / sound. Before, it saved a copy of the picture anyway (a new “-edited” file in 🖼 Media, and a JPEG lost a little quality each time).
 - A first run has no dot on **❔ Help**, and the keys window keeps **🆕 What moved in this version** folded: that list is for hosts who knew the old places, who still get the dot and the open list.
 - On a 1280-wide laptop the header's **✓ Kept in this browser** is whole again (it read “✓ Kept in this brow…”): the game's title box gives way first.
+- The line beside **🤝 Partner clues** (and **⭐ Daily Doubles**) no longer says “all placed” when some can't go: it says how many can't, and why (“3 can't go yet: write a question and answer on more tiles first”). With no tile written yet, **🔀 Randomize** is greyed and says so.
 
 ## 2026-11-08
 

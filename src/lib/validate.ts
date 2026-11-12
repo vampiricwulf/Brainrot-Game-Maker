@@ -178,9 +178,14 @@ export function dailyDoublesOver(round: BoardRound): { want: number; placed: num
 export function partnerTilesShort(round: BoardRound): { want: number; placed: number; most: number } | null {
   if (!round.partnerCount) return null;
   const placed = partnerTilesPlaced(round);
-  const most = placed + round.categories.reduce((n, c) => n + c.clues.filter(partnerSpot).length, 0);
+  const most = partnerTilesMost(round);
   const want = Math.min(round.partnerCount, most);
   return placed < want || most < round.partnerCount ? { want, placed, most } : null;
+}
+
+/** The most 🤝 partner clues a board can have: those on it, and a tile with a written question and answer each. */
+export function partnerTilesMost(round: BoardRound): number {
+  return partnerTilesPlaced(round) + round.categories.reduce((n, c) => n + c.clues.filter(partnerSpot).length, 0);
 }
 
 /** A board with more partner clues than its 🤝 Partner clues box says (made by hand, or the box lowered): both. */
@@ -193,9 +198,11 @@ export function partnerTilesOver(round: BoardRound): { want: number; placed: num
 /**
  * The line beside ⭐ Daily Doubles and 🤝 Partner clues, one shape for both: "2 on the board · Start places 1 at random",
  * or "· all placed" once the board has what the box asks for (nothing after it when the box asks for none), with the
- * notes in brackets.
+ * notes in brackets. Short of it with nothing more to place, `cantGo` says why the rest can't go yet ("1 can't go yet:
+ * …"), in place of the notes.
  */
-export function placedLine(placed: number, toPlace: number, asked: number, notes: readonly string[] = []): string {
+export function placedLine(placed: number, toPlace: number, asked: number, notes: readonly string[] = [], cantGo = ''): string {
+  if (!toPlace && placed < asked && cantGo) return `${placed} on the board · ${asked - placed} can’t go yet: ${cantGo}`;
   const more = toPlace > 0 ? ` · Start places ${toPlace} at random` : asked > 0 ? ' · all placed' : '';
   const said = notes.filter(Boolean);
   return `${placed} on the board${more}${said.length ? ` (${said.join('; ')})` : ''}`;
@@ -206,7 +213,7 @@ export function dailyDoublesLine(round: BoardRound): string {
   const short = dailyDoublesShort(round);
   const most = dailyDoublesMost(round);
   const asked = round.dailyDoubleCount ?? 1;
-  return placedLine(dailyDoublesPlaced(round), short ? short.want - short.placed : 0, asked, [asked > most ? `one a category, ${most} at most` : '']);
+  return placedLine(dailyDoublesPlaced(round), short ? short.want - short.placed : 0, asked, [asked > most ? `one a category, ${most} at most` : ''], `one a category, ${most} at most`);
 }
 
 /** 🤝 Partner clues' line, as ⭐ Daily Doubles' (the ones Start places get a copy of their answer as their card). */
@@ -214,10 +221,13 @@ export function partnersLine(round: BoardRound): string {
   const short = partnerTilesShort(round);
   const left = short ? short.want - short.placed : 0;
   const asked = round.partnerCount ?? 0;
-  return placedLine(partnerTilesPlaced(round), left, asked, [
-    short && asked > short.most ? `on written tiles, ${short.most} at most` : '',
-    left && round.partnerCardFrom === 'empty' ? 'each with a copy of its answer as its card' : '',
-  ]);
+  return placedLine(
+    partnerTilesPlaced(round),
+    left,
+    asked,
+    [short && asked > short.most ? `on written tiles, ${short.most} at most` : '', left && round.partnerCardFrom === 'empty' ? 'each with a copy of its answer as its card' : ''],
+    'write a question and answer on more tiles first',
+  );
 }
 
 /**

@@ -28,7 +28,7 @@
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import { toolChosen } from '../lib/tools';
-  import { choiceFaults, dailyDoublesLine, partnersLine } from '../lib/validate';
+  import { choiceFaults, dailyDoublesLine, partnersLine, partnerTilesMost } from '../lib/validate';
   import { cardsToFinish } from '../lib/partner';
   import {
     addCategory,
@@ -108,6 +108,9 @@
   /** At most one 🤝 partner clue a playable tile. */
   const ptMax = $derived(Math.min(PARTNER_COUNT_MAX, playableClues(round).length));
   const ptPlaced = $derived(partnerTilesPlaced(round));
+  /** No tile can take a 🤝 partner clue yet (none has a written question and answer): 🔀 Randomize has nothing to do. */
+  const ptNone = $derived(partnerTilesMost(round) === 0);
+  const PT_NONE = 'No tile has a written question and answer yet: write some first';
   const PT_GAMES = Object.keys(PARTNER_GAMES) as PartnerGame[];
 
   /** 🔀 Randomize partner clues: the ones on the board move, the box's number go on tiles with a written question and answer. */
@@ -120,7 +123,9 @@
       return placed;
     });
     toast(
-      n < want
+      !n && want
+        ? PT_NONE
+        : n < want
         ? `Placed ${n} of ${want} partner clue${want === 1 ? '' : 's'}: only ${n} tile${n === 1 ? ' has' : 's have'} a written question and answer`
         : `Placed ${n} partner clue${n === 1 ? '' : 's'} at random`,
     );
@@ -922,9 +927,11 @@
   <!-- (Named apart from the Daily Doubles' 🔀 Randomize beside it.) -->
   <button
     onclick={randomizePartners}
-    disabled={!round.partnerCount}
+    disabled={!round.partnerCount || ptNone}
     aria-label="Randomize partner clues"
-    title={round.partnerCount
+    title={round.partnerCount && ptNone
+      ? PT_NONE
+      : round.partnerCount
       ? 'Scatter partner clues at random, on tiles with a written question and answer (never a Daily Double). The ones on the board move. To make one by hand, right-click a tile → Make it a… 🤝 Partner clue (or pick it as the clue’s Type).'
       : 'Say how many first'}>🔀 Randomize</button
   >

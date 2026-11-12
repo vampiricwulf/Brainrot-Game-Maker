@@ -7,7 +7,7 @@ import { cardSlides, migrateGame, newImageEl, partnerTilesPlaced, setSlideText, 
 import { addCard, newCard, partnerSpot, setPartnerGame } from './partner';
 import { answerCardDue, copyClue, followDailyDoubles, pastedCardDue, pastedPartnerCard, placePartner, randomizePartnerTiles, setClueType } from './ops';
 import { randomizeDailyDoubles } from './session';
-import { dailyDoublesLine, partnersLine, partnerTilesOver, partnerTilesShort, placedLine, validate } from './validate';
+import { dailyDoublesLine, partnersLine, partnerTilesMost, partnerTilesOver, partnerTilesShort, placedLine, validate } from './validate';
 import { answerCardAt, checklistLines } from './checklist';
 
 /** A seeded random: the same picks every run. */
@@ -478,6 +478,9 @@ describe('the lines beside the boxes, one shape', () => {
     expect(placedLine(3, 0, 3)).toBe('3 on the board · all placed');
     expect(placedLine(0, 0, 0)).toBe('0 on the board');
     expect(placedLine(0, 6, 6, ['one a category, 6 at most', ''])).toBe('0 on the board · Start places 6 at random (one a category, 6 at most)');
+    // Short of it with nothing more to place: why the rest can't go, never “all placed”.
+    expect(placedLine(0, 0, 3, ['on written tiles, 0 at most'], 'write a question and answer on more tiles first')).toBe('0 on the board · 3 can’t go yet: write a question and answer on more tiles first');
+    expect(placedLine(3, 0, 3, [], 'never said')).toBe('3 on the board · all placed');
   });
 
   it('⭐ Daily Doubles and 🤝 Partner clues say it alike', () => {
@@ -495,5 +498,19 @@ describe('the lines beside the boxes, one shape', () => {
     expect(partnersLine(r)).toBe('2 on the board · all placed');
     r.partnerCount = 40;
     expect(partnersLine(r)).toBe('2 on the board · Start places 28 at random (on written tiles, 30 at most; each with a copy of its answer as its card)');
+  });
+
+  it('a box asking for more than can go says why, not “all placed”', () => {
+    const { r } = board();
+    // No tile written yet: none of the 3 can go.
+    for (const c of r.categories) for (const cl of c.clues) cl.answerSlide = { background: {}, elements: [] };
+    r.partnerCount = 3;
+    expect(partnerTilesMost(r)).toBe(0);
+    expect(partnersLine(r)).toBe('0 on the board · 3 can’t go yet: write a question and answer on more tiles first');
+    // ⭐ Daily Doubles past one a category: on the board, the rest can't go.
+    const { r: b } = board();
+    b.dailyDoubleCount = 8;
+    b.categories.forEach((c) => (c.clues[0].type = 'dailyDouble'));
+    expect(dailyDoublesLine(b)).toBe('6 on the board · 2 can’t go yet: one a category, 6 at most');
   });
 });

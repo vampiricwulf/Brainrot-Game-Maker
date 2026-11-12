@@ -194,6 +194,23 @@ try {
   await addClassicRounds(page);
   await page.locator('.cat textarea').first().fill('Movies');
 
+  // ---------- 🤝 Partner clues on a board with nothing written yet ----------
+  {
+    // Asked for 3 with no tile written: the line says why none can go (never “all placed”), and 🔀 Randomize waits.
+    const ptCount = page.getByLabel('How many partner clues');
+    await ptCount.fill('3');
+    await ptCount.press('Tab');
+    const ptGroup = page.locator('[data-partner-count]');
+    const randomize = ptGroup.getByRole('button', { name: 'Randomize partner clues' });
+    const line = await ptGroup.locator('.hint').innerText();
+    assert(
+      line === '0 on the board · 3 can’t go yet: write a question and answer on more tiles first' && (await randomize.isDisabled()) && (await randomize.getAttribute('title')).startsWith('No tile has a written question and answer yet'),
+      `nothing written yet: the 🤝 line says why none can go, and 🔀 Randomize is greyed (${line})`,
+    );
+    await ptCount.fill('0');
+    await ptCount.press('Tab');
+  }
+
   // ---------- Making a tile a partner clue ----------
   await page.locator('[data-tile="0,1"]').click();
   const dialog = page.getByRole('dialog', { name: 'Edit clue' });
