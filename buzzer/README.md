@@ -82,6 +82,15 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   to that seat's own phones (their view's `answer`) only, and a phone seated (or on the team: joined or moved onto it)
   after the round began sees only what it sent itself (`hidden`: one is in). The choices go only to the phones of seats in it. With the round
   closed the room keeps what was sent: the same id again shows each phone its own; a new id forgets it.
+- **Passes** (`pass` in the host's state: a round id of 100 characters at most, on an ordinary buzz-in clue only): a
+  seat passes on the clue from its phone, or takes its pass back (`pass` with the round id and `on`; teams: anyone on
+  the team, for the team), at most 10 in 10 seconds per phone, while the clue is open (closed, armed or answering, not
+  answered right nor its answer shown) and the seat isn't answering, in this opening's buzz order or out of the clue
+  (taking a pass back is always fine while the clue is open). A passed seat's buzz is refused (`locked`), it can't get
+  in line, and it doesn't hold up the grace window. The room tells the host who passed (`passes` with the round id and
+  each seat, teams `by`) whenever that changes and when the host comes back; each phone's view says whether its seat
+  passed and whether a press does anything now (`pass` with `passed`, `by`, `byYou`, `can`). A seat answering or out
+  of the clue loses its pass; a new round id, or none, forgets them all.
 - **Private cards** (`cards` in the host's state, at most 8): a card is shown only on the phones the host sends it to,
   and only when the host sends it (a partner clue's 📤 Send): nothing goes out by itself. Each has an `id`, who it's
   `to` (a seat, which on a team is everyone on it; one `member` of a team; or a team `except` some members), `open`
@@ -186,7 +195,9 @@ be multiple choice: `'choices'` in `welcome.features`, `AnswerAsk.choices`, `pic
 `text` may then be left out), on the room → host `answer` and on `PhoneView.answer` with its `choices`. An app that
 doesn't see `'choices'` sends no choices: phones type, and a typed letter or the choice's words count as that choice. Since a
 judged answer is final: `closed` on an `AnswerAsk` seat (a room from before drops it, and that seat can still change
-its answer until the round closes).
+its answer until the round closes). Since players can pass: `'pass'` in `welcome.features`, `HostState.pass`, the
+phone → room `pass`, room → host `passes` and `PhoneView.pass` (a room from before drops the host's `pass` and ignores
+a phone's: its phones show no Pass; a phone page from before shows none either).
 
 ## Fair timing
 

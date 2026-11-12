@@ -138,12 +138,12 @@ describe('host', () => {
   it('is welcomed and keeps the latest state', () => {
     const g = setup();
     g.room.hostOpen();
-    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs', 'choices'] });
+    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs', 'choices', 'pass'] });
     // 'files' only while the server takes card files (index.ts knows its setting and budget), and with it the
     // server's limits.
     const f = setup(undefined, [], { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 });
     f.room.hostOpen(true);
-    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs', 'choices'], limits: { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 } });
+    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs', 'choices', 'pass'], limits: { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 } });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -1592,7 +1592,7 @@ describe('teams', () => {
 
   it('the room says it knows teams, and the host state keeps teams on', () => {
     const g = teams();
-    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs', 'choices'] });
+    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs', 'choices', 'pass'] });
     expect(g.room.saved.state?.teams).toBe(true);
     expect(cleanState({ ...state(), teams: 'yes' })?.teams).toBeUndefined();
   });
@@ -3160,5 +3160,140 @@ describe('typed answers over several lines (cleanAnswer, foldLines)', () => {
     expect(foldLines('one line')).toBe('one line');
     expect(foldLines('a\nb\nc\nd\ne', 3)).toBe('a\nb\nc / d / e');
     expect(foldLines('a\nb', 3)).toBe('a\nb');
+  });
+});
+
+describe('passes', () => {
+  const ask = { id: 'c1@1' };
+  const clue = (over: Partial<HostState> = {}) => state({ phase: 'armed', armId: 1, clue: { text: 'Q?' }, pass: ask, ...over });
+
+  it('a seat passes and takes it back; the host hears the whole list each time, and the phone sees it', () => {
+    const g = game();
+    g.send({ t: 'state', state: clue() });
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@1', can: true });
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.hostLast('passes')).toEqual({ t: 'passes', id: 'c1@1', seats: [{ seatId: 'a' }] });
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@1', passed: true, can: true });
+    // (The others' phones aren't told.)
+    expect(g.pb.last('view')!.view.pass).toEqual({ id: 'c1@1', can: true });
+    // The same press again (a double tap): nothing new.
+    const n = g.hostAll('passes').length;
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.hostAll('passes')).toHaveLength(n);
+    g.pb.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.hostLast('passes')!.seats).toEqual([{ seatId: 'a' }, { seatId: 'b' }]);
+    g.pa.send({ t: 'pass', id: 'c1@1', on: false });
+    expect(g.hostLast('passes')!.seats).toEqual([{ seatId: 'b' }]);
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@1', can: true });
+  });
+
+  it('a passed seat can’t buzz until it takes the pass back, and doesn’t hold up the grace window', () => {
+    const g = game();
+    g.send({ t: 'state', state: clue() });
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    g.pa.send({ t: 'buzz', armId: 1 });
+    expect(g.pa.last('result')).toMatchObject({ outcome: 'locked' });
+    expect(g.room.saved.race?.queue ?? []).toEqual([]);
+    g.pa.send({ t: 'pass', id: 'c1@1', on: false });
+    g.pa.send({ t: 'buzz', armId: 1 });
+    expect(g.pa.last('result')).toMatchObject({ outcome: 'pending' });
+  });
+
+  it('can’t pass once buzzed, answering or out; can always take a pass back while the clue is open', () => {
+    const g = game();
+    g.send({ t: 'state', state: clue() });
+    g.pc.send({ t: 'pass', id: 'c1@1', on: true });
+    g.pa.send({ t: 'buzz', armId: 1 });
+    g.tick(MAX_GRACE_MS + 10);
+    // a answers: can't pass, nor can anyone in the queue; b can (and gets in line otherwise).
+    expect(g.room.saved.state?.answering).toBe('a');
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@1' });
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.hostLast('passes')!.seats).toEqual([{ seatId: 'c' }]);
+    expect(g.pb.last('view')!.view).toMatchObject({ canQueue: true, pass: { id: 'c1@1', can: true } });
+    // A passed seat can't get in line either.
+    expect(g.pc.last('view')!.view.canQueue).toBeUndefined();
+    expect(g.pc.last('view')!.view.pass).toEqual({ id: 'c1@1', passed: true, can: true });
+    // a missed it: out of the clue, no pass.
+    g.send({ t: 'state', state: clue({ armId: 2, lockedOut: ['a'] }) });
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@1' });
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.hostLast('passes')!.seats).toEqual([{ seatId: 'c' }]);
+    // A wrong id (an older round) does nothing.
+    g.pb.send({ t: 'pass', id: 'c1@0', on: true });
+    expect(g.hostLast('passes')!.seats).toEqual([{ seatId: 'c' }]);
+  });
+
+  it('closes once the clue is answered right or its answer shows; a new round, or none, forgets them', () => {
+    const g = game();
+    g.send({ t: 'state', state: clue() });
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    g.send({ t: 'state', state: clue({ phase: 'closed', done: { by: 'b' } }) });
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@1', passed: true });
+    g.pa.send({ t: 'pass', id: 'c1@1', on: false });
+    expect(g.hostLast('passes')!.seats).toEqual([{ seatId: 'a' }]);
+    g.send({ t: 'state', state: clue({ phase: 'closed', answerShown: true }) });
+    expect(g.pb.last('view')!.view.pass).toEqual({ id: 'c1@1' });
+    // Before the buzzers open (closed, not done) it's open.
+    g.send({ t: 'state', state: clue({ phase: 'closed' }) });
+    expect(g.pb.last('view')!.view.pass).toEqual({ id: 'c1@1', can: true });
+    // ↺ Reset: a new round, nobody passed (the host hears so).
+    g.send({ t: 'state', state: clue({ armId: 3, pass: { id: 'c1@2' } }) });
+    expect(g.hostLast('passes')).toEqual({ t: 'passes', id: 'c1@2', seats: [] });
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@2', can: true });
+    g.pa.send({ t: 'pass', id: 'c1@2', on: true });
+    // The board: none.
+    g.send({ t: 'state', state: state() });
+    expect(g.room.saved.passes).toBeUndefined();
+    expect(g.pa.last('view')!.view.pass).toBeUndefined();
+  });
+
+  it('the host picking a passed seat by hand drops its pass; the host back hears the list again', () => {
+    const g = game();
+    g.send({ t: 'state', state: clue() });
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    g.pb.send({ t: 'pass', id: 'c1@1', on: true });
+    g.send({ t: 'state', state: clue({ phase: 'answering', answering: 'a' }) });
+    expect(g.hostLast('passes')!.seats).toEqual([{ seatId: 'b' }]);
+    g.room.hostClose();
+    g.host.length = 0;
+    g.room.hostOpen();
+    expect(g.hostLast('passes')).toEqual({ t: 'passes', id: 'c1@1', seats: [{ seatId: 'b' }] });
+  });
+
+  it('no pass on a clue without one (an older host, a clue everyone must play)', () => {
+    const g = game();
+    g.send({ t: 'state', state: clue({ pass: undefined }) });
+    expect(g.pa.last('view')!.view.pass).toBeUndefined();
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.hostAll('passes')).toEqual([]);
+    expect(cleanState({ ...clue(), pass: { id: '' } })?.pass).toBeUndefined();
+    expect(cleanState({ ...clue(), pass: { id: 'x'.repeat(101) } })?.pass).toBeUndefined();
+    expect(cleanState({ ...clue(), pass: { id: 'c1@1', extra: 1 } })?.pass).toEqual({ id: 'c1@1' });
+  });
+
+  it('teams: a pass counts for the team, says who passed, and any of them can take it back', () => {
+    const g = setup();
+    g.room.hostOpen();
+    const st = (x: Partial<HostState> = {}) =>
+      state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    g.send({ t: 'state', state: st() });
+    const join = (conn: string, seatId: string, name: string) => {
+      const p = g.phone(conn);
+      p.send({ t: 'join', seatId, name, device: `dev-${conn}` });
+      return p;
+    };
+    const ann = join('ann', 'a', 'Ann');
+    const al = join('al', 'a', 'Al');
+    g.send({ t: 'state', state: st({ phase: 'armed', armId: 1, clue: { text: 'Q?' }, pass: ask }) });
+    ann.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.hostLast('passes')).toEqual({ t: 'passes', id: 'c1@1', seats: [{ seatId: 'a', by: 'Ann' }] });
+    expect(ann.last('view')!.view.pass).toEqual({ id: 'c1@1', passed: true, by: 'Ann', byYou: true, can: true });
+    expect(al.last('view')!.view.pass).toEqual({ id: 'c1@1', passed: true, by: 'Ann', byYou: false, can: true });
+    // Al can't buzz for the team now.
+    al.send({ t: 'buzz', armId: 1 });
+    expect(al.last('result')).toMatchObject({ outcome: 'locked' });
+    al.send({ t: 'pass', id: 'c1@1', on: false });
+    expect(g.hostLast('passes')!.seats).toEqual([]);
   });
 });

@@ -30,8 +30,9 @@ export const BUZZ_PROTOCOL = 1;
  * 'files': card files over HTTP (POST and GET /api/rooms/:code/files); listed only while the server takes files.
  * 'gifs': a card's file can be a GIF sent as a looping video (CardMedia `gif`), which phones show like the GIF.
  * 'choices': a ✍ round's multiple choices (AnswerAsk.choices); phones pick one (PhoneMsg 'answer' with `pick`).
+ * 'pass': players may pass on an ordinary buzz-in clue (HostState.pass, PhoneMsg 'pass'); the host hears who passed.
  */
-export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs', 'choices'] as const;
+export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs', 'choices', 'pass'] as const;
 export type RoomFeature = (typeof ROOM_FEATURES)[number];
 
 /**
@@ -264,6 +265,25 @@ export interface HostState {
    * `cards`). Only ever what the host sent by hand; a card holds whatever the host put on it.
    */
   cards?: HostCard[] | null;
+  /**
+   * Added later ('pass'): players may pass on this clue (an ordinary buzz-in one: never one everyone must play). `id`
+   * names this round of passes: a new id (the clue opened again, ↺ Reset) starts over, and none forgets them. The room
+   * keeps who passed (PhoneMsg 'pass'), tells the host ('passes') and keeps a passed seat from buzzing until it takes
+   * the pass back. Passing is open while the clue is (closed, armed or answering), until it's answered right or its
+   * answer shows.
+   */
+  pass?: PassAsk | null;
+}
+
+/** HostState.pass: this clue takes passes, for the round of passes `id`. */
+export interface PassAsk {
+  id: string;
+}
+
+/** A seat that passed (teams: the member who passed for it, called by), as the room tells the host. */
+export interface PassedSeat {
+  seatId: string;
+  by?: string;
 }
 
 /** A card for some phones only (a partner clue's, one the host sent…). */
@@ -471,6 +491,21 @@ export interface PhoneView {
   cards?: { list: PhoneCard[]; late?: number };
   /** Added later: 🔒 the host locked the seats (HostState.locked): a phone that gives up its seat can't get back in. */
   locked?: true;
+  /** Added later ('pass', the room adds it): this clue takes passes (HostState.pass), as this phone should see it. */
+  pass?: PhonePass;
+}
+
+/**
+ * Passing, as one phone sees it. passed: its seat passed (teams: by, who on the team; byYou, this phone). can: a press
+ * does something now (pass, or take the pass back): not once the clue is answered right or its answer shows, nor for a
+ * seat that is answering, has buzzed, or is out of this clue.
+ */
+export interface PhonePass {
+  id: string;
+  passed?: true;
+  by?: string;
+  byYou?: boolean;
+  can?: true;
 }
 
 /**
@@ -820,7 +855,12 @@ export type RoomToHost =
    * the seat, joined the team or was moved onto it after the card went out), whenever that changes; empty once none
    * are. The host suggests ↻ Send again.
    */
-  | { t: 'cardsLate'; late: CardLate[] };
+  | { t: 'cardsLate'; late: CardLate[] }
+  /**
+   * Added later ('pass'): who has passed in the round of passes `id` (HostState.pass), the whole list, whenever it
+   * changes and when the host comes back.
+   */
+  | { t: 'passes'; id: string; seats: PassedSeat[] };
 
 /** A phone of seatId (teams: member, called by) that card `id` was sent to, but that is late for it. */
 export interface CardLate {
@@ -854,7 +894,9 @@ export type PhoneMsg =
   /** Added later ('answers'): this phone's seat's answer for the answer round `id`: words, or ('choices') a choice's id. */
   | { t: 'answer'; id: string; text?: string; pick?: string }
   /** Added later ('cards'): this phone showed card `id` (its player tapped to see it). */
-  | { t: 'cardSeen'; id: string };
+  | { t: 'cardSeen'; id: string }
+  /** Added later ('pass'): this phone's seat passes on the clue (on), or takes its pass back, in the round of passes `id`. */
+  | { t: 'pass'; id: string; on: boolean };
 
 /** Why the room didn't take a phone's wager: not taking one now, over the max (with the limit on), not a whole number, too many sends. */
 export type WagerRefusal = 'closed' | 'over' | 'bad' | 'slow';

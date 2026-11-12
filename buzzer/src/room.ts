@@ -119,7 +119,9 @@ import {
   type HostState,
   type MemberRef,
   type PhoneCard,
+  type PassedSeat,
   type PhoneInfo,
+  type PhonePass,
   type PhoneView,
   type CardLate,
   type QueuedBuzz,
@@ -174,6 +176,9 @@ export const COLOR_WINDOW_MS = 10_000;
 /** Answers a phone may send per ANSWER_WINDOW_MS (fixing a typo a few times is fine; a script isn't). */
 export const ANSWER_RATE = 10;
 export const ANSWER_WINDOW_MS = 10_000;
+/** Passes (and passes taken back) a phone may send per PASS_WINDOW_MS (changing its mind is fine; a script isn't). */
+export const PASS_RATE = 10;
+export const PASS_WINDOW_MS = 10_000;
 /** cardSeen reports a phone may send per CARD_SEEN_WINDOW_MS (like answers). */
 export const CARD_SEEN_RATE = 10;
 export const CARD_SEEN_WINDOW_MS = 10_000;
@@ -260,6 +265,11 @@ export interface RoomSaved {
   wagers?: { id: string; seats: Record<string, SentWager>; at?: number };
   /** The answers phones sent for the host's answer round `id` (HostState.answers), per seat; at: when the round began. */
   answers?: { id: string; seats: Record<string, SentAnswer>; at?: number };
+  /**
+   * Added later ('pass'): the seats that passed in the host's round of passes `id` (HostState.pass); teams: the member
+   * who passed for it (id, not a credential) and their name.
+   */
+  passes?: { id: string; seats: Record<string, { member?: string; by?: string }> };
   /** Seat id → when its token was handed out (a phone coming back with it keeps the time; see Wagers above). */
   seatedAt?: Record<string, number>;
   /**
@@ -384,6 +394,8 @@ interface Phone extends PhoneSaved {
   answerRate?: Window;
   /** cardSeen reports sent lately (CARD_SEEN_RATE). */
   seenRate?: Window;
+  /** Passes sent lately (PASS_RATE). */
+  passRate?: Window;
 }
 
 interface Window {
@@ -429,6 +441,8 @@ export class Room {
   private lastPhones = '';
   /** The cardsLate list the host last heard ('' for none). */
   private lastLate = '';
+  /** The passes the host last heard ('' for none yet). */
+  private lastPasses = '';
   /** The grace window's timer. */
   private grace: unknown = null;
   /** The last queue / results sent this arm, so unchanged ones aren't sent again. */
@@ -480,6 +494,7 @@ export class Room {
     this.lastPhones = '';
     this.lastQueue = '';
     this.lastLate = '';
+    this.lastPasses = '';
     const features = ROOM_FEATURES.filter((f) => f !== 'files' || files);
     this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now(), features, ...(files ? { limits: { ...this.deps.limits } } : {}) });
     this.tellFiles();
@@ -503,6 +518,8 @@ export class Room {
     if (typed && st?.answers?.id === typed.id)
       for (const [seatId, a] of Object.entries(typed.seats))
         if (a.n > (st.answers.seats.find((x) => x.id === seatId)?.got ?? 0)) this.tellAnswer(typed.id, seatId, a);
+    // And who passed.
+    this.tellPasses();
     // And who has seen the current cards (still sent to them).
     for (const c of st?.cards ?? []) for (const who of this.s.cards?.seen[c.id] ?? []) if (this.sentTo(c, who.seatId, who.member)) this.tellSeen(c.id, who);
   }
@@ -642,6 +659,15 @@ export class Room {
       /* kept */
     } else if (this.s.answers?.id !== ans.id) this.s.answers = { id: ans.id, seats: {}, at: now };
     else for (const id of Object.keys(this.s.answers.seats)) if (!ans.seats.some((x) => x.id === id)) delete this.s.answers.seats[id];
+    // Passes: a new round of passes (or none) forgets who passed; a seat gone from the game, answering or out of the clue
+    // has no pass any more (the host picked them by hand, say).
+    const pa = next.pass;
+    if (!pa) delete this.s.passes;
+    else {
+      if (this.s.passes?.id !== pa.id) this.s.passes = { id: pa.id, seats: {} };
+      for (const id of Object.keys(this.s.passes.seats))
+        if (!seatIds.has(id) || next.lockedOut.includes(id) || (next.phase === 'answering' && next.answering === id)) delete this.s.passes.seats[id];
+    }
     // Cards: a new id is a new card, first seen now (the late rule); one gone from the state is forgotten at once, so a
     // closed tile leaves nothing of its cards in the room. Their files follow (unused ones are cleaned up later).
     const cardIds = new Set((next.cards ?? []).map((c) => c.id));
@@ -654,6 +680,7 @@ export class Room {
     if (cardIds.size) this.s.cards = kept;
     else delete this.s.cards;
     this.useFiles(now);
+    this.tellPasses();
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {
       for (const p of this.phones.values()) if (p.pendingName !== undefined) {
@@ -1233,7 +1260,7 @@ export class Room {
       delete p.flooded;
       this.deps.savePhone(strip(p));
     }
-    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager' || m.t === 'answer' || m.t === 'cardSeen') p.active = this.deps.now();
+    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager' || m.t === 'answer' || m.t === 'cardSeen' || m.t === 'pass') p.active = this.deps.now();
     if ((m.t === 'join' || m.t === 'new') && typeof m.device === 'string' && m.device && m.device.length <= 64 && p.device !== m.device) {
       p.device = m.device;
       this.deps.savePhone(strip(p));
@@ -1281,6 +1308,9 @@ export class Room {
         break;
       case 'cardSeen':
         if (typeof m.id === 'string') this.cardSeen(p, m.id);
+        break;
+      case 'pass':
+        if (typeof m.id === 'string' && typeof m.on === 'boolean') this.pass(p, m.id, m.on);
         break;
       case 'ping':
         if (typeof m.at === 'number') {
@@ -1528,6 +1558,8 @@ export class Room {
     }
     if (armId !== st.armId) return result('late');
     if (st.lockedOut.includes(seatId) || (member && this.s.clueOut?.includes(member))) return result('locked');
+    // Passed: no buzz until the pass is taken back (its phone doesn't offer one).
+    if (this.passed(seatId)) return result('locked');
     const until = (member ? this.s.memberLocks?.[member] : this.s.earlyLocks[seatId]) ?? 0;
     if (until > now) return result('locked', { lockedUntil: until });
     let race = this.s.race;
@@ -1576,6 +1608,68 @@ export class Room {
     }
     this.save();
     this.announce();
+  }
+
+  /** Seat `seatId` passed in the current round of passes. */
+  private passed(seatId: string): boolean {
+    const st = this.s.state;
+    return !!st?.pass && this.s.passes?.id === st.pass.id && !!this.s.passes.seats[seatId];
+  }
+
+  /**
+   * What a press of Pass on this phone can do now (see PhonePass): passing is open while the clue is (closed, armed or
+   * answering), until it's answered right or its answer shows; a seat answering, in this opening's buzz order, out of
+   * the clue (teams: this member, moved off a team in it) can't pass, but one that passed can always take it back then.
+   */
+  private passView(p: Phone): PhonePass | undefined {
+    const st = this.s.state;
+    const ask = st?.pass;
+    if (!st || !ask || !p.seatId) return undefined;
+    const seatId = p.seatId;
+    const mine = this.s.passes?.id === ask.id ? this.s.passes.seats[seatId] : undefined;
+    const open = st.phase !== 'lobby' && !(st.phase === 'closed' && st.done) && !st.answerShown;
+    const race = this.s.race;
+    const out = !!p.member && !!this.s.clueOut?.includes(p.member);
+    const can = mine
+      ? open
+      : open && !out && !st.lockedOut.includes(seatId) && !(st.phase === 'answering' && st.answering === seatId) && !(race && race.armId === st.armId && race.queue.some((b) => b.seatId === seatId));
+    return {
+      id: ask.id,
+      ...(mine ? { passed: true as const } : {}),
+      ...(mine && st.teams && mine.by ? { by: mine.by, byYou: !!p.member && p.member === mine.member } : {}),
+      ...(can ? { can: true as const } : {}),
+    };
+  }
+
+  /**
+   * A phone passes on the clue (`on`), or takes its pass back, in the host's round of passes `id`: for its whole seat
+   * (teams: whoever on it pressed it). The host hears who has passed; every phone of the seat sees it.
+   */
+  private pass(p: Phone, id: string, on: boolean): void {
+    const st = this.s.state;
+    if (!st?.pass || st.pass.id !== id || !p.seatId || !st.seats.some((x) => x.id === p.seatId)) return;
+    if (!this.allow((p.passRate ??= { start: 0, count: 0 }), PASS_RATE, PASS_WINDOW_MS)) return;
+    const can = this.passView(p);
+    if (!can?.can || !!can.passed === on) return;
+    const passes = this.s.passes?.id === id ? this.s.passes : (this.s.passes = { id, seats: {} });
+    const member = st.teams && p.member ? this.s.members?.[p.member] : undefined;
+    if (on) passes.seats[p.seatId] = member && p.member ? { member: p.member, by: member.name } : {};
+    else delete passes.seats[p.seatId];
+    this.tellPasses();
+    this.save();
+  }
+
+  /** The host hears who has passed (the whole list), when it changed. */
+  private tellPasses(): void {
+    const st = this.s.state;
+    const passes = st?.pass && this.s.passes?.id === st.pass.id ? this.s.passes : undefined;
+    if (!this.hostHere || !passes) return;
+    const seats: PassedSeat[] = Object.entries(passes.seats).map(([seatId, x]) => ({ seatId, ...(x.by ? { by: x.by } : {}) }));
+    const msg: RoomToHost = { t: 'passes', id: passes.id, seats };
+    const key = JSON.stringify(msg);
+    if (key === this.lastPasses) return;
+    this.lastPasses = key;
+    this.deps.toHost(msg);
   }
 
   /**
@@ -1658,7 +1752,7 @@ export class Room {
     const out = this.s.state?.lockedOut ?? [];
     let slack = 0;
     for (const p of this.phones.values())
-      if (p.seatId && !out.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId)) slack = Math.max(slack, slackFor(this.rtt(p.conn)));
+      if (p.seatId && !out.includes(p.seatId) && !this.passed(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId)) slack = Math.max(slack, slackFor(this.rtt(p.conn)));
     return Math.min(now + MAX_GRACE_MS, Math.max(now + GRACE_MS, race.armedAt + key + slack));
   }
 
@@ -1825,7 +1919,7 @@ export class Room {
         const out = !!p.member && !!this.s.clueOut?.includes(p.member);
         // A buzz now would still get in line: someone else answers out of a race this seat hasn't buzzed in.
         const canQueue =
-          !out && st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
+          !out && !this.passed(p.seatId) && st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
         const asked = st.answers && this.s.answers?.id === st.answers.id ? this.s.answers : undefined;
         let typed = asked?.seats[p.seatId];
         // The same for answers: seated (teams: on the team) since the answers began, only what it sent itself.
@@ -1836,7 +1930,8 @@ export class Room {
         // Only the cards sent to this phone that it isn't late for (see Cards above). The host hears which it's late for.
         const { view: cards, lateIds } = this.cardsFor(p);
         for (const id of lateIds) if (!cardsLate.some((x) => x.id === id && x.seatId === p.seatId && x.member === p.member)) cardsLate.push({ id, seatId: p.seatId, ...(me ? { member: me.id, by: me.name } : {}) });
-        const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed, ansHidden, cards), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
+        const pass = this.passView(p);
+        const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed, ansHidden, cards), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}), ...(pass ? { pass } : {}) };
         if (out && view.you) view.you = { ...view.you, lockedOut: true, out: true };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
@@ -2014,6 +2109,7 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
     const cards = cleanCards(x.cards, ids, files);
     if (cards.length) extra.cards = cards;
   }
+  if (isObj(x.pass) && typeof x.pass.id === 'string' && x.pass.id && x.pass.id.length <= 100) extra.pass = { id: x.pass.id };
   if (x.over === true) extra.over = true;
   if (extra.over && typeof x.winner === 'string' && ids.has(x.winner)) extra.winner = x.winner;
   if (isObj(x.wager) && typeof x.wager.id === 'string' && x.wager.id && x.wager.id.length <= 100 && (x.wager.kind === 'dd' || x.wager.kind === 'final') && Array.isArray(x.wager.seats)) {
