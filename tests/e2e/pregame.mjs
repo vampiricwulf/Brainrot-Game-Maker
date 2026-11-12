@@ -348,7 +348,23 @@ try {
     'in one window, ✅ Before you start leads with “Viewers see this page now”, and has the one 🔊 Test the sound… on the screen',
   );
   const playersBox = await page.locator('[data-place="play:players"]').boundingBox();
-  assert((await beforeCard.boundingBox()).y > playersBox.y && (await beforeCard.locator('[data-checks]').count()) === 1, 'the card is in the players’ column, under 👥 Players, with its The game group');
+  const streamBox = await page.locator('[data-place="play:stream"]').boundingBox();
+  const beforeBox = await beforeCard.boundingBox();
+  assert(
+    beforeBox.x > playersBox.x + playersBox.width && beforeBox.y > streamBox.y + streamBox.height && (await beforeCard.locator('[data-checks]').count()) === 1,
+    'two columns (1280 wide): the card is at the foot of the right column, under 📺 On stream, with its The game group',
+  );
+  // One column (a narrow window): the card is back under the players' cards, before ⚖ Game rules.
+  await page.setViewportSize({ width: 1000, height: 720 });
+  const narrowBefore = await beforeCard.boundingBox();
+  const narrowPhones = await page.locator('[data-place="play:buzzers"]').boundingBox();
+  const narrowRules = await page.locator('details.rules').first().boundingBox();
+  assert(narrowBefore.y > narrowPhones.y && narrowBefore.y < narrowRules.y, 'one column: the card is under 📱 Phone buzzers and above ⚖ Game rules, as before');
+  // A tall window: the Start bar rests at its foot, not under the last card.
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const tallBar = await page.locator('.pregame .actions').boundingBox();
+  assert(Math.abs(tallBar.y + tallBar.height - 1080) <= 1, `1920×1080: the Start bar rests at the window’s foot (its bottom at ${Math.round(tallBar.y + tallBar.height)}px)`);
+  await page.setViewportSize({ width: 1280, height: 720 });
   await live.getByRole('button', { name: 'Hide the On stream tips' }).click();
   assert((await live.count()) === 0 && (await beforeCard.locator('[data-checks]').count()) === 1 && (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1, '✕ folds the On stream tips only (the game’s checks and 🔊 Test the sound… stay)');
   await beforeCard.getByRole('button', { name: 'Show them' }).click();

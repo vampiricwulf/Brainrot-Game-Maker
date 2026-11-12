@@ -29,6 +29,8 @@ in plain words for the people who make and host games. Anything committed but no
 - On an RPG screen's editor, **Background ▾** sits at the right beside **▶ Preview**, so on a laptop the add buttons wrap to a second line instead of Background dropping there on its own; and a screen opened with the page scrolled down to the map no longer shows the round's title cut in half above it. On a phone, the map's settings go under the map instead of squeezing it to nothing.
 ### Changed
 
+- **▶ Play**: on a wide window **✅ Before you start** sits at the foot of the right column, under **📺 On stream**, so the game's checks stay in view beside Start while the 📱 Phone buzzers card makes the left column long. On a narrow window it stays under the players.
+- **▶ Play** on a tall screen (1920×1080) keeps the Start bar at the foot of the window, instead of right under the last card with empty space below.
 - In one window, **❔ Help**, **📜 Log**, **👥 Players** and **⚖ Rules** opened during the game scroll inside the host panel's own space: the stage viewers see keeps its size (it shrank to make room for them).
 - The Final's spotlight card on stream gives a typed answer more room: three lines show at about 53px on the 1920 stage (they were 28px), with the name, wager, verdict and score a little smaller so the card keeps its height.
 

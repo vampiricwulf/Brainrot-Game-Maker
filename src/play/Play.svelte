@@ -335,6 +335,8 @@
   let checksEl = $state<HTMLElement>();
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
   const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
+  /** The pre-game screen's two columns (its CSS's breakpoint): ✅ Before you start goes at the foot of the right one. */
+  const twoCols = new MediaQuery('(min-width: 1200px)');
   // RPG and board-game rounds have a tall host panel (the player cards, the round's own controls): on a wide window it
   // goes beside the stage instead of under it, so the stage keeps a good share. (The Final fits under the stage.)
   const side = $derived(wide.current && (session.phase === 'rpg' || session.phase === 'boardgame'));
@@ -6270,7 +6272,7 @@
             uses={phoneUsesNow}
           />
         </div>
-        {@render beforeStart()}
+        {#if !twoCols.current}{@render beforeStart()}{/if}
       </div>
       <div class="col">
         <GameRules s={game.settings} players={session.players.length} teams={pregameTeams} />
@@ -6389,7 +6391,8 @@
             </div>
           </details>
         </section>
-
+        <!-- Two columns: the checks at the foot of this one, in view next to Start (the 📱 card makes the left one long). -->
+        {#if twoCols.current}{@render beforeStart()}{/if}
       </div>
     </div>
 
@@ -6932,8 +6935,11 @@
 {/if}
 
 <style>
+  /* As tall as the window at least: the Start bar rests at its foot (a 1080p screen), not under the last card. */
   .pregame {
     max-width: 860px;
+    min-height: 100vh;
+    box-sizing: border-box;
     margin: 0 auto;
     padding: 32px 20px 0;
     display: flex;
@@ -7181,7 +7187,7 @@
     display: flex;
     gap: 8px;
     align-items: center;
-    margin: 4px -20px 0;
+    margin: auto -20px 0;
     padding: 10px 20px;
     background: var(--bg);
     border-top: 1px solid var(--border);
