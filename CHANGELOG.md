@@ -34,6 +34,9 @@ in plain words for the people who make and host games. Anything committed but no
 - **▶ Play** on a tall screen (1920×1080) keeps the Start bar at the foot of the window, instead of right under the last card with empty space below.
 - In one window, **❔ Help**, **📜 Log**, **👥 Players**, **⚖ Rules**, **🔊 Sound**, **🗜 Make smaller**, the RPG's **⤢ Full map** and ✎ Edit board's **⚙ Buttons** opened during the game scroll inside the host panel's own space: the stage viewers see keeps its size (it shrank to make room for them).
 - The Final's spotlight card on stream gives a typed answer more room: three lines show at about 53px on the 1920 stage (they were 28px), with the name, wager, verdict and score a little smaller so the card keeps its height.
+### Changed
+
+- When the host's connection drops, phones say “The host's connection dropped: waiting for them…” and, after a minute, how long the host has been away and that their seat is kept, instead of promising “they'll be back” for as long as the room lasts.
 
 ## 2026-11-12
 

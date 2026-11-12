@@ -124,7 +124,8 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   (`full`) and its 📱 list says "Room full". In a team game everyone on a team holds a place, so once 24 people are
   on teams it stays full until someone leaves: a phone turned away while joining a team says so on its name form.
 - **The host comes back**: a buzz the room decided while the host was away is sent again when it reconnects, so the
-  host picks the winner. Phones see `hostHere: false` meanwhile ("The host's connection dropped"). The app saves the
+  host picks the winner. Phones see `hostHere: false` meanwhile ("The host's connection dropped: waiting for them…", and after a
+  minute how long they've been away, and that the seat is kept). The app saves the
   buzzers' state with the game, so a host reload mid-clue keeps who is answering and who already missed it.
 - **Phones come back**: a phone that gets its seat back (a reload, a new connection) is told where its buzz of the
   current opening stands ("You're 2nd…"). A press the room hasn't answered is kept by the phone page and sent again

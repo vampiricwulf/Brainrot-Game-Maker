@@ -29,6 +29,7 @@ import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type H
 import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
 import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
+import { HOST_AWAY_SAY_MS, hostAwayLine, money } from './lines';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -502,6 +503,8 @@ function onMessage(m: RoomToPhone): void {
       if (view.status !== STARTS_SOON && view.status !== SETTING_UP) gameSeen = true;
       if (answerTapTaken) answerTap = '';
       answerTapTaken = false;
+      // (Back, whatever screen this phone is on: the next time it goes, it's counted from then.)
+      if (view.hostHere !== false) hostGoneAt = 0;
       if (result && result.armId !== view.armId) result = null;
       if (sendingArm >= 0 && (view.armId !== sendingArm || view.phase === 'lobby')) stopSending();
       if (lostArm >= 0 && view.armId !== lostArm) lostArm = -1;
@@ -1585,8 +1588,22 @@ function renderFoot(v: PhoneView, sym: string): boolean {
   renderColors(v);
   const hostGone = v.hostHere === false;
   $('host-note').hidden = !hostGone;
+  // How long it's been (a show that has ended looks like one that's paused): the note changes after a minute, then
+  // every minute.
+  clearTimeout(hostAwayTimer);
+  if (!hostGone) hostGoneAt = 0;
+  else {
+    hostGoneAt ||= Date.now();
+    const away = Date.now() - hostGoneAt;
+    $('host-note').textContent = hostAwayLine(away);
+    hostAwayTimer = window.setTimeout(render, away < HOST_AWAY_SAY_MS ? HOST_AWAY_SAY_MS - away : 60_000 - ((away - HOST_AWAY_SAY_MS) % 60_000));
+  }
   return hostGone;
 }
+
+/** When this phone heard the host's connection was gone (0: it's here), and the timer that brings the note up to date. */
+let hostGoneAt = 0;
+let hostAwayTimer = 0;
 
 /** 🎨 Change your color (when the host allows it): the palette, with other players' colours greyed out. */
 function renderColors(v: PhoneView): void {
@@ -2049,12 +2066,6 @@ function placeLine(v: PhoneView): { big: string; small: string } {
   const who = v.teams ? 'Your team' : 'You';
   const big = f.tied ? `${who} tied for ${ordinal(f.place)}` : `${who} came ${ordinal(f.place)}`;
   return { big, small: `with ${money(v.you!.score, v.currency ?? '')}${f.place === 1 ? ' 🎉' : ''}` };
-}
-
-/** Points as the game shows them: a word like "pts" goes after the number, $ or 🧠 in front. */
-function money(n: number, sym: string): string {
-  const pts = Math.abs(n).toLocaleString();
-  return `${n < 0 ? '−' : ''}${/^\p{L}+\.?$/u.test(sym.trim()) ? `${pts} ${sym.trim()}` : sym + pts}`;
 }
 
 /** 0.04 s */

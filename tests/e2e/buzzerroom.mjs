@@ -812,7 +812,10 @@ try {
   assert(true, 'the screen flashes when BUZZ! lights up');
   host.close();
   await dee.locator('#host-note').waitFor();
-  assert(true, "phones see that the host's connection dropped");
+  assert(
+    (await dee.locator('#host-note').innerText()) === 'The host’s connection dropped: waiting for them…',
+    `phones see that the host's connection dropped, with no promise they'll be back (${await dee.locator('#host-note').innerText()})`,
+  );
   await press(dee);
   await big(dee).getByText("You're answering!").waitFor();
   host = await connectHost(room.code, room.hostToken);
