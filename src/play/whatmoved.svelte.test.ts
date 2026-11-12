@@ -33,6 +33,9 @@ describe('what moved in this version', () => {
     expect(noSettings(store('other.site'))).toBe(true);
     expect(noSettings(store('other.site', 'jb.prefs'))).toBe(false);
     expect(noSettings(null)).toBe(false);
+    // A browser refusing site data throws on reading it: not a first run, and never a crash.
+    const refused = { get length(): number { throw new DOMException('denied', 'SecurityError'); }, key: () => null };
+    expect(noSettings(refused)).toBe(false);
     movedSeen.game = movedSeen.editor = null;
     // A host coming back (a setting kept, or a game kept from before) still gets the dot and the list.
     firstRunSeen(false, false);

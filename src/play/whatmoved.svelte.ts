@@ -78,8 +78,10 @@ function read(part: MovedPart): string | null {
  * Nothing of this app was ever kept on this computer (no `jb.` setting at all): read once, before anything is written.
  * With no game kept either (App's start-up), it's a first run, and there is nothing that moved for this person.
  */
-export function noSettings(storage: Pick<Storage, 'length' | 'key'> | null = typeof localStorage === 'undefined' ? null : localStorage): boolean {
+export function noSettings(given?: Pick<Storage, 'length' | 'key'> | null): boolean {
   try {
+    // (Inside the try: where the browser refuses site data, even reading localStorage throws.)
+    const storage = given !== undefined ? given : typeof localStorage === 'undefined' ? null : localStorage;
     if (!storage) return false;
     for (let i = 0; i < storage.length; i++) if (storage.key(i)?.startsWith('jb.')) return false;
     return true;
