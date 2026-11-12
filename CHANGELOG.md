@@ -16,6 +16,8 @@ in plain words for the people who make and host games. Anything committed but no
 ### Added
 
 - A board's category can be copied and pasted whole: **📋 Copy category** and **📋 Paste category here** in its menu (after ⧉ Duplicate), or `Ctrl+C` / `Ctrl+V` on its ⋯. Its name, picture and clues go over the column you paste on, into another round or another game, with the pictures, sounds, wheels and dice they use; Undo takes it back.
+- **Pass** on the phones: on an ordinary buzz-in clue, each phone has **Pass: I won’t buzz on this one** under the buzzer (`P` with a keyboard), and a pass can be taken back until the clue is answered or its answer shows. A passed player can’t buzz; with teams a pass counts for the whole team. You see “Passed: Ann, Bob” in the buzzers’ row, and once everyone who could still buzz has passed, it says **Everyone passed** and 👁 Reveal answer wears the ring. Clues players type or pick an answer to, the Final, partner clues and Daily Doubles never offer it, nor does a clue you tick **Everyone must play (no Pass)** in the clue editor. Phones get Pass once the buzzer server is updated.
+- Phones hear their Final verdict: once you judge a player in the Final's reveals (the stream shows ✔ CORRECT or ✘ WRONG), their phone says **✔ Right! +$1,200** or **✘ Wrong −$2,000** over their wager and answer, instead of staying on “Answers locked”.
 
 ### Changed
 
@@ -27,18 +29,11 @@ in plain words for the people who make and host games. Anything committed but no
 - Unticking **✍ Players type their answers on their phones** on a Final with multiple choice no longer makes the choices vanish: they stay in sight, dimmed, with a line saying they're kept and to tick ✍ again to use them.
 - An RPG map shows a ＋ column past its right edge and a ＋ row under it (until it's 16×16), so a full map, like the sample's Adventure, can still get a screen in one click: the map grows by that column or row with the screen in it, and Undo takes both back. The arrows reach them, and Enter adds.
 - On an RPG screen's editor, **Background ▾** sits at the right beside **▶ Preview**, so on a laptop the add buttons wrap to a second line instead of Background dropping there on its own; and a screen opened with the page scrolled down to the map no longer shows the round's title cut in half above it. On a phone, the map's settings go under the map instead of squeezing it to nothing.
-### Changed
-
 - **▶ Play**: on a wide window **✅ Before you start** sits at the foot of the right column, under **📺 On stream**, so the game's checks stay in view beside Start while the 📱 Phone buzzers card makes the left column long. On a narrow window it stays under the players.
 - **▶ Play** says each stream warning once, in **✅ Before you start**: what viewers see in one window (now with what they see in the game: the wagers as you type them, answers and host notes), the audience window's sound, and a closed audience window. **🖥 Display** keeps only the choice of mode.
 - **▶ Play** on a tall screen (1920×1080) keeps the Start bar at the foot of the window, instead of right under the last card with empty space below.
 - In one window, **❔ Help**, **📜 Log**, **👥 Players**, **⚖ Rules**, **🔊 Sound**, **🗜 Make smaller**, the RPG's **⤢ Full map** and ✎ Edit board's **⚙ Buttons** opened during the game scroll inside the host panel's own space: the stage viewers see keeps its size (it shrank to make room for them).
 - The Final's spotlight card on stream gives a typed answer more room: three lines show at about 53px on the 1920 stage (they were 28px), with the name, wager, verdict and score a little smaller so the card keeps its height.
-- **Pass** on the phones: on an ordinary buzz-in clue, each phone has **Pass: I won’t buzz on this one** under the buzzer (`P` with a keyboard), and a pass can be taken back until the clue is answered or its answer shows. A passed player can’t buzz; with teams a pass counts for the whole team. You see “Passed: Ann, Bob” in the buzzers’ row, and once everyone who could still buzz has passed, it says **Everyone passed** and 👁 Reveal answer wears the ring. Clues players type or pick an answer to, the Final, partner clues and Daily Doubles never offer it, nor does a clue you tick **Everyone must play (no Pass)** in the clue editor. Phones get Pass once the buzzer server is updated.
-- Phones hear their Final verdict: once you judge a player in the Final's reveals (the stream shows ✔ CORRECT or ✘ WRONG), their phone says **✔ Right! +$1,200** or **✘ Wrong −$2,000** over their wager and answer, instead of staying on “Answers locked”.
-
-### Changed
-
 - When the host's connection drops, phones say “The host's connection dropped: waiting for them…” and, after a minute, how long the host has been away and that their seat is kept, instead of promising “they'll be back” for as long as the room lasts.
 - **🎨 Change your color** on a phone shows the colors other players have in their own color, struck through with a dashed edge (they looked like darker colors to pick), and a tap on one says another player has it.
 - A phone's wager box has one label, “Your wager (only the host sees it)”, with the score and max right over the box, instead of saying “wager” three times and putting the max under the Send button.
