@@ -34,6 +34,7 @@ in plain words for the people who make and host games. Anything committed but no
 - A room code typed on the phone page with no game behind it stays in the box, selected, with "No game ZZZZ: check the code on the stream" under it, so one wrong letter is one letter to change (a link to a game that has ended still shows its own screen). The code box's example is now one that could be a real code (BKTZ: codes have no vowels).
 - The “Before you go on” card's last line no longer seems to contradict its own **Not yet [Esc]**: it says “Next time: Esc on the clue closes it without asking” (or “Esc on the wheel goes on without asking”), where it said “Esc closes at once”.
 - Two first lines no longer lose their ends at 1280×720: a board game's turn box reads “Bob's turn: 🎲 Roll, then ▶ Move (or click the dice)”, and a partner clue with the clock running “Did they get it? ✔ Got it or ✘ Missed”. The keys they named are on the buttons under them.
+- Every key hint in the host panel has the boxed keycap look: the results screen's **🎲 Tiebreaker roll-off** showed its O as a plain letter that read like a zero, and a partner clue's ✔ Got it ⏎ / ✘ Missed ⇧⏎ showed bare symbols.
 - In the Final's wagers, the line when a wager is missing says how to let the game go on without it: “Waiting on Dee's phone: type their wager, or untick them to sit out” (it ended “or Sits out”, a label that isn't on screen: the tick box before each name is what sits a player out).
 
 ## 2026-11-08

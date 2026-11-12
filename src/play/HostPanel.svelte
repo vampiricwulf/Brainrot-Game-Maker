@@ -1952,7 +1952,9 @@
   .mainroom > [data-next] {
     justify-self: stretch;
   }
-  kbd {
+  /* The keycap look for every key hint in the panel, its boxes' too (as weak as a bare kbd rule, so a box's own kbd
+     rule still wins). */
+  :where(.panel) :global(kbd) {
     font: 11px/1 ui-monospace, monospace;
     padding: 1px 4px;
     margin-left: 4px;
