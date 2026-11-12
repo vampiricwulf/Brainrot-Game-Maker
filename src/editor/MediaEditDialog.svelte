@@ -691,7 +691,9 @@
         <span class="hint foot-hint"
           >{oneOf
             ? 'Ctrl+Z (or 🕘 History) puts the old file back. Only this item keeps the original for the other places (both are saved with the game).'
-            : 'Ctrl+Z (or 🕘 History) puts the old file back. Save as a new file keeps both (both are saved with the game).'}</span
+            : !item
+              ? 'Ctrl+Z (or 🕘 History) puts the old file back. Save as a new file keeps both (both are saved with the game).'
+              : 'Ctrl+Z (or 🕘 History) puts the old file back.'}</span
         >
         <button class="ghost" onclick={close}>Cancel</button>
         {#if oneOf}

@@ -521,6 +521,12 @@ try {
   await page.mouse.click(at11.x + at11.width / 2, at11.y + at11.height / 2);
   await clueEditor.locator('.itembar [data-edit-media]').click();
   await dialog.locator('[data-trimbar]').waitFor({ timeout: 30_000 });
+  // (That item plays its own copy now, used once: its foot is Cancel and Apply, and its hint names no other button.)
+  const hint11 = await foot().locator('.foot-hint').innerText();
+  assert(
+    (await foot().getByRole('button').allInnerTexts()).join(' | ') === 'Cancel | Apply' && hint11 === 'Ctrl+Z (or 🕘 History) puts the old file back.',
+    `from an item whose file is used once: Cancel, Apply, and the hint names no Save as a new file (${hint11})`,
+  );
   const focused = () => page.evaluate(() => (document.activeElement === document.body ? 'the page' : (document.activeElement?.innerText?.trim().slice(0, 40) ?? 'nothing')));
   await dialog.getByRole('button', { name: '✂ Crop' }).click();
   await dialog.getByRole('button', { name: 'Remove crop' }).click();
