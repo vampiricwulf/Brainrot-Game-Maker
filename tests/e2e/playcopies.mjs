@@ -270,8 +270,12 @@ try {
   assert((await left.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)', `one window: its panel line counts it, never naming it (${await left.innerText()})`);
   const panelButton = left.locator('..').getByRole('button', { name: '🗜 Make smaller' });
   assert((await panelButton.getAttribute('title')) === 'Make smaller copies of these files for phones', 'and has 🗜 Make smaller, titled for what it does');
+  const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const stageWas = await stageH();
   await panelButton.click();
   await dialog.waitFor();
+  await page.waitForTimeout(300);
+  assert((await stageH()) === stageWas, `one window, its window open: the stage viewers see keeps its size (${stageWas}px, now ${await stageH()}px)`);
   const placed = await dialog.evaluate((d) => {
     const [b, p] = [d.parentElement.getBoundingClientRect(), document.querySelector('.play > .panel').getBoundingClientRect()];
     const box = (r) => [r.top, r.bottom, r.left, r.right].map(Math.round).join();

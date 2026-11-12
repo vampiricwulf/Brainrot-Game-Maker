@@ -441,8 +441,8 @@ try {
   assert((await page.locator('.board').count()) === 0, `＋ Award pressed with Enter: then 2, Enter award Player 2, and the clue stays open (the keys were on ${await focused()})`);
   await page.keyboard.press('Escape');
   await page.locator('.board').waitFor();
-  // One window: ?, 📜 Log, ⚖ Rules and 👥 Players open in the host panel's own box, scrolling there, and the stage viewers
-  // see keeps its size (the panel doesn't grow for them).
+  // One window: ?, 📜 Log, ⚖ Rules, 🔊 Sound and 👥 Players open in the host panel's own box, scrolling there, and the
+  // stage viewers see keeps its size (the panel doesn't grow for them; playcopies.mjs checks 🗜 Make smaller).
   const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
   const boardH = await stageH();
   const panelBox = await page.locator('.play > .panel').boundingBox();
@@ -451,6 +451,7 @@ try {
     ['?', () => page.keyboard.press('?'), page.getByRole('dialog', { name: 'Keyboard shortcuts' })],
     ['📜 Log', () => page.keyboard.press('l'), page.locator('aside[aria-label="Log"]')],
     ['⚖ Rules', () => rulesBtn.click(), rulesDlg],
+    ['🔊 Sound', () => page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click(), page.getByRole('dialog', { name: 'Streaming the sound' })],
     ['👥 Players', () => page.getByRole('button', { name: '👥 Players' }).click(), page.getByRole('dialog', { name: 'Players' })],
   ]) {
     await open();

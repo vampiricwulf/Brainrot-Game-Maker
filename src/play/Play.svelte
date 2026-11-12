@@ -306,7 +306,7 @@
   let editingScore = $state<string | null>(null);
   /**
    * Single window: the host panel's box while the keys (❔ Help) or 👥 Players are open. They show in there, never over the stage
-   * viewers see (the panel grows for them, as for a tool menu).
+   * viewers see (they scroll in the panel's own box, so the stage keeps its size).
    */
   let panelBox = $state<{ top: number; left: number; width: number; height: number } | null>(null);
   /** What each combined Undo took back (from the score log or the action log), so Redo goes back the same way. */
@@ -327,11 +327,6 @@
    * RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons).
    */
   const panelWindow = $derived(!dual && (showKeys || showPlayers || showRules || showLog || showSound || !!shrinkDialog.open || rpgMap || !!boardEdit.buttons));
-  /**
-   * The ones of those that need more room than the panel has, so it grows for them (🔊 Sound, 🗜 Make smaller, ⤢ Full map,
-   * ⚙ Buttons). ?, 📜 Log, 👥 Players and ⚖ Rules scroll in the panel's own box: the stage on stream keeps its size.
-   */
-  const roomy = $derived(!dual && (showSound || !!shrinkDialog.open || rpgMap || !!boardEdit.buttons));
   /** The pre-game screen's "things to check" box (the bar at the foot brings it into view). */
   let checksEl = $state<HTMLElement>();
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
@@ -584,7 +579,7 @@
       const r = el.getBoundingClientRect();
       panelBox = { top: r.top, left: r.left, width: r.width, height: r.height };
     };
-    // After the panel is back and has grown.
+    // After the panel is back.
     const raf = requestAnimationFrame(read);
     window.addEventListener('resize', read);
     return () => {
@@ -6498,7 +6493,6 @@
     class:side
     class:dual
     class:logged={dual && showLog}
-    class:roomy
     oncontextmenu={hostMenu}
     use:focusRescue
     use:longPress
@@ -6711,7 +6705,7 @@
     {/if}
   </main>
   {#if showLog && (dual || panelBox)}
-    <!-- Single window: in the host panel (it grows for it), never over the stage viewers see. -->
+    <!-- Single window: in the host panel's own box (scrolling there), never over the stage viewers see. -->
     <ScoreLog {game} {session} {sym} hide={!dual} bind:tab={logTab} area={panelBox} spinning={spinningIds} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
   {/if}
   {#if showPlayers}
@@ -6928,11 +6922,11 @@
 {/if}
 {#if shrinkDialog.open && (dual || app.pregame || panelBox)}
   <!-- 🗜 for the game being played: in one window the host's window is on stream, so it names no file, and mid-game it
-       opens in the host panel (it grows for it), never over the stage viewers see. -->
+       opens in the host panel's own box (scrolling there), never over the stage viewers see. -->
   {#key shrinkDialog.open}<ShrinkDialog ids={shrinkDialog.open} secret={!dual} area={panelBox} onclose={() => (shrinkDialog.open = null)} />{/key}
 {/if}
 {#if showSound && (dual || app.pregame || panelBox)}
-  <!-- Single window, mid-game: in the host panel (it grows for it), never over the stage viewers see. Its steps share the
+  <!-- Single window, mid-game: in the host panel's own box (scrolling there), never over the stage viewers see. Its steps share the
        audience window when it's open, or before Start with 📺 picked (Start opens it); a test round, or a game whose
        audience window was closed, plays in this window. -->
   <AudioHelp {dual} audienceMode={dual || (app.pregame && wantAudience)} area={panelBox} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
@@ -7376,10 +7370,6 @@
     place-items: center;
     z-index: 100;
     padding: 16px;
-  }
-  /* Single window: over the host panel only, never the stage viewers see (the panel grows for the windows that need it). */
-  .play.roomy:not(.side) > :global(.panel) {
-    min-height: min(62vh, 440px);
   }
   .backdrop.in-panel {
     inset: auto;
