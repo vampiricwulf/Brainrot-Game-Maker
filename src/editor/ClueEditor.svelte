@@ -612,6 +612,19 @@
             /> ✍ Everyone answers<span class="more-words">{' '}(in secret, on their phones)</span></label
           >
         {/if}
+        <!-- An ordinary buzz-in tile (not ✍, a Daily Double or a partner clue: those are played by everyone in them anyway). -->
+        {#if (clue.type === 'standard' && !clue.everyone) || clue.type === 'wheel' || clue.type === 'dice'}
+          <label
+            class="check"
+            title="Everyone must play (no Pass): with phone buzzers, players' phones offer no Pass on this clue (by default they can pass on a clue they won't buzz on)"
+            ><input
+              type="checkbox"
+              disabled={clue.empty}
+              aria-label="Everyone must play (no Pass)"
+              bind:checked={() => !!clue.mustPlay, (v) => (v ? (clue.mustPlay = true) : delete clue.mustPlay)}
+            /> Everyone must play<span class="more-words">{' '}(no Pass)</span></label
+          >
+        {/if}
         <label class="field">
           Value
           <!-- Whole points, never below 0 (blank: the row's value). -->

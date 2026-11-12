@@ -526,6 +526,11 @@ export interface Clue {
    */
   everyone?: boolean;
   /**
+   * Everyone must play (no Pass): with phone buzzers, players' phones offer no Pass on this clue. Off (left out) by
+   * default and in older games: an ordinary buzz-in clue lets players pass. (Kept when the type changes, unused then.)
+   */
+  mustPlay?: true;
+  /**
    * ✍ multiple choice: 2 to CHOICES_MAX choices players pick from on their phone (kept when ✍ is off or the type
    * changes, unused then, like partner rules).
    */
