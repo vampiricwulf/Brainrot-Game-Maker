@@ -101,12 +101,12 @@
         </div>
         <!-- Wagers: this player's own box (the amount goes to the host only). -->
         <form id="wager-form" novalidate hidden>
-          <h2 id="wager-head"></h2>
-          <label for="wager-in" id="wager-label">Your wager</label>
-          <input id="wager-in" type="number" inputmode="numeric" min="0" step="1" autocomplete="off" enterkeyhint="send" />
+          <!-- (What it's for is over it already: "Daily Double — you're up!", or the Final's name.) Score and max over the box. -->
+          <label for="wager-in" id="wager-label">Your wager (only the host sees it)</label>
+          <p id="wager-info" class="note"></p>
+          <input id="wager-in" type="number" inputmode="numeric" min="0" step="1" autocomplete="off" enterkeyhint="send" aria-describedby="wager-info" />
           <p id="wager-err" class="err" role="alert"></p>
           <button type="submit" class="primary" id="wager-send">Send wager</button>
-          <p id="wager-info" class="note"></p>
           <p id="wager-state" class="note"></p>
         </form>
         <!-- A ✍ clue: everyone types an answer (only the host sees it). -->

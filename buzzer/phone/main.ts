@@ -1838,9 +1838,8 @@ function hexDone(): boolean {
 function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   const you = v.you!;
   const team = !!v.teams;
-  // (The line above already says it's a Daily Double or names the Final.)
-  $('wager-head').textContent = team ? 'Your team’s wager' : 'Your wager';
-  $('wager-label').textContent = team ? 'Wager (only the host and your team see it)' : 'Wager (only the host sees it)';
+  // (The line above already says it's a Daily Double or names the Final: one label says whose wager it is.)
+  $('wager-label').textContent = team ? 'Your team’s wager (only the host and your team see it)' : 'Your wager (only the host sees it)';
   const inp = $<HTMLInputElement>('wager-in');
   // Filled with what's in when the box comes up, and again when what's in changes (a teammate, the host), unless the
   // box holds an edit not sent yet (something other than what was in before). The box has the focus as it opens, so
@@ -1866,7 +1865,7 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   $<HTMLButtonElement>('wager-send').textContent = w.amount !== undefined && !w.host ? 'Change wager' : 'Send wager';
   const hostGone = renderFoot(v, sym);
   // (What it's for first: "Final Jeopardy! · US Presidents". The error has its own alert, so it isn't said twice.)
-  say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
+  say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', $('wager-label').textContent ?? '', $('wager-info').textContent ?? '', state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }
 

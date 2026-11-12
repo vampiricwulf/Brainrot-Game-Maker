@@ -38,6 +38,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - When the host's connection drops, phones say “The host's connection dropped: waiting for them…” and, after a minute, how long the host has been away and that their seat is kept, instead of promising “they'll be back” for as long as the room lasts.
 - **🎨 Change your color** on a phone shows the colors other players have in their own color, struck through with a dashed edge (they looked like darker colors to pick), and a tap on one says another player has it.
+- A phone's wager box has one label, “Your wager (only the host sees it)”, with the score and max right over the box, instead of saying “wager” three times and putting the max under the Send button.
 
 ## 2026-11-12
 

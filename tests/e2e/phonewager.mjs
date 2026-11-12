@@ -117,6 +117,12 @@ async function sendAnswer(p, words) {
   await p.locator('#answer-in').fill(words);
   await p.locator('#answer-send').click();
 }
+/** The score and max line sits between the wager box's label and the box. */
+const wagerInfoOverBox = (p) =>
+  p.evaluate(() => {
+    const y = (id) => document.getElementById(id).getBoundingClientRect();
+    return y('wager-label').bottom <= y('wager-info').top && y('wager-info').bottom <= y('wager-in').top && y('wager-in').bottom <= y('wager-send').top;
+  });
 /** Type a wager on a phone and send it. */
 async function sendWager(p, amount) {
   await p.locator('#wager-in').fill(String(amount));
@@ -186,7 +192,11 @@ try {
   await dd.locator('.chip', { hasText: 'Player 1' }).click();
   await form(ann).waitFor();
   assert(await key1.isHidden(), 'picked: the number keys go from the chips (they type the wager now)');
-  assert((await ann.locator('#wager-head').innerText()) === 'Your wager', 'the player who found it gets a wager box on their phone (“Your wager”, under “Daily Double — you’re up!”)');
+  assert(
+    (await ann.locator('#wager-label').innerText()) === 'Your wager (only the host sees it)' && (await ann.locator('#wager-head').count()) === 0,
+    'the player who found it gets a wager box on their phone, under “Daily Double — you’re up!”: one label, “Your wager (only the host sees it)”, no heading saying it again',
+  );
+  assert(await wagerInfoOverBox(ann), 'their score and max are over the box (in sight while they type), not under Send wager');
   assert((await ann.locator('#wager-info').innerText()) === 'Score $0 · Max $2,000', `with their score and their max: $2,000 at $0 (${await ann.locator('#wager-info').innerText()})`);
   await big(bo).getByText('Player 1 is wagering…').waitFor();
   assert(true, 'the other phones see "Player 1 is wagering…"');
@@ -289,7 +299,10 @@ try {
   const box = (name) => row(name).locator('input[data-wager]');
   await form(ann).waitFor();
   await form(bo).waitFor();
-  assert((await ann.locator('#wager-head').innerText()) === 'Your wager', 'the Final’s wager screen (“Your wager”, under the Final’s name): every phone in it gets its wager box');
+  assert(
+    (await ann.locator('#wager-label').innerText()) === 'Your wager (only the host sees it)' && (await wagerInfoOverBox(bo)),
+    'the Final’s wager screen (under the Final’s name): every phone in it gets its wager box, “Your wager (only the host sees it)”, score and max over the box',
+  );
   assert(
     (await bo.locator('#wager-info').innerText()) === 'Score $0 · Max $2,000',
     `a player at $0 can wager up to $2,000, and their phone says so (${await bo.locator('#wager-info').innerText()})`,
@@ -631,7 +644,7 @@ try {
     return 0;
   });
   assert(keysHeld && cut <= 0, `one window, phones sending the wagers: the wager list holds the keys and the box's first line reads whole (on ${await host2.evaluate(() => document.activeElement?.className)}, cut ${cut}px)`);
-  assert((await al.locator('#wager-head').innerText()) === 'Your team’s wager', 'teams: every member’s phone gets the team’s wager box');
+  assert((await al.locator('#wager-label').innerText()) === 'Your team’s wager (only the host and your team see it)', 'teams: every member’s phone gets the team’s wager box');
   await sendWager(al, 300);
   const team1 = rows2.locator('.wrow', { hasText: 'Player 1' });
   await team1.getByText('📱 from phone ✔ · sent by Al').waitFor();
@@ -643,7 +656,7 @@ try {
   assert(undo2.startsWith('Undo: Player 1’s wager (from Al’s phone)') && !undo2.includes('$'), `and ↶ Undo names the step without the amount (${undo2})`);
   await amy.locator('#wager-state').getByText('✔ Al sent $300 for your team').waitFor();
   assert((await amy.locator('#wager-in').inputValue()) === '300', 'his teammate’s box fills in with it (it had the focus as it opened, but she typed nothing)');
-  assert((await amy.locator('#wager-label').innerText()) === 'Wager (only the host and your team see it)', 'teams: the box says the team sees the wager too');
+  assert((await amy.locator('#wager-label').innerText()) === 'Your team’s wager (only the host and your team see it)', 'teams: the box says the team sees the wager too');
   assert(await noneOf(cy, [300]), 'Al sends the team’s wager: the host sees “sent by Al”, his teammate sees it, the other team doesn’t');
   await sendWager(amy, 450);
   await team1.getByText('📱 from phone ✔ · sent by Amy').waitFor();
