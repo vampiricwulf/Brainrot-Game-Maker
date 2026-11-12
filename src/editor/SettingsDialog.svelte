@@ -13,8 +13,13 @@
   /** `at`: the section it opens at (the pre-game screen's ⚙ Set up phone buzzers… opens it at the phone buzzers). */
   let { onclose, at }: { onclose: () => void; at?: 'buzzer' } = $props();
   let buzzerHead = $state<HTMLElement>();
+  let buzzerEnd = $state<HTMLElement>();
+  // Only as far as the section needs to be in sight (its end, then its heading if that went past it): scrolled to the
+  // top, the window's own ⚙ Settings title and ✕ went out of sight.
   onMount(() => {
-    if (at === 'buzzer') buzzerHead?.scrollIntoView({ block: 'start' });
+    if (at !== 'buzzer') return;
+    buzzerEnd?.scrollIntoView({ block: 'nearest' });
+    buzzerHead?.scrollIntoView({ block: 'nearest' });
   });
   const desktop = inTauri();
   /** What ⚙ Test found at the buzzer server. */
@@ -167,7 +172,7 @@
       >
     </label>
     {#if tested}<p class="small" role="status">{tested}</p>{/if}
-    <p class="hint">
+    <p class="hint" bind:this={buzzerEnd}>
       Advanced: where phone buzzer rooms are made. Once there's an address, ▶ Play › 📱 Phone buzzers offers Buzzer mode.
       {DEFAULT_BUZZER_URL ? 'Leave it blank for the one this copy comes with.' : "This version of the app has no buzzer server set: phone buzzers need an address here."}
       <a href={BUZZER_GUIDE} target="_blank" rel="noreferrer" onclick={externalLink}>How to set up your own (free, on Cloudflare) ↗</a>

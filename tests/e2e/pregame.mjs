@@ -523,6 +523,13 @@ try {
   const settingsDlg = page.getByRole('dialog', { name: 'Settings' });
   await settingsDlg.waitFor();
   assert(await settingsDlg.getByLabel('Buzzer server').evaluate((e) => e === document.activeElement), '⚙ Set up phone buzzers… opens Settings with the buzzer server box ready');
+  // Scrolled only as far as its phone buzzers need: the box in sight, and the window's title and ✕ not cut off at its top.
+  const inSight = await settingsDlg.evaluate((d) => {
+    const box = d.getBoundingClientRect();
+    const r = (sel) => d.querySelector(sel).getBoundingClientRect();
+    return { x: r('.modal-x').top - box.top, field: r('input[aria-label="Buzzer server"]').bottom <= box.bottom, top: d.scrollTop, room: d.scrollHeight - d.clientHeight };
+  });
+  assert(inSight.field && inSight.x >= 0, `Settings at its phone buzzers: the box in sight, scrolled no further than it needs (${JSON.stringify(inSight)})`);
   const guide = settingsDlg.getByRole('link', { name: /How to set up your own/ });
   assert((await guide.getAttribute('href')).endsWith('Brainrot-Game-Maker/blob/main/docs/buzzer-server.md'), 'and links to the guide to setting up your own buzzer server');
   await settingsDlg.getByRole('button', { name: 'Done' }).click();
