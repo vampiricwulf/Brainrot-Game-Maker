@@ -165,9 +165,9 @@ export function typingIn(e: MouseEvent, picked = false, before: Element | null =
 
 /**
  * `from`: the button a dropped menu came from (see dropMenu). `back`: where the focus goes when it closes (what had it,
- * or the tile, card… right-clicked), so the keys go on working there.
+ * or the tile, card… right-clicked), so the keys go on working there. `at`: what was right-clicked (where it opens).
  */
-export const contextMenu = $state<{ open: { x: number; y: number; items: MenuEntry[]; from?: HTMLElement; back?: HTMLElement } | null }>({ open: null });
+export const contextMenu = $state<{ open: { x: number; y: number; items: MenuEntry[]; from?: HTMLElement; back?: HTMLElement; at?: Element } | null }>({ open: null });
 
 const FOCUSABLE = 'button, [tabindex]:not([tabindex="-1"]), a[href], input, textarea, select';
 
@@ -182,7 +182,8 @@ export function showMenu(e: MouseEvent, items: MenuEntry[], from?: HTMLElement):
   const active = page ? document.activeElement : null;
   const focused = page && active instanceof HTMLElement && active !== document.body ? active : null;
   const clicked = page && e.target instanceof Element ? e.target.closest<HTMLElement>(FOCUSABLE) : null;
-  contextMenu.open = { x: e.clientX, y: e.clientY, items: shown, from, back: from ?? clicked ?? focused ?? undefined };
+  const at = page && e.target instanceof Element ? e.target : undefined;
+  contextMenu.open = { x: e.clientX, y: e.clientY, items: shown, from, back: from ?? clicked ?? focused ?? undefined, at };
 }
 
 /**

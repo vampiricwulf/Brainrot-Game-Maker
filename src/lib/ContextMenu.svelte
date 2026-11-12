@@ -3,6 +3,7 @@
   import { tick } from 'svelte';
   import { placePopup } from './anchored';
   import { closeMenu, contextMenu, gaveBack, menuKeys } from './menustate.svelte';
+  import { audience } from './sync.svelte';
 
   let box = $state<HTMLDivElement>();
   /** "Ctrl+" reads "⌘" on a Mac, "Alt+" "⌥" and "Shift+" "⇧". */
@@ -20,11 +21,17 @@
       // Under the pointer, or a dropped menu under its button; over it when there's more room above (see anchored.ts),
       // moved in from the window's sides, and scrolling inside on a short window.
       const r = m.from?.getBoundingClientRect();
+      // In a single window, a menu opened in the host panel (or a window held in its place, 👥 Players…) stays in it,
+      // scrolling there if it must, as the panel's other pop-ups do: the stage beside it is what viewers see. (One opened
+      // on the stage stays where it was opened.)
+      const panel = audience.open ? null : (m.from ?? m.at ?? m.back)?.closest('.play .panel, .in-panel');
       const p = placePopup({
         anchor: r ?? { left: m.x, top: m.y, right: m.x, bottom: m.y },
         width: box.offsetWidth,
         height: box.scrollHeight + box.offsetHeight - box.clientHeight,
         view: { width: innerWidth, height: innerHeight },
+        within: panel?.getBoundingClientRect(),
+        beside: !!panel,
         gap: r ? 2 : 0,
         margin: 4,
       });

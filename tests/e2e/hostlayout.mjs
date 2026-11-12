@@ -900,6 +900,18 @@ try {
     if (w !== 1024) {
       const chipsOut = await outOfSight('.panel .players .p');
       assert(chipsOut.length === 0, `${w}×${h}, a partner clue's 📤 Hand out the cards: every player's chip is in sight above it${chipsOut.length ? ` (not: ${chipsOut.join(', ')})` : ''}`);
+      // A player's right-click menu, opened on their chip, stays in the host panel (scrolling there), off the stage.
+      await p4.locator('.panel .players .p').last().click({ button: 'right' });
+      const menu = p4.locator('.cm[role="menu"]');
+      await menu.waitFor();
+      await p4.waitForTimeout(100);
+      const [mb, pb] = [await menu.boundingBox(), await p4.locator('.play .panel').boundingBox()];
+      assert(
+        mb.y >= pb.y - 1 && mb.y + mb.height <= pb.y + pb.height + 1 && mb.x >= pb.x - 1 && mb.x + mb.width <= pb.x + pb.width + 1,
+        `${w}×${h}: a player's right-click menu in the host panel stays in it, off the stage (menu ${[mb.x, mb.y, mb.width, mb.height].map(Math.round).join()}, panel ${[pb.x, pb.y, pb.width, pb.height].map(Math.round).join()})`,
+      );
+      await p4.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached' });
     }
     await partner.getByRole('button', { name: /✔ Got it/ }).click();
     await partner.locator('[data-judged]').waitFor();
