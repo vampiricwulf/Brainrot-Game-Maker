@@ -1014,7 +1014,8 @@ try {
     `an answer changed but not sent: “Not sent yet…”, in amber (${unsentAnswer.join(', ')})`,
   );
   await cat.keyboard.press('Enter');
-  await cat.locator('#answer-state').getByText('✔ Sent: “Poodle, Beagle”').waitFor();
+  // (The box holds the words: the line says it's in without saying them again.)
+  await cat.locator('#answer-state').getByText('✔ Sent. You can change it until the host shows the answer.', { exact: true }).waitFor();
   // (A phone reloaded mid-clue: nothing tapped since, so the browser would ring what the page gives the keys to.)
   await ann.reload();
   await ann.locator('#answer-form').waitFor();

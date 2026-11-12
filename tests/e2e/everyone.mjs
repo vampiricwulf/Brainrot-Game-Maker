@@ -166,7 +166,9 @@ try {
   await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
   assert((await p1.getByLabel(/Your answer/).inputValue()) === 'Shiba Inu\n', 'on a phone, Enter in the answer box starts a new line (it sends nothing)');
   await p1.getByRole('button', { name: 'Send answer' }).click();
-  await p1.locator('#answer-state').getByText('✔ Sent: “Shiba Inu”').waitFor();
+  // (The box holds the words: the line under it doesn't say them again.)
+  const sentLine = '✔ Sent. You can change it until the host shows the answer.';
+  await p1.locator('#answer-state').getByText(sentLine, { exact: true }).waitFor();
   // (Player 2 types a long one over three lines: in a single window the words go up in the room the box kept for them,
   // scrolling.)
   const longLines = ['Corgi, the short-legged herding dog from Wales', 'with a fox face, big ears and a fluffy bottom', 'kept by the Queen'];
@@ -178,17 +180,31 @@ try {
   }
   await p2.getByRole('button', { name: 'Send answer' }).click();
   await p2.locator('#answer-state').getByText('✔ Sent').waitFor();
-  assert((await p1.getByRole('button', { name: 'Change answer' }).count()) === 1, 'a phone sends its answer (the button) and can change it');
-  // Edited and not sent: it says so (not "✔ Sent"), and back as it was, it's sent again.
+  const sendBtn = (p) => p.locator('#answer-send');
+  const sendLook = async (p) => [await sendBtn(p).innerText(), await sendBtn(p).evaluate((e) => e.className)].join(' | ');
+  assert(
+    (await sendLook(p1)) === '✔ Sent | sent' && (await sendLook(p2)) === '✔ Sent | sent' && (await p2.locator('#answer-state').innerText()) === sentLine,
+    `a phone sends its answer (the button): with the box holding what's in, the button is a quiet “✔ Sent” (not blue), and the line under it says “✔ Sent.” without the words again, long ones too (${await sendLook(p1)} / ${await p2.locator('#answer-state').innerText()})`,
+  );
+  // Pressed again, twice, with nothing changed: nothing is sent (no "Sending…").
+  await sendBtn(p1).dblclick();
+  await p1.waitForTimeout(150);
+  assert((await p1.locator('#answer-state').innerText()) === sentLine, 'pressing the quiet “✔ Sent” (a double-click too) sends nothing again');
+  // Edited and not sent: it says so (not "✔ Sent"), the button is the blue Change answer, and back as it was, it's sent again.
   await p1.getByLabel(/Your answer/).fill('Shiba Inu dog');
   await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
+  assert((await sendLook(p1)) === 'Change answer | primary', `edited: the blue Change answer again (${await sendLook(p1)})`);
   // The phone reloads before it's sent (a pull down, the tab reloaded in the background): the words come back, not sent.
   await p1.reload();
   await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
   assert((await p1.getByLabel(/Your answer/).inputValue()) === 'Shiba Inu dog', 'a phone that reloads keeps the words typed and not sent, and says “Not sent yet”');
+  assert(
+    /^Not sent yet: (tap|click) Change answer to send it\. What the host has: “Shiba Inu”$/.test(await p1.locator('#answer-state').innerText()),
+    `the line says what the host has, on one line (${await p1.locator('#answer-state').innerText()})`,
+  );
   await p1.getByLabel(/Your answer/).fill('Shiba Inu');
-  await p1.locator('#answer-state').getByText('✔ Sent: “Shiba Inu”').waitFor();
-  assert(true, 'an answer edited on the phone and not sent says “Not sent yet”; back as sent, “✔ Sent: …”');
+  await p1.locator('#answer-state').getByText(sentLine, { exact: true }).waitFor();
+  assert((await sendLook(p1)) === '✔ Sent | sent', 'an answer edited on the phone and not sent says “Not sent yet”; back as sent, “✔ Sent.” and the quiet button');
   // A single window (the default) is on stream, host panel and all: there it says who has answered, never the words.
   const answersBox = host.locator('[aria-label="Answers from phones"]');
   await answersBox.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();

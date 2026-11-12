@@ -1862,7 +1862,7 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   // Green for what's in and shown; plain for "not shown here".
   $('wager-state').classList.toggle('plain-note', !!w.hidden && w.amount === undefined);
   $('wager-err').textContent = wagerErr;
-  $<HTMLButtonElement>('wager-send').textContent = w.amount !== undefined && !w.host ? 'Change wager' : 'Send wager';
+  drawWagerSend(w);
   const hostGone = renderFoot(v, sym);
   // (What it's for first: "Final Jeopardy! · US Presidents". The error has its own alert, so it isn't said twice.)
   say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', $('wager-label').textContent ?? '', $('wager-info').textContent ?? '', state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
@@ -1888,6 +1888,30 @@ function wagerState(w: PhoneWager, team: boolean, sym: string): string {
   const what = w.host ? `The host has ${team ? 'your team’s' : 'your'} wager as ${amt}` : team && w.by ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team` : w.sent ? `✔ Sent: ${amt}` : '';
   return `${what}. You can change it until the question shows.`;
 }
+
+/**
+ * A box's button: blue while there's something to send (Send…, or Change… once the box differs from what's in), quiet
+ * "✔ Sent" while the box holds what was sent (pressing it then sends nothing).
+ */
+function drawSend(id: 'answer-send' | 'wager-send', label: string, sent: boolean): void {
+  const b = $<HTMLButtonElement>(id);
+  b.textContent = sent ? '✔ Sent' : label;
+  b.classList.toggle('primary', !sent);
+  b.classList.toggle('sent', sent);
+}
+
+/** The wager box holds the amount this phone's seat sent (not the host's). */
+function wagerIn(w: PhoneWager): boolean {
+  const typed = $<HTMLInputElement>('wager-in').value.trim();
+  return w.amount !== undefined && !w.host && typed !== '' && Number(typed) === w.amount;
+}
+
+const drawWagerSend = (w: PhoneWager): void => drawSend('wager-send', w.amount !== undefined && !w.host ? 'Change wager' : 'Send wager', wagerIn(w));
+
+/** The answer box holds what's in (typed: multiple choice has no box). */
+const answerIn = (a: NonNullable<PhoneView['answer']>): boolean => !!a.text && sameAnswer($<HTMLTextAreaElement>('answer-in').value, a.text);
+
+const drawAnswerSend = (a: NonNullable<PhoneView['answer']>): void => drawSend('answer-send', a.text ? 'Change answer' : 'Send answer', answerIn(a));
 
 /** Held to a max the amount is over. */
 const overMax = (w: PhoneWager, amount: number): boolean => !!w.limit && w.max !== undefined && amount > w.max;
@@ -1918,8 +1942,8 @@ function sameAnswer(typed: string, sent: string): boolean {
 /** The box holds as many lines as the room keeps (ANSWER_LINES): one more would only be joined onto the last. */
 const answerFull = (box: HTMLTextAreaElement): boolean => cleanAnswer(box.value).split('\n').length >= ANSWER_LINES;
 
-/** An answer sent, in its line: in quotes, its first lines as typed (three at most: the box under has them all). */
-const quoted = (text: string): string => `“${foldLines(text, 3)}”`;
+/** An answer sent, in its line: in quotes, on one line (" / " between its lines: the box has them as typed). */
+const quoted = (text: string): string => `“${foldLines(text, 1)}”`;
 
 /** What's in with the host, or that the box holds something not sent yet (an edit not sent would read as sent). */
 function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string {
@@ -1943,7 +1967,9 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
   const at = a.pick ? (a.choices ?? []).findIndex((c) => c.id === a.pick) : -1;
   if (at >= 0 && team && a.by) return `✔ ${a.byYou ? 'You' : a.by} picked ${letter(at)} for your team. You can change it until the host ${until}.`;
   if (at >= 0) return `✔ Sent: ${letter(at)}. You can change it until the host ${until}.`;
-  return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: ${quoted(a.text)}. You can change it until the host ${until}.`;
+  // (Words: quoted only when the box doesn't hold them already, a teammate's, or one emptied out of the box.)
+  const what = (team && a.by && !a.byYou) || !sameAnswer(box, a.text) ? `: ${quoted(a.text)}` : '';
+  return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}${what}. You can change it until the host ${until}.`;
 }
 
 /** The letter of the choice at place `i`: A, B, C… */
@@ -2045,7 +2071,7 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   // Green for what's in and shown; plain for "not shown here".
   $('answer-state').classList.toggle('plain-note', !!a.hidden && !a.text);
   $('answer-err').textContent = answerErr;
-  $<HTMLButtonElement>('answer-send').textContent = a.text ? 'Change answer' : 'Send answer';
+  drawAnswerSend(a);
   const hostGone = renderFoot(v, sym);
   // The question (and what's on), said once as it comes: not again before each "Sending…" or "✔ Sent" (it can be 1,000
   // characters long). It stays on the page to read again.
@@ -2427,7 +2453,8 @@ window.visualViewport?.addEventListener('resize', () => {
 $('wager-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const w = view?.wager;
-  if (!w?.mine || !w.open) return;
+  // (What's in already: nothing to send. A second press of a double tap lands here too.)
+  if (!w?.mine || !w.open || wagerIn(w)) return;
   const raw = $<HTMLInputElement>('wager-in').value.trim();
   const amount = Number(raw);
   if (!raw || !Number.isSafeInteger(amount) || amount < 0) {
@@ -2449,7 +2476,7 @@ $('wager-form').addEventListener('submit', (e) => {
 $('answer-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const a = view?.answer;
-  if (!a?.mine || !a.open || a.choices?.length) return;
+  if (!a?.mine || !a.open || a.choices?.length || answerIn(a)) return;
   const text = $<HTMLTextAreaElement>('answer-in').value.trim();
   if (!text) {
     answerErr = 'Type an answer first.';
@@ -2535,12 +2562,14 @@ $('answer-in').addEventListener('input', () => {
   growAnswer();
   if (typedErr(answerErr)) $('answer-err').textContent = answerErr = '';
   if (a && !answerSending) drawState('answer-state', answerState(a, !!view?.teams), false);
+  if (a?.mine && a.open) drawAnswerSend(a);
 });
 $('wager-in').addEventListener('input', () => {
   const w = view?.wager;
   if (w?.mine && w.open) saveDraft('wager', w.id, $<HTMLInputElement>('wager-in').value);
   if (typedErr(wagerErr)) $('wager-err').textContent = wagerErr = '';
   if (w?.mine && !wagerSending) drawState('wager-state', wagerState(w, !!view?.teams, view?.currency ?? ''), false);
+  if (w?.mine && w.open) drawWagerSend(w);
 });
 $('new-form').addEventListener('submit', (e) => {
   e.preventDefault();

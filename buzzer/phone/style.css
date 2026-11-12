@@ -118,7 +118,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   padding: 12px 0 12px 0.3em;
 }
 
-.primary, .plain, .seat {
+.primary, .plain, .seat, .sent {
   min-height: 56px;
   border-radius: 14px;
   border: 0;
@@ -128,6 +128,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 }
 .primary { background: var(--accent-fill); color: #fff; }
 .plain { background: transparent; color: var(--muted); font-weight: 400; }
+/* A box's button while the box holds what was sent: nothing to press for (main.ts drawSend). */
+.sent { background: transparent; color: #6fdc8c; border: 2px solid rgba(111, 220, 140, 0.45); cursor: default; }
 
 #seat-list { display: flex; flex-direction: column; gap: 10px; }
 .seat {
@@ -541,7 +543,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
    */
   #wager-form, #answer-form { grid-area: buzz; grid-row: 1 / span 2; align-self: safe center; width: min(420px, 56vw); gap: 6px; }
   #wager-in { font-size: 26px; padding: 8px; }
-  #wager-form .primary { min-height: 46px; }
+  #wager-form :is(.primary, .sent) { min-height: 46px; }
   /* A ✍ clue's choices: two columns, lower, so the last is on screen (four in one column run past a phone's bottom). */
   #answer-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   #answer-choices .choice { min-height: 44px; padding: 4px 10px; gap: 8px; font-size: 16px; }

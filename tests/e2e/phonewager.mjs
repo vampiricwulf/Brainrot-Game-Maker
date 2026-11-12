@@ -237,6 +237,17 @@ try {
   // Within it: the host's box fills in, marked 📱.
   await sendWager(ann, 777);
   await ann.locator('#wager-state').getByText('✔ Sent: $777').waitFor();
+  // The box holds what was sent: the button is a quiet “✔ Sent” (pressing it sends nothing), the blue Change wager as
+  // soon as the box differs.
+  const wagerBtn = async (p) => [await p.locator('#wager-send').innerText(), await p.locator('#wager-send').evaluate((e) => e.className)].join(' | ');
+  assert((await wagerBtn(ann)) === '✔ Sent | sent', `sent: the button is a quiet “✔ Sent”, not blue (${await wagerBtn(ann)})`);
+  await ann.locator('#wager-send').dblclick();
+  await sleep(150);
+  assert((await ann.locator('#wager-state').innerText()).startsWith('✔ Sent: $777'), 'a double press of “✔ Sent” sends nothing (no “Sending…”)');
+  await ann.locator('#wager-in').fill('778');
+  assert((await wagerBtn(ann)) === 'Change wager | primary', `the box changed: the blue Change wager (${await wagerBtn(ann)})`);
+  await ann.locator('#wager-in').fill('777');
+  assert((await wagerBtn(ann)) === '✔ Sent | sent', 'back to what was sent: “✔ Sent” again');
   await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '777');
   await dd.getByText('📱 from phone').waitFor();
   assert(true, 'sent from the phone: the host’s wager box fills in (777) marked “📱 from phone”, and the phone says “✔ Sent: $777”');
@@ -426,9 +437,10 @@ try {
   assert((await ansBox.inputValue()) === '1\n2\n3\n4\n5\n6\n7\n8', `at 8 lines a phone's Enter makes no 9th (${JSON.stringify(await ansBox.inputValue())})`);
   await ansBox.fill('1\n2\n3\n4\n5\n6\n7\n8\n9');
   await ansBox.press('Control+Enter');
-  await ann.locator('#answer-state').getByText('✔ Sent:').waitFor();
+  const sentLine = '✔ Sent. You can change it until the host shows the answer.';
+  await ann.locator('#answer-state').getByText(sentLine, { exact: true }).waitFor();
   assert(
-    (await ansBox.evaluate((e) => document.activeElement === e)) && !(await ann.locator('#answer-state').innerText()).includes('Not sent yet'),
+    (await ansBox.evaluate((e) => document.activeElement === e)) && (await ann.locator('#answer-send').innerText()) === '✔ Sent',
     `nine lines sent from the box (still in it): ✔ Sent, not “Not sent yet” (${await ann.locator('#answer-state').innerText()})`,
   );
   await ansBox.fill('Alexander');
@@ -443,8 +455,16 @@ try {
   );
   await shot('pw-6-answer-lines', ann);
   await ann.locator('#answer-send').click();
-  await ann.locator('#answer-state').getByText('✔ Sent: “Alexander Fleming (penicillin)”').waitFor();
-  assert((await ann.locator('#answer-state').innerText()).startsWith('✔ Sent: “Alexander\nFleming\n(penicillin)”'), `the phone's ✔ Sent line shows the lines (${await ann.locator('#answer-state').innerText()})`);
+  await ann.locator('#answer-state').getByText(sentLine, { exact: true }).waitFor();
+  assert(!(await ann.locator('#answer-state').innerText()).includes('Fleming'), `the phone's ✔ Sent line doesn't say the lines again: the box has them (${await ann.locator('#answer-state').innerText()})`);
+  // Edited: what the host has, on one line.
+  await ansBox.fill('Fleming');
+  assert(
+    (await ann.locator('#answer-state').innerText()).endsWith('What the host has: “Alexander / Fleming / (penicillin)”'),
+    `edited, the line says what the host has, its lines on one (${await ann.locator('#answer-state').innerText()})`,
+  );
+  await ansBox.fill('Alexander\nFleming\n(penicillin)');
+  await ann.locator('#answer-state').getByText(sentLine, { exact: true }).waitFor();
   const answers = host.locator('.fj [aria-label="Answers from phones"]');
   await answers.locator('[data-answer-row]', { hasText: 'Fleming' }).waitFor();
   assert(
@@ -472,9 +492,10 @@ try {
   assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'back at the wagers after a trip to the round before, the phones stay locked (the question was seen)');
   // The question again: her answer came back with the Final, on her phone and in the host's panel.
   await mainButton(host).filter({ hasText: 'Show question ▶' }).click();
-  await ann.locator('#answer-state').getByText('✔ Sent: “Alexander Fleming (penicillin)”').waitFor();
+  await ann.locator('#answer-state').getByText(sentLine, { exact: true }).waitFor();
+  assert((await ansBox.inputValue()) === 'Alexander\nFleming\n(penicillin)', 'her answer is back in her box');
   await answers.locator('[data-answer-row]', { hasText: 'Fleming' }).waitFor();
-  assert(true, 'Show question again: Player 1’s phone still says “✔ Sent: …”, and the host still has it');
+  assert(true, 'Show question again: Player 1’s phone still says “✔ Sent.”, and the host still has it');
   // The answer on screen: answers lock, each phone keeping its own (after the wager it was locked with). Player 2's
   // phone sent none: 👁 Reveal answer asks first (⏱ 10 more seconds), and R reveals anyway.
   await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
