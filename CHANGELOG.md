@@ -27,6 +27,9 @@ in plain words for the people who make and host games. Anything committed but no
 - Unticking **✍ Players type their answers on their phones** on a Final with multiple choice no longer makes the choices vanish: they stay in sight, dimmed, with a line saying they're kept and to tick ✍ again to use them.
 - An RPG map shows a ＋ column past its right edge and a ＋ row under it (until it's 16×16), so a full map, like the sample's Adventure, can still get a screen in one click: the map grows by that column or row with the screen in it, and Undo takes both back. The arrows reach them, and Enter adds.
 - On an RPG screen's editor, **Background ▾** sits at the right beside **▶ Preview**, so on a laptop the add buttons wrap to a second line instead of Background dropping there on its own; and a screen opened with the page scrolled down to the map no longer shows the round's title cut in half above it. On a phone, the map's settings go under the map instead of squeezing it to nothing.
+### Changed
+
+- The Final's spotlight card on stream gives a typed answer more room: three lines show at about 53px on the 1920 stage (they were 28px), with the name, wager, verdict and score a little smaller so the card keeps its height.
 
 ## 2026-11-12
 

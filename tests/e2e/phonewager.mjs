@@ -492,12 +492,15 @@ try {
   const spotLines = await aud.locator('.spot-answer').evaluate((e) => {
     const r = e.getBoundingClientRect();
     const t = e.querySelector('.lines').getBoundingClientRect();
-    return { text: e.innerText, fits: t.height <= r.height + 1 && t.width <= r.width + 1, h: Math.round(r.height) };
+    const card = e.closest('.spot').getBoundingClientRect();
+    return { text: e.innerText, fits: t.height <= r.height + 1 && t.width <= r.width + 1, h: Math.round(r.height), px: parseFloat(getComputedStyle(e).fontSize), card: Math.round(card.height) };
   });
   assert(
     spotLines.text === '“Alexander\nFleming\n(penicillin)”' && spotLines.fits,
     `the reveal card shows its three lines, fitted in the answer's line (${JSON.stringify(spotLines)})`,
   );
+  // The answer is what viewers wait for: three lines stay big on the 1920 stage (40px or more), not the smallest size.
+  assert(spotLines.px >= 40, `the three lines are big enough to read on stream (${spotLines.px}px on the 1920 stage)`);
   await shot('pw-6c-reveal-lines', aud);
   // N again: her verdict first (the check, with no “anyway”); C there judges her and closes it, the spotlight staying.
   await host.keyboard.press('n');

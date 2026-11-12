@@ -572,7 +572,7 @@ try {
   const [cardsBox, answerBox] = [await bob.locator('#cards').boundingBox(), await bob.locator('#answer-form').boundingBox()];
   assert(cardsBox.y + cardsBox.height <= answerBox.y + 1, `Bob’s answer box is under both cards (cards end at ${Math.round(cardsBox.y + cardsBox.height)}px, the box starts at ${Math.round(answerBox.y)}px)`);
   assert((await bob.locator('#clue').innerText()) === 'The final question' && (await bob.locator('#clue-cap').innerText()) === 'Final Jeopardy! · Movies', 'over them, the question and what’s on (“Final Jeopardy! · Movies”)');
-  // (Short lines over a long one, 197 characters in all: its lines don't fit the stage's answer line at its smallest size.)
+  // (Short lines over a long one, 197 characters in all, near the 200 a phone takes.)
   const BOB_LONG = 'Bob-answer it was the one with the dog that drove the bus across the bridge in the rain and then the whole town came out to watch it go by that grey afternoon, and nobody ever forgot that day';
   const BOB_ANSWER = `Yes\nNo\n${BOB_LONG}`;
   assert(BOB_ANSWER.length > 190 && BOB_ANSWER.length <= 200, `Bob's answer is ${BOB_ANSWER.length} characters (under the 200 a phone takes)`);
@@ -616,8 +616,8 @@ try {
   await host.locator('.fj .pl button[aria-pressed="true"]').first().waitFor();
   const judgedNow = await host.locator('.fj .pl button[aria-pressed="true"]').count();
   assert(judgedNow === 1 && (await mainLabel(host)) === 'Next player ▶', `the row's ✔ Right judges one player (${judgedNow} judged; the main button: ${await mainLabel(host)})`);
-  // Bob's typed answer on the stage: two short lines over a long one don't fit the answer line as lines, so it goes up as
-  // one paragraph (every word in sight), never cut off at the top and bottom; the card keeps its size.
+  // Bob's typed answer on the stage: two short lines over a long one, near the most a phone takes, fit the answer's room
+  // on their own lines (every word in sight, never cut off at the top and bottom); the card keeps its size.
   const spotBox = () => host.locator('.stage-box .spot').evaluate((e) => Math.round(e.getBoundingClientRect().height));
   await host.locator('.fj .pl', { hasText: 'Bob' }).locator('button.name').click();
   await host.locator('.stage-box .spot-name', { hasText: 'Bob' }).waitFor();
@@ -632,8 +632,8 @@ try {
     size: e.style.fontSize,
   }));
   assert(
-    bobSpot.fits && bobSpot.text === `“Yes / No / ${BOB_LONG}”` && (await spotBox()) === cardH,
-    `Bob's answer (two short lines over a long one) goes up as one paragraph that fits, the card keeping its size (${JSON.stringify(bobSpot)}, card ${cardH}px)`,
+    bobSpot.fits && bobSpot.text === `“Yes\nNo\n${BOB_LONG}”` && parseFloat(bobSpot.size) > 28 && (await spotBox()) === cardH,
+    `Bob's answer (two short lines over a long one, near the most a phone takes) goes up on its own lines, every word in sight above the smallest size, the card keeping its size (${JSON.stringify(bobSpot)}, card ${cardH}px)`,
   );
   // (The others judged without Show answer, as a rude one may be: it ends all the same.)
   for (const who of ['Ann', 'Bob', 'Cat']) {

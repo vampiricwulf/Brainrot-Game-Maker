@@ -1653,28 +1653,32 @@
     min-width: 900px;
   }
   /*
-   * A Final with typed answers: a fixed width (names and answers coming and going don't resize it), a line for the
-   * answer, and the rest a little smaller, so the card still fits above the scores (about 690 of the 740px).
+   * A Final with typed answers: a fixed width (names and answers coming and going don't resize it), the answer's room
+   * (three lines at about 55px, what viewers wait for), and the rest smaller to pay for it, so the card keeps its height and
+   * still fits above the scores (about 690 of the 740px).
    */
   .spot.typed {
-    gap: 12px;
+    gap: 8px;
     padding: 24px 80px;
     width: 1500px;
   }
   .spot.typed .spot-name {
     max-width: 100%;
-    font-size: 76px;
+    font-size: 62px;
+  }
+  .spot.typed .spot-wager {
+    font-size: 54px;
   }
   .spot.typed .spot-result,
   .spot.typed .spot-hold {
-    font-size: 76px;
+    font-size: 62px;
   }
   .spot.typed .spot-score {
-    font-size: 96px;
+    font-size: 84px;
   }
   .spot-answer {
     width: 100%;
-    height: 100px;
+    height: 185px;
     display: grid;
     place-items: center;
     font-size: 72px;
