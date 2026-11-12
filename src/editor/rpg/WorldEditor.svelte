@@ -121,7 +121,12 @@
   const picked = $derived(map ? map.screens.filter((s) => selIds.includes(s.id)) : []);
   const sel = $derived(picked.length === 1 ? picked[0] : undefined);
   const look = $derived(sel?.variants?.find((v) => v.id === lookId));
-  const cur = $derived<[number, number]>(map ? [Math.min(cursor[0], map.cols - 1), Math.min(cursor[1], map.rows - 1)] : [0, 0]);
+  /** A map that can grow shows a ＋ column past its right edge and a ＋ row under it (a click adds a screen there). */
+  const growCol = $derived(!!map && map.cols < MAX_GRID);
+  const growRow = $derived(!!map && map.rows < MAX_GRID);
+  const viewCols = $derived(map ? map.cols + (growCol ? 1 : 0) : 1);
+  const viewRows = $derived(map ? map.rows + (growRow ? 1 : 0) : 1);
+  const cur = $derived<[number, number]>(map ? [Math.min(cursor[0], viewCols - 1), Math.min(cursor[1], viewRows - 1)] : [0, 0]);
 
   function selectOnly(s: Screen | null): void {
     selIds = s ? [s.id] : [];
@@ -254,6 +259,22 @@
   }
 
   // ---------- Screens ----------
+
+  /**
+   * A ＋ past the map's right or bottom edge: the map grows by that column (or row, or both) and gets a screen there,
+   * one step.
+   */
+  function growAdd(col: number, row: number): void {
+    if (col < map.cols && row < map.rows) return addScreen(col, row);
+    const m = map;
+    const [cols, rows] = [Math.max(m.cols, col + 1), Math.max(m.rows, row + 1)];
+    if (cols > MAX_GRID || rows > MAX_GRID) return;
+    step(`Added a screen to map “${m.name}” (the map grew to ${cols}×${rows})`, () => {
+      m.cols = cols;
+      m.rows = rows;
+      addScreen(col, row);
+    });
+  }
 
   /** A new screen in this cell, selected, with the focus on it (the cell's ＋ button it replaced is gone). */
   function addScreen(col: number, row: number): void {
@@ -412,7 +433,8 @@
     const copy = copyScreen(src, src.name);
     step(`Pasted screen “${copy.name}”`, () => {
       adoptUsedBy(game, copy);
-      [[copy.col, copy.row]] = cell && !screenAt(map, ...cell) ? [cell] : freeCells(map, 1);
+      // (On a ＋ past the edge: a free cell on the map, which doesn't grow for a paste.)
+      [[copy.col, copy.row]] = cell && cell[0] < map.cols && cell[1] < map.rows && !screenAt(map, ...cell) ? [cell] : freeCells(map, 1);
       map.screens.push(copy);
     });
     selectOnly(copy);
@@ -730,15 +752,22 @@
   let gridEl = $state<HTMLDivElement>();
 
   /** Where a cell sits over the grid (col/row may be past the edges), as CSS lengths. */
-  const along = (i: number, n: number, extra = 0) => `calc((100% - ${(n - 1) * GAP}px) / ${n} * ${i} + ${i * GAP + extra}px)`;
-  const span = (n: number) => `calc((100% - ${(n - 1) * GAP}px) / ${n})`;
+  /** How wide the ＋ column past the right edge is (and how tall the ＋ row under it). */
+  const TAIL = 40;
+  /** The room the ＋ column (or row) takes at the end of the grid, past its cells. */
+  const tailX = $derived(growCol ? TAIL + GAP : 0);
+  const tailY = $derived(growRow ? TAIL + GAP : 0);
+  const along = (i: number, n: number, extra = 0, tail = 0) => `calc((100% - ${tail + (n - 1) * GAP}px) / ${n} * ${i} + ${i * GAP + extra}px)`;
+  const span = (n: number, tail = 0) => `calc((100% - ${tail + (n - 1) * GAP}px) / ${n})`;
+  const alongX = (i: number, extra = 0) => along(i, map.cols, extra, tailX);
+  const alongY = (i: number, extra = 0) => along(i, map.rows, extra, tailY);
 
   /** The cell under a point (or one past the edges, with `ring`), or null. */
   function cellAt(x: number, y: number, ring = 0): [number, number] | null {
     if (!gridEl) return null;
     const r = gridEl.getBoundingClientRect();
-    const c = Math.floor((x - r.left + GAP / 2) / ((r.width + GAP) / map.cols));
-    const row = Math.floor((y - r.top + GAP / 2) / ((r.height + GAP) / map.rows));
+    const c = Math.floor((x - r.left + GAP / 2) / ((r.width - tailX + GAP) / map.cols));
+    const row = Math.floor((y - r.top + GAP / 2) / ((r.height - tailY + GAP) / map.rows));
     return c >= -ring && row >= -ring && c < map.cols + ring && row < map.rows + ring ? [c, row] : null;
   }
 
@@ -903,7 +932,7 @@
   function emptyClick(c: number, r: number): void {
     if (swallow) return void (swallow = false);
     if (picking) return;
-    addScreen(c, r);
+    growAdd(c, r);
   }
 
   // ---------- Keys ----------
@@ -934,8 +963,9 @@
     const v = ARROWS[e.key];
     if (v && !e.altKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
-      const c = Math.max(0, Math.min(map.cols - 1, cur[0] + v[0]));
-      const r = Math.max(0, Math.min(map.rows - 1, cur[1] + v[1]));
+      // (Past the right or bottom edge: the ＋ there, while the map can grow.)
+      const c = Math.max(0, Math.min(viewCols - 1, cur[0] + v[0]));
+      const r = Math.max(0, Math.min(viewRows - 1, cur[1] + v[1]));
       cursor = [c, r];
       const s = screenAt(map, c, r);
       if (e.shiftKey && s) selIds = [...new Set([...picked.map((x) => x.id), s.id])];
@@ -944,7 +974,7 @@
     } else if (e.key === 'Enter' && !e.altKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       const s = screenAt(map, ...cur);
-      if (!s) return addScreen(...cur);
+      if (!s) return growAdd(...cur);
       selectOnly(s);
       lookId = null;
       editing = true;
@@ -1190,22 +1220,37 @@
           <div
             class="grid-map"
             bind:this={gridEl}
-            style:grid-template-columns="repeat({map.cols}, minmax(0, 1fr))"
+            style:grid-template-columns="repeat({map.cols}, minmax(0, 1fr)){growCol ? ` ${TAIL}px` : ''}"
             role="grid"
             aria-label="{map.name} grid"
-            aria-rowcount={map.rows}
-            aria-colcount={map.cols}
+            aria-rowcount={viewRows}
+            aria-colcount={viewCols}
             aria-multiselectable="true"
             tabindex="-1"
             onkeydown={gridKey}
           >
-            {#each Array.from({ length: map.rows }, (_, r) => r) as r (r)}
+            {#each Array.from({ length: viewRows }, (_, r) => r) as r (r)}
               <div class="gr" role="row">
-                {#each Array.from({ length: map.cols }, (_, c) => c) as c (c)}
+                {#each Array.from({ length: viewCols }, (_, c) => c) as c (c)}
                   {@const s = grid.get(`${c},${r}`)}
                   {@const here = cur[0] === c && cur[1] === r}
+                  {@const past = c >= map.cols || r >= map.rows}
                   <div class="gc" role="gridcell" aria-selected={!!s && selIds.includes(s.id)}>
-                    {#if s}
+                    {#if past}
+                      <!-- Past the edge: a ＋ that grows the map by this column (or row) with a screen in it. -->
+                      <button
+                        class="cell empty grow"
+                        class:gcol={c >= map.cols}
+                        class:grow-row={r >= map.rows}
+                        data-cell="{c},{r}"
+                        data-grow
+                        tabindex={here ? 0 : -1}
+                        onclick={() => emptyClick(c, r)}
+                        onfocus={() => (cursor = [c, r])}
+                        aria-label="Add a screen at column {c + 1}, row {r + 1} (the map grows)"
+                        title="Add a screen here: the map grows by a {c >= map.cols && r >= map.rows ? 'column and a row' : c >= map.cols ? 'column' : 'row'}">＋</button
+                      >
+                    {:else if s}
                       {@const code = /^Screen ([A-Z]\d+)$/.exec(s.name)?.[1]}
                       <button
                         class="cell screen"
@@ -1263,7 +1308,7 @@
               {#if dragFrom?.id === map.id && over?.kind === 'cell'}
                 <!-- Near the right or bottom edge, a column (or row) past it to drop on: the map grows. -->
                 {#each ring(over.col, over.row) as [c, r] (`${c},${r}`)}
-                  <div class="ghost-cell" style:left={along(c, map.cols)} style:top={along(r, map.rows)} style:width={span(map.cols)} style:height={span(map.rows)}></div>
+                  <div class="ghost-cell" style:left={alongX(c)} style:top={alongY(r)} style:width={span(map.cols, tailX)} style:height={span(map.rows, tailY)}></div>
                 {/each}
               {/if}
               {#if plan}
@@ -1273,10 +1318,10 @@
                     class="drop-cell"
                     class:bad={!plan.ok}
                     class:edge={c < 0 || r < 0}
-                    style:left={c < 0 ? `-${GAP + 3}px` : along(c, map.cols)}
-                    style:top={r < 0 ? `-${GAP + 3}px` : along(r, map.rows)}
-                    style:width={c < 0 ? '6px' : span(map.cols)}
-                    style:height={r < 0 ? '6px' : span(map.rows)}
+                    style:left={c < 0 ? `-${GAP + 3}px` : alongX(c)}
+                    style:top={r < 0 ? `-${GAP + 3}px` : alongY(r)}
+                    style:width={c < 0 ? '6px' : span(map.cols, tailX)}
+                    style:height={r < 0 ? '6px' : span(map.rows, tailY)}
                   >
                     {#if dragging[i]?.id === drag.anchor && c >= 0 && r >= 0}<span>{plan.text}</span>{/if}
                   </div>
@@ -1291,8 +1336,8 @@
                     <button
                       class="seam"
                       class:shut
-                      style:left={d === 'e' ? along(s.col + 1, map.cols, -GAP / 2) : along(s.col + 0.5, map.cols, -GAP / 2)}
-                      style:top={d === 's' ? along(s.row + 1, map.rows, -GAP / 2) : along(s.row + 0.5, map.rows, -GAP / 2)}
+                      style:left={d === 'e' ? alongX(s.col + 1, -GAP / 2) : alongX(s.col + 0.5, -GAP / 2)}
+                      style:top={d === 's' ? alongY(s.row + 1, -GAP / 2) : alongY(s.row + 0.5, -GAP / 2)}
                       tabindex="-1"
                       onpointerdown={(e) => e.stopPropagation()}
                       onclick={() => toggleWall(s, d)}
@@ -1431,7 +1476,7 @@
               </span>
             </div>
           {:else}
-            <Tips id="rpg-map" hint="Click an empty cell (＋) to add a screen, click a screen for its settings, double-click it to edit its picture and objects.">
+            <Tips id="rpg-map" hint="Click a ＋ to add a screen (past the edge, the map grows), click a screen for its settings, double-click it to edit its picture and objects.">
               <ul>
                 <li>Drag a screen to move it (onto another to swap them, onto a map's tab to move it there). Drop pictures on the map to make screens.</li>
                 <li>
@@ -1604,6 +1649,19 @@
   }
   .cell.screen {
     border: 3px solid var(--border);
+  }
+  /* The ＋ column and row past the edges: narrow, so the map's own cells keep their size. */
+  .cell.grow {
+    aspect-ratio: auto;
+    font-size: 16px;
+    opacity: 0.7;
+  }
+  .cell.grow-row {
+    height: 40px;
+  }
+  .cell.grow:hover,
+  .cell.grow:focus-visible {
+    opacity: 1;
   }
   .cell.screen.sel {
     border-color: var(--accent);

@@ -142,8 +142,8 @@ export const EDITOR_KEYS: KeyGroup[] = [
   {
     title: 'Map (RPG)',
     keys: [
-      ['Arrows', 'Move around the grid (the screen there is selected); Shift+arrows add to the selection'],
-      ['Enter', 'Edit the screen, or add one on an empty cell'],
+      ['Arrows', 'Move around the grid (the screen there is selected), and past its right or bottom edge to its ＋; Shift+arrows add to the selection'],
+      ['Enter', 'Edit the screen, or add one on an empty cell (on a ＋ past the edge, the map grows)'],
       ['Shift/Ctrl+click, or draw a box', 'Pick several screens (a box from an empty cell, or Alt+drag from anywhere)'],
       ['Drag a screen', 'Move it (onto another to swap them, onto a map’s tab to move it there)'],
       ['Alt+arrows', 'Move the selected screens (in a screen: open the screen next door)'],

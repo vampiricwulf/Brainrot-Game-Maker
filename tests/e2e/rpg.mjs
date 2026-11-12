@@ -731,6 +731,32 @@ try {
 
   // The RPG round: its world starts with one screen; add one to the east.
   await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
+  {
+    // SLIDES-2: past the right and bottom edges, a ＋ column and row; a click (or the arrows past the edge and Enter)
+    // grows the map with a screen there, one step.
+    const size = async () => /\((\d+)×(\d+)\)/.exec(await page.locator('summary', { hasText: 'Map settings' }).innerText())?.slice(1).map(Number);
+    const [cols, rows] = await size();
+    const grow = page.locator('.grid-map [data-grow]');
+    assert((await grow.count()) === cols + rows + 1, `a ＋ column and row past the edges (${await grow.count()} for ${cols}×${rows})`);
+    const undoTitle = () => page.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
+    await page.getByRole('button', { name: `Add a screen at column ${cols + 1}, row 1 (the map grows)` }).click();
+    assert(
+      (await size()).join() === `${cols + 1},${rows}` && (await page.locator(`.grid-map [data-cell="${cols},0"]`).getAttribute('aria-label')).startsWith('Screen ') && (await undoTitle()).startsWith(`Undo: Added a screen to map “Overworld” (the map grew to ${cols + 1}×${rows})`),
+      `a click on the ＋ past the right edge adds a column with a screen in it, one step (${await undoTitle()})`,
+    );
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction((n) => document.querySelectorAll('.grid-map [data-grow]').length === n, cols + rows + 1);
+    assert((await size()).join() === `${cols},${rows}`, 'Ctrl+Z takes the column and its screen back');
+    await page.locator('.grid-map [data-cell="0,0"]').focus();
+    for (let i = 0; i < rows; i++) await page.keyboard.press('ArrowDown');
+    const focusedLabel = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
+    assert((await focusedLabel()) === `Add a screen at column 1, row ${rows + 1} (the map grows)`, `the arrows go past the bottom edge to the ＋ row (${await focusedLabel()})`);
+    await page.keyboard.press('Enter');
+    assert((await size()).join() === `${cols},${rows + 1}` && (await focusedLabel())?.startsWith('Screen '), `Enter there adds a row with a screen, the keys on it (${await focusedLabel()})`);
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction((n) => document.querySelectorAll('.grid-map [data-grow]').length === n, cols + rows + 1);
+    assert((await size()).join() === `${cols},${rows}`, 'and Ctrl+Z takes that back');
+  }
   await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).click();
   assert(await page.getByRole('button', { name: 'Screen Screen B1' }).isVisible(), 'a screen can be added to the map grid');
   const b1Name = await page.getByRole('button', { name: 'Screen Screen B1' }).locator('.nm').innerText();

@@ -82,6 +82,7 @@ Slide items and whole slides copy and paste between clues, rounds and games, wit
 
 ## The RPG map
 
+- Click a ＋ to add a screen. The ＋ column past the map's right edge and the ＋ row under it grow the map (up to 16×16).
 - Drag a screen to move or swap it; dropping past the edge grows the map.
 - Pictures dropped on the map become screens.
 - `Shift`-click or drag a box to select several screens.

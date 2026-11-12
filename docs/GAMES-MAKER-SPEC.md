@@ -711,7 +711,9 @@ RPG toolset: avatars, stats, items, shops, actions, wheels and the host-confirme
 **Map view** (the default for a world) works like LDtk's GridVania world view:
 
 - The world's maps are tabs: the primary map first, then the other maps, then **＋ Map**.
-- Each map shows its grid with a thumbnail of every screen and "＋" in empty cells. Click "＋" to add a screen,
+- Each map shows its grid with a thumbnail of every screen and "＋" in empty cells, and while the map is under 16×16 a narrow
+  "＋" column past its right edge and a "＋" row under it (a click there grows the map by that column or row with a
+  screen in it, one step; the arrows reach them too, and Enter adds). Click "＋" to add a screen,
   double-click a screen to edit it, drag to move it, and use the right-click menu to duplicate, delete or copy a
   screen to another map.
 - **Exit editing** happens right on the grid: each edge between screens has a small toggle for open or blocked, and

@@ -25,6 +25,7 @@ in plain words for the people who make and host games. Anything committed but no
 - A slides round's page (the sample game's Introduction among them) shows its whole slide on a 1280×720 or 1366×768 screen: the slide is no taller than the room left, how the round plays is said in the header's line under its name, and the slide's **Text** box sits under the slide tabs that pick the slide.
 - On a board round's page, **⭐ Daily Doubles** and **🤝 Partner clues** have a line of their own under the row values, side by side, with each hint under its box: the box you type in no longer jumps to another line as its hint grows, nor when partner clues turn on or the rows change.
 - Unticking **✍ Players type their answers on their phones** on a Final with multiple choice no longer makes the choices vanish: they stay in sight, dimmed, with a line saying they're kept and to tick ✍ again to use them.
+- An RPG map shows a ＋ column past its right edge and a ＋ row under it (until it's 16×16), so a full map, like the sample's Adventure, can still get a screen in one click: the map grows by that column or row with the screen in it, and Undo takes both back. The arrows reach them, and Enter adds.
 
 ## 2026-11-12
 
