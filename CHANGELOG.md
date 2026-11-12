@@ -11,12 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Changed
-
-- **Everyone must play (no Pass)** shows in the clue editor for every kind of clue: on ✍ clues (and their multiple choice), Daily Doubles and partner clues, and in the Final's editor, it's ticked and greyed, its tooltip saying why, since those never offer Pass.
-
 ## 2026-11-12
 
 ### Added
@@ -44,6 +38,7 @@ in plain words for the people who make and host games. Anything committed but no
 - **🎨 Change your color** on a phone shows the colors other players have in their own color, struck through with a dashed edge (they looked like darker colors to pick), and a tap on one says another player has it. (50e7f8d)
 - A phone's wager box has one label, “Your wager (only the host sees it)”, with the score and max right over the box, instead of saying “wager” three times and putting the max under the Send button. (28126fc)
 - Once a phone has sent its answer or wager, its button is a quiet **✔ Sent** (pressing it sends nothing) until the box changes, when it's the blue **Change answer** / **Change wager** again; the line under the box says “✔ Sent.” without repeating the answer the box already holds, and what the host has is quoted on one line. (a1d5e3c)
+- **Everyone must play (no Pass)** shows in the clue editor for every kind of clue: on ✍ clues (and their multiple choice), Daily Doubles and partner clues, and in the Final's editor, it's ticked and greyed, its tooltip saying why, since those never offer Pass. (09bf0bd, 570e66e)
 
 ### Fixed
 
