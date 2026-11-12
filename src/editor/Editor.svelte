@@ -1435,12 +1435,15 @@
           <div class="first-round">
             <h2>Add your first round</h2>
             <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
-            <p class="muted small">New here? <b>✨ Try the sample</b>, then <b>▶ Play</b> it as a host. <b>❔ Help</b> (top right, or ?) has the keys and the guide.</p>
+            <!-- (One short line, so the cards and 📂 Open a game… fit a laptop's screen.) The one thing a first-time browser
+                 user can lose: the game lives in this browser until it's saved as a file. -->
+            {#if !inTauri() && app.storageOk}
+              <p class="muted small">New here? <b>✨ Try the sample</b>, then <b>▶ Play</b> it. Your work is kept in this browser; <b>💾 Save</b> makes a file.</p>
+            {:else}
+              <p class="muted small">New here? <b>✨ Try the sample</b>, then <b>▶ Play</b> it.</p>
+            {/if}
             {#if !inTauri()}
-              <!-- The one thing a first-time browser user can lose: the game lives in this browser until it's saved as a file. -->
-              {#if app.storageOk}
-                <p class="muted small">Your game is kept in this browser as you work. <b>💾 Save</b> gives you it as a file: keep that to move it to another computer or browser, or to share it.</p>
-              {:else}
+              {#if !app.storageOk}
                 <p class="small warn">⚠ This browser isn't keeping your game (its storage is blocked or full): <b>💾 Save</b> it to a file before you close the tab.</p>
               {/if}
             {:else}

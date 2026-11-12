@@ -80,7 +80,7 @@ try {
     await p.goto(url);
     await p.locator('header').getByText('⚠ Autosave unavailable here: use Save').waitFor();
     const first = await p.locator('.first-round').innerText();
-    assert(first.includes("This browser isn't keeping your game") && !first.includes('kept in this browser as you work'), 'with storage blocked from the start, the first screen says the game isn’t kept, to 💾 Save it');
+    assert(first.includes("This browser isn't keeping your game") && !first.includes('kept in this browser'), 'with storage blocked from the start, the first screen says the game isn’t kept, to 💾 Save it');
     await blocked.close();
   }
 

@@ -17,6 +17,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - The editor's **Checklist** is pinned to the foot of the sidebar, its heading counting what's left (“Checklist · ⚠ 1 · ℹ 1”), so it stays in view on a 1280- or 1366-wide laptop however many rounds the game has; a long list scrolls in its own box. Until the game has a round it leaves out “No rounds yet”, “No players yet” and the untitled game's note (the first screen already says what to do), so a new game has no checklist.
 - Sidebar buttons are no longer cut to “…”: **＋ Add tiebreaker** and **📊 Stats & Items** show “(optional)” on a small line under their name.
+- The first screen's two notes are one short line (“New here? ✨ Try the sample, then ▶ Play it. Your work is kept in this browser; 💾 Save makes a file.”), so the cards and **📂 Open a game…** fit a laptop's screen.
 
 ## 2026-11-12
 

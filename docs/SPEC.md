@@ -487,7 +487,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   its setting". Tile glow's Glow size sits beside its tick in Colors (it was in Tiles).
 
 ### 5.8 Save / load / export
-- **The first screen** (a game with no rounds): ✨ Try a sample game, then a card a mode (a blank round) with at most two
+- **The first screen** (a game with no rounds): one short line (New here? ✨ Try the sample, then ▶ Play it; in a
+  browser, that the work is kept in this browser and 💾 Save makes a file), ✨ Try a sample game, then a card a mode (a blank round) with at most two
   templates in it to start from (＋ Add round has them all), the arrow keys moving between the cards, and a line for a
   game file, "Have a game file? 📂 Open a game… or drop it here", with the three newest Recent games as buttons on it
   (title · rounds · when). ▶ Play isn't greyed there: a click says "Add a round first" and puts the keys on the sample.
