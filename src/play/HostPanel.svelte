@@ -132,6 +132,7 @@
     onrolltie,
     phonesDown = '',
     buzzExtra,
+    inQueue = [],
     phoneChip,
     boxMenu = $bindable(null),
     playerVerbs = $bindable(null),
@@ -275,6 +276,8 @@
     phonesDown?: string;
     /** Buzzer mode: what phones add to the buzzer row (later buzzes, the phones' status). */
     buzzExtra?: Snippet;
+    /** The players in the buzz order buzzExtra lists (those who missed struck out there, so not named again here). */
+    inQueue?: string[];
     /** Phone buzzers: the "📱 3/4" chip (its list of phones). */
     phoneChip?: Snippet;
     /** What the boxes open here add to the stage's menu (read back by the play screen: see stagemenu.ts). */
@@ -396,8 +399,10 @@
     return step === 'nobody' ? 'Partner clue: nobody to partner with (Solo, or Esc)' : 'Partner clue: spin for a partner';
   });
   const buzz = $derived(app.live.buzz);
+  // (Who missed and isn't struck out in the buzz order: named once in the row.)
   const lockedNames = $derived(
     (buzz?.lockedOut ?? [])
+      .filter((id) => !inQueue.includes(id))
       .map((id) => session.players.find((p) => p.id === id)?.name)
       .filter(Boolean)
       .join(', '),

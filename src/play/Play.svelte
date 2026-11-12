@@ -6655,6 +6655,7 @@
         goon={goPanel}
         clicknote={clickNote}
         tieNames={tie.length ? nameList(tie.map((id) => playerName(session, id))) : ''}
+        inQueue={queueRows.map((r) => r.id)}
         onrolltie={rollTie}
         {phonesDown}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}

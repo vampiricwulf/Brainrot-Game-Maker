@@ -362,9 +362,9 @@ try {
     next: seats[2].id,
   });
   assert((await pressed())[0].includes('Player 3'), 'a wrong answer locks Player 2 out, and Player 3, next in the buzz order, answers (no re-opening)');
-  await page.getByText('Missed: Player 2').waitFor();
+  await queue.locator('li.out', { hasText: 'Player 2' }).waitFor();
   heights.missed = await panelH();
-  assert((await queue.locator('li.out', { hasText: 'Player 2' }).count()) === 1, 'the queue stays, Player 2 struck out');
+  assert((await page.locator('.panel [data-buzzrow]', { hasText: 'Missed:' }).count()) === 0, 'the queue stays, Player 2 struck out (and not named again as “Missed: Player 2”)');
   // The ? list says so too (not that the buzzers open for the others).
   await page.keyboard.press('?');
   const wrongKey = page.getByRole('dialog', { name: 'Keyboard shortcuts' }).locator('tr', { hasText: 'Shift+Enter on the one answering' });

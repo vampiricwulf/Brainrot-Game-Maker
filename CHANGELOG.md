@@ -37,6 +37,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Every key hint in the host panel has the boxed keycap look: the results screen's **🎲 Tiebreaker roll-off** showed its O as a plain letter that read like a zero, and a partner clue's ✔ Got it ⏎ / ✘ Missed ⇧⏎ showed bare symbols.
 - The Final's reveals: the spotlit player's row stops above the sticky **Finish now…** row as it scrolls into sight, so their ✔ Right / ✘ Wrong can be seen (from the third or fourth player on at 1280×720, it was half or wholly behind it).
 - The results screen: a tie box's heading “Tie for first: Bob & Cat” is one line again (it took two, pushing ▶ Next game… and 🔁 Rematch under the tools row at 1280×720), and with no tie the keys rest on the results box after Finish game, with no focus ring on ◀ Back to final reveals.
+- **⚙ Set up phone buzzers…** opens ⚙ Settings scrolled only as far as its Phone buzzers part needs, so the window's title and ✕ aren't cut off at its top.
+- After a wrong buzz, the buzzer row no longer names the same player twice: a player struck out in the buzz order isn't listed again after “Missed:”, which now names only those who missed without buzzing (picked by hand).
 - In the Final's wagers, the line when a wager is missing says how to let the game go on without it: “Waiting on Dee's phone: type their wager, or untick them to sit out” (it ended “or Sits out”, a label that isn't on screen: the tick box before each name is what sits a player out).
 
 ## 2026-11-08
