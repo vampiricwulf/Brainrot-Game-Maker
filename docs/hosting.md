@@ -214,7 +214,7 @@ show the lines.
 With **Players can pick their color on their phone** on, players tap their color on the phone and pick a swatch, or
 **＋** for any color they like. ＋ opens a picker on the phone: their buzzer shows the color as they move it, and you
 and the stream get it when they press **OK** or tap off the picker. **Cancel** keeps the color they had. A color
-another player already has is taken.
+another player already has is taken: it shows struck through, and a tap on it says so.
 
 ### Seats
 

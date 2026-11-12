@@ -488,7 +488,7 @@ try {
   await kim.keyboard.press('Escape');
   await colours.waitFor({ state: 'hidden' });
   await kim.getByRole('button', { name: '🎨 Change your color' }).click();
-  await colours.locator('.swatch:not([disabled]):not([aria-pressed="true"])').first().click();
+  await colours.locator('.swatch:not(.taken):not([aria-pressed="true"])').first().click();
   await colours.waitFor({ state: 'hidden' });
   await host.wait((m) => m.t === 'color' && m.seatId === 'k', 'Kim’s colour');
   await kim.locator('#sound').click();

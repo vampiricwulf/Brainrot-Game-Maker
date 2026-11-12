@@ -144,14 +144,23 @@ try {
   await small(p2).getByText('The game starts soon').waitFor();
   assert(true, '▶ Play goes back into the same room: same code, both phones still joined');
 
-  // ---------- A phone picks its own colour (another player's is greyed out) ----------
+  // ---------- A phone picks its own colour (another player's is struck through) ----------
   await p1.getByRole('button', { name: '🎨 Change your color' }).click();
   const colours = p1.getByRole('group', { name: 'Pick your color' });
+  const takenSwatch = colours.getByRole('button', { name: 'sky blue (another player has it)' });
+  const takenLook = await takenSwatch.evaluate((e) => ({
+    opacity: getComputedStyle(e).opacity,
+    border: getComputedStyle(e).borderTopStyle,
+    strike: getComputedStyle(e, '::after').backgroundImage.includes('gradient'),
+  }));
   assert(
-    (await colours.getByRole('button', { name: 'sky blue (another player has it)' }).isDisabled()) &&
-      (await colours.locator('[aria-pressed="true"]').count()) === 1,
-    'the phone shows the colours: its own ticked, Player 2’s greyed out',
+    (await takenSwatch.isDisabled()) && takenLook.opacity === '1' && takenLook.border === 'dashed' && takenLook.strike && (await colours.locator('[aria-pressed="true"]').count()) === 1,
+    `the phone shows the colours: its own ticked, Player 2’s in its own colour, struck through with a dashed edge (not a darker colour to pick) (${JSON.stringify(takenLook)})`,
   );
+  // A tap on it says why nothing happens; the colours stay open.
+  await takenSwatch.click({ force: true });
+  await p1.locator('#colors-note').getByText('Another player has that color: pick another.', { exact: true }).waitFor();
+  assert(await colours.isVisible(), 'a tap on a taken colour says another player has it, and the colours stay open');
   await colours.getByRole('button', { name: 'yellow', exact: true }).click();
   await p1.waitForFunction(() => getComputedStyle(document.getElementById('buzz')).getPropertyValue('--seat').trim() === '#f0e442');
   assert(await colours.isHidden(), 'picking one shuts the picker, and the phone’s buzzer turns that colour');

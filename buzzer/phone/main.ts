@@ -1618,6 +1618,8 @@ function renderColors(v: PhoneView): void {
   btn.setAttribute('aria-expanded', String(colorsOpen));
   const box = $('colors');
   box.hidden = !colorsOpen;
+  // (Why a tap on a taken one did nothing: until it shuts.)
+  if (!pick || !colorsOpen) $('colors-note').textContent = '';
   if (!pick || !colorsOpen) return;
   const mine = v.you!.color.toLowerCase();
   const key = `${mine} ${pick.taken.join(',')}`;
@@ -1634,7 +1636,13 @@ function renderColors(v: PhoneView): void {
       b.dataset.color = c;
       b.style.background = c;
       const taken = pick.taken.includes(c);
-      b.disabled = taken;
+      // Taken: struck through (style.css), in its own colour, and a tap says why it isn't picked (not disabled, so it can).
+      // The keys pass it by, as they did a disabled one.
+      b.classList.toggle('taken', taken);
+      if (taken) {
+        b.setAttribute('aria-disabled', 'true');
+        b.tabIndex = -1;
+      }
       b.setAttribute('aria-pressed', String(c === mine));
       b.setAttribute('aria-label', `${PLAYER_COLOR_NAMES[i] ?? c}${taken ? ' (another player has it)' : ''}`);
       b.title = b.getAttribute('aria-label')!;
@@ -2241,7 +2249,7 @@ document.addEventListener('keydown', (e) => {
   }
   // The colour picker: the arrow keys go from colour to colour.
   if (colorsOpen && $('colors').contains(document.activeElement) && /^Arrow(Left|Right|Up|Down)$/.test(e.key))
-    stepFocus(e, $('colors').querySelectorAll<HTMLButtonElement>('button.swatch'), e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1);
+    stepFocus(e, $('colors').querySelectorAll<HTMLButtonElement>('button.swatch:not(.taken)'), e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1);
 });
 // (Space presses a focused button as it comes back up: the buzz was on the way down. A card's Tap to see, Hide or play
 // button the keys moved to while Space was down, a card arriving, isn't pressed by it.)
@@ -2328,6 +2336,17 @@ $('color-btn').addEventListener('click', () => {
 $('colors').addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.swatch');
   if (b?.dataset.own !== undefined) return openAny();
+  if (b?.classList.contains('taken')) {
+    // (Emptied first: a second tap is said again.)
+    const note = $('colors-note');
+    note.textContent = '';
+    queueMicrotask(() => {
+      note.textContent = 'Another player has that color: pick another.';
+      // (On a small phone it comes below the screen's edge.)
+      note.scrollIntoView({ block: 'nearest' });
+    });
+    return;
+  }
   if (!b || b.disabled || !b.dataset.color) return;
   if (b.getAttribute('aria-pressed') !== 'true') send({ t: 'color', color: b.dataset.color });
   // Shut; the buzzer turns the new colour when the host has it. Picked with the keys on a computer, they go on to the

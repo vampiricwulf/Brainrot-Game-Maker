@@ -37,6 +37,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 
 - When the host's connection drops, phones say “The host's connection dropped: waiting for them…” and, after a minute, how long the host has been away and that their seat is kept, instead of promising “they'll be back” for as long as the room lasts.
+- **🎨 Change your color** on a phone shows the colors other players have in their own color, struck through with a dashed edge (they looked like darker colors to pick), and a tap on one says another player has it.
 
 ## 2026-11-12
 
