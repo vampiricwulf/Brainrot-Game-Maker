@@ -300,6 +300,21 @@ try {
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Question 2' }).waitFor();
   assert((await undoTitle()).startsWith('Undo: Added question slide 2 to “Final Jeopardy!”'), `＋ Add slide on the Final is one named step (${await undoTitle()})`);
+  // At 1280 and 1366 beside the sidebar, the slide's row fits: the group drops under the tabs rather than run off the
+  // right edge, so 🗑 Delete slide is whole and the page doesn't scroll sideways.
+  const rowFits = () =>
+    page.evaluate(() => {
+      const del = [...document.querySelectorAll('main button')].find((b) => b.textContent.trim() === '🗑 Delete slide');
+      let sideways = false;
+      for (let el = del.parentElement; el; el = el.parentElement) if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== 'hidden') sideways = true;
+      return { right: del.getBoundingClientRect().right, width: innerWidth, sideways };
+    });
+  for (const width of [1280, 1366]) {
+    await page.setViewportSize({ width, height: 720 });
+    const fit = await rowFits();
+    assert(fit.right <= fit.width && !fit.sideways, `at ${width}, the Final's slide row fits: 🗑 Delete slide whole (right edge ${Math.round(fit.right)}), no sideways scroll`);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByPlaceholder('Type the final question…').fill('Then the real question');
   assert(await slideShows('Then the real question'), "the Final's quick field writes on its second question slide");
   // Moved and then undone, the slide that moved back shows (not the first one), as on a clue.

@@ -125,6 +125,7 @@
   .group {
     flex: 1 1 auto;
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     align-items: center;
     min-width: 0;
@@ -155,8 +156,11 @@
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
   }
-  /* 🗑 apart from the rest, at the right. */
+  /* 🗑 apart from the rest, at the right (on a line of its own, if the group wraps). */
+  .spacer {
+    flex: 1 0 8px;
+  }
   .danger {
-    margin-left: 12px;
+    margin-left: auto;
   }
 </style>

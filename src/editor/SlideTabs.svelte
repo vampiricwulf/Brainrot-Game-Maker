@@ -376,9 +376,10 @@
 </div>
 
 <style>
-  /* One line from a laptop up: the tabs scroll (as many slides' do) before the group wraps under them. */
+  /* One line where it fits; where it doesn't (a laptop beside the sidebar), the slide's group drops under the tabs. */
   .tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     align-items: flex-end;
     border-bottom: 1px solid var(--border);
@@ -388,7 +389,7 @@
     flex: 0 1 auto;
     display: flex;
     gap: 4px;
-    min-width: 0;
+    min-width: min(100%, 320px);
     overflow-x: auto;
     scrollbar-width: thin;
   }
@@ -411,10 +412,5 @@
   .tabs .add {
     font-size: 12px;
     opacity: 0.8;
-  }
-  @media (max-width: 900px) {
-    .tabs {
-      flex-wrap: wrap;
-    }
   }
 </style>

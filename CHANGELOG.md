@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- On a 1280- or 1366-wide laptop, the Final's and the tiebreaker's slide buttons (＋ Add slide to 🗑 Delete slide) drop under the slide tabs when they don't fit beside them, instead of running off the right edge and making the editor scroll sideways.
+
 ## 2026-11-08
 
 ### Added
