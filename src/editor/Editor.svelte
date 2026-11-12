@@ -1660,9 +1660,15 @@
       row-gap: 6px;
     }
   }
-  /* Short, so it stays on one line (the details are in its tooltip). */
+  /* Short, so it stays on one line (the details are in its tooltip). From a laptop up it's never cut mid-word: the
+     title box gives way first. */
   .saved {
     white-space: nowrap;
+  }
+  @media (min-width: 1101px) {
+    .saved {
+      flex-shrink: 0;
+    }
   }
   /* 💾 Save •: changed since its last save as a file. Its words only where the header has room. */
   .save-file .dot {

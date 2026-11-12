@@ -196,8 +196,8 @@ try {
   await page.locator('.cat textarea').first().fill('Changed');
   await page.locator('.cat textarea').nth(1).click();
   // 💾 Save • and the browser's note keep their spaces, and where the header shows their words, the note is never cut
-  // short (from 1450px “(💾 Save makes a file)”, from 1600px “not saved as a file”). (Narrower, the short note gives
-  // way as the header needs, as before.)
+  // short (from 1450px “(💾 Save makes a file)”, from 1600px “not saved as a file”; at 1280 the title box gives way
+  // for it). (Narrower, the short note gives way as the header needs, as before.)
   {
     const looks = [];
     for (const w of [1280, 1450, 1525, 1600]) {
@@ -207,7 +207,7 @@ try {
         await page.evaluate((w) => {
           const save = document.querySelector('.save-file')?.innerText.replace(/\s+/g, ' ').trim();
           const note = document.querySelector('.autosave');
-          const cut = w >= 1450 && note && note.scrollWidth > note.clientWidth;
+          const cut = note && note.scrollWidth > note.clientWidth;
           return `${w}: ${save} | ${note?.innerText.trim()}${cut ? ' (cut)' : ''}`;
         }, w),
       );
