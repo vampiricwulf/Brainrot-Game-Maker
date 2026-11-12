@@ -1,7 +1,8 @@
 <!--
   Editable player roster with enforced unique colors. Used on the pre-game screen (the game's players) and in the in-game Players
-  dialog. Rows reorder by dragging their ⋮⋮ grip, with ▲▼ or Alt+↑/↓; ＋ Add player and Enter in a name add the next
-  player, typing in their name; F2 in a row renames it. Before the game a row has a right-click menu (Shift+F10 too; in
+  dialog. Rows reorder by dragging their ⋮⋮ grip, with ▲▼ or Alt+↑/↓; ＋ Add player and (before the game) Enter in a
+  name add the next player, typing in their name (in the game, Enter keeps the name and goes to the window's Done: each
+  player added shows on stream at once); F2 in a row renames it. Before the game a row has a right-click menu (Shift+F10 too; in
   play, the host's own player menu is the one), and the 📱 card's rows open the same one (openMenu). Before the game the
   start scores are behind ± Start scores, by ＋ Add player (remembered on this computer; shown whenever one isn't 0).
 -->
@@ -115,10 +116,21 @@
     });
   }
 
-  /** Enter in a name: the next player, typing in their name (keyboard-first roster entry). */
+  /**
+   * Enter in a name: before the game, the next player, typing in their name (keyboard-first roster entry). In the game,
+   * the name is kept and the keys go to the window's Done (a second Enter closes it): a player added there is on stream
+   * at once.
+   */
   function nameKey(e: KeyboardEvent): void {
     if (e.key !== 'Enter' || e.isComposing || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
     e.preventDefault();
+    if (inGame) {
+      const box = e.currentTarget as HTMLInputElement;
+      const done = box.closest('[role="dialog"]')?.querySelector<HTMLElement>('.modal-foot button.primary');
+      if (done) done.focus();
+      else box.blur();
+      return;
+    }
     if (players.length >= max) return void toast(`${max} ${lower}s at most`);
     addAndName();
   }

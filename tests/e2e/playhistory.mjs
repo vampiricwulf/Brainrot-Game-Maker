@@ -128,6 +128,14 @@ try {
   await page.keyboard.press('Control+z');
   assert((await names()) === 'Player 1, Player 2, Player 3' && (await toast()).includes('Undid Renamed Player 1 to Alice'), 'Ctrl+Z undoes the rename');
   await page.keyboard.press('Control+Shift+z');
+  // In the game, Enter in a name keeps it and goes to Done (no “Player 4” on stream at once); Enter again closes.
+  await page.getByRole('button', { name: '👥 Players' }).click();
+  await page.getByLabel('Player 3 name').focus();
+  await page.keyboard.press('Enter');
+  const onDone = await page.getByRole('dialog', { name: 'Players' }).getByRole('button', { name: 'Done' }).evaluate((b) => b === document.activeElement);
+  await page.keyboard.press('Enter');
+  await page.getByRole('dialog', { name: 'Players' }).waitFor({ state: 'detached' });
+  assert(onDone && (await names()) === 'Alice, Player 2, Player 3', `in the game’s 👥 Players, Enter in a name goes to Done, adding nobody; Enter again closes (${await names()})`);
 
   // 📜 Log opens on 🕘 History: everything, newest first, and "● Now".
   await page.keyboard.press('l');
