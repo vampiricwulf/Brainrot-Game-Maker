@@ -66,6 +66,8 @@
 
   const cat = $derived(round.categories[pos.cat]);
   const clue = $derived(cat?.clues[pos.row]);
+  // Why Everyone must play (no Pass) is always on for this clue, when it is: those are played by everyone in them.
+  const mustWhy = $derived(!clue ? '' : clue.type === 'dailyDouble' ? 'a Daily Double is played by the player who found it' : clue.type === 'partner' ? 'a partner clue is played by its two partners' : clue.type === 'standard' && clue.everyone ? 'everyone answers a ✍ clue' : '');
   const sym = $derived(app.game.settings.currencySymbol);
 
   const TYPE_WORDS: Record<ClueType, string> = { standard: 'a standard tile', dailyDouble: 'a Daily Double', wheel: 'a wheel tile', dice: 'a dice tile', partner: 'a partner clue' };
@@ -612,19 +614,21 @@
             /> ✍ Everyone answers<span class="more-words">{' '}(in secret, on their phones)</span></label
           >
         {/if}
-        <!-- An ordinary buzz-in tile (not ✍, a Daily Double or a partner clue: those are played by everyone in them anyway). -->
-        {#if (clue.type === 'standard' && !clue.everyone) || clue.type === 'wheel' || clue.type === 'dice'}
-          <label
-            class="check"
-            title="Everyone must play (no Pass): with phone buzzers, players' phones offer no Pass on this clue (by default they can pass on a clue they won't buzz on)"
-            ><input
-              type="checkbox"
-              disabled={clue.empty}
-              aria-label="Everyone must play (no Pass)"
-              bind:checked={() => !!clue.mustPlay, (v) => (v ? (clue.mustPlay = true) : delete clue.mustPlay)}
-            /> Everyone must play<span class="more-words">{' '}(no Pass)</span></label
-          >
-        {/if}
+        <!-- Everyone must play (no Pass): the author's choice on an ordinary buzz-in tile; a ✍ clue (and its multiple
+             choice), a Daily Double and a partner clue are always played by everyone in them, so it shows ticked and fixed. -->
+        <label
+          class="check"
+          title={mustWhy
+            ? `Everyone must play (no Pass): always on here, since ${mustWhy}; their phones never offer Pass`
+            : "Everyone must play (no Pass): with phone buzzers, players' phones offer no Pass on this clue (by default they can pass on a clue they won't buzz on)"}
+          ><input
+            type="checkbox"
+            disabled={clue.empty || !!mustWhy}
+            aria-label="Everyone must play (no Pass)"
+            data-must-fixed={mustWhy ? '' : undefined}
+            bind:checked={() => !!mustWhy || !!clue.mustPlay, (v) => (v ? (clue.mustPlay = true) : delete clue.mustPlay)}
+          /> Everyone must play<span class="more-words">{' '}(no Pass)</span></label
+        >
         <label class="field">
           Value
           <!-- Whole points, never below 0 (blank: the row's value). -->

@@ -253,8 +253,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - A tile's right-click menu has a **Make it a…** group, the kind it is ticked: Standard · ⭐ Daily Double · 🤝 Partner
   clue · 🎡 Wheel tile… · 🎲 Dice tile…, then ✍ Everyone answers (standard tiles; on or off) and ⬚ Empty tile. A wheel or
   dice tile opens the clue editor with the keys in its Which wheel / Which dice box.
-- A standard (not ✍), wheel or dice tile's clue editor has **Everyone must play (no Pass)** beside ✍ Everyone answers
-  (`Clue.mustPlay`, off by default and in older games): with phone buzzers its phones offer no Pass (§6.3).
+- Every clue editor has **Everyone must play (no Pass)** beside ✍ Everyone answers. On a standard (not ✍), wheel or
+  dice tile it's the author's (`Clue.mustPlay`, off by default and in older games): with phone buzzers its phones offer
+  no Pass (§6.3). On a ✍ clue, a Daily Double or a partner clue, and in the Final's editor, it shows ticked and greyed,
+  its tooltip saying why: those never offer Pass.
 - Tile badges show the clue type (DD, wheel, dice), whether media is attached, and whether the answer is missing.
 - **Daily Doubles**: toggle any tile as a DD by hand, or press **Randomize Daily Doubles** to place `dailyDoubleCount`
   of them at random, one a category (asked for more, it places what fits, says “Placed 6 of 8 Daily Doubles: one a

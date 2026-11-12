@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- **Everyone must play (no Pass)** shows in the clue editor for every kind of clue: on ✍ clues (and their multiple choice), Daily Doubles and partner clues, and in the Final's editor, it's ticked and greyed, its tooltip saying why, since those never offer Pass.
+
 ## 2026-11-12
 
 ### Added
