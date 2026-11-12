@@ -253,6 +253,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - A tile's right-click menu has a **Make it a…** group, the kind it is ticked: Standard · ⭐ Daily Double · 🤝 Partner
   clue · 🎡 Wheel tile… · 🎲 Dice tile…, then ✍ Everyone answers (standard tiles; on or off) and ⬚ Empty tile. A wheel or
   dice tile opens the clue editor with the keys in its Which wheel / Which dice box.
+- A standard (not ✍), wheel or dice tile's clue editor has **Everyone must play (no Pass)** beside ✍ Everyone answers
+  (`Clue.mustPlay`, off by default and in older games): with phone buzzers its phones offer no Pass (§6.3).
 - Tile badges show the clue type (DD, wheel, dice), whether media is attached, and whether the answer is missing.
 - **Daily Doubles**: toggle any tile as a DD by hand, or press **Randomize Daily Doubles** to place `dailyDoubleCount`
   of them at random, one a category (asked for more, it places what fits, says “Placed 6 of 8 Daily Doubles: one a
@@ -892,6 +894,17 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 2. Host clicks a tile. It zoom-transitions to the **Question slide**. A clue can have several question slides (a
    lead-in, then more): `N` / **Next slide ▶** goes through them before the answer, and viewers see small dots for
    where they are.
+   - *Pass* (phone buzzers, an ordinary buzz-in clue: a standard tile, or a wheel or dice tile's question; never ✍ or
+     multiple choice, the Final, a partner clue, a Daily Double, or a clue ticked Everyone must play): each phone has
+     **Pass: I won't buzz on this one** under the buzzer (`P` with a keyboard; teams: "our team", for the whole team).
+     It keeps its place through the clue, out of sight while it can't be pressed (that phone answering, in the buzz
+     order or out of the clue), so BUZZ! never moves. A passed seat can't buzz; **Take back my pass** undoes it until the
+     clue is answered right or its answer shows. The room keeps the passes for the clue's round of passes
+     (`HostState.pass`, its id the clue's and when it opened or ↺ Reset last ran: a reset forgets them) and tells the
+     host; the buzzers' row says "Passed: Ann, Bob" (on one line, cut short), and once every player not out of the clue
+     has passed, "Everyone passed: reveal the answer" (the status line too) and 👁 Reveal answer wears the ring, the
+     buzzers-never-opened item no longer asked. An Undo of a judgement keeps the passes; an older phone shows no Pass,
+     and an older room drops it.
    - *Daily Double*: DD splash, then a wager input for the chosen player (up to max(score, the game's wager floor, $2,000 by default); Ignore the limit, unticked on each Daily Double, takes any wager), then the question.
      The ⭐ box's first row is “Daily Double! Who found it?” and the players; its Wager row holds the Wager box, Ignore the
      limit and True Daily Double, then the max's words, cut short where the row is narrow. **Show question ▶** is the

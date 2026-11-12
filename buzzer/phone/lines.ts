@@ -30,3 +30,21 @@ export function verdictLine(v: { right: boolean; delta: number }, sym: string): 
   const amount = v.delta ? ` ${v.delta > 0 ? '+' : '−'}\u2060${money(Math.abs(v.delta), sym)}` : '';
   return `${v.right ? '✔ Right!' : '✘ Wrong'}${amount}`;
 }
+
+/** What a phone knows of passing on the clue (PhoneView.pass), and whether its seat is a team. */
+type PassNow = { passed?: boolean; by?: string; byYou?: boolean };
+
+/** The Pass button's words: pass ("I won't buzz on this one"), or take the pass back. */
+export function passButton(p: PassNow, team: boolean): string {
+  if (p.passed) return team ? 'Take back the pass' : 'Take back my pass';
+  return team ? 'Pass: our team won’t buzz on this one' : 'Pass: I won’t buzz on this one';
+}
+
+/**
+ * The buzzer's two lines once this seat passed: who did (a teammate, for a team) over what's going on (someone answering)
+ * or how to buzz after all.
+ */
+export function passedLines(p: PassNow, team: boolean, answering: string | null): { big: string; small: string } {
+  const big = !team ? 'You passed' : p.by && !p.byYou ? `${p.by} passed for your team` : 'Your team passed';
+  return { big, small: answering ?? 'Take the pass back to buzz' };
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hostAwayLine, money, verdictLine as line } from './lines';
+import { hostAwayLine, money, passButton, passedLines, verdictLine as line } from './lines';
 
 describe('money', () => {
   it('puts $ or an emoji in front, a word after, and a minus sign before', () => {
@@ -33,5 +33,23 @@ describe('verdictLine: the Final’s verdict on a phone', () => {
     expect(verdictLine({ right: true, delta: 0 }, '$')).toBe('✔ Right!');
     expect(verdictLine({ right: false, delta: 0 }, 'pts')).toBe('✘ Wrong');
     expect(verdictLine({ right: true, delta: 50 }, 'pts')).toBe('✔ Right! +50 pts');
+  });
+});
+
+describe('passing on a clue', () => {
+  it('the button passes, then takes the pass back; teams say so', () => {
+    expect(passButton({}, false)).toBe('Pass: I won’t buzz on this one');
+    expect(passButton({}, true)).toBe('Pass: our team won’t buzz on this one');
+    expect(passButton({ passed: true }, false)).toBe('Take back my pass');
+    expect(passButton({ passed: true, by: 'Ann', byYou: false }, true)).toBe('Take back the pass');
+  });
+
+  it('the buzzer says who passed, then who is answering or how to buzz after all', () => {
+    expect(passedLines({ passed: true }, false, null)).toEqual({ big: 'You passed', small: 'Take the pass back to buzz' });
+    expect(passedLines({ passed: true }, false, 'Bob is answering')).toEqual({ big: 'You passed', small: 'Bob is answering' });
+    expect(passedLines({ passed: true, by: 'Ann', byYou: true }, true, null).big).toBe('Your team passed');
+    expect(passedLines({ passed: true, by: 'Ann', byYou: false }, true, null).big).toBe('Ann passed for your team');
+    // (A team passed without a name from an older room: plain.)
+    expect(passedLines({ passed: true }, true, null).big).toBe('Your team passed');
   });
 });

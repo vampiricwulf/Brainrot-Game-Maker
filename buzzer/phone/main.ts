@@ -29,7 +29,7 @@ import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type H
 import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
 import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
-import { HOST_AWAY_SAY_MS, hostAwayLine, money, verdictLine } from './lines';
+import { HOST_AWAY_SAY_MS, hostAwayLine, money, passButton, passedLines, verdictLine } from './lines';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -54,6 +54,8 @@ const PROBE_MS = 2500;
 const BUZZ_ANSWER_MS = 3000;
 /** Buzzes sent this close together at most. */
 const BUZZ_GAP_MS = 150;
+/** A Pass press waits this long for the room to say it's in before another press counts. */
+const PASS_WAIT_MS = 1500;
 
 /** A mouse (or trackpad) and a screen to hover: a desktop or laptop. The keys get hints there, and "tap" says "click". */
 const fine = matchMedia('(hover: hover) and (pointer: fine)');
@@ -118,6 +120,9 @@ let lastSent = -1000;
 let held: { armId: number; reactMs?: number; on: WebSocket | null } | null = null;
 /** A held press couldn't be sent again (its arm was over): "didn't get through" shows while the arm is this one. */
 let lostArm = -1;
+/** A Pass (or a pass taken back) sent, until the view says so: more presses wait (a double tap passes once). */
+let passSent: { id: string; on: boolean; at: number } | null = null;
+let passTimer = 0;
 /** The last state cue (BUZZ! lit, you won) played, so each plays once. */
 let cued = '';
 /** Why the room didn't take the last wager sent ('' when it did, or none was sent). */
@@ -672,6 +677,8 @@ const serverNow = () => Date.now() + offset;
 /** at: when the press happened (an event's timeStamp, same clock as performance.now()). */
 function buzz(at = performance.now()): void {
   if (!view || view.phase === 'lobby') return;
+  // Passed: the buzzer does nothing until the pass is taken back.
+  if (view.pass?.passed) return;
   lastPress = performance.now();
   lostArm = -1;
   const reactMs = litArm === view.armId && view.phase === 'armed' ? Math.max(0, Math.round(at - litAt)) : undefined;
@@ -690,6 +697,22 @@ function buzz(at = performance.now()): void {
   lastSent = performance.now();
   sendBuzz(view.armId, reactMs);
   if (!answered) awaitAnswer(view.armId);
+}
+
+/**
+ * Pass, or take the pass back: once per press, and none while one is on its way (the view says when it's in). A
+ * double tap passes once, never passes and takes it back.
+ */
+function pass(): void {
+  const p = view?.pass;
+  if (!p?.can || !connected || $('pass').hidden) return;
+  if (passSent && performance.now() - passSent.at < PASS_WAIT_MS) return;
+  vibrate(20);
+  passSent = { id: p.id, on: !p.passed, at: performance.now() };
+  send({ t: 'pass', id: p.id, on: !p.passed });
+  clearTimeout(passTimer);
+  passTimer = window.setTimeout(() => ((passSent = null), render()), PASS_WAIT_MS);
+  render();
 }
 
 function sendBuzz(armId: number, reactMs?: number): void {
@@ -909,12 +932,15 @@ function clueRoom(sec: HTMLElement, kbd: boolean): number {
     // (A card under the question keeps room for its Tap to see, as the CSS does; the note about missed cards, its own.)
     const cards = $('cards');
     const under = sec.classList.contains('cards-aside') && rectOf(cards) ? gap + (cards.querySelector('.card') ? Math.min(150, 0.4 * innerHeight) : cards.scrollHeight) : 0;
-    return free - (side.height - c.height) - gap - foot - under;
+    // (Pass has a row of its own over the name, and its gap, whether it's up or not.)
+    const pass = gap + (rectOf($('pass'))?.height ?? 0);
+    return free - (side.height - c.height) - gap - foot - under - pass;
   }
   // One above the other: what's above and below it moves with it, so its own height doesn't change theirs. (On a touch
   // screen, cards under BUZZ! come between it and the name: there BUZZ! is the last that must stay.)
   const keep = [
     $('buzz'),
+    $('pass'),
     $('wager-send'),
     $('answer-send'),
     // (Multiple choice: the last choice, in Send's place.)
@@ -1428,6 +1454,12 @@ function renderBuzz(v: PhoneView): void {
   const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
   /** Not answering this round (a Final this seat sits out): what's on is over the question already. */
   const notIn = team ? 'Your team isn’t in this one' : 'You’re not in this one';
+  /** Passing on this clue (an ordinary buzz-in one): the room's, until a press of Pass is in. */
+  const pass = v.pass;
+  if (passSent && (!pass || pass.id !== passSent.id || !!pass.passed === passSent.on)) {
+    passSent = null;
+    clearTimeout(passTimer);
+  }
   if (ans && !ans.open && v.statusOff && v.status) {
     // A partner clue's guess, locked (judged, or the answer is up): how it went, over what this seat sent.
     greyed = v.phase === 'lobby';
@@ -1480,6 +1512,12 @@ function renderBuzz(v: PhoneView): void {
   } else if (v.phase === 'answering' && v.answering?.you) {
     const how = mine?.rolled === 1 ? 'You won the roll' : mine?.byMs !== undefined ? `You were first by ${secs(mine.byMs)}` : 'Say your answer';
     [cls, big, small] = ['first', "You're answering!", how];
+  } else if (pass?.passed && !(v.phase === 'closed' && v.done)) {
+    // Passed: no buzzing on this one (Pass beside it takes it back), and who's answering if anyone is.
+    const who = v.phase === 'answering' ? (v.answering ? `${v.answering.name} is answering${v.answering.by ? ` (${v.answering.by})` : ''}` : 'Tie! The host decides') : null;
+    ({ big, small } = passedLines(pass, team, who));
+    cls = 'off';
+    greyed = true;
   } else if (v.phase === 'answering') {
     const who = v.answering ? `${v.answering.name} is answering${v.answering.by ? ` (${v.answering.by})` : ''}` : 'Tie! The host decides';
     // Out of this clue (wrong, or skipped): no place in the order to show any more.
@@ -1557,6 +1595,7 @@ function renderBuzz(v: PhoneView): void {
   b.setAttribute('aria-label', sentences(heard));
   if (greyed) b.setAttribute('aria-disabled', 'true');
   else b.removeAttribute('aria-disabled');
+  renderPass(v, !b.hidden && v.phase !== 'lobby', team);
   const hostGone = renderFoot(v, sym);
   // (Cards up: the line over them is what's said, not the hidden buzzer's.)
   const said = cardsUp && plain ? [cardBig, cardSmall] : heard;
@@ -1566,6 +1605,29 @@ function renderBuzz(v: PhoneView): void {
   // Count the early lock down.
   clearTimeout(tick);
   if (left > 0) tick = window.setTimeout(render, 200);
+}
+
+/**
+ * Pass, under the buzzer on an ordinary buzz-in clue (never on one players must play, nor with a box or cards in the
+ * buzzer's place): "I won't buzz on this one", or take the pass back. It keeps its place for the whole clue (hidden from
+ * sight, not taken out, while it can't be pressed: answering, out, or the clue over), so BUZZ! never moves under a finger.
+ */
+function renderPass(v: PhoneView, up: boolean, team: boolean): void {
+  const btn = $('pass') as HTMLButtonElement;
+  const p = up ? v.pass : undefined;
+  btn.hidden = !p;
+  const can = !!p?.can;
+  btn.classList.toggle('gone', !!p && !can);
+  btn.tabIndex = can ? 0 : -1;
+  if (fine.matches) btn.setAttribute('aria-keyshortcuts', 'P');
+  else btn.removeAttribute('aria-keyshortcuts');
+  btn.classList.toggle('passed', !!p?.passed);
+  const label = p ? passButton(p, team) : '';
+  if (btn.textContent !== label) btn.textContent = label;
+  // (On its way: pressing again waits.)
+  if (passSent) btn.setAttribute('aria-busy', 'true');
+  else btn.removeAttribute('aria-busy');
+  drawKeys();
 }
 
 /** Desktop: "Press Space to buzz" under the buzzer, and the same to a screen reader (its shortcut and description). */
@@ -2166,6 +2228,11 @@ $('buzz').addEventListener('click', (e) => {
   buzz(e.timeStamp);
 });
 $('buzz').addEventListener('contextmenu', (e) => e.preventDefault());
+// (The rest of a double tap or click is the same press: it passes once.)
+$('pass').addEventListener('click', (e) => {
+  if (e.detail > 1) return;
+  pass();
+});
 // A mouse press on 🎨, a colour, Not you? or the sound leaves the keys where they were, not on that button: Space and
 // Enter stay the buzzer's, and a wager or answer box that opens still takes them. (A touch screen's taps as before. A
 // ✍ clue's choice takes them: nothing buzzes then, and ↑ / ↓ go on from the one picked.)
@@ -2246,6 +2313,12 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (typing(e.target)) return;
+  // P: Pass (or take the pass back), as a click on it would.
+  if ((e.key === 'p' || e.key === 'P') && !$('s-buzz').hidden && $('overlay').hidden && !$('pass').hidden && !$('pass').classList.contains('gone')) {
+    e.preventDefault();
+    if (!e.repeat) pass();
+    return;
+  }
   if (!$('s-seats').hidden) {
     // The seat list: 1–9 takes that seat (or team), as a click on it would; ↑ and ↓ move the keys along the list.
     if (/^[1-9]$/.test(e.key)) {
@@ -2294,7 +2367,14 @@ function drawKeys(away = !document.hasFocus()): void {
   if (away) return void (k.textContent = 'Space goes to another window: click here first');
   const cap = document.createElement('kbd');
   cap.textContent = 'Space';
-  k.replaceChildren('Press ', cap, ' to buzz');
+  // (Pass up and pressable: its key too.)
+  const p = $('pass');
+  if (p.hidden || p.classList.contains('gone')) return void k.replaceChildren('Press ', cap, ' to buzz');
+  const key = document.createElement('kbd');
+  key.textContent = 'P';
+  // (Passed: Space does nothing until P takes it back.)
+  if (view?.pass?.passed) return void k.replaceChildren('Press ', key, ' to take back the pass');
+  k.replaceChildren('Press ', cap, ' to buzz · ', key, ' to pass');
 }
 addEventListener('focus', () => drawKeys(false));
 addEventListener('blur', () => drawKeys(true));

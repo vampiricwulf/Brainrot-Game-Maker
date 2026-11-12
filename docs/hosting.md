@@ -192,7 +192,13 @@ More settings are under **▸ Buzzer options**. **🔒 Lock seats** keeps new ph
 - The fastest reaction wins, timed on each phone, so a slow connection doesn't cost the buzz.
 - Every buzz is listed in the panel, fastest first. A wrong answer locks that player out and the next one answers.
   **⏭ Skip** passes them on with no points taken.
-- **↺ Reset buzzers** (`0`) lets everyone buzz again.
+- **↺ Reset buzzers** (`0`) lets everyone buzz again (and forgets who passed).
+- **Pass**: on an ordinary buzz-in clue, each phone has **Pass: I won't buzz on this one** under the buzzer (`P` on a
+  computer). A player who passed can't buzz until they tap **Take back my pass**, which they can until someone gets it
+  right or the answer shows; with Teams a pass counts for the team. The buzzers' row lists who passed ("Passed: Ann,
+  Bob"); once everyone who could still buzz has passed (or missed it), it says **Everyone passed** and 👁 Reveal answer
+  wears the ring. There's no Pass on ✍ clues, multiple choice, the Final, partner clues or Daily Doubles, nor on a clue
+  ticked **Everyone must play (no Pass)** in the editor.
 - Buzzes within 0.01 seconds are a tie: **🎲 Roll for it** (`O`), or pick a player yourself.
 
 ### Teams
