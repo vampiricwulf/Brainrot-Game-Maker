@@ -216,6 +216,17 @@ try {
     const at = (x) => items.findIndex((i) => i.includes(x));
     const order = ['Duplicate', 'Copy category', 'Paste category here', 'Move left'].map(at);
     assert(order.every((n, i) => n >= 0 && (i === 0 || n > order[i - 1])) && (await menu.getByRole('menuitem', { name: /Paste category here/ }).isDisabled()), `the category menu: ⧉ Duplicate · 📋 Copy category · 📋 Paste category here (greyed until one is copied) (${items.join(' | ')})`);
+    const kbd = (name) => menu.getByRole('menuitem', { name }).locator('kbd').allInnerTexts();
+    assert((await kbd(/Copy category/)).length === 0 && (await kbd(/Paste category here/)).length === 0, 'right-clicked off the ⋯, Copy / Paste category show no Ctrl+C / Ctrl+V (they copy and paste only on the ⋯)');
+    await page.keyboard.press('Escape');
+    await page.locator('.cat').nth(0).locator('textarea').first().focus();
+    await page.keyboard.press('Shift+F10');
+    assert((await menu.getByRole('menuitem', { name: /Copy category/ }).isVisible()) && (await kbd(/Copy category/)).length === 0 && (await kbd(/Paste category here/)).length === 0, 'Shift+F10 in the name: no Ctrl+C / Ctrl+V beside Copy / Paste category (there they copy and paste text)');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /^More for category 1/ }).click();
+    assert((await kbd(/Copy category/)).join('').includes('C') && (await kbd(/Paste category here/)).join('').includes('V'), 'from the ⋯ the menu shows Ctrl+C / Ctrl+V beside Copy / Paste category');
+    await page.keyboard.press('Escape');
+    await page.locator('.cat').nth(0).locator('.grip').click({ button: 'right' });
     await menu.getByRole('menuitem', { name: /Copy category/ }).click();
     const first = await tileText(0, 0);
     const before6 = await tileText(5, 0);

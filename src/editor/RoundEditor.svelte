@@ -705,16 +705,21 @@
     else if (k === 'v') (e.preventDefault(), pasteCat(ci));
   }
 
-  /** A category's menu: its image, a copy, moves and inserts, then clearing and deleting it. */
-  function catItems(ci: number): MenuEntry[] {
+  /**
+   * A category's menu: its image, a copy, moves and inserts, then clearing and deleting it. `fromButton`: it drops from
+   * the ⋯, the one place Ctrl+C / Ctrl+V copy and paste the category, so only there does it show those keys (in the
+   * name box they're the browser's text copy and paste).
+   */
+  function catItems(ci: number, fromButton = false): MenuEntry[] {
+    const noKeys = fromButton ? {} : { keys: false as const };
     const cat = round.categories[ci];
     const n = round.categories.length;
     return menuOf({
       heading: categoryLabel(cat),
       verbs: [{ label: '🖼 Image…', onclick: () => (catPicker = ci) }],
       duplicate: menuItem.duplicate(() => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))), { disabled: n >= 10, keys: false }),
-      copy: menuItem.copy(() => copyCat(ci), { label: '📋 Copy category' }),
-      paste: menuItem.paste(() => pasteCat(ci), { label: '📋 Paste category here', disabled: !clipboard.category }),
+      copy: menuItem.copy(() => copyCat(ci), { label: '📋 Copy category', ...noKeys }),
+      paste: menuItem.paste(() => pasteCat(ci), { label: '📋 Paste category here', disabled: !clipboard.category, ...noKeys }),
       move: [menuItem.left(() => moveCat(ci, ci - 1), { disabled: ci === 0 }), menuItem.right(() => moveCat(ci, ci + 1), { disabled: ci === n - 1 })],
       insert: [
         { label: '＋ Insert category left', onclick: () => insertCat(ci), disabled: n >= 10 },
@@ -732,7 +737,7 @@
    */
   function catMenu(e: MouseEvent, ci: number, button = false): void {
     if (!button && typingIn(e, e.target instanceof HTMLTextAreaElement && madeUpCategoryName(e.target.value))) return;
-    (button ? dropMenu : showMenu)(e, catItems(ci));
+    (button ? dropMenu : showMenu)(e, catItems(ci, button));
   }
 
   // Category headers drag to reorder (a line shows where it goes), from anywhere but their fields and buttons, so
