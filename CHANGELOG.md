@@ -29,6 +29,7 @@ in plain words for the people who make and host games. Anything committed but no
 - In the slide editor, ⤒ and ⤓ now only mean the layer order: a text's place in its box is ▔ ▬ ▁ (top, middle, bottom), and the order buttons read **⤒ To front** and **⤓ To back**, with the same signs in front of the item menu's **⤒ Bring to front**, **↑ Bring forward**, **↓ Send backward** and **⤓ Send to back**.
 - A new **🔊 Sound** on a slide goes beside the speakers already there (along the bottom, then up the right edge) and clear of the text where there's room, instead of landing exactly on the last one, where only the top speaker could be clicked.
 - In **🖼 Media** every card has its buttons at the same height: a sound's player sits inside its box, and the foot gives each button a row of its own (✎ Edit…, then **Replace everywhere…**, then the one fix), with ✎ Edit…'s place kept empty on a picture.
+- **🎨 Theme**'s preview of **❓ A clue** or the Final no longer shows an empty blue box while nothing is written yet: it shows sample words (“This is how a clue looks on stream”, and a sample category for the Final) in the clue text's font and color, and a click on them finds Clue text. The game itself isn't changed.
 
 ## 2026-11-08
 

@@ -41,7 +41,7 @@
   import { mediaDrop } from '../lib/mediadrop';
   import ThemeShare from './ThemeShare.svelte';
   import type { SharedTheme } from '../lib/themefile';
-  import { themeDemo } from './themedemo';
+  import { themeDemo, withSampleClue } from './themedemo';
   import { partAt, PREVIEW_PARTS, PREVIEW_SETTING } from './themepick';
   import { flash } from '../lib/nav.svelte';
 
@@ -75,8 +75,9 @@
   const firstBoard = $derived(shown.rounds.findIndex(isBoard));
   const view = $derived(previewing === 'clue' ? (firstBoard >= 0 ? 'clue' : 0) : Math.min(previewing, shown.rounds.length - 1));
 
-  // A pretend game in progress for the preview.
-  const demo = $derived(themeDemo(shown, view === 'clue' ? firstBoard : view, view === 'clue'));
+  // A pretend game in progress for the preview (a clue or Final with nothing written yet shows sample words, on a copy).
+  const previewGame = $derived(withSampleClue(shown, view === 'clue' ? firstBoard : view, view === 'clue'));
+  const demo = $derived(themeDemo(previewGame, view === 'clue' ? firstBoard : view, view === 'clue'));
 
   /**
    * The game's clue text: a font or color for the main text of every question and answer (the note offers Undo). It
@@ -596,7 +597,7 @@
     <div class="preview-click" onclick={previewClick} title="Click a tile, a value, a category, a score plate, or a clue’s text or background to find its setting">
       <div class="preview" aria-hidden="true" inert>
         <Stage hostOnly>
-          <AudienceView game={shown} session={demo} {live} role="mirror" demo />
+          <AudienceView game={previewGame} session={demo} {live} role="mirror" demo />
         </Stage>
       </div>
     </div>

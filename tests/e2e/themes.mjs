@@ -88,6 +88,11 @@ try {
     const was = await pick.inputValue();
     await pick.selectOption({ label: '❓ A clue' });
     await preview.locator('.full .slide .text').first().waitFor();
+    // (A new board's clue has nothing written: sample words, to judge the clue text on. The game's clue stays empty.)
+    assert(
+      (await preview.locator('.full .slide .text').first().innerText()).toLowerCase() === 'this is how a clue looks on stream',
+      'on ❓ A clue a clue with nothing written shows sample words in its text box',
+    );
     const flashed = () => page.evaluate(() => [...document.querySelectorAll('[data-place].flash')].map((e) => e.dataset.place));
     await page.waitForFunction(() => !document.querySelector('[data-place].flash'));
     await clickOn('.full .slide .text');
@@ -99,6 +104,10 @@ try {
     await page.waitForFunction(() => document.querySelector('[data-place="theme:tile"]')?.classList.contains('flash'));
     const onSlide = await flashed();
     assert(onText.join() === 'theme:clueColor' && onSlide.join() === 'theme:tile', `on ❓ A clue the clue's text finds Clue text and the slide's edge Tiles & slide background (${onText} | ${onSlide})`);
+    // The Final, nothing written yet: the same sample words under a sample category.
+    await pick.selectOption(await pick.locator('option', { hasText: 'Final' }).first().getAttribute('value'));
+    await preview.locator('.full .slide .text', { hasText: /this is how a clue looks on stream/i }).waitFor();
+    assert(true, 'the Final with nothing written shows the sample words too');
     await pick.selectOption(was);
     await preview.locator('.board .tile').first().waitFor();
   }
