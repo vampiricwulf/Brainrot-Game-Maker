@@ -441,7 +441,29 @@ try {
   assert((await page.locator('.board').count()) === 0, `＋ Award pressed with Enter: then 2, Enter award Player 2, and the clue stays open (the keys were on ${await focused()})`);
   await page.keyboard.press('Escape');
   await page.locator('.board').waitFor();
-  await page.getByRole('button', { name: '👥 Players' }).click();
+  // One window: ?, 📜 Log, ⚖ Rules and 👥 Players open in the host panel's own box, scrolling there, and the stage viewers
+  // see keeps its size (the panel doesn't grow for them).
+  const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const boardH = await stageH();
+  const panelBox = await page.locator('.play > .panel').boundingBox();
+  const inPanel = [];
+  for (const [what, open, box] of [
+    ['?', () => page.keyboard.press('?'), page.getByRole('dialog', { name: 'Keyboard shortcuts' })],
+    ['📜 Log', () => page.keyboard.press('l'), page.locator('aside[aria-label="Log"]')],
+    ['⚖ Rules', () => rulesBtn.click(), rulesDlg],
+    ['👥 Players', () => page.getByRole('button', { name: '👥 Players' }).click(), page.getByRole('dialog', { name: 'Players' })],
+  ]) {
+    await open();
+    await box.waitFor();
+    await page.waitForTimeout(300);
+    const r = await box.boundingBox();
+    inPanel.push(`${what} ${await stageH()}px, top ${Math.round(r.y)}`);
+    assert((await stageH()) === boardH && r.y >= panelBox.y - 1 && r.y + r.height <= 720 + 1, `one window, ${what} open: the stage keeps its size (${boardH}px) and the window is in the panel (${inPanel.at(-1)}, the panel from ${Math.round(panelBox.y)})`);
+    if (what === '👥 Players') break;
+    await page.keyboard.press('Escape');
+    await box.waitFor({ state: 'detached' });
+    await page.waitForFunction((h) => Math.round(document.querySelector('.stage-box').getBoundingClientRect().height) === h, boardH);
+  }
   const playersDlg = page.getByRole('dialog', { name: 'Players' });
   const ariaFocused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? 'BODY');
   const rowNames = () => playersDlg.locator('input.name').evaluateAll((els) => els.map((e) => e.value).join());

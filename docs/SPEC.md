@@ -604,7 +604,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     (on a laptop it fills the action part); the clue row's quiet ▦ Done (a skip) and 🙈 Hide may scroll out of sight
     there (`Esc`, `R` and the stage's menu do them). Windows opened mid-game (?,
     📜 Log, 👥 Players, ⚖ Rules, 🔊 Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel,
-    never the stage (the full map's screen card beside the map where the panel is wide enough); the RPG's ✎
+    never the stage (the full map's screen card beside the map where the panel is wide enough): ?, 📜 Log, 👥 Players
+    and ⚖ Rules scroll in the panel's own box, so the stage keeps its size; the others grow the panel; the RPG's ✎
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size
     from the board through a clue's steps (a Daily Double's splash, its question slides, a clue's media controls:
     room for as many as the round's busiest slide has, in a slides round too), so viewers don't see it zoom down and

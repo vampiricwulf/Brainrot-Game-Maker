@@ -326,6 +326,11 @@
    * RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons).
    */
   const panelWindow = $derived(!dual && (showKeys || showPlayers || showRules || showLog || showSound || !!shrinkDialog.open || rpgMap || !!boardEdit.buttons));
+  /**
+   * The ones of those that need more room than the panel has, so it grows for them (🔊 Sound, 🗜 Make smaller, ⤢ Full map,
+   * ⚙ Buttons). ?, 📜 Log, 👥 Players and ⚖ Rules scroll in the panel's own box: the stage on stream keeps its size.
+   */
+  const roomy = $derived(!dual && (showSound || !!shrinkDialog.open || rpgMap || !!boardEdit.buttons));
   /** The pre-game screen's "things to check" box (the bar at the foot brings it into view). */
   let checksEl = $state<HTMLElement>();
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
@@ -6496,7 +6501,7 @@
     class:side
     class:dual
     class:logged={dual && showLog}
-    class:roomy={panelWindow}
+    class:roomy
     oncontextmenu={hostMenu}
     use:focusRescue
     use:longPress
@@ -7362,7 +7367,7 @@
     z-index: 100;
     padding: 16px;
   }
-  /* Single window: over the host panel only (it grows for it), never the stage viewers see. */
+  /* Single window: over the host panel only, never the stage viewers see (the panel grows for the windows that need it). */
   .play.roomy:not(.side) > :global(.panel) {
     min-height: min(62vh, 440px);
   }
