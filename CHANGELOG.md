@@ -24,6 +24,7 @@ in plain words for the people who make and host games. Anything committed but no
 - The **🤫 CARD** and **ANSWER** badge at a slide's top-left is drawn under the selected item's frame and handles, so a picture or video placed near the top can still be grabbed by its corner, and the badge goes see-through while something is selected.
 - On a 1280-wide laptop the clue editor's Type row stays on one line with **🖼 Tile image** on it, so the slide below gets its height back: the Value, Countdown and Tile shows boxes are narrower, and under 1300px the two ticks read **⬚ Empty tile** and **✍ Everyone answers** (their tooltips keep the rest).
 - In a browser, **⚙ Settings › Saving** now says where the game is kept (in this browser as you work, a replaced game in 📂 Open… → Recent games, 💾 Save for a file to move or share) instead of naming Resume game and desktop-only settings, and the buzzer line says plainly when this version has no buzzer server set. The game's title box shows **Untitled Game** when it's empty, and its tooltip says the title shows on stream and names the saved file.
+- In the wheel and dice editors the preview stays in view beside a long list of slices or faces, so **🎡 Test spin** and **🎲 Test roll** play where you can see them (as on 🎨 Theme).
 
 ## 2026-11-08
 

@@ -323,6 +323,14 @@
     inset: 0;
     background: radial-gradient(circle, #1422a0, #000014);
   }
+  /* Two columns: the preview stays in view while a long list scrolls, so a test spin or roll is seen (as on 🎨 Theme). */
+  @media (min-width: 901px) {
+    .right {
+      position: sticky;
+      top: 0;
+      align-self: start;
+    }
+  }
   @media (max-width: 900px) {
     .we {
       grid-template-columns: 1fr;

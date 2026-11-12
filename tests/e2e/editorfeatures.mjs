@@ -375,6 +375,21 @@ try {
   await page.locator('.seg input.label').first().fill('');
   assert((await page.getByText('No label on slice 1: it lands as “Slice 1”.').count()) === 1, 'a slice left without a label is pointed out');
   await page.keyboard.press('Control+z');
+  {
+    // A long wheel: with its last slice in view, the preview and 🎡 Test spin are still in view beside it.
+    const addSlice = page.getByRole('button', { name: '＋ Add slice' });
+    for (let i = 0; i < 30; i++) await addSlice.click();
+    await page.locator('.seg').last().scrollIntoViewIfNeeded();
+    const inView = (el) => {
+      const r = el.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= innerHeight;
+    };
+    assert(!(await page.locator('.seg').first().evaluate(inView)), 'the list is longer than the window (its first slice is scrolled out of view)');
+    assert(
+      (await page.locator('.we .preview').evaluate(inView)) && (await page.getByRole('button', { name: '🎡 Test spin' }).evaluate(inView)),
+      'with a long wheel scrolled to its last slice, the preview and 🎡 Test spin stay in view',
+    );
+  }
   await page.getByRole('button', { name: '＋ Add dice' }).click();
   const count = page.getByLabel('How many', { exact: true });
   await count.fill('500');
