@@ -69,8 +69,9 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   moved onto it by the host, `Member.teamAt`) after the round began sees only what it sent itself (`hidden`: one is
   in). Other phones only hear who is wagering (a Daily Double) or that they sit it out (a Final). A new round id
   forgets what was sent.
-- **Answers** (`answers` in the host's state: a round id of 100 characters at most, `open`, its seats with `got` and
-  `closed` (the host has judged that seat's answer), and, with `'choices'`, 2 to 6 `choices`, each an `id` of 64
+- **Answers** (`answers` in the host's state: a round id of 100 characters at most, `open`, its seats with `got`,
+  `closed` (the host has judged that seat's answer) and `verdict` (the Final's, once the stream shows it: `right` and
+  the points `delta`, passed to that seat's phones, which show "✔ Right! +$1,200" or "✘ Wrong −$2,000"), and, with `'choices'`, 2 to 6 `choices`, each an `id` of 64
   characters at most and its words, 80 at most, never which is right): each seat in it sends its own answer from its
   phone (`answer` with the round id and its words, 200 characters at most, line breaks as spaces, or with `'choices'` a
   `pick`, one of the choices' ids, whose words become the answer; teams: anyone on the team, the newest counts). The

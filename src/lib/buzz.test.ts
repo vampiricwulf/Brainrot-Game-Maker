@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { finalName, newImageEl, newTextEl, playableClues, setSlideText, textSlide, PARTNER_GAMES, type BoardRound, type FinalRound, type PartnerGame, type SavedCard } from './model';
-import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, setScore, undo } from './session';
+import { applyScore, ddShowQuestion, finalChoose, finalJudge, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, setScore, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
   answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
@@ -800,6 +800,36 @@ describe('the Final’s typed answers (finalAnswerAsk, and its question in hostS
     session.finalStep = 'question';
     session.final!.answersLocked = true;
     expect(finalAnswerAsk(game, session)?.open).toBe(false);
+  });
+
+  it('in the reveals, each player judged gets their verdict and the points it counted, only on their own phone', () => {
+    const { game, session } = setup();
+    finalNext(session, game);
+    session.final!.answers = { a: { text: 'Adams', n: 1 }, b: { text: 'Washington', n: 1 } };
+    finalNext(session, game);
+    finalNext(session, game);
+    expect(session.finalStep).toBe('reveal');
+    expect(finalAnswerAsk(game, session)!.seats.map((x) => x.verdict)).toEqual([undefined, undefined]);
+    finalJudge(session, game, 'a', true);
+    expect(finalAnswerAsk(game, session)!.seats).toEqual([
+      { id: 'a', got: 1, verdict: { right: true, delta: 100 } },
+      { id: 'b', got: 1 },
+    ]);
+    finalJudge(session, game, 'b', false);
+    expect(finalAnswerAsk(game, session)!.seats[1].verdict).toEqual({ right: false, delta: -50 });
+    // Judged again: the judgment that counts now.
+    finalJudge(session, game, 'a', false);
+    expect(finalAnswerAsk(game, session)!.seats[0].verdict).toEqual({ right: false, delta: -100 });
+    undo(session);
+    expect(finalAnswerAsk(game, session)!.seats[0].verdict).toEqual({ right: true, delta: 100 });
+    // Each phone hears its own only.
+    const st = hostState(game, session, newBuzz(), 0, { answers: finalAnswerAsk(game, session) });
+    expect(phoneView(st, 'a').answer?.verdict).toEqual({ right: true, delta: 100 });
+    expect(phoneView(st, 'b').answer?.verdict).toEqual({ right: false, delta: -50 });
+    expect(phoneView(st, 'c').answer?.verdict).toBeUndefined();
+    // Never before the reveals (an Undo back to the answer).
+    session.finalStep = 'answer';
+    expect(finalAnswerAsk(game, session)!.seats.some((x) => x.verdict)).toBe(false);
   });
 
   it('the phones get the Final’s question and caption only with its answers asked, never what viewers can’t see yet', () => {

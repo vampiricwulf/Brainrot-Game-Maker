@@ -2024,6 +2024,21 @@ describe('answers (everyone answers on their phone)', () => {
     expect(g.pa.last('view')!.view.answer).toMatchObject({ open: true });
   });
 
+  it('a seat’s verdict (the Final’s, once on stream) goes to its own phones only; one that isn’t a verdict is dropped', () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ answers: ask() }) });
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'Siamese' });
+    const seats = (verdict: unknown) => [{ id: 'a', got: 1, closed: true, verdict }, { id: 'b' }];
+    g.send({ t: 'state', state: state({ answers: ask({ open: false, seats: seats({ right: true, delta: 1200 }) as never }) }) });
+    expect(g.pa.last('view')!.view.answer).toMatchObject({ text: 'Siamese', verdict: { right: true, delta: 1200 } });
+    expect(g.pb.last('view')!.view.answer?.verdict).toBeUndefined();
+    expect(g.pc.last('view')!.view.answer?.verdict).toBeUndefined();
+    for (const bad of [{ right: 'yes', delta: 5 }, { right: true, delta: 1.5 }, { right: false }, 'right', null]) {
+      g.send({ t: 'state', state: state({ answers: ask({ open: false, seats: seats(bad) as never }) }) });
+      expect(g.pa.last('view')!.view.answer?.verdict).toBeUndefined();
+    }
+  });
+
   it('limits how often a phone sends one, and how long it is', () => {
     const g = game();
     g.send({ t: 'state', state: state({ answers: ask() }) });

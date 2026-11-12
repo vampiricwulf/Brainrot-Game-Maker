@@ -109,6 +109,7 @@ import {
   cleanName,
   CLUE_TEXT_MAX,
   KICK_BLOCK_MS,
+  type AnswerAsk,
   type BuzzPhase,
   type CardMedia,
   type CardTo,
@@ -1998,11 +1999,13 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
   if (x.colorPick === true) extra.colorPick = true;
   if (x.answerShown === true) extra.answerShown = true;
   if (isObj(x.answers) && typeof x.answers.id === 'string' && x.answers.id && x.answers.id.length <= 100 && Array.isArray(x.answers.seats)) {
-    const aseats: { id: string; got?: number; closed?: true }[] = [];
+    const aseats: AnswerAsk['seats'] = [];
     for (const a of x.answers.seats.slice(0, 64)) {
       if (!isObj(a) || typeof a.id !== 'string' || !ids.has(a.id) || aseats.some((o) => o.id === a.id)) continue;
       const got = Number.isSafeInteger(a.got) && (a.got as number) > 0 ? (a.got as number) : undefined;
-      aseats.push({ id: a.id, ...(got ? { got } : {}), ...(a.closed === true ? { closed: true as const } : {}) });
+      const v = a.verdict;
+      const verdict = isObj(v) && typeof v.right === 'boolean' && Number.isSafeInteger(v.delta) ? { right: v.right, delta: v.delta as number } : undefined;
+      aseats.push({ id: a.id, ...(got ? { got } : {}), ...(a.closed === true ? { closed: true as const } : {}), ...(verdict ? { verdict } : {}) });
     }
     const choices = cleanChoices(x.answers.choices);
     extra.answers = { id: x.answers.id, open: x.answers.open === true, seats: aseats, ...(choices ? { choices } : {}) };

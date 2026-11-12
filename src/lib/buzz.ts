@@ -1,7 +1,7 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, SETTING_UP, STARTS_SOON, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
+import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, SETTING_UP, STARTS_SOON, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk, type AnswerVerdict } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, isBoard, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type SlideElement, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
@@ -596,7 +596,9 @@ export function everyoneAnswerAsk(game: Game, session: Session, opts: { choices?
  * yet), nor once the question has gone by without them (`f.answers` never set: the room was opened, or one that takes
  * answers came back, after it), else every phone would say "Answers locked" to a question it was never asked. `got`:
  * the last answer the host took from each (FinalState.answers). `choices`: as for a ✍ clue (everyoneAnswerAsk), the
- * Final's usable multiple choices, their words only.
+ * Final's usable multiple choices, their words only. `verdict`: in the reveals, each player judged (judging puts their
+ * wager on screen, and the stream shows ✔ CORRECT / ✘ WRONG and their new score): right or wrong, and the points the
+ * judgment counted gave or took (never before it's judged).
  */
 export function finalAnswerAsk(game: Game, session: Session, opts: { choices?: boolean } = {}): AnswerAsk | null {
   const f = session.final;
@@ -606,10 +608,17 @@ export function finalAnswerAsk(game: Game, session: Session, opts: { choices?: b
   if (step !== 'question' && !((step === 'answer' || step === 'reveal') && f.answers)) return null;
   const got = f.answers ?? {};
   const choices = opts.choices ? usableChoices(r.choices).map(({ id, text }) => ({ id, text })) : [];
+  const tag = finalTag(r.id);
+  const verdict = (id: Id): { verdict?: AnswerVerdict } => {
+    const res = step === 'reveal' && f.shown[id] ? f.results[id] : undefined;
+    if (!res) return {};
+    const counted = [...session.scoreLog].reverse().find((e) => e.playerId === id && e.clueId === tag && !e.undone);
+    return { verdict: { right: res === 'right', delta: counted?.delta ?? 0 } };
+  };
   return {
-    id: answerRoundId(session, finalTag(r.id)),
+    id: answerRoundId(session, tag),
     open: step === 'question' && !f.answersLocked,
-    seats: f.players.filter((id) => session.players.some((p) => p.id === id)).map((id) => ({ id, ...(got[id] ? { got: got[id].n } : {}) })),
+    seats: f.players.filter((id) => session.players.some((p) => p.id === id)).map((id) => ({ id, ...(got[id] ? { got: got[id].n } : {}), ...verdict(id) })),
     ...(choices.length ? { choices } : {}),
   };
 }

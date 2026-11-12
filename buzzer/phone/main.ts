@@ -29,7 +29,7 @@ import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type H
 import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
 import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
-import { HOST_AWAY_SAY_MS, hostAwayLine, money } from './lines';
+import { HOST_AWAY_SAY_MS, hostAwayLine, money, verdictLine } from './lines';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -1438,9 +1438,10 @@ function renderBuzz(v: PhoneView): void {
     // lines on one, " / " between them).
     const staked = wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
     const picked = pickLine(ans);
+    // Judged, and the stream shows it (the Final's reveals): how it went over it ("✔ Right! +$1,200").
     [cls, big, small] = [
       'off',
-      'Answers locked',
+      ans.verdict ? verdictLine(ans.verdict, sym) : 'Answers locked',
       staked + (ans.text ? `${team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${foldLines(ans.text)}”`}` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent'),
     ];
   } else if (wager?.mine) {

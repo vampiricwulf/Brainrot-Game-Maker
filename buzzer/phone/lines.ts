@@ -21,3 +21,12 @@ export function hostAwayLine(ms: number): string {
   const away = min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}` : `${min} min`;
   return `The host has been away ${away}. Your seat is kept: this page picks up by itself when they’re back.`;
 }
+
+/**
+ * The Final's verdict on this seat, once the stream shows it: "✔ Right! +$1,200", "✘ Wrong −$2,000" (no amount for 0).
+ * (A word joiner keeps the sign on the amount's line.)
+ */
+export function verdictLine(v: { right: boolean; delta: number }, sym: string): string {
+  const amount = v.delta ? ` ${v.delta > 0 ? '+' : '−'}\u2060${money(Math.abs(v.delta), sym)}` : '';
+  return `${v.right ? '✔ Right!' : '✘ Wrong'}${amount}`;
+}

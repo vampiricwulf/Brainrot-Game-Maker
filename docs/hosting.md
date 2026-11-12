@@ -203,7 +203,8 @@ locks out the whole team. A room holds up to 24 phones.
 ### Wagers and answers on phones
 
 On a Daily Double or Final, players type their wager on their phone; it fills your wager box (marked 📱) and only you
-see it. The phone shows their max and won't send more (unless you ticked Ignore the limit). In a Final they type their answer too.
+see it. The phone shows their max and won't send more (unless you ticked Ignore the limit). In a Final they type their
+answer too, and once you judge it in the reveals their phone says how it went ("✔ Right! +$1,200").
 
 A typed answer can take a few lines (8 at most): on a phone the keyboard's Enter key starts a new line and **Send
 answer** sends it; on a computer Enter sends and Shift+Enter starts a new line. The answers list and the Final's reveal

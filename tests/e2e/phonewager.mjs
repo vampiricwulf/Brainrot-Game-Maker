@@ -544,13 +544,20 @@ try {
     'N again: the check asks for Player 1’s verdict first (✔ Right C / ✘ Wrong X), with no “anyway”',
   );
   await goOnCheck(host, { ready: true }).waitFor();
+  assert((await big(ann).innerText()) === 'Answers locked', 'not judged yet: her phone still says “Answers locked” (no verdict before the stream has one)');
   const scoreWas = await ann.locator('#me').innerText();
   await host.keyboard.press('c');
   await goOnCheck(host).waitFor({ state: 'detached' });
   await aud.locator('.spot-result', { hasText: '✔ CORRECT' }).waitFor();
   assert((await aud.locator('.spot-wager').innerText()).includes('$1,300'), 'C: CORRECT, and her wager ($1,300) goes up with it');
   await ann.waitForFunction((was) => document.getElementById('me').innerText !== was, scoreWas);
-  assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Alexander / Fleming / (penicillin)”', `through the reveals her phone keeps her wager with her answer (${await small(ann).innerText()})`);
+  // (A word joiner keeps the sign with the amount.)
+  await big(ann).getByText('✔ Right! +\u2060$1,300', { exact: true }).waitFor();
+  assert(
+    (await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Alexander / Fleming / (penicillin)”' && (await big(bo).innerText()) === 'Answers locked',
+    `judged, on stream: her phone says “✔ Right! +$1,300”, her wager and answer under it; his, not judged, still “Answers locked” (${await small(ann).innerText()})`,
+  );
+  await shot('pw-6d-verdict-phone', ann);
   // (Its fly-in done:) the card, with the answer's line, still fits above the scores.
   await aud.waitForFunction(() => document.querySelector('.spot')?.getBoundingClientRect().bottom <= document.querySelector('.score-area')?.getBoundingClientRect().top);
   assert(true, 'the spotlight card, answer line and all, fits above the scores');
@@ -561,6 +568,11 @@ try {
   await aud.locator('.spot-wager', { hasText: '$2,000' }).waitFor();
   assert((await aud.locator('.spot-answer').innerText()).trim() === '', 'Player 2, with no typed answer: N shows his wager, as before (his answer line stays empty)');
   await shot('pw-6b-reveal-audience', aud);
+  assert((await big(bo).innerText()) === 'Answers locked', 'his wager shown, not judged yet: still “Answers locked”');
+  await host.keyboard.press('x');
+  await aud.locator('.spot-result', { hasText: '✘ WRONG' }).waitFor();
+  await big(bo).getByText(/^✘ Wrong/).waitFor();
+  assert((await small(bo).innerText()) === 'Your wager: $2,000 · None sent', `X: WRONG on stream, and his phone says “${await big(bo).innerText()}” over his wager`);
 
   // ---------- Teams: one wager per team, anyone on it sends it (one window: viewers see the host's panel) ----------
   const host2 = await newHost(undefined, true);

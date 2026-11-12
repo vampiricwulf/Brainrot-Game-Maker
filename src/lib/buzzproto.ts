@@ -338,11 +338,18 @@ export interface AnswerAsk {
   open: boolean;
   /**
    * got: the last answer (its `n`) the host took from this seat: one sent while the host was away comes again only if newer.
-   * Added later: closed, the host has judged this seat's answer (it can't be changed now, as if locked).
+   * Added later: closed, the host has judged this seat's answer (it can't be changed now, as if locked). verdict (added
+   * later): the Final's verdict on this seat once the stream shows it (right, and the points it gave or took).
    */
-  seats: { id: string; got?: number; closed?: true }[];
+  seats: { id: string; got?: number; closed?: true; verdict?: AnswerVerdict }[];
   /** Added later ('choices'): 2 to CHOICES_MAX choices to pick from instead of typing (never which one is right). */
   choices?: { id: string; text: string }[];
+}
+
+/** How a seat's answer was judged, as its phones are told once the stream shows it: right or not, and the points. */
+export interface AnswerVerdict {
+  right: boolean;
+  delta: number;
 }
 
 /** An answer a phone sent, as the room keeps it (per seat: a team's newest, whoever on it sent it). */
@@ -377,6 +384,8 @@ export interface PhoneAnswer {
   /** Added later ('choices'): the choices to pick from (only for a seat in it), and the one this seat picked. */
   choices?: { id: string; text: string }[];
   pick?: string;
+  /** Added later: this seat's verdict, once the stream shows it (AnswerAsk's seats). */
+  verdict?: AnswerVerdict;
 }
 
 /** HostState.wager: who is wagering, and on what. */
@@ -562,6 +571,7 @@ function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | n
       ...(mine && sent ? { text: sent.text, ...(sent.pick ? { pick: sent.pick } : {}), ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}) } : {}),
       ...(mine && !sent && hidden ? { hidden: true } : {}),
       ...(mine && a.choices?.length ? { choices: a.choices } : {}),
+      ...(seat?.verdict ? { verdict: seat.verdict } : {}),
     },
   };
 }
