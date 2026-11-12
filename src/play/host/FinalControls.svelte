@@ -350,12 +350,30 @@
     cardsBox?.querySelector<HTMLElement>('button:not(:disabled)')?.focus({ preventScroll: true });
   }
 
-  // The spotlit row stays in sight in a long list (8 players in a short window).
+  // The spotlit row stays in sight in a long list (8 players in a short window), above the step's sticky row: once its
+  // layout has settled (the next frame), and by hand when the scroll margin left it under that row.
   $effect(() => {
     const id = f?.current;
     if (!id || session.finalStep !== 'reveal') return;
-    void tick().then(() => orderEl?.querySelector(`[data-row="${id}"]`)?.scrollIntoView({ block: 'nearest' }));
+    let frame = 0;
+    let gone = false;
+    void tick().then(() => {
+      if (!gone) frame = requestAnimationFrame(() => keepInSight(id));
+    });
+    return () => {
+      gone = true;
+      cancelAnimationFrame(frame);
+    };
   });
+  function keepInSight(id: string): void {
+    const row = orderEl?.querySelector<HTMLElement>(`[data-row="${id}"]`);
+    if (!row) return;
+    row.scrollIntoView({ block: 'nearest' });
+    const foot = row.closest('.fj')?.querySelector(':scope > .row:last-child')?.getBoundingClientRect();
+    const under = foot ? row.getBoundingClientRect().bottom - (foot.top - 6) : 0;
+    const sc = scroller(row) ?? document.scrollingElement;
+    if (under > 0 && sc) sc.scrollTop += under;
+  }
 
   /**
    * What the blue button does next in the reveals (lib's finalRevealNow, as goon.ts reads it): the spotlit row's Show

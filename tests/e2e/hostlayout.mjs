@@ -1476,6 +1476,7 @@ try {
       await pl.keyboard.press('n');
       await pl.locator('.fj .pl').nth(i).and(pl.locator('.cur')).waitFor();
       await pl.waitForTimeout(150);
+      await pl.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
       clear.push(
         await pl.locator('.fj .pl.cur').evaluate((r) => {
           const foot = document.querySelector('.fj > .row:last-child').getBoundingClientRect();
