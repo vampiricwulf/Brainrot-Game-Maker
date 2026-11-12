@@ -586,6 +586,9 @@ try {
   assert((await revealMain()).includes('Finish game'), 'with everyone judged, Finish game is the main button');
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Game over'));
+  // No tie: the keys rest on the end box, with no ring, not on its first button (◀ Back to final reveals).
+  await page.waitForFunction(() => document.activeElement?.matches('.panel .end'));
+  assert((await page.locator('.panel .end').evaluate((e) => getComputedStyle(e).outlineStyle)) === 'none', 'the end screen with no tie: the keys rest on the end box, no ring on ◀ Back to final reveals');
   // (Typed with a symbol, a comma or a word too: the score box reads them all as 500.)
   const typed = ['$500', '500', '500 pts'];
   for (let i = 0; i < 3; i++) {
@@ -608,6 +611,10 @@ try {
     JSON.stringify(tieBox) === JSON.stringify(['❓ Tiebreaker clue (off)', '🎲 Tiebreaker roll-off', '🤝 Declare co-winners']) && (await mainButton(page).count()) === 0,
     `the tie box holds every way to settle it, and the end screen has no blue button (${tieBox.join(' | ')})`,
   );
+  // Its heading is one line, and the roll-off's O is a boxed keycap (it read like a zero).
+  const tieHead = await page.locator('.panel [data-tie] > div').first().evaluate((d) => ({ text: d.textContent.trim(), h: d.getBoundingClientRect().height }));
+  const capO = await page.locator('.panel [data-tie] kbd').evaluate((k) => getComputedStyle(k).borderTopStyle);
+  assert(/^Tie for first: Player 1, Player 2 & Player 3$/.test(tieHead.text) && tieHead.h < 30 && capO === 'solid', `the tie box's heading is one line, its O a keycap (${JSON.stringify(tieHead)}, ${capO})`);
   // After the show, all on the left, in one place tie or not: the way back, 📋 Copy standings, ▶ Next game…, then
   // 🔁 Rematch last and set apart; nothing takes the empty main cell's place. The status line says to settle the tie.
   const endRow = await page.locator('.panel .end > .row').last().evaluate((row) => {

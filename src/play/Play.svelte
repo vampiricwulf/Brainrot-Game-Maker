@@ -3488,7 +3488,7 @@
    * Another round is up: the button pressed for it is gone (the round buttons are new for each round), so the keys go on
    * from the new board's tile, not from the top of the page (nor the panel's first button, the timer's Start); with no
    * tile to pick, from the panel's main button (a title card, a board game, a Final), else the round's own first one (an
-   * Adventure's, not a tool card's).
+   * Adventure's, not a tool card's). The end screen with no tie: its box, so Tab goes on from there.
    */
   /** True while boardFocus puts the keys on a button it picked (not a tile): a guess, like the rescue's (see onfocusin). */
   let placing = false;
@@ -3497,9 +3497,12 @@
       const at = document.activeElement;
       if (at && at !== document.body && at.isConnected && !(at as HTMLButtonElement).disabled) return;
       const tile = document.querySelector<HTMLElement>('.play .stage-box .tile[tabindex="0"]:not(:disabled)');
+      // (The end screen with no tie: the end box itself, with no ring, not its first button, ◀ Back to final reveals.)
+      const end = session.phase === 'end' && !document.querySelector('.play .panel [data-tie]') ? document.querySelector<HTMLElement>('.play .panel .end') : null;
       const to =
         tile ??
         document.querySelector<HTMLElement>('.play .panel [data-next]:not(:disabled)') ??
+        end ??
         document.querySelector<HTMLElement>('.play .panel .mode-host:not(.tools) button:not(:disabled)');
       placing = !tile;
       to?.focus({ preventScroll: true });

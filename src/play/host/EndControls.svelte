@@ -99,10 +99,11 @@
 </script>
 
 <!-- (One column, spaced as the rest of the panel: the tie box and the line under it never sit on the buttons.) -->
-<div class="end">
+<div class="end" tabindex="-1">
   {#if ties.length}
     <div class="tie" data-tie>
-      <b>Tie for first:</b> {nameList(ties.map((p) => p.name))}
+      <!-- (One element: in the box's column each bare piece would take a line of its own.) -->
+      <div><b>Tie for first:</b> {nameList(ties.map((p) => p.name))}</div>
       <div class="row">
         <!-- Every way to settle it, here only (no blue button on the end screen). -->
         {#if tbReady}
@@ -149,6 +150,10 @@
 </div>
 
 <style>
+  /* (The keys rest on the box at the end, without a ring: see Play's boardFocus.) */
+  .end:focus {
+    outline: none;
+  }
   .end {
     display: flex;
     flex-direction: column;
