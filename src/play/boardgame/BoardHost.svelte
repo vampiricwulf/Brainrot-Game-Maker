@@ -141,8 +141,8 @@
     }
     if (round.mover.kind === 'step') return stepWays.length ? `${turnName}’s turn: → the way on (Enter, or click the space on the stage).` : `${turnName}’s turn: no way on from here.`;
     return round.mover.kind === 'wheel'
-      ? `${turnName}’s turn: 🎡 Spin (D), then ▶ Move (Enter, or click the wheel once it lands).`
-      : `${turnName}’s turn: 🎲 Roll (D), then ▶ Move (Enter, or click the dice once they land).`;
+      ? `${turnName}’s turn: 🎡 Spin, then ▶ Move (or click the wheel).`
+      : `${turnName}’s turn: 🎲 Roll, then ▶ Move (or click the dice).`;
   });
   // The stage's menu: the turn box's own actions (its slot, or the one way on), then ✎ Edit board and 🔀 Shuffle. (Next
   // turn ▶ is the blue button's step: the moment's own.)

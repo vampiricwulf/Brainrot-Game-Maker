@@ -652,7 +652,7 @@ place, is dropped. The blue button, 👁 Reveal answer, asks first while the car
   still playing (23 s left)", with ✔ Got it ▶ reveal ⏎ and ✘ Missed ⇧⏎), so clicking it over and over never shows the
   answer mid-turn. Once time's up it reveals at once (they can still be judged after); ▦ Done ▶ board with them not
   judged asks again. Nothing is focused by the app: Enter and Shift+Enter go through the clue's own handling,
-  with its guard. The first line reads "Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)", and "Time's up:
+  with its guard. The first line reads "Did they get it? ✔ Got it or ✘ Missed" (the keys are on the buttons), and "Time's up:
   did they get it?" when the clock ends.
 - **A click on the stage** never shows the answer before the pair has had their go. On PARTNER UP! it's the blue
   button's Show question ▶, asking first for who picked it and the partner. In the Distribute step, with cards still

@@ -358,7 +358,7 @@ try {
   await page.mouse.click(startAt.x + startAt.width / 2, startAt.y + startAt.height / 2);
   await page.waitForTimeout(300);
   assert((await panel.locator('[data-judged]').count()) === 0 && (await gotIt.boundingBox()).x === gotAt, 'a second click where ⏱ Start the clock was judges nothing: ✔ Got it kept its place');
-  assert((await panel.locator('[data-partner-next]').innerText()) === 'Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)', 'the box’s first line asks if they got it, and how');
+  assert((await panel.locator('[data-partner-next]').innerText()) === 'Did they get it? ✔ Got it or ✘ Missed', 'the box’s first line asks if they got it, and how');
   // The verdict due: ✔ Got it and ✘ Missed an equal pair in the box, neither blue; the blue button stays 👁 Reveal answer,
   // and pressing it while they play asks first, so clicking it over and over never shows the answer mid-turn.
   const verdicts = await panel.locator('[data-partner-judge] button').evaluateAll((bs) => bs.slice(0, 2).map((b) => (b.classList.contains('good') ? 'good' : b.classList.contains('bad') ? 'bad' : b.className)));

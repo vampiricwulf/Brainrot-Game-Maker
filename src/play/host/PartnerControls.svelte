@@ -649,7 +649,7 @@
       return { text: toCopy.length ? 'Next: ⏱ Start the clock (the cards are copied)' : 'Next: ⏱ Start the clock' };
     }
     // (The verdict due: ✔ Got it and ✘ Missed an equal pair at the foot, neither blue, the keys where they were.)
-    return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)' };
+    return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it? ✔ Got it or ✘ Missed' };
   });
 
   // The stage's menu: the box's steps as they are here (who picked it, the wheel, the partner, the question; the cards'

@@ -677,7 +677,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   (`Enter`) in its 🤝 box, a wheel's 🎡 Spin! (`W`) or dice's 🎲 Roll! (`D`) in the tool's box, and a board game's roll and move
   in its turn box: one slot, 🎲 Roll (`D`), then ▶ Move Ann: 3 (`Enter`) in the same place once there's a count (greyed
   while the dice roll and at a fork), the Steps box and ◀ Back beside it, under a first line saying what to do (“Ann's
-  turn: 🎲 Roll (D), then ▶ Move (Enter, or click the dice once they land)”); a click on the landed dice (or movement
+  turn: 🎲 Roll, then ▶ Move (or click the dice)”: the keys are on the buttons); a click on the landed dice (or movement
   wheel) moves the token, with `Enter`'s checks. **The check before going on** (`src/play/host/goon.ts`,
   `GoOnCheck.svelte`): the blue button pressed (a click, `N`, `Enter` where it's Next, a click on the stage, the clue
   row's ▦ Done) with something left opens a card in the panel instead, anchored at its bottom right over the panel's
@@ -905,8 +905,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      leaves the keys where they were; the rest of a double-click that redrew the box is dropped, and 📤 Send and start
      (or ⏱ Start the clock), in the box or in the check, waits a second after the question, as Enter does. Once the
      clock runs a verdict is due: ✔ Got it / ✘ Missed are an equal pair (neither blue), the blue 👁 Reveal answer asks
-     first, and the first line says "Did they get it? ✔ Got it (Enter) or ✘ Missed
-     (Shift+Enter)" ("Time's up: did they get it?" once it runs out). ⏱ Start the clock says what it counts down from
+     first, and the first line says "Did they get it? ✔ Got it or ✘ Missed" (the
+     keys are on the buttons; "Time's up: did they get it?" once it runs out). ⏱ Start the clock says what it counts down from
      ("⏱ Start the clock (45 s)"). `T` or the status line's ⏱ Start while the cards are handed out: with no card waiting
      for a phone (copied by hand, or all sent) it goes live as ⏱ Start the clock does, sending nothing, and the first
      Enter after it only says "Clock is running: Enter again for ✔ Got it"; with phone cards still to send it starts
