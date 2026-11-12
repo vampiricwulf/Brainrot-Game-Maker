@@ -4,7 +4,7 @@ import { finalName, newImageEl, newTextEl, playableClues, setSlideText, textSlid
 import { applyScore, ddShowQuestion, finalChoose, finalJudge, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, setScore, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
-  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
+  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, passAsk, phoneStatus, questionText, roomCardCount,
   roomCardsFull, seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
 } from './buzz';
 import { CARDS_MAX, phoneView, OLD_FILE_LIMITS } from './buzzproto';
@@ -19,8 +19,8 @@ const P = ['a', 'b', 'c'];
 describe('buzzer rules', () => {
   it('a clue opens armed (a new armId) or closed, and nobody is locked out', () => {
     const b = { ...newBuzz(4), lockedOut: ['a'] };
-    expect(buzzClueOpened(b, true)).toEqual({ phase: 'armed', armId: 5, answering: null, lockedOut: [] });
-    expect(buzzClueOpened(b, false)).toEqual({ phase: 'closed', armId: 4, answering: null, lockedOut: [], armAt: 4 });
+    expect(buzzClueOpened(b, true, 77)).toEqual({ phase: 'armed', armId: 5, answering: null, lockedOut: [], passAt: 77 });
+    expect(buzzClueOpened(b, false, 77)).toEqual({ phase: 'closed', armId: 4, answering: null, lockedOut: [], armAt: 4, passAt: 77 });
   });
 
   it('tells buzzers never opened on this clue from ones opened and closed again (armAt)', () => {
@@ -53,9 +53,10 @@ describe('buzzer rules', () => {
   });
 
   it('a wrong answer locks that player out and opens the buzzers again for the rest (a new armId)', () => {
-    const a = buzzTake(buzzClueOpened(newBuzz(), true), 'a')!;
+    const a = buzzTake(buzzClueOpened(newBuzz(), true, 3), 'a')!;
     const r = buzzMissed(a, 'a', P);
-    expect(r).toEqual({ phase: 'armed', armId: 2, answering: null, lockedOut: ['a'] });
+    // (The clue's passes go on: the same round.)
+    expect(r).toEqual({ phase: 'armed', armId: 2, answering: null, lockedOut: ['a'], passAt: 3 });
     expect(buzzTake(r, 'a')).toBeNull();
     const b = buzzMissed(buzzTake(r, 'b')!, 'b', P);
     expect(b.lockedOut).toEqual(['a', 'b']);
@@ -67,9 +68,9 @@ describe('buzzer rules', () => {
   });
 
   it('a wrong answer with others in the buzz order: the next one who hasn’t missed answers, no new opening', () => {
-    const a = buzzTake(buzzClueOpened(newBuzz(), true), 'a')!;
+    const a = buzzTake(buzzClueOpened(newBuzz(), true, 3), 'a')!;
     const r = buzzMissed(a, 'a', P, ['a', 'c', 'b']);
-    expect(r).toEqual({ phase: 'answering', armId: a.armId, answering: 'c', lockedOut: ['a'] });
+    expect(r).toEqual({ phase: 'answering', armId: a.armId, answering: 'c', lockedOut: ['a'], passAt: 3 });
     // c misses too: b is next; then the order is used up and the buzzers open for whoever is left.
     const s = buzzMissed(r, 'c', P, ['a', 'c', 'b']);
     expect(s).toMatchObject({ phase: 'answering', answering: 'b', lockedOut: ['a', 'c'] });
@@ -81,7 +82,7 @@ describe('buzzer rules', () => {
 
   it('0 opens them for everyone; a right answer closes them; leaving the clue clears it all', () => {
     const r = buzzMissed(buzzTake(buzzClueOpened(newBuzz(), true), 'a')!, 'a', P);
-    expect(buzzReset(r)).toEqual({ phase: 'armed', armId: r.armId + 1, answering: null, lockedOut: [] });
+    expect(buzzReset(r, 88)).toEqual({ phase: 'armed', armId: r.armId + 1, answering: null, lockedOut: [], passAt: 88 });
     const done = buzzDone(buzzTake(r, 'b')!);
     expect(done).toMatchObject({ phase: 'closed', answering: null, lockedOut: ['a'], done: true, doneBy: 'b' });
     expect(buzzArm(done, P)).toMatchObject({ phase: 'armed', armId: r.armId + 1, lockedOut: ['a'] });
@@ -91,9 +92,9 @@ describe('buzzer rules', () => {
 
 describe('team buzzers', () => {
   it('a team member’s buzz: the team answers, and the state says who on it buzzed', () => {
-    const armed = buzzClueOpened(newBuzz(), true);
+    const armed = buzzClueOpened(newBuzz(), true, 3);
     const a = buzzTake(armed, 'a', false, 'Ann')!;
-    expect(a).toEqual({ phase: 'answering', armId: 1, answering: 'a', lockedOut: [], by: 'Ann' });
+    expect(a).toEqual({ phase: 'answering', armId: 1, answering: 'a', lockedOut: [], by: 'Ann', passAt: 3 });
     // A teammate (or anyone) buzzing after doesn't take over.
     expect(buzzTake(a, 'a', false, 'Al')).toBeNull();
     // Picked by the host: nobody on the team buzzed.
@@ -104,17 +105,17 @@ describe('team buzzers', () => {
   });
 
   it('a wrong answer locks out the whole team; the next team in the order answers, with who buzzed for it', () => {
-    const a = buzzTake(buzzClueOpened(newBuzz(), true), 'a', false, 'Ann')!;
+    const a = buzzTake(buzzClueOpened(newBuzz(), true, 5), 'a', false, 'Ann')!;
     const r = buzzMissed(a, 'a', P, [{ id: 'a', by: 'Ann' }, { id: 'a', by: 'Al' }, { id: 'b', by: 'Bea' }]);
-    expect(r).toEqual({ phase: 'answering', armId: 1, answering: 'b', lockedOut: ['a'], by: 'Bea' });
+    expect(r).toEqual({ phase: 'answering', armId: 1, answering: 'b', lockedOut: ['a'], by: 'Bea', passAt: 5 });
     // Team b misses too: c (no phone buzz: picked by number key earlier) is next, then a rebound for nobody left.
     const s = buzzMissed(r, 'b', P, [{ id: 'a', by: 'Ann' }, { id: 'b', by: 'Bea' }, 'c']);
-    expect(s).toEqual({ phase: 'answering', armId: 1, answering: 'c', lockedOut: ['a', 'b'] });
+    expect(s).toEqual({ phase: 'answering', armId: 1, answering: 'c', lockedOut: ['a', 'b'], passAt: 5 });
     const t = buzzMissed(s, 'c', P, ['a', 'b', 'c']);
     expect(t).toMatchObject({ phase: 'closed', lockedOut: ['a', 'b', 'c'] });
     expect(t).not.toHaveProperty('by');
     // A rebound (nobody left in the order) opens the buzzers with nobody answering.
-    expect(buzzMissed(a, 'a', P, [{ id: 'a', by: 'Ann' }])).toEqual({ phase: 'armed', armId: 2, answering: null, lockedOut: ['a'] });
+    expect(buzzMissed(a, 'a', P, [{ id: 'a', by: 'Ann' }])).toEqual({ phase: 'armed', armId: 2, answering: null, lockedOut: ['a'], passAt: 5 });
   });
 
   it('the buzz order has each team once, its first buzz (a teammate’s later one is no new place)', () => {
@@ -221,6 +222,37 @@ describe('hostState (what the buzzer room is told)', () => {
     const json = JSON.stringify(s);
     for (const leak of ['Shiba', 'HOST NOTE', 'LAYER NOTE', 'SECRET', 'img1', 'answerSlide', 'What is', 'hostNotes', 'media']) expect(json).not.toContain(leak);
     expect(Object.keys(s).sort()).toEqual(['allowNew', 'answerShown', 'answering', 'armId', 'clue', 'colorPick', 'currency', 'earlyLockMs', 'lockedOut', 'phase', 'scores', 'seats', 'title']);
+  });
+
+  it('Pass: an ordinary buzz-in clue takes passes, in a round named by the clue and when its passes began', () => {
+    const { game, session } = setup();
+    const clue = (game.rounds[0] as BoardRound).categories[0].clues[0];
+    expect(passAsk(game, session, buzzClueOpened(newBuzz(), true, 7))).toBeNull();
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    const b = buzzClueOpened(newBuzz(), false, 7);
+    expect(passAsk(game, session, b)).toEqual({ id: `${clue.id}@7` });
+    // Through a buzz, a miss and a right answer the round stays; ↺ Reset starts another; put away (lobby): none.
+    const missed = buzzMissed(buzzTake(buzzArm(b, P), 'a')!, 'a', P);
+    expect(passAsk(game, session, missed)?.id).toBe(`${clue.id}@7`);
+    expect(passAsk(game, session, buzzDone(buzzTake(missed, 'b')!))?.id).toBe(`${clue.id}@7`);
+    expect(passAsk(game, session, buzzReset(missed, 9))?.id).toBe(`${clue.id}@9`);
+    expect(passAsk(game, session, buzzIdle(b))).toBeNull();
+    // It goes to the room with the clue, never on the board.
+    expect(hostState(game, session, b, 0, { pass: passAsk(game, session, b) }).pass).toEqual({ id: `${clue.id}@7` });
+    expect(hostState(game, session, buzzIdle(b), 0, { pass: { id: 'x' } }).pass).toBeUndefined();
+    // Everyone must play, ✍ Everyone answers, a Daily Double, a partner clue: no Pass.
+    clue.mustPlay = true;
+    expect(passAsk(game, session, b)).toBeNull();
+    delete clue.mustPlay;
+    clue.everyone = true;
+    expect(passAsk(game, session, b)).toBeNull();
+    delete clue.everyone;
+    clue.type = 'dailyDouble';
+    expect(passAsk(game, session, b)).toBeNull();
+    clue.type = 'wheel';
+    expect(passAsk(game, session, b)).toEqual({ id: `${clue.id}@7` });
+    session.dd = { stage: 'question', playerId: 'a', wager: 0 };
+    expect(passAsk(game, session, b)).toBeNull();
   });
 
   it('a phone sees no clue on the board, even if the buzz state says otherwise', () => {

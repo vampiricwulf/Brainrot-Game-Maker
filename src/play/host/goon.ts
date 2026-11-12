@@ -304,6 +304,8 @@ export type GoCtx = {
   buzz: BuzzState | null;
   /** A buzzer tie the room left to the host. */
   tie: Id[];
+  /** Players who passed on this clue from their phone (the room's, for its round of passes; left out: none). */
+  passed?: Id[];
   /** A ✍ clue: its answers from phones (the room's, for this clue), and who has a phone connected. */
   everyone: boolean;
   answers: { seats: Record<Id, { text: string; pick?: Id }>; locked: boolean } | null;
@@ -719,7 +721,8 @@ function buzzItems(c: GoCtx): LeftItem[] {
         ],
       },
     ];
-  if (buzzNeverOpened(c.buzz) && !c.selected.length && !Object.keys(c.marks).length)
+  // (Everyone passed: nobody would buzz in, opened or not.)
+  if (buzzNeverOpened(c.buzz) && !c.selected.length && !Object.keys(c.marks).length && !everyonePassed(c))
     return [
       {
         id: 'buzzers',
@@ -1494,6 +1497,26 @@ export function leftNow(c: GoCtx, step: Step): LeftItem[] {
 
 /** The box button that wears the ring now: the first item left with one (null: none). */
 export const ringOf = (items: LeftItem[]): string | null => items.find((i) => !i.done && i.box)?.box ?? null;
+
+/**
+ * Phone buzzers: every player still able to buzz on the open clue has passed (and at least one did; the rest missed
+ * it), nobody answering, picked or right, the answer not up. Nobody will take it: the answer comes next.
+ */
+export function everyonePassed(c: Pick<GoCtx, 'session' | 'buzzing' | 'buzz' | 'selected' | 'passed'>): boolean {
+  const b = c.buzz;
+  const passed = c.passed ?? [];
+  if (!c.buzzing || !b || b.phase === 'lobby' || b.phase === 'answering' || b.done || c.selected.length || c.session.revealed || c.session.phase !== 'clue') return false;
+  const ids = c.session.players.map((p) => p.id);
+  return ids.some((id) => passed.includes(id) && !b.lockedOut.includes(id)) && ids.every((id) => passed.includes(id) || b.lockedOut.includes(id));
+}
+
+/**
+ * What wears the ring now (one at a time): a box's button with something left (ringOf), else, once everyone passed,
+ * the blue button's 👁 Reveal answer ('main'), the moment's next step.
+ */
+export function ringNow(c: GoCtx, step: Step | null, items: LeftItem[]): string | null {
+  return ringOf(items) ?? (step?.id === 'reveal' && everyonePassed(c) ? 'main' : null);
+}
 
 // ---------- Going on ----------
 

@@ -6,7 +6,7 @@ import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
 import { prefs, serverAddress } from './prefs.svelte';
 import { app } from './app.svelte';
-import { PING_MS, RoomLink, type LinkDeps, type RoomBuzz, type RoomCardSeen, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
+import { PING_MS, RoomLink, type LinkDeps, type RoomBuzz, type RoomCardSeen, type RoomPasses, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
 import { healthFiles, noteServerFiles } from './serverlimits.svelte';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
@@ -116,6 +116,7 @@ function newLink(base: string): RoomLink {
       onAnswer: (a) => answerWatchers.forEach((fn) => fn(a)),
       onColor: (c) => colorWatchers.forEach((fn) => fn(c)),
       onCardSeen: (c) => seenWatchers.forEach((fn) => fn(c)),
+      onPasses: (p) => passWatchers.forEach((fn) => fn(p)),
     },
     deps,
   );
@@ -148,6 +149,13 @@ const seenWatchers = new Set<(c: RoomCardSeen) => void>();
 export function onRoomCardSeen(fn: (c: RoomCardSeen) => void): () => void {
   seenWatchers.add(fn);
   return () => seenWatchers.delete(fn);
+}
+
+const passWatchers = new Set<(p: RoomPasses) => void>();
+/** Who has passed on the open clue changed (the room's whole list). Returns the unsubscribe. */
+export function onRoomPasses(fn: (p: RoomPasses) => void): () => void {
+  passWatchers.add(fn);
+  return () => passWatchers.delete(fn);
 }
 
 const colorWatchers = new Set<(c: { seatId: string; color: string }) => void>();

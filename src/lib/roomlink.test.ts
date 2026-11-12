@@ -122,6 +122,17 @@ describe('parseRoomMsg', () => {
       expect(parseRoomMsg(JSON.stringify({ t: 'answer', id: 'c1@k', seatId: 'a', text: 'Oslo', n: 1, pick }))).toEqual({ t: 'answer', id: 'c1@k', seatId: 'a', text: 'Oslo', n: 1 });
   });
 
+  it("takes who passed (added later, 'pass'): the whole list, teams' who on it; a bad one is dropped", () => {
+    expect(parseRoomMsg('{"t":"passes","id":"c1@5","seats":[{"seatId":"a"},{"seatId":"b","by":"Bea"},{"seatId":"c","by":""}]}')).toEqual({
+      t: 'passes',
+      id: 'c1@5',
+      seats: [{ seatId: 'a' }, { seatId: 'b', by: 'Bea' }, { seatId: 'c' }],
+    });
+    expect(parseRoomMsg('{"t":"passes","id":"c1@5","seats":[]}')).toEqual({ t: 'passes', id: 'c1@5', seats: [] });
+    for (const bad of ['{"id":"","seats":[]}', '{"id":"c1","seats":[{"seat":"a"}]}', '{"id":"c1","seats":"a"}', '{"id":"c1"}'])
+      expect(parseRoomMsg(JSON.stringify({ t: 'passes', ...JSON.parse(bad) }))).toBeNull();
+  });
+
   it('takes the teams fields (added later): what the room can do, who on a team buzzed, who is on which phone', () => {
     expect(parseRoomMsg(JSON.stringify({ ...welcome, features: ['teams', 7, 'x'.repeat(50)] }))).toEqual({ ...welcome, features: ['teams'] });
     expect(parseRoomMsg('{"t":"buzz","armId":3,"seatId":"a","rank":1,"afterMs":0,"by":"Ann"}')).toMatchObject({ seatId: 'a', by: 'Ann' });

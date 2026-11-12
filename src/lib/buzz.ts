@@ -1,7 +1,7 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, SETTING_UP, STARTS_SOON, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk, type AnswerVerdict } from './buzzproto';
+import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, SETTING_UP, STARTS_SOON, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk, type AnswerVerdict, type PassAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, isBoard, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type SlideElement, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
@@ -34,6 +34,11 @@ export interface BuzzState {
    * this clue while armId is still this (see buzzNeverOpened). Dropped by any other change.
    */
   armAt?: number;
+  /**
+   * When this clue's passes began (the clue opening, or ↺ Reset): it names the round of passes phones pass in
+   * (passAsk), so a new one starts with nobody passed. Kept by every change on the clue (a wrong answer, an Undo of it).
+   */
+  passAt?: number;
 }
 
 /** A place in the buzz order: a player (team) id, or (teams) with the name of the team member who buzzed. */
@@ -61,6 +66,9 @@ export function buzzOrder(queue: QueuedId[]): { id: Id; by?: string }[] {
   return out;
 }
 
+/** The round of passes `b` is in, carried over to the state after it. */
+const keepPass = (b: Pick<BuzzState, 'passAt'>): { passAt?: number } => (b.passAt !== undefined ? { passAt: b.passAt } : {});
+
 export function newBuzz(armId = 0): BuzzState {
   return { phase: 'lobby', armId, answering: null, lockedOut: [] };
 }
@@ -72,10 +80,12 @@ export function buzzIdle(b: BuzzState): BuzzState {
 
 /**
  * A tile opened: nobody is locked out; the buzzers open now, or (`armNow` false) once the host opens them (`armAt`
- * notes the opening it started on).
+ * notes the opening it started on). Its passes start now (`now`: the time).
  */
-export function buzzClueOpened(b: BuzzState, armNow: boolean): BuzzState {
-  return armNow ? { phase: 'armed', armId: b.armId + 1, answering: null, lockedOut: [] } : { phase: 'closed', armId: b.armId, answering: null, lockedOut: [], armAt: b.armId };
+export function buzzClueOpened(b: BuzzState, armNow: boolean, now = Date.now()): BuzzState {
+  return armNow
+    ? { phase: 'armed', armId: b.armId + 1, answering: null, lockedOut: [], passAt: now }
+    : { phase: 'closed', armId: b.armId, answering: null, lockedOut: [], armAt: b.armId, passAt: now };
 }
 
 /**
@@ -91,12 +101,12 @@ export function buzzArm(b: BuzzState, players: Id[]): BuzzState {
     const { by: _by, ...rest } = b;
     return { ...rest, phase: 'closed', answering: null };
   }
-  return { phase: 'armed', armId: b.armId + 1, answering: null, lockedOut: [...b.lockedOut] };
+  return { phase: 'armed', armId: b.armId + 1, answering: null, lockedOut: [...b.lockedOut], ...keepPass(b) };
 }
 
-/** 0: everyone may buzz again (the locked-out players too). */
-export function buzzReset(b: BuzzState): BuzzState {
-  return { phase: 'armed', armId: b.armId + 1, answering: null, lockedOut: [] };
+/** 0: everyone may buzz again (the locked-out players too, and those who passed: the passes start over at `now`). */
+export function buzzReset(b: BuzzState, now = Date.now()): BuzzState {
+  return { phase: 'armed', armId: b.armId + 1, answering: null, lockedOut: [], passAt: now };
 }
 
 /**
@@ -105,7 +115,7 @@ export function buzzReset(b: BuzzState): BuzzState {
  */
 export function buzzTake(b: BuzzState, id: Id, force = false, by?: string): BuzzState | null {
   if (!force && (b.phase === 'answering' || b.phase === 'lobby' || b.lockedOut.includes(id))) return null;
-  return { phase: 'answering', armId: b.armId, answering: id, lockedOut: [...b.lockedOut], ...(by ? { by } : {}) };
+  return { phase: 'answering', armId: b.armId, answering: id, lockedOut: [...b.lockedOut], ...(by ? { by } : {}), ...keepPass(b) };
 }
 
 /**
@@ -116,13 +126,13 @@ export function buzzTake(b: BuzzState, id: Id, force = false, by?: string): Buzz
 export function buzzMissed(b: BuzzState, id: Id, players: Id[], queue: QueuedId[] = []): BuzzState {
   const lockedOut = b.lockedOut.includes(id) ? [...b.lockedOut] : [...b.lockedOut, id];
   const next = buzzOrder(queue).find((q) => !lockedOut.includes(q.id) && players.includes(q.id));
-  if (next) return { phase: 'answering', armId: b.armId, answering: next.id, lockedOut, ...(next.by ? { by: next.by } : {}) };
+  if (next) return { phase: 'answering', armId: b.armId, answering: next.id, lockedOut, ...(next.by ? { by: next.by } : {}), ...keepPass(b) };
   return buzzArm({ ...b, answering: null, lockedOut }, players);
 }
 
 /** Answered right: the buzzers close for this clue (0 opens them again). */
 export function buzzDone(b: BuzzState): BuzzState {
-  return { phase: 'closed', armId: b.armId, answering: null, lockedOut: [...b.lockedOut], done: true, doneBy: b.answering };
+  return { phase: 'closed', armId: b.armId, answering: null, lockedOut: [...b.lockedOut], done: true, doneBy: b.answering, ...keepPass(b) };
 }
 
 /**
@@ -700,6 +710,19 @@ export function wagerAsk(
   return null;
 }
 
+/**
+ * Whether players may pass on the open clue (HostState.pass), and its round of passes: an ordinary buzz-in clue only (a
+ * standard tile, or a wheel or dice tile's question), with the buzzers out (`b`); never a Daily Double, a partner clue,
+ * a ✍ clue everyone answers, nor one the author marked Everyone must play (Clue.mustPlay). Null otherwise. Its id is
+ * the clue's and when its passes began (BuzzState.passAt), so the clue reopened, or ↺ Reset, starts them over.
+ */
+export function passAsk(game: Game, session: Session, b: BuzzState): PassAsk | null {
+  if (session.phase !== 'clue' || session.dd || session.partner || b.phase === 'lobby') return null;
+  const clue = currentClueInfo(session, game)?.clue;
+  if (!clue || clue.everyone || clue.mustPlay || !['standard', 'wheel', 'dice'].includes(clue.type)) return null;
+  return { id: clip(`${clue.id}@${b.passAt ?? 0}`, 100) };
+}
+
 /** A player's name as the phones get it (the room takes 40 characters at most). */
 export const SEAT_NAME_MAX = 40;
 
@@ -708,14 +731,14 @@ export const SEAT_NAME_MAX = 40;
  * and caption (the question slide on screen). Built here only, from a whitelist: never answers, host notes, media or
  * the game's other content, except the cards the host sent (hostCards: built only from session.partner.sent and
  * session.cards, which only the host's presses add to). A card holds whatever the host put on it. `extra`: the phones' status line (phoneStatus), 🔒 locked seats, the wagers
- * and answers phones may send, and those cards (only for a room that takes them).
+ * and answers phones may send, those cards (only for a room that takes them), and whether players may pass (passAsk).
  */
 export function hostState(
   game: Game,
   session: Session,
   b: BuzzState,
   earlyLockMs: number,
-  extra: { status?: HostState['status']; locked?: boolean; wager?: WagerAsk | null; answers?: AnswerAsk | null; cards?: HostCard[] | null } = {},
+  extra: { status?: HostState['status']; locked?: boolean; wager?: WagerAsk | null; answers?: AnswerAsk | null; cards?: HostCard[] | null; pass?: PassAsk | null } = {},
 ): HostState {
   const info = (b.phase !== 'lobby' || extra.answers) && session.phase === 'clue' ? currentClueInfo(session, game) : null;
   // The Final's question goes along with its answers (never on the wager screen: there are none asked then).
@@ -752,6 +775,8 @@ export function hostState(
     ...(session.phase === 'end' ? { over: true, ...(session.rollOffWinner && tiebreakHolds(session, tiedForFirst(session).map((p) => p.id)) ? { winner: session.rollOffWinner } : {}) } : {}),
     ...(!game.settings.phoneColorsOff && !teamsOn(game.settings) ? { colorPick: true } : {}),
     ...(info && session.revealed ? { answerShown: true } : {}),
+    // (Players may pass on it: only while its buzzers are out.)
+    ...(extra.pass && b.phase !== 'lobby' && info ? { pass: extra.pass } : {}),
   };
 }
 

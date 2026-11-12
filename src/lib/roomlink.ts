@@ -12,6 +12,7 @@ export type RoomQueue = Extract<RoomToHost, { t: 'queue' }>;
 export type RoomWager = Extract<RoomToHost, { t: 'wager' }>;
 export type RoomAnswer = Extract<RoomToHost, { t: 'answer' }>;
 export type RoomCardSeen = Extract<RoomToHost, { t: 'cardSeen' }>;
+export type RoomPasses = Extract<RoomToHost, { t: 'passes' }>;
 
 /** What the link needs from a WebSocket (the browser's, or a test's fake). */
 export interface SocketLike {
@@ -48,6 +49,8 @@ export interface LinkEvents {
   onAnswer?: (a: RoomAnswer) => void;
   /** A phone showed a 🤫 card the host sent it. */
   onCardSeen?: (c: RoomCardSeen) => void;
+  /** Who has passed on the open clue changed (the whole list). */
+  onPasses?: (p: RoomPasses) => void;
 }
 
 const OPEN = 1;
@@ -163,6 +166,15 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
             ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}),
           }
         : null;
+    case 'passes': {
+      if (!isStr(m.id, 100) || !m.id || !Array.isArray(m.seats) || m.seats.length > 200) return null;
+      const seats: RoomPasses['seats'] = [];
+      for (const x of m.seats as unknown[]) {
+        if (!isObj(x) || !isStr(x.seatId)) return null;
+        seats.push({ seatId: x.seatId, ...(isStr(x.by, 100) && x.by ? { by: x.by } : {}) });
+      }
+      return { t: 'passes', id: m.id, seats };
+    }
     case 'files':
       return Array.isArray(m.ids) && m.ids.length <= FILES_LIST_MAX && m.ids.every(isFileId) ? { t: 'files', ids: m.ids as string[] } : null;
     case 'cardsLate': {
@@ -534,6 +546,9 @@ export class RoomLink {
         return;
       case 'cardSeen':
         this.ev.onCardSeen?.(m);
+        return;
+      case 'passes':
+        this.ev.onPasses?.(m);
         return;
       case 'files':
         this.files = m.ids;

@@ -131,6 +131,8 @@
     tieNames = '',
     onrolltie,
     phonesDown = '',
+    passNames = '',
+    allPassed = false,
     buzzExtra,
     inQueue = [],
     phoneChip,
@@ -274,6 +276,10 @@
     onrolltie?: () => void;
     /** Buzzer mode with no buzzer room to reach: why phones can't buzz (said instead of "Buzzers open"). */
     phonesDown?: string;
+    /** Phone buzzers: who passed on the open clue from their phone ("Ann, Bob"; teams "Red team (Zoe)"). */
+    passNames?: string;
+    /** Phone buzzers: everyone still able to buzz passed (goon.ts everyonePassed): the answer comes next. */
+    allPassed?: boolean;
     /** Buzzer mode: what phones add to the buzzer row (later buzzes, the phones' status). */
     buzzExtra?: Snippet;
     /** The players in the buzz order buzzExtra lists (those who missed struck out there, so not named again here). */
@@ -384,6 +390,7 @@
     if (partner?.stage === 'pick') return pickLine;
     if (steal && !steal.by) return stealersLeft(session.players, steal, marks).length ? 'Answer hidden · 🔔 a steal: the others can answer' : 'Answer hidden · nobody stole it: reveal the answer';
     if (partnerJudged) return 'Answer hidden · judged';
+    if (allPassed) return 'Answer hidden · everyone passed: reveal the answer';
     // (T started the clock with phone cards still to send: Enter sends them.)
     if (partner?.stage === 'distribute' && partnerUnsent && clockRuns) return `Clock running: Enter sends the ${partnerUnsent === 1 ? 'card' : `${partnerUnsent} cards`}`;
     const sent = sentNote ? ` · ${sentNote}` : '';
@@ -1453,6 +1460,8 @@
               <span class="muted hint">or pick one (1–{Math.min(9, session.players.length) || 9})</span>
             {:else if answerUp && !selected.length}
               <span class="muted hint">Answer on screen: the buzzers stay closed (🙈 Hide answer to open them again)</span>
+            {:else if allPassed}
+              <span class="passed-all" role="status">Everyone passed: reveal the answer</span>
             {:else if buzz?.phase === 'armed' && !selected.length}
               {#if !phonesDown}
                 <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
@@ -1470,6 +1479,7 @@
               <span class="muted hint">Buzzers closed (number keys still pick)</span>
             {/if}
             {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
+            {#if passNames && !allPassed}<span class="muted hint passed" title="Passed: {passNames}">Passed: {passNames}</span>{/if}
             {@render buzzExtra?.()}
             <span class="spacer"></span>
             <!-- Closed: they open on U, here (after a right answer, for the rest). -->
@@ -1583,6 +1593,7 @@
           {/if}
           <button
             class:primary={!ask}
+            class:ring={goon?.ring === 'main'}
             data-next
             data-flow={n.flow}
             disabled={n.disabled}
@@ -2320,6 +2331,19 @@
   .tie {
     font-weight: 700;
     color: var(--warn);
+  }
+  /* Who passed: on one line in the room left, cut short (…) rather than wrapping the row, which would shrink the stage
+     viewers see in one window (its tooltip has them all). */
+  .hint.passed {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Everyone passed: the answer comes next (👁 Reveal answer wears the ring). */
+  .passed-all {
+    font-weight: 700;
   }
   /* The open clue's words: cut short (…) rather than wrapping the line, which would shrink the stage viewers see (its
      tooltip has them whole). They take the room they need first; the host notes and the spacer get the rest. */

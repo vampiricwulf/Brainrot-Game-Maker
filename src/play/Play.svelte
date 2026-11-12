@@ -30,24 +30,24 @@
   import { dropOffersBut } from './host/offered.svelte';
   import { forgetRecipients, recipientsOf } from './host/tilecardpicks.svelte';
   import {
-    anywayLabel, answerRow, asked, ddWaits, doneSay, doneStep, escBounce, finalWaits, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx,
+    anywayLabel, answerRow, asked, ddWaits, doneSay, doneStep, escBounce, finalWaits, goOnDecision, inside, leftNow, mainStep, everyonePassed, mergeItems, ringNow, swallowSay, todo, type Check, type GoActs, type GoCtx,
     type GoPanel, type PartnerNow, type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
   } from './host/goon';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type Overlay, type StageAction, type TimerState } from '../lib/live';
   import {
-    answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
+    answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, passAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
   import { clip, KICK_BLOCK_MS, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
   import {
-    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, forgetCardFiles, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomCardSeen, onRoomColor, onRoomQueue,
+    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, forgetCardFiles, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomCardSeen, onRoomColor, onRoomPasses, onRoomQueue,
     onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomCanFree, roomHasAnswers, roomHasCards, roomHasChoices, roomHasFiles, roomHasWagers, roomLink, roomMembers, roomStillOpen, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { judgeAllPlan, usableChoices } from '../lib/choices';
   import { clearRoom, debounce, saveRoom, type SavedRoom } from '../lib/persist';
   import { chime } from '../lib/chime';
-  import type { RoomBuzz, RoomAnswer, RoomCardSeen, RoomQueue, RoomWager } from '../lib/roomlink';
+  import type { RoomBuzz, RoomAnswer, RoomCardSeen, RoomPasses, RoomQueue, RoomWager } from '../lib/roomlink';
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
@@ -801,6 +801,7 @@
     const offAnswer = onRoomAnswer(roomAnswer);
     const offColor = onRoomColor(roomColor);
     const offSeen = onRoomCardSeen(roomCardSeen);
+    const offPasses = onRoomPasses((p) => (roomPasses = p));
     if (session.remote && phonesOn) rejoinRoom(session.remote);
     else if (session.remote) {
       // Buzzer mode was turned off (in the editor) while the room was left open: it's closed now.
@@ -830,6 +831,7 @@
       offAnswer();
       offColor();
       offSeen();
+      offPasses();
       // Leaving the game (Discard & leave, the results): the phones are told it's over. Not ◀ Back to editor, Keep &
       // leave or ▶ Next game…: the room stays open in the editor (see keepRoomInEditor).
       // (A room kept in the editor that this game didn't take, as when viewing a finished game's results, stays open.)
@@ -1254,7 +1256,7 @@
     // would take its decided buzz for this one. Open, it's a new opening; otherwise the latest one.
     const floor = session.remote?.armId ?? 0;
     // The answer is on screen: nobody buzzes any more (a wrong answer then doesn't open them for the rest).
-    if (b.phase === 'armed' && session.phase === 'clue' && session.revealed) b = { phase: 'closed', armId: Math.max(floor, b.armId - 1), answering: null, lockedOut: [...b.lockedOut], done: true };
+    if (b.phase === 'armed' && session.phase === 'clue' && session.revealed) b = { phase: 'closed', armId: Math.max(floor, b.armId - 1), answering: null, lockedOut: [...b.lockedOut], done: true, ...(b.passAt !== undefined ? { passAt: b.passAt } : {}) };
     // (A clue's first opening moves up with it: they're still never opened.)
     if (b.armId < floor) {
       const armId = b.phase === 'armed' ? floor + 1 : floor;
@@ -1404,6 +1406,25 @@
       out: buzz.lockedOut.includes(q.seatId),
     })),
   );
+  /**
+   * Pass: the open clue takes passes from phones (an ordinary buzz-in clue, its buzzers out: passAsk), and who passed in
+   * its round of passes, as the room last said (a new round, ↺ Reset or the clue opened again, starts with nobody).
+   */
+  const passNow = $derived(phonesOn && buzzing && !toolFirst ? passAsk(game, session, buzz) : null);
+  let roomPasses = $state.raw<RoomPasses | null>(null);
+  const passed = $derived(
+    passNow && roomPasses?.id === passNow.id ? roomPasses.seats.filter((x) => session.players.some((p) => p.id === x.seatId)) : [],
+  );
+  /** "Passed: Ann, Bob" in the buzzers' row (teams: "Red team (Zoe)"), in the players' order. */
+  const passNames = $derived(
+    session.players
+      .filter((p) => passed.some((x) => x.seatId === p.id))
+      .map((p) => whoBuzzed(p.name, passed.find((x) => x.seatId === p.id)?.by))
+      .join(', '),
+  );
+  $effect(() => {
+    if (passNames) announce(`Passed: ${passNames}`, 'buzz-passed');
+  });
   /** A tie the room left to the host: nobody answers until the host picks or rolls. */
   const tie = $derived(
     roomQueue?.tie && roomQueue.armId === buzz.armId && buzz.phase === 'armed' && !selected.length
@@ -1526,6 +1547,7 @@
       wager: phoneWagerAsk(),
       answers: phoneAnswerAsk(),
       cards: cards ? hostCards(game, session, phoneCan(session)) : null,
+      pass: passNow,
     });
   }
 
@@ -3142,6 +3164,7 @@
       buzzing: buzzing && !phonesDown,
       buzz: app.live.buzz ?? null,
       tie,
+      passed: passed.map((x) => x.seatId),
       everyone,
       answers: everyone ? { seats: ans?.seats ?? {}, locked: !!ans?.locked } : null,
       phones: app.live.phones ?? [],
@@ -3430,7 +3453,7 @@
     check,
     first: leftMain[0]?.text ?? null,
     // (While the check is open, its strongest button has the ring: one at a time.)
-    ring: check ? null : ringOf(leftMain),
+    ring: check ? null : ringNow(go, mainNow, leftMain),
     lit: checkLit,
     flash: checkFlash,
     main: (src) => goOn(src),
@@ -6654,6 +6677,8 @@
         inQueue={queueRows.map((r) => r.id)}
         onrolltie={rollTie}
         {phonesDown}
+        {passNames}
+        allPassed={everyonePassed(go)}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}
         onhide={hideByButton}
         onexit={exitGame}

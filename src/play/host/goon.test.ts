@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from '../../lib/testgame';
 import { newSlidesRound, setSlideText, textSlide, type BoardRound, type FinalRound, type Game, type Session, type WheelSegment } from '../../lib/model';
 import { applyScore, goToRound, newSession, openClue, startTiebreaker, undo } from '../../lib/session';
-import { buzzArm, buzzClueOpened, buzzDone, buzzTake, newBuzz } from '../../lib/buzz';
+import { buzzArm, buzzClueOpened, buzzDone, buzzMissed, buzzReset, buzzTake, newBuzz } from '../../lib/buzz';
 import { newLive } from '../../lib/live';
 import { draftPick, openDice, openWheel, quickDice, scoreCards, spinWheel, toggleScoreboard } from '../../lib/overlay';
 import { newWheel } from '../../lib/tools';
@@ -14,7 +14,7 @@ import { moveNow, rollMover, runLanding, runSpace, sendNow } from '../boardgame/
 import { undoAction } from '../../lib/toolset';
 import {
   anywayLabel, asked, CHECK_GUARD_MS, ddWaits, doneSay, doneStep, enterQuick, escBounce, finalWaits, flowSteps, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
-  quietKinds, ringOf, swallowSay, teachLine, todo, wagersLine, type BoardNow, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
+  quietKinds, ringNow, ringOf, swallowSay, everyonePassed, teachLine, todo, wagersLine, type BoardNow, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
 } from './goon';
 import { FLOW } from './verbs';
 
@@ -300,6 +300,42 @@ describe('what’s left (3.4)', () => {
     expect(leftNow(ctx(g, s, { buzzing: true, buzz: closed, selected: ['a'] }), mainStep(c)!)).toEqual([]);
     s.goonQuiet = ['buzzers'];
     expect(leftNow(c, mainStep(c)!)).toEqual([]);
+  });
+
+  it('B: everyone passed (or missed it): no "never opened" item, and 👁 Reveal answer wears the ring', () => {
+    const { g, s } = setup();
+    openClue(s, REF, g);
+    const closed = buzzClueOpened(newBuzz(3), false);
+    const all = ctx(g, s, { buzzing: true, buzz: closed, passed: ['a', 'b', 'c'] });
+    const st = mainStep(all)!;
+    expect(st.id).toBe('reveal');
+    expect(everyonePassed(all)).toBe(true);
+    expect(leftNow(all, st)).toEqual([]);
+    expect(ringNow(all, st, [])).toBe('main');
+    // Two passed, one still could buzz: not yet (and the buzzers' item stays).
+    const two = ctx(g, s, { buzzing: true, buzz: closed, passed: ['a', 'b'] });
+    expect(everyonePassed(two)).toBe(false);
+    expect(ringNow(two, st, leftNow(two, st))).toBe('buzzers');
+    // One missed it, the other two passed: everyone left passed.
+    const armed = buzzArm(closed, ['a', 'b', 'c']);
+    const missed = buzzMissed(buzzTake(armed, 'c')!, 'c', ['a', 'b', 'c']);
+    expect(everyonePassed(ctx(g, s, { buzzing: true, buzz: missed, passed: ['a', 'b'] }))).toBe(true);
+    // Nobody passed, everyone missed: that's not "everyone passed" (the buzzers' row says they missed).
+    const out = { ...missed, lockedOut: ['a', 'b', 'c'] };
+    expect(everyonePassed(ctx(g, s, { buzzing: true, buzz: out, passed: [] }))).toBe(false);
+    // Someone answering, picked, right, the answer up, or phone buzzers off: no.
+    expect(everyonePassed(ctx(g, s, { buzzing: true, buzz: buzzTake(armed, 'a', true)!, passed: ['a', 'b', 'c'] }))).toBe(false);
+    expect(everyonePassed(ctx(g, s, { buzzing: true, buzz: armed, passed: ['a', 'b', 'c'], selected: ['a'] }))).toBe(false);
+    expect(everyonePassed(ctx(g, s, { buzzing: true, buzz: buzzDone(buzzTake(armed, 'a')!), passed: ['b', 'c'] }))).toBe(false);
+    expect(everyonePassed(ctx(g, s, { buzzing: false, buzz: armed, passed: ['a', 'b', 'c'] }))).toBe(false);
+    s.revealed = true;
+    expect(everyonePassed(ctx(g, s, { buzzing: true, buzz: armed, passed: ['a', 'b', 'c'] }))).toBe(false);
+    s.revealed = false;
+    // ↺ Reset: the host's list follows the room's (a new round of passes: nobody passed), and the ring goes.
+    expect(ringNow(ctx(g, s, { buzzing: true, buzz: buzzReset(armed), passed: [] }), st, [])).toBeNull();
+    // A box's ring comes first: a card not sent yet.
+    const items = leftNow(ctx(g, s, { buzzing: true, buzz: armed, passed: ['a', 'b', 'c'], cards: [{ id: 'k', name: 'Card 1', to: ['a'] }] }), st);
+    expect(ringNow(all, st, items)).toBe('card:k');
   });
 
   it('B: a buzzer tie: 🎲 Roll for it (O) or who answers, by their number', () => {
