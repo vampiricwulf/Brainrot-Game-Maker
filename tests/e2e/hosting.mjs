@@ -522,7 +522,7 @@ try {
   );
   await page.locator('.panel .status').click();
   await page.keyboard.press('n');
-  await page.locator('.toast', { hasText: /Waiting on .+: type their wagers?, or Sits out/ }).waitFor();
+  await page.locator('.toast', { hasText: /Waiting on .+: type their wagers?, or untick them to sit out/ }).waitFor();
   assert(
     await page.evaluate(() => document.activeElement?.matches('.fj .wagers input[data-wager]') && document.activeElement.value === ''),
     'N with a wager missing says whose (a toast) and goes to that box',

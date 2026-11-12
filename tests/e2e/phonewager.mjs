@@ -301,7 +301,7 @@ try {
   // up to $2,000: nothing is filled in for them.)
   assert(await mainButton(host, 'Show question ▶').isEnabled(), 'the Final’s wagers: the blue Show question ▶ is not greyed while some are missing');
   await host.keyboard.press('n');
-  await host.locator('.toast', { hasText: 'Waiting on Player 1’s phone, Player 2’s phone & Player 3: type their wagers, or Sits out' }).waitFor();
+  await host.locator('.toast', { hasText: 'Waiting on Player 1’s phone, Player 2’s phone & Player 3: type their wagers, or untick them to sit out' }).waitFor();
   assert(
     (await box('Player 3').inputValue()) === '' && (await box('Player 3').getAttribute('title')) === 'Max $2,000 (their score, or $2,000 if they have less)',
     'Player 3 at $0 has no 0 filled in: waited on, up to $2,000',

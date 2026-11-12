@@ -410,7 +410,7 @@ describe('the check (3.1–3.10)', () => {
   it('its words: the heading, "… anyway", the teach line, the ticks', () => {
     const { step, items } = picked();
     const ck = open(step, items);
-    expect([headingOf(items), anywayLabel(ck), teachLine(ck)]).toEqual(['loss', '▦ Done anyway: no points', 'Next time: Esc closes at once · Shift+click on the blue button skips this']);
+    expect([headingOf(items), anywayLabel(ck), teachLine(ck)]).toEqual(['loss', '▦ Done anyway: no points', 'Next time: Esc on the clue closes it without asking · Shift+click on the blue button skips this']);
     const buzz: LeftItem = { id: 'buzzers', kind: 'first', quiet: 'buzzers', text: '', quick: [] };
     const reveal: Step = { id: 'reveal', verb: FLOW.reveal, run: () => {}, reveals: true };
     expect([headingOf([buzz]), anywayLabel(open(reveal, [buzz])), teachLine(open(reveal, [buzz])), quietKinds([buzz])]).toEqual([
@@ -767,7 +767,7 @@ describe('wheels, dice, the scores and pop-ups over the stage (3.4 F, G, M)', ()
       ['tool'],
       'Spinning… then Show question ▶ (N)',
       'Show question anyway',
-      'Next time: Esc closes at once · Shift+click on the blue button skips this',
+      'Next time: Esc on the wheel goes on without asking · Shift+click on the blue button skips this',
     ]);
     // N, then Enter or W, spins (2); W spins at once (1, never the check). N again goes on without it.
     expect([goOnDecision('n', st, items, false, false), inside({ key: 'Enter' }, ck, after).do, inside({ key: 'w' }, ck, after).do, inside({ key: 'n' }, ck, after).do]).toEqual(['open', 'quick', 'quick', 'anyway']);
@@ -971,7 +971,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     const c = (over: Partial<GoCtx> = {}) => ctx(g, s, { final: { ...FIN, wagerPhones: ['b'] }, ...over });
     const cards = [{ id: 'k', name: 'Card “Hint”', to: ['a'] }];
     expect(finalWaits(c())).toEqual({
-      say: 'Waiting on Bob’s phone & Cat: type their wagers, or Sits out',
+      say: 'Waiting on Bob’s phone & Cat: type their wagers, or untick them to sit out',
       at: '.play .panel input[data-wager="b"]',
       row: '.play .panel .wrow[data-player="b"]',
     });
@@ -979,7 +979,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     const st = mainStep(c({ cards }))!;
     expect([st.busy, leftNow(c({ cards }), st)]).toEqual([undefined, []]);
     f.phonesLocked = true;
-    expect(finalWaits(c())!.say).toBe('Waiting on Bob & Cat: type their wagers, or Sits out');
+    expect(finalWaits(c())!.say).toBe('Waiting on Bob & Cat: type their wagers, or untick them to sit out');
     f.wagers = { a: 100, b: 50, c: 2.5 };
     expect(finalWaits(c())!.say).toBe('Not a whole number: Cat (type a whole number, 0 or more)');
     applyScore(s, g, ['a'], 300, 'x');

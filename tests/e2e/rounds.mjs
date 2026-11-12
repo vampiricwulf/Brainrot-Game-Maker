@@ -235,7 +235,7 @@ try {
   // Show question ▶ is never greyed: pressed with a wager missing, the keys go to its box and the status line says whose.
   assert((await showQuestion.isEnabled()) && (await waiting.count()) === 1, 'Show question waits for the wagers, never greyed');
   await showQuestion.click();
-  await page.locator('.toast', { hasText: /Waiting on .+: type their wagers, or Sits out/ }).waitFor();
+  await page.locator('.toast', { hasText: /Waiting on .+: type their wagers, or untick them to sit out/ }).waitFor();
   assert(
     (await wagerBoxes.first().evaluate((b) => b === document.activeElement)) && (await page.locator('.panel .status').innerText()).includes('taking wagers') && (await goOnCheck(page).count()) === 0,
     'pressed with a wager missing: the keys go to its box, no check, the question not up',

@@ -1111,7 +1111,7 @@ export function finalWaits(c: GoCtx): { say: string; at: string; row: string } |
     const rows = s.players.map((p) => p.id).filter((id) => f.players.includes(id));
     const first = rows.find((id) => missing.includes(id) || whole.includes(id) || over.includes(id));
     if (!first) return null;
-    if (missing.length) return { say: `Waiting on ${waitingOn(s, missing, c.final.wagerPhones)}: type ${missing.length === 1 ? 'their wager' : 'their wagers'}, or Sits out`, ...box(first) };
+    if (missing.length) return { say: `Waiting on ${waitingOn(s, missing, c.final.wagerPhones)}: type ${missing.length === 1 ? 'their wager' : 'their wagers'}, or untick them to sit out`, ...box(first) };
     if (whole.length) return { say: `Not a whole number: ${named(c, whole)} (type a whole number, 0 or more)`, ...box(first) };
     if (over.length === 1) return { say: `Over ${name(c, over[0])}’s max (${formatPoints(finalWagerCap(s, c.game, over[0]), sym(c))}): type less, or tick Ignore the limits`, ...box(first) };
     return { say: `Over the max: ${named(c, over)} (type less, or tick Ignore the limits)`, ...box(first) };
@@ -1559,7 +1559,10 @@ export function teachLine(check: Pick<Check, 'step' | 'items'>): string {
   const parts: string[] = [];
   if (check.step.reveals) parts.push('R reveals at once');
   // (Not with a score effect left: Esc asks once about it too.)
-  if (check.step.id === 'done' || (check.step.id === 'tool' && !todo(check.items).some((i) => i.hold))) parts.push('Esc closes at once');
+  // (Esc on the clue or the tile's wheel, with no card open: on this card Esc is Not yet.)
+  if (check.step.id === 'done') parts.push('Esc on the clue closes it without asking');
+  else if (check.step.id === 'tool' && !todo(check.items).some((i) => i.hold))
+    parts.push(`Esc on the ${check.step.verb.title?.includes('dice') ? 'dice' : 'wheel'} goes on without asking`);
   // (Only with a roll or a move left: neither key runs a landing.)
   if (check.step.id === 'turn' && todo(check.items).some((i) => i.id === 'roll' || i.id === 'move')) parts.push('D rolls and Enter moves at once');
   if (!todo(check.items).every((i) => i.must)) parts.push('Shift+click on the blue button skips this');
