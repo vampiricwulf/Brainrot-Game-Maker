@@ -782,8 +782,9 @@
     padding: 4px 0;
     background: var(--panel);
   }
-  /* (Scrolled to by 🤫 N cards ↓, it stops above the step's sticky row, not behind it.) */
-  .cards-box {
+  /* (Scrolled to by 🤫 N cards ↓, or the spotlit row kept in sight, it stops above the step's sticky row, not behind it.) */
+  .cards-box,
+  .pl {
     scroll-margin-bottom: 48px;
   }
   .no-wager {

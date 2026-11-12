@@ -1456,6 +1456,22 @@ try {
       spotRight && foot.join() === 'Finish now…,4 still to judge' && early.x + early.width < verdict.x,
       `and the spotlit row's ✔ Right in sight; Finish now… at the left of the box's foot beside “4 still to judge”, away from the verdicts (${foot.join(' | ')})`,
     );
+    // Each next player in turn (C judges, N spotlights the next): their row stops above the box's sticky foot, not
+    // under it, so its ✔ Right / ✘ Wrong are in sight.
+    const clear = [];
+    for (let i = 1; i < 4; i++) {
+      await pl.keyboard.press('c');
+      await pl.keyboard.press('n');
+      await pl.locator('.fj .pl').nth(i).and(pl.locator('.cur')).waitFor();
+      await pl.waitForTimeout(150);
+      clear.push(
+        await pl.locator('.fj .pl.cur').evaluate((r) => {
+          const foot = document.querySelector('.fj > .row:last-child').getBoundingClientRect();
+          return Math.round(foot.top - r.getBoundingClientRect().bottom);
+        }),
+      );
+    }
+    assert(clear.every((d) => d >= 0), `1280×720: each spotlit row in turn stops above the sticky Finish now… row (${clear.join(', ')}px clear)`);
     await ctx.close();
   }
 
