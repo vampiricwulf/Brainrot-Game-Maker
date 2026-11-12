@@ -52,6 +52,7 @@
     type EmbedKind, type ImageEl, type MediaKind, type MediaRef, type ShapeType, type Slide, type SlideElement, type TextEl,
   } from '../../lib/model';
   import Stage from '../../lib/Stage.svelte';
+  import StageRibbon from './StageRibbon.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import EditLayer from './EditLayer.svelte';
@@ -1294,6 +1295,8 @@
             {/key}
           {:else}
             <SlideView slide={editView} mode="edit" {placeholder} {fallbackBg} card={onCard} onfit={(id, r) => (fits[id] = r)} />
+            <!-- (Under the edit layer: the selection's frames and handles go over the badge.) -->
+            {#if badge && !drawing}<StageRibbon text={badge} dim={selected.length > 0} />{/if}
             <EditLayer
               {slide}
               bind:selected
@@ -1320,8 +1323,6 @@
           <div class="ribbon preview">PREVIEW · click to stop</div>
         {:else if drawing}
           <div class="ribbon drawing">✏ DRAWING · drag to draw a line · hold Shift as you let go to close it · Esc to stop</div>
-        {:else if badge}
-          <div class="ribbon">{badge}</div>
         {/if}
         {#if notice && notice.at === undoApi.top && !undoApi.pending && !previewing}
           <div class="notice" role="status">

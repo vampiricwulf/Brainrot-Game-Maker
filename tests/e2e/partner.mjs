@@ -250,6 +250,13 @@ try {
   // ---------- The card ----------
   await tabs.getByRole('tab', { name: '🤫 Card 1' }).click();
   assert((await dialog.getByText('🤫 CARD 1 · ONLY WHO YOU SEND IT TO SEES IT').count()) === 1, 'Card 1 opens with its badge');
+  // The badge is drawn on the slide under the edit layer: a selected item's frame and handles go over it.
+  const under = await dialog.evaluate((d) => {
+    const r = [...d.querySelectorAll('.ribbon')].find((e) => e.textContent.includes('ONLY WHO YOU SEND IT TO'));
+    const layer = d.querySelector('.canvas .layer');
+    return !!r && !!layer && r.parentElement === layer.parentElement && +getComputedStyle(r).zIndex < +getComputedStyle(layer).zIndex;
+  });
+  assert(under, 'the badge sits under the edit layer, so handles near the top-left show over it');
   assert((await dialog.getByLabel('Goes to').inputValue()) === 'giver', 'Card 1 goes to the describer');
   assert((await dialog.getByRole('option', { name: 'the describer (the partner)' }).count()) === 1, 'in the game’s words, saying who that is');
   await away();

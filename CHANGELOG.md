@@ -21,6 +21,7 @@ in plain words for the people who make and host games. Anything committed but no
 - On a 1280-wide laptop the header's **✓ Kept in this browser** is whole again (it read “✓ Kept in this brow…”): the game's title box gives way first.
 - The line beside **🤝 Partner clues** (and **⭐ Daily Doubles**) no longer says “all placed” when some can't go: it says how many can't, and why (“3 can't go yet: write a question and answer on more tiles first”). With no tile written yet, **🔀 Randomize** is greyed and says so.
 - **✎ Edit video / sound** opened from a slide item whose file is used only there no longer names a “Save as a new file” button that isn't in that window.
+- The **🤫 CARD** and **ANSWER** badge at a slide's top-left is drawn under the selected item's frame and handles, so a picture or video placed near the top can still be grabbed by its corner, and the badge goes see-through while something is selected.
 
 ## 2026-11-08
 
