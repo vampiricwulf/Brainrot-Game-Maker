@@ -16,6 +16,7 @@ import {
   inventory,
   logged,
   newStatField,
+  playStep,
   redoAction,
   redoFrom,
   type Undone,
@@ -229,6 +230,40 @@ describe('action log', () => {
     expect(lastAction(session, 2)?.text).toBe('Bob hurt');
     expect(lastAction(session, 3)).toBeUndefined(); // "Last:" in another round shows nothing
     expect(lastAction(session)?.text).toBe('Bob hurt'); // but Ctrl+Z still reaches it
+  });
+
+  it('↺ Reset buzzers on the open clue is a step: its Undo puts the round of passes back, only on that clue', () => {
+    const game = jeopardyGame();
+    const session = newSession(game);
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    session.remote = { code: 'ABCD', hostToken: 't', buzz: { phase: 'armed', armId: 1, answering: null, lockedOut: ['a'], passAt: 100, clue: '0.0.0', floor: 0 } };
+    logged(session, '↺ Reset buzzers', () => {
+      session.remote!.buzz = { phase: 'armed', armId: 2, answering: null, lockedOut: [], passAt: 200, clue: '0.0.0', floor: 0 };
+    });
+    expect(Object.keys(JSON.parse(session.actionLog!.at(-1)!.before))).toEqual(['pass:0.0.0']);
+    undoAction(session, game);
+    expect(session.remote.buzz!.passAt).toBe(100);
+    redoAction(session, game);
+    expect(session.remote.buzz!.passAt).toBe(200);
+    // Another clue open by then: nothing changes there.
+    undoAction(session, game);
+    session.remote.buzz = { ...session.remote.buzz!, clue: '0.0.1', passAt: 300 };
+    redoAction(session, game);
+    expect(session.remote.buzz.passAt).toBe(300);
+  });
+
+  it('a step only play can put back: undone and redone with nothing else changed', () => {
+    const { session } = setup();
+    session.currentRound = 1;
+    session.actionRedo = [{ id: 'x', ts: 1, text: 'old', before: '{}' }];
+    const id = playStep(session, 'Countdown stopped: everyone passed', 'clock:q1');
+    expect(session.actionLog!.at(-1)).toMatchObject({ id, text: 'Countdown stopped: everyone passed', round: 1 });
+    expect(session.actionRedo).toEqual([]);
+    const before = JSON.stringify(session.players);
+    expect(undoAction(session)?.id).toBe(id);
+    expect(redoAction(session)?.id).toBe(id);
+    expect(JSON.stringify(session.players)).toBe(before);
+    expect(lastAction(session)?.id).toBe(id);
   });
 
   it('stays small in a long show: never a copy of the score log', () => {

@@ -88,7 +88,7 @@
   import { cueHere, playCue } from './cues';
   import { BUILTIN } from '../lib/sounds';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, stepText, undoAction, whoWasWhoStep, type Undone } from '../lib/toolset';
+  import { finalNextStep, logged, playStep, redoAction, redoFrom, revealStep, setPicker, startStep, stepText, undoAction, whoWasWhoStep, type Undone } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
@@ -1203,6 +1203,27 @@
   const stealArm = (b: BuzzState, out: string[]): BuzzState => buzzArm({ ...b, answering: null, lockedOut: out }, playerIds());
   const playerIds = () => session.players.map((p) => p.id);
 
+  /**
+   * ↺ Reset buzzers (0, or U while someone answers), by its step: an Undo puts the buzzers back as they were (who was
+   * answering, who missed it, the buzz order and the round of passes), a Redo resets them again.
+   */
+  const resetSteps = new Map<string, { clue: string | undefined; before: BuzzState; after: BuzzState; queue: RoomQueue | null }>();
+  function resetFollow(a: ActionEvent, undone: boolean): void {
+    if (!buzzing || !(`pass:${openClueKey}` in JSON.parse(a.before))) return;
+    const s = resetSteps.get(a.id);
+    if (s && s.clue === info?.clue.id) {
+      const to = undone ? s.before : s.after;
+      setBuzz(to);
+      roomQueue = undone ? s.queue : null;
+      selected = to.phase === 'answering' && to.answering ? [to.answering] : [];
+      return;
+    }
+    // (After a reload: the round of passes the step put back, at least.)
+    const passAt = session.remote?.buzz?.passAt;
+    const { passAt: _was, ...rest } = $state.snapshot(buzz) as BuzzState;
+    setBuzz({ ...rest, ...(passAt !== undefined ? { passAt } : {}) });
+  }
+
   /** Awards that changed the buzzers (by their step): an Undo puts them back as they were, a Redo as they were after. */
   const buzzSteps = new Map<string, { clue: string | undefined; before: BuzzState; after: BuzzState }>();
   /** A score step undone or redone: the buzzers follow it, while its clue is still open. */
@@ -1251,6 +1272,20 @@
     pairClock = null;
     // (Not over a countdown the host started meanwhile, nor once the answer is up.)
     if (c?.clue === s.clue && c.at === s.at && !app.live.timer && !session.revealed) app.live.timer = timerResumed(c.timer, c.stopped);
+  }
+  /** The countdowns stopped once everyone passed, by their step (see allPassed): an Undo puts one back as it was. */
+  const clockSteps = new Map<string, { clue: string; timer: TimerState; at: number }>();
+  /** One of those undone or redone while its clue is still open (the answer not up): its countdown comes back, or stops again. */
+  function clockFollow(a: ActionEvent, undone: boolean): void {
+    const s = clockSteps.get(a.id);
+    if (!s || session.phase !== 'clue' || s.clue !== info?.clue.id || session.revealed) return;
+    if (undone) {
+      if (!app.live.timer) app.live.timer = timerResumed(s.timer, s.at);
+      return;
+    }
+    const t = app.live.timer;
+    if (t && !t.expired && timerRemaining(t) > 0) clockSteps.set(a.id, { ...s, timer: $state.snapshot(t) as TimerState, at: Date.now() });
+    app.live.timer = null;
   }
   /** One of those undone or redone while its clue is still open (the answer not up): its countdown comes back, or stops again. */
   function timerFollow(events: { batchId?: string; id: string }[], undone: boolean): void {
@@ -1377,9 +1412,17 @@
       // (A partner clue's steal: open for everyone but the ones who missed it, the two who played it.)
       const steal = partnerSteal(session);
       if (selected.length || buzz.lockedOut.length) toast(steal ? `Buzzers open for everyone but ${nameList(steal.out.map((id) => playerName(session, id)))}` : 'Buzzers open for everyone');
-      selected = [];
-      setBuzz(steal ? stealArm(buzz, steal.out) : buzzReset(buzz));
-      roomQueue = null;
+      // One step: Ctrl+Z puts the buzzers back as they were, with the buzz order and the round of passes it ended.
+      const before = $state.snapshot(buzz) as BuzzState;
+      const queue = $state.snapshot(roomQueue) as RoomQueue | null;
+      const last = session.actionLog?.at(-1)?.id;
+      logged(session, VERBS.resetBuzzers.label, () => {
+        selected = [];
+        setBuzz(steal ? stealArm(buzz, steal.out) : buzzReset(buzz));
+        roomQueue = null;
+      });
+      const step = session.actionLog?.at(-1)?.id;
+      if (step && step !== last) resetSteps.set(step, { clue: info?.clue.id, before, after: $state.snapshot(app.live.buzz) as BuzzState, queue });
       return;
     }
     if (buzz.phase === 'armed') return;
@@ -3204,6 +3247,24 @@
       act: goActs,
     };
   });
+  /**
+   * Everyone passed (or missed) with the countdown up: nobody is playing the clue any more, so it stops (no "Time's up"
+   * for nobody on stream). Its own step: Ctrl+Z puts it back with the time it had left. (Started again by hand meanwhile,
+   * it runs.)
+   */
+  const allPassed = $derived(everyonePassed(go));
+  $effect(() => {
+    if (!allPassed) return;
+    untrack(() => {
+      const t = app.live.timer;
+      if (!t || t.expired || timerRemaining(t) <= 0 || !info) return;
+      const timer = $state.snapshot(t) as TimerState;
+      const id = playStep(session, 'Countdown stopped: everyone passed', `clock:${info.clue.id}`);
+      clockSteps.set(id, { clue: info.clue.id, timer, at: Date.now() });
+      app.live.timer = null;
+      announce('Everyone passed: the countdown stopped');
+    });
+  });
   /** The blue button's step now (null: no blue button now: see goon.ts). */
   const mainNow = $derived(mainStep(go));
   /** What going on by it would skip or lose now: its tooltip's "first: …", and the ring on the box's next action. */
@@ -3801,6 +3862,8 @@
       const a = undoAction(session, game)!;
       undone.push({ log: 'action', id: a.id });
       pairClockFollow(was);
+      resetFollow(a, true);
+      clockFollow(a, true);
       // A Daily Double's player back (taken out, then the Undo): picked again, for its ✔ / ✘ and Enter.
       const dd = session.phase === 'clue' ? session.dd : null;
       if (dd?.stage === 'question' && dd.playerId && !selected.length) selected = [dd.playerId];
@@ -3833,6 +3896,10 @@
       const was = session.partner?.stage;
       const a = redoAction(session, game);
       pairClockFollow(was);
+      if (a) {
+        resetFollow(a, false);
+        clockFollow(a, false);
+      }
       if (a) return after(`${stepText(a, !dual)}${inRound(a)}`);
     }
     const events = redo(session);
@@ -5863,8 +5930,8 @@
             break;
           }
           // Every phone passed: nobody is left to award; the answer comes next (👁 Reveal answer wears the ring).
-          if (everyonePassed(go)) {
-            hint('Everyone passed: N reveals the answer');
+          if (allPassed) {
+            hint('Everyone passed: N reveals the answer, 0 lets them all buzz again');
             break;
           }
         }
@@ -6707,7 +6774,8 @@
         onrolltie={rollTie}
         {phonesDown}
         {passNames}
-        allPassed={everyonePassed(go)}
+        passedIds={passed.map((x) => x.seatId)}
+        {allPassed}
         onrolloff={(ids) => rolloff(ids, game.settings.rollOffDie || 20, 'tiebreak')}
         onhide={hideByButton}
         onexit={exitGame}

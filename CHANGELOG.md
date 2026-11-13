@@ -15,6 +15,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Changed
 
+- With phone buzzers, who passed is easy to see with a big table: the buzzers' row puts the count first (“Passed 6 of 8: Ann, Bob…”, in the room the 🔔 Buzzers open hint had), and the chips of players who passed fade, with “passed” on them. Once everyone has passed, the row also says ↺ Reset lets them all buzz again (after a hint, say).
 - A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
 - In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window.
 - Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.)
@@ -23,6 +24,8 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Fixed
 
+- Once everyone has passed, a running countdown stops, so the stream doesn't count down to “Time's up” for nobody. Ctrl+Z brings it back with the time it had left.
+- ↺ Reset buzzers (0, right next to 9) can be undone: Ctrl+Z puts the buzzers back as they were, with the buzz order, who missed it and who passed (with the buzzer room updated to this version; an older one still forgets the passes).
 - Seconds typed in the host's ⏱ box are for that clue only: the next clue (or the Final) starts its own countdown again. A number typed once used to replace every later clue's own time for the rest of the game.
 - In a board game's editor, the space you click shows its dashed yellow ring at once (it only showed on a space picked before).
 - The sample game's board, and a game file with partner clues made by hand, open with **🤝 Partner clues** counting the ones on the board (it said 0 beside “1 on the board”, with 🔀 Randomize greyed).

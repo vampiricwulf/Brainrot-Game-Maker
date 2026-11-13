@@ -904,12 +904,18 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      It keeps its place through the clue, out of sight while it can't be pressed (that phone answering, in the buzz
      order or out of the clue), so BUZZ! never moves. A passed seat can't buzz; **Take back my pass** undoes it until the
      clue is answered right or its answer shows. The room keeps the passes for the clue's round of passes
-     (`HostState.pass`, its id the clue's and when it opened or ↺ Reset last ran: a reset forgets them) and tells the
-     host; the buzzers' row says "Passed: Ann, Bob" (on one line, cut short), and once every player not out of the clue
-     has passed, "Everyone passed: reveal the answer" (the status line just "everyone passed"; Enter with nobody selected says N
-     reveals it) and 👁 Reveal answer wears the ring, the
-     buzzers-never-opened item no longer asked. An Undo of a judgement keeps the passes; an older phone shows no Pass,
-     and an older room drops it.
+     (`HostState.pass`, its id the clue's and when it opened or ↺ Reset last ran: a reset starts them over, and the room
+     keeps a few earlier rounds of the clue's, so going back to one's id brings its passes back) and tells the host; the
+     buzzers' row says "Passed 2 of 8: Ann, Bob", the count first (on one line, cut short, in the room of the 🔔 Buzzers
+     open hint, which goes once anyone has passed), and the chips of who passed fade (opacity 0.55) with "passed" in
+     their mark's place, so no chip changes width. Once every player not out of the clue has passed, "Everyone passed:
+     reveal the answer, or ↺ Reset to let them all buzz again" (the status line just "everyone passed"; Enter with
+     nobody selected says N reveals it and 0 lets them all buzz again) and 👁 Reveal answer wears the ring, the
+     buzzers-never-opened item no longer asked; a countdown up then stops, as its own step (“Countdown stopped:
+     everyone passed”: Ctrl+Z puts it back with the time it had left). ↺ Reset buzzers (0, or U while someone answers)
+     is a step too: Ctrl+Z puts the buzzers back as they were, with the buzz order, who missed it and the round of
+     passes it ended. An Undo of a judgement keeps the passes; an older phone shows no Pass, and an older room drops it
+     (and forgets the passes a Reset ended, even after its Undo).
    - *Daily Double*: DD splash, then a wager input for the chosen player (up to max(score, the game's wager floor, $2,000 by default); Ignore the limit, unticked on each Daily Double, takes any wager), then the question.
      The ⭐ box's first row is “Daily Double! Who found it?” and the players; its Wager row holds the Wager box, Ignore the
      limit and True Daily Double, then the max's words, cut short where the row is narrow. **Show question ▶** is the

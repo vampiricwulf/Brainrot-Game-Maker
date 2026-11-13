@@ -422,6 +422,10 @@ function capture(session: Session, game?: Game): Record<string, string> {
   // it back). Only who: the wagers, the deal and the sends change outside any step.
   const c = session.phase === 'clue' ? session.currentClue : null;
   if (c && session.dd) out[`dd:${c.round}.${c.cat}.${c.row}`] = JSON.stringify(session.dd.playerId ?? null);
+  // The open clue's round of passes from phones (when it began: the clue opening, or ↺ Reset buzzers). ↺ Reset buzzers is
+  // a step: undoing it brings back the round of passes it ended (play puts the rest of the buzzers back with it).
+  const rb = c ? session.remote?.buzz : null;
+  if (c && rb && rb.clue === `${c.round}.${c.cat}.${c.row}`) out[`pass:${rb.clue}`] = JSON.stringify(rb.passAt ?? null);
   const pt = session.phase === 'clue' ? session.partner : null;
   if (pt) out[`pair:${pt.clue}`] = JSON.stringify({ pickerId: pt.pickerId ?? null, partnerId: pt.partnerId ?? null, how: pt.how ?? null, member: pt.member ?? null, stage: pt.stage });
   for (const w of game?.worlds ?? [])
@@ -458,6 +462,7 @@ function restore(session: Session, json: string, game?: Game): void {
     else if (k.startsWith('step:')) putStep(session, k.slice(5), v as Session['finalStep'] | null);
     else if (k.startsWith('deal:')) putDeal(session, k.slice(5), v === true);
     else if (k.startsWith('dd:')) putDd(session, k.slice(3), v as string | null);
+    else if (k.startsWith('pass:')) putPass(session, k.slice(5), v as number | null);
     else if (k.startsWith('pair:')) putPair(session, k.slice(5), v as Pair | null);
     else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
     else if (k.startsWith('board:')) putBoard(game, k.slice(6), v as { spaces: BoardSpace[]; start: string | null } | null);
@@ -517,6 +522,14 @@ function putDd(session: Session, ref: string, playerId: string | null): void {
   if (!session.dd || !c || `${c.round}.${c.cat}.${c.row}` !== ref) return;
   if (playerId) session.dd.playerId = playerId;
   else delete session.dd.playerId;
+}
+
+/** The open clue's round of passes again (see capture): only while that clue is still the one open. */
+function putPass(session: Session, clue: string, passAt: number | null): void {
+  const b = session.phase === 'clue' ? session.remote?.buzz : null;
+  if (!b || b.clue !== clue) return;
+  if (passAt === null) delete b.passAt;
+  else b.passAt = passAt;
 }
 
 type Pair = { pickerId: string | null; partnerId: string | null; how: PartnerState['how'] | null; member: PartnerState['member'] | null; stage: PartnerState['stage'] };
@@ -612,6 +625,19 @@ export function startStep(session: Session, game?: Game): (text: string, quiet?:
     if (session.actionLog.length > LOG_LIMIT) session.actionLog.splice(0, session.actionLog.length - LOG_LIMIT);
     session.actionRedo = [];
   };
+}
+
+/**
+ * A step only play can put back, called `text`: play keeps what to put back by the step's id (the countdown stopped once
+ * everyone passed, say). `part` names it; its Undo and Redo change nothing else here. Returns the step's id.
+ */
+export function playStep(session: Session, text: string, part: string): string {
+  const id = newId();
+  session.actionLog ??= [];
+  session.actionLog.push({ id, ts: Date.now(), text, round: session.currentRound, before: JSON.stringify({ [part]: null }) });
+  if (session.actionLog.length > LOG_LIMIT) session.actionLog.splice(0, session.actionLog.length - LOG_LIMIT);
+  session.actionRedo = [];
+  return id;
 }
 
 /** The newest step (with `round`: only if it was taken in that round, as "Last:" shows it). */

@@ -3248,6 +3248,30 @@ describe('passes', () => {
     expect(g.pa.last('view')!.view.pass).toBeUndefined();
   });
 
+  it('an Undo of ↺ Reset (the round before again) brings back who passed in it', () => {
+    const g = game();
+    g.send({ t: 'state', state: clue() });
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    g.pb.send({ t: 'pass', id: 'c1@1', on: true });
+    // ↺ Reset: a new round, and c passes in it.
+    g.send({ t: 'state', state: clue({ armId: 2, pass: { id: 'c1@2' } }) });
+    expect(g.hostLast('passes')).toEqual({ t: 'passes', id: 'c1@2', seats: [] });
+    g.pc.send({ t: 'pass', id: 'c1@2', on: true });
+    // Undone: the round before, with a and b passed (and a still can't buzz).
+    g.send({ t: 'state', state: clue({ armId: 3, pass: { id: 'c1@1' } }) });
+    expect(g.hostLast('passes')).toEqual({ t: 'passes', id: 'c1@1', seats: [{ seatId: 'a' }, { seatId: 'b' }] });
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@1', passed: true, can: true });
+    g.pa.send({ t: 'buzz', armId: 3 });
+    expect(g.pa.last('result')).toMatchObject({ outcome: 'locked' });
+    // Redone: the Reset's round again, with c.
+    g.send({ t: 'state', state: clue({ armId: 4, pass: { id: 'c1@2' } }) });
+    expect(g.hostLast('passes')).toEqual({ t: 'passes', id: 'c1@2', seats: [{ seatId: 'c' }] });
+    // Only a few are kept; the board forgets them all.
+    expect(g.room.saved.passesBefore?.map((x) => x.id)).toEqual(['c1@1']);
+    g.send({ t: 'state', state: state() });
+    expect(g.room.saved.passesBefore).toBeUndefined();
+  });
+
   it('the host picking a passed seat by hand drops its pass; the host back hears the list again', () => {
     const g = game();
     g.send({ t: 'state', state: clue() });

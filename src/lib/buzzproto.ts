@@ -267,7 +267,8 @@ export interface HostState {
   cards?: HostCard[] | null;
   /**
    * Added later ('pass'): players may pass on this clue (an ordinary buzz-in one: never one everyone must play). `id`
-   * names this round of passes: a new id (the clue opened again, ↺ Reset) starts over, and none forgets them. The room
+   * names this round of passes: a new id (the clue opened again, ↺ Reset) starts over, the id before it again (an Undo
+   * of ↺ Reset) brings back who passed in that round, and none forgets them. The room
    * keeps who passed (PhoneMsg 'pass'), tells the host ('passes') and keeps a passed seat from buzzing until it takes
    * the pass back. Passing is open while the clue is (closed, armed or answering), until it's answered right or its
    * answer shows.

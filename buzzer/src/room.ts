@@ -179,6 +179,8 @@ export const ANSWER_WINDOW_MS = 10_000;
 /** Passes (and passes taken back) a phone may send per PASS_WINDOW_MS (changing its mind is fine; a script isn't). */
 export const PASS_RATE = 10;
 export const PASS_WINDOW_MS = 10_000;
+/** A clue's earlier rounds of passes the room keeps (State.passesBefore). */
+export const PASSES_KEPT = 4;
 /** cardSeen reports a phone may send per CARD_SEEN_WINDOW_MS (like answers). */
 export const CARD_SEEN_RATE = 10;
 export const CARD_SEEN_WINDOW_MS = 10_000;
@@ -270,6 +272,11 @@ export interface RoomSaved {
    * who passed for it (id, not a credential) and their name.
    */
   passes?: { id: string; seats: Record<string, { member?: string; by?: string }> };
+  /**
+   * The clue's earlier rounds of passes (↺ Reset began a new one), newest last, a few at most: the host's Undo of the
+   * Reset goes back to one's id, and who passed in it counts again.
+   */
+  passesBefore?: { id: string; seats: Record<string, { member?: string; by?: string }> }[];
   /** Seat id → when its token was handed out (a phone coming back with it keeps the time; see Wagers above). */
   seatedAt?: Record<string, number>;
   /**
@@ -659,12 +666,21 @@ export class Room {
       /* kept */
     } else if (this.s.answers?.id !== ans.id) this.s.answers = { id: ans.id, seats: {}, at: now };
     else for (const id of Object.keys(this.s.answers.seats)) if (!ans.seats.some((x) => x.id === id)) delete this.s.answers.seats[id];
-    // Passes: a new round of passes (or none) forgets who passed; a seat gone from the game, answering or out of the clue
-    // has no pass any more (the host picked them by hand, say).
+    // Passes: a new round of passes starts with nobody (the one before is kept a while: an Undo of ↺ Reset goes back to
+    // it), none forgets them all; a seat gone from the game, answering or out of the clue has no pass any more (the host
+    // picked them by hand, say).
     const pa = next.pass;
-    if (!pa) delete this.s.passes;
-    else {
-      if (this.s.passes?.id !== pa.id) this.s.passes = { id: pa.id, seats: {} };
+    if (!pa) {
+      delete this.s.passes;
+      delete this.s.passesBefore;
+    } else {
+      if (this.s.passes?.id !== pa.id) {
+        const before = (this.s.passesBefore ?? []).filter((x) => x.id !== this.s.passes?.id);
+        if (this.s.passes) before.push(this.s.passes);
+        const back = before.find((x) => x.id === pa.id);
+        this.s.passes = back ?? { id: pa.id, seats: {} };
+        this.s.passesBefore = before.filter((x) => x !== back).slice(-PASSES_KEPT);
+      }
       for (const id of Object.keys(this.s.passes.seats))
         if (!seatIds.has(id) || next.lockedOut.includes(id) || (next.phase === 'answering' && next.answering === id)) delete this.s.passes.seats[id];
     }

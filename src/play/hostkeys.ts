@@ -145,7 +145,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
     title: 'Buzzer mode (phone buzzers, set on the pre-game screen)',
     keys: [
       ['1 – 9', 'During a clue: player N answers, picked by hand (over a phone’s buzz). With someone answering it picks N as well (to judge both); press the one answering’s number to let them go'],
-      ['0', 'During a clue: reset the buzzers (↺): nobody is locked out any more, and they open for everyone'],
+      ['0', 'During a clue: reset the buzzers (↺): nobody is locked out any more, and they open for everyone (Ctrl+Z puts them back as they were, passes too)'],
       ['U', 'Open the buzzers (🔔 in the buzzers’ row: when they open on your key, after reading the clue; after a right answer, for the rest)'],
       ['O in a buzzer tie', '🎲 Roll for it (in the buzzers’ row): the tied players roll, and the order they roll in is the order they answer in'],
       ['Shift+Enter on the one answering', 'Wrong: they’re locked out of this clue and the next one who buzzed answers at once (⏭ Skip: the same, with no points taken); once nobody who buzzed is left, the buzzers open for the rest'],

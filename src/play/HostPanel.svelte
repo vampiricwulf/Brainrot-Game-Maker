@@ -132,6 +132,7 @@
     onrolltie,
     phonesDown = '',
     passNames = '',
+    passedIds = [],
     allPassed = false,
     buzzExtra,
     inQueue = [],
@@ -278,6 +279,8 @@
     phonesDown?: string;
     /** Phone buzzers: who passed on the open clue from their phone ("Ann, Bob"; teams "Red team (Zoe)"). */
     passNames?: string;
+    /** Phone buzzers: the players who passed on the open clue (their chips fade, with a "passed" tag). */
+    passedIds?: string[];
     /** Phone buzzers: everyone still able to buzz passed (goon.ts everyonePassed): the answer comes next. */
     allPassed?: boolean;
     /** Buzzer mode: what phones add to the buzzer row (later buzzes, the phones' status). */
@@ -1072,6 +1075,7 @@
           class="p"
           class:on
           class:picker={session.currentPickerId === p.id}
+          class:passed={passedIds.includes(p.id)}
           style:--c={p.color}
           role="group"
           aria-label={p.name}
@@ -1126,8 +1130,10 @@
                opening a clue never wraps the row and shrinks the stage, and ✔ / ✘ never move under the host's cursor. -->
           {#if chipSlots}
             {@const m = marks[p.id]}
-            <span class="mark" class:right={m?.right} class:wrong={m && !m.right} class:empty={!m} style:min-width="{markCh}ch">
-              {#if m}{m.right ? '✔' : '✘'}{m.delta ? ` ${m.delta > 0 ? '+' : ''}${formatPoints(m.delta, sym)}` : ''}{/if}
+            {@const gone = !m && passedIds.includes(p.id)}
+            <!-- (Passed from their phone: "passed" in the mark's own place, so the chip keeps its width.) -->
+            <span class="mark" class:right={m?.right} class:wrong={m && !m.right} class:gone class:empty={!m && !gone} style:min-width="{markCh}ch">
+              {#if m}{m.right ? '✔' : '✘'}{m.delta ? ` ${m.delta > 0 ? '+' : ''}${formatPoints(m.delta, sym)}` : ''}{:else if gone}passed{/if}
             </span>
           {/if}
           {#if quickFor(p.id)}
@@ -1461,9 +1467,10 @@
             {:else if answerUp && !selected.length}
               <span class="muted hint">Answer on screen: the buzzers stay closed (🙈 Hide answer to open them again)</span>
             {:else if allPassed}
-              <span class="passed-all" role="status">Everyone passed: reveal the answer</span>
+              <span class="passed-all" role="status">Everyone passed: reveal the answer, or ↺ Reset to let them all buzz again</span>
             {:else if buzz?.phase === 'armed' && !selected.length}
-              {#if !phonesDown}
+              <!-- (Once anyone has passed, their names get this hint's room.) -->
+              {#if !phonesDown && !passNames}
                 <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
               {/if}
             {:else if buzzClosed && gotIt}
@@ -1479,7 +1486,10 @@
               <span class="muted hint">Buzzers closed (number keys still pick)</span>
             {/if}
             {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
-            {#if passNames && !allPassed}<span class="muted hint passed" title="Passed: {passNames}">Passed: {passNames}</span>{/if}
+            {#if passNames && !allPassed}
+              {@const passText = `Passed ${passedIds.length} of ${session.players.length}: ${passNames}`}
+              <span class="muted hint passed" title={passText}>{passText}</span>
+            {/if}
             {@render buzzExtra?.()}
             <span class="spacer"></span>
             <!-- Closed: they open on U, here (after a right answer, for the rest). -->
@@ -2441,6 +2451,14 @@
   }
   .mark.empty {
     visibility: hidden;
+  }
+  .mark.gone {
+    font-weight: 400;
+    color: var(--muted);
+  }
+  /* Passed from their phone: faded, still clickable (a host can still pick them). */
+  .p.passed {
+    opacity: 0.55;
   }
   .pending {
     background: var(--warn);

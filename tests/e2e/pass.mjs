@@ -1,9 +1,10 @@
 // Pass, end to end: the built app hosts a game with phone buzzers against the buzzer room (buzzer/ under `wrangler dev`,
 // local, never the real server), with phones for Ann (390×844), Bob (360×640) and Cat (a desktop window, keys only).
 // 1. On an ordinary buzz-in clue each phone has Pass under the buzzer: a pass (a double tap passes once) blocks the buzz
-//    until it's taken back; the host sees "Passed: Ann" in the buzzers' row; once everyone still able to buzz passed (a
-//    wrong answer counts as out), the host's row says "Everyone passed" and 👁 Reveal answer wears the ring; Cat takes
-//    the pass back with P; ↺ Reset buzzers (0) starts the passes over; the answer up, Pass can't be pressed.
+//    until it's taken back; the host sees "Passed 1 of 3: Ann" in the buzzers' row and the chips of who passed fade;
+//    once everyone still able to buzz passed (a wrong answer counts as out), the host's row says "Everyone passed",
+//    👁 Reveal answer wears the ring and a running countdown stops (Ctrl+Z brings it back); Cat takes the pass back with
+//    P; ↺ Reset buzzers (0) starts the passes over, and Ctrl+Z of it brings them back; the answer up, Pass can't be pressed.
 // 2. No Pass on a clue ticked Everyone must play (no Pass) in the editor, nor on a ✍ clue (whose tick is fixed on).
 // 3. Teams: a pass counts for the team (a teammate's phone says who passed, and can take it back).
 // Needs `npm ci` in buzzer/.
@@ -214,8 +215,11 @@ try {
   assert((await big(ann)) === 'You passed' && (await passBtn(ann).innerText()) === 'Take back my pass', 'Ann passes (a double tap passes once): her buzzer says You passed, Pass says Take back my pass');
   const at2 = await settledBox(ann.locator('#buzz'));
   assert(at && at2 && Math.abs(at.y - at2.y) < 1 && Math.abs(at.height - at2.height) < 1, `and BUZZ! stays where it was (${JSON.stringify([at, at2])})`);
-  await row(page).getByText('Passed: Ann').waitFor();
-  assert(true, 'the host sees "Passed: Ann" in the buzzers’ row');
+  await row(page).getByText('Passed 1 of 3: Ann').waitFor();
+  assert(
+    (await row(page).getByText(/Buzzers open/).count()) === 0,
+    'the host sees "Passed 1 of 3: Ann" in the buzzers’ row, the count first (the 🔔 Buzzers open hint gives it its room)',
+  );
   await shot(ann, 'ann-390-passed');
   if (shots) {
     // (On its side, and at 360×640: Pass in sight, nothing over BUZZ!.)
@@ -231,14 +235,24 @@ try {
   // Taken back: she can buzz again.
   await passBtn(ann).click();
   await ann.locator('#buzz.armed').waitFor();
-  await row(page).getByText('Passed:').waitFor({ state: 'detached' });
+  await row(page).getByText(/^Passed \d/).waitFor({ state: 'detached' });
   assert((await passBtn(ann).innerText()) === 'Pass: I won’t buzz on this one', 'Take back my pass: BUZZ! again, and the host’s row no longer names her');
 
   // Everyone passes: Ann, Bob, and Cat with P.
   await passBtn(ann).click();
   await passBtn(bob).click();
-  await row(page).getByText('Passed: Ann, Bob').waitFor();
+  await row(page).getByText('Passed 2 of 3: Ann, Bob').waitFor();
   assert(!(await ringed(page)), 'two of three passed: no ring yet');
+  // Who passed shows on the players' chips too: faded, "passed" in the mark's place (the chip keeps its width).
+  const chip = (name) => page.locator('.panel .players .p', { has: page.locator('.who', { hasText: name }) });
+  const fade = async (name) => [await chip(name).evaluate((e) => e.classList.contains('passed') && getComputedStyle(e).opacity), (await chip(name).locator('.mark').innerText()).trim()];
+  assert(
+    JSON.stringify(await fade('Ann')) === JSON.stringify(['0.55', 'passed']) && JSON.stringify(await fade('Bob')) === JSON.stringify(['0.55', 'passed']) && (await fade('Cat'))[0] === false,
+    `Ann's and Bob's chips fade, with "passed" on them; Cat's doesn't (${JSON.stringify([await fade('Ann'), await fade('Cat')])})`,
+  );
+  // The countdown going as the last one passes: it stops (no "Time's up" for nobody on stream); Ctrl+Z brings it back.
+  await page.keyboard.press('t');
+  await page.locator('.stage-box .timer').waitFor();
   const size1 = await settledStageSize(page);
   if (shots)
     for (const [w, h] of [[1366, 768], [1920, 1080], [1280, 720]]) {
@@ -248,6 +262,14 @@ try {
     }
   await cat.keyboard.press('p');
   await row(page).getByText('Everyone passed: reveal the answer').waitFor();
+  await page.locator('.stage-box .timer').waitFor({ state: 'detached' });
+  assert(true, 'everyone passed with the countdown going: it stops');
+  await page.keyboard.press('Control+z');
+  await page.locator('.stage-box .timer .num').waitFor();
+  assert(+(await page.locator('.stage-box .timer .num').innerText()) > 0 && (await big(cat)) === 'You passed', 'Ctrl+Z brings the countdown back, with the passes as they were');
+  await page.keyboard.press('Control+y');
+  await page.locator('.stage-box .timer').waitFor({ state: 'detached' });
+  assert(true, 'and Ctrl+Y stops it again');
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.classList.contains('ring'));
   assert(
     (await main(page).innerText()).startsWith('👁 Reveal answer') && (await page.locator('.panel .status .say').innerText()).includes('everyone passed'),
@@ -268,7 +290,7 @@ try {
   assert((await cat.locator('#keys').innerText()) === 'Press P to take back the pass', 'Cat’s key hint now says P takes it back (Space does nothing then)');
   await cat.keyboard.press('p');
   await cat.locator('#buzz.armed').waitFor();
-  await row(page).getByText('Passed: Ann, Bob').waitFor();
+  await row(page).getByText('Passed 2 of 3: Ann, Bob').waitFor();
   assert(!(await ringed(page)), 'Cat takes it back with P: the ring goes');
 
   // Cat buzzes and is wrong: out of the clue; with Ann and Bob passed, everyone left passed.
@@ -293,8 +315,18 @@ try {
   await ann.locator('#buzz.armed').waitFor();
   await bob.locator('#buzz.armed').waitFor();
   assert((await passSays(ann, 'Pass: I won’t buzz on this one')) && !(await ringed(page)) && (await row(page).getByText(/Passed/).count()) === 0, '↺ Reset buzzers (0): nobody has passed any more, BUZZ! on every phone');
+  // A slip of 0: Ctrl+Z puts the buzzers back, with the passes and Cat's miss.
+  await page.keyboard.press('Control+z');
+  await row(page).getByText('Everyone passed: reveal the answer').waitFor();
+  await ann.locator('#pass.passed').waitFor();
+  await page.locator('.toast', { hasText: 'Undid ↺ Reset buzzers' }).waitFor();
+  assert((await big(ann)) === 'You passed' && (await big(bob)) === 'You passed' && (await chip('Cat').locator('.mark').innerText()).includes('✘'), 'Ctrl+Z of ↺ Reset buzzers: Ann and Bob passed again, Cat still out, everyone passed');
+  await page.keyboard.press('Control+y');
+  await ann.locator('#buzz.armed').waitFor();
+  await row(page).getByText(/Passed/).waitFor({ state: 'detached' });
+  assert(await passSays(ann, 'Pass: I won’t buzz on this one'), 'and Ctrl+Y resets them again');
   await passBtn(bob).click();
-  await row(page).getByText('Passed: Bob').waitFor();
+  await row(page).getByText('Passed 1 of 3: Bob').waitFor();
   // The answer up: Pass can't be pressed.
   await page.keyboard.press('r');
   await page.locator('.stage-box [data-slide="answer"]').waitFor();
@@ -338,8 +370,8 @@ try {
   await zoe.locator('#pass.passed').waitFor();
   const [alSays, zoeSays] = [await big(al), await big(zoe)];
   assert(alSays === 'Zoe passed for your team' && zoeSays === 'Your team passed', `Zoe passes: the whole team passed (Al’s phone says Zoe passed for it: ${alSays}; ${zoeSays})`);
-  await row(t.page).getByText('Passed: Zoe (Red)').waitFor();
-  assert(true, 'the host sees "Passed: Zoe (Red)"');
+  await row(t.page).getByText('Passed 1 of 2: Zoe (Red)').waitFor();
+  assert(true, 'the host sees "Passed 1 of 2: Zoe (Red)"');
   await shot(al, 'al-360-team-passed');
   await al.locator('#buzz').click({ force: true });
   await sleep(500);
