@@ -360,6 +360,19 @@ try {
   await ann.locator('#buzz.armed').waitFor();
   await row(page).getByText(/Passed/).waitFor({ state: 'detached' });
   assert(await passSays(ann, 'Pass: I won’t buzz on this one'), 'and Ctrl+Y resets them again');
+  // A hint, the clock started again, then a slip noticed: Ctrl+Z of the Reset brings the passes back a round trip later,
+  // and that's the Undo's (not a new "Countdown stopped" step that would lose the Redo).
+  await page.keyboard.press('t');
+  await page.locator('.tc .left').waitFor();
+  await page.keyboard.press('Control+z');
+  await row(page).getByText('Everyone passed: reveal the answer').waitFor();
+  await page.waitForTimeout(600);
+  const redoTitle = await page.getByRole('button', { name: '↷ Redo' }).getAttribute('title');
+  assert(/↺ Reset buzzers/.test(redoTitle ?? ''), `a clock started after ↺ Reset, then Ctrl+Z: the Redo still names the Reset (${redoTitle})`);
+  await page.keyboard.press('Control+y');
+  await ann.locator('#buzz.armed').waitFor();
+  await row(page).getByText(/Passed/).waitFor({ state: 'detached' });
+  assert(true, 'and Ctrl+Y resets the passes again');
   await passBtn(bob).click();
   await row(page).getByText('Passed 1 of 3: Bob').waitFor();
   // The answer up: Pass can't be pressed.

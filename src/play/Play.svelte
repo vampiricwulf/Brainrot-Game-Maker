@@ -3280,10 +3280,31 @@
   const allPassed = $derived(everyonePassed(go));
   /** An Undo or Redo is being followed: everyone passed again by it isn't a new step (that would empty the Redos). */
   let following = false;
+  /**
+   * The round of passes an Undo or Redo went back to, while the room hasn't yet sent who passed in it (they come a round
+   * trip later, after `following` is over): everyone passed again once they come is the Undo's too, not a new step.
+   */
+  let followPass: string | null = null;
+  /** After an Undo or Redo: wait for the room's passes of the round it left, if they aren't all in yet. */
+  function followPasses(): void {
+    following = true;
+    followPass = null;
+    void tick().then(() => {
+      following = false;
+      followPass = passNow && !allPassed && roomPasses?.id !== passNow.id ? passNow.id : null;
+    });
+  }
+  // The room's passes for that round have come: the next change is the host's own again.
+  $effect(() => {
+    const id = roomPasses?.id;
+    untrack(() => {
+      if (followPass && id === followPass) void tick().then(() => (followPass = null));
+    });
+  });
   $effect(() => {
     if (!allPassed) return;
     untrack(() => {
-      if (following) return;
+      if (following || (followPass && passNow?.id === followPass)) return;
       const t = app.live.timer;
       if (!t || t.expired || timerRemaining(t) <= 0 || !info) return;
       const timer = $state.snapshot(t) as TimerState;
@@ -3883,8 +3904,7 @@
    * picker, a Players or Final change). Returns what it took back, or null with nothing to undo.
    */
   function undoOnce(): string | null {
-    following = true;
-    void tick().then(() => (following = false));
+    followPasses();
     undoIntoFinal();
     const next = nextUndo(session);
     if (next?.log === 'action') {
@@ -3910,8 +3930,7 @@
 
   /** One Redo, back the way the Undos went. Returns what it brought back, or null with nothing to redo. */
   function redoOnce(): string | null {
-    following = true;
-    void tick().then(() => (following = false));
+    followPasses();
     const finalWas = session.phase === 'final' ? session.finalStep : undefined;
     // A Redo back onto the Final's question starts its countdown and think music again (as N did); onto the answer, the music stops.
     const after = (t: string | null) => {
