@@ -187,8 +187,9 @@
     cursor: grab;
     touch-action: none;
   }
-  /* (Board px: the board is scaled down in the editor.) */
-  .space.grab:focus {
+  /* (Board px: the board is scaled down in the editor.) A selected space keeps
+     its dashed ring when the mouse focuses it. */
+  .space.grab:focus:not(.sel) {
     outline: none;
   }
   .space.grab:focus-visible,

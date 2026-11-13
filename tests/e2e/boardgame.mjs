@@ -156,6 +156,9 @@ try {
   assert((await hiddenHeads()) === 0, 'no arrowhead is hidden under a space’s name');
   // The two lists of buttons say which is which.
   await space('Space 6').click();
+  // The space just clicked (focused by the mouse) shows its dashed selection ring.
+  const selRing = await space('Space 6').evaluate((el) => [document.activeElement === el, el.classList.contains('sel'), getComputedStyle(el).outlineStyle]);
+  assert(selRing[0] && selRing[1] && selRing[2] === 'dashed', `the clicked space shows it is selected (${selRing.join(', ')})`);
   const addLabels = await page.locator('.side .actions').getByRole('button', { name: /＋ Add button/ }).allInnerTexts();
   assert(addLabels.join('|') === '＋ Add button (when passed)|＋ Add button (when landed on)', `the space’s two ＋ Add buttons say which they are (${addLabels.join(' | ')})`);
   // Make it a…: a kind of space fills in its landing buttons, its color and an emoji in it.

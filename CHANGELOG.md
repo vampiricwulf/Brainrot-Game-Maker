@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- In a board game's editor, the space you click shows its dashed yellow ring at once (it only showed on a space picked before).
+
 ## 2026-11-12
 
 ### Added
