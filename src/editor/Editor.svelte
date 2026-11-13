@@ -5,7 +5,7 @@
   import SettingsDialog from './SettingsDialog.svelte';
   import { listSaves, onOpenedFile, readSave, type SaveEntry } from '../lib/desktop.svelte';
   import { onDestroy, onMount, tick, untrack } from 'svelte';
-  import { app, toast } from '../lib/app.svelte';
+  import { app, clearToast, toast } from '../lib/app.svelte';
   import { announce } from '../lib/announce';
   import {
     gameProblem,
@@ -694,6 +694,8 @@
     const started = historyStarted();
     arriving(origin, history, !!history);
     app.game = next;
+    // A toast about the game that was here ("Added a sample game: press ▶ Play…") goes with it.
+    clearToast();
     // A new game has no rounds: tab 0 is the screen that adds the first one.
     tab = 0;
     previous = kept ? { key: kept.key, title: old.title.trim() || 'Untitled Game', dropped: kept.dropped } : null;

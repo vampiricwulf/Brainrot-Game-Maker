@@ -186,6 +186,8 @@ try {
   assert(!(await saveDot()), 'the sample as it came: 💾 Save has no dot');
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.locator('.data-notice', { hasText: '“Sample game” was replaced.' }).waitFor();
+  // (Its toast, “Added a sample game: press ▶ Play to try it…”, was about the game New just replaced: it goes with it.)
+  assert((await page.locator('.toast', { hasText: 'Added a sample game' }).count()) === 0, 'New puts away the sample’s “press ▶ Play to try it” toast');
   await editorReady(page);
   assert((await page.locator('nav button.round-tab').count()) === 0, 'New over the untouched sample asks nothing, and keeps it in Recent games (↶ Reopen previous game)');
   await reopenBtn.click();

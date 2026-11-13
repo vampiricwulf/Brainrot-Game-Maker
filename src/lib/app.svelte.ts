@@ -148,6 +148,12 @@ export function toast(msg: string, ms = toastMs(msg)): void {
   toastTimer = setTimeout(() => (app.toast = ''), ms);
 }
 
+/** Puts the toast away now (one about a game that has just been replaced: "Added a sample game: press ▶ Play…"). */
+export function clearToast(): void {
+  clearTimeout(toastTimer);
+  app.toast = '';
+}
+
 /**
  * A toast that says what to do first ("Select a player first"): put away once the game moves on, not left contradicting
  * it. (Said last, once the moment is as it stays: a change after it in the same handler would put it away at once.)
