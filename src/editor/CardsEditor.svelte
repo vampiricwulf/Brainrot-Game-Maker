@@ -162,7 +162,7 @@
 <div class="page wide">
 <PageHeader
   title="Cards"
-  sub="Private cards made before the show, in the order 🤫 Send a card… lists them during play. Only the players you send one to see it, on their phones (or 📋 copied, or in the 🪟 card window), never the stream. A tile can have cards of its own too (＋ 🤫 Card in its clue editor)."
+  sub="Private cards made before the show, in the order 🤫 Send a card… lists them during play. Only the players you send one to see it, on their phones (or 📋 copied, or in the 🪟 card window), never the stream. A tile can have cards of its own too (＋ 🤫 Card in its clue editor), offered when the tile is played."
 />
 
 <div class="layout">
@@ -253,7 +253,6 @@
           <b>🤫 Send a card…</b> in the host panel’s tools row sends one to the players you choose, and only they see it. Add
           one with <b>＋ Add card</b> on the left.
         </p>
-        <p class="muted">A tile can have cards of its own too (＋ 🤫 Card in its clue editor), offered when the tile is played.</p>
       </div>
     {/if}
   </section>
