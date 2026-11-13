@@ -1017,8 +1017,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 3. Answer reveal.
 4. **Per-player reveal**, one at a time in an order the host chooses: a typed answer first (show it, then mark ✔ / ✘,
    and the wager goes up with the mark; judging first puts it up too), otherwise show the wager, then mark ✔ / ✘; the
-   score animates. The blue button (`N`) does Show answer ▶, Show wager ▶ and Next player ▶ (Finish game ▶ after the
-   last one); the spotlit row's own Show answer or Show wager is left empty meanwhile (the other rows keep theirs, to
+   score animates. The blue button (`N`) does Show wager ▶ and Next player ▶, or with a typed answer Show answer ▶
+   and then Next player ▶ (no Show wager ▶: the verdict puts the wager up with it) (Finish game ▶ after the last one); the spotlit row's own Show answer or Show wager is left empty meanwhile (the other rows keep theirs, to
    show a player out of turn). The verdicts are only in the rows, **✔ Right** (`C`) then **✘ Wrong** (`X`), neither
    blue; with multiple choice and one marked ✔ Right, the verdict their pick points to is ringed there (in one window
    once their answer is on screen). With the spotlit player not judged yet, Next player ▶ (or Finish game ▶) asks for

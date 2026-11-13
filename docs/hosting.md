@@ -139,8 +139,10 @@ Everyone types an answer on their phone (or taps a multiple choice); only you se
 First the wagers: players send theirs from their phone, or you type them in. Untick a player who sits out (players
 with no points sit out until you tick them). Wagers go up to the player's score, or $2,000 if they have less, as on
 a Daily Double; **Ignore the limits** takes any wager for this Final. Then the blue button walks through it: **Show question ▶**,
-**👁 Reveal answer**, **Start player reveals ▶**, then for each player **Show answer ▶**, **Show wager ▶** and
-**Next player ▶**, and finally **Finish game ▶**. Judge each player with **✔ Right** (`C`) or **✘ Wrong** (`X`).
+**👁 Reveal answer**, **Start player reveals ▶**, then for each player **Show wager ▶** and **Next player ▶**, and
+finally **Finish game ▶**. Judge each player with **✔ Right** (`C`) or **✘ Wrong** (`X`). With answers typed on phones
+it goes **Show answer ▶**, then your ✔ Right or ✘ Wrong puts their wager and the verdict up together, then **Next
+player ▶** (there's no Show wager ▶ step).
 **Finish now…** ends early.
 
 In the reveals, **½ Halve** and **0 Nullify** beside a player's wager halve it (rounded down) or make it 0. If
