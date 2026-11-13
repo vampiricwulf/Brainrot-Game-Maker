@@ -274,7 +274,7 @@
     else {
       const boards = game.rounds.slice(0, at).filter(isBoard);
       const prev = boards[boards.length - 1];
-      const name = boards.length === 1 ? 'Double Jeopardy!' : boards.length ? `Round ${boards.length + 1}` : 'Jeopardy!';
+      const name = boards.length === 1 ? 'Double Jeopardy!' : boards.length ? `Jeopardy! ${boards.length + 1}` : 'Jeopardy!';
       // The second board doubles the first (Double Jeopardy!); later ones keep the values of the one before.
       round = newRound(name, prev?.categories.length ?? 6, prev ? prev.values.map((v) => (boards.length === 1 ? v * 2 : v)) : undefined);
     }

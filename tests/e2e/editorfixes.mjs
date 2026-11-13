@@ -115,15 +115,17 @@ try {
   const order = await page.locator('nav > button, nav > .navlabel').allInnerTexts();
   const at = (re) => order.findIndex((t) => re.test(t));
   // (Off, it reads ＋ Add tiebreaker (optional).)
-  assert(at(/tiebreaker/i) === at(/Round 3/) + 1 && at(/Add round/) === at(/tiebreaker/i) + 1, `the Tiebreaker comes right after the rounds (${order.join(' | ')})`);
+  assert(at(/tiebreaker/i) === at(/Jeopardy! 3/) + 1 && at(/Add round/) === at(/tiebreaker/i) + 1, `the Tiebreaker comes right after the rounds (${order.join(' | ')})`);
   assert(at(/^Game$/i) > at(/Add round/) && at(/Sounds/) > at(/^Game$/i) && at(/Theme/) > at(/^Game$/i), 'the game-wide tabs have a Game group of their own');
-  await page.locator('nav .problem', { hasText: 'Round 3:' }).waitFor();
+  // (A third board is “Jeopardy! 3”, a name that can't be read as its place, unlike “Round 3”.)
+  await page.locator('nav .problem', { hasText: 'Jeopardy! 3:' }).waitFor();
   const lines = await page.locator('nav .problem').allInnerTexts();
   assert(lines.filter((l) => /^⚠ Jeopardy!:/.test(l)).length === 1 && lines.some((l) => /^⚠ Jeopardy!: 30 clues to finish/.test(l)), `the checklist has one line a round (${lines.join(' | ')})`);
   // (👥 Players & rules ▶ and 📊 Stats & Items (optional) are always listed now: the list may scroll in its own box, by
-  // about those two rows at most.)
+  // about those two rows at most. The third board's checklist line, “⚠ Jeopardy! 3: 30 clues to finish”, takes two
+  // lines as “⚠ Double Jeopardy!: …” does: 72px became 86px when the third board stopped being called “Round 3”.)
   const navOver = await page.locator('nav').evaluate((n) => n.scrollHeight - n.clientHeight);
-  assert(navOver <= 80 && (await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)), `with three boards the sidebar fits at 720p, or scrolls in its box by two rows at most (${navOver}px)`);
+  assert(navOver <= 88 && (await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)), `with three boards the sidebar fits at 720p, or scrolls in its box by two rows at most (${navOver}px)`);
   // No sidebar label is cut to "…": "(optional)" sits on a small line of its own.
   const cut = await page.locator('nav > button').evaluateAll((bs) => bs.filter((b) => b.scrollWidth > b.clientWidth).map((b) => b.textContent.trim()));
   assert(cut.length === 0, `no sidebar label is cut short (${cut.join(' | ')})`);
