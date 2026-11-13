@@ -27,6 +27,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - A tile ticked **🚫 No Pass** wears a small 🚫 on the editor's board, so you can see which clues players can't pass on, and its right-click menu has **🚫 No Pass** after ✍ Everyone answers to turn it on or off (one undo step; ticked and greyed on a ✍ clue, a Daily Double or a partner clue, where it's always on).
 - A category's menu has **📋 Paste as new category right**: the copied category goes into a new column beside it in one step (it took ＋ Insert category right, then 📋 Paste category here). Pasting over an empty column now says so too, with ↶ Undo (only the old “Copied…” toast showed).
+- A picture, video, sound or font dropped just beside the slide (or anywhere nothing takes it) goes into **🖼 Media** with a short toast, “Added “pic.png” to 🖼 Media” (Ctrl+Z takes it out). Any other file gets one line that names it, instead of a 50-word paragraph.
 
 ### Changed
 

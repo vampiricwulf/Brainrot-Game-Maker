@@ -71,6 +71,21 @@ try {
   await drop(soundBtn, [['cat.png', 'image/png']]);
   assert((await toast.innerText()).includes('"cat.png" isn\'t a sound') && (await mediaCount()) === 1, 'a picture dropped on a sound slot is refused with a toast');
 
+  // ---------- SHELL-2: a picture dropped where nothing takes it (beside the slide, on a page's header) goes into 🖼 Media ----------
+  await drop(page.locator('.editor > header'), [['stray.png', 'image/png']]);
+  await page.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('Added “stray.png” to 🖼 Media'));
+  assert((await mediaCount()) === 2 && (await toast.innerText()) === 'Added “stray.png” to 🖼 Media', `a picture dropped where nothing takes it is added to 🖼 Media, with a short toast (${await toast.innerText()})`);
+  await page.locator('main').click({ position: { x: 2, y: 2 } });
+  await page.keyboard.press('Control+z');
+  assert((await mediaCount()) === 1, 'one Ctrl+Z takes it back out');
+  // Any other file: one line that names it.
+  await drop(page.locator('.editor > header'), [['notes.txt', 'text/plain']]);
+  await page.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('notes.txt'));
+  assert(
+    (await toast.innerText()) === '“notes.txt” isn’t a picture, video, sound, clue sheet or game file' && (await mediaCount()) === 1,
+    `any other file gets one line that names it, and isn't added (${await toast.innerText()})`,
+  );
+
   // ---------- An open picker takes a dropped file, and a pasted one ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   const banner = page.locator('.row.pop', { hasText: 'Banner above the board' });

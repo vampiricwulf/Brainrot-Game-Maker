@@ -527,7 +527,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   on a new game) without asking; it's kept in Recent games. The note under the header that says the game was replaced (with ↶ Reopen previous game) goes with the first change to the new game. **Open…** (Ctrl+O, the first screen's 📂 Open a game…, Game over › ▶ Next game…) is always one window,
   "📂 Open a game": Recent games (the last 8 games replaced, kept in the browser or on this PC with their undo history),
   in the desktop app "Your saves (BrainrotSaves)" newest first with date and size and 📂 Saves folder, then the foot's
-  Cancel … Browse for a game file… (blue when both lists are empty) "or drop a game file anywhere on the editor". Its
+  Cancel … Browse for a game file… (blue when both lists are empty) "or drop a game file anywhere on the editor" (a
+  picture, video, sound or font dropped where nothing else takes it goes into 🖼 Media, one undo step, with a toast
+  "Added “pic.png” to 🖼 Media"; any other file gets one line that names it). Its
   rows: ↑ / ↓ (Home / End) across both lists, Enter opens, Delete on a recent game asks to delete it, a right-click or
   Shift+F10 its menu (▶ Open, 📁 Show in folder for a save, 🗑 Delete from Recent games… for a recent game, red), 🗑 at a
   recent game's far end. A file dropped on the editor opens as before.

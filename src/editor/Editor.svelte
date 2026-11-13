@@ -39,7 +39,9 @@
   import { MAX_PACK_READ, readGameFile, savePack, storeFiles, type ReadGame } from '../lib/pack';
   import { exportedLine, exportStandaloneHtml } from '../lib/export';
   import { buzzerBase } from '../lib/remote.svelte';
-  import { loadGameMedia, mediaUrls, pruneMedia } from '../lib/media.svelte';
+  import { addMediaFile, loadGameMedia, mediaUrls, pruneMedia } from '../lib/media.svelte';
+  import { fileKind } from '../lib/mediadrop';
+  import { strayDropLine } from '../lib/straydrop';
   import { askToKeepStorage } from '../lib/persist';
   import SoundsPanel from './SoundsPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
@@ -66,7 +68,7 @@
   import { validate } from '../lib/validate';
   import { answerCardAt, boardPlace, type ChecklistLine } from '../lib/checklist';
   import { followClueText } from '../lib/cluetext';
-  import { arriving, commit, heldMedia, history, historyStarted, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
+  import { arriving, commit, heldMedia, history, historyStarted, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, stepAsync, undo, wholeHistory, type Origin } from '../lib/history.svelte';
   import { whileWriting } from '../lib/desktop.svelte';
   import { isCancel } from '../lib/fileio';
   import { goTo, take, type Place } from '../lib/nav.svelte';
@@ -84,7 +86,7 @@
   import ConvertNotice from './ConvertNotice.svelte';
   import { verdictOf } from '../lib/shrink/checks.svelte';
   import { jobAsk, stopAll } from '../lib/shrink/jobs.svelte';
-  import { checkGame } from '../lib/shrink/checks.svelte';
+  import { checkAdded, checkGame } from '../lib/shrink/checks.svelte';
   import { libraryMedia } from '../lib/phonecopies';
   import RoundImport from './RoundImport.svelte';
   import { clipboard } from '../lib/clipboard.svelte';
@@ -870,16 +872,42 @@
     void open();
   });
 
-  /** A game file dropped anywhere no other part of the editor takes the drop opens, like Open…. */
+  /**
+   * A file dropped anywhere no other part of the editor takes the drop: a game file opens, like Open… (a theme file shows
+   * on 🎨 Theme); pictures, videos, sounds and fonts go into 🖼 Media, as one undo step (they missed a slide or a tile by a
+   * few pixels, say); anything else gets one short line that names it.
+   */
   function ondrop(e: DragEvent): void {
     if (e.defaultPrevented || !e.dataTransfer?.files.length) return;
     e.preventDefault();
-    const file = Array.from(e.dataTransfer.files).find((f) => isGameFile(f.name) || isThemeFile(f.name));
-    if (file) openFile(file);
-    else
-      toast(
-        'Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button, and a sheet of clues (.csv, .tsv) on a board’s 📥 Import clues…. A game file (.brainrot, .json, or a play-only web page’s .html) dropped here opens, and a theme file (.brainrot-theme) shows on 🎨 Theme.',
-      );
+    const files = Array.from(e.dataTransfer.files);
+    const file = files.find((f) => isGameFile(f.name) || isThemeFile(f.name));
+    if (file) return void openFile(file);
+    if (replacing) return;
+    void addStray(files);
+  }
+
+  async function addStray(files: File[]): Promise<void> {
+    const media = files.filter((f) => fileKind(f));
+    const refused = files.filter((f) => !fileKind(f)).map((f) => f.name);
+    const added: string[] = [];
+    const errors: string[] = [];
+    const g = game;
+    if (media.length)
+      await stepAsync(media.length === 1 ? `Added “${media[0].name}” to 🖼 Media` : `Added ${media.length} files to 🖼 Media`, async () => {
+        for (const f of media) {
+          try {
+            const ref = await addMediaFile(g, f, f.name, {}, { quiet: true });
+            checkAdded(ref);
+            added.push(ref.name);
+          } catch (err) {
+            // (Too big, or unreadable: its own words say so.)
+            errors.push((err as Error).message);
+          }
+        }
+      });
+    const line = [strayDropLine(added, refused), ...errors].filter(Boolean).join('. ');
+    if (line) toast(line);
   }
 
   let saving = $state(false);

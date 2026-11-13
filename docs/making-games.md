@@ -84,6 +84,8 @@ video, audio or YouTube, arranged freely.
 - **🔁 Use another picture…** (or video, sound) swaps the file for this item only. To replace a file everywhere, use
   Replace everywhere… in **🖼 Media**.
 - In these editors, `Ctrl+Enter` applies and `Esc` asks before throwing changes away.
+- A picture, video, sound or font dropped where nothing takes it (just beside the slide, say) goes into **🖼 Media**,
+  and a toast says so; `Ctrl+Z` takes it out.
 
 Slide items and whole slides copy and paste between clues, rounds and games, with their pictures and sounds.
 
