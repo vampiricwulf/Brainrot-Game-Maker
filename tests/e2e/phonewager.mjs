@@ -251,6 +251,8 @@ try {
   await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '777');
   await dd.getByText('📱 from phone').waitFor();
   assert(true, 'sent from the phone: the host’s wager box fills in (777) marked “📱 from phone”, and the phone says “✔ Sent: $777”');
+  await host.locator('.info .dd', { hasText: '⭐ Daily Double · Player 1’s wager is in ($777)' }).waitFor();
+  assert(true, 'the host’s right column says the wager is in ($777), no longer “waiting for the wager”');
   const said = (who) => host.waitForFunction((w) => document.getElementById('live-region')?.dataset.said?.includes(`${w}’s wager is in (from their phone)`), who).then(() => host.evaluate(() => document.getElementById('live-region').dataset.said));
   assert(!/777/.test(await said('Player 1')), 'a screen reader hears that the wager is in, not how much');
   assert((await ddBox()) === ddH, `the Daily Double box keeps its height from the pick to the phone’s wager (${ddH}px)`);
@@ -318,7 +320,9 @@ try {
     (await bo.locator('#wager-info').innerText()) === 'Score $0 · Max $2,000',
     `a player at $0 can wager up to $2,000, and their phone says so (${await bo.locator('#wager-info').innerText()})`,
   );
-  await row('Player 1').getByText('📱 waiting…').waitFor();
+  await row('Player 1').locator('[data-phone-wager]', { hasText: '📱 … waiting' }).waitFor();
+  const tagW = (name) => row(name).locator('[data-phone-wager]').evaluate((e) => e.getBoundingClientRect().width);
+  const [waitW, rowsH] = [await tagW('Player 1'), await rows.evaluate((e) => e.getBoundingClientRect().height)];
   assert(!(await host.evaluate(() => !!document.activeElement?.matches('input[data-wager]'))), 'phones send the wagers: no wager box takes the focus (the keys stay the host’s)');
   // The blue Show question ▶ is never greyed: N with wagers still to come puts the keys in the first box to fill (no
   // check opens: they're typed), and the status line says whose, a phone's on its way. (Players 2 and 3 at $0 can wager
@@ -336,8 +340,8 @@ try {
   // (The keys back to the host, as phones send.)
   await host.locator('.panel .status').click();
   assert(
-    (await row('Player 2').getByText('📱 waiting…').count()) === 1 && (await row('Player 3').getByText('📱').count()) === 0,
-    'the host sees whose phone can send one (“📱 waiting…”); a player without a phone has no 📱',
+    (await row('Player 2').locator('[data-phone-wager]', { hasText: '📱 … waiting' }).count()) === 1 && (await row('Player 3').getByText('📱').count()) === 0,
+    'the host sees whose phone can send one (“📱 …”); a player without a phone has no 📱',
   );
 
   // Ticked out: their phone says so; back in, the box is back.
@@ -347,14 +351,16 @@ try {
   await form(bo).waitFor();
   assert(true, 'a player ticked out sees “You sit this one out” on their phone (ticked back in, the box is back)');
   await sendWager(ann, 1234);
-  await row('Player 1').getByText('📱 $1,234 from phone ✔').waitFor();
-  assert((await box('Player 1').inputValue()) === '1234', 'Player 1’s wager comes in from their phone: “📱 $1,234 from phone ✔”, in their box');
+  await row('Player 1').locator('[data-phone-wager]', { hasText: '📱 ✔ $1,234 from phone' }).waitFor();
+  assert((await box('Player 1').inputValue()) === '1234', 'Player 1’s wager comes in from their phone: “📱 ✔”, in their box');
   // Over Player 2's max ($2,000 at $0): refused on the phone.
   await sendWager(bo, 2222);
   await bo.locator('#wager-state').getByText(/^Type \$2,000 or less/).waitFor();
   assert((await box('Player 2').inputValue()) === '', 'over the max: refused on the phone, nothing reaches the host');
   await sendWager(bo, 1999);
-  await row('Player 2').getByText('📱 $1,999 from phone ✔').waitFor();
+  await row('Player 2').locator('[data-phone-wager]', { hasText: '📱 ✔ $1,999 from phone' }).waitFor();
+  const [inW, rowsH2] = [await tagW('Player 1'), await rows.evaluate((e) => e.getBoundingClientRect().height)];
+  assert(Math.abs(inW - waitW) < 0.5 && Math.abs(rowsH2 - rowsH) < 0.5, `a wager coming in changes no row: its 📱 tag keeps its width (${waitW} → ${inW}px), the wagers box its height (${rowsH} → ${rowsH2}px)`);
   assert(!/1,?999/.test(await said('Player 2')), 'and in the Final too');
   await host.waitForTimeout(300);
   assert(await noneOf(aud, [1234, 1999]), 'the audience window never has the amounts (only the ✔ that a wager is in)');
@@ -365,7 +371,7 @@ try {
   // A change of mind before the host locks: the host's box follows, as a named step. Its name leaves the amounts out (a
   // step keeps its name: with the audience window closed, viewers would see ↶ Undo's toast and the 📜 Log).
   await sendWager(ann, 1300);
-  await row('Player 1').getByText('📱 $1,300 from phone ✔').waitFor();
+  await row('Player 1').locator('[data-phone-wager]', { hasText: '📱 ✔ $1,300 from phone' }).waitFor();
   const undo = await host.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   assert(
     undo.startsWith('Undo: Player 1’s wager (from their phone) (Ctrl+Z') && !undo.includes('$'),
@@ -373,11 +379,11 @@ try {
   );
   // ↶ Undo puts the one before back: the phone says the host has that one (not the $1,300 it sent last); ↷ Redo, its own.
   await host.getByRole('button', { name: '↶ Undo' }).click();
-  await row('Player 1').getByText('📱 $1,234 from phone ✔').waitFor();
+  await row('Player 1').locator('[data-phone-wager]', { hasText: '📱 ✔ $1,234 from phone' }).waitFor();
   await ann.locator('#wager-state').getByText('The host has your wager as $1,234').waitFor();
   assert(true, '↶ Undo of a phone’s change: its phone says the host has the one before ($1,234), not the $1,300 it sent');
   await host.getByRole('button', { name: '↷ Redo' }).click();
-  await row('Player 1').getByText('📱 $1,300 from phone ✔').waitFor();
+  await row('Player 1').locator('[data-phone-wager]', { hasText: '📱 ✔ $1,300 from phone' }).waitFor();
   await ann.locator('#wager-state').getByText('✔ Sent: $1,300').waitFor();
   // A phone reload shows its own wager again.
   await ann.reload();
@@ -388,7 +394,7 @@ try {
   await box('Player 3').fill('5');
   await box('Player 3').press('Tab');
   assert(
-    (await row('Player 2').getByText('from phone').count()) === 0 && (await row('Player 2').getByText('📱 can still send').count()) === 1,
+    (await row('Player 2').getByText('from phone').count()) === 0 && (await row('Player 2').locator('[data-phone-wager]', { hasText: '📱 … can still send' }).count()) === 1,
     'the host changes a wager a phone sent: it’s the host’s now (no “from phone”)',
   );
   await bo.locator('#wager-state').getByText('The host has your wager as $2,000').waitFor();
@@ -680,10 +686,10 @@ try {
   assert((await al.locator('#wager-label').innerText()) === 'Your team’s wager (only the host and your team see it)', 'teams: every member’s phone gets the team’s wager box');
   await sendWager(al, 300);
   const team1 = rows2.locator('.wrow', { hasText: 'Player 1' });
-  await team1.getByText('📱 from phone ✔ · sent by Al').waitFor();
+  await team1.locator('[data-phone-wager]', { hasText: '📱 ✔ from phone, sent by Al' }).waitFor();
   assert(
     (await team1.locator('input[data-wager]').inputValue()) === '' && (await team1.locator('input[data-wager]').getAttribute('placeholder')) === 'hidden' && (await panelHides([300])),
-    'one window: the Final wager a phone sent stays hidden in the host’s panel (“📱 from phone ✔ · sent by Al”, the box “hidden”)',
+    'one window: the Final wager a phone sent stays hidden in the host’s panel (“📱 ✔”, sent by Al in its tooltip, the box “hidden”)',
   );
   const undo2 = await host2.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   assert(undo2.startsWith('Undo: Player 1’s wager (from Al’s phone)') && !undo2.includes('$'), `and ↶ Undo names the step without the amount (${undo2})`);
@@ -692,7 +698,7 @@ try {
   assert((await amy.locator('#wager-label').innerText()) === 'Your team’s wager (only the host and your team see it)', 'teams: the box says the team sees the wager too');
   assert(await noneOf(cy, [300]), 'Al sends the team’s wager: the host sees “sent by Al”, his teammate sees it, the other team doesn’t');
   await sendWager(amy, 450);
-  await team1.getByText('📱 from phone ✔ · sent by Amy').waitFor();
+  await team1.locator('[data-phone-wager]', { hasText: '📱 ✔ from phone, sent by Amy' }).waitFor();
   assert(await panelHides([300, 450]), 'a teammate changes it: still hidden in the host’s panel');
   await al.locator('#wager-state').getByText('✔ Amy sent $450 for your team').waitFor();
   assert((await al.locator('#wager-in').inputValue()) === '450', 'a teammate changes it: still one wager for the team, and every member sees the new one');
@@ -711,7 +717,7 @@ try {
     `the host types over it: ↶ Undo names the step without the phone’s amount (${undo3})`,
   );
   await host2.getByRole('button', { name: '↶ Undo' }).click();
-  await team1.getByText('📱 from phone ✔ · sent by Amy').waitFor();
+  await team1.locator('[data-phone-wager]', { hasText: '📱 ✔ from phone, sent by Amy' }).waitFor();
   await al.locator('#wager-state').getByText('✔ Amy sent $450 for your team').waitFor();
   assert((await box1.inputValue()) === '' && (await panelHides([300, 450])), '↶ Undo puts the phone’s wager back, hidden again');
 
@@ -835,6 +841,11 @@ try {
   assert(await rev2.locator('button[aria-label="Show answer: Player 2"]').evaluate((b) => getComputedStyle(b).visibility === 'hidden'), 'the spotlit row’s Show answer is empty while the blue button is Show answer ▶');
   await host2.keyboard.press('n');
   await rev2.locator('[data-pick-hint]', { hasText: '✘ not B' }).waitFor();
+  const [hintLines, pickCut] = [
+    await rev2.locator('[data-pick-hint]').evaluate((e) => e.getClientRects().length),
+    await rev2.locator('[data-typed]').evaluate((e) => e.scrollWidth - e.clientWidth),
+  ];
+  assert(hintLines === 1 && pickCut <= 0, `the row's pick reads whole and “✘ not B” stays on one line beside it (${hintLines} line, cut ${pickCut}px)`);
   const rowRings = await rev2.locator('button.ring').allInnerTexts();
   assert(
     (await flowIs(host2, 'Finish game ▶')) && rowRings.join() === '✘ Wrong' && (await host2.locator('.panel button.ring').count()) === 1,
@@ -864,7 +875,7 @@ try {
   await form(al).waitFor();
   assert((await al.locator('#wager-info').innerText()).endsWith('Max $2,000'), `a team at $0 can wager up to $2,000 (${await al.locator('#wager-info').innerText()})`);
   await sendWager(al, 2000);
-  await rows2.locator('.wrow', { hasText: 'Player 1' }).getByText('📱 from phone ✔ · sent by Al').waitFor();
+  await rows2.locator('.wrow', { hasText: 'Player 1' }).locator('[data-phone-wager]', { hasText: '📱 ✔ from phone, sent by Al' }).waitFor();
   // (Every wager in first: the blue button is never greyed, so wait for that.)
   await host2.waitForFunction(() => ![...document.querySelectorAll('.fj .row .muted')].some((e) => /^(Waiting on|Not a whole number|Over the max)/.test(e.textContent ?? '')));
   await mainButton(host2).filter({ hasText: 'Show question ▶' }).click();

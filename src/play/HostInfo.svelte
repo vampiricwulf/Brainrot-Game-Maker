@@ -174,10 +174,15 @@
       <span class="val">{formatPoints(info.value, sym)}</span>
     </div>
     {#if session.dd}
+      <!-- (Before the question, the wager in the host's box, typed or sent from a phone: this column is never on stream.) -->
+      {@const ddName = session.players.find((p) => p.id === session.dd?.playerId)?.name ?? ''}
+      {@const ddIn = session.dd.draft ?? session.dd.wager}
       <div class="dd">
         ⭐ Daily Double{session.dd.stage === 'question'
-          ? ` · ${session.players.find((p) => p.id === session.dd?.playerId)?.name ?? ''} wagered ${formatPoints(session.dd.wager ?? 0, sym)}`
-          : ' · waiting for the wager'}
+          ? ` · ${ddName} wagered ${formatPoints(session.dd.wager ?? 0, sym)}`
+          : ddIn != null
+            ? ` · ${ddName ? `${ddName}’s` : 'the'} wager is in (${formatPoints(ddIn, sym)})`
+            : ' · waiting for the wager'}
       </div>
     {/if}
     {#if pt}

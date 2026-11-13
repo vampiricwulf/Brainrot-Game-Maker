@@ -38,6 +38,7 @@ in plain words for the people who make and host games. Anything committed but no
 - The Amount box takes no minus sign: ↓ in an empty box stops at 0 and a typed −100 reads 100, so **＋ Award** and **− Deduct** always do what their label says (before, a −1 in the box gave +$1).
 - The tiebreaker clue no longer shows the “📱 Players’ buzzers” join code on stream: it’s answered out loud, so nobody buzzes (as on a Daily Double).
 - On stream, the Final’s green ✔ (wager in) sits wholly above each player’s plate instead of over the top of their name.
+- Two windows: while a Daily Double waits for its question, your right column says “Ann’s wager is in ($300)” once it’s typed or sent from a phone, instead of still “waiting for the wager”. The Final’s wager rows: each phone’s tag is a short **📱 …** (still to come) or **📱 ✔** (in), the same width, with the amount and who sent it in its tooltip, so rows no longer wrap and push the buttons down as wagers arrive. The reveal rows give a typed or picked answer at least 12em (a long name is cut shorter, whole in its tooltip), and “✘ not A” stays on one line.
 
 ## 2026-11-12
 

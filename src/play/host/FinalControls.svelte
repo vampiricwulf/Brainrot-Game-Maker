@@ -515,19 +515,25 @@
                 }}
                 data-wager={p.id}
               />
+              <!-- (A short tag, the same width whether the wager is still to come or in, so a row never wraps and moves the
+                   buttons under it as wagers arrive: the words are in its tooltip, and said to a screen reader.) -->
               {#if phone}
                 {@const by = wagerSentBy(f, p.id)}
+                {@const sent = `${dual ? `${formatPoints(w ?? 0, sym)} ` : ''}from phone${by ? `, sent by ${by}` : ''}`}
                 <span
-                  class="phone small"
+                  class="phone small ptag"
                   title={dual
-                    ? 'Sent from their phone (only you see the amount). You can still change it.'
-                    : 'Sent from their phone. The amount stays hidden here (viewers see this window) until you show it in the reveals. Typing a wager replaces it.'}
-                  data-phone-wager={p.id}>📱 {dual ? `${formatPoints(w ?? 0, sym)} ` : ''}from phone ✔{by ? ` · sent by ${by}` : ''}</span
+                    ? `${sent[0].toUpperCase()}${sent.slice(1)}. Only you see the amount. You can still change it.`
+                    : `In from their phone${by ? `, sent by ${by}` : ''}. The amount stays hidden here (viewers see this window) until you show it in the reveals. Typing a wager replaces it.`}
+                  data-phone-wager={p.id}>📱 ✔<span class="sr-only">{` ${sent}`}</span></span
                 >
               {:else if phones.includes(p.id) && !f.phonesLocked}
                 <!-- (One the host typed, or the 0 filled in for nothing to wager: their phone can still send another.) -->
-                <span class="muted small" data-phone-wager={p.id} title="Their phone can send their wager"
-                  >{w === undefined ? '📱 waiting…' : '📱 can still send'}</span
+                <span
+                  class="muted small ptag"
+                  data-phone-wager={p.id}
+                  title={w === undefined ? 'Waiting for their phone to send their wager' : 'Their phone can still send a wager, which replaces this one'}
+                  >📱 …<span class="sr-only">{w === undefined ? ' waiting' : ' can still send'}</span></span
                 >
               {/if}
               <!-- (Each one's max is their score, beside their name, or the game's floor: Ignore the limits' line says so once,
@@ -650,7 +656,7 @@
                 >
                 {#if rightOne && named}
                   {#if named === rightOne.id}<span class="small pick-right" data-pick-hint={id}>✔ right choice</span>
-                  {:else}<span class="muted small" data-pick-hint={id}>✘ not {letter(choices.indexOf(rightOne))}</span>{/if}
+                  {:else}<span class="muted small pick-wrong" data-pick-hint={id}>✘ not {letter(choices.indexOf(rightOne))}</span>{/if}
                 {/if}
               {:else}
                 <span class="muted small typed" title="Shown here once you put it on screen" data-typed={id}>✍ hidden</span>
@@ -823,6 +829,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* (On one line, beside the pick: “✘ not A” never stacks into three.) */
+  .pick-right,
+  .pick-wrong {
+    white-space: nowrap;
+  }
   .pick-right {
     color: var(--good);
     font-weight: 600;
@@ -861,6 +872,12 @@
   .phone {
     color: var(--accent);
     font-weight: 600;
+  }
+  /* 📱 … and 📱 ✔ take the same room: a wager coming in changes no row's width. */
+  .ptag {
+    display: inline-block;
+    min-width: 2.6em;
+    white-space: nowrap;
   }
   input.bad {
     outline: 2px solid var(--bad);
@@ -943,8 +960,13 @@
         grid-template-columns: minmax(7em, 1fr) repeat(4, auto);
         column-gap: 6px;
       }
+      /* With typed answers, the answer the host judges from gets the room first: at least 12em, a long name cut
+         shorter (9em, whole in its tooltip). */
       .order.typedcol {
-        grid-template-columns: minmax(7em, max-content) minmax(0, 1fr) repeat(5, auto);
+        grid-template-columns: minmax(7em, max-content) minmax(12em, 1fr) repeat(5, auto);
+      }
+      .order.typedcol .name {
+        max-width: 9em;
       }
       .pl {
         grid-column: 1 / -1;
