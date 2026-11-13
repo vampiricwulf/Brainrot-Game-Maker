@@ -105,6 +105,12 @@ try {
   await applyStyle.click();
   assert((await page.locator('.notice').innerText()).includes('There are no other slides in that group yet'), '"Questions in this round" restyles none of the board’s questions (it has one question slide)');
   await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click();
+  // Its board's 🤝 Partner clues box counts the partner clue on it, and its 🔀 Randomize works.
+  {
+    const ptBox = page.locator('[data-partner-count]');
+    const n = await ptBox.getByRole('spinbutton', { name: 'How many partner clues' }).inputValue();
+    assert(n === '1' && (await ptBox.getByRole('button', { name: 'Randomize partner clues' }).isEnabled()), `the sample board's Partner clues box says 1, as on the board (${n})`);
+  }
 
   // ---------- Import clues ----------
   await page.getByRole('button', { name: '📥 Import clues…' }).click();

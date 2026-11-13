@@ -353,6 +353,7 @@ export function addSampleGame(game: Game): number {
   // A 🤝 partner clue: Describe it, its card the answer (the describer's to describe).
   const pc = board.categories[2].clues[1];
   pc.type = 'partner';
+  board.partnerCount = 1;
   setPartnerGame(pc, 'describe');
   setSlideText(pc.questionSlide, 'Describe this app to your partner without saying its name!');
   setSlideText(cardSlides(pc)[0], 'TikTok');

@@ -2089,6 +2089,9 @@ function repairPartnerTiles(r: BoardRound): void {
     if (typeof n !== 'number' || !Number.isFinite(n) || n < 1) delete r.partnerCount;
     else if (n !== Math.min(PARTNER_COUNT_MAX, Math.floor(n))) r.partnerCount = Math.min(PARTNER_COUNT_MAX, Math.floor(n));
   }
+  // Partner clues placed by hand count (as after an edit): the box opens saying as many as the board has.
+  const placed = partnerTilesPlaced(r);
+  if (placed > (r.partnerCount ?? 0)) r.partnerCount = Math.min(PARTNER_COUNT_MAX, placed);
   if (r.partnerGame !== undefined && !Object.hasOwn(PARTNER_GAMES, r.partnerGame)) delete r.partnerGame;
   if (r.partnerCardFrom !== undefined && r.partnerCardFrom !== 'answer' && r.partnerCardFrom !== 'empty') delete r.partnerCardFrom;
 }

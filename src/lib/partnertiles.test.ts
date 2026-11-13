@@ -3,12 +3,13 @@
 // spread over the categories; each keeps its own rules and cards, or gets the round's game and a copy of its answer.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { cardSlides, migrateGame, newImageEl, partnerTilesPlaced, setSlideText, slideText, type BoardRound, type Game } from './model';
+import { cardSlides, boardRounds, migrateGame, newGame, newImageEl, partnerTilesPlaced, setSlideText, slideText, type BoardRound, type Game } from './model';
 import { addCard, newCard, partnerSpot, setPartnerGame } from './partner';
 import { answerCardDue, copyClue, followDailyDoubles, pastedCardDue, pastedPartnerCard, placePartner, randomizePartnerTiles, setClueType } from './ops';
 import { randomizeDailyDoubles } from './session';
 import { dailyDoublesLine, partnersLine, partnerTilesMost, partnerTilesOver, partnerTilesShort, placedLine, validate } from './validate';
 import { answerCardAt, checklistLines } from './checklist';
+import { addSampleGame } from './samples';
 
 /** A seeded random: the same picks every run. */
 function seeded(seed = 7): () => number {
@@ -309,6 +310,24 @@ describe('the checks', () => {
     const line = checklistLines(g, validate(g)).find((l) => l.tab === 0);
     expect(line?.level).toBe('info');
     expect(line?.text).toBe('Jeopardy!: 2 partner clues not placed yet (Start game puts them on the board at random)');
+  });
+
+  it('a file with partner clues placed by hand opens with the box counting them', () => {
+    const { g, r } = board();
+    placePartner(r, r.categories[0].clues[0]);
+    placePartner(r, r.categories[1].clues[0]);
+    delete r.partnerCount;
+    const back = migrateGame(JSON.parse(JSON.stringify(g))).rounds[0] as BoardRound;
+    expect(back.partnerCount).toBe(2);
+    r.partnerCount = 5;
+    expect((migrateGame(JSON.parse(JSON.stringify(g))).rounds[0] as BoardRound).partnerCount).toBe(5);
+  });
+
+  it('the sample game’s board counts its partner clue', () => {
+    const g = newGame();
+    addSampleGame(g);
+    const r = boardRounds(g)[0];
+    expect([partnerTilesPlaced(r), r.partnerCount]).toEqual([1, 1]);
   });
 
   it('a hand-edited count, game or card the app can’t use goes', () => {

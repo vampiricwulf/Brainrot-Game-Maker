@@ -20,6 +20,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Fixed
 
 - In a board game's editor, the space you click shows its dashed yellow ring at once (it only showed on a space picked before).
+- The sample game's board, and a game file with partner clues made by hand, open with **🤝 Partner clues** counting the ones on the board (it said 0 beside “1 on the board”, with 🔀 Randomize greyed).
 
 ## 2026-11-12
 
