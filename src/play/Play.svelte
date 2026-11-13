@@ -587,6 +587,27 @@
       document.body.style.removeProperty('--toast-top');
     };
   });
+  /** With an audience window: where the 📜 Log goes, in the room its margin takes from the stage preview and info. */
+  let logBeside = $state<{ top: number; left: number; height: number } | null>(null);
+  $effect(() => {
+    if (!dual || !showLog) return void (logBeside = null);
+    let ro: ResizeObserver | undefined;
+    const read = () => {
+      const el = document.querySelector<HTMLElement>('.play > .stage-area');
+      if (!el) return;
+      if (!ro) (ro = new ResizeObserver(read)).observe(el);
+      const r = el.getBoundingClientRect();
+      logBeside = { top: r.top, left: r.right, height: r.height };
+    };
+    read();
+    window.addEventListener('resize', read);
+    window.addEventListener('scroll', read, true);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', read);
+      window.removeEventListener('scroll', read, true);
+    };
+  });
   $effect(() => {
     if (!panelWindow) return void (panelBox = null);
     let ro: ResizeObserver | undefined;
@@ -6755,6 +6776,7 @@
         ontiebreakwin={(id) => tiebreakWin(1, [id])}
         oncowinners={winnerCue}
         onjudge={judge}
+        logOpen={showLog}
         onlog={(tab) => {
           if (tab) logTab = tab;
           showLog = !!tab || !showLog;
@@ -6833,7 +6855,7 @@
   </main>
   {#if showLog && (dual || panelBox)}
     <!-- Single window: in the host panel's own box (scrolling there), never over the stage viewers see. -->
-    <ScoreLog {game} {session} {sym} hide={!dual} bind:tab={logTab} area={panelBox} spinning={spinningIds} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
+    <ScoreLog {game} {session} {sym} hide={!dual} bind:tab={logTab} area={panelBox} beside={dual ? logBeside : null} spinning={spinningIds} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
   {/if}
   {#if showPlayers}
     <!-- Every click, change or dropped row (a player dragged to a new place) in here ends a step (see commitRoster). -->
@@ -7359,9 +7381,9 @@
   .play:not(.dual) {
     overflow: hidden;
   }
-  /* An audience window: the 📜 Log drawer sits beside the host's view, not over the panel's buttons (which the keys
-     still reach). As wide as the drawer (see ScoreLog). */
-  .play.dual.logged {
+  /* An audience window: the 📜 Log drawer takes its room from the host's stage preview and info (see logBeside), not
+     from the host panel, whose rows keep their words (the keys still reach them). As wide as the drawer (see ScoreLog). */
+  .play.dual.logged > .stage-area {
     margin-right: min(460px, 100vw);
   }
   .play:not(.dual):not(.side) > :global(.panel) {

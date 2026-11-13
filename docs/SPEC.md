@@ -669,7 +669,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   row is drawn in the ghost look, `.quiettools`, its words, edges and places as they are, so the box is what the eye
   finds), then a fixed
   bar in groups by purpose (Undo, Redo · Log, Players, Rules · Cover, Hide · Sound, Audience, ▭ Scores window, ● while
-  open · ❔ Help, Exit; ▭ Scores window as ▭ up to 1340 px wide, ❔ Help as its sign only up to 1040 px, and under about
+  open · ❔ Help, Exit; 📜 Log shows pressed while the Log is open, which with an audience window sits beside the host's
+  stage preview and info, taking its room from them, so the host panel under them keeps its full width; ▭ Scores window as ▭ up to 1340 px wide, ❔ Help as its sign only up to 1040 px, and under about
   940 px the others too, so it stays one line; beside the stage a grid: Undo Redo and the lists, then Sound, Audience
   and Scores window across both columns, then Cover Hide and Help Exit, every word kept). On a short window the round's own
   box keeps a few rows in sight (the panel scrolls), a roll's box above it too. **A clue's flow row** (the row level with

@@ -58,8 +58,9 @@ The panel keeps the same layout in every round:
 3. **The action row** for this moment, with the **blue button** at its right.
 4. **Tools**: 🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard, with the round
    navigation (◀ Previous round, the round list, Next round ▶) on the right.
-5. **A fixed bar**: ↶ Undo, ↷ Redo, 📜 Log, 👥 Players, ⚖ Rules, ⏸ Cover, 🙈 Hide, 🔊 Sound, 📺 Audience, ▭ Scores window,
-   ❔ Help and 🚪 Exit.
+5. **A fixed bar**: ↶ Undo, ↷ Redo, 📜 Log (shown pressed while it's open; with an audience window it opens beside
+   your stage preview, so the panel keeps its width), 👥 Players, ⚖ Rules, ⏸ Cover, 🙈 Hide, 🔊 Sound, 📺 Audience,
+   ▭ Scores window, ❔ Help and 🚪 Exit.
 
 ### The blue button
 

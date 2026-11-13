@@ -118,6 +118,7 @@
     onjudge,
     onrolloff,
     onlog,
+    logOpen = false,
     onplayers,
     onrules,
     onhide,
@@ -254,6 +255,8 @@
     onrolloff?: (ids: string[]) => void;
     /** Open or close the 📜 Log (with a tab: open it on that tab). */
     onlog: (tab?: LogTab) => void;
+    /** The 📜 Log is open (its button shows it pressed). */
+    logOpen?: boolean;
     onplayers: () => void;
     /** ⚖ Game rules, mid-game (a window). */
     onrules: () => void;
@@ -1667,7 +1670,7 @@
     </span>
     <span class="divider" aria-hidden="true"></span>
     <span class="group g-lists">
-      <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 <span class="txt">Log</span></button>
+      <button onclick={() => onlog()} class:on={logOpen} aria-pressed={logOpen} title={logOpen ? 'L: close the log' : 'L: the history, scores and rolls'}>📜 <span class="txt">Log</span></button>
       <!-- The game's rules go with its players (Most players). -->
       <button onclick={onplayers} title={teams ? 'Teams' : 'Players'}>👥 <span class="txt">{teams ? 'Teams' : 'Players'}</span></button>
       <button onclick={onrules} title="⚖ Game rules: scoring, most players, timers, the round intro">⚖ <span class="txt">Rules</span></button>

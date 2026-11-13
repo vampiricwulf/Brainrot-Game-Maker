@@ -24,6 +24,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Fixed
 
+- With an audience window, opening 📜 Log no longer squeezes the host panel until its clue buttons lose their words: the Log takes its room from your stage preview instead. 📜 Log shows pressed while it's open.
 - On a Daily Double's question, pressing the player's number out of habit (which let them go) and then Enter judges them anyway, instead of saying to select a player first.
 - Once everyone has passed, a running countdown stops, so the stream doesn't count down to “Time's up” for nobody. Ctrl+Z brings it back with the time it had left.
 - ↺ Reset buzzers (0, right next to 9) can be undone: Ctrl+Z puts the buzzers back as they were, with the buzz order, who missed it and who passed (with the buzzer room updated to this version; an older one still forgets the passes).

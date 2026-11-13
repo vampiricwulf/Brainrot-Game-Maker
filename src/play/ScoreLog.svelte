@@ -23,6 +23,7 @@
     onredoto,
     onclose,
     area = null,
+    beside = null,
     spinning = [],
     hide = false,
   }: {
@@ -39,6 +40,11 @@
     onclose: () => void;
     /** Single window: the host panel's box. The log shows in there, never over the stage viewers see. */
     area?: { top: number; left: number; width: number; height: number } | null;
+    /**
+     * With an audience window: the room beside the host's stage preview and info (taken from them), so the host panel
+     * under them keeps its full width.
+     */
+    beside?: { top: number; left: number; height: number } | null;
     /** Rolls whose wheel, dice or roll-off is still going: their result waits for the landing (this log can be on stream). */
     spinning?: string[];
     /** Single window (this log is on stream): steps say their quiet text, a secret board-game space as “? (secret)”. */
@@ -165,10 +171,11 @@
 <aside
   bind:this={box}
   class:in-panel={!!area}
-  style:top={area ? `${area.top}px` : undefined}
-  style:left={area ? `${area.left}px` : undefined}
+  class:beside={!area && !!beside}
+  style:top={area ? `${area.top}px` : beside ? `${beside.top}px` : undefined}
+  style:left={area ? `${area.left}px` : beside ? `${beside.left}px` : undefined}
   style:width={area ? `${area.width}px` : undefined}
-  style:height={area ? `${area.height}px` : undefined}
+  style:height={area ? `${area.height}px` : beside ? `${beside.height}px` : undefined}
   aria-label="Log"
 >
   <header class="row">
@@ -332,6 +339,11 @@
     display: flex;
     flex-direction: column;
     box-shadow: -8px 0 30px rgba(0, 0, 0, 0.4);
+  }
+  aside.beside {
+    right: auto;
+    bottom: auto;
+    border-bottom: 1px solid var(--border);
   }
   aside.in-panel {
     right: auto;

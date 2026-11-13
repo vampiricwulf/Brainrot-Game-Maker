@@ -417,8 +417,21 @@ try {
   await page.waitForFunction((name) => document.querySelector('.spot-name')?.textContent === name, order[1]);
   assert(true, 'number keys from the audience window move the spotlight');
   // With the audience window the 📜 Log opens beside the host's view, not over the panel's buttons (the keys reach them).
+  // Its room comes from the host's stage preview and info, not the panel: the panel keeps its width, and 📜 Log shows
+  // pressed while it's open.
+  const panelBox = () => page.locator('.play > .panel').boundingBox();
+  const logBtn = page.locator('.panel .fixed button', { hasText: '📜' });
+  const panelWas = await panelBox();
+  const stageWas = await page.locator('.play > .stage-area > .stage-box').boundingBox();
   await page.keyboard.press('l');
   await page.locator('aside[aria-label="Log"]').waitFor();
+  await page.waitForTimeout(300);
+  const [panelNow, stageNow, logAt] = [await panelBox(), await page.locator('.play > .stage-area > .stage-box').boundingBox(), await page.locator('aside[aria-label="Log"]').boundingBox()];
+  assert(
+    Math.abs(panelNow.width - panelWas.width) < 1 && stageNow.width < stageWas.width - 100 && logAt.y + logAt.height <= panelNow.y + 1 && logAt.x >= stageNow.x + stageNow.width - 1,
+    `two windows: the 📜 Log takes its room from the stage preview, beside it and above the panel, which keeps its width (panel ${panelWas.width} → ${panelNow.width}, preview ${stageWas.width} → ${stageNow.width})`,
+  );
+  assert((await logBtn.getAttribute('aria-pressed')) === 'true', '📜 Log shows pressed while the Log is open');
   const dualSteps = await history();
   assert(
     dualSteps.some((t) => /’s wager: \$100 → \$150$/.test(t)) && dualSteps.some((t) => /’s wager: \$300$/.test(t)) && dualSteps.some((t) => /’s wager: \$\d+ → \$120$/.test(t)),
@@ -434,6 +447,7 @@ try {
   assert(exitFree, 'with the audience window, the 📜 Log leaves 🚪 Exit in sight (it’s beside the panel, not over it)');
   await page.keyboard.press('l');
   await page.locator('aside[aria-label="Log"]').waitFor({ state: 'detached' });
+  assert((await logBtn.getAttribute('aria-pressed')) === 'false', 'and not once it’s closed');
   await aud.close();
 
   // A player taken out in the round before the Final, back with ↶ Undo on its wager screen and out again with ↷ Redo:
