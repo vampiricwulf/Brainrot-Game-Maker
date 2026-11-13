@@ -1610,8 +1610,9 @@
     {/if}
   </div>
 
-  <!-- The tools, then the round's navigation (quiet; leaving a round asks), away from the main cell. -->
-  <div class="row toolsrow">
+  <!-- The tools, then the round's navigation (quiet; leaving a round asks), away from the main cell. (In one window, out
+       of the keys' reach while the strip lies over it: nothing out of sight is pressed.) -->
+  <div class="row toolsrow" inert={!!ask && !dual}>
     {@render tools?.()}
     <!-- (A Final's title card too: a way back from it without putting its category on stream.) -->
     {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'slides' || (session.phase === 'final' && session.intro?.stage === 'title')}

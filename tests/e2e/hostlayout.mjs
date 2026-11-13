@@ -332,6 +332,12 @@ try {
   assert(strip.y + strip.h >= tools.y + tools.h - 1 && strip.y <= tools.y + 1, `the strip lies over the tools row (strip ${strip.y}+${strip.h}, tools ${tools.y}+${tools.h})`);
   const fixedBar = await box(page.locator('.panel .fixed'));
   assert(strip.y + strip.h <= fixedBar.y && strip.w > fixedBar.w * 0.9, 'the strip spans the panel, right above the fixed bar (no button under it)');
+  // (What it lies over is out of the keys' reach: Shift+Tab from its Stay never lands on a hidden tool or ▶.)
+  await page.waitForFunction(() => document.activeElement?.closest('.confirm') && document.activeElement.textContent?.includes('Stay'));
+  await page.keyboard.press('Shift+Tab');
+  const behind = await page.evaluate(() => ({ inTools: !!document.activeElement?.closest('.toolsrow'), text: document.activeElement?.textContent?.trim() ?? '' }));
+  assert(!behind.inTools, `one window: Shift+Tab from the strip doesn't reach the tools row under it (${behind.text})`);
+  await confirmStrip(page).getByRole('button', { name: 'Stay' }).focus();
   const exitAsked = await box(btn('🚪 Exit'));
   assert(exitAsked.x === states.board.exit.x, '🚪 Exit keeps its place while it asks');
   await confirmStrip(page).getByRole('button', { name: 'Stay' }).click();
@@ -441,6 +447,16 @@ try {
   await page.waitForTimeout(450);
   const leave = page.locator('.rn button', { hasText: '▶' });
   assert(!(await leave.evaluate((b) => b.classList.contains('primary'))), 'its Next round ▶ is a quiet button');
+  // By keys: Enter on ▶ asks, Enter on the strip's Cancel gives the keys back to ▶ (the tools row out of reach meanwhile).
+  await leave.focus();
+  await page.keyboard.press('Enter');
+  await confirmStrip(page).waitFor();
+  await page.waitForFunction(() => !!document.activeElement?.closest('.confirm'));
+  await page.keyboard.press('Enter');
+  await confirmStrip(page).waitFor({ state: 'detached' });
+  await page.waitForFunction(() => document.activeElement?.closest('.rn') && document.activeElement.textContent?.includes('▶'));
+  assert(true, 'Cancel on the leave question gives the keys back to Next round ▶');
+  await page.waitForTimeout(450);
   await leave.click();
   assert((await confirmStrip(page).innerText()).includes('Leave Board game for Final Jeopardy!?'), 'and leaving it asks first (“Leave Board game for Final Jeopardy!?”)');
   assert(

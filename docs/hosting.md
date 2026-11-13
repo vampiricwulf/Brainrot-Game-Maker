@@ -79,7 +79,7 @@ small card opens in the panel with a button to fix each one.
 - "Don't ask about … again this game" turns one kind of check off. The keys window (`?`) lists what's off, with
   **Ask again**.
 
-Other questions (Exit, leaving a round, Rematch) appear in a strip above the fixed bar (in one window over the tools row, so the stage keeps its size). Nothing pops up over the stage.
+Other questions (Exit, leaving a round, Rematch) appear in a strip above the fixed bar (in one window over the tools row, so the stage keeps its size; Tab skips the tools under it until you answer). Nothing pops up over the stage.
 
 ### Clicking the stage
 
