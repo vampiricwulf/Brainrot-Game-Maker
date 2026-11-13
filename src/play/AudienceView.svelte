@@ -349,15 +349,15 @@
    * Phone buzzers: the join code in a corner while the room is open (unless the host turned it off), kept off the board's
    * tiles: on the board it sits at the end of the score bar (none without one); on clue slides and title cards in the
    * bottom-right corner (the caption is bottom-left); not over a Final, RPG or board game round, a Daily Double (only
-   * the player who found it plays it: nobody buzzes), a wheel, dice or roll-off on screen (it showed through their
-   * backdrop), or the results.
+   * the player who found it plays it: nobody buzzes), the tiebreaker (answered out loud: nobody buzzes either), a
+   * wheel, dice or roll-off on screen (it showed through their backdrop), or the results.
    */
   const codeSpot = $derived.by((): 'bar' | 'corner' | null => {
     if (!live.room || stream?.hideJoinCode || live.pregame) return null;
     if (introName || (session.phase === 'board' && session.intro?.stage === 'title')) return 'corner';
     if (session.phase === 'board') return layout.score ? 'bar' : null;
     if (session.phase === 'clue') return own ? null : 'corner';
-    if (session.phase === 'tiebreaker' || session.phase === 'slides') return 'corner';
+    if (session.phase === 'slides') return 'corner';
     return null;
   });
   /** The host just opened the buzzers ("When I press U"): a cue on the clue's slide while they're open. */

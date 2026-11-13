@@ -286,6 +286,8 @@ async function show(how) {
     await key('Enter', 'Ann’s points', marked);
   } else {
     await stageClick('the clue', mainIs('👁 Reveal answer'), tile('Memes for $200'));
+    await host.locator('.stage-box .join-badge').waitFor();
+    assert(true, 'a clue anyone may buzz on shows the join code');
     await buzz('Ann');
     await click(award, 'Ann’s points', marked);
   }
@@ -508,6 +510,7 @@ async function show(how) {
   // (No blue button on the end screen: every way to settle the tie is in its box.)
   await until('the end screen, no blue button', noMain);
   await click(host.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' }), 'the tiebreaker clue', mainIs('👁 Reveal answer'));
+  assert((await host.locator('.stage-box .join-badge').count()) === 0, 'no join code on the tiebreaker clue (answered out loud: nobody buzzes)');
   if (byKeys) {
     await key('r', 'its answer', mainIs('🏁 Back to results'));
     await key(String(NAMES.indexOf(winner) + 1), `${winner} picked`, async () => (await host.locator('.panel .p .sel[aria-pressed="true"]').count()) === 1);
