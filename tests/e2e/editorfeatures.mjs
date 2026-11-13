@@ -57,6 +57,23 @@ try {
     assert((await fp.locator('.page-header .sub').innerText()).includes('Viewers see these slides one after another'), 'a slides round says how it plays in its header line');
     const order = await fp.evaluate(() => { const tabs = document.querySelector('main [role="tablist"]'); const q = document.querySelector('main [data-field="q"]'); return !!tabs && !!q && !!(tabs.compareDocumentPosition(q) & Node.DOCUMENT_POSITION_FOLLOWING); });
     assert(order, 'and its Text (slide 1 of 2) box comes after the slide tabs');
+    // ＋ Add round under the sample's five rounds at 1280×720 and 1366×768: 📂 Import rounds… and 📋 Paste round in sight.
+    for (const [w, h] of [[1280, 720], [1366, 768]]) {
+      await fp.setViewportSize({ width: w, height: h });
+      await fp.getByRole('button', { name: '＋ Add round' }).click();
+      const menu = fp.getByRole('menu');
+      await menu.waitFor();
+      const seen = await menu.evaluate((m) => {
+        const box = m.getBoundingClientRect();
+        const inSight = (re) => {
+          const b = [...m.querySelectorAll('[role="menuitem"]')].find((x) => re.test(x.textContent))?.getBoundingClientRect();
+          return !!b && b.top >= box.top && b.bottom <= box.bottom && b.bottom <= innerHeight;
+        };
+        return { imp: inSight(/Import rounds/), paste: inSight(/Paste round/), scroll: m.scrollHeight, client: m.clientHeight };
+      });
+      assert(seen.imp && seen.paste, `${w}×${h}: ＋ Add round shows Import rounds… and Paste round without scrolling (${JSON.stringify(seen)})`);
+      await fp.keyboard.press('Escape');
+    }
     await fresh.close();
   }
 
@@ -292,8 +309,14 @@ try {
 
   // ---------- Templates, Copy / Paste round ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();
+  {
+    // The menu's order: the five kinds, then 📂 Import rounds… and 📋 Paste round, then the templates, one line each.
+    const items = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.trim());
+    const at = (re) => items.findIndex((x) => re.test(x));
+    assert(at(/Import rounds…/) === 5 && at(/^📋 Paste round$/) === 6 && at(/20-space loop/) > 6 && items.every((x) => !x.includes('\n')), `＋ Add round: Import rounds… and Paste round right under the five kinds, every entry one line (${items.join(' | ')})`);
+  }
   await page.keyboard.press('End');
-  assert((await page.evaluate(() => document.activeElement?.textContent)).includes('Import round'), 'End in a menu goes to its last item (Paste round is greyed out)');
+  assert((await page.evaluate(() => document.activeElement?.textContent)).includes('The sample game'), 'End in a menu goes to its last item');
   await page.keyboard.press('Home');
   assert((await page.evaluate(() => document.activeElement?.getAttribute('role'))) === 'menuitem' && (await page.evaluate(() => document.activeElement?.parentElement?.querySelector('button:not(:disabled)') === document.activeElement)), 'Home to its first');
   await page.getByRole('menuitem', { name: /20-space loop/ }).click();

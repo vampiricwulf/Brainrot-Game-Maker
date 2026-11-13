@@ -108,7 +108,7 @@ export async function pickOtherGame(): Promise<Game | null> {
   }
 }
 
-/** The ＋ Add round menu: the blank modes, the templates (each with its explanation under it), then a round from elsewhere. */
+/** The ＋ Add round menu: the blank modes, a round from elsewhere (imported or pasted), then the templates (one line each). */
 export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) => void, shown: (at: number) => void, importRounds: () => void, sample?: () => void): MenuEntry[] {
   const b = clipboard.round;
   // (Its introduction comes only in an empty game: see addSampleGame.)
@@ -118,10 +118,7 @@ export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) 
   return [
     ...Object.entries(ROUND_MODES).map(([mode, m]) => ({ label: `${m.icon} ${m.label}`, hint: m.hint, onclick: () => add(mode as keyof typeof ROUND_MODES) })),
     { sep: true },
-    { heading: 'Start from a template' },
-    ...TEMPLATES.map((t) => ({ label: `${ROUND_MODES[t.mode].icon} ${t.label}`, detail: t.hint, onclick: () => shown(addTemplate(game, t)) })),
-    ...(sample ? [{ label: '✨ The sample game', detail: sampleHint, onclick: sample }] : []),
-    { sep: true },
+    // (Up here, under the kinds, so a short window shows them: they bring in what the author already has.)
     { label: '📂 Import rounds…', hint: 'From another game’s .brainrot file (or its play-only web page), with their worlds, wheels, items and files', onclick: importRounds },
     {
       label: b ? `📋 Paste round “${bundleName(b)}”` : '📋 Paste round',
@@ -132,5 +129,10 @@ export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) 
         if (at !== null) shown(at);
       },
     },
+    { sep: true },
+    { heading: 'Start from a template' },
+    // (One line each, what it is in its tooltip, so the whole menu fits under the button at 720 high.)
+    ...TEMPLATES.map((t) => ({ label: `${ROUND_MODES[t.mode].icon} ${t.label}`, hint: t.hint, onclick: () => shown(addTemplate(game, t)) })),
+    ...(sample ? [{ label: '✨ The sample game', hint: sampleHint, onclick: sample }] : []),
   ];
 }

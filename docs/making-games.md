@@ -30,6 +30,8 @@ video, audio or YouTube, arranged freely.
 
 - Drag round tabs to reorder them. Right-click a tab for its menu, including **Copy round**.
 - `Ctrl+C` on a tab copies the round; `Ctrl+V` pastes after it.
+- **＋ Add round** offers the five kinds of round first, then 📂 Import rounds… and 📋 Paste round, then the templates
+  to start from (each one's tooltip says what it is).
 - **📂 Import rounds…** brings rounds in from a `.brainrot` file or from a game exported as a web page. The worlds,
   wheels, dice, stats, items, shops and files a round uses come along with it. If something with the same name
   already exists but differs, it comes in as a copy (for example "Potion (copy)").
