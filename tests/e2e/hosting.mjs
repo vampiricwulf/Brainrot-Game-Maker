@@ -158,6 +158,14 @@ try {
   await page.waitForTimeout(150);
   assert((await focused()) === 'Category 2 for $200, played', `after the clue, the keys go on from its tile (${await focused()})`);
   assert((await stage('.board .tile:not([tabindex="-1"])').count()) === 1, 'the board is one Tab stop (a roving tabindex)');
+  // ↶ Reopen in the status line (pressed with the keys): the keys go to that tile, not the panel's first button.
+  await page.locator('.panel .status').getByRole('button', { name: '↶ Reopen Category 2 $200' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  assert((await focused()) === 'Category 2 for $200', `↶ Reopen Category 2 $200: the keys go to the tile put back (${await focused()})`);
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Category 2 for $200, played');
+  assert(true, 'Ctrl+Z marks it played again, the keys still on it');
   await page.keyboard.press('ArrowDown');
   assert((await focused()) === 'Category 2 for $400', `↓ moves down the board (${await focused()})`);
   await page.keyboard.press('ArrowLeft');
@@ -177,6 +185,12 @@ try {
   const pops = (await stage('.pop').allInnerTexts()).filter((t) => t.includes('$400'));
   assert(pops.length === 1 && pops[0] === 'Everyone +$400', `a group award shows one pop (${pops.join(' | ')})`);
   await page.keyboard.press('Escape');
+  // ± Adjust score, then Esc in the Amount box: the keys go to the board's tile, not the page itself.
+  await page.getByRole('button', { name: '± Adjust score' }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('.panel .award input'));
+  await page.keyboard.press('Escape');
+  assert(await page.evaluate(() => !!document.activeElement?.matches('.stage-box .board .tile[tabindex="0"]')), `Esc in the Amount box opened with ± Adjust score: the keys go to the board's tile (${await focused()})`);
+  await page.locator('.panel .award').getByRole('button', { name: '✕ Close' }).click();
   // On the board, one player's pop sits over their plate. (± Adjust score puts the keys in the Amount box: the points
   // first, then who gets them.)
   await page.getByRole('button', { name: '± Adjust score' }).click();

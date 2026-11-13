@@ -440,14 +440,13 @@
     return cardSlides(info.clue).filter((c) => !cardSends(partner, c.id).length && cardRecipients(session, partner, c).length > 0).length;
   });
   const used = $derived(session.phase === 'board' ? usedTiles(session, game) : []);
-  /** Picked from ↶ Reopen a tile…: back on the board. With the last one back that button goes, so the keys go to the tile. */
+  /**
+   * ↶ Reopen (the status line's button, or a tile picked from ↶ Reopen a tile…): back on the board, and the keys go to
+   * that tile, as after ▦ Done ▶ board, so the arrows and Enter go on from it (not the panel's first button).
+   */
   function reopenPicked(id: string): void {
     onreopen(id);
-    void tick().then(() => {
-      const a = document.activeElement;
-      if (a && a !== document.body && a.isConnected) return;
-      document.querySelector<HTMLElement>(`.play .stage-box .tile[data-clue="${id}"]`)?.focus({ preventScroll: true });
-    });
+    void tick().then(() => document.querySelector<HTMLElement>(`.play .stage-box .tile[data-clue="${id}"]`)?.focus({ preventScroll: true }));
   }
   // Only in the round it's from: reopening a tile of another round would change a board nobody is looking at.
   const lastClosedRef = $derived.by(() => {
@@ -625,13 +624,14 @@
   let amountKeys = $state(false);
   /**
    * The board's tile the keys came to the Amount box from (2, then Enter on it): its Enter or Esc gives them back there,
-   * so the arrows and Enter go on with the board. (Elsewhere they're let go, for the shortcuts.)
+   * so the arrows and Enter go on with the board. Opened with ± Adjust score, they go to the board's tile (the one Tab
+   * reaches), never the page itself. (Elsewhere they're let go, for the shortcuts.)
    */
   let amountFrom: HTMLElement | null = null;
   function amountDone(box: HTMLInputElement): void {
-    const to = amountFrom;
+    const to = session.phase === 'board' ? (amountFrom?.isConnected ? amountFrom : document.querySelector<HTMLElement>('.play .stage-box .tile[data-clue][tabindex="0"]')) : null;
     amountFrom = null;
-    if (to?.isConnected && session.phase === 'board') to.focus({ preventScroll: true });
+    if (to) to.focus({ preventScroll: true });
     else box.blur();
   }
   $effect(() => {
@@ -933,7 +933,7 @@
       {/if}
       {#if !session.intro && lastClosedRef && session.lastClosed}
         {@const id = session.lastClosed}
-        <button class="small ghost" onclick={() => onreopen(id)} title="Put the last tile you closed back on the board">
+        <button class="small ghost" onclick={() => reopenPicked(id)} title="Put the last tile you closed back on the board">
           ↶ Reopen {clueName(game, lastClosedRef)}
         </button>
       {/if}

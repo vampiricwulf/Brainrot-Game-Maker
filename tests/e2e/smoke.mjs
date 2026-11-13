@@ -944,7 +944,8 @@ assert(!(await isUsed(2)), 'Shift+Esc cancels a clue and keeps its tile playable
 await page.getByRole('button', { name: /↶ Reopen Category 2/ }).waitFor();
 assert(true, 'the host panel offers to reopen the last tile closed');
 // "↶ Reopen a tile…" is a menu: the arrow keys look through it (nothing is put back until one is picked with Enter), and
-// the keys go back to its button after, where shortcuts work. (Focused after a key, as the keyboard would: Enter opens it.)
+// the keys go to the tile put back after, where the arrows, Enter and the shortcuts work. (Focused after a key, as the
+// keyboard would: Enter opens it.)
 const reopenBtn = page.getByRole('button', { name: /Reopen a tile/ });
 await reopenBtn.focus();
 await page.keyboard.press('Enter');
@@ -955,7 +956,7 @@ assert((await isUsed(0)) && (await isUsed(1)), 'looking through the reopen menu 
 await page.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Memes $200');
 await page.keyboard.press('Enter');
 await page.waitForFunction(() => !document.querySelectorAll('.stage-box .board .tile')[0].classList.contains('used'));
-assert((await isUsed(1)) && (await reopenBtn.evaluate((b) => b === document.activeElement)), 'Enter puts the tile picked back, and only that one; the keys go back to ↶ Reopen a tile…');
+assert((await isUsed(1)) && (await tile(0).evaluate((b) => b === document.activeElement)), 'Enter puts the tile picked back, and only that one; the keys go to that tile (not ↶ Reopen a tile…)');
 await page.keyboard.press('1');
 assert((await page.locator('.panel .p').nth(0).locator('.sel').getAttribute('aria-pressed')) === 'true', 'number keys work right after reopening from the menu');
 await page.keyboard.press('1');
