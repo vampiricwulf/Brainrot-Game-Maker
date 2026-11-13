@@ -399,9 +399,12 @@ try {
   await big(al).getByText('Ann is answering').waitFor();
   const before = await al.locator('#me').innerText();
   await host.keyboard.press('Enter');
-  await big(al).getByText('Your team got it!').waitFor();
+  await big(al).getByText(/^✔ Right! \+/).waitFor();
   await al.waitForFunction((b) => document.getElementById('me').textContent !== b, before);
-  assert((await ann.locator('#me').innerText()) === (await al.locator('#me').innerText()).replace(/^Al/, 'Ann'), 'right: the team scores, and both teammates see it ("Your team got it!")');
+  assert(
+    (await ann.locator('#me').innerText()) === (await al.locator('#me').innerText()).replace(/^Al/, 'Ann') && (await big(ann).innerText()) === (await big(al).innerText()),
+    `right: the team scores, and both teammates see it ("${await big(al).innerText()}")`,
+  );
   await host.keyboard.press('Escape');
 
   // ---------- A ✍ clue: one answer per team; a teammate's fills the others' boxes ----------

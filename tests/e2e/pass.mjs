@@ -310,10 +310,16 @@ try {
   await row(page).getByText('Everyone passed: reveal the answer').waitFor();
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.classList.contains('ring'));
   assert(true, 'Cat wrong (out of the clue) and the others passed: everyone passed, 👁 Reveal answer ringed');
+  await cat.locator('#buzz.wrong').waitFor();
+  assert(
+    (await big(cat)).startsWith('✘ Wrong') && (await cat.locator('#buzz-small').innerText()) === 'You’ve had your go on this one · everyone else passed',
+    `Cat’s phone says how it went (${await big(cat)}, in red) and that everyone else passed`,
+  );
   // Ctrl+Z of the wrong answer: Cat answers again, nobody's pass lost.
   await page.keyboard.press('Control+z');
   await cat.locator('#buzz.first').waitFor();
   assert(!(await ringed(page)) && (await big(ann)) === 'You passed', 'Ctrl+Z of the wrong answer: Cat is answering again, no ring, Ann still passed');
+  assert((await cat.locator('#buzz.wrong').count()) === 0, 'and the undone verdict is gone from Cat’s phone');
   await page.keyboard.press('Control+y');
   await row(page).getByText('Everyone passed: reveal the answer').waitFor();
   assert(true, 'and Ctrl+Y: everyone passed again');

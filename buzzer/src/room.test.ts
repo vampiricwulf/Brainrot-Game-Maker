@@ -3163,6 +3163,23 @@ describe('typed answers over several lines (cleanAnswer, foldLines)', () => {
   });
 });
 
+describe('verdicts on a buzz-in clue', () => {
+  it('each phone gets its own seat’s only; taken away when the host’s state no longer has it (an Undo)', () => {
+    const g = game();
+    g.arm(1, { verdicts: { a: { right: false, delta: -200 } } });
+    expect(g.pa.last('view')!.view.verdict).toEqual({ right: false, delta: -200 });
+    expect(g.pb.last('view')!.view.verdict).toBeUndefined();
+    g.arm(1);
+    expect(g.pa.last('view')!.view.verdict).toBeUndefined();
+  });
+
+  it('keeps only well-formed ones for seats in the game', () => {
+    const st = cleanState({ ...state(), verdicts: { a: { right: true, delta: 400, extra: 1 }, zz: { right: true, delta: 1 }, b: { right: 'yes', delta: 1 }, c: { right: false, delta: 1.5 } } });
+    expect(st?.verdicts).toEqual({ a: { right: true, delta: 400 } });
+    expect(cleanState({ ...state(), verdicts: { zz: { right: true, delta: 1 } } })?.verdicts).toBeUndefined();
+  });
+});
+
 describe('passes', () => {
   const ask = { id: 'c1@1' };
   const clue = (over: Partial<HostState> = {}) => state({ phase: 'armed', armId: 1, clue: { text: 'Q?' }, pass: ask, ...over });

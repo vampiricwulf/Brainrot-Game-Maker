@@ -4,7 +4,7 @@ import { finalName, newImageEl, newTextEl, playableClues, setSlideText, textSlid
 import { applyScore, ddShowQuestion, finalChoose, finalJudge, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, setScore, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
-  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, passAsk, phoneStatus, questionText, roomCardCount,
+  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, buzzVerdicts, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, passAsk, phoneStatus, questionText, roomCardCount,
   roomCardsFull, seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
 } from './buzz';
 import { CARDS_MAX, phoneView, OLD_FILE_LIMITS } from './buzzproto';
@@ -698,8 +698,63 @@ describe('each game’s answer rounds are its own (answerRoundId, everyoneAnswer
     session.scoreLog.push({ id: 'e1', ts: 1, playerId: 'a', delta: 200, reason: 'x', clueId: clue.id, right: true });
     expect(everyoneAnswerAsk(game, session)).toMatchObject({ open: true, seats: [{ id: 'a', closed: true }, { id: 'b' }] });
     expect(everyoneAnswerAsk(game, session)?.seats[1]).not.toHaveProperty('closed');
+    // Its phone says how it went from then (✔ Right! +$200); the others nothing yet.
+    expect(everyoneAnswerAsk(game, session)?.seats[0].verdict).toEqual({ right: true, delta: 200 });
+    expect(everyoneAnswerAsk(game, session)?.seats[1]).not.toHaveProperty('verdict');
+    session.scoreLog.push({ id: 'e2', ts: 2, playerId: 'b', delta: -200, reason: 'x', clueId: clue.id, right: false });
+    expect(everyoneAnswerAsk(game, session)?.seats[1].verdict).toEqual({ right: false, delta: -200 });
     session.scoreLog[1].undone = true;
     expect(everyoneAnswerAsk(game, session)?.seats[0]).not.toHaveProperty('closed');
+    expect(everyoneAnswerAsk(game, session)?.seats[0]).not.toHaveProperty('verdict');
+  });
+});
+
+describe('how each player was judged on a buzz-in clue (buzzVerdicts, phoneView)', () => {
+  function setup() {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#ff0000' },
+      { id: 'b', name: 'Bo', color: '#00ff00' },
+    ];
+    const clue = (game.rounds[0] as BoardRound).categories[0].clues[0];
+    const session = newSession(game);
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    return { game, clue, session };
+  }
+
+  it('none before a mark; each player’s own from the moment it’s judged, gone with an Undo', () => {
+    const { game, clue, session } = setup();
+    expect(buzzVerdicts(game, session)).toBeNull();
+    session.scoreLog.push({ id: 'e1', ts: 10, playerId: 'b', delta: -200, reason: 'x', clueId: clue.id, right: false });
+    expect(buzzVerdicts(game, session)).toEqual({ b: { right: false, delta: -200 } });
+    session.scoreLog.push({ id: 'e2', ts: 11, playerId: 'a', delta: 200, reason: 'x', clueId: clue.id, right: true });
+    const v = buzzVerdicts(game, session)!;
+    expect(v).toEqual({ b: { right: false, delta: -200 }, a: { right: true, delta: 200 } });
+    // The phones: each its own seat's, never another's.
+    const st = hostState(game, session, buzzArm(newBuzz(), ['a', 'b']), 0, { verdicts: v });
+    expect(phoneView(st, 'a').verdict).toEqual({ right: true, delta: 200 });
+    expect(phoneView(st, 'b').verdict).toEqual({ right: false, delta: -200 });
+    expect(phoneView(st, null).verdict).toBeUndefined();
+    session.scoreLog[1].undone = true;
+    expect(buzzVerdicts(game, session)).toEqual({ b: { right: false, delta: -200 } });
+    // Wrong, then right after ↺ Reset buzzers: the last mark's points, not the two summed.
+    session.scoreLog.push({ id: 'e3', ts: 12, playerId: 'b', delta: 200, reason: 'x', clueId: clue.id, right: true });
+    expect(buzzVerdicts(game, session)?.b).toEqual({ right: true, delta: 200 });
+    // Marks from before the clue opened (a tile played before, put back) don't count.
+    expect(buzzVerdicts(game, session, 13)).toBeNull();
+  });
+
+  it('none on a ✍ clue (its answers say it), a Daily Double or the board', () => {
+    const { game, clue, session } = setup();
+    session.scoreLog.push({ id: 'e1', ts: 10, playerId: 'b', delta: -200, reason: 'x', clueId: clue.id, right: false });
+    clue.everyone = true;
+    expect(buzzVerdicts(game, session)).toBeNull();
+    clue.everyone = false;
+    session.dd = { stage: 'question', playerId: 'b' } as never;
+    expect(buzzVerdicts(game, session)).toBeNull();
+    delete session.dd;
+    session.phase = 'board';
+    expect(buzzVerdicts(game, session)).toBeNull();
   });
 });
 

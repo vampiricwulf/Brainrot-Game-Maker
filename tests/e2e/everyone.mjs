@@ -266,10 +266,14 @@ try {
   await row('Player 2').getByText('✘ Wrong').waitFor();
   await p1.locator('#me').getByText(/\$[1-9]/).waitFor();
   assert(true, '✔ / ✘ on each: Player 1 gets the clue’s points');
+  // Each phone says how it went, in green or red, over the answer it sent.
+  await p1.locator('#buzz.right #buzz-big').getByText(/^✔ Right! \+/).waitFor();
+  await p2.locator('#buzz.wrong #buzz-big').getByText(/^✘ Wrong/).waitFor();
+  assert((await p1.locator('#buzz-small').innerText()) === 'Yours: “Shiba Inu”', 'judged: Player 1’s phone says ✔ Right! (green), Player 2’s ✘ Wrong (red), each over its own answer');
 
   await host.keyboard.press('r');
   await host.waitForTimeout(800);
-  assert((await p1.locator('#buzz-big').innerText()) === 'Answers locked' && (await p1.locator('#answer-form').isHidden()), 'hiding the answer again doesn’t open them: nobody changes theirs after seeing it');
+  assert((await p1.locator('#buzz-big').innerText()).startsWith('✔ Right!') && (await p1.locator('#answer-form').isHidden()), 'hiding the answer again doesn’t open them: nobody changes theirs after seeing it');
   // Still locked: the stream's ✍ pill doesn't come back (nobody is answering), and the box says the answer was up.
   await answersBox.getByRole('status').getByText('locked (the answer was on screen)').waitFor();
   assert((await pill.count()) === 0, 'hidden again: no ✍ pill on stream, and the box says “locked (the answer was on screen)”');
@@ -304,11 +308,11 @@ try {
   await host.keyboard.press('Enter');
   await row('Player 1').getByText('✔ Right').waitFor();
   await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('Right: Player 2 '));
-  // Judged, Player 1's answer is final: the phone says it's locked, while Player 2 can still change theirs.
-  await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
+  // Judged, Player 1's answer is final: the phone says how it went at once, while Player 2 can still change theirs.
+  await p1.locator('#buzz.right #buzz-big').getByText(/^✔ Right! \+/).waitFor();
   assert(
     (await p1.locator('#buzz-small').innerText()) === 'Yours: “Siamese”' && (await p2.locator('#answer-form').isVisible()),
-    'an answer judged while answers are open is locked on its phone (“Yours: “Siamese””); the others stay open',
+    'an answer judged while answers are open is locked on its phone, which says ✔ Right! over “Yours: “Siamese””; the others stay open',
   );
   // (Its score pop on stream: the audience window has the state after the ✔.)
   await aud.locator('.pop', { hasText: 'Player 1' }).first().waitFor();
@@ -317,6 +321,7 @@ try {
   // words before, so it never lands beside the new ones.
   await host.keyboard.press('Control+z');
   await p1.getByLabel(/Your answer/).waitFor();
+  assert(!(await p1.getByText(/✔ Right!/).isVisible()), 'Ctrl+Z takes the verdict off the phone with the ✔ (its answer box is back)');
   await p1.getByLabel(/Your answer/).fill('Persian');
   await p1.getByRole('button', { name: /^(Send|Change) answer$/ }).click();
   await row('Player 1').getByText('“Persian”').waitFor();
@@ -452,6 +457,9 @@ try {
   await row('Player 1').getByText('✘ Wrong').waitFor();
   await row('Player 2').getByText('✔ Right').waitFor();
   await picker('Player 2').waitFor();
+  await p1.locator('#buzz.wrong #buzz-big').getByText(/^✘ Wrong/).waitFor();
+  await p2.locator('#buzz.right #buzz-big').getByText(/^✔ Right!/).waitFor();
+  assert(true, '✔ Judge all: each phone says how it went (✘ Wrong in red, ✔ Right! in green)');
   // Everyone judged: the keys go on to the main button (not 🙈 Hide answer), where Enter says so.
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   await host.keyboard.press('Enter');

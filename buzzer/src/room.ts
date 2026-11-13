@@ -110,6 +110,7 @@ import {
   CLUE_TEXT_MAX,
   KICK_BLOCK_MS,
   type AnswerAsk,
+  type AnswerVerdict,
   type BuzzPhase,
   type CardMedia,
   type CardTo,
@@ -2138,6 +2139,11 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
   if (Array.isArray(x.cards)) {
     const cards = cleanCards(x.cards, ids, files);
     if (cards.length) extra.cards = cards;
+  }
+  if (isObj(x.verdicts)) {
+    const verdicts: Record<string, AnswerVerdict> = {};
+    for (const [k, v] of Object.entries(x.verdicts)) if (ids.has(k) && isObj(v) && typeof v.right === 'boolean' && Number.isSafeInteger(v.delta)) verdicts[k] = { right: v.right, delta: v.delta as number };
+    if (Object.keys(verdicts).length) extra.verdicts = verdicts;
   }
   if (isObj(x.pass) && typeof x.pass.id === 'string' && x.pass.id && x.pass.id.length <= 100) extra.pass = { id: x.pass.id };
   if (x.over === true) extra.over = true;

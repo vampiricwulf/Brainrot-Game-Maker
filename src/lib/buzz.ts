@@ -597,12 +597,13 @@ export function everyoneAnswerAsk(game: Game, session: Session, opts: { choices?
   const mine = session.remote?.answers?.id === id ? session.remote.answers : undefined;
   const got = mine?.seats ?? {};
   const choices = opts.choices ? usableChoices(clue.choices).map(({ id, text }) => ({ id, text })) : [];
-  // Judged on this clue (✔ / ✘, or an award), and not taken back: their answer stays the one judged.
-  const judged = new Set(session.scoreLog.filter((e) => !e.undone && e.clueId === clue.id).map((e) => e.playerId));
+  // Judged on this clue (✔ / ✘, or an award), and not taken back: their answer stays the one judged, and their phone
+  // says how it went from then (an Undo takes it away).
+  const marks = lastVerdicts(session, clue.id);
   return {
     id,
     open: !session.revealed && !mine?.locked,
-    seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}), ...(judged.has(p.id) ? { closed: true as const } : {}) })),
+    seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}), ...(marks[p.id] ? { closed: true as const, verdict: marks[p.id] } : {}) })),
     ...(choices.length ? { choices } : {}),
   };
 }
@@ -731,6 +732,32 @@ export function passAsk(game: Game, session: Session, b: BuzzState): PassAsk | n
   return { id: clip(`${clue.id}@${b.passAt ?? 0}`, 100) };
 }
 
+/**
+ * Each player's verdict on a clue as their phone says it: their last mark on it since `since` that isn't undone (✔ / ✘,
+ * or an award or a deduction on it), right or not and the points that mark gave or took (a player wrong, then right
+ * after ↺ Reset buzzers, reads "✔ Right! +$200", not the two summed).
+ */
+function lastVerdicts(session: Session, clueId: string, since = 0): Record<Id, AnswerVerdict> {
+  const out: Record<Id, AnswerVerdict> = {};
+  for (const e of session.scoreLog) if (!e.undone && e.clueId === clueId && e.ts >= since) out[e.playerId] = { right: e.right ?? e.delta > 0, delta: e.delta };
+  return out;
+}
+
+/**
+ * How the host judged each player on the open buzz-in clue (HostState.verdicts), from the moment each is judged
+ * (lastVerdicts) since `since` (when the clue opened: Play's markSince). Null for anything else (a Daily Double and a
+ * partner clue say how it went in the status line, a ✍ clue with its answers, the Final in its reveals) and before
+ * anyone is judged.
+ */
+export function buzzVerdicts(game: Game, session: Session, since = 0): Record<Id, AnswerVerdict> | null {
+  if (session.phase !== 'clue' || session.dd || session.partner) return null;
+  const clue = currentClueInfo(session, game)?.clue;
+  if (!clue || clue.everyone) return null;
+  const marks = lastVerdicts(session, clue.id, since);
+  const out = Object.fromEntries(session.players.filter((p) => marks[p.id]).map((p) => [p.id, marks[p.id]]));
+  return Object.keys(out).length ? out : null;
+}
+
 /** A player's name as the phones get it (the room takes 40 characters at most). */
 export const SEAT_NAME_MAX = 40;
 
@@ -739,14 +766,23 @@ export const SEAT_NAME_MAX = 40;
  * and caption (the question slide on screen). Built here only, from a whitelist: never answers, host notes, media or
  * the game's other content, except the cards the host sent (hostCards: built only from session.partner.sent and
  * session.cards, which only the host's presses add to). A card holds whatever the host put on it. `extra`: the phones' status line (phoneStatus), 🔒 locked seats, the wagers
- * and answers phones may send, those cards (only for a room that takes them), and whether players may pass (passAsk).
+ * and answers phones may send, those cards (only for a room that takes them), whether players may pass (passAsk), and
+ * how each player was judged on the open buzz-in clue (buzzVerdicts).
  */
 export function hostState(
   game: Game,
   session: Session,
   b: BuzzState,
   earlyLockMs: number,
-  extra: { status?: HostState['status']; locked?: boolean; wager?: WagerAsk | null; answers?: AnswerAsk | null; cards?: HostCard[] | null; pass?: PassAsk | null } = {},
+  extra: {
+    status?: HostState['status'];
+    locked?: boolean;
+    wager?: WagerAsk | null;
+    answers?: AnswerAsk | null;
+    cards?: HostCard[] | null;
+    pass?: PassAsk | null;
+    verdicts?: Record<Id, AnswerVerdict> | null;
+  } = {},
 ): HostState {
   const info = (b.phase !== 'lobby' || extra.answers) && session.phase === 'clue' ? currentClueInfo(session, game) : null;
   // The Final's question goes along with its answers (never on the wager screen: there are none asked then).
@@ -785,6 +821,8 @@ export function hostState(
     ...(info && session.revealed ? { answerShown: true } : {}),
     // (Players may pass on it: only while its buzzers are out.)
     ...(extra.pass && b.phase !== 'lobby' && info ? { pass: extra.pass } : {}),
+    // (Each player's own verdict on the open buzz-in clue, from the moment it's judged.)
+    ...(extra.verdicts && info ? { verdicts: Object.fromEntries(Object.entries(extra.verdicts).filter(([id]) => seats.some((x) => x.id === id))) } : {}),
   };
 }
 

@@ -315,20 +315,24 @@ try {
   // buzz could jump).
   await host.keyboard.press('Shift+Enter');
   await small(p2).getByText('Player 1 is answering').waitFor();
-  await big(p2).getByText('Wait').waitFor();
+  await big(p2).getByText('✘ Wrong').waitFor();
   await big(p1).getByText("You're answering!").waitFor();
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')));
-  assert(true, 'a wrong answer (on $0, nothing to take) locks Player 2 out, and Player 1, next in the buzz order, answers without buzzing again');
+  assert(
+    (await big(p2).innerText()) === '✘ Wrong' && (await p2.locator('#buzz.wrong').count()) === 1,
+    'a wrong answer (on $0, nothing to take) locks Player 2 out (their phone says ✘ Wrong, in red), and Player 1, next in the buzz order, answers without buzzing again',
+  );
   // Undone, redone, undone, and wrong again: the buzz order stays, and Player 1 answers again (the buzzers don't open).
   const order = () => queue.locator('li').evaluateAll((ls) => ls.map((l) => l.textContent.replace(/\s+/g, ' ').replace(/ \+.*$/, '').trim() + (l.classList.contains('now') ? '*' : '')).join());
   const answering = async (p, other) => {
     await big(p).getByText("You're answering!").waitFor();
-    await big(other).getByText(/You're 2nd|Wait/).waitFor();
+    await big(other).getByText(/You're 2nd|Wait|✘ Wrong/).waitFor();
   };
   await host.keyboard.press('Control+z');
   await answering(p2, p1);
   await host.waitForFunction(() => document.querySelector('.buzz-queue li.now')?.textContent.includes('Player 2'));
   assert((await order()) === '1. Player 2*,2. Player 1', `Ctrl+Z: Player 2 answers again, the buzz order kept (${await order()})`);
+  assert((await p2.locator('#buzz.wrong').count()) === 0, 'and the undone verdict is gone from Player 2’s phone');
   await host.keyboard.press('Control+y');
   await answering(p1, p2);
   await host.waitForFunction(() => document.querySelector('.buzz-queue li.now')?.textContent.includes('Player 1'));
@@ -375,9 +379,12 @@ try {
   await host.keyboard.press('Enter');
   await p2.locator('#me').getByText(/^Player 2 · \$[1-9]/).waitFor();
   assert(true, 'Player 2 (locked out before the reset) buzzes in, is awarded, and their phone shows the new score');
-  await big(p2).getByText('You got it!').waitFor();
+  await big(p2).getByText(/^✔ Right! \+\u2060?\$[1-9]/).waitFor();
   await big(p1).getByText('Player 2 got it').waitFor();
-  assert((await small(p1).innerText()) === 'Wait for the next clue', 'right: "Player 2 got it" on the other phone, "You got it!" on theirs (not "Get ready…")');
+  assert(
+    (await small(p1).innerText()) === 'Wait for the next clue' && (await p2.locator('#buzz.right').count()) === 1,
+    'right: "Player 2 got it" on the other phone, "✔ Right! +$…" in green on theirs (not "Get ready…")',
+  );
 
   // ---------- A tie: 🎲 Roll for it sets who answers first ----------
   await host.keyboard.press('Escape');

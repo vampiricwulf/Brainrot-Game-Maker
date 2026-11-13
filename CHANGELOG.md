@@ -13,6 +13,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+
+- Phones say whether the player was right or wrong outside the Final too: on a buzz-in clue the judged player's phone shows “✔ Right! +$400” in green or “✘ Wrong −$200” in red the moment you mark them, and on a ✍ clue each phone shows its own as you judge it. An Undo takes it away.
+
 ### Changed
 
 - With phone buzzers, who passed is easy to see with a big table: the buzzers' row puts the count first (“Passed 6 of 8: Ann, Bob…”, in the room the 🔔 Buzzers open hint had), and the chips of players who passed fade, with “passed” on them. Once everyone has passed, the row also says ↺ Reset lets them all buzz again (after a hint, say).

@@ -1494,6 +1494,11 @@ function renderBuzz(v: PhoneView): void {
   const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
   /** Not answering this round (a Final this seat sits out): what's on is over the question already. */
   const notIn = team ? 'Your team isn’t in this one' : 'You’re not in this one';
+  /**
+   * How the host judged this seat on the open buzz-in clue ("✘ Wrong −$200"), green or red: not for one who had their
+   * go on another team (it's this team's).
+   */
+  const judged = v.verdict && !you.out ? ([v.verdict.right ? 'right' : 'wrong', verdictLine(v.verdict, sym)] as const) : null;
   /** Passing on this clue (an ordinary buzz-in one): the room's, until a press of Pass is in. */
   const pass = v.pass;
   if (passSent && (!pass || pass.id !== passSent.id || !!pass.passed === passSent.on)) {
@@ -1510,7 +1515,8 @@ function renderBuzz(v: PhoneView): void {
     // lines on one, " / " between them).
     const staked = wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
     const picked = pickLine(ans);
-    // Judged, and the stream shows it (the Final's reveals): how it went over it ("✔ Right! +$1,200"), green or red.
+    // Judged (a ✍ clue once the host judges it, the Final in its reveals): how it went over it ("✔ Right! +$1,200"),
+    // green or red.
     [cls, big, small] = [
       ans.verdict ? (ans.verdict.right ? 'right' : 'wrong') : 'off',
       ans.verdict ? verdictLine(ans.verdict, sym) : 'Answers locked',
@@ -1570,7 +1576,7 @@ function renderBuzz(v: PhoneView): void {
   } else if (v.phase === 'answering') {
     const who = v.answering ? `${v.answering.name} is answering${v.answering.by ? ` (${v.answering.by})` : ''}` : 'Tie! The host decides';
     // Out of this clue (wrong, or skipped): no place in the order to show any more.
-    if (you.lockedOut) [cls, big, small] = ['off', 'Wait', who];
+    if (you.lockedOut) [cls, big, small] = judged ? [...judged, who] : ['off', 'Wait', who];
     else if (mine?.outcome === 'tie') [cls, big, small] = ['off', 'Tie!', 'The host decides who goes first'];
     else if (mine?.outcome === 'late' && mine.rank) {
       // (Teams: the whole team rolled as one, whoever on it buzzed.)
@@ -1586,12 +1592,14 @@ function renderBuzz(v: PhoneView): void {
     else [cls, big, small] = ['off', mine?.outcome === 'late' ? 'Too late' : 'Wait', who];
   } else if (v.phase === 'closed' && v.done) {
     const by = v.done.by;
-    [cls, big, small] = ['off', by ? (by.you ? (team ? 'Your team got it!' : 'You got it!') : `${by.name} got it`) : 'Clue over', 'Wait for the next clue'];
+    // (Got it: how it went, "✔ Right! +$400", in green.)
+    if (by?.you && judged) [cls, big, small] = [...judged, 'Wait for the next clue'];
+    else [cls, big, small] = ['off', by ? (by.you ? (team ? 'Your team got it!' : 'You got it!') : `${by.name} got it`) : 'Clue over', 'Wait for the next clue'];
   } else if (mine?.outcome === 'pending' && v.phase === 'armed') {
     [cls, big, small] = ['off', '…', 'Buzzed! Checking who was first'];
   } else if (you.lockedOut) {
     // (Out: on another team for this clue; the one they're on now hasn't answered.)
-    [cls, big, small] = ['off', 'Wait', hadGoLine(team, !!you.out, !!pass?.all)];
+    [cls, big, small] = [...(judged ?? (['off', 'Wait'] as const)), hadGoLine(team, !!you.out, !!pass?.all)];
   } else if (left > 0) {
     [cls, big, small] = ['locked', 'Too early', `You buzzed before it lit up · wait ${left}s`];
     spoken = 'Wait a moment before buzzing again';

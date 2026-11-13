@@ -274,6 +274,11 @@ export interface HostState {
    * answer shows.
    */
   pass?: PassAsk | null;
+  /**
+   * Added later: how the host judged each seat on the open buzz-in clue (✔ / ✘, and the points it gave or took), from
+   * the moment it's judged; an Undo takes it away. phoneView() gives each phone its own seat's only.
+   */
+  verdicts?: Record<string, AnswerVerdict> | null;
 }
 
 /** HostState.pass: this clue takes passes, for the round of passes `id`. */
@@ -360,7 +365,8 @@ export interface AnswerAsk {
   /**
    * got: the last answer (its `n`) the host took from this seat: one sent while the host was away comes again only if newer.
    * Added later: closed, the host has judged this seat's answer (it can't be changed now, as if locked). verdict (added
-   * later): the Final's verdict on this seat once the stream shows it (right, and the points it gave or took).
+   * later): the verdict on this seat (right, and the points it gave or took): the Final's once the stream shows it, a ✍
+   * clue's once it's judged.
    */
   seats: { id: string; got?: number; closed?: true; verdict?: AnswerVerdict }[];
   /** Added later ('choices'): 2 to CHOICES_MAX choices to pick from instead of typing (never which one is right). */
@@ -494,6 +500,8 @@ export interface PhoneView {
   locked?: true;
   /** Added later ('pass', the room adds it): this clue takes passes (HostState.pass), as this phone should see it. */
   pass?: PhonePass;
+  /** Added later: how the host judged this phone's seat on the open buzz-in clue (HostState.verdicts). */
+  verdict?: AnswerVerdict;
 }
 
 /**
@@ -592,6 +600,7 @@ export function phoneView(
     ...answerView(s, seat?.id, me, answer, answerHidden),
     ...(seat && cards && (cards.list.length || cards.late) ? { cards } : {}),
     ...(s.locked ? { locked: true as const } : {}),
+    ...(seat && s.verdicts?.[seat.id] ? { verdict: { ...s.verdicts[seat.id] } } : {}),
   };
 }
 

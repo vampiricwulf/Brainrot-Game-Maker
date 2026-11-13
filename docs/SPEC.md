@@ -921,6 +921,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      (and forgets the passes a Reset ended, even after its Undo). The room works out everyone passed from its list too
      (`PhonePass.all`) and every phone says "Everyone passed" (a passed one "· take the pass back to buzz", one out of the
      clue "· everyone else passed"), never what comes next: the host may reset the buzzers and give a hint.
+     On any ordinary buzz-in clue a judged player's phone says how it went from the moment the host judges it, in green
+     or red (`HostState.verdicts`, each phone its own seat's only: "✔ Right! +$400" where it said "You got it!",
+     "✘ Wrong −$200" over "You've had your go on this one"), with the points that mark gave or took; an Undo takes it
+     away.
    - *Daily Double*: DD splash, then a wager input for the chosen player (up to max(score, the game's wager floor, $2,000 by default); Ignore the limit, unticked on each Daily Double, takes any wager), then the question.
      The ⭐ box's first row is “Daily Double! Who found it?” and the players; its Wager row holds the Wager box, Ignore the
      limit and True Daily Double, then the max's words, cut short where the row is narrow. **Show question ▶** is the
@@ -972,8 +976,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      says how the steal goes on, as Enter does.
    - *✍ Everyone answers* (a standard tile with the box ticked, with phone buzzers): nobody buzzes; every player types
      an answer on their phone (a team: anyone on it) until the answer is shown, or until the host judges theirs (then
-     it's locked on their phone; undoing the mark opens it again, and once they change it, redo doesn't bring that mark
-     back); only the host sees them (in one window, not until the answer is up: till then each player's row says whether
+     it's locked on their phone, which says how it went in green or red, "✔ Right! +$200" / "✘ Wrong −$200", over the
+     answer they sent; undoing the mark takes that away and opens it again, and once they change it, redo doesn't bring
+     that mark back); only the host sees them (in one window, not until the answer is up: till then each player's row says whether
      theirs is in, in the room the words then take, long ones scrolling in it, so the stage keeps its size); the stream shows ✍ and who has answered
      while answers are open; the host marks each ✔ / ✘ for the tile's value. With **multiple choice** (2–6 choices
      under ✍ in the editor, one marked right: its **Mark right** reads ✔ Right once pressed), players tap one instead, and ✔ Judge all marks everyone by the right
