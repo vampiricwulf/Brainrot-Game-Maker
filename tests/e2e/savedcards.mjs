@@ -278,16 +278,37 @@ try {
   const after = await phoneBtn.boundingBox();
   assert(after.x === xBefore && after.y >= 0 && after.y + after.height <= 900, `📱 stays where it was across the page, on screen (x ${xBefore} → ${after.x}, y ${after.y})`);
   assert((await phone.innerText()).includes(TIP), '📱 On their phone: its words and its picture, as a phone gets them');
-  // On a laptop it stays beside the slide, in sight, as in the clue editor's 🤫 card tab: the inspector goes under the
-  // slide, which keeps its size.
-  for (const [w, h] of [[1280, 720], [1366, 768]]) {
+  // On a laptop it sits above the inspector, beside the slide, as in the clue editor's 🤫 card tab: the slide keeps its
+  // size, and with an item selected its bar (✎ Edit, Duplicate, Lock, Delete) stays in sight beside the slide too.
+  const slideAt = () => host.locator('main .se .canvas').first().boundingBox();
+  await host.locator('main .se [data-layer] .name').first().click();
+  const itemBar = host.locator('main .se .itembar').first();
+  assert(await until(async () => ((await itemBar.getAttribute('aria-label')) ?? '').startsWith('Selected: ')), 'a click on a layer selects its item');
+  for (const [w, h] of [[1280, 720], [1366, 768], [1400, 900]]) {
     await host.setViewportSize({ width: w, height: h });
     await host.waitForTimeout(200);
     const p = await phone.boundingBox();
-    const slideBox = await host.locator('main .se .canvas').first().boundingBox();
+    const slideBox = await slideAt();
+    const bar = await itemBar.boundingBox();
     assert(
       p.x >= slideBox.x + slideBox.width && Math.abs(p.y - slideBox.y) < 80 && p.y + 100 <= h && slideBox.width >= 440,
       `${w}×${h}: 📱 On their phone beside the slide and in sight, the slide ${Math.round(slideBox.width)}px wide (phone at ${Math.round(p.x)},${Math.round(p.y)})`,
+    );
+    assert(
+      bar.x >= slideBox.x + slideBox.width && bar.y >= p.y + p.height && bar.y + bar.height <= h,
+      `${w}×${h}: the selected item's bar under the phone, beside the slide and in sight (at ${Math.round(bar.x)},${Math.round(bar.y)}, ${Math.round(bar.height)} tall)`,
+    );
+  }
+  // With room for all three (a wide window) it's beside the whole slide editor, the inspector beside the slide.
+  await host.setViewportSize({ width: 1920, height: 1080 });
+  await host.waitForTimeout(200);
+  {
+    const p = await phone.boundingBox();
+    const bar = await itemBar.boundingBox();
+    const slideBox = await slideAt();
+    assert(
+      p.x >= bar.x + bar.width && bar.x >= slideBox.x + slideBox.width && bar.y < slideBox.y + 80 && slideBox.width >= 600,
+      `1920×1080: slide, inspector and 📱 On their phone side by side (slide ${Math.round(slideBox.width)}px, bar at x ${Math.round(bar.x)}, phone at x ${Math.round(p.x)})`,
     );
   }
   await host.setViewportSize({ width: 1400, height: 900 });

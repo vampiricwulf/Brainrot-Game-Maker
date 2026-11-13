@@ -89,6 +89,7 @@
     hotspots = false,
     fallbackBg = 'var(--tile)',
     tabbed = false,
+    sidetop,
   }: {
     slide: Slide;
     /** The main text elements "Use this style elsewhere" restyles for a scope (the host knows the round). */
@@ -127,6 +128,11 @@
     fallbackBg?: string;
     /** It has slide tabs (a clue's, a Final's, the tiebreaker's, a slides round's), with their 📋 Paste slide. */
     tabbed?: boolean;
+    /**
+     * Above the inspector, in its column (a 🤫 card's 📱 On their phone when there's no room for it beside the slide
+     * editor): the slide keeps its size and the selected item's bar stays in sight.
+     */
+    sidetop?: Snippet;
   } = $props();
   let editingImage = $state<string | null>(null);
   const imageEl = $derived(slide.elements.find((e) => e.id === editingImage && e.kind === 'image') as ImageEl | undefined);
@@ -1381,106 +1387,117 @@
       </div>
     </div>
 
-    <aside class="side">
-      <!-- The selected item's buttons, pinned at the top whatever's below (there, greyed, with nothing selected). -->
-      {#if !previewing}
-        <ItemBar
-          items={slide.elements.filter((e) => selected.includes(e.id))}
-          all={slide.elements}
-          {game}
-          card={onCard}
-          onedit={openEditor}
-          onduplicate={duplicate}
-          onlock={(on) => menuAction(on ? 'lock' : 'unlock')}
-          ondelete={() => remove()}
-          onmenu={menuFrom}
-        />
-      {/if}
-      <!-- Whenever the slide has anything: the keyboard way to every item (and a lone locked one, which clicks go through). -->
-      {#if !previewing && slide.elements.length}
-        <details class="layers-box" open>
-          <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
-          <LayersPanel
-            elements={slide.elements}
-            {game}
-            card={onCard}
-            bind:selected
-            bind:hidden
-            bind:hovered
-            bind:renaming
-            onedit={edit}
-            onmenu={(m) => {
-              const el = slide.elements.find((e) => e.id === selected[selected.length - 1]);
-              menu = { x: m.x, y: m.y, at: el ? { x: el.x + el.w / 2, y: el.y + el.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 }, stack: [], from: m.from };
-            }}
-          />
-        </details>
-      {/if}
-      {#if previewing}
-        <p class="muted">Previewing the slide as players will see it. Press <b>Esc</b>, click the slide or <b>■ Stop preview</b> to edit again.</p>
-      {:else if single}
-        <Inspector
-          el={single}
-          {game}
-          card={onCard}
-          onTile={themedBg && !slide.background.color && !slide.background.gradient && !slide.background.image}
-          fit={fits[single.id]}
-          bind:textArea
-          onorder={order}
-          onreplace={(from) => {
-            if (single && (single.kind === 'image' || single.kind === 'video' || single.kind === 'audio')) {
-              replacing = single.id;
-              picker = single.kind;
-              pickerFrom = from;
-            }
-          }}
-          onapplystyle={styletargets ? applyStyle : undefined}
-          {stylecategory}
-          {styleslides}
-          {stylescope}
-          onuploadfont={(from) => {
-            replacing = null;
-            picker = 'font';
-            pickerFrom = from;
-          }}
-          {objectsection}
-          aligns={lineUp}
-        />
-        {#if picker && replacing === single.id}
-          <MediaPicker kind={picker} anchor={pickerFrom} onpick={picked} onclose={() => ((picker = null), (replacing = null))} />
-        {/if}
-      {:else if selected.length > 1}
-        <!-- The same controls, in the same places, as the Inspector's Position for one item (⧉, 🔒 and 🗑 are in the bar
-             at the top). -->
-        <section class="multi">
-          {@render lineUp()}
-          <div class="row">
-            <button class="small" onclick={() => order('front')} aria-label="Bring to front" title="Bring them to the front (Ctrl+Shift+])">⤒ To front</button>
-            <button class="small" onclick={() => order('up')} aria-label="Bring forward" title="Bring forward (Ctrl+])">↑</button>
-            <button class="small" onclick={() => order('down')} aria-label="Send backward" title="Send backward (Ctrl+[)">↓</button>
-            <button class="small" onclick={() => order('back')} aria-label="Send to back" title="Send them to the back (Ctrl+Shift+[)">⤓ To back</button>
-          </div>
-        </section>
-      {:else}
-        <Tips id="slide" hint="Click an item to edit it, or double-click it (text goes straight to its text field).">
-          <ul>
-            <li>Drag to move (press Shift while dragging to keep to one axis), pull the handles to resize (or Ctrl+arrows; arrows alone nudge), and use the round handle to rotate.</li>
-            <li>Drop or paste pictures, videos, sounds and links. Ctrl+C / Ctrl+X / Ctrl+V copy items between slides.</li>
-            <li>Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws one) to select several.</li>
-            <li>
-              Something hidden under a bigger item? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> again
-              and again to walk down the stack, <b>Tab</b> to step through items, or use the <b>Layers</b> list. Lock a background so
-              clicks go through it.
-            </li>
-          </ul>
-        </Tips>
-      {/if}
-      {#if picker === 'font'}
-        <MediaPicker kind="font" anchor={pickerFrom} onpick={(id) => ((picker = null), addMedia('font', id))} onclose={() => (picker = null)} />
-      {/if}
-    </aside>
+    {#if sidetop}
+      <div class="sidecol">
+        {@render sidetop()}
+        {@render inspector()}
+      </div>
+    {:else}
+      {@render inspector()}
+    {/if}
   </div>
 </div>
+
+{#snippet inspector()}
+<aside class="side">
+  <!-- The selected item's buttons, pinned at the top whatever's below (there, greyed, with nothing selected). -->
+  {#if !previewing}
+    <ItemBar
+      items={slide.elements.filter((e) => selected.includes(e.id))}
+      all={slide.elements}
+      {game}
+      card={onCard}
+      onedit={openEditor}
+      onduplicate={duplicate}
+      onlock={(on) => menuAction(on ? 'lock' : 'unlock')}
+      ondelete={() => remove()}
+      onmenu={menuFrom}
+    />
+  {/if}
+  <!-- Whenever the slide has anything: the keyboard way to every item (and a lone locked one, which clicks go through). -->
+  {#if !previewing && slide.elements.length}
+    <details class="layers-box" open>
+      <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
+      <LayersPanel
+        elements={slide.elements}
+        {game}
+        card={onCard}
+        bind:selected
+        bind:hidden
+        bind:hovered
+        bind:renaming
+        onedit={edit}
+        onmenu={(m) => {
+          const el = slide.elements.find((e) => e.id === selected[selected.length - 1]);
+          menu = { x: m.x, y: m.y, at: el ? { x: el.x + el.w / 2, y: el.y + el.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 }, stack: [], from: m.from };
+        }}
+      />
+    </details>
+  {/if}
+  {#if previewing}
+    <p class="muted">Previewing the slide as players will see it. Press <b>Esc</b>, click the slide or <b>■ Stop preview</b> to edit again.</p>
+  {:else if single}
+    <Inspector
+      el={single}
+      {game}
+      card={onCard}
+      onTile={themedBg && !slide.background.color && !slide.background.gradient && !slide.background.image}
+      fit={fits[single.id]}
+      bind:textArea
+      onorder={order}
+      onreplace={(from) => {
+        if (single && (single.kind === 'image' || single.kind === 'video' || single.kind === 'audio')) {
+          replacing = single.id;
+          picker = single.kind;
+          pickerFrom = from;
+        }
+      }}
+      onapplystyle={styletargets ? applyStyle : undefined}
+      {stylecategory}
+      {styleslides}
+      {stylescope}
+      onuploadfont={(from) => {
+        replacing = null;
+        picker = 'font';
+        pickerFrom = from;
+      }}
+      {objectsection}
+      aligns={lineUp}
+    />
+    {#if picker && replacing === single.id}
+      <MediaPicker kind={picker} anchor={pickerFrom} onpick={picked} onclose={() => ((picker = null), (replacing = null))} />
+    {/if}
+  {:else if selected.length > 1}
+    <!-- The same controls, in the same places, as the Inspector's Position for one item (⧉, 🔒 and 🗑 are in the bar
+         at the top). -->
+    <section class="multi">
+      {@render lineUp()}
+      <div class="row">
+        <button class="small" onclick={() => order('front')} aria-label="Bring to front" title="Bring them to the front (Ctrl+Shift+])">⤒ To front</button>
+        <button class="small" onclick={() => order('up')} aria-label="Bring forward" title="Bring forward (Ctrl+])">↑</button>
+        <button class="small" onclick={() => order('down')} aria-label="Send backward" title="Send backward (Ctrl+[)">↓</button>
+        <button class="small" onclick={() => order('back')} aria-label="Send to back" title="Send them to the back (Ctrl+Shift+[)">⤓ To back</button>
+      </div>
+    </section>
+  {:else}
+    <Tips id="slide" hint="Click an item to edit it, or double-click it (text goes straight to its text field).">
+      <ul>
+        <li>Drag to move (press Shift while dragging to keep to one axis), pull the handles to resize (or Ctrl+arrows; arrows alone nudge), and use the round handle to rotate.</li>
+        <li>Drop or paste pictures, videos, sounds and links. Ctrl+C / Ctrl+X / Ctrl+V copy items between slides.</li>
+        <li>Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws one) to select several.</li>
+        <li>
+          Something hidden under a bigger item? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> again
+          and again to walk down the stack, <b>Tab</b> to step through items, or use the <b>Layers</b> list. Lock a background so
+          clicks go through it.
+        </li>
+      </ul>
+    </Tips>
+  {/if}
+  {#if picker === 'font'}
+    <MediaPicker kind="font" anchor={pickerFrom} onpick={(id) => ((picker = null), addMedia('font', id))} onclose={() => (picker = null)} />
+  {/if}
+</aside>
+{/snippet}
 
 <!-- One item goes to the slide's edges (in the Inspector's Position, under X and Y); several line up with each other
      (and can be spaced evenly). -->
@@ -1706,6 +1723,18 @@
     overflow-y: auto;
     max-height: 70vh;
     padding-right: 4px;
+  }
+  /* With something above the inspector (sidetop): the inspector takes the height left and scrolls on its own. */
+  .sidecol {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+  }
+  .sidecol > .side {
+    flex: 1 1 auto;
+    min-height: 0;
   }
   .side p {
     margin: 0 0 8px;

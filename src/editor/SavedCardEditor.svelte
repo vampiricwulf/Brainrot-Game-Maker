@@ -20,7 +20,15 @@
 
   let root = $state<HTMLElement>();
   /**
-   * 📱 On their phone: turned on under the slide editor (a very narrow page) with its top below the fold (or a line short of
+   * 📱 On their phone goes beside the slide editor when there's room for the slide, its inspector and a phone's width
+   * side by side (a wide window); else at the top of the inspector's column, as tall as it needs up to a cap, so the
+   * slide keeps its size and the selected item's bar stays in sight (a laptop).
+   */
+  const BESIDE_MIN = 1080;
+  let editWidth = $state(0);
+  const beside = $derived(editWidth >= BESIDE_MIN);
+  /**
+   * 📱 On their phone: turned on under the slide (a narrow page) with its top below the fold (or a line short of
    * it), the page scrolls to put this card's bar at the top, the button still on screen. Beside the slide editor
    * nothing moves.
    */
@@ -93,12 +101,19 @@
       title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone">📱 On their phone</button
     >
   </div>
-  <!-- (📱 On their phone sits beside the slide editor, never over its toolbar or inspector; under it in a very narrow page.
+  <!-- (📱 On their phone sits beside the slide editor, or above its inspector, never over its toolbar or inspector.
        Its text doesn't follow 🎨 Theme › Clue text, as a deal's cards don't: phones show the words in their own type.) -->
-  <div class="card-edit">
-    <SlideEditor slide={card} quickfield="card" placeholder="Click to type what they’ll see" badge="🤫 CARD · ONLY WHO YOU SEND IT TO SEES IT" />
-    {#if phoneView}<PhoneCardPreview game={app.game} {card} />{/if}
+  <div class="card-edit" bind:clientWidth={editWidth}>
+    <SlideEditor
+      slide={card}
+      quickfield="card"
+      placeholder="Click to type what they’ll see"
+      badge="🤫 CARD · ONLY WHO YOU SEND IT TO SEES IT"
+      sidetop={phoneView && !beside ? phone : undefined}
+    />
+    {#if phoneView && beside}{@render phone()}{/if}
   </div>
+  {#snippet phone()}<PhoneCardPreview game={app.game} {card} />{/snippet}
 </div>
 
 <style>
@@ -141,31 +156,11 @@
   .card-edit > :global(.se) {
     min-width: 0;
     flex: 1;
-    container: card-se / inline-size;
   }
-  /* With 📱 On their phone beside it on a laptop (1280 or 1366 wide), the slide editor is too narrow for the slide and
-     its inspector side by side: the inspector goes under the slide, so the slide keeps its size. */
-  @container card-se (max-width: 640px) {
-    .card-edit :global(.se .body) {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .card-edit :global(.se .side) {
-      max-height: none;
-    }
-  }
-  /* (The container is the cards page's right side.) 📱 On their phone stays beside the slide editor, as in the clue
-     editor's 🤫 card tab, down to a 1280-wide window (the slide shrinks a little to make room); only in a page too
-     narrow for both does it go under it, a phone's width. */
-  @container (max-width: 640px) {
-    .card-edit {
-      flex-direction: column;
-    }
-    .card-edit > :global(.phone-preview) {
-      flex: none;
-      align-self: flex-start;
-      width: 300px;
-      max-width: 100%;
-    }
+  /* Above the inspector: a phone's width is the column's, and a tall card scrolls inside it so the item's bar shows. */
+  .card-edit :global(.sidecol > .phone-preview) {
+    flex: none;
+    max-height: min(30vh, 280px);
   }
   @container (max-width: 640px) {
     .quick {
