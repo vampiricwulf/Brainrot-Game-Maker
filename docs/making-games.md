@@ -44,10 +44,11 @@ video, audio or YouTube, arranged freely.
 - A category's menu (right-click it, or its ⋯) has **📋 Copy category** and **📋 Paste category here**, to reuse a
   whole category (name, picture and clues) in another round or game; `Ctrl+C` / `Ctrl+V` on its ⋯ do the same.
 - A tile's right-click menu has **Make it a…**: Standard, Daily Double, Partner clue, Wheel tile, Dice tile, Everyone
-  answers, or Empty tile.
-- With phone buzzers, players can **Pass** on an ordinary buzz-in clue. Tick **Everyone must play (no Pass)** in the
-  clue editor for a clue everyone has to try. On clues everyone answers, Daily Doubles, partner clues and the Final the
-  tick is shown already on, and can't be changed: they never offer Pass.
+  answers, 🚫 No Pass, or Empty tile.
+- With phone buzzers, players can **Pass** on an ordinary buzz-in clue. Tick **🚫 No Pass (everyone must play)** in the
+  clue editor (or 🚫 No Pass in the tile's right-click menu) for a clue everyone has to try; the tile shows a 🚫 on the
+  board. On clues everyone answers, Daily Doubles, partner clues and the Final the tick is shown already on, and can't
+  be changed: they never offer Pass.
 - **Partner clues** are for two players without buzzers, with an optional steal on a miss. Place them by hand or at
   random. Their less common settings are under **▸ More rules**.
 - **Wagers** (Daily Doubles and the Final) go up to the player's score, or up to $2,000 if they have less. Change the

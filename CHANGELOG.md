@@ -25,6 +25,11 @@ in plain words for the people who make and host games. Anything committed but no
 - One window: 👥 Players, ⚖ Rules and the keys (?) keep their title and **Done** in sight as they scroll inside the host panel, with a fade at the bottom while there's more below (Done was out of sight, and nothing showed that they scroll).
 - Phones: once everyone has passed on a clue, every phone says **Everyone passed** (a player who passed can still take it back; ↺ Reset buzzers puts the phones back to BUZZ!), instead of each still saying “Take the pass back to buzz”.
 
+- A tile ticked **🚫 No Pass** wears a small 🚫 on the editor's board, so you can see which clues players can't pass on, and its right-click menu has **🚫 No Pass** after ✍ Everyone answers to turn it on or off (one undo step; ticked and greyed on a ✍ clue, a Daily Double or a partner clue, where it's always on).
+
+### Changed
+
+- The clue editor's **Everyone must play (no Pass)** tick is **🚫 No Pass (everyone must play)**, and on a 1280-wide screen it reads **🚫 No Pass** (it read “Everyone must play”, next to ✍ Everyone answers, which sounded like the same thing). The Final's editor and 🕘 History use the same name.
 - A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
 - In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window.
 - Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.)

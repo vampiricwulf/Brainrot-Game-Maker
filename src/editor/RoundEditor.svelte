@@ -46,6 +46,8 @@
     madeUpCategoryName,
     moveCategory,
     moveRow,
+    noPassBadge,
+    noPassFixed,
     pasteCategory,
     pastedCardDue,
     pastedPartnerCard,
@@ -53,6 +55,7 @@
     removeCategory,
     scaleValues,
     setClueType,
+    setNoPass,
     setRowCount,
     followDailyDoubles,
     swapClues,
@@ -576,6 +579,18 @@
                 step(
                   clue.everyone ? `Took ✍ Everyone answers off ${tileName(p)}` : `Made ${tileName(p)} ✍ Everyone answers`,
                   () => (clue.everyone ? delete clue.everyone : (clue.everyone = true)),
+                  { place: tilePlace(p.cat, clue.id) },
+                ),
+            },
+            {
+              // (Ticked and greyed where it's always on, with why, as the clue editor shows it.)
+              label: on(!!clue.mustPlay || !!noPassFixed(clue), '🚫 No Pass'),
+              disabled: clue.empty || !!noPassFixed(clue),
+              hint: noPassFixed(clue) ? `Always on: ${noPassFixed(clue)}` : "Everyone must play: players' phones offer no Pass on this clue",
+              onclick: () =>
+                step(
+                  clue.mustPlay ? `Took 🚫 No Pass off ${tileName(p)}` : `Set 🚫 No Pass on ${tileName(p)}`,
+                  () => setNoPass(clue, !clue.mustPlay),
                   { place: tilePlace(p.cat, clue.id) },
                 ),
             },
@@ -1141,7 +1156,7 @@
         <!-- (What its badges say, for a screen reader.) -->
         {@const kind = clue.empty
           ? ''
-          : `${clue.value !== null ? ' (custom)' : ''}${TILE_KIND[clue.type] ?? ''}${everyone ? ', everyone answers' : ''}${choices ? ', multiple choice' : ''}${clue.extraSlides?.length ? `, ${clue.extraSlides.length + 1} question slides` : ''}${faceText ? `, tile shows “${faceText}”` : ''}`}
+          : `${clue.value !== null ? ' (custom)' : ''}${TILE_KIND[clue.type] ?? ''}${everyone ? ', everyone answers' : ''}${choices ? ', multiple choice' : ''}${noPassBadge(clue) ? ', no Pass' : ''}${clue.extraSlides?.length ? `, ${clue.extraSlides.length + 1} question slides` : ''}${faceText ? `, tile shows “${faceText}”` : ''}`}
         {@const what = clue.empty
           ? 'empty tile, not played'
           : tool
@@ -1183,6 +1198,7 @@
             {#if clue.type === 'dice' && !clue.empty}<span class="dd" title="Dice tile">🎲</span>{/if}
             {#if clue.type === 'partner' && !clue.empty}<span class="dd" title="Partner clue: played by the picker and a partner, nobody buzzes">🤝</span>{/if}
             {#if everyone}<span class="dd" title={choices ? 'Everyone answers · multiple choice' : 'Everyone answers, in secret on their phones'}>✍</span>{/if}
+            {#if noPassBadge(clue)}<span class="dd" title="🚫 No Pass: everyone must play (players' phones offer no Pass on this clue)">🚫</span>{/if}
             {#if clue.extraSlides?.length && !clue.empty}
               {@const n = clue.extraSlides.length + 1}
               <span class="dd" title="{n} question slides, shown in order before the answer">▤ {n}</span>

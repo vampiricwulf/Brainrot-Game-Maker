@@ -110,8 +110,8 @@ describe('step labels', () => {
     expect(everyone.label).toBe(`Made ${cat} $200 ✍ Everyone answers`);
     expect(describeStep(diff(everyone.after, everyone.before), everyone.after, everyone.before).label).toBe(`Took ✍ Everyone answers off ${cat} $200`);
     const must = step((g) => (board(g).categories[0].clues[0].mustPlay = true));
-    expect(must.label).toBe(`Made ${cat} $200 Everyone must play (no Pass)`);
-    expect(describeStep(diff(must.after, must.before), must.after, must.before).label).toBe(`Let players pass on ${cat} $200`);
+    expect(must.label).toBe(`Set 🚫 No Pass on ${cat} $200`);
+    expect(describeStep(diff(must.after, must.before), must.after, must.before).label).toBe(`Took 🚫 No Pass off ${cat} $200`);
     // A multiple choice typed in: which one, by its letter, and where.
     const typed = sample();
     board(typed).categories[0].clues[1].choices = [

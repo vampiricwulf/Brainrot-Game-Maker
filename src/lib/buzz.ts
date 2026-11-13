@@ -723,7 +723,7 @@ export function wagerAsk(
 /**
  * Whether players may pass on the open clue (HostState.pass), and its round of passes: an ordinary buzz-in clue only (a
  * standard tile, or a wheel or dice tile's question), with the buzzers out (`b`); never a Daily Double, a partner clue,
- * a ✍ clue everyone answers, nor one the author marked Everyone must play (Clue.mustPlay). Null otherwise. Its id is
+ * a ✍ clue everyone answers, nor one the author marked No Pass (Clue.mustPlay). Null otherwise. Its id is
  * the clue's and when its passes began (BuzzState.passAt), so the clue reopened, or ↺ Reset, starts them over.
  */
 export function passAsk(game: Game, session: Session, b: BuzzState): PassAsk | null {

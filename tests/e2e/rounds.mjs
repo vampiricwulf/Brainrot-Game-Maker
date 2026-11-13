@@ -55,8 +55,8 @@ try {
   await page.getByLabel('Players with a score of 0 or less can play it').uncheck();
   // Answers on paper for this one: a step named so (↶ Undo says it), and Ctrl+Z ticks it again.
   const typed = page.getByLabel('✍ Players type their answers on their phones');
-  const finalMust = page.getByLabel('Everyone must play (no Pass)');
-  assert((await finalMust.isChecked()) && (await finalMust.isDisabled()), 'the Final shows Everyone must play (no Pass) ticked and fixed (everyone in it plays)');
+  const finalMust = page.getByLabel('🚫 No Pass (everyone must play)');
+  assert((await finalMust.isChecked()) && (await finalMust.isDisabled()), 'the Final shows 🚫 No Pass (everyone must play) ticked and fixed (everyone in it plays)');
   // (BOARD-9: with no choices, nothing of them shows unticked; with some, they stay in sight, dimmed and out of reach.)
   await typed.uncheck();
   assert((await page.locator('[data-choices-off]').count()) === 0 && (await page.getByRole('button', { name: '＋ Multiple choice' }).count()) === 0, 'unticked with no choices: no ＋ Multiple choice, nothing dimmed');

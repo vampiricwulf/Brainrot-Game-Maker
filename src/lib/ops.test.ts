@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { gameRules, newFinalRound, newImageEl, newRound, setSlideText, slideText, textSlide, type Clue, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
+import { gameRules, newClue, newFinalRound, newImageEl, newRound, setSlideText, slideText, textSlide, type Clue, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
 import { clueSlides, followClueText } from './cluetext';
 import { addCard, setPartnerGame } from './partner';
 
@@ -19,11 +19,14 @@ import {
   moveRow,
   pasteCategory,
   neighbourClue,
+  noPassBadge,
+  noPassFixed,
   ownTextTargets,
   reidRound,
   restyle,
   rowStep,
   setClueType,
+  setNoPass,
   followDailyDoubles,
   setRowCount,
   stepClue,
@@ -494,3 +497,31 @@ describe('a category copied and pasted', () => {
   });
 });
 
+
+describe('🚫 No Pass on a tile', () => {
+  it("is the author's on an ordinary buzz-in tile, and fixed on (with why) where everyone in it plays anyway", () => {
+    const clue = newClue();
+    expect(noPassFixed(clue)).toBe('');
+    for (const type of ['wheel', 'dice'] as const) expect(noPassFixed({ ...clue, type })).toBe('');
+    expect(noPassFixed({ ...clue, type: 'dailyDouble' })).toMatch(/Daily Double/);
+    expect(noPassFixed({ ...clue, type: 'partner' })).toMatch(/partner clue/);
+    expect(noPassFixed({ ...clue, everyone: true })).toMatch(/✍/);
+  });
+  it('sets and clears it (the field taken away, as in older games)', () => {
+    const clue = newClue();
+    setNoPass(clue, true);
+    expect(clue.mustPlay).toBe(true);
+    setNoPass(clue, false);
+    expect('mustPlay' in clue).toBe(false);
+  });
+  it('badges only the tiles the author ticked, never one where it is fixed on, nor an empty tile', () => {
+    const clue: Clue = { ...newClue(), mustPlay: true };
+    expect(noPassBadge(clue)).toBe(true);
+    expect(noPassBadge({ ...clue, type: 'dice' })).toBe(true);
+    expect(noPassBadge({ ...clue, everyone: true })).toBe(false);
+    expect(noPassBadge({ ...clue, type: 'dailyDouble' })).toBe(false);
+    expect(noPassBadge({ ...clue, type: 'partner' })).toBe(false);
+    expect(noPassBadge({ ...clue, empty: true })).toBe(false);
+    expect(noPassBadge(newClue())).toBe(false);
+  });
+});

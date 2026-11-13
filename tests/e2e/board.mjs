@@ -321,7 +321,7 @@ try {
   await tile(2, 3).click({ button: 'right' });
   const kinds = (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert(
-    ['✓ Standard', '⭐ Daily Double', '🤝 Partner clue', '🎡 Wheel tile…', '🎲 Dice tile…', '✍ Everyone answers', '⬚ Empty tile'].every((x) => kinds.includes(x)) && (await menu.getByText('Make it a…').count()) === 1,
+    ['✓ Standard', '⭐ Daily Double', '🤝 Partner clue', '🎡 Wheel tile…', '🎲 Dice tile…', '✍ Everyone answers', '🚫 No Pass', '⬚ Empty tile'].every((x) => kinds.includes(x)) && (await menu.getByText('Make it a…').count()) === 1,
     `a tile's menu has Make it a…, the kind it is ticked (${kinds.join(' | ')})`,
   );
   await menu.getByRole('menuitem', { name: '🎡 Wheel tile…' }).click();

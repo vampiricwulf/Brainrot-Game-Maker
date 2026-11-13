@@ -210,7 +210,7 @@ More settings are under **▸ Buzzer options**. **🔒 Lock seats** keeps new ph
   ("Passed 2 of 8: Ann, Bob"), and their chips fade with "passed" on them. Once everyone who could still buzz has
   passed (or missed it), it says **Everyone passed** and 👁 Reveal answer wears the ring (or ↺ Reset buzzers to let them
   all buzz again, after a hint, say), and a running countdown stops (`Ctrl+Z` brings it back). Every phone says **Everyone passed** too (a player can still take their pass back; ↺ Reset buzzers puts the phones back to BUZZ!). There's no Pass on ✍ clues, multiple choice, the Final, partner clues or Daily Doubles, nor on a clue
-  ticked **Everyone must play (no Pass)** in the editor.
+  ticked **🚫 No Pass** in the editor.
 - Buzzes within 0.01 seconds are a tie: **🎲 Roll for it** (`O`), or pick a player yourself.
 
 ### Teams

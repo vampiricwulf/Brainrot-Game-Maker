@@ -1066,7 +1066,7 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   // (Its words or its picture, or the whole of it.)
   if (at.noun === 'clue' && (own ? k === 'tileFace' : op.p.length === at.depth + 1 && op.p[at.depth] === 'tileFace')) return `Changed the tile face of ${tile}`;
   if (own && at.noun === 'clue' && k === 'everyone') return v ? `Made ${tile} ✍ Everyone answers` : `Took ✍ Everyone answers off ${tile}`;
-  if (own && at.noun === 'clue' && k === 'mustPlay') return v ? `Made ${tile} Everyone must play (no Pass)` : `Let players pass on ${tile}`;
+  if (own && at.noun === 'clue' && k === 'mustPlay') return v ? `Set 🚫 No Pass on ${tile}` : `Took 🚫 No Pass off ${tile}`;
   if (own && at.noun === 'clue' && k === 'value') {
     const sym = after.settings.currencySymbol;
     const r = byId<Round>(after.rounds, op.p[1]);

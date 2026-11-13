@@ -200,9 +200,9 @@
     ✍ Players type their answers on their phones
   </label>
   <!-- (Shown for the same place as a clue's: the Final is always played by everyone in it, so it's ticked and fixed.) -->
-  <label class="check" title="Everyone must play (no Pass): always on here, since everyone in the Final plays it; their phones never offer Pass">
-    <input type="checkbox" checked disabled aria-label="Everyone must play (no Pass)" data-must-fixed />
-    Everyone must play (no Pass)
+  <label class="check" title="🚫 No Pass (everyone must play): always on here, since everyone in the Final plays it; their phones never offer Pass">
+    <input type="checkbox" checked disabled aria-label="🚫 No Pass (everyone must play)" data-must-fixed />
+    🚫 No Pass (everyone must play)
   </label>
   <!-- (Wagers go up to their score, or the game's floor in ⚖ Game rules; the wager screen says so, by its Ignore the limits.) -->
   <span class="hint">

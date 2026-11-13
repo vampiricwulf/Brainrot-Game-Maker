@@ -37,6 +37,7 @@ export const RENAMED: [string, string][] = [
   ['❔ Help', '⌨'],
   ['🔊 Test the sound…', '🔊 Sound for Discord / OBS…'],
   ['⏹ Close the room…', '✕ Close the room'],
+  ['🚫 No Pass (everyone must play)', 'Everyone must play (no Pass)'],
 ];
 
 /** "Ctrl+" reads "⌘" on a Mac. */

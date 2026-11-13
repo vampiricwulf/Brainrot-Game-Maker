@@ -234,6 +234,26 @@ function partnerStartCards(clue: Clue, cardFrom: 'answer' | 'empty'): void {
 }
 
 /**
+ * Why 🚫 No Pass (everyone must play) is always on for this clue, when it is ('' when it's the author's to set): a Daily
+ * Double, a partner clue and a ✍ clue are played by everyone in them, so their phones never offer Pass.
+ */
+export function noPassFixed(clue: Clue): string {
+  if (clue.type === 'dailyDouble') return 'a Daily Double is played by the player who found it';
+  if (clue.type === 'partner') return 'a partner clue is played by its two partners';
+  if (clue.type === 'standard' && clue.everyone) return 'everyone answers a ✍ clue';
+  return '';
+}
+
+/** Whether the board shows a tile's 🚫 No Pass badge: the author ticked it, on a tile where it's theirs to set. */
+export const noPassBadge = (clue: Clue): boolean => !!clue.mustPlay && !clue.empty && !noPassFixed(clue);
+
+/** 🚫 No Pass on a clue (one step in the history): on, or off again (the field taken away, as in older games). */
+export function setNoPass(clue: Clue, on: boolean): void {
+  if (on) clue.mustPlay = true;
+  else delete clue.mustPlay;
+}
+
+/**
  * Make a tile a Daily Double (or a standard, wheel, dice or partner tile). The board's ⭐ Daily Doubles and 🤝 Partner
  * clues boxes go up with the ones placed by hand, so they never say fewer than the board has. A partner clue starts as
  * Describe it (a 45 s countdown when it has none) with its starting card, a copy of its answer when answerCardDue; one

@@ -6,7 +6,7 @@
   import { announce } from '../lib/announce';
   import { take, type ClueSide, type Place, type RoundPart } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { addClueSlide, answerCardDue, CARD_COPIED, cardFromAnswer, deleteClueSlide, duplicateClueSlide, followDailyDoubles, insertClueSlide, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
+  import { addClueSlide, answerCardDue, CARD_COPIED, cardFromAnswer, deleteClueSlide, duplicateClueSlide, followDailyDoubles, insertClueSlide, moveClueSlide, neighbourClue, noPassFixed, setClueType, setNoPass, stepClue, textStyleTargets } from '../lib/ops';
   import { clipboard, copySlide, takeCopiedSlide } from '../lib/clipboard.svelte';
   import { isMenuKey, keyMenu, showMenu } from '../lib/menustate.svelte';
   import { slideTabMenu, slideTabTitle } from '../lib/slidetabs';
@@ -66,8 +66,8 @@
 
   const cat = $derived(round.categories[pos.cat]);
   const clue = $derived(cat?.clues[pos.row]);
-  // Why Everyone must play (no Pass) is always on for this clue, when it is: those are played by everyone in them.
-  const mustWhy = $derived(!clue ? '' : clue.type === 'dailyDouble' ? 'a Daily Double is played by the player who found it' : clue.type === 'partner' ? 'a partner clue is played by its two partners' : clue.type === 'standard' && clue.everyone ? 'everyone answers a ✍ clue' : '');
+  // Why No Pass (everyone must play) is always on for this clue, when it is: those are played by everyone in them.
+  const mustWhy = $derived(clue ? noPassFixed(clue) : '');
   const sym = $derived(app.game.settings.currencySymbol);
 
   const TYPE_WORDS: Record<ClueType, string> = { standard: 'a standard tile', dailyDouble: 'a Daily Double', wheel: 'a wheel tile', dice: 'a dice tile', partner: 'a partner clue' };
@@ -614,20 +614,20 @@
             /> ✍ Everyone answers<span class="more-words">{' '}(in secret, on their phones)</span></label
           >
         {/if}
-        <!-- Everyone must play (no Pass): the author's choice on an ordinary buzz-in tile; a ✍ clue (and its multiple
+        <!-- No Pass (everyone must play): the author's choice on an ordinary buzz-in tile; a ✍ clue (and its multiple
              choice), a Daily Double and a partner clue are always played by everyone in them, so it shows ticked and fixed. -->
         <label
           class="check"
           title={mustWhy
-            ? `Everyone must play (no Pass): always on here, since ${mustWhy}; their phones never offer Pass`
-            : "Everyone must play (no Pass): with phone buzzers, players' phones offer no Pass on this clue (by default they can pass on a clue they won't buzz on)"}
+            ? `🚫 No Pass (everyone must play): always on here, since ${mustWhy}; their phones never offer Pass`
+            : "🚫 No Pass (everyone must play): with phone buzzers, players' phones offer no Pass on this clue (by default they can pass on a clue they won't buzz on)"}
           ><input
             type="checkbox"
             disabled={clue.empty || !!mustWhy}
-            aria-label="Everyone must play (no Pass)"
+            aria-label="🚫 No Pass (everyone must play)"
             data-must-fixed={mustWhy ? '' : undefined}
-            bind:checked={() => !!mustWhy || !!clue.mustPlay, (v) => (v ? (clue.mustPlay = true) : delete clue.mustPlay)}
-          /> Everyone must play<span class="more-words">{' '}(no Pass)</span></label
+            bind:checked={() => !!mustWhy || !!clue.mustPlay, (v) => setNoPass(clue, v)}
+          /> 🚫 No Pass<span class="more-words">{' '}(everyone must play)</span></label
         >
         <label class="field">
           Value

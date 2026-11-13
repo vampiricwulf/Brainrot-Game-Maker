@@ -5,7 +5,7 @@
 //    once everyone still able to buzz passed (a wrong answer counts as out), the host's row says "Everyone passed",
 //    👁 Reveal answer wears the ring and a running countdown stops (Ctrl+Z brings it back); Cat takes the pass back with
 //    P; ↺ Reset buzzers (0) starts the passes over, and Ctrl+Z of it brings them back; the answer up, Pass can't be pressed.
-// 2. No Pass on a clue ticked Everyone must play (no Pass) in the editor, nor on a ✍ clue (whose tick is fixed on).
+// 2. No Pass on a clue ticked 🚫 No Pass (everyone must play) in the editor, nor on a ✍ clue (whose tick is fixed on).
 // 3. Teams: a pass counts for the team (a teammate's phone says who passed, and can take it back).
 // Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
@@ -138,16 +138,16 @@ async function openTile(page, id) {
 try {
   // ---------- 1. An ordinary clue: Pass, the buzz it blocks, everyone passed ----------
   console.log('An ordinary buzz-in clue:');
-  // In the editor: Rizz's first tile is ticked Everyone must play (no Pass); Lore's ✍ one shows it ticked and fixed.
+  // In the editor: Rizz's first tile is ticked 🚫 No Pass (everyone must play); Lore's ✍ one shows it ticked and fixed.
   const { page, card, code } = await host(gameFile, async (page) => {
     await page.locator('.tile[data-place="clue:c1_0"]').click();
     const editor = page.getByRole('dialog', { name: 'Edit clue' });
-    const must = editor.getByLabel('Everyone must play (no Pass)');
-    assert(!(await must.isChecked()), 'the clue editor has an Everyone must play (no Pass) tick, off by default');
+    const must = editor.getByLabel('🚫 No Pass (everyone must play)');
+    assert(!(await must.isChecked()), 'the clue editor has a 🚫 No Pass (everyone must play) tick, off by default');
     await must.check();
     await editor.getByRole('button', { name: /Done/ }).click();
     await page.locator('.tile[data-place="clue:c2_0"]').click();
-    const fixed = editor.getByLabel('Everyone must play (no Pass)');
+    const fixed = editor.getByLabel('🚫 No Pass (everyone must play)');
     assert((await fixed.isChecked()) && (await fixed.isDisabled()), 'a ✍ clue shows it ticked and fixed (everyone answers it anyway)');
     await editor.getByRole('button', { name: /Done/ }).click();
     // A Daily Double and a partner clue: the same, ticked and fixed; back to Standard, it's the author's again (off).
@@ -164,6 +164,26 @@ try {
     await page.locator('.tile[data-place="clue:c0_1"]').click();
     assert((await editor.getByRole('combobox', { name: /^Type/ }).inputValue()) === 'standard', 'Ctrl+Z ×3 takes the type changes back');
     await editor.getByRole('button', { name: /Done/ }).click();
+    // On the board: the tile ticked wears 🚫 (and says no Pass to a screen reader); the ✍ one, where it's fixed on, doesn't.
+    const tileAt = (id) => page.locator(`.tile[data-place="clue:${id}"]`);
+    const badge = (id) => tileAt(id).locator('.dd', { hasText: '🚫' });
+    assert((await badge('c1_0').count()) === 1 && (await tileAt('c1_0').getAttribute('aria-label')).includes(', no Pass'), 'a tile ticked 🚫 No Pass wears its badge on the board');
+    assert((await badge('c2_0').count()) === 0 && (await badge('c0_0').count()) === 0, 'a ✍ tile (fixed on) and an ordinary one wear none');
+    // The tile's right-click menu: 🚫 No Pass after ✍ Everyone answers, one step, undone by Ctrl+Z; ticked and greyed on a ✍ tile.
+    const menu = page.getByRole('menu');
+    await tileAt('c0_0').click({ button: 'right' });
+    const items = (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+    const at = (x) => items.indexOf(x);
+    assert(at('✍ Everyone answers') >= 0 && at('🚫 No Pass') === at('✍ Everyone answers') + 1 && at('⬚ Empty tile') === at('🚫 No Pass') + 1, `the tile menu has 🚫 No Pass between ✍ Everyone answers and ⬚ Empty tile (${items.join(' | ')})`);
+    await menu.getByRole('menuitem', { name: '🚫 No Pass' }).click();
+    const undoTitle = () => page.getByRole('button', { name: 'Undo (Ctrl+Z)' }).first().getAttribute('title');
+    assert((await badge('c0_0').count()) === 1 && (await undoTitle()).includes('Set 🚫 No Pass on Memes $200'), `🚫 No Pass from the menu: the badge, one named step (${await undoTitle()})`);
+    await page.keyboard.press('Control+z');
+    assert((await badge('c0_0').count()) === 0, 'Ctrl+Z takes it off again');
+    await tileAt('c2_0').click({ button: 'right' });
+    const fixedItem = menu.getByRole('menuitem', { name: /🚫 No Pass/ });
+    assert((await fixedItem.innerText()).startsWith('✓ 🚫 No Pass') && (await fixedItem.isDisabled()), 'on a ✍ tile it is ticked and greyed (always on)');
+    await page.keyboard.press('Escape');
   });
   const ann = await phone('ann', code);
   const bob = await phone('bob', code, { w: 360, h: 640 });
@@ -354,7 +374,7 @@ try {
   await page.locator('.stage-box .board').waitFor();
   await openTile(page, 'c1_0');
   await ann.locator('#buzz.armed').waitFor();
-  assert((await passBtn(ann).isHidden()) && (await passBtn(cat).isHidden()), 'a clue ticked Everyone must play (no Pass): BUZZ! and no Pass');
+  assert((await passBtn(ann).isHidden()) && (await passBtn(cat).isHidden()), 'a clue ticked 🚫 No Pass (everyone must play): BUZZ! and no Pass');
   await page.keyboard.press('Escape');
   await page.locator('.stage-box .board').waitFor();
   await page.locator('.stage-box .board .tile[data-clue="c2_0"]').click();

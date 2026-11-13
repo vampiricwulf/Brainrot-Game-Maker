@@ -264,7 +264,7 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
         clearClue(clue);
         clue.value = null;
         clue.empty = undefined;
-        // A plain clue again: not the wheel, dice, ✍ (and its choices), Everyone must play, partner rules and cards or countdown of the clue
+        // A plain clue again: not the wheel, dice, ✍ (and its choices), No Pass, partner rules and cards or countdown of the clue
         // that was there.
         clue.type = 'standard';
         delete clue.wheelId;

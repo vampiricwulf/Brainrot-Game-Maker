@@ -526,7 +526,7 @@ export interface Clue {
    */
   everyone?: boolean;
   /**
-   * Everyone must play (no Pass): with phone buzzers, players' phones offer no Pass on this clue. Off (left out) by
+   * No Pass (everyone must play): with phone buzzers, players' phones offer no Pass on this clue. Off (left out) by
    * default and in older games: an ordinary buzz-in clue lets players pass. (Kept when the type changes, unused then.)
    */
   mustPlay?: true;
