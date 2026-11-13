@@ -134,9 +134,12 @@ try {
   const card = (name) => page.locator('.card', { has: page.locator('button.nm', { hasText: new RegExp(`^${name.replace(/[.()]/g, '\\$&')}$`) }) });
   const dialog = page.locator('[data-media-edit]');
   const clueEditor = page.getByRole('dialog', { name: 'Edit clue' });
-  /** ✎ Edit… on a file's card in 🖼 Media: its window, once it has read the file. */
+  /** ✎ Edit video… / ✎ Edit sound… on a file's card in 🖼 Media (named as the slide's item bar names it): its window, once
+   * it has read the file. */
   const editFromMedia = async (name) => {
     await media();
+    const named = await card(name).locator('[data-edit-media]').innerText();
+    assert(named === (/\.(wav|mp3|ogg|m4a|flac)$/.test(name) ? '✎ Edit sound…' : '✎ Edit video…'), `${name}'s card names it as the item bar does (${named})`);
     await card(name).locator('[data-edit-media]').click();
     await dialog.waitFor();
     await dialog.locator('[data-trimbar]').waitFor({ timeout: 30_000 });

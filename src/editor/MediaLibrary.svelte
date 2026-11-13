@@ -139,6 +139,8 @@
         ? 'Wait for its edit to be saved (or Stop it)'
         : 'Wait for its copy for phones to be made (or Stop it)';
   }
+  /** ✎ Edit video… / ✎ Edit sound…: the name the slide's item bar gives the same window. */
+  const editLabel = (m: MediaRef): string => (m.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…');
   /** ✎ Edit…'s tooltip. */
   const editHint = (m: MediaRef): string =>
     editOffer(m) === 'busy'
@@ -156,7 +158,7 @@
     const offer = editOffer(m);
     return menuOf({
       heading: m.name,
-      open: offer ? [{ label: '✎ Edit…', onclick: () => openMediaDialog({ mode: 'edit', id: m.id }), disabled: offer === 'busy', hint: editHint(m) }] : undefined,
+      open: offer ? [{ label: editLabel(m), onclick: () => openMediaDialog({ mode: 'edit', id: m.id }), disabled: offer === 'busy', hint: editHint(m) }] : undefined,
       verbs: [
         missingFile
           ? { label: '🔗 Replace file…', onclick: () => void replace(m), hint: "Pick the file again (or another one) to fix every place it's used" }
@@ -676,7 +678,7 @@
         <div class="foot">
           {#if editOffer(m)}
             <button class="ghost small" data-edit-media onclick={() => openMediaDialog({ mode: 'edit', id: m.id })} disabled={editOffer(m) === 'busy'} title={editHint(m)}
-              >✎ Edit…</button
+              >{editLabel(m)}</button
             >
           {:else}
             <span class="ghost small slot" aria-hidden="true">✎ Edit…</span>

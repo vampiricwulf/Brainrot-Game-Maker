@@ -16,6 +16,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 
 - A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
+- In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window.
 
 ### Fixed
 
