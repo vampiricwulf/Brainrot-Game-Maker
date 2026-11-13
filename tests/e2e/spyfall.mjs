@@ -364,8 +364,8 @@ try {
 
   // ---------- Bob's phone gives up his seat and takes it again: new to the room, so counted with Eve's ----------
   const bob = phones.Bob;
-  asking.add(bob);
   await bob.getByRole('button', { name: 'Not you? Change player' }).click();
+  await bob.getByRole('button', { name: 'Give up Bob', exact: true }).click();
   await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
   assert(await until(async () => (await flat(dialog.locator('[data-deal-status]'))).includes('📵 Bob has no phone here')), 'Bob’s phone lets go of his seat: the panel names him as having no phone here');
   assert((await flat(dialog.locator('[data-deal-status]'))).includes(lateStatus), 'Eve’s phone is still the one counted');

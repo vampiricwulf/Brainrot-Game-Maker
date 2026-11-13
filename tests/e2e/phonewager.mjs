@@ -737,6 +737,7 @@ try {
 
   // Cy (Player 2) changes name and joins Player 1 to read their wager: his phone is told one is in, not how much.
   await cy.locator('#leave').click();
+  await cy.getByRole('button', { name: 'Leave Player 2', exact: true }).click();
   await cy.getByRole('heading', { name: 'Pick your team' }).waitFor();
   await cy.getByRole('button', { name: 'Player 1' }).click();
   await cy.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Spy');
@@ -747,6 +748,7 @@ try {
   await shot('pw-9-late-joiner-phone', cy);
   // Back on Player 2, he'll pick for it (not the one marked ✔ Right).
   await cy.locator('#leave').click();
+  await cy.getByRole('button', { name: 'Leave Player 1', exact: true }).click();
   await cy.getByRole('button', { name: 'Player 2' }).click();
   await cy.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Cy');
   await cy.getByRole('button', { name: 'Join the team' }).click();

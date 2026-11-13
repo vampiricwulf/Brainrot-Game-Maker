@@ -444,8 +444,8 @@ try {
   });
   const kim = await kimCtx.newPage();
   kim.on('pageerror', (e) => errors.push(`[kim] ${e.message}`));
-  // "Not you? Change player" asks first: Kim says no.
-  kim.on('dialog', (d) => d.dismiss());
+  // "Not you? Change player" asks on the page, never with the browser's own box (an app's browser may not show it).
+  kim.on('dialog', (d) => (errors.push(`[kim] dialog: ${d.message()}`), void d.dismiss()));
   pages.push(['kim', kim]);
   const kimBuzzes = () => kim.evaluate(() => window.sentBuzzes);
   /** Kim's page sent exactly n buzzes in all, and no more come after. */
@@ -495,7 +495,15 @@ try {
   await kim.locator('#sound').getByText('Muted').waitFor();
   await kim.locator('#sound').click();
   await kim.locator('#sound').getByText('Sound on').waitFor();
+  // It asks first, under the link: Kim says no (Keep playing).
   await kim.getByRole('button', { name: 'Not you? Change player' }).click();
+  await kim.getByRole('group', { name: 'Give up this player and pick again?' }).waitFor();
+  assert(
+    (await kim.getByRole('button', { name: 'Not you? Change player' }).getAttribute('aria-expanded')) === 'true' && (await kim.getByRole('button', { name: 'Give up Kim', exact: true }).isVisible()),
+    '“Not you?” asks on the page, under the link: Keep playing, or Give up Kim',
+  );
+  await kim.getByRole('button', { name: 'Keep playing', exact: true }).click();
+  await kim.locator('#leave-ask').waitFor({ state: 'hidden' });
   await arm(101, 'This planet is red '.repeat(8));
   assert((await kim.locator('#buzz').evaluate((b) => getComputedStyle(b).cursor)) === 'pointer', 'BUZZ!: the hand cursor');
   let n = await kimBuzzes();
@@ -770,8 +778,10 @@ try {
   assert(await bob.getByRole('button', { name: "＋ I'm new" }).isHidden(), '🔒 and nobody can ask to join');
   /** What "Not you? Change player" asks Dee now, seated since before the lock (she says no). */
   const deeAsks = async () => {
-    const said = new Promise((r) => dee.once('dialog', (d) => (r(d.message()), void d.dismiss())));
     await dee.getByRole('button', { name: 'Not you? Change player' }).click();
+    const said = await dee.locator('#leave-q').innerText();
+    await dee.getByRole('button', { name: 'Keep playing', exact: true }).click();
+    await dee.locator('#leave-ask').waitFor({ state: 'hidden' });
     return said;
   };
   /** Waits (up to 10 s) until Dee's "Not you?" asks with (or without) the lock's warning. */
@@ -836,9 +846,16 @@ try {
   setState({ phase: 'lobby', clue: null, done: null });
 
   // "Not you?": Dee lets go of her seat and taps her name again.
-  // It asks first (the link sits under the buzz button).
-  dee.once('dialog', (d) => d.accept());
+  // It asks first (the link sits under the buzz button), on the page. With the keys: Enter on the link puts them on
+  // Keep playing, Esc takes the question away and the keys back to the link.
+  await dee.locator('#leave').focus();
+  await dee.keyboard.press('Enter');
+  await dee.waitForFunction(() => document.activeElement?.id === 'leave-no');
+  await dee.keyboard.press('Escape');
+  await dee.locator('#leave-ask').waitFor({ state: 'hidden' });
+  assert((await dee.evaluate(() => document.activeElement?.id)) === 'leave', '“Not you?” with the keys: they go to Keep playing; Esc takes the question away, the keys back on the link');
   await dee.getByRole('button', { name: 'Not you? Change player' }).click();
+  await dee.getByRole('button', { name: 'Give up Dee', exact: true }).click();
   await dee.getByRole('heading', { name: 'Tap your name' }).waitFor();
   assert(await dee.getByRole('button', { name: 'Dee' }).isEnabled(), '"Not you? Change player" frees the seat');
   await dee.getByRole('button', { name: 'Dee' }).click();

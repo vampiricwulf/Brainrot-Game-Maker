@@ -489,8 +489,8 @@ try {
   await audClean('a quick card sent');
 
   // ---------- Cat gives up her seat and picks it again: that phone is new for the card ----------
-  asking.add(cat);
   await cat.getByRole('button', { name: 'Not you? Change player' }).click();
+  await cat.getByRole('button', { name: 'Give up Cat', exact: true }).click();
   await cat.getByRole('heading', { name: 'Tap your name' }).waitFor();
   assert(!(await cardsOn(cat)), 'her phone lets go of the seat, and of the card');
   await cat.getByRole('button', { name: 'Cat', exact: true }).click();

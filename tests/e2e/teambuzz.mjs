@@ -226,10 +226,15 @@ try {
   await al.locator('#me').getByText('Al · Player 1').waitFor();
   assert(true, 'a phone reload comes back on its team with its name');
   // Change team or name asks about leaving the team, not giving it up (said no to).
-  await al.evaluate(() => (window.confirm = (m) => ((window.__asked = m), false)));
   await al.getByRole('button', { name: 'Change team or name' }).click();
-  const leaveAsk = await al.evaluate(() => window.__asked);
-  assert(leaveAsk === 'Leave Player 1 to pick a team and your name again? Your team plays on.' && (await al.locator('#me').isVisible()), `Change team or name asks to leave the team, which plays on (${leaveAsk})`);
+  const leaveAsk = await al.locator('#leave-q').innerText();
+  assert(
+    leaveAsk === 'Leave Player 1 to pick a team and your name again? Your team plays on.' && (await al.getByRole('button', { name: 'Leave Player 1', exact: true }).isVisible()),
+    `Change team or name asks, on the page, to leave the team, which plays on (${leaveAsk})`,
+  );
+  await al.getByRole('button', { name: 'Keep playing', exact: true }).click();
+  await al.locator('#leave-ask').waitFor({ state: 'hidden' });
+  assert(await al.locator('#me').isVisible(), 'Keep playing: still on the team');
 
   // The list's words are a team's: two teams of one name.
   await roster.getByRole('button', { name: '＋ Add team' }).click();

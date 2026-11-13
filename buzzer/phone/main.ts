@@ -646,21 +646,50 @@ function denied(reason: DenyReason): void {
   );
 }
 
-/** "Not you?": let go of this seat and pick again (it asks first: the link is right under the buzz button). */
-function leaveSeat(): void {
+/**
+ * "Not you?" asks first, on the page under the link (it's right under the buzz button), not with the browser's own box:
+ * an app's built-in browser (where stream links often open) may never show that one, and the link would do nothing.
+ * Opened with the keys, they go to Keep playing.
+ */
+function askLeave(e: MouseEvent): void {
+  drawLeave();
+  if (!$('leave-ask').hidden) return;
+  $('leave-ask').hidden = false;
+  $('leave').setAttribute('aria-expanded', 'true');
+  news(sentences([$('leave-q').textContent ?? '']));
+  if (e.detail === 0) $('leave-no').focus();
+}
+
+/** The question and the button that gives the seat up: who it is, and whether the seats are locked (as it is now). */
+function drawLeave(): void {
   // (A seated phone hears it in its view: the seat list it last saw may be from before the lock, or before an unlock.)
   const locked = view ? !!view.locked : !!seats?.locked;
   const lock = "The host has locked the seats: you can't get back in until they unlock them.";
   // Teams: this person leaves; the team goes on without them.
-  const team = view?.teams || seats?.teams ? (view?.you?.name ?? 'this team') : '';
-  const ask = team
+  const teams = !!(view?.teams || seats?.teams);
+  const name = view?.you?.name ?? '';
+  const team = teams ? name || 'this team' : '';
+  $('leave-q').textContent = team
     ? locked
       ? `Leave ${team}? ${lock}`
       : `Leave ${team} to pick a team and your name again? Your team plays on.`
     : locked
       ? `Give up this player? ${lock}`
       : 'Give up this player and pick again?';
-  if (!confirm(ask)) return;
+  $('leave-yes').textContent = team ? `Leave ${team}` : name ? `Give up ${name}` : 'Give up this player';
+}
+
+/** Keep playing (or Esc): the question goes; keys that were on it go back to the link. */
+function keepSeat(): void {
+  if ($('leave-ask').hidden) return;
+  const inside = $('leave-ask').contains(document.activeElement);
+  $('leave-ask').hidden = true;
+  $('leave').setAttribute('aria-expanded', 'false');
+  if (inside) $('leave').focus();
+}
+
+/** Lets go of this seat to pick again. */
+function leaveSeat(): void {
   send({ t: 'leave' });
   saveSeat(null);
   seatId = null;
@@ -851,6 +880,11 @@ let wasBoxUp = false;
 function show(id: ScreenId): void {
   // (Off the buzz screen: ＋ Pick any color goes, nothing sent.)
   if (id !== 's-buzz' && anyColor) closeAny('drop');
+  // (And "Not you?"'s question: off the buzz screen, nothing is given up.)
+  if (id !== 's-buzz') {
+    $('leave-ask').hidden = true;
+    $('leave').setAttribute('aria-expanded', 'false');
+  }
   for (const s of screens) $(s).hidden = s !== id;
   // (Every drawing of the buzz screen ends here, before it's painted: the question fits what's around it.)
   if (id === 's-buzz') fitClue();
@@ -1661,6 +1695,8 @@ function renderFoot(v: PhoneView, sym: string): boolean {
   const team = !!v.teams;
   $('me').textContent = `${team && you.member ? `${you.member} · ` : ''}${you.name} · ${money(you.score, sym)}`;
   $('leave').textContent = team ? 'Change team or name' : 'Not you? Change player';
+  // (Its question, while it's asked: the lock can come or go meanwhile.)
+  if (!$('leave-ask').hidden) drawLeave();
   renderColors(v);
   const hostGone = v.hostHere === false;
   $('host-note').hidden = !hostGone;
@@ -2300,7 +2336,8 @@ function stepFocus(e: KeyboardEvent, buttons: Iterable<HTMLButtonElement>, dir: 
  * to the buzzer, not back to 🎨: Space there would open it again, not buzz.)
  */
 function escape(e: KeyboardEvent): void {
-  if (colorsOpen && !$('s-buzz').hidden) {
+  if (!$('leave-ask').hidden && !$('s-buzz').hidden) keepSeat();
+  else if (colorsOpen && !$('s-buzz').hidden) {
     const inside = $('colors').contains(document.activeElement);
     colorsOpen = false;
     if (view?.you) renderColors(view);
@@ -2451,7 +2488,25 @@ document.addEventListener('visibilitychange', () => {
     connect();
   } else probe();
 });
-$('leave').addEventListener('click', leaveSeat);
+// The browser knows at once when the phone loses its network: "Reconnecting…" covers the buzzer then (a press is kept
+// and sent once back), not after the pings go unanswered for half a minute. Back online, it connects at once.
+window.addEventListener('offline', () => {
+  if (ws) dropped(ws);
+});
+window.addEventListener('online', () => {
+  if (!code || notice?.final) return;
+  attempts = 0;
+  clearTimeout(retryTimer);
+  if (!ws || ws.readyState !== WebSocket.OPEN) connect();
+  else probe();
+});
+$('leave').addEventListener('click', askLeave);
+$('leave-no').addEventListener('click', keepSeat);
+// (The rest of a double tap or click is the same press: it gives the seat up once.)
+$('leave-yes').addEventListener('click', (e) => {
+  if (e.detail > 1 || $('leave-ask').hidden) return;
+  leaveSeat();
+});
 $('overlay-retry').addEventListener('click', () => {
   clearTimeout(retryTimer);
   attempts = 0;

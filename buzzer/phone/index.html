@@ -138,7 +138,15 @@
           <div id="colors" role="group" aria-label="Pick your color" hidden></div>
           <!-- A tap on a color another player has: why nothing happened (main.ts). -->
           <p id="colors-note" class="note" role="status"></p>
-          <button id="leave" type="button" class="link">Not you? Change player</button>
+          <button id="leave" type="button" class="link" aria-expanded="false" aria-controls="leave-ask">Not you? Change player</button>
+          <!-- What it asks first, on the page (an app's own browser may never show the browser's box): main.ts askLeave. -->
+          <div id="leave-ask" role="group" aria-labelledby="leave-q" hidden>
+            <p id="leave-q" dir="auto"></p>
+            <div class="any-btns">
+              <button id="leave-no" type="button" class="plain">Keep playing</button>
+              <button id="leave-yes" type="button" class="primary"></button>
+            </div>
+          </div>
         </div>
         <!--
           ＋ Pick any color (main.ts, openAny): the square and the hue strip (dragged, or the arrow keys) and a Hex box.

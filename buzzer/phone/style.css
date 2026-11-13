@@ -326,6 +326,10 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   #any-note:empty { min-height: 0; }
 }
 .warn-note { margin: 0; color: #ffd27a; text-align: center; font-size: 16px; }
+/* "Not you?" asks under the link: the question, then Keep playing and Give up (the any-btns pair). */
+#leave-ask { display: flex; flex-direction: column; gap: 10px; width: min(100%, 420px); padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
+#leave-ask[hidden] { display: none; }
+#leave-q { margin: 0; text-align: center; font-size: 17px; overflow-wrap: anywhere; }
 .link {
   border: 0;
   background: transparent;
