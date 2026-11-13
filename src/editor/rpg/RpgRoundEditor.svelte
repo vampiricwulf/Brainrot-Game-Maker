@@ -97,7 +97,7 @@
       </label>
     </div>
     <p class="muted small">
-      An adventure is a map of screens (places) the players walk between: a ＋ on the map adds one (past its edge, the map grows), double-click it to draw it and fill it.
+      An adventure is a map of screens (places) the players walk between.
     </p>
     {#if sharing}
       <p class="muted small" data-world-shared>

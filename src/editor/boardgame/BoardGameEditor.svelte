@@ -1077,7 +1077,7 @@
           </div>
           <p class="muted small">Delete disconnects it, Esc lets go of it. Click a space to set it up.</p>
         {:else}
-          <Tips id="board-game" hint="Click a space to set it up. Ctrl+click (⌘+click) or double-click the board to add one, or right-click → Add a space here.">
+          <Tips id="board-game" hint="Click a space to set it up.">
             <ul>
               <li>New spaces go after the selected space, so you can draw the path in order.</li>
               <li>Drag spaces (or Alt+arrows) to move them. Drop a picture on a space for its icon, or on the board for its backdrop.</li>
