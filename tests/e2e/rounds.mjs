@@ -82,6 +82,23 @@ try {
   await page.waitForFunction(() => document.querySelector('input[data-final-typed]')?.checked === true);
   assert((await off.count()) === 0 && (await page.getByRole('textbox', { name: 'Choice A', exact: true }).inputValue()) === 'Crisps', 'Ctrl+Z: it is ticked again, its choices back in reach');
   await page.getByRole('button', { name: 'Take the choices off' }).click();
+  // BOARD-8: with the answer written (one short line), ＋ Multiple choice starts A as the answer, marked ✔ Right, the
+  // keys in B, and a note that says so; ↶ Undo takes the choices off again.
+  await page.locator('[data-field="a"]').fill('Crisps');
+  await page.getByRole('button', { name: '＋ Multiple choice' }).click();
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choice B');
+  await page.locator('.history-notice, .toast', { hasText: 'Added multiple choice to Midgame Wager: A is the answer, marked right' }).waitFor();
+  const firstRow = page.locator('[data-choice-row]').first();
+  assert(
+    (await page.getByRole('textbox', { name: 'Choice A', exact: true }).inputValue()) === 'Crisps' &&
+      (await firstRow.locator('button[aria-pressed="true"]').count()) === 1 &&
+      (await page.locator('[data-choice-row] button[aria-pressed="true"]').count()) === 1 &&
+      (await page.getByRole('textbox', { name: 'Choice B', exact: true }).inputValue()) === '',
+    '＋ Multiple choice with the answer written: A is the answer, marked ✔ Right, the keys in B, and a note says so',
+  );
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await page.getByRole('button', { name: '＋ Multiple choice' }).waitFor();
+  await page.locator('[data-field="a"]').fill('');
   await page.getByLabel('Category').fill('Snacks');
   await page.getByRole('button', { name: '▲ Move round up' }).click();
   await page.getByRole('button', { name: '▲ Move round up' }).click();

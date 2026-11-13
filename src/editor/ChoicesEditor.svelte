@@ -1,5 +1,6 @@
 <!--
-  A ✍ clue's (or a Final's) multiple choices in its editor: ＋ Multiple choice starts A to D, then each choice's words,
+  A ✍ clue's (or a Final's) multiple choices in its editor: ＋ Multiple choice starts A to D (A is the answer, marked
+  ✔ Right, when the answer is one short line), then each choice's words,
   Mark right (✔ Right once pressed: at most one, and it can be taken off), ⋯ (its menu: ▲ / ▼, drag ⋮⋮ or Alt+↑/↓) and 🗑, ＋ Choice up to
   CHOICES_MAX, and Take the choices off.
   Each change is a step named by the letters as they were ("Deleted choice C of Memes $400"); typing goes to the history
@@ -10,9 +11,9 @@
   import { tick } from 'svelte';
   import { step as record, type StepOptions } from '../lib/history.svelte';
   import { moveTo } from '../lib/listedit';
-  import { newId, type Choice } from '../lib/model';
+  import { newId, slideText, type Choice, type Slide } from '../lib/model';
   import { CHOICE_MAX, CHOICES_MAX } from '../lib/buzzproto';
-  import { letter } from '../lib/choices';
+  import { answerChoice, letter } from '../lib/choices';
   import { DragOrder, rowKeys } from '../lib/dragorder.svelte';
   import { menuItem, menuOf, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { isTextField } from '../lib/undokeys';
@@ -24,8 +25,8 @@
     place,
     final = false,
   }: {
-    /** The clue (or the Final) whose choices they are. */
-    owner: { choices?: Choice[] };
+    /** The clue (or the Final) whose choices they are (its answer slide: what ＋ Multiple choice puts in A). */
+    owner: { choices?: Choice[]; answerSlide?: Slide };
     /** It as the history names it: "Memes $400", "Final Jeopardy!". */
     where: () => string;
     /** Where its steps show (left out: where the change is). */
@@ -44,9 +45,15 @@
   /** A step; `notify`: with "… · Undo" shown (typed words went, as deleting a card says). */
   const change = <T,>(label: string, fn: () => T, notify = false): T => record(label, fn, { ...(place ? { place } : {}), ...(notify ? { notify: true } : {}) });
 
+  /** A to D; with a one-line answer, A is it, marked ✔ Right (said in the step's note), and the keys go to B. */
   function start(): void {
-    change(`Added multiple choice to ${where()}`, () => (owner.choices = Array.from({ length: 4 }, () => ({ id: newId(), text: '' }))));
-    void focusBox(0);
+    const a = owner.answerSlide && answerChoice(slideText(owner.answerSlide));
+    change(
+      a ? `Added multiple choice to ${where()}: A is the answer, marked right` : `Added multiple choice to ${where()}`,
+      () => (owner.choices = Array.from({ length: 4 }, (_, i) => (i === 0 && a ? { id: newId(), text: a, right: true } : { id: newId(), text: '' }))),
+      !!a,
+    );
+    void focusBox(a ? 1 : 0);
   }
   function add(): void {
     if (list.length >= CHOICES_MAX) return;

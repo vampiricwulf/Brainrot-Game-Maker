@@ -987,7 +987,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      late answer", locking nothing); only the host sees them (in one window, not until the answer is up: till then each player's row says whether
      theirs is in, in the room the words then take, long ones scrolling in it, so the stage keeps its size); the stream shows ✍ and who has answered
      while answers are open; the host marks each ✔ / ✘ for the tile's value. With **multiple choice** (2–6 choices
-     under ✍ in the editor, one marked right: its **Mark right** reads ✔ Right once pressed), players tap one instead, and ✔ Judge all marks everyone by the right
+     under ✍ in the editor, one marked right: its **Mark right** reads ✔ Right once pressed; **＋ Multiple choice** starts A to D, A being the answer, marked right, when the answer is one line of up to 80 characters), players tap one instead, and ✔ Judge all marks everyone by the right
      choice in one step (`Enter` too, with nobody selected; its button shows ⏎ then). The stream shows the choices under the question (the slide drawn smaller over them, the right
      one lit with the answer). Without phone buzzers it plays as a normal clue, the choices still on stream.
    - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for whoever picked it (a Daily

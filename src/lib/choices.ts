@@ -31,6 +31,16 @@ export function usableChoices(list: readonly Choice[] | undefined): UsableChoice
   return out.length >= 2 ? out : [];
 }
 
+/**
+ * What ＋ Multiple choice puts in choice A, marked right: the answer slide's words when they're one short line (1 to
+ * CHOICE_MAX characters, as the room keeps them), else nothing (A to D start empty).
+ */
+export function answerChoice(answer: string): string | undefined {
+  const t = answer.trim();
+  if (!t || /[\r\n]/.test(t) || Array.from(t).length > CHOICE_MAX) return undefined;
+  return cleanName(t, CHOICE_MAX) || undefined;
+}
+
 /** The one marked ✔ Right, among the usable ones (one marked with no words counts as none). */
 export const rightChoice = (usable: readonly UsableChoice[]): UsableChoice | undefined => usable.find((c) => c.right);
 

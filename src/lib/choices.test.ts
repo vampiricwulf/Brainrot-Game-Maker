@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { choiceCounts, countsLine, judgeAllPlan, letter, matchChoice, pickLabel, pickOf, rightChoice, usableChoices } from './choices';
+import { answerChoice, choiceCounts, countsLine, judgeAllPlan, letter, matchChoice, pickLabel, pickOf, rightChoice, usableChoices } from './choices';
 import type { Choice } from './model';
 
 const four = (): Choice[] => [
@@ -72,5 +72,19 @@ describe('multiple choice', () => {
     const u = usableChoices(four());
     const answers = { p1: { text: 'Stockholm', pick: 'b' }, p2: { text: 'Paris', pick: 'a' }, p3: { text: 'b. stockholm' }, p4: { text: 'banana' }, p5: { text: 'oslo' }, p6: { text: 'Bern', pick: 'd' } };
     expect(judgeAllPlan(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'], answers, u, { p6: 1 })).toEqual({ right: ['p1', 'p3'], wrong: ['p2', 'p5'] });
+  });
+});
+
+describe('answerChoice', () => {
+  it('takes a one-line answer of 1 to CHOICE_MAX characters', () => {
+    expect(answerChoice('Mario')).toBe('Mario');
+    expect(answerChoice('  Mario  ')).toBe('Mario');
+    expect(answerChoice('x'.repeat(80))).toBe('x'.repeat(80));
+  });
+  it('leaves an empty, long or several-line answer out', () => {
+    expect(answerChoice('')).toBeUndefined();
+    expect(answerChoice('   ')).toBeUndefined();
+    expect(answerChoice('x'.repeat(81))).toBeUndefined();
+    expect(answerChoice('Mario\nand Luigi')).toBeUndefined();
   });
 });
