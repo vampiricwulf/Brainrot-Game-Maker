@@ -34,6 +34,7 @@ in plain words for the people who make and host games. Anything committed but no
 - After **↶ Reopen** (the status line's button or a tile picked from **↶ Reopen a tile… ▾**) the keys go to that tile, so the arrows and Enter go on from it, and Esc in the Amount box opened with **± Adjust score** gives them back to the board, not the top of the page.
 - The board tile the keys are on has a clear white ring in a dark band, instead of a thin blue line lost on a blue tile (still none on stream while the controls are hidden in one window).
 - One window, the Final's reveals: a wager you typed stays hidden in its row (“hidden”, as a phone's already did) until **Show wager** or a verdict, so viewers no longer see every wager before its reveal; typing one in the row replaces it.
+- One window: a question in the strip (🚪 Exit, leaving a round with clues left, Rematch) lies over the tools row instead of adding a row, so the stage viewers see no longer shrinks and grows back for a question only you see.
 
 ## 2026-11-12
 

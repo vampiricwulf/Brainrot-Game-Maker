@@ -1623,11 +1623,15 @@
   </div>
 
   {#if ask}
-    <!-- Confirmations: one strip across the panel, right above the fixed bar (never squeezed into a row of buttons). -->
-    <div class="confirm" role="alert">
-      {#key ask}
-        <InlineAsk text={ask.text} ok={ask.ok} cancel={ask.cancel} danger={ask.danger} alt={ask.alt} onalt={ask.onalt} altDanger={ask.altDanger} focusCancel onok={ask.onok} oncancel={ask.oncancel} />
-      {/key}
+    <!-- Confirmations: one strip across the panel, right above the fixed bar (never squeezed into a row of buttons). In a
+         single window it lies over the tools row (and what's above it, if it needs more), so the panel keeps its height
+         and the stage viewers see keeps its size for a question only the host sees. -->
+    <div class="askslot">
+      <div class="confirm" role="alert">
+        {#key ask}
+          <InlineAsk text={ask.text} ok={ask.ok} cancel={ask.cancel} danger={ask.danger} alt={ask.alt} onalt={ask.onalt} altDanger={ask.altDanger} focusCancel onok={ask.onok} oncancel={ask.oncancel} />
+        {/key}
+      </div>
     </div>
   {/if}
 
@@ -1988,7 +1992,7 @@
     border-top: 1px solid var(--border);
   }
   /* Only the action part gives up height (it scrolls): the status, the tools and the fixed bar keep theirs. */
-  .panel > :is(.status, .toolsrow, .confirm, .fixed) {
+  .panel > :is(.status, .toolsrow, .askslot, .fixed) {
     flex-shrink: 0;
   }
   .group {
@@ -2000,6 +2004,21 @@
     padding: 6px 10px;
     border: 1px solid var(--warn);
     border-radius: 8px;
+  }
+  /* Single window: the strip takes no room of its own (its slot is no height, and the panel's gap before it is taken
+     back), lying over the tools row from its foot up, so the panel, and the stage above it, keep their size. */
+  .panel:not(.dual) > .askslot {
+    position: relative;
+    height: 0;
+    margin-top: -10px;
+  }
+  .panel:not(.dual) > .askslot > .confirm {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    background: var(--panel);
   }
   .toolsrow:empty {
     display: none;

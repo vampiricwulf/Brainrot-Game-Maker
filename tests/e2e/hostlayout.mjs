@@ -1,7 +1,7 @@
 // The host panel's layout holds in every state: the fixed bar (↶ Undo, 📜 Log, 🚪 Exit) stays put from the board to a
 // clue, a Daily Double, the Final, an RPG and a board-game round and the end screen; there's never more than one main
-// (.primary) button, and one where the moment has a next step; a confirmation is one strip above the fixed bar (the
-// panel grows by that strip, nothing overlaps); and beside the stage (RPG and board-game rounds on a wide window) the
+// (.primary) button, and one where the moment has a next step; a confirmation is one strip above the fixed bar (in one
+// window over the tools row: the panel and the stage keep their size, nothing overlaps the fixed bar); and beside the stage (RPG and board-game rounds on a wide window) the
 // fixed bar is a grid with 🚪 Exit in its bottom-right cell, ↶ Undo and ↷ Redo in words and each group on one line (🔊
 // Sound with 📺 Audience and ▭ Scores window ●, at 1280×720 and 1093×526). A Daily Double with three question slides keeps Next slide ▶
 // the main button until its last slide (viewers see where it is: ● ● ○) and its flow row keeps its places (↩ Put back
@@ -314,14 +314,22 @@ try {
   await page.keyboard.press('Escape');
   await page.locator('.stage-box .board').waitFor();
 
-  // A confirmation is one strip above the fixed bar: the panel grows by that strip only, and nothing overlaps.
-  const panelH = (await box(page.locator('.panel'))).h;
+  // A confirmation is one strip above the fixed bar: in one window it lies over the tools row, so the panel and the stage
+  // viewers see keep their size, and nothing overlaps the fixed bar.
   await page.waitForTimeout(450);
+  const panelH = (await box(page.locator('.panel'))).h;
+  const stageAt = await box(page.locator('.stage-box'));
   await btn('🚪 Exit').click();
   await confirmStrip(page).waitFor();
   const strip = await box(confirmStrip(page));
   const grown = (await box(page.locator('.panel'))).h - panelH;
-  assert(grown <= strip.h + 12, `Exit asks in one strip: the panel grows by that strip only (${grown}px, the strip ${strip.h}px)`);
+  const stageAsked = await box(page.locator('.stage-box'));
+  assert(
+    grown === 0 && stageAsked.h === stageAt.h && stageAsked.w === stageAt.w,
+    `one window: Exit asks in one strip, and the panel and the stage keep their size (${grown}px, stage ${stageAt.w}×${stageAt.h} → ${stageAsked.w}×${stageAsked.h}, the strip ${strip.h}px)`,
+  );
+  const tools = await box(page.locator('.panel .toolsrow'));
+  assert(strip.y + strip.h >= tools.y + tools.h - 1 && strip.y <= tools.y + 1, `the strip lies over the tools row (strip ${strip.y}+${strip.h}, tools ${tools.y}+${tools.h})`);
   const fixedBar = await box(page.locator('.panel .fixed'));
   assert(strip.y + strip.h <= fixedBar.y && strip.w > fixedBar.w * 0.9, 'the strip spans the panel, right above the fixed bar (no button under it)');
   const exitAsked = await box(btn('🚪 Exit'));
