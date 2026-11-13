@@ -604,11 +604,17 @@
 
   // ---------- Categories ----------
 
-  /** A category's name box grows with its name (a long one never scrolls out of sight), as typed or undone. */
+  /**
+   * A category's name box grows with its name (a long one never scrolls out of sight), as typed or undone. It is
+   * measured unstretched: the box then fills its header's height, so every header in the row is as tall as the tallest
+   * (and they all shrink back once a long name is shortened).
+   */
   function autosize(el: HTMLTextAreaElement, _text: string) {
     const fit = () => {
+      el.style.flexGrow = '0';
       el.style.height = 'auto';
       el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+      el.style.flexGrow = '';
     };
     fit();
     el.addEventListener('input', fit);
@@ -1306,6 +1312,10 @@
     hyphens: auto;
   }
   /* Narrow columns (ten, or a narrow window): smaller names, so a word like GEOGRAPHY still fits on a line. */
+  /* A name box fills its header, so the headers in a row are one height when one name wraps longer, as on stream. */
+  .cat > textarea:not(.sub) {
+    flex: 1 1 auto;
+  }
   .grid.many .cat textarea:not(.sub) {
     font-size: 12px;
     padding-inline: 2px;

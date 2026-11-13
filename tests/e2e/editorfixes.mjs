@@ -174,6 +174,14 @@ try {
   await name.fill('Famous Memes Of The Early Twenty Tens Internet Era');
   const hidden = await name.evaluate((t) => t.scrollHeight - t.clientHeight);
   assert(hidden <= 1, `a long category name grows its box instead of hiding lines (${hidden}px hidden)`);
+  // Every header in the row fills it, as tall as the long one, as on stream (no short blue strip over a dark gap).
+  const nameBoxes = () => page.locator('.cat > textarea:not(.sub)').evaluateAll((ts) => ts.map((t) => { const r = t.getBoundingClientRect(); return `${Math.round(r.top)}+${Math.round(r.height)}`; }));
+  const even = await nameBoxes();
+  assert(new Set(even).size === 1, `the category name boxes are one height when one name is long (${even.join(' ')})`);
+  await name.fill('Memes');
+  const back = await nameBoxes();
+  assert(new Set(back).size === 1 && Number(back[0].split('+')[1]) < Number(even[0].split('+')[1]), `and all shrink back when it is short again (${back.join(' ')} after ${even.join(' ')})`);
+  await name.fill('Famous Memes Of The Early Twenty Tens Internet Era');
   const fits = await page.locator('.cat').evaluateAll((cats) => cats.every((c) => c.querySelector('.cat-tools').scrollWidth <= c.clientWidth));
   assert(fits, "each category's tools fit its column at 1280");
   await page.getByRole('button', { name: 'More for category 2' }).click();
