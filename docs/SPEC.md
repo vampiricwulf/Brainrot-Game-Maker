@@ -212,8 +212,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   text selected on the page still copies as text.
 - **A category's menu** (a right-click on it, its ⋯, or Shift+F10 in its name): 🖼 Image… · ⧉ Duplicate · 📋 Copy category ·
   📋 Paste category here (its name, picture and clues over this column, with the files, wheels and dice they use from
-  another game; one step, with the bottom note's Undo when the column had anything in it; clues past this board's rows
-  don't fit, and a toast says how many) · ◀ ▶ moves · ＋ Insert… · ⌫ Clear its clues · 🗑 Delete category. Ctrl+C / Ctrl+V
+  another game; one step, with the bottom note's Undo, also over an empty column; clues past this board's rows
+  don't fit, and a toast says how many) · 📋 Paste as new category right (a new column right of it, the copied category
+  in it, one step with the note's Undo, the keys on its ⋯; greyed at 10 columns) · ◀ ▶ moves · ＋ Insert… · ⌫ Clear its clues · 🗑 Delete category. Ctrl+C / Ctrl+V
   on its ⋯ copy and paste it; in its name box they stay the browser's text copy and paste, so the menu shows those keys only when it drops from the ⋯.
 - **Every editor menu, one order** (menustate.svelte.ts `menuOf`, with `menuItem`'s standard items, unit-tested): a heading
   naming the thing, then ✎ Edit / ▶ Open (what a click does), what it can do or be set to and its kinds (Make it a…),

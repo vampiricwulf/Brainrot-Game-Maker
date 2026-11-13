@@ -20,6 +20,7 @@
     roundName,
     slideText,
     type BoardRound,
+    type Category,
     type Clue,
     type ClueType,
     type PartnerGame,
@@ -691,31 +692,46 @@
     const cat = round.categories[ci];
     clipboard.category = clone(cat);
     holdUsedBy(app.game, clipboard.category);
-    toast(`Copied category “${categoryLabel(cat)}”: paste it over any category (Ctrl+V on its ⋯)`);
+    toast(`Copied category “${categoryLabel(cat)}”: paste it over any category (Ctrl+V on its ⋯), or as a new one, from its ⋯ menu`);
   }
+
+  /** The copied category into the one at `ci`: ids, files, wheels and dice of its own. The clues that didn't fit. */
+  function pasteInto(ci: number, from: Category): number {
+    const cat = round.categories[ci];
+    const left = pasteCategory(round, ci, from);
+    adoptUsedBy(app.game, cat);
+    for (const c of cat.clues) pastedPartnerCard(round, c);
+    followDailyDoubles(round);
+    return left;
+  }
+  const didntFit = (left: number) => left && toast(`${left} of its clue${left === 1 ? '' : 's'} didn’t fit: add rows first`);
 
   /**
    * Paste the copied category over this one: its name, picture and clues, with ids of their own (and the files, wheels
-   * and dice they use, when it came from another game). What was there goes at once: the note at the bottom offers Undo.
+   * and dice they use, when it came from another game). The note at the bottom says so and offers Undo (also over an
+   * empty column, where it's the one sign the paste happened: it takes the place of the Copied toast).
    */
   function pasteCat(ci: number): void {
     const from = clipboard.category;
     if (!from) return void toast('Copy a category first (its ⋯ menu, or Ctrl+C on its ⋯)');
     const cat = round.categories[ci];
-    const game = app.game;
     const place: Place = { tab: 'round', round: round.id, part: { kind: 'category', category: cat.id } };
+    didntFit(step(`Pasted category “${categoryLabel(from)}” over “${categoryLabel(cat)}”`, () => pasteInto(ci, from), { notify: true, place }));
+  }
+
+  /** 📋 Paste as new category right: a new column right of this one, the copied category in it, in one step. */
+  function pasteCatRight(ci: number): void {
+    const from = clipboard.category;
+    if (!from || round.categories.length >= 10) return;
+    const at = ci + 1;
     const left = step(
-      `Pasted category “${categoryLabel(from)}” over “${categoryLabel(cat)}”`,
-      () => {
-        const left = pasteCategory(round, ci, from);
-        adoptUsedBy(game, cat);
-        for (const c of cat.clues) pastedPartnerCard(round, c);
-        followDailyDoubles(round);
-        return left;
-      },
-      { notify: categoryHasContent(cat), place },
+      `Pasted category “${categoryLabel(from)}” as a new category right of “${categoryLabel(round.categories[ci])}”`,
+      () => (addCategory(round, at), pasteInto(at, from)),
+      { notify: true },
     );
-    if (left) toast(`${left} of its clue${left === 1 ? '' : 's'} didn’t fit: add rows first`);
+    didntFit(left);
+    // The keys go to its ⋯, so Ctrl+V there or its menu carries on from it.
+    void tick().then(() => document.querySelectorAll<HTMLButtonElement>('.cat-tools button[aria-label^="More for"]')[at]?.focus());
   }
 
   /** Ctrl+C / Ctrl+V on a category's ⋯: copy or paste the whole category. */
@@ -740,7 +756,10 @@
       verbs: [{ label: '🖼 Image…', onclick: () => (catPicker = ci) }],
       duplicate: menuItem.duplicate(() => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))), { disabled: n >= 10, keys: false }),
       copy: menuItem.copy(() => copyCat(ci), { label: '📋 Copy category', ...noKeys }),
-      paste: menuItem.paste(() => pasteCat(ci), { label: '📋 Paste category here', disabled: !clipboard.category, ...noKeys }),
+      paste: [
+        menuItem.paste(() => pasteCat(ci), { label: '📋 Paste category here', disabled: !clipboard.category, ...noKeys }),
+        { label: '📋 Paste as new category right', onclick: () => pasteCatRight(ci), disabled: !clipboard.category || n >= 10 },
+      ],
       move: [menuItem.left(() => moveCat(ci, ci - 1), { disabled: ci === 0 }), menuItem.right(() => moveCat(ci, ci + 1), { disabled: ci === n - 1 })],
       insert: [
         { label: '＋ Insert category left', onclick: () => insertCat(ci), disabled: n >= 10 },

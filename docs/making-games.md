@@ -43,8 +43,9 @@ video, audio or YouTube, arranged freely.
 
 - Drag tiles, categories and rows to move them, or use `Alt`+arrows: `Alt`+`←`/`→` moves a category, `Alt`+`↑`/`↓`
   moves a row.
-- A category's menu (right-click it, or its ⋯) has **📋 Copy category** and **📋 Paste category here**, to reuse a
-  whole category (name, picture and clues) in another round or game; `Ctrl+C` / `Ctrl+V` on its ⋯ do the same.
+- A category's menu (right-click it, or its ⋯) has **📋 Copy category**, **📋 Paste category here** (over this column)
+  and **📋 Paste as new category right** (in a new column beside it), to reuse a whole category (name, picture and
+  clues) in another round or game; `Ctrl+C` / `Ctrl+V` on its ⋯ copy it and paste it over the column.
 - A tile's right-click menu has **Make it a…**: Standard, Daily Double, Partner clue, Wheel tile, Dice tile, Everyone
   answers, 🚫 No Pass, or Empty tile.
 - With phone buzzers, players can **Pass** on an ordinary buzz-in clue. Tick **🚫 No Pass (everyone must play)** in the

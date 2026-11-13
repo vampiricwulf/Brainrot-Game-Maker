@@ -214,8 +214,13 @@ try {
     await page.locator('.cat').nth(0).locator('.grip').click({ button: 'right' });
     const items = await menu.getByRole('menuitem').allInnerTexts();
     const at = (x) => items.findIndex((i) => i.includes(x));
-    const order = ['Duplicate', 'Copy category', 'Paste category here', 'Move left'].map(at);
-    assert(order.every((n, i) => n >= 0 && (i === 0 || n > order[i - 1])) && (await menu.getByRole('menuitem', { name: /Paste category here/ }).isDisabled()), `the category menu: ⧉ Duplicate · 📋 Copy category · 📋 Paste category here (greyed until one is copied) (${items.join(' | ')})`);
+    const order = ['Duplicate', 'Copy category', 'Paste category here', 'Paste as new category right', 'Move left'].map(at);
+    assert(
+      order.every((n, i) => n >= 0 && (i === 0 || n > order[i - 1])) &&
+        (await menu.getByRole('menuitem', { name: /Paste category here/ }).isDisabled()) &&
+        (await menu.getByRole('menuitem', { name: /Paste as new category right/ }).isDisabled()),
+      `the category menu: ⧉ Duplicate · 📋 Copy category · 📋 Paste category here · 📋 Paste as new category right (greyed until one is copied) (${items.join(' | ')})`,
+    );
     const kbd = (name) => menu.getByRole('menuitem', { name }).locator('kbd').allInnerTexts();
     assert((await kbd(/Copy category/)).length === 0 && (await kbd(/Paste category here/)).length === 0, 'right-clicked off the ⋯, Copy / Paste category show no Ctrl+C / Ctrl+V (they copy and paste only on the ⋯)');
     await page.keyboard.press('Escape');
@@ -235,6 +240,8 @@ try {
     await page.keyboard.press('Control+v');
     await page.waitForTimeout(200);
     assert((await catNames())[5] === 'Category 1' && (await tileText(5, 0)) === first && (await undoTitle()).startsWith('Undo: Pasted category “Category 1” over “Category 6”'), `Ctrl+V on a category's ⋯ pastes the copied one over it, name and clues, as one named step (${(await catNames())[5]}, ${await undoTitle()})`);
+    // BOARD-4: a note says so even over a column with nothing in it (it was the one paste with no word but the stale Copied toast).
+    assert((await notice.innerText()).startsWith('Pasted category “Category 1” over “Category 6”') && (await notice.getByRole('button', { name: '↶ Undo' }).count()) === 1, `pasting over an empty column, a note says so and offers ↶ Undo (${await notice.innerText()})`);
     await page.locator('main').click({ position: { x: 4, y: 4 } });
     await key('Control+z');
     assert((await catNames())[5] === 'Category 6' && (await tileText(5, 0)) === before6, 'Ctrl+Z puts it back');
@@ -247,6 +254,24 @@ try {
     await page.locator('main').click({ position: { x: 4, y: 4 } });
     await key('Control+z');
     assert((await catNames())[5] === 'Category 6', 'and Ctrl+Z puts that back too');
+    // BOARD-4: 📋 Paste as new category right puts the copied one in a new column right of this one, in one step.
+    const count = (await catNames()).length;
+    await page.locator('.cat').nth(0).locator('.grip').click({ button: 'right' });
+    await menu.getByRole('menuitem', { name: /Paste as new category right/ }).click();
+    await page.waitForTimeout(200);
+    const names = await catNames();
+    assert(
+      names.length === count + 1 && names[1] === 'Category 2' && names[2] === 'Category 2' && (await tileText(1, 0)) === (await tileText(2, 0)) && (await tileText(0, 0)) === first,
+      `📋 Paste as new category right: a new column right of it with the copied category, the rest moved along (${names.join(', ')})`,
+    );
+    assert(
+      (await notice.innerText()).startsWith('Pasted category “Category 2” as a new category right of “Category 1”') && (await undoTitle()).startsWith('Undo: Pasted category “Category 2” as a new category right of “Category 1”'),
+      `with a note and one named step (${await notice.innerText()})`,
+    );
+    assert(await page.evaluate(() => /^More for category 2/.test(document.activeElement?.getAttribute('aria-label') ?? '')), 'the keys go to the new category’s ⋯');
+    await page.locator('main').click({ position: { x: 4, y: 4 } });
+    await key('Control+z');
+    assert((await catNames()).join('|') === names.filter((_, i) => i !== 1).join('|'), 'one Ctrl+Z takes the new column away');
   }
   // The checklist notes names still made up (they show on stream as they are); its line's tooltip lists it.
   const roundLine = page.locator('nav .problem', { hasText: 'Jeopardy!: ' }).first();

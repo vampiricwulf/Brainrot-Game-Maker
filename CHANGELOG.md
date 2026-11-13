@@ -26,6 +26,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Phones: once everyone has passed on a clue, every phone says **Everyone passed** (a player who passed can still take it back; ↺ Reset buzzers puts the phones back to BUZZ!), instead of each still saying “Take the pass back to buzz”.
 
 - A tile ticked **🚫 No Pass** wears a small 🚫 on the editor's board, so you can see which clues players can't pass on, and its right-click menu has **🚫 No Pass** after ✍ Everyone answers to turn it on or off (one undo step; ticked and greyed on a ✍ clue, a Daily Double or a partner clue, where it's always on).
+- A category's menu has **📋 Paste as new category right**: the copied category goes into a new column beside it in one step (it took ＋ Insert category right, then 📋 Paste category here). Pasting over an empty column now says so too, with ↶ Undo (only the old “Copied…” toast showed).
 
 ### Changed
 
