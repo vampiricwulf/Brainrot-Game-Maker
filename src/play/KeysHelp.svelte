@@ -9,6 +9,7 @@
 -->
 <script lang="ts">
   import { modal } from '../lib/modal';
+  import { scrollMore } from '../lib/scrollmore';
   import { app } from '../lib/app.svelte';
   import { filterKeys, rowCount } from '../lib/keylist';
   import { HOSTING_GUIDE, openSite } from '../lib/sitelinks';
@@ -97,27 +98,30 @@
   onclick={(e) => e.target === e.currentTarget && onclose()}
   role="presentation"
 >
-  <div class="modal lg" role="dialog" aria-modal="true" aria-label={from === 'editor' ? 'Editor keyboard shortcuts' : 'Keyboard shortcuts'} use:modal={{ enter: onclose }} data-undo="off">
-    <div class="modal-head">
-      <h2 class="modal-title">⌨ Keyboard shortcuts</h2>
-      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
-    </div>
-    <div class="row bar">
-      <!-- Both parts always showing, the one shown filled in (the color picker's Hex | RGB). -->
-      <div class="parts" role="group" aria-label="Keys for">
-        {#each ['editor', 'game'] as const as p (p)}
-          <button class="small" class:on={part === p} aria-pressed={part === p} onclick={() => (part = p)}>{PARTS[p]}</button>
-        {/each}
+  <div class="modal lg" role="dialog" aria-modal="true" aria-label={from === 'editor' ? 'Editor keyboard shortcuts' : 'Keyboard shortcuts'} use:modal={{ enter: onclose }} use:scrollMore data-undo="off">
+    <!-- (In the host panel its title, ✕, the switch and the filter stay at the top as the keys scroll.) -->
+    <div class="keys-head" data-head>
+      <div class="modal-head">
+        <h2 class="modal-title">⌨ Keyboard shortcuts</h2>
+        <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
       </div>
-      <span class="spacer"></span>
-      <input
-        class="filter"
-        type="search"
-        bind:value={filter}
-        placeholder="🔍 Filter: a key or a word"
-        aria-label="Filter shortcuts"
-        onkeydown={(e) => e.key === 'Escape' && filter && (e.preventDefault(), (filter = ''))}
-      />
+      <div class="row bar">
+        <!-- Both parts always showing, the one shown filled in (the color picker's Hex | RGB). -->
+        <div class="parts" role="group" aria-label="Keys for">
+          {#each ['editor', 'game'] as const as p (p)}
+            <button class="small" class:on={part === p} aria-pressed={part === p} onclick={() => (part = p)}>{PARTS[p]}</button>
+          {/each}
+        </div>
+        <span class="spacer"></span>
+        <input
+          class="filter"
+          type="search"
+          bind:value={filter}
+          placeholder="🔍 Filter: a key or a word"
+          aria-label="Filter shortcuts"
+          onkeydown={(e) => e.key === 'Escape' && filter && (e.preventDefault(), (filter = ''))}
+        />
+      </div>
     </div>
     {#if !shown.length || elsewhere}
       <p class="muted found">
@@ -210,6 +214,11 @@
   }
   .in-panel .modal {
     height: 100%;
+  }
+  .keys-head {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
   .bar {
     flex-wrap: nowrap;

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { focusRescue, rescuing } from '../lib/focusrescue';
   import { modal, takeFocus } from '../lib/modal';
+  import { scrollMore } from '../lib/scrollmore';
   import { app, hint, sceneFrom, toast, toastMs } from '../lib/app.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
@@ -6879,8 +6880,8 @@
       ondrop={() => commitRoster()}
     >
       <!-- Phone buzzer teams: each row is a team, as before the game (a new one is "Team 4", not "Player 4"). -->
-      <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal bind:this={playersBox}>
-        <div class="row"><h2 class="modal-title">{pregameTeams ? '👥 Teams' : '👥 Players'}</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
+      <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal use:scrollMore bind:this={playersBox}>
+        <div class="row" data-head><h2 class="modal-title">{pregameTeams ? '👥 Teams' : '👥 Players'}</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
         <p class="muted">Add, remove, rename or recolor {pregameTeams ? 'teams' : 'players'}. To change a score, click it in the host panel.</p>
         <PlayerList
           bind:players={session.players}
@@ -6943,8 +6944,8 @@
     role="presentation"
     onclick={(e) => e.target === e.currentTarget && (showRules = false)}
   >
-    <div class="modal rules-modal" role="dialog" aria-label="Game rules" use:modal={{ esc: () => (showRules = false), enter: () => (showRules = false) }}>
-      <div class="row">
+    <div class="modal rules-modal" role="dialog" aria-label="Game rules" use:modal={{ esc: () => (showRules = false), enter: () => (showRules = false) }} use:scrollMore>
+      <div class="row" data-head>
         <h2 class="modal-title">⚖ Game rules</h2>
         <span class="spacer"></span>
         <button class="ghost modal-x" onclick={() => (showRules = false)} aria-label="Close" title="Close (Esc)">✕</button>

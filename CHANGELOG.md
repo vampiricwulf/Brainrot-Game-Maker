@@ -16,6 +16,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 
 - With phone buzzers, who passed is easy to see with a big table: the buzzers' row puts the count first (“Passed 6 of 8: Ann, Bob…”, in the room the 🔔 Buzzers open hint had), and the chips of players who passed fade, with “passed” on them. Once everyone has passed, the row also says ↺ Reset lets them all buzz again (after a hint, say).
+- One window: 👥 Players, ⚖ Rules and the keys (?) keep their title and **Done** in sight as they scroll inside the host panel, with a fade at the bottom while there's more below (Done was out of sight, and nothing showed that they scroll).
 - A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
 - In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window.
 - Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.)

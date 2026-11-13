@@ -300,6 +300,28 @@ body:has(.in-panel [aria-modal='true']) .toast {
   background: inherit;
   z-index: 1;
 }
+/* One window: a window in the host panel (.in-panel: 👥 Players, ⚖ Rules, the keys) scrolls in that box. Its head (the
+   title, ✕, the keys' filter) stays at the top and its foot (Done) at the bottom, and while there's more below, the
+   rows fade out over the foot (data-more: see scrollmore.ts). */
+.in-panel [role='dialog'] > [data-head] {
+  position: sticky;
+  top: -18px;
+  margin-top: -18px;
+  padding-top: 18px;
+  padding-bottom: 4px;
+  background: inherit;
+  z-index: 2;
+}
+.in-panel [role='dialog'][data-more] > .modal-foot::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 32px;
+  background: linear-gradient(transparent, var(--panel));
+  pointer-events: none;
+}
 
 /* A page in the editor: its title (20px) and one muted line, its actions on the right (PageHeader). Forms stay
    readable on a wide screen; boards and maps fill it. */
