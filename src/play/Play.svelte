@@ -225,6 +225,24 @@
   let wagerLimitsOff = $state(false);
   /** Seconds typed in the host panel's timer box: T starts that countdown, like its Start button. */
   let timerSeconds = $state<number | null>(null);
+  /**
+   * The moment the typed seconds were for: the phase, the round, the open clue, the Final being played, and a slides
+   * round's slide. Seconds typed once are that moment's only: a new clue (or the board, an undo or a reopen) empties the
+   * box, so the next Start or T takes that clue's own countdown (the Final's, or the game's) again.
+   */
+  const timerMoment = $derived(
+    JSON.stringify([
+      session.phase,
+      session.currentRound,
+      session.currentClue ? clueKey(session.currentClue) : null,
+      session.phase === 'final' ? (session.final?.roundId ?? null) : null,
+      session.phase === 'slides' ? (session.slide ?? 0) : null,
+    ]),
+  );
+  $effect(() => {
+    void timerMoment;
+    untrack(() => (timerSeconds = null));
+  });
   /** RPG rounds: the object whose card is open in the host panel. */
   let rpgObject = $state<string | null>(null);
   /** RPG rounds: the objects selected on the stage (Shift/Ctrl+click, or a box): they drag with the selected players. */

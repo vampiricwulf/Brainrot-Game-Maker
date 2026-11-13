@@ -60,7 +60,7 @@ async function crowd() {
     players: NAMES.map((name, i) => ({ id: `p${i + 1}`, name, color: COLORS[i], startScore: SCORES[i] })),
     rounds: [{
       id: 'r_big', name: 'Big board', mode: 'board', values, dailyDoubleCount: 0,
-      categories: CATS.map((title, c) => ({ id: `c${c}`, title, clues: values.map((v, r) => ({ id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: { background: {}, elements: [text(c + r ? `Clue ${c}-${r}` : LONG)] }, answerSlide: { background: {}, elements: [text(`Answer ${c}-${r}`)] } })) })),
+      categories: CATS.map((title, c) => ({ id: `c${c}`, title, clues: values.map((v, r) => ({ id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: { background: {}, elements: [text(c + r ? `Clue ${c}-${r}` : LONG)] }, answerSlide: { background: {}, elements: [text(`Answer ${c}-${r}`)] }, ...(c === 1 && r === 0 ? { timerSeconds: 45 } : {}) })) })),
     }],
     media: [], audio: {}, wheels: [], dice: [], theme: {},
   };
@@ -208,6 +208,35 @@ async function crowd() {
   await sc.reload();
   await sc.locator('.clock .timer.done').waitFor();
   assert((await sc.locator('.timesup').count()) === 0, "so does a reloaded scores window");
+
+  // Seconds typed in the ⏱ box are for that moment only: 60 typed on one clue, the next clue's ⏱ Start (and T) is that
+  // clue's own countdown again, not 60.
+  await host.getByRole('button', { name: 'Hide timer' }).click();
+  const crowdTile = (id) => host.locator(`.stage-box .board .tile[data-clue="${id}"]`);
+  await crowdTile('q2_1').click();
+  await host.locator('.tc button', { hasText: 'Start 30s' }).waitFor();
+  await secs.fill('60');
+  await host.locator('.tc button', { hasText: 'Start 60s' }).waitFor();
+  await secs.press('Enter');
+  await aud.locator('.timer').waitFor();
+  assert(+(await aud.locator('.timer .num').innerText()) > 55, 'a countdown of 60 seconds typed on one clue starts at 60');
+  await host.locator('.panel .p').nth(2).locator('.sel').click();
+  await host.keyboard.press('Enter');
+  await host.keyboard.press('Escape');
+  await crowdTile('q1_0').waitFor();
+  await crowdTile('q1_0').click();
+  await host.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  if (await host.getByRole('button', { name: 'Hide timer' }).isVisible()) await host.getByRole('button', { name: 'Hide timer' }).click();
+  await host.locator('.tc button', { hasText: /^Start \d+s$/ }).waitFor();
+  assert(
+    (await host.locator('.tc button', { hasText: /^Start \d+s$/ }).innerText()) === 'Start 45s' && (await secs.inputValue()) === '',
+    `the next clue's ⏱ Start is its own 45 s, with the box empty (${await host.locator('.tc button', { hasText: /^Start \d+s$/ }).innerText()}, box “${await secs.inputValue()}”)`,
+  );
+  await host.keyboard.press('t');
+  await aud.locator('.timer .num').waitFor();
+  const own = +(await aud.locator('.timer .num').innerText());
+  assert(own > 40 && own <= 45, `and T starts that clue's own 45 s (${own})`);
+  await host.keyboard.press('t');
 
   // The builder opened again mid-game in another tab (a bookmark, the file double-clicked): it says a game is being
   // played in this one, and that taking over closes its audience window. Closing it leaves the stream as it was.
