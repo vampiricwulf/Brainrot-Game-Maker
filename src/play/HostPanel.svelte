@@ -1504,7 +1504,8 @@
             Amount
             <input
               type="number"
-              bind:value={() => (ddHidden ? null : amount), (v) => (amount = wholePoints(v))}
+              min="0"
+              bind:value={() => (ddHidden ? null : amount), (v) => (amount = wholePoints(v === null ? null : Math.abs(v)))}
               placeholder={ddHidden ? 'hidden' : undefined}
               bind:this={amountBox}
               onfocus={(e) => {

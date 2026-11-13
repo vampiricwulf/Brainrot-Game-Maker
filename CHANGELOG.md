@@ -35,6 +35,7 @@ in plain words for the people who make and host games. Anything committed but no
 - The board tile the keys are on has a clear white ring in a dark band, instead of a thin blue line lost on a blue tile (still none on stream while the controls are hidden in one window).
 - One window, the Final's reveals: a wager you typed stays hidden in its row (“hidden”, as a phone's already did) until **Show wager** or a verdict, so viewers no longer see every wager before its reveal; typing one in the row replaces it.
 - One window: a question in the strip (🚪 Exit, leaving a round with clues left, Rematch) lies over the tools row instead of adding a row, so the stage viewers see no longer shrinks and grows back for a question only you see.
+- The Amount box takes no minus sign: ↓ in an empty box stops at 0 and a typed −100 reads 100, so **＋ Award** and **− Deduct** always do what their label says (before, a −1 in the box gave +$1).
 
 ## 2026-11-12
 

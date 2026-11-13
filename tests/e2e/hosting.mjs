@@ -191,6 +191,21 @@ try {
   await page.keyboard.press('Escape');
   assert(await page.evaluate(() => !!document.activeElement?.matches('.stage-box .board .tile[tabindex="0"]')), `Esc in the Amount box opened with ± Adjust score: the keys go to the board's tile (${await focused()})`);
   await page.locator('.panel .award').getByRole('button', { name: '✕ Close' }).click();
+  // The Amount box takes no sign: ↓ in the empty box doesn't go below 0, and a typed −100 is 100 (Award or Deduct gives
+  // the sign).
+  await page.getByRole('button', { name: '± Adjust score' }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('.panel .award input'));
+  await page.keyboard.press('ArrowDown');
+  const down = await page.locator('.panel .award input').inputValue();
+  assert(!down.startsWith('-'), `↓ in the empty Amount box doesn't make it negative (${down})`);
+  await page.locator('.panel .award input').fill('-100');
+  await page.locator('.panel .award input').evaluate((e) => e.blur());
+  await page.keyboard.press('1');
+  await page.locator('.panel .award').getByRole('button', { name: /Deduct .*−\$100/ }).waitFor();
+  assert((await page.locator('.panel .award input').inputValue()) === '100', 'a typed −100 in the Amount box reads 100, and Deduct takes $100');
+  await page.locator('.panel .award input').fill('');
+  await page.locator('.panel .award').getByRole('button', { name: 'Clear selection' }).click();
+  await page.locator('.panel .award').getByRole('button', { name: '✕ Close' }).click();
   // On the board, one player's pop sits over their plate. (± Adjust score puts the keys in the Amount box: the points
   // first, then who gets them.)
   await page.getByRole('button', { name: '± Adjust score' }).click();
