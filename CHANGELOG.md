@@ -17,7 +17,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
 - In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window.
-- Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.)
+- Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.)
 - A deal part's **Their card also shows** reads **nothing more**, **a wheel slice everyone shares** or **a wheel slice of their own** (it said “nothing from the wheel” before the deal had one), as the host's 🎭 Deal says it; picking a slice with no wheel chosen yet takes you to **🎡 Wheel its cards draw from**.
 - A third Jeopardy board is named **Jeopardy! 3** (then Jeopardy! 4…), not “Round 3”, which read as its place in the game (“Round 7 of 8”).
 
