@@ -284,7 +284,8 @@
             <span class="wh muted">{e.where}</span>
           </button>
           <span class="go">
-            {#if current}<span class="pill">Now</span>{/if}
+            <!-- (One “Now” mark: with undone steps listed above, the ● Now line marks the place instead.) -->
+            {#if current && history.index === history.entries.length}<span class="pill">Now</span>{/if}
             {#if applied ? e.place : e.undoPlace}
               <button class="gobtn ghost small" tabindex="-1" onclick={() => goThere(e, applied)}>Go there ›</button>
             {/if}
@@ -300,7 +301,6 @@
         <span class="wh muted">{history.entries.length ? 'Undo everything back to here' : ''}</span>
       </button>
       <span class="go">
-        {#if history.index === 0 && history.entries.length}<span class="pill">Now</span>{/if}
         <span class="muted small">{minute(history.origin.ts)}</span>
       </span>
     </div>

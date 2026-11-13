@@ -158,11 +158,14 @@ try {
     (await rows.first().innerText()).includes('Deleted category “Category 4”') && (await page.locator('.hist .hr.undone').count()) === 1,
     'the step just undone is on top, dimmed',
   );
-  assert((await page.locator('.hist .hr.current').innerText()).includes('Renamed round “Round of memes”'), 'below ● Now, the latest step, marked Now');
+  assert((await page.locator('.hist .hr.current').innerText()).includes('Renamed round “Round of memes”'), 'below ● Now, the latest step');
+  const nowMarks = async () => (await page.locator('.hist .now').count()) + (await page.locator('.hist .pill', { hasText: 'Now' }).count());
+  assert((await nowMarks()) === 1, `one Now mark after an undo: the ● Now line, no Now pill under it too (${await nowMarks()})`);
   await page.locator('.hist .hr.origin .pick').click();
   await page.waitForTimeout(250);
   assert((await page.locator('nav button.round-tab').count()) === 0, 'the first row undoes everything, back to the new game');
   assert((await page.locator('.hist .hr.undone').count()) === (await rows.count()) - 1, 'every step shows as undone, above ● Now');
+  assert((await nowMarks()) === 1, `and one at the start of the history (${await nowMarks()})`);
   await rows.nth(1).locator('.pick').click();
   await page.waitForTimeout(250);
   assert((await page.locator('nav button.round-tab').count()) === 2 && (await page.locator('.hist .hr.undone').count()) === 1, 'a row redoes everything up to it');
