@@ -239,7 +239,7 @@ a card to shows the card in its place (§8.2). The table after this one says wha
 
 | # | What happens | Host | Stream | Ann's phone (picker, guesser) | Bob's phone (partner, describer) | Cat's and Dan's phones |
 |---|---|---|---|---|---|---|
-| 1 | Ann says "Movies for $400". The host clicks the tile. | Partner panel: "🤝 Partner clue! Ann picked it." and 🎡 Spin for a partner (W) in front of the players, ringed. The blue button: Show question ▶. | "PARTNER UP!", Ann's plate and a "?" plate. The partner sound plays. | "🤝 Your partner clue!" · "Spinning for your partner…" | "🤝 Partner clue" · "Ann needs a partner…" | the same as Bob's |
+| 1 | Ann says "Movies for $400". The host clicks the tile. | Partner panel: "🤝 Partner clue! Ann picked it." and 🎡 Spin for a partner (W) in front of the players, ringed. The blue button: Show question ▶. | "PARTNER UP!", Ann's plate and a "?" plate. The partner sound plays. | "🤝 Your partner clue!" · "Your partner is being picked…" ("Spinning for your partner…" while the wheel is up) | "🤝 Partner clue" · "Ann needs a partner…" | the same as Bob's |
 | 2 | The host presses W. | The wheel spins over Bob, Cat and Dan (Ann is off it). | The wheel lands on Bob. Then the splash: "Ann 🤝 Bob". | "🤝 You two play this one!" | the same as Ann's | "🤝 Ann + Bob" |
 | 3 | The host presses Enter twice (Next ▶: the wheel goes; Show question ▶). | The 📤 Distribute list: "Card 1 · 1 line of words, 1 picture → Bob (describer)". At its foot 📤 Send and start (Enter), ringed. The blue button: 👁 Reveal answer. | The question slide and the badge "🗣 Bob describes → 🎯 Ann guesses". No countdown yet. | "🎯 You're guessing!" · "Bob is describing: say it out loud" | "🤝 Bob describes → Ann guesses" · "Nobody buzzes on this one" | the same as Bob's |
 | 4 | The host presses Enter (📤 Send and start). | Card 1's row: "→ Bob · sent · uploading 1 picture…", then "✓ seen". The judge row: "✔ Got it → Bob +$400 · Ann +$200", "✘ Missed → Ann −$200". | The 45 s countdown starts. | unchanged | The card panel: "Tap to see", then "Shrek", and the picture a moment later, once it's uploaded. | unchanged |
@@ -478,7 +478,7 @@ session.partner = clue?.type === 'partner' ? startPartner(session, clue) : null;
 - **Stream:** a full-stage "PARTNER UP!" card in the Daily Double splash's place (AudienceView.svelte:419-428), with
   Ann's coloured plate and a pulsing "?" plate. The join code is hidden (`codeSpot`, 243-250). There is no "answering"
   pill and no Buzz now glow (168, 252-253).
-- **Picker's phone:** "🤝 Your partner clue!" · "Spinning for your partner…".
+- **Picker's phone:** "🤝 Your partner clue!" · "Your partner is being picked…" ("Spinning for your partner…" while the partner wheel is up).
 - **Partner's phone, other phones:** "🤝 Partner clue" · "Ann needs a partner…".
 - **No phone:** nothing changes for them; the host and the stream carry it.
 - **No picker yet** (the first tile, nobody marked): "Who picked it?" chips come first, with 1–9, as on a Daily Double
@@ -996,7 +996,7 @@ panel in its place:
 
 | Moment | Ann's phone (picker, guesser) | Bob's phone (partner, describer) | Other phones |
 |---|---|---|---|
-| Partner up | "🤝 Your partner clue!" · "Spinning for your partner…" | "🤝 Partner clue" · "Ann needs a partner…" | the same as Bob's |
+| Partner up | "🤝 Your partner clue!" · "Your partner is being picked…" ("Spinning for your partner…" while the wheel is up) | "🤝 Partner clue" · "Ann needs a partner…" | the same as Bob's |
 | Paired | "🤝 You two play this one!" · "Wait for the question" | the same | "🤝 Ann + Bob" · "Partner clue: nobody buzzes" |
 | Question up | "🎯 You're guessing!" · "Bob is describing: say it out loud", or the ✍ box when she types her guess | "🤝 Bob describes → Ann guesses" · "Nobody buzzes on this one" | the same as Bob's |
 | A card sent to this phone | the card panel in place of the button (§12.3) | the same | the same |
@@ -2221,7 +2221,7 @@ With a room that lists `cards` (P2):
 
 | Moment | `text` / `sub` (everyone, and the seat list's note) | `seats` → `seatsText` / `seatsSub` |
 |---|---|---|
-| Partner up | `🤝 Partner clue` / `Ann needs a partner…` | [Ann] → `🤝 Your partner clue!` / `Spinning for your partner…` |
+| Partner up | `🤝 Partner clue` / `Ann needs a partner…` | [Ann] → `🤝 Your partner clue!` / `Your partner is being picked…` (`Spinning for your partner…` while the wheel is up) |
 | Paired | `🤝 Ann + Bob` / `Partner clue: nobody buzzes` | [Ann, Bob] → `🤝 You two play this one!` / `Wait for the question` |
 | Question up, and after the send | `🤝 Bob describes → Ann guesses` / `Nobody buzzes on this one` | [Ann] → `🎯 You're guessing!` / `Bob is describing: say it out loud` (a phone with a card shows the card panel) |
 | Judged | `✔ Got it! Bob +$400 · Ann +$200` or `✘ Missed: Ann −$200` | — |
@@ -2235,7 +2235,7 @@ and `text` (or `seatsText`) as the small line (§8.2):
 
 | Moment | `text` | `seats` → `seatsText` |
 |---|---|---|
-| Partner up | `🤝 Partner clue: Ann needs a partner…` | [Ann] → `🤝 Your partner clue! Spinning for your partner…` |
+| Partner up | `🤝 Partner clue: Ann needs a partner…` | [Ann] → `🤝 Your partner clue! Your partner is being picked…` (`Spinning for your partner…` while the wheel is up) |
 | Paired | `🤝 Partner clue: Ann + Bob` | [Ann, Bob] → `🤝 You two play this one!` |
 | Question up, and after | `🤝 Bob describes → Ann guesses` | [Bob] → `🗣 You're describing!` (the game's verb: "✏ You're drawing!", "🙋 You're helping!") |
 | Judged | `✔ Got it! Bob +$400 · Ann +$200` or `✘ Missed: Ann −$200` | — |

@@ -1542,7 +1542,7 @@
   function roomState(): HostState {
     const cards = roomHasCards();
     return hostState(game, session, buzz, earlyMs, {
-      status: phoneStatus(game, session, app.pregame, { cards }),
+      status: phoneStatus(game, session, app.pregame, { cards, partnerWheel: partnerWheelUp() }),
       locked: !!session.remote?.locked,
       wager: phoneWagerAsk(),
       answers: phoneAnswerAsk(),
@@ -2404,6 +2404,12 @@
   /** The open partner clue's cards that 📤 Send and start would send: not sent yet, with someone to go to. */
   const unsentCards = (): ReturnType<typeof cardSlides> =>
     partner && info && phoneCards ? cardSlides(info.clue).filter((c) => !cardSends(partner, c.id).length && cardRecipients(session, partner, c).length > 0) : [];
+
+  /** The partner wheel is up on stage (not the member wheel): the picker's phone says it's spinning for their partner. */
+  function partnerWheelUp(): boolean {
+    const o = toolOverlay(app.live);
+    return !!session.partner && o?.kind === 'wheel' && o.partnerFor === session.partner.clue && !o.members;
+  }
 
   /** A wheel, dice or a roll-off still going on stage (no word said, unlike toolBusy). */
   function toolGoing(): boolean {

@@ -909,7 +909,7 @@ describe('phoneStatus: a 🤝 partner clue (partner-clues spec §19.4, a room th
   it('each moment: who needs a partner, the pair, who plays which part, how it went, then who played which', () => {
     const { g, session, s } = setup();
     const moments = [
-      ['tile open', '🤝 Partner clue: Ann needs a partner…', ['a'], '🤝 Your partner clue! Spinning for your partner…'],
+      ['tile open', '🤝 Partner clue: Ann needs a partner…', ['a'], '🤝 Your partner clue! Your partner is being picked…'],
       ['paired', '🤝 Partner clue: Ann + Bob', ['a', 'b'], '🤝 You two play this one!'],
       ['question up', '🤝 Bob describes → Ann guesses', ['b'], '🗣 You’re describing!'],
       ['clock started', '🤝 Bob describes → Ann guesses', ['b'], '🗣 You’re describing!'],
@@ -928,6 +928,14 @@ describe('phoneStatus: a 🤝 partner clue (partner-clues spec §19.4, a room th
       expect(phoneStatus(g, session), when).toEqual(seats ? { text, seats, seatsText } : { text });
       noCard(g, session);
     }
+  });
+
+  it('the picker’s phone says it’s spinning for their partner only while the partner wheel is up', () => {
+    const { g, session } = setup();
+    expect(phoneStatus(g, session)?.seatsText).toBe('🤝 Your partner clue! Your partner is being picked…');
+    expect(phoneStatus(g, session, false, { cards: false, partnerWheel: true })?.seatsText).toBe('🤝 Your partner clue! Spinning for your partner…');
+    expect(phoneStatus(g, session, false, { cards: true })?.seatsSub).toBe('Your partner is being picked…');
+    expect(phoneStatus(g, session, false, { cards: true, partnerWheel: true })?.seatsSub).toBe('Spinning for your partner…');
   });
 
   it('✘ Missed says who lost points, and nothing about who lost none', () => {
@@ -967,7 +975,7 @@ describe('phoneStatus: a 🤝 partner clue (partner-clues spec §19.4, a room th
 
   it('teams: each line is the team’s', () => {
     const { g, session, s } = setup('describe', true);
-    expect(phoneStatus(g, session)?.seatsText).toBe('🤝 Your team’s partner clue! Spinning for your partner…');
+    expect(phoneStatus(g, session)?.seatsText).toBe('🤝 Your team’s partner clue! Your partner is being picked…');
     setPartner(session, s, 'b', 'wheel');
     expect(phoneStatus(g, session)?.seatsText).toBe('🤝 Your team plays this one!');
     s.stage = 'distribute';

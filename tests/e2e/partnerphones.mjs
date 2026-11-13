@@ -186,7 +186,7 @@ try {
     'every phone’s button greyed and disabled, the small line under it',
   );
   const last = () => states.at(-1);
-  assert(last()?.status?.off === true && last().status.sub === 'Player 1 needs a partner…' && last().status.seatsSub === 'Spinning for your partner…', 'every phone greyed (off), with the small lines under them');
+  assert(last()?.status?.off === true && last().status.sub === 'Player 1 needs a partner…' && last().status.seatsSub === 'Your partner is being picked…', 'every phone greyed (off), with the small lines under them');
   assert((await host.locator('.stage-box .join-badge').count()) === 0, 'no join code over PARTNER UP! (nobody buzzes)');
   const panel = host.locator('[data-partner-panel]');
   // The card's details fold into one quiet line; it opens by itself when there's something to see first (the partner

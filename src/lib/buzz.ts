@@ -169,9 +169,10 @@ export { SETTING_UP };
  * A short line for the phones about what's on screen when nobody buzzes: the round starting, who picks, a Daily Double
  * (its player sees "you're up"), a partner clue (who plays which part), a Final, an RPG or board game round, the end.
  * Null during an ordinary clue. `room.cards`: the buzzer room takes cards, so its phones also grey their button and
- * show a small line under the big one (status.off, sub, seatsSub) on a partner clue.
+ * show a small line under the big one (status.off, sub, seatsSub) on a partner clue. `room.partnerWheel`: the partner
+ * wheel is up on stage (the picker's phone says it's spinning for their partner only then).
  */
-export function phoneStatus(game: Game, session: Session, pregame = false, room: { cards: boolean } = { cards: false }): HostState['status'] {
+export function phoneStatus(game: Game, session: Session, pregame = false, room: { cards: boolean; partnerWheel?: boolean } = { cards: false }): HostState['status'] {
   if (pregame) return { text: STARTS_SOON };
   const nameOf = (id?: Id | null) => (id ? session.players.find((p) => p.id === id)?.name : undefined);
   const round = game.rounds[session.currentRound];
@@ -188,7 +189,8 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
   // A partner clue's miss let the others steal it: they buzz in as on any clue (nothing greyed), the two locked out.
   const steal = session.phase === 'clue' && session.partner && !session.revealed ? partnerSteal(session) : null;
   if (steal && !steal.by) return { text: clip(`🔔 Steal! ${nameList(steal.out.flatMap((id) => nameOf(id) ?? []))} missed it`, 120) };
-  if (session.phase === 'clue' && session.partner) return room.cards ? partnerStatusOff(game, session, session.partner) : partnerStatus(game, session, session.partner);
+  if (session.phase === 'clue' && session.partner)
+    return room.cards ? partnerStatusOff(game, session, session.partner, !!room.partnerWheel) : partnerStatus(game, session, session.partner, !!room.partnerWheel);
   if (session.intro?.stage === 'title' && round) return { text: `${roundName(round, session.currentRound)} is starting` };
   switch (session.phase) {
     case 'board': {
@@ -234,7 +236,7 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
  * part, under each player's name, then how it went once it's judged. The picker's phone and the giver's say what's
  * theirs. Never what's on a card.
  */
-function partnerStatus(game: Game, session: Session, s: PartnerState): HostState['status'] {
+function partnerStatus(game: Game, session: Session, s: PartnerState, wheel = false): HostState['status'] {
   const clue = currentClueInfo(session, game)?.clue;
   const rules = partnerRules(clue ?? {});
   const team = teamsOn(game.settings);
@@ -246,7 +248,7 @@ function partnerStatus(game: Game, session: Session, s: PartnerState): HostState
   const { giver, guesser, solo } = partnerRoles(s);
   const paired = here(s.partnerId);
   if (s.stage === 'pick') {
-    if (!paired) return { text: line(`🤝 Partner clue: ${nameOf(picker)} needs a partner…`), seats: [picker], seatsText: line(`🤝 ${team ? 'Your team’s' : 'Your'} partner clue! Spinning for your partner…`) };
+    if (!paired) return { text: line(`🤝 Partner clue: ${nameOf(picker)} needs a partner…`), seats: [picker], seatsText: line(`🤝 ${team ? 'Your team’s' : 'Your'} partner clue! ${choosing(wheel)}`) };
     if (solo) return { text: line(`🤝 Partner clue: ${nameOf(picker)} plays it alone`), seats: [picker], seatsText: line(`🤝 ${team ? 'Your team plays' : 'You play'} this one alone!`) };
     return { text: line(`🤝 Partner clue: ${nameOf(picker)} + ${nameOf(s.partnerId)}`), seats: [picker, s.partnerId!], seatsText: line(`🤝 ${team ? 'Your team plays' : 'You two play'} this one!`) };
   }
@@ -259,6 +261,12 @@ function partnerStatus(game: Game, session: Session, s: PartnerState): HostState
   if (session.revealed || solo || !here(giver)) return { text };
   return { text, seats: [giver], seatsText: line(giverLine(rules, team)) };
 }
+
+/**
+ * The picker's phone while their partner is still to choose: the wheel turning for them only while it's up on stage
+ * (the host may choose one by hand instead, or not have spun yet).
+ */
+const choosing = (wheel: boolean): string => (wheel ? 'Spinning for your partner…' : 'Your partner is being picked…');
 
 /** What each part is doing, for the guesser's phone: "Bob is describing", "Bob is drawing". */
 const DOING_NOW: Record<keyof typeof PARTNER_GAMES, string> = {
@@ -276,7 +284,7 @@ const DOING_NOW: Record<keyof typeof PARTNER_GAMES, string> = {
  * small one; the picker's phone (then the two, then the guesser's) says what's theirs. Never what's on a card: a card
  * goes to its phones as a card (HostState.cards).
  */
-function partnerStatusOff(game: Game, session: Session, s: PartnerState): HostState['status'] {
+function partnerStatusOff(game: Game, session: Session, s: PartnerState, wheel = false): HostState['status'] {
   const clue = currentClueInfo(session, game)?.clue;
   const rules = partnerRules(clue ?? {});
   const team = teamsOn(game.settings);
@@ -306,7 +314,7 @@ function partnerStatusOff(game: Game, session: Session, s: PartnerState): HostSt
     return off(text, 'Nobody buzzes on this one', { ids: [picker], text: '🤝 Your team plays this one!', sub: `${m.name} ${DOING_NOW[rules.game]}: ${then}` });
   }
   if (s.stage === 'pick') {
-    if (!paired) return off('🤝 Partner clue', `${nameOf(picker)} needs a partner…`, { ids: [picker], text: `🤝 ${team ? 'Your team’s' : 'Your'} partner clue!`, sub: 'Spinning for your partner…' });
+    if (!paired) return off('🤝 Partner clue', `${nameOf(picker)} needs a partner…`, { ids: [picker], text: `🤝 ${team ? 'Your team’s' : 'Your'} partner clue!`, sub: choosing(wheel) });
     // (Teams: the picker's own team plays it, one of them describing once the host has chosen who: §10.2.)
     if (solo && team) return off('🤝 Partner clue', `${nameOf(picker)} plays it`, { ids: [picker], text: '🤝 Your team plays this one!', sub: 'Wait for the question' });
     if (solo) return off('🤝 Partner clue', `${nameOf(picker)} plays it alone`, { ids: [picker], text: '🤝 You play this one alone!', sub: 'Wait for the question' });

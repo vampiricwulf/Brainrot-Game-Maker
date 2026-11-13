@@ -475,7 +475,7 @@ describe('phoneStatus with a room that takes cards (spec §8.2, §19.4)', () => 
       sub: 'Ann needs a partner…',
       seats: ['a'],
       seatsText: '🤝 Your partner clue!',
-      seatsSub: 'Spinning for your partner…',
+      seatsSub: 'Your partner is being picked…',
     });
     setPartner(session, s, 'b', 'wheel');
     expect(phoneStatus(g, session, false, room)).toEqual({
@@ -512,7 +512,7 @@ describe('phoneStatus with a room that takes cards (spec §8.2, §19.4)', () => 
 
   it('without a room that takes cards: the lines as before (no off, no small line)', () => {
     const { g, session } = setup();
-    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann needs a partner…', seats: ['a'], seatsText: '🤝 Your partner clue! Spinning for your partner…' });
+    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann needs a partner…', seats: ['a'], seatsText: '🤝 Your partner clue! Your partner is being picked…' });
   });
 });
 

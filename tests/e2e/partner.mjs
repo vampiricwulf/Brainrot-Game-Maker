@@ -759,8 +759,10 @@ try {
     await rs('.tile[aria-label^="Movies for $400"]').click();
     await stateIs((st) => st.status?.text === '🤝 Partner clue: Ann needs a partner…');
     let st = await state();
-    assert(st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p1' && st.status.seatsText === '🤝 Your partner clue! Spinning for your partner…', 'a partner clue opens with the buzzers off: the phones hear who needs a partner (Ann’s: it’s hers)');
+    assert(st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p1' && st.status.seatsText === '🤝 Your partner clue! Your partner is being picked…', 'a partner clue opens with the buzzers off: the phones hear who needs a partner (Ann’s: it’s hers, being picked: no wheel turns yet)');
     await p.keyboard.press('w');
+    await stateIs((st) => st.status?.seatsText === '🤝 Your partner clue! Spinning for your partner…');
+    assert(true, 'W: the partner wheel up, Ann’s phone says it’s spinning for her partner');
     await rp.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 15000 });
     await p.keyboard.press('Escape');
     await rs('.wheel').waitFor({ state: 'detached' });
@@ -823,7 +825,7 @@ try {
     await goOnCheck(p).waitFor({ state: 'detached' });
     await p.keyboard.press('1');
     await rp.getByText('Red Team picked it.').waitFor();
-    await stateIs((st) => st.status?.seatsText === '🤝 Your team’s partner clue! Spinning for your partner…');
+    await stateIs((st) => st.status?.seatsText === '🤝 Your team’s partner clue! Your partner is being picked…');
     assert((await state()).status.seats.join() === 'p1', 'Red Team’s phones: “🤝 Your team’s partner clue!”');
     await p.keyboard.press('w');
     await rs('.wheel').waitFor();

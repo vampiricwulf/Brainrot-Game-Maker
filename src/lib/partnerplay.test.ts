@@ -503,7 +503,7 @@ describe('the phones’ line (no card content, ever)', () => {
     const { g, session } = setup();
     openClue(session, REF, g);
     const s = session.partner!;
-    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann needs a partner…', seats: ['a'], seatsText: '🤝 Your partner clue! Spinning for your partner…' });
+    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann needs a partner…', seats: ['a'], seatsText: '🤝 Your partner clue! Your partner is being picked…' });
     setPartner(session, s, 'b', 'wheel');
     expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann + Bob', seats: ['a', 'b'], seatsText: '🤝 You two play this one!' });
     s.stage = 'distribute';
