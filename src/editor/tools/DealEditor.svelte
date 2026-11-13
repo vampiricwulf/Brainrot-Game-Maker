@@ -95,12 +95,19 @@
     const n = to === 'rest' ? 'rest' : Number(to);
     step(`How many get ${partName(p, i)} in “${deal.name}”: ${countText(n)}`, () => (p.count = n));
   }
-  const DRAWS: Record<string, string> = { '': 'no wheel', shared: '+ the slice they all share', own: '+ a slice each' };
+  const DRAWS: Record<string, string> = { '': 'nothing more', shared: '+ a wheel slice everyone shares', own: '+ a wheel slice of their own' };
+  let wheelEl = $state<HTMLSelectElement>();
   function setDraw(p: DealPart, i: number, to: string): void {
     step(`${partName(p, i)}’s card in “${deal.name}”: ${DRAWS[to] ?? DRAWS['']}`, () => {
       if (to === 'own' || to === 'shared') p.draw = to;
       else delete p.draw;
     });
+    // A slice needs a wheel: with none chosen yet, take the author to the 🎡 box that just appeared.
+    if (p.draw && !deal.wheel)
+      void tick().then(() => {
+        wheelEl?.scrollIntoView({ block: 'nearest' });
+        wheelEl?.focus();
+      });
   }
   function setWheel(id: string): void {
     step(`“${deal.name}” draws from ${game.wheels.find((w) => w.id === id)?.name ?? 'no wheel'}`, () => (deal.wheel = id || undefined));
@@ -168,9 +175,9 @@
           <button class="small" onclick={() => (editing = part)} title="Pictures, videos, sounds, links: on their phones under the words. 📱 On their phone shows the card as they get it">Edit card…</button>
           <label class="inline"
             >Their card also shows<select aria-label="{partName(part, i)}’s card draws from the wheel" value={part.draw ?? ''} onchange={(e) => setDraw(part, i, e.currentTarget.value)}>
-              <option value="">nothing from the wheel</option>
-              <option value="shared">the slice they all share</option>
-              <option value="own">a slice each</option>
+              <option value="">nothing more</option>
+              <option value="shared">a wheel slice everyone shares</option>
+              <option value="own">a wheel slice of their own</option>
             </select></label
           >
         </div>
@@ -182,12 +189,12 @@
 
   {#if draws}
     <label class="field">🎡 Wheel its cards draw from
-      <select value={deal.wheel ?? ''} onchange={(e) => setWheel(e.currentTarget.value)}>
+      <select bind:this={wheelEl} value={deal.wheel ?? ''} onchange={(e) => setWheel(e.currentTarget.value)}>
         <option value="">Choose a saved wheel…</option>
         {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
       </select>
     </label>
-    <p class="muted small">“The slice they all share” is drawn once for the deal (🕵 the location everyone but the spy knows); “a slice each” gives each player their own (🧠 a prompt each), none twice while there are enough.</p>
+    <p class="muted small">“A wheel slice everyone shares” is drawn once for the deal (🕵 the location everyone but the spy knows); “a wheel slice of their own” gives each player their own (🧠 a prompt each), none twice while there are enough.</p>
   {/if}
   <label class="check"><input type="checkbox" checked={!!deal.perTeam} onchange={(e) => setPerTeam(e.currentTarget.checked)} /> Teams: deal within each team, to the people on it (a captain for each team)</label>
 

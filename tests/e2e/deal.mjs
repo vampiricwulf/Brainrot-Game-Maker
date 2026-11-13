@@ -173,7 +173,8 @@ try {
   await editor.getByLabel('How many get Wolf').selectOption('2');
   assert(await until(async () => (await undoTitle()).startsWith('Undo: How many get Wolf in “Secret roles”: ×2')), `how many get a part is a step named after it (${await undoTitle()})`);
   await editor.getByLabel('Wolf’s card draws from the wheel').selectOption('shared');
-  assert(await until(async () => (await undoTitle()).startsWith('Undo: Wolf’s card in “Secret roles”: + the slice they all share')), `and so is its card's wheel (${await undoTitle()})`);
+  assert(await until(async () => (await undoTitle()).startsWith('Undo: Wolf’s card in “Secret roles”: + a wheel slice everyone shares')), `and so is its card's wheel (${await undoTitle()})`);
+  assert(await until(() => editor.getByRole('combobox', { name: '🎡 Wheel its cards draw from' }).evaluate((e) => e === document.activeElement)), 'a slice with no wheel chosen yet takes the author to the 🎡 wheel box');
   await host.keyboard.press('Control+z');
   await host.keyboard.press('Control+z');
   assert(await until(async () => (await editor.getByLabel('How many get Wolf').inputValue()) === '1'), 'Ctrl+Z takes them back');

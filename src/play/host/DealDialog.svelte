@@ -399,8 +399,8 @@
               else delete part.draw;
             }}>
               <option value="">no wheel</option>
-              <option value="shared">+ the slice they all share</option>
-              <option value="own">+ a slice each</option>
+              <option value="shared">+ a wheel slice everyone shares</option>
+              <option value="own">+ a wheel slice of their own</option>
             </select>
           </div>
           {#if dual}
