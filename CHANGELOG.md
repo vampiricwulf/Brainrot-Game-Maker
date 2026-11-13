@@ -11,41 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Changed
-
-- A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
-- In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window.
-- Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.)
-- A deal part's **Their card also shows** reads **nothing more**, **a wheel slice everyone shares** or **a wheel slice of their own** (it said “nothing from the wheel” before the deal had one), as the host's 🎭 Deal says it; picking a slice with no wheel chosen yet takes you to **🎡 Wheel its cards draw from**.
-- A third Jeopardy board is named **Jeopardy! 3** (then Jeopardy! 4…), not “Round 3”, which read as its place in the game (“Round 7 of 8”).
-
-### Fixed
-
-- In a board game's editor, the space you click shows its dashed yellow ring at once (it only showed on a space picked before).
-- The sample game's board, and a game file with partner clues made by hand, open with **🤝 Partner clues** counting the ones on the board (it said 0 beside “1 on the board”, with 🔀 Randomize greyed).
-- A video or sound the app can't read (an old .avi, say) is no longer a dead end: its card in 🖼 Media says, where it stays, to convert it to MP4 (H.264) or MP3 with another program and then **Replace everywhere…** (now the card's strong button), and the checklist's line points there.
-- ⚙ Settings on a 1280×720 laptop keeps **Done** and **Back to the defaults…** whole and in sight while the rest scrolls under them (as does any window taller than the screen). A failed buzzer server **Test** says where it asked and what to check, and the line saying there's no buzzer server goes once you type one.
-- Small editor fixes: the tiebreaker's **Answer slide (hidden until revealed)** tab is no longer cut under ＋ Add slide on a 1280-wide screen; a board's category headers are all as tall as the longest name, as on stream; 🤫 Cards with no cards yet says once that a tile can have cards of its own; 🕘 History after an undo shows one **● Now**, not a second “Now” on the row under it; and 📄 New (or Open…) puts away the sample's “press ▶ Play to try it” message.
-- Once everyone has passed, the status line says just “Answer hidden · everyone passed” (the buzzers' row says to reveal the answer, once), and Enter says “Everyone passed: N reveals the answer” instead of “Select a player first”.
-- After **↶ Reopen** (the status line's button or a tile picked from **↶ Reopen a tile… ▾**) the keys go to that tile, so the arrows and Enter go on from it, and Esc in the Amount box opened with **± Adjust score** gives them back to the board, not the top of the page.
-- The board tile the keys are on has a clear white ring in a dark band, instead of a thin blue line lost on a blue tile (still none on stream while the controls are hidden in one window).
-- One window, the Final's reveals: a wager you typed stays hidden in its row (“hidden”, as a phone's already did) until **Show wager** or a verdict, so viewers no longer see every wager before its reveal; typing one in the row replaces it. In one window a wager's step is just “Ann’s wager set” or “Ann’s wager changed” in the 📜 Log and in ↶ Undo’s and ↷ Redo’s messages, with no amount (the audience window's host still sees the amounts).
-- One window: a question in the strip (🚪 Exit, leaving a round with clues left, Rematch) lies over the tools row instead of adding a row, so the stage viewers see no longer shrinks and grows back for a question only you see; the tools under it are out of the keys' reach until you answer.
-- The Amount box takes no minus sign: ↓ in an empty box stops at 0 and a typed −100 reads 100, so **＋ Award** and **− Deduct** always do what their label says (before, a −1 in the box gave +$1).
-- The tiebreaker clue no longer shows the “📱 Players’ buzzers” join code on stream: it’s answered out loud, so nobody buzzes (as on a Daily Double).
-- On stream, the Final’s green ✔ (wager in) sits wholly above each player’s plate instead of over the top of their name.
-- Two windows: while a Daily Double waits for its question, your right column says “Ann’s wager is in ($300)” once it’s typed or sent from a phone, instead of still “waiting for the wager”. The Final’s wager rows: each phone’s tag is a short **📱 …** (still to come) or **📱 ✔** (in), the same width, with the amount and who sent it in its tooltip, so rows no longer wrap and push the buttons down as wagers arrive. The reveal rows give a typed or picked answer at least 12em (a long name is cut shorter, whole in its tooltip), and “✘ not A” stays on one line.
-- Phones in the Final: once you judge a player in the reveals, their phone's **✔ Right!** is green and **✘ Wrong** red (both were the grey of “Answers locked”), and at the end whoever came 1st (or shared it) sees their place in gold. The Final's wager and answer boxes now say **(shown on stream at the reveals)** instead of promising that only the host sees them, and a ✍ clue's box says **only the host sees it until the answer is up**. A buzzer server you run yourself needs deploying again for the phones' changes.
-- The player who found a Daily Double gets **You're answering!** in their colour (with their wager under it) once you show the question, as on any clue they buzz in on, not a grey “Wager locked”.
-- A sent wager no longer says ✔ Sent twice: the button says it, and the line under the box only says, quietly, that it can change until the question shows.
-- **Not you? Change player** asks on the page under the link (**Keep playing** or **Give up Ann**; Esc keeps playing) instead of the browser's own box, which some apps' built-in browsers never show.
-- With every seat taken and no new players let in, the phone's heading says **Every seat is taken**, with what to do on its own line, instead of “Tap your name” over names that can't be tapped. A new player's name box says **Your name (everyone sees it)**, as the team one does, and the wait names who they asked to join as.
-- A phone that loses its network shows **Reconnecting…** over the buzzer at once, instead of a lit BUZZ! for about half a minute, and connects again as soon as it's back online.
-- On a small phone (360×640), BUZZ! with **Pass** under it fits the screen, so a quick press doesn't scroll the page.
-- On a partner clue, the picker's phone says **Your partner is being picked…** until you spin, and “Spinning for your partner…” only while the partner wheel is up.
-
 ## 2026-11-12
 
 ### Added
@@ -74,6 +39,11 @@ in plain words for the people who make and host games. Anything committed but no
 - A phone's wager box has one label, “Your wager (only the host sees it)”, with the score and max right over the box, instead of saying “wager” three times and putting the max under the Send button. (28126fc)
 - Once a phone has sent its answer or wager, its button is a quiet **✔ Sent** (pressing it sends nothing) until the box changes, when it's the blue **Change answer** / **Change wager** again; the line under the box says “✔ Sent.” without repeating the answer the box already holds, and what the host has is quoted on one line. (a1d5e3c)
 - **Everyone must play (no Pass)** shows in the clue editor for every kind of clue: on ✍ clues (and their multiple choice), Daily Doubles and partner clues, and in the Final's editor, it's ticked and greyed, its tooltip saying why, since those never offer Pass. (09bf0bd, 570e66e)
+- A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**. (640f20a)
+- In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window. (2a2b687)
+- Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.) (978db53)
+- A deal part's **Their card also shows** reads **nothing more**, **a wheel slice everyone shares** or **a wheel slice of their own** (it said “nothing from the wheel” before the deal had one), as the host's 🎭 Deal says it; picking a slice with no wheel chosen yet takes you to **🎡 Wheel its cards draw from**. (15ca3b9)
+- A third Jeopardy board is named **Jeopardy! 3** (then Jeopardy! 4…), not “Round 3”, which read as its place in the game (“Round 7 of 8”). (2f266af)
 
 ### Fixed
 
@@ -104,6 +74,28 @@ in plain words for the people who make and host games. Anything committed but no
 - **⚙ Set up phone buzzers…** opens ⚙ Settings scrolled only as far as its Phone buzzers part needs, so the window's title and ✕ aren't cut off at its top. (fc5aac5)
 - After a wrong buzz, the buzzer row no longer names the same player twice: a player struck out in the buzz order isn't listed again after “Missed:”, which now names only those who missed without buzzing (picked by hand). (fc5aac5)
 - In the Final's wagers, the line when a wager is missing says how to let the game go on without it: “Waiting on Dee's phone: type their wager, or untick them to sit out” (it ended “or Sits out”, a label that isn't on screen: the tick box before each name is what sits a player out). (619be5c)
+- In a board game's editor, the space you click shows its dashed yellow ring at once (it only showed on a space picked before). (623b29c)
+- The sample game's board, and a game file with partner clues made by hand, open with **🤝 Partner clues** counting the ones on the board (it said 0 beside “1 on the board”, with 🔀 Randomize greyed). (1645136)
+- A video or sound the app can't read (an old .avi, say) is no longer a dead end: its card in 🖼 Media says, where it stays, to convert it to MP4 (H.264) or MP3 with another program and then **Replace everywhere…** (now the card's strong button), and the checklist's line points there. (eca2660)
+- ⚙ Settings on a 1280×720 laptop keeps **Done** and **Back to the defaults…** whole and in sight while the rest scrolls under them (as does any window taller than the screen). A failed buzzer server **Test** says where it asked and what to check, and the line saying there's no buzzer server goes once you type one. (d05cf2e)
+- Small editor fixes: the tiebreaker's **Answer slide (hidden until revealed)** tab is no longer cut under ＋ Add slide on a 1280-wide screen; a board's category headers are all as tall as the longest name, as on stream; 🤫 Cards with no cards yet says once that a tile can have cards of its own; 🕘 History after an undo shows one **● Now**, not a second “Now” on the row under it; and 📄 New (or Open…) puts away the sample's “press ▶ Play to try it” message. (a750c39, fab2c55, cf0828d, 17d64fd, 4e13c18)
+- Once everyone has passed, the status line says just “Answer hidden · everyone passed” (the buzzers' row says to reveal the answer, once), and Enter says “Everyone passed: N reveals the answer” instead of “Select a player first”. (6f8c014)
+- After **↶ Reopen** (the status line's button or a tile picked from **↶ Reopen a tile… ▾**) the keys go to that tile, so the arrows and Enter go on from it, and Esc in the Amount box opened with **± Adjust score** gives them back to the board, not the top of the page. (12f98a1)
+- The board tile the keys are on has a clear white ring in a dark band, instead of a thin blue line lost on a blue tile (still none on stream while the controls are hidden in one window). (3d6a524)
+- One window, the Final's reveals: a wager you typed stays hidden in its row (“hidden”, as a phone's already did) until **Show wager** or a verdict, so viewers no longer see every wager before its reveal; typing one in the row replaces it. In one window a wager's step is just “Ann’s wager set” or “Ann’s wager changed” in the 📜 Log and in ↶ Undo’s and ↷ Redo’s messages, with no amount (the audience window's host still sees the amounts). (d62c9fb, ab16541)
+- One window: a question in the strip (🚪 Exit, leaving a round with clues left, Rematch) lies over the tools row instead of adding a row, so the stage viewers see no longer shrinks and grows back for a question only you see; the tools under it are out of the keys' reach until you answer. (736b01e, 413b610)
+- The Amount box takes no minus sign: ↓ in an empty box stops at 0 and a typed −100 reads 100, so **＋ Award** and **− Deduct** always do what their label says (before, a −1 in the box gave +$1). (0e7c1e2)
+- The tiebreaker clue no longer shows the “📱 Players’ buzzers” join code on stream: it’s answered out loud, so nobody buzzes (as on a Daily Double). (2cb8167)
+- On stream, the Final’s green ✔ (wager in) sits wholly above each player’s plate instead of over the top of their name. (6523ea8)
+- Two windows: while a Daily Double waits for its question, your right column says “Ann’s wager is in ($300)” once it’s typed or sent from a phone, instead of still “waiting for the wager”. The Final’s wager rows: each phone’s tag is a short **📱 …** (still to come) or **📱 ✔** (in), the same width, with the amount and who sent it in its tooltip, so rows no longer wrap and push the buttons down as wagers arrive. The reveal rows give a typed or picked answer at least 12em (a long name is cut shorter, whole in its tooltip), and “✘ not A” stays on one line. (1c9e971)
+- Phones in the Final: once you judge a player in the reveals, their phone's **✔ Right!** is green and **✘ Wrong** red (both were the grey of “Answers locked”), and at the end whoever came 1st (or shared it) sees their place in gold. The Final's wager and answer boxes now say **(shown on stream at the reveals)** instead of promising that only the host sees them, and a ✍ clue's box says **only the host sees it until the answer is up**. A buzzer server you run yourself needs deploying again for the phones' changes. (c536e0e)
+- The player who found a Daily Double gets **You're answering!** in their colour (with their wager under it) once you show the question, as on any clue they buzz in on, not a grey “Wager locked”. (c536e0e)
+- A sent wager no longer says ✔ Sent twice: the button says it, and the line under the box only says, quietly, that it can change until the question shows. (c536e0e)
+- **Not you? Change player** asks on the page under the link (**Keep playing** or **Give up Ann**; Esc keeps playing) instead of the browser's own box, which some apps' built-in browsers never show. (72576ba)
+- With every seat taken and no new players let in, the phone's heading says **Every seat is taken**, with what to do on its own line, instead of “Tap your name” over names that can't be tapped. A new player's name box says **Your name (everyone sees it)**, as the team one does, and the wait names who they asked to join as. (0fbe84c)
+- A phone that loses its network shows **Reconnecting…** over the buzzer at once, instead of a lit BUZZ! for about half a minute, and connects again as soon as it's back online. (0fbe84c)
+- On a small phone (360×640), BUZZ! with **Pass** under it fits the screen, so a quick press doesn't scroll the page. (0fbe84c)
+- On a partner clue, the picker's phone says **Your partner is being picked…** until you spin, and “Spinning for your partner…” only while the partner wheel is up. (8dec6ab)
 
 ## 2026-11-08
 
