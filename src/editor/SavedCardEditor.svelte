@@ -20,7 +20,7 @@
 
   let root = $state<HTMLElement>();
   /**
-   * 📱 On their phone: turned on under the slide editor (a narrow page) with its top below the fold (or a line short of
+   * 📱 On their phone: turned on under the slide editor (a very narrow page) with its top below the fold (or a line short of
    * it), the page scrolls to put this card's bar at the top, the button still on screen. Beside the slide editor
    * nothing moves.
    */
@@ -93,7 +93,7 @@
       title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone">📱 On their phone</button
     >
   </div>
-  <!-- (📱 On their phone sits beside the slide editor, never over its toolbar or inspector; under it in a narrow page.
+  <!-- (📱 On their phone sits beside the slide editor, never over its toolbar or inspector; under it in a very narrow page.
        Its text doesn't follow 🎨 Theme › Clue text, as a deal's cards don't: phones show the words in their own type.) -->
   <div class="card-edit">
     <SlideEditor slide={card} quickfield="card" placeholder="Click to type what they’ll see" badge="🤫 CARD · ONLY WHO YOU SEND IT TO SEES IT" />
@@ -141,10 +141,22 @@
   .card-edit > :global(.se) {
     min-width: 0;
     flex: 1;
+    container: card-se / inline-size;
   }
-  /* (The container is the cards page's right side.) The slide editor and its inspector want the width first: under
-     1000px, 📱 On their phone goes under it, a phone's width. */
-  @container (max-width: 1000px) {
+  /* With 📱 On their phone beside it on a laptop (1280 or 1366 wide), the slide editor is too narrow for the slide and
+     its inspector side by side: the inspector goes under the slide, so the slide keeps its size. */
+  @container card-se (max-width: 640px) {
+    .card-edit :global(.se .body) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .card-edit :global(.se .side) {
+      max-height: none;
+    }
+  }
+  /* (The container is the cards page's right side.) 📱 On their phone stays beside the slide editor, as in the clue
+     editor's 🤫 card tab, down to a 1280-wide window (the slide shrinks a little to make room); only in a page too
+     narrow for both does it go under it, a phone's width. */
+  @container (max-width: 640px) {
     .card-edit {
       flex-direction: column;
     }

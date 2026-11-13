@@ -278,6 +278,19 @@ try {
   const after = await phoneBtn.boundingBox();
   assert(after.x === xBefore && after.y >= 0 && after.y + after.height <= 900, `📱 stays where it was across the page, on screen (x ${xBefore} → ${after.x}, y ${after.y})`);
   assert((await phone.innerText()).includes(TIP), '📱 On their phone: its words and its picture, as a phone gets them');
+  // On a laptop it stays beside the slide, in sight, as in the clue editor's 🤫 card tab: the inspector goes under the
+  // slide, which keeps its size.
+  for (const [w, h] of [[1280, 720], [1366, 768]]) {
+    await host.setViewportSize({ width: w, height: h });
+    await host.waitForTimeout(200);
+    const p = await phone.boundingBox();
+    const slideBox = await host.locator('main .se .canvas').first().boundingBox();
+    assert(
+      p.x >= slideBox.x + slideBox.width && Math.abs(p.y - slideBox.y) < 80 && p.y + 100 <= h && slideBox.width >= 440,
+      `${w}×${h}: 📱 On their phone beside the slide and in sight, the slide ${Math.round(slideBox.width)}px wide (phone at ${Math.round(p.x)},${Math.round(p.y)})`,
+    );
+  }
+  await host.setViewportSize({ width: 1400, height: 900 });
 
   // ---------- 🔍 Find ----------
   await host.keyboard.press('Control+f');
