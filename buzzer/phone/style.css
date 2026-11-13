@@ -8,6 +8,8 @@
   --accent: #4f7cff;
   --accent-fill: #3d68ea;
   --bad: #ff6b6b;
+  --good: #4ade80;
+  --gold: #f5c542;
   --seat: #3d68ea;
   --seat-ink: #fff;
   color-scheme: dark;
@@ -441,6 +443,11 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 #buzz.off[aria-disabled='true'] { border-style: dashed; border-color: var(--border); cursor: default; }
 #buzz.off[aria-disabled='true'] #buzz-big { color: var(--text); }
 #buzz.locked { background: #3a2226; color: #ffb3b3; border-color: var(--bad); }
+/* The Final's verdict on this seat (the stream shows it): green for right, the "too early" red for wrong. */
+#buzz.right { background: #1d3a2a; color: var(--text); border-color: var(--good); box-shadow: 0 0 0 8px color-mix(in srgb, var(--good) 25%, transparent); }
+#buzz.wrong { background: #3a2226; color: #ffb3b3; border-color: var(--bad); }
+/* The game's over and this seat came 1st (or shared it): gold. */
+#buzz.won { background: #3a311a; color: var(--text); border-color: var(--gold); box-shadow: 0 0 0 8px color-mix(in srgb, var(--gold) 25%, transparent); }
 /*
  * Pass, under the buzzer: quiet beside it, as wide as a thumb needs. It keeps its room for the whole clue (.gone: out of
  * sight, not out of the way), so BUZZ! never moves. Passed: it takes the pass back, in the accent colour.
@@ -581,6 +588,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 #card-status-big { font-size: clamp(20px, 6.5vmin, 30px); font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
 #card-status-small { color: var(--muted); font-size: 16px; overflow-wrap: anywhere; }
 #card-status-small:empty { display: none; }
+#card-status.right #card-status-big { color: var(--good); }
+#card-status.wrong #card-status-big { color: var(--bad); }
 #card-list { display: flex; flex-direction: column; gap: 12px; }
 .card {
   --secret: #a98bff;
@@ -763,7 +772,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   .icon:hover { border-color: var(--muted); }
   .swatch:not(.taken):hover { transform: scale(1.12); }
   #buzz:is(.armed, .ready, .queue):hover { filter: brightness(1.1); }
-  #buzz:is(.off, .first, .team, [class=''], :not([class])) { cursor: default; }
+  #buzz:is(.off, .first, .team, .right, .wrong, .won, [class=''], :not([class])) { cursor: default; }
   /* Too early: a press starts the wait over. */
   #buzz.locked { cursor: not-allowed; }
 

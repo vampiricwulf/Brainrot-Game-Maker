@@ -469,7 +469,8 @@ async function show(how) {
       await ph.locator('#wager-form').waitFor();
       await ph.locator('#wager-in').fill(String(wagers[p]));
       await ph.locator('#wager-send').click();
-      await ph.locator('#wager-state', { hasText: '✔ Sent' }).waitFor();
+      // (In: the button is the quiet “✔ Sent”.)
+      await ph.locator('#wager-send.sent', { hasText: '✔ Sent' }).waitFor();
     }
     // (The host has them all: the blue button is never greyed, so its wager screen's own line says so.)
     await until('every wager in on the host', async () => (await host.locator('.fj .row .muted', { hasText: /^Waiting on/ }).count()) === 0);

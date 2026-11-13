@@ -402,7 +402,7 @@ try {
   // ---------- A ✍ clue: one answer per team; a teammate's fills the others' boxes ----------
   await host.locator('.stage-box .board .tile').nth(1).click();
   for (const p of [ann, al, bea]) await p.locator('#answer-in').waitFor();
-  assert((await ann.locator('#answer-label').innerText()) === 'Your team’s answer (only the host and your team see it)', 'a ✍ clue: every member gets the team’s answer box, which says the team sees it too');
+  assert((await ann.locator('#answer-label').innerText()) === 'Your team’s answer (only the host and your team see it until the answer is up)', 'a ✍ clue: every member gets the team’s answer box, which says the team sees it too (until the answer is up)');
   // Ann's box has the focus (it takes it as it opens) and she typed nothing: Al's answer for the team fills it.
   await ann.locator('#answer-in').focus();
   await al.locator('#answer-in').fill('Poodle');

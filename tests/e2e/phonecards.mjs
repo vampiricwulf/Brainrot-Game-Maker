@@ -1052,15 +1052,19 @@ try {
   const typedWager = await colour(cat, 'wager-state');
   assert(typedWager[0] === 'Not sent yet: click Send wager to send it.' && typedWager[1] === 'rgb(255, 210, 122)', `a wager typed but not sent: “Not sent yet…”, in amber (${typedWager.join(', ')})`);
   await cat.keyboard.press('Enter');
-  await cat.locator('#wager-state').getByText('✔ Sent: 300').waitFor();
+  await cat.locator('#wager-state').getByText('You can change it until the question shows.', { exact: true }).waitFor();
   await cat.locator('#wager-in').fill('900');
   const unsentWager = await colour(cat, 'wager-state');
   assert(
     unsentWager[0] === 'Not sent yet: click Change wager to send it. What the host has: 300' && unsentWager[1] === 'rgb(255, 210, 122)',
-    `a wager changed but not sent: “Not sent yet…”, in amber, not “✔ Sent: 300” (${unsentWager.join(', ')})`,
+    `a wager changed but not sent: “Not sent yet…”, in amber, not the quiet line of one that's in (${unsentWager.join(', ')})`,
   );
   await cat.locator('#wager-in').fill('300');
-  assert((await cat.locator('#wager-state').innerText()).startsWith('✔ Sent: 300'), 'the amount sent typed back: “✔ Sent: 300” again');
+  const sentAgain = await colour(cat, 'wager-state');
+  assert(
+    sentAgain[0] === 'You can change it until the question shows.' && sentAgain[1] !== 'rgb(255, 210, 122)' && (await cat.locator('#wager-send').innerText()) === '✔ Sent',
+    `the amount sent typed back: the quiet “✔ Sent” again, and the line under it quiet too (${sentAgain.join(', ')})`,
+  );
   // The question: the answer box takes the keys from the wager box; Ann (on paper) sees her wager locked over her card.
   hostState({
     wager: { id: 'fin1', kind: 'final', open: false, seats: [{ id: 'a', max: 1000, amount: 500 }, { id: 'c', max: 1000, amount: 300 }] },

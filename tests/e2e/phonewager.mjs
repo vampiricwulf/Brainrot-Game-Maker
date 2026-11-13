@@ -236,21 +236,26 @@ try {
   assert((await ann.locator('#wager-err').innerText()) === '', 'the red “Type a whole number” goes once an amount is typed');
   // Within it: the host's box fills in, marked 📱.
   await sendWager(ann, 777);
-  await ann.locator('#wager-state').getByText('✔ Sent: $777').waitFor();
+  await ann.locator('#wager-state').getByText('You can change it until the question shows.', { exact: true }).waitFor();
+  // (The quiet “✔ Sent” button says it's in, and the box shows the amount: the line under it doesn't say either again.)
+  assert(
+    (await ann.locator('#wager-state').innerText()) === 'You can change it until the question shows.' && (await ann.locator('#wager-state').evaluate((e) => e.classList.contains('plain-note'))),
+    'sent: the line under the box says only until when it can change, quietly (no second “✔ Sent”, no amount)',
+  );
   // The box holds what was sent: the button is a quiet “✔ Sent” (pressing it sends nothing), the blue Change wager as
   // soon as the box differs.
   const wagerBtn = async (p) => [await p.locator('#wager-send').innerText(), await p.locator('#wager-send').evaluate((e) => e.className)].join(' | ');
   assert((await wagerBtn(ann)) === '✔ Sent | sent', `sent: the button is a quiet “✔ Sent”, not blue (${await wagerBtn(ann)})`);
   await ann.locator('#wager-send').dblclick();
   await sleep(150);
-  assert((await ann.locator('#wager-state').innerText()).startsWith('✔ Sent: $777'), 'a double press of “✔ Sent” sends nothing (no “Sending…”)');
+  assert((await ann.locator('#wager-state').innerText()) === 'You can change it until the question shows.', 'a double press of “✔ Sent” sends nothing (no “Sending…”)');
   await ann.locator('#wager-in').fill('778');
   assert((await wagerBtn(ann)) === 'Change wager | primary', `the box changed: the blue Change wager (${await wagerBtn(ann)})`);
   await ann.locator('#wager-in').fill('777');
   assert((await wagerBtn(ann)) === '✔ Sent | sent', 'back to what was sent: “✔ Sent” again');
   await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '777');
   await dd.getByText('📱 from phone').waitFor();
-  assert(true, 'sent from the phone: the host’s wager box fills in (777) marked “📱 from phone”, and the phone says “✔ Sent: $777”');
+  assert(true, 'sent from the phone: the host’s wager box fills in (777) marked “📱 from phone”, and the phone’s button says “✔ Sent”');
   await host.locator('.info .dd', { hasText: '⭐ Daily Double · Player 1’s wager is in ($777)' }).waitFor();
   assert(true, 'the host’s right column says the wager is in ($777), no longer “waiting for the wager”');
   const said = (who) => host.waitForFunction((w) => document.getElementById('live-region')?.dataset.said?.includes(`${w}’s wager is in (from their phone)`), who).then(() => host.evaluate(() => document.getElementById('live-region').dataset.said));
@@ -268,8 +273,11 @@ try {
   await sendWager(ann, 700);
   await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '700');
   await mainButton(host).click();
-  await big(ann).getByText('Wager locked').waitFor();
-  assert((await small(ann).innerText()) === 'Your wager: $700', 'Show question locks it: the phone says “Wager locked · Your wager: $700”');
+  await big(ann).getByText("You're answering!").waitFor();
+  assert(
+    (await small(ann).innerText()) === 'Your wager: $700 · say your answer' && (await ann.locator('#buzz').getAttribute('class')) === 'first',
+    `Show question locks it: she's on the spot, so her phone says “You're answering!” in her colour, her wager under it (${await small(ann).innerText()})`,
+  );
   // The host fixes it in the Amount box (the question is up): the phone has the host's amount, not the one it sent.
   const amountBox = host.locator('.panel .award').getByLabel('Amount');
   await amountBox.fill('500');
@@ -313,8 +321,8 @@ try {
   await form(ann).waitFor();
   await form(bo).waitFor();
   assert(
-    (await ann.locator('#wager-label').innerText()) === 'Your wager (only the host sees it)' && (await wagerInfoOverBox(bo)),
-    'the Final’s wager screen (under the Final’s name): every phone in it gets its wager box, “Your wager (only the host sees it)”, score and max over the box',
+    (await ann.locator('#wager-label').innerText()) === 'Your wager (shown on stream at the reveals)' && (await wagerInfoOverBox(bo)),
+    'the Final’s wager screen (under the Final’s name): every phone in it gets its wager box, “Your wager (shown on stream at the reveals)”, score and max over the box',
   );
   assert(
     (await bo.locator('#wager-info').innerText()) === 'Score $0 · Max $2,000',
@@ -384,10 +392,10 @@ try {
   assert(true, '↶ Undo of a phone’s change: its phone says the host has the one before ($1,234), not the $1,300 it sent');
   await host.getByRole('button', { name: '↷ Redo' }).click();
   await row('Player 1').locator('[data-phone-wager]', { hasText: '📱 ✔ $1,300 from phone' }).waitFor();
-  await ann.locator('#wager-state').getByText('✔ Sent: $1,300').waitFor();
+  await ann.locator('#wager-state').getByText('You can change it until the question shows.', { exact: true }).waitFor();
   // A phone reload shows its own wager again.
   await ann.reload();
-  await ann.locator('#wager-state').getByText('✔ Sent: $1,300').waitFor();
+  await ann.locator('#wager-state').getByText('You can change it until the question shows.', { exact: true }).waitFor();
   assert((await ann.locator('#wager-in').inputValue()) === '1300', 'a phone reload comes back to its own wager');
   // The host changes Player 2's: it's the host's now (the phone says so).
   await box('Player 2').fill('2000');
@@ -482,6 +490,7 @@ try {
   await answers.locator('[data-answer-row] .text', { hasText: 'Fleming' }).dblclick({ position: { x: 12, y: 8 } });
   assert((await selectedWords(host)) === 'Alexander', `two windows: the host's copy of a typed answer selects (${await selectedWords(host)})`);
   assert((await answers.getByRole('status').innerText()).startsWith('1 of 3 in · only you see them'), 'Player 1 types “Fleming” and sends it: the host’s panel has it (only the host sees it)');
+  assert((await ann.locator('#answer-label').innerText()) === 'Your answer (shown on stream at the reveals)', `the Final’s answer box says the reveals put it on stream, not that only the host sees it (${await ann.locator('#answer-label').innerText()})`);
   await aud.waitForFunction(() => document.querySelector('[data-everyone] [role="img"]')?.getAttribute('aria-label') === '1 of 3 answers in');
   assert(!(await text(aud)).includes('Fleming') && !(await text(bo)).includes('Fleming'), 'the stream says 1 of 3 in, never the words; nor does the other phone have them');
   await shot('pw-6-answer-phone', ann);
@@ -563,6 +572,10 @@ try {
     (await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Alexander / Fleming / (penicillin)”' && (await big(bo).innerText()) === 'Answers locked',
     `judged, on stream: her phone says “✔ Right! +$1,300”, her wager and answer under it; his, not judged, still “Answers locked” (${await small(ann).innerText()})`,
   );
+  assert(
+    (await ann.locator('#buzz').getAttribute('class')) === 'right' && (await bo.locator('#buzz').getAttribute('class')) === 'off',
+    'and in green (right), not the grey of “Answers locked” his still has',
+  );
   await shot('pw-6d-verdict-phone', ann);
   // (Its fly-in done:) the card, with the answer's line, still fits above the scores.
   await aud.waitForFunction(() => document.querySelector('.spot')?.getBoundingClientRect().bottom <= document.querySelector('.score-area')?.getBoundingClientRect().top);
@@ -578,6 +591,7 @@ try {
   await host.keyboard.press('x');
   await aud.locator('.spot-result', { hasText: '✘ WRONG' }).waitFor();
   await big(bo).getByText(/^✘ Wrong/).waitFor();
+  assert((await bo.locator('#buzz').getAttribute('class')) === 'wrong', 'his “✘ Wrong” in red, not grey');
   assert((await small(bo).innerText()) === 'Your wager: $2,000 · None sent', `X: WRONG on stream, and his phone says “${await big(bo).innerText()}” over his wager`);
 
   // ---------- Teams: one wager per team, anyone on it sends it (one window: viewers see the host's panel) ----------
@@ -683,7 +697,7 @@ try {
     return 0;
   });
   assert(keysHeld && cut <= 0, `one window, phones sending the wagers: the wager list holds the keys and the box's first line reads whole (on ${await host2.evaluate(() => document.activeElement?.className)}, cut ${cut}px)`);
-  assert((await al.locator('#wager-label').innerText()) === 'Your team’s wager (only the host and your team see it)', 'teams: every member’s phone gets the team’s wager box');
+  assert((await al.locator('#wager-label').innerText()) === 'Your team’s wager (shown on stream at the reveals)', 'teams: every member’s phone gets the team’s wager box');
   await sendWager(al, 300);
   const team1 = rows2.locator('.wrow', { hasText: 'Player 1' });
   await team1.locator('[data-phone-wager]', { hasText: '📱 ✔ from phone, sent by Al' }).waitFor();
@@ -695,7 +709,7 @@ try {
   assert(undo2.startsWith('Undo: Player 1’s wager (from Al’s phone)') && !undo2.includes('$'), `and ↶ Undo names the step without the amount (${undo2})`);
   await amy.locator('#wager-state').getByText('✔ Al sent $300 for your team').waitFor();
   assert((await amy.locator('#wager-in').inputValue()) === '300', 'his teammate’s box fills in with it (it had the focus as it opened, but she typed nothing)');
-  assert((await amy.locator('#wager-label').innerText()) === 'Your team’s wager (only the host and your team see it)', 'teams: the box says the team sees the wager too');
+  assert((await amy.locator('#wager-label').innerText()) === 'Your team’s wager (shown on stream at the reveals)', 'teams: the box says when the wager goes on stream (the reveals)');
   assert(await noneOf(cy, [300]), 'Al sends the team’s wager: the host sees “sent by Al”, his teammate sees it, the other team doesn’t');
   await sendWager(amy, 450);
   await team1.locator('[data-phone-wager]', { hasText: '📱 ✔ from phone, sent by Amy' }).waitFor();

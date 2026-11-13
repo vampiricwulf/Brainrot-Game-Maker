@@ -1472,14 +1472,22 @@ function renderBuzz(v: PhoneView): void {
     // lines on one, " / " between them).
     const staked = wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
     const picked = pickLine(ans);
-    // Judged, and the stream shows it (the Final's reveals): how it went over it ("✔ Right! +$1,200").
+    // Judged, and the stream shows it (the Final's reveals): how it went over it ("✔ Right! +$1,200"), green or red.
     [cls, big, small] = [
-      'off',
+      ans.verdict ? (ans.verdict.right ? 'right' : 'wrong') : 'off',
       ans.verdict ? verdictLine(ans.verdict, sym) : 'Answers locked',
       staked + (ans.text ? `${team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${foldLines(ans.text)}”`}` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent'),
     ];
+  } else if (wager?.kind === 'dd' && wager.mine && !wager.open) {
+    // This seat's Daily Double, the question up: they're on the spot, as on any clue they buzzed in on.
+    const yours = team ? 'Your team’s wager' : 'Your wager';
+    [cls, big, small] = [
+      'first',
+      team ? 'Your team is answering!' : "You're answering!",
+      wager.amount !== undefined ? `${yours}: ${money(wager.amount, sym)} · say your answer` : 'Say your answer',
+    ];
   } else if (wager?.mine) {
-    // Locked: the question is up.
+    // Locked: the question is up (the Final).
     const yours = team ? 'Your team’s wager' : 'Your wager';
     [cls, big, small] = [
       'off',
@@ -1494,7 +1502,8 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = ['off', 'You sit this one out', q?.caption ? notIn : v.status || notIn];
   } else if (v.phase === 'lobby' && v.final) {
     ({ big, small } = placeLine(v));
-    cls = 'off';
+    // (Gold for 1st, a shared 1st too.)
+    cls = v.final.place === 1 ? 'won' : 'off';
     whole = true;
   } else if (v.phase === 'lobby' && v.statusOff && v.status) {
     // Nobody buzzes (a partner clue): greyed, with who plays which part as the big line and what's going on under it.
@@ -1556,11 +1565,13 @@ function renderBuzz(v: PhoneView): void {
   // Between clues nothing buzzes: no Space hint under what the button says instead ("Wager locked", "Ann is answering ·
   // Daily Double", "Answers locked", "You sit this one out", where you came). (During a clue it stays, even under
   // "Wait": coming and going, it would move BUZZ!.)
-  if (v.phase === 'lobby' && cls === 'off') keyHint(false);
+  if (v.phase === 'lobby' && cls !== '') keyHint(false);
   // Cards in the buzzer's place: what it would say over them ("Answers locked", "Wager locked", where you came), or the
   // host's status line between clues (none: no line).
   const [cardBig, cardSmall] = !cardsUp ? ['', ''] : plain ? [v.status ?? '', v.statusSub ?? ''] : [big, small];
   $('card-status').hidden = !cardBig;
+  // (The Final's verdict in its colour there too.)
+  $('card-status').className = cardsUp && (cls === 'right' || cls === 'wrong') ? cls : '';
   $('card-status-big').textContent = cardBig;
   $('card-status-small').textContent = cardSmall;
   if (sendingArm === v.armId && !mine && v.phase !== 'lobby') small = 'Sending…';
@@ -1904,7 +1915,9 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   const you = v.you!;
   const team = !!v.teams;
   // (The line above already says it's a Daily Double or names the Final: one label says whose wager it is.)
-  $('wager-label').textContent = team ? 'Your team’s wager (only the host and your team see it)' : 'Your wager (only the host sees it)';
+  // (The Final's reveals put each wager on stream.)
+  const seen = w.kind === 'final' ? 'shown on stream at the reveals' : team ? 'only the host and your team see it' : 'only the host sees it';
+  $('wager-label').textContent = `${team ? 'Your team’s wager' : 'Your wager'} (${seen})`;
   const inp = $<HTMLInputElement>('wager-in');
   // Filled with what's in when the box comes up, and again when what's in changes (a teammate, the host), unless the
   // box holds an edit not sent yet (something other than what was in before). The box has the focus as it opens, so
@@ -1922,16 +1935,21 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   // (Not held to a max: the host takes any amount, so none is shown; a score of 0 or less would read "Max $0".)
   const max = !w.limit ? 'No limit' : w.max !== undefined ? `Max ${money(w.max, sym)}` : '';
   $('wager-info').textContent = [`Score ${money(you.score, sym)}`, max].filter(Boolean).join(' · ');
-  const state = wagerState(w, team, sym);
-  drawState('wager-state', state, wagerSending);
-  // Green for what's in and shown; plain for "not shown here".
-  $('wager-state').classList.toggle('plain-note', !!w.hidden && w.amount === undefined);
+  const state = drawWagerState(w, team, sym);
   $('wager-err').textContent = wagerErr;
   drawWagerSend(w);
   const hostGone = renderFoot(v, sym);
   // (What it's for first: "Final Jeopardy! · US Presidents". The error has its own alert, so it isn't said twice.)
   say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', $('wager-label').textContent ?? '', $('wager-info').textContent ?? '', state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
+}
+
+/** The line under the wager box: green for what's in and shown; plain for "not shown here", and under the quiet "✔ Sent". */
+function drawWagerState(w: PhoneWager, team: boolean, sym: string): string {
+  const state = wagerState(w, team, sym);
+  drawState('wager-state', state, wagerSending);
+  $('wager-state').classList.toggle('plain-note', (!!w.hidden && w.amount === undefined) || quietSent(w, team));
+  return state;
 }
 
 /** What's in with the host, or that the box holds an amount not sent yet (one not sent would read as sent). */
@@ -1950,6 +1968,8 @@ function wagerState(w: PhoneWager, team: boolean, sym: string): string {
   // (As numbers: "00" typed after the 0 the host put in for a player with nothing to wager is the same wager.)
   if (over) return `${over} What the host has: ${amt}`;
   if (typed && Number(typed) !== w.amount) return `${tap(`Not sent yet: tap ${w.host ? 'Send' : 'Change'} wager to send it.`)} What the host has: ${amt}`;
+  // The box holds what this phone sent: its quiet "✔ Sent" button says so, and the box shows the amount.
+  if (quietSent(w, team)) return 'You can change it until the question shows.';
   const what = w.host ? `The host has ${team ? 'your team’s' : 'your'} wager as ${amt}` : team && w.by ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team` : w.sent ? `✔ Sent: ${amt}` : '';
   return `${what}. You can change it until the question shows.`;
 }
@@ -1964,6 +1984,9 @@ function drawSend(id: 'answer-send' | 'wager-send', label: string, sent: boolean
   b.classList.toggle('primary', !sent);
   b.classList.toggle('sent', sent);
 }
+
+/** The wager box holds what this phone sent (or a teammate's phone did not): nothing to add under it but until when. */
+const quietSent = (w: PhoneWager, team: boolean): boolean => wagerIn(w) && (team ? !w.by || !!w.byYou : !!w.sent);
 
 /** The wager box holds the amount this phone's seat sent (not the host's). */
 function wagerIn(w: PhoneWager): boolean {
@@ -2109,15 +2132,18 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   if (!choices) answerTap = '';
   $('answer-keys').textContent = choices ? `Press A–${letter(a.choices!.length - 1)} to pick` : 'Enter sends · Shift+Enter for a new line';
   // (Five or six choices: a shorter label, a line more for the last of them on a small phone.)
+  // Who sees it, and from when: the Final's reveals put each answer on stream; one window shows a ✍ clue's answers in
+  // the host panel (on stream) once the answer is up.
+  const seen = !guess && w?.kind === 'final' ? 'shown on stream at the reveals' : `only the host${team ? ' and your team see it' : ' sees it'} until the answer is up`;
   $('answer-label').textContent = choices
     ? a.choices!.length >= 5
-      ? `Pick one (only the host${team ? ' and your team see it' : ' sees it'})`
+      ? `Pick one (${seen})`
       : team
-        ? 'Your team’s answer: pick one (only the host and your team see it)'
-        : 'Pick your answer (only the host sees it)'
+        ? `Your team’s answer: pick one (${seen})`
+        : `Pick your answer (${seen})`
     : team
-      ? 'Your team’s answer (only the host and your team see it)'
-      : 'Your answer (only the host sees it)';
+      ? `Your team’s answer (${seen})`
+      : `Your answer (${seen})`;
   const inp = $<HTMLTextAreaElement>('answer-in');
   // Filled with what's in when the box comes up, and again when what's in changes (a teammate), unless the box holds
   // an edit not sent yet (as for the wager box).
@@ -2651,7 +2677,7 @@ $('wager-in').addEventListener('input', () => {
   const w = view?.wager;
   if (w?.mine && w.open) saveDraft('wager', w.id, $<HTMLInputElement>('wager-in').value);
   if (typedErr(wagerErr)) $('wager-err').textContent = wagerErr = '';
-  if (w?.mine && !wagerSending) drawState('wager-state', wagerState(w, !!view?.teams, view?.currency ?? ''), false);
+  if (w?.mine && !wagerSending) drawWagerState(w, !!view?.teams, view?.currency ?? '');
   if (w?.mine && w.open) drawWagerSend(w);
 });
 $('new-form').addEventListener('submit', (e) => {
