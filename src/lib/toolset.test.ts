@@ -236,20 +236,21 @@ describe('action log', () => {
     const game = jeopardyGame();
     const session = newSession(game);
     openClue(session, { round: 0, cat: 0, row: 0 }, game);
-    session.remote = { code: 'ABCD', hostToken: 't', buzz: { phase: 'armed', armId: 1, answering: null, lockedOut: ['a'], passAt: 100, clue: '0.0.0', floor: 0 } };
+    const remote = { code: 'ABCD', hostToken: 't', base: 'https://buzz.test', buzz: { phase: 'armed' as const, armId: 1, answering: null, lockedOut: ['a'], passAt: 100, clue: '0.0.0', floor: 0 } };
+    session.remote = remote;
     logged(session, '↺ Reset buzzers', () => {
-      session.remote!.buzz = { phase: 'armed', armId: 2, answering: null, lockedOut: [], passAt: 200, clue: '0.0.0', floor: 0 };
+      remote.buzz = { phase: 'armed', armId: 2, answering: null, lockedOut: [], passAt: 200, clue: '0.0.0', floor: 0 };
     });
     expect(Object.keys(JSON.parse(session.actionLog!.at(-1)!.before))).toEqual(['pass:0.0.0']);
     undoAction(session, game);
-    expect(session.remote.buzz!.passAt).toBe(100);
+    expect(remote.buzz.passAt).toBe(100);
     redoAction(session, game);
-    expect(session.remote.buzz!.passAt).toBe(200);
+    expect(remote.buzz.passAt).toBe(200);
     // Another clue open by then: nothing changes there.
     undoAction(session, game);
-    session.remote.buzz = { ...session.remote.buzz!, clue: '0.0.1', passAt: 300 };
+    remote.buzz = { ...remote.buzz, clue: '0.0.1', passAt: 300 };
     redoAction(session, game);
-    expect(session.remote.buzz.passAt).toBe(300);
+    expect(remote.buzz.passAt).toBe(300);
   });
 
   it('a step only play can put back: undone and redone with nothing else changed', () => {
