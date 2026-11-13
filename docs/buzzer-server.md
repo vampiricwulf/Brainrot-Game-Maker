@@ -78,7 +78,7 @@ To build the address into your own releases (so nobody has to paste it), also ad
 
 ## Troubleshooting
 
-- **Test says "No answer from there".** Check the address: it ends in `.workers.dev` (`https://` is added if you leave
+- **Test says "Nothing answered at …".** Check the address: it ends in `.workers.dev` (`https://` is added if you leave
   it out). Make sure the deploy finished without errors. A new address can take a minute or two to start answering.
 - **`npx wrangler login` doesn't open a browser** (on a remote machine, say). Run `npx wrangler login --browser=false`
   and open the link it prints.

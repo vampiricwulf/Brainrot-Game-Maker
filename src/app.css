@@ -290,6 +290,16 @@ body:has(.in-panel [aria-modal='true']) .toast {
   align-items: center;
   gap: 8px;
 }
+/* A window taller than the screen scrolls under its foot: Done and the rest stay in sight, whole. */
+:where(.modal) > .modal-foot {
+  position: sticky;
+  bottom: -18px;
+  margin-bottom: -18px;
+  padding: 8px 0 18px;
+  margin-top: -8px;
+  background: inherit;
+  z-index: 1;
+}
 
 /* A page in the editor: its title (20px) and one muted line, its actions on the right (PageHeader). Forms stay
    readable on a wide screen; boards and maps fill it. */

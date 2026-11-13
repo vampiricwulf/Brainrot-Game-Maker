@@ -24,6 +24,7 @@ in plain words for the people who make and host games. Anything committed but no
 - In a board game's editor, the space you click shows its dashed yellow ring at once (it only showed on a space picked before).
 - The sample game's board, and a game file with partner clues made by hand, open with **🤝 Partner clues** counting the ones on the board (it said 0 beside “1 on the board”, with 🔀 Randomize greyed).
 - A video or sound the app can't read (an old .avi, say) is no longer a dead end: its card in 🖼 Media says, where it stays, to convert it to MP4 (H.264) or MP3 with another program and then **Replace everywhere…** (now the card's strong button), and the checklist's line points there.
+- ⚙ Settings on a 1280×720 laptop keeps **Done** and **Back to the defaults…** whole and in sight while the rest scrolls under them (as does any window taller than the screen). A failed buzzer server **Test** says where it asked and what to check, and the line saying there's no buzzer server goes once you type one.
 
 ## 2026-11-12
 

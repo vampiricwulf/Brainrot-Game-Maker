@@ -32,6 +32,8 @@ await context.addInitScript(() => {
   const realFetch = window.fetch.bind(window);
   window.fetch = async (url, init) => {
     const u = String(url);
+    // (An address where nothing answers: Settings' Test fails.)
+    if (u.startsWith('https://nowhere.invalid/')) throw new TypeError('Failed to fetch');
     if (u === 'https://buzz.test/api/rooms' && init?.method === 'POST') {
       room.posts++;
       if (room.refuse) return new Response(JSON.stringify({ error: room.refuse }), { status: 429, headers: { 'content-type': 'application/json' } });
@@ -124,6 +126,34 @@ try {
   await settings.getByRole('button', { name: 'Test' }).click();
   await settings.getByText('✔ The buzzer server is answering').waitFor();
   assert((await page.evaluate(() => window.__room.health)) === 1, 'Test asks the server’s /api/health');
+  // With an address typed, the hint no longer says this copy has none.
+  assert(!(await settings.innerText()).includes('no buzzer server set'), 'with an address, the hint doesn’t say there is none');
+  // On a 1280×720 laptop the window is taller than the screen: its foot stays in sight, whole, after a failed Test.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await settings.getByLabel('Buzzer server').fill('https://nowhere.invalid');
+  await settings.getByLabel('Buzzer server').press('Tab');
+  await settings.getByRole('button', { name: 'Test' }).click();
+  const failed = settings.getByText(/^✘ Nothing answered at/);
+  await failed.waitFor();
+  assert(
+    (await failed.innerText()) === '✘ Nothing answered at https://nowhere.invalid. Check the address (the one Cloudflare shows for your buzzer server) and that you’re online.',
+    `a failed Test says where it asked and what to check (${await failed.innerText()})`,
+  );
+  for (const at of ['top', 'end']) {
+    await settings.evaluate((d, at) => (d.scrollTop = at === 'top' ? 0 : d.scrollHeight), at);
+    const fits = await settings.evaluate((d) => {
+      const box = d.getBoundingClientRect();
+      return [...d.querySelectorAll(':scope > .modal-foot button')].every((b) => {
+        const r = b.getBoundingClientRect();
+        return r.height > 0 && r.top >= box.top && r.bottom <= box.bottom && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('button') === b;
+      });
+    });
+    const scrolls = await settings.evaluate((d) => d.scrollHeight > d.clientHeight);
+    assert(fits && scrolls, `1280×720, scrolled to the ${at}: Settings scrolls under its foot, and Done and Back to the defaults… show whole`);
+  }
+  await settings.getByLabel('Buzzer server').fill('https://buzz.test');
+  await settings.getByLabel('Buzzer server').press('Tab');
+  await page.setViewportSize({ width: 1400, height: 900 });
   await settings.getByRole('button', { name: 'Done' }).click();
 
   // ---------- Export HTML takes the buzzer server along (another computer has no Settings for it) ----------

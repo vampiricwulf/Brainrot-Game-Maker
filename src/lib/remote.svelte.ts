@@ -436,7 +436,7 @@ export async function testServer(base: string): Promise<string> {
     if (said) return `✔ The buzzer server is answering: card files up to ${mbText(said.files.fileBytes)} each, ${mbText(said.files.roomBytes)} a room`;
     return '✔ The buzzer server is answering';
   } catch {
-    return '✘ No answer from there';
+    return `✘ Nothing answered at ${url}. Check the address (the one Cloudflare shows for your buzzer server) and that you’re online.`;
   }
 }
 

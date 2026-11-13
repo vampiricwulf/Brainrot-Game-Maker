@@ -174,7 +174,7 @@
     {#if tested}<p class="small" role="status">{tested}</p>{/if}
     <p class="hint" bind:this={buzzerEnd}>
       Advanced: where phone buzzer rooms are made. Once there's an address, ▶ Play › 📱 Phone buzzers offers Buzzer mode.
-      {DEFAULT_BUZZER_URL ? 'Leave it blank for the one this copy comes with.' : "This version of the app has no buzzer server set: phone buzzers need an address here."}
+      {DEFAULT_BUZZER_URL ? 'Leave it blank for the one this copy comes with.' : server.trim() ? '' : 'This version of the app has no buzzer server set: phone buzzers need an address here.'}
       <a href={BUZZER_GUIDE} target="_blank" rel="noreferrer" onclick={externalLink}>How to set up your own (free, on Cloudflare) ↗</a>
     </p>
 
