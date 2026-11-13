@@ -466,7 +466,7 @@ try {
   // A phone that comes in now and waits on the seat list never saw the game start: when the room closes it's told so.
   const late = watch(await (await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true })).newPage(), 'late phone');
   await late.goto(`${base}/${code}`);
-  await late.getByRole('heading', { name: 'Tap your name' }).waitFor();
+  await late.getByRole('heading', { name: 'Every seat is taken' }).waitFor(); // (Both seats are taken: the heading says so.)
   // Player 2's phone is asleep (its connection gone) when the room closes: it misses being told.
   const p2Tap = taps.get(p2);
   p2Tap.blocked = true;
