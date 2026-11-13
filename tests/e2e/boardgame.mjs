@@ -132,6 +132,7 @@ try {
   await (await iconFile).setFiles({ name: 'icon.png', mimeType: 'image/png', buffer: png(200, 40, 40) });
   const iconImg = space('Space 4').locator('img');
   await iconImg.waitFor();
+  assert(await page.locator('.side').getByRole('button', { name: '⌫ Take off icon' }).isVisible(), 'the picture icon is taken off with a button named as an action');
   const iconAt = await space('Space 4').boundingBox();
   await dragBy(page, iconImg, { x: iconAt.x + iconAt.width / 2 + 80, y: iconAt.y + iconAt.height / 2 + 60 });
   const iconTo = await space('Space 4').boundingBox();

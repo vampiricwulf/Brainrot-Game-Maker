@@ -13,6 +13,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Changed
+
+- A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
+
 ### Fixed
 
 - In a board game's editor, the space you click shows its dashed yellow ring at once (it only showed on a space picked before).

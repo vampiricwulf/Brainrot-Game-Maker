@@ -986,10 +986,10 @@
                 <MediaPicker kind="image" onpick={(id) => ((sel.icon = id), (pickingIcon = false))} onclose={() => (pickingIcon = false)} />
               {/if}
             </div>
-            {#if sel.icon}<button class="ghost small" onclick={() => (sel.icon = undefined)}>No icon</button>{/if}
+            {#if sel.icon}<button class="ghost small" title="Take the picture icon off this space" onclick={() => (sel.icon = undefined)}>⌫ Take off icon</button>{/if}
             {#if sel.mark && !sel.icon}
               <span class="muted small" title="Drawn in the circle">{sel.mark}</span>
-              <button class="ghost small" onclick={() => step(`Took the emoji off “${sel.name}”`, () => (sel.mark = undefined))}>No emoji</button>
+              <button class="ghost small" onclick={() => step(`Took the emoji off “${sel.name}”`, () => (sel.mark = undefined))} title="Take the emoji off this space">⌫ Take off emoji</button>
             {/if}
           </div>
           <label class="field">
