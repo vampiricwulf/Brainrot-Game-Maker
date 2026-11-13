@@ -37,6 +37,14 @@ in plain words for the people who make and host games. Anything committed but no
 - The tiebreaker clue no longer shows the “📱 Players’ buzzers” join code on stream: it’s answered out loud, so nobody buzzes (as on a Daily Double).
 - On stream, the Final’s green ✔ (wager in) sits wholly above each player’s plate instead of over the top of their name.
 - Two windows: while a Daily Double waits for its question, your right column says “Ann’s wager is in ($300)” once it’s typed or sent from a phone, instead of still “waiting for the wager”. The Final’s wager rows: each phone’s tag is a short **📱 …** (still to come) or **📱 ✔** (in), the same width, with the amount and who sent it in its tooltip, so rows no longer wrap and push the buttons down as wagers arrive. The reveal rows give a typed or picked answer at least 12em (a long name is cut shorter, whole in its tooltip), and “✘ not A” stays on one line.
+- Phones in the Final: once you judge a player in the reveals, their phone's **✔ Right!** is green and **✘ Wrong** red (both were the grey of “Answers locked”), and at the end whoever came 1st (or shared it) sees their place in gold. The Final's wager and answer boxes now say **(shown on stream at the reveals)** instead of promising that only the host sees them, and a ✍ clue's box says **only the host sees it until the answer is up**. A buzzer server you run yourself needs deploying again for the phones' changes.
+- The player who found a Daily Double gets **You're answering!** in their colour (with their wager under it) once you show the question, as on any clue they buzz in on, not a grey “Wager locked”.
+- A sent wager no longer says ✔ Sent twice: the button says it, and the line under the box only says, quietly, that it can change until the question shows.
+- **Not you? Change player** asks on the page under the link (**Keep playing** or **Give up Ann**; Esc keeps playing) instead of the browser's own box, which some apps' built-in browsers never show.
+- With every seat taken and no new players let in, the phone's heading says **Every seat is taken**, with what to do on its own line, instead of “Tap your name” over names that can't be tapped. A new player's name box says **Your name (everyone sees it)**, as the team one does, and the wait names who they asked to join as.
+- A phone that loses its network shows **Reconnecting…** over the buzzer at once, instead of a lit BUZZ! for about half a minute, and connects again as soon as it's back online.
+- On a small phone (360×640), BUZZ! with **Pass** under it fits the screen, so a quick press doesn't scroll the page.
+- On a partner clue, the picker's phone says **Your partner is being picked…** until you spin, and “Spinning for your partner…” only while the partner wheel is up.
 
 ## 2026-11-12
 
