@@ -595,7 +595,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     host reveals them. Meant to be captured in OBS (window capture). It mirrors state via `postMessage`.
   - Media plays in the **audience window** so that OBS picks up its audio. The host window shows controls and a muted mirror/progress.
 - **Single window** (the default)
-  - One view: the stage, with the host panel under it (beside it in RPG and board-game rounds on a wide window).
+  - One view: the stage, with the host panel under it (with an audience window, beside it in RPG and board-game rounds on a wide window).
     Nothing answer-revealing is rendered until the host clicks Reveal. `H` (🙈 Hide) hides the host controls (then
     nothing on the stage shows a focus ring until the host moves the keys: Tab, or the board's arrow keys; Show
     controls shows when the mouse moves, or on a touch screen at a first tap, which does nothing else). The
@@ -614,17 +614,19 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     there (`Esc`, `R` and the stage's menu do them). Windows opened mid-game (?,
     📜 Log, 👥 Players, ⚖ Rules, 🔊 Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel,
     never the stage (the full map's screen card beside the map where the panel is wide enough); they scroll in the
-    panel's own box, so the stage keeps its size; the RPG's ✎
-    Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size
-    from the board through a clue's steps (a Daily Double's splash, its question slides, a clue's media controls:
-    room for as many as the round's busiest slide has, in a slides round too), so viewers don't see it zoom down and
-    up: each score chip keeps room for the mark and the score a clue of the round can give it, counted from its score
-    before the clue's marks (the ★ of who picks next takes none). A 🤝
-    partner clue, a wheel or dice tile (its tool, then its question), the Final with the results, a roll-off and the
-    tiebreaker clue, and a board-game round under the stage hold the panel at one height instead: the stage changes
-    size only as they start and end. What scrolls in there comes into view as it comes (a board-game move's landing
-    row, a tool's outcome), and at the end and in the tiebreaker clue the score chips stay whole while the part under
-    them scrolls.
+    panel's own box, so the stage keeps its size, their head (title, ✕, the keys' filter) and foot (Done) staying in
+    sight and the rows fading over the foot while there's more below; the RPG's ✎
+    Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). **The stage is one box the
+    whole game**: the host panel under it is one height in every round and moment (the Final's, `min(clamp(280px,
+    44vh, 440px), 62vh)`), from the board, a clue's steps, a Daily Double, a 🤝 partner clue and a wheel or dice tile to
+    the RPG and board-game rounds (under the stage in one window too; beside it only with an audience window), the
+    Final, the results, a roll-off and the tiebreaker clue, so a crop set on one round fits every other and viewers
+    never see the stage zoom down and up. Each moment's rows scroll in the panel: the status line at its top, the
+    tools row and the fixed bar at its foot; an open 🎲 / 🎡 / 🏁 menu or the 📱 phones list stays inside it too,
+    scrolling. Each score chip keeps room for the mark and the score a clue of the round can give it, counted from its
+    score before the clue's marks (the ★ of who picks next takes none), so the chips don't reflow. What scrolls in
+    there comes into view as it comes (a board-game move's landing row, a tool's outcome), and at the end and in the
+    tiebreaker clue the score chips stay whole while the part under them scrolls.
 - **The host panel's rules** (everything below follows them):
   1. **Each action has one place: its situation's box**, beside the manual choices it's an alternative to (🤝 a partner
      clue, ⭐ a Daily Double, 🎡 / 🎲 a wheel or dice, the Final's wagers and reveals, a tie at the end, the buzzers' row,

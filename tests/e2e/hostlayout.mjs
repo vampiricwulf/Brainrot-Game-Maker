@@ -1,7 +1,7 @@
 // The host panel's layout holds in every state: the fixed bar (↶ Undo, 📜 Log, 🚪 Exit) stays put from the board to a
 // clue, a Daily Double, the Final, an RPG and a board-game round and the end screen; there's never more than one main
 // (.primary) button, and one where the moment has a next step; a confirmation is one strip above the fixed bar (in one
-// window over the tools row: the panel and the stage keep their size, nothing overlaps the fixed bar); and beside the stage (RPG and board-game rounds on a wide window) the
+// window over the tools row: the panel and the stage keep their size, nothing overlaps the fixed bar); and beside the stage (RPG and board-game rounds on a wide window, with an audience window) the
 // fixed bar is a grid with 🚪 Exit in its bottom-right cell, ↶ Undo and ↷ Redo in words and each group on one line (🔊
 // Sound with 📺 Audience and ▭ Scores window ●, at 1280×720 and 1093×526). A Daily Double with three question slides keeps Next slide ▶
 // the main button until its last slide (viewers see where it is: ● ● ○) and its flow row keeps its places (↩ Put back
@@ -585,7 +585,8 @@ try {
   // (The moment with none: the end screen, a tie settled in its tie box.)
   assert(['end'].every((k) => counts[k] === 0), 'and none on the end screen (a tie for first is settled in its box)');
 
-  // Beside the stage (a wide window, RPG and board-game rounds): 🚪 Exit in the fixed bar's bottom-right cell, in both.
+  // Beside the stage (a wide window with an audience window, RPG and board-game rounds; in one window the panel stays
+  // under the stage, see onestage.mjs): 🚪 Exit in the fixed bar's bottom-right cell, in both.
   console.log('Beside the stage:');
   const wide = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const p2 = await wide.newPage();
@@ -595,11 +596,13 @@ try {
   await p2.getByText(/^Opened “/).waitFor();
   await p2.getByRole('button', { name: '▶ Play' }).click();
   assert((await p2.getByRole('button', { name: 'Start game ▶' }).locator('kbd').innerText()) === 'Ctrl+⏎', 'Start game ▶ shows its key (Ctrl+⏎) on it');
+  const [aud2] = await Promise.all([p2.waitForEvent('popup'), p2.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  await aud2.waitForLoadState('domcontentloaded');
   // A double-click on Start game ▶: its second click lands on the host panel's fixed bar, and does nothing there.
   await p2.getByRole('button', { name: 'Start game ▶' }).dblclick();
   await p2.locator('.panel').waitFor();
   await p2.waitForTimeout(500);
-  assert(wide.pages().length === 1 && (await p2.locator('.panel .confirm').count()) === 0, 'a double-click on Start game ▶ opens no audience window and asks nothing');
+  assert(wide.pages().length === 2 && (await p2.locator('.panel .confirm').count()) === 0, 'a double-click on Start game ▶ opens no other window and asks nothing');
   const exitIn = async () => {
     await p2.waitForTimeout(450);
     const e = await p2.locator('.panel .fixed').getByRole('button', { name: '🚪 Exit' }).boundingBox();
@@ -614,7 +617,7 @@ try {
     await p2.locator('.panel .status', { hasText: name }).waitFor();
   };
   await p2Next('Adventure');
-  assert(await p2.locator('.play.side').count(), 'an RPG round on a wide window puts the panel beside the stage');
+  assert(await p2.locator('.play.side').count(), 'an RPG round on a wide window with an audience window puts the panel beside the stage');
   const inRpg = await exitIn();
   await p2Next('Board game');
   const inBg = await exitIn();
@@ -648,8 +651,8 @@ try {
       };
     });
     assert(
-      bar.oneLine && bar.undoWords && bar.stream.join() === '🔊 Sound,📺 Audience,▭ Scores window ●',
-      `${w}×${h} beside the stage: ↶ Undo and ↷ Redo in words, each of the bar's groups on one line, 🔊 Sound with 📺 Audience and ▭ Scores window (${JSON.stringify(bar)})`,
+      bar.oneLine && bar.undoWords && bar.stream.join() === '🔊 Sound,📺 Audience ●,▭ Scores window ●',
+      `${w}×${h} beside the stage: ↶ Undo and ↷ Redo in words, each of the bar's groups on one line, 🔊 Sound with 📺 Audience ● and ▭ Scores window ● (${JSON.stringify(bar)})`,
     );
   }
   await p2.setViewportSize({ width: 1280, height: 720 });

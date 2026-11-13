@@ -4,11 +4,7 @@
   import { mediaCommand } from '../lib/sync.svelte';
   import { toast } from '../lib/app.svelte';
 
-  /**
-   * `reserve`: how many rows keep their room, empty where nothing plays (a round with media on its slides, as many as
-   * its busiest slide has: see HostPanel).
-   */
-  let { dual, reserve = 0 }: { dual: boolean; reserve?: number } = $props();
+  let { dual }: { dual: boolean } = $props();
 
   // In dual mode the audience window's copies are the real (audible) ones.
   const items = $derived<[string, MediaState][]>(
@@ -31,8 +27,8 @@
   }
 </script>
 
-{#if items.length || reserve}
-  <div class="mc" class:held={!items.length}>
+{#if items.length}
+  <div class="mc">
     <!-- "Click the audience window once" is in SoundWarnings: it applies to every sound, not only slide media. -->
     {#each items as [id, m], i (id)}
       <div class="item" class:failed={m.failed} role="group" aria-label={names[i]}>
@@ -94,12 +90,6 @@
         {/if}
       </div>
     {/each}
-    <!-- (Hidden rows like an item's, as tall, for the rest: the stage viewers see keeps its size as a slide's media comes up.) -->
-    {#each { length: Math.max(0, reserve - items.length) }, i (i)}
-      <div class="held-row" aria-hidden="true" inert>
-        <button class="small" tabindex="-1" disabled aria-label="Play">▶</button><input class="seek" type="range" tabindex="-1" disabled aria-label="Seek" />
-      </div>
-    {/each}
   </div>
 {/if}
 
@@ -109,8 +99,7 @@
     flex-direction: column;
     gap: 4px;
   }
-  .item,
-  .held-row {
+  .item {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -118,9 +107,6 @@
     background: var(--panel-2);
     border-radius: 8px;
     padding: 4px 8px;
-  }
-  .held-row {
-    visibility: hidden;
   }
   .item.failed {
     border: 1px solid var(--warn);

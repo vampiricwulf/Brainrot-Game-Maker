@@ -40,6 +40,12 @@ In two-window mode, **📺 Open it now** (or **Start game**) opens the audience 
 > **Single window shows viewers everything on screen**, including wagers as you type them, answers, host notes and
 > hidden objects. Use the separate audience window when that matters.
 
+In a single window the stage keeps one size and place for the whole game, from the first board to the Final and the
+results, so a crop you set in OBS once fits every round. The host panel under it is the same height throughout (RPG and
+board-game rounds included: their controls go beside the stage only with the audience window), and each moment's rows
+scroll inside it. **👥 Players**, **⚖ Rules** and the keys (**?**) open in that panel too: their title and **Done**
+stay in sight while the middle scrolls, with a fade at the bottom while there's more below.
+
 Until you press **Start game**, viewers see a "Starting soon…" card.
 
 ### Resuming a game

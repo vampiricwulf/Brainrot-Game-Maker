@@ -16,6 +16,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 
 - With phone buzzers, who passed is easy to see with a big table: the buzzers' row puts the count first (“Passed 6 of 8: Ann, Bob…”, in the room the 🔔 Buzzers open hint had), and the chips of players who passed fade, with “passed” on them. Once everyone has passed, the row also says ↺ Reset lets them all buzz again (after a hint, say).
+- One window: the stage viewers see keeps one size and place for the whole game, so a crop set in OBS on the board fits every round. Before, it moved and changed size from round to round (the Final's and the results' were the smallest of the night, an RPG or board game's moved to the left edge). The host panel under it is now one height in every round, the Final's, and each moment's rows scroll inside it; RPG and board-game rounds keep their controls under the stage too (beside it only with the audience window open).
 - One window: 👥 Players, ⚖ Rules and the keys (?) keep their title and **Done** in sight as they scroll inside the host panel, with a fade at the bottom while there's more below (Done was out of sight, and nothing showed that they scroll).
 - A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
 - In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window.

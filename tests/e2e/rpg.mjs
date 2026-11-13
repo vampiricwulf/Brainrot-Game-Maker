@@ -1071,9 +1071,9 @@ try {
   await page.keyboard.press('j');
   const full = page.getByRole('dialog', { name: 'Full map' });
   await full.waitFor();
-  // (One window: over the host panel beside the stage, never the stage: the host's map names screens not found yet.)
+  // (One window: over the host panel under the stage, never the stage: the host's map names screens not found yet.)
   const [fb, sb] = [await full.boundingBox(), await page.locator('.stage-box').boundingBox()];
-  assert(fb.x >= sb.x + sb.width - 1, `one window: the full map opens over the host panel, not the stage (map at x ${Math.round(fb.x)}, the stage ends at ${Math.round(sb.x + sb.width)})`);
+  assert(fb.y >= sb.y + sb.height - 1, `one window: the full map opens over the host panel, not the stage (map at y ${Math.round(fb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`);
   const [tb, xb] = [await full.locator('.modal-title').boundingBox(), await full.getByRole('button', { name: 'Close' }).boundingBox()];
   assert(xb.y < tb.y + tb.height && xb.x + xb.width > fb.x + fb.width - 40, `its ✕ stays at the top right, on the title's line (✕ at ${Math.round(xb.x)},${Math.round(xb.y)}; title at y ${Math.round(tb.y)})`);
   await full.getByRole('button', { name: 'Overworld · Screen B1' }).click();

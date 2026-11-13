@@ -352,9 +352,10 @@
   const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
   /** The pre-game screen's two columns (its CSS's breakpoint): ✅ Before you start goes at the foot of the right one. */
   const twoCols = new MediaQuery('(min-width: 1200px)');
-  // RPG and board-game rounds have a tall host panel (the player cards, the round's own controls): on a wide window it
-  // goes beside the stage instead of under it, so the stage keeps a good share. (The Final fits under the stage.)
-  const side = $derived(wide.current && (session.phase === 'rpg' || session.phase === 'boardgame'));
+  // RPG and board-game rounds have a tall host panel (the player cards, the round's own controls): with an audience
+  // window, on a wide window, it goes beside the host's stage copy instead of under it. In one window it stays under the
+  // stage, as in every other round: the stage viewers see keeps one size and place the whole game (its rows scroll).
+  const side = $derived(dual && wide.current && (session.phase === 'rpg' || session.phase === 'boardgame'));
 
   // Timeouts that touch the live state (score pops, roll-off pickers) are cancelled if the game is left.
   const pending = new Set<ReturnType<typeof setTimeout>>();
@@ -7384,8 +7385,9 @@
     height: 100%;
   }
   /* One window: exactly the window's height, never scrolling (that would take the stage out of sight on a short or
-     scaled-up screen). The stage keeps its floor; the host panel under it scrolls instead. (Its pop-ups are fixed to
-     the window, so its scrolling never cuts them off: see anchored.ts.) */
+     scaled-up screen). The host panel under the stage is one height the whole game (see HostPanel's .panel:not(.dual)),
+     so the stage viewers see keeps one size and place from the first round to the results; the panel's rows scroll
+     instead. (Its pop-ups are fixed to the window, so its scrolling never cuts them off: see anchored.ts.) */
   .play:not(.dual) {
     overflow: hidden;
   }

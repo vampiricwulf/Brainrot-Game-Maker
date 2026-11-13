@@ -21,7 +21,7 @@
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { endLine, tiebreakLine } from './host/endlines';
   import { movedNew } from './whatmoved.svelte';
-  import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isBoardGame, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isBoardGame, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
@@ -188,7 +188,7 @@
     undoText?: string | null;
     redoText?: string | null;
     dual: boolean;
-    /** RPG and board-game rounds on a wide window: the panel is a column beside the stage (see Play's `side`). */
+    /** RPG and board-game rounds on a wide window, with an audience window: the panel is a column beside the stage (see Play's `side`). */
     side?: boolean;
     /** P was pressed and the next number key picks the picker. */
     pickerPending?: boolean;
@@ -336,41 +336,9 @@
   // (Off in a copy with no buzzer server, see buzzerOn.)
   const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !own && !everyone);
   /**
-   * Single window, buzzer mode: the buzzers' row keeps its room (empty) where there are no buzzers, on the board and on a
-   * Daily Double's question, so the stage viewers see keeps one size.
-   */
-  const roomForBuzzers = $derived(!dual && buzzerOn(game.settings));
-  /**
-   * Single window: a board or slides round with videos, sounds or embeds on its slides keeps the media controls' room
-   * (empty) through the round, as many rows as the most on any one slide, so the stage viewers see doesn't shrink when a
-   * slide's media comes up. (Other games don't give up that room.)
-   */
-  const roomForMedia = $derived.by(() => {
-    // (Not in a 🤝 partner clue: its panel keeps a height of its own.)
-    if (dual || side || partner) return 0;
-    const slides =
-      isBoard(round) && (session.phase === 'board' || session.phase === 'clue')
-        ? round.categories.flatMap((c) => c.clues.flatMap((q) => [...questionSlides(q), q.answerSlide]))
-        : isSlides(round) && session.phase === 'slides'
-          ? questionSlides(round)
-          : [];
-    return Math.max(0, ...slides.map((sl) => sl?.elements.filter((e) => e.kind === 'video' || e.kind === 'audio' || e.kind === 'embed').length ?? 0));
-  });
-  /**
-   * Single window: the panel's height on the board (measured there). A Daily Double's splash holds the panel to it (its
-   * box scrolls, the chips and the Wager box in sight), so the stage keeps its size from the board to the splash to the
-   * question.
-   */
-  let panelH = $state(0);
-  let boardH = $state(0);
-  $effect(() => {
-    if (session.phase === 'board' && !session.intro && panelH) boardH = panelH;
-  });
-  const ddHold = $derived(ddWager && !dual && !side && boardH > 0);
-  /**
-   * Single window, under the stage: the panel keeps one height (the Final's) through the results, a roll-off and the
-   * tiebreaker clue, through a board-game round's turns, and through a wheel or dice tile (its tool, then its question),
-   * so the stage changes size only as the tile opens and closes. Its rows scroll instead (see .held).
+   * Moments whose rows scroll in the panel's one height (single window, under the stage) in their own way: the results,
+   * a roll-off and the tiebreaker clue (the players' chips kept whole first: .keepchips), a board-game round's turns, and
+   * a wheel or dice tile (its tool kept whole at the top).
    */
   const held = $derived(
     !side &&
@@ -903,10 +871,7 @@
   class:partnerclue={!!partner && !side}
   class:held
   class:keepchips={held && (session.phase === 'end' || session.phase === 'tiebreaker')}
-  class:ddhold={ddHold}
   class:quiettools={quietTools}
-  bind:offsetHeight={panelH}
-  style:height={ddHold ? `${boardH}px` : undefined}
   onpointerdowncapture={(e) => goon?.check && e.target instanceof Element && !e.target.closest('[data-goon], .cover-toggle') && goon.away()}
 >
   <!-- What's going on, read out to screen readers as it changes (buttons and hints left out). Its chips on the right. -->
@@ -1068,7 +1033,7 @@
   {/if}
 
   <SoundWarnings {dual} onhelp={onsound} />
-  <MediaControls {dual} reserve={roomForMedia} />
+  <MediaControls {dual} />
 
   {#if showPlayers}
     <div class="players">
@@ -1443,12 +1408,6 @@
           {@render flowEnd()}
         </div>
       {/if}
-      <!-- Single window, buzzer mode: the buzzers' row (on clues, below) kept on the board too, empty, so the stage viewers
-           see keeps one size when a clue opens (and on a Daily Double's question, below). -->
-      {#if roomForBuzzers && session.phase === 'board'}
-        <div class="row buzzrow" aria-hidden="true"></div>
-      {/if}
-
       {#if showAward}
         {#if buzzing}
           <!-- Buzzer mode: the first one in answers, the others are locked out until the buzzers open again. The buzzers'
@@ -1506,10 +1465,6 @@
               <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title={VERBS.resetBuzzers.title}>{VERBS.resetBuzzers.label}</button>
             {/if}
           </div>
-        {:else if roomForBuzzers && session.phase === 'clue' && own && !own.setup}
-          <!-- A Daily Double's or a partner clue's question has no buzzers (its players answer): their row is kept, empty,
-               as on the board. -->
-          <div class="row buzzrow" aria-hidden="true"></div>
         {/if}
         <div class="row award" class:flowrow={session.phase === 'clue' || session.phase === 'tiebreaker'} data-flowrow>
           {#if session.phase === 'clue' && info}{@render putBack()}{/if}
@@ -1745,22 +1700,25 @@
        floor, and the panel's tall parts scroll. */
     min-height: 0;
   }
-  /* Single window: an open 🎲 / 🎡 / 🏁 menu, the 📱 phones list or a color box's picker may not cover the stage, so the
-     panel grows to make room for it (the stage shrinks, down to its floor) and the bottom rows move to its foot. The
-     pop-up stays inside the panel, scrolling if it must (or, on a window too short for even that, goes where there's
-     room). */
-  .panel:not(.dual):has(:global(:is(.tl .menu, #phone-pop, input[data-picking]))) {
-    min-height: min(62vh, 420px);
+  /* Single window: one height the whole game, the Final's (room for its wagers and reveals), from the board to a clue,
+     a Daily Double, a 🤝 partner clue, the RPG and board-game rounds, the Final, the tiebreaker and the results: the
+     stage viewers see keeps one size and place all show long. Each moment's rows scroll in it (the action part, the
+     players' chips); the status line stays at its top, the tools row and the fixed bar at its foot. An open 🎲 / 🎡 /
+     🏁 menu, the 📱 phones list or a color box's picker stays inside it too, scrolling if it must (or, on a window too
+     short for even that, goes where there's room). (At most 62% of the window: the stage keeps its floor.) */
+  .panel:not(.dual) {
+    flex: none;
+    height: min(clamp(280px, 44vh, 440px), 62vh);
   }
-  .panel:not(.dual):has(:global(.tl .menu)) > .toolsrow {
-    margin-top: auto;
+  .panel:not(.dual) > .act {
+    margin-bottom: auto;
   }
   .mode-host {
     min-height: 0;
     overflow: auto;
   }
   /*
-    Beside the stage (RPG and board-game rounds on a wide window): a column the window's height, the same stack with the
+    Beside the stage (RPG and board-game rounds on a wide window, with an audience window): a column the window's height, the same stack with the
     round's controls scrolling in the middle and smaller buttons at its foot. An open 🎲 / 🎡 / 🏁 menu pops up over
     the column, never the stage.
   */
@@ -2072,16 +2030,9 @@
     }
   }
   /* In the column: the action part takes the height left and scrolls; the tools and the fixed bar stay at its foot. */
-  /* The Final in a single window: the panel keeps one height through its steps (the title card to the reveals), and on
-     through the results, a roll-off or the tiebreaker clue, so the stage viewers see doesn't change size; its rows
-     scroll in there instead. A board-game round's under the stage too, through its turns (the landing row comes and
-     goes). A 🤝 partner clue's too, from PARTNER UP! (the wheel, the question and 📤 Distribute, a steal) to the answer,
-     and a wheel or dice tile's (its tool, then its question): the stage changes size only as the tile opens and closes.
-     A partner clue's box scrolls, its foot kept in sight (📤 Send and start and ✔ Got it / ✘ Missed; the steal's row);
-     a tile's tool keeps its height at the top (an outcome's score buttons in sight), what's under it scrolls. */
-  .panel:is(.final, .partnerclue, .held):not(.dual) {
-    height: clamp(280px, 44vh, 440px);
-  }
+  /* In a single window (the panel one height: see .panel:not(.dual)), a 🤝 partner clue's box scrolls, its foot kept in
+     sight (📤 Send and start and ✔ Got it / ✘ Missed; the steal's row); a wheel or dice tile's tool keeps its height at
+     the top (an outcome's score buttons in sight), what's under it scrolls. */
   .panel.held:not(.dual) > .act > .action > .tools {
     flex-shrink: 0;
   }
@@ -2104,8 +2055,7 @@
     max-height: 100%;
     overflow: auto;
   }
-  .panel:is(.final, .partnerclue, .held):not(.dual) > .toolsrow,
-  .panel.ddhold > .toolsrow {
+  .panel:not(.dual) > .toolsrow {
     margin-top: auto;
   }
   /* A situation's box open: the tools row in the ghost look (its words and edges as they are). What's on keeps its
