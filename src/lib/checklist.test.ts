@@ -24,7 +24,7 @@ describe('the checklist in the sidebar', () => {
       ['No rounds yet', true],
     ]);
     // Anything else, as a file that won't play, isn't one of them.
-    expect(checklistLines(game, [{ text: '1 video/audio file this browser may not play', tab: 'media', level: 'warn' }])[0].starter).toBeUndefined();
+    expect(checklistLines(game, [{ text: '1 video/audio file this browser may not play: 🖼 Media says what to do', tab: 'media', level: 'warn' }])[0].starter).toBeUndefined();
   });
   it('says one line a round, and goes to its first unfinished tile', () => {
     const game = jeopardyGame();

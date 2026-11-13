@@ -129,6 +129,9 @@
     }
     return null;
   }
+  /** What to do with a file the app can't read (so can't convert) and whose type this browser may not play. */
+  const cantReadAdvice = (m: MediaRef): string =>
+    `This browser may not play ${typeName(m) || 'this kind of'} files, and the app can’t read this one to convert it: convert it to ${m.kind === 'video' ? 'MP4 (H.264) with another program (HandBrake is free)' : 'MP3 with another program'}, then Replace everywhere…`;
   /** Why Replace everywhere… waits (a job on the file), or what it does. */
   function replaceHint(m: MediaRef): string {
     const job = jobFor(m.id);
@@ -530,6 +533,7 @@
       {@const job = jobFor(m.id)}
       {@const v = !m.url && (m.kind === 'video' || m.kind === 'audio') ? verdictOf(m.id) : undefined}
       {@const fix = fixOf(m, v, copy)}
+      {@const unread = !m.url && (m.kind === 'video' || m.kind === 'audio') && typeof v === 'object' && v.is === 'unknown' && !canPlay(m.mime)}
       <!-- The keyboard selects with the checkbox. -->
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
       <div
@@ -628,9 +632,10 @@
           {:else if typeof v === 'object' && v.is === 'silent'}<span class="warn" title={whyLine(v)}>{' '}· ⚠ plays without its sound here</span>
           {:else if !m.url && (m.kind === 'video' || m.kind === 'audio') && (typeof v !== 'object' || v.is === 'unknown') && !canPlay(m.mime)}<span
               class="warn"
-              title={m.mime}>{' '}· may not play</span
+              title={unread ? cantReadAdvice(m) : m.mime}>{' '}· may not play</span
             >{/if}
         </div>
+        {#if unread}<div class="meta warn" data-cant-read>⚠ {cantReadAdvice(m)}</div>{/if}
         {#if job}
           <div class="meta muted" data-job-line>
             {jobText(job)}
@@ -686,7 +691,7 @@
           {#if !m.url && !mediaUrls[m.id]}
             <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
           {:else}
-            <button class="ghost small" onclick={() => replace(m)} disabled={!!job} title={replaceHint(m)}>Replace everywhere…</button>
+            <button class="small {unread ? 'primary' : 'ghost'}" onclick={() => replace(m)} disabled={!!job} title={replaceHint(m)}>Replace everywhere…</button>
           {/if}
           <!-- 🔄 one that won't play here (or plays without its sound); ↻ one on a 🤫 card that phones can't open; 🗜 a copy
                for phones. -->

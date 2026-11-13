@@ -528,7 +528,12 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   if (fails) out.push({ text: `${plural(fails, 'video/audio file')} won’t play in this browser, and it can’t convert ${them(fails)}: 🖼 Media says why`, tab: 'media', level: 'warn' });
   if (silent)
     out.push({ text: `${plural(silent, 'video')} play${silent === 1 ? 's' : ''} without ${silent === 1 ? 'its' : 'their'} sound in this browser (🖼 Media says why)`, tab: 'media', level: 'warn' });
-  if (unsure) out.push({ text: `${plural(unsure, 'video/audio file')} this browser may not play`, tab: 'media', level: 'warn' });
+  if (unsure)
+    out.push({
+      text: `${plural(unsure, 'video/audio file')} this browser may not play: 🖼 Media says what to do`,
+      tab: 'media',
+      level: 'warn',
+    });
 
   const links = game.media.filter((m) => m.url);
   const online = onlineCount(game);

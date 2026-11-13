@@ -85,7 +85,13 @@ try {
 
   // Bytes the app can't read: as before, its type alone says.
   const fake = await checked('fake.mov');
-  assert(fake.verdict === 'unknown' && fake.text.endsWith('· may not play') && fake.title === 'video/quicktime', `fake.mov: still “${fake.text}”`);
+  const advice = 'This browser may not play MOV files, and the app can’t read this one to convert it: convert it to MP4 (H.264) with another program (HandBrake is free), then Replace everywhere…';
+  assert(fake.verdict === 'unknown' && fake.text.endsWith('· may not play') && fake.title === advice, `fake.mov: still “${fake.text}”, its title says what to do (${fake.title})`);
+  const fakeLine = (await card('fake.mov').locator('[data-cant-read]').innerText()).trim();
+  assert(fakeLine === `⚠ ${advice}`, `and a line on its card says it, where it stays (${fakeLine})`);
+  const fakeReplace = card('fake.mov').locator('.foot').getByRole('button', { name: 'Replace everywhere…' });
+  assert(await fakeReplace.evaluate((b) => b.classList.contains('primary')), 'with Replace everywhere… the strong button on its card');
+  assert((await card('talk.mkv').locator('[data-cant-read]').count()) === 0 && !(await card('clip.mkv').locator('.foot').getByRole('button', { name: 'Replace everywhere…' }).evaluate((b) => b.classList.contains('primary'))), 'files the app reads get neither');
   const toasts = await page.evaluate(() => window.__seen.filter((t) => t.startsWith('⚠ This browser may not play')));
   assert(toasts.includes('⚠ This browser may not play "fake.mov" (video/quicktime). Try converting it to MP4 (H.264) or MP3.'), `and today’s toast, word for word (${toasts.join(' | ')})`);
 
@@ -94,7 +100,7 @@ try {
   const want = [
     '1 video/audio file won’t play in this browser, and it can’t convert it: 🖼 Media says why',
     '1 video plays without its sound in this browser (🖼 Media says why)',
-    '1 video/audio file this browser may not play',
+    '1 video/audio file this browser may not play: 🖼 Media says what to do',
   ];
   await page.waitForFunction((want) => want.every((w) => [...document.querySelectorAll('nav .problem')].some((b) => b.textContent.replace(/\s+/g, ' ').includes(w))), want, { timeout: 20_000 });
   const got = (await lines()).filter((t) => /browser/.test(t));
@@ -109,7 +115,8 @@ try {
   await page.locator('nav > button', { hasText: '🖼 Media' }).click();
   const again = await Promise.all(['clip.mkv', 'talk.mkv', 'ac3.mka', 'fake.mov'].map(async (n) => (await checked(n)).verdict));
   assert(again.join() === 'plays,silent,fails,unknown', `after a reload, each is checked again: ${again.join(', ')}`);
-  const after = await page.evaluate(() => window.__seen.filter((t) => t.startsWith('⚠ This browser')));
+  // (Toasts only: the card's own line for fake.mov says it again, where it stays.)
+  const after = await page.evaluate(() => window.__seen.filter((t, i) => t.startsWith('⚠ This browser') && !window.__seenWhere[i]?.el.includes('data-cant-read')));
   assert(!after.length, `with no toast (${after.join(' | ')})`);
   assert(!(await page.locator('[data-convert-notice]').count()), 'nor any note at the top: those are for files just added');
 

@@ -374,7 +374,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   page element also plays a moment of it, to see whether it opens, decodes frames and decodes sound. 🖼 Media then
   says "won't play here" or "plays without its sound here" (its title says why: an HEVC picture, Dolby Digital
   sound…), and the checklist counts them. A file the app can't read keeps the type-based warning ("may not play"),
-  as does one not checked yet.
+  as does one not checked yet; once checked, its card also says, on a line of its own, to convert it to MP4 (H.264)
+  or MP3 with another program and then Replace everywhere… (the card's strong button then), and the checklist's line
+  says 🖼 Media says what to do.
 - **🔄 Convert** (editor only): a video or sound added in the editor that won't play here (or plays without its sound)
   gets a note at the top of the editor and a toast (naming nothing; added in the clue editor, which covers that
   note, the toast points to the item's own panel and its 🔄 Convert…; added in a window with no such panel, a wheel
