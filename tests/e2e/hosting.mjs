@@ -413,14 +413,25 @@ try {
   await page.keyboard.press('h');
   await page.locator('.panel').waitFor({ state: 'detached' });
   await page.waitForFunction(() => !!document.activeElement?.closest('.stage-box'));
-  const ring = await page.evaluate(() => [document.activeElement.matches(':focus-visible'), getComputedStyle(document.activeElement).outlineStyle]);
-  assert(ring.join() === 'true,none', `one window, controls hidden: the keys are on the stage, with no focus ring on stream (${ring.join(', ')})`);
+  const ring = await page.evaluate(() => {
+    const a = document.activeElement;
+    // (A tile's own look, not its focus band: the same shadow as a tile without the keys.)
+    const other = a.matches('.tile') ? [...document.querySelectorAll('.stage-box .board .tile:not(.used)')].find((t) => t !== a) : null;
+    return [a.matches(':focus-visible'), getComputedStyle(a).outlineStyle, !other || getComputedStyle(a).boxShadow === getComputedStyle(other).boxShadow];
+  });
+  assert(ring.join() === 'true,none,true', `one window, controls hidden: the keys are on the stage, with no focus ring on stream (${ring.join(', ')})`);
   // The host's own arrow key on the board: they see which tile has the keys (Enter opens it).
   const was = await focused();
   await page.keyboard.press((await page.evaluate(() => document.activeElement.dataset.cat)) === '0' ? 'ArrowRight' : 'ArrowLeft');
   await page.waitForFunction((w) => document.activeElement?.matches('.stage-box .board .tile') && document.activeElement.getAttribute('aria-label') !== w, was);
-  const moved = await page.evaluate(() => [document.activeElement.getAttribute('aria-label'), getComputedStyle(document.activeElement).outlineStyle]);
-  assert(moved[1] !== 'none', `…until the host moves them with the arrow keys: then the tile they're on shows it (${was} → ${moved.join(', ')})`);
+  const moved = await page.evaluate(() => {
+    const s = getComputedStyle(document.activeElement);
+    return [document.activeElement.getAttribute('aria-label'), s.outlineStyle, s.outlineColor, s.outlineWidth];
+  });
+  assert(
+    moved[1] === 'solid' && moved[2] === 'rgb(255, 255, 255)' && moved[3] === '3px',
+    `…until the host moves them with the arrow keys: then the tile they're on shows it, a white ring plain on a blue tile (${was} → ${moved.join(', ')})`,
+  );
   await page.keyboard.press('l');
   const log = page.locator('aside.in-panel');
   await log.waitFor();

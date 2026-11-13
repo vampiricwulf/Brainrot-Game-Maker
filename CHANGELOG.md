@@ -32,6 +32,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - Once everyone has passed, the status line says just “Answer hidden · everyone passed” (the buzzers' row says to reveal the answer, once), and Enter says “Everyone passed: N reveals the answer” instead of “Select a player first”.
 - After **↶ Reopen** (the status line's button or a tile picked from **↶ Reopen a tile… ▾**) the keys go to that tile, so the arrows and Enter go on from it, and Esc in the Amount box opened with **± Adjust score** gives them back to the board, not the top of the page.
+- The board tile the keys are on has a clear white ring in a dark band, instead of a thin blue line lost on a blue tile (still none on stream while the controls are hidden in one window).
 
 ## 2026-11-12
 

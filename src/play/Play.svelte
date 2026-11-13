@@ -7283,6 +7283,7 @@
      until the host moves the keys themselves (see ringOff). */
   .play.hidden.ring-off:not(.dual) .stage-box :global(:focus-visible) {
     outline: none;
+    --tile-ring: 0 0 0 transparent;
   }
   /* And no cursor over it while the mouse is still (as in the audience window). */
   .play.hidden.still:not(.dual) .stage-box,

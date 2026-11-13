@@ -177,6 +177,7 @@
     border-radius: var(--tile-radius, 0);
     padding: 12px;
     box-shadow:
+      var(--tile-ring, 0 0 0 transparent),
       inset 0 0 0 var(--tile-border-width, 3px) var(--tile-border-color, rgba(0, 0, 0, 0.35)),
       0 0 var(--glow-size, 0) var(--glow, transparent),
       var(--tile-drop, 0 0 0 transparent);
@@ -312,6 +313,13 @@
   }
   .tile:disabled {
     opacity: 1;
+  }
+  /* The keys' tile on the host's board: a white ring in a dark band, plain on any tile colour (the app's thin blue ring
+     is lost on a blue tile). One window with the controls hidden takes it off, as Play's ring-off does. */
+  .tile:focus-visible {
+    --tile-ring: inset 0 0 0 6px rgba(0, 0, 0, 0.6);
+    outline: 3px solid #fff;
+    outline-offset: -9px;
   }
   /* (Drawn content: never in the tile's text, so the host's stage reads as the audience's.) */
   .tile.host-mark::after {
