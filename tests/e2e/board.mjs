@@ -468,6 +468,13 @@ try {
   await page.keyboard.type('How many rizz?');
   assert((await page.getByPlaceholder('Type the tiebreaker question…').inputValue()) === 'How many rizz?', 'ticking Include a tiebreaker clue puts the keys in its question box');
   assert(await slideShows('How many rizz?'), "the Tiebreaker's quick field writes on its slide");
+  // At 1280 (and around it) its two tabs show whole: the slide's buttons drop under them rather than squeeze them.
+  for (const width of [1260, 1280, 1300]) {
+    await page.setViewportSize({ width, height: 720 });
+    const whole = await page.waitForFunction(() => { const l = document.querySelector('main .tabs .tablist'); return l.scrollWidth <= l.clientWidth; }, null, { timeout: 3000 }).then(() => true, () => false);
+    assert(whole, `at ${width}, the tiebreaker's “Answer slide (hidden until revealed)” tab isn't cut under ＋ Add slide`);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   // Like a clue, the tiebreaker can have more question slides: ＋ Add slide opens a second one, its quick field types on it.
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Question 2' }).waitFor();

@@ -226,6 +226,8 @@
   /** As its tab shows it (S3, Q3 with many). */
   const tabLabel = (i: number) => (qslides.length > SHORT_TABS ? `${plain ? 'S' : 'Q'}${i + 1}` : tabName(i));
   let tablist = $state<HTMLElement>();
+  // Two tabs say their names in full; they are never squeezed under a scrollbar (the group drops under them instead).
+  const longAnswer = $derived(!plain && qslides.length <= 1 && !list.length);
   /** The focus on the open tab (after a key changed the tabs, a card's bar went, or Enter in its Card name box). */
   export function focusTab(): Promise<void> {
     return tick().then(() => tablist?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus());
@@ -290,7 +292,7 @@
 
 <div class="tabs">
   <!-- (One Tab stop, the open slide's: ←/→ go along.) -->
-  <div class="tablist" role="tablist" aria-label="Slides" tabindex="-1" bind:this={tablist} onkeydown={tabKey}>
+  <div class="tablist" class:whole={longAnswer} role="tablist" aria-label="Slides" tabindex="-1" bind:this={tablist} onkeydown={tabKey}>
     {#each qslides as s, i (i)}
       {@const on = !cardOpen && tab === 'q' && at === i}
       <button
@@ -341,7 +343,7 @@
         onclick={() => ((onCard = false), (side = 'a'))}
         oncontextmenu={(e) => rightClick(e, qslides.length + list.length)}
         title={slideTabTitle('Answer', holder.answerSlide ? slideText(holder.answerSlide) : '', 'Hidden until revealed. Right-click: its menu')}
-        >{qslides.length > 1 || list.length ? 'Answer' : 'Answer slide (hidden until revealed)'}</button
+        >{longAnswer ? 'Answer slide (hidden until revealed)' : 'Answer'}</button
       >
     {/if}
   </div>
@@ -394,6 +396,9 @@
     min-width: 0;
     overflow-x: auto;
     scrollbar-width: thin;
+  }
+  .tablist.whole {
+    min-width: max-content;
   }
   .tablist button {
     flex: none;
