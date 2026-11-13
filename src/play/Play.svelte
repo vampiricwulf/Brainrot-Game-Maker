@@ -3274,9 +3274,12 @@
    * it runs.)
    */
   const allPassed = $derived(everyonePassed(go));
+  /** An Undo or Redo is being followed: everyone passed again by it isn't a new step (that would empty the Redos). */
+  let following = false;
   $effect(() => {
     if (!allPassed) return;
     untrack(() => {
+      if (following) return;
       const t = app.live.timer;
       if (!t || t.expired || timerRemaining(t) <= 0 || !info) return;
       const timer = $state.snapshot(t) as TimerState;
@@ -3876,6 +3879,8 @@
    * picker, a Players or Final change). Returns what it took back, or null with nothing to undo.
    */
   function undoOnce(): string | null {
+    following = true;
+    void tick().then(() => (following = false));
     undoIntoFinal();
     const next = nextUndo(session);
     if (next?.log === 'action') {
@@ -3901,6 +3906,8 @@
 
   /** One Redo, back the way the Undos went. Returns what it brought back, or null with nothing to redo. */
   function redoOnce(): string | null {
+    following = true;
+    void tick().then(() => (following = false));
     const finalWas = session.phase === 'final' ? session.finalStep : undefined;
     // A Redo back onto the Final's question starts its countdown and think music again (as N did); onto the answer, the music stops.
     const after = (t: string | null) => {
