@@ -96,6 +96,10 @@ try {
   await insp.getByLabel('Plays to').fill('1:00');
   await insp.getByLabel('Plays to').press('Enter');
   assert((await insp.getByLabel('Players see').count()) === 0, 'Players see is offered only with Sound only on');
+  assert(
+    (await insp.locator('[data-yt-try]').innerText()) === 'Try the part it plays with ▶ Preview (sound on).' && (await insp.getByRole('button', { name: '▶ Try it' }).count()) === 0,
+    'a YouTube item has no ▶ Try it, so a line under Plays from … to says to try the part with ▶ Preview'
+  );
   const soundOnly = insp.getByLabel('Sound only (hide the video)');
   await soundOnly.check();
   await page.locator('.canvas .card.dim').waitFor();
@@ -155,6 +159,7 @@ try {
   assert((await page.locator('.canvas .card.dim, .canvas .badge').count()) === 0, 'a card: a sound only item pasted on it shows no Sound only badge');
   assert((await insp.getByLabel('Sound only (hide the video)').count()) === 0 && (await insp.getByLabel('Players see').count()) === 0, 'its Inspector offers no Sound only');
   assert((await insp.getByText('On a 🤫 card it plays in YouTube’s own player').count()) === 1, 'and says a card’s YouTube video plays in YouTube’s own player');
+  assert((await insp.locator('[data-yt-try]').count()) === 0, 'and no line about ▶ Preview, which a card has none of');
   assert((await page.getByText('YouTube (sound only)').count()) === 0, 'and its layer and the item bar call it just YouTube');
   await clueDialog.locator('select').first().selectOption('standard');
   await page.getByRole('button', { name: 'Done' }).click();

@@ -511,6 +511,10 @@
             <audio bind:this={tryEl} src={tryUrl} onloadedmetadata={tryFrom} onended={stopTry}></audio>
           {/if}
         {/if}
+        {#if el.kind === 'embed' && el.embedKind === 'youtube' && !card}
+          <!-- (No ▶ Try it for a YouTube link: its player only plays on the slide.) -->
+          <p class="hint" data-yt-try>Try the part it plays with ▶ Preview (sound on).</p>
+        {/if}
         {#if el.endAt !== undefined && el.endAt <= (el.startAt ?? 0)}
           <p class="warn small" role="status">“to” isn't after “from”, so it's left out: the clip plays to its end.</p>
         {/if}

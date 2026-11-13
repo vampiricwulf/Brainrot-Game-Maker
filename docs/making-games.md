@@ -74,7 +74,7 @@ video, audio or YouTube, arranged freely.
 - **✎ Edit video… / sound…** trims a file, and crops and resizes a video. The change applies everywhere the file is
   used, unless you save it as a new file or pick **Only this item**.
 - **Plays from … to …** sets the part this one item plays. Type times like `83`, `1:23` or `1:23.5`, and press
-  **▶ Try it** to hear it.
+  **▶ Try it** to hear it. A YouTube link has no ▶ Try it: hear its part with the slide's **▶ Preview** (sound on).
 - **When it plays** holds Autoplay, Loop, Start muted and Volume.
 - A YouTube video can be **Sound only (hide the video)**: players hear it but never see it. **Players see** picks what
   goes in its place: nothing, a 🔊 speaker, or the speaker with a time bar that shows how long it plays. In the editor
