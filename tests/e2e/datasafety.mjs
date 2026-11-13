@@ -316,7 +316,7 @@ try {
     });
   });
   await openGameFile(page, { name: 'Holiday photos.brainrot', mimeType: 'application/octet-stream', buffer: Buffer.from('not a game at all') });
-  const notGame = page.getByRole('alertdialog').filter({ hasText: 'not a Brainrot Games Maker game pack' });
+  const notGame = page.getByRole('alertdialog').filter({ hasText: '“Holiday photos.brainrot” isn’t a game this app can open. Game files are made with 💾 Save' });
   await notGame.waitFor();
   assert(
     (await page.evaluate(() => window.__opening)).some((s) => s.text.includes('📂 Opening “Holiday photos.brainrot”…') && s.inert),

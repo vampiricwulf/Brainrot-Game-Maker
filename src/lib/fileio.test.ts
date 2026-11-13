@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import JSZip from 'jszip';
 import { BIG_FILE, GAME_FILES, isGameFile, OTHER_GAME_FILES, parseGame, readTextFile, safeFilename, savedWhere, saveTarget, usePicker } from './fileio';
 import { base64Length, MAX_HTML_CHARS, MAX_PACK_CHARS, TOO_BIG_TO_OPEN, tooBigForHtml } from './export';
@@ -77,9 +77,14 @@ describe('opening game files', () => {
   it('explains a damaged .json instead of showing the parser’s error', () => {
     expect(() => parseGame('{"version": 2, "title": "Cut o')).toThrow("This file isn't a readable game (.json)");
     expect(() => parseGame('PK not json at all')).toThrow("This file isn't a readable game (.json)");
-    expect(() => parseGame('{"hello": 1}')).toThrow('This file is not a Brainrot Games Maker game: it has no "rounds" list.');
-    expect(() => parseGame('[1]')).toThrow('This file is not a Brainrot Games Maker game.');
-    expect(() => parseGame('{"version": "2", "rounds": []}')).toThrow('its "version" isn’t a number');
+    const words = ' isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json).';
+    // (In plain words, naming the file when known; the reason goes to the console.)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(() => parseGame('{"hello": 1}', 'notes.json')).toThrow(`“notes.json”${words}`);
+    expect(warn).toHaveBeenLastCalledWith('Not a game (notes.json): it has no "rounds" list');
+    expect(() => parseGame('[1]')).toThrow(`This file${words}`);
+    expect(() => parseGame('{"version": "2", "rounds": []}')).toThrow(`This file${words}`);
+    warn.mockRestore();
     expect(() => parseGame('{"format": "brainrot-theme", "version": 1, "theme": {}}')).toThrow('This is a theme file, not a game');
   });
 

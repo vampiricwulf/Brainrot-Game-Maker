@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks, storedBlob } from './media.svelte';
 import { settleFiles } from './roundcopy';
 import { migrateGame, type Game } from './model';
-import { parseGame, safeFilename, saveFile, savedName, savedWhere } from './fileio';
+import { notAGame, parseGame, safeFilename, saveFile, savedName, savedWhere } from './fileio';
 import { buildZip, crc32, type ZipEntry } from './zipwrite';
 import { looksLikeHtml } from './sniff';
 import { MAX_HTML_CHARS, packInHtml, TOO_BIG_TO_OPEN, unpackEmbedded } from './export';
@@ -81,7 +81,8 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
     const zipStart = new TextDecoder().decode(await file.slice(0, 2).arrayBuffer()) === 'PK';
     // ...unless it's too big to read: that one is whole (only said once reading it failed, so it never stops one opening).
     if (zipStart && file.size >= MAX_PACK_READ) throw new Error(TOO_BIG_PACK);
-    throw new Error(zipStart ? CUT_OFF : 'This file is not a Brainrot Games Maker game pack (.brainrot, or .jbr from Jeopardy Builder).');
+    if (zipStart) throw new Error(CUT_OFF);
+    throw notAGame(file instanceof File ? file.name : undefined, 'not a zip');
   }
   let json = zip.file('game.json');
   if (!json) {
@@ -106,7 +107,7 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
   // A damaged game.json is a damaged file: nothing in it can be trusted.
   const text = await intact(json);
   if (!text) throw new Error(CUT_OFF);
-  const parsed = parseGame(new TextDecoder().decode(text));
+  const parsed = parseGame(new TextDecoder().decode(text), file instanceof File ? file.name : undefined);
   // Each file is in the zip under its name as packed: migrateGame may rename one whose name another file has too
   // ("view" → "view-k3f9x2", in a pack from before names were kept apart), and a name with no dot is its own
   // extension. So files are looked up by their names from before it (which changes the game it's given).
@@ -178,7 +179,7 @@ export async function openGameFile(file: File, put: PutMedia = putMedia): Promis
     return openPack(await unpackEmbedded(inside.pack, inside.cut), undefined, put);
   }
   if (kind === 'json' || (!kind && (/\.json$/i.test(name) || file.type === 'application/json'))) {
-    const game = migrateGame(parseGame(await file.text()));
+    const game = migrateGame(parseGame(await file.text(), file.name));
     registerLinks(game);
     return game;
   }

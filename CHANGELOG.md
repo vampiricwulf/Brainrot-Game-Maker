@@ -17,6 +17,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
 - In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window.
+- Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.)
 
 ### Fixed
 

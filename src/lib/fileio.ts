@@ -184,7 +184,18 @@ export async function saveGameJson(game: Game): Promise<string> {
   return savedWhere(await saveFile(name, new Blob([JSON.stringify(game, null, 2)], { type: 'application/json' }), game.id), name);
 }
 
-export function parseGame(text: string): Game {
+/**
+ * What Open… says of a file that isn't a game (`name`: the file's, when known), in plain words: the reason it gives up
+ * goes to the console only.
+ */
+export function notAGame(name?: string, why?: string): Error {
+  if (why) console.warn(`Not a game${name ? ` (${name})` : ''}: ${why}`);
+  return new Error(
+    `${name ? `“${name}”` : 'This file'} isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json).`,
+  );
+}
+
+export function parseGame(text: string, name?: string): Game {
   let data;
   try {
     data = JSON.parse(text);
@@ -193,8 +204,8 @@ export function parseGame(text: string): Game {
   }
   // (Import rounds… and the like take game files only.)
   if (data?.format === 'brainrot-theme') throw new Error('This is a theme file, not a game: use it with 📂 Import theme… on 🎨 Theme.');
-  const no = (what: string) => new Error(`This file is not a Brainrot Games Maker game: ${what}.`);
-  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('This file is not a Brainrot Games Maker game.');
+  const no = (why: string) => notAGame(name, why);
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw no('not an object');
   if (!Array.isArray(data.rounds)) throw no('it has no "rounds" list');
   // A hand-made game can leave out what has an obvious fill: its players (added on ▶ Play), and its version (this
   // app's: an older version's game is read another way, migrateGame).
@@ -202,7 +213,7 @@ export function parseGame(text: string): Game {
   data.version ??= GAME_VERSION;
   if (typeof data.version !== 'number') throw no('its "version" isn’t a number');
   if (data.version > GAME_VERSION) throw new Error('This game was made with a newer version of Brainrot Games Maker: update the app to open it.');
-  if (data.version < 1) throw new Error('This file is not a Brainrot Games Maker game.');
+  if (data.version < 1) throw no(`version ${data.version}`);
   return data as Game;
 }
 
