@@ -31,6 +31,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - The clue editor's **Everyone must play (no Pass)** tick is **🚫 No Pass (everyone must play)**, and on a 1280-wide screen it reads **🚫 No Pass** (it read “Everyone must play”, next to ✍ Everyone answers, which sounded like the same thing). The Final's editor and 🕘 History use the same name.
 - **＋ Add round** puts **📂 Import rounds…** and **📋 Paste round** right under the five kinds of round, and each template is one line (what it is shows in its tooltip), so on a 1280×720 laptop the whole menu fits under the button instead of hiding those two past the bottom.
+- 🖼 Media's **🗑 Delete unused** says in its tooltip that files used only on 🤫 cards count as used, and that an older copy of the app would delete them. The checklist no longer has a long line about it for every game with a picture or video on a card.
 - A board-game space's **No emoji** and **No icon** buttons read as what they do: **⌫ Take off emoji** and **⌫ Take off icon**.
 - In 🖼 Media, a video's or sound's **✎ Edit…** is **✎ Edit video…** or **✎ Edit sound…**, the name the slide's item bar gives the same window.
 - Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.)

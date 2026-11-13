@@ -427,22 +427,8 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
 
   const known = new Set(game.media.map((m) => m.id));
   const usage = mediaUsage(game);
-  // Files only 🤫 cards use: an older copy's 🗑 Delete unused doesn't see cards, so it would delete them.
-  const onCards = new Map<string, number>();
-  for (const r of boardRounds(game))
-    for (const c of r.categories)
-      for (const cl of c.clues) for (const card of cardSlides(cl)) for (const id of slideMediaIds(card)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
-  // (A Final's too.)
-  for (const r of game.rounds)
-    if (isFinal(r)) for (const card of cardSlides(r)) for (const id of slideMediaIds(card)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
-  for (const c of game.cards ?? []) for (const id of slideMediaIds(c)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
-  const cardOnly = [...onCards].filter(([id, n]) => known.has(id) && usage.get(id) === n).length;
-  if (cardOnly)
-    out.push({
-      text: `${plural(cardOnly, 'file')} ${cardOnly === 1 ? 'is' : 'are'} used only on 🤫 cards. Older copies of the app don't know about cards: in one of them, 🖼 Media › 🗑 Delete unused would delete ${cardOnly === 1 ? 'it' : 'them'}. Open the game in an up-to-date copy before deleting unused files`,
-      tab: 'media',
-      level: 'info',
-    });
+  // (A file used only on 🤫 cards: an older copy's 🗑 Delete unused would delete it. 🖼 Media's 🗑 Delete unused says so
+  // in its tooltip, not here: there's nothing to fix.)
   const partners = boardRounds(game).flatMap((r) => playableClues(r).filter((c) => c.type === 'partner'));
   if (partners.length && !game.settings.buzzer)
     out.push({ text: 'Partner clues: without phone buzzers you copy the cards to the players yourself', tab: 'play', level: 'info' });

@@ -314,8 +314,10 @@ try {
   const usedAt = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert((await usedBtn.innerText()).trim() === 'used 1× ▾' && usedAt.some((t) => t.startsWith('Cards › Tip A')), `zfnqj-tip.png is used 1×, on the 🤫 card Tip A (${usedAt.join(' | ')})`);
   await host.keyboard.press('Escape');
-  await host.locator('nav .problem', { hasText: '1 file is used only on 🤫 cards' }).waitFor();
-  assert(true, 'the checklist notes a file used only on 🤫 cards');
+  assert(
+    (await host.locator('nav .problem', { hasText: /only on 🤫 cards|Older copies/ }).count()) === 0 && (await unusedBtn.getAttribute('title')).includes('Files used only on 🤫 cards count as used here'),
+    'the checklist has no line about it: 🗑 Delete unused’s tooltip says files only on 🤫 cards count as used (an older copy would delete them)',
+  );
 
   // ---------- Renamed in the list, then something else clicked: the keys stay there ----------
   await cardsTab.click();

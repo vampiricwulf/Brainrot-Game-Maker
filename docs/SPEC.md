@@ -409,7 +409,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   whose file is used elsewhere) gives that item an edited copy of its own. Toasts and History name no file. Nothing is
   edited in play.
 - A media library panel (🖼 Media) lists everything in the game with its size and usage count. "🗑 Delete unused" is
-  available. Each card keeps its buttons in fixed places: the name row (☐ Select, the name, ⋯ for its menu, then 🗑
+  available; files used only on 🤫 cards count as used, and its tooltip says an older copy of the app (which doesn't
+  know about cards) would delete them. The checklist has no line for this: there's nothing to fix. Each card keeps its buttons in fixed places: the name row (☐ Select, the name, ⋯ for its menu, then 🗑
   apart at the right end), and the foot (✎ Edit video… or ✎ Edit sound…, as the slide's item bar names it · **Replace everywhere…** · the one fix that
   applies: 🔄 Convert…, else ↻ Make it a…, else 🗜 Make smaller…). A link's card adds 💾 Store in game and 🌐 Check it
   still loads. **used 3× ▾** (plain "unused" when nothing uses it) drops the list of places, in the History's words

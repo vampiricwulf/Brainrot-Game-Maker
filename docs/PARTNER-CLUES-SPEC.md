@@ -446,9 +446,9 @@ In validate.ts (its checks at 118-134, each a warning or an info) and checklist.
 - **Info**, only with ⚖ Deduct on wrong off: "Deduct on wrong is off, but 3 partner clues take points on a miss: their
   own Points say so." A partner clue's points are its own (§9.1), so a host who turned deductions off sees where they
   still happen.
-- **Info**, when the game has partner clues with pictures only on a card: "Older copies of the app don't know about
-  cards: in one of them, 🖼 Media › Remove unused would delete these pictures. Open the game in an up-to-date copy
-  before removing unused media." (§17)
+- (Pictures only on a card: no checklist line any more, since there's nothing to fix. 🖼 Media's 🗑 Delete unused
+  counts them as used, and its tooltip says an older copy of the app, which doesn't know about cards, would delete
+  them. §17)
 - Partner tiles never count as Daily Doubles (session.ts:644, validate.ts:39). Nothing to add.
 
 ## 6. Play, step by step

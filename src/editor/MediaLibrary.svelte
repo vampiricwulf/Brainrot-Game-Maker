@@ -497,7 +497,7 @@
       class="ghost danger"
       disabled={!unused.length}
       onclick={() => remove(unused.map((m) => m.id), `Deleted ${unused.length} unused file${unused.length === 1 ? '' : 's'}`)}
-      title="Delete the files nothing in the game uses (Undo brings them back)">🗑 Delete unused ({unused.length})</button
+      title="Delete the files nothing in the game uses (Undo brings them back). Files used only on 🤫 cards count as used here; an older copy of the app doesn’t know about cards, and its 🗑 Delete unused would delete them">🗑 Delete unused ({unused.length})</button
     >
   </div>
   {#if files.length}

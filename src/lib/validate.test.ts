@@ -284,7 +284,7 @@ describe('🤝 partner clues', () => {
     setClueType(round, clue, 'partner');
     return { game, round, clue };
   }
-  const mine = (game: Game, room = OLD) => validate(game, room).filter((p) => /card|partner/i.test(p.text) && !p.text.includes('Older copies'));
+  const mine = (game: Game, room = OLD) => validate(game, room).filter((p) => /card|partner/i.test(p.text));
 
   it('warns of an empty card and of a ready-made game with no card, going to the card', () => {
     const { game, round, clue } = partnerGame();
@@ -515,19 +515,13 @@ describe('🤝 partner clues', () => {
     expect(validate(game)).toEqual(before);
   });
 
-  it('says when files are used only on cards (an older copy’s Delete unused would delete them)', () => {
+  it('adds no checklist line for a file used only on cards (🗑 Delete unused’s tooltip says what an older copy would do)', () => {
     const { game, clue } = partnerGame();
     game.settings.buzzer = true;
     setSlideText(clue.cards![0], 'Shrek');
     clue.cards![0].elements.push(newImageEl('pic'));
     game.media.push({ id: 'pic', name: 'shrek.png', mime: 'image/png', size: 10, kind: 'image' });
-    const older = () => validate(game).filter((p) => p.text.includes('Older copies'));
-    expect(older()).toHaveLength(1);
-    expect(older()[0]).toMatchObject({ tab: 'media', level: 'info' });
-    expect(older()[0].text).toMatch(/^1 file is used only on 🤫 cards/);
-    // Used on the answer too: an older copy keeps it.
-    clue.answerSlide.elements.push(newImageEl('pic'));
-    expect(older()).toHaveLength(0);
+    expect(validate(game).filter((p) => /only on 🤫 cards|Older copies|Delete unused/.test(p.text))).toEqual([]);
   });
 });
 
@@ -616,11 +610,11 @@ describe('a Final’s 🤫 cards', () => {
     expect(mine(game)).toEqual([{ text: 'Final Jeopardy! has two cards called “Card 2”: in the host panel you can’t tell them apart', tab: 1, level: 'info', place: at(final, second.id) }]);
   });
 
-  it('counts a file used only on one as used only on cards (an older copy’s Delete unused would delete it)', () => {
+  it('adds no checklist line for a file used only on one', () => {
     const { game, card } = finalGame();
     card.elements.push(newImageEl('pic'));
     game.media.push({ id: 'pic', name: 'hint.png', mime: 'image/png', size: 10, kind: 'image' });
-    expect(validate(game).filter((p) => p.text.includes('Older copies')).map((p) => p.text)).toEqual([expect.stringMatching(/^1 file is used only on 🤫 cards/)]);
+    expect(validate(game).filter((p) => /only on 🤫 cards|Older copies|Delete unused/.test(p.text))).toEqual([]);
   });
 });
 
@@ -791,14 +785,11 @@ describe('🤫 Cards (the editor’s tab)', () => {
     expect(mine(game)).toEqual([{ text: 'Two 🤫 cards are called “tip a”: in 🤫 Send a card… you can’t tell them apart', tab: 'cards', level: 'info', place: { tab: 'cards', card: 'sc2' } }]);
   });
 
-  it('counts a file used only on one of them as used only on cards (an older copy’s Delete unused would delete it)', () => {
+  it('adds no checklist line for a file used only on one of them', () => {
     const game = jeopardyGame();
     game.media.push({ id: 'pic', name: 'spoon.png', mime: 'image/png', size: 10, kind: 'image' });
     game.cards = [card('sc1', 'Tip A', newTextEl('Hide it'), newImageEl('pic'))];
-    const older = () => validate(game).filter((p) => p.text.includes('Older copies'));
-    expect(older().map((p) => p.text)).toEqual([expect.stringMatching(/^1 file is used only on 🤫 cards/)]);
-    (game.rounds[0] as BoardRound).categories[0].clues[0].answerSlide.elements.push(newImageEl('pic'));
-    expect(older()).toEqual([]);
+    expect(validate(game).filter((p) => /only on 🤫 cards|Older copies|Delete unused/.test(p.text))).toEqual([]);
   });
 });
 
