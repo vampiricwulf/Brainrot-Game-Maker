@@ -192,6 +192,8 @@
     if (wasPhone) return `${name} (from their phone) → ${shownWager(now)}`;
     return `${name}: ${shownWager(was)} → ${shownWager(now)}`;
   }
+  /** The same step in one window, where no wager's amount shows before Show wager: "Ann’s wager set" / "… changed". */
+  const wagerQuiet = (id: string, was: number | undefined): string => `${byId[id]?.name ?? '?'}’s wager ${was === undefined ? 'set' : 'changed'}`;
 
   /**
    * The wager being typed: what that player's wager was when the box got the focus. Once it's left, the change is one
@@ -213,7 +215,7 @@
     if (now === w.was) return;
     // Back to what it was, then the change as a step.
     finalSetWager(session, w.id, w.was, w.from, w.by);
-    logged(session, wagerText(w.id, w.was, now, w.from === 'phone'), () => finalSetWager(session, w.id, now));
+    logged(session, wagerText(w.id, w.was, now, w.from === 'phone'), () => finalSetWager(session, w.id, now), undefined, wagerQuiet(w.id, w.was));
   }
 
   // A wager sent from their phone while the host's focus is in that box is a step of its own ("Ann’s wager (from their
@@ -308,7 +310,7 @@
     if (why) back();
     if (why === 'whole') return toast('A wager is a whole number, 0 or more', 3000);
     if (why === 'over') return toast(`Over ${byId[id]?.name ?? '?'}’s max of ${formatPoints(finalWagerCap(session, game, id), sym)}`, 3000);
-    logged(session, wagerText(id, was, v, wagerFromPhone(fs, id)), () => finalSetWager(session, id, v));
+    logged(session, wagerText(id, was, v, wagerFromPhone(fs, id)), () => finalSetWager(session, id, v), undefined, wagerQuiet(id, was));
     // (One window: the amount just typed doesn't stay in sight either.)
     if (!dual) box.value = '';
   }

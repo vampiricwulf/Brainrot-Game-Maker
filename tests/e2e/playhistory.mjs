@@ -321,14 +321,15 @@ try {
   await page.locator('.toast', { hasText: 'At most $1,000,000,000,000' }).waitFor();
   assert((await wager1.inputValue()) === '1000000000000', `a wager typed on past the most points shows the most in its box (${await wager1.inputValue()})`);
   for (let i = 0; i < 3; i++) await page.locator('.fj .wagers input[data-wager]').nth(i).fill(String((i + 1) * 100));
-  // A wager already in is changed in its box: one step, named with the old and the new amount.
+  // A wager already in is changed in its box: one step. In one window, where viewers see the 📜 Log, it names no amount
+  // (the audience window, below, shows its full name: the old and the new amount).
   await page.locator('.fj .wagers input[data-wager]').first().fill('150');
   await page.locator('.panel .status').click();
   await page.keyboard.press('l');
   const wagerSteps = await history();
   assert(
-    /’s wager: \$100 → \$150$/.test(wagerSteps[0]) && /’s wager: \$300$/.test(wagerSteps[1]),
-    `a wager typed is a step, a change says from what to what (${wagerSteps.slice(0, 2).join(' | ')})`,
+    /’s wager changed$/.test(wagerSteps[0]) && /’s wager set$/.test(wagerSteps[1]) && !wagerSteps.slice(0, 3).join().includes('$'),
+    `a wager typed is a step, named with no amount in one window (${wagerSteps.slice(0, 2).join(' | ')})`,
   );
   await page.keyboard.press('Escape');
   // (The limits ignored for this Final: below, the reveals take a wager up to the most points. They stay so through it.)
@@ -352,8 +353,17 @@ try {
   assert((await rowBox.inputValue()) === '', 'one window: the wager just typed in the reveals goes out of sight too');
   await page.locator('.panel .status').click();
   await page.keyboard.press('l');
-  assert(/’s wager: \$\d+ → \$120$/.test((await history())[0]), 'changing it in the reveals is a step too');
+  const revealStep = (await history())[0];
+  assert(/’s wager changed$/.test(revealStep) && !revealStep.includes('$'), `changing it in the reveals is a step too, with no amount in one window (${revealStep})`);
   await page.keyboard.press('Escape');
+  // Nor do ↶ Undo's and ↷ Redo's toasts say the amounts, there before Show wager.
+  await page.keyboard.press('Control+z');
+  const undid = await page.locator('.toast', { hasText: 'Undid' }).innerText();
+  assert(/’s wager changed/.test(undid) && !undid.includes('$'), `Ctrl+Z’s toast names no wager amount in one window (${undid})`);
+  await page.keyboard.press('Control+Shift+z');
+  const redid = await page.locator('.toast', { hasText: 'Redid' }).innerText();
+  assert(/’s wager changed/.test(redid) && !redid.includes('$'), `nor does Ctrl+Shift+Z’s (${redid})`);
+  assert((await rowBox.inputValue()) === '', 'and the box stays hidden through them');
   // Already at the most points, a bigger one typed there puts the most back in the box (not the digits typed).
   await rowBox.fill('1000000000000');
   await rowBox.press('Enter');
@@ -409,6 +419,11 @@ try {
   // With the audience window the 📜 Log opens beside the host's view, not over the panel's buttons (the keys reach them).
   await page.keyboard.press('l');
   await page.locator('aside[aria-label="Log"]').waitFor();
+  const dualSteps = await history();
+  assert(
+    dualSteps.some((t) => /’s wager: \$100 → \$150$/.test(t)) && dualSteps.some((t) => /’s wager: \$300$/.test(t)) && dualSteps.some((t) => /’s wager: \$\d+ → \$120$/.test(t)),
+    'with the audience window, the 📜 Log names the wager steps with their amounts (from what to what)',
+  );
   const exitFree = await page.evaluate(() => {
     const b = [...document.querySelectorAll('.panel .fixed button')].find((x) => x.textContent?.includes('🚪 Exit'));
     b?.scrollIntoView({ block: 'center' });
