@@ -28,9 +28,6 @@ in plain words for the people who make and host games. Anything committed but no
 - A tile ticked **🚫 No Pass** wears a small 🚫 on the editor's board, so you can see which clues players can't pass on, and its right-click menu has **🚫 No Pass** after ✍ Everyone answers to turn it on or off (one undo step; ticked and greyed on a ✍ clue, a Daily Double or a partner clue, where it's always on).
 - A category's menu has **📋 Paste as new category right**: the copied category goes into a new column beside it in one step (it took ＋ Insert category right, then 📋 Paste category here). Pasting over an empty column now says so too, with ↶ Undo (only the old “Copied…” toast showed).
 - A picture, video, sound or font dropped just beside the slide (or anywhere nothing takes it) goes into **🖼 Media** with a short toast, “Added “pic.png” to 🖼 Media” (Ctrl+Z takes it out). Any other file gets one line that names it, instead of a 50-word paragraph.
-
-### Changed
-
 - The clue editor's **Everyone must play (no Pass)** tick is **🚫 No Pass (everyone must play)**, and on a 1280-wide screen it reads **🚫 No Pass** (it read “Everyone must play”, next to ✍ Everyone answers, which sounded like the same thing). The Final's editor and 🕘 History use the same name.
 - **＋ Add round** puts **📂 Import rounds…** and **📋 Paste round** right under the five kinds of round, and each template is one line (what it is shows in its tooltip), so on a 1280×720 laptop the whole menu fits under the button instead of hiding those two past the bottom.
 - 🖼 Media's **🗑 Delete unused** says in its tooltip that files used only on 🤫 cards count as used, and that an older copy of the app would delete them. The checklist no longer has a long line about it for every game with a picture or video on a card.
