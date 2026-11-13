@@ -11,40 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Added
-
-- Phones say whether the player was right or wrong outside the Final too: on a buzz-in clue the judged player's phone shows “✔ Right! +$400” in green or “✘ Wrong −$200” in red the moment you mark them, and on a ✍ clue each phone shows its own as you judge it. An Undo takes it away.
-- Phones show the countdown over the answer box on a ✍ clue and in the Final (and over the Final's wager box): “⏱ 12 s left”, amber in the last 5 seconds, following your pause, +10 and −10, and gone when you put it away. At 0 they say “Time's up: the host may still take a late answer”; answers stay open until you lock them, as before.
-- A tile ticked **🚫 No Pass** wears a small 🚫 on the editor's board, so you can see which clues players can't pass on, and its right-click menu has **🚫 No Pass** after ✍ Everyone answers to turn it on or off (one undo step; ticked and greyed on a ✍ clue, a Daily Double or a partner clue, where it's always on).
-- A category's menu has **📋 Paste as new category right**: the copied category goes into a new column beside it in one step (it took ＋ Insert category right, then 📋 Paste category here). Pasting over an empty column now says so too, with ↶ Undo (only the old “Copied…” toast showed).
-- A picture, video, sound or font dropped just beside the slide (or anywhere nothing takes it) goes into **🖼 Media** with a short toast, “Added “pic.png” to 🖼 Media” (Ctrl+Z takes it out). Any other file gets one line that names it, instead of a 50-word paragraph.
-
-### Changed
-
-- With phone buzzers, who passed is easy to see with a big table: the buzzers' row puts the count first (“Passed 6 of 8: Ann, Bob…”, in the room the 🔔 Buzzers open hint had), and the chips of players who passed fade, with “passed” on them. Once everyone has passed, the row also says ↺ Reset lets them all buzz again (after a hint, say).
-- One window: the stage viewers see keeps one size and place for the whole game, so a crop set in OBS on the board fits every round. Before, it moved and changed size from round to round (the Final's and the results' were the smallest of the night, an RPG or board game's moved to the left edge). The host panel under it is now one height in every round, the Final's, and each moment's rows scroll inside it; RPG and board-game rounds keep their controls under the stage too (beside it only with the audience window open).
-- One window: 👥 Players, ⚖ Rules and the keys (?) keep their title and **Done** in sight as they scroll inside the host panel, with a fade at the bottom while there's more below (Done was out of sight, and nothing showed that they scroll).
-- Phones: once everyone has passed on a clue, every phone says **Everyone passed** (a player who passed can still take it back; ↺ Reset buzzers puts the phones back to BUZZ!), instead of each still saying “Take the pass back to buzz”.
-- The clue editor's **Everyone must play (no Pass)** tick is **🚫 No Pass (everyone must play)**, and on a laptop (under 1600 wide) it reads **🚫 No Pass** (it read “Everyone must play”, next to ✍ Everyone answers, which sounded like the same thing). The Final's editor and 🕘 History use the same name.
-- **＋ Add round** puts **📂 Import rounds…** and **📋 Paste round** right under the five kinds of round, and each template is one line (what it is shows in its tooltip), so on a 1280×720 laptop the whole menu fits under the button instead of hiding those two past the bottom.
-- 🖼 Media's **🗑 Delete unused** says in its tooltip that files used only on 🤫 cards count as used, and that an older copy of the app would delete them. The checklist no longer has a long line about it for every game with a picture or video on a card.
-- After 📄 New or Open…, the “… was replaced · ↶ Reopen previous game” note under the header goes away with your first change to the new game (it stayed all session, a line of a laptop's screen). The game is still in Open… → Recent games.
-- **＋ Multiple choice** on a ✍ clue or the Final starts choice A with the answer, marked ✔ Right, and the keys in B, when the answer is one short line (a note says so, with ↶ Undo). It started A to D all empty.
-- A YouTube item's **Plays from … to …** has a line under it saying to try that part with **▶ Preview** (sound on), since a YouTube link has no ▶ Try it.
-- An 🗺 RPG round's line under Host notes and a ♟ board game's tips say how to add things once (the map's 💡 Tips and the board's tools row already said it), so the map and the board start higher up on a laptop.
-
-### Fixed
-
-- With an audience window, opening 📜 Log no longer squeezes the host panel until its clue buttons lose their words: the Log takes its room from your stage preview instead. 📜 Log shows pressed while it's open.
-- On a Daily Double's question, pressing the player's number out of habit (which let them go) and then Enter judges them anyway, instead of saying to select a player first.
-- Once everyone has passed, a running countdown stops, so the stream doesn't count down to “Time's up” for nobody. Ctrl+Z brings it back with the time it had left.
-- ↺ Reset buzzers (0, right next to 9) can be undone: Ctrl+Z puts the buzzers back as they were, with the buzz order, who missed it and who passed (with the buzzer room updated to this version; an older one still forgets the passes).
-- Seconds typed in the host's ⏱ box are for that clue only: the next clue (or the Final) starts its own countdown again. A number typed once used to replace every later clue's own time for the rest of the game.
-- In 🤫 Cards on a 1280- or 1366-wide laptop, **📱 On their phone** opens beside the slide, in sight, as in a clue's 🤫 card tab (it opened far down the page, under the whole slide editor, so the button seemed to do nothing); the slide's settings go under the slide to make room.
-- In 🤫 Cards on a 1280- or 1366-wide laptop, **📱 On their phone** opens beside the slide, in sight, as in a clue's 🤫 card tab (it opened far down the page, under the whole slide editor, so the button seemed to do nothing). It sits above the slide's settings, so the slide keeps its size and the selected item's buttons stay in sight beside it.
-
 ## 2026-11-12
 
 ### Added
@@ -52,6 +18,11 @@ in plain words for the people who make and host games. Anything committed but no
 - A board's category can be copied and pasted whole: **📋 Copy category** and **📋 Paste category here** in its menu (after ⧉ Duplicate), or `Ctrl+C` / `Ctrl+V` on its ⋯. Its name, picture and clues go over the column you paste on, into another round or another game, with the pictures, sounds, wheels and dice they use; Undo takes it back. (c43b544, f6db895, e0248d4)
 - **Pass** on the phones: on an ordinary buzz-in clue, each phone has **Pass: I won’t buzz on this one** under the buzzer (`P` with a keyboard), and a pass can be taken back until the clue is answered or its answer shows. A passed player can’t buzz; with teams a pass counts for the whole team. You see “Passed: Ann, Bob” in the buzzers’ row, and once everyone who could still buzz has passed, it says **Everyone passed** and 👁 Reveal answer wears the ring. Clues players type or pick an answer to, the Final, partner clues and Daily Doubles never offer it, nor does a clue you tick **Everyone must play (no Pass)** in the clue editor. Phones get Pass once the buzzer server is updated. (0ed36a6, eab4b84, 4f1d7b4, e4dee02, c9a8d22)
 - Phones hear their Final verdict: once you judge a player in the Final's reveals (the stream shows ✔ CORRECT or ✘ WRONG), their phone says **✔ Right! +$1,200** or **✘ Wrong −$2,000** over their wager and answer, instead of staying on “Answers locked”. (ca07384)
+- Phones say whether the player was right or wrong outside the Final too: on a buzz-in clue the judged player's phone shows “✔ Right! +$400” in green or “✘ Wrong −$200” in red the moment you mark them, and on a ✍ clue each phone shows its own as you judge it. An Undo takes it away. (9244761)
+- Phones show the countdown over the answer box on a ✍ clue and in the Final (and over the Final's wager box): “⏱ 12 s left”, amber in the last 5 seconds, following your pause, +10 and −10, and gone when you put it away. At 0 they say “Time's up: the host may still take a late answer”; answers stay open until you lock them, as before. (fdf3ac6)
+- A tile ticked **🚫 No Pass** wears a small 🚫 on the editor's board, so you can see which clues players can't pass on, and its right-click menu has **🚫 No Pass** after ✍ Everyone answers to turn it on or off (one undo step; ticked and greyed on a ✍ clue, a Daily Double or a partner clue, where it's always on). (8675e86)
+- A category's menu has **📋 Paste as new category right**: the copied category goes into a new column beside it in one step (it took ＋ Insert category right, then 📋 Paste category here). Pasting over an empty column now says so too, with ↶ Undo (only the old “Copied…” toast showed). (c38c729)
+- A picture, video, sound or font dropped just beside the slide (or anywhere nothing takes it) goes into **🖼 Media** with a short toast, “Added “pic.png” to 🖼 Media” (Ctrl+Z takes it out). Any other file gets one line that names it, instead of a 50-word paragraph. (9979ecc)
 
 ### Changed
 
@@ -78,6 +49,17 @@ in plain words for the people who make and host games. Anything committed but no
 - Opening a file that isn't a game names it and says, in plain words, which files are games: “bad.json” isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json). (It talked of a “rounds” list, or of a “game pack”.) (978db53)
 - A deal part's **Their card also shows** reads **nothing more**, **a wheel slice everyone shares** or **a wheel slice of their own** (it said “nothing from the wheel” before the deal had one), as the host's 🎭 Deal says it; picking a slice with no wheel chosen yet takes you to **🎡 Wheel its cards draw from**. (15ca3b9)
 - A third Jeopardy board is named **Jeopardy! 3** (then Jeopardy! 4…), not “Round 3”, which read as its place in the game (“Round 7 of 8”). (2f266af)
+- With phone buzzers, who passed is easy to see with a big table: the buzzers' row puts the count first (“Passed 6 of 8: Ann, Bob…”, in the room the 🔔 Buzzers open hint had), and the chips of players who passed fade, with “passed” on them. Once everyone has passed, the row also says ↺ Reset lets them all buzz again (after a hint, say). (9127c43)
+- One window: the stage viewers see keeps one size and place for the whole game, so a crop set in OBS on the board fits every round. Before, it moved and changed size from round to round (the Final's and the results' were the smallest of the night, an RPG or board game's moved to the left edge). The host panel under it is now one height in every round, the Final's, and each moment's rows scroll inside it; RPG and board-game rounds keep their controls under the stage too (beside it only with the audience window open). (df21e41)
+- One window: 👥 Players, ⚖ Rules and the keys (?) keep their title and **Done** in sight as they scroll inside the host panel, with a fade at the bottom while there's more below (Done was out of sight, and nothing showed that they scroll). (b18a084)
+- Phones: once everyone has passed on a clue, every phone says **Everyone passed** (a player who passed can still take it back; ↺ Reset buzzers puts the phones back to BUZZ!), instead of each still saying “Take the pass back to buzz”. (4682265)
+- The clue editor's **Everyone must play (no Pass)** tick is **🚫 No Pass (everyone must play)**, and on a laptop (under 1600 wide) it reads **🚫 No Pass** (it read “Everyone must play”, next to ✍ Everyone answers, which sounded like the same thing). The Final's editor and 🕘 History use the same name. (8675e86, f6bde00)
+- **＋ Add round** puts **📂 Import rounds…** and **📋 Paste round** right under the five kinds of round, and each template is one line (what it is shows in its tooltip), so on a 1280×720 laptop the whole menu fits under the button instead of hiding those two past the bottom. (27fbdf7)
+- 🖼 Media's **🗑 Delete unused** says in its tooltip that files used only on 🤫 cards count as used, and that an older copy of the app would delete them. The checklist no longer has a long line about it for every game with a picture or video on a card. (4abcbff)
+- After 📄 New or Open…, the “… was replaced · ↶ Reopen previous game” note under the header goes away with your first change to the new game (it stayed all session, a line of a laptop's screen). The game is still in Open… → Recent games. (8834cd8)
+- **＋ Multiple choice** on a ✍ clue or the Final starts choice A with the answer, marked ✔ Right, and the keys in B, when the answer is one short line (a note says so, with ↶ Undo). It started A to D all empty. (272bbf5)
+- A YouTube item's **Plays from … to …** has a line under it saying to try that part with **▶ Preview** (sound on), since a YouTube link has no ▶ Try it. (39f1950)
+- An 🗺 RPG round's line under Host notes and a ♟ board game's tips say how to add things once (the map's 💡 Tips and the board's tools row already said it), so the map and the board start higher up on a laptop. (c706f8a)
 
 ### Fixed
 
@@ -130,6 +112,12 @@ in plain words for the people who make and host games. Anything committed but no
 - A phone that loses its network shows **Reconnecting…** over the buzzer at once, instead of a lit BUZZ! for about half a minute, and connects again as soon as it's back online. (0fbe84c)
 - On a small phone (360×640), BUZZ! with **Pass** under it fits the screen, so a quick press doesn't scroll the page. (0fbe84c)
 - On a partner clue, the picker's phone says **Your partner is being picked…** until you spin, and “Spinning for your partner…” only while the partner wheel is up. (8dec6ab)
+- With an audience window, opening 📜 Log no longer squeezes the host panel until its clue buttons lose their words: the Log takes its room from your stage preview instead. 📜 Log shows pressed while it's open. (fbe4361)
+- On a Daily Double's question, pressing the player's number out of habit (which let them go) and then Enter judges them anyway, instead of saying to select a player first. (0bf4be8)
+- Once everyone has passed, a running countdown stops, so the stream doesn't count down to “Time's up” for nobody. Ctrl+Z brings it back with the time it had left. (9127c43, 0e9fd68)
+- ↺ Reset buzzers (0, right next to 9) can be undone: Ctrl+Z puts the buzzers back as they were, with the buzz order, who missed it and who passed (with the buzzer room updated to this version; an older one still forgets the passes). (9127c43, f008550)
+- Seconds typed in the host's ⏱ box are for that clue only: the next clue (or the Final) starts its own countdown again. A number typed once used to replace every later clue's own time for the rest of the game. (7c67f86)
+- In 🤫 Cards on a 1280- or 1366-wide laptop, **📱 On their phone** opens beside the slide, in sight, as in a clue's 🤫 card tab (it opened far down the page, under the whole slide editor, so the button seemed to do nothing). It sits above the slide's settings, so the slide keeps its size and the selected item's buttons stay in sight beside it. (21f3eff, 28e909e)
 
 ## 2026-11-08
 
