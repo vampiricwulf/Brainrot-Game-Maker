@@ -5935,8 +5935,13 @@
             break;
           }
         }
-        // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen).
-        if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
+        // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen). A Daily
+        // Double's question with nobody selected (its player's number pressed again lets them go): Enter judges its player,
+        // the only one who can answer it, so "1, Enter" works as on any clue.
+        if (awardOpen(session)) {
+          const dd = session.phase === 'clue' && session.dd?.stage === 'question' ? session.dd.playerId : undefined;
+          award(e.shiftKey ? -1 : 1, !selected.length && dd && session.players.some((p) => p.id === dd) ? [dd] : selected);
+        }
         break;
       case 'r':
         if (session.phase === 'clue' && info && !session.revealed && !toolOnlyClue(info.clue) && tileToolUp(app.live, info.clue)) {

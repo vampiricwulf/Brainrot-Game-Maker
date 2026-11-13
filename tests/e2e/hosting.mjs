@@ -330,6 +330,20 @@ try {
   await page.keyboard.press('Control+z');
   await stage('.timer').waitFor();
   assert((await stage('.timesup').count()) === 0, '✘ on the Daily Double’s player stops its countdown, and Ctrl+Z brings it back');
+  // Out of habit the host presses the player's number (letting them go), then Enter: it judges the Daily Double's
+  // player all the same, the only one who can answer it.
+  // (Once the question has been up a moment: an Enter right after it only says to press it again.)
+  await page.waitForTimeout(1000);
+  const ddWho = pickedBefore.match(/Player \d+/)[0];
+  const ddOn = page.locator(`.panel .p[aria-label="${ddWho}"]`);
+  const ddKey = (await ddOn.locator('.key').innerText()).trim();
+  if (!(await ddOn.evaluate((e) => e.classList.contains('on')))) await page.keyboard.press(ddKey);
+  await page.locator('.panel .p.on').waitFor();
+  await page.keyboard.press(ddKey);
+  await page.locator('.panel .p.on').waitFor({ state: 'detached' });
+  await page.keyboard.press('Enter');
+  await page.locator(`.panel .p[aria-label="${ddWho}"] .mark.right`).waitFor();
+  assert((await page.locator('.toast', { hasText: 'Select a player first' }).count()) === 0, `a Daily Double: ${ddKey} (letting ${ddWho} go), then Enter, still judges ${ddWho} right`);
   await page.keyboard.press('Escape');
 
   // ---------- ✔ / ✘ on a player's chip: shown there, and the same one isn't taken twice; the nav buttons stay put ----------

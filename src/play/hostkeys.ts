@@ -125,6 +125,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['Shift+Esc', '↩ Put back (keep tile): back to the board, the tile stays playable (not once points were given)'],
       ['Enter in the Daily Double wager', 'Show question ▶, as N (its player answers it). Who found it or the wager still missing: the keys stay in the box, and the status line says what'],
       ['Esc on a Daily Double splash', 'Back to the board: the tile stays playable (no wager was taken)'],
+      ['Enter on a Daily Double’s question', 'Right for its player (Shift+Enter: wrong), even with nobody selected (their number pressed again lets them go)'],
       ['Enter on a ✍ multiple-choice clue', 'With nobody selected, once the answers are locked: ✔ Judge all, by the choice marked right (one Ctrl+Z takes it back). With players selected, Enter awards them'],
       ['W on a partner clue', '🎡 Spin for a partner (1–9: choose one yourself). With nobody marked as its picker yet, the status line asks who picked it: their number first'],
       ['Enter on a partner clue', 'Show the question, send the cards to their phones and start the clock (📤 Send and start; copy them to anyone without a phone), then ✔ Got it (Shift+Enter: ✘ Missed)'],

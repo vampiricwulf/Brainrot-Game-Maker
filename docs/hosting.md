@@ -115,7 +115,8 @@ tile playable.
 
 Pick who found it, type the wager (or press **True Daily Double**), then `Enter` or **Show question ▶**. A wager goes
 up to the player's score, or up to $2,000 if they have less (at $0 or below too; the $2,000 is set in ⚖ Game rules).
-Tick **Ignore the limit** to take any wager this time.
+Tick **Ignore the limit** to take any wager this time. On the question, `Enter` (right) or `Shift+Enter` (wrong) judges
+the player who found it, even if pressing their number let them go.
 
 ### Partner clues
 

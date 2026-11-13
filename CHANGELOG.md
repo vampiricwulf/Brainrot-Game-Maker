@@ -24,6 +24,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Fixed
 
+- On a Daily Double's question, pressing the player's number out of habit (which let them go) and then Enter judges them anyway, instead of saying to select a player first.
 - Once everyone has passed, a running countdown stops, so the stream doesn't count down to “Time's up” for nobody. Ctrl+Z brings it back with the time it had left.
 - ↺ Reset buzzers (0, right next to 9) can be undone: Ctrl+Z puts the buzzers back as they were, with the buzz order, who missed it and who passed (with the buzzer room updated to this version; an older one still forgets the passes).
 - Seconds typed in the host's ⏱ box are for that clue only: the next clue (or the Final) starts its own countdown again. A number typed once used to replace every later clue's own time for the rest of the game.

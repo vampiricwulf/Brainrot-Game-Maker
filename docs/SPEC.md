@@ -1196,7 +1196,8 @@ clue's PARTNER UP! `Enter` is the blue button wherever the keys are, then the �
 clock), then ✔ Got it; in the Final's
 steps it says which key (or click) goes on (with the spotlit player's verdict due, “C: right · X: wrong”; in its wager
 boxes `Enter` is the next box to fill, then Show question ▶), and on a wheel or dice tile not spun or rolled yet
-the key that does it (“Spin the wheel first: W”). `Enter` in a Daily Double's Wager box is its Show question ▶. With players
+the key that does it (“Spin the wheel first: W”). `Enter` in a Daily Double's Wager box is its Show question ▶; on its question, with nobody selected (its player's number
+pressed again lets them go), `Enter` / `Shift+Enter` judge its player, the only one who can answer it. With players
 selected on the board, `Enter` on a tile takes the keys to the Amount box (type the points, then `Enter`, and they're
 back on the tile) instead of opening it; while the keys are there, number keys type and the chips hide theirs.
 
