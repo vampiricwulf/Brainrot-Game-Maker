@@ -627,7 +627,7 @@
             aria-label="🚫 No Pass (everyone must play)"
             data-must-fixed={mustWhy ? '' : undefined}
             bind:checked={() => !!mustWhy || !!clue.mustPlay, (v) => setNoPass(clue, v)}
-          /> 🚫 No Pass<span class="more-words">{' '}(everyone must play)</span></label
+          /> 🚫 No Pass<span class="more-words wide-words">{' '}(everyone must play)</span></label
         >
         <label class="field">
           Value
@@ -933,6 +933,13 @@
   }
   @media (max-width: 1300px) {
     .more-words {
+      display: none;
+    }
+  }
+  /* (No Pass's are the row's last to show: with them a 1400-wide screen's row spills Tile shows onto a row of its own,
+     and the slide shrinks under it.) */
+  @media (max-width: 1599px) {
+    .wide-words {
       display: none;
     }
   }

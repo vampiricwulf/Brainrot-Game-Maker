@@ -255,7 +255,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   clue · 🎡 Wheel tile… · 🎲 Dice tile…, then ✍ Everyone answers (standard tiles; on or off), 🚫 No Pass (on or off, one
   step; ticked and greyed where it's always on, its tooltip saying why) and ⬚ Empty tile. A wheel or dice tile opens
   the clue editor with the keys in its Which wheel / Which dice box.
-- Every clue editor has **🚫 No Pass (everyone must play)** beside ✍ Everyone answers (under 1300 px wide, just "🚫 No
+- Every clue editor has **🚫 No Pass (everyone must play)** beside ✍ Everyone answers (under 1600 px wide, just "🚫 No
   Pass"). On a standard (not ✍), wheel or dice tile it's the author's (`Clue.mustPlay`, off by default and in older
   games): with phone buzzers its phones offer no Pass (§6.3), and the tile wears a 🚫 badge on the board (", no Pass"
   in its spoken label). On a ✍ clue, a Daily Double or a partner clue, and in the Final's editor, it shows ticked and
