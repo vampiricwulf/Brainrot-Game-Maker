@@ -54,7 +54,8 @@
       <section id="s-new" hidden>
         <h1>What's your name?</h1>
         <form id="new-form">
-          <input id="new-in" maxlength="24" autocomplete="nickname" aria-label="Your name" />
+          <label for="new-in">Your name (everyone sees it)</label>
+          <input id="new-in" maxlength="24" autocomplete="nickname" placeholder="e.g. Zoe" />
           <button type="submit" class="primary">Ask to join</button>
           <button type="button" id="new-back" class="plain">Back</button>
           <p id="new-err" class="err" role="alert"></p>

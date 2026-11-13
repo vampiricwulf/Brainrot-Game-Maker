@@ -91,6 +91,8 @@ section {
 
 h1 { font-size: 26px; margin: 8px 0 4px; text-align: center; overflow-wrap: anywhere; }
 .note { color: var(--muted); text-align: center; margin: 0; min-height: 1.2em; overflow-wrap: anywhere; }
+/* (What to do when every seat is taken, then what the host says: a line each.) */
+#seats-status { white-space: pre-line; }
 .err { color: var(--bad); text-align: center; margin: 0; min-height: 1.2em; }
 .big-msg { font-size: 24px; text-align: center; margin: auto 0; color: var(--muted); }
 #wait-cancel { margin-bottom: auto; }
@@ -343,8 +345,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 
 #buzz {
   flex: none;
-  /* Never below 160px, never off the screen: the height left once the clue and the name are drawn. */
-  width: max(160px, min(88vw, calc(100dvh - 270px), 520px));
+  /* Never below 160px, never off the screen: the height left once the clue and the name are drawn (and Pass, when up). */
+  width: max(160px, min(88vw, calc(100dvh - 270px - var(--pass-room, 0px)), 520px));
   aspect-ratio: 1;
   border-radius: 50%;
   border: 6px solid transparent;
@@ -368,6 +370,13 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
  * Sized by the screen's short side (portrait or landscape); words wrap between words, never in the middle. Except a
  * player's name (.name), which may be one long word: it breaks where it must rather than push the page sideways.
  */
+/*
+ * Pass under it (an ordinary clue): its row and gap (58px), and the line over the question with it, so BUZZ!, Pass and
+ * the name fit a 360×640 phone with nothing to scroll. (Taller phones keep their button: 88vw is the smaller there.)
+ */
+#s-buzz:has(#pass:not([hidden])) { --pass-room: 90px; }
+/* The buzz screen never pulls to refresh or bounces under a mashing thumb. */
+html:has(#s-buzz:not([hidden])) { overscroll-behavior: none; }
 #buzz-big { font-size: clamp(22px, 8.5vmin, 60px); font-weight: 900; line-height: 1.05; max-width: 100%; overflow-wrap: normal; word-break: normal; hyphens: none; }
 /* At most three lines inside the round button (the whole of it is in the button's name). */
 #buzz-small { font-size: clamp(15px, 4.2vmin, 22px); max-width: 100%; overflow-wrap: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }

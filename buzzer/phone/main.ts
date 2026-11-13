@@ -1159,7 +1159,7 @@ function render(): void {
   const away = !connected && everConnected && !notice?.final && !notice?.full && !!code;
   $('overlay').hidden = !away;
   // Long gone: say what to check, and offer a try now (it keeps trying on its own too).
-  const long = away && attempts > 3;
+  const long = away && (attempts > 3 || !navigator.onLine);
   $('overlay-text').textContent = long ? `Still trying to reconnect… check your ${fine.matches ? 'internet connection' : 'Wi-Fi or mobile data'}` : 'Reconnecting…';
   $('overlay-retry').hidden = !long;
   // The page behind the overlay can't be reached (a screen reader or Tab would land on a buzzer that does nothing).
@@ -1199,7 +1199,8 @@ function render(): void {
   }
   if (away) say(awayText());
   if (seatId && view?.you) return renderBuzz(view);
-  if (pendingName) return wait('Waiting for the host to let you in…', true);
+  // (The name asked as, so a typo shows: Cancel goes back to change it.)
+  if (pendingName) return wait(`Asked to join as ${pendingName}. Waiting for the host to let you in…`, true);
   if (newForm) {
     show('s-new');
     return;
@@ -1251,7 +1252,8 @@ function renderSeats(s: SeatsMsg): void {
   if (s.title) $('title').textContent = s.title;
   const teams = !!s.teams;
   const allTaken = everyTaken(s);
-  $('seats-title').textContent = teams ? 'Pick your team' : tap('Tap your name');
+  // (Every seat taken, nobody new let in: no name here can be tapped, so the heading says why.)
+  $('seats-title').textContent = teams ? 'Pick your team' : allTaken ? 'Every seat is taken' : tap('Tap your name');
   const list = $('seat-list');
   // The seat this phone still holds a claim to (another tab or phone took it back): tapping it takes it back here.
   const saved = loadSeat();
@@ -1353,11 +1355,13 @@ function renderSeatsRest(s: SeatsMsg): void {
   const teams = !!s.teams;
   $('new-btn').hidden = !s.allowNew || !!s.locked;
   $('host-away').hidden = s.hostHere;
-  // (What's on screen first, then that every seat is taken.)
-  const status = [s.note ?? '', everyTaken(s) ? 'Every seat is taken. If one is yours on a new phone, ask the host to free it.' : ''].filter(Boolean).join(' · ');
-  $('seats-status').textContent = s.locked ? '🔒 The host has locked the seats.' : status;
+  // (Every seat taken: what to do, on a line of its own under the heading, then what's on screen.)
+  const allTaken = everyTaken(s);
+  const free = allTaken ? 'If one is yours on a new phone, ask the host to free it.' : '';
+  $('seats-status').textContent = s.locked ? '🔒 The host has locked the seats.' : [free, s.note ?? ''].filter(Boolean).join('\n');
   $('seats-note').textContent = seatsNote;
-  say([teams ? 'Pick your team.' : tap('Tap your name.'), seatsNote, s.locked ? 'The host has locked the seats.' : status, s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
+  const head = teams ? 'Pick your team.' : allTaken ? 'Every seat is taken.' : tap('Tap your name.');
+  say([head, seatsNote, s.locked ? 'The host has locked the seats.' : free, s.locked ? '' : sentences([s.note ?? '']), s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
   show('s-seats');
 }
 

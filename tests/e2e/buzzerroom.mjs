@@ -197,10 +197,12 @@ try {
   // No name yet: the name screen itself says so (not the hidden seat list).
   await dee.getByRole('button', { name: 'Ask to join' }).click();
   await dee.locator('#new-err').getByText('Type your name first.').waitFor();
-  assert(await dee.getByLabel('Your name', { exact: true }).evaluate((el) => el === document.activeElement), '"Ask to join" with no name says to type one, on the name screen');
-  await dee.getByLabel('Your name', { exact: true }).fill('Dee');
+  assert(await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).evaluate((el) => el === document.activeElement), '"Ask to join" with no name says to type one, on the name screen');
+  await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).fill('Dee');
   await dee.getByRole('button', { name: 'Ask to join' }).click();
-  await dee.locator('main').getByText('Waiting for the host to let you in…').waitFor();
+  // The wait names the name she asked as (a typo shows), and the name box said everyone sees it (as the team one does).
+  await dee.locator('main').getByText('Asked to join as Dee. Waiting for the host to let you in…', { exact: true }).waitFor();
+  assert(true, 'a new player waiting to be let in sees the name they asked as (“Asked to join as Dee…”), from a box labelled “Your name (everyone sees it)”');
   // She changes her mind (Cancel takes the request back: the host no longer sees it), then asks again.
   await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Dee'), 'Dee asking');
   const before = host.got.length;
@@ -209,7 +211,7 @@ try {
   await host.wait((m) => host.got.indexOf(m) >= before && m.t === 'phones' && !m.phones.some((p) => p.pendingName === 'Dee'), 'Dee no longer asking');
   assert(true, 'a phone waiting to be let in can cancel (the host stops seeing the request)');
   await dee.getByRole('button', { name: "＋ I'm new" }).click();
-  await dee.getByLabel('Your name', { exact: true }).fill('Dee');
+  await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).fill('Dee');
   // (Only what the host hears from now on: the first request's line names a connection that may be gone.)
   const reask = host.got.length;
   await dee.getByRole('button', { name: 'Ask to join' }).click();
@@ -746,7 +748,7 @@ try {
   await kim.keyboard.press('Enter');
   await kim.getByRole('heading', { name: 'Click your name' }).waitFor();
   await kim.getByRole('button', { name: "＋ I'm new" }).click();
-  await kim.getByLabel('Your name', { exact: true }).waitFor();
+  await kim.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).waitFor();
   await kim.keyboard.press('Escape');
   await kim.getByRole('heading', { name: 'Click your name' }).waitFor();
   await kim.waitForFunction(() => document.activeElement?.id === 'new-btn');
@@ -865,7 +867,7 @@ try {
   const eve = await phone('eve');
   await eve.goto(`${base}/${room.code}`);
   await eve.getByRole('button', { name: "＋ I'm new" }).click();
-  await eve.getByLabel('Your name', { exact: true }).fill('Eve');
+  await eve.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).fill('Eve');
   await eve.getByRole('button', { name: 'Ask to join' }).click();
   const ask1 = await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Eve'), 'Eve asking');
   const eveConn = ask1.phones.find((p) => p.pendingName === 'Eve').conn;
@@ -908,6 +910,18 @@ try {
   const kept = await host.wait((m) => m.t === 'buzz' && m.armId === 8 && m.rank === 1, 'the press made while checking', 15_000);
   assert(kept.seatId === 'c' && catTap2.routes.length > routes, 'a press while "Checking connection…" on a dead socket still counts, sent once reconnected');
   setState({ phase: 'lobby', clue: null });
+
+  // The browser says the phone went offline (out of Wi-Fi range): "Reconnecting…" covers the buzzer at once, not after
+  // half a minute of unanswered pings; online again, it's back in its seat.
+  const coveredAtOnce = await ann.evaluate(() => {
+    window.dispatchEvent(new Event('offline'));
+    return !document.getElementById('overlay').hidden;
+  });
+  assert(coveredAtOnce, 'the browser’s “offline”: the phone’s “Reconnecting…” covers the buzzer at once');
+  await ann.evaluate(() => window.dispatchEvent(new Event('online')));
+  await ann.locator('#overlay').waitFor({ state: 'hidden' });
+  await big(ann).getByText('Ann', { exact: true }).waitFor();
+  assert(true, 'and “online” again: it reconnects at once, back in its seat');
 
   // Ann's phone is off the network for a while (no Wi-Fi, asleep): after a few tries it checks whether the room is
   // still there. It is, so it keeps trying, and she's back on her buzzer once online again (not "The game is over").
@@ -1134,12 +1148,17 @@ try {
     const ann = await phoneOn('a');
     const bob = await phoneOn('b');
     await sleep(50);
-    // A viewer with the link while every seat is taken (and nobody new can ask): one line says so, each name just
-    // “Taken”, not “ask the host to free it” on every one.
+    // A viewer with the link while every seat is taken (and nobody new can ask): the heading says so (not “Tap your
+    // name” over names that can't be tapped), one line under it what to do, each name just “Taken”, not “ask the host
+    // to free it” on every one.
     const viewer = await phone('viewer');
     await viewer.goto(`${base}/${made.code}`);
-    await viewer.locator('#seats-status').getByText('Every seat is taken. If one is yours on a new phone, ask the host to free it.').waitFor();
-    assert((await viewer.getByRole('button', { name: 'Ann: Taken', exact: true }).count()) === 1, 'a viewer when every seat is taken: one line says so, and each name is just “Taken”');
+    await viewer.getByRole('heading', { name: 'Every seat is taken', exact: true }).waitFor();
+    assert(
+      (await viewer.locator('#seats-status').innerText()).split('\n')[0] === 'If one is yours on a new phone, ask the host to free it.' &&
+        (await viewer.getByRole('button', { name: 'Ann: Taken', exact: true }).count()) === 1,
+      `a viewer when every seat is taken: the heading says so, a line of its own under it what to do, and each name is just “Taken” (${await viewer.locator('#seats-status').innerText()})`,
+    );
     await viewer.context().close();
     pages.splice(pages.findIndex(([, p]) => p === viewer), 1);
     const filesUrl = (code, id) => `${base}/api/rooms/${code}/files${id ? `/${id}` : ''}`;

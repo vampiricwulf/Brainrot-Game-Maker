@@ -199,6 +199,9 @@ try {
     return last;
   };
   const at = await settledBox(ann.locator('#buzz'));
+  // A small phone (360×640): BUZZ! and Pass fit on the screen, so a quick press never scrolls the page instead.
+  const bobFits = await bob.evaluate(() => [document.scrollingElement.scrollHeight, innerHeight]);
+  assert(bobFits[0] <= bobFits[1], `at 360×640, BUZZ! with Pass under it fits the screen: nothing to scroll (${bobFits.join(' ≤ ')})`);
   const size0 = await settledStageSize(page);
   await shot(ann, 'ann-390-armed');
   await shot(bob, 'bob-360-armed');
