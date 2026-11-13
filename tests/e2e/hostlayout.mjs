@@ -598,7 +598,7 @@ try {
   assert((await p2.getByRole('button', { name: 'Start game ▶' }).locator('kbd').innerText()) === 'Ctrl+⏎', 'Start game ▶ shows its key (Ctrl+⏎) on it');
   const [aud2] = await Promise.all([p2.waitForEvent('popup'), p2.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   await aud2.waitForLoadState('domcontentloaded');
-  // A double-click on Start game ▶: its second click lands on the host panel's fixed bar, and does nothing there.
+  // A double-click on Start game ▶ with the audience window open (one window: see onestage.mjs): nothing more opens.
   await p2.getByRole('button', { name: 'Start game ▶' }).dblclick();
   await p2.locator('.panel').waitFor();
   await p2.waitForTimeout(500);

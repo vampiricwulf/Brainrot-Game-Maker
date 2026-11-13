@@ -128,7 +128,15 @@ try {
     await openGameFile(page, gameFile);
     await page.getByText(/^Opened “/).waitFor();
     await page.getByRole('button', { name: '▶ Play' }).click();
-    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    // A double-click on Start game ▶ in one window: its second click lands on the host panel (❔ Help, 📺 Audience
+    // nearby) and does nothing there: no audience window, no question asked.
+    await page.getByRole('button', { name: 'Start game ▶' }).dblclick();
+    await page.locator('.panel').waitFor();
+    await page.waitForTimeout(500);
+    assert(
+      context.pages().length === 1 && (await page.locator('.panel .confirm').count()) === 0 && (await page.locator('[role=dialog]').count()) === 0,
+      `${w}×${h}: a double-click on Start game ▶ in one window opens no audience window and asks nothing (${context.pages().length} pages)`,
+    );
     await page.getByRole('button', { name: 'Skip intro' }).click();
     await page.locator('.stage-box .board .tile:not([disabled])').first().waitFor();
 
