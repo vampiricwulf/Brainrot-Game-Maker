@@ -390,7 +390,7 @@
     if (partner?.stage === 'pick') return pickLine;
     if (steal && !steal.by) return stealersLeft(session.players, steal, marks).length ? 'Answer hidden · 🔔 a steal: the others can answer' : 'Answer hidden · nobody stole it: reveal the answer';
     if (partnerJudged) return 'Answer hidden · judged';
-    if (allPassed) return 'Answer hidden · everyone passed: reveal the answer';
+    if (allPassed) return 'Answer hidden · everyone passed';
     // (T started the clock with phone cards still to send: Enter sends them.)
     if (partner?.stage === 'distribute' && partnerUnsent && clockRuns) return `Clock running: Enter sends the ${partnerUnsent === 1 ? 'card' : `${partnerUnsent} cards`}`;
     const sent = sentNote ? ` · ${sentNote}` : '';

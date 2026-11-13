@@ -5838,6 +5838,11 @@
             hint('Everyone is judged: Esc goes back to the board');
             break;
           }
+          // Every phone passed: nobody is left to award; the answer comes next (👁 Reveal answer wears the ring).
+          if (everyonePassed(go)) {
+            hint('Everyone passed: N reveals the answer');
+            break;
+          }
         }
         // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen).
         if (awardOpen(session)) award(e.shiftKey ? -1 : 1);

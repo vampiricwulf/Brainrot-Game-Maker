@@ -251,6 +251,14 @@ try {
     'Cat passes with P: the host’s row says Everyone passed, 👁 Reveal answer wears the ring, the status line says so',
   );
   await shot(page, 'host-1280-everyone-passed');
+  assert(
+    !(await page.locator('.panel .status .say').innerText()).includes('reveal the answer'),
+    'the status line says where the clue stands (everyone passed); the buzzers’ row alone says to reveal the answer',
+  );
+  // Enter with nobody selected: nobody is left to award, so it says N reveals the answer (not “Select a player first”).
+  await page.keyboard.press('Enter');
+  await page.locator('.toast', { hasText: 'Everyone passed: N reveals the answer' }).waitFor();
+  assert((await page.locator('.toast', { hasText: 'Select a player first' }).count()) === 0, 'Enter after everyone passed: the hint names N, not “Select a player first”');
   const size2 = await settledStageSize(page);
   assert(size0 === size1 && size1 === size2, `one window: the stage keeps its size as players pass and everyone has (${size0}, ${size1}, ${size2})`);
   await shot(cat, 'cat-desk-passed');

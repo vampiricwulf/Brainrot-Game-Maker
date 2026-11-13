@@ -906,7 +906,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      clue is answered right or its answer shows. The room keeps the passes for the clue's round of passes
      (`HostState.pass`, its id the clue's and when it opened or ↺ Reset last ran: a reset forgets them) and tells the
      host; the buzzers' row says "Passed: Ann, Bob" (on one line, cut short), and once every player not out of the clue
-     has passed, "Everyone passed: reveal the answer" (the status line too) and 👁 Reveal answer wears the ring, the
+     has passed, "Everyone passed: reveal the answer" (the status line just "everyone passed"; Enter with nobody selected says N
+     reveals it) and 👁 Reveal answer wears the ring, the
      buzzers-never-opened item no longer asked. An Undo of a judgement keeps the passes; an older phone shows no Pass,
      and an older room drops it.
    - *Daily Double*: DD splash, then a wager input for the chosen player (up to max(score, the game's wager floor, $2,000 by default); Ignore the limit, unticked on each Daily Double, takes any wager), then the question.
