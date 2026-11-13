@@ -334,7 +334,7 @@ async function viewers() {
   await badge.waitFor();
   assert(true, 'on the board the join code is at the end of the score bar');
   // The window not clicked yet: its “🔊 Click to enable sound” chip (for the host) is in the top left, clear of the code
-  // (in the bottom right here, on slides, a clue and the tiebreaker).
+  // (in the bottom right here, on slides and a clue).
   const [chipAt, badgeAt] = [await aud.locator('.activate').boundingBox(), await badge.boundingBox()];
   assert(
     chipAt.x <= 12 && chipAt.y <= 12 && (chipAt.x + chipAt.width <= badgeAt.x || chipAt.y + chipAt.height <= badgeAt.y),
@@ -436,6 +436,14 @@ async function viewers() {
     }).length,
   );
   assert(overScore === 0, 'with 12 players, every ✔ (wager in) is clear of its plate’s score');
+  const overName = await aud.locator('.plate').evaluateAll((els) =>
+    els.filter((p) => {
+      const t = p.querySelector('.tick')?.getBoundingClientRect();
+      const n = p.querySelector('.name')?.getBoundingClientRect();
+      return !t || !n || t.bottom > n.top + 0.5;
+    }).length,
+  );
+  assert(overName === 0, 'and of its name: each ✔ sits wholly above the plate');
   // The question with its countdown, and the answer that stops it, each come as one picture: the slide is drawn at its
   // size from the start (not full size, then shrinking under the clock a moment later; nor growing into the answer).
   await aud.evaluate(() => {

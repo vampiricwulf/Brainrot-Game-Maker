@@ -37,6 +37,7 @@ in plain words for the people who make and host games. Anything committed but no
 - One window: a question in the strip (🚪 Exit, leaving a round with clues left, Rematch) lies over the tools row instead of adding a row, so the stage viewers see no longer shrinks and grows back for a question only you see.
 - The Amount box takes no minus sign: ↓ in an empty box stops at 0 and a typed −100 reads 100, so **＋ Award** and **− Deduct** always do what their label says (before, a −1 in the box gave +$1).
 - The tiebreaker clue no longer shows the “📱 Players’ buzzers” join code on stream: it’s answered out loud, so nobody buzzes (as on a Daily Double).
+- On stream, the Final’s green ✔ (wager in) sits wholly above each player’s plate instead of over the top of their name.
 
 ## 2026-11-12
 

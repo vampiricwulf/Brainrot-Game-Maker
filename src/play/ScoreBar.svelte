@@ -185,10 +185,11 @@
       opacity: 0;
     }
   }
+  /* Wholly above the plate (its bottom on the plate's top edge): never over the top of the name. */
   .tick {
     position: absolute;
     left: 50%;
-    top: -34px;
+    top: -46px;
     translate: -50% 0;
     display: grid;
     place-items: center;
