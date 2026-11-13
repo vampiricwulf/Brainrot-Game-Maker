@@ -29,7 +29,7 @@ import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type H
 import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
 import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
-import { HOST_AWAY_SAY_MS, hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine } from './lines';
+import { clockLine, HOST_AWAY_SAY_MS, hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine } from './lines';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -1471,6 +1471,7 @@ function renderBuzz(v: PhoneView): void {
   if (!boxUp) saveDraft('wager');
   // (A box in the buzzer's place: no Pass under it.)
   if (boxUp || ansUp) $('pass').hidden = true;
+  drawClock();
   if (boxUp) return renderWager(v, wager!, sym);
   if (ansUp) return renderAnswer(v, ans!, sym);
   if (!ans) ((answerFor = ''), (answerErr = ''));
@@ -1664,6 +1665,31 @@ function renderBuzz(v: PhoneView): void {
   // Count the early lock down.
   clearTimeout(tick);
   if (left > 0) tick = window.setTimeout(render, 200);
+}
+
+let clockTick = 0;
+
+/**
+ * The host's countdown over the answer or wager box that's up ("⏱ 12 s left", amber in its last seconds; at 0 that the
+ * host may still take a late one: nothing locks). Kept up to date while it runs; none without a box or a countdown.
+ */
+function drawClock(): void {
+  clearTimeout(clockTick);
+  const t = view?.timer;
+  const box = !$('answer-form').hidden ? 'answer' : !$('wager-form').hidden ? 'wager' : null;
+  for (const [id, what] of [
+    ['answer-clock', 'answer'],
+    ['wager-clock', 'wager'],
+  ] as const) {
+    const el = $(id);
+    el.hidden = !t || box !== what;
+    if (el.hidden || !t) continue;
+    const c = clockLine(t, serverNow(), what);
+    if (el.textContent !== c.text) el.textContent = c.text;
+    el.classList.toggle('soon', c.soon);
+    el.classList.toggle('up', c.up);
+  }
+  if (t && box && 'endsAt' in t && t.endsAt > serverNow()) clockTick = window.setTimeout(drawClock, 250);
 }
 
 /**

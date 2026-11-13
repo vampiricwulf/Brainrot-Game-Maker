@@ -251,6 +251,8 @@ export class RoomLink {
   /** A probe waiting for its answer (see probe()). */
   private probeTimer: unknown = null;
   private heard = 0;
+  /** The room's clock less this one's (ms), from its welcome, then each pong (half the round trip taken off). */
+  private offset = 0;
   /** When the last ping went (0: none yet). */
   private pingAt = 0;
   private stopped = true;
@@ -319,6 +321,11 @@ export class RoomLink {
     if (this.status !== 'online' || !this.ws || this.ws.readyState !== OPEN) return false;
     this.ws.send(JSON.stringify(msg));
     return true;
+  }
+
+  /** The room's clock less this one's (ms), as last worked out: a time on this clock plus it is the room's. */
+  clockOffset(): number {
+    return this.offset;
   }
 
   /** How long since the room last said anything (ms): a pong comes every PING_MS while the line is alive. */
@@ -503,6 +510,7 @@ export class RoomLink {
           return this.close();
         }
         this.code = m.code;
+        this.offset = m.serverNow - this.deps.now();
         this.features = m.features ?? [];
         this.limits = m.limits ?? null;
         this.welcomed = true;
@@ -559,6 +567,8 @@ export class RoomLink {
         this.ev.onChange?.();
         return;
       case 'pong':
+        // (The room's clock when it answered was about halfway through the round trip.)
+        if (m.at <= this.deps.now()) this.offset = Math.round(m.serverNow - (m.at + this.deps.now()) / 2);
         return;
     }
   }

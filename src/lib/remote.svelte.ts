@@ -190,6 +190,11 @@ export function rejoinRoom(room: NewRoom & { base: string }): void {
   sync();
 }
 
+/** The buzzer room's clock less this one's (ms; 0 without a room): a time here plus it is the room's. */
+export function roomClockOffset(): number {
+  return link?.clockOffset() ?? 0;
+}
+
 export function sendHostState(state: HostState, now = false): void {
   link?.setState(state, now);
 }

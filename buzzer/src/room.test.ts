@@ -3180,6 +3180,23 @@ describe('verdicts on a buzz-in clue', () => {
   });
 });
 
+describe('the countdown', () => {
+  it('passes the host’s countdown to the phones while answers are asked for, checked', () => {
+    const answers = { id: 'q1', open: true, seats: [{ id: 'a' }] };
+    const g = game();
+    g.send({ t: 'state', state: state({ answers, timer: { endsAt: 70_000 } }) });
+    expect(g.pa.last('view')!.view.timer).toEqual({ endsAt: 70_000 });
+    g.send({ t: 'state', state: state({ answers, timer: { left: 12_000 } }) });
+    expect(g.pa.last('view')!.view.timer).toEqual({ left: 12_000 });
+    // Hidden: gone.
+    g.send({ t: 'state', state: state({ answers }) });
+    expect(g.pa.last('view')!.view.timer).toBeUndefined();
+    expect(cleanState({ ...state(), timer: { left: -5 } })?.timer).toEqual({ left: 0 });
+    expect(cleanState({ ...state(), timer: { left: 9e9 } })?.timer).toEqual({ left: 3_600_000 });
+    expect(cleanState({ ...state(), timer: { endsAt: 'soon' } })?.timer).toBeUndefined();
+  });
+});
+
 describe('passes', () => {
   const ask = { id: 'c1@1' };
   const clue = (over: Partial<HostState> = {}) => state({ phase: 'armed', armId: 1, clue: { text: 'Q?' }, pass: ask, ...over });

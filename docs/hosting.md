@@ -226,6 +226,11 @@ answer too, and once you judge it in the reveals their phone says how it went ("
 green or red, shows on a ✍ clue's phones as you judge each answer, and on an ordinary buzz-in clue on the phone of the
 player you just marked ("✘ Wrong −$200"); an Undo takes it off the phone again.
 
+While you run the countdown (`T`) on a ✍ clue or in the Final, each phone shows it over the answer or wager box
+("⏱ 12 s left", amber in the last 5 seconds), paused, given 10 more seconds or put away as you do. At 0 it says
+"Time's up: the host may still take a late answer": nothing locks then, you still decide when answers lock (👁 Reveal
+answer).
+
 A typed answer can take a few lines (8 at most): on a phone the keyboard's Enter key starts a new line and **Send
 answer** sends it; on a computer Enter sends and Shift+Enter starts a new line. The answers list and the Final's reveal
 show the lines.

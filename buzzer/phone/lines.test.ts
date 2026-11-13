@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine as line } from './lines';
+import { clockLine, hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine as line } from './lines';
 
 describe('money', () => {
   it('puts $ or an emoji in front, a word after, and a minus sign before', () => {
@@ -65,5 +65,23 @@ describe('passing on a clue', () => {
     expect(hadGoLine(false, false, true)).toBe('You’ve had your go on this one · everyone else passed');
     expect(hadGoLine(true, false, true)).toBe('Your team already answered this one · everyone else passed');
     expect(hadGoLine(true, true, false)).toBe('You were on another team for this one');
+  });
+});
+
+describe('clockLine: the host’s countdown over an answer or wager box', () => {
+  it('counts down in whole seconds from when it ends on the room’s clock, amber at 5 s', () => {
+    expect(clockLine({ endsAt: 20_000 }, 8_000, 'answer')).toEqual({ text: '⏱ 12 s left', soon: false, up: false });
+    expect(clockLine({ endsAt: 20_000 }, 15_200, 'answer')).toEqual({ text: '⏱ 5 s left', soon: true, up: false });
+    expect(clockLine({ endsAt: 20_000 }, 19_999, 'answer').text).toBe('⏱ 1 s left');
+    expect(clockLine({ endsAt: 200_000 }, 110_000, 'answer').text).toBe('⏱ 1:30 left');
+  });
+
+  it('paused: the time it has left, and says so', () => {
+    expect(clockLine({ left: 12_000 }, 999_999, 'answer')).toEqual({ text: '⏱ 12 s left · paused', soon: false, up: false });
+  });
+
+  it('at 0: time’s up, and the host may still take a late one (nothing locks)', () => {
+    expect(clockLine({ endsAt: 20_000 }, 20_000, 'answer')).toEqual({ text: 'Time’s up: the host may still take a late answer', soon: false, up: true });
+    expect(clockLine({ left: 0 }, 0, 'wager').text).toBe('Time’s up: the host may still take a late wager');
   });
 });

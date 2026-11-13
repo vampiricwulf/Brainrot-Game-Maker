@@ -2145,6 +2145,11 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
     for (const [k, v] of Object.entries(x.verdicts)) if (ids.has(k) && isObj(v) && typeof v.right === 'boolean' && Number.isSafeInteger(v.delta)) verdicts[k] = { right: v.right, delta: v.delta as number };
     if (Object.keys(verdicts).length) extra.verdicts = verdicts;
   }
+  if (isObj(x.timer)) {
+    const t = x.timer;
+    if (Number.isSafeInteger(t.endsAt) && (t.endsAt as number) > 0) extra.timer = { endsAt: t.endsAt as number };
+    else if (typeof t.left === 'number' && Number.isFinite(t.left)) extra.timer = { left: Math.max(0, Math.min(3_600_000, Math.round(t.left))) };
+  }
   if (isObj(x.pass) && typeof x.pass.id === 'string' && x.pass.id && x.pass.id.length <= 100) extra.pass = { id: x.pass.id };
   if (x.over === true) extra.over = true;
   if (extra.over && typeof x.winner === 'string' && ids.has(x.winner)) extra.winner = x.winner;

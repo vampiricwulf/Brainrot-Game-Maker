@@ -279,7 +279,19 @@ export interface HostState {
    * the moment it's judged; an Undo takes it away. phoneView() gives each phone its own seat's only.
    */
   verdicts?: Record<string, AnswerVerdict> | null;
+  /**
+   * Added later: the host's countdown while answers or wagers are asked for on phones (a ✍ clue, the Final), so a
+   * player looking down at their phone sees the time left. It only informs: nothing locks at 0 (the host decides when
+   * answers lock).
+   */
+  timer?: PhoneTimer | null;
 }
+
+/**
+ * HostState.timer: running, when it ends on the room's clock (endsAt, ms: the host works it out with its offset to the
+ * room's clock, as phones do for lockedUntil); paused, how long it has left (left, ms; 0: time's up).
+ */
+export type PhoneTimer = { endsAt: number } | { left: number };
 
 /** HostState.pass: this clue takes passes, for the round of passes `id`. */
 export interface PassAsk {
@@ -502,6 +514,8 @@ export interface PhoneView {
   pass?: PhonePass;
   /** Added later: how the host judged this phone's seat on the open buzz-in clue (HostState.verdicts). */
   verdict?: AnswerVerdict;
+  /** Added later: the host's countdown (HostState.timer), while answers or wagers are asked for. */
+  timer?: PhoneTimer;
 }
 
 /**
@@ -601,6 +615,7 @@ export function phoneView(
     ...(seat && cards && (cards.list.length || cards.late) ? { cards } : {}),
     ...(s.locked ? { locked: true as const } : {}),
     ...(seat && s.verdicts?.[seat.id] ? { verdict: { ...s.verdicts[seat.id] } } : {}),
+    ...(seat && s.timer && (s.answers || s.wager) ? { timer: { ...s.timer } } : {}),
   };
 }
 

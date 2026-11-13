@@ -36,14 +36,14 @@
   } from './host/goon';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type Overlay, type StageAction, type TimerState } from '../lib/live';
   import {
-    answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, buzzVerdicts, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, passAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
+    answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, buzzVerdicts, phoneTimer, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, passAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
   import { clip, KICK_BLOCK_MS, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
   import {
     acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, forgetCardFiles, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomCardSeen, onRoomColor, onRoomPasses, onRoomQueue,
-    onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomCanFree, roomHasAnswers, roomHasCards, roomHasChoices, roomHasFiles, roomHasWagers, roomLink, roomMembers, roomStillOpen, sendHostState, startRoom,
+    onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomCanFree, roomClockOffset, roomHasAnswers, roomHasCards, roomHasChoices, roomHasFiles, roomHasWagers, roomLink, roomMembers, roomStillOpen, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { judgeAllPlan, usableChoices } from '../lib/choices';
   import { clearRoom, debounce, saveRoom, type SavedRoom } from '../lib/persist';
@@ -1633,6 +1633,7 @@
       cards: cards ? hostCards(game, session, phoneCan(session)) : null,
       pass: passNow,
       verdicts: phonesOn ? buzzVerdicts(game, session, markSince) : null,
+      timer: phoneTimer(app.live.timer, roomClockOffset()),
     });
   }
 

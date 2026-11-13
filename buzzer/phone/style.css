@@ -527,6 +527,9 @@ html:has(#s-buzz:not([hidden])) { overscroll-behavior: none; }
 /* Wagers: the player's own box in place of the buzzer. */
 #wager-form { width: 100%; max-width: 420px; gap: 10px; }
 #answer-form { width: 100%; max-width: 420px; gap: 10px; }
+/* The host's countdown over a box: amber in its last seconds, and once time's up. */
+.clock { margin: 0; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+.clock:is(.soon, .up) { color: #ffd27a; }
 /* It grows with its lines (main.ts growAnswer), then scrolls. */
 #answer-in { resize: none; line-height: 1.25; overflow-y: hidden; }
 /* A ✍ clue's multiple choices: a big button each, the one picked in green. */

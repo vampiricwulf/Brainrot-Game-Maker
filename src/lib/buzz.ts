@@ -1,7 +1,7 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, SETTING_UP, STARTS_SOON, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk, type AnswerVerdict, type PassAsk } from './buzzproto';
+import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, SETTING_UP, STARTS_SOON, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk, type AnswerVerdict, type PassAsk, type PhoneTimer } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, isBoard, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type SlideElement, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
@@ -9,6 +9,7 @@ import {
 import { ANY_SERVER, cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
 import { usableChoices } from './choices';
+import type { TimerState } from './live';
 import { clueMarks, currentClueInfo, currentFinal, ddCap, finalTag, finalWagerCap, nameList, partnerSteal, roundComplete, score, shownQuestionSlide, tiebreakHolds, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
@@ -758,6 +759,18 @@ export function buzzVerdicts(game: Game, session: Session, since = 0): Record<Id
   return Object.keys(out).length ? out : null;
 }
 
+/**
+ * The host's countdown as the phones get it (HostState.timer): running, when it ends on the buzzer room's clock
+ * (`offset`: the room's clock less this one's); paused, the time it has left; run out, none left. Null without one
+ * (hidden). Worked out from when it started, never from now, so it stays the same until the clock is changed.
+ */
+export function phoneTimer(t: TimerState | null | undefined, offset = 0): PhoneTimer | null {
+  if (!t) return null;
+  if (t.expired) return { left: 0 };
+  const left = Math.max(0, (t.total - t.elapsed) * 1000);
+  return t.startedAt === null ? { left: Math.round(left) } : { endsAt: Math.round(t.startedAt + offset + left) };
+}
+
 /** A player's name as the phones get it (the room takes 40 characters at most). */
 export const SEAT_NAME_MAX = 40;
 
@@ -767,7 +780,8 @@ export const SEAT_NAME_MAX = 40;
  * the game's other content, except the cards the host sent (hostCards: built only from session.partner.sent and
  * session.cards, which only the host's presses add to). A card holds whatever the host put on it. `extra`: the phones' status line (phoneStatus), 🔒 locked seats, the wagers
  * and answers phones may send, those cards (only for a room that takes them), whether players may pass (passAsk), and
- * how each player was judged on the open buzz-in clue (buzzVerdicts).
+ * how each player was judged on the open buzz-in clue (buzzVerdicts), and the countdown (phoneTimer) while answers or
+ * wagers are asked for.
  */
 export function hostState(
   game: Game,
@@ -782,6 +796,7 @@ export function hostState(
     cards?: HostCard[] | null;
     pass?: PassAsk | null;
     verdicts?: Record<Id, AnswerVerdict> | null;
+    timer?: PhoneTimer | null;
   } = {},
 ): HostState {
   const info = (b.phase !== 'lobby' || extra.answers) && session.phase === 'clue' ? currentClueInfo(session, game) : null;
@@ -822,6 +837,8 @@ export function hostState(
     // (Players may pass on it: only while its buzzers are out.)
     ...(extra.pass && b.phase !== 'lobby' && info ? { pass: extra.pass } : {}),
     // (Each player's own verdict on the open buzz-in clue, from the moment it's judged.)
+    // (The countdown only while phones are asked for answers or wagers: then a player looks down, not at the stream.)
+    ...(extra.timer && (extra.answers || extra.wager) ? { timer: extra.timer } : {}),
     ...(extra.verdicts && info ? { verdicts: Object.fromEntries(Object.entries(extra.verdicts).filter(([id]) => seats.some((x) => x.id === id))) } : {}),
   };
 }

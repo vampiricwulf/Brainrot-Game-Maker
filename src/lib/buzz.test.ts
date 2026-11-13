@@ -4,7 +4,7 @@ import { finalName, newImageEl, newTextEl, playableClues, setSlideText, textSlid
 import { applyScore, ddShowQuestion, finalChoose, finalJudge, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, setScore, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
-  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, buzzVerdicts, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, passAsk, phoneStatus, questionText, roomCardCount,
+  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, buzzVerdicts, cardsLeftOff, phoneTimer, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, passAsk, phoneStatus, questionText, roomCardCount,
   roomCardsFull, seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
 } from './buzz';
 import { CARDS_MAX, phoneView, OLD_FILE_LIMITS } from './buzzproto';
@@ -1159,5 +1159,30 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
     expect(roomCardCount(g, session)).toBe(CARDS_MAX);
     expect(cardsLeftOff(g, session)).toEqual([]);
     expect(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((x) => x.id)).toContain(sentCardId(first));
+  });
+});
+
+describe('the countdown on phones (phoneTimer, hostState, phoneView)', () => {
+  it('running: when it ends on the room’s clock; paused: the time left; run out: none; hidden: nothing', () => {
+    const t = { total: 30, startedAt: 10_000, elapsed: 5, expired: false };
+    expect(phoneTimer(t, 500)).toEqual({ endsAt: 10_000 + 500 + 25_000 });
+    // (+10: ends later; the same however late it's worked out.)
+    expect(phoneTimer({ ...t, total: 40 }, 500)).toEqual({ endsAt: 45_500 });
+    expect(phoneTimer({ ...t, startedAt: null }, 500)).toEqual({ left: 25_000 });
+    expect(phoneTimer({ ...t, expired: true }, 500)).toEqual({ left: 0 });
+    expect(phoneTimer(null)).toBeNull();
+  });
+
+  it('goes to the phones only while answers or wagers are asked for', () => {
+    const game = jeopardyGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#ff0000' }];
+    const session = newSession(game);
+    const timer = { endsAt: 99_000 };
+    expect(hostState(game, session, newBuzz(), 0, { timer }).timer).toBeUndefined();
+    const answers = { id: 'q', open: true, seats: [{ id: 'a' }] };
+    const st = hostState(game, session, newBuzz(), 0, { timer, answers });
+    expect(st.timer).toEqual(timer);
+    expect(phoneView(st, 'a').timer).toEqual(timer);
+    expect(phoneView(st, null).timer).toBeUndefined();
   });
 });

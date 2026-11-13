@@ -427,6 +427,23 @@ describe('RoomLink', () => {
     expect(sockets.length).toBe(2);
   });
 
+  it('knows the room’s clock: from its welcome, then each pong (half the round trip taken off)', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    const link = new RoomLink('https://buzz.test', {}, t.deps);
+    await link.create();
+    sockets[0].open();
+    // (Here it's 1000; the room says 51000.)
+    sockets[0].say({ ...welcome, serverNow: 51_000 });
+    expect(link.clockOffset()).toBe(50_000);
+    t.advance(PING_MS);
+    const at = (sockets[0].sent.at(-1) as { at: number }).at;
+    t.advance(200);
+    // The room answered 100 ms into the 200 ms round trip, at its 60000.
+    sockets[0].say({ t: 'pong', at, serverNow: at + 100 + 40_000 });
+    expect(link.clockOffset()).toBe(40_000);
+  });
+
   it('a hidden page’s late timers aren’t taken as a quiet room: only a ping left unanswered is', async () => {
     sockets = [];
     const t = fakeDeps();

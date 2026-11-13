@@ -16,6 +16,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Added
 
 - Phones say whether the player was right or wrong outside the Final too: on a buzz-in clue the judged player's phone shows “✔ Right! +$400” in green or “✘ Wrong −$200” in red the moment you mark them, and on a ✍ clue each phone shows its own as you judge it. An Undo takes it away.
+- Phones show the countdown over the answer box on a ✍ clue and in the Final (and over the Final's wager box): “⏱ 12 s left”, amber in the last 5 seconds, following your pause, +10 and −10, and gone when you put it away. At 0 they say “Time's up: the host may still take a late answer”; answers stay open until you lock them, as before.
 
 ### Changed
 

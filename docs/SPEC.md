@@ -978,7 +978,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      an answer on their phone (a team: anyone on it) until the answer is shown, or until the host judges theirs (then
      it's locked on their phone, which says how it went in green or red, "✔ Right! +$200" / "✘ Wrong −$200", over the
      answer they sent; undoing the mark takes that away and opens it again, and once they change it, redo doesn't bring
-     that mark back); only the host sees them (in one window, not until the answer is up: till then each player's row says whether
+     that mark back; while the host's countdown runs, here and in the Final, the phones show it over the answer or wager
+     box, `HostState.timer`: when it ends on the room's clock, the host's clock put right by the room's welcome and
+     pongs, or the time left while paused; "⏱ 12 s left", amber from 5 s, then "Time's up: the host may still take a
+     late answer", locking nothing); only the host sees them (in one window, not until the answer is up: till then each player's row says whether
      theirs is in, in the room the words then take, long ones scrolling in it, so the stage keeps its size); the stream shows ✍ and who has answered
      while answers are open; the host marks each ✔ / ✘ for the tile's value. With **multiple choice** (2–6 choices
      under ✍ in the editor, one marked right: its **Mark right** reads ✔ Right once pressed), players tap one instead, and ✔ Judge all marks everyone by the right

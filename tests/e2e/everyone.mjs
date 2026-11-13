@@ -289,6 +289,22 @@ try {
   // A countdown (T): this game has none of its own.
   await host.keyboard.press('t');
   await aud.locator('.timer').waitFor();
+  // The phones show it too, over the answer box (a player looking down needn't look up at a stream behind them).
+  const clock = (p) => p.locator('#answer-clock');
+  await clock(p1).getByText(/^⏱ \d+ s left$/).waitFor();
+  const secs = async (p) => Number((await clock(p).innerText()).match(/\d+/)?.[0]);
+  const first = await secs(p1);
+  await p1.waitForFunction((n) => Number(document.getElementById('answer-clock').textContent.match(/\d+/)?.[0]) < n, first);
+  assert(first > 0 && first <= 30 && (await clock(p2).isVisible()), `the phones count it down over the answer box (⏱ ${first} s left, then less)`);
+  // T pauses it, Shift+T gives it 10 more seconds, T lets it go on: the phones follow.
+  await host.keyboard.press('t');
+  await clock(p1).getByText(/· paused$/).waitFor();
+  const paused = await secs(p1);
+  await host.keyboard.press('Shift+t');
+  await p1.waitForFunction((n) => Number(document.getElementById('answer-clock').textContent.match(/\d+/)?.[0]) === n + 10, paused);
+  await host.keyboard.press('t');
+  await clock(p1).getByText(/^⏱ \d+ s left$/).waitFor();
+  assert(true, `paused (⏱ ${paused} s left · paused), 10 more seconds (${paused + 10}), and going again: the phones follow`);
   await p1.getByLabel(/Your answer/).fill('Siamese');
   await p1.getByRole('button', { name: 'Send answer' }).click();
   await p2.getByLabel(/Your answer/).fill('Bulldog');
@@ -343,7 +359,9 @@ try {
   assert(true, '✔ reached with Tab and pressed with Enter: the keys go to the next ✔, and Enter marks Player 2 right (not “Select a player first”)');
   await host.keyboard.press('r');
   await aud.locator('.timer').waitFor({ state: 'detached' });
-  assert(true, 'showing the answer ends it');
+  await clock(p1).waitFor({ state: 'hidden' });
+  await clock(p2).waitFor({ state: 'hidden' });
+  assert(true, 'showing the answer ends it (on the phones too)');
 
   // ---------- Multiple choice: phones tap one; the host sees the picks, how many picked each, and ✔ Judge all ----------
   // (At 1024×768: up to 1180px wide the host panel's buttons are a size bigger, ✔ Judge all's kept room too.)

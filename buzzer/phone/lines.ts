@@ -56,3 +56,22 @@ export function hadGoLine(team: boolean, otherTeam: boolean, all: boolean): stri
   const line = otherTeam ? 'You were on another team for this one' : team ? 'Your team already answered this one' : 'You’ve had your go on this one';
   return all ? `${line} · everyone else passed` : line;
 }
+
+/** The host's countdown as a phone gets it (PhoneView.timer): running, when it ends on the room's clock; paused, ms left. */
+type ClockNow = { endsAt: number } | { left: number };
+
+/** At this many seconds left (or fewer) the countdown turns amber. */
+export const CLOCK_SOON_S = 5;
+
+/**
+ * The countdown's line over an answer or wager box, `now` on the room's clock: "⏱ 12 s left" (past a minute "⏱ 1:30
+ * left"), "· paused" while the host has it paused, and at 0 that the host may still take a late one (nothing locks at
+ * 0: the host decides when answers lock). soon: CLOCK_SOON_S or fewer left; up: time's up.
+ */
+export function clockLine(t: ClockNow, now: number, what: 'answer' | 'wager'): { text: string; soon: boolean; up: boolean } {
+  const paused = 'left' in t;
+  const s = Math.max(0, Math.ceil((paused ? t.left : t.endsAt - now) / 1000));
+  if (!s) return { text: `Time’s up: the host may still take a late ${what}`, soon: false, up: true };
+  const left = s < 60 ? `${s} s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  return { text: `⏱ ${left} left${paused ? ' · paused' : ''}`, soon: s <= CLOCK_SOON_S, up: false };
+}
