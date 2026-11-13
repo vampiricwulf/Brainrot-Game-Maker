@@ -3296,6 +3296,27 @@ describe('passes', () => {
     expect(cleanState({ ...clue(), pass: { id: 'c1@1', extra: 1 } })?.pass).toEqual({ id: 'c1@1' });
   });
 
+  it('everyone passed: every phone is told (those out of the clue too), until a pass is taken back or the buzzers are reset', () => {
+    const g = game();
+    g.send({ t: 'state', state: clue({ lockedOut: ['c'] }) });
+    g.pa.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.pa.last('view')!.view.pass!.all).toBeUndefined();
+    g.pb.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@1', passed: true, all: true, can: true });
+    expect(g.pc.last('view')!.view.pass).toEqual({ id: 'c1@1', all: true });
+    // Taken back: not everyone now.
+    g.pb.send({ t: 'pass', id: 'c1@1', on: false });
+    expect(g.pa.last('view')!.view.pass!.all).toBeUndefined();
+    g.pb.send({ t: 'pass', id: 'c1@1', on: true });
+    expect(g.pa.last('view')!.view.pass!.all).toBe(true);
+    // ↺ Reset (a new round of passes): forgotten.
+    g.send({ t: 'state', state: clue({ armId: 2, pass: { id: 'c1@2' } }) });
+    expect(g.pa.last('view')!.view.pass).toEqual({ id: 'c1@2', can: true });
+    // Nobody passed, all out: not "everyone passed".
+    g.send({ t: 'state', state: clue({ armId: 3, lockedOut: ['a', 'b', 'c'], pass: { id: 'c1@3' } }) });
+    expect(g.pa.last('view')!.view.pass!.all).toBeUndefined();
+  });
+
   it('teams: a pass counts for the team, says who passed, and any of them can take it back', () => {
     const g = setup();
     g.room.hostOpen();

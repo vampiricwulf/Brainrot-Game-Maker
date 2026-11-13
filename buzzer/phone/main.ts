@@ -29,7 +29,7 @@ import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type H
 import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
 import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
-import { HOST_AWAY_SAY_MS, hostAwayLine, money, passButton, passedLines, verdictLine } from './lines';
+import { HOST_AWAY_SAY_MS, hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine } from './lines';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -1591,7 +1591,7 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = ['off', '…', 'Buzzed! Checking who was first'];
   } else if (you.lockedOut) {
     // (Out: on another team for this clue; the one they're on now hasn't answered.)
-    [cls, big, small] = ['off', 'Wait', you.out ? 'You were on another team for this one' : team ? 'Your team already answered this one' : 'You’ve had your go on this one'];
+    [cls, big, small] = ['off', 'Wait', hadGoLine(team, !!you.out, !!pass?.all)];
   } else if (left > 0) {
     [cls, big, small] = ['locked', 'Too early', `You buzzed before it lit up · wait ${left}s`];
     spoken = 'Wait a moment before buzzing again';

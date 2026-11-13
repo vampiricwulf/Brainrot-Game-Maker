@@ -499,7 +499,9 @@ export interface PhoneView {
 /**
  * Passing, as one phone sees it. passed: its seat passed (teams: by, who on the team; byYou, this phone). can: a press
  * does something now (pass, or take the pass back): not once the clue is answered right or its answer shows, nor for a
- * seat that is answering, has buzzed, or is out of this clue.
+ * seat that is answering, has buzzed, or is out of this clue. all (added later): everyone still able to buzz passed
+ * (the rest missed it), nobody answering: the phone says so, and never what comes next (the host may reset the
+ * buzzers and give a hint).
  */
 export interface PhonePass {
   id: string;
@@ -507,6 +509,7 @@ export interface PhonePass {
   by?: string;
   byYou?: boolean;
   can?: true;
+  all?: true;
 }
 
 /**

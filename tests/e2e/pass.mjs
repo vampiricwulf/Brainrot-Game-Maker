@@ -276,6 +276,14 @@ try {
     'Cat passes with P: the host’s row says Everyone passed, 👁 Reveal answer wears the ring, the status line says so',
   );
   await shot(page, 'host-1280-everyone-passed');
+  // The phones are told too, and never what comes next (the host may reset the buzzers and give a hint).
+  await ann.locator('#buzz-small', { hasText: 'Everyone passed' }).waitFor();
+  await bob.locator('#buzz-small', { hasText: 'Everyone passed' }).waitFor();
+  assert(
+    (await ann.locator('#buzz-small').innerText()) === 'Everyone passed · take the pass back to buzz' && (await passBtn(ann).innerText()) === 'Take back my pass' && !/answer|next/i.test(await bob.locator('#buzz-small').innerText()),
+    'every phone says Everyone passed (and the pass can still be taken back), never what comes next',
+  );
+  await shot(bob, 'bob-360-everyone-passed');
   assert(
     !(await page.locator('.panel .status .say').innerText()).includes('reveal the answer'),
     'the status line says where the clue stands (everyone passed); the buzzers’ row alone says to reveal the answer',
@@ -315,6 +323,7 @@ try {
   await ann.locator('#buzz.armed').waitFor();
   await bob.locator('#buzz.armed').waitFor();
   assert((await passSays(ann, 'Pass: I won’t buzz on this one')) && !(await ringed(page)) && (await row(page).getByText(/Passed/).count()) === 0, '↺ Reset buzzers (0): nobody has passed any more, BUZZ! on every phone');
+  assert(!/Everyone/.test(await ann.locator('#buzz-small').innerText()), 'and the phones no longer say Everyone passed');
   // A slip of 0: Ctrl+Z puts the buzzers back, with the passes and Cat's miss.
   await page.keyboard.press('Control+z');
   await row(page).getByText('Everyone passed: reveal the answer').waitFor();

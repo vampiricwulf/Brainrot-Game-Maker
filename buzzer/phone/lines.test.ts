@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hostAwayLine, money, passButton, passedLines, verdictLine as line } from './lines';
+import { hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine as line } from './lines';
 
 describe('money', () => {
   it('puts $ or an emoji in front, a word after, and a minus sign before', () => {
@@ -51,5 +51,19 @@ describe('passing on a clue', () => {
     expect(passedLines({ passed: true, by: 'Ann', byYou: false }, true, null).big).toBe('Ann passed for your team');
     // (A team passed without a name from an older room: plain.)
     expect(passedLines({ passed: true }, true, null).big).toBe('Your team passed');
+  });
+
+  it('everyone passed: says so (and that the pass can still be taken back), never what comes next', () => {
+    expect(passedLines({ passed: true, all: true, can: true }, false, null)).toEqual({ big: 'You passed', small: 'Everyone passed · take the pass back to buzz' });
+    expect(passedLines({ passed: true, all: true }, false, null).small).toBe('Everyone passed');
+    expect(passedLines({ passed: true, all: true, can: true }, true, null).big).toBe('Your team passed');
+    for (const all of [true, false]) expect(passedLines({ passed: true, all, can: true }, false, null).small).not.toMatch(/answer|next|reveal/i);
+  });
+
+  it('a seat that had its go hears that everyone else passed', () => {
+    expect(hadGoLine(false, false, false)).toBe('You’ve had your go on this one');
+    expect(hadGoLine(false, false, true)).toBe('You’ve had your go on this one · everyone else passed');
+    expect(hadGoLine(true, false, true)).toBe('Your team already answered this one · everyone else passed');
+    expect(hadGoLine(true, true, false)).toBe('You were on another team for this one');
   });
 });

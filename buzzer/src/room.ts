@@ -1652,9 +1652,23 @@ export class Room {
     return {
       id: ask.id,
       ...(mine ? { passed: true as const } : {}),
+      ...(this.allPassed() ? { all: true as const } : {}),
       ...(mine && st.teams && mine.by ? { by: mine.by, byYou: !!p.member && p.member === mine.member } : {}),
       ...(can ? { can: true as const } : {}),
     };
+  }
+
+  /**
+   * Everyone passed (PhonePass.all): every seat still able to buzz on the clue passed, and at least one did (the rest
+   * missed it), with nobody answering and the clue not answered right. As the host's panel works it out (goon.ts
+   * everyonePassed) from the same list of passes. A new round of passes (↺ Reset) starts it over.
+   */
+  private allPassed(): boolean {
+    const st = this.s.state;
+    const seats = this.s.passes && st?.pass && this.s.passes.id === st.pass.id ? this.s.passes.seats : undefined;
+    if (!st || !seats || !st.seats.length || st.phase === 'lobby' || st.phase === 'answering' || (st.phase === 'closed' && st.done)) return false;
+    const ids = st.seats.map((x) => x.id);
+    return ids.some((id) => seats[id] && !st.lockedOut.includes(id)) && ids.every((id) => seats[id] || st.lockedOut.includes(id));
   }
 
   /**
