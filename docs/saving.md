@@ -28,7 +28,8 @@ Use `↑` / `↓` and `Enter` to pick a game. Right-click a game (or press `Shif
 You can also drop a game file on the editor to open it. A `.brainrot-theme` file opens on the 🎨 Theme page.
 
 If the game you have open has unsaved changes, New and Open… ask first: **Cancel**, **Open anyway** (or **Start new
-anyway**) or **Save first**. Going on anyway keeps the old game in Recent games, so it isn't lost.
+anyway**) or **Save first**. Going on anyway keeps the old game in Recent games, so it isn't lost. A note under the header
+offers **↶ Reopen previous game** until you change the new game.
 
 Only one browser tab can edit at a time. Another tab waits and offers **Edit here** once the first one closes.
 

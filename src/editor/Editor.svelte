@@ -613,6 +613,17 @@
   let asking = $state<{ heading: string; title: string; go: string; answer: (c: ReplaceChoice) => void } | null>(null);
   /** The game just replaced, which "↶ Reopen previous game" brings back (null: no note), and kept games that made room. */
   let previous = $state<{ key: string; title: string; dropped?: string[] } | null>(null);
+  /**
+   * The new game's last step once its history started (undefined: not yet). The note goes away with the first change to
+   * the new game (a step made, undone or redone, or typing not yet a step): it stays in Open… → Recent games, as the note
+   * says, and would otherwise take a line of a laptop's screen all session.
+   */
+  let previousTop = $state<string | null | undefined>(undefined);
+  /** (A function: replaceNow's own `history` is the one the game arrives with.) */
+  const topStep = () => history.top;
+  $effect(() => {
+    if (previous && previousTop !== undefined && (history.pending || history.top !== previousTop)) previous = null;
+  });
 
   /** Counts the questions asked, so an older one answered late doesn't close a newer one. */
   let asked = 0;
@@ -699,6 +710,8 @@
     // A new game has no rounds: tab 0 is the screen that adds the first one.
     tab = 0;
     previous = kept ? { key: kept.key, title: old.title.trim() || 'Untitled Game', dropped: kept.dropped } : null;
+    previousTop = undefined;
+    void started.then(() => (previousTop = topStep()));
     await pruneMedia([app.game, app.playGame, app.resumable?.game], held);
     // The editor takes no edits until the game's history has started, a moment after it's on screen (App.svelte's
     // startWatch): one made before would count as part of the game as it arrived, so Open… or New wouldn't ask about it

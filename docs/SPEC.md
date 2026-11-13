@@ -524,7 +524,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   beside it at 1600 px and up, and its tooltip says "Last saved as a file at 2:05 PM" (a desktop autosave file counts)
   or "Not saved as a file yet". The header's note beside it: in a browser "✓ Kept in this browser (💾 Save makes a
   file)" (the brackets at 1450 px and up), in the desktop app "✓ Autosaved · file 2:05". New and Open… replace the sample game as it came (its one step,
-  on a new game) without asking; it's kept in Recent games. **Open…** (Ctrl+O, the first screen's 📂 Open a game…, Game over › ▶ Next game…) is always one window,
+  on a new game) without asking; it's kept in Recent games. The note under the header that says the game was replaced (with ↶ Reopen previous game) goes with the first change to the new game. **Open…** (Ctrl+O, the first screen's 📂 Open a game…, Game over › ▶ Next game…) is always one window,
   "📂 Open a game": Recent games (the last 8 games replaced, kept in the browser or on this PC with their undo history),
   in the desktop app "Your saves (BrainrotSaves)" newest first with date and size and 📂 Saves folder, then the foot's
   Cancel … Browse for a game file… (blue when both lists are empty) "or drop a game file anywhere on the editor". Its

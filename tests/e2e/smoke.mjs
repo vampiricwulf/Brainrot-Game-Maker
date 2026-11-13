@@ -1612,8 +1612,14 @@ assert((await page.locator('nav > button.round-tab').count()) === 0 && (await pa
 // Its line for opening a game lists the one just replaced, under Recent.
 await page.locator('.first-round .open-line').getByRole('button', { name: / · \d+ rounds? · / }).waitFor();
 assert(true, 'the first screen’s Recent games list the game New replaced (title · rounds · when)');
+// The note stays while nothing is changed (its history has started by now)…
+await page.waitForTimeout(1000);
+assert((await page.getByRole('button', { name: '↶ Reopen previous game' }).count()) === 1, 'the “was replaced · ↶ Reopen previous game” note stays while the new game is unchanged');
 // The "Add your first round" screen, then a Final from the nav.
 await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
+// …and goes with the first change to the new game (the game stays in Open… → Recent games).
+await page.locator('.data-notice', { hasText: 'was replaced' }).waitFor({ state: 'detached' });
+assert(true, 'the first change to the new game puts the “was replaced” note away');
 await page.getByRole('button', { name: '＋ Add round' }).click();
 await page.getByRole('menuitem', { name: /Final Jeopardy/ }).click();
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
