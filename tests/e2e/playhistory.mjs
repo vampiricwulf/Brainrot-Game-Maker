@@ -342,9 +342,14 @@ try {
   // In the reveals a wager not shown yet can still be fixed in its row (a step); once shown, it's no longer a field.
   const firstRow = page.locator('.fj .pl').first();
   const rowBox = firstRow.locator('input[data-reveal-wager]');
-  assert(/^\d+$/.test(await rowBox.inputValue()), 'in the reveals a wager not shown yet is still a field');
+  // (One window: viewers see the panel, so the amount the host typed stays hidden until it's shown, as a phone's does.)
+  assert(
+    (await rowBox.inputValue()) === '' && (await rowBox.getAttribute('placeholder')) === 'hidden',
+    'in the reveals a wager not shown yet is still a field, its amount hidden in one window (the host typed it)',
+  );
   await rowBox.fill('120');
   await rowBox.press('Enter');
+  assert((await rowBox.inputValue()) === '', 'one window: the wager just typed in the reveals goes out of sight too');
   await page.locator('.panel .status').click();
   await page.keyboard.press('l');
   assert(/’s wager: \$\d+ → \$120$/.test((await history())[0]), 'changing it in the reveals is a step too');
@@ -357,7 +362,7 @@ try {
   await rowBox.fill('10000000000009');
   await rowBox.press('Enter');
   await page.locator('.toast', { hasText: 'At most $1,000,000,000,000' }).waitFor();
-  assert((await rowBox.inputValue()) === '1000000000000', `in the reveals too, a wager past the most shows the most in its box (${await rowBox.inputValue()})`);
+  assert((await rowBox.inputValue()) === '', `in the reveals too, a wager past the most is the most, and the box goes back to hidden (${await rowBox.inputValue()})`);
   await rowBox.fill('120');
   await rowBox.press('Enter');
   // (They're spotlit: their Show wager is the blue button's, the row's own slot left empty meanwhile.)

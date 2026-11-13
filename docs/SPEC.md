@@ -1018,7 +1018,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    the verdict first, in the check: ✔ Right / ✘ Wrong there judge them and close it (`N`, `C`, `N`, as before).
    The rows are in straight columns, each in the same place on every row whatever that row holds (a long name or typed
    answer cut short with …, whole in its tooltip): the player (⋮⋮ ▲▼ number name), their typed answer, Show answer,
-   the score and wager (📱 for a phone's), Show wager, then ✔ Right and ✘ Wrong at the right end; on a window under
+   the score and wager (📱 for a phone's; in one window the amount stays hidden until Show wager or a verdict, whoever
+   typed it, and typing one replaces it), Show wager, then ✔ Right and ✘ Wrong at the right end; on a window under
    900 px wide they wrap. Finishing early is a quiet **Finish now…** at the left of the box's foot, beside "2 still to
    judge", away from the verdicts, asking first in the strip; it isn't there while the blue button is Finish game ▶
    itself. With everyone judged, `N` twice finishes. `1`–`9` spotlight a player by their number (in the players'

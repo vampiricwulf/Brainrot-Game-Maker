@@ -296,9 +296,9 @@
     const typed = Number(value);
     const v = Math.min(MAX_POINTS, typed);
     const was = fs?.wagers[id];
-    // (In one window a phone's amount stays hidden: the box goes back to empty.)
+    // (In one window a wager not shown yet stays hidden, whoever typed it: the box goes back to empty.)
     const back = (): void => {
-      box.value = typeof was === 'number' && (dual || !(fs && wagerFromPhone(fs, id))) ? String(was) : '';
+      box.value = typeof was === 'number' && dual ? String(was) : '';
     };
     if (!fs || value.trim() === '' || !Number.isFinite(v)) return back();
     if (typed > MAX_POINTS) toast(`At most ${formatPoints(MAX_POINTS, sym)}`, 3000);
@@ -309,6 +309,8 @@
     if (why === 'whole') return toast('A wager is a whole number, 0 or more', 3000);
     if (why === 'over') return toast(`Over ${byId[id]?.name ?? '?'}’s max of ${formatPoints(finalWagerCap(session, game, id), sym)}`, 3000);
     logged(session, wagerText(id, was, v, wagerFromPhone(fs, id)), () => finalSetWager(session, id, v));
+    // (One window: the amount just typed doesn't stay in sight either.)
+    if (!dual) box.value = '';
   }
 
   /** ½ Halve / 0 Nullify in a reveal row: any time in the reveals; a judged player's points follow. */
@@ -671,8 +673,9 @@
               <!-- Until it's shown (or they're judged) the wager can still be changed here; with none in (it's never taken as
                    0) it's asked for here before they can be judged. -->
               {@const cap = finalWagerCap(session, game, id)}
-              <!-- (One window: a phone's amount stays hidden until it's shown, as on the wager screen.) -->
-              {@const hideW = !dual && wagerFromPhone(f, id)}
+              <!-- (One window: viewers see this panel, so a wager stays hidden here until Show wager or a verdict, whoever
+                   typed it, as a phone's does on the wager screen. Typing one replaces it.) -->
+              {@const hideW = !dual && hasWager(f, id)}
               <span class="cell sw">
               <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
               <label class="check small" class:no-wager={!hasWager(f, id)}>
