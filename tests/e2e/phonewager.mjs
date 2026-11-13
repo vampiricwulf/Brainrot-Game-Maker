@@ -704,17 +704,17 @@ try {
   assert((await al.locator('#wager-in').inputValue()) === '450', 'a teammate changes it: still one wager for the team, and every member sees the new one');
   await shot('pw-7-team-phone', al);
   await shot('pw-8-team-host', host2);
-  // The host types over the hidden wager: the step's name leaves out the amount it replaced. ↶ Undo puts the phone's back,
-  // hidden again.
+  // The host types over the hidden wager: in one window the step's name leaves out both amounts (the one it replaced and
+  // the one typed). ↶ Undo puts the phone's back, hidden again.
   const box1 = team1.locator('input[data-wager]');
   await box1.fill('500');
   await al.locator('#wager-state').getByText('The host has your team’s wager as $500').waitFor();
   await box1.blur();
-  await host2.waitForFunction(() => document.querySelector('button[title^="Undo:"]')?.getAttribute('title')?.includes('→'));
+  await host2.waitForFunction(() => document.querySelector('button[title^="Undo:"]')?.getAttribute('title')?.includes('wager changed'));
   const undo3 = await host2.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   assert(
-    undo3.startsWith('Undo: Player 1’s wager (from their phone) → $500 (Ctrl+Z') && !undo3.includes('$300') && !undo3.includes('$450'),
-    `the host types over it: ↶ Undo names the step without the phone’s amount (${undo3})`,
+    undo3.startsWith('Undo: Player 1’s wager changed (Ctrl+Z') && !undo3.includes('$'),
+    `the host types over it: ↶ Undo names the step with no amount in one window (${undo3})`,
   );
   await host2.getByRole('button', { name: '↶ Undo' }).click();
   await team1.locator('[data-phone-wager]', { hasText: '📱 ✔ from phone, sent by Amy' }).waitFor();
