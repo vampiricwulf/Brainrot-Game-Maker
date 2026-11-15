@@ -155,7 +155,7 @@ let rechecking = false;
 /**
  * While the app is open, ask GitHub again every hour, quietly: nothing on screen changes while it asks, and a check
  * that fails changes nothing either (what's shown stays as it was). Only a newer version than the one it knew of brings
- * up the editor's notice. It looks every minute whether an hour has gone by since the last check (any check: ℹ About's
+ * up the editor's notice, and an update already under way is left alone. It looks every minute whether an hour has gone by since the last check (any check: ℹ About's
  * too), so a computer coming back from sleep asks within a minute rather than up to an hour later. Started once.
  */
 export function recheckHourly(): void {
@@ -168,7 +168,16 @@ export function recheckHourly(): void {
       (release) => {
         // (An ⬆ Update or a check from ℹ About started meanwhile has the last word.)
         if (update.status === 'checking' || update.status === 'installing') return;
-        if (release || update.status !== 'available') settle(release);
+        // GitHub answered: a failure said before no longer holds.
+        update.error = '';
+        const known = update.status === 'available' ? update.latest : null;
+        if (known) {
+          // An update under way (its file downloading, or the desktop app's new version in place, waiting for the
+          // restart) stays as it is; and a version already known is only ever replaced by a newer one.
+          if (update.downloading === known.version || update.installed === known.version) return;
+          if (!release || !isNewer(release.version, known.version)) return;
+        }
+        settle(release);
       },
       () => {},
     );

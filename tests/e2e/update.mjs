@@ -150,7 +150,7 @@ try {
   await again.waitFor();
   assert(true, 'and the editor’s notice comes back for it (put away was only for 99.0.0)');
 
-  // ⚙ Settings can turn the start-up check off.
+  // ⚙ Settings can turn the start-up check (and the hourly one) off.
   await page.getByRole('button', { name: /^More:/ }).click();
   await page.getByRole('menuitem', { name: /Settings/ }).click();
   const box = page.getByLabel("Check for a newer version when the app starts, and every hour while it's open");
@@ -199,6 +199,27 @@ try {
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
     assert(calls === 3 && (await hn.count()) === 1 && (await hn.innerText()).includes('99.2.0 is out'), 'an hour later, a check that fails leaves the notice as it was');
+    hourly = release('99.1.0');
+    await hp.clock.fastForward('01:01:00');
+    await hp.waitForTimeout(500);
+    assert(calls === 4 && (await hn.innerText()).includes('99.2.0 is out'), 'an older answer (99.1.0) doesn’t replace the newer version already known');
+    // ⬇ Download's steps stay while a still newer version comes out (the next hourly check after Done brings it up).
+    await hp.evaluate(() => (window.open = () => null));
+    await hn.getByRole('button', { name: '⬇ Download 99.2.0' }).click();
+    const hs = hp.locator('.data-notice', { hasText: 'Downloading 99.2.0 in a new tab' });
+    await hs.waitFor();
+    hourly = release('99.3.0');
+    await hp.clock.fastForward('01:01:00');
+    await hp.waitForTimeout(500);
+    assert(calls === 5 && (await hs.count()) === 1, 'a newer version found while the download’s steps show leaves them as they are');
+    // With ⚙ Settings' box unticked, it doesn't ask again.
+    await hp.getByRole('button', { name: /^More:/ }).click();
+    await hp.getByRole('menuitem', { name: /Settings/ }).click();
+    await hp.getByLabel("Check for a newer version when the app starts, and every hour while it's open").uncheck();
+    await hp.keyboard.press('Escape');
+    await hp.clock.fastForward('01:01:00');
+    await hp.waitForTimeout(500);
+    assert(calls === 5, 'with the box unticked in ⚙ Settings, it doesn’t ask every hour');
     await ctx.close();
   }
 
