@@ -47,7 +47,9 @@ lines the push adds:
 | Anything under **Added**, **Changed** or **Removed** | minor (1.4.2 → 1.5.0) |
 | A line marked **Breaking** (for example, saves older versions can't open) | major (1.4.2 → 2.0.0) |
 
-The release notes are the changelog lines added since the last release.
+The release notes are the changelog lines added since the last release. The same push also puts the release file up as the GitHub Pages site
+(https://vampiricwulf.github.io/Brainrot-Game-Maker/, the `pages` job); Pages must be on in the repository's
+Settings, Pages, with Source "GitHub Actions".
 
 - `package.json`'s version is a floor. To make a deliberate jump, set it by hand: `node scripts/version.mjs set 2.0.0`.
 - `node scripts/version.mjs check` makes sure `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`,

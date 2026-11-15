@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Added
+
+- The app is online at https://vampiricwulf.github.io/Brainrot-Game-Maker/: open it in a browser with nothing to download. It's the same file as the release's, put up again with every release.
+
 ## 2026-11-12
 
 ### Added

@@ -8,7 +8,7 @@
 [![Build](https://github.com/vampiricwulf/Brainrot-Game-Maker/actions/workflows/build.yml/badge.svg)](../../actions/workflows/build.yml)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[Download](../../releases/latest) · [Making games](docs/making-games.md) · [Hosting](docs/hosting.md)
+[Use it online](https://vampiricwulf.github.io/Brainrot-Game-Maker/) · [Download](../../releases/latest) · [Making games](docs/making-games.md) · [Hosting](docs/hosting.md)
 
 ![A Jeopardy board in play](docs/screenshots/play-board.png)
 
@@ -53,6 +53,9 @@ Get the latest version from the [Releases page](../../releases/latest):
 |---|---|
 | `brainrot-game-maker.html` | Opens in Chrome, Edge or Firefox |
 | `brainrot-game-maker-portable.exe` | Windows app, no install, updates itself |
+
+Or use it online, with nothing to download: [vampiricwulf.github.io/Brainrot-Game-Maker](https://vampiricwulf.github.io/Brainrot-Game-Maker/)
+is the same file, updated with every release. Your games stay in that browser, as with the downloaded file.
 
 ## Quick start
 
