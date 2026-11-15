@@ -64,7 +64,7 @@ Add files on the **🖼 Media** page: drop them there, or use **＋ Add files…
 | **Autosave** | Saves every few minutes. Default: every 5 minutes, keeping the last 3. Desktop app. |
 | **Undo** | How many changes `Ctrl+Z` and the 🕘 History tab remember (300 by default). |
 | **Reduce motion on stream** | Viewers get no pop-ins, fly-ins or confetti: things just appear. |
-| **Check for a newer version when the app starts** | See [Updating](#updating). |
+| **Check for a newer version when the app starts, and every hour while it's open** | See [Updating](#updating). |
 | **Buzzer server** | Where phone buzzer rooms are made. Press **Test** to check it. See [Set up your own buzzer server](buzzer-server.md). |
 
 **Back to the defaults…**, at the bottom, asks first, then puts every setting back, including the buzzer server. It
@@ -72,12 +72,14 @@ can't be undone.
 
 ## Updating
 
-When a newer version is out, the editor says so. It checks GitHub each time it starts, and **ℹ About** can check any
-time. ℹ About also shows which version you have.
+When a newer version is out, the editor says so. It checks GitHub each time it starts and then every hour while it's
+open, and **ℹ About** can check any time. ℹ About also shows which version you have.
 
 - **Desktop app:** click **⬆ Update to …**. It downloads the new version, saves your game and restarts. If a game is
   being played, it waits: click **⟳ Restart into …** when you're ready.
 - **HTML file:** download the new file and save it in place of the old one (same name and folder), then open it. Your
   games carry over, because they're kept in the browser, not in the file.
+- **Online** (vampiricwulf.github.io/Brainrot-Game-Maker): click **⟳ Reload for …**. The site is updated with every
+  release, so reloading the page gets the new version (it can take a few minutes to show).
 
 The notice's **✕** hides it until the next version comes out.

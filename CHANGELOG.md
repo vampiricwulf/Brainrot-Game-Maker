@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Added
+
+- While it's open, the app checks for a newer version every hour, not only when it starts, and says so in the editor when one is out. The check is quiet: nothing on screen changes while it asks, or when it can't reach GitHub. ⚙ Settings turns it off along with the start-up check.
+
 ## 2026-11-15
 
 ### Added

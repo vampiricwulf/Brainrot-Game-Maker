@@ -1,5 +1,6 @@
 // Is a newer version out? The app asks GitHub for the newest release (every push to main is one, numbered by
-// scripts/version.mjs) each time it starts (⚙ Settings can turn that off) and when ℹ About is asked.
+// scripts/version.mjs) each time it starts and then every hour while it's open (⚙ Settings can turn both off), and
+// when ℹ About is asked.
 // The desktop app can then update itself in place; the HTML file offers the new file to download (a page can't
 // replace the file it was opened from).
 import { isNewer } from './semver';
@@ -99,28 +100,12 @@ function toApi(r: Release): unknown {
  */
 export async function checkForUpdate(manual = false): Promise<void> {
   if (update.status === 'checking' || update.status === 'installing') return;
-  // Only published releases check on their own (a test can turn it on with the "jb.updateCheck" storage key).
-  if (!manual && (!prefs.checkUpdates || !(__RELEASE__ || storedFlag('jb.updateCheck')))) return;
+  if (!manual && !checksOnItsOwn()) return;
   update.status = 'checking';
   update.error = '';
+  lastAsked = Date.now();
   try {
-    const res = await fetch(API, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
-    if (res.status === 404) return settle(null);
-    if (!res.ok) throw new Error(res.status === 403 || res.status === 429 ? 'GitHub is busy: try again in a while' : `GitHub answered ${res.status}`);
-    let json: unknown;
-    try {
-      json = await res.json();
-    } catch {
-      throw new Error("GitHub's answer couldn't be read: try again in a while");
-    }
-    const release = releaseFrom(json);
-    update.checkedAt = Date.now();
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ at: update.checkedAt, release }));
-    } catch {
-      // Storage off: nothing kept for an offline start.
-    }
-    settle(release);
+    settle(await askGitHub());
   } catch (err) {
     // fetch's own failures (offline, blocked) are TypeErrors, worded differently in each browser.
     update.error = err instanceof Error && !(err instanceof TypeError) ? err.message : "Couldn't reach GitHub (offline?)";
@@ -133,6 +118,61 @@ export async function checkForUpdate(manual = false): Promise<void> {
       update.status = 'available';
     } else update.status = 'failed';
   }
+}
+
+/** Only published releases check on their own (a test can turn it on with the "jb.updateCheck" storage key). */
+function checksOnItsOwn(): boolean {
+  return prefs.checkUpdates && (__RELEASE__ || storedFlag('jb.updateCheck'));
+}
+
+/** GitHub's newest release (null: none), kept for an offline start. Throws, worded for ℹ About, when it can't say. */
+async function askGitHub(): Promise<Release | null> {
+  const res = await fetch(API, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(res.status === 403 || res.status === 429 ? 'GitHub is busy: try again in a while' : `GitHub answered ${res.status}`);
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error("GitHub's answer couldn't be read: try again in a while");
+  }
+  const release = releaseFrom(json);
+  update.checkedAt = Date.now();
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ at: update.checkedAt, release }));
+  } catch {
+    // Storage off: nothing kept for an offline start.
+  }
+  return release;
+}
+
+/** How often an open copy asks again. */
+export const RECHECK_MS = 60 * 60 * 1000;
+/** When GitHub was last asked (ms; 0: not yet), by any check. */
+let lastAsked = 0;
+let rechecking = false;
+
+/**
+ * While the app is open, ask GitHub again every hour, quietly: nothing on screen changes while it asks, and a check
+ * that fails changes nothing either (what's shown stays as it was). Only a newer version than the one it knew of brings
+ * up the editor's notice. It looks every minute whether an hour has gone by since the last check (any check: ℹ About's
+ * too), so a computer coming back from sleep asks within a minute rather than up to an hour later. Started once.
+ */
+export function recheckHourly(): void {
+  if (rechecking) return;
+  rechecking = true;
+  setInterval(() => {
+    if (Date.now() - lastAsked < RECHECK_MS || update.status === 'checking' || update.status === 'installing' || !checksOnItsOwn()) return;
+    lastAsked = Date.now();
+    askGitHub().then(
+      (release) => {
+        // (An ⬆ Update or a check from ℹ About started meanwhile has the last word.)
+        if (update.status === 'checking' || update.status === 'installing') return;
+        if (release || update.status !== 'available') settle(release);
+      },
+      () => {},
+    );
+  }, 60 * 1000);
 }
 
 /** Put the editor's notice away until a newer version than this one is out. */

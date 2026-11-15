@@ -17,7 +17,7 @@ export interface Prefs {
   reduceMotion: boolean;
   /** Phone buzzers: the buzzer server's address ('' for the one this copy was built with). */
   buzzerServer: string;
-  /** Ask GitHub whether a newer version is out when the app starts (update.svelte.ts). */
+  /** Ask GitHub whether a newer version is out when the app starts and every hour while it's open (update.svelte.ts). */
   checkUpdates: boolean;
   /** How the last game was shown (the pre-game screen's 🖥 Display): one window, or a separate audience window. */
   display: 'single' | 'audience';

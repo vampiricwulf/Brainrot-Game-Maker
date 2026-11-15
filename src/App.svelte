@@ -45,7 +45,7 @@
   import { checklistLines, type ChecklistLine } from './lib/checklist';
   import { blankName, isBoard, migrateGame, newId } from './lib/model';
   import { nextFreeColor } from './lib/colors';
-  import { checkForUpdate } from './lib/update.svelte';
+  import { checkForUpdate, recheckHourly } from './lib/update.svelte';
   import { registerGameFonts } from './lib/fonts';
   import { audience, audienceTitle, closeAudienceWindow, closeScoresWindow, openAudienceWindow, pushGame, pushLive } from './lib/sync.svelte';
   import ModeCards from './play/ModeCards.svelte';
@@ -202,6 +202,8 @@
     // Is a newer version out? Asked first, so nothing slow (or failing) while the game loads holds it up. (The builder
     // only: an exported game file isn't updated.)
     void checkForUpdate();
+    // (And every hour after, while it's open.)
+    recheckHourly();
     const [editor, play, ok] = await Promise.all([loadEditor(), loadPlay(), testStorage()]);
     app.storageOk = ok;
     // (A first run: nothing moved for this person, so ❔ Help has no dot.)

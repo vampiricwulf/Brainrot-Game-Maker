@@ -153,7 +153,7 @@ try {
   // ⚙ Settings can turn the start-up check off.
   await page.getByRole('button', { name: /^More:/ }).click();
   await page.getByRole('menuitem', { name: /Settings/ }).click();
-  const box = page.getByLabel('Check for a newer version when the app starts');
+  const box = page.getByLabel("Check for a newer version when the app starts, and every hour while it's open");
   assert(await box.isChecked(), '⚙ Settings has the start-up check, on');
   await box.uncheck();
   await page.keyboard.press('Escape');
@@ -167,6 +167,40 @@ try {
   await page.waitForTimeout(800);
   if (await page.evaluate(() => localStorage.getItem('test.marker') === '2')) assert(asked === n, 'with it off, starting doesn’t ask GitHub');
   else console.log('  - (the browser lost its storage on that reload: the start-up check is skipped this time)');
+
+  // While it's open, it asks again every hour, quietly: a newer version brings up the notice, and a check that fails
+  // changes nothing on screen. (The page's clock is moved on rather than waited for.)
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    await ctx.addInitScript(() => localStorage.setItem('jb.updateCheck', 'on'));
+    let hourly = release('0.0.1');
+    let calls = 0;
+    await ctx.route('https://api.github.com/**', (route) => {
+      calls++;
+      if (hourly === 'offline') return route.abort();
+      return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(hourly) });
+    });
+    const hp = await ctx.newPage();
+    hp.on('pageerror', (e) => errors.push(e.message));
+    await hp.clock.install();
+    await hp.goto(url);
+    await hp.getByRole('button', { name: 'Open…' }).waitFor();
+    await hp.waitForTimeout(500);
+    const hn = hp.locator('.data-notice', { hasText: 'is out' });
+    assert(calls === 1 && (await hn.count()) === 0, `it asks once at start-up and an older release brings up no notice (${calls} asked)`);
+    hourly = release('99.2.0');
+    await hp.clock.fastForward('30:00');
+    await hp.waitForTimeout(500);
+    assert(calls === 1 && (await hn.count()) === 0, 'half an hour on, it hasn’t asked again');
+    await hp.clock.fastForward('31:00');
+    await hn.waitFor();
+    assert(calls === 2 && (await hn.innerText()).includes('99.2.0 is out'), `an hour on, it asks again and says 99.2.0 is out (${calls} asked)`);
+    hourly = 'offline';
+    await hp.clock.fastForward('01:01:00');
+    await hp.waitForTimeout(500);
+    assert(calls === 3 && (await hn.count()) === 1 && (await hn.innerText()).includes('99.2.0 is out'), 'an hour later, a check that fails leaves the notice as it was');
+    await ctx.close();
+  }
 
   // The copy online (GitHub Pages, over https) is put up again with every release: it offers a reload, not a file to
   // download (a downloaded file opens in another place, and the games kept online wouldn't come along). The page is

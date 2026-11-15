@@ -142,10 +142,11 @@
     <h3>Updates</h3>
     <label class="check">
       <input type="checkbox" bind:checked={prefs.checkUpdates} onchange={savePrefs} />
-      Check for a newer version when the app starts
+      Check for a newer version when the app starts, and every hour while it's open
     </label>
     <p class="hint">
-      Asks GitHub, where new versions are published, each time the app starts, and says so in the editor when one is out.
+      Asks GitHub, where new versions are published, each time the app starts and then once an hour, and says so in the
+      editor when one is out.
       ℹ About can check any time.
     </p>
 
