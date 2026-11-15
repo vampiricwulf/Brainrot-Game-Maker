@@ -2,7 +2,9 @@
   A newer version is out: what this copy can do about it. The desktop app updates itself in place (it downloads the
   new .exe, checks its signature, saves everything and restarts into it); a copy that can't (no signing key built in)
   or the HTML file offers the new file to download. Shown in the editor's notice (`notice`) and in ℹ About. Once the HTML
-  file's download is open in a new tab, both say what to do with it (the page itself can't change the file).
+  file's download is open in a new tab, both say what to do with it (the page itself can't change the file). The copy
+  online (GitHub Pages, over https) is put up again with every release: it offers a reload instead, since a downloaded
+  file opens in another place and the games kept in this one wouldn't come along.
 -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
@@ -17,6 +19,7 @@
   let { release, notice = false }: { release: Release; notice?: boolean } = $props();
 
   const desktopApp = inTauri();
+  const online = !desktopApp && (location.protocol === 'https:' || location.protocol === 'http:');
   let selfUpdate = $state(false);
   onMount(() => void canSelfUpdate().then((ok) => (selfUpdate = ok)));
 
@@ -88,6 +91,10 @@
   </button>
 {:else if desktopApp}
   <button class="small primary" onclick={() => open(exe ?? release.page)} title="Put the downloaded .exe in place of this one">⬇ Download {release.version}</button>
+{:else if online}
+  <button class="small primary" onclick={() => location.reload()} title="This is the online copy: reloading the page gets the new version (just put up, it can take a few minutes to show).">
+    ⟳ Reload for {release.version}
+  </button>
 {:else if notice && update.downloading === release.version}
   <!-- The notice: the steps, then What's new and ✕ Done (back to the notice). -->
   <span class="steps">{steps}</span>

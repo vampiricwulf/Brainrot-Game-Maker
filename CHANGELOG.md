@@ -15,7 +15,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Added
 
-- The app is online at https://vampiricwulf.github.io/Brainrot-Game-Maker/: open it in a browser with nothing to download. It's the same file as the release's, put up again with every release.
+- The app is online at https://vampiricwulf.github.io/Brainrot-Game-Maker/: open it in a browser with nothing to download. It's the same file as the release's, put up again with every release. When a new version is out, it offers ⟳ Reload instead of a file to download.
 
 ## 2026-11-12
 

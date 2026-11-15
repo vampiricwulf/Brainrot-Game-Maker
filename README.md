@@ -55,7 +55,7 @@ Get the latest version from the [Releases page](../../releases/latest):
 | `brainrot-game-maker-portable.exe` | Windows app, no install, updates itself |
 
 Or use it online, with nothing to download: [vampiricwulf.github.io/Brainrot-Game-Maker](https://vampiricwulf.github.io/Brainrot-Game-Maker/)
-is the same file, updated with every release. Your games stay in that browser, as with the downloaded file.
+is the same file, updated with every release. Your games stay in that browser, kept apart from the downloaded file's (move one across with Save and Open).
 
 ## Quick start
 

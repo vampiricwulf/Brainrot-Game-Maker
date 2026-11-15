@@ -1,6 +1,6 @@
 // Is a newer version out? GitHub's "latest release" answer is faked here: the editor says when one is out (with the
 // new file to download, for the HTML file, then says on the page what to do with it), "Not now" puts it away for that
-// version, and ℹ About checks on demand.
+// version, and ℹ About checks on demand. The copy online offers a reload instead.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -167,6 +167,34 @@ try {
   await page.waitForTimeout(800);
   if (await page.evaluate(() => localStorage.getItem('test.marker') === '2')) assert(asked === n, 'with it off, starting doesn’t ask GitHub');
   else console.log('  - (the browser lost its storage on that reload: the start-up check is skipped this time)');
+
+  // The copy online (GitHub Pages, over https) is put up again with every release: it offers a reload, not a file to
+  // download (a downloaded file opens in another place, and the games kept online wouldn't come along). The page is
+  // served here from a made-up https address, so nothing goes to GitHub.
+  {
+    const web = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    await web.addInitScript(() => localStorage.setItem('jb.updateCheck', 'on'));
+    await web.route('https://api.github.com/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(release('99.0.0')) }),
+    );
+    const site = 'https://pages.example.test/Brainrot-Game-Maker/';
+    await web.route(site, (route) => route.fulfill({ status: 200, contentType: 'text/html', path: file }));
+    const wp = await web.newPage();
+    wp.on('pageerror', (e) => errors.push(e.message));
+    await wp.goto(site);
+    const wn = wp.locator('.data-notice', { hasText: 'is out' });
+    await wn.waitFor();
+    assert(
+      (await wn.getByRole('button', { name: '⟳ Reload for 99.0.0' }).count()) === 1 && (await wn.getByRole('button', { name: /Download/ }).count()) === 0,
+      'online, the notice offers ⟳ Reload for the new version, not a download',
+    );
+    let reloaded = false;
+    wp.on('framenavigated', (f) => f === wp.mainFrame() && (reloaded = true));
+    await wn.getByRole('button', { name: '⟳ Reload for 99.0.0' }).click();
+    await wp.getByRole('button', { name: 'Open…' }).waitFor();
+    assert(reloaded, '⟳ Reload reloads the page');
+    await web.close();
+  }
 
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Update E2E passed.');
