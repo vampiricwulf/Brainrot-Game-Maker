@@ -151,6 +151,20 @@ try {
     const scrolls = await settings.evaluate((d) => d.scrollHeight > d.clientHeight);
     assert(fits && scrolls, `1280×720, scrolled to the ${at}: Settings scrolls under its foot, and Done and Back to the defaults… show whole`);
   }
+  // Back to the defaults… asks first, in words for this copy: this build has no buzzer server of its own to go back
+  // to, so the address is cleared. The question has the foot's room up to Done.
+  {
+    await settings.getByRole('button', { name: 'Back to the defaults…' }).click();
+    const q = settings.locator('.reset-ask');
+    const text = await q.innerText();
+    const [qw, fw] = await settings.evaluate((d) => [d.querySelector('.reset-ask').getBoundingClientRect().width, d.querySelector('.modal-foot').getBoundingClientRect().width]);
+    assert(
+      text.includes('Put every setting here back? The buzzer server address is cleared.') && !text.includes('built-in') && qw > fw * 0.6,
+      `Back to the defaults… says the buzzer server address is cleared (no built-in one here), across the foot (${Math.round(qw)} of ${Math.round(fw)}px)`,
+    );
+    await q.getByRole('button', { name: 'Cancel' }).click();
+    await settings.getByRole('button', { name: 'Back to the defaults…' }).waitFor();
+  }
   await settings.getByLabel('Buzzer server').fill('https://buzz.test');
   await settings.getByLabel('Buzzer server').press('Tab');
   await page.setViewportSize({ width: 1400, height: 900 });

@@ -184,7 +184,7 @@
       {#if resetting}
         <div class="reset-ask">
           <InlineAsk
-            text="Put every setting here back? The buzzer server goes back to the built-in one."
+            text={`Put every setting here back? ${DEFAULT_BUZZER_URL ? 'The buzzer server goes back to the built-in one.' : 'The buzzer server address is cleared.'}`}
             ok="Put them back"
             danger
             focusCancel
@@ -195,7 +195,8 @@
       {:else}
         <button class="ghost" bind:this={resetBtn} onclick={() => (resetting = true)} title="Asks first">Back to the defaults…</button>
       {/if}
-      <span class="spacer"></span>
+      <!-- (While it asks, the question has the room up to Done, not half of it.) -->
+      {#if !resetting}<span class="spacer"></span>{/if}
       <button class="primary" onclick={close}>Done</button>
     </div>
   </div>
