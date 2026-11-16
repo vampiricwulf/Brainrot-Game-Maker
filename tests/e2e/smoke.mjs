@@ -1188,7 +1188,7 @@ if (await page.locator('.panel .backdrop').count()) await page.locator('.panel .
 // Moving on with tiles left takes an inline second click.
 await page.waitForTimeout(450); // round buttons ignore clicks right after they appear
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
-await page.getByText('25 clues are left in Jeopardy!. Go to Final Brainrot?').waitFor();
+await page.getByText('25 clues are left in Jeopardy! Go to Final Brainrot?').waitFor();
 assert((await page.locator('.final-label').count()) === 0, 'Final Brainrot ▶ with tiles left asks before moving on, naming what it does');
 assert((await page.evaluate(() => document.activeElement?.textContent)) === 'Keep playing', 'keyboard focus moves to Keep playing while it asks');
 await page.getByRole('button', { name: 'Keep playing', exact: true }).click();

@@ -6418,7 +6418,8 @@
           {/if}
           {#if !session.players.length}
             <div class="row">
-              <span class="warn">Add {pregameTeams ? 'teams' : 'players'} to start: ＋ Add {pregameTeams ? 'team' : 'player'}, or</span>
+              <!-- (Plain words: "＋ Add player" here would look like a button.) -->
+              <span class="warn">Add {pregameTeams ? 'teams' : 'players'} above to start, or</span>
               <button onclick={addSamplePlayers}>＋ Add 3 sample {pregameTeams ? 'teams' : 'players'}</button>
             </div>
           {/if}

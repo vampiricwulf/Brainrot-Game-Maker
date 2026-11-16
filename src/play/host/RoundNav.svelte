@@ -1,7 +1,7 @@
 <!--
   Prev / Next round (or the final round / End game), and Go to round: quiet buttons at the end of the tools row.
   Leaving a round always asks first, in the panel's confirmation strip, its answers saying what they do ("12 clues are
-  left in Jeopardy!. Go to Double Jeopardy!? Keep playing / Go to Double Jeopardy! ▶"; an RPG or board-game round:
+  left in Jeopardy! Go to Double Jeopardy!? Keep playing / Go to Double Jeopardy! ▶"; an RPG or board-game round:
   "Leave Adventure for Board game?"), so a stray click or a double-click never jumps ahead on stream. Only a board
   played out goes on at once (the panel's blue button is Next round ▶ then, goon.ts).
 -->
@@ -111,11 +111,12 @@
     // The question says what leaving does, and its answers name it. A round picked in Go to round is named (it may not
     // be the next one). (A board played out only asks for a round picked with the arrow keys.)
     const lefts = `${left} clue${left === 1 ? ' is' : 's are'} left`;
+    // (No full stop after a name that ends in its own: "left in Jeopardy! Go to …".)
     const text = board
       ? left
         ? end
           ? `End the game now? ${lefts}.`
-          : `${lefts} in ${here}. Go to ${name}?`
+          : `${lefts} in ${here}${/[.!?]$/.test(here) ? '' : '.'} Go to ${name}?`
         : `Go to ${name}?`
       : end
         ? `Leave ${here} and end the game?`

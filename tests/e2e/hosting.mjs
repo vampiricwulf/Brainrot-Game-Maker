@@ -515,7 +515,7 @@ try {
   await goOn.waitFor();
   const asked = (await goOn.innerText()).replace(/\s+/g, ' ');
   assert(
-    /\d+ clues are left in Jeopardy!\. Go to Final Jeopardy!\? Keep playing Go to Final Jeopardy! ▶/.test(asked) && (await page.evaluate(() => document.activeElement?.textContent)) === 'Keep playing',
+    /\d+ clues are left in Jeopardy! Go to Final Jeopardy!\? Keep playing Go to Final Jeopardy! ▶/.test(asked) && (await page.evaluate(() => document.activeElement?.textContent)) === 'Keep playing',
     `Next round with clues left asks in the confirmation strip, naming its answers (${asked})`,
   );
   await page.waitForTimeout(4400);

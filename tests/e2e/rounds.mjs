@@ -224,14 +224,14 @@ try {
   const picker = page.getByRole('combobox', { name: 'Go to round' });
   // With clues left on this board it asks first, like Next round; Keep playing puts the list back on this round.
   await picker.selectOption({ label: '🏆 Final Jeopardy!' });
-  const goTo = page.getByText(/clues? (is|are) left in Double Jeopardy!\. Go to Final Jeopardy!\?/);
+  const goTo = page.getByText(/clues? (is|are) left in Double Jeopardy! Go to Final Jeopardy!\?/);
   await goTo.waitFor();
   await page.waitForTimeout(450);
   // (It asks in the strip above the fixed bar.)
   await page.locator('.panel .confirm').getByRole('button', { name: 'Keep playing' }).click();
   assert(
     (await goTo.count()) === 0 && (await picker.locator('option:checked').innerText()).includes('Double Jeopardy!'),
-    'Keep playing on “N clues are left in Double Jeopardy!. Go to Final Jeopardy!?” stays on this round, and the round list shows it again',
+    'Keep playing on “N clues are left in Double Jeopardy! Go to Final Jeopardy!?” stays on this round, and the round list shows it again',
   );
   await picker.selectOption({ label: '🏆 Final Jeopardy!' });
   await page.waitForTimeout(450);

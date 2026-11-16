@@ -105,7 +105,7 @@ try {
   await card.getByLabel(/Buzzer mode/).check();
   await card.getByLabel(/Teams: people join a team/).check();
   const emptyRoster = host.locator('[data-place="play:players"]');
-  assert((await emptyRoster.locator('.warn').innerText()).startsWith('Add teams to start: ＋ Add team, or'), 'with Teams on and nobody yet, the list says to add teams (＋ Add team)');
+  assert((await emptyRoster.locator('.warn').innerText()).startsWith('Add teams above to start, or'), 'with Teams on and nobody yet, the list says to add teams');
   const startButton = host.getByRole('button', { name: 'Start game ▶' });
   assert(
     (await host.getByText('Add teams to start', { exact: true }).isVisible()) && (await startButton.getAttribute('title')) === 'Add teams to start',
