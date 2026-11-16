@@ -31,7 +31,7 @@
     onaskagain,
   }: {
     onclose: () => void;
-    /** Where it was opened: it's named for it, and starts on that part (the editor's, or the game's). */
+    /** Where it was opened: it starts on that part (the editor's, or the game's). */
     from?: 'editor' | 'play';
     /** The part it starts on, if not that one (the editor's 🎮 Keys during the game). */
     start?: 'editor' | 'game';
@@ -50,6 +50,8 @@
   // svelte-ignore state_referenced_locally
   let part = $state<Part>(start ?? (from === 'editor' ? 'editor' : 'game'));
   const PARTS: Record<Part, string> = { editor: 'Editor', game: 'During the game' };
+  // (Its name says which keys it shows, as the switch does: a screen reader hears the part it's on.)
+  const NAMES: Record<Part, string> = { editor: 'Editor keyboard shortcuts', game: 'Keyboard shortcuts during the game' };
 
   /** The game's keys: the pre-game screen's only there; the group asked for first, then the rest. */
   const gameKeys = $derived.by(() => {
@@ -98,7 +100,7 @@
   onclick={(e) => e.target === e.currentTarget && onclose()}
   role="presentation"
 >
-  <div class="modal lg" role="dialog" aria-modal="true" aria-label={from === 'editor' ? 'Editor keyboard shortcuts' : 'Keyboard shortcuts'} use:modal={{ enter: onclose }} use:scrollMore data-undo="off">
+  <div class="modal lg" role="dialog" aria-modal="true" aria-label={NAMES[part]} use:modal={{ enter: onclose }} use:scrollMore data-undo="off">
     <!-- (In the host panel its title, ✕, the switch and the filter stay at the top as the keys scroll.) -->
     <div class="keys-head" data-head>
       <div class="modal-head">

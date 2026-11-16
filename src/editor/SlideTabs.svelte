@@ -139,7 +139,7 @@
     const s = openSlide();
     if (!s) return;
     copySlide(app.game, s);
-    toast('Slide copied: 📋 Paste slide by the tabs puts it in as a new slide (its ▾: over another), here or in another game');
+    toast('Slide copied: 📋 Paste slide by the tabs adds it as a new slide, here or in another game');
   }
   /** 📋 Paste slide: as a new slide after the question slide open (from the Answer or a card's tab: before the answer), or over the open one. */
   function pasteSlide(over: boolean): void {

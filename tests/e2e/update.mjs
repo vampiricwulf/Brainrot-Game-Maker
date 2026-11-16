@@ -53,8 +53,13 @@ try {
   const openLine = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
   assert(openLine <= 720, `with the notice up, 📂 Open a game… is in a 1280×720 window (${openLine})`);
   await page.setViewportSize({ width: 1280, height: 800 });
+  // (A notice that appears with its words isn't always read: screen readers hear it from the page's live region.)
+  await page.waitForFunction(() => document.getElementById('live-region')?.dataset.said?.includes('Brainrot Games Maker 99.0.0 is out.'), null, { timeout: 3000 });
+  assert(true, 'screen readers are told a newer version is out');
   // (The link it opens is noted rather than opened, so the test doesn't go to GitHub.)
   await page.evaluate(() => (window.open = (u) => ((window.__opened = String(u)), null)));
+  // (Narrow: the steps wrap, the ⬆ staying with their first words rather than on a line of its own.)
+  await page.setViewportSize({ width: 820, height: 720 });
   await notice.getByRole('button', { name: '⬇ Download 99.0.0' }).click();
   const opened = await page.evaluate(() => window.__opened);
   assert(/\/v99\.0\.0\/brainrot-game-maker\.html$/.test(opened), `Download opens the new HTML file’s link (${opened})`);
@@ -67,6 +72,18 @@ try {
       (await steps.getByRole('button', { name: 'Done' }).evaluate((b) => b === document.activeElement)),
     `after ⬇ Download the notice says what to do with the new file, with What’s new and Done, the keys on Done (${(await steps.innerText()).replace(/\s+/g, ' ')})`,
   );
+  const arrow = await steps.evaluate((n) => {
+    const walker = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
+    let t;
+    while ((t = walker.nextNode()) && !t.data.includes('⬆'));
+    const r = document.createRange();
+    r.setStart(t, t.data.indexOf('⬆'));
+    r.setEnd(t, t.data.indexOf('⬆') + 1);
+    const word = n.querySelector('.steps');
+    return { arrow: r.getBoundingClientRect().top, words: word && word.getClientRects()[0].top, h: n.getBoundingClientRect().height };
+  });
+  assert(arrow.words !== null && Math.abs(arrow.arrow - arrow.words) < 4 && arrow.h < 80, `at 820 wide the ⬆ starts the steps' first line (${JSON.stringify(arrow)})`);
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.getByRole('button', { name: /^More:/ }).click();
   await page.getByRole('menuitem', { name: /About/ }).click();
   await page.getByRole('dialog', { name: 'About Brainrot Games Maker' }).getByText('Downloading 99.0.0 in a new tab').waitFor();
@@ -198,9 +215,16 @@ try {
     await hp.clock.fastForward('30:00');
     await hp.waitForTimeout(500);
     assert(calls === 1 && (await hn.count()) === 0, 'half an hour on, it hasn’t asked again');
+    // (⚙ Settings open as it comes: the notice is behind the window, out of reach like the rest of the page.)
+    await hp.getByRole('button', { name: /^More:/ }).click();
+    await hp.getByRole('menuitem', { name: /Settings/ }).click();
     await hp.clock.fastForward('31:00');
     await hn.waitFor();
     assert(calls === 2 && (await hn.innerText()).includes('99.2.0 is out'), `an hour on, it asks again and says 99.2.0 is out (${calls} asked)`);
+    assert(await hn.evaluate((n) => !!n.closest('[inert]')), 'a notice that comes while ⚙ Settings is open is inert behind it, as the rest of the page is');
+    await hp.keyboard.press('Escape');
+    await hp.getByRole('dialog').waitFor({ state: 'detached' });
+    assert(await hn.evaluate((n) => !n.closest('[inert]')), 'and usable again once the window closes');
     hourly = 'offline';
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);

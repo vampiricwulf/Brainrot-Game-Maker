@@ -484,7 +484,8 @@ try {
   const rows = await page.locator('[role="dialog"] tr').allInnerTexts();
   assert(rows.length >= 1 && rows.every((r) => /ctrl\+f/i.test(r)), `the shortcuts filter keeps the matching keys (${rows.length})`);
   // Every Ctrl+A is listed, the RPG map's too; and the list keys name deals beside wheels and dice.
-  const sheet = page.getByRole('dialog', { name: 'Editor keyboard shortcuts' });
+  // (Named for the part shown: Editor keyboard shortcuts, Keyboard shortcuts during the game.)
+  const sheet = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await page.getByLabel('Filter shortcuts').fill('ctrl+a');
   await sheet.locator('section', { hasText: 'Map (RPG)' }).getByText('Select every screen on the map').waitFor();
   await page.getByLabel('Filter shortcuts').fill('deal in focus');

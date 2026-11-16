@@ -97,7 +97,8 @@
   </button>
 {:else if notice && update.downloading === release.version}
   <!-- The notice: the steps, then What's new and ✕ Done (back to the notice). -->
-  <span class="steps">{steps}</span>
+  <!-- (The ⬆ in the same words: at a narrow width they wrap with it, rather than leave it on a line of its own.) -->
+  <span class="steps notice-steps">⬆ {steps}</span>
 {:else}
   <button class="small primary" onclick={download} title="Save it in place of this file (same name and folder) and open that: your games carry over">
     ⬇ Download {release.version}
@@ -119,5 +120,9 @@
 <style>
   .own-line {
     flex-basis: 100%;
+  }
+  /* (Room for the words first: What's new and Done wrap under them, not the other way.) */
+  .notice-steps {
+    flex: 1 1 300px;
   }
 </style>

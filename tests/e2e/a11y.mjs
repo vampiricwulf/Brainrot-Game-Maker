@@ -116,6 +116,10 @@ try {
   const gameKeys = page.getByRole('dialog', { name: /keyboard shortcuts/i });
   await gameKeys.waitFor();
   assert((await gameKeys.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true', '❔ Help › 🎮 Keys during the game opens the keys window on During the game');
+  // Its name says which keys it shows, as its switch does.
+  assert((await gameKeys.getAttribute('aria-label')) === 'Keyboard shortcuts during the game', `the keys window on During the game is named for it (${await gameKeys.getAttribute('aria-label')})`);
+  await gameKeys.getByRole('button', { name: 'Editor', exact: true }).click();
+  assert((await gameKeys.getAttribute('aria-label')) === 'Editor keyboard shortcuts', 'switched to Editor, it’s named Editor keyboard shortcuts');
   await page.keyboard.press('Escape');
   await gameKeys.waitFor({ state: 'detached' });
   assert(await help.evaluate((b) => b === document.activeElement), 'closing it gives the focus back to ❔ Help');
@@ -151,7 +155,8 @@ try {
   // Every window has the same ✕ named Close.
   await more.click();
   await page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).click();
-  const sheet = page.getByRole('dialog', { name: 'Editor keyboard shortcuts' });
+  // (Named for the part shown: it switches to During the game below.)
+  const sheet = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   assert((await sheet.getByRole('button', { name: 'Close' }).count()) === 1 && (await sheet.getByRole('button', { name: 'Done' }).count()) === 1, '⌨ Keyboard shortcuts: a ✕ named Close and a Done');
   // Enter in its filter is the filter's; Enter on the window closes it.
   await sheet.getByLabel('Filter shortcuts').press('Enter');
@@ -235,6 +240,9 @@ try {
     toastBox,
   );
   assert(toastBox && hit.length === 0, `a toast while the clue editor is open covers none of its buttons (${hit.join(', ') || 'none'})`);
+  // (One line there: what it says fits, not cut off before it says where to paste.)
+  const fits = await page.locator('.toast').evaluate((t) => [t.scrollWidth, t.clientWidth]);
+  assert(fits[0] <= fits[1], `📋 Copy slide's toast over the clue editor fits on its line (${fits.join(' / ')})`);
   // What's said while a window is open is still read: the live region isn't made inert with the page.
   await page.keyboard.press('Control+Enter');
   await page.waitForFunction(() => document.getElementById('live-region')?.dataset.said?.endsWith('Category 1 $400.'), null, { timeout: 3000 });

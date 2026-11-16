@@ -248,7 +248,8 @@
   const openName = () => (shown === 'card' && card ? clueCardWords(card, cardAt) : shown === 'a' ? 'the answer slide' : `question slide ${at + 1}`);
   function copyOpen(): void {
     copySlide(app.game, openSlide());
-    toast('Slide copied: 📋 Paste slide by the tabs puts it in as a new slide (its ▾: over another), here or in another clue or game');
+    // (Short: over this window the toast is one line.)
+    toast('Slide copied: 📋 Paste slide by the tabs adds it as a new slide, here or in another clue or game');
   }
   /** 📋 Paste slide: a new slide after the question slide open (from the Answer or a card's tab: before the answer), or over the open one. */
   function pasteSlide(over: boolean): void {

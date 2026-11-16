@@ -5,6 +5,7 @@
 // replace the file it was opened from).
 import { isNewer } from './semver';
 import { prefs } from './prefs.svelte';
+import { announce } from './announce';
 
 export const REPO = 'vampiricwulf/Brainrot-Game-Maker';
 export const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`;
@@ -182,6 +183,19 @@ export function recheckHourly(): void {
       () => {},
     );
   }, 60 * 1000);
+}
+
+/** The version the editor's notice was read out for. */
+let said = '';
+
+/**
+ * The editor's notice for this version is showing: screen readers hear it from the page's live region (a notice that
+ * appears with its words isn't always read), once, not again each time the editor comes back.
+ */
+export function sayUpdateOut(version: string): void {
+  if (said === version) return;
+  said = version;
+  announce(`Brainrot Games Maker ${version} is out. The notice under the header says how to get it.`);
 }
 
 /** Put the editor's notice away until a newer version than this one is out. */

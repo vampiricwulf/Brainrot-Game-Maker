@@ -59,7 +59,7 @@
   import ThemeEditor from './ThemeEditor.svelte';
   import { isThemeFile, parseThemeFile, ThemeError, type SharedTheme } from '../lib/themefile';
   import UpdateControls from './UpdateControls.svelte';
-  import { update } from '../lib/update.svelte';
+  import { sayUpdateOut, update } from '../lib/update.svelte';
   import AboutDialog from './AboutDialog.svelte';
   import KeysHelp from '../play/KeysHelp.svelte';
   import { inTauri, keptHere } from '../lib/platform';
@@ -1147,6 +1147,13 @@
   onMount(() => {
     if (inTauri()) dataFolders().then((f) => (movedNotice = !!f?.moved));
   });
+  /** The version the notice under the header says is out (none: no notice). */
+  const updateOut = $derived(
+    (update.status === 'available' || update.status === 'installing') && update.latest && update.latest.version !== update.skipped ? update.latest : null,
+  );
+  $effect(() => {
+    if (updateOut && update.downloading !== updateOut.version) sayUpdateOut(updateOut.version);
+  });
   // ⬆ Update failed during a game: why, now that the host is back here (see UpdateControls).
   onMount(() => {
     const why = update.failed;
@@ -1213,22 +1220,46 @@
   </header>
   <!-- The notices under the header look and close alike: an icon and words, the actions (the main one first), then ✕
        at the far right, its tooltip saying what it does (its name is the word it replaced: Got it, Not now…). -->
-  {#if movedNotice}
-    <div class="data-notice" role="status">
-      <span>📁 Jeopardy Builder is now <b>Brainrot Games Maker</b>. Your games and media were moved to its new folder.</span>
-      <button class="small" onclick={() => ((about = true), (movedNotice = false))}>ℹ See where</button>
-      <button class="small ghost notice-x" onclick={() => (movedNotice = false)} aria-label="Got it" title="Got it: don't show this again">✕</button>
-    </div>
-  {/if}
-  {#if (update.status === 'available' || update.status === 'installing') && update.latest && update.latest.version !== update.skipped}
-    {@const latest = update.latest}
-    <!-- (Once its download is open, the notice says what to do with it instead: see UpdateControls.) -->
-    <div class="data-notice" role="status">
-      <span>⬆{#if update.downloading !== latest.version}{' '}<b>Brainrot Games Maker {latest.version}</b> is out (this is {__APP_VERSION__}).{/if}</span>
-      <UpdateControls release={latest} notice />
-    </div>
-  {/if}
-  <ConvertNotice onshow={() => (tab = 'media')} />
+  <!-- (In a box that's always there: a notice that comes while a window is open is out of reach with the rest of the
+       page, the box being what the window makes inert. It lays nothing out itself.) -->
+  <div class="notices">
+    {#if movedNotice}
+      <div class="data-notice" role="status">
+        <span>📁 Jeopardy Builder is now <b>Brainrot Games Maker</b>. Your games and media were moved to its new folder.</span>
+        <button class="small" onclick={() => ((about = true), (movedNotice = false))}>ℹ See where</button>
+        <button class="small ghost notice-x" onclick={() => (movedNotice = false)} aria-label="Got it" title="Got it: don't show this again">✕</button>
+      </div>
+    {/if}
+    {#if updateOut}
+      {@const latest = updateOut}
+      <!-- (Once its download is open, the notice says what to do with it instead, its ⬆ with those words: see
+           UpdateControls.) -->
+      <div class="data-notice" role="status">
+        {#if update.downloading !== latest.version}<span>⬆ <b>Brainrot Games Maker {latest.version}</b> is out (this is {__APP_VERSION__}).</span>{/if}
+        <UpdateControls release={latest} notice />
+      </div>
+    {/if}
+    <ConvertNotice onshow={() => (tab = 'media')} />
+    {#if previous}
+      {@const prev = previous}
+      <div class="data-notice" role="status">
+        <span
+          >📂 “{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}{' '}{prev.dropped.length === 1 ? 'Removed the oldest kept game' : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
+        >
+        <button class="small" onclick={() => reopen(prev)}>↶ Reopen previous game</button>
+        <button
+          class="small ghost notice-x"
+          onclick={() => {
+            // (The focus goes on from here to Open…, where the game is kept, instead of dropping to the page.)
+            previous = null;
+            openBtn?.focus();
+          }}
+          aria-label="Hide"
+          title="Hide (it stays in Open… → Recent games)">✕</button
+        >
+      </div>
+    {/if}
+  </div>
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
   {#if shortcuts}<KeysHelp from="editor" start={shortcuts} onclose={() => (shortcuts = false)} />{/if}
   {#if finding}<FindDialog onclose={() => (finding = false)} />{/if}
@@ -1256,25 +1287,6 @@
   {/if}
   {#if asking}<ReplaceDialog heading={asking.heading} title={asking.title} go={asking.go} full={!app.storageOk} onchoice={asking.answer} />{/if}
   {#if naming}<NameDialog onname={naming.answer} exporting={naming.exporting} />{/if}
-  {#if previous}
-    {@const prev = previous}
-    <div class="data-notice" role="status">
-      <span
-        >📂 “{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}{' '}{prev.dropped.length === 1 ? 'Removed the oldest kept game' : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
-      >
-      <button class="small" onclick={() => reopen(prev)}>↶ Reopen previous game</button>
-      <button
-        class="small ghost notice-x"
-        onclick={() => {
-          // (The focus goes on from here to Open…, where the game is kept, instead of dropping to the page.)
-          previous = null;
-          openBtn?.focus();
-        }}
-        aria-label="Hide"
-        title="Hide (it stays in Open… → Recent games)">✕</button
-      >
-    </div>
-  {/if}
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
   <div class="body" use:inertWhile={replacing || !!opening} use:focusRescue>
@@ -1681,6 +1693,9 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+  }
+  .notices {
+    display: contents;
   }
   header {
     display: flex;
