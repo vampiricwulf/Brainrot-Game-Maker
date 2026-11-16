@@ -603,16 +603,27 @@ try {
     await sp.locator('nav > button.round-tab').filter({ hasText: /^\W*Jeopardy!$/ }).click();
     const onRound = await mainEl.evaluate((m) => m.scrollTop);
     assert(scrolled > 100 && onTheme === 0 && onRound === 0, `🎨 Theme and a round's tab open at the top after a page scrolled down (${scrolled} → ${onTheme}, ${onRound})`);
+    // So does a round just added.
+    await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
+    await sp.getByRole('button', { name: '＋ Add round' }).click();
+    await sp.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+    await sp.locator('nav > button.round-tab', { hasText: 'Double Jeopardy!' }).waitFor();
+    const onAdded = await mainEl.evaluate((m) => m.scrollTop);
+    assert(onAdded === 0, `a round just added opens at the top too (${onAdded})`);
+    await sp.keyboard.press('Control+z');
+    await sp.locator('nav > button.round-tab', { hasText: 'Double Jeopardy!' }).waitFor({ state: 'detached' });
+    await sp.locator('nav > button.round-tab').filter({ hasText: /^\W*Jeopardy!$/ }).click();
     // A round's name keeps its width on a tablet (the sidebar beside it): its buttons go under it where both don't fit.
-    for (const width of [760, 820, 900, 1280]) {
+    for (const width of [720, 760, 820, 900, 1280]) {
       await sp.setViewportSize({ width, height: 720 });
       const h = await sp.locator('main .page-header').first().evaluate((el) => {
         const h2 = el.querySelector('h2');
         const t = el.querySelector('.titles').getBoundingClientRect();
         const a = el.querySelector('.actions').getBoundingClientRect();
-        return { cut: h2.scrollWidth - h2.clientWidth, width: Math.round(t.width), under: a.top >= t.bottom, beside: Math.round(a.top) === Math.round(t.top) };
+        const main = el.closest('main');
+        return { cut: h2.scrollWidth - h2.clientWidth, width: Math.round(t.width), under: a.top >= t.bottom, beside: Math.round(a.top) === Math.round(t.top), wide: main.scrollWidth - main.clientWidth };
       });
-      assert(h.cut <= 0 && h.width >= 200 && (width === 1280 ? h.beside : h.under), `at ${width} px wide the round's name shows whole, its buttons ${width === 1280 ? 'beside' : 'under'} it (${JSON.stringify(h)})`);
+      assert(h.cut <= 0 && h.width >= 200 && h.wide <= 0 && (width === 1280 ? h.beside : h.under), `at ${width} px wide the round's name shows whole, its buttons ${width === 1280 ? 'beside' : 'under'} it (${JSON.stringify(h)})`);
     }
     await sp.context().close();
   }

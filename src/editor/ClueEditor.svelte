@@ -828,7 +828,7 @@
           >
             {#snippet cardButton()}
               <button
-                class="ghost add"
+                class="ghost small add"
                 onclick={newCardTab}
                 disabled={cards.length >= MAX_CARDS}
                 title={cards.length >= MAX_CARDS
@@ -1020,10 +1020,11 @@
   .tablist button {
     border-radius: 6px 6px 0 0;
   }
-  /* ＋ 🤫 Card sits quietly after ＋ Add slide. */
+  /* ＋ 🤫 Card sits quietly after ＋ Add slide, its size (a set line height: the ＋ comes from another font). */
   .tabs .add {
     font-size: 12px;
     opacity: 0.8;
+    line-height: 1.25;
   }
   @media (max-width: 900px) {
     .tabs {

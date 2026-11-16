@@ -39,6 +39,11 @@ try {
   const tabNames = () => tabs.getByRole('tab').allInnerTexts();
   const q = dialog.locator('[data-field="q"]');
   const addSlide = dialog.getByRole('button', { name: '＋ Add slide' });
+  // ＋ Add slide and ＋ 🤫 Card are the size of the slide's other buttons.
+  {
+    const sizes = await Promise.all(['＋ Add slide', '＋ 🤫 Card', '⧉ Duplicate slide'].map(async (name) => (await dialog.getByRole('button', { name }).boundingBox()).height));
+    assert(sizes.every((h) => h === sizes[2]), `＋ Add slide and ＋ 🤫 Card are as tall as ⧉ Duplicate slide (${sizes.join(', ')})`);
+  }
   const undo = () => page.keyboard.press('Control+z');
   const redo = () => page.keyboard.press('Control+y');
   /** An opened game (answering Discard if it asks first about unsaved changes). */

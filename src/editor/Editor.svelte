@@ -134,10 +134,10 @@
   const NAMED_TABS: readonly unknown[] = ['sounds', 'tiebreaker', 'media', 'tools', 'cards', 'theme', 'stats', 'history'];
   let tab = $state<Tab>(untrack(() => (NAMED_TABS.includes(startRound) ? (startRound as Tab) : Math.max(0, app.game.rounds.findIndex((r) => r.id === startRound)))));
   let mainEl = $state<HTMLElement>();
-  /** A page picked in the sidebar opens at its top, not as far down as the last page was scrolled. (Find, Go there
-   *  and the checklist set `tab` themselves, then scroll to what they show.) */
-  function openTab(t: Tab): void {
-    if (t !== tab && mainEl) mainEl.scrollTop = 0;
+  /** A page picked in the sidebar (or a round just added: `added`) opens at its top, not as far down as the last page
+   *  was scrolled. (Find, Go there and the checklist set `tab` themselves, then scroll to what they show.) */
+  function openTab(t: Tab, added = false): void {
+    if ((added || t !== tab) && mainEl) mainEl.scrollTop = 0;
     tab = t;
   }
   /** ▶ Play, saying the tab it was pressed on. */
@@ -266,7 +266,7 @@
       game.rounds.splice(at, 0, round);
       return round;
     });
-    tab = at;
+    openTab(at, true);
     // (Said, as it isn't where new rounds usually go.)
     if (intro && game.rounds.length > 1) toast('Added “Introduction” at the start of the game: drag its tab to move it');
     // The menu (or the card) that added it is gone: the focus goes to the new round's name, ready to type over.
@@ -301,7 +301,7 @@
 
   /** A round just added (a template, a pasted or imported round): shown, with its name ready to type over. */
   function showNew(at: number): void {
-    tab = at;
+    openTab(at, true);
     const id = game.rounds[at]?.id;
     if (id) focusRoundName(id);
   }
