@@ -5,6 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { addClassicRounds, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -248,6 +249,26 @@ try {
     await wn.getByRole('button', { name: '⟳ Reload for 99.0.0' }).click();
     await wp.getByRole('button', { name: 'Open…' }).waitFor();
     assert(reloaded, '⟳ Reload reloads the page');
+
+    // There's no file online: ℹ About says it's the copy online, and that its games are its own (not shared with the
+    // downloaded file, as copies opened from a file share theirs).
+    await wp.getByRole('button', { name: /^More:/ }).click();
+    await wp.getByRole('menuitem', { name: 'ℹ About' }).click();
+    const about = await wp.getByRole('dialog', { name: 'About Brainrot Games Maker' }).innerText();
+    assert(
+      /Version\s+\d+\.\d+\.\d+ \(online\)/.test(about) &&
+        about.includes("This site keeps its own games: the downloaded file and the desktop app don't see them") &&
+        !about.includes('single HTML file') && !about.includes('opened from a file'),
+      'online, ℹ About says “(online)” and that this site keeps its own games, not the file’s words',
+    );
+    await wp.keyboard.press('Escape');
+    // A blocked popup: allow popups for this site (there's no file to allow them for).
+    await addClassicRounds(wp);
+    await playWithPlayers(wp, 2);
+    await wp.evaluate(() => (window.open = () => null));
+    await wp.getByRole('button', { name: /Separate audience window/ }).click();
+    await wp.locator('.toast', { hasText: 'The browser blocked the popup. Allow popups for this site and try again.' }).waitFor();
+    assert(true, 'online, a blocked popup says to allow popups for this site');
     await web.close();
   }
 

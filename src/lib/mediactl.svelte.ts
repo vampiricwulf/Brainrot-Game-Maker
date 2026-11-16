@@ -4,6 +4,7 @@
 // report their status back so the host sees real progress.
 
 import { isWebUrl } from './links';
+import { popupsFor } from './platform';
 
 export type MediaRole = 'single' | 'mirror' | 'audience';
 
@@ -262,7 +263,9 @@ export function fmtTime(t: number): string {
 export { youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl } from './links';
 
 /** What the host is told when openMediaPopup fails. */
-export const POPUP_FAILED = "Couldn't open the link. If the browser blocked the popup, allow popups for this file.";
+export function popupFailed(): string {
+  return `Couldn't open the link. If the browser blocked the popup, allow popups for ${popupsFor()}.`;
+}
 
 /**
  * Open the real page for an online media element in a popup window (the YouTube fallback). Web links only. False if

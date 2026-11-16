@@ -135,7 +135,7 @@
   } from '../lib/sync.svelte';
   import { mediaUsage, slideMediaIds } from '../lib/usage';
   import { mediaUrls } from '../lib/media.svelte';
-  import { localMedia, openMediaPopup, POPUP_FAILED, remoteMedia } from '../lib/mediactl.svelte';
+  import { localMedia, openMediaPopup, popupFailed, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, popupBlocked, toggleFullscreen } from '../lib/platform';
   import { onMount, setContext, tick, untrack } from 'svelte';
@@ -919,7 +919,7 @@
       toast(
         inTauri()
           ? "Couldn't open the audience window. Try again, or use single-window mode."
-          : 'The browser blocked the popup. Allow popups for this file and try again.',
+          : popupBlocked(),
         5000,
       );
     return ok;
@@ -6119,7 +6119,7 @@
         break;
       case 'y': {
         const m = firstMedia();
-        if (m?.[1].openUrl && !openMediaPopup(m[1].openUrl)) toast(POPUP_FAILED, 5000);
+        if (m?.[1].openUrl && !openMediaPopup(m[1].openUrl)) toast(popupFailed(), 5000);
         break;
       }
       case 'delete':

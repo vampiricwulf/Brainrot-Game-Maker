@@ -62,7 +62,7 @@
   import AskDialog from './lib/AskDialog.svelte';
   import { ask } from './lib/ask.svelte';
   import { autosave } from './lib/autosave';
-  import { inTauri } from './lib/platform';
+  import { inTauri, popupBlocked, popupsFor } from './lib/platform';
   import { flushOnClose, whileWriting } from './lib/desktop.svelte';
   import { prefs, savePrefs } from './lib/prefs.svelte';
   import { watchGame, type GameWatch } from './lib/watch.svelte';
@@ -869,7 +869,7 @@
           toast(
             inTauri()
               ? "Couldn't open the audience window: press A in the game to try again."
-              : 'The browser blocked the audience window: allow popups for this file, then press A in the game.',
+              : `The browser blocked the audience window: allow popups for ${popupsFor()}, then press A in the game.`,
             6000,
           );
       });
@@ -1067,7 +1067,7 @@
   }
   async function reopenAudience(): Promise<void> {
     if (!(await openAudienceWindow(audienceTitle(app.game))))
-      toast(inTauri() ? "Couldn't open the audience window." : 'The browser blocked the popup. Allow popups for this file and try again.', 5000);
+      toast(inTauri() ? "Couldn't open the audience window." : popupBlocked(), 5000);
   }
 
   /**

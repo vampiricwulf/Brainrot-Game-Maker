@@ -11,7 +11,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { ask, tell } from '../lib/ask.svelte';
   import { canSelfUpdate, installUpdate, openLink, restartIntoUpdate } from '../lib/desktop.svelte';
-  import { inTauri } from '../lib/platform';
+  import { inTauri, onlineCopy } from '../lib/platform';
   import { oneShot } from '../lib/oneshot';
   import { jobAsk, jobLine, stopAll } from '../lib/shrink/jobs.svelte';
   import { ASSETS, skipVersion, update, type Release } from '../lib/update.svelte';
@@ -19,7 +19,7 @@
   let { release, notice = false }: { release: Release; notice?: boolean } = $props();
 
   const desktopApp = inTauri();
-  const online = !desktopApp && (location.protocol === 'https:' || location.protocol === 'http:');
+  const online = onlineCopy();
   let selfUpdate = $state(false);
   onMount(() => void canSelfUpdate().then((ok) => (selfUpdate = ok)));
 

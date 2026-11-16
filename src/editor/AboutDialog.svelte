@@ -6,7 +6,7 @@
   import { onMount } from 'svelte';
   import { toast } from '../lib/app.svelte';
   import { dataFolders, openDataFolder, type DataFolders, type FolderName } from '../lib/desktop.svelte';
-  import { inTauri } from '../lib/platform';
+  import { inTauri, onlineCopy } from '../lib/platform';
   import { storageKept } from '../lib/persist';
   import { checkForUpdate, update } from '../lib/update.svelte';
   import { prefs } from '../lib/prefs.svelte';
@@ -15,6 +15,8 @@
   let { onclose }: { onclose: () => void } = $props();
 
   const desktopApp = inTauri();
+  /** The copy online (GitHub Pages): no file, and its games are its own. */
+  const online = onlineCopy();
   let folders = $state<DataFolders | null>(null);
   const leftovers = $derived(
     folders ? ([['old-data', folders.oldData], ['old-settings', folders.oldSettings]] as const).filter(([, f]) => f?.exists && f.path) : [],
@@ -61,7 +63,7 @@
     <p class="muted">Build game shows (Jeopardy boards, RPG maps and more) with rich slides, then host them for a livestream.</p>
     <dl>
       <dt>Version</dt>
-      <dd class="selectable">{__APP_VERSION__} ({desktopApp ? 'Windows desktop app' : 'single HTML file'})</dd>
+      <dd class="selectable">{__APP_VERSION__} ({desktopApp ? 'Windows desktop app' : online ? 'online' : 'single HTML file'})</dd>
       <dt>Build</dt>
       <dd class="selectable">{__BUILD_COMMIT__ ? `${__BUILD_COMMIT__}, ` : ''}{__BUILD_DATE__}</dd>
       <dt>Guide</dt>
@@ -174,8 +176,11 @@
       {/if}
     {:else}
       <p class="muted">
-        The autosave and the media you add are kept in this browser's storage. In Chrome and Edge every copy of this app
-        opened from a file shares it; another browser starts empty. Nothing is uploaded, except to the buzzer server while
+        The autosave and the media you add are kept in this browser's storage.
+        {online
+          ? "This site keeps its own games: the downloaded file and the desktop app don't see them (move a game across with 💾 Save and 📂 Open…)."
+          : 'In Chrome and Edge every copy of this app opened from a file shares it; another browser starts empty.'}
+        Nothing is uploaded, except to the buzzer server while
         phones play: what the phones show and send (the clue, names, answers), and 🤫 cards' files. Clearing this
         browser's site data deletes them, so use <b>Save</b> (.brainrot) to keep a copy.
       </p>

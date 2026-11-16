@@ -10,9 +10,22 @@ export function keptHere(): string {
   return inTauri() ? 'on this PC' : 'in this browser';
 }
 
+/**
+ * True for the copy online (GitHub Pages, or any web address): not the downloaded file, not the desktop app. There's no
+ * file to speak of there, and its games are kept apart from the file's.
+ */
+export function onlineCopy(): boolean {
+  return !inTauri() && typeof location !== 'undefined' && (location.protocol === 'https:' || location.protocol === 'http:');
+}
+
+/** What the browser allows popups for: "this site" online, else "this file". */
+export function popupsFor(): string {
+  return onlineCopy() ? 'this site' : 'this file';
+}
+
 /** Said when a window (a 🪟 card window, the scores or audience window) didn't open. */
 export function popupBlocked(): string {
-  return inTauri() ? "Couldn't open the window. Try again." : 'The browser blocked the popup. Allow popups for this file and try again.';
+  return inTauri() ? "Couldn't open the window. Try again." : `The browser blocked the popup. Allow popups for ${popupsFor()} and try again.`;
 }
 
 /**

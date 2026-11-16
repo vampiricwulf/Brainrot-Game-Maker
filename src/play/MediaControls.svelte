@@ -1,6 +1,6 @@
 <!-- Host playback controls for media on the current slide (spec §6.7). -->
 <script lang="ts">
-  import { fmtTime, localMedia, openMediaPopup, POPUP_FAILED, remoteMedia, type MediaState } from '../lib/mediactl.svelte';
+  import { fmtTime, localMedia, openMediaPopup, popupFailed, remoteMedia, type MediaState } from '../lib/mediactl.svelte';
   import { mediaCommand } from '../lib/sync.svelte';
   import { toast } from '../lib/app.svelte';
 
@@ -23,7 +23,7 @@
   });
 
   function open(url?: string): void {
-    if (url && !openMediaPopup(url)) toast(POPUP_FAILED, 5000);
+    if (url && !openMediaPopup(url)) toast(popupFailed(), 5000);
   }
 </script>
 
