@@ -55,7 +55,7 @@
 </script>
 
 <div class="group" role="group" aria-label={card ? 'This card' : 'This slide'}>
-  <button class="ghost add" onclick={onadd} title={addTitle}>＋ Add slide</button>
+  <button class="ghost small add" onclick={onadd} title={addTitle}>＋ Add slide</button>
   {@render cardButton?.()}
   <span class="gap" aria-hidden="true"></span>
   <button
@@ -131,11 +131,13 @@
     min-width: 0;
     padding-bottom: 3px;
   }
+  /* (A set line height, as .tiny has: the ＋ comes from another font, which would make ＋ Add slide taller than the rest.) */
   .group button {
     flex: none;
     border-radius: 6px;
+    line-height: 1.25;
   }
-  /* ＋ Add slide (and ＋ 🤫 Card) sit quietly after the tabs, as they did. */
+  /* ＋ Add slide (and ＋ 🤫 Card) sit quietly after the tabs, as they did, the size of the buttons beside them. */
   .add {
     font-size: 12px;
     opacity: 0.8;

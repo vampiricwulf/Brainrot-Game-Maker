@@ -474,6 +474,12 @@ try {
       `the Editor part opens with “What moved” (the menus’ one order, the new names, the slide editor's bar, tabs' group and Shape ▾, the image and video windows, 🖼 Media's cards, a video's Plays row, a card's ⧉, the partner rules, the tiebreaker, a board-game space's buttons, Ways out)`,
     );
   }
+  // A long key that wraps is a whole chip on each line (not two half-boxes).
+  const chips = await page.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).locator('kbd').evaluateAll((ks) => ({
+    wrapped: ks.filter((k) => k.getClientRects().length > 1).length,
+    cloned: ks.every((k) => getComputedStyle(k).boxDecorationBreak === 'clone'),
+  }));
+  assert(chips.cloned, `the shortcuts' key chips are whole on each line they wrap to (${chips.wrapped} wrap here)`);
   await page.getByLabel('Filter shortcuts').fill('ctrl+f');
   const rows = await page.locator('[role="dialog"] tr').allInnerTexts();
   assert(rows.length >= 1 && rows.every((r) => /ctrl\+f/i.test(r)), `the shortcuts filter keeps the matching keys (${rows.length})`);

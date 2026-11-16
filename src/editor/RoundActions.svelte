@@ -62,15 +62,18 @@
   .del {
     margin-left: 8px;
   }
+  /* The buttons go under the name where the row has no room for both (a tablet, with the sidebar beside the page),
+     rather than squeeze the name to nothing under them. */
   .ra :global(.page-header) {
     padding-bottom: 12px;
     border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .ra :global(.page-header .titles) {
+    flex-basis: 16em;
   }
   /* On a phone the buttons go under the name and its line, which keep the width. */
   @media (max-width: 700px) {
-    .ra :global(.page-header) {
-      flex-wrap: wrap;
-    }
     .ra :global(.page-header .titles) {
       flex-basis: 100%;
     }

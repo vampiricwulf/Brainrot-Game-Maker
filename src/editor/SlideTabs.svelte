@@ -365,7 +365,7 @@
     {#snippet cardButton()}
       {#if cards}
         <button
-          class="ghost add"
+          class="ghost small add"
           onclick={cards.onadd}
           disabled={list.length >= MAX_CARDS}
           title={list.length >= MAX_CARDS
@@ -419,5 +419,6 @@
   .tabs .add {
     font-size: 12px;
     opacity: 0.8;
+    line-height: 1.25;
   }
 </style>

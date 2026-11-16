@@ -133,6 +133,13 @@
   type Tab = 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'cards' | 'theme' | 'stats' | 'history' | number;
   const NAMED_TABS: readonly unknown[] = ['sounds', 'tiebreaker', 'media', 'tools', 'cards', 'theme', 'stats', 'history'];
   let tab = $state<Tab>(untrack(() => (NAMED_TABS.includes(startRound) ? (startRound as Tab) : Math.max(0, app.game.rounds.findIndex((r) => r.id === startRound)))));
+  let mainEl = $state<HTMLElement>();
+  /** A page picked in the sidebar opens at its top, not as far down as the last page was scrolled. (Find, Go there
+   *  and the checklist set `tab` themselves, then scroll to what they show.) */
+  function openTab(t: Tab): void {
+    if (t !== tab && mainEl) mainEl.scrollTop = 0;
+    tab = t;
+  }
   /** ▶ Play, saying the tab it was pressed on. */
   const play = () => onplay(typeof tab === 'number' ? game.rounds[tab]?.id : tab);
   /** The header's ▶ Play: with no rounds yet it says to add one, the keys on ✨ Try a sample game (it isn't greyed). */
@@ -401,7 +408,7 @@
    * tiebreaker clue turns it off).
    */
   function addTiebreaker(): void {
-    tab = 'tiebreaker';
+    openTab('tiebreaker');
     setTiebreaker(true);
     void tick()
       .then(tick)
@@ -1297,7 +1304,7 @@
             data-place="round:{round.id}"
             draggable="true"
             onclick={(e) => {
-              tab = i;
+              openTab(i);
               // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a tab renamed.)
               e.currentTarget.focus();
             }}
@@ -1325,7 +1332,7 @@
           class:active={tab === 'tiebreaker'}
           class:optional={!game.tiebreaker}
           aria-current={tab === 'tiebreaker' ? 'page' : undefined}
-          onclick={() => (game.tiebreaker ? (tab = 'tiebreaker') : addTiebreaker())}
+          onclick={() => (game.tiebreaker ? openTab('tiebreaker') : addTiebreaker())}
           oncontextmenu={(e) => showMenu(e, tiebreakerMenu())}
           title={game.tiebreaker
             ? 'Played after the last round when players tie for the win'
@@ -1345,13 +1352,13 @@
         title={game.rounds.length ? 'Set before the show, on the ▶ Play screen. The game doesn’t start until you press Start game ▶.' : 'Add a round first'}
         >👥 Players & rules ▶{game.players.length ? ` (${game.players.length})` : ''}</button
       >
-      <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => (tab = 'sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
-      <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => (tab = 'theme')}>🎨 Theme</button>
+      <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => openTab('sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
+      <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => openTab('theme')}>🎨 Theme</button>
       <button
         class="wrap"
         class:active={tab === 'tools'}
         aria-current={tab === 'tools' ? 'page' : undefined}
-        onclick={() => (tab = 'tools')}
+        onclick={() => openTab('tools')}
         title="Wheels, custom dice and 🎭 deals (a secret part for each player)"
       >
         🎡 Wheels, Dice & Deals
@@ -1359,7 +1366,7 @@
       <button
         class:active={tab === 'cards'}
         aria-current={tab === 'cards' ? 'page' : undefined}
-        onclick={() => (tab = 'cards')}
+        onclick={() => openTab('cards')}
         title="Private cards made before the show: during play, 🤫 Send a card… sends one to the players you choose, on their phones only, never on stream"
         >🤫 Cards{game.cards?.length ? ` (${game.cards.length})` : ''}</button
       >
@@ -1368,12 +1375,12 @@
         class:active={tab === 'stats'}
         class:optional={!statsUsed}
         aria-current={tab === 'stats' ? 'page' : undefined}
-        onclick={() => (tab = 'stats')}
+        onclick={() => openTab('stats')}
         title={statsUsed ? 'Player stats, items and shops (RPG and board game rounds)' : 'Optional: player stats, items and shops, for RPG and board game rounds'}
         >📊 Stats & Items{#if !statsUsed}{' '}<span class="opt">(optional)</span>{/if}</button
       >
-      <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => (tab = 'media')}>🖼 Media ({libraryMedia(game).length})</button>
-      <button class:active={tab === 'history'} aria-current={tab === 'history' ? 'page' : undefined} onclick={() => (tab = 'history')} title="Every change to this game: go back to any point">
+      <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => openTab('media')}>🖼 Media ({libraryMedia(game).length})</button>
+      <button class:active={tab === 'history'} aria-current={tab === 'history' ? 'page' : undefined} onclick={() => openTab('history')} title="Every change to this game: go back to any point">
         🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
       </button>
 
@@ -1424,7 +1431,7 @@
       {/if}
     </nav>
 
-    <main>
+    <main bind:this={mainEl}>
       <h1 class="sr-only">{game.title || 'Untitled Game'}</h1>
       <!-- A game that's opened or new starts every editor afresh: no undo history carries over from the last one
            (another save of the same game has the same round ids). -->
@@ -1588,6 +1595,13 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+  /* (On a laptop's short screen it starts near the top, so 📂 Open a game… stays in view under a notice such as "… is
+     out".) */
+  @media (max-height: 760px) {
+    .first-round {
+      margin-top: 8px;
+    }
   }
   .first-round h2,
   .first-round p {
@@ -1769,7 +1783,8 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    /* (3px, not 4: the sample game's five rounds, Add tiebreaker and its checklist still fit at 1280×720.) */
+    gap: 3px;
     padding: 12px;
     border-right: 1px solid var(--border);
     background: var(--panel);

@@ -48,6 +48,11 @@ try {
   const notice = page.locator('.data-notice', { hasText: 'is out' });
   await notice.waitFor();
   assert((await notice.innerText()).includes('Brainrot Games Maker 99.0.0 is out'), `the editor says a newer version is out (${(await notice.innerText()).split('\n')[0]})`);
+  // On a 1280×720 laptop the first screen's 📂 Open a game… stays in view under it.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const openLine = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
+  assert(openLine <= 720, `with the notice up, 📂 Open a game… is in a 1280×720 window (${openLine})`);
+  await page.setViewportSize({ width: 1280, height: 800 });
   // (The link it opens is noted rather than opened, so the test doesn't go to GitHub.)
   await page.evaluate(() => (window.open = (u) => ((window.__opened = String(u)), null)));
   await notice.getByRole('button', { name: '⬇ Download 99.0.0' }).click();

@@ -285,6 +285,9 @@
     padding: 1px 6px;
     font-family: inherit;
     font-size: 12px;
+    /* (A long one that wraps is a whole chip on each line, not two half-boxes.) */
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
   .was {
     font-size: 12px;

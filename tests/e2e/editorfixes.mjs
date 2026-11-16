@@ -3,7 +3,8 @@
 // characters, the world's menu, one set of ↶ ↷, and the theme's clue text and preview. Also: Enter in a category's
 // name, the last clue's Ctrl+Enter, Import clues keeping what was pasted, slice weights, ＋ buttons that put the
 // focus on what they add, and a board's six columns fitting a narrower window. Also: an RPG screen pasted into
-// another game bringing the items and stats its objects use, and undone where it was pasted.
+// another game bringing the items and stats its objects use, and undone where it was pasted. And the sample game's
+// sidebar at 1280×720, pages opening at their top, and a round's name on a tablet.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -574,6 +575,47 @@ try {
     picks.push((await page.locator('.insp select').evaluateAll((els) => els.map((e) => e.selectedOptions[0]?.textContent?.trim()))).join(', '));
   }
   assert(picks[0].includes('Potion') && picks[1].includes('Gold') && !picks.join().includes('Deleted'), `a screen pasted into another game keeps its Potion and Gold (${picks.join(' | ')})`);
+
+  // ---------- The sample game: its sidebar, scrolling and a round's name on a tablet ----------
+  // (On a page of its own: no notice over the editor.) With the sample's five rounds the sidebar fits at 1280×720,
+  // 🕘 History whole above the checklist.
+  {
+    const sp = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+    sp.on('pageerror', (e) => errors.push(e.message));
+    await sp.goto(pathToFileURL(file).href);
+    await sp.getByRole('button', { name: /Try a sample game/ }).click();
+    // (Once the checklist has caught up with the sample's rounds.)
+    await sp.locator('nav .problem', { hasText: 'No rounds yet' }).waitFor({ state: 'detached' });
+    const side = await sp.locator('nav').first().evaluate((n) => ({
+      over: n.scrollHeight - n.clientHeight,
+      history: [...n.querySelectorAll(':scope > button')].at(-1).getBoundingClientRect().bottom,
+      check: n.querySelector('.problems').getBoundingClientRect().top,
+    }));
+    assert(side.over <= 0 && side.history <= side.check, `the sample game's sidebar fits at 1280×720, History above the checklist (${JSON.stringify(side)})`);
+    // A page picked in the sidebar opens at its top, not as far down as the last one was scrolled.
+    const mainEl = sp.locator('main');
+    await sp.getByRole('button', { name: '🔊 Sounds' }).click();
+    await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
+    const scrolled = await mainEl.evaluate((m) => m.scrollTop);
+    await sp.getByRole('button', { name: '🎨 Theme' }).click();
+    const onTheme = await mainEl.evaluate((m) => m.scrollTop);
+    await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
+    await sp.locator('nav > button.round-tab').filter({ hasText: /^\W*Jeopardy!$/ }).click();
+    const onRound = await mainEl.evaluate((m) => m.scrollTop);
+    assert(scrolled > 100 && onTheme === 0 && onRound === 0, `🎨 Theme and a round's tab open at the top after a page scrolled down (${scrolled} → ${onTheme}, ${onRound})`);
+    // A round's name keeps its width on a tablet (the sidebar beside it): its buttons go under it where both don't fit.
+    for (const width of [760, 820, 900, 1280]) {
+      await sp.setViewportSize({ width, height: 720 });
+      const h = await sp.locator('main .page-header').first().evaluate((el) => {
+        const h2 = el.querySelector('h2');
+        const t = el.querySelector('.titles').getBoundingClientRect();
+        const a = el.querySelector('.actions').getBoundingClientRect();
+        return { cut: h2.scrollWidth - h2.clientWidth, width: Math.round(t.width), under: a.top >= t.bottom, beside: Math.round(a.top) === Math.round(t.top) };
+      });
+      assert(h.cut <= 0 && h.width >= 200 && (width === 1280 ? h.beside : h.under), `at ${width} px wide the round's name shows whole, its buttons ${width === 1280 ? 'beside' : 'under'} it (${JSON.stringify(h)})`);
+    }
+    await sp.context().close();
+  }
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('editorfixes: all passed');

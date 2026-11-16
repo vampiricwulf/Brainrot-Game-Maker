@@ -56,6 +56,11 @@ try {
     await page.keyboard.press('Escape');
     await row.getByLabel('Layer name').waitFor({ state: 'detached' });
   }
+  // ＋ Add slide is the size of the buttons beside it, and the slide's toolbar has a gap above it, under the Text box.
+  const sizes = await Promise.all(['＋ Add slide', '⧉ Duplicate slide'].map(async (name) => (await page.getByRole('button', { name }).boundingBox()).height));
+  assert(sizes[0] === sizes[1], `＋ Add slide is as tall as ⧉ Duplicate slide (${sizes.join(', ')})`);
+  const gap = await page.locator('label.quick').evaluate((l) => l.nextElementSibling.getBoundingClientRect().top - l.getBoundingClientRect().bottom);
+  assert(gap >= 6, `a gap between the Text box and the slide's toolbar (${gap} px)`);
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Slide 2' }).waitFor();
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'));
