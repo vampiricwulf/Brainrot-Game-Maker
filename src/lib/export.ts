@@ -150,6 +150,9 @@ function selfHtml(): string {
   root.querySelector(`#${PACK_ELEMENT_ID}`)?.remove();
   // Not this page's own leftovers: its screen-reader line (it would say the last toast again) and its classes.
   root.querySelector('#live-region')?.remove();
+  // Nor the app's own page words: a shared link's preview of the maker (index.html), and its no-JavaScript line (the
+  // loading line above says what to do instead).
+  root.querySelectorAll('meta[name="description"], meta[property^="og:"], meta[name^="twitter:"], #no-js').forEach((m) => m.remove());
   root.removeAttribute('class');
   return '<!doctype html>\n' + root.outerHTML;
 }

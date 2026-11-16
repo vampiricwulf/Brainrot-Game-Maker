@@ -198,6 +198,23 @@ assert(
 await page.keyboard.press('Escape');
 await about.waitFor({ state: 'detached' });
 
+// A shared link to the page shows what the app is (Discord, Slack, a search result).
+assert(
+  (await page.locator('head meta[name="description"]').getAttribute('content'))?.includes('game shows') &&
+    (await page.locator('head meta[property="og:title"]').getAttribute('content')) === 'Brainrot Games Maker' &&
+    (await page.locator('head meta[property="og:description"]').count()) === 1,
+  'the page has a description and link-preview tags',
+);
+// With JavaScript off it says so, not "Loading…" for good.
+{
+  const nojs = await browser.newContext({ javaScriptEnabled: false });
+  const np = await nojs.newPage();
+  await np.goto(url);
+  const shown = await np.locator('body').innerText();
+  assert(shown.includes('needs JavaScript') && !shown.includes('Loading…'), 'with JavaScript off, the page says it needs JavaScript instead of “Loading…”');
+  await nojs.close();
+}
+
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
 await page.locator('.cat textarea').first().fill('Memes');
 await page.locator('.tile').first().click();
@@ -1675,6 +1692,11 @@ assert(html.suggestedFilename().endsWith('.html'), 'Export HTML downloads a .htm
 mkdirSync('test-results', { recursive: true });
 const exported = resolve('test-results/exported-game.html');
 await html.saveAs(exported);
+{
+  // Not the maker's link preview, nor its no-JavaScript line (the file's own loading line says what to do).
+  const text = (await import('node:fs')).readFileSync(exported, 'utf8');
+  assert(!/<meta [^>]*(og:|twitter:|name="description")|<noscript id="no-js"/.test(text) && /<div id="app"><style>[^<]*<\/style><div[^>]*><div>Loading the game…/.test(text), 'the exported file leaves out the site’s link preview and no-JavaScript line');
+}
 const player = await context.newPage();
 player.on('pageerror', (e) => errors.push('[exported] ' + e.message));
 player.on('dialog', (d) => d.accept());
