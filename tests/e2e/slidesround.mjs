@@ -138,11 +138,12 @@ try {
   assert((await page.locator('[data-slide-pips]').getAttribute('aria-label')) === 'Slide 2 of 2', 'Enter on Next slide ▶ (the keys on it) shows the next slide (the dots say where it is)');
   await page.keyboard.press('Shift+N');
   await stage.locator('[data-slide="1"]').waitFor();
-  // H, H: the keys come back to a button the app picked. Space and Enter there press nothing (no countdown starts).
+  // H, H: the keys come back to a button the app picked (the main button: a slides round's status line has no ⏱ Start).
+  // Space and Enter there press nothing (no slide goes on, no countdown starts).
   await page.keyboard.press('h');
   await page.locator('.panel').waitFor({ state: 'detached' });
   await page.keyboard.press('h');
-  await page.waitForFunction(() => !!document.activeElement?.matches('.panel button:not([data-next])'));
+  await page.waitForFunction(() => !!document.activeElement?.matches('.panel button'));
   const keysOn = await page.evaluate(() => document.activeElement.textContent.trim());
   await page.keyboard.press(' ');
   await page.keyboard.press('Enter');

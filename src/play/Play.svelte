@@ -5852,6 +5852,8 @@
    */
   const pointed = new WeakSet<Element>();
   let tabbedTo: EventTarget | null = null;
+  /** The main button, when the keys are on it by the focus rescue's guess (see onfocusin): Enter there isn't N. */
+  let guessedMain: Element | null = null;
   /** The list tabbedTo is in (a ✍ clue's ✔ / ✘ rows…): after it goes, the rescue's pick in that same list counts. */
   let tabbedList: Element | null = null;
 
@@ -6032,7 +6034,7 @@
       case 'enter':
         // Enter on the blue button where Enter awards nothing (a slides round, a round's title card or its categories
         // coming up): as N. (In clues "1, Enter" awards with the keys on it.)
-        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && mainNow?.enterIsNext) {
+        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && t !== guessedMain && mainNow?.enterIsNext) {
           goOn('enter', mainNow);
           break;
         }
@@ -6394,6 +6396,9 @@
     // next row of the list the keys were in (✔ on one ✍ answer, then the next one's ✔): Enter presses that one too.
     const nextRow = !!el && !!tabbedList?.isConnected && tabbedList.contains(el);
     const guess = (rescuing() || placing) && !nextRow;
+    // (The rescue's guess landing on the main button itself, as after H, H in a slides round, where no ⏱ Start is
+    // first in the panel: Enter there isn't its step either.)
+    guessedMain = rescuing() && !nextRow && el?.matches('[data-next]') ? el : null;
     if (tabbing && el) pointed.delete(el);
     // (The keys the app gave a button after a step (focusQuiet): Enter there still goes through the checks below, as
     // partnerEnter's second-Enter guard, never a press of that button.)
