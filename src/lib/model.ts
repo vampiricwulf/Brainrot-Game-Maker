@@ -1210,6 +1210,11 @@ export interface Session {
    * moves the picker on. Left out off a tile, and in older saves (then the picker now).
    */
   tilePicker?: Id | null;
+  /**
+   * When the open tile opened (Date.now()): how each player was marked on it counts only since then (a reopened tile
+   * starts afresh), after a reload too. Left out off a tile, and in older saves (then all of it).
+   */
+  clueAt?: number;
   /** Player stats (host-defined fields), by player then field. */
   stats?: Record<Id, Record<Id, StatValue>>;
   /** What each player carries. */

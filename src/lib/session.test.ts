@@ -1711,4 +1711,107 @@ describe('a verdict switched on a clue (✘ then ✔, or ✔ then ✘)', () => {
     toggleStep(session, stepOf(e));
     expect(score(session, a)).toBe(200);
   });
+
+  /** Ann & Bob − Deduct $200 together (one step G), then Ann's ✔ switches her part of it. */
+  function deductThenSwitch() {
+    const s = setup();
+    const { session, game, a, b } = s;
+    const g = applyScore(session, game, [a, b], -200, 'Memes $200', 'q1');
+    const [sw] = quick(s, a, true);
+    expect([score(session, a), score(session, b)]).toEqual([200, -200]);
+    return { ...s, g, sw };
+  }
+
+  it('📜 Log’s Restore on a mark a switch took back takes the switch back too (never counted twice)', () => {
+    const s = deductThenSwitch();
+    const { session, a, b, g, sw } = s;
+    toggleStep(session, stepOf(g[0]));
+    expect([score(session, a), score(session, b)]).toEqual([200, 0]);
+    toggleStep(session, stepOf(g[0]));
+    expect([score(session, a), score(session, b)]).toEqual([-200, -200]);
+    expect(sw.undone).toBe(true);
+    expect(clueMarks(session, 'q1')[a]).toEqual({ right: false, delta: -200 });
+    // The switch counted again takes Ann's part back again.
+    toggleEvent(session, sw.id);
+    expect([score(session, a), score(session, b)]).toEqual([200, -200]);
+    // ↷ Restore on Ann's own row: the same.
+    toggleEvent(session, g[0].id);
+    expect([score(session, a), score(session, b), sw.undone]).toEqual([-200, -200, true]);
+  });
+
+  it('an Undo of the switch leaves its mark off when the host turned the rest of its step off', () => {
+    const s = deductThenSwitch();
+    const { session, a, b, g } = s;
+    toggleStep(session, stepOf(g[0]));
+    undo(session);
+    expect([score(session, a), score(session, b)]).toEqual([0, 0]);
+    redo(session);
+    expect([score(session, a), score(session, b)]).toEqual([200, 0]);
+    // With the rest still counted, an Undo brings it back as before.
+    const t = deductThenSwitch();
+    undo(t.session);
+    expect([score(t.session, t.a), score(t.session, t.b)]).toEqual([-200, -200]);
+  });
+
+  it('an Undo of one switch brings back a mark whose step’s rest another switch took back', () => {
+    const s = deductThenSwitch();
+    const { session, a, b, g } = s;
+    quick(s, b, true);
+    expect([score(session, a), score(session, b)]).toEqual([200, 200]);
+    undo(session);
+    expect([score(session, a), score(session, b), g[1].undone]).toEqual([200, -200, false]);
+    undo(session);
+    expect([score(session, a), score(session, b)]).toEqual([-200, -200]);
+  });
+
+  it('the session keeps when the open tile opened (marks count since then, after a reload too)', () => {
+    const { session, game } = setup();
+    const before = Date.now();
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    expect(session.clueAt).toBeGreaterThanOrEqual(before);
+    backToBoard(session, game);
+    expect(session.clueAt).toBeUndefined();
+  });
+
+  it('a mark is brought back while some of the rest of its step counts', () => {
+    const s = setup();
+    const { session, game, a, b, c } = s;
+    const g = applyScore(session, game, [a, b, c], -200, 'Memes $200', 'q1');
+    quick(s, a, true);
+    toggleEvent(session, g[1].id);
+    undo(session);
+    expect([score(session, a), score(session, b), score(session, c)]).toEqual([-200, 0, -200]);
+  });
+
+  it('✘ → ✔ → ✘: Restore on the first ✘ or the ✔ takes back the switches after it', () => {
+    const s = setup();
+    const { session, a } = s;
+    const [x] = quick(s, a, false);
+    const [s1] = quick(s, a, true);
+    const [s2] = quick(s, a, false);
+    expect(score(session, a)).toBe(-200);
+    toggleEvent(session, x.id);
+    expect([score(session, a), x.undone, s1.undone, s2.undone]).toEqual([-200, false, true, true]);
+    expect(clueMarks(session, 'q1')[a]).toEqual({ right: false, delta: -200 });
+    const t = setup();
+    quick(t, t.a, false);
+    const [t1] = quick(t, t.a, true);
+    const [t2] = quick(t, t.a, false);
+    toggleEvent(t.session, t1.id);
+    expect([score(t.session, t.a), t2.undone]).toEqual([200, true]);
+  });
+
+  it('Restore on one part of a mark takes the switch back: its whole mark and the board come back', () => {
+    const s = setup();
+    const { session, game, a, b } = s;
+    session.currentPickerId = b;
+    const [x] = quick(s, a, false);
+    applyScore(session, game, [a], -100, 'Deduct', 'q1');
+    const [sw] = quick(s, a, true);
+    sw.picker = { was: b, now: a };
+    session.currentPickerId = a;
+    expect(score(session, a)).toBe(200);
+    toggleEvent(session, x.id);
+    expect([score(session, a), session.currentPickerId, sw.undone]).toEqual([-300, b, true]);
+  });
 });

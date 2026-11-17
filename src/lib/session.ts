@@ -111,20 +111,53 @@ export function undo(session: Session): ScoreEvent[] {
  * undone, after: so the picker ends where each step left it.)
  */
 function follow(session: Session, events: ScoreEvent[]): void {
+  // A mark a switch took back, counted again (📜 Log's ↷ Restore): the switch is taken back, as an Undo of it would,
+  // so the mark never counts twice. (A switch switched in turn: the later one first, then the one it took back.)
+  for (const e of events) {
+    if (e.undone) continue;
+    const chain = switchChain(session, e.id).filter((s) => !events.includes(s));
+    for (const s of chain.reverse()) {
+      s.undone = true;
+      follow(session, [s]);
+    }
+  }
   followSwitch(session, events.filter((e) => !e.undone));
   followFinals(session, events);
   followPicker(session, events);
   followSwitch(session, events.filter((e) => e.undone));
 }
 
-/** A switched verdict undone brings back the mark it took back (and its picker); counted again, takes it back again. */
+/**
+ * A switched verdict undone brings back the mark it took back (and its picker); counted again, takes it back again.
+ * (Brought back only while the rest of its own step counts: one player's part of a step the host turned off in 📜 Log
+ * stays off.)
+ */
 function followSwitch(session: Session, events: ScoreEvent[]): void {
   for (const e of events) {
     if (!e.switched?.length) continue;
-    const was = session.scoreLog.filter((x) => e.switched!.includes(x.id) && x.undone !== !e.undone);
+    const was = session.scoreLog.filter((x) => e.switched!.includes(x.id) && x.undone !== !e.undone && (!e.undone || !stepOff(session, x, e.switched!)));
     for (const x of was) x.undone = !e.undone;
     followPicker(session, was);
   }
+}
+
+/**
+ * The counted switch that took back event `id`, with any switch between them (a ✔ that took back a ✘, then a ✘ that
+ * took back the ✔): nearest first. Empty when no counted switch holds it (it's counted, or off on its own).
+ */
+export function switchChain(session: Pick<Session, 'scoreLog'>, id: Id): ScoreEvent[] {
+  const chain: ScoreEvent[] = [];
+  for (let s = session.scoreLog.find((x) => x.switched?.includes(id)); s && !chain.includes(s); s = session.scoreLog.find((x) => x.switched?.includes(s!.id))) {
+    chain.push(s);
+    if (!s.undone) return chain;
+  }
+  return [];
+}
+
+/** The rest of event `x`'s step (leaving out `skip`) is all off, and not because a switch took it back. */
+function stepOff(session: Session, x: ScoreEvent, skip: Id[]): boolean {
+  const rest = session.scoreLog.filter((y) => y !== x && !skip.includes(y.id) && stepOf(y) === stepOf(x));
+  return rest.length > 0 && rest.every((y) => y.undone && !switchChain(session, y.id).length);
 }
 
 /**
@@ -339,6 +372,7 @@ export function openClue(session: Session, ref: ClueRef, game?: Game): void {
   const clue = game && getClue(game, ref)?.clue;
   session.dd = clue?.type === 'dailyDouble' ? { stage: 'splash', playerId: session.currentPickerId } : null;
   session.tilePicker = session.currentPickerId ?? null;
+  session.clueAt = Date.now();
   session.partner = clue?.type === 'partner' ? startPartner(session, clue) : null;
 }
 
@@ -602,6 +636,7 @@ export function backToBoard(session: Session, game: Game, { markUsed = true }: {
   session.revealed = false;
   session.dd = null;
   delete session.tilePicker;
+  delete session.clueAt;
   session.partner = null;
   session.phase = 'board';
   // (A card sent from the tile's panel lasts until it closes.)
@@ -707,6 +742,7 @@ function enterRound(session: Session, game: Game, index: number): void {
   session.revealed = false;
   session.dd = null;
   delete session.tilePicker;
+  delete session.clueAt;
   session.partner = null;
   if (session.phase === 'final') stashFinal(session);
   if (index >= game.rounds.length) {
@@ -774,6 +810,7 @@ export function backToLastRound(session: Session, game: Game, index = game.round
   session.revealed = false;
   session.dd = null;
   delete session.tilePicker;
+  delete session.clueAt;
   session.partner = null;
   if (isFinal(round)) {
     startFinal(session, game, round);
@@ -1401,6 +1438,7 @@ function rebase(session: Session, from: Game, to: Game): void {
     session.revealed = false;
     session.dd = null;
     delete session.tilePicker;
+    delete session.clueAt;
     session.partner = null;
     if (session.phase === 'clue') session.phase = 'board';
   }

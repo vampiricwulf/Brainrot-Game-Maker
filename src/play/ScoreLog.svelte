@@ -5,7 +5,7 @@
 <script lang="ts">
   import { formatPoints, roundName, type Game, type RollEvent, type ScoreEvent, type Session } from '../lib/model';
   import { ROUND_MODES } from '../lib/modes';
-  import { nameList, reasonText, stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
+  import { nameList, reasonText, stepAmount, stepOf, switchChain, toggleEvent, toggleStep } from '../lib/session';
   import { timelineRows, type TimelineRow } from '../lib/timeline';
   import InlineAsk from './host/InlineAsk.svelte';
   import { onMount } from 'svelte';
@@ -118,6 +118,10 @@
     if (row.steps > 1) asking = row;
     else go(row);
   }
+
+  /** A mark a switched verdict took back (✘ → ✔): restored, it takes the switch back (so it never counts twice). */
+  const held = (events: ScoreEvent[]): string | undefined =>
+    events.some((e) => e.undone && switchChain(session, e.id).length) ? 'Takes back the switched verdict that replaced it' : undefined;
 
   function go(row: TimelineRow): void {
     asking = null;
@@ -284,7 +288,7 @@
             {#if inStep.has(first.id)}
               <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
             {:else}
-              <button class="small ghost" onclick={() => toggleEvent(session, first.id)}>{first.undone ? '↷ Restore' : '↶ Undo'}</button>
+              <button class="small ghost" onclick={() => toggleEvent(session, first.id)} title={held([first])}>{first.undone ? '↷ Restore' : '↶ Undo'}</button>
             {/if}
           </div>
         {:else}
@@ -300,7 +304,7 @@
             {#if step.events.some((e) => inStep.has(e.id))}
               <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
             {:else}
-              <button class="small ghost" onclick={() => toggleStep(session, step.key)}>{allUndone ? '↷ Restore all' : '↶ Undo all'}</button>
+              <button class="small ghost" onclick={() => toggleStep(session, step.key)} title={allUndone ? held(step.events) : undefined}>{allUndone ? '↷ Restore all' : '↶ Undo all'}</button>
             {/if}
           </div>
           {#if expanded[step.key]}
@@ -310,7 +314,7 @@
                 <span class="dot" style:background={p?.color ?? '#666'}></span>
                 <span class="who">{name(e.playerId)}</span>
                 <span class="delta" class:neg={e.delta < 0}>{amount(e.delta)}</span>
-                {#if !inStep.has(e.id)}<button class="small ghost" onclick={() => toggleEvent(session, e.id)}>{e.undone ? '↷ Restore' : '↶ Undo'}</button>{/if}
+                {#if !inStep.has(e.id)}<button class="small ghost" onclick={() => toggleEvent(session, e.id)} title={held([e])}>{e.undone ? '↷ Restore' : '↶ Undo'}</button>{/if}
               </div>
             {/each}
           {/if}

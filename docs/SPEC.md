@@ -1016,7 +1016,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      on the score without it, so ✘ −$200 then ✔ ends at +$200. One undo step (Ctrl+Z puts the old mark back), one pop
      with the change to the score ("Ann +$400"), and the undo says "+$400 (Ann, ✘ → ✔)". Enter / Shift+Enter on the
      one selected at the clue's value are the same verdicts (with another amount, an award on top); the ＋ Award /
-     − Deduct buttons always add on top. Another
+     − Deduct buttons always add on top. Marks count since the tile opened (the session's `clueAt`, kept over a
+     reload: a tile put back and opened again starts afresh). In 📜 Log › Scores the mark a switch took back reads
+     undone; its ↷ Restore (or its step's ↷ Restore all) takes the switch back, as an Undo of it would, so it never
+     counts twice, and an Undo of the switch leaves that mark off when the host turned the rest of its step off. Another
      player's verdict (a second buzzer, a steal) is never a switch. The Final's ✔ / ✘ re-judge the same way already.
 5. **Reveal answer**: shows the answer slide in the audience view (by the blue button, `N` or a click: with the buzzers
    never opened, ✍ answers still coming in or a 🤫 card not sent, it asks first; `R` shows it at once).

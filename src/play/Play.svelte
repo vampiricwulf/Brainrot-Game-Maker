@@ -1213,10 +1213,12 @@
   /** The buzzers' state (see buzz.ts). */
   const buzz = $derived(app.live.buzz ?? newBuzz(session.remote?.armId ?? 0));
   /**
-   * When the open clue opened: how each player was marked on it (✔ / ✘, or Award / Deduct) counts only since then, on
-   * their chip and in the check before going on (a reopened tile starts afresh; after a reload, all of it).
+   * When the open clue opened (the session's clueAt, kept over a reload): how each player was marked on it (✔ / ✘, or
+   * Award / Deduct) counts only since then, on their chip and in the check before going on (a reopened tile starts
+   * afresh). A session saved before clueAt: since it opened in this window (after a reload, all of it).
    */
-  let markSince = $state(0);
+  let markOpened = $state(0);
+  const markSince = $derived(session.clueAt ?? markOpened);
   const openClueKey = $derived(session.phase === 'clue' ? clueKey(session.currentClue) : null);
   let markClue: string | null = untrack(() => openClueKey);
   $effect(() => {
@@ -1224,7 +1226,7 @@
     untrack(() => {
       if (k === markClue) return;
       markClue = k;
-      markSince = Date.now();
+      markOpened = Date.now();
     });
   });
   // A tile's (or the Final's) 🤫 cards' chosen players are for it only: another one starts from its Goes to.
