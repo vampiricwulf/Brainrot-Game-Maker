@@ -58,6 +58,12 @@
     box-sizing: border-box;
     background: var(--panel);
   }
+  /* (On one line, where the note is the short one, its words would be a letter and "…": the tooltip has them.) */
+  @media (min-width: 901px) and (max-width: 1449px) {
+    .over .words {
+      display: none;
+    }
+  }
   .pct:empty {
     display: none;
   }
