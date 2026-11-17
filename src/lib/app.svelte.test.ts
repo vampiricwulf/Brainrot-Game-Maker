@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
-import { app, hint, sceneFrom, toast } from './app.svelte';
+import { app, hint, sceneFrom, toast, toastMs } from './app.svelte';
 import { newSession } from './session';
 import { jeopardyGame } from './testgame';
 
@@ -108,5 +108,16 @@ describe('hints', () => {
     s.phase = 'clue';
     flushSync();
     expect(app.toast).toBe('📱 Zed wants to join: click the 📱 chip');
+  });
+});
+
+describe('toastMs', () => {
+  it('gives a long toast time to read it (200 ms a word), from 2.5 s up to 8 s', () => {
+    expect(toastMs('Saved')).toBe(2500);
+    expect(toastMs('Roll first (D), or type the steps')).toBe(3400);
+    // A how-to said once (22 words): 6.4 s, where 50 ms a word gave it 3.6 s, gone before it was read.
+    const copied = 'Copied “Round”: paste it from ＋ Add round, a round’s menu or Ctrl+V on a round’s tab (in this game or another)';
+    expect(toastMs(copied)).toBe(6400);
+    expect(toastMs('word '.repeat(60))).toBe(8000);
   });
 });

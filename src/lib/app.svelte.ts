@@ -68,10 +68,13 @@ export function editedGame(): Game {
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
-/** How long a toast stays: long enough to read it (2.5 s, plus 50 ms a word, at most 8 s). */
+/**
+ * How long a toast stays: long enough to read it at an easy pace (2 s, plus 200 ms a word, so at least 2.5 s and at
+ * most 8 s). A long one is usually a how-to ("Copied: paste it from…"), said once.
+ */
 export function toastMs(msg: string): number {
   const words = msg.trim().split(/\s+/).filter(Boolean).length;
-  return Math.min(8000, Math.max(2500, 2500 + 50 * words));
+  return Math.min(8000, Math.max(2500, 2000 + 200 * words));
 }
 
 /** Where the host is (the editor, the pre-game screen, the game): a toast belongs to the place it was said in. */
