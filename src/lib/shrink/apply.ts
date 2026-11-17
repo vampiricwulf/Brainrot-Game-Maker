@@ -373,8 +373,10 @@ export function applyConvert(game: Game, id: Id, to: Id, made: { mime: string; s
 export const CONVERT_CHANGED = 'The file changed while it was being worked on: nothing was changed.';
 
 /** Why a file couldn't be converted, in a few words after "couldn't be converted: ". */
-function convertReason(why: RunReason | 'unreadable-now'): string {
+function convertReason(why: RunReason | 'unreadable-now' | 'no-picture'): string {
   switch (why) {
+    case 'no-picture':
+      return 'this browser can’t read its picture, which would be lost';
     case 'cannot-copy':
       return 'it couldn’t be repackaged as it is';
     case 'undecodable':
@@ -425,13 +427,15 @@ export function queueConvert(game: Game, id: Id, batch?: string): string | null 
   const kind = ref.kind;
   const what = kind === 'audio' ? 'sound' : 'video';
   const gameId = game.id;
-  const failed = (why: RunReason | 'unreadable-now') => {
+  const failed = (why: RunReason | 'unreadable-now' | 'no-picture') => {
     const reason = convertReason(why);
     return { failed: `${reason[0].toUpperCase()}${reason.slice(1)}: nothing was changed.`, toast: `🔄 A ${what} couldn’t be converted: ${reason}. Nothing was changed.` };
   };
   return addJob({ kind: 'convert', what, media: id, gameId, batch, copying: isLossless(fix) }, async (ctl) => {
     const facts = await readFacts(src, { duration: 'compute' });
     if (!facts.box) return failed('unreadable-now');
+    // (Never a video for one without its picture: a picture the app can't read, though the file has one, would be lost.)
+    if (kind === 'video' && (facts.hiddenVideo || facts.video) && !fix.video) return failed('no-picture');
     const plan = planConvert(facts, fix, await probe(), kind);
     if (ctl.signal.aborted) throw stopped();
     ctl.phase('working');

@@ -137,6 +137,40 @@ export async function ts(page, { seconds = 3 } = {}) {
 }
 
 /**
+ * A DVD's or a TV recording's .mts as the app sees it: `ts`'s bytes (`buf`) with an MPEG-2 picture listed in its program
+ * map beside the sound (mediabunny leaves such a picture out, so it needn't be there). Returns new bytes.
+ */
+export function withMpeg2Picture(buf) {
+  const b = Buffer.from(buf);
+  const crc = (bytes) => {
+    let c = 0xffffffff;
+    for (const x of bytes) {
+      c ^= x << 24;
+      for (let k = 0; k < 8; k++) c = c & 0x80000000 ? (c << 1) ^ 0x04c11db7 : c << 1;
+    }
+    return c >>> 0;
+  };
+  let patched = 0;
+  for (let at = 0; at + 188 <= b.length; at += 188) {
+    if (!(b[at + 1] & 0x40)) continue;
+    let p = at + 4 + (b[at + 3] & 0x20 ? 1 + b[at + 4] : 0);
+    p += 1 + b[p];
+    if (b[p] !== 0x02) continue;
+    // A program map: one more stream (MPEG-2 video, PID 0x1ff, no descriptors) before its CRC, and the CRC again.
+    const len = ((b[p + 1] & 0x0f) << 8) | b[p + 2];
+    const end = p + 3 + len - 4;
+    const section = Buffer.concat([b.subarray(p, end), Buffer.from([0x02, 0xe1, 0xff, 0xf0, 0x00])]);
+    section.writeUInt16BE((section.readUInt16BE(1) & 0xf000) | (len + 5), 1);
+    const out = Buffer.concat([section, Buffer.alloc(4)]);
+    out.writeUInt32BE(crc(section), section.length);
+    out.copy(b, p);
+    patched++;
+  }
+  if (!patched) throw new Error('No program map to patch');
+  return b;
+}
+
+/**
  * What's in a file (its bytes, `buf`), read in `page` (fixturePage): its type, length, and picture and sound codecs
  * (null: none).
  */

@@ -636,6 +636,8 @@
             >{/if}
         </div>
         {#if unread}<div class="meta warn" data-cant-read>⚠ {cantReadAdvice(m)}</div>{/if}
+        <!-- Why it won't play (or plays silent), and what to do, in sight: a title needs a mouse, and the checklist points here. -->
+        {#if typeof v === 'object' && (v.is === 'fails' || v.is === 'silent') && whyLine(v)}<div class="meta warn" data-why>{whyLine(v)}</div>{/if}
         {#if job}
           <div class="meta muted" data-job-line>
             {jobText(job)}
@@ -691,7 +693,8 @@
           {#if !m.url && !mediaUrls[m.id]}
             <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
           {:else}
-            <button class="small {unread ? 'primary' : 'ghost'}" onclick={() => replace(m)} disabled={!!job} title={replaceHint(m)}>Replace everywhere…</button>
+            <!-- (The way out for one nothing here can fix: the app can't read it, or can't convert it.) -->
+            <button class="small {unread || (typeof v === 'object' && v.is === 'fails' && !v.fix) ? 'primary' : 'ghost'}" onclick={() => replace(m)} disabled={!!job} title={replaceHint(m)}>Replace everywhere…</button>
           {/if}
           <!-- 🔄 one that won't play here (or plays without its sound); ↻ one on a 🤫 card that phones can't open; 🗜 a copy
                for phones. -->

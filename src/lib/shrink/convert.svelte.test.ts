@@ -21,14 +21,14 @@ import type { Verdict } from './playable';
 import { checkMade, convertBlob, RunError } from './run';
 
 /** Where the test steps in: once the file is made (release), and once its bytes are stored. */
-const at = vi.hoisted(() => ({ release: null as (() => void) | null, stored: null as (() => void) | null }));
+const at = vi.hoisted(() => ({ release: null as (() => void) | null, stored: null as (() => void) | null, facts: null as Partial<MediaFacts> | null }));
 const track = { str: null, decodes: true, bps: 64_000, cpt: true };
 const TS: MediaFacts = { box: 'ts', seconds: 3, size: 900, video: null, audio: { ...track, codec: 'mp3', channels: 1, label: null }, moreAudio: 0, subtitles: false };
 
 vi.mock('../app.svelte', async (orig) => ({ ...(await orig<typeof import('../app.svelte')>()), toast: vi.fn() }));
 // (🖼 Media's card for it flashes: there's no page here.)
 vi.mock('../nav.svelte', async (orig) => ({ ...(await orig<typeof import('../nav.svelte')>()), flash: vi.fn() }));
-vi.mock('./facts', async (orig) => ({ ...(await orig<typeof import('./facts')>()), readFacts: async () => TS }));
+vi.mock('./facts', async (orig) => ({ ...(await orig<typeof import('./facts')>()), readFacts: async () => ({ ...TS, ...at.facts }) }));
 vi.mock('./probe', async (orig) => ({ ...(await orig<typeof import('./probe')>()), probe: async () => ({ ok: true, aac: false, opus: true }) }));
 vi.mock('./run', async (orig) => ({ ...(await orig<typeof import('./run')>()), checkMade: vi.fn(async () => null), convertBlob: vi.fn() }));
 vi.mock('../desktop.svelte', async (orig) => ({
@@ -74,6 +74,7 @@ beforeEach(() => {
   registerBlob('partyc', new Blob([new Uint8Array(300)], { type: 'video/webm' }));
   checks.offers.splice(0, checks.offers.length, 'party');
   at.release = at.stored = null;
+  at.facts = null;
   mediaDialog.open = null;
 });
 afterEach(() => {
@@ -237,6 +238,18 @@ describe('🔄 never joining a step made meanwhile, and never put in over other 
     await ended(job);
     expect(jobs.ended[job]).toEqual({ failed: 'It didn’t come out right: nothing was changed.', toast: '🔄 A video couldn’t be converted: it didn’t come out right. Nothing was changed.' });
     expect([g.media.map((m) => m.id), labels(), Object.keys(mediaUrls).length]).toEqual([['party', 'partyc'], [], files]);
+  });
+
+  it('never a video for one without its picture: a picture it can’t read, though the file has one, keeps the file as it is', async () => {
+    made();
+    at.facts = { hiddenVideo: 'mpeg2' };
+    const job = queueConvert(g, 'party')!;
+    await ended(job);
+    expect(jobs.ended[job]).toEqual({
+      failed: 'This browser can’t read its picture, which would be lost: nothing was changed.',
+      toast: '🔄 A video couldn’t be converted: this browser can’t read its picture, which would be lost. Nothing was changed.',
+    });
+    expect([vi.mocked(convertBlob).mock.calls.length, g.media.map((m) => m.id), labels()]).toEqual([0, ['party', 'partyc'], []]);
   });
 
   it('one too big for the room left in this browser’s storage asks first; Cancel stops it, nothing changed', async () => {

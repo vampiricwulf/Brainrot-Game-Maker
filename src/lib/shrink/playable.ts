@@ -147,6 +147,10 @@ function fixOf(
 export function verdict(f: MediaFacts, can: Can, kind: 'video' | 'audio', mime: string, enc: Encoders = NO_ENCODERS): Verdict {
   const vid = kind === 'video' ? f.video : null;
   const aud = f.audio;
+  // (A video whose picture the app can't read at all, though the file says it has one: nothing made of it would have
+  // that picture, so there's no fix. Repackaging its sound alone swapped the video for a black one.)
+  if (kind === 'video' && f.box && f.hiddenVideo && !vid)
+    return { is: 'fails', fix: null, why: { kind, video: f.hiddenVideo, ...(aud ? { fine: { sound: aud.codec } } : {}), cant: 'undecodable' } };
   // (Nothing in it the app can judge: its type alone says.)
   if (!f.box || (!vid && !aud)) return { is: 'unknown' };
   const el = f.element;

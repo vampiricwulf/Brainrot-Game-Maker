@@ -3,20 +3,21 @@
 // Part 1: an MKV with VP9 and Opus (which plays though its type says it may not), one whose sound is AC-3 (which the
 // test Chromium doesn't play), an AC-3 sound alone and bytes no app can read (named .mov), added in 🖼 Media. Each card says what
 // was found once the file is checked: nothing, "plays without its sound here", "won't play here" (its title says why),
-// or today's "may not play" and toast, word for word, for the one the app can't read. So does the checklist, counting
-// and naming nothing. A reload checks the files again.
+// or today's "may not play" and toast, word for word, for the one the app can't read; why is a line on the card too. So
+// does the checklist, counting and naming nothing. A reload checks the files again.
 // Part 2: a camcorder-like .mts (an MP3 sound in MPEG-TS, which the test Chromium doesn't open) added in 🖼 Media gets the note at
 // the top, and 🔄 repackages it as an MP4 in its place (Ctrl+Z and Ctrl+Y); the AC-3 MKV dropped on a slide in the clue
 // editor (its toast points to the item's panel) becomes a WebM without its sound, on that item; the AC-3 sound alone
 // gets only OK; two .mts at once go through 🔄 Convert's window, one step each; the VP9 MKV on a 🤫 card gets ↻ from the
-// 📱 preview. No toast, History row or pill names a file. (H.264, AAC, HEVC and AC-3 don't play in the test Chromium,
+// 📱 preview; an .mts with an MPEG-2 picture (which the app can't read) gets no 🔄, only why and Replace everywhere….
+// No toast, History row or pill names a file. (H.264, AAC, HEVC and AC-3 don't play in the test Chromium,
 // so what plays in Chrome or Edge on Windows or Mac, and converting to MP4 (H.264) or M4A (AAC), are checked by hand.)
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { addClassicRounds, editorReady, recordSeen, stored } from './helpers.mjs';
-import { clip, fixturePage, noise, readBack, ts } from './mediafixtures.mjs';
+import { clip, fixturePage, noise, readBack, ts, withMpeg2Picture } from './mediafixtures.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -46,6 +47,7 @@ try {
   const party = await ts(fx, { seconds: 3 });
   const twoA = await ts(fx, { seconds: 2 });
   const twoB = await ts(fx, { seconds: 2.5 });
+  const dvd = withMpeg2Picture(await ts(fx, { seconds: 2 }));
   await ctx.addInitScript(recordSeen);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
@@ -77,11 +79,15 @@ try {
     talk.title === 'Its sound is AC-3 (Dolby Digital), which this browser can’t play or convert. To keep its sound, convert it with a video app first (HandBrake is free).',
     `its title says why, and what to do (${talk.title})`,
   );
+  // (In sight on the card too: a title needs a mouse, and the checklist says 🖼 Media says why.)
+  const whyOn = async (name) => ((await card(name).locator('[data-why]').count()) ? (await card(name).locator('[data-why]').innerText()).trim() : '');
+  assert((await whyOn('talk.mkv')) === talk.title, `and a line on its card says it (${await whyOn('talk.mkv')})`);
 
   // A sound alone in AC-3: it won't play at all.
   const mka = await checked('ac3.mka');
   assert(mka.verdict === 'fails' && mka.text.endsWith('· ⚠ won’t play here'), `ac3.mka: “${mka.text}”`);
   assert(mka.title === 'It’s AC-3 (Dolby Digital), which this browser can’t play or convert. Convert it to MP3 or M4A with an audio or video app first.', `its title says why (${mka.title})`);
+  assert((await whyOn('ac3.mka')) === mka.title && !(await whyOn('clip.mkv')), 'so does a line on its card (none on the one that plays)');
 
   // Bytes the app can't read: as before, its type alone says.
   const fake = await checked('fake.mov');
@@ -122,7 +128,7 @@ try {
 
   // ---------- Part 2: 🔄 Convert on add ----------
   console.log('🔄 Convert on add:');
-  const NAMES = ['party', 'talk', 'ac3', 'clip', 'two-a', 'two-b'];
+  const NAMES = ['party', 'talk', 'ac3', 'clip', 'two-a', 'two-b', 'dvd'];
   const notice = page.locator('[data-convert-notice]');
   const noticeText = async () => (await notice.locator('span').first().innerText()).replace(/\s+/g, ' ').trim();
   /** The toasts shown so far (the app's .toast), in order. */
@@ -398,6 +404,19 @@ try {
   await talkNote.waitFor({ state: 'detached' });
   const talkCopy = (await phone.locator('[data-copy-note]').innerText()).replace(/\s+/g, ' ');
   assert(talkCopy.startsWith('📱 Phones get a copy they can play instead ('), `made: phones get a copy they can play, and the 📱 note is gone (${talkCopy})`);
+
+  // 5c. dvd.mts: an MPEG-2 picture (a DVD's, a TV recording's) beside an MP3, in MPEG-TS. The app can't read that
+  // picture, so 🔄 isn't offered: its sound alone in an MP4 swapped the video for one with no picture, "nothing lost".
+  await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await dropOnMedia([{ name: 'dvd.mts', type: 'video/mp2t', buffer: dvd }]);
+  const dvdSays = await checked('dvd.mts');
+  const dvdWhy = 'Its video is MPEG-2, which this browser can’t play or convert. Convert it to MP4 (H.264) with a video app first (HandBrake is free).';
+  assert(dvdSays.verdict === 'fails' && dvdSays.text.endsWith('· ⚠ won’t play here') && (await whyOn('dvd.mts')) === dvdWhy, `dvd.mts (MPEG-2, MP3): “${dvdSays.text}”, and why (${await whyOn('dvd.mts')})`);
+  const dvdFoot = card('dvd.mts').locator('.foot');
+  assert(
+    !(await dvdFoot.getByRole('button', { name: /🔄|↻/ }).count()) && (await dvdFoot.getByRole('button', { name: 'Replace everywhere…' }).evaluate((b) => b.classList.contains('primary'))),
+    'no 🔄 Convert: Replace everywhere… is its strong button',
+  );
 
   // 6. No toast, History row or pill named a file.
   const named = (list) => list.filter((t) => NAMES.some((n) => t.includes(n)));

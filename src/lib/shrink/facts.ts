@@ -35,6 +35,11 @@ export interface MediaFacts {
   /** Sound tracks besides the main one. */
   moreAudio: number;
   subtitles: boolean;
+  /**
+   * An MPEG-TS whose picture the app's reader can't see at all (MPEG-2, as DVDs and TV recordings have): its codec.
+   * The reader leaves such a track out, so without this it looks like a sound alone, and a repack would lose the picture.
+   */
+  hiddenVideo?: string;
   /** What a page element made of it (elementTest), when it was asked. */
   element?: ElementResult;
 }
@@ -144,6 +149,46 @@ export function canPlayTrack(codec: string | null, str: string | null): boolean 
   return (PLAY_TYPES[codec] ?? []).some((t) => el.canPlayType(str ? `${t}; codecs="${str}"` : t) !== '');
 }
 
+/** Picture codecs an MPEG-TS's program map may list that mediabunny leaves out (H.264 and HEVC it reads), by stream type. */
+const HIDDEN_TS_VIDEO: Record<number, string> = { 0x01: 'mpeg1', 0x02: 'mpeg2', 0x10: 'mpeg4', 0x42: 'avs', 0xd1: 'dirac', 0xea: 'vc1' };
+
+/**
+ * The picture codec an MPEG-TS's program map lists that mediabunny would leave out (null: none, or no map in `b`, its
+ * first bytes). Plain 188-byte packets, 204 with error correction, or 192 with a time first (a camcorder's .mts).
+ */
+export function hiddenTsVideo(b: Uint8Array): string | null {
+  const layout = [
+    [0, 188],
+    [0, 204],
+    [4, 192],
+  ].find(([at, step]) => b[at] === 0x47 && b[at + step] === 0x47);
+  if (!layout) return null;
+  const [first, step] = layout;
+  let pmt = -1;
+  for (let at = first; at + 188 <= b.length; at += step) {
+    if (b[at] !== 0x47 || !(b[at + 1] & 0x40)) continue;
+    const pid = ((b[at + 1] & 0x1f) << 8) | b[at + 2];
+    if (pid !== 0 && pid !== pmt) continue;
+    // (Past the header and any adaptation field, then the pointer to the section.)
+    let p = at + 4 + (b[at + 3] & 0x20 ? 1 + b[at + 4] : 0);
+    p += 1 + b[p];
+    const end = Math.min(at + 188, p + 3 + (((b[p + 1] & 0x0f) << 8) | b[p + 2]) - 4);
+    if (pid === 0 && b[p] === 0x00) {
+      // The first program's map (program 0 is the network's).
+      for (let q = p + 8; q + 4 <= end; q += 4)
+        if ((b[q] << 8) | b[q + 1]) {
+          pmt = ((b[q + 2] & 0x1f) << 8) | b[q + 3];
+          break;
+        }
+    } else if (pid === pmt && b[p] === 0x02) {
+      let q = p + 12 + (((b[p + 10] & 0x0f) << 8) | b[p + 11]);
+      for (; q + 5 <= end; q += 5 + (((b[q + 3] & 0x0f) << 8) | b[q + 4])) if (HIDDEN_TS_VIDEO[b[q]]) return HIDDEN_TS_VIDEO[b[q]];
+      return null;
+    }
+  }
+  return null;
+}
+
 /** The file's type: mediabunny's own (WebM before Matroska: a WebM is one). */
 async function boxOf(mb: typeof import('./mb'), format: InputFormat): Promise<Box | null> {
   const by: [InputFormat, Box][] = [
@@ -213,7 +258,18 @@ export async function readFacts(blob: Blob, opts: { duration?: 'metadata' | 'com
           label: (await quietly(a.getName(), null)) || ((l) => (l && l !== 'und' ? l : null))(await quietly(a.getLanguageCode(), 'und')),
         }
       : null;
-    return { box, seconds, size: blob.size, video, audio, moreAudio: Math.max(0, audios - 1), subtitles: tracks.some((t) => t.type === 'subtitle') };
+    // (A picture the reader left out of an MPEG-TS: its program map at the start says so.)
+    const hidden = box === 'ts' && !v ? hiddenTsVideo(new Uint8Array(await blob.slice(0, 256 * 1024).arrayBuffer())) : null;
+    return {
+      box,
+      seconds,
+      size: blob.size,
+      video,
+      audio,
+      moreAudio: Math.max(0, audios - 1),
+      subtitles: tracks.some((t) => t.type === 'subtitle'),
+      ...(hidden ? { hiddenVideo: hidden } : {}),
+    };
   } catch {
     return none;
   } finally {

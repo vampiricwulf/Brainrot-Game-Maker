@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ElementResult, MediaFacts, TrackFacts } from './facts';
-import { needsElementTest } from './facts';
+import { hiddenTsVideo, needsElementTest } from './facts';
 import { boxFor, isLossless, verdict } from './playable';
+import { whyLine } from './words';
 import type { Can, Encoders } from './probe';
 
 /** A track this browser plays and decodes, unless told otherwise. */
@@ -48,6 +49,15 @@ describe('whether a file plays here, and what would fix it', () => {
     const why = { box: 'ts', fine: { sound: 'mp3' } };
     expect(verdict(f, CHROMIUM, 'video', 'video/mp2t', CHROMIUM_ENC)).toEqual({ is: 'fails', fix: { audio: 'keep', box: 'mp4' }, why: { kind: 'video', ...why } });
     expect(verdict(f, CHROMIUM, 'audio', 'video/mp2t', CHROMIUM_ENC)).toEqual({ is: 'fails', fix: { audio: 'keep', box: 'mp3' }, why: { kind: 'audio', ...why } });
+  });
+
+  it('a TS whose picture the reader leaves out (MPEG-2: a DVD, a TV recording) can’t be fixed: its sound alone would lose the picture', () => {
+    const f = { ...facts('ts', null, snd('mp3'), refused), hiddenVideo: 'mpeg2' };
+    const v = verdict(f, CHROMIUM, 'video', 'video/mp2t', CHROMIUM_ENC);
+    expect(v).toEqual({ is: 'fails', fix: null, why: { kind: 'video', video: 'mpeg2', fine: { sound: 'mp3' }, cant: 'undecodable' } });
+    expect(whyLine(v)).toBe('Its video is MPEG-2, which this browser can’t play or convert. Convert it to MP4 (H.264) with a video app first (HandBrake is free).');
+    // (One with no sound either: still a video it can't read, not one whose type alone says.)
+    expect(verdict({ ...facts('ts', null, null), hiddenVideo: 'mpeg2' }, CHROME, 'video', 'video/mp2t', CHROME_ENC).is).toBe('fails');
   });
 
   it('in the test Chromium: an AC-3 sound alone can’t be fixed', () => {
@@ -205,5 +215,36 @@ describe('which files only a page element can tell about', () => {
     expect(needsElementTest(facts('wav', null, snd('pcm-s16')))).toBe(false);
     expect(needsElementTest(facts('flac', null, snd('flac')))).toBe(false);
     expect(needsElementTest(facts(null, null, null))).toBe(false);
+  });
+});
+
+describe('a picture an MPEG-TS has that the reader leaves out', () => {
+  /** A 188-byte packet of `pid` starting a section (pointer 0), padded. */
+  const packet = (pid: number, section: number[]): number[] => {
+    const p = [0x47, 0x40 | (pid >> 8), pid & 0xff, 0x10, 0x00, ...section];
+    return [...p, ...Array(188 - p.length).fill(0xff)];
+  };
+  /** A section: its table, its body, and a CRC (not checked). */
+  const section = (table: number, body: number[]): number[] => {
+    const len = body.length + 4;
+    return [table, 0xb0 | (len >> 8), len & 0xff, ...body, 0, 0, 0, 0];
+  };
+  const pat = packet(0, section(0x00, [0x00, 0x01, 0xc1, 0x00, 0x00, 0x00, 0x01, 0xf0, 0x00]));
+  /** A program map at PID 0x1000 listing each stream type, with PIDs from 0x100. */
+  const pmt = (...types: number[]) =>
+    packet(0x1000, section(0x02, [0x00, 0x01, 0xc1, 0x00, 0x00, 0xe1, 0x00, 0xf0, 0x00, ...types.flatMap((t, i) => [t, 0xe1, i, 0xf0, 0x00])]));
+
+  it('MPEG-2 beside an MP3 is found; H.264 and a sound alone (which it reads) aren’t; nor is anything without a map', () => {
+    expect(hiddenTsVideo(new Uint8Array([...pat, ...pmt(0x02, 0x03)]))).toBe('mpeg2');
+    expect(hiddenTsVideo(new Uint8Array([...pat, ...pmt(0x03, 0xea)]))).toBe('vc1');
+    expect(hiddenTsVideo(new Uint8Array([...pat, ...pmt(0x1b, 0x0f)]))).toBe(null);
+    expect(hiddenTsVideo(new Uint8Array([...pat, ...pmt(0x03)]))).toBe(null);
+    expect(hiddenTsVideo(new Uint8Array([...pat, ...pat]))).toBe(null);
+    expect(hiddenTsVideo(new Uint8Array(400))).toBe(null);
+  });
+
+  it('a camcorder’s .mts: 192-byte packets, a time before each', () => {
+    const t = [0, 0, 0, 0];
+    expect(hiddenTsVideo(new Uint8Array([...t, ...pat, ...t, ...pmt(0x01, 0x81)]))).toBe('mpeg1');
   });
 });
