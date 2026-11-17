@@ -175,6 +175,11 @@ function shownColor(you: { color: string }): string {
 let pointerKind = '';
 /** A press on the buzzer that began with a pointerdown (it buzzed then): the click that ends it doesn't, however long it was held. */
 let pointerPress = false;
+/**
+ * A seat (or a name) was given with the keys: the buzz screen that comes once the room has it takes them, not the page.
+ * (A tap leaves them be.)
+ */
+let seatByKeys = false;
 /** Cards were up in the buzzer's place when last drawn (the keys move with them). */
 let wasCardsUp = false;
 /** What a screen reader hears about cards this phone missed (with the screen's other words: a box's too). */
@@ -909,6 +914,8 @@ function show(id: ScreenId): void {
     $('leave').setAttribute('aria-expanded', 'false');
   }
   for (const s of screens) $(s).hidden = s !== id;
+  // (Turned away, or out of the room: a seat taken later, with a tap, doesn't move the keys.)
+  if (id === 's-msg' || id === 's-code') seatByKeys = false;
   // (Every drawing of the buzz screen ends here, before it's painted: the question fits what's around it.)
   if (id === 's-buzz') fitClue();
 }
@@ -1363,8 +1370,10 @@ function renderSeats(s: SeatsMsg): void {
         b.append(k);
         if (fine.matches) b.setAttribute('aria-keyshortcuts', String(i + 1));
       }
-      b.addEventListener('click', () => {
+      b.addEventListener('click', (e) => {
         seatsNote = '';
+        // (The 1–9 keys click it too: no detail then either.)
+        seatByKeys = e.detail === 0;
         unlockAudio();
         // Its own seat (or team place) back, with the token it holds: no name to give again.
         if (mine && saved) {
@@ -1702,7 +1711,20 @@ function renderBuzz(v: PhoneView): void {
   // (Cards up: the line over them is what's said, not the hidden buzzer's.)
   const said = cardsUp && plain ? [cardBig, cardSmall] : heard;
   say(sentences([connected ? '' : awayText(), ...said, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
+  const arriving = $('s-buzz').hidden;
   show('s-buzz');
+  // In from the seats with the keys: they (and a screen reader) come here, not to the page. On a computer to the buzzer,
+  // as after the colour picker; on a touch screen to the heading, where a stray key presses nothing. (A box or a card
+  // that came up in the buzzer's place has taken them already.)
+  if (arriving && seatByKeys) {
+    seatByKeys = false;
+    queueMicrotask(() => {
+      // (Still on the seat that was pressed, until the browser notices it's hidden.)
+      const at = document.activeElement;
+      if (at && at !== document.body && !at.closest('[hidden]')) return;
+      (fine.matches && !b.hidden ? b : $('buzz-title')).focus({ preventScroll: true });
+    });
+  }
   if (lit) litAt = performance.now();
   // Count the early lock down.
   clearTimeout(tick);
@@ -2838,6 +2860,8 @@ $('new-form').addEventListener('submit', (e) => {
   }
   $('new-err').textContent = '';
   unlockAudio();
+  // (Enter in the box: given with the keys.)
+  seatByKeys = document.activeElement === $('new-in');
   pendingName = name;
   send({ t: 'new', name, device });
   render();
@@ -2852,6 +2876,7 @@ $('team-form').addEventListener('submit', (e) => {
   }
   unlockAudio();
   $('team-err').textContent = '';
+  seatByKeys = document.activeElement === $('team-in');
   teamAsked = true;
   send({ t: 'join', seatId: teamPick.id, name, device });
   render();

@@ -162,6 +162,8 @@ try {
   await ann.getByRole('button', { name: 'Ann' }).click();
   await big(ann).getByText('Ann').waitFor();
   assert((await ann.locator('#me').innerText()).includes('200'), 'Ann has a seat and sees her name and score');
+  await sleep(100);
+  assert(await ann.evaluate(() => document.activeElement === document.body), 'a seat taken with a tap leaves the keys be');
 
   // Bob types the code in, at 320px wide.
   const bob = await phone('bob', 320);
@@ -192,8 +194,12 @@ try {
   assert((await bob.locator('#code-err').innerText()) === '', 'the right code clears the reason');
   await shot(bob, 'seats');
   assert(await bob.getByRole('button', { name: /Ann/ }).isDisabled(), "Ann's seat is greyed out for Bob");
-  await bob.getByRole('button', { name: 'Bob' }).click();
+  // (With the keys: a phone with a keyboard, or a screen reader.)
+  await bob.getByRole('button', { name: 'Bob' }).focus();
+  await bob.keyboard.press('Enter');
   await big(bob).getByText('Bob').waitFor();
+  await bob.waitForFunction(() => document.activeElement?.id === 'buzz-title');
+  assert(true, 'a phone: a seat taken with the keys puts them on the buzz screen’s heading (“Your buzzer”), not the page');
   assert(new URL(bob.url()).pathname === `/${room.code}`, 'the code went into the address');
   const overflow = await bob.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   assert(!overflow, 'nothing overflows at 320px');
@@ -515,6 +521,9 @@ try {
   await kim.keyboard.press('1'); // Ann's seat: taken, so nothing
   await kim.keyboard.press('5');
   await big(kim).getByText('Kim').waitFor();
+  await kim.waitForFunction(() => document.activeElement?.id === 'buzz');
+  await sleep(300);
+  assert((await kimBuzzes()) === 0, 'desktop: a seat taken with the keys puts them on the buzzer (not the page), and nothing buzzes');
   assert((await kim.evaluate(() => window.audioMade)) >= 1, 'Kim joins with the keys alone (the code, Enter, 5): her page may play sound from then on');
   const keysHint = kim.locator('#keys');
   assert(
