@@ -51,7 +51,9 @@
 <div class="tc row" bind:this={box}>
   <span class="muted" aria-hidden="true">⏱</span>
   {#if t}
-    <!-- A running countdown isn't read out every second by the status line; "Time's up" is, once. -->
+    <!-- A running countdown isn't read out every second by the status line; "Time's up" is, once, after a "·" as the
+         status line's other parts are (not run on from the words before it). -->
+    {#if t.expired}<span class="sr-only">{'· '}</span>{/if}
     <b class="left" class:done={t.expired} data-quiet={t.expired ? undefined : ''}>{t.expired ? "Time's up" : `${left}s`}</b>
     <button class="small" onclick={toggle} disabled={t.expired} title="T" aria-label={t.startedAt === null ? 'Start timer' : 'Pause timer'}>{t.startedAt === null ? '▶' : '⏸'}</button>
     <!-- Change the time left without starting over. -->

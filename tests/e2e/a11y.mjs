@@ -583,6 +583,15 @@ try {
   await page.keyboard.press('h');
   await saidHas(/Host controls shown/);
   assert(true, 'H says the host controls are hidden, then shown');
+  // Time's up is said as a part of its own of the status line.
+  await page.locator('.board .tile:not(.used)').first().click();
+  await page.waitForFunction(() => document.activeElement?.textContent?.includes('Reveal answer'));
+  await page.getByLabel('Timer seconds').fill('1');
+  await page.getByLabel('Timer seconds').press('Enter');
+  await saidHas(/Time's up/);
+  assert(/ · Time's up\.$/.test(await said()), `“Time's up” comes after a “·” in what's said (“${await said()}”)`);
+  await page.keyboard.press('Escape');
+  await page.locator('.board').waitFor();
   // One window: ?, 📜 Log, ⚖ Rules, 🔊 Sound and 👥 Players open in the host panel's own box, scrolling there, and the
   // stage viewers see keeps its size (the panel doesn't grow for them; playcopies.mjs checks 🗜 Make smaller).
   const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
