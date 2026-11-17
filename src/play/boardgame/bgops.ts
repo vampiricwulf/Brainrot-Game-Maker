@@ -95,7 +95,9 @@ export function sendNow(game: Game, session: Session, who: string[], to: { space
  * not revealed yet as “? (secret)”, for one window (runAction keeps both).
  */
 export function spaceActText(game: Game, bs: BoardGameState, s: BoardSpace, a: Action, on: 'land' | 'pass', teams: boolean): [text: string, quiet: string] {
-  return [`${s.name}: ${describeAction(game, a, on, teams)}`, `${spaceSaid(bs, s, true)}: ${describeAction(game, a, on, teams, bs)}`];
+  // A space named for what it does says it once: “Roll again”, not “Roll again: Roll again”.
+  const said = (name: string, what: string) => (name === what ? what : `${name}: ${what}`);
+  return [said(s.name, describeAction(game, a, on, teams)), said(spaceSaid(bs, s, true), describeAction(game, a, on, teams, bs))];
 }
 
 /**

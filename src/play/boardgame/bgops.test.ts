@@ -293,6 +293,10 @@ describe('board game: the host’s moves on the stage', () => {
     expect(runAction(ctx, card, ...spaceActText(game, bs(), trap, card, 'land', false))).toBe('Trap Door: 🤫 Card for whoever landed there');
     expect(offers[0]).toMatchObject({ from: 'Trap Door: 🤫 Card for whoever landed there', quiet: '? (secret): 🤫 Card for whoever landed there' });
     expect(runAction({ ...ctx, hide: true }, card, ...spaceActText(game, bs(), trap, card, 'land', false))).toBe('? (secret): 🤫 Card for whoever landed there');
+    // A space named for what it does says it once; a secret one not revealed keeps its “? (secret)”.
+    const again: Action = { id: 'r', do: 'again' };
+    expect(spaceActText(game, bs(), Object.assign(round.spaces[6], { name: 'Roll again' }), again, 'land', false)).toEqual(['Roll again', 'Roll again']);
+    expect(spaceActText(game, bs(), Object.assign(round.spaces[7], { name: 'Roll again', secret: true }), again, 'land', false)).toEqual(['Roll again', '? (secret): Roll again']);
     // Revealing it: its step says so without the name (an Undo hides it again).
     revealSpace(session, bs(), trap);
     expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Reveal ? (secret)');

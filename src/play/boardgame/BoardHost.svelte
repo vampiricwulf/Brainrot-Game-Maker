@@ -137,7 +137,9 @@
     if (moved) {
       // (The landing's actions not run yet: its buttons are below. Next turn ▶ asks first, while they aren't.)
       const left = !!landed?.onLand?.length && !!last && !landingRan(session, last);
-      return left && landed ? `${turnName} landed on ${shown(landed.id)}: its buttons are below, then Next turn ▶ (N).` : `${turnName}’s turn is played: Next turn ▶ (N).`;
+      if (left && landed) return `${turnName} landed on ${shown(landed.id)}: its buttons are below, then Next turn ▶ (N).`;
+      // (A Roll again run: Next turn comes back to them.)
+      return bs.again && bs.again === turnId ? `${turnName} rolls again: Next turn ▶ (N).` : `${turnName}’s turn is played: Next turn ▶ (N).`;
     }
     if (round.mover.kind === 'step') return stepWays.length ? `${turnName}’s turn: → the way on (Enter, or click the space on the stage).` : `${turnName}’s turn: no way on from here.`;
     return round.mover.kind === 'wheel'
