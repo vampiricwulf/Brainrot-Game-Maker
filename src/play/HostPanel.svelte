@@ -844,6 +844,24 @@
     return flowSteps(tb, !!slidePos);
   });
 
+  /**
+   * An RPG or board-game round under the stage: the main button's cell keeps one width from the round's title card to its
+   * play, the widest it takes there (Start the round ▶; a board game's ◀ Previous turn and Next turn ▶), and with no blue
+   * button too (an RPG round's walking), so the round's box beside it keeps one width and its buttons never jump.
+   */
+  const cellRoom = $derived.by((): { label: string; key: string }[][] => {
+    if (side || (session.phase !== 'rpg' && session.phase !== 'boardgame')) return [];
+    const start = [{ label: FLOW.startRound.label, key: 'N' }];
+    if (session.phase === 'rpg') return [start];
+    return [
+      start,
+      [
+        { label: VERBS.prevTurn.label, key: VERBS.prevTurn.key },
+        { label: FLOW.nextTurn.label, key: 'N' },
+      ],
+    ];
+  });
+
   // ---------- The stage's menu: what the panel's own rows add ----------
   /** ± Adjust score / ± Other points…: the Amount row, opened, the keys in it. */
   function openAmount(): void {
@@ -1653,11 +1671,17 @@
         </span>
       </div>
     {/if}
+    {#if cellRoom.length}
+      <!-- (The cell's room in an RPG or board-game round: see cellRoom. Unseen, no height.) -->
+      <span class="cellroom" aria-hidden="true" inert>
+        {#each cellRoom as row, i (i)}<span>{#each row as b (b.label)}<button tabindex="-1">{b.label} <kbd aria-hidden="true">{b.key}</kbd></button>{/each}</span>{/each}
+      </span>
+    {/if}
   </div>
 
   <!-- The tools, then the round's navigation (quiet; leaving a round asks), away from the main cell. (In one window, out
        of the keys' reach while the strip lies over it: nothing out of sight is pressed.) -->
-  <div class="row toolsrow" inert={!!ask && !dual}>
+  <div class="row toolsrow" id="host-tools" inert={!!ask && !dual}>
     {@render tools?.()}
     <!-- (A Final's title card too: a way back from it without putting its category on stream.) -->
     {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'slides' || (session.phase === 'final' && session.intro?.stage === 'title')}
@@ -2000,6 +2024,24 @@
   .sizer {
     display: grid;
     visibility: hidden;
+  }
+  /* (In the main button's cell, under it: as wide as its widest row, no height.) */
+  .panel:not(.side) > .act > .next {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .cellroom {
+    grid-column: 2;
+    grid-row: 1;
+    display: grid;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+  .cellroom > * {
+    grid-area: 1 / 1;
+    display: flex;
+    gap: 6px;
   }
   /* The buzzers' row keeps one height (a button's) when it only has a hint in it. */
   .buzzrow {

@@ -35,7 +35,8 @@
 // question ▶ within 96 px of its Spin! (↩ Put back in sight, as on PARTNER UP! and a Daily Double's splash, where it
 // leads the Wager row). At 1280×720 with long team names, the Final's reveal rows keep straight columns, one line each,
 // Finish now… at the left of their box's foot, and the tools row folds behind ⋯ Tools (out while 📊 Scoreboard is on),
-// giving three rows or more their ✔ Right and ✘ Wrong in sight.
+// giving three rows or more their ✔ Right and ✘ Wrong in sight. An RPG and a board-game round's box keeps one width
+// from its title card to play, clear of the main button's cell.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -1750,6 +1751,53 @@ try {
         }
         await p5.getByRole('button', { name: 'Skip intro' }).click();
         await p5.locator('.stage-box .board .tile:not([disabled])').first().waitFor();
+      }
+    }
+    await ctx.close();
+  }
+  // An RPG and a board-game round with title cards, one window at 1280×720: the round's box keeps one width from its
+  // title card (Start the round ▶) to play (an RPG round's walking, no blue button; a board game's ◀ Previous turn and
+  // Next turn ▶), its right edge never under the main button's cell, which keeps its place at the right.
+  console.log('RPG and board-game rounds, title card to play:');
+  {
+    const modesFile = resolve('test-results/hostlayout-modes.json');
+    writeFileSync(modesFile, JSON.stringify({ ...game, id: 'g_layout_modes', settings: { ...game.settings, roundIntro: { titleCard: true, tileFill: false, categoryReveal: 'off' } }, rounds: [game.rounds[1], game.rounds[2]] }));
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const pm = await ctx.newPage();
+    pm.on('pageerror', (e) => errors.push(e.message));
+    await pm.goto(pathToFileURL(file).href);
+    await openGameFile(pm, modesFile);
+    await pm.getByText(/^Opened “/).waitFor();
+    await pm.getByRole('button', { name: '▶ Play' }).click();
+    await pm.getByRole('button', { name: 'Start game ▶' }).click();
+    /** The round's box's edges and the main button's, rounded. */
+    const edges = () =>
+      pm.evaluate(() => {
+        const box = document.querySelector('.panel .act .mode-host').getBoundingClientRect();
+        const main = document.querySelector('.panel [data-next]')?.getBoundingClientRect();
+        return { left: Math.round(box.left), right: Math.round(box.right), main: main ? Math.round(main.right) : null, mainLeft: main ? Math.round(main.left) : null };
+      });
+    for (const [round, play] of [
+      ['Adventure', 'walking'],
+      ['Board game', 'Next turn ▶'],
+    ]) {
+      await pm.locator('.panel .status', { hasText: 'Title card' }).waitFor();
+      await pm.waitForTimeout(450);
+      const title = await edges();
+      await mainButton(pm).click();
+      await pm.locator('.panel .status', { hasText: 'Title card' }).waitFor({ state: 'detached' });
+      if (play !== 'walking') await pm.locator('.panel [data-next]', { hasText: play }).waitFor();
+      await pm.waitForTimeout(450);
+      const playing = await edges();
+      assert(
+        title.left === playing.left && title.right === playing.right && title.right < title.mainLeft && (playing.mainLeft === null || playing.right < playing.mainLeft) && (playing.main === null || playing.main === title.main),
+        `1280×720, ${round}: the round's box keeps one width from its title card to play (${play}), clear of the main button, which keeps its place (${JSON.stringify({ title, playing })})`,
+      );
+      if (round === 'Adventure') {
+        await pm.locator('.rn button', { hasText: '▶' }).click();
+        await confirmStrip(pm).waitFor();
+        await pm.waitForTimeout(450);
+        await leaveAnswer(pm).click();
       }
     }
     await ctx.close();

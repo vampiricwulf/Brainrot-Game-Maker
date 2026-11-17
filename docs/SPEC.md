@@ -660,7 +660,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      `N` its key, in FLOW's words only (goon.ts `mainStep`). It never spins, rolls, sends cards, starts the clock, opens
      the buzzers, gives points or judges; it's never greyed for something the host can do (pressed with something left,
      it opens the check), only while a wheel turns or dice roll. With no next step the cell is empty (a board with tiles
-     left, an RPG round, the end screen, ✎ Edit board), except for **Next ▶** while something is over the stage. Nothing
+     left, an RPG round, the end screen, ✎ Edit board), except for **Next ▶** while something is over the stage. In an
+     RPG or board-game round under the stage the cell keeps one width from the title card to play, empty or not (the
+     widest it takes there: Start the round ▶, or ◀ Previous turn with Next turn ▶), so the round's box beside it never
+     changes width. Nothing
      else in the panel is blue but a pop-up the host opened (🎲 Dice…, 🤫 Send a card…, 🎭 Deal…) and a question asked
      in the strip.
   3. **A click on the stage does the moment's safe step** (`src/lib/stageclick.ts`, a table of unit tests). Where
