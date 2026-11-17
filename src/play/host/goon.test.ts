@@ -597,7 +597,7 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     // Ann picked it: her partner next, the wheel first and ringed, then the others by hand.
     s.partner!.pickerId = 'a';
     const need = leftNow(c, st);
-    expect(lines(need)).toEqual([['first must: Ann needs a partner first.', '🎡 Spin for a partner [W] ⏎ · close', 'Bob [2] · close', 'Cat [3] · close']]);
+    expect(lines(need)).toEqual([['first must: Ann needs a partner.', '🎡 Spin for a partner [W] ⏎ · close', 'Bob [2] · close', 'Cat [3] · close']]);
     expect([ringOf(need), need[0].quick[0].after, need[0].quick[2].after]).toEqual(['partnerspin', 'Spinning… then Next ▶ shows the pair', 'Cat partners Ann · Show question ▶ (N) next']);
     expect(inside({ key: 'w' }, open(st, need), after)).toMatchObject({ do: 'quick', quick: { label: '🎡 Spin for a partner' } });
     expect(inside({ key: 'Enter' }, open(st, need), after)).toMatchObject({ do: 'quick', quick: { label: '🎡 Spin for a partner' } });

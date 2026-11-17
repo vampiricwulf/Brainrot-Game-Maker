@@ -1397,8 +1397,8 @@ await makePicker.or(pickedWheel).waitFor({ timeout: 10000 });
 const wheelPick = (await page.locator('.tc .result b').innerText()).trim();
 if (await makePicker.count()) await makePicker.click();
 await page.getByText(`★ ${wheelPick} picks the next clue.`).waitFor();
-const pickerIdx = await page.locator('.panel .p').evaluateAll((els) => els.findIndex((e) => e.classList.contains('picker')));
-assert(pickerIdx >= 0 && (await page.locator('.panel .p').nth(pickerIdx).innerText()).includes(wheelPick), `the wheel landed on ${wheelPick}, who is now the picker`);
+// (On the Game over screen no chip wears the ★ "picks next", even so: nobody picks now, and it would read as the winner's.)
+assert((await page.locator('.panel .p.picker').count()) === 0, `the wheel landed on ${wheelPick}, who is now the picker (no ★ on a chip at Game over)`);
 await page.keyboard.press('Escape');
 
 // ✎ Edit a wheel for one spin: leave players out, and the saved wheels stay as they are unless saved.

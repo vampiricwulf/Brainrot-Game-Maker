@@ -464,13 +464,15 @@
    * server, files that won't reach the phones): the fold opens by itself then.
    */
   const cardsGist = $derived.by((): { text: string; problem: boolean } => {
-    if (!room || (!cardsOn && !older)) return { text: '📋 you’ll copy them', problem: false };
-    if (older) return { text: '📋 you’ll copy them (an older buzzer server)', problem: true };
+    // ("1 card · 📋 you’ll copy it": the line says how many just before.)
+    const them = cards.length === 1 ? 'it' : 'them';
+    if (!room || (!cardsOn && !older)) return { text: `📋 you’ll copy ${them}`, problem: false };
+    if (older) return { text: `📋 you’ll copy ${them} (an older buzzer server)`, problem: true };
     const to = s.partnerId ? session.players.map((p) => p.id).filter((id) => cards.some((c) => cardRecipients(session, s, c).some((t) => t.seat === id))) : [];
     const none = to.filter((id) => !hasPhone(id));
     if (none.length) return { text: `📵 ${nameList(none.map(name))} ${none.length === 1 ? 'has' : 'have'} no phone here: you’ll copy theirs`, problem: true };
-    if (filesLine && !filesOn) return { text: '📱 phones get them, not all their files', problem: true };
-    return { text: '📱 phones get them when you send', problem: false };
+    if (filesLine && !filesOn) return { text: `📱 phones get ${them}, not all ${cards.length === 1 ? 'its' : 'their'} files`, problem: true };
+    return { text: `📱 phones get ${them} when you send`, problem: false };
   });
   const CARDS_KEY = 'jb.partnerCardsOpen';
   /**

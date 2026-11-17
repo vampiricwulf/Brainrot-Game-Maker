@@ -181,8 +181,11 @@ try {
   // The blue Show question ▶ is never greyed: pressed with nobody picked, the question waits and the status line says why.
   assert((await mainButton(host, 'Show question ▶').isEnabled()) && (await dd.getByRole('button', { name: 'Show question ▶' }).count()) === 0, 'nobody picked: the blue Show question ▶ is not greyed (and the box has no copy of it)');
   await mainButton(host, 'Show question ▶').click();
-  await host.getByText('Who found it? Click their name (the keys stay in the Wager box)').waitFor();
-  assert((await dd.count()) === 1, 'pressed with nobody picked: the question waits, and the status line says to click who found it');
+  await host.locator('.panel .status [data-click-note]', { hasText: 'Who found it? Click their name (the keys stay in the Wager box)' }).waitFor();
+  assert(
+    (await dd.count()) === 1 && !(await host.locator('.toast', { hasText: 'Who found it?' }).count()),
+    'pressed with nobody picked: the question waits, and the status line (not a toast at the foot) says to click who found it',
+  );
   assert(await dd.getByRole('button', { name: 'True Daily Double' }).isDisabled(), 'True Daily Double is off (with no amount) until a player is picked');
   assert((await dd.locator('[data-dd-phones]').innerText()).includes('Once you pick them'), 'the phones’ line is there from the start (the box doesn’t grow as a wager comes in)');
   const key1 = dd.locator('.chip .key', { hasText: '1' });
@@ -204,7 +207,7 @@ try {
   assert(true, 'the host sees the phone can send it ("📱 waiting…")');
   // Show question ▶ with the wager still to come: the keys stay in the Wager box, and the status line says whose phone.
   await mainButton(host, 'Show question ▶').click();
-  await host.getByText('Waiting on Player 1’s phone: type their wager here if it doesn’t come').waitFor();
+  await host.locator('.panel .status [data-click-note]', { hasText: 'Waiting on Player 1’s phone: type their wager here if it doesn’t come' }).waitFor();
   await host.waitForFunction(() => document.activeElement?.matches('.dd input[type=number]'));
   assert((await dd.count()) === 1 && (await mainButton(host, 'Show question ▶').isEnabled()), 'Show question ▶ with the wager to come: the question waits, the keys in the Wager box (never greyed)');
 
@@ -337,7 +340,7 @@ try {
   // up to $2,000: nothing is filled in for them.)
   assert(await mainButton(host, 'Show question ▶').isEnabled(), 'the Final’s wagers: the blue Show question ▶ is not greyed while some are missing');
   await host.keyboard.press('n');
-  await host.locator('.toast', { hasText: 'Waiting on Player 1’s phone, Player 2’s phone & Player 3: type their wagers, or untick them to sit out' }).waitFor();
+  await host.locator('.panel .status [data-click-note]', { hasText: 'Waiting on Player 1’s phone, Player 2’s phone & Player 3: type their wagers, or untick them to sit out' }).waitFor();
   assert(
     (await box('Player 3').inputValue()) === '' && (await box('Player 3').getAttribute('title')) === 'Max $2,000 (their score, or $2,000 if they have less)',
     'Player 3 at $0 has no 0 filled in: waited on, up to $2,000',

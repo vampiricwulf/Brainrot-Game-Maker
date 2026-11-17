@@ -801,7 +801,7 @@ function pickItems(c: GoCtx): LeftItem[] {
         kind: 'first',
         must: true,
         box: 'partnerspin',
-        text: `${picker} needs a partner first.`,
+        text: `${picker} needs a partner.`,
         quick: [
           { label: VERBS.partnerSpin.label, key: 'W', enter: true, then: 'close', run: c.act.partnerSpin, after: `Spinning… then ${FLOW.next.label} shows the pair`, aria: 'Spin for a partner: the wheel spins over the other players' },
           ...partnerCandidates(c.session, s).map((pl): Quick => {

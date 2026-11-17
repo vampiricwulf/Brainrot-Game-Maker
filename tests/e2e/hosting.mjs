@@ -245,12 +245,26 @@ try {
   await saidHas(/Player 2 \+\$50/);
   await page.waitForFunction((id) => document.activeElement?.matches(`.stage-box .tile[data-clue="${id}"]`), from);
   assert(true, 'then 50, Enter: the keys are back on that tile');
+  const pop50 = stage('.pops .pop', { hasText: '$50' });
+  assert((await pop50.count()) === 1, 'the +$50 pops up on stage');
   // Redo with nothing to redo says so, as Undo does. (Then Undo: the scores stay as they were.)
   await page.keyboard.press('Control+y');
   await page.locator('.toast', { hasText: 'Nothing to redo' }).waitFor();
   await page.keyboard.press('Control+z');
   await page.locator('.toast', { hasText: 'Undid' }).waitFor();
   assert(true, 'then 50, Enter gives them $50; Ctrl+Y with nothing to redo says “Nothing to redo”');
+  // (Its pop goes with the Undo, not 2 s later: nothing on stage says +$50 once the score is back.)
+  await pop50.waitFor({ state: 'detached', timeout: 900 });
+  assert(true, 'Ctrl+Z takes the +$50 pop off the stage at once');
+  // Opening a score to fix it moves no other chip: the box is as wide as the score it stands in for.
+  const chipBox = async (i) => page.locator('.panel .p').nth(i).boundingBox();
+  const [w0, x1] = [(await chipBox(0)).width, (await chipBox(1)).x];
+  await page.locator('.panel .p').nth(0).locator('.score').click();
+  await page.locator('.panel .score-edit').waitFor();
+  const [w0e, x1e] = [(await chipBox(0)).width, (await chipBox(1)).x];
+  await page.locator('.panel .score-edit').press('Escape');
+  await page.locator('.panel .score-edit').waitFor({ state: 'detached' });
+  assert(Math.abs(w0e - w0) < 1 && Math.abs(x1e - x1) < 1, `a score's box keeps its chip's width, and the next chip stays put (${w0}→${w0e}, ${x1}→${x1e})`);
 
   // ---------- Daily Double: Enter in the wager box shows the question, not the answer ----------
   await page.waitForTimeout(500);
@@ -308,7 +322,7 @@ try {
   // A wager below 0 (the box's min doesn't stop a typed minus) says so, not "over the max" with the limit ignored.
   await page.locator('.dd input[type=number]').fill('-500');
   await page.keyboard.press('Enter');
-  await page.locator('.toast', { hasText: 'A wager can’t be below 0: type 0 or more' }).waitFor();
+  await page.locator('.panel .status [data-click-note]', { hasText: 'A wager can’t be below 0: type 0 or more' }).waitFor();
   assert(
     (await mainButton(page, 'Show question ▶').isEnabled()) && (await page.evaluate(() => document.activeElement?.matches('.dd input[type=number]'))),
     'a Daily Double wager below 0 says so in the status line, not “over the max”: the question waits, the keys stay in the Wager box (the blue button never greyed)',
@@ -576,10 +590,11 @@ try {
   );
   await page.locator('.panel .status').click();
   await page.keyboard.press('n');
-  await page.locator('.toast', { hasText: /Waiting on .+: type their wagers?, or untick them to sit out/ }).waitFor();
+  await page.locator('.panel .status [data-click-note]', { hasText: /Waiting on .+: type their wagers?, or untick them to sit out/ }).waitFor();
   assert(
-    await page.evaluate(() => document.activeElement?.matches('.fj .wagers input[data-wager]') && document.activeElement.value === ''),
-    'N with a wager missing says whose (a toast) and goes to that box',
+    (await page.evaluate(() => document.activeElement?.matches('.fj .wagers input[data-wager]') && document.activeElement.value === '')) &&
+      !(await page.locator('.toast', { hasText: 'Waiting on' }).count()),
+    'N with a wager missing says whose in the status line (not a toast at the foot) and goes to that box',
   );
   const n = await boxes.count();
   for (let i = 0; i < n; i++) await boxes.nth(i).fill(String(100 + i));
@@ -732,8 +747,20 @@ try {
   assert(wonGap >= 5, `“… won the tiebreaker roll-off.” doesn't sit on the buttons under it (${wonGap}px apart)`);
 
   // ---------- The scores window on the results: nobody lit as the picker (nobody picks) ----------
+  // (A picker is still set going into the results, in the saved game: what neither the panel nor the scores window lights.)
+  await page.waitForTimeout(300);
+  const savedPicker = await page.evaluate(
+    () =>
+      new Promise((res) => {
+        const q = indexedDB.open('keyval-store');
+        q.onsuccess = () => {
+          const g = q.result.transaction('keyval').objectStore('keyval').get('playSession');
+          g.onsuccess = () => res(g.result.session.currentPickerId ?? null);
+        };
+      }),
+  );
   const pickerChips = await page.locator('.panel .p.picker').count();
-  assert(pickerChips > 0, 'a picker is still set going into the results (what the scores window must not light)');
+  assert(!!savedPicker && pickerChips === 0, `Game over: a picker is still set, but no chip wears the ★ “picks next” (nobody picks now) (${pickerChips})`);
   const [scoresWin] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);
   watch(scoresWin, 'scores');
   await scoresWin.locator('.strip .plate').first().waitFor();

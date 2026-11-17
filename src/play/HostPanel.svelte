@@ -1042,7 +1042,7 @@
         <div
           class="p"
           class:on
-          class:picker={session.currentPickerId === p.id}
+          class:picker={session.phase !== 'end' && session.currentPickerId === p.id}
           class:passed={passedIds.includes(p.id)}
           style:--c={p.color}
           role="group"
@@ -1066,8 +1066,10 @@
           {/if}
           {#if editingScore === p.id}
             <!-- svelte-ignore a11y_autofocus -->
+            <!-- (As wide as the score button it stands in for: opening it moves no other chip.) -->
             <input
               class="score-edit"
+              style:width={scoreRoom(score(session, p.id) - (marks[p.id]?.delta ?? 0))}
               type="text"
               inputmode="text"
               autocomplete="off"
@@ -2462,7 +2464,8 @@
     box-shadow: 0 0 0 2px var(--c);
   }
   /* (Read out as words, not "black star"; a browser without alt text for it keeps the plain star.) On the name's corner,
-     taking no room: the chip keeps its width as the pick goes to another player. */
+     taking no room: the chip keeps its width as the pick goes to another player. (Not on Game over: nobody picks next,
+     and a star there reads as the winner's.) */
   .p.picker .sel::after {
     content: '★';
     content: '★' / ', picks next';
@@ -2510,8 +2513,10 @@
     min-width: 70px;
     border: none;
   }
+  /* (Bold as the score button is: its width, set in ch where the chips keep one width, then comes out the same.) */
   .score-edit {
     width: 100px;
+    font-weight: 700;
   }
   .quick {
     padding: 4px 8px;

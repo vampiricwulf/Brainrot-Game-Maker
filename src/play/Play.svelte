@@ -2459,7 +2459,16 @@
     const wait = ddWaits(go);
     if (!wait && dd.playerId && typeof dd.draft === 'number') return ddShow(dd.playerId, dd.draft);
     flashTo('.play .panel [data-dd] input[type=number]', wait?.at === 'names' ? '.play .panel [data-dd-names]' : undefined);
-    if (wait) hint(wait.say);
+    if (wait) waitSay(wait.say);
+  }
+  /**
+   * What a Daily Double or the Final's wagers still wait on, by the blue button, N or Enter: in the status line, as a
+   * stage click says it (the host's eyes are on the panel, not the window's foot). The controls hidden: a toast, since
+   * clickSay would open the stage's menu where nothing was clicked.
+   */
+  function waitSay(text: string): void {
+    if (hideControls) hint(text);
+    else clickSay(text);
   }
   function ddShow(playerId: string, wager: number): void {
     ddShowQuestion(session, playerId, wager);
@@ -3687,7 +3696,7 @@
     const w = finalWaits(go);
     if (!w) return false;
     flashTo(w.at, w.row);
-    hint(w.say);
+    waitSay(w.say);
     return true;
   }
 
@@ -3922,6 +3931,9 @@
     const events = undo(session);
     if (!events.length) return null;
     undone.push({ log: 'score', id: stepOf(events[0]) });
+    // Its pop goes with it: no "−$200" left on stage once the score is back (a group's pop, with no player, too).
+    const hit = new Set(events.map((e) => e.playerId));
+    if (app.live.pops.length) app.live.pops = app.live.pops.filter((p) => !!p.playerId && !hit.has(p.playerId));
     stealFollow(events);
     buzzFollow(events, true);
     timerFollow(events, true);

@@ -509,6 +509,8 @@ try {
   await page.keyboard.press('n');
   await checkItem(page, 'partner').waitFor();
   assert((await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await anyway(page).count()) === 0, 'N with no partner yet asks first (“First:” Ann needs a partner), with no “anyway”');
+  const needs = await checkItem(page, 'partner').innerText();
+  assert(needs.includes('Ann needs a partner.') && !needs.includes('partner first'), `its line says it once, under “First:” (${needs})`);
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('w');
   await aud.locator('.wheel').waitFor();

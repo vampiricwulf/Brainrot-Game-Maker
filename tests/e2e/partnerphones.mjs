@@ -194,7 +194,7 @@ try {
   const fold = panel.locator('[data-partner-cards-fold]');
   const folded = async () => ({ open: await fold.evaluate((d) => d.open), says: (await fold.locator('summary').innerText()).trim() });
   let f = await folded();
-  assert(!f.open && f.says === '🤫 1 card · 📱 phones get them when you send', `PARTNER UP!: the card's details fold into one line (${f.says})`);
+  assert(!f.open && f.says === '🤫 1 card · 📱 phones get it when you send', `PARTNER UP!: the card's details fold into one line (${f.says})`);
   await host.keyboard.press('3');
   await host.waitForFunction(() => document.querySelector('[data-partner-cards-fold]')?.open);
   f = await folded();
@@ -204,7 +204,7 @@ try {
   await host.keyboard.press('2');
   assert(await says(ann, '🤝 You two play this one!') && (await says(bob, '🤝 You two play this one!')), 'paired: both phones say “🤝 You two play this one!”');
   f = await folded();
-  assert(f.open && f.says === '🤫 1 card · 📱 phones get them when you send', `Player 2 instead: it stays open, its line back to how the card goes (${f.says})`);
+  assert(f.open && f.says === '🤫 1 card · 📱 phones get it when you send', `Player 2 instead: it stays open, its line back to how the card goes (${f.says})`);
   assert((await panel.locator('[data-partner-files]').innerText()).includes('1 picture goes up when you send its card'), 'it counts the card’s picture that goes up when its card is sent (never names it)');
   assert((await panel.locator('[data-partner-readiness]').innerText()).includes('📱 Player 2: phone here'), 'the readiness line: “📱 Player 2: phone here”');
   nothingSent('paired');
