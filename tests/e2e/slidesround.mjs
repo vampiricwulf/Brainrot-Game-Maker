@@ -190,7 +190,8 @@ try {
   assert((await strip.count()) === 0, `typing J goes to Jeopardy! in the list (its options: ${(await goTo.locator('option').allInnerTexts()).join(' | ')})`);
   await page.keyboard.press('Enter');
   await strip.getByText('Leave Introduction for Jeopardy!?').waitFor();
-  assert((await stage.locator('[data-slide="2"]').count()) === 1, 'Enter on it asks before leaving the round (it doesn’t jump)');
+  await page.locator('.toast', { hasText: 'Enter: go to' }).waitFor({ state: 'detached' });
+  assert((await stage.locator('[data-slide="2"]').count()) === 1, 'Enter on it asks before leaving the round (it doesn’t jump), its hint put away');
   await page.waitForFunction(() => document.activeElement?.closest('.panel .confirm') && document.activeElement.textContent?.trim() === 'Keep playing');
   await page.keyboard.press('Enter');
   await strip.waitFor({ state: 'detached' });

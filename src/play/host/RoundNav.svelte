@@ -14,7 +14,7 @@
   import { justShown } from './guard';
   import { secondClick } from '../../lib/oneshot';
   import { VERBS } from './verbs';
-  import { app, hint } from '../../lib/app.svelte';
+  import { app, clearToast, hint } from '../../lib/app.svelte';
 
   let {
     game,
@@ -78,7 +78,7 @@
    * there instead, the keys staying in the list, and asks only on Enter (hold).
    */
   function goto(i: number, keyed = false): void {
-    held = null;
+    unhold();
     if (i === session.currentRound) return;
     if (keyed) return hold(i);
     if (done) ongoto?.(i);
@@ -89,10 +89,18 @@
   /** The round the keys moved the closed list to: nothing happens until Enter asks to go there (Esc or leaving it: back). */
   let held: number | null = null;
 
-  /** ↓ or ↑ on the closed list: the round is only shown there, and the status line says what Enter does. */
+  /** What it says Enter does, while it's up. */
+  let holdSay = '';
+  /** ↓ or ↑ on the closed list: the round is only shown there, and a hint says what Enter does. */
   function hold(i: number): void {
     held = i;
-    hint(`Enter: go to ${roundName(game.rounds[i], i)} (it asks first) · Esc: stay`);
+    holdSay = `Enter: go to ${roundName(game.rounds[i], i)} (it asks first) · Esc: stay`;
+    hint(holdSay);
+  }
+  /** Nothing held any more: its hint goes too (the question, or the list back on this round, says the rest). */
+  function unhold(): void {
+    held = null;
+    if (app.toast === holdSay) clearToast();
   }
   /** Keys on the list: Enter asks about the round held there, Esc puts it back on this round. */
   function pickerKey(e: KeyboardEvent): void {
@@ -100,7 +108,7 @@
       e.preventDefault();
       e.stopPropagation();
       const i = held;
-      held = null;
+      unhold();
       if (e.key === 'Enter') ask(i);
       else if (picker) picker.value = String(session.currentRound);
       return;
@@ -110,7 +118,7 @@
   /** The keys left the list with a round only held there: nothing happens, the list shows this round again. */
   function pickerBlur(): void {
     if (held === null) return;
-    held = null;
+    unhold();
     if (picker) picker.value = String(session.currentRound);
   }
 
