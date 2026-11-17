@@ -1164,6 +1164,7 @@
               autocomplete="off"
               spellcheck="false"
               autofocus
+              aria-label="{p.name}’s score"
               value={score(session, p.id)}
               onfocus={(e) => e.currentTarget.select()}
               onkeydown={(e) => {
@@ -1180,7 +1181,14 @@
               }}
             />
           {:else}
-            <button class="score ghost" onclick={() => (editingScore = p.id)} title="Click to set this score" style:min-width={scoreBox(p.id)}>
+            <!-- (Named for whose it is: on its own, a screen reader would say only "$0".) -->
+            <button
+              class="score ghost"
+              onclick={() => (editingScore = p.id)}
+              title="Set this score"
+              aria-label="{p.name}’s score: {formatPoints(score(session, p.id), sym)}"
+              style:min-width={scoreBox(p.id)}
+            >
               {formatPoints(score(session, p.id), sym)}
             </button>
           {/if}

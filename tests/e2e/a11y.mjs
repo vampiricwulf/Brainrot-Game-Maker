@@ -567,6 +567,16 @@ try {
   await page.keyboard.press('Escape');
   await strip.waitFor({ state: 'detached' });
   assert((await page.locator('.board').count()) === 1, 'and Esc there cancels it, the round still on');
+  // A player's score button and the box it opens are named for the player.
+  const scoreBtn = page.locator('.panel .p').first().locator('button.score');
+  assert(/^Player 1’s score: \$\d+$/.test(await scoreBtn.getAttribute('aria-label')), `a player's score button is named for them (${await scoreBtn.getAttribute('aria-label')})`);
+  await scoreBtn.focus();
+  await page.keyboard.press('Enter');
+  const scoreBox = page.locator('.panel .score-edit');
+  await scoreBox.waitFor();
+  assert((await scoreBox.getAttribute('aria-label')) === 'Player 1’s score', 'and the box it opens is named “Player 1’s score”');
+  await scoreBox.press('Escape');
+  await scoreBox.waitFor({ state: 'detached' });
   // One window: ?, 📜 Log, ⚖ Rules, 🔊 Sound and 👥 Players open in the host panel's own box, scrolling there, and the
   // stage viewers see keeps its size (the panel doesn't grow for them; playcopies.mjs checks 🗜 Make smaller).
   const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
