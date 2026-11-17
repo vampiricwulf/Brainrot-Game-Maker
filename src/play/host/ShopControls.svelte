@@ -28,7 +28,13 @@
     }
   });
 
-  function purchase(item: string, opts: { price?: number; allowShort?: boolean } = {}): void {
+  /**
+   * Still short at a price typed in: the question asked again leaves the keys alone. (The Enter that answered the price
+   * box would press its Cancel.)
+   */
+  let typedPrice = $state(false);
+  function purchase(item: string, opts: { price?: number; allowShort?: boolean } = {}, typed = false): void {
+    typedPrice = typed;
     if (o) shopBuy(game, session, o, selected, item, opts);
   }
 
@@ -77,7 +83,7 @@
     if (a.what === 'price') {
       if (v === null || !Number.isFinite(v) || v < 0) return void toast('That isn’t a price');
       // Short of it at that price too: it says so (Sell anyway is still there), as at the usual price.
-      purchase(a.item, { price: v, allowShort: false });
+      purchase(a.item, { price: v, allowShort: false }, true);
       return;
     }
     if (v !== null && !Number.isFinite(v)) return void toast('That isn’t a number');
@@ -168,7 +174,7 @@
           <InlineAsk
             text={short}
             ok="Sell anyway"
-            focusCancel
+            focusCancel={!typedPrice}
             alts={[
               { label: 'Give it free', onclick: () => purchase(it, { price: 0 }) },
               { label: 'Other price…', onclick: () => otherPrice(it) },
