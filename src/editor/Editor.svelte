@@ -62,7 +62,7 @@
   import { atAPause, sayUpdateOut, update } from '../lib/update.svelte';
   import AboutDialog from './AboutDialog.svelte';
   import KeysHelp from '../play/KeysHelp.svelte';
-  import { inTauri, keptHere } from '../lib/platform';
+  import { inTauri, keptHere, onlineCopy } from '../lib/platform';
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate } from '../lib/validate';
@@ -94,7 +94,7 @@
   import { addRoundItems, addSample, addTemplate, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
   import { firstTemplates } from '../lib/samples';
   import { cardToward, isArrow } from '../lib/gridkeys';
-  import { HOSTING_GUIDE, openSite } from '../lib/sitelinks';
+  import { HOSTING_GUIDE, openSite, RELEASES } from '../lib/sitelinks';
   import { showTipsAgain } from '../lib/tips';
   import { oneShot } from '../lib/oneshot';
   import { movedNew } from '../play/whatmoved.svelte';
@@ -1522,6 +1522,12 @@
           {/key}
         {:else if !game.rounds.length}
           <div class="first-round">
+            <!-- What this is, for someone who came by a link with nothing else to go on (one line, so the cards and 📂 Open a
+                 game… still fit a laptop's screen). Online, where the desktop app and the file to keep are from. -->
+            <p class="muted small what">
+              🎮 <b>Brainrot Games Maker</b>: build a game show, host it on stream, players buzz in from their phones.{#if !inTauri()}{' '}Nothing to install.{/if}
+              {#if onlineCopy()}<a href={RELEASES} target="_blank" rel="noreferrer" title="The desktop app, or the game maker as one file to keep and use offline (GitHub)">Get the app ↗</a>{/if}
+            </p>
             <h2>Add your first round</h2>
             <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
             <!-- (One short line, so the cards and 📂 Open a game… fit a laptop's screen.) The one thing a first-time browser
@@ -1639,11 +1645,16 @@
     flex-direction: column;
     gap: 12px;
   }
-  /* (On a laptop's short screen it starts near the top, so 📂 Open a game… stays in view under a notice such as "… is
-     out".) */
+  /* (On a laptop's short screen it starts near the top, a little closer together, so 📂 Open a game… stays in view under
+     a notice such as "… is out".) */
   @media (max-height: 760px) {
     .first-round {
       margin-top: 8px;
+      gap: 8px;
+    }
+    .first-round .card > .mode,
+    .first-round > .sample {
+      padding-block: 13px;
     }
   }
   .first-round h2,

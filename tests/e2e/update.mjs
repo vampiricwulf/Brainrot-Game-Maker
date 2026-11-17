@@ -369,6 +369,18 @@ try {
       (await wn.getByRole('button', { name: '⟳ Reload for 99.0.0' }).count()) === 1 && (await wn.getByRole('button', { name: /Download/ }).count()) === 0,
       'online, the notice offers ⟳ Reload for the new version, not a download',
     );
+    // Online, the first screen's line that says what the app is ends with where to get the app (to keep, or use
+    // offline). With the notice up, 📂 Open a game… still fits a 1280×720 laptop.
+    await wp.setViewportSize({ width: 1280, height: 720 });
+    const what = wp.locator('.first-round > p.what');
+    const get = what.getByRole('link', { name: 'Get the app ↗' });
+    const whatLines = await what.evaluate((e) => e.getBoundingClientRect().height / (parseFloat(getComputedStyle(e).lineHeight) || 16));
+    const wOpen = await wp.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
+    assert(
+      (await get.getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases/latest' && (await get.getAttribute('target')) === '_blank' && whatLines < 2 && wOpen <= 720,
+      `online, the first screen's one line about the app ends with “Get the app ↗” (the latest release), and 📂 Open a game… fits under the notice (${whatLines.toFixed(2)} lines, ${wOpen})`,
+    );
+    await wp.setViewportSize({ width: 1280, height: 800 });
     let reloaded = false;
     wp.on('framenavigated', (f) => f === wp.mainFrame() && (reloaded = true));
     await wn.getByRole('button', { name: '⟳ Reload for 99.0.0' }).click();

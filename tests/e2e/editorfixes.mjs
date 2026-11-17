@@ -54,11 +54,17 @@ try {
   const cards = await page.locator('.first-round .mode').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
   assert(cards.length === 5 && cards[0] === cards[1] && cards[1] === cards[2] && cards[3] === cards[4] && cards[2] < cards[3], `the five mode cards sit three, then two (${cards})`);
   assert((await page.locator('main').count()) === 1, 'one main landmark');
-  // No checklist yet (the page says what to do), and the first screen fits a laptop: one short line over the cards,
-  // and 📂 Open a game… in the window.
+  // No checklist yet (the page says what to do), and the first screen fits a laptop: a line saying what the app is,
+  // one short line over the cards, and 📂 Open a game… in the window.
   assert((await page.locator('nav .problems').count()) === 0, 'with no rounds the sidebar has no checklist');
   const openBottom = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
-  assert(openBottom <= 720 && (await page.locator('.first-round > p').count()) === 2, `the first screen has two lines of words and 📂 Open a game… in the window (${openBottom})`);
+  assert(openBottom <= 720 && (await page.locator('.first-round > p').count()) === 3, `the first screen has three lines of words and 📂 Open a game… in the window (${openBottom})`);
+  const what = page.locator('.first-round > p.what');
+  const whatBox = await what.evaluate((e) => ({ h: e.getBoundingClientRect().height, line: parseFloat(getComputedStyle(e).lineHeight) || 16, above: !!e.nextElementSibling?.matches('h2') }));
+  assert(
+    (await what.innerText()).startsWith('🎮 Brainrot Games Maker: build a game show') && (await what.innerText()).includes('Nothing to install.') && whatBox.above && whatBox.h < 2 * whatBox.line && (await what.locator('a').count()) === 0,
+    `over “Add your first round”, one line says what the app is (no download link in the file: it's the file) (${JSON.stringify(whatBox)})`,
+  );
   // A card a mode, each with at most two templates in it to start from (＋ Add round has them all).
   const starts = await page.locator('.first-round .card').evaluateAll((cs) => cs.map((c) => [...c.querySelectorAll('.from button')].map((b) => b.textContent.trim())));
   assert(

@@ -1,7 +1,7 @@
 <!-- ℹ About: version and build, links, and where this copy keeps its data (the desktop app's folders, with buttons to
      open them, so nobody is surprised by folders the app made). -->
 <script lang="ts">
-  import { externalLink, HOSTING_GUIDE, REPO } from '../lib/sitelinks';
+  import { externalLink, HOSTING_GUIDE, RELEASES, REPO } from '../lib/sitelinks';
   import { modal } from '../lib/modal';
   import { onMount } from 'svelte';
   import { toast } from '../lib/app.svelte';
@@ -87,7 +87,7 @@
         {#if newest}
           <UpdateControls release={newest} />
         {:else}
-          <a href={`${REPO}/releases/latest`} target="_blank" rel="noreferrer" onclick={link}>Latest release</a>
+          <a href={RELEASES} target="_blank" rel="noreferrer" onclick={link}>Latest release</a>
         {/if}
         <button class="small" onclick={() => checkForUpdate(true)} disabled={update.status === 'checking' || update.status === 'installing'}>Check for updates</button>
       </dd>
