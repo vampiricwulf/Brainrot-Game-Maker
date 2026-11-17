@@ -1059,7 +1059,7 @@
   <MediaControls {dual} />
 
   {#if showPlayers}
-    <div class="players">
+    <div class="players" class:marking={chipSlots}>
       {#each session.players as p, i (p.id)}
         {@const on = selected.includes(p.id)}
         <div
@@ -2553,8 +2553,21 @@
   .score-edit {
     font-weight: 700;
   }
-  .quick {
+  /* ✔ / ✘: the show's most-clicked pair, where a slip costs points, big enough to hit at once and apart (the chip's gap
+     and 3px more). (Their signs at the panel's size, not .small's.) */
+  .p .quick {
+    min-width: 36px;
+    min-height: 32px;
     padding: 4px 8px;
+    font-size: 14px;
+  }
+  .quick + .quick {
+    margin-left: 3px;
+  }
+  /* On the board and in a clue the chips are ✔ / ✘'s height with them or without (a game that doesn't take points for a
+     wrong answer keeps no room for them on the board): opening a clue never makes the rows taller. */
+  .players.marking > .p {
+    min-height: 42px;
   }
   /* ✔ / ✘'s place where they aren't offered: unseen, but as wide (the chip's gap still applies). */
   .quick-slot {

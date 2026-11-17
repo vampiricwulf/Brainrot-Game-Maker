@@ -16,7 +16,7 @@
 // above, which opens the keys on During the game, where 💡 Show all tips again brings 🙈 Hide's note back). With six
 // players in a single window (at
 // 1366×768, 1200×720, 1024×768 and 960×900, and a long Final name) the stage keeps one size from the board to a clue and
-// with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), and
+// with a player picked (the chips where they were on the board, each one's ✔ / ✘ at least 36×32 px and 6–8 px apart) (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), and
 // through a 🤝 partner clue from PARTNER UP! (the wheel, 📤 Hand out the cards) to ✔ Got it, its ✔ / ✘ in sight (the wheel's own
 // bar too, and the players' chips where they fit), up to 1240px wide 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭
 // (named in full), 🔊 Sound opens in the host panel, and every Final wager box is in sight (the Final's own 🤫 cards
@@ -848,6 +848,9 @@ try {
     const onBoard = await stageH();
     const boardStatus = Math.round((await p4.locator('.panel .status').boundingBox()).height);
     assert((await p4.locator('.panel .p button.quick:visible').count()) === 0, `${w}×${h}: on the board the chips keep ✔ / ✘'s place, unseen`);
+    /** Each chip's place and size (the rows they make), from the board to a clue. */
+    const chipRects = () => p4.locator('.panel .players .p').evaluateAll((ps) => ps.map((p) => { const r = p.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(Math.round).join(' '); }).join(', '));
+    const chipsOnBoard = await chipRects();
     if (w <= 1240) {
       const widths = await Promise.all(['🤫 Send a card…', '🎭 Deal…'].map(async (name) => Math.round((await p4.locator('.panel').getByRole('button', { name, exact: true }).boundingBox()).width)));
       assert(widths.every((x) => x < 60), `${w}×${h}: 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭, still named in full (${widths.join(' / ')}px wide)`);
@@ -861,6 +864,16 @@ try {
       await award.waitFor();
       const picked = await stageH();
       assert(onBoard === inClue && inClue === picked, `${w}×${h}, a ${value} clue: the stage keeps one size from the board to a clue and with a player picked (${onBoard} / ${inClue} / ${picked})`);
+      if (value === '$200') {
+        // ✔ / ✘ big enough to hit and apart (32px tall, 36 wide, 6–8px between), and the chips just as they were on the
+        // board: no row wraps anew.
+        const pair = await p4.locator('.panel .players .p').first().locator('button.quick').evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect()).map((r) => ({ x: r.x, w: r.width, h: r.height })));
+        const apart = pair[1].x - pair[0].x - pair[0].w;
+        assert(
+          pair.length === 2 && pair.every((b) => b.h >= 32 && b.w >= 36) && apart >= 6 && apart <= 8 && (await chipRects()) === chipsOnBoard,
+          `${w}×${h}: a chip's ✔ / ✘ are ${pair.map((b) => `${Math.round(b.w)}×${Math.round(b.h)}`).join(' and ')}, ${apart}px apart, and every chip keeps its place and size from the board`,
+        );
+      }
       // (Only the name may be cut short: nothing runs past ＋ Award's or − Deduct's edge, so the amount shows whole.)
       const whole = await p4.locator('.panel .award button.named').evaluateAll((bs) => bs.length === 2 && bs.every((b) => b.scrollWidth <= b.clientWidth));
       assert(whole && (await award.textContent()).includes(`+${value}`), `${w}×${h}, a ${value} clue: ＋ Award and − Deduct show the whole amount`);
