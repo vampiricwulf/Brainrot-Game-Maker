@@ -2565,9 +2565,12 @@
     margin-left: 3px;
   }
   /* On the board and in a clue the chips are ✔ / ✘'s height with them or without (a game that doesn't take points for a
-     wrong answer keeps no room for them on the board): opening a clue never makes the rows taller. */
+     wrong answer keeps no room for them on the board): opening a clue never makes the rows taller. And no taller than
+     the chips were before ✔ / ✘ grew (thinner above and below them): a crowded 🤝 partner clue still has every chip in
+     sight. */
   .players.marking > .p {
-    min-height: 42px;
+    padding-block: 1px;
+    min-height: 38px;
   }
   /* ✔ / ✘'s place where they aren't offered: unseen, but as wide (the chip's gap still applies). */
   .quick-slot {
