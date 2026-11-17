@@ -24,6 +24,7 @@
   import { jobs, stopJob, watchJob } from '../lib/shrink/jobs.svelte';
   import {
     CANT_READ_EDIT,
+    CANT_READ_PICTURE_EDIT,
     cantReencode,
     clockTenths,
     cropPixels,
@@ -98,6 +99,8 @@
     if (!blob) return void (cant = 'That file isn’t stored in this browser.');
     const f = await readFacts(blob, { duration: 'compute', fps: kind === 'video' });
     if (!f.box || (!f.video && !f.audio)) return void (cant = CANT_READ_EDIT);
+    // (Its picture left out, an edit would make its sound alone: the picture lost.)
+    if (kind === 'video' && f.hiddenVideo && !f.video) return void (cant = CANT_READ_PICTURE_EDIT);
     const c = await probe();
     if (f.video && c.ok) encs[`${f.video.width}×${f.video.height}`] = await encodersFor(f.video.width, f.video.height);
     can = c;

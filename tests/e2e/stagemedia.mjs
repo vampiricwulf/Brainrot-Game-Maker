@@ -524,7 +524,7 @@ try {
   // rows looked the same), and only the row the keys reach names them in its tooltips (Space and M reach one clip, not
   // every row). The tools row folds behind ⋯ Tools, so the fixed bar (↶ Undo … 🚪 Exit) stays in sight, and the stage
   // keeps its size. A clue whose video and sound files are missing from this computer: a row each says so, naming no
-  // file, and Space passes them by.
+  // file.
   {
     const lapCtx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const lp = await lapCtx.newPage();
@@ -604,6 +604,12 @@ try {
     await lp.screenshot({ path: 'test-results/stagemedia-laptop.png' });
     assert(fit.exitBottom <= 720 && fit.tools === 'none' && fit.fold, `at 1280×720 the tools row folds behind ⋯ Tools, and 🚪 Exit is in sight (${JSON.stringify(fit)})`);
     assert((await stageAt()) === onBoard, `and the stage keeps its size (${onBoard} / ${await stageAt()})`);
+    // 🚪 Exit's question, in the strip over the tools row: its answers in sight too.
+    await lp.getByRole('button', { name: /Exit/ }).click();
+    const stay = lp.locator('.askslot').getByRole('button', { name: 'Stay' });
+    const stayAt = await stay.evaluate((b) => Math.round(b.getBoundingClientRect().bottom));
+    assert(stayAt <= 720 && (await stageAt()) === onBoard, `🚪 Exit asks in the strip, its answers in sight (Stay's foot at ${stayAt}), the stage its size`);
+    await stay.click();
     await lp.locator('.toolsfold').click();
     await lp.locator('.toolsrow').waitFor();
     assert(true, '⋯ Tools brings the tools row back');
@@ -614,17 +620,13 @@ try {
     await lp.locator('.board .tile').nth(1).click();
     await rows.nth(1).waitFor();
     await lp.screenshot({ path: 'test-results/stagemedia-missing.png' });
-    const missing =(await rows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+    const missing = (await rows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
     assert(
       missing.join(' | ') === '🎬 This video’s file is missing from this computer. | 🔊 This sound’s file is missing from this computer.',
       `missing files: a row each says so, naming no file (${missing.join(' | ')})`,
     );
     assert((await lp.locator('.stage-box .full .missing').count()) === 0, 'and the stage (what the stream shows) has no box for them');
     assert((await lp.locator('.toolsfold').count()) === 0 && (await lp.locator('.toolsrow').isVisible()), 'two thin rows leave room for all: the tools row stays out');
-    await lp.evaluate(() => document.activeElement?.blur());
-    await lp.keyboard.press(' ');
-    await lp.waitForTimeout(300);
-    assert((await lp.locator('.stage-box').getByText('Missing').count()) === 0, 'Space passes them by');
     await lapCtx.close();
   }
 

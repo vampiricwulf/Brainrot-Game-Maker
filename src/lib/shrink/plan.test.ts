@@ -10,6 +10,7 @@ import {
   avPlan,
   CANT_MAKE_SOUND,
   CANT_READ_FILE,
+  CANT_READ_PICTURE,
   CANT_READ_VIDEO,
   cardSpan,
   clockTenths,
@@ -288,6 +289,8 @@ describe('videoOptions: which size is picked', () => {
   it('refuses a file it can’t read, one with no picture, or one this browser can’t decode', () => {
     expect(videoOptions({ ...video(1, 1, 1, 1), box: null }, 1, opts)).toEqual({ refuse: CANT_READ_FILE });
     expect(videoOptions(video(1, 1, 1, 1, { video: null }), 1, opts)).toEqual({ refuse: NO_PICTURE });
+    // (A picture the reader leaves out, an MPEG-TS's MPEG-2: it has one, the app can't read it.)
+    expect(videoOptions(video(1, 1, 1, 1, { video: null, hiddenVideo: 'mpeg2' }), 1, opts)).toEqual({ refuse: CANT_READ_PICTURE });
     const hevc = video(1920, 1080, 60, 400 * MiB);
     hevc.video = { ...hevc.video!, codec: 'hevc', decodes: false };
     expect(videoOptions(hevc, 60, opts)).toEqual({ refuse: CANT_READ_VIDEO });

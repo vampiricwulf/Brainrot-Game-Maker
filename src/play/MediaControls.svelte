@@ -63,7 +63,7 @@
           {/if}
           <button class="small ghost" onclick={() => open(m.openUrl)} title="Open the player in its own window{key(id, 'Y')}">Open player window ↗</button>
         {:else}
-          <button class="small" onclick={() => mediaCommand({ el: id, op: 'toggle' })} title={id === keyed ? 'Space' : undefined} aria-label={m.paused ? 'Play' : 'Pause'}>{m.paused ? '▶' : '⏸'}</button>
+          <button class="small" onclick={() => mediaCommand({ el: id, op: 'toggle' })} title={id === keyed ? 'Space' : m.paused ? 'Play' : 'Pause'} aria-label={m.paused ? 'Play' : 'Pause'}>{m.paused ? '▶' : '⏸'}</button>
           <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'restart' })} title="Restart" aria-label="Restart">⏮</button>
           <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'seekBy', value: -5 })} title="Back 5s{key(id, '←')}" aria-label="Back 5 seconds">−5</button>
           <input

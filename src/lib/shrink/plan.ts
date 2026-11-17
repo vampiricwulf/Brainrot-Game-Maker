@@ -154,6 +154,8 @@ export const NOT_MUCH_SMALLER = 'A copy of it wouldn’t be much smaller: nothin
 export const NO_PICTURE = 'The app finds no picture in this video, so it can’t make a copy of it';
 export const CANT_READ_VIDEO = 'This browser can’t read this video’s format. Try Chrome or Edge on Windows, or add it from a link';
 export const CANT_READ_FILE = 'The app can’t read this file, so it can’t make a copy of it';
+/** A picture the file has that the app's reader leaves out (an MPEG-TS's MPEG-2: facts.ts). */
+export const CANT_READ_PICTURE = 'The app can’t read this video’s picture, so it can’t make a copy of it';
 export const CANT_MAKE_SOUND = 'This browser can’t make this video’s sound for phones. Try Chrome or Edge on Windows or Mac, or add it from a link';
 export const SOUND_TOO_LONG = 'This browser can only make a copy of a sound like this one up to 15 minutes long';
 /** Said under the choice when a sound's copy is Opus. */
@@ -317,7 +319,7 @@ export function videoOptions(
   opts: { fileBytes: number; playable: boolean; over?: OverCopy },
 ): { choices: (VideoChoice & { estimate: number })[]; pick: number; tooBig: boolean } | { refuse: string } {
   if (!f.box) return { refuse: CANT_READ_FILE };
-  if (!f.video) return { refuse: NO_PICTURE };
+  if (!f.video) return { refuse: f.hiddenVideo ? CANT_READ_PICTURE : NO_PICTURE };
   if (!f.video.decodes) return { refuse: CANT_READ_VIDEO };
   const abps = soundBps(f);
   let all = videoChoices(f.video.width, f.video.height).map((c) => ({ ...c, estimate: estimateBytes(c.bps + abps, seconds) }));
@@ -363,7 +365,7 @@ const trimOf = (span: Span | null): Pick<RunPlan, 'trim'> => (span ? { trim: { s
  */
 export function planVideoCopy(f: MediaFacts, can: Can, enc: Encoders, choice: VideoChoice, span: Span | null, playable: boolean): CopyPlan | { refuse: string } {
   if (!f.box) return { refuse: CANT_READ_FILE };
-  if (!f.video) return { refuse: NO_PICTURE };
+  if (!f.video) return { refuse: f.hiddenVideo ? CANT_READ_PICTURE : NO_PICTURE };
   if (!f.video.decodes) return { refuse: CANT_READ_VIDEO };
   if (!can.ok) return { refuse: can.why ?? NO_WEBCODECS };
   // A sound this browser can't read, nor copy into a phone's file (Dolby Digital, DTS: phones can't play it either): the
@@ -663,6 +665,7 @@ const SOUND_SLACK = 0.2;
 const GiB = 1024 ** 3;
 
 export const CANT_READ_EDIT = 'The app can’t read this file, so it can’t edit it.';
+export const CANT_READ_PICTURE_EDIT = 'The app can’t read this video’s picture, so it can’t edit it: convert it to MP4 (H.264) with a video app first (HandBrake is free).';
 export const NO_REENCODE_HERE =
   'Cropping and resizing need Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address. Trimming works here.';
 export const CANT_SIZE = 'This browser can’t make a video this size: pick a smaller size.';
