@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addSample, addTemplate } from './roundtools';
+import { addSample, addTemplate, templateStep } from './roundtools';
 import { clueSlides, FACTORY_FONT } from '../lib/cluetext';
 import { newGame, newRound, type Game, type TextEl } from '../lib/model';
 import { TEMPLATES } from '../lib/samples';
@@ -27,5 +27,14 @@ describe('rounds from a template or the sample game', () => {
     addSample(game);
     expect(new Set(fontsOf(game, 0).slice(0, 2 * 5 * 2))).toEqual(new Set([FACTORY_FONT]));
     expect(new Set(fontsOf(game, 1))).toEqual(new Set(['Bangers']));
+  });
+});
+
+describe('a template round’s undo step', () => {
+  it('names the template only when the round’s name doesn’t already say it', () => {
+    expect(templateStep('Jeopardy!', 'Classic board, 6 × 5')).toBe('Added round “Jeopardy!” (Classic board, 6 × 5)');
+    expect(templateStep('Race', 'Race to the finish')).toBe('Added round “Race” (Race to the finish)');
+    expect(templateStep('Mini quest', 'Mini quest')).toBe('Added round “Mini quest”');
+    expect(templateStep('Mini quest (2)', 'Mini quest')).toBe('Added round “Mini quest (2)”');
   });
 });

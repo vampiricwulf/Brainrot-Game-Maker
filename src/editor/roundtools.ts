@@ -21,6 +21,12 @@ function saidIfFirst(game: Game, at: number): void {
     toast(`Added “${roundName(game.rounds[0], 0)}” at the start of the game: drag its tab to move it`);
 }
 
+/** A template round's step name: the template's label is added only when it says something the round's name doesn't
+ * ("Added round “Jeopardy!” (Classic board, 6 × 5)", but "Added round “Mini quest”", and its copy "Mini quest (2)"). */
+export function templateStep(name: string, label: string): string {
+  return `Added round “${name}”${name.startsWith(label) ? '' : ` (${label})`}`;
+}
+
 /** A round from a template: its step is named after the round it makes ("Added round “Jeopardy!”"), not the template. */
 export function addTemplate(game: Game, t: Template): number {
   const at = step(null, () => {
@@ -31,7 +37,7 @@ export function addTemplate(game: Game, t: Template): number {
     if (round.name) round.name = uniqueName(game.rounds.map((r, i) => roundName(r, i)), round.name, false);
     const at = placeFor(game, round);
     game.rounds.splice(at, 0, round);
-    nameStep(`Added round “${roundName(round, at)}” (${t.label})`);
+    nameStep(templateStep(roundName(round, at), t.label));
     return at;
   });
   saidIfFirst(game, at);
