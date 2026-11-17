@@ -263,6 +263,15 @@
   .goon.side .foot {
     padding-bottom: var(--pad-bottom);
   }
+  /* Beside the stage the card is narrow: a long "Next turn anyway: …" wraps inside it (its key stays whole). */
+  .goon.side .foot button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+  }
+  .goon.side .foot kbd {
+    white-space: nowrap;
+  }
   /* (Taller than its room: what's left scrolls, the foot stays.) */
   .scroll {
     flex: 1 1 auto;
