@@ -76,6 +76,22 @@
       switching = !!value;
     } else onset(key, value, label);
   };
+  let startBtn = $state<HTMLButtonElement>();
+  let copyBtn = $state<HTMLButtonElement>();
+  /** ▶ Start the room was pressed with the keys: they follow it (it turns off while the room starts, then goes). */
+  let keysOnStart = false;
+  function start(e: MouseEvent): void {
+    keysOnStart = e.detail === 0;
+    onstart();
+  }
+  // The room up, the keys go to 📋 Copy link beside its code; it failed, back to ▶ Start the room (its reason beside it).
+  // Only from the page, where they fell: never from somewhere the host has gone since.
+  $effect(() => {
+    const to = copyBtn ?? (remote.status === 'connecting' ? undefined : startBtn);
+    if (!to || !keysOnStart) return;
+    keysOnStart = false;
+    if (!document.activeElement || document.activeElement === document.body) to.focus();
+  });
   /** The browser says there's no network (it can be wrong the other way, never this way round for long). */
   let offline = $state(typeof navigator !== 'undefined' && navigator.onLine === false);
   $effect(() => {
@@ -177,7 +193,7 @@
     <!-- 2. The room: its one next step, right under the tick box. (A room that ended or was lost: why, and a new one. Its
          code, link and QR code would only share a dead room.) -->
     <div class="row">
-      <button class="primary" onclick={onstart} disabled={remote.status === 'connecting'}>
+      <button class="primary" bind:this={startBtn} onclick={start} disabled={remote.status === 'connecting'}>
         {remote.status === 'connecting' ? 'Starting the room…' : '▶ Start the room'}
       </button>
       {#if remote.status === 'error' && remote.error}<span class="warn small selectable" role="alert">{remote.error}</span>{/if}
@@ -198,7 +214,7 @@
         <div class="code selectable whole" aria-label="Room code {remote.code}">{remote.code}</div>
         <div class="row">
           <a href={link} target="_blank" rel="noreferrer" class="link">{link}</a>
-          <button class="small" onclick={() => copyText(link, 'Join link copied: paste it in the Discord chat')}>📋 Copy link</button>
+          <button class="small" bind:this={copyBtn} onclick={() => copyText(link, 'Join link copied: paste it in the Discord chat')}>📋 Copy link</button>
         </div>
         {#if remote.status === 'online'}
           {#if settings.buzzTeams}

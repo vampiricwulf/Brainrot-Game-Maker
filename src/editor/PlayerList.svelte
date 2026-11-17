@@ -166,9 +166,23 @@
     if (undone && players.some((x) => x.id === undone?.p.id)) undone = null;
   });
   function undoRemove(): void {
-    if (!undone || players.length >= max || players.some((x) => x.id === undone?.p.id)) return void (undone = null);
-    players.splice(Math.min(undone.at, players.length), 0, undone.p);
+    if (!undone || players.length >= max || players.some((x) => x.id === undone?.p.id)) return void dismissUndo();
+    const back = undone.p;
+    players.splice(Math.min(undone.at, players.length), 0, back);
     undone = null;
+    // The keys go to the name of the one brought back (not selected: a stray key mustn't replace it), not to the page.
+    void tick().then(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      list?.querySelector<HTMLInputElement>(`[data-place="player:${back.id}"] input.name`)?.focus();
+    });
+  }
+  /** The note's ✕: it goes, and the keys go on to ＋ Add player (not to the page). */
+  function dismissUndo(): void {
+    undone = null;
+    void tick().then(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      list?.querySelector<HTMLButtonElement>('button.add')?.focus();
+    });
   }
 
   /** The row's own box (its color, its start score), to open or type in from its menu. */
@@ -422,7 +436,7 @@
         >Deleted <b>{undone.p.name}</b>{undone.n ? `: its ${undone.n === 1 ? '1 person picks' : `${undone.n} people pick`} a team again` : ''}</span
       >
       <button class="small" onclick={undoRemove} disabled={players.length >= max}>↶ Undo</button>
-      <button class="small ghost" onclick={() => (undone = null)} aria-label="Dismiss">✕</button>
+      <button class="small ghost" onclick={dismissUndo} aria-label="Dismiss">✕</button>
     </div>
   {/if}
 </div>

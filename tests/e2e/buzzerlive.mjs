@@ -95,8 +95,10 @@ try {
   // No negative scores: a wrong answer from a player on $0 takes nothing, but still locks them out (below).
   const neg = (await openRules(host)).getByLabel('Allow negative scores');
   await neg.uncheck();
-  const code = await startRoomOn(card);
+  const code = await startRoomOn(card, { keys: true });
   assert(/^[BCDFGHJKLMNPQRSTVWXZ]{4}$/.test(code), `the app made a real room (${code})`);
+  await host.waitForFunction(() => document.activeElement?.textContent === '📋 Copy link');
+  assert(true, '▶ Start the room pressed with the keys: they go on to 📋 Copy link beside the code (not the page)');
   assert((await card.getByRole('link').innerText()) === `${base}/${code}`, 'the join link points at the room server');
 
   // ---------- Two phones join ----------

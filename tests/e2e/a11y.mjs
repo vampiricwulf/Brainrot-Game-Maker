@@ -406,8 +406,25 @@ try {
   await page.getByRole('button', { name: /^Delete Player 2$/ }).click();
   const undoNote = page.locator('.undo-note');
   assert((await names.count()) === before - 1 && (await undoNote.innerText()).includes('Deleted Player 2'), 'deleting a player before the game says so');
-  await undoNote.getByRole('button', { name: '↶ Undo' }).click();
+  await undoNote.getByRole('button', { name: '↶ Undo' }).focus();
+  await page.keyboard.press('Enter');
   assert((await names.count()) === before, 'and its Undo brings them back');
+  await page.waitForFunction(() => document.activeElement?.matches('.pregame input.name') && document.activeElement.value === 'Player 2');
+  assert(await page.evaluate(() => document.activeElement.selectionStart === document.activeElement.selectionEnd), 'the keys go to the name of the one brought back (not selected), not the page');
+  await page.getByRole('button', { name: /^Delete Player 2$/ }).click();
+  await undoNote.getByRole('button', { name: 'Dismiss' }).focus();
+  await page.keyboard.press('Enter');
+  await undoNote.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => document.activeElement?.textContent?.trim() === '＋ Add player');
+  assert(true, 'the note’s ✕ puts them on ＋ Add player');
+  await page.getByRole('button', { name: '＋ Add player' }).click();
+  // ✅ Before you start's On stream tips: their ✕ puts the keys on Show them, and Show them back on the ✕.
+  await page.getByRole('button', { name: 'Hide the On stream tips' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.textContent === 'Show them');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Hide the On stream tips');
+  assert(true, 'hiding the On stream tips puts the keys on Show them, and showing them on their ✕ (not the page)');
   // Small text (✅ Before you start's 🔊 Test the sound…), and Start game's key chip, read at 4.5:1.
   const testSound = await inkOn(page.getByRole('button', { name: '🔊 Test the sound…' }));
   const startKey = await inkOn(page.locator('.start-key'));

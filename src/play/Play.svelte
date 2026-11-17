@@ -4982,6 +4982,19 @@
     start();
   }
 
+  /**
+   * ✅ Before you start's On stream tips shown or hidden: the keys go to the button that turns them back (Show them, or
+   * the tips' ✕), not to the page with the one pressed.
+   */
+  function tipsShown(on: boolean): void {
+    prefs.liveChecklist = on;
+    savePrefs();
+    void tick().then(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      document.querySelector<HTMLElement>('.pregame [data-tips-toggle]')?.focus();
+    });
+  }
+
   /** The room started from the bar's question (or the card): scrolled into view, its code above the Start bar. */
   async function startRoomHere(): Promise<void> {
     startAsk = null;
@@ -7094,7 +7107,8 @@
           <h3 id="pregame-live">On stream</h3>
           <button
             class="ghost small"
-            onclick={() => ((prefs.liveChecklist = false), savePrefs())}
+            onclick={() => tipsShown(false)}
+            data-tips-toggle
             aria-label="Hide the On stream tips"
             title="Hide these tips (the game's checks stay)">✕</button
           >
@@ -7136,7 +7150,7 @@
     {:else}
       <div class="row small live-off">
         <span class="muted">On stream tips hidden{wantAudience ? '' : ' (one window: viewers see this page)'}.</span>
-        <button class="ghost small" onclick={() => ((prefs.liveChecklist = true), savePrefs())}>Show them</button>
+        <button class="ghost small" onclick={() => tipsShown(true)} data-tips-toggle>Show them</button>
         {@render testSound()}
       </div>
     {/if}

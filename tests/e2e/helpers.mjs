@@ -533,11 +533,11 @@ export async function startBuzzer(prefix, { vars = {} } = {}) {
 }
 
 /**
- * ▶ Start the room on a 📱 Phone buzzers card: its code, once the card shows it. If it never does, it fails saying what
- * the card says instead (the buzzer server's refusal, or still its Start button) and what the page asked the buzzer
+ * ▶ Start the room on a 📱 Phone buzzers card (`keys`: with Enter, not a click): its code, once the card shows it. If it
+ * never does, it fails saying what the card says instead (the buzzer server's refusal, or still its Start button) and what the page asked the buzzer
  * server meanwhile.
  */
-export async function startRoomOn(card) {
+export async function startRoomOn(card, { keys = false } = {}) {
   const page = card.page();
   const t0 = Date.now();
   const asked = [];
@@ -553,8 +553,12 @@ export async function startRoomOn(card) {
   page.on('requestfailed', onFailed);
   page.on('websocket', onSocket);
   try {
-    await card.getByRole('button', { name: '▶ Start the room' }).click();
-    note('clicked ▶ Start the room');
+    const start = card.getByRole('button', { name: '▶ Start the room' });
+    if (keys) {
+      await start.focus();
+      await page.keyboard.press('Enter');
+    } else await start.click();
+    note(`${keys ? 'pressed' : 'clicked'} ▶ Start the room`);
     const codeEl = card.locator('[aria-label^="Room code "]');
     try {
       await codeEl.waitFor();
