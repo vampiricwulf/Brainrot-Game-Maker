@@ -11,6 +11,56 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- 🖼 Media cards now say in plain text why a file won't play or plays without its sound, and what to do about it. Before, the reason was only in a tooltip, though the checklist says "🖼 Media says why" (8752114).
+
+### Fixed
+
+- Esc on any answer of a question in the host panel (Keep & leave, Discard & leave, Go to … ▶) now cancels the question, the same as on its Cancel. Before, during a clue it closed the clue and used up the tile, and the question stayed open. (c920756)
+- On the ▶ Play screen, the keys no longer drop to the page. After ▶ Start the room they go to 📋 Copy link, or back to Start the room if it failed. After the Deleted note's ↶ Undo they go to the name brought back, and after its ✕ to ＋ Add player. Hiding or showing the On stream tips puts them on the button that changes them back. (2436d2f)
+- Screen readers now name a player's score button with the player and the score ("Ann's score: $0", not just "$0"), and name the box it opens "Ann's score". (704a058)
+- Phone buzzers: a player who takes a seat with the keyboard (Enter or a number key) keeps the keys. On a computer they go to BUZZ!, and on a touch screen to the "Your buzzer" heading. Before, they dropped to the page. (e6b8cbf)
+- Screen readers now hear what H, V and I change: "Host controls hidden: H shows them" / "Host controls shown", "Map on stream" / "Map off stream", and "Ann's sheet on screen" / "Sheet off screen". (faa956e)
+- When a countdown ends, screen readers now read "Time's up" as its own part of the status line ("Answer hidden · Time's up"), not run on from the words before it. (370fe47)
+- N and Shift+N on a board with tiles left used to do nothing. They now say "Pick a tile on the board: click it, or Enter on it". C or X before the Final's reveals now say to start the reveals first, instead of doing nothing. (0333a03)
+- With a chroma-key stage background, a clue opening, the board coming back after a clue, the title card and the end screen no longer flash black (or dark green) round the edges. The stage under them is the key, so OBS keeps it see-through, in the audience window and in one window (0acb286).
+- The ▭ scores window opens at 1440×195, the same shape as its score strip, so there's no empty band above the plates to crop in OBS (dafbc31).
+- Opening a clue on a light theme such as Pastel no longer flashes the stage black. The clue zooms in over the board's background colour, or over the key on a chroma-key stage (ab12091, a85388c).
+- Wheel, dice and Who goes first titles are white when the theme's value colour is too dark on their black pill (Pastel's purple), as the Scores overlay's already were. Other themes keep their colour (ab12091).
+- A short wheel title such as "Partner for Ann" fits on one line in its pill instead of wrapping onto two (ab12091, a85388c).
+- A long cover-card text (K) wraps in even lines next to the ❚❚ and stays well clear of the stage's sides (ab12091).
+- In one window with the controls hidden (H), a tile under the still, hidden mouse pointer no longer stays lit. Viewers could take the lit tile as a hint at the next pick. It lights up again when the mouse moves (ab12091).
+- A round added from a template no longer repeats its name in Undo and 🕘 History ("Added round “Mini quest”", not "Added round “Mini quest” (Mini quest)") (6c97237, 9b6a823)
+- Board games: running a space named for its action, such as Roll again, says it once ("Roll again: Player 1"), and the turn box says "Player 1 rolls again: Next turn ▶ (N)" instead of saying the turn is played (d50d067, 9b6a823)
+- RPG shop: when the buyer is short of money, the question (Cancel, Give it free, Other price…, Sell anyway) now scrolls into view in the round's box with the keys on Cancel. The toast names the item. A price typed in that is still too low no longer moves the keys (57016af, 00b4825, 6dc2dd2)
+- RPG: ⤢ Full map opens scrolled to the party's screen, so on a 3 × 3 map their bottom-row screen is no longer below the fold (f8a5455, 6dc2dd2)
+- RPG and board-game rounds under the stage: the round's box fades at its foot while there's more to scroll, so a row cut off at the bottom reads as "more below" (f859376, 6dc2dd2)
+- RPG: opening ▸ Players: stats & inventory scrolls the first player's sheet into view, and the toggle stays in sight (0af8c52, 6dc2dd2)
+- Board games beside the stage: the go-on card's long "Next turn anyway: …" button now wraps inside the card instead of sticking out past its edge (0349ce2, 6dc2dd2)
+- 🔄 Convert no longer turns an MPEG-2 video into one with no picture. These are .mts and .m2ts files from DVDs, TV recordings and older camcorders. The card used to promise "nothing lost" and then swapped in a black video. Now the card says the video is MPEG-2 and suggests converting it with another app (HandBrake is free), with Replace everywhere… as its main button. A convert that would lose a video's picture is refused, and the original is kept (8752114).
+- The copy for phones (🗜) and ✎ Edit also refuse a video whose picture the app can't read, instead of making a copy with sound only (53e72cd).
+- In play, a video or sound whose file is missing from this computer now gets a row in the host panel saying so. Before, the slide was just blank with no sign. The row never names the file (82f9348).
+- Two videos (or two sounds) on one slide get their numbers (1, 2) on their media rows. Only the row that Space, ← →, M and Y control shows those keys in its tooltips (82f9348, 53e72cd).
+- On a laptop screen (1280×720), a slide with three clips no longer pushes Undo, Cover, Hide and Exit off the bottom of the host panel. The media rows are thinner, the tools row folds behind ⋯ Tools as it does in the Final's reveals, and the stage keeps its size (82f9348).
+- When you start a ✎ Edit, 🗜 Make smaller or 🔄 Convert job, the header's buttons stay where they are. The job's pill now sits where "✓ Kept in this browser" was. At 1280 px it shows the percentage and Stop, and its tooltip has the rest; before, it read "✂ Saving a …" with no percentage (aaf4f6a, c562e70).
+- ✎ Edit video: pressing ↶ Undo right after ✂ Crop now lifts ✂ Crop again. Before, the window stayed in crop mode with no crop box, and Free did nothing (aaf4f6a).
+- ✎ Edit video / sound: a Start or End time that can't be used now shows the reason under the boxes. An End past the clip's end is set to the end, with a note saying so. Ctrl+Enter doesn't apply a time that was refused or changed (aaf4f6a).
+- A finished sound edit or sound copy for phones now has ▶ Listen / ⏹ Stop instead of ▶ Watch it. ✎ Edit's "Saved as a new file" line now gives the new file's length and size (aaf4f6a).
+- ＋ Add files… now describes a file the game can't use in the same words as dropping it does. When you add several files at once, one message covers them all: which were already in 🖼 Media and which couldn't be used. Before, one message replaced another (aaf4f6a).
+- One window: reloading the page mid-game (F5) no longer shows the editor, with every clue still to play, on the window viewers see. It opens on the game's cover card, with Resume game (still covered if ⏸ Cover was on) and Go to the editor. Ctrl+O and Ctrl+S do nothing there. After Keep & leave, after a finished game, or with an audience window, the editor opens as before (b51a561, ee62154).
+- Closing or reloading the tab now asks first while a Drawpad drawing isn't inserted, image edits aren't applied, or a video or sound trim isn't applied. Before, they were lost without a word (7886d94).
+- Final reveals in one window at 1280×720: with four players, the fourth row's ✔ Right / ✘ Wrong are no longer half hidden (ee833d3).
+- In one window, the stage's countdown, the status line and the go-on check's "(26 s left)" no longer disagree by a second for a moment (7c70638).
+- If the browser's storage never answers when the app starts, the loading screen now says so after a while and offers ⟳ Reload, instead of showing "Loading…" forever (f9d7439, c11555e).
+- ⚙ Settings now says when this browser can't keep them, for example a buzzer server you typed in. Before, they were gone after a reload with no warning (ca6ffc6).
+- Opening an empty game file (0 bytes, from a failed copy or download) now says the file is empty, instead of saying it isn't a game (d41de26).
+- On a touch tablet, the first screen's line about what the app is now shows in full instead of being cut off (e9e3280).
+- On a phone, the editor's sidebar list fades at the bottom when it has more to scroll, so 🕘 History isn't hidden (e9e3280).
+- On a touch screen, the go-on check no longer shows the keyboard hint "Next time: R reveals at once · Shift+click …" (4ded519).
+
 ## 2026-11-16
 
 ### Added
