@@ -112,6 +112,26 @@
   const aliases = $derived(here && st && !dual ? hiddenNames(st, here.screen) : new Map<string, string>());
   const last = $derived(lastAction(session, session.currentRound));
   const showPlayers = $derived(cardsShown());
+  let whoRow = $state<HTMLElement>();
+  let cardsEl = $state<HTMLElement>();
+  /**
+   * ▸ Players: stats & inventory, opened by its click: the first card comes into sight in the box that scrolls round it
+   * (it opens under the box's foot), as far as the toggle stays in sight under the selection line. Only that box moves.
+   * (Not when it opens itself: this computer remembers the fold.)
+   */
+  async function openCards(): Promise<void> {
+    playerCards.open = true;
+    await tick();
+    const first = cardsEl?.firstElementChild;
+    let box = cardsEl?.parentElement;
+    while (box && !(/auto|scroll/.test(getComputedStyle(box).overflowY) && box.scrollHeight > box.clientHeight)) box = box.parentElement;
+    if (!first || !box || !whoRow) return;
+    const b = box.getBoundingClientRect();
+    // (The selection line, 24px, is sticky at the box's top.)
+    const room = whoRow.getBoundingClientRect().top - b.top - 24;
+    const down = Math.min(first.getBoundingClientRect().bottom - b.bottom, room);
+    if (down > 0) box.scrollTop += down;
+  }
   /** A screen picked on the host map, waiting for "Move here". */
   let picked = $state<ScreenRef | null>(null);
   const pickedFound = $derived(picked && world ? findIn(world, picked) : null);
@@ -648,8 +668,8 @@
     {/if}
     </div>
 
-    <div class="row who">
-      <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>
+    <div class="row who" bind:this={whoRow}>
+      <button class="ghost small" onclick={() => (showPlayers ? (playerCards.open = false) : void openCards())} aria-expanded={showPlayers}>
         {showPlayers ? '▾' : '▸'} {ctx.teams ? 'Teams' : 'Players'}: stats & inventory
       </button>
       {#each session.players as pl, i (pl.id)}
@@ -671,7 +691,7 @@
       {/each}
     </div>
     {#if showPlayers}
-      <div class="cards">
+      <div class="cards" bind:this={cardsEl}>
         {#each session.players as pl (pl.id)}
           <PlayerCard
             {game}
