@@ -1151,6 +1151,26 @@
   onMount(() => {
     if (inTauri()) dataFolders().then((f) => (movedNotice = !!f?.moved));
   });
+  // A phone (or a small tablet) gets the editor as it is, with a word that it's made for a computer: phones are for the
+  // players, who join with the code the host shows. Closed, it stays closed on this phone (💡 Show all tips again
+  // brings it back).
+  let computerNote = $state(false);
+  onMount(() => {
+    if (!matchMedia('(pointer: coarse) and (max-width: 700px)').matches) return;
+    try {
+      computerNote = !localStorage.getItem('jb.computerNoteSeen');
+    } catch {
+      computerNote = true;
+    }
+  });
+  function closeComputerNote(): void {
+    computerNote = false;
+    try {
+      localStorage.setItem('jb.computerNoteSeen', '1');
+    } catch {
+      // Storage is off (private mode): it shows again next time.
+    }
+  }
   /** The version the notice under the header says is out (none: no notice). */
   const updateOut = $derived(
     (update.status === 'available' || update.status === 'installing') && update.latest && update.latest.version !== update.skipped ? update.latest : null,
@@ -1246,6 +1266,12 @@
   <!-- (In a box that's always there: a notice that comes while a window is open is out of reach with the rest of the
        page, the box being what the window makes inert. It lays nothing out itself.) -->
   <div class="notices">
+    {#if computerNote}
+      <div class="data-notice computer-note" role="status">
+        <span>💻 <b>Made for a computer.</b> Players join from their phones with the host's code.</span>
+        <button class="small ghost notice-x" onclick={closeComputerNote} aria-label="Got it" title="Got it: don't show this again">✕</button>
+      </div>
+    {/if}
     {#if movedNotice}
       <div class="data-notice" role="status">
         <span>📁 Jeopardy Builder is now <b>Brainrot Games Maker</b>. Your games and media were moved to its new folder.</span>
@@ -1580,7 +1606,7 @@
             <div class="open-line muted small">
               <span>Have a game file?</span>
               <button class="small" onclick={open} disabled={!!opening}><span aria-hidden="true">📂</span> Open a game…</button>
-              <span>or drop it here.</span>
+              <span class="not-touch">or drop it here.</span>
               {#if recentFirst.length}
                 <span class="recent-head">Recent:</span>
                 {#each recentFirst as r (r.key)}
@@ -1637,6 +1663,10 @@
   /* ▶ Play and 👥 Players & rules ▶ before there's a round: quiet, not greyed (a click says to add one). */
   .editor [aria-disabled='true'] {
     opacity: 0.55;
+  }
+  /* (Its ✕ beside its words, however narrow the phone.) */
+  .computer-note > span {
+    flex: 1 1 0;
   }
   .first-round {
     max-width: 820px;

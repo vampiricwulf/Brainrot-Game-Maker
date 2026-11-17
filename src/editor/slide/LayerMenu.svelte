@@ -145,7 +145,7 @@
   {/snippet}
   {#snippet alignItem(run: (a: LayerAction) => void, off: boolean, several: boolean)}
     <button role="menuitem" aria-haspopup="true" aria-expanded={aligning} onclick={() => (aligning = !aligning)} disabled={off}>
-      Align<kbd>{aligning ? '▾' : '▸'}</kbd>
+      Align<span class="sub" aria-hidden="true">{aligning ? '▾' : '▸'}</span>
     </button>
     {#if aligning}
       <!-- One item lines up with the slide; several with each other. -->
@@ -271,7 +271,9 @@
   button.danger {
     color: var(--bad);
   }
-  kbd {
+  /* (Align's ▸ sits where a key would: it isn't one, so a touch screen, which shows no keys, still shows it.) */
+  kbd,
+  .sub {
     margin-left: auto;
     padding-left: 16px;
     font-family: inherit;

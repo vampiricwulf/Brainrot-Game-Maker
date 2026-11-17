@@ -22,7 +22,10 @@ runs the board, decides who gets points, and controls media.
 - Buzzers, networked multiplayer, or player-side devices (v1's; optional phone buzzers came later: §6).
 - Online hosting, accounts, or a cloud sync backend.
 - Built-in sound-effect library. Users can attach their own audio anywhere (see §9).
-- Mobile-optimized editing. Play mode should still render acceptably on tablets.
+- Mobile-optimized editing. Play mode should still render acceptably on tablets. A phone (a touch screen under
+  700 px) gets a note under the header, "💻 Made for a computer. Players join from their phones with the host's code.",
+  closed for good with its ✕ (💡 Show all tips again brings it back). A touch screen with no mouse shows no keys on
+  buttons and in menus, nor "or drop it here"; the keys window still lists them.
 
 ---
 

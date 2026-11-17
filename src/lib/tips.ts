@@ -2,8 +2,8 @@
 // editor/Tips.svelte), the note 🙈 Hide gives the first time, and the Final's how-to in the reveals. 💡 Show all tips
 // again forgets that they were seen.
 
-/** The once-only notes on the game screen (the 💡 Tips folds are every `jb.tips.…`). */
-const ONCE = ['jb.hideHintSeen', 'jb.finalHowSeen'];
+/** The once-only notes (the 💡 Tips folds are every `jb.tips.…`): on the game screen, and a phone's "Made for a computer". */
+const ONCE = ['jb.hideHintSeen', 'jb.finalHowSeen', 'jb.computerNoteSeen'];
 
 /** Every tip shows again, as the first time (each the next time its place comes up). */
 export function showTipsAgain(): void {

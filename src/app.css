@@ -195,6 +195,14 @@ label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
 }
 .data-notice > .notice-x { margin-left: auto; }
 
+/* A touch screen with no mouse (a phone, a tablet): there are no keys to press and no files to drop, so the keys on
+   buttons and in menus, and "or drop it here", aren't shown. (The keys window still lists the keys, in its table, for
+   a keyboard plugged in.) */
+@media (hover: none) {
+  kbd:not(td > kbd),
+  .not-touch { display: none !important; }
+}
+
 /* A short message (toast) and the editor's "Deleted … · Undo" note (HistoryNotice): one pill at the bottom middle. */
 .note-pill {
   position: fixed;
