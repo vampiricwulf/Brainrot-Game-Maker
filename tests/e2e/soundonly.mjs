@@ -66,13 +66,34 @@ const player = async (p, stage) => (await p.locator(`${stage} iframe`).elementHa
 const cmds = async (p, stage) => (await player(p, stage)).evaluate(() => window.__yt.cmds.map((c) => c[0]));
 const hasCmd = async (p, stage, name, arg) =>
   (await player(p, stage)).waitForFunction(([n, a]) => window.__yt?.cmds.some((c) => c[0] === n && (a === undefined || c[1] === a)), [name, arg], { timeout: 5000 }).then(() => true, () => false);
-/** The player is on the page, playing size, yet nothing of it is seen. */
-const unseen = (p, stage) =>
-  p.locator(`${stage} iframe`).evaluate((f) => {
+/**
+ * The player is on the page, playing size, yet nothing of it is seen. (Measured once the clue has zoomed in: it grows
+ * from the tile, so its size is read when it has stayed the same a few frames, or after 3 s.)
+ */
+const unseen = async (p, stage) => {
+  await p.locator(`${stage} iframe`).evaluate(
+    (f) =>
+      new Promise((done) => {
+        const t0 = performance.now();
+        let last = '';
+        let same = 0;
+        const look = () => {
+          const r = f.getBoundingClientRect();
+          const now = `${r.width}x${r.height}`;
+          same = now === last ? same + 1 : 0;
+          last = now;
+          if (same >= 5 || performance.now() - t0 > 3000) return done();
+          requestAnimationFrame(look);
+        };
+        look();
+      }),
+  );
+  return p.locator(`${stage} iframe`).evaluate((f) => {
     const r = f.getBoundingClientRect();
     const cs = getComputedStyle(f);
     return r.width > 50 && r.height > 50 && cs.opacity === '0' && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.pointerEvents === 'none';
   });
+};
 /** Anything showing the video's picture or YouTube's card. */
 const cards = (p, stage) => p.locator(`${stage} .card, ${stage} [style*="ytimg"]`).count();
 
