@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { modal } from '../../lib/modal';
-  import { getContext, untrack } from 'svelte';
+  import { getContext, tick, untrack } from 'svelte';
   import { hint, toast } from '../../lib/app.svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import type { Game, Screen, ScreenRef, Session, World, WorldState } from '../../lib/model';
@@ -85,6 +85,26 @@
     if (text) (text === START_FIRST ? hint : toast)(text);
   }
 
+  /**
+   * Opened, or on the party's map's tab: the party's screen in sight in the map's box, which scrolls (a 3 × 3 map is
+   * taller than the box in one window, and the party may be on its bottom row). Only the box moves, never the panel or
+   * the stage. (Not again as the party moves: a drag of their dots leaves the map where it is.)
+   */
+  async function showHere(grid: HTMLElement, map: string | undefined): Promise<void> {
+    // (Once the map's tab has drawn its screens.)
+    await tick();
+    const at = untrack(() => here);
+    if (!at || at.map !== map) return;
+    const cell = grid.querySelector<HTMLElement>(`[data-screen="${at.screen}"]`);
+    if (!cell) return;
+    const g = grid.getBoundingClientRect();
+    const c = cell.getBoundingClientRect();
+    if (c.bottom > g.bottom) grid.scrollTop += Math.min(c.bottom - g.bottom, c.top - g.top);
+    else if (c.top < g.top) grid.scrollTop += c.top - g.top;
+    if (c.right > g.right) grid.scrollLeft += Math.min(c.right - g.right, c.left - g.left);
+    else if (c.left < g.left) grid.scrollLeft += c.left - g.left;
+  }
+
   /** Move the party (or these players) to the picked screen, then close. */
   function go(players?: string[], label?: string): void {
     // (Not under the round's title card: nobody would see them move.)
@@ -137,7 +157,7 @@
         </span>
       </div>
       <div class="body">
-        <div class="grid">
+        <div class="grid" {@attach (grid) => void showHere(grid, mapId)}>
           <MapView {world} {st} players={session.players} audience={false} focus={here} only={mapId} big {picked} onpick={pick} onmenu={menu} onmove={moveDots} />
         </div>
         <aside class="side">
