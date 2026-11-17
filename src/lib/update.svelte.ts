@@ -171,6 +171,7 @@ let rechecking = false;
 export function recheckHourly(): void {
   if (rechecking) return;
   rechecking = true;
+  watchHands();
   setInterval(() => {
     if (Date.now() - lastAsked < RECHECK_MS || update.status === 'checking' || update.status === 'installing' || !checksOnItsOwn()) return;
     lastAsked = Date.now();
@@ -204,8 +205,9 @@ function underWay(r: Release): boolean {
 /** How long without a key or a click counts as a pause. */
 export const PAUSE_MS = 4000;
 let pauseTimer: ReturnType<typeof setTimeout> | undefined;
-/** A pointer is down (a drag, a held button): not a pause however long it lasts. */
+/** A pointer is down (a held button), or something is being dragged: not a pause however long it lasts. */
 let pointerDown = false;
+let dragging = false;
 
 /**
  * Keep a newer version the hourly check found until the next pause: a place change in the editor (another page or
@@ -216,38 +218,40 @@ let pointerDown = false;
 function holdForAPause(release: Release): void {
   const first = !update.held;
   update.held = release;
-  if (!first) return;
-  pointerDown = false;
-  addEventListener('pointerdown', onPointerDown, true);
-  addEventListener('pointerup', onPointerUp, true);
-  addEventListener('pointercancel', onPointerUp, true);
+  if (first) waitAgain();
+}
+
+/**
+ * Follows the keys, the pointer and drags from the start (a drag begun before a version is held still counts). A
+ * native drag (a tile, a slide) cancels its pointer as it starts, so dragstart and dragend say when it's over.
+ */
+function watchHands(): void {
+  const down = (): void => {
+    pointerDown = true;
+    clearTimeout(pauseTimer);
+  };
+  const up = (): void => {
+    pointerDown = false;
+    waitAgain();
+  };
+  addEventListener('pointerdown', down, true);
+  addEventListener('pointerup', up, true);
+  addEventListener('pointercancel', up, true);
+  addEventListener('dragstart', () => ((dragging = true), clearTimeout(pauseTimer)), true);
+  addEventListener('dragend', () => ((dragging = false), waitAgain()), true);
   addEventListener('keydown', waitAgain, true);
-  waitAgain();
 }
 
-function onPointerDown(): void {
-  pointerDown = true;
-  clearTimeout(pauseTimer);
-}
-
-function onPointerUp(): void {
-  pointerDown = false;
-  waitAgain();
-}
-
+/** (While a version is held: the pause starts again from now.) */
 function waitAgain(): void {
   clearTimeout(pauseTimer);
-  if (!pointerDown) pauseTimer = setTimeout(atAPause, PAUSE_MS);
+  if (update.held && !pointerDown && !dragging) pauseTimer = setTimeout(atAPause, PAUSE_MS);
 }
 
 function takeHeld(): Release | null {
   const release = update.held;
   update.held = null;
   clearTimeout(pauseTimer);
-  removeEventListener('pointerdown', onPointerDown, true);
-  removeEventListener('pointerup', onPointerUp, true);
-  removeEventListener('pointercancel', onPointerUp, true);
-  removeEventListener('keydown', waitAgain, true);
   return release;
 }
 
@@ -257,7 +261,8 @@ function takeHeld(): Release | null {
  * shown version's download open) until the pause after that.
  */
 export function atAPause(): void {
-  if (!update.held || update.status === 'checking' || update.status === 'installing') return;
+  // (Not mid-drag either, a drag over a round's tab opening it: its end starts the pause again.)
+  if (!update.held || pointerDown || dragging || update.status === 'checking' || update.status === 'installing') return;
   const shown = update.status === 'available' ? update.latest : null;
   if (shown && underWay(shown)) return;
   settle(takeHeld());

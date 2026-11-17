@@ -277,26 +277,46 @@ try {
     await hp.keyboard.press('Escape');
     await hp.getByRole('dialog').waitFor({ state: 'detached' });
     assert(await hn.evaluate((n) => !n.closest('[inert]')), 'and usable again once the window closes');
-    // Going to another page of the editor is a pause too.
+    // A drag (a tile picked up, here) is someone at work however long it lasts, even one started before the answer
+    // came: the pause starts when it's dropped.
     hourly = release('99.2.2');
+    const tb = await hp.locator('.tile').nth(1).boundingBox();
+    const before = await at();
+    await hp.mouse.move(tb.x + 10, tb.y + 10);
+    await hp.mouse.down();
+    await hp.mouse.move(tb.x + 40, tb.y + 40, { steps: 5 });
+    await hp.clock.fastForward('01:01:00');
+    await hp.waitForTimeout(300);
+    await hp.clock.fastForward('00:05');
+    await hp.waitForTimeout(300);
+    assert(
+      calls === 6 && (await hn.innerText()).includes('99.2.1 is out') && (await at()) === before,
+      'a newer version (99.2.2) found during a drag that lasts longer than the pause waits: nothing moves',
+    );
+    await hp.mouse.up();
+    await hp.clock.fastForward('00:05');
+    await hp.locator('.data-notice', { hasText: '99.2.2 is out' }).waitFor({ timeout: 2000 });
+    assert(true, 'and shows a few seconds after the drop');
+    // Going to another page of the editor is a pause too.
+    hourly = release('99.2.3');
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(300);
     await hp.keyboard.press('Shift');
-    assert(calls === 6 && (await hn.innerText()).includes('99.2.1 is out'), 'a newer version (99.2.2) found while they work leaves the notice at 99.2.1 for now');
+    assert(calls === 7 && (await hn.innerText()).includes('99.2.2 is out'), 'a newer version (99.2.3) found while they work leaves the notice at 99.2.2 for now');
     await hp.locator('nav > button.round-tab').nth(1).click();
-    await hp.locator('.data-notice', { hasText: '99.2.2 is out' }).waitFor({ timeout: 2000 });
+    await hp.locator('.data-notice', { hasText: '99.2.3 is out' }).waitFor({ timeout: 2000 });
     assert(true, 'and going to another round shows it at once');
     // ⬇ Download's steps stay while a still newer version comes out (the next hourly check after Done brings it up).
     await hp.evaluate(() => (window.open = () => null));
-    await hn.getByRole('button', { name: '⬇ Download 99.2.2' }).click();
-    const hs = hp.locator('.data-notice', { hasText: 'Downloading 99.2.2 in a new tab' });
+    await hn.getByRole('button', { name: '⬇ Download 99.2.3' }).click();
+    const hs = hp.locator('.data-notice', { hasText: 'Downloading 99.2.3 in a new tab' });
     await hs.waitFor();
     hourly = release('99.3.0');
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
     await hp.clock.fastForward('00:05');
     await hp.locator('nav > button.round-tab').first().click();
-    assert(calls === 7 && (await hs.count()) === 1, 'a newer version found while the download’s steps show leaves them as they are');
+    assert(calls === 8 && (await hs.count()) === 1, 'a newer version found while the download’s steps show leaves them as they are');
     // With ⚙ Settings' box unticked, it doesn't ask again.
     await hp.getByRole('button', { name: /^More:/ }).click();
     await hp.getByRole('menuitem', { name: /Settings/ }).click();
@@ -304,7 +324,7 @@ try {
     await hp.keyboard.press('Escape');
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
-    assert(calls === 7, 'with the box unticked in ⚙ Settings, it doesn’t ask every hour');
+    assert(calls === 8, 'with the box unticked in ⚙ Settings, it doesn’t ask every hour');
     await ctx.close();
   }
 
