@@ -809,3 +809,13 @@ export const returningHost = (context) =>
       // (A page with no storage of its own.)
     }
   });
+
+/**
+ * The editor's sidebar Checklist unfolded (it starts folded on a window under 800 px high; the choice is remembered, so
+ * once is enough for a page).
+ */
+export async function showChecklist(page) {
+  const head = page.locator('nav .problems > button.fold');
+  await head.waitFor();
+  if ((await head.getAttribute('aria-expanded')) === 'false') await head.click();
+}

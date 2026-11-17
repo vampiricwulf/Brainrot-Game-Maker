@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, stored, leaveAnswer, revealAnyway } from './helpers.mjs';
+import { addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, showChecklist, stored, leaveAnswer, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -73,6 +73,7 @@ async function crowd() {
   await host.goto(pathToFileURL(file).href);
   await openGameFile(host, gameFile);
   await host.getByText(/^Opened “/).waitFor();
+  await showChecklist(host);
   await host.locator('nav .problem', { hasText: 'Big board' }).waitFor();
   const line = host.locator('nav .problem', { hasText: 'Big board' });
   assert(((await line.getAttribute('title')) ?? (await line.innerText())).includes('too long to read on the board'), 'the editor’s checklist says which category names are too long for the board');

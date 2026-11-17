@@ -110,11 +110,12 @@ try {
   await page.getByRole('tab', { name: /^Answer slide/, selected: true }).waitFor();
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="a"]'), null, { timeout: 3000 });
   assert(true, "a Final's line for its missing answer opens its Answer side, with the focus in the Answer box");
-  // A tiebreaker ticked on but not finished is on the checklist too (a tie would put its blank slide on stream): its line
-  // opens the empty side's box.
+  // A tiebreaker ticked on but not finished is on the checklist too (a tie would put its blank slide on stream), in one
+  // line as a round's problems are, naming both; its line opens the empty side's box.
   await page.getByRole('button', { name: 'Add tiebreaker (optional)' }).click();
   await page.getByLabel('Include a tiebreaker clue').check();
-  await page.locator('nav .problem', { hasText: 'The tiebreaker has no question' }).waitFor();
+  await page.locator('nav .problem', { hasText: 'Tiebreaker: no question, no answer' }).waitFor();
+  assert((await page.locator('nav .problem', { hasText: /tiebreaker/i }).count()) === 1, 'an empty tiebreaker is one checklist line, “Tiebreaker: no question, no answer”');
   await page.locator('main [data-field="q"]').fill('How many toilets?');
   await page.locator('nav > button.round-tab', { hasText: 'Introduction' }).click();
   await page.locator('nav .problem', { hasText: 'The tiebreaker has no answer' }).click();

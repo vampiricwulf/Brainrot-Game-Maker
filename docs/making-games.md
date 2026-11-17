@@ -38,6 +38,9 @@ video, audio or YouTube, arranged freely.
 - **＋ Add tiebreaker (optional)**, at the end of the round list, adds a tiebreaker clue.
 - The **Checklist** at the foot of the list on the left says what's left to do before ▶ Play (⚠, counted in its
   heading) and notes worth a look (ℹ). It stays in view however many rounds there are; click a line to go and fix it.
+  Each round (and the tiebreaker) gets one line, naming two or three things ("Final Jeopardy!: no question, no
+  answer") and counting more. Click its heading to fold it to the counts (▸) or open it again (▾): it starts folded on
+  a window under 800 pixels high, and remembers your choice.
 
 ## Jeopardy boards
 

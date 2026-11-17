@@ -25,6 +25,11 @@ export interface Prefs {
   liveChecklist: boolean;
   /** How the color picker shows a color to type: one Hex box (#rrggbb) or three RGB boxes (ColorPicker.svelte). */
   colorFormat: 'hex' | 'rgb';
+  /**
+   * The editor's sidebar Checklist folded to its heading (its heading's ▸ / ▾). Unset: folded while the window is under
+   * 800 px high, where its lines would cover the sidebar's own tabs.
+   */
+  checklistFolded?: boolean;
   /** Which defaults the stored settings were made with (2: Save replaces by default). */
   v?: number;
 }

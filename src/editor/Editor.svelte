@@ -72,6 +72,7 @@
   import { whileWriting } from '../lib/desktop.svelte';
   import { isCancel } from '../lib/fileio';
   import { goTo, take, type Place } from '../lib/nav.svelte';
+  import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { itemIdsIn } from '../lib/historyops';
   import { rpgRounds } from '../lib/rpg';
   import { copyIsTheBrowsers, createFieldTracker, undoKeyOf } from '../lib/undokeys';
@@ -497,6 +498,22 @@
   const lines = $derived(game.rounds.length ? checklist : checklist.filter((l) => !l.starter));
   const warns = $derived(lines.filter((l) => l.level === 'warn').length);
   const notes = $derived(lines.length - warns);
+  /** The window's height: under 800 px the checklist starts folded (prefs.checklistFolded once its heading is clicked). */
+  let winH = $state(innerHeight);
+  const folded = $derived(prefs.checklistFolded ?? winH < 800);
+  function foldChecklist(): void {
+    prefs.checklistFolded = !folded;
+    savePrefs();
+  }
+  /** The sidebar scrolls and there's more below (a fade at its foot says so). */
+  let navEl = $state<HTMLElement>();
+  let navMore = $state(false);
+  const measureNav = () => void (navMore = !!navEl && navEl.scrollHeight - navEl.scrollTop - navEl.clientHeight > 1);
+  $effect(() => {
+    // (Again once the tabs or the checklist change: a round added, the list folded.)
+    void [game.rounds.length, lines.length, folded, checkH, winH];
+    void tick().then(measureNav);
+  });
   function renameRound(round: Round, name: string, refocus = true): void {
     renamingRound = null;
     const n = name.trim();
@@ -1193,7 +1210,7 @@
   });
 </script>
 
-<svelte:window {onkeydown} onfocusincapture={fields.focusin} oninputcapture={fields.input} />
+<svelte:window {onkeydown} bind:innerHeight={winH} onfocusincapture={fields.focusin} oninputcapture={fields.input} />
 <svelte:document {ondrop} />
 
 <div class="editor" aria-busy={replacing || !!opening}>
@@ -1339,7 +1356,7 @@
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
   <div class="body" use:inertWhile={replacing || !!opening} use:focusRescue>
-    <nav aria-label="Editor" style:scroll-padding-bottom="{checkH}px">
+    <nav aria-label="Editor" style:scroll-padding-bottom="{checkH}px" bind:this={navEl} onscroll={measureNav}>
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
         {#if renamingRound === round.id}
@@ -1453,10 +1470,14 @@
            scrolls in its own box). None for a new game with no rounds: the page itself says what to do. Orange only when
            something needs fixing (notes alone are grey). -->
       {#if game.rounds.length || lines.length}
-        <div class="problems" class:warn={warns > 0} class:ok={!lines.length} bind:offsetHeight={checkH}>
+        <div class="problems" class:warn={warns > 0} class:ok={!lines.length} class:below={navMore} bind:offsetHeight={checkH}>
           {#if lines.length}
-            <div class="navlabel">Checklist{#if warns}{' · '}⚠ {warns}{/if}{#if notes}{' · '}ℹ {notes}{/if}</div>
-            <div class="problem-list">
+            <!-- Its heading folds it (folded to start with on a short window, where its lines would cover the tabs above),
+                 still counting what's left. -->
+            <button class="navlabel fold" aria-expanded={!folded} aria-controls="checklist-lines" onclick={foldChecklist} title={folded ? 'Show the checklist' : 'Fold the checklist'}
+              >Checklist{#if warns}{' · '}⚠ {warns}{/if}{#if notes}{' · '}ℹ {notes}{/if} <span aria-hidden="true">{folded ? '▸' : '▾'}</span></button
+            >
+            <div class="problem-list" id="checklist-lines" hidden={folded}>
               {#each lines as line}
                 <!-- (The fix it offers beside it: ⧉ for an empty card, 🔄 or ↻ to convert, 🗜 a smaller copy; never naming a
                      file, as the line doesn't.) -->
@@ -1956,6 +1977,29 @@
   }
   .problems > .navlabel {
     margin-top: 0;
+  }
+  /* The heading is its fold: a small label as before, in the checklist's color. */
+  .problems > .fold {
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    text-align: left;
+    white-space: normal;
+  }
+  .problems > .fold:hover {
+    text-decoration: underline;
+  }
+  /* More of the sidebar below, under the checklist: a fade over its foot says it scrolls. */
+  .problems.below::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 24px;
+    background: linear-gradient(to bottom, transparent, var(--panel));
+    pointer-events: none;
   }
   .problem-list {
     min-height: 0;

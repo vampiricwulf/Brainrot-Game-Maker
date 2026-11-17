@@ -26,7 +26,8 @@ host panel.
 The **✅ Before you start** list shows two groups:
 
 - **On stream**: the audience window, the phone room and sound (**🔊 Test the sound…**).
-- **The game**: things worth fixing, each with **Fix ›** to that place in the editor. They're only warnings.
+- **The game**: things worth fixing, one line a round as in the editor's Checklist (the same count), each with
+  **Fix ›** to that place in the editor. They're only warnings.
 
 ### Pick how viewers see the game
 

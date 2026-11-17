@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { answerAsk, exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer } from './helpers.mjs';
+import { answerAsk, exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer, showChecklist } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -312,6 +312,7 @@ try {
 
   // ---------- The game's name: a note in the editor's checklist, renamed right on the pre-game screen ----------
   const untitledLine = page.locator('nav .problem', { hasText: 'still called “Untitled Game”' });
+  await showChecklist(page);
   await untitledLine.waitFor();
   assert(true, 'the editor\'s checklist notes a game still called “Untitled Game”');
   await untitledLine.click();
@@ -675,14 +676,25 @@ try {
   await partners.press('Tab');
   await p2.getByLabel('The card a new partner clue gets').selectOption('empty');
   await p2.getByRole('button', { name: 'Randomize partner clues' }).click();
+  // ✅ Before you start counts as the editor's checklist does: a board's problems are one line, as there.
+  await p2.locator('nav .problem', { hasText: 'Jeopardy!: 1 clue to finish' }).waitFor({ state: 'attached' });
+  const editorWarns = (await p2.locator('nav .problems > .fold').innerText()).match(/⚠ (\d+)/)?.[1];
   await p2.getByRole('button', { name: '▶ Play', exact: true }).click();
-  const tileLine = p2.locator('[data-checks] li', { hasText: 'card 1 is empty' });
+  await pointer.getByText(/to check/).waitFor();
+  assert((await pointer.innerText()) === `⚠ ${editorWarns} to check`, `the bar by Start game counts what the editor's checklist does (⚠ ${editorWarns}: ${await pointer.innerText()})`);
+  const tileLine = p2.locator('[data-checks] li', { hasText: 'Jeopardy!: 1 clue to finish' });
   await tileLine.waitFor();
   const said = await tileLine.innerText();
-  assert(said.startsWith("A tile in Jeopardy!: card 1 is empty: there's nothing on it to send") && !/\$\d/.test(said), `in one window the line about the partner clue's empty card names no tile (${said})`);
+  const tip = (await tileLine.locator('span').first().getAttribute('title')) ?? '';
+  assert(
+    said.startsWith('Jeopardy!: 1 clue to finish') && !/\$\d/.test(said + tip) && tip.includes("A tile in Jeopardy!: card 1 is empty: there's nothing on it to send"),
+    `the partner clue's empty card is the board's one line, as in the editor; in one window neither it nor its tooltip names the tile (${said} / ${tip})`,
+  );
+  // (Its Fix › goes where the editor's line goes: the board's first tile to finish, the partner clue.)
   await tileLine.getByRole('button', { name: 'Fix ›' }).click();
-  await p2.getByRole('dialog', { name: 'Edit clue' }).waitFor();
-  assert(true, 'its Fix › opens that tile in the editor');
+  await p2.waitForFunction(() => document.activeElement?.matches('[data-tile]'), null, { timeout: 5000 });
+  const tileTip = await p2.evaluate(() => document.activeElement.getAttribute('aria-label') ?? document.activeElement.textContent);
+  assert((await tabShown()).includes('Jeopardy!') && tileTip.includes('partner clue'), `its Fix › goes to that tile on the board in the editor (${tileTip})`);
   await own.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);

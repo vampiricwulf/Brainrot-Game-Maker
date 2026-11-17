@@ -55,7 +55,8 @@
   import { applyScoreCard, openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
-  import { dailyDoublesShort, partnerTilesShort, phoneUses, phoneUsesLine, validate } from '../lib/validate';
+  import { dailyDoublesShort, partnerTilesShort, phoneUses, phoneUsesLine, validate, type Problem } from '../lib/validate';
+  import { checklistLines } from '../lib/checklist';
   import type { Place } from '../lib/historylabel';
   import { isColorTaken, nextFreeColor, obsKeyed } from '../lib/colors';
   import { announce } from '../lib/announce';
@@ -5064,7 +5065,7 @@
    * once the screen is up, then a moment after changes stop (as the editor's checklist): reading the whole game through
    * its proxies on every key of a player's name made typing lag in big games, and held up ▶ Play itself.
    */
-  let checks = $state.raw<ReturnType<typeof gameChecks>>([]);
+  let checks = $state.raw<GameCheck[]>([]);
   /** The checks have been worked out once (until then, ✅ Before you start doesn't say there's nothing to check). */
   let checksReady = $state(false);
   /** The bar's ⚠ 2 to check: the card's checks, in sight, with the keys on them. */
@@ -5097,35 +5098,79 @@
   onMount(() => {
     requestAnimationFrame(() => setTimeout(recheckNow));
   });
-  function gameChecks(g: Game) {
+  /** A line of ✅ Before you start › The game. */
+  interface GameCheck {
+    text: string;
+    /** Its words in one window, where viewers see this page (none: the same). */
+    quiet?: string;
+    /** What a grouped line stands for (its tooltip), and in one window. */
+    details?: string[];
+    quietDetails?: string[];
+    level: Problem['level'];
+    /** Where ◀ Fix in editor goes: a round's id or an editor tab. */
+    fix?: string;
+    /** 🎲 Place now: the round whose Daily Doubles or partner clues aren't placed yet. */
+    ddRound?: number;
+    ptRound?: number;
+    /** 🗜 Make smaller: the file. */
+    shrink?: string;
+    /** Where its own Fix › goes. */
+    place?: Place;
+  }
+  function gameChecks(g: Game): GameCheck[] {
     // (A board short of Daily Doubles gets a button to place them.)
     // (Daily Doubles not placed yet are only a note in the editor, as Start places them: here they're listed with it.)
     // (Whether a video or sound plays in this browser: as worked out in the editor, as nothing is checked here.)
     // (A card's file too big for the buzzer server, or of a kind phones can't play, that 🗜 can make a copy of: its
     // line gets 🗜 Make smaller. There's no ↻ here: an MKV that plays is 🗜's too.)
     const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id] && shrinksFurther(g, m, fileBytes);
-    return validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls, plays: knownVerdict, canShrink, repack: false })
-      .map((p) => {
-        const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;
-        const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
-        const pt = isBoard(r) && partnerShort(r) && p.text.includes('partner clue') && p.text.includes(' not placed yet');
-        // (A player-only file can't add or swap files: its own words for those.)
-        const said = (t: { text: string; player?: string }) => (app.playerOnly && t.player ? t.player : t.text);
-        return {
-          text: said(p),
-          // (In one window this page is on stream: a line about a tile, a secret space or object doesn't say which.)
-          quiet: p.quiet && said({ text: p.quiet.text, player: p.quiet.player ?? p.player }),
-          level: p.level,
-          // Where ◀ Fix in editor goes (not this screen's own things).
-          fix: typeof p.tab === 'number' ? g.rounds[p.tab]?.id : p.tab === 'play' ? undefined : p.tab,
-          ddRound: dd ? (p.tab as number) : undefined,
-          ptRound: pt ? (p.tab as number) : undefined,
-          shrink: p.shrink,
-          // (Its own Fix › goes there.)
-          place: p.place,
-        };
-      })
-      .filter((p) => p.level === 'warn' || p.ddRound !== undefined || p.ptRound !== undefined);
+    const problems = validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls, plays: knownVerdict, canShrink, repack: false });
+    // (A player-only file can't add or swap files: its own words for those.)
+    const said = (t: { text: string; player?: string }) => (app.playerOnly && t.player ? t.player : t.text);
+    // The warnings as the editor's checklist puts them, one line a round (and one for the tiebreaker), so the bar's
+    // ⚠ 2 to check is the editor's ⚠ 2. Also in the words for one window, where this page is on stream: a line about a
+    // tile, a secret space or object doesn't say which (the same lines, as they're grouped by where they are).
+    const lines = checklistLines(g, problems.map((p) => ({ ...p, text: said(p) })));
+    const hushed = checklistLines(g, problems.map((p) => ({ ...p, text: p.quiet ? said({ text: p.quiet.text, player: p.quiet.player ?? p.player }) : said(p) })));
+    // Daily Doubles and partner clues not placed yet: notes of their own, with 🎲 Place now (Start places them too).
+    const unplaced = (p: Problem) => {
+      const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;
+      const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
+      const pt = isBoard(r) && partnerShort(r) && p.text.includes('partner clue') && p.text.includes(' not placed yet');
+      return dd || pt ? { dd, pt } : null;
+    };
+    return lines.flatMap((line, i): GameCheck[] => {
+      const quiet = hushed[i];
+      const warn: GameCheck[] =
+        line.level === 'warn'
+          ? [
+              {
+                text: line.text,
+                quiet: quiet && quiet.text !== line.text ? quiet.text : undefined,
+                // (Its tooltip: what it stands for, as the editor's.)
+                details: line.details.length > 1 ? line.details : undefined,
+                quietDetails: line.details.length > 1 ? quiet?.details : undefined,
+                level: line.level,
+                // Where ◀ Fix in editor goes (not this screen's own things).
+                fix: line.round ?? (typeof line.tab === 'number' || line.tab === 'play' ? undefined : line.tab),
+                ddRound: undefined,
+                ptRound: undefined,
+                shrink: line.shrink?.[0],
+                // (Its own Fix › goes there.)
+                place: line.place,
+              },
+            ]
+          : [];
+      const notes = line.round
+        ? problems.flatMap((p) => {
+            const u = p.tab === line.tab ? unplaced(p) : null;
+            if (!u) return [];
+            const ri = p.tab as number;
+            return [{ text: said(p), quiet: undefined, details: undefined, quietDetails: undefined, level: p.level, fix: line.round, ddRound: u.dd ? ri : undefined, ptRound: u.pt ? ri : undefined, shrink: undefined, place: p.place }];
+          })
+        : [];
+      return [...warn, ...notes];
+    });
   }
 
   /**
@@ -7090,7 +7135,8 @@
         <ul>
           {#each checks as c}
             <li class:warn-line={c.level === 'warn'}>
-              <span>{c.level === 'warn' ? '' : 'ℹ '}{!wantAudience && c.quiet ? c.quiet : c.text}</span>
+              <!-- (Its tooltip: what a grouped line stands for, in the words viewers may see.) -->
+              <span title={(!wantAudience && c.quietDetails ? c.quietDetails : c.details)?.join('\n')}>{c.level === 'warn' ? '' : 'ℹ '}{!wantAudience && c.quiet ? c.quiet : c.text}</span>
               {#if c.ddRound !== undefined}
                 {@const ri = c.ddRound}
                 <button

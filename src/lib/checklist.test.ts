@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newGame, newRound, PLAYER_WHEEL, setSlideText, type BoardRound, type FinalRound } from './model';
+import { newFinalRound, newGame, newRound, PLAYER_WHEEL, setSlideText, textSlide, type BoardRound, type FinalRound } from './model';
 import { validate } from './validate';
 import { answerCardAt, checklistLines } from './checklist';
 import { newRpgRound, newScreen } from './rpg';
@@ -51,6 +51,57 @@ describe('the checklist in the sidebar', () => {
     const only = lines().find((l) => l.tab === 0)!;
     expect(only.text).toBe('Jeopardy!: 1 category with no name');
     expect(only.place).toEqual({ tab: 'round', round: board.id, part: { kind: 'category', category: board.categories[4].id } });
+  });
+});
+
+describe('two or three things to fix in one line', () => {
+  it('names them in the line, the round’s name once; more, or too long, says how many', () => {
+    const game = jeopardyGame();
+    const final = newFinalRound();
+    game.rounds = [final];
+    const line = () => checklistLines(game, validate(game)).find((l) => l.tab === 0)!;
+    expect(line().text).toBe('Final Jeopardy!: no question, no answer');
+    // (Still going to the first: the question.)
+    expect(line().place).toEqual({ tab: 'round', round: final.id, part: { kind: 'final', side: 'q' } });
+    expect(line().details).toEqual(['Final Jeopardy! has no question', 'Final Jeopardy! has no answer']);
+    // One: as it is.
+    setSlideText(final.questionSlide, 'Q?');
+    expect(line().text).toBe('Final Jeopardy! has no answer');
+    // Four: counted.
+    const lines = checklistLines(game, ['a', 'b', 'c', 'd'].map((x) => ({ text: `Final Jeopardy!: ${x}`, tab: 0, level: 'warn' as const })));
+    expect(lines.map((l) => l.text)).toEqual(['Final Jeopardy!: 4 things to fix']);
+    // Too long for the sidebar, or one not starting with the name: counted too.
+    const long = checklistLines(game, [
+      { text: 'Final Jeopardy! has no answer', tab: 0, level: 'warn' },
+      { text: 'Final Jeopardy! was switched off in the old game: kept because something is written in it', tab: 0, level: 'info' },
+    ]);
+    expect(long[0].text).toBe('Final Jeopardy!: 2 things to fix');
+  });
+  it('a board with a few things to fix but no clues to finish names them', () => {
+    const game = jeopardyGame();
+    const board = game.rounds[0] as BoardRound;
+    game.rounds = [board];
+    board.dailyDoubleCount = 0;
+    fill(board);
+    // (No clues to finish: what's left is said, as for any round.)
+    const lines = checklistLines(game, [
+      { text: 'Jeopardy!: 1 category with no name', tab: 0, level: 'warn' },
+      { text: 'Jeopardy!: no playable tiles', tab: 0, level: 'warn' },
+    ]);
+    expect(lines.map((l) => l.text)).toEqual(['Jeopardy!: 1 category with no name, no playable tiles']);
+  });
+});
+
+describe('the tiebreaker in the checklist', () => {
+  it('is one line, like a round’s, going to its first empty side', () => {
+    const game = jeopardyGame();
+    game.tiebreaker = { questionSlide: textSlide(), answerSlide: textSlide() };
+    const line = () => checklistLines(game, validate(game)).filter((l) => l.tab === 'tiebreaker');
+    expect(line().map((l) => [l.text, l.level, l.details.length])).toEqual([['Tiebreaker: no question, no answer', 'warn', 2]]);
+    expect(line()[0].place).toEqual({ tab: 'tiebreaker', side: 'q' });
+    setSlideText(game.tiebreaker!.questionSlide, 'Closest wins');
+    expect(line().map((l) => l.text)).toEqual(['The tiebreaker has no answer']);
+    expect(line()[0].place).toEqual({ tab: 'tiebreaker', side: 'a' });
   });
 });
 

@@ -1,4 +1,5 @@
-// The editor's checklist in the sidebar: the problems validate() finds, one line a round, and where a click on it goes.
+// The editor's checklist in the sidebar (and ▶ Play's ✅ Before you start): the problems validate() finds, one line a
+// round, and where a click on it goes.
 import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isFinal, roundName, type BoardRound, type ClueCard, type Game, type Id, type Slide } from './model';
 import type { Place } from './historylabel';
 import { toolChosen } from './tools';
@@ -81,13 +82,38 @@ export function boardPlace(game: Game, round: BoardRound): Place | undefined {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** Past this many characters, a line's details make it too long for the sidebar: it says how many instead. */
+const INLINE_MAX = 70;
+
 /**
- * The checklist's lines: a round's problems make one line ("Jeopardy!: 30 clues to finish"), the rest one each. A
- * board's line goes to its first unfinished tile (else its first nameless category).
+ * Two or three problems of one round said in its line, its name once ("Final Jeopardy!: no question, no answer"), so a
+ * touch or keyboard user reads them without the tooltip. Null: more than three, one that doesn't start with the name, or
+ * too long for the sidebar ("N things to fix" then).
+ */
+function inline(name: string, details: string[]): string | null {
+  if (details.length < 2 || details.length > 3) return null;
+  const lower = name.toLowerCase();
+  const rest = details.map((d) => {
+    // ("Jeopardy!: 2 clues with no answer", "Final Jeopardy! has no answer", "The tiebreaker has no answer".)
+    const head = d.slice(0, name.length).toLowerCase() === lower ? name.length : d.slice(0, name.length + 4).toLowerCase() === `the ${lower}` ? name.length + 4 : -1;
+    if (head < 0) return null;
+    const after = d.slice(head);
+    return after.startsWith(': ') ? after.slice(2) : after.startsWith(' has ') ? after.slice(5) : null;
+  });
+  if (rest.some((r) => !r)) return null;
+  const text = `${name}: ${rest.join(', ')}`;
+  return text.length <= INLINE_MAX ? text : null;
+}
+
+/**
+ * The checklist's lines: a round's problems make one line ("Jeopardy!: 30 clues to finish"), and so do the tiebreaker's,
+ * the rest one each. A board's line goes to its first unfinished tile (else its first nameless category), the
+ * tiebreaker's to its first empty side.
  */
 export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[] {
   const lines: ChecklistLine[] = [];
   const byRound = new Map<number, ChecklistLine>();
+  let tiebreaker: ChecklistLine | undefined;
   for (const p of problems) {
     const round = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
     const shrink = {
@@ -95,8 +121,16 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
       ...(p.convert?.length ? { convert: [...p.convert] } : {}),
       ...(p.sameAsAnswer && p.place ? { answerCard: p.place } : {}),
     };
+    // (The tiebreaker isn't a round, but its question and answer are one thing to write, like a Final's: one line, going to
+    // the first side left empty.)
+    if (p.tab === 'tiebreaker' && tiebreaker) {
+      tiebreaker.details.push(p.text);
+      if (p.level === 'warn') tiebreaker.level = 'warn';
+      continue;
+    }
     if (!round) {
       lines.push({ text: p.text, level: p.level, tab: p.tab, details: [p.text], place: p.place, ...(p.starter ? { starter: true } : {}), ...shrink });
+      if (p.tab === 'tiebreaker') tiebreaker = lines[lines.length - 1];
       continue;
     }
     const line = byRound.get(p.tab as number);
@@ -136,12 +170,13 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
         line.text = todo.length
           ? `${name}: ${plural(todo.length, 'clue')} to finish${others ? `, ${others} more to fix` : ''}`
           : others
-            ? `${name}: ${plural(others, 'thing')} to fix`
+            ? ((others === line.details.length && inline(name, line.details)) || `${name}: ${plural(others, 'thing')} to fix`)
             : unplaced.length
               ? `${name}: ${unplaced.join(' and ')} not placed yet (Start game places ${n === 1 ? 'it' : 'them'})${besides ? ` · ${plural(besides, 'more note')}` : ''}`
               : `${name}: ${plural(line.details.length, 'note')}`;
       }
-    } else if (line.details.length > 1) line.text = `${name}: ${plural(line.details.length, 'thing')} to fix`;
+    } else if (line.details.length > 1) line.text = inline(name, line.details) ?? `${name}: ${plural(line.details.length, 'thing')} to fix`;
   }
+  if (tiebreaker && tiebreaker.details.length > 1) tiebreaker.text = inline('Tiebreaker', tiebreaker.details) ?? `Tiebreaker: ${plural(tiebreaker.details.length, 'thing')} to fix`;
   return lines;
 }

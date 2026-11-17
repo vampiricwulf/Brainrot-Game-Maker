@@ -242,8 +242,13 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   off while it's on), and an RPG world's ⋯ has ✎ Rename world,
   ⧉ Duplicate world (this round plays the copy: worldedit `duplicateWorld`) and 🗑 Delete world.
 - **The sidebar** lists the rounds, then the Game pages, with the **Checklist** pinned at its foot: its heading counts
-  what's left to fix and the notes ("Checklist · ⚠ 2 · ℹ 1") and stays in view however long the list is (a long list
-  scrolls in its own box, at most about a third of the height). Until the game has a round it leaves out a new game's own lines (no title, players or rounds yet: `Problem.starter`), as the first screen says what to do. No
+  what's left to fix and the notes ("Checklist · ⚠ 2 · ℹ 1 ▾") and stays in view however long the list is (a long list
+  scrolls in its own box, at most about a third of the height). The heading folds the list to itself (▸) and opens it
+  (▾); it starts folded on a window under 800 px high, where the lines would cover the sidebar's own tabs, and the
+  choice is kept (`prefs.checklistFolded`). When more of the sidebar is below, a fade over the checklist's top edge says
+  it scrolls. A round's problems make one line, and so do the tiebreaker's ("Tiebreaker: no question, no answer", going
+  to the first side left empty): two or three are named in it, the round's name once, more are counted ("3 things to
+  fix"), as is a line that wouldn't fit (checklist.ts `inline`). Until the game has a round it leaves out a new game's own lines (no title, players or rounds yet: `Problem.starter`), as the first screen says what to do. No
   label is cut to "…": a long one goes on two lines, and "(optional)" sits on a small line under its name.
 - **A slides round's page** says how it plays in its header's line, and its slide is no taller than the window has
   room for below the round name, notes, slide tabs and Text box, so the whole slide shows on a laptop screen. The Text
@@ -590,8 +595,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
    players' cards on a narrow one) is one card in two groups: *On stream* (one window: "Viewers see this page now", with
    what they see in the game, first; the audience window, the room and who's in, the sound and its 🔊 Test the sound…;
    ✕ folds only these tips, "Show them" brings them back), the warnings about stream sound and a closed audience window
-   above them (never folded; 🖥 Display says none of these again), and *The game*, validate()'s warnings
-   (and the notes Start takes care of), each line with its own Fix › (that problem's place in the editor), 🎲 Place now
+   above them (never folded; 🖥 Display says none of these again), and *The game*, validate()'s warnings grouped as the
+   editor's checklist groups them, one line a round (so "⚠ 2 to check" is the editor's ⚠ 2), and the notes Start takes
+   care of, each line with its own Fix › (where the editor's line goes), 🎲 Place now
    and 🗜 Make smaller where they apply, and ◀ Fix in editor to the first; never folded. The Start bar keeps one pointer,
    "⚠ 2 to check" ("ℹ 1 note" for notes alone), which scrolls to it with the keys on it. The page is at least as tall
    as the window, so the Start bar rests at the window's foot.

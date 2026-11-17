@@ -124,6 +124,22 @@ try {
   // (Off, it reads ＋ Add tiebreaker (optional).)
   assert(at(/tiebreaker/i) === at(/Jeopardy! 3/) + 1 && at(/Add round/) === at(/tiebreaker/i) + 1, `the Tiebreaker comes right after the rounds (${order.join(' | ')})`);
   assert(at(/^Game$/i) > at(/Add round/) && at(/Sounds/) > at(/^Game$/i) && at(/Theme/) > at(/^Game$/i), 'the game-wide tabs have a Game group of their own');
+  // At 720 px high the checklist starts folded to its heading, still counting what's left: the sidebar's own tabs stay
+  // clear of it, down to 🕘 History.
+  const fold = page.locator('nav .problems > button.fold');
+  await fold.waitFor();
+  const shut = await page.evaluate(() => {
+    const p = document.querySelector('nav .problems').getBoundingClientRect();
+    const h = [...document.querySelectorAll('nav > button')].find((b) => b.textContent.includes('🕘 History')).getBoundingClientRect();
+    return { top: Math.round(p.top), height: Math.round(p.height), history: Math.round(h.bottom), lines: document.querySelectorAll('nav .problem').length };
+  });
+  assert(
+    (await fold.getAttribute('aria-expanded')) === 'false' && /^Checklist · ⚠ \d+( · ℹ \d+)? ▸$/i.test((await fold.innerText()).replace(/\s+/g, ' ').trim()) && shut.height < 40 && shut.history <= shut.top,
+    `on a 720-high window the checklist starts folded to its heading (“${await fold.innerText()}”), below 🕘 History (${JSON.stringify(shut)})`,
+  );
+  await fold.click();
+  assert((await fold.getAttribute('aria-expanded')) === 'true' && (await fold.innerText()).trim().endsWith('▾'), 'its heading unfolds it');
+  assert((await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).checklistFolded)) === false, '…and this computer remembers it open');
   // (A third board is “Jeopardy! 3”, a name that can't be read as its place, unlike “Round 3”.)
   await page.locator('nav .problem', { hasText: 'Jeopardy! 3:' }).waitFor();
   const lines = await page.locator('nav .problem').allInnerTexts();
@@ -151,6 +167,14 @@ try {
     const at = await pinned();
     assert(at.bottom <= 720 && at.first <= 720 && /^Checklist · ⚠ \d+/.test(at.head), `the checklist's heading and first line stay in view (nav scrolled to ${to}: ${JSON.stringify(at)})`);
   }
+  // More of the sidebar under the open checklist: a fade over its foot says so, gone once scrolled to the end.
+  const fades = () => page.locator('nav .problems').evaluate((p) => p.classList.contains('below') && getComputedStyle(p, '::before').content !== 'none');
+  await page.locator('nav').evaluate((n) => (n.scrollTop = 0));
+  await page.waitForFunction(() => document.querySelector('nav .problems.below'));
+  assert(await fades(), 'with more of the sidebar below, a fade over its foot says it scrolls');
+  await page.locator('nav').evaluate((n) => (n.scrollTop = 9999));
+  await page.waitForFunction(() => !document.querySelector('nav .problems.below'));
+  assert(!(await fades()), '…and none once it’s scrolled to the end');
   await page.locator('nav').evaluate((n) => (n.scrollTop = 0));
   await page.locator('nav > button', { hasText: '🖼 Media' }).focus();
   await page.keyboard.press('Tab');
