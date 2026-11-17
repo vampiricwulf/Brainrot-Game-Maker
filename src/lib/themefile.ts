@@ -8,7 +8,7 @@ export const THEME_FORMAT = 'brainrot-theme';
 /** The theme file format's version: a newer file says to update the app; an older one is read as it is. */
 export const THEME_VERSION = 1;
 export const THEME_EXT = '.brainrot-theme';
-/** What 📂 Import theme… offers to open. */
+/** What 📥 Import theme… offers to open. */
 export const THEME_FILES = `${THEME_EXT},.json,application/json`;
 /** A theme file, by its name (Open… and a drop on the editor take one too). */
 export const isThemeFile = (name: string) => /\.brainrot-theme$/i.test(name);

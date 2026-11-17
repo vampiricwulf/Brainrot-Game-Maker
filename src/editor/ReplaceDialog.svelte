@@ -41,12 +41,12 @@
       <p class="hint">Either way “{title}” isn't lost: {go} anyway keeps it {keptHere()}, and Open… → Recent games brings it back.</p>
     {/if}
     <div class="modal-foot">
-      <button class="ghost" onclick={() => onchoice('cancel')}>Cancel</button>
-      <span class="spacer"></span>
       <button
         onclick={() => onchoice('discard')}
         title={full ? `${go} without saving “${title}” (it's lost)` : `${go} without saving “${title}” to a file (it stays in Recent games)`}>{go} anyway</button
       >
+      <span class="spacer"></span>
+      <button class="ghost" onclick={() => onchoice('cancel')}>Cancel</button>
       <button class="primary" data-autofocus onclick={() => onchoice('save')} title="Save “{title}” to a file, then go on">Save first</button>
     </div>
   </div>

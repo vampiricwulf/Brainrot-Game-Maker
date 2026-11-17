@@ -57,7 +57,7 @@
 <div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Import rounds" use:modal data-undo="off">
     <div class="modal-head">
-      <h2 class="modal-title">📂 Import rounds from “{source.title}”</h2>
+      <h2 class="modal-title">📥 Import rounds from “{source.title}”</h2>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     {#if !source.rounds.length}
@@ -76,13 +76,13 @@
       </div>
     {/if}
     <div class="modal-foot">
-      <button class="ghost" onclick={onclose}>Cancel</button>
       {#if source.rounds.length > 1}
         <button class="ghost" onclick={() => (picked = picked.length === source.rounds.length ? [] : source.rounds.map((r) => r.id))}>
           {picked.length === source.rounds.length ? 'Tick none' : 'Tick all'}
         </button>
       {/if}
       <span class="spacer"></span>
+      <button class="ghost" onclick={onclose}>Cancel</button>
       <button class="primary" onclick={bring} disabled={!picked.length}>Import {picked.length || ''} round{picked.length === 1 ? '' : 's'}</button>
     </div>
   </div>

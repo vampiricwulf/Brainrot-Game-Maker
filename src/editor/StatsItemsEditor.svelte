@@ -510,7 +510,7 @@
   <h3>Items</h3>
   <div class="row">
     <button onclick={addItem}>＋ Add item</button>
-    <button class="ghost" onclick={importCsv} title="Columns: name, price, stackable, wearable, description">📂 Import CSV…</button>
+    <button class="ghost" onclick={importCsv} title="Columns: name, price, stackable, wearable, description">📥 Import CSV…</button>
     <button class="ghost" onclick={exportCsv} disabled={!game.items?.length}>⬇ Export CSV</button>
   </div>
   <div class="list" role={game.items?.length ? 'list' : undefined} aria-label={game.items?.length ? 'Items' : undefined}>

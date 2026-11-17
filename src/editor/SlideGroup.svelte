@@ -137,11 +137,6 @@
     border-radius: 6px;
     line-height: 1.25;
   }
-  /* ＋ Add slide (and ＋ 🤫 Card) sit quietly after the tabs, as they did, the size of the buttons beside them. */
-  .add {
-    font-size: 12px;
-    opacity: 0.8;
-  }
   .gap {
     width: 8px;
     flex: none;

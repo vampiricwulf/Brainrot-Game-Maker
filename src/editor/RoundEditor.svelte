@@ -1295,10 +1295,13 @@
     display: block;
     min-height: 2lh;
   }
+  /* Each block's label, boxes and line share rows with the block beside it: Partner clues' selects wrapping under its
+     boxes (a laptop) keep both blocks' "… on the board" lines level. */
   .values .group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    row-gap: 4px;
   }
   .values .lbl {
     color: var(--muted);

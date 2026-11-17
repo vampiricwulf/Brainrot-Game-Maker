@@ -1,5 +1,5 @@
 <!--
-  A shared theme coming in: a pasted code (Paste theme code…) or a file (📂 Import theme…). It shows the theme on this
+  A shared theme coming in: a pasted code (Paste theme code…) or a file (📥 Import theme…). It shows the theme on this
   game's board first, then "Use in this game" or "Save to my themes".
 -->
 <script lang="ts">
@@ -146,8 +146,9 @@
         {/if}
       </p>
       <div class="modal-foot">
-        <button class="ghost" type="button" onclick={onclose}>Cancel</button>
         <button type="button" onclick={() => shared && onsave(shared)}>💾 Save to my themes</button>
+        <span class="spacer"></span>
+        <button class="ghost" type="button" onclick={onclose}>Cancel</button>
         <button class="primary" type="button" onclick={() => shared && onuse(shared)}>🎨 Use in this game</button>
       </div>
     {/if}

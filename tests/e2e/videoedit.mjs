@@ -433,7 +433,15 @@ try {
   await clueEditor.locator('.itembar [data-edit-media]').click();
   await dialog.waitFor();
   await dialog.locator('[data-trimbar]').waitFor({ timeout: 30_000 });
-  assert((await foot().getByRole('button').allInnerTexts()).join(' | ') === 'Cancel | Only this item | Apply to all 2', 'its panel’s ✎ Edit video…, from an item whose file another item uses: Cancel, Only this item, Apply to all 2');
+  const footAt = await foot().evaluate((f) => {
+    const r = (b) => b.getBoundingClientRect();
+    const [only, cancel, apply] = f.querySelectorAll('button');
+    return { together: r(apply).left - r(cancel).right <= 12 && r(apply).right >= r(f).right - 1, apart: r(only).right < r(cancel).left - 24 };
+  });
+  assert(
+    (await foot().getByRole('button').allInnerTexts()).join(' | ') === 'Only this item | Cancel | Apply to all 2' && footAt.together && footAt.apart,
+    `its panel’s ✎ Edit video…, from an item whose file another item uses: Only this item at the left, Cancel and Apply to all 2 together at the right (${JSON.stringify(footAt)})`,
+  );
   await dialog.getByRole('button', { name: '✂ Keep just what this item plays (0:00.5–0:02)' }).click();
   assert(
     (await dialog.getByRole('slider', { name: 'Start of the trim' }).getAttribute('aria-valuetext')) === '0:00.5' && (await dialog.getByRole('slider', { name: 'End of the trim' }).getAttribute('aria-valuetext')) === '0:02.0',

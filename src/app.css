@@ -47,6 +47,8 @@
   --z-menu: 300;
   --z-ask: 400;
   --z-toast: 500;
+  /* The width a page of settings stops at on a wide screen (.page; a slides round's fields above its slide). */
+  --page-width: 1200px;
   color-scheme: dark;
 }
 
@@ -292,11 +294,17 @@ body:has(.in-panel [aria-modal='true']) .toast {
   padding: 2px 8px;
   flex-shrink: 0;
 }
+/* A window's buttons, one layout in every window: Cancel (or Close) and the main button together at the right, the
+   main one last; anything else (a hint, Tick all, ▶ Watch it, Start new anyway) at the left, before a .spacer, which
+   keeps it apart even when a long hint takes the rest of the line. */
 .modal-foot {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
+}
+.modal-foot > .spacer {
+  min-width: 24px;
 }
 /* A window taller than the screen scrolls under its foot: Done and the rest stay in sight, whole. */
 :where(.modal) > .modal-foot {
@@ -332,8 +340,9 @@ body:has(.in-panel [aria-modal='true']) .toast {
 }
 
 /* A page in the editor: its title (20px) and one muted line, its actions on the right (PageHeader). Forms stay
-   readable on a wide screen; boards and maps fill it. */
-.page { max-width: 1200px; }
+   readable on a wide screen; boards, maps and a slides round's slide fill it, and so does a round's header (its
+   buttons stay put from one round's tab to the next). */
+.page { max-width: var(--page-width); }
 .page-header {
   display: flex;
   gap: 12px;

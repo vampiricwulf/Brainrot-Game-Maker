@@ -4,7 +4,8 @@
 // name, the last clue's Ctrl+Enter, Import clues keeping what was pasted, slice weights, ＋ buttons that put the
 // focus on what they add, and a board's six columns fitting a narrower window. Also: an RPG screen pasted into
 // another game bringing the items and stats its objects use, and undone where it was pasted. And the sample game's
-// sidebar at 1280×720, pages opening at their top, and a round's name on a tablet.
+// sidebar at 1280×720, pages opening at their top, and a round's name on a tablet; its round pages at 1920 (one header
+// width, a slides round's slide filling it), the slide's buttons all one size, and the board's two count lines level.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -669,6 +670,72 @@ try {
       assert(h.cut <= 0 && h.width >= 200 && h.wide <= 0 && (width === 1280 ? h.beside : h.under), `at ${width} px wide the round's name shows whole, its buttons ${width === 1280 ? 'beside' : 'under'} it (${JSON.stringify(h)})`);
     }
     await sp.context().close();
+  }
+
+  // ---------- The sample's round pages: one header width, a slides round's slide, level hints, the slide's buttons ----------
+  {
+    const wp = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
+    wp.on('pageerror', (e) => errors.push(e.message));
+    await wp.goto(pathToFileURL(file).href);
+    await wp.getByRole('button', { name: /Try a sample game/ }).click();
+    const roundTab = (name) => wp.locator('nav > button.round-tab').filter({ hasText: name }).first();
+    // At 1920 a round's buttons stay put from tab to tab: its header is one width on every round's page.
+    const edges = [];
+    for (const name of [/Introduction/, /^\W*Jeopardy!$/, /Adventure/, /Board game/, /Final Jeopardy!/]) {
+      await roundTab(name).click();
+      const del = await wp.getByRole('button', { name: '🗑 Delete round' }).boundingBox();
+      edges.push(Math.round(del.x + del.width));
+    }
+    assert(new Set(edges).size === 1 && edges[0] > 1800, `at 1920 🗑 Delete round is in one place on every round's page (right edges ${edges.join(', ')})`);
+    // A slides round's slide fills the width, as a board does; its Round name and Host notes stay at the readable width.
+    await roundTab(/Introduction/).click();
+    const slides = await wp.evaluate(() => {
+      const main = document.querySelector('main');
+      const r = (el) => el.getBoundingClientRect();
+      return {
+        head: r(main.querySelector('.page-header')).right,
+        editor: r(main.querySelector('.se')).right,
+        canvas: Math.round(r(main.querySelector('.se .canvas')).width),
+        fields: r(main.querySelector('[data-field="round-notes"]')).right - r(main.querySelector('[data-round-name]')).left,
+        scroll: main.scrollHeight - main.clientHeight,
+      };
+    });
+    assert(
+      Math.abs(slides.editor - slides.head) <= 2 && slides.canvas > 1000 && slides.fields <= 1200 && slides.scroll <= 0,
+      `at 1920 a slides round's slide editor reaches the header's right edge, its fields stay at the readable width, and the whole slide shows (${JSON.stringify(slides)})`,
+    );
+    // The Final's form stays at the readable width under its full-width header.
+    await roundTab(/Final Jeopardy!/).click();
+    const final = await wp.evaluate(() => document.querySelector('main .se').getBoundingClientRect().right - document.querySelector('main [data-round-name], main input').getBoundingClientRect().left);
+    assert(final <= 1200, `the Final's form keeps the readable width (${Math.round(final)})`);
+    // ＋ Add slide and ＋ 🤫 Card are the same small button as the rest of the slide's group.
+    const look = (b) => {
+      const s = getComputedStyle(b);
+      return [Math.round(b.getBoundingClientRect().height), s.fontSize, s.opacity, s.borderRadius, s.paddingTop, s.paddingLeft].join(' ');
+    };
+    const group = await wp.evaluate(
+      (f) => {
+        const look = new Function(`return ${f}`)();
+        const g = document.querySelector('main .tabs .group');
+        const bs = [...g.closest('.tabs').querySelectorAll('.add'), ...g.querySelectorAll(':scope > button:not(.add):not(:disabled)')];
+        return bs.map((b) => `${b.textContent.trim()}: ${look(b)}`);
+      },
+      look.toString(),
+    );
+    const styles = new Set(group.map((l) => l.split(': ')[1]));
+    assert(group.some((l) => l.startsWith('＋ 🤫 Card')) && group.some((l) => l.startsWith('＋ Add slide')) && styles.size === 1, `the Final's slide buttons are one small button, ＋ Add slide and ＋ 🤫 Card too (${group.join(' | ')})`);
+    // At laptop widths Partner clues' selects take a second line: the two blocks' "… on the board" lines stay level.
+    await roundTab(/^\W*Jeopardy!$/).click();
+    for (const [w, h] of [[1280, 720], [1366, 768]]) {
+      await wp.setViewportSize({ width: w, height: h });
+      const hints = await wp.evaluate(() => {
+        const [dd, pt] = [...document.querySelectorAll('main .values .extras .group')];
+        const r = (el) => Math.round(el.getBoundingClientRect().top);
+        return { dd: r(dd.querySelector('.hint')), pt: r(pt.querySelector('.hint')), wrapped: r(pt.querySelector('select:last-of-type')) > r(pt.querySelector('input')) + 10, ddText: dd.querySelector('.hint').textContent, ptText: pt.querySelector('.hint').textContent };
+      });
+      assert(hints.dd === hints.pt && hints.wrapped && /on the board/.test(hints.ddText) && /on the board/.test(hints.ptText), `at ${w}×${h} the ⭐ Daily Doubles and 🤝 Partner clues lines are level, with Partner clues' 🤫 Card on a second line (${JSON.stringify(hints)})`);
+    }
+    await wp.context().close();
   }
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));

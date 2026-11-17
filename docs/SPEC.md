@@ -274,7 +274,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   category”, and the box then says 6; at 0 it's greyed). Placement is weighted toward the lower (higher-value) rows like
   on TV, and it never picks empty or wheel/dice tiles. The hint under it says how many are on the board and how many
   Start game places, by the checklist's rule. ⭐ Daily Doubles and 🤝 Partner clues sit on a line of their own under the
-  row values, as two fixed columns (one on a phone), each hint under its box, so a box never moves while you type. Pressing it again re-rolls the placement. The DD positions are visible only in the editor and the host view.
+  row values, as two fixed columns (one on a phone), each hint under its box, so a box never moves while you type; the
+  two hints are level, even where Partner clues' Plays and 🤫 Card take a second line (a laptop). Pressing it again re-rolls the placement. The DD positions are visible only in the editor and the host view.
 - **🤝 Partner clues** (PARTNER-CLUES-SPEC.md §21, P4): make any tile one by hand, or set how many next to ⭐ Daily
   Doubles and press **🔀 Randomize** to place `partnerCount` of them at random, spread over the categories, only on
   tiles with a written question and answer and never on a Daily Double. A tile that was a partner clue keeps its own
@@ -318,7 +319,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼 Image,
   🎬 Video, 🔊 Sound, 🌐 Link, a drop or a paste) the keys are on the slide.
 - **Slide tabs** (a clue's, the tiebreaker's, a Final's, a slides round's): right after them, one group for the open
-  slide (SlideGroup), always there and greyed where it can't act: ＋ Add slide (＋ 🤫 Card) · ⧉ Duplicate slide · 📋 Copy
+  slide (SlideGroup), always there and greyed where it can't act, all the same small button: ＋ Add slide (＋ 🤫 Card) · ⧉ Duplicate slide · 📋 Copy
   slide · 📋 Paste slide (the safe paste: the copied slide as a new slide after this one, before the answer from the
   Answer's tab; its ▾: Paste over this slide, one undo step with ↶ Undo in the note) · ◀ ▶ · 🗑 Delete slide apart at the
   right. On a 🤫 card's tab they're the card's: ⧉ Duplicate card, ◀ ▶ among the cards, 🗑 Delete card (it left the card's
@@ -541,7 +542,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   on a new game) without asking; it's kept in Recent games. The note under the header that says the game was replaced (with ↶ Reopen previous game) goes with the first change to the new game. **Open…** (Ctrl+O, the first screen's 📂 Open a game…, Game over › ▶ Next game…) is always one window,
   "📂 Open a game": Recent games (the last 8 games replaced, kept in the browser or on this PC with their undo history),
   in the desktop app "Your saves (BrainrotSaves)" newest first with date and size and 📂 Saves folder, then the foot's
-  Cancel … Browse for a game file… (blue when both lists are empty) "or drop a game file anywhere on the editor" (a
+  "or drop a game file on the editor" at the left, then Cancel and Browse for a game file… (blue when both lists are empty) (a
   picture, video, sound or font dropped where nothing else takes it goes into 🖼 Media, one undo step, with a toast
   "Added “pic.png” to 🖼 Media"; any other file gets one line that names it). Its
   rows: ↑ / ↓ (Home / End) across both lists, Enter opens, Delete on a recent game asks to delete it, a right-click or
@@ -1302,6 +1303,14 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   `aria-selected`, `aria-current`) is one look everywhere, a light accent tint (`--sel-bg`) with an accent edge and the
   usual text (4.5:1 or more), so it never reads as "press me". It's low priority (a class's weight): a player's colored
   chip, the color picker's Hex | RGB, a green ✔ or red ✘ and the RPG stage's yellow selection keep their own.
+- **A window's buttons** (its foot): Cancel (or Close) and the main button together at the right, the main one last;
+  a hint or any other action at the left (Open…'s "or drop a game file on the editor", Start new anyway, Import
+  rounds' Tick all, a shared theme's 💾 Save to my themes, ▶ Watch it). Every import is 📥 (📥 Import clues…, 📥 Import
+  rounds…, 📥 Import theme…, 📥 Import CSV…); 📂 is Open… and folders.
+- **Page widths on a wide screen**: a page of settings or lists stops at a readable width (1200 px); boards, maps and a
+  slides round's slide fill the window (its Round name and Host notes stay at the readable width). A round's header
+  (its name, ▶ Test this round, ▲ ▼, ⧉ Duplicate, ⋯, 🗑 Delete) fills it on every round's page, so its buttons stay put
+  from one round's tab to the next.
 - **Deleting, and one meaning per sign**: 🗑 Delete *thing* is the last button of its row, a little apart, in red
   (`.danger`), its tooltip saying "(Undo brings it back)"; one that can't be undone asks first ("…"), Cancel first,
   the red answer last (🚪 Exit's Discard & leave is red, apart from Keep & leave; 🕘 History's 🗑 Clear history… sits

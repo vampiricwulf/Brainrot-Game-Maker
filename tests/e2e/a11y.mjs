@@ -176,12 +176,22 @@ try {
   await sheet.waitFor({ state: 'detached' });
   assert(true, 'Enter on the keys window closes it');
 
-  // ---------- Windows' buttons: Cancel (the safe answer) first, the main one last ----------
-  /** A window's footer buttons, in the order they show (left to right), with their DOM order alongside. */
+  // ---------- Windows' buttons: Cancel and the main one together at the right, the main one last; the rest at the left ----------
+  /**
+   * A window's footer buttons, in the order they show (left to right), with their DOM order alongside. `together`:
+   * Cancel right before the main one, which ends at the foot's right edge; `apart`: what else is there (a hint, another
+   * button) is at the left, well clear of Cancel.
+   */
   const footer = (dlg) =>
-    dlg.locator('.modal-foot button').evaluateAll((bs) => {
+    dlg.locator('.modal-foot').evaluate((f) => {
+      const bs = [...f.querySelectorAll('button')];
       const visual = [...bs].sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left).map((b) => b.textContent.trim());
-      return { dom: bs.map((b) => b.textContent.trim()), visual, mainClass: bs.at(-1)?.className ?? '' };
+      const r = (el) => el.getBoundingClientRect();
+      const [cancel, main] = bs.slice(-2);
+      const together = !!main && r(main).right >= r(f).right - 1 && r(main).left - r(cancel).right <= 12;
+      const rest = [...f.children].filter((el) => el !== cancel && el !== main && !el.classList.contains('spacer') && r(el).width);
+      const apart = rest.every((el) => r(el).right < r(cancel).left - 24);
+      return { dom: bs.map((b) => b.textContent.trim()), visual, mainClass: bs.at(-1)?.className ?? '', together, apart, rest: rest.map((el) => el.textContent.trim()) };
     });
   await page.getByRole('button', { name: /Save/ }).first().click();
   const naming = page.getByRole('dialog', { name: 'Name your game' });
@@ -207,10 +217,31 @@ try {
   await replacing.waitFor();
   foot = await footer(replacing);
   assert(
-    foot.dom.join('|') === 'Cancel|Start new anyway|Save first' && foot.visual.join('|') === 'Cancel|Start new anyway|Save first',
-    `Start a new game?: Cancel first, Start new anyway, then Save first rightmost (${foot.visual.join(' · ')})`,
+    foot.dom.join('|') === 'Start new anyway|Cancel|Save first' && foot.visual.join('|') === 'Start new anyway|Cancel|Save first' && foot.together && foot.apart,
+    `Start a new game?: Start new anyway at the left, Cancel and Save first together at the right (${foot.visual.join(' · ')})`,
   );
   await replacing.getByRole('button', { name: 'Cancel' }).click();
+  // 📂 Open…: its hint at the left, Cancel and Browse for a game file… at the right (the hint on one line).
+  await page.getByRole('button', { name: /Open…/ }).first().click();
+  const opening = page.getByRole('dialog', { name: 'Open a game' });
+  await opening.waitFor();
+  foot = await footer(opening);
+  const hintLines = await opening.locator('.modal-foot .hint').evaluate((h) => Math.round(h.getBoundingClientRect().height / (parseFloat(getComputedStyle(h).fontSize) * 1.25)));
+  assert(
+    foot.visual.join('|') === 'Cancel|Browse for a game file…' && foot.together && foot.apart && foot.rest[0] === 'or drop a game file on the editor' && hintLines === 1,
+    `📂 Open a game: “or drop a game file on the editor” at the left on one line, Cancel and Browse for a game file… together at the right (${JSON.stringify(foot)}, ${hintLines} line)`,
+  );
+  await opening.getByRole('button', { name: 'Cancel' }).click();
+  await opening.waitFor({ state: 'detached' });
+  // 📥 Import clues…: the same.
+  await page.locator('nav > button.round-tab').first().click();
+  await page.getByRole('button', { name: '📥 Import clues…' }).click();
+  const importing = page.getByRole('dialog', { name: 'Import clues' });
+  await importing.waitFor();
+  foot = await footer(importing);
+  assert(foot.visual.join('|') === 'Cancel|Import' && foot.together && foot.mainClass.includes('primary'), `📥 Import clues: Cancel and Import together at the right (${foot.visual.join(' · ')})`);
+  await importing.getByRole('button', { name: 'Cancel' }).click();
+  await importing.waitFor({ state: 'detached' });
 
   // ---------- One focus ring, for the keyboard ----------
   const ring = () => page.evaluate(() => {

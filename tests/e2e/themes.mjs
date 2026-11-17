@@ -493,7 +493,7 @@ try {
   await page.keyboard.press('Escape');
   await shot('1b-menus');
 
-  // ---------- ⬇ Export theme / 📂 Import theme… ----------
+  // ---------- ⬇ Export theme / 📥 Import theme… ----------
   await openThemeShare(page);
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⬇ Export theme' }).click()]);
   assert(download.suggestedFilename() === 'Checkers.brainrot-theme', `Export theme writes a .brainrot-theme file named after the theme (${download.suggestedFilename()})`);
@@ -504,7 +504,7 @@ try {
   assert(data.format === 'brainrot-theme' && data.version === 1 && data.theme.tilePattern === 'checker' && data.theme.tile2 === '#ff0000', 'the file is JSON with its format, version and the looks');
   await page.getByRole('button', { name: /^Classic/ }).click();
   assert((await bg(preview, 1, 0)) === CLASSIC_TILE, 'a preset takes the extra looks off');
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📂 Import theme…' }).click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import theme…' }).click()]);
   await chooser.setFiles(themePath);
   const imported = page.getByRole('dialog', { name: /Theme “Checkers”/ });
   await imported.waitFor();
@@ -514,10 +514,20 @@ try {
     'its preview is a picture only: screen readers skip its made-up tiles and players',
   );
   await shot('2-import-preview');
+  // Its buttons as every window's: Cancel and the main one together at the right, 💾 Save to my themes at the left.
+  const themeFoot = await imported.locator('.modal-foot').evaluate((f) => {
+    const r = (b) => b.getBoundingClientRect();
+    const [save, cancel, use] = f.querySelectorAll('button');
+    return { names: [save, cancel, use].map((b) => b.textContent.trim()).join(' | '), together: r(use).left - r(cancel).right <= 12 && r(use).right >= r(f).right - 1, apart: r(save).right < r(cancel).left - 24 };
+  });
+  assert(
+    themeFoot.names === '💾 Save to my themes | Cancel | 🎨 Use in this game' && themeFoot.together && themeFoot.apart,
+    `a theme file's window: 💾 Save to my themes at the left, Cancel and 🎨 Use in this game together at the right (${JSON.stringify(themeFoot)})`,
+  );
   await imported.getByRole('button', { name: '🎨 Use in this game' }).click();
   assert((await bg(preview, 1, 0)) === RED, 'Use in this game puts it on the game');
   // A bad file is refused with a message, and the game is untouched.
-  const [bad] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📂 Import theme…' }).click()]);
+  const [bad] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import theme…' }).click()]);
   await bad.setFiles({ name: 'broken.brainrot-theme', mimeType: 'application/json', buffer: Buffer.from('{"format":"brainrot-theme","theme":{"tile":"url(evil)"}}') });
   const refused = page.getByRole('alertdialog').filter({ hasText: 'can’t be used as a theme' });
   await refused.waitFor();
@@ -588,12 +598,12 @@ try {
   withBanner.theme = { ...withBanner.theme, banner: 'm_banner1' };
   const bannerPath = resolve('test-results/themes-banner.brainrot-theme');
   writeFileSync(bannerPath, JSON.stringify(withBanner));
-  const [bannerChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📂 Import theme…' }).click()]);
+  const [bannerChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import theme…' }).click()]);
   await bannerChooser.setFiles(bannerPath);
   await page.getByRole('dialog', { name: /Theme “Banner show”/ }).getByRole('button', { name: '💾 Save to my themes' }).click();
   await card('Banner show').waitFor();
   const bannerSaved = await page.locator('.toast', { hasText: 'Saved “Banner show”' }).innerText();
-  assert(bannerSaved.includes('📂 Import the file again and 🎨 Use in this game'), `saving a theme file with a picture says how to bring it in (${bannerSaved})`);
+  assert(bannerSaved.includes('📥 Import the file again and 🎨 Use in this game'), `saving a theme file with a picture says how to bring it in (${bannerSaved})`);
 
   // ---------- An exported HTML file ----------
   // (Its values in a font file of its own: the file's first screen shows its logo in it from the start.)

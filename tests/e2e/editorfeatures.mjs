@@ -57,7 +57,7 @@ try {
     assert((await fp.locator('.page-header .sub').innerText()).includes('Viewers see these slides one after another'), 'a slides round says how it plays in its header line');
     const order = await fp.evaluate(() => { const tabs = document.querySelector('main [role="tablist"]'); const q = document.querySelector('main [data-field="q"]'); return !!tabs && !!q && !!(tabs.compareDocumentPosition(q) & Node.DOCUMENT_POSITION_FOLLOWING); });
     assert(order, 'and its Text (slide 1 of 2) box comes after the slide tabs');
-    // ＋ Add round under the sample's five rounds at 1280×720 and 1366×768: 📂 Import rounds… and 📋 Paste round in sight.
+    // ＋ Add round under the sample's five rounds at 1280×720 and 1366×768: 📥 Import rounds… and 📋 Paste round in sight.
     for (const [w, h] of [[1280, 720], [1366, 768]]) {
       await fp.setViewportSize({ width: w, height: h });
       await fp.getByRole('button', { name: '＋ Add round' }).click();
@@ -310,7 +310,7 @@ try {
   // ---------- Templates, Copy / Paste round ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();
   {
-    // The menu's order: the five kinds, then 📂 Import rounds… and 📋 Paste round, then the templates, one line each.
+    // The menu's order: the five kinds, then 📥 Import rounds… and 📋 Paste round, then the templates, one line each.
     const items = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.trim());
     const at = (re) => items.findIndex((x) => re.test(x));
     assert(at(/Import rounds…/) === 5 && at(/^📋 Paste round$/) === 6 && at(/20-space loop/) > 6 && items.every((x) => !x.includes('\n')), `＋ Add round: Import rounds… and Paste round right under the five kinds, every entry one line (${items.join(' | ')})`);
@@ -524,7 +524,7 @@ try {
   copyFileSync(await download.path(), other);
   const before = (await tabs()).length;
   await page.getByRole('button', { name: '＋ Add round' }).click();
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📂 Import rounds…' }).click()]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📥 Import rounds…' }).click()]);
   // (As Open… does, it lists the web page a game was exported as, and the desktop app's backups.)
   const accept = ((await chooser.element().getAttribute('accept')) ?? '').split(',');
   assert(['.brainrot', '.json', '.html', '.bak'].every((x) => accept.includes(x)), `Import rounds… can pick an exported page or a backup (${accept.join(',')})`);
@@ -545,7 +545,7 @@ try {
   const changed = join(tmpdir(), `editorfeatures-changed-${Date.now()}.json`);
   writeFileSync(changed, JSON.stringify(json));
   await page.getByRole('button', { name: '＋ Add round' }).click();
-  const [chooser3] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📂 Import rounds…' }).click()]);
+  const [chooser3] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📥 Import rounds…' }).click()]);
   await chooser3.setFiles(changed);
   const pick2 = page.getByRole('dialog', { name: 'Import rounds' });
   await pick2.getByLabel(/Adventure/).check();

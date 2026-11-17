@@ -686,6 +686,7 @@
         {#if madeRef && mediaUrls[madeRef.id]}
           <button class="ghost" onclick={() => (watching = watching ? null : madeRef!.id)}>{watching ? '⏹ Stop watching' : '▶ Watch it'}</button>
         {/if}
+        <span class="spacer"></span>
         <button class="primary" onclick={onclose}>Close</button>
       {:else}
         <span class="hint foot-hint"
@@ -695,7 +696,6 @@
               ? 'Ctrl+Z (or 🕘 History) puts the old file back. Save as a new file keeps both (both are saved with the game).'
               : 'Ctrl+Z (or 🕘 History) puts the old file back.'}</span
         >
-        <button class="ghost" onclick={close}>Cancel</button>
         {#if oneOf}
           <button onclick={() => apply('item')} disabled={!ok || nothing || keyPending} title={nothing ? nothingYet : 'Only the item this was opened from gets the edited file'}
             >Only this item</button
@@ -705,6 +705,8 @@
             >Save as a new file</button
           >
         {/if}
+        <span class="spacer"></span>
+        <button class="ghost" onclick={close}>Cancel</button>
         <button class="primary" onclick={() => apply('all')} disabled={!ok || nothing || keyPending} title={nothing ? nothingYet : 'Ctrl+Enter'}
           >{oneOf ? `Apply to all ${uses}` : 'Apply'}</button
         >
@@ -837,9 +839,6 @@
   }
   .good {
     color: var(--good);
-  }
-  .foot-hint {
-    margin-right: auto;
   }
   @media (max-width: 800px) {
     .body,

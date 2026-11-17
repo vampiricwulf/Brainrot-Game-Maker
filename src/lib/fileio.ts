@@ -203,7 +203,7 @@ export function parseGame(text: string, name?: string): Game {
     throw new Error("This file isn't a readable game (.json). It may be cut off or damaged.");
   }
   // (Import rounds… and the like take game files only.)
-  if (data?.format === 'brainrot-theme') throw new Error('This is a theme file, not a game: use it with 📂 Import theme… on 🎨 Theme.');
+  if (data?.format === 'brainrot-theme') throw new Error('This is a theme file, not a game: use it with 📥 Import theme… on 🎨 Theme.');
   const no = (why: string) => notAGame(name, why);
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw no('not an object');
   if (!Array.isArray(data.rounds)) throw no('it has no "rounds" list');

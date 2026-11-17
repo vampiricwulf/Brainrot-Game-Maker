@@ -43,7 +43,7 @@
     list = $bindable(),
     origin,
   }: {
-    /** A theme file opened or dropped on the editor: shown first, like 📂 Import theme… (then back to null). */
+    /** A theme file opened or dropped on the editor: shown first, like 📥 Import theme… (then back to null). */
     incoming?: SharedTheme | null;
     /** My themes (stored on this computer as they change). */
     list: MyTheme[];
@@ -305,7 +305,7 @@
     const next = addMyTheme(list, freshThemeName(list, s.name), s.theme);
     if (!next) return void toast(NOT_STORED);
     list = next;
-    toast(`Saved “${next[next.length - 1].name}” to My themes${s.media.length ? ' (without its pictures and fonts: to bring those in, 📂 Import the file again and 🎨 Use in this game)' : ''}`);
+    toast(`Saved “${next[next.length - 1].name}” to My themes${s.media.length ? ' (without its pictures and fonts: to bring those in, 📥 Import the file again and 🎨 Use in this game)' : ''}`);
   }
 
   async function fromGame(): Promise<void> {
@@ -413,7 +413,7 @@
     aria-controls="theme-share"
     data-share-fold
     onclick={() => share.set(!share.open)}
-    title="⬇ Export theme, 📋 Copy theme code, 📂 Import theme…, ⌨ Paste theme code…, 📂 Use a theme from another game…"
+    title="⬇ Export theme, 📋 Copy theme code, 📥 Import theme…, ⌨ Paste theme code…, 📂 Use a theme from another game…"
     >{share.open ? '▾' : '▸'} Share or bring in a theme <span class="muted">· file, code, another game</span></button
   >
   {#if share.open}
@@ -429,7 +429,7 @@
   <div class="row">
     <span class="lbl">Bring one in</span>
     <span class="btns">
-      <button class="small" onclick={importFile} title="Open a .brainrot-theme file">📂 Import theme…</button>
+      <button class="small" onclick={importFile} title="Open a .brainrot-theme file">📥 Import theme…</button>
       <button class="small" onclick={() => (importing = 'code')} title="Paste a theme code someone sent you">⌨ Paste theme code…</button>
       <button class="small" onclick={fromGame} title="Open a .brainrot game (or its play-only web page) and use its theme (with its pictures and uploaded fonts)">📂 Use a theme from another game…</button>
     </span>

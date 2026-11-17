@@ -396,6 +396,7 @@
         <button data-stop onclick={() => stopJob(job.id)} title="Stop it: nothing is changed">Stop</button>
       {:else if ended && 'done' in ended}
         {#if madeRef}<button class="ghost" onclick={() => (watching = !watching)}>{watching ? '⏹ Stop watching' : '▶ Watch it'}</button>{/if}
+        <span class="spacer"></span>
         <button class="primary" onclick={onclose}>Close</button>
       {:else}
         <button class="ghost" onclick={onclose}>Cancel</button>

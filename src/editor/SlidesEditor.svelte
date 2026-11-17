@@ -62,6 +62,11 @@
 {/key}
 
 <style>
+  /* The fields stay at the readable width of a page of settings; the slide under them fills the screen, as a board does. */
+  .grid,
+  .quick {
+    max-width: var(--page-width);
+  }
   .grid {
     display: flex;
     gap: 12px;

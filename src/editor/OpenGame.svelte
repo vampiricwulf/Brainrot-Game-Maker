@@ -150,8 +150,9 @@
       {/if}
     </div>
     <div class="modal-foot">
-      <button class="ghost" onclick={onclose}>Cancel</button>
+      <span class="hint drop">or drop a game file on the editor</span>
       <span class="spacer"></span>
+      <button class="ghost" onclick={onclose}>Cancel</button>
       <button
         class:primary={nothing}
         bind:this={browseBtn}
@@ -159,7 +160,6 @@
         title="A game you saved or were sent: a .brainrot, a .json or a play-only web page (.html){desktop ? ', or an older version Save kept (Game.brainrot.bak)' : ''}"
         >Browse for a game file…</button
       >
-      <span class="hint drop">or drop a game file anywhere on the editor</span>
     </div>
   </div>
 </div>
