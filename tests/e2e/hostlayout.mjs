@@ -1549,7 +1549,7 @@ try {
       `and the spotlit row's ✔ Right in sight; Finish now… at the left of the box's foot beside “4 still to judge”, away from the verdicts (${foot.join(' | ')})`,
     );
     // The reveals in one window: the tools row folds behind the status line's ⋯ Tools (nothing in it is for this moment),
-    // and the reveal rows get its room: three or more with ✔ Right and ✘ Wrong whole in sight. ⋯ Tools brings it back.
+    // and the reveal rows get its room: all four with ✔ Right and ✘ Wrong whole in sight. ⋯ Tools brings it back.
     /** The rows whose ✔ Right and ✘ Wrong are wholly in sight (not under the box's foot nor out of the panel's room). */
     const rowsInSight = () =>
       pl.locator('.fj .pl').evaluateAll((els) => {
@@ -1565,7 +1565,7 @@ try {
     const folded = pl.locator('.panel .status').getByRole('button', { name: '⋯ Tools' });
     const shownRows = await rowsInSight();
     assert(
-      (await pl.locator('.panel .toolsrow').isHidden()) && (await folded.getAttribute('aria-expanded')) === 'false' && shownRows >= 3,
+      (await pl.locator('.panel .toolsrow').isHidden()) && (await folded.getAttribute('aria-expanded')) === 'false' && shownRows === 4,
       `1280×720, the Final's reveals in one window: the tools row folds behind ⋯ Tools, and ${shownRows} of the 4 reveal rows have ✔ Right and ✘ Wrong whole in sight`,
     );
     await folded.click();

@@ -887,19 +887,21 @@
   .order {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
   }
   .how summary {
     cursor: pointer;
     font-size: 12px;
   }
+  /* (1px above and below, 3px apart: four rows' ✔ Right / ✘ Wrong fit above the box's foot in one window at 1280×720,
+     with a few pixels to spare for a taller font.) */
   .pl {
     position: relative;
     display: flex;
     gap: 6px;
     align-items: center;
     flex-wrap: wrap;
-    padding: 2px 6px;
+    padding: 1px 6px;
     border-radius: 8px;
     border: 2px solid transparent;
   }
