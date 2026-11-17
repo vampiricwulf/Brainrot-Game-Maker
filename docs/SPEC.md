@@ -686,7 +686,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   and so does an RPG shop: short of money, “Short by 🪙1 for Potion.” Cancel · Give it free · Other price… · **Sell
   anyway** (the buyer goes below zero); Other price… asks the price (Cancel · Sell), and 📦 the stock left (Cancel ·
   Set; blank is unlimited).
-- **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
+- **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips; ⏱ Start and its
+  seconds box only where a clock fits, a clue, the Final's wagers and question, the tiebreaker and a board game's turns,
+  and while a countdown is up: `T` and the stage menu's ⏱ Start the countdown start one anywhere), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation (a played-out board keeps Next round ▶'s room there, unseen: the blue button is it; while a
   situation's box is open, a 🤝 partner clue's, a Daily Double's wager, a tile's own 🎡 / 🎲 or the Final's, the tools

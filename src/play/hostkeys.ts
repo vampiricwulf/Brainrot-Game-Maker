@@ -49,7 +49,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['P then 1 – 9', 'Make player N the current picker'],
       ['Esc', 'Close the log, a tool, Who was who or a card; on a clue: back to the board (the tile is used up); else clear the selection'],
       ['K or B', 'Cover: viewers see only a “Be right back” card, and the countdown and the clue’s video wait (again: uncover)'],
-      ['T', 'Start / pause the countdown (the seconds typed in the ⏱ box, if any)'],
+      ['T', 'Start / pause the countdown, anywhere (the seconds typed in the status line’s ⏱ box, where a clock fits)'],
       ['Shift+T', '10 more seconds on the countdown (none up: start one, as T)'],
       ['Ctrl+Z', 'Undo the last change: a score, a move, a stat or item, a tile, the picker, the turn order, Players or the Final'],
       ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],

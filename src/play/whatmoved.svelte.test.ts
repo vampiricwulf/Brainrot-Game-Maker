@@ -15,7 +15,7 @@ describe('what moved in this version', () => {
 
   it('says where things went in plain lines, the renames from the keys filter’s list', () => {
     const game = WHAT_MOVED.game.join('\n');
-    for (const w of ['↩ Put back (keep tile)', '🔊 Sound', 'Shift+click', '🎲 Roll for it (O)', '▸ Buzzer options', '✅ Before you start']) expect(game).toContain(w);
+    for (const w of ['↩ Put back (keep tile)', '🔊 Sound', 'Shift+click', '🎲 Roll for it (O)', '▸ Buzzer options', '✅ Before you start', '⏱ Start the countdown']) expect(game).toContain(w);
     for (const l of WHAT_MOVED.game) expect(l.trim(), l).toBe(l);
     expect(renames()).toHaveLength(RENAMED.length);
     expect(renames()).toContain('📊 Scores → 📊 Scoreboard');

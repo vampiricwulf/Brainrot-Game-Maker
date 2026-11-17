@@ -1,4 +1,4 @@
-<!-- Host countdown controls; usable any time (spec §6.6). -->
+<!-- Host countdown controls (spec §6.6): in the status line where a clock fits, and while one is up (T starts one any time). -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { app } from '../../lib/app.svelte';
@@ -6,9 +6,15 @@
 
   /**
    * custom: the seconds typed in the box (bound, so T uses them too). onstart: a countdown was started or went on from
-   * here (Start, ▶, ↺, Enter in the box), as T does: a 🤝 partner clue handing out its cards goes on with it.
+   * here (Start, ▶, ↺, Enter in the box), as T does: a 🤝 partner clue handing out its cards goes on with it. onhidden:
+   * ✕ put the countdown away and these controls went with it (no clock fits the moment), so the focus is the panel's.
    */
-  let { defaultSeconds, custom = $bindable(null), onstart = () => {} }: { defaultSeconds: number; custom?: number | null; onstart?: () => void } = $props();
+  let {
+    defaultSeconds,
+    custom = $bindable(null),
+    onstart = () => {},
+    onhidden = () => {},
+  }: { defaultSeconds: number; custom?: number | null; onstart?: () => void; onhidden?: () => void } = $props();
   /** The countdown it starts: the seconds typed when they make one (1 to 3600), else the default. */
   const secs = $derived(custom != null && custom >= 1 ? Math.min(3600, Math.round(custom)) : defaultSeconds);
   let now = $state(Date.now());
@@ -31,10 +37,14 @@
   }
 
   let box = $state<HTMLElement>();
-  /** Hide it: the keys go on from its Start button (the ✕ that had them is gone). */
+  /** Hide it: the keys go on from its Start button (the ✕ that had them is gone), or, gone too, from the panel. */
   function hide(): void {
     app.live.timer = null;
-    void tick().then(() => box?.querySelector<HTMLButtonElement>('button')?.focus());
+    void tick().then(() => {
+      const start = box?.querySelector<HTMLButtonElement>('button');
+      if (start?.isConnected) start.focus();
+      else onhidden();
+    });
   }
 </script>
 

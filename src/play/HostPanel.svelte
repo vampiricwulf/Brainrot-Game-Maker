@@ -416,6 +416,20 @@
       ? currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30
       : (clueSecs >= 1 ? clueSecs : 0) || game.settings.defaultTimerSeconds || 30,
   );
+  /**
+   * Where a countdown fits, the status line has ⏱ (Start, its seconds box): a clue (a Daily Double's, a partner clue's
+   * too), the Final's wagers (phones show the time over the wager box) and question, the tiebreaker and a board game's
+   * turns. Elsewhere (a round's title card, the board, a slides round, an RPG round, Game over) the line is for what to do
+   * next: T and the stage menu still start one, and while one is up its ⏱ is there to pause or put it away.
+   */
+  const clockFits = $derived(
+    !!app.live.timer ||
+      (!session.intro &&
+        (session.phase === 'clue' ||
+          session.phase === 'tiebreaker' ||
+          session.phase === 'boardgame' ||
+          (session.phase === 'final' && (session.finalStep === 'wagers' || session.finalStep === 'question')))),
+  );
   /** The countdown is running. */
   const clockRuns = $derived(!!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired);
   /**
@@ -735,6 +749,11 @@
     const p = partnerShares(partnerValue, partnerRules(info.clue), partner, got).find((x) => x.id === id)?.points;
     return p === undefined ? null : `${p > 0 ? '+' : ''}${formatPoints(p, sym)}`;
   }
+  /** ⏱'s ✕ where no clock fits (it goes with the countdown): the focus goes on to the main button, as after ✔ / ✘. */
+  function clockHidden(): void {
+    const a = document.activeElement;
+    if (!a || a === document.body) focusMain();
+  }
   /** ✔ / ✘ pressed: that button is off now, so the focus goes on to the main button (not lost to the page). */
   function judged(): void {
     void tick().then(() => {
@@ -1038,7 +1057,12 @@
     {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}
     <span class="spacer"></span>
     {@render phoneChip?.()}
-    <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} onstart={ontimerstart} />
+    {#if clockFits}
+      <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} onstart={ontimerstart} onhidden={clockHidden} />
+    {:else}
+      <!-- (⏱'s height kept, not its width: the line is one height at every moment, so nothing under it moves.) -->
+      <span class="clockroom" aria-hidden="true"><input tabindex="-1" disabled /></span>
+    {/if}
   </div>
 
   <!-- A score asked for from the player's menu, where there are no score chips to type it into (RPG and board games). -->
@@ -2393,6 +2417,16 @@
      words under it, so nothing in the line moves and the one-window stage keeps its size. */
   .status {
     position: relative;
+  }
+  .clockroom {
+    visibility: hidden;
+  }
+  /* (As TimerControls' seconds box, but no width.) */
+  .clockroom input {
+    width: 0;
+    padding: 3px 0;
+    border-left: 0;
+    border-right: 0;
   }
   .clicknote {
     position: absolute;

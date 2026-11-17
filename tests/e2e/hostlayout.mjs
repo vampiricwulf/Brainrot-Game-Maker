@@ -189,8 +189,25 @@ try {
     }
   });
   assert(gap && (await rightClick(gap.x, gap.y)) === true, 'a right-click on a gap in the host panel gets no browser menu');
-  const timerBox = await page.getByLabel('Timer seconds').boundingBox();
-  assert((await rightClick(timerBox.x + 8, timerBox.y + timerBox.height / 2)) === false, 'a box to type in keeps the browser’s menu (cut, copy, paste)');
+  // ⏱ Start and its seconds box only where a clock fits: not on the board (T and the stage's menu still start one, and
+  // the status line keeps its height).
+  const statusH = async () => Math.round((await page.locator('.panel .status').boundingBox()).height);
+  const boardStatusH = await statusH();
+  assert((await page.getByLabel('Timer seconds').count()) === 0 && (await page.locator('.panel .status .tc').count()) === 0, 'on the board the status line has no ⏱ Start or seconds box');
+  await page.keyboard.press('t');
+  await page.locator('.panel .status .tc .left').waitFor();
+  assert((await statusH()) === boardStatusH, 'T starts a countdown on the board all the same, and its ⏱ shows in the status line to pause or put away (the line one height)');
+  await page.locator('.panel .status').getByRole('button', { name: 'Hide timer' }).click();
+  await page.locator('.panel .status .tc').waitFor({ state: 'detached' });
+  assert((await statusH()) === boardStatusH, 'put away (✕), it goes from the board’s status line, the line one height');
+  await page.locator('.stage-box .stage').click({ button: 'right', position: { x: 5, y: 5 } });
+  const clockMenu = page.getByRole('menuitem', { name: /⏱ Start the countdown/ });
+  await clockMenu.waitFor();
+  await clockMenu.click();
+  await page.locator('.panel .status .tc .left').waitFor();
+  await page.locator('.panel .status').getByRole('button', { name: 'Hide timer' }).click();
+  await page.locator('.panel .status .tc').waitFor({ state: 'detached' });
+  assert(true, 'the stage’s menu on the board has ⏱ Start the countdown (T), which starts one');
   // A double-click on the tile in the stage's middle: it opens, and its second click, on the question's words now, turns
   // nothing blue on stream (nor does Ctrl+A).
   const stageMid = await page.locator('.stage-box .stage').boundingBox().then((s) => ({ x: s.x + s.width / 2, y: s.y + s.height / 2 }));
@@ -199,6 +216,10 @@ try {
   await page.keyboard.press('Control+a');
   assert(await noSelection(page), `a double-click on a tile, the second click on the question, and Ctrl+A select nothing (${await selectedWords(page)})`);
   states.clue = await look();
+  // (A clue: ⏱ Start and its seconds box are back, the status line one height.)
+  const timerBox = await page.getByLabel('Timer seconds').boundingBox();
+  assert((await statusH()) === boardStatusH && (await page.locator('.panel .status').getByRole('button', { name: /^Start \d+s$/ }).count()) === 1, 'in a clue the status line has ⏱ Start and its seconds box, and keeps its height');
+  assert((await rightClick(timerBox.x + 8, timerBox.y + timerBox.height / 2)) === false, 'a box to type in keeps the browser’s menu (cut, copy, paste)');
   assert((await mainLabel(page)) === '👁 Reveal answer', 'in a clue the main button is 👁 Reveal answer');
   // ✔ greys out once pressed: the focus goes on to the main button, not lost to the page.
   await page.getByRole('button', { name: /^Right: Ann/ }).click();

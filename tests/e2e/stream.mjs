@@ -187,8 +187,13 @@ async function crowd() {
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/stream-crowd.png` });
 
   // TIME'S UP slams in once, when the countdown runs out: an audience window reloaded during its moment joins it where
-  // it is by then, and one reloaded after it (or the scores window) shows only the red 0 clock.
+  // it is by then, and one reloaded after it (or the scores window) shows only the red 0 clock. (On a clue: the board's
+  // status line has no ⏱ box, no clock fits there.)
   const secs = host.getByLabel('Timer seconds');
+  const crowdTile = (id) => host.locator(`.stage-box .board .tile[data-clue="${id}"]`);
+  assert((await secs.count()) === 0, 'the board’s status line has no ⏱ seconds box');
+  await crowdTile('q2_1').click();
+  await host.locator('.tc button', { hasText: 'Start 30s' }).waitFor();
   await secs.fill('1');
   await secs.press('Enter');
   await aud.locator('.timesup').waitFor();
@@ -213,9 +218,6 @@ async function crowd() {
   // Seconds typed in the ⏱ box are for that moment only: 60 typed on one clue, the next clue's ⏱ Start (and T) is that
   // clue's own countdown again, not 60.
   await host.getByRole('button', { name: 'Hide timer' }).click();
-  const crowdTile = (id) => host.locator(`.stage-box .board .tile[data-clue="${id}"]`);
-  await crowdTile('q2_1').click();
-  await host.locator('.tc button', { hasText: 'Start 30s' }).waitFor();
   await secs.fill('60');
   await host.locator('.tc button', { hasText: 'Start 60s' }).waitFor();
   await secs.press('Enter');

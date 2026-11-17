@@ -2376,7 +2376,8 @@
   /** The controls hidden: the moment's menu where the stage was clicked, under what the click would have said. */
   function clickMenu(text: string): void {
     if (!stagePt) return hint(text);
-    showMenu(new MouseEvent('contextmenu', { clientX: stagePt.x, clientY: stagePt.y }), [{ heading: text }, ...stageMenuOf({ ...momentMenu(), main: mainItem() }, [], standingItems())]);
+    const m = momentMenu();
+    showMenu(new MouseEvent('contextmenu', { clientX: stagePt.x, clientY: stagePt.y }), [{ heading: text }, ...stageMenuOf({ ...m, main: mainItem() }, [], standingItems(m))]);
   }
 
   /**
@@ -4330,9 +4331,14 @@
   /** What the host panel's boxes add to the stage's menu (its own items there; not while the controls are hidden). */
   let boxMenu = $state<(() => StageItem[]) | null>(null);
 
-  /** ↶ Undo and ⏸ Cover the screen, in every moment. (One window: Undo doesn't name its step, as it's on stream.) */
-  function standingItems(): StageItem[] {
+  /**
+   * ↶ Undo and ⏸ Cover the screen, in every moment. (One window: Undo doesn't name its step, as it's on stream.) The
+   * countdown too where the moment's own actions don't have it (the board, a round's title card, Game over…): the
+   * status line has ⏱ only where a clock fits, so T and this menu start one anywhere.
+   */
+  function standingItems(m: Moment): StageItem[] {
     return [
+      ...(m.steps.some((it) => it.id === 'clock') ? [] : [clockItem()]),
       { id: 'undo', label: '↶ Undo', keys: 'Ctrl+Z', disabled: !undoText, ...(dual && undoText ? { hint: `Undo: ${undoText}` } : {}), onclick: doUndo },
       { id: 'cover', label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', keys: 'K', onclick: () => (app.live.cover = !app.live.cover) },
     ];
@@ -4656,7 +4662,8 @@
       e.preventDefault();
       return flashCheck(CHECK.answerFirst);
     }
-    showMenu(e, stageMenuOf({ ...momentMenu(at), main: mainItem() }, hideControls ? [] : (boxMenu?.() ?? []), standingItems()));
+    const m = momentMenu(at);
+    showMenu(e, stageMenuOf({ ...m, main: mainItem() }, hideControls ? [] : (boxMenu?.() ?? []), standingItems(m)));
   }
 
   /**

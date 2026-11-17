@@ -61,7 +61,9 @@ pre-game screen with **▶ Resume it**. **Start game** asks before discarding it
 
 The panel keeps the same layout in every round:
 
-1. **The status line**: what's happening and what to do next.
+1. **The status line**: what's happening and what to do next. Where a clock fits (a clue, the Final's wagers and
+   question, the tiebreaker, a board game's turns) it has **⏱ Start** and a box for other seconds; anywhere else `T`
+   or ⏱ Start the countdown in the stage's right-click menu starts one, and its ⏱ shows while it's up.
 2. **Score chips** for each player.
 3. **The action row** for this moment, with the **blue button** at its right.
 4. **Tools**: 🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard, with the round
