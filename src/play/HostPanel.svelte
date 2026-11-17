@@ -476,19 +476,45 @@
    * row steps back (the ghost look, at full contrast), so the box is what the eye finds. Nothing moves, every tool works.
    */
   const quietTools = $derived(!!partner || ddWager || toolFirst || session.phase === 'final');
-  /**
-   * The Final's reveals in one window, under the stage: the tools row folds behind ⋯ Tools in the status line (nothing
-   * there is for this moment), so the reveal list has its height and three or four rows are in sight on a laptop. What's
-   * on in it (📊 pressed, a deal, cards out, 🔇 Stop sounds, a warning) keeps it out (see .foldtools), and so does a
-   * question in the strip, which lies over it.
-   */
-  const revealFold = $derived(!dual && !side && session.phase === 'final' && session.finalStep === 'reveal' && !session.intro);
+  /** The Final's reveals in one window, under the stage. */
+  const revealsHere = $derived(!dual && !side && session.phase === 'final' && session.finalStep === 'reveal' && !session.intro);
   /** The media rows under the status line, in one window (this window's own copies: see MediaControls). */
   const mediaRows = $derived(dual ? 0 : Object.values(localMedia).filter((m) => m.role !== 'mirror').length);
   let panelEl = $state<HTMLElement>();
+  /** In the Final's reveals, the reveal rows didn't all fit with the tools row out (they scrolled). */
+  let revealCrowded = $state(false);
+  $effect(() => {
+    if (!revealsHere || !panelEl) return void (revealCrowded = false);
+    const panel = panelEl;
+    void session.final?.order.length;
+    // Measured with the tools row out, once its rows are in, before the frame is drawn; again when the window changes
+    // size or the how-to over the rows opens or folds (never on what the fold itself changes: that would go back and forth).
+    const measure = (): void => {
+      revealCrowded = false;
+      void tick().then(() => {
+        const box = panel.querySelector('.fj')?.closest<HTMLElement>('.mode-host');
+        if (box && revealsHere) revealCrowded = box.scrollHeight > box.clientHeight + 1;
+      });
+    };
+    measure();
+    const toggled = (e: Event) => (e.target as Element | null)?.closest?.('.fj') && measure();
+    window.addEventListener('resize', measure);
+    panel.addEventListener('toggle', toggled, true);
+    return () => {
+      window.removeEventListener('resize', measure);
+      panel.removeEventListener('toggle', toggled, true);
+    };
+  });
+  /**
+   * The Final's reveals in one window, its rows not all in sight with the tools row out (three or four players on a
+   * laptop): the tools row folds behind ⋯ Tools in the status line (nothing there is for this moment), so the reveal list
+   * has its height. A window with room for all folds nothing. What's on in it (📊 pressed, a deal, cards out, 🔇 Stop
+   * sounds, a warning) keeps it out (see .foldtools), and so does a question in the strip, which lies over it.
+   */
+  const revealFold = $derived(revealsHere && revealCrowded);
   /** With the slide's media rows in, the panel ran over: the fixed bar went out of sight. */
   let mediaCrowded = $state(false);
-  const mayFoldForMedia = $derived(!dual && !side && !revealFold && !toolFirst);
+  const mayFoldForMedia = $derived(!dual && !side && !revealsHere && !toolFirst);
   /**
    * The panel's size, while the rows may fold: a window grown or shrunk with the clue up (fullscreen left, the browser
    * snapped to half the screen) measures them again. (Its height follows the window's, never what's in it: folding
@@ -522,7 +548,8 @@
   /** ⋯ Tools pressed: the row is out again, for these reveals (or this slide's clips). */
   let toolsOut = $state(false);
   $effect(() => {
-    if (!revealFold && !mediaFold) toolsOut = false;
+    // (Not while the reveals measure their room: ⋯ Tools pressed stays pressed.)
+    if (!revealsHere && !mediaFold) toolsOut = false;
   });
   /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
   const slidePos = $derived(setup ? null : slidePosition(session, game));

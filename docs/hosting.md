@@ -157,8 +157,8 @@ a Daily Double; **Ignore the limits** takes any wager for this Final. Then the b
 finally **Finish game ▶**. Judge each player with **✔ Right** (`C`) or **✘ Wrong** (`X`). With answers typed on phones
 it goes **Show answer ▶**, then your ✔ Right or ✘ Wrong puts their wager and the verdict up together, then **Next
 player ▶** (there's no Show wager ▶ step).
-**Finish now…** ends early. In a single window the tools row folds away during the reveals so more players' rows fit;
-**⋯ Tools** in the status line brings it back.
+**Finish now…** ends early. In a single window, when the players' rows don't all fit, the tools row folds away during
+the reveals; **⋯ Tools** in the status line brings it back.
 
 Show question ▶ starts the think clock. While it's still running, 👁 Reveal answer (the blue button, `N`, a click on the
 screen or its menu) asks first: **⏱ Let it run** (`Enter`, or `Esc`) keeps it going, **⏸ Pause the clock** (`T`)

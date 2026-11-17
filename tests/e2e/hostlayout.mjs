@@ -35,7 +35,7 @@
 // question ▶ within 96 px of its Spin! (↩ Put back in sight, as on PARTNER UP! and a Daily Double's splash, where it
 // leads the Wager row). At 1280×720 with long team names, the Final's reveal rows keep straight columns, one line each,
 // Finish now… at the left of their box's foot, and the tools row folds behind ⋯ Tools (out while 📊 Scoreboard is on),
-// giving three rows or more their ✔ Right and ✘ Wrong in sight. An RPG and a board-game round's box keeps one width
+// giving three rows or more their ✔ Right and ✘ Wrong in sight; at 1920×1080, where the rows fit, it stays out. An RPG and a board-game round's box keeps one width
 // from its title card to play, clear of the main button's cell.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -1596,6 +1596,38 @@ try {
       );
     }
     assert(clear.every((d) => d >= 0), `1280×720: each spotlit row in turn stops above the sticky Finish now… row (${clear.join(', ')}px clear)`);
+    await ctx.close();
+  }
+  // At 1920×1080 the four reveal rows fit with the tools row out: it stays (no ⋯ Tools), the stage its size.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    const pw = await ctx.newPage();
+    pw.on('pageerror', (e) => errors.push(e.message));
+    await pw.goto(pathToFileURL(file).href);
+    await openGameFile(pw, longFile);
+    await pw.getByText(/^Opened “/).waitFor();
+    await pw.getByRole('button', { name: '▶ Play' }).click();
+    await pw.getByRole('button', { name: 'Start game ▶' }).click();
+    await pw.locator('.fj .wagers').waitFor();
+    const zeroBoxes = pw.locator('.fj .wagers input[data-wager]');
+    for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill('0');
+    const stageAt = () => pw.locator('.stage-box').evaluate((s) => JSON.stringify(s.getBoundingClientRect()));
+    const before = await stageAt();
+    for (const step of ['Question on screen', 'Answer on screen', 'Player reveals']) {
+      await pw.keyboard.press(step === 'Answer on screen' ? 'r' : 'n');
+      await pw.locator('.panel .status', { hasText: step }).waitFor();
+    }
+    await pw.keyboard.press('n');
+    await pw.locator('.fj .pl.cur', { hasText: 'wager $0' }).waitFor();
+    await pw.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+    const box = await pw.locator('.fj').evaluate((f) => {
+      const m = f.closest('.mode-host');
+      return [m.scrollHeight, m.clientHeight];
+    });
+    assert(
+      (await pw.locator('.panel .toolsrow').getByRole('button', { name: /Scoreboard/ }).isVisible()) && (await pw.locator('.toolsfold').count()) === 0 && box[0] <= box[1] + 1 && (await stageAt()) === before,
+      `1920×1080, the Final's reveals in one window: the four rows fit (${box.join(' of ')}px), so the tools row stays out, no ⋯ Tools, the stage its size`,
+    );
     await ctx.close();
   }
 

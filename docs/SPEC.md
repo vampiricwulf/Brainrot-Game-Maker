@@ -1086,9 +1086,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    typed it, and typing one replaces it), Show wager, then ✔ Right and ✘ Wrong at the right end; on a window under
    900 px wide they wrap. Finishing early is a quiet **Finish now…** at the left of the box's foot, beside "2 still to
    judge", away from the verdicts, asking first in the strip; it isn't there while the blue button is Finish game ▶
-   itself. In one window the tools row folds away during the reveals (⋯ Tools in the status line brings it back; it
-   stays while something in it is on, 📊 Scoreboard pressed, a deal or cards out), so the rows get its room: three or
-   four in sight at 1280×720. With everyone judged, `N` twice finishes. `1`–`9` spotlight a player by their number (in the players'
+   itself. In one window, where the rows don't all fit with it out, the tools row folds away during the reveals (⋯ Tools
+   in the status line brings it back; it stays while something in it is on, 📊 Scoreboard pressed, a deal or cards
+   out), so the rows get its room: three or four in sight at 1280×720. Where they fit (1920×1080) it stays. With everyone judged, `N` twice finishes. `1`–`9` spotlight a player by their number (in the players'
    order), shown on each row.
 5. **Tie check**: if two or more players are tied for first, the results screen's tie box offers every way to settle it
    (it has no blue button; `N` says to settle the tie there):

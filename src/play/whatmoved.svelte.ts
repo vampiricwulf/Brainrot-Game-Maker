@@ -37,7 +37,7 @@ export const WHAT_MOVED: Record<MovedPart, readonly string[]> = {
     'One window: the stage keeps one size and place the whole game (a crop set on the board fits the Final), the host panel under it one height in every round, each moment’s rows scrolling in it. RPG and board-game rounds keep the panel under the stage too (beside it only with the audience window open). 👥 Players, ⚖ Rules and ? keep their title and Done in sight as they scroll there.',
     'The status line’s ⏱ Start and its seconds box are there only where a clock fits: a clue, the Final’s wagers and question, the tiebreaker and a board game’s turns (not a round’s title card, the board, a slides or RPG round, or Game over). T, or ⏱ Start the countdown in the stage’s right-click menu, starts one anywhere, and its ⏱ shows while it’s up.',
     'Go to round: ↓ and ↑ only move the list now (it asked at once and took the keys): Enter asks to go to the round it shows, Esc puts it back. The rounds’ names come first, their signs after, so typing a first letter goes to one.',
-    'The Final’s reveals in one window: the tools row (🎲 Dice … 📊 Scoreboard) folds away so more rows fit; ⋯ Tools in the status line brings it back.',
+    'The Final’s reveals in one window: when the rows don’t all fit, the tools row (🎲 Dice … 📊 Scoreboard) folds away so more of them do; ⋯ Tools in the status line brings it back.',
     '🚪 Exit: Discard & leave is red and set apart from Keep & leave. ✖ is gone: a 🤫 card’s ✖ Take back reads ↩ Take back, and the card window’s ✖ Close the card window reads ✕ Close the card window. In the 🎡 box, a wheel spun along with another comes off it with 🗑 (it was ✕), as a slice does in ✎ Edit wheel (it was −).',
   ],
   editor: [
