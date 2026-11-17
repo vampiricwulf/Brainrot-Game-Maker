@@ -832,17 +832,16 @@ try {
   assert(true, 'the screen flashes when BUZZ! lights up');
   host.close();
   await dee.locator('#host-note').waitFor();
-  // A phone opening the link now sees it at the top, under the heading, not below all the names.
+  // A phone opening the link sees it on screen, held at the foot of a list longer than the screen (it isn't above the
+  // names: a line coming or going there would move them all under a player's tap).
   const ida = await phone('ida', 360, 640);
   await ida.goto(`${base}/${room.code}`);
   await ida.getByRole('heading', { name: 'Tap your name' }).waitFor();
   const away = await ida.locator('#host-away').evaluate((e) => {
     const r = e.getBoundingClientRect();
-    const list = document.getElementById('seat-list').getBoundingClientRect();
-    // (And no blank lines for the empty notes between the heading and the names.)
-    return !e.hidden && r.top >= 0 && r.bottom <= innerHeight && r.top < list.top && document.getElementById('seats-note').offsetHeight === 0;
+    return !e.hidden && r.top >= 0 && r.bottom <= innerHeight + 0.5;
   });
-  assert(away, "a phone opening the link sees “The host isn't connected right now” on screen, above the names");
+  assert(away, "a phone opening the link sees “The host isn't connected right now” on screen");
   pages.splice(pages.findIndex(([, p]) => p === ida), 1);
   await ida.context().close();
   assert(

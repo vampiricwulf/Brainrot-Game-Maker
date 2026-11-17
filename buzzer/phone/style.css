@@ -93,8 +93,10 @@ h1 { font-size: 26px; margin: 8px 0 4px; text-align: center; overflow-wrap: anyw
 .note { color: var(--muted); text-align: center; margin: 0; min-height: 1.2em; overflow-wrap: anywhere; }
 /* (What to do when every seat is taken, then what the host says: a line each.) */
 #seats-status { white-space: pre-line; }
-/* (Empty, the status and note lines take no room: the names go up under the heading, ＋ I'm new with them.) */
-#s-seats > .note:empty { display: none; }
+/* The host gone: said under the names, kept on screen at its foot while the list is longer than the screen. (Not
+   above the names, nor folding the empty lines up there: a line coming or going there would move every name while a
+   player is reaching for theirs.) */
+#host-away:not([hidden]) { position: sticky; bottom: 0; padding: 8px 0; background: var(--bg); }
 .err { color: var(--bad); text-align: center; margin: 0; min-height: 1.2em; }
 .big-msg { font-size: 24px; text-align: center; margin: auto 0; color: var(--muted); }
 #wait-cancel { margin-bottom: auto; }

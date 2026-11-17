@@ -32,18 +32,18 @@ in plain words for the people who make and host games. Anything committed but no
 - ⌨ Keyboard shortcuts: a long key that wraps onto two lines now shows as a whole chip on each line, not two half-boxes (aebc9be).
 - The host's leave-round question no longer doubles the punctuation after a round name: "12 clues are left in Jeopardy! Go to Board game?" (e267d80).
 - With no players yet, the pre-game line now says "Add players above to start, or". It used to include a "＋ Add player" that looked like a button but did nothing when clicked (e267d80).
-- The toast after 📋 Copy slide in the clue editor is no longer cut off mid-sentence over the window. It now reads “Slide copied: 📋 Paste slide by the tabs adds it as a new slide, here or in another clue or game”. The slide tabs' Copy slide and Copy round toasts are shorter too. (2bcd0ac)
+- The toast after 📋 Copy slide in the clue editor is no longer cut off mid-sentence over the window. It now reads “Slide copied: 📋 Paste slide by the tabs adds it as a new slide, here or in another clue or game”. The slide tabs' Copy slide toast and a round tab's Copy round toast are shorter too. (2bcd0ac)
 - Screen readers now hear when the editor's notice says a newer version is out, once per version, even when the hourly check finds it while you're busy. (2bcd0ac)
 - After ⬇ Download, the steps notice under the header keeps its ⬆ with its words on a narrow window, instead of leaving the ⬆ alone on a line. (2bcd0ac)
 - A notice that appears under the header while a window (such as ⚙ Settings) is open is now out of reach behind the window, like the rest of the page. (2bcd0ac)
 - Screen readers name the ⌨ Keyboard shortcuts window for the part it shows: “Editor keyboard shortcuts” or “Keyboard shortcuts during the game”. Before, it said “Editor keyboard shortcuts” even while showing the game's keys. (2bcd0ac)
-- A Daily Double or the Final's wagers that can't go on yet (nobody picked, no wager, over the max, wagers still to come) now say why in the host panel's status line when you press the blue Show question ▶, N or Enter, as a click on the stage does, not in a message at the foot of the window (1ca1794).
+- A Daily Double or the Final's wagers that can't go on yet (nobody picked, no wager, over the max, wagers still to come) now say why in the host panel's status line when you press the blue Show question ▶, N or Enter, as a click on the stage does, not in a message at the foot of the window. Where the status line is too narrow for all of it, it's said in full at the foot as well (1ca1794, REVIEWHASH).
 - Undo of a score change takes its pop ("−$200") off the stage right away, so it no longer stays up after the score has gone back (1ca1794).
 - Clicking a score to fix it no longer widens that player's chip and pushes the other chips sideways (1ca1794).
 - The Game over screen no longer shows the ★ "picks next" star on a player's chip, where it looked like a winner's mark (1ca1794).
 - Partner clue wording: the check reads "First: Bob needs a partner." (not "…a partner first."), and the cards line says "you’ll copy it" or "phones get it" when there's one card (1ca1794).
 - On a short phone with a clue up, tapping "Not you? Change player" now scrolls down to its question (Keep playing / Give up), instead of opening it below the screen so the tap looked like it did nothing (88ba5ab).
-- The phone's seat list no longer leaves blank lines under "Tap your name", so more names and "＋ I'm new" fit on screen; and "The host isn't connected right now" now shows under the heading instead of below all the names (88ba5ab).
+- On a phone, "The host isn't connected right now" under the seat list now stays on screen, held at its foot while the list is longer than the screen. Before, with many names it was below them all, out of sight (88ba5ab).
 - On a phone joining a team, a refused name ("A team or someone in the game already has that name…", "The game is full…") now shows in red, like the new-player form's errors, not in grey (88ba5ab).
 - Typing a room code that can't be one (too short, or with a vowel) and tapping Join now puts the cursor back in the box with the code selected, so a phone's keyboard stays up to fix it (88ba5ab).
 - A negative score on a phone (like "You came 6th with −$600") no longer breaks between the minus sign and the amount (88ba5ab).

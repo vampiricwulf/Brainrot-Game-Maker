@@ -423,7 +423,7 @@
     const on = !!game.tiebreaker;
     return menuOf({
       heading: 'Tiebreaker clue',
-      open: [on ? { label: '❓ Open it', onclick: () => (tab = 'tiebreaker') } : { label: '＋ Add tiebreaker', onclick: addTiebreaker }],
+      open: [on ? { label: '❓ Open it', onclick: () => openTab('tiebreaker') } : { label: '＋ Add tiebreaker', onclick: addTiebreaker }],
       delete: on
         ? { label: '🗑 Turn it off', onclick: () => setTiebreaker(false), hint: 'Takes the tiebreaker clue out of the game, its question, answer and notes too (Undo brings it back)' }
         : undefined,
@@ -477,7 +477,7 @@
       if (!clipboard.round) return void toast('Copy a round first (its tab’s menu, or Ctrl+C on its tab)');
       const at = pasteRound(game, i);
       if (at === null) return;
-      tab = at;
+      openTab(at, true);
       focusRoundTab(game.rounds[at]?.id);
     }
   }

@@ -143,6 +143,7 @@
     markSince = 0,
     goon = null,
     clicknote = null,
+    onclipped,
   }: {
     game: Game;
     session: Session;
@@ -305,6 +306,8 @@
      * over where it says where you are (Play's: see stageclick.ts).
      */
     clicknote?: { text: string; undo?: () => void } | null;
+    /** The note didn't fit the status line (cut off with …): Play says it in full at the foot. */
+    onclipped?: (text: string) => void;
   } = $props();
 
   /** The status line, and how much of it a click's note covers: its start, up to the spacer before its chips. */
@@ -314,6 +317,22 @@
     if (!clicknote || !statusEl) return;
     const sp = statusEl.querySelector<HTMLElement>(':scope > .spacer');
     noteW = sp ? Math.max(0, sp.offsetLeft + sp.offsetWidth) : 0;
+  });
+  /** The note's words, measured once it's laid out at its width: cut off, they're said in full too (what to do next,
+   *  such as "or untick them to sit out", is often at their end). Once per note. */
+  let noteEl = $state<HTMLElement>();
+  let clippedSaid: object | null = null;
+  $effect(() => {
+    const note = clicknote;
+    const el = noteEl;
+    if (!note || !el || !noteW || clippedSaid === note) return;
+    // (After the frame: the note's width, set from noteW just now, is laid out by then.)
+    const f = requestAnimationFrame(() => {
+      if (clicknote !== note || clippedSaid === note || el.scrollWidth <= el.clientWidth + 1) return;
+      clippedSaid = note;
+      onclipped?.(note.text);
+    });
+    return () => cancelAnimationFrame(f);
   });
 
   const info = $derived(currentClueInfo(session, game));
@@ -749,6 +768,10 @@
    */
   const markCh = $derived(Math.max(7, `✘ −${formatPoints(topValue, sym)}`.length + 1));
   const scoreRoom = (n: number) => (chipSlots && topValue ? `max(70px, ${`−${formatPoints(Math.abs(n) + topValue, sym)}`.length}ch + 24px)` : undefined);
+  /** The score button's width, and its edit box's: elsewhere (the Final, Game over…) as wide as the score shown (one
+   *  more ch for a minus typed), so clicking it to fix it doesn't widen the chip either. */
+  const scoreBox = (p: string) =>
+    scoreRoom(score(session, p) - (marks[p]?.delta ?? 0)) ?? `max(70px, ${formatPoints(score(session, p), sym).length + 1}ch + 24px)`;
 
   // ---------- The NEXT cell: one main button ----------
   /**
@@ -880,7 +903,7 @@
       <!-- Over the line's start, up to its chips and buttons, so nothing in the line moves and the one-window stage keeps
            its size. (Read out by Play when it's said.) -->
       <span class="clicknote" data-click-note data-quiet style:width={noteW ? `${noteW}px` : undefined} title={clicknote.text}
-        ><span class="nt">{clicknote.text}</span>{#if clicknote.undo}<button class="small ghost" onclick={clicknote.undo} title="Takes it back">↶ Undo</button>{/if}</span
+        ><span class="nt" bind:this={noteEl}>{clicknote.text}</span>{#if clicknote.undo}<button class="small ghost" onclick={clicknote.undo} title="Takes it back">↶ Undo</button>{/if}</span
       >
     {/if}
     {#if session.phase === 'board'}
@@ -1069,7 +1092,7 @@
             <!-- (As wide as the score button it stands in for: opening it moves no other chip.) -->
             <input
               class="score-edit"
-              style:width={scoreRoom(score(session, p.id) - (marks[p.id]?.delta ?? 0))}
+              style:width={scoreBox(p.id)}
               type="text"
               inputmode="text"
               autocomplete="off"
@@ -1091,7 +1114,7 @@
               }}
             />
           {:else}
-            <button class="score ghost" onclick={() => (editingScore = p.id)} title="Click to set this score" style:min-width={scoreRoom(score(session, p.id) - (marks[p.id]?.delta ?? 0))}>
+            <button class="score ghost" onclick={() => (editingScore = p.id)} title="Click to set this score" style:min-width={scoreBox(p.id)}>
               {formatPoints(score(session, p.id), sym)}
             </button>
           {/if}
@@ -2513,9 +2536,8 @@
     min-width: 70px;
     border: none;
   }
-  /* (Bold as the score button is: its width, set in ch where the chips keep one width, then comes out the same.) */
+  /* (Bold as the score button is: its width, set in ch as the button's is, then comes out the same.) */
   .score-edit {
-    width: 100px;
     font-weight: 700;
   }
   .quick {

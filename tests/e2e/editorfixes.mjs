@@ -613,6 +613,19 @@ try {
     await sp.keyboard.press('Control+z');
     await sp.locator('nav > button.round-tab', { hasText: 'Double Jeopardy!' }).waitFor({ state: 'detached' });
     await sp.locator('nav > button.round-tab').filter({ hasText: /^\W*Jeopardy!$/ }).click();
+    // And a round pasted with Ctrl+V on its tab, as the menu's 📋 Paste round does.
+    const tabs = sp.locator('nav > button.round-tab');
+    const before = await tabs.count();
+    await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
+    await tabs.filter({ hasText: /^\W*Jeopardy!$/ }).focus();
+    await sp.keyboard.press('Control+c');
+    await sp.keyboard.press('Control+v');
+    await sp.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n + 1, before);
+    const onPasted = await mainEl.evaluate((m) => m.scrollTop);
+    assert(onPasted === 0, `a round pasted with Ctrl+V opens at the top (${onPasted})`);
+    await sp.keyboard.press('Control+z');
+    await sp.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n, before);
+    await tabs.filter({ hasText: /^\W*Jeopardy!$/ }).click();
     // A round's name keeps its width on a tablet (the sidebar beside it): its buttons go under it where both don't fit.
     for (const width of [720, 760, 820, 900, 1280]) {
       await sp.setViewportSize({ width, height: 720 });

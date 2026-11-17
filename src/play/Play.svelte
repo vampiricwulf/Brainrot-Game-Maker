@@ -6839,6 +6839,7 @@
         {markSince}
         goon={goPanel}
         clicknote={clickNote}
+        onclipped={(text) => hint(text)}
         tieNames={tie.length ? nameList(tie.map((id) => playerName(session, id))) : ''}
         inQueue={queueRows.map((r) => r.id)}
         onrolltie={rollTie}

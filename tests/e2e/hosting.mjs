@@ -761,6 +761,16 @@ try {
   );
   const pickerChips = await page.locator('.panel .p.picker').count();
   assert(!!savedPicker && pickerChips === 0, `Game over: a picker is still set, but no chip wears the ★ “picks next” (nobody picks now) (${pickerChips})`);
+  // Off the board too (here Game over), fixing a score opens its box as wide as the score: no chip moves.
+  {
+    const [g0, gx1] = [(await chipBox(0)).width, (await chipBox(1)).x];
+    await page.locator('.panel .p').nth(0).locator('.score').click();
+    await page.locator('.panel .score-edit').waitFor();
+    const [g0e, gx1e] = [(await chipBox(0)).width, (await chipBox(1)).x];
+    await page.locator('.panel .score-edit').press('Escape');
+    await page.locator('.panel .score-edit').waitFor({ state: 'detached' });
+    assert(Math.abs(g0e - g0) < 1 && Math.abs(gx1e - gx1) < 1, `Game over: a score's box keeps its chip's width too (${g0}→${g0e}, ${gx1}→${gx1e})`);
+  }
   const [scoresWin] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);
   watch(scoresWin, 'scores');
   await scoresWin.locator('.strip .plate').first().waitFor();
