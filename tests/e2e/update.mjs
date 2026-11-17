@@ -306,17 +306,38 @@ try {
     await hp.locator('nav > button.round-tab').nth(1).click();
     await hp.locator('.data-notice', { hasText: '99.2.3 is out' }).waitFor({ timeout: 2000 });
     assert(true, 'and going to another round shows it at once');
+    // A press whose release never reaches the page (a right-click whose native menu takes it, alt-tab while holding a
+    // button) holds the notice back only until the page can tell: the menu, the window losing focus, or a move with no
+    // button down. (The press is made up here, with no release after it.)
+    const press = () => hp.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 2, buttons: 2 })));
+    for (const [v, how, lost] of [
+      ['99.2.4', 'the right-click’s menu', () => hp.evaluate(() => document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, buttons: 2 })))],
+      ['99.2.5', 'the window losing focus', () => hp.evaluate(() => window.dispatchEvent(new Event('blur')))],
+      ['99.2.6', 'a move with no button down', () => hp.mouse.move(600, 400)],
+    ]) {
+      hourly = release(v);
+      await press();
+      await hp.clock.fastForward('01:01:00');
+      await hp.waitForTimeout(300);
+      await hp.clock.fastForward('00:05');
+      await hp.waitForTimeout(300);
+      assert((await hn.innerText()).includes('is out') && !(await hn.innerText()).includes(`${v} is out`), `a version (${v}) found while a button is held waits`);
+      await lost();
+      await hp.clock.fastForward('00:05');
+      await hp.locator('.data-notice', { hasText: `${v} is out` }).waitFor({ timeout: 2000 });
+      assert(true, `and when its release is lost, ${how} ends the wait`);
+    }
     // ⬇ Download's steps stay while a still newer version comes out (the next hourly check after Done brings it up).
     await hp.evaluate(() => (window.open = () => null));
-    await hn.getByRole('button', { name: '⬇ Download 99.2.3' }).click();
-    const hs = hp.locator('.data-notice', { hasText: 'Downloading 99.2.3 in a new tab' });
+    await hn.getByRole('button', { name: '⬇ Download 99.2.6' }).click();
+    const hs = hp.locator('.data-notice', { hasText: 'Downloading 99.2.6 in a new tab' });
     await hs.waitFor();
     hourly = release('99.3.0');
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
     await hp.clock.fastForward('00:05');
     await hp.locator('nav > button.round-tab').first().click();
-    assert(calls === 8 && (await hs.count()) === 1, 'a newer version found while the download’s steps show leaves them as they are');
+    assert(calls === 11 && (await hs.count()) === 1, 'a newer version found while the download’s steps show leaves them as they are');
     // With ⚙ Settings' box unticked, it doesn't ask again.
     await hp.getByRole('button', { name: /^More:/ }).click();
     await hp.getByRole('menuitem', { name: /Settings/ }).click();
@@ -324,7 +345,7 @@ try {
     await hp.keyboard.press('Escape');
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
-    assert(calls === 8, 'with the box unticked in ⚙ Settings, it doesn’t ask every hour');
+    assert(calls === 11, 'with the box unticked in ⚙ Settings, it doesn’t ask every hour');
     await ctx.close();
   }
 

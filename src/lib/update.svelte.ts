@@ -234,9 +234,19 @@ function watchHands(): void {
     pointerDown = false;
     waitAgain();
   };
+  // A release that never reaches the page (a native right-click menu takes it, or the window loses focus while a
+  // button is held) is over once the page can tell: the menu, the window's blur, or a move with no button down.
+  const lost = (): void => {
+    pointerDown = dragging = false;
+    waitAgain();
+  };
   addEventListener('pointerdown', down, true);
   addEventListener('pointerup', up, true);
   addEventListener('pointercancel', up, true);
+  addEventListener('pointermove', (e) => e.buttons === 0 && (pointerDown || dragging) && lost(), true);
+  addEventListener('contextmenu', lost, true);
+  // (Not on capture: an element's blur would come too.)
+  addEventListener('blur', lost);
   addEventListener('dragstart', () => ((dragging = true), clearTimeout(pauseTimer)), true);
   addEventListener('dragend', () => ((dragging = false), waitAgain()), true);
   addEventListener('keydown', waitAgain, true);
