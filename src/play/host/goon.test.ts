@@ -107,7 +107,7 @@ function ctx(g: Game, s: Session, over: Partial<GoCtx> = {}): GoCtx {
     wagerLimitsOff: false,
     ddPhone: false,
     partner: null,
-    final: { teams: false, wagerPhones: [] },
+    final: { teams: false, wagerPhones: [], clock: null },
     board: null,
     act,
     ...over,
@@ -965,7 +965,7 @@ describe('wheels, dice, the scores and pop-ups over the stage (3.4 F, G, M)', ()
 });
 
 describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
-  const FIN: FinalNow = { teams: false, wagerPhones: [] };
+  const FIN: FinalNow = { teams: false, wagerPhones: [], clock: null };
   /** Into the Final (everyone plays it), at `step`: the wagers in (Ann $100, Bob $50, Cat $0) past the wagers. */
   function final(step: NonNullable<Session['finalStep']> = 'wagers') {
     const { g, s } = setup();
@@ -1076,6 +1076,31 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     // In, or locked: nothing.
     f.answers.b = { text: 'Rome', n: 2 };
     expect(leftNow(c, st)).toEqual([]);
+  });
+
+  it('the clock still running at 👁 Reveal answer: ⏱ Let it run (⏎) or 👁 Reveal anyway (R); stopped or run out, none', () => {
+    const { g, s } = final('question');
+    const c = (clock: FinalNow['clock'], over: Partial<GoCtx> = {}) => ctx(g, s, { final: { ...FIN, clock }, ...over });
+    const st = mainStep(c(null))!;
+    const items = leftNow(c({ left: 27, running: true }), st);
+    expect(lines(items)).toEqual([['first: The clock is still running (27 s left).', '⏱ Let it run ⏎ · close']]);
+    const ck = open(st, items);
+    expect([anywayLabel(ck), inside({ key: 'Enter' }, ck, after), inside({ key: 'n' }, ck, after).do, inside({ key: 'r' }, ck, after).do, inside({ key: 'Escape' }, ck, after).do]).toEqual([
+      '👁 Reveal anyway',
+      { do: 'quick', quick: items[0].quick[0] },
+      'flash',
+      'anyway',
+      'notyet',
+    ]);
+    // Paused, run out, none: at once. Stopped while the check is open: its line says so.
+    for (const clock of [{ left: 27, running: false }, 'out', null] as const) expect(leftNow(c(clock), st)).toEqual([]);
+    expect([doneSay(c('out'), 'clock'), doneSay(c({ left: 20, running: false }), 'clock')]).toEqual(['Time’s up', 'The clock stopped']);
+    // Typed answers still coming: theirs only (its ⏱ 10 more seconds is the clock's); silenced, the clock's.
+    s.final!.answers = { a: { text: 'Paris', n: 1 } };
+    const phones = { phones: ['a', 'b'], clockUp: true };
+    expect(leftNow(c({ left: 27, running: true }, phones), st).map((i) => i.id)).toEqual(['answers']);
+    s.goonQuiet = ['answers'];
+    expect(leftNow(c({ left: 27, running: true }, phones), st).map((i) => i.id)).toEqual(['clock']);
   });
 
   it('the reveals: Show answer ▶, Show wager ▶, Next player ▶; the spotlit player’s verdict is a must at Next player ▶ (✔ C / ✘ X close it, no ⏎)', () => {

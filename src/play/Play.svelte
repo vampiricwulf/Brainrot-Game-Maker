@@ -32,7 +32,7 @@
   import { forgetRecipients, recipientsOf } from './host/tilecardpicks.svelte';
   import {
     anywayLabel, answerRow, asked, ddWaits, doneSay, doneStep, escBounce, finalWaits, goOnDecision, inside, leftNow, mainStep, everyonePassed, mergeItems, ringNow, swallowSay, todo, type Check, type GoActs, type GoCtx,
-    type GoPanel, type PartnerNow, type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
+    type FinalNow, type GoPanel, type PartnerNow, type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
   } from './host/goon';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type Overlay, type StageAction, type TimerState } from '../lib/live';
   import {
@@ -3193,13 +3193,17 @@
     return () => clearTimeout(t);
   });
 
-  /** Goes up while a partner clue's check counts its seconds down, or its wheel turns: the check and the blue button follow. */
+  /**
+   * Goes up while a partner clue's check (or the Final's, at its question) counts its seconds down, or its wheel turns:
+   * the check and the blue button follow.
+   */
   let partnerTick = $state(0);
   const partnerTicks = $derived.by(() => {
     const o = app.live.overlay;
     const t = app.live.timer;
     const turning = !!partner && o?.kind === 'wheel' && !!o.partnerFor && !!o.spin && o.partnerLanded !== o.spin.startedAt;
-    return turning || (!!check && !!partner && !!t && !t.expired && t.startedAt !== null);
+    const counting = !!partner || (session.phase === 'final' && session.finalStep === 'question');
+    return turning || (!!check && counting && !!t && !t.expired && t.startedAt !== null);
   });
   $effect(() => {
     if (!partnerTicks) return;
@@ -3260,6 +3264,13 @@
     };
   });
 
+  /** The Final's countdown at its question, as the check reads it (partnerTick, or a press, reads it again). */
+  function finalClock(): FinalNow['clock'] {
+    const t = app.live.timer;
+    if (session.phase !== 'final' || session.finalStep !== 'question' || !t) return null;
+    return t.expired ? 'out' : { left: Math.max(0, Math.ceil(timerRemaining(t))), running: t.startedAt !== null };
+  }
+
   /** What the blue button and the check read now: this screen's state and lib's (never a box's: H hides the boxes). */
   const go = $derived.by((): GoCtx => {
     const ans = everyone && info && session.remote?.answers?.id === answerRoundId(session, info.clue.id) ? session.remote.answers : undefined;
@@ -3287,7 +3298,7 @@
       wagerLimitsOff,
       ddPhone: !!session.dd?.playerId && wagerPhones.includes(session.dd.playerId),
       partner: partnerNow,
-      final: { teams: pregameTeams, wagerPhones },
+      final: { teams: pregameTeams, wagerPhones, clock: finalClock() },
       board: session.phase === 'boardgame' ? { editing: boardEdit.on, steps: bgSteps, noNumber: bgNoNumber, question: bgQuestion?.turn === bgAmountKey ? bgQuestion : null } : null,
       act: goActs,
     };
@@ -3404,6 +3415,8 @@
     if (!st) return;
     if (check) return flashCheck();
     if (st.busy) return hint(st.busy);
+    // (Read again now: a running clock's seconds left are this press's, not those of when it started.)
+    partnerTick++;
     const items = asked(source, leftNow(go, st));
     const d = goOnDecision(source, st, items, hideControls, dual);
     if (d === 'run') return void st.run();

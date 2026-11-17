@@ -7,8 +7,11 @@
 //    the clock not started), N, N, N there never shows the answer, a click on the stage with the card waiting opens it
 //    too, Enter in it sends the card and starts the clock, then R in it reveals anyway; the page never holds the
 //    card's words while it's open;
-// 3. the Final's reveals, one window: N with the spotlit player not judged yet opens the check (a must: no “anyway”), C
-//    in it judges them and closes it, the spotlight staying on them with their verdict on stage, then N goes on;
+// 3. the Final, one window: with its think clock running, 👁 Reveal answer by N, a stage click, the stage's menu or the
+//    blue button asks first (⏱ Let it run, the ⏎ one, keeps the clock going; 👁 Reveal anyway shows the answer); with
+//    the clock paused or run out it goes on at once (3b). In its reveals, N with the spotlit player not judged yet opens
+//    the check (a must: no “anyway”), C in it judges them and closes it, the spotlight staying on them with their
+//    verdict on stage, then N goes on;
 // 4. with the controls hidden: in one window N with something left changes nothing on stream (the stage its size, the
 //    pill pulses) and H shows the panel with the check open; in two windows the controls come back while it's open and
 //    hide again after;
@@ -71,6 +74,9 @@ const gameFile = resolve('test-results/goon.json');
 writeFileSync(gameFile, JSON.stringify(game));
 const finalFile = resolve('test-results/goon-final.json');
 writeFileSync(finalFile, JSON.stringify(finalGame));
+/** The same Final with a 2-second clock: it runs out (flow 3b). */
+const shortFinalFile = resolve('test-results/goon-final-short.json');
+writeFileSync(shortFinalFile, JSON.stringify({ ...finalGame, id: 'g_goon_final_short', rounds: [{ ...finalGame.rounds[0], timerSeconds: 2 }] }));
 
 const buzzer = await startBuzzer('buzzer-goon-');
 const browser = await chromium.launch({ executablePath });
@@ -361,8 +367,48 @@ try {
     for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill('0');
     await page.keyboard.press('n');
     await status('Question on screen');
+    // The think clock running: 👁 Reveal answer asks first, by N, by a click on the stage, by the stage's menu and by
+    // the blue button (⏱ Let it run, the ⏎ one; 👁 Reveal anyway, R), the answer hidden meanwhile.
+    const answerUp = () => page.locator('.stage-box .stage', { hasText: 'The final answer' }).count();
+    const clockRuns = () => page.locator('.panel .tc button[aria-label="Pause timer"]').count();
+    const clockLine = checkItem(page, 'clock');
     await page.keyboard.press('n');
+    await clockLine.waitFor();
+    assert(
+      /^The clock is still running \(\d+ s left\)\.$/.test((await clockLine.locator('.text').innerText()).trim()) &&
+        (await quick(page, '⏱ Let it run').innerText()).includes('⏎') &&
+        (await anyway(page).innerText()).startsWith('👁 Reveal anyway') &&
+        (await answerUp()) === 0,
+      `N with the Final’s clock running asks first (“${(await clockLine.locator('.text').innerText()).trim()}”): ⏱ Let it run ⏎, 👁 Reveal anyway, the answer hidden`,
+    );
+    // Enter in it: ⏱ Let it run, the clock still running, the answer still hidden.
+    await goOnCheck(page, { ready: true }).waitFor();
+    await page.keyboard.press('Enter');
+    await goOnCheck(page).waitFor({ state: 'detached' });
+    assert((await answerUp()) === 0 && (await clockRuns()) === 1, 'Enter (⏱ Let it run) closes it: the clock still running, the answer hidden');
+    await page.locator('.stage-box .stage').click();
+    await clockLine.waitFor();
+    // (Its seconds follow the clock while it's open.)
+    const secs = () => page.evaluate(() => Number(/\((\d+) s left\)/.exec(document.querySelector('[data-goon-item="clock"] .text')?.textContent ?? '')?.[1]));
+    const was = await secs();
+    await page.waitForFunction((w) => Number(/\((\d+) s left\)/.exec(document.querySelector('[data-goon-item="clock"] .text')?.textContent ?? '')?.[1]) < w, was);
+    assert((await answerUp()) === 0, `a click on the stage asks too, its seconds counting down (${was} s, then ${await secs()} s)`);
+    await goOnCheck(page, { ready: true }).waitFor();
+    await page.keyboard.press('Escape');
+    await goOnCheck(page).waitFor({ state: 'detached' });
+    await page.locator('.stage-box .stage').click({ button: 'right' });
+    await page.locator('.cm[role="menu"]').getByRole('menuitem', { name: /👁 Reveal answer/ }).click();
+    await clockLine.waitFor();
+    assert((await answerUp()) === 0 && (await clockRuns()) === 1, 'so does the stage’s menu; Esc (Not yet) leaves the clock running');
+    await goOnCheck(page, { ready: true }).waitFor();
+    await page.keyboard.press('Escape');
+    await goOnCheck(page).waitFor({ state: 'detached' });
+    await mainButton(page, '👁 Reveal answer').click();
+    await clockLine.waitFor();
+    await goOnCheck(page, { ready: true }).waitFor();
+    await anyway(page).click();
     await status('Answer on screen');
+    assert((await answerUp()) === 1 && (await goOnCheck(page).count()) === 0, 'the blue button asks too, and 👁 Reveal anyway shows the answer');
     await page.keyboard.press('n');
     await status('Player reveals');
     const spot = () => page.locator('.fj .pl.cur .name').innerText();
@@ -387,6 +433,33 @@ try {
     await page.keyboard.press('n');
     await page.waitForFunction((w) => document.querySelector('.fj .pl.cur .name')?.textContent !== w, who);
     assert((await goOnCheck(page).count()) === 0, 'then N goes on to the next player (N, C, N)');
+    await ctx.close();
+  }
+
+  // ---------- 3b: the Final's clock stopped or run out: 👁 Reveal answer at once ----------
+  console.log('The Final’s reveal, the clock stopped or run out:');
+  for (const [how, from] of [
+    ['paused', finalFile],
+    ['run out', shortFinalFile],
+  ]) {
+    const { ctx, page } = await host(`final ${how}`, undefined, from);
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    await page.locator('.fj .wagers, .stage-box .title-card').first().waitFor();
+    if (await page.locator('.stage-box .title-card').count()) await page.keyboard.press('n');
+    await page.locator('.fj .wagers').waitFor();
+    const zeroBoxes = page.locator('.fj .wagers input[data-wager]');
+    for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill('0');
+    await page.keyboard.press('n');
+    await page.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
+    await page.locator('.panel .tc button[aria-label="Pause timer"]').waitFor();
+    if (how === 'paused') {
+      await page.keyboard.press('t');
+      await page.locator('.panel .tc button[aria-label="Start timer"]').waitFor();
+    } else await page.locator('.panel .tc .left', { hasText: 'Time’s up' }).or(page.locator('.panel .tc .left', { hasText: "Time's up" })).waitFor();
+    const seen = await page.evaluate(() => window.__goonSeen);
+    await page.keyboard.press('n');
+    await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
+    assert((await page.evaluate(() => window.__goonSeen)) === seen && (await page.locator('.stage-box .stage', { hasText: 'The final answer' }).count()) === 1, `the clock ${how}: N shows the answer at once, no check`);
     await ctx.close();
   }
 

@@ -243,6 +243,8 @@ export type FinalNow = {
   teams: boolean;
   /** Who can send their wager from a phone now (the wagers: "Waiting on Bob’s phone"). */
   wagerPhones: Id[];
+  /** The countdown: up (running or paused, its seconds left), run out, or none. */
+  clock: { left: number; running: boolean } | 'out' | null;
 };
 
 /**
@@ -669,6 +671,24 @@ function finalAnswersItems(c: GoCtx): LeftItem[] {
   const ans = f?.answers;
   if (!f || !ans || f.answersLocked || c.session.finalStep !== 'question') return [];
   return comingItems(c, (id) => !!ans[id], f.players, FLOW.reveal.label);
+}
+
+/**
+ * The Final's think clock still running, at 👁 Reveal answer: the answer would cut it short. ⏱ Let it run (⏎) closes the
+ * check, the clock going on; 👁 Reveal anyway (R) shows it. Stopped or run out: it goes on at once.
+ */
+function finalClockItems(c: GoCtx): LeftItem[] {
+  const t = c.final.clock;
+  if (c.session.finalStep !== 'question' || !t || t === 'out' || !t.running || t.left <= 0) return [];
+  return [
+    {
+      id: 'clock',
+      kind: 'first',
+      text: `The clock is still running (${t.left} s left).`,
+      anyway: FLOW.reveal.anyway,
+      quick: [{ label: '⏱ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label} (N)` }],
+    },
+  ];
 }
 
 /**
@@ -1445,9 +1465,11 @@ function questionItems(c: GoCtx, t: Turn): LeftItem[] {
 
 /**
  * What a line of the check says once it's done, where that says more than “✓ Done”: a board game's turn, walked
- * (“✓ Ann rolled 4”). Undefined: the plain tick.
+ * (“✓ Ann rolled 4”), the Final's clock (“✓ Time’s up”). Undefined: the plain tick.
  */
 export function doneSay(c: GoCtx, id: string): string | undefined {
+  // (The Final's clock, stopped or run out while the check was open.)
+  if (id === 'clock') return c.final.clock === 'out' ? 'Time’s up' : 'The clock stopped';
   const t = turnOf(c);
   if (!t?.id) return undefined;
   const who = name(c, t.id);
@@ -1483,7 +1505,7 @@ export function leftNow(c: GoCtx, step: Step): LeftItem[] {
                 ? []
                 : cardItems(c, true)
               : step.id === 'finalreveal'
-                ? finalAnswersItems(c)
+                ? finalRevealItems(c)
                 : step.id === 'spot' || step.id === 'finish'
                   ? verdictItems(c, step)
                   : step.id === 'results'
@@ -1491,8 +1513,19 @@ export function leftNow(c: GoCtx, step: Step): LeftItem[] {
                     : step.id === 'turn'
                       ? turnItems(c)
                       : [];
-  const quiet = c.session.goonQuiet ?? [];
-  return all.filter((i) => !i.quiet || !quiet.includes(i.quiet));
+  return all.filter((i) => !quieted(c, i));
+}
+
+/** Its kind silenced this game. */
+const quieted = (c: GoCtx, i: LeftItem): boolean => !!i.quiet && (c.session.goonQuiet ?? []).includes(i.quiet);
+
+/**
+ * The Final's 👁 Reveal answer: typed answers still coming (their ⏱ 10 more seconds says the clock's part), else the
+ * clock still running. One at a time: the panel's room for the check is small in one window.
+ */
+function finalRevealItems(c: GoCtx): LeftItem[] {
+  const answers = finalAnswersItems(c).filter((i) => !quieted(c, i));
+  return answers.length ? answers : finalClockItems(c);
 }
 
 /** The box button that wears the ring now: the first item left with one (null: none). */
