@@ -83,7 +83,7 @@ export function boardPlace(game: Game, round: BoardRound): Place | undefined {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Past this many characters, a line's details make it too long for the sidebar: it says how many instead. */
-const INLINE_MAX = 70;
+const INLINE_MAX = 100;
 
 /**
  * Two or three problems of one round said in its line, its name once ("Final Jeopardy!: no question, no answer"), so a

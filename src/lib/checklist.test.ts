@@ -73,7 +73,7 @@ describe('two or three things to fix in one line', () => {
     // Too long for the sidebar, or one not starting with the name: counted too.
     const long = checklistLines(game, [
       { text: 'Final Jeopardy! has no answer', tab: 0, level: 'warn' },
-      { text: 'Final Jeopardy! was switched off in the old game: kept because something is written in it', tab: 0, level: 'info' },
+      { text: "Final Jeopardy! was switched off in the old game: kept because something is written in it, and plays last. Delete the round if it shouldn't play", tab: 0, level: 'info' },
     ]);
     expect(long[0].text).toBe('Final Jeopardy!: 2 things to fix');
   });
@@ -222,6 +222,15 @@ describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () =
     expect(lines.find((l) => l.tab === 1)).toMatchObject({ text: 'Race: a button on “Space 4” points nowhere', place: { tab: 'round', round: race.id, part: { kind: 'space', space: race.spaces[3].id } } });
     race.spaces[3].onLand = undefined;
     expect(lines.length - checklistLines(game, validate(game)).length).toBe(1);
+  });
+  it('names a board game’s two problems in its line too', () => {
+    const game = jeopardyGame();
+    const race = raceRound();
+    game.rounds = [race];
+    race.mover = { kind: 'wheel', wheel: 'gone' };
+    race.spaces[3].onLand = [{ id: 'g', do: 'goto', space: 'gone', who: 'ask' }];
+    const line = checklistLines(game, validate(game)).find((l) => l.tab === 0)!;
+    expect(line.text).toBe('Race: the movement wheel no longer exists, a button on “Space 4” points nowhere');
   });
 });
 
