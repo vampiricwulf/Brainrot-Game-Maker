@@ -653,7 +653,7 @@ try {
   await panel.getByText('Ann picked it.').waitFor();
   assert((await page.locator('.panel .status [data-viewers]').getAttribute('title')).includes('⚠ Viewers can see this window'), 'the status line’s ⚠ Viewers see this chip says viewers can see this window');
   await never(host, CARD_ONLY, 'PARTNER UP!');
-  /** Reload the page and resume the game in one window (the editor shows first, with Resume game: on stream too). */
+  /** Reload the page and resume the game in one window (the game's cover card shows first, with Resume game). */
   const resume = async () => {
     await page.reload();
     await page.getByRole('button', { name: 'Resume game' }).click();

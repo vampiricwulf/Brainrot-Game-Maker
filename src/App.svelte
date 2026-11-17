@@ -147,6 +147,28 @@
    * $state: the effect that starts the watcher reads it.)
    */
   let ownsLock = $state(false);
+  /**
+   * Set as the page goes away mid-game in one window (a reload, F5): that window is the one on stream, so it opens on a
+   * cover, not the editor with every clue still to play (bootCover). Read once, as the page starts.
+   */
+  const MIDGAME_KEY = 'brainrot.leftMidGame';
+  const leftMidGame = untrack(() => !playerOnly) && takeFlag(MIDGAME_KEY);
+  /** The page reloaded mid-game in one window: the game's cover card until the host picks Resume game or the editor. */
+  let bootCover = $state(false);
+  $effect(() => {
+    // (Gone once the game screen is up: Keep & leave later comes back to the editor.)
+    if (app.screen !== 'editor') bootCover = false;
+  });
+  /** A flag kept in this tab for its next page (read once, then gone). */
+  function takeFlag(key: string): boolean {
+    try {
+      const on = sessionStorage.getItem(key) === '1';
+      sessionStorage.removeItem(key);
+      return on;
+    } catch {
+      return false;
+    }
+  }
   /** Set just before reloading to take over editing from another tab. */
   const TAKE_KEY = 'brainrot.takeEditor';
   /** "Edit here instead" was pressed just before this reload (read once). */
@@ -243,6 +265,8 @@
     } else arriving({ kind: 'new', label: 'New game' });
     // A finished game stays too, so its results can still be viewed after a reload.
     if (play) app.resumable = resumed(play);
+    // (Before the editor is ever shown: this window may be the one on stream.)
+    if (leftMidGame && app.resumable && app.resumable.session.phase !== 'end') bootCover = true;
     // Drop stored media that no saved game uses any more.
     await pruneMedia([app.game, app.resumable?.game], held);
     loaded = true;
@@ -626,9 +650,22 @@
     // Desktop app: closing the window waits for these writes (and asks about a 🗜 copy being made, or what autosave
     // couldn't keep).
     flushOnClose(flush, jobLine, wouldLose);
+    // Going away mid-game in one window, or with the cover still up: the next page in this tab opens on the cover too.
+    // (Not on hiding the tab: the game goes on when it's shown again.)
+    const marked = () => {
+      const midGame = loaded && mayPlay() && app.screen === 'play' && !app.pregame && !app.test && app.session?.phase !== 'end' && !audience.open;
+      if (!playerOnly && (midGame || (bootCover && app.screen === 'editor')))
+        try {
+          sessionStorage.setItem(MIDGAME_KEY, '1');
+        } catch {
+          // No session storage: the editor shows, as before.
+        }
+    };
     window.addEventListener('pagehide', flush);
+    window.addEventListener('pagehide', marked);
     document.addEventListener('visibilitychange', onvis);
     return () => {
+      window.removeEventListener('pagehide', marked);
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onvis);
     };
@@ -1181,6 +1218,22 @@
       <PlayerHome onplay={() => void startPlay()} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
     </div>
   </div>
+{:else if app.screen === 'editor' && bootCover && app.resumable}
+  <!-- The page reloaded mid-game in one window, the window on stream: the game's cover card, and the editor (every clue
+       still to play) kept out until the host picks it. Nothing here is secret. -->
+  <div class="boot-cover" role="region" aria-label="Game paused">
+    <div class="cover-card"><span class="pause" aria-hidden="true"></span>{app.resumable.game.settings.stream?.coverText?.trim() || 'Be right back'}</div>
+    <div class="cover-host">
+      {#if resuming}
+        {@render modeAsk()}
+      {:else}
+        <span class="muted small">The page reloaded during the game: viewers see this card.</span>
+        <!-- svelte-ignore a11y_autofocus -->
+        <button class="primary" use:oneShot autofocus onclick={() => askResume()}>Resume game</button>
+        <button onclick={() => ((bootCover = false), focusMain())}>Go to the editor</button>
+      {/if}
+    </div>
+  </div>
 {:else if app.screen === 'editor'}
   <!-- The editor fills the window (the page itself never scrolls): the status bar stays on top of it. -->
   <div class="editor-screen">
@@ -1409,5 +1462,43 @@
   }
   .mode-ask :global(.modes) {
     align-self: stretch;
+  }
+  /* The cover after a reload mid-game in one window: as viewers see ⏸ Cover, the host's choice small at the foot. */
+  .boot-cover {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    padding: 16px;
+    background: radial-gradient(circle, #2a3a8a, #000);
+  }
+  .boot-cover .cover-card {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    font: clamp(40px, 9vw, 120px) 'Anton', 'Oswald', sans-serif;
+    color: #fff;
+    text-align: center;
+    text-shadow: 6px 6px 0 #000;
+  }
+  /* Two bars, drawn: the ⏸ character is thin or missing in many fonts. */
+  .boot-cover .pause {
+    flex: none;
+    width: 0.75em;
+    height: 0.9em;
+    background: linear-gradient(to right, currentColor 0 34%, transparent 34% 66%, currentColor 66%);
+    filter: drop-shadow(6px 6px 0 #000);
+  }
+  .cover-host {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.5);
   }
 </style>

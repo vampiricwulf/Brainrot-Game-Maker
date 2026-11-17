@@ -6,7 +6,9 @@
 // and the countdown wait for the tile's own tool, and only for it; Done and Cancel take it down, Esc waits for its spin,
 // the keys go back to its main button, a reload keeps it the tile's own), a countdown started under the cover, Undo bringing
 // back a countdown, everyone missing, and the stage's size with a long host note, the buzzers' row and a Daily Double;
-// TIME'S UP joined partway in a window reloaded during it, and not shown again in one reloaded after it.
+// TIME'S UP joined partway in a window reloaded during it, and not shown again in one reloaded after it. A reload
+// mid-game in one window (the window on stream) opens on the game's cover card, never the editor with the clues still
+// to play: Resume game (covered again if it was), or Go to the editor.
 // On Pastel, one window: a clue zooming in over the board's background, white tool titles, a long cover text, and no
 // lit tile under a still, hidden cursor.
 import { chromium } from 'playwright-core';
@@ -671,6 +673,105 @@ async function viewers() {
  * Esc while it spins waits for it, the keys go back to its main button once it lands, and after a reload closing a dice
  * tile's dice still finishes the tile.
  */
+/**
+ * A reload mid-game in one window: that window is the one on stream, so it opens on the game's cover card, never the
+ * editor (every clue still to play, its ⭐ DD and 🤝 badges). Again on a reload of the cover; Resume game goes back in
+ * (covered again if ⏸ Cover was on); Go to the editor shows it, the game kept to resume. Keep & leave, then a reload:
+ * the editor, as before; and so with an audience window, which is the one on stream.
+ */
+async function reloadMidGame() {
+  console.log('A reload mid-game in one window:');
+  const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
+  const clue = (id, q) => ({ id, value: null, type: 'standard', questionSlide: slide(q), answerSlide: slide(`${q}: the answer`) });
+  const game = {
+    id: 'g_reload', version: 2, title: 'Reload show',
+    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 20, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, stream: { coverText: 'Back in a sec' } },
+    players: [['Ann', '#e6194b'], ['Bob', '#3cb44b']].map(([name, color], i) => ({ id: `p${i + 1}`, name, color })),
+    rounds: [{ id: 'r_b', name: 'Board', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: [{ id: 'c0', title: 'Facts', clues: [clue('qa', 'Secret question one'), clue('qb', 'Secret question two')] }] }],
+    media: [], audio: {}, dice: [], theme: {}, wheels: [],
+  };
+  const gameFile = resolve('test-results/stream-reload.json');
+  writeFileSync(gameFile, JSON.stringify(game));
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  // (Whether the editor was ever on the page since it loaded: a cover shown after a moment of editor would be too late.)
+  await ctx.addInitScript(() => {
+    window.__editorSeen = 0;
+    new MutationObserver(() => {
+      if (document.querySelector('nav[aria-label="Editor"]')) window.__editorSeen++;
+    }).observe(document, { subtree: true, childList: true });
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => errors.push(`[reload] ${e.message}`));
+  await page.goto(pathToFileURL(file).href);
+  await openGameFile(page, gameFile);
+  await page.getByText(/^Opened “/).waitFor();
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.locator('.mode', { hasText: 'Single window' }).click();
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.locator('.stage-box .board .tile[data-clue="qa"]').click();
+  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  const cover = page.getByRole('region', { name: 'Game paused' });
+  const editorSeen = () => page.evaluate(() => window.__editorSeen);
+  const reloadToCover = async () => {
+    await page.reload();
+    await cover.waitFor();
+    await page.waitForTimeout(300);
+  };
+  await reloadToCover();
+  const said = await cover.innerText();
+  const focused = await page.evaluate(() => document.activeElement?.textContent?.trim());
+  assert(
+    (await editorSeen()) === 0 && said.includes('Back in a sec') && !said.includes('Secret question') && focused === 'Resume game' && (await cover.getByRole('button', { name: 'Go to the editor' }).count()) === 1,
+    `reloaded mid-game in one window, it opens on the game's cover card (“Back in a sec”), never the editor; Resume game has the keys (${focused})`,
+  );
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/stream-reload-cover.png` });
+  await reloadToCover();
+  assert((await editorSeen()) === 0, 'reloaded again on the cover, it opens on the cover again');
+  // Resume game asks how it's shown, as from the editor; Enter picks one window, used last.
+  await cover.getByRole('button', { name: 'Resume game' }).click();
+  await page.waitForFunction(() => !!document.activeElement?.matches('.mode-ask .mode.on'));
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/stream-reload-ask.png` });
+  await page.keyboard.press('Enter');
+  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  assert((await cover.count()) === 0 && (await editorSeen()) === 0, 'Resume game goes back into the game, the clue still open');
+  // ⏸ Cover on (K), then a reload: Resume game comes back covered.
+  await page.keyboard.press('k');
+  await page.locator('.stage-box .cover').waitFor();
+  await reloadToCover();
+  await cover.getByRole('button', { name: 'Resume game' }).click();
+  await page.waitForFunction(() => !!document.activeElement?.matches('.mode-ask .mode.on'));
+  await page.keyboard.press('Enter');
+  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  assert((await page.locator('.stage-box .cover').count()) === 1 && (await editorSeen()) === 0, 'with ⏸ Cover on, a reload and Resume game come back covered, the editor never shown');
+  // Go to the editor: the editor, the game kept to resume.
+  await reloadToCover();
+  await cover.getByRole('button', { name: 'Go to the editor' }).click();
+  await page.locator('nav[aria-label="Editor"]').waitFor();
+  assert((await page.locator('.status-bar .kept').innerText()).includes('Kept to resume'), 'Go to the editor shows the editor, the game kept to resume');
+  // Keep & leave, then a reload: the editor, as before.
+  await page.locator('.status-bar .kept').getByRole('button', { name: 'Resume game' }).click();
+  await page.waitForFunction(() => !!document.activeElement?.matches('.mode-ask .mode.on'));
+  await page.keyboard.press('Enter');
+  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await page.getByRole('button', { name: '🚪 Exit' }).click();
+  // (Past the question's guard against a double click.)
+  await page.waitForTimeout(450);
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  await page.locator('nav[aria-label="Editor"]').waitFor();
+  await page.reload();
+  await page.locator('nav[aria-label="Editor"]').waitFor();
+  assert((await cover.count()) === 0, 'Keep & leave, then a reload: the editor, as before');
+  // With a separate audience window (the one on stream), a reload mid-game opens the editor, as before.
+  await page.locator('.status-bar .kept').getByRole('button', { name: 'Resume game' }).click();
+  const [aud] = await Promise.all([ctx.waitForEvent('page'), page.locator('.mode-ask .mode', { hasText: 'Separate audience window' }).click()]);
+  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await page.reload();
+  await page.locator('nav[aria-label="Editor"]').waitFor();
+  assert((await cover.count()) === 0, 'with an audience window, a reload mid-game opens the editor, as before');
+  await aud.close();
+  await ctx.close();
+}
+
 async function tileTools() {
   console.log('Wheel and dice tiles, the countdown and the buzzers (single window, buzzer mode):');
   const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
@@ -1321,6 +1422,7 @@ try {
   await crowd();
   await viewers();
   await tileTools();
+  await reloadMidGame();
 
   assert(!dialogs.length, 'no browser dialogs' + (dialogs.length ? ': ' + dialogs.join(' | ') : ''));
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
