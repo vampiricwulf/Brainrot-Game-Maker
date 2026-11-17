@@ -14,7 +14,7 @@
   import { justShown } from './guard';
   import { secondClick } from '../../lib/oneshot';
   import { VERBS } from './verbs';
-  import { app } from '../../lib/app.svelte';
+  import { app, hint } from '../../lib/app.svelte';
 
   let {
     game,
@@ -74,15 +74,45 @@
 
   /**
    * A round picked in Go to round: at once when this one is played out, else asked like Next round. Picked with the
-   * arrow keys (`keyed`: on a closed list, ↓ picks the next round while someone only looks through it), it always asks.
+   * keys on the closed list (`keyed`: ↓, ↑ or a round's first letter, while someone only looks through it), it's held
+   * there instead, the keys staying in the list, and asks only on Enter (hold).
    */
   function goto(i: number, keyed = false): void {
+    held = null;
     if (i === session.currentRound) return;
-    if (done && !keyed) ongoto?.(i);
+    if (keyed) return hold(i);
+    if (done) ongoto?.(i);
     else ask(i);
   }
   /** The last key on Go to round changed it by itself (not Enter or Space in its open list, nor Alt+↓ opening it). */
   let keyed = false;
+  /** The round the keys moved the closed list to: nothing happens until Enter asks to go there (Esc or leaving it: back). */
+  let held: number | null = null;
+
+  /** ↓ or ↑ on the closed list: the round is only shown there, and the status line says what Enter does. */
+  function hold(i: number): void {
+    held = i;
+    hint(`Enter: go to ${roundName(game.rounds[i], i)} (it asks first) · Esc: stay`);
+  }
+  /** Keys on the list: Enter asks about the round held there, Esc puts it back on this round. */
+  function pickerKey(e: KeyboardEvent): void {
+    if (held !== null && !e.altKey && (e.key === 'Enter' || e.key === 'Escape')) {
+      e.preventDefault();
+      e.stopPropagation();
+      const i = held;
+      held = null;
+      if (e.key === 'Enter') ask(i);
+      else if (picker) picker.value = String(session.currentRound);
+      return;
+    }
+    keyed = !e.altKey && !['Enter', ' ', 'Tab'].includes(e.key);
+  }
+  /** The keys left the list with a round only held there: nothing happens, the list shows this round again. */
+  function pickerBlur(): void {
+    if (held === null) return;
+    held = null;
+    if (picker) picker.value = String(session.currentRound);
+  }
 
   function stop(): void {
     asking = null;
@@ -147,12 +177,14 @@
       aria-label="Go to round"
       bind:this={picker}
       value={session.currentRound}
-      onkeydown={(e) => (keyed = !e.altKey && !['Enter', ' ', 'Tab'].includes(e.key))}
+      onkeydown={pickerKey}
+      onblur={pickerBlur}
       onpointerdown={() => (keyed = false)}
       onchange={(e) => goto(+e.currentTarget.value, keyed)}
     >
+      <!-- (The name first, its sign after: typing a round's first letter goes to it.) -->
       {#each game.rounds as r, i (r.id)}
-        <option value={i}>{ROUND_MODES[r.mode].icon} {roundName(r, i)}</option>
+        <option value={i}>{roundName(r, i)} {ROUND_MODES[r.mode].icon}</option>
       {/each}
     </select>
   {/if}

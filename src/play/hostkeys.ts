@@ -56,6 +56,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['Right-click a player', 'Their menu: on the stage (avatar, token, strip, score plate) or in the host panel (their score chip, their button in any box). This moment’s verbs for them first (✔ Right / ✘ Wrong in a clue, ★ picked it, ⭐ found it…), then Select, ★ Make the picker, ✎ Set the score…; ⛔ Kick from phone and 🗑 Remove player… last. Shift+F10 on their button, or a long press, opens it too'],
       ['Right-click the stage', 'The moment’s menu: first the blue button’s step (N, asking first as N does), then the moment’s own actions with their keys, what its box adds, the way out, Undo and Cover. Shift+F10 on the blue button (or a long press) opens it too'],
       ['L', 'Log: the history (go back to any point), scores and rolls; right-click a row of its 🕘 History: ↶ Back to here, ↶ Reopen tile, undo or restore just that score'],
+      ['↓ / ↑ on Go to round', 'Move the list to another round (or type its first letter): nothing happens yet. Enter asks to go there, Esc puts it back. Alt+↓ opens the list'],
       ['A', 'Open / focus the audience window (never closes it)'],
       ['Shift+A', 'Open / focus ▭ Scores window: only the score plates and the countdown, for a lower third in OBS'],
       ['H', 'Hide / show the host controls'],

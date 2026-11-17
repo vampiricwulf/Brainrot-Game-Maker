@@ -164,19 +164,43 @@ try {
   if (process.env.SCREENSHOTS) await page.screenshot({ path: `${process.env.SCREENSHOTS}/slides-host.png` });
   await page.getByRole('button', { name: 'Next round ▶' }).first().waitFor();
   assert(true, 'on the last slide the main button is Next round ▶');
-  // Go to round with the keyboard: on a closed list ↓ picks the next round, so it asks first (a round played out goes on
-  // at once only when picked with the mouse); Keep playing gives the keys back to the list, on this round again.
+  // Go to round with the keyboard: on a closed list ↓ and ↑ only move it, the keys staying there and nothing asked (a
+  // round further on can be reached), the status line saying what Enter does; a round's first letter goes to it (its
+  // name comes first, its sign after); Esc puts it back on this round. Enter asks first (a round played out goes on at
+  // once only when picked with the mouse); Keep playing gives the keys back to the list, on this round again.
   const goTo = page.getByRole('combobox', { name: 'Go to round' });
+  const strip = page.locator('.panel .confirm');
+  const onRound = () => goTo.evaluate((s) => s.selectedOptions[0]?.textContent.trim());
+  const keysOnList = () => page.evaluate(() => !!document.activeElement?.matches('select[aria-label="Go to round"]'));
   await goTo.focus();
   await page.keyboard.press('ArrowDown');
-  const strip = page.locator('.panel .confirm');
+  await page.locator('.toast', { hasText: 'Enter: go to Jeopardy! (it asks first) · Esc: stay' }).waitFor();
+  assert(
+    (await strip.count()) === 0 && (await keysOnList()) && (await onRound()).startsWith('Jeopardy!') && (await stage.locator('[data-slide="2"]').count()) === 1,
+    `↓ on Go to round only moves the list (“${await onRound()}”): nothing asked, the keys still there, the round where it was; the status line says Enter goes there`,
+  );
+  await page.keyboard.press('ArrowDown');
+  await page.waitForFunction(() => document.querySelector('select[aria-label="Go to round"]')?.selectedOptions[0]?.textContent.startsWith('Final Jeopardy!'));
+  assert((await strip.count()) === 0 && (await keysOnList()), '↓ again reaches the round after it (Final Jeopardy!), still asking nothing');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => document.querySelector('select[aria-label="Go to round"]')?.selectedOptions[0]?.textContent.startsWith('Introduction'));
+  assert((await strip.count()) === 0 && (await keysOnList()), 'Esc puts the list back on this round');
+  await page.keyboard.press('j');
+  await page.waitForFunction(() => document.querySelector('select[aria-label="Go to round"]')?.selectedOptions[0]?.textContent.startsWith('Jeopardy!'));
+  assert((await strip.count()) === 0, `typing J goes to Jeopardy! in the list (its options: ${(await goTo.locator('option').allInnerTexts()).join(' | ')})`);
+  await page.keyboard.press('Enter');
   await strip.getByText('Leave Introduction for Jeopardy!?').waitFor();
-  assert((await stage.locator('[data-slide="2"]').count()) === 1, '↓ on Go to round asks before leaving the round (it doesn’t jump)');
+  assert((await stage.locator('[data-slide="2"]').count()) === 1, 'Enter on it asks before leaving the round (it doesn’t jump)');
   await page.waitForFunction(() => document.activeElement?.closest('.panel .confirm') && document.activeElement.textContent?.trim() === 'Keep playing');
   await page.keyboard.press('Enter');
   await strip.waitFor({ state: 'detached' });
   await page.waitForFunction(() => document.activeElement?.matches('select[aria-label="Go to round"]'));
   assert((await goTo.locator('option:checked').innerText()).includes('Introduction'), 'Keep playing puts the keys back on Go to round, on this round');
+  // (Leaving the list with a round only moved to: nothing happens, it shows this round again.)
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Tab');
+  await page.waitForFunction(() => document.querySelector('select[aria-label="Go to round"]')?.selectedOptions[0]?.textContent.startsWith('Introduction'));
+  assert((await strip.count()) === 0 && (await stage.locator('[data-slide="2"]').count()) === 1, 'Tab away from a round only moved to in the list: nothing asked, the list back on this round');
   // (Not in the first moments of a round: a double-click's second half doesn't jump ahead.)
   await page.waitForTimeout(500);
   // A click on the stage on the last slide says so first (leaving the round is on stream), in the status line; the next

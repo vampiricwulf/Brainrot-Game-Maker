@@ -245,7 +245,7 @@ try {
   await page.getByRole('button', { name: 'Skip intro' }).click().catch(() => {});
   const picker = page.getByRole('combobox', { name: 'Go to round' });
   // With clues left on this board it asks first, like Next round; Keep playing puts the list back on this round.
-  await picker.selectOption({ label: '🏆 Final Jeopardy!' });
+  await picker.selectOption({ label: 'Final Jeopardy! 🏆' });
   const goTo = page.getByText(/clues? (is|are) left in Double Jeopardy! Go to Final Jeopardy!\?/);
   await goTo.waitFor();
   await page.waitForTimeout(450);
@@ -255,7 +255,7 @@ try {
     (await goTo.count()) === 0 && (await picker.locator('option:checked').innerText()).includes('Double Jeopardy!'),
     'Keep playing on “N clues are left in Double Jeopardy! Go to Final Jeopardy!?” stays on this round, and the round list shows it again',
   );
-  await picker.selectOption({ label: '🏆 Final Jeopardy!' });
+  await picker.selectOption({ label: 'Final Jeopardy! 🏆' });
   await page.waitForTimeout(450);
   await leaveAnswer(page).click();
   // Its title card, by mistake: ◀ Previous round goes back without starting it (its category never on stream).
@@ -265,7 +265,7 @@ try {
   await page.locator('.stage-box .board').waitFor();
   assert((await page.locator('.fj').count()) === 0, 'the Final’s title card has ◀ Previous round: back to Double Jeopardy! without starting the Final');
   await page.waitForTimeout(450);
-  await picker.selectOption({ label: '🏆 Final Jeopardy!' });
+  await picker.selectOption({ label: 'Final Jeopardy! 🏆' });
   await page.waitForTimeout(450);
   await leaveAnswer(page).click();
   // (Its title card was shown already: it opens on the round.)

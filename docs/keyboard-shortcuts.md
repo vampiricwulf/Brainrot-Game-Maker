@@ -25,6 +25,7 @@ See [Hosting a game](hosting.md) for how the show runs.
 | `K` or `B` | "Be right back" cover |
 | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y` | Undo / redo |
 | `L` | Log: the history, scores and rolls |
+| `↓` / `↑` on Go to round | Move the list to another round (or type its first letter); `Enter` asks to go there, `Esc` puts it back. `Alt+↓` opens the list |
 
 ## Players and scores
 

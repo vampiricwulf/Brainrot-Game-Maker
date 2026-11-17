@@ -1745,7 +1745,7 @@ try {
         await p5.keyboard.press('Escape');
         const picker = p5.getByRole('combobox', { name: 'Go to round' });
         await picker.waitFor();
-        await picker.selectOption({ label: '🟦 Double Jeopardy!' });
+        await picker.selectOption({ label: 'Double Jeopardy! 🟦' });
         const ask = confirmStrip(p5);
         await ask.waitFor();
         // (Its answer ignores a click in its first moment: the second half of a double-click.)
