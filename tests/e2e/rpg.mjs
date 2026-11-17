@@ -1302,12 +1302,16 @@ try {
   assert((await firstCard.getByLabel(/ HP$/).inputValue()) === '10', 'undo puts the HP back');
 
   // Map and cover.
+  const saidNow = (re) => page.waitForFunction((src) => new RegExp(src).test(document.getElementById('live-region')?.dataset.said ?? ''), re.source);
   await page.keyboard.press('v');
   await page.locator('.rpg .map-ov').waitFor();
-  assert(true, 'V shows the map to viewers');
+  await saidNow(/Map on stream/);
+  assert(true, 'V shows the map to viewers, and says so');
   await page.keyboard.press('v');
   await page.waitForTimeout(300);
   assert(!(await page.locator('.rpg .map-ov').count()), 'V again takes the map off the screen');
+  await saidNow(/Map off stream/);
+  assert(true, 'and says so');
   await page.keyboard.press('b');
   await page.locator('.cover').waitFor();
   assert(true, 'B covers the screen');
@@ -1435,6 +1439,8 @@ try {
   await page.keyboard.press('i');
   await page.locator('.sheet').waitFor();
   assert((await page.locator('.sheet').innerText()).includes('Potion'), 'I shows a player sheet with the inventory');
+  await saidNow(/’s sheet on screen/);
+  assert(true, `and says whose (“${await page.evaluate(() => document.getElementById('live-region').dataset.said)}”)`);
   await page.keyboard.press('Escape');
 
   // Use: the card says what the item does and asks first.

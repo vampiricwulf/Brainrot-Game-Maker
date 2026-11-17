@@ -5987,7 +5987,12 @@
       e.preventDefault();
       if (k === 'j') rpgMap = true;
       else if (k === 'g') regroupKey();
-      else toggleMap(game, session);
+      else {
+        toggleMap(game, session);
+        // (Said, as S says the scores are: it changes what viewers see, out of a screen reader's sight.)
+        const shown = rpgNow(game, session).st?.mapShown;
+        if (shown !== undefined) announce(shown ? 'Map on stream' : 'Map off stream');
+      }
       return;
     }
     // The toolset's key in RPG and board-game rounds: a player's sheet (I).
@@ -5998,9 +6003,13 @@
         const at = selected.indexOf(app.live.overlay.playerId);
         const next = selected[at + 1];
         app.live.overlay = next ? { kind: 'sheet', nonce: newId(), playerId: next } : null;
+        announce(next ? `${playerName(session, next)}’s sheet on screen` : 'Sheet off screen');
       } else {
         const id = selected[0] ?? session.players[0]?.id;
-        if (id) app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: id };
+        if (id) {
+          app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: id };
+          announce(`${playerName(session, id)}’s sheet on screen`);
+        }
       }
       return;
     }
@@ -6189,6 +6198,7 @@
       case 'h':
         hideAgain = false;
         hideControls = !hideControls;
+        announce(hideControls ? 'Host controls hidden: H shows them' : 'Host controls shown');
         break;
       case 'f':
         toggleFullscreen();

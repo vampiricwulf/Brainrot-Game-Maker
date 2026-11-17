@@ -577,6 +577,12 @@ try {
   assert((await scoreBox.getAttribute('aria-label')) === 'Player 1’s score', 'and the box it opens is named “Player 1’s score”');
   await scoreBox.press('Escape');
   await scoreBox.waitFor({ state: 'detached' });
+  // H says whether the controls are hidden.
+  await page.keyboard.press('h');
+  await saidHas(/Host controls hidden/);
+  await page.keyboard.press('h');
+  await saidHas(/Host controls shown/);
+  assert(true, 'H says the host controls are hidden, then shown');
   // One window: ?, 📜 Log, ⚖ Rules, 🔊 Sound and 👥 Players open in the host panel's own box, scrolling there, and the
   // stage viewers see keeps its size (the panel doesn't grow for them; playcopies.mjs checks 🗜 Make smaller).
   const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
