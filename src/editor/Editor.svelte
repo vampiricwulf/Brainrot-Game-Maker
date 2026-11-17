@@ -1890,15 +1890,28 @@
       text-align: right;
     }
   }
-  /* (Short, on one line like the other notes, the details in its tooltip.) From a laptop up it's never cut mid-word: the
-     title box gives way first. */
-  @media (min-width: 1101px) {
+  /* (Short, on one line like the other notes, the details in its tooltip.) While the header is one line (from 901px
+     up: a laptop at 125% zoom, half a screen) it's never cut mid-word: the title box gives way first. */
+  @media (min-width: 901px) {
     /* (Always with room for a file job's pill, so nothing moves when one starts: the desktop app's "✓ Autosaved" is
        short.) */
     .saved {
       flex-shrink: 0;
       min-width: 9.5rem;
       text-align: right;
+    }
+  }
+  /* Up to 1100px the note gives way too, cut short (its words stay there, unseen, under a pill: it's as wide either
+     way), down to the room for the pill's sign, percentage and Stop (it has no words here: JobPill.svelte). The title
+     box may be narrower too: ▶ Play is still whole at 901px. */
+  @media (min-width: 901px) and (max-width: 1100px) {
+    .saved,
+    .saved.busy {
+      flex-shrink: 1;
+      min-width: 8.25rem;
+    }
+    .title {
+      min-width: 100px;
     }
   }
   /* 💾 Save •: changed since its last save as a file. Its words only where the header has room. */

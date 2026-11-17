@@ -648,14 +648,21 @@ try {
   // (The page's work slowed down 4 times again: the edit is still being made after the clicks below.)
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
   // On a 1280×720 screen, the header's title and buttons stay where they are while the pill shows (it takes the
-  // browser's note's place), and the pill shows how far it got.
-  await page.setViewportSize({ width: 1280, height: 720 });
+  // browser's note's place), and the pill shows how far it got. So they do at 1000 and 901 px wide (a laptop at 125%
+  // zoom, half a screen), where the title box is narrower.
   const headerAt = () =>
     page.evaluate(() =>
       [...document.querySelectorAll('.editor > header > input, .editor > header > button, .editor > header .end > button')]
         .map((b) => `${(b.getAttribute('aria-label') ?? b.textContent).trim().slice(0, 6)}@${Math.round(b.getBoundingClientRect().left)}w${Math.round(b.getBoundingClientRect().width)}`)
         .join(' '),
     );
+  const narrower = [1000, 901];
+  const idleAt = {};
+  for (const width of narrower) {
+    await page.setViewportSize({ width, height: 720 });
+    idleAt[width] = await headerAt();
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   const before5 = await headerAt();
   await foot().getByRole('button', { name: 'Apply', exact: true }).click();
   await foot().getByRole('button', { name: 'Keep working' }).click();
@@ -672,6 +679,21 @@ try {
   });
   assert(during5 === before5, `at 1280×720 the header’s title and buttons don’t move as the pill comes (${before5} / ${during5})`);
   assert(/^\d+%$/.test(pillAt.pct) && pillAt.stop && /^✂ Saving a video’s edit… \d+%/.test(pillAt.title), `and the pill shows its percentage and Stop, its words in full in its tooltip (${JSON.stringify(pillAt)})`);
+  for (const width of narrower) {
+    await page.setViewportSize({ width, height: 720 });
+    const busyAt = await headerAt();
+    const playEnd = await page.getByRole('button', { name: '▶ Play' }).evaluate((b) => Math.round(b.getBoundingClientRect().right));
+    assert(busyAt === idleAt[width] && playEnd <= width, `at ${width} px wide they don’t move either, ▶ Play whole (to x=${playEnd}) (${idleAt[width]} / ${busyAt})`);
+  }
+  // A phone: the pill shows (its Stop in reach) without its words, which would be cut to a letter or two and "…".
+  await page.setViewportSize({ width: 390, height: 800 });
+  const phonePill = await page.locator('[data-job-pill]').evaluate((p) => {
+    const words = p.querySelector('.words');
+    const stop = p.querySelector('button').getBoundingClientRect();
+    return { words: words ? getComputedStyle(words).display : 'gone', stop: stop.width >= 30 && stop.right <= innerWidth };
+  });
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/videoedit-pill-390.png` });
+  assert(phonePill.words === 'none' && phonePill.stop, `at 390 px wide the pill has no words, its Stop whole and in sight (${JSON.stringify(phonePill)})`);
   await page.setViewportSize({ width: 1400, height: 950 });
   const play = page.getByRole('button', { name: '▶ Play' });
   await play.click();
