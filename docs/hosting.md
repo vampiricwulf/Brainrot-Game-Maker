@@ -154,6 +154,10 @@ it goes **Show answer ▶**, then your ✔ Right or ✘ Wrong puts their wager a
 player ▶** (there's no Show wager ▶ step).
 **Finish now…** ends early.
 
+Show question ▶ starts the think clock. While it's still running, 👁 Reveal answer (the blue button, `N`, a click on the
+screen or its menu) asks first: **⏱ Let it run** (`Enter`, or `Esc`) keeps it going, **👁 Reveal anyway** (`R`) shows
+the answer. Once the clock runs out, or you pause it (`T`), the answer goes up at once. `R` always shows it at once.
+
 In the reveals, **½ Halve** and **0 Nullify** beside a player's wager halve it (rounded down) or make it 0. If
 they're already judged, their points change with it. `Ctrl+Z` undoes it.
 
