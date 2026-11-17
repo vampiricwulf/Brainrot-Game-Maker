@@ -363,8 +363,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 ### 5.4 Image editor (modal; non-destructive; original kept)
 - The image, drawing (🖌 Drawpad) and video windows work alike: the header is the title and the file's facts, then ↶
   Undo · ↷ Redo · Reset (apart; the Drawpad's clears the drawing, undoable) · Use original (an edited picture's) ·
-  Cancel · Apply / Insert drawing · ✕ (✎ Edit video / sound has no Cancel there: its foot keeps Cancel, Save as a new
-  file or Only this item, and Apply / Apply to all N). Ctrl+Enter applies in all three, Esc asks before throwing changes
+  Cancel · Apply / Insert drawing · ✕ (✎ Edit video / sound has no Cancel there: its foot has Save as a new file or
+  Only this item at the left, then Cancel and Apply / Apply to all N at the right). Ctrl+Enter applies in all three, Esc asks before throwing changes
   away (Discard, or Keep editing / Keep drawing), and ✂ Crop is a toggle that reads ✓ Done cropping while pressed, the
   shapes and Remove crop by it.
 - Tools: ✋ Select (M), ✂ Crop (C; C again is done cropping), 🖌 Draw (D), 🅣 Text (T), 😂 Sticker (S), each key in its
@@ -518,7 +518,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 ### 5.8 Save / load / export
 - **The first screen** (a game with no rounds): a muted line saying what the app is ("🎮 Brainrot Games Maker: build a
   game show, host it on stream, players buzz in from their phones.", in a browser "Nothing to install.", and online a
-  "Get the app ↗" link to the Releases page), "Add your first round", one short line (New here? ✨ Try the sample, then ▶ Play it; in a
+  "Get the app ↗" link to the Releases page; one line that never wraps, its words cut short in a narrow window, all of
+  them in its tooltip, the link always whole; it wraps on a phone, where the page scrolls), "Add your first round", one short line (New here? ✨ Try the sample, then ▶ Play it; in a
   browser, that the work is kept in this browser and 💾 Save makes a file), ✨ Try a sample game, then a card a mode (a blank round) with at most two
   templates in it to start from (＋ Add round has them all), the arrow keys moving between the cards, and a line for a
   game file, "Have a game file? 📂 Open a game… or drop it here", with the three newest Recent games as buttons on it
@@ -1313,7 +1314,8 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   chip, the color picker's Hex | RGB, a green ✔ or red ✘ and the RPG stage's yellow selection keep their own.
 - **A window's buttons** (its foot): Cancel (or Close) and the main button together at the right, the main one last;
   a hint or any other action at the left (Open…'s "or drop a game file on the editor", Start new anyway, Import
-  rounds' Tick all, a shared theme's 💾 Save to my themes, ▶ Watch it). Every import is 📥 (📥 Import clues…, 📥 Import
+  rounds' Tick all, a shared theme's 💾 Save to my themes, ▶ Watch it). On a phone (under 600 px) the foot wraps: what's
+  at the left takes a line of its own, Cancel and the main button together at the right under it. Every import is 📥 (📥 Import clues…, 📥 Import
   rounds…, 📥 Import theme…, 📥 Import CSV…); 📂 is Open… and folders.
 - **Page widths on a wide screen**: a page of settings or lists stops at a readable width (1200 px); boards, maps and a
   slides round's slide fill the window (its Round name and Host notes stay at the readable width). A round's header

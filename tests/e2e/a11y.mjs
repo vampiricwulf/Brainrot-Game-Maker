@@ -233,6 +233,38 @@ try {
   );
   await opening.getByRole('button', { name: 'Cancel' }).click();
   await opening.waitFor({ state: 'detached' });
+  // On a phone the foot wraps: what's at the left gets a line of its own above Cancel and the main button (still
+  // together at the right), and nothing runs off the window or the screen.
+  const narrowFoot = (dlg) =>
+    dlg.locator('.modal-foot').evaluate((f) => {
+      const r = (el) => el.getBoundingClientRect();
+      const box = r(f.closest('[role="dialog"], [role="alertdialog"]'));
+      const bs = [...f.querySelectorAll('button')];
+      const [cancel, main] = bs.slice(-2);
+      const shown = [...f.children].filter((el) => r(el).width);
+      const left = shown.filter((el) => el !== cancel && el !== main && !el.classList.contains('spacer'));
+      return {
+        inside: shown.every((el) => r(el).left >= Math.max(box.left, 0) - 1 && r(el).right <= Math.min(box.right, innerWidth) + 1),
+        above: left.length > 0 && left.every((el) => r(el).bottom <= r(cancel).top + 1),
+        together: r(main).right >= r(f).right - 1 && r(main).left - r(cancel).right <= 12 && Math.abs(r(main).top - r(cancel).top) <= 1,
+        gap: Math.round(r(cancel).top - Math.max(...left.map((el) => r(el).bottom))),
+      };
+    });
+  for (const [w, h] of [[390, 844], [360, 740]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.getByRole('button', { name: /New/ }).first().click();
+    await replacing.waitFor();
+    const nf = await narrowFoot(replacing);
+    assert(nf.inside && nf.above && nf.together && nf.gap <= 12, `at ${w}×${h}, Start a new game?'s foot wraps: Start new anyway above, Cancel and Save first together at the right, all in the window (${JSON.stringify(nf)})`);
+    await replacing.getByRole('button', { name: 'Cancel' }).click();
+    await page.keyboard.press('Control+o');
+    await opening.waitFor();
+    const of = await narrowFoot(opening);
+    assert(of.inside && of.above && of.together && of.gap <= 12, `at ${w}×${h}, 📂 Open a game's foot wraps: the hint above, Cancel and Browse together at the right, all in the window (${JSON.stringify(of)})`);
+    await opening.getByRole('button', { name: 'Cancel' }).click();
+    await opening.waitFor({ state: 'detached' });
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   // 📥 Import clues…: the same.
   await page.locator('nav > button.round-tab').first().click();
   await page.getByRole('button', { name: '📥 Import clues…' }).click();

@@ -306,6 +306,23 @@ body:has(.in-panel [aria-modal='true']) .toast {
 .modal-foot > .spacer {
   min-width: 24px;
 }
+/* On a phone the foot wraps, rather than running off the window: what's at the left takes a line of its own (the
+   spacer, a full line as tall as the gap, breaks it there), and Cancel and the main button stay together at the right
+   under it. (Under 600px no foot with something at the left fits on one line.) */
+@media (max-width: 600px) {
+  .modal-foot:has(> .spacer) {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    row-gap: 0;
+  }
+  .modal-foot > .spacer {
+    flex-basis: 100%;
+    height: 8px;
+  }
+  .modal-foot > .spacer + * {
+    margin-left: auto;
+  }
+}
 /* A window taller than the screen scrolls under its foot: Done and the rest stay in sight, whole. */
 :where(.modal) > .modal-foot {
   position: sticky;
