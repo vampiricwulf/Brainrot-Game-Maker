@@ -32,7 +32,7 @@ See [Hosting a game](hosting.md) for how the show runs.
 | `1`–`9` | Select player 1–9 |
 | `0` | Select everyone or no one |
 | `P` then `1`–`9` | Make that player the picker |
-| `Enter` / `Shift+Enter` | Award / deduct |
+| `Enter` / `Shift+Enter` | Award / deduct (on one player at the clue's value: ✔ / ✘, where the other one switches a verdict already given) |
 | `C` / `X` | Final reveal: right / wrong |
 
 ## Tools and timers

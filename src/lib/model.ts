@@ -929,6 +929,11 @@ export interface ScoreEvent {
   batchId?: Id;
   /** A Final re-judge: the earlier judgment's event it took the place of (undoing this brings that one back). */
   replaces?: Id;
+  /**
+   * A verdict switched on a clue (✔ after ✘, or ✘ after ✔, on the same player: switchVerdict in session.ts): the events
+   * of the mark it took back. Undoing this brings them back; redoing it takes them back again.
+   */
+  switched?: Id[];
   /** A Final judgment: marked right or wrong (older saves go by the sign of `delta`; a 0 wager changes nothing). */
   right?: boolean;
   /** The round it was given in (the 📜 Log's history groups by round). */

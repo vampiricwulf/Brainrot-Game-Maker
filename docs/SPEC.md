@@ -1008,6 +1008,13 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    - Amount field, prefilled with the clue value (or the DD wager). Editable to any number.
    - Buttons: **Award +**, **Deduct −**, and quick "Wrong (−value)" per player when deduct-on-wrong is on.
    - Awarding does not auto-close the clue, so multiple awards/deductions per clue are possible.
+   - A player's quick ✔ / ✘ marks them on the clue (on their chip: "✘ −$200"); the same one again is off. The other one
+     on the same player switches the verdict (session.ts `switchVerdict`): every score change of their mark on the clue
+     is taken back and the new verdict gives or takes the clue's value (a Daily Double's wager, a partner clue's share)
+     on the score without it, so ✘ −$200 then ✔ ends at +$200. One undo step (Ctrl+Z puts the old mark back), one pop
+     with the change to the score ("Ann +$400"), and the undo says "+$400 (Ann, ✘ → ✔)". Enter / Shift+Enter on the
+     one selected at the clue's value are the same verdicts; ＋ Award / − Deduct with another amount add on top. Another
+     player's verdict (a second buzzer, a steal) is never a switch. The Final's ✔ / ✘ re-judge the same way already.
 5. **Reveal answer**: shows the answer slide in the audience view (by the blue button, `N` or a click: with the buzzers
    never opened, ✍ answers still coming in or a 🤫 card not sent, it asks first; `R` shows it at once).
 6. **Back to board**: marks the tile used. "Unmark" is available by right-clicking the tile. By the blue button, `N` or

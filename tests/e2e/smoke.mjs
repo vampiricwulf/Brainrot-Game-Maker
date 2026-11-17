@@ -882,13 +882,13 @@ assert(
   'a player marked ✘ shows “✘ −$200” on their chip, and their ✘ is off for this clue',
 );
 assert(await page.locator('.panel .p').nth(1).locator('button.right').isDisabled(), 'a player already awarded on this clue can’t be ✔ again (＋ Award still can)');
-// One-click correct: awards the value and makes that player the picker.
+// One-click correct: awards the value and makes that player the picker. (Marked ✘ already: a switch, the ✘ taken back.)
 await page.locator('.panel .p').nth(2).locator('button.right').click();
-assert((await scoreOf(2)) === '$0', 'quick ✔ awards the clue value to one player');
+assert((await scoreOf(2)) === '$200', 'quick ✔ after their ✘ switches the verdict: the clue value, the ✘ taken back');
 assert(await page.locator('.panel .p').nth(2).evaluate((e) => e.classList.contains('picker')), 'the player marked right becomes the picker (★)');
 await page.keyboard.press('Control+z');
 assert((await scoreOf(2)) === '−$200', 'Ctrl+Z takes the quick ✔ back');
-assert((await page.locator('.toast').innerText()).includes('Undid +$200 (Player 3)'), 'the undo toast says what was undone');
+assert((await page.locator('.toast').innerText()).includes('Undid +$400 (Player 3, ✘ → ✔)'), 'the undo toast says what was undone');
 assert(
   (await page.locator('.toast button').count()) === 0 && (await page.locator('.toast').evaluate((e) => getComputedStyle(e).pointerEvents)) === 'none',
   'the toast has no buttons and lets clicks through to the host nav row under it',

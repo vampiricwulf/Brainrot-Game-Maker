@@ -10,7 +10,7 @@ import {
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
   finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
   blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown, finalTakeNewcomers, finalReached, reveal, unreveal,
-  finalShowAnswer, typedAnswer, finalRevealNow,
+  finalShowAnswer, typedAnswer, finalRevealNow, switchVerdict, switchNet, logZero,
 } from './session';
 import { finalNextStep, logged, redoAction, revealStep, undoAction } from './toolset';
 import { newRpgRound } from './rpg';
@@ -1575,5 +1575,140 @@ describe('an award that made its player the picker', () => {
     expect([score(session, b), session.currentPickerId]).toEqual([0, a]);
     toggleStep(session, stepOf(both[0]));
     expect([score(session, b), session.currentPickerId]).toEqual([200, b]);
+  });
+});
+
+describe('a verdict switched on a clue (✘ then ✔, or ✔ then ✘)', () => {
+  /** A quick ✔ / ✘ as the chip gives it: a switch when they're marked the other way, else the verdict on top. */
+  function quick(s: ReturnType<typeof setup>, id: string, right: boolean, amount = 200, since = 0) {
+    const switched = switchVerdict(s.session, s.game, id, 'q1', since, right, amount, 'Memes $200');
+    if (switched) return switched;
+    const given = applyScore(s.session, s.game, [id], right ? amount : -amount, 'Memes $200', 'q1');
+    return given.length ? given : logZero(s.session, [id], 'Memes $200', 'q1', right);
+  }
+
+  it('✘ then ✔ ends at +the value (not 0), the chip reads ✔, in one undo step back to the ✘', () => {
+    const s = setup();
+    const { session, a } = s;
+    quick(s, a, false);
+    expect(score(session, a)).toBe(-200);
+    const events = quick(s, a, true);
+    expect(score(session, a)).toBe(200);
+    expect(clueMarks(session, 'q1')).toEqual({ [a]: { right: true, delta: 200 } });
+    expect(switchNet(session, events[0])).toBe(400);
+    expect(describeStep(session, events, '$')).toBe('+$400 (P1, ✘ → ✔) · Memes $200');
+    expect(undo(session)).toHaveLength(1);
+    expect(score(session, a)).toBe(-200);
+    expect(clueMarks(session, 'q1')).toEqual({ [a]: { right: false, delta: -200 } });
+    redo(session);
+    expect(score(session, a)).toBe(200);
+    expect(clueMarks(session, 'q1')).toEqual({ [a]: { right: true, delta: 200 } });
+    // Two undos: back to before the ✘.
+    undo(session);
+    undo(session);
+    expect(score(session, a)).toBe(0);
+    expect(clueMarks(session, 'q1')).toEqual({});
+  });
+
+  it('✔ then ✘ ends at −the value, and gives the board back', () => {
+    const s = setup();
+    const { session, a, b } = s;
+    session.currentPickerId = b;
+    const right = quick(s, a, true);
+    right[0].picker = { was: b, now: a };
+    session.currentPickerId = a;
+    const events = quick(s, a, false);
+    expect(score(session, a)).toBe(-200);
+    expect(clueMarks(session, 'q1')[a]).toEqual({ right: false, delta: -200 });
+    expect(switchNet(session, events[0])).toBe(-400);
+    expect(session.currentPickerId).toBe(b);
+    undo(session);
+    expect([score(session, a), session.currentPickerId]).toEqual([200, a]);
+    redo(session);
+    expect([score(session, a), session.currentPickerId]).toEqual([-200, b]);
+  });
+
+  it('the same verdict again, another player, or a mark from before the clue opened is no switch', () => {
+    const s = setup();
+    const { session, game, a } = s;
+    quick(s, a, true);
+    expect(switchVerdict(session, game, a, 'q1', 0, true, 200, 'x')).toBeNull();
+    // A tile reopened: what was given before it opened again is left as it was.
+    expect(switchVerdict(session, game, a, 'q1', Date.now() + 1000, false, 200, 'x')).toBeNull();
+    expect(score(session, a)).toBe(200);
+    // Ann wrong, then Bob right (another buzzer, a steal): Bob's is his own verdict, Ann's ✘ stands.
+    const s2 = setup();
+    quick(s2, s2.a, false);
+    expect(switchVerdict(s2.session, s2.game, s2.b, 'q1', 0, true, 200, 'x')).toBeNull();
+    quick(s2, s2.b, true);
+    expect([score(s2.session, s2.a), score(s2.session, s2.b)]).toEqual([-200, 200]);
+  });
+
+  it('a second player is left as they were by another player’s switch, and by its undo', () => {
+    const s = setup();
+    const { session, a, b } = s;
+    quick(s, a, false);
+    quick(s, b, false);
+    quick(s, a, true);
+    expect([score(session, a), score(session, b)]).toEqual([200, -200]);
+    expect(clueMarks(session, 'q1')).toEqual({ [a]: { right: true, delta: 200 }, [b]: { right: false, delta: -200 } });
+    undo(session);
+    expect([score(session, a), score(session, b)]).toEqual([-200, -200]);
+  });
+
+  it('takes back everything the mark came to (＋ Award on top too), so the chip holds the new verdict alone', () => {
+    const s = setup();
+    const { session, game, a } = s;
+    quick(s, a, true);
+    applyScore(session, game, [a], 100, 'Memes $200', 'q1');
+    expect(score(session, a)).toBe(300);
+    const events = quick(s, a, false);
+    expect(score(session, a)).toBe(-200);
+    expect(switchNet(session, events[0])).toBe(-500);
+    undo(session);
+    expect(score(session, a)).toBe(300);
+  });
+
+  it('with negative scores off, the new deduction counts from the score without the old mark', () => {
+    const s = setup();
+    const { session, game, a } = s;
+    game.settings.allowNegativeScores = false;
+    applyScore(session, game, [a], 100, 'earlier');
+    quick(s, a, false);
+    expect(score(session, a)).toBe(0);
+    const right = quick(s, a, true);
+    expect(score(session, a)).toBe(300);
+    expect(switchNet(session, right[0])).toBe(300);
+    // And back to ✘: the ✔'s $200 off, then the $100 left to take.
+    quick(s, a, false);
+    expect(score(session, a)).toBe(0);
+    expect(clueMarks(session, 'q1')[a]).toEqual({ right: false, delta: -100 });
+  });
+
+  it('a Daily Double’s wager, and a 0 result, switch the same way', () => {
+    const s = setup();
+    quick(s, s.a, false, 1000);
+    quick(s, s.a, true, 1000);
+    expect(score(s.session, s.a)).toBe(1000);
+    const s0 = setup();
+    quick(s0, s0.a, false, 0);
+    const zero = quick(s0, s0.a, true, 0);
+    expect(clueMarks(s0.session, 'q1')).toEqual({ [s0.a]: { right: true, delta: 0 } });
+    expect(switchNet(s0.session, zero[0])).toBe(0);
+  });
+
+  it('📜 Log’s Undo and Restore on the switch bring the old mark back and take it again', () => {
+    const s = setup();
+    const { session, a } = s;
+    quick(s, a, false);
+    const [e] = quick(s, a, true);
+    toggleEvent(session, e.id);
+    expect(score(session, a)).toBe(-200);
+    toggleEvent(session, e.id);
+    expect(score(session, a)).toBe(200);
+    toggleStep(session, stepOf(e));
+    expect(score(session, a)).toBe(-200);
+    toggleStep(session, stepOf(e));
+    expect(score(session, a)).toBe(200);
   });
 });

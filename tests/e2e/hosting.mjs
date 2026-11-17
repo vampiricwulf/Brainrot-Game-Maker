@@ -396,6 +396,52 @@ try {
       (await chip.getByRole('button', { name: /^Right:/ }).isEnabled()),
     'a player marked ✘ shows it on their chip (✘ −$400), and ✘ is off for them on this clue (✔ still on)',
   );
+  // A slip fixed with the other one: ✔ after ✘ switches the verdict (the ✘'s −$400 taken back, +$400 given), in one
+  // step, with one pop for the change. Another player's ✘ on the clue is their own, and stays.
+  const money = (t) => Number(t.trim().replace('−', '-').replace(/[$,]/g, ''));
+  const scoreOf = async (c) => money(await c.locator('.score').innerText());
+  const chip2 = page.locator('.panel .p').nth(1);
+  await chip2.getByRole('button', { name: /^Wrong:/ }).click();
+  await chip2.locator('.mark.wrong').waitFor();
+  const [wrong1, wrong2] = [await scoreOf(chip), await scoreOf(chip2)];
+  await chip.getByRole('button', { name: /^Right:/ }).click();
+  await chip.locator('.mark.right').waitFor();
+  await stage('.pop', { hasText: 'Player 1 +$800' }).waitFor();
+  assert(
+    (await scoreOf(chip)) === wrong1 + 800 &&
+      (await chip.locator('.mark').innerText()).trim() === '✔ +$400' &&
+      (await chip.getByRole('button', { name: /^Right:/ }).isDisabled()) &&
+      (await chip.getByRole('button', { name: /^Wrong:/ }).isEnabled()),
+    '✔ after ✘ switches the verdict: the ✘ taken back and +$400 given, the chip reads ✔ +$400, one pop “Player 1 +$800”',
+  );
+  assert((await scoreOf(chip2)) === wrong2 && (await chip2.locator('.mark').innerText()).trim() === '✘ −$400', 'another player’s ✘ on the clue stays as it was');
+  await page.keyboard.press('Control+z');
+  await chip.locator('.mark.wrong').waitFor();
+  assert(
+    (await scoreOf(chip)) === wrong1 && (await chip.locator('.mark').innerText()).trim() === '✘ −$400' && (await scoreOf(chip2)) === wrong2,
+    'one Ctrl+Z takes the switch back to the ✘ (the other player’s ✘ untouched)',
+  );
+  assert((await page.locator('.toast').innerText()).includes('Undid +$800 (Player 1, ✘ → ✔)'), `the undo says it was a change of verdict (${await page.locator('.toast').innerText()})`);
+  await page.keyboard.press('Control+Shift+z');
+  await chip.locator('.mark.right').waitFor();
+  // ✘ after ✔: back the other way, −$800 from the ✔.
+  await chip.getByRole('button', { name: /^Wrong:/ }).click();
+  await chip.locator('.mark.wrong').waitFor();
+  assert(
+    (await scoreOf(chip)) === wrong1 && (await chip.locator('.mark').innerText()).trim() === '✘ −$400' && (await scoreOf(chip2)) === wrong2,
+    '✘ after ✔ switches back: the ✔ taken back and −$400 taken, the chip reads ✘ −$400',
+  );
+  // From the keys: 2 then Enter (one player at the clue's value is their ✔) switches Player 2's ✘ the same way.
+  await page.keyboard.press('2');
+  await page.keyboard.press('Enter');
+  await chip2.locator('.mark.right').waitFor();
+  assert(
+    (await scoreOf(chip2)) === wrong2 + 800 && (await chip2.locator('.mark').innerText()).trim() === '✔ +$400' && (await scoreOf(chip)) === wrong1,
+    '2, Enter on a player marked ✘ switches them to ✔ +$400 too (Player 1 untouched)',
+  );
+  await page.keyboard.press('Control+z');
+  await chip2.locator('.mark.wrong').waitFor();
+  assert((await scoreOf(chip2)) === wrong2, 'Ctrl+Z puts their ✘ back');
   await page.waitForTimeout(700); // past Not yet's bounce guard: an Esc right after it does nothing
   await page.keyboard.press('Escape');
   // A $0 tile is still judged: ✔ marks the player (a 0 result), rather than "Enter an amount first".

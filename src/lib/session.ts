@@ -101,9 +101,30 @@ export function undo(session: Session): ScoreEvent[] {
     e.undone = true;
     session.redoStack.push(e.id);
   }
+  follow(session, events);
+  return events;
+}
+
+/**
+ * What follows score events undone or counted again (`events`, already flipped): a Final's judgments, the picker, and a
+ * switched verdict's earlier mark. (Counted again, a switch takes its earlier mark back before its own picker follows;
+ * undone, after: so the picker ends where each step left it.)
+ */
+function follow(session: Session, events: ScoreEvent[]): void {
+  followSwitch(session, events.filter((e) => !e.undone));
   followFinals(session, events);
   followPicker(session, events);
-  return events;
+  followSwitch(session, events.filter((e) => e.undone));
+}
+
+/** A switched verdict undone brings back the mark it took back (and its picker); counted again, takes it back again. */
+function followSwitch(session: Session, events: ScoreEvent[]): void {
+  for (const e of events) {
+    if (!e.switched?.length) continue;
+    const was = session.scoreLog.filter((x) => e.switched!.includes(x.id) && x.undone !== !e.undone);
+    for (const x of was) x.undone = !e.undone;
+    followPicker(session, was);
+  }
 }
 
 /**
@@ -133,8 +154,7 @@ export function redo(session: Session): ScoreEvent[] {
   }
   // In the order they happened (the stack gives them back last first), so "Redid …" names them as "Undid …" did.
   events.reverse();
-  followFinals(session, events);
-  followPicker(session, events);
+  follow(session, events);
   return events;
 }
 
@@ -153,8 +173,7 @@ export function toggleEvent(session: Session, eventId: string): void {
   if (!e) return;
   e.undone = !e.undone;
   session.redoStack = session.redoStack.filter((id) => id !== eventId);
-  followFinals(session, [e]);
-  followPicker(session, [e]);
+  follow(session, [e]);
 }
 
 /**
@@ -206,6 +225,12 @@ export function describeStep(session: Session, events: ScoreEvent[], sym: string
   if (!events.length) return '';
   const names = nameList(events.map((e) => playerName(session, e.playerId)));
   const why = reasonText(events[0], hide);
+  // A switched verdict: the change it made to the score, and from which verdict to which ("+$400 (Ann, ✘ → ✔)").
+  const net = events.length === 1 ? switchNet(session, events[0]) : null;
+  if (net !== null) {
+    const now = events[0].right ?? events[0].delta > 0;
+    return `${net > 0 ? '+' : ''}${formatPoints(net, sym)} (${names}, ${now ? '✘ → ✔' : '✔ → ✘'})${why ? ` · ${why}` : ''}`;
+  }
   return `${stepAmount(events, sym)} (${names})${why ? ` · ${why}` : ''}`;
 }
 
@@ -216,8 +241,7 @@ export function toggleStep(session: Session, step: string): void {
   for (const e of events) e.undone = undoing;
   const ids = new Set(events.map((e) => e.id));
   session.redoStack = session.redoStack.filter((id) => !ids.has(id));
-  followFinals(session, events);
-  followPicker(session, events);
+  follow(session, events);
 }
 
 // ---------- Players ----------
@@ -483,8 +507,8 @@ export function clueScored(session: Session, clueId: string): boolean {
 
 /**
  * How each player was marked on a clue (since `since`, when it was opened: a reopened tile starts afresh): right or
- * wrong by their last mark, with the points it came to. The host panel shows it on their chip, and a second ✔ or ✘
- * the same way isn't taken again.
+ * wrong by their last mark, with the points it came to. The host panel shows it on their chip, a second ✔ or ✘ the
+ * same way isn't taken again, and the other one switches it (switchVerdict).
  */
 export function clueMarks(session: Session, clueId: string, since = 0): Record<string, { right: boolean; delta: number }> {
   const marks: Record<string, { right: boolean; delta: number }> = {};
@@ -494,6 +518,35 @@ export function clueMarks(session: Session, clueId: string, since = 0): Record<s
     marks[e.playerId] = { right, delta: (marks[e.playerId]?.delta ?? 0) + e.delta };
   }
   return marks;
+}
+
+/**
+ * A quick ✔ (`right`) or ✘ for one player marked the other way on clue `clueId` (since `since`, as clueMarks): a slip
+ * fixed, so a switch, not a second verdict. Their mark is taken back (every score change it came to: a ✘ and a
+ * − Deduct after it too, and the board if it gave them it), then the new verdict gives or takes `amount` (the clue's
+ * value, a Daily Double's wager, a partner clue's share) on the score without it, as ✔ / ✘ would have the first time.
+ * One step (`batchId`): an Undo puts the old mark back. Ann ✘ −$200, then ✔: +$200, not $0. Returns the new verdict's
+ * events, or null when it's no switch (not marked on the clue, or marked the same way: ＋ Award gives more).
+ */
+export function switchVerdict(session: Session, game: Game, playerId: string, clueId: string, since: number, right: boolean, amount: number, reason: string, batchId = newId()): ScoreEvent[] | null {
+  const mark = clueMarks(session, clueId, since)[playerId];
+  if (!mark || mark.right === right) return null;
+  const was = session.scoreLog.filter((e) => !e.undone && e.clueId === clueId && e.ts >= since && e.playerId === playerId);
+  for (const e of was) e.undone = true;
+  followPicker(session, was);
+  const a = Math.abs(amount);
+  const given = a ? applyScore(session, game, [playerId], right ? a : -a, reason, clueId, false, batchId) : [];
+  // (A 0, or nothing left to take with ⚖ Negative scores off: logged all the same, so the mark reads the new verdict.)
+  const events = given.length ? given : logZero(session, [playerId], reason, clueId, right, batchId);
+  events[0].switched = was.map((e) => e.id);
+  return events;
+}
+
+/** A switched verdict's change to the score (the new verdict less the mark it took back): +$400 for ✘ −$200 then ✔. */
+export function switchNet(session: Pick<Session, 'scoreLog'>, e: ScoreEvent): number | null {
+  if (!e.switched?.length) return null;
+  const was = session.scoreLog.filter((x) => e.switched!.includes(x.id));
+  return e.delta - was.reduce((n, x) => n + x.delta, 0);
 }
 
 /**

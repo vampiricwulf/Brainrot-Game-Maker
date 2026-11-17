@@ -13,7 +13,7 @@
     finalAdvance, finalBack, finalJudge, finalRevealNow, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, forgetRedo, removePlayer, restorePlayer, answerShowing, rosterChange, roundComplete, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown,
-    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft, slidePosition,
+    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft, slidePosition, switchNet, switchVerdict,
   } from '../lib/session';
   import {
     cardCopyText, cardId, cardRecipients, cardSends, cardSlides, lowerWord, markCopied, marksText, sentSeats, partnerCandidates, partnerPlayers, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
@@ -995,7 +995,12 @@
     return 'Adjustment';
   }
 
-  function award(sign: 1 | -1, ids = selected, amt = amount, picker = true): void {
+  /**
+   * `verdict`: a quick ✔ / ✘ (a chip's, a player's menu, or Enter / Shift+Enter on the one selected at the clue's value),
+   * where the other one on a player already marked switches their verdict (switchVerdict) rather than adding to it.
+   * ＋ Award / − Deduct always give or take more.
+   */
+  function award(sign: 1 | -1, ids = selected, amt = amount, picker = true, verdict = false): void {
     // (The tiebreaker: its Who won? row says who to pick.)
     if (!ids.length && session.phase === 'tiebreaker' && !amt) return hint('Who won? Click their 🏆, or press their number then Enter');
     if (!ids.length) return hint(`Select a ${pregameTeams ? 'team' : 'player'} first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
@@ -1007,7 +1012,11 @@
     const zero = amt === 0 && session.phase === 'clue' && (own ? !own.setup : info?.value === 0 && !toolOnlyClue(info.clue));
     if (!amt && !zero) return hint('Enter an amount first');
     const batch = newId();
-    const events = scoreInto(sign, ids, zero ? 0 : amt!, batch);
+    const switched =
+      verdict && ids.length === 1 && session.phase === 'clue' && info
+        ? switchVerdict(session, game, ids[0], info.clue.id, partner?.at ?? markSince, sign > 0, zero ? 0 : amt!, reasonNow(), batch)
+        : null;
+    const events = switched ?? scoreInto(sign, ids, zero ? 0 : amt!, batch);
     if (events.length) playCue(app.live, game, sign > 0 ? 'right' : 'wrong');
     // A Daily Double's own player wrong: nobody else answers it, so its clock is done too (no TIME'S UP after).
     const ownMiss = sign < 0 && session.phase === 'clue' && session.dd?.stage === 'question' && ids.length === 1 && ids[0] === session.dd.playerId;
@@ -1034,12 +1043,14 @@
     // The buzzers as they were, for an Undo of this award (and as they are now, for a Redo).
     if (buzzBefore && app.live.buzz && app.live.buzz !== b)
       buzzSteps.set(batch, { clue: info?.clue.id, before: buzzBefore, after: $state.snapshot(app.live.buzz) as BuzzState });
-    // One pop per player, or one for a group ("Everyone +$200").
-    for (const p of groupPops(events, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
+    // One pop per player, or one for a group ("Everyone +$200"). A switched verdict: one pop with the change to the
+    // score (✘ −$200 then ✔: "+$400"), so what viewers see on the score bar adds up.
+    const shown = events.map((e) => ({ ...e, delta: switchNet(session, e) ?? e.delta }));
+    for (const p of groupPops(shown, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
     // Screen readers: what changed, and where that leaves each player.
-    for (const e of events) {
+    for (const e of shown) {
       const total = formatPoints(score(session, e.playerId), sym);
-      announce(`${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${total}`);
+      announce(`${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}${switched ? ` (changed to ${sign > 0 ? 'right' : 'wrong'})` : ''}, now ${total}`);
     }
     // Awarding control of the board follows TV rules: the last correct player picks next.
     // (Kept on the award, so undoing it gives the picker back.)
@@ -2867,8 +2878,8 @@
     const s = partner;
     if (!s || !info) return;
     const share = partnerShares(partnerValue(), partnerRules(info.clue), s, got).find((x) => x.id === id);
-    if (!share) return award(got ? 1 : -1, [id], info.value);
-    award(share.points > 0 ? 1 : share.points < 0 ? -1 : got ? 1 : -1, [id], Math.abs(share.points), partnerRoles(s).guesser === id);
+    if (!share) return award(got ? 1 : -1, [id], info.value, true, true);
+    award(share.points > 0 ? 1 : share.points < 0 ? -1 : got ? 1 : -1, [id], Math.abs(share.points), partnerRoles(s).guesser === id, true);
   }
 
   /**
@@ -6003,7 +6014,12 @@
         // the only one who can answer it, so "1, Enter" works as on any clue.
         if (awardOpen(session)) {
           const dd = session.phase === 'clue' && session.dd?.stage === 'question' ? session.dd.playerId : undefined;
-          award(e.shiftKey ? -1 : 1, !selected.length && dd && session.players.some((p) => p.id === dd) ? [dd] : selected);
+          const ids = !selected.length && dd && session.players.some((p) => p.id === dd) ? [dd] : selected;
+          // One player at the clue's value (or the wager): the ✔ / ✘ their chip gives (⏎ / ⇧⏎ in their menu), so the
+          // other one switches their verdict. Another amount typed is an award or a deduction on top.
+          const quick = session.phase === 'clue' && session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0);
+          const verdict = session.phase === 'clue' && ids.length === 1 && (!partner || !!partnerSteal(session)) && (amount ?? quick) === quick;
+          award(e.shiftKey ? -1 : 1, ids, amount, true, verdict);
         }
         break;
       case 'r':
@@ -6781,8 +6797,8 @@
         {pickerPending}
         {finishArmed}
         onaward={(s) => award(s)}
-        onright={(id) => (partner ? partnerQuick(id, true) : award(1, [id], session.dd?.wager ?? info?.value ?? 0))}
-        onwrong={(id) => (partner ? partnerQuick(id, false) : award(-1, [id], session.dd?.wager ?? info?.value ?? 0))}
+        onright={(id) => (partner ? partnerQuick(id, true) : award(1, [id], session.dd?.wager ?? info?.value ?? 0, true, true))}
+        onwrong={(id) => (partner ? partnerQuick(id, false) : award(-1, [id], session.dd?.wager ?? info?.value ?? 0, true, true))}
         onreveal={revealToggle}
         onslide={slideStep}
         onback={() => back()}

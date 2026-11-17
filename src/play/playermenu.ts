@@ -138,7 +138,7 @@ export interface Verdict {
   loses: string | null;
   /** Why it isn't theirs (with `gets` null): "Only Ann plays this Daily Double". */
   why?: string;
-  /** How they're marked on this clue already (that verdict is greyed, as on their chip). */
+  /** How they're marked on this clue already (that verdict is greyed, as on their chip; the other one switches it). */
   marked?: boolean;
   /** They're the one selected, so Enter (⏎) and Shift+Enter (⇧⏎) do these. */
   enter?: boolean;
@@ -160,14 +160,14 @@ export function verdictVerbs(name: string, v: Verdict): MenuEntry[] {
     {
       label: `${yes} ${v.gets}`,
       disabled: v.marked === true,
-      ...(v.marked === true ? { hint: `${name} is marked right on this clue (＋ Award gives more)` } : {}),
+      ...(v.marked === true ? { hint: `${name} is marked right on this clue (＋ Award gives more)` } : v.marked === false ? { hint: `Changes ${name}’s ✘ to ✔ (the ✘ taken back)` } : {}),
       ...(v.enter ? { keys: '⏎' } : {}),
       onclick: v.right,
     },
     {
       label: `${no} ${v.loses}`,
       disabled: v.marked === false,
-      ...(v.marked === false ? { hint: `${name} is marked wrong on this clue (− Deduct takes more)` } : {}),
+      ...(v.marked === false ? { hint: `${name} is marked wrong on this clue (− Deduct takes more)` } : v.marked === true ? { hint: `Changes ${name}’s ✔ to ✘ (the ✔ taken back)` } : {}),
       ...(v.enter ? { keys: '⇧⏎' } : {}),
       onclick: v.wrong,
     },

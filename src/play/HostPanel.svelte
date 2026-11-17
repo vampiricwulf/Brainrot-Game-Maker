@@ -1130,7 +1130,8 @@
             </span>
           {/if}
           {#if quickFor(p.id)}
-            <!-- Pressed once on this clue, the same one is off (＋ Award / − Deduct still give or take more on purpose). -->
+            <!-- Pressed once on this clue, the same one is off (＋ Award / − Deduct still give or take more on purpose); the
+                 other one switches the verdict, a slip fixed (the mark taken back, the new one given: Play's award). -->
             {@const was = marks[p.id]?.right}
             <!-- (A partner clue: each of the two's own share, a ✘ often 0 for the partner.) -->
             {@const gets = quickShare(p.id, true) ?? (ddHidden ? '+ the wager' : `+${formatPoints(quickValue, sym)}`)}
@@ -1142,7 +1143,9 @@
               aria-label="Right: {p.name} {gets}"
               title={was === true
                 ? `${p.name} is marked right on this clue (＋ Award gives more)`
-                : partner && !steal
+                : was === false
+                  ? `Change to right: ${p.name} ${gets} (the ✘ taken back)`
+                  : partner && !steal
                   ? `Got it: ${p.name} only, ${gets} (their share)`
                   : steal
                     ? `Stole it: ${p.name} ${gets}`
@@ -1156,7 +1159,9 @@
               aria-label="Wrong: {p.name} {loses}"
               title={was === false
                 ? `${p.name} is marked wrong on this clue (− Deduct takes more)`
-                : partner && !steal
+                : was === true
+                  ? `Change to wrong: ${p.name} ${loses} (the ✔ taken back)`
+                  : partner && !steal
                   ? `Missed: ${p.name} only, ${loses} (their share)`
                   : `Wrong: ${p.name} ${loses}`}
               >✘</button
