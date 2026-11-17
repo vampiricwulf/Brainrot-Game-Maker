@@ -106,7 +106,8 @@
     ⬇ Download {release.version}
   </button>
 {/if}
-<button class="small ghost" onclick={() => open(release.page)}>What’s new</button>
+<!-- (↗ as on the app's other outside links: it opens the browser, not a panel here.) -->
+<button class="small ghost" onclick={() => open(release.page)} title="The release notes on GitHub">What’s new ↗</button>
 <!-- The notice's ✕, at its far right (named for what it does: Done puts the steps away, Not now hides the notice).
      (Not now comes up where Done was: a double-click on Done is one click, never Not now too.) -->
 {#if notice && !desktopApp && update.downloading === release.version}

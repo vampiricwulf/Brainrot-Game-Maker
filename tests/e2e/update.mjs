@@ -68,9 +68,10 @@ try {
   await steps.waitFor();
   assert(
     (await steps.innerText()).includes('Then save it over your old Brainrot file (same name, same folder) and open it. Your games come along.') &&
-      (await steps.getByRole('button', { name: 'What’s new' }).count()) === 1 &&
+      // (Its ↗ says it opens the browser, as the app's other outside links do.)
+      (await steps.getByRole('button', { name: 'What’s new ↗', exact: true }).getAttribute('title')) === 'The release notes on GitHub' &&
       (await steps.getByRole('button', { name: 'Done' }).evaluate((b) => b === document.activeElement)),
-    `after ⬇ Download the notice says what to do with the new file, with What’s new and Done, the keys on Done (${(await steps.innerText()).replace(/\s+/g, ' ')})`,
+    `after ⬇ Download the notice says what to do with the new file, with What’s new ↗ and Done, the keys on Done (${(await steps.innerText()).replace(/\s+/g, ' ')})`,
   );
   const arrow = await steps.evaluate((n) => {
     const walker = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
