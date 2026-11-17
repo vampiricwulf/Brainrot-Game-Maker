@@ -3,7 +3,7 @@
   import { modal } from '../lib/modal';
   import { inTauri } from '../lib/platform';
   import { keepLimits } from '../lib/history.svelte';
-  import { DEFAULT_PREFS, prefs, savePrefs, UNDO_STEPS } from '../lib/prefs.svelte';
+  import { DEFAULT_PREFS, prefs, prefsUnkept, savePrefs, UNDO_STEPS } from '../lib/prefs.svelte';
   import { DEFAULT_BUZZER_URL, testServer } from '../lib/remote.svelte';
   import { BUZZER_GUIDE, externalLink } from '../lib/sitelinks';
   import { toast } from '../lib/app.svelte';
@@ -73,6 +73,9 @@
       <h2 class="modal-title">⚙ Settings</h2>
       <button class="ghost modal-x" onclick={close} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
+    {#if prefsUnkept.on}
+      <p class="warn small" role="status">⚠ These settings can’t be kept in this browser: they last until you close this tab.</p>
+    {/if}
 
     <h3>Saving</h3>
     {#if desktop}

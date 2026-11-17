@@ -106,6 +106,26 @@ try {
     await hung.close();
   }
 
+  // ---------- Settings the browser can't keep: ⚙ Settings says so ----------
+  {
+    const noLocal = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    await noLocal.addInitScript(() => {
+      Storage.prototype.setItem = () => {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      };
+    });
+    const p = await noLocal.newPage();
+    await p.goto(url);
+    await p.getByRole('button', { name: /^More:/ }).click();
+    await p.getByRole('menuitem', { name: '⚙ Settings' }).click();
+    const settings = p.getByRole('dialog', { name: 'Settings' });
+    await settings.getByLabel('Buzzer server').fill('https://buzz.example');
+    await settings.getByLabel('Buzzer server').press('Tab');
+    await settings.getByText('These settings can’t be kept in this browser: they last until you close this tab.').waitFor({ timeout: 3000 });
+    assert(true, 'with the browser’s settings storage off, ⚙ Settings says a buzzer server typed in lasts until the tab closes');
+    await noLocal.close();
+  }
+
   await page.goto(url);
   await page.getByRole('button', { name: 'Open…' }).waitFor();
   await page.waitForTimeout(600);

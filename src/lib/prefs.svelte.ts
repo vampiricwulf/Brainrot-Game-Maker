@@ -70,6 +70,9 @@ let kept = {
   undoSteps: numberOr(prefs.undoSteps, DEFAULT_PREFS.undoSteps),
 };
 
+/** The last change to the settings couldn't be kept (the browser's storage is off or full): ⚙ Settings says so. */
+export const prefsUnkept = $state({ on: false });
+
 /** Keep the current preferences (the settings dialog calls this on every change). */
 export function savePrefs(): void {
   prefs.autosaveMinutes = Math.max(0, Math.min(240, Math.round(numberOr(prefs.autosaveMinutes, kept.autosaveMinutes))));
@@ -81,7 +84,10 @@ export function savePrefs(): void {
   kept = { autosaveMinutes: prefs.autosaveMinutes, autosaveKeep: prefs.autosaveKeep, undoSteps: prefs.undoSteps };
   try {
     localStorage.setItem(KEY, JSON.stringify($state.snapshot(prefs)));
+    prefsUnkept.on = false;
   } catch {
-    // Storage may be off (private mode): the settings last until the app closes.
+    // Storage may be off (private mode) or full: the settings last until the app closes, and ⚙ Settings says so (a
+    // buzzer server typed in would otherwise be gone at the next show, without a word).
+    prefsUnkept.on = true;
   }
 }
