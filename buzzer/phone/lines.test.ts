@@ -4,7 +4,8 @@ import { clockLine, hadGoLine, hostAwayLine, money, passButton, passedLines, ver
 describe('money', () => {
   it('puts $ or an emoji in front, a word after, and a minus sign before', () => {
     expect(money(1200, '$')).toBe('$1,200');
-    expect(money(-2000, '$')).toBe('−$2,000');
+    // (The minus kept on the amount's line by a word joiner.)
+    expect(money(-2000, '$')).toBe('−\u2060$2,000');
     expect(money(300, 'pts')).toBe('300 pts');
     expect(money(0, '')).toBe('0');
   });

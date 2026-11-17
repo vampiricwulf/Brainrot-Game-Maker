@@ -166,6 +166,14 @@ try {
   // Bob types the code in, at 320px wide.
   const bob = await phone('bob', 320);
   await bob.goto(base);
+  // One that can't be a code: the reason, and back in the box (selected), so a phone's keyboard stays up to fix it.
+  await bob.getByLabel('Room code').fill('ab');
+  await bob.getByRole('button', { name: 'Join' }).click();
+  await bob.locator('#code-err').getByText('A room code is 4 letters (no vowels), like on the stream.').waitFor();
+  assert(
+    await bob.getByLabel('Room code').evaluate((e) => document.activeElement === e && e.selectionStart === 0 && e.selectionEnd === 2),
+    'a code too short: the reason under the box, and the keys back in it with the code selected',
+  );
   // A code with no game first: back in the box to fix, with the code kept, and nothing in the header or address.
   const wrong = room.code === 'ZZZZ' ? 'ZZZX' : 'ZZZZ';
   await bob.getByLabel('Room code').fill(wrong);
@@ -824,6 +832,19 @@ try {
   assert(true, 'the screen flashes when BUZZ! lights up');
   host.close();
   await dee.locator('#host-note').waitFor();
+  // A phone opening the link now sees it at the top, under the heading, not below all the names.
+  const ida = await phone('ida', 360, 640);
+  await ida.goto(`${base}/${room.code}`);
+  await ida.getByRole('heading', { name: 'Tap your name' }).waitFor();
+  const away = await ida.locator('#host-away').evaluate((e) => {
+    const r = e.getBoundingClientRect();
+    const list = document.getElementById('seat-list').getBoundingClientRect();
+    // (And no blank lines for the empty notes between the heading and the names.)
+    return !e.hidden && r.top >= 0 && r.bottom <= innerHeight && r.top < list.top && document.getElementById('seats-note').offsetHeight === 0;
+  });
+  assert(away, "a phone opening the link sees “The host isn't connected right now” on screen, above the names");
+  pages.splice(pages.findIndex(([, p]) => p === ida), 1);
+  await ida.context().close();
   assert(
     (await dee.locator('#host-note').innerText()) === 'The host’s connection dropped: waiting for them…',
     `phones see that the host's connection dropped, with no promise they'll be back (${await dee.locator('#host-note').innerText()})`,
@@ -846,6 +867,23 @@ try {
   await sleep(400);
   assert((await big(ann).innerText()) === 'Dee got it', 'a right answer: "Dee got it" / "You got it!", and a press then is no early buzz');
   setState({ phase: 'lobby', clue: null, done: null });
+
+  // On a short phone with a long clue up, "Not you?" opens its question below the screen: the page goes down to it.
+  await dee.setViewportSize({ width: 360, height: 640 });
+  setState({ phase: 'closed', armId: 61, clue: { text: 'This planet is red and has the largest volcano in the solar system, Olympus Mons, three times Everest.' } });
+  await big(dee).getByText('Get ready…').waitFor();
+  await dee.getByRole('button', { name: 'Not you? Change player' }).click();
+  const inView = await dee
+    .waitForFunction(() => {
+      const r = document.getElementById('leave-yes').getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= innerHeight + 0.5;
+    }, null, { timeout: 2000 })
+    .then(() => true, () => false);
+  assert(inView, '“Not you?” on a short phone with a clue up: the question and Give up Dee come into view');
+  await dee.getByRole('button', { name: 'Keep playing', exact: true }).click();
+  await dee.locator('#leave-ask').waitFor({ state: 'hidden' });
+  setState({ phase: 'lobby', clue: null });
+  await dee.setViewportSize({ width: 360, height: 740 });
 
   // "Not you?": Dee lets go of her seat and taps her name again.
   // It asks first (the link sits under the buzz button), on the page. With the keys: Enter on the link puts them on

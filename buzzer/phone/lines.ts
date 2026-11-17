@@ -2,10 +2,13 @@
  * Lines the phone page shows that come from numbers alone (no page here, so they're unit-tested: lines.test.ts).
  */
 
-/** Points as the game shows them: a word like "pts" goes after the number, $ or 🧠 in front. */
+/**
+ * Points as the game shows them: a word like "pts" goes after the number, $ or 🧠 in front. (A word joiner keeps a
+ * minus on the amount's line.)
+ */
 export function money(n: number, sym: string): string {
   const pts = Math.abs(n).toLocaleString();
-  return `${n < 0 ? '−' : ''}${/^\p{L}+\.?$/u.test(sym.trim()) ? `${pts} ${sym.trim()}` : sym + pts}`;
+  return `${n < 0 ? '−\u2060' : ''}${/^\p{L}+\.?$/u.test(sym.trim()) ? `${pts} ${sym.trim()}` : sym + pts}`;
 }
 
 /** How long the host can be away before the note says how long (and that the seat is kept). */

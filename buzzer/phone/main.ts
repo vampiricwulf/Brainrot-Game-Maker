@@ -655,6 +655,8 @@ function askLeave(e: MouseEvent): void {
   drawLeave();
   if (!$('leave-ask').hidden) return;
   $('leave-ask').hidden = false;
+  // (On a short phone with a clue up it opens below the screen, and the tap would look like it did nothing.)
+  $('leave-ask').scrollIntoView({ block: 'nearest' });
   $('leave').setAttribute('aria-expanded', 'true');
   news(sentences([$('leave-q').textContent ?? '']));
   if (e.detail === 0) $('leave-no').focus();
@@ -2737,10 +2739,15 @@ $('code-form').addEventListener('submit', (e) => {
   if (isRoomCode(c)) {
     $('code-err').textContent = '';
     void start(c, true);
-  } else
+  } else {
     $('code-err').textContent = /^[A-Z]{4}$/.test(c)
       ? `Room codes have no vowels (${[...c].filter((x) => !ROOM_ALPHABET.includes(x)).join(', ')}): check the code on the stream.`
       : 'A room code is 4 letters (no vowels), like on the stream.';
+    // (Back in the box, selected, as for a code with no game: a phone's keyboard stays up to fix it.)
+    const box = $<HTMLInputElement>('code-in');
+    box.focus();
+    box.select();
+  }
 });
 $('new-btn').addEventListener('click', () => {
   newForm = true;
