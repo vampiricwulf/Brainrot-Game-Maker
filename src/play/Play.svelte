@@ -3,6 +3,7 @@
   import { modal, takeFocus } from '../lib/modal';
   import { scrollMore } from '../lib/scrollmore';
   import { app, hint, sceneFrom, toast, toastMs } from '../lib/app.svelte';
+  import { clockNow } from '../lib/clocknow.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, isTextField, undoKeyOf } from '../lib/undokeys';
@@ -3266,11 +3267,14 @@
     };
   });
 
-  /** The Final's countdown at its question, as the check reads it (partnerTick, or a press, reads it again). */
+  /**
+   * The Final's countdown at its question, as the check reads it: at the moment the stage's clock and the status line
+   * show (clockNow), so its "(26 s left)" never says a second less than they do.
+   */
   function finalClock(): FinalNow['clock'] {
     const t = app.live.timer;
     if (session.phase !== 'final' || session.finalStep !== 'question' || !t) return null;
-    return t.expired ? 'out' : { left: Math.max(0, Math.ceil(timerRemaining(t))), running: t.startedAt !== null };
+    return t.expired ? 'out' : { left: Math.max(0, Math.ceil(timerRemaining(t, clockNow()))), running: t.startedAt !== null };
   }
 
   /** What the blue button and the check read now: this screen's state and lib's (never a box's: H hides the boxes). */

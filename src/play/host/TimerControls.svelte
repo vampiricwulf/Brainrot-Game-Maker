@@ -1,7 +1,8 @@
 <!-- Host countdown controls (spec §6.6): in the status line where a clock fits, and while one is up (T starts one any time). -->
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { tick } from 'svelte';
   import { app } from '../../lib/app.svelte';
+  import { clockNow } from '../../lib/clocknow.svelte';
   import { addTime, startTimer, timerRemaining, toggleTimer } from '../../lib/live';
 
   /**
@@ -17,11 +18,8 @@
   }: { defaultSeconds: number; custom?: number | null; onstart?: () => void; onhidden?: () => void } = $props();
   /** The countdown it starts: the seconds typed when they make one (1 to 3600), else the default. */
   const secs = $derived(custom != null && custom >= 1 ? Math.min(3600, Math.round(custom)) : defaultSeconds);
-  let now = $state(Date.now());
-  onMount(() => {
-    const id = setInterval(() => (now = Date.now()), 250);
-    return () => clearInterval(id);
-  });
+  // (The stage's clock and the go-on check read the same moment: see clockNow.)
+  const now = $derived(clockNow());
   const t = $derived(app.live.timer);
   const left = $derived(t ? Math.ceil(timerRemaining(t, now)) : 0);
 

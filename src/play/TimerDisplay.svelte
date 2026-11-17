@@ -1,6 +1,6 @@
 <!-- Countdown clock + TIME'S UP banner, drawn in stage coordinates. -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { clockNow } from '../lib/clocknow.svelte';
   import { timerRemaining, type TimerState } from '../lib/live';
 
   let {
@@ -11,12 +11,8 @@
     /** On the board: the clock is centred on this line (the score bar's), at its right end, not in the top corner. */
     middle?: number;
   } = $props();
-  let now = $state(Date.now());
-
-  onMount(() => {
-    const id = setInterval(() => (now = Date.now()), 100);
-    return () => clearInterval(id);
-  });
+  // (The host's status line and go-on check read the same moment: see clockNow.)
+  const now = $derived(clockNow());
 
   const left = $derived(timerRemaining(timer, now));
   const frac = $derived(timer.total ? left / timer.total : 0);

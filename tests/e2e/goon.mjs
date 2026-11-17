@@ -398,6 +398,22 @@ try {
     const was = await secs();
     await page.waitForFunction((w) => Number(/\((\d+) s left\)/.exec(document.querySelector('[data-goon-item="clock"] .text')?.textContent ?? '')?.[1]) < w, was);
     assert((await answerUp()) === 0, `a click on the stage asks too, its seconds counting down (${was} s, then ${await secs()} s)`);
+    // (The check, the status line and the stage show the same seconds left at any moment: its words invite comparing.)
+    const seen = new Set();
+    for (let i = 0; i < 40; i++) {
+      seen.add(
+        await page.evaluate(() =>
+          [
+            /\((\d+) s left\)/.exec(document.querySelector('[data-goon-item="clock"] .text')?.textContent ?? '')?.[1],
+            /(\d+)s/.exec(document.querySelector('.panel .tc .left')?.textContent ?? '')?.[1],
+            document.querySelector('.stage-box .timer .num')?.textContent?.trim(),
+          ].join('/'),
+        ),
+      );
+      await page.waitForTimeout(37);
+    }
+    const odd = [...seen].filter((x) => new Set(x.split('/')).size !== 1);
+    assert(odd.length === 0, `the check, the status line and the stage show the same seconds left (${[...seen].join(', ')})`);
     await goOnCheck(page, { ready: true }).waitFor();
     await page.keyboard.press('Escape');
     await goOnCheck(page).waitFor({ state: 'detached' });
