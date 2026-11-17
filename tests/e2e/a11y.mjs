@@ -2,10 +2,10 @@
 // close), the app asks in its own windows, the header fits at 150% zoom, readable colors, reduced motion, names, and
 // with forced colors what's chosen still shows (the color picker's Hex or RGB too).
 import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, clickExportHtml, stored } from './helpers.mjs';
+import { addClassicRounds, clickExportHtml, openGameFile, returningHost, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -765,6 +765,66 @@ try {
   assert(true, 'New → Start new anyway: the keys go to the new game’s first screen (not the page)');
   await saidHas(/Started a new game/);
   assert(true, `and it’s said (“${await saidNow()}”)`);
+
+  // ---------- What's on stream is said: the question as it shows, the answer once it's revealed ----------
+  {
+    const text = (id, t, more = {}) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true, ...more });
+    const slide = (id, t, more = []) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t), ...more] });
+    const clue = (id, q, a, more = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(`q${id}`, q, [text(`s${id}`, 'Psst: host only', { y: 800, secret: true })]), answerSlide: slide(`a${id}`, a), ...more });
+    const said = {
+      id: 'g_said', version: 2, title: 'Said Night',
+      settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+      players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b'][i], startScore: 0 })),
+      rounds: [
+        {
+          id: 'r_board', name: 'Jeopardy!', mode: 'board', values: [200, 400], dailyDoubleCount: 0,
+          categories: [
+            { id: 'cat0', title: 'Memes', clues: [clue('c0', '“Never gonna give you up” is the song of this prank', 'Rickroll'), clue('c1', 'A Daily Double question', 'Its answer', { type: 'dailyDouble' })] },
+          ],
+        },
+      ],
+      media: [], audio: {}, theme: {}, wheels: [], dice: [], statFields: [], items: [],
+    };
+    mkdirSync(resolve('test-results'), { recursive: true });
+    const saidFile = resolve('test-results/a11y-said.json');
+    writeFileSync(saidFile, JSON.stringify(said));
+    const sc = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    await returningHost(sc);
+    const sp = await sc.newPage();
+    sp.on('pageerror', (e) => errors.push(`[said] ${e.message}`));
+    await sp.goto(pathToFileURL(file).href);
+    await openGameFile(sp, saidFile);
+    await sp.getByText(/^Opened “/).waitFor();
+    await sp.getByRole('button', { name: '▶ Play' }).click();
+    await sp.getByRole('button', { name: 'Start game ▶' }).click();
+    await sp.getByRole('button', { name: 'Skip intro' }).click();
+    const spoken = [];
+    await sp.exposeFunction('heard', (t) => spoken.push(t));
+    await sp.evaluate(() => {
+      const r = document.getElementById('live-region');
+      new MutationObserver(() => window.heard(r.dataset.said ?? '')).observe(r, { attributes: true, attributeFilter: ['data-said'] });
+    });
+    const heardHas = (words) => sp.waitForFunction((w) => (document.getElementById('live-region')?.dataset.said ?? '').includes(w), words, { timeout: 4000 });
+    // A Daily Double: nothing of its question while its splash is up (a moment past when it would be said).
+    await sp.locator('.stage-box .board .tile[data-clue="c1"]').click();
+    await sp.locator('.stage-box .dd').waitFor();
+    await sp.waitForTimeout(1500);
+    assert(!spoken.some((t) => t.includes('Daily Double question')), `a Daily Double's splash: its question isn't said before it shows (${JSON.stringify(spoken)})`);
+    await sp.keyboard.press('Escape');
+    await sp.locator('.stage-box .board').waitFor();
+    // A clue: its question as it shows (after its name), never its answer nor the host's secret words; its answer after R.
+    await sp.locator('.stage-box .board .tile[data-clue="c0"]').click();
+    await heardHas('“Never gonna give you up” is the song of this prank.');
+    await sp.waitForTimeout(700);
+    assert(
+      spoken.some((t) => /Memes \$200 · Answer hidden\. “Never gonna give you up” is the song of this prank\./.test(t)) && !spoken.some((t) => /Rickroll|Psst/.test(t)),
+      `opening a clue says its question, after its name (“${spoken.at(-1)}”), never its answer nor a secret text box`,
+    );
+    await sp.keyboard.press('r');
+    await heardHas('Rickroll.');
+    assert(true, `R says the answer as it goes on stream (“${spoken.at(-1)}”)`);
+    await sc.close();
+  }
 
   // ---------- Windows High Contrast (forced colors): the selected and pressed states still show ----------
   const fc = await browser.newContext({ viewport: { width: 1280, height: 720 }, forcedColors: 'active' });

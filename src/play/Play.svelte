@@ -83,6 +83,7 @@
   import { phoneWord, waitingFor, whoJoined, type PhoneWord } from './phonewords';
   import { keptProgress, keptRound, keptScores, savedWhen } from './keptgame';
   import { streamGist } from './streamgist';
+  import { stageWords } from './stagewords';
   import { RememberedFold } from '../lib/fold.svelte';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
   import HostInfo from './HostInfo.svelte';
@@ -140,7 +141,7 @@
   import { keyTarget, localMedia, openMediaPopup, popupFailed, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, popupBlocked, toggleFullscreen } from '../lib/platform';
-  import { onMount, setContext, tick, untrack } from 'svelte';
+  import { onDestroy, onMount, setContext, tick, untrack } from 'svelte';
   import { NEXT_GAME } from './host/nextgame';
   import { PANEL_AREA, type PanelPlace } from './host/panelarea';
   import { MediaQuery } from 'svelte/reactivity';
@@ -3169,6 +3170,26 @@
     boardMove: (steps, way) => boardMoveBy(steps, way),
     boardLanding: () => boardLanding(),
   };
+
+  /**
+   * Screen readers hear the question as it goes on stream, and the answer once it's revealed: only what viewers see
+   * (stagewords.ts), so it holds in one window too. Said after the status line's own words (“Memes $400 · Answer
+   * hidden”, which wait 600 ms), in the same breath. Said again only for another slide, or after the cover.
+   */
+  let stageSaid = '';
+  let stageSay: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    const w = stageWords(session, game, app.live);
+    if (!w) {
+      stageSaid = '';
+      return void clearTimeout(stageSay);
+    }
+    if (w.key === stageSaid) return;
+    stageSaid = w.key;
+    clearTimeout(stageSay);
+    stageSay = setTimeout(() => announce(w.words), 650);
+  });
+  onDestroy(() => clearTimeout(stageSay));
 
   /**
    * Goes up once a wheel, dice or a roll-off on stage lands (under the scores too): the blue button (greyed while it
