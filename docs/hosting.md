@@ -109,7 +109,8 @@ Right-click (or `Shift+F10`, or a long press) for a menu.
 3. Pick a player with `1`–`9` or a click, then **＋ Award** (`Enter`) or **− Deduct** (`Shift+Enter`). A player's chip
    also has a quick ✔ / ✘. Clicked the wrong one? Press the other: it changes their verdict rather than adding to it
    (✘ −$200, then ✔, ends at +$200), and one `Ctrl+Z` puts the ✘ back. `Enter` / `Shift+Enter` on one player at the
-   clue's value do the same; **＋ Award** with another amount gives more.
+   clue's value work as their ✔ / ✘ (with another amount, they award or deduct on top). The **＋ Award** and
+   **− Deduct** buttons always give or take more.
 4. Press `R` (or the blue **👁 Reveal answer**) to show the answer.
 5. Press **▦ Done ▶ board** to go back.
 

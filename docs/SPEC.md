@@ -1013,7 +1013,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      is taken back and the new verdict gives or takes the clue's value (a Daily Double's wager, a partner clue's share)
      on the score without it, so ✘ −$200 then ✔ ends at +$200. One undo step (Ctrl+Z puts the old mark back), one pop
      with the change to the score ("Ann +$400"), and the undo says "+$400 (Ann, ✘ → ✔)". Enter / Shift+Enter on the
-     one selected at the clue's value are the same verdicts; ＋ Award / − Deduct with another amount add on top. Another
+     one selected at the clue's value are the same verdicts (with another amount, an award on top); the ＋ Award /
+     − Deduct buttons always add on top. Another
      player's verdict (a second buzzer, a steal) is never a switch. The Final's ✔ / ✘ re-judge the same way already.
 5. **Reveal answer**: shows the answer slide in the audience view (by the blue button, `N` or a click: with the buzzers
    never opened, ✍ answers still coming in or a 🤫 card not sent, it asks first; `R` shows it at once).
