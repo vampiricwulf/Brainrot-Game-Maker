@@ -11,7 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
+## 2026-11-16
+
+### Added
+
+- A link to the app shared on Discord, Slack or a search page now shows a short description of what it is, not just the bare title. (8b41e14)
 
 ### Changed
 
@@ -20,12 +24,6 @@ in plain words for the people who make and host games. Anything committed but no
 - The undo message and 🕘 History say when a step changed a verdict, e.g. "Undid +$400 (Ann, ✘ → ✔)". (7fc2803)
 - In the Final, while the think clock is still running, 👁 Reveal answer asks first instead of showing the answer. This covers the blue button, N, a click on the screen and the screen's menu. The panel says "The clock is still running (27 s left)." with ⏱ Let it run (Enter; Esc does the same) and 👁 Reveal anyway (R). A stray click can no longer spoil the Final. If the clock has run out or you paused it (T), the answer goes up at once, as before, and R still shows it at once. (d6e610a, cba9cf0)
 - If the Final's clock runs out while that question is open, its line changes to "✓ Time's up" and N shows the answer. (cba9cf0)
-
-## 2026-11-16
-
-### Added
-
-- A link to the app shared on Discord, Slack or a search page now shows a short description of what it is, not just the bare title. (8b41e14)
 
 ### Fixed
 
