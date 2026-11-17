@@ -8,6 +8,7 @@
 -->
 <script lang="ts">
   import { announce, announceChanges } from '../lib/announce';
+  import { scrollMore } from '../lib/scrollmore';
   import { textOn } from '../lib/colors';
   import { hostSlots, offerMenu, panelGuard, type HostAsk, type NextAction, type PlayerVerb, type PlayerVerbs } from './host/slots.svelte';
   import { verdictVerbs } from './playermenu';
@@ -1432,13 +1433,13 @@
       {/if}
 
       {#if session.phase === 'boardgame'}
-        <div class="mode-host bgame">
+        <div class="mode-host bgame" use:scrollMore>
           <BoardHost {game} {session} bind:selected bind:steps={bgSteps} bind:space={bgSpace} {dual} {side} ring={goon?.ring} mover={moverUp ? toolBox : undefined} onhistory={() => onlog('history')} />
         </div>
       {/if}
 
       {#if session.phase === 'rpg'}
-        <div class="mode-host">
+        <div class="mode-host" use:scrollMore>
           <RpgHost
             {game}
             {session}
@@ -1826,6 +1827,19 @@
   .mode-host {
     min-height: 0;
     overflow: auto;
+  }
+  /* Under the stage, an RPG or board-game round's box is short and scrolls: while there's more below, its last rows
+     fade out (data-more: see scrollmore.ts), so a row cut at its foot reads as "more below". (Beside the stage the
+     board game's turn part is pinned at the foot instead.) The fade takes no room and never takes a click. */
+  .panel:not(.side) .mode-host:global([data-more])::after {
+    content: '';
+    display: block;
+    position: sticky;
+    bottom: 0;
+    height: 24px;
+    margin-top: -24px;
+    background: linear-gradient(transparent, var(--panel));
+    pointer-events: none;
   }
   /*
     Beside the stage (RPG and board-game rounds on a wide window, with an audience window): a column the window's height, the same stack with the
