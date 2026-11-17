@@ -11,6 +11,16 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- When the hourly check finds a newer version, its notice no longer pops up while you're clicking, typing or dragging in the editor (it pushed the editor down). It waits for a pause: another page or round, coming back from a game, or a few seconds without a click or a key. The notice at start-up still shows at once, and ℹ About shows the newer version straight away. Screen readers hear about it when the notice shows. (2f12d26, 0401f1e)
+- Clicked the wrong ✔ / ✘ on a player's chip? Pressing the other one now changes their verdict instead of adding to it: Ann ✘ −$200, then ✔, ends at +$200, not $0. The stage shows one pop with the change to the score ("Ann +$400"), the chip reads the new verdict, and one Ctrl+Z puts the ✘ back. It works the same in a Daily Double (the wager), on a partner clue (their share), and from Enter / Shift+Enter on one player at the clue's value. The ＋ Award / − Deduct buttons still give or take more, and another player's verdict on the same clue (a second buzzer, a steal) stays their own. (7fc2803, 27df89d)
+- The undo message and 🕘 History say when a step changed a verdict, e.g. "Undid +$400 (Ann, ✘ → ✔)". (7fc2803)
+- In the Final, while the think clock is still running, 👁 Reveal answer asks first instead of showing the answer. This covers the blue button, N, a click on the screen and the screen's menu. The panel says "The clock is still running (27 s left)." with ⏱ Let it run (Enter; Esc does the same) and 👁 Reveal anyway (R). A stray click can no longer spoil the Final. If the clock has run out or you paused it (T), the answer goes up at once, as before, and R still shows it at once. (d6e610a, cba9cf0)
+- If the Final's clock runs out while that question is open, its line changes to "✓ Time's up" and N shows the answer. (cba9cf0)
+
 ## 2026-11-16
 
 ### Added
