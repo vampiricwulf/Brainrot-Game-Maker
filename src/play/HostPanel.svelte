@@ -2492,8 +2492,10 @@
   .status {
     position: relative;
   }
+  /* (Nor the line's gap before it: what's last in the line ends at its right edge.) */
   .clockroom {
     visibility: hidden;
+    margin-left: -8px;
   }
   /* (As TimerControls' seconds box, but no width.) */
   .clockroom input {
