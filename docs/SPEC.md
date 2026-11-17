@@ -511,7 +511,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   browser, that the work is kept in this browser and 💾 Save makes a file), ✨ Try a sample game, then a card a mode (a blank round) with at most two
   templates in it to start from (＋ Add round has them all), the arrow keys moving between the cards, and a line for a
   game file, "Have a game file? 📂 Open a game… or drop it here", with the three newest Recent games as buttons on it
-  (title · rounds · when). ▶ Play isn't greyed there: a click says "Add a round first" and puts the keys on the sample.
+  (title · rounds · when). ▶ Play and 👥 Players & rules ▶ look quiet there (aria-disabled, dimmed, "Add a round
+  first…" in their tooltips) but aren't greyed: a click says "Add a round first" and puts the keys on the sample.
   In the desktop app it also says the autosave and media are kept in a folder on this PC, with ℹ See where (ℹ About).
 - **Notices under the header** (a new version and its steps, a file just added that won't play, the game New or Open…
   just replaced, the folders moved from Jeopardy Builder) look and close alike: an icon and words, the actions (the main

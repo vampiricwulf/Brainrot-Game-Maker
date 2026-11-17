@@ -29,13 +29,26 @@ try {
   assert(await page.locator('.first-round').isVisible(), 'the editor opens on "Add your first round"');
   // (A new game's "Untitled Game" isn't a name: the tab says the app alone.)
   assert((await page.title()) === 'Brainrot Games Maker', `an untitled game's tab says “Brainrot Games Maker” alone (${await page.title()})`);
-  // ▶ Play isn't greyed with no rounds: a click says to add one, the keys on ✨ Try a sample game.
-  await page.getByRole('button', { name: '▶ Play' }).click();
+  // With no rounds ▶ Play and 👥 Players & rules ▶ look quiet (aria-disabled, the reason in the tooltip), not greyed: a
+  // click says to add one, the keys on ✨ Try a sample game. (A mouse's click goes through: Playwright's waits for
+  // aria-disabled to go, hence force.)
+  const playBtn = page.getByRole('button', { name: '▶ Play' });
+  const playersBtn = page.locator('nav [data-nav="players"]');
+  const quiet = async (b) => (await b.getAttribute('aria-disabled')) === 'true' && (await b.isEnabled()) === false && (await b.evaluate((e) => +getComputedStyle(e).opacity)) < 1;
+  assert((await quiet(playBtn)) && (await quiet(playersBtn)), 'with no rounds ▶ Play and 👥 Players & rules ▶ look quiet (aria-disabled, dimmed)');
+  assert((await playBtn.getAttribute('title')).startsWith('Add a round first') && (await playersBtn.getAttribute('title')).startsWith('Add a round first'), 'their tooltips say to add a round first');
+  await playBtn.click({ force: true });
   await page.locator('.toast', { hasText: 'Add a round first' }).waitFor();
   await page.waitForFunction(() => !!document.activeElement?.matches('.first-round .sample'));
   assert(await page.locator('.first-round').isVisible(), '▶ Play with no rounds says “Add a round first”, the keys on ✨ Try a sample game');
+  await playersBtn.focus();
+  await page.keyboard.press('Enter');
+  await page.locator('.toast', { hasText: 'That’s on the ▶ Play screen: add a round first' }).waitFor();
+  await page.waitForFunction(() => !!document.activeElement?.matches('.first-round .sample'));
+  assert(true, '👥 Players & rules ▶ (from the keys) says so too, the keys on ✨ Try a sample game');
   assert((await page.locator('.first-round .mode').count()) === 5, 'every mode can be the first round');
   await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
+  assert((await playBtn.getAttribute('aria-disabled')) === null && (await playersBtn.getAttribute('aria-disabled')) === null, 'with a round they are plain buttons again');
   // (Its first tile is played below as a plain clue: no Daily Double may land on it at random when the game starts.)
   await noDailyDoubles(page);
   await page.getByRole('button', { name: '＋ Add round' }).click();

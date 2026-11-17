@@ -142,12 +142,19 @@
   }
   /** ▶ Play, saying the tab it was pressed on. */
   const play = () => onplay(typeof tab === 'number' ? game.rounds[tab]?.id : tab);
-  /** The header's ▶ Play: with no rounds yet it says to add one, the keys on ✨ Try a sample game (it isn't greyed). */
-  function playClicked(): void {
-    if (game.rounds.length) return play();
-    toast('Add a round first: ✨ Try a sample game, or pick a kind of round');
+  /**
+   * With no rounds yet ▶ Play and 👥 Players & rules ▶ look quiet, the reason in their tooltips, but still take a click
+   * (a greyed button says nothing): it says to add a round, the keys on ✨ Try a sample game.
+   */
+  function addRoundFirst(said: string): void {
+    toast(said);
     tab = 0;
     void tick().then(() => document.querySelector<HTMLElement>('.first-round .sample')?.focus());
+  }
+  /** The header's ▶ Play (with no rounds, see addRoundFirst). */
+  function playClicked(): void {
+    if (game.rounds.length) return play();
+    addRoundFirst('Add a round first: ✨ Try a sample game, or pick a kind of round');
   }
   const game = $derived(app.game);
   /**
@@ -1222,7 +1229,14 @@
       ><span aria-hidden="true">❔</span><span class="word">Help</span>{#if movedNew('editor')}<span class="newdot" data-moved-dot aria-hidden="true"></span>{/if}</button
     >
     <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
-    <button class="primary play" use:oneShot onclick={playClicked} disabled={!!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
+    <button
+      class="primary play"
+      use:oneShot
+      onclick={playClicked}
+      disabled={!!opening}
+      aria-disabled={game.rounds.length ? undefined : 'true'}
+      title={game.rounds.length ? '' : 'Add a round first: ✨ Try a sample game, or pick a kind of round'}>▶ Play</button
+    >
   </header>
   <!-- The notices under the header look and close alike: an icon and words, the actions (the main one first), then ✕
        at the far right, its tooltip saying what it does (its name is the word it replaced: Got it, Not now…). -->
@@ -1362,12 +1376,16 @@
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
       <div class="navlabel muted">Game</div>
       <!-- The players, ⚖ Game rules and phone buzzers are set on the ▶ Play screen, before the game: this opens it at 👥
-           Players (nothing starts until Start game ▶). With no rounds yet it says to add one first. -->
+           Players (nothing starts until Start game ▶). With no rounds yet it's quiet, and says to add one first. -->
       <button
         class="wrap"
         data-nav="players"
-        onclick={() => show({ tab: 'play', part: 'players' })}
-        title={game.rounds.length ? 'Set before the show, on the ▶ Play screen. The game doesn’t start until you press Start game ▶.' : 'Add a round first'}
+        aria-disabled={game.rounds.length ? undefined : 'true'}
+        onclick={() =>
+          game.rounds.length ? show({ tab: 'play', part: 'players' }) : addRoundFirst('That’s on the ▶ Play screen: add a round first (✨ Try a sample game, or pick a kind of round)')}
+        title={game.rounds.length
+          ? 'Set before the show, on the ▶ Play screen. The game doesn’t start until you press Start game ▶.'
+          : 'Add a round first: the players and rules are set on the ▶ Play screen, before the game'}
         >👥 Players & rules ▶{game.players.length ? ` (${game.players.length})` : ''}</button
       >
       <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => openTab('sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
@@ -1606,6 +1624,10 @@
     height: 7px;
     border-radius: 50%;
     background: var(--accent);
+  }
+  /* ▶ Play and 👥 Players & rules ▶ before there's a round: quiet, not greyed (a click says to add one). */
+  .editor [aria-disabled='true'] {
+    opacity: 0.55;
   }
   .first-round {
     max-width: 820px;
