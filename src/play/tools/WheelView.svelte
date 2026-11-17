@@ -77,12 +77,15 @@
     position: absolute;
     top: 30px;
     left: 40px;
-    max-width: 440px;
+    /* (Room for a short name on one line, "Partner for Ann", still clear of the wheel.) */
+    max-width: 600px;
+    text-wrap: balance;
     font-family: var(--value-font);
     font-size: 64px;
     line-height: 1.05;
     font-weight: 900;
-    color: var(--value);
+    /* (White where the value color is too dark on the pill: Pastel's purple, theme.ts.) */
+    color: var(--value-on-dark, var(--value));
     text-shadow: 5px 5px 0 #000;
   }
   .disc.single {
@@ -112,7 +115,7 @@
     font-family: var(--value-font);
     font-size: calc(var(--size) / 12);
     font-weight: 900;
-    color: var(--value);
+    color: var(--value-on-dark, var(--value));
     text-shadow: 4px 4px 0 #000;
     text-align: center;
     line-height: 1.05;

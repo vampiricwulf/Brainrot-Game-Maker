@@ -7573,6 +7573,10 @@
   .play.hidden.still:not(.dual) .stage-box :global(*) {
     cursor: none !important;
   }
+  /* Nor a tile lit under it: with no pointer, viewers would take it for a hint at the next pick. */
+  .play.hidden.still:not(.dual) .stage-box :global(.tile:hover:not(:disabled):not(.used)) {
+    filter: none !important;
+  }
   .stage-area.dual > :global(.info) {
     width: min(360px, 35vw);
     flex-shrink: 0;

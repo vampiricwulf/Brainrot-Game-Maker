@@ -610,6 +610,9 @@
     {@const waiting = tileToolUp(live, info.clue) && !session.revealed}
     <!-- The question slide the host is on (a clue can have several: the first one zooms in, the next ones come in quietly). -->
     {@const at = clueSlideIndex(session, info.clue)}
+    <!-- The board's background behind it while it zooms in (the slide covers it after): a light theme doesn't blink to
+         black on every clue. On a keyed stage, the key, as round the board. -->
+    <div class="clue-bg" style:background={keyColor}></div>
     {#key `${info.clue.id}-${session.revealed}-${waiting}-${at}`}
       <div
         class="full"
@@ -936,7 +939,7 @@
   <div class="cover" class:host={role === 'mirror'}>
     <div class="cover-in">
       {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
-      <div class="cover-card"><span class="pause" aria-hidden="true"></span>{stream?.coverText?.trim() || 'Be right back'}</div>
+      <div class="cover-card"><span class="pause" aria-hidden="true"></span><span class="cover-text">{stream?.coverText?.trim() || 'Be right back'}</span></div>
       {#if live.room && !stream?.hideJoinCode}
         <div class="cover-join">{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz from your phone'}: <b>{live.room.code}</b> · {live.room.link.replace(/^https?:\/\//, '')}</div>
       {/if}
@@ -1090,6 +1093,11 @@
     text-align: center;
     text-shadow: 6px 6px 0 #000;
   }
+  /* A long text: in even lines beside the ❚❚, well clear of the stage's sides. */
+  .cover-text {
+    max-width: 1400px;
+    text-wrap: balance;
+  }
   /* Two bars, drawn: the ⏸ character is thin or missing in many fonts. */
   .pause {
     flex: none;
@@ -1113,6 +1121,11 @@
     left: 0;
     width: 1920px;
     z-index: 0;
+    background: var(--board-image, none) center / cover no-repeat, var(--board-bg, var(--board-gap));
+  }
+  .clue-bg {
+    position: absolute;
+    inset: 0;
     background: var(--board-image, none) center / cover no-repeat, var(--board-bg, var(--board-gap));
   }
   .layer {

@@ -73,7 +73,8 @@
     font-family: var(--value-font);
     font-size: 64px;
     font-weight: 900;
-    color: var(--value);
+    /* (White where the value color is too dark on the pill: Pastel's purple, theme.ts.) */
+    color: var(--value-on-dark, var(--value));
     text-shadow: 5px 5px 0 #000;
   }
   .dice {

@@ -70,7 +70,7 @@
     font-family: var(--value-font);
     font-size: 90px;
     font-weight: 900;
-    color: var(--value);
+    color: var(--value-on-dark, var(--value));
     text-shadow: 6px 6px 0 #000;
   }
   .row {

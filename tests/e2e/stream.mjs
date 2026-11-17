@@ -7,6 +7,8 @@
 // the keys go back to its main button, a reload keeps it the tile's own), a countdown started under the cover, Undo bringing
 // back a countdown, everyone missing, and the stage's size with a long host note, the buzzers' row and a Daily Double;
 // TIME'S UP joined partway in a window reloaded during it, and not shown again in one reloaded after it.
+// On Pastel, one window: a clue zooming in over the board's background, white tool titles, a long cover text, and no
+// lit tile under a still, hidden cursor.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -40,6 +42,135 @@ const nextRound = async () => {
   const yes = leaveAnswer(page);
   if (await yes.isVisible()) await yes.click();
 };
+
+/**
+ * A light theme (Pastel) in one window at 1280×720: a clue zooms in over the board's own background (no black flash),
+ * the tools' titles on their dark pills in white as the Scores overlay's, a short wheel title on one line, a long cover
+ * text kept off the stage's edges, and no tile lit under a still, hidden cursor with the controls hidden.
+ */
+async function pastelStage() {
+  console.log('Pastel in one window at 1280×720:');
+  const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#4a3b5c', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
+  const values = [200, 400];
+  const game = {
+    id: 'g_pastel', version: 2, title: 'Pastel',
+    settings: {
+      allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      stream: { coverText: 'Technical difficulties — the host is fighting the cat for the keyboard, back in a few minutes!' },
+    },
+    players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#56b4e9', '#d55e00'][i] })),
+    rounds: [{ id: 'r_b', name: 'Board', mode: 'board', values, dailyDoubleCount: 0, categories: ['One', 'Two'].map((title, c) => ({ id: `c${c}`, title, clues: values.map((v, r) => ({ id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: slide(`Clue ${c}-${r}`), answerSlide: slide(`Answer ${c}-${r}`) })) })) }],
+    media: [], audio: {}, wheels: [], dice: [],
+    theme: { preset: 'pastel', tile: '#ffd6e7', tileUsed: '#f5ecf1', boardGap: '#fff7fb', value: '#7a4cff', boardText: '#4a3b5c', stageText: '#4a3b5c', boardFont: "'Comic Neue', 'Comic Sans MS', cursive", valueFont: "'Comic Neue', 'Comic Sans MS', cursive", glow: 'none', scoreBar: 'bottom', scoreBarBg: '#fce4ef' },
+  };
+  mkdirSync(resolve('test-results'), { recursive: true });
+  const gameFile = resolve('test-results/stream-pastel.json');
+  writeFileSync(gameFile, JSON.stringify(game));
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const host = await ctx.newPage();
+  host.on('pageerror', (e) => errors.push(`[pastel] ${e.message}`));
+  await host.goto(pathToFileURL(file).href);
+  await openGameFile(host, gameFile);
+  await host.getByText(/^Opened “/).waitFor();
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await host.getByRole('button', { name: 'Start game ▶' }).click();
+  const st = (sel) => host.locator(`.stage-box ${sel}`);
+  await st('.board .tile').first().waitFor();
+  await host.waitForTimeout(400);
+  const boardBg = await st('.board-bg').evaluate((e) => getComputedStyle(e).backgroundColor);
+  /** What's painted at the stage's top-left corner (just inside it): the clue, its stage, or something else on it. */
+  const corner = () =>
+    host.evaluate(() => {
+      const stage = document.querySelector('.stage-box .stage');
+      const r = stage.getBoundingClientRect();
+      const els = document.elementsFromPoint(r.left + 3, r.top + 3).filter((e) => !e.closest('.full'));
+      const at = els[0];
+      return at === stage ? `the stage, ${getComputedStyle(stage).backgroundColor}` : getComputedStyle(at).backgroundColor;
+    });
+
+  // A clue zooming in: the board's background stays behind it while it grows (paused partway), not the stage's black.
+  await st('.tile[data-clue="q1_0"]').click();
+  await host.evaluate(() => document.getAnimations().forEach((a) => a.pause()));
+  const small = await host.evaluate(() => {
+    const full = document.querySelector('.stage-box .full')?.getBoundingClientRect();
+    return !!full && full.width < document.querySelector('.stage-box .stage').getBoundingClientRect().width * 0.9;
+  });
+  const zooming = await corner();
+  await host.evaluate(() => document.getAnimations().forEach((a) => a.play()));
+  assert(small && zooming === boardBg, `a clue zooming in on Pastel has the board's background round it (${zooming}), not black`);
+  await st('.full[data-slide="1"]').waitFor();
+  await host.waitForTimeout(600);
+  await host.keyboard.press('Escape');
+  await st('.board .tile').first().waitFor();
+  await host.waitForTimeout(400);
+
+  // The tools' titles: white on their dark pills (Pastel's purple is too dark there), as the Scores heading.
+  const pill = () =>
+    st('.ov .title').evaluate((e) => {
+      const stage = document.querySelector('.stage-box .stage').getBoundingClientRect();
+      const k = stage.width / 1920;
+      const range = document.createRange();
+      range.selectNodeContents(e);
+      return { color: getComputedStyle(e).color, lines: range.getClientRects().length, right: Math.round((e.getBoundingClientRect().right - stage.left) / k) };
+    });
+  await host.getByRole('button', { name: '🎡 Wheel' }).click();
+  await host.getByRole('button', { name: '🗂 Pick a category', exact: true }).click();
+  await st('.ov .title').waitFor();
+  await host.waitForTimeout(800);
+  const wheelTitle = await pill();
+  assert(wheelTitle.color === 'rgb(255, 255, 255)', `the wheel's title is white on its pill (${wheelTitle.color})`);
+  assert(wheelTitle.lines === 1 && wheelTitle.right <= 700, `“Pick a category” fits on one line, clear of the wheel (${wheelTitle.lines} lines, to x=${wheelTitle.right})`);
+  await host.keyboard.press('Escape');
+  await st('.ov').waitFor({ state: 'detached' });
+  await host.getByRole('button', { name: '🎲 Dice' }).click();
+  await host.getByRole('button', { name: 'd6', exact: true }).click();
+  await st('.ov .title').waitFor();
+  const diceTitle = await pill();
+  assert(diceTitle.color === 'rgb(255, 255, 255)', `and so is the dice's (${diceTitle.color})`);
+  // (Esc waits for the roll to land.)
+  await host.waitForTimeout(2500);
+  await host.keyboard.press('Escape');
+  await st('.ov').waitFor({ state: 'detached' });
+
+  // A long cover text: next to the ❚❚, kept off the stage's sides.
+  await host.keyboard.press('k');
+  await st('.cover-card').waitFor();
+  await host.waitForTimeout(500);
+  const cover = await st('.cover-card').evaluate((e) => {
+    const stage = document.querySelector('.stage-box .stage').getBoundingClientRect();
+    const k = stage.width / 1920;
+    // (Its words' line boxes, not the ❚❚.)
+    const walk = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+    const rects = [];
+    while (walk.nextNode()) {
+      const range = document.createRange();
+      range.selectNodeContents(walk.currentNode);
+      rects.push(...[...range.getClientRects()].filter((r) => r.width > 0));
+    }
+    return { left: Math.round((Math.min(...rects.map((r) => r.left)) - stage.left) / k), right: Math.round((Math.max(...rects.map((r) => r.right)) - stage.left) / k) };
+  });
+  assert(cover.left >= 150 && cover.right <= 1770, `a long cover text keeps off the stage's sides (x=${cover.left} to ${cover.right} of 1920)`);
+  await host.keyboard.press('k');
+  await st('.cover').waitFor({ state: 'detached' });
+
+  // Controls hidden (H), the mouse left still on a tile: its cursor goes, and the tile isn't lit for viewers either.
+  await host.keyboard.press('h');
+  await host.locator('.play > .panel').waitFor({ state: 'detached' });
+  const tile = await st('.tile[data-clue="q0_1"]').boundingBox();
+  await host.mouse.move(tile.x + tile.width / 2, tile.y + tile.height / 2);
+  await host.mouse.move(tile.x + tile.width / 2 + 4, tile.y + tile.height / 2);
+  const lit = () => st('.tile[data-clue="q0_1"]').evaluate((e) => getComputedStyle(e).filter);
+  await host.locator('.play.still').waitFor({ state: 'detached' });
+  await host.waitForTimeout(300);
+  const moving = await lit();
+  await host.locator('.play.still').waitFor();
+  await host.waitForTimeout(300);
+  const still = await lit();
+  assert(moving === 'brightness(1.25)' && still === 'none', `a tile under the mouse lights up while it moves (${moving}), not once it's still with the controls hidden (${still})`);
+  await host.keyboard.press('h');
+  await ctx.close();
+}
 
 /**
  * A crowded game on a 720p stream: 12 players with long names and big scores, a board of 10 categories with long
@@ -1186,6 +1317,7 @@ try {
   const spot = await page.locator('.stage .spot-name').innerText();
   assert((await page.locator('.stage .score-area .plate.picker').innerText()).includes(spot), 'the score bar lights up the spotlit player');
 
+  await pastelStage();
   await crowd();
   await viewers();
   await tileTools();
