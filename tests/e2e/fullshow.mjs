@@ -7,14 +7,15 @@
 // board's Next round ▶, a slides round, a board-game turn and leaving that round, a three-player Final (the wagers typed
 // by the host, or sent from the phones) and a tie at the end settled by the tiebreaker clue. Each step waits for what it
 // should do (never a timer), and goes at a host's pace where the app holds a quick second press back (KEY_GUARD,
-// STAGE_GAP). The check before going on (the blue button pressed with something left) never opens in either run. With
+// STAGE_GAP). The check before going on (the blue button pressed with something left) never opens in either run, but
+// once by clicks: the Final's answer with its think clock still running (👁 Reveal anyway). With
 // SCREENSHOTS set to a folder, it saves the host's window as each part starts. Needs `npm ci` in
 // buzzer/.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, stepButton, leaveAnswer } from './helpers.mjs';
+import { anyway, checkItem, confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -60,7 +61,8 @@ const TODAY = {
     // (U2's last slide: a click on the stage there says “click again”, and the second goes on.)
     'A slides round': { keys: 0, clicks: 4, typed: 0 },
     'A board-game turn, then leaving the round': { keys: 0, clicks: 6, typed: 0 },
-    'The Final': { keys: 0, clicks: 13, typed: 0 },
+    // (Its answer with the think clock still running: the check asks first, 👁 Reveal anyway.)
+    'The Final': { keys: 0, clicks: 14, typed: 0 },
     // (U8's Who won? row: one click on the winner's 🏆, where it was their chip, then ＋ Award.)
     'A tie at the end: the tiebreaker clue': { keys: 0, clicks: 4, typed: 0 },
   },
@@ -475,7 +477,13 @@ async function show(how) {
     // (The host has them all: the blue button is never greyed, so its wager screen's own line says so.)
     await until('every wager in on the host', async () => (await host.locator('.fj .row .muted', { hasText: /^Waiting on/ }).count()) === 0);
     await main('Show question ▶', 'the question', mainIs('👁 Reveal answer'));
-    await stageClick('the answer', mainIs('Start player reveals ▶'));
+    // (The think clock still running: the click asks first, and 👁 Reveal anyway shows it. The one check of the run:
+    // nothing else opens it, before or after.)
+    assert((await host.evaluate(() => window.__goonSeen)) === 0, 'by clicks, the check never opened up to the Final’s answer');
+    await stageClick('the check: the clock still running', async () => (await checkItem(host, 'clock').count()) === 1);
+    await until('the check ready', async () => (await goOnCheck(host, { ready: true }).count()) === 1);
+    await click(anyway(host), '👁 Reveal anyway: the answer', mainIs('Start player reveals ▶'));
+    await host.evaluate(() => (window.__goonSeen = 0));
     await stageClick('the reveals', mainIs('Show wager ▶'));
   }
   // (Their wager up: their verdict due, ✔ Right / ✘ Wrong in their row only; the blue button is what follows it.)
@@ -523,7 +531,7 @@ async function show(how) {
     await main('🏁 Back to results', 'the results', over);
   }
   assert(true, `${winner} won the tiebreaker, and the show is over`);
-  assert((await host.evaluate(() => window.__goonSeen)) === 0, `by ${how}, the check before going on never opened: nothing an expert does is left behind`);
+  assert((await host.evaluate(() => window.__goonSeen)) === 0, `by ${how}, the check before going on never opened (but for the Final's clock, by clicks): nothing an expert does is left behind`);
   await ctx.close();
   return took;
 }

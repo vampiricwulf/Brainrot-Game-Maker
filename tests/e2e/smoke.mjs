@@ -1224,7 +1224,11 @@ await wagers.nth(1).fill('0');
 await mainButton(page, 'Show question ▶').click();
 await page.locator('.timer').waitFor();
 assert(true, 'Final question starts the think timer');
+// (The think clock still running: 👁 Reveal answer asks first, and 👁 Reveal anyway shows it.)
 await mainButton(page, '👁 Reveal answer').click();
+await checkItem(page, 'clock').waitFor();
+await goOnCheck(page, { ready: true }).waitFor();
+await anyway(page).click();
 await flowButton(page, 'reveal', '🙈 Hide answer').click();
 await mainButton(page, '👁 Reveal answer').waitFor();
 assert(true, 'final answer can be hidden again');

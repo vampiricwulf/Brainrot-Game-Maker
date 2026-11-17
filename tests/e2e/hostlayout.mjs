@@ -38,7 +38,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, quickInSight, selectedWords, stepButton, leaveAnswer, returningHost } from './helpers.mjs';
+import { boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, quickInSight, selectedWords, stepButton, leaveAnswer, returningHost, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -481,6 +481,8 @@ try {
       );
     if (label === '👁 Reveal answer') assert((await page.locator('.stage-box').innerText()).includes('Uploaded in 2005'), 'then its second slide, then 👁 Reveal answer');
     await mainButton(page).click();
+    // (Its think clock still running: it asks first.)
+    if (label === '👁 Reveal answer') await revealAnyway(page);
   }
   await page.locator('.fj .pl').first().waitFor();
   states.reveals = await look();
@@ -1455,12 +1457,12 @@ try {
     await pl.getByRole('button', { name: '▶ Play' }).click();
     await pl.getByRole('button', { name: 'Start game ▶' }).click();
     await pl.locator('.fj .wagers').waitFor();
-    // (Everyone on $0 plays and could wager up to $2,000; each wagers $0 here: N shows the question, the answer, the
-    // reveals, then the first one's wager.)
+    // (Everyone on $0 plays and could wager up to $2,000; each wagers $0 here: N shows the question, R the answer (N
+    // would ask first: the think clock still runs), N the reveals, then the first one's wager.)
     const zeroBoxes = pl.locator('.fj .wagers input[data-wager]');
     for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill('0');
     for (const step of ['Question on screen', 'Answer on screen', 'Player reveals']) {
-      await pl.keyboard.press('n');
+      await pl.keyboard.press(step === 'Answer on screen' ? 'r' : 'n');
       await pl.locator('.panel .status', { hasText: step }).waitFor();
     }
     await pl.keyboard.press('n');

@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, stored, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, stored, leaveAnswer, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -491,6 +491,8 @@ async function viewers() {
   await aud.locator('.timer').waitFor();
   const asked = await sizes();
   await mainButton(host, '👁 Reveal answer').click();
+  // (Its think clock still running: it asks first.)
+  await revealAnyway(host);
   await aud.locator('.timer').waitFor({ state: 'detached' });
   const answered = await sizes();
   assert(!asked.includes('→') && asked !== '1' && answered === '1', `the Final's question comes in at its size beside the countdown, its answer at full size (${asked} | ${answered})`);
@@ -1174,6 +1176,8 @@ try {
   assert(scAfter === scBefore, `the scores window: a ✔ for each wager in, and 3 plates that stay put when the countdown comes (${scBefore} / ${scAfter})`);
   assert((await stageSize()) === finalSize, 'the question keeps it');
   await mainButton(page, '👁 Reveal answer').click();
+  // (Its think clock still running: it asks first.)
+  await revealAnyway(page);
   await mainButton(page, 'Start player reveals ▶').click();
   assert((await stageSize()) === finalSize, 'and so do the reveals');
   const spot = await page.locator('.stage .spot-name').innerText();

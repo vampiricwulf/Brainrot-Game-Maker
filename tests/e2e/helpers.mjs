@@ -277,6 +277,13 @@ export const quick = (page, words) => goOnCheck(page).locator('[data-quick]').fi
 export const anyway = (page) => goOnCheck(page).locator('[data-anyway]');
 /** Its Not yet (Esc). */
 export const notYet = (page) => goOnCheck(page).locator('[data-notyet]');
+/** The Final's 👁 Reveal answer just pressed, its think clock still running: the check asks first, 👁 Reveal anyway. */
+export async function revealAnyway(page) {
+  await checkItem(page, 'clock').waitFor();
+  await goOnCheck(page, { ready: true }).waitFor();
+  await anyway(page).click();
+  await goOnCheck(page).waitFor({ state: 'detached' });
+}
 /**
  * Whether a fix in the open check is in sight as it opened, scrolled nowhere: all of it inside the check's scrolling
  * part above its faded foot, and a click at its middle lands on it (not on the pinned foot). Playwright's own click

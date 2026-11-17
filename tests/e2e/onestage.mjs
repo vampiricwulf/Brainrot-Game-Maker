@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, leaveAnswer, mainButton, openGameFile, returningHost } from './helpers.mjs';
+import { confirmStrip, leaveAnswer, mainButton, openGameFile, returningHost, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -226,6 +226,8 @@ try {
       await page.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l), label);
       if (label === '👁 Reveal answer') await measure('Final question');
       await mainButton(page).click();
+      // (Its think clock still running: it asks first.)
+      if (label === '👁 Reveal answer') await revealAnyway(page);
     }
     await page.locator('.fj .pl').first().waitFor();
     await measure('Final reveals');

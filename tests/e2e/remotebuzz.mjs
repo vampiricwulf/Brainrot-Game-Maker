@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -776,6 +776,8 @@ try {
   await mainButton(page, 'Show question ▶').click();
   await outLoud.waitFor();
   await mainButton(page, '👁 Reveal answer').click();
+  // (Its think clock still running: it asks first.)
+  await revealAnyway(page);
   await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
   assert(await outLoud.isVisible(), 'a Final with a room too old for answers: the panel says players answer out loud');
   // The room back after the question, saying now it takes them (as one started then would): the answers never began,

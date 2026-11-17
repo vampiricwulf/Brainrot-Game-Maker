@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, openGameFile, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
+import { anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, openGameFile, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -210,6 +210,8 @@ try {
   await page.locator('.fj .wagers input[data-wager]').first().fill('200');
   await mainButton(page, 'Show question ▶').click();
   await mainButton(page, '👁 Reveal answer').click();
+  // (Its think clock still running: it asks first.)
+  await revealAnyway(page);
   await mainButton(page, 'Start player reveals ▶').click();
   await page.locator('.spot').waitFor();
   await page.keyboard.press('c');
@@ -301,11 +303,12 @@ try {
   assert((await page.locator('.panel [data-next]').innerText()).startsWith('Finish game'), 'nobody playing: the main button goes on (Finish game)');
   await plays.nth(0).check();
   await plays.nth(1).check();
-  // The keys go on: N shows the question once every wager is in, N the answer, N the reveals.
+  // The keys go on: N shows the question once every wager is in, R the answer (N would ask first: the think clock still
+  // runs), N the reveals.
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Question on screen'));
   assert(true, 'N on the wager screen shows the question once every wager is in');
-  await page.keyboard.press('n');
+  await page.keyboard.press('r');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer on screen'));
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));

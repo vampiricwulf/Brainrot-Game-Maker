@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -228,6 +228,8 @@ try {
   await p2.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
   assert((await p2.locator('.panel .status .notes').count()) === 0, 'one window: the Final’s host notes stay off the panel while its question is up');
   await press('👁 Reveal answer');
+  // (Its think clock still running: it asks first.)
+  await revealAnyway(p2);
   await p2.locator('.panel .status .notes', { hasText: '📝 Accept Abe Lincoln too' }).waitFor();
   assert(true, '…and show there once its answer is up');
   // Two windows: the host's info column (the notes) is up.

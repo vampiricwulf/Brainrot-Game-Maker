@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, menuLines, openMenu, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
+import { addClassicRounds, mainButton, menuLines, openMenu, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -336,6 +336,8 @@ try {
   await page.getByLabel('Ignore the limits').check();
   await mainButton(page, 'Show question ▶').click();
   await mainButton(page, '👁 Reveal answer').click();
+  // (Its think clock still running: it asks first.)
+  await revealAnyway(page);
   await mainButton(page, 'Start player reveals ▶').click();
   await page.locator('.spot').waitFor();
   const spot = () => page.locator('.spot-name').innerText();

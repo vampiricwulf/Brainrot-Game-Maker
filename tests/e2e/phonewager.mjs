@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, anyway, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, anyway, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -818,6 +818,8 @@ try {
     'the stage shows the Final’s 4 choices under the question, none lit',
   );
   await mainButton(host2).filter({ hasText: '👁 Reveal answer' }).click();
+  // (Its think clock still running: it asks first.)
+  await revealAnyway(host2);
   await stageStrip.locator('.choice.right', { hasText: CHOICES[1] }).waitFor();
   assert(true, 'with the answer, the one marked ✔ Right (B) lights up');
   await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();
