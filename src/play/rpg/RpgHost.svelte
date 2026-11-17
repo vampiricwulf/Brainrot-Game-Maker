@@ -392,9 +392,18 @@
   <div class="rh">
     <div class="row top">
       <b class="where">🗺 {here ? `${here.map.name} · ${here.screen.name}` : 'Nowhere'}</b>
-      {#if here?.screen.hostNotes && !dual}<span class="notes">📝 {here.screen.hostNotes}</span>{/if}
-      {#if now.round?.hostNotes && !dual}<span class="notes" title="Round notes">📝 {now.round.hostNotes}</span>{/if}
-      <span class="spacer"></span>
+      <!-- One window: the notes' slot, there on every screen, note or none, and one line (cut short, the whole of it in
+           its tooltip): a screen's note never pushes 🗺 Map on stream to a second line, so the buttons, the pad and the
+           minimap keep their places from screen to screen. -->
+      {#if !dual}
+        {@const notes = [here?.screen.hostNotes, now.round?.hostNotes && `Round: ${now.round.hostNotes}`].filter(Boolean).join('\n')}
+        <span class="notes-slot" data-screen-notes title={notes || undefined}>
+          {#if here?.screen.hostNotes}<span class="notes">📝 {here.screen.hostNotes}</span>{/if}
+          {#if now.round?.hostNotes}<span class="notes">📝 {now.round.hostNotes}</span>{/if}
+        </span>
+      {:else}
+        <span class="spacer"></span>
+      {/if}
       {#each st.parties as pt (pt.id)}
         {@const lead = session.players.find((pl) => pl.id === pt.members[0])}
         <button
@@ -775,6 +784,21 @@
     padding: 2px 8px;
     border-radius: 6px;
     font-size: 12px;
+  }
+  /* The rest of the row's first line, whatever the screen: the notes in it give way, never the buttons. (At least
+     120px, the same with or without a note, so the row wraps the same way on every screen.) */
+  .notes-slot {
+    flex: 1 1 0;
+    min-width: 120px;
+    display: flex;
+    gap: 6px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .notes-slot .notes {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .party {
     border-width: 2px;

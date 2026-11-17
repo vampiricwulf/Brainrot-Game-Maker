@@ -7,6 +7,9 @@
 // 3. Mini quest, in two windows and in one: short of gold in the shop, the question comes into sight with the keys on Cancel, and the
 //    toast names the item; ▸ Players: stats & inventory opened shows the first sheet, the toggle still in sight.
 // 4. 3 × 3 dungeon, one window: ⤢ Full map opens with the party's screen (the bottom row) in sight.
+// 5. Mini quest, one window: the screen's 📝 note has a slot of its own in the top row (cut short, the whole of it in
+//    its tooltip), so the parties, 🗺 Map on stream, the pad and the minimap stay put from a screen with a note to one
+//    without.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -209,6 +212,36 @@ try {
     assert(at.scrolls && inSight, `⤢ Full map opens with the party's screen in sight, though the map is taller than its box (${JSON.stringify(at)})`);
     assert((await stageAt(page)) === stage, 'the stage keeps its place and size');
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-fullmap.png` });
+    await ctx.close();
+  }
+  {
+    console.log('Mini quest, one window: the top row from screen to screen');
+    const { ctx, page } = await host('Mini quest', false);
+    await page.keyboard.press('n');
+    const rh = page.locator('.rh');
+    await rh.waitFor();
+    /** Where the top row's buttons, the pad and the minimap are, and what the note slot says. */
+    const layout = () =>
+      page.evaluate(() => {
+        const at = (el) => (el ? [Math.round(el.getBoundingClientRect().left), Math.round(el.getBoundingClientRect().top)].join(',') : null);
+        const btn = (t) => [...document.querySelectorAll('.rh button')].find((b) => b.textContent.includes(t));
+        const slot = document.querySelector('.rh [data-screen-notes]');
+        return {
+          where: document.querySelector('.rh .where').textContent.trim(),
+          places: { party: at(document.querySelector('.rh .party')), map: at(btn('Map on stream')), pad: at(document.querySelector('.rh .pad')), minimap: at(document.querySelector('.rh .mapbox')) },
+          note: slot && { text: slot.textContent.trim(), title: slot.title, cut: slot.scrollWidth > slot.clientWidth + 1 || slot.scrollHeight > slot.clientHeight + 1, lines: slot.getClientRects().length },
+        };
+      });
+    const village = await layout();
+    assert(village.where.endsWith('Village') && village.note?.text.startsWith('📝 Everyone starts with 10 gold'), `in the Village the screen's note shows in its slot (${JSON.stringify(village)})`);
+    assert(village.note.title.includes('Then walk east.'), `its whole text is in its tooltip (${village.note.title})`);
+    if (shots) await page.screenshot({ path: `${shots}/worldfixes-note-village.png` });
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.querySelector('.rh .where')?.textContent.includes('Forest'));
+    const forest = await layout();
+    assert(forest.note && forest.note.text === '', `in the Forest (no note) the slot is there, empty (${JSON.stringify(forest.note)})`);
+    assert(JSON.stringify(forest.places) === JSON.stringify(village.places), `the parties, 🗺 Map on stream, the pad and the minimap stay put (${JSON.stringify(village.places)} → ${JSON.stringify(forest.places)})`);
+    if (shots) await page.screenshot({ path: `${shots}/worldfixes-note-forest.png` });
     await ctx.close();
   }
 
