@@ -1078,12 +1078,12 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect(leftNow(c, st)).toEqual([]);
   });
 
-  it('the clock still running at 👁 Reveal answer: ⏱ Let it run (⏎) or 👁 Reveal anyway (R); stopped or run out, none', () => {
+  it('the clock still running at 👁 Reveal answer: ⏱ Let it run (⏎), ⏸ Pause the clock (T) or 👁 Reveal anyway (R); stopped or run out, none', () => {
     const { g, s } = final('question');
     const c = (clock: FinalNow['clock'], over: Partial<GoCtx> = {}) => ctx(g, s, { final: { ...FIN, clock }, ...over });
     const st = mainStep(c(null))!;
     const items = leftNow(c({ left: 27, running: true }), st);
-    expect(lines(items)).toEqual([['first: The clock is still running (27 s left).', '⏱ Let it run ⏎ · close']]);
+    expect(lines(items)).toEqual([['first: The clock is still running (27 s left).', '⏱ Let it run ⏎ · close', '⏸ Pause the clock [T] · close']]);
     const ck = open(st, items);
     expect([anywayLabel(ck), inside({ key: 'Enter' }, ck, after), inside({ key: 'n' }, ck, after).do, inside({ key: 'r' }, ck, after).do, inside({ key: 'Escape' }, ck, after).do]).toEqual([
       '👁 Reveal anyway',
@@ -1092,6 +1092,11 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
       'anyway',
       'notyet',
     ]);
+    // T in it pauses the clock, as outside (Shift+T's 10 more seconds isn't offered: the answer is what's waiting).
+    expect([inside({ key: 't' }, ck, after), inside({ key: 'T', shift: true }, ck, after).do]).toEqual([{ do: 'quick', quick: items[0].quick[1] }, 'ignore']);
+    did.length = 0;
+    items[0].quick[1].run();
+    expect(did).toEqual(['clock']);
     // Paused, run out, none: at once. Stopped while the check is open: its line says so.
     for (const clock of [{ left: 27, running: false }, 'out', null] as const) expect(leftNow(c(clock), st)).toEqual([]);
     expect([doneSay(c('out'), 'clock'), doneSay(c({ left: 0, running: true }), 'clock'), doneSay(c({ left: 20, running: false }), 'clock')]).toEqual(['Time’s up', 'Time’s up', 'The clock stopped']);

@@ -743,8 +743,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   PARTNER UP!, all musts with no “anyway”, then at the reveal its cards not handed out or the clock not started, the pair
   still playing, a steal open; a wheel or dice tile's own tool not spun or rolled, or landed on “Spin again”; the
   Final's own 🤫 card not sent at Show question ▶, its typed answers still coming at 👁 Reveal answer, else its think
-  clock still running there (“The clock is still running (27 s left).”: ⏱ Let it run, the `Enter` one, and
-  👁 Reveal anyway; paused or run out, it goes on at once), and the spotlit
+  clock still running there (“The clock is still running (27 s left).”: ⏱ Let it run, the `Enter` one, ⏸ Pause the
+  clock, `T` as outside, and 👁 Reveal anyway; paused or run out, it goes on at once), and the spotlit
   player not judged yet at Next player ▶ or Finish game ▶, a must whose ✔ Right `C` / ✘ Wrong `X` close the check, so
   the verdict lands on stream before `N` goes on, with no `Enter` and the likely one ringed; a board game's turn at Next
   turn ▶, where one check walks it: its roll (🎲 Roll `D`, `Enter`), “Rolling…” while the dice go, its move (▶ Move

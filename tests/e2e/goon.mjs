@@ -8,7 +8,7 @@
 //    too, Enter in it sends the card and starts the clock, then R in it reveals anyway; the page never holds the
 //    card's words while it's open;
 // 3. the Final, one window: with its think clock running, 👁 Reveal answer by N, a stage click, the stage's menu or the
-//    blue button asks first (⏱ Let it run, the ⏎ one, keeps the clock going; 👁 Reveal anyway shows the answer); with
+//    blue button asks first (⏱ Let it run, the ⏎ one, keeps the clock going; ⏸ Pause the clock, T, pauses it; 👁 Reveal anyway shows the answer); with
 //    the clock paused or run out it goes on at once (3b). In its reveals, N with the spotlit player not judged yet opens
 //    the check (a must: no “anyway”), C in it judges them and closes it, the spotlight staying on them with their
 //    verdict on stage, then N goes on;
@@ -384,8 +384,8 @@ try {
         (await answerUp()) === 0,
       `N with the Final’s clock running asks first (“${(await clockLine.locator('.text').innerText()).trim()}”): ⏱ Let it run ⏎, 👁 Reveal anyway, the answer hidden`,
     );
-    const inSight = await quickInSight(page, '⏱ Let it run');
-    assert(inSight === '', `1280×720, one window: ⏱ Let it run is in sight, nothing scrolled${inSight ? ` (${inSight})` : ''}`);
+    const inSight = (await quickInSight(page, '⏱ Let it run')) + (await quickInSight(page, '⏸ Pause the clock'));
+    assert(inSight === '', `1280×720, one window: ⏱ Let it run and ⏸ Pause the clock are in sight, nothing scrolled${inSight ? ` (${inSight})` : ''}`);
     // Enter in it: ⏱ Let it run, the clock still running, the answer still hidden.
     await goOnCheck(page, { ready: true }).waitFor();
     await page.keyboard.press('Enter');
@@ -445,6 +445,18 @@ try {
     await goOnCheck(page, { ready: true }).waitFor();
     await page.keyboard.press('Escape');
     await goOnCheck(page).waitFor({ state: 'detached' });
+    // T in it: ⏸ Pause the clock, as outside. It closes with the clock paused and the answer still hidden (a paused
+    // clock lets the next 👁 Reveal answer go on at once); T outside starts it again.
+    await mainButton(page, '👁 Reveal answer').click();
+    await clockLine.waitFor();
+    assert((await quick(page, '⏸ Pause the clock').innerText()).includes('T'), 'the check offers ⏸ Pause the clock, its key T');
+    await goOnCheck(page, { ready: true }).waitFor();
+    await page.keyboard.press('t');
+    await goOnCheck(page).waitFor({ state: 'detached' });
+    await page.locator('.panel .tc button[aria-label="Start timer"]').waitFor();
+    assert((await answerUp()) === 0, 'T in the check pauses the clock and closes it, the answer still hidden');
+    await page.keyboard.press('t');
+    await page.locator('.panel .tc button[aria-label="Pause timer"]').waitFor();
     await mainButton(page, '👁 Reveal answer').click();
     await clockLine.waitFor();
     await goOnCheck(page, { ready: true }).waitFor();

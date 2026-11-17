@@ -675,7 +675,8 @@ function finalAnswersItems(c: GoCtx): LeftItem[] {
 
 /**
  * The Final's think clock still running, at 👁 Reveal answer: the answer would cut it short. ⏱ Let it run (⏎) closes the
- * check, the clock going on; 👁 Reveal anyway (R) shows it. Stopped or run out: it goes on at once.
+ * check, the clock going on; ⏸ Pause the clock (T, as outside) closes it with the clock paused, so the next 👁 Reveal
+ * answer goes on at once; 👁 Reveal anyway (R) shows it. Stopped or run out: it goes on at once.
  */
 function finalClockItems(c: GoCtx): LeftItem[] {
   const t = c.final.clock;
@@ -686,7 +687,10 @@ function finalClockItems(c: GoCtx): LeftItem[] {
       kind: 'first',
       text: `The clock is still running (${t.left} s left).`,
       anyway: FLOW.reveal.anyway,
-      quick: [{ label: '⏱ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label} (N)` }],
+      quick: [
+        { label: '⏱ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label} (N)` },
+        { label: '⏸ Pause the clock', key: 'T', then: 'close', run: () => c.act.clock(false), after: `Clock paused: ${FLOW.reveal.label} (N) shows it now` },
+      ],
     },
   ];
 }

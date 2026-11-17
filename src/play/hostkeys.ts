@@ -85,7 +85,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['N in the check', '“… anyway”, except into an answer (R there); with nothing left, the step'],
       ['R in the check', 'Before an answer: 👁 Reveal anyway'],
       ['Esc in the check', 'Not yet: back as it was (a second Esc right after does nothing, so a bounced Esc never closes the clue)'],
-      ['W, D, U, O, C, X, T in the check', 'The fix that shows that key (W spins, U opens the buzzers, O rolls for a tie, C / X judge…)'],
+      ['W, D, U, O, C, X, T in the check', 'The fix that shows that key (W spins, U opens the buzzers, O rolls for a tie, C / X judge, T pauses the Final’s clock…)'],
       ['1 – 9, K, B, M, Space, ← / →, F in the check', 'As outside (who’s picked, the cover, the media): the check stays open. A number a fix shows (a tie’s “Ann answers 1”, a steal’s) presses that fix'],
       ['?, L, A, H, Ctrl+Z in the check', 'Not yet, then as outside'],
       ['A double press', 'Never skips the check: for a moment after it opens it takes no key or click (Esc aside), and what the press would do lights up'],
