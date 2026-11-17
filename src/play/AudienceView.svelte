@@ -481,12 +481,10 @@
 {/snippet}
 
 <div class="theme" style={themeCss} style:--right={rightBg}>
-<!-- The board's background color under the board and its clues, there all along: a clue zooms in over it, and the board
-     fades back in over it (the slide or board covers it after). A light theme doesn't blink to black either way. On a
-     keyed stage, the key, as round the board. -->
-{#if !live.pregame && !introName && (session.phase === 'board' || (session.phase === 'clue' && info))}
-  <div class="board-under" style:background={keyColor}></div>
-{/if}
+<!-- The board's background color under every screen, there all along: a clue zooms in over it, the board fades back in
+     over it, and so do the Final, the slides and the end (each covers it once it's in). A light theme doesn't blink to
+     black between them. On a keyed stage, the key, as round the board. -->
+<div class="board-under" style:background={keyColor}></div>
 {#if live.pregame}
   <!-- The host is still on the pre-game screen. -->
   <div class="full title-card" in:fade={{ duration: 300 }}>
@@ -1102,7 +1100,9 @@
   .cover-text {
     max-width: 1500px;
     max-height: 560px;
-    overflow: hidden;
+    /* (Its shadow kept whole beyond the box.) */
+    overflow: clip;
+    overflow-clip-margin: 12px;
     text-wrap: balance;
   }
   /* Two bars, drawn: the ⏸ character is thin or missing in many fonts. */
