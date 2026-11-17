@@ -211,37 +211,92 @@ try {
     await hp.waitForTimeout(500);
     const hn = hp.locator('.data-notice', { hasText: 'is out' });
     assert(calls === 1 && (await hn.count()) === 0, `it asks once at start-up and an older release brings up no notice (${calls} asked)`);
+    await addClassicRounds(hp);
     hourly = release('99.2.0');
     await hp.clock.fastForward('30:00');
     await hp.waitForTimeout(500);
     assert(calls === 1 && (await hn.count()) === 0, 'half an hour on, it hasn’t asked again');
-    // (⚙ Settings open as it comes: the notice is behind the window, out of reach like the rest of the page.)
-    await hp.getByRole('button', { name: /^More:/ }).click();
-    await hp.getByRole('menuitem', { name: /Settings/ }).click();
+    // A version found while someone is at work waits for a pause: the notice would push the board down under their
+    // hands. (Here: clicking into a category's name and typing, a click and a key every second.)
+    const tile = hp.locator('.tile').first();
+    const at = async () => JSON.stringify(await tile.evaluate((t) => t.getBoundingClientRect().toJSON()));
+    const where = await at();
+    const said = () => hp.evaluate(() => document.getElementById('live-region')?.dataset.said ?? '');
+    const name = hp.getByLabel('Category 1 name');
+    await name.click();
     await hp.clock.fastForward('31:00');
-    await hn.waitFor();
-    assert(calls === 2 && (await hn.innerText()).includes('99.2.0 is out'), `an hour on, it asks again and says 99.2.0 is out (${calls} asked)`);
-    assert(await hn.evaluate((n) => !!n.closest('[inert]')), 'a notice that comes while ⚙ Settings is open is inert behind it, as the rest of the page is');
+    await hp.waitForTimeout(300);
+    for (const c of 'Science') {
+      await name.click();
+      await hp.keyboard.type(c);
+      await hp.clock.fastForward('00:01');
+    }
+    await hp.waitForTimeout(300);
+    assert(calls === 2, `an hour on, it asks again (${calls} asked)`);
+    assert(
+      (await hn.count()) === 0 && (await at()) === where && !(await said()).includes('99.2.0'),
+      'while they keep clicking and typing (7 s), the notice for 99.2.0 waits: nothing moves and nothing is read out',
+    );
+    // ℹ About says so at once (it's a window: nothing under it moves).
+    await hp.getByRole('button', { name: /^More:/ }).click();
+    await hp.getByRole('menuitem', { name: 'ℹ About' }).click();
+    const aboutText = await hp.getByRole('dialog', { name: 'About Brainrot Games Maker' }).innerText();
+    assert(aboutText.includes('Version 99.2.0 is out.') && aboutText.includes('⬇ Download 99.2.0'), 'ℹ About shows 99.2.0 at once, with its download');
     await hp.keyboard.press('Escape');
     await hp.getByRole('dialog').waitFor({ state: 'detached' });
-    assert(await hn.evaluate((n) => !n.closest('[inert]')), 'and usable again once the window closes');
+    assert((await hn.count()) === 0, 'and the editor’s notice still waits');
+    // A few seconds with no key and no click: then it shows, and is read out.
+    await hp.clock.fastForward('00:05');
+    await hn.waitFor();
+    assert(
+      (await hn.innerText()).includes('99.2.0 is out') && (await at()) !== where,
+      'after a few seconds without a key or a click, the notice says 99.2.0 is out (moving the board down, which is why it waited)',
+    );
+    await hp.waitForFunction(() => document.getElementById('live-region')?.dataset.said?.includes('99.2.0 is out.'), null, { timeout: 3000 });
+    assert(true, 'and screen readers are told then');
     hourly = 'offline';
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
+    await hp.clock.fastForward('00:05');
     assert(calls === 3 && (await hn.count()) === 1 && (await hn.innerText()).includes('99.2.0 is out'), 'an hour later, a check that fails leaves the notice as it was');
     hourly = release('99.1.0');
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
+    await hp.clock.fastForward('00:05');
     assert(calls === 4 && (await hn.innerText()).includes('99.2.0 is out'), 'an older answer (99.1.0) doesn’t replace the newer version already known');
+    // (⚙ Settings open as it comes: the notice is behind the window, out of reach like the rest of the page.)
+    hourly = release('99.2.1');
+    await hp.getByRole('button', { name: /^More:/ }).click();
+    await hp.getByRole('menuitem', { name: /Settings/ }).click();
+    await hp.clock.fastForward('01:01:00');
+    await hp.waitForTimeout(300);
+    await hp.clock.fastForward('00:05');
+    await hp.locator('.data-notice', { hasText: '99.2.1 is out' }).waitFor();
+    assert(calls === 5, `a still newer version (99.2.1) takes the notice’s place after the pause (${calls} asked)`);
+    assert(await hn.evaluate((n) => !!n.closest('[inert]')), 'a notice that comes while ⚙ Settings is open is inert behind it, as the rest of the page is');
+    await hp.keyboard.press('Escape');
+    await hp.getByRole('dialog').waitFor({ state: 'detached' });
+    assert(await hn.evaluate((n) => !n.closest('[inert]')), 'and usable again once the window closes');
+    // Going to another page of the editor is a pause too.
+    hourly = release('99.2.2');
+    await hp.clock.fastForward('01:01:00');
+    await hp.waitForTimeout(300);
+    await hp.keyboard.press('Shift');
+    assert(calls === 6 && (await hn.innerText()).includes('99.2.1 is out'), 'a newer version (99.2.2) found while they work leaves the notice at 99.2.1 for now');
+    await hp.locator('nav > button.round-tab').nth(1).click();
+    await hp.locator('.data-notice', { hasText: '99.2.2 is out' }).waitFor({ timeout: 2000 });
+    assert(true, 'and going to another round shows it at once');
     // ⬇ Download's steps stay while a still newer version comes out (the next hourly check after Done brings it up).
     await hp.evaluate(() => (window.open = () => null));
-    await hn.getByRole('button', { name: '⬇ Download 99.2.0' }).click();
-    const hs = hp.locator('.data-notice', { hasText: 'Downloading 99.2.0 in a new tab' });
+    await hn.getByRole('button', { name: '⬇ Download 99.2.2' }).click();
+    const hs = hp.locator('.data-notice', { hasText: 'Downloading 99.2.2 in a new tab' });
     await hs.waitFor();
     hourly = release('99.3.0');
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
-    assert(calls === 5 && (await hs.count()) === 1, 'a newer version found while the download’s steps show leaves them as they are');
+    await hp.clock.fastForward('00:05');
+    await hp.locator('nav > button.round-tab').first().click();
+    assert(calls === 7 && (await hs.count()) === 1, 'a newer version found while the download’s steps show leaves them as they are');
     // With ⚙ Settings' box unticked, it doesn't ask again.
     await hp.getByRole('button', { name: /^More:/ }).click();
     await hp.getByRole('menuitem', { name: /Settings/ }).click();
@@ -249,7 +304,7 @@ try {
     await hp.keyboard.press('Escape');
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
-    assert(calls === 5, 'with the box unticked in ⚙ Settings, it doesn’t ask every hour');
+    assert(calls === 7, 'with the box unticked in ⚙ Settings, it doesn’t ask every hour');
     await ctx.close();
   }
 

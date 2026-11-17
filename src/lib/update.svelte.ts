@@ -39,7 +39,12 @@ export const update = $state<{
   failed: string;
   /** The HTML file: the version whose ⬇ Download was just opened in a new tab (the notice and ℹ About say what's next). */
   downloading: string;
-}>({ status: 'idle', latest: null, error: '', skipped: readSkip(), checkedAt: 0, installed: '', failed: '', downloading: '' });
+  /**
+   * A newer version the hourly check found while the editor was in use: ℹ About shows it, the editor's notice waits for
+   * a pause (see holdForAPause).
+   */
+  held: Release | null;
+}>({ status: 'idle', latest: null, error: '', skipped: readSkip(), checkedAt: 0, installed: '', failed: '', downloading: '', held: null });
 
 function storedFlag(key: string): boolean {
   try {
@@ -102,6 +107,8 @@ function toApi(r: Release): unknown {
 export async function checkForUpdate(manual = false): Promise<void> {
   if (update.status === 'checking' || update.status === 'installing') return;
   if (!manual && !checksOnItsOwn()) return;
+  // (A version held for a pause is known: this check goes on from it, and has the last word.)
+  if (update.held) settle(takeHeld());
   update.status = 'checking';
   update.error = '';
   lastAsked = Date.now();
@@ -156,8 +163,10 @@ let rechecking = false;
 /**
  * While the app is open, ask GitHub again every hour, quietly: nothing on screen changes while it asks, and a check
  * that fails changes nothing either (what's shown stays as it was). Only a newer version than the one it knew of brings
- * up the editor's notice, and an update already under way is left alone. It looks every minute whether an hour has gone by since the last check (any check: ℹ About's
- * too), so a computer coming back from sleep asks within a minute rather than up to an hour later. Started once.
+ * up the editor's notice, and not at once: it waits for a pause (holdForAPause), so the notice never moves the editor
+ * under someone's hands. An update already under way is left alone. It looks every minute whether an hour has gone by
+ * since the last check (any check: ℹ About's too), so a computer coming back from sleep asks within a minute rather than
+ * up to an hour later. Started once.
  */
 export function recheckHourly(): void {
   if (rechecking) return;
@@ -171,21 +180,89 @@ export function recheckHourly(): void {
         if (update.status === 'checking' || update.status === 'installing') return;
         // GitHub answered: a failure said before no longer holds.
         update.error = '';
-        const known = update.status === 'available' ? update.latest : null;
+        const shown = update.status === 'available' ? update.latest : null;
+        // An update under way (its file downloading, or the desktop app's new version in place, waiting for the
+        // restart) stays as it is.
+        if (shown && underWay(shown)) return;
+        // A version already known (shown, or waiting to be) is only ever replaced by a newer one.
+        const known = update.held ?? shown;
         if (known) {
-          // An update under way (its file downloading, or the desktop app's new version in place, waiting for the
-          // restart) stays as it is; and a version already known is only ever replaced by a newer one.
-          if (update.downloading === known.version || update.installed === known.version) return;
-          if (!release || !isNewer(release.version, known.version)) return;
-        }
-        settle(release);
+          if (release && isNewer(release.version, known.version)) holdForAPause(release);
+        } else if (release && isNewer(release.version, __APP_VERSION__)) holdForAPause(release);
+        // (Nothing newer: nothing on screen changes, ℹ About says it's the newest.)
+        else settle(release);
       },
       () => {},
     );
   }, 60 * 1000);
 }
 
-/** The version the editor's notice was read out for. */
+function underWay(r: Release): boolean {
+  return update.downloading === r.version || update.installed === r.version;
+}
+
+/** How long without a key or a click counts as a pause. */
+export const PAUSE_MS = 4000;
+let pauseTimer: ReturnType<typeof setTimeout> | undefined;
+/** A pointer is down (a drag, a held button): not a pause however long it lasts. */
+let pointerDown = false;
+
+/**
+ * Keep a newer version the hourly check found until the next pause: a place change in the editor (another page or
+ * round, back from a game, a reload: see atAPause) or a few seconds without a key or a click. Its notice coming up
+ * pushes the editor down, so it mustn't while someone is clicking or typing in it. (The start-up check's notice shows
+ * at once: nothing's under anyone's hands yet.)
+ */
+function holdForAPause(release: Release): void {
+  const first = !update.held;
+  update.held = release;
+  if (!first) return;
+  pointerDown = false;
+  addEventListener('pointerdown', onPointerDown, true);
+  addEventListener('pointerup', onPointerUp, true);
+  addEventListener('pointercancel', onPointerUp, true);
+  addEventListener('keydown', waitAgain, true);
+  waitAgain();
+}
+
+function onPointerDown(): void {
+  pointerDown = true;
+  clearTimeout(pauseTimer);
+}
+
+function onPointerUp(): void {
+  pointerDown = false;
+  waitAgain();
+}
+
+function waitAgain(): void {
+  clearTimeout(pauseTimer);
+  if (!pointerDown) pauseTimer = setTimeout(atAPause, PAUSE_MS);
+}
+
+function takeHeld(): Release | null {
+  const release = update.held;
+  update.held = null;
+  clearTimeout(pauseTimer);
+  removeEventListener('pointerdown', onPointerDown, true);
+  removeEventListener('pointerup', onPointerUp, true);
+  removeEventListener('pointercancel', onPointerUp, true);
+  removeEventListener('keydown', waitAgain, true);
+  return release;
+}
+
+/**
+ * A pause (the editor opened, another page or round shown, or a few seconds without a key or a click): a version held
+ * for one now shows in the editor's notice. It waits on while an update is under way (an ⬆ Update installing, or the
+ * shown version's download open) until the pause after that.
+ */
+export function atAPause(): void {
+  if (!update.held || update.status === 'checking' || update.status === 'installing') return;
+  const shown = update.status === 'available' ? update.latest : null;
+  if (shown && underWay(shown)) return;
+  settle(takeHeld());
+}
+
 let said = '';
 
 /**

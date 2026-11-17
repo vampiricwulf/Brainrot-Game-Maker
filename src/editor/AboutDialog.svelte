@@ -17,6 +17,13 @@
   const desktopApp = inTauri();
   /** The copy online (GitHub Pages): no file, and its games are its own. */
   const online = onlineCopy();
+  /**
+   * The newest version known to be out. One the hourly check found shows here at once, while the editor's notice waits
+   * for a pause (a window moves nothing under anyone's hands).
+   */
+  const newest = $derived(
+    update.status === 'checking' ? null : (update.held ?? (update.status === 'available' || update.status === 'installing' ? update.latest : null)),
+  );
   let folders = $state<DataFolders | null>(null);
   const leftovers = $derived(
     folders ? ([['old-data', folders.oldData], ['old-settings', folders.oldSettings]] as const).filter(([, f]) => f?.exists && f.path) : [],
@@ -73,12 +80,12 @@
       <dt>Updates</dt>
       <dd class="updates">
         <span role="status" class:selectable={!!update.error}>
-          {#if update.status === 'checking'}Checking…{:else if update.status === 'available' && update.latest}Version {update.latest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{:else if update.status === 'idle' && !prefs.checkUpdates}Not checked on its own (⚙ Settings).{/if}
+          {#if update.status === 'checking'}Checking…{:else if newest && update.status !== 'installing'}Version {newest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{:else if update.status === 'idle' && !prefs.checkUpdates}Not checked on its own (⚙ Settings).{/if}
           {#if update.error && (update.status === 'available' || update.status === 'current')}<span class="muted">{update.error}.</span>{/if}
           {#if update.checkedAt && update.status !== 'checking'}<span class="muted checked">(checked {checkedWhen(update.checkedAt)})</span>{/if}
         </span>
-        {#if (update.status === 'available' || update.status === 'installing') && update.latest}
-          <UpdateControls release={update.latest} />
+        {#if newest}
+          <UpdateControls release={newest} />
         {:else}
           <a href={`${REPO}/releases/latest`} target="_blank" rel="noreferrer" onclick={link}>Latest release</a>
         {/if}

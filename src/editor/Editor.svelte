@@ -59,7 +59,7 @@
   import ThemeEditor from './ThemeEditor.svelte';
   import { isThemeFile, parseThemeFile, ThemeError, type SharedTheme } from '../lib/themefile';
   import UpdateControls from './UpdateControls.svelte';
-  import { sayUpdateOut, update } from '../lib/update.svelte';
+  import { atAPause, sayUpdateOut, update } from '../lib/update.svelte';
   import AboutDialog from './AboutDialog.svelte';
   import KeysHelp from '../play/KeysHelp.svelte';
   import { inTauri, keptHere } from '../lib/platform';
@@ -1153,6 +1153,12 @@
   );
   $effect(() => {
     if (updateOut && update.downloading !== updateOut.version) sayUpdateOut(updateOut.version);
+  });
+  // A newer version found while the editor was in use shows at the next pause: the editor opening (at start, back from
+  // a game) and another page or round count as one (see holdForAPause).
+  $effect(() => {
+    void tab;
+    untrack(atAPause);
   });
   // ⬆ Update failed during a game: why, now that the host is back here (see UpdateControls).
   onMount(() => {

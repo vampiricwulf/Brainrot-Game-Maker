@@ -73,7 +73,9 @@ can't be undone.
 ## Updating
 
 When a newer version is out, the editor says so. It checks GitHub each time it starts and then every hour while it's
-open, and **ℹ About** can check any time. ℹ About also shows which version you have.
+open, and **ℹ About** can check any time. ℹ About also shows which version you have. A version found while you're
+working waits for a pause before its notice shows (another page or round, or a few seconds without a click or a key),
+so the editor doesn't move under your hands; ℹ About shows it at once.
 
 - **Desktop app:** click **⬆ Update to …**. It downloads the new version, saves your game and restarts. If a game is
   being played, it waits: click **⟳ Restart into …** when you're ready.
