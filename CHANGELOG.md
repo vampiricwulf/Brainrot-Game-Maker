@@ -11,12 +11,13 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
+## 2026-11-16
 
 ### Added
 
 - The first screen starts with a muted line that says what the app is. In a browser it says there's nothing to install, and the copy online ends with a "Get the app ↗" link to the Releases page. 📂 Open a game… still fits a 1280×720 laptop, even under the new-version notice. In a narrow window the line is cut short, with all of it in its tooltip (6fa28a6, a64ceff, c9f29a3).
 - On a phone, a note under the header says the editor is made for a computer and that players join from their phones with the host's code. Its ✕ closes it for good, and 💡 Show all tips again brings it back (69284e0, a64ceff).
+- A link to the app shared on Discord, Slack or a search page now shows a short description of what it is, not just the bare title. (8b41e14)
 
 ### Changed
 
@@ -45,22 +46,6 @@ in plain words for the people who make and host games. Anything committed but no
 - Phones: while a wager or answer shows a red reason for what was typed (like “Type a whole number, 0 or more.”), the “Not sent yet: tap Send wager” line under it is hidden. (81a976f)
 - Phones: the “Sound on” / “Muted” label in the header is a little bigger (13px, was 12px). (81a976f)
 - Phones: when the host has locked the seats and the phone has no seat it can take back, the seat list heading says “Seats are locked” instead of “Tap your name” (or “Pick your team”). A phone that can still take its own seat back still sees “Tap your name”. (81a976f)
-
-### Fixed
-
-- The header's buttons no longer move left when 💾 Save gets its unsaved dot: the dot's room is kept when there's no dot (b3723c2).
-- ▶ Play's ✅ Before you start groups a board's problems into one line the way the editor's Checklist does, so the "⚠ 2 to check" next to Start game matches the editor's ⚠ count for the same game. (e8ef15b)
-- On a laptop screen, the "… on the board" lines under ⭐ Daily Doubles and 🤝 Partner clues now line up, even when Partner clues' Plays and 🤫 Card menus drop to a second line. (f08c0cb, ae5209a)
-- Phones: after tapping a multiple-choice answer on a short phone, the page scrolls so the “✔ Sent: B…” line is on screen. Before, with 5 or 6 choices it could sit below the bottom of the screen. (81a976f)
-
-## 2026-11-16
-
-### Added
-
-- A link to the app shared on Discord, Slack or a search page now shows a short description of what it is, not just the bare title. (8b41e14)
-
-### Changed
-
 - When the hourly check finds a newer version, its notice no longer pops up while you're clicking, typing or dragging in the editor (it pushed the editor down). It waits for a pause: another page or round, coming back from a game, or a few seconds without a click or a key. The notice at start-up still shows at once, and ℹ About shows the newer version straight away. Screen readers hear about it when the notice shows. (2f12d26, 0401f1e, 7d1ef9b, a8f1797)
 - Clicked the wrong ✔ / ✘ on a player's chip? Pressing the other one now changes their verdict instead of adding to it: Ann ✘ −$200, then ✔, ends at +$200, not $0. The stage shows one pop with the change to the score ("Ann +$400"), the chip reads the new verdict, and one Ctrl+Z puts the ✘ back. It works the same in a Daily Double (the wager), on a partner clue (their share), and from Enter / Shift+Enter on one player at the clue's value. The ＋ Award / − Deduct buttons still give or take more, and another player's verdict on the same clue (a second buzzer, a steal) stays their own. In 📜 Log › Scores, ↷ Restore on the mark a switch replaced takes the switch back, so the old mark never counts twice. (7fc2803, 27df89d, 2473977, 014710d, ae19ccb)
 - The undo message and 🕘 History say when a step changed a verdict, e.g. "Undid +$400 (Ann, ✘ → ✔)". (7fc2803)
@@ -69,6 +54,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Fixed
 
+- The header's buttons no longer move left when 💾 Save gets its unsaved dot: the dot's room is kept when there's no dot (b3723c2).
+- ▶ Play's ✅ Before you start groups a board's problems into one line the way the editor's Checklist does, so the "⚠ 2 to check" next to Start game matches the editor's ⚠ count for the same game. (e8ef15b)
+- On a laptop screen, the "… on the board" lines under ⭐ Daily Doubles and 🤝 Partner clues now line up, even when Partner clues' Plays and 🤫 Card menus drop to a second line. (f08c0cb, ae5209a)
+- Phones: after tapping a multiple-choice answer on a short phone, the page scrolls so the “✔ Sent: B…” line is on screen. Before, with 5 or 6 choices it could sit below the bottom of the screen. (81a976f)
 - On the website copy, a blocked popup (the audience window, the scores window, a 🪟 card window or a media link) now says to allow popups for this site, not "for this file". (4753790)
 - On the website copy, ℹ About now shows the version as "(online)" instead of "(single HTML file)". It also says the site keeps its own games apart from the downloaded file and the desktop app, and that you move a game across with 💾 Save and 📂 Open…. (4753790)
 - With JavaScript turned off, the page now says it needs JavaScript (turn it on, or use a recent Chrome, Edge or Firefox) instead of showing "Loading…" forever. (8b41e14)
