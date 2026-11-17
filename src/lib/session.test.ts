@@ -10,7 +10,7 @@ import {
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
   finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
   blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown, finalTakeNewcomers, finalReached, reveal, unreveal,
-  finalShowAnswer, typedAnswer, finalRevealNow, switchVerdict, switchNet, logZero,
+  finalShowAnswer, typedAnswer, finalRevealNow, switchVerdict, switchNet, switchChain, logZero,
 } from './session';
 import { finalNextStep, logged, redoAction, revealStep, undoAction } from './toolset';
 import { newRpgRound } from './rpg';
@@ -1710,6 +1710,22 @@ describe('a verdict switched on a clue (✘ then ✔, or ✔ then ✘)', () => {
     expect(score(session, a)).toBe(-200);
     toggleStep(session, stepOf(e));
     expect(score(session, a)).toBe(200);
+  });
+
+  it('a mark switched again after its first switch was undone: restoring it in 📜 Log takes the later switch back', () => {
+    const s = setup();
+    const { session, a } = s;
+    const [x] = quick(s, a, false);
+    quick(s, a, true);
+    undo(session);
+    expect(score(session, a)).toBe(-200);
+    const [later] = quick(s, a, true);
+    expect(score(session, a)).toBe(200);
+    // (The first switch, undone, lists the ✘ too: the later one, counted, is the one holding it.)
+    expect(switchChain(session, x.id).map((e) => e.id)).toEqual([later.id]);
+    toggleEvent(session, x.id);
+    expect(score(session, a)).toBe(-200);
+    expect(clueMarks(session, 'q1')).toEqual({ [a]: { right: false, delta: -200 } });
   });
 
   /** Ann & Bob − Deduct $200 together (one step G), then Ann's ✔ switches her part of it. */

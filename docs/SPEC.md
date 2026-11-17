@@ -1019,7 +1019,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      − Deduct buttons always add on top. Marks count since the tile opened (the session's `clueAt`, kept over a
      reload: a tile put back and opened again starts afresh). In 📜 Log › Scores the mark a switch took back reads
      undone; its ↷ Restore (or its step's ↷ Restore all) takes the switch back, as an Undo of it would, so it never
-     counts twice, and an Undo of the switch leaves that mark off when the host turned the rest of its step off. Another
+     counts twice, and an Undo of the switch leaves that mark off when the host turned the rest of its step off (by
+     Undo all, or each of the other players' lines one by one: the Log doesn't tell those apart). Another
      player's verdict (a second buzzer, a steal) is never a switch. The Final's ✔ / ✘ re-judge the same way already.
 5. **Reveal answer**: shows the answer slide in the audience view (by the blue button, `N` or a click: with the buzzers
    never opened, ✍ answers still coming in or a 🤫 card not sent, it asks first; `R` shows it at once).

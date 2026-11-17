@@ -145,11 +145,16 @@ function followSwitch(session: Session, events: ScoreEvent[]): void {
  * The counted switch that took back event `id`, with any switch between them (a ✔ that took back a ✘, then a ✘ that
  * took back the ✔): nearest first. Empty when no counted switch holds it (it's counted, or off on its own).
  */
-export function switchChain(session: Pick<Session, 'scoreLog'>, id: Id): ScoreEvent[] {
-  const chain: ScoreEvent[] = [];
-  for (let s = session.scoreLog.find((x) => x.switched?.includes(id)); s && !chain.includes(s); s = session.scoreLog.find((x) => x.switched?.includes(s!.id))) {
-    chain.push(s);
-    if (!s.undone) return chain;
+export function switchChain(session: Pick<Session, 'scoreLog'>, id: Id, seen: Set<Id> = new Set()): ScoreEvent[] {
+  // (Every switch that lists it, latest first: a switch undone brings the mark back, and a later one can take it again,
+  // so the first one listing it may be off while a later one still holds it.)
+  seen.add(id);
+  for (let i = session.scoreLog.length - 1; i >= 0; i--) {
+    const s = session.scoreLog[i];
+    if (seen.has(s.id) || !s.switched?.includes(id)) continue;
+    if (!s.undone) return [s];
+    const rest = switchChain(session, s.id, seen);
+    if (rest.length) return [s, ...rest];
   }
   return [];
 }
