@@ -294,6 +294,7 @@
   const fit = $derived(slideFit(band, strip?.h ?? 0));
   /** What's along the foot (the caption, the slide dots, score pops) sits this far up: above the strip, if it's there. */
   const foot = $derived(strip ? strip.h + 8 : 0);
+  const coverText = $derived(stream?.coverText?.trim() || 'Be right back');
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
   /** The Daily Double and PARTNER UP! splashes' colors, clear of that key. */
   const splash = $derived(splashColors(game.theme?.stageBg));
@@ -480,6 +481,12 @@
 {/snippet}
 
 <div class="theme" style={themeCss} style:--right={rightBg}>
+<!-- The board's background color under the board and its clues, there all along: a clue zooms in over it, and the board
+     fades back in over it (the slide or board covers it after). A light theme doesn't blink to black either way. On a
+     keyed stage, the key, as round the board. -->
+{#if !live.pregame && !introName && (session.phase === 'board' || (session.phase === 'clue' && info))}
+  <div class="board-under" style:background={keyColor}></div>
+{/if}
 {#if live.pregame}
   <!-- The host is still on the pre-game screen. -->
   <div class="full title-card" in:fade={{ duration: 300 }}>
@@ -610,9 +617,6 @@
     {@const waiting = tileToolUp(live, info.clue) && !session.revealed}
     <!-- The question slide the host is on (a clue can have several: the first one zooms in, the next ones come in quietly). -->
     {@const at = clueSlideIndex(session, info.clue)}
-    <!-- The board's background color behind it while it zooms in (the slide covers it after): a light theme doesn't
-         blink to black on every clue. On a keyed stage, the key, as round the board. -->
-    <div class="clue-bg" style:background={keyColor}></div>
     {#key `${info.clue.id}-${session.revealed}-${waiting}-${at}`}
       <div
         class="full"
@@ -939,7 +943,7 @@
   <div class="cover" class:host={role === 'mirror'}>
     <div class="cover-in">
       {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
-      <div class="cover-card"><span class="pause" aria-hidden="true"></span><span class="cover-text">{stream?.coverText?.trim() || 'Be right back'}</span></div>
+      <div class="cover-card"><span class="pause" aria-hidden="true"></span><span class="cover-text" use:autofit={{ size: 120, min: 56, enabled: true, text: coverText }}>{coverText}</span></div>
       {#if live.room && !stream?.hideJoinCode}
         <div class="cover-join">{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz from your phone'}: <b>{live.room.code}</b> · {live.room.link.replace(/^https?:\/\//, '')}</div>
       {/if}
@@ -1093,9 +1097,12 @@
     text-align: center;
     text-shadow: 6px 6px 0 #000;
   }
-  /* A long text: in even lines beside the ❚❚, well clear of the stage's sides. */
+  /* A long text: in even lines beside the ❚❚, clear of the stage's sides, three at most (a longer one shrinks to fit):
+     the tallest banner over it and the phones' join line under it stay on the stage. */
   .cover-text {
-    max-width: 1400px;
+    max-width: 1500px;
+    max-height: 560px;
+    overflow: hidden;
     text-wrap: balance;
   }
   /* Two bars, drawn: the ⏸ character is thin or missing in many fonts. */
@@ -1124,7 +1131,7 @@
     background: var(--board-image, none) center / cover no-repeat, var(--board-bg, var(--board-gap));
   }
   /* (The board's color, not its picture: the quiet fade between a clue's slides dips to it too.) */
-  .clue-bg {
+  .board-under {
     position: absolute;
     inset: 0;
     background: var(--board-bg, var(--board-gap));

@@ -103,7 +103,20 @@ async function pastelStage() {
   assert(small && zooming === boardBg, `a clue zooming in on Pastel has the board's background round it (${zooming}), not black`);
   await st('.full[data-slide="1"]').waitFor();
   await host.waitForTimeout(600);
+  // And back to the board: it fades in over its own background too (paused partway), not over the stage's black.
   await host.keyboard.press('Escape');
+  await host.waitForFunction(() => document.querySelector('.stage-box .board-screen'));
+  await host.evaluate(() => document.getAnimations().forEach((a) => a.pause()));
+  const back = await host.evaluate(() => {
+    const stage = document.querySelector('.stage-box .stage');
+    const r = stage.getBoundingClientRect();
+    const fading = Number(getComputedStyle(document.querySelector('.stage-box .board-screen')).opacity);
+    // (What's under the fading board: not the board itself.)
+    const at = document.elementsFromPoint(r.left + 3, r.top + 3).filter((e) => !e.closest('.board-screen'))[0];
+    return { fading, under: at === stage ? `the stage, ${getComputedStyle(stage).backgroundColor}` : getComputedStyle(at).backgroundColor };
+  });
+  await host.evaluate(() => document.getAnimations().forEach((a) => a.play()));
+  assert(back.fading < 1 && back.under === boardBg, `back on the board, it fades in over its own background (${back.under}, at opacity ${back.fading}), not black`);
   await st('.board .tile').first().waitFor();
   await host.waitForTimeout(400);
 
@@ -135,7 +148,8 @@ async function pastelStage() {
   await host.keyboard.press('Escape');
   await st('.ov').waitFor({ state: 'detached' });
 
-  // A long cover text: next to the ❚❚, kept off the stage's sides.
+  // A long cover text: next to the ❚❚, kept off the stage's sides, in three lines at most (wide ones: in four, the card
+  // ran off the stage with a banner and the join line).
   await host.keyboard.press('k');
   await st('.cover-card').waitFor();
   await host.waitForTimeout(500);
@@ -150,9 +164,38 @@ async function pastelStage() {
       range.selectNodeContents(walk.currentNode);
       rects.push(...[...range.getClientRects()].filter((r) => r.width > 0));
     }
-    return { left: Math.round((Math.min(...rects.map((r) => r.left)) - stage.left) / k), right: Math.round((Math.max(...rects.map((r) => r.right)) - stage.left) / k) };
+    const pause = e.querySelector('.pause').getBoundingClientRect();
+    const words = e.querySelector('.cover-text');
+    return {
+      left: Math.round((pause.left - stage.left) / k),
+      right: Math.round((Math.max(...rects.map((r) => r.right)) - stage.left) / k),
+      lines: new Set(rects.map((r) => Math.round(r.top))).size,
+      size: parseFloat(getComputedStyle(words).fontSize),
+    };
   });
-  assert(cover.left >= 150 && cover.right <= 1770, `a long cover text keeps off the stage's sides (x=${cover.left} to ${cover.right} of 1920)`);
+  assert(
+    cover.left >= 120 && cover.right <= 1800 && cover.lines <= 3 && cover.size >= 100,
+    `a long cover text keeps off the stage's sides, ❚❚ to its last word (x=${cover.left} to ${cover.right} of 1920), in ${cover.lines} lines at ${cover.size}px`,
+  );
+  // With the tallest banner over it and the phones' join line under it, the whole card is still on the stage. (Both
+  // put in by hand: a phone room needs the buzzer server.)
+  const column = await st('.cover-in').evaluate((e) => {
+    const img = document.createElement('div');
+    img.style.cssText = 'width: 1400px; height: 300px; flex: none';
+    e.prepend(img);
+    const join = document.createElement('div');
+    join.className = e.querySelector('.cover-card').className.replace('cover-card', 'cover-join');
+    join.textContent = '📱 Buzz from your phone: ABCD · buzz.example/ABCD';
+    e.append(join);
+    const stage = document.querySelector('.stage-box .stage').getBoundingClientRect();
+    const k = stage.width / 1920;
+    const r = e.getBoundingClientRect();
+    const said = { top: Math.round((r.top - stage.top) / k), bottom: Math.round((r.bottom - stage.top) / k), joinH: Math.round(join.getBoundingClientRect().height / k) };
+    img.remove();
+    join.remove();
+    return said;
+  });
+  assert(column.top >= 0 && column.bottom <= 1080 && column.joinH > 20, `and with a 300px banner and the join line it fits the stage (y=${column.top} to ${column.bottom} of 1080)`);
   await host.keyboard.press('k');
   await st('.cover').waitFor({ state: 'detached' });
 
