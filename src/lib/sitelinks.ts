@@ -4,8 +4,8 @@ import { openLink } from './desktop.svelte';
 import { inTauri } from './platform';
 
 export const REPO = 'https://github.com/vampiricwulf/Brainrot-Game-Maker';
-/** The newest release's page: the desktop app and the single-file copy, to download. */
-export const RELEASES = `${REPO}/releases/latest`;
+/** The releases: the desktop app and the single-file copy of each version, to download. */
+export const RELEASES = `${REPO}/releases`;
 /** The guide to running your own buzzer server on Cloudflare. */
 export const BUZZER_GUIDE = `${REPO}/blob/main/docs/buzzer-server.md`;
 /** The guide to hosting: phone buzzers, 🤫 cards, 🎭 deals, teams, the audience window. */

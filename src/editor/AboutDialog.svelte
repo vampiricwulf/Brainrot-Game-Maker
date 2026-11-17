@@ -87,7 +87,7 @@
         {#if newest}
           <UpdateControls release={newest} />
         {:else}
-          <a href={RELEASES} target="_blank" rel="noreferrer" onclick={link}>Latest release</a>
+          <a href={`${RELEASES}/latest`} target="_blank" rel="noreferrer" onclick={link}>Latest release</a>
         {/if}
         <button class="small" onclick={() => checkForUpdate(true)} disabled={update.status === 'checking' || update.status === 'installing'}>Check for updates</button>
       </dd>

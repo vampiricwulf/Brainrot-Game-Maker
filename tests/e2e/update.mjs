@@ -377,8 +377,8 @@ try {
     const whatLines = await what.evaluate((e) => e.getBoundingClientRect().height / (parseFloat(getComputedStyle(e).lineHeight) || 16));
     const wOpen = await wp.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
     assert(
-      (await get.getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases/latest' && (await get.getAttribute('target')) === '_blank' && whatLines < 2 && wOpen <= 720,
-      `online, the first screen's one line about the app ends with “Get the app ↗” (the latest release), and 📂 Open a game… fits under the notice (${whatLines.toFixed(2)} lines, ${wOpen})`,
+      (await get.getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases' && (await get.getAttribute('target')) === '_blank' && whatLines < 2 && wOpen <= 720,
+      `online, the first screen's one line about the app ends with “Get the app ↗” (the Releases page), and 📂 Open a game… fits under the notice (${whatLines.toFixed(2)} lines, ${wOpen})`,
     );
     await wp.setViewportSize({ width: 1280, height: 800 });
     let reloaded = false;

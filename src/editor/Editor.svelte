@@ -1123,7 +1123,7 @@
         onclick: () => (shortcuts = 'editor'),
       },
       { label: '🎮 Keys during the game', hint: "The host's keys while a game is played, round by round", onclick: () => (shortcuts = 'game') },
-      { label: '💡 Show all tips again', hint: 'The 💡 Tips folds open again, and the game screen’s first-time notes show again', onclick: tipsAgain },
+      { label: '💡 Show all tips again', hint: 'The 💡 Tips folds open again, and the first-time notes show again', onclick: tipsAgain },
       { label: '📖 How to host (guide) ↗', hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams', onclick: () => openSite(HOSTING_GUIDE) },
       { label: 'ℹ About', hint: 'Version, updates, links, and where your data is saved', onclick: () => (about = true) },
     ]);

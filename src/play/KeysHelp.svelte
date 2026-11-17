@@ -178,7 +178,7 @@
         class="ghost"
         onclick={() => (showTipsAgain(), (tipsShown = true))}
         disabled={tipsShown}
-        title="The editor’s 💡 Tips open again, and the game screen’s first-time notes show again (🙈 Hide’s, the Final’s how-to)"
+        title="The editor’s 💡 Tips open again, and the game screen’s first-time notes show again (🙈 Hide’s, the Final’s how-to, a phone’s “Made for a computer”)"
         >{tipsShown ? '✓ Tips will show again' : '💡 Show all tips again'}</button
       >
       <span class="spacer"></span>
