@@ -823,6 +823,7 @@ try {
     (await bob.getByRole('heading', { name: 'Seats are locked', exact: true }).isVisible()) && !(await bob.locator('#live').innerText()).includes('Tap your name'),
     '🔒 with no name Bob can tap, the heading says the seats are locked (not “Tap your name”)',
   );
+  await shot(bob, 'seats-locked');
   /** What "Not you? Change player" asks Dee now, seated since before the lock (she says no). */
   const deeAsks = async () => {
     await dee.getByRole('button', { name: 'Not you? Change player' }).click();

@@ -73,6 +73,7 @@ try {
       (await steps.getByRole('button', { name: 'Done' }).evaluate((b) => b === document.activeElement)),
     `after ⬇ Download the notice says what to do with the new file, with What’s new ↗ and Done, the keys on Done (${(await steps.innerText()).replace(/\s+/g, ' ')})`,
   );
+  if (process.env.SCREENSHOTS) await page.screenshot({ path: `${process.env.SCREENSHOTS}/update-steps-820.png` });
   const arrow = await steps.evaluate((n) => {
     const walker = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
     let t;
