@@ -1128,8 +1128,8 @@
       {:else}
         Loading…
       {/if}
-      <!-- (Not while an exported game's files are being unpacked: a big one takes a while, and says how far it got.) -->
-      {#if slowStart && !(unpacked && unpacked.done < unpacked.total)}
+      <!-- (The builder only: an exported game's big pack can take a while to unpack, and a reload would start it again.) -->
+      {#if slowStart && !playerOnly}
         <p class="small">This is taking longer than usual: the browser’s storage may not be answering.</p>
         <button onclick={() => location.reload()}>⟳ Reload</button>
       {/if}
