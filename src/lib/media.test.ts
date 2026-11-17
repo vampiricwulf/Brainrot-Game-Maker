@@ -39,6 +39,12 @@ describe('adding files', () => {
     expect(game.media).toEqual([]);
   });
 
+  it('refuses any other file in the editor’s words (as a file dropped on it is)', async () => {
+    const game = newGame();
+    await expect(addMediaFile(game, new File(['hi'], 'notes.txt', { type: 'text/plain' }))).rejects.toThrow('“notes.txt” isn’t a picture, video, sound or font file.');
+    expect(game.media).toEqual([]);
+  });
+
   it('stores the same bytes once: a second drop of the same picture reuses the file', async () => {
     const game = newGame();
     const a = await addMediaFile(game, new File(['same bytes'], 'meme.png', { type: 'image/png' }));

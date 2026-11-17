@@ -86,7 +86,7 @@
   import ConvertDialog from './ConvertDialog.svelte';
   import ConvertNotice from './ConvertNotice.svelte';
   import { verdictOf } from '../lib/shrink/checks.svelte';
-  import { jobAsk, stopAll } from '../lib/shrink/jobs.svelte';
+  import { jobAsk, jobs, stopAll } from '../lib/shrink/jobs.svelte';
   import { checkAdded, checkGame } from '../lib/shrink/checks.svelte';
   import { libraryMedia } from '../lib/phonecopies';
   import RoundImport from './RoundImport.svelte';
@@ -1239,17 +1239,20 @@
     {#if exporting}
       <span class="muted autosave" role="status" title="Exporting the play-only web page">⬇ Exporting the play-only web page…{packPct !== null ? ` ${packPct}%` : ''}</span>
     {/if}
-    <JobPill />
+    {#if !app.storageOk}<JobPill />{/if}
     {#if opening}
       <span class="muted autosave" role="status" title={`Opening “${opening}”`}>📂 Opening “{opening}”…</span>
     {/if}
     {#if app.storageOk}
       <!-- (In a browser it says it isn't a file: the game is kept in the browser until 💾 Save makes one.) -->
+      <!-- While a file job runs, its pill is laid over this note, in its place: the header's buttons don't move. -->
       <span
         class="muted autosave saved"
-        title={`Every change is autosaved ${keptHere()}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : inTauri() ? '' : ' 💾 Save makes a file of it, to keep, move or share.'}`}
+        class:busy={!!jobs.current}
+        title={jobs.current ? undefined : `Every change is autosaved ${keptHere()}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : inTauri() ? '' : ' 💾 Save makes a file of it, to keep, move or share.'}`}
       >
-        {#if inTauri()}✓ Autosaved{app.fileAutosave ? ` · file ${clock(app.fileAutosave.at)}` : ''}{:else}✓ Kept in this browser<span class="wide">{' '}(💾 Save makes a file)</span>{/if}
+        <span class="says">{#if inTauri()}✓ Autosaved{app.fileAutosave ? ` · file ${clock(app.fileAutosave.at)}` : ''}{:else}✓ Kept in this browser<span class="wide">{' '}(💾 Save makes a file)</span>{/if}</span>
+        <JobPill over />
       </span>
     {:else}
       <span class="autosave warn" title={`Changes can't be kept ${keptHere()} right now (storage is blocked or full). Use Save often.`}>
@@ -1835,6 +1838,18 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
+  /* A file job's pill lies over the note (JobPill.svelte), which keeps its width, unseen: the buttons before it stay put.
+     The note is at least as wide as the pill's sign, percentage and Stop, and as tall as the header's buttons. */
+  .saved {
+    position: relative;
+  }
+  .saved.busy {
+    align-self: stretch;
+    min-width: 9.5rem;
+  }
+  .saved.busy > .says {
+    visibility: hidden;
+  }
   .more {
     font-weight: 700;
     letter-spacing: 1px;
@@ -1878,8 +1893,12 @@
   /* (Short, on one line like the other notes, the details in its tooltip.) From a laptop up it's never cut mid-word: the
      title box gives way first. */
   @media (min-width: 1101px) {
+    /* (Always with room for a file job's pill, so nothing moves when one starts: the desktop app's "✓ Autosaved" is
+       short.) */
     .saved {
       flex-shrink: 0;
+      min-width: 9.5rem;
+      text-align: right;
     }
   }
   /* 💾 Save •: changed since its last save as a file. Its words only where the header has room. */
@@ -2089,6 +2108,10 @@
     .problems,
     .autosave {
       display: none;
+    }
+    /* (Not while it holds a file job's pill: its Stop stays in reach.) */
+    .autosave.busy {
+      display: block;
     }
   }
 </style>

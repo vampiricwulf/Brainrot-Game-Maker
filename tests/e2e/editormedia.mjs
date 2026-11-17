@@ -85,6 +85,20 @@ try {
     (await toast.innerText()) === '“notes.txt” isn’t a picture, video, sound, clue sheet or game file' && (await mediaCount()) === 1,
     `any other file gets one line that names it, and isn't added (${await toast.innerText()})`,
   );
+  // ＋ Add files… with several: one toast says what each that wasn't simply added did (none hides another's), in the
+  // editor's words.
+  await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).click();
+  const pngNamed = (name) => Buffer.concat([Buffer.from(PNG, 'base64'), Buffer.from(name)]);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
+  await chooser.setFiles([
+    { name: 'wall-copy.png', mimeType: 'image/png', buffer: pngNamed('wall.png') },
+    { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('x') },
+  ]);
+  await page.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('wall-copy.png'));
+  assert(
+    (await toast.innerText()) === '“wall-copy.png” is already in 🖼 Media as “wall.png”: using that one. “notes.txt” isn’t a picture, video, sound or font file.' && (await mediaCount()) === 1,
+    `＋ Add files… with a file already in the game and one it can’t use: one toast says both (${await toast.innerText()})`,
+  );
 
   // ---------- An open picker takes a dropped file, and a pasted one ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();

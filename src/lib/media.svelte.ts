@@ -260,7 +260,8 @@ async function checkedFile(file: Blob, name: string): Promise<{ mime: string; ki
   const mime = mimeFor(name, file.type);
   if (isHeic(name, mime)) throw new Error(`"${name}" is a HEIC photo (the iPhone's format), which the game can't show. Convert it to JPG or PNG first.`);
   const kind = mediaKind(name, mime);
-  if (!kind) throw new Error(`"${name}" isn't a supported image, video, audio or font file.`);
+  // (In the editor's words, as a file dropped on it is told: straydrop.ts.)
+  if (!kind) throw new Error(`“${name}” isn’t a picture, video, sound or font file.`);
   const blob = mime === 'image/svg+xml' ? new Blob([sanitizeSvg(await file.text())], { type: mime }) : file;
   return { mime, kind, blob };
 }

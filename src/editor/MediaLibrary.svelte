@@ -11,6 +11,7 @@
   import { longPress } from '../lib/longpress';
   import { uniqueMediaName } from '../lib/medianame';
   import { hasFiles, notMedia } from '../lib/mediadrop';
+  import { addedLine } from '../lib/straydrop';
   import { allCardSlides, allEmbeds, mediaUsage, slideMediaIds } from '../lib/usage';
   import { redoEdits } from '../lib/reedit';
   import { recentMedia } from '../lib/recent';
@@ -393,18 +394,31 @@
     toast(`Reconnected ${r.fixed} file${r.fixed === 1 ? '' : 's'}.${rest}${r.errors.length ? ' ' + r.errors.join(' ') : ''}`);
   }
 
-  /** Add files to the game (＋ Add files…, or dropped on this page). The last one's card scrolls into view and flashes. */
+  /**
+   * Add files to the game (＋ Add files…, or dropped on this page). The last one's card scrolls into view and flashes.
+   * Several together say what happened in one toast (one a file, each would hide the one before).
+   */
   async function addFiles(files: File[]): Promise<void> {
     let last: MediaRef | undefined;
+    const many = files.length > 1;
+    const added: string[] = [];
+    const twins: { name: string; as: string }[] = [];
+    const refused: string[] = [];
     for (const f of files) {
       try {
-        const ref = await addMediaFile(game, f);
+        const had = new Set(game.media.map((m) => m.id));
+        const ref = await addMediaFile(game, f, f.name, {}, { quiet: many });
+        if (had.has(ref.id)) twins.push({ name: f.name, as: ref.name });
+        else added.push(ref.name);
         checkAdded(ref);
         last = ref;
       } catch (e) {
-        toast((e as Error).message);
+        if (many) refused.push((e as Error).message);
+        else toast((e as Error).message);
       }
     }
+    const line = many ? addedLine(added, twins, refused) : '';
+    if (line) toast(line);
     if (last) flash(`media:${last.id}`);
   }
 

@@ -4,16 +4,32 @@
   screen reader hears when it starts and ends, not every percent.
 -->
 <script lang="ts">
-  import { jobs, pillText, progressText, stopJob } from '../lib/shrink/jobs.svelte';
+  import { jobs, pillText, stopJob } from '../lib/shrink/jobs.svelte';
+  import { leftText } from '../lib/shrink/plan';
+
+  /** Laid over the autosave note, in its place (Editor.svelte): the header's buttons don't move as jobs come and go. */
+  let { over = false }: { over?: boolean } = $props();
 
   const job = $derived(jobs.current);
   const waiting = $derived(jobs.list.length - (job ? 1 : 0));
+  const said = $derived(job ? pillText(job) : '');
+  // ("✂ Saving a video’s edit…": its sign, then its words.)
+  const sign = $derived(said.split(' ')[0]);
+  const words = $derived(said.slice(sign.length + 1));
+  const working = $derived(!!job && job.phase === 'working' && job.progress > 0);
+  const pct = $derived(working ? `${Math.floor(job!.progress * 100)}%` : '');
+  const more = $derived(
+    [working && job!.left !== null && job!.progress < 1 ? ` (${leftText(job!.left)})` : '', waiting ? ` (+${waiting} waiting)` : ''].join(''),
+  );
 </script>
 
 {#if job}
-  <span class="pill" data-job-pill>
-    <!-- (Short of room, the words end in "…": Stop stays.) -->
-    <span class="words"><span role="status">{pillText(job)}</span> <span aria-hidden="true">{progressText(job)}{waiting ? ` (+${waiting} waiting)` : ''}</span></span>
+  <span class="pill" class:over data-job-pill title={`${said}${pct ? ` ${pct}` : ''}${more}`}>
+    <span class="sr-only" role="status">{said}</span>
+    <!-- (Short of room, the words end in "…", then go: the sign, the percentage and Stop stay.) -->
+    <span class="sign" aria-hidden="true">{sign}</span>
+    <span class="pct" aria-hidden="true" data-job-pct>{pct}</span>
+    <span class="words" aria-hidden="true">{words}{more}</span>
     <button class="small ghost" onclick={() => stopJob(job.id)} title="Stop it: nothing is changed">Stop</button>
   </span>
 {/if}
@@ -22,20 +38,36 @@
   .pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     min-width: 0;
     padding: 2px 4px 2px 10px;
     border: 1px solid var(--border);
     border-radius: 999px;
     font-size: 12px;
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
+  }
+  /* (Its own width at most, the note's at most, at the note's right: next to 🔍 Find, where the note ends.) */
+  .over {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    max-width: 100%;
+    box-sizing: border-box;
+    background: var(--panel);
+  }
+  .pct:empty {
+    display: none;
   }
   .words {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .sign,
+  .pct,
   button {
     flex-shrink: 0;
   }

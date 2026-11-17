@@ -139,12 +139,20 @@
     const prev = hist?.undo(JSON.stringify(edit));
     if (prev) edit = JSON.parse(prev);
     histTick++;
+    uncrop();
   }
   function redo(): void {
     clearTimeout(burst);
     const next = hist?.redo(JSON.stringify(edit));
     if (next) edit = JSON.parse(next);
     histTick++;
+    uncrop();
+  }
+  /** Undone back to no crop: ✂ Crop is up again (pressed, it would have no box to drag). */
+  function uncrop(): void {
+    if (edit.crop) return;
+    cropping = false;
+    cropAspect = 'free';
   }
   function reset(): void {
     if (!facts) return;
@@ -264,11 +272,34 @@
     edit.end = Math.min(length, end);
     if (moved !== null && media?.paused) seek(moved);
   }
+  /** Why a time typed in Start or End wasn't taken as it was (shown while the trim is still as that left it). */
+  let trimNote = $state<{ text: string; which: 'start' | 'end'; refused: boolean; start: number; end: number } | null>(null);
+  const trimSays = $derived(trimNote && trimNote.start === edit.start && trimNote.end === edit.end ? trimNote : null);
+  /** Times typed that were refused or corrected (Ctrl+Enter in the box doesn't apply one of those unseen). */
+  let corrected = 0;
   function typed(e: Event, which: 'start' | 'end'): void {
     const box = e.currentTarget as HTMLInputElement;
-    const t = parseClock(box.value);
-    const fine = t !== null && (which === 'start' ? t >= 0 && t < edit.end - 0.05 : t > edit.start + 0.05 && t <= length + 0.05);
-    if (!fine) return void (box.value = clockTenths(which === 'start' ? edit.start : edit.end, true));
+    const raw = box.value.trim();
+    const t = parseClock(raw);
+    trimNote = null;
+    const say = (text: string, refused: boolean) => {
+      corrected++;
+      trimNote = { text, which, refused, start: edit.start, end: edit.end };
+    };
+    let why = '';
+    if (t === null || t < 0) why = `“${raw}” isn’t a time: type one like 1:05.0.`;
+    else if (which === 'start' && t >= edit.end - 0.05) why = `Start must be before End (${clockTenths(edit.end, true)}).`;
+    else if (which === 'end' && t <= edit.start + 0.05) why = `End must be after Start (${clockTenths(edit.start, true)}).`;
+    if (why) {
+      box.value = clockTenths(which === 'start' ? edit.start : edit.end, true);
+      return say(why, true);
+    }
+    // (Past its end: its end, said, as the box couldn't show it otherwise.)
+    if (which === 'end' && t! > length + 0.05) {
+      change(() => (edit.end = length));
+      box.value = clockTenths(length, true);
+      return say(`The ${what} ends at ${clockTenths(length, true)}: End is there.`, false);
+    }
     change(() => (which === 'start' ? (edit.start = tenth(t!)) : (edit.end = Math.min(length, tenth(t!)))));
   }
   const startHere = () => change(() => (edit.start = Math.max(0, Math.min(tenth(at), edit.end - 0.1))));
@@ -357,7 +388,7 @@
   });
   const doneText = $derived.by(() => {
     if (!done || !madeRef) return '';
-    if (how === 'new') return `✓ Saved as “${madeRef.name}”: the original is unchanged.`;
+    if (how === 'new') return `✓ Saved as “${madeRef.name}” (${[...(asked?.seconds ? [lengthText(asked.seconds)] : []), formatBytes(madeRef.size)].join(', ')}): the original is unchanged.`;
     if (how === 'item') return '✓ This item plays its own edited copy now.';
     const bits = [...(asked?.seconds ? [lengthText(asked.seconds)] : []), ...(asked?.w ? [`${asked.w}×${asked.h}`] : []), `${formatBytes(madeRef.size)} (was ${formatBytes(was.size)})`];
     return `✓ ${bits.join(' · ')}. Ctrl+Z puts the old one back.`;
@@ -409,8 +440,10 @@
       e.preventDefault();
       e.stopImmediatePropagation();
       // (A time typed in Start or End counts, as when leaving the box: it's left first, then it applies.)
+      // (Not when the time typed was refused or corrected: its line says why, to read first.)
+      const was = corrected;
       if (t?.matches?.('[data-trim-start], [data-trim-end], [data-size-pct]')) t.blur();
-      void tick().then(() => (applyAsked = 'all'));
+      void tick().then(() => corrected === was && (applyAsked = 'all'));
     } else if (mod && ((k === 'z' && e.shiftKey) || k === 'y') && !typing) {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -519,12 +552,30 @@
                 <h4>✂ Trim</h4>
                 <TrimBar {length} start={edit.start} end={edit.end} {at} keys={quickAt !== null ? [quickAt] : undefined} onseek={seek} onchange={setTrim} />
                 <div class="row trimrow">
-                  <label class="field">Start<input value={clockTenths(edit.start, true)} onchange={(e) => typed(e, 'start')} aria-label="Start" data-trim-start /></label>
+                  <label class="field"
+                    >Start<input
+                      value={clockTenths(edit.start, true)}
+                      onchange={(e) => typed(e, 'start')}
+                      aria-label="Start"
+                      aria-invalid={trimSays?.which === 'start' && trimSays.refused ? 'true' : undefined}
+                      data-trim-start
+                    /></label
+                  >
                   <button class="small" onclick={startHere} title="I">⇤ Start here</button>
                   <button class="small" onclick={endHere} title="O">End here ⇥</button>
-                  <label class="field">End<input value={clockTenths(edit.end, true)} onchange={(e) => typed(e, 'end')} aria-label="End" data-trim-end /></label>
+                  <label class="field"
+                    >End<input
+                      value={clockTenths(edit.end, true)}
+                      onchange={(e) => typed(e, 'end')}
+                      aria-label="End"
+                      aria-invalid={trimSays?.which === 'end' && trimSays.refused ? 'true' : undefined}
+                      data-trim-end
+                    /></label
+                  >
                   <span class="muted small" data-trim-keeps>Keeps {lengthText(ok?.out.seconds ?? edit.end - edit.start)} of {lengthText(length)}.</span>
                 </div>
+                <!-- (A time typed that wasn't taken as it was: why, under the boxes.) -->
+                <p class="small warn trim-note" class:said={!!trimSays} role="status" data-trim-note>{trimSays?.text ?? ''}</p>
                 {#if itemRange}
                   {@const r = itemRange}
                   <button class="small" onclick={() => change(() => ((edit.start = r.start), (edit.end = r.end ?? length)))}
@@ -687,7 +738,10 @@
         <button data-stop onclick={() => stopJob(jobId!)} title="Stop it: nothing is changed">Stop</button>
       {:else if done}
         {#if madeRef && mediaUrls[madeRef.id]}
-          <button class="ghost" onclick={() => (watching = watching ? null : madeRef!.id)}>{watching ? '⏹ Stop watching' : '▶ Watch it'}</button>
+          <!-- (A sound is listened to.) -->
+          <button class="ghost" onclick={() => (watching = watching ? null : madeRef!.id)}
+            >{madeRef.kind === 'audio' ? (watching ? '⏹ Stop' : '▶ Listen') : watching ? '⏹ Stop watching' : '▶ Watch it'}</button
+          >
         {/if}
         <span class="spacer"></span>
         <button class="primary" onclick={onclose}>Close</button>
@@ -800,6 +854,13 @@
   .trimrow .field {
     flex-direction: row;
     align-items: center;
+  }
+  /* (Always there, for screen readers to hear it; it takes no room until it has something to say.) */
+  .trim-note {
+    margin: 0;
+  }
+  .trim-note:not(.said) {
+    display: contents;
   }
   .choice {
     margin: 0;

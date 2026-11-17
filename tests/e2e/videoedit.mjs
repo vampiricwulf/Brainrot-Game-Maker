@@ -410,7 +410,8 @@ try {
   await editFromMedia('clip.webm');
   await trimTo(undefined, 1);
   const done6 = await applyAnd('Save as a new file');
-  assert(done6 === '✓ Saved as “clip (edited).webm”: the original is unchanged.', `done: ${done6}`);
+  assert(/^✓ Saved as “clip \(edited\)\.webm” \(1(\.\d)? s, [\d.]+ KB\): the original is unchanged\.$/.test(done6), `done, with its length and size: ${done6}`);
+  assert(await foot().getByRole('button', { name: '▶ Watch it' }).isVisible(), 'a video is ▶ Watch it');
   await closeDialog();
   await card('clip (edited).webm').waitFor();
   const g6 = await draftWhen((g) => !!refNamed(g, 'clip (edited).webm'), 'clip (edited).webm');
@@ -462,8 +463,32 @@ try {
   console.log('8. A sound:');
   await editFromMedia('tone.wav');
   assert((await dialog.locator('.modal-title').innerText()) === '✎ Edit sound', 'the window: ✎ Edit sound');
+  // A time typed that can't be taken says why, under the boxes; one past the end is its end.
+  const [startBox, endBox, trimNote] = ['[data-trim-start]', '[data-trim-end]', '[data-trim-note]'].map((s) => dialog.locator(s));
+  const typedSays = async (box, text, key = 'Enter') => {
+    await box.fill(text);
+    await box.press(key);
+    return { box: await box.inputValue(), note: await trimNote.innerText(), invalid: await box.getAttribute('aria-invalid') };
+  };
+  const late = await typedSays(startBox, '9');
+  assert(late.box === '0:00.0' && late.note === 'Start must be before End (0:04.0).' && late.invalid === 'true', `9 in Start (it lasts 4 s): kept at 0:00.0, saying why (${JSON.stringify(late)})`);
+  const word = await typedSays(startBox, 'abc', 'Tab');
+  assert(word.box === '0:00.0' && word.note === '“abc” isn’t a time: type one like 1:05.0.', `abc: kept, saying why (${JSON.stringify(word)})`);
+  const past = await typedSays(endBox, '9');
+  assert(past.box === '0:04.0' && past.note === 'The sound ends at 0:04.0: End is there.' && past.invalid === null, `9 in End: its end, said (${JSON.stringify(past)})`);
   await trimTo(1, 3);
+  assert((await trimNote.innerText()) === '', 'a time taken: the line goes');
+  // (Ctrl+Enter on a time refused applies nothing: its line is read first.)
+  await typedSays(endBox, 'x', 'Control+Enter');
+  await page.waitForTimeout(400);
+  assert(
+    (await trimNote.innerText()).startsWith('“x” isn’t a time') && (await endBox.inputValue()) === '0:03.0' && (await foot().getByRole('button', { name: 'Apply', exact: true }).isEnabled()),
+    'Ctrl+Enter on a time refused: not applied, its line says why',
+  );
   await applyAnd();
+  assert((await foot().getByRole('button').allInnerTexts()).join(' | ') === '▶ Listen | Close', 'done: a sound is ▶ Listen (not ▶ Watch it)');
+  await foot().getByRole('button', { name: '▶ Listen' }).click();
+  assert(await foot().getByRole('button', { name: '⏹ Stop', exact: true }).isVisible(), 'and then ⏹ Stop');
   await closeDialog();
   const g8 = await draftWhen((g) => refNamed(g, 'tone.wav')?.id !== 'tone', 'tone.wav trimmed');
   const tone = refNamed(g8, 'tone.wav');
@@ -512,6 +537,16 @@ try {
   await dialog.getByRole('button', { name: '✂ Crop' }).click();
   const doneCrop = dialog.getByRole('button', { name: '✓ Done cropping' });
   assert((await doneCrop.getAttribute('aria-pressed')) === 'true', '✂ Crop pressed reads ✓ Done cropping');
+  // ↶ Undo right after takes the crop off, and ✂ Crop is up again (pressed, it had no box to drag, and Free did nothing).
+  await dialog.locator('header').getByRole('button', { name: '↶ Undo' }).click();
+  const cropUp = dialog.getByRole('button', { name: '✂ Crop' });
+  assert(
+    (await cropUp.getAttribute('aria-pressed')) === 'false' && !(await dialog.locator('[data-crop-box]').count()) && !(await dialog.getByRole('button', { name: 'Free', exact: true }).count()),
+    '↶ Undo right after ✂ Crop: no crop, and ✂ Crop is up again, with no shapes beside it',
+  );
+  await cropUp.click();
+  await dialog.locator('[data-crop-box]').waitFor();
+  assert((await doneCrop.getAttribute('aria-pressed')) === 'true', 'and ✂ Crop again draws its box');
   await doneCrop.click();
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached', timeout: 5000 });
@@ -610,10 +645,32 @@ try {
   await dialog.getByRole('button', { name: '1:1', exact: true }).click();
   // (The page's work slowed down 4 times again: the edit is still being made after the clicks below.)
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  // On a 1280×720 screen, the header's title and buttons stay where they are while the pill shows (it takes the
+  // browser's note's place), and the pill shows how far it got.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const headerAt = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.editor > header > input, .editor > header > button, .editor > header .end > button')]
+        .map((b) => `${(b.getAttribute('aria-label') ?? b.textContent).trim().slice(0, 6)}@${Math.round(b.getBoundingClientRect().left)}w${Math.round(b.getBoundingClientRect().width)}`)
+        .join(' '),
+    );
+  const before5 = await headerAt();
   await foot().getByRole('button', { name: 'Apply', exact: true }).click();
   await foot().getByRole('button', { name: 'Keep working' }).click();
   await dialog.waitFor({ state: 'detached' });
   await page.locator('[data-job-pill]', { hasText: /\d+%/ }).waitFor({ timeout: 60_000 });
+  const during5 = await headerAt();
+  const pillAt = await page.locator('[data-job-pill]').evaluate((p) => {
+    const r = p.getBoundingClientRect();
+    const inside = (el) => {
+      const b = el.getBoundingClientRect();
+      return b.width > 0 && b.left >= r.left - 0.5 && b.right <= r.right + 0.5;
+    };
+    return { pct: inside(p.querySelector('[data-job-pct]')) && p.querySelector('[data-job-pct]').textContent, stop: inside(p.querySelector('button')), title: p.title };
+  });
+  assert(during5 === before5, `at 1280×720 the header’s title and buttons don’t move as the pill comes (${before5} / ${during5})`);
+  assert(/^\d+%$/.test(pillAt.pct) && pillAt.stop && /^✂ Saving a video’s edit… \d+%/.test(pillAt.title), `and the pill shows its percentage and Stop, its words in full in its tooltip (${JSON.stringify(pillAt)})`);
+  await page.setViewportSize({ width: 1400, height: 950 });
   const play = page.getByRole('button', { name: '▶ Play' });
   await play.click();
   const playAsk = page.getByRole('alertdialog').filter({ hasText: 'still being saved' });

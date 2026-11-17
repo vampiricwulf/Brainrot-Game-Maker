@@ -314,7 +314,7 @@ try {
   await page.keyboard.press('Enter');
   // The GIF's made (its pill said 100%), then checked: the pill says how far it got no more. A moment longer, held.
   await page.waitForFunction((mark) => window.__seen.slice(mark).includes('100%'), mark, { timeout: 60_000 });
-  await page.waitForFunction(() => document.querySelector('[data-job-pill] span[aria-hidden="true"]')?.textContent?.trim() === '', null, { timeout: 60_000 });
+  await page.waitForFunction(() => document.querySelector('[data-job-pill] [data-job-pct]')?.textContent?.trim() === '', null, { timeout: 60_000 });
   await sleep(1500);
   const putIn = () => page.evaluate((mark) => window.__seen.slice(mark).some((t) => t.startsWith('🗜 Phones get the smaller copy now')), mark);
   assert((await pill.count()) === 1 && (await historyCount()) === atDrag && !(await putIn()), 'a copy made while a drag is held waits for it: not put in yet');
@@ -442,6 +442,7 @@ try {
   );
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
   await dialog.locator('[data-shrink-done]').waitFor({ timeout: 120_000 });
+  assert((await dialog.getByRole('button', { name: '▶ Listen' }).count()) === 1 && !(await dialog.getByRole('button', { name: '▶ Watch it' }).count()), 'a sound’s copy is ▶ Listen, not ▶ Watch it');
   // Ctrl+Z with the window still open does what its line says: it closes, and the copy goes (Ctrl+Y: back).
   await page.keyboard.press('Control+z');
   await dialog.waitFor({ state: 'detached' });
