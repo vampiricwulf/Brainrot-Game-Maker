@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { addTime, newLive, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, type Overlay } from './live';
+import { addTime, newLive, soonLeft, SOON_NOW_MS, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, type Overlay } from './live';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -65,6 +65,20 @@ describe('the countdown', () => {
     const held = timerResumed({ ...live.timer! }, Date.now());
     vi.advanceTimersByTime(5000);
     expect([timerRemaining(held), held.startedAt]).toEqual([20, null]);
+  });
+});
+
+describe('the “Starting soon” countdown', () => {
+  it('counts down in whole seconds, then says “Starting now!” (0) for a while, then goes (null)', () => {
+    const at = 1_000_000;
+    expect(soonLeft(undefined, at)).toBeNull();
+    expect(soonLeft(at, at - 60_000)).toBe(60);
+    expect(soonLeft(at, at - 1_500)).toBe(2);
+    expect(soonLeft(at, at)).toBe(0);
+    expect(soonLeft(at, at + SOON_NOW_MS - 1)).toBe(0);
+    expect(soonLeft(at, at + SOON_NOW_MS)).toBeNull();
+    expect(soonLeft(at, at + 10 * 60_000)).toBeNull();
+    expect(SOON_NOW_MS).toBe(30_000);
   });
 });
 

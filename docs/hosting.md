@@ -364,7 +364,8 @@ and you can go back to any point in it.
   a player's color or part of the theme is close to the key.
 - **Scores only:** **▭ Scores window** (`Shift+A`) opens a scores-only window for a lower third.
 - **On stream options:** the pre-game screen's **📺 On stream** fold edits the "Starting soon" and cover cards (with a
-  countdown) and has **Reduce motion on stream**.
+  countdown: at 0 the card says "Starting now!" for about 30 seconds, then it has its own words again) and has **Reduce
+  motion on stream**.
 - **Sounds** are built in and on by default. Preview, replace or turn each off in the editor's 🔊 Sounds tab. See also
   [Streaming the sound to Discord or OBS](streaming-sound.md).
 - **Low resolution:** the stage reads on a 720p or 480p stream, and new players get colors color-blind viewers can tell

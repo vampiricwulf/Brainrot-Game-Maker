@@ -1,6 +1,6 @@
 // What viewers see in single-window mode, and around the game: the honest "viewers can see this" warnings, the stage
 // keeping its size (a clue opening, the Final's steps), the in-panel key list, score pops, the stream cards (Starting
-// soon with a countdown, the cover), the clue caption, the Final's scores and wager ticks, and 📋 Copy standings; a
+// soon with a countdown, back to its own words about 30 s after 0, the cover), the clue caption, the Final's scores and wager ticks, and 📋 Copy standings; a
 // crowded 720p game; 12 players with phone buzzers (the join code only where people can buzz, a roll-off for 12,
 // the ✔ marks, a long tie heading on the end screen); and wheel and dice tiles in buzzer mode (the question, the buzzers
 // and the countdown wait for the tile's own tool, and only for it; Done and Cancel take it down, Esc waits for its spin,
@@ -1247,6 +1247,43 @@ async function tileTools() {
   await ctx.close();
 }
 
+/**
+ * The "Starting soon" countdown past 0 (on a fake clock): "Starting now!" for about 30 s, then the card has its own
+ * words again and the host's ▶ Start countdown is back (never "Starting now!" for as long as the host takes).
+ */
+async function soonOver() {
+  console.log('The “Starting soon” countdown past 0:');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  await ctx.clock.install();
+  const host = await ctx.newPage();
+  host.on('pageerror', (e) => errors.push(`[soon] ${e.message}`));
+  await host.goto(pathToFileURL(file).href);
+  await addClassicRounds(host);
+  await playWithPlayers(host, 2);
+  const [aud] = await Promise.all([host.waitForEvent('popup'), host.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  aud.on('pageerror', (e) => errors.push(`[soon audience] ${e.message}`));
+  await aud.locator('.soon-text').waitFor();
+  await openOnStream(host);
+  await host.getByLabel('Countdown minutes').fill('1');
+  await host.getByRole('button', { name: '▶ Start countdown' }).click();
+  await ctx.clock.runFor(2000);
+  const early = await aud.locator('.soon-count').innerText();
+  assert(/^0:5\d$/.test(early), `the countdown runs on the Starting soon card (${early})`);
+  await ctx.clock.runFor(60_000);
+  assert(
+    (await aud.locator('.soon-count').innerText()) === 'Starting now!' && (await host.getByRole('timer').innerText()) === 'Starting now!',
+    'at 0 the card says “Starting now!”, and so does the host’s line',
+  );
+  await ctx.clock.runFor(31_000);
+  await aud.locator('.soon-count').waitFor({ state: 'detached' });
+  assert((await aud.locator('.soon-text').innerText()) === 'Starting soon…', 'about 30 s later the card goes back to its own words (no “Starting now!” for as long as the host takes)');
+  assert(
+    (await host.getByRole('button', { name: '▶ Start countdown' }).count()) === 1 && (await host.getByRole('timer').count()) === 0,
+    'and the host’s line is ▶ Start countdown again',
+  );
+  await ctx.close();
+}
+
 /** The next round, from a host page. */
 async function nextRoundOf(p) {
   await p.waitForTimeout(450);
@@ -1461,6 +1498,7 @@ try {
   const spot = await page.locator('.stage .spot-name').innerText();
   assert((await page.locator('.stage .score-area .plate.picker').innerText()).includes(spot), 'the score bar lights up the spotlit player');
 
+  await soonOver();
   await pastelStage();
   await crowd();
   await viewers();

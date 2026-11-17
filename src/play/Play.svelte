@@ -35,7 +35,7 @@
     anywayLabel, answerRow, asked, ddWaits, doneSay, doneStep, escBounce, finalWaits, goOnDecision, inside, leftNow, mainStep, everyonePassed, mergeItems, ringNow, swallowSay, todo, type Check, type GoActs, type GoCtx,
     type FinalNow, type GoPanel, type PartnerNow, type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
   } from './host/goon';
-  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type Overlay, type StageAction, type TimerState } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, soonLeft as soonLeftAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type Overlay, type StageAction, type TimerState } from '../lib/live';
   import {
     answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, buzzVerdicts, phoneTimer, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, passAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
@@ -5395,7 +5395,13 @@
   $effect(() => {
     const at = app.live.soonAt;
     if (!at) return;
-    const tick = () => (soonLeft = Math.max(0, Math.ceil((at - Date.now()) / 1000)));
+    // "Starting now!" for a while, then the countdown is over: viewers' card has its own words again, and here it's
+    // ▶ Start countdown again (no "Starting now!" for as long as the host takes).
+    const tick = () => {
+      const left = soonLeftAt(at, Date.now());
+      if (left === null) app.live.soonAt = undefined;
+      else soonLeft = left;
+    };
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);

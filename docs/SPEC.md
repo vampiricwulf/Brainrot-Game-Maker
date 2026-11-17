@@ -573,7 +573,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
    right-click or Shift+F10 on it or on the player's 📱 row: 🎨 Color… · 🖼 Picture… · ± Start score… · ✎ Rename F2 ·
    ▲ Move up · ▼ Move down · 🗑 Delete player), ⚖ Game rules, 📱 Phone
    buzzers (with Teams) and On stream options (folded: "📺 On stream · “Starting soon” card · cover card · captions on",
-   remembered, open by itself while its countdown runs), all saved with the game, and choose **Single window** or **📺 Separate
+   remembered, open by itself while its countdown runs; at 0 the card says "Starting now!" for 30 s, then its own words
+   again, and the host's line is ▶ Start countdown again), all saved with the game, and choose **Single window** or **📺 Separate
    audience window** (with 📺 picked, a line under the cards: "not open yet" [📺 Open it now], or "open ✓" [Bring it
    forward] … [Close it], which asks first; `A` / `Shift+A` open the audience and scores windows here too). A game in
    progress is picked up from the editor with **Resume game**, or here: its card says where it got to and its scores

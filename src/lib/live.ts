@@ -281,6 +281,18 @@ export function tileToolUp(live: Live, clue: { id: string; type: string }): bool
   return live.toolTile === clue.id && toolOverlay(live)?.kind === clue.type;
 }
 
+/** How long "Starting now!" stays on the "Starting soon" card once its countdown reaches 0: then the card has its own words again. */
+export const SOON_NOW_MS = 30_000;
+
+/**
+ * Whole seconds left on the "Starting soon" countdown at `now`: 0 is "Starting now!" (for SOON_NOW_MS), null is no
+ * countdown (none set, or over a while ago: the host hasn't started yet, and the card shouldn't keep saying "now").
+ */
+export function soonLeft(at: number | undefined, now = Date.now()): number | null {
+  if (!at || now - at >= SOON_NOW_MS) return null;
+  return Math.max(0, Math.ceil((at - now) / 1000));
+}
+
 export function timerRemaining(t: TimerState, now = Date.now()): number {
   const run = t.startedAt === null ? 0 : (now - t.startedAt) / 1000;
   return Math.max(0, t.total - t.elapsed - run);

@@ -16,7 +16,7 @@
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { mediaScope, previewMediaScope, type MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
-  import { cuesAfter, tileToolUp, type Live, type SoundCue, type StageAction } from '../lib/live';
+  import { cuesAfter, soonLeft as soonLeftAt, tileToolUp, type Live, type SoundCue, type StageAction } from '../lib/live';
   import { plateCenter, wagersIn } from './flow';
   import { autofit } from '../lib/autofit';
   import SlideView from '../lib/slide/SlideView.svelte';
@@ -164,7 +164,8 @@
   $effect.pre(() => {
     if (live.soonAt) untrack(() => (clock = Date.now()));
   });
-  const soonLeft = $derived(live.soonAt ? Math.max(0, Math.ceil((live.soonAt - clock) / 1000)) : null);
+  // (Worked out from this window's own clock: a host window in the background ticks only now and then.)
+  const soonLeft = $derived(soonLeftAt(live.soonAt, clock));
   const mmss = (t: number) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
   const sym = $derived(game.settings.currencySymbol);
   const round = $derived.by(() => {
