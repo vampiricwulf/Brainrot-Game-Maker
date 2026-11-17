@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerAsk, answerReplace, anyway, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
+import { addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -356,11 +356,13 @@ const discardAsk = ie.getByRole('group', { name: 'Discard your image edits?' });
 await discardAsk.waitFor();
 await page.keyboard.press('Escape');
 assert((await discardAsk.count()) === 0 && (await ie.count()) === 1, 'Esc while it asks keeps editing');
+assert(await leaveAsks(page), 'with image edits not applied, closing the tab asks first');
 await ie.getByRole('button', { name: 'Cancel', exact: true }).click();
 await page.waitForTimeout(450);
 await discardAsk.getByRole('button', { name: 'Discard' }).click();
 await ie.waitFor({ state: 'detached' });
 assert(confirms.length === asked, 'Cancel with unsaved edits asks first, in the editor');
+assert(!(await leaveAsks(page)), 'and once they’re discarded, closing the tab asks nothing');
 const dims2 = await page.locator('.canvas img').first().evaluate((i) => [i.naturalWidth, i.naturalHeight]);
 assert(dims2.join('×') === '100×100', 'cancelled edits leave the slide image as it was');
 await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();

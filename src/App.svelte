@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from './lib/app.svelte';
+  import { unapplied } from './lib/unapplied';
   import {
     clearPlay,
     clearRoom,
@@ -451,8 +452,8 @@
   }
   onMount(() => {
     const warn = (e: BeforeUnloadEvent) => {
-      // (A 🗜 copy being made would be lost too.)
-      if (!wouldLose() && !jobs.current) return;
+      // (A 🗜 copy being made would be lost too, and a drawing or an edit not put in the game yet.)
+      if (!wouldLose() && !jobs.current && !unapplied()) return;
       e.preventDefault();
       e.returnValue = '';
     };

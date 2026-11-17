@@ -23,6 +23,7 @@
     renderEdited, sizeToOutput, STICKERS, toOutput, toSource, turnCrop,
   } from '../../lib/imageedit';
   import { editedFile, fileBytes, gifFrames } from '../../lib/gifedit';
+  import { holdUnapplied } from '../../lib/unapplied';
 
   let { el, onclose }: { el: ImageEl; onclose: () => void } = $props();
 
@@ -206,6 +207,11 @@
     };
     burstTimer = setTimeout(end, 1000);
   }
+
+  // (Closing or reloading the tab would throw them away too: the browser asks first.)
+  $effect(() => {
+    if (snapshot(edits) !== opened) return holdUnapplied();
+  });
 
   /** Cancel (Esc, the Cancel button): ask before throwing edits away. */
   function cancel(): void {

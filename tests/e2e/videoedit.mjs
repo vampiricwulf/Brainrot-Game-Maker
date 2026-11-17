@@ -26,7 +26,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { editorReady, openGameFile, packGame, recordSeen, stored } from './helpers.mjs';
+import { editorReady, leaveAsks, openGameFile, packGame, recordSeen, stored } from './helpers.mjs';
 import { clip, fixturePage, hueAt, readBack, wav } from './mediafixtures.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
@@ -522,6 +522,7 @@ try {
   assert(true, 'Esc after a change asks “Discard your edits to this video?”');
   await dialog.getByRole('button', { name: 'Keep editing' }).click();
   assert(await dialog.isVisible(), 'Keep editing: still open');
+  assert(await leaveAsks(page), 'with a trim not applied, closing the tab asks first');
   await page.keyboard.press('Escape');
   await ask.waitFor();
   // (A click right after the question shows is taken for the end of what asked it, as the image editor's.)
@@ -529,6 +530,7 @@ try {
   await dialog.getByRole('button', { name: 'Discard' }).click();
   await dialog.waitFor({ state: 'detached' });
   assert(refNamed(await stored(page, 'editorDraft'), 'pair.webm').id === 'pair', 'Discard: closed, the file as it was');
+  assert(!(await leaveAsks(page)), 'and closing the tab then asks nothing');
   // ✂ Crop pressed (it reads ✓ Done cropping) and put away changes nothing, as Result says: Esc just closes. The header
   // is ↶ ↷, Reset apart and ✕, as in the image and drawing windows (Cancel is the foot's).
   await editFromMedia('pair.webm');

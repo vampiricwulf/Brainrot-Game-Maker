@@ -268,6 +268,14 @@ export async function flowIs(page, label) {
  * The check, while it's open (its data-goon says its heading: 'first', 'loss' or 'nothing'). `ready`: once its guard
  * is over (600 ms after it opens: keys and clicks on it count from then), a state to wait on, never a timer.
  */
+/** Closing or reloading the tab now would have the browser ask first ("Leave site?"): the app's beforeunload says so. */
+export const leaveAsks = (page) =>
+  page.evaluate(() => {
+    const e = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+
 export const goOnCheck = (page, { ready = false } = {}) => page.locator(ready ? '.panel [data-goon][data-ready]' : '.panel [data-goon]');
 /** One thing left in it, by its id: 'picked', 'dd', 'buzzers', 'tie', 'answers', 'judge', 'card:<card id>'. */
 export const checkItem = (page, id) => goOnCheck(page).locator(`[data-goon-item="${id}"]`);

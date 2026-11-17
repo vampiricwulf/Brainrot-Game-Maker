@@ -9,6 +9,7 @@
   import { SLIDE_H, SLIDE_W } from '../../lib/model';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
+  import { holdUnapplied } from '../../lib/unapplied';
 
   type Tool = 'pen' | 'fill' | 'erase';
   interface Stroke {
@@ -199,6 +200,11 @@
     busy = false;
     if (png) oninsert(png, box);
   }
+
+  // (Closing or reloading the tab would throw it away too: the browser asks first.)
+  $effect(() => {
+    if (strokes.length) return holdUnapplied();
+  });
 
   /** Cancel (Esc, the Cancel button): ask before throwing a drawing away. */
   function cancel(): void {

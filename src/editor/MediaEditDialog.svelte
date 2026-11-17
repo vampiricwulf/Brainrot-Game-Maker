@@ -53,6 +53,7 @@
   import CropBox from './CropBox.svelte';
   import JobProgress from './JobProgress.svelte';
   import TrimBar from './TrimBar.svelte';
+  import { holdUnapplied } from '../lib/unapplied';
 
   let { id, item, onclose }: { id: Id; item?: VideoEl | AudioEl; onclose: () => void } = $props();
 
@@ -410,6 +411,10 @@
   // ---------- Closing ----------
   let discarding = $state(false);
   let box = $state<HTMLElement>();
+  // (Closing or reloading the tab would throw away edits not applied, or the work under way: the browser asks first.)
+  $effect(() => {
+    if (!done && changed && !nothing) return holdUnapplied();
+  });
   /** Esc, ✕, the foot's Cancel: while it works, the work goes on; edits not applied are asked about first (not ✂ Crop alone). */
   function close(): void {
     if (working || done || !changed || nothing) return onclose();

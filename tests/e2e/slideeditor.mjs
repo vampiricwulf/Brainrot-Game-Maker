@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerAsk, answerReplace, noSelection, selectedWords } from './helpers.mjs';
+import { addClassicRounds, answerAsk, answerReplace, leaveAsks, noSelection, selectedWords } from './helpers.mjs';
 import { gif } from './mediafixtures.mjs';
 
 const { GifReader } = createRequire(import.meta.url)('omggif');
@@ -947,6 +947,8 @@ try {
   await page.keyboard.press('Escape');
   await answerAsk(pad.getByRole('button', { name: 'Keep drawing', exact: true }));
   assert(await padArea.isVisible(), 'Esc with a drawing asks “Discard this drawing?”, and Keep drawing goes back to it');
+  // (Closing or reloading the tab would lose it too: the browser asks first.)
+  assert(await leaveAsks(page), 'with a drawing not inserted yet, closing the tab asks first');
   // Ctrl+Enter inserts it, as Insert drawing does (and Apply in the image and video windows).
   const idsBefore = new Set((await drawn()).map((e) => e.id));
   await page.keyboard.press('Control+Enter');
@@ -958,6 +960,7 @@ try {
     if (!drawing) await page.waitForTimeout(100);
   }
   assert(!!drawing && drawing.y + drawing.h >= 1070, `drawn along the pad's bottom edge, it sits at the slide's bottom (${drawing?.y} + ${drawing?.h})`);
+  assert(!(await leaveAsks(page)), 'once it’s inserted, closing the tab asks nothing');
   await page.setViewportSize({ width: 1400, height: 900 });
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
