@@ -34,7 +34,8 @@
 // Spin! first and no Close (the blue button is Next ▶), landed too, and a wheel tile's bar the same with the blue Show
 // question ▶ within 96 px of its Spin! (↩ Put back in sight, as on PARTNER UP! and a Daily Double's splash, where it
 // leads the Wager row). At 1280×720 with long team names, the Final's reveal rows keep straight columns, one line each,
-// Finish now… at the left of their box's foot.
+// Finish now… at the left of their box's foot, and the tools row folds behind ⋯ Tools (out while 📊 Scoreboard is on),
+// giving three rows or more their ✔ Right and ✘ Wrong in sight.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -1541,6 +1542,37 @@ try {
       spotRight && foot.join() === 'Finish now…,4 still to judge' && early.x + early.width < verdict.x,
       `and the spotlit row's ✔ Right in sight; Finish now… at the left of the box's foot beside “4 still to judge”, away from the verdicts (${foot.join(' | ')})`,
     );
+    // The reveals in one window: the tools row folds behind the status line's ⋯ Tools (nothing in it is for this moment),
+    // and the reveal rows get its room: three or more with ✔ Right and ✘ Wrong whole in sight. ⋯ Tools brings it back.
+    /** The rows whose ✔ Right and ✘ Wrong are wholly in sight (not under the box's foot nor out of the panel's room). */
+    const rowsInSight = () =>
+      pl.locator('.fj .pl').evaluateAll((els) => {
+        const foot = document.querySelector('.fj > .row:last-child').getBoundingClientRect();
+        const room = document.querySelector('.panel > .act > .action').getBoundingClientRect();
+        return els.filter((r) =>
+          [...r.querySelectorAll('button.good, button.bad')].every((b) => {
+            const x = b.getBoundingClientRect();
+            return x.top >= room.top - 1 && x.bottom <= Math.min(room.bottom, foot.top) + 1 && b.contains(document.elementFromPoint(x.x + x.width / 2, x.y + x.height / 2));
+          }),
+        ).length;
+      });
+    const folded = pl.locator('.panel .status').getByRole('button', { name: '⋯ Tools' });
+    const shownRows = await rowsInSight();
+    assert(
+      (await pl.locator('.panel .toolsrow').isHidden()) && (await folded.getAttribute('aria-expanded')) === 'false' && shownRows >= 3,
+      `1280×720, the Final's reveals in one window: the tools row folds behind ⋯ Tools, and ${shownRows} of the 4 reveal rows have ✔ Right and ✘ Wrong whole in sight`,
+    );
+    await folded.click();
+    await pl.locator('.panel .toolsrow').getByRole('button', { name: /Scoreboard/ }).waitFor();
+    assert((await folded.getAttribute('aria-expanded')) === 'true', '⋯ Tools brings the tools row back (🎲 Dice … 📊 Scoreboard)');
+    // (Something on in it keeps it out: 📊 Scoreboard pressed, and ⋯ Tools isn't needed then.)
+    await folded.click();
+    await pl.locator('.panel .toolsrow').waitFor({ state: 'hidden' });
+    await pl.keyboard.press('s');
+    await pl.locator('.panel .toolsrow button[aria-pressed="true"]', { hasText: 'Scoreboard' }).waitFor();
+    assert((await folded.isHidden()) && (await pl.locator('.panel .toolsrow').isVisible()), 'with 📊 Scoreboard on screen (S) the tools row stays out to show it, ⋯ Tools gone');
+    await pl.keyboard.press('s');
+    await pl.locator('.panel .toolsrow').waitFor({ state: 'hidden' });
     // Each next player in turn (C judges, N spotlights the next): their row stops above the box's sticky foot, not
     // under it, so its ✔ Right / ✘ Wrong are in sight.
     const clear = [];

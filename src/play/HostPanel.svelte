@@ -474,6 +474,18 @@
    * row steps back (the ghost look, at full contrast), so the box is what the eye finds. Nothing moves, every tool works.
    */
   const quietTools = $derived(!!partner || ddWager || toolFirst || session.phase === 'final');
+  /**
+   * The Final's reveals in one window, under the stage: the tools row folds behind ⋯ Tools in the status line (nothing
+   * there is for this moment), so the reveal list has its height and three or four rows are in sight on a laptop. What's
+   * on in it (📊 pressed, a deal, cards out, 🔇 Stop sounds, a warning) keeps it out (see .foldtools), and so does a
+   * question in the strip, which lies over it.
+   */
+  const revealFold = $derived(!dual && !side && session.phase === 'final' && session.finalStep === 'reveal' && !session.intro);
+  /** ⋯ Tools pressed: the row is out again, for these reveals. */
+  let toolsOut = $state(false);
+  $effect(() => {
+    if (!revealFold) toolsOut = false;
+  });
   /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
   const slidePos = $derived(setup ? null : slidePosition(session, game));
   /** The tiebreaker clue's winner, picked (while they're still tied for first: an older roll-off's doesn't count). */
@@ -914,6 +926,7 @@
   class:held
   class:keepchips={held && (session.phase === 'end' || session.phase === 'tiebreaker')}
   class:quiettools={quietTools}
+  class:foldtools={revealFold && !toolsOut && !ask}
   onpointerdowncapture={(e) => goon?.check && e.target instanceof Element && !e.target.closest('[data-goon], .cover-toggle') && goon.away()}
 >
   <!-- What's going on, read out to screen readers as it changes (buttons and hints left out). Its chips on the right. -->
@@ -1057,6 +1070,16 @@
     {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}
     <span class="spacer"></span>
     {@render phoneChip?.()}
+    {#if revealFold}
+      <button
+        class="small ghost toolsfold"
+        aria-expanded={toolsOut}
+        aria-controls="host-tools"
+        onclick={() => (toolsOut = !toolsOut)}
+        title={toolsOut ? 'Fold the tools row away: the reveal rows get its room' : 'The tools row (🎲 Dice, 🎡 Wheel, 📊 Scoreboard…), folded away so the reveal rows have its room'}
+        >⋯ Tools</button
+      >
+    {/if}
     {#if clockFits}
       <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} onstart={ontimerstart} onhidden={clockHidden} />
     {:else}
@@ -2056,6 +2079,14 @@
     background: var(--panel);
   }
   .toolsrow:empty {
+    display: none;
+  }
+  /* Folded in the Final's reveals (see revealFold), unless something in it is on: then it stays, and ⋯ Tools isn't
+     needed. */
+  .panel.foldtools > .toolsrow:not(:has(:global(:is([aria-pressed='true'], [aria-expanded='true'], .on, .warn, .stop, .cardsout, .winwarn)))) {
+    display: none;
+  }
+  .panel.foldtools:has(> .toolsrow :global(:is([aria-pressed='true'], [aria-expanded='true'], .on, .warn, .stop, .cardsout, .winwarn))) .toolsfold {
     display: none;
   }
   /* Under the stage, with 🔇 Stop sounds, cards out or a 🎭 deal's state in the tools row (they come and go on the
