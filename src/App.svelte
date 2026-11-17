@@ -1129,7 +1129,8 @@
   function saveKey(e: KeyboardEvent): void {
     const k = e.key.toLowerCase();
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || (k !== 's' && k !== 'o') || e.defaultPrevented) return;
-    if (app.screen !== 'play' && !playerOnly) return;
+    // (The cover after a reload mid-game too: the browser's own Open or Save page would show on stream.)
+    if (app.screen !== 'play' && !playerOnly && !bootCover) return;
     e.preventDefault();
     if (e.repeat) return;
     // Ctrl+O, as in the editor: never the browser's own Open (a file picked there would take this tab, show and all).
@@ -1463,7 +1464,7 @@
   .mode-ask :global(.modes) {
     align-self: stretch;
   }
-  /* The cover after a reload mid-game in one window: as viewers see ⏸ Cover, the host's choice small at the foot. */
+  /* The cover after a reload mid-game in one window: as viewers see ⏸ Cover, the host's choice small under it. */
   .boot-cover {
     height: 100%;
     display: flex;
