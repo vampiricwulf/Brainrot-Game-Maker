@@ -285,7 +285,8 @@
   {#if game && scores}
     <ScoresView {game} {session} {live} />
   {:else if game && (session || live.pregame)}
-    <Stage>
+    <!-- The key under every screen too: what one doesn't paint while it fades or zooms in stays keyed (not black). -->
+    <Stage background={keyColor}>
       <!-- Before Start the host sends no session yet: AudienceView shows its "Starting soon" card. -->
       <AudienceView {game} session={session ?? newSession(game)} {live} role="audience" />
     </Stage>

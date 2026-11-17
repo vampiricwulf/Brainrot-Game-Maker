@@ -186,6 +186,9 @@ try {
   await aud.locator('.stage .full').waitFor();
   const audBg = await aud.locator('.aud').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(audBg === 'rgb(0, 255, 0)', 'the audience window is chroma green around the stage');
+  // The stage itself too: what a screen doesn't paint (around a clue zooming in, the board fading back in) stays keyed.
+  const audStage = await aud.locator('.stage').evaluate((e) => getComputedStyle(e).backgroundColor);
+  assert(audStage === 'rgb(0, 255, 0)', `and on the stage, under what a screen paints (${audStage})`);
   await aud.keyboard.press('3');
   await aud.locator('.plate').waitFor();
   assert((await aud.locator('.plate').innerText()).includes('Player 3'), 'a number key pressed in the audience window picks that player (viewers see who is answering)');
@@ -377,6 +380,10 @@ try {
     );
     await sp.getByRole('button', { name: 'Start game ▶' }).click();
     const look = (sel) => sp.locator(`.stage-box ${sel}`).evaluate((e) => getComputedStyle(e).backgroundImage);
+    // One window: the stage under every screen is the key too, so a clue zooming in has no black frame round it.
+    const keyRgb = key === 'green' ? 'rgb(0, 255, 0)' : 'rgb(255, 0, 255)';
+    const stageBg = await sp.locator('.stage-box .stage').evaluate((e) => getComputedStyle(e).backgroundColor);
+    assert(stageBg === keyRgb, `on a ${key} key, the one-window stage is the key under its screens (${stageBg})`);
     await sp.locator('.stage-box .tile[data-clue="q_dd"]').click();
     await sp.locator('.stage-box .dd-text').waitFor();
     const ddLook = await look('.full.dd');

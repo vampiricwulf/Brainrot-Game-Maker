@@ -1163,11 +1163,10 @@
     selected = [];
   }
 
+  /** The chroma key OBS takes out (🎨 Theme › Stage background), if the game has one. */
+  const stageKey = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
   /** Players whose color a chroma-key stage background would take out on stream (the pre-game screen warns). */
-  const keyedOut = $derived.by(() => {
-    const key = game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined;
-    return key ? session.players.filter((p) => obsKeyed(p.color, key)) : [];
-  });
+  const keyedOut = $derived(stageKey ? session.players.filter((p) => obsKeyed(p.color, stageKey)) : []);
   /** Does the game have a Jeopardy board? (Without one, the theme's board-only looks never show.) */
   const hasBoard = $derived(game.rounds.some(isBoard));
   /** The theme's colors that key would make see-through (🎨 Theme says so too), of those the game shows. */
@@ -6817,7 +6816,8 @@
         onpointerdowncapture={(e) => (stagePt = { x: e.clientX, y: e.clientY })}
         onclickcapture={stageWhileCheck}
       >
-        <Stage hostOnly={dual}>
+        <!-- (One window: the key under every screen, as in the audience window. The mirror stays black: no viewer sees it.) -->
+        <Stage hostOnly={dual} background={dual ? undefined : stageKey}>
           <AudienceView
             {game}
             {session}
