@@ -227,6 +227,11 @@ try {
   await mainButton(page, '👁 Reveal answer').click();
   // (Its think clock still running: it asks first.)
   await revealAnyway(page);
+  // C before the reveals says what starts them (it did nothing, saying nothing).
+  await mainButton(page, 'Start player reveals ▶').waitFor();
+  await page.keyboard.press('c');
+  await page.locator('.toast', { hasText: 'C / X judge in the reveals: Start player reveals ▶ first (N)' }).waitFor();
+  assert((await page.locator('.spot').count()) === 0, 'C before the reveals says to start them first (N), and judges nobody');
   await mainButton(page, 'Start player reveals ▶').click();
   await page.locator('.spot').waitFor();
   await page.keyboard.press('c');

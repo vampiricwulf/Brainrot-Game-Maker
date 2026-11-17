@@ -3885,6 +3885,8 @@
   /** C / X in the final reveal: judge the spotlit player. */
   function finalJudgeKey(right: boolean): void {
     const id = session.final?.current;
+    // Before the reveals: what starts them (C or X there would otherwise do nothing, and say nothing).
+    if (session.phase === 'final' && session.finalStep === 'answer' && mainNow) return hint(`C / X judge in the reveals: ${mainNow.verb.label} first (N)`);
     if (!id || session.phase !== 'final' || session.finalStep !== 'reveal') return;
     judge(id, right);
   }
@@ -6358,6 +6360,9 @@
     } else if (session.phase === 'board' && !e.shiftKey && mainNow?.clickOnly) {
       // A played-out board goes on only from its button (N mashed after the last clue mustn't jump on stream).
       hint(`Round complete: click ${mainNow.verb.label} to go on`);
+    } else if (session.phase === 'board' && !mainNow) {
+      // The board has no blue button: N (or Shift+N) says what to do instead of nothing.
+      hint('Pick a tile on the board: click it, or Enter on it');
     } else if (session.phase === 'end' && !e.shiftKey && !coWinnersHold(session) && tiedLeaders(session).length) {
       // The end screen has no blue button: a tie is settled in its box (N mashed after the Final mustn't start one on
       // stream). N says so, and the box flashes.

@@ -577,6 +577,15 @@ try {
   assert((await scoreBox.getAttribute('aria-label')) === 'Player 1’s score', 'and the box it opens is named “Player 1’s score”');
   await scoreBox.press('Escape');
   await scoreBox.waitFor({ state: 'detached' });
+  // N and Shift+N on the board (no blue button): they say how to pick a tile.
+  await page.locator('.panel').getByRole('button', { name: '⚖ Rules', exact: true }).focus();
+  await page.keyboard.press('n');
+  await saidHas(/Pick a tile on the board: click it, or Enter on it/);
+  assert((await page.locator('.toast', { hasText: 'Pick a tile' }).count()) === 1, 'N on the board says how to pick a tile (said and shown)');
+  await page.evaluate(() => (document.getElementById('live-region').dataset.said = ''));
+  await page.keyboard.press('Shift+N');
+  await saidHas(/Pick a tile on the board/);
+  assert(true, 'and so does Shift+N');
   // H says whether the controls are hidden.
   await page.keyboard.press('h');
   await saidHas(/Host controls hidden/);
