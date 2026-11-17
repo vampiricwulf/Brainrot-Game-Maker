@@ -380,9 +380,10 @@ function idle(busy: () => string | null): Promise<void> {
  * export or autosave is being written, it asks first: Wait (the app closes once it's done) or Close anyway. So it does
  * while `busy` says what's under way (a 🗜 copy being made, in a sentence): Wait waits for it to finish, then writes
  * what it made too. While `lost` says autosave isn't working, closing would lose the game in progress ('play') or the
- * changes since the last Save ('edit'): it asks first, as a browser tab does, and Stay keeps the window open.
+ * changes since the last Save ('edit'): it asks first, as a browser tab does, and Stay keeps the window open. So it does
+ * while `held` says a drawing or an edit isn't in the game yet (it's in no draft).
  */
-export function flushOnClose(flush: () => void, busy?: () => string | null, lost?: () => 'play' | 'edit' | null): void {
+export function flushOnClose(flush: () => void, busy?: () => string | null, lost?: () => 'play' | 'edit' | null, held?: () => boolean): void {
   if (!isHost()) return;
   closeFlush = flush;
   /** Waiting for a save to finish before closing (the ✕ clicked again changes nothing). */
@@ -424,6 +425,10 @@ export function flushOnClose(flush: () => void, busy?: () => string | null, lost
             await invoke('hold_close');
             const what = loses === 'play' ? 'the game in progress' : 'your changes since the last Save';
             stay = !(await ask(`Autosave isn't working, so closing now loses ${what}.`, { ok: 'Close anyway', cancel: 'Stay', danger: true }));
+          } else if (held?.()) {
+            waiting = true;
+            await invoke('hold_close');
+            stay = !(await ask('Closing now throws away a drawing or an edit that isn’t in the game yet.', { ok: 'Close anyway', cancel: 'Stay', danger: true }));
           }
         } finally {
           waiting = false;

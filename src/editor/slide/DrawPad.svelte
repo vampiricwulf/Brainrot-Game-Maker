@@ -9,7 +9,7 @@
   import { SLIDE_H, SLIDE_W } from '../../lib/model';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
-  import { holdUnapplied } from '../../lib/unapplied';
+  import { holdUnapplied } from '../../lib/unapplied.svelte';
 
   type Tool = 'pen' | 'fill' | 'erase';
   interface Stroke {

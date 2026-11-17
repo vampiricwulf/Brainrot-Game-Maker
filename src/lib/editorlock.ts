@@ -2,8 +2,8 @@
 // overwrite each other's draft (and clean up each other's undo steps). The copy that edits holds a Web Lock; another
 // copy waits with editing paused until it's asked to take over ("Edit here instead"), and then the first one lets go.
 // An exported player-only file does the same for its saved game in progress (the file opened twice). The copy that edits
-// also says when it's playing a game or showing its audience window (shared locks): taking over stops those, so a paused
-// copy warns first.
+// also says when it's playing a game, showing its audience window, or holding a drawing or an edit not put in the game
+// yet (shared locks): taking over stops or loses those, so a paused copy warns first.
 const LOCK = 'brainrot-games-editor';
 /** How long a copy asking to take over waits for the editing one to let go before taking the lock anyway. */
 const WAIT_MS = 4000;
@@ -76,14 +76,17 @@ export async function claimEditor(take: boolean, onLost: () => Promise<void> | v
 
 /**
  * What the copy that edits is doing that taking over would stop: playing a game (not the pre-game screen, nor a ▶ Test),
- * and showing its audience window (which a stream may be capturing).
+ * showing its audience window (which a stream may be capturing), and holding work not in the game yet (a drawing not
+ * inserted, image edits or a trim not applied: see unapplied.svelte.ts), which it would lose.
  */
-export type Busy = { playing: boolean; audience: boolean };
-const BUSY = ['playing', 'audience'] as const;
+export type Busy = { playing: boolean; audience: boolean; unapplied: boolean };
+const BUSY = ['playing', 'audience', 'unapplied'] as const;
+/** Nothing that taking over would stop. */
+export const NOT_BUSY: Busy = { playing: false, audience: false, unapplied: false };
 /** Each is a lock this copy holds (shared) meanwhile, named after the editor's. */
 const busyLock = (k: keyof Busy) => `${lockName}:${k}`;
 /** What lets go of each one held. */
-const letBusyGo: Record<keyof Busy, (() => void) | null> = { playing: null, audience: null };
+const letBusyGo: Record<keyof Busy, (() => void) | null> = { playing: null, audience: null, unapplied: null };
 
 /** Say what this copy is doing that taking over would stop: a paused copy warns before it takes over (watchEditor). */
 export function markBusy(busy: Busy): void {
@@ -112,7 +115,7 @@ export function watchEditor(onChange: (taken: boolean, busy: Busy) => void): () 
     if (!state) return;
     const taken = [...(state.held ?? []), ...(state.pending ?? [])].some((l) => l.name === lockName);
     const held = new Set((state.held ?? []).map((l) => l.name));
-    const busy = { playing: held.has(busyLock('playing')), audience: held.has(busyLock('audience')) };
+    const busy = Object.fromEntries(BUSY.map((k) => [k, held.has(busyLock(k))])) as Busy;
     const now = JSON.stringify([taken, busy]);
     if (now === last) return;
     last = now;

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from './lib/app.svelte';
-  import { unapplied } from './lib/unapplied';
+  import { unapplied } from './lib/unapplied.svelte';
   import {
     clearPlay,
     clearRoom,
@@ -34,7 +34,7 @@
   import { packInfo, unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
   import { holdOpenLock, keepInMemory, loadGameMedia, mediaUrls, pruneMedia, storePlayFiles } from './lib/media.svelte';
-  import { claimEditor, markBusy, watchEditor, type Busy } from './lib/editorlock';
+  import { claimEditor, markBusy, NOT_BUSY, watchEditor, type Busy } from './lib/editorlock';
   import { hasWork, listRecent } from './lib/recent';
   import { firstRunSeen } from './play/whatmoved.svelte';
   import { validate } from './lib/validate';
@@ -110,7 +110,7 @@
   /** While paused: the tab that was editing has closed, so nothing stops this one editing. */
   let otherClosed = $state(false);
   /** While paused: what the tab that edits is doing that taking over would stop. */
-  let otherBusy = $state<Busy>({ playing: false, audience: false });
+  let otherBusy = $state<Busy>(NOT_BUSY);
   $effect(() => {
     if (!paused) return;
     return watchEditor((taken, busy) => {
@@ -119,14 +119,17 @@
     });
   });
   /** Taking over from the other tab stops this there (said, and asked, first), or ''. */
-  const takeOverStops = $derived(
-    [
+  const takeOverStops = $derived.by(() => {
+    const said = [
       otherBusy.playing && 'stops the game being played there (it’s kept: Resume game carries on here)',
       otherBusy.audience && 'closes the audience window there, so a stream showing it goes dark',
-    ]
-      .filter(Boolean)
-      .join(' and '),
-  );
+      // (A drawing not inserted, image edits or a trim not applied: in no draft, so it's lost.)
+      otherBusy.unapplied && 'throws away a drawing or an edit there that isn’t in the game yet',
+    ].filter((x) => typeof x === 'string');
+    return said.length > 1 ? `${said.slice(0, -1).join(', ')} and ${said[said.length - 1]}` : (said[0] ?? '');
+  });
+  /** What taking over stops first, for the paused card's heading and button and the question: the game, the window or the work. */
+  const takeOverFirst = $derived(otherBusy.playing ? 'playing' : otherBusy.audience ? 'audience' : 'unapplied');
   // The tab's title, the game's name in it: on the ▶ Play screens it says ▶ Playing (see hostTitle). A player-only file's
   // start screen is its game's name alone.
   $effect(() => {
@@ -383,7 +386,7 @@
     if (!editing && !playsHere) return;
     // (Let go of at once, and not taken again while the last changes are written.)
     ownsLock = false;
-    markBusy({ playing: false, audience: false });
+    markBusy(NOT_BUSY);
     if (watch) commit();
     const { playGame, session } = app;
     const playing = app.screen === 'play' && !app.pregame && !app.test && playGame && session && playWatch && playWatched === playGame;
@@ -403,11 +406,11 @@
     app.resumable = null;
   }
 
-  // A game being played here (not the pre-game screen, nor a ▶ Test), and the audience window: a tab opened alongside
-  // says so before taking over, which stops them.
+  // A game being played here (not the pre-game screen, nor a ▶ Test), the audience window, and a drawing or an edit not
+  // put in the game yet: a tab opened alongside says so before taking over, which stops or loses them.
   $effect(() => {
     const here = ownsLock;
-    markBusy({ playing: app.screen === 'play' && !app.pregame && !app.test && here, audience: audience.open && here });
+    markBusy({ playing: app.screen === 'play' && !app.pregame && !app.test && here, audience: audience.open && here, unapplied: unapplied() && here });
   });
 
   /** "Edit here instead": the tab editing now writes its last changes and lets go, then this one starts afresh. */
@@ -419,10 +422,17 @@
     }
     location.reload();
   }
-  /** "Edit here instead" when that stops a game being played in the other tab, or closes its audience window: asked. */
+  /**
+   * "Edit here instead" when that stops a game being played in the other tab, closes its audience window or throws away
+   * a drawing or an edit there: asked.
+   */
   async function takeOverBusy(): Promise<void> {
     const ok = await ask(`${playerOnly ? 'Playing' : 'Editing'} here ${takeOverStops}.`, {
-      title: otherBusy.playing ? 'Stop the game in the other tab?' : 'Close the audience window in the other tab?',
+      title: {
+        playing: 'Stop the game in the other tab?',
+        audience: 'Close the audience window in the other tab?',
+        unapplied: 'Throw away the drawing or edit in the other tab?',
+      }[takeOverFirst],
       ok: playerOnly ? 'Play here' : 'Edit here',
       cancel: 'Leave it as it is',
       danger: true,
@@ -647,9 +657,9 @@
       savePlaySoon.flush();
     };
     const onvis = () => document.visibilityState === 'hidden' && flush();
-    // Desktop app: closing the window waits for these writes (and asks about a 🗜 copy being made, or what autosave
-    // couldn't keep).
-    flushOnClose(flush, jobLine, wouldLose);
+    // Desktop app: closing the window waits for these writes (and asks about a 🗜 copy being made, what autosave
+    // couldn't keep, or a drawing or an edit not put in the game yet).
+    flushOnClose(flush, jobLine, wouldLose, unapplied);
     // Going away mid-game in one window, or with the cover still up: the next page in this tab opens on the cover too.
     // (Not on hiding the tab: the game goes on when it's shown again.)
     const marked = () => {
@@ -1192,11 +1202,20 @@
         <p class="muted">Its changes are saved. Nothing else is editing this game now.</p>
         <button class="primary" onclick={editHere}>Edit here</button>
       {:else if takeOverStops}
-        <!-- (Taking over would stop a game being played there, or close the audience window a stream may be showing.) -->
-        <h1>{otherBusy.playing ? 'A game is being played in the other tab' : 'The other tab has its audience window open'}</h1>
+        <!-- (Taking over would stop a game being played there, close the audience window a stream may be showing, or throw
+             away a drawing or an edit not put in the game yet.) -->
+        <h1>
+          {{
+            playing: 'A game is being played in the other tab',
+            audience: 'The other tab has its audience window open',
+            unapplied: 'The other tab has a drawing or an edit not put in yet',
+          }[takeOverFirst]}
+        </h1>
         <p>Close this tab to leave that one as it is.</p>
         <p class="warn small">{playerOnly ? 'Playing' : 'Editing'} here {takeOverStops}.</p>
-        <button class="danger" onclick={takeOverBusy}>{otherBusy.playing ? 'Stop that game' : 'Close that window'} and {playerOnly ? 'play' : 'edit'} here…</button>
+        <button class="danger" onclick={takeOverBusy}
+          >{{ playing: 'Stop that game', audience: 'Close that window', unapplied: 'Throw it away' }[takeOverFirst]} and {playerOnly ? 'play' : 'edit'} here…</button
+        >
       {:else if playerOnly}
         <!-- (The same file opened twice: one tab plays and saves its game at a time.) -->
         <h1>This game is open in another tab</h1>

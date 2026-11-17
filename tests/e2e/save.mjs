@@ -399,6 +399,57 @@ try {
   assert(scores[0].includes('300'), `the other tab resumes it as it was left (${scores.join(', ')})`);
   await played.close();
 
+  // A drawing not inserted yet (or image edits, a trim not applied) in a tab another one takes over: it's in no draft,
+  // so the tab opened alongside says taking over throws it away, and asks first. Once it's put in, or cancelled, the
+  // warning goes.
+  const drawn = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  const d1 = await open('drawing', true, drawn);
+  await d1.getByRole('button', { name: '＋ Add round' }).click();
+  await d1.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+  await d1.locator('[data-tile="0,0"]').click();
+  await d1.keyboard.press('Enter');
+  await d1.getByRole('dialog', { name: 'Edit clue' }).waitFor();
+  const draw = async () => {
+    await d1.getByRole('button', { name: /◼ Shape/ }).click();
+    await d1.getByRole('button', { name: '🖌 Drawpad…' }).click();
+    const area = await d1.getByRole('dialog', { name: 'Drawpad' }).getByLabel('Drawing area').boundingBox();
+    await d1.mouse.move(area.x + area.width * 0.3, area.y + area.height * 0.5);
+    await d1.mouse.down();
+    await d1.mouse.move(area.x + area.width * 0.6, area.y + area.height * 0.4, { steps: 6 });
+    await d1.mouse.up();
+  };
+  await draw();
+  const d2 = await drawn.newPage();
+  d2.on('pageerror', (e) => errors.push(`[taking over a drawing] ${e.message}`));
+  await d2.goto(url);
+  const lose = d2.getByRole('button', { name: 'Throw it away and edit here…' });
+  await lose.waitFor({ timeout: 8000 });
+  if (process.env.SHOTS) await d2.screenshot({ path: `${process.env.SHOTS}/save-drawing-elsewhere.png` });
+  assert(
+    (await d2.getByRole('heading', { name: 'The other tab has a drawing or an edit not put in yet' }).count()) === 1 &&
+      (await d2.getByText('Editing here throws away a drawing or an edit there that isn’t in the game yet.').count()) === 1 &&
+      !(await d2.getByRole('button', { name: 'Edit here instead' }).count()),
+    'a tab opened beside one with a drawing not inserted says taking over throws it away',
+  );
+  // Cancelled (Discard), the drawing is gone anyway: the tab offers Edit here instead again.
+  const pad = d1.getByRole('dialog', { name: 'Drawpad' });
+  await pad.getByRole('button', { name: 'Cancel' }).click();
+  await pad.locator('[data-ask][data-ready]').waitFor();
+  await pad.getByRole('button', { name: 'Discard', exact: true }).click();
+  await pad.waitFor({ state: 'detached' });
+  await d2.getByRole('button', { name: 'Edit here instead' }).waitFor({ timeout: 5000 });
+  assert((await lose.count()) === 0, 'once it’s cancelled, the warning goes');
+  // Drawn again, then taken over: asked first, and Edit here takes over.
+  await draw();
+  await lose.waitFor({ timeout: 5000 });
+  await lose.click();
+  const throwAsk = d2.getByRole('alertdialog', { name: 'Throw away the drawing or edit in the other tab?' });
+  await throwAsk.getByRole('button', { name: 'Edit here', exact: true }).click();
+  await d2.getByRole('button', { name: 'Open…' }).waitFor();
+  await d1.getByRole('heading', { name: 'This game is open in another tab' }).waitFor();
+  assert(true, 'taking over is asked first (“Throw away the drawing or edit in the other tab?”), and Edit here takes over');
+  await drawn.close();
+
   // A reload a moment after a change: the autosave started as the page went away may not finish, so a copy written at
   // once comes back instead (it lost the change every time before), with its undo history.
   const quick = await browser.newContext({ viewport: { width: 1400, height: 900 } });

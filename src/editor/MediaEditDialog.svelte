@@ -53,7 +53,7 @@
   import CropBox from './CropBox.svelte';
   import JobProgress from './JobProgress.svelte';
   import TrimBar from './TrimBar.svelte';
-  import { holdUnapplied } from '../lib/unapplied';
+  import { holdUnapplied } from '../lib/unapplied.svelte';
 
   let { id, item, onclose }: { id: Id; item?: VideoEl | AudioEl; onclose: () => void } = $props();
 

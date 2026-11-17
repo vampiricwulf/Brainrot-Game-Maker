@@ -32,6 +32,9 @@ the left, or **Cancel** and **Save first** at the right. Going on anyway keeps t
 offers **↶ Reopen previous game** until you change the new game.
 
 Only one browser tab can edit at a time. Another tab waits and offers **Edit here** once the first one closes.
+Taking over while the first tab plays a game, shows its audience window, or has a drawing or an edit not put in the
+game yet (a 🖌 Drawpad drawing not inserted, image edits or a trim not applied) asks first, since that tab stops it or
+throws it away. Closing or reloading the tab, or the desktop app's window, with such a drawing or edit asks first too.
 
 Old Jeopardy Builder games (`.jbr` packs and exported HTML files) still open.
 

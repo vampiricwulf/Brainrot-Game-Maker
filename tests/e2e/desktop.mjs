@@ -592,6 +592,36 @@ try {
   assert(true, '…the next ✕ asks again (storage that can’t be read either too), and Close anyway closes');
   await d.evaluate(() => (window.__full = window.__unreadable = false));
 
+  // A drawing not inserted yet (it's in no draft): closing asks first, as a browser tab does, and Stay keeps it.
+  await d.evaluate(() => (window.__closed = false));
+  await d.getByRole('button', { name: '＋ Add round' }).click();
+  await d.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+  await d.locator('[data-tile="0,0"]').click();
+  await d.keyboard.press('Enter');
+  const clueBox = d.getByRole('dialog', { name: 'Edit clue' });
+  await clueBox.waitFor();
+  await d.getByRole('button', { name: /◼ Shape/ }).click();
+  await d.getByRole('button', { name: '🖌 Drawpad…' }).click();
+  const pad = d.getByRole('dialog', { name: 'Drawpad' });
+  const area = await pad.getByLabel('Drawing area').boundingBox();
+  await d.mouse.move(area.x + area.width * 0.3, area.y + area.height * 0.5);
+  await d.mouse.down();
+  await d.mouse.move(area.x + area.width * 0.6, area.y + area.height * 0.4, { steps: 6 });
+  await d.mouse.up();
+  await calls(d);
+  await d.evaluate(() => window.__emit('close-requested'));
+  const drawingAsk = d.getByRole('alertdialog').filter({ hasText: 'Closing now throws away a drawing or an edit that isn’t in the game yet.' });
+  await drawingAsk.getByRole('button', { name: 'Stay' }).click();
+  await drawingAsk.waitFor({ state: 'detached' });
+  const kept = await calls(d);
+  assert(kept.includes('hold_close') && !kept.includes('close_app') && (await pad.isVisible()), `a drawing not inserted: closing asks first, and Stay keeps the window and the drawing (${kept.join(', ')})`);
+  await pad.getByRole('button', { name: 'Cancel' }).click();
+  await pad.locator('[data-ask][data-ready]').waitFor();
+  await pad.getByRole('button', { name: 'Discard', exact: true }).click();
+  await pad.waitFor({ state: 'detached' });
+  await d.keyboard.press('Escape');
+  await clueBox.waitFor({ state: 'hidden' });
+
   // Closing while a 🗜 copy for phones is made: Wait, and once it's done the app writes it, then closes.
   console.log('Closing while a copy for phones is made:');
   await d.evaluate(() => (window.__closed = false));

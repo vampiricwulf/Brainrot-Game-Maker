@@ -23,7 +23,7 @@
     renderEdited, sizeToOutput, STICKERS, toOutput, toSource, turnCrop,
   } from '../../lib/imageedit';
   import { editedFile, fileBytes, gifFrames } from '../../lib/gifedit';
-  import { holdUnapplied } from '../../lib/unapplied';
+  import { holdUnapplied } from '../../lib/unapplied.svelte';
 
   let { el, onclose }: { el: ImageEl; onclose: () => void } = $props();
 
