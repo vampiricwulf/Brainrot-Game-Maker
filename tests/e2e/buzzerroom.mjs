@@ -197,6 +197,11 @@ try {
   assert(new URL(bob.url()).pathname === `/${room.code}`, 'the code went into the address');
   const overflow = await bob.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   assert(!overflow, 'nothing overflows at 320px');
+  const soundWords = await bob.evaluate(() => {
+    const header = document.querySelector('header');
+    return { size: getComputedStyle(document.querySelector('#sound small')).fontSize, fits: header.scrollWidth <= header.clientWidth, title: document.getElementById('title').getBoundingClientRect().width };
+  });
+  assert(soundWords.size === '13px' && soundWords.fits && soundWords.title >= 60, `the header’s “Sound on” is 13px, and the header still fits at 320px with room for the title (${JSON.stringify(soundWords)})`);
 
   // Dee is new: she asks, the host adds her and accepts.
   const dee = await phone('dee');
@@ -206,6 +211,26 @@ try {
   await dee.getByRole('button', { name: 'Ask to join' }).click();
   await dee.locator('#new-err').getByText('Type your name first.').waitFor();
   assert(await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).evaluate((el) => el === document.activeElement), '"Ask to join" with no name says to type one, on the name screen');
+  /** Where the name form's reason is: right under the box (before Ask to join), and the box points at it. */
+  const errUnderBox = (p, form = 'new') =>
+    p.evaluate((f) => {
+      const [box, err, go] = [document.getElementById(`${f}-in`), document.getElementById(`${f}-err`), document.querySelector(`#${f}-form [type=submit]`)];
+      const [b, e, g] = [box, err, go].map((x) => x.getBoundingClientRect());
+      return box.getAttribute('aria-describedby') === `${f}-err` && e.top >= b.bottom && e.bottom <= g.top && g.top - b.bottom < 70;
+    }, form);
+  assert(await errUnderBox(dee), 'its reason is right under the name box, above Ask to join (not under Back), and the box is described by it');
+  // A name a player has: she stays on the name form, the reason under the box, the name selected to change (her own
+  // seat, if it's her, is a Back away).
+  await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).fill('ann');
+  await dee.getByRole('button', { name: 'Ask to join' }).click();
+  await dee.locator('#new-err').getByText('A player already has that name: add a letter, or pick another. If it’s you, go Back and tap your name.', { exact: true }).waitFor();
+  assert(
+    (await dee.locator('#s-new').isVisible()) &&
+      (await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).evaluate((el) => el === document.activeElement && el.value === 'ann' && el.selectionStart === 0 && el.selectionEnd === 3)) &&
+      (await dee.locator('#seats-note').innerText()) === '',
+    'a new player asking with a name a player has stays on the name form, the reason under the box, the name selected (not sent back to the list)',
+  );
+  await shot(dee, 'new-name-taken');
   await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).fill('Dee');
   await dee.getByRole('button', { name: 'Ask to join' }).click();
   // The wait names the name she asked as (a typo shows), and the name box said everyone sees it (as the team one does).
@@ -377,7 +402,15 @@ try {
     annTap.routes.length > annRoutes && (await big(ann2).innerText()) === 'Ann' && (await ann.getByRole('heading', { name: 'Tap your name' }).isVisible()),
     'after a dropped connection the first tab stays on the seat list: the tab in use keeps Ann’s seat',
   );
-  setState({ scores: { a: 200, b: 400 } });
+  // 🔒 Locked, her own seat can still be taken back here: the heading still says to tap it.
+  setState({ locked: true });
+  await ann.locator('#seats-status').getByText('The host has locked the seats').waitFor();
+  assert(
+    (await ann.getByRole('heading', { name: 'Tap your name', exact: true }).isVisible()) && (await annSeat.isEnabled()),
+    '🔒 seats locked: a tab whose seat moved still says “Tap your name” over its own seat (it can take it back)',
+  );
+  setState({ locked: false, scores: { a: 200, b: 400 } });
+  await ann.locator('#seats-status').getByText('The host has locked the seats').waitFor({ state: 'hidden' });
   await annSeat.click();
   await big(ann).getByText('Ann').waitFor();
   assert(true, 'and tapping it takes it back here (with the token: no "taken")');
@@ -786,6 +819,10 @@ try {
   await bob.locator('#seats-status').getByText('The host has locked the seats').waitFor();
   assert(await bob.getByRole('button', { name: 'Bob' }).isDisabled(), '🔒 seats locked: free seats are greyed out');
   assert(await bob.getByRole('button', { name: "＋ I'm new" }).isHidden(), '🔒 and nobody can ask to join');
+  assert(
+    (await bob.getByRole('heading', { name: 'Seats are locked', exact: true }).isVisible()) && !(await bob.locator('#live').innerText()).includes('Tap your name'),
+    '🔒 with no name Bob can tap, the heading says the seats are locked (not “Tap your name”)',
+  );
   /** What "Not you? Change player" asks Dee now, seated since before the lock (she says no). */
   const deeAsks = async () => {
     await dee.getByRole('button', { name: 'Not you? Change player' }).click();
@@ -802,6 +839,7 @@ try {
   assert(await deeWarned(true), '🔒 a seated phone’s “Not you?” warns that the seats are locked (she couldn’t get back in)');
   setState({ locked: false });
   await bob.locator('#seats-status').getByText('The host has locked the seats').waitFor({ state: 'hidden' });
+  assert(await bob.getByRole('heading', { name: 'Tap your name', exact: true }).isVisible(), 'unlocked: Bob’s heading says to tap his name again');
   assert(await deeWarned(false), 'unlocked: it asks plainly again');
   // Locked, a player taken out and put back (the host's Ctrl+Z, ↩ Restore) can't tap their name: their phone says why.
   setState({ locked: true });
@@ -823,6 +861,24 @@ try {
   await small(dee).getByText('Daily Double: Ann').waitFor();
   assert(true, 'a status line: "Daily Double — you\'re up!" for Ann, "Daily Double: Ann" for the others');
   setState({ status: null });
+
+  // Multiple choice on a short phone, 6 choices (one of 3 lines) under a caption, a question of 2 lines and the timer:
+  // after a tap, “✔ Sent: B…” under them is scrolled into sight (it was under the bottom of the screen).
+  await dee.setViewportSize({ width: 360, height: 640 });
+  const six = ['Penicillin', 'Aspirin', 'Insulin', 'The smallpox vaccine, first given to a boy in 1796 by a country doctor', 'Morphine', 'Quinine'].map((text, i) => ({ id: `c${i}`, text }));
+  setState({ clue: { text: 'This pain reliever was first made from willow bark, and Bayer sold it from 1899', caption: 'Medicine · $600' }, timer: { left: 30000 }, answers: { id: 'mc6', open: true, seats: [{ id: 'd' }], choices: six } });
+  await dee.locator('#answer-choices .choice').nth(5).waitFor();
+  await dee.locator('#answer-choices .choice', { hasText: 'Aspirin' }).click();
+  await dee.locator('#answer-state').getByText(/^✔ Sent: B\./).waitFor();
+  await dee.waitForFunction(() => {
+    const r = document.getElementById('answer-state').getBoundingClientRect();
+    return r.top >= 0 && r.bottom <= innerHeight + 0.5;
+  }, null, { timeout: 5000 });
+  assert(true, 'a choice tapped on a short phone: its “✔ Sent: B” line is scrolled into sight');
+  await shot(dee, 'choice-sent-360x640');
+  setState({ clue: null, timer: null, answers: null });
+  await big(dee).getByText('Dee').waitFor();
+  await dee.setViewportSize({ width: 360, height: 740 });
 
   // The host's connection drops with the buzzers open: phones are told, the race goes on, and the host hears who won
   // once it's back.

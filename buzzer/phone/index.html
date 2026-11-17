@@ -55,10 +55,11 @@
         <h1>What's your name?</h1>
         <form id="new-form">
           <label for="new-in">Your name (everyone sees it)</label>
-          <input id="new-in" maxlength="24" autocomplete="nickname" placeholder="e.g. Zoe" />
+          <input id="new-in" maxlength="24" autocomplete="nickname" placeholder="e.g. Zoe" aria-describedby="new-err" />
+          <!-- (What's wrong with the name, right under it: not under Back, away from the box.) -->
+          <p id="new-err" class="err" role="alert"></p>
           <button type="submit" class="primary">Ask to join</button>
           <button type="button" id="new-back" class="plain">Back</button>
-          <p id="new-err" class="err" role="alert"></p>
         </form>
       </section>
 
@@ -67,10 +68,10 @@
         <p id="team-on" class="note" dir="auto"></p>
         <form id="team-form">
           <label for="team-in">Your name (everyone sees it)</label>
-          <input id="team-in" maxlength="24" autocomplete="nickname" placeholder="e.g. Zoe" />
+          <input id="team-in" maxlength="24" autocomplete="nickname" placeholder="e.g. Zoe" aria-describedby="team-err" />
+          <p id="team-err" class="err" role="alert"></p>
           <button type="submit" class="primary">Join the team</button>
           <button type="button" id="team-back" class="plain">Back</button>
-          <p id="team-err" class="err" role="alert"></p>
         </form>
       </section>
 

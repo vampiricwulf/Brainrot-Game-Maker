@@ -92,6 +92,11 @@ let teamPick: SeatsMsg['seats'][number] | null = null;
 let teamAsked = false;
 /** Teams: that join was turned away, the room full (the name form says so when it's back). */
 let fullJoin = false;
+/**
+ * A name form's box, its name turned down (taken, or none): once the form is up again, the box gets the keys with the
+ * name selected, so a letter added or a new name typed fixes it (as the room code's box does).
+ */
+let retype: 'new-in' | 'team-in' | null = null;
 let notice: Notice | null = null;
 let seatsNote = '';
 /** Empties the assertive alert once it has been said, so a screen reader browsing later doesn't find a stale "BUZZ!". */
@@ -139,6 +144,11 @@ let answerFor = '';
 let answerTap = '';
 /** The room took it ('answered'): the next view has it. */
 let answerTapTaken = false;
+/**
+ * A choice tapped here whose "✔ Sent" line hasn't been shown yet: once it says so (or why not), it's scrolled into
+ * sight (with 5 or 6 choices it can be under the bottom of a short phone, and the tap would look unanswered).
+ */
+let pickToShow = '';
 /** The choices drawn (their ids and words), so they're drawn again only when they change (the keys stay put). */
 let choicesKey = '';
 let wasAnsUp = false;
@@ -621,14 +631,25 @@ function denied(reason: DenyReason): void {
     view = null;
     result = null;
   }
+  // A name someone else has, or a missing one, keeps the name form up to try again, the reason under the box (a new
+  // player's too: sent back to the list, they'd have to find ＋ I'm new again, maybe below the screen).
+  const nameNo = reason === 'name-taken' || reason === 'need-name';
+  const keepNew = !!pendingName && !teamPick && nameNo;
+  const keepForm = !!teamPick && teamAsked && nameNo;
   pendingName = null;
-  newForm = false;
-  // Teams: a name someone else has, or a missing one, keeps the name form up to try again.
-  const keepForm = teamPick && teamAsked && (reason === 'name-taken' || reason === 'need-name');
+  newForm = keepNew;
   teamAsked = false;
   if (teamPick && !keepForm) teamPick = null;
+  if (keepNew) {
+    // (If the name is theirs, their seat is on the list Back goes to.)
+    $('new-err').textContent =
+      reason === 'name-taken' ? tap('A player already has that name: add a letter, or pick another. If it’s you, go Back and tap your name.') : 'Type a name with letters in it.';
+    retype = 'new-in';
+    return;
+  }
   if (keepForm) {
     $('team-err').textContent = reason === 'name-taken' ? 'A team or someone in the game already has that name: add a letter, or pick another.' : 'Type your name first.';
+    retype = 'team-in';
     return;
   }
   seatsNote = tap(
@@ -1205,6 +1226,7 @@ function render(): void {
   if (pendingName) return wait(`Asked to join as ${pendingName}. Waiting for the host to let you in…`, true);
   if (newForm) {
     show('s-new');
+    retypeName('new-in');
     return;
   }
   if (teamPick && seats?.teams && !rejoining) return renderTeam(teamPick);
@@ -1239,6 +1261,16 @@ function renderTeam(t: SeatsMsg['seats'][number]): void {
   say(sentences([`Join ${t.name}`, t.members?.length ? `On it: ${t.members.join(', ')}` : '', 'Type your name']));
   show('s-team');
   if (wasHidden) inp.focus();
+  retypeName('team-in');
+}
+
+/** The name form's box back in use, its name selected, after the room turned the name down (see retype). */
+function retypeName(id: 'new-in' | 'team-in'): void {
+  if (retype !== id) return;
+  retype = null;
+  const box = $<HTMLInputElement>(id);
+  box.focus();
+  box.select();
 }
 
 /**
@@ -1250,15 +1282,22 @@ const everyTaken = (s: SeatsMsg): boolean => {
   return !s.teams && !s.allowNew && !s.locked && s.seats.length > 0 && s.seats.every((x) => x.taken && x.id !== saved?.seatId);
 };
 
+/** The seats are locked and none on the list is this phone's (one that is can still be taken back here). */
+const lockedOut = (s: SeatsMsg): boolean => {
+  const saved = loadSeat();
+  return !!s.locked && !s.seats.some((x) => x.id === saved?.seatId);
+};
+
 function renderSeats(s: SeatsMsg): void {
   if (s.title) $('title').textContent = s.title;
   const teams = !!s.teams;
   const allTaken = everyTaken(s);
-  // (Every seat taken, nobody new let in: no name here can be tapped, so the heading says why.)
-  $('seats-title').textContent = teams ? 'Pick your team' : allTaken ? 'Every seat is taken' : tap('Tap your name');
-  const list = $('seat-list');
   // The seat this phone still holds a claim to (another tab or phone took it back): tapping it takes it back here.
   const saved = loadSeat();
+  // (Every seat taken, nobody new let in, or the seats locked with none of them this phone's: no name here can be
+  // tapped, so the heading says why.)
+  $('seats-title').textContent = lockedOut(s) ? 'Seats are locked' : teams ? 'Pick your team' : allTaken ? 'Every seat is taken' : tap('Tap your name');
+  const list = $('seat-list');
   // Redrawn only when what it shows changed (a tap on a name mid-redraw would be lost, and the keys' place too); the
   // name the keys were on keeps them.
   const key = JSON.stringify([s.seats, s.teams, s.locked, s.allowNew, saved?.seatId ?? null]);
@@ -1362,7 +1401,8 @@ function renderSeatsRest(s: SeatsMsg): void {
   const free = allTaken ? 'If one is yours on a new phone, ask the host to free it.' : '';
   $('seats-status').textContent = s.locked ? '🔒 The host has locked the seats.' : [free, s.note ?? ''].filter(Boolean).join('\n');
   $('seats-note').textContent = seatsNote;
-  const head = teams ? 'Pick your team.' : allTaken ? 'Every seat is taken.' : tap('Tap your name.');
+  // (Locked with nothing to tap: the line under the heading says it, said once.)
+  const head = lockedOut(s) ? '' : teams ? 'Pick your team.' : allTaken ? 'Every seat is taken.' : tap('Tap your name.');
   say([head, seatsNote, s.locked ? 'The host has locked the seats.' : free, s.locked ? '' : sentences([s.note ?? '']), s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
   show('s-seats');
 }
@@ -1477,7 +1517,7 @@ function renderBuzz(v: PhoneView): void {
   if (boxUp) return renderWager(v, wager!, sym);
   if (ansUp) return renderAnswer(v, ans!, sym);
   if (!ans) ((answerFor = ''), (answerErr = ''));
-  answerTap = '';
+  answerTap = pickToShow = '';
   wagerFor = '';
   wagerErr = '';
   const left = Math.ceil((lockedUntil - serverNow()) / 1000);
@@ -2036,14 +2076,15 @@ function wagerState(w: PhoneWager, team: boolean, sym: string): string {
   if (w.amount === undefined) {
     // Typed, none sent yet (typing alone sends nothing). Seated after the wagers began: one is in, but this phone isn't
     // shown it.
-    const unsent = over || (typed ? tap('Not sent yet: tap Send wager to send it.') : '');
+    // (Not while the line above says what's wrong with it: "tap Send wager" would read as if the tap wasn't seen.)
+    const unsent = over || (typed && !typedErr(wagerErr) ? tap('Not sent yet: tap Send wager to send it.') : '');
     const hidden = w.hidden ? `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.` : '';
     return [unsent, hidden].filter(Boolean).join(' ');
   }
   const amt = money(w.amount, sym);
   // (As numbers: "00" typed after the 0 the host put in for a player with nothing to wager is the same wager.)
   if (over) return `${over} What the host has: ${amt}`;
-  if (typed && Number(typed) !== w.amount) return `${tap(`Not sent yet: tap ${w.host ? 'Send' : 'Change'} wager to send it.`)} What the host has: ${amt}`;
+  if (typed && Number(typed) !== w.amount) return typedErr(wagerErr) ? `What the host has: ${amt}` : `${tap(`Not sent yet: tap ${w.host ? 'Send' : 'Change'} wager to send it.`)} What the host has: ${amt}`;
   // The box holds what this phone sent: its quiet "✔ Sent" button says so, and the box shows the amount.
   if (quietSent(w, team)) return 'You can change it until the question shows.';
   const what = w.host ? `The host has ${team ? 'your team’s' : 'your'} wager as ${amt}` : team && w.by ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team` : w.sent ? `✔ Sent: ${amt}` : '';
@@ -2117,13 +2158,15 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
   if (!a.text) {
     // Typed, none sent yet (typing alone sends nothing). Seated after the answers began: one is in, but this phone isn't
     // shown it (as for wagers).
-    const unsent = !choices && typed ? tap('Not sent yet: tap Send answer to send it.') : '';
+    // (Not while the line above says what's wrong with it, as for wagers.)
+    const unsent = !choices && typed && !typedErr(answerErr) ? tap('Not sent yet: tap Send answer to send it.') : '';
     const hidden = a.hidden
       ? `${team ? 'Your team’s' : 'Your'} answer is in with the host (not shown on a phone that joined after the answers began). ${choices ? tap('Tapping one replaces it.') : 'Sending one replaces it.'}`
       : '';
     return [unsent, hidden].filter(Boolean).join(' ');
   }
-  if (!choices && typed && !sameAnswer(box, a.text)) return `${tap('Not sent yet: tap Change answer to send it.')} What the host has: ${quoted(a.text)}`;
+  if (!choices && typed && !sameAnswer(box, a.text))
+    return typedErr(answerErr) ? `What the host has: ${quoted(a.text)}` : `${tap('Not sent yet: tap Change answer to send it.')} What the host has: ${quoted(a.text)}`;
   // (A partner clue's guess, nobody buzzing, is locked once the host judges it too.)
   const until = view?.statusOff ? 'judges it or shows the answer' : 'shows the answer';
   // Multiple choice: by its letter alone ("✔ Sent: B", "✔ Ann picked B for your team"): the lit button has its words,
@@ -2258,6 +2301,11 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
         : ['Everyone answers'];
   say(sentences([connected ? '' : awayText(), ...what, state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
+  // (Once laid out. Only for this phone's own tap, once: never a teammate's pick, nor every redraw.)
+  if (pickToShow && !answerSending && (a.pick === pickToShow || answerErr)) {
+    pickToShow = '';
+    $(answerErr ? 'answer-err' : 'answer-state').scrollIntoView({ block: 'nearest' });
+  }
 }
 
 /** The game is over: "You came 1st" / "with $700 🎉" (teams: your team; a tie says so). */
@@ -2701,7 +2749,7 @@ $('answer-choices').addEventListener('click', (e) => {
   // (Already the one in: nothing to send.)
   if (pick === a.pick && !answerTap) return;
   answerErr = '';
-  answerTap = pick;
+  answerTap = pickToShow = pick;
   answerTapTaken = false;
   answerSending = connected;
   if (!connected) ((answerErr = 'Not connected: try again in a moment.'), (answerTap = ''));
@@ -2758,6 +2806,7 @@ $('new-btn').addEventListener('click', () => {
 });
 $('new-back').addEventListener('click', (e) => {
   newForm = false;
+  retype = null;
   $('new-err').textContent = '';
   render();
   // (Back with the keys, or Esc: they go back onto ＋ I'm new.)
@@ -2811,6 +2860,7 @@ $('team-back').addEventListener('click', (e) => {
   const was = teamPick?.id;
   teamPick = null;
   teamAsked = fullJoin = false;
+  retype = null;
   render();
   // (Back with the keys, or Esc: they go back onto that team.)
   if (e.detail === 0 && was) $('seat-list').querySelector<HTMLElement>(`[data-seat="${CSS.escape(was)}"]`)?.focus();

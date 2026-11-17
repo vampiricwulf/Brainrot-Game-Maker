@@ -196,6 +196,14 @@ try {
   await nameTaken.waitFor();
   // (In red, as the new-player form's errors are.)
   assert((await zed.locator('#team-err').getAttribute('class')) === 'err', 'the team list shows who is on each team, and a name someone has is taken (in red)');
+  assert(
+    await zed.evaluate(() => {
+      const [box, err, go] = [document.getElementById('team-in'), document.getElementById('team-err'), document.querySelector('#team-form [type=submit]')];
+      const [b, e, g] = [box, err, go].map((x) => x.getBoundingClientRect());
+      return box.getAttribute('aria-describedby') === 'team-err' && e.top >= b.bottom && e.bottom <= g.top && document.activeElement === box && box.selectionStart === 0 && box.selectionEnd === 3;
+    }),
+    'the reason is right under the name box (above Join the team), which is described by it, and has the keys, the name selected to change',
+  );
   // A team's name too ("Player 1" on Player 2 would buzz as "Player 1 (Player 2)").
   // (Join the team empties the line first: what shows next is the room's answer.)
   await zed.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('player 1');

@@ -237,7 +237,13 @@ try {
   await ann.locator('#wager-err').getByText('Type a whole number, 0 or more.').waitFor();
   await ann.locator('#wager-in').fill('777');
   assert((await ann.locator('#wager-err').innerText()) === '', 'the red “Type a whole number” goes once an amount is typed');
-  // Within it: the host's box fills in, marked 📱.
+  // (While it says what's wrong with the box, no “Not sent yet: tap Send wager” under it: they just did.)
+  await sendWager(ann, '-5');
+  await ann.locator('#wager-err').getByText('Type a whole number, 0 or more.').waitFor();
+  assert((await ann.locator('#wager-state').innerText()) === '', `a wager the phone can't send (-5): only the red reason, no “Not sent yet” (${await ann.locator('#wager-state').innerText()})`);
+  await shot('wager-invalid', ann);
+  await ann.locator('#wager-in').fill('77');
+  assert(/^Not sent yet/.test(await ann.locator('#wager-state').innerText()), 'once the box changes, “Not sent yet” is back');
   await sendWager(ann, 777);
   await ann.locator('#wager-state').getByText('You can change it until the question shows.', { exact: true }).waitFor();
   // (The quiet “✔ Sent” button says it's in, and the box shows the amount: the line under it doesn't say either again.)
@@ -254,6 +260,9 @@ try {
   assert((await ann.locator('#wager-state').innerText()) === 'You can change it until the question shows.', 'a double press of “✔ Sent” sends nothing (no “Sending…”)');
   await ann.locator('#wager-in').fill('778');
   assert((await wagerBtn(ann)) === 'Change wager | primary', `the box changed: the blue Change wager (${await wagerBtn(ann)})`);
+  await sendWager(ann, '12.5');
+  await ann.locator('#wager-err').getByText('Type a whole number, 0 or more.').waitFor();
+  assert((await ann.locator('#wager-state').innerText()) === 'What the host has: $777', `a change the phone can't send (12.5): the red reason, and what the host has, without “Not sent yet” (${await ann.locator('#wager-state').innerText()})`);
   await ann.locator('#wager-in').fill('777');
   assert((await wagerBtn(ann)) === '✔ Sent | sent', 'back to what was sent: “✔ Sent” again');
   await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '777');
