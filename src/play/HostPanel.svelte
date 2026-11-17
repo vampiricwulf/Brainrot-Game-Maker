@@ -489,9 +489,23 @@
   /** With the slide's media rows in, the panel ran over: the fixed bar went out of sight. */
   let mediaCrowded = $state(false);
   const mayFoldForMedia = $derived(!dual && !side && !revealFold && !toolFirst);
+  /**
+   * The panel's size, while the rows may fold: a window grown or shrunk with the clue up (fullscreen left, the browser
+   * snapped to half the screen) measures them again. (Its height follows the window's, never what's in it: folding
+   * doesn't change it.)
+   */
+  let panelSize = $state('');
+  $effect(() => {
+    if (!panelEl || !mayFoldForMedia || mediaRows < 2) return;
+    const el = panelEl;
+    const seen = new ResizeObserver(() => (panelSize = `${el.clientWidth}x${el.clientHeight}`));
+    seen.observe(el);
+    return () => seen.disconnect();
+  });
   $effect(() => {
     const n = mediaRows;
     const may = mayFoldForMedia;
+    void panelSize;
     mediaCrowded = false;
     if (!may || n < 2) return;
     // (Measured with the tools row out, once the rows are in, before the frame is drawn.)

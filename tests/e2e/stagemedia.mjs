@@ -604,6 +604,23 @@ try {
     await lp.screenshot({ path: 'test-results/stagemedia-laptop.png' });
     assert(fit.exitBottom <= 720 && fit.tools === 'none' && fit.fold, `at 1280×720 the tools row folds behind ⋯ Tools, and 🚪 Exit is in sight (${JSON.stringify(fit)})`);
     assert((await stageAt()) === onBoard, `and the stage keeps its size (${onBoard} / ${await stageAt()})`);
+    // The window grown with the clue up (fullscreen, a snapped window let go): measured again, the tools row is back
+    // where there's room. And shrunk again: folded again, 🚪 Exit still in sight.
+    const fitNow = () =>
+      lp.evaluate(() => {
+        const exit = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Exit'));
+        const tools = document.querySelector('.toolsrow');
+        return { exitBottom: Math.round(exit.getBoundingClientRect().bottom), tools: tools ? getComputedStyle(tools).display : 'none', fold: !!document.querySelector('.toolsfold') };
+      });
+    await lp.setViewportSize({ width: 1280, height: 1000 });
+    await lp.waitForTimeout(400);
+    const grown = await fitNow();
+    assert(grown.exitBottom <= 1000 && grown.tools !== 'none' && !grown.fold, `grown to 1280×1000 with the clue up: the tools row is back, ⋯ Tools gone (${JSON.stringify(grown)})`);
+    await lp.setViewportSize({ width: 1280, height: 720 });
+    await lp.waitForTimeout(400);
+    const shrunk = await fitNow();
+    assert(shrunk.exitBottom <= 720 && shrunk.tools === 'none' && shrunk.fold, `back to 1280×720: folded again, 🚪 Exit in sight (${JSON.stringify(shrunk)})`);
+    assert((await stageAt()) === onBoard, 'and the stage is its size again');
     // 🚪 Exit's question, in the strip over the tools row: its answers in sight too.
     await lp.getByRole('button', { name: /Exit/ }).click();
     const stay = lp.locator('.askslot').getByRole('button', { name: 'Stay' });
