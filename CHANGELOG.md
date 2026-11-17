@@ -11,6 +11,43 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Added
+
+- A link to the app shared on Discord, Slack or a search page now shows a short description of what it is, not just the bare title. (8b41e14)
+
+### Fixed
+
+- On the website copy, a blocked popup (the audience window, the scores window, a 🪟 card window or a media link) now says to allow popups for this site, not "for this file". (4753790)
+- On the website copy, ℹ About now shows the version as "(online)" instead of "(single HTML file)". It also says the site keeps its own games apart from the downloaded file and the desktop app, and that you move a game across with 💾 Save and 📂 Open…. (4753790)
+- With JavaScript turned off, the page now says it needs JavaScript (turn it on, or use a recent Chrome, Edge or Firefox) instead of showing "Loading…" forever. (8b41e14)
+- ⚙ Settings › Back to the defaults… no longer promises a "built-in" buzzer server in a copy that has none: there it says the buzzer server address is cleared. The question also uses the window's full width instead of a narrow column next to Done. (0d56b76)
+- A round's page on a tablet-sized window (about 701 to 1000 px wide, with the sidebar beside it) no longer squeezes the round's name to nothing under ▶ Test this round and the other buttons. The buttons now go under the name when there isn't room for both (aebc9be).
+- A page or round picked in the sidebar, or a round just added, opens at its top, not as far down as the last page was scrolled (aebc9be, 5a9b183).
+- At 1280×720 the sample game's sidebar fits: 🕘 History is no longer cut off above the checklist (aebc9be).
+- On a 1280×720 laptop, 📂 Open a game… on the first screen stays in view when the "… is out" update notice is showing (aebc9be).
+- ＋ Add slide and ＋ 🤫 Card are the same size as the other buttons in their row (Slides rounds, the clue editor, the Final and the tiebreaker) (aebc9be, 5a9b183).
+- In a Slides round, the slide's 🅣 Text / 🖼 Image row no longer sits right on the Text box's border (aebc9be).
+- ⌨ Keyboard shortcuts: a long key that wraps onto two lines now shows as a whole chip on each line, not two half-boxes (aebc9be).
+- The host's leave-round question no longer doubles the punctuation after a round name: "12 clues are left in Jeopardy! Go to Board game?" (e267d80).
+- With no players yet, the pre-game line now says "Add players above to start, or". It used to include a "＋ Add player" that looked like a button but did nothing when clicked (e267d80).
+- The toast after 📋 Copy slide in the clue editor is no longer cut off mid-sentence over the window. It now reads “Slide copied: 📋 Paste slide by the tabs adds it as a new slide, here or in another clue or game”. The slide tabs' Copy slide and Copy round toasts are shorter too. (2bcd0ac)
+- Screen readers now hear when the editor's notice says a newer version is out, once per version, even when the hourly check finds it while you're busy. (2bcd0ac)
+- After ⬇ Download, the steps notice under the header keeps its ⬆ with its words on a narrow window, instead of leaving the ⬆ alone on a line. (2bcd0ac)
+- A notice that appears under the header while a window (such as ⚙ Settings) is open is now out of reach behind the window, like the rest of the page. (2bcd0ac)
+- Screen readers name the ⌨ Keyboard shortcuts window for the part it shows: “Editor keyboard shortcuts” or “Keyboard shortcuts during the game”. Before, it said “Editor keyboard shortcuts” even while showing the game's keys. (2bcd0ac)
+- A Daily Double or the Final's wagers that can't go on yet (nobody picked, no wager, over the max, wagers still to come) now say why in the host panel's status line when you press the blue Show question ▶, N or Enter, as a click on the stage does, not in a message at the foot of the window (1ca1794).
+- Undo of a score change takes its pop ("−$200") off the stage right away, so it no longer stays up after the score has gone back (1ca1794).
+- Clicking a score to fix it no longer widens that player's chip and pushes the other chips sideways (1ca1794).
+- The Game over screen no longer shows the ★ "picks next" star on a player's chip, where it looked like a winner's mark (1ca1794).
+- Partner clue wording: the check reads "First: Bob needs a partner." (not "…a partner first."), and the cards line says "you’ll copy it" or "phones get it" when there's one card (1ca1794).
+- On a short phone with a clue up, tapping "Not you? Change player" now scrolls down to its question (Keep playing / Give up), instead of opening it below the screen so the tap looked like it did nothing (88ba5ab).
+- The phone's seat list no longer leaves blank lines under "Tap your name", so more names and "＋ I'm new" fit on screen; and "The host isn't connected right now" now shows under the heading instead of below all the names (88ba5ab).
+- On a phone joining a team, a refused name ("A team or someone in the game already has that name…", "The game is full…") now shows in red, like the new-player form's errors, not in grey (88ba5ab).
+- Typing a room code that can't be one (too short, or with a vowel) and tapping Join now puts the cursor back in the box with the code selected, so a phone's keyboard stays up to fix it (88ba5ab).
+- A negative score on a phone (like "You came 6th with −$600") no longer breaks between the minus sign and the amount (88ba5ab).
+
 ## 2026-11-15
 
 ### Added
