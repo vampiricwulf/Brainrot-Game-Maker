@@ -268,6 +268,14 @@ export function atAPause(): void {
   settle(takeHeld());
 }
 
+/**
+ * ℹ About acts on the version held for a pause (⬆ Update, ⬇ Download, ⟳ Reload): it's the one known from now on, so
+ * the editor's notice names it, and nothing goes on offering the older one.
+ */
+export function settleHeld(release: Release): void {
+  if (update.held?.version === release.version) settle(takeHeld());
+}
+
 let said = '';
 
 /**

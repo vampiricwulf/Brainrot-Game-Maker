@@ -636,6 +636,45 @@ try {
   // (An MP4 where the browser makes H.264, as CI's does; a WebM in the test Chromium here.)
   assert(atClose?.some((n) => /^dance \(phones\)\.(mp4|webm)$/.test(n)), `Wait: the app closes once the copy is made, with it written (${atClose?.join(', ')})`);
 
+  // ⬆ Update pressed in ℹ About for a version the hourly check holds for a pause: from then on it's the version known,
+  // so the editor's notice names it (not the one the start-up check found).
+  {
+    console.log('⬆ Update for a version waiting for a pause:');
+    const hctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    await hctx.addInitScript(fakeDesktop);
+    await hctx.addInitScript(() => localStorage.setItem('jb.updateCheck', 'on'));
+    let answer = { ...latest, tag_name: 'v0.0.1' };
+    await hctx.route('https://api.github.com/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(answer) }),
+    );
+    const hp = await hctx.newPage();
+    hp.on('pageerror', (e) => errors.push(`[held] ${e.message}`));
+    await hp.clock.install();
+    await hp.goto(url);
+    await hp.getByRole('button', { name: 'Open…' }).waitFor();
+    await hp.evaluate(() => {
+      window.__installGo = new Promise((go) => (window.__installDone = go));
+    });
+    answer = latest;
+    await hp.clock.fastForward('01:01:00');
+    await hp.waitForTimeout(300);
+    await hp.getByRole('button', { name: /^More:/ }).click();
+    await hp.getByRole('menuitem', { name: /About/ }).click();
+    const about = hp.getByRole('dialog', { name: 'About Brainrot Games Maker' });
+    await about.getByRole('button', { name: '⬆ Update to 99.0.0' }).click();
+    await about.getByRole('button', { name: 'Updating…' }).waitFor();
+    await hp.keyboard.press('Escape');
+    await about.waitFor({ state: 'detached' });
+    const hn = hp.locator('.data-notice', { hasText: 'is out' });
+    await hn.waitFor({ timeout: 2000 });
+    const words = await hn.innerText();
+    assert(words.includes('99.0.0 is out') && words.includes('Updating…'), `while it installs, the editor’s notice names 99.0.0 (${words.split('\n')[0]})`);
+    await hp.evaluate(() => window.__installDone());
+    await hp.waitForFunction(() => window.__calls.includes('restart_app'));
+    assert(true, 'and the app restarts into it once it’s in place');
+    await hctx.close();
+  }
+
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nDesktop E2E passed.');
 } finally {

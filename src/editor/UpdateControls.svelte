@@ -14,7 +14,7 @@
   import { inTauri, onlineCopy } from '../lib/platform';
   import { oneShot } from '../lib/oneshot';
   import { jobAsk, jobLine, stopAll } from '../lib/shrink/jobs.svelte';
-  import { ASSETS, skipVersion, update, type Release } from '../lib/update.svelte';
+  import { ASSETS, settleHeld, skipVersion, update, type Release } from '../lib/update.svelte';
 
   let { release, notice = false }: { release: Release; notice?: boolean } = $props();
 
@@ -35,6 +35,7 @@
 
   async function install(): Promise<void> {
     if (!exe || !sig) return;
+    settleHeld(release);
     // A ✎ / 🗜 / 🔄 job would be cut off by the restart: asked first, as New and ▶ Play do.
     const job = jobAsk('restart into the new version');
     if (job) {
@@ -75,6 +76,7 @@
   /** The HTML file: the new one opens in a new tab, and the steps from there show here (and in the other place). */
   let doneBtn = $state<HTMLButtonElement>();
   function download(): void {
+    settleHeld(release);
     open(html ?? release.page);
     update.downloading = release.version;
     // (Its button gives way to the steps: the keys go to Done.)
@@ -90,9 +92,9 @@
     {update.status === 'installing' ? 'Updating…' : ready ? `⟳ Restart into ${release.version}` : `⬆ Update to ${release.version}`}
   </button>
 {:else if desktopApp}
-  <button class="small primary" onclick={() => open(exe ?? release.page)} title="Put the downloaded .exe in place of this one">⬇ Download {release.version}</button>
+  <button class="small primary" onclick={() => (settleHeld(release), open(exe ?? release.page))} title="Put the downloaded .exe in place of this one">⬇ Download {release.version}</button>
 {:else if online}
-  <button class="small primary" onclick={() => location.reload()} title="This is the online copy: reloading the page gets the new version (just put up, it can take a few minutes to show).">
+  <button class="small primary" onclick={() => (settleHeld(release), location.reload())} title="This is the online copy: reloading the page gets the new version (just put up, it can take a few minutes to show).">
     ⟳ Reload for {release.version}
   </button>
 {:else if notice && update.downloading === release.version}
