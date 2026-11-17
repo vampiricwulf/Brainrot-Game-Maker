@@ -209,7 +209,7 @@
       {/each}
     </div>
     <!-- (Under what's left, not in the pinned foot: in a short panel the first fix stays in sight above the foot.) -->
-    {#if teach && left.length}<p class="teach">{teach}</p>{/if}
+    {#if teach && left.length}<p class="teach not-touch">{teach}</p>{/if}
     {#each ticks as kind (kind)}
       <label class="check tick-row"><input type="checkbox" onchange={(e) => e.currentTarget.checked && onquiet(kind)} /> {CHECK.dontAsk(CHECK.quiet[kind])}</label>
     {/each}

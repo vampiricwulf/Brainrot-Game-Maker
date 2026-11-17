@@ -82,9 +82,12 @@ const buzzer = await startBuzzer('buzzer-goon-');
 const browser = await chromium.launch({ executablePath });
 const errors = [];
 
-/** A window at 1280×720 on the game's pre-game screen (`server`: the buzzer server in its settings; `from`: its file). */
-async function host(name, server, from = gameFile) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+/**
+ * A window at 1280×720 on the game's pre-game screen (`server`: the buzzer server in its settings; `from`: its file;
+ * `opts`: the window's own, a touch tablet's say).
+ */
+async function host(name, server, from = gameFile, opts = { viewport: { width: 1280, height: 720 } }) {
+  const ctx = await browser.newContext(opts);
   if (server)
     await ctx.addInitScript((s) => {
       try {
@@ -497,6 +500,30 @@ try {
     await page.keyboard.press('n');
     await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
     assert((await page.evaluate(() => window.__goonSeen)) === seen && (await page.locator('.stage-box .stage', { hasText: 'The final answer' }).count()) === 1, `the clock ${how}: N shows the answer at once, no check`);
+    await ctx.close();
+  }
+
+  // ---------- 3c: the Final's clock check on a touch tablet: no keys taught ----------
+  console.log('The Final’s clock check on a touch tablet:');
+  for (const [what, opts] of [
+    ['a computer', { viewport: { width: 1280, height: 720 } }],
+    ['a touch tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true }],
+  ]) {
+    const { ctx, page } = await host(`final, ${what}`, undefined, finalFile, opts);
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    await page.locator('.fj .wagers, .stage-box .title-card').first().waitFor();
+    if (await page.locator('.stage-box .title-card').count()) await page.keyboard.press('n');
+    await page.locator('.fj .wagers').waitFor();
+    const zeroBoxes = page.locator('.fj .wagers input[data-wager]');
+    for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill('0');
+    await page.keyboard.press('n');
+    await page.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
+    await mainButton(page, '👁 Reveal answer').click();
+    await checkItem(page, 'clock').waitFor();
+    const teach = goOnCheck(page).locator('.teach');
+    const shown = (await teach.count()) === 1 && (await teach.isVisible());
+    // (A finger can't press R or Shift+click: "Next time: …" is only for a keyboard and a mouse.)
+    assert(what === 'a computer' ? shown : !shown, `${what}: the check ${what === 'a computer' ? 'says' : 'doesn’t say'} “Next time: R reveals at once · Shift+click …”`);
     await ctx.close();
   }
 
