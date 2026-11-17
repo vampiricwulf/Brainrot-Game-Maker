@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { answerReplace, editorReady, exportHtml, nameGame, noDailyDoubles, openGameFile, png } from './helpers.mjs';
+import { answerReplace, editorReady, exportHtml, lineOf, nameGame, noDailyDoubles, openGameFile, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -81,6 +81,13 @@ try {
     await p.locator('header').getByText('⚠ Autosave unavailable here: use Save').waitFor();
     const first = await p.locator('.first-round').innerText();
     assert(first.includes("This browser isn't keeping your game") && !first.includes('kept in this browser'), 'with storage blocked from the start, the first screen says the game isn’t kept, to 💾 Save it');
+    // In a narrow window the header's warning gives way like the saved note: one line, cut short (its tooltip says it
+    // all), so the header doesn't grow taller and push the editor down.
+    for (const width of [860, 800, 740]) {
+      await p.setViewportSize({ width, height: 720 });
+      const warn = await p.locator('header > .autosave.warn').evaluate(lineOf);
+      assert(warn.lines === 1, `at ${width} px wide the header's “⚠ Autosave unavailable” stays one line (${JSON.stringify(warn)})`);
+    }
     await blocked.close();
   }
 

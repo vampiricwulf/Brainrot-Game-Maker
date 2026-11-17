@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, lineOf, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -48,11 +48,13 @@ try {
   const notice = page.locator('.data-notice', { hasText: 'is out' });
   await notice.waitFor();
   assert((await notice.innerText()).includes('Brainrot Games Maker 99.0.0 is out'), `the editor says a newer version is out (${(await notice.innerText()).split('\n')[0]})`);
-  // On a 1280×720 laptop the first screen's 📂 Open a game… stays in view under it.
-  await page.setViewportSize({ width: 1280, height: 720 });
-  const openLine = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
-  assert(openLine <= 720, `with the notice up, 📂 Open a game… is in a 1280×720 window (${openLine})`);
-  await page.setViewportSize({ width: 1280, height: 800 });
+  // On a laptop's screen (1280×720, 1366×768 and a little shorter, a 1024×768 one) the first screen's 📂 Open a game…
+  // stays in view under it, with room to spare (a wider font than CI's mustn't push it off).
+  for (const [w, h] of [[1280, 720], [1366, 768], [1366, 764], [1024, 768], [1280, 800], [1366, 801], [1280, 840]]) {
+    await page.setViewportSize({ width: w, height: h });
+    const openLine = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
+    assert(openLine <= h - 12, `with the notice up, 📂 Open a game… is in a ${w}×${h} window (${openLine})`);
+  }
   // (A notice that appears with its words isn't always read: screen readers hear it from the page's live region.)
   await page.waitForFunction(() => document.getElementById('live-region')?.dataset.said?.includes('Brainrot Games Maker 99.0.0 is out.'), null, { timeout: 3000 });
   assert(true, 'screen readers are told a newer version is out');
@@ -372,16 +374,20 @@ try {
       'online, the notice offers ⟳ Reload for the new version, not a download',
     );
     // Online, the first screen's line that says what the app is ends with where to get the app (to keep, or use
-    // offline). With the notice up, 📂 Open a game… still fits a 1280×720 laptop.
-    await wp.setViewportSize({ width: 1280, height: 720 });
+    // offline). With the notice up it stays one line (its words cut short where the window is narrow, the link whole,
+    // the full words in its tooltip) and 📂 Open a game… still fits a laptop's screen.
     const what = wp.locator('.first-round > p.what');
     const get = what.getByRole('link', { name: 'Get the app ↗' });
-    const whatLines = await what.evaluate((e) => e.getBoundingClientRect().height / (parseFloat(getComputedStyle(e).lineHeight) || 16));
-    const wOpen = await wp.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
-    assert(
-      (await get.getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases' && (await get.getAttribute('target')) === '_blank' && whatLines < 2 && wOpen <= 720,
-      `online, the first screen's one line about the app ends with “Get the app ↗” (the Releases page), and 📂 Open a game… fits under the notice (${whatLines.toFixed(2)} lines, ${wOpen})`,
-    );
+    for (const [w, h] of [[1280, 720], [1366, 768], [1366, 764], [1024, 768]]) {
+      await wp.setViewportSize({ width: w, height: h });
+      const line = await what.evaluate(lineOf);
+      const wOpen = await wp.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
+      assert(
+        (await get.getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases' && (await get.getAttribute('target')) === '_blank' &&
+          line.lines === 1 && line.linkIn && line.title.includes('players buzz in from their phones') && wOpen <= h - 12,
+        `online at ${w}×${h}, the first screen's one line about the app ends with “Get the app ↗” (the Releases page), and 📂 Open a game… fits under the notice (${JSON.stringify(line)}, ${wOpen})`,
+      );
+    }
     await wp.setViewportSize({ width: 1280, height: 800 });
     let reloaded = false;
     wp.on('framenavigated', (f) => f === wp.mainFrame() && (reloaded = true));

@@ -819,3 +819,23 @@ export async function showChecklist(page) {
   await head.waitFor();
   if ((await head.getAttribute('aria-expanded')) === 'false') await head.click();
 }
+
+/**
+ * (Run in the page, with `locator.evaluate(lineOf)`.) How many lines an element's words take, counted from where they
+ * sit (its height over its line height can't tell: a `normal` line height reads as no number, and a guess passes two
+ * lines), whether any of it is cut short with an ellipsis, whether its link (if any) shows whole inside it, and its
+ * tooltip.
+ */
+export const lineOf = (e) => {
+  const range = document.createRange();
+  range.selectNodeContents(e);
+  const tops = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0).map((r) => r.top).sort((a, b) => a - b);
+  // (Words in another font, or bold, sit a few pixels off the line's own top: a new line is more than half a line down.)
+  const half = (parseFloat(getComputedStyle(e).fontSize) || 12) * 0.6;
+  const lines = tops.reduce((n, t, i) => (i && t - tops[i - 1] > half ? n + 1 : n), tops.length ? 1 : 0);
+  const box = e.getBoundingClientRect();
+  const link = e.querySelector('a')?.getBoundingClientRect();
+  const linkIn = !!link && link.left >= box.left - 1 && link.right <= box.right + 1 && link.right <= innerWidth;
+  const cut = [e, ...e.querySelectorAll('*')].some((el) => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).textOverflow === 'ellipsis');
+  return { lines, cut, linkIn, title: e.title };
+};

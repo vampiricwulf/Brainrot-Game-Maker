@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { answerReplace, clickExportHtml, editorReady, openRules } from './helpers.mjs';
+import { answerReplace, clickExportHtml, editorReady, lineOf, openRules } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -61,11 +61,16 @@ try {
   const openBottom = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
   assert(openBottom <= 720 && (await page.locator('.first-round > p').count()) === 3, `the first screen has three lines of words and 📂 Open a game… in the window (${openBottom})`);
   const what = page.locator('.first-round > p.what');
-  const whatBox = await what.evaluate((e) => ({ h: e.getBoundingClientRect().height, line: parseFloat(getComputedStyle(e).lineHeight) || 16, above: !!e.nextElementSibling?.matches('h2') }));
+  // (At 1280 it shows whole; narrower, it stays one line, cut short, the full words in its tooltip.)
+  const whatBox = { ...(await what.evaluate(lineOf)), above: await what.evaluate((e) => !!e.nextElementSibling?.matches('h2')) };
   assert(
-    (await what.innerText()).startsWith('🎮 Brainrot Games Maker: build a game show') && (await what.innerText()).includes('Nothing to install.') && whatBox.above && whatBox.h < 2 * whatBox.line && (await what.locator('a').count()) === 0,
-    `over “Add your first round”, one line says what the app is (no download link in the file: it's the file) (${JSON.stringify(whatBox)})`,
+    (await what.innerText()).startsWith('🎮 Brainrot Games Maker: build a game show') && (await what.innerText()).includes('Nothing to install.') && whatBox.above && whatBox.lines === 1 && !whatBox.cut && (await what.locator('a').count()) === 0,
+    `over “Add your first round”, one line says what the app is, whole (no download link in the file: it's the file) (${JSON.stringify(whatBox)})`,
   );
+  await page.setViewportSize({ width: 900, height: 720 });
+  const narrowWhat = await what.evaluate(lineOf);
+  assert(narrowWhat.lines === 1 && narrowWhat.title.includes('Nothing to install.'), `in a 900 px window it's still one line, its words in full in its tooltip (${JSON.stringify(narrowWhat)})`);
+  await page.setViewportSize({ width: 1280, height: 720 });
   // A card a mode, each with at most two templates in it to start from (＋ Add round has them all).
   const starts = await page.locator('.first-round .card').evaluateAll((cs) => cs.map((c) => [...c.querySelectorAll('.from button')].map((b) => b.textContent.trim())));
   assert(

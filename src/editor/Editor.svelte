@@ -1237,11 +1237,11 @@
     </button>
     <span class="spacer"></span>
     {#if exporting}
-      <span class="muted autosave" role="status">⬇ Exporting the play-only web page…{packPct !== null ? ` ${packPct}%` : ''}</span>
+      <span class="muted autosave" role="status" title="Exporting the play-only web page">⬇ Exporting the play-only web page…{packPct !== null ? ` ${packPct}%` : ''}</span>
     {/if}
     <JobPill />
     {#if opening}
-      <span class="muted autosave" role="status">📂 Opening “{opening}”…</span>
+      <span class="muted autosave" role="status" title={`Opening “${opening}”`}>📂 Opening “{opening}”…</span>
     {/if}
     {#if app.storageOk}
       <!-- (In a browser it says it isn't a file: the game is kept in the browser until 💾 Save makes one.) -->
@@ -1569,9 +1569,10 @@
         {:else if !game.rounds.length}
           <div class="first-round">
             <!-- What this is, for someone who came by a link with nothing else to go on (one line, so the cards and 📂 Open a
-                 game… still fit a laptop's screen). Online, where the desktop app and the file to keep are from. -->
-            <p class="muted small what">
-              🎮 <b>Brainrot Games Maker</b>: build a game show, host it on stream, players buzz in from their phones.{#if !inTauri()}{' '}Nothing to install.{/if}
+                 game… still fit a laptop's screen: in a narrower window its words are cut short, all of them in its
+                 tooltip). Online, where the desktop app and the file to keep are from (always whole). -->
+            <p class="muted small what" title={`Brainrot Games Maker: build a game show, host it on stream, players buzz in from their phones.${inTauri() ? '' : ' Nothing to install.'}`}>
+              <span class="words">🎮 <b>Brainrot Games Maker</b>: build a game show, host it on stream, players buzz in from their phones.{#if !inTauri()}{' '}Nothing to install.{/if}</span>
               {#if onlineCopy()}<a href={RELEASES} target="_blank" rel="noreferrer" title="The desktop app, or the game maker as one file to keep and use offline (GitHub)">Get the app ↗</a>{/if}
             </p>
             <h2>Add your first round</h2>
@@ -1695,9 +1696,25 @@
     flex-direction: column;
     gap: 12px;
   }
-  /* (On a laptop's short screen it starts near the top, a little closer together, so 📂 Open a game… stays in view under
-     a notice such as "… is out".) */
-  @media (max-height: 760px) {
+  /* The line saying what the app is never wraps, so it never pushes 📂 Open a game… off a laptop's screen: its words
+     give way (cut short, the rest in its tooltip), the link after them doesn't. */
+  .first-round .what {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3em;
+    white-space: nowrap;
+  }
+  .first-round .what > .words {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .first-round .what > a {
+    flex-shrink: 0;
+  }
+  /* (On a laptop's short screen, 1366×768 and 1280×800 too, it starts near the top, a little closer together, so 📂 Open
+     a game… stays in view under a notice such as "… is out", with room to spare for a wider font than CI's.) */
+  @media (max-height: 800px) {
     .first-round {
       margin-top: 8px;
       gap: 8px;
@@ -1808,11 +1825,14 @@
     min-width: 120px;
     flex-shrink: 1;
   }
+  /* (One line, every note there: in a narrow window it's cut short, its tooltip saying it all, rather than wrapping
+     and making the header taller.) */
   .autosave {
     font-size: 12px;
     min-width: 0;
     flex-shrink: 1;
     overflow: hidden;
+    white-space: nowrap;
     text-overflow: ellipsis;
   }
   .more {
@@ -1855,11 +1875,8 @@
       text-align: right;
     }
   }
-  /* Short, so it stays on one line (the details are in its tooltip). From a laptop up it's never cut mid-word: the
+  /* (Short, on one line like the other notes, the details in its tooltip.) From a laptop up it's never cut mid-word: the
      title box gives way first. */
-  .saved {
-    white-space: nowrap;
-  }
   @media (min-width: 1101px) {
     .saved {
       flex-shrink: 0;
@@ -2044,6 +2061,11 @@
     min-width: 0;
   }
   @media (max-width: 700px) {
+    /* (On a phone the page scrolls, so the line about the app wraps: cut to a few words it would say nothing.) */
+    .first-round .what {
+      display: block;
+      white-space: normal;
+    }
     .first-round .modes {
       grid-template-columns: 1fr;
     }
