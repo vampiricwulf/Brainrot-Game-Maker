@@ -1084,7 +1084,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    answer cut short with …, whole in its tooltip): the player (⋮⋮ ▲▼ number name), their typed answer, Show answer,
    the score and wager (📱 for a phone's; in one window the amount stays hidden until Show wager or a verdict, whoever
    typed it, and typing one replaces it), Show wager, then ✔ Right and ✘ Wrong at the right end; on a window under
-   900 px wide they wrap. Finishing early is a quiet **Finish now…** at the left of the box's foot, beside "2 still to
+   900 px wide they wrap, ✔ Right and ✘ Wrong together at the row's right end, at one place in every row (on a touch
+   screen the how-to above them names no keys). Finishing early is a quiet **Finish now…** at the left of the box's foot, beside "2 still to
    judge", away from the verdicts, asking first in the strip; it isn't there while the blue button is Finish game ▶
    itself. In one window, where the rows don't all fit with it out, the tools row folds away during the reveals (⋯ Tools
    in the status line brings it back; it stays while something in it is on, 📊 Scoreboard pressed, a deal or cards
