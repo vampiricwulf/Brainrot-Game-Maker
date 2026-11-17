@@ -494,6 +494,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - Presets: **Classic** (blue board, gold values), **Dark**, **Brainrot Neon**, and **Pastel**.
 - Overrides: board background (color/gradient/image/video), tile color, tile font/color, category header style,
   value text style, used-tile look, score bar style, and player-color accent usage.
+- **Category names** fit their cell: they shrink to 30 stage px, then, words still whole, down to 20 (the editor's
+  checklist says such a name is too long to read on the board). Only a word too long for its cell even then is
+  hyphenated, at a syllable ("ANTI-DIS-…"), never fewer than 4 letters from either end (no "UNIVE-RSE").
 - **Board images** (added on request):
   - Category headers can show an image instead of the name (fit or fill, optionally with the name on top). The name is
     still used by the host (notes, log).

@@ -252,7 +252,8 @@ async function crowd() {
   await showChecklist(host);
   await host.locator('nav .problem', { hasText: 'Big board' }).waitFor();
   const line = host.locator('nav .problem', { hasText: 'Big board' });
-  assert(((await line.getAttribute('title')) ?? (await line.innerText())).includes('too long to read on the board'), 'the editor’s checklist says which category names are too long for the board');
+  const tooLong = (await line.getAttribute('title')) ?? (await line.innerText());
+  assert(tooLong.includes('too long to read on the board'), 'the editor’s checklist says which category names are too long for the board');
   await host.getByRole('button', { name: '▶ Play' }).click();
   await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.locator('.mode', { hasText: 'Separate audience window' }).click()]);
@@ -284,10 +285,55 @@ async function crowd() {
   );
   assert(vals.length === 50 && !vals.some((v) => v.over), '10 categories: every value fits its tile');
   assert(new Set(vals.map((v) => v.size)).size === 1 && vals[0].size >= 40, `one size for every value on the board (${vals[0].size}px)`);
-  const cats = await aud.locator('.board .header .title').evaluateAll((els) => els.map((e) => parseFloat(getComputedStyle(e).fontSize)));
-  // (Two of them are too long for a 10-column board: the editor's checklist said so, and they alone go smaller.)
-  const small = cats.filter((n) => n < 30);
-  assert(cats.length === 10 && small.length <= 2 && Math.min(...cats) >= 20, `category names stay at 30 stage px or more (${cats.join(', ')})`);
+  const cats = await aud.locator('.board .header .title').evaluateAll((els) => els.map((e) => ({ name: e.textContent.replace(/\u00ad/g, ''), px: parseFloat(getComputedStyle(e).fontSize) })));
+  // (No more than the editor's checklist called too long for a 10-column board go smaller, and never below 20.)
+  const flagged = Number(tooLong.match(/(\d+) category names are too long/)?.[1] ?? 1);
+  const small = cats.filter((c) => c.px < 30);
+  assert(
+    cats.length === 10 && small.length <= flagged && Math.min(...cats.map((c) => c.px)) >= 20,
+    `category names stay at 30 stage px or more, but for those the checklist called too long (${flagged}: ${cats.map((c) => `${c.name} ${c.px}`).join(', ')})`,
+  );
+  // A word is broken only when it can't be whole even at 20 px, and never leaves fewer than 4 letters on a line
+  // ("SUPERCALI-FRAGI-…", never "UNIVE-RSE").
+  const broken = await aud.locator('.board .header .title > div').evaluateAll((els) =>
+    els.flatMap((inner) => {
+      const node = inner.firstChild;
+      const text = node?.textContent ?? '';
+      const tops = [...text].map((_, i) => {
+        const r = document.createRange();
+        r.setStart(node, i);
+        r.setEnd(node, i + 1);
+        // (Its last box: a letter just after a break also has an empty one at the end of the line before.)
+        const boxes = r.getClientRects();
+        return Math.round(boxes[boxes.length - 1]?.top ?? 0);
+      });
+      const out = [];
+      let at = 0;
+      for (const word of text.split(' ')) {
+        const lines = [];
+        [...word].forEach((c, i) => {
+          if (c === '\u00ad') return;
+          const t = tops[at + i];
+          if (!lines.length || lines[lines.length - 1].t !== t) lines.push({ t, s: '' });
+          lines[lines.length - 1].s += c;
+        });
+        at += word.length + 1;
+        if (lines.length < 2) continue;
+        const probe = document.createElement('span');
+        probe.textContent = word.replace(/\u00ad/g, '');
+        probe.style.cssText = 'position:absolute;white-space:nowrap;font-size:20px';
+        inner.append(probe);
+        const whole = probe.offsetWidth <= inner.parentElement.clientWidth;
+        probe.remove();
+        out.push({ pieces: lines.map((l) => l.s), whole });
+      }
+      return out;
+    }),
+  );
+  assert(
+    broken.length > 0 && broken.every((b) => !b.whole && b.pieces.every((p) => p.length >= 4)),
+    `long words on the board break only when they must, at 4 letters or more a piece (${broken.map((b) => b.pieces.join('-')).join(', ')})`,
+  );
   const catsOver = await aud.locator('.board .header .title').evaluateAll((els) =>
     els.filter((e) => e.firstElementChild.scrollHeight > e.clientHeight + 1).map((e) => `${e.textContent} ${e.firstElementChild.scrollHeight}/${e.clientHeight} ${e.style.fontSize} ${e.style.hyphens}`),
   );

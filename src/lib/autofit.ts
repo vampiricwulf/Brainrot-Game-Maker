@@ -20,11 +20,15 @@ export interface AutofitOptions {
   /** Smallest size to shrink to (px). */
   min?: number;
   /**
-   * Where a word longer than the line still doesn't fit at the smallest size, hyphenate it (at the largest size that
-   * fits that way) before breaking it anywhere. The text must carry soft hyphens where it may break (softHyphens).
+   * Where a word longer than the line still doesn't fit at the smallest size (and at `floor`), hyphenate it (at the
+   * largest size that fits that way) before breaking it anywhere. The text must carry soft hyphens where it may break
+   * (softHyphens).
    */
   hyphenate?: boolean;
-  /** With hyphenate: text that doesn't fit even hyphenated at `min` may go down to this size instead of being cut off. */
+  /**
+   * With hyphenate: text that doesn't fit whole at `min` goes down to this size, words still whole, before any word is
+   * broken; and text that doesn't fit even hyphenated at `min` may go down to it too instead of being cut off.
+   */
   floor?: number;
   /** Never break a word: at the smallest size, what's left over is cut (CSS shows "…" where it's set). */
   noBreak?: boolean;
@@ -83,6 +87,12 @@ function* fitting({ size, enabled, min = 12, hyphenate, noBreak, floor }: Autofi
   }
   if (!left || noBreak) return { size: s, overflow: left };
   if (hyphenate) {
+    // Smaller still with whole words (down to `floor`) before any word is broken: "UNIVERSE" whole at 24px reads better
+    // than "UNIVE-RSE" at 30.
+    if (floor !== undefined && floor < lo) {
+      s = yield* largest(floor, lo, 'normal');
+      if (!(yield { size: s, wrap: 'normal' })) return { size: s, overflow: false };
+    }
     s = yield* largest(lo, size, 'hyphen');
     if (!(yield { size: s, wrap: 'hyphen' })) return { size: s, overflow: false };
     // Still too much for the box: smaller than the smallest after all (down to `floor`), rather than cut off.
@@ -308,14 +318,39 @@ export function autofit(node: HTMLElement, opts: AutofitOptions) {
   };
 }
 
+/** Letters a hyphenated word keeps on either side of its break, at least ("UNIV-", never "UNIVE-RSE"). */
+export const HYPHEN_KEEP = 4;
+const VOWEL = /[aeiouyàáâãäåæèéêëìíîïòóôõöøœùúûüýÿ]/i;
+/** Two consonants that sound as one ("TEA-CHER", never "TEAC-HER") or start a syllable together ("CONS-TRUCT"). */
+const PAIR = /^(?:ch|ck|gh|ph|sh|th|wh|qu|[bcdfgkpt]r|[sw]r)$/i;
+
 /**
- * Soft hyphens (U+00AD) inside long words, where a hyphenating box may break them, never leaving fewer than 3 letters
- * on either side. They're invisible unless a word is broken there (then a "-" shows). Browsers' own hyphenation needs
- * a dictionary a stream PC may not have; these always work.
+ * Where a long word may break, by a rough syllable rule: before a consonant that starts a syllable (a consonant then a
+ * vowel: "ANTI-DI-SES-TAB-LISH-MEN-TA-RIA-NISM"), or before a pair of them that go together. A word in another
+ * alphabet (no vowel this knows) may break at any letter instead. Either way never within HYPHEN_KEEP letters of its
+ * ends, so a short word like "UNIVERSE" has no break at all (it shrinks instead).
+ */
+function breaks(ch: string[]): number[] {
+  const ok = (i: number) => i >= HYPHEN_KEEP && i <= ch.length - HYPHEN_KEEP;
+  const at = new Set<number>();
+  for (let i = 1; i < ch.length - 1; i++) {
+    if (VOWEL.test(ch[i]) || !VOWEL.test(ch[i + 1]) || !/\p{L}/u.test(ch[i])) continue;
+    const b = PAIR.test(ch[i - 1] + ch[i]) ? i - 1 : i;
+    if (ok(b)) at.add(b);
+  }
+  if (at.size || ch.some((c) => VOWEL.test(c))) return [...at];
+  return ch.map((_, i) => i).filter(ok);
+}
+
+/**
+ * Soft hyphens (U+00AD) inside long words, where a hyphenating box may break them (see breaks). They're invisible
+ * unless a word is broken there (then a "-" shows). Browsers' own hyphenation needs a dictionary a stream PC may not
+ * have; these always work.
  */
 export function softHyphens(text: string, from = 8): string {
   return text.replace(new RegExp(`\\p{L}{${from},}`, 'gu'), (w) => {
     const ch = Array.from(w);
-    return ch.map((c, i) => (i >= 3 && i <= ch.length - 3 ? '\u00ad' + c : c)).join('');
+    const at = new Set(breaks(ch));
+    return ch.map((c, i) => (at.has(i) ? '\u00ad' + c : c)).join('');
   });
 }

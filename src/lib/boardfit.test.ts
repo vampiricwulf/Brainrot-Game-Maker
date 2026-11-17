@@ -27,6 +27,13 @@ describe('category names on the board', () => {
     expect(categoryTooLong('Famous Internet Personalities of the 2010s and the Memes They Made Famous', 3, 5)).toBe(false);
   });
 
+  it('warn about a name that goes smaller to keep its words whole, not one whose long word is hyphenated', () => {
+    // 10 columns: about 133px a line, 8 letters at 30px. "Speedrunning" (12) fits whole only below 30px.
+    expect(categoryTooLong('Speedrunning Facts', 10, 5)).toBe(true);
+    // A word too long even at the floor (34 letters): hyphenated at 30px, readable.
+    expect(categoryTooLong('Supercalifragilisticexpialidocious', 6, 5)).toBe(false);
+  });
+
   it('show in the editor’s checklist', () => {
     const game: Game = jeopardyGame();
     const r = newRound('Big board', 10);

@@ -1,9 +1,12 @@
 // How big the board's words can be, so they stay readable once the stream is scaled down (720p, 480p in Discord).
 import { boardLayout, lookNumber, type Theme } from './theme';
 
-/** Category names never shrink below this (stage px): about 13px tall at 480p. Longer words are hyphenated instead. */
+/** Category names shrink to this (stage px) as they need: about 13px tall at 480p. */
 export const CAT_MIN = 30;
-/** Only a name too long for its cell even then goes smaller, down to this (the editor's checklist says to shorten it). */
+/**
+ * A name too long for its cell even then goes smaller, down to this, its words still whole (the editor's checklist says
+ * to shorten it); only a word too long for the cell at this size is hyphenated (at CAT_MIN or more where it fits so).
+ */
 export const CAT_FLOOR = 20;
 
 /** A cell's padding (Board.svelte). The board's padding and gaps are the theme's space between tiles (10 by default). */
@@ -48,9 +51,20 @@ export function linesAt(text: string, size: number, w: number): number {
   return lines;
 }
 
-/** A category name that won't fit its cell even at the smallest size (an estimate: the editor's checklist warns). */
+/** Every word of `text` fits a line `w` wide at `size` px, and all its lines fit `h`. */
+function wholeAt(text: string, size: number, w: number, h: number): boolean {
+  const per = Math.max(1, Math.floor(w / (CHAR * size)));
+  return text.trim().split(/\s+/).every((word) => word.length <= per) && linesAt(text, size, w) * size * LINE <= h;
+}
+
+/**
+ * A category name that goes below CAT_MIN on the board (an estimate: the editor's checklist warns). As the board fits
+ * it: one that's whole at a smaller size goes there before a word is broken; one with a word too long even at the
+ * floor is hyphenated at CAT_MIN, unless even that doesn't fit.
+ */
 export function categoryTooLong(title: string, cols: number, rows: number, theme?: Theme): boolean {
   if (!title.trim()) return false;
   const { w, h } = categoryBox(cols, rows, theme);
-  return linesAt(title, CAT_MIN, w) * CAT_MIN * LINE > h;
+  if (wholeAt(title, CAT_MIN, w, h)) return false;
+  return wholeAt(title, CAT_FLOOR, w, h) || linesAt(title, CAT_MIN, w) * CAT_MIN * LINE > h;
 }

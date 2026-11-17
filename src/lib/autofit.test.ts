@@ -52,17 +52,45 @@ describe('fitting a box (score plates, board values, category names)', () => {
     expect(fitWith({ size: 54, min: 30, enabled: true }, box(13, 157)).wrap).toBe('anywhere');
   });
 
+  it('shrinks toward the floor with whole words before breaking one, then hyphenates at the smallest size or more', () => {
+    // "UNIVERSE" (8 letters) in a 140px column: whole at 35px or less. Above `min` it would have to break; between
+    // `floor` and `min` it fits whole, so it does.
+    const word = (size: number, wrap: string) => (wrap === 'hyphen' || wrap === 'anywhere' ? false : 8 * size * 0.5 > 140);
+    expect(fitWith({ size: 54, min: 36, floor: 20, hyphenate: true, enabled: true }, word)).toMatchObject({ size: 35, overflow: false, wrap: 'normal' });
+    // Too long to be whole even at the floor: hyphenated, at `min` or more.
+    const r = fitWith({ size: 54, min: 30, floor: 20, hyphenate: true, enabled: true }, box(30, 157));
+    expect(r.wrap).toBe('hyphen');
+    expect(r.size).toBeGreaterThanOrEqual(30);
+  });
+
   it('gives a group the smallest size any of its boxes fits at', () => {
     expect(groupSize([84, 61, 72, undefined])).toBe(61);
     expect(groupSize([undefined])).toBeUndefined();
   });
 
-  it('puts soft hyphens inside long words only, at least 3 letters from either end', () => {
+  /** A word as it may break ("ANTI|DIS|…"). */
+  const parts = (w: string) => softHyphens(w).split('\u00ad');
+
+  it('puts soft hyphens inside long words only, at syllables, never fewer than 4 letters from either end', () => {
     expect(softHyphens('Skibidi Lore')).toBe('Skibidi Lore');
     const s = softHyphens('Supercalifragilistic');
-    expect(s.replace(/­/g, '')).toBe('Supercalifragilistic');
-    expect(s.startsWith('Sup­')).toBe(true);
-    expect(s.endsWith('­tic')).toBe(true);
+    expect(s.replace(/\u00ad/g, '')).toBe('Supercalifragilistic');
+    expect(parts('Supercalifragilistic')).toEqual(['Super', 'ca', 'li', 'fra', 'gi', 'listic']);
+    expect(parts('ANTIDISESTABLISHMENTARIANISM')).toEqual(['ANTI', 'DI', 'SES', 'TAB', 'LISH', 'MEN', 'TA', 'RIA', 'NISM']);
+    // Never "UNIVE-RSE", "EXTE-NDED" nor "ESTABLI-SHMENT".
+    expect(parts('UNIVERSE')).toEqual(['UNIVERSE']);
+    expect(parts('EXTENDED')).toEqual(['EXTENDED']);
+    expect(parts('ESTABLISHMENT')).toEqual(['ESTAB', 'LISH', 'MENT']);
+    // Two consonants that go together stay together.
+    expect(parts('TEACHERS')).toEqual(['TEACHERS']);
+    expect(parts('CONSTRUCTION')).toEqual(['CONS', 'TRUC', 'TION']);
+    // Another alphabet: any letter, still 4 from either end.
+    expect(parts('ДОСТОПРИМЕЧАТЕЛЬНОСТЬ').length).toBe(15);
+    for (const w of ['Supercalifragilistic', 'ANTIDISESTABLISHMENTARIANISM', 'ESTABLISHMENT', 'CONSTRUCTION', 'ДОСТОПРИМЕЧАТЕЛЬНОСТЬ']) {
+      const p = parts(w);
+      expect(p[0].length).toBeGreaterThanOrEqual(4);
+      expect(p[p.length - 1].length).toBeGreaterThanOrEqual(4);
+    }
   });
 });
 

@@ -100,7 +100,8 @@
               {/if}
             </div>
           {:else}
-            <!-- Never so small it can't be read on a scaled-down stream: at the smallest size, long words are hyphenated. -->
+            <!-- Readable on a scaled-down stream: down to CAT_MIN, then (words still whole) to CAT_FLOOR; only a word too
+                 long even then is hyphenated, at a syllable (softHyphens). -->
             <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}>
               <div dir="auto">{softHyphens(cat.title)}</div>
             </div>
