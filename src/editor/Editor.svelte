@@ -1359,7 +1359,7 @@
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
   <div class="body" use:inertWhile={replacing || !!opening} use:focusRescue>
-    <nav aria-label="Editor" style:scroll-padding-bottom="{checkH}px" bind:this={navEl} onscroll={measureNav}>
+    <nav aria-label="Editor" class:more={navMore} style:scroll-padding-bottom="{checkH}px" bind:this={navEl} onscroll={measureNav}>
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}
         {#if renamingRound === round.id}
@@ -2079,12 +2079,15 @@
     padding: 16px 20px;
     min-width: 0;
   }
-  @media (max-width: 700px) {
-    /* (On a phone the page scrolls, so the line about the app wraps: cut to a few words it would say nothing.) */
+  /* (On a phone, and on a touch screen with no mouse, the page scrolls, so the line about the app wraps: cut to a few
+     words it would say nothing, and a finger can't open its tooltip.) */
+  @media (max-width: 700px), (hover: none) {
     .first-round .what {
       display: block;
       white-space: normal;
     }
+  }
+  @media (max-width: 700px) {
     .first-round .modes {
       grid-template-columns: 1fr;
     }
@@ -2103,6 +2106,10 @@
       border-right: none;
       border-bottom: 1px solid var(--border);
       max-height: 30vh;
+    }
+    /* (The checklist, whose top fades to say "more below" on a computer, is hidden here: the list's foot fades instead.) */
+    nav.more {
+      mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
     }
     .navlabel,
     .problems,

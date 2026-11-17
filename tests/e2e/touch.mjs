@@ -64,11 +64,34 @@ try {
     // The ▶ Play screen's Start game ▶ has no Ctrl+⏎ on it.
     await page.getByRole('button', { name: /Try a sample game/ }).click();
     await page.locator('nav > button.round-tab').first().waitFor();
+    // The sidebar's list, at most 30% of the height, scrolls: its foot fades to say there's more (🕘 History, cut).
+    const nav = page.locator('nav[aria-label="Editor"]');
+    await page.waitForFunction(() => {
+      const n = document.querySelector('nav[aria-label="Editor"]');
+      return n && n.scrollHeight > n.clientHeight + 1;
+    });
+    await page.waitForTimeout(100);
+    assert((await nav.evaluate((n) => getComputedStyle(n).maskImage)).includes('gradient'), 'the sidebar’s list scrolls on a phone, and its foot fades to say so');
+    await nav.evaluate((n) => n.scrollTo(0, n.scrollHeight));
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('nav[aria-label="Editor"]')).maskImage === 'none');
+    assert(true, 'scrolled to its end, it doesn’t fade');
     await page.getByRole('button', { name: '▶ Play' }).click();
     await page.getByRole('button', { name: /Start game ▶/ }).waitFor();
     await addPlayers(page, 2);
     const startKey = page.locator('kbd.start-key');
     assert((await startKey.count()) === 1 && !(await shows(startKey)), 'Start game ▶ shows no Ctrl+⏎ on a touch screen');
+    await ctx.close();
+  }
+
+  // ---------- A tablet ----------
+  {
+    // The line saying what the app is wraps: a finger can't open the tooltip a cut line keeps the rest in.
+    const { ctx, page } = await open({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true });
+    const words = page.locator('.first-round .what > .words');
+    assert(
+      (await words.evaluate((w) => w.scrollWidth <= w.clientWidth)) && (await page.locator('.first-round .what').innerText()).includes('Nothing to install.'),
+      'a tablet shows the whole line saying what the app is, not cut short',
+    );
     await ctx.close();
   }
 
@@ -85,6 +108,8 @@ try {
   {
     const { ctx, page } = await open({ viewport: { width: 1280, height: 800 } });
     assert(await shows(page.locator('.first-round .open-line .not-touch')), 'with a mouse, the first screen says “or drop it here”');
+    const what = await page.locator('.first-round .what').boundingBox();
+    assert(what.height < 30, 'and its line saying what the app is stays on one line');
     await page.locator('.first-round .open-line').getByRole('button', { name: /Open a game/ }).click();
     await page.locator('.hint.drop').waitFor();
     assert(await shows(page.locator('.hint.drop')), 'and 📂 Open a game says “or drop a game file on the editor”');
