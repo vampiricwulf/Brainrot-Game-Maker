@@ -6,7 +6,7 @@ import { jeopardyGame } from './testgame';
 import { newRpgRound, newScreen } from './rpg';
 import { newBoardGameRound } from './boardgame';
 import { watchGame, type GameWatch } from './watch.svelte';
-import { applyGamePatch, gamePatch, hideFromViewers, viewersGame } from './sync.svelte';
+import { applyGamePatch, audienceTitle, gamePatch, hideFromViewers, hostTitle, viewersGame } from './sync.svelte';
 
 /** A board, a Final, an RPG world with a screen holding a text, and a board game. */
 function sample(): Game {
@@ -97,5 +97,25 @@ describe('the game the viewers’ windows get', () => {
     // (Nothing to leave out: the game itself.)
     const plain = sample();
     expect(viewersGame(plain)).toBe(plain);
+  });
+});
+
+describe('the tab titles', () => {
+  const named = (title: string): Game => ({ ...jeopardyGame(), title });
+
+  it('say the app alone until the game is named, then the game first', () => {
+    expect([named('Untitled Game'), named(' '), named('Meme Night ')].map((g) => hostTitle(g))).toEqual([
+      'Brainrot Games Maker',
+      'Brainrot Games Maker',
+      'Meme Night · Brainrot Games Maker',
+    ]);
+  });
+
+  it('say ▶ Playing on the host’s play screens, unlike the audience window', () => {
+    expect([hostTitle(named('Meme Night'), true), hostTitle(named('Untitled Game'), true), audienceTitle(named('Meme Night'))]).toEqual([
+      '▶ Playing · Meme Night',
+      '▶ Playing · Brainrot Games Maker',
+      'Meme Night · Audience',
+    ]);
   });
 });

@@ -167,9 +167,6 @@
     for (const m of game.media) if (m.kind === 'font') void mediaUrls[m.id];
     registerGameFonts(game);
   });
-  $effect(() => {
-    document.title = game.title ? `${game.title} · Brainrot Games Maker` : 'Brainrot Games Maker';
-  });
   // Whether each video and sound really plays in this browser, worked out as files arrive or change (🖼 Media and the
   // checklist say; nothing pops up for files already in a game).
   $effect(() => {

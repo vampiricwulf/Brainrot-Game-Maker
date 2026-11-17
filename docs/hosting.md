@@ -351,6 +351,9 @@ and you can go back to any point in it.
 ## Streaming tips
 
 - **Capture with OBS's Window Capture.** A Browser source runs in OBS's own browser and can't reach the host page.
+  OBS lists windows by their titles: the audience window is "My game · Audience", and the host's tab says
+  "▶ Playing · My game" on the ▶ Play screens (and "My game · Brainrot Games Maker" in the editor), so the two are
+  easy to tell apart. In a single window, pick it while it's on the ▶ Play screen.
 - **Green screen:** set Theme › Stage background to chroma green or magenta to key it out. The pre-game screen warns when
   a player's color or part of the theme is close to the key.
 - **Scores only:** **▭ Scores window** (`Shift+A`) opens a scores-only window for a lower third.

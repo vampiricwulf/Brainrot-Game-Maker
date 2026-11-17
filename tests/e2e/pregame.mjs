@@ -57,7 +57,10 @@ try {
   await playersNav.click();
   await start.waitFor();
   assert(await page.getByRole('heading', { name: '👥 Players' }).isVisible(), 'it opens the ▶ Play screen at 👥 Players');
+  assert((await page.title()) === '▶ Playing · Brainrot Games Maker', `the ▶ Play screen's tab says ▶ Playing (${await page.title()})`);
   await back.click();
+  await page.getByRole('button', { name: '＋ Add round' }).waitFor();
+  assert((await page.title()) === 'Brainrot Games Maker', `back in the editor, the tab says the editor's title again (${await page.title()})`);
   // 🔊 Sounds points there in one line (the sidebar's 👥 Players & rules ▶ is the way in, not a second button).
   const elsewhere = page.locator('.elsewhere');
   await elsewhere.waitFor();

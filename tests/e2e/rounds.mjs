@@ -27,6 +27,8 @@ try {
   await page.getByRole('button', { name: 'Open…' }).waitFor();
   assert((await roundNames()).length === 0, 'a new game has no rounds');
   assert(await page.locator('.first-round').isVisible(), 'the editor opens on "Add your first round"');
+  // (A new game's "Untitled Game" isn't a name: the tab says the app alone.)
+  assert((await page.title()) === 'Brainrot Games Maker', `an untitled game's tab says “Brainrot Games Maker” alone (${await page.title()})`);
   // ▶ Play isn't greyed with no rounds: a click says to add one, the keys on ✨ Try a sample game.
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.locator('.toast', { hasText: 'Add a round first' }).waitFor();
@@ -386,12 +388,15 @@ try {
   });
   const oldRounds = (await p2.locator('nav > button.round-tab').allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
   assert(oldRounds.join('|') === 'Classic|Old Final', `an old game's Final becomes its last round (${oldRounds.join(', ')})`);
+  assert((await p2.title()) === 'Old Game · Brainrot Games Maker', `a named game's tab says its name first (${await p2.title()})`);
   await p2.getByRole('button', { name: 'Old Final' }).click();
   assert((await p2.getByLabel('Category').inputValue()) === 'History' && (await p2.getByLabel('Think time (seconds)').inputValue()) === '40', 'with its category and think time');
   // Its board played out (its one tile marked played): N says how to go on, and doesn't jump to the Final on stream.
   await playWithPlayers(p2, 2);
   await p2.getByRole('button', { name: 'Start game ▶' }).click();
   await p2.getByRole('button', { name: 'Skip intro' }).click();
+  // The host's tab stands apart from the audience window's (“Old Game · Audience”).
+  assert((await p2.title()) === '▶ Playing · Old Game', `during the game the host's tab says “▶ Playing · Old Game” (${await p2.title()})`);
   await p2.locator('.stage-box .board .tile').first().click({ button: 'right' });
   await p2.getByRole('menuitem', { name: /Mark as played/ }).click();
   await p2.locator('.panel', { hasText: 'Round complete!' }).waitFor();

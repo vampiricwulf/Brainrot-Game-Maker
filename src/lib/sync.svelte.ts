@@ -106,6 +106,18 @@ export function syncTarget(): string {
   return location.protocol === 'http:' || location.protocol === 'https:' ? location.origin : '*';
 }
 
+/**
+ * The host's tab title. "Brainrot Games Maker" alone until the game is named (a new game is "Untitled Game"), else
+ * "My Game · Brainrot Games Maker"; on the ▶ Play screens "▶ Playing · My Game", so the host's tab stands apart from
+ * the audience window's ("My Game · Audience") in the tab strip and in OBS's and Discord's window lists.
+ */
+export function hostTitle(game: Game, playing = false): string {
+  const t = game.title.trim();
+  const name = t === 'Untitled Game' ? '' : t;
+  if (playing) return `▶ Playing · ${name || 'Brainrot Games Maker'}`;
+  return name ? `${name} · Brainrot Games Maker` : 'Brainrot Games Maker';
+}
+
 /** The audience window's title: Discord and OBS list the window by it ("My Game · Audience"). */
 export function audienceTitle(game: Game | undefined): string {
   return `${game?.title.trim() || 'Brainrot Games Maker'} · Audience`;

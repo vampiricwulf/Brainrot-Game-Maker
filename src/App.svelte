@@ -47,7 +47,7 @@
   import { nextFreeColor } from './lib/colors';
   import { checkForUpdate, recheckHourly } from './lib/update.svelte';
   import { registerGameFonts } from './lib/fonts';
-  import { audience, audienceTitle, closeAudienceWindow, closeScoresWindow, openAudienceWindow, pushGame, pushLive } from './lib/sync.svelte';
+  import { audience, audienceTitle, closeAudienceWindow, closeScoresWindow, hostTitle, openAudienceWindow, pushGame, pushLive } from './lib/sync.svelte';
   import ModeCards from './play/ModeCards.svelte';
   import { goToRound, migrateSession, newSession, randomizeDailyDoubles, rebaseSession, startIntro } from './lib/session';
   import { forgetGameParts } from './lib/toolset';
@@ -120,6 +120,13 @@
       .filter(Boolean)
       .join(' and '),
   );
+  // The tab's title, the game's name in it: on the ▶ Play screens it says ▶ Playing (see hostTitle). A player-only file's
+  // start screen is its game's name alone.
+  $effect(() => {
+    if (!loaded || loadError) return;
+    const playing = app.screen === 'play';
+    document.title = playerOnly && !playing ? app.game.title : hostTitle(playing ? (app.playGame ?? app.game) : app.game, playing);
+  });
   /** This copy is the one that edits and autosaves the game. */
   let editing = false;
   /**
@@ -166,7 +173,6 @@
         // Its files stay in memory: every file opened from disk shares one storage with the builder (see keepInMemory).
         keepInMemory();
         app.game = await openPack(await unpackEmbedded(embedded, info.cut), (done, total) => (unpacked = { done, total }));
-        document.title = app.game.title;
         // (Its first screen's logo is in the theme's value font, which may be one of its own files.)
         void registerGameFonts(app.game);
         usePlayerStorage(app.game.id, info.exported);
