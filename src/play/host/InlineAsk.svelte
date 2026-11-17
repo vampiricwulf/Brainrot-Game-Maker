@@ -1,7 +1,8 @@
 <!--
   A question asked right in the host panel, where a browser dialog (prompt, confirm) would show on stream: the
   question, a box when it wants a name, some text or a number, then Cancel (the safe answer, on the left) and the answer
-  button (rightmost, filled red when it can't easily be taken back). In the box, Enter answers and Esc cancels.
+  button (rightmost, filled red when it can't easily be taken back). In the box, Enter answers and Esc cancels; on any
+  of its buttons, Esc cancels too.
 -->
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
@@ -107,7 +108,22 @@
   }
 </script>
 
-<div class="ia" role="group" aria-label={text ?? field} data-ask data-ready={ready || undefined}>
+<!-- Esc on any of its buttons cancels, as on Cancel, and goes no further: the host's Esc would close the clue under it.
+     (In the box, Esc cancels too: below. Inside a window, the window's own Esc comes first.) -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div
+  class="ia"
+  role="group"
+  aria-label={text ?? field}
+  data-ask
+  data-ready={ready || undefined}
+  onkeydown={(e) => {
+    if (e.key !== 'Escape' || !(e.target instanceof HTMLButtonElement)) return;
+    e.stopPropagation();
+    e.preventDefault();
+    cancelled();
+  }}
+>
   {#if text}<span class="ask">{text}</span>{/if}
   {#if field !== undefined}
     <input
@@ -130,13 +146,8 @@
     bind:this={cancelBtn}
     onclick={cancelled}
     onkeydown={(e) => {
-      // The keys stay here: Enter or Space presses Cancel, Esc cancels (neither reaches the host's shortcuts).
+      // The keys stay here: Enter or Space presses Cancel (never reaching the host's shortcuts). Esc: the group's.
       if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
-      else if (e.key === 'Escape') {
-        e.stopPropagation();
-        e.preventDefault();
-        cancelled();
-      }
     }}>{cancel}</button
   >
   {#if alt && onalt}

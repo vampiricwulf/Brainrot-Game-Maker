@@ -512,6 +512,44 @@ try {
   assert((await page.locator('.board').count()) === 0, `＋ Award pressed with Enter: then 2, Enter award Player 2, and the clue stays open (the keys were on ${await focused()})`);
   await page.keyboard.press('Escape');
   await page.locator('.board').waitFor();
+  // Esc on any of a host-panel question's answers cancels the question (as on its Cancel), and goes no further: during
+  // a clue it never closes the clue too.
+  const strip = page.locator('.panel [data-ask]');
+  const exitBtn = page.locator('.panel').getByRole('button', { name: '🚪 Exit' });
+  const usedBefore = await page.locator('.board .tile.used').count();
+  await page.locator('.board .tile:not(.used)').first().click();
+  await page.waitForFunction(() => document.activeElement?.textContent?.includes('Reveal answer'));
+  await exitBtn.click();
+  await page.waitForFunction(() => document.activeElement?.textContent === 'Stay');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  assert((await focused()) === 'Keep & leave', `🚪 Exit's question: Tab twice reaches Keep & leave (${await focused()})`);
+  await page.keyboard.press('Escape');
+  await strip.waitFor({ state: 'detached' });
+  await page.waitForTimeout(300);
+  assert(
+    (await page.locator('.board').count()) === 0 && (await exitBtn.evaluate((b) => b === document.activeElement)),
+    'Esc on Keep & leave cancels the question, the keys back on 🚪 Exit, and the clue stays open',
+  );
+  await page.keyboard.press('Escape');
+  await page.locator('.board').waitFor();
+  assert((await page.locator('.board .tile.used').count()) === usedBefore + 1, 'and Esc then closes the clue, as before');
+  await exitBtn.click();
+  await page.waitForFunction(() => document.activeElement?.textContent === 'Stay');
+  await page.keyboard.press('Tab');
+  assert((await focused()) === 'Discard & leave', `on the board, Tab reaches Discard & leave (${await focused()})`);
+  await page.keyboard.press('Escape');
+  await strip.waitFor({ state: 'detached' });
+  assert(await exitBtn.evaluate((b) => b === document.activeElement), 'and Esc there cancels it too');
+  const nextRoundBtn = page.locator('.panel .rn > button').last();
+  await page.waitForTimeout(450); // (the round buttons ignore clicks right after they appear)
+  await nextRoundBtn.click();
+  await page.waitForFunction(() => document.activeElement?.textContent === 'Keep playing');
+  await page.keyboard.press('Tab');
+  assert((await focused()).startsWith('Go to '), `leaving the round early asks, Tab reaching its Go to … (${await focused()})`);
+  await page.keyboard.press('Escape');
+  await strip.waitFor({ state: 'detached' });
+  assert((await page.locator('.board').count()) === 1, 'and Esc there cancels it, the round still on');
   // One window: ?, 📜 Log, ⚖ Rules, 🔊 Sound and 👥 Players open in the host panel's own box, scrolling there, and the
   // stage viewers see keeps its size (the panel doesn't grow for them; playcopies.mjs checks 🗜 Make smaller).
   const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
