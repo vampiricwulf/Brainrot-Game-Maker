@@ -1000,8 +1000,10 @@ await shot('5-board-after');
 // Crash recovery: reload and resume.
 await page.waitForTimeout(300);
 await page.reload();
-await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
-await page.getByRole('button', { name: 'Resume game' }).click();
+// (A one-window game, the window on stream: it reopens on the game's cover, not the editor with the clues to play.)
+await page.locator('.boot-cover').waitFor();
+assert((await page.locator('.board .tile').count()) === 0, 'reloaded mid-game in one window: the cover, no board of clues on screen');
+await page.locator('.boot-cover').getByRole('button', { name: 'Resume game' }).click();
 // Resume asks how the game is shown, with the same cards as before the game.
 assert((await page.locator('.mode-ask .mode').count()) === 2, 'Resume asks: single window or the audience window');
 await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();

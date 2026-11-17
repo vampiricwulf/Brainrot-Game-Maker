@@ -871,6 +871,8 @@ try {
     for (let i = 0; i < 100 && !(await saved()); i++) await page.waitForTimeout(100);
     assert(await saved(), 'the game in progress is saved with its buzzer room');
     await page.reload();
+    // (One window: it reopens on the game's cover; Go to the editor shows what's kept.)
+    await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
     await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
   };
   await playThenReload();
@@ -901,6 +903,7 @@ try {
   // So does ◀ Back to editor: the editor's Resume game then goes back to room BCDF too.
   const overToBCDF = () => page.evaluate(() => window.__room.sockets.filter((s) => s.url.includes('/ws/BCDF')).flatMap((s) => s.sent).filter((m) => m.t === 'close' || (m.t === 'state' && m.state.over)).length);
   await page.reload();
+  await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
   await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
   await page.getByRole('button', { name: '▶ Play' }).click();
   await resumeCard.getByText('Its phones wait in room BCDF').waitFor();
@@ -918,6 +921,7 @@ try {
   assert((await overToBCDF()) === 0, 'and the editor’s Resume game goes back to room BCDF, its phones not told the game is over');
   // A kept game's room that has ended isn't waited for: ▶ Resume it keeps the room started here.
   await page.reload();
+  await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
   await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
   await page.evaluate(() => (window.__room.ended = ['BCDF']));
   await page.getByRole('button', { name: '▶ Play' }).click();
@@ -947,6 +951,7 @@ try {
   for (let i = 0; i < 100 && !(await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100); i++) await page.waitForTimeout(100);
   assert((await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100), 'the points are saved with the game in progress');
   await page.reload();
+  await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
   await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
   await page.getByRole('button', { name: '▶ Play' }).click();
   await resumeCard.waitFor();
