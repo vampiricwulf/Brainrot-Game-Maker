@@ -38,8 +38,9 @@ The **✅ Before you start** list shows two groups:
 
 In two-window mode, **📺 Open it now** (or **Start game**) opens the audience window. Click it once so it can play sound.
 
-> **Single window shows viewers everything on screen**, including wagers as you type them, answers, host notes and
-> hidden objects. Use the separate audience window when that matters.
+> **Single window shows viewers everything on screen**, including wagers as you type them, the players' typed answers
+> once the answer is up, and host notes (a hidden object goes by "🙈 Hidden object", never its name). Use the separate
+> audience window when that matters.
 
 In a single window the stage keeps one size and place for the whole game, from the first board to the Final and the
 results, so a crop you set in OBS once fits every round. The host panel under it is the same height throughout (RPG and

@@ -7091,8 +7091,8 @@
           {#if !wantAudience}
             <li class="lead exposed">
               🖥 Viewers see this page now (one window): everything on it is on stream. In the game they see the wagers as you type
-              them, and the answers, host notes and hidden objects in the controls. H hides the controls; the 📺 audience window
-              keeps them secret.
+              them, the players' typed answers once the answer is up, and host notes. H hides the controls; the 📺 audience
+              window keeps them secret.
             </li>
           {:else}
             <li class:done={dual}>

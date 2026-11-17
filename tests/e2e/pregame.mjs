@@ -363,8 +363,10 @@ try {
   assert(
     (await display.locator('.exposed').count()) === 0 &&
       !(await display.innerText()).includes('viewers see everything') &&
-      (await live.locator('li.exposed').innerText()).includes('wagers as you type them'),
-    'one window: 🖥 Display no longer repeats the warning; the card’s first line says what viewers see in the game',
+      (await live.locator('li.exposed').innerText()).includes('wagers as you type them') &&
+      (await live.locator('li.exposed').innerText()).includes('typed answers once the answer is up') &&
+      !(await live.locator('li.exposed').innerText()).includes('hidden objects'),
+    'one window: 🖥 Display no longer repeats the warning; the card’s first line says what viewers see in the game (typed answers once the answer is up, no hidden objects: they’re never named there)',
   );
   // One column (a narrow window): the card is back under the players' cards, before ⚖ Game rules.
   await page.setViewportSize({ width: 1000, height: 720 });
