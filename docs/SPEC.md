@@ -874,7 +874,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   📍 Send … to…), the round's own dice or movement wheel's box under it (HostPanel hands its ToolsControls in as the
   `mover` snippet: never at the panel's top), a fork's ways, the framed landing box (`.acts`: the spaces passed and
   landed on, their buttons, 👁 Reveal space). Beside the stage that part is the column's foot (sticky, the box filling
-  the column), so its slot is within 96 px of the blue button there and under the stage. Then a space's card, the turn
+  the column), so its slot is within 96 px of the blue button there and under the stage; its first line may wrap to
+  two lines there (it's one line, cut short, under the stage). Then a space's card, the turn
   order in one line with ✎ Change (a RememberedFold, `jb.turnOrderOpen`, closed at first; the chips, their drag and
   `Alt+←/→`, and 🔀 Shuffle inside), and a line with ✎ Edit board (`E`), 🗂 Spaces…, 📺 The board, 🛒 Shop…, the Last:
   step and ▸ Players. In one window 📍 Send … to… and 🗂 Spaces… name a secret space not revealed yet “? (secret)”

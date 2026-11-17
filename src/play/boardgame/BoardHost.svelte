@@ -462,7 +462,8 @@
   {#if round && bs}
     <div class="turn" data-turn-part>
       <div class="row move" data-turn-box>
-        <!-- The first line: what to do next (one line, cut short where narrow: the whole of it in its tooltip). -->
+        <!-- The first line: what to do next (one line, cut short where narrow: the whole of it in its tooltip; beside the
+             stage two lines, where the column has the room). -->
         <span class="first" title={firstLine} data-turn-next>{firstLine}</span>
         {#if round.mover.kind === 'step'}
           <!-- One space per turn: the player picks which way. -->
@@ -684,6 +685,15 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  /* Beside the stage there's room above the foot-pinned turn part, so a long line ('… landed on Roll again: its
+     buttons are below, then Next turn ▶ (N).') wraps to a second line rather than losing its end. */
+  .bh.side .first {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
   }
   .fork {
     padding: 6px 8px;

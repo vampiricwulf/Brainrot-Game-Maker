@@ -2,7 +2,8 @@
 // it, and the box says when there's more below. Only that box moves, never the stage.
 // 1. Race to the finish, one window: the box under the stage, taller than its room, fades at its foot while there's
 //    more below (data-more), not once scrolled to the end.
-// 2. Race to the finish, two windows: the go-on card's long "Next turn anyway: …" button stays inside the card.
+// 2. Race to the finish, two windows: the turn box's long first line wraps to two lines beside the stage, not cut
+//    short; the go-on card's long "Next turn anyway: …" button stays inside the card.
 // 3. Mini quest, in two windows and in one: short of gold in the shop, the question comes into sight with the keys on Cancel, and the
 //    toast names the item; ▸ Players: stats & inventory opened shows the first sheet, the toggle still in sight.
 // 4. 3 × 3 dungeon, one window: ⤢ Full map opens with the party's screen (the bottom row) in sight.
@@ -91,6 +92,19 @@ try {
     await page.getByLabel('Steps').fill('9');
     await page.getByLabel('Steps').press('Enter');
     await page.locator('.bh .acts').getByRole('button', { name: 'Roll again' }).waitFor();
+    // Beside the stage the turn box's first line wraps to two lines where it's long, not cut short (its room is there).
+    const line = await page.locator('.bh [data-turn-next]').evaluate((e) => ({
+      side: !!e.closest('.bh.side'),
+      text: e.textContent,
+      cut: e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1,
+      lines: (() => {
+        const r = document.createRange();
+        r.selectNodeContents(e);
+        return new Set([...r.getClientRects()].map((x) => Math.round(x.bottom))).size;
+      })(),
+    }));
+    assert(line.side && line.text.endsWith('then Next turn ▶ (N).') && !line.cut && line.lines === 2, `beside the stage, the turn box's long first line wraps to two lines, whole (${JSON.stringify(line)})`);
+    if (shots) await page.screenshot({ path: `${shots}/worldfixes-turnline-side.png` });
     await page.evaluate(() => document.activeElement?.blur?.());
     await page.keyboard.press('n');
     const anyway = goOnCheck(page).locator('[data-anyway]');
