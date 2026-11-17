@@ -11,6 +11,48 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Added
+
+- The first screen starts with a muted line that says what the app is. In a browser it says there's nothing to install, and the copy online ends with a "Get the app ↗" link to the Releases page. 📂 Open a game… still fits a 1280×720 laptop, even under the new-version notice. In a narrow window the line is cut short, with all of it in its tooltip (6fa28a6, a64ceff, c9f29a3).
+- On a phone, a note under the header says the editor is made for a computer and that players join from their phones with the host's code. Its ✕ closes it for good, and 💡 Show all tips again brings it back (69284e0, a64ceff).
+
+### Changed
+
+- The tab's title is "Brainrot Games Maker" alone until the game has a name (not "Untitled Game · …"), and "▶ Playing · <game>" on the ▶ Play screens, so the host's tab stands apart from the audience window's in the tab strip and in OBS's window list (9bad365).
+- With no rounds yet, ▶ Play and 👥 Players & rules ▶ look quiet (dimmed, with "Add a round first…" in their tooltips). They can still be clicked: a click says to add a round and moves the keys to ✨ Try a sample game (b78df21).
+- When the editor's header wraps (a tablet, or 200% zoom), 🔍 Find, ❔ Help, ⋯ and ▶ Play stay together at the right, and the notes beside them ("✓ Kept in this browser", "⚠ Autosave unavailable here") are cut short instead of wrapping (f4a79bd, c9f29a3).
+- On a touch screen with no mouse, buttons and menus don't show their keys, and the first screen doesn't say "or drop it here". The keys window still lists every key (69284e0).
+- The editor's Checklist folds: click its heading ("Checklist · ⚠ 5 · ℹ 2 ▸") to fold it down to the counts or open it again. It starts folded on a window under 800 pixels high, so it no longer covers the sidebar's tabs, and your choice is remembered. When more of the sidebar is below, a fade at its foot shows that it scrolls. (e8ef15b)
+- When a round has two or three things to fix, its checklist line names them ("Final Jeopardy!: no question, no answer") instead of saying "2 things to fix". Longer lists are still counted. (e8ef15b, 838fdae)
+- An empty tiebreaker gets one checklist line ("Tiebreaker: no question, no answer") instead of two. Clicking it goes to the first side left empty. (e8ef15b)
+- On a wide screen a round's header (its name, ▶ Test this round, ▲ ▼, ⧉ Duplicate, ⋯, 🗑 Delete) is the same width on every round's page, so its buttons no longer jump when you switch rounds. Under it, the Final's settings still stop at a readable width. (f08c0cb, ae5209a)
+- On a wide screen a slides round's slide uses the full width, as boards and maps do: at 1920×1080 it grows from about 860 to 1228 px wide. Round name, Host notes and Text stay at the readable width. (f08c0cb, ae5209a)
+- ＋ Add slide and ＋ 🤫 Card are the same small button as the other slide buttons beside them (they were dimmed). (f08c0cb, ae5209a)
+- Every import uses the 📥 icon: 📥 Import rounds…, 📥 Import theme… and 📥 Import CSV… (they were 📂), matching 📥 Import clues…. 📂 now means opening a game or a folder. (f08c0cb, ae5209a)
+- Every window puts its buttons the same way: Cancel and the main button together at the right, and anything else on the left. In 📂 Open a game, Browse for a game file… now sits beside Cancel and the drop hint is on the left. Start new anyway / Open anyway, Import rounds' Tick all, a shared theme's 💾 Save to my themes, ✎ Edit video's Only this item / Save as a new file and ▶ Watch it all moved to the left. On a phone the left part goes on its own line above. (f08c0cb, ae5209a, aa59661)
+- The ✔ / ✘ buttons on each player's chip are bigger (at least 36×32 px, was 28×24) and 6 px apart, so they're easier to hit and harder to mix up. The chips stay the same height, and no wider than before, so the row doesn't wrap any sooner and the stage keeps its size. (eca2121, 372cc0c, 5f3921f, 4ede6e0)
+- In a single window, the tools row (🎲 Dice … 📊 Scoreboard) now folds away during the Final's player reveals. That gives the reveal list its room, so three or four players' ✔ Right / ✘ Wrong fit at 1280×720 (the third row used to be cut in half). **⋯ Tools** in the status line brings the row back. The row stays visible while something in it is on (📊 Scoreboard on screen, a deal, cards out). (c05a2bc)
+- **⏱ Start** and its seconds box now appear in the status line only where a countdown makes sense: a clue, the Final's wagers and question, the tiebreaker, and a board game's turns. They're gone from title cards, the board, slides and RPG rounds, and Game over. `T` still starts a countdown anywhere, the stage's right-click menu now has **⏱ Start the countdown** in every moment, and a running countdown always shows its controls. (de08d1e, 0f11fb9, 0779981)
+- In a single window, the warning in ✅ Before you start now says exactly what viewers see in the game: wagers as you type them, the players' typed answers once the answer is up, and host notes. It no longer mentions answers or hidden objects, which the panel doesn't show. (2f32770)
+- In RPG and board-game rounds under the stage, the round's box (Party, Split off selected, Send Ann to…, Change…) stays the same width from the title card to play, so its buttons no longer jump sideways when the round starts. (d0c440a)
+- The confirmation strip's answers (Keep playing / Go to … ▶, Stay / Keep & leave…) are now the same size as the panel's other buttons instead of small ones. In a single window the strip still covers only the tools row. (03c9e91)
+- Long toasts now stay up long enough to read: 2 s plus 200 ms a word, still between 2.5 and 8 s. A 22-word how-to toast now stays 6.4 s instead of 3.6 s. (d79baec)
+- What’s new, in the update notice and ℹ About, now reads “What’s new ↗” with the tooltip “The release notes on GitHub”, like the app’s other links that open the browser. (509e8ab)
+- Phones: a new player whose name is already taken stays on the name form. The reason shows under the box and the name is selected to change. The message says “If it’s you, go Back and tap your name.” Before, the phone went back to the seat list, where ＋ I’m new could be off the bottom of the screen. (81a976f)
+- Phones: on both name forms (new player and team), the red reason now sits right under the name box, above the buttons, and screen readers read it with the box. When a team name is refused, the box is focused and the name selected. (81a976f)
+- Phones: while a wager or answer shows a red reason for what was typed (like “Type a whole number, 0 or more.”), the “Not sent yet: tap Send wager” line under it is hidden. (81a976f)
+- Phones: the “Sound on” / “Muted” label in the header is a little bigger (13px, was 12px). (81a976f)
+- Phones: when the host has locked the seats and the phone has no seat it can take back, the seat list heading says “Seats are locked” instead of “Tap your name” (or “Pick your team”). A phone that can still take its own seat back still sees “Tap your name”. (81a976f)
+
+### Fixed
+
+- The header's buttons no longer move left when 💾 Save gets its unsaved dot: the dot's room is kept when there's no dot (b3723c2).
+- ▶ Play's ✅ Before you start groups a board's problems into one line the way the editor's Checklist does, so the "⚠ 2 to check" next to Start game matches the editor's ⚠ count for the same game. (e8ef15b)
+- On a laptop screen, the "… on the board" lines under ⭐ Daily Doubles and 🤝 Partner clues now line up, even when Partner clues' Plays and 🤫 Card menus drop to a second line. (f08c0cb, ae5209a)
+- Phones: after tapping a multiple-choice answer on a short phone, the page scrolls so the “✔ Sent: B…” line is on screen. Before, with 5 or 6 choices it could sit below the bottom of the screen. (81a976f)
+
 ## 2026-11-16
 
 ### Added
