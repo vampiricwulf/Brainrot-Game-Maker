@@ -156,25 +156,29 @@
     <!-- (Short at a price typed in: Sell anyway sells at that price.) -->
     {@const at = o.short.price}
     {@const short = `Short by ${formatPrice(game, shop, gap)} for ${itemDef(game, it)?.name}.`}
-    <!-- (Cancel first; Give it free and Other price… between; Sell anyway, the buyer going below zero, last.) -->
-    <div class="small" role="alert">
-      {#if asking?.what === 'price' && asking.item === it}
-        {#key asking}
-          <InlineAsk text={short} field="Price" number value={asking.start} ok="Sell" onok={answer} oncancel={() => (asking = null)} />
-        {/key}
-      {:else}
-        <InlineAsk
-          text={short}
-          ok="Sell anyway"
-          alts={[
-            { label: 'Give it free', onclick: () => purchase(it, { price: 0 }) },
-            { label: 'Other price…', onclick: () => otherPrice(it) },
-          ]}
-          onok={() => purchase(it, { allowShort: true, price: at })}
-          oncancel={() => (o.short = undefined)}
-        />
-      {/if}
-    </div>
+    <!-- (Cancel first; Give it free and Other price… between; Sell anyway, the buyer going below zero, last. Each time
+         it's asked it comes into view in the round's box, which scrolls, with the keys on Cancel, not on the item.) -->
+    {#key o.short}
+      <div class="small" role="alert" {@attach (el) => el.scrollIntoView({ block: 'nearest' })}>
+        {#if asking?.what === 'price' && asking.item === it}
+          {#key asking}
+            <InlineAsk text={short} field="Price" number value={asking.start} ok="Sell" onok={answer} oncancel={() => (asking = null)} />
+          {/key}
+        {:else}
+          <InlineAsk
+            text={short}
+            ok="Sell anyway"
+            focusCancel
+            alts={[
+              { label: 'Give it free', onclick: () => purchase(it, { price: 0 }) },
+              { label: 'Other price…', onclick: () => otherPrice(it) },
+            ]}
+            onok={() => purchase(it, { allowShort: true, price: at })}
+            oncancel={() => (o.short = undefined)}
+          />
+        {/if}
+      </div>
+    {/key}
   {/if}
 {/if}
 

@@ -14,7 +14,7 @@ export function shopBuyer(o: ShopOverlay, session: Session, selected: string[]):
   return here(o.buyer) ?? here(selected[0]) ?? session.players[0]?.id;
 }
 
-/** Buy one of an item for the buyer. Short of money, the host is asked (in the shop controls) what to do. */
+/** Buy one of an item for the buyer. Short of money, the host is asked (in the shop's box) what to do. */
 export function shopBuy(
   game: Game,
   session: Session,
@@ -36,7 +36,7 @@ export function shopBuy(
   } else if (result.error === 'Sold out') toast(`${itemDef(game, item)?.name} is sold out`);
   else {
     o.short = { item, price: opts.price };
-    toast(`${result.error}: choose in the shop controls`, 3000);
+    toast(`${result.error} for ${itemDef(game, item)?.name}: choose in the shop’s box`, 3000);
   }
 }
 
