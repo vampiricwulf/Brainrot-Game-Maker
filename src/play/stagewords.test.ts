@@ -4,7 +4,7 @@ import { jeopardyGame } from '../lib/testgame';
 import { newTextEl, setSlideText, textSlide, type BoardRound, type FinalRound, type Slide } from '../lib/model';
 import { goToRound, newSession, openClue, startTiebreaker } from '../lib/session';
 import { newLive } from '../lib/live';
-import { openWheel } from '../lib/overlay';
+import { openWheel, toggleScoreboard } from '../lib/overlay';
 import { newWheel } from '../lib/tools';
 import { slideWords, stageWords } from './stagewords';
 
@@ -49,7 +49,7 @@ describe('the words on stream, for screen readers', () => {
     expect(stageWords(s, g, live)).toEqual({ key: `clue ${clue.id} answer`, words: 'Rickroll.' });
   });
 
-  it('nothing while the stage doesn’t show it: the cover, a Daily Double’s splash, PARTNER UP!, a tile’s own wheel, an empty slide', () => {
+  it('nothing while the stage doesn’t show it: the cover, a Daily Double’s splash, PARTNER UP!, a wheel or the scores over it, an empty slide', () => {
     const { g, s, clue, live } = setup();
     openClue(s, REF, g);
     live.cover = true;
@@ -69,6 +69,13 @@ describe('the words on stream, for screen readers', () => {
     expect(stageWords(s, g, live)).toBeNull();
     live.overlay = null;
     expect(stageWords(s, g, live)?.words).toContain('Never gonna');
+    // The scores (or dice) over it: its answer isn't said until they go.
+    s.revealed = true;
+    toggleScoreboard(live);
+    expect(stageWords(s, g, live)).toBeNull();
+    live.overlay = null;
+    expect(stageWords(s, g, live)?.words).toBe('Rickroll.');
+    s.revealed = false;
     setSlideText(clue.questionSlide, '');
     expect(stageWords(s, g, live)).toBeNull();
   });
