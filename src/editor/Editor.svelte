@@ -1189,7 +1189,10 @@
       data-changed={fileState.changed || undefined}
       title={`${fileState.said ? `${fileState.said} · Ctrl+S\n` : ''}${inTauri() ? 'Save a .brainrot game pack (the game and all its media) into BrainrotSaves' : 'Download a .brainrot game pack (the game and all its media)'}${fileState.said ? '' : ' · Ctrl+S'}`}
     >
-      <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}{#if fileState.changed && !saving}<span class="dot" aria-hidden="true">{' '}•<span class="unsaved">{' '}not saved as a file</span></span>{/if}
+      <!-- (The dot's room is kept when there's no dot, so the buttons before it don't move as it comes and goes.) -->
+      <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}{' '}<span class="dot" aria-hidden="true"
+        >{#if fileState.changed && !saving}•<span class="unsaved">{' '}not saved as a file</span>{/if}</span
+      >
     </button>
     <span class="spacer"></span>
     {#if exporting}
@@ -1765,6 +1768,8 @@
   }
   /* 💾 Save •: changed since its last save as a file. Its words only where the header has room. */
   .save-file .dot {
+    display: inline-block;
+    min-width: 0.7em;
     color: var(--accent);
     font-weight: 700;
   }
