@@ -39,6 +39,12 @@ try {
     assert(x.y < words.y + words.height && x.x > words.x + words.width - 1, 'its ✕ sits beside its words');
     // Nothing to drop with a finger, nor keys to press.
     assert(!(await shows(page.locator('.first-round .open-line .not-touch'))) && (await page.locator('.first-round .open-line').innerText()).includes('Have a game file?'), '“or drop it here” isn’t shown on a touch screen');
+    // (Nor in 📂 Open a game's foot.)
+    await page.locator('.first-round .open-line').getByRole('button', { name: /Open a game/ }).click();
+    await page.locator('.hint.drop').waitFor({ state: 'attached' });
+    assert(!(await shows(page.locator('.hint.drop'))), '📂 Open a game doesn’t say “or drop a game file” on a touch screen');
+    await page.keyboard.press('Escape');
+    await page.locator('.hint.drop').waitFor({ state: 'detached' });
     await page.getByRole('button', { name: /^Help:/ }).click();
     const menuKey = page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).locator('kbd');
     assert((await menuKey.count()) === 1 && !(await shows(menuKey)), 'a menu shows no keys on a touch screen');
@@ -79,6 +85,11 @@ try {
   {
     const { ctx, page } = await open({ viewport: { width: 1280, height: 800 } });
     assert(await shows(page.locator('.first-round .open-line .not-touch')), 'with a mouse, the first screen says “or drop it here”');
+    await page.locator('.first-round .open-line').getByRole('button', { name: /Open a game/ }).click();
+    await page.locator('.hint.drop').waitFor();
+    assert(await shows(page.locator('.hint.drop')), 'and 📂 Open a game says “or drop a game file on the editor”');
+    await page.keyboard.press('Escape');
+    await page.locator('.hint.drop').waitFor({ state: 'detached' });
     await page.getByRole('button', { name: /^Help:/ }).click();
     assert(await shows(page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).locator('kbd')), 'and its menus show their keys');
     await ctx.close();

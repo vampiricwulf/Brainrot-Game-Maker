@@ -150,7 +150,7 @@
       {/if}
     </div>
     <div class="modal-foot">
-      <span class="hint drop">or drop a game file on the editor</span>
+      <span class="hint drop not-touch">or drop a game file on the editor</span>
       <span class="spacer"></span>
       <button class="ghost" onclick={onclose}>Cancel</button>
       <button
