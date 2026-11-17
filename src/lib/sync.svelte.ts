@@ -493,7 +493,9 @@ export function openScoresWindow(): boolean {
   const url = new URL(location.href);
   url.searchParams.set(SCORES_PARAM, scoresKey());
   url.hash = SCORES_HASH;
-  const w = window.open(url.href, 'jb-audience-scores', 'popup=yes,width=1280,height=240');
+  // At the strip's own shape (1920×260, ScoresView) at 3/4 size, so it fills the window with no empty band for OBS to
+  // crop; taller than the desktop app's smallest window (180).
+  const w = window.open(url.href, 'jb-audience-scores', 'popup=yes,width=1440,height=195');
   if (!w) return false;
   adoptScores(w);
   return true;

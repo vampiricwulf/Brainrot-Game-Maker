@@ -268,6 +268,12 @@ try {
   await scores.locator('.strip .plate').first().waitFor();
   assert((await scores.locator('.strip .plate').count()) === 3, 'Shift+A opens the scores window: one plate per player');
   assert((await scores.title()).endsWith('· Scores'), `it has its own title for OBS (${await scores.title()})`);
+  // It opens at the strip's own shape (1920×260): no empty band over the plates for OBS to crop.
+  const fit = await scores.evaluate(() => {
+    const r = document.querySelector('.strip').getBoundingClientRect();
+    return { w: innerWidth, h: innerHeight, top: Math.round(r.top), bottom: Math.round(r.bottom) };
+  });
+  assert(fit.top <= 1 && fit.bottom >= fit.h - 1, `the strip fills the scores window as it opens (${JSON.stringify(fit)})`);
   assert((await scores.locator('.frame').evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(0, 255, 0)', 'it is chroma green around the plates');
   assert((await scores.locator('.strip .plate').nth(1).innerText()).includes('$200'), `the scores are there (${await scores.locator('.strip .plate').nth(1).innerText()})`);
   await page.keyboard.press('t');
