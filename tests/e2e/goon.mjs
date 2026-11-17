@@ -74,9 +74,9 @@ const gameFile = resolve('test-results/goon.json');
 writeFileSync(gameFile, JSON.stringify(game));
 const finalFile = resolve('test-results/goon-final.json');
 writeFileSync(finalFile, JSON.stringify(finalGame));
-/** The same Final with a 2-second clock: it runs out (flow 3b). */
+/** The same Final with a 3-second clock: it runs out (flow 3b). */
 const shortFinalFile = resolve('test-results/goon-final-short.json');
-writeFileSync(shortFinalFile, JSON.stringify({ ...finalGame, id: 'g_goon_final_short', rounds: [{ ...finalGame.rounds[0], timerSeconds: 2 }] }));
+writeFileSync(shortFinalFile, JSON.stringify({ ...finalGame, id: 'g_goon_final_short', rounds: [{ ...finalGame.rounds[0], timerSeconds: 3 }] }));
 
 const buzzer = await startBuzzer('buzzer-goon-');
 const browser = await chromium.launch({ executablePath });
@@ -381,6 +381,8 @@ try {
         (await answerUp()) === 0,
       `N with the Final’s clock running asks first (“${(await clockLine.locator('.text').innerText()).trim()}”): ⏱ Let it run ⏎, 👁 Reveal anyway, the answer hidden`,
     );
+    const inSight = await quickInSight(page, '⏱ Let it run');
+    assert(inSight === '', `1280×720, one window: ⏱ Let it run is in sight, nothing scrolled${inSight ? ` (${inSight})` : ''}`);
     // Enter in it: ⏱ Let it run, the clock still running, the answer still hidden.
     await goOnCheck(page, { ready: true }).waitFor();
     await page.keyboard.press('Enter');
@@ -400,6 +402,27 @@ try {
     await page.locator('.cm[role="menu"]').getByRole('menuitem', { name: /👁 Reveal answer/ }).click();
     await clockLine.waitFor();
     assert((await answerUp()) === 0 && (await clockRuns()) === 1, 'so does the stage’s menu; Esc (Not yet) leaves the clock running');
+    await goOnCheck(page, { ready: true }).waitFor();
+    await page.keyboard.press('Escape');
+    await goOnCheck(page).waitFor({ state: 'detached' });
+    // Enter with the keys on the blue button shows nothing either.
+    await mainButton(page, '👁 Reveal answer').focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    assert((await answerUp()) === 0, 'Enter with the keys on the blue button doesn’t show the answer');
+    if (await goOnCheck(page).count()) {
+      await goOnCheck(page, { ready: true }).waitFor();
+      await page.keyboard.press('Escape');
+      await goOnCheck(page).waitFor({ state: 'detached' });
+    }
+    // The controls hidden in one window: N changes nothing on stream (the pill pulses), H shows the check.
+    await page.keyboard.press('h');
+    await page.locator('.play > .panel').waitFor({ state: 'detached' });
+    await page.keyboard.press('n');
+    await page.locator('.show-controls.pulse').waitFor();
+    assert((await answerUp()) === 0, 'the controls hidden, one window: N holds (the pill pulses), the answer hidden');
+    await page.keyboard.press('h');
+    await clockLine.waitFor();
     await goOnCheck(page, { ready: true }).waitFor();
     await page.keyboard.press('Escape');
     await goOnCheck(page).waitFor({ state: 'detached' });
@@ -441,6 +464,7 @@ try {
   for (const [how, from] of [
     ['paused', finalFile],
     ['run out', shortFinalFile],
+    ['run out with the check open', shortFinalFile],
   ]) {
     const { ctx, page } = await host(`final ${how}`, undefined, from);
     await page.getByRole('button', { name: 'Start game ▶' }).click();
@@ -451,8 +475,21 @@ try {
     for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill('0');
     await page.keyboard.press('n');
     await page.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
-    await page.locator('.panel .tc button[aria-label="Pause timer"]').waitFor();
+    if (how === 'run out with the check open') {
+      // N while it runs: the check; once it runs out, its line says so and N takes the step.
+      await page.keyboard.press('n');
+      await checkItem(page, 'clock').waitFor();
+      await page.locator('.panel [data-goon="nothing"] [data-goon-item="clock"]', { hasText: '✓ Time’s up' }).waitFor();
+      assert((await page.locator('.stage-box .stage', { hasText: 'The final answer' }).count()) === 0, 'the clock runs out with the check open: “✓ Time’s up”, the answer still hidden');
+      await goOnCheck(page, { ready: true }).waitFor();
+      await page.keyboard.press('n');
+      await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
+      assert((await goOnCheck(page).count()) === 0, 'then N shows the answer');
+      await ctx.close();
+      continue;
+    }
     if (how === 'paused') {
+      await page.locator('.panel .tc button[aria-label="Pause timer"]').waitFor();
       await page.keyboard.press('t');
       await page.locator('.panel .tc button[aria-label="Start timer"]').waitFor();
     } else await page.locator('.panel .tc .left', { hasText: 'Time’s up' }).or(page.locator('.panel .tc .left', { hasText: "Time's up" })).waitFor();

@@ -3194,16 +3194,17 @@
   });
 
   /**
-   * Goes up while a partner clue's check (or the Final's, at its question) counts its seconds down, or its wheel turns:
-   * the check and the blue button follow.
+   * Goes up while a partner clue's check counts its seconds down, or its wheel turns, and while the Final's think clock
+   * runs (its check, and the blue button's “first: …”, say the seconds left): the check and the blue button follow.
    */
   let partnerTick = $state(0);
   const partnerTicks = $derived.by(() => {
     const o = app.live.overlay;
     const t = app.live.timer;
     const turning = !!partner && o?.kind === 'wheel' && !!o.partnerFor && !!o.spin && o.partnerLanded !== o.spin.startedAt;
-    const counting = !!partner || (session.phase === 'final' && session.finalStep === 'question');
-    return turning || (!!check && counting && !!t && !t.expired && t.startedAt !== null);
+    const running = !!t && !t.expired && t.startedAt !== null;
+    const thinking = session.phase === 'final' && session.finalStep === 'question';
+    return turning || (running && ((!!check && !!partner) || thinking));
   });
   $effect(() => {
     if (!partnerTicks) return;

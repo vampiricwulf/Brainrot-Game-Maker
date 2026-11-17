@@ -1094,7 +1094,8 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     ]);
     // Paused, run out, none: at once. Stopped while the check is open: its line says so.
     for (const clock of [{ left: 27, running: false }, 'out', null] as const) expect(leftNow(c(clock), st)).toEqual([]);
-    expect([doneSay(c('out'), 'clock'), doneSay(c({ left: 20, running: false }), 'clock')]).toEqual(['Time’s up', 'The clock stopped']);
+    expect([doneSay(c('out'), 'clock'), doneSay(c({ left: 0, running: true }), 'clock'), doneSay(c({ left: 20, running: false }), 'clock')]).toEqual(['Time’s up', 'Time’s up', 'The clock stopped']);
+    expect(leftNow(c({ left: 0, running: true }), st)).toEqual([]);
     // Typed answers still coming: theirs only (its ⏱ 10 more seconds is the clock's); silenced, the clock's.
     s.final!.answers = { a: { text: 'Paris', n: 1 } };
     const phones = { phones: ['a', 'b'], clockUp: true };

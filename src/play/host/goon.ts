@@ -1469,7 +1469,11 @@ function questionItems(c: GoCtx, t: Turn): LeftItem[] {
  */
 export function doneSay(c: GoCtx, id: string): string | undefined {
   // (The Final's clock, stopped or run out while the check was open.)
-  if (id === 'clock') return c.final.clock === 'out' ? 'Time’s up' : 'The clock stopped';
+  // (At 0 s it's run out, a moment before the clock says so.)
+  if (id === 'clock') {
+    const t = c.final.clock;
+    return t === 'out' || (t?.running && t.left <= 0) ? 'Time’s up' : 'The clock stopped';
+  }
   const t = turnOf(c);
   if (!t?.id) return undefined;
   const who = name(c, t.id);
