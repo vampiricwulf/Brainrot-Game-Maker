@@ -1219,24 +1219,27 @@
         ⚠ Autosave unavailable here: use Save
       </span>
     {/if}
-    <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
-    <button
-      class="ghost help"
-      onclick={helpMenu}
-      aria-haspopup="menu"
-      aria-label="Help: Keyboard shortcuts, Keys during the game, Show all tips again, How to host (guide), About"
-      title="⌨ Keyboard shortcuts (?), 🎮 Keys during the game, 💡 Show all tips again, 📖 How to host (guide), ℹ About"
-      ><span aria-hidden="true">❔</span><span class="word">Help</span>{#if movedNew('editor')}<span class="newdot" data-moved-dot aria-hidden="true"></span>{/if}</button
-    >
-    <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
-    <button
-      class="primary play"
-      use:oneShot
-      onclick={playClicked}
-      disabled={!!opening}
-      aria-disabled={game.rounds.length ? undefined : 'true'}
-      title={game.rounds.length ? '' : 'Add a round first: ✨ Try a sample game, or pick a kind of round'}>▶ Play</button
-    >
+    <!-- (One group that wraps as one, at the right end of whichever line it's on: ▶ Play stays where it always is.) -->
+    <div class="end">
+      <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
+      <button
+        class="ghost help"
+        onclick={helpMenu}
+        aria-haspopup="menu"
+        aria-label="Help: Keyboard shortcuts, Keys during the game, Show all tips again, How to host (guide), About"
+        title="⌨ Keyboard shortcuts (?), 🎮 Keys during the game, 💡 Show all tips again, 📖 How to host (guide), ℹ About"
+        ><span aria-hidden="true">❔</span><span class="word">Help</span>{#if movedNew('editor')}<span class="newdot" data-moved-dot aria-hidden="true"></span>{/if}</button
+      >
+      <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
+      <button
+        class="primary play"
+        use:oneShot
+        onclick={playClicked}
+        disabled={!!opening}
+        aria-disabled={game.rounds.length ? undefined : 'true'}
+        title={game.rounds.length ? '' : 'Add a round first: ✨ Try a sample game, or pick a kind of round'}>▶ Play</button
+      >
+    </div>
   </header>
   <!-- The notices under the header look and close alike: an icon and words, the actions (the main one first), then ✕
        at the far right, its tooltip saying what it does (its name is the word it replaced: Got it, Not now…). -->
@@ -1768,11 +1771,27 @@
       display: none;
     }
   }
-  /* Very narrow (200% zoom on a laptop): the header wraps onto a second line instead of running off the side. */
+  header > .end {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+  }
+  /* Very narrow (a tablet, 200% zoom on a laptop): the header wraps onto a second line instead of running off the side,
+     🔍 ❔ ⋯ ▶ Play together at its right. The notes before them give way first, down to their first letters (their
+     tooltips say it all), and fill what's left of their line, so the buttons never wrap to make room for them. */
   @media (max-width: 900px) {
     header {
       flex-wrap: wrap;
       row-gap: 6px;
+    }
+    header > .spacer {
+      display: none;
+    }
+    header > .autosave {
+      flex: 1 1 0;
+      min-width: 2.5em;
+      text-align: right;
     }
   }
   /* Short, so it stays on one line (the details are in its tooltip). From a laptop up it's never cut mid-word: the

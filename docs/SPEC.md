@@ -522,9 +522,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **Save** → download `.brainrot` (zip); in the desktop app, into `BrainrotSaves` next to the exe (Documents when that
   can't be written), replacing the game's last save and keeping two `.bak` backups. The button reads **💾 Save •** while
   the game has work no file has yet (what New and Open… ask about; its name stays Save), with "not saved as a file"
-  beside it at 1600 px and up, and its tooltip says "Last saved as a file at 2:05 PM" (a desktop autosave file counts)
+  beside it at 1600 px and up (the dot's room is kept when there's none, so nothing in the header moves as it comes
+  and goes), and its tooltip says "Last saved as a file at 2:05 PM" (a desktop autosave file counts)
   or "Not saved as a file yet". The header's note beside it: in a browser "✓ Kept in this browser (💾 Save makes a
-  file)" (the brackets at 1450 px and up), in the desktop app "✓ Autosaved · file 2:05". New and Open… replace the sample game as it came (its one step,
+  file)" (the brackets at 1450 px and up), in the desktop app "✓ Autosaved · file 2:05". Under 900 px (a tablet,
+  200% zoom) the header wraps, 🔍 ❔ ⋯ ▶ Play kept together at the right end of their line; the note gives way first
+  (cut short, its tooltip saying it all). New and Open… replace the sample game as it came (its one step,
   on a new game) without asking; it's kept in Recent games. The note under the header that says the game was replaced (with ↶ Reopen previous game) goes with the first change to the new game. **Open…** (Ctrl+O, the first screen's 📂 Open a game…, Game over › ▶ Next game…) is always one window,
   "📂 Open a game": Recent games (the last 8 games replaced, kept in the browser or on this PC with their undo history),
   in the desktop app "Your saves (BrainrotSaves)" newest first with date and size and 📂 Saves folder, then the foot's

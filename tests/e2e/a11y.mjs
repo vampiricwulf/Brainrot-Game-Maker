@@ -545,6 +545,24 @@ try {
   await page.setViewportSize({ width: 853, height: 480 });
   const fit = await headerFit();
   assert(fit.over <= 0 && fit.play <= 853 && fit.help <= 853, `at 150% zoom (853px) the header fits and ❔ Help and ▶ Play show (${JSON.stringify(fit)})`);
+  // Wrapped (a tablet), 🔍 ❔ ⋯ ▶ Play stay together at the right end of their line, as on one line: the browser's note
+  // gives way first, never moving into their place.
+  for (const w of [900, 820, 760]) {
+    await page.setViewportSize({ width: w, height: 700 });
+    const ends = await page.evaluate(async () => {
+      await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+      const h = document.querySelector('.editor > header');
+      const edge = h.getBoundingClientRect().right - parseFloat(getComputedStyle(h).paddingRight);
+      const named = (n) => [...h.querySelectorAll('button')].find((b) => (b.getAttribute('aria-label') ?? b.textContent.trim()).startsWith(n)).getBoundingClientRect();
+      const [find, help, more, play] = ['Find', 'Help', 'More', '▶ Play'].map(named);
+      const note = h.querySelector('.autosave').getBoundingClientRect();
+      return { lines: new Set([find, help, more, play].map((r) => Math.round(r.top))).size, gap: Math.round(edge - play.right), order: find.left < help.left && help.left < more.left && more.left < play.left, noteRight: Math.round(note.right), findLeft: Math.round(find.left), noteTop: Math.round(note.top), playTop: Math.round(play.top) };
+    });
+    assert(
+      ends.lines === 1 && ends.gap === 0 && ends.order && (ends.noteTop !== ends.playTop || ends.noteRight <= ends.findLeft),
+      `at ${w}px 🔍 ❔ ⋯ ▶ Play are together at the header's right, ▶ Play last (${JSON.stringify(ends)})`,
+    );
+  }
 
   // ---------- 200% zoom on a laptop (720 CSS px): the header wraps, nothing runs off the side ----------
   await page.setViewportSize({ width: 720, height: 450 });
