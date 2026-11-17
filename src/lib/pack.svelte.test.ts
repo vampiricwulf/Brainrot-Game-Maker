@@ -142,6 +142,11 @@ describe('game packs', () => {
     await expect(readGameFile(big)).rejects.toThrow(TOO_BIG_PACK);
   });
 
+  it('an empty file says it is empty, not that it is no game', async () => {
+    // (A copy or download that failed often leaves a 0-byte file with the game's name.)
+    for (const name of ['Packed.brainrot', 'Old.jbr', 'Quiz.html', 'Quiz.json']) await expect(readGameFile(new File([], name))).rejects.toThrow(/^This file is empty: /);
+  });
+
   it("this app's page cut off before its game is incomplete; another page has no game", async () => {
     const page = '<!doctype html><html><head><title>Quiz · Brainrot Games Maker</title></head><body><script>var a = 1;';
     await expect(readGameFile(new File([page], 'Quiz.html'))).rejects.toThrow(CUT_OFF);

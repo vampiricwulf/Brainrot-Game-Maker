@@ -68,6 +68,9 @@ export const TOO_BIG_PACK =
 /** Said when a game file (or an exported one) didn't arrive whole. */
 export const CUT_OFF = "This file is incomplete: it probably didn't finish downloading or uploading. Ask for it again.";
 
+/** Said when a game file is empty (0 bytes): what a failed copy or download often leaves. */
+export const EMPTY_FILE = "This file is empty: it probably didn't finish downloading or copying. Ask for it again.";
+
 /** What's done with each file of a pack as it's read: stored (by default). */
 export type PutMedia = (id: string, blob: Blob) => Promise<void>;
 
@@ -166,6 +169,8 @@ const cutAppPage = (html: string) => /<title>[^<]*(Brainrot Games Maker|Jeopardy
 export async function openGameFile(file: File, put: PutMedia = putMedia): Promise<Game> {
   // What the file is goes by its first bytes (a pack starts with "PK", a game with "{", a page with "<!doctype html"…),
   // so one renamed or saved with the wrong ending still opens; its name only decides what it's taken for otherwise.
+  // (An empty one is no other kind of file: it's a game that never arrived, whatever its name says.)
+  if (!file.size) throw new Error(EMPTY_FILE);
   const kind = await sniffGameFile(file);
   const name = file.name.replace(/\.bak\d*$/i, '');
   if (kind === 'html' || (!kind && (/\.html?$/i.test(name) || file.type === 'text/html'))) {
