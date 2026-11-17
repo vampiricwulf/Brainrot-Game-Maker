@@ -2008,6 +2008,12 @@
     border: 1px solid var(--warn);
     border-radius: 8px;
   }
+  /* Under the stage, the strip's answers are the panel's own size (InlineAsk's are small in the boxes it's in): the
+     answer that leaves a round is clicked under pressure. (Beside the stage the panel's buttons are small anyway.) */
+  .panel:not(.side) > .askslot > .confirm :global(.ia > button) {
+    font-size: 14px;
+    padding: 6px 12px;
+  }
   /* Single window: the strip takes no room of its own (its slot is no height, and the panel's gap before it is taken
      back), lying over the tools row from its foot up, so the panel, and the stage above it, keep their size. */
   .panel:not(.dual) > .askslot {
@@ -2016,6 +2022,8 @@
     margin-top: -10px;
   }
   .panel:not(.dual) > .askslot > .confirm {
+    /* (Thin above and below its buttons: as tall as the tools row it lies over, give or take the gap above it.) */
+    padding-block: 1px;
     position: absolute;
     left: 0;
     right: 0;

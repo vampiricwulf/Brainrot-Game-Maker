@@ -1,7 +1,8 @@
 // The host panel's layout holds in every state: the fixed bar (↶ Undo, 📜 Log, 🚪 Exit) stays put from the board to a
 // clue, a Daily Double, the Final, an RPG and a board-game round and the end screen; there's never more than one main
 // (.primary) button, and one where the moment has a next step; a confirmation is one strip above the fixed bar (in one
-// window over the tools row: the panel and the stage keep their size, nothing overlaps the fixed bar); and beside the stage (RPG and board-game rounds on a wide window, with an audience window) the
+// window over the tools row: the panel and the stage keep their size, nothing overlaps the fixed bar, its answers the
+// panel's own size and the action row above it in sight); and beside the stage (RPG and board-game rounds on a wide window, with an audience window) the
 // fixed bar is a grid with 🚪 Exit in its bottom-right cell, ↶ Undo and ↷ Redo in words and each group on one line (🔊
 // Sound with 📺 Audience and ▭ Scores window ●, at 1280×720 and 1093×526). A Daily Double with three question slides keeps Next slide ▶
 // the main button until its last slide (viewers see where it is: ● ● ○) and its flow row keeps its places (↩ Put back
@@ -332,6 +333,15 @@ try {
   assert(strip.y + strip.h >= tools.y + tools.h - 1 && strip.y <= tools.y + 1, `the strip lies over the tools row (strip ${strip.y}+${strip.h}, tools ${tools.y}+${tools.h})`);
   const fixedBar = await box(page.locator('.panel .fixed'));
   assert(strip.y + strip.h <= fixedBar.y && strip.w > fixedBar.w * 0.9, 'the strip spans the panel, right above the fixed bar (no button under it)');
+  // Its answers are the panel's own size (as tall as the tools row's buttons, not small), and still the strip covers no
+  // more than the tools row and the gap above it: the main button's row stays in sight.
+  const askH = await confirmStrip(page).getByRole('button', { name: 'Stay' }).evaluate((b) => b.getBoundingClientRect().height);
+  const toolH = await page.locator('.panel .toolsrow button').first().evaluate((b) => b.getBoundingClientRect().height);
+  const actFoot = await page.locator('.panel .act').evaluate((a) => a.getBoundingClientRect().bottom);
+  assert(
+    Math.abs(askH - toolH) <= 1 && strip.y >= actFoot - 1,
+    `the strip's answers are as tall as the tools row's buttons (${askH} / ${toolH}px), and it starts below the action row (${strip.y} / ${Math.round(actFoot)})`,
+  );
   // (What it lies over is out of the keys' reach: Shift+Tab from its Stay never lands on a hidden tool or ▶.)
   await page.waitForFunction(() => document.activeElement?.closest('.confirm') && document.activeElement.textContent?.includes('Stay'));
   await page.keyboard.press('Shift+Tab');
