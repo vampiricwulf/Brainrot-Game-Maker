@@ -31,6 +31,8 @@
   const styleTargets = (el: TextEl, scope: string) => textStyleTargets(app.game, null, el, scope, null, scope.startsWith('game') ? undefined : round);
 </script>
 
+<!-- (One box for the page under the header: the slide refits as the fields above it grow or shrink, see fitheight.) -->
+<div>
 <div class="grid">
   <label class="field">
     Round name
@@ -60,6 +62,7 @@
 {#key `${round.id}-${slideKeyOf(slide)}`}
   <SlideEditor {slide} styletargets={styleTargets} styleslides quickfield="q" placeholder="Click to type on the slide" tabbed fitheight />
 {/key}
+</div>
 
 <style>
   /* The fields stay at the readable width of a page of settings; the slide under them fills the screen, as a board does. */

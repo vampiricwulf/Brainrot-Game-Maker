@@ -704,6 +704,17 @@ try {
       Math.abs(slides.editor - slides.head) <= 2 && slides.canvas > 1000 && slides.fields <= 1200 && slides.scroll <= 0,
       `at 1920 a slides round's slide editor reaches the header's right edge, its fields stay at the readable width, and the whole slide shows (${JSON.stringify(slides)})`,
     );
+    // Lines typed above the slide shrink it to fit (still all in sight), and it grows back when they go.
+    const fit = () => wp.evaluate(() => ({ canvas: Math.round(document.querySelector('main .se .canvas').getBoundingClientRect().width), scroll: document.querySelector('main').scrollHeight - document.querySelector('main').clientHeight }));
+    await wp.locator('[data-field="round-notes"]').fill('one\ntwo\nthree\nfour');
+    await wp.locator('main [data-field="q"]').fill('Welcome to the sample game!\n2\n3\n4\n5\n6');
+    await wp.waitForTimeout(200);
+    const typed = await fit();
+    await wp.locator('[data-field="round-notes"]').fill('');
+    await wp.locator('main [data-field="q"]').fill('Welcome to the sample game!');
+    await wp.waitForTimeout(200);
+    const cleared = await fit();
+    assert(typed.scroll <= 0 && typed.canvas < slides.canvas - 50 && cleared.canvas === slides.canvas && cleared.scroll <= 0, `lines typed above a slides round's slide shrink it to stay in sight, and it grows back (${slides.canvas} → ${typed.canvas} → ${cleared.canvas})`);
     // The Final's form stays at the readable width under its full-width header.
     await roundTab(/Final Jeopardy!/).click();
     const final = await wp.evaluate(() => document.querySelector('main .se').getBoundingClientRect().right - document.querySelector('main [data-round-name], main input').getBoundingClientRect().left);
@@ -713,17 +724,28 @@ try {
       const s = getComputedStyle(b);
       return [Math.round(b.getBoundingClientRect().height), s.fontSize, s.opacity, s.borderRadius, s.paddingTop, s.paddingLeft].join(' ');
     };
-    const group = await wp.evaluate(
-      (f) => {
-        const look = new Function(`return ${f}`)();
-        const g = document.querySelector('main .tabs .group');
-        const bs = [...g.closest('.tabs').querySelectorAll('.add'), ...g.querySelectorAll(':scope > button:not(.add):not(:disabled)')];
-        return bs.map((b) => `${b.textContent.trim()}: ${look(b)}`);
-      },
-      look.toString(),
-    );
-    const styles = new Set(group.map((l) => l.split(': ')[1]));
-    assert(group.some((l) => l.startsWith('＋ 🤫 Card')) && group.some((l) => l.startsWith('＋ Add slide')) && styles.size === 1, `the Final's slide buttons are one small button, ＋ Add slide and ＋ 🤫 Card too (${group.join(' | ')})`);
+    const slideButtons = (where) =>
+      wp.evaluate(
+        ([f, where]) => {
+          const look = new Function(`return ${f}`)();
+          const g = document.querySelector(`${where} .tabs .group`);
+          const bs = [...g.closest('.tabs').querySelectorAll('.add'), ...g.querySelectorAll(':scope > button:not(.add):not(:disabled)')];
+          return bs.map((b) => `${b.textContent.trim()}: ${look(b)}`);
+        },
+        [look.toString(), where],
+      );
+    const oneLook = (group) => group.some((l) => l.startsWith('＋ 🤫 Card')) && group.some((l) => l.startsWith('＋ Add slide')) && new Set(group.map((l) => l.split(': ')[1])).size === 1;
+    const group = await slideButtons('main');
+    assert(oneLook(group), `the Final's slide buttons are one small button, ＋ Add slide and ＋ 🤫 Card too (${group.join(' | ')})`);
+    // The same in the clue editor.
+    await roundTab(/^\W*Jeopardy!$/).click();
+    await wp.locator('.grid .tile').first().click();
+    const clueDlg = wp.getByRole('dialog', { name: 'Edit clue' });
+    await clueDlg.waitFor();
+    const clueGroup = await slideButtons('[role="dialog"]');
+    assert(oneLook(clueGroup), `the clue editor's slide buttons are one small button, ＋ Add slide and ＋ 🤫 Card too (${clueGroup.join(' | ')})`);
+    await wp.keyboard.press('Escape');
+    await clueDlg.waitFor({ state: 'detached' });
     // At laptop widths Partner clues' selects take a second line: the two blocks' "… on the board" lines stay level.
     await roundTab(/^\W*Jeopardy!$/).click();
     for (const [w, h] of [[1280, 720], [1366, 768]]) {
