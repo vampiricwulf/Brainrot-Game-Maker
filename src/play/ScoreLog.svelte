@@ -147,7 +147,7 @@
       items.push(
         row.state === 'done'
           ? { label: '↶ Undo just this score', onclick: () => toggleStep(session, row.id), hint: 'Only this one: the steps after it stay' }
-          : { label: '↷ Restore', onclick: () => toggleStep(session, row.id), hint: 'Only this one' },
+          : { label: '↷ Restore', onclick: () => toggleStep(session, row.id), hint: held(session.scoreLog.filter((e) => stepOf(e) === row.id)) ?? 'Only this one' },
       );
     }
     showMenu(e, items);
