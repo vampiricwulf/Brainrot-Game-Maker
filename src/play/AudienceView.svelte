@@ -610,8 +610,8 @@
     {@const waiting = tileToolUp(live, info.clue) && !session.revealed}
     <!-- The question slide the host is on (a clue can have several: the first one zooms in, the next ones come in quietly). -->
     {@const at = clueSlideIndex(session, info.clue)}
-    <!-- The board's background behind it while it zooms in (the slide covers it after): a light theme doesn't blink to
-         black on every clue. On a keyed stage, the key, as round the board. -->
+    <!-- The board's background color behind it while it zooms in (the slide covers it after): a light theme doesn't
+         blink to black on every clue. On a keyed stage, the key, as round the board. -->
     <div class="clue-bg" style:background={keyColor}></div>
     {#key `${info.clue.id}-${session.revealed}-${waiting}-${at}`}
       <div
@@ -1123,10 +1123,11 @@
     z-index: 0;
     background: var(--board-image, none) center / cover no-repeat, var(--board-bg, var(--board-gap));
   }
+  /* (The board's color, not its picture: the quiet fade between a clue's slides dips to it too.) */
   .clue-bg {
     position: absolute;
     inset: 0;
-    background: var(--board-image, none) center / cover no-repeat, var(--board-bg, var(--board-gap));
+    background: var(--board-bg, var(--board-gap));
   }
   .layer {
     position: absolute;

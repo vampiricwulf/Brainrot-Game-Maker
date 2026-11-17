@@ -77,9 +77,8 @@
     position: absolute;
     top: 30px;
     left: 40px;
-    /* (Room for a short name on one line, "Partner for Ann", still clear of the wheel.) */
-    max-width: 600px;
-    text-wrap: balance;
+    /* (Room for a short name on one line, "Partner for Ann", clear of the wheel's rim below it.) */
+    max-width: 500px;
     font-family: var(--value-font);
     font-size: 64px;
     line-height: 1.05;
