@@ -6,7 +6,7 @@ import { classIcon, classLabel, ensureWorld } from './rpg';
 import { newSession } from './session';
 import { layerIcon } from './layerlabel';
 import { STAT_PRESETS } from './toolset';
-import { miniQuestRound, TEMPLATES } from './samples';
+import { addSampleGame, dungeonRound, miniQuestRound, TEMPLATES } from './samples';
 import { validate } from './validate';
 import { isBoardGame } from './model';
 
@@ -173,6 +173,14 @@ describe('⑂ Add a fork here', () => {
 });
 
 describe('templates with shops and fights', () => {
+  it('the templates’ maps have place names, not “Map” (it read as a label: “Map · Forest”)', () => {
+    const game = newGame();
+    miniQuestRound(game);
+    dungeonRound(game);
+    addSampleGame(game);
+    expect(game.worlds!.map((w) => w.maps.map((m) => m.name))).toEqual([['Valley'], ['Dungeon'], ['Countryside']]);
+  });
+
   it('Mini quest: a village shop, gold to find and a boss guarding a hidden treasure, with nothing to fix', () => {
     const game = newGame();
     const r = miniQuestRound(game);

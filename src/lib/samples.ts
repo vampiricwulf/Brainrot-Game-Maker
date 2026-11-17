@@ -81,9 +81,19 @@ function potion(game: Game): ItemDef {
 
 // ---------- RPG ----------
 
-/** A world of `cols` × `rows` screens, every cell filled, named by `name(col, row)`. */
-function gridWorld(worldName: string, cols: number, rows: number, name: (c: number, r: number) => string, color: (c: number, r: number) => string): World {
-  const map = newWorldMap('Map', cols, rows);
+/**
+ * A world of `cols` × `rows` screens, every cell filled, named by `name(col, row)`. Its one map gets a place name
+ * (`mapName`): the map's name shows as 'Valley · Forest' and on the stream's map, where 'Map' read as a label.
+ */
+function gridWorld(
+  worldName: string,
+  mapName: string,
+  cols: number,
+  rows: number,
+  name: (c: number, r: number) => string,
+  color: (c: number, r: number) => string,
+): World {
+  const map = newWorldMap(mapName, cols, rows);
   map.screens = [];
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++) {
@@ -105,7 +115,7 @@ export function dungeonRound(game: Game, name = 'Dungeon'): RpgRound {
     ['Dark hall', 'Great hall', 'Armory'],
     ['Cell', 'Entrance', 'Guard room'],
   ];
-  const world = gridWorld(`${name} world`, 3, 3, (c, r) => names[r][c], (c, r) => (r === 0 && c === 1 ? '#5a4a12' : ['#23232e', '#2b2638', '#1f2a2e'][(c + r) % 3]));
+  const world = gridWorld(`${name} world`, 'Dungeon', 3, 3, (c, r) => names[r][c], (c, r) => (r === 0 && c === 1 ? '#5a4a12' : ['#23232e', '#2b2638', '#1f2a2e'][(c + r) % 3]));
   const map = world.maps[0];
   const at = (c: number, r: number) => map.screens.find((s) => s.col === c && s.row === r)!;
   at(1, 0).slide.elements.push(thing('💰', 'Treasure chest', 850, 520, { class: 'item', item: potion(game).id, qty: 1 }));
@@ -148,7 +158,7 @@ export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
     { item: drink.id, qty: null },
     { item: sword.id, qty: 3 },
   ];
-  const world = gridWorld(`${name} world`, 3, 1, (c) => ['Village', 'Forest', 'Boss lair'][c], (c) => ['#2f6b3a', '#1d4a26', '#3a1420'][c]);
+  const world = gridWorld(`${name} world`, 'Valley', 3, 1, (c) => ['Village', 'Forest', 'Boss lair'][c], (c) => ['#2f6b3a', '#1d4a26', '#3a1420'][c]);
   const [village, forest, lair] = world.maps[0].screens;
   // (Up and to the side: everyone starts in a row through the middle.)
   village.slide.elements.push(
@@ -176,7 +186,7 @@ export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
 /** The sample's little world: a village, a forest with a chest, and a cave with a talking cat. */
 function sampleWorld(game: Game): RpgRound {
   const coin = gold(game);
-  const world = gridWorld('Sample world', 3, 1, (c) => ['Village', 'Forest', 'Cave'][c], (c) => ['#2f6b3a', '#1d4a26', '#2b2b38'][c]);
+  const world = gridWorld('Sample world', 'Countryside', 3, 1, (c) => ['Village', 'Forest', 'Cave'][c], (c) => ['#2f6b3a', '#1d4a26', '#2b2b38'][c]);
   const [village, forest, cave] = world.maps[0].screens;
   village.slide.elements.push(words('Walk east with the arrows →', 820, 60, '#ffe119'));
   village.hostNotes = 'The arrow keys (or the pad) move the party. Click a thing on a screen for its card.';
