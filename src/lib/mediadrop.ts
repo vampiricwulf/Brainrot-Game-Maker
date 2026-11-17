@@ -17,12 +17,12 @@ export interface MediaDrop {
   disabled?: boolean;
 }
 
-const WORD: Record<MediaKind, string> = { image: 'a picture', video: 'a video', audio: 'a sound', font: 'a font' };
+const WORD: Record<MediaKind, string> = { image: 'picture', video: 'video', audio: 'sound', font: 'font' };
 
-/** "a picture", "a picture or a video", "a picture, a video or a sound". */
+/** "a picture file", "a picture or video file", "a picture, video or sound file". */
 export function kindWords(kinds: readonly MediaKind[]): string {
   const w = kinds.map((k) => WORD[k]);
-  return w.length > 1 ? `${w.slice(0, -1).join(', ')} or ${w[w.length - 1]}` : (w[0] ?? 'a file');
+  return `a ${w.length > 1 ? `${w.slice(0, -1).join(', ')} or ${w[w.length - 1]}` : (w[0] ?? 'media')} file`;
 }
 
 const kindsOf = (k: MediaDrop['kind']): readonly MediaKind[] => (typeof k === 'string' ? [k] : k);
@@ -32,12 +32,16 @@ export function fileKind(file: { name: string; type: string }): MediaKind | null
   return mediaKind(file.name, mimeFor(file.name, file.type));
 }
 
+/**
+ * A file of the wrong kind, said the way ＋ Add files… says it, wherever a file is refused: "“notes.txt” isn’t a
+ * picture or video file."
+ */
+export const wrongFile = (name: string, kinds: MediaDrop['kind']): string => `“${name}” isn’t ${kindWords(kindsOf(kinds))}.`;
+
 /** Why `file` can't go in a slot for `kinds`, for a toast (null: it can). */
 export function refusal(file: { name: string; type: string }, kinds: MediaDrop['kind']): string | null {
-  const list = kindsOf(kinds);
   const k = fileKind(file);
-  if (k && list.includes(k)) return null;
-  return `"${file.name}" isn't ${kindWords(list)}${k ? '' : ' the game can use'}`;
+  return k && kindsOf(kinds).includes(k) ? null : wrongFile(file.name, kinds);
 }
 
 /** The first of `files` that fits (else the first one, whose refusal says why). */

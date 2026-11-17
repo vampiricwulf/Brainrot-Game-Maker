@@ -10,7 +10,7 @@
   import { app, toast } from '../lib/app.svelte';
   import { begin, history, redo, step, stepAsync, undo } from '../lib/history.svelte';
   import { addMediaFile, mediaUrls } from '../lib/media.svelte';
-  import { fileKind, isGameDrop } from '../lib/mediadrop';
+  import { fileKind, isGameDrop, wrongFile } from '../lib/mediadrop';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
   import { align, bounds, centreOn, clampOnto, elementsAt, restack, type Pt } from '../lib/layers';
@@ -177,7 +177,7 @@
         try {
           // Checked before it's stored: a video or a sound mustn't end up in 🖼 Media unused.
           if (fileKind(file) !== 'image') {
-            toast(`"${file.name}" isn't an image. Board images can be pictures or GIFs.`);
+            toast(`${wrongFile(file.name, 'image')} Board images can be pictures or GIFs.`);
             continue;
           }
           const ref = await addMediaFile(game, file);

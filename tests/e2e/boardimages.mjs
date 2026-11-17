@@ -252,7 +252,7 @@ try {
     return d;
   });
   await modal.locator('.canvas').dispatchEvent('drop', { dataTransfer: sound });
-  await page.locator('.toast', { hasText: 'isn\'t an image' }).waitFor();
+  await page.locator('.toast', { hasText: '“boing.wav” isn’t a picture file. Board images can be pictures or GIFs.' }).waitFor();
   assert((await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).innerText()) === mediaBefore, 'a sound dropped on the board images is refused and not added to 🖼 Media');
 
   await modal.getByRole('button', { name: /Copy all to other rounds/ }).click();

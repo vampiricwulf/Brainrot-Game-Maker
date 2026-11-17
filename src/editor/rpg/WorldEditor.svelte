@@ -52,7 +52,7 @@
     toggleSeam,
   } from '../../lib/worldedit';
   import MediaPicker from '../slide/MediaPicker.svelte';
-  import { isGameDrop, mediaDrop } from '../../lib/mediadrop';
+  import { isGameDrop, mediaDrop, wrongFile } from '../../lib/mediadrop';
   import ScreenEditor from './ScreenEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
 
@@ -720,7 +720,7 @@
         try {
           const ref = await addMediaFile(game, file);
           if (ref.kind === 'image') pics.push({ id: ref.id, name: file.name.replace(/\.[^.]+$/, '') || 'Screen' });
-          else toast(`"${ref.name}" isn't an image`);
+          else toast(wrongFile(ref.name, 'image'));
         } catch (err) {
           toast((err as Error).message);
         }

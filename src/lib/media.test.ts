@@ -33,7 +33,7 @@ describe('adding files', () => {
   it('refuses HEIC photos, which never show', async () => {
     const game = newGame();
     await expect(addMediaFile(game, new File(['x'], 'IMG_4821.HEIC', { type: 'image/heic' }))).rejects.toThrow(
-      '"IMG_4821.HEIC" is a HEIC photo',
+      '“IMG_4821.HEIC” is a HEIC photo (the iPhone’s format)',
     );
     await expect(addMediaFile(game, new File(['x'], 'photo.heif'))).rejects.toThrow('Convert it to JPG or PNG first.');
     expect(game.media).toEqual([]);

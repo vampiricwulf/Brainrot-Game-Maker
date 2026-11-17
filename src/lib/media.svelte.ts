@@ -258,7 +258,7 @@ const isHeic = (name: string, mime: string) => /^image\/hei[cf]/.test(mime) || /
  */
 async function checkedFile(file: Blob, name: string): Promise<{ mime: string; kind: MediaKind; blob: Blob }> {
   const mime = mimeFor(name, file.type);
-  if (isHeic(name, mime)) throw new Error(`"${name}" is a HEIC photo (the iPhone's format), which the game can't show. Convert it to JPG or PNG first.`);
+  if (isHeic(name, mime)) throw new Error(`“${name}” is a HEIC photo (the iPhone’s format), which the game can’t show. Convert it to JPG or PNG first.`);
   const kind = mediaKind(name, mime);
   // (In the editor's words, as a file dropped on it is told: straydrop.ts.)
   if (!kind) throw new Error(`“${name}” isn’t a picture, video, sound or font file.`);

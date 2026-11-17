@@ -66,7 +66,7 @@
   import { followClueText, textSlidesOf } from '../lib/cluetext';
   import { toast } from '../lib/app.svelte';
   import { addMediaFile, imgFallback, mediaUrls, slideImageSize } from '../lib/media.svelte';
-  import { isGameDrop } from '../lib/mediadrop';
+  import { isGameDrop, wrongFile } from '../lib/mediadrop';
   import ClueEditor from './ClueEditor.svelte';
   import BoardDecorEditor from './BoardDecorEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -164,7 +164,7 @@
       try {
         const ref = await addMediaFile(app.game, file);
         if (ref.kind === 'image') ids.push(ref.id);
-        else toast(`"${ref.name}" isn't an image`);
+        else toast(wrongFile(ref.name, 'image'));
       } catch (err) {
         toast((err as Error).message);
       }

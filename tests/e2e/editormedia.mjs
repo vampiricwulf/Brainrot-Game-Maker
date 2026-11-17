@@ -69,7 +69,10 @@ try {
   await page.getByRole('button', { name: '🔊 Sounds' }).click();
   const soundBtn = page.getByRole('button', { name: /^Choose file for/ }).first();
   await drop(soundBtn, [['cat.png', 'image/png']]);
-  assert((await toast.innerText()).includes('"cat.png" isn\'t a sound') && (await mediaCount()) === 1, 'a picture dropped on a sound slot is refused with a toast');
+  assert(
+    (await toast.innerText()) === '“cat.png” isn’t a sound file.' && (await mediaCount()) === 1,
+    `a picture dropped on a sound slot is refused with a toast, said as ＋ Add files… says it (${await toast.innerText()})`,
+  );
 
   // ---------- SHELL-2: a picture dropped where nothing takes it (beside the slide, on a page's header) goes into 🖼 Media ----------
   await drop(page.locator('.editor > header'), [['stray.png', 'image/png']]);

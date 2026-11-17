@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { fileKind, fittingFile, isGameDrop, kindWords, notMedia, refusal } from './mediadrop';
+import { fileKind, fittingFile, isGameDrop, kindWords, notMedia, refusal, wrongFile } from './mediadrop';
 
 const f = (name: string, type = '') => new File(['x'], name, { type });
 
 describe('media drops', () => {
   it('names what a slot takes', () => {
-    expect(kindWords(['image'])).toBe('a picture');
-    expect(kindWords(['image', 'video', 'audio'])).toBe('a picture, a video or a sound');
+    expect(kindWords(['image'])).toBe('a picture file');
+    expect(kindWords(['image', 'video', 'audio'])).toBe('a picture, video or sound file');
   });
   it('knows a file by its type or its name', () => {
     expect(fileKind(f('cat.png', 'image/png'))).toBe('image');
@@ -22,8 +22,10 @@ describe('media drops', () => {
   });
   it('says why a file is refused', () => {
     expect(refusal(f('cat.png', 'image/png'), 'image')).toBeNull();
-    expect(refusal(f('cat.png', 'image/png'), 'audio')).toBe('"cat.png" isn\'t a sound');
-    expect(refusal(f('notes.txt', 'text/plain'), ['image', 'video'])).toBe('"notes.txt" isn\'t a picture or a video the game can use');
+    // (As ＋ Add files… says it: curly quotes, the same words.)
+    expect(refusal(f('cat.png', 'image/png'), 'audio')).toBe('“cat.png” isn’t a sound file.');
+    expect(refusal(f('notes.txt', 'text/plain'), ['image', 'video'])).toBe('“notes.txt” isn’t a picture or video file.');
+    expect(wrongFile('song.mp3', 'image')).toBe('“song.mp3” isn’t a picture file.');
   });
   it('takes the first file that fits, else the first (whose refusal says why)', () => {
     const files = [f('a.txt', 'text/plain'), f('b.png', 'image/png')];
