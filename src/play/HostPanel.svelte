@@ -767,11 +767,11 @@
    * minus. (A Daily Double's wager can be more: that one may grow.)
    */
   const markCh = $derived(Math.max(7, `✘ −${formatPoints(topValue, sym)}`.length + 1));
-  const scoreRoom = (n: number) => (chipSlots && topValue ? `max(70px, ${`−${formatPoints(Math.abs(n) + topValue, sym)}`.length}ch + 24px)` : undefined);
+  const scoreRoom = (n: number) => (chipSlots && topValue ? `max(70px, ${`−${formatPoints(Math.abs(n) + topValue, sym)}`.length}ch + 16px)` : undefined);
   /** The score button's width, and its edit box's: elsewhere (the Final, Game over…) as wide as the score shown (one
    *  more ch for a minus typed), so clicking it to fix it doesn't widen the chip either. */
   const scoreBox = (p: string) =>
-    scoreRoom(score(session, p) - (marks[p]?.delta ?? 0)) ?? `max(70px, ${formatPoints(score(session, p), sym).length + 1}ch + 24px)`;
+    scoreRoom(score(session, p) - (marks[p]?.delta ?? 0)) ?? `max(70px, ${formatPoints(score(session, p), sym).length + 1}ch + 16px)`;
 
   // ---------- The NEXT cell: one main button ----------
   /**
@@ -2513,13 +2513,16 @@
     color: var(--warn);
     pointer-events: none;
   }
+  /* (A little narrower than the panel's buttons, as the score is: room for ✔ / ✘ at their size, so a crowded row of chips
+     wraps no sooner.) */
   .sel {
     position: relative;
     font-weight: 700;
     border: none;
+    padding-inline: 10px;
   }
   .sel.name {
-    padding: 6px 12px;
+    padding: 6px 10px;
   }
   /* A very long name ends in "…", so its row never runs past the panel. */
   .who {
@@ -2548,13 +2551,16 @@
     font-weight: 700;
     min-width: 70px;
     border: none;
+    padding-inline: 8px;
   }
   /* (Bold as the score button is: its width, set in ch as the button's is, then comes out the same.) */
   .score-edit {
     font-weight: 700;
+    /* (Its text as wide as the button's: 7px and its 1px edge, the button's 8px.) */
+    padding-inline: 7px;
   }
   /* ✔ / ✘: the show's most-clicked pair, where a slip costs points, big enough to hit at once and apart (the chip's gap
-     and 3px more). (Their signs at the panel's size, not .small's.) */
+     and 2px more). (Their signs at the panel's size, not .small's.) */
   .p .quick {
     min-width: 36px;
     min-height: 32px;
@@ -2562,7 +2568,7 @@
     font-size: 14px;
   }
   .quick + .quick {
-    margin-left: 3px;
+    margin-left: 2px;
   }
   /* On the board and in a clue the chips are ✔ / ✘'s height with them or without (a game that doesn't take points for a
      wrong answer keeps no room for them on the board): opening a clue never makes the rows taller. And no taller than

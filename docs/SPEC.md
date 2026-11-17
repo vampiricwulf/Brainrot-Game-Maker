@@ -1026,7 +1026,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    - Amount field, prefilled with the clue value (or the DD wager). Editable to any number.
    - Buttons: **Award +**, **Deduct −**, and quick "Wrong (−value)" per player when deduct-on-wrong is on.
    - Awarding does not auto-close the clue, so multiple awards/deductions per clue are possible.
-   - A player's quick ✔ / ✘ (on their chip, each at least 36×32 px and 7 px apart: the show's most-clicked pair, where a
+   - A player's quick ✔ / ✘ (on their chip, each at least 36×32 px and 6 px apart: the show's most-clicked pair, where a
      slip costs points) marks them on the clue (on their chip: "✘ −$200"); the same one again is off. The other one
      on the same player switches the verdict (session.ts `switchVerdict`): every score change of their mark on the clue
      is taken back and the new verdict gives or takes the clue's value (a Daily Double's wager, a partner clue's share)
