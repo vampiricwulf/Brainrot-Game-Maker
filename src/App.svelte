@@ -95,6 +95,12 @@
   const playerOnly = untrack(() => !!embedded || !!packError);
 
   let loaded = $state(false);
+  /**
+   * Still loading after a while: the browser's storage may never answer (it can hang rather than fail). The loading
+   * screen says so, with ⟳ Reload, and keeps waiting: opening a new game instead could autosave over a draft that was
+   * only slow to load.
+   */
+  let slowStart = $state(false);
   let loadError = $state('');
   /** While an exported game opens: its files unpacked so far, of how many. */
   let unpacked = $state<{ done: number; total: number } | null>(null);
@@ -162,6 +168,7 @@
 
   onMount(async () => {
     app.playerOnly = playerOnly;
+    setTimeout(() => (slowStart = true), 8000);
     if (packError) {
       loadError = packError;
       loaded = true;
@@ -1111,14 +1118,21 @@
 
 {#if !loaded}
   <div class="loading muted" role="status">
-    {#if playerOnly}
-      <span>
-        Loading the game…
-        {#if unpacked?.total}<br /><span class="small">Unpacking files: {unpacked.done} of {unpacked.total}</span>{/if}
-      </span>
-    {:else}
-      Loading…
-    {/if}
+    <div>
+      {#if playerOnly}
+        <span>
+          Loading the game…
+          {#if unpacked?.total}<br /><span class="small">Unpacking files: {unpacked.done} of {unpacked.total}</span>{/if}
+        </span>
+      {:else}
+        Loading…
+      {/if}
+      <!-- (Not while an exported game's files are being unpacked: a big one takes a while, and says how far it got.) -->
+      {#if slowStart && !(unpacked && unpacked.done < unpacked.total)}
+        <p class="small">This is taking longer than usual: the browser’s storage may not be answering.</p>
+        <button onclick={() => location.reload()}>⟳ Reload</button>
+      {/if}
+    </div>
   </div>
 {:else if loadError}
   <div class="loading">

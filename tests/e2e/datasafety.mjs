@@ -91,6 +91,21 @@ try {
     await blocked.close();
   }
 
+  // ---------- Storage that never answers: the loading screen says so, with ⟳ Reload ----------
+  {
+    const hung = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    await hung.addInitScript(() => {
+      // (A request that never succeeds nor fails.)
+      IDBFactory.prototype.open = () => ({});
+    });
+    const p = await hung.newPage();
+    await p.goto(url);
+    const slow = p.getByText('This is taking longer than usual: the browser’s storage may not be answering.');
+    await slow.waitFor({ timeout: 15000 });
+    assert((await p.getByRole('button', { name: '⟳ Reload' }).count()) === 1, 'storage that never answers: after a while the loading screen says so, with ⟳ Reload');
+    await hung.close();
+  }
+
   await page.goto(url);
   await page.getByRole('button', { name: 'Open…' }).waitFor();
   await page.waitForTimeout(600);
