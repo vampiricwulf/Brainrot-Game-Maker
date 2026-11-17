@@ -736,6 +736,9 @@ try {
   await p3.getByRole('button', { name: 'Start game ▶' }).click();
   await p3.locator('.panel').waitFor();
   if (await p3.getByRole('button', { name: 'Skip intro' }).count()) await p3.getByRole('button', { name: 'Skip intro' }).click();
+  // (Three players' chips, ✔ / ✘'s room and all, on one row at 1024px wide.)
+  const chipRows = await p3.locator('.panel .players .p').evaluateAll((ps) => new Set(ps.map((p) => Math.round(p.getBoundingClientRect().top))).size);
+  assert(chipRows === 1, `1024 px wide: three players' chips, with ✔ / ✘'s room, are one row (${chipRows})`);
   const oneLine = async (where) => {
     const bar = p3.locator('.panel .fixed');
     const u = await bar.getByRole('button', { name: '↶ Undo' }).boundingBox();
@@ -892,9 +895,11 @@ try {
         // board: no row wraps anew.
         const pair = await p4.locator('.panel .players .p').first().locator('button.quick').evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect()).map((r) => ({ x: r.x, w: r.width, h: r.height })));
         const apart = pair[1].x - pair[0].x - pair[0].w;
+        // (As many rows as the chips had before ✔ / ✘ grew: three a row from 1200px wide, two a row narrower.)
+        const rows = new Set(chipsOnBoard.split(', ').map((r) => r.split(' ')[1])).size;
         assert(
-          pair.length === 2 && pair.every((b) => b.h >= 32 && b.w >= 36) && apart >= 6 && apart <= 8 && (await chipRects()) === chipsOnBoard,
-          `${w}×${h}: a chip's ✔ / ✘ are ${pair.map((b) => `${Math.round(b.w)}×${Math.round(b.h)}`).join(' and ')}, ${apart}px apart, and every chip keeps its place and size from the board`,
+          pair.length === 2 && pair.every((b) => b.h >= 32 && b.w >= 36) && apart >= 6 && apart <= 8 && (await chipRects()) === chipsOnBoard && rows === (w >= 1200 ? 2 : 3),
+          `${w}×${h}: a chip's ✔ / ✘ are ${pair.map((b) => `${Math.round(b.w)}×${Math.round(b.h)}`).join(' and ')}, ${apart}px apart, and every chip keeps its place and size from the board, in ${rows} rows`,
         );
       }
       // (Only the name may be cut short: nothing runs past ＋ Award's or − Deduct's edge, so the amount shows whole.)

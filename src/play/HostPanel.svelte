@@ -793,11 +793,12 @@
   /**
    * On the board and in a clue each chip keeps the room its mark and its score can take there, so a ✔ / ✘ never widens
    * it (and the row never wraps anew, shrinking the stage). The mark's: the widest a clue of this round gives
-   * ("✘ −$1,000"), in ch, one more for the ✘ and the minus (wider than a digit in some fonts). The score's: as wide as it
+   * ("✘ −$1,000"), in ch (its ✘ and minus are wider than a digit in some fonts: the room a padding would take is
+   * theirs). The score's: as wide as it
    * gets the round's largest value away from the score before this clue's marks (so a mark never changes it), with a
    * minus. (A Daily Double's wager can be more: that one may grow.)
    */
-  const markCh = $derived(Math.max(7, `✘ −${formatPoints(topValue, sym)}`.length + 1));
+  const markCh = $derived(Math.max(7, `✘ −${formatPoints(topValue, sym)}`.length));
   const scoreRoom = (n: number) => (chipSlots && topValue ? `max(70px, ${`−${formatPoints(Math.abs(n) + topValue, sym)}`.length}ch + 16px)` : undefined);
   /** The score button's width, and its edit box's: elsewhere (the Final, Game over…) as wide as the score shown (one
    *  more ch for a minus typed), so clicking it to fix it doesn't widen the chip either. */
@@ -2541,10 +2542,10 @@
   }
   /* A fixed width (the round's widest mark: see markCh), kept while empty: the chip doesn't grow when its player is
      marked. */
+  /* (No padding: the chip's gaps set it apart, and its ch take the room the padding had, for ✔ / ✘ at their size.) */
   .mark {
     font-size: 12px;
     font-weight: 700;
-    padding: 0 4px;
     white-space: nowrap;
   }
   .mark.empty {
