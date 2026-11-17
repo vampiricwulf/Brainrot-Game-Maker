@@ -645,7 +645,9 @@ try {
   await page.getByRole('button', { name: /^▶ Move Cat/ }).click();
   await page.locator('.bh .acts').getByRole('button', { name: 'Roll again' }).click();
   // It says the space's name once, and that Next turn gives Cat another go.
-  assert((await toast()) === 'Roll again: Cat', `the toast says Roll again once (${await toast()})`);
+  const ran = await page.locator('.toast', { hasText: /^Roll again/ }).innerText();
+  assert(ran === 'Roll again: Cat', `the toast says Roll again once (${ran})`);
+  await page.locator('.bh [data-turn-next]', { hasText: 'rolls again' }).waitFor({ timeout: 3000 }).catch(() => {});
   const first = await page.locator('.bh [data-turn-next]').innerText();
   assert(first === 'Cat rolls again: Next turn ▶ (N).', `the turn box says Cat rolls again (${first})`);
   await page.keyboard.press('n');

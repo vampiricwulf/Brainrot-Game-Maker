@@ -1,5 +1,6 @@
-// A box that scrolls (a window in the one-window host panel: 👥 Players, ⚖ Rules, the keys): `data-more` on it while
-// there's more below what shows, so a fade over its foot says it scrolls (see app.css, .in-panel).
+// A box that scrolls (a window in the one-window host panel: 👥 Players, ⚖ Rules, the keys; an RPG or board-game round's
+// box under the stage): `data-more` on it while there's more below what shows, so a fade over its foot says it scrolls
+// (see app.css, .in-panel, and HostPanel.svelte, .mode-host).
 
 /** Whether a box scrolled to `top` (`height` showing of `full`) has more below (a pixel's rounding left out). */
 export function moreBelow(top: number, height: number, full: number): boolean {

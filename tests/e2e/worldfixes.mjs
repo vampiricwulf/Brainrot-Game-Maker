@@ -37,6 +37,9 @@ async function host(template, two) {
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: new RegExp(template) }).click();
   await page.locator('nav > button.round-tab').first().waitFor();
+  // Its undo step names the template only when the round's name doesn't already ("Added round “Mini quest”").
+  const undo = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  assert(/^Undo: Added round “.+”/.test(undo) && !/“([^”]+)” \(\1\)/.test(undo), `the template's undo step says its name once (${undo})`);
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
   await addPlayers(page, 3);
