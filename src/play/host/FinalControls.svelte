@@ -566,17 +566,20 @@
       <!-- The how-to folds away: the rows (and the stage) keep the room. -->
       <details class="how" bind:open={howOpen}>
         {#if f.answers}
-          <summary class="muted">One by one: spotlight → show answer → right or wrong (N, C, X)</summary>
+          <summary class="muted">One by one: spotlight → show answer → right or wrong<span class="not-touch">{' '}(N, C, X)</span></summary>
           <span class="muted small">
-            Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows their typed
-            answer (or their wager, for a {noun} who answered out loud), C / X judge them (their answer and wager go up with it), then N
-            goes to the next {noun} · Shift+N back · 1–9 spotlight (the number on each row) · C right · X wrong.
+            Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼<span class="not-touch">, Alt+↑/↓</span>).
+            <!-- (No keys on a touch screen.) -->
+            <span class="not-touch">Keys: N shows their typed answer (or their wager, for a {noun} who answered out loud), C / X judge
+            them (their answer and wager go up with it), then N goes to the next {noun} · Shift+N back · 1–9 spotlight (the number
+            on each row) · C right · X wrong.</span>
           </span>
         {:else}
-          <summary class="muted">One by one: spotlight → show wager → right or wrong (N, C, X)</summary>
+          <summary class="muted">One by one: spotlight → show wager → right or wrong<span class="not-touch">{' '}(N, C, X)</span></summary>
           <span class="muted small">
-            Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows the wager,
-            C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9 spotlight (the number on each row) · C right · X wrong.
+            Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼<span class="not-touch">, Alt+↑/↓</span>).
+            <span class="not-touch">Keys: N shows the wager, C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9
+            spotlight (the number on each row) · C right · X wrong.</span>
           </span>
         {/if}
       </details>
@@ -724,8 +727,11 @@
                 <button class="small" class:slot={blue === 'wager'} onclick={() => finalShow(session, id)} disabled={f.shown[id]} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>
               </span>
             {/if}
+            <!-- (One pair: on a narrow window they wrap together, to the row's right end, at one place in every row.) -->
+            <span class="cell verdicts">
             <button class="small good" class:on={res === 'right'} class:ring={lit === 'verdict:right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)} aria-label="✔ Right: {p?.name ?? '?'}">✔ Right</button>
             <button class="small bad" class:on={res === 'wrong'} class:ring={lit === 'verdict:wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)} aria-label="✘ Wrong: {p?.name ?? '?'}">✘ Wrong</button>
+            </span>
           </div>
         {/each}
       </div>
@@ -953,6 +959,11 @@
   .cell.sw > label {
     gap: 6px;
   }
+  /* ✔ Right and ✘ Wrong, where the rows wrap (a narrow window, a tablet): together at the row's right end, so they're at
+     one place in every row whatever wraps before them (the spotlit row's Show wager, kept empty, too). */
+  .verdicts {
+    margin-left: auto;
+  }
   /* The reveal rows in straight columns: each row a subgrid of the list, so a column is as wide as its widest cell and
      keeps its place in every row whatever that row holds. The typed answer (with none, the name) takes the room left,
      so the score and wager, Show wager and the verdicts stay at the right end. On a narrow window, or where subgrid
@@ -979,6 +990,10 @@
       }
       .typed {
         max-width: none;
+      }
+      /* (Each its own column here.) */
+      .verdicts {
+        display: contents;
       }
     }
   }

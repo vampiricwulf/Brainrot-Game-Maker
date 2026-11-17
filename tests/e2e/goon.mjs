@@ -8,10 +8,11 @@
 //    too, Enter in it sends the card and starts the clock, then R in it reveals anyway; the page never holds the
 //    card's words while it's open;
 // 3. the Final, one window: with its think clock running, 👁 Reveal answer by N, a stage click, the stage's menu or the
-//    blue button asks first (⏱ Let it run, the ⏎ one, keeps the clock going; ⏸ Pause the clock, T, pauses it; 👁 Reveal anyway shows the answer); with
-//    the clock paused or run out it goes on at once (3b). In its reveals, N with the spotlit player not judged yet opens
-//    the check (a must: no “anyway”), C in it judges them and closes it, the spotlight staying on them with their
-//    verdict on stage, then N goes on;
+//    blue button asks first (⏱ Let it run, the ⏎ one, keeps the clock going; ⏸ Pause the clock, T, pauses it;
+//    👁 Reveal anyway shows the answer); with the clock paused or run out it goes on at once (3b). In its reveals, N with
+//    the spotlit player not judged yet opens the check (a must: no “anyway”), C in it judges them and closes it, the
+//    spotlight staying on them with their verdict on stage, then N goes on. On a touch tablet (3c) the check and the
+//    reveals' how-to teach no keys, and every reveal row has its ✔ Right / ✘ Wrong at one place;
 // 4. with the controls hidden: in one window N with something left changes nothing on stream (the stage its size, the
 //    pill pulses) and H shows the panel with the check open; in two windows the controls come back while it's open and
 //    hide again after;
@@ -552,6 +553,25 @@ try {
     const shown = (await teach.count()) === 1 && (await teach.isVisible());
     // (A finger can't press R or Shift+click: "Next time: …" is only for a keyboard and a mouse.)
     assert(what === 'a computer' ? shown : !shown, `${what}: the check ${what === 'a computer' ? 'says' : 'doesn’t say'} “Next time: R reveals at once · Shift+click …”`);
+    if (what === 'a touch tablet') {
+      // Its reveals: the rows wrap, ✔ Right and ✘ Wrong together at one place in every row (the spotlit one's too, its
+      // wager shown and its Show wager kept empty), and the how-to names no keys.
+      await goOnCheck(page, { ready: true }).waitFor();
+      await anyway(page).click();
+      await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
+      await page.keyboard.press('n');
+      await page.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();
+      await page.keyboard.press('n');
+      await page.locator('.fj .pl.cur', { hasText: 'wager $0' }).waitFor();
+      const at = await page.locator('.fj .pl').evaluateAll((rows) =>
+        rows.map((r) => ['button.good', 'button.bad'].map((sel) => Math.round(r.querySelector(sel).getBoundingClientRect().left)).join('/')),
+      );
+      assert(new Set(at).size === 1, `a touch tablet: ✔ Right / ✘ Wrong at one place in every reveal row, the spotlit one's too (${at.join(', ')})`);
+      const how = page.locator('.fj details.how');
+      if (!(await how.evaluate((d) => d.open))) await how.locator('summary').click();
+      const words = await how.innerText();
+      assert(words.includes('spotlight') && !/Keys:|Alt\+|\(N, C, X\)/.test(words), `a touch tablet: the reveals' how-to names no keys (“${words.replace(/\s+/g, ' ')}”)`);
+    }
     await ctx.close();
   }
 
