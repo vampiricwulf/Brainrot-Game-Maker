@@ -737,7 +737,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   wheel) moves the token, with `Enter`'s checks. **The check before going on** (`src/play/host/goon.ts`,
   `GoOnCheck.svelte`): the blue button pressed (a click, `N`, `Enter` where it's Next, a click on the stage, the clue
   row's ▦ Done) with something left opens a card in the panel instead, anchored at its bottom right over the panel's
-  buttons (never the stage, the status line or the fixed bar), with a button-free spot over the blue button. Its
+  buttons (never the stage, the status line or the fixed bar), up to 720px wide, or under the stage the panel's whole
+  width where its left edge would cut a button of the tools row (it covers that row whole, no stub beside it), with a
+  button-free spot over the blue button. Its
   heading is “First:” (a step to take first: phone buzzers never opened, a buzzer tie, ✍ answers still coming in, a
   tile's 🤫 card not sent; a 🤝 partner clue's who picked it, the partner, who describes or nobody to partner with on
   PARTNER UP!, all musts with no “anyway”, then at the reveal its cards not handed out or the clock not started, the pair

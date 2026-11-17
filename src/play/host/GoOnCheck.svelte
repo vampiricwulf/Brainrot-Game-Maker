@@ -64,7 +64,8 @@
   /**
    * Where it goes: from the status line's foot to the fixed bar's top, right-aligned, up to 720px wide (the column's
    * width beside the stage), as tall as it needs but reaching over the blue button; and that button's rectangle,
-   * measured as it opened, kept free of buttons.
+   * measured as it opened, kept free of buttons. Under the stage, where its left edge would cut a button of the tools row
+   * (its foot lies over that row), it's the panel's whole width instead: it covers the row, no stub of a tool beside it.
    */
   let place = $state<{ right: number; bottom: number; width: number; maxH: number; minH: number; spot: { right: number; bottom: number; width: number; height: number } | null; pad: number }>();
   function measure(): void {
@@ -76,8 +77,14 @@
     const padR = parseFloat(cs.paddingRight) || 0;
     const top = panel.querySelector(':scope > .status')?.getBoundingClientRect().bottom ?? pr.top;
     const foot = panel.querySelector(':scope > .fixed')?.getBoundingClientRect().top ?? pr.bottom;
-    const width = side ? pr.width - padL - padR : Math.min(pr.width - padL - padR, 720);
+    const whole = pr.width - padL - padR;
     const right = padR;
+    const cuts = (left: number) =>
+      [...panel.querySelectorAll<HTMLElement>(':scope > .toolsrow button, :scope > .toolsrow select')].some((b) => {
+        const r = b.getBoundingClientRect();
+        return r.width > 0 && r.left < left && r.right > left;
+      });
+    const width = side || cuts(pr.right - right - Math.min(whole, 720)) ? whole : Math.min(whole, 720);
     const bottom = pr.bottom - foot + 4;
     const cardRight = pr.right - right;
     const cardBottom = foot - 4;

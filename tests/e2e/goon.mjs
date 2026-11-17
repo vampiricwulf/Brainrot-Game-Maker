@@ -17,7 +17,7 @@
 //    pill pulses) and H shows the panel with the check open; in two windows the controls come back while it's open and
 //    hide again after;
 // 5. the check's place at 1280×720 in one window: inside the panel, off the stage and the fixed bar, none of its buttons
-//    where the blue button is, the stage its size.
+//    where the blue button is, the tools row covered whole (no tool cut off beside it), the stage its size.
 // Each step waits for what it should do, never a timer. Needs `npm ci` in buzzer/ (the buzzers never opened, flow 4).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -156,6 +156,21 @@ const rectOf = (loc) => loc.evaluate((b) => (({ left, right, top, bottom }) => (
 const boardUp = async (page) => (await page.locator('.stage-box .board').count()) === 1 && (await page.locator('.stage-box [data-slide]').count()) === 0;
 
 try {
+  /**
+   * The tools row's buttons the open check cuts (one partly under it, partly beside it): it covers the row whole where it
+   * would cut one.
+   */
+  const toolStubs = (page) =>
+    page.evaluate(() => {
+      const card = document.querySelector('.panel [data-goon]').getBoundingClientRect();
+      return [...document.querySelectorAll('.panel > .toolsrow :is(button, select)')]
+        .filter((b) => {
+          const r = b.getBoundingClientRect();
+          return r.width > 0 && r.left < card.right && card.left < r.right && r.top < card.bottom && card.top < r.bottom && (r.left < card.left - 0.5 || r.right > card.right + 0.5);
+        })
+        .map((b) => b.textContent.trim());
+    });
+
   // ---------- 1 and 5: a clue at ▦ Done with points not given, one window ----------
   console.log('A clue at ▦ Done ▶ board with points not given, one window at 1280×720:');
   {
@@ -193,6 +208,8 @@ try {
       c.inside && c.offStage && c.offBar && !c.onMain.length && (await stageSize(page)) === stageWas,
       `its place: inside the panel, off the stage and the fixed bar, none of its buttons on the blue button's spot, the stage its size (${JSON.stringify({ ...c, stageWas, stage: await stageSize(page) })})`,
     );
+    const stubs = await toolStubs(page);
+    assert(!stubs.length, `it covers the tools row whole, no tool cut off beside it (${stubs.join(', ') || 'none'})`);
     // (Its fixes in sight as it opens, not under its pinned foot while “▦ Done anyway: no points” shows.)
     for (const fix of ['＋ Award Ann $200 ▶ board', '− Deduct Ann $200 ▶ board']) {
       const hid = await quickInSight(page, fix);
@@ -385,6 +402,8 @@ try {
         (await answerUp()) === 0,
       `N with the Final’s clock running asks first (“${(await clockLine.locator('.text').innerText()).trim()}”): ⏱ Let it run ⏎, 👁 Reveal anyway, the answer hidden`,
     );
+    const stubs = await toolStubs(page);
+    assert(!stubs.length, `1280×720: the Final's clock check covers the tools row whole, no tool cut off beside it (${stubs.join(', ') || 'none'})`);
     const inSight = (await quickInSight(page, '⏱ Let it run')) + (await quickInSight(page, '⏸ Pause the clock'));
     assert(inSight === '', `1280×720, one window: ⏱ Let it run and ⏸ Pause the clock are in sight, nothing scrolled${inSight ? ` (${inSight})` : ''}`);
     // Enter in it: ⏱ Let it run, the clock still running, the answer still hidden.
