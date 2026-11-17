@@ -136,8 +136,11 @@
       placeholder={placeholder ?? field}
       aria-label={field}
       onkeydown={(e) => {
-        if (e.key === 'Enter') answer();
-        else if (e.key === 'Escape') cancelled();
+        // (Its default is held back: a question asked again in its place, keys on its Cancel, isn't pressed by it.)
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          answer();
+        } else if (e.key === 'Escape') cancelled();
       }}
     />
   {/if}

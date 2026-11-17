@@ -136,6 +136,16 @@ try {
     assert(focused === 'Cancel', `the keys are on Cancel, not on the item clicked (${focused})`);
     assert((await stageAt(page)) === stage, 'the stage keeps its place and size');
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-short-${two ? 2 : 1}.png` });
+    // A price typed in that's still short: the question is asked again with the keys on its Cancel (not on a buyer's
+    // chip at the top of the box), and the Enter that answered the price didn't press it.
+    await page.locator('[data-ask][data-ready]').waitFor();
+    await ask.getByRole('button', { name: 'Other price…' }).click();
+    await ask.getByLabel('Price').fill('7');
+    await ask.getByLabel('Price').press('Enter');
+    await ask.getByRole('button', { name: 'Sell anyway' }).waitFor();
+    await page.waitForTimeout(300);
+    const again = await page.evaluate(() => ({ text: document.activeElement?.textContent?.trim(), inAsk: !!document.activeElement?.closest('[data-ask]') }));
+    assert(again.text === 'Cancel' && again.inAsk && (await ask.count()) === 1, `still short at a typed price: asked again, the keys on its Cancel (${JSON.stringify(again)})`);
     await ask.getByRole('button', { name: 'Cancel' }).click();
     await ask.waitFor({ state: 'detached' });
     await page.keyboard.press('Escape');
