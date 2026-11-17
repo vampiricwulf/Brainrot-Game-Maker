@@ -12,6 +12,7 @@
   import TextBox from './TextBox.svelte';
   import ShapeView from './ShapeView.svelte';
   import MediaPlayer from './MediaPlayer.svelte';
+  import MissingMedia from './MissingMedia.svelte';
   import YouTubeEmbed from './YouTubeEmbed.svelte';
   import PlayerEmbed from './PlayerEmbed.svelte';
 
@@ -117,6 +118,7 @@
           <MediaPlayer {el} {src} {mode} {role} label={label(el)} />
         {:else}
           {#if hostView}<div class="missing">Missing {el.kind}</div>{/if}
+          <MissingMedia id={el.id} kind={el.kind} {role} label={label(el)} />
         {/if}
       {:else if el.kind === 'embed'}
         {#if el.embedKind === 'youtube'}

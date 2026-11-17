@@ -136,7 +136,7 @@
   } from '../lib/sync.svelte';
   import { mediaUsage, slideMediaIds } from '../lib/usage';
   import { mediaUrls } from '../lib/media.svelte';
-  import { localMedia, openMediaPopup, popupFailed, remoteMedia } from '../lib/mediactl.svelte';
+  import { keyTarget, localMedia, openMediaPopup, popupFailed, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, popupBlocked, toggleFullscreen } from '../lib/platform';
   import { onMount, setContext, tick, untrack } from 'svelte';
@@ -906,11 +906,9 @@
     if (t && game.settings.timerAutoStart) startTimer(app.live, t);
   }
 
-  /** The first controllable media element on screen (for the Space / ← → / M / Y shortcuts): not a silent loop (a GIF), if
-   *  there's other media. */
+  /** The media element on screen the Space / ← → / M / Y shortcuts reach (keyTarget: MediaControls marks its row). */
   function firstMedia(): [string, { paused: boolean; muted: boolean; openUrl?: string }] | undefined {
-    const src = dual ? Object.entries(remoteMedia) : Object.entries(localMedia).filter(([, s]) => s.role !== 'mirror');
-    return src.find(([, s]) => !s.silent) ?? src[0];
+    return keyTarget(dual ? Object.entries(remoteMedia) : Object.entries(localMedia).filter(([, s]) => s.role !== 'mirror'));
   }
 
   /** Open the audience window, or bring it to the front if it's already open. Never closes it. */

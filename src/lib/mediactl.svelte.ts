@@ -26,6 +26,8 @@ export interface MediaState {
   blocked?: boolean;
   /** The media failed (e.g. YouTube refused to embed); the host should use the "open" fallback. */
   failed?: boolean;
+  /** Its file is missing from this computer (failed too): its row says so, and the keys pass it by. */
+  missing?: boolean;
   /** Page to open as a fallback (YouTube watch URL or the remote media URL). */
   openUrl?: string;
   /** For 'external': the player is showing (false once the host stopped it). */
@@ -119,6 +121,15 @@ export function previewMediaScope(): () => void {
     mediaScope(was.scope);
     was.kept.forEach((k, key) => kept.set(key, k));
   };
+}
+
+/**
+ * The row the host's keys (Space, ← →, M, Y) reach, of the rows on screen: the first that isn't a silent loop (a GIF),
+ * if there's other media, and never one whose file is missing. Its row alone says so in its buttons' tooltips.
+ */
+export function keyTarget<T extends MediaState>(rows: [string, T][]): [string, T] | undefined {
+  const live = rows.filter(([, s]) => !s.missing);
+  return live.find(([, s]) => !s.silent) ?? live[0];
 }
 
 export function registerMedia(id: string, role: MediaRole, handle: MediaHandle, state: MediaState, start = 0): void {

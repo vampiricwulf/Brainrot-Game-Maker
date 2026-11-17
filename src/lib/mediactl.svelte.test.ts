@@ -2,7 +2,7 @@
 // where a clue's media was, when its slide comes back: not for the editor's preview, nor one that hadn't started yet.
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  applyLocal, handover, localMedia, mediaScope, previewMediaScope, registerMedia, setMediaRole, unregisterMedia, updateMedia, type MediaHandle,
+  applyLocal, handover, keyTarget, localMedia, mediaScope, previewMediaScope, registerMedia, setMediaRole, unregisterMedia, updateMedia, type MediaHandle,
   type MediaState,
 } from './mediactl.svelte';
 
@@ -163,5 +163,17 @@ describe('a clip that plays by itself, still waiting for its entrance', () => {
     updateMedia('a', { waiting: false, time: 1, paused: true });
     unregisterMedia('a');
     expect(comesUp('a').filter((c) => !c.endsWith('mute'))).toEqual(['seek 1', 'pause']);
+  });
+});
+
+describe('the row the host’s keys reach (Space, ← →, M, Y)', () => {
+  it('the first that isn’t a silent loop (a GIF), when there’s other media; never a file missing from this computer', () => {
+    const rows = (...s: Partial<MediaState>[]): [string, MediaState][] => s.map((x, i) => [`e${i}`, state(x)]);
+    expect(keyTarget(rows({ silent: true }, {}, {}))?.[0]).toBe('e1');
+    expect(keyTarget(rows({ missing: true, failed: true }, { silent: true }))?.[0]).toBe('e1');
+    expect(keyTarget(rows({ missing: true, failed: true }, {}))?.[0]).toBe('e1');
+    expect(keyTarget(rows({ missing: true, failed: true }))).toBeUndefined();
+    // (A link that failed is still reached: Y opens it.)
+    expect(keyTarget(rows({ failed: true, openUrl: 'https://example.com/a.mp4' }, {}))?.[0]).toBe('e0');
   });
 });

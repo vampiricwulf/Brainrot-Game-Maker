@@ -6,7 +6,9 @@
 // still has it where the game left it. A video (and a YouTube video) that comes in after the slide starts playing as it
 // shows, even if its slide comes back, or the audience window reloads, before it does. Space and M go to a sound before
 // a looping, muted video (a GIF), and ▶ plays a sound stopped at its Plays to again from its start. The Plays row takes
-// a time typed (and Enter), steps 0.1 s with ↑ / ↓, and offers ▶ Try it.
+// a time typed (and Enter), steps 0.1 s with ↑ / ↓, and offers ▶ Try it. At 1280×720, two videos and a sound on a
+// slide: the videos' rows say 1 and 2, only the row the keys reach names them, and the tools row folds so 🚪 Exit stays
+// in sight with the stage its size; files missing from this computer get a row each saying so.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -517,6 +519,114 @@ try {
   await page.waitForTimeout(1700);
   now = await page.locator(hostSong).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
   assert(now.paused && Math.abs(now.t - left) < 0.3, `and after the previews, 🎨 Theme and 🖼 Board images, Resume game has it paused where the game left it (${left.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`);
+
+  // A laptop (1280×720), one window. A clue with two videos and a sound: each row says which clip it is (the two videos'
+  // rows looked the same), and only the row the keys reach names them in its tooltips (Space and M reach one clip, not
+  // every row). The tools row folds behind ⋯ Tools, so the fixed bar (↶ Undo … 🚪 Exit) stays in sight, and the stage
+  // keeps its size. A clue whose video and sound files are missing from this computer: a row each says so, naming no
+  // file, and Space passes them by.
+  {
+    const lapCtx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const lp = await lapCtx.newPage();
+    lp.on('pageerror', (e) => errors.push('[laptop] ' + e.message));
+    lp.on('dialog', (d) => d.accept());
+    await lp.goto(pathToFileURL(file).href);
+    await addClassicRounds(lp);
+    const upload = async (what, name, mimeType, buffer) => {
+      await lp.getByRole('button', { name: what === 'video' ? '🎬 Video' : '🔊 Sound', exact: true }).click();
+      const [chooser] = await Promise.all([lp.waitForEvent('filechooser'), lp.getByRole('button', { name: `⬆ Upload ${what === 'video' ? 'video' : 'sound'} file…` }).click()]);
+      await chooser.setFiles({ name, mimeType, buffer });
+      await lp.locator('.insp h4', { hasText: what === 'video' ? 'Video' : 'Sound' }).waitFor();
+      await lp.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
+    };
+    await lp.locator('.tile').first().click();
+    await upload('video', 'one.webm', 'video/webm', clip);
+    await upload('video', 'two.webm', 'video/webm', Buffer.concat([clip, Buffer.alloc(8)]));
+    await upload('sound', 'ding.wav', 'audio/wav', wav(3));
+    await lp.getByRole('button', { name: 'Done' }).click();
+    // (Files of their own sizes: those are the ones taken from the browser's storage.)
+    const lost = { video: Buffer.concat([clip, Buffer.alloc(24)]), sound: wav(2) };
+    await lp.locator('.tile').nth(1).click();
+    await upload('video', 'lost.webm', 'video/webm', lost.video);
+    await upload('sound', 'lost.wav', 'audio/wav', lost.sound);
+    await lp.getByRole('button', { name: 'Done' }).click();
+    await lp.waitForTimeout(900);
+    await lp.evaluate(
+      (sizes) =>
+        new Promise((done, fail) => {
+          const open = indexedDB.open('keyval-store');
+          open.onsuccess = () => {
+            const tx = open.result.transaction('keyval', 'readwrite');
+            const cursor = tx.objectStore('keyval').openCursor();
+            cursor.onsuccess = () => {
+              const c = cursor.result;
+              if (!c) return;
+              if (String(c.key).startsWith('media:') && sizes.includes(c.value?.size)) c.delete();
+              c.continue();
+            };
+            tx.oncomplete = done;
+            tx.onerror = fail;
+          };
+          open.onerror = fail;
+        }),
+      [lost.video.length, lost.sound.length],
+    );
+    await lp.reload();
+    await lp.getByRole('button', { name: 'Open…' }).waitFor();
+    await lp.waitForTimeout(600);
+    await playWithPlayers(lp, 2);
+    await lp.getByRole('button', { name: 'Start game ▶' }).click();
+    await lp.getByRole('button', { name: 'Skip intro' }).click();
+    const stageAt = () => lp.locator('.stage-box').evaluate((s) => JSON.stringify(s.getBoundingClientRect()));
+    const onBoard = await stageAt();
+
+    await lp.locator('.board .tile').first().click();
+    const rows = lp.locator('.mc .item');
+    await rows.nth(2).locator('.time', { hasText: '/ 0:03' }).waitFor();
+    const said = await rows.evaluateAll((els) =>
+      els.map((e) => ({
+        name: e.getAttribute('aria-label'),
+        tag: e.querySelector('.nm')?.textContent ?? '',
+        titles: [...e.querySelectorAll('button')].map((b) => b.title).filter(Boolean).join('|'),
+      })),
+    );
+    const keys = said.filter((r) => /Space|\(M\)|\(←\)|\(→\)/.test(r.titles));
+    assert(
+      said.map((r) => `${r.name}:${r.tag}`).join() === 'Video 1:1,Video 2:2,Audio:' && keys.length === 1 && keys[0].name === 'Video 1' && /^Space\|.*Mute \(M\)/.test(keys[0].titles),
+      `three clips: the videos' rows say 1 and 2, and only the row the keys reach names them (${JSON.stringify(said)})`,
+    );
+    const fit = await lp.evaluate(() => {
+      const exit = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Exit'));
+      const r = exit.getBoundingClientRect();
+      const tools = document.querySelector('.toolsrow');
+      return { exitBottom: Math.round(r.bottom), tools: tools ? getComputedStyle(tools).display : 'none', fold: !!document.querySelector('.toolsfold') };
+    });
+    await lp.screenshot({ path: 'test-results/stagemedia-laptop.png' });
+    assert(fit.exitBottom <= 720 && fit.tools === 'none' && fit.fold, `at 1280×720 the tools row folds behind ⋯ Tools, and 🚪 Exit is in sight (${JSON.stringify(fit)})`);
+    assert((await stageAt()) === onBoard, `and the stage keeps its size (${onBoard} / ${await stageAt()})`);
+    await lp.locator('.toolsfold').click();
+    await lp.locator('.toolsrow').waitFor();
+    assert(true, '⋯ Tools brings the tools row back');
+    await lp.keyboard.press('Shift+Escape');
+    await lp.locator('.stage-box .board').waitFor();
+    await lp.waitForTimeout(500);
+
+    await lp.locator('.board .tile').nth(1).click();
+    await rows.nth(1).waitFor();
+    await lp.screenshot({ path: 'test-results/stagemedia-missing.png' });
+    const missing =(await rows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+    assert(
+      missing.join(' | ') === '🎬 This video’s file is missing from this computer. | 🔊 This sound’s file is missing from this computer.',
+      `missing files: a row each says so, naming no file (${missing.join(' | ')})`,
+    );
+    assert((await lp.locator('.stage-box .full .missing').count()) === 0, 'and the stage (what the stream shows) has no box for them');
+    assert((await lp.locator('.toolsfold').count()) === 0 && (await lp.locator('.toolsrow').isVisible()), 'two thin rows leave room for all: the tools row stays out');
+    await lp.evaluate(() => document.activeElement?.blur());
+    await lp.keyboard.press(' ');
+    await lp.waitForTimeout(300);
+    assert((await lp.locator('.stage-box').getByText('Missing').count()) === 0, 'Space passes them by');
+    await lapCtx.close();
+  }
 
   // A wheel slice's video: it gets a media row, and Space and M reach it, as any clip on stage (it looped on with
   // sound, out of the host's reach).

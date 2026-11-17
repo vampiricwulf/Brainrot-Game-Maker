@@ -25,6 +25,7 @@
   import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isBoardGame, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
+  import { localMedia } from '../lib/mediactl.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
@@ -482,10 +483,32 @@
    * question in the strip, which lies over it.
    */
   const revealFold = $derived(!dual && !side && session.phase === 'final' && session.finalStep === 'reveal' && !session.intro);
-  /** ⋯ Tools pressed: the row is out again, for these reveals. */
+  /** The media rows under the status line, in one window (this window's own copies: see MediaControls). */
+  const mediaRows = $derived(dual ? 0 : Object.values(localMedia).filter((m) => m.role !== 'mirror').length);
+  let panelEl = $state<HTMLElement>();
+  /** With the slide's media rows in, the panel ran over: the fixed bar went out of sight. */
+  let mediaCrowded = $state(false);
+  const mayFoldForMedia = $derived(!dual && !side && !revealFold && !toolFirst);
+  $effect(() => {
+    const n = mediaRows;
+    const may = mayFoldForMedia;
+    mediaCrowded = false;
+    if (!may || n < 2) return;
+    // (Measured with the tools row out, once the rows are in, before the frame is drawn.)
+    void tick().then(() => {
+      if (panelEl && mediaRows === n) mediaCrowded = panelEl.scrollHeight > panelEl.clientHeight + 1;
+    });
+  });
+  /**
+   * A slide with two or more clips (a row each), in one window, whose rows would push the fixed bar out of sight (three
+   * of them under a 1280×720 window): the tools row folds behind ⋯ Tools the same way, and the stage keeps its size.
+   * Not while a tile's own 🎡 / 🎲 is up. A window with room for all folds nothing.
+   */
+  const mediaFold = $derived(mayFoldForMedia && mediaRows >= 2 && mediaCrowded);
+  /** ⋯ Tools pressed: the row is out again, for these reveals (or this slide's clips). */
   let toolsOut = $state(false);
   $effect(() => {
-    if (!revealFold) toolsOut = false;
+    if (!revealFold && !mediaFold) toolsOut = false;
   });
   /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
   const slidePos = $derived(setup ? null : slidePosition(session, game));
@@ -936,6 +959,7 @@
 </script>
 
 <div
+  bind:this={panelEl}
   class="panel"
   role="region"
   aria-label="Host controls"
@@ -947,6 +971,7 @@
   class:keepchips={held && (session.phase === 'end' || session.phase === 'tiebreaker')}
   class:quiettools={quietTools}
   class:foldtools={revealFold && !toolsOut && !ask}
+  class:mediafold={mediaFold && !toolsOut && !ask}
   onpointerdowncapture={(e) => goon?.check && e.target instanceof Element && !e.target.closest('[data-goon], .cover-toggle') && goon.away()}
 >
   <!-- What's going on, read out to screen readers as it changes (buttons and hints left out). Its chips on the right. -->
@@ -1090,13 +1115,14 @@
     {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}
     <span class="spacer"></span>
     {@render phoneChip?.()}
-    {#if revealFold}
+    {#if revealFold || mediaFold}
+      {@const rows = revealFold ? 'reveal' : 'media'}
       <button
         class="small ghost toolsfold"
         aria-expanded={toolsOut}
         aria-controls="host-tools"
         onclick={() => (toolsOut = !toolsOut)}
-        title={toolsOut ? 'Fold the tools row away: the reveal rows get its room' : 'The tools row (🎲 Dice, 🎡 Wheel, 📊 Scoreboard…), folded away so the reveal rows have its room'}
+        title={toolsOut ? `Fold the tools row away: the ${rows} rows get its room` : `The tools row (🎲 Dice, 🎡 Wheel, 📊 Scoreboard…), folded away so the ${rows} rows have its room`}
         >⋯ Tools</button
       >
     {/if}
@@ -2152,6 +2178,13 @@
     display: none;
   }
   .panel.foldtools:has(> .toolsrow :global(:is([aria-pressed='true'], [aria-expanded='true'], .on, .warn, .stop, .cardsout, .winwarn))) .toolsfold {
+    display: none;
+  }
+  /* The same for a slide's clips whose rows would push the fixed bar out of sight (see mediaFold). */
+  .panel.mediafold > .toolsrow:not(:has(:global(:is([aria-pressed='true'], [aria-expanded='true'], .on, .warn, .stop, .cardsout, .winwarn)))) {
+    display: none;
+  }
+  .panel.mediafold:has(> .toolsrow :global(:is([aria-pressed='true'], [aria-expanded='true'], .on, .warn, .stop, .cardsout, .winwarn))) .toolsfold {
     display: none;
   }
   /* Under the stage, with 🔇 Stop sounds, cards out or a 🎭 deal's state in the tools row (they come and go on the
