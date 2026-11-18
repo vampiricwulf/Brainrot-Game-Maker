@@ -728,7 +728,16 @@
             {@const pickAt = shown && usable.length ? usable.findIndex((c) => c.id === pickOf(shown, usable)) : -1}
             {#key spotlight.id}
               <div class="spot" class:typed={!!f.answers} in:fly|global={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
-                <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
+                {#if f.answers}
+                  <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
+                {:else}
+                  <!-- One width all through the Final, the longest name's (the card's frame doesn't jump from one player to
+                       the next): every player's name laid in the same place, unseen, under the one shown. -->
+                  <div class="spot-head">
+                    {#each f.players as id (id)}<div class="spot-size" data-n={byId[id]?.name ?? ''} aria-hidden="true"></div>{/each}
+                    <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
+                  </div>
+                {/if}
                 {#if f.answers}
                   <!-- What they typed on their phone, once the host puts it up (its room kept: the card doesn't jump). Typed over
                        a few lines: three at most (more go on the third, " / " between), each line its own; one paragraph if they don't fit. -->
@@ -1728,7 +1737,8 @@
     font-weight: 900;
     vertical-align: middle;
   }
-  .spot-name {
+  .spot-name,
+  .spot-size {
     max-width: 1700px;
     box-sizing: border-box;
     overflow: hidden;
@@ -1738,6 +1748,20 @@
     font-weight: 900;
     padding: 6px 40px;
     border-radius: 18px;
+  }
+  .spot-head {
+    display: grid;
+    justify-items: center;
+    max-width: 1700px;
+  }
+  .spot-head > * {
+    grid-area: 1 / 1;
+  }
+  .spot-size {
+    visibility: hidden;
+  }
+  .spot-size::after {
+    content: attr(data-n);
   }
   .spot-wager {
     font-size: 64px;
