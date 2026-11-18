@@ -95,6 +95,17 @@ try {
     assert((await note(page).count()) === 0, 'and it stays closed');
     // The ▶ Play screen's Start game ▶ has no Ctrl+⏎ on it.
     await toastOverWindow(page, 'a phone');
+    // A window as tall as the screen (the clue editor): its toast (📋 Copy slide's) still sits above it, not on its
+    // title and ✕.
+    await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click();
+    await page.locator('.grid .tile').first().click();
+    const clueDlg = page.getByRole('dialog', { name: 'Edit clue' });
+    await clueDlg.waitFor();
+    await clueDlg.getByRole('button', { name: /Copy slide/ }).click();
+    const [tb, cb] = [await page.locator('.toast').boundingBox(), await clueDlg.boundingBox()];
+    assert(tb.y + tb.height <= cb.y && cb.y + cb.height >= 844 - 17, `a toast over the clue editor, as tall as the phone's screen, stays above its top (${Math.round(tb.y + tb.height)} ≤ ${Math.round(cb.y)})`);
+    await page.keyboard.press('Escape');
+    await clueDlg.waitFor({ state: 'detached' });
     await page.locator('nav > button.round-tab').first().waitFor();
     // The sidebar's list, at most 30% of the height, scrolls: its foot fades to say there's more (🕘 History, cut).
     const nav = page.locator('nav[aria-label="Editor"]');
