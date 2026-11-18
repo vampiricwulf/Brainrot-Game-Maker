@@ -306,6 +306,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   items on a slide; objects on a screen in the RPG screen editor (its 📦 Item ▾ adds a catalog item, so they aren't
   “items” there); pictures on the board in a board game's 🖼 Board backdrop. The hint and Tips, Move to the screen's…,
   “2 objects selected”, 📋 Copy screen and the History's steps all say them.
+- Its `overlay`: a guide its host draws over the slide while it's edited (z-index 998, under the ribbon and the edit
+  layer; inert, so every click and drag goes through; never in a preview, never saved). A board game's 🖼 Board backdrop
+  draws the board's spaces and links there, faint, behind ⬤ Spaces over it (a RememberedFold, `jb.backdropPath`, on
+  until first turned off).
 - Insert: 🅣 Text, 🖼 Image, 🎬 Video, 🔊 Sound, Shape. Drag-drop files onto the canvas. Shape ▾ is in sections: Shapes (▭ ◯ ― ➝),
   Draw (✏ Freehand line…, one stroke, named "Freehand line" in Layers and the History, "Freehand shape" closed with
   Shift; 🖌 Drawpad…, a whole drawing inserted as a picture named "Drawing"), and on an RPG screen only ⬚ Hotspot (one

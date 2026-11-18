@@ -31,6 +31,7 @@
   import { fittingFile, hasFiles, isGameDrop, mediaDrop, useFile } from '../../lib/mediadrop';
   import SlideEditor from '../slide/SlideEditor.svelte';
   import { BACKDROP_NOUNS } from '../slide/nouns';
+  import { RememberedFold } from '../../lib/fold.svelte';
   import ToolPopup, { freeName, newTool } from '../tools/ToolPopup.svelte';
   import { newWheel } from '../../lib/tools';
 
@@ -80,6 +81,8 @@
   }
 
   let view = $state<'spaces' | 'backdrop' | 'zones'>('spaces');
+  /** ⬤ Spaces over it: the path drawn faint over the backdrop being edited (this computer remembers; on at first). */
+  const pathShown = new RememberedFold('jb.backdropPath', true);
   /** The selected spaces (Shift+click or a box adds more), the last one picked last. */
   let selIds = $state<string[]>([]);
   const picked = $derived(selIds.map((id) => spaceById(round, id)).filter((s): s is BoardSpace => !!s));
@@ -818,6 +821,16 @@
     <button aria-pressed={view === 'spaces'} class:on={view === 'spaces'} onclick={() => (view = 'spaces')}>⬤ Spaces ({round.spaces.length})</button>
     <button aria-pressed={view === 'backdrop'} class:on={view === 'backdrop'} onclick={() => (view = 'backdrop')}>🖼 Board backdrop</button>
     <button aria-pressed={view === 'zones'} class:on={view === 'zones'} onclick={() => (view = 'zones')}>🌀 Off-board zones ({round.zones.length})</button>
+    {#if view === 'backdrop' && round.spaces.length}
+      <button
+        class="small path-toggle"
+        class:on={pathShown.open}
+        aria-pressed={pathShown.open}
+        onclick={() => pathShown.set(!pathShown.open)}
+        title="The spaces and links, faint over the backdrop while you edit it, so a river or a castle lines up with the path (clicks go through them; viewers see the board as always)"
+        data-path-toggle>⬤ Spaces over it</button
+      >
+    {/if}
   </div>
 
 
@@ -1093,7 +1106,13 @@
       </aside>
     </div>
   {:else if view === 'backdrop'}
-    <div class="se-wrap"><SlideEditor slide={round.slide} placeholder="Click to type" fill fallbackBg="#1d5e3a" nouns={BACKDROP_NOUNS} /></div>
+    <div class="se-wrap">
+      <SlideEditor slide={round.slide} placeholder="Click to type" fill fallbackBg="#1d5e3a" nouns={BACKDROP_NOUNS}>
+        {#snippet overlay()}
+          {#if pathShown.open}<div class="path" data-backdrop-path><BoardSpaces {round} allNames /></div>{/if}
+        {/snippet}
+      </SlideEditor>
+    </div>
   {:else}
     <div class="zones">
       <div class="row">
@@ -1174,6 +1193,17 @@
   }
   .tabs button {
     border-radius: 6px 6px 0 0;
+  }
+  .tabs .path-toggle {
+    margin-left: auto;
+    align-self: center;
+    border-radius: 6px;
+  }
+  /* Faint: the backdrop being edited is what's looked at. */
+  .path {
+    position: absolute;
+    inset: 0;
+    opacity: 0.4;
   }
   .main {
     display: flex;

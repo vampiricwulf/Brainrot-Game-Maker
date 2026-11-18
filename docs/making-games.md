@@ -106,6 +106,8 @@ Slide items and whole slides copy and paste between clues, rounds and games, wit
 - `Ctrl`+click adds a space, and `Alt`+drag links two spaces. **＋ Add space** adds one after the selected space.
 - Arrow keys move between spaces; `Enter` opens a space's settings.
 - A space's own buttons sit under its name: **🏁 Make it the start**, add a space after it, duplicate, and delete.
+- **🖼 Board backdrop** edits the picture behind the board. The spaces and their links show faint over it, so a river or
+  a castle lines up with the path; clicks go through them. **⬤ Spaces over it** hides them.
 
 ## Other editor tabs
 

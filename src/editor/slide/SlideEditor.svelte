@@ -92,6 +92,7 @@
     tabbed = false,
     sidetop,
     nouns = SLIDE_NOUNS,
+    overlay,
   }: {
     slide: Slide;
     /** The main text elements "Use this style elsewhere" restyles for a scope (the host knows the round). */
@@ -140,6 +141,11 @@
      * item), a board's pictures on the board; a slide's items otherwise.
      */
     nouns?: SlideNouns;
+    /**
+     * Drawn over the slide while it's edited (not in a preview), under the selection's frames: a guide that clicks and
+     * drags go through (a board game's spaces and links over its backdrop). Never on stream: it's the editor's only.
+     */
+    overlay?: Snippet;
   } = $props();
   setSlideNouns(() => nouns);
   let editingImage = $state<string | null>(null);
@@ -1349,6 +1355,7 @@
             <SlideView slide={editView} mode="edit" {placeholder} {fallbackBg} card={onCard} onfit={(id, r) => (fits[id] = r)} />
             <!-- (Under the edit layer: the selection's frames and handles go over the badge.) -->
             {#if badge && !drawing}<StageRibbon text={badge} dim={selected.length > 0} />{/if}
+            {#if overlay}<div class="guide" inert aria-hidden="true">{@render overlay()}</div>{/if}
             <EditLayer
               {slide}
               bind:selected
@@ -1547,6 +1554,14 @@
 {/if}
 
 <style>
+  /* A host's guide over the slide (a board's spaces): seen over every item (under the ribbon, 999, and the edit
+     layer, 1000), never in the way. */
+  .guide {
+    position: absolute;
+    inset: 0;
+    z-index: 998;
+    pointer-events: none;
+  }
   .se {
     display: flex;
     flex-direction: column;

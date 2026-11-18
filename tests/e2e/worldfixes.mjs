@@ -15,6 +15,8 @@
 //    without.
 // 7. The slide editor in its host's words: objects on a screen in the RPG screen editor, pictures on the board in a
 //    board game's backdrop, items on a slide in a slides round.
+// 8. Race to the finish, 🖼 Board backdrop: the spaces and links show faint over it (clicks go through to the backdrop's
+//    pictures), and ⬤ Spaces over it hides them (remembered).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -329,6 +331,62 @@ try {
     t = await says();
     assert(t.includes('Click an item to edit it') && t.includes('copy items between slides') && t.includes('More for this slide'), 'a slides round still says items and slides');
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-nouns.png` });
+    await ctx.close();
+  }
+  {
+    console.log('Race to the finish, 🖼 Board backdrop: the path faint over it');
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    await ctx.route('https://api.github.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(`[backdrop] ${e.message}`));
+    await page.goto(pathToFileURL(file).href);
+    await editorReady(page);
+    await page.getByRole('button', { name: '＋ Add round' }).click();
+    await page.getByRole('menuitem', { name: /Race to the finish/ }).click();
+    const n = Number((await page.getByRole('button', { name: /⬤ Spaces \(\d+\)/ }).innerText()).match(/\d+/)[0]);
+    await page.getByRole('button', { name: /Board backdrop/ }).click();
+    const path = page.locator('.se [data-backdrop-path]');
+    const toggle = page.locator('[data-path-toggle]');
+    await path.waitFor();
+    const look = await path.evaluate((p) => ({ spaces: p.querySelectorAll('[data-space]').length, links: p.querySelectorAll('line.link').length, opacity: Number(getComputedStyle(p).opacity) }));
+    assert(look.spaces === n && look.links > 0 && look.opacity < 0.6 && (await toggle.getAttribute('aria-pressed')) === 'true', `the board's ${n} spaces and their links show faint over the backdrop, ⬤ Spaces over it on (${JSON.stringify(look)})`);
+    // A picture over the whole board: pressed where a space is drawn, it's the picture that's dragged.
+    await page.getByRole('button', { name: '◼ Shape ▾' }).click();
+    await page.getByRole('button', { name: '▭ Rectangle' }).click();
+    const pos = page.locator('.insp');
+    for (const [k, v] of [['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+    await pos.getByLabel('X', { exact: true }).press('Tab');
+    const c = await path.locator('[data-space]').nth(2).boundingBox();
+    const [x, y] = [c.x + c.width / 2, c.y + c.height / 2];
+    const through = await page.evaluate(([x, y]) => !document.elementFromPoint(x, y)?.closest('[data-backdrop-path]'), [x, y]);
+    // (Drawn over the picture, not under it: were it to take the pointer, it's what would be found there.)
+    const over = await page.evaluate(([x, y]) => {
+      const g = document.querySelector('.se .guide');
+      g.inert = false;
+      g.style.pointerEvents = 'auto';
+      const all = document.elementsFromPoint(x, y);
+      const path = all.findIndex((e) => e.closest('[data-backdrop-path]'));
+      const pic = all.findIndex((e) => e.closest('.canvas .slide .el'));
+      const top = path >= 0 && pic >= 0 && path < pic;
+      g.inert = true;
+      g.style.pointerEvents = '';
+      return top;
+    }, [x, y]);
+    assert(over, 'the path is drawn over the backdrop’s pictures, not hidden under them');
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 40, y + 20, { steps: 5 });
+    await page.mouse.up();
+    const moved = Number(await pos.getByLabel('X', { exact: true }).inputValue());
+    assert(through && moved > 0, `a press over a drawn space goes through to the picture, which drags (x 0 → ${moved})`);
+    if (shots) await page.screenshot({ path: `${shots}/worldfixes-backdrop-path.png` });
+    await toggle.click();
+    assert((await path.count()) === 0 && (await toggle.getAttribute('aria-pressed')) === 'false', '⬤ Spaces over it again hides them');
+    assert((await page.locator('.layers-box .row').count()) === 1, 'the backdrop holds only its own picture (the path is never part of it)');
+    // Remembered on this computer: the next board's backdrop opens with them hidden too.
+    await page.getByRole('button', { name: /⬤ Spaces/ }).first().click();
+    await page.getByRole('button', { name: /Board backdrop/ }).click();
+    assert((await path.count()) === 0 && (await toggle.getAttribute('aria-pressed')) === 'false', 'and stays so when the backdrop is opened again');
     await ctx.close();
   }
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
