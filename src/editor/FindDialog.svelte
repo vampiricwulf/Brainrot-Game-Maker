@@ -155,7 +155,7 @@
   /* Near the top, where the results have room to grow downwards. */
   .find-backdrop {
     place-items: start center;
-    padding-top: max(48px, 10vh);
+    padding-top: max(var(--toast-room), 10vh);
   }
   .find {
     width: min(680px, 100%);

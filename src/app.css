@@ -47,6 +47,9 @@
   --z-menu: 300;
   --z-ask: 400;
   --z-toast: 500;
+  /* The room every window leaves at the top for a toast over it (.modal-backdrop): one line, or on a phone up to
+     three. */
+  --toast-room: 48px;
   /* The width a page of settings stops at on a wide screen (.page; the fields above a slides round's, a Final's or the
      tiebreaker's slide). */
   --page-width: 1200px;
@@ -232,8 +235,8 @@ label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
 }
 /* Above the editor's "Deleted … · Undo" note (HistoryNotice), not over it. */
 body:has(.history-notice) .toast { bottom: 72px; }
-/* A window is open: one line at the top, in the room every window leaves there (.modal-backdrop), clear of its
-   buttons. */
+/* A window is open: one line at the top, in the room every window leaves there (.modal-backdrop, --toast-room), clear
+   of its buttons. */
 body:has([aria-modal='true']) .toast {
   top: 8px;
   bottom: auto;
@@ -241,6 +244,22 @@ body:has([aria-modal='true']) .toast {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* On a phone one line holds only a few words ("Added a sample game: press ▶ Play to try it, or…"): there it wraps,
+   up to three lines, and every window leaves room for three. (Always, not only while a toast shows: the window would
+   jump down and back under a finger.) */
+@media (max-width: 600px) {
+  :root { --toast-room: 88px; }
+  body:has([aria-modal='true']) .toast {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    white-space: normal;
+    line-height: 1.35;
+    /* (As wide as its words, up to the pill's max-width: left: 50% would otherwise wrap it at half the screen.) */
+    width: max-content;
+  }
 }
 /* Single window: a window inside the host panel (.in-panel) keeps the stage viewers see clear, and so does its toast,
    at the panel's foot. */
@@ -262,8 +281,8 @@ body:has(.in-panel [aria-modal='true']) .toast {
   grid-template-rows: minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
   place-items: center;
-  /* (The top 48px: room for a toast over the window.) */
-  padding: 48px 16px 16px;
+  /* (The top: room for a toast over the window.) */
+  padding: var(--toast-room) 16px 16px;
 }
 :where(.modal-backdrop) > :where(.modal) {
   width: min(560px, 100%);

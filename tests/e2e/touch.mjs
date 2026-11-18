@@ -27,6 +27,38 @@ async function open(opts) {
 }
 const note = (page) => page.locator('.data-notice', { hasText: 'Made for a computer.' });
 const shows = (loc) => loc.evaluate((e) => getComputedStyle(e).display !== 'none');
+/** ✨ Try a sample game, then 📂 Open… while its toast is up: on a narrow screen the toast over the window wraps to a
+ * few lines rather than being cut mid-sentence, and stays in the room above the window, clear of it and its buttons. */
+async function toastOverWindow(page, what) {
+  await page.getByRole('button', { name: /Try a sample game/ }).click();
+  await page.locator('.toast', { hasText: 'Added a sample game' }).waitFor();
+  await page.getByRole('button', { name: 'Open…' }).click();
+  const dlg = page.getByRole('dialog');
+  await dlg.waitFor();
+  const t = await page.locator('.toast').evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const lh = parseFloat(getComputedStyle(el).lineHeight);
+    // (Room at the top of every window for three lines, a tall window's title and ✕ too: its backdrop's padding.)
+    const room = parseFloat(getComputedStyle(document.querySelector('.modal-backdrop')).paddingTop);
+    return {
+      cut: el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight,
+      wide: r.width >= innerWidth - 33,
+      lines: Math.round((el.clientHeight - 16) / lh),
+      roomy: r.top + (r.height - el.clientHeight) + 16 + 3 * lh <= room,
+      top: r.top,
+      bottom: r.bottom,
+      text: el.textContent,
+    };
+  });
+  const box = await dlg.boundingBox();
+  const hit = await dlg.locator('button:visible').evaluateAll((bs, b) => bs.filter((x) => x.getBoundingClientRect().top < b).map((x) => x.textContent.trim() || x.getAttribute('aria-label')), t.bottom);
+  assert(
+    !t.cut && t.wide && t.lines >= 2 && t.lines <= 3 && t.roomy && t.top >= 0 && t.bottom <= box.y && hit.length === 0,
+    `${what}: a toast over a window wraps to ${t.lines} lines the screen's width, not cut, above the window (with room for three) and clear of its buttons (${t.text})`,
+  );
+  await page.keyboard.press('Escape');
+  await dlg.waitFor({ state: 'detached' });
+}
 
 try {
   // ---------- A phone ----------
@@ -62,7 +94,7 @@ try {
     await page.waitForTimeout(300);
     assert((await note(page).count()) === 0, 'and it stays closed');
     // The ▶ Play screen's Start game ▶ has no Ctrl+⏎ on it.
-    await page.getByRole('button', { name: /Try a sample game/ }).click();
+    await toastOverWindow(page, 'a phone');
     await page.locator('nav > button.round-tab').first().waitFor();
     // The sidebar's list, at most 30% of the height, scrolls: its foot fades to say there's more (🕘 History, cut).
     const nav = page.locator('nav[aria-label="Editor"]');
@@ -103,6 +135,7 @@ try {
     const { ctx, page } = await open(opts);
     await page.waitForTimeout(300);
     assert((await note(page).count()) === 0, `${what} gets no “Made for a computer” note`);
+    if (opts.viewport.width < 600) await toastOverWindow(page, what);
     await ctx.close();
   }
   {
