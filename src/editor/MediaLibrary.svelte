@@ -3,7 +3,7 @@
   import PageHeader from './PageHeader.svelte';
   import { tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
+  import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, noCopyLinks, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
   import { attachBlobSwap, nameStep, step, stepAsync } from '../lib/history.svelte';
   import { flash, focusPlace, goTo, placeKey } from '../lib/nav.svelte';
   import { filePlaces, type Place } from '../lib/historylabel';
@@ -139,7 +139,10 @@
   /** Why Replace everywhere… waits (a job on the file), or what it does. */
   function replaceHint(m: MediaRef): string {
     const job = jobFor(m.id);
-    if (!job) return "Swap in another file: every place it's used follows, on stream too";
+    if (!job)
+      return m.url && noCopyLinks.has(m.id)
+        ? "Pick the file you downloaded (⬇ Download it…): every place it's used gets it, stored in the game"
+        : "Swap in another file: every place it's used follows, on stream too";
     return job.kind === 'convert'
       ? 'Wait for it to be converted (or Stop it)'
       : job.kind === 'edit'
@@ -346,6 +349,12 @@
   }
 
   /** Put a new file in place of this one (every use of it follows). Undo puts the old one back. */
+  /** ⬇ Download it… (a link whose site refuses the game a copy): the file in a tab of its own, to save from there. */
+  function downloadLink(m: MediaRef): void {
+    // (noopener: that tab gets no handle on this page.)
+    if (m.url) window.open(m.url, '_blank', 'noopener');
+  }
+
   async function replace(m: MediaRef): Promise<void> {
     const [f] = await pickFiles(ACCEPT[m.kind], false);
     if (f) await replaceWith(m, f);
@@ -686,8 +695,16 @@
         {#if m.url}
           {@const exp = expiry(m)}
           {#if exp}<div class="meta warn">⏳ {exp}</div>{/if}
+          <!-- The site refused a copy (noCopyLinks): the way to keep it is the file itself, downloaded in a tab of its own
+               and put in with Replace everywhere…. -->
+          {#if noCopyLinks.has(m.id)}<div class="meta muted" data-no-copy>Its site doesn’t let the game save a copy: ⬇ download it, then put it in with Replace everywhere…</div>{/if}
           <div class="acts">
-            <SaveCopyButton id={m.id} />
+            {#if noCopyLinks.has(m.id)}
+              <button class="small" onclick={() => downloadLink(m)} title="Opens the file in a new tab: save it there (Ctrl+S), then put it in the game with Replace everywhere…">⬇ Download it…</button>
+              <SaveCopyButton id={m.id} label="💾 Try again" ghost title="Try storing it in the game again, in case the site allows it now" />
+            {:else}
+              <SaveCopyButton id={m.id} />
+            {/if}
             <button class="ghost small" onclick={() => check(m)} disabled={checks[m.id] === 'checking'} title="Does the link still play?">
               {checks[m.id] === 'checking' ? 'Checking…' : '🌐 Check it still loads'}
             </button>
@@ -710,8 +727,14 @@
           {#if !m.url && !mediaUrls[m.id]}
             <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
           {:else}
-            <!-- (The way out for one nothing here can fix: the app can't read it, or can't convert it.) -->
-            <button class="small {unread || (typeof v === 'object' && v.is === 'fails' && !v.fix) ? 'primary' : 'ghost'}" onclick={() => replace(m)} disabled={!!job} title={replaceHint(m)}>Replace everywhere…</button>
+            <!-- (The way out for one nothing here can fix: the app can't read it, or can't convert it, or a link whose
+                 site refuses the game a copy: the file downloaded from ⬇ Download it…) -->
+            <button
+              class="small {unread || (typeof v === 'object' && v.is === 'fails' && !v.fix) || (m.url && noCopyLinks.has(m.id)) ? 'primary' : 'ghost'}"
+              onclick={() => replace(m)}
+              disabled={!!job}
+              title={replaceHint(m)}>Replace everywhere…</button
+            >
           {/if}
           <!-- 🔄 one that won't play here (or plays without its sound); ↻ one on a 🤫 card that phones can't open; 🗜 a copy
                for phones. -->

@@ -281,16 +281,44 @@ assert(
 await card('beep1.wav').getByRole('button', { name: '🌐 Check it still loads' }).click();
 await card('beep1.wav').getByText('✓ The link works').waitFor();
 assert(true, '🌐 Check it still loads plays the link to see that it works');
-await card('beep1.wav').getByRole('button', { name: '💾 Store in game' }).click();
+// The site refused the game a copy when the sound was added: 💾 Store in game would only fail again, so its card says
+// so and offers ⬇ Download it… and Replace everywhere… (the strong button) instead, with 💾 Try again.
+assert(
+  (await card('beep1.wav').getByRole('button', { name: '💾 Store in game' }).count()) === 0 &&
+    (await card('beep1.wav').locator('[data-no-copy]').innerText()) === 'Its site doesn’t let the game save a copy: ⬇ download it, then put it in with Replace everywhere…' &&
+    (await card('beep1.wav').locator('.foot').getByRole('button', { name: 'Replace everywhere…' }).evaluate((b) => b.classList.contains('primary'))),
+  'a link whose site refused a copy offers ⬇ Download it… then Replace everywhere…, not 💾 Store in game',
+);
+const [tab] = await Promise.all([context.waitForEvent('page'), card('beep1.wav').getByRole('button', { name: '⬇ Download it…' }).click()]);
+assert(tab.url() === 'https://files.catbox.moe/beep1.wav', `⬇ Download it… opens the file in a tab of its own, to save from there (${tab.url()})`);
+await tab.close();
+await card('beep1.wav').getByRole('button', { name: '💾 Try again' }).click();
 await page.locator('.toast', { hasText: "files.catbox.moe doesn't let the game save a copy." }).waitFor();
-assert((await card('beep1.wav').getByText('🌐 files.catbox.moe').count()) === 1, "Save a copy explains when the site refuses, and the link keeps working");
+assert(
+  (await card('beep1.wav').getByText('🌐 files.catbox.moe').count()) === 1 && (await card('beep1.wav').getByRole('button', { name: '⬇ Download it…' }).count()) === 1,
+  '💾 Try again says when the site still refuses, and the link keeps working',
+);
+// The downloaded file put in with Replace everywhere…: stored in the game, every use with it. (Undone: the link again.)
+const [chooser] = await Promise.all([page.waitForEvent('filechooser'), card('beep1.wav').locator('.foot').getByRole('button', { name: 'Replace everywhere…' }).click()]);
+await chooser.setFiles({ name: 'beep1.wav', mimeType: 'audio/wav', buffer: wav(2) });
+await page.getByText(/Files stored with this game: 2 ·/).waitFor();
+assert(
+  (await card('beep1.wav').getByText('🌐 files.catbox.moe').count()) === 0 &&
+    (await card('beep1.wav').getByRole('button', { name: '⬇ Download it…' }).count()) === 0 &&
+    /\d+(\.\d+)? KB/.test(await card('beep1.wav').locator('.meta').first().innerText()),
+  'Replace everywhere… with the downloaded file stores it in the game',
+);
+await page.evaluate(() => document.activeElement?.blur?.());
+await page.keyboard.press('Control+z');
+await card('beep1.wav').getByText('🌐 files.catbox.moe').waitFor();
+assert((await card('beep1.wav').getByRole('button', { name: '⬇ Download it…' }).count()) === 1, 'and Ctrl+Z makes it the link again, with ⬇ Download it… still');
 assert((await page.locator('.problems').getByText('4 items play from the internet').count()) === 1, 'the checklist counts what plays from the internet (3 links + 1 Drive player)');
 await shot('links-2-media');
-// Save a copy works once the site allows it (here the host starts sending Access-Control-Allow-Origin).
+// 💾 Try again works once the site allows it (here the host starts sending Access-Control-Allow-Origin).
 await context.route('https://files.catbox.moe/pic3.png', (r) =>
   r.fulfill({ status: 200, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: png(200, 120) }),
 );
-await card('pic3.png').getByRole('button', { name: '💾 Store in game' }).click();
+await card('pic3.png').getByRole('button', { name: '💾 Try again' }).click();
 await card('pic3.png').getByText('Saved from files.catbox.moe').waitFor();
 assert(/\d+(\.\d+)? KB/.test(await card('pic3.png').locator('.meta').first().innerText()) && (await card('pic3.png').locator('.badge').count()) === 0, 'Save a copy downloads a live link into the game (same file, now stored)');
 assert((await page.getByText(/Files stored with this game: 2 ·/).count()) === 1, 'and it counts as stored');

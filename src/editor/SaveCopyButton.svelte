@@ -6,7 +6,13 @@
   import { attachBlobSwap, stepAsync } from '../lib/history.svelte';
   import { isAbort } from '../lib/download';
 
-  let { id, label = '💾 Store in game', onsaved }: { id: string; label?: string; onsaved?: () => void } = $props();
+  let {
+    id,
+    label = '💾 Store in game',
+    title = 'Download the file into the game, so it works offline and never expires',
+    ghost = false,
+    onsaved,
+  }: { id: string; label?: string; title?: string; ghost?: boolean; onsaved?: () => void } = $props();
 
   let busy = $state<number | null>(null);
   let controller: AbortController | null = null;
@@ -42,7 +48,7 @@
 </script>
 
 {#if busy === null}
-  <button class="small" onclick={save} title="Download the file into the game, so it works offline and never expires">{label}</button>
+  <button class="small" class:ghost onclick={save} {title}>{label}</button>
 {:else}
   <span class="small busy" role="status">
     Saving… {busy ? formatBytes(busy) : ''}

@@ -431,8 +431,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   know about cards) would delete them. The checklist has no line for this: there's nothing to fix. Each card keeps its buttons in fixed places: the name row (☐ Select, the name, ⋯ for its menu, then 🗑
   apart at the right end), and the foot (✎ Edit video… or ✎ Edit sound…, as the slide's item bar names it · **Replace everywhere…** · the one fix that
   applies: 🔄 Convert…, else ↻ Make it a…, else 🗜 Make smaller…, offered only for a file on a 🤫 card, the only place
-  phones get one). A link's card adds 💾 Store in game and 🌐 Check it
-  still loads. **used 3× ▾** (plain "unused" when nothing uses it) drops the list of places, in the History's words
+  phones get one). A link's card adds 💾 Store in game and 🌐 Check it still loads; in the browser, once its site has
+  refused a copy (no CORS header), ⬇ Download it… (the file in a tab of its own) and 💾 Try again instead, saying to put
+  the downloaded file in with Replace everywhere…, then the strong button. **used 3× ▾** (plain "unused" when nothing uses it) drops the list of places, in the History's words
   ("Jeopardy! › Memes › $400 › Question", "Theme › background picture", "Sounds › Round intro"; `filePlaces` in
   historylabel.ts, from `mediaPaths` in usage.ts), each going there with goTo and flashing it (a sound's row, the
   theme's picture row, a slide item, out of any fold it's in). A right-click on a card (Shift+F10 in it, a long press,
@@ -460,7 +461,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
     `source`.
   - Otherwise, if the link plays in a plain `<img>`/`<video>` (no permission needed), it's added as a **live link**
     (`MediaRef.url`): it plays from the internet during the show, from both windows. The Media tab marks it 🌐 with the site,
-    *💾 Store in game* (downloads it later under the same id) and *🌐 Check it still loads*; the checklist counts what plays from the internet
+    *💾 Store in game* (downloads it later under the same id; in the browser, a site known this visit to refuse copies gets
+    *⬇ Download it…* and *💾 Try again* instead, `noCopyLinks`) and *🌐 Check it still loads*; the checklist counts what plays from the internet
     and warns about temporary or expired links. Pages send no referrer (`<meta name="referrer" content="no-referrer">`,
     YouTube and site players ask for theirs explicitly).
   - **Google Drive** refuses its files to web pages (403 for any other site, `file://` and the desktop webview included).

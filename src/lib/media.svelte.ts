@@ -15,10 +15,19 @@ import { DownloadError, downloadDrive, downloadFirst, isAbort, LinkError, probeL
 import { kindOfMime, mimeFromName, soundTwin, swapExtension } from './sniff';
 import { inTauri } from './platform';
 import { toast } from './app.svelte';
+import { SvelteSet } from 'svelte/reactivity';
 
 const blobs = new Map<string, Blob>();
 /** id → object URL (or the web link of a live-link file), reactive so components re-render when media arrives. */
 export const mediaUrls = $state<Record<string, string>>({});
+/**
+ * Live links whose site refused this page a copy (it sends no CORS header: the file plays, but can't be read), by id,
+ * for this visit. 💾 Store in game would only fail again, so their cards offer ⬇ Download it… and Replace everywhere…
+ * instead (with 💾 Try again, in case the site allows it now). Never in the desktop app, which can always save a copy.
+ */
+export const noCopyLinks = new SvelteSet<string>();
+/** The download failed the way a refused copy does (no CORS header reads as the connection failing), in the browser. */
+const refusedHere = (e: unknown): boolean => !inTauri() && e instanceof DownloadError && e.reason === 'network';
 
 /** Where a file is stored: the builder's store, or a player-only file's saved game (see storePlayFiles). */
 const KEY = (id: string) => (playFiles ? playFileKey(id) : `media:${id}`);
@@ -412,6 +421,8 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
   let failure: LinkError;
   /** Why there's no copy when the site did allow one: the user said no to a big file, or it's over 1 GB. */
   let notSaved: 'declined' | 'too-big' | undefined;
+  /** The site refused the copy (see noCopyLinks). */
+  let refused = false;
   try {
     const got = { ...job, want };
     const file: Downloaded = link.drive ? await downloadDrive(link.drive, got) : await downloadFirst(link.fetchUrls, got);
@@ -429,6 +440,7 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
     if (isAbort(e) || e instanceof LinkError) throw e;
     failure = explain(e, link);
     if (e instanceof DownloadError && (e.reason === 'declined' || e.reason === 'too-big')) notSaved = e.reason;
+    refused = refusedHere(e);
     // A web page, or a file that isn't media, won't play live either; nor will a Drive link that failed.
     if (e instanceof DownloadError && (e.reason === 'html' || e.reason === 'not-media')) throw failure;
     if (link.drive) throw failure;
@@ -440,7 +452,9 @@ export async function addMediaLink(game: Game, raw: string | MediaLink, want?: L
     if (job.signal?.aborted) throw cancelled();
     if (!kind) continue;
     if (want && kind !== want) throw wrongKind(kind, want);
-    return { ref: addLinkRef(game, url, kind, link, extra), saved: false, message: linkMessages.live(link, desktop, notSaved), warn: !!link.temporary, link };
+    const ref = addLinkRef(game, url, kind, link, extra);
+    if (refused) noCopyLinks.add(ref.id);
+    return { ref, saved: false, message: linkMessages.live(link, desktop, notSaved), warn: !!link.temporary, link };
   }
   throw failure;
 }
@@ -470,6 +484,7 @@ export async function fetchLinkCopy(game: Game, id: string, job: DownloadJob = {
     if (isAbort(e) || e instanceof LinkError) throw e;
     const host = link?.host ?? new URL(url).hostname;
     if (e instanceof DownloadError && e.reason === 'http') throw new LinkError({ problem: 'http', message: linkMessages.http(host, e.status) });
+    if (refusedHere(e)) noCopyLinks.add(id);
     throw new LinkError({ problem: 'save-failed', message: linkMessages.saveFailed(host, inTauri()) });
   }
   let mime = file.mime;
@@ -495,6 +510,7 @@ export async function keepLinkCopy(game: Game, id: string, copy: LinkCopy): Prom
   ref.size = copy.blob.size;
   delete ref.url;
   delete ref.expiresAt;
+  noCopyLinks.delete(id);
   return true;
 }
 
