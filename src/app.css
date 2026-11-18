@@ -261,6 +261,9 @@ body:has([aria-modal='true']) .toast {
     width: max-content;
   }
 }
+/* The dropped steps' note is over the window's top (HistoryNotice), its ↶ Undo the only way back: a toast goes under it,
+   not over it. (Clicks go through a toast to the window under it.) */
+body:has([aria-modal='true']):has(.history-notice.over) .toast { top: 52px; }
 /* Single window: a window inside the host panel (.in-panel) keeps the stage viewers see clear, and so does its toast,
    at the panel's foot. */
 body:has(.in-panel [aria-modal='true']) .toast {

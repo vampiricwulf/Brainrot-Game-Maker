@@ -96,9 +96,9 @@
   /** The wager rule, in words: "their score, or $2,000 if they have less". */
   const rule = $derived(`their score, or ${formatPoints(wagerFloor(game.settings), sym)} if they have less`);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
-  /** Phone buzzer teams: each row is a team, and the buttons say so ("Next team ▶"). */
   /** The stage's score plates spotlight too, unless the theme hides the score bar (the Final leaves them out then). */
   const onStage = $derived(game.theme?.scoreBar === 'hidden' ? '' : ' or on the stage');
+  /** Phone buzzer teams: each row is a team, and the buttons say so ("Next team ▶"). */
   const noun = $derived(buzzerOn(game.settings) && teamsOn(game.settings) ? 'team' : 'player');
   const problems = $derived(finalWagerProblems(session, game, override));
   const wagersOk = $derived(finalWagersOk(session, game, override));

@@ -464,6 +464,15 @@ try {
   await clue.waitFor();
   await page.getByPlaceholder('Type the question…').fill('Who is Doge?');
   await notice.filter({ hasText: 'Dropped 1 undone step' }).waitFor({ timeout: 3000 });
+  // A toast meanwhile goes under the note, not over its ↶ Undo (a toast's place, as the app's own CSS puts it).
+  const overlap = await page.evaluate(() => {
+    const t = Object.assign(document.createElement('div'), { className: 'toast', textContent: 'A toast while the note shows' });
+    document.body.append(t);
+    const [a, b] = [t.getBoundingClientRect(), document.querySelector('.history-notice').getBoundingClientRect()];
+    t.remove();
+    return a.top < b.bottom && b.top < a.bottom && a.left < b.right && b.left < a.right;
+  });
+  assert(!overlap, 'with the note over the window, a toast goes under it, not over its ↶ Undo');
   // The keyboard reaches its ↶ Undo too: the window's Tab cycle takes in the note's buttons after its own, so from the
   // question box Shift+Tab gets there past the window's first few buttons.
   const onBringBack = () => page.evaluate(() => document.activeElement?.hasAttribute('data-bring-back') ?? false);
