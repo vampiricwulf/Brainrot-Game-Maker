@@ -144,7 +144,11 @@ async function copiesGame() {
       { id: 'long', name: 'long.gif', mime: 'image/gif', size: long.length, kind: 'image' },
     ],
     audio: {}, wheels: [], dice: [], theme: {},
-    cards: [{ id: 'sc_tip', name: 'Tip', background: {}, elements: [{ ...box('e1', 300), kind: 'image', media: 'dance', fit: 'contain' }] }],
+    // (Both on 🤫 cards: 🗜 is offered only for files phones get.)
+    cards: [
+      { id: 'sc_tip', name: 'Tip', background: {}, elements: [{ ...box('e1', 300), kind: 'image', media: 'dance', fit: 'contain' }] },
+      { id: 'sc_long', name: 'Long', background: {}, elements: [{ ...box('e2', 300), kind: 'image', media: 'long', fit: 'contain' }] },
+    ],
   };
   return packGame(game, { dance, long });
 }

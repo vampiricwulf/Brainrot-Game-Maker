@@ -36,6 +36,8 @@ function assert(cond, msg) {
 
 // 2.4 s of it, on a 🤫 card.
 const dance = gif(320, 240, Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })));
+// The same kind of GIF on no 🤫 card: phones never get it, so its card offers no 🗜.
+const spare = gif(320, 240, Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })));
 // 2,000 frames (as many as 🗜 takes) of small changes over a big picture: long enough to stop partway, or to wait
 // behind, while the page's work is slowed down too (below).
 const long = gif(1024, 720, [
@@ -79,10 +81,12 @@ const gameWith = (movie, mov) => ({
     // (A WebM inside, as phones can't tell: a .mov is a kind they don't take.)
     { id: 'mov', name: 'clip-zfnqj.mov', mime: 'video/quicktime', size: mov.length, kind: 'video' },
     { id: 'tone', name: 'tone-zfnqj.flac', mime: 'audio/flac', size: tone.length, kind: 'audio' },
+    { id: 'spare', name: 'spare-zfnqj.gif', mime: 'image/gif', size: spare.length, kind: 'image' },
   ],
   audio: {}, wheels: [], dice: [], theme: {},
   cards: [
     { id: 'sc_tip', name: 'Tip', background: {}, elements: [text('Do this'), image('dance', 300)] },
+    { id: 'sc_long', name: 'Long', background: {}, elements: [text('Stare'), image('long', 300)] },
     // Its card plays 1 to 3 s of it.
     { id: 'sc_movie', name: 'Movie', background: {}, elements: [text('Watch'), videoEl('movie', 300, { startAt: 1, endAt: 3 })] },
     { id: 'sc_song', name: 'Song', background: {}, elements: [text('Hum'), soundEl('song', 300)] },
@@ -110,7 +114,7 @@ try {
   const mov = await clip(fx, { w: 320, h: 240, seconds: 1, bitrate: 600_000, audio: false });
   await fx.close();
   if (movie.length <= 3 * 1024 ** 2) throw new Error(`The video fixture came out ${movie.length} bytes: it has to be over 3 MB`);
-  writeFileSync(packPath, await packGame(gameWith(movie, mov), { dance, long, movie, song, mov, tone }));
+  writeFileSync(packPath, await packGame(gameWith(movie, mov), { dance, long, movie, song, mov, tone, spare }));
   await ctx.addInitScript(recordSeen);
   await ctx.addInitScript((server) => {
     try {
@@ -186,7 +190,11 @@ try {
   // ---------- 🗜 on 🖼 Media ----------
   console.log('🗜 Make smaller… on a GIF in 🖼 Media:');
   await media();
-  assert((await card('dance').getByRole('button', { name: '🗜 Make smaller…' }).count()) === 1, `a GIF over 2 MB gets 🗜 Make smaller… (${MB(dance.length)})`);
+  assert((await card('dance').getByRole('button', { name: '🗜 Make smaller…' }).count()) === 1, `a GIF over 2 MB on a 🤫 card gets 🗜 Make smaller… (${MB(dance.length)})`);
+  assert(
+    (await card('spare').getByRole('button', { name: /🗜/ }).count()) === 0 && (await card('spare').innerText()).includes('unused'),
+    `one on no 🤫 card gets no 🗜: phones never get it (${MB(spare.length)})`,
+  );
   await openShrink('dance');
   const says = (await dialog.innerText()).replace(/\s+/g, ' ');
   assert(says.includes('dance-zfnqj.gif') && says.includes('2.4 s') && says.includes('320×240'), `its dialog names the file, its length and size (the editor isn't on stream): ${says.slice(0, 160)}`);
@@ -225,7 +233,7 @@ try {
   assert(line.startsWith('📱 Phone copy · ') && line.includes(` KB · 320×240 ${gifBox.word}`), `the GIF's card says phones get a copy (${line})`);
   const header = (await page.locator('.library .page-header').innerText()).replace(/\s+/g, ' ');
   assert(header.includes('(1 phone copy)'), `the header counts it (${header.slice(0, 90)})`);
-  assert((await page.locator('.library .card').count()) === 6, 'and it has no card of its own');
+  assert((await page.locator('.library .card').count()) === 7, 'and it has no card of its own');
   assert((await historyCount()) === before + 1, 'one step in History');
 
   // ---------- Ctrl+Z, Ctrl+Y ----------
@@ -606,7 +614,7 @@ try {
   await ann.c.close();
   await cy.c.close();
   const audGames = await aud.evaluate(() => window.__games);
-  assert(audGames.length > 0 && audGames.every((names) => names.length === 6 && !names.some((n) => n.includes('(phones)'))), `the audience window’s copy of the game never lists the copies (${audGames.at(-1)?.join(', ')})`);
+  assert(audGames.length > 0 && audGames.every((names) => names.length === 7 && !names.some((n) => n.includes('(phones)'))), `the audience window’s copy of the game never lists the copies (${audGames.at(-1)?.join(', ')})`);
   await phoneCtx.close();
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);

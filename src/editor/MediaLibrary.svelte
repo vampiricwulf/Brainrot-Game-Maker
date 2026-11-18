@@ -56,8 +56,11 @@
     if (j.kind === 'edit') return j.phase === 'waiting' ? '✂ Waiting to save its edit…' : `✂ Saving the edit… ${progressText(j)}`;
     return j.phase === 'waiting' ? '🗜 Waiting to make its copy for phones…' : `🗜 Making a smaller copy for phones… ${progressText(j)}`;
   }
-  /** 🗜 is offered on a file's card: a GIF, video or sound stored here, over 2 MB, that phones don't get from its link. */
-  const offerShrink = (m: MediaRef): boolean => shrinkable(m) && !!mediaUrls[m.id] && m.size > SHRINK_OFFER_BYTES && !phonesGetLink(m);
+  /**
+   * 🗜 is offered on a file's card: a GIF, video or sound stored here, over 2 MB, on a 🤫 card (the only place phones
+   * get a file: a copy of one they never get only adds to the game's size), that phones don't get from its link.
+   */
+  const offerShrink = (m: MediaRef): boolean => onCards.has(m.id) && shrinkable(m) && !!mediaUrls[m.id] && m.size > SHRINK_OFFER_BYTES && !phonesGetLink(m);
   /** A copy's part of its file, when it holds only part ("0:12–0:45"). */
   const partOf = (c: MediaRef): string => {
     const p = c.phoneCopy;
@@ -677,7 +680,7 @@
             <button class="small ghost danger" onclick={() => removePhoneCopy(game, m.id)} aria-label="Remove its copy for phones" title="Remove its copy: phones get the file itself (Undo brings the copy back)">🗑</button>
           </div>
         {/if}
-        {#if shrinkable(m) && !copy && m.size > SHRINK_OFFER_BYTES && phonesGetLink(m)}
+        {#if onCards.has(m.id) && shrinkable(m) && !copy && m.size > SHRINK_OFFER_BYTES && phonesGetLink(m)}
           <div class="meta muted">Phones get this one from its link: no copy needed</div>
         {/if}
         {#if m.url}

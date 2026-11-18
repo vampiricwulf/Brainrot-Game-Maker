@@ -95,8 +95,8 @@ frees up.
 To change these limits, edit `FILE_MB`, `ROOM_FILES_MB` and `FILES_MB_PER_DAY` in `buzzer/wrangler.jsonc` and deploy
 again. `FILES_MB_PER_DAY` set to `0` turns these files off.
 
-Big files are slow for phones on mobile data. **🗜 Make smaller…** on a file's card in 🖼 Media makes a smaller copy
-for phones, while the show keeps the original. It's best done in the editor before the show, since it works the
+Big files are slow for phones on mobile data. **🗜 Make smaller…** on a file's card in 🖼 Media (a file used on a 🤫 card)
+makes a smaller copy for phones, while the show keeps the original. It's best done in the editor before the show, since it works the
 computer hard for a minute or two. Copies made in Chrome, Edge (on Windows or Mac) or the desktop app play on every
 phone; ones made in other browsers may not play on some iPhones.
 

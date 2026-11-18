@@ -430,7 +430,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   available; files used only on 🤫 cards count as used, and its tooltip says an older copy of the app (which doesn't
   know about cards) would delete them. The checklist has no line for this: there's nothing to fix. Each card keeps its buttons in fixed places: the name row (☐ Select, the name, ⋯ for its menu, then 🗑
   apart at the right end), and the foot (✎ Edit video… or ✎ Edit sound…, as the slide's item bar names it · **Replace everywhere…** · the one fix that
-  applies: 🔄 Convert…, else ↻ Make it a…, else 🗜 Make smaller…). A link's card adds 💾 Store in game and 🌐 Check it
+  applies: 🔄 Convert…, else ↻ Make it a…, else 🗜 Make smaller…, offered only for a file on a 🤫 card, the only place
+  phones get one). A link's card adds 💾 Store in game and 🌐 Check it
   still loads. **used 3× ▾** (plain "unused" when nothing uses it) drops the list of places, in the History's words
   ("Jeopardy! › Memes › $400 › Question", "Theme › background picture", "Sounds › Round intro"; `filePlaces` in
   historylabel.ts, from `mediaPaths` in usage.ts), each going there with goTo and flashing it (a sound's row, the
