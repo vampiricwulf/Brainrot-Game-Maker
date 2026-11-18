@@ -2,10 +2,13 @@
   Says what an undo or redo did ("↶ Undid Renamed category “Memes” · Round 1 › Memes" with ↷ Redo), and the steps an
   editor asks to announce ("Deleted screen “Cave”" with Undo). At the bottom of the editor (under any open window: a
   toast there says it instead), until a few seconds pass or the next change.
+  Also a new change that dropped undone steps ("Dropped 4 undone steps" with ↶ Undo, which brings them back): over an
+  open window too, in the room a toast has at its top (an edit in the clue editor is the usual one), and kept while the
+  typing goes on in that step.
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { history, onApplied, onNotify, redo, undo, type HistoryEntry } from '../lib/history.svelte';
+  import { bringBackDropped, canBringBack, history, onApplied, onDropped, onNotify, redo, undo, type HistoryEntry } from '../lib/history.svelte';
   import { goTo } from '../lib/nav.svelte';
   import { announce } from '../lib/announce';
   import { toast } from '../lib/app.svelte';
@@ -13,8 +16,9 @@
   /** The History tab is showing: it shows the steps itself. */
   let { quiet = false }: { quiet?: boolean } = $props();
 
-  type Kind = 'undid' | 'redid' | 'made';
-  let notice = $state<{ kind: Kind; entry: HistoryEntry; index: number } | null>(null);
+  type Kind = 'undid' | 'redid' | 'made' | 'dropped';
+  /** `count`: the undone steps a new step dropped (`entry`, that step). */
+  let notice = $state<{ kind: Kind; entry: HistoryEntry; index: number; count?: number } | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   function show(kind: Kind, entry: HistoryEntry, ms: number): void {
@@ -29,8 +33,8 @@
     });
   }
 
-  function place(kind: Kind, entry: HistoryEntry, ms: number, said: string): void {
-    notice = { kind, entry, index: history.index };
+  function place(kind: Kind, entry: HistoryEntry, ms: number, said: string, count?: number): void {
+    notice = { kind, entry, index: history.index, count };
     // Read out from the page's live region (one that appears with its words isn't always read).
     announce(said);
     clearTimeout(timer);
@@ -46,22 +50,38 @@
       else announce([`${dir < 0 ? 'Undid' : 'Redid'} ${e.label}`, e.where].filter(Boolean).join(' · '));
     });
     const offNotify = onNotify((e) => !quiet && show('made', e, 6000));
+    const offDropped = onDropped((count, e) => {
+      const said = `Dropped ${count} undone ${count === 1 ? 'step' : 'steps'}`;
+      if (!quiet) place('dropped', e, 8000, said, count);
+      else announce(said);
+    });
     return () => {
       offApplied();
       offNotify();
+      offDropped();
       clearTimeout(timer);
     };
   });
 
-  // Gone at the next change, so its button always means that step.
+  // Gone at the next change, so its button always means that step. (Dropped steps' note stays while the typing that
+  // dropped them goes on: that's still the same step.)
   $effect(() => {
-    if (notice && (history.pending || history.index !== notice.index)) notice = null;
+    if (!notice) return;
+    if (notice.kind === 'dropped' ? history.top !== notice.entry.id : history.pending || history.index !== notice.index) notice = null;
   });
 
   /** Undo the step the notice announced, if it's still the latest. */
   function undoMade(): void {
     if (notice && history.top === notice.entry.id) undo('button');
     else notice = null;
+  }
+
+  /** ↶ Undo on dropped steps: the new step goes, and they're back (still undone, for ↷ Redo). */
+  function bringBack(): void {
+    const n = notice?.count ?? 0;
+    const ok = !!notice && canBringBack(notice.entry.id) && bringBackDropped();
+    notice = null;
+    if (ok) toast(`↶ Brought back ${n} undone ${n === 1 ? 'step' : 'steps'}: ↷ Redo redoes them`);
   }
 
   function showHistory(): void {
@@ -72,16 +92,27 @@
 
 {#if notice && !quiet}
   {@const { kind, entry } = notice}
-  <div class="history-notice note-pill" role="region" aria-label="Last change" title={[entry.label, entry.where].filter(Boolean).join(' · ')}>
+  <div
+    class="history-notice note-pill"
+    class:over={kind === 'dropped'}
+    data-over-modal={kind === 'dropped' || undefined}
+    role="region"
+    aria-label="Last change"
+    title={kind === 'dropped' ? 'A new change drops the steps you undid (↷): Undo takes it back and brings them back' : [entry.label, entry.where].filter(Boolean).join(' · ')}
+  >
     <span class="text">
-      {#if kind === 'made'}
+      {#if kind === 'dropped'}
+        Dropped {notice.count} undone {notice.count === 1 ? 'step' : 'steps'}
+      {:else if kind === 'made'}
         {entry.label}
       {:else}
         {kind === 'undid' ? '↶ Undid' : '↷ Redid'} <b>{entry.label}</b>
       {/if}
-      {#if entry.where}<span class="muted">· {entry.where}</span>{/if}
+      {#if entry.where && kind !== 'dropped'}<span class="muted">· {entry.where}</span>{/if}
     </span>
-    {#if kind === 'undid'}
+    {#if kind === 'dropped'}
+      <button class="small" onclick={bringBack} data-bring-back>↶ Undo</button>
+    {:else if kind === 'undid'}
       <button class="small" onclick={() => redo('button')}>↷ Redo</button>
     {:else if kind === 'redid'}
       <button class="small" onclick={() => undo('button')}>↶ Undo</button>
@@ -102,6 +133,12 @@
   }
   .history-notice :global(button) {
     pointer-events: auto;
+  }
+  /* Dropped steps' note, with a window open: over it, at its top (the room every window leaves for a toast). */
+  :global(body:has([aria-modal='true'])) .history-notice.over {
+    z-index: var(--z-toast);
+    top: 8px;
+    bottom: auto;
   }
   .text {
     min-width: 0;

@@ -1,5 +1,6 @@
 // The editor's one undo history: Ctrl+Z / Ctrl+Y go where each change is (and say so), a text box's own undo comes
-// first, the 🕘 History tab jumps anywhere (asking first when it's far), deleting needs no confirm, removed and
+// first, the 🕘 History tab jumps anywhere (asking first when it's far), deleting needs no confirm, a change that
+// drops undone steps says so (its ↶ Undo brings them back, kept over a reload), removed and
 // replaced files come back, the history survives a reload, a game opened starts afresh, and changes made while
 // hosting are steps too.
 import { chromium } from 'playwright-core';
@@ -424,6 +425,55 @@ try {
   await page.getByRole('button', { name: /🖼 Media/ }).click();
   const names = await page.locator('.card .nm').allInnerTexts();
   assert(images === 1 && !names.some((n) => /red|blue/.test(n)), `and one Ctrl+Z takes the images and their files back (${names})`);
+
+  // ---------- A new change that drops undone steps says so, and its ↶ Undo brings them back ----------
+  await page.locator('nav button.round-tab').first().click();
+  const [was2, was5] = [await catName(2).inputValue(), await catName(5).inputValue()];
+  await clickAway();
+  await catName(2).fill('Alpha');
+  await clickAway();
+  await catName(4).fill('Beta');
+  await clickAway();
+  await key('Control+z');
+  await key('Control+z');
+  await catName(5).fill('Oops');
+  await clickAway();
+  await notice.filter({ hasText: 'Dropped 2 undone steps' }).waitFor({ timeout: 3000 });
+  assert(true, 'a change made after two undos says it dropped the 2 undone steps');
+  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  await page.locator('.toast', { hasText: '↶ Brought back 2 undone steps: ↷ Redo redoes them' }).waitFor();
+  assert(
+    (await catName(5).inputValue()) === was5 &&
+      (await catName(2).inputValue()) === was2 &&
+      (await header.getByRole('button', { name: 'Redo (Ctrl+Y)' }).getAttribute('title')) === 'Redo: Renamed category “Alpha” (Ctrl+Y)',
+    'its ↶ Undo takes the new change back and brings the 2 steps back, still undone',
+  );
+  // They're kept with the game: after a reload Ctrl+Y redoes both.
+  await reload();
+  await clickAway();
+  await key('Control+y');
+  await key('Control+y');
+  assert((await catName(2).inputValue()) === 'Alpha' && (await catName(4).inputValue()) === 'Beta', 'and after a reload Ctrl+Y redoes them both');
+  // In the clue editor the note shows over the window, where its ↶ Undo can be pressed.
+  await page.locator('.tile').nth(6).click();
+  const asked = await page.getByPlaceholder('Type the question…').inputValue();
+  await page.getByPlaceholder('Type the question…').fill('Who is Wojak?');
+  await clue.getByRole('button', { name: 'Done' }).click();
+  await clickAway();
+  await key('Control+z');
+  await clue.waitFor();
+  await page.getByPlaceholder('Type the question…').fill('Who is Doge?');
+  await notice.filter({ hasText: 'Dropped 1 undone step' }).waitFor({ timeout: 3000 });
+  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  await page.locator('.toast', { hasText: '↶ Brought back 1 undone step' }).waitFor();
+  assert(
+    (await clue.isVisible()) && (await page.getByPlaceholder('Type the question…').inputValue()) === asked,
+    'in the clue editor too: the note is over the window, and its ↶ Undo works there',
+  );
+  await clue.getByRole('button', { name: 'Done' }).click();
+  await clickAway();
+  await key('Control+y');
+  await clue.getByRole('button', { name: 'Done' }).click();
 
   assert(dialogs.length === 0, `no browser dialogs (Open… asks in the page) (${dialogs.join(' | ')})`);
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));

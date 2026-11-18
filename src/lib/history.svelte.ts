@@ -167,10 +167,17 @@ let swaps: BlobSwap[] = [];
 /** Unused files that only dropped steps held are cleaned up a little later. */
 let pruning: ReturnType<typeof setTimeout> | undefined;
 const PRUNE_MS = 5000;
+/**
+ * The undone steps (↷) a new step dropped, and the marks among them (where each sits after the new step's place), kept
+ * while that new step is the newest: ↶ Undo on "Dropped 4 undone steps" takes it back and puts them back as they were
+ * (bringBackDropped). Gone once anything else moves the history.
+ */
+let dropped: { steps: HistoryEntry[]; marks: Mark[]; after: string } | null = null;
 
 const applyingFns = new Set<() => void>();
 const appliedFns = new Set<(e: HistoryEntry, dir: 1 | -1, via: Via) => void>();
 const notifyFns = new Set<(e: HistoryEntry) => void>();
+const droppedFns = new Set<(count: number, after: HistoryEntry) => void>();
 
 const focused = (): Element | null => (typeof document === 'undefined' ? null : document.activeElement);
 
@@ -226,6 +233,7 @@ export function startHistory(g: Game, w: GameWatch): void {
 }
 
 function restart(origin: Omit<Origin, 'ts'>): void {
+  dropped = null;
   left(h.entries);
   swaps = [];
   h.entries = [];
@@ -335,7 +343,8 @@ function merge(e: HistoryEntry, before: Game, after: Game): boolean {
   if (!ops) return false;
   const rest = h.entries.slice(0, -1);
   if (!ops.length) {
-    // Back to how it was: no step at all.
+    // Back to how it was: no step at all (and the undone steps it dropped stay dropped: there's nothing to undo).
+    if (dropped?.after === top.id) dropped = null;
     left([top]);
     h.entries = rest;
     h.index = rest.length;
@@ -348,13 +357,47 @@ function merge(e: HistoryEntry, before: Game, after: Game): boolean {
 }
 
 function add(e: HistoryEntry): void {
-  // A new step drops the undone ones (and the marks among them).
-  left(h.entries.slice(h.index));
+  // A new step drops the undone ones (and the marks among them), kept a while so ↶ Undo can bring them back.
+  const undone = h.entries.slice(h.index);
+  left(undone);
+  dropped = undone.length ? { steps: undone, marks: h.marks.filter((m) => m.at > h.index).map((m) => ({ ...m, at: m.at - h.index })), after: e.id } : null;
   unsaved.add(e.id);
   h.marks = h.index < h.entries.length ? h.marks.filter((m) => m.at <= h.index) : h.marks;
   h.entries = [...h.entries.slice(0, h.index), e];
   h.index = h.entries.length;
   keepLimits();
+  // (Said, as nothing on the page shows it: the ↷ steps were gone without a word.)
+  if (undone.length) for (const fn of droppedFns) fn(undone.length, e);
+}
+
+/**
+ * ↶ Undo on "Dropped 4 undone steps": the new step that dropped them is taken back, and they come back as they were,
+ * still undone (↷ Redo brings each back). False when it's too late: that step is no longer the newest (another step, an
+ * undo…), or one can't be taken back.
+ */
+export function bringBackDropped(): boolean {
+  if (!ready()) return false;
+  commit();
+  const d = dropped;
+  const top = h.entries[h.index - 1];
+  if (!d || !top || top.id !== d.after || h.index !== h.entries.length || !apply([top], -1)) return false;
+  left([top]);
+  const at = h.index - 1;
+  h.entries = [...h.entries.slice(0, at), ...d.steps];
+  h.index = at;
+  // (A mark on the step taken back goes with it.)
+  h.marks = [...h.marks.filter((m) => m.at <= at), ...d.marks.map((m) => ({ ...m, at: m.at + at }))];
+  // Stored again with the next save (dropping them had them deleted from storage then).
+  for (const e of d.steps) {
+    unsaved.add(e.id);
+    goneIds.delete(e.id);
+  }
+  return true;
+}
+
+/** Whether ↶ Undo on "Dropped N undone steps" can still bring them back (their new step is still the newest). */
+export function canBringBack(after: string): boolean {
+  return dropped?.after === after && h.entries[h.index - 1]?.id === after && h.index === h.entries.length;
 }
 
 /**
@@ -377,6 +420,8 @@ export function keepLimits(): void {
 
 /** Apply steps to the game (backward to undo). False when one couldn't be: the history starts again from here. */
 function apply(list: HistoryEntry[], dir: 1 | -1): boolean {
+  // (Dropped undone steps can't come back over another undo or redo: the timeline they belonged to has moved.)
+  dropped = null;
   for (const fn of applyingFns) fn();
   let gone = false;
   try {
@@ -593,7 +638,8 @@ function left(steps: readonly HistoryEntry[]): void {
   }
   if (!steps.some((e) => e.media || e.blobs)) return;
   clearTimeout(pruning);
-  pruning = setTimeout(() => pruneMedia([app.game, app.playGame, app.resumable?.game], heldMedia()), PRUNE_MS);
+  // (Undone steps a new step dropped hold their files while ↶ Undo can still bring them back.)
+  pruning = setTimeout(() => pruneMedia([app.game, app.playGame, app.resumable?.game], heldMedia([...h.entries, ...(dropped?.steps ?? [])])), PRUNE_MS);
 }
 
 /**
@@ -703,6 +749,12 @@ export function onApplying(fn: () => void): () => void {
 export function onApplied(fn: (e: HistoryEntry, dir: 1 | -1, via: Via) => void): () => void {
   appliedFns.add(fn);
   return () => appliedFns.delete(fn);
+}
+
+/** Called when a new step dropped undone steps (how many, and the new step). Returns the unsubscribe. */
+export function onDropped(fn: (count: number, after: HistoryEntry) => void): () => void {
+  droppedFns.add(fn);
+  return () => droppedFns.delete(fn);
 }
 
 /** Called when a step made with `notify: true` is made. */

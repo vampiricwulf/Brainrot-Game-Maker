@@ -4,6 +4,8 @@ import {
   arriving,
   attachBlobSwap,
   begin,
+  bringBackDropped,
+  canBringBack,
   clear,
   commit,
   heldMedia,
@@ -17,6 +19,7 @@ import {
   keepLimits,
   nameStep,
   onApplied,
+  onDropped,
   onNotify,
   redo,
   savedSinceChange,
@@ -479,6 +482,72 @@ describe('undo history: undo, redo, jump', () => {
     step(null, () => (g.rounds[0].name = 'New'));
     expect(history.canRedo).toBe(false);
     expect(history.entries.map((e) => e.label)).toEqual(['Renamed the game “One”', 'Renamed round “New”']);
+  });
+
+  it('says how many undone steps a new one drops, and ↶ Undo brings them back as they were', async () => {
+    const said = vi.fn();
+    const off = onDropped(said);
+    await three();
+    mark('saved', 'Saved “Three.brainrot”');
+    undo();
+    undo();
+    toSave('r0');
+    step(null, () => (g.rounds[0].name = 'New'));
+    const made = history.entries[1];
+    expect(said).toHaveBeenCalledWith(2, made);
+    expect(history.marks).toEqual([]);
+    expect(toSave('r1').dropped).toHaveLength(2);
+    expect(canBringBack(made.id)).toBe(true);
+    expect(bringBackDropped()).toBe(true);
+    // The new step is gone, and the two undone ones are back, still undone, with the save mark among them.
+    expect(g.rounds[0].name).not.toBe('New');
+    expect(g.title).toBe('One');
+    expect(history.entries.map((e) => e.label)).toEqual(['Renamed the game “One”', 'Renamed the game “Two”', 'Renamed the game “Three”']);
+    expect(history.index).toBe(1);
+    expect(history.marks).toEqual([expect.objectContaining({ kind: 'saved', at: 3 })]);
+    // Stored again with the next save (dropping them had them deleted).
+    const s = toSave('r2');
+    expect(s.steps.map((e) => e.label)).toEqual(['Renamed the game “Two”', 'Renamed the game “Three”']);
+    expect(s.history.ids).toEqual(history.entries.map((e) => e.id));
+    expect(redo()?.label).toBe('Renamed the game “Two”');
+    expect(redo()?.label).toBe('Renamed the game “Three”');
+    expect(g.title).toBe('Three');
+    expect(said).toHaveBeenCalledTimes(1);
+    off();
+  });
+
+  it('keeps dropped steps only while the step that dropped them is the newest', async () => {
+    await three();
+    undo();
+    step(null, () => (g.rounds[0].name = 'New'));
+    const made = history.entries[2];
+    // Another step after it, or an undo, ends that.
+    step(null, () => (g.rounds[0].name = 'Newer'));
+    expect(canBringBack(made.id)).toBe(false);
+    expect(bringBackDropped()).toBe(false);
+    undo();
+    expect(canBringBack(made.id)).toBe(false);
+    expect(bringBackDropped()).toBe(false);
+    expect(history.entries).toHaveLength(4);
+    // A new step that drops nothing says nothing.
+    const said = vi.fn();
+    const off = onDropped(said);
+    redo();
+    step(null, () => (g.title = 'Four'));
+    expect(said).not.toHaveBeenCalled();
+    off();
+  });
+
+  it('holds the files of dropped steps while they can come back', () => {
+    const pic = { id: 'pic', name: 'pic.png', mime: 'image/png', size: 3, kind: 'image' as const };
+    step(null, () => g.media.push(pic));
+    undo();
+    step(null, () => (g.title = 'New'));
+    expect(heldMedia()).toEqual(new Set());
+    expect(bringBackDropped()).toBe(true);
+    expect(heldMedia()).toEqual(new Set(['pic']));
+    expect(redo()?.label).toBe(history.entries[0].label);
+    expect(g.media.map((m) => m.id)).toContain('pic');
   });
 
   it('ignores undo while a pointer is held', async () => {
