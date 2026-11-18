@@ -1349,8 +1349,10 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   rounds' Tick all, a shared theme's 💾 Save to my themes, ▶ Watch it). On a phone (under 600 px) the foot wraps: what's
   at the left takes a line of its own, Cancel and the main button together at the right under it. Every import is 📥 (📥 Import clues…, 📥 Import
   rounds…, 📥 Import theme…, 📥 Import CSV…); 📂 is Open… and folders.
-- **Page widths on a wide screen**: a page of settings or lists stops at a readable width (1200 px); boards, maps and a
-  slides round's slide fill the window (its Round name and Host notes stay at the readable width). A round's header
+- **Page widths on a wide screen**: a page of settings or lists stops at a readable width (1200 px); boards, maps and the
+  slide of a slides round, a Final or the tiebreaker fill the window, no taller than the window has room for under the
+  fields above it (those stay at the readable width; a Final's slide is never smaller than it is at that width, so on a
+  laptop the page scrolls to it), and the clue editor takes the window's whole width. A round's header
   (its name, ▶ Test this round, ▲ ▼, ⧉ Duplicate, ⋯, 🗑 Delete) fills it on every round's page, so its buttons stay put
   from one round's tab to the next.
 - **Deleting, and one meaning per sign**: 🗑 Delete *thing* is the last button of its row, a little apart, in red

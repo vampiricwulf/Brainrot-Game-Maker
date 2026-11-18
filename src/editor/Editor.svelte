@@ -1546,7 +1546,8 @@
           {@const round = game.rounds[i]}
           {#key round.id}
             <!-- The header is the same width on every round's page, so its buttons stay put from tab to tab. Under it a
-                 Final's form reads best at the pages' width; boards, maps and a slides round's slide fill the screen. -->
+                 Final's fields read best at the pages' width (FinalEditor keeps them there); boards, maps and the
+                 slide of a slides round or a Final fill the screen. -->
             <RoundActions
               {round}
               index={i}
@@ -1560,7 +1561,7 @@
             {#if isBoard(round)}
               <RoundEditor {round} />
             {:else if isFinal(round)}
-              <div class="page"><FinalEditor {round} /></div>
+              <FinalEditor {round} />
             {:else if isRpg(round)}
               <RpgRoundEditor {round} />
             {:else if isBoardGame(round)}

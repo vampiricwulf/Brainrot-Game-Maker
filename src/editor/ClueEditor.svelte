@@ -883,8 +883,9 @@
     padding-inline: 12px;
     padding-bottom: 12px;
   }
+  /* The whole window's width, as a slides round's slide fills the page: the slide takes what the height allows. */
   .clue {
-    width: min(1800px, 100%);
+    width: 100%;
     /* A fixed-height column: the slide editor takes whatever height the fields above leave. */
     height: 100%;
   }

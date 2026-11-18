@@ -167,6 +167,8 @@
   const styleTargets = (el: TextEl, scope: string) => (scope.startsWith('game') ? textStyleTargets(app.game, null, el, scope) : ownTextTargets(round, el, scope));
 </script>
 
+<!-- (One box for the page under the header: the slide refits as the fields above it grow or shrink, see fitheight.) -->
+<div>
 <div class="grid">
   <label class="field">
     Round name
@@ -304,13 +306,25 @@
       placeholder={shown === 'card' ? 'Click to type what they’ll see' : side === 'q' ? 'Click to type the final question' : 'Click to type the final answer'}
       badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 16).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : side === 'a' ? 'ANSWER' : undefined}
       tabbed
+      fitheight
     />
   {/key}
   <!-- (No clue: a Final's card has no role or hint line, and is each player's own, as sessionCards sends it.) -->
   {#if shown === 'card' && card && phoneView}<PhoneCardPreview game={app.game} {card} />{/if}
 </div>
+</div>
 
 <style>
+  /* The fields stay at the readable width of a page of settings; the slide under them fills the screen, as a slides
+     round's does, no taller than the window has room for, and never smaller than it is at the readable width (it sits
+     under the Final's settings, so on a laptop that room is small: the page scrolls to it instead). */
+  .grid,
+  .quick {
+    max-width: var(--page-width);
+  }
+  .card-edit {
+    --fit-floor: var(--page-slide-width);
+  }
   .quick {
     display: grid;
     grid-template-columns: 1.3fr 1fr 1fr;

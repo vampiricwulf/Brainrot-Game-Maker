@@ -64,7 +64,8 @@
   };
 </script>
 
-<div class="page">
+<!-- (One box for the page: the slide refits as the fields above it grow or shrink, see fitheight.) -->
+<div class="tb">
 <PageHeader title="Tiebreaker clue" sub="Optional. If players are tied for first at the end, the host can play this clue to settle it." />
 {#snippet toggle()}
 <label class="check">
@@ -127,12 +128,22 @@
       placeholder={tbSide === 'q' ? 'Click to type the tiebreaker question' : 'Click to type the tiebreaker answer'}
       badge={tbSide === 'a' ? 'ANSWER' : undefined}
       tabbed
+      fitheight
     />
   {/key}
 {/if}
 </div>
 
 <style>
+  /* The header and fields stay at the readable width of a page of settings; the slide under them fills the screen, as
+     a slides round's does, never smaller than it is at that width (see FinalEditor). */
+  .tb > :global(.page-header),
+  .quick {
+    max-width: var(--page-width);
+  }
+  .tb {
+    --fit-floor: var(--page-slide-width);
+  }
   .empty {
     max-width: 640px;
     margin-top: 8px;

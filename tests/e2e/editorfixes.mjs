@@ -5,7 +5,8 @@
 // focus on what they add, and a board's six columns fitting a narrower window. Also: an RPG screen pasted into
 // another game bringing the items and stats its objects use, and undone where it was pasted. And the sample game's
 // sidebar at 1280×720, pages opening at their top, and a round's name on a tablet; its round pages at 1920 (one header
-// width, a slides round's slide filling it), the slide's buttons all one size, and the board's two count lines level.
+// width; the slide of a slides round, a Final and the tiebreaker filling it, and the clue editor the window), the slide's
+// buttons all one size, and the board's two count lines level.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -720,10 +721,39 @@ try {
     await wp.waitForTimeout(200);
     const cleared = await fit();
     assert(typed.scroll <= 0 && typed.canvas < slides.canvas - 50 && cleared.canvas === slides.canvas && cleared.scroll <= 0, `lines typed above a slides round's slide shrink it to stay in sight, and it grows back (${slides.canvas} → ${typed.canvas} → ${cleared.canvas})`);
-    // The Final's form stays at the readable width under its full-width header.
+    // The Final's slide fills the width as a slides round's does, all in sight; its form stays at the readable width.
     await roundTab(/Final Jeopardy!/).click();
-    const final = await wp.evaluate(() => document.querySelector('main .se').getBoundingClientRect().right - document.querySelector('main [data-round-name], main input').getBoundingClientRect().left);
-    assert(final <= 1200, `the Final's form keeps the readable width (${Math.round(final)})`);
+    const page = (fieldsSel = '.grid, .quick') =>
+      wp.evaluate((fieldsSel) => {
+        const main = document.querySelector('main');
+        const r = (el) => el.getBoundingClientRect();
+        return {
+          head: Math.round(r(main.querySelector('.page-header')).right),
+          editor: Math.round(r(main.querySelector('.se')).right),
+          canvas: Math.round(r(main.querySelector('.se .canvas')).width),
+          fields: Math.round(Math.max(...[...main.querySelectorAll(fieldsSel)].filter((el) => !el.closest('.se')).map((el) => r(el).right)) - r(main.querySelector('.se')).left),
+          scroll: main.scrollHeight - main.clientHeight,
+        };
+      }, fieldsSel);
+    const final = await page();
+    assert(
+      Math.abs(final.editor - final.head) <= 2 && final.canvas > 1000 && final.scroll <= 0 && final.fields <= 1200,
+      `at 1920 the Final's slide editor reaches the header's right edge and the whole slide shows; its form keeps the readable width (${JSON.stringify(final)})`,
+    );
+    await wp.locator('main [data-field="round-notes"]').fill('one\ntwo\nthree\nfour');
+    await wp.waitForTimeout(200);
+    const finalTyped = await page();
+    assert(finalTyped.canvas < final.canvas - 20 && finalTyped.scroll <= 0, `lines typed in its Host notes shrink it to stay in sight (${final.canvas} → ${finalTyped.canvas})`);
+    await wp.locator('main [data-field="round-notes"]').fill('');
+    // The tiebreaker's too, under its fields at the readable width.
+    await wp.locator('nav button', { hasText: 'Add tiebreaker' }).click();
+    await wp.locator('main [data-field="q"]').waitFor();
+    const tb = await page('.page-header, .quick');
+    assert(
+      Math.abs(tb.editor - slides.head) <= 2 && tb.canvas > 1000 && tb.scroll <= 0 && tb.fields <= 1200,
+      `at 1920 the tiebreaker's slide editor fills the width too, its header and fields at the readable width (${JSON.stringify(tb)})`,
+    );
+    await roundTab(/Final Jeopardy!/).click();
     // ＋ Add slide and ＋ 🤫 Card are the same small button as the rest of the slide's group.
     const look = (b) => {
       const s = getComputedStyle(b);
@@ -749,6 +779,9 @@ try {
     await clueDlg.waitFor();
     const clueGroup = await slideButtons('[role="dialog"]');
     assert(oneLook(clueGroup), `the clue editor's slide buttons are one small button, ＋ Add slide and ＋ 🤫 Card too (${clueGroup.join(' | ')})`);
+    // Its window takes the whole width, as a slides round's slide does the page's.
+    const clueRight = await clueDlg.evaluate((d) => Math.round(innerWidth - d.getBoundingClientRect().right));
+    assert(clueRight <= 20, `at 1920 the clue editor takes the window's width (${clueRight}px to spare at its right)`);
     await wp.keyboard.press('Escape');
     await clueDlg.waitFor({ state: 'detached' });
     // At laptop widths Partner clues' selects take a second line: the two blocks' "… on the board" lines stay level.
@@ -762,6 +795,12 @@ try {
       });
       assert(hints.dd === hints.pt && hints.wrapped && /on the board/.test(hints.ddText) && /on the board/.test(hints.ptText), `at ${w}×${h} the ⭐ Daily Doubles and 🤝 Partner clues lines are level, with Partner clues' 🤫 Card on a second line (${JSON.stringify(hints)})`);
     }
+    // On a laptop the Final's settings leave its slide little room in sight: it keeps its size at the readable width
+    // (the page scrolls to it), never shrunk to fit.
+    await wp.setViewportSize({ width: 1280, height: 720 });
+    await roundTab(/Final Jeopardy!/).click();
+    const laptop = await page();
+    assert(laptop.canvas >= 700, `at 1280×720 the Final's slide keeps the size it has at the readable width (${JSON.stringify(laptop)})`);
     await wp.context().close();
   }
 

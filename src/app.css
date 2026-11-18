@@ -47,8 +47,11 @@
   --z-menu: 300;
   --z-ask: 400;
   --z-toast: 500;
-  /* The width a page of settings stops at on a wide screen (.page; a slides round's fields above its slide). */
+  /* The width a page of settings stops at on a wide screen (.page; the fields above a slides round's, a Final's or the
+     tiebreaker's slide). */
   --page-width: 1200px;
+  /* A slide's width in a slide editor that wide (less its inspector, 300 px and a 12 px gap, and its pasteboard, 28 px). */
+  --page-slide-width: calc(var(--page-width) - 340px);
   color-scheme: dark;
 }
 

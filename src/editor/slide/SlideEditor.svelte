@@ -115,8 +115,9 @@
     /** Fill the parent's height and fit the canvas to both width and height (the clue editor). */
     fill?: boolean;
     /**
-     * No taller than the window has room for below what's above it on the page (a slides round's), so the whole slide
-     * shows without scrolling.
+     * No taller than the window has room for below what's above it on the page (a slides round's, a Final's, the
+     * tiebreaker's), so the whole slide shows without scrolling. A page can set `--fit-floor`, a width it never goes
+     * under (the Final's: its size at the readable width, where its settings above leave a laptop little room).
      */
     fitheight?: boolean;
     /** Extra inspector settings for the selected item (RPG screens: class, secret, host notes). */
@@ -208,9 +209,10 @@
       if (w !== fitW) fitW = w;
     };
     measure();
-    // (What's above it changes height as it's typed in, or as the window does.)
+    // (What's above it changes height as it's typed in, or as the window does. A box of its own around it, as the
+    // Final's beside 📱 On their phone, keeps its size then: the page around that box doesn't.)
     const watch = new ResizeObserver(measure);
-    for (const el of [page, scroller]) if (el) watch.observe(el);
+    for (const el of [page, page?.parentElement, scroller]) if (el) watch.observe(el);
     return () => watch.disconnect();
   });
   /** Fitted font size of each text element, as drawn on the canvas. */
@@ -1858,11 +1860,11 @@
   }
   /* A slides round's: no taller than the window has room for (the inspector takes the width it leaves). */
   .fit .canvas {
-    width: min(calc(100% - 2 * var(--pb)), var(--fit-w));
+    width: min(calc(100% - 2 * var(--pb)), max(var(--fit-w), var(--fit-floor, 0px)));
   }
   @media (min-width: 901px) {
     .fit .body {
-      grid-template-columns: minmax(0, calc(var(--fit-w) + 30px)) minmax(300px, 1fr);
+      grid-template-columns: minmax(0, calc(max(var(--fit-w), var(--fit-floor, 0px)) + 30px)) minmax(300px, 1fr);
     }
   }
   @media (max-width: 900px) {
