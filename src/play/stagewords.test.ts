@@ -103,4 +103,22 @@ describe('the words on stream, for screen readers', () => {
     s.tiebreakerRevealed = true;
     expect(stageWords(s, g, live)).toEqual({ key: 'tiebreaker answer', words: '97.' });
   });
+  it('a text box with an entrance delay is said when it comes in, not before', () => {
+    const { g, s, clue, live } = setup();
+    const hint = newTextEl('Hint: it’s a song');
+    hint.y = clue.questionSlide.elements[0].y + 300;
+    hint.entrance = { type: 'fade', delay: 8, duration: 1 };
+    const soon = newTextEl('Quick');
+    soon.y = hint.y + 100;
+    soon.entrance = { type: 'pop', delay: 0, duration: 1 };
+    clue.questionSlide.elements.push(hint, soon);
+    openClue(s, REF, g);
+    const w = stageWords(s, g, live);
+    expect(w?.words).toBe('“Never gonna give you up” is the song of this prank. Quick.');
+    expect(w?.later).toEqual([{ after: 8000, words: 'Hint: it’s a song.' }]);
+    // Only delayed words: still said, when they come in.
+    setSlideText(clue.questionSlide, '');
+    soon.text = ' ';
+    expect(stageWords(s, g, live)).toEqual({ key: `clue ${clue.id} 0`, words: '', later: [{ after: 8000, words: 'Hint: it’s a song.' }] });
+  });
 });

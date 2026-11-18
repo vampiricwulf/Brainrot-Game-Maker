@@ -3179,22 +3179,25 @@
   /**
    * Screen readers hear the question as it goes on stream, and the answer once it's revealed: only what viewers see
    * (stagewords.ts), so it holds in one window too. Said after the status line's own words (“Memes $400 · Answer
-   * hidden”, which wait 600 ms), in the same breath. Said again only for another slide, or after the cover.
+   * hidden”, which wait 600 ms), in the same breath. Said again only for another slide, or after the cover. A text
+   * box with an entrance delay is said when it comes in, not before viewers can see it.
    */
   let stageSaid = '';
-  let stageSay: ReturnType<typeof setTimeout> | undefined;
+  let stageSay: ReturnType<typeof setTimeout>[] = [];
+  const stageHush = () => (stageSay.forEach(clearTimeout), (stageSay = []));
   $effect(() => {
     const w = stageWords(session, game, app.live);
     if (!w) {
       stageSaid = '';
-      return void clearTimeout(stageSay);
+      return void stageHush();
     }
     if (w.key === stageSaid) return;
     stageSaid = w.key;
-    clearTimeout(stageSay);
-    stageSay = setTimeout(() => announce(w.words), 650);
+    stageHush();
+    if (w.words) stageSay.push(setTimeout(() => announce(w.words), 650));
+    for (const l of w.later ?? []) stageSay.push(setTimeout(() => announce(l.words), Math.max(650, l.after)));
   });
-  onDestroy(() => clearTimeout(stageSay));
+  onDestroy(stageHush);
 
   /**
    * Goes up once a wheel, dice or a roll-off on stage lands (under the scores too): the blue button (greyed while it

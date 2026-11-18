@@ -377,5 +377,6 @@ and you can go back to any point in it.
 
 Screen readers hear the status line, scores, who's answering and results as the game goes. They also hear a clue's
 question as it goes on screen and its answer once you reveal it (the Final's and the tiebreaker's too): only the words
-viewers can see, when they see them. A slide's secret text boxes are never read, nor a question still behind a Daily
-Double's splash, PARTNER UP!, a wheel, dice or the scoreboard over the screen, or the cover (it's read once they go).
+viewers can see, when they see them, so a text box with an entrance delay is read when it comes in. A slide's secret
+text boxes are never read, nor a question still behind a Daily Double's splash, PARTNER UP!, a wheel, dice or the
+scoreboard over the screen, or the cover (it's read once they go).

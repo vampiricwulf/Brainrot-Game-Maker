@@ -7,21 +7,43 @@ import type { Game, Session, Slide, TextEl } from '../lib/model';
 import { clueSlideIndex, currentClueInfo, currentFinal, shownQuestionSlide } from '../lib/session';
 import type { Live } from '../lib/live';
 
-/** A slide's words as viewers see them: its text boxes (not a secret or see-through one), top to bottom, left to right. */
-export function slideWords(slide: Slide): string {
-  return slide.elements
-    .filter((e): e is TextEl => e.kind === 'text' && !e.secret && e.opacity > 0 && !!e.text.trim())
+/** Text boxes viewers can read (not a secret or see-through one), top to bottom, left to right, each a sentence. */
+function sentences(els: TextEl[]): string {
+  return els
     .sort((a, b) => a.y - b.y || a.x - b.x)
     .map((e) => e.text.replace(/\s+/g, ' ').trim())
     .map((t) => (/[.!?…:;,]$/.test(t) ? t : `${t}.`))
     .join(' ');
 }
 
+const readable = (slide: Slide): TextEl[] =>
+  slide.elements.filter((e): e is TextEl => e.kind === 'text' && !e.secret && e.opacity > 0 && !!e.text.trim());
+
+/** Seconds after the slide appears that a box comes in (its entrance's delay; 0 = with the slide). */
+const delayOf = (e: TextEl): number => Math.max(0, e.entrance?.delay ?? 0);
+
+/** A slide's words as viewers see them the moment it appears: a text box with an entrance delay isn't on yet. */
+export function slideWords(slide: Slide): string {
+  return sentences(readable(slide).filter((e) => delayOf(e) === 0));
+}
+
+/** The words of a slide's text boxes that come in later (an entrance delay), each group at its time, in ms. */
+export function laterWords(slide: Slide): { after: number; words: string }[] {
+  const at = new Map<number, TextEl[]>();
+  for (const e of readable(slide)) if (delayOf(e) > 0) at.set(delayOf(e), [...(at.get(delayOf(e)) ?? []), e]);
+  return [...at].sort((a, b) => a[0] - b[0]).map(([d, els]) => ({ after: Math.round(d * 1000), words: sentences(els) }));
+}
+
 /**
  * The words of the question or answer slide on stream now, keyed by which one it is (a clue's next slide, or its
- * answer, is another); null: none (no such slide up, it's hidden for now, or it has no words).
+ * answer, is another); null: none (no such slide up, it's hidden for now, or it has no words). A text box that
+ * comes in later (an entrance delay) isn't in `words`: it's in `later`, to be said when viewers see it.
  */
-export function stageWords(session: Session, game: Game, live: Live): { key: string; words: string } | null {
+export function stageWords(
+  session: Session,
+  game: Game,
+  live: Live,
+): { key: string; words: string; later?: { after: number; words: string }[] } | null {
   // (Anything over the stage hides its slide: a wheel, dice, a roll-off, the scores, a sheet, a shop, a pop-up.)
   if (live.pregame || live.cover || live.overlay) return null;
   // (A round's title card, over everything but a board's.)
@@ -45,5 +67,7 @@ export function stageWords(session: Session, game: Game, live: Live): { key: str
     slide = session.tiebreakerRevealed ? t.answerSlide : shownQuestionSlide(session, t);
   } else return null;
   const words = slideWords(slide);
-  return words ? { key, words } : null;
+  const later = laterWords(slide);
+  if (!words && !later.length) return null;
+  return later.length ? { key, words, later } : { key, words };
 }
