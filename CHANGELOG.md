@@ -11,6 +11,51 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Added
+
+- The Final's "The clock is still running" check has ⏸ Pause the clock (T). It closes the check with the clock paused, so the next 👁 Reveal answer shows the answer at once. (17f97d3)
+- Screen readers now hear a clue's question as it goes on screen and its answer once you reveal it, after the clue's name ("Memes $400 · Answer hidden. …"). This works for the Final and the tiebreaker too. Only the words viewers can see are read, and only when they see them. Secret text boxes are never read. Nothing is read while a Daily Double's splash, PARTNER UP!, a wheel, dice, the scoreboard, a pop-up or the cover hides the slide; it's read once they go. A text box that comes in later is said when it shows. (5deb45e, ea72264, 6534510).
+- 🖼 Board backdrop shows the board's spaces and links faintly on top while you edit, so you can line pictures up with the path. Clicks go through them, and the remembered ⬤ Spaces over it button hides them (b6953b3)
+- Reloading the page while editing brings you back to the page or round you had open, with the clue editor reopened on the same clue. This is remembered per tab, for that game only. (e68883c)
+- When a new change throws away steps you had undone, a note now says "Dropped N undone steps" with ↶ Undo. That Undo takes the change back and restores those steps, still undone, so ↷ Redo works again, even after a reload. The note also appears over the clue editor, and a deletion's own note ("Deleted card 3 · dropped 1 undone step") says it too. With a window open, Shift+Tab reaches the note's ↶ Undo. (58d8d82, cbea37d, d65189f, 72f0812).
+
+### Changed
+
+- A file of the wrong kind is now described the same way everywhere, in the wording ＋ Add files… uses, with curly quotes: “notes.txt” isn’t a picture or video file. This covers a file dropped on a slot, the board images, an RPG map or a board's tiles. The HEIC photo message also uses curly quotes. (f919b38)
+- Go to round: ↓ and ↑ on the closed list now only move it, and the keys stay in the list, so you can reach any round. Typing a round's first letter also works, because the names now come before their signs ("Adventure 🗺"). Enter asks to go to the round shown, Esc puts the list back, and the keys window names Alt+↓ to open the list. Before, ↓ asked at once and took the keys, so rounds after the next one couldn't be reached. (653aa92, 91b74fa)
+- In one window, the check before going on now spans the panel's whole width whenever its edge would cut a tools-row button, so no stub of 🎭 Deal… or 📊 Scoreboard sticks out beside it (1280×720, 1366×768). On a wide window, where nothing is cut, it stays 720px wide. (f80a33e)
+- In one window, the tools row folds behind ⋯ Tools during the Final's reveals only when the reveal rows don't all fit with it showing. At 1920×1080 it stays, with 📊 Scoreboard in reach; at 1280×720 it still folds. (14c352f)
+- Starting soon: when the countdown reaches 0, the card says "Starting now!" for about 30 seconds and then goes back to its own words, so it no longer says "Starting now!" for as long as the host takes. The host's ▶ Start countdown comes back at the same time. (3058a61)
+- RPG templates: Mini quest and 3 × 3 dungeon give their map a real place name, so it no longer reads as a label ('Map · Forest', an overlay titled 'Map') (960e4d0)
+- ✎ Edit board in play now uses the board-game editor's gestures. Shift+click selects several spaces: drag one to move them all, or Delete removes them in one step. Connect two spaces with Alt+drag or 🔗 Connect to… (Shift+click no longer connects). (14cd51e, a5fb2ab).
+- The slide editor uses the words of the place it's open in. The RPG screen editor talks about objects and screens, the board-game backdrop about pictures and the board, and slides rounds still say items and slides. (7ed5148, ccae5b9).
+- 🖼 Media offers 🗜 Make smaller… only on files used on 🤫 cards. Phones only ever get those, so a phone copy of any other file just made the game bigger. (9eedf20, 43efe8c).
+- On a wide screen, the slide of the Final and of the tiebreaker now fills the width, as a slides round's does. Their fields stay at the readable width, and on a laptop the Final's slide is never smaller than before. The clue editor window now takes the whole window width instead of stopping at 1800 px. (e261d6e)
+- In the browser, once a link's site has refused to let the game save a copy, its 🖼 Media card says so. Instead of 💾 Store in game, which only failed again, it offers ⬇ Download it… (opens the file in its own tab) and then Replace everywhere… to put the downloaded file in, with 💾 Try again in case the site now allows it. The desktop app is unchanged. (e74572a)
+- Phones: when a phone still can't reach the buzzer room after a few tries but its own internet is working, it now says "Can't reach the game's buzzer server right now: the host has been told. Keep this page open." It only tells players to check their Wi-Fi or mobile data when the phone itself is offline. If you run your own buzzer server, redeploy it to get this. (91504f2)
+
+### Fixed
+
+- On a light theme such as Pastel, going back to the board from a clue no longer dips to black. The board's background colour now sits under every screen of the stage, so the Final, the slides and the end screen also come in over it instead of black. The RPG and board-game screens keep their own black. (dc6505d, b133dc3)
+- A long cover-card text now uses wider lines, at most three, and shrinks if it is still too long. The tallest banner above it and the phones' join code below it stay on the stage; before, a four-line text pushed the join code off the bottom. The text's shadow is no longer cut off at its edge. (dc6505d, b133dc3)
+- Shop: after Other price… with a price that is still short, the question comes back with the keys on its Cancel, instead of on a buyer's chip at the top of the shop's box. The Enter that answers a question's box no longer presses a button that comes up in its place. (6d18610)
+- A slide with several clips now checks again whether the tools row needs to fold whenever the window changes size with the clue up. Shrinking the window (leaving fullscreen, snapping to half the screen) no longer leaves Undo, Cover, Hide and Exit below the edge, and growing it brings the tools row back. (6e0c81630)
+- Editor header between 901 and 1100 px wide (a laptop at 125% zoom, half a screen): the title and buttons no longer slide left when a file job starts and back when it ends, and ▶ Play stays whole at 901 px. (0a6c14a)
+- On a phone, the job pill in the header shows its sign, percentage and Stop without its words, which were cut to a letter or two. (0a6c14a)
+- If another tab holds a Drawpad drawing not yet inserted, or an image edit or trim not yet applied, a second tab now says taking over would throw it away (“The other tab has a drawing or an edit not put in yet”) and asks before Throw it away and edit here. Before, Edit here instead discarded it without a word. The desktop app also asks before closing its window while such work is open. (9c91732)
+- On a tablet or narrow window, the Final's reveal rows now all have ✔ Right / ✘ Wrong in the same place, together at the row's right end. The spotlit row's verdicts no longer wrap apart from the others. On a touch screen, the how-to above the rows no longer lists keys. (63175ce, a285041)
+- Long category names shrink while their words stay whole before any word is hyphenated. When a word has to break, it breaks between syllables and keeps at least 4 letters on each side, so you get "ESTAB-LISH-MENT" and never "UNIVE-RSE" or "ESTABLI-SHMENT". (c0fed56)
+- One window: after Esc or N, the board tile that gets focus no longer shows its keyboard ring on stream. The ring appears only once the host moves around the board with Tab or the arrow keys. (c5a1327)
+- On the board, a score pop now lies over its player's name on the score plate and stays inside the score bar. It no longer covers the bottom row of tiles, or the category row when the bar is at the top. (eee7633)
+- Final reveals: the spotlight card is the same width for every player, sized for the longest name in the Final and kept within the stage. Its frame no longer grows and shrinks from one player to the next. (08eeb47)
+- The Final follows 🎨 Theme › Score bar. With Top, the plates stay at the top during the wagers and the reveals, and each wager's ✔ sits under its plate. With Hidden, the Final shows no plates either: the reveal card shows each player's total, and the host spotlights players from the panel or with the number keys. The panel's how-to no longer says to click the stage in that case. (2bad2b7, 53f124d)
+- Board game beside the stage: the turn's first line can wrap onto a second line instead of being cut off with '…' (b027c96)
+- RPG round in one window: the screen's 📝 note has its own fixed slot in the top row. It is cut short, with the whole note in its tooltip, so the parties, 🗺 Map on stream, the pad and the minimap stay in place when you move between screens (fe4ca99)
+- RPG round beside the stage: an object's card gets the empty room where the NEXT button would be before the box scrolls, and opening a card never leaves a row cut in half or tucked under the pinned pad and map (e88a697)
+- On a phone or a narrow window, a message that pops up while a window is open now wraps onto two or three lines instead of being cut off mid-sentence. Windows leave room at the top for it, so it doesn't cover a window's title or buttons. (dce3dbe, b519212)
+
 ## 2026-11-17
 
 ### Changed
