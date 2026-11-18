@@ -464,20 +464,22 @@ try {
   await clue.waitFor();
   await page.getByPlaceholder('Type the question…').fill('Who is Doge?');
   await notice.filter({ hasText: 'Dropped 1 undone step' }).waitFor({ timeout: 3000 });
-  // The keyboard reaches its ↶ Undo too: Tab goes on from the window's last button to the note's, then back round.
+  // The keyboard reaches its ↶ Undo too: the window's Tab cycle takes in the note's buttons after its own, so from the
+  // question box Shift+Tab gets there past the window's first few buttons.
   const onBringBack = () => page.evaluate(() => document.activeElement?.hasAttribute('data-bring-back') ?? false);
   let tabs = 0;
-  while (!(await onBringBack()) && tabs < 80) {
-    await page.keyboard.press('Tab');
+  while (!(await onBringBack()) && tabs < 20) {
+    await page.keyboard.press('Shift+Tab');
     tabs++;
   }
-  assert(await onBringBack(), `with the clue editor open, Tab reaches the note's ↶ Undo (${tabs} presses)`);
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
-  assert(await clue.evaluate((c) => c.contains(document.activeElement)), 'and Tab past the note goes back into the window');
+  assert(await onBringBack(), `with the clue editor open, Shift+Tab from the question reaches the note's ↶ Undo (${tabs} presses)`);
+  // (It stays while the keys are on it, past its own few seconds.)
+  await page.waitForTimeout(9000);
+  assert(await onBringBack(), 'the note stays while the focus is on it');
   await page.keyboard.press('Shift+Tab');
-  await page.keyboard.press('Shift+Tab');
-  assert(await onBringBack(), 'Shift+Tab back to it from the window');
+  assert(await clue.evaluate((c) => c.contains(document.activeElement)), 'Shift+Tab past the note goes back into the window');
+  await page.keyboard.press('Tab');
+  assert(await onBringBack(), 'and Tab from there comes back to it');
   await page.keyboard.press('Enter');
   await page.locator('.toast', { hasText: '↶ Brought back 1 undone step' }).waitFor();
   assert(

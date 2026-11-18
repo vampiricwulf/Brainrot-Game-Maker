@@ -61,7 +61,7 @@
     });
     const offDropped = onDropped((count, e) => {
       const said = `Dropped ${count} undone ${count === 1 ? 'step' : 'steps'}`;
-      // (Said with the way back: the note's ↶ Undo, which Tab reaches over a window too.)
+      // (Said with the way back: the note's ↶ Undo, which Shift+Tab reaches over a window too.)
       if (!quiet) place('dropped', e, 8000, `${said}: ↶ Undo on its note brings ${count === 1 ? 'it' : 'them'} back`, count);
       else announce(said);
     });
@@ -109,8 +109,17 @@
     const onfocusout = (e: FocusEvent) => {
       if (e.relatedTarget instanceof Node && !node.contains(e.relatedTarget)) from = null;
     };
+    // (It stays while the keys are on it: the note's own few seconds would otherwise go mid-Tab.)
+    const hold = () => clearTimeout(timer);
+    const resume = (e: FocusEvent) => {
+      if (e.relatedTarget instanceof Node && node.contains(e.relatedTarget)) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => (notice = null), 4000);
+    };
     node.addEventListener('focusin', onfocusin);
     node.addEventListener('focusout', onfocusout);
+    node.addEventListener('focusin', hold);
+    node.addEventListener('focusout', resume);
     return {
       destroy() {
         // (By now the note may be out of the page already, the focus with it.)
@@ -143,7 +152,7 @@
     use:giveBack
     role="region"
     aria-label="Last change"
-    title={kind === 'dropped' ? 'A new change drops the steps you undid (↷): Undo takes it back and brings them back (over a window, Tab reaches it)' : [entry.label, entry.where].filter(Boolean).join(' · ')}
+    title={kind === 'dropped' ? 'A new change drops the steps you undid (↷): Undo takes it back and brings them back (over a window, Shift+Tab reaches it)' : [entry.label, entry.where].filter(Boolean).join(' · ')}
   >
     <span class="text">
       {#if kind === 'dropped'}
