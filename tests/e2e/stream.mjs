@@ -1441,8 +1441,8 @@ try {
   const plate = await page.locator('.stage .plate').first().boundingBox();
   const num = await page.locator('.stage .plate').first().locator('.score').boundingBox();
   assert(
-    pop && pop.x + pop.width / 2 > plate.x && pop.x + pop.width / 2 < plate.x + plate.width && pop.y + pop.height > bar.y && pop.y + pop.height <= num.y + 1,
-    'back on the board, the score pop sits on its player’s plate, above the score',
+    pop && pop.x + pop.width / 2 > plate.x && pop.x + pop.width / 2 < plate.x + plate.width && pop.y >= bar.y && pop.y + pop.height <= num.y + 1,
+    `back on the board, the score pop sits on its player’s plate, above the score, inside the score bar (off the tiles) (${JSON.stringify({ pop, bar: bar.y, num: num.y })})`,
   );
   await page.locator('.stage-box .board .tile').nth(1).click();
   // (Well before the pop's own 2.2 s, after its fade-out.)

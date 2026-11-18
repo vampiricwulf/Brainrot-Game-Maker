@@ -216,7 +216,7 @@
   const layout = $derived(boardLayout(game.theme, !!bannerUrl));
   /** On the board, score pops sit over the score bar. */
   const popsOnBar = $derived(session.phase === 'board' && !session.intro && layout.score ? layout.score : null);
-  /** The score bar is at the top of the board: pops hang below the plates' names instead. */
+  /** The score bar is at the top of the board: pops fly in from above. */
   const barTop = $derived(!!popsOnBar && popsOnBar.top === 0);
   /** A player's pop over their plate (its centre, kept on the stage); null for a group's pop. */
   function popX(playerId: string | undefined): number | null {
@@ -226,6 +226,11 @@
   }
   /** An anchored pop is at most this wide (its name gives way to "…"), so it stays on the stage. */
   const POP_HALF = 300;
+  /**
+   * On the board, a pop's top is this far inside the score bar's band: with the pop's height (.on-bar .pop, 58px) it
+   * covers the plate's name strip and stops at the score, even on the picker's plate (raised 6px).
+   */
+  const POP_BAR_INSET = 10;
   /** Slide dots (● ● ○) up to this many slides; more (a long rules deck) say "3 / 45" instead, so they stay on the stage. */
   const PIPS_MAX = 20;
   /** How wide the slide dots are (32px each, an 18px gap, 20px padding a side). */
@@ -882,15 +887,15 @@
 {/if}
 
 <!--
-  On the board a player's pop sits on their plate's name, above its score (a group's in the middle of the bar);
-  elsewhere they sit near the foot of the stage.
+  On the board a player's pop sits on their plate's name, above its score (a group's in the middle of the bar), inside
+  the score bar's band whether it's at the top or the foot: never over a row of tiles. Elsewhere they sit near the foot
+  of the stage.
 -->
 <div
   class="pops"
-  style:top={popsOnBar ? `${barTop ? popsOnBar.top + popsOnBar.height - 30 : popsOnBar.top + 30}px` : undefined}
+  style:top={popsOnBar ? `${popsOnBar.top + POP_BAR_INSET}px` : undefined}
   style:bottom={popsOnBar ? undefined : `${(foot || 40) + (captionUp ? 90 : 0)}px`}
   class:on-bar={!!popsOnBar}
-  class:bar-top={barTop}
 >
   {#each live.pops as p (p.id)}
     {@const at = popsOnBar ? popX(p.playerId) : null}
@@ -1849,11 +1854,7 @@
     z-index: 17;
   }
   .pops.on-bar {
-    transform: translateY(-100%);
-    align-items: flex-end;
-  }
-  .pops.on-bar.bar-top {
-    transform: none;
+    flex-wrap: wrap;
     align-items: flex-start;
   }
   /* Over its player's plate. */
@@ -1874,11 +1875,17 @@
     max-width: 280px;
   }
   .on-bar .pop.anchored {
-    bottom: 0;
-  }
-  .on-bar.bar-top .pop.anchored {
     top: 0;
-    bottom: auto;
+  }
+  /*
+   * Smaller on the score bar: the height of the plate's name strip (58px), laid over it and clear of the score under it
+   * (still about as big as the name, to read on a scaled-down stream).
+   */
+  .on-bar .pop {
+    font-size: 42px;
+    line-height: 1.1;
+    padding: 2px 22px;
+    border-width: 4px;
   }
   /* Big enough to count on a scaled-down stream; level with the caption beside it. */
   .pips {
