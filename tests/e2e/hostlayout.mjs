@@ -138,17 +138,19 @@ try {
     (await help.locator('section', { hasText: 'The blue button and the check' }).locator('tr td:first-child').first().innerText()) === 'N' && (await help.locator('[data-quiet]').count()) === 0,
     '❔ Help: the blue button’s keys (N first), and no list of kinds not asked about while none is',
   );
-  const hideSeen = () => page.evaluate(() => localStorage.getItem('jb.hideHintSeen'));
-  const seenBefore = await hideSeen();
   await help.getByRole('button', { name: '💡 Show all tips again' }).click();
   await help.getByRole('button', { name: '✓ Tips will show again' }).waitFor();
-  const seenAfter = await hideSeen();
   await help.getByRole('button', { name: 'Done' }).click();
   await help.waitFor({ state: 'detached' });
+  // (Past the first note's 3.5 seconds, so a note now is the new one.)
+  await page.waitForTimeout(3600);
   await page.getByRole('button', { name: '🙈 Hide', exact: true }).click();
+  assert(
+    await page.locator('.toast', { hasText: 'Press H to bring the controls back' }).waitFor({ timeout: 2000 }).then(() => true, () => false),
+    '💡 Show all tips again: the next 🙈 Hide says how to get the controls back again',
+  );
   await page.keyboard.press('h');
   await page.getByRole('button', { name: '🙈 Hide', exact: true }).waitFor();
-  assert(seenBefore === '1' && seenAfter === null && (await hideSeen()) === '1', '💡 Show all tips again: the next 🙈 Hide says how to get the controls back again');
 
   const btn =(name) => page.locator('.panel .fixed').getByRole('button', { name, exact: true });
   const box = async (l) => {

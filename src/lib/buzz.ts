@@ -6,7 +6,7 @@ import { categoryLabel, finalName, formatPoints, isBoard, PARTNER_GAMES, roundNa
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
 } from './partner';
-import { ANY_SERVER, cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
+import { ANY_SERVER, cardWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
 import { usableChoices } from './choices';
 import type { TimerState } from './live';
@@ -156,11 +156,6 @@ export function questionText(s: Slide | undefined): string {
     .join('\n')
     .replace(/\n[^\S\n]*(\n[^\S\n]*)+/g, '\n');
   return clipUnits(words, CLUE_TEXT_MAX);
-}
-
-/** A 🤫 card's words for the phones: every text box, top to bottom (one hidden from viewers too), cut at 1000 characters. */
-export function cardText(s: Slide): string {
-  return clipWords(cardWords(s));
 }
 
 /** The phones' status line while the host is back in the editor with the room kept open. */

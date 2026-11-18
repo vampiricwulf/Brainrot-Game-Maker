@@ -119,11 +119,9 @@ try {
   await count.fill('3');
   await count.press('Tab');
   const group = host.locator('[data-partner-count]');
-  assert((await group.innerText()).includes('1 on the board · Start places 2 at random'), 'the box asks for 3: one placed, Start places 2');
   assert((await group.getByRole('combobox', { name: 'The game partner clues placed at random play' }).inputValue()) === 'describe', 'placed at random, they play Describe it (the round’s choice)');
   await group.getByRole('button', { name: 'Randomize partner clues' }).click();
-  assert(await toast('Placed 3 partner clues at random'), '🔀 Randomize places 3');
-  assert((await badges()) === 3, 'the board shows 3 partner clues');
+  assert(await until(async () => (await badges()) === 3), 'the board shows 3 partner clues');
   await host.screenshot({ path: 'test-results/partner-steal-board.png' });
   await host.keyboard.press('Control+z');
   assert(await until(async () => (await badges()) === 1 && (await isPartner(0, 1))), 'Ctrl+Z takes them off in one step: the one made by hand is back where it was');

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Verdict, Why } from './playable';
-import { ADVICE, advice, aOrAn, boxName, codecName, fixBoxName, rowText, severalText, shortWhy, tracksOf, whyLine, whyText } from './words';
+import { advice, aOrAn, boxName, codecName, fixBoxName, rowText, severalText, shortWhy, tracksOf, whyLine, whyText } from './words';
 
 const fails = (why: Omit<Why, 'kind'> & { kind?: Why['kind'] }, fix: Extract<Verdict, { is: 'fails' }>['fix'] = null): Verdict => ({ is: 'fails', fix, why: { kind: 'video', ...why } });
 const silent = (why: Omit<Why, 'kind'>, fix: Extract<Verdict, { is: 'silent' }>['fix'] = null): Verdict => ({ is: 'silent', fix, why: { kind: 'video', ...why } });
@@ -60,11 +60,11 @@ describe('what the host can do about it', () => {
   it('a sound alone, a sound left out, a silent one nothing fixes, no WebCodecs', () => {
     expect(advice(fails({ kind: 'audio', sound: 'ac3', cant: 'undecodable' }))).toBe(' Convert it to MP3 or M4A with an audio or video app first.');
     // (A video file with no picture in it is a sound alone too.)
-    expect(advice(fails({ sound: 'dts', cant: 'undecodable' }))).toBe(ADVICE.sound);
+    expect(advice(fails({ sound: 'dts', cant: 'undecodable' }))).toBe(' Convert it to MP3 or M4A with an audio or video app first.');
     expect(advice(silent({ sound: 'ac3', fine: { video: 'vp9' } }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe(' To keep its sound, convert it with a video app first (HandBrake is free).');
     expect(advice(silent({ sound: 'ac3', fine: { video: 'vp9' }, cant: 'undecodable' }))).toBe(' To hear its sound, convert it with a video app first (HandBrake is free).');
     expect(advice(fails({ video: 'hevc', cant: 'no-webcodecs' }))).toBe(' Converting it needs Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address.');
-    expect(advice(silent({ sound: 'pcm-s16', cant: 'no-webcodecs' }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe(ADVICE.webcodecs);
+    expect(advice(silent({ sound: 'pcm-s16', cant: 'no-webcodecs' }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe(' Converting it needs Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address.');
   });
 
   it('as sentences, for a title', () => {

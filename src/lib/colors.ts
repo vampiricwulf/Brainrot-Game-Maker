@@ -17,8 +17,6 @@ export const PLAYER_PALETTE = [
 ];
 /** What each palette colour is called (said by screen readers where people pick one). */
 export const PLAYER_COLOR_NAMES = ['red', 'sky blue', 'yellow', 'blue', 'orange', 'white', 'green', 'pink', 'purple', 'brown', 'lime', 'magenta'];
-/** How many of the palette's first colors stay apart for colour-blind viewers. */
-export const CVD_SAFE_UPTO = 8;
 
 export function normalizeColor(c: string): string {
   return c.trim().toLowerCase();

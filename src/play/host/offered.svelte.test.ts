@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardOffers, offerCard, offerIn, offerPlaces, offerShownAt, showPlace } from './offered.svelte';
+import { cardOffers, offerCard, offerIn, offerShownAt, showPlace } from './offered.svelte';
 import { textSlide } from '../../lib/model';
 
 const offer = (from: string) => ({ from, slide: textSlide('Psst'), to: [], until: 'round' as const });
@@ -21,6 +21,5 @@ describe('a 🤫 card an action offers', () => {
     expect(offerShownAt(land)).toBe('placed');
     again();
     expect(offerShownAt(land)).toBe('top');
-    expect(offerPlaces).toEqual({});
   });
 });

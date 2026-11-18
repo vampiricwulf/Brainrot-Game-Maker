@@ -102,7 +102,6 @@ try {
   await editor.locator('[data-field="q"]').fill('Name a cat breed');
   await editor.getByLabel(/Everyone answers/).check();
   await editor.getByRole('button', { name: /Done/ }).click();
-  assert(true, 'a clue is set to ✍ Everyone answers in the clue editor');
   // (And a third, with multiple choice: B is right.)
   await host.locator('.tile').nth(2).click();
   await editor.locator('[data-field="q"]').fill('The capital of Sweden?');

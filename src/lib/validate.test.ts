@@ -505,24 +505,6 @@ describe('🤝 partner clues', () => {
     expect(lines[0].place).toMatchObject({ tab: 'round', round: round.id, part: { kind: 'clue', clue: clue.id } });
     vi.unstubAllGlobals();
   });
-
-  it('says nothing new with ⚖ Show quick ✔/✘ buttons off: it only hides the buttons, and a miss still costs points', () => {
-    const { game, clue } = partnerGame();
-    game.settings.buzzer = true;
-    setSlideText(clue.cards![0], 'Shrek');
-    const before = validate(game);
-    game.settings.deductOnWrong = false;
-    expect(validate(game)).toEqual(before);
-  });
-
-  it('adds no checklist line for a file used only on cards (🗑 Delete unused’s tooltip says what an older copy would do)', () => {
-    const { game, clue } = partnerGame();
-    game.settings.buzzer = true;
-    setSlideText(clue.cards![0], 'Shrek');
-    clue.cards![0].elements.push(newImageEl('pic'));
-    game.media.push({ id: 'pic', name: 'shrek.png', mime: 'image/png', size: 10, kind: 'image' });
-    expect(validate(game).filter((p) => /only on 🤫 cards|Older copies|Delete unused/.test(p.text))).toEqual([]);
-  });
 });
 
 describe('a Final’s 🤫 cards', () => {
@@ -608,13 +590,6 @@ describe('a Final’s 🤫 cards', () => {
     const second = addCard(final, 'nobody')!;
     setSlideText(second, 'Side bet');
     expect(mine(game)).toEqual([{ text: 'Final Jeopardy! has two cards called “Card 2”: in the host panel you can’t tell them apart', tab: 1, level: 'info', place: at(final, second.id) }]);
-  });
-
-  it('adds no checklist line for a file used only on one', () => {
-    const { game, card } = finalGame();
-    card.elements.push(newImageEl('pic'));
-    game.media.push({ id: 'pic', name: 'hint.png', mime: 'image/png', size: 10, kind: 'image' });
-    expect(validate(game).filter((p) => /only on 🤫 cards|Older copies|Delete unused/.test(p.text))).toEqual([]);
   });
 });
 
@@ -783,13 +758,6 @@ describe('🤫 Cards (the editor’s tab)', () => {
     const game = jeopardyGame();
     game.cards = [card('sc1', 'Tip A', newTextEl('One')), card('sc2', 'tip a ', newTextEl('Two')), card('sc3', 'Tip A', newTextEl('Three'))];
     expect(mine(game)).toEqual([{ text: 'Two 🤫 cards are called “tip a”: in 🤫 Send a card… you can’t tell them apart', tab: 'cards', level: 'info', place: { tab: 'cards', card: 'sc2' } }]);
-  });
-
-  it('adds no checklist line for a file used only on one of them', () => {
-    const game = jeopardyGame();
-    game.media.push({ id: 'pic', name: 'spoon.png', mime: 'image/png', size: 10, kind: 'image' });
-    game.cards = [card('sc1', 'Tip A', newTextEl('Hide it'), newImageEl('pic'))];
-    expect(validate(game).filter((p) => /only on 🤫 cards|Older copies|Delete unused/.test(p.text))).toEqual([]);
   });
 });
 

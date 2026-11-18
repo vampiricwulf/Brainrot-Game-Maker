@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyOps, diff, itemIdsIn, mediaIdsIn, mergeOps, opPath, opsSize, PathGone, same, type Json, type Op } from './historyops';
+import { applyOps, diff, itemIdsIn, mediaIdsIn, mergeOps, opPath, PathGone, same, type Json, type Op } from './historyops';
 
 type Obj = { [k: string]: Json };
 const clone = <T>(v: T): T => structuredClone(v);
@@ -305,11 +305,6 @@ describe('op helpers', () => {
     expect(opPath({ t: 'set', p: ['rounds', 'r1'], k: 'name', a: 'X' })).toEqual(['rounds', 'r1', 'name']);
     expect(opPath({ t: 'ins', p: ['rounds'], i: 0, id: 'r2', v: {} })).toEqual(['rounds', 'r2']);
     expect(opPath({ t: 'ord', p: ['rounds'], b: [], a: [] })).toEqual(['rounds']);
-  });
-
-  it('measures ops by their JSON', () => {
-    const ops: Op[] = [{ t: 'set', p: [], k: 'title', b: 'A', a: 'B' }];
-    expect(opsSize(ops)).toBe(JSON.stringify(ops).length);
   });
 
   it('lists the media files ops add, remove or change', () => {

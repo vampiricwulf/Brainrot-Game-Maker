@@ -155,7 +155,7 @@ try {
     ref('huge', 'zfnqj-huge.gif', 'image/gif', 'image'),
   ];
   // (Four of them and the rest fit in 10 MiB, five don't; the one too big is over 3 MiB.)
-  assert(files.gif1.length > 2.15e6 && files.gif1.length < 2.4e6 && files.huge.length > 3 * 1024 * 1024, `the GIFs: five of ${(files.gif1.length / 1e6).toFixed(2)} MB, one of ${(files.huge.length / 1e6).toFixed(2)} MB`);
+  if (!(files.gif1.length > 2.15e6 && files.gif1.length < 2.4e6 && files.huge.length > 3 * 1024 * 1024)) throw new Error(`The GIF fixtures came out ${files.gif1.length} and ${files.huge.length} bytes: five have to be 2.15–2.4 MB, one over 3 MiB`);
   const rules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
   const plain = (id, q, a) => ({ id, value: null, type: 'standard', questionSlide: slide(text(q)), answerSlide: slide(text(a)) });
   const partnerClue = (id, q, a, cards) => ({ ...plain(id, q, a), type: 'partner', partner: { ...rules }, timerSeconds: 60, cards });

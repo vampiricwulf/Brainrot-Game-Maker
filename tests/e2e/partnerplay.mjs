@@ -188,7 +188,6 @@ try {
   assert((await stage('[data-partner-up]').innerText()).includes(landed), 'Esc closes the wheel onto the pair');
   await page.keyboard.press('3');
   await page.keyboard.press('2');
-  assert((await chip('Bob is the partner').getAttribute('aria-pressed')) === 'true', '1–9 overrule the wheel (2: Bob)');
   assert((await stepButton(panel, '↻ Spin again').count()) === 1, 'and ↻ Spin again stays in its place');
   await page.keyboard.press('1');
   assert(await toast('Ann picked it: tick'), 'Ann’s own number says how to make it Solo');

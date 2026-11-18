@@ -36,7 +36,7 @@ describe('a slide between a top band and a multiple choice strip (slideFit)', ()
 
   it('full size with neither; a band only, as before: smaller toward the bottom', () => {
     expect(slideFit(0, 0)).toBeUndefined();
-    expect(slideFit(TIMER_BAND, 0)).toEqual({ scale: (1080 - TIMER_BAND) / 1080, originY: 1080 });
+    expect(slideFit(190, 0)).toEqual({ scale: 890 / 1080, originY: 1080 });
   });
 
   it('a strip only: smaller toward the top, its foot on the strip', () => {

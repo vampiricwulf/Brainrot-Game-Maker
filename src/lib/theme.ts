@@ -393,16 +393,6 @@ export function presetTheme(p: ThemePreset): Theme {
   return { preset: p, ...PRESETS[p].theme };
 }
 
-/** What a preset sets: its colors and fonts (applying one keeps the images and where the score bar goes). */
-const PRESET_LOOK = ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'stageText', 'boardFont', 'valueFont', 'glow', 'scoreBarBg'] as const;
-
-/** Some of the theme's colors or fonts no longer match its preset, or it has looks no preset has. */
-export function presetEdited(t: Theme): boolean {
-  const p = PRESETS[t.preset]?.theme;
-  if (p && EXTRA_LOOKS.some((k) => t[k] !== undefined)) return true;
-  return !!p && PRESET_LOOK.some((k) => (k === 'stageText' ? stageText(t) : t[k]).toLowerCase() !== (p[k] ?? '').toLowerCase());
-}
-
 /** The Clue text color the clues are drawn in, or undefined: none, or plain white (drawn in the slides' text color). */
 export function clueTextColor(t: Pick<Theme, 'clueColor'>): string | undefined {
   return t.clueColor && !/^#?(fff|ffffff)$/i.test(t.clueColor.trim()) ? t.clueColor : undefined;

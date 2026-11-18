@@ -80,7 +80,7 @@ describe('step labels', () => {
   it('cuts long text to 40 characters', () => {
     const long = 'This is the question text for a clue, fairly long, maybe two lines';
     expect(step((g) => ((board(g).categories[0].clues[0].questionSlide.elements[0] as TextEl).text = long)).label).toBe(
-      `Edited question “${short(long)}”`,
+      'Edited question “This is the question text for a clue, f…”',
     );
     expect(short(long)).toHaveLength(40);
     expect(short('Line one\nline two')).toBe('Line one');

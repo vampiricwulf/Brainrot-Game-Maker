@@ -130,7 +130,6 @@ try {
   await start(page);
   const toast = () => page.locator('.toast').innerText();
   const turn = () => page.locator('.stage .turn-banner').innerText();
-  assert(!(await page.locator('.bh').getByRole('button', { name: '◀ Previous turn' }).count()), 'Previous turn is no longer up in the round’s box');
   assert(
     (await mainLabel(page)) === 'Next turn ▶' && (await stepButton(page, '🎲 Roll d6').count()) === 1,
     `the blue button is Next turn ▶; the turn box's one slot is 🎲 Roll (${await mainLabel(page)})`,

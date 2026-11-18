@@ -118,7 +118,7 @@ describe('planGif', () => {
     const p = planGif({ ...info, seconds: 0.5, frames: 5 }, WEBM);
     expect(p).toMatchObject({ loops: 4, seconds: 2 });
     if ('refuse' in p) throw new Error('refused');
-    expect(p.estimate).toBe(Math.round(((p.bitrate * 2) / 8) * 1.03));
+    expect(p.estimate).toBe(74_902);
   });
 
   it('refuses a GIF over 2,000 frames or 60 s', () => {
@@ -211,7 +211,7 @@ describe('a video’s sizes', () => {
   });
 
   it('come out about (picture + sound) × length / 8, with 3% for the file', () => {
-    expect(estimateBytes(2_628_000, 60)).toBe(Math.round(((2_628_000 * 60) / 8) * 1.03));
+    expect(estimateBytes(2_628_000, 60)).toBe(20_301_300);
     // A sound copied as it is costs its own bitrate; another is made again at 128 kbps (96 for one channel).
     expect(soundBps(video(1, 1, 1, 1))).toBe(128_000);
     expect(soundBps(video(1, 1, 1, 1, { audio: { ...track, codec: 'opus', bps: 64_000, channels: 2, label: null } }))).toBe(64_000);
@@ -550,10 +550,10 @@ describe('how 🔄 Convert makes a file that plays here', () => {
     expect(p).toMatchObject({ run: { box: 'webm', audio: { discard: true }, copy: { mode: 'forced' } }, copied: true, label: 'Repackaged a video as WebM without its sound', format: 'WebM (VP9, no sound)' });
     expect(p.out.sound).toBe(false);
     // 1 MB, less 10 s at 400 kbps (500 KB).
-    expect(p.estimate).toBe(Math.round(1_000_000 * 1.01 - 500_000));
+    expect(p.estimate).toBe(510_000);
     // A sound whose own rate the file doesn't say: the file's 800 kbps less the picture's 600 (250 KB for 10 s).
     const unsaid = facts('mkv', pic('vp9', { bps: 600_000 }), snd('ac3', { bps: null, decodes: false, cpt: false }), { element: { opens: 'yes', picture: true, sound: 'no' } });
-    expect(planFor(unsaid, 'video', 'video/x-matroska').estimate).toBe(Math.round(1_000_000 * 1.01 - 250_000));
+    expect(planFor(unsaid, 'video', 'video/x-matroska').estimate).toBe(760_000);
   });
 
   it('a sound file with a picture in it (an MP3’s cover) leaves the picture out', () => {
@@ -567,12 +567,12 @@ describe('how 🔄 Convert makes a file that plays here', () => {
     const p = planFor(f, 'video', 'video/mp4');
     expect(p.run).toEqual({
       box: 'webm',
-      video: { codec: 'vp9', bitrate: videoBitrate(1280, 720, 'vp9', { bps: 4_000_000, w: 1280, h: 720, codec: 'hevc' }), keyFrameInterval: 2, forceTranscode: true },
+      video: { codec: 'vp9', bitrate: 4_000_000, keyFrameInterval: 2, forceTranscode: true },
       copy: {},
     });
     expect([p.copied, p.label, p.format]).toEqual([false, 'Converted a video to WebM', 'WebM (VP9, Opus)']);
     // Its size, about: the picture at its new rate and the sound at its own, 10 s.
-    expect(p.estimate).toBe(estimateBytes(p.run.video!.bitrate! + 200_000, 10));
+    expect(p.estimate).toBe(5_407_500);
     // Uncompressed sound in a MOV that doesn't play: Opus (96 kbps for one channel), the picture kept.
     const pcm = facts('mov', pic('vp9'), snd('pcm-s16', { cpt: false, channels: 1 }), { element: { opens: 'yes', picture: true, sound: 'no' } });
     const q = planFor(pcm, 'video', 'video/quicktime');
@@ -801,12 +801,12 @@ describe('✎ Edit: what an edit makes', () => {
   });
 
   it('its size, about: the part kept of the file as it is, less a sound left out; else the rates it’s made at', () => {
-    expect(plan(mp4, { start: 2, end: 7 }).estimate).toBe(Math.round(10_000_000 * 0.5 * 1.01));
+    expect(plan(mp4, { start: 2, end: 7 }).estimate).toBe(5_050_000);
     // Without its 128 kbps sound: 5 s less 80 KB.
-    expect(plan(mp4, { start: 2, end: 7, sound: false }).estimate).toBe(Math.round(10_000_000 * 0.5 * 1.01 - (128_000 * 5) / 8));
+    expect(plan(mp4, { start: 2, end: 7, sound: false }).estimate).toBe(4_970_000);
     // Made again: the picture's new rate and the sound's own, for the 5 s.
     const p = plan(mp4, { start: 2, end: 7, short: 720 }, { can: WINDOWS, enc: AVC });
-    expect(p.estimate).toBe(estimateBytes(p.run.video!.bitrate! + 128_000, 5));
+    expect(p.estimate).toBe(3_301_150);
     // A WebM that says neither track's rate (most don't), trimmed to 0–7 of 9 s without its sound: about the 7 s of
     // the file less 128 kbps of sound, not a twentieth of it.
     const unsaid = facts('webm', pic('vp9', { bps: null }), snd('opus', { bps: null }), { seconds: 9, size: 25_900_000 });
@@ -815,10 +815,10 @@ describe('✎ Edit: what an edit makes', () => {
     expect(Math.abs(silent.estimate - near) / near).toBeLessThan(0.1);
     // (Kept, the sound beside a picture made again is charged about 128 kbps, not the whole file's rate.)
     const crop = plan(unsaid, { end: 7, short: 360 });
-    expect(crop.estimate).toBe(estimateBytes(crop.run.video!.bitrate! + 128_000, 7));
+    expect(crop.estimate).toBe(1_016_610);
     // (A sound left out of a file whose picture's rate is said: the file's rate less the picture's.)
     const said = facts('webm', pic('vp9', { bps: 20_000_000 }), snd('opus', { bps: null }), { seconds: 10, size: 25_200_000 });
-    expect(plan(said, { end: 5, sound: false }).estimate).toBe(Math.round(25_200_000 * 0.5 * 1.01 - (160_000 * 5) / 8));
+    expect(plan(said, { end: 5, sound: false }).estimate).toBe(12_626_000);
     // Over 2 GB: a pack can't hold it.
     const big = facts('mp4', pic('avc'), snd('aac'), { size: 3 * 1024 ** 3 });
     expect(plan(big, { start: 1 }).notes.at(-1)).toMatch(/^About 2\.\d GB: a \.brainrot pack this big can’t be opened again \(2 GB at most\)\.$/);

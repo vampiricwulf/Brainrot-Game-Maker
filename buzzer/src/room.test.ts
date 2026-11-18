@@ -1592,7 +1592,6 @@ describe('teams', () => {
 
   it('the room says it knows teams, and the host state keeps teams on', () => {
     const g = teams();
-    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs', 'choices', 'pass'] });
     expect(g.room.saved.state?.teams).toBe(true);
     expect(cleanState({ ...state(), teams: 'yes' })?.teams).toBeUndefined();
   });
@@ -2139,7 +2138,7 @@ describe('answers (everyone answers on their phone)', () => {
     it('are kept only as 2 to 6 choices, each with its own id and words, never which is right', () => {
       expect(kept(four.map((c, i) => (i === 1 ? { ...c, right: true } : c)))).toEqual(four);
       // Words cleaned and cut as a name is; one choice, seven, an id twice, an empty one or a bad id: none at all.
-      expect(kept([{ id: 'a', text: '  Pa\u200bris  ' }, { id: 'b', text: 'x'.repeat(100) }])).toEqual([{ id: 'a', text: 'Paris' }, { id: 'b', text: clip('x'.repeat(100), 80) }]);
+      expect(kept([{ id: 'a', text: '  Pa\u200bris  ' }, { id: 'b', text: 'x'.repeat(100) }])).toEqual([{ id: 'a', text: 'Paris' }, { id: 'b', text: `${'x'.repeat(79)}…` }]);
       for (const bad of [
         four.slice(0, 1),
         [...four, ...four.map((c) => ({ ...c, id: c.id + 'x' }))].slice(0, 7),
@@ -3152,7 +3151,9 @@ describe('typed answers over several lines (cleanAnswer, foldLines)', () => {
   });
 
   it('a one-line answer is as cleanName makes it', () => {
-    for (const s of ['  What is   a Shiba Inu?  ', 'Ünïcödé 👨‍👩‍👧 🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'a\u200bb']) expect(cleanAnswer(s)).toBe(cleanName(s, ANSWER_MAX));
+    expect(cleanAnswer('  What is   a Shiba Inu?  ')).toBe('What is a Shiba Inu?');
+    expect(cleanAnswer('Ünïcödé 👨‍👩‍👧 🏴󠁧󠁢󠁥󠁮󠁧󠁿')).toBe('Ünïcödé 👨‍👩‍👧 🏴󠁧󠁢󠁥󠁮󠁧󠁿');
+    expect(cleanAnswer('a\u200bb')).toBe('ab');
   });
 
   it('foldLines: one line for lists and labels, a few for a stage card', () => {

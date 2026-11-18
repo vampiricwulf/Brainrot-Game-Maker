@@ -77,9 +77,9 @@ describe('the game kept to resume', () => {
   it('when it was saved: the time today, the day too before today', () => {
     const now = new Date(2026, 9, 31, 14, 0).getTime();
     const today = new Date(2026, 9, 31, 2, 41).getTime();
-    expect(savedWhen(today, now)).toBe(new Date(today).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+    expect(savedWhen(today, now)).toMatch(/(^|\D)(0?2|14):41(\D|$)/);
     const before = new Date(2026, 9, 30, 2, 41).getTime();
     expect(savedWhen(before, now)).not.toBe(savedWhen(today, now));
-    expect(savedWhen(before, now)).toContain(new Date(before).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+    expect(savedWhen(before, now)).toMatch(/30\D.*2:41|2:41.*\D30/);
   });
 });

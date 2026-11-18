@@ -55,7 +55,6 @@ export function liveRegion(): HTMLElement | null {
   host = document.createElement('div');
   host.id = 'live-region';
   host.className = 'sr-only';
-  host.dataset.live = 'polite';
   // (Left out of what a window makes inert: what's said while one is open must still be read.)
   host.setAttribute('data-over-modal', '');
   const root = host.attachShadow({ mode: 'closed' });

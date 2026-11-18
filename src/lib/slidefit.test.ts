@@ -5,7 +5,7 @@ describe('fitSlideWidth', () => {
   it('fits the slide and its frame above the window’s foot, 16 px clear', () => {
     // A 1280×720 laptop: the canvas starts at 371.
     const w = fitSlideWidth(371, 720);
-    expect(w).toBe(Math.floor(((720 - 371 - 16 - 30) * 16) / 9));
+    expect(w).toBe(538);
     expect(371 + (w * 9) / 16 + 30 + 16).toBeLessThanOrEqual(720);
   });
   it('grows with the window', () => {

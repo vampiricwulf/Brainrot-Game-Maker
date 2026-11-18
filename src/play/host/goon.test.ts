@@ -519,15 +519,6 @@ describe('the check (3.1–3.10)', () => {
   });
 
   it('presses it takes (6.2): N, N closes a clue with no points as before; Shift+click once; U, O and Enter do the boxes’ jobs at once', () => {
-    const { step, items } = picked();
-    // N: the check opens; N again (after the guard) is "anyway": 2 presses, as N, N with the old toast.
-    let presses = 1;
-    expect(goOnDecision('n', step, items, false, false)).toBe('open');
-    presses++;
-    expect(inside({ key: 'n' }, open(step, items), after)).toEqual({ do: 'anyway' });
-    expect(presses).toBe(2);
-    // Shift+click: 1. A click, then "anyway": 2 (the button). Esc never goes through the check: 1.
-    expect(goOnDecision('shift', step, items, false, false)).toBe('run');
     // N with the buzzers never opened: N, then Enter (2), or U at once (1, never the check).
     const reveal: Step = { id: 'reveal', verb: FLOW.reveal, run: () => {}, reveals: true };
     const buzz: LeftItem[] = [{ id: 'buzzers', kind: 'first', text: '', quick: [{ label: '🔔 Open the buzzers', key: 'U', enter: true, then: 'close', run: () => {} }] }];

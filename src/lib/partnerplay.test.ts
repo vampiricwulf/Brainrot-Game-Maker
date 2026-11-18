@@ -32,7 +32,7 @@ import {
 } from './session';
 import { buzzIdle, hostState, newBuzz, phoneStatus } from './buzz';
 import { newLive, overlayDoneAt } from './live';
-import { addWheel, openPartnerWheel, openPlayerWheel, spinningRolls, spinWheel } from './overlay';
+import { openPartnerWheel, spinningRolls, spinWheel } from './overlay';
 import { clone } from './ops';
 
 const REF = { round: 0, cat: 0, row: 1 };
@@ -141,16 +141,6 @@ describe('who plays a partner clue', () => {
     expect(s.partnerId).toBeUndefined();
   });
 
-  it('the partner describes and the picker guesses; ⇄ Swap turns it round', () => {
-    const { g, session } = setup();
-    openClue(session, REF, g);
-    const s = session.partner!;
-    setPartner(session, s, 'b', 'wheel');
-    expect(partnerRoles(s)).toEqual({ giver: 'b', guesser: 'a', solo: false });
-    swapParts(s);
-    expect(partnerRoles(s)).toEqual({ giver: 'a', guesser: 'b', solo: false });
-  });
-
   it('in every game the partner gives and the picker guesses, ⇄ Swap turns it round, and the picker alone is Solo', () => {
     for (const game of Object.keys(PARTNER_GAMES) as PartnerGame[]) {
       const { g, clue, session } = setup();
@@ -236,19 +226,17 @@ describe('who gets each card', () => {
   });
 
   it('Solo: only a card for the guesser starts with the picker', () => {
-    const { session, s, clue } = paired();
+    const { session, s } = paired();
     s.partnerId = 'a';
     expect(seats(defaultRecipients(session, s, 'guesser'))).toEqual(['a']);
     for (const to of ['giver', 'both', 'others', 'nobody'] as const) expect(defaultRecipients(session, s, to)).toEqual([]);
-    expect(clue.cards!.length).toBe(1);
   });
 
   it('says who in words, never what’s on the card', () => {
-    const { session, s, clue, card } = paired();
+    const { session, s, card } = paired();
     expect(recipientsText(session, s, clueRules(), card)).toBe('Bob (describer)');
     delete s.partnerId;
     expect(recipientsText(session, s, clueRules(), card)).toBe('the describer');
-    expect(clue.cards![0]).toBe(card);
   });
 
   it('a removed player leaves the cards they were given; the picker or partner removed goes back to choosing', () => {
@@ -480,21 +468,6 @@ describe('the partner wheel', () => {
     // Kept through a reload, as the game in progress saves the wheel.
     const kept = JSON.parse(JSON.stringify(o));
     expect(spinningRolls(kept, end - 1)).toEqual([o.rollId]);
-  });
-
-  it('every wheel spun together has its roll, until it lands', () => {
-    const { session, g } = setup();
-    const live = newLive();
-    openPlayerWheel(live, session);
-    addWheel(live, session, g, 'player');
-    const o = live.overlay!;
-    if (o.kind !== 'wheel') throw new Error('no wheel');
-    o.extra = [{ key: 'k', name: 'Pick a player', players: true, segments: clone(o.segments), rotation: 0, spin: null, result: null }];
-    spinWheel(live, session, g);
-    const ids = spinningRolls(o, Date.now());
-    expect(ids).toHaveLength(2);
-    expect(ids).toEqual([o.rollId, o.extra[0].rollId]);
-    expect(spinningRolls(o, overlayDoneAt(o) + 1)).toEqual([]);
   });
 });
 

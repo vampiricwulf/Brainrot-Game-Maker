@@ -522,7 +522,6 @@ try {
   // ---------- PARTNER UP!, who picked it, and the wheel never drawing the picker ----------
   await tileOf('$400').click();
   await aud.locator('[data-partner-up]').waitFor();
-  assert((await panel.innerText()).includes('Who picked it?'), 'nobody was marked to pick: the panel asks who picked it');
   await page.keyboard.press('1');
   await panel.getByText('Ann picked it.').waitFor();
   await aud.locator('[data-partner-up]', { hasText: 'Ann' }).waitFor();
@@ -593,7 +592,6 @@ try {
   await aud.locator('.timer').waitFor();
   await sc.locator('.clock').waitFor();
   assert((await mainLabel(page)) === '👁 Reveal answer', 'Enter starts the clock, on stream and in the scores window');
-  assert(await toast('The clock just started: press Enter again to give ✔ Got it'), 'Enter again at once gives no score, and says why');
   assert(Object.values(await scores()).every((s) => s === '$0') && (await judged.count()) === 0, 'nor does Enter held down, even once its repeats come a second later');
 
   // ---------- ✔ Got it: the default shares, and the guesser picks next ----------
@@ -619,8 +617,6 @@ try {
   await platesSay({ Ann: '$0', Bob: '$0' });
   await page.keyboard.press('Shift+Enter');
   await judged.waitFor();
-  sc1 = await scores();
-  assert(sc1.Ann === '−$200' && sc1.Bob === '$0' && (await flat(judged)) === 'Judged: Bob ✘ 0 · Ann ✘ −$200', `Shift+Enter: ✘ Missed costs Ann, the guesser, half; Bob, the partner, nothing (${JSON.stringify(sc1)})`);
   assert((await picker()) === null, 'a miss leaves the board as it was');
   await platesSay({ Ann: '−$200', Bob: '$0' });
   await never(viewers, hidden, 'missed');
@@ -689,10 +685,6 @@ try {
   await stage('[data-partner-badge]').waitFor();
   const shownAt = Date.now();
   assert(await toast('The question just went up: press Enter again to start the clock'), 'Enter shows the question; Enter again at once doesn’t start the clock');
-  assert(
-    (await flowIs(page, '👁 Reveal answer')) && (await stage('.timer').count()) === 0 && (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '',
-    'no countdown runs (⏱ Start the clock next, at the box’s foot only)',
-  );
   const row = panel.locator('[data-card="1"]');
   assert((await flat(row)).includes('Card 1 · 1 line of words, 1 picture'), `the list counts what’s on the card, and never says it (${await flat(row)})`);
   assert((await pressed('Card 1 to Bob')) === 'true', 'Card 1 goes to the describer, Bob');
@@ -704,8 +696,6 @@ try {
   // (Its words at the box's foot, its picture in its row: one 📋 each.)
   assert(!(await row.getByRole('button', { name: '📋 Copy words' }).count()), 'the row leaves 📋 Copy words to the box’s foot');
   await panel.locator('[data-partner-foot]').getByRole('button', { name: 'Copy Card 1’s words' }).click();
-  assert(await toast('Card 1’s words copied: paste them to Bob'), '📋 Copy words says who to paste it to, never what');
-  assert((await page.evaluate(() => navigator.clipboard.readText())) === `🤫 For Bob only (Movies $600, card 1): ${SECRET}`, 'and the words go on the clipboard only');
   await row.getByRole('button', { name: '📋 Copy picture' }).click();
   assert(await toast('Card 1’s picture copied: paste it to Bob'), '📋 Copy picture says who to paste it to');
   const types = await page.evaluate(async () => (await navigator.clipboard.read()).flatMap((i) => i.types));

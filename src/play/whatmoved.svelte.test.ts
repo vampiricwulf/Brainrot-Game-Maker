@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { RENAMED } from '../lib/keylist';
-import { firstRunSeen, markMovedSeen, MOVED_SINCE, movedNew, movedSeen, noSettings, renames, WHAT_MOVED } from './whatmoved.svelte';
+import { markMovedSeen, MOVED_SINCE, movedNew, noSettings, renames, WHAT_MOVED } from './whatmoved.svelte';
 
 describe('what moved in this version', () => {
   it('is new until its part’s list was shown, and again for a later list', () => {
@@ -10,7 +10,7 @@ describe('what moved in this version', () => {
     // (A part with nothing moved shows no dot.)
     expect(movedNew('editor', null, [])).toBe(false);
     markMovedSeen('game');
-    expect([movedSeen.game, movedNew('game')]).toEqual([MOVED_SINCE, false]);
+    expect(movedNew('game')).toBe(false);
   });
 
   it('says where things went in plain lines, the renames from the keys filter’s list', () => {
@@ -27,7 +27,7 @@ describe('what moved in this version', () => {
     expect(movedNew('editor', null)).toBe(true);
   });
 
-  it('counts as seen on a first run only: no settings kept and no game from before', () => {
+  it('counts as seen on a first run only: no settings kept and no game from before', async () => {
     const store = (...keys: string[]) => ({ length: keys.length, key: (i: number) => keys[i] ?? null });
     expect(noSettings(store())).toBe(true);
     expect(noSettings(store('other.site'))).toBe(true);
@@ -36,13 +36,15 @@ describe('what moved in this version', () => {
     // A browser refusing site data throws on reading it: not a first run, and never a crash.
     const refused = { get length(): number { throw new DOMException('denied', 'SecurityError'); }, key: () => null };
     expect(noSettings(refused)).toBe(false);
-    movedSeen.game = movedSeen.editor = null;
+    // A fresh start: nothing shown yet on this computer.
+    vi.resetModules();
+    const fresh = await import('./whatmoved.svelte');
     // A host coming back (a setting kept, or a game kept from before) still gets the dot and the list.
-    firstRunSeen(false, false);
-    firstRunSeen(true, true);
-    expect([movedNew('game'), movedNew('editor')]).toEqual([true, true]);
-    firstRunSeen(false, true);
-    expect([movedNew('game'), movedNew('editor')]).toEqual([false, false]);
+    fresh.firstRunSeen(false, false);
+    fresh.firstRunSeen(true, true);
+    expect([fresh.movedNew('game'), fresh.movedNew('editor')]).toEqual([true, true]);
+    fresh.firstRunSeen(false, true);
+    expect([fresh.movedNew('game'), fresh.movedNew('editor')]).toEqual([false, false]);
   });
 });
 

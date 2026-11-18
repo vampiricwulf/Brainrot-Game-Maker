@@ -368,7 +368,6 @@ try {
   await d.getByRole('button', { name: '🎨 Theme' }).click();
   const valuesBox = d.locator('[data-k="value"] input[type=color]');
   await valuesBox.waitFor();
-  assert((await d.getByRole('button', { name: /from the screen/ }).count()) === 0, 'no 💧 beside the color boxes any more: it is in their color picker');
   const valueBefore = await valuesBox.inputValue();
   const stepBefore = await undoTitle();
   await valuesBox.click();

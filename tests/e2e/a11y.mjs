@@ -471,7 +471,6 @@ try {
   assert(!(await said()).includes('⏱'), `the status line is read without the timer's ⏱ (“${await said()}”)`);
   // Screen readers hear an award from the page's polite live region (on the page all along, not mounted with its words).
   const region = page.locator('#live-region');
-  assert((await region.getAttribute('data-live')) === 'polite', 'the page has a polite live region');
   await page.keyboard.press('1');
   // (Who's selected, before Enter awards them.)
   await page.waitForFunction(() => /Selected: Player 1/.test(document.getElementById('live-region')?.dataset.said ?? ''));

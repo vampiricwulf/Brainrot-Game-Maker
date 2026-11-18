@@ -445,9 +445,8 @@ describe('RPG: things pointing at deleted screens, items and shops', () => {
     });
     world.maps[0].screens[1].exits = { e: { kind: 'warp', to: at(world, 'A1') }, w: { kind: 'warp', to: { map: world.maps[1].id, screen: 'gone' } } };
     world.maps[0].screens[2].exits = { s: { kind: 'warp', to: { map: world.maps[1].id, screen: 'gone' } } };
-    const [b1, c1] = [world.maps[0].screens[1].name, world.maps[0].screens[2].name];
+    const b1 = world.maps[0].screens[1].name;
     expect(rpgProblems(game, round, "Quest", 0).map((p) => p.text)).toContain(`Quest: 3 ways out lead nowhere (from “A1”, “${b1}” and 1 more)`);
-    expect(c1).toBe("C1");
   });
 
   it('lists objects whose item or buttons point nowhere', () => {

@@ -233,8 +233,11 @@ describe('several wheels at once', () => {
     expect(o.extra!.every((w) => w.result !== null && w.spin)).toBe(true);
     expect(o.extra![1].segments[o.extra![1].result!].id).toMatch(/^[abc]$/);
     expect(session.rollLog?.map((r) => r.name)).toEqual(['Good Wheel', 'Bad Wheel', 'Pick a player']);
-    // The overlay is done when the last wheel stops.
-    expect(overlayDoneAt(o)).toBe(Math.max(o.spin!.startedAt + o.spin!.duration, ...o.extra!.map((w) => w.spin!.startedAt + w.spin!.duration)));
+    // The overlay is done when the last wheel stops (here the first extra one: 1000 + 5000).
+    o.spin = { ...o.spin!, startedAt: 1000, duration: 4000 };
+    o.extra![0].spin = { ...o.extra![0].spin!, startedAt: 1000, duration: 5000 };
+    o.extra![1].spin = { ...o.extra![1].spin!, startedAt: 2000, duration: 3000 };
+    expect(overlayDoneAt(o)).toBe(6000);
     removeWheel(live, o.extra![0].key);
     removeWheel(live, o.extra![0].key);
     expect(o.extra).toBeUndefined();

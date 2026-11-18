@@ -11,7 +11,6 @@ import {
   FINAL_GOES_TO,
   finalGoesToLabel,
   goesToLabel,
-  missCosts,
   moveCard,
   partnerRules,
   partWho,
@@ -103,15 +102,6 @@ describe('partner clue rules', () => {
     // Whole points: half of $25 rounds; no "−0".
     expect(tilePoints(d, 25, true)).toEqual({ giver: 25, guesser: 13 });
     expect(Object.is(tilePoints(d, 0, false).guesser, 0)).toBe(true);
-  });
-
-  it('says whether a miss costs anyone', () => {
-    expect(missCosts(gameRules('describe'))).toBe(true);
-    const none = partnerClue();
-    setPartnerPoints(none, 'none');
-    expect(missCosts(none.partner!)).toBe(false);
-    // Swapped, the game's own points cost nobody (the partner guesses, and never loses points).
-    expect(missCosts({ ...gameRules('describe'), giver: 'picker' })).toBe(false);
   });
 
   it('says who plays each part, in the game’s words', () => {
@@ -236,11 +226,15 @@ describe('changing a partner clue’s rules', () => {
 
 describe('🤫 cards', () => {
   it('starts each game’s cards empty, for the host to fill in', () => {
-    for (const g of GAMES) {
-      const cards = startingCards(g);
-      expect(cards.map((c) => c.to)).toEqual(PARTNER_GAMES[g].cards);
-      for (const c of cards) expect(c.elements.map((e) => (e.kind === 'text' ? e.text : e.kind))).toEqual(['']);
-    }
+    expect(Object.fromEntries(GAMES.map((g) => [g, startingCards(g).map((c) => c.to)]))).toEqual({
+      describe: ['giver'],
+      draw: ['giver'],
+      act: ['giver'],
+      help: ['giver'],
+      split: ['giver', 'guesser'],
+      custom: [],
+    });
+    for (const g of GAMES) for (const c of startingCards(g)) expect(c.elements.map((e) => (e.kind === 'text' ? e.text : e.kind))).toEqual(['']);
     expect(new Set(startingCards('split').map((c) => c.id)).size).toBe(2);
   });
 

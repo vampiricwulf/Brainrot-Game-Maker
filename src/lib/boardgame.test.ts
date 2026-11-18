@@ -441,13 +441,6 @@ describe('board game: what spaces show', () => {
     expect(spaceNumber('Start')).toBeUndefined();
   });
 
-  it('never says a space is under the stats strip (the board is scaled into the room above it)', () => {
-    const { game, round } = setup();
-    round.spaces[3].y = 1000;
-    round.spaces[3].name = 'Finish';
-    expect(boardGameProblems(game, round, 'Board', 1).some((p) => p.text.includes('stats strip'))).toBe(false);
-  });
-
   it('notes spaces the turn banner can cover on stream: along the top, or the bottom with the scores at the top', () => {
     const { game, round } = setup();
     // The new board's loop starts clear of it.

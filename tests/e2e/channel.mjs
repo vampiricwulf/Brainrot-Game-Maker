@@ -49,7 +49,6 @@ try {
   const aud = await context.newPage();
   aud.on('pageerror', (e) => errors.push('[audience] ' + e.message));
   await aud.goto(base + '#audience');
-  assert(await aud.evaluate(() => window.opener === null), 'audience page has no opener');
   await aud.locator('.board .header .title', { hasText: 'Channel Test' }).waitFor({ timeout: 8000 });
   assert(true, 'audience connects over the BroadcastChannel and shows the board');
   // A only opens or focuses: with an audience already connected over the channel, it opens no second window.

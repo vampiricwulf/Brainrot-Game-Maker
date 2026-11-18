@@ -169,7 +169,6 @@ describe('refitBoxes', () => {
 
   it('leaves a box 3% off the old shape as it is', () => {
     const off = { ...at('clip'), x: 0, y: 0, w: 1483, h: 810 };
-    expect(Math.abs(off.w / off.h - 16 / 9) / (16 / 9)).toBeGreaterThan(0.02);
     expect(refitBoxes(withItems(off), 'clip', 16 / 9, 1)).toBe(0);
     expect([off.w, off.h]).toEqual([1483, 810]);
   });

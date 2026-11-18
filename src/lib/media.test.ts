@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   addMediaFile,
   dropPhoneCopies,
-  dropStoredMedia,
   getBlob,
   identicalMedia,
   keepLinkCopy,
@@ -242,6 +241,5 @@ describe('🔄 a converted file in its place', () => {
     const a = await addMediaFile(game, new File(['ts1'], 'Party.mts', { type: 'model/vnd.mts' }));
     const b = await addMediaFile(game, new File(['ts2'], 'Beach.m2ts', { type: '' }));
     expect([a.kind, a.mime, b.kind, b.mime]).toEqual(['video', 'video/mp2t', 'video', 'video/mp2t']);
-    expect(dropStoredMedia).toBeTypeOf('function');
   });
 });

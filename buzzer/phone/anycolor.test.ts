@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hexToHsv, hsvToHex, nudge } from '../../src/lib/colormath';
+import { hexToHsv } from '../../src/lib/colormath';
 import { anyVerdict, colorWords, hueName, hueText, squareText, typedHex } from './anycolor';
 
 describe('anyVerdict', () => {
@@ -47,18 +47,5 @@ describe('words', () => {
   it('gives the sliders their values in words', () => {
     expect(squareText({ h: 10, s: 0.5, v: 0.256 })).toBe('Color 50%, brightness 26%');
     expect(hueText({ h: 210.4, s: 1, v: 1 })).toBe('blue, 210°');
-  });
-});
-
-describe('the picker’s moves (colormath)', () => {
-  it('a color comes back out as the same hex', () => {
-    for (const c of ['#123456', '#f0e442', '#000000', '#ffffff', '#9a6324']) expect(hsvToHex(hexToHsv(c)!)).toBe(c);
-  });
-  it('arrow keys step the square and the strip', () => {
-    const c = { h: 200, s: 0.5, v: 0.5 };
-    expect(nudge(c, 'square', 'ArrowRight', false)).toEqual({ h: 200, s: 0.51, v: 0.5 });
-    expect(nudge(c, 'square', 'ArrowUp', true)).toEqual({ h: 200, s: 0.5, v: 0.6 });
-    expect(nudge(c, 'bar', 'ArrowLeft', false)).toEqual({ h: 199, s: 0.5, v: 0.5 });
-    expect(nudge(c, 'bar', 'Enter', false)).toBeNull();
   });
 });

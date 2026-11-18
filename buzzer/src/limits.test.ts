@@ -152,7 +152,7 @@ describe('card files in any 24 hours', () => {
     expect(mbSetting(0.5, 2)).toBe(MB / 2);
     // (Whole bytes: a fraction of one is dropped.)
     expect(mbSetting('0.0000001', 2)).toBe(0);
-    expect(mbSetting(1.0000001, 2)).toBe(Math.floor(1.0000001 * MB));
+    expect(mbSetting(1.0000001, 2)).toBe(MB);
     expect(mbSetting('0', 2)).toBe(0);
     for (const bad of [undefined, null, '', ' ', 'lots', '-1', -1, NaN, Infinity, {}, '1e400']) expect(mbSetting(bad, 2)).toBe(2 * MB);
   });
@@ -165,7 +165,7 @@ describe('card files in any 24 hours', () => {
       expect(fileLimits({ FILE_MB: bad, ROOM_FILES_MB: bad }), String(bad)).toEqual(DEFAULT_FILE_LIMITS);
     // A file is never bigger than a room's files together.
     expect(fileLimits({ FILE_MB: '50', ROOM_FILES_MB: '20' })).toEqual({ fileBytes: 20 * MB, roomBytes: 20 * MB, roomFiles: ROOM_FILES_MAX });
-    expect(fileLimits({ ROOM_FILES_MB: '8' }).fileBytes).toBe(Math.min(DEFAULT_FILE_LIMITS.fileBytes, 8 * MB));
+    expect(fileLimits({ ROOM_FILES_MB: '8' }).fileBytes).toBe(8 * MB);
     // At most 2^40 bytes (what the app takes from a server).
     expect(fileLimits({ FILE_MB: '1e12', ROOM_FILES_MB: '1e12' })).toEqual({ fileBytes: 2 ** 40, roomBytes: 2 ** 40, roomFiles: ROOM_FILES_MAX });
     // The defaults: 90 MB a file and 900 MB a room, just under what Cloudflare's free plan allows (a request body of

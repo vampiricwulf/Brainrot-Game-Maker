@@ -112,13 +112,13 @@ try {
   await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).click();
   // The board's 💡 Tips are open the first time it's seen (and closed after that).
   assert(await page.locator('details.tips').first().evaluate((d) => d.open), "the board's 💡 Tips open the first time");
-  assert((await page.evaluate(() => localStorage.getItem('jb.tips.board'))) === 'closed', '…and closed from then on');
   assert((await page.locator('.cat textarea').first().getAttribute('placeholder')) === 'Type a name, or paste a column of clues', 'an empty category name says a column of clues can be pasted');
   await addRound(/Jeopardy board/);
   assert(
     await page.evaluate(() => { const a = document.activeElement; return a?.hasAttribute('data-round-name') && a.value === 'Double Jeopardy!' && a.selectionEnd - a.selectionStart === a.value.length; }),
     "＋ Add round puts the focus in the new round's name, selected",
   );
+  assert(!(await page.locator('details.tips').first().evaluate((d) => d.open)), "…and the board's 💡 Tips are closed from then on (on the next board)");
   await addRound(/Jeopardy board/);
   const vals = () => values(page.locator('.values input[aria-label^="Row"]'));
   assert((await vals()).join() === '400,800,1200,1600,2000', `a third board keeps the second's values (${await vals()})`);
@@ -436,9 +436,8 @@ try {
   await dpop.waitFor();
   await dpop.getByRole('button', { name: 'Done' }).click();
   assert((await page.getByLabel('Dice', { exact: true }).inputValue()) === 'Dice 1', 'Move by ＋ Add dice… makes dice and moves by them');
-  assert((await page.locator('.bge').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()) === 0, 'the board game has no ↶ of its own (the header has it)');
   await page.getByRole('button', { name: /Board backdrop/ }).click();
-  assert((await page.locator('.se').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()) === 0, 'nor its backdrop editor');
+  assert((await page.locator('.se').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()) === 0, "the board game's backdrop editor has no ↶ of its own (the header has it)");
 
   // ---------- Stat presets ----------
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();

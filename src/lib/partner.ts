@@ -108,9 +108,6 @@ export function tilePoints(rules: PartnerRules, value: number, got: boolean): Re
   return out;
 }
 
-/** A miss can cost someone points (the clue's own points, after ☑ The partner never loses points). */
-export const missCosts = (rules: PartnerRules): boolean => Object.values(tilePoints(rules, 100, false)).some((n) => n < 0);
-
 /**
  * Steal on a miss is on for the clue (partner-clues spec §8.3): its own say, else ⚖ Game rules' "A miss on a partner
  * clue lets the others steal it".

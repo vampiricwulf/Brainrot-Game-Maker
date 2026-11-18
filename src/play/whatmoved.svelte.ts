@@ -103,7 +103,7 @@ export function noSettings(given?: Pick<Storage, 'length' | 'key'> | null): bool
 const firstVisit = noSettings();
 
 /** The list each part was last shown on this computer (its MOVED_SINCE), null for never. */
-export const movedSeen = $state<Record<MovedPart, string | null>>({ game: read('game'), editor: read('editor') });
+const movedSeen = $state<Record<MovedPart, string | null>>({ game: read('game'), editor: read('editor') });
 
 /** This part has lines not shown on this computer yet (❔ Help's dot, and the list open at first). */
 export const movedNew = (part: MovedPart, seen: string | null = movedSeen[part], lines: readonly string[] = WHAT_MOVED[part], since = MOVED_SINCE): boolean =>

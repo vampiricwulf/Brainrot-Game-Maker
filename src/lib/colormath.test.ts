@@ -30,6 +30,7 @@ describe('hex, RGB and HSV', () => {
           for (let i = 0; i < 3; i++) c = hexToHsv(hsvToHex(c), c)!;
           if (hsvToHex(c) !== hex) throw new Error(`${hex} came back as ${hsvToHex(c)}`);
         }
+    for (const hex of ['#123456', '#f0e442', '#9a6324']) expect(hsvToHex(hexToHsv(hex)!)).toBe(hex);
   });
 
   it('keeps the hue a grey has no say in, and the saturation of black', () => {
@@ -76,10 +77,12 @@ describe('the square and the hue bar', () => {
     expect(nudge(c, 'square', 'ArrowUp', true)).toEqual({ h: 200, s: 0.5, v: 0.6 });
     expect(nudge(c, 'square', 'ArrowDown', false)).toEqual({ h: 200, s: 0.5, v: 0.49 });
     expect(nudge(c, 'bar', 'ArrowLeft', true)).toEqual({ h: 190, s: 0.5, v: 0.5 });
+    expect(nudge(c, 'bar', 'ArrowLeft', false)).toEqual({ h: 199, s: 0.5, v: 0.5 });
     expect(nudge(c, 'bar', 'ArrowUp', false)).toEqual({ h: 201, s: 0.5, v: 0.5 });
     expect(nudge({ h: 355, s: 1, v: 0.02 }, 'bar', 'ArrowRight', true)?.h).toBe(360);
     expect(nudge({ h: 355, s: 1, v: 0.02 }, 'square', 'ArrowDown', true)?.v).toBe(0);
     expect(nudge(c, 'square', 'Enter', false)).toBeNull();
+    expect(nudge(c, 'bar', 'Enter', false)).toBeNull();
     // Back and forth comes back to the same color.
     const there = nudge(nudge(c, 'square', 'ArrowLeft', false)!, 'square', 'ArrowRight', false)!;
     expect(hsvToHex(there)).toBe(hsvToHex(c));

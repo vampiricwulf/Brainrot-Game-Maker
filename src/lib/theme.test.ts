@@ -1,23 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { contrast, obsKeyed } from './colors';
-import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedRoundColors, keyedThemeColors, lookNumber, otherStageKey, presetEdited, presetTheme, rightFill, roundStageColors, splashColors, STAGE_KEYS, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
+import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedRoundColors, keyedThemeColors, lookNumber, otherStageKey, presetTheme, rightFill, roundStageColors, splashColors, STAGE_KEYS, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
 import { migrateGame, newGame } from './model';
 import { categoryBox } from './boardfit';
 import { newBoardGameRound } from './boardgame';
 import { newRpgRound } from './rpg';
-
-describe('theme presets', () => {
-  it("notices when the colors or fonts no longer match the theme's preset", () => {
-    const t = presetTheme('dark');
-    expect(presetEdited(t)).toBe(false);
-    // Where the score bar goes and the images aren't part of a preset.
-    expect(presetEdited({ ...t, scoreBar: 'top', banner: 'img1' })).toBe(false);
-    // A color picker may write the same color in capitals.
-    expect(presetEdited({ ...t, tile: t.tile.toUpperCase() })).toBe(false);
-    expect(presetEdited({ ...t, value: '#ff0000' })).toBe(true);
-    expect(presetEdited({ ...t, boardFont: "'Anton', Impact, sans-serif" })).toBe(true);
-  });
-});
 
 describe('stage text', () => {
   it('is readable on every preset’s tiles (4.5:1 or better)', () => {
@@ -48,7 +35,6 @@ describe('stage text', () => {
   it('a game from before it was a theme color: its preset’s, or black / white by its own tiles', () => {
     const { stageText: _, ...old } = presetTheme('pastel');
     expect(stageText(old)).toBe('#4a3b5c');
-    expect(presetEdited(old)).toBe(false);
     expect(stageText({ ...old, tile: '#ffffcc' })).toBe('#000000');
     expect(stageText({ ...old, tile: '#202020' })).toBe('#ffffff');
   });
@@ -83,7 +69,6 @@ describe('more looks', () => {
         '--plate-radius': '14px',
         '--board-bg': t.boardGap,
       });
-      expect(presetEdited(t)).toBe(false);
     }
   });
 
@@ -106,7 +91,6 @@ describe('more looks', () => {
     const t: Theme = { ...presetTheme('classic'), tilePattern: 'checker', tile2: '#ff0000' };
     expect([tileBackground(t, 0, 0), tileBackground(t, 0, 1)]).toEqual([t.tile, '#ff0000']);
     expect(vars(t)['--tile-bg-2']).toBe('#ff0000');
-    expect(presetEdited(t)).toBe(true);
   });
 
   it('gradients, borders, corners, glow, shadows, played tiles, headers, plates and the background', () => {

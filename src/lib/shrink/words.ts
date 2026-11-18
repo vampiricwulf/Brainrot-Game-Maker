@@ -75,7 +75,7 @@ export function whyText(v: Verdict): string {
   return parts.join(', and ');
 }
 
-export const ADVICE = {
+const ADVICE = {
   hevc: ' Convert it to MP4 (H.264) with a video app first (HandBrake is free). On an iPhone, Settings › Camera › Formats › Most Compatible films clips every browser plays.',
   prores: ' It’s an editing format: export it from your video editor as MP4 (H.264).',
   video: ' Convert it to MP4 (H.264) with a video app first (HandBrake is free).',

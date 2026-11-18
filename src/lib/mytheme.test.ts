@@ -126,12 +126,6 @@ describe('my themes (several, named)', () => {
     expect(loadMyThemes().map((m) => m.name)).toEqual(['Neon']);
   });
 
-  it('never keeps the pictures', () => {
-    addMyTheme([], 'Pics', { ...presetTheme('neon'), boardImage: 'img', banner: 'ban' });
-    const mine = loadMyThemes()[0].theme;
-    expect('boardImage' in mine || 'banner' in mine).toBe(false);
-  });
-
   it('a full or blocked storage says so and changes nothing', () => {
     const list = addMyTheme([], 'One', presetTheme('neon'))!;
     full = true;

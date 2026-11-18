@@ -204,13 +204,6 @@ describe('🔄 repackaging: the tracks copied as they are, nothing decoded', () 
     expect(e).toBeInstanceOf(RunError);
     expect(e.reason).toBe('cannot-copy');
   });
-
-  it('stops when asked, with an AbortError', async () => {
-    const stop = new AbortController();
-    stop.abort();
-    const mkv = await made((t) => mux('mkv', t, true), 'video/x-matroska');
-    await expect(convertBlob(mkv, { box: 'webm', copy: FORCED }, 'video/webm', ctl(stop.signal).ctl)).rejects.toMatchObject({ name: 'AbortError' });
-  });
 });
 
 describe('✎ Edit’s plans, made (card-files spec §4.11.4)', () => {

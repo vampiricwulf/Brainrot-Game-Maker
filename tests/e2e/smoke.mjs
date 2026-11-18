@@ -855,7 +855,6 @@ await page.waitForTimeout(500); // past the double-click guard
 await soundIcon.click();
 await page.waitForFunction(() => document.querySelector('.mc .item button')?.textContent?.includes('▶'));
 assert((await page.getByText('Who is Pepe?').count()) === 0, 'clicking it again pauses it');
-assert((await page.getByText('Who is Pepe?').count()) === 0, 'answer is not in the page before reveal');
 
 await page.keyboard.press('1');
 await page.keyboard.press('2');

@@ -32,8 +32,9 @@ import {
   takeBack,
   wasCopied,
 } from './partner';
-import { buzzIdle, cardText, fitCards, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, partnerCards, phoneStatus, sendOf } from './buzz';
+import { buzzIdle, fitCards, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, partnerCards, phoneStatus, sendOf } from './buzz';
 import { CARDS_BYTES, type HostCard, OLD_FILE_LIMITS } from './buzzproto';
+import { ANY_SERVER, phoneCard } from './phonecard';
 
 /** How big a file the buzzer server takes in these tests (one that doesn't say: 16 MB). */
 const FILE_BYTES = OLD_FILE_LIMITS.fileBytes;
@@ -509,11 +510,6 @@ describe('phoneStatus with a room that takes cards (spec §8.2, §19.4)', () => 
     s.stage = 'distribute';
     expect(phoneStatus(g, session, false, { cards: true })).toMatchObject({ seatsText: '🎯 Your team is guessing!', seatsSub: 'Bob is drawing: type your guess' });
   });
-
-  it('without a room that takes cards: the lines as before (no off, no small line)', () => {
-    const { g, session } = setup();
-    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann needs a partner…', seats: ['a'], seatsText: '🤝 Your partner clue! Your partner is being picked…' });
-  });
 });
 
 describe('the guesser types their guess (spec §5.4)', () => {
@@ -557,11 +553,11 @@ describe('the guesser types their guess (spec §5.4)', () => {
   });
 });
 
-describe('cardText and fitting the room', () => {
+describe('a card’s words and fitting the room', () => {
   it('every text box, a hidden one too, cut at 1000 characters with "…"', () => {
     const slide = { background: {}, elements: [{ ...newTextEl('Top'), y: 0 }, { ...newTextEl('Hidden from viewers'), y: 100, secret: true }, { ...newTextEl('x'.repeat(2000)), y: 200 }] };
-    const t = cardText(slide);
-    expect(t.startsWith('Top\nHidden from viewers\n')).toBe(true);
+    const t = phoneCard({ media: [] }, slide, ANY_SERVER).text!;
+    expect(t.startsWith('Hidden from viewers\nxxx')).toBe(true);
     expect([...t]).toHaveLength(1000);
     expect(t.endsWith('…')).toBe(true);
   });

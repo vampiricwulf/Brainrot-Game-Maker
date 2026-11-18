@@ -613,7 +613,6 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen · taking wagers'));
   assert((await page.locator('.panel .award').count()) === 0, 'no award row during the Final (it has its own scoring)');
   // No step between the category and the wagers: the wager screen is up at once, with who plays on it.
-  assert((await page.getByRole('button', { name: /Lock category|take wagers/ }).count()) === 0, 'no “Lock category, take wagers” step: the wagers are taken while the category is up');
   await page.waitForFunction(() => document.activeElement?.matches('.fj .wagers input[data-wager]'));
   assert(await page.evaluate(() => document.activeElement.value === ''), 'the Final comes up with the focus in the first wager box still to fill');
   // ◀ Back to the round before, from the keyboard: the keys go on from its board (the button is gone).

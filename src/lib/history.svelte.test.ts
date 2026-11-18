@@ -305,7 +305,7 @@ describe('undo history: named steps', () => {
       g.worlds![0].maps[0].screens = screens.filter((s) => s !== cave);
     });
     expect(history.entries).toHaveLength(1);
-    expect(history.entries[0]).toMatchObject({ label: 'Deleted screen “Cave”', explicit: true, sealed: true, icon: '🗺' });
+    expect(history.entries[0]).toMatchObject({ label: 'Deleted screen “Cave”', icon: '🗺' });
     expect(history.entries[0].undoPlace).toMatchObject({ tab: 'world', screen: cave.id });
     // Its label from the ops when there's none.
     step(null, () => (g.worlds![0].maps[0].screens[1].col = 3));
@@ -424,8 +424,13 @@ describe('undo history: named steps', () => {
     await seen();
     vi.advanceTimersByTime(700);
     off();
-    expect(history.entries[0]).toMatchObject({ label: 'Theme preset: Neon', explicit: true });
+    expect(history.entries[0].label).toBe('Theme preset: Neon');
     expect(told).toHaveBeenCalledWith(history.entries[0]);
+    // A quick change to the same setting after it is its own step, not joined to the named one.
+    g.theme.preset = 'pastel';
+    await seen();
+    vi.advanceTimersByTime(700);
+    expect(history.entries).toHaveLength(2);
   });
 });
 

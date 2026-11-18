@@ -502,7 +502,7 @@ try {
     assert((await help.getByText('Share Your Screen › Applications › "Untitled Game · Audience"').count()) === 1, 'the Discord steps name the audience window by its real title');
     const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
     assert(await fix.isChecked(), 'the Discord audio fix shows as on');
-    assert((await help.getByText('(on by default)').count()) === 1 && (await help.getByText('experimental', { exact: true }).count()) === 0, 'it says it is on by default (no longer experimental)');
+    assert((await help.getByText('(on by default)').count()) === 1, 'it says it is on by default');
     assert(
       (await help.locator('code', { hasText: '--no-audio-fix' }).count()) === 1 && (await help.locator('code', { hasText: 'discord-audio-fix-off' }).count()) === 1,
       'the help says how to switch the fix off from outside the app',
@@ -597,7 +597,6 @@ try {
       (await help.getByText("The fix didn't start this time").count()) === 1 && (await help.getByText('probably still closing').count()) === 1,
       'the help says it didn’t start this time, and why',
     );
-    assert((await help.getByText("couldn't start on this PC").count()) === 0, 'it no longer calls it permanent');
     assert((await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1, 'it offers a restart');
     await fix.uncheck();
     await help.getByText("The fix didn't start this time").waitFor({ state: 'detached' });

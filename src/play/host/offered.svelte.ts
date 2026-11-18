@@ -35,7 +35,7 @@ export const offerIn =
     offerCard(offer, session.currentRound, at);
 
 /** The places in the panel showing their own offers now (how many of each: a CardOffers with `at` is on screen). */
-export const offerPlaces = $state<Record<string, number>>({});
+const offerPlaces = $state<Record<string, number>>({});
 
 /** A place shows its own offers (from a CardOffers with `at`): returns what takes it away again. */
 export function showPlace(at: string): () => void {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { finalName, newImageEl, newTextEl, playableClues, setSlideText, textSlide, PARTNER_GAMES, type BoardRound, type FinalRound, type PartnerGame, type SavedCard } from './model';
+import { newImageEl, newTextEl, playableClues, setSlideText, textSlide, PARTNER_GAMES, type BoardRound, type FinalRound, type PartnerGame, type SavedCard } from './model';
 import { applyScore, ddShowQuestion, finalChoose, finalJudge, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, setScore, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
@@ -631,9 +631,9 @@ describe('wagerAsk (the wagers phones may send)', () => {
     session.intro = null;
     const f = game.rounds[1] as FinalRound;
     f.category = '  US Presidents ';
-    expect(phoneStatus(game, session)?.text).toBe(`${finalName(f)} · US Presidents`);
+    expect(phoneStatus(game, session)?.text).toBe('Final Jeopardy! · US Presidents');
     f.category = '';
-    expect(phoneStatus(game, session)?.text).toBe(finalName(f));
+    expect(phoneStatus(game, session)?.text).toBe('Final Jeopardy!');
   });
 });
 
@@ -924,12 +924,12 @@ describe('the Final’s typed answers (finalAnswerAsk, and its question in hostS
     finalNext(session, game);
     expect(hostState(game, session, newBuzz(), 0).clue).toBeNull();
     const s = hostState(game, session, newBuzz(), 0, { answers: finalAnswerAsk(game, session) });
-    expect(s.clue).toEqual({ text: 'He was the first', caption: `${finalName(round)} · US Presidents` });
+    expect(s.clue).toEqual({ text: 'He was the first', caption: 'Final Jeopardy! · US Presidents' });
     expect(phoneView(s, 'c').clue?.text).toBe('He was the first');
     const json = JSON.stringify(s);
     for (const leak of ['LATER', 'Washington']) expect(json).not.toContain(leak);
     round.category = '';
-    expect(hostState(game, session, newBuzz(), 0, { answers: finalAnswerAsk(game, session) }).clue?.caption).toBe(finalName(round));
+    expect(hostState(game, session, newBuzz(), 0, { answers: finalAnswerAsk(game, session) }).clue?.caption).toBe('Final Jeopardy!');
   });
 });
 

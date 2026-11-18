@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newId, type Session } from '../lib/model';
 import {
-  applyScore, awardOpen, finalChoose, finalJudge, finalNext, goToRound, hasWager, logZero, newSession, score, tiedLeaders, undo, winnerKnown,
+  applyScore, finalChoose, finalJudge, finalNext, goToRound, hasWager, logZero, newSession, score, undo,
 } from '../lib/session';
 import { cuesAfter, MAX_CUES, type SoundCue } from '../lib/live';
 import { finalNextStep, logged, revealStep, undoAction, redoAction } from '../lib/toolset';
@@ -58,13 +58,11 @@ describe('score pops', () => {
 
   it('sits a player’s pop over their plate, as the score bar lays them out', () => {
     // 3 players: 420px plates, centred.
-    const w3 = 3 * 420 + 2 * 18;
-    expect(plateCenter(3, 0)).toBe(24 + (1872 - w3) / 2 + 210);
+    expect(plateCenter(3, 0)).toBe(522);
     expect(plateCenter(3, 1)).toBe(960);
     // 8 players fill the width (narrower than 320px each).
-    const p8 = (1872 - 7 * 18) / 8;
-    expect(plateCenter(8, 0)).toBeCloseTo(24 + p8 / 2);
-    expect(plateCenter(8, 7)).toBeCloseTo(1920 - 24 - p8 / 2);
+    expect(plateCenter(8, 0)).toBeCloseTo(133.125);
+    expect(plateCenter(8, 7)).toBeCloseTo(1786.875);
     // Room kept for the join code at the right moves them left.
     expect(plateCenter(8, 7, 230)).toBeLessThan(plateCenter(8, 7));
   });
@@ -216,11 +214,6 @@ describe('Final wagers', () => {
     expect(finalJudge(session, game, ids[2], false)).toBe(true);
     expect(score(session, ids[2])).toBe(200);
   });
-
-  it('keeps the award row out of the Final', () => {
-    const { session } = inFinal();
-    expect(awardOpen(session)).toBe(false);
-  });
 });
 
 describe('Daily Double wagered at 0', () => {
@@ -233,28 +226,3 @@ describe('Daily Double wagered at 0', () => {
     expect(undo(session).length).toBe(1);
   });
 });
-
-describe('the winner fanfare', () => {
-  function ended(tie: boolean): { session: Session; ids: string[] } {
-    const { game, session, ids } = setup(3);
-    applyScore(session, game, [ids[0]], 500, 'x');
-    applyScore(session, game, [ids[1]], tie ? 500 : 300, 'x');
-    session.phase = 'end';
-    return { session, ids };
-  }
-
-  it('waits while a tie for first is open, and plays once it’s settled', () => {
-    expect(winnerKnown(ended(false).session)).toBe(true);
-    const { session, ids } = ended(true);
-    expect(winnerKnown(session)).toBe(false);
-    // A roll-off (or the tiebreaker clue) settles it…
-    session.rollOffWinner = ids[1];
-    expect([tiedLeaders(session).length, winnerKnown(session)]).toEqual([0, true]);
-    // …or co-winners.
-    session.rollOffWinner = undefined;
-    session.coWinners = true;
-    expect(winnerKnown(session)).toBe(true);
-  });
-});
-
-

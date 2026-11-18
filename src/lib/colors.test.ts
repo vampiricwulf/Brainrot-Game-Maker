@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, obsKeyed, obsKeyedFade, parseHex, PLAYER_PALETTE, textOn, toHex, type Vision } from './colors';
+import { colorDistance, contrast, luminance, obsKeyed, obsKeyedFade, parseHex, PLAYER_PALETTE, textOn, toHex, type Vision } from './colors';
 
 describe('contrast', () => {
   it('follows WCAG: black on white is 21, a color on itself is 1', () => {
@@ -46,13 +46,8 @@ describe('player colors for colour-blind viewers', () => {
     return min;
   };
 
-  it('keeps the first 6 clearly apart (ΔE 15 or more) with normal sight, deuteranopia and protanopia', () => {
-    for (const v of ['normal', 'deutan', 'protan'] as const) expect(smallest(PLAYER_PALETTE.slice(0, 6), v)).toBeGreaterThanOrEqual(15);
-  });
-
-  it('keeps the first 8 apart too', () => {
-    expect(CVD_SAFE_UPTO).toBe(8);
-    for (const v of ['normal', 'deutan', 'protan'] as const) expect(smallest(PLAYER_PALETTE.slice(0, CVD_SAFE_UPTO), v)).toBeGreaterThanOrEqual(15);
+  it('keeps the first 8 clearly apart (ΔE 15 or more) with normal sight, deuteranopia and protanopia', () => {
+    for (const v of ['normal', 'deutan', 'protan'] as const) expect(smallest(PLAYER_PALETTE.slice(0, 8), v)).toBeGreaterThanOrEqual(15);
   });
 
   it('shows why: the old red and green looked alike to deuteranopes', () => {
@@ -61,7 +56,7 @@ describe('player colors for colour-blind viewers', () => {
   });
 
   it('the first 8 stand out on the Classic theme (its blue tiles and dark score bar), none a navy that vanishes there', () => {
-    for (const c of PLAYER_PALETTE.slice(0, CVD_SAFE_UPTO)) {
+    for (const c of PLAYER_PALETTE.slice(0, 8)) {
       expect(contrast(c, '#060ce9')).toBeGreaterThanOrEqual(1.5);
       expect(contrast(c, '#050835')).toBeGreaterThanOrEqual(3);
     }
