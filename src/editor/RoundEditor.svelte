@@ -1,8 +1,9 @@
 <script lang="ts">
   import Tips from './Tips.svelte';
-  import { tick, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { dropMenu, isMenuKey, keyMenu, menuItem, menuOf, showMenu, typingIn, type MenuEntry, type MenuLine } from '../lib/menustate.svelte';
   import { take, type Place } from '../lib/nav.svelte';
+  import { rememberClue, takeClue } from '../lib/editorplace';
   import { app } from '../lib/app.svelte';
   import { announce } from '../lib/announce';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
@@ -83,6 +84,17 @@
     const cat = round.categories.findIndex((c) => c.id === open!.category);
     const row = cat < 0 ? -1 : round.categories[cat].clues.findIndex((c) => c.id === open!.clue);
     return row < 0 ? null : { cat, row };
+  });
+  // Open again after a reload, if it was (editorplace.ts); and remembered for the next one.
+  onMount(() => {
+    const again = takeClue(round.id);
+    const cat = again ? round.categories.findIndex((c) => c.id === again.category) : -1;
+    const row = cat < 0 ? -1 : round.categories[cat].clues.findIndex((c) => c.id === again!.clue);
+    if (row >= 0) openAt(cat, row);
+  });
+  $effect(() => {
+    const at = editing && open ? { category: open.category, clue: open.clue } : null;
+    untrack(() => rememberClue(app.game.id, round.id, at));
   });
   /** The clue editor opens with the keys in its Which wheel / Which dice box (the tile menu's 🎡 Wheel tile…). */
   let toolFirst = $state(false);

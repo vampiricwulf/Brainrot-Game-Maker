@@ -569,6 +569,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   An untitled game's first export asks ⬇ Name your game, with Export.
 - **Autosave** of the editing session to IndexedDB after every change: the next launch opens where you left off (a game
   in progress offers Resume game). The desktop app can also write timed autosaves into BrainrotSaves (⚙ Settings).
+  A reload in the same tab opens the editor on the page or round it had open, with a board's clue editor open again if
+  it was (kept per tab in sessionStorage, for that game only: `editorplace.ts`).
 - Import/export of plain `game.json` without media, for easy hand-editing or AI-assisted question writing. A slip with
   an obvious fill is repaired as the file opens (a repeated id gets a new one, in a board game's spaces, an RPG world's
   screens and objects, the stats and items too; a text item with just its words gets a new text box's looks; a theme

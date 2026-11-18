@@ -72,6 +72,7 @@
   import { whileWriting } from '../lib/desktop.svelte';
   import { isCancel } from '../lib/fileio';
   import { goTo, take, type Place } from '../lib/nav.svelte';
+  import { rememberPage, takeEditorAt } from '../lib/editorplace';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { itemIdsIn } from '../lib/historyops';
   import { rpgRounds } from '../lib/rpg';
@@ -133,7 +134,9 @@
   // 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'cards' | 'theme' | 'stats' | 'history' | round index
   type Tab = 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'cards' | 'theme' | 'stats' | 'history' | number;
   const NAMED_TABS: readonly unknown[] = ['sounds', 'tiebreaker', 'media', 'tools', 'cards', 'theme', 'stats', 'history'];
-  let tab = $state<Tab>(untrack(() => (NAMED_TABS.includes(startRound) ? (startRound as Tab) : Math.max(0, app.game.rounds.findIndex((r) => r.id === startRound)))));
+  /** A reload mid-edit opens on the page this tab had open (editorplace.ts), unless the app asks for another. */
+  const startPage = untrack(() => startRound ?? (startFix ? null : (takeEditorAt(app.game.id)?.page ?? null)));
+  let tab = $state<Tab>(untrack(() => (NAMED_TABS.includes(startPage) ? (startPage as Tab) : Math.max(0, app.game.rounds.findIndex((r) => r.id === startPage)))));
   let mainEl = $state<HTMLElement>();
   /** A page picked in the sidebar (or a round just added: `added`) opens at its top, not as far down as the last page
    *  was scrolled. (Find, Go there and the checklist set `tab` themselves, then scroll to what they show.) */
@@ -165,6 +168,11 @@
   const statsUsed = $derived(
     game.rounds.some((r) => r.mode === 'rpg' || r.mode === 'boardgame') || !!game.statFields?.length || !!game.items?.length || !!game.shops?.length,
   );
+  // The page open, for a reload (editorplace.ts).
+  $effect(() => {
+    const page = typeof tab === 'number' ? game.rounds[tab]?.id : tab;
+    if (page) rememberPage(game.id, page);
+  });
   /** The round tab last open (🎨 Theme previews it). */
   let lastRound = $state(0);
   $effect(() => {

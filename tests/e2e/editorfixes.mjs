@@ -6,7 +6,8 @@
 // another game bringing the items and stats its objects use, and undone where it was pasted. And the sample game's
 // sidebar at 1280×720, pages opening at their top, and a round's name on a tablet; its round pages at 1920 (one header
 // width; the slide of a slides round, a Final and the tiebreaker filling it, and the clue editor the window), the slide's
-// buttons all one size, and the board's two count lines level.
+// buttons all one size, and the board's two count lines level. And a reload mid-edit coming back on the page, round and
+// clue it left.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -802,6 +803,42 @@ try {
     const laptop = await page();
     assert(laptop.canvas >= 700, `at 1280×720 the Final's slide keeps the size it has at the readable width (${JSON.stringify(laptop)})`);
     await wp.context().close();
+  }
+
+  // ---------- A reload mid-edit comes back where it was ----------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const rp = await ctx.newPage();
+    rp.on('pageerror', (e) => errors.push(e.message));
+    await rp.goto(pathToFileURL(file).href);
+    await rp.getByRole('button', { name: /Try a sample game/ }).click();
+    const roundTab = (name) => rp.locator('nav > button.round-tab').filter({ hasText: name }).first();
+    const current = () => rp.locator('nav button[aria-current="page"]').first().innerText();
+    const clue = rp.getByRole('dialog', { name: 'Edit clue' });
+    await roundTab(/^\W*Jeopardy!$/).click();
+    await rp.locator('.grid .tile').nth(1).click();
+    await clue.waitFor();
+    const question = clue.locator('[data-field="q"]');
+    const asked = await question.inputValue();
+    await question.fill(`${asked} TYPED`);
+    await rp.waitForTimeout(1200);
+    await rp.reload();
+    await clue.waitFor();
+    assert(
+      (await clue.locator('[data-field="q"]').inputValue()) === `${asked} TYPED` && /Jeopardy!/.test(await current()),
+      `a reload with a clue open comes back on its round with that clue open again (${await current()})`,
+    );
+    await rp.keyboard.press('Escape');
+    await clue.waitFor({ state: 'detached' });
+    await rp.reload();
+    await editorReady(rp);
+    await rp.locator('.grid .tile').first().waitFor();
+    assert((await clue.count()) === 0 && /Jeopardy!/.test(await current()), 'closed, the round comes back without it');
+    await rp.locator('nav > button', { hasText: 'Theme' }).first().click();
+    await rp.reload();
+    await editorReady(rp);
+    assert(/Theme/.test(await current()), `on a page such as 🎨 Theme, that page (${await current()})`);
+    await ctx.close();
   }
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
