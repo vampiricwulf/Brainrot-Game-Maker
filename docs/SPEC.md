@@ -623,7 +623,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   - Media plays in the **audience window** so that OBS picks up its audio. The host window shows controls and a muted mirror/progress.
 - **Single window** (the default)
   - One view: the stage, with the host panel under it (with an audience window, beside it in RPG and board-game rounds on a wide window).
-    Nothing answer-revealing is rendered until the host clicks Reveal. `H` (🙈 Hide) hides the host controls (then
+    Nothing answer-revealing is rendered until the host clicks Reveal. A board tile shows its focus ring only once the
+    host moves the keys with Tab or the arrow keys (not when Esc, N or a click puts them back on a tile: a stream crops
+    the stage). `H` (🙈 Hide) hides the host controls (then
     nothing on the stage shows a focus ring until the host moves the keys: Tab, or the board's arrow keys; Show
     controls shows when the mouse moves, or on a touch screen at a first tap, which does nothing else). The
     panel's status line shows the 📝 host notes of the clue, the slides round, the tiebreaker or the Final (once its

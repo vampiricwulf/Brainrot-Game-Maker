@@ -316,7 +316,7 @@
     opacity: 1;
   }
   /* The keys' tile on the host's board: a white ring in a dark band, plain on any tile colour (the app's thin blue ring
-     is lost on a blue tile). One window with the controls hidden takes it off, as Play's ring-off does. */
+     is lost on a blue tile). One window takes it off until the host moves the keys with Tab or an arrow (Play's ring-off). */
   .tile:focus-visible {
     --tile-ring: inset 0 0 0 6px rgba(0, 0, 0, 0.6);
     outline: 3px solid #fff;

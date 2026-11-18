@@ -496,6 +496,20 @@ try {
   assert(after.muted && after.t >= before.t - 0.6, `hiding the answer again keeps the video’s place and mute (${before.t.toFixed(1)} → ${after.t.toFixed(1)}, muted ${before.muted} → ${after.muted})`);
   await page.keyboard.press('Escape');
 
+  // ---------- One window, controls shown: no focus ring on a tile until the host moves the keys ----------
+  // (A stream crops the stage: Esc, N or a click putting the keys back on a tile leaves no ring there; Tab or an arrow
+  // does, so the host sees which tile Enter opens.)
+  const tileRing = () =>
+    page.evaluate(() => {
+      const a = document.activeElement;
+      return [a.matches('.stage-box .board .tile'), a.matches(':focus-visible'), getComputedStyle(a).outlineStyle].join();
+    });
+  await page.waitForFunction(() => document.activeElement?.matches('.stage-box .board .tile'));
+  assert((await tileRing()) === 'true,true,none', `one window, controls shown: Esc puts the keys back on the tile, with no ring on it (${await tileRing()})`);
+  await page.keyboard.press((await page.evaluate(() => document.activeElement.dataset.cat)) === '0' ? 'ArrowRight' : 'ArrowLeft');
+  assert((await tileRing()) === 'true,true,solid', `…until the host moves them with an arrow key: then the tile shows it (${await tileRing()})`);
+  await page.keyboard.press((await page.evaluate(() => document.activeElement.dataset.cat)) === '0' ? 'ArrowRight' : 'ArrowLeft');
+
   // ---------- 📜 Log in the host panel (single window) ----------
   // (The keys on a panel button first: H puts them on the stage, where viewers see no focus ring.)
   await page.locator('.panel').getByRole('button', { name: '⚖ Rules', exact: true }).focus();
@@ -609,7 +623,7 @@ try {
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.activeElement?.matches('.stage-box .board .tile'));
-  assert(true, '◀ Back to the round before puts the focus on its board');
+  assert((await tileRing()) === 'true,true,none', `◀ Back to the round before puts the focus on its board, with no ring on the tile (${await tileRing()})`);
   await page.waitForTimeout(450);
   await page.locator('.rn > button').last().click();
   await page.waitForTimeout(450);

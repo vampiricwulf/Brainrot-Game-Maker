@@ -741,10 +741,11 @@
     return () => (app.onAir = false);
   });
   /**
-   * Controls hidden: no focus ring on the stage (in one window, viewers see it) until the host moves the keys themselves
-   * (Tab, or the board's arrow keys): then they need to see where they are.
+   * One window: no focus ring on the stage's tiles (viewers see the stage, and a stream crops it), nor with the controls
+   * hidden on anything on the stage, until the host moves the keys themselves (Tab, or the board's arrow keys): then
+   * they need to see where they are. The keys put back on a tile for them (Esc, a round's first tile) take it off again.
    */
-  let ringOff = $state(false);
+  let ringOff = $state(true);
   $effect(() => {
     if (hideControls) ringOff = true;
   });
@@ -2970,7 +2971,11 @@
     app.live.timer = null;
     delete app.live.toolTile;
     // The keys go on from the tile that was open (the arrow keys move from it), not from the top of the page.
-    if (clueId) void tick().then(() => document.querySelector<HTMLElement>(`.play .stage-box .tile[data-clue="${clueId}"]`)?.focus({ preventScroll: true }));
+    if (clueId)
+      void tick().then(() => {
+        ringOff = true;
+        document.querySelector<HTMLElement>(`.play .stage-box .tile[data-clue="${clueId}"]`)?.focus({ preventScroll: true });
+      });
   }
 
   /**
@@ -3725,6 +3730,7 @@
         end ??
         document.querySelector<HTMLElement>('.play .panel .mode-host:not(.tools) button:not(:disabled)');
       placing = !tile;
+      if (tile) ringOff = true;
       to?.focus({ preventScroll: true });
       placing = false;
     });
@@ -7592,8 +7598,10 @@
     min-width: 0;
   }
   /* One window with the controls hidden: the stage is all viewers see, so no focus ring on it (the keys still work)
-     until the host moves the keys themselves (see ringOff). */
-  .play.hidden.ring-off:not(.dual) .stage-box :global(:focus-visible) {
+     until the host moves the keys themselves (see ringOff). With the controls shown, none on a tile either: a stream
+     crops the stage. */
+  .play.hidden.ring-off:not(.dual) .stage-box :global(:focus-visible),
+  .play.ring-off:not(.dual) .stage-box :global(.tile:focus-visible) {
     outline: none;
     --tile-ring: 0 0 0 transparent;
   }
