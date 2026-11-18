@@ -2306,6 +2306,11 @@
     align-self: stretch;
     overflow: auto;
   }
+  /* No main button this moment (an RPG round has none): the action part takes the NEXT row and its gap too, so the
+     round's box gets that room before it scrolls (an object's card opened under the pinned pad needs every row). */
+  .side > .act:not(:has(> .next)) {
+    grid-template-rows: minmax(0, 1fr);
+  }
   .side > .act > .next {
     justify-self: end;
     align-self: end;

@@ -4,10 +4,13 @@
 //    more below (data-more), not once scrolled to the end.
 // 2. Race to the finish, two windows: the turn box's long first line wraps to two lines beside the stage, not cut
 //    short; the go-on card's long "Next turn anyway: …" button stays inside the card.
-// 3. Mini quest, in two windows and in one: short of gold in the shop, the question comes into sight with the keys on Cancel, and the
-//    toast names the item; ▸ Players: stats & inventory opened shows the first sheet, the toggle still in sight.
+// 3. Mini quest, in two windows and in one: the Shopkeeper's card scrolled into sight never leaves the top row cut in
+//    half; short of gold in the shop, the question comes into sight with the keys on Cancel, and the toast names the
+//    item; ▸ Players: stats & inventory opened shows the first sheet, the toggle still in sight.
 // 4. 3 × 3 dungeon, one window: ⤢ Full map opens with the party's screen (the bottom row) in sight.
-// 5. Mini quest, one window: the screen's 📝 note has a slot of its own in the top row (cut short, the whole of it in
+// 5. Mini quest, two windows: the Boss's card, taller than the box, opens with its top under the pinned pad and map
+//    (the round's part takes the empty main-button row, so the box has that room too).
+// 6. Mini quest, one window: the screen's 📝 note has a slot of its own in the top row (cut short, the whole of it in
 //    its tooltip), so the parties, 🗺 Map on stream, the pad and the minimap stay put from a screen with a note to one
 //    without.
 import { chromium } from 'playwright-core';
@@ -128,6 +131,16 @@ try {
     await page.keyboard.press('n');
     const rh = page.locator('.rh');
     await rh.getByRole('button', { name: /Shopkeeper/ }).first().click();
+    // The card comes into sight with the box scrolled to a row's edge: the top row (where, the parties, 🗺 Map on
+    // stream) all out of sight or all in it, never cut in half under the selection line.
+    await rh.getByRole('button', { name: '🛒 Shop' }).waitFor();
+    await page.waitForTimeout(300);
+    const top = await rh.evaluate((r) => {
+      const box = r.closest('.mode-host').getBoundingClientRect();
+      const row = r.querySelector('.row.top').getBoundingClientRect();
+      return { box: Math.round(box.top), row: [Math.round(row.top), Math.round(row.bottom)], scrolled: r.closest('.mode-host').scrollTop };
+    });
+    assert(top.row[1] <= top.box + 1 || top.row[0] >= top.box - 1, `the Shopkeeper's card open, the top row isn't cut at the box's top (${JSON.stringify(top)})`);
     await rh.getByRole('button', { name: '🛒 Shop' }).click();
     await page.getByRole('button', { name: /^Potion · / }).click();
     await page.locator('.toast', { hasText: 'Potion' }).waitFor();
@@ -212,6 +225,32 @@ try {
     assert(at.scrolls && inSight, `⤢ Full map opens with the party's screen in sight, though the map is taller than its box (${JSON.stringify(at)})`);
     assert((await stageAt(page)) === stage, 'the stage keeps its place and size');
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-fullmap.png` });
+    await ctx.close();
+  }
+  {
+    console.log('Mini quest, two windows: the Boss’s card');
+    const { ctx, page } = await host('Mini quest', true);
+    await page.keyboard.press('n');
+    const rh = page.locator('.rh');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => document.querySelector('.rh .where')?.textContent.includes('Boss lair'));
+    const stage = await stageAt(page);
+    await rh.getByRole('button', { name: /^Boss · / }).click();
+    await rh.getByRole('button', { name: '▶ Run all' }).waitFor();
+    await page.waitForTimeout(300);
+    const at = await rh.evaluate((r) => {
+      const host = r.closest('.mode-host');
+      const act = host.closest('.act').getBoundingClientRect();
+      const action = host.closest('.action').getBoundingClientRect();
+      const nav = r.querySelector('.nav.pinned').getBoundingClientRect();
+      const card = r.querySelector('.main .side').getBoundingClientRect();
+      return { over: host.scrollHeight > host.clientHeight, act: Math.round(act.bottom), action: Math.round(action.bottom), nav: Math.round(nav.bottom), card: Math.round(card.top) };
+    });
+    assert(at.action === at.act, `beside the stage with no main button, the round's part reaches the column's foot (no empty row under it) (${JSON.stringify(at)})`);
+    assert(at.over && at.card >= at.nav - 1, `a card taller than the box opens with its top row under the pinned pad and map, not cut by them (${JSON.stringify(at)})`);
+    assert((await stageAt(page)) === stage, 'the stage keeps its place and size');
+    if (shots) await page.screenshot({ path: `${shots}/worldfixes-bosscard.png` });
     await ctx.close();
   }
   {

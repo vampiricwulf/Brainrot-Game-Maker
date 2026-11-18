@@ -887,11 +887,14 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **An RPG round's box** (RpgHost), the pad first at every height: the top row (where, notes, the parties, ✂ Split off,
   🤝 Regroup, ▦ Split view, 🛒 Shop…, 🗺 Map on stream; in one window the screen's and round's 📝 notes have a slot of
   their own there on every screen, note or none, one line cut short with the whole of it in its tooltip, so the
-  buttons, the pad and the minimap keep their places from screen to screen), the selection line, a party's rename question, then the pad and
-  the minimap beside the `tools` snippet (HostPanel's ToolsControls: in an RPG round a tool's box goes here, never at
-  the panel's top) and the object's card or Objects here, then **✎ Improvise** (a RememberedFold, `jb.improviseOpen`,
-  open until first folded; its questions show under it either way), then the players. It has no `.primary` button:
-  an object's card, the minimap's Move … here and the full map's are plain. An object's card and its menu (hostops
+  buttons, the pad and the minimap keep their places from screen to screen), the selection line, a party's rename
+  question, then the pad and the minimap beside the `tools` snippet (HostPanel's ToolsControls: in an RPG round a
+  tool's box goes here, never at the panel's top) and the object's card or Objects here, then **✎ Improvise** (a RememberedFold, `jb.improviseOpen`,
+  open until first folded; its questions show under it either way), then the players. An object's card, once open,
+  comes into sight: the pad and the minimap pinned under the sticky selection line, the box scrolled to a row's edge
+  (a short way scrolls the whole top row out, never half of it) and never so far that the card's top goes under what's
+  pinned over it. Beside the stage, with no NEXT button, the action part takes the NEXT row's room as well. It has no
+  `.primary` button: an object's card, the minimap's Move … here and the full map's are plain. An object's card and its menu (hostops
   `objectMenu`, in the list and on the stage) draw one list, `objectActs` (✋ … picks up, 🚪 Go through / Only …, 🔒 Lock,
   💬 Talk, 🛒 Shop, each action, ▶ Run all), in the card's words and order; in the menu, one that asks first (`asks`:
   nobody to run it for, a locked door) opens the card, and after them come 🗂 Open its card, ✎ Edit (the live editor,

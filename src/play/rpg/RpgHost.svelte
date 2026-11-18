@@ -169,9 +169,12 @@
   /**
    * An object's card, once it opens: in sight, when the panel is short and the card would open below its fold, but
    * never by scrolling the pad and the map (just above it) out of sight: they're what the host moves the party with.
+   * A short way down scrolls the whole top row out (the selection line at the box's top), never half of it: a row cut
+   * in two under the selection line read as broken.
    */
   let cardEl = $state<HTMLElement>();
   let mainEl = $state<HTMLElement>();
+  let selEl = $state<HTMLElement>();
   $effect(() => {
     if (!obj?.el.id) return;
     tick().then(() => {
@@ -185,8 +188,16 @@
       const c = card.getBoundingClientRect();
       const below = c.bottom - view.bottom;
       const above = c.top - view.top;
+      // (The selection line is sticky: once it's at the box's top, there's no row above it left to scroll out.)
+      const sel = selEl?.getBoundingClientRect();
+      const rowsAbove = sel ? Math.max(0, sel.top - view.top) : 0;
+      // A card taller than the box stops with its top just under what's pinned over it (the selection line, and the pad
+      // and the map when the card is under them, beside the stage), so its first row isn't left cut under them.
+      const nav = main.querySelector('.nav')?.getBoundingClientRect();
+      const over = (sel?.height ?? 0) + (nav && nav.left < c.right && c.left < nav.right ? nav.height : 0);
+      const most = Math.max(0, Math.min(main.getBoundingClientRect().top - view.top, c.top - view.top - over));
       if (above < 0) box.scrollTop += above;
-      else if (below > 0) box.scrollTop += Math.min(below, Math.max(0, main.getBoundingClientRect().top - view.top));
+      else if (below > 0) box.scrollTop += Math.min(Math.max(below, rowsAbove), most);
     });
   });
 
@@ -455,7 +466,7 @@
     <!-- What's selected, players and objects, with one Clear selection for both: one line (the stage keeps its size as it
          changes), in sight with a card open too. ↩ Select them again sits apart from it, so a double-click can't undo a
          clear. -->
-    <div class="row sel" data-rpg-sel>
+    <div class="row sel" data-rpg-sel bind:this={selEl}>
       {#if again}<button class="link again" onclick={again} title="Bring back what was selected">↩ Select them again</button>{/if}
       {#if selWords}
         <span class="words" title="{selWords} · drag one on the stage to move them all · Esc clears"
