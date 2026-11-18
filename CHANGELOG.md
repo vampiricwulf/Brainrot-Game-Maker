@@ -11,7 +11,7 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
+## 2026-11-17
 
 ### Added
 
@@ -19,7 +19,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Screen readers now hear a clue's question as it goes on screen and its answer once you reveal it, after the clue's name ("Memes $400 · Answer hidden. …"). This works for the Final and the tiebreaker too. Only the words viewers can see are read, and only when they see them. Secret text boxes are never read. Nothing is read while a Daily Double's splash, PARTNER UP!, a wheel, dice, the scoreboard, a pop-up or the cover hides the slide; it's read once they go. A text box that comes in later is said when it shows. (5deb45e, ea72264, 6534510).
 - 🖼 Board backdrop shows the board's spaces and links faintly on top while you edit, so you can line pictures up with the path. Clicks go through them, and the remembered ⬤ Spaces over it button hides them (b6953b3)
 - Reloading the page while editing brings you back to the page or round you had open, with the clue editor reopened on the same clue. This is remembered per tab, for that game only. (e68883c)
-- When a new change throws away steps you had undone, a note now says "Dropped N undone steps" with ↶ Undo. That Undo takes the change back and restores those steps, still undone, so ↷ Redo works again, even after a reload. The note also appears over the clue editor, and a deletion's own note ("Deleted card 3 · dropped 1 undone step") says it too. With a window open, Shift+Tab reaches the note's ↶ Undo. (58d8d82, cbea37d, d65189f, 72f0812).
+- When a new change throws away steps you had undone, a note now says "Dropped N undone steps" with ↶ Undo. That Undo takes the change back and restores those steps, still undone, so ↷ Redo works again, even after a reload. The note also appears over the clue editor, and a deletion's own note ("Deleted card 3 · dropped 1 undone step") says it too. With a window open, Shift+Tab reaches the note's ↶ Undo, and a toast goes under the note, not over it. (58d8d82, cbea37d, d65189f, 72f0812, cbc894b).
 
 ### Changed
 
@@ -35,6 +35,7 @@ in plain words for the people who make and host games. Anything committed but no
 - On a wide screen, the slide of the Final and of the tiebreaker now fills the width, as a slides round's does. Their fields stay at the readable width, and on a laptop the Final's slide is never smaller than before. The clue editor window now takes the whole window width instead of stopping at 1800 px. (e261d6e)
 - In the browser, once a link's site has refused to let the game save a copy, its 🖼 Media card says so. Instead of 💾 Store in game, which only failed again, it offers ⬇ Download it… (opens the file in its own tab) and then Replace everywhere… to put the downloaded file in, with 💾 Try again in case the site now allows it. The desktop app is unchanged. (e74572a)
 - Phones: when a phone still can't reach the buzzer room after a few tries but its own internet is working, it now says "Can't reach the game's buzzer server right now: the host has been told. Keep this page open." It only tells players to check their Wi-Fi or mobile data when the phone itself is offline. If you run your own buzzer server, redeploy it to get this. (91504f2)
+- 🖼 Media cards now say in plain text why a file won't play or plays without its sound, and what to do about it. Before, the reason was only in a tooltip, though the checklist says "🖼 Media says why" (8752114).
 
 ### Fixed
 
@@ -55,15 +56,6 @@ in plain words for the people who make and host games. Anything committed but no
 - RPG round in one window: the screen's 📝 note has its own fixed slot in the top row. It is cut short, with the whole note in its tooltip, so the parties, 🗺 Map on stream, the pad and the minimap stay in place when you move between screens (fe4ca99)
 - RPG round beside the stage: an object's card gets the empty room where the NEXT button would be before the box scrolls, and opening a card never leaves a row cut in half or tucked under the pinned pad and map (e88a697)
 - On a phone or a narrow window, a message that pops up while a window is open now wraps onto two or three lines instead of being cut off mid-sentence. Windows leave room at the top for it, so it doesn't cover a window's title or buttons. (dce3dbe, b519212)
-
-## 2026-11-17
-
-### Changed
-
-- 🖼 Media cards now say in plain text why a file won't play or plays without its sound, and what to do about it. Before, the reason was only in a tooltip, though the checklist says "🖼 Media says why" (8752114).
-
-### Fixed
-
 - Esc on any answer of a question in the host panel (Keep & leave, Discard & leave, Go to … ▶) now cancels the question, the same as on its Cancel. Before, during a clue it closed the clue and used up the tile, and the question stayed open. (c920756)
 - On the ▶ Play screen, the keys no longer drop to the page. After ▶ Start the room they go to 📋 Copy link, or back to Start the room if it failed. After the Deleted note's ↶ Undo they go to the name brought back, and after its ✕ to ＋ Add player. Hiding or showing the On stream tips puts them on the button that changes them back. (2436d2f)
 - Screen readers now name a player's score button with the player and the score ("Ann's score: $0", not just "$0"), and name the box it opens "Ann's score". (704a058)
