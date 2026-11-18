@@ -1652,6 +1652,11 @@
   .final-screen.bar-top > .score-area {
     top: 0;
   }
+  /* A wager's ✔ hangs under its plate there (above it, it would be cut off by the stage's top edge). */
+  .final-screen.bar-top > .score-area :global(.tick) {
+    top: auto;
+    bottom: -46px;
+  }
   .final-screen.bar-top > .final-cat {
     top: 230px;
     bottom: -230px;

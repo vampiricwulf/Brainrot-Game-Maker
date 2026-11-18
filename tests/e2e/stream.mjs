@@ -1396,6 +1396,13 @@ async function finalBar() {
     const wagers = host.locator('.fj .wagers input[data-wager]');
     for (let i = 0; i < 3; i++) await wagers.nth(i).fill('0');
     await host.locator('.fj').click({ position: { x: 2, y: 2 } });
+    if (scoreBar === 'top') {
+      // Each wager's ✔ on the stage, whole: under its plate (over it, the stage's top edge would cut it off).
+      await st('.score-area .tick').nth(2).waitFor();
+      const ticks = await Promise.all([0, 1, 2].map((i) => box('.score-area .tick', i)));
+      const score = await box('.score-area .plate .score');
+      assert(ticks.every((t) => t.top >= score.bottom - 0.5 && t.bottom <= 1080), `the wagers in: each ✔ whole on the stage, under its plate's score (from ${ticks.map((t) => Math.round(t.top)).join(', ')}; the score to ${Math.round(score.bottom)})`);
+    }
     await mainButton(host, 'Show question ▶').click();
     await mainButton(host, '👁 Reveal answer').click();
     await revealAnyway(host);
