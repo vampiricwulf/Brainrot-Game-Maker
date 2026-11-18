@@ -4,7 +4,7 @@ import { newBoardGameRound } from '../../lib/boardgame';
 import { addLiveSpace, connectSpaces, deleteLiveSpace, disconnectSpaces, keepBoard, linkAt, refuge, reverseLink, toggleBothWays } from '../../lib/boardedit';
 import { goToRound, newSession } from '../../lib/session';
 import { redoAction, stepText, undoAction } from '../../lib/toolset';
-import { boardEdit, editAdd, editAllNames, editConnect, editDelete, editDeleteAll, editDisconnect, editDrag, editPicked, editShowName, editSpace, editStart, editToggle, setEditing } from './boardedit.svelte';
+import { boardEdit, editAdd, editAllNames, editConnect, editDelete, editDeleteAll, editDisconnect, editDrag, editFocus, editPicked, editShowName, editSpace, editStart, editToggle, setEditing } from './boardedit.svelte';
 
 /** A game with a 12-space loop (Start, Space 2…Space 12) and two players, playing it. */
 function setup() {
@@ -207,6 +207,21 @@ describe('editing a board during play: several spaces at once', () => {
     expect(boardEdit.sel).toBe(id('Space 5'));
     setEditing(false);
     expect(editPicked()).toEqual([]);
+  });
+
+  it('a right-click on one of several selected picks it (Rename, Connect to… and the panel act on it), the rest kept', () => {
+    const { id } = setup();
+    setEditing(true);
+    boardEdit.sel = id('Space 7');
+    editToggle(id('Space 3'));
+    expect(boardEdit.sel).toBe(id('Space 3'));
+    editFocus(id('Space 7'));
+    expect(boardEdit.sel).toBe(id('Space 7'));
+    expect(editPicked().sort()).toEqual([id('Space 3'), id('Space 7')].sort());
+    // One not selected: just it.
+    editFocus(id('Space 9'));
+    expect(editPicked()).toEqual([id('Space 9')]);
+    setEditing(false);
   });
 
   it('deletes them as one step that says how many and who moved, and one Undo brings them all back', () => {

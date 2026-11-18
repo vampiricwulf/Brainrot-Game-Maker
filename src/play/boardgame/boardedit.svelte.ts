@@ -65,6 +65,17 @@ export function editPick(id: string | null): void {
 }
 
 /**
+ * A right-click on a space: it's picked, so its menu's ✎ Rename and 🔗 Connect to… (and the panel) act on it. One of
+ * several selected stays with them, so Delete still deletes them all; any other is picked alone.
+ */
+export function editFocus(id: string): void {
+  const all = editPicked();
+  if (!all.includes(id)) return editPick(id);
+  boardEdit.sel = id;
+  boardEdit.also = all.filter((x) => x !== id);
+}
+
+/**
  * Shift+click on a space: it joins the selection (picked, so the panel shows it), or leaves it when it's in it already
  * (the one picked before it is picked again).
  */

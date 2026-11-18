@@ -12,7 +12,7 @@
   import { linkAt } from '../../lib/boardedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { SLIDE_H, SLIDE_W, type BoardGameRound, type BoardSpace, type Game, type Session } from '../../lib/model';
-  import { boardEdit, editAdd, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editDrag, editIdle, editPick, editPicked, editReverse, editShowName, editStart, editToggle } from './boardedit.svelte';
+  import { boardEdit, editAdd, editAllNames, editBothWays, editConnect, editDelete, editDeleteAll, editDisconnect, editDrag, editFocus, editIdle, editPick, editPicked, editReverse, editShowName, editStart, editToggle } from './boardedit.svelte';
   import { boardNow } from './bgops';
 
   let { game, session, round, hide = false }: { game: Game; session: Session; round: BoardGameRound; hide?: boolean } = $props();
@@ -135,8 +135,10 @@
     const s = spaceAt(p);
     const l = s ? null : linkAt(round, p);
     if (s) {
-      if (!editPicked().includes(s.id)) editPick(s.id);
+      // (Picked, so Rename and Connect to… are its own; one of several selected keeps the rest with it.)
+      editFocus(s.id);
       boardEdit.link = null;
+      const all = editPicked();
       return showMenu(e, [
         { heading: said(s) },
         { label: '✎ Rename', keys: 'F2', onclick: () => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select() },
@@ -147,7 +149,9 @@
           : { label: '👁 Show name', hint: 'Viewers see its name under it', onclick: () => editShowName(game, session, s.id, true) },
         { label: '＋ Add a space after it', onclick: () => editAdd(game, session, { x: s.x + 160, y: s.y }) },
         { sep: true },
-        { label: '🗑 Delete space', danger: true, keys: 'Delete', onclick: () => editDelete(game, session, s.id, hide) },
+        // (With several selected, the Delete key deletes them all: its entry is the one that says so.)
+        { label: '🗑 Delete space', danger: true, keys: all.length > 1 ? undefined : 'Delete', onclick: () => editDelete(game, session, s.id, hide) },
+        ...(all.length > 1 ? [{ label: `🗑 Delete ${all.length} spaces`, danger: true, keys: 'Delete', onclick: () => editDeleteAll(game, session, all, hide) }] : []),
       ]);
     }
     if (l) {

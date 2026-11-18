@@ -448,6 +448,20 @@ try {
   assert((await top3()) !== top3was && (await last(page)).includes('Moved 2 spaces'), `one of two selected dragged: both move, one step (${await last(page)})`);
   await page.keyboard.press('Control+z');
   assert((await top3()) === top3was, 'Ctrl+Z puts them both back');
+  // A right-click on the selected one that isn't picked (Space 7; Space 3 was Shift+clicked last) picks it, the other
+  // kept: ✎ Rename and 🔗 Connect to… act on the space the menu names, and its Delete is the one for both.
+  await page.mouse.click(s7up.x, s7up.y, { button: 'right' });
+  const sevMenu = page.getByRole('menu');
+  await sevMenu.waitFor();
+  assert(
+    (await sevMenu.locator('.heading').innerText()) === 'Space 7' &&
+      (await page.locator('[data-picked-space]').count()) === 2 &&
+      (await page.locator('[data-edit-name]').inputValue()) === 'Space 7' &&
+      (await sevMenu.getByRole('menuitem', { name: /Delete 2 spaces/ }).count()) === 1,
+    `right-click on one of two selected: it's picked, both stay selected (${await page.locator('[data-edit-name]').inputValue()})`,
+  );
+  await page.keyboard.press('Escape');
+  await sevMenu.waitFor({ state: 'detached' });
   const s7b = await at(750, 560);
   await page.mouse.click(s7b.x, s7b.y);
   assert((await page.locator('[data-picked-space]').count()) === 1 && !(await page.locator('[data-edit-several]').count()), 'a click on one of the selected picks just it');
