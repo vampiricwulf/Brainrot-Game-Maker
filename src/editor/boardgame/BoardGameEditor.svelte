@@ -30,6 +30,7 @@
   import MediaPicker from '../slide/MediaPicker.svelte';
   import { fittingFile, hasFiles, isGameDrop, mediaDrop, useFile } from '../../lib/mediadrop';
   import SlideEditor from '../slide/SlideEditor.svelte';
+  import { BACKDROP_NOUNS } from '../slide/nouns';
   import ToolPopup, { freeName, newTool } from '../tools/ToolPopup.svelte';
   import { newWheel } from '../../lib/tools';
 
@@ -1092,7 +1093,7 @@
       </aside>
     </div>
   {:else if view === 'backdrop'}
-    <div class="se-wrap"><SlideEditor slide={round.slide} placeholder="Click to type" fill fallbackBg="#1d5e3a" /></div>
+    <div class="se-wrap"><SlideEditor slide={round.slide} placeholder="Click to type" fill fallbackBg="#1d5e3a" nouns={BACKDROP_NOUNS} /></div>
   {:else}
     <div class="zones">
       <div class="row">

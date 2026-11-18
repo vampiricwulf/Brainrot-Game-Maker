@@ -10,6 +10,7 @@
   import { clearSpot, type Box } from '../../lib/rpg';
   import SlideEditor from '../slide/SlideEditor.svelte';
   import ObjectPanel from './ObjectPanel.svelte';
+  import { SCREEN_NOUNS } from '../slide/nouns';
 
   /**
    * `slide`: one of the screen's other looks, edited instead of its own slide. `avatars`: where the players stand on it
@@ -134,7 +135,8 @@
   }
 </script>
 
-<SlideEditor slide={slide ?? screen.slide} placeholder="Click to type" fill fallbackBg="#2f6b3a" hotspots {menuextras}>
+<!-- (Objects on a screen, as the rest of the RPG says: its 📦 Item ▾ adds a catalog item, so they aren't “items” here.) -->
+<SlideEditor slide={slide ?? screen.slide} placeholder="Click to type" fill fallbackBg="#2f6b3a" hotspots {menuextras} nouns={SCREEN_NOUNS}>
   {#snippet objectsection(el: SlideElement)}
     <ObjectPanel {el} {world} slide={slide ?? screen.slide} />
   {/snippet}

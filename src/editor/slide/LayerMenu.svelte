@@ -11,6 +11,7 @@
   import { LAYER_ICON, editWords, layerLabel, type Align, type LayerAction } from '../../lib/layerlabel';
   import { dropdown, menuKeys } from '../../lib/menustate.svelte';
   import { editOffer } from '../../lib/shrink/apply';
+  import { countOf, Page, slideNouns } from './nouns';
 
   let {
     x,
@@ -23,7 +24,7 @@
     canReplace = false,
     slideExtras,
     extras = [],
-    where = 'This slide',
+    where,
     onpick,
     onaction,
     onclose,
@@ -54,6 +55,9 @@
     onaction: (a: LayerAction) => void;
     onclose: () => void;
   } = $props();
+  /** The words of the editor it's in (a screen's objects, a board's pictures, a slide's items). */
+  const words = slideNouns();
+  const say = $derived(words());
 
   let w = $state(0);
   let h = $state(0);
@@ -111,8 +115,8 @@
   }}
   role="presentation"
 ></div>
-<div class="menu" style:left="{left}px" style:top="{top}px" bind:clientWidth={w} bind:clientHeight={h} role="menu" aria-label="Slide item menu" use:dropdown={onclose}>
-  <div class="head">{selected.length > 1 ? `${selected.length} items` : selected.length ? layerLabel(selected[0], game) : where}</div>
+<div class="menu" style:left="{left}px" style:top="{top}px" bind:clientWidth={w} bind:clientHeight={h} role="menu" aria-label="{Page(say)} {say.thing} menu" use:dropdown={onclose}>
+  <div class="head">{selected.length > 1 ? countOf(selected.length, say) : selected.length ? layerLabel(selected[0], game) : (where ?? `This ${say.page}`)}</div>
   {#if picks}
     <div class="sub">Select an item here</div>
     {#each stack as el (el.id)}
@@ -149,7 +153,7 @@
     </button>
     {#if aligning}
       <!-- One item lines up with the slide; several with each other. -->
-      <div class="aligns" role="group" aria-label={several ? 'Line up the selected items' : 'Align to the slide'}>
+      <div class="aligns" role="group" aria-label={several ? `Line up the selected ${say.things}` : `Align to the ${say.page}`}>
         {#each ALIGNS as [how, label] (how)}<button role="menuitem" onclick={() => run(`align-${how}`)}>{label}</button>{/each}
         {#if unlocked > 2}
           <button role="menuitem" class="wide" onclick={() => run('align-hdistribute')}>Space evenly across</button>
@@ -161,7 +165,7 @@
   {#if selected.length}
     {#if editing || replaces}
       {@render editItem(act)}
-      {#if replaces}<button role="menuitem" onclick={() => act('replace')} title="Only this item: the same file elsewhere stays as it is"
+      {#if replaces}<button role="menuitem" onclick={() => act('replace')} title="Only this {say.thing}: the same file elsewhere stays as it is"
           >🔁 Use another {one?.kind === 'image' ? 'picture' : one?.kind === 'video' ? 'video' : 'sound'}…</button
         >{/if}
       <hr />
@@ -198,12 +202,12 @@
     {/if}
     <button role="menuitem" onclick={() => act('paste')} disabled={!canPaste}>📋 Paste here<kbd>{key('Ctrl+V')}</kbd></button>
     {#if slideExtras}
-      <button role="menuitem" onclick={() => act('copy-slide')} title="The whole slide, to paste over another one or as a new slide by the slide tabs">📋 Copy slide</button>
+      <button role="menuitem" onclick={() => act('copy-slide')} title={say.page === 'slide' ? 'The whole slide, to paste over another one or as a new slide by the slide tabs' : `The whole ${say.page}, to paste over another one`}>📋 Copy {say.page}</button>
       <button
         role="menuitem"
         onclick={() => act('paste-over')}
         disabled={!slideExtras.canPasteSlide}
-        title={slideExtras.canPasteSlide ? 'Everything on this slide is replaced by the copied one (Undo brings it back)' : 'Copy a slide first (📋 Copy slide)'}>📋 Paste over this slide</button
+        title={slideExtras.canPasteSlide ? `Everything on this ${say.page} is replaced by the copied one (Undo brings it back)` : `Copy a ${say.page} first (📋 Copy ${say.page})`}>📋 Paste over this {say.page}</button
       >
       <hr />
       <button role="menuitem" onclick={() => act('background')}>🎨 Background…</button>

@@ -302,6 +302,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 5.3 Slide editor (question / answer / category header / Final)
 - 16:9 canvas with snapping guides, grid, and alignment tools (left/center/right, distribute).
+- Its words follow its host (`nouns`, slide/nouns.ts, shared with its Inspector, ItemBar, LayerMenu and LayersPanel):
+  items on a slide; objects on a screen in the RPG screen editor (its 📦 Item ▾ adds a catalog item, so they aren't
+  “items” there); pictures on the board in a board game's 🖼 Board backdrop. The hint and Tips, Move to the screen's…,
+  “2 objects selected”, 📋 Copy screen and the History's steps all say them.
 - Insert: 🅣 Text, 🖼 Image, 🎬 Video, 🔊 Sound, Shape. Drag-drop files onto the canvas. Shape ▾ is in sections: Shapes (▭ ◯ ― ➝),
   Draw (✏ Freehand line…, one stroke, named "Freehand line" in Layers and the History, "Freehand shape" closed with
   Shift; 🖌 Drawpad…, a whole drawing inserted as a picture named "Drawing"), and on an RPG screen only ⬚ Hotspot (one

@@ -13,6 +13,8 @@
 // 6. Mini quest, one window: the screen's 📝 note has a slot of its own in the top row (cut short, the whole of it in
 //    its tooltip), so the parties, 🗺 Map on stream, the pad and the minimap stay put from a screen with a note to one
 //    without.
+// 7. The slide editor in its host's words: objects on a screen in the RPG screen editor, pictures on the board in a
+//    board game's backdrop, items on a slide in a slides round.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -284,6 +286,51 @@ try {
     await ctx.close();
   }
 
+  {
+    console.log('The slide editor in its host’s words');
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    await ctx.route('https://api.github.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(`[nouns] ${e.message}`));
+    await page.goto(pathToFileURL(file).href);
+    await editorReady(page);
+    const addRound = async (name) => {
+      await page.getByRole('button', { name: '＋ Add round' }).click();
+      await page.getByRole('menuitem', { name }).first().click();
+      await page.waitForTimeout(500);
+    };
+    /** Everything the slide editor says (its text, tooltips and labels, its Tips folded or not). */
+    const says = () =>
+      page.locator('.se').evaluate((se) => [se.textContent, ...[...se.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? ''])].join('\n'));
+    // (Entrance animations “Slide from left” are a way in, and 📦 Item ▾ adds a catalog item: not its nouns.)
+    const strays = (t) => t.replace(/Slide from \w+/g, '').replace(/📦 Item ▾?|an item from the catalog/g, '').match(/[^\n.]*\b(items?|slides?|slide['’]s)\b[^\n.]*/gi) ?? [];
+    // An RPG screen: objects on a screen.
+    await addRound(/Mini quest/);
+    await page.getByRole('button', { name: 'Screen Forest' }).focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: '◀ Back to the map' }).waitFor();
+    let t = await says();
+    assert(t.includes('Click an object to edit it') && t.includes('copy objects between screens') && t.includes('More for this screen'), 'the RPG screen editor says objects and screens');
+    await page.locator('.layers-box .row').filter({ hasText: 'Gold coins' }).locator('.name').click();
+    t = await says();
+    assert(t.includes("Move to the screen's left edge"), 'an object goes to the screen’s edges');
+    await page.locator('.layers-box .row').filter({ hasNotText: 'Gold coins' }).first().locator('.name').click({ modifiers: ['Shift'] });
+    t = await says();
+    assert(t.includes('2 objects selected') && t.includes('Line up the selected objects'), 'two of them are “2 objects”');
+    assert(!strays(t).length, `nothing in it says item or slide (${strays(t).join(' | ')})`);
+    // A board game's backdrop: pictures on the board.
+    await addRound(/Race to the finish/);
+    await page.getByRole('button', { name: /Board backdrop/ }).click();
+    t = await says();
+    assert(t.includes('Click a picture to edit it') && t.includes('More for this board') && !strays(t).length, `the board backdrop says pictures and the board (${strays(t).join(' | ')})`);
+    // A slides round keeps items on slides.
+    await addRound(/Slides/);
+    await page.locator('.se').waitFor();
+    t = await says();
+    assert(t.includes('Click an item to edit it') && t.includes('copy items between slides') && t.includes('More for this slide'), 'a slides round still says items and slides');
+    if (shots) await page.screenshot({ path: `${shots}/worldfixes-nouns.png` });
+    await ctx.close();
+  }
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('worldfixes: all passed');
 } finally {

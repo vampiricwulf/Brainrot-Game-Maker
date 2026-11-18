@@ -18,6 +18,7 @@
   import { verdictOf } from '../../lib/shrink/checks.svelte';
   import { jobFor } from '../../lib/shrink/jobs.svelte';
   import { shortWhy } from '../../lib/shrink/words';
+  import { slideNouns } from './nouns';
 
   let {
     el,
@@ -63,6 +64,9 @@
     /** A 🤫 card's item: Sound only isn't offered (a phone plays a card's YouTube video in YouTube's own player). */
     card?: boolean;
   } = $props();
+  /** The words of the editor it's in (a screen's objects, a board's pictures, a slide's items). */
+  const words = slideNouns();
+  const say = $derived(words());
   /** The selected image/video/audio file, when it plays from the internet (a live link). */
   const liveRef = $derived('media' in el ? game.media.find((m) => m.id === el.media && m.url) : undefined);
   /** Google Drive's or Streamable's own player: no playback options apply. */
@@ -358,7 +362,7 @@
       <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
       <!-- (✎ Edit image… is the bar's at the top of the panel.) -->
       <div class="row">
-        <button onclick={(e) => onreplace(e.currentTarget)} data-replace title="Only this item: the same file elsewhere stays as it is">🔁 Use another picture…</button>
+        <button onclick={(e) => onreplace(e.currentTarget)} data-replace title="Only this {say.thing}: the same file elsewhere stays as it is">🔁 Use another picture…</button>
       </div>
       {@render liveNote()}
     </section>
@@ -464,11 +468,11 @@
         {/if}
         <!-- (✎ Edit video… / sound… is the bar's at the top of the panel.) -->
         <div class="row">
-          <button class="small" onclick={(e) => onreplace(e.currentTarget)} data-replace title="Only this item: the same file elsewhere stays as it is"
+          <button class="small" onclick={(e) => onreplace(e.currentTarget)} data-replace title="Only this {say.thing}: the same file elsewhere stays as it is"
             >🔁 Use another {el.kind === 'video' ? 'video' : 'sound'}…</button
           >
         </div>
-        {#if el.kind === 'audio'}<label class="check"><input type="checkbox" bind:checked={el.visible} /> Show a speaker icon on the slide</label>{/if}
+        {#if el.kind === 'audio'}<label class="check"><input type="checkbox" bind:checked={el.visible} /> Show a speaker icon on the {say.page}</label>{/if}
         {@render liveNote()}
         {@render playsNote(el.media)}
       {/if}
@@ -520,12 +524,12 @@
         {/if}
         {#if el.kind !== 'embed'}
           <p class="hint">
-            {#if cuts}Only this item. To cut the file itself (smaller, everywhere): <b>{el.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…'}</b> at the
+            {#if cuts}Only this {say.thing}. To cut the file itself (smaller, everywhere): <b>{el.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…'}</b> at the
               top.{:else}Only this item: the file itself stays whole.{/if}
           </p>
         {/if}
         <h5>When it plays</h5>
-        <label class="check"><input type="checkbox" bind:checked={el.autoplay} /> Autoplay when the slide appears</label>
+        <label class="check"><input type="checkbox" bind:checked={el.autoplay} /> Autoplay when the {say.page} appears</label>
         <label class="check"><input type="checkbox" bind:checked={el.loop} /> Loop</label>
         <label class="check"><input type="checkbox" bind:checked={el.muted} /> Start muted</label>
         <label class="field">Volume {Math.round(el.volume * 100)}%<input type="range" min="0" max="1" step="0.05" bind:value={el.volume} /></label>

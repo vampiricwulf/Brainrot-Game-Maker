@@ -12,6 +12,7 @@
   import { offStage } from '../../lib/layers';
   import { announce } from '../../lib/announce';
   import { isMenuKey } from '../../lib/menustate.svelte';
+  import { slideNouns } from './nouns';
 
   let {
     elements,
@@ -44,6 +45,9 @@
     /** A row's menu (right-click, Shift+F10): at x/y in the window, `from` the row's name, which gets the keys back. */
     onmenu?: (m: { x: number; y: number; from: HTMLElement }) => void;
   } = $props();
+  /** The words of the editor it's in (a screen's objects, a board's pictures, a slide's items). */
+  const words = slideNouns();
+  const say = $derived(words());
   const edit = (change: () => void, label?: string) => (onedit ? onedit(change, label) : change());
 
   const top = $derived([...elements].sort((a, b) => b.zIndex - a.zIndex));
@@ -255,7 +259,7 @@
       <button class="ico" class:on={!isHidden} onclick={() => toggleHidden(el)} aria-label={`${isHidden ? 'Show while editing' : 'Hide while editing'}: ${name}`} title={isHidden ? 'Show while editing' : 'Hide while editing (still shows in the game)'}>
         {isHidden ? '◌' : '👁'}
       </button>
-      <button class="ico" class:on={!!el.locked} onclick={() => toggleLock(el)} aria-label={`${el.locked ? 'Unlock' : 'Lock'}: ${name}`} aria-pressed={!!el.locked} title={el.locked ? 'Unlock' : 'Lock: clicks on the slide go through it to what is underneath'}>
+      <button class="ico" class:on={!!el.locked} onclick={() => toggleLock(el)} aria-label={`${el.locked ? 'Unlock' : 'Lock'}: ${name}`} aria-pressed={!!el.locked} title={el.locked ? 'Unlock' : `Lock: clicks on the ${say.page} go through it to what is underneath`}>
         {el.locked ? '🔒' : '🔓'}
       </button>
       <span class="updown">

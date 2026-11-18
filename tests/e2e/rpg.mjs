@@ -867,11 +867,11 @@ try {
   // Put a secret Potion on the start screen.
   await page.getByRole('button', { name: 'Screen Start' }).click();
   await page.getByRole('button', { name: '✎ Edit screen' }).click();
-  // A screen has no slide tabs: 📋 Copy slide's note says where it pastes (not “by the slide tabs”).
-  await page.getByRole('button', { name: 'More for this slide' }).click();
-  await page.getByRole('menu').getByRole('menuitem', { name: '📋 Copy slide' }).click();
-  const slideCopied = (await page.locator('.toast', { hasText: 'Slide copied' }).last().innerText()).trim();
-  assert(slideCopied === 'Slide copied: on another one, right-click an empty spot › 📋 Paste over this slide', `on a screen, 📋 Copy slide says where to paste it (${slideCopied})`);
+  // A screen has no slide tabs: 📋 Copy screen's note says where it pastes (not “by the slide tabs”), in a screen's words.
+  await page.getByRole('button', { name: 'More for this screen' }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: '📋 Copy screen' }).click();
+  const slideCopied = (await page.locator('.toast', { hasText: 'Screen copied' }).last().innerText()).trim();
+  assert(slideCopied === 'Screen copied: on another one, right-click an empty spot › 📋 Paste over this screen', `on a screen, 📋 Copy screen says where to paste it (${slideCopied})`);
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
   assert((await page.getByRole('menu').count()) === 0, '📦 Item ▾ closes on a second click');

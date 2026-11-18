@@ -71,6 +71,7 @@
   import { itemsFor, placeElement, take } from '../../lib/nav.svelte';
   import { gameUndo, slideHistory } from '../../lib/slideundo.svelte';
   import { itemPlace } from '../../lib/historylabel';
+  import { aThing, countOf, Page, setSlideNouns, SLIDE_NOUNS, type SlideNouns } from './nouns';
 
   let {
     slide,
@@ -90,6 +91,7 @@
     fallbackBg = 'var(--tile)',
     tabbed = false,
     sidetop,
+    nouns = SLIDE_NOUNS,
   }: {
     slide: Slide;
     /** The main text elements "Use this style elsewhere" restyles for a scope (the host knows the round). */
@@ -133,7 +135,13 @@
      * editor): the slide keeps its size and the selected item's bar stays in sight.
      */
     sidetop?: Snippet;
+    /**
+     * What it calls the things on it and the page: an RPG screen's objects on a screen (its 📦 Item ▾ adds a catalog
+     * item), a board's pictures on the board; a slide's items otherwise.
+     */
+    nouns?: SlideNouns;
   } = $props();
+  setSlideNouns(() => nouns);
   let editingImage = $state<string | null>(null);
   const imageEl = $derived(slide.elements.find((e) => e.id === editingImage && e.kind === 'image') as ImageEl | undefined);
 
@@ -315,9 +323,9 @@
   }
 
   const NAMES: Record<SlideElement['kind'], string> = { text: 'text box', image: 'image', video: 'video', audio: 'sound', shape: 'shape', embed: 'link' };
-  const describe = (els: SlideElement[]) => (els.length === 1 ? NAMES[els[0].kind] : `${els.length} items`);
+  const describe = (els: SlideElement[]) => (els.length === 1 ? NAMES[els[0].kind] : countOf(els.length, nouns));
   /** The items as the History names a step done to them: shape “Ellipse”, 3 shapes, 3 items. */
-  const named = (els: SlideElement[]) => itemsNamed(els, game, onCard);
+  const named = (els: SlideElement[]) => itemsNamed(els, game, onCard, nouns.things);
 
   // ---------- Adding elements ----------
   /**
@@ -431,7 +439,7 @@
       const el = slide.elements.find((e) => e.id === replacing);
       replacing = null;
       if (el && (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio') && kind !== el.kind)
-        return void toast(`That file is ${KIND_WORD[kind] ?? 'another kind of file'}: this item takes ${KIND_WORD[el.kind]} (add it as its own item instead)`, 4000);
+        return void toast(`That file is ${KIND_WORD[kind] ?? 'another kind of file'}: this ${nouns.thing} takes ${KIND_WORD[el.kind]} (add it as its own ${nouns.thing} instead)`, 4000);
       if (el && (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio'))
         edit(() => {
           el.media = id;
@@ -695,16 +703,16 @@
   }
 
   /** How the History names Align (# is the items): several line up with each other, one goes to the slide's edge or middle. */
-  const ALIGNED: Record<Align, [several: string, one: string]> = {
-    left: ['Lined up the left edges of #', "Moved # to the slide's left edge"],
-    hcenter: ['Lined up the middles of # across', 'Centered # across the slide'],
-    right: ['Lined up the right edges of #', "Moved # to the slide's right edge"],
-    top: ['Lined up the top edges of #', "Moved # to the slide's top edge"],
-    vcenter: ['Lined up the middles of # down', 'Centered # down the slide'],
-    bottom: ['Lined up the bottom edges of #', "Moved # to the slide's bottom edge"],
+  const ALIGNED: Record<Align, [several: string, one: string]> = $derived({
+    left: ['Lined up the left edges of #', `Moved # to the ${nouns.page}'s left edge`],
+    hcenter: ['Lined up the middles of # across', `Centered # across the ${nouns.page}`],
+    right: ['Lined up the right edges of #', `Moved # to the ${nouns.page}'s right edge`],
+    top: ['Lined up the top edges of #', `Moved # to the ${nouns.page}'s top edge`],
+    vcenter: ['Lined up the middles of # down', `Centered # down the ${nouns.page}`],
+    bottom: ['Lined up the bottom edges of #', `Moved # to the ${nouns.page}'s bottom edge`],
     hdistribute: ['Spaced # evenly across', 'Spaced # evenly across'],
     vdistribute: ['Spaced # evenly down', 'Spaced # evenly down'],
-  };
+  });
   function align(how: Align): void {
     const { free, held } = selection();
     const spacing = how === 'hdistribute' || how === 'vdistribute';
@@ -735,7 +743,7 @@
     toast(
       tabbed
         ? 'Slide copied: 📋 Paste over this slide (right-click an empty spot) or 📋 Paste slide by the slide tabs'
-        : 'Slide copied: on another one, right-click an empty spot › 📋 Paste over this slide',
+        : `${Page(nouns)} copied: on another one, right-click an empty spot › 📋 Paste over this ${nouns.page}`,
     );
   }
 
@@ -744,13 +752,13 @@
   function pasteSlide(): void {
     if (!clipboard.slide) return;
     // (Its files, wheels and dice from another game come in the same step: one Ctrl+Z takes them out too.)
-    undoApi.step('Pasted a slide', () => {
+    undoApi.step(`Pasted a ${nouns.page}`, () => {
       const s = takeCopiedSlide(game)!;
       slide.background = s.background;
       slide.elements = s.elements;
       selected = [];
     });
-    tell('Pasted the copied slide', undoApi.undo);
+    tell(`Pasted the copied ${nouns.page}`, undoApi.undo);
   }
 
   /**
@@ -967,8 +975,7 @@
   // ---------- Clipboard (shared with the board images: clipboard.svelte.ts) ----------
   /** Copy the selection (or `from`) to the clipboard: "3 items". */
   function copied(data: DataTransfer | null, from = slide.elements.filter((x) => selected.includes(x.id))): string {
-    const n = copyElements(game, from, data);
-    return `${n} item${n === 1 ? '' : 's'}`;
+    return countOf(copyElements(game, from, data), nouns);
   }
 
   function oncopy(e: ClipboardEvent): void {
@@ -1013,7 +1020,7 @@
     copies.sort((a, b) => a.zIndex - b.zIndex).forEach((c, i) => (c.zIndex = z + i));
     // (Their files, wheels and dice from another game come in the same step: one Ctrl+Z takes them out too. They're
     // named by those files, not in this game yet.)
-    undoApi.step(`Pasted ${itemsNamed(copies, { ...game, media: [...game.media, ...clipboard.media] }, onCard)}`, () => {
+    undoApi.step(`Pasted ${itemsNamed(copies, { ...game, media: [...game.media, ...clipboard.media] }, onCard, nouns.things)}`, () => {
       adoptMedia(game, elementMediaIds(copies));
       adoptUsedBy(game, copies);
       slide.elements.push(...copies);
@@ -1051,7 +1058,7 @@
         pasteItems();
       } else if (pastingGone(data ?? null)) {
         e.preventDefault();
-        toast('Those items were copied in another tab or before the page reloaded: copy them again here');
+        toast(`Those ${nouns.things} were copied in another tab or before the page reloaded: copy them again here`);
       }
       return;
     }
@@ -1066,7 +1073,7 @@
     } else if (pastingGone(data ?? null)) {
       // Copied in another tab or before a reload: the items themselves aren't here (only "2 slide items").
       e.preventDefault();
-      toast('Those items were copied in another tab or before the page reloaded: copy them again here');
+      toast(`Those ${nouns.things} were copied in another tab or before the page reloaded: copy them again here`);
     } else if (text.trim()) {
       e.preventDefault();
       addTextContent(text.trim());
@@ -1118,7 +1125,7 @@
 {#snippet bgBox()}
       <div class="pop">
         <!-- (Its swatch shows the background as it is: the picture's thumbnail when it has one.) -->
-        <button onclick={() => ((bgAt = null), (bgMenu = !bgMenu))} aria-expanded={bgMenu} disabled={previewing} title="The slide's background: a color or a picture">
+        <button onclick={() => ((bgAt = null), (bgMenu = !bgMenu))} aria-expanded={bgMenu} disabled={previewing} title="The {nouns.page}'s background: a color or a picture">
           <span
             class="swatch"
             aria-hidden="true"
@@ -1162,15 +1169,15 @@
             <div class="bg-row">
               {#if slide.background.image}
                 <img class="bg-thumb" src={mediaUrls[slide.background.image]} alt="The slide’s background" draggable="false" />
-                <button class="small" onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="Another picture behind everything on the slide">Change…</button>
+                <button class="small" onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="Another picture behind everything on the {nouns.page}">Change…</button>
                 <button class="small" onclick={() => edit(() => delete slide.background.image)} title="Take the picture off (the color stays; the file stays in 🖼 Media)">⌫ Clear picture</button>
               {:else}
-                <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the slide">🖼 Add a picture…</button>
+                <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the {nouns.page}">🖼 Add a picture…</button>
               {/if}
             </div>
             <hr />
             <button
-              onclick={() => ((bgMenu = false), edit(() => (slide.background = {}), 'Reset the slide background'))}
+              onclick={() => ((bgMenu = false), edit(() => (slide.background = {}), `Reset the ${nouns.page} background`))}
               disabled={!slide.background.image && !slide.background.color}
               title={themedBg ? "Back to the theme's background" : 'Back to the default background'}>↺ Reset background</button
             >
@@ -1230,9 +1237,9 @@
             <button onclick={() => addShape('line')}>― Line</button>
             <button onclick={() => addShape('arrow')}>➝ Arrow</button>
             <div class="head">Draw</div>
-            <button onclick={() => ((shapeMenu = false), (drawing = true))} title="Drag on the slide to draw one line; hold Shift when letting go to close the shape">✏ Freehand line…</button>
+            <button onclick={() => ((shapeMenu = false), (drawing = true))} title="Drag on the {nouns.page} to draw one line; hold Shift when letting go to close the shape">✏ Freehand line…</button>
             <!-- Nothing stays selected behind the drawpad. -->
-            <button onclick={() => ((shapeMenu = false), (selected = []), (drawpad = true))} title="Draw a whole picture (as many strokes as it takes) over the slide, then insert it">🖌 Drawpad…</button>
+            <button onclick={() => ((shapeMenu = false), (selected = []), (drawpad = true))} title="Draw a whole picture (as many strokes as it takes) over the {nouns.page}, then insert it">🖌 Drawpad…</button>
             {#if hotspots}
               <div class="head">On this screen</div>
               <button onclick={addHotspot} title="An invisible area (viewers never see it): give it a class to make part of a picture a doorway, shop…">⬚ Hotspot</button>
@@ -1330,7 +1337,7 @@
         oncontextmenu={(e) => e.target === canvasEl && e.preventDefault()}
         onclick={() => previewing && togglePreview()}
         role="region"
-        aria-label="Slide canvas. Tab and Shift+Tab pick the items on it, Shift+F10 opens the menu for the selection. Drop files or links here."
+        aria-label="{Page(nouns)} canvas. Tab and Shift+Tab pick the {nouns.things} on it, Shift+F10 opens the menu for the selection. Drop files or links here."
       >
         <Stage>
           {#if previewing}
@@ -1480,14 +1487,14 @@
       </div>
     </section>
   {:else}
-    <Tips id="slide" hint="Click an item to edit it, or double-click it (text goes straight to its text field).">
+    <Tips id="slide" hint="Click {aThing(nouns)} to edit it, or double-click it (text goes straight to its text field).">
       <ul>
         <li>Drag to move (press Shift while dragging to keep to one axis), pull the handles to resize (or Ctrl+arrows; arrows alone nudge), and use the round handle to rotate.</li>
-        <li>Drop or paste pictures, videos, sounds and links. Ctrl+C / Ctrl+X / Ctrl+V copy items between slides.</li>
+        <li>Drop or paste pictures, videos, sounds and links. Ctrl+C / Ctrl+X / Ctrl+V copy {nouns.things} between {nouns.page}s.</li>
         <li>Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws one) to select several.</li>
         <li>
-          Something hidden under a bigger item? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> again
-          and again to walk down the stack, <b>Tab</b> to step through items, or use the <b>Layers</b> list. Lock a background so
+          Something hidden under a bigger {nouns.thing}? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> again
+          and again to walk down the stack, <b>Tab</b> to step through {nouns.things}, or use the <b>Layers</b> list. Lock a background so
           clicks go through it.
         </li>
       </ul>
@@ -1504,7 +1511,7 @@
 {#snippet lineUp()}
   <div class="aligns">
     {#if selected.length > 1}
-      <span class="muted small">Line up the selected items…</span>
+      <span class="muted small">Line up the selected {nouns.things}…</span>
       <div class="agrid">
         <button class="small" onclick={() => align('left')} aria-label="Line up their left edges">Left</button>
         <button class="small" onclick={() => align('hcenter')} aria-label="Line up their middles across">Center</button>
@@ -1520,14 +1527,14 @@
         </div>
       {/if}
     {:else}
-      <span class="muted small">Move to the slide's…</span>
+      <span class="muted small">Move to the {nouns.page}'s…</span>
       <div class="agrid">
-        <button class="small" onclick={() => align('left')} aria-label="Move to the slide's left edge">Left</button>
-        <button class="small" onclick={() => align('hcenter')} aria-label="Center across the slide">Center</button>
-        <button class="small" onclick={() => align('right')} aria-label="Move to the slide's right edge">Right</button>
-        <button class="small" onclick={() => align('top')} aria-label="Move to the slide's top edge">Top</button>
-        <button class="small" onclick={() => align('vcenter')} aria-label="Center down the slide">Middle</button>
-        <button class="small" onclick={() => align('bottom')} aria-label="Move to the slide's bottom edge">Bottom</button>
+        <button class="small" onclick={() => align('left')} aria-label="Move to the {nouns.page}'s left edge">Left</button>
+        <button class="small" onclick={() => align('hcenter')} aria-label="Center across the {nouns.page}">Center</button>
+        <button class="small" onclick={() => align('right')} aria-label="Move to the {nouns.page}'s right edge">Right</button>
+        <button class="small" onclick={() => align('top')} aria-label="Move to the {nouns.page}'s top edge">Top</button>
+        <button class="small" onclick={() => align('vcenter')} aria-label="Center down the {nouns.page}">Middle</button>
+        <button class="small" onclick={() => align('bottom')} aria-label="Move to the {nouns.page}'s bottom edge">Bottom</button>
       </div>
     {/if}
   </div>

@@ -45,11 +45,12 @@ const NOUNS: Record<SlideElement['kind'], [string, string]> = {
 
 /**
  * Items as the History names a step done to them: shape “Ellipse”, 3 shapes, or 3 items when they're of different
- * kinds (named from the changes alone, a paste of a text box and two shapes was "Added 3 text boxes").
+ * kinds (named from the changes alone, a paste of a text box and two shapes was "Added 3 text boxes"). `things`: the
+ * editor's word for them (an RPG screen's objects, a board's pictures).
  */
-export function itemsNamed(els: SlideElement[], game: Game, onCard = false): string {
+export function itemsNamed(els: SlideElement[], game: Game, onCard = false, things = 'items'): string {
   if (els.length === 1) return `${NOUNS[els[0].kind][0]} “${short(layerLabel(els[0], game, onCard))}”`;
-  return `${els.length} ${new Set(els.map((e) => e.kind)).size === 1 ? NOUNS[els[0].kind][1] : 'items'}`;
+  return `${els.length} ${new Set(els.map((e) => e.kind)).size === 1 ? NOUNS[els[0].kind][1] : things}`;
 }
 
 /** `onCard`: it's on a 🤫 card, where Sound only isn't used (a card's YouTube video plays in YouTube's own player). */
