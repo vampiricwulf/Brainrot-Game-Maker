@@ -688,8 +688,10 @@
   {#key session.finalStep}
     <!-- The host's clicks: on the wagers, who they wait on (never the question; the keys stay in the wager box); the
          question's next slide or answer; the reveals starting; the spotlit player's card, their next step. -->
+    <!-- (The score bar where the theme puts it, as on the board: Top moves the rest down under it; Hidden leaves it out,
+         the reveal card says each player's total and the host spotlights from the panel or the number keys.) -->
     <div
-      class="full"
+      class="full final-screen bar-{bar}"
       class:clickable={!!onact && session.finalStep !== 'reveal'}
       onmousedown={(e) => onact && session.finalStep === 'wagers' && e.preventDefault()}
       onclick={() =>
@@ -699,10 +701,10 @@
     >
       {#if session.finalStep === 'wagers'}
         {#if finalLabelShown}<div class="final-label">{finalLabel}</div>{/if}
-        <SlideView slide={finalCategorySlide} />
+        <div class="final-cat"><SlideView slide={finalCategorySlide} /></div>
         <div class="final-sub">Make your wagers…</div>
         <!-- The scores stay up while players decide what to wager (a ✔ once a wager is in). -->
-        <div class="score-area"><ScoreBar {game} {session} phones={live.phones} host={!!onact} lit={null} {ticks} /></div>
+        {#if bar !== 'hidden'}<div class="score-area"><ScoreBar {game} {session} phones={live.phones} host={!!onact} lit={null} {ticks} /></div>{/if}
       {:else if session.finalStep === 'question'}
         {#if finalRound}
           {@const fAt = clueSlideIndex(session, finalRound)}
@@ -780,9 +782,11 @@
             {/key}
           {/if}
         </div>
-        <div class="score-area">
-          <ScoreBar {game} {session} phones={live.phones} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" host={!!onact} lit={session.final?.current ?? null} />
-        </div>
+        {#if bar !== 'hidden'}
+          <div class="score-area">
+            <ScoreBar {game} {session} phones={live.phones} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" host={!!onact} lit={session.final?.current ?? null} />
+          </div>
+        {/if}
       {/if}
     </div>
   {/key}
@@ -1635,6 +1639,38 @@
     border: 5px solid;
     border-radius: 16px;
     z-index: 15;
+  }
+  /* The Final's category slide. */
+  .final-cat {
+    position: absolute;
+    inset: 0;
+  }
+  /*
+   * The theme's score bar at the top: the Final's screens as with it at the foot, moved down under it (the category
+   * slide's foot then goes under the stage's edge, as it went under the bar).
+   */
+  .final-screen.bar-top > .score-area {
+    top: 0;
+  }
+  .final-screen.bar-top > .final-cat {
+    top: 230px;
+    bottom: -230px;
+  }
+  .final-screen.bar-top > .final-label {
+    translate: 0 230px;
+  }
+  .final-screen.bar-top > .final-sub {
+    bottom: 20px;
+  }
+  .final-screen.bar-top > .reveal {
+    top: 230px;
+  }
+  /* No score bar: the reveals have the whole stage, and "Make your wagers…" sits lower. */
+  .final-screen.bar-hidden > .final-sub {
+    bottom: 100px;
+  }
+  .final-screen.bar-hidden > .reveal {
+    height: 1080px;
   }
   .final-label {
     position: absolute;

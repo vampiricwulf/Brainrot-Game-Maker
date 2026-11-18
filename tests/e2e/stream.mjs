@@ -9,6 +9,8 @@
 // TIME'S UP joined partway in a window reloaded during it, and not shown again in one reloaded after it. A reload
 // mid-game in one window (the window on stream) opens on the game's cover card, never the editor with the clues still
 // to play: Resume game (covered again if it was), or Go to the editor.
+// 🎨 Score bar Top and Hidden, one window: a score pop inside the bar's band, the Final following the setting, and its
+// reveal card one width from a short name to a long one.
 // On Pastel, one window: a clue zooming in over the board's background, white tool titles, a long cover text, and no
 // lit tile under a still, hidden cursor.
 import { chromium } from 'playwright-core';
@@ -1330,6 +1332,92 @@ async function soonOver() {
   await ctx.close();
 }
 
+/**
+ * 🎨 Theme › Score bar in one window at 1280×720 (Top, then Hidden): on the board a score pop stays inside the bar's
+ * band (never over a row of tiles); the Final follows the setting (plates at the top over its wagers and reveals, or
+ * none at all); and the reveal card keeps one width from a short name to a long one and back.
+ */
+async function finalBar() {
+  const slide = (id, t) => ({ background: {}, elements: [{ id, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
+  for (const scoreBar of ['top', 'hidden']) {
+    console.log(`Score bar ${scoreBar}, from the board to the Final's reveals:`);
+    const game = {
+      id: `g_bar_${scoreBar}`, version: 2, title: 'Bar',
+      settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' } },
+      players: ['Ann', 'Bartholomew Montgomery', 'Cy'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#56b4e9', '#d55e00', '#009e73'][i], startScore: 0 })),
+      rounds: [
+        { id: 'r_b', name: 'Board', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: ['One', 'Two'].map((title, c) => ({ id: `c${c}`, title, clues: [0, 1].map((r) => ({ id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: slide(`qs${c}${r}`, `Clue ${c}-${r}`), answerSlide: slide(`as${c}${r}`, 'Answer') })) })) },
+        { id: 'r_f', name: 'Final Jeopardy!', mode: 'final', category: 'Movies', questionSlide: slide('fq', 'The question'), answerSlide: slide('fa', 'The answer'), timerSeconds: 30, allowNonPositive: true, phoneAnswersOff: true },
+      ],
+      media: [], audio: {}, wheels: [], dice: [], theme: { scoreBar },
+    };
+    mkdirSync(resolve('test-results'), { recursive: true });
+    const gameFile = resolve(`test-results/stream-bar-${scoreBar}.json`);
+    writeFileSync(gameFile, JSON.stringify(game));
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const host = await ctx.newPage();
+    host.on('pageerror', (e) => errors.push(`[bar ${scoreBar}] ${e.message}`));
+    await host.goto(pathToFileURL(file).href);
+    await openGameFile(host, gameFile);
+    await host.getByText(/^Opened “/).waitFor();
+    await host.getByRole('button', { name: '▶ Play' }).click();
+    await host.getByRole('button', { name: 'Start game ▶' }).click();
+    const st = (sel) => host.locator(`.stage-box ${sel}`);
+    /** An element's box in stage pixels (1920×1080), or null. */
+    const box = (sel, i = 0) =>
+      host.evaluate(([sel, i]) => {
+        const s = document.querySelector('.stage-box .stage').getBoundingClientRect();
+        const k = s.width / 1920;
+        const b = document.querySelectorAll(`.stage-box ${sel}`)[i]?.getBoundingClientRect();
+        return b ? { top: (b.top - s.top) / k, bottom: (b.bottom - s.top) / k, width: b.width / k } : null;
+      }, [sel, i]);
+    await st('.board .tile').first().waitFor();
+    await host.waitForTimeout(400);
+
+    if (scoreBar === 'top') {
+      // A pop over Bartholomew's plate at the top: inside the bar's band, clear of the category row under it.
+      await st('.tile[data-clue="q1_1"]').click();
+      await host.keyboard.press('2');
+      await host.keyboard.press('Enter');
+      await host.keyboard.press('Escape');
+      await st('.pop').waitFor();
+      await host.waitForTimeout(400);
+      const [pop, bar, row] = [await box('.pop'), await box('.board-screen .score-area'), await box('.board .tile')];
+      assert(bar.top < 1 && pop.top >= bar.top && pop.bottom <= bar.bottom + 0.5 && pop.bottom <= row.top, `the pop stays in the top bar's band, off the tiles (pop ${Math.round(pop.top)}–${Math.round(pop.bottom)}, bar to ${Math.round(bar.bottom)}, tiles from ${Math.round(row.top)})`);
+    } else assert(!(await st('.board-screen .score-area').count()), 'no score bar on the board');
+
+    await nextRoundOf(host);
+    await st('.final-sub').waitFor();
+    await host.waitForTimeout(400);
+    if (scoreBar === 'top') {
+      const [bar, label, sub] = [await box('.score-area'), await box('.final-label'), await box('.final-sub')];
+      assert(bar.top < 1 && label.top >= bar.bottom && sub.bottom <= 1080, `the wagers: plates at the top, the Final's name under them and “Make your wagers…” on the stage (bar to ${Math.round(bar.bottom)}, name from ${Math.round(label.top)}, words to ${Math.round(sub.bottom)})`);
+    } else assert(!(await st('.score-area').count()), 'the wagers: no plates');
+    const wagers = host.locator('.fj .wagers input[data-wager]');
+    for (let i = 0; i < 3; i++) await wagers.nth(i).fill('0');
+    await host.locator('.fj').click({ position: { x: 2, y: 2 } });
+    await mainButton(host, 'Show question ▶').click();
+    await mainButton(host, '👁 Reveal answer').click();
+    await revealAnyway(host);
+    await mainButton(host, 'Start player reveals ▶').click();
+    const widths = [];
+    for (const n of ['1', '2', '3']) {
+      await host.keyboard.press(n);
+      await host.waitForTimeout(600);
+      const card = await box('.spot');
+      widths.push(Math.round(card.width));
+      if (scoreBar === 'top') {
+        const bar = await box('.score-area');
+        assert(bar.top < 1 && card.top >= bar.bottom && card.bottom <= 1080, `reveal ${n}: the card under the top plates, on the stage (${Math.round(card.top)}–${Math.round(card.bottom)})`);
+      } else assert(!(await st('.score-area').count()) && card.bottom <= 1080, `reveal ${n}: no plates, the card on the stage`);
+    }
+    assert(new Set(widths).size === 1 && widths[0] <= 1920, `the reveal card keeps one width for Ann, Bartholomew Montgomery and Cy (${widths.join(', ')})`);
+    const hint = await host.locator('.panel details.how').textContent();
+    assert(hint.includes('or on the stage') === (scoreBar !== 'hidden'), `the panel's how-to says the stage's plates spotlight only when they're there (${scoreBar})`);
+    await ctx.close();
+  }
+}
+
 /** The next round, from a host page. */
 async function nextRoundOf(p) {
   await p.waitForTimeout(450);
@@ -1545,6 +1633,7 @@ try {
   assert((await page.locator('.stage .score-area .plate.picker').innerText()).includes(spot), 'the score bar lights up the spotlit player');
 
   await soonOver();
+  await finalBar();
   await pastelStage();
   await crowd();
   await viewers();

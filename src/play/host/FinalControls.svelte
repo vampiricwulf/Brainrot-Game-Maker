@@ -97,6 +97,8 @@
   const rule = $derived(`their score, or ${formatPoints(wagerFloor(game.settings), sym)} if they have less`);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   /** Phone buzzer teams: each row is a team, and the buttons say so ("Next team ▶"). */
+  /** The stage's score plates spotlight too, unless the theme hides the score bar (the Final leaves them out then). */
+  const onStage = $derived(game.theme?.scoreBar === 'hidden' ? '' : ' or on the stage');
   const noun = $derived(buzzerOn(game.settings) && teamsOn(game.settings) ? 'team' : 'player');
   const problems = $derived(finalWagerProblems(session, game, override));
   const wagersOk = $derived(finalWagersOk(session, game, override));
@@ -568,7 +570,7 @@
         {#if f.answers}
           <summary class="muted">One by one: spotlight → show answer → right or wrong<span class="not-touch">{' '}(N, C, X)</span></summary>
           <span class="muted small">
-            Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼<span class="not-touch">, Alt+↑/↓</span>).
+            Click a name here{onStage} to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼<span class="not-touch">, Alt+↑/↓</span>).
             <!-- (No keys on a touch screen.) -->
             <span class="not-touch">Keys: N shows their typed answer (or their wager, for a {noun} who answered out loud), C / X judge
             them (their answer and wager go up with it), then N goes to the next {noun} · Shift+N back · 1–9 spotlight (the number
@@ -577,7 +579,7 @@
         {:else}
           <summary class="muted">One by one: spotlight → show wager → right or wrong<span class="not-touch">{' '}(N, C, X)</span></summary>
           <span class="muted small">
-            Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼<span class="not-touch">, Alt+↑/↓</span>).
+            Click a name here{onStage} to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼<span class="not-touch">, Alt+↑/↓</span>).
             <span class="not-touch">Keys: N shows the wager, C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9
             spotlight (the number on each row) · C right · X wrong.</span>
           </span>

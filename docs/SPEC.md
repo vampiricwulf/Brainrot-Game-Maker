@@ -1276,7 +1276,12 @@ back on the tile) instead of opening it; while the keys are there, number keys t
 - Smooth transitions: tile zoom (a clue's question the first time it shows; its next slides, its answer and its question
   again come in quietly), slide fade, score tick animations, and a board-fill animation at round start. Each step
   arrives as one picture (the session and what's over it in one message), as on the host's own copy.
-- Score bar position is configurable: bottom (default), top, or hidden.
+- Score bar position is configurable: bottom (default), top, or hidden. The Final follows it too: at the top, its
+  wagers and reveals sit under the plates; hidden, they're left out (the reveal card says each player's total, and the
+  host spotlights from the panel or with the number keys). On the board a score pop stays inside the bar's band, over
+  its player's plate name, never over a row of tiles.
+- The Final's reveal card keeps one width for the whole Final (its longest player name's, within the stage), so its
+  frame stays put from one player to the next.
 - Can be opened, closed, and reopened without losing sync. On reopen, the full state is resent.
 
 ---
