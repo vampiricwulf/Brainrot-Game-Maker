@@ -1028,13 +1028,14 @@ try {
 
   // Ann's phone is off the network for a while (no Wi-Fi, asleep): after a few tries it checks whether the room is
   // still there. It is, so it keeps trying, and she's back on her buzzer once online again (not "The game is over").
-  // (Online again the moment it asks, in step with the phone: its next try gets through.)
+  // (Online again the second time it asks, in step with the phone: its next try gets through.)
   let asked = '';
+  let asks = 0;
   const checking = (r) => {
     const path = new URL(r.url()).pathname;
     if (!path.startsWith('/api/rooms/')) return;
     asked = path;
-    annTap.blocked = false;
+    if (++asks > 1) annTap.blocked = false;
   };
   ann.on('request', checking);
   await ann.locator('#leave').focus();
@@ -1045,7 +1046,33 @@ try {
     () => !document.getElementById('overlay').hidden && document.querySelector('main').inert && document.getElementById('live').textContent.startsWith(document.getElementById('overlay-text').textContent),
   );
   assert(true, 'reconnecting: the buzzer behind the overlay is inert and #live starts with the overlay text');
-  for (let i = 0; i < 240 && !asked; i++) await sleep(250);
+  // Still away after a few tries, with the phone's own network up (the browser says it's online): it's the buzzer
+  // server, so the phone says so, and that the host knows, not "check your Wi-Fi".
+  const awayLine = () => ann.locator('#overlay-text').innerText();
+  await ann.locator('#overlay-text', { hasText: 'Can’t reach the game’s buzzer server right now' }).waitFor({ timeout: 30_000 });
+  const serverLine = await awayLine();
+  assert(
+    serverLine === 'Can’t reach the game’s buzzer server right now: the host has been told. Keep this page open.' &&
+      !/Wi-Fi|mobile data|internet/.test(serverLine) &&
+      (await ann.locator('#live').innerText()).startsWith(serverLine) &&
+      (await ann.getByRole('button', { name: 'Try again now' }).isVisible()),
+    `still away, online: the phone says the buzzer server can't be reached and the host has been told, with Try again now (${serverLine})`,
+  );
+  // The browser says the phone itself is offline: then it's the Wi-Fi to check. Online again: "Reconnecting…" as it
+  // tries at once.
+  await ann.evaluate(() => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+    window.dispatchEvent(new Event('offline'));
+  });
+  const offLine = await awayLine();
+  assert(offLine === 'Still trying to reconnect… check your Wi-Fi or mobile data', `and offline, it says to check the Wi-Fi or mobile data (${offLine})`);
+  await ann.evaluate(() => {
+    delete navigator.onLine;
+    window.dispatchEvent(new Event('online'));
+  });
+  const backLine = await awayLine();
+  assert(backLine === 'Reconnecting…', `online again, it says "Reconnecting…" as it tries at once (${backLine})`);
+  for (let i = 0; i < 240 && asks < 2; i++) await sleep(250);
   ann.off('request', checking);
   annTap.blocked = false;
   await ann.locator('#overlay').waitFor({ state: 'hidden' });

@@ -140,7 +140,10 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 - **Phones come back**: a phone that gets its seat back (a reload, a new connection) is told where its buzz of the
   current opening stands ("You're 2nd…"). A press the room hasn't answered is kept by the phone page and sent again
   once it is back in its seat, if that opening is still on (the room counts one buzz per seat per opening and answers
-  a repeat with where it stands); otherwise the phone says "Your buzz didn't get through — press again".
+  a repeat with where it stands); otherwise the phone says "Your buzz didn't get through — press again". While it
+  can't reach the room, "Reconnecting…" covers its buzzer; after a few tries, a phone the browser says is online says
+  the game's buzzer server can't be reached right now, that the host has been told (the host panel says the phones
+  aren't connected) and to keep the page open, and only an offline one says to check its Wi-Fi or mobile data.
 - **Floods**: a phone socket sending more than 20 messages a second for 3 seconds in a row, more than 60 in one
   second, or more than 16 KB in one second is closed (4008) before its messages are read, and its address can't
   connect again for 30 seconds. The phone page never sends anything like that (one buzz per 150 ms at most).

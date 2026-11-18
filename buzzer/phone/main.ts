@@ -1188,9 +1188,15 @@ const awayText = (): string => $('overlay-text').textContent || 'Reconnecting…
 function render(): void {
   const away = !connected && everConnected && !notice?.final && !notice?.full && !!code;
   $('overlay').hidden = !away;
-  // Long gone: say what to check, and offer a try now (it keeps trying on its own too).
+  // Long gone: say what's wrong, and offer a try now (it keeps trying on its own too). The phone's own network is up:
+  // it's the buzzer server, which the host's screen shows too (a whole room checking their Wi-Fi would be no help).
+  // Only a phone the browser says is offline is told to check its Wi-Fi.
   const long = away && (attempts > 3 || !navigator.onLine);
-  $('overlay-text').textContent = long ? `Still trying to reconnect… check your ${fine.matches ? 'internet connection' : 'Wi-Fi or mobile data'}` : 'Reconnecting…';
+  $('overlay-text').textContent = !long
+    ? 'Reconnecting…'
+    : navigator.onLine
+      ? 'Can’t reach the game’s buzzer server right now: the host has been told. Keep this page open.'
+      : `Still trying to reconnect… check your ${fine.matches ? 'internet connection' : 'Wi-Fi or mobile data'}`;
   $('overlay-retry').hidden = !long;
   // The page behind the overlay can't be reached (a screen reader or Tab would land on a buzzer that does nothing).
   // That drops focus, so a half-typed answer gets it back (and the phone keyboard) once reconnected.
@@ -2602,6 +2608,8 @@ document.addEventListener('visibilitychange', () => {
 // and sent once back), not after the pings go unanswered for half a minute. Back online, it connects at once.
 window.addEventListener('offline', () => {
   if (ws) dropped(ws);
+  // (Already away and trying again: the overlay now says to check the Wi-Fi.)
+  else render();
 });
 window.addEventListener('online', () => {
   if (!code || notice?.final) return;
@@ -2609,6 +2617,8 @@ window.addEventListener('online', () => {
   clearTimeout(retryTimer);
   if (!ws || ws.readyState !== WebSocket.OPEN) connect();
   else probe();
+  // (Back to "Reconnecting…" while it tries, not "check your Wi-Fi".)
+  render();
 });
 $('leave').addEventListener('click', askLeave);
 $('leave-no').addEventListener('click', keepSeat);
