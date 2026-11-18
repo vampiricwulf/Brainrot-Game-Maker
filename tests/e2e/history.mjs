@@ -464,12 +464,27 @@ try {
   await clue.waitFor();
   await page.getByPlaceholder('Type the question…').fill('Who is Doge?');
   await notice.filter({ hasText: 'Dropped 1 undone step' }).waitFor({ timeout: 3000 });
-  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  // The keyboard reaches its ↶ Undo too: Tab goes on from the window's last button to the note's, then back round.
+  const onBringBack = () => page.evaluate(() => document.activeElement?.hasAttribute('data-bring-back') ?? false);
+  let tabs = 0;
+  while (!(await onBringBack()) && tabs < 80) {
+    await page.keyboard.press('Tab');
+    tabs++;
+  }
+  assert(await onBringBack(), `with the clue editor open, Tab reaches the note's ↶ Undo (${tabs} presses)`);
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  assert(await clue.evaluate((c) => c.contains(document.activeElement)), 'and Tab past the note goes back into the window');
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Shift+Tab');
+  assert(await onBringBack(), 'Shift+Tab back to it from the window');
+  await page.keyboard.press('Enter');
   await page.locator('.toast', { hasText: '↶ Brought back 1 undone step' }).waitFor();
   assert(
     (await clue.isVisible()) && (await page.getByPlaceholder('Type the question…').inputValue()) === asked,
     'in the clue editor too: the note is over the window, and its ↶ Undo works there',
   );
+  assert(await clue.evaluate((c) => c.contains(document.activeElement)), 'and the focus is back in the window once the note goes');
   await clue.getByRole('button', { name: 'Done' }).click();
   await clickAway();
   await key('Control+y');

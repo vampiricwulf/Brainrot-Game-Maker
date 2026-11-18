@@ -61,7 +61,8 @@
     });
     const offDropped = onDropped((count, e) => {
       const said = `Dropped ${count} undone ${count === 1 ? 'step' : 'steps'}`;
-      if (!quiet) place('dropped', e, 8000, said, count);
+      // (Said with the way back: the note's ↶ Undo, which Tab reaches over a window too.)
+      if (!quiet) place('dropped', e, 8000, `${said}: ↶ Undo on its note brings ${count === 1 ? 'it' : 'them'} back`, count);
       else announce(said);
     });
     return () => {
@@ -94,6 +95,36 @@
     if (ok) toast(`${undid} ${n} undone ${n === 1 ? 'step' : 'steps'}: ↷ Redo redoes them`);
   }
 
+  /**
+   * Over a window the Tab cycle takes in the note's buttons (modal.ts, [data-tab-over-modal]). When the note goes with
+   * the focus on one of them, the focus goes back where it came from in the window, not lost to the page.
+   */
+  function giveBack(node: HTMLElement) {
+    // (Where the focus came from while it's on the note; cleared once it moves on to something else.)
+    let from: HTMLElement | null = null;
+    const onfocusin = (e: FocusEvent) => {
+      const t = e.relatedTarget;
+      if (t instanceof HTMLElement && !node.contains(t)) from = t;
+    };
+    const onfocusout = (e: FocusEvent) => {
+      if (e.relatedTarget instanceof Node && !node.contains(e.relatedTarget)) from = null;
+    };
+    node.addEventListener('focusin', onfocusin);
+    node.addEventListener('focusout', onfocusout);
+    return {
+      destroy() {
+        // (By now the note may be out of the page already, the focus with it.)
+        const lost = node.contains(document.activeElement) || !document.activeElement || document.activeElement === document.body;
+        if (!from || !lost) return;
+        const win = [...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')].at(-1);
+        const to = from.isConnected && !from.closest('[inert]') ? from : win;
+        queueMicrotask(() => {
+          if (to?.isConnected && (!document.activeElement || document.activeElement === document.body)) to.focus({ preventScroll: true });
+        });
+      },
+    };
+  }
+
   function showHistory(): void {
     notice = null;
     goTo({ tab: 'history' });
@@ -108,9 +139,11 @@
     class="history-notice note-pill"
     class:over={kind === 'dropped'}
     data-over-modal={kind === 'dropped' || undefined}
+    data-tab-over-modal={kind === 'dropped' || undefined}
+    use:giveBack
     role="region"
     aria-label="Last change"
-    title={kind === 'dropped' ? 'A new change drops the steps you undid (↷): Undo takes it back and brings them back' : [entry.label, entry.where].filter(Boolean).join(' · ')}
+    title={kind === 'dropped' ? 'A new change drops the steps you undid (↷): Undo takes it back and brings them back (over a window, Tab reaches it)' : [entry.label, entry.where].filter(Boolean).join(' · ')}
   >
     <span class="text">
       {#if kind === 'dropped'}

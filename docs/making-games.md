@@ -151,7 +151,8 @@ back the old one.
 - `Ctrl+Z` undoes and `Ctrl+Y` redoes any change in the editor, and takes you to where it happened.
 - Deleting doesn't ask first; the "Deleted … · Undo" note brings it back.
 - A change made after undoing drops the steps you undid (`Ctrl+Y` can't redo them any more). The note "Dropped 2
-  undone steps · ↶ Undo" says so, and its ↶ Undo takes that change back and brings them back.
+  undone steps · ↶ Undo" says so, and its ↶ Undo takes that change back and brings them back. Over an open window,
+  like the clue editor, `Tab` reaches the note's buttons after the window's own.
 - The **🕘 History** tab lists every change and lets you jump back to any point. It survives a reload. **⚙ Settings**
   sets how many changes it keeps (300 by default).
 

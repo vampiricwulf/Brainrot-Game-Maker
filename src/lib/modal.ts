@@ -66,6 +66,12 @@ export function tabbables(box: HTMLElement): HTMLElement[] {
   );
 }
 
+/**
+ * Buttons over a window that its Tab cycle takes in, after its own: [data-tab-over-modal] (the note of the undone steps
+ * a change dropped, whose ↶ Undo is the only way to bring them back). Without this only a mouse could reach them.
+ */
+const tabbablesOver = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>('[data-tab-over-modal]')].flatMap((el) => tabbables(el));
+
 /** Marks everything outside `box` inert (walking up to <body>), returning what it changed. Overlays that stay usable
  * over a window (the Undo note, toasts, menus) carry [data-over-modal]. */
 function inertOutside(box: HTMLElement): HTMLElement[] {
@@ -126,11 +132,18 @@ export function modal(node: HTMLElement, opts: ModalOptions = {}) {
       }
     }
     if (e.key !== 'Tab') return;
-    const list = tabbables(node);
+    const own = tabbables(node);
+    const list = [...own, ...tabbablesOver()];
     if (!list.length) return void e.preventDefault();
     const at = list.indexOf(document.activeElement as HTMLElement);
-    const outside = !node.contains(document.activeElement);
-    if (e.shiftKey && (at <= 0 || outside)) {
+    const outside = at < 0 && !node.contains(document.activeElement);
+    // Into, out of and through the buttons over it: they're elsewhere on the page, so the browser's own Tab wouldn't go
+    // there. (Inside the window it moves as it does, radio groups and all.)
+    const step = e.shiftKey ? -1 : 1;
+    if (list.length > own.length && at >= 0 && (at >= own.length || at + step === own.length)) {
+      e.preventDefault();
+      list[(at + step + list.length) % list.length].focus();
+    } else if (e.shiftKey && (at <= 0 || outside)) {
       e.preventDefault();
       list.at(-1)!.focus();
     } else if (!e.shiftKey && (at === list.length - 1 || outside)) {
