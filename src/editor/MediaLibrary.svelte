@@ -186,7 +186,8 @@
   /** Several files selected: copies for phones of the ones that can have one, and 🗑 Delete them. */
   function manyMenu(): MenuEntry[] {
     const refs = pickedRefs;
-    const copiable = refs.filter((m) => shrinkable(m) && !!mediaUrls[m.id] && !phonesGetLink(m) && !phoneCopyOf(game, m) && !jobFor(m.id));
+    // (Only files on a 🤫 card: phones never get any other, so a copy of one would only make the game bigger.)
+    const copiable = refs.filter((m) => onCards.has(m.id) && shrinkable(m) && !!mediaUrls[m.id] && !phonesGetLink(m) && !phoneCopyOf(game, m) && !jobFor(m.id));
     return menuOf({
       heading: `${refs.length} files selected`,
       verbs: [
@@ -194,7 +195,11 @@
           label: `🗜 Phone copies for ${copiable.length}…`,
           onclick: () => openShrinkDialog(copiable.map((m) => m.id)),
           disabled: !copiable.length,
-          hint: copiable.length ? 'Smaller copies phones get on 🤫 cards (the show keeps the files as they are)' : 'None of them is a video, sound or GIF without a copy yet',
+          hint: copiable.length
+            ? 'Smaller copies phones get on 🤫 cards (the show keeps the files as they are)'
+            : refs.some((m) => onCards.has(m.id))
+              ? 'None of them is a video, sound or GIF on a 🤫 card without a copy yet'
+              : 'None of them is on a 🤫 card: phones never get them',
         },
       ],
       delete: { label: `🗑 Delete ${refs.length} files`, onclick: removePicked, keys: 'Delete', hint: 'Undo brings them back' },

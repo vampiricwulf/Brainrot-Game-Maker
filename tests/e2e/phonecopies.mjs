@@ -195,6 +195,17 @@ try {
     (await card('spare').getByRole('button', { name: /🗜/ }).count()) === 0 && (await card('spare').innerText()).includes('unused'),
     `one on no 🤫 card gets no 🗜: phones never get it (${MB(spare.length)})`,
   );
+  // Selected with one on a card, the selection's menu offers a copy only of that one.
+  await card('spare').locator('.thumb').click({ modifiers: ['Control'] });
+  await card('dance').locator('.thumb').click({ modifiers: ['Control'] });
+  await card('dance').locator('.thumb').click({ button: 'right' });
+  const many = page.getByRole('menu');
+  await many.waitFor();
+  const manyCopies = (await many.getByRole('menuitem', { name: /🗜/ }).innerText()).replace(/\s+/g, ' ');
+  assert(manyCopies.includes('Phone copies for 1…'), `two selected, one on no 🤫 card: 🗜 offers copies of just the other (${manyCopies})`);
+  await page.keyboard.press('Escape');
+  await many.waitFor({ state: 'detached' });
+  await page.keyboard.press('Escape');
   await openShrink('dance');
   const says = (await dialog.innerText()).replace(/\s+/g, ' ');
   assert(says.includes('dance-zfnqj.gif') && says.includes('2.4 s') && says.includes('320×240'), `its dialog names the file, its length and size (the editor isn't on stream): ${says.slice(0, 160)}`);
