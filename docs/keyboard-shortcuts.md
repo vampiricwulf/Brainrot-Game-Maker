@@ -78,6 +78,8 @@ See [Hosting a game](hosting.md) for how the show runs.
 | `I` (RPG, board game) | Player sheet |
 | `D`, then `Enter` (board game) | Roll, then move |
 | `E` (board game) | ✎ Edit board while you play |
+| Shift+click a space (✎ Edit board, and the editor) | Select several: drag one to move them all, `Delete` deletes them |
+| `Alt`+drag from a space (✎ Edit board, and the editor) | Connect it to the space you let go on (or 🔗 Connect to…) |
 
 ## Menus
 

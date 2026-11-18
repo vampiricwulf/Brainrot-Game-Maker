@@ -423,12 +423,44 @@ try {
   await page.mouse.up();
   const x1 = parseFloat(await added.evaluate((e) => e.style.left));
   assert(Math.abs(x1 - (x0 - 250)) < 20 && (await last(page)).includes('Moved space “Space 7”'), `a space dragged moves (${x0} → ${x1}), one step`);
-  // Connect: Space 7 picked, Shift+click Space 3.
+  // Shift+click selects several, as in the editor (it never connects): Space 7 picked, Shift+click Space 3.
   const s3 = await at(1000, 300);
+  const before = await last(page);
   await page.keyboard.down('Shift');
   await page.mouse.click(s3.x, s3.y);
   await page.keyboard.up('Shift');
-  assert((await last(page)).includes('Connected Space 7 → Space 3'), `Shift+click connects the picked space to another (${await last(page)})`);
+  await page.locator('[data-edit-several]').waitFor();
+  assert(
+    (await page.locator('[data-picked-space]').count()) === 2 && (await last(page)) === before && (await page.locator('[data-edit-several]').innerText()).includes('2 spaces selected'),
+    `Shift+click adds a space to the selection: two rings, no step (${await last(page)})`,
+  );
+  const hint = await page.locator('[data-board-editing]').innerText();
+  assert(hint.includes('Shift+click selects several') && hint.includes('Alt+drag connects') && !hint.includes('to connect the picked one'), 'the hint says Shift+click selects several and Alt+drag connects');
+  // Dragged, both move (one step, Ctrl+Z puts them back); a click on one of them, without a drag, picks just it.
+  const s7up = await at(750, 560);
+  const s7down = await at(750, 640);
+  const top3 = () => page.locator('.stage-box .space', { hasText: 'Space 3' }).evaluate((e) => parseFloat(e.style.top));
+  const top3was = await top3();
+  await page.mouse.move(s7up.x, s7up.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++) await page.mouse.move(s7up.x, s7up.y + ((s7down.y - s7up.y) * i) / 6);
+  await page.mouse.up();
+  assert((await top3()) !== top3was && (await last(page)).includes('Moved 2 spaces'), `one of two selected dragged: both move, one step (${await last(page)})`);
+  await page.keyboard.press('Control+z');
+  assert((await top3()) === top3was, 'Ctrl+Z puts them both back');
+  const s7b = await at(750, 560);
+  await page.mouse.click(s7b.x, s7b.y);
+  assert((await page.locator('[data-picked-space]').count()) === 1 && !(await page.locator('[data-edit-several]').count()), 'a click on one of the selected picks just it');
+  // Connect: Alt+drag from Space 7 to Space 3 (🔗 Connect to… does it too).
+  await page.keyboard.down('Alt');
+  await page.mouse.move(s7b.x, s7b.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++) await page.mouse.move(s7b.x + ((s3.x - s7b.x) * i) / 6, s7b.y + ((s3.y - s7b.y) * i) / 6);
+  await page.mouse.up();
+  await page.keyboard.up('Alt');
+  assert((await last(page)).includes('Connected Space 7 → Space 3'), `Alt+drag from the picked space to another connects them (${await last(page)})`);
+  const x7 = parseFloat(await added.evaluate((e) => e.style.left));
+  assert(Math.abs(x7 - x1) < 1, 'Alt+drag moves no space');
   if (shots) await page.screenshot({ path: `${shots}/editing-connected.png` });
   // Disconnect: click the link, Delete.
   const mid = await at((750 + 1000) / 2, (560 + 300) / 2);

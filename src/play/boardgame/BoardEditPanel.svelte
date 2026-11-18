@@ -12,12 +12,14 @@
   import type { BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
   import BoardSpaceButtons from './BoardSpaceButtons.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
-  import { boardEdit, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editKeep, editReverse, editShowName, editSpace, editStart, setEditing } from './boardedit.svelte';
+  import { boardEdit, editAllNames, editBothWays, editConnect, editDelete, editDeleteAll, editDisconnect, editKeep, editPick, editPicked, editReverse, editShowName, editSpace, editStart, setEditing } from './boardedit.svelte';
   import { VERBS } from '../host/verbs';
 
   let { game, session, round, bs, dual }: { game: Game; session: Session; round: BoardGameRound; bs: BoardGameState; dual: boolean } = $props();
 
   const sel = $derived(spaceById(round, boardEdit.sel ?? undefined));
+  /** The spaces selected (Shift+click adds more): with several, the picked one's settings show under their line. */
+  const picked = $derived(editPicked());
   const link = $derived.by(() => {
     const l = boardEdit.link;
     const a = l && spaceById(round, l.from);
@@ -89,12 +91,22 @@
       {:else if boardEdit.connecting && sel}
         Click the space {said(sel)} should lead to…
       {:else}
-        Click a space or a link to pick it · drag a space to move it · Shift+click a space to connect the picked one to it · Ctrl+click or double-click the board to add one · right-click for more
+        Click a space or a link to pick it · drag a space to move it · Shift+click selects several · Alt+drag connects · Ctrl+click or double-click the board to add one · right-click for more
       {/if}
     </span>
   </div>
 
   <!-- (A pick's row comes into view as it's picked: in one window under the stage this part scrolls, the note above it.) -->
+  {#if sel && picked.length > 1}
+    <!-- (A count, never their names: in one window this is on stream, and a secret one would be named.) -->
+    <div class="row" data-edit-several>
+      <b class="small">{picked.length} spaces selected</b>
+      <span class="muted small">Drag one to move them all · Shift+click a space to add or leave it out · Delete deletes them · Esc lets go</span>
+      <span class="spacer"></span>
+      <button class="small" onclick={() => editPick(boardEdit.sel)} title="Keep only the space whose settings are below">Just this one</button>
+      <button class="ghost small danger" onclick={() => editDeleteAll(game, session, picked, hide)} title="Delete them (Ctrl+Z brings them back; players on them move to a space that stays)">🗑 Delete {picked.length} spaces</button>
+    </div>
+  {/if}
   {#if sel}
     {@const s = sel}
     <div class="row pick" data-edit-space={s.id} {@attach (el) => (void boardEdit.sel, el.scrollIntoView({ block: 'nearest' }))}>
@@ -183,7 +195,7 @@
           </span>
         {/each}
       {/if}
-      <button class="small" class:on={boardEdit.connecting} aria-pressed={boardEdit.connecting} onclick={() => (boardEdit.connecting = !boardEdit.connecting)} title="Then click the space it should lead to (or Shift+click it on the stage)">🔗 Connect to…</button>
+      <button class="small" class:on={boardEdit.connecting} aria-pressed={boardEdit.connecting} onclick={() => (boardEdit.connecting = !boardEdit.connecting)} title="Then click the space it should lead to (or Alt+drag from it to that space on the stage)">🔗 Connect to…</button>
       <select
         class="small"
         aria-label="Connect {said(s)} to"

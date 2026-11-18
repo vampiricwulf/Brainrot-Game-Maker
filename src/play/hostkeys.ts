@@ -203,7 +203,9 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['Alt+← / → on a name', 'Move them earlier / later in the turn order (✎ Change opens it; or drag the chip)'],
       ['← ↑ → ↓ on the board', 'Tab to the board, then go from space to space; Enter or Space opens its card, Shift+F10 its menu (a click on the board lets the space go: Enter moves the steps again)'],
       ['E', '✎ Edit board: add, move, delete and connect spaces while you play (E or Esc again: back to playing)'],
-      ['Delete / F2 while editing', 'Delete the picked space or link / rename the picked space'],
+      ['Shift+click a space while editing', 'Select several, as in the editor: drag one to move them all, Delete deletes them'],
+      ['Alt+drag a space while editing', 'Connect it to the space you let go on (or 🔗 Connect to…, then click it)'],
+      ['Delete / F2 while editing', 'Delete the picked spaces or link / rename the picked space'],
     ],
   },
 ];

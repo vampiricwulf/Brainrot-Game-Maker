@@ -106,7 +106,7 @@
   import { currentPlayer, ensureBoard, HOP_MS, spaceSaid, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, focusRef, refindPositions } from '../lib/rpg';
   import { boardNow, isMover, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, revealSpace, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
-  import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
+  import { boardEdit, editDeleteAll, editDisconnect, editIdle, editPicked, setEditing } from './boardgame/boardedit.svelte';
   import { partnerUpVerbs, playerMenu, revealVerbs, type SeatPhone } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
   import { editScreen } from './rpg/screenedit.svelte';
@@ -5878,7 +5878,7 @@
         else editIdle();
       } else setEditing(false);
     } else if (k === 'delete' || k === 'backspace') {
-      if (boardEdit.sel) editDelete(game, session, boardEdit.sel, !dual);
+      if (boardEdit.sel) editDeleteAll(game, session, editPicked(), !dual);
       else if (boardEdit.link) editDisconnect(game, session, boardEdit.link);
     } else if (k === 'f2') {
       hideControls = false;

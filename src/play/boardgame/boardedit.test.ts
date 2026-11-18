@@ -4,7 +4,7 @@ import { newBoardGameRound } from '../../lib/boardgame';
 import { addLiveSpace, connectSpaces, deleteLiveSpace, disconnectSpaces, keepBoard, linkAt, refuge, reverseLink, toggleBothWays } from '../../lib/boardedit';
 import { goToRound, newSession } from '../../lib/session';
 import { redoAction, stepText, undoAction } from '../../lib/toolset';
-import { boardEdit, editAdd, editAllNames, editConnect, editDelete, editDisconnect, editDrag, editShowName, editSpace, editStart, setEditing } from './boardedit.svelte';
+import { boardEdit, editAdd, editAllNames, editConnect, editDelete, editDeleteAll, editDisconnect, editDrag, editPicked, editShowName, editSpace, editStart, editToggle, setEditing } from './boardedit.svelte';
 
 /** A game with a 12-space loop (Start, Space 2…Space 12) and two players, playing it. */
 function setup() {
@@ -190,6 +190,57 @@ describe('editing a board during play: each edit is a named undo step', () => {
     expect(names(round, round.spaces[4].next)).toEqual(['Space 6']);
     setEditing(false);
     expect(boardEdit.on).toBe(false);
+  });
+});
+
+describe('editing a board during play: several spaces at once', () => {
+  it('Shift+click adds a space to the selection or leaves it out, the last one picked', () => {
+    const { id } = setup();
+    setEditing(true);
+    boardEdit.sel = id('Space 3');
+    editToggle(id('Space 5'));
+    editToggle(id('Space 7'));
+    expect(editPicked()).toEqual([id('Space 3'), id('Space 5'), id('Space 7')]);
+    expect(boardEdit.sel).toBe(id('Space 7'));
+    editToggle(id('Space 7'));
+    expect(editPicked()).toEqual([id('Space 3'), id('Space 5')]);
+    expect(boardEdit.sel).toBe(id('Space 5'));
+    setEditing(false);
+    expect(editPicked()).toEqual([]);
+  });
+
+  it('deletes them as one step that says how many and who moved, and one Undo brings them all back', () => {
+    const { game, round, session, bs, id } = setup();
+    setEditing(true);
+    const log = () => session.actionLog?.at(-1);
+    const steps = session.actionLog?.length ?? 0;
+    bs.positions.a = { space: id('Space 6') };
+    editDeleteAll(game, session, [id('Space 5'), id('Space 6')]);
+    expect(session.actionLog!.length).toBe(steps + 1);
+    expect(log()?.text).toBe('Deleted 2 spaces (Ann moved to Space 4)');
+    expect(round.spaces).toHaveLength(10);
+    expect(editPicked()).toEqual([]);
+    undoAction(session, game);
+    expect(round.spaces).toHaveLength(12);
+    expect(session.boardgames![round.id].positions.a.space).toBe(id('Space 6'));
+    // A secret space not revealed yet: a single window's step doesn't name where a player went.
+    round.spaces.find((s) => s.name === 'Space 4')!.secret = true;
+    editDeleteAll(game, session, [id('Space 5'), id('Space 6')], true);
+    expect(stepText(log()!, true)).toBe('Deleted 2 spaces (Ann moved to ? (secret))');
+    expect(stepText(log()!, false)).toBe('Deleted 2 spaces (Ann moved to Space 4)');
+    // A board keeps a space: every one of them selected, nothing goes.
+    const all = round.spaces.map((s) => s.id);
+    editDeleteAll(game, session, all);
+    expect(round.spaces).toHaveLength(all.length);
+    setEditing(false);
+  });
+
+  it('a drag of several is one step, “Moved 3 spaces”', () => {
+    const { game, round, session, id } = setup();
+    const end = editDrag(game, session, id('Space 3'), 3);
+    for (const n of ['Space 3', 'Space 4', 'Space 5']) round.spaces.find((s) => s.name === n)!.x += 40;
+    end();
+    expect(session.actionLog?.at(-1)?.text).toBe('Moved 3 spaces');
   });
 });
 

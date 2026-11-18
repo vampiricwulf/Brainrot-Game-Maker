@@ -1,7 +1,9 @@
 <!--
   ✎ Edit board, on the host's stage: over the board, it takes the clicks and drags. Click a space or a link to pick it,
-  drag a space to move it, Shift+click another space to connect the picked one to it, Ctrl+click or double-click an empty
-  spot to add a space (or ＋ Space, then click), right-click for more. Its marks are quiet (a dashed ring, a dashed
+  drag a space to move it, Shift+click spaces to select several (dragged together, deleted together), Alt+drag from a
+  space to another to connect them (or 🔗 Connect to…, then click), Ctrl+click or double-click an empty spot to add a
+  space (or ＋ Space, then click), right-click for more: the editor's gestures, so a host used to one isn't surprised
+  by the other on stream. Its marks are quiet (a dashed ring, a dashed
   link): in a single window, viewers see them, so there (`hide`) a secret space not revealed yet is “? (secret)” in its
   menu and in what the edits say.
 -->
@@ -10,7 +12,7 @@
   import { linkAt } from '../../lib/boardedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { SLIDE_H, SLIDE_W, type BoardGameRound, type BoardSpace, type Game, type Session } from '../../lib/model';
-  import { boardEdit, editAdd, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editDrag, editIdle, editReverse, editShowName, editStart } from './boardedit.svelte';
+  import { boardEdit, editAdd, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editDrag, editIdle, editPick, editPicked, editReverse, editShowName, editStart, editToggle } from './boardedit.svelte';
   import { boardNow } from './bgops';
 
   let { game, session, round, hide = false }: { game: Game; session: Session; round: BoardGameRound; hide?: boolean } = $props();
@@ -21,9 +23,12 @@
 
   const R = 58;
   let el = $state<HTMLDivElement>();
-  /** The pointer, on the board (for the line Connect to… draws). */
+  /** The pointer, on the board (for the line Connect to… and Alt+drag draw). */
   let hover = $state<{ x: number; y: number } | null>(null);
-  let drag: { id: string; sx: number; sy: number; ox: number; oy: number; end: (() => void) | null } | null = null;
+  /** A drag of the selected spaces (from where each was), started on `id`. */
+  let drag: { id: string; sx: number; sy: number; at: Map<string, { x: number; y: number }>; end: (() => void) | null } | null = null;
+  /** Alt+drag from a space: a link drawn to where the pointer is let go. */
+  let wire = $state<string | null>(null);
 
   function toBoard(e: MouseEvent): { x: number; y: number } {
     const r = el!.getBoundingClientRect();
@@ -39,43 +44,78 @@
     const s = spaceAt(p);
     if (s) {
       const from = boardEdit.sel;
-      if (from && from !== s.id && (boardEdit.connecting || e.shiftKey)) return editConnect(game, session, from, s.id, hide);
-      boardEdit.sel = s.id;
+      if (from && from !== s.id && boardEdit.connecting) return editConnect(game, session, from, s.id, hide);
+      if (e.altKey) {
+        editPick(s.id);
+        boardEdit.link = null;
+        boardEdit.adding = false;
+        boardEdit.connecting = false;
+        wire = s.id;
+        hover = p;
+        capture(e);
+        return;
+      }
+      if (e.shiftKey) return editToggle(s.id);
+      // (A press on one of several selected keeps them all: they drag together. A click without a drag picks just it.)
+      if (!editPicked().includes(s.id)) editPick(s.id);
       boardEdit.link = null;
       boardEdit.adding = false;
-      drag = { id: s.id, sx: p.x, sy: p.y, ox: s.x, oy: s.y, end: null };
-      try {
-        el?.setPointerCapture(e.pointerId);
-      } catch {
-        // (A synthetic pointer can't be captured: the drag still works over the board.)
-      }
+      boardEdit.connecting = false;
+      const ids = editPicked();
+      const at = new Map(ids.map((id) => spaceById(round, id)).filter((x) => !!x).map((x) => [x.id, { x: x.x, y: x.y }]));
+      drag = { id: s.id, sx: p.x, sy: p.y, at, end: null };
+      capture(e);
       return;
     }
     if (boardEdit.adding || e.ctrlKey || e.metaKey) return editAdd(game, session, p);
     const l = linkAt(round, p);
     if (l) {
       boardEdit.link = l;
-      boardEdit.sel = null;
+      editPick(null);
       boardEdit.connecting = false;
       return;
     }
     editIdle();
   }
 
+  function capture(e: PointerEvent): void {
+    try {
+      el?.setPointerCapture(e.pointerId);
+    } catch {
+      // (A synthetic pointer can't be captured: the drag still works over the board.)
+    }
+  }
+
   function move(e: PointerEvent): void {
     const p = toBoard(e);
     hover = p;
     if (!drag) return;
-    const s = spaceById(round, drag.id);
-    if (!s) return;
     if (!drag.end && Math.abs(p.x - drag.sx) + Math.abs(p.y - drag.sy) < 6) return;
-    drag.end ??= editDrag(game, session, drag.id);
-    const at = clampToBoard(drag.ox + p.x - drag.sx, drag.oy + p.y - drag.sy);
-    s.x = at.x;
-    s.y = at.y;
+    drag.end ??= editDrag(game, session, drag.id, drag.at.size);
+    // As far as keeps every one of them on the board, so they keep their shape.
+    const was = [...drag.at.values()];
+    const lo = clampToBoard(-Infinity, -Infinity);
+    const hi = clampToBoard(Infinity, Infinity);
+    const dx = Math.max(lo.x - Math.min(...was.map((w) => w.x)), Math.min(hi.x - Math.max(...was.map((w) => w.x)), p.x - drag.sx));
+    const dy = Math.max(lo.y - Math.min(...was.map((w) => w.y)), Math.min(hi.y - Math.max(...was.map((w) => w.y)), p.y - drag.sy));
+    for (const [id, w] of drag.at) {
+      const s = spaceById(round, id);
+      if (!s) continue;
+      s.x = Math.round(w.x + dx);
+      s.y = Math.round(w.y + dy);
+    }
   }
 
-  function up(): void {
+  function up(e: PointerEvent): void {
+    if (wire) {
+      const from = wire;
+      wire = null;
+      const to = spaceAt(toBoard(e));
+      if (to && to.id !== from) editConnect(game, session, from, to.id, hide);
+      return;
+    }
+    // A click (no drag) on one of several selected picks just that one.
+    if (drag && !drag.end && drag.at.size > 1) editPick(drag.id);
     drag?.end?.();
     drag = null;
   }
@@ -95,12 +135,12 @@
     const s = spaceAt(p);
     const l = s ? null : linkAt(round, p);
     if (s) {
-      boardEdit.sel = s.id;
+      if (!editPicked().includes(s.id)) editPick(s.id);
       boardEdit.link = null;
       return showMenu(e, [
         { heading: said(s) },
         { label: '✎ Rename', keys: 'F2', onclick: () => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select() },
-        { label: '🔗 Connect to…', hint: 'Then click the space it leads to (or Shift+click it)', onclick: () => (boardEdit.connecting = true) },
+        { label: '🔗 Connect to…', hint: 'Then click the space it leads to (or Alt+drag from it)', onclick: () => (boardEdit.connecting = true) },
         { label: '🏁 Make it the start', disabled: (round.start ?? round.spaces[0]?.id) === s.id, onclick: () => editStart(game, session, s.id) },
         nameShown(s)
           ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => editShowName(game, session, s.id, false) }
@@ -112,7 +152,7 @@
     }
     if (l) {
       boardEdit.link = l;
-      boardEdit.sel = null;
+      editPick(null);
       const both = !!spaceById(round, l.to)?.next.includes(l.from);
       return showMenu(e, [
         { label: both ? '→ One way only' : '⇄ Both ways', onclick: () => editBothWays(game, session, l) },
@@ -131,6 +171,9 @@
   }
 
   const sel = $derived(spaceById(round, boardEdit.sel ?? undefined));
+  /** The others selected with it (a ring each, as the picked one's). */
+  const also = $derived(boardEdit.also.map((id) => spaceById(round, id)).filter((s) => !!s && s.id !== boardEdit.sel) as BoardSpace[]);
+  const wired = $derived(wire ? spaceById(round, wire) : undefined);
   const link = $derived.by(() => {
     const l = boardEdit.link;
     const a = l && spaceById(round, l.from);
@@ -146,7 +189,12 @@
   onpointerdown={down}
   onpointermove={move}
   onpointerup={up}
-  onpointercancel={up}
+  onpointercancel={() => {
+    // (Cut off, not let go: no link made; a drag so far is kept as a step.)
+    wire = null;
+    drag?.end?.();
+    drag = null;
+  }}
   onpointerleave={() => (hover = null)}
   ondblclick={dbl}
   oncontextmenu={menu}
@@ -157,6 +205,12 @@
   <svg viewBox="0 0 {SLIDE_W} {SLIDE_H}" aria-hidden="true">
     {#if link}
       <line x1={link.a.x} y1={link.a.y} x2={link.b.x} y2={link.b.y} class="picked-link" data-picked-link="{link.a.id}>{link.b.id}" />
+    {/if}
+    {#each also as s (s.id)}
+      <circle cx={s.x} cy={s.y} r={R + 16} class="picked" data-picked-space={s.id} />
+    {/each}
+    {#if wired && hover}
+      <line x1={wired.x} y1={wired.y} x2={hover.x} y2={hover.y} class="wire" />
     {/if}
     {#if sel}
       <circle cx={sel.x} cy={sel.y} r={R + 16} class="picked" data-picked-space={sel.id} />

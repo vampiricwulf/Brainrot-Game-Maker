@@ -15,11 +15,22 @@ export type LinkRef = { from: string; to: string };
 
 /**
  * Edit mode, and what's picked in it: a space or a link; ＋ Space waits for a click; Connect to… waits for the other space;
- * the space whose ⚙ Buttons… window is open (in one window it goes over the host panel).
+ * the space whose ⚙ Buttons… window is open (in one window it goes over the host panel). `also`: the other spaces
+ * selected with the picked one (Shift+click, as in the editor): they move and delete together; the panel shows the
+ * picked one.
  */
-export const boardEdit = $state<{ on: boolean; sel: string | null; link: LinkRef | null; adding: boolean; connecting: boolean; buttons: string | null }>({
+export const boardEdit = $state<{
+  on: boolean;
+  sel: string | null;
+  also: string[];
+  link: LinkRef | null;
+  adding: boolean;
+  connecting: boolean;
+  buttons: string | null;
+}>({
   on: false,
   sel: null,
+  also: [],
   link: null,
   adding: false,
   connecting: false,
@@ -29,6 +40,7 @@ export const boardEdit = $state<{ on: boolean; sel: string | null; link: LinkRef
 /** Clear what's picked and waiting (edit mode stays as it is). */
 export function editIdle(): void {
   boardEdit.sel = null;
+  boardEdit.also = [];
   boardEdit.link = null;
   boardEdit.adding = false;
   boardEdit.connecting = false;
@@ -39,6 +51,31 @@ export function setEditing(on: boolean): void {
   editIdle();
   if (!on) boardEdit.buttons = null;
   boardEdit.on = on;
+}
+
+/** The spaces selected: the picked one last. */
+export function editPicked(): string[] {
+  return boardEdit.sel ? [...boardEdit.also.filter((id) => id !== boardEdit.sel), boardEdit.sel] : [];
+}
+
+/** Pick just this space (or none): the others selected with it let go. */
+export function editPick(id: string | null): void {
+  boardEdit.sel = id;
+  boardEdit.also = [];
+}
+
+/**
+ * Shift+click on a space: it joins the selection (picked, so the panel shows it), or leaves it when it's in it already
+ * (the one picked before it is picked again).
+ */
+export function editToggle(id: string): void {
+  const all = editPicked();
+  const now = all.includes(id) ? all.filter((x) => x !== id) : [...all, id];
+  boardEdit.sel = now.at(-1) ?? null;
+  boardEdit.also = now.slice(0, -1);
+  boardEdit.link = null;
+  boardEdit.adding = false;
+  boardEdit.connecting = false;
 }
 
 /** A space's name as an edit says it (`hide`: one window, a secret one not revealed yet is “? (secret)”). */
@@ -73,14 +110,17 @@ export function editAdd(game: Game, session: Session, at: { x: number; y: number
   edit(game, session, (h) => `Added space “${name}”${after ? ` after ${nm(game, session, after, h)}` : ''}`, () => (id = addLiveSpace(round, at, after).id));
   boardEdit.adding = false;
   boardEdit.link = null;
-  boardEdit.sel = id;
+  editPick(id);
 }
 
-/** Start dragging a space: everything until the returned end() is one step, “Moved space …” (nothing if it didn't move). */
-export function editDrag(game: Game, session: Session, id: string): () => void {
+/**
+ * Start dragging a space (or several selected together, `count`): everything until the returned end() is one step,
+ * “Moved space …” or “Moved 3 spaces” (nothing if it didn't move).
+ */
+export function editDrag(game: Game, session: Session, id: string, count = 1): () => void {
   const { round } = boardNow(game, session);
   const done = startStep(session, game);
-  const label = (h: boolean) => `Moved space ${nm(game, session, round && spaceById(round, id), h)}`;
+  const label = (h: boolean) => (count > 1 ? `Moved ${count} spaces` : `Moved space ${nm(game, session, round && spaceById(round, id), h)}`);
   return () => done(label(false), label(true));
 }
 
@@ -98,9 +138,45 @@ export function editDelete(game: Game, session: Session, id: string, hide = fals
     if (done.quiet !== done.text) last.quiet = done.quiet;
     else delete last.quiet;
   }
-  if (boardEdit.sel === id) boardEdit.sel = null;
+  if (boardEdit.sel === id) editPick(null);
   boardEdit.link = null;
   if (done) toast(hide ? done.quiet : done.text, 4000);
+}
+
+/**
+ * Delete several spaces as one step, “Deleted 3 spaces” (the log says who moved where). A board keeps one space: with
+ * every space selected, nothing is deleted.
+ */
+export function editDeleteAll(game: Game, session: Session, ids: string[], hide = false): void {
+  const { round, bs } = boardNow(game, session);
+  if (!round) return;
+  ids = ids.filter((id) => spaceById(round, id));
+  if (ids.length === 1) return editDelete(game, session, ids[0], hide);
+  if (!ids.length) return;
+  if (round.spaces.length <= ids.length) return void toast('A board needs a space: leave one out of the selection (Shift+click it)');
+  const done: Deleted[] = [];
+  logged(session, `Deleted ${ids.length} spaces`, () => {
+    for (const id of ids) {
+      const d = deleteLiveSpace(session, round, bs, id, (s) => said(game, session, s, true));
+      if (d) done.push(d);
+    }
+  }, game);
+  // (The log says who moved where, as one space's delete does: each player moved, where they ended up.)
+  const moved = [...new Set(done.flatMap((d) => d.moved.map((m) => m.playerId)))].filter((pid) => session.players.some((p) => p.id === pid));
+  const line = (h: boolean) => {
+    const m = moved.map((pid) => `${session.players.find((p) => p.id === pid)?.name ?? '?'} moved to ${said(game, session, spaceById(round, bs?.positions[pid]?.space), h)}`);
+    return `Deleted ${ids.length} spaces${m.length ? ` (${m.join('; ')})` : ''}`;
+  };
+  const [text, quiet] = [line(false), line(true)];
+  const last = session.actionLog?.at(-1);
+  if (last && last.text === `Deleted ${ids.length} spaces`) {
+    last.text = text;
+    if (quiet !== text) last.quiet = quiet;
+    else delete last.quiet;
+  }
+  editPick(null);
+  boardEdit.link = null;
+  toast(hide ? quiet : text, 4000);
 }
 
 /** Connect the space picked to another (one way, from → to). */
@@ -112,7 +188,7 @@ export function editConnect(game: Game, session: Session, from: string, to: stri
   const [a, b] = [spaceById(round, from), spaceById(round, to)];
   if (a?.next.includes(to)) return void toast(`${nm(game, session, a, hide)} already leads to ${nm(game, session, b, hide)}`);
   edit(game, session, (h) => `Connected ${said(game, session, a, h)} → ${said(game, session, b, h)}`, () => connectSpaces(round, from, to));
-  boardEdit.sel = null;
+  editPick(null);
   boardEdit.link = { from, to };
 }
 

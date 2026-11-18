@@ -878,7 +878,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   two lines there (it's one line, cut short, under the stage). Then a space's card, the turn
   order in one line with ✎ Change (a RememberedFold, `jb.turnOrderOpen`, closed at first; the chips, their drag and
   `Alt+←/→`, and 🔀 Shuffle inside), and a line with ✎ Edit board (`E`), 🗂 Spaces…, 📺 The board, 🛒 Shop…, the Last:
-  step and ▸ Players. In one window 📍 Send … to… and 🗂 Spaces… name a secret space not revealed yet “? (secret)”
+  step and ▸ Players. ✎ Edit board (BoardEditLayer on the stage, BoardEditPanel in the box) has the editor's gestures,
+  one meaning per modifier: Shift+click selects several (`boardEdit.also` beside the picked `sel`: dragged together as
+  one step, `Delete` deletes them as one, “Deleted 3 spaces”), Alt+drag from a space or 🔗 Connect to… connects,
+  Ctrl+click or a double-click on the board adds. In one window 📍 Send … to… and 🗂 Spaces… name a secret space not revealed yet “? (secret)”
   (spaceListShown), and every step, point and card offer its buttons make keeps a quiet text that says it so
   (ActionEvent.quiet, ScoreEvent.quiet, CardOffer.quiet), whichever window it was made in. A 🤫 card an action
   offers keeps where it was made (OpenOffer.at: 'land', 'space:<id>', 'object:<id>', 'tool'), and shows under that
