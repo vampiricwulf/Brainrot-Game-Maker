@@ -326,7 +326,7 @@ try {
     const bgs = await at.locator('.canvas .slide').evaluate((e) => [e, e.closest('.se').querySelector('.swatch')].map((x) => getComputedStyle(x).backgroundColor));
     await at.getByRole('button', { name: /Background ▾/ }).click();
     const title = await at.getByRole('button', { name: '↺ Reset background' }).getAttribute('title');
-    await at.getByLabel('Slide background color').press('Escape');
+    await at.getByLabel(/^(Slide|Board) background color$/).press('Escape');
     return { bgs, title };
   };
   await page.getByRole('button', { name: '🖼 Board backdrop' }).click();

@@ -236,9 +236,35 @@ describe('step labels', () => {
     const el = (g: Game) => screens(g)[1].slide.elements;
     expect(step((g) => ((el(g)[1].x += 10), (el(g)[1].y += 5))).label).toBe('Moved object “Old Man”');
     expect(step((g) => ((el(g)[1].w = 300), (el(g)[1].x = 0))).label).toBe('Resized object “Old Man”');
-    expect(step((g) => ((el(g)[0].x += 10), (el(g)[1].x += 10))).label).toBe('Moved 2 items');
-    expect(step((g) => ((el(g)[0].zIndex = 2), (el(g)[1].zIndex = 1))).label).toBe('Restacked items');
+    // In the words of the editor they're in: objects on an RPG screen (and its looks), pictures on a board game's
+    // backdrop, items on a slide.
+    expect(step((g) => ((el(g)[0].x += 10), (el(g)[1].x += 10))).label).toBe('Moved 2 objects');
+    expect(step((g) => ((el(g)[0].zIndex = 2), (el(g)[1].zIndex = 1))).label).toBe('Restacked objects');
     expect(step((g) => ((el(g)[0].rotation = 15))).label).toBe('Rotated text box “Welcome”');
+    expect(step((g) => (screens(g)[1].slide.background.color = '#123456')).label).toBe('Screen background color #123456');
+    const look = sample();
+    screens(look)[1].variants = [newVariant(undefined, screens(look)[1], 'Night')];
+    const night = (g: Game) => screens(g)[1].variants![0].slide;
+    night(look).elements.push(newTextEl('A'), newTextEl('B'));
+    const lookMoved = structuredClone(look);
+    night(lookMoved).elements.slice(-2).forEach((e) => (e.w += 20));
+    expect(describeStep(diff(look, lookMoved), look, lookMoved).label).toBe('Resized 2 objects');
+    const q = (g: Game) => board(g).categories[0].clues[1].questionSlide;
+    const two = sample();
+    q(two).elements.push(newTextEl('Second'));
+    const twoMoved = structuredClone(two);
+    q(twoMoved).elements.forEach((e) => (e.x += 10));
+    expect(describeStep(diff(two, twoMoved), two, twoMoved).label).toBe('Moved 2 items');
+    const race = sample();
+    race.rounds.push(newBoardGameRound('Race'));
+    const backdrop = (g: Game) => (g.rounds.at(-1) as BoardGameRound).slide;
+    backdrop(race).elements.push(newTextEl('A'), newTextEl('B'));
+    const raceMoved = structuredClone(race);
+    backdrop(raceMoved).elements.forEach((e) => (e.rotation = 10));
+    expect(describeStep(diff(race, raceMoved), race, raceMoved).label).toBe('Rotated 2 pictures');
+    const raceBg = structuredClone(race);
+    backdrop(raceBg).background.color = '#00ff00';
+    expect(describeStep(diff(race, raceBg), race, raceBg).label).toBe('Board background color #00ff00');
   });
 
   it('names rules, sounds, the theme, files, wheels and the tiebreaker', () => {

@@ -304,8 +304,9 @@ try {
     /** Everything the slide editor says (its text, tooltips and labels, its Tips folded or not). */
     const says = () =>
       page.locator('.se').evaluate((se) => [se.textContent, ...[...se.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? ''])].join('\n'));
-    // (Entrance animations “Slide from left” are a way in, and 📦 Item ▾ adds a catalog item: not its nouns.)
-    const strays = (t) => t.replace(/Slide from \w+/g, '').replace(/📦 Item ▾?|an item from the catalog/g, '').match(/[^\n.]*\b(items?|slides?|slide['’]s)\b[^\n.]*/gi) ?? [];
+    // (Entrance animations “Slide from left” are a way in, 📦 Item ▾ adds a catalog item and an object's Class can be
+    // 📦 Item: not its nouns.)
+    const strays = (t) => t.replace(/Slide from \w+/g, '').replace(/📦 Item( ▾)?|an item from the catalog/g, '').match(/[^\n.]*\b(items?|slides?|slide['’]s)\b[^\n.]*/gi) ?? [];
     // An RPG screen: objects on a screen.
     await addRound(/Mini quest/);
     await page.getByRole('button', { name: 'Screen Forest' }).focus();
@@ -320,6 +321,27 @@ try {
     t = await says();
     assert(t.includes('2 objects selected') && t.includes('Line up the selected objects'), 'two of them are “2 objects”');
     assert(!strays(t).length, `nothing in it says item or slide (${strays(t).join(' | ')})`);
+    // Its steps and notes too: the two dragged together are “Moved 2 objects”, ▶ Preview previews the screen, and one
+    // moved off it is “off the screen”.
+    const undoTip = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+    const coinsId = await page.locator('.layers-box .row').filter({ hasText: 'Gold coins' }).getAttribute('data-layer');
+    const cb = await page.locator(`.se .slide .el[data-el="${coinsId}"]`).boundingBox();
+    await page.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2);
+    await page.mouse.down();
+    for (let i = 1; i <= 6; i++) await page.mouse.move(cb.x + cb.width / 2 + i * 6, cb.y + cb.height / 2 + i * 3);
+    await page.mouse.up();
+    assert((await undoTip()).includes('Moved 2 objects'), `two objects dragged: “Moved 2 objects” (${await undoTip()})`);
+    await page.keyboard.press('Control+z');
+    await page.locator('.se').getByRole('button', { name: '▶ Preview' }).click();
+    t = await says();
+    assert(t.includes('Previewing the screen') && !strays(t).length, `▶ Preview says the screen (${strays(t).join(' | ')})`);
+    await page.keyboard.press('Escape');
+    await page.locator('.layers-box .row').filter({ hasText: 'Gold coins' }).locator('.name').click();
+    await page.locator('.insp section:has(h4:text("Position"))').getByLabel('X', { exact: true }).fill('5000');
+    await page.keyboard.press('Enter');
+    t = await says();
+    assert(t.includes('off the screen') && !strays(t).length, `one off it is “off the screen” (${strays(t).join(' | ')})`);
+    await page.keyboard.press('Control+z');
     // A board game's backdrop: pictures on the board.
     await addRound(/Race to the finish/);
     await page.getByRole('button', { name: /Board backdrop/ }).click();

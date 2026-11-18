@@ -811,7 +811,7 @@ try {
   assert(bgs.every((c) => c === 'rgb(47, 107, 58)'), `a screen with its background reset shows green in the editor, as on stage (${bgs.join(', ')})`);
   await page.getByRole('button', { name: /Background ▾/ }).click();
   assert((await page.getByRole('button', { name: '↺ Reset background' }).getAttribute('title')) === 'Back to the default background', "and its Reset doesn't say it's the theme's");
-  await page.getByLabel('Slide background color').press('Escape');
+  await page.getByLabel('Screen background color').press('Escape');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
   // Clearing Columns (to type another number) deletes nothing: the box shows the size again.
   await page.locator('summary', { hasText: 'Map settings' }).click();

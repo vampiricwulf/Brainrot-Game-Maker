@@ -525,7 +525,7 @@
         {#if el.kind !== 'embed'}
           <p class="hint">
             {#if cuts}Only this {say.thing}. To cut the file itself (smaller, everywhere): <b>{el.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…'}</b> at the
-              top.{:else}Only this item: the file itself stays whole.{/if}
+              top.{:else}Only this {say.thing}: the file itself stays whole.{/if}
           </p>
         {/if}
         <h5>When it plays</h5>

@@ -11,7 +11,7 @@
   import { LAYER_ICON, editWords, layerLabel, type Align, type LayerAction } from '../../lib/layerlabel';
   import { dropdown, menuKeys } from '../../lib/menustate.svelte';
   import { editOffer } from '../../lib/shrink/apply';
-  import { countOf, Page, slideNouns } from './nouns';
+  import { aThing, countOf, Page, slideNouns } from './nouns';
 
   let {
     x,
@@ -118,7 +118,7 @@
 <div class="menu" style:left="{left}px" style:top="{top}px" bind:clientWidth={w} bind:clientHeight={h} role="menu" aria-label="{Page(say)} {say.thing} menu" use:dropdown={onclose}>
   <div class="head">{selected.length > 1 ? countOf(selected.length, say) : selected.length ? layerLabel(selected[0], game) : (where ?? `This ${say.page}`)}</div>
   {#if picks}
-    <div class="sub">Select an item here</div>
+    <div class="sub">Select {aThing(say)} here</div>
     {#each stack as el (el.id)}
       {@const thumb = el.kind === 'image' ? mediaUrls[el.editedMedia ?? el.media] : undefined}
       <button

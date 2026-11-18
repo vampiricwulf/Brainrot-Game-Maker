@@ -668,6 +668,17 @@ function themeValue(k: Seg, v: unknown): string {
 const fieldName = (k: Seg) => (typeof k === 'number' ? 'item' : (FIELDS[k] ?? k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()));
 export { short };
 const quoted = (name: string) => (name.trim() ? ` “${short(name)}”` : '');
+/**
+ * What the slide editor calls the page and several of the things on it (nouns.ts), for the slide whose path ends at
+ * `end` in `p`: an RPG screen's objects (a screen's or one of its looks'), a board game's backdrop pictures on the
+ * board, a slide's items.
+ */
+function slideWords(game: Game, p: readonly Seg[], end: number): { page: string; things: string } {
+  if (p[0] === 'worlds' && p[end - 1] === 'slide' && (end === 7 || (end === 9 && p[6] === 'variants'))) return { page: 'screen', things: 'objects' };
+  if (p[0] === 'rounds' && end === 3 && p[2] === 'slide' && byId<Round>(game.rounds, p[1])?.mode === 'boardgame') return { page: 'board', things: 'pictures' };
+  return { page: 'slide', things: 'items' };
+}
+
 const nounOf = (at: At) => (at.noun === 'game' ? 'the game' : at.noun);
 const what = (at: At) => nounOf(at) + quoted(at.name);
 function plural(noun: string): string {
@@ -991,10 +1002,12 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   }
   // A slide's background (not a text box's background box): its colour, its picture, or all of it reset.
   const bg = slideBackground(op);
-  if (bg === 'whole') return 'Reset the slide background';
-  if (bg === 'color') return v ? `Slide background color ${String(v)}` : 'Removed the slide background color';
-  if (bg === 'image') return v ? 'Slide background picture' : 'Removed the slide background picture';
-  if (bg) return 'Changed the slide background';
+  // (The screen's or the board's, in the words of the editor it's in.)
+  const page = bg ? slideWords(after, op.p, bg === 'whole' ? op.p.length : op.p.length - 1).page : 'slide';
+  if (bg === 'whole') return `Reset the ${page} background`;
+  if (bg === 'color') return v ? `${page[0].toUpperCase()}${page.slice(1)} background color ${String(v)}` : `Removed the ${page} background color`;
+  if (bg === 'image') return v ? `${page[0].toUpperCase()}${page.slice(1)} background picture` : `Removed the ${page} background picture`;
+  if (bg) return `Changed the ${page} background`;
   if (!op.p.length && k === 'tiebreaker') return v === undefined ? 'Tiebreaker off' : 'Tiebreaker on';
   const rules = partnerChange(ops, at);
   if (rules) return rules;
@@ -1014,10 +1027,12 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     return `Moved ${ids.length} screens`;
   }
   const several = things.size > 1;
-  if (only('x', 'y')) return several ? `Moved ${things.size} items` : `Moved ${what(at)}`;
-  if (only('x', 'y', 'w', 'h')) return several ? `Resized ${things.size} items` : `Resized ${what(at)}`;
-  if (only('rotation')) return several ? `Rotated ${things.size} items` : `Rotated ${what(at)}`;
-  if (only('zIndex')) return 'Restacked items';
+  // (In the words of the editor they're in: “Moved 2 objects” on an RPG screen, by its 📦 Item ▾.)
+  const items = slideWords(after, op.p, op.p.lastIndexOf('elements')).things;
+  if (only('x', 'y')) return several ? `Moved ${things.size} ${items}` : `Moved ${what(at)}`;
+  if (only('x', 'y', 'w', 'h')) return several ? `Resized ${things.size} ${items}` : `Resized ${what(at)}`;
+  if (only('rotation')) return several ? `Rotated ${things.size} ${items}` : `Rotated ${what(at)}`;
+  if (only('zIndex')) return `Restacked ${items}`;
   // (Changes inside one thing and around it are one thing's change.)
   if (several && !related(ops, op)) return `${ops.length} changes`;
   // An object made a doorway, a character… (or scenery again).

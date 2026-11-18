@@ -571,7 +571,7 @@
   function remove(verb = 'Deleted'): void {
     const { free: gone, locked } = selection();
     if (!gone.length) {
-      if (locked) tell(lockedNote(locked));
+      if (locked) tell(lockedNote(locked, nouns.thing));
       return;
     }
     const ids = new Set(gone.map((e) => e.id));
@@ -579,7 +579,7 @@
       slide.elements = slide.elements.filter((e) => !ids.has(e.id));
       selected = selected.filter((id) => !ids.has(id));
     });
-    tell(`${verb} ${describe(gone)}${locked ? ` · ${lockedNote(locked)}` : ''}`, undoApi.undo);
+    tell(`${verb} ${describe(gone)}${locked ? ` · ${lockedNote(locked, nouns.thing)}` : ''}`, undoApi.undo);
   }
 
   function duplicate(): void {
@@ -728,7 +728,7 @@
     const fixed = spacing ? [] : held;
     if (free.length) undoApi.step(ALIGNED[how][free.length + fixed.length > 1 ? 0 : 1].replace('#', named(free)), () => alignTo(free, how, SLIDE_W, SLIDE_H, fixed));
     // Said when locked items were left out of spacing, or when nothing could move at all (as a nudge says it).
-    if (held.length && (spacing || !free.length)) tell(lockedNote(held.length));
+    if (held.length && (spacing || !free.length)) tell(lockedNote(held.length, nouns.thing));
   }
 
   // Restyling many slides is one step, so it's done at once and offers Undo (the words stay the same).
@@ -948,7 +948,7 @@
       e.preventDefault();
       const step = e.shiftKey ? 10 : 1;
       const { free, locked } = selection();
-      if (!free.length) tell(lockedNote(locked));
+      if (!free.length) tell(lockedNote(locked, nouns.thing));
       for (const el of free) {
         const grow = k === 'arrowright' || k === 'arrowdown' ? step : -step;
         if (keepsShape(el)) {
@@ -968,7 +968,7 @@
       e.preventDefault();
       const step = e.shiftKey ? 10 : 1;
       const { free, locked } = selection();
-      if (!free.length) tell(lockedNote(locked));
+      if (!free.length) tell(lockedNote(locked, nouns.thing));
       for (const el of free) {
         if (k === 'arrowleft') el.x -= step;
         if (k === 'arrowright') el.x += step;
@@ -996,7 +996,7 @@
   /** Copy, then delete. Locked items stay where they are, so they aren't copied either (a paste would duplicate them). */
   function cut(data: DataTransfer | null): void {
     const { free, locked } = selection();
-    if (!free.length) return void tell(lockedNote(locked));
+    if (!free.length) return void tell(lockedNote(locked, nouns.thing));
     if (data) copied(data, free);
     else copyFromMenu((d) => copied(d, free));
     remove('Cut');
@@ -1161,7 +1161,7 @@
             <div class="bg-row">
               <label class="check">
                 <ColorBox
-                  aria-label="Slide background color"
+                  aria-label="{Page(nouns)} background color"
                   value={slide.background.color ?? plainBg}
                   oninput={(e) => (slide.background.color = e.currentTarget.value)}
                 />
@@ -1176,7 +1176,7 @@
             </div>
             <div class="bg-row">
               {#if slide.background.image}
-                <img class="bg-thumb" src={mediaUrls[slide.background.image]} alt="The slide’s background" draggable="false" />
+                <img class="bg-thumb" src={mediaUrls[slide.background.image]} alt="The {nouns.page}’s background" draggable="false" />
                 <button class="small" onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="Another picture behind everything on the {nouns.page}">Change…</button>
                 <button class="small" onclick={() => edit(() => delete slide.background.image)} title="Take the picture off (the color stays; the file stays in 🖼 Media)">⌫ Clear picture</button>
               {:else}
@@ -1451,7 +1451,7 @@
     </details>
   {/if}
   {#if previewing}
-    <p class="muted">Previewing the slide as players will see it. Press <b>Esc</b>, click the slide or <b>■ Stop preview</b> to edit again.</p>
+    <p class="muted">Previewing the {nouns.page} as players will see it. Press <b>Esc</b>, click the {nouns.page} or <b>■ Stop preview</b> to edit again.</p>
   {:else if single}
     <Inspector
       el={single}
