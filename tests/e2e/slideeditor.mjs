@@ -582,7 +582,7 @@ try {
   assert(shown.w === 300 && shown.h === 400 && shown.px[2] > 200 && shown.px[0] < 50, `the slide shows the new (blue) file, turned as edited (${shown.w}×${shown.h})`);
   await clue.getByRole('button', { name: 'Close' }).click();
 
-  await page.getByRole('button', { name: /🕘 History/ }).click();
+  await page.locator('nav').getByRole('button', { name: /🕘 History/ }).click();
   const labels = (await page.locator('.hist .hr').allInnerTexts()).join('\n');
   assert(labels.includes('Slide background color #333333'), 'History: “Slide background color #333333”');
   assert(labels.includes('Added an outline to text box'), 'History: “Added an outline to text box …”');

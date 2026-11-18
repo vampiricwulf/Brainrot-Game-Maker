@@ -17,8 +17,11 @@
   let { quiet = false }: { quiet?: boolean } = $props();
 
   type Kind = 'undid' | 'redid' | 'made' | 'dropped';
-  /** `count`: the undone steps a new step dropped (`entry`, that step). */
-  let notice = $state<{ kind: Kind; entry: HistoryEntry; index: number; count?: number } | null>(null);
+  /**
+   * `count`: the undone steps a new step dropped (`entry`, that step); `named`: that step is one an editor announces
+   * ("Deleted category “Memes”"), said in the same note, whose ↶ Undo brings the dropped steps back too.
+   */
+  let notice = $state<{ kind: Kind; entry: HistoryEntry; index: number; count?: number; named?: boolean } | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   function show(kind: Kind, entry: HistoryEntry, ms: number): void {
@@ -45,11 +48,17 @@
     // A jump from the History list shows in the list itself (and says so there). On the History tab an undo or redo
     // shows only as the list's "● Now" moving: it's still said.
     const offApplied = onApplied((e, dir, via) => {
-      if (via === 'list') return;
+      // (↶ Undo on dropped steps: its own toast says what it did.)
+      if (via === 'list' || via === 'dropped') return;
       if (!quiet) show(dir < 0 ? 'undid' : 'redid', e, 4000);
       else announce([`${dir < 0 ? 'Undid' : 'Redid'} ${e.label}`, e.where].filter(Boolean).join(' · '));
     });
-    const offNotify = onNotify((e) => !quiet && show('made', e, 6000));
+    // (A step announced that also dropped undone steps: its note says both, so its ↶ Undo never loses them unsaid.)
+    const offNotify = onNotify((e) => {
+      if (quiet) return;
+      if (notice?.kind === 'dropped' && notice.entry.id === e.id) notice = { ...notice, named: true };
+      else show('made', e, 6000);
+    });
     const offDropped = onDropped((count, e) => {
       const said = `Dropped ${count} undone ${count === 1 ? 'step' : 'steps'}`;
       if (!quiet) place('dropped', e, 8000, said, count);
@@ -79,9 +88,10 @@
   /** ↶ Undo on dropped steps: the new step goes, and they're back (still undone, for ↷ Redo). */
   function bringBack(): void {
     const n = notice?.count ?? 0;
+    const undid = notice?.named ? `↶ Undid ${notice.entry.label}, and brought back` : '↶ Brought back';
     const ok = !!notice && canBringBack(notice.entry.id) && bringBackDropped();
     notice = null;
-    if (ok) toast(`↶ Brought back ${n} undone ${n === 1 ? 'step' : 'steps'}: ↷ Redo redoes them`);
+    if (ok) toast(`${undid} ${n} undone ${n === 1 ? 'step' : 'steps'}: ↷ Redo redoes them`);
   }
 
   function showHistory(): void {
@@ -92,6 +102,8 @@
 
 {#if notice && !quiet}
   {@const { kind, entry } = notice}
+  <!-- (A note of its own for dropped steps: one shown before a window opened is inert under it, and this one is over it.) -->
+  {#key kind === 'dropped'}
   <div
     class="history-notice note-pill"
     class:over={kind === 'dropped'}
@@ -102,7 +114,8 @@
   >
     <span class="text">
       {#if kind === 'dropped'}
-        Dropped {notice.count} undone {notice.count === 1 ? 'step' : 'steps'}
+        {#if notice.named}{entry.label} ·{/if}
+        {notice.named ? 'dropped' : 'Dropped'} {notice.count} undone {notice.count === 1 ? 'step' : 'steps'}
       {:else if kind === 'made'}
         {entry.label}
       {:else}
@@ -121,6 +134,7 @@
     {/if}
     <button class="small ghost" onclick={showHistory} title="Every change to this game">🕘 History</button>
   </div>
+  {/key}
 {/if}
 
 <style>

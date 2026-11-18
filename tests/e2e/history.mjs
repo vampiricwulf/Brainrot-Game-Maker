@@ -474,6 +474,23 @@ try {
   await clickAway();
   await key('Control+y');
   await clue.getByRole('button', { name: 'Done' }).click();
+  // A step whose own note says what it did (Deleted category …) says the drop in that note, and its ↶ Undo brings
+  // the dropped step back too.
+  const cats = await page.locator('.cat').count();
+  await catName(2).fill('Gamma');
+  await clickAway();
+  await key('Control+z');
+  await page.locator('.cat').nth(3).getByRole('button', { name: 'More for category 4' }).click();
+  await page.getByRole('menuitem', { name: '🗑 Delete category' }).click();
+  await notice.filter({ hasText: 'dropped 1 undone step' }).waitFor({ timeout: 3000 });
+  assert(/^Deleted category “.+” · dropped 1 undone step/.test(await notice.innerText()), `a deletion that drops an undone step says both in its note (${await notice.innerText()})`);
+  await notice.getByRole('button', { name: '↶ Undo' }).click();
+  await page.locator('.toast', { hasText: /^↶ Undid Deleted category “.+”, and brought back 1 undone step/ }).waitFor();
+  assert(
+    (await page.locator('.cat').count()) === cats &&
+      (await header.getByRole('button', { name: 'Redo (Ctrl+Y)' }).getAttribute('title')) === 'Redo: Renamed category “Gamma” (Ctrl+Y)',
+    'and its ↶ Undo puts the category back and brings the undone step back',
+  );
 
   assert(dialogs.length === 0, `no browser dialogs (Open… asks in the page) (${dialogs.join(' | ')})`);
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));

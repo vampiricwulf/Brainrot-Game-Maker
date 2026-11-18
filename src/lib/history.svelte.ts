@@ -93,8 +93,11 @@ export interface StepOptions {
   notify?: boolean;
 }
 
-/** How an undo or redo was asked for: a key, a button, or a click in the History list. */
-export type Via = 'key' | 'button' | 'list';
+/**
+ * How an undo or redo was asked for: a key, a button, a click in the History list, or ↶ Undo on dropped steps' note
+ * (bringBackDropped: the editor goes to where the change was, and the note says the rest).
+ */
+export type Via = 'key' | 'button' | 'list' | 'dropped';
 
 /** How many steps are kept: ⚙ Settings (300 unless changed). */
 export const maxSteps = (): number => prefs.undoSteps;
@@ -392,6 +395,7 @@ export function bringBackDropped(): boolean {
     unsaved.add(e.id);
     goneIds.delete(e.id);
   }
+  for (const fn of appliedFns) fn(top, -1, 'dropped');
   return true;
 }
 
