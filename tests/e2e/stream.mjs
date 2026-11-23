@@ -445,8 +445,11 @@ async function crowd() {
   await secs.fill('60');
   await host.locator('.tc button', { hasText: 'Start 60s' }).waitFor();
   await secs.press('Enter');
-  await aud.locator('.timer').waitFor();
-  assert(+(await aud.locator('.timer .num').innerText()) > 55, 'a countdown of 60 seconds typed on one clue starts at 60');
+  // (The new countdown's number, not the last one's 0 still going away: waited for, a 30 or a 0 never reads as 60.)
+  const started = await aud
+    .waitForFunction(() => +(document.querySelector('.timer:not(.done) .num')?.textContent ?? 0) > 55, null, { timeout: 3000 })
+    .then(() => true, () => false);
+  assert(started, 'a countdown of 60 seconds typed on one clue starts at 60');
   await host.locator('.panel .p').nth(2).locator('.sel').click();
   await host.keyboard.press('Enter');
   await host.keyboard.press('Escape');
