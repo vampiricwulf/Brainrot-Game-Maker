@@ -11,6 +11,13 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- Final Jeopardy with answers typed on phones: a player who sent no answer keeps his own Show wager button in the reveals while he's spotlit, and it does what the blue Show wager ▶ does. Before, his was the only row left with no button to show anything, so it looked as if his wager couldn't be put on screen. (969022d)
+- Final Jeopardy with answers typed on phones: once the clock has run out or is paused, 👁 Reveal answer (the blue button, N or Enter) shows the answer even if a phone never sent one. Before, it kept asking about that phone, and only R got past it. (f1b4f6d)
+
 ## 2026-11-17
 
 ### Added
