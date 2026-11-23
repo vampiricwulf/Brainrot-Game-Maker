@@ -665,11 +665,18 @@ function answersItems(c: GoCtx): LeftItem[] {
   return comingItems(c, (id) => !!ans.seats[id], c.session.players.map((p) => p.id), FLOW.reveal.label);
 }
 
-/** The Final's typed answers still coming in, at 👁 Reveal answer (3.4 I): those playing it with a phone here. */
+/**
+ * The Final's typed answers still coming in, at 👁 Reveal answer (3.4 I): those playing it with a phone here. Only while
+ * their time runs (or no clock was started: its ⏱ starts one). Once the clock has run out or is paused, N goes on and
+ * the answers lock, as the clock's own line does: asked again, its ⏱ would only start the clock over, so with a phone
+ * that never sends, the blue button, N and Enter would never get to the answer.
+ */
 function finalAnswersItems(c: GoCtx): LeftItem[] {
   const f = c.session.final;
   const ans = f?.answers;
+  const t = c.final.clock;
   if (!f || !ans || f.answersLocked || c.session.finalStep !== 'question') return [];
+  if (t === 'out' || (t && (!t.running || t.left <= 0))) return [];
   return comingItems(c, (id) => !!ans[id], f.players, FLOW.reveal.label);
 }
 
@@ -1477,6 +1484,11 @@ export function doneSay(c: GoCtx, id: string): string | undefined {
   if (id === 'clock') {
     const t = c.final.clock;
     return t === 'out' || (t?.running && t.left <= 0) ? 'Time’s up' : 'The clock stopped';
+  }
+  // (The Final's answers still coming, their time up while the check was open: N shows the answer now.)
+  if (id === 'answers' && c.session.phase === 'final') {
+    const t = c.final.clock;
+    if (t === 'out' || (t?.running && t.left <= 0)) return 'Time’s up';
   }
   const t = turnOf(c);
   if (!t?.id) return undefined;

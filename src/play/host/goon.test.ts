@@ -1096,6 +1096,12 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     s.final!.answers = { a: { text: 'Paris', n: 1 } };
     const phones = { phones: ['a', 'b'], clockUp: true };
     expect(leftNow(c({ left: 27, running: true }, phones), st).map((i) => i.id)).toEqual(['answers']);
+    // No clock: its ⏱ starts one. Run out or paused: N goes on, the answers lock (asked again, its ⏱ would only start the
+    // clock over: a phone that never sends would keep the answer off screen for good). Run out while it's open: its line
+    // says so.
+    expect(leftNow(c(null, { phones: ['a', 'b'], clockUp: false }), st).map((i) => [i.id, i.quick[0].label])).toEqual([['answers', '⏱ Start the countdown']]);
+    for (const clock of [{ left: 12, running: false }, 'out', { left: 0, running: true }] as const) expect(leftNow(c(clock, phones), st)).toEqual([]);
+    expect([doneSay(c('out', phones), 'answers'), doneSay(c({ left: 0, running: true }, phones), 'answers')]).toEqual(['Time’s up', 'Time’s up']);
     s.goonQuiet = ['answers'];
     expect(leftNow(c({ left: 27, running: true }, phones), st).map((i) => i.id)).toEqual(['clock']);
   });

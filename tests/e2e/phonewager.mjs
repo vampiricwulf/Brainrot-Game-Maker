@@ -531,13 +531,26 @@ try {
   await answers.locator('[data-answer-row]', { hasText: 'Fleming' }).waitFor();
   assert(true, 'Show question again: Player 1’s phone still says “✔ Sent.”, and the host still has it');
   // The answer on screen: answers lock, each phone keeping its own (after the wager it was locked with). Player 2's
-  // phone sent none: 👁 Reveal answer asks first (⏱ 10 more seconds), and R reveals anyway.
+  // phone sent none: 👁 Reveal answer asks first (⏱ 10 more seconds, Enter). Once the clock has run out, N shows the
+  // answer: it doesn't ask again (its ⏱ would only start the clock over, and the answer would never go up but by R).
   await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
   await checkItem(host, 'answers').waitFor();
   assert((await checkItem(host, 'answers').innerText()).includes('1 of 2 answers are in (Player 2’s isn’t)'), '👁 Reveal answer with an answer still to come: “1 of 2 answers are in (Player 2’s isn’t)”');
   await goOnCheck(host, { ready: true }).waitFor();
-  await host.keyboard.press('r');
-  await big(ann).getByText('Answers locked').waitFor();
+  await host.keyboard.press('Enter');
+  await goOnCheck(host).waitFor({ state: 'detached' });
+  const less = host.locator('.panel').getByRole('button', { name: '10 seconds less' });
+  // (−10 until it's run out.)
+  await less.waitFor();
+  await less.evaluate(async (b) => {
+    while (!b.disabled && b.isConnected) {
+      b.click();
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  });
+  await host.keyboard.press('n');
+  await big(ann).getByText('Answers locked').waitFor({ timeout: 5000 });
+  assert(await goOnCheck(host).count() === 0, 'his answer never came and the clock ran out: N shows the answer (no check again, no R needed)');
   assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Alexander / Fleming / (penicillin)”', `the answer shows: “Answers locked”, with her wager and her answer (${await small(ann).innerText()})`);
   await big(bo).getByText('Answers locked').waitFor();
   assert((await small(bo).innerText()) === 'Your wager: $2,000 · None sent', 'and one who sent none: “None sent”');
