@@ -384,10 +384,18 @@
   /**
    * What the blue button does next in the reveals (lib's finalRevealNow, as goon.ts reads it): the spotlit row's Show
    * answer or Show wager is that button's, so its slot stays empty meanwhile (other rows keep theirs, out of turn); and
-   * with the last one's verdict due, the blue button is Finish game ▶, so finishing early isn't offered twice.
+   * with the last one's verdict due, the blue button is Finish game ▶, so finishing early isn't offered twice. Not Show
+   * wager in a Final with typed answers (wagerSlot).
    */
   const blueDoes = $derived(session.finalStep === 'reveal' ? finalRevealNow(session) : null);
   const blueFinishes = $derived(blueDoes?.at === 'judge' && !!blueDoes.last);
+  /**
+   * The spotlit row's Show wager left empty while the blue button is Show wager ▶: only in a Final without typed answers.
+   * With them, the blue button only gets to Show wager for one who sent none (the others go answer, then verdict), so
+   * theirs was the one row left with no button to show anything, and hosts took it for gone: it stays, doing what the
+   * blue button does.
+   */
+  const wagerSlot = (id: string): boolean => blueDoes?.id === id && blueDoes.at === 'wager' && !f?.answers;
 
   // The how-to in the reveals is open the first time on this computer, folded after that (the rows keep the room). In a
   // short window it starts folded: open, it pushed the third player's row out of sight at 1280×720.
@@ -594,7 +602,8 @@
           {@const res = f.results[id]}
           {@const line = rows.lineAt(id)}
           {@const k = keyOf(id)}
-          <!-- (The spotlit one's likely verdict, as goon.ts rings it; their Show answer or Show wager is the blue button's.) -->
+          <!-- (The spotlit one's likely verdict, as goon.ts rings it; their Show answer, or with no typed answers their Show
+               wager, is the blue button's: wagerSlot.) -->
           {@const lit = f.current === id && !res ? ring : null}
           {@const blue = blueDoes?.id === id ? blueDoes.at : null}
           <div
@@ -714,7 +723,7 @@
               {/if}
               </span>
               <span class="cell">
-                {#if hasWager(f, id)}<button class="small" class:slot={blue === 'wager'} onclick={() => finalShow(session, id)} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>{/if}
+                {#if hasWager(f, id)}<button class="small" class:slot={wagerSlot(id)} onclick={() => finalShow(session, id)} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>{/if}
               </span>
             {:else}
               <span class="cell sw">
@@ -726,7 +735,7 @@
               {/if}
               </span>
               <span class="cell">
-                <button class="small" class:slot={blue === 'wager'} onclick={() => finalShow(session, id)} disabled={f.shown[id]} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>
+                <button class="small" class:slot={wagerSlot(id)} onclick={() => finalShow(session, id)} disabled={f.shown[id]} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>
               </span>
             {/if}
             <!-- (One pair: on a narrow window they wrap together, to the row's right end, at one place in every row.) -->

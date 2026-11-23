@@ -612,12 +612,19 @@ try {
   // (Its fly-in done:) the card, with the answer's line, still fits above the scores.
   await aud.waitForFunction(() => document.querySelector('.spot')?.getBoundingClientRect().bottom <= document.querySelector('.score-area')?.getBoundingClientRect().top);
   assert(true, 'the spotlight card, answer line and all, fits above the scores');
-  // Player 2 answered out loud: N spotlights him, N shows his wager, as before.
+  // Player 2 sent no answer: N spotlights him, and the blue button is Show wager ▶. His row's own Show wager stays (the
+  // rows with an answer keep theirs while the blue button shows the answer: his was left with no button at all) and
+  // does what the blue button does.
   await host.keyboard.press('n');
   await aud.locator('.spot-name', { hasText: 'Player 2' }).waitFor();
-  await host.keyboard.press('n');
+  const hisShow = rev('Player 2').getByRole('button', { name: 'Show wager: Player 2' });
+  assert(
+    (await flowIs(host, 'Show wager ▶')) && (await hisShow.isVisible()) && (await hisShow.isEnabled()),
+    'Player 2 spotlit, no typed answer: the blue button is Show wager ▶, and his row keeps its own Show wager',
+  );
+  await hisShow.click();
   await aud.locator('.spot-wager', { hasText: '$2,000' }).waitFor();
-  assert((await aud.locator('.spot-answer').innerText()).trim() === '', 'Player 2, with no typed answer: N shows his wager, as before (his answer line stays empty)');
+  assert((await aud.locator('.spot-answer').innerText()).trim() === '', 'his row’s Show wager puts his wager on the audience window (his answer line stays empty)');
   await shot('pw-6b-reveal-audience', aud);
   assert((await big(bo).innerText()) === 'Answers locked', 'his wager shown, not judged yet: still “Answers locked”');
   await host.keyboard.press('x');
