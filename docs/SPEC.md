@@ -1353,7 +1353,9 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 - **A window's buttons** (its foot): Cancel (or Close) and the main button together at the right, the main one last;
   a hint or any other action at the left (Open…'s "or drop a game file on the editor", Start new anyway, Import
   rounds' Tick all, a shared theme's 💾 Save to my themes, ▶ Watch it). On a phone (under 600 px) the foot wraps: what's
-  at the left takes a line of its own, Cancel and the main button together at the right under it. Every import is 📥 (📥 Import clues…, 📥 Import
+  at the left takes a line of its own, Cancel and the main button together at the right under it. A window taller
+  than the screen (⚙ Settings on a laptop) scrolls only its middle: its title and ✕ stay at the top and its foot at
+  the bottom. Every import is 📥 (📥 Import clues…, 📥 Import
   rounds…, 📥 Import theme…, 📥 Import CSV…); 📂 is Open… and folders.
 - **Page widths on a wide screen**: a page of settings or lists stops at a readable width (1200 px); boards, maps and the
   slide of a slides round, a Final or the tiebreaker fill the window, no taller than the window has room for under the
