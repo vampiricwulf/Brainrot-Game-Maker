@@ -80,6 +80,11 @@ if (cmd === 'next') {
   // A run again on a commit that was released already: the same version (its notes worked out the same way).
   const own = releaseTags('--points-at', 'HEAD')[0] ?? null;
   const last = lastReleaseTag(own);
+  // CI fetches every tag; a local clone may have only old ones, and then this works from the wrong release.
+  if (!process.env.GITHUB_ACTIONS && !own) {
+    const since = last ? `${last} (${git('rev-list', '--count', `${last}..HEAD`)} commits ago)` : 'none';
+    console.error(`(Last release tag in this clone: ${since}. Run \`git fetch --tags\` first for the real number.)`);
+  }
   const lines = read('CHANGELOG.md').split('\n');
   // The first release: everything in the changelog so far is what it brings (the notes say so briefly instead).
   // (An entry the last release had, only edited since, isn't new: see addedEntries.)
