@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip } from './helpers.mjs';
+import { appFile, addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const fileUrl = pathToFileURL(file).href;
@@ -1034,6 +1034,9 @@ try {
 
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Audio E2E passed.');
+} catch (e) {
+  await failureShots('audio', browser);
+  throw e;
 } finally {
   await browser.close();
   server.close();

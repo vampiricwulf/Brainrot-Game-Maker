@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerAsk, answerReplace, leaveAsks, noSelection, selectedWords } from './helpers.mjs';
+import { appFile, addClassicRounds, answerAsk, answerReplace, leaveAsks, noSelection, selectedWords, failureShots } from './helpers.mjs';
 import { gif } from './mediafixtures.mjs';
 
 const { GifReader } = createRequire(import.meta.url)('omggif');
@@ -964,6 +964,9 @@ try {
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSlide editor E2E passed.');
+} catch (e) {
+  await failureShots('slideeditor', browser);
+  throw e;
 } finally {
   await browser.close();
 }

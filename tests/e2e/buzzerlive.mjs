@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, goOnCheck, openBuzzerOptions, openRules, playWithPlayers, quick, startRoomOn, tap, tieThem } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, goOnCheck, openBuzzerOptions, openRules, playWithPlayers, quick, startRoomOn, tap, tieThem, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const dir = resolve('buzzer');
@@ -520,6 +520,9 @@ try {
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Buzzer live E2E passed.');
+} catch (e) {
+  await failureShots('buzzerlive', browser);
+  throw e;
 } finally {
   await browser?.close();
   stopWrangler();

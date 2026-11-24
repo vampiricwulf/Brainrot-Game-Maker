@@ -8,7 +8,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { appFile, addClassicRounds, playWithPlayers, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -280,6 +280,9 @@ try {
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSound only E2E passed.');
+} catch (e) {
+  await failureShots('soundonly', browser);
+  throw e;
 } finally {
   await browser.close();
 }

@@ -5,7 +5,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerReplace, dragBy } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, dragBy, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -596,6 +596,9 @@ try {
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join(' | ')}` : ''));
   console.log('Board editor E2E passed.');
+} catch (e) {
+  await failureShots('board', browser);
+  throw e;
 } finally {
   await browser.close();
 }

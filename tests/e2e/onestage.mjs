@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, leaveAnswer, mainButton, openGameFile, returningHost, revealAnyway } from './helpers.mjs';
+import { appFile, confirmStrip, leaveAnswer, mainButton, openGameFile, returningHost, revealAnyway, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -249,6 +249,9 @@ try {
   }
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);
   console.log('onestage: all passed');
+} catch (e) {
+  await failureShots('onestage', browser);
+  throw e;
 } finally {
   await browser.close();
 }

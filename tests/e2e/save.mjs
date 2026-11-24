@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
-import { appFile, addClassicRounds, answerReplace, editorReady, exportHtml, openGameFile, playWithPlayers, png } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, editorReady, exportHtml, openGameFile, playWithPlayers, png, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -492,6 +492,9 @@ try {
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSave E2E passed.');
+} catch (e) {
+  await failureShots('save', browser);
+  throw e;
 } finally {
   await browser.close();
 }

@@ -23,7 +23,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openBuzzerOptions, openGameFile, quick, quickInSight, startBuzzer, startRoomOn, stepButton } from './helpers.mjs';
+import { appFile, anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openBuzzerOptions, openGameFile, quick, quickInSight, startBuzzer, startRoomOn, stepButton, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -675,6 +675,9 @@ try {
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('goon: all passed');
+} catch (e) {
+  await failureShots('goon', browser);
+  throw e;
 } finally {
   await browser.close();
   buzzer.stop();

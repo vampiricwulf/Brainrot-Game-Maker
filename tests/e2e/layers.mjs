@@ -3,7 +3,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds } from './helpers.mjs';
+import { appFile, addClassicRounds, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -389,6 +389,9 @@ try {
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nLayers E2E passed.');
+} catch (e) {
+  await failureShots('layers', browser);
+  throw e;
 } finally {
   await browser.close();
 }

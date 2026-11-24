@@ -20,7 +20,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addPlayers, editorReady, goOnCheck } from './helpers.mjs';
+import { appFile, addPlayers, editorReady, goOnCheck, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -411,6 +411,9 @@ try {
   }
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('worldfixes: all passed');
+} catch (e) {
+  await failureShots('worldfixes', browser);
+  throw e;
 } finally {
   await browser.close();
 }

@@ -15,7 +15,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, editorReady, recordSeen, stored } from './helpers.mjs';
+import { appFile, addClassicRounds, editorReady, recordSeen, stored, failureShots } from './helpers.mjs';
 import { clip, fixturePage, noise, readBack, ts, withMpeg2Picture } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -431,6 +431,7 @@ try {
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Convert E2E passed.');
 } catch (e) {
+  await failureShots('convert', browser);
   console.error(e);
   process.exitCode = 1;
 } finally {

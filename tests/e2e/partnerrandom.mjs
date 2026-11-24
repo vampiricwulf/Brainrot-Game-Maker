@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { appFile, openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -297,6 +297,7 @@ try {
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner random E2E passed.');
 } catch (e) {
+  await failureShots('partnerrandom', browser);
   console.error(e);
   process.exitCode = 1;
 } finally {

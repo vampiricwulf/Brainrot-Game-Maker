@@ -3,7 +3,7 @@
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { addClassicRounds, appFile, playWithPlayers, stored } from "./helpers.mjs";
+import { addClassicRounds, appFile, playWithPlayers, stored, failureShots } from "./helpers.mjs";
 
 const file = appFile();
 const executablePath =
@@ -129,6 +129,9 @@ try {
 
   assert(!errors.length, `no page errors (${errors.join(" | ")})`);
   console.log("verdictswitch: all passed");
+} catch (e) {
+  await failureShots('verdictswitch', browser);
+  throw e;
 } finally {
   await browser.close();
 }

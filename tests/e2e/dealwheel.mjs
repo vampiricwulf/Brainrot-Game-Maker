@@ -13,7 +13,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { appFile, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -302,6 +302,7 @@ try {
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Deal wheel tests passed');
 } catch (e) {
+  await failureShots('dealwheel', browser);
   console.error(e);
   process.exitCode = 1;
 } finally {

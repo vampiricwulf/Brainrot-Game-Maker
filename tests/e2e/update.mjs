@@ -2,7 +2,7 @@
 // new file to download, for the HTML file, then says on the page what to do with it), "Not now" puts it away for that
 // version, and ℹ About checks on demand. The copy online offers a reload instead.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, launchChromium, lineOf, playWithPlayers } from './helpers.mjs';
+import { appFile, addClassicRounds, launchChromium, lineOf, playWithPlayers, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -415,6 +415,9 @@ try {
 
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Update E2E passed.');
+} catch (e) {
+  await failureShots('update', browser);
+  throw e;
 } finally {
   await browser.close();
 }

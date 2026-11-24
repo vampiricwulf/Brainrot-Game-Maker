@@ -13,7 +13,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn } from './helpers.mjs';
+import { appFile, addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const dir = resolve('buzzer');
@@ -304,6 +304,7 @@ try {
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner clue phones E2E passed.');
 } catch (e) {
+  await failureShots('partnerphones', browser);
   console.error(e);
   process.exitCode = 1;
 } finally {

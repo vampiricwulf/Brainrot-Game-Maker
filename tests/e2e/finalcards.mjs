@@ -22,6 +22,7 @@ import { pathToFileURL } from 'node:url';
 import { appFile, 
   checkItem, confirmStrip, editorReady, flowIs, forgetSeen, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored,
   leaveAnswer,
+  failureShots,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -653,6 +654,9 @@ try {
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Final card tests passed');
+} catch (e) {
+  await failureShots('finalcards', browser);
+  throw e;
 } finally {
   await browser?.close();
   buzzer.stop();

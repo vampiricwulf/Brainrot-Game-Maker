@@ -21,7 +21,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
+import { appFile, confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -513,6 +513,7 @@ try {
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Spyfall tests passed');
 } catch (e) {
+  await failureShots('spyfall', browser);
   console.error(e);
   process.exitCode = 1;
 } finally {

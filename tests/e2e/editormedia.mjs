@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerReplace, macClicks, openGameFile } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, macClicks, openGameFile, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -536,6 +536,7 @@ try {
   assert(!errors.length, `no page errors (${errors.join(' | ')})`);
   console.log('\nEditor media E2E passed.');
 } catch (e) {
+  await failureShots('editormedia', browser);
   await shot('em-fail');
   console.error(e);
   process.exitCode = 1;

@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -375,6 +375,9 @@ try {
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Slides round E2E passed.');
+} catch (e) {
+  await failureShots('slidesround', browser);
+  throw e;
 } finally {
   await browser.close();
 }

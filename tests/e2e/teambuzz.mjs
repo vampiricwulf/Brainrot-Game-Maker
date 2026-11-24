@@ -13,7 +13,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, openBuzzerOptions, openRules, startRoomOn, stored, tap, tieThem } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, openBuzzerOptions, openRules, startRoomOn, stored, tap, tieThem, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const dir = resolve('buzzer');
@@ -706,6 +706,9 @@ try {
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Team buzzers E2E passed.');
+} catch (e) {
+  await failureShots('teambuzz', browser);
+  throw e;
 } finally {
   await browser?.close();
   stopWrangler();

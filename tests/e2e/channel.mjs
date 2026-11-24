@@ -4,7 +4,7 @@
 import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
-import { appFile, addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { appFile, addClassicRounds, playWithPlayers, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const html = readFileSync(file);
@@ -232,6 +232,9 @@ try {
   assert((await host2.locator('.status-bar [data-audience-lost]').count()) === 0, 'closed by the host: no "Audience window closed" warning');
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Channel sync test passed');
+} catch (e) {
+  await failureShots('channel', browser);
+  throw e;
 } finally {
   await browser.close();
   server.close();

@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, checkItem, exportHtml, goOnCheck, mainButton, mainLabel, openGameFile, quick, stepButton } from './helpers.mjs';
+import { appFile, checkItem, exportHtml, goOnCheck, mainButton, mainLabel, openGameFile, quick, stepButton, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -821,6 +821,7 @@ try {
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('boardedit: all passed');
 } catch (e) {
+  await failureShots('boardedit', browser);
   console.error(e);
   if (errors.length) console.error('page errors:', errors);
   process.exitCode = 1;

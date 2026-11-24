@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, goOnCheck, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
+import { appFile, confirmStrip, goOnCheck, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -551,6 +551,9 @@ try {
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Card send tests passed');
+} catch (e) {
+  await failureShots('cardsend', browser);
+  throw e;
 } finally {
   await browser?.close();
   buzzer.stop();

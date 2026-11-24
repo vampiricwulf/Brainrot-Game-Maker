@@ -3,7 +3,7 @@
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { appFile, addClassicRounds, launchChromium, playWithPlayers } from './helpers.mjs';
+import { appFile, addClassicRounds, launchChromium, playWithPlayers, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -314,6 +314,9 @@ try {
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nBoard images E2E passed.');
+} catch (e) {
+  await failureShots('boardimages', browser);
+  throw e;
 } finally {
   await browser.close();
 }

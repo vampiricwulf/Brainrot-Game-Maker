@@ -4,7 +4,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addPlayers } from './helpers.mjs';
+import { appFile, addPlayers, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -164,6 +164,9 @@ try {
 
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Touch E2E passed.');
+} catch (e) {
+  await failureShots('touch', browser);
+  throw e;
 } finally {
   await browser.close();
 }

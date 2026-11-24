@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored, revealAnyway } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored, revealAnyway, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -998,6 +998,9 @@ try {
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('remotebuzz e2e passed');
+} catch (e) {
+  await failureShots('remotebuzz', browser);
+  throw e;
 } finally {
   await browser.close();
 }

@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, editorReady, exportHtml, openGameFile, playWithPlayers } from './helpers.mjs';
+import { appFile, addClassicRounds, editorReady, exportHtml, openGameFile, playWithPlayers, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -403,6 +403,9 @@ try {
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('playfeatures e2e passed');
+} catch (e) {
+  await failureShots('playfeatures', browser);
+  throw e;
 } finally {
   await browser.close();
 }

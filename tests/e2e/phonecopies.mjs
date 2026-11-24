@@ -15,7 +15,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, startBuzzer, startRoomOn } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, startBuzzer, startRoomOn, failureShots } from './helpers.mjs';
 import { clip, fixturePage, flac, gif, noise, wav } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -651,6 +651,7 @@ try {
     await dialog.waitFor({ state: 'detached' });
   }
 } catch (e) {
+  await failureShots('phonecopies', browser);
   console.error(e);
   process.exitCode = 1;
 } finally {

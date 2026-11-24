@@ -41,7 +41,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, quickInSight, selectedWords, stepButton, leaveAnswer, returningHost, revealAnyway } from './helpers.mjs';
+import { appFile, boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, quickInSight, selectedWords, stepButton, leaveAnswer, returningHost, revealAnyway, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -1842,6 +1842,9 @@ try {
   }
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Host layout e2e passed');
+} catch (e) {
+  await failureShots('hostlayout', browser);
+  throw e;
 } finally {
   await browser.close();
 }

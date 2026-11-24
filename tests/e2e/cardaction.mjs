@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, flowButton, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer } from './helpers.mjs';
+import { appFile, confirmStrip, flowButton, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots } from './helpers.mjs';
 import { wav } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -446,6 +446,9 @@ try {
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Card action tests passed');
+} catch (e) {
+  await failureShots('cardaction', browser);
+  throw e;
 } finally {
   await browser?.close();
   buzzer.stop();

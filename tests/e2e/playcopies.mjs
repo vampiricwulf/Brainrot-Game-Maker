@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, seenWhere, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, seenWhere, shownOf, startBuzzer, startRoomOn, stored, failureShots } from './helpers.mjs';
 import { gif, noise, wav } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -323,6 +323,7 @@ try {
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Copies in play E2E passed.');
 } catch (e) {
+  await failureShots('playcopies', browser);
   console.error(e);
   process.exitCode = 1;
 } finally {

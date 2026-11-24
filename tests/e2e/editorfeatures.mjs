@@ -7,7 +7,7 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer, returningHost } from './helpers.mjs';
+import { appFile, checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer, returningHost, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -658,6 +658,9 @@ try {
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);
   console.log('editor features: all passed');
+} catch (e) {
+  await failureShots('editorfeatures', browser);
+  throw e;
 } finally {
   await browser.close();
 }

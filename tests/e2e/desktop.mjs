@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, clickExportHtml, editorReady, packGame } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, clickExportHtml, editorReady, packGame, failureShots } from './helpers.mjs';
 import { gif, noise } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -709,6 +709,9 @@ try {
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nDesktop E2E passed.');
+} catch (e) {
+  await failureShots('desktop', browser);
+  throw e;
 } finally {
   await browser.close();
 }

@@ -26,7 +26,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, leaveAsks, openGameFile, packGame, recordSeen, stored } from './helpers.mjs';
+import { appFile, editorReady, leaveAsks, openGameFile, packGame, recordSeen, stored, failureShots } from './helpers.mjs';
 import { clip, fixturePage, hueAt, readBack, wav } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -733,6 +733,9 @@ try {
   await fx.close();
   if (errors.length) throw new Error('Page errors: ' + errors.join(' | '));
   console.log('videoedit: all passed');
+} catch (e) {
+  await failureShots('videoedit', browser);
+  throw e;
 } finally {
   await browser?.close();
 }

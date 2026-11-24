@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, anyway, launchChromium, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway } from './helpers.mjs';
+import { appFile, addClassicRounds, anyway, launchChromium, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const dir = resolve('buzzer');
@@ -952,6 +952,9 @@ try {
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Phone wagers E2E passed.');
+} catch (e) {
+  await failureShots('phonewager', browser);
+  throw e;
 } finally {
   await browser?.close();
   stopWrangler();

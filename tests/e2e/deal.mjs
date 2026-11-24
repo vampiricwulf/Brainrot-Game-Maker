@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored } from './helpers.mjs';
+import { appFile, flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, failureShots } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -446,6 +446,9 @@ try {
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Deal tests passed');
+} catch (e) {
+  await failureShots('deal', browser);
+  throw e;
 } finally {
   await browser?.close();
   buzzer.stop();

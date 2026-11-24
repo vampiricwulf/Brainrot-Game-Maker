@@ -8,7 +8,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, leaveAnswer } from './helpers.mjs';
+import { appFile, openGameFile, leaveAnswer, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -291,6 +291,7 @@ try {
   assert(errors.length === 0, `no page errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
   console.log('\nAll popup checks passed.');
 } catch (e) {
+  await failureShots('popups', browser);
   console.error(e);
   if (errors.length) console.error('Page errors:', errors);
   process.exitCode = 1;

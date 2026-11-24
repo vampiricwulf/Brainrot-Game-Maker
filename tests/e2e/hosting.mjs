@@ -5,7 +5,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, confirmStrip, flowButton, goOnCheck, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, confirmStrip, flowButton, goOnCheck, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -893,6 +893,9 @@ try {
 
   assert(!errors.length, `no page errors (${errors.join(' | ')})`);
   console.log('hosting: all passed');
+} catch (e) {
+  await failureShots('hosting', browser);
+  throw e;
 } finally {
   await browser.close();
 }
