@@ -6,10 +6,10 @@ entries are grouped by the day they were pushed (Pacific time, PST/PDT). Each en
 it covers, so it also serves as the readable record where a commit title says little (see
 [Notes on the history](#notes-on-the-history)).
 
-How to add to it: put a line in the same commit as the change (or the merge that brings it in), under the heading for
-the day it's pushed (Pacific time; start the heading on the day's first push) and Added / Changed / Fixed / Removed,
-in plain words for the people who make and host games. Anything committed but not pushed yet goes under
-**Unreleased** at the top, and moves under its day when it's pushed.
+How to add to it: commit the line with the change (or the merge that brings it in) under **Unreleased** at the top,
+in Added / Changed / Fixed / Removed, in plain words for the people who make and host games. Once the commit hashes
+are known, add them to the line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unreleased lines
+under the day's heading (Pacific time), and commit that with the hashes as `Changelog: …`.
 
 ## 2026-11-24
 
