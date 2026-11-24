@@ -24,6 +24,10 @@ The desktop app also needs Rust and the [Tauri prerequisites](https://tauri.app/
 Run these from the repo root. The times are rough.
 
 ```sh
+npm run gate           # everything CI checks before a release, stopping at the first failure, then every
+                       # end-to-end file three at a time (--quiet); prints each step's time. Run it before pushing.
+                       # npm run gate -- --jobs 4, or --e2e 3 (one shard) / --e2e none (no end-to-end files)
+                       # The steps before the end-to-end files take about a minute.
 npm run dev            # dev server
 npm run build          # → dist/index.html (one self-contained file), about 8 s
 npm run check          # type-check (svelte-check; a warning fails it too), about 30 s
@@ -34,7 +38,8 @@ node tests/e2e/goon.mjs        # one end-to-end file (build first)
 node scripts/e2e-shard.mjs 3   # one CI shard (1–5 or rest; scripts/e2e-shard.mjs lists them), 6–8 min each
 npm run test:e2e       # the whole end-to-end suite, one file after another, going on past a failure: about 35 min
                        # (CI runs it in six shards alongside the release)
-node scripts/e2e-shard.mjs all --jobs 3   # the same, three files at a time (any shard or buzzer takes --jobs too)
+node scripts/e2e-shard.mjs all --jobs 3   # the same, three files at a time (any shard or buzzer takes --jobs too),
+                                          # about a third of the time: shard 5 took 1m48s, against 5m11s one at a time
 node scripts/e2e-shard.mjs 5 --quiet      # a passing file is one line; a failing one shows its last 80 lines
                                           # (E2E_QUIET=1 does the same; CI keeps the whole output)
 npm run test:buzzer    # only the phone-buzzer end-to-end files (they start a local buzzer server)
