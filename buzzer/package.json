@@ -7,7 +7,8 @@
     "build": "node build.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "tsc -p tsconfig.json && tsc -p phone/tsconfig.json"
+    "check": "tsc -p tsconfig.json && tsc -p phone/tsconfig.json",
+    "test": "cd .. && npx vitest run --project buzzer"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261001.1",
