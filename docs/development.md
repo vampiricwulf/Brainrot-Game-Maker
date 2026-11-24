@@ -32,6 +32,7 @@ npm run gate           # CI's checks in one command (all but the desktop app's b
 npm run dev            # dev server
 npm run build          # → dist/index.html (one self-contained file), about 8 s
 npm run check          # type-check (svelte-check; a warning fails it too), about 25 s
+npm run check:e2e      # type-check the e2e files marked // @ts-check (tests/e2e/tsconfig.json), about 10 s; not in CI
 npm test               # unit tests (Vitest: src/ and buzzer/), about 30 s
 (cd buzzer && npm run check)   # type-check the buzzer Worker and phone page (CI runs it; the root check doesn't)
 npm run test:quick     # the quick end-to-end test (tests/e2e/smoke.mjs), about 100 s; CI waits for it before releasing
@@ -62,6 +63,34 @@ Files can run side by side (`--jobs N` on `scripts/e2e-shard.mjs`): a server a t
 `freePort()` in `tests/e2e/helpers.mjs`, which claims it for that test's process (a file in the temp folder,
 `brainrot-e2e-ports/`), so two tests never get the same one; anything else a test keeps goes in a temp folder of its own.
 With `--jobs` above 1, or `--quiet`, each file's output is held back and printed when it ends.
+
+#### Writing an e2e file
+
+Start from a file like it and keep to `tests/e2e/helpers.mjs` for the common steps; `node scripts/e2e-shard.mjs
+--check` (the build job runs it) refuses a file with its own copy of these:
+
+- `appFile()` for the app to open, and `failureShots(name, browser)` in the `catch`, so a failure leaves its pictures
+  where CI keeps them.
+- `launchChromium(opts)` to start the browser (never `chromium.launch` or `CHROMIUM_PATH` by hand).
+- `assert(cond, msg)`: prints `  ✓ msg`, or throws `Assertion failed: msg`. Put what was seen into `msg`, or use
+  `assertEq(actual, expected, msg)`, which says both values when they differ. End with one `… passed.` line.
+- `until(cond, { timeout, every, what })` to wait for something: the truthy value, or `false` after `timeout` (15 s;
+  check it with `assert(await until(…), '…')`), or a `never: <what>` failure when `what` is given. A file whose waits
+  all want other defaults sets them once: `const until = untilWith({ timeout: 20_000, every: 100 })`. `sleep(ms)` for a
+  plain pause.
+- `section(title)` to print a section's heading (`---------- title ----------`).
+- `startBuzzer(prefix, { vars })` for a buzzer server (its `base` and `port`, `stop()`, `restart()`).
+
+Type-checking: `npm run check:e2e` checks every e2e file that starts with `// @ts-check` against `helpers.mjs`'s
+JSDoc types and Playwright's (not strict; `tests/e2e/window.d.ts` allows the tests' own `window.__…` hooks). Inside a
+`page.evaluate()` callback an element is a plain `Element`, so a property of one kind of element needs a JSDoc cast,
+e.g. `/** @type {HTMLInputElement} */ (el).value` (a cast is only a comment and brackets, so the callback still runs
+in the page; a helper it calls must be defined inside it). Give a new file `// @ts-check` and keep the check clean.
+Not checked yet (each has errors to fix first, mostly such casts): a11y, board, boardedit, boardgame, buzzerroom,
+convert, datasafety, dealcaptain, desktop, editorfeatures, editorfixes, editormedia, goon, history, hosting,
+hostlayout, links, lists, mediafixtures, partner, partnersend, partnerteams, phonecards, phonecopies, playcopies,
+pregame, remotebuzz, rounds, rpg, save, slideeditor, smoke, spyfall, stagemedia, stream, themes, update, videoedit
+and worldfixes. To see one's errors: `npx tsc -p tests/e2e/tsconfig.json --checkJs`, which checks every file.
 
 Fonts: some layout checks measure rows and buttons, and assume CI's fonts, which have no Inter. `tests/e2e/helpers.mjs`,
 which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machine's fonts minus Inter) unless

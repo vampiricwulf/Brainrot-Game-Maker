@@ -21,7 +21,8 @@ Chromium you have.
   rebuild after any change there (or set `APP_FILE` to test another file).
 - `npm run check`, 25 s (svelte-check over `src/`). `npm test`, 30 s (Vitest: unit, runes and `buzzer/` rules).
   `(cd buzzer && npm run check)`, 3 s.
-- `node scripts/e2e-shard.mjs --check`, `node scripts/version.mjs check`: a second each.
+- `node scripts/e2e-shard.mjs --check`, `node scripts/version.mjs check`: a second each. `npm run check:e2e`, 10 s:
+  type-checks the e2e files marked `// @ts-check` (not in CI or the gate yet; keep it clean).
 - One e2e file: `node tests/e2e/<name>.mjs`, 5 s to about 2½ min. `npm run test:quick` builds and runs `smoke.mjs`,
   about 100 s; the release waits only for this.
 - `npm run gate`: the checks in order (version check, svelte-check, unit tests, buzzer check, shard check, build, then
@@ -36,8 +37,9 @@ Chromium you have.
 
 - No test contacts the real buzzer server, a live room or GitHub. Phone tests start a local `wrangler dev` with
   `startBuzzer()` from `tests/e2e/helpers.mjs`; test builds have no `VITE_BUZZER_URL`. GitHub's API is routed to a
-  fake (see `tests/e2e/update.mjs`). A new e2e file uses `appFile()` and `failureShots()` from `helpers.mjs` (the shard
-  check enforces it).
+  fake (see `tests/e2e/update.mjs`). An e2e file uses `helpers.mjs`'s `appFile()`, `failureShots()`, `launchChromium()`,
+  `assert()`/`assertEq()`, `until()`, `sleep()` and `section()`, never copies of its own (the shard check enforces it;
+  "Writing an e2e file" in `docs/development.md`).
 - One window (no audience window, so the panel is on stream): the host panel never shows secrets, such as card words,
   file names, typed answers, picks, wagers and secret names (`docs/SPEC.md` §6.2, "Single window" and "The host
   panel's rules").
