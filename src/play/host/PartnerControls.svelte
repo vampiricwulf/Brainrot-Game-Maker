@@ -997,7 +997,7 @@
          gives (a click judges while handing out the cards too; the keys wait for the clock), and while the cards are
          handed out, the next step at its right end (📋 for the cards to copy by hand, then 📤 Send and start or ⏱ Start
          the clock): when it goes, nothing moves into its place, so a second click there never judges. Judged, the line
-         reads the marks; an Undo brings the buttons back. (Clicked, they go off: Play's partnerJudge gives the keys to the
+         reads the marks; an Undo brings the buttons back. (Clicked, they go off: partnerJudge, in partner.svelte.ts, gives the keys to the
          main button.) A steal's row takes its place, its marks first: the players list above keeps its room, the
          stealers' quick buttons in view. -->
     {#if !steal}

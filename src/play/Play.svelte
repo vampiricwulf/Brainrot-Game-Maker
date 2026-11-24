@@ -863,7 +863,7 @@
       offSeen();
       offPasses();
       // Leaving the game (Discard & leave, the results): the phones are told it's over. Not ◀ Back to editor, Keep &
-      // leave or ▶ Next game…: the room stays open in the editor (see keepRoomInEditor).
+      // leave or ▶ Next game…: the room stays open in the editor (see keepRoomInEditor, in host/phones.svelte.ts).
       // (A room kept in the editor that this game didn't take, as when viewing a finished game's results, stays open.)
       // Its saved copy goes too (a room out of reach, left with ◀ Back to editor, would pull a reload back into it).
       if (!phones.keepRoomOpen && !app.test && !kept.handedOff && !(kept.room && inRoom(kept.room.remote.code))) {
@@ -3810,7 +3810,7 @@
       n ? `⭐ Placed ${n} Daily Double${n === 1 ? '' : 's'} at random in ${where(placed)} (${n === 1 ? 'it wasn’t' : 'they weren’t'} on the board yet)` : '',
     ].filter(Boolean);
     if (said.length) toast(said.join(' · '), 5000);
-    // (The players are kept with the game as they're changed here: see keepRoster.)
+    // (The players are kept with the game as they're changed here: see keepRoster, in host/pregame.svelte.ts.)
     // A picture chosen for a player here was stored in the editor's game: the game being played gets it too.
     for (const p of session.players) {
       const m = p.avatar && !game.media.some((x) => x.id === p.avatar) ? app.game.media.find((x) => x.id === p.avatar) : undefined;
@@ -4133,7 +4133,7 @@
           goOnHint();
           break;
         }
-        // Board games with nobody selected: move (see boardEnter).
+        // Board games with nobody selected: move (see boardEnter, in host/midgame.svelte.ts).
         if (session.phase === 'boardgame' && session.intro) break;
         if (session.phase === 'boardgame' && (!selected.length || !amount) && !e.shiftKey && boardEnter()) break;
         // A partner clue: its main button, then ✔ Got it / ✘ Missed (with players picked by hand, an award as below).
@@ -5086,7 +5086,7 @@
     <ScoreLog {game} {session} {sym} hide={!dual} bind:tab={logTab} area={panelBox} beside={dual ? logBeside : null} spinning={spinningIds} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
   {/if}
   {#if showPlayers}
-    <!-- Every click, change or dropped row (a player dragged to a new place) in here ends a step (see commitRoster). -->
+    <!-- Every click, change or dropped row (a player dragged to a new place) in here ends a step (see commitRoster, in host/midgame.svelte.ts). -->
     <div
       class="backdrop"
       class:in-panel={!!panelBox}
