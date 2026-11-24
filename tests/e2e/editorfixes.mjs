@@ -661,7 +661,7 @@ try {
     {
       // A slider has no text box's padding or border round it, so at 100% its thumb is at the end of its track.
       const boxed = await sp.locator('main input[type="range"]').evaluateAll((rs) =>
-        rs.map((r) => getComputedStyle(r)).filter((c) => c.paddingLeft !== '0px' || c.paddingRight !== '0px' || c.borderLeftWidth !== '0px').map((c) => `${c.padding} / ${c.borderLeftWidth}`),
+        rs.map((r) => getComputedStyle(r)).filter((c) => c.paddingLeft !== '0px' || c.paddingRight !== '0px' || c.borderLeftWidth !== '0px' || c.borderRightWidth !== '0px').map((c) => `${c.padding} / ${c.borderLeftWidth}`),
       );
       assert(boxed.length === 0, `🔊 Sounds’ volume sliders have no padding or border in their track’s way (${boxed.slice(0, 2).join(', ')})`);
     }
