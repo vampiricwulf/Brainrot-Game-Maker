@@ -60,6 +60,10 @@ under the day's heading (Pacific time), and commit that with the hashes as `Chan
 
 ### Fixed
 
+- Final Jeopardy's reveal rows on the host panel no longer draw buttons over each other (names over scores, Show wager over the wager box, ✔ Right / ✘ Wrong over ½ Halve / 0 Nullify) on windows about 900 to 1300 px wide or on a phone: where the columns don't fit, the rows wrap onto two lines, so fewer fit in the box without scrolling. A scrolled panel stays where it was as a row changes. (f61c4c3, cbdf28e, f2b2eec, 804d4a8)
+- 🖼️ Media's file icons, the History, Find, the card and info panels, phones, and every button, menu and message that names 🖼️ Media, 🎞️ videos, 🗺️ maps, the ⏱️ clock, ✏️ Draw, 🗣️ Describe it or 🕵️ Odd one out now show those icons in colour, not as grey outlines. (449792b, 080f6f8, 2617b97)
+- On a phone or tablet, the host's how-to lines (a board game's "🎲 Roll, then ▶ Move · ◀ Previous turn to go back", title cards, slides, the tiebreaker, PARTNER UP! and the Final) name the buttons to tap instead of keys like D, Enter and Shift+N; with a mouse and keyboard they still show the keys. (0764aac, e290bbe)
+- On a phone, the "Go to <round> ▶" answer when you leave a round no longer runs off the screen: a long round name is cut short with "…", the ▶ stays, and the full name shows in its tooltip. (04d5c14, 5c52fc0, 96b91b9, c4f3028)
 - The desktop app's Rust tests no longer fail now and then on CI: two of them shared a temp folder while running side by side. (2bfef9d)
 - The 🚫 No Pass end-to-end test waits for Ctrl+Z to reach the phone before checking it, so it no longer fails now and then on CI. (bc00661)
 - CI: the Pages site no longer fails to deploy with "No artifacts named github-pages were found": it is uploaded in one job and deployed in the next. (5b32160)
