@@ -1,17 +1,15 @@
 // Is a newer version out? GitHub's "latest release" answer is faked here: the editor says when one is out (with the
 // new file to download, for the HTML file, then says on the page what to do with it), "Not now" puts it away for that
 // version, and ℹ About checks on demand. The copy online offers a reload instead.
-import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, lineOf, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, launchChromium, lineOf, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
 const url = pathToFileURL(file).href;
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
 function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
@@ -49,7 +47,8 @@ try {
   await notice.waitFor();
   assert((await notice.innerText()).includes('Brainrot Games Maker 99.0.0 is out'), `the editor says a newer version is out (${(await notice.innerText()).split('\n')[0]})`);
   // On a laptop's screen (1280×720, 1366×768 and a little shorter, a 1024×768 one) the first screen's 📂 Open a game…
-  // stays in view under it, with room to spare (a wider font than CI's mustn't push it off).
+  // stays in view under it, with room to spare. Measured with CI's fonts (tests/e2e/fonts.conf, which launchChromium()
+  // uses): a wider UI font, such as Inter, moves it down.
   for (const [w, h] of [[1280, 720], [1366, 768], [1366, 764], [1024, 768], [1280, 800], [1366, 801], [1280, 840]]) {
     await page.setViewportSize({ width: w, height: h });
     const openLine = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);

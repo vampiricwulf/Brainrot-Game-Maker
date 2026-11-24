@@ -1,5 +1,92 @@
 // Shared e2e steps.
+import { chromium } from 'playwright-core';
+import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
+
+const repo = fileURLToPath(new URL('../../', import.meta.url));
+
+/** The newest of the files the build is made from (src/, index.html, vite.config.ts). */
+function newestSource() {
+  let newest = null;
+  const consider = (path) => {
+    const t = statSync(path).mtimeMs;
+    if (!newest || t > newest.t) newest = { path, t };
+  };
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, e.name);
+      if (e.isDirectory()) walk(path);
+      else if (e.isFile()) consider(path);
+    }
+  };
+  walk(join(repo, 'src'));
+  for (const f of ['index.html', 'vite.config.ts']) if (existsSync(join(repo, f))) consider(join(repo, f));
+  return newest;
+}
+
+/**
+ * The app file the tests open: APP_FILE as given, or else the repo's dist/index.html, which must exist and be newer
+ * than every file it's built from, so a test never quietly drives an old build.
+ */
+export function appFile() {
+  if (process.env.APP_FILE) {
+    const file = resolve(process.env.APP_FILE);
+    if (!existsSync(file)) throw new Error(`APP_FILE ${file} doesn't exist`);
+    return file;
+  }
+  const file = join(repo, 'dist/index.html');
+  if (!existsSync(file)) throw new Error('Run `npm run build` first');
+  const src = newestSource();
+  if (src && src.t > statSync(file).mtimeMs) {
+    throw new Error(`dist/index.html is older than ${relative(repo, src.path)}: run npm run build (or set APP_FILE)`);
+  }
+  return file;
+}
+
+/**
+ * Starts Chromium (CHROMIUM_PATH, or the sandbox's one) with the tests' fonts: tests/e2e/fonts.conf, the machine's
+ * fonts minus Inter, as on CI, unless FONTCONFIG_FILE is already set. Layout checks measure text, and a wider UI font
+ * (Inter is system-ui on some Linux desktops) moves what they measure.
+ */
+export function launchChromium(opts = {}) {
+  const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+  const FONTCONFIG_FILE = process.env.FONTCONFIG_FILE || fileURLToPath(new URL('fonts.conf', import.meta.url));
+  return chromium.launch({ executablePath, ...opts, env: { ...process.env, FONTCONFIG_FILE, ...opts.env } });
+}
+
+/** Where a failing test leaves its pictures: SCREENSHOTS (CI uploads it), else SHOTS, else test-results/. */
+export function failureDir() {
+  const dir = process.env.SCREENSHOTS || process.env.SHOTS || 'test-results';
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/**
+ * On a failure: a full-page screenshot of each page in failureDir(), as `<name>-failure.png` for one page or
+ * `<name>-<label>-failure.png` for several, each logged with its address. `pages` is a page, a list of pages or
+ * [label, page] pairs, or a browser (all its open pages). Closed pages, and a browser that never started, are skipped.
+ */
+export async function failureShots(name, pages) {
+  try {
+    let list = [];
+    if (pages && typeof pages.contexts === 'function') list = pages.contexts().flatMap((c) => c.pages()).map((p, i) => [String(i + 1), p]);
+    else if (pages && typeof pages.screenshot === 'function') list = [['', pages]];
+    else if (Array.isArray(pages)) list = pages.map((p, i) => (Array.isArray(p) ? p : [String(i + 1), p]));
+    list = list.filter(([, p]) => p && !p.isClosed());
+    const dir = failureDir();
+    for (const [label, p] of list) {
+      const path = `${dir}/${name}${list.length === 1 ? '' : '-' + String(label).replace(/[^\w.-]+/g, '')}-failure.png`;
+      await p
+        .screenshot({ path, fullPage: true })
+        .then(() => console.error(`failure screenshot: ${path} (${p.url()})`))
+        .catch(() => {});
+    }
+  } catch {
+    /* best effort */
+  }
+}
 
 /**
  * A new game has no rounds: add a Jeopardy board and a Final Jeopardy (the classic game most tests play), then go

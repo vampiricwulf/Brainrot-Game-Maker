@@ -10,14 +10,13 @@
 // and N in the reveals puts each on stream before C / X shows the wager. The team's Final has multiple choice (made in
 // its editor): they show on stream under the question (the right one lit with the answer), a member taps one, and the
 // reveal says whether it's the right one. Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, anyway, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway } from './helpers.mjs';
+import { addClassicRounds, anyway, launchChromium, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -146,8 +145,7 @@ try {
     if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
     await sleep(500);
   }
-  const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   // ---------- The host: a Daily Double on the board, 3 players, the audience window ----------
   const host = await newHost();
