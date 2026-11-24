@@ -460,7 +460,7 @@
 </script>
 
 {#if f}
-  <div class="fj">
+  <div class="fj" data-final-controls>
     {#if session.finalStep === 'wagers'}
       <!-- The box's first line: whose wager it waits on, or that the blue button is next (names only, never an amount;
            in one window the status line's ⚠ chip says viewers see the boxes). -->

@@ -210,7 +210,7 @@
   {/if}
 {/snippet}
 
-<div class="insp">
+<div class="insp" data-inspector>
   <!-- RPG screens: what the item is comes first (the rest is how it looks). -->
   {#if objectsection}{@render objectsection(el)}{/if}
 

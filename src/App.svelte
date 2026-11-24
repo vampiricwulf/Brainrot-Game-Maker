@@ -1304,7 +1304,7 @@
   {@const room = kept.room}
   {@const showAudience = audience.open || audience.lost}
   {#if room || saved || showAudience}
-    <div class="status-bar" class:asking={!!resuming && !!saved} role="region" aria-label="Status">
+    <div class="status-bar" data-status-bar class:asking={!!resuming && !!saved} role="region" aria-label="Status">
       {#if room}
         {@const n = Array.isArray(room.players) ? room.players.length : 0}
         {@const other = room.gameId !== app.game.id}
@@ -1382,7 +1382,7 @@
 <AskDialog />
 {#if app.toast && !app.onAir}
   <!-- (Screen readers hear it from the live region: announce.ts.) -->
-  <div class="toast note-pill" data-over-modal aria-hidden="true">{app.toast}</div>
+  <div class="toast note-pill" data-toast data-over-modal aria-hidden="true">{app.toast}</div>
 {/if}
 
 <style>

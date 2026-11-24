@@ -1385,6 +1385,7 @@
         {:else}
           <button
             class="round-tab"
+            data-round-tab
             class:active={tab === i}
             aria-current={tab === i ? 'page' : undefined}
             class:drop-before={roundDrop?.id === round.id && !roundDrop.after}

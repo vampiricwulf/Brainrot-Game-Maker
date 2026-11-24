@@ -4874,6 +4874,7 @@
       <!-- (Named, as the host panel is, so a screen reader can jump between them.) -->
       <div
         class="stage-box"
+        data-stage-box
         role="region"
         aria-label="Stage"
         ondragover={(e) => (itemDrag.now ? itemOver(e) : session.phase === 'rpg' && e.dataTransfer?.types.includes('Files') && e.preventDefault())}
@@ -4934,8 +4935,8 @@
         title="H"
         data-no-rescue>Show controls</button
       >
-      {#if heldNote}<div class="toast note-pill" role="status" data-goon-held>{CHECK.hiddenNote}</div>
-      {:else if hideNote}<div class="toast note-pill" role="status">{coarse ? 'Tap the screen, then Show controls (top right), to bring the controls back' : 'Press H to bring the controls back'}</div>{/if}
+      {#if heldNote}<div class="toast note-pill" data-toast role="status" data-goon-held>{CHECK.hiddenNote}</div>
+      {:else if hideNote}<div class="toast note-pill" data-toast role="status">{coarse ? 'Tap the screen, then Show controls (top right), to bring the controls back' : 'Press H to bring the controls back'}</div>{/if}
     {:else}
       <HostPanel
         {game}

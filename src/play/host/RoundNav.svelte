@@ -190,7 +190,7 @@
   }
 </script>
 
-<div class="rn">
+<div class="rn" data-round-nav>
   {#if app.test}
     <!-- ▶ Test this round: one round, nothing kept (🚪 Exit goes back to the editor). -->
     <span class="test" title="Only this round plays, and nothing is kept: 🚪 Exit goes back to the editor">🧪 Testing this round</span>

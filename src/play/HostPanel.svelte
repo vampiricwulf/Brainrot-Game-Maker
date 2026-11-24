@@ -1014,6 +1014,7 @@
 <div
   bind:this={panelEl}
   class="panel"
+  data-host-panel
   role="region"
   aria-label="Host controls"
   class:dual
@@ -1028,7 +1029,7 @@
   onpointerdowncapture={(e) => goon?.check && e.target instanceof Element && !e.target.closest('[data-goon], .cover-toggle') && goon.away()}
 >
   <!-- What's going on, read out to screen readers as it changes (buttons and hints left out). Its chips on the right. -->
-  <div class="status row" use:announceChanges bind:this={statusEl}>
+  <div class="status row" data-host-status use:announceChanges bind:this={statusEl}>
     {#if clicknote}
       <!-- Over the line's start, up to its chips and buttons, so nothing in the line moves and the one-window stage keeps
            its size. (Read out by Play when it's said.) -->
@@ -1210,6 +1211,7 @@
         {@const on = selected.includes(p.id)}
         <div
           class="p"
+          data-player-row
           class:on
           class:picker={session.phase !== 'end' && session.currentPickerId === p.id}
           class:passed={passedIds.includes(p.id)}
@@ -1651,7 +1653,7 @@
             {/if}
           </div>
         {/if}
-        <div class="row award" class:flowrow={session.phase === 'clue' || session.phase === 'tiebreaker'} data-flowrow>
+        <div class="row award" data-award-row class:flowrow={session.phase === 'clue' || session.phase === 'tiebreaker'} data-flowrow>
           {#if session.phase === 'clue' && info}{@render putBack()}{/if}
           <label class="check">
             Amount
@@ -1771,7 +1773,7 @@
 
   <!-- The tools, then the round's navigation (quiet; leaving a round asks), away from the main cell. (In one window, out
        of the keys' reach while the strip lies over it: nothing out of sight is pressed.) -->
-  <div class="row toolsrow" id="host-tools" inert={!!ask && !dual}>
+  <div class="row toolsrow" data-tools-row id="host-tools" inert={!!ask && !dual}>
     {@render tools?.()}
     <!-- (A Final's title card too: a way back from it without putting its category on stream.) -->
     {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'slides' || (session.phase === 'final' && session.intro?.stage === 'title')}
@@ -1788,7 +1790,7 @@
          single window it lies over the tools row (and what's above it, if it needs more), so the panel keeps its height
          and the stage viewers see keeps its size for a question only the host sees. -->
     <div class="askslot">
-      <div class="confirm" role="alert">
+      <div class="confirm" data-confirm-strip role="alert">
         {#key ask}
           <InlineAsk text={ask.text} ok={ask.ok} cancel={ask.cancel} danger={ask.danger} alt={ask.alt} onalt={ask.onalt} altDanger={ask.altDanger} focusCancel onok={ask.onok} oncancel={ask.oncancel} />
         {/key}

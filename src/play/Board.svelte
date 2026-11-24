@@ -85,6 +85,7 @@
 {#if round}
   <div
     class="board"
+    data-board
     class:intro={!!intro}
     style:grid-template-columns="repeat({round.categories.length}, 1fr)"
     style:grid-template-rows="1.35fr repeat({round.values.length}, 1fr)"
@@ -118,6 +119,7 @@
         <!-- One Tab stop for the whole board (the arrow keys reach every tile, played ones too, for their menu). -->
         <button
           class="cell tile"
+          data-board-tile
           class:used
           class:alt={altTile(theme?.tilePattern, row, ci)}
           class:dim={used && usedLook === 'dim'}
