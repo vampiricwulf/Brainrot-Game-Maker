@@ -679,7 +679,7 @@ function finalAnswersItems(c: GoCtx): LeftItem[] {
   if (t === 'out' || (t && (!t.running || t.left <= 0))) return [];
   const items = comingItems(c, (id) => !!ans[id], f.players, FLOW.reveal.label);
   // (The clock running: ⏸ Pause the clock (T), as in the clock's own check. Its ⏱ 10 more seconds is ⇧T then.)
-  return t ? items.map((i) => ({ ...i, quick: [...i.quick, pauseQuick(c)] })) : items;
+  return t && c.clockUp ? items.map((i) => ({ ...i, quick: [...i.quick, pauseQuick(c)] })) : items;
 }
 
 /** ⏸ Pause the clock (T) in the Final's checks at 👁 Reveal answer: paused, the next 👁 Reveal answer goes on at once. */
