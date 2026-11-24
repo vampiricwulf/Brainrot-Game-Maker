@@ -10,8 +10,9 @@ The rule is in `CLAUDE.md` ("Commits and CHANGELOG.md"); these are its steps.
    people who make or host games would notice, make sure there's a line under **Unreleased** at the top of
    `CHANGELOG.md`, in **Added**, **Changed**, **Fixed** or **Removed** (only Fixed lines make a patch release; a line
    marked **Breaking** makes a major one). Write it in plain words for them, as the lines around it are written: what
-   they see or do now, and what was wrong before for a fix. Behind-the-scenes changes (tests, docs, tooling) get no
-   line. Ideally each line went in with its change; add any that are missing.
+   they see or do now, and what was wrong before for a fix. A change only people working on the app notice (a script,
+   the tests, CI, the docs) gets a line too, in plain words for them, as the ones already there are; a change nobody
+   would notice gets none. Ideally each line went in with its change; add any that are missing.
 2. **Hashes.** Add the short hashes of the commits each line covers at its end, e.g. `(abc1234)` or
    `(abc1234, def5678)`. A commit can't hold its own hash, so this always comes after.
 3. **Titles that say nothing.** A commit whose title doesn't say what it is goes in the "Notes on the history" table
