@@ -11,7 +11,7 @@ in Added / Changed / Fixed / Removed, in plain words for the people who make and
 are known, add them to the line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unreleased lines
 under the day's heading (Pacific time), and commit that with the hashes as `Changelog: …`.
 
-## Unreleased
+## 2026-11-24
 
 ### Added
 
@@ -38,17 +38,6 @@ under the day's heading (Pacific time), and commit that with the hashes as `Chan
 - The changelog rule in CLAUDE.md, docs/development.md and at the top of CHANGELOG.md says the real steps: commit the line under Unreleased, add the hashes once known, and stamp the date when pushing. (fc46722, 3e6dcc7)
 - CLAUDE.md gives a map of the repo, setup, the checks fastest first with their times, the rules not to change, and the commit title style, and /gate and /changelog commands walk through the checks and the changelog steps. (eeb22b5, f730916, 98547e9)
 - CI reads the Node version from .nvmrc, keys its npm cache on the buzzer room's lockfile too, gives the release job a 15-minute limit, and a svelte-check warning now fails `npm run check`. (1ac015c)
-
-### Fixed
-
-- Hosting from a phone, the 📱 Phone buzzers card no longer sticks out sideways: on a narrow phone (under about 395px wide) Free seat and Kick show as just 📱 and ⛔, each player stays on one line, and Start game ▶ can be tapped. The in-game 📱 list keeps their words. (9b21391, 680b77c)
-- After a reload mid-game in one window, the "Be right back" card sits where the stage is, at its size, so a capture of just the stage shows the whole card and none of the host's buttons. (ae7ea34)
-- The Final's and ✍ clues' answer counts agree: the answers box and the check before 👁 Reveal answer both say e.g. "1 of 2 phones answered · Player 3 answers out loud", and "All phones answered" once the last one is in. (db34031, cb7f43d)
-
-## 2026-11-24
-
-### Changed
-
 - `npm run test:quick` builds the app first, and every end-to-end file stops with "dist/index.html is older than <file>: run npm run build (or set APP_FILE)" instead of quietly testing an old build. Editing a unit test doesn't count. (9ba9d89, e615346, 96923d3)
 - The end-to-end tests' browser uses the same fonts as CI (tests/e2e/fonts.conf: this machine's fonts minus Inter), however a file is run, unless FONTCONFIG_FILE is set. Before, boardimages, update and phonewager always failed where the system font is Inter. (01e7527, 96923d3)
 - `npm run test:buzzer` works out which files start a local buzzer server and goes on past a failing file. It now includes pass.mjs and leaves out themes.mjs. (e615346)
@@ -61,6 +50,9 @@ under the day's heading (Pacific time), and commit that with the hashes as `Chan
 
 ### Fixed
 
+- Hosting from a phone, the 📱 Phone buzzers card no longer sticks out sideways: on a narrow phone (under about 395px wide) Free seat and Kick show as just 📱 and ⛔, each player stays on one line, and Start game ▶ can be tapped. The in-game 📱 list keeps their words. (9b21391, 680b77c)
+- After a reload mid-game in one window, the "Be right back" card sits where the stage is, at its size, so a capture of just the stage shows the whole card and none of the host's buttons. (ae7ea34)
+- The Final's and ✍ clues' answer counts agree: the answers box and the check before 👁 Reveal answer both say e.g. "1 of 2 phones answered · Player 3 answers out loud", and "All phones answered" once the last one is in. (db34031, cb7f43d)
 - Board games: with the dice still up after a roll, clicking a space in ✎ Edit board now picks the space instead of moving the player. (49ad714, cdfd31b)
 - Board games: opening ✎ Edit board after a roll no longer scrolls its heading and ✓ Done editing out of sight under the stage. (e0805a9)
 - Final: in the "answers still coming" check, T now pauses the clock (⏸ Pause the clock), as in the clock check; it used to do nothing. (e0c2fa6, 1e5f662)
