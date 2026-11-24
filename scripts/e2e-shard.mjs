@@ -90,7 +90,7 @@ function run(files, name) {
     const head = `### E2E shard ${name}: ${failed.length ? `${failed.length} of ${results.length} failed` : `all ${results.length} passed`} (${total}s)`;
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, [head, '', '| File | Result | Seconds |', '| --- | --- | ---: |', ...rows, ''].join('\n') + '\n');
     for (const r of failed)
-      console.log(`::error file=tests/e2e/${r.f}.mjs,title=e2e ${r.f}.mjs failed::${r.f}.mjs failed in e2e shard ${name}: see its log, and the e2e-debug-${name} artifact for screenshots`);
+      console.log(`::error file=tests/e2e/${r.f}.mjs,title=e2e ${r.f}.mjs failed::${r.f}.mjs failed in e2e shard ${name}: see its log, and the e2e-debug-${name} artifact for any screenshot or trace it saved`);
   }
   process.exit(failed.length ? 1 : 0);
 }
