@@ -21,7 +21,7 @@ The desktop app also needs Rust and the [Tauri prerequisites](https://tauri.app/
 
 ## Commands
 
-Run these from the repo root. Times are rough, from a fast Linux machine.
+Run these from the repo root. The times are rough.
 
 ```sh
 npm run dev            # dev server
@@ -36,7 +36,7 @@ npm run test:e2e       # the whole end-to-end suite, one file after another, goi
                        # (CI runs it in six shards alongside the release)
 npm run test:buzzer    # only the phone-buzzer end-to-end files (they start a local buzzer server)
 npm run screenshots    # regenerate docs/screenshots (build first)
-npm run desktop:dev    # the desktop app, running from the dev server (needs Rust + Tauri prerequisites)
+npm run desktop:dev    # the desktop app around the dev server (it starts npm run dev; needs Rust + Tauri prerequisites)
 npm run desktop:build  # Windows app (needs Rust + Tauri prerequisites)
 (cd src-tauri && cargo test)   # the desktop app's Rust tests (CI runs them too; on Linux needs libwebkit2gtk-4.1-dev)
 ```

@@ -2,8 +2,8 @@
 
 Status: built. Milestones P1–P5 (§21) have shipped: 🤝 partner clues, 🤫 cards on phones with every kind of media,
 🤫 Send a card… and the 🪟 card window, 🎭 Deal, steal on a miss, 🔀 Randomize for partner tiles, and cards made in the
-editor. Not built: a Partner Double (§21, P4, "if wanted"). The open questions in §23 are left as they were asked; the
-app shows how each was settled. Where this spec and [`SPEC.md`](SPEC.md) differ, SPEC.md and the app are current; this
+editor. Not built: a Partner Double (§21, P4, "if wanted"). The open questions in §23 are kept as they were asked and
+weren't updated as they were settled. Where this spec and [`SPEC.md`](SPEC.md) differ, SPEC.md and the app are current; this
 doc stays the reference for how partner clues and cards work and why.
 
 It was written as draft 3 (2026-10-13), after the owner answered draft 2's open questions. Phones and the buzzer server
