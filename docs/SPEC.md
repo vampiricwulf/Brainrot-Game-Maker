@@ -262,7 +262,11 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - A tile's right-click menu has a **Make it a…** group, the kind it is ticked: Standard · ⭐ Daily Double · 🤝 Partner
   clue · 🎡 Wheel tile… · 🎲 Dice tile…, then ✍ Everyone answers (standard tiles; on or off), 🚫 No Pass (on or off, one
   step; ticked and greyed where it's always on, its tooltip saying why) and ⬚ Empty tile. A wheel or dice tile opens
-  the clue editor with the keys in its Which wheel / Which dice box.
+  the clue editor with the keys in its Which wheel / Which dice box. Which wheel lists 🎯 Pick a player, the game's own
+  wheels, a **Ready-made** group (the wheels of 🎡 › 📋 Ready-made wheel…: picked, one is added to the game and the tile
+  uses it, one undo step) and ＋ Add wheel…. In play, a wheel or dice tile with nothing to ask says so in the host
+  panel's status line as what to do: "🎡 Wheel tile · spin it (W)" / "🎲 Dice tile · roll it (D)", then "· spun" /
+  "· rolled".
 - Every clue editor has **🚫 No Pass (everyone must play)** beside ✍ Everyone answers (under 1600 px wide, just "🚫 No
   Pass"). On a standard (not ✍), wheel or dice tile it's the author's (`Clue.mustPlay`, off by default and in older
   games): with phone buzzers its phones offer no Pass (§6.3), and the tile wears a 🚫 badge on the board (", no Pass"

@@ -50,7 +50,7 @@
   import { answerRoundId, teamsOn } from '../lib/buzz';
   import { usableChoices } from '../lib/choices';
   import { scoresWindow } from '../lib/sync.svelte';
-  import { tileToolUp, timerRemaining } from '../lib/live';
+  import { tileToolUp, timerRemaining, toolOverlay } from '../lib/live';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
 
   let {
@@ -377,9 +377,21 @@
   const describers = $derived(
     partner?.pickerId && teams && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards() ? roomMembers(partner.pickerId).length : 0,
   );
+  /**
+   * A wheel or dice tile with nothing to ask: what it is and what's next, as W or D does it (spin it, roll it), then
+   * that it's done. (Never the wheel's name or where it landed: those are on the stage.)
+   */
+  const toolTileSay = $derived.by((): string => {
+    const dice = info?.clue.type === 'dice';
+    const what = dice ? '🎲 Dice tile' : '🎡 Wheel tile';
+    const o = info && tileToolUp(app.live, info.clue) ? toolOverlay(app.live) : null;
+    if (!o) return what;
+    const fresh = o.kind === 'wheel' ? !o.spin : o.kind === 'dice' && !o.roll;
+    return fresh ? `${what} · ${dice ? 'roll it (D)' : 'spin it (W)'}` : `${what} · ${dice ? 'rolled' : 'spun'}`;
+  });
   /** What the status line says of the open clue: where it is. */
   const clueSay = $derived.by((): string => {
-    if (toolOnly) return 'No question on this tile';
+    if (toolOnly) return toolTileSay;
     if (session.revealed) return 'Answer is showing';
     if (ddWager) return 'Daily Double: who found it, and their wager';
     if (partner?.stage === 'pick') return pickLine;

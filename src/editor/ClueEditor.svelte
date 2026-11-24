@@ -50,6 +50,8 @@
   import { commit as commitHistory, step as record } from '../lib/history.svelte';
   import { QUICK_DICE, STD_DICE, tileDice } from '../lib/tools';
   import ToolPopup, { newTool } from './tools/ToolPopup.svelte';
+  import { WHEEL_TEMPLATES, wheelFromTemplate } from '../lib/wheeltemplates';
+  import { uniqueName } from '../lib/roundcopy';
 
   let {
     round,
@@ -403,14 +405,30 @@
   /** The wheel or dice open over the clue (one made from the list, or ✎ Edit). */
   let tool = $state<{ kind: 'wheel' | 'dice'; id: string } | null>(null);
   const NEW = 'new';
+  /** A ready-made wheel in Which wheel (tpl:<key>): picked, it's added to the game, as from 🎡 › 📋 Ready-made wheel…. */
+  const TPL = 'tpl:';
 
   /** A wheel or dice picked for the tile; ＋ Add… makes one (with the tile using it: one step) and opens it. */
   function pickTool(kind: 'wheel' | 'dice', sel: HTMLSelectElement): void {
     const c = clue;
     if (!c) return;
     const key = kind === 'wheel' ? 'wheelId' : 'diceId';
-    if (sel.value !== NEW) return void (c[key] = sel.value || undefined);
     const game = app.game;
+    const tpl = kind === 'wheel' && sel.value.startsWith(TPL) ? WHEEL_TEMPLATES.find((t) => TPL + t.key === sel.value) : undefined;
+    if (tpl) {
+      // (Named after it, numbered when the game has one by that name; ✎ Edit wheel changes anything after.)
+      const w = wheelFromTemplate(tpl, game.settings.currencySymbol, uniqueName(game.wheels.map((x) => x.name), tpl.name, false));
+      record(
+        `Added wheel “${w.name}”`,
+        () => {
+          game.wheels.push(w);
+          c.wheelId = w.id;
+        },
+        { place: { tab: 'round', round: round.id, part: { kind: 'clue', category: cat.id, clue: c.id } } },
+      );
+      return;
+    }
+    if (sel.value !== NEW) return void (c[key] = sel.value || undefined);
     const item = kind === 'wheel' ? newTool('wheel') : newTool('dice');
     record(
       `Added ${kind} “${item.name}”`,
@@ -568,7 +586,15 @@
               <option value={clue.wheelId}>⚠ Deleted wheel — pick another</option>
             {/if}
             <option value={PLAYER_WHEEL}>🎯 Pick a player (built in)</option>
-            {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
+            {#if app.game.wheels.length}
+              <optgroup label="This game's wheels">
+                {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
+              </optgroup>
+            {/if}
+            <!-- (Picked, one is added to the game: as 🎡 Wheels, Dice & Deals › 📋 Ready-made wheel… does.) -->
+            <optgroup label="Ready-made">
+              {#each WHEEL_TEMPLATES as t (t.key)}<option value="{TPL}{t.key}">{t.icon} {t.name}</option>{/each}
+            </optgroup>
             <option value={NEW}>＋ Add wheel…</option>
           </select>
           </label>

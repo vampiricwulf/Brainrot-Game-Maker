@@ -1243,8 +1243,11 @@ async function tileTools() {
   // Esc while its wheel spins: it lands first, and offers its score effect (as W, D and a click wait for it).
   await tileOf('qs').click();
   await stage('.ov .wheel').waitFor();
+  const wheelSaid = () => host.locator('.panel .status .say').innerText();
+  assert((await wheelSaid()) === '🎡 Wheel tile · spin it (W)', `a wheel tile with nothing to ask: the status line says “${await wheelSaid()}”, not “No question on this tile”`);
   await host.keyboard.press('w');
   await host.locator('.panel [data-next]:disabled').waitFor();
+  assert((await wheelSaid()) === '🎡 Wheel tile · spun', `spinning, it says “${await wheelSaid()}”`);
   await host.keyboard.press('Escape');
   await host.locator('.toast', { hasText: 'Still spinning: wait for it to land' }).waitFor();
   assert((await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0, 'Esc while a wheel tile’s wheel spins says to wait for it to land, and the wheel stays');
@@ -1272,10 +1275,14 @@ async function tileTools() {
   await tileOf('qz').click();
   await stage('.ov').waitFor();
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  // The status line says what the tile is and what's next, not "No question on this tile".
+  const said = () => host.locator('.panel .status .say').innerText();
+  assert((await said()) === '🎲 Dice tile · roll it (D)', `the status line: “${await said()}”`);
   await host.keyboard.press('d');
   await host.locator('.tc .result').waitFor();
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   assert((await mainLabel(host)) === '▦ Done ▶ board', 'a dice tile rolled: the keys are on its blue ▦ Done ▶ board');
+  assert((await said()) === '🎲 Dice tile · rolled', `and the status line: “${await said()}”`);
   await cancel.click();
   await tileOf('qz').waitFor();
   await stage('.ov').waitFor({ state: 'detached' });
@@ -1293,7 +1300,7 @@ async function tileTools() {
   assert((await mainLabel(host)) === '▦ Done ▶ board', 'after a reload the rolled dice are back, with ▦ Done ▶ board');
   await host.keyboard.press('Escape');
   await tileOf('qz').waitFor();
-  assert((await used('qz')) && (await host.locator('.panel .status', { hasText: 'No question on this tile' }).count()) === 0, 'and closing them finishes the tile, as before the reload');
+  assert((await used('qz')) && (await host.locator('.panel .status', { hasText: '🎲 Dice tile' }).count()) === 0, 'and closing them finishes the tile, as before the reload');
   await ctx.close();
 }
 

@@ -50,7 +50,8 @@ video, audio or YouTube, arranged freely.
   and **📋 Paste as new category right** (in a new column beside it), to reuse a whole category (name, picture and
   clues) in another round or game; `Ctrl+C` / `Ctrl+V` on its ⋯ copy it and paste it over the column.
 - A tile's right-click menu has **Make it a…**: Standard, Daily Double, Partner clue, Wheel tile, Dice tile, Everyone
-  answers, 🚫 No Pass, or Empty tile.
+  answers, 🚫 No Pass, or Empty tile. A wheel tile's **Which wheel** offers the game's wheels and the ready-made ones
+  (Point wheel, Double or nothing…): picking a ready-made one adds it to the game.
 - With phone buzzers, players can **Pass** on an ordinary buzz-in clue. Tick **🚫 No Pass (everyone must play)** in the
   clue editor (or 🚫 No Pass in the tile's right-click menu) for a clue everyone has to try; the tile shows a 🚫 on the
   board. On clues everyone answers, Daily Doubles, partner clues and the Final the tick is shown already on, and can't

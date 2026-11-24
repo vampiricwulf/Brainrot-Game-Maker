@@ -1,6 +1,7 @@
 // Small editor and host tidy-ups at 1280×720: a tall window keeps its title and ✕ in sight as it scrolls, and 🖼 Media
 // offers 🗑 Delete unused only while some file is unused. Icons that are text by default ask for the colour emoji.
-// ⚙ Settings › Undo says when it snaps a number into range and how many changes a lower one forgot.
+// ⚙ Settings › Undo says when it snaps a number into range and how many changes a lower one forgot. A wheel tile's
+// Which wheel offers the ready-made wheels.
 import { pathToFileURL } from 'node:url';
 import { addClassicRounds, appFile, failureShots, launchChromium, png } from './helpers.mjs';
 
@@ -137,6 +138,29 @@ try {
   await toast.waitFor();
   assert((await toast.innerText()) === 'Undo: set to 20, the lowest it goes. Forgot the 3 oldest changes in 🕘 History.', `closed with Esc, a toast says it (“${await toast.innerText()}”)`);
   assert((await steps()) === 20, '🕘 History keeps 20');
+
+  // ---------- A wheel tile's Which wheel offers the ready-made wheels, and picking one adds it to the game ----------
+  await page.locator('nav > button.round-tab').first().click();
+  await page.locator('[data-tile="1,2"]').click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '🎡 Wheel tile…' }).click();
+  const clueBox = page.getByRole('dialog', { name: 'Edit clue' });
+  await clueBox.waitFor();
+  const which = clueBox.getByLabel('Which wheel');
+  const groups = await which.evaluate((sel) => [...sel.querySelectorAll('optgroup')].map((g) => `${g.label}: ${[...g.children].map((o) => o.textContent).join(', ')}`));
+  const readyGroup = groups.find((g) => g.startsWith('Ready-made: ')) ?? '';
+  assert(readyGroup.includes('🎰 Point wheel') && readyGroup.includes('💰 Double or nothing'), `Which wheel has a Ready-made group (${readyGroup.slice(0, 80)}…)`);
+  await which.selectOption({ label: '🎰 Point wheel' });
+  const pickedWheel = () => which.evaluate((sel) => sel.selectedOptions[0]?.textContent ?? '');
+  for (let i = 0; i < 50 && (await pickedWheel()) !== 'Point wheel'; i++) await page.waitForTimeout(100);
+  const undoTitle = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  assert((await pickedWheel()) === 'Point wheel' && undoTitle.startsWith('Undo: Added wheel “Point wheel”'), `picking 🎰 Point wheel adds it to the game and the tile uses it, one step (${undoTitle})`);
+  assert((await clueBox.getByRole('button', { name: '✎ Edit wheel' }).count()) === 1, 'and ✎ Edit wheel can change it');
+  await page.keyboard.press('Control+z');
+  for (let i = 0; i < 50 && (await pickedWheel()).includes('Point wheel'); i++) await page.waitForTimeout(100);
+  const left = await which.evaluate((sel) => [...sel.options].map((o) => o.textContent));
+  assert((await pickedWheel()) === 'Choose a wheel…' && !left.includes('Point wheel'), `one Ctrl+Z takes the wheel off the tile and out of the game (${await pickedWheel()})`);
+  await page.keyboard.press('Escape');
+  await clueBox.waitFor({ state: 'detached' });
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('tidyups: all passed');
