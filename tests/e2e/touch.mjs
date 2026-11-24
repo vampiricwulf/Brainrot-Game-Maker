@@ -3,21 +3,14 @@
 // and no "or drop it here", but the keys window still lists the keys. A computer shows all of it, and no note.
 // A phone hosting with the buzzer room up (local, under wrangler dev): the 📱 card's rows fit the screen (📱 and ⛔
 // only, their words for screen readers and in their tooltips), nothing scrolls sideways, and Start game ▶ takes a tap.
-import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addPlayers, failureShots, startBuzzer, startRoomOn } from './helpers.mjs';
+import { appFile, addPlayers, failureShots, startBuzzer, startRoomOn, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-touch-');
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 async function open(opts) {
   const ctx = await browser.newContext(opts);
   const page = await ctx.newPage();

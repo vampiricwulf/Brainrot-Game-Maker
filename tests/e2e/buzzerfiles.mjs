@@ -8,22 +8,11 @@
 // them, holds to them, and gives back what an upload kept for itself and didn't store. Needs `npm ci` in buzzer/.
 import { createHash, randomBytes } from 'node:crypto';
 import { request } from 'node:http';
-import { roomKeys, startBuzzer } from './helpers.mjs';
+import { roomKeys, startBuzzer, assert, sleep, untilWith } from './helpers.mjs';
 
 const MB = 1024 * 1024;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
-/** Waits (up to `ms`) until pred() holds; its value. */
-async function until(pred, what, ms = 10_000) {
-  for (const end = Date.now() + ms; ; await sleep(50)) {
-    const v = await pred();
-    if (v) return v;
-    if (Date.now() > end) throw new Error('never: ' + what);
-  }
-}
+/** Waits (up to 10 s) until pred() holds: its value, or a failure saying `never: <what>`. */
+const until = untilWith({ timeout: 10_000 });
 /** p's value, or an error if it takes over `ms`: a wait on a body the test holds would otherwise hang the run. */
 const within = (p, what, ms = 20_000) => Promise.race([p, sleep(ms).then(() => Promise.reject(new Error('never: ' + what)))]);
 /** The card file pieces stored now, in every room. */

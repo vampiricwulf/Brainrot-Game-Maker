@@ -1,24 +1,18 @@
 // The ▶ Play screen before the game (players, ⚖ Game rules, 📺 On stream's options at the rules' size, the sticky Start
 // bar, Ctrl+Z / Ctrl+Y there, History's Go there), the rules mid-game, a rematch keeping the players' pictures, and
 // phone buzzers in a copy without a buzzer server (an old game with Buzzer mode on, an exported player-only file).
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, answerAsk, exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer, showChecklist } from './helpers.mjs';
+import { appFile, failureShots, answerAsk, exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer, showChecklist, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, acceptDownloads: true });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 // 4×4 white PNG.
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEUlEQVR42mP8z8AARLgBAAC0BAP/HpJ+EwAAAABJRU5ErkJggg==';
 /** Drop a picture on an element, the way a file from the desktop arrives. */

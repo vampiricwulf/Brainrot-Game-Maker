@@ -3,18 +3,15 @@
 // settings (with a stand-in for its native side).
 // Headless Chromium has no speakers, and it's launched with autoplay allowed (as after a click in each
 // window), so a blocking browser and fake speakers are simulated with init scripts where a check needs them.
-import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const fileUrl = pathToFileURL(file).href;
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 
 // The desktop app serves the page over http (http://tauri.localhost), and its fallback audience window
 // talks over a BroadcastChannel, which needs a real origin.
@@ -25,12 +22,8 @@ const server = createServer((req, res) => {
 }).listen(0);
 const httpUrl = `http://127.0.0.1:${server.address().port}/index.html`;
 
-const browser = await chromium.launch({ executablePath, args: ['--autoplay-policy=no-user-gesture-required'] });
+const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 function watch(page, name) {
   page.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
   page.on('dialog', (d) => d.accept());

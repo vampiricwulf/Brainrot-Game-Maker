@@ -15,20 +15,14 @@
 // Phone buzzers, against a fake room (as in remotebuzz.mjs): nobody buzzes on a partner clue (a plain clue still opens
 // them), the room hears who plays which part and how it went, and never a card. With teams, the wheel spins over the
 // other teams and each team scores its share.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, png, stepButton } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, png, stepButton, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 mkdirSync(resolve('test-results'), { recursive: true });
 
 // Words and a file name that are only on the second clue's card (Movies $600), and words only on the first clue's
@@ -477,7 +471,7 @@ try {
   await dialog.waitFor({ state: 'detached' });
 
   // ---------- Two windows ----------
-  console.log('Two windows:');
+  section('Two windows');
   await playWithPlayers(page, 4);
   for (const [i, name] of ['Ann', 'Bob', 'Cat', 'Dan'].entries()) await page.getByLabel(`Player ${i + 1} name`).fill(name);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
@@ -639,7 +633,7 @@ try {
   }
 
   // ---------- One window: Movies $600, from tile open to ▦ Done ----------
-  console.log('One window:');
+  section('One window');
   const host = [[page, 'the host page']];
   await watch(page);
   await tileOf('$600').click();
@@ -731,7 +725,7 @@ try {
   await page.screenshot({ path: 'test-results/partner-one-window.png' });
 
   // ---------- Phone buzzers, against a fake room: nobody buzzes, and the room never gets a card ----------
-  console.log('Phone buzzers (a fake room):');
+  section('Phone buzzers (a fake room)');
   {
     const { p, stage: rs, panel: rp, state, sent, say, stateIs, toast: rtoast } = await roomGame(['Ann', 'Bob', 'Cat'], false);
     // A plain clue opens the buzzers at once (the room is live, Buzzer mode on).
@@ -801,7 +795,7 @@ try {
   }
 
   // ---------- Teams: team against team ----------
-  console.log('Teams:');
+  section('Teams');
   {
     const { p, stage: rs, panel: rp, state, stateIs } = await roomGame(['Red Team', 'Green Team', 'Blue Team'], true);
     await rs('.tile[aria-label^="Movies for $400"]').click();

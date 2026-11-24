@@ -10,19 +10,13 @@
 // location. With four cards out, the deal's panel warns that its 📤 Send fills the phones; then, with the 8 they hold
 // out, a tile's card and a partner clue's say in their panels why they can't go: the partner clue's by what's off now
 // (📤 Send and start, then, the clock running, a card's 📤 Send or 📤 Send changes), never by what isn't.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, failureShots } from './helpers.mjs';
+import { appFile, flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, failureShots, assert, sleep, launchChromium, until } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // ---------- The game ----------
 
@@ -36,12 +30,7 @@ const text = (t, y = 40) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotat
 const slide = (...elements) => ({ background: {}, elements });
 
 /** Waits (up to `ms`) until pred() holds. */
-const until = async (pred, ms = 15000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-  return !!(await pred());
-};
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-deal-');
 const { base } = buzzer;
 let browser;
@@ -53,7 +42,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   const plain = (id, extra = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(text('A question')), answerSlide: slide(text('An answer')), ...extra });
   const partnerClue = {

@@ -1,13 +1,10 @@
 // The editor's lists: stats, items, shops and what they sell, buttons, wheel slices, the wheels & dice list, dice
 // faces, players, and a board game's spaces and zones. Reorder (drag, Alt+↑/↓), duplicate, delete with Undo.
-import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, dragBy, macClicks } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, dragBy, macClicks, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
 const page = await context.newPage();
 const errors = [];
@@ -17,10 +14,6 @@ page.on('dialog', (d) => {
   dialogs.push(d.message());
   return d.accept();
 });
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const notice = page.locator('.history-notice');
 const values = (loc) => loc.evaluateAll((els) => els.map((e) => e.value));
 const texts = async (loc) => (await loc.allInnerTexts()).map((t) => t.trim());

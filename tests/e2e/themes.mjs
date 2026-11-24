@@ -5,28 +5,22 @@
 // to a preset), and the right-click menus (and Shift+F10) on the cards and the settings. A color box opens the app's own
 // color picker (by a click, Enter or its label; never Chromium's): Hex first and RGB beside it (kept after a reload),
 // the box changing live, a hex typed then Enter as one undo step, a bad one turned down, and Esc leaving no step.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 // (CI sets SCREENSHOTS: a failure leaves its picture in the run's e2e-debug files.)
 const shots = process.env.SHOTS || process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
 await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const shot = (name, p = page) => shots && p.screenshot({ path: `${shots}/${name}.png` });
 const RED = 'rgb(255, 0, 0)';
 const CLASSIC_TILE = 'rgb(6, 12, 233)';

@@ -11,25 +11,16 @@
 // copy, the phone shows it looping, silent and without controls (with reduced motion, or on a phone that won't start
 // it by itself, still with "▶ Play"), and the audience window's copy of the game never lists it. Needs `npm ci` in
 // buzzer/.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, startBuzzer, startRoomOn, failureShots } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
 import { clip, fixturePage, flac, gif, noise, wav } from './mediafixtures.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** Waits (up to `ms`: a slow machine takes its time) until pred() holds. */
-const until = async (pred, ms = 20000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-  return !!(await pred());
-};
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
+const until = untilWith({ timeout: 20_000 });
 
 // ---------- Two GIFs, made here: noise, so they're big for what they show (about 2.5 MB each) ----------
 
@@ -96,7 +87,6 @@ const gameWith = (movie, mov) => ({
 const packPath = resolve('test-results/phone-copies.brainrot');
 const MB = (n) => `${(n / 1024 ** 2).toFixed(1)} MB`;
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 // (3 MB a file: the 4 MB video and the 3.5 MB sound are big for it, the GIFs aren't.)
 const buzzer = await startBuzzer('buzzer-phonecopies-', { vars: { FILE_MB: 3, ROOM_FILES_MB: 12, FILES_MB_PER_DAY: 50 } });
 const { base } = buzzer;
@@ -104,7 +94,7 @@ let browser;
 const errors = [];
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 950 } });
   // The videos, made in a blank page of their own: 4 s of 720p noise at 8 Mbps (about 4 MB) with an Opus tone, and a
   // second of a small one.
@@ -187,7 +177,7 @@ try {
   };
 
   // ---------- 🗜 on 🖼 Media ----------
-  console.log('🗜 Make smaller… on a GIF in 🖼 Media:');
+  section('🗜 Make smaller… on a GIF in 🖼 Media');
   await media();
   assert((await card('dance').getByRole('button', { name: '🗜 Make smaller…' }).count()) === 1, `a GIF over 2 MB on a 🤫 card gets 🗜 Make smaller… (${MB(dance.length)})`);
   assert(
@@ -247,7 +237,7 @@ try {
   assert((await historyCount()) === before + 1, 'one step in History');
 
   // ---------- Ctrl+Z, Ctrl+Y ----------
-  console.log('Ctrl+Z and Ctrl+Y:');
+  section('Ctrl+Z and Ctrl+Y');
   const notice = page.locator('.history-notice');
   await page.keyboard.press('Control+z');
   await copyLine('dance').waitFor({ state: 'detached' });
@@ -258,7 +248,7 @@ try {
   assert((await copyOf('dance')).hash === first.hash, 'Ctrl+Y puts the same copy back');
 
   // ---------- Stop partway ----------
-  console.log('Stop partway:');
+  section('Stop partway');
   // (The page's work slowed down 4 times, so the long one is still being made while the clicks below are.)
   const cdp = await ctx.newCDPSession(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
@@ -275,7 +265,7 @@ try {
   assert((await copyLine('long').count()) === 0 && (await historyCount()) === steps, 'Stop leaves nothing: no copy, no step');
 
   // ---------- One waiting behind another; the pill; the toast ----------
-  console.log('One waiting behind another:');
+  section('One waiting behind another');
   await forgetSeen(page);
   await openShrink('long');
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
@@ -306,7 +296,7 @@ try {
   assert(copy.type === gifBox.mime && copy.hash, 'the GIF has its copy (made again)');
 
   // ---------- Done while a drag is held ----------
-  console.log('Done while a drag on a slide is held:');
+  section('Done while a drag on a slide is held');
   // (The GIF's waits behind the long one, and starts once that's stopped, from the keyboard: the mouse holds a drag.)
   await openShrink('long');
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
@@ -358,7 +348,7 @@ try {
   copy = await copyOf('dance');
 
   // ---------- Videos and sounds ----------
-  console.log('A video’s and a sound’s copies (stage 6):');
+  section('A video’s and a sound’s copies (stage 6)');
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   await forgetSeen(page);
   // (Each thing the dialog says while it works, as it shows: it can be quick.)
@@ -518,7 +508,7 @@ try {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
 
   // ---------- ▶ Play while one is made ----------
-  console.log('▶ Play while a copy is made:');
+  section('▶ Play while a copy is made');
   await openShrink('long');
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
   await progress.filter({ hasText: /Making it… \d+%/ }).waitFor({ timeout: 60_000 });
@@ -543,7 +533,7 @@ try {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
 
   // ---------- In play: the phone gets the copy ----------
-  console.log('In play:');
+  section('In play');
   const states = [];
   const posts = [];
   page.on('websocket', (ws) =>

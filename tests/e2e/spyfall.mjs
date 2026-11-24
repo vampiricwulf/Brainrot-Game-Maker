@@ -18,24 +18,15 @@
 // who got which part, nor shows a card's words or the location, until Who was who. The audience window, opened at the
 // end with Who was who up, shows it, and puts who got which in the host's column; closing it takes that away again.
 // Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots } from './helpers.mjs';
+import { appFile, confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** Waits (up to `ms`) until pred() holds. */
-const until = async (pred, ms = 20000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await pred()) return true;
-  return !!(await pred());
-};
+const until = untilWith({ timeout: 20_000, every: 100 });
 
 // ---------- The game: two short rounds, six players, no deal or wheel yet ----------
 
@@ -109,7 +100,6 @@ function wordsShown({ words, ATTRS, skip }) {
   return words.filter((w) => new RegExp(`(^|[^\\p{L}\\p{N}])${esc(w)}($|[^\\p{L}\\p{N}])`, 'u').test(all));
 }
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-spyfall-');
 const { base } = buzzer;
 let browser;
@@ -126,7 +116,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   // ---------- The host ----------
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -158,7 +148,7 @@ try {
   await host.getByText(/^Opened “/).waitFor();
 
   // ---------- The editor: 📋 Ready-made deal… → 🕵 Odd one out, with its 🗺 Locations wheel ----------
-  console.log('Editor:');
+  section('Editor');
   await host.getByRole('button', { name: /Wheels, Dice & Deals/ }).click();
   await host.getByRole('button', { name: '📋 Ready-made deal…' }).click();
   await host.getByRole('menuitem', { name: /Odd one out/ }).click();
@@ -242,7 +232,7 @@ try {
     }, ATTRS);
 
   // ---------- 🎭 Deal… in one window: the setup counts, never says ----------
-  console.log('Dealing in one window:');
+  section('Dealing in one window');
   await openDeal();
   assert((await dialog.locator('.exposed').count()) === 1, 'one window: the deal’s window warns that viewers see it');
   assert((await dialog.getByRole('combobox', { name: 'The deal' }).locator('option:checked').innerText()).includes('Odd one out'), 'it starts with the game’s saved deal');
@@ -301,7 +291,7 @@ try {
   await secret('reloaded, dealt');
 
   // ---------- 📤 Send: each dealt-in phone gets its own card ----------
-  console.log('Sending:');
+  section('Sending');
   await dialog.locator('[data-deal-send]').click();
   assert(await until(() => cards().length === 5), 'sent: the room holds five cards, one per player dealt in (Eve’s too, with no phone yet)');
   const heardSent = () => host.evaluate(() => window.__seen.filter((s) => /cards? sent/.test(s)).join(' | '));
@@ -352,7 +342,7 @@ try {
   await secret('sent');
 
   // ---------- Eve's phone joins after the send: no card, only a note; the panel counts her phone ----------
-  console.log('A late phone:');
+  section('A late phone');
   const eve = await join('Eve');
   const lateLine = 'A card went to your seat before this phone joined. Ask the host to send it again.';
   await eve.locator('#cards-late').getByText(lateLine).waitFor();
@@ -394,7 +384,7 @@ try {
   await secret('sent again');
 
   // ---------- 🎭 Who was who: on the stage only when pressed; Ctrl+Z, Ctrl+Y ----------
-  console.log('Who was who:');
+  section('Who was who');
   assert(!(await reveal.count()), 'Who was who isn’t on the stage before the host shows it');
   await dialog.locator('[data-deal-reveal]').click();
   await reveal.waitFor();
@@ -502,7 +492,7 @@ try {
   assert((await flat(reveal)).includes(`${spy} Spy`), 'Ctrl+Z puts it back');
 
   // ---------- Two windows: the audience window, opened with Who was who up, shows it; the host's column says who got which ----------
-  console.log('Two windows:');
+  section('Two windows');
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
   await aud.locator('.board').waitFor();

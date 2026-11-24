@@ -9,24 +9,18 @@
 // a time typed (and Enter), steps 0.1 s with ↑ / ↓, and offers ▶ Try it. At 1280×720, two videos and a sound on a
 // slide: the videos' rows say 1 and 2, only the row the keys reach names them, and the tools row folds so 🚪 Exit stays
 // in sight with the stage its size; files missing from this computer get a row each saying so.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, openGameFile, packGame, playWithPlayers, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, openGameFile, packGame, playWithPlayers, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath, args: ['--autoplay-policy=no-user-gesture-required'] });
+const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** 8 kHz mono WAV with a tone. */
 function wav(seconds) {
   const rate = 8000;

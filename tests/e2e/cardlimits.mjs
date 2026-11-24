@@ -10,27 +10,18 @@
 // never naming it, with 🗜 Make smaller (its window names no file either). Its upload (slowed down here) says how far
 // it got, and a phone how much has come; ↩ Take back stops one partway (the room never lists it); and a file the room
 // holds already isn't uploaded again. Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, roomKeys, shownOf, startBuzzer, startRoomOn, failureShots } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, roomKeys, shownOf, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
 const MB = 1024 * 1024;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** Waits (up to `ms`: a slow machine takes its time) until pred() holds. */
-const until = async (pred, ms = 20000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-  return !!(await pred());
-};
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
+const until = untilWith({ timeout: 20_000 });
 
 // ---------- The game: a 🤫 Card with a 25 MB video and a 20 MB one, and two with a 17 MB one each (the same bytes in
 // two files of the game). Padded: the app goes by size and type. ----------
@@ -83,7 +74,6 @@ const game = {
 const packPath = resolve('test-results/card-limits.brainrot');
 writeFileSync(packPath, await packGame(game, files));
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-cardlimits-', { vars: { FILE_MB: 24, ROOM_FILES_MB: 60, FILES_MB_PER_DAY: 400 } });
 const { base, persist } = buzzer;
 // A server that answers /api/health as an older buzzer server did (nothing about card files).
@@ -146,10 +136,10 @@ async function notesAre(page, notes, want, what) {
 }
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   // ---------- No room open: the editor asks the server ----------
-  console.log('The editor, no room open:');
+  section('The editor, no room open');
   {
     const { ctx, page, asked } = await open(base);
     const notes = await preview(page);
@@ -167,7 +157,7 @@ try {
   }
 
   // ---------- A room's welcome says it too ----------
-  console.log('Its /api/health out of reach, then a room open:');
+  section('Its /api/health out of reach, then a room open');
   {
     const { ctx, page } = await open(base, { noHealth: true });
     const notes = await preview(page);
@@ -189,7 +179,7 @@ try {
   }
 
   // ---------- An older server ----------
-  console.log('A server that doesn’t say:');
+  section('A server that doesn’t say');
   {
     const { ctx, page, asked, answered } = await open(olderBase);
     const notes = await preview(page);
@@ -222,7 +212,7 @@ try {
   }
 
   // ---------- A 17 MB video on a server that takes 24 MB: a note, not a refusal; its upload ----------
-  console.log('A 17 MB video, which the server takes:');
+  section('A 17 MB video, which the server takes');
   {
     const { ctx, page } = await open(base);
     const slowNote = '🎞 slow-zfnqj.mp4 is 17.0 MB: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).';

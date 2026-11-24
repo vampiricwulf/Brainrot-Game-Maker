@@ -3,7 +3,7 @@
 // ⚙ Settings › Undo says when it snaps a number into range and how many changes a lower one forgot. A wheel tile's
 // Which wheel offers the ready-made wheels.
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, appFile, failureShots, launchChromium, png } from './helpers.mjs';
+import { addClassicRounds, appFile, failureShots, launchChromium, png, assert, until } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -11,10 +11,6 @@ const context = await browser.newContext({ viewport: { width: 1280, height: 720 
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const more = page.getByRole('button', { name: /^More:/ });
 async function openSettings() {
   await more.click();
@@ -194,12 +190,12 @@ try {
   assert(readyGroup.includes('🎰 Point wheel') && readyGroup.includes('💰 Double or nothing'), `Which wheel has a “Ready-made (adds a copy to the game)” group (${readyGroup.slice(0, 80)}…)`);
   await which.selectOption({ label: '🎰 Point wheel' });
   const pickedWheel = () => which.evaluate((sel) => sel.selectedOptions[0]?.textContent ?? '');
-  for (let i = 0; i < 50 && (await pickedWheel()) !== 'Point wheel'; i++) await page.waitForTimeout(100);
+  await until(async () => (await pickedWheel()) === 'Point wheel', { timeout: 5_000, every: 100 });
   const undoTitle = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert((await pickedWheel()) === 'Point wheel' && undoTitle.startsWith('Undo: Added wheel “Point wheel”'), `picking 🎰 Point wheel adds it to the game and the tile uses it, one step (${undoTitle})`);
   assert((await clueBox.getByRole('button', { name: '✎ Edit wheel' }).count()) === 1, 'and ✎ Edit wheel can change it');
   await page.keyboard.press('Control+z');
-  for (let i = 0; i < 50 && (await pickedWheel()).includes('Point wheel'); i++) await page.waitForTimeout(100);
+  await until(async () => !(await pickedWheel()).includes('Point wheel'), { timeout: 5_000, every: 100 });
   const left = await which.evaluate((sel) => [...sel.options].map((o) => o.textContent));
   assert((await pickedWheel()) === 'Choose a wheel…' && !left.includes('Point wheel'), `one Ctrl+Z takes the wheel off the tile and out of the game (${await pickedWheel()})`);
   await page.keyboard.press('Escape');

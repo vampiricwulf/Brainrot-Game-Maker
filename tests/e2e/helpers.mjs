@@ -5,6 +5,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inspect, isDeepStrictEqual } from 'node:util';
 import { deflateSync } from 'node:zlib';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
@@ -64,6 +65,92 @@ export function launchChromium(opts = {}) {
   const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
   return chromium.launch({ executablePath, ...opts, env: { ...process.env, ...opts.env } });
 }
+
+/**
+ * A check: throws `Assertion failed: <msg>` when `cond` is falsy, and prints `  ✓ <msg>` when it holds. Put what was
+ * seen into `msg` (e.g. `(${got})`), or use assertEq(), so a failure says more than which check it was.
+ * @param {unknown} cond
+ * @param {string} msg
+ * @returns {asserts cond}
+ */
+export function assert(cond, msg) {
+  if (!cond) throw new Error('Assertion failed: ' + msg);
+  console.log('  ✓ ' + msg);
+}
+
+/**
+ * assert() for a value: passes when `actual` deep-equals `expected` (strict: 1 isn't '1'), and on a failure says both,
+ * as `Assertion failed: <msg> (got <actual>, expected <expected>)`.
+ * @param {unknown} actual
+ * @param {unknown} expected
+ * @param {string} msg
+ */
+export function assertEq(actual, expected, msg) {
+  if (!isDeepStrictEqual(actual, expected)) {
+    const show = (/** @type {unknown} */ v) => inspect(v, { depth: 6, breakLength: Infinity, maxStringLength: 300 });
+    throw new Error(`Assertion failed: ${msg} (got ${show(actual)}, expected ${show(expected)})`);
+  }
+  console.log('  ✓ ' + msg);
+}
+
+/**
+ * A section's heading in a test's output, as `---------- <title> ----------`.
+ * @param {string} title
+ */
+export function section(title) {
+  console.log(`---------- ${title} ----------`);
+}
+
+/**
+ * Waits `ms` milliseconds.
+ * @param {number} ms
+ * @returns {Promise<void>}
+ */
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * @typedef {object} UntilOptions
+ * @property {number} [timeout] how long to keep asking, in ms (default 15 000)
+ * @property {number} [every] how long to wait between asks, in ms (default 50)
+ * @property {string} [what] what's awaited: given, a timeout throws `never: <what>` instead of returning false
+ */
+
+/**
+ * Asks `cond` (sync or async) every `every` ms until it gives a truthy value, and returns that value. Past `timeout` it
+ * asks once more, then returns false, or throws `never: <what>` when `what` is given. Most callers check the result:
+ * `assert(await until(…), '…')`. `opts` may also be just the timeout (a number) or just `what` (a string).
+ * @template T
+ * @param {() => T | Promise<T>} cond
+ * @param {number | string | UntilOptions} [opts]
+ * @returns {Promise<T | false>}
+ */
+export async function until(cond, opts = {}) {
+  const o = typeof opts === 'number' ? { timeout: opts } : typeof opts === 'string' ? { what: opts } : opts;
+  const { timeout = 15_000, every = 50, what } = o;
+  for (const end = Date.now() + timeout; ; await sleep(every)) {
+    const v = await cond();
+    if (v) return v;
+    if (Date.now() >= end) {
+      if (what !== undefined) throw new Error('never: ' + what);
+      return false;
+    }
+  }
+}
+
+/**
+ * until() with other defaults, for a file whose waits all want them, e.g. `const until = untilWith({ timeout: 20_000,
+ * every: 100 })`. A call's own number, string or options still win.
+ * @param {UntilOptions} defaults
+ */
+export const untilWith =
+  (defaults) =>
+  /**
+   * @template T
+   * @param {() => T | Promise<T>} cond
+   * @param {number | string | UntilOptions} [opts]
+   */
+  (cond, opts = {}) =>
+    until(cond, { ...defaults, ...(typeof opts === 'number' ? { timeout: opts } : typeof opts === 'string' ? { what: opts } : opts) });
 
 /** Where a failing test leaves its pictures: SCREENSHOTS (CI uploads it), else SHOTS, else test-results/. */
 export function failureDir() {
@@ -607,9 +694,9 @@ export async function freePort() {
 }
 
 /**
- * The buzzer room (buzzer/ under `wrangler dev`, local), its storage in a new folder (`persist`): its address once it
- * answers, stop() (which also deletes that folder), and restart() (stopped and started again on the same address and
- * storage, as a deploy or a crash would: its rooms come back from storage). `vars`: its settings for this test (as
+ * The buzzer room (buzzer/ under `wrangler dev`, local), its storage in a new folder (`persist`): its address (`base`,
+ * and `port`) once it answers, stop() (which also deletes that folder), and restart() (stopped and started again on the
+ * same address and storage, as a deploy or a crash would: its rooms come back from storage). `vars`: its settings for this test (as
  * wrangler.jsonc's vars, e.g. { FILE_MB: 4 }), passed as --var (never buzzer/.dev.vars: the working tree is shared).
  * Needs `npm ci` in buzzer/.
  */
@@ -676,7 +763,7 @@ export async function startBuzzer(prefix, { vars = {} } = {}) {
   process.on('exit', stop);
   for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1));
   await start();
-  return { base, persist, stop, restart };
+  return { base, port, persist, stop, restart };
 }
 
 /**

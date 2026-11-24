@@ -22,22 +22,16 @@
 //     editor under it stays inert, the focus is on Close, and Esc closes the window only.
 // Then: no toast, History row or pill names a file. 5. ▶ Play (and New) while an edit is saved asks first: Keep working
 // stays, Stop it and play starts the game with the file unchanged.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, leaveAsks, openGameFile, packGame, recordSeen, stored, failureShots } from './helpers.mjs';
+import { appFile, editorReady, leaveAsks, openGameFile, packGame, recordSeen, stored, failureShots, assert, launchChromium, section, until } from './helpers.mjs';
 import { clip, fixturePage, hueAt, readBack, wav } from './mediafixtures.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const near = (a, b, d) => typeof a === 'number' && Math.abs(a - b) <= d;
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 let browser;
 const errors = [];
 
@@ -51,7 +45,7 @@ const tile = (id, ...els) => ({ id, value: null, type: 'standard', questionSlide
 const NAMES = ['clip', 'wide', 'long', 'pair', 'card', 'tone'];
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 950 } });
   const fx = await fixturePage(ctx);
   // A colour a frame (its hue says when in the clip it is), a key frame every second.
@@ -166,12 +160,12 @@ try {
   };
   /** The editor's game as autosave last stored it, once `ok(game)` holds. */
   const draftWhen = async (ok, what) => {
-    for (let i = 0; i < 300; i++) {
+    const g = await until(async () => {
       const g = await stored(page, 'editorDraft');
-      if (g && ok(g)) return g;
-      await page.waitForTimeout(100);
-    }
-    throw new Error(`The stored game never got to: ${what}`);
+      return g && ok(g) ? g : null;
+    }, { timeout: 30_000, every: 100 });
+    if (!g) throw new Error(`The stored game never got to: ${what}`);
+    return g;
   };
   const refNamed = (g, name) => g.media.find((m) => m.name === name);
   /** The file `name` is in the game, and isn't file `id` any more (edited, a new one in its place). */
@@ -227,7 +221,7 @@ try {
       });
 
   // ---------- 1. clip.mp4, used by two items, trimmed to 1.2–3.0 ----------
-  console.log('1. An MP4 trimmed, nothing re-encoded:');
+  section('1. An MP4 trimmed, nothing re-encoded');
   const hue12 = (await hueAt(fx, files.clip, 1.2)).hue;
   {
     // 🖼 Media's cards: a sound's player sits in its box, so its name row and Replace everywhere… are where a video's are.
@@ -297,7 +291,7 @@ try {
   assert(itemsOf(await draftWhen((g) => !!g.media.find((m) => m.id === clipNew.id), 'the edit again'))[items.c1.id].startAt === 0.3, 'Ctrl+Y: the edit again');
 
   // ---------- 2. clip.webm, 1.3–2.5: Exact, then Quick ----------
-  console.log('2. A WebM: exact or quick:');
+  section('2. A WebM: exact or quick');
   // (On a laptop's screen, 1366×768 less the browser's bars.)
   await page.setViewportSize({ width: 1366, height: 657 });
   await editFromMedia('clip.webm');
@@ -341,7 +335,7 @@ try {
   assert(w1.startAt === 0.5 && w1.endAt === 1, `its item (1.5–2.0) plays 0.5–1.0 (${JSON.stringify([w1.startAt, w1.endAt])})`);
 
   // ---------- 3. wide.webm (854×480), 1:1 crop + 360p ----------
-  console.log('3. Crop and size:');
+  section('3. Crop and size');
   await editFromMedia('wide.webm');
   await dialog.getByRole('button', { name: '✂ Crop' }).click();
   await dialog.getByRole('button', { name: '1:1', exact: true }).click();
@@ -387,7 +381,7 @@ try {
   assert(b43.w === 800 && b43.h === 600, 'the 4:3 box is as it was');
 
   // ---------- 4. long.webm (20 s, 720p), cropped: Stop, then Keep working ----------
-  console.log('4. Stop, and Keep working:');
+  section('4. Stop, and Keep working');
   const rowsBefore = (await historyRows()).filter((t) => t.startsWith('Edited a video')).length;
   await editFromMedia('long.webm');
   await dialog.getByRole('button', { name: '✂ Crop' }).click();
@@ -417,7 +411,7 @@ try {
   const longId = refNamed(g4b, `long.${longExt}`).id;
 
   // ---------- 6. Save as a new file ----------
-  console.log('6. Save as a new file:');
+  section('6. Save as a new file');
   const cwId = refNamed(g2b, 'clip.webm').id;
   await editFromMedia('clip.webm');
   await trimTo(undefined, 1);
@@ -430,7 +424,7 @@ try {
   assert(refNamed(g6, 'clip.webm').id === cwId && itemsOf(g6)[items.w1.id].media === cwId, 'a second card, “clip (edited).webm”; clip.webm and its item as they were');
 
   // ---------- 7. Only this item, from a slide item's panel ----------
-  console.log('7. Only this item:');
+  section('7. Only this item');
   await page.getByRole('button', { name: 'Round 1', exact: true }).click();
   await page.locator('.grid .tile').nth(4).click();
   await clueEditor.waitFor();
@@ -472,7 +466,7 @@ try {
   assert(p1.startAt === undefined && p1.endAt === undefined, 'and it plays all of its own copy (its part was what was kept)');
 
   // ---------- 8. tone.wav trimmed to 1–3 ----------
-  console.log('8. A sound:');
+  section('8. A sound');
   await editFromMedia('tone.wav');
   assert((await dialog.locator('.modal-title').innerText()) === '✎ Edit sound', 'the window: ✎ Edit sound');
   // A time typed that can't be taken says why, under the boxes; one past the end is its end.
@@ -515,7 +509,7 @@ try {
   assert(true, 'and its preview plays it');
 
   // ---------- 9. The handles, I and O, Esc ----------
-  console.log('9. Keys:');
+  section('9. Keys');
   await editFromMedia('pair.webm');
   const startHandle = dialog.getByRole('slider', { name: 'Start of the trim' });
   const endHandle = dialog.getByRole('slider', { name: 'End of the trim' });
@@ -567,7 +561,7 @@ try {
   assert(true, '✂ Crop alone, then Esc: the window closes without asking about edits');
 
   // ---------- 10. A 🤫 card's file with a copy for phones ----------
-  console.log('10. Its copy for phones:');
+  section('10. Its copy for phones');
   await editFromMedia('card.webm');
   const remake = dialog.locator('[data-edit-remake]');
   await remake.waitFor();
@@ -585,7 +579,7 @@ try {
   assert(g10b.media.some((m) => m.phoneCopy?.of === cardNew.id), 'and a 🗜 job made a new one, of the edited file');
 
   // ---------- 11. Over the clue editor, the window keeps the keys ----------
-  console.log('11. Keys stay in the window over the clue editor:');
+  section('11. Keys stay in the window over the clue editor');
   await page.getByRole('button', { name: 'Round 1', exact: true }).click();
   await page.locator('.grid .tile').nth(4).click();
   await clueEditor.waitFor();
@@ -653,7 +647,7 @@ try {
   assert(pills.length && !named(pills).length, `nor the header’s pill (${[...new Set(pills)].join(' | ')})`);
 
   // ---------- 5. ▶ Play while an edit is being saved ----------
-  console.log('5. ▶ Play asks first:');
+  section('5. ▶ Play asks first');
   await editFromMedia(`long.${longExt}`);
   await dialog.getByRole('button', { name: '✂ Crop' }).click();
   await dialog.getByRole('button', { name: '1:1', exact: true }).click();

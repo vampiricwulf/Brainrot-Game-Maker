@@ -1,7 +1,6 @@
 // End-to-end smoke test of the built single-file app, opened from disk (file://) like a user would.
 // Usage: npm run test:quick   (builds first; SCREENSHOTS=dir to save screenshots)
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -9,9 +8,8 @@ const file = appFile();
 const url = pathToFileURL(file).href;
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 // Keep the run hermetic: no third-party network (CI has internet, the dev sandbox doesn't).
 await context.route(/(youtube(-nocookie)?\.com|ytimg\.com|googlevideo\.com|google\.com)/, (r) => r.abort());
@@ -86,13 +84,9 @@ async function exitGame() {
   return asked;
 }
 
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { appFile, failureDir, failureShots, addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
+import { appFile, failureDir, failureShots, addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton, assert, launchChromium } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {

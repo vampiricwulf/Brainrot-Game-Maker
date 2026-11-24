@@ -8,19 +8,13 @@
 // box's 🎡 Spin for the describer, in front of them, then ↻ Spin again in its place), the card
 // to the describer only and a line for the rest of the team, one award to the team. All through, the host page holds no
 // card's words and no file name: not in its text, labels, titles or announcements.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer } from './helpers.mjs';
+import { appFile, failureShots, boxHasAction, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, assert, sleep, launchChromium, until } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // Every card's words carry "qkzvt", its picture's file name "zfnqt": neither may ever be on the host page (on stream).
 const WORDS1 = 'Kelp-qkzvt words';
@@ -33,7 +27,6 @@ const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, o
 const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
 const slide = (...elements) => ({ background: {}, elements });
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-partnerteams-');
 const { base } = buzzer;
 let browser;
@@ -47,7 +40,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   // ---------- A team game: Movies $200 is a partner clue, card 1 for the describing team (a picture on it), card 2 for the others ----------
   const kelp = png(30, 140, 90, 640, 480);
@@ -164,10 +157,6 @@ try {
       .waitForFunction((t) => ['buzz-big', 'card-status-big'].some((id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length), t, { timeout: 8000 })
       .then(() => true, () => false);
   /** Waits (up to `ms`) until pred() holds. */
-  const until = async (pred, ms = 15000) => {
-    for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-    return !!(await pred());
-  };
   const tokenOf = (p) => p.evaluate((c) => JSON.parse(localStorage.getItem(`brainrot-buzzer:${c}`)).token, code);
   const fetchAs = async (p, id) => {
     const t = await tokenOf(p);

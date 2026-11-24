@@ -1,16 +1,14 @@
 // Hosting extras: who's answering on stream, the built-in sound cues (and switching one off in 🔊 Sounds), the chroma-key
 // stage background, the scores-only window for OBS and the ? list closed from the audience window. (Buzzer mode is phone buzzers: remotebuzz.mjs, buzzerlive.mjs.)
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, editorReady, exportHtml, openGameFile, playWithPlayers, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, editorReady, exportHtml, openGameFile, playWithPlayers, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath, args: ['--autoplay-policy=no-user-gesture-required'] });
+const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 // Every sound a window starts, by its file (a built-in sound's link ends in #its-name), and how loud.
 await context.addInitScript(() => {
@@ -31,10 +29,6 @@ const watch = (p, name) => {
   return p;
 };
 watch(page, 'host');
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** The built-in cues a window has played so far (["roundIntro", "tileOpen", …]). */
 const cues = (p) => p.evaluate(() => window.__plays.filter((s) => s.startsWith('blob:') && s.includes('#')).map((s) => s.split('#').pop()));
 const played = async (p, cue) => (await cues(p)).filter((c) => c === cue).length;

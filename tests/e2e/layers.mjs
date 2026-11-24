@@ -1,25 +1,19 @@
 // Slide editor layers: reaching items stacked under a bigger one (right-click menu, Alt+click, Tab,
 // the Layers list), restacking, locking (clicks go through), hiding while editing, drag-to-select.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const shot = (name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
 // 4×4 white PNG.
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEUlEQVR42mP8z8AARLgBAAC0BAP/HpJ+EwAAAABJRU5ErkJggg==';

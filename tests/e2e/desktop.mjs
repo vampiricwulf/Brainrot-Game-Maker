@@ -7,22 +7,16 @@
 // in a color box's picker (a theme color, a slide's text color, a caption's in the image editor) puts the color picked
 // on the screen in it, one undo step, and Esc there changes nothing; a player's color another player has is turned
 // down. Also in a browser: Open… takes an exported .html.
-import { chromium } from 'playwright-core';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, clickExportHtml, editorReady, packGame, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, clickExportHtml, editorReady, packGame, failureShots, assert, launchChromium, section } from './helpers.mjs';
 import { gif, noise } from './mediafixtures.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 /** The native side: BrainrotSaves in memory, the commands the page uses, and events (window.__emit). */
 function fakeDesktop() {
@@ -352,7 +346,7 @@ try {
 
   // ---------- 💧 Pick from the screen, in the app's color picker (the browser's eyedropper does nothing in the app on
   // some PCs) ----------
-  console.log('💧 Pick from the screen:');
+  section('💧 Pick from the screen');
   const undoTitle = () => d.evaluate(() => document.querySelector('.editor > header button[aria-label="Undo (Ctrl+Z)"]').title);
   const colorPicker = d.locator('[data-color-picker]');
   const drop = colorPicker.getByRole('button', { name: '💧 Pick from the screen' });
@@ -474,7 +468,7 @@ try {
   await editorReady(d);
 
   // ---------- ℹ About's folders; ⬆ Update ----------
-  console.log('ℹ About and ⬆ Update:');
+  section('ℹ About and ⬆ Update');
   await d.getByRole('button', { name: /^More:/ }).click();
   await d.getByRole('menuitem', { name: /About/ }).click();
   const aboutDlg = d.getByRole('dialog', { name: 'About Brainrot Games Maker' });
@@ -625,7 +619,7 @@ try {
   await clueBox.waitFor({ state: 'hidden' });
 
   // Closing while a 🗜 copy for phones is made: Wait, and once it's done the app writes it, then closes.
-  console.log('Closing while a copy for phones is made:');
+  section('Closing while a copy for phones is made');
   await d.evaluate(() => (window.__closed = false));
   await d.evaluate(
     ([name, b64]) => {
@@ -671,7 +665,7 @@ try {
   // ⬆ Update pressed in ℹ About for a version the hourly check holds for a pause: from then on it's the version known,
   // so the editor's notice names it (not the one the start-up check found).
   {
-    console.log('⬆ Update for a version waiting for a pause:');
+    section('⬆ Update for a version waiting for a pause');
     const hctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     await hctx.addInitScript(fakeDesktop);
     await hctx.addInitScript(() => localStorage.setItem('jb.updateCheck', 'on'));

@@ -20,19 +20,12 @@
 // 5. the check's place at 1280×720 in one window: inside the panel, off the stage and the fixed bar, none of its buttons
 //    where the blue button is, the tools row covered whole (no tool cut off beside it), the stage its size.
 // Each step waits for what it should do, never a timer. Needs `npm ci` in buzzer/ (the buzzers never opened, flow 4).
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openBuzzerOptions, openGameFile, quick, quickInSight, startBuzzer, startRoomOn, stepButton, failureShots } from './helpers.mjs';
+import { appFile, anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openBuzzerOptions, openGameFile, quick, quickInSight, startBuzzer, startRoomOn, stepButton, failureShots, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // Ann and Bob on $0, a board of four categories (each flow plays its own column's first tile, $200), no Daily Doubles;
 // Lore's first tile is a 🤝 partner clue with a card for its describer.
@@ -80,7 +73,7 @@ const shortFinalFile = resolve('test-results/goon-final-short.json');
 writeFileSync(shortFinalFile, JSON.stringify({ ...finalGame, id: 'g_goon_final_short', rounds: [{ ...finalGame.rounds[0], timerSeconds: 3 }] }));
 
 const buzzer = await startBuzzer('buzzer-goon-');
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
 
 /**
@@ -178,7 +171,7 @@ try {
     });
 
   // ---------- 1 and 5: a clue at ▦ Done with points not given, one window ----------
-  console.log('A clue at ▦ Done ▶ board with points not given, one window at 1280×720:');
+  section('A clue at ▦ Done ▶ board with points not given, one window at 1280×720');
   {
     const { ctx, page } = await host('one window');
     await start(page);
@@ -306,7 +299,7 @@ try {
   }
 
   // ---------- 2: a partner clue's hand-out, one window, with phones ----------
-  console.log('A partner clue’s hand-out, one window, with phones:');
+  section('A partner clue’s hand-out, one window, with phones');
   {
     const { ctx, page } = await host('partner, one window', buzzer.base);
     const card = page.getByRole('region', { name: 'Phone buzzers' });
@@ -379,7 +372,7 @@ try {
   }
 
   // ---------- 3: the Final's spotlit player's verdict, a must ----------
-  console.log('The Final’s reveals, one window:');
+  section('The Final’s reveals, one window');
   {
     const { ctx, page } = await host('final', undefined, finalFile);
     await page.getByRole('button', { name: 'Start game ▶' }).click();
@@ -517,7 +510,7 @@ try {
   }
 
   // ---------- 3b: the Final's clock stopped or run out: 👁 Reveal answer at once ----------
-  console.log('The Final’s reveal, the clock stopped or run out:');
+  section('The Final’s reveal, the clock stopped or run out');
   for (const [how, from] of [
     ['paused', finalFile],
     ['run out', shortFinalFile],
@@ -558,7 +551,7 @@ try {
   }
 
   // ---------- 3c: the Final's clock check on a touch tablet: no keys taught ----------
-  console.log('The Final’s clock check on a touch tablet:');
+  section('The Final’s clock check on a touch tablet');
   for (const [what, opts] of [
     ['a computer', { viewport: { width: 1280, height: 720 } }],
     ['a touch tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true }],
@@ -630,7 +623,7 @@ try {
   }
 
   // ---------- 4: with the controls hidden ----------
-  console.log('With the controls hidden:');
+  section('With the controls hidden');
   {
     // One window, phone buzzers the host opens, never opened on this clue: 👁 Reveal answer would show it with nobody
     // having had a chance to buzz.

@@ -12,19 +12,13 @@
 // A card's picture whose upload is cut off goes again by itself, unless its card was taken back meanwhile; one the server
 // turns down is said in the list of cards out (and the tools row's cards out turns orange), and ↻ Send again puts it up.
 // Cat's phone gone, a quick card to everyone says after 📤 Send that Cat has none, and copies it for her from there.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, goOnCheck, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots } from './helpers.mjs';
+import { appFile, confirmStrip, goOnCheck, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, until } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // ---------- The game ----------
 
@@ -42,12 +36,7 @@ const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' }
 const slide = (...elements) => ({ background: {}, elements });
 
 /** Waits (up to `ms`) until pred() holds. */
-const until = async (pred, ms = 15000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-  return !!(await pred());
-};
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-cardsend-');
 const { base, persist } = buzzer;
 let browser;
@@ -59,7 +48,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   // An SVG as a drawing program saves it (an XML declaration first), and as the game stores it (cleaned: without one).
   const FLAG_RAW = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="64" height="48"><rect width="64" height="48" fill="green"/></svg>\n';

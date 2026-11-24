@@ -37,20 +37,14 @@
 // Finish now… at the left of their box's foot, and the tools row folds behind ⋯ Tools (out while 📊 Scoreboard is on),
 // giving three rows or more their ✔ Right and ✘ Wrong in sight; at 1920×1080, where the rows fit, it stays out. An RPG and a board-game round's box keeps one width
 // from its title card to play, clear of the main button's cell.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, quickInSight, selectedWords, stepButton, leaveAnswer, returningHost, revealAnyway, failureShots } from './helpers.mjs';
+import { appFile, boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, quickInSight, selectedWords, stepButton, leaveAnswer, returningHost, revealAnyway, failureShots, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // A game with every kind of round: a board (a Daily Double on its first Speedruns tile), an RPG round, a board game and
 // a Final (with a 🤫 card of its own).
@@ -175,7 +169,7 @@ try {
     await leaveAnswer(page).click();
   };
 
-  console.log('The fixed bar stays put, one main button at most:');
+  section('The fixed bar stays put, one main button at most');
   states.board = await look();
   // A right-click on a gap in the host panel shows nothing: never the browser's menu (on stream, with its Reload). A box
   // to type in keeps it (cut, copy, paste).
@@ -623,7 +617,7 @@ try {
 
   // Beside the stage (a wide window with an audience window, RPG and board-game rounds; in one window the panel stays
   // under the stage, see onestage.mjs): 🚪 Exit in the fixed bar's bottom-right cell, in both.
-  console.log('Beside the stage:');
+  section('Beside the stage');
   const wide = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const p2 = await wide.newPage();
   p2.on('pageerror', (e) => errors.push(e.message));
@@ -726,7 +720,7 @@ try {
   await p2Next('Final');
   assert((await p2.locator('.play.side').count()) === 0, 'the Final uses the panel under the stage');
   // A narrow, short window (1024×600): the fixed bar on one line, 🚪 Exit at its right, on the board and in a clue.
-  console.log('A narrow window:');
+  section('A narrow window');
   const narrow = await browser.newContext({ viewport: { width: 1024, height: 600 } });
   const p3 = await narrow.newPage();
   p3.on('pageerror', (e) => errors.push(e.message));
@@ -810,7 +804,7 @@ try {
   // main button and the players' chips in sight; 🔊 Sound opens in the host panel (not over the stage), and every Final
   // wager box is in sight. (A long Final name, so the board's tools row holds a wide ▶ beside 🤫 Send a card… and
   // 🎭 Deal…: it still fits on one line, as in a clue.)
-  console.log('A crowded single window:');
+  section('A crowded single window');
   /** A second of tone, as a WAV file. */
   const tone = () => {
     const w = Buffer.alloc(44 + 8000, 128);
@@ -1140,7 +1134,7 @@ try {
   // keeps one size from PARTNER UP! to ✔ Got it. (With 8 at 1280×720, the wheel spun from the box's own button and put
   // away by the blue Next ▶.)
   // The 4 have short names and no − Deduct on their scores (one row of them), the 8 long names.
-  console.log('The 🤝 box on a laptop, 4 and 8 players:');
+  section('The 🤝 box on a laptop, 4 and 8 players');
   for (const count of [4, 8]) {
     const boxFile = resolve(`test-results/hostlayout-box${count}.json`);
     const names = count === 4 ? ['Ann', 'Bob', 'Cat', 'Dan'] : [...crowd, 'Gwendolyn', 'Hal'];
@@ -1445,7 +1439,7 @@ try {
   }
   // Seven players tied at the end (one window, 1024×768): the results and the tiebreaker clue keep the Final's panel
   // height, and every chip's score stays in sight there (the part under them gives up its room first).
-  console.log('Seven tied at the end:');
+  section('Seven tied at the end');
   const tieFile = resolve('test-results/hostlayout-tie.json');
   const seven = ['Annabelle', 'Bob', 'Cyrus', 'Deedee', 'Eleanor', 'Fay', 'Gus'];
   const tieBoard = { ...board, id: 'r_tie', values: [200], dailyDoubleCount: 0, categories: [{ ...board.categories[0], clues: [board.categories[0].clues[0]] }] };
@@ -1492,7 +1486,7 @@ try {
   // The Final's reveal rows at 1280×720 in one window, long team names: straight columns (✔ Right, ✘ Wrong and Show
   // wager at one place on every row, its wager shown or still in a box), each row one line, a long name cut short (whole
   // in its tooltip), and Finish now… at the left of the box's foot, beside how many are still to judge.
-  console.log('The Final’s reveal rows, long names:');
+  section('The Final’s reveal rows, long names');
   const longFile = resolve('test-results/hostlayout-long.json');
   const longNames = ['The Unbelievably Long-Named Team of Champions', 'Bo', 'Cyrus Who Never Stops Talking About Speedruns', 'Dee'];
   writeFileSync(
@@ -1667,7 +1661,7 @@ try {
   // 🔇 Stop sounds (the round intro's music goes on over the board until a tile opens) and the cards out come and go on
   // the board's tools row: with either, both or neither there, a three-round game (Go to round, a long Final name in its
   // list and on the second round's ▶) keeps the stage one size from the board to a clue, all still named in full.
-  console.log('🔇 Stop sounds and cards out on the board:');
+  section('🔇 Stop sounds and cards out on the board');
   // (A second of tone: the intro's own file, so 🔇 Stop sounds shows.)
   const intro = tone();
   const board2 = { id: 'r_board2', name: 'Double Jeopardy!', mode: 'board', values: [400, 800, 1200, 1600, 2000], dailyDoubleCount: 0, categories: cats.map((c, ci) => ({ id: `cat2${ci}`, title: c, clues: [0, 1, 2, 3, 4].map((ri) => clue(`${c} again ${ri}`, `Answer 2.${ci}.${ri}`)) })) };
@@ -1796,7 +1790,7 @@ try {
   // An RPG and a board-game round with title cards, one window at 1280×720: the round's box keeps one width from its
   // title card (Start the round ▶) to play (an RPG round's walking, no blue button; a board game's ◀ Previous turn and
   // Next turn ▶), its right edge never under the main button's cell, which keeps its place at the right.
-  console.log('RPG and board-game rounds, title card to play:');
+  section('RPG and board-game rounds, title card to play');
   {
     const modesFile = resolve('test-results/hostlayout-modes.json');
     writeFileSync(modesFile, JSON.stringify({ ...game, id: 'g_layout_modes', settings: { ...game.settings, roundIntro: { titleCard: true, tileFill: false, categoryReveal: 'off' } }, rounds: [game.rounds[1], game.rounds[2]] }));

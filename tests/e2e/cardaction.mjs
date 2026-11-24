@@ -7,20 +7,14 @@
 // messages, nor a card's words. With no phone buzzers, 🪟 Show puts an offered card in the card window, and so it does a
 // standard tile's card (the stream then says "Cat has a private question") and a partner clue's, until the tile closes,
 // with more cards out than the phones' 8 (that limit is the buzzer room's).
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, flowButton, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots } from './helpers.mjs';
+import { appFile, confirmStrip, flowButton, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots, assert, sleep, launchChromium, until } from './helpers.mjs';
 import { wav } from './mediafixtures.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // Every card's words carry "wqzpk", its picture's file name "jhxvb": never on stream, and no file name leaves this computer.
 const MISSION = 'Mission-wqzpk words';
@@ -36,12 +30,6 @@ const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', 
 const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
 const slide = (...elements) => ({ background: {}, elements });
 
-const until = async (pred, ms = 15000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-  return !!(await pred());
-};
-
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-cardaction-');
 const { base } = buzzer;
 let browser;
@@ -53,7 +41,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   const files = { pic: png(40, 200, 90, 300, 200) };
   const media = [{ id: 'pic', name: 'jhxvb-map.png', mime: 'image/png', size: files.pic.length, kind: 'image' }];

@@ -3,7 +3,7 @@
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { appFile, addClassicRounds, launchChromium, playWithPlayers, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, launchChromium, playWithPlayers, failureShots, assert } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -15,10 +15,6 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const shot = (name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
 
 /** A small solid-color PNG, base64. */

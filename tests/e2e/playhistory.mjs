@@ -1,24 +1,17 @@
 // Undo everywhere in play: the 📜 Log's 🕘 History (scores, steps and rolls in one list, back to any point and forward
 // again), host choices that are steps too (a tile marked played, the picker, 👥 Players, a Final's players), and the
 // keys that go with it (0, Esc, K, Shift+N, 1–9 in the reveals, Enter on a board game, keys from the audience window).
-import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, mainButton, menuLines, openMenu, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, mainButton, menuLines, openMenu, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const page = await context.newPage();
 const errors = [];
 const dialogs = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => (dialogs.push(d.message()), d.accept()));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const toast = () => page.locator('.toast').innerText();
 const tile = (i) => page.locator('.stage-box .board .tile').nth(i);
 const isUsed = (i) => tile(i).evaluate((e) => e.classList.contains('used'));

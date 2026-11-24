@@ -15,23 +15,22 @@
 // windows: the column beside the stage shows what's on them, the cards out say which Final and card each one is, never
 // on the audience window. They stay out through the question (a phone's answer box under them) and the answer, and go
 // when the Final ends; Ctrl+Z back into its reveals doesn't bring them back.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { appFile, 
   checkItem, confirmStrip, editorReady, flowIs, forgetSeen, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored,
   leaveAnswer,
   failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  untilWith,
+  section,
 } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // ---------- The game ----------
 
@@ -48,14 +47,10 @@ const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' }
 const slide = (...elements) => ({ background: {}, elements });
 
 /** Waits (up to `ms`: a slow machine takes its time) until pred() holds. */
-const until = async (pred, ms = 20000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-  return !!(await pred());
-};
+const until = untilWith({ timeout: 20_000 });
 /** An element's words on one line (a row's parts are laid out apart). */
 const words = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-finalcards-');
 const { base, persist } = buzzer;
 let browser;
@@ -67,7 +62,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   const files = { hint: png(200, 60, 20, 300, 200) };
   const media = [{ id: 'hint', name: 'zfnqj-hint.png', mime: 'image/png', size: files.hint.length, kind: 'image' }];
@@ -156,7 +151,7 @@ try {
   // =====================================================================================================================
   // A. The editor
   // =====================================================================================================================
-  console.log('A tile’s card names:');
+  section('A tile’s card names');
   await host.locator('[data-tile="0,0"]').click();
   const dialog = host.getByRole('dialog', { name: 'Edit clue' });
   await dialog.waitFor();
@@ -205,7 +200,7 @@ try {
   assert(true, 'Esc from the Card name box closes the clue');
 
   // ---------- A Final's cards ----------
-  console.log('A Final’s cards:');
+  section('A Final’s cards');
   const finalTab = host.locator('nav > button.round-tab', { hasText: 'Final' });
   await finalTab.click();
   const main = host.getByRole('main');
@@ -319,7 +314,7 @@ try {
   // =====================================================================================================================
   // B. Play, one window, against the real buzzer room
   // =====================================================================================================================
-  console.log('Play, one window:');
+  section('Play, one window');
   await host.getByRole('button', { name: '▶ Play' }).click();
   const roomCard = host.getByRole('region', { name: 'Phone buzzers' });
   await roomCard.waitFor();
@@ -520,7 +515,7 @@ try {
   // =====================================================================================================================
   // C. Two windows
   // =====================================================================================================================
-  console.log('Two windows:');
+  section('Two windows');
   // (From the panel, not a box the focus may be in: A would be typed there.)
   await host.locator('.panel .status').click();
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
@@ -554,7 +549,7 @@ try {
   // =====================================================================================================================
   // D. Through the Final, and its end
   // =====================================================================================================================
-  console.log('Through the Final:');
+  section('Through the Final');
   const next = async (label) => {
     await host.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !document.querySelector('.panel [data-next]')?.disabled, label);
     await mainButton(host).click();

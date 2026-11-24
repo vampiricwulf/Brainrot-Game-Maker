@@ -5,20 +5,14 @@
 // and a step taken on it with the audience window open says “? (secret)” once that window closes); the audience window
 // follows; 💾 Keep in game writes the board back into the game in the editor, and without it the editor's game
 // stays as it was.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, checkItem, exportHtml, goOnCheck, mainButton, mainLabel, openGameFile, openMenu, quick, stepButton, failureShots } from './helpers.mjs';
+import { appFile, checkItem, exportHtml, goOnCheck, mainButton, mainLabel, openGameFile, openMenu, quick, stepButton, failureShots, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const shots = process.env.SHOTS;
 
 const sp = (id, name, x, y, next, more = {}) => ({ id, name, x, y, color: '#4363d8', next, ...more });
@@ -122,7 +116,7 @@ const settled = (page) =>
 
 try {
   // ---------- One window, the panel under the stage ----------
-  console.log('Under the stage:');
+  section('Under the stage');
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 } });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
@@ -685,7 +679,7 @@ try {
   await ctx.close();
 
   // ---------- A wide window with an audience window: the side column ----------
-  console.log('Beside the stage, with an audience window:');
+  section('Beside the stage, with an audience window');
   const ctx2 = await browser.newContext({ viewport: { width: 1600, height: 900 } });
   // The messages each window gets from another, by type.
   await ctx2.addInitScript(() => {
@@ -790,7 +784,7 @@ try {
   // ---------- ✎ Edit board with the dice still up (one window, 1280×720) ----------
   // The dice stay on the stage while editing, but a click there picks a space (not ▶ Move, as a click on landed dice
   // is when playing), and the edit box opens with its heading and ✓ Done editing in view.
-  console.log('Edit board with the dice up:');
+  section('Edit board with the dice up');
   const ctxD = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const dp = await ctxD.newPage();
   dp.on('pageerror', (e) => errors.push(`[dice up] ${e.message}`));
@@ -832,7 +826,7 @@ try {
   await ctxD.close();
 
   // ---------- A phone (390×844): the check's lines and its “Don't ask” tick get the card's whole width ----------
-  console.log('The check on a phone:');
+  section('The check on a phone');
   const ctxP = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const pp = await ctxP.newPage();
   pp.on('pageerror', (e) => errors.push(`[phone] ${e.message}`));
@@ -873,7 +867,7 @@ try {
   await ctxP.close();
 
   // ---------- A touch tablet (820×1180): ✎ Edit board says it in taps, and ☐ Select several is its Shift ----------
-  console.log('✎ Edit board on a touch tablet:');
+  section('✎ Edit board on a touch tablet');
   const ctxT = await browser.newContext({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true });
   const tt = await ctxT.newPage();
   tt.on('pageerror', (e) => errors.push(`[tablet] ${e.message}`));
@@ -968,7 +962,7 @@ try {
   // ---------- The check's ▶ Run, for a landing whose action is for the players picked ----------
   // (Thief takes $100 from the players picked, as the landing box's own −$100 button does: the check waits for a pick,
   // then gives it to them, not to whoever landed.)
-  console.log('A landing for the players picked:');
+  section('A landing for the players picked');
   const thief = { ...game, id: 'g_boardedit_thief', rounds: [{ ...board, spaces: board.spaces.map((x) => (x.id === 'b2' ? { ...x, name: 'Thief', onLand: [{ id: 't1', do: 'score', amount: -100, who: 'selected' }] } : x)) }] };
   const thiefFile = resolve('test-results/boardedit-thief.json');
   writeFileSync(thiefFile, JSON.stringify(thief));

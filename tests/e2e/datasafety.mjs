@@ -1,15 +1,13 @@
 // Keeping games safe in the browser: a full storage that recovers, New / Open… keeping the game they replace, the
 // first Save asking for a name, hand-edited games, and exported player files that never touch the builder's files.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, answerReplace, editorReady, exportHtml, lineOf, nameGame, noDailyDoubles, openGameFile, png } from './helpers.mjs';
+import { appFile, failureShots, answerReplace, editorReady, exportHtml, lineOf, nameGame, noDailyDoubles, openGameFile, png, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, acceptDownloads: true });
 // Storage fills up while window.__full is set (as when the disk or the browser's quota is full).
 await context.addInitScript(() => {
@@ -26,10 +24,6 @@ page.on('pageerror', (e) => errors.push(e.message));
 // (The step that closes the tab answers its beforeunload itself.)
 page.on('dialog', (d) => d.type() !== 'beforeunload' && (dialogs.push(`${d.type()}: ${d.message()}`), d.accept()));
 mkdirSync('test-results', { recursive: true });
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const shot = async (name) => process.env.SHOTS && (await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` }));
 
 const header = page.locator('header');

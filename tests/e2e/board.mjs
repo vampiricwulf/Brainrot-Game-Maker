@@ -2,16 +2,14 @@
 // each other to swap (Ctrl: copy), the arrows walk the board and a clue copies, pastes and clears; categories and
 // rows go in, out and around anywhere; the clue editor's Alt+arrows match the board; and the Final and the
 // Tiebreaker have the quick Question / Answer fields. Every gesture is one named step, and nothing asks first.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerReplace, dragBy, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, dragBy, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const shots = process.env.SHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const page = await context.newPage();
 const errors = [];
@@ -19,10 +17,6 @@ page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 const dialogs = [];
 page.on('dialog', (d) => (dialogs.push(d.message()), d.accept()));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 const notice = page.locator('.history-notice');
 const header = page.locator('.editor > header');

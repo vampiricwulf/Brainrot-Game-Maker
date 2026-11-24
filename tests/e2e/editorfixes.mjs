@@ -8,14 +8,11 @@
 // width; the slide of a slides round, a Final and the tiebreaker filling it, and the clue editor the window), the slide's
 // buttons all one size, and the board's two count lines level. And a reload mid-edit coming back on the page, round and
 // clue it left.
-import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, answerReplace, clickExportHtml, editorReady, lineOf, openRules } from './helpers.mjs';
+import { appFile, failureShots, answerReplace, clickExportHtml, editorReady, lineOf, openRules, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const page = await context.newPage();
 const errors = [];
@@ -25,10 +22,6 @@ page.on('dialog', (d) => {
   dialogs.push(d.message());
   return d.accept();
 });
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const header = page.locator('.editor > header');
 const tabs = page.locator('nav > button.round-tab');
 const values = (loc) => loc.evaluateAll((els) => els.map((e) => e.value));

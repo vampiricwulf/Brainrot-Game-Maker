@@ -12,19 +12,13 @@
 // too), so a phone seated meanwhile is late for them on Resume; discarding the kept game takes them off the phones. A
 // host reload with cards out resumes with the same card ids (nothing sent again, an offer left waiting not sent), the
 // card window lets go of its cards when the host page goes, and comes back (the same window) on 🪟.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, quick, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, leaveAnswer, failureShots } from './helpers.mjs';
+import { appFile, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, quick, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // ---------- The game ----------
 
@@ -50,14 +44,10 @@ const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' }
 const slide = (...elements) => ({ background: {}, elements });
 
 /** Waits (up to `ms`: a slow machine takes its time) until pred() holds. */
-const until = async (pred, ms = 20000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await pred()) return true;
-  return !!(await pred());
-};
+const until = untilWith({ timeout: 20_000, every: 100 });
 /** An element's words on one line (a row's parts are laid out apart). */
 const words = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-cardrounds-');
 const { base } = buzzer;
 let browser;
@@ -74,7 +64,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   const files = { just: png(200, 60, 20, 300, 200), map: png(40, 200, 90, 300, 200) };
   const media = [
@@ -273,7 +263,7 @@ try {
   // =====================================================================================================================
   // Round 1, a Jeopardy board, in one window: the host page is what viewers see.
   // =====================================================================================================================
-  console.log('A Jeopardy round, in one window:');
+  section('A Jeopardy round, in one window');
 
   // ---------- 🤫 Send a card… to Bob, in one window: a quick card, typed out of sight ----------
   await openSend();
@@ -452,7 +442,7 @@ try {
   // =====================================================================================================================
   // Round 2, an RPG round, in two windows: the audience window is what viewers see.
   // =====================================================================================================================
-  console.log('An RPG round, in two windows:');
+  section('An RPG round, in two windows');
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
   await aud.locator('.rpg').waitFor();
@@ -597,7 +587,7 @@ try {
   // =====================================================================================================================
   // Round 3, a board-game round: two windows, then one after Exit › Keep & leave and Resume.
   // =====================================================================================================================
-  console.log('A board-game round, in two windows, then Keep & leave, Resume and a host reload in one window:');
+  section('A board-game round, in two windows, then Keep & leave, Resume and a host reload in one window');
   await nextRound();
   await host.locator('.bh').waitFor();
   assert(await until(() => !cards().length), 'the next round: the RPG round’s cards go');

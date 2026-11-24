@@ -1,10 +1,9 @@
 // Host ⇄ audience sync over the BroadcastChannel fallback: the audience page is opened on its own
 // (no window.opener), the way the desktop app's fallback window is. Served over http like the
 // desktop app (http://tauri.localhost), not file://.
-import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
-import { readFileSync, existsSync } from 'node:fs';
-import { appFile, addClassicRounds, playWithPlayers, failureShots } from './helpers.mjs';
+import { readFileSync } from 'node:fs';
+import { appFile, addClassicRounds, playWithPlayers, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const html = readFileSync(file);
@@ -15,14 +14,9 @@ const server = createServer((req, res) => {
 const port = server.address().port;
 const base = `http://127.0.0.1:${port}/index.html`;
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 try {
   // The scores window opened on its own (as an OBS Browser source would): it says where it opens from, and how to capture it.
   const lone = await context.newPage();

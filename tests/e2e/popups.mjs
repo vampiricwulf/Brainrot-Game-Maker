@@ -4,22 +4,16 @@
 // beside it) and its Go to round list; the editor's ⋯ More menu; a slide editor's Background ▾, ◼ Shape ▾, 🌐 Link and
 // 🖼 Image pop-ups by the window's right edge; and the pre-game screen's player picture picker. In a single window the
 // phones list stays off the stage viewers see.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, leaveAnswer, failureShots } from './helpers.mjs';
+import { appFile, openGameFile, leaveAnswer, failureShots, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // A game with a board, an RPG round (the host panel beside the stage on a wide window) and a Final; eight players.
 const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
@@ -182,7 +176,7 @@ try {
   ]) {
     for (const dual of [false, true]) {
       const how = `${w}×${h}, ${dual ? 'with an audience window' : 'single window'}`;
-      console.log(`Host panel, ${how}:`);
+      section(`Host panel, ${how}`);
       const page = await newPage(w, h);
       await playWithPhones(page, dual);
       await checkPhones(page, `board, ${how}`, dual);
@@ -224,7 +218,7 @@ try {
   }
 
   // ---------- The phones list follows the window and the panel ----------
-  console.log('The phones list as the window shrinks and the panel scrolls:');
+  section('The phones list as the window shrinks and the panel scrolls');
   {
     const page = await newPage(1920, 1080);
     await playWithPhones(page, false);
@@ -244,7 +238,7 @@ try {
   }
 
   // ---------- The editor: ⋯ More, a slide editor's pop-ups by the right edge ----------
-  console.log('The editor:');
+  section('The editor');
   {
     const page = await newPage(1280, 600);
     await page.getByRole('button', { name: /^More:/ }).click();
@@ -276,7 +270,7 @@ try {
   }
 
   // ---------- The pre-game screen: a player's picture ----------
-  console.log('The pre-game screen:');
+  section('The pre-game screen');
   {
     const page = await newPage(1280, 600);
     await page.getByRole('button', { name: '▶ Play' }).click();

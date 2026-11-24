@@ -6,24 +6,17 @@
 //   and plays video in its /preview player;
 // - files.catbox.moe/flaky* goes down during the show, to prove viewers never see the host's error messages.
 // Usage: npm run build && node tests/e2e/links.mjs   (SCREENSHOTS=dir to save screenshots)
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import JSZip from 'jszip';
-import { appFile, failureShots, addClassicRounds, nameGame, exportHtml, openGameFile } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, nameGame, exportHtml, openGameFile, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 /** An RGB PNG (a gradient), made in memory. */
 function png(w, h) {
@@ -75,7 +68,7 @@ function wav(seconds) {
 const DRIVE_IMG = '1ImageImageImageImageImageImage12345';
 const DRIVE_VID = '1VideoVideoVideoVideoVideoVideo67890';
 
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
 // Hermetic: any web request fails unless a mock answers it (routes registered later take precedence).
 await context.route(/^https?:\/\//, (r) => r.abort());

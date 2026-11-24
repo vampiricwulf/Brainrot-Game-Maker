@@ -2,15 +2,13 @@
 // the item up, change a stat, undo and redo, show the map, and check viewers never see secret objects. The editor
 // shows a screen with its background reset in the color viewers see. A box drawn on the stage selects players and
 // the things that move in play, in two windows, one, and on a touch screen.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, answerAsk, dragBy, editorReady, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerAsk, dragBy, editorReady, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
 const page = await context.newPage();
 const errors = [];
@@ -22,16 +20,12 @@ page.on('dialog', (d) => {
   if (playing) dialogs.push(d.message());
   return d.accept();
 });
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const where = () => page.locator('.rh .where').innerText();
 const toast = () => page.locator('.toast').innerText();
 
 /** A big world (20×20 screens) from a file, with four players and an audience window. */
 async function bigWorld() {
-  console.log('A 20×20 world:');
+  section('A 20×20 world');
   const text = (id, t, x, y) => ({ id, kind: 'text', text: t, x, y, w: 520, h: 100, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 48, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
   const shape = (id, name, x, y, role) => ({ id, name, kind: 'shape', shape: 'rect', x, y, w: 150, h: 150, rotation: 0, opacity: 1, zIndex: 1, fill: '#aa5500', stroke: '#000', strokeWidth: 0, radius: 0, role });
   const screens = [];
@@ -397,7 +391,7 @@ async function bigWorld() {
  * windows, then one, then a touch screen.
  */
 async function boxSelect() {
-  console.log('A box on the RPG stage:');
+  section('A box on the RPG stage');
   const shape = (id, name, x, y, w, h, role, more = {}) => ({
     id, name, kind: 'shape', shape: 'rect', x, y, w, h, rotation: 0, opacity: 1, zIndex: 1, fill: '#887755', stroke: '#000', strokeWidth: 0, radius: 0, ...(role ? { role } : {}), ...more,
   });

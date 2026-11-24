@@ -12,12 +12,11 @@
 // the same step. 🎨 Edit image on a moving GIF edits every frame, so it stays a moving GIF. New 🅣 Text boxes stay on the slide.
 // The image and drawing windows' headers in one order (↶ ↷, Reset apart, Cancel, the main button, ✕), the image editor's
 // tool keys (C, D, T, S, M; ✂ Crop pressed reads ✓ Done cropping), and the Drawpad's Keep drawing and Ctrl+Enter.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerAsk, answerReplace, leaveAsks, noSelection, selectedWords, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, answerAsk, answerReplace, leaveAsks, noSelection, selectedWords, failureShots, assert, launchChromium, until } from './helpers.mjs';
 import { gif } from './mediafixtures.mjs';
 
 const { GifReader } = createRequire(import.meta.url)('omggif');
@@ -25,18 +24,13 @@ const { GifReader } = createRequire(import.meta.url)('omggif');
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const shot = (name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
 
 const canvas = page.locator('.canvas');
@@ -954,10 +948,7 @@ try {
   await pad.waitFor({ state: 'detached' });
   // The drawing reaches the slide a moment after the pad closes (it's made into a picture first): wait for it.
   let drawing;
-  for (let i = 0; i < 50 && !drawing; i++) {
-    drawing = (await drawn()).find((e) => !idsBefore.has(e.id));
-    if (!drawing) await page.waitForTimeout(100);
-  }
+  drawing = await until(async () => (await drawn()).find((e) => !idsBefore.has(e.id)), { timeout: 5_000, every: 100 });
   assert(!!drawing && drawing.y + drawing.h >= 1070, `drawn along the pad's bottom edge, it sits at the slide's bottom (${drawing?.y} + ${drawing?.h})`);
   assert(!(await leaveAsks(page)), 'once it’s inserted, closing the tab asks nothing');
   await page.setViewportSize({ width: 1400, height: 900 });

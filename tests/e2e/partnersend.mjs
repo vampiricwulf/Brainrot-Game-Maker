@@ -13,19 +13,13 @@
 // the upload the room turns down, and one too big for the buzzer server, are said in plain words and offered 📋 Copy
 // picture.
 // The audience window, and the host page in one window, never hold a card's words, its file names or its link.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, confirmStrip, flowIs, mainButton, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stepButton, stored } from './helpers.mjs';
+import { appFile, failureShots, boxHasAction, confirmStrip, flowIs, mainButton, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stepButton, stored, assert, sleep, launchChromium, until, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 /**
  * A GIF of `w`×`h` random pixels (seeded), its picture data stored uncompressed (a clear code every 250 pixels keeps
@@ -91,7 +85,6 @@ const video = (media, y) => ({ ...box(y), kind: 'video', media, fit: 'contain', 
 const youtube = (url, y) => ({ ...box(y), kind: 'embed', embedKind: 'youtube', url, ...play });
 const slide = (...elements) => ({ background: {}, elements });
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 // (Its own limits, so the sizes below hold whatever wrangler.jsonc says: small ones, so the files are small too.)
 const buzzer = await startBuzzer('buzzer-partnersend-', { vars: { FILE_MB: 3, ROOM_FILES_MB: 10, FILES_MB_PER_DAY: 200 } });
 const { base, persist } = buzzer;
@@ -106,7 +99,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   // A second of WebM, made in the browser (a real video file a phone can play).
   const maker = await browser.newPage();
@@ -272,10 +265,6 @@ try {
   /** Its small line under that. */
   const small = (p) => p.evaluate(() => (document.getElementById('buzz')?.getClientRects().length ? document.getElementById('buzz-small') : document.getElementById('card-status-small'))?.textContent ?? '');
   /** Waits (up to `ms`) until pred() holds. */
-  const until = async (pred, ms = 15000) => {
-    for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-    return !!(await pred());
-  };
   /** The room's answers to the uploads, once `n` came and each was read. */
   const answered = (n) => until(() => answers.length === n && answers.every((a) => a.read));
   /** This phone's seat token (what it fetches card files with). */
@@ -589,7 +578,7 @@ try {
   assert((await shownOf(host, SECRETS)).length === 0, 'the host page in one window held no card’s words, file names or link, through the whole clue');
 
   // ---------- More GIFs than the room holds, and one too big for the buzzer server ----------
-  console.log('Over the caps:');
+  section('Over the caps');
   const [aud2] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud2, 'audience 2');
   await aud2.locator('.board').waitFor();

@@ -7,23 +7,17 @@
 // 🏁 Back to results, which warns first with a tied player picked and no winner given), points given there settle the
 // tie (the panel says so), and Ctrl+Z takes back that award there, then goes back to the Final's reveals for its last
 // judgment (not out of sight), from the outro too.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway, failureShots, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const roundNames = async () => (await page.locator('nav > button.round-tab').allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
 
 try {
@@ -216,7 +210,7 @@ try {
   assert(true, 'and the next click goes on to the board');
 
   // ---------- A Final, then a slides outro, then the tiebreaker ----------
-  console.log('A Final with a slides outro after it, and the tiebreaker:');
+  section('A Final with a slides outro after it, and the tiebreaker');
   const textEl = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
   const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [textEl(id, t)] });
   const outro = Array.from({ length: 22 }, (_, i) => slide(`o${i}`, `Thanks ${i + 1}`));

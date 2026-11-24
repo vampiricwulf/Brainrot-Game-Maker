@@ -5,15 +5,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, launchChromium, openGameFile } from './helpers.mjs';
+import { appFile, failureShots, launchChromium, openGameFile, assert } from './helpers.mjs';
 
 const url = pathToFileURL(appFile()).href;
 const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 const slide = (t) => ({ background: {}, elements: [{ id: `t_${t.replace(/\W/g, '')}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
 const clue = (id, q) => ({ id, value: null, type: 'standard', questionSlide: slide(q), answerSlide: slide(`${q}: the answer`) });

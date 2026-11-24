@@ -1,23 +1,17 @@
 // Round modes: a game is a list of rounds and each picks a mode. Final Jeopardy is a round like any other (it can
 // go in the middle), rounds can be reordered, duplicated and deleted, and games saved before modes still open.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, openGameFile, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway, failureShots } from './helpers.mjs';
+import { appFile, anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, openGameFile, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const nav = () => page.locator('nav > button, nav .add > button').allInnerTexts();
 const roundNames = async () => (await page.locator('nav > button.round-tab').allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
 

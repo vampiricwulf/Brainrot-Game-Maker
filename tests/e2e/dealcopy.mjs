@@ -8,20 +8,12 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, failureShots, launchChromium, leaveAnswer, openGameFile, recordSeen, stored } from './helpers.mjs';
+import { appFile, confirmStrip, failureShots, launchChromium, leaveAnswer, openGameFile, recordSeen, stored, assert, sleep, untilWith, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** Waits (up to `ms`) until pred() holds. */
-const until = async (pred, ms = 15000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await pred()) return true;
-  return !!(await pred());
-};
+const until = untilWith({ every: 100 });
 
 let ids = 0;
 const text = (t) => ({ id: `e${ids++}`, x: 100, y: 40, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1, kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
@@ -97,7 +89,7 @@ try {
   await host.getByText(/^Opened “/).waitFor();
 
   // ---------- 📥 Import rounds…: the other game's deal, with the wheel it draws from ----------
-  console.log('Import rounds…:');
+  section('Import rounds…');
   const tabs = () => host.locator('nav > button.round-tab').allInnerTexts();
   const tabsBefore = await tabs();
   await host.getByRole('button', { name: '＋ Add round' }).click();
@@ -154,7 +146,7 @@ try {
   };
 
   // ---------- Dealt, handed out: nothing about phones ----------
-  console.log('Copy mode:');
+  section('Copy mode');
   await openDeal();
   // ---------- The lists mark a ready-made deal or wheel the game has its own copy of ----------
   const dealOptions = await dialog.getByRole('combobox', { name: 'The deal' }).locator('option').allInnerTexts();

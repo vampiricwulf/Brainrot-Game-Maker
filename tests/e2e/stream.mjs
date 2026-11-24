@@ -13,15 +13,13 @@
 // reveal card one width from a short name to a long one.
 // On Pastel, one window: a clue zooming in over the board's background, white tool titles, a long cover text, and no
 // lit tile under a still, hidden cursor.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, showChecklist, stored, leaveAnswer, revealAnyway } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, showChecklist, stored, leaveAnswer, revealAnyway, assert, launchChromium, section, until } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 const page = await context.newPage();
@@ -29,10 +27,6 @@ const errors = [];
 const dialogs = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => (dialogs.push(d.message()), d.accept()));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const stageSize = async () => {
   await page.waitForTimeout(400);
   const b = await page.locator('.stage-box .stage').boundingBox();
@@ -52,7 +46,7 @@ const nextRound = async () => {
  * text kept off the stage's edges, and no tile lit under a still, hidden cursor with the controls hidden.
  */
 async function pastelStage() {
-  console.log('Pastel in one window at 1280×720:');
+  section('Pastel in one window at 1280×720');
   const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#4a3b5c', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
   const values = [200, 400];
   const game = {
@@ -223,7 +217,7 @@ async function pastelStage() {
  * names. Nothing viewers need is cut off, shrunk past reading, or covered.
  */
 async function crowd() {
-  console.log('A crowded game at 1280×720:');
+  section('A crowded game at 1280×720');
   const NAMES = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
   const SCORES = [12400, -3200, 800, 0, 25600, 1000000, -400, 600, 200, 1600, 3000, 99999];
   const COLORS = ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'];
@@ -495,7 +489,7 @@ async function crowd() {
  * ✔ marks clear of the scores, and an end screen whose tie heading (two long names) keeps every place on screen.
  */
 async function viewers() {
-  console.log('What viewers see, 12 players with phone buzzers:');
+  section('What viewers see, 12 players with phone buzzers');
   const NAMES = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
   const SCORES = [5000, 5000, 0, 800, 2600, 100, -400, 600, 200, 1600, 3000, 4000];
   const COLORS = ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'];
@@ -773,7 +767,7 @@ async function viewers() {
  * the editor, as before; and so with an audience window, which is the one on stream.
  */
 async function reloadMidGame() {
-  console.log('A reload mid-game in one window:');
+  section('A reload mid-game in one window');
   const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
   const clue = (id, q) => ({ id, value: null, type: 'standard', questionSlide: slide(q), answerSlide: slide(`${q}: the answer`) });
   const game = {
@@ -866,7 +860,7 @@ async function reloadMidGame() {
 }
 
 async function tileTools() {
-  console.log('Wheel and dice tiles, the countdown and the buzzers (single window, buzzer mode):');
+  section('Wheel and dice tiles, the countdown and the buzzers (single window, buzzer mode)');
   const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
   const NOTE = 'Accept Shiba or Shiba Inu. If they say Akita, ask them to be more specific; if they say Corgi, it is wrong. The picture on the next slide is of the same dog, taken in 2010 by its owner in Japan.';
   const clue = (id, type, q, extra = {}) => ({ id, value: null, type, questionSlide: slide(q), answerSlide: slide(`${q}: the answer`), ...extra });
@@ -1292,7 +1286,7 @@ async function tileTools() {
   await stage('.ov').waitFor();
   await host.keyboard.press('d');
   await host.locator('.tc .result').waitFor();
-  for (let i = 0; i < 100 && (await stored(host))?.toolTile !== 'qz'; i++) await host.waitForTimeout(100);
+  await until(async () => (await stored(host))?.toolTile === 'qz', { timeout: 10_000, every: 100 });
   await host.reload();
   await host.getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
@@ -1309,7 +1303,7 @@ async function tileTools() {
  * words again and the host's ▶ Start countdown is back (never "Starting now!" for as long as the host takes).
  */
 async function soonOver() {
-  console.log('The “Starting soon” countdown past 0:');
+  section('The “Starting soon” countdown past 0');
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   await ctx.clock.install();
   const host = await ctx.newPage();

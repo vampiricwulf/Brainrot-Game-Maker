@@ -10,25 +10,16 @@
 // whose copies came out too big for the server: 🗜 Again offers one of only the part its card plays (none of all of
 // it), or, for one whose card plays all of it, says there's none smaller to make; the checklist offers 🗜 for the first
 // only. Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, seenWhere, shownOf, startBuzzer, startRoomOn, stored, failureShots } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, seenWhere, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, launchChromium, untilWith, section } from './helpers.mjs';
 import { gif, noise, wav } from './mediafixtures.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** Waits (up to `ms`: a slow machine takes its time) until pred() holds. */
-const until = async (pred, ms = 20000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-  return !!(await pred());
-};
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
+const until = untilWith({ timeout: 20_000 });
 
 // ---------- Two GIFs of noise, made here: big for what they show (2.4 MB and 1.6 MB), each too big for 1 MB ----------
 
@@ -87,14 +78,13 @@ const game = {
 const packPath = resolve('test-results/play-copies.brainrot');
 writeFileSync(packPath, await packGame(game, { dance, twirl, hum, humc: tooBig, drone, dronec: tooBig }));
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-playcopies-', { vars: { FILE_MB: 1, ROOM_FILES_MB: 8, FILES_MB_PER_DAY: 40 } });
 const { base } = buzzer;
 let browser;
 const errors = [];
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 950 } });
   await ctx.addInitScript(recordSeen);
   await ctx.addInitScript((server) => {
@@ -141,7 +131,7 @@ try {
   };
 
   // ---------- In the editor: 🗜 Again on a copy that came out too big ----------
-  console.log('A copy that came out too big:');
+  section('A copy that came out too big');
   await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const again = async (id) => {
     await page.locator(`[data-place="media:${id}"] [data-phone-copy]`).getByRole('button', { name: '🗜 Again' }).click();
@@ -168,7 +158,7 @@ try {
   await dialog.waitFor({ state: 'detached' });
 
   // ---------- Before the game: the checklist ----------
-  console.log('The pre-game checklist:');
+  section('The pre-game checklist');
   await page.getByRole('button', { name: '▶ Play' }).click();
   const roomCard = page.getByRole('region', { name: 'Phone buzzers' });
   await roomCard.waitFor();
@@ -204,7 +194,7 @@ try {
   assert(await until(async () => !(await tipLine.count())), 'made: the line about it goes');
   await namesNone('the copy made');
 
-  console.log('Ctrl+Z and Ctrl+Y before the game:');
+  section('Ctrl+Z and Ctrl+Y before the game');
   /** A toast (or anything) the page said, by now. */
   const saidSoon = (t) => page.waitForFunction((t) => window.__seen.some((s) => s.includes(t)), t);
   await page.keyboard.press('Control+z');
@@ -221,7 +211,7 @@ try {
   assert(await until(async () => ['mp4', 'webm'].includes((ext = (await copyName())?.split('.').pop() ?? ''))), `the editor’s game has the copy (${await copyName()})`);
 
   // ---------- In the game ----------
-  console.log('In the game:');
+  section('In the game');
   const code = await startRoomOn(roomCard);
   const phoneCtx = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true });
   const ann = await phoneCtx.newPage();

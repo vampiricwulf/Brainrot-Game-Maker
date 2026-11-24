@@ -12,20 +12,14 @@
 // it never spins or judges. In one window the host page never
 // holds a card's words or its picture's name; in two windows the audience window never does, and the host column lists
 // the cards as text.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, anyway, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, menuLines, notYet, openGameFile, openMenu, quick, stepButton } from './helpers.mjs';
+import { appFile, failureShots, anyway, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, menuLines, notYet, openGameFile, openMenu, quick, stepButton, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 mkdirSync(resolve('test-results'), { recursive: true });
 
 // ---------- The game: Movies $400, $600 and $800 are partner clues ----------
@@ -96,7 +90,7 @@ try {
   await tile(0, 1).waitFor();
 
   // ---------- PARTNER UP!, and who picked it ----------
-  console.log('One window:');
+  section('One window');
   // (The tools row steps back while the 🤝 box is open: the ghost look, the same words, the same place.)
   const diceTool = page.locator('.panel .toolsrow .tl .pop > button', { hasText: '🎲 Dice' });
   const toolLook = () => diceTool.evaluate((b) => [getComputedStyle(b).backgroundColor, Math.round(b.getBoundingClientRect().x)].join());
@@ -491,7 +485,7 @@ try {
   await page.keyboard.press('Escape');
 
   // ---------- Two windows: the audience window never gets a card; the host column lists them ----------
-  console.log('Two windows:');
+  section('Two windows');
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
   aud.on('pageerror', (e) => errors.push(`[audience] ${e.message}`));
   await aud.locator('.board').waitFor();

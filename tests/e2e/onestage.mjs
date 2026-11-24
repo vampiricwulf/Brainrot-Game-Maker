@@ -5,20 +5,14 @@
 // height all along (its rows scroll), and the RPG and board-game rounds keep it under the stage too. 👥 Players,
 // ⚖ Rules and the keys (?) open in that panel: their title and Done stay in sight as the middle scrolls, and the rows
 // fade over Done while there's more below (gone at the foot).
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, leaveAnswer, mainButton, openGameFile, returningHost, revealAnyway, failureShots } from './helpers.mjs';
+import { appFile, confirmStrip, leaveAnswer, mainButton, openGameFile, returningHost, revealAnyway, failureShots, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // Every kind of round: a board (a Daily Double, a partner clue), an RPG round, a board game and a Final, three players
 // at 500 (the Final at 0 wagers, all right: a tie for first, and the tiebreaker).
@@ -117,7 +111,7 @@ try {
     [1366, 768],
     [1920, 1080],
   ]) {
-    console.log(`${w}×${h}:`);
+    section(`${w}×${h}`);
     const context = await browser.newContext({ viewport: { width: w, height: h } });
     await returningHost(context);
     const page = await context.newPage();

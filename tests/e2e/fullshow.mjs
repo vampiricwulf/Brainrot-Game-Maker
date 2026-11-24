@@ -11,22 +11,16 @@
 // once by clicks: the Final's answer with its think clock still running (👁 Reveal anyway). With
 // SCREENSHOTS set to a folder, it saves the host's window as each part starts. Needs `npm ci` in
 // buzzer/.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, checkItem, confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots } from './helpers.mjs';
+import { appFile, anyway, checkItem, confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots, assert, sleep, launchChromium, section, until as waitUntil } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 /** A folder for a screenshot of the host's window as each part of the show starts (left out: none). */
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 /**
  * Today's counts, recorded on the app before the usability plan's changes (17e8dbe): each part of the show, by keys and
@@ -123,14 +117,13 @@ const gameFile = resolve('test-results/fullshow.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 const { base, stop } = await startBuzzer('buzzer-fullshow-');
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
 const watch = (p, name) => {
   p.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
   p.on('dialog', (d) => (errors.push(`[${name}] dialog: ${d.message()}`), d.accept()));
   return p;
 };
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** The three phones, each in its own browser (joined to each run's room). */
 const phones = {};
@@ -139,7 +132,7 @@ for (const name of NAMES) phones[name] = watch(await (await browser.newContext({
 /** One show: `how` is 'keys' or 'clicks'. Returns what each part took ({ keys, clicks, typed } by part). */
 async function show(how) {
   const byKeys = how === 'keys';
-  console.log(`By ${how}:`);
+  section(`By ${how}`);
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   await ctx.addInitScript((server) => {
     try {
@@ -186,8 +179,7 @@ async function show(how) {
   };
   /** Waits for the state `what` describes (`check` holds), or fails saying which step didn't bring it. */
   const until = async (what, check, ms = 15000) => {
-    for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await check()) return;
-    throw new Error(`${part}: ${what} never came (${await where()})`);
+    if (!(await waitUntil(check, ms))) throw new Error(`${part}: ${what} never came (${await where()})`);
   };
   const label = async () => ((await mainButton(host).count()) ? await mainLabel(host) : '');
   const mainIs = (l) => async () => (await label()) === l;

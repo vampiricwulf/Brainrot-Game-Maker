@@ -8,24 +8,15 @@
 // taken out, the list still names the other four and the status reads as before. 🎭 Who was who goes on the stage; a
 // click on it takes it off (Ctrl+Z puts it back), and so does Esc; a tile opened with the keyboard under it takes it off
 // (it would cover the question); and the board under it takes clicks again.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, recordSeen, stored, failureShots } from './helpers.mjs';
+import { appFile, openGameFile, recordSeen, stored, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** Waits (up to `ms`) until pred() holds. */
-const until = async (pred, ms = 15000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await pred()) return true;
-  return !!(await pred());
-};
+const until = untilWith({ every: 100 });
 
 let ids = 0;
 const text = (t) => ({ id: `e${ids++}`, x: 100, y: 40, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1, kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
@@ -48,12 +39,11 @@ const gameFile = resolve('test-results/dealcaptain.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 const ATTRS = ['aria-label', 'title', 'alt', 'aria-description', 'placeholder', 'data-said', 'value'];
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 let browser;
 const errors = [];
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
   await ctx.addInitScript(recordSeen);
@@ -87,7 +77,7 @@ try {
   const savedDeal = async () => (await stored(host))?.session?.deal ?? null;
 
   // ---------- 🎭 Deal…: the way on stays in view at the menu's foot ----------
-  console.log('The menu’s foot:');
+  section('The menu’s foot');
   await openDeal();
   const pick = dialog.getByRole('combobox', { name: 'The deal' });
   await pick.selectOption('tpl:roles');
@@ -100,7 +90,7 @@ try {
   assert((await dialog.getByLabel('How many get Captain').inputValue()) === '1', 'one Captain');
 
   // ---------- Dealt and handed out: everyone on the list, the same buttons for each ----------
-  console.log('One window, no phones:');
+  section('One window, no phones');
   await dialog.getByRole('button', { name: '🎭 Deal', exact: true }).click();
   await dialog.locator('[data-deal-counts]').waitFor();
   assert((await flat(dialog.locator('[data-deal-counts]'))) === 'Dealt to 5: Captain ×1', '“Dealt to 5: Captain ×1”: everyone dealt in, one part');
@@ -179,7 +169,7 @@ try {
   assert(!/\b(Ann|Bob|Cat|Dan|Eve)\b[^\n]*Captain|Captain[^\n]*\b(Ann|Bob|Cat|Dan|Eve)\b/.test(`${next.page}\n${next.said}`), 'no line names anyone with “Captain”');
 
   // ---------- The captain taken out: the panel reads as it would for anyone else ----------
-  console.log('The captain taken out:');
+  section('The captain taken out');
   const status = dialog.locator('[data-deal-status]');
   const statusWas = await flat(status);
   const handRows = () => dialog.locator('.hands .row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
@@ -205,7 +195,7 @@ try {
   assert(await until(async () => (await handRows()).length === 5), '↩ Restore: the captain is back on the list');
 
   // ---------- 🎭 Who was who: a click on the stage takes it off ----------
-  console.log('Who was who:');
+  section('Who was who');
   const reveal = host.locator('.stage-box [data-who-was-who]');
   await dialog.locator('[data-deal-reveal]').click();
   await reveal.waitFor();

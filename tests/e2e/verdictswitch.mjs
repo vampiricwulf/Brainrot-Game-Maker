@@ -1,17 +1,10 @@
 // A verdict switched on a clue (✔ after ✘): a tile reopened and the page reloaded mid-clue switches only marks from
 // this opening, and 📜 Log › Scores' ↷ Restore on the mark a switch took back takes the switch back (never counted twice).
-import { chromium } from "playwright-core";
-import { existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { addClassicRounds, appFile, playWithPlayers, stored, failureShots } from "./helpers.mjs";
+import { addClassicRounds, appFile, playWithPlayers, stored, failureShots, assert, launchChromium, until } from "./helpers.mjs";
 
 const file = appFile();
-const executablePath =
-  process.env.CHROMIUM_PATH ||
-  (existsSync("/opt/pw-browsers/chromium")
-    ? "/opt/pw-browsers/chromium"
-    : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({
   viewport: { width: 1280, height: 720 },
 });
@@ -19,10 +12,6 @@ const page = await context.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("dialog", (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error("Assertion failed: " + msg);
-  console.log("  ✓ " + msg);
-}
 const tile = (i) => page.locator(".stage-box .board .tile").nth(i);
 const chip = () => page.locator(".panel .p").first();
 const money = (t) => Number(t.trim().replace("−", "-").replace(/[$,]/g, ""));
@@ -36,8 +25,10 @@ const opened = () =>
 /** Waits for autosave to hold what's on screen (a reload resumes what it stored). */
 async function saved() {
   const at = Date.now();
-  for (let i = 0; i < 100 && !((await stored(page))?.savedAt >= at); i++)
-    await page.waitForTimeout(100);
+  await until(async () => (await stored(page))?.savedAt >= at, {
+    timeout: 10_000,
+    every: 100,
+  });
 }
 
 try {
@@ -116,8 +107,10 @@ try {
     "the ✘ the switch took back reads undone, its ↷ Restore saying it takes the switch back",
   );
   await restore.click();
-  for (let i = 0; i < 20 && (await scoreOf()) !== before - 200; i++)
-    await page.waitForTimeout(100);
+  await until(async () => (await scoreOf()) === before - 200, {
+    timeout: 2_000,
+    every: 100,
+  });
   assert(
     (await scoreOf()) === before - 200 &&
       (await page.locator("aside .ev.undone").count()) === 1 &&

@@ -9,24 +9,15 @@
 // slice's longer words. ↩ Take the cards back lets go of the pictures, 📤 Send puts the same prompts out again. A deal drawn from
 // the ready-made 🗺 Locations wheel replaces it (asked first, its cards out), and neither changes the game: its deal
 // and wheels stay as saved. Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots } from './helpers.mjs';
+import { appFile, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** Waits (up to `ms`) until pred() holds. */
-const until = async (pred, ms = 20000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await pred()) return true;
-  return !!(await pred());
-};
+const until = untilWith({ timeout: 20_000, every: 100 });
 
 // ---------- The game ----------
 
@@ -47,7 +38,6 @@ let ids = 0;
 const text = (t, y = 40) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1, kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
 const slide = (...elements) => ({ background: {}, elements });
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-dealwheel-');
 const { base } = buzzer;
 let browser;
@@ -59,7 +49,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   const files = { hum: png(200, 40, 40, 300, 200), clap: png(40, 160, 40, 300, 200) };
   const media = Object.entries(files).map(([id, b]) => ({ id, name: `zfnqj-${id}.png`, mime: 'image/png', size: b.length, kind: 'image' }));
@@ -156,7 +146,7 @@ try {
   const flat = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
 
   // ---------- 🎭 Deal…: the saved deal, its words changed for this deal only ----------
-  console.log('Dealing:');
+  section('Dealing');
   const tools = host.locator('.panel .toolsrow');
   const dialog = host.getByRole('dialog', { name: 'Deal' });
   await tools.getByRole('button', { name: '🎭 Deal…' }).click();
@@ -194,7 +184,7 @@ try {
   await offStream(SECRETS, 'dealt');
 
   // ---------- 📤 Send: the pictures go up; each phone gets its own prompt ----------
-  console.log('Sending:');
+  section('Sending');
   await dialog.locator('[data-deal-send]').click();
   assert(await until(() => cards().length === 4), 'sent: four cards, one per player');
   const slice = (name) => PROMPTS.find((s) => s.label === drew[name]);
@@ -232,7 +222,7 @@ try {
   await offStream(SECRETS, 'sent');
 
   // ---------- 🎭 Who was who: names and slices, never the longer words ----------
-  console.log('Who was who:');
+  section('Who was who');
   assert(!(await aud.locator('[data-who-was-who]').count()), 'not on stream before the host shows it');
   await dialog.locator('[data-deal-reveal]').click();
   const reveal = aud.locator('[data-who-was-who]');
@@ -250,7 +240,7 @@ try {
   await offStream(SECRETS, 'Who was who taken off');
 
   // ---------- ↩ Take the cards back lets go of the pictures; 📤 Send puts the same prompts out again ----------
-  console.log('Take back, send again:');
+  section('Take back, send again');
   // (Sent, 🎭 Deal… says so: “🎭 Own prompts · sent”.)
   await tools.locator('[data-deal-tool="sent"]').click();
   await dialog.waitFor();
@@ -268,7 +258,7 @@ try {
   await offStream(SECRETS, 'sent again');
 
   // ---------- A deal drawn from the ready-made 🗺 Locations wheel replaces it ----------
-  console.log('A ready-made wheel:');
+  section('A ready-made wheel');
   await dialog.getByRole('button', { name: '🎭 Deal a new one' }).click();
   await dialog.getByRole('combobox', { name: 'The wheel its cards draw from' }).selectOption('tpl:locations');
   assert(!(await dialog.locator('[data-deal-problem]').count()), 'the ready-made Locations wheel can be drawn from');

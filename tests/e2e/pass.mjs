@@ -8,23 +8,15 @@
 // 2. No Pass on a clue ticked 🚫 No Pass (everyone must play) in the editor, nor on a ✍ clue (whose tick is fixed on).
 // 3. Teams: a pass counts for the team (a teammate's phone says who passed, and can take it back).
 // Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, openGameFile, startBuzzer, startRoomOn, failureShots } from './helpers.mjs';
+import { appFile, editorReady, openGameFile, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 mkdirSync('test-results', { recursive: true });
 const shots = process.env.PASS_SHOTS ? resolve(process.env.PASS_SHOTS) : null;
 if (shots) mkdirSync(shots, { recursive: true });
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
 const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t)] });
@@ -57,7 +49,7 @@ const teamsFile = resolve('test-results/pass-teams.json');
 writeFileSync(teamsFile, JSON.stringify(game(true)));
 
 const buzzer = await startBuzzer('buzzer-pass-');
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
 const watch = (p, name) => {
   p.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
@@ -136,7 +128,7 @@ async function openTile(page, id) {
 
 try {
   // ---------- 1. An ordinary clue: Pass, the buzz it blocks, everyone passed ----------
-  console.log('An ordinary buzz-in clue:');
+  section('An ordinary buzz-in clue');
   // In the editor: Rizz's first tile is ticked 🚫 No Pass (everyone must play); Lore's ✍ one shows it ticked and fixed.
   const { page, card, code } = await host(gameFile, async (page) => {
     await page.locator('.tile[data-place="clue:c1_0"]').click();
@@ -381,7 +373,7 @@ try {
   assert((await bob.locator('#buzz-big').innerText()) !== 'You passed', 'the answer up: the clue is over on the phones, Pass out of sight');
 
   // ---------- 2. No Pass on a clue everyone must play, nor on a ✍ clue ----------
-  console.log('Clues everyone plays:');
+  section('Clues everyone plays');
   await page.keyboard.press('Escape');
   await page.locator('.stage-box .board').waitFor();
   await openTile(page, 'c1_0');
@@ -395,7 +387,7 @@ try {
   await page.keyboard.press('Escape');
 
   // ---------- 3. Teams: a pass counts for the team ----------
-  console.log('Teams:');
+  section('Teams');
   const t = await host(teamsFile);
   const joinTeam = async (name, team, opts) => {
     const p = await phone(name, t.code, opts);

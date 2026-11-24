@@ -14,19 +14,13 @@
 // audience window. A card changed in the editor (▶ Resume with my edits) comes off the phones until ↻ Send again. With
 // no phones (the room closed), one shown in the 🪟 card window comes out of it, and its row says to ↩ Take it back and
 // show it again: there's no ↻ Send again.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, launchChromium, untilWith, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 // ---------- The game ----------
 
@@ -44,14 +38,10 @@ const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' }
 const slide = (...elements) => ({ background: {}, elements });
 
 /** Waits (up to `ms`: a slow machine takes its time) until pred() holds. */
-const until = async (pred, ms = 20000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-  return !!(await pred());
-};
+const until = untilWith({ timeout: 20_000 });
 /** An element's words on one line (a row's parts are laid out apart). */
 const words = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-savedcards-');
 const { base } = buzzer;
 let browser;
@@ -63,7 +53,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   const files = { tip: png(200, 60, 20, 300, 200) };
   const media = [{ id: 'tip', name: 'zfnqj-tip.png', mime: 'image/png', size: files.tip.length, kind: 'image' }];
@@ -134,7 +124,7 @@ try {
   // =====================================================================================================================
   // A. The editor's 🤫 Cards tab
   // =====================================================================================================================
-  console.log('The editor’s 🤫 Cards tab:');
+  section('The editor’s 🤫 Cards tab');
   const navTexts = await host.locator('nav > button').allInnerTexts();
   const at = (re) => navTexts.findIndex((t) => re.test(t.trim()));
   assert(at(/^🤫 Cards \(2\)$/) >= 0 && at(/^🤫 Cards \(2\)$/) === at(/Wheels, Dice & Deals/) + 1, `🤫 Cards (2) sits right after 🎡 Wheels, Dice & Deals (${navTexts.join(' | ')})`);
@@ -373,7 +363,7 @@ try {
   // =====================================================================================================================
   // B. Play, one window, against the real buzzer room
   // =====================================================================================================================
-  console.log('Play, one window:');
+  section('Play, one window');
   // (What the editor showed doesn't count, nor its last notices (the Delete above), said a moment late: from here on the
   // host page is on stream.)
   await forgetSeen(host);
@@ -518,7 +508,7 @@ try {
   // =====================================================================================================================
   // C. Two windows
   // =====================================================================================================================
-  console.log('Two windows:');
+  section('Two windows');
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
   await aud.locator('.board').waitFor();
@@ -546,7 +536,7 @@ try {
   // =====================================================================================================================
   // D. Changed in the editor
   // =====================================================================================================================
-  console.log('Changed in the editor:');
+  section('Changed in the editor');
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
@@ -587,7 +577,7 @@ try {
   // =====================================================================================================================
   // E. Changed in the editor, with no phones (the 🪟 card window)
   // =====================================================================================================================
-  console.log('Changed in the editor, no phones:');
+  section('Changed in the editor, no phones');
   // Keep & leave, then ⏹ Close the room… in the bar over the editor: Resume game plays on with no phones getting cards.
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);

@@ -1,24 +1,18 @@
 // Saving: Save / Export HTML keep working and keep every file, and a second copy of the app (another
 // tab or window, which shares the browser's storage) never overwrites this copy's game or deletes its media.
-import { chromium } from 'playwright-core';
-import { existsSync, statSync, writeFileSync } from 'node:fs';
+import { statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
-import { appFile, addClassicRounds, answerReplace, editorReady, exportHtml, openGameFile, playWithPlayers, png, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, editorReady, exportHtml, openGameFile, playWithPlayers, png, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
 const errors = [];
 const dialogs = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** `editing`: true, the copy that edits; false, one paused; 'playing', one paused while the other plays a game. */
 async function open(name, editing = true, ctx = context) {
   const page = await ctx.newPage();

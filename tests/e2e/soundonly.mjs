@@ -5,23 +5,16 @@
 // 0:30", once its length is known), or nothing at all. A player that fails shows no card to viewers (the host's own
 // copy still offers it). Before YouTube says how long a video is, players see just the speaker. On a 🤫 card Sound only
 // isn't offered (a phone plays it in YouTube's own player).
-import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, playWithPlayers, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, playWithPlayers, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath, args: ['--autoplay-policy=no-user-gesture-required'] });
+const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const guard = () => page.waitForTimeout(500); // past the stage's double-click guard
 /** Back to the board (the keys away from the media row's slider first). */
 async function back() {

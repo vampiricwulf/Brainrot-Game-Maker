@@ -3,16 +3,13 @@
 // drops undone steps says so (its ↶ Undo brings them back, kept over a reload), removed and
 // replaced files come back, the history survives a reload, a game opened starts afresh, and changes made while
 // hosting are steps too.
-import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { appFile, failureShots, addClassicRounds, answerReplace, dragBy, openGameFile } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerReplace, dragBy, openGameFile, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 // (A step's 📋 Copy step name, read back.)
 await context.grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -23,10 +20,6 @@ page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 /** Browser dialogs (none should show: deleting offers Undo instead of asking). */
 const dialogs = [];
 page.on('dialog', (d) => (dialogs.push(d.message()), d.accept()));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 /** A small solid-color PNG. */
 function png(r, g, b, w = 40, h = 24) {

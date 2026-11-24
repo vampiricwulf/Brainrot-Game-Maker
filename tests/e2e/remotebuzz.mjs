@@ -6,17 +6,15 @@
 // room), the audience window closed by accident (the host is told), Exit › Keep & leave keeping the room for Resume,
 // another game keeping the room and its players, its Final with a room too old for answers (then back with them after
 // the question: no answers block), and ⏹ Close the room….
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored, revealAnyway, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored, revealAnyway, failureShots, assert, launchChromium, until } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 
 // The fake buzzer room: POST /api/rooms makes room BCDF; a socket says welcome; everything the host sends is kept.
@@ -95,10 +93,6 @@ const watch = (p, name) => {
   return p;
 };
 watch(page, 'host');
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const shot = async (name, p = page) => shots && (await p.screenshot({ path: `${shots}/${name}.png` }));
 const state = () => page.evaluate(() => window.__state());
 const sent = () => page.evaluate(() => window.__room.sent);
@@ -867,7 +861,7 @@ try {
           }),
         since,
       );
-    for (let i = 0; i < 100 && !(await saved()); i++) await page.waitForTimeout(100);
+    await until(saved, { timeout: 10_000, every: 100 });
     assert(await saved(), 'the game in progress is saved with its buzzer room');
     await page.reload();
     // (One window: it reopens on the game's cover; Go to the editor shows what's kept.)
@@ -947,7 +941,7 @@ try {
   await page.keyboard.press('1');
   await page.locator('.panel .award').getByLabel('Amount').fill('100');
   await page.locator('.panel .award').getByLabel('Amount').press('Enter');
-  for (let i = 0; i < 100 && !(await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100); i++) await page.waitForTimeout(100);
+  await until(async () => (await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100), { timeout: 10_000, every: 100 });
   assert((await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100), 'the points are saved with the game in progress');
   await page.reload();
   await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();

@@ -8,24 +8,15 @@
 // greyed again), Ctrl+Y opens it again, Dan (chosen by the host) answers it through a host reload, misses, and the
 // buzzers open for Cat alone; Cat misses too, and the panel, the status line and Enter say nobody is left to steal it
 // (👁 Reveal answer); a click on the stage shows the answer then, and that ends it. Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, startBuzzer, startRoomOn, stored, failureShots } from './helpers.mjs';
+import { appFile, openGameFile, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** Waits (up to `ms`) until pred() holds. */
-const until = async (pred, ms = 10000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(50)) if (await pred()) return true;
-  return !!(await pred());
-};
+const until = untilWith({ timeout: 10_000 });
 
 // ---------- The game: Movies, Songs, Games, every tile written; Movies $400 a Describe it partner clue ----------
 let n = 0;
@@ -57,7 +48,6 @@ const game = {
 const gameFile = resolve('test-results/partner-steal.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-steal-');
 const { base } = buzzer;
 let browser;
@@ -69,7 +59,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   await ctx.addInitScript((server) => {
     try {
@@ -96,7 +86,7 @@ try {
   await host.getByText(/^Opened “/).waitFor();
 
   // ---------- In the editor: a partner clue's steal ----------
-  console.log('Editor:');
+  section('Editor');
   await host.locator('[data-tile="0,1"]').click();
   const dialog = host.getByRole('dialog', { name: 'Edit clue' });
   const settings = dialog.getByRole('group', { name: 'Partner clue' });
@@ -166,7 +156,7 @@ try {
   const lockedOut = () => [...(last()?.lockedOut ?? [])].sort().join(',');
 
   // ---------- Ann picks Movies $400, Bob describes, Ann misses ----------
-  console.log('Steal on a miss:');
+  section('Steal on a miss');
   await host.keyboard.press('p');
   await host.keyboard.press('1');
   await host.locator('.stage-box .tile[data-clue="q0_1"]').click();

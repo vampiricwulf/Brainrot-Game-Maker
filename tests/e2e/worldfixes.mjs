@@ -17,22 +17,15 @@
 //    board game's backdrop, items on a slide in a slides round.
 // 8. Race to the finish, 🖼 Board backdrop: the spaces and links show faint over it (clicks go through to the backdrop's
 //    pictures), and ⬤ Spaces over it hides them (remembered).
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addPlayers, editorReady, goOnCheck, failureShots } from './helpers.mjs';
+import { appFile, addPlayers, editorReady, goOnCheck, failureShots, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
 const shots = process.env.SHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 /** A new game with one round from a template, started with 3 players (in two windows, with the audience window open). */
 async function host(template, two) {
@@ -75,7 +68,7 @@ const until = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 5000 }
 
 try {
   {
-    console.log('Race to the finish, one window:');
+    section('Race to the finish, one window');
     const { ctx, page } = await host('Race to the finish', false);
     const box = page.locator('.mode-host.bgame');
     const info = () =>
@@ -92,7 +85,7 @@ try {
     await ctx.close();
   }
   {
-    console.log('Race to the finish, two windows:');
+    section('Race to the finish, two windows');
     const { ctx, page } = await host('Race to the finish', true);
     await page.keyboard.press('n');
     await page.locator('.bh [data-turn-next]', { hasText: 'Roll' }).waitFor();
@@ -206,7 +199,7 @@ try {
     await ctx.close();
   }
   {
-    console.log('3 × 3 dungeon, one window:');
+    section('3 × 3 dungeon, one window');
     const { ctx, page } = await host('3 × 3 dungeon', false);
     await page.keyboard.press('n');
     await page.locator('.rh').waitFor();

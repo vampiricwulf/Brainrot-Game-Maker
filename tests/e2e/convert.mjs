@@ -12,25 +12,19 @@
 // 📱 preview; an .mts with an MPEG-2 picture (which the app can't read) gets no 🔄, only why and Replace everywhere….
 // No toast, History row or pill names a file. (H.264, AAC, HEVC and AC-3 don't play in the test Chromium,
 // so what plays in Chrome or Edge on Windows or Mac, and converting to MP4 (H.264) or M4A (AAC), are checked by hand.)
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, editorReady, recordSeen, stored, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, editorReady, recordSeen, stored, failureShots, assert, launchChromium, section, until } from './helpers.mjs';
 import { clip, fixturePage, noise, readBack, ts, withMpeg2Picture } from './mediafixtures.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 let browser;
 const errors = [];
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 950 } });
   // The files, made in a blank page of their own: 2 s each, small (a few tens of KB).
   const fx = await fixturePage(ctx);
@@ -112,7 +106,7 @@ try {
   assert(!got.some((t) => /clip|talk|ac3|fake/.test(t)), 'and names no file');
 
   // Files already in the game are checked again after a reload (their bytes come back from storage), with no toast.
-  for (let i = 0; i < 100 && ((await stored(page, 'editorDraft'))?.media?.length ?? 0) < 4; i++) await page.waitForTimeout(100);
+  await until(async () => ((await stored(page, 'editorDraft'))?.media?.length ?? 0) >= 4, { timeout: 10_000, every: 100 });
   assert(((await stored(page, 'editorDraft'))?.media?.length ?? 0) === 4, 'the four files are stored');
   await page.reload();
   await editorReady(page);
@@ -125,7 +119,7 @@ try {
   assert(!(await page.locator('[data-convert-notice]').count()), 'nor any note at the top: those are for files just added');
 
   // ---------- Part 2: 🔄 Convert on add ----------
-  console.log('🔄 Convert on add:');
+  section('🔄 Convert on add');
   const NAMES = ['party', 'talk', 'ac3', 'clip', 'two-a', 'two-b', 'dvd'];
   const notice = page.locator('[data-convert-notice]');
   const noticeText = async () => (await notice.locator('span').first().innerText()).replace(/\s+/g, ' ').trim();
@@ -139,12 +133,12 @@ try {
       });
   /** The editor's game as autosave last stored it, once `ok(game)` holds. */
   const draftWhen = async (ok, what) => {
-    for (let i = 0; i < 150; i++) {
+    const g = await until(async () => {
       const g = await stored(page, 'editorDraft');
-      if (g && ok(g)) return g;
-      await page.waitForTimeout(100);
-    }
-    throw new Error(`The stored game never got to: ${what}`);
+      return g && ok(g) ? g : null;
+    }, { timeout: 15_000, every: 100 });
+    if (!g) throw new Error(`The stored game never got to: ${what}`);
+    return g;
   };
   const refNamed = (g, name) => g.media.find((m) => m.name === name);
   /** Files dropped on 🖼 Media (as the page's ＋ Add files…). */

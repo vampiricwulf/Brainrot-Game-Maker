@@ -1,24 +1,18 @@
 // Board game rounds: build a board (a loop with a fork, a Start bonus, an off-board zone), then play it: roll, move,
 // pick the way at the fork, pass Start, take turns, send someone to the Shadow Realm, undo; a reload keeps a roll. The
 // editor shows a backdrop or zone with its background reset in the color viewers see.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, startNewGame, stepButton } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, startNewGame, stepButton, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const toast = () => page.locator('.toast').innerText();
 // The editor's board: its spaces are buttons named after them.
 const spaces = page.locator('.canvas [data-space]');
@@ -827,7 +821,7 @@ try {
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-file.png` });
 
   // Twelve players: the stats strip is one row of compact cards, and it never covers a space (Finish is low down).
-  console.log('Twelve players on the board:');
+  section('Twelve players on the board');
   const crowd = { ...g, id: 'g_board_crowd', title: 'Board crowd', settings: { ...g.settings, maxPlayers: 12 } };
   crowd.players = ['Ann', 'Bob', 'Cy', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jay', 'Kim', 'Lou'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'][i] }));
   // (With a zone to send them all to.)
@@ -880,7 +874,7 @@ try {
   // Twelve long names in one window at 1280×720 (beside the stage): the turn order, opened, wraps onto many rows, and a
   // move that stops at the fork has its "which way?" row in view (the turn's part is at the column's foot; the stage
   // doesn't move). (A second board after it, for the Steps box going into another round.)
-  console.log('A fork under a long turn order, one window at 1280×720:');
+  section('A fork under a long turn order, one window at 1280×720');
   const longNames = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
   const long = {
     ...crowd,

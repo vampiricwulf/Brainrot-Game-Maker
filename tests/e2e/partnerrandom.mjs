@@ -10,24 +10,15 @@
 // Reveal), Ann misses, the buzzers open at once for Cat and Dan, Cat buzzes and misses, the buzzers open for Dan alone,
 // Dan steals it. Ctrl+Z three times takes back Dan's steal, Cat's miss and Ann's miss (the steal closes, the phones grey
 // out); Ctrl+Y three times brings them all back. Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots } from './helpers.mjs';
+import { appFile, openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** Waits (up to `ms`) until pred() holds. */
-const until = async (pred, ms = 20000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await pred()) return true;
-  return !!(await pred());
-};
+const until = untilWith({ timeout: 20_000, every: 100 });
 
 // ---------- The game: Movies, Songs, Games at $200 and $400 ----------
 let n = 0;
@@ -67,7 +58,6 @@ const game = {
 const gameFile = resolve('test-results/partner-random.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-partnerrandom-');
 const { base } = buzzer;
 let browser;
@@ -79,7 +69,7 @@ const watch = (p, name) => {
 };
 
 try {
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   await ctx.addInitScript((server) => {
     try {
@@ -109,7 +99,7 @@ try {
   await host.getByText(/^Opened “/).waitFor();
 
   // ---------- The editor: 🔀 Randomize, Ctrl+Z, Ctrl+Y ----------
-  console.log('Editor:');
+  section('Editor');
   /** The board's partner clues, by "category,row". */
   const partnerTiles = () =>
     host.locator('[data-tile]').evaluateAll((els) => els.filter((e) => e.querySelector('[title^="Partner clue: played by"]')).map((e) => e.dataset.tile).sort());
@@ -169,7 +159,7 @@ try {
   }
 
   // ---------- Start game: the missing partner clue and the Daily Double go on, one toast, never one tile ----------
-  console.log('Start game:');
+  section('Start game');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.locator('.stage-box .tile').first().waitFor();
   assert(
@@ -215,7 +205,7 @@ try {
   };
 
   // ---------- The partner clue made by hand: "No steal" wins over the game's rule ----------
-  console.log('No steal:');
+  section('No steal');
   await play('q0_0');
   await phones.Bob.getByRole('button', { name: 'Tap to see' }).waitFor();
   await host.keyboard.press('Shift+Enter');
@@ -228,7 +218,7 @@ try {
   assert(await until(async () => !(await phones.Bob.locator('.card').count())), 'back on the board: Bob’s card goes');
 
   // ---------- The placed one: its card (the answer) to Bob's phone only, never on the host page ----------
-  console.log('Steal on a miss:');
+  section('Steal on a miss');
   await host.evaluate(() => (window.__seen.length = 0));
   const ANSWER = answer(extra.ci, extra.r);
   await play(extra.id);
@@ -267,7 +257,7 @@ try {
   await host.screenshot({ path: 'test-results/partner-random-steal.png' });
 
   // ---------- Ctrl+Z three times: Dan's steal, Cat's miss, Ann's miss ----------
-  console.log('Undo, redo:');
+  section('Undo, redo');
   const scores = async () => Promise.all(['Ann', 'Bob', 'Cat', 'Dan'].map(scoreOf)).then((s) => s.join(' '));
   const after = await scores();
   await host.keyboard.press('Control+z');

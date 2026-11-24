@@ -2,17 +2,15 @@
 // (rename, drop to replace, select several to remove; a card's foot in fixed places and 🗑 in the same spot on every
 // card, "used 1× ▾" listing where and going there, a card's menu by a right-click and by Shift+F10), the slide's
 // right-click menus, renaming layers, board images on the slides' clipboard, and the ⌨ Shortcuts sheet.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerReplace, macClicks, openGameFile, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, macClicks, openGameFile, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 const page = await context.newPage();
 const errors = [];
@@ -20,10 +18,6 @@ const dialogs = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 page.on('dialog', (d) => (dialogs.push(d.message()), d.accept()));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const shot = (name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
 // 4×4 white PNG.
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEUlEQVR42mP8z8AARLgBAAC0BAP/HpJ+EwAAAABJRU5ErkJggg==';

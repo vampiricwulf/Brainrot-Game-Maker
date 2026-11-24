@@ -1,25 +1,19 @@
 // Accessibility and consistency: windows keep the focus (Tab stays inside, the rest is inert, the focus goes back on
 // close), the app asks in its own windows, the header fits at 150% zoom, readable colors, reduced motion, names, and
 // with forced colors what's chosen still shows (the color picker's Hex or RGB too).
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, clickExportHtml, openGameFile, returningHost, stored } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, clickExportHtml, openGameFile, returningHost, stored, assert, launchChromium, until } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 const dialogs = [];
 page.on('dialog', (d) => (dialogs.push(d.message()), d.accept()));
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 /** The focused element's accessible-ish name (aria-label or text). */
 const focused = () => page.evaluate(() => {
   const el = document.activeElement;
@@ -444,7 +438,7 @@ try {
     'the game screen has a Stage region and a Host controls region (🚪 Exit)',
   );
   // The same after a reload (once the game is stored) and Resume game, Enter picking how it's shown.
-  for (let i = 0; i < 100 && !((await stored(page))?.savedAt >= startedAt); i++) await page.waitForTimeout(100);
+  await until(async () => (await stored(page))?.savedAt >= startedAt, { timeout: 10_000, every: 100 });
   await page.reload();
   await page.getByRole('button', { name: 'Resume game' }).click();
   // (The keys go to the one used last a frame after the question shows.)

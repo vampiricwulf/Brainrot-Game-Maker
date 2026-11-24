@@ -5,20 +5,14 @@
 // bringing it again, a player scored by hand first left as they are, ✘ Missed with negative scores off still marking
 // both, the quick ✔/✘ chips worth each one's share, ↩ Cancel with the partner wheel up, and a reload mid-spin, while
 // handing out the cards, while playing and once judged, then two windows (Enter held down in the audience window too).
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, checkItem, flowButton, flowIs, goOnCheck, mainLabel, openGameFile } from './helpers.mjs';
+import { appFile, failureShots, boxHasAction, checkItem, flowButton, flowIs, goOnCheck, mainLabel, openGameFile, assert, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 mkdirSync(resolve('test-results'), { recursive: true });
 
 // ---------- The game: Movies, Songs and Games, every tile but $200 a Describe it partner clue ----------
@@ -112,7 +106,7 @@ try {
   await tile(0, 1).waitFor();
 
   // ---------- ✔ Got it, after ⇄ Swap: the points and the board follow the parts ----------
-  console.log('Judging:');
+  section('Judging');
   await picks(1);
   await play(0, 1, 2);
   assert((await flat(judgeRow.locator('[data-judge-got]'))) === 'Bob +$400 · Ann +$200' && (await flat(judgeRow.locator('[data-judge-missed]'))) === 'Ann −$200', 'the judge row says what each gives: got → Bob +$400 · Ann +$200, missed → Ann −$200');
@@ -280,7 +274,7 @@ try {
   assert(gone && !(await tile(2, 3).getAttribute('class')).includes('used'), '↩ Cancel with the partner wheel up: back to the board, the wheel gone, the tile kept');
 
   // ---------- Reloads ----------
-  console.log('Reloads:');
+  section('Reloads');
   await picks(1);
   await tile(2, 1).click();
   await stage('[data-partner-up]').waitFor();
@@ -327,7 +321,7 @@ try {
   await page.keyboard.press('Escape');
 
   // ---------- Two windows ----------
-  console.log('Two windows:');
+  section('Two windows');
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
   aud.on('pageerror', (e) => errors.push(`[audience] ${e.message}`));
   await aud.locator('.board').waitFor();

@@ -2,16 +2,12 @@
 // new file to download, for the HTML file, then says on the page what to do with it), "Not now" puts it away for that
 // version, and ℹ About checks on demand. The copy online offers a reload instead.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, launchChromium, lineOf, playWithPlayers, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, launchChromium, lineOf, playWithPlayers, failureShots, assert } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
 const browser = await launchChromium();
 const errors = [];
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 
 const DL = 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases/download';
 const release = (v) => ({

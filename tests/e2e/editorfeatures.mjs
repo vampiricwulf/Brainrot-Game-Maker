@@ -2,16 +2,14 @@
 // (Ctrl+F), Copy / Paste round, Most players, my theme (and its contrast warning), the Wheels, Dice & Deals tab's whole
 // name, its ready-made menus' whole names (described in their tooltips) and what its number boxes keep, the Media and
 // shortcuts filters, and the board-game spaces that move players back, skip a turn or roll again (played, with undo).
-import { chromium } from 'playwright-core';
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer, returningHost, failureShots } from './helpers.mjs';
+import { appFile, checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer, returningHost, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
+const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
 // (A host who used it before: the keys window opens on what moved.)
 await returningHost(context);
@@ -19,10 +17,6 @@ const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const tabs = () => page.locator('nav > button.round-tab').allInnerTexts();
 const toast = () => page.locator('.toast').last().innerText();
 

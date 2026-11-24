@@ -2,16 +2,14 @@
 // cover pausing what's under it, the 📜 Log in the host panel, score pops, the board's arrow keys, the Final's wagers
 // step and its ✔/✘ sounds, a tie for first, Resume asking how the game is shown, and View results after a reload
 // finding the audience window again.
-import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, confirmStrip, flowButton, goOnCheck, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, confirmStrip, flowButton, goOnCheck, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer, failureShots, assert, launchChromium } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath, args: ['--autoplay-policy=no-user-gesture-required'] });
+const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
 // Every sound a window starts (a built-in cue's link ends in #its-name).
 await context.addInitScript(() => {
@@ -30,10 +28,6 @@ const watch = (p, name) => {
   return p;
 };
 watch(page, 'host');
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
 const cues = (p, cue) => p.evaluate((c) => window.__plays.filter((s) => s.startsWith('blob:') && s.endsWith('#' + c)).length, cue);
 const shot = async (name, p = page) => shots && (await p.screenshot({ path: `${shots}/${name}.png` }));
 /**
