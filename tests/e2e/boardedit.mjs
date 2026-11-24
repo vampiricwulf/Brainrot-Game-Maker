@@ -907,19 +907,54 @@ try {
   await tapAt(650, 300);
   await tt.locator('[data-edit-several]').waitFor({ state: 'detached' });
   assert((await tt.locator('[data-picked-space]').count()) === 1, 'and a tap on one of them leaves it out');
-  // A long press on a space (a finger held still on it): its menu (the right-click's).
-  {
+  // A long press on a space (a finger held still on it): its menu (the right-click's). On one of several selected, with
+  // ☑ Select several on or off, it neither leaves it out nor lets the others go: its menu offers 🗑 Delete 2 spaces,
+  // and the finger let go keeps both.
+  const cdpT = await ctxT.newCDPSession(tt);
+  const atT = async (x, y) => {
     const b = await box(layerT);
-    const pt = { x: b.x + (1000 * b.width) / 1920, y: b.y + (300 * b.height) / 1080 };
-    const cdp = await ctxT.newCDPSession(tt);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt] });
+    return { x: b.x + (x * b.width) / 1920, y: b.y + (y * b.height) / 1080 };
+  };
+  const longPress = async (x, y) => {
+    await cdpT.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [await atT(x, y)] });
     await tt.waitForTimeout(900);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdpT.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  };
+  const rings = () => tt.locator('[data-picked-space]').count();
+  await tapAt(650, 300);
+  await tt.locator('[data-edit-several]').waitFor();
+  for (const on of [true, false]) {
+    if (!on) await severalT.tap();
+    assert((await severalT.getAttribute('aria-pressed')) === String(on), `☑ Select several ${on ? 'on' : 'off'}, 2 selected`);
+    await longPress(on ? 1000 : 650, 300);
+    await openMenu(tt).waitFor();
+    const said = await openMenu(tt).innerText();
+    await tt.waitForTimeout(300);
+    assert(
+      said.includes('Connect to') && said.includes('Delete 2 spaces') && (await rings()) === 2,
+      `☑ Select several ${on ? 'on' : 'off'}: a long press on one of 2 selected opens its menu, with 🗑 Delete 2 spaces, and both stay selected after the finger lets go (${await rings()})`,
+    );
+    await tt.keyboard.press('Escape');
+    await openMenu(tt).waitFor({ state: 'detached' });
   }
-  await openMenu(tt).waitFor();
-  assert((await openMenu(tt).innerText()).includes('Connect to'), 'a long press on a space opens its menu, as the hint says');
-  await tt.keyboard.press('Escape');
-  await openMenu(tt).waitFor({ state: 'detached' });
+  // A finger drag on one of them moves both, as the hint says (drag a space to move it).
+  {
+    const cx = () => tt.locator('[data-picked-space]').evaluateAll((cs) => cs.map((c) => Math.round(+c.getAttribute('cx'))));
+    const before = await cx();
+    const from = await atT(1000, 300);
+    await cdpT.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+    for (let i = 1; i <= 8; i++) await cdpT.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x, y: from.y + i * 8 }] });
+    await cdpT.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await tt.waitForTimeout(200);
+    const cy = await tt.locator('[data-picked-space]').evaluateAll((cs) => cs.map((c) => Math.round(+c.getAttribute('cy'))));
+    assert(
+      (await rings()) === 2 && JSON.stringify(await cx()) === JSON.stringify(before) && cy.every((y) => y > 300 + 20),
+      `a finger drag on one of the 2 selected moves both down (cy ${JSON.stringify(cy)})`,
+    );
+  }
+  // The box's note says how to take an edit back on a touch screen: ↶ Undo, not Ctrl+Z.
+  const noteT = await editT.locator('.row.note').innerText();
+  assert(noteT.includes('↶ Undo takes it back') && !noteT.includes('Ctrl+Z'), `its note says ↶ Undo takes an edit back, not Ctrl+Z (${noteT.replace(/\s+/g, ' ')})`);
   // Done editing turns it off: the next ✎ Edit board starts with it off.
   await editT.getByRole('button', { name: /Done editing/ }).tap();
   await editT.waitFor({ state: 'detached' });

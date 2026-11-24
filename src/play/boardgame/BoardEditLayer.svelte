@@ -30,11 +30,18 @@
   let drag: { id: string; sx: number; sy: number; at: Map<string, { x: number; y: number }>; end: (() => void) | null } | null = null;
   /** Alt+drag from a space: a link drawn to where the pointer is let go. */
   let wire = $state<string | null>(null);
+  /**
+   * ☑ Select several: the space a finger (or a click) is on, added or left out when it's let go there. Not at once: a
+   * long press on it opens its menu instead (with the ones selected kept, so 🗑 Delete N spaces is in it).
+   */
+  let tapping: string | null = null;
 
   function toBoard(e: MouseEvent): { x: number; y: number } {
     const r = el!.getBoundingClientRect();
     return { x: ((e.clientX - r.left) * SLIDE_W) / (r.width || 1), y: ((e.clientY - r.top) * SLIDE_H) / (r.height || 1) };
   }
+  /** A touch screen (no hover): a menu's hints say taps. */
+  const touch = () => typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
   const spaceAt = (p: { x: number; y: number }) => [...round.spaces].reverse().find((s) => Math.hypot(s.x - p.x, s.y - p.y) <= R + 6);
 
   function down(e: PointerEvent): void {
@@ -56,7 +63,12 @@
         capture(e);
         return;
       }
-      if (e.shiftKey || boardEdit.several) return editToggle(s.id);
+      if (e.shiftKey) return editToggle(s.id);
+      if (boardEdit.several) {
+        tapping = s.id;
+        capture(e);
+        return;
+      }
       // (A press on one of several selected keeps them all: they drag together. A click without a drag picks just it.)
       if (!editPicked().includes(s.id)) editPick(s.id);
       boardEdit.link = null;
@@ -108,6 +120,12 @@
   }
 
   function up(e: PointerEvent): void {
+    if (tapping) {
+      const id = tapping;
+      tapping = null;
+      if (spaceAt(toBoard(e))?.id === id) editToggle(id);
+      return;
+    }
     if (wire) {
       const from = wire;
       wire = null;
@@ -132,6 +150,10 @@
   function menu(e: MouseEvent): void {
     e.preventDefault();
     e.stopPropagation();
+    // (A long press: the finger still down on a space. Letting it go adds or picks nothing, and moves nothing more.)
+    tapping = null;
+    drag?.end?.();
+    drag = null;
     const p = toBoard(e);
     const s = spaceAt(p);
     const l = s ? null : linkAt(round, p);
@@ -143,7 +165,7 @@
       return showMenu(e, [
         { heading: said(s) },
         { label: '✎ Rename', keys: 'F2', onclick: () => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select() },
-        { label: '🔗 Connect to…', hint: 'Then click the space it leads to (or Alt+drag from it)', onclick: () => (boardEdit.connecting = true) },
+        { label: '🔗 Connect to…', hint: touch() ? 'Then tap the space it leads to' : 'Then click the space it leads to (or Alt+drag from it)', onclick: () => (boardEdit.connecting = true) },
         { label: '🏁 Make it the start', disabled: (round.start ?? round.spaces[0]?.id) === s.id, onclick: () => editStart(game, session, s.id) },
         nameShown(s)
           ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => editShowName(game, session, s.id, false) }
@@ -195,8 +217,9 @@
   onpointermove={move}
   onpointerup={up}
   onpointercancel={() => {
-    // (Cut off, not let go: no link made; a drag so far is kept as a step.)
+    // (Cut off, not let go: no link made, nothing added or left out; a drag so far is kept as a step.)
     wire = null;
+    tapping = null;
     drag?.end?.();
     drag = null;
   }}

@@ -57,7 +57,7 @@
     <span class="muted small">
       {dual ? 'Viewers see the changes as you make them (not the dashed marks).' : 'Viewers see this: the board changes as you edit it, with its dashed marks.'}
       {dual ? 'Hidden names show dimmed, here only.' : 'Hidden names show dimmed while you edit (on the stage too), and go again when you’re done.'}
-      The changes last for this game only{app.playerOnly ? '' : ', unless you press 💾 Keep in game'}. Each one is a step: Ctrl+Z takes it back.
+      The changes last for this game only{app.playerOnly ? '' : ', unless you press 💾 Keep in game'}. Each one is a step: <span class="not-touch">Ctrl+Z</span><span class="touch-only">↶ Undo</span> takes it back.
     </span>
     <!-- Back to playing (the panel's main cell is empty while editing: no Next turn ▶ under the edits). -->
     <button class="small done" onclick={() => setEditing(false)} title={VERBS.doneEditing.title}>{VERBS.doneEditing.label} <kbd aria-hidden="true">{VERBS.doneEditing.key}</kbd></button>
@@ -97,9 +97,9 @@
   <div class="row">
     <span class="muted small">
       {#if boardEdit.adding}
-        Click the board where the new space goes{sel ? ` (after ${said(sel)})` : ''}…
+        <span class="not-touch">Click</span><span class="touch-only">Tap</span> the board where the new space goes{sel ? ` (after ${said(sel)})` : ''}…
       {:else if boardEdit.connecting && sel}
-        Click the space {said(sel)} should lead to…
+        <span class="not-touch">Click</span><span class="touch-only">Tap</span> the space {said(sel)} should lead to…
       {:else if boardEdit.several}
         Tap spaces to add them or leave them out · turn ☑ Select several off to drag them together
       {:else}
@@ -115,7 +115,7 @@
     <div class="row" data-edit-several>
       <b class="small">{picked.length} spaces selected</b>
       <span class="muted small not-touch">Drag one to move them all · Shift+click a space to add or leave it out · Delete deletes them · Esc lets go</span>
-      <span class="muted small touch-only">Drag one to move them all · with ☑ Select several on, tap a space to add or leave it out</span>
+      <span class="muted small touch-only">With ☑ Select several on, a tap adds a space or leaves it out · turn it off, then drag one to move them all</span>
       <span class="spacer"></span>
       <button class="small" onclick={() => editPick(boardEdit.sel)} title="Keep only the space whose settings are below">Just this one</button>
       <button class="ghost small danger" onclick={() => editDeleteAll(game, session, picked, hide)} title="Delete them (Ctrl+Z brings them back; players on them move to a space that stays)">🗑 Delete {picked.length} spaces</button>
