@@ -577,11 +577,18 @@ try {
   await bob.locator('#answer-in').fill(BOB_ANSWER);
   await bob.locator('#answer-send').click();
   assert(await until(() => last()?.answers?.seats?.find((x) => x.id === seat.Bob)?.got === 1), 'Bob sends his answer: the host took it (the room is told it has it)');
-  // Ann's and Cat's answers aren't in: 👁 Reveal answer asks first (⏱ 10 more seconds), and R reveals anyway.
+  // Ann's and Cat's answers aren't in: 👁 Reveal answer asks first (⏱ 10 more seconds).
   await next('👁 Reveal answer');
   await checkItem(host, 'answers').waitFor();
   const coming = await checkItem(host, 'answers').innerText();
   assert(coming.includes('1 of 3 answers are in') && !coming.includes('Bob-answer'), `👁 Reveal answer with answers still coming asks first, names and counts only (${coming})`);
+  // Ann's and Cat's come in with the check open: its line says they're all in (not the count from before).
+  for (const [p, a] of [[ann, 'Ann-answer'], [cat, 'Cat-answer']]) {
+    await p.locator('#answer-in').fill(a);
+    await p.locator('#answer-send').click();
+  }
+  await checkItem(host, 'answers').filter({ hasText: 'All answers are in' }).waitFor({ timeout: 10000 });
+  assert(!(await checkItem(host, 'answers').innerText()).includes('1 of 3'), `the last answer in with the check open: “All answers are in” (${(await checkItem(host, 'answers').innerText()).replace(/\s+/g, ' ')})`);
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('r');
   await host.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
