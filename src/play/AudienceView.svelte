@@ -25,6 +25,7 @@
   import TimerDisplay from './TimerDisplay.svelte';
   import Confetti from './Confetti.svelte';
   import ToolOverlay from './tools/ToolOverlay.svelte';
+  import { boardEdit } from './boardgame/boardedit.svelte';
   import DealReveal from './tools/DealReveal.svelte';
   import { dealReveal } from '../lib/deals';
   import RpgStage from './rpg/RpgStage.svelte';
@@ -895,8 +896,11 @@
   <DealReveal name={whoWasWho.name} lines={whoWasWho.lines} onclick={onact ? () => act('whowaswho') : undefined} />
 {/if}
 
+<!-- (While the host edits the board, the dice stay up on their stage but let clicks through to the board: a click picks
+     a space there, it doesn't move anyone.) -->
 {#if live.overlay}
-  <ToolOverlay o={live.overlay} {game} {session} {role} onclick={onact ? () => act('overlay') : undefined} {onshopbuy} />
+  {@const editing = !!onact && boardEdit.on}
+  <ToolOverlay o={live.overlay} {game} {session} {role} passthrough={editing} onclick={onact && !editing ? () => act('overlay') : undefined} {onshopbuy} />
 {/if}
 
 <!--

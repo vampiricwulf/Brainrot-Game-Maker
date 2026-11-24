@@ -20,6 +20,7 @@
     role,
     onclick,
     onshopbuy,
+    passthrough = false,
   }: {
     o: Overlay;
     game: Game;
@@ -28,10 +29,12 @@
     onclick?: () => void;
     /** Host: a ware in the shop on screen was clicked. */
     onshopbuy?: (itemId: string) => void;
+    /** Host, ✎ Edit board: still shown, but clicks go through to the board under it. */
+    passthrough?: boolean;
   } = $props();
 </script>
 
-<div class="ov" class:clickable={!!onclick} transition:fade={{ duration: 200 }} onclick={() => onclick?.()} role="presentation">
+<div class="ov" class:clickable={!!onclick} class:passthrough transition:fade={{ duration: 200 }} onclick={() => onclick?.()} role="presentation">
   {#key o.nonce}
     {#if o.kind === 'wheel'}
       <WheelView {o} {game} {role} />
@@ -78,6 +81,10 @@
   }
   .clickable {
     cursor: pointer;
+  }
+  .passthrough,
+  .passthrough :global(*) {
+    pointer-events: none;
   }
   .popup {
     position: absolute;
