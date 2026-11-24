@@ -2233,7 +2233,10 @@ try {
         }
         return bad;
       });
-  const sweep = [...Array.from({ length: 40 }, (_, i) => 360 + i * 40), 390, 960, 1000, 1050, 1100, 1280].sort((a, b) => a - b);
+  // (Every 40px, and every 8px where the columns come and go, with the window's own step at 900px.)
+  const sweep = [
+    ...new Set([...Array.from({ length: 40 }, (_, i) => 360 + i * 40), ...Array.from({ length: 56 }, (_, i) => 880 + i * 8), 390, 899, 900, 901, 1050, 1100]),
+  ].sort((a, b) => a - b);
   /** Each width's stage in one window with the wagers in. */
   const stageOf = new Map();
   for (const typedRun of [false, true]) {
@@ -2311,6 +2314,36 @@ try {
       clashes.length === 0 && moved.length === 0,
       `${typedRun ? 'typed answers, two windows' : 'one window'}, 360–1920px wide: no control in a reveal row over another or past its row${typedRun ? '' : ', the stage its size'}${clashes.length || moved.length ? ` (not: ${[...clashes, ...moved].join(' | ')})` : ''}`,
     );
+    if (!typedRun) {
+      // At one width the rows' words change (0 Nullify takes ½ Halve and itself away; Ctrl+Z brings them back): the
+      // rows go back to columns where they now fit, and wrap again where they don't.
+      await pf.setViewportSize({ width: 960, height: 720 });
+      await pf.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+      const wrapped = async () => (await finalControlsIn(pf).locator('.order').getAttribute('class')).split(' ').includes('wrap');
+      const before = await wrapped();
+      const nullify = finalControlsIn(pf).getByRole('button', { name: /^Nullify wager: / });
+      const n = await nullify.count();
+      for (let i = 0; i < n; i++) await nullify.first().click();
+      await finalControlsIn(pf)
+        .getByRole('button', { name: /^Halve wager: / })
+        .first()
+        .waitFor({ state: 'detached' });
+      await pf.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+      const less = [await wrapped(), await rowClashes(pf)];
+      // (The panel, not a wager box, has the keys.)
+      await statusLineIn(pf).click();
+      for (let i = 0; i < n; i++) await pf.keyboard.press('Control+z');
+      await finalControlsIn(pf)
+        .getByRole('button', { name: /^Nullify wager: / })
+        .nth(n - 1)
+        .waitFor();
+      await pf.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+      const back = [await wrapped(), await rowClashes(pf)];
+      assert(
+        n === 4 && before && !less[0] && !less[1].length && back[0] && !back[1].length,
+        `960px wide, the rows' words changing: wrapped with ½ Halve / 0 Nullify (${before}), in columns once every wager is nullified (${!less[0]}), wrapped again on Ctrl+Z (${back[0]}), nothing drawn over anything${[...less[1], ...back[1]].length ? ` (not: ${[...less[1], ...back[1]].join(', ')})` : ''}`,
+      );
+    }
     await ctx.close();
   }
 
