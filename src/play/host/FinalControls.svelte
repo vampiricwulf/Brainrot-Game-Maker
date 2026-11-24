@@ -263,6 +263,10 @@
   /** Whether the rows fit in their columns (checked with the columns on, before the browser paints). */
   function rowsFit(el: HTMLElement): boolean {
     const was = el.classList.contains('wrap');
+    // (In columns the rows are shorter, and laying them out so clamps a box scrolled down to the last rows: each box
+    // around the list gets its scroll back after.)
+    const scrolled: [Element, number][] = [];
+    for (let e: Element | null = el; e; e = e.parentElement) if (e.scrollTop) scrolled.push([e, e.scrollTop]);
     el.classList.remove('wrap');
     let fits = true;
     // (No columns here: a narrow window, or a browser without subgrid. The rows wrap anyway.)
@@ -271,6 +275,7 @@
       for (const c of el.querySelectorAll<HTMLElement>('.pl > .cell')) if (fits && c.scrollWidth > c.clientWidth + 1) fits = false;
     }
     el.classList.toggle('wrap', was);
+    for (const [e, top] of scrolled) e.scrollTop = top;
     return fits;
   }
   $effect(() => {

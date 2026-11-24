@@ -37,7 +37,7 @@
 // Finish now… at the left of their box's foot, and the tools row folds behind ⋯ Tools (out while 📊 Scoreboard is on),
 // giving three rows or more their ✔ Right and ✘ Wrong in sight; at 1920×1080, where the rows fit, it stays out. From
 // 360 to 1920px wide (big scores, ½ Halve and 0 Nullify, typed answers or none, one window or two) no control in a reveal
-// row is drawn over another or past its row, the stage its size. An RPG and a board-game round's box keeps one width
+// row is drawn over another or past its row, the stage its size, and a panel scrolled down stays so as a row changes. An RPG and a board-game round's box keeps one width
 // from its title card to play, clear of the main button's cell.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -2358,6 +2358,26 @@ try {
       assert(
         n === 4 && before && !less[0] && !less[1].length && back[0] && !back[1].length,
         `960px wide, the rows' words changing: wrapped with ½ Halve / 0 Nullify (${before}), in columns once every wager is nullified (${!less[0]}), wrapped again on Ctrl+Z (${back[0]}), nothing drawn over anything${[...less[1], ...back[1]].length ? ` (not: ${[...less[1], ...back[1]].join(', ')})` : ''}`,
+      );
+      // Scrolled down to the last row, wrapped, the host nullifies its wager: the rows are measured again (in columns,
+      // shorter), and the panel stays scrolled where it was. (A click from the page itself: Playwright's would scroll.)
+      const kept = await finalControlsIn(pf)
+        .locator('.order')
+        .evaluate(async (order) => {
+          const boxes = [];
+          for (let e = order; e; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 1) boxes.push(e);
+          for (const e of boxes) e.scrollTop = e.scrollHeight;
+          const at = boxes.map((e) => Math.round(e.scrollTop));
+          const rows = order.querySelectorAll('.pl');
+          rows[rows.length - 1].querySelector('[aria-label^="Nullify wager"]').click();
+          await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+          // (Where the row is now shorter, as far down as the box still goes.)
+          const want = boxes.map((e, i) => Math.min(at[i], e.scrollHeight - e.clientHeight));
+          return { wrap: order.classList.contains('wrap'), at, want, then: boxes.map((e) => Math.round(e.scrollTop)) };
+        });
+      assert(
+        kept.wrap && kept.want.some((t) => t > 0) && kept.want.join() === kept.then.join(),
+        `960px wide, scrolled to the last row: its 0 Nullify leaves the panel scrolled down (${kept.at.join('/')}, then ${kept.then.join('/')}, as far as it goes: ${kept.want.join('/')}; wrapped: ${kept.wrap})`,
       );
     }
     await ctx.close();
