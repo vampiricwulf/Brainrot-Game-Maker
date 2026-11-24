@@ -11,7 +11,7 @@ const { GifWriter } = createRequire(import.meta.url)('omggif');
 
 /** A blank page in `ctx` with mediabunny in it, as `window.Mediabunny`. */
 export async function fixturePage(ctx) {
-  const html = join(tmpdir(), 'brainrot-fixtures.html');
+  const html = join(tmpdir(), `brainrot-fixtures-${process.pid}.html`);
   writeFileSync(html, '<!doctype html><meta charset="utf-8"><title>Fixtures</title>');
   const page = await ctx.newPage();
   await page.goto(pathToFileURL(html).href);

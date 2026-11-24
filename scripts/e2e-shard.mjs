@@ -5,6 +5,10 @@
 //   node scripts/e2e-shard.mjs buzzer    run the files that start a local buzzer server (npm run test:buzzer)
 //   node scripts/e2e-shard.mjs --check   prove the layout below is sound (the build job runs it)
 //
+//   --jobs N   run up to N files at once (default 1, one after another). Each file's output is then held back and
+//              printed whole when it ends, so files never mix their lines; the results still come in the list's order.
+//              Files can run side by side: each takes its own ports (freePort() in helpers.mjs) and temp folders.
+//
 // A run goes on past a failing file, prints each file's result and time, and exits 1 if any failed. In GitHub Actions
 // (GITHUB_STEP_SUMMARY set) it also writes that table to the run's summary page and marks each failed file with an
 // error annotation, so the run page says which file failed without opening the log. The named shards
@@ -16,8 +20,10 @@
 //
 // Before a run it checks that dist/index.html is newer than the source (unless APP_FILE is set). Each file's Chromium
 // gets tests/e2e/fonts.conf (CI's fonts, no Inter) unless FONTCONFIG_FILE is set: helpers.mjs sets it.
-import { spawnSync } from 'node:child_process';
-import { appendFileSync, readdirSync, readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { appendFileSync, closeSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { appFile } from '../tests/e2e/helpers.mjs';
 
 const SHARDS = {
@@ -66,20 +72,59 @@ function check() {
   console.log(`e2e shards: ${want.map((s) => `${s} (${shardFiles(s).length})`).join(', ')}; ${all.length} files, each once`);
 }
 
-function run(files, name) {
+// One file in its own Node: its result, its time, and (when `held`) everything it printed, stdout and stderr together
+// in the order it printed them. Held output goes to a file, not a pipe: a test that ends with process.exit() right after
+// printing its failure would lose the end of what it wrote down a pipe.
+function runFile(f, held, children) {
+  return new Promise((done) => {
+    const t0 = Date.now();
+    if (!held) console.log(`\n▶ ${f}.mjs`);
+    const log = held && join(mkdtempSync(join(tmpdir(), 'e2e-out-')), `${f}.log`);
+    const fd = held && openSync(log, 'w');
+    const child = spawn(process.execPath, [`tests/e2e/${f}.mjs`], { cwd: root, stdio: held ? ['ignore', fd, fd] : 'inherit' });
+    if (held) closeSync(fd);
+    children.add(child);
+    let failed = '';
+    child.on('error', (e) => (failed = String(e.stack || e) + '\n'));
+    child.on('close', (code) => {
+      children.delete(child);
+      let out = '';
+      if (held) {
+        out = readFileSync(log, 'utf8') + failed;
+        rmSync(dirname(log), { recursive: true, force: true });
+      }
+      done({ f, ok: code === 0, s: Math.round((Date.now() - t0) / 1000), out });
+    });
+  });
+}
+
+async function run(files, name, { jobs }) {
   try {
     appFile();
   } catch (e) {
     console.error(e.message);
     process.exit(1);
   }
-  const results = [];
-  for (const f of files) {
-    const t0 = Date.now();
-    console.log(`\n▶ ${f}.mjs`);
-    const r = spawnSync(process.execPath, [`tests/e2e/${f}.mjs`], { cwd: root, stdio: 'inherit' });
-    results.push({ f, ok: r.status === 0, s: Math.round((Date.now() - t0) / 1000) });
-  }
+  const held = jobs > 1;
+  const children = new Set();
+  // Stopped (Ctrl+C, or a kill): the files running now are stopped too, so none is left behind with its browser or
+  // buzzer server.
+  for (const sig of ['SIGINT', 'SIGTERM'])
+    process.on(sig, () => {
+      for (const c of children) c.kill(sig);
+      process.exit(1);
+    });
+  const results = new Array(files.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < files.length) {
+      const i = next++;
+      const r = await runFile(files[i], held, children);
+      results[i] = r;
+      if (held) process.stdout.write(`\n▶ ${r.f}.mjs (${r.ok ? 'ok' : 'FAIL'}, ${r.s}s)\n${r.out}`);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(jobs, files.length) }, worker));
   console.log('\nE2E results:');
   for (const r of results) console.log(`  ${r.ok ? 'ok  ' : 'FAIL'} ${r.f}.mjs ${r.s}s`);
   const failed = results.filter((r) => !r.ok);
@@ -95,12 +140,23 @@ function run(files, name) {
   process.exit(failed.length ? 1 : 0);
 }
 
-const arg = process.argv[2];
+const args = process.argv.slice(2);
+let jobs = 1;
+const jobsAt = args.indexOf('--jobs');
+if (jobsAt >= 0) {
+  jobs = Number(args[jobsAt + 1]);
+  args.splice(jobsAt, 2);
+  if (!Number.isInteger(jobs) || jobs < 1) {
+    console.error('--jobs wants a whole number, 1 or more');
+    process.exit(2);
+  }
+}
+const arg = args.length === 1 ? args[0] : undefined;
 if (arg === '--check') check();
-else if (arg === 'all') run(all, 'all');
-else if (arg === 'buzzer') run(buzzerFiles(), 'buzzer');
-else if (arg === 'rest' || named[arg]) run(shardFiles(arg), arg);
+else if (arg === 'all') run(all, 'all', { jobs });
+else if (arg === 'buzzer') run(buzzerFiles(), 'buzzer', { jobs });
+else if (arg === 'rest' || named[arg]) run(shardFiles(arg), arg, { jobs });
 else {
-  console.error('Usage: node scripts/e2e-shard.mjs <1–5 | rest | all | buzzer | --check>');
+  console.error('Usage: node scripts/e2e-shard.mjs <1–5 | rest | all | buzzer | --check> [--jobs N]');
   process.exit(2);
 }

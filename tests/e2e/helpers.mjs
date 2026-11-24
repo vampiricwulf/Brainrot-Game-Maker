@@ -1,6 +1,8 @@
 // Shared e2e steps.
 import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
@@ -552,6 +554,57 @@ export function png(r, g, b, w = 40, h = 24) {
 
 // ---------- The buzzer room, game packs, and what a page showed ----------
 
+// Ports claimed by this process (freePort), given up when it exits.
+const claimedPorts = new Set();
+const portClaims = join(tmpdir(), 'brainrot-e2e-ports');
+process.on('exit', () => {
+  for (const f of claimedPorts) rmSync(f, { force: true });
+});
+const pidAlive = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === 'EPERM';
+  }
+};
+
+/**
+ * A port on 127.0.0.1 for a server this test starts later (wrangler dev and its inspector), kept for this process
+ * until it exits, so e2e files run side by side (e2e-shard --jobs) never get the same one. It's picked from 20000–29999,
+ * below the range the system hands out for port 0, so no server that asks for "any port" (Chromium, workerd's own,
+ * another test's) takes it meanwhile; it's free when picked; and it's claimed with a file in the temp folder
+ * (brainrot-e2e-ports/<port>, holding the process id) that no other test process can make while this one is alive.
+ */
+export async function freePort() {
+  mkdirSync(portClaims, { recursive: true });
+  const canBind = (port) =>
+    new Promise((ok) => {
+      const s = createServer();
+      s.once('error', () => ok(false));
+      s.listen(port, '127.0.0.1', () => s.close(() => ok(true)));
+    });
+  for (let tries = 0; tries < 500; tries++) {
+    const port = 20000 + Math.floor(Math.random() * 10000);
+    const claim = join(portClaims, String(port));
+    if (claimedPorts.has(claim)) continue;
+    try {
+      writeFileSync(claim, String(process.pid), { flag: 'wx' });
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      // Claimed by a test process that's gone (killed before it could tidy up): take it over.
+      const owner = Number(readFileSync(claim, 'utf8'));
+      if (owner && pidAlive(owner)) continue;
+      rmSync(claim, { force: true });
+      continue;
+    }
+    claimedPorts.add(claim);
+    if (await canBind(port)) return port;
+    // Something else (not a test) is on it: keep the claim, so no one else tries it either, and pick another.
+  }
+  throw new Error('freePort: no free port in 20000–29999');
+}
+
 /**
  * The buzzer room (buzzer/ under `wrangler dev`, local), its storage in a new folder (`persist`): its address once it
  * answers, stop() (which also deletes that folder), and restart() (stopped and started again on the same address and
@@ -561,20 +614,11 @@ export function png(r, g, b, w = 40, h = 24) {
  */
 export async function startBuzzer(prefix, { vars = {} } = {}) {
   const { spawn } = await import('node:child_process');
-  const { createServer } = await import('node:net');
-  const { existsSync, mkdtempSync, rmSync } = await import('node:fs');
-  const { tmpdir } = await import('node:os');
-  const { join, resolve } = await import('node:path');
+  const { mkdtempSync } = await import('node:fs');
   const dir = resolve('buzzer');
   if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
-  const freePort = () =>
-    new Promise((ok) => {
-      const s = createServer().listen(0, '127.0.0.1', () => {
-        const { port } = s.address();
-        s.close(() => ok(port));
-      });
-    });
   const port = await freePort();
+  const inspector = await freePort();
   const persist = mkdtempSync(join(tmpdir(), prefix));
   const base = `http://127.0.0.1:${port}`;
   let log = '';
@@ -583,7 +627,7 @@ export async function startBuzzer(prefix, { vars = {} } = {}) {
     log = '';
     wrangler = spawn(
       join(dir, 'node_modules/.bin/wrangler'),
-      ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(await freePort()), '--persist-to', persist, '--log-level', 'warn', ...buzzerVars(vars)],
+      ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn', ...buzzerVars(vars)],
       { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
     );
     wrangler.stdout.on('data', (d) => (log += d));

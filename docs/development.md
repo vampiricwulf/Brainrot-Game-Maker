@@ -34,6 +34,7 @@ node tests/e2e/goon.mjs        # one end-to-end file (build first)
 node scripts/e2e-shard.mjs 3   # one CI shard (1–5 or rest; scripts/e2e-shard.mjs lists them), 6–8 min each
 npm run test:e2e       # the whole end-to-end suite, one file after another, going on past a failure: about 35 min
                        # (CI runs it in six shards alongside the release)
+node scripts/e2e-shard.mjs all --jobs 3   # the same, three files at a time (any shard or buzzer takes --jobs too)
 npm run test:buzzer    # only the phone-buzzer end-to-end files (they start a local buzzer server)
 npm run screenshots    # regenerate docs/screenshots (build first)
 npm run desktop:dev    # the desktop app around the dev server (it starts npm run dev; needs Rust + Tauri prerequisites)
@@ -48,6 +49,11 @@ Each `tests/e2e/*.mjs` file is a plain Node script that drives the built app, `d
 `dist/index.html` older than the sources it's built from, so it never quietly tests an old build (set `APP_FILE` to
 test another file). Shared steps are in `tests/e2e/helpers.mjs`, including `startBuzzer()`, which runs the buzzer
 server locally under `wrangler dev` for the phone tests. No test may reach the real buzzer server or GitHub.
+
+Files can run side by side (`--jobs N` on `scripts/e2e-shard.mjs`): a server a test starts later gets its port from
+`freePort()` in `tests/e2e/helpers.mjs`, which claims it for that test's process (a file in the temp folder,
+`brainrot-e2e-ports/`), so two tests never get the same one; anything else a test keeps goes in a temp folder of its own.
+With `--jobs` above 1 each file's output is held back and printed whole when it ends.
 
 Fonts: some layout checks measure rows and buttons, and assume CI's fonts, which have no Inter. `tests/e2e/helpers.mjs`,
 which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machine's fonts minus Inter) unless

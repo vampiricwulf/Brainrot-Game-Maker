@@ -1,7 +1,7 @@
 // Builds the phone page into one file: phone/index.html with phone/style.css and the bundled phone/main.ts inlined,
 // written to dist/index.html (wrangler serves dist/). Run by wrangler before dev and deploy.
 import { build } from 'esbuild';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,6 +20,13 @@ const css = readFileSync(join(here, 'phone/style.css'), 'utf8');
 const html = readFileSync(join(here, 'phone/index.html'), 'utf8')
   .replace('/*STYLE*/', () => css)
   .replace('/*SCRIPT*/', () => js);
+// Several wrangler dev at once (e2e files run side by side) each build it: a page that hasn't changed isn't written again,
+// and a changed one is written next to dist/ and moved into place, so none of them ever serves a half-written page.
+const page = join(here, 'dist/index.html');
 mkdirSync(join(here, 'dist'), { recursive: true });
-writeFileSync(join(here, 'dist/index.html'), html);
+if (!existsSync(page) || readFileSync(page, 'utf8') !== html) {
+  const part = join(here, `.phone-page-${process.pid}.part`);
+  writeFileSync(part, html);
+  renameSync(part, page);
+}
 console.log(`phone page: dist/index.html (${(html.length / 1024).toFixed(1)} KB)`);

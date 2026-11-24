@@ -11,12 +11,11 @@
 // its editor): they show on stream under the question (the right one lit with the answer), a member taps one, and the
 // reveal says whether it's the right one. Needs `npm ci` in buzzer/.
 import { spawn } from 'node:child_process';
-import { createServer } from 'node:net';
 import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, anyway, launchChromium, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, anyway, launchChromium, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway, failureShots, freePort } from './helpers.mjs';
 
 const file = appFile();
 const dir = resolve('buzzer');
@@ -24,13 +23,6 @@ if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
 
-const freePort = () =>
-  new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const { port } = s.address();
-      s.close(() => ok(port));
-    });
-  });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const port = await freePort();

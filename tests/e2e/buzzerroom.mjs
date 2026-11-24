@@ -5,22 +5,14 @@
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { createServer } from 'node:net';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { buzzerVars, failureShots, tap, tieThem } from './helpers.mjs';
+import { buzzerVars, failureShots, tap, tieThem, freePort } from './helpers.mjs';
 
 const dir = resolve('buzzer');
 if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
 
-const freePort = () =>
-  new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const { port } = s.address();
-      s.close(() => ok(port));
-    });
-  });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const port = await freePort();

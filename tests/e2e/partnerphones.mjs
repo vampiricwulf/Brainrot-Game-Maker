@@ -8,24 +8,16 @@
 // and the host's panel says ✓ seen. The tile closing takes it away. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
-import { createServer } from 'node:net';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn, failureShots } from './helpers.mjs';
+import { appFile, addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn, failureShots, freePort } from './helpers.mjs';
 
 const file = appFile();
 const dir = resolve('buzzer');
 if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
 
-const freePort = () =>
-  new Promise((ok) => {
-    const s = createServer().listen(0, '127.0.0.1', () => {
-      const { port } = s.address();
-      s.close(() => ok(port));
-    });
-  });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const port = await freePort();
