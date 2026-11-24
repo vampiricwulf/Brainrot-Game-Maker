@@ -149,7 +149,10 @@ jobs:
   buzzer:
     # The remote buzzer room (buzzer/): deployed to Cloudflare Workers on every push to main, when the repository has
     # the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets. Without them it says so and passes.
+    # It waits for the build job, which type-checks the buzzer room and runs its unit tests and the quick end-to-end
+    # test: if any of those fail, the live server is left as it was.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
