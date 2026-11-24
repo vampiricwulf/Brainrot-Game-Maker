@@ -188,7 +188,6 @@
     {/each}
     <div>
       <button
-        class="small"
         onclick={() => {
           preset.totalOutcomes ??= [];
           preset.totalOutcomes.push({ id: newId(), min: 1, max: 1, outcome: { label: '' } });

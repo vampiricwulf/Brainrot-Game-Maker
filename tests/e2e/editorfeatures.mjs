@@ -465,6 +465,12 @@ try {
   await sides.press('Tab');
   assert((await sides.inputValue()) === '2', 'sides typed 0 then 1 show the d2 it is');
   assert((await page.locator('.die .roll').first().innerText()) === '20d2', 'and the row says what it rolls (20d2)');
+  {
+    // ＋ Add range is the size of the page's other ＋ Add buttons.
+    const h = async (name) => Math.round((await page.getByRole('button', { name }).boundingBox()).height);
+    const [die, range] = [await h('＋ Add another die'), await h('＋ Add range')];
+    assert(die === range, `＋ Add range is as tall as ＋ Add another die (${range}, ${die})`);
+  }
 
   // ---------- Shortcuts filter ----------
   await page.getByRole('button', { name: /^More:/ }).click();
