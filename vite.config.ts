@@ -18,6 +18,9 @@ export default defineConfig({
     // local ones) only check when asked (ℹ About).
     __RELEASE__: JSON.stringify(build.release),
   },
+  // npm run desktop:dev opens http://localhost:5173 (src-tauri/tauri.conf.json's devUrl): with that port taken, fail
+  // rather than serve elsewhere and leave the window on whatever holds it.
+  server: { port: 5173, strictPort: true },
   build: { outDir: 'dist', assetsInlineLimit: 100_000_000 },
   test: {
     projects: [
