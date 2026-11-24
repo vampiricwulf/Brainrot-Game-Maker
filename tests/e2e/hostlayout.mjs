@@ -2708,17 +2708,26 @@ try {
         `${width}px wide ${where}: “${goLong}” is cut short, its ▶ kept, named in full and in its tooltip (${JSON.stringify({ cut: fit.cut, arrow: fit.arrow, title: fit.title })})`,
       );
     }
+    // Asked at 390px wide too (not only narrowed into): it stays inside the window, and in one window the strip lies
+    // over the tools row, so the stage keeps its size.
+    await confirmStrip(pp).getByRole('button', { name: 'Keep playing', exact: true }).click();
+    await confirmStrip(pp).waitFor({ state: 'detached' });
+    await pp.setViewportSize({ width: 390, height: 844 });
+    await pp.waitForTimeout(450);
+    const stageAt = async () => JSON.stringify(await pp.locator('.stage-area').boundingBox());
+    const before = await stageAt();
+    await roundNavIn(pp).locator('button', { hasText: '▶' }).click();
+    await confirmStrip(pp).getByRole('button', { name: goLong, exact: true }).waitFor();
+    await pp.waitForTimeout(300);
+    const asked = await pp.evaluate(() => {
+      const strip = document.querySelector('[data-confirm-strip]');
+      return {
+        out: [strip, ...strip.querySelectorAll('*')].filter((e) => e.getBoundingClientRect().right > innerWidth + 0.5).length,
+        sideways: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
+      };
+    });
+    assert(asked.out === 0 && asked.sideways <= 0, `asked at 390px wide ${where}: the leave-round question stays inside the window (${JSON.stringify(asked)})`);
     if (!dual) {
-      // In one window the strip lies over the tools row: the stage keeps its size at 390px wide.
-      await confirmStrip(pp).getByRole('button', { name: 'Keep playing', exact: true }).click();
-      await confirmStrip(pp).waitFor({ state: 'detached' });
-      await pp.setViewportSize({ width: 390, height: 844 });
-      await pp.waitForTimeout(450);
-      const stageAt = async () => JSON.stringify(await pp.locator('.stage-area').boundingBox());
-      const before = await stageAt();
-      await roundNavIn(pp).locator('button', { hasText: '▶' }).click();
-      await confirmStrip(pp).waitFor();
-      await pp.waitForTimeout(300);
       const asking = await stageAt();
       assert(before === asking, `390px wide in one window: the stage keeps its size while the question is up (${before} → ${asking})`);
     }
