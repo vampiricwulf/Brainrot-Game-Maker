@@ -194,7 +194,7 @@ try {
   await page.keyboard.press('Escape');
   assert(await clueWin.waitFor({ state: 'detached', timeout: 3000 }).then(() => true, () => false), 'a double-click on a tile opens its clue, and one Esc closes it (the second click picked nothing in it)');
   await tabs.nth(2).click();
-  await page.locator('nav .problem', { hasText: /^⚠ Jeopardy!:/ }).click();
+  await page.locator('nav .problem', { hasText: /^⚠\s+Jeopardy!:/ }).click();
   await page.waitForTimeout(300);
   const tile = await page.evaluate(() => document.activeElement?.getAttribute('data-tile'));
   assert((await tabs.nth(0).getAttribute('class')).includes('active') && tile === '0,1', `a checklist line opens its round at the first unfinished tile (${tile})`);
