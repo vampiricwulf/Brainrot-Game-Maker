@@ -288,7 +288,7 @@ try {
     await host.reload();
     await host.getByRole('button', { name: 'Resume game' }).click();
     await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-    await host.locator('.play .panel').waitFor();
+    await hostPanelIn(host).waitFor();
   };
   // (Once autosave holds them: its write waits a moment for more clicks, and the copy written as the page goes away
   // isn't always kept by a browser under test. A reload before that comes back to the game before Card 2 went, and the

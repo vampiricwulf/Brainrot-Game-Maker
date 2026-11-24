@@ -516,7 +516,7 @@ try {
   await host.reload();
   await host.getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await host.locator('.play .panel').waitFor();
+  await hostPanelIn(host).waitFor();
   assert(await until(() => states.length > n && JSON.stringify(cards().map((c) => c.id)) === JSON.stringify([c1.id, c2.id])), 'reloaded: both cards are out under the same ids');
   await panel.waitFor();
   assert(await until(async () => /listed as Card 1/.test(await words(row1)) && /listed as Card 2/.test(await words(row2))), 'and the Final’s panel says both went');

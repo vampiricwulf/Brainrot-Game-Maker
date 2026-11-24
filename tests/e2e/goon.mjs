@@ -377,7 +377,7 @@ try {
     const { ctx, page } = await host('final', undefined, finalFile);
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     // (Its title card, if it has one: N starts the round.)
-    await page.locator('.fj .wagers, .stage-box .title-card').first().waitFor();
+    await finalControlsIn(page).locator('.wagers').or(stageBoxIn(page).locator('.title-card')).first().waitFor();
     if (await stageBoxIn(page).locator('.title-card').count()) await page.keyboard.press('n');
     await finalControlsIn(page).locator('.wagers').waitFor();
     const status = (t) => statusLineIn(page, { hasText: t }).waitFor();
@@ -518,7 +518,7 @@ try {
   ]) {
     const { ctx, page } = await host(`final ${how}`, undefined, from);
     await page.getByRole('button', { name: 'Start game ▶' }).click();
-    await page.locator('.fj .wagers, .stage-box .title-card').first().waitFor();
+    await finalControlsIn(page).locator('.wagers').or(stageBoxIn(page).locator('.title-card')).first().waitFor();
     if (await stageBoxIn(page).locator('.title-card').count()) await page.keyboard.press('n');
     await finalControlsIn(page).locator('.wagers').waitFor();
     const zeroBoxes = finalControlsIn(page).locator('.wagers input[data-wager]');
@@ -559,7 +559,7 @@ try {
   ]) {
     const { ctx, page } = await host(`final, ${what}`, undefined, finalFile, opts);
     await page.getByRole('button', { name: 'Start game ▶' }).click();
-    await page.locator('.fj .wagers, .stage-box .title-card').first().waitFor();
+    await finalControlsIn(page).locator('.wagers').or(stageBoxIn(page).locator('.title-card')).first().waitFor();
     if (await stageBoxIn(page).locator('.title-card').count()) await page.keyboard.press('n');
     await finalControlsIn(page).locator('.wagers').waitFor();
     const zeroBoxes = finalControlsIn(page).locator('.wagers input[data-wager]');

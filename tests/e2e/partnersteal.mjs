@@ -220,7 +220,7 @@ try {
   await host.reload();
   await host.getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await host.locator('.play .panel').waitFor();
+  await hostPanelIn(host).waitFor();
   assert(
     await until(async () => (await stealRow.count()) === 1 && (await stealRow.getByRole('button', { name: 'Dan steals it' }).getAttribute('aria-pressed')) === 'true'),
     'a host reload keeps the steal open, Dan still answering it',

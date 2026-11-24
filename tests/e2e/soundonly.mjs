@@ -227,7 +227,7 @@ try {
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
   aud.on('pageerror', (e) => errors.push('[audience] ' + e.message));
   const full = '.full';
-  await aud.locator('.board, .full').first().waitFor();
+  await boardIn(aud).or(aud.locator('.full')).first().waitFor();
   await boardTilesIn(boardIn(page)).first().click();
   await aud.locator(`${full} iframe`).waitFor({ state: 'attached' });
   await page.locator('.mc .time', { hasText: '/ 1:40' }).waitFor();

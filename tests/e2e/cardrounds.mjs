@@ -681,7 +681,7 @@ try {
   await host.reload();
   await host.getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await host.locator('.play .panel').waitFor();
+  await hostPanelIn(host).waitFor();
   await host.locator('.bh').waitFor();
   assert(await until(() => states.length > n2 && cards().length === 2), 'reloaded: the host is back in the room, with both cards');
   assert(

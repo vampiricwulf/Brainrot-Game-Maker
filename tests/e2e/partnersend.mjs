@@ -355,7 +355,7 @@ try {
     reloaded();
     await host.getByRole('button', { name: 'Resume game' }).click();
     await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-    await host.locator('.play .panel').waitFor();
+    await hostPanelIn(host).waitFor();
   };
   await aud.close();
   let n = states.length;

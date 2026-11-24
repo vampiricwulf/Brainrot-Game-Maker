@@ -205,7 +205,7 @@ try {
     (await marked.count()) === 1 &&
       (await marked.getAttribute('data-mark')) === '⭐' &&
       (await marked.getAttribute('aria-label')).endsWith(', Daily Double') &&
-      (await aud.locator('.board .tile.host-mark, .board .tile[data-mark]').count()) === 0,
+      (await boardIn(aud).locator('.tile.host-mark, .tile[data-mark]').count()) === 0,
     `two windows: the host's board marks its Daily Double (${await marked.getAttribute('aria-label')}), the audience window's doesn't`,
   );
   await page.keyboard.press('d');
@@ -379,7 +379,7 @@ try {
       `on a ${key} key, the pre-game screen names ${named} and no note offers the other key (${notes.join(' | ')})`,
     );
     await sp.getByRole('button', { name: 'Start game ▶' }).click();
-    const look = (sel) => sp.locator(`.stage-box ${sel}`).evaluate((e) => getComputedStyle(e).backgroundImage);
+    const look = (sel) => stageBoxIn(sp).locator(sel).evaluate((e) => getComputedStyle(e).backgroundImage);
     // One window: the stage under every screen is the key too, so a clue zooming in has no black frame round it.
     const keyRgb = key === 'green' ? 'rgb(0, 255, 0)' : 'rgb(255, 0, 255)';
     const stageBg = await stageBoxIn(sp).locator('.stage').evaluate((e) => getComputedStyle(e).backgroundColor);

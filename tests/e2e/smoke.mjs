@@ -734,7 +734,7 @@ await page.keyboard.press('Delete');
 await page.getByRole('button', { name: 'Add tiebreaker (optional)' }).click();
 assert(await page.getByLabel('Include a tiebreaker clue').isChecked(), '＋ Add tiebreaker turns it on and opens its page');
 await page.locator('.se .canvas .hit').first().click();
-await page.locator('.se .insp textarea').fill('TIEBREAKER TEXT');
+await inspectorIn(page.locator('.se')).locator('textarea').fill('TIEBREAKER TEXT');
 assert((await page.getByRole('button', { name: 'Tiebreaker', exact: true }).count()) === 1, 'the tiebreaker is edited on its own tab');
 await page.getByLabel('Include a tiebreaker clue').uncheck();
 assert((await page.getByRole('button', { name: 'Add tiebreaker (optional)' }).count()) === 1, 'the nav shows ＋ Add tiebreaker (optional) while it is off');
@@ -747,8 +747,8 @@ await page.getByRole('combobox', { name: 'Score bar' }).selectOption('top');
 const previewing = await page.getByLabel('Preview', { exact: true }).evaluate((e) => e.selectedOptions[0].text);
 assert(previewing.includes('Final'), `the theme preview starts on the round last open (${previewing})`);
 await page.getByLabel('Preview', { exact: true }).selectOption({ index: 0 });
-await page.locator('.preview .board').waitFor();
-const previewTile = await page.locator('.preview .board .tile').nth(1).evaluate((e) => getComputedStyle(e).backgroundColor);
+await boardIn(page.locator('.preview')).waitFor();
+const previewTile = await boardTilesIn(boardIn(page.locator('.preview'))).nth(1).evaluate((e) => getComputedStyle(e).backgroundColor);
 assert(previewTile === 'rgb(22, 0, 46)', `theme preview uses the neon tile color (${previewTile})`);
 await shot('2a-theme');
 
@@ -859,13 +859,13 @@ assert((await page.getByText('Who is Pepe?').count()) === 0, 'clicking it again 
 
 await page.keyboard.press('1');
 await page.keyboard.press('2');
-await page.locator('.award input').fill('350');
-await page.locator('.award input').press('Enter');
+await awardRowIn(page).locator('input').fill('350');
+await awardRowIn(page).locator('input').press('Enter');
 assert((await scoreOf(0)) === '$350' && (await scoreOf(1)) === '$350', 'custom amount awarded to two players');
 assert((await scoreOf(2)) === '$0', 'third player untouched');
 // Enter in the Amount box hands the keys back: the next number selects a player instead of typing "3502".
 await page.keyboard.press('2');
-assert((await page.locator('.award input').inputValue()) === '350', 'Amount keeps 350 after Enter (the box lets go of the keys)');
+assert((await awardRowIn(page).locator('input').inputValue()) === '350', 'Amount keeps 350 after Enter (the box lets go of the keys)');
 assert((await playerRowsIn(page).nth(1).locator('.sel').getAttribute('aria-pressed')) === 'true', 'the next number key selects player 2');
 await page.keyboard.press('2');
 assert(await page.getByText('Pick who answered').isVisible(), 'with nobody selected the panel explains how to score');
@@ -1170,7 +1170,7 @@ await page.locator('.dd-badge').waitFor();
 assert(!(await page.locator('.dd-badge').innerText()).includes('500'), 'viewers don\'t see the Daily Double wager until the host shows it');
 await page.getByRole('button', { name: 'Show wager' }).click();
 assert((await page.locator('.dd-badge').innerText()).includes('$500'), 'Show wager puts it on screen');
-assert((await page.locator('.award input').inputValue()) === '500', 'wager prefilled as the amount');
+assert((await awardRowIn(page).locator('input').inputValue()) === '500', 'wager prefilled as the amount');
 // Player 2 taken out by mistake (👥 Players), then Ctrl+Z: the Daily Double is theirs again (the badge, Enter).
 await page.getByRole('button', { name: '👥 Players' }).click();
 await page.getByRole('button', { name: 'Remove Player 2' }).click();

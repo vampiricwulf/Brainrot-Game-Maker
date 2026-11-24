@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, openGameFile, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway, failureShots, assert, launchChromium, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import { appFile, anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, openGameFile, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway, failureShots, assert, launchChromium, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn, inspectorIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -95,7 +95,7 @@ try {
   await page.locator('[data-field="a"]').fill('Crisps');
   await page.getByRole('button', { name: '＋ Multiple choice' }).click();
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choice B');
-  await page.locator('.history-notice, .toast', { hasText: 'Added multiple choice to Midgame Wager: A is the answer, marked right' }).waitFor();
+  await page.locator('.history-notice', { hasText: 'Added multiple choice to Midgame Wager: A is the answer, marked right' }).or(toastsIn(page, { hasText: 'Added multiple choice to Midgame Wager: A is the answer, marked right' })).waitFor();
   const firstRow = page.locator('[data-choice-row]').first();
   assert(
     (await page.getByRole('textbox', { name: 'Choice A', exact: true }).inputValue()) === 'Crisps' &&
@@ -113,7 +113,7 @@ try {
   assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!', 'rounds can be moved (a Final in the middle of the game)');
   assert((await page.locator('.ra .mode-chip').innerText()).includes('Final Jeopardy') && (await page.locator('.ra').innerText()).includes('Round 2 of 4'), 'the round bar shows the mode and position');
   await page.locator('.se .canvas .hit').first().click();
-  await page.locator('.se .insp textarea').fill('Best chip flavor?');
+  await inspectorIn(page.locator('.se')).locator('textarea').fill('Best chip flavor?');
   // Duplicate and delete.
   await page.getByRole('button', { name: '⧉ Duplicate round' }).click();
   assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Midgame Wager (copy)|Double Jeopardy!|Final Jeopardy!', 'Duplicate puts a copy right after the round');
@@ -232,7 +232,7 @@ try {
   assert((await finish.count()) === 1, 'a Final in the middle of the game offers the next round instead of finishing the game');
   await page.waitForTimeout(450);
   await finish.click();
-  await page.locator('.board, .round-name').first().waitFor({ timeout: 10000 });
+  await boardIn(page).or(page.locator('.round-name')).first().waitFor({ timeout: 10000 });
   assert(true, 'after the mid-game Final, play continues with the next board round');
   // The round picker jumps anywhere (rounds can be played out of order).
   await page.getByRole('button', { name: 'Skip intro' }).click().catch(() => {});

@@ -980,7 +980,7 @@ try {
       const menu = p4.locator('.cm[role="menu"]');
       await menu.waitFor();
       await p4.waitForTimeout(100);
-      const [mb, pb] = [await menu.boundingBox(), await p4.locator('.play .panel').boundingBox()];
+      const [mb, pb] = [await menu.boundingBox(), await hostPanelIn(p4).boundingBox()];
       assert(
         mb.y >= pb.y - 1 && mb.y + mb.height <= pb.y + pb.height + 1 && mb.x >= pb.x - 1 && mb.x + mb.width <= pb.x + pb.width + 1,
         `${w}×${h}: a player's right-click menu in the host panel stays in it, off the stage (menu ${[mb.x, mb.y, mb.width, mb.height].map(Math.round).join()}, panel ${[pb.x, pb.y, pb.width, pb.height].map(Math.round).join()})`,

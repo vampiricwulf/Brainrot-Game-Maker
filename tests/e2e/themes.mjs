@@ -223,13 +223,13 @@ try {
   // ---------- Clue text: Undo stays on the Theme page; a kept color too close to new tiles is pointed out ----------
   const clueFont = page.getByRole('combobox', { name: 'Clue text font' });
   // (What an undo or redo did: the note under the page, or a toast over a window opened on top of it.)
-  const said = (text) => page.locator('.history-notice, .toast', { hasText: text }).first().waitFor();
+  const said = (text) => page.locator('.history-notice', { hasText: text }).or(toastsIn(page, { hasText: text })).first().waitFor();
   const onThemePage = async () => (await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page' && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0;
   await clueFont.selectOption({ label: 'Anton' });
   await page.keyboard.press('Control+z');
   await said('Undid Clue text font');
   assert((await onThemePage()) && (await clueFont.inputValue()) === '', 'Ctrl+Z of a Clue text font (it restyles every clue) stays on the Theme page, no clue editor opens');
-  const undidNote = await page.locator('.history-notice, .toast', { hasText: 'Undid Clue text font' }).first().innerText();
+  const undidNote = await page.locator('.history-notice', { hasText: 'Undid Clue text font' }).or(toastsIn(page, { hasText: 'Undid Clue text font' })).first().innerText();
   assert(/· Theme\b/.test(undidNote) && !undidNote.includes('Question'), `and its note says it was on the Theme page, not at a clue (${undidNote})`);
   await page.keyboard.press('Control+y');
   await said('Redid Clue text font');

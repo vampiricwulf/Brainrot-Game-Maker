@@ -9,7 +9,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, checkItem, flowButton, flowIs, goOnCheck, mainLabel, openGameFile, assert, launchChromium, section, awardRowIn, boardIn, hostPanelIn, statusLineIn, toastsIn } from './helpers.mjs';
+import { appFile, failureShots, boxHasAction, checkItem, flowButton, flowIs, goOnCheck, mainLabel, openGameFile, assert, launchChromium, section, awardRowIn, boardIn, hostPanelIn, statusLineIn, toastsIn, stageBoxIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -51,7 +51,7 @@ const page = await context.newPage();
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => (errors.push('dialog: ' + d.message()), d.accept()));
 
-const stage = (sel) => page.locator(`.stage-box ${sel}`);
+const stage = (sel) => stageBoxIn(page).locator(sel);
 const tile = (cat, row) => stage(`.tile[data-clue="q${cat}_${row}"]`);
 const panel = hostPanelIn(page).locator('[data-partner-panel]');
 const judgeRow = panel.locator('[data-partner-judge]');
@@ -86,7 +86,7 @@ async function resume() {
   await page.reload();
   await page.getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await page.locator('.play .panel').waitFor();
+  await hostPanelIn(page).waitFor();
 }
 /** Toggle a rule in ⚖ Rules mid-game. */
 async function rule(label, on) {

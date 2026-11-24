@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, openGameFile, packGame, playWithPlayers, failureShots, assert, launchChromium, boardIn, boardTilesIn, inspectorIn, roundTabsIn, stageBoxIn } from './helpers.mjs';
+import { appFile, addClassicRounds, openGameFile, packGame, playWithPlayers, failureShots, assert, launchChromium, boardIn, boardTilesIn, inspectorIn, roundTabsIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
@@ -495,7 +495,7 @@ try {
   await page.getByRole('button', { name: 'Done' }).click();
   // 🎨 Theme and 🖼 Board images show the board on a stage of their own: they leave the game's clip where it was too.
   await page.getByRole('button', { name: '🎨 Theme' }).click();
-  await page.locator('.preview .board').waitFor();
+  await boardIn(page.locator('.preview')).waitFor();
   await roundTabsIn(page).first().click();
   await page.getByRole('button', { name: /Board images/ }).click();
   const decor = page.locator('[aria-label="Board images"]');
@@ -621,7 +621,7 @@ try {
     assert(stayAt <= 720 && (await stageAt()) === onBoard, `🚪 Exit asks in the strip, its answers in sight (Stay's foot at ${stayAt}), the stage its size`);
     await stay.click();
     await lp.locator('.toolsfold').click();
-    await lp.locator('.toolsrow').waitFor();
+    await toolsRowIn(lp).waitFor();
     assert(true, '⋯ Tools brings the tools row back');
     await lp.keyboard.press('Shift+Escape');
     await boardIn(stageBoxIn(lp)).waitFor();
@@ -636,7 +636,7 @@ try {
       `missing files: a row each says so, naming no file (${missing.join(' | ')})`,
     );
     assert((await stageBoxIn(lp).locator('.full .missing').count()) === 0, 'and the stage (what the stream shows) has no box for them');
-    assert((await lp.locator('.toolsfold').count()) === 0 && (await lp.locator('.toolsrow').isVisible()), 'two thin rows leave room for all: the tools row stays out');
+    assert((await lp.locator('.toolsfold').count()) === 0 && (await toolsRowIn(lp).isVisible()), 'two thin rows leave room for all: the tools row stays out');
     await lapCtx.close();
   }
 

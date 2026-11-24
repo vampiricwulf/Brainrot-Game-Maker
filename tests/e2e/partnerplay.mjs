@@ -76,7 +76,7 @@ async function noCards(p, when) {
   const words = await pageWords(p);
   assert(!words.includes(SECRET) && !words.includes(PIC) && !words.includes('zorbulon'), `${when}: no card’s words nor its picture’s name`);
 }
-const stage = (sel) => page.locator(`.stage-box ${sel}`);
+const stage = (sel) => stageBoxIn(page).locator(sel);
 const tile = (cat, row) => stage(`.tile[data-clue="q${cat}_${row}"]`);
 const panel = hostPanelIn(page).locator('[data-partner-panel]');
 const toast = (t) => toastsIn(page, { hasText: t }).waitFor({ timeout: 3000 }).then(() => true, () => false);

@@ -186,7 +186,7 @@ async function show(how) {
   const mainIs = (l) => async () => (await label()) === l;
   const noMain = async () => (await mainButton(host).count()) === 0;
   const statusHas = (t) => async () => (await statusLineIn(host).innerText()).includes(t);
-  const stageHas = (sel) => async () => (await host.locator(`.stage-box ${sel}`).count()) > 0;
+  const stageHas = (sel) => async () => (await stageBoxIn(host).locator(sel).count()) > 0;
   const marked = async () => (await hostPanelIn(host).locator('.mark.right').count()) === 1;
   /** The tool's own 🎡 Spin! / ↻ Spin again (its box's slot: the blue button only puts it away). */
   const slot = () => stepButton(hostPanelIn(host).locator('[data-tool-controls]'));

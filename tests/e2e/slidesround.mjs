@@ -11,7 +11,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway, failureShots, assert, launchChromium, section, awardRowIn, confirmStrip, finalControlsIn, hostPanelIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway, failureShots, assert, launchChromium, section, awardRowIn, confirmStrip, finalControlsIn, hostPanelIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn, boardIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -94,7 +94,7 @@ try {
   await roundTabsIn(page, { hasText: 'Introduction' }).click();
   // 🎨 Theme opened from here previews the board (its looks are most of the page), not this round's slide.
   await page.getByRole('button', { name: '🎨 Theme' }).click();
-  const boardShown = await page.locator('.preview .board').waitFor({ timeout: 5000 }).then(() => true, () => false);
+  const boardShown = await boardIn(page.locator('.preview')).waitFor({ timeout: 5000 }).then(() => true, () => false);
   assert(boardShown, '🎨 Theme opened from a Slides round previews the first board');
   // A Final's line goes to the side with nothing on it (here its answer), from another round.
   await roundTabsIn(page, { hasText: 'Final' }).click();
@@ -207,7 +207,7 @@ try {
   // (A double-click is one click: the second click counts a moment after the first.)
   await page.waitForTimeout(700);
   await stage.locator('[data-slide="2"]').click();
-  await stage.locator('.board, .round-name').first().waitFor();
+  await boardIn(stage).or(stage.locator('.round-name')).first().waitFor();
   assert(true, 'and the next click goes on to the board');
 
   // ---------- A Final, then a slides outro, then the tiebreaker ----------

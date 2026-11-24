@@ -459,6 +459,7 @@ try {
   // A toast meanwhile goes under the note, not over its ↶ Undo (a toast's place, as the app's own CSS puts it).
   const overlap = await page.evaluate(() => {
     const t = Object.assign(document.createElement('div'), { className: 'toast note-pill', textContent: 'A toast while the note shows' });
+    t.setAttribute('data-toast', '');
     document.body.append(t);
     const [a, b] = [t.getBoundingClientRect(), document.querySelector('.history-notice').getBoundingClientRect()];
     t.remove();

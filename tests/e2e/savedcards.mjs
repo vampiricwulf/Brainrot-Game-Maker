@@ -18,7 +18,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, launchChromium, untilWith, section, boardIn, stageBoxIn, statusBarIn, toolsRowIn } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, launchChromium, untilWith, section, boardIn, stageBoxIn, statusBarIn, toolsRowIn, hostPanelIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -493,7 +493,7 @@ try {
   await host.reload();
   await host.getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await host.locator('.play .panel').waitFor();
+  await hostPanelIn(host).waitFor();
   assert(await until(() => states.length > n && cards().length === 1 && cards()[0].id === c1.id), 'reloaded: the card is out under the same id');
   const outButton = tools.locator('[data-cards-out-count]');
   assert((await outButton.innerText()).trim() === '🤫 1 card out', 'and the tools row counts it');
@@ -554,7 +554,7 @@ try {
   await host.evaluate(() => (window.__seen.length = 0));
   await resumeEdits.click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await host.locator('.play .panel').waitFor();
+  await hostPanelIn(host).waitFor();
   assert(await until(() => cards().length === 0), 'Wild card changed in the editor: the room no longer has it');
   assert(await until(async () => (await cardsOn(bob)) === 0), 'and Bob’s phone drops it');
   await outButton.click();
@@ -592,7 +592,7 @@ try {
   await host.evaluate(() => (window.__seen.length = 0));
   await statusBarIn(host).locator('.kept').getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await host.locator('.play .panel').waitFor();
+  await hostPanelIn(host).waitFor();
   dialog = await openSend();
   assert((await dialog.getByRole('button', { name: '📤 Send' }).count()) === 0, 'the room closed: no 📤 Send (no phones get cards)');
   const [win] = await Promise.all([host.waitForEvent('popup'), dialog.getByRole('button', { name: 'Card window for Bob' }).click()]);
@@ -628,7 +628,7 @@ try {
   await host.evaluate(() => (window.__seen.length = 0));
   await resumeEdits.click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await host.locator('.play .panel').waitFor();
+  await hostPanelIn(host).waitFor();
   await outButton.click();
   await outList.waitFor();
   const noPhones = await words(outList.locator('[data-card-out] [data-card-state]'));

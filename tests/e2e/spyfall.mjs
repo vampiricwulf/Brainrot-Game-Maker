@@ -21,7 +21,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, untilWith, section, boardIn, roundNavIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
+import { appFile, confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, untilWith, section, boardIn, roundNavIn, stageBoxIn, toolsRowIn, hostPanelIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -277,7 +277,7 @@ try {
     await host.reload();
     await host.getByRole('button', { name: 'Resume game' }).click();
     await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-    await host.locator('.play .panel').waitFor();
+    await hostPanelIn(host).waitFor();
   };
   let n = states.length;
   await resume();

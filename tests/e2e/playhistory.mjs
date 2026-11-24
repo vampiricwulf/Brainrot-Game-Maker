@@ -3,7 +3,7 @@
 // again), host choices that are steps too (a tile marked played, the picker, 👥 Players, a Final's players), and the
 // keys that go with it (0, Esc, K, Shift+N, 1–9 in the reveals, Enter on a board game, keys from the audience window).
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, mainButton, menuLines, openMenu, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway, assert, launchChromium, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, roundNavIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, mainButton, menuLines, openMenu, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway, assert, launchChromium, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, roundNavIn, stageBoxIn, statusLineIn, toastsIn, awardRowIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -73,14 +73,14 @@ try {
   await page.keyboard.press('Escape');
   assert((await selected()) === 0, 'Esc clears the selection');
   await page.keyboard.press('0');
-  await page.locator('.award input').fill('300');
-  await page.locator('.award input').press('Enter');
+  await awardRowIn(page).locator('input').fill('300');
+  await awardRowIn(page).locator('input').press('Enter');
   assert((await scores()) === '$300 $300 $300', 'the group award goes to everyone');
   // A button clicked with the mouse keeps Enter = Award, even after other keys.
   await playerRowsIn(page).locator('.sel').nth(1).click();
   await page.keyboard.press('3');
-  await page.locator('.award input').fill('100');
-  await page.locator('.award input').blur();
+  await awardRowIn(page).locator('input').fill('100');
+  await awardRowIn(page).locator('input').blur();
   await page.keyboard.press('Enter');
   assert((await scores()) === '$300 $400 $400', 'Enter awards after clicking a player (not a press of the clicked button)');
   // The picker (P then a number) is a step, and ↶ Undo says what it would undo.
@@ -457,8 +457,8 @@ try {
   await p2.getByRole('button', { name: 'Skip intro' }).click();
   // Player 3 has $500 (enough to play the Final), then leaves.
   await p2.keyboard.press('3');
-  await p2.locator('.award input').fill('500');
-  await p2.locator('.award input').press('Enter');
+  await awardRowIn(p2).locator('input').fill('500');
+  await awardRowIn(p2).locator('input').press('Enter');
   await p2.getByRole('button', { name: '👥 Players' }).click();
   await p2.getByRole('button', { name: 'Remove Player 3' }).click();
   await p2.locator('.modal .ask').getByRole('button', { name: 'Remove', exact: true }).click();

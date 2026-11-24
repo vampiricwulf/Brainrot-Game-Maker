@@ -302,7 +302,7 @@ try {
   await host.reload();
   await host.getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await host.locator('.play .panel').waitFor();
+  await hostPanelIn(host).waitFor();
   assert(await until(() => states.length > n && cards().length === 4), 'reloaded: back in the room with the four cards');
   const odd = states.slice(n).filter((s) => JSON.stringify((s.cards ?? []).map((c) => c.id)) !== JSON.stringify(again));
   assert(!odd.length, `under the same ids (no phone is told anything new)${odd.length ? `: ${JSON.stringify(again)} vs ${odd.map((s) => JSON.stringify((s.cards ?? []).map((c) => c.id))).join(' | ')}` : ''}`);

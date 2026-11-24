@@ -658,7 +658,7 @@ try {
   await hostPanelIn(host2).locator('[data-next]').click();
   await host2.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
   const amountIn = awardRowIn(host2).locator('input');
-  const named345 = () => host2.locator('.panel [title*="345"], .panel [aria-label*="345"]').count();
+  const named345 = () => hostPanelIn(host2).locator('[title*="345"], [aria-label*="345"]').count();
   assert(
     (await panelHides([345])) && (await hostPanelIn(host2).locator('.ddtag').innerText()) === 'DD 📱' && (await amountIn.inputValue()) === '' && (await amountIn.getAttribute('placeholder')) === 'hidden' && (await named345()) === 0,
     'one window: once its question shows, the phone’s wager stays hidden in the panel (“DD 📱”, the Amount box “hidden”, no amount on the buttons)',

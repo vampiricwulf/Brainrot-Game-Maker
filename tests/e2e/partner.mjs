@@ -171,7 +171,7 @@ async function roomGame(names, teams) {
   const state = () => p.evaluate(() => window.__state());
   return {
     p,
-    stage: (sel) => p.locator(`.stage-box ${sel}`),
+    stage: (sel) => stageBoxIn(p).locator(sel),
     panel: hostPanelIn(p).locator('[data-partner-panel]'),
     state,
     sent: () => p.evaluate(() => window.__room.sent),
@@ -476,7 +476,7 @@ try {
   for (const [i, name] of ['Ann', 'Bob', 'Cat', 'Dan'].entries()) await page.getByLabel(`Player ${i + 1} name`).fill(name);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
-  const stage = (sel, opts) => page.locator(`.stage-box ${sel}`, opts);
+  const stage = (sel, opts) => stageBoxIn(page).locator(sel, opts);
   const tileOf = (value) => stage(`.tile[aria-label^="Movies for ${value}"]`);
   await tileOf('$400').waitFor();
   const panel = hostPanelIn(page).locator('[data-partner-panel]');

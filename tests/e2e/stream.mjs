@@ -72,7 +72,7 @@ async function pastelStage() {
   await host.getByText(/^Opened “/).waitFor();
   await host.getByRole('button', { name: '▶ Play' }).click();
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  const st = (sel) => host.locator(`.stage-box ${sel}`);
+  const st = (sel) => stageBoxIn(host).locator(sel);
   await st('.board .tile').first().waitFor();
   await host.waitForTimeout(400);
   const boardBg = await st('.board-bg').evaluate((e) => getComputedStyle(e).backgroundColor);
@@ -933,7 +933,7 @@ async function tileTools() {
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   const skip = host.getByRole('button', { name: 'Skip intro' });
   if (await skip.isVisible().catch(() => false)) await skip.click();
-  const stage = (sel) => host.locator(`.stage-box ${sel}`);
+  const stage = (sel) => stageBoxIn(host).locator(sel);
   const tileOf = (id) => stage(`.board .tile[data-clue="${id}"]`);
   const clueOpen = () => host.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
   const timerNum = async () => +(await stage('.timer .num').innerText());
@@ -1365,7 +1365,7 @@ async function finalBar() {
     await host.getByText(/^Opened “/).waitFor();
     await host.getByRole('button', { name: '▶ Play' }).click();
     await host.getByRole('button', { name: 'Start game ▶' }).click();
-    const st = (sel) => host.locator(`.stage-box ${sel}`);
+    const st = (sel) => stageBoxIn(host).locator(sel);
     /** An element's box in stage pixels (1920×1080), or null. */
     const box = (sel, i = 0) =>
       host.evaluate(([sel, i]) => {

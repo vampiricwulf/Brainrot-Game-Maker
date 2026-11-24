@@ -44,7 +44,7 @@ async function stageMenu({ close = true } = {}) {
   await openMenu(page).waitFor({ state: 'detached' });
   return lines;
 }
-const stage = (sel, opts) => page.locator(`.stage-box ${sel}`, opts);
+const stage = (sel, opts) => stageBoxIn(page).locator(sel, opts);
 const tile = (i) => stage('.board .tile').nth(i);
 const status = () => statusLineIn(page).innerText();
 const focused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName);
