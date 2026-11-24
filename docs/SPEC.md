@@ -821,7 +821,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   Jeopardy!?” Keep playing / Go to Double Jeopardy! ▶; “End the game now? 7 clues are left.” Keep playing / End game ▶;
   an RPG or board-game round: “Leave Adventure for Board game?”), and what goes with the round: the 🎭 deal's cards
   and the 🤫 cards out that last until it ends, by the deal's name and a count only (“… The 🎭 Odd one out cards and
-  2 🤫 cards go with it.”); it goes after a few seconds, but not while the
+  2 🤫 cards go with Round 1.”, naming the round left: after “Go to Round 2?” an “it” would read as Round 2); it goes after a few seconds, but not while the
   pointer is on it or the keys are in it.
 - **Nothing selects by accident**, in every window and on the phone page: a click, a double-click, a drag or `Ctrl+A`
   turns no words blue (in a single window they'd be on stream). Text selects only in fields, links, the room code (one

@@ -12,7 +12,7 @@
 // again is new to the room too: the panel names him as having no phone here in between, then counts his phone with
 // hers, as it would whatever his part. ↻ Send again reaches them both. 🎭 Who was who goes on the stage only when
 // pressed: Ctrl+Z, Ctrl+Y, and a host reload keep it as it was. "Deal a new one?" asks while cards are out. Leaving the
-// round says its cards go with it (the deal's by name, a 🤫 card counted), and the next round takes the cards back
+// round says its cards go with that round (the deal's by name, a 🤫 card counted), and the next round takes the cards back
 // (the deal's window and the host's column say they went with that round, back in it too), and Who was who off the
 // screen (Esc too). The host page never says
 // who got which part, nor shows a card's words or the location, until Who was who. The audience window, opened at the
@@ -471,7 +471,7 @@ try {
   await leaveAnswer(host).waitFor();
   assert((await stageBox()) === stageWas, `the longer question leaves the stage where it was, its size too (${await stageBox()} vs ${stageWas})`);
   const leaving = (await confirmStrip(host).innerText()).replace(/\s+/g, ' ');
-  assert(leaving.includes('Go to Round 2? The 🎭 Odd one out cards and 1 🤫 card go with it.'), `Next round ▶ asks first, saying the deal’s cards and the 🤫 card go with the round (“${leaving}”)`);
+  assert(leaving.includes('Go to Round 2? The 🎭 Odd one out cards and 1 🤫 card go with Round 1.'), `Next round ▶ asks first, saying the deal’s cards and the 🤫 card go with the round (“${leaving}”)`);
   await sleep(500);
   await leaveAnswer(host).click();
   assert(await until(() => !cards().length), 'the next round: the cards (until the round ends) go from the room');

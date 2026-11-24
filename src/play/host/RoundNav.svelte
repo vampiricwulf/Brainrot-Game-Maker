@@ -141,17 +141,20 @@
 
   /**
    * What leaving the round takes along, said in its question: the 🎭 deal's cards and the 🤫 cards out that last until
-   * the round ends ("The 🎭 Odd one out cards and 2 🤫 cards go with it."), or ''. Only the deal's name and a count:
-   * never what's on a card, nor whose.
+   * the round ends ("The 🎭 Odd one out cards and 2 🤫 cards go with Round 1."), or ''. The round left is named, not
+   * "it": after "Go to Round 2?", "it" would read as the round they're going to. Only the deal's name and a count: never
+   * what's on a card, nor whose.
    */
-  function goesWith(): string {
+  function goesWith(here: string): string {
     const held = cardsHeld(game, session).filter((c) => c.until === 'round');
     const deal = session.deal && held.some((c) => c.deal === session.deal!.id) ? `🎭 ${session.deal.name}` : '';
     const n = held.filter((c) => !c.deal).length;
     const cards = n ? `${n} 🤫 card${n === 1 ? '' : 's'}` : '';
-    if (deal && cards) return `The ${deal} cards and ${cards} go with it.`;
-    if (deal) return `The ${deal} cards go with it.`;
-    return cards ? `The ${cards} out ${n === 1 ? 'goes' : 'go'} with it.` : '';
+    // (No full stop after a name that ends in its own: "go with Jeopardy!".)
+    const end = `with ${here}${/[.!?]$/.test(here) ? '' : '.'}`;
+    if (deal && cards) return `The ${deal} cards and ${cards} go ${end}`;
+    if (deal) return `The ${deal} cards go ${end}`;
+    return cards ? `The ${cards} out ${n === 1 ? 'goes' : 'go'} ${end}` : '';
   }
 
   function ask(what: 'next' | number): void {
@@ -175,7 +178,7 @@
       : end
         ? `Leave ${here} and end the game?`
         : `Leave ${here} for ${name}?`;
-    const also = goesWith();
+    const also = goesWith(here);
     setAsk({ text: also ? `${text} ${also}` : text, ok: (end ? VERBS.endGame : VERBS.goToRound(name)).label, cancel: board && !left ? 'Stay' : VERBS.keepPlaying.label, onok: yes, oncancel: stop });
   }
 
