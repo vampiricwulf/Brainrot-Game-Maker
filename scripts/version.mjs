@@ -122,7 +122,14 @@ if (cmd === 'next') {
   console.log(`${[...versions][0]} everywhere`);
 } else if (cmd === 'stamp') {
   const date = arg ?? pacificDate();
-  const stamped = stampChangelog(read('CHANGELOG.md'), date);
+  let stamped;
+  try {
+    stamped = stampChangelog(read('CHANGELOG.md'), date);
+  } catch (e) {
+    // A bad date or a changelog it can't read safely: say why, change nothing.
+    console.error(`stamp: ${e.message}`);
+    process.exit(1);
+  }
   if (!stamped) {
     console.log('Nothing under Unreleased in CHANGELOG.md: nothing to stamp.');
   } else {
