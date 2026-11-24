@@ -592,9 +592,10 @@ export async function freePort() {
       writeFileSync(claim, String(process.pid), { flag: 'wx' });
     } catch (e) {
       if (e.code !== 'EEXIST') throw e;
-      // Claimed by a test process that's gone (killed before it could tidy up): take it over.
+      // Claimed by a test process that's gone (killed before it could tidy up): free it for a later try. An empty
+      // claim is one being made right now (the file exists before its process id is in it): leave that alone.
       const owner = Number(readFileSync(claim, 'utf8'));
-      if (owner && pidAlive(owner)) continue;
+      if (!owner || pidAlive(owner)) continue;
       rmSync(claim, { force: true });
       continue;
     }
