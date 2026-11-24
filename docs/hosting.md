@@ -261,7 +261,7 @@ another player already has is taken: it shows struck through, and a tap on it sa
 ### Seats
 
 **📱 Free seat (new phone)** lets a player join from another phone. **⛔ Kick** takes a seat back for 2 minutes (or
-until **↩ Let back**).
+until **↩ Let back**). Hosting from a phone, they show as just 📱 and ⛔, so each player stays on one line.
 
 ### How long the room lasts
 

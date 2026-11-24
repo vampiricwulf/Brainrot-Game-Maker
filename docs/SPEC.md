@@ -609,7 +609,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
    more: how many, and Show ↓ to the 📱 card's list), else the code, who's in and who it's waiting for, plain until
    everyone is in, then green. The 📱 Phone buzzers card goes in the order it's used: ☐ Phone buzzers on (Buzzer
    mode, ☐ Teams beside it); ▶ Start the room right under it, then the QR code, the code, the link and 📋 Copy link; who's
-   asking to join (✔ Add / ✕ No), then each player's phone (📱 Free seat (new phone) first, ⛔ Kick apart at the end, red);
+   asking to join (✔ Add / ✕ No), then each player's phone (📱 Free seat (new phone) first, ⛔ Kick apart at the end, red; one line each, so on a narrow list
+   such as a phone's, just 📱 and ⛔, their words in their tooltips);
    "▸ Buzzer options · Buzzers open with the clue · new players: no · colors on phones · 1 s early wait" folded (the
    line says each as set; remembered on this computer; it opens by itself only for an option this buzzer server can't
    do); and a foot row, 🔒 Lock seats left and ⏹ Close the room… right, which asks while any phone is in. With phone

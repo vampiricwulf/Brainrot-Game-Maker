@@ -1,14 +1,17 @@
 // The editor on a phone or a tablet: a phone gets a note that it's made for a computer (players join from their phones
 // with the host's code), closed for good with its ✕. A touch screen with no mouse shows no keys on buttons and in menus,
 // and no "or drop it here", but the keys window still lists the keys. A computer shows all of it, and no note.
+// A phone hosting with the buzzer room up (local, under wrangler dev): the 📱 card's rows fit the screen (📱 and ⛔
+// only, their words for screen readers and in their tooltips), nothing scrolls sideways, and Start game ▶ takes a tap.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addPlayers, failureShots } from './helpers.mjs';
+import { appFile, addPlayers, failureShots, startBuzzer, startRoomOn } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+const buzzer = await startBuzzer('buzzer-touch-');
 const browser = await chromium.launch({ executablePath });
 const errors = [];
 function assert(cond, msg) {
@@ -124,6 +127,70 @@ try {
     await ctx.close();
   }
 
+  // ---------- A phone hosting, the buzzer room up ----------
+  {
+    const opts = { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true };
+    const ctx = await browser.newContext(opts);
+    await ctx.addInitScript((s) => {
+      try {
+        const p = JSON.parse(localStorage.getItem('jb.prefs') || '{}');
+        if (!p.buzzerServer) localStorage.setItem('jb.prefs', JSON.stringify({ ...p, v: 2, buzzerServer: s }));
+      } catch {}
+    }, buzzer.base);
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(url);
+    await page.getByRole('button', { name: /Try a sample game/ }).click();
+    await page.getByRole('button', { name: '▶ Play' }).click();
+    await page.getByRole('button', { name: /Start game ▶/ }).waitFor();
+    await addPlayers(page, 3);
+    const card = page.getByRole('region', { name: 'Phone buzzers' });
+    await card.getByLabel(/Buzzer mode/).check();
+    const code = await startRoomOn(card);
+    const seats = await card.locator('ul.phones > li .name').allInnerTexts();
+    for (const seat of seats.slice(0, 2)) {
+      const pc = await browser.newContext(opts);
+      const p = await pc.newPage();
+      p.on('pageerror', (e) => errors.push(`[phone] ${e.message}`));
+      await p.goto(`${buzzer.base}/${code}`);
+      await p.getByRole('heading', { name: 'Tap your name' }).waitFor();
+      await p.getByRole('button', { name: seat, exact: true }).tap();
+      await p.locator('#me').getByText(seat).waitFor();
+    }
+    await page.waitForFunction(() => document.querySelectorAll('ul.phones button.kick').length === 2);
+    const fit = await page.evaluate(() => {
+      // (A phone widens the page to fit what sticks out, so innerWidth would grow with it: the screen's 390 it is.)
+      const wide = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > 390.5).map((e) => e.getAttribute('aria-label') || e.textContent.trim().slice(0, 30));
+      const rows = [...document.querySelectorAll('ul.phones > li')].map((li) => Math.round(li.getBoundingClientRect().height));
+      return { sw: document.documentElement.scrollWidth, iw: innerWidth, wide, rows, list: Math.round(document.querySelector('ul.phones').getBoundingClientRect().width) };
+    });
+    assert(
+      fit.sw === 390 && fit.iw === 390 && fit.wide.length === 0 && fit.rows.every((h) => h < 40),
+      `a phone hosting, two phones in: the 📱 card's rows fit the screen, one line each, nothing scrolls sideways (${JSON.stringify(fit)})`,
+    );
+    const kick = card.getByRole('button', { name: /^Kick .*: take their seat back from their phone$/ }).first();
+    const free = card.getByRole('button', { name: /^Free seat: .*’s \(moved phone\)$/ }).first();
+    assert(
+      (await kick.innerText()).trim() === '⛔' && (await free.innerText()).trim() === '📱' && (await kick.getAttribute('title')).startsWith('Kick') && (await free.getAttribute('title')).includes('free the seat'),
+      `there, ⛔ Kick and 📱 Free seat show only their icons, their words in their names and tooltips (“${(await kick.innerText()).trim()}”, “${(await free.innerText()).trim()}”)`,
+    );
+    // (A wider phone, 412: room for their words, still one line each, without the “(new phone)”.)
+    await page.setViewportSize({ width: 412, height: 915 });
+    const fit412 = await page.evaluate(() => ({
+      sw: document.documentElement.scrollWidth,
+      rows: [...document.querySelectorAll('ul.phones > li')].map((li) => Math.round(li.getBoundingClientRect().height)),
+    }));
+    assert(
+      fit412.sw === 412 && fit412.rows.every((h) => h < 40) && (await kick.innerText()).trim() === '⛔ Kick' && (await free.innerText()).trim() === '📱 Free seat',
+      `a 412-wide phone: ⛔ Kick and 📱 Free seat with their words, rows still one line, nothing sideways (${JSON.stringify(fit412)})`,
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: /Start game ▶/ }).tap({ timeout: 5000 });
+    await page.locator('main.play').waitFor();
+    assert(true, 'and Start game ▶ takes a tap');
+    await ctx.close();
+  }
+
   // ---------- A tablet ----------
   {
     // The line saying what the app is wraps: a finger can't open the tooltip a cut line keeps the rest in.
@@ -169,4 +236,5 @@ try {
   throw e;
 } finally {
   await browser.close();
+  buzzer.stop();
 }

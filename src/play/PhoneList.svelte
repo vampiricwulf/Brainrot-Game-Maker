@@ -1,6 +1,7 @@
 <!--
   Phone buzzers: people asking to join from their phone first, then each player and their phone in the 👥 rows' words
-  (📱 in, 📵 lost 0:12, 📱 waiting, ⛔ kicked 1:40…), with 📱 Free seat (new phone) and, apart at the row's end, ⛔ Kick.
+  (📱 in, 📵 lost 0:12, 📱 waiting, ⛔ kicked 1:40…), with 📱 Free seat (new phone) and, apart at the row's end, ⛔ Kick
+  (on a narrow list, a phone's screen, just 📱 and ⛔: each row stays on one line).
   Teams: each team and the people on it (move one to another team, or ⛔ take them off). A player's row opens their menu
   (a right-click, Shift+F10; before the game the 👥 list's, in the game the host's) and F2 renames them before the game.
 -->
@@ -178,9 +179,9 @@
             disabled={down}
             aria-label="Free seat: {p.name}’s (moved phone)"
             title={down ? downTitle : "They're on a new phone or browser: free the seat so they can tap their name there. Blocks nobody."}
-          >📱 Free seat<span class="why">{' '}(new phone)</span></button>
+          >📱<span class="word">{' '}Free seat</span><span class="why">{' '}(new phone)</span></button>
         {/if}
-        <button class="ghost small kick danger" onclick={() => onkick(p.id)} disabled={down} aria-label="Kick {p.name}: take their seat back from their phone" title={down ? downTitle : "Kick: take the seat back. That phone, and any on the same Wi-Fi, can't take it again for 2 minutes (they can pick another free name)"}>⛔ Kick</button>
+        <button class="ghost small kick danger" onclick={() => onkick(p.id)} disabled={down} aria-label="Kick {p.name}: take their seat back from their phone" title={down ? downTitle : "Kick: take the seat back. That phone, and any on the same Wi-Fi, can't take it again for 2 minutes (they can pick another free name)"}>⛔<span class="word">{' '}Kick</span></button>
       {/if}
     </li>
     {/if}
@@ -215,6 +216,8 @@
 
 <style>
   .phones {
+    /* (Its rows' buttons read their room from the list's width: see the query below.) */
+    container-type: inline-size;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -298,5 +301,26 @@
   }
   .ask {
     display: flex;
+  }
+  /* Narrow (a phone hosting, the in-game 📱 list): 📱 Free seat goes without its "(new phone)", and a long name gives
+     way, so each player's row stays on one line. Narrower still, 📱 Free seat and ⛔ Kick go down to their icons (their
+     words stay in their names and tooltips). */
+  @container (max-width: 380px) {
+    .free .why {
+      display: none;
+    }
+    .name,
+    .member .name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+  @container (max-width: 330px) {
+    .free .word,
+    .kick .word {
+      display: none;
+    }
   }
 </style>
