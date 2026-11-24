@@ -57,7 +57,7 @@
   import ToolsEditor from './tools/ToolsEditor.svelte';
   import CardsEditor from './CardsEditor.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
-  import { isThemeFile, parseThemeFile, ThemeError, type SharedTheme } from '../lib/themefile';
+  import { isThemeFile, readThemeFile, ThemeError, type SharedTheme } from '../lib/themefile';
   import UpdateControls from './UpdateControls.svelte';
   import { atAPause, sayUpdateOut, update } from '../lib/update.svelte';
   import AboutDialog from './AboutDialog.svelte';
@@ -853,7 +853,7 @@
   let incomingTheme = $state.raw<SharedTheme | null>(null);
   async function openThemeFile(file: File): Promise<void> {
     try {
-      incomingTheme = parseThemeFile(await file.text());
+      incomingTheme = await readThemeFile(file);
       tab = 'theme';
     } catch (e) {
       void tell(`“${file.name}” can’t be used as a theme: ${e instanceof ThemeError ? e.message : 'it can’t be read.'}`);

@@ -140,6 +140,10 @@ describe('theme files', () => {
 
   it('refuse what isn’t a theme, with a clear message', () => {
     expect(() => parseThemeFile('{oops')).toThrow(/cut off or damaged/);
+    // (A game pack, an exported game or any other file: not "damaged".)
+    expect(() => parseThemeFile('PK\u0003\u0004\u0014\u0000game.json')).toThrow(/This is a game, not a theme/);
+    expect(() => parseThemeFile('<!doctype html>\n<html lang="en">')).toThrow(/This is a game, not a theme/);
+    expect(() => parseThemeFile('name,price\nSword,10')).toThrow(/isn’t a Brainrot theme file/);
     expect(() => parseThemeFile('[]')).toThrow(/isn’t a Brainrot theme/);
     expect(() => parseThemeFile(JSON.stringify({ version: 2, rounds: [], players: [] }))).toThrow(/This is a game, not a theme/);
     expect(() => parseThemeFile(JSON.stringify({ format: THEME_FORMAT, version: 1, theme: { tile: 'url(x)' } }))).toThrow(/no colors/);

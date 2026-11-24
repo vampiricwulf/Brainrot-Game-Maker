@@ -27,7 +27,7 @@
   } from '../lib/mytheme';
   import { storeThemeFiles, renameThemeFiles, withShared } from '../lib/themeapply';
   import { setTheme } from '../lib/cluetext';
-  import { leftOutLine, parseThemeFile, THEME_EXT, THEME_FILES, themeCode, themeFileText, ThemeError, type SharedTheme, type ThemeMediaFile } from '../lib/themefile';
+  import { leftOutLine, readThemeFile, THEME_EXT, THEME_FILES, themeCode, themeFileText, ThemeError, type SharedTheme, type ThemeMediaFile } from '../lib/themefile';
   import { clone } from '../lib/ops';
   import { addMedia, sameContent } from '../lib/roundcopy';
   import { copyText } from '../play/standings';
@@ -262,7 +262,7 @@
     const file = await pickFile(THEME_FILES);
     if (!file) return;
     try {
-      importing = parseThemeFile(await file.text());
+      importing = await readThemeFile(file);
     } catch (e) {
       void tell(`“${file.name}” can’t be used as a theme: ${e instanceof ThemeError ? e.message : 'it can’t be read.'}`);
     }

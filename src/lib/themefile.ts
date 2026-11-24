@@ -163,12 +163,14 @@ export function leftOutLine(tooBig: readonly string[], notHere: readonly string[
 const IMAGE_MIME = /^image\/(png|jpeg|gif|webp|avif|bmp|svg\+xml)$/;
 const FONT_MIME = /^(font\/[\w.+-]+|application\/(font-[\w.+-]+|x-font-[\w.+-]+|vnd\.ms-fontobject|octet-stream))$/;
 
+const GAME_NOT_THEME = 'This is a game, not a theme: open it with Open…, or take its look with “📂 Use a theme from another game…”.';
+
 /** What a parsed theme file or code (JSON) holds, checked. Throws a ThemeError saying what's wrong. */
 function sharedTheme(data: unknown, from: 'file' | 'code'): SharedTheme {
   if (!isObj(data)) throw new ThemeError(from === 'file' ? 'This file isn’t a Brainrot theme.' : 'That code isn’t a Brainrot theme code.');
   if (data.format !== THEME_FORMAT) {
     if (Array.isArray(data.rounds))
-      throw new ThemeError('This is a game, not a theme: open it with Open…, or take its look with “📂 Use a theme from another game…”.');
+      throw new ThemeError(GAME_NOT_THEME);
     throw new ThemeError(from === 'file' ? 'This file isn’t a Brainrot theme.' : 'That code isn’t a Brainrot theme code.');
   }
   const version = typeof data.version === 'number' ? data.version : 1;
@@ -202,16 +204,27 @@ function sharedTheme(data: unknown, from: 'file' | 'code'): SharedTheme {
   return { name: themeName(data.name) || 'Shared theme', theme, media, leftOut };
 }
 
+/** A game pack (a zip) or an exported game (a web page), by the start of its file. */
+const isGameStart = (head: string) => head.startsWith('PK\u0003\u0004') || /^\s*<(!doctype\s+html|html)[\s>]/i.test(head);
+
 /** A theme file's text, checked (see sharedTheme). */
 export function parseThemeFile(text: string): SharedTheme {
+  if (isGameStart(text.slice(0, 64))) throw new ThemeError(GAME_NOT_THEME);
   if (text.length > MAX_FILE_CHARS) throw new ThemeError('This file is too big to be a theme.');
   let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
-    throw new ThemeError('This file can’t be read as a theme: it may be cut off or damaged.');
+    // (A theme file is JSON: one that starts as JSON was cut off or damaged; anything else isn't a theme file.)
+    throw new ThemeError(/^\s*\{/.test(text) ? 'This file can’t be read as a theme: it may be cut off or damaged.' : 'This isn’t a Brainrot theme file (.brainrot-theme).');
   }
   return sharedTheme(data, 'file');
+}
+
+/** A picked or dropped theme file, checked (a game pack is told apart by its start, without reading all of it). */
+export async function readThemeFile(file: Blob): Promise<SharedTheme> {
+  if (isGameStart(await file.slice(0, 64).text())) throw new ThemeError(GAME_NOT_THEME);
+  return parseThemeFile(await file.text());
 }
 
 // ---------- Codes ----------

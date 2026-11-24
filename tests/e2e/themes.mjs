@@ -533,6 +533,14 @@ try {
   assert((await refused.innerText()).includes('no colors'), 'a bad theme file is refused, saying why');
   await refused.getByRole('button', { name: 'OK' }).click();
   assert((await bg(preview, 1, 0)) === RED, 'and the game keeps its look');
+  // A game (a .brainrot pack, a zip) picked by mistake is called a game, not a damaged theme.
+  const [pack] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import theme…' }).click()]);
+  await pack.setFiles({ name: 'Sample-game.brainrot', mimeType: 'application/zip', buffer: Buffer.from('PK\u0003\u0004\u0014\u0000\u0000\u0000game.json') });
+  const notTheme = page.getByRole('alertdialog').filter({ hasText: 'can’t be used as a theme' });
+  await notTheme.waitFor();
+  const notThemeText = await notTheme.innerText();
+  assert(notThemeText.includes('This is a game, not a theme') && !notThemeText.includes('damaged'), `a game pack picked in Import theme… is called a game (${notThemeText.replace(/\s+/g, ' ')})`);
+  await notTheme.getByRole('button', { name: 'OK' }).click();
   // A theme file dropped on the editor, or picked with Open…, shows on the Theme page first, like Import theme….
   await page.locator('nav > button.round-tab').first().click();
   const themeText = readFileSync(themePath, 'utf8');
