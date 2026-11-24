@@ -61,6 +61,8 @@ jobs:
             package-lock.json
             buzzer/package-lock.json
       - run: npm ci
+      # The code is as Prettier lays it out (npm run format fixes it).
+      - run: npm run format:check
       - name: Stamp the version (${{ needs.version.outputs.version }})
         run: node scripts/version.mjs set "${{ needs.version.outputs.version }}"
       - run: npm run check

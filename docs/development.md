@@ -28,11 +28,12 @@ npm run gate           # CI's checks in one command (all but the desktop app's b
                        # job's checks, stopping at the first failure, then every end-to-end file three at a time
                        # (--quiet); prints each step's time.
                        # npm run gate -- --jobs 4, or --e2e 3 (one shard) / --e2e none (no end-to-end files)
-                       # The steps before the end-to-end files take about a minute.
+                       # The steps before the end-to-end files take about a minute and a half.
 npm run dev            # dev server
 npm run build          # → dist/index.html (one self-contained file), about 8 s
 npm run check          # type-check (svelte-check; a warning fails it too), about 25 s
 npm run check:e2e      # type-check the e2e files marked // @ts-check (tests/e2e/tsconfig.json), about 10 s; not in CI
+npm run format         # format the code with Prettier (npm run format:check only checks it, as CI does), about 25 s
 npm test               # unit tests (Vitest: src/ and buzzer/), about 30 s
 (cd buzzer && npm run check)   # type-check the buzzer Worker and phone page (CI runs it; the root check doesn't)
 npm run test:quick     # the quick end-to-end test (tests/e2e/smoke.mjs), about 100 s; CI waits for it before releasing
@@ -166,9 +167,23 @@ which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machin
 
 Unit tests sit next to the code they test (`*.test.ts`).
 
-There's no formatter set up. `.editorconfig` tells editors to save files as UTF-8 with LF line ends, a final newline,
-no spaces at line ends (except in Markdown) and 2-space indents (4 in the Rust and Cargo files); otherwise keep to the
-style of the code around you.
+Code is formatted with [Prettier](https://prettier.io/) (and prettier-plugin-svelte for the components): run
+`npm run format` before you commit, and `npm run format:check` says whether anything is left (CI and `npm run gate`
+run it). `.prettierrc` holds the settings, matched to the code as it was: single quotes, 160 columns (comments are
+still wrapped by hand at about 120), and `htmlWhitespaceSensitivity: "strict"`, so Prettier never adds or takes away a
+space between elements, which would change the text on screen. `.prettierignore` leaves out Markdown, lockfiles, build
+output and the two pages whose markup is used as written (`index.html` and `buzzer/phone/index.html`). `.editorconfig`
+tells editors to save files as UTF-8 with LF line ends, a final newline, no spaces at line ends (except in Markdown)
+and 2-space indents (4 in the Rust and Cargo files, which Prettier doesn't format).
+
+The whole code was reformatted in one commit, listed in `.git-blame-ignore-revs`. So that `git blame` looks past it
+to the commit that really wrote each line, run once in your clone:
+
+```sh
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+(GitHub's blame view reads the file by itself.)
 
 The specs:
 

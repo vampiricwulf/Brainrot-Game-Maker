@@ -6,7 +6,7 @@ Run the whole gate and report what failed. $ARGUMENTS
 
 1. In a worktree, if `node_modules` is missing, link the main checkout's:
    `ln -s <main checkout>/node_modules node_modules` and the same for `buzzer/node_modules`.
-2. Start `npm run gate` **in the background** (it takes over 10 minutes: the version check, svelte-check,
+2. Start `npm run gate` **in the background** (it takes over 10 minutes: the version check, the format check, svelte-check,
    the unit tests, the buzzer check, the shard check, the build, then every e2e file 3 at a time with quiet output).
    Send its output to a file, e.g. `npm run gate > gate.log 2>&1`. Don't start it twice, and don't run the e2e suite
    in the foreground.

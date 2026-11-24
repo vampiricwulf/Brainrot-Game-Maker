@@ -1,5 +1,5 @@
-# How editors should save files here, matching the code as it is. There's no formatter set up, so otherwise keep to
-# the style of the code around you.
+# How editors should save files here, matching the code as it is. The code's layout is Prettier's (npm run format,
+# .prettierrc); these settings agree with it.
 root = true
 
 [*]

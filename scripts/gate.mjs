@@ -8,8 +8,9 @@
 //
 // It stops at the first step that fails, then prints each step's result and time and exits 1. The end-to-end files run
 // through scripts/e2e-shard.mjs --quiet: one line per passing file, the last lines of a failing one, and they all run
-// (a failing file doesn't stop the others). The steps before them take about a minute; three at a time, the end-to-end
-// files take about a third of their time one after another (shard 5: 1m48s against 5m11s; the 26 buzzer files: 4m13s).
+// (a failing file doesn't stop the others). The steps before them take about a minute and a half; three at a time, the
+// end-to-end files take about a third of their time one after another (shard 5: 1m48s against 5m11s; the 26 buzzer
+// files: 4m13s).
 import { spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
@@ -32,6 +33,7 @@ const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const steps = [
   ['Version numbers match', 'node', ['scripts/version.mjs', 'check']],
   // The npm scripts CI runs, so the gate can't drift from them.
+  ['Formatting (npm run format:check: Prettier; npm run format fixes it)', npm, ['run', 'format:check']],
   ['Type check (npm run check: svelte-check, warnings fail it)', npm, ['run', 'check']],
   ['Unit tests (npm test: Vitest, src/ and buzzer/)', npm, ['test']],
   ['Buzzer room type check (buzzer/)', npm, ['--prefix', 'buzzer', 'run', 'check']],

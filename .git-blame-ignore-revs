@@ -1,0 +1,5 @@
+# Commits git blame looks past (git config blame.ignoreRevsFile .git-blame-ignore-revs; GitHub reads this file by
+# itself), so each line is blamed on the commit that really wrote it. Each is a full commit hash.
+
+# Format: run Prettier over the code (no change in behaviour)
+15e725e42698c687083febc2c69ca7fa38b10527
