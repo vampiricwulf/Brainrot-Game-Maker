@@ -4,10 +4,6 @@ import { inTauri } from './platform';
 import { dataFolders, listSaves, saveToSaves, type SavedFile } from './desktop.svelte';
 import { prefs } from './prefs.svelte';
 
-export function downloadText(filename: string, text: string, type = 'application/json'): void {
-  downloadBlob(filename, new Blob([text], { type }));
-}
-
 export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

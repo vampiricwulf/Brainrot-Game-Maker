@@ -160,10 +160,6 @@ export function waysLine(map: WorldMap, screen: Screen, name: (to: ScreenRef) =>
   return parts.join(' · ');
 }
 
-export function exitsOf(map: WorldMap, screen: Screen): Record<Dir8, Exit> {
-  return Object.fromEntries(DIRS.map((d) => [d, exitOf(map, screen, d)])) as Record<Dir8, Exit>;
-}
-
 // ---------- World state ----------
 
 const AVATAR = 150;

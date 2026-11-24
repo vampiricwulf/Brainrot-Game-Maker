@@ -23,8 +23,6 @@ export const BUNDLED_FONTS: FontChoice[] = [
   { label: 'Courier', css: "'Courier New', Courier, monospace" },
 ];
 
-export const DEFAULT_CLUE_FONT = BUNDLED_FONTS[0].css;
-
 /** Family name used for an uploaded font file. */
 export function uploadedFamily(mediaId: string): string {
   return `jb-${mediaId.slice(0, 8)}`;

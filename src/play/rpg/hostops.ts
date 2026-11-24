@@ -714,13 +714,6 @@ export function droppedObject(game: Game, e: InventoryEntry, st: WorldState, by:
   return el;
 }
 
-/** Where a player stands, as a screen ref. */
-export function whereIs(session: Session, game: Game, playerId: string): ScreenRef | null {
-  const { st } = rpgNow(game, session);
-  const p = st?.positions[playerId];
-  return p ? { map: p.map, screen: p.screen } : null;
-}
-
 /** The screen an object is on (authored or added) in the current world. */
 export function objectAt(game: Game, session: Session, elId: string) {
   const { world, st } = rpgNow(game, session);

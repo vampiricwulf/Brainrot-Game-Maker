@@ -2,8 +2,8 @@
 // then the theme and its files go into the game in one undo step (ThemeShare).
 import { uploadedFamily } from './fonts';
 import { fileDigest, putMedia, sanitizeSvg, storedBlob } from './media.svelte';
-import { newId, type Game, type MediaRef } from './model';
-import { missingFonts, themeFiles, withMyTheme } from './mytheme';
+import { newId, type MediaRef } from './model';
+import { themeFiles, withMyTheme } from './mytheme';
 import type { Theme } from './theme';
 import type { SharedTheme } from './themefile';
 
@@ -53,6 +53,3 @@ export function withShared(current: Theme, shared: Theme, media: readonly MediaR
   if (shared.banner && has.some((m) => m.id === shared.banner)) t.banner = shared.banner;
   return t;
 }
-
-/** The uploaded fonts a theme uses that aren't in the game (their text keeps the game's font): how many. */
-export const fontsMissing = (t: Theme, game: Game): number => missingFonts(t, game.media).length;
