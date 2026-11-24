@@ -88,8 +88,11 @@
     const bottom = pr.bottom - foot + 4;
     const cardRight = pr.right - right;
     const cardBottom = foot - 4;
+    // (Narrow under the stage, a phone: no room kept for the blue button's spot. Beside it, the card's lines would be
+    // squeezed to half its width and cut; its guard still keeps a fast second tap there from pressing what's under it.)
     const main = mainAt;
-    const spot = main ? { right: Math.max(0, cardRight - main.right - 4), bottom: Math.max(0, cardBottom - main.bottom - 4), width: main.width + 8, height: main.height + 8 } : null;
+    const keep = !!main && (side || width >= 460);
+    const spot = main && keep ? { right: Math.max(0, cardRight - main.right - 4), bottom: Math.max(0, cardBottom - main.bottom - 4), width: main.width + 8, height: main.height + 8 } : null;
     place = {
       right,
       bottom,
@@ -97,7 +100,7 @@
       maxH: Math.max(120, foot - top - 10),
       minH: main ? Math.max(0, cardBottom - main.top + 10) : 0,
       spot,
-      pad: main ? (side ? cardBottom - main.top + 8 : cardRight - main.left + 8) : 0,
+      pad: main && keep ? (side ? cardBottom - main.top + 8 : cardRight - main.left + 8) : 0,
     };
   }
   /** The blue button's rectangle as the check opened (it may be gone under the card since). */

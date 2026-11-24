@@ -12,7 +12,8 @@
 //    👁 Reveal anyway shows the answer); with the clock paused or run out it goes on at once (3b). In its reveals, N with
 //    the spotlit player not judged yet opens the check (a must: no “anyway”), C in it judges them and closes it, the
 //    spotlight staying on them with their verdict on stage, then N goes on. On a touch tablet (3c) the check and the
-//    reveals' how-to teach no keys, and every reveal row has its ✔ Right / ✘ Wrong at one place;
+//    reveals' how-to teach no keys, and every reveal row has its ✔ Right / ✘ Wrong at one place; on a phone the check's
+//    lines and the reveal rows (½ Halve, 0 Nullify) get the panel's whole width;
 // 4. with the controls hidden: in one window N with something left changes nothing on stream (the stage its size, the
 //    pill pulses) and H shows the panel with the check open; in two windows the controls come back while it's open and
 //    hide again after;
@@ -555,6 +556,7 @@ try {
   for (const [what, opts] of [
     ['a computer', { viewport: { width: 1280, height: 720 } }],
     ['a touch tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true }],
+    ['a phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }],
   ]) {
     const { ctx, page } = await host(`final, ${what}`, undefined, finalFile, opts);
     await page.getByRole('button', { name: 'Start game ▶' }).click();
@@ -562,7 +564,8 @@ try {
     if (await page.locator('.stage-box .title-card').count()) await page.keyboard.press('n');
     await page.locator('.fj .wagers').waitFor();
     const zeroBoxes = page.locator('.fj .wagers input[data-wager]');
-    for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill('0');
+    // (On the phone, $100 each: ½ Halve and 0 Nullify show for a wager over $0.)
+    for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill(what === 'a phone' ? '100' : '0');
     await page.keyboard.press('n');
     await page.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
     await mainButton(page, '👁 Reveal answer').click();
@@ -571,6 +574,29 @@ try {
     const shown = (await teach.count()) === 1 && (await teach.isVisible());
     // (A finger can't press R or Shift+click: "Next time: …" is only for a keyboard and a mouse.)
     assert(what === 'a computer' ? shown : !shown, `${what}: the check ${what === 'a computer' ? 'says' : 'doesn’t say'} “Next time: R reveals at once · Shift+click …”`);
+    if (what === 'a phone') {
+      // A phone: the check's lines get the card's whole width (no room kept beside them for the blue button's spot, which
+      // squeezed them to half of it); the reveal rows get the panel's whole width, ½ Halve and 0 Nullify in sight, the
+      // blue button on its own row under them.
+      const pad = await goOnCheck(page).locator('.scroll').evaluate((e) => getComputedStyle(e).paddingRight);
+      assert(pad === '0px' && (await goOnCheck(page).locator('.spot').count()) === 0, `a phone: the check's lines take its whole width (padding ${pad})`);
+      await goOnCheck(page, { ready: true }).waitFor();
+      await anyway(page).click();
+      await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
+      await page.keyboard.press('n');
+      await page.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();
+      await page.locator('.fj .pl').first().waitFor();
+      const cut = await page.evaluate(() => {
+        const box = document.querySelector('.panel > .act > .action').getBoundingClientRect();
+        return [...document.querySelectorAll('.fj .pl.cur button')]
+          .filter((b) => /Halve|Nullify/.test(b.textContent))
+          .map((b) => [b.textContent.trim(), b.getBoundingClientRect()])
+          .filter(([, r]) => r.left < box.left - 1 || r.right > box.right + 1)
+          .map(([t, r]) => `${t} ${Math.round(r.left)}..${Math.round(r.right)} outside ${Math.round(box.left)}..${Math.round(box.right)}`);
+      });
+      const halves = await page.locator('.fj .pl.cur button', { hasText: /Halve|Nullify/ }).count();
+      assert(halves === 2 && !cut.length, `a phone: the spotlit reveal row's ½ Halve and 0 Nullify are in sight (${cut.join(', ') || 'both'})`);
+    }
     if (what === 'a touch tablet') {
       // Its reveals: the rows wrap, ✔ Right and ✘ Wrong together at one place in every row (the spotlit one's too, its
       // wager shown and its Show wager kept empty), and the how-to names no keys.
