@@ -162,8 +162,10 @@ the reveals; **⋯ Tools** in the status line brings it back.
 
 Show question ▶ starts the think clock. While it's still running, 👁 Reveal answer (the blue button, `N`, a click on the
 screen or its menu) asks first: **⏱ Let it run** (`Enter`, or `Esc`) keeps it going, **⏸ Pause the clock** (`T`)
-pauses it, **👁 Reveal anyway** (`R`) shows the answer. Once the clock has run out or is paused, 👁 Reveal answer shows
-the answer at once, even with a phone's typed answer still missing (the answers lock). `R` always shows it at once.
+pauses it, **👁 Reveal anyway** (`R`) shows the answer. With typed answers still coming from phones it asks about them
+first: **⏱ 10 more seconds** (`Shift+T`) or **⏸ Pause the clock** (`T`). Once the clock has run out or is paused,
+👁 Reveal answer shows the answer at once, even with a phone's typed answer still missing (the answers lock). `R` always
+shows it at once.
 
 In the reveals, **½ Halve** and **0 Nullify** beside a player's wager halve it (rounded down) or make it 0. If
 they're already judged, their points change with it. `Ctrl+Z` undoes it.

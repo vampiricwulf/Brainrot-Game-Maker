@@ -536,6 +536,19 @@ try {
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('Enter');
   await goOnCheck(host).waitFor({ state: 'detached' });
+  // The countdown on and his answer still missing, 👁 Reveal answer asks again: ⇧T gives 10 more seconds, and T pauses
+  // the clock (as in the clock's own check), closing it; T outside starts it again.
+  await host.locator('.panel .tc button[aria-label="Pause timer"]').waitFor();
+  await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
+  await checkItem(host, 'answers').waitFor();
+  assert((await quick(host, '⏸ Pause the clock').innerText()).includes('T'), 'the countdown on, the answers check offers ⏸ Pause the clock, its key T');
+  await goOnCheck(host, { ready: true }).waitFor();
+  await host.keyboard.press('t');
+  await goOnCheck(host).waitFor({ state: 'detached', timeout: 3000 });
+  await host.locator('.panel .tc button[aria-label="Start timer"]').waitFor({ timeout: 3000 });
+  assert(await big(ann).getByText('Answers locked').count() === 0, 'T in it pauses the clock and closes it, the answers still open');
+  await host.keyboard.press('t');
+  await host.locator('.panel .tc button[aria-label="Pause timer"]').waitFor();
   const less = host.locator('.panel').getByRole('button', { name: '10 seconds less' });
   // (−10 until it's run out.)
   await less.waitFor();

@@ -677,8 +677,13 @@ function finalAnswersItems(c: GoCtx): LeftItem[] {
   const t = c.final.clock;
   if (!f || !ans || f.answersLocked || c.session.finalStep !== 'question') return [];
   if (t === 'out' || (t && (!t.running || t.left <= 0))) return [];
-  return comingItems(c, (id) => !!ans[id], f.players, FLOW.reveal.label);
+  const items = comingItems(c, (id) => !!ans[id], f.players, FLOW.reveal.label);
+  // (The clock running: ⏸ Pause the clock (T), as in the clock's own check. Its ⏱ 10 more seconds is ⇧T then.)
+  return t ? items.map((i) => ({ ...i, quick: [...i.quick, pauseQuick(c)] })) : items;
 }
+
+/** ⏸ Pause the clock (T) in the Final's checks at 👁 Reveal answer: paused, the next 👁 Reveal answer goes on at once. */
+const pauseQuick = (c: GoCtx): Quick => ({ label: '⏸ Pause the clock', key: 'T', then: 'close', run: () => c.act.clock(false), after: `Clock paused: ${FLOW.reveal.label} (N) shows it now` });
 
 /**
  * The Final's think clock still running, at 👁 Reveal answer: the answer would cut it short. ⏱ Let it run (⏎) closes the
@@ -696,7 +701,7 @@ function finalClockItems(c: GoCtx): LeftItem[] {
       anyway: FLOW.reveal.anyway,
       quick: [
         { label: '⏱ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label} (N)` },
-        { label: '⏸ Pause the clock', key: 'T', then: 'close', run: () => c.act.clock(false), after: `Clock paused: ${FLOW.reveal.label} (N) shows it now` },
+        pauseQuick(c),
       ],
     },
   ];
@@ -730,6 +735,12 @@ function comingItems(c: GoCtx, sent: (id: Id) => boolean, ids: Id[], step: strin
       ],
     },
   ];
+}
+
+/** Every answer expected from `ids` (those with a phone here, or whose answer is in) is in, and there is one at least. */
+function allIn(c: GoCtx, sent: (id: Id) => boolean, ids: Id[]): boolean {
+  const can = ids.filter((id) => c.phones.includes(id) || sent(id));
+  return can.length > 0 && can.every(sent);
 }
 
 /** Phone buzzers at 👁 Reveal answer: never opened, or a tie left to the host (3.4 B). */
@@ -1489,7 +1500,13 @@ export function doneSay(c: GoCtx, id: string): string | undefined {
   if (id === 'answers' && c.session.phase === 'final') {
     const t = c.final.clock;
     if (t === 'out' || (t?.running && t.left <= 0)) return 'Time’s up';
+    const f = c.session.final;
+    if (f && allIn(c, (p) => !!f.answers?.[p], f.players)) return 'All answers are in';
+    if (t && !t.running) return 'The clock is paused';
   }
+  // (A ✍ clue's answers: the last one came in while the check was open.)
+  if (id === 'answers' && c.session.phase !== 'final' && c.answers && allIn(c, (p) => !!c.answers!.seats[p], c.session.players.map((p) => p.id)))
+    return 'All answers are in';
   const t = turnOf(c);
   if (!t?.id) return undefined;
   const who = name(c, t.id);

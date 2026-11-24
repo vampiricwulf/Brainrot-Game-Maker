@@ -380,6 +380,9 @@ describe('what’s left (3.4)', () => {
     const reveal = leftNow(c, mainStep(c)!);
     expect(lines(reveal)).toEqual([['first: 2 of 3 answers are in (Cat’s isn’t).', '⏱ 10 more seconds [⇧T] ⏎ · close']]);
     expect([reveal[0].quiet, anywayLabel(open(mainStep(c)!, reveal))]).toEqual(['answers', '👁 Reveal anyway: the answers lock']);
+    // Cat's comes in with the check open: its line says they're all in.
+    const allSeats = ctx(g, s, { everyone: true, answers: { seats: { ...seats, c: { text: 'Nice' } }, locked: false }, phones: ['a', 'b', 'c'], clockUp: true });
+    expect([doneSay(c, 'answers'), doneSay(allSeats, 'answers')]).toEqual([undefined, 'All answers are in']);
     s.revealed = true;
     const done = ctx(g, s, { everyone: true, answers: { seats, locked: true }, phones: ['a', 'b', 'c'] });
     expect(lines(leftNow(done, mainStep(done)!))).toEqual([['loss: Nobody’s answer is judged yet (2 are in).', '✍ Judge them ⏎ · close']]);
@@ -1096,6 +1099,22 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     s.final!.answers = { a: { text: 'Paris', n: 1 } };
     const phones = { phones: ['a', 'b'], clockUp: true };
     expect(leftNow(c({ left: 27, running: true }, phones), st).map((i) => i.id)).toEqual(['answers']);
+    // Its T pauses the clock, as in the clock's own check (⇧T is its 10 more seconds): N then shows the answer.
+    const coming = leftNow(c({ left: 27, running: true }, phones), st);
+    expect(lines(coming)).toEqual([['first: 1 of 2 answers are in (Bob’s isn’t).', '⏱ 10 more seconds [⇧T] ⏎ · close', '⏸ Pause the clock [T] · close']]);
+    const ack = open(st, coming);
+    expect([inside({ key: 't' }, ack, after), inside({ key: 'T', shift: true }, ack, after)]).toEqual([
+      { do: 'quick', quick: coming[0].quick[1] },
+      { do: 'quick', quick: coming[0].quick[0] },
+    ]);
+    did.length = 0;
+    coming[0].quick[1].run();
+    expect(did).toEqual(['clock']);
+    // The last answer in while it's open: its line says so (not the count from before); paused while it's open, that.
+    s.final!.answers.b = { text: 'Rome', n: 2 };
+    expect([doneSay(c({ left: 20, running: true }, phones), 'answers'), doneSay(c('out', phones), 'answers')]).toEqual(['All answers are in', 'Time’s up']);
+    delete s.final!.answers.b;
+    expect([doneSay(c({ left: 20, running: false }, phones), 'answers'), doneSay(c({ left: 20, running: true }, phones), 'answers')]).toEqual(['The clock is paused', undefined]);
     // No clock: its ⏱ starts one. Run out or paused: N goes on, the answers lock (asked again, its ⏱ would only start the
     // clock over: a phone that never sends would keep the answer off screen for good). Run out while it's open: its line
     // says so.
