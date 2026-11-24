@@ -1501,7 +1501,8 @@
     font: clamp(40px, 9vw, 120px) 'Anton', 'Oswald', sans-serif;
     color: #fff;
     text-align: center;
-    text-shadow: 6px 6px 0 #000;
+    /* In em, so it stays a shadow on a phone, where the words are a third the size (6px at 120px). */
+    text-shadow: 0.05em 0.05em 0 #000;
   }
   /* Two bars, drawn: the ⏸ character is thin or missing in many fonts. */
   .boot-cover .pause {
@@ -1509,7 +1510,7 @@
     width: 0.75em;
     height: 0.9em;
     background: linear-gradient(to right, currentColor 0 34%, transparent 34% 66%, currentColor 66%);
-    filter: drop-shadow(6px 6px 0 #000);
+    filter: drop-shadow(0.05em 0.05em 0 #000);
   }
   .cover-host {
     display: flex;

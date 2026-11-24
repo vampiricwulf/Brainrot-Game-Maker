@@ -1009,6 +1009,17 @@ await page.reload();
 // (A one-window game, the window on stream: it reopens on the game's cover, not the editor with the clues to play.)
 await page.locator('.boot-cover').waitFor();
 assert((await page.locator('.board .tile').count()) === 0, 'reloaded mid-game in one window: the cover, no board of clues on screen');
+// On a phone the title's shadow shrinks with the words (a fixed 6px read as a second copy of them).
+await page.setViewportSize({ width: 390, height: 844 });
+{
+  const { fs, sh } = await page.locator('.boot-cover .cover-card').evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { fs: parseFloat(cs.fontSize), sh: cs.textShadow };
+  });
+  const off = parseFloat((sh.match(/(-?[\d.]+)px/) ?? [])[1] ?? 'NaN');
+  assert(off > 0 && off <= fs * 0.06, `the cover's title shadow scales with its size on a phone (${sh} on ${fs}px)`);
+}
+await page.setViewportSize({ width: 1400, height: 900 });
 await page.locator('.boot-cover').getByRole('button', { name: 'Resume game' }).click();
 // Resume asks how the game is shown, with the same cards as before the game.
 assert((await page.locator('.mode-ask .mode').count()) === 2, 'Resume asks: single window or the audience window');
