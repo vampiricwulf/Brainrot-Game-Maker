@@ -125,7 +125,7 @@ export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) 
     ...Object.entries(ROUND_MODES).map(([mode, m]) => ({ label: `${m.icon} ${m.label}`, hint: m.hint, onclick: () => add(mode as keyof typeof ROUND_MODES) })),
     { sep: true },
     // (Up here, under the kinds, so a short window shows them: they bring in what the author already has.)
-    { label: '📥 Import rounds…', hint: 'From another game’s .brainrot file (or its play-only web page), with their worlds, wheels, items and files', onclick: importRounds },
+    { label: '📥 Import rounds…', hint: 'From another game’s .brainrot file (or its play-only web page), with their worlds, wheels, items and files; its 🎭 deals too, with their wheels', onclick: importRounds },
     {
       label: b ? `📋 Paste round “${bundleName(b)}”` : '📋 Paste round',
       hint: b ? undefined : 'Copy a round first (right-click its tab)',

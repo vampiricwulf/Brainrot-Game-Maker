@@ -2,12 +2,13 @@
 // viewers see). Its lists mark the ready-made Odd one out and Locations wheel as already in this game (it has its own
 // copies). Dealt and ✔ handed out, the cards are copied to each player (📋), so there's no "Lasts" choice to make
 // and ↩ Take the cards back says it only marks them; the next round leaves the deal handed out, its 📋 rows still there.
-// 📥 Import rounds… lists the other game's deal as a row to tick, and brings it with the wheel it draws from (one step).
+// 📥 Import rounds… lists the other game's deal as a row to tick, and brings it with the wheel it draws from (one step);
+// brought again, nothing comes in. Leaving the round doesn't say the copied cards go with it.
 // Needs no buzzer room.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, launchChromium, leaveAnswer, openGameFile, recordSeen, stored } from './helpers.mjs';
+import { appFile, confirmStrip, failureShots, launchChromium, leaveAnswer, openGameFile, recordSeen, stored } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -120,6 +121,19 @@ try {
   await dealList.getByRole('button', { name: 'Spy night' }).click();
   const drawn = host.locator('[data-deal-editor]').getByRole('combobox', { name: /Wheel its cards draw from/ });
   assert((await drawn.locator('option:checked').innerText()) === 'Places', 'and the deal draws from that wheel');
+  // Again: the game has that deal now, so nothing comes in, its wheel neither, and nothing is said as used.
+  await host.getByRole('button', { name: '＋ Add round' }).click();
+  const [chooser2] = await Promise.all([host.waitForEvent('filechooser'), host.getByRole('menuitem', { name: '📥 Import rounds…' }).click()]);
+  await chooser2.setFiles(otherFile);
+  await pick.getByLabel(/Their round/).uncheck();
+  await pick.locator('[data-import-deal]').getByRole('checkbox').check();
+  await pick.getByRole('button', { name: 'Import 1 deal' }).click();
+  const again = host.locator('.toast', { hasText: 'Nothing imported' });
+  await again.waitFor({ timeout: 3000 });
+  const againText = (await again.innerText()).replace(/\s+/g, ' ').trim();
+  assert(againText.includes('Nothing imported: “Spy night” is in this game already') && !againText.includes('Used'), `importing it again brings nothing, and says so (“${againText}”)`);
+  assert((await dealList.getByRole('button', { name: 'Spy night' }).count()) === 1 && (await wheelList.getByRole('button', { name: 'Places' }).count()) === 1, 'still one Spy night, and one Places wheel');
+  // (That changed nothing, so it's no step of its own: one Ctrl+Z takes out the import before it.)
   await host.keyboard.press('Control+z');
   assert(await until(async () => !(await dealList.getByRole('button', { name: 'Spy night' }).count()) && !(await wheelList.getByRole('button', { name: 'Places' }).count())), 'Ctrl+Z takes the deal and its wheel out, as one step');
 
@@ -169,6 +183,8 @@ try {
   await sleep(450); // the round buttons ignore clicks right after they appear
   await tools.getByRole('button', { name: 'Next round ▶' }).click();
   await leaveAnswer(host).waitFor();
+  const leaving = (await confirmStrip(host).innerText()).replace(/\s+/g, ' ');
+  assert(!leaving.includes('go with') && !leaving.includes('🎭'), `leaving the round doesn’t say the copied cards go with it: they stay (“${leaving}”)`);
   await sleep(500);
   await leaveAnswer(host).click();
   assert(await until(async () => (await stored(host))?.session?.currentRound === 1), 'Next round ▶: on to Round 2');

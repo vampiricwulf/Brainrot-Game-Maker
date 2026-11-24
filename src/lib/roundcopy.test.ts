@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addBundledRound, addDealFrom, bringAlong, dealWheelName, bundleRound, copiesMessage, copyRound, mergedMessage, placeFor, settleFiles, uniqueName } from './roundcopy';
+import { addBundledRound, addDealFrom, bringAlong, dealWheelName, bundleRound, copiesMessage, copyRound, mergedMessage, placeFor, settleFiles, uniqueName, type CopyIds } from './roundcopy';
 import { keepScreen } from './rpg';
 import { clipboard } from './clipboard.svelte';
 import { isBoard, isRpg, newFinalRound, newGame, newImageEl, newRound, type Game } from './model';
@@ -323,5 +323,22 @@ describe('🎭 deals between games (Import rounds…)', () => {
     other.parts[0].count = 2;
     expect(addDealFrom(b, { ...a, deals: [other] }, other)!.name).toBe('Odd one out (copy)');
     expect(b.deals!.map((x) => x.name)).toEqual(['Odd one out', 'Odd one out (copy)']);
+  });
+
+  it('a deal the game has already brings nothing: no wheel, no file, nothing said as used or copied', () => {
+    const a = withSpy();
+    a.wheels[0].segments[0].media = 'm1';
+    a.media.push({ id: 'm1', name: 'beach.png', mime: 'image/png', size: 1, kind: 'image' });
+    const b = clone(a);
+    b.media = [];
+    b.wheels[0].id = 'w_own';
+    b.deals![0].wheel = 'w_own';
+    const before = JSON.stringify(b);
+    const copied: string[] = [];
+    const merged: string[] = [];
+    const ids: CopyIds = new Map();
+    expect(addDealFrom(b, a, a.deals![0], copied, ids, merged)).toBeNull();
+    expect(JSON.stringify(b)).toBe(before);
+    expect([copied, merged, ids.size]).toEqual([[], [], 0]);
   });
 });

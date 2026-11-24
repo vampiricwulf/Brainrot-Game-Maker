@@ -253,15 +253,25 @@ export const dealWheelName = (source: Pick<Game, 'wheels'>, deal: Pick<DealPrese
  * what that wheel uses, and the files its cards show, as a round brings them (addBundledRound; `copied`, `ids` and
  * `merged` as there). Its wheel is this game's own when this game has one of its name that's the same apart from its
  * ids (a ready-made wheel added to both). Null when this game already has the same deal (by name, the same apart from
- * its ids): nothing is added.
+ * its ids): nothing is added, and nothing goes in `copied`, `merged` or `ids`.
  */
 export function addDealFrom(game: Game, source: Game, deal: DealPreset, copied?: string[], ids: CopyIds = new Map(), merged?: string[]): DealPreset | null {
   const d = clone(deal);
   const { wheels, dice, shops, items, statFields, media } = usedBy(source, d);
+  // (As it was, to put back when the deal is one this game has: then nothing comes in, and nothing is said.)
+  const was = { lists: KINDS.map(([kind]) => [kind, game[kind]] as const), media: game.media.length, ids: [...ids], copied: copied?.length, merged: merged?.length };
   const b = addThings(game, { deal: d, worlds: [], wheels, dice, shops, items, statFields, media }, ids, copied, merged, [...ROUND_NAMES, 'wheels']);
   const key = (name: string) => name.trim().toLowerCase();
   const plain = (x: DealPreset) => noIds({ ...x, name: '' });
-  if ((game.deals ?? []).some((x) => key(x.name) === key(b.deal.name) && sameContent(plain(x), plain(b.deal)))) return null;
+  if ((game.deals ?? []).some((x) => key(x.name) === key(b.deal.name) && sameContent(plain(x), plain(b.deal)))) {
+    for (const [kind, list] of was.lists) if (game[kind] !== list) (game as Record<Kind, Named[] | undefined>)[kind] = list as Named[] | undefined;
+    game.media.splice(was.media);
+    ids.clear();
+    for (const [k, v] of was.ids) ids.set(k, v);
+    copied?.splice(was.copied ?? 0);
+    merged?.splice(was.merged ?? 0);
+    return null;
+  }
   const out = clone(b.deal);
   out.id = newId();
   for (const p of out.parts) {
