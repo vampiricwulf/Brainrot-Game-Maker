@@ -20,6 +20,7 @@ node scripts/e2e-shard.mjs 3   # one CI shard (1–5 or rest; scripts/e2e-shard.
 npm run test:buzzer    # only the phone-buzzer end-to-end files (they start a local buzzer server)
 npm run screenshots    # regenerate docs/screenshots (build first)
 npm run desktop:build  # Windows app (needs Rust + Tauri prerequisites)
+cargo test --manifest-path src-tauri/Cargo.toml  # the desktop app's Rust tests (build first; on Linux needs libwebkit2gtk-4.1-dev)
 ```
 
 ## Where things are

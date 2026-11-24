@@ -176,6 +176,26 @@ jobs:
           fi
           npx wrangler deploy
 
+  rust:
+    # The desktop app's Rust unit tests (src-tauri: save files, save migration, update signatures, screen colors), on
+    # Linux, where they build fastest. Like the e2e job it doesn't hold up the release: a failure marks the run red.
+    name: Desktop app's Rust tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Tauri's Linux build prerequisites (WebKitGTK)
+        timeout-minutes: 15
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev
+      # Tauri builds the app's page (../dist) into the binary; the tests don't use it, so a placeholder will do.
+      - name: Placeholder app page
+        run: mkdir -p dist && echo '<!doctype html>' > dist/index.html
+      - run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+
   windows:
     # The desktop app (Tauri). Skipped for pull requests (desktop.yml covers src-tauri changes there).
     if: github.event_name != 'pull_request'
