@@ -8,6 +8,8 @@
 //   --jobs N   run up to N files at once (default 1, one after another). Each file's output is then held back and
 //              printed whole when it ends, so files never mix their lines; the results still come in the list's order.
 //              Files can run side by side: each takes its own ports (freePort() in helpers.mjs) and temp folders.
+//   --quiet    (or E2E_QUIET=1) a file that passes prints one line with its time; one that fails prints its last 80
+//              lines (stdout and stderr together, each cut at 400 characters), where its failure is.
 //
 // A run goes on past a failing file, prints each file's result and time, and exits 1 if any failed. In GitHub Actions
 // (GITHUB_STEP_SUMMARY set) it also writes that table to the run's summary page and marks each failed file with an
@@ -98,14 +100,21 @@ function runFile(f, held, children) {
   });
 }
 
-async function run(files, name, { jobs }) {
+// The end of a failed file's output: its last `n` lines, each cut short, so a line listing a whole page stays readable.
+function tail(out, n = 80) {
+  const lines = out.replace(/\n+$/, '').split('\n');
+  const cut = lines.slice(-n).map((l) => (l.length > 400 ? l.slice(0, 400) + ` … (${l.length} characters)` : l));
+  return (lines.length > n ? `  … (${lines.length - n} lines before)\n` : '') + cut.join('\n') + '\n';
+}
+
+async function run(files, name, { jobs, quiet }) {
   try {
     appFile();
   } catch (e) {
     console.error(e.message);
     process.exit(1);
   }
-  const held = jobs > 1;
+  const held = jobs > 1 || quiet;
   const children = new Set();
   // Stopped (Ctrl+C, or a kill): the files running now are stopped too, so none is left behind with its browser or
   // buzzer server.
@@ -121,7 +130,8 @@ async function run(files, name, { jobs }) {
       const i = next++;
       const r = await runFile(files[i], held, children);
       results[i] = r;
-      if (held) process.stdout.write(`\n▶ ${r.f}.mjs (${r.ok ? 'ok' : 'FAIL'}, ${r.s}s)\n${r.out}`);
+      if (quiet) process.stdout.write(`${r.ok ? 'ok  ' : 'FAIL'} ${r.f}.mjs ${r.s}s\n${r.ok ? '' : tail(r.out)}`);
+      else if (held) process.stdout.write(`\n▶ ${r.f}.mjs (${r.ok ? 'ok' : 'FAIL'}, ${r.s}s)\n${r.out}`);
     }
   };
   await Promise.all(Array.from({ length: Math.min(jobs, files.length) }, worker));
@@ -151,12 +161,15 @@ if (jobsAt >= 0) {
     process.exit(2);
   }
 }
+const quietAt = args.indexOf('--quiet');
+if (quietAt >= 0) args.splice(quietAt, 1);
+const quiet = quietAt >= 0 || process.env.E2E_QUIET === '1';
 const arg = args.length === 1 ? args[0] : undefined;
 if (arg === '--check') check();
-else if (arg === 'all') run(all, 'all', { jobs });
-else if (arg === 'buzzer') run(buzzerFiles(), 'buzzer', { jobs });
-else if (arg === 'rest' || named[arg]) run(shardFiles(arg), arg, { jobs });
+else if (arg === 'all') run(all, 'all', { jobs, quiet });
+else if (arg === 'buzzer') run(buzzerFiles(), 'buzzer', { jobs, quiet });
+else if (arg === 'rest' || named[arg]) run(shardFiles(arg), arg, { jobs, quiet });
 else {
-  console.error('Usage: node scripts/e2e-shard.mjs <1–5 | rest | all | buzzer | --check> [--jobs N]');
+  console.error('Usage: node scripts/e2e-shard.mjs <1–5 | rest | all | buzzer | --check> [--jobs N] [--quiet]');
   process.exit(2);
 }

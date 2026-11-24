@@ -35,6 +35,8 @@ node scripts/e2e-shard.mjs 3   # one CI shard (1–5 or rest; scripts/e2e-shard.
 npm run test:e2e       # the whole end-to-end suite, one file after another, going on past a failure: about 35 min
                        # (CI runs it in six shards alongside the release)
 node scripts/e2e-shard.mjs all --jobs 3   # the same, three files at a time (any shard or buzzer takes --jobs too)
+node scripts/e2e-shard.mjs 5 --quiet      # a passing file is one line; a failing one shows its last 80 lines
+                                          # (E2E_QUIET=1 does the same; CI keeps the whole output)
 npm run test:buzzer    # only the phone-buzzer end-to-end files (they start a local buzzer server)
 npm run screenshots    # regenerate docs/screenshots (build first)
 npm run desktop:dev    # the desktop app around the dev server (it starts npm run dev; needs Rust + Tauri prerequisites)
