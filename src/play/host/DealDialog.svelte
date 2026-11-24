@@ -199,8 +199,12 @@
   const held = $derived(d ? dealHeld(game, session) : []);
   const roundOn = $derived(session.phase !== 'end' && session.phase !== 'tiebreaker');
   let lasts = $state<'round' | 'host'>('round');
-  /** How long the cards last: as chosen, or as they lasted when sent before (📤 Send after ↩ Take the cards back). */
-  const until = $derived<'round' | 'host'>(!roundOn ? 'host' : d?.stage === 'sent' && d.until ? d.until : lasts);
+  /**
+   * How long the cards last: as chosen, or as they lasted when sent before (📤 Send after ↩ Take the cards back). With no
+   * phones getting cards, until the host takes them back: a copied card can't be taken off anyone at the round's end, so
+   * the deal stays handed out (its 📋 rows too) until ↩ Take the cards back, a new deal or 🗑 End this deal.
+   */
+  const until = $derived<'round' | 'host'>(!roundOn || !cardsOn ? 'host' : d?.stage === 'sent' && d.until ? d.until : lasts);
   /** More players than the phones hold cards at once, all together (the room's CARDS_MAX). */
   const tooMany = $derived(!!d && cardsOn && d.hands.length > CARDS_MAX);
   const full = $derived(!!d && cardsOn && !held.length && !tooMany && roomCardsFull(game, session, dealTrial(game, d, until)));
@@ -476,7 +480,7 @@
     <div class="muted small">{dual ? 'Who got which part is in the column beside the stage (viewers don’t see it).' : 'Who got which part is never shown here: viewers see this window.'}</div>
     {#if d.stage === 'dealt'}
       <div class="small">Not sent yet: nobody has their card.</div>
-      {#if roundOn}
+      {#if roundOn && cardsOn}
         <div class="row wrap" role="radiogroup" aria-label="How long the cards last">
           <span class="muted small">Lasts</span>
           <label class="check small"><input type="radio" name="deal-lasts-{uid}" value="round" bind:group={lasts} /> until the round ends</label>
@@ -509,7 +513,7 @@
         <span class="lbl muted small">{cardsOn ? 'On phones' : 'The cards'}</span>
         {#if held.length}
           {#if cardsOn && !over}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone), or a player put back, gets theirs">↻ Send again</button>{/if}
-          <button class="ghost small" onclick={takeBack} title="Takes every card of the deal off the phones (the deal stays, for Who was who)" data-deal-takeback>↩ Take the cards back</button>
+          <button class="ghost small" onclick={takeBack} title={cardsOn ? 'Takes every card of the deal off the phones (the deal stays, for Who was who)' : 'Marks the cards as taken back: copied cards can’t be unsent (the deal stays, for Who was who)'} data-deal-takeback>↩ Take the cards back</button>
         {:else}
           <button class="small" onclick={send} disabled={tooMany || full} title={tooMany ? `The phones hold ${CARDS_MAX} cards at once, all phones together: this deal has ${d.hands.length}, one each` : full ? fullText : 'The same cards go out again'} data-deal-resend>📤 Send</button>
         {/if}

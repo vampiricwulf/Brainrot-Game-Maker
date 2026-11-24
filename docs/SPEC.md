@@ -1216,7 +1216,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   slice of the wheel, "+ a slice of Locations: Beach") or a ready-made one. Each player gets one part at random (or the host's pick,
   with the audience window open), and a part's card can show a slice of a saved wheel (each their own, or one shared
   by everyone but the odd one out). Nothing goes until 📤 Send, which sends each player's card on its own; ↻ Send again
-  and ↩ Take the cards back work on the whole deal. A player taken out keeps their part, their card off the phones: the
+  and ↩ Take the cards back work on the whole deal. With phones getting the cards they last until the round ends or
+  until taken back, as the host chooses; with none (✔ Hand them out, then 📋 Copy each player theirs) there's no choice:
+  a copied card can't be unsent, so the deal stays handed out past the round's end, until ↩ Take the cards back (its
+  tooltip says it only marks them), a new deal or 🗑 End this deal. A player taken out keeps their part, their card off the phones: the
   counts stay as dealt, the deal stays out (↻ Send again, and ↩ Take the cards back, which takes theirs too) even when
   theirs was its only card, and once they're back (Ctrl+Z, ↩ Restore) ↻ Send again sends their card. Only the two-window host column says who got which: one window lists everyone
   dealt in alike, a part or not (with the phones getting the cards, only those with no phone here, 📵, to copy theirs),

@@ -310,6 +310,10 @@ them alone (a Discord DM call, say).
 
 Make your own in the editor's 🎡 Wheels, Dice & Deals tab. **🎭 Show who was who** reveals everyone's part on screen.
 
+With phone buzzers, the cards last until the round ends or until you take them back. With no phones, press
+**✔ Hand them out** and **📋 Copy** each player's card to them: copied cards can't be unsent, so the deal stays handed
+out until you take the cards back, deal a new one or end it, whatever round you're on.
+
 ## RPG rounds
 
 ![An RPG round](screenshots/play-rpg.png)
