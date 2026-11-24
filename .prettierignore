@@ -1,0 +1,25 @@
+# What npm run format leaves alone (Prettier also skips what .gitignore lists, but only the top folder's one).
+
+# Installed packages, build output and test output.
+node_modules/
+dist/
+test-results/
+/.tauri/
+*-failure.png
+buzzer/.wrangler/
+buzzer/.phone-page-*.part
+src-tauri/target/
+src-tauri/gen/
+.claude/
+
+# Prose: the changelog, docs and READMEs are written by hand (two spaces at a line's end are a line break).
+*.md
+
+# Written by npm and cargo.
+package-lock.json
+src-tauri/Cargo.lock
+
+# Pages whose markup is used as written: the app's page (its "Loading…" sits in #app until the app replaces it) and the
+# phone page, a template buzzer/build.mjs fills in at /*STYLE*/ and /*SCRIPT*/.
+/index.html
+buzzer/phone/index.html
