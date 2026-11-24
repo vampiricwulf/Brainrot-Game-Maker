@@ -614,8 +614,8 @@ try {
     await p.locator('#answer-in').fill(a);
     await p.locator('#answer-send').click();
   }
-  await checkItem(host, 'answers').filter({ hasText: 'All answers are in' }).waitFor({ timeout: 10000 });
-  assert(!(await checkItem(host, 'answers').innerText()).includes('1 of 3'), `the last answer in with the check open: “All answers are in” (${(await checkItem(host, 'answers').innerText()).replace(/\s+/g, ' ')})`);
+  await checkItem(host, 'answers').filter({ hasText: 'All phones answered' }).waitFor({ timeout: 10000 });
+  assert(!(await checkItem(host, 'answers').innerText()).includes('1 of 3'), `the last answer in with the check open: “All phones answered” (${(await checkItem(host, 'answers').innerText()).replace(/\s+/g, ' ')})`);
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('r');
   await host.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();

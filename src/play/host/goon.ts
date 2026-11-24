@@ -726,7 +726,14 @@ export function phoneAnswers(
   const noun = teams ? (can.length === 1 ? 'team' : 'teams') : can.length === 1 ? 'phone' : 'phones';
   return {
     count: can.length ? `${can.filter((p) => sent(p.id)).length} of ${can.length} ${noun} answered` : teams ? 'No team has a phone here' : 'No phones here',
-    loud: !out.length ? '' : out.length > 1 && !can.length ? 'everyone answers out loud' : `${nameList(out.map((p) => p.name))} ${out.length === 1 ? 'answers' : 'answer'} out loud`,
+    // (Past three, a count: the line stays one line however few phones there are.)
+    loud: !out.length
+      ? ''
+      : out.length > 1 && !can.length
+        ? 'everyone answers out loud'
+        : out.length > 3
+          ? `${out.length} ${teams ? 'teams' : 'players'} answer out loud`
+          : `${nameList(out.map((p) => p.name))} ${out.length === 1 ? 'answers' : 'answer'} out loud`,
     missing: can.filter((p) => !sent(p.id)).map((p) => p.name),
   };
 }
@@ -759,6 +766,9 @@ function comingItems(c: GoCtx, sent: (id: Id) => boolean, ids: Id[], step: strin
     },
   ];
 }
+
+/** The last answer in with the check open: said as the ✍ box counts them (phoneAnswers), “All phones answered” (teams: “All teams answered”), never “all answers” while some answer out loud. */
+const allAnswered = (c: GoCtx): string => (c.final.teams ? 'All teams answered' : 'All phones answered');
 
 /** Every answer expected from `ids` (those with a phone here, or whose answer is in) is in, and there is one at least. */
 function allIn(c: GoCtx, sent: (id: Id) => boolean, ids: Id[]): boolean {
@@ -1524,12 +1534,12 @@ export function doneSay(c: GoCtx, id: string): string | undefined {
     const t = c.final.clock;
     if (t === 'out' || (t?.running && t.left <= 0)) return 'Time’s up';
     const f = c.session.final;
-    if (f && allIn(c, (p) => !!f.answers?.[p], f.players)) return 'All answers are in';
+    if (f && allIn(c, (p) => !!f.answers?.[p], f.players)) return allAnswered(c);
     if (t && !t.running) return 'The clock is paused';
   }
   // (A ✍ clue's answers: the last one came in while the check was open.)
   if (id === 'answers' && c.session.phase !== 'final' && c.answers && allIn(c, (p) => !!c.answers!.seats[p], c.session.players.map((p) => p.id)))
-    return 'All answers are in';
+    return allAnswered(c);
   const t = turnOf(c);
   if (!t?.id) return undefined;
   const who = name(c, t.id);
