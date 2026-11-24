@@ -1471,6 +1471,7 @@
             answers={session.remote?.answers?.id === answerRoundId(session, info.clue.id) ? session.remote.answers.seats : {}}
             clueId={info.clue.id}
             phones={answerPhones}
+            {teams}
             open={!session.revealed && !session.remote?.answers?.locked}
             onjudge={onanswerjudge}
             choices={usableChoices(info.clue.choices)}

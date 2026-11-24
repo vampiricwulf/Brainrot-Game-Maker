@@ -708,20 +708,43 @@ function finalClockItems(c: GoCtx): LeftItem[] {
 }
 
 /**
+ * The answers typed on phones, counted one way wherever the host reads them (the ✍ box's head, the check at 👁 Reveal
+ * answer): of `ids`, in the players' order, those with a phone here or whose answer is in can answer from one; the rest
+ * answer out loud. “1 of 2 phones answered · Cat answers out loud” (teams: “1 of 2 teams answered”); names and counts
+ * only, never the words. `missing`: those who can and haven't yet.
+ */
+export function phoneAnswers(
+  players: readonly { id: Id; name: string }[],
+  ids: readonly Id[],
+  phones: readonly Id[],
+  sent: (id: Id) => boolean,
+  teams = false,
+): { count: string; loud: string; missing: string[] } {
+  const listed = players.filter((p) => ids.includes(p.id));
+  const can = listed.filter((p) => phones.includes(p.id) || sent(p.id));
+  const out = listed.filter((p) => !can.includes(p));
+  const noun = teams ? (can.length === 1 ? 'team' : 'teams') : can.length === 1 ? 'phone' : 'phones';
+  return {
+    count: can.length ? `${can.filter((p) => sent(p.id)).length} of ${can.length} ${noun} answered` : teams ? 'No team has a phone here' : 'No phones here',
+    loud: !out.length ? '' : out.length > 1 && !can.length ? 'everyone answers out loud' : `${nameList(out.map((p) => p.name))} ${out.length === 1 ? 'answers' : 'answer'} out loud`,
+    missing: can.filter((p) => !sent(p.id)).map((p) => p.name),
+  };
+}
+
+/**
  * Answers still coming from phones, of `ids` (those with a phone here, or whose answer is in): ⏱ 10 more seconds (or a
- * countdown). Names and counts only, never the words.
+ * countdown). Names and counts only, never the words, counted as the ✍ box counts them (phoneAnswers).
  */
 function comingItems(c: GoCtx, sent: (id: Id) => boolean, ids: Id[], step: string): LeftItem[] {
-  const can = c.session.players.filter((p) => ids.includes(p.id) && (c.phones.includes(p.id) || sent(p.id)));
-  const missing = can.filter((p) => !sent(p.id));
-  if (!missing.length) return [];
+  const a = phoneAnswers(c.session.players, ids, c.phones, sent, c.final.teams);
+  if (!a.missing.length) return [];
   const verb = c.clockUp ? '⏱ 10 more seconds' : '⏱ Start the countdown';
   return [
     {
       id: 'answers',
       kind: 'first',
       quiet: 'answers',
-      text: `${can.length - missing.length} of ${can.length} answers are in (${nameList(missing.map((p) => `${p.name}’s`))} ${missing.length === 1 ? 'isn’t' : 'aren’t'}).`,
+      text: `${a.count} (${nameList(a.missing)} ${a.missing.length === 1 ? 'hasn’t' : 'haven’t'} yet)${a.loud ? ` · ${a.loud}` : ''}.`,
       lost: 'the answers lock',
       quick: [
         {

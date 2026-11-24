@@ -1106,7 +1106,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 2. Question slide + timer (default 30 s) + optional music file. With phone buzzers (and ✍ Players type their answers on
    their phones, on unless the host unticks it in the round's editor), each player in it types their answer on their
    phone (a team: anyone on it) from the question until the answer shows; only the host sees them (in one window, not
-   until each is revealed), and the stream shows ✍ and who has answered, never what. With multiple choice (under the
+   until each is revealed), and the stream shows ✍ and who has answered, never what. The host's ✍ box and the check at
+   👁 Reveal answer count them one way (phoneAnswers, as a ✍ clue's do): those with a phone here, the rest answering out
+   loud, “1 of 2 phones answered · Player 3 answers out loud” (teams: “teams”). With multiple choice (under the
    switch in its editor, as a ✍ clue's) they tap one instead, the choices show on stream under the question (the right
    one lit with the answer), and each reveal says whether a pick is the one marked ✔ Right. Unticked, the choices are
    kept but unused: the editor shows them dimmed and out of reach, with a line saying to tick ✍ to use them.

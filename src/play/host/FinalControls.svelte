@@ -759,6 +759,7 @@
         answers={f.answers ?? {}}
         title="✍ Answers from phones"
         phones={answerPhones}
+        teams={noun === 'team'}
         open={session.finalStep === 'question' && !f.answersLocked}
         hideUntilShown
         {choices}

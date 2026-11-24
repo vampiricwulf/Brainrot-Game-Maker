@@ -586,7 +586,7 @@ try {
   await next('👁 Reveal answer');
   await checkItem(host, 'answers').waitFor();
   const coming = await checkItem(host, 'answers').innerText();
-  assert(coming.includes('1 of 3 answers are in') && !coming.includes('Bob-answer'), `👁 Reveal answer with answers still coming asks first, names and counts only (${coming})`);
+  assert(coming.includes('1 of 3 phones answered') && !coming.includes('Bob-answer'), `👁 Reveal answer with answers still coming asks first, names and counts only (${coming})`);
   await goOnCheck(host, { ready: true }).waitFor();
   const narrow = await goOnCheck(host).evaluate((card, r) => {
     const t = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('button, label, input');

@@ -497,7 +497,7 @@ try {
   // Two windows: the host can select the typed answer, to paste it in chat.
   await answers.locator('[data-answer-row] .text', { hasText: 'Fleming' }).dblclick({ position: { x: 12, y: 8 } });
   assert((await selectedWords(host)) === 'Alexander', `two windows: the host's copy of a typed answer selects (${await selectedWords(host)})`);
-  assert((await answers.getByRole('status').innerText()).startsWith('1 of 3 in · only you see them'), 'Player 1 types “Fleming” and sends it: the host’s panel has it (only the host sees it)');
+  assert((await answers.getByRole('status').innerText()).startsWith('1 of 2 phones answered · Player 3 answers out loud · only you see them'), 'Player 1 types “Fleming” and sends it: the host’s panel has it (only the host sees it)');
   assert((await ann.locator('#answer-label').innerText()) === 'Your answer (shown on stream at the reveals)', `the Final’s answer box says the reveals put it on stream, not that only the host sees it (${await ann.locator('#answer-label').innerText()})`);
   await aud.waitForFunction(() => document.querySelector('[data-everyone] [role="img"]')?.getAttribute('aria-label') === '1 of 3 answers in');
   assert(!(await text(aud)).includes('Fleming') && !(await text(bo)).includes('Fleming'), 'the stream says 1 of 3 in, never the words; nor does the other phone have them');
@@ -524,7 +524,7 @@ try {
   // answer: it doesn't ask again (its ⏱ would only start the clock over, and the answer would never go up but by R).
   await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
   await checkItem(host, 'answers').waitFor();
-  assert((await checkItem(host, 'answers').innerText()).includes('1 of 2 answers are in (Player 2’s isn’t)'), '👁 Reveal answer with an answer still to come: “1 of 2 answers are in (Player 2’s isn’t)”');
+  assert((await checkItem(host, 'answers').innerText()).includes('1 of 2 phones answered (Player 2 hasn’t yet) · Player 3 answers out loud'), '👁 Reveal answer with an answer still to come: “1 of 2 phones answered (Player 2 hasn’t yet) · Player 3 answers out loud”');
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('Enter');
   await goOnCheck(host).waitFor({ state: 'detached' });
@@ -816,7 +816,7 @@ try {
   const head2 = await answers2.getByRole('status').innerText();
   const chips2 = await answers2.locator('[data-answer-in]').allInnerTexts();
   assert(
-    head2.includes('1 of 2 in · viewers see this window') && head2.includes('Open the 📺 audience window to read them before they go on screen') && JSON.stringify(chips2) === JSON.stringify(['Player 1 ✔', 'Player 2 …']),
+    head2.includes('1 of 2 teams answered · viewers see this window') && head2.includes('Open the 📺 audience window to read them before they go on screen') && JSON.stringify(chips2) === JSON.stringify(['Player 1 ✔', 'Player 2 …']),
     `one window: Amy taps B for her team, the panel shows “Player 1 ✔” (no letter) and says to open the audience window to read them first (${JSON.stringify(chips2)}; ${head2})`,
   );
   await cy.locator('#answer-choices .choice').filter({ hasText: CHOICES[2] }).click();
@@ -944,7 +944,7 @@ try {
   // (The team in it typed no answer: 👁 Reveal answer asks first, and R reveals anyway.)
   await mainButton(host2).filter({ hasText: '👁 Reveal answer' }).click();
   await checkItem(host2, 'answers').waitFor();
-  assert((await checkItem(host2, 'answers').innerText()).includes('0 of 1 answers are in (Player 1’s isn’t)'), '👁 Reveal answer with the one team in it yet to answer asks first: “0 of 1 answers are in (Player 1’s isn’t)”');
+  assert((await checkItem(host2, 'answers').innerText()).includes('0 of 1 team answered (Player 1 hasn’t yet)'), '👁 Reveal answer with the one team in it yet to answer asks first: “0 of 1 team answered (Player 1 hasn’t yet)”');
   await goOnCheck(host2, { ready: true }).waitFor();
   await host2.keyboard.press('r');
   await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();

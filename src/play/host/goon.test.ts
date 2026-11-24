@@ -14,7 +14,7 @@ import { moveNow, rollMover, runLanding, runSpace, sendNow } from '../boardgame/
 import { undoAction } from '../../lib/toolset';
 import {
   anywayLabel, asked, CHECK_GUARD_MS, ddWaits, doneSay, doneStep, enterQuick, escBounce, finalWaits, flowSteps, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
-  quietKinds, ringNow, ringOf, swallowSay, everyonePassed, teachLine, todo, wagersLine, type BoardNow, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
+  phoneAnswers, quietKinds, ringNow, ringOf, swallowSay, everyonePassed, teachLine, todo, wagersLine, type BoardNow, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
 } from './goon';
 import { FLOW } from './verbs';
 
@@ -372,13 +372,23 @@ describe('what’s left (3.4)', () => {
     expect(inside({ key: 'Enter', awards: true }, open({ ...st, enterIsNext: true }, nothing.items), after)).toEqual({ do: 'step' });
   });
 
+  it('phoneAnswers: one count for the ✍ box and the check, those with no phone answering out loud', () => {
+    const ps = [{ id: 'a', name: 'Ann' }, { id: 'b', name: 'Bob' }, { id: 'c', name: 'Cat' }];
+    const sent = (id: string) => id === 'a';
+    expect(phoneAnswers(ps, ['a', 'b', 'c'], ['a', 'b'], sent)).toEqual({ count: '1 of 2 phones answered', loud: 'Cat answers out loud', missing: ['Bob'] });
+    // (An answer in from a phone that dropped out since still counts; teams say teams.)
+    expect(phoneAnswers(ps, ['a', 'b'], ['b'], sent, true)).toEqual({ count: '1 of 2 teams answered', loud: '', missing: ['Bob'] });
+    expect(phoneAnswers(ps, ['a', 'b', 'c'], [], () => false)).toEqual({ count: 'No phones here', loud: 'everyone answers out loud', missing: [] });
+    expect(phoneAnswers(ps, ['b', 'c'], ['b'], () => false).count).toBe('0 of 1 phone answered');
+  });
+
   it('C: ✍ answers still coming in at the reveal; at Done, the ones not judged (names and counts, never the words)', () => {
     const { g, s } = setup();
     openClue(s, REF, g);
     const seats = { a: { text: 'Paris' }, b: { text: 'Lyon' } };
     const c = ctx(g, s, { everyone: true, answers: { seats, locked: false }, phones: ['a', 'b', 'c'], clockUp: true });
     const reveal = leftNow(c, mainStep(c)!);
-    expect(lines(reveal)).toEqual([['first: 2 of 3 answers are in (Cat’s isn’t).', '⏱ 10 more seconds [⇧T] ⏎ · close']]);
+    expect(lines(reveal)).toEqual([['first: 2 of 3 phones answered (Cat hasn’t yet).', '⏱ 10 more seconds [⇧T] ⏎ · close']]);
     expect([reveal[0].quiet, anywayLabel(open(mainStep(c)!, reveal))]).toEqual(['answers', '👁 Reveal anyway: the answers lock']);
     // Cat's comes in with the check open: its line says they're all in.
     const allSeats = ctx(g, s, { everyone: true, answers: { seats: { ...seats, c: { text: 'Nice' } }, locked: false }, phones: ['a', 'b', 'c'], clockUp: true });
@@ -1057,7 +1067,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     const c = ctx(g, s, { final: FIN, phones: ['a', 'b'], clockUp: true });
     const st = mainStep(c)!;
     const items = leftNow(c, st);
-    expect(lines(items)).toEqual([['first: 1 of 2 answers are in (Bob’s isn’t).', '⏱ 10 more seconds [⇧T] ⏎ · close']]);
+    expect(lines(items)).toEqual([['first: 1 of 2 phones answered (Bob hasn’t yet) · Cat answers out loud.', '⏱ 10 more seconds [⇧T] ⏎ · close']]);
     expect(JSON.stringify(items)).not.toContain('Paris');
     const ck = open(st, items);
     expect([anywayLabel(ck), inside({ key: 'n' }, ck, after).do, inside({ key: 'r' }, ck, after).do, quietKinds(items), items[0].quick[0].after]).toEqual([
@@ -1101,7 +1111,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect(leftNow(c({ left: 27, running: true }, phones), st).map((i) => i.id)).toEqual(['answers']);
     // Its T pauses the clock, as in the clock's own check (⇧T is its 10 more seconds): N then shows the answer.
     const coming = leftNow(c({ left: 27, running: true }, phones), st);
-    expect(lines(coming)).toEqual([['first: 1 of 2 answers are in (Bob’s isn’t).', '⏱ 10 more seconds [⇧T] ⏎ · close', '⏸ Pause the clock [T] · close']]);
+    expect(lines(coming)).toEqual([['first: 1 of 2 phones answered (Bob hasn’t yet) · Cat answers out loud.', '⏱ 10 more seconds [⇧T] ⏎ · close', '⏸ Pause the clock [T] · close']]);
     const ack = open(st, coming);
     expect([inside({ key: 't' }, ack, after), inside({ key: 'T', shift: true }, ack, after)]).toEqual([
       { do: 'quick', quick: coming[0].quick[1] },

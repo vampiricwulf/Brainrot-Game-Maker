@@ -12,7 +12,7 @@
   import { textOn } from '../../lib/colors';
   import type { Session } from '../../lib/model';
   import { choiceCounts, countsLine, judgeAllPlan, letter, matchChoice, pickLabel, rightChoice, type UsableChoice } from '../../lib/choices';
-  import { judgedOn } from './goon';
+  import { judgedOn, phoneAnswers } from './goon';
   import { offerExposed } from './slots.svelte';
 
   let {
@@ -32,6 +32,7 @@
     enterJudges = false,
     ring = false,
     worth = '',
+    teams = false,
   }: {
     session: Session;
     /** Who answers (ids), in the players' order. */
@@ -63,10 +64,19 @@
     worth?: string;
     /** ✔ Judge all is the next thing to do before ▦ Done ▶ board: it wears the ring. */
     ring?: boolean;
+    /** Phone buzzer teams: each player is a team (“1 of 2 teams answered”). */
+    teams?: boolean;
   } = $props();
 
   const listed = $derived(session.players.filter((p) => players.includes(p.id)));
-  const inCount = $derived(listed.filter((p) => answers[p.id]).length);
+  /**
+   * “1 of 2 phones answered · Cat answers out loud”: those with a phone here (or whose answer is in) counted, as the check
+   * at 👁 Reveal answer counts them.
+   */
+  const tally = $derived.by(() => {
+    const a = phoneAnswers(session.players, players, phones, (id) => !!answers[id], teams);
+    return a.count + (a.loud ? ` · ${a.loud}` : '');
+  });
   /** The words are on this panel: off stream, or (a ✍ clue) once the answer is up. */
   const words = $derived(dual || (!open && !hideUntilShown));
   /**
@@ -112,8 +122,8 @@
     <b>{title}{choices.length ? ' · multiple choice' : ''}</b>
     <!-- (A single window's ✍ clue: the line keeps the room it takes once locked, its longest, so it never wraps anew.) -->
     <span class="muted small slot"
-      ><span role="status">{inCount} of {listed.length} in{onStream}{open ? '' : locked}</span
-      >{#if keepRoom}<span class="room" aria-hidden="true">{inCount} of {listed.length} in · locked (the answer was on screen)</span>{/if}</span
+      ><span role="status">{tally}{onStream}{open ? '' : locked}</span
+      >{#if keepRoom}<span class="room" aria-hidden="true">{tally} · locked (the answer was on screen)</span>{/if}</span
     >
   </div>
   {#if note}<p class="small note">{note}</p>{/if}
