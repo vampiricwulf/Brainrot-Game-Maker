@@ -50,6 +50,8 @@ under the day's heading (Pacific time), and commit that with the hashes as `Chan
 
 ### Fixed
 
+- CI: the Pages site no longer fails to deploy with "No artifacts named github-pages were found": it is uploaded in one job and deployed in the next. (5b32160)
+- The reload-cover end-to-end test waits for the resume question's focus before pressing Enter, so it no longer fails now and then on CI. (1e2e629)
 - Hosting from a phone, the 📱 Phone buzzers card no longer sticks out sideways: on a narrow phone (under about 395px wide) Free seat and Kick show as just 📱 and ⛔, each player stays on one line, and Start game ▶ can be tapped. The in-game 📱 list keeps their words. (9b21391, 680b77c)
 - After a reload mid-game in one window, the "Be right back" card sits where the stage is, at its size, so a capture of just the stage shows the whole card and none of the host's buttons. (ae7ea34)
 - The Final's and ✍ clues' answer counts agree: the answers box and the check before 👁 Reveal answer both say e.g. "1 of 2 phones answered · Player 3 answers out loud", and "All phones answered" once the last one is in. (db34031, cb7f43d)
