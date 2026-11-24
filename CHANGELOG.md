@@ -11,6 +11,17 @@ in Added / Changed / Fixed / Removed, in plain words for the people who make and
 are known, add them to the line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unreleased lines
 under the day's heading (Pacific time), and commit that with the hashes as `Changelog: …`.
 
+## Unreleased
+
+### Changed
+
+- The end-to-end tests share one assert, assertEq, sleep, until, section heading and browser launcher from tests/e2e/helpers.mjs instead of each file's own copy; section headings now print as "---------- … ----------". (a8aabd2, eff78d4, 0924c34)
+- The seven phone end-to-end files that started their own buzzer server now use startBuzzer(). (9721e50, e5781cb)
+- The e2e shard check refuses a test file with its own assert, sleep, until loop, Chromium launch or buzzer server start. (4c4a0d8)
+- New `npm run check:e2e` type-checks helpers.mjs and the end-to-end files marked `// @ts-check` (36 so far; not in CI yet), with @types/node as a new dev dependency. (5a4aeb4)
+- docs/development.md says how to write an end-to-end file with the shared helpers and how check:e2e works; CLAUDE.md lists both. (8563854)
+- The host screen's code is split: the phone buzzers, the pre-game screen, partner clues and the mid-game players and board-game moves moved out of Play.svelte (7,775 lines, now 5,804) into src/play/host/phones, pregame, partner and midgame .svelte.ts, with no change in what they do; the docs and comments say where each now lives. (de39bf0, d289eda, c7c2aed, de28e6e, 6d9d3d6, edaea75, 5a09b67)
+
 ## 2026-11-24
 
 ### Added
