@@ -11,6 +11,40 @@ in Added / Changed / Fixed / Removed, in plain words for the people who make and
 are known, add them to the line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unreleased lines
 under the day's heading (Pacific time), and commit that with the hashes as `Changelog: …`.
 
+## Unreleased
+
+### Added
+
+- 📥 Import rounds… can bring in the other game's 🎭 deals, each with the wheel it draws from; a deal the game already has isn't added again, and nothing comes with it. Its hint and its ＋ Add round menu line say what comes along and what stays behind. (ba22988, 340c96b)
+- On a touch screen, ✎ Edit board explains itself in taps (↶ Undo to take an edit back) and has a ☐ Select several button, so a tap can select more spaces, as Shift+click does; a long press on one of them opens its menu with all of them still selected. (9941b56, 76e175a)
+- `npm run gate` runs CI's checks in one command (all but the desktop app's builds and Rust tests): version numbers, type checks, unit tests, the e2e shard check and the build, stopping at the first failure, then the end-to-end files three at a time; it prints each step's time. (107407c, c1a356a)
+- `node scripts/e2e-shard.mjs <target> --jobs N` runs end-to-end files side by side, and the buzzer tests no longer risk getting the same port. (99efc58, 1e2febb, 40c5fcc, 5adc2d0)
+- `--quiet` (or `E2E_QUIET=1`) on e2e-shard prints one line for a passing file and the last 80 lines of a failing one. (94dd3e6, a875320)
+- `node scripts/version.mjs stamp` moves the changelog's Unreleased lines under today's date in Pacific time, merging them into that day's sections if it already has a heading, so the date is never worked out by hand. It refuses a date that isn't a real day and says why it stopped instead of changing anything. (37cc5e3, 7c93b6a, 773ffec)
+- The repo has an .editorconfig (UTF-8, LF line ends, 2-space indents, 4 in the Rust files, a final newline), so editors save files the way the code is already written. (658684b)
+
+### Changed
+
+- A window taller than the screen (⚙ Settings on a 1280×720 laptop, the big editors on a phone) now scrolls only between its title and its buttons: the title and ✕ stay at the top and Done at the bottom, and whatever Tab or ⚙ Set up phone buzzers… brings into view stops clear of both. (68f215a, 69a973e, 829abf3)
+- ✎ Edit video… / ✎ Edit sound… say "Ctrl+Z (or 🕘 History) puts the old file back" once, beside the buttons, instead of also under the title. (397eb25)
+- 🖼 Media shows 🗑 Delete unused (N) only while some file is unused, instead of a greyed-out red "🗑 Delete unused (0)". (02618ab)
+- Icons that some systems drew as grey outlines now show in colour: 🗺 RPG, ♟ Board game and 🖼 Slides (in ＋ Add round and the sidebar), the sidebar's 🖼 Media, 😈 Punishments, 🃏 Truth or dare, ⏱ Time limit and 🗺 Locations (📋 Ready-made wheel…), 🕵 Odd one out (📋 Ready-made deal…), and 🗣 Describe it / ✏ Draw it (partner clues, on stream and phones too). (1d8f471, 671aa00)
+- ⚙ Settings › Undo says what it did: a number out of range says "Set to 20, the lowest it goes" (or 2000, the highest, or 300, the default, for 0), and lowering it says "Forgot the 17 oldest changes in 🕘 History". If the window closes straight after typing, a toast says it instead; Back to the defaults says what it forgot too. (861f651, ee977ec, 973d827)
+- A wheel tile's Which wheel lists the game's wheels and a "Ready-made (adds a copy to the game)" group (Point wheel, Double or nothing, Rewards…): picking one adds it to the game and the tile uses it, in one undo step. (fa2ca20, c85733d)
+- In play, a wheel or dice tile with no question says "🎡 Wheel tile · spin it (W)" or "🎲 Dice tile · roll it (D)" in the host panel's status line, then "· spun" / "· rolled", instead of "No question on this tile". (fa2ca20)
+- With no phone buzzers, a handed-out 🎭 deal stays handed out past the round's end (copied cards can't be unsent), 🎭 Deal… no longer offers "Lasts until the round ends", and ↩ Take the cards back says it only marks them. (7011cd4)
+- Leaving a round now says when the 🎭 deal's cards or 🤫 cards go with it, naming the round left ("Go to Round 2? The 🎭 Odd one out cards go with Round 1."). (d805bb7, 1564eab)
+- 🎭 Deal… marks a ready-made deal or wheel the game already has as "· already in this game". (42682a8)
+- The changelog rule in CLAUDE.md, docs/development.md and at the top of CHANGELOG.md says the real steps: commit the line under Unreleased, add the hashes once known, and stamp the date when pushing. (fc46722, 3e6dcc7)
+- CLAUDE.md gives a map of the repo, setup, the checks fastest first with their times, the rules not to change, and the commit title style, and /gate and /changelog commands walk through the checks and the changelog steps. (eeb22b5, f730916, 98547e9)
+- CI reads the Node version from .nvmrc, keys its npm cache on the buzzer room's lockfile too, gives the release job a 15-minute limit, and a svelte-check warning now fails `npm run check`. (1ac015c)
+
+### Fixed
+
+- Hosting from a phone, the 📱 Phone buzzers card no longer sticks out sideways: on a narrow phone (under about 395px wide) Free seat and Kick show as just 📱 and ⛔, each player stays on one line, and Start game ▶ can be tapped. The in-game 📱 list keeps their words. (9b21391, 680b77c)
+- After a reload mid-game in one window, the "Be right back" card sits where the stage is, at its size, so a capture of just the stage shows the whole card and none of the host's buttons. (ae7ea34)
+- The Final's and ✍ clues' answer counts agree: the answers box and the check before 👁 Reveal answer both say e.g. "1 of 2 phones answered · Player 3 answers out loud", and "All phones answered" once the last one is in. (db34031, cb7f43d)
+
 ## 2026-11-24
 
 ### Changed
@@ -3103,6 +3137,7 @@ Commits whose titles don't say what they contain:
 
 | Commit | Title | What it is |
 |---|---|---|
+| 107407c | Tests: npm run gate runs everything CI checks before a release in one command | The gate leaves out the desktop app's builds and Rust tests, and runs the full e2e suite, which the release doesn't wait for; corrected in c1a356a |
 | 4356683 | Tests: the spaces check parses only the components' markup, and has room on a busy machine | The spaces check is src/lib/spaces.test.ts, which finds words run into the one before them (“▸ More rules· …”); it now reads only the components' markup, not their scripts, and may take 30 s |
 | 2f87f2a | The timer box keeps its corner ✕ (a word there could wrap the status line and shrink the one-window stage) | Takes back the timer box's ✕ Close from ab07118: its ✕ is bare again, as in v2.38.0, and SPEC lists it among the corner ✕s |
 | f09c3c2 | The tools row steps back while a situation's box is open; the tiebreaker's 🏆 winner and the host panel's last blues in the one look | “The host panel's last blues”: the check's lit key is tinted and a media link's ▶ Open ↗ is plain, so the panel's one solid blue is its blue button; the tiebreaker's pressed 🏆 takes the selected look (it was green) |
