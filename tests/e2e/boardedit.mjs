@@ -787,6 +787,47 @@ try {
   if (shots) await host.screenshot({ path: `${shots}/names-editor.png` });
   await ctx2.close();
 
+  // ---------- ✎ Edit board with the dice still up (one window, 1280×720) ----------
+  // The dice stay on the stage while editing, but a click there picks a space (not ▶ Move, as a click on landed dice
+  // is when playing), and the edit box opens with its heading and ✓ Done editing in view.
+  console.log('Edit board with the dice up:');
+  const ctxD = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const dp = await ctxD.newPage();
+  dp.on('pageerror', (e) => errors.push(`[dice up] ${e.message}`));
+  await start(dp);
+  await dp.keyboard.press('d');
+  await dp.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
+  await dp.waitForTimeout(1500);
+  await dp.locator('.stage-box .ov').waitFor();
+  // (No step yet in this game: no last-step line.)
+  const lastD = async () => ((await dp.locator('.bh .last').count()) ? last(dp) : '');
+  const lastBefore = await lastD();
+  // (Clicked, ✎ Edit board keeps the focus, at the box's foot.)
+  await dp.locator('.bh').getByRole('button', { name: /Edit board/ }).click();
+  await dp.locator('[data-board-editing]').waitFor();
+  await dp.waitForTimeout(400);
+  const doneInView = await dp
+    .locator('[data-board-editing]')
+    .getByRole('button', { name: '✓ Done editing' })
+    .evaluate((b) => {
+      const r = b.getBoundingClientRect();
+      for (let p = b.parentElement; p; p = p.parentElement) {
+        const c = p.getBoundingClientRect();
+        if (/(auto|scroll|hidden)/.test(getComputedStyle(p).overflowY) && (r.top < c.top - 1 || r.bottom > c.bottom + 1)) return `out of ${p.className} (${Math.round(r.top)}..${Math.round(r.bottom)} vs ${Math.round(c.top)}..${Math.round(c.bottom)})`;
+      }
+      return r.bottom <= innerHeight ? 'in view' : `below the window (${Math.round(r.bottom)})`;
+    });
+  assert(doneInView === 'in view', `opened with the dice up, the edit box shows ✓ Done editing (${doneInView})`);
+  assert((await dp.locator('.stage-box .ov').count()) === 1, 'the dice stay on the stage while editing');
+  const dl = await box(dp.locator('.stage-box [data-board-edit]'));
+  await dp.mouse.click(dl.x + (650 * dl.width) / 1920, dl.y + (300 * dl.height) / 1080);
+  await dp.locator('[data-picked-space="b2"]').waitFor({ timeout: 3000 });
+  assert(
+    (await lastD()) === lastBefore && !(await dp.locator('.toast', { hasText: 'Landed' }).count()),
+    `a click on a space with the dice up picks it, and moves nobody (${await lastD()})`,
+  );
+  await ctxD.close();
+
   // ---------- The check's ▶ Run, for a landing whose action is for the players picked ----------
   // (Thief takes $100 from the players picked, as the landing box's own −$100 button does: the check waits for a pick,
   // then gives it to them, not to whoever landed.)

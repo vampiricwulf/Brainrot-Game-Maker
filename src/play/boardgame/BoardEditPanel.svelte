@@ -50,7 +50,9 @@
 </script>
 
 <div class="be" data-board-editing>
-  <div class="row note">
+  <!-- (Opening it brings its heading and ✓ Done editing into view: under the stage this part scrolls, and the box can
+       open scrolled down, kept on ✎ Edit board at its foot.) -->
+  <div class="row note" {@attach (el) => el.scrollIntoView({ block: 'nearest' })}>
     <b>✎ Editing the board</b>
     <span class="muted small">
       {dual ? 'Viewers see the changes as you make them (not the dashed marks).' : 'Viewers see this: the board changes as you edit it, with its dashed marks.'}
