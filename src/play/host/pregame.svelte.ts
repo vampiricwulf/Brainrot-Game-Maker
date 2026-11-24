@@ -51,7 +51,7 @@ export interface PregameHost {
   /** The ? list (Play keeps it). */
   showKeys: boolean;
   readonly checksEl: HTMLElement | undefined;
-  /** The game has been left (Play's onDestroy). */
+  /** The game has been left (Play's onDestroy). A plain value, not a reactive one: read it from `host` each time. */
   readonly left: boolean;
   /** Sample players' names, by id (nobody renamed them). */
   readonly samples: Map<string, string>;
@@ -79,7 +79,6 @@ export function createPregame(host: PregameHost) {
   const dual = $derived(host.dual);
   const showSound = $derived(host.showSound);
   const checksEl = $derived(host.checksEl);
-  const left = $derived(host.left);
   const gameRev = $derived(host.gameRev);
   const gameCopy = $derived(host.gameCopy);
   const onresume = $derived(host.onresume);
@@ -314,7 +313,7 @@ export function createPregame(host: PregameHost) {
   /** Where ◀ Fix in editor goes: the first warning's tab (else the first note's). */
   const fixAt = $derived((checks.find((c) => c.level === 'warn' && c.fix) ?? checks.find((c) => c.fix))?.fix);
   const recheck = debounce(() => {
-    if (!left && app.pregame) {
+    if (!host.left && app.pregame) {
       checks = gameChecks(gameCopy?.() ?? $state.snapshot(game));
       checksReady = true;
     }
