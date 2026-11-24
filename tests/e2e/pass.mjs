@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, openGameFile, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, section } from './helpers.mjs';
+import { appFile, editorReady, openGameFile, startBuzzer, startRoomOn, failureShots, assert, sleep, until, launchChromium, section } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -278,7 +278,12 @@ try {
   assert(true, 'everyone passed with the countdown going: it stops');
   await page.keyboard.press('Control+z');
   await page.locator('.stage-box .timer .num').waitFor();
-  assert(+(await page.locator('.stage-box .timer .num').innerText()) > 0 && (await big(cat)) === 'You passed', 'Ctrl+Z brings the countdown back, with the passes as they were');
+  // Cat's phone hears of the undo through the room, a moment after the host's stage shows it.
+  const undone = async () => [+(await page.locator('.stage-box .timer .num').innerText()), await big(cat)];
+  assert(
+    await until(async () => { const [n, b] = await undone(); return n > 0 && b === 'You passed'; }, 5_000),
+    `Ctrl+Z brings the countdown back, with the passes as they were (${JSON.stringify(await undone())})`,
+  );
   await page.keyboard.press('Control+y');
   await page.locator('.stage-box .timer').waitFor({ state: 'detached' });
   assert(true, 'and Ctrl+Y stops it again');
