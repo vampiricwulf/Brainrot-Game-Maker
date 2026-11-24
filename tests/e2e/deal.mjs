@@ -14,10 +14,9 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored } from './helpers.mjs';
+import { appFile, flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 mkdirSync('test-results', { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function assert(cond, msg) {

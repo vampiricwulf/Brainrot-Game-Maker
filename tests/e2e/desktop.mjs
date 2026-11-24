@@ -11,11 +11,10 @@ import { chromium } from 'playwright-core';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, clickExportHtml, editorReady, packGame } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, clickExportHtml, editorReady, packGame } from './helpers.mjs';
 import { gif, noise } from './mediafixtures.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const url = pathToFileURL(file).href;
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const browser = await chromium.launch({ executablePath });

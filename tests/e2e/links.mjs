@@ -12,10 +12,9 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import JSZip from 'jszip';
-import { addClassicRounds, nameGame, exportHtml, openGameFile } from './helpers.mjs';
+import { appFile, addClassicRounds, nameGame, exportHtml, openGameFile } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const url = pathToFileURL(file).href;
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });

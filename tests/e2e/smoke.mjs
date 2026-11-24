@@ -1,12 +1,11 @@
 // End-to-end smoke test of the built single-file app, opened from disk (file://) like a user would.
-// Usage: npm run build && npm run test:e2e   (SCREENSHOTS=dir to save screenshots)
+// Usage: npm run test:quick   (builds first; SCREENSHOTS=dir to save screenshots)
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const url = pathToFileURL(file).href;
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
@@ -94,7 +93,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
+import { appFile, addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {

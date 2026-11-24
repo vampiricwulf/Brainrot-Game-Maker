@@ -16,10 +16,9 @@ import { createServer } from 'node:http';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { editorReady, forgetSeen, openGameFile, packGame, recordSeen, roomKeys, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, roomKeys, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 mkdirSync('test-results', { recursive: true });
 const MB = 1024 * 1024;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

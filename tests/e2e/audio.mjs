@@ -8,10 +8,9 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip } from './helpers.mjs';
+import { appFile, addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const fileUrl = pathToFileURL(file).href;
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });

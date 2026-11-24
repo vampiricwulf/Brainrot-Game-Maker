@@ -9,10 +9,9 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 // (CI sets SCREENSHOTS: a failure leaves its picture in the run's e2e-debug files.)
 const shots = process.env.SHOTS || process.env.SCREENSHOTS;

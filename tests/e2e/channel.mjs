@@ -4,11 +4,9 @@
 import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { appFile, addClassicRounds, playWithPlayers } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const html = readFileSync(file);
 const server = createServer((req, res) => {
   res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });

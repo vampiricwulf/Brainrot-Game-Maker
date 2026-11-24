@@ -3,12 +3,10 @@
 // and no "or drop it here", but the keys window still lists the keys. A computer shows all of it, and no note.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addPlayers } from './helpers.mjs';
+import { appFile, addPlayers } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const url = pathToFileURL(file).href;
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const browser = await chromium.launch({ executablePath });

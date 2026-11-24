@@ -1,13 +1,10 @@
 // Is a newer version out? GitHub's "latest release" answer is faked here: the editor says when one is out (with the
 // new file to download, for the HTML file, then says on the page what to do with it), "Not now" puts it away for that
 // version, and ℹ About checks on demand. The copy online offers a reload instead.
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, launchChromium, lineOf, playWithPlayers } from './helpers.mjs';
+import { appFile, addClassicRounds, launchChromium, lineOf, playWithPlayers } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const url = pathToFileURL(file).href;
 const browser = await launchChromium();
 const errors = [];

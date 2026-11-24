@@ -1,13 +1,11 @@
 // Board images: category header images, tile images, free-placed board images (layers, opacity,
 // behind the tiles, click-through), the banner above the board, and how they show up in a game.
-import { existsSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, launchChromium, playWithPlayers } from './helpers.mjs';
+import { appFile, addClassicRounds, launchChromium, playWithPlayers } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
 const browser = await launchChromium();

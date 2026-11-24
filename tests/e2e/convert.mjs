@@ -14,13 +14,11 @@
 // so what plays in Chrome or Edge on Windows or Mac, and converting to MP4 (H.264) or M4A (AAC), are checked by hand.)
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, editorReady, recordSeen, stored } from './helpers.mjs';
+import { appFile, addClassicRounds, editorReady, recordSeen, stored } from './helpers.mjs';
 import { clip, fixturePage, noise, readBack, ts, withMpeg2Picture } from './mediafixtures.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 mkdirSync('test-results', { recursive: true });
 function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);

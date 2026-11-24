@@ -4,12 +4,10 @@
 // Tiebreaker have the quick Question / Answer fields. Every gesture is one named step, and nothing asks first.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, dragBy } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, dragBy } from './helpers.mjs';
 
-const file = resolve(process.env.APP_FILE || 'dist/index.html');
-if (!existsSync(file)) throw new Error('Run `npm run build` first');
+const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const shots = process.env.SHOTS;
 if (shots) mkdirSync(shots, { recursive: true });

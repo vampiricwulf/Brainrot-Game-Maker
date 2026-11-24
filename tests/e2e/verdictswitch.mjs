@@ -2,12 +2,10 @@
 // this opening, and 📜 Log › Scores' ↷ Restore on the mark a switch took back takes the switch back (never counted twice).
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { addClassicRounds, playWithPlayers, stored } from "./helpers.mjs";
+import { addClassicRounds, appFile, playWithPlayers, stored } from "./helpers.mjs";
 
-const file = resolve(process.env.APP_FILE || "dist/index.html");
-if (!existsSync(file)) throw new Error("Run `npm run build` first");
+const file = appFile();
 const executablePath =
   process.env.CHROMIUM_PATH ||
   (existsSync("/opt/pw-browsers/chromium")
