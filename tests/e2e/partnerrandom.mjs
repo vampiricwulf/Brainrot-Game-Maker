@@ -1,3 +1,4 @@
+// @ts-check
 // 🤝 Partner clues placed at random, and a steal on one of them (docs/PARTNER-CLUES-SPEC.md §5.1, §8.3, §21, milestone
 // P4). The board has a partner clue made by hand (Movies $200, "No steal"), three written tiles, a ✍ tile and a tile
 // with no answer. In the editor the 🤝 Partner clues box asks for 2: 🔀 Randomize places 2, never on the ✍ tile or the
@@ -168,6 +169,7 @@ try {
   );
   // (What Start placed, as the game in progress keeps it: the stage doesn't say which tiles are what.)
   const savedGame = async () => (await stored(host))?.game ?? null;
+  /** @type {any} */
   let board = null;
   assert(await until(async () => (board = (await savedGame())?.rounds?.[0])?.categories?.flatMap((c) => c.clues).filter((cl) => cl.type === 'partner').length === 2), 'the game in progress has 2 partner clues');
   const all = board.categories.flatMap((c, ci) => c.clues.map((cl, r) => ({ ...cl, at: `${ci},${r}`, ci, r })));

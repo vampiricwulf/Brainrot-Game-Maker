@@ -1,3 +1,4 @@
+// @ts-check
 // ✍ Everyone answers: a clue where every player types an answer on their phone, against the real buzzer room (buzzer/
 // under `wrangler dev`). Only the host sees the answers; the stream sees who has answered (in a single window the host
 // panel too, until the answer is up); showing the answer locks them; the host marks each ✔ / ✘. Then, with an audience

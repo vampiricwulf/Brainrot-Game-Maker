@@ -1,3 +1,4 @@
+// @ts-check
 // Board images: category header images, tile images, free-placed board images (layers, opacity,
 // behind the tiles, click-through), the banner above the board, and how they show up in a game.
 import { mkdirSync } from 'node:fs';

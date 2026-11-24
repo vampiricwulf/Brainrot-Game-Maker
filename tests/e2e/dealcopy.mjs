@@ -1,3 +1,4 @@
+// @ts-check
 // 🎭 Deals with no phone buzzers (docs/SPEC.md §6, docs/hosting.md "🎭 Deal…"), in one window (the host page is what
 // viewers see). Its lists mark the ready-made Odd one out and Locations wheel as already in this game (it has its own
 // copies). Dealt and ✔ handed out, the cards are copied to each player (📋), so there's no "Lasts" choice to make

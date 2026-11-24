@@ -1,3 +1,4 @@
+// @ts-check
 // Shared e2e steps.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -7,6 +8,10 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inspect, isDeepStrictEqual } from 'node:util';
 import { deflateSync } from 'node:zlib';
+
+/** @typedef {import('playwright-core').Page} Page */
+/** @typedef {import('playwright-core').Locator} Locator */
+/** @typedef {import('playwright-core').Browser} Browser */
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -60,6 +65,7 @@ export function appFile() {
 /**
  * Starts Chromium (CHROMIUM_PATH, or the sandbox's one) with the tests' fonts (FONTCONFIG_FILE, set above). Layout
  * checks measure text, and a wider UI font (Inter is system-ui on some Linux desktops) moves what they measure.
+ * @param {import('playwright-core').LaunchOptions} [opts]
  */
 export function launchChromium(opts = {}) {
   const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -163,13 +169,16 @@ export function failureDir() {
  * On a failure: a full-page screenshot of each page in failureDir(), as `<name>-failure.png` for one page or
  * `<name>-<label>-failure.png` for several, each logged with its address. `pages` is a page, a list of pages or
  * [label, page] pairs, or a browser (all its open pages). Closed pages, and a browser that never started, are skipped.
+ * @param {string} name
+ * @param {Page | Browser | Array<Page | [string, Page]> | null | undefined} pages
  */
 export async function failureShots(name, pages) {
   try {
     let list = [];
-    if (pages && typeof pages.contexts === 'function') list = pages.contexts().flatMap((c) => c.pages()).map((p, i) => [String(i + 1), p]);
-    else if (pages && typeof pages.screenshot === 'function') list = [['', pages]];
-    else if (Array.isArray(pages)) list = pages.map((p, i) => (Array.isArray(p) ? p : [String(i + 1), p]));
+    const given = /** @type {any} */ (pages);
+    if (given && typeof given.contexts === 'function') list = given.contexts().flatMap((c) => c.pages()).map((p, i) => [String(i + 1), p]);
+    else if (given && typeof given.screenshot === 'function') list = [['', given]];
+    else if (Array.isArray(given)) list = given.map((p, i) => (Array.isArray(p) ? p : [String(i + 1), p]));
     list = list.filter(([, p]) => p && !p.isClosed());
     const dir = failureDir();
     for (const [label, p] of list) {
@@ -189,6 +198,7 @@ export async function failureShots(name, pages) {
  * back to the board's tab. Does nothing if the game already has rounds (e.g. after a reload).
  * The board wants no Daily Doubles (a test makes a tile one by hand, which counts it): Start game would otherwise
  * put one on a random tile, and a test clicking that tile would get its wager screen.
+ * @param {Page} page
  */
 export async function addClassicRounds(page) {
   await page.getByRole('button', { name: 'Open…' }).waitFor();
@@ -201,7 +211,10 @@ export async function addClassicRounds(page) {
   await noDailyDoubles(page);
 }
 
-/** The open board wants no Daily Doubles (none go on at random when the game starts). */
+/**
+ * The open board wants no Daily Doubles (none go on at random when the game starts).
+ * @param {Page} page
+ */
 export async function noDailyDoubles(page) {
   const box = page.getByLabel('How many Daily Doubles');
   await box.fill('0');
@@ -211,6 +224,8 @@ export async function noDailyDoubles(page) {
 /**
  * The first Save (or export) of an untitled game asks for its name: answer with `name` ('' keeps "Untitled Game"). Its
  * button is Save, or Export when it's for the play-only web page.
+ * @param {Page} page
+ * @param {string} [name]
  */
 export async function nameGame(page, name = '') {
   const dialog = page.getByRole('dialog', { name: 'Name your game' });
@@ -219,7 +234,11 @@ export async function nameGame(page, name = '') {
   await dialog.getByRole('button', { name: /^(Save|Export)$/ }).click();
 }
 
-/** ⋯ → ⬇ Export as a web page… (play-only): Export HTML, the play-only web page. */
+/**
+ * ⋯ → ⬇ Export as a web page… (play-only): Export HTML, the play-only web page.
+ * @param {Page} page
+ * @param {Parameters<Locator['click']>[0]} [opts] for its clicks
+ */
 export async function clickExportHtml(page, opts = {}) {
   await page.getByRole('button', { name: /^More:/ }).click(opts);
   await page.getByRole('menuitem', { name: /Export as a web page/ }).click(opts);
@@ -228,6 +247,8 @@ export async function clickExportHtml(page, opts = {}) {
 /**
  * Export HTML, answering the name it asks for on an untitled game's first export (with `name`: '' keeps "Untitled Game").
  * Returns the download.
+ * @param {Page} page
+ * @param {string} [name]
  */
 export async function exportHtml(page, name = '') {
   // Nothing may be open over the editor: a window or question still up leaves the header inert, so the click would wait
@@ -247,6 +268,8 @@ export async function exportHtml(page, name = '') {
 /**
  * New, Open… or a recent game asks before replacing a game with unsaved changes: answer it (Save first, Cancel, or
  * 'Discard' for "Open anyway" / "Reopen anyway" / "Start new anyway", which keeps it in Recent games).
+ * @param {Page} page
+ * @param {string} [answer]
  */
 export async function answerReplace(page, answer = 'Discard') {
   const dialog = page.getByRole('dialog', { name: /^(Start a new game|Open|Reopen)/ });
@@ -259,28 +282,44 @@ export async function answerReplace(page, answer = 'Discard') {
 /**
  * The editor takes edits: not while a game is being put in place of another (until the new one's undo history has
  * started). A fill meanwhile is lost, since the editor is inert then; a click waits by itself.
+ * @param {Page} page
  */
 export async function editorReady(page) {
-  await page.waitForFunction(() => !document.querySelector('.editor > header')?.inert && !document.querySelector('.editor > .body')?.inert);
+  await page.waitForFunction(() => {
+    const inert = (/** @type {string} */ sel) => /** @type {HTMLElement | null} */ (document.querySelector(sel))?.inert;
+    return !inert('.editor > header') && !inert('.editor > .body');
+  });
 }
 
 /**
  * The words selected (blue) on the page outside a field, '' for none (a text box's own selection doesn't count). A click,
  * a double-click, a drag or Ctrl+A selects nothing but fields and the few words marked to copy (.selectable).
+ * @param {Page} page
+ * @returns {Promise<string>}
  */
 export const selectedWords = (page) =>
   page.evaluate(() => (document.activeElement?.matches?.('input, textarea') ? '' : String(getSelection()).replace(/\s+/g, ' ').trim()));
-/** Nothing on the page is selected (outside a field). */
+/**
+ * Nothing on the page is selected (outside a field).
+ * @param {Page} page
+ */
 export const noSelection = async (page) => (await selectedWords(page)) === '';
 
-/** 🎨 Theme › ▸ Share or bring in a theme: open its fold (it starts folded; this computer remembers it). */
+/**
+ * 🎨 Theme › ▸ Share or bring in a theme: open its fold (it starts folded; this computer remembers it).
+ * @param {Page} page
+ */
 export async function openThemeShare(page) {
   const fold = page.locator('[data-share-fold]');
   if ((await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
   await page.locator('#theme-share').waitFor();
 }
 
-/** Open… a game file (`files` as for setFiles): Open… is one window, whose Browse for a game file… picks it. */
+/**
+ * Open… a game file (`files` as for setFiles): Open… is one window, whose Browse for a game file… picks it.
+ * @param {Page} page
+ * @param {Parameters<import('playwright-core').FileChooser['setFiles']>[0]} files
+ */
 export async function openGameFile(page, files) {
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Open…' }).click();
@@ -291,13 +330,18 @@ export async function openGameFile(page, files) {
 /**
  * Drag in small steps (the browser's own drag and drop needs a few moves to start) from the middle of one thing to the
  * middle of another, or to a point ({ x, y }).
+ * @param {Page} page
+ * @param {Locator} from
+ * @param {Locator | { x: number, y: number }} to
  */
 export async function dragBy(page, from, to) {
+  const point = /** @type {{ x?: number, y?: number }} */ (to);
+  const toThing = /** @type {Locator} */ (to);
   // (Both ends on screen: the mouse can't go past the window's edge.)
-  if (to.x === undefined) await to.evaluate((e) => e.scrollIntoView({ block: 'nearest' }));
+  if (point.x === undefined) await toThing.evaluate((e) => e.scrollIntoView({ block: 'nearest' }));
   await from.evaluate((e) => e.scrollIntoView({ block: 'nearest' }));
   const a = await from.boundingBox();
-  const b = to.x !== undefined ? to : await to.boundingBox().then((r) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 }));
+  const b = point.x !== undefined ? point : await toThing.boundingBox().then((r) => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 }));
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
   await page.mouse.move(b.x, b.y, { steps: 10 });
@@ -308,26 +352,35 @@ export async function dragBy(page, from, to) {
 /**
  * Clicks as Safari, the Mac desktop app and Firefox on a Mac make them: a button clicked doesn't take the focus, and the
  * field that had it lets go (its blur has no relatedTarget). Returns what puts Chromium's own clicks back.
+ * @param {Page} page
  */
 export async function macClicks(page) {
   await page.evaluate(() => {
-    window.macClick = (e) => {
+    window.__macClick = (e) => {
       if (!e.target.closest?.('button')) return;
       e.preventDefault();
-      document.activeElement?.blur();
+      /** @type {HTMLElement | null} */ (document.activeElement)?.blur();
     };
-    window.addEventListener('mousedown', window.macClick, true);
+    window.addEventListener('mousedown', window.__macClick, true);
   });
-  return () => page.evaluate(() => window.removeEventListener('mousedown', window.macClick, true));
+  return () => page.evaluate(() => window.removeEventListener('mousedown', window.__macClick, true));
 }
 
-/** On the pre-game screen (▶ Play): add `n` players with ＋ Add player. */
+/**
+ * On the pre-game screen (▶ Play): add `n` players with ＋ Add player.
+ * @param {Page} page
+ * @param {number} n
+ */
 export async function addPlayers(page, n) {
   const add = page.getByRole('button', { name: '＋ Add player' });
   for (let i = 0; i < n; i++) await add.click();
 }
 
-/** ▶ Play from the editor, then add `n` players on the pre-game screen (where the game's players are set). */
+/**
+ * ▶ Play from the editor, then add `n` players on the pre-game screen (where the game's players are set).
+ * @param {Page} page
+ * @param {number} n
+ */
 export async function playWithPlayers(page, n) {
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
@@ -337,6 +390,7 @@ export async function playWithPlayers(page, n) {
 /**
  * ▶ Play's Start game ▶, and, when it asks first about the game in progress it would throw away (one with points, tiles
  * played or rolls), its Start new game (past the question's double-click guard). Resolves once the game is on screen.
+ * @param {Page} page
  */
 export async function startNewGame(page) {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
@@ -351,43 +405,57 @@ export async function startNewGame(page) {
 /**
  * The 📱 Phone buzzers card's ▸ Buzzer options fold (when the buzzers open, new players, colors, the early wait), opened
  * (this computer remembers it). `where`: the card, or the page.
+ * @param {Page | Locator} where
  */
 export async function openBuzzerOptions(where) {
   const fold = where.locator('[data-buzzer-options]');
   await fold.waitFor();
-  if (!(await fold.evaluate((d) => d.open))) await fold.locator('summary').click();
-  await fold.evaluate((d) => new Promise((ok) => (d.open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
+  if (!(await fold.evaluate((d) => /** @type {HTMLDetailsElement} */ (d).open))) await fold.locator('summary').click();
+  await fold.evaluate((d) => new Promise((ok) => (/** @type {HTMLDetailsElement} */ (d).open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
   return fold;
 }
 
-/** The pre-game screen's 📺 On stream fold (the Starting soon and cover cards, captions…), opened (remembered). */
+/**
+ * The pre-game screen's 📺 On stream fold (the Starting soon and cover cards, captions…), opened (remembered).
+ * @param {Page} page
+ */
 export async function openOnStream(page) {
   const fold = page.locator('[data-stream-fold]');
   await fold.waitFor();
-  if (!(await fold.evaluate((d) => d.open))) await fold.locator('summary').click();
-  await fold.evaluate((d) => new Promise((ok) => (d.open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
+  if (!(await fold.evaluate((d) => /** @type {HTMLDetailsElement} */ (d).open))) await fold.locator('summary').click();
+  await fold.evaluate((d) => new Promise((ok) => (/** @type {HTMLDetailsElement} */ (d).open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
   return fold;
 }
 
-/** The pre-game screen's player list with its start scores shown (± Start scores; they show anyway when one isn't 0). */
+/**
+ * The pre-game screen's player list with its start scores shown (± Start scores; they show anyway when one isn't 0).
+ * @param {Page} page
+ */
 export async function openStartScores(page) {
   const toggle = page.getByRole('button', { name: '± Start scores' });
   if ((await toggle.getAttribute('aria-pressed')) !== 'true') await toggle.click();
   await page.locator('.pregame .player input.score').first().waitFor();
 }
 
-/** The pre-game screen's ⚖ Game rules, opened (rules, timers, the round intro). */
+/**
+ * The pre-game screen's ⚖ Game rules, opened (rules, timers, the round intro).
+ * @param {Page} page
+ */
 export async function openRules(page) {
   const rules = page.locator('details.rules');
   await rules.waitFor();
-  if (!(await rules.evaluate((d) => d.open))) await rules.locator('summary').click();
-  await rules.evaluate((d) => new Promise((ok) => (d.open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
+  if (!(await rules.evaluate((d) => /** @type {HTMLDetailsElement} */ (d).open))) await rules.locator('summary').click();
+  await rules.evaluate((d) => new Promise((ok) => (/** @type {HTMLDetailsElement} */ (d).open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
   return rules;
 }
 
 // ---------- The host panel ----------
 
-/** The host panel's main button (its NEXT cell: 👁 Reveal answer, Show question ▶, Next ▶…); with `name`, while it says that. */
+/**
+ * The host panel's main button (its NEXT cell: 👁 Reveal answer, Show question ▶, Next ▶…); with `name`, while it says that.
+ * @param {Page} page
+ * @param {string | RegExp} [name]
+ */
 export const mainButton = (page, name) => {
   const b = page.locator('.panel [data-next]');
   return name === undefined ? b : b.and(page.getByRole('button', { name, exact: true }));
@@ -398,6 +466,9 @@ export const mainButton = (page, name) => {
  * (👁 Reveal answer / 🙈 Hide answer), 'putback' (↩ Put back (keep tile)) or 'done' (▦ Done ▶ board, the tiebreaker's
  * 🏁 Back to results); with `name`, the one that says that. The main button carries the mark of the place whose step it
  * does: the row's own button comes first, else the main button, so the step is found wherever it is now.
+ * @param {Page} page
+ * @param {string} place
+ * @param {string | RegExp} [name]
  */
 export const flowButton = (page, place, name) => {
   const b = page.locator(`.panel [data-flow="${place}"]`);
@@ -408,14 +479,20 @@ export const flowButton = (page, place, name) => {
  * A step button (data-step) in a moment's box (the 🤝 box's 🎡 Spin for a partner…): the box's own button for a step the
  * main button may do too, never the main button. `box`: the box (a locator), or a page for any in its host panel; with
  * `name`, the one that says that.
+ * @param {Page | Locator} box
+ * @param {string | RegExp} [name]
  */
 export const stepButton = (box, name) => {
-  const root = typeof box.mainFrame === 'function' ? box.locator('.panel') : box;
+  const root = typeof (/** @type {any} */ (box).mainFrame) === 'function' ? box.locator('.panel') : box;
   const b = root.locator('[data-step]');
   return name === undefined ? b : b.and(root.getByRole('button', { name, exact: true }));
 };
 
-/** What the main button says, without its key cap (R, N, Esc…). */
+/**
+ * What the main button says, without its key cap (R, N, Esc…).
+ * @param {Page} page
+ * @returns {Promise<string>}
+ */
 export const mainLabel = (page) =>
   mainButton(page).evaluate((b) => [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim());
 
@@ -424,6 +501,9 @@ export const mainLabel = (page) =>
  * panel says `name` (no copy anywhere else, the blue button included), it's in `box`, and it's in sight there, not
  * scrolled away inside the box nor under its foot (what's at its middle is it). Resolves to '' when it holds, else
  * what's wrong, for the assertion's message.
+ * @param {Locator} box
+ * @param {string} name
+ * @returns {Promise<string>}
  */
 export async function boxHasAction(box, name) {
   const all = box.page().locator('.panel').getByRole('button', { name, exact: true });
@@ -439,7 +519,11 @@ export async function boxHasAction(box, name) {
   return seen ? '' : `the box's “${name}” is out of sight`;
 }
 
-/** The blue button is this step of the show (its words without the key cap), and blue (the panel's one .primary). */
+/**
+ * The blue button is this step of the show (its words without the key cap), and blue (the panel's one .primary).
+ * @param {Page} page
+ * @param {string} label
+ */
 export async function flowIs(page, label) {
   const b = mainButton(page);
   return (await b.count()) === 1 && (await mainLabel(page)) === label && (await b.evaluate((el) => el.classList.contains('primary')));
@@ -451,7 +535,10 @@ export async function flowIs(page, label) {
  * The check, while it's open (its data-goon says its heading: 'first', 'loss' or 'nothing'). `ready`: once its guard
  * is over (600 ms after it opens: keys and clicks on it count from then), a state to wait on, never a timer.
  */
-/** Closing or reloading the tab now would have the browser ask first ("Leave site?"): the app's beforeunload says so. */
+/**
+ * Closing or reloading the tab now would have the browser ask first ("Leave site?"): the app's beforeunload says so.
+ * @param {Page} page
+ */
 export const leaveAsks = (page) =>
   page.evaluate(() => {
     const e = new Event('beforeunload', { cancelable: true });
@@ -459,16 +546,37 @@ export const leaveAsks = (page) =>
     return e.defaultPrevented;
   });
 
+/**
+ * @param {Page} page
+ * @param {{ ready?: boolean }} [opts]
+ */
 export const goOnCheck = (page, { ready = false } = {}) => page.locator(ready ? '.panel [data-goon][data-ready]' : '.panel [data-goon]');
-/** One thing left in it, by its id: 'picked', 'dd', 'buzzers', 'tie', 'answers', 'judge', 'card:<card id>'. */
+/**
+ * One thing left in it, by its id: 'picked', 'dd', 'buzzers', 'tie', 'answers', 'judge', 'card:<card id>'.
+ * @param {Page} page
+ * @param {string} id
+ */
 export const checkItem = (page, id) => goOnCheck(page).locator(`[data-goon-item="${id}"]`);
-/** A fix in it, by the words it starts with ("＋ Award Ann $200 ▶ board", "🔔 Open the buzzers"). */
+/**
+ * A fix in it, by the words it starts with ("＋ Award Ann $200 ▶ board", "🔔 Open the buzzers").
+ * @param {Page} page
+ * @param {string | RegExp} words
+ */
 export const quick = (page, words) => goOnCheck(page).locator('[data-quick]').filter({ hasText: words }).first();
-/** Its quiet "… anyway" (▦ Done anyway: no points, 👁 Reveal anyway). */
+/**
+ * Its quiet "… anyway" (▦ Done anyway: no points, 👁 Reveal anyway).
+ * @param {Page} page
+ */
 export const anyway = (page) => goOnCheck(page).locator('[data-anyway]');
-/** Its Not yet (Esc). */
+/**
+ * Its Not yet (Esc).
+ * @param {Page} page
+ */
 export const notYet = (page) => goOnCheck(page).locator('[data-notyet]');
-/** The Final's 👁 Reveal answer just pressed, its think clock still running: the check asks first, 👁 Reveal anyway. */
+/**
+ * The Final's 👁 Reveal answer just pressed, its think clock still running: the check asks first, 👁 Reveal anyway.
+ * @param {Page} page
+ */
 export async function revealAnyway(page) {
   await checkItem(page, 'clock').waitFor();
   await goOnCheck(page, { ready: true }).waitFor();
@@ -479,6 +587,9 @@ export async function revealAnyway(page) {
  * Whether a fix in the open check is in sight as it opened, scrolled nowhere: all of it inside the check's scrolling
  * part above its faded foot, and a click at its middle lands on it (not on the pinned foot). Playwright's own click
  * scrolls a hidden button into view first, so a test that only clicks it can't tell. '' when it is, else what's wrong.
+ * @param {Page} page
+ * @param {string | RegExp} words
+ * @returns {Promise<string>}
  */
 export async function quickInSight(page, words) {
   return quick(page, words).evaluate((b) => {
@@ -488,16 +599,20 @@ export async function quickInSight(page, words) {
     const fade = parseFloat(getComputedStyle(scroll, '::after').height) || 0;
     const at = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
     const inside = r.top >= s.top - 0.5 && r.bottom <= s.bottom - fade + 0.5;
-    return inside && b.contains(at) ? '' : `“${b.innerText.replace(/\s+/g, ' ').trim()}” at ${Math.round(r.top)}–${Math.round(r.bottom)}, the scrolling part ${Math.round(s.top)}–${Math.round(s.bottom)} (its last ${fade}px faded), the middle on ${at?.tagName}.${at?.className}`;
+    return inside && b.contains(at) ? '' : `“${/** @type {HTMLElement} */ (b).innerText.replace(/\s+/g, ' ').trim()}” at ${Math.round(r.top)}–${Math.round(r.bottom)}, the scrolling part ${Math.round(s.top)}–${Math.round(s.bottom)} (its last ${fade}px faded), the middle on ${at?.tagName}.${at?.className}`;
   });
 }
 
-/** The app's own right-click menu, while it's open. */
+/**
+ * The app's own right-click menu, while it's open.
+ * @param {Page} page
+ */
 export const openMenu = (page) => page.locator('.cm[role="menu"]');
 
 /**
  * What the open right-click menu says, in order: "# heading", each item's words with its key ("👁 Reveal answer · R"),
  * " (off)" on a greyed one, "—" for a line.
+ * @param {Page} page
  */
 export async function menuLines(page) {
   const m = openMenu(page);
@@ -507,12 +622,16 @@ export async function menuLines(page) {
       if (c.classList.contains('sep')) return '—';
       if (c.classList.contains('heading')) return `# ${c.textContent.trim()}`;
       const key = c.querySelector('kbd')?.textContent.trim();
-      return `${c.querySelector('.label')?.textContent.trim()}${key ? ` · ${key}` : ''}${c.disabled ? ' (off)' : ''}`;
+      return `${c.querySelector('.label')?.textContent.trim()}${key ? ` · ${key}` : ''}${/** @type {HTMLButtonElement} */ (c).disabled ? ' (off)' : ''}`;
     }),
   );
 }
 
-/** A finger held still on `target` (a locator) for `ms`, then lifted: a long press on a touch screen, sent from the page. */
+/**
+ * A finger held still on `target` (a locator) for `ms`, then lifted: a long press on a touch screen, sent from the page.
+ * @param {Locator} target
+ * @param {number} [ms]
+ */
 export async function longPress(target, ms = 800) {
   await target.evaluate(async (el, wait) => {
     const r = el.getBoundingClientRect();
@@ -524,19 +643,26 @@ export async function longPress(target, ms = 800) {
   }, ms);
 }
 
-/** The confirmation strip above the fixed bar (Leave this game?, End the game now? 7 clues are left.…). */
+/**
+ * The confirmation strip above the fixed bar (Leave this game?, End the game now? 7 clues are left.…).
+ * @param {Page} page
+ */
 export const confirmStrip = (page) => page.locator('.panel .confirm');
 
 /**
  * Press an answer of a question asked in the panel (Replace, Sell anyway…), once its question takes clicks: in its first
  * moment it takes none (the rest of the double-click that asked it). Cancel needs no wait.
+ * @param {Locator} button
  */
 export async function answerAsk(button) {
   await button.locator('xpath=ancestor::*[@data-ask][@data-ready]').waitFor();
   await button.click();
 }
 
-/** Leaving a round's question, its answer that goes: Go to Double Jeopardy! ▶, End game ▶ (Keep playing stays). */
+/**
+ * Leaving a round's question, its answer that goes: Go to Double Jeopardy! ▶, End game ▶ (Keep playing stays).
+ * @param {Page} page
+ */
 export const leaveAnswer = (page) => confirmStrip(page).getByRole('button', { name: /^(Go to .+|End game) ▶$/ });
 
 // ---------- Phone buzzers ----------
@@ -547,6 +673,7 @@ export const leaveAnswer = (page) => confirmStrip(page).getByRole('button', { na
  * buzz on its way. `drop()` cuts the connection (both ends see it close), `stall()` makes it go silent without closing
  * (a phone asleep in the background), and `blocked` turns new connections away (the network is down). Each of `routes`
  * notes the code the server closed it with (`closed`).
+ * @param {Page} page
  */
 export async function tap(page) {
   const t = { delay: 0, sent: [], armedAt: {}, rewrite: null, blocked: false, routes: [] };
@@ -591,7 +718,10 @@ export async function tap(page) {
   return t;
 }
 
-/** Holds the next buzz from each of these phones, then lets them all go with the same reaction time: a tie. */
+/**
+ * Holds the next buzz from each of these phones, then lets them all go with the same reaction time: a tie.
+ * @param {Array<Awaited<ReturnType<typeof tap>>>} taps
+ */
 export function tieThem(taps) {
   const held = [];
   for (const t of taps)
@@ -610,7 +740,14 @@ export function tieThem(taps) {
     };
 }
 
-/** A plain-colored PNG. */
+/**
+ * A plain-colored PNG.
+ * @param {number} r
+ * @param {number} g
+ * @param {number} b
+ * @param {number} [w]
+ * @param {number} [h]
+ */
 export function png(r, g, b, w = 40, h = 24) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
     let c = n;
@@ -699,6 +836,8 @@ export async function freePort() {
  * same address and storage, as a deploy or a crash would: its rooms come back from storage). `vars`: its settings for this test (as
  * wrangler.jsonc's vars, e.g. { FILE_MB: 4 }), passed as --var (never buzzer/.dev.vars: the working tree is shared).
  * Needs `npm ci` in buzzer/.
+ * @param {string} prefix the name its storage folder starts with
+ * @param {{ vars?: Record<string, string | number> }} [opts]
  */
 export async function startBuzzer(prefix, { vars = {} } = {}) {
   const { spawn } = await import('node:child_process');
@@ -770,6 +909,9 @@ export async function startBuzzer(prefix, { vars = {} } = {}) {
  * ▶ Start the room on a 📱 Phone buzzers card (`keys`: with Enter, not a click): its code, once the card shows it. If it
  * never does, it fails saying what the card says instead (the buzzer server's refusal, or still its Start button) and what the page asked the buzzer
  * server meanwhile.
+ * @param {Locator} card
+ * @param {{ keys?: boolean }} [opts]
+ * @returns {Promise<string>}
  */
 export async function startRoomOn(card, { keys = false } = {}) {
   const page = card.page();
@@ -809,12 +951,17 @@ export async function startRoomOn(card, { keys = false } = {}) {
   }
 }
 
-/** wrangler dev's arguments for these settings (startBuzzer's `vars`): --var K:V each, over wrangler.jsonc's. */
+/**
+ * wrangler dev's arguments for these settings (startBuzzer's `vars`): --var K:V each, over wrangler.jsonc's.
+ * @param {Record<string, string | number>} vars
+ */
 export const buzzerVars = (vars) => Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]);
 
 /**
  * The keys every buzzer room (BuzzRoom Durable Object) under `persist` has stored now: read from a copy of their
  * SQLite files (wrangler dev keeps one per object, its keys in the _cf_KV table), so the server needs no test code.
+ * @param {string} persist
+ * @returns {Promise<string[]>}
  */
 export async function roomKeys(persist) {
   const { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync } = await import('node:fs');
@@ -841,7 +988,7 @@ export async function roomKeys(persist) {
         const db = new DatabaseSync(join(copy, f), { readOnly: true });
         try {
           // (A room that ended has no table left.)
-          if (db.prepare("SELECT 1 FROM sqlite_master WHERE name = '_cf_KV'").get()) keys.push(...db.prepare('SELECT key FROM _cf_KV').all().map((r) => r.key));
+          if (db.prepare("SELECT 1 FROM sqlite_master WHERE name = '_cf_KV'").get()) keys.push(...db.prepare('SELECT key FROM _cf_KV').all().map((r) => /** @type {string} */ (r.key)));
         } finally {
           db.close();
         }
@@ -859,6 +1006,8 @@ export async function roomKeys(persist) {
 /**
  * Whether any file the buzzer room stored (its Durable Objects' SQLite files under `persist`) holds `text`: as the
  * room saves strings (one byte a character for plain ASCII, two otherwise), so look for both.
+ * @param {string} persist
+ * @param {string} text
  */
 export async function roomStored(persist, text) {
   const { readdirSync, readFileSync } = await import('node:fs');
@@ -877,7 +1026,11 @@ export async function roomStored(persist, text) {
   return false;
 }
 
-/** A game pack (.brainrot: a zip of game.json and media/<id>.<ext>) with these files, by media id: what Open… takes. */
+/**
+ * A game pack (.brainrot: a zip of game.json and media/<id>.<ext>) with these files, by media id: what Open… takes.
+ * @param {object} game
+ * @param {Record<string, Uint8Array | string>} files
+ */
 export async function packGame(game, files) {
   const JSZip = (await import('jszip')).default;
   const zip = new JSZip();
@@ -918,15 +1071,18 @@ export function recordSeen() {
       if (!unseen(n.parentElement)) push(n.data, n.parentElement);
     } else if (n.nodeType === Node.ELEMENT_NODE && !unseen(n)) {
       const walk = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
-      for (let t = walk.nextNode(); t; t = walk.nextNode()) if (!unseen(t.parentElement)) push(t.data, t.parentElement);
+      for (let t = walk.nextNode(); t; t = walk.nextNode()) if (!unseen(t.parentElement)) push(/** @type {Text} */ (t).data, t.parentElement);
       for (const el of [n, ...n.querySelectorAll('*')]) for (const a of ATTRS) if (el.hasAttribute(a)) push(el.getAttribute(a), el);
     }
   };
   new MutationObserver((list) => {
     for (const m of list) {
       if (m.type === 'childList') m.addedNodes.forEach(take);
-      else if (m.type === 'characterData') !unseen(m.target.parentElement) && push(m.target.data, m.target.parentElement);
-      else if (m.target.hasAttribute(m.attributeName)) push(m.target.getAttribute(m.attributeName), m.target);
+      else if (m.type === 'characterData') !unseen(m.target.parentElement) && push(/** @type {CharacterData} */ (m.target).data, m.target.parentElement);
+      else {
+        const el = /** @type {Element} */ (m.target);
+        if (el.hasAttribute(m.attributeName)) push(el.getAttribute(m.attributeName), el);
+      }
     }
   }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
 }
@@ -936,6 +1092,9 @@ export function recordSeen() {
  * when a check fails: what held it, the element (its tag, its ancestors), when (ms since the page loaded), and whether
  * it was still on the page by the time it was recorded ("gone at once": added and taken off before it could be drawn).
  * (The screen reader's words are the live region's: div#live-region, drawn nowhere.)
+ * @param {Page} page
+ * @param {string[]} words
+ * @returns {Promise<string[]>}
  */
 export function seenWhere(page, words) {
   return page.evaluate((words) => {
@@ -961,9 +1120,9 @@ export function seenWhere(page, words) {
     let inNode = false;
     const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let t = walk.nextNode(); t; t = walk.nextNode())
-      if (has(t.data) && !t.parentElement?.closest('style, script, noscript, template')) {
+      if (has(/** @type {Text} */ (t).data) && !t.parentElement?.closest('style, script, noscript, template')) {
         inNode = true;
-        out.push(`on the page now in <${t.parentElement?.localName}${cls(t.parentElement)}>: ${near(t.data)}`);
+        out.push(`on the page now in <${t.parentElement?.localName}${cls(t.parentElement)}>: ${near(/** @type {Text} */ (t).data)}`);
       }
     for (const el of document.body.querySelectorAll('*'))
       for (const a of ATTRS) if (el.hasAttribute(a) && has(el.getAttribute(a))) out.push(`on the page now in <${el.localName}${cls(el)}> ${a}: ${near(el.getAttribute(a))}`);
@@ -980,6 +1139,7 @@ export function seenWhere(page, words) {
  * that (src/lib/announce.ts): an editor's last notices ("Deleted card “Leader hint”…") are said after ▶ Play when ▶ Play
  * comes sooner, and would count as said in play. So it waits in the page itself: timers run in the order they're due
  * however busy the page is, so the batch goes before a 1 s timer, and its last 30 ms before one set after that.
+ * @param {Page} page
  */
 export async function forgetSeen(page) {
   await page.evaluate(async () => {
@@ -991,7 +1151,12 @@ export async function forgetSeen(page) {
   });
 }
 
-/** Which of `words` a page (with recordSeen) shows or said, now or since it loaded (case aside). */
+/**
+ * Which of `words` a page (with recordSeen) shows or said, now or since it loaded (case aside).
+ * @param {Page} page
+ * @param {string[]} words
+ * @returns {Promise<string[]>}
+ */
 export async function shownOf(page, words) {
   const text = await page.evaluate(() =>
     [
@@ -1012,6 +1177,9 @@ export async function shownOf(page, words) {
  * ({ game, session, savedAt }), what a reload resumes; 'editorDraft' the editor's game. Null when there is none. A test
  * that reloads waits for the stored session to hold its last host action first: the write waits a moment for more
  * clicks, and the copy written as the page goes away isn't always kept by a browser under test.
+ * @param {Page} page
+ * @param {string} [key]
+ * @returns {Promise<any>}
  */
 export function stored(page, key = 'playSession') {
   return page.evaluate(
@@ -1038,6 +1206,7 @@ export function stored(page, key = 'playSession') {
 /**
  * The context's pages are a host's who used the app before (a setting is kept): a first run counts “What moved in this
  * version” as seen (no ❔ Help dot), so a test of the dot and the open list starts as a returning host.
+ * @param {import('playwright-core').BrowserContext} context
  */
 export const returningHost = (context) =>
   context.addInitScript(() => {
@@ -1051,6 +1220,7 @@ export const returningHost = (context) =>
 /**
  * The editor's sidebar Checklist unfolded (it starts folded on a window under 800 px high; the choice is remembered, so
  * once is enough for a page).
+ * @param {Page} page
  */
 export async function showChecklist(page) {
   const head = page.locator('nav .problems > button.fold');
@@ -1063,6 +1233,7 @@ export async function showChecklist(page) {
  * sit (its height over its line height can't tell: a `normal` line height reads as no number, and a guess passes two
  * lines), whether any of it is cut short with an ellipsis, whether its link (if any) shows whole inside it, and its
  * tooltip.
+ * @param {Element} e
  */
 export const lineOf = (e) => {
   const range = document.createRange();
@@ -1075,5 +1246,5 @@ export const lineOf = (e) => {
   const link = e.querySelector('a')?.getBoundingClientRect();
   const linkIn = !!link && link.left >= box.left - 1 && link.right <= box.right + 1 && link.right <= innerWidth;
   const cut = [e, ...e.querySelectorAll('*')].some((el) => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).textOverflow === 'ellipsis');
-  return { lines, cut, linkIn, title: e.title };
+  return { lines, cut, linkIn, title: /** @type {HTMLElement} */ (e).title };
 };

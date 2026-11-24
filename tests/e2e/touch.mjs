@@ -1,3 +1,4 @@
+// @ts-check
 // The editor on a phone or a tablet: a phone gets a note that it's made for a computer (players join from their phones
 // with the host's code), closed for good with its ✕. A touch screen with no mouse shows no keys on buttons and in menus,
 // and no "or drop it here", but the keys window still lists the keys. A computer shows all of it, and no note.
@@ -197,10 +198,10 @@ try {
   }
 
   // ---------- A computer: a narrow window, and a touch laptop ----------
-  for (const [what, opts] of [
+  for (const [what, opts] of /** @type {[string, import('playwright-core').BrowserContextOptions][]} */ ([
     ['a narrow window on a computer', { viewport: { width: 390, height: 844 } }],
     ['a touch laptop', { viewport: { width: 1280, height: 800 }, hasTouch: true }],
-  ]) {
+  ])) {
     const { ctx, page } = await open(opts);
     await page.waitForTimeout(300);
     assert((await note(page).count()) === 0, `${what} gets no “Made for a computer” note`);

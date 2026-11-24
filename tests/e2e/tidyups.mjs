@@ -1,3 +1,4 @@
+// @ts-check
 // Small editor and host tidy-ups at 1280×720: a tall window keeps its title and ✕ in sight as it scrolls, and 🖼 Media
 // offers 🗑 Delete unused only while some file is unused. Icons that are text by default ask for the colour emoji.
 // ⚙ Settings › Undo says when it snaps a number into range and how many changes a lower one forgot. A wheel tile's
@@ -189,14 +190,14 @@ try {
   const readyGroup = groups.find((g) => g.startsWith('Ready-made (adds a copy to the game): ')) ?? '';
   assert(readyGroup.includes('🎰 Point wheel') && readyGroup.includes('💰 Double or nothing'), `Which wheel has a “Ready-made (adds a copy to the game)” group (${readyGroup.slice(0, 80)}…)`);
   await which.selectOption({ label: '🎰 Point wheel' });
-  const pickedWheel = () => which.evaluate((sel) => sel.selectedOptions[0]?.textContent ?? '');
+  const pickedWheel = () => which.evaluate((sel) => /** @type {HTMLSelectElement} */ (sel).selectedOptions[0]?.textContent ?? '');
   await until(async () => (await pickedWheel()) === 'Point wheel', { timeout: 5_000, every: 100 });
   const undoTitle = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert((await pickedWheel()) === 'Point wheel' && undoTitle.startsWith('Undo: Added wheel “Point wheel”'), `picking 🎰 Point wheel adds it to the game and the tile uses it, one step (${undoTitle})`);
   assert((await clueBox.getByRole('button', { name: '✎ Edit wheel' }).count()) === 1, 'and ✎ Edit wheel can change it');
   await page.keyboard.press('Control+z');
   await until(async () => !(await pickedWheel()).includes('Point wheel'), { timeout: 5_000, every: 100 });
-  const left = await which.evaluate((sel) => [...sel.options].map((o) => o.textContent));
+  const left = await which.evaluate((sel) => [.../** @type {HTMLSelectElement} */ (sel).options].map((o) => o.textContent));
   assert((await pickedWheel()) === 'Choose a wheel…' && !left.includes('Point wheel'), `one Ctrl+Z takes the wheel off the tile and out of the game (${await pickedWheel()})`);
   await page.keyboard.press('Escape');
   await clueBox.waitFor({ state: 'detached' });

@@ -1,3 +1,4 @@
+// @ts-check
 // The editor's 🤫 Cards, end to end (docs/PARTNER-CLUES-SPEC.md §12.2, §14.2, milestone P5): private cards made before
 // the show, then sent in play against the real buzzer room (buzzer/ under `wrangler dev`, local), with three phones on
 // the real phone page.
@@ -257,7 +258,7 @@ try {
 
   // ---------- 📱 On their phone ----------
   await row('Tip A').click();
-  await host.waitForFunction(() => document.querySelector('main [data-field="card-name"]')?.value === 'Tip A');
+  await host.waitForFunction(() => /** @type {HTMLInputElement | null} */ (document.querySelector('main [data-field="card-name"]'))?.value === 'Tip A');
   assert((await row('Tip A').getAttribute('aria-current')) === 'true', 'clicking Tip A opens it');
   const phoneBtn = host.getByRole('button', { name: '📱 On their phone' });
   const xBefore = (await phoneBtn.boundingBox()).x;
@@ -543,7 +544,7 @@ try {
   await editorReady(host);
   await cardsTab.click();
   await row('Wild card').click();
-  await host.waitForFunction(() => document.querySelector('main [data-field="card-name"]')?.value === 'Wild card');
+  await host.waitForFunction(() => /** @type {HTMLInputElement | null} */ (document.querySelector('main [data-field="card-name"]'))?.value === 'Wild card');
   await wordsBox.fill(WILD2);
   const resumeEdits = host.getByRole('button', { name: 'Resume with my edits' });
   await resumeEdits.waitFor();
@@ -620,7 +621,7 @@ try {
   await editorReady(host);
   await cardsTab.click();
   await row('Wild card').click();
-  await host.waitForFunction(() => document.querySelector('main [data-field="card-name"]')?.value === 'Wild card');
+  await host.waitForFunction(() => /** @type {HTMLInputElement | null} */ (document.querySelector('main [data-field="card-name"]'))?.value === 'Wild card');
   await wordsBox.fill(WILD3);
   await resumeEdits.waitFor();
   await undoSays('Undo: Edited card “Wild3-qkzvx words”');

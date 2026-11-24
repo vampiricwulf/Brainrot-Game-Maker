@@ -1,3 +1,4 @@
+// @ts-check
 // Slide editor layers: reaching items stacked under a bigger one (right-click menu, Alt+click, Tab,
 // the Layers list), restacking, locking (clicks go through), hiding while editing, drag-to-select.
 import { mkdirSync } from 'node:fs';
@@ -59,7 +60,7 @@ try {
   await canvas.dispatchEvent('drop', { dataTransfer: dt });
   await page.locator('.insp h4', { hasText: 'Image' }).waitFor();
   const pos = page.locator('.insp section:has(h4:text("Position"))');
-  for (const [k, v] of [['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+  for (const [k, v] of /** @type {[string, number][]} */ ([['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
   await page.keyboard.press('Escape');
   await page.locator('.canvas img').first().click({ trial: true }).catch(() => {});
 
@@ -176,11 +177,11 @@ try {
 
   // Drag-to-select: two shapes in the top-left corner (over the locked picture), clear of the text.
   await layers.filter({ hasText: 'Under the picture' }).locator('.name').click();
-  for (const [k, v] of [['X', 400], ['Y', 500], ['W', 1100], ['H', 300]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+  for (const [k, v] of /** @type {[string, number][]} */ ([['X', 400], ['Y', 500], ['W', 1100], ['H', 300]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
   for (let i = 0; i < 2; i++) {
     await page.getByRole('button', { name: '◼ Shape ▾' }).click();
     await page.getByRole('button', { name: '▭ Rectangle' }).click();
-    for (const [k, v] of [['X', 40 + i * 260], ['Y', 40], ['W', 200], ['H', 150]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+    for (const [k, v] of /** @type {[string, number][]} */ ([['X', 40 + i * 260], ['Y', 40], ['W', 200], ['H', 150]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
   }
   const a = await at(10, 10);
   const b = await at(560, 260);
@@ -274,7 +275,7 @@ try {
     }, PNG);
     await canvas.dispatchEvent('drop', { dataTransfer: dt2 });
     await page.locator('.insp h4', { hasText: 'Image' }).waitFor();
-    for (const [k, v] of [['X', 300], ['Y', 200], ['W', 600], ['H', 400]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+    for (const [k, v] of /** @type {[string, number][]} */ ([['X', 300], ['Y', 200], ['W', 600], ['H', 400]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
     await page.evaluate(() => {
       window.__nativeDrag = [];
       for (const t of ['dragstart', 'pointercancel']) document.addEventListener(t, () => window.__nativeDrag.push(t), true);
@@ -358,7 +359,7 @@ try {
   // A small item is moved by any part of it: on a short side the handles sit outside it (they covered it, so a drag
   // near its top edge, or on a laptop by its middle, resized it).
   await layers.first().locator('.name').click();
-  for (const [k, v] of [['W', 40], ['H', 40], ['X', 800], ['Y', 300]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+  for (const [k, v] of /** @type {[string, number][]} */ ([['W', 40], ['H', 40], ['X', 800], ['Y', 300]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
   {
     const from = await at(820, 306);
     await page.mouse.move(from.x, from.y);

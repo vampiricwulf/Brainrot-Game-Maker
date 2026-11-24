@@ -1,3 +1,4 @@
+// @ts-check
 // Host ⇄ audience sync over the BroadcastChannel fallback: the audience page is opened on its own
 // (no window.opener), the way the desktop app's fallback window is. Served over http like the
 // desktop app (http://tauri.localhost), not file://.
@@ -11,7 +12,7 @@ const server = createServer((req, res) => {
   res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
   res.end(html);
 }).listen(0);
-const port = server.address().port;
+const port = (/** @type {import('node:net').AddressInfo} */ (server.address())).port;
 const base = `http://127.0.0.1:${port}/index.html`;
 
 const browser = await launchChromium();

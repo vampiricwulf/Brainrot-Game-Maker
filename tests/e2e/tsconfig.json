@@ -1,0 +1,18 @@
+{
+  // npm run check:e2e: type-checks the e2e files that start with `// @ts-check` (helpers.mjs's JSDoc types and
+  // Playwright's own), so a misnamed helper or option shows up without running the file. Not strict: page.evaluate()
+  // callbacks work on plain DOM elements. A file without `// @ts-check` is only parsed. See docs/development.md.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": false,
+    "target": "ES2023",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "skipLibCheck": true
+  },
+  "include": ["*.mjs", "*.d.ts"]
+}

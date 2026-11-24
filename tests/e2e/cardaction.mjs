@@ -1,3 +1,4 @@
+// @ts-check
 // 🤫 Cards from actions and the 🪟 card window, end to end (docs/PARTNER-CLUES-SPEC.md §11, §12.2, §13.6, §14, milestone
 // P3): the built app hosts an RPG round against the real buzzer room (buzzer/ under `wrangler dev`, local), with phones
 // for Ann and Bob (Cat has none). In the editor, an item's buttons offer 🤫 Send a card, with who gets it. In play, an

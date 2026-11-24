@@ -1,3 +1,4 @@
+// @ts-check
 // 🤫 Cards anywhere, end to end (docs/PARTNER-CLUES-SPEC.md §11, §12, §14, §22, milestone P3): the built app hosts a game
 // against the real buzzer room (buzzer/ under `wrangler dev`, local), with three phones on the real phone page.
 // 🤫 Send a card… in the tools row sends a quick card (typed words) to one player, then a tile's card made in the editor
@@ -500,7 +501,7 @@ try {
   assert(await until(() => noPhoneLine.isVisible()), 'Cat’s phone gone: the dialog says to copy it to her');
   // 👁 Show to check the words: it reads 🙈 Hide while on, and the next card starts hidden again.
   const wordsBox = dialog.getByRole('textbox', { name: 'The card’s words' });
-  const hidden = () => wordsBox.evaluate((el) => getComputedStyle(el).webkitTextSecurity === 'disc');
+  const hidden = () => wordsBox.evaluate((el) => /** @type {any} */ (getComputedStyle(el)).webkitTextSecurity === 'disc');
   await dialog.getByRole('button', { name: '👁 Show', exact: true }).click();
   const hideBtn = dialog.getByRole('button', { name: '🙈 Hide', exact: true });
   assert((await hideBtn.getAttribute('aria-pressed')) === 'true' && !(await hidden()), '👁 Show: the words show, and the button reads 🙈 Hide');

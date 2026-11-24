@@ -1,3 +1,4 @@
+// @ts-check
 // 🤝 Partner clues, milestone P4 (docs/PARTNER-CLUES-SPEC.md §8.3, §21): steal on a miss and partner clues placed at
 // random. In the editor, a partner clue's "After a miss" lets the others steal it; the board's 🤝 Partner clues box with
 // 🔀 Randomize scatters them over written tiles (one undo step), and the pre-game's 🎲 Place now puts the missing one on

@@ -1,3 +1,4 @@
+// @ts-check
 // Phone buzzers, both halves together: the built app hosts a game against the real buzzer room (buzzer/ under
 // `wrangler dev`, local, no Cloudflare account) and two phones play on the real phone page: the queue, a wrong answer,
 // → Next in line, ↺ Reset buzzers, and a tie settled with 🎲 Roll for it. Needs `npm ci` in buzzer/.
@@ -191,7 +192,7 @@ try {
   await picker.getByRole('button', { name: 'Cancel' }).click();
   await picker.waitFor({ state: 'hidden' });
   assert(
-    (await seatOf(p1)) === '#f0e442' && (await colours.isVisible()) && (await p1.evaluate(() => document.activeElement?.dataset.own)) === '',
+    (await seatOf(p1)) === '#f0e442' && (await colours.isVisible()) && (await p1.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.dataset.own)) === '',
     'Cancel puts the yellow back on the buzzer, the palette still open and the keys back on ＋',
   );
   await p1.getByRole('button', { name: '🎨 Change your color' }).click();

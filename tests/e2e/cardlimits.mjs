@@ -1,3 +1,4 @@
+// @ts-check
 // 🤫 Card files as big as the buzzer server takes (card-files spec §2.3, §3), end to end: a buzzer server of our own
 // (buzzer/ under `wrangler dev`, local) set to 24 MB a file, 60 MB a room and 400 MB in any 24 hours. The editor
 // asks it (/api/health) before any room is open, so the 📱 preview and the checklist go by its number; a room's
@@ -81,8 +82,8 @@ const older = createServer((req, res) => {
   res.writeHead(req.url === '/api/health' ? 200 : 404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
   res.end(req.url === '/api/health' ? JSON.stringify({ ok: true, protocol: 1 }) : '{}');
 });
-await new Promise((ok) => older.listen(0, '127.0.0.1', ok));
-const olderBase = `http://127.0.0.1:${older.address().port}`;
+await new Promise((ok) => older.listen(0, '127.0.0.1', () => ok(undefined)));
+const olderBase = `http://127.0.0.1:${(/** @type {import('node:net').AddressInfo} */ (older.address())).port}`;
 let browser;
 const errors = [];
 

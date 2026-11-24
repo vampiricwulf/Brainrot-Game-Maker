@@ -1,3 +1,4 @@
+// @ts-check
 // One window: the stage viewers see is one box the whole game. At 1280×720, 1366×768 and 1920×1080 it keeps one size
 // and place (the 16:9 stage, measured on screen) from the board to a clue and its answer, a Daily Double's splash and
 // question, a 🤝 partner clue (PARTNER UP!, its wheel, the cards handed out, ✔ Got it), an RPG round, a board-game

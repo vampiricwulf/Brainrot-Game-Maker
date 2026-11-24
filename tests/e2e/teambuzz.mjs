@@ -1,3 +1,4 @@
+// @ts-check
 // Team buzzers, end to end: the built app hosts a game with Teams on against the real buzzer room (buzzer/ under
 // `wrangler dev`, local), and people join teams from the real phone page with their own names. Two on one team: whoever
 // buzzes first answers for it, the host and viewers see who ("Al (Player 1)"), a teammate's later buzz is no new place
@@ -141,7 +142,7 @@ try {
   assert((await zed.locator('#team-err').getAttribute('class')) === 'err', 'the team list shows who is on each team, and a name someone has is taken (in red)');
   assert(
     await zed.evaluate(() => {
-      const [box, err, go] = [document.getElementById('team-in'), document.getElementById('team-err'), document.querySelector('#team-form [type=submit]')];
+      const [box, err, go] = [/** @type {HTMLInputElement} */ (document.getElementById('team-in')), document.getElementById('team-err'), document.querySelector('#team-form [type=submit]')];
       const [b, e, g] = [box, err, go].map((x) => x.getBoundingClientRect());
       return box.getAttribute('aria-describedby') === 'team-err' && e.top >= b.bottom && e.bottom <= g.top && document.activeElement === box && box.selectionStart === 0 && box.selectionEnd === 3;
     }),

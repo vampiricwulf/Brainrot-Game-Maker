@@ -1,3 +1,4 @@
+// @ts-check
 // Streaming the sound: the 🔊 Sound help, Test sound in single and dual mode, blocked sounds reported to the
 // host (an RPG round's music too, which starts on the click), the Game audio output picker, and the desktop app's
 // settings (with a stand-in for its native side).
@@ -20,7 +21,7 @@ const server = createServer((req, res) => {
   res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
   res.end(html);
 }).listen(0);
-const httpUrl = `http://127.0.0.1:${server.address().port}/index.html`;
+const httpUrl = `http://127.0.0.1:${(/** @type {import('node:net').AddressInfo} */ (server.address())).port}/index.html`;
 
 const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const errors = [];
@@ -179,8 +180,8 @@ try {
         { kind: 'audiooutput', deviceId: 'cable', label: 'CABLE Input', groupId: 'c' },
         { kind: 'audiooutput', deviceId: 'usb', label: 'USB Headset', groupId: 'u' },
       ];
-      navigator.mediaDevices.enumerateDevices = async () => devices;
-      navigator.mediaDevices.getUserMedia = async () => ({ getTracks: () => [{ stop() {} }] });
+      /** @type {any} */ (navigator.mediaDevices).enumerateDevices = async () => devices;
+      /** @type {any} */ (navigator.mediaDevices).getUserMedia = async () => ({ getTracks: () => [{ stop() {} }] });
       // Record where sound is sent; the USB headset is unplugged by the time the audience window uses it.
       window.__sinks = [];
       HTMLMediaElement.prototype.setSinkId = function (id) {

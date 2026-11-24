@@ -1,3 +1,4 @@
+// @ts-check
 // 🧠 A deal drawn from a wheel, end to end (docs/PARTNER-CLUES-SPEC.md §11, §12, §14.6, milestone P4): the built app
 // hosts a game against the real buzzer room (buzzer/ under `wrangler dev`, local), with four phones and the audience
 // window open. The game's saved deal gives every player their own slice of its "Party prompts" wheel: four slices to
@@ -166,6 +167,7 @@ try {
     return Object.fromEntries([...t.matchAll(/(Ann|Bob|Cat|Dan) → Player · (.+?)(?= (?:Ann|Bob|Cat|Dan) →|$)/g)].map((m) => [m[1], m[2].replace(/ · ✓ seen$/, '')]));
   };
   const labels = PROMPTS.map((s) => s.label).sort();
+  /** @type {any} */
   let d = null;
   let drew = {};
   for (let i = 0; i < 6; i++) {
@@ -189,7 +191,7 @@ try {
   assert(await until(() => cards().length === 4), 'sent: four cards, one per player');
   const slice = (name) => PROMPTS.find((s) => s.label === drew[name]);
   const pics = () => cards().filter((c) => c.media?.[0]?.file);
-  assert(await until(() => pics().length === 2) && uploads === 2, 'the two pictures go up once each, and the cards then name the room’s files');
+  assert(await until(() => pics().length === 2) && /** @type {number} */ (uploads) === 2, 'the two pictures go up once each, and the cards then name the room’s files');
   const sent = cards();
   for (const c of sent) {
     const who = nameOf[c.to[0].seat];

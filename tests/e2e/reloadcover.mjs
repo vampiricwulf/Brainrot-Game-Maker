@@ -1,3 +1,4 @@
+// @ts-check
 // A reload mid-game in one window opens on the game's cover card (the window is the one on stream). The card sits in a
 // box the stage's size and place in the game (16:9, the host panel's height under it), its words sized to that box, and
 // Resume game / Go to the editor go under it, where the host panel is: a capture of just the stage (an OBS crop) shows

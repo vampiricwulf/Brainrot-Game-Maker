@@ -1,3 +1,4 @@
+// @ts-check
 // 🤝 Judging a partner clue (docs/PARTNER-CLUES-SPEC.md §6.6, §9, §15): ✔ Got it and ✘ Missed score both players in one
 // step with the clue's points (a second Enter right after the clock starts gives nothing; with no clock, a click on the
 // stage waits for them), ⇄ Swap moving the points and

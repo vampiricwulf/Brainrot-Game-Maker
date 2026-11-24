@@ -1,3 +1,4 @@
+// @ts-check
 // 🤝 Playing a partner clue (docs/PARTNER-CLUES-SPEC.md §6–§8): PARTNER UP! on stream, "Who picked it?", the partner
 // wheel (the picker never on it, the log hiding the spin until it lands, its landing the partner), overruling it with
 // 1–9, Show question ▶ with the parts badge and caption, a second Enter that doesn't start the clock, the 📤 list's
@@ -188,7 +189,7 @@ try {
   // the keys on it, opens it (and shows no question).
   const fold = panel.locator('[data-partner-cards-fold]');
   const foldSays = (await fold.locator('summary').innerText()).trim();
-  assert(foldSays === '🤫 2 cards · 📋 you’ll copy them' && !(await fold.evaluate((d) => d.open)), `PARTNER UP!'s cards fold into one line (${foldSays})`);
+  assert(foldSays === '🤫 2 cards · 📋 you’ll copy them' && !(await fold.evaluate((d) => /** @type {HTMLDetailsElement} */ (d).open)), `PARTNER UP!'s cards fold into one line (${foldSays})`);
   await fold.locator('summary').focus();
   await page.keyboard.press('Enter');
   await panel.locator('[data-partner-readiness]').waitFor();

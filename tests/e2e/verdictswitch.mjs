@@ -1,3 +1,4 @@
+// @ts-check
 // A verdict switched on a clue (✔ after ✘): a tile reopened and the page reloaded mid-clue switches only marks from
 // this opening, and 📜 Log › Scores' ↷ Restore on the mark a switch took back takes the switch back (never counted twice).
 import { pathToFileURL } from "node:url";

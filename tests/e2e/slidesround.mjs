@@ -1,3 +1,4 @@
+// @ts-check
 // A slides round: an introduction of several slides, in one round. The host makes it in the editor (it goes first, a
 // template one too, which says so; the checklist goes to an empty slide, to a Final's missing answer, and to a
 // tiebreaker ticked on but left empty), then plays through it with N (Shift+N back) and goes on to the board after the
@@ -163,7 +164,7 @@ try {
   // once only when picked with the mouse); Keep playing gives the keys back to the list, on this round again.
   const goTo = page.getByRole('combobox', { name: 'Go to round' });
   const strip = page.locator('.panel .confirm');
-  const onRound = () => goTo.evaluate((s) => s.selectedOptions[0]?.textContent.trim());
+  const onRound = () => goTo.evaluate((s) => /** @type {HTMLSelectElement} */ (s).selectedOptions[0]?.textContent.trim());
   const keysOnList = () => page.evaluate(() => !!document.activeElement?.matches('select[aria-label="Go to round"]'));
   await goTo.focus();
   await page.keyboard.press('ArrowDown');
@@ -173,13 +174,13 @@ try {
     `↓ on Go to round only moves the list (“${await onRound()}”): nothing asked, the keys still there, the round where it was; the status line says Enter goes there`,
   );
   await page.keyboard.press('ArrowDown');
-  await page.waitForFunction(() => document.querySelector('select[aria-label="Go to round"]')?.selectedOptions[0]?.textContent.startsWith('Final Jeopardy!'));
+  await page.waitForFunction(() => /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith('Final Jeopardy!'));
   assert((await strip.count()) === 0 && (await keysOnList()), '↓ again reaches the round after it (Final Jeopardy!), still asking nothing');
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => document.querySelector('select[aria-label="Go to round"]')?.selectedOptions[0]?.textContent.startsWith('Introduction'));
+  await page.waitForFunction(() => /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith('Introduction'));
   assert((await strip.count()) === 0 && (await keysOnList()), 'Esc puts the list back on this round');
   await page.keyboard.press('j');
-  await page.waitForFunction(() => document.querySelector('select[aria-label="Go to round"]')?.selectedOptions[0]?.textContent.startsWith('Jeopardy!'));
+  await page.waitForFunction(() => /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith('Jeopardy!'));
   assert((await strip.count()) === 0, `typing J goes to Jeopardy! in the list (its options: ${(await goTo.locator('option').allInnerTexts()).join(' | ')})`);
   await page.keyboard.press('Enter');
   await strip.getByText('Leave Introduction for Jeopardy!?').waitFor();
@@ -193,7 +194,7 @@ try {
   // (Leaving the list with a round only moved to: nothing happens, it shows this round again.)
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Tab');
-  await page.waitForFunction(() => document.querySelector('select[aria-label="Go to round"]')?.selectedOptions[0]?.textContent.startsWith('Introduction'));
+  await page.waitForFunction(() => /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith('Introduction'));
   assert((await strip.count()) === 0 && (await stage.locator('[data-slide="2"]').count()) === 1, 'Tab away from a round only moved to in the list: nothing asked, the list back on this round');
   // (Not in the first moments of a round: a double-click's second half doesn't jump ahead.)
   await page.waitForTimeout(500);
@@ -240,7 +241,7 @@ try {
   const wagers = p2.locator('.fj .wagers input[data-wager]');
   for (let i = 0; i < 2; i++) await wagers.nth(i).fill('100');
   const press = async (label) => {
-    await p2.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !document.querySelector('.panel [data-next]')?.disabled, label);
+    await p2.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !(/** @type {HTMLButtonElement | null} */ (document.querySelector('.panel [data-next]'))?.disabled), label);
     await mainButton(p2).click();
   };
   // One window: the Final's notes (they may give its answer away) stay off the panel on stream while the players write.

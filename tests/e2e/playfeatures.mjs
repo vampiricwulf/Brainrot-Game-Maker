@@ -1,3 +1,4 @@
+// @ts-check
 // Hosting extras: who's answering on stream, the built-in sound cues (and switching one off in 🔊 Sounds), the chroma-key
 // stage background, the scores-only window for OBS and the ? list closed from the audience window. (Buzzer mode is phone buzzers: remotebuzz.mjs, buzzerlive.mjs.)
 import { mkdirSync } from 'node:fs';
@@ -57,7 +58,7 @@ try {
   await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#right')));
   assert((await previewRight.getAttribute('aria-pressed')) === 'true' && (await previewRight.innerText()) === '■', '▶ previews the built-in sound, and turns into ■ while it plays');
   await previewRight.click();
-  const previewPaused = () => page.evaluate(() => document.querySelector('.sounds').previousElementSibling.paused);
+  const previewPaused = () => page.evaluate(() => /** @type {HTMLMediaElement} */ (document.querySelector('.sounds').previousElementSibling).paused);
   assert((await previewRight.getAttribute('aria-pressed')) === 'false' && (await previewPaused()), '■ stops the preview');
   // Each sound has its own volume: the preview and the game play it that loud.
   const wrongRow = rows.filter({ has: page.getByRole('button', { name: 'Preview Wrong' }) });

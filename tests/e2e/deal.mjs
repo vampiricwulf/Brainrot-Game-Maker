@@ -1,3 +1,4 @@
+// @ts-check
 // 🎭 Deals, end to end (docs/PARTNER-CLUES-SPEC.md §11, §12, milestone P4): the built app hosts a game against the real
 // buzzer room (buzzer/ under `wrangler dev`, local), with four phones on the real phone page. A ready-made deal goes in
 // from the editor's 🎡 tab. In play, 🎭 Deal… deals the game's saved Odd one out (the host picks Bob as the spy, with

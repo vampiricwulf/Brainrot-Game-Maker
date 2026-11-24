@@ -1,3 +1,4 @@
+// @ts-check
 // 🤫 Card files on the buzzer server, a piece at a time (buzzer/src/filestore.ts), end to end: the room (buzzer/) under
 // `wrangler dev` (local), a fake host and phones on plain sockets, and what the room stored read from its SQLite files
 // (helpers.mjs roomKeys). An upload cut off by the host closing the room, by the server stopping (a deploy, a crash)
@@ -52,7 +53,11 @@ async function newRoom(ip, at = base) {
   const state = (patch) => host.send({ t: 'state', state: (st = { ...st, ...patch }) });
   state({});
   const url = (id) => `${at}/api/rooms/${made.code}/files${id ? `/${id}` : ''}`;
-  /** An upload (`from`: the address it comes from, which the server's budget counts by). */
+  /**
+   * An upload (`from`: the address it comes from, which the server's budget counts by).
+   * @param {any} body
+   * @param {{ from?: string, duplex?: string } & RequestInit} [opts]
+   */
   const upload = (body, { from, ...extra } = {}) =>
     fetch(url(), { method: 'POST', headers: { 'Content-Type': 'video/mp4', Authorization: `Bearer ${made.hostToken}`, ...(from ? { 'CF-Connecting-IP': from } : {}) }, body, ...extra });
   /**

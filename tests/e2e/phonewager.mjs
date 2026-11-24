@@ -1,3 +1,4 @@
+// @ts-check
 // Wagers from phones, end to end: the built app hosts a game against the real buzzer room (buzzer/ under `wrangler dev`,
 // local), with the audience window open, and players send their wagers from the real phone page. A Daily Double: its
 // player's phone sends the wager (refused over the max: their score, or $2,000 if less; not once the host ticks Ignore
@@ -212,7 +213,7 @@ try {
   assert((await ann.locator('#wager-state').innerText()) === 'What the host has: $777', `a change the phone can't send (12.5): the red reason, and what the host has, without “Not sent yet” (${await ann.locator('#wager-state').innerText()})`);
   await ann.locator('#wager-in').fill('777');
   assert((await wagerBtn(ann)) === '✔ Sent | sent', 'back to what was sent: “✔ Sent” again');
-  await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '777');
+  await host.waitForFunction(() => /** @type {HTMLInputElement | null} */ (document.querySelector('.dd input[type=number]'))?.value === '777');
   await dd.getByText('📱 from phone').waitFor();
   assert(true, 'sent from the phone: the host’s wager box fills in (777) marked “📱 from phone”, and the phone’s button says “✔ Sent”');
   await host.locator('.info .dd', { hasText: '⭐ Daily Double · Player 1’s wager is in ($777)' }).waitFor();
@@ -230,7 +231,7 @@ try {
   await ann.locator('#wager-state').getByText('The host has your wager as $600').waitFor();
   assert(true, 'the host types over it: the 📱 mark goes, and the phone shows the host’s amount');
   await sendWager(ann, 700);
-  await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '700');
+  await host.waitForFunction(() => /** @type {HTMLInputElement | null} */ (document.querySelector('.dd input[type=number]'))?.value === '700');
   await mainButton(host).click();
   await big(ann).getByText("You're answering!").waitFor();
   assert(
@@ -871,7 +872,7 @@ try {
 
   // ---------- A team sitting the Final out (a 🔁 Rematch in the same room): its phones name the Final once ----------
   await host2.keyboard.press('x');
-  await host2.waitForFunction(() => !document.querySelector('.panel [data-next]')?.disabled && !/wrong|right/i.test(document.querySelector('.panel [data-next]')?.textContent ?? ''));
+  await host2.waitForFunction(() => !(/** @type {HTMLButtonElement | null} */ (document.querySelector('.panel [data-next]'))?.disabled) && !/wrong|right/i.test(document.querySelector('.panel [data-next]')?.textContent ?? ''));
   await mainButton(host2).click();
   await host2.getByRole('button', { name: '🔁 Rematch' }).click();
   await host2.getByText('Start a rematch? Scores go back to 0.').waitFor();

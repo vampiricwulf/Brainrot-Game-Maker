@@ -1,3 +1,4 @@
+// @ts-check
 // A Final's own 🤫 cards and named tile and Final cards, end to end (docs/PARTNER-CLUES-SPEC.md §12.2, §14.2): the
 // built app hosts a game against the real buzzer room (buzzer/ under `wrangler dev`, local), with three phones on the
 // real phone page.
@@ -551,7 +552,7 @@ try {
   // =====================================================================================================================
   section('Through the Final');
   const next = async (label) => {
-    await host.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !document.querySelector('.panel [data-next]')?.disabled, label);
+    await host.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !(/** @type {HTMLButtonElement | null} */ (document.querySelector('.panel [data-next]'))?.disabled), label);
     await mainButton(host).click();
   };
   await next('Show question ▶');

@@ -1,3 +1,4 @@
+// @ts-check
 // 🤫 Cards in every kind of round, end to end (docs/PARTNER-CLUES-SPEC.md §11, §12, §13.6, §14, §15.2, milestone P3):
 // the built app hosts one game of three rounds (a Jeopardy board, an RPG round and a board-game round) against the real
 // buzzer room (buzzer/ under `wrangler dev`, local), with phones for Ann, Bob and Cat on the real phone page (Dan comes
@@ -277,7 +278,7 @@ try {
   assert(await sendMenu.getByRole('radio', { name: 'The slide on screen' }).isDisabled(), 'on the board, nothing is on screen to send');
   const typedBox = sendMenu.getByRole('textbox', { name: 'The card’s words' });
   await typedBox.fill(TYPED);
-  assert((await typedBox.evaluate((el) => getComputedStyle(el).webkitTextSecurity)) === 'disc', 'what’s typed is hidden as it’s typed (viewers see this window)');
+  assert((await typedBox.evaluate((el) => /** @type {any} */ (getComputedStyle(el)).webkitTextSecurity)) === 'disc', 'what’s typed is hidden as it’s typed (viewers see this window)');
   assert(!(await sendMenu.getByRole('combobox', { name: 'A file from the game’s 🖼 Media' }).count()), 'and the game’s files (by name) aren’t offered in one window');
   await sendMenu.getByRole('button', { name: 'Bob', exact: true }).click();
   await sleep(500);

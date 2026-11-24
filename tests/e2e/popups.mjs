@@ -1,3 +1,4 @@
+// @ts-check
 // Pop-ups are always whole in the window and on top of everything (see src/lib/anchored.ts): the host panel's 📱 phones
 // list (a single window, under the stage and beside it, and with an audience window; at 1280×600 and 1920×1080, after
 // the window shrinks and with the panel scrolled), its 🎲 Dice menu (its Roll as tall as its field, under the stage and
@@ -60,8 +61,8 @@ function fakeRoom() {
       setTimeout(() => {
         if (this.readyState !== 0) return;
         this.readyState = 1;
-        this.onopen?.({});
-        this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: Date.now() }) });
+        /** @type {any} */ (this).onopen?.({});
+        /** @type {any} */ (this).onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: Date.now() }) });
       }, 20);
     }
     send() {}
@@ -69,7 +70,7 @@ function fakeRoom() {
       this.readyState = 3;
     }
   }
-  window.WebSocket = FakeSocket;
+  window.WebSocket = /** @type {any} */ (FakeSocket);
   window.__say = (m) => sockets.at(-1)?.onmessage?.({ data: JSON.stringify(m) });
 }
 

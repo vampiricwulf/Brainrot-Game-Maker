@@ -1,3 +1,4 @@
+// @ts-check
 // Clues with several question slides: the host builds one in the clue editor (＋ Add slide, the tabs, moving, duplicating
 // and deleting slides, each one an undo step), saves it, opens the pack again, then plays it: the main button goes
 // Next slide ▶ (N) through the slides, ◀ Slide goes back, the audience window shows the slide the host is on, and then
@@ -51,11 +52,11 @@ try {
   /** The slide tab that's open comes to be this one within a few seconds. */
   const opens = (name) => tabs.locator('[role="tab"][aria-selected="true"]', { hasText: name }).waitFor({ timeout: 3000 }).then(() => true, () => false);
   // Ctrl+D, and whether the page kept it from the browser (which would bookmark the page).
-  await page.evaluate(() => window.addEventListener('keydown', (e) => e.key.toLowerCase() === 'd' && (window.lastD = e.defaultPrevented)));
+  await page.evaluate(() => window.addEventListener('keydown', (e) => e.key.toLowerCase() === 'd' && (window.__lastD = e.defaultPrevented)));
   const ctrlD = async () => {
-    await page.evaluate(() => (window.lastD = undefined));
+    await page.evaluate(() => (window.__lastD = undefined));
     await page.keyboard.press('Control+d');
-    return page.evaluate(() => window.lastD === true);
+    return page.evaluate(() => window.__lastD === true);
   };
 
   // One slide: the plain tabs, then the slide's group (＋ Add slide…), its 🗑 Delete slide greyed.

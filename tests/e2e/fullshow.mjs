@@ -1,3 +1,4 @@
+// @ts-check
 // A whole show, twice: once by keys (an expert), once by clicks (a host who drives from the stage, and clicks the panel
 // only where the stage does nothing). It counts the keys pressed, the clicks and the numbers typed in each part of the
 // show, and checks them against today's (TODAY, below), so a change that makes a host take one more step shows up here.

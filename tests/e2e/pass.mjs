@@ -1,3 +1,4 @@
+// @ts-check
 // Pass, end to end: the built app hosts a game with phone buzzers against the buzzer room (buzzer/ under `wrangler dev`,
 // local, never the real server), with phones for Ann (390×844), Bob (360×640) and Cat (a desktop window, keys only).
 // 1. On an ordinary buzz-in clue each phone has Pass under the buzzer: a pass (a double tap passes once) blocks the buzz

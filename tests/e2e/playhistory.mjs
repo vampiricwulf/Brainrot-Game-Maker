@@ -1,3 +1,4 @@
+// @ts-check
 // Undo everywhere in play: the 📜 Log's 🕘 History (scores, steps and rolls in one list, back to any point and forward
 // again), host choices that are steps too (a tile marked played, the picker, 👥 Players, a Final's players), and the
 // keys that go with it (0, Esc, K, Shift+N, 1–9 in the reveals, Enter on a board game, keys from the audience window).
@@ -225,7 +226,7 @@ try {
   assert(!(await page.locator('.bh input[aria-label="Steps"]').inputValue()), 'the Steps box stays empty while the dice roll');
   await page.keyboard.press('Enter');
   assert((await toast()).startsWith('Still rolling') && (await page.locator('.stage-box .ov').count()) === 1, 'Enter while the dice still roll waits for them');
-  await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
+  await page.waitForFunction(() => Number(/** @type {HTMLInputElement | null} */ (document.querySelector('.bh input[aria-label="Steps"]'))?.value) > 0, null, { timeout: 8000 });
   await page.keyboard.press('Enter');
   assert((await toast()).startsWith('Alice: Landed on'), 'Enter with nobody selected moves the rolled steps');
   await page.keyboard.press('n');
@@ -237,7 +238,7 @@ try {
   await page.keyboard.press('Shift+Tab');
   await page.waitForFunction(() => document.activeElement?.matches('.bh [data-step]') && document.activeElement.textContent?.includes('🎲 Roll'));
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
+  await page.waitForFunction(() => Number(/** @type {HTMLInputElement | null} */ (document.querySelector('.bh input[aria-label="Steps"]'))?.value) > 0, null, { timeout: 8000 });
   await page.keyboard.press('Enter');
   await page.locator('.toast', { hasText: 'Player 2: Landed on' }).waitFor();
   assert(true, `🎲 Roll pressed with Enter (Tab there): Enter moves once the dice land (the keys were on ${await page.evaluate(() => document.activeElement?.textContent?.trim())})`);

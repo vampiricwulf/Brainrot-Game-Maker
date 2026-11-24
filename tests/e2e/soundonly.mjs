@@ -1,3 +1,4 @@
+// @ts-check
 // A YouTube video set to Sound only: the slide editor shows it so (its picture dimmed, a "🔊 Sound only" badge, what
 // players will see), and Ctrl+Z / Ctrl+Y take the choice back and forth. In play the player still loads and plays, but
 // unseen, in one window and in the audience window; the host's media row plays, pauses and turns it up or down through
@@ -18,7 +19,7 @@ page.on('dialog', (d) => d.accept());
 const guard = () => page.waitForTimeout(500); // past the stage's double-click guard
 /** Back to the board (the keys away from the media row's slider first). */
 async function back() {
-  await page.evaluate(() => document.activeElement?.blur());
+  await page.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.blur());
   await page.keyboard.press('Shift+Escape');
   await page.locator('.stage-box .board').waitFor();
   await guard();

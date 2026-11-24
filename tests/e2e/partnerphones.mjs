@@ -1,3 +1,4 @@
+// @ts-check
 // 🤝 A partner clue with phone buzzers, end to end (docs/PARTNER-CLUES-SPEC.md §8.2, §12.3, §13.5, §14.9, §19.4): the
 // built app hosts a game against the real buzzer room (buzzer/ under `wrangler dev`, local), which takes cards and card
 // files. Nobody buzzes: every phone's button greys, with who plays which part as its big line (the picker's, then the
@@ -136,7 +137,7 @@ try {
   let f = await folded();
   assert(!f.open && f.says === '🤫 1 card · 📱 phones get it when you send', `PARTNER UP!: the card's details fold into one line (${f.says})`);
   await host.keyboard.press('3');
-  await host.waitForFunction(() => document.querySelector('[data-partner-cards-fold]')?.open);
+  await host.waitForFunction(() => /** @type {HTMLDetailsElement | null} */ (document.querySelector('[data-partner-cards-fold]'))?.open);
   f = await folded();
   assert(f.says === '🤫 1 card · 📵 Player 3 has no phone here: you’ll copy theirs', `Player 3 the partner, with no phone here: it opens by itself and says so (${f.says})`);
   await host.screenshot({ path: 'test-results/partner-phones-up.png' });
@@ -220,7 +221,7 @@ try {
   await bob.getByText('Card-only-zz words').waitFor();
   const pic = bob.locator('.card img');
   await bob.waitForFunction(() => {
-    const img = document.querySelector('.card img');
+    const img = /** @type {HTMLImageElement | null} */ (document.querySelector('.card img'));
     return !!img && img.src.startsWith('blob:') && img.complete && img.naturalWidth === 640;
   });
   assert((await pic.getAttribute('alt')) === 'Picture' && !(await bob.locator('body').innerText()).includes(PIC), 'tapped: its words and its picture, fetched from the room (never its file name)');
