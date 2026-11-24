@@ -15,6 +15,7 @@
   import { secondClick } from '../../lib/oneshot';
   import { VERBS } from './verbs';
   import { app, clearToast, hint } from '../../lib/app.svelte';
+  import { cardsHeld } from '../../lib/sentcards';
 
   let {
     game,
@@ -138,6 +139,21 @@
     timer = setTimeout(() => (document.activeElement?.closest('.confirm') || document.querySelector('.confirm:hover') ? lapse() : stop()), 4000);
   }
 
+  /**
+   * What leaving the round takes along, said in its question: the 🎭 deal's cards and the 🤫 cards out that last until
+   * the round ends ("The 🎭 Odd one out cards and 2 🤫 cards go with it."), or ''. Only the deal's name and a count:
+   * never what's on a card, nor whose.
+   */
+  function goesWith(): string {
+    const held = cardsHeld(game, session).filter((c) => c.until === 'round');
+    const deal = session.deal && held.some((c) => c.deal === session.deal!.id) ? `🎭 ${session.deal.name}` : '';
+    const n = held.filter((c) => !c.deal).length;
+    const cards = n ? `${n} 🤫 card${n === 1 ? '' : 's'}` : '';
+    if (deal && cards) return `The ${deal} cards and ${cards} go with it.`;
+    if (deal) return `The ${deal} cards go with it.`;
+    return cards ? `The ${cards} out ${n === 1 ? 'goes' : 'go'} with it.` : '';
+  }
+
   function ask(what: 'next' | number): void {
     asking = what;
     clearTimeout(timer);
@@ -159,7 +175,8 @@
       : end
         ? `Leave ${here} and end the game?`
         : `Leave ${here} for ${name}?`;
-    setAsk({ text, ok: (end ? VERBS.endGame : VERBS.goToRound(name)).label, cancel: board && !left ? 'Stay' : VERBS.keepPlaying.label, onok: yes, oncancel: stop });
+    const also = goesWith();
+    setAsk({ text: also ? `${text} ${also}` : text, ok: (end ? VERBS.endGame : VERBS.goToRound(name)).label, cancel: board && !left ? 'Stay' : VERBS.keepPlaying.label, onok: yes, oncancel: stop });
   }
 
   function yes(): void {

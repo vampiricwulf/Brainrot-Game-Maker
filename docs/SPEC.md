@@ -819,7 +819,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   Questions for the host (Exit, leaving a round, a locked door…) appear in one strip above that bar, never over the
   stage; in one window it lies over the tools row, so the panel and the stage keep their size, and the tools under it are inert until it is answered. Its answers are the panel's own button size (beside the stage, the column's small ones). Leaving a round says what it does and its answers name it (“7 clues are left in Jeopardy!. Go to Double
   Jeopardy!?” Keep playing / Go to Double Jeopardy! ▶; “End the game now? 7 clues are left.” Keep playing / End game ▶;
-  an RPG or board-game round: “Leave Adventure for Board game?”); it goes after a few seconds, but not while the
+  an RPG or board-game round: “Leave Adventure for Board game?”), and what goes with the round: the 🎭 deal's cards
+  and the 🤫 cards out that last until it ends, by the deal's name and a count only (“… The 🎭 Odd one out cards and
+  2 🤫 cards go with it.”); it goes after a few seconds, but not while the
   pointer is on it or the keys are in it.
 - **Nothing selects by accident**, in every window and on the phone page: a click, a double-click, a drag or `Ctrl+A`
   turns no words blue (in a single window they'd be on stream). Text selects only in fields, links, the room code (one

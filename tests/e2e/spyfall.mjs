@@ -11,9 +11,10 @@
 // a card to be late for, would say who got one). Bob's phone giving up his seat (Not you? Change player) and taking it
 // again is new to the room too: the panel names him as having no phone here in between, then counts his phone with
 // hers, as it would whatever his part. ↻ Send again reaches them both. 🎭 Who was who goes on the stage only when
-// pressed: Ctrl+Z, Ctrl+Y, and a host reload keep it as it was. "Deal a new one?" asks while cards are out. The next
-// round takes the cards back (the deal's window and the host's column say they went with that round, back in it
-// too), and Who was who off the screen (Esc too). The host page never says
+// pressed: Ctrl+Z, Ctrl+Y, and a host reload keep it as it was. "Deal a new one?" asks while cards are out. Leaving the
+// round says its cards go with it (the deal's by name, a 🤫 card counted), and the next round takes the cards back
+// (the deal's window and the host's column say they went with that round, back in it too), and Who was who off the
+// screen (Esc too). The host page never says
 // who got which part, nor shows a card's words or the location, until Who was who. The audience window, opened at the
 // end with Who was who up, shows it, and puts who got which in the host's column; closing it takes that away again.
 // Needs `npm ci` in buzzer/.
@@ -452,9 +453,25 @@ try {
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
   assert((await reveal.count()) === 1, 'Who was who is up, the deal’s window closed');
+  // (A 🤫 quick card to Ann too, until the round ends: leaving the round says it goes, by a count.)
+  await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
+  const sendMenu = host.getByRole('dialog', { name: 'Send a card' });
+  await sendMenu.getByRole('textbox', { name: 'The card’s words' }).fill('Meet at the bar');
+  await sendMenu.getByRole('button', { name: 'Ann', exact: true }).click();
+  assert(await sendMenu.getByRole('radio', { name: 'until the round ends' }).isChecked(), 'a 🤫 quick card to Ann, until the round ends');
+  await sendMenu.getByRole('button', { name: '📤 Send' }).click();
+  await sendMenu.locator('[data-card-said]').waitFor();
+  assert(await until(() => cards().length === 6), 'sent: six cards out');
+  await host.keyboard.press('Escape');
+  await sendMenu.waitFor({ state: 'detached' });
   await sleep(500);
+  const stageBox = () => host.evaluate(() => JSON.stringify(document.querySelector('.stage-box').getBoundingClientRect()));
+  const stageWas = await stageBox();
   await tools.getByRole('button', { name: 'Next round ▶' }).click();
   await leaveAnswer(host).waitFor();
+  assert((await stageBox()) === stageWas, `the longer question leaves the stage where it was, its size too (${await stageBox()} vs ${stageWas})`);
+  const leaving = (await confirmStrip(host).innerText()).replace(/\s+/g, ' ');
+  assert(leaving.includes('Go to Round 2? The 🎭 Odd one out cards and 1 🤫 card go with it.'), `Next round ▶ asks first, saying the deal’s cards and the 🤫 card go with the round (“${leaving}”)`);
   await sleep(500);
   await leaveAnswer(host).click();
   assert(await until(() => !cards().length), 'the next round: the cards (until the round ends) go from the room');
