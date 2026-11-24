@@ -9,7 +9,7 @@ import { createServer } from 'node:net';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { buzzerVars, tap, tieThem } from './helpers.mjs';
+import { buzzerVars, failureShots, tap, tieThem } from './helpers.mjs';
 
 const dir = resolve('buzzer');
 if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
@@ -1409,7 +1409,7 @@ try {
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Buzzer room E2E passed.');
 } catch (e) {
-  if (process.env.SCREENSHOTS) for (const [label, p] of pages) await p.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-${label}-failure.png` }).catch(() => {});
+  await failureShots('buzzer', pages);
   console.error(e);
   if (errors.length) console.error('page errors:', errors);
   process.exitCode = 1;

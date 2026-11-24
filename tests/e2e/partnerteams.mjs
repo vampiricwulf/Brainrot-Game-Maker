@@ -12,7 +12,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, boxHasAction, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer } from './helpers.mjs';
+import { appFile, failureShots, boxHasAction, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -379,7 +379,7 @@ try {
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner cards on team phones E2E passed.');
 } catch (e) {
-  for (const [label, p] of pages) await p.screenshot({ path: `test-results/partnerteams-${label}-failure.png` }).catch(() => {});
+  await failureShots('partnerteams', pages);
   console.error(e);
   if (errors.length) console.error('page errors:', errors);
   process.exitCode = 1;

@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -717,7 +717,7 @@ try {
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('themes: all passed');
 } catch (e) {
-  await shot('themes-failure');
+  await failureShots('themes', page);
   // What the page shows at the failure (CI keeps no browser): the editor paused for another window, its "can't be shown"
   // card, a window left open, or the page's text in short.
   const state = await page

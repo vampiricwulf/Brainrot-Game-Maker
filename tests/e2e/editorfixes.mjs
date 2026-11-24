@@ -11,7 +11,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, answerReplace, clickExportHtml, editorReady, lineOf, openRules } from './helpers.mjs';
+import { appFile, failureShots, answerReplace, clickExportHtml, editorReady, lineOf, openRules } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -842,7 +842,7 @@ try {
   console.log('editorfixes: all passed');
 } catch (e) {
   console.error(e);
-  await page.screenshot({ path: 'editorfixes-failure.png' }).catch(() => {});
+  await failureShots('editorfixes', page);
   process.exitCode = 1;
 } finally {
   await browser.close();

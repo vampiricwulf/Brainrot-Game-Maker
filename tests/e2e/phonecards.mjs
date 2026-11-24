@@ -23,7 +23,7 @@ import { createServer } from 'node:net';
 import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { buzzerVars, png } from './helpers.mjs';
+import { buzzerVars, failureShots, png } from './helpers.mjs';
 
 const dir = resolve('buzzer');
 if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
@@ -1097,7 +1097,7 @@ try {
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Phone cards E2E passed.');
 } catch (e) {
-  for (const [label, p] of pages) await p.screenshot({ path: `test-results/phonecards-${label}-failure.png` }).catch(() => {});
+  await failureShots('phonecards', pages);
   console.error(e);
   if (errors.length) console.error('page errors:', errors);
   process.exitCode = 1;

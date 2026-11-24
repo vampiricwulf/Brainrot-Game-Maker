@@ -17,7 +17,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, showChecklist, stored, leaveAnswer, revealAnyway } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, showChecklist, stored, leaveAnswer, revealAnyway } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -1653,7 +1653,7 @@ try {
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Stream E2E passed.');
 } catch (e) {
-  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/stream-failure.png` }).catch(() => {});
+  await failureShots('stream', page);
   console.error(e);
   if (errors.length) console.error('page errors:', errors);
   process.exitCode = 1;

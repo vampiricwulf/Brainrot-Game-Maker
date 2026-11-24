@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, clickExportHtml, openGameFile, returningHost, stored } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, clickExportHtml, openGameFile, returningHost, stored } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -893,7 +893,7 @@ try {
   console.log('a11y: all passed');
 } catch (e) {
   console.error(e);
-  await page.screenshot({ path: 'a11y-failure.png' }).catch(() => {});
+  await failureShots('a11y', page);
   process.exitCode = 1;
 } finally {
   await browser.close();

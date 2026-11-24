@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
-import { appFile, addClassicRounds, flowButton, mainButton, mainLabel, nameGame, openGameFile, answerReplace, startNewGame } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, flowButton, mainButton, mainLabel, nameGame, openGameFile, answerReplace, startNewGame } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -356,7 +356,7 @@ try {
 } catch (e) {
   console.error(e);
   console.error('Page errors:', errors);
-  await page.screenshot({ path: 'test-results/multislide-failure.png' }).catch(() => {});
+  await failureShots('multislide', page);
   process.exitCode = 1;
 } finally {
   await browser.close();

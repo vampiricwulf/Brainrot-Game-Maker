@@ -3,7 +3,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, dragBy, macClicks } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, dragBy, macClicks } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -445,7 +445,7 @@ try {
   console.log('lists: all passed');
 } catch (e) {
   console.error(e);
-  await page.screenshot({ path: 'lists-failure.png' }).catch(() => {});
+  await failureShots('lists', page);
   process.exitCode = 1;
 } finally {
   await browser.close();

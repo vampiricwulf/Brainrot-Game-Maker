@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { appFile, addClassicRounds, answerReplace, dragBy, openGameFile } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerReplace, dragBy, openGameFile } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -521,7 +521,7 @@ try {
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('History E2E passed.');
 } catch (e) {
-  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/history-failure.png` }).catch(() => {});
+  await failureShots('history', page);
   console.error(e);
   if (errors.length) console.error('page errors:', errors);
   process.exitCode = 1;

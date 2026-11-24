@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, startNewGame, stepButton } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, startNewGame, stepButton } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -978,7 +978,7 @@ try {
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame.png` });
   console.log('boardgame: all passed');
 } catch (e) {
-  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-failure.png` }).catch(() => {});
+  await failureShots('boardgame', page);
   console.error(e);
   if (errors.length) console.error('page errors:', errors);
   process.exitCode = 1;

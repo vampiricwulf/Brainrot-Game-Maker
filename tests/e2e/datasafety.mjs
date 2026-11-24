@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, answerReplace, editorReady, exportHtml, lineOf, nameGame, noDailyDoubles, openGameFile, png } from './helpers.mjs';
+import { appFile, failureShots, answerReplace, editorReady, exportHtml, lineOf, nameGame, noDailyDoubles, openGameFile, png } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -537,7 +537,7 @@ try {
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('Data safety E2E passed.');
 } catch (e) {
-  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/datasafety-failure.png` }).catch(() => {});
+  await failureShots('datasafety', page);
   console.error(e);
   if (errors.length) console.error('page errors:', errors);
   process.exitCode = 1;

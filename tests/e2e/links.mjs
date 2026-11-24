@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import JSZip from 'jszip';
-import { appFile, addClassicRounds, nameGame, exportHtml, openGameFile } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, nameGame, exportHtml, openGameFile } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -136,8 +136,7 @@ page.on('dialog', (d) => {
 async function onFailure(e) {
   console.error(e);
   try {
-    mkdirSync('test-results', { recursive: true });
-    await page.screenshot({ path: 'test-results/links-failure.png', fullPage: true });
+    await failureShots('links', page);
   } catch {
     /* best effort */
   }

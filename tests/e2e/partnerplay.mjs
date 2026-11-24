@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, menuLines, notYet, openGameFile, openMenu, quick, stepButton } from './helpers.mjs';
+import { appFile, failureShots, anyway, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, menuLines, notYet, openGameFile, openMenu, quick, stepButton } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -548,7 +548,7 @@ try {
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner clue play tests passed');
 } catch (e) {
-  await page.screenshot({ path: 'test-results/partner-play-failure.png' }).catch(() => {});
+  await failureShots('partner-play', page);
   console.error(e);
   process.exitCode = 1;
 } finally {

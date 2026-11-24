@@ -18,16 +18,15 @@ await context.route(/(youtube(-nocookie)?\.com|ytimg\.com|googlevideo\.com|googl
 await context.tracing.start({ screenshots: true, snapshots: true });
 const page = await context.newPage();
 
-// On any failure, save a screenshot + Playwright trace to test-results/ (uploaded by CI).
+// On any failure, save a screenshot + Playwright trace to SCREENSHOTS (CI uploads it; test-results/ when unset).
 let failing = false;
 async function onFailure(e) {
   if (failing) return;
   failing = true;
   console.error(e);
   try {
-    mkdirSync('test-results', { recursive: true });
-    await page.screenshot({ path: 'test-results/failure.png', fullPage: true });
-    await context.tracing.stop({ path: 'test-results/trace.zip' });
+    await failureShots('smoke', page);
+    await context.tracing.stop({ path: `${failureDir()}/smoke-trace.zip` });
   } catch {
     /* best effort */
   }
@@ -93,7 +92,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { appFile, addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
+import { appFile, failureDir, failureShots, addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
