@@ -159,12 +159,12 @@ try {
   // ---------- The lists mark a ready-made deal or wheel the game has its own copy of ----------
   const dealOptions = await dialog.getByRole('combobox', { name: 'The deal' }).locator('option').allInnerTexts();
   assert(
-    dealOptions.includes('🎭 Odd one out') && dealOptions.includes('🕵 Odd one out · already in this game · One spy; everyone else knows the location') && dealOptions.filter((o) => o.includes('already in this game')).length === 1,
+    dealOptions.includes('🎭 Odd one out') && dealOptions.includes('🕵️ Odd one out · already in this game · One spy; everyone else knows the location') && dealOptions.filter((o) => o.includes('already in this game')).length === 1,
     `🎭 Deal…: the ready-made Odd one out says the game already has one, and no other (${dealOptions.join(' | ')})`,
   );
   const wheelOptions = await dialog.getByRole('combobox', { name: 'The wheel its cards draw from' }).locator('option').allInnerTexts();
   assert(
-    wheelOptions.includes('Locations') && wheelOptions.includes('🗺 Locations · already in this game') && wheelOptions.filter((o) => o.includes('already in this game')).length === 1,
+    wheelOptions.includes('Locations') && wheelOptions.includes('🗺️ Locations · already in this game') && wheelOptions.filter((o) => o.includes('already in this game')).length === 1,
     `and so does the ready-made Locations wheel (${wheelOptions.join(' | ')})`,
   );
   await dialog.getByRole('combobox', { name: 'The deal' }).selectOption('saved:deal1');
