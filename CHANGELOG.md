@@ -11,6 +11,47 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- `npm run test:quick` builds the app first, and every end-to-end file stops with "dist/index.html is older than <file>: run npm run build (or set APP_FILE)" instead of quietly testing an old build. Editing a unit test doesn't count. (9ba9d89, e615346, 96923d3)
+- The end-to-end tests' browser uses the same fonts as CI (tests/e2e/fonts.conf: this machine's fonts minus Inter), however a file is run, unless FONTCONFIG_FILE is set. Before, boardimages, update and phonewager always failed where the system font is Inter. (01e7527, 96923d3)
+- `npm run test:buzzer` works out which files start a local buzzer server and goes on past a failing file. It now includes pass.mjs and leaves out themes.mjs. (e615346)
+- The repo says it needs Node 22.18 or newer (package.json `engines`, `.nvmrc`). (454b1a1)
+- `node scripts/version.mjs next`, run outside CI, says which release tag it found here and how many commits ago, and suggests `git fetch --tags` first. (4ec9057)
+- CI's run page says which end-to-end file failed (a table per shard with each file's time, and an error mark per failed file), and the desktop app's Rust tests run on every push. (5dfab1e, feafd24)
+- docs/development.md covers setup, the tests' browser, the environment variables, how long each check takes, a fuller map of the code and the changelog rule. The specs say which parts are built. (ed839bc, 3fa470f, bf285c3, 3dd1221, 60b4f13)
+- ℹ About's links that open the browser (the guide, GitHub, Latest release, Report an issue, the library sources) end in ↗, like the app's other outside links. (7d4afcb)
+- 🎡 Dice: ＋ Add range is the same size as the page's other ＋ Add buttons. (29393ad)
+
+### Fixed
+
+- Board games: with the dice still up after a roll, clicking a space in ✎ Edit board now picks the space instead of moving the player. (49ad714, cdfd31b)
+- Board games: opening ✎ Edit board after a roll no longer scrolls its heading and ✓ Done editing out of sight under the stage. (e0805a9)
+- Final: in the "answers still coming" check, T now pauses the clock (⏸ Pause the clock), as in the clock check; it used to do nothing. (e0c2fa6, 1e5f662)
+- Final and ✍ clues: when the last answer arrives while the check is open, its line says "All answers are in" instead of the old count. (e0c2fa6)
+- Host panel on a phone: the Final's reveal rows use the full width, so ½ Halve and 0 Nullify are no longer cut off. (c10df72)
+- Host panel on a phone: the check before going on uses its full width, so its lines and the "Don't ask…" tick are no longer squeezed and cut, and a second tap where the blue button was still does nothing. (a0f2dcb, 44496be, bb30a21)
+- The check before going on: its "Don't ask … again this game" tick no longer takes a tap in the moment the check opens, or the rest of a double tap, so a quick second tap can't turn the check off for the game. (1abf17e)
+- 🎭 Deal… in one window: after ✔ Hand them out, the first 📋 Copy button comes into view and gets the keys instead of sitting below the box's fold. (8950dcc)
+- Reload cover on a phone: the "Be right back" shadow shrinks with the words, so the title no longer looks doubled. (06325c5)
+- 📥 Import theme… given a .brainrot game or an exported .html game now says it's a game, not a theme, instead of "it may be cut off or damaged". Any other file that isn't a theme (a CSV, say) is now called "not a Brainrot theme file", and a damaged theme file's message no longer says "can't be used as a theme" twice. (b016274, 0315ec2)
+- 📊 Stats & Items › 📥 Import CSV… reads files saved with semicolons (Excel in much of Europe) instead of making every line an item. It also reads prices like "$12" and says which prices it couldn't read ("8 gold") instead of dropping them silently, and an exported price such as 1.125 comes back as it was. (b1ea058, 5830f80)
+- 🎡 Wheels, Dice & Deals: the empty page no longer reads "Ready-made deal…." with an extra full stop. (4e16070)
+- 🎡 Wheels: a slice's ⋯, 🗑 and percentage sit level with its label box instead of 5px higher. (51e9220)
+- 📊 Stats & Items: an item's ⋯ 🗑 are at its row's right end, like a stat's and a shop's. ＋ Add item lines up with 📥 Import CSV… and ⬇ Export CSV. (ee958fe)
+- ℹ About: "Latest release" starts where the other lines do instead of 10px further right. (7d4afcb)
+- Sliders (🔊 Sounds volumes, 🎨 Theme, the image editor, and the host's video and sound controls during play) reach the end of their track at their maximum, so 100% no longer looks like about 80%. (812ce5c, 6db0dc3)
+- ✎ Edit video › ✂ Crop: the crop box's top and bottom handles show whole instead of cut in half. (f990b2a)
+- With the update notice up in a 1280×720 window, "📂 Open a game…" on the first screen stays in view with a taller UI font (Inter on some Linux desktops). (2fe60bd)
+- The hosting guide's paragraph on the Final's think clock says once what pausing does, and that 👁 Reveal answer goes on once the clock is out or paused, even with a phone's answer missing. (230fb8e, e0c2fa6)
+- A failing end-to-end file now always leaves a full-page screenshot of each open page, as <name>-failure.png in SCREENSHOTS (which CI uploads) or test-results/. Before, most files saved none. smoke.mjs's trace is now smoke-trace.zip in the same place. `e2e-shard.mjs --check` keeps new files on these helpers. (b6cb21d, 7e8e3d5, 96923d3, cf7a3b1)
+- `npm test` inside buzzer/ runs the buzzer room's unit tests instead of failing with "Missing script". (b476e06)
+- `npm run desktop:dev` no longer opens its window on another dev server: `npm run dev` fails if port 5173 is taken instead of moving to another port. (84126e8)
+- The phone buzzer server is only updated once the app's checks, unit tests and quick end-to-end test have passed, so a broken update no longer goes live. (7fa8f6d)
+- The development tools' npm audit warnings are fixed, within the current version ranges. (2b3c67d)
+
 ## 2026-11-22
 
 ### Fixed
