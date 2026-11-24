@@ -1,4 +1,4 @@
-// The blue button and the check before going on (src/play/host/goon.ts, docs/SPEC.md §6.6), in the built app:
+// The blue button and the check before going on (src/play/host/goon.ts, docs/SPEC.md §6.2), in the built app:
 // 1. a clue at ▦ Done ▶ board with points not given, one window at 1280×720: the check opens by N, by a click on the
 //    blue button and by a click on the stage; N, N at once does nothing, a slow N goes on anyway; the keys go back to
 //    what opened it; ＋ Award … ▶ board then Ctrl+Z takes the points back and the board stays; Not yet then a quick Esc

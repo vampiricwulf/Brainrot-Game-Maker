@@ -3031,7 +3031,7 @@
       : null,
   );
 
-  // ---------- The blue button and the check before going on (host/goon.ts, docs/SPEC.md §6.6) ----------
+  // ---------- The blue button and the check before going on (host/goon.ts, docs/SPEC.md §6.2) ----------
 
   /**
    * Whose 🤫 cards the check asks about: the open tile's (not a partner clue's), before its answer; the Final's, at its

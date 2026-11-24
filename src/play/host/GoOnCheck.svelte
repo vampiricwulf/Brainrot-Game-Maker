@@ -1,5 +1,5 @@
 <!--
-  The check before going on (goon.ts, docs/SPEC.md §6.6): the blue button was pressed with something left. Inside the
+  The check before going on (goon.ts, docs/SPEC.md §6.2): the blue button was pressed with something left. Inside the
   host panel, anchored bottom right over its buttons, never over the stage (the one-window stage keeps its size) nor
   the status line and the fixed bar. It says what's left, a button per fix, Not yet and a quiet "… anyway"; "First:" in
   the panel's frame when what's left is the box's next step, "Before you go on" in the warning frame when going on would

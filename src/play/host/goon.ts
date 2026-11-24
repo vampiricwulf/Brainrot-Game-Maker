@@ -1,5 +1,5 @@
 /**
- * The blue button and the check before going on (docs/SPEC.md §6.6). The blue button (the host panel's main button) is
+ * The blue button and the check before going on (docs/SPEC.md §6.2). The blue button (the host panel's main button) is
  * the show's next step only, a Next or a Reveal (mainStep); a box's actions (a spin, the buzzers, points, a card) are
  * in their box. Pressing it (a click, N, Enter where Enter means Next, a click on the stage that would go on) with
  * something left that going on would skip or lose (leftNow) opens the check: what's left, a quick button per fix, a

@@ -1,5 +1,5 @@
 /**
- * A host's click on the stage (docs/SPEC.md §6.6, the plan's rule 3): what it does in the moment on screen. Pure: the
+ * A host's click on the stage (docs/SPEC.md §6.2, the host panel's rule 3): what it does in the moment on screen. Pure: the
  * play screen works out the moment (ClickNow) and does what this says.
  * - 'go': the blue button's step (Next slide ▶, 👁 Reveal answer, ▦ Done ▶ board, Show question ▶…), through the check
  *   before going on, so a click never loses anything (it asks when something's left, as the blue button does).
