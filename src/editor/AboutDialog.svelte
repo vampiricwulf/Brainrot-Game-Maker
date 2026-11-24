@@ -74,32 +74,33 @@
       <dt>Build</dt>
       <dd class="selectable">{__BUILD_COMMIT__ ? `${__BUILD_COMMIT__}, ` : ''}{__BUILD_DATE__}</dd>
       <dt>Guide</dt>
-      <dd><a href={HOSTING_GUIDE} target="_blank" rel="noreferrer" onclick={link} title="The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams">📖 How to host (the guide)</a></dd>
+      <dd><a href={HOSTING_GUIDE} target="_blank" rel="noreferrer" onclick={link} title="The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams">📖 How to host (the guide) ↗</a></dd>
       <dt>Source</dt>
-      <dd><a href={REPO} target="_blank" rel="noreferrer" onclick={link}>GitHub: vampiricwulf/Brainrot-Game-Maker</a></dd>
+      <dd><a href={REPO} target="_blank" rel="noreferrer" onclick={link}>GitHub: vampiricwulf/Brainrot-Game-Maker ↗</a></dd>
       <dt>Updates</dt>
       <dd class="updates">
-        <span role="status" class:selectable={!!update.error}>
-          {#if update.status === 'checking'}Checking…{:else if newest && update.status !== 'installing'}Version {newest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{:else if update.status === 'idle' && !prefs.checkUpdates}Not checked on its own (⚙ Settings).{/if}
-          {#if update.error && (update.status === 'available' || update.status === 'current')}<span class="muted">{update.error}.</span>{/if}
-          {#if update.checkedAt && update.status !== 'checking'}<span class="muted checked">(checked {checkedWhen(update.checkedAt)})</span>{/if}
-        </span>
+        <!-- (No whitespace in it between its parts: with nothing to say it is empty, and the line starts where the others do.) -->
+        <span role="status" class:selectable={!!update.error}
+          >{#if update.status === 'checking'}Checking…{:else if newest && update.status !== 'installing'}Version {newest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{:else if update.status === 'idle' && !prefs.checkUpdates}Not checked on its own (⚙ Settings).{/if}<!--
+          -->{#if update.error && (update.status === 'available' || update.status === 'current')}{' '}<span class="muted">{update.error}.</span>{/if}<!--
+          -->{#if update.checkedAt && update.status !== 'checking'}{' '}<span class="muted checked">(checked {checkedWhen(update.checkedAt)})</span>{/if}</span
+        >
         {#if newest}
           <UpdateControls release={newest} />
         {:else}
-          <a href={`${RELEASES}/latest`} target="_blank" rel="noreferrer" onclick={link}>Latest release</a>
+          <a href={`${RELEASES}/latest`} target="_blank" rel="noreferrer" onclick={link}>Latest release ↗</a>
         {/if}
         <button class="small" onclick={() => checkForUpdate(true)} disabled={update.status === 'checking' || update.status === 'installing'}>Check for updates</button>
       </dd>
       <dt>Problems</dt>
-      <dd><a href={`${REPO}/issues`} target="_blank" rel="noreferrer" onclick={link}>Report an issue</a></dd>
+      <dd><a href={`${REPO}/issues`} target="_blank" rel="noreferrer" onclick={link}>Report an issue ↗</a></dd>
       <dt>License</dt>
       <dd>
         MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones), 🔄 Convert, ✎ Edit and the check whether a video or sound plays
         here: mediabunny © 2026-present Vanilagy and contributors (MPL-2.0, source at
-        <a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noreferrer" onclick={link}>github.com/Vanilagy/mediabunny</a>). 🗜 for a GIF's
+        <a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noreferrer" onclick={link}>github.com/Vanilagy/mediabunny ↗</a>). 🗜 for a GIF's
         frames: omggif © 2013 Dean McNamee (MIT,
-        <a href="https://github.com/deanm/omggif" target="_blank" rel="noreferrer" onclick={link}>github.com/deanm/omggif</a>).
+        <a href="https://github.com/deanm/omggif" target="_blank" rel="noreferrer" onclick={link}>github.com/deanm/omggif ↗</a>).
         <details class="license">
           <summary>omggif’s license</summary>
           <p>
@@ -233,6 +234,10 @@
     flex-wrap: wrap;
     gap: 6px 10px;
     align-items: center;
+  }
+  /* Nothing said yet: the line starts where the others do (the live region stays, ready to be heard). */
+  .updates > [role='status']:empty {
+    margin-right: -10px;
   }
   .folder {
     display: flex;

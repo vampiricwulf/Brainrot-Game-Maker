@@ -193,6 +193,15 @@ assert(
   aboutText.includes("kept in this browser's storage") && (await about.getByRole('button', { name: /Open folder/ }).count()) === 0 && (await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0,
   'in a browser, About says the data stays in the browser (no folders, no desktop notice)',
 );
+{
+  // Its lines start at one edge (nothing said about updates yet: Latest release isn't pushed right by an empty status),
+  // and its links that open the browser say so with ↗, as the app's other outside links do.
+  const left = async (name) => Math.round((await about.getByRole('link', { name }).boundingBox()).x);
+  const lefts = [await left(/How to host/), await left(/^Latest release/), await left(/^Report an issue/)];
+  assert(new Set(lefts).size === 1, `ℹ About’s Guide, Latest release and Problems lines start at one edge (${lefts.join(', ')})`);
+  const links = await about.locator('a[target="_blank"]').evaluateAll((as) => as.map((a) => a.textContent.trim()));
+  assert(links.length >= 6 && links.every((t) => t.endsWith('↗')), `ℹ About’s outside links end in ↗ (${links.join(' | ')})`);
+}
 await page.keyboard.press('Escape');
 await about.waitFor({ state: 'detached' });
 
