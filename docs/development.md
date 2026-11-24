@@ -119,6 +119,9 @@ Settings, Pages, with Source "GitHub Actions".
 - `package.json`'s version is a floor. To make a deliberate jump, set it by hand: `node scripts/version.mjs set 2.0.0`.
 - `node scripts/version.mjs check` makes sure `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`,
   `Cargo.toml` and `Cargo.lock` agree.
+- `node scripts/version.mjs stamp` moves the lines under **Unreleased** in `CHANGELOG.md` under today's heading in
+  Pacific time (it works the date out, whatever the computer's clock zone is), merging them into that day's sections if
+  it has a heading already. It does nothing when Unreleased is empty. `stamp 2026-11-22` uses that date instead.
 
 ### Writing changelog lines
 

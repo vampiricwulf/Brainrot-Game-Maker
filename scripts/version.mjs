@@ -10,9 +10,15 @@
 //   node scripts/version.mjs set X.Y.Z         Stamp a version into every file that carries it (package.json and its
 //                                              lock file, the desktop app's tauri.conf.json, Cargo.toml, Cargo.lock).
 //   node scripts/version.mjs check             Fail when those files don't all carry the same version.
+//   node scripts/version.mjs stamp [YYYY-MM-DD]
+//                                              Just before a push: move CHANGELOG.md's Unreleased lines under today's
+//                                              heading in Pacific time (or the date given), merging them into that
+//                                              day's Added / Changed / Fixed / Removed if it has a heading already.
+//                                              Does nothing (and says so) when Unreleased is empty.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { addedEntries, nextVersion, parseVersion, releaseNotes } from '../src/lib/semver.ts';
+import { pacificDate, stampChangelog } from '../src/lib/changelog.ts';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
@@ -114,7 +120,17 @@ if (cmd === 'next') {
     process.exit(1);
   }
   console.log(`${[...versions][0]} everywhere`);
+} else if (cmd === 'stamp') {
+  const date = arg ?? pacificDate();
+  const stamped = stampChangelog(read('CHANGELOG.md'), date);
+  if (!stamped) {
+    console.log('Nothing under Unreleased in CHANGELOG.md: nothing to stamp.');
+  } else {
+    write('CHANGELOG.md', stamped.text);
+    const lines = `${stamped.moved} line${stamped.moved === 1 ? '' : 's'}`;
+    console.log(`Moved ${lines} from Unreleased ${stamped.merged ? 'into the existing' : 'under a new'} heading ## ${date}.`);
+  }
 } else {
-  console.error('Usage: node scripts/version.mjs next [notes.md] | set X.Y.Z | check');
+  console.error('Usage: node scripts/version.mjs next [notes.md] | set X.Y.Z | check | stamp [YYYY-MM-DD]');
   process.exit(2);
 }
