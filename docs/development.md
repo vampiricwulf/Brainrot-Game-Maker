@@ -125,13 +125,19 @@ Settings, Pages, with Source "GitHub Actions".
 
 ### Writing changelog lines
 
-Every change people who make or host games would notice gets a line in `CHANGELOG.md`, in the same commit as the change
-(or the merge that brings it in):
+Every change people who make or host games would notice gets a line in `CHANGELOG.md`:
 
-- under **Unreleased** at the top until it's pushed, then under the heading for the day it's pushed (Pacific time,
-  PST/PDT; start the heading on the day's first push);
 - in **Added**, **Changed**, **Fixed** or **Removed**, which also picks the version step above (only Fixed: a patch);
-- in plain words, with the commit hashes when known.
+- in plain words, with the commit hashes;
+- under the heading for the day it's pushed (Pacific time, PST/PDT).
+
+In practice that takes three steps:
+
+1. Commit the change (or the merge that brings it in) with its line under **Unreleased** at the top.
+2. A commit can't hold its own hash, so once the hashes are known, add them to the line, e.g. `(abc1234)`.
+3. When you push, first run `node scripts/version.mjs stamp`. It moves the Unreleased lines under today's Pacific date,
+   merging them into that day's sections if it has a heading already. Commit the hashes and the move together as
+   `Changelog: …`, and push it with the rest.
 
 When a commit or merge lands with a title that doesn't say what it is, add it to the changelog's "Notes on the history"
 table instead of rewriting pushed history. The same rule is in `CLAUDE.md` and at the top of `CHANGELOG.md`.
