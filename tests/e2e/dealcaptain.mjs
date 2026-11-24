@@ -108,6 +108,12 @@ try {
   assert((await handOut.innerText()).trim() === '✔ Hand them out' && (await clickable(handOut)), 'no phones: ✔ Hand them out, in view');
   await handOut.click();
   await dialog.locator('.hands').waitFor();
+  // (The next step, the first 📋 Copy, sits at the box's foot, under its fold at 1280×720: it comes into view, the keys on it.)
+  const firstCopy = dialog.locator('.hands button').first();
+  assert(
+    await until(async () => (await clickable(firstCopy)) && (await firstCopy.evaluate((b) => b === document.activeElement)), 3000),
+    `handed out: the first 📋 Copy is in view and has the keys (focus: ${await host.evaluate(() => document.activeElement?.textContent?.trim())})`,
+  );
   const rows = await dialog.locator('.hands .row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
   assert(JSON.stringify(rows) === JSON.stringify(NAMES.map((n) => `${n} 📋 Copy 🪟`)), `the list names all five dealt in, each with 📋 Copy and 🪟 (${rows.join(' | ')})`);
   let d = null;

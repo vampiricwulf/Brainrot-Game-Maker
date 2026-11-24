@@ -13,7 +13,7 @@
   there.
 -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
   import { popupBlocked } from '../../lib/platform';
   import { announce } from '../../lib/announce';
@@ -57,6 +57,8 @@
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   const room = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
   /** Its phones get the cards the host sends (else the host copies them: 📋, or the 🪟 card window). */
+  /** The box itself. */
+  let box = $state<HTMLElement>();
   const cardsOn = $derived(room && roomHasCards());
   const filesOn = $derived(cardsOn && roomHasFiles());
   /** What the phones can get (with files off, none from this computer). */
@@ -229,6 +231,14 @@
     if (!cards.length) return toast('The deal can’t be sent now');
     d.phonesAt = dealPhones(d, remote.phones);
     announce(cardsOn ? `${d.name}: ${cards.length} card${cards.length === 1 ? '' : 's'} sent` : `${d.name} dealt: copy each card to its player (📋)`);
+    // (Handed out to copy: the next step is the first 📋 Copy, at the box's foot. It gets the keys and comes into view,
+    // where the box is short (one window) and it would sit under its fold.)
+    if (!cardsOn)
+      void tick().then(() => {
+        const first = box?.querySelector<HTMLElement>('.hands button');
+        first?.focus({ preventScroll: true });
+        first?.scrollIntoView({ block: 'nearest' });
+      });
   }
   function again(): void {
     if (!d) return;
@@ -357,7 +367,7 @@
   {/if}
 {/snippet}
 
-<div class="deal" data-deal>
+<div class="deal" data-deal bind:this={box}>
   {#if !dual}
     <span class="exposed">⚠ Viewers can see this window: it never says who got which part, nor what’s on a card.</span>
   {/if}
