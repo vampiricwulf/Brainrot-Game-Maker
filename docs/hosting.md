@@ -356,6 +356,9 @@ Each turn:
 - Edit the board while you play with **✎ Edit board** (`E`), and go back with **✓ Done editing** or `Esc`. Its gestures
   are the editor's: drag a space to move it, Shift+click to select several (drag one to move them all), Alt+drag from
   a space to another (or **🔗 Connect to…**) to connect them, and Ctrl+click or double-click the board to add a space.
+  On a touch screen its box says it in taps: tap to pick, drag to move, **＋ Space** then a tap to add one, a long press
+  for a space's menu, and **☐ Select several** makes a tap add a space to the ones selected (or leave it out), as
+  Shift+click does.
 - Move around the board with the arrow keys once it has the keys; `Enter` opens a space's card.
 
 ## Ending and resuming

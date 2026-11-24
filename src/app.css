@@ -213,6 +213,10 @@ label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
   kbd:not(td > kbd),
   .not-touch { display: none !important; }
 }
+/* Its other half: words only for a touch screen (tap, long-press) and its own buttons (✎ Edit board's ☐ Select several). */
+@media (hover: hover) {
+  .touch-only { display: none !important; }
+}
 
 /* A short message (toast) and the editor's "Deleted … · Undo" note (HistoryNotice): one pill at the bottom middle. */
 .note-pill {

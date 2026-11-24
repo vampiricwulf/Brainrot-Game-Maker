@@ -903,7 +903,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   step and ▸ Players. ✎ Edit board (BoardEditLayer on the stage, BoardEditPanel in the box) has the editor's gestures,
   one meaning per modifier: Shift+click selects several (`boardEdit.also` beside the picked `sel`: dragged together as
   one step, `Delete` deletes them as one, “Deleted 3 spaces”), Alt+drag from a space or 🔗 Connect to… connects,
-  Ctrl+click or a double-click on the board adds. In one window 📍 Send … to… and 🗂 Spaces… name a secret space not revealed yet “? (secret)”
+  Ctrl+click or a double-click on the board adds. On a touch screen (`hover: none`) the box's hint says it in taps
+  (`.not-touch` / `.touch-only`), and its ☐ Select several (`boardEdit.several`, off again when editing ends) makes a
+  tap on a space what Shift+click is. In one window 📍 Send … to… and 🗂 Spaces… name a secret space not revealed yet “? (secret)”
   (spaceListShown), and every step, point and card offer its buttons make keeps a quiet text that says it so
   (ActionEvent.quiet, ScoreEvent.quiet, CardOffer.quiet), whichever window it was made in. A 🤫 card an action
   offers keeps where it was made (OpenOffer.at: 'land', 'space:<id>', 'object:<id>', 'tool'), and shows under that

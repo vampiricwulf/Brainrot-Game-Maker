@@ -70,6 +70,14 @@
   {/if}
   <div class="row">
     <button class="small" class:on={boardEdit.adding} aria-pressed={boardEdit.adding} onclick={() => (boardEdit.adding = !boardEdit.adding)} title="Then click the board where it goes">＋ Space</button>
+    <!-- (A touch screen has no Shift: this makes a tap on a space add it or leave it out, as Shift+click does.) -->
+    <button
+      class="small touch-only"
+      class:on={boardEdit.several}
+      aria-pressed={boardEdit.several}
+      onclick={() => (boardEdit.several = !boardEdit.several)}
+      title="While it's on, a tap on a space adds it to the ones selected, or leaves it out (as Shift+click does)">{boardEdit.several ? '☑' : '☐'} Select several</button
+    >
     <span class="muted small">Names:</span>
     <button class="small" data-names-all="show" disabled={round.spaces.every(nameShown)} onclick={() => editAllNames(game, session, true)} title="Viewers see every space's name">
       Show all
@@ -92,8 +100,11 @@
         Click the board where the new space goes{sel ? ` (after ${said(sel)})` : ''}…
       {:else if boardEdit.connecting && sel}
         Click the space {said(sel)} should lead to…
+      {:else if boardEdit.several}
+        Tap spaces to add them or leave them out · turn ☑ Select several off to drag them together
       {:else}
-        Click a space or a link to pick it · drag a space to move it · Shift+click selects several · Alt+drag connects · Ctrl+click or double-click the board to add one · right-click for more
+        <span class="not-touch">Click a space or a link to pick it · drag a space to move it · Shift+click selects several · Alt+drag connects · Ctrl+click or double-click the board to add one · right-click for more</span>
+        <span class="touch-only">Tap a space or a link to pick it · drag a space to move it · ☐ Select several, then tap spaces · ＋ Space, then tap the board to add one · long-press for more</span>
       {/if}
     </span>
   </div>
@@ -103,7 +114,8 @@
     <!-- (A count, never their names: in one window this is on stream, and a secret one would be named.) -->
     <div class="row" data-edit-several>
       <b class="small">{picked.length} spaces selected</b>
-      <span class="muted small">Drag one to move them all · Shift+click a space to add or leave it out · Delete deletes them · Esc lets go</span>
+      <span class="muted small not-touch">Drag one to move them all · Shift+click a space to add or leave it out · Delete deletes them · Esc lets go</span>
+      <span class="muted small touch-only">Drag one to move them all · with ☑ Select several on, tap a space to add or leave it out</span>
       <span class="spacer"></span>
       <button class="small" onclick={() => editPick(boardEdit.sel)} title="Keep only the space whose settings are below">Just this one</button>
       <button class="ghost small danger" onclick={() => editDeleteAll(game, session, picked, hide)} title="Delete them (Ctrl+Z brings them back; players on them move to a space that stays)">🗑 Delete {picked.length} spaces</button>

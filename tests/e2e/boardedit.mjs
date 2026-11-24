@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, checkItem, exportHtml, goOnCheck, mainButton, mainLabel, openGameFile, quick, stepButton, failureShots } from './helpers.mjs';
+import { appFile, checkItem, exportHtml, goOnCheck, mainButton, mainLabel, openGameFile, openMenu, quick, stepButton, failureShots } from './helpers.mjs';
 
 const file = appFile();
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -871,6 +871,62 @@ try {
   }, mainAt);
   assert(under === '', `a phone: where the blue button was, the check has no button (${under})`);
   await ctxP.close();
+
+  // ---------- A touch tablet (820×1180): ✎ Edit board says it in taps, and ☐ Select several is its Shift ----------
+  console.log('✎ Edit board on a touch tablet:');
+  const ctxT = await browser.newContext({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true });
+  const tt = await ctxT.newPage();
+  tt.on('pageerror', (e) => errors.push(`[tablet] ${e.message}`));
+  await start(tt);
+  await tt.getByRole('button', { name: /^✎ Edit board/ }).tap();
+  const editT = tt.locator('[data-board-editing]');
+  await editT.waitFor();
+  const hintT = await editT.locator('.row .muted', { hasText: 'to pick it' }).innerText();
+  assert(
+    hintT.includes('Tap a space or a link to pick it') && hintT.includes('long-press for more') && !/Shift|Alt\+|Ctrl\+|right-click|double-click/.test(hintT),
+    `a touch tablet: ✎ Edit board's hint says taps and a long press, no Shift, Alt, Ctrl or right-click (${hintT.replace(/\s+/g, ' ').slice(0, 400)})`,
+  );
+  const layerT = tt.locator('.stage-box [data-board-edit]');
+  const tapAt = async (x, y) => {
+    const b = await box(layerT);
+    await tt.touchscreen.tap(b.x + (x * b.width) / 1920, b.y + (y * b.height) / 1080);
+  };
+  const severalT = editT.getByRole('button', { name: /Select several/ });
+  await tapAt(300, 300);
+  await tapAt(650, 300);
+  assert((await tt.locator('[data-picked-space]').count()) === 1 && (await severalT.getAttribute('aria-pressed')) === 'false', 'a tap picks one space, the next tap another one instead');
+  await severalT.tap();
+  assert((await severalT.innerText()).startsWith('☑') && (await editT.innerText()).includes('Tap spaces to add them'), '☐ Select several turns on (☑), and the hint says to tap spaces');
+  await tapAt(1000, 300);
+  await tt.locator('[data-edit-several]').waitFor();
+  const severalSaid = await tt.locator('[data-edit-several]').innerText();
+  assert(
+    (await tt.locator('[data-picked-space]').count()) === 2 && severalSaid.includes('2 spaces selected') && !severalSaid.includes('Shift'),
+    `with it on, a tap adds a space to the one picked, as Shift+click does: 2 selected, said in taps (${severalSaid.replace(/\s+/g, ' ')})`,
+  );
+  await tapAt(650, 300);
+  await tt.locator('[data-edit-several]').waitFor({ state: 'detached' });
+  assert((await tt.locator('[data-picked-space]').count()) === 1, 'and a tap on one of them leaves it out');
+  // A long press on a space (a finger held still on it): its menu (the right-click's).
+  {
+    const b = await box(layerT);
+    const pt = { x: b.x + (1000 * b.width) / 1920, y: b.y + (300 * b.height) / 1080 };
+    const cdp = await ctxT.newCDPSession(tt);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt] });
+    await tt.waitForTimeout(900);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  }
+  await openMenu(tt).waitFor();
+  assert((await openMenu(tt).innerText()).includes('Connect to'), 'a long press on a space opens its menu, as the hint says');
+  await tt.keyboard.press('Escape');
+  await openMenu(tt).waitFor({ state: 'detached' });
+  // Done editing turns it off: the next ✎ Edit board starts with it off.
+  await editT.getByRole('button', { name: /Done editing/ }).tap();
+  await editT.waitFor({ state: 'detached' });
+  await tt.getByRole('button', { name: /^✎ Edit board/ }).tap();
+  await editT.waitFor();
+  assert((await severalT.getAttribute('aria-pressed')) === 'false', '✓ Done editing turns ☑ Select several off again');
+  await ctxT.close();
 
   // ---------- The check's ▶ Run, for a landing whose action is for the players picked ----------
   // (Thief takes $100 from the players picked, as the landing box's own −$100 button does: the check waits for a pick,

@@ -17,7 +17,7 @@ export type LinkRef = { from: string; to: string };
  * Edit mode, and what's picked in it: a space or a link; ＋ Space waits for a click; Connect to… waits for the other space;
  * the space whose ⚙ Buttons… window is open (in one window it goes over the host panel). `also`: the other spaces
  * selected with the picked one (Shift+click, as in the editor): they move and delete together; the panel shows the
- * picked one.
+ * picked one. `several`: ☑ Select several is on (a touch screen's Shift): a tap on a space adds it or leaves it out.
  */
 export const boardEdit = $state<{
   on: boolean;
@@ -27,6 +27,7 @@ export const boardEdit = $state<{
   adding: boolean;
   connecting: boolean;
   buttons: string | null;
+  several: boolean;
 }>({
   on: false,
   sel: null,
@@ -35,6 +36,7 @@ export const boardEdit = $state<{
   adding: false,
   connecting: false,
   buttons: null,
+  several: false,
 });
 
 /** Clear what's picked and waiting (edit mode stays as it is). */
@@ -49,6 +51,7 @@ export function editIdle(): void {
 /** Edit mode on or off (off: nothing stays picked, nor a ⚙ Buttons… window open). */
 export function setEditing(on: boolean): void {
   editIdle();
+  boardEdit.several = false;
   if (!on) boardEdit.buttons = null;
   boardEdit.on = on;
 }

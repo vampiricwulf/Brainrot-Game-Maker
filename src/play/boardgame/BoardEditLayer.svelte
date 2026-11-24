@@ -1,6 +1,7 @@
 <!--
   ✎ Edit board, on the host's stage: over the board, it takes the clicks and drags. Click a space or a link to pick it,
-  drag a space to move it, Shift+click spaces to select several (dragged together, deleted together), Alt+drag from a
+  drag a space to move it, Shift+click spaces to select several (dragged together, deleted together; on a touch screen,
+  ☑ Select several in the panel makes a tap do it), Alt+drag from a
   space to another to connect them (or 🔗 Connect to…, then click), Ctrl+click or double-click an empty spot to add a
   space (or ＋ Space, then click), right-click for more: the editor's gestures, so a host used to one isn't surprised
   by the other on stream. Its marks are quiet (a dashed ring, a dashed
@@ -55,7 +56,7 @@
         capture(e);
         return;
       }
-      if (e.shiftKey) return editToggle(s.id);
+      if (e.shiftKey || boardEdit.several) return editToggle(s.id);
       // (A press on one of several selected keeps them all: they drag together. A click without a drag picks just it.)
       if (!editPicked().includes(s.id)) editPick(s.id);
       boardEdit.link = null;
