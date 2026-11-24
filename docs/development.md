@@ -26,7 +26,7 @@ Run these from the repo root. The times are rough.
 ```sh
 npm run dev            # dev server
 npm run build          # → dist/index.html (one self-contained file), about 8 s
-npm run check          # type-check (svelte-check), about 25 s
+npm run check          # type-check (svelte-check; a warning fails it too), about 30 s
 npm test               # unit tests (Vitest: src/ and buzzer/), about 30 s
 (cd buzzer && npm run check)   # type-check the buzzer Worker and phone page (CI runs it; the root check doesn't)
 npm run test:quick     # the quick end-to-end test (tests/e2e/smoke.mjs), about 100 s; CI waits for it before releasing
