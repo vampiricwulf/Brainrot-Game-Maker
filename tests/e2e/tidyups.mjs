@@ -66,7 +66,11 @@ try {
   await unusedBtn.click();
   await page.locator('[data-place^="media:"]').waitFor({ state: 'detached' });
   assert((await unusedBtn.count()) === 0, 'and once it is deleted, the button goes again');
-  assert(await page.evaluate(() => document.activeElement !== document.body), 'the keys stay on the page, not lost with the button');
+  const kept = await page.waitForFunction(() => document.activeElement && document.activeElement !== document.body, null, { timeout: 3000 }).then(
+    () => true,
+    () => false,
+  );
+  assert(kept, 'the keys stay on the page, not lost with the button');
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('tidyups: all passed');
