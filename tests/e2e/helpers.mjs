@@ -7,7 +7,15 @@ import { deflateSync } from 'node:zlib';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 
-/** The newest of the files the build is made from (src/, index.html, vite.config.ts). */
+// Every Chromium a test starts gets the tests' fonts (fonts.conf: the machine's minus Inter, as on CI), however the file
+// is run: each e2e file imports this one before it launches, and Chromium inherits process.env. A FONTCONFIG_FILE that's
+// already set wins.
+process.env.FONTCONFIG_FILE ||= fileURLToPath(new URL('fonts.conf', import.meta.url));
+
+/**
+ * The newest of the files the build is made from (src/, index.html, vite.config.ts). Unit tests (*.test.ts and
+ * src/test/) aren't in the build, so editing one doesn't call for a new one.
+ */
 function newestSource() {
   let newest = null;
   const consider = (path) => {
@@ -17,8 +25,9 @@ function newestSource() {
   const walk = (dir) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
       const path = join(dir, e.name);
-      if (e.isDirectory()) walk(path);
-      else if (e.isFile()) consider(path);
+      if (e.isDirectory()) {
+        if (path !== join(repo, 'src/test')) walk(path);
+      } else if (e.isFile() && !/\.test\.ts$/.test(e.name)) consider(path);
     }
   };
   walk(join(repo, 'src'));
@@ -46,14 +55,12 @@ export function appFile() {
 }
 
 /**
- * Starts Chromium (CHROMIUM_PATH, or the sandbox's one) with the tests' fonts: tests/e2e/fonts.conf, the machine's
- * fonts minus Inter, as on CI, unless FONTCONFIG_FILE is already set. Layout checks measure text, and a wider UI font
- * (Inter is system-ui on some Linux desktops) moves what they measure.
+ * Starts Chromium (CHROMIUM_PATH, or the sandbox's one) with the tests' fonts (FONTCONFIG_FILE, set above). Layout
+ * checks measure text, and a wider UI font (Inter is system-ui on some Linux desktops) moves what they measure.
  */
 export function launchChromium(opts = {}) {
   const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-  const FONTCONFIG_FILE = process.env.FONTCONFIG_FILE || fileURLToPath(new URL('fonts.conf', import.meta.url));
-  return chromium.launch({ executablePath, ...opts, env: { ...process.env, FONTCONFIG_FILE, ...opts.env } });
+  return chromium.launch({ executablePath, ...opts, env: { ...process.env, ...opts.env } });
 }
 
 /** Where a failing test leaves its pictures: SCREENSHOTS (CI uploads it), else SHOTS, else test-results/. */

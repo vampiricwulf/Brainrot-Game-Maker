@@ -9,14 +9,13 @@
 // hold about six minutes of tests each (from a full run's times); rest is every tests/e2e/*.mjs file they don't list,
 // so a new file always runs somewhere. buzzer is worked out from the files' source (startBuzzer, startRoomOn or
 // buzzer/'s wrangler), so it never needs a list. When a shard grows past about eight minutes, move a file to another one here.
-// --check fails unless every named file exists, no file is in two shards, and build.yml's e2e matrix runs exactly
-// these shards.
+// --check fails unless every named file exists, no file is in two shards, build.yml's e2e matrix runs exactly
+// these shards, and every file uses appFile() and failureShots() from helpers.mjs.
 //
-// Before a run it checks that dist/index.html is newer than the source (unless APP_FILE is set), and each file's
-// Chromium gets tests/e2e/fonts.conf (CI's fonts, no Inter) unless FONTCONFIG_FILE is set.
+// Before a run it checks that dist/index.html is newer than the source (unless APP_FILE is set). Each file's Chromium
+// gets tests/e2e/fonts.conf (CI's fonts, no Inter) unless FONTCONFIG_FILE is set: helpers.mjs sets it.
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { appFile } from '../tests/e2e/helpers.mjs';
 
 const SHARDS = {
@@ -50,6 +49,14 @@ function check() {
   const got = m ? m[1].split(',').map((s) => s.trim()) : [];
   if (got.join() !== want.join()) bad.push(`build.yml's e2e matrix is [${got}], not [${want}]`);
   if (!shardFiles('rest').length) bad.push('rest is empty');
+  // Every file opens the app through appFile() (which refuses a stale build) and leaves failure pictures through
+  // failureShots() (where CI uploads them), so a file copied from an old one can't bring the old ways back.
+  for (const f of all) {
+    const src = readFileSync(new URL(`tests/e2e/${f}.mjs`, root), 'utf8');
+    if (/process\.env\.APP_FILE|dist\/index\.html/.test(src)) bad.push(`${f}.mjs reads APP_FILE or dist/index.html itself: use appFile()`);
+    if (/newPage\(/.test(src) && !/failureShots\(/.test(src)) bad.push(`${f}.mjs opens pages but never calls failureShots()`);
+    if (/process\.env\.SHOTS\b[^\n]*failure/.test(src)) bad.push(`${f}.mjs takes its failure picture only when SHOTS is set: use failureShots()`);
+  }
   if (bad.length) {
     console.error(bad.join('\n'));
     process.exit(1);
@@ -64,12 +71,11 @@ function run(files) {
     console.error(e.message);
     process.exit(1);
   }
-  const env = { ...process.env, FONTCONFIG_FILE: process.env.FONTCONFIG_FILE || fileURLToPath(new URL('tests/e2e/fonts.conf', root)) };
   const results = [];
   for (const f of files) {
     const t0 = Date.now();
     console.log(`\n▶ ${f}.mjs`);
-    const r = spawnSync(process.execPath, [`tests/e2e/${f}.mjs`], { cwd: root, env, stdio: 'inherit' });
+    const r = spawnSync(process.execPath, [`tests/e2e/${f}.mjs`], { cwd: root, stdio: 'inherit' });
     results.push({ f, ok: r.status === 0, s: Math.round((Date.now() - t0) / 1000) });
   }
   console.log('\nE2E results:');
