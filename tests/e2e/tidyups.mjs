@@ -66,6 +66,9 @@ try {
   const unusedBtn = page.getByRole('main').getByRole('button', { name: /^🗑 Delete unused/ });
   await page.getByRole('button', { name: '＋ Add files…' }).waitFor();
   assert((await unusedBtn.count()) === 0, 'an empty 🖼️ Media has no 🗑 Delete unused (0)');
+  // (Its empty page's 🖼 asks for the colour emoji too, U+FE0F after it, like the sidebar's 🖼 Media.)
+  const emptyIcon = await page.getByRole('main').locator('.empty .ic').innerText();
+  assert(emptyIcon.trim() === '🖼️', `an empty 🖼 Media's picture asks for the colour emoji (${JSON.stringify(emptyIcon)})`);
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await chooser.setFiles([{ name: 'spare.png', mimeType: 'image/png', buffer: png(200, 40, 40) }]);
   await page.locator('[data-place^="media:"]').first().waitFor();
@@ -89,9 +92,9 @@ try {
   const rounds = await menuIcons();
   await page.keyboard.press('Escape');
   for (const [icon, name] of [
-    ['🗺️', 'RPG'],
-    ['♟️', 'Board game'],
-    ['🖼️', 'Slides'],
+    ['🗺', 'RPG'],
+    ['♟', 'Board game'],
+    ['🖼', 'Slides'],
   ])
     assert(
       rounds.some((t) => t.startsWith(`${icon}${VS} ${name}`)),
@@ -104,8 +107,8 @@ try {
   for (const [icon, name] of [
     ['😈', 'Punishments'],
     ['🃏', 'Truth or dare'],
-    ['⏱️', 'Time limit'],
-    ['🗺️', 'Locations'],
+    ['⏱', 'Time limit'],
+    ['🗺', 'Locations'],
   ])
     assert(
       ready.some((t) => t.startsWith(`${icon}${VS} ${name}`)),
@@ -115,12 +118,12 @@ try {
   const deals = await menuIcons();
   await page.keyboard.press('Escape');
   assert(
-    deals.some((t) => t.startsWith(`🕵️${VS} Odd one out`)),
+    deals.some((t) => t.startsWith(`🕵${VS} Odd one out`)),
     '📋 Ready-made deal…: 🕵️ Odd one out too',
   );
   // (The sidebar lists 🖼️ Media under the rounds, beside 🖼️ Slides ones.)
   const mediaTab = (await page.locator('nav > button', { hasText: 'Media (' }).innerText()).trim();
-  assert(mediaTab.startsWith(`🖼️${VS} Media (`), `the sidebar: 🖼️ Media too (${mediaTab})`);
+  assert(mediaTab.startsWith(`🖼${VS} Media (`), `the sidebar: 🖼️ Media too (${mediaTab})`);
 
   // ---------- ⚙ Settings › Undo says what it did: snapped into range, and the changes it forgot ----------
   await roundTabsIn(page).first().click();
