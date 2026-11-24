@@ -54,6 +54,14 @@ try {
   await page.waitForTimeout(100);
   assert(await onTop(settings, 'input[aria-label="Undo steps to remember"]'), 'a box Tab goes to higher up comes into view below the head');
   await settings.getByRole('button', { name: 'Done' }).click();
+  // On a phone the foot takes two lines: a box Tab goes to lower down comes into view above it, not under it.
+  await page.setViewportSize({ width: 390, height: 844 });
+  settings = await openSettings();
+  await settings.evaluate((d) => (d.scrollTop = 0));
+  await settings.getByLabel('Buzzer server').focus();
+  await page.waitForTimeout(100);
+  assert(await onTop(settings, 'input[aria-label="Buzzer server"]'), 'on a phone, the buzzer server box comes into view above the two-line foot');
+  await settings.getByRole('button', { name: 'Done' }).click();
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // ---------- 🖼 Media offers 🗑 Delete unused only while something is unused ----------

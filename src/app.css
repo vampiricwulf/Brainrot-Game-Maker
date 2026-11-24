@@ -359,6 +359,12 @@ body:has(.in-panel [aria-modal='true']) .toast {
 :where(.modal-backdrop) > :where(.modal) {
   scroll-padding: 64px 0 72px;
 }
+/* (On a phone a big editor's head and a foot with a hint both take two lines.) */
+@media (max-width: 600px) {
+  :where(.modal-backdrop) > :where(.modal) {
+    scroll-padding: 112px 0 112px;
+  }
+}
 :where(.modal-backdrop) > :where(.modal) > :is(.modal-head, header, [data-head]):first-child {
   position: sticky;
   top: 0;
