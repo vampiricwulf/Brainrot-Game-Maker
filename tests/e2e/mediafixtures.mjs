@@ -1,7 +1,7 @@
 // Videos, sounds and GIFs for the e2e tests, made here, a few MB at most: videos with mediabunny in a blank page of
 // their own (Node has no video encoder; never the app's page, where mediabunny would be loaded twice), WAV sounds and
 // GIFs (omggif) in Node.
-import { writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -13,6 +13,7 @@ const { GifWriter } = createRequire(import.meta.url)('omggif');
 export async function fixturePage(ctx) {
   const html = join(tmpdir(), `brainrot-fixtures-${process.pid}.html`);
   writeFileSync(html, '<!doctype html><meta charset="utf-8"><title>Fixtures</title>');
+  process.once('exit', () => rmSync(html, { force: true }));
   const page = await ctx.newPage();
   await page.goto(pathToFileURL(html).href);
   await page.addScriptTag({ path: resolve('node_modules/mediabunny/dist/bundles/mediabunny.min.cjs') });
