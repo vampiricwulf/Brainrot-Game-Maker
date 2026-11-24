@@ -83,7 +83,10 @@ export interface Stamped {
  * Keeps the file's line ends (\r\n on a Windows checkout).
  */
 export function stampChangelog(text: string, date: string): Stamped | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`Not a date (YYYY-MM-DD): ${date}`);
+  // A real day, so a typo such as 2026-11-31 or 2026-22-11 can't make a heading for a day that doesn't exist.
+  const asDate = new Date(`${date}T00:00:00Z`);
+  const real = /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(asDate.getTime()) && asDate.toISOString().startsWith(date);
+  if (!real) throw new Error(`Not a date (YYYY-MM-DD): ${date}`);
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   const lines = text.split(/\r?\n/);
   const at = lines.findIndex((l) => /^## Unreleased\s*$/i.test(l));

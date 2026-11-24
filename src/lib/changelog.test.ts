@@ -73,6 +73,8 @@ describe('stamping the changelog', () => {
     expect(() => stampChangelog(file(['## Unreleased', '', '- A line with no section', ''], older), '2026-11-22')).toThrow(/outside a section/);
     expect(() => stampChangelog(file(['## Unreleased', '', '### Security', '', '- Something', ''], older), '2026-11-22')).toThrow(/Security/);
     expect(() => stampChangelog(file(unreleased, older), '22/11/2026')).toThrow(/Not a date/);
+    expect(() => stampChangelog(file(unreleased, older), '2026-11-31')).toThrow(/Not a date/);
+    expect(() => stampChangelog(file(unreleased, older), '2026-22-11')).toThrow(/Not a date/);
   });
 
   it('never takes the Notes on the history table for a day', () => {
