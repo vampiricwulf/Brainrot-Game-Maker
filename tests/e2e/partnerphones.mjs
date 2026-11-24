@@ -29,8 +29,8 @@ const says = (p, text) =>
   p
     .waitForFunction((t) => ['buzz-big', 'buzz-small', 'card-status-big'].some((id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length), text, { timeout: 8000 })
     .then(() => true, () => false);
-/** Waits (up to 10 s) until pred() holds; false if it never does. */
-const until = untilWith({ timeout: 10_000 });
+/** Waits (up to 8 s) until pred() holds; false if it never does. */
+const until = untilWith({ timeout: 8_000 });
 const PIC = 'kzv-ogre-pic.png';
 
 try {

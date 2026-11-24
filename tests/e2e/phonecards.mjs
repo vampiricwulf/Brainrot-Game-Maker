@@ -36,8 +36,8 @@ async function connectHost(code, token) {
   return { got, send: (m) => ws.send(JSON.stringify(m)), close: () => ws.close() };
 }
 
-/** Waits (up to 10 s) until pred() holds, or fails saying `never: <what>`. */
-const until = untilWith({ timeout: 10_000 });
+/** Waits (up to 8 s) until pred() holds, or fails saying `never: <what>`. */
+const until = untilWith({ timeout: 8_000 });
 
 // A 1×1 GIF.
 const GIF = Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64');
