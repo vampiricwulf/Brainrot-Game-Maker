@@ -30,6 +30,10 @@ describe('readItemsCsv', () => {
     expect(badPrices).toEqual(['8 gold']);
   });
 
+  it('reads back the prices ⬇ Export CSV wrote, three decimals too', () => {
+    expect(readItemsCsv('name,price\nGem,1.125\nOrb,12.375\n').items).toEqual([{ name: 'Gem', price: 1.125 }, { name: 'Orb', price: 12.375 }]);
+  });
+
   it('takes a column of names with no header', () => {
     expect(readItemsCsv('Sword\nPotion\n').items).toEqual([{ name: 'Sword' }, { name: 'Potion' }]);
   });

@@ -33,7 +33,8 @@ export function readItemsCsv(text: string): { items: ItemCsvRow[]; badPrices: st
     const it: ItemCsvRow = { name };
     const price = cell(r, 'price');
     if (price) {
-      const v = parseValue(price);
+      // (A plain number as ⬇ Export CSV writes it is read as it is: "1.125" is a price of 1.125, not 1125.)
+      const v = /^-?\d+(\.\d+)?$/.test(price) ? Number(price) : parseValue(price);
       if (v === null) badPrices.push(price);
       else it.price = v;
     }
