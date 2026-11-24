@@ -258,9 +258,11 @@
 
   let stageW = $state(0);
   let stageH = $state(0);
+  /** Black round the picture, so the crop box's handles on its edges show whole (as .stage's padding). */
+  const STAGE_PAD = 8;
   /** The picture's box in the stage, its own shape (the crop box lies over it exactly). */
   const fit = $derived.by(() => {
-    const k = Math.min(stageW / W, stageH / H);
+    const k = Math.min((stageW - 2 * STAGE_PAD) / W, (stageH - 2 * STAGE_PAD) / H);
     return k > 0 && Number.isFinite(k) ? { w: Math.round(W * k), h: Math.round(H * k) } : null;
   });
 
@@ -818,6 +820,10 @@
   }
   .stage.sound {
     height: 90px;
+  }
+  /* (STAGE_PAD: room for the crop box's handles on the picture's edges.) */
+  .stage:not(.sound) {
+    padding: 8px;
   }
   /* A laptop's screen: a smaller picture, so the trim, its choices and the buttons fit under it. */
   @media (max-height: 820px) {

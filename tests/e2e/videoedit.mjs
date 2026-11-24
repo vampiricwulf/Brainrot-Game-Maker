@@ -345,6 +345,17 @@ try {
   await dialog.getByRole('button', { name: '1:1', exact: true }).click();
   assert((await dialog.locator('[data-crop-size]').innerText()) === 'crop 480×480', 'a square crop: 480×480');
   assert(await dialog.locator('[data-crop-box]').count(), 'the crop box lies over the picture');
+  {
+    // Its handles show whole, those on the picture's top and bottom edges too (not cut by the black stage's edge).
+    const cut = await dialog.locator('.stage').evaluate((stage) => {
+      const s = stage.getBoundingClientRect();
+      return [...stage.querySelectorAll('[data-crop-handle]')]
+        .map((h) => [h.dataset.cropHandle, h.getBoundingClientRect()])
+        .filter(([, r]) => r.top < s.top || r.bottom > s.bottom || r.left < s.left || r.right > s.right)
+        .map(([m, r]) => `${m} ${Math.round(r.top - s.top)}..${Math.round(r.bottom - s.top)} of ${Math.round(s.height)}`);
+    });
+    assert(cut.length === 0, `the crop box’s handles show whole in the stage (${cut.join(', ')})`);
+  }
   await dialog.getByRole('button', { name: '360p', exact: true }).click();
   assert((await dialog.getByRole('button', { name: '360p', exact: true }).getAttribute('title')) === '360×360', '360p is 360×360');
   // A size in percent instead (a picture may be any shape): the window says what it comes out at, whichever is picked.
