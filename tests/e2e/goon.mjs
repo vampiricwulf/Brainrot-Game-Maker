@@ -153,6 +153,12 @@ async function settledStageSize(page) {
   throw new Error(`the stage never settled at one size (last ${was})`);
 }
 const rectOf = (loc) => loc.evaluate((b) => (({ left, right, top, bottom }) => ({ left, right, top, bottom }))(b.getBoundingClientRect()));
+/** What a tap at the middle of `r` would press (its words), or '' for nothing. */
+const underAt = (page, r) =>
+  page.evaluate(({ x, y, width, height }) => {
+    const t = document.elementFromPoint(x + width / 2, y + height / 2)?.closest('button, label, input');
+    return t ? t.textContent.trim() || t.outerHTML.slice(0, 60) : '';
+  }, r);
 const boardUp = async (page) => (await page.locator('.stage-box .board').count()) === 1 && (await page.locator('.stage-box [data-slide]').count()) === 0;
 
 try {
@@ -568,6 +574,7 @@ try {
     for (let i = 0; i < (await zeroBoxes.count()); i++) await zeroBoxes.nth(i).fill(what === 'a phone' ? '100' : '0');
     await page.keyboard.press('n');
     await page.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
+    const mainAt = await mainButton(page, '👁 Reveal answer').boundingBox();
     await mainButton(page, '👁 Reveal answer').click();
     await checkItem(page, 'clock').waitFor();
     const teach = goOnCheck(page).locator('.teach');
@@ -579,8 +586,11 @@ try {
       // squeezed them to half of it); the reveal rows get the panel's whole width, ½ Halve and 0 Nullify in sight, the
       // blue button on its own row under them.
       const pad = await goOnCheck(page).locator('.scroll').evaluate((e) => getComputedStyle(e).paddingRight);
-      assert(pad === '0px' && (await goOnCheck(page).locator('.spot').count()) === 0, `a phone: the check's lines take its whole width (padding ${pad})`);
+      assert(pad === '0px', `a phone: the check's lines take its whole width (padding ${pad})`);
       await goOnCheck(page, { ready: true }).waitFor();
+      // (No spot drawn, but where the blue button was the check has no button: a nervous second tap there presses nothing.)
+      const under = await underAt(page, mainAt);
+      assert(under === '' && (await goOnCheck(page).locator('.spot').count()) === 0, `a phone: where the blue button was, the check has no button (${under})`);
       await anyway(page).click();
       await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
       await page.keyboard.press('n');

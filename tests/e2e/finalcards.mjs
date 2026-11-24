@@ -577,11 +577,31 @@ try {
   await bob.locator('#answer-in').fill(BOB_ANSWER);
   await bob.locator('#answer-send').click();
   assert(await until(() => last()?.answers?.seats?.find((x) => x.id === seat.Bob)?.got === 1), 'Bob sends his answer: the host took it (the room is told it has it)');
-  // Ann's and Cat's answers aren't in: 👁 Reveal answer asks first (⏱ 10 more seconds).
+  // Ann's and Cat's answers aren't in: 👁 Reveal answer asks first (⏱ 10 more seconds). (On a phone's width, 390×844:
+  // its lines and its “Don't ask” tick get the card's whole width, and where the blue button was it has no button.)
+  await host.setViewportSize({ width: 390, height: 844 });
+  await host.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('👁 Reveal answer'));
+  const mainAt = await mainButton(host).boundingBox();
   await next('👁 Reveal answer');
   await checkItem(host, 'answers').waitFor();
   const coming = await checkItem(host, 'answers').innerText();
   assert(coming.includes('1 of 3 answers are in') && !coming.includes('Bob-answer'), `👁 Reveal answer with answers still coming asks first, names and counts only (${coming})`);
+  await goOnCheck(host, { ready: true }).waitFor();
+  const narrow = await goOnCheck(host).evaluate((card, r) => {
+    const t = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('button, label, input');
+    // (Taller than its room, what's left scrolls: at its end, the tick is whole, one line at the card's width.)
+    const sc = card.querySelector('.scroll');
+    sc.scrollTop = sc.scrollHeight;
+    const box = sc.getBoundingClientRect();
+    const tick = card.querySelector('.tick-row')?.getBoundingClientRect();
+    return {
+      pad: getComputedStyle(sc).paddingRight,
+      tick: !!tick && tick.top >= box.top - 1 && tick.bottom <= box.bottom + 1 && tick.right <= box.right + 1 && tick.height < 40,
+      under: t ? t.textContent.trim() : '',
+      main: [Math.round(r.x), Math.round(r.y)],
+    };
+  }, mainAt);
+  assert(narrow.pad === '0px' && narrow.tick && narrow.under === '', `a phone's width: the answers check's lines and tick take its whole width, and no button where the blue button was (${JSON.stringify(narrow)})`);
   // Ann's and Cat's come in with the check open: its line says they're all in (not the count from before).
   for (const [p, a] of [[ann, 'Ann-answer'], [cat, 'Cat-answer']]) {
     await p.locator('#answer-in').fill(a);
@@ -592,6 +612,7 @@ try {
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('r');
   await host.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
+  await host.setViewportSize({ width: 1400, height: 900 });
   await next('Start player reveals ▶');
   await host.locator('.fj .pl').first().waitFor();
   // (The reveals keep the wagers locked on the phones: the room is told, the cards with it.)
