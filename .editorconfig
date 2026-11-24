@@ -1,0 +1,23 @@
+# How editors should save files here, matching the code as it is. There's no formatter set up, so otherwise keep to
+# the style of the code around you.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Markdown: two spaces at a line's end are a line break.
+[*.md]
+trim_trailing_whitespace = false
+
+# The desktop app's Rust and Cargo files use 4 spaces, as rustfmt and cargo write them.
+[*.{rs,toml}]
+indent_size = 4
+
+# Written by cargo: leave its layout alone.
+[Cargo.lock]
+indent_size = unset

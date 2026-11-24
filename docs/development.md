@@ -90,6 +90,10 @@ which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machin
 
 Unit tests sit next to the code they test (`*.test.ts`).
 
+There's no formatter set up. `.editorconfig` tells editors to save files as UTF-8 with LF line ends, a final newline,
+no spaces at line ends (except in Markdown) and 2-space indents (4 in the Rust and Cargo files); otherwise keep to the
+style of the code around you.
+
 The specs:
 
 - [`SPEC.md`](SPEC.md): the Jeopardy modes, the editor, play, the host panel's rules and the audience view. Current.
