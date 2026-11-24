@@ -2144,6 +2144,21 @@
     flex-wrap: wrap;
     gap: 6px;
   }
+  /* A phone (the panel under the stage, narrow): the main cell on its own row at the foot, at the right, so the action
+     row gets the panel's whole width (the Final's reveal rows with their ½ Halve and 0 Nullify, the check's lines). */
+  @media (max-width: 600px) {
+    .panel:not(.side) > .act {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .panel:not(.side) > .act > .next {
+      grid-column: 1;
+      grid-row: 2;
+      justify-self: end;
+    }
+    .panel:not(.side) > .act > .cellroom {
+      display: none;
+    }
+  }
   /* The blue button over its room (the widest of its steps in a clue: see mainRoom), as wide as it. */
   .mainroom {
     display: grid;
