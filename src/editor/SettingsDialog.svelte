@@ -36,6 +36,27 @@
     // (As kept: with its https://.)
     server = prefs.buzzerServer;
   }
+  /**
+   * The Undo box as typed since it was last kept (null: not touched), so a number out of its range can be said when it
+   * snaps to the lowest or highest one.
+   */
+  let undoTyped: string | null = null;
+  /** What the Undo box's last change did, under it: snapped into range, steps forgotten (nothing: as typed). */
+  let undoSaid = $state('');
+  /**
+   * Keeps the Undo setting (in range) and forgets the steps past it at once: says what happened, or ''. Lowering it
+   * can't be taken back (the forgotten steps are gone), so it's always said.
+   */
+  function keepUndo(): string {
+    const typed = undoTyped?.trim() ? Number(undoTyped) : NaN;
+    undoTyped = null;
+    savePrefs();
+    const n = prefs.undoSteps;
+    const snapped = Number.isFinite(typed) && Math.round(typed) !== n ? `Set to ${n}, the ${typed < n ? 'lowest' : 'highest'} it goes.` : '';
+    const gone = keepLimits();
+    const forgot = gone ? (gone === 1 ? 'Forgot the oldest change in 🕘 History.' : `Forgot the ${gone} oldest changes in 🕘 History.`) : '';
+    return [snapped, forgot].filter(Boolean).join(' ');
+  }
   /** Back to the defaults asks first, in the foot (it can't be undone, and it forgets a typed buzzer server). */
   let resetting = $state(false);
   let resetBtn = $state<HTMLButtonElement>();
@@ -46,8 +67,10 @@
     tested = '';
     savePrefs();
     server = prefs.buzzerServer;
-    keepLimits();
-    toast('Every setting here is back to its default');
+    undoTyped = null;
+    undoSaid = '';
+    const gone = keepLimits();
+    toast(`Every setting here is back to its default${gone ? ` (forgot the ${gone === 1 ? 'oldest change' : `${gone} oldest changes`} in 🕘 History)` : ''}`);
     askDone();
   }
   /** The question goes, and the keys go back to Back to the defaults. */
@@ -58,9 +81,10 @@
   /** Esc closes it with a box still focused (no change event then), so whatever was typed is kept here too. */
   function close(): void {
     prefs.buzzerServer = server;
-    savePrefs();
-    keepLimits();
+    const said = keepUndo();
     onclose();
+    // (The window's gone: what the Undo box did is said in a toast.)
+    if (said) toast(`Undo: ${said[0].toLowerCase()}${said.slice(1)}`);
   }
 </script>
 
@@ -125,12 +149,14 @@
         max={UNDO_STEPS.max}
         class="n"
         bind:value={prefs.undoSteps}
-        onchange={() => (savePrefs(), keepLimits())}
+        oninput={(e) => (undoTyped = e.currentTarget.value)}
+        onchange={() => (undoSaid = keepUndo())}
         aria-label="Undo steps to remember"
       />
       changes ({UNDO_STEPS.min}–{UNDO_STEPS.max})
     </label>
-    <p class="hint">How far Ctrl+Z and the 🕘 History tab can go back. The oldest changes are forgotten first.</p>
+    {#if undoSaid}<p class="small" role="status" data-undo-said>{undoSaid}</p>{/if}
+    <p class="hint">How far Ctrl+Z and the 🕘 History tab can go back. The oldest changes are forgotten first, as soon as you lower it.</p>
 
     <h3>Motion</h3>
     <label class="check">

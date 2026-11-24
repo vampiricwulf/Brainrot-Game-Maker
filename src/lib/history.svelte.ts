@@ -406,20 +406,22 @@ export function canBringBack(after: string): boolean {
 
 /**
  * Forget the oldest steps beyond the limits (the step count from ⚙ Settings, and the size). Only steps that are
- * done can go, so lowering the setting never takes away a redo. ⚙ Settings calls this when the count changes.
+ * done can go, so lowering the setting never takes away a redo. ⚙ Settings calls this when the count changes, and says
+ * how many it forgot (the number returned).
  */
-export function keepLimits(): void {
+export function keepLimits(): number {
   const { entries } = h;
   let bytes = entries.reduce((n, x) => n + x.size, 0);
   let drop = 0;
   while (drop < h.index && (entries.length - drop > maxSteps() || (bytes > MAX_BYTES && entries.length - drop > KEEP_NEWEST))) bytes -= entries[drop++].size;
-  if (!drop) return;
+  if (!drop) return 0;
   left(entries.slice(0, drop));
   h.origin = { kind: 'older', label: "Older steps weren't kept", ts: entries[drop - 1].end };
   h.trimmed += drop;
   h.marks = h.marks.map((m) => ({ ...m, at: m.at - drop })).filter((m) => m.at >= 0);
   h.entries = entries.slice(drop);
   h.index -= drop;
+  return drop;
 }
 
 /** Apply steps to the game (backward to undo). False when one couldn't be: the history starts again from here. */

@@ -604,7 +604,9 @@ describe('undo history: limits and marks', () => {
       undo();
       undo();
       prefs.undoSteps = 20;
-      keepLimits();
+      // (It says how many it forgot: ⚙ Settings tells the host.)
+      expect(keepLimits()).toBe(10);
+      expect(keepLimits()).toBe(0);
       expect(history.entries).toHaveLength(20);
       expect(history.index).toBe(18);
       expect(history.entries[0].label).toBe('Renamed the game “T10”');

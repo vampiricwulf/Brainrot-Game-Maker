@@ -1,5 +1,6 @@
 // Small editor and host tidy-ups at 1280×720: a tall window keeps its title and ✕ in sight as it scrolls, and 🖼 Media
 // offers 🗑 Delete unused only while some file is unused. Icons that are text by default ask for the colour emoji.
+// ⚙ Settings › Undo says when it snaps a number into range and how many changes a lower one forgot.
 import { pathToFileURL } from 'node:url';
 import { addClassicRounds, appFile, failureShots, launchChromium, png } from './helpers.mjs';
 
@@ -91,6 +92,51 @@ try {
   const deals = await menuIcons();
   await page.keyboard.press('Escape');
   assert(deals.some((t) => t.startsWith(`🕵${VS} Odd one out`)), '📋 Ready-made deal…: 🕵 Odd one out too');
+
+  // ---------- ⚙ Settings › Undo says what it did: snapped into range, and the changes it forgot ----------
+  await page.locator('nav > button.round-tab').first().click();
+  for (let i = 0; i < 15; i++) {
+    await page.getByRole('button', { name: '×2', exact: true }).click();
+    await page.getByRole('button', { name: '÷2', exact: true }).click();
+  }
+  const historyTab = page.locator('nav').getByRole('button', { name: /🕘 History/ });
+  const steps = async () => Number((await historyTab.innerText()).match(/\((\d+)\)/)?.[1] ?? 0);
+  const before = await steps();
+  assert(before > 30, `30 changes are in 🕘 History (${before})`);
+  settings = await openSettings();
+  const undoBox = settings.getByLabel('Undo steps to remember');
+  const said = settings.locator('[data-undo-said]');
+  await undoBox.fill('5');
+  await undoBox.press('Tab');
+  await said.waitFor();
+  const forgot = before - 20;
+  assert(
+    (await undoBox.inputValue()) === '20' && (await said.innerText()) === `Set to 20, the lowest it goes. Forgot the ${forgot} oldest changes in 🕘 History.`,
+    `5 snaps to 20 and the window says so, and what it forgot (“${await said.innerText()}”)`,
+  );
+  await undoBox.fill('300');
+  await undoBox.press('Tab');
+  await said.waitFor({ state: 'detached' });
+  assert(true, 'raising it again says nothing (nothing snapped, nothing forgotten)');
+  await undoBox.fill('99999');
+  await undoBox.press('Tab');
+  assert((await undoBox.inputValue()) === '2000' && (await said.innerText()) === 'Set to 2000, the highest it goes.', '99999 snaps to 2000, said the same way');
+  await undoBox.fill('20');
+  await undoBox.press('Tab');
+  assert(!(await said.count()), '20 with only 20 kept: nothing to say');
+  await undoBox.fill('300');
+  await undoBox.press('Tab');
+  // Esc with the box still focused (no change yet): the window goes, and a toast says what was forgotten.
+  await settings.getByRole('button', { name: 'Done' }).click();
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: '×2', exact: true }).click();
+  settings = await openSettings();
+  await undoBox.fill('2');
+  await page.keyboard.press('Escape');
+  await settings.waitFor({ state: 'detached' });
+  const toast = page.locator('.toast');
+  await toast.waitFor();
+  assert((await toast.innerText()) === 'Undo: set to 20, the lowest it goes. Forgot the 3 oldest changes in 🕘 History.', `closed with Esc, a toast says it (“${await toast.innerText()}”)`);
+  assert((await steps()) === 20, '🕘 History keeps 20');
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('tidyups: all passed');

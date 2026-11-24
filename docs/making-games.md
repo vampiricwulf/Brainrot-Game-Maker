@@ -154,6 +154,8 @@ back the old one.
   undone steps · ↶ Undo" says so, and its ↶ Undo takes that change back and brings them back. Over an open window,
   like the clue editor, `Tab` reaches the note's buttons after the window's own.
 - The **🕘 History** tab lists every change and lets you jump back to any point. It survives a reload. **⚙ Settings**
-  sets how many changes it keeps (300 by default).
+  sets how many changes it keeps (300 by default, 20 to 2000). Lowering it forgets the oldest changes at once, and the
+  window says how many (“Forgot the 17 oldest changes in 🕘 History”); a number out of range is set to the nearest one,
+  and it says that too.
 
 ![The History tab](screenshots/history.png)
