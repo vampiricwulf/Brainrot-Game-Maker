@@ -1,5 +1,5 @@
 // Small editor and host tidy-ups at 1280×720: a tall window keeps its title and ✕ in sight as it scrolls, and 🖼 Media
-// offers 🗑 Delete unused only while some file is unused.
+// offers 🗑 Delete unused only while some file is unused. Icons that are text by default ask for the colour emoji.
 import { pathToFileURL } from 'node:url';
 import { addClassicRounds, appFile, failureShots, launchChromium, png } from './helpers.mjs';
 
@@ -71,6 +71,26 @@ try {
     () => false,
   );
   assert(kept, 'the keys stay on the page, not lost with the button');
+
+  // ---------- Icons that are text by default ask for the colour emoji (U+FE0F), so none is a grey outline ----------
+  const VS = '️';
+  /** The menu's lines, each with whether its icon asks for the colour emoji. */
+  const menuIcons = async () => (await page.getByRole('menuitem').allInnerTexts()).map((t) => t.trim().split('\n')[0]);
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  const rounds = await menuIcons();
+  await page.keyboard.press('Escape');
+  for (const [icon, name] of [['🗺', 'RPG'], ['♟', 'Board game'], ['🖼', 'Slides']])
+    assert(rounds.some((t) => t.startsWith(`${icon}${VS} ${name}`)), `＋ Add round: ${icon} ${name} asks for the colour emoji`);
+  await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
+  await page.getByRole('button', { name: '📋 Ready-made wheel…' }).click();
+  const ready = await menuIcons();
+  await page.keyboard.press('Escape');
+  for (const [icon, name] of [['😈', 'Punishments'], ['🃏', 'Truth or dare'], ['⏱', 'Time limit'], ['🗺', 'Locations']])
+    assert(ready.some((t) => t.startsWith(`${icon}${VS} ${name}`)), `📋 Ready-made wheel…: ${icon} ${name} too`);
+  await page.getByRole('button', { name: '📋 Ready-made deal…' }).click();
+  const deals = await menuIcons();
+  await page.keyboard.press('Escape');
+  assert(deals.some((t) => t.startsWith(`🕵${VS} Odd one out`)), '📋 Ready-made deal…: 🕵 Odd one out too');
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('tidyups: all passed');

@@ -48,7 +48,7 @@ export interface DealTemplate {
 export const DEAL_TEMPLATES: DealTemplate[] = [
   {
     key: 'spy',
-    icon: '🕵',
+    icon: '🕵️',
     name: 'Odd one out',
     hint: 'One spy; everyone else knows the location',
     wheel: 'locations',

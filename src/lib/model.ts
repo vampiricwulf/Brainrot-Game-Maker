@@ -464,12 +464,13 @@ export interface PartnerGameInfo {
 }
 
 /**
- * The ready-made games (partner-clues spec §2.2). In every one the partner gives and the picker guesses, and a miss never
+ * The ready-made games (partner-clues spec §2.2). (🗣 and ✏ have U+FE0F after them, so they show in colour, not as a
+ * grey outline where the system's first font has them as text; ⚙ stays a sign.) In every one the partner gives and the picker guesses, and a miss never
  * costs the partner.
  */
 export const PARTNER_GAMES: Record<PartnerGame, PartnerGameInfo> = {
-  describe: { label: 'Describe it', icon: '🗣', giver: 'Describer', guesser: 'Guesser', verb: 'describes', guessVerb: 'guesses', task: 'describe', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
-  draw: { label: 'Draw it', icon: '✏', giver: 'Drawer', guesser: 'Guesser', verb: 'draws', guessVerb: 'guesses', task: 'draw', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
+  describe: { label: 'Describe it', icon: '🗣️', giver: 'Describer', guesser: 'Guesser', verb: 'describes', guessVerb: 'guesses', task: 'describe', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
+  draw: { label: 'Draw it', icon: '✏️', giver: 'Drawer', guesser: 'Guesser', verb: 'draws', guessVerb: 'guesses', task: 'draw', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
   act: { label: 'Act it out', icon: '🎭', giver: 'Actor', guesser: 'Guesser', verb: 'acts it out', guessVerb: 'guesses', task: 'act out', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
   help: { label: 'Help a friend', icon: '🙋', giver: 'Helper', guesser: 'Answerer', verb: 'helps', guessVerb: 'answers', task: 'give as a hint', got: { giver: 50, guesser: 100 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
   split: { label: 'Split clue', icon: '🧩', giver: 'Half A', guesser: 'Half B', verb: 'has half A', guessVerb: 'has half B', task: 'share', got: { giver: 100, guesser: 100 }, missed: { giver: 0, guesser: -50 }, cards: ['giver', 'guesser'] },

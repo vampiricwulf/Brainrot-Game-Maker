@@ -480,7 +480,7 @@ describe('the phones’ line (no card content, ever)', () => {
     setPartner(session, s, 'b', 'wheel');
     expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann + Bob', seats: ['a', 'b'], seatsText: '🤝 You two play this one!' });
     s.stage = 'distribute';
-    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Bob describes → Ann guesses', seats: ['b'], seatsText: '🗣 You’re describing!' });
+    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Bob describes → Ann guesses', seats: ['b'], seatsText: '🗣️ You’re describing!' });
     session.revealed = true;
     expect(phoneStatus(g, session)).toEqual({ text: '🤝 Bob described → Ann guessed' });
     for (const st of [phoneStatus(g, session)]) expect(JSON.stringify(st)).not.toMatch(/Shrek/);
@@ -492,7 +492,7 @@ describe('the phones’ line (no card content, ever)', () => {
     const s = session.partner!;
     setPartner(session, s, 'b', 'wheel');
     s.stage = 'live';
-    expect(phoneStatus(g, session)).toMatchObject({ text: '🤝 Bob draws → Ann guesses', seatsText: '✏ You’re drawing!' });
+    expect(phoneStatus(g, session)).toMatchObject({ text: '🤝 Bob draws → Ann guesses', seatsText: '✏️ You’re drawing!' });
     expect(giverLine({ ...clueRules(), game: 'help' }, true)).toBe('🙋 Your team is helping!');
     expect(partsLine({ ...clueRules(), game: 'split' }, { giver: 'Bob', guesser: 'Ann' })).toBe('Bob has half A → Ann has half B');
     expect(partsLine(clueRules(), { guesser: 'Ann', solo: true })).toBe('Ann · Solo!');

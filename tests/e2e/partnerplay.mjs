@@ -202,7 +202,7 @@ try {
   // (The keys off it again, onto the panel: Enter is the main button's.)
   await page.locator('.panel .status').click();
   const panelText = await panel.innerText();
-  assert(panelText.includes('🗣 Bob describes · 🎯 Ann guesses') && panelText.includes('Card 1 → Bob (describer) · Card 2 → nobody yet'), `the panel says who plays which part and where the cards go (${panelText.replace(/\n/g, ' | ')})`);
+  assert(panelText.includes('🗣️ Bob describes · 🎯 Ann guesses') && panelText.includes('Card 1 → Bob (describer) · Card 2 → nobody yet'), `the panel says who plays which part and where the cards go (${panelText.replace(/\n/g, ' | ')})`);
   const viewers = page.locator('.panel .status [data-viewers]');
   assert(
     (await viewers.innerText()).startsWith('⚠ Viewers see this') && (await viewers.textContent()).includes('⚠ Viewers can see this window: they can read a card’s name here') && !panelText.includes('Viewers can see'),
@@ -250,7 +250,7 @@ try {
     JSON.stringify(await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()))) === JSON.stringify(['✔ Got it', '✘ Missed', '📋 Copy words', '⏱ Start the clock (45 s)⏎']),
     `the foot: ✔ Got it and ✘ Missed, then at its right end Card 1’s 📋 Copy words (the card to copy, in view) and ⏱ Start the clock (${await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()).join(' | '))})`,
   );
-  assert((await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣 Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
+  assert((await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣️ Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
   assert((await stage('.caption').innerText()).trim().endsWith('· 🤝'), `and the caption marks it (${await stage('.caption').innerText()})`);
   assert((await stage('[data-slide="1"]').innerText()).includes('Describe this movie'), 'the question is on stream');
   const list = (await panel.innerText()).replace(/\s+/g, ' ');
@@ -261,7 +261,7 @@ try {
   await chip('Card 1 to Cat').click();
   assert((await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'), 'a chip gives it to Cat as well, and the row says it changed');
   await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
-  assert((await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣 Ann describes → 🎯 Bob guesses', '⇄ Swap turns the parts round on stream');
+  assert((await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣️ Ann describes → 🎯 Bob guesses', '⇄ Swap turns the parts round on stream');
   assert((await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'true' && (await chip('Card 1 to Ann').getAttribute('aria-pressed')) === 'false', 'a row you changed stays as it was');
   await panel.getByRole('button', { name: 'Card 1: back to the describer' }).click();
   assert((await chip('Card 1 to Ann').getAttribute('aria-pressed')) === 'true' && (await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'false', '↺ follows the parts again: the describer is Ann now');

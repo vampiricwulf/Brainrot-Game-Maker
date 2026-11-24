@@ -1,4 +1,5 @@
 // Ready-made wheels: added to the game in the editor's 🎡 tab, or spun as they are from the host's 🎡 Wheel menu.
+// (Each icon that could show as a grey outline, text by default or drawn by a text font first, has U+FE0F after it.)
 import { formatPoints, newId, type ScoreAction, type WheelPreset, type WheelSegment } from './model';
 import { WHEEL_COLORS } from './tools';
 
@@ -123,7 +124,7 @@ export const WHEEL_TEMPLATES: WheelTemplate[] = [
   },
   {
     key: 'punish',
-    icon: '😈',
+    icon: '😈️',
     name: 'Punishments',
     hint: 'Dares for a wrong answer',
     slices: () => [
@@ -139,7 +140,7 @@ export const WHEEL_TEMPLATES: WheelTemplate[] = [
   },
   {
     key: 'truthdare',
-    icon: '🃏',
+    icon: '🃏️',
     name: 'Truth or dare',
     hint: 'The classic',
     slices: () => [
@@ -158,16 +159,16 @@ export const WHEEL_TEMPLATES: WheelTemplate[] = [
   },
   {
     key: 'time',
-    icon: '⏱',
+    icon: '⏱️',
     name: 'Time limit',
     hint: 'A countdown when it lands',
     slices: () => [10, 15, 20, 30, 45, 60].map((s) => ({ label: `${s} seconds`, timerSeconds: s })),
   },
   {
     key: 'locations',
-    icon: '🗺',
+    icon: '🗺️',
     name: 'Locations',
-    hint: 'Places, for 🕵 Odd one out',
+    hint: 'Places, for 🕵️ Odd one out',
     slices: () =>
       ['Beach', 'Airplane', 'Hospital', 'School', 'Casino', 'Movie theater', 'Space station', 'Submarine', 'Restaurant', 'Pirate ship', 'Zoo', 'Bank', 'Circus', 'Supermarket', 'Hotel', 'Train']
         .map((label) => ({ label })),

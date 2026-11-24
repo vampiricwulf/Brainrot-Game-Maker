@@ -966,8 +966,8 @@ describe('phoneStatus: a 🤝 partner clue (partner-clues spec §19.4, a room th
     const moments = [
       ['tile open', '🤝 Partner clue: Ann needs a partner…', ['a'], '🤝 Your partner clue! Your partner is being picked…'],
       ['paired', '🤝 Partner clue: Ann + Bob', ['a', 'b'], '🤝 You two play this one!'],
-      ['question up', '🤝 Bob describes → Ann guesses', ['b'], '🗣 You’re describing!'],
-      ['clock started', '🤝 Bob describes → Ann guesses', ['b'], '🗣 You’re describing!'],
+      ['question up', '🤝 Bob describes → Ann guesses', ['b'], '🗣️ You’re describing!'],
+      ['clock started', '🤝 Bob describes → Ann guesses', ['b'], '🗣️ You’re describing!'],
       ['judged', '✔ Got it! Bob +$400 · Ann +$200'],
       ['revealed', '🤝 Bob described → Ann guessed'],
     ] as const;
@@ -1009,8 +1009,8 @@ describe('phoneStatus: a 🤝 partner clue (partner-clues spec §19.4, a room th
 
   it('in each game’s own words', () => {
     const lines: Record<PartnerGame, [string, string, string]> = {
-      describe: ['Bob describes → Ann guesses', '🗣 You’re describing!', 'Bob described → Ann guessed'],
-      draw: ['Bob draws → Ann guesses', '✏ You’re drawing!', 'Bob drew → Ann guessed'],
+      describe: ['Bob describes → Ann guesses', '🗣️ You’re describing!', 'Bob described → Ann guessed'],
+      draw: ['Bob draws → Ann guesses', '✏️ You’re drawing!', 'Bob drew → Ann guessed'],
       act: ['Bob acts it out → Ann guesses', '🎭 You’re acting it out!', 'Bob acted it out → Ann guessed'],
       help: ['Bob helps → Ann answers', '🙋 You’re helping!', 'Bob helped → Ann answered'],
       split: ['Bob has half A → Ann has half B', '🧩 You’re sharing half A!', 'Bob had half A → Ann had half B'],
@@ -1034,7 +1034,7 @@ describe('phoneStatus: a 🤝 partner clue (partner-clues spec §19.4, a room th
     setPartner(session, s, 'b', 'wheel');
     expect(phoneStatus(g, session)?.seatsText).toBe('🤝 Your team plays this one!');
     s.stage = 'distribute';
-    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Bob describes → Ann guesses', seats: ['b'], seatsText: '🗣 Your team is describing!' });
+    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Bob describes → Ann guesses', seats: ['b'], seatsText: '🗣️ Your team is describing!' });
     noCard(g, session);
   });
 

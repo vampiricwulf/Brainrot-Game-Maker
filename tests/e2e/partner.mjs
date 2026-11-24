@@ -563,7 +563,7 @@ try {
     (await flowIs(page, '👁 Reveal answer')) && (await stepButton(panel, '⏱ Start the clock (45 s)').count()) === 1 && (await aud.locator('.timer').count()) === 0,
     'Enter held down shows the question once, and its repeats (even a second later) don’t start the clock (the box’s ⏱ Start the clock next)',
   );
-  assert((await flat(aud.locator('[data-partner-badge]'))) === '🗣 Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
+  assert((await flat(aud.locator('[data-partner-badge]'))) === '🗣️ Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
   await never(viewers, hidden, 'the question');
 
   // ---------- Handing out the cards: one given to someone else, and copied for them ----------
@@ -763,7 +763,7 @@ try {
     const shown = Date.now();
     await stateIs((st) => st.status?.text === '🤝 Bob describes → Ann guesses');
     st = await state();
-    assert(st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p2' && st.status.seatsText === '🗣 You’re describing!', 'the question up: still no buzzers and no question words; the describer’s phone says so');
+    assert(st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p2' && st.status.seatsText === '🗣️ You’re describing!', 'the question up: still no buzzers and no question words; the describer’s phone says so');
     // (The partner clue's panel keeps one height: the buzzers' row isn't kept for the stage's size, and the Amount row
     // is folded behind ± Other points….)
     assert(
@@ -830,7 +830,7 @@ try {
     await rs('[data-partner-badge]').waitFor();
     const shown = Date.now();
     await stateIs((st) => st.status?.text === '🤝 Green Team describes → Red Team guesses');
-    assert((await state()).status.seatsText === '🗣 Your team is describing!', 'the question up: Green Team’s phones say the team is describing');
+    assert((await state()).status.seatsText === '🗣️ Your team is describing!', 'the question up: Green Team’s phones say the team is describing');
     assert((await rp.getByText('📤 Hand out the cards', { exact: true }).getAttribute('title')).includes('Copy each card to its teams'), 'the panel copies the cards to teams (its 📤 Hand out the cards heading says so)');
     await p.waitForTimeout(Math.max(0, shown + 1100 - Date.now()));
     await p.keyboard.press('Enter');
