@@ -58,3 +58,4 @@ Chromium you have.
 
   If a commit or merge lands with a title that doesn't say what it is, add it to the changelog's "Notes on the history"
   table instead of rewriting pushed history.
+- `/gate` and `/changelog` (`.claude/commands/`) walk through the checks and the changelog steps.
