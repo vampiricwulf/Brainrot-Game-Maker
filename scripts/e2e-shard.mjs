@@ -2,15 +2,22 @@
 //
 //   node scripts/e2e-shard.mjs <shard>   run the shard's files one after another (1–5, or rest)
 //   node scripts/e2e-shard.mjs all       run every file (npm run test:e2e)
+//   node scripts/e2e-shard.mjs buzzer    run the files that start a local buzzer server (npm run test:buzzer)
 //   node scripts/e2e-shard.mjs --check   prove the layout below is sound (the build job runs it)
 //
 // A run goes on past a failing file, prints each file's result and time, and exits 1 if any failed. The named shards
 // hold about six minutes of tests each (from a full run's times); rest is every tests/e2e/*.mjs file they don't list,
-// so a new file always runs somewhere. When a shard grows past about eight minutes, move a file to another one here.
+// so a new file always runs somewhere. buzzer is worked out from the files' source (startBuzzer, startRoomOn or
+// buzzer/'s wrangler), so it never needs a list. When a shard grows past about eight minutes, move a file to another one here.
 // --check fails unless every named file exists, no file is in two shards, and build.yml's e2e matrix runs exactly
 // these shards.
+//
+// Before a run it checks that dist/index.html is newer than the source (unless APP_FILE is set), and each file's
+// Chromium gets tests/e2e/fonts.conf (CI's fonts, no Inter) unless FONTCONFIG_FILE is set.
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { appFile } from '../tests/e2e/helpers.mjs';
 
 const SHARDS = {
   1: 'phonecopies cardrounds partnerplay cardsend history playfeatures buzzerlive convert slidesround dealcaptain',
@@ -30,6 +37,8 @@ const all = readdirSync(new URL('tests/e2e/', root))
 const named = Object.fromEntries(Object.entries(SHARDS).map(([k, v]) => [k, v.split(/\s+/)]));
 const listed = Object.values(named).flat();
 const shardFiles = (s) => (s === 'rest' ? all.filter((f) => !listed.includes(f)) : named[s]);
+const buzzerFiles = () =>
+  all.filter((f) => /startBuzzer|startRoomOn|node_modules\/\.bin\/wrangler/.test(readFileSync(new URL(`tests/e2e/${f}.mjs`, root), 'utf8')));
 
 function check() {
   const bad = [];
@@ -49,11 +58,18 @@ function check() {
 }
 
 function run(files) {
+  try {
+    appFile();
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
+  const env = { ...process.env, FONTCONFIG_FILE: process.env.FONTCONFIG_FILE || fileURLToPath(new URL('tests/e2e/fonts.conf', root)) };
   const results = [];
   for (const f of files) {
     const t0 = Date.now();
     console.log(`\n▶ ${f}.mjs`);
-    const r = spawnSync(process.execPath, [`tests/e2e/${f}.mjs`], { cwd: root, stdio: 'inherit' });
+    const r = spawnSync(process.execPath, [`tests/e2e/${f}.mjs`], { cwd: root, env, stdio: 'inherit' });
     results.push({ f, ok: r.status === 0, s: Math.round((Date.now() - t0) / 1000) });
   }
   console.log('\nE2E results:');
@@ -66,8 +82,9 @@ function run(files) {
 const arg = process.argv[2];
 if (arg === '--check') check();
 else if (arg === 'all') run(all);
+else if (arg === 'buzzer') run(buzzerFiles());
 else if (arg === 'rest' || named[arg]) run(shardFiles(arg));
 else {
-  console.error('Usage: node scripts/e2e-shard.mjs <1–5 | rest | all | --check>');
+  console.error('Usage: node scripts/e2e-shard.mjs <1–5 | rest | all | buzzer | --check>');
   process.exit(2);
 }
