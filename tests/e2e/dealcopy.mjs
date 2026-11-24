@@ -1,5 +1,6 @@
 // 🎭 Deals with no phone buzzers (docs/SPEC.md §6, docs/hosting.md "🎭 Deal…"), in one window (the host page is what
-// viewers see). Dealt and ✔ handed out, the cards are copied to each player (📋), so there's no "Lasts" choice to make
+// viewers see). Its lists mark the ready-made Odd one out and Locations wheel as already in this game (it has its own
+// copies). Dealt and ✔ handed out, the cards are copied to each player (📋), so there's no "Lasts" choice to make
 // and ↩ Take the cards back says it only marks them; the next round leaves the deal handed out, its 📋 rows still there.
 // Needs no buzzer room.
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -89,6 +90,17 @@ try {
   // ---------- Dealt, handed out: nothing about phones ----------
   console.log('Copy mode:');
   await openDeal();
+  // ---------- The lists mark a ready-made deal or wheel the game has its own copy of ----------
+  const dealOptions = await dialog.getByRole('combobox', { name: 'The deal' }).locator('option').allInnerTexts();
+  assert(
+    dealOptions.includes('🎭 Odd one out') && dealOptions.includes('🕵 Odd one out · already in this game · One spy; everyone else knows the location') && dealOptions.filter((o) => o.includes('already in this game')).length === 1,
+    `🎭 Deal…: the ready-made Odd one out says the game already has one, and no other (${dealOptions.join(' | ')})`,
+  );
+  const wheelOptions = await dialog.getByRole('combobox', { name: 'The wheel its cards draw from' }).locator('option').allInnerTexts();
+  assert(
+    wheelOptions.includes('Locations') && wheelOptions.includes('🗺 Locations · already in this game') && wheelOptions.filter((o) => o.includes('already in this game')).length === 1,
+    `and so does the ready-made Locations wheel (${wheelOptions.join(' | ')})`,
+  );
   await dialog.getByRole('combobox', { name: 'The deal' }).selectOption('saved:deal1');
   await dialog.getByRole('button', { name: '🎭 Deal', exact: true }).click();
   await dialog.locator('[data-deal-counts]').waitFor();

@@ -74,11 +74,20 @@
   // ---------- Setting up ----------
 
   const work = $derived(dealDraft.work);
+  /** The same name, but for case and spaces at the ends ("Locations" and "locations "). */
+  const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  /**
+   * A ready-made deal or wheel the game already has a copy of (one of its own named like it, as 📋 Ready-made deal…
+   * adds them): marked in the lists, so the two aren't taken for one another.
+   */
+  const dealInGame = (name: string) => !!game.deals?.some((x) => sameName(x.name, name));
+  const wheelInGame = (name: string) => game.wheels.some((w) => sameName(w.name, name));
+  const IN_GAME = ' · already in this game';
   /** The game's wheel for a ready-made deal's wheel: one named like it, if the game has one. */
   function wheelFor(key: string | undefined): Id | undefined {
     const t = WHEEL_TEMPLATES.find((x) => x.key === key);
     if (!t) return undefined;
-    const have = game.wheels.find((w) => w.name.trim().toLowerCase() === t.name.toLowerCase());
+    const have = game.wheels.find((w) => sameName(w.name, t.name));
     return have?.id ?? readyWheel(t.key);
   }
   /**
@@ -384,7 +393,7 @@
         </optgroup>
       {/if}
       <optgroup label="Ready-made">
-        {#each DEAL_TEMPLATES as t (t.key)}<option value="tpl:{t.key}">{t.icon} {t.name} · {t.hint}</option>{/each}
+        {#each DEAL_TEMPLATES as t (t.key)}<option value="tpl:{t.key}">{t.icon} {t.name}{dealInGame(t.name) ? IN_GAME : ''} · {t.hint}</option>{/each}
       </optgroup>
     </select>
     {#if !app.playerOnly}<div class="muted small">Make your own in the editor’s 🎡 Wheels, Dice & Deals tab.</div>{/if}
@@ -442,7 +451,7 @@
               </optgroup>
             {/if}
             <optgroup label="Ready-made">
-              {#each WHEEL_TEMPLATES as t (t.key)}<option value="tpl:{t.key}">{t.icon} {t.name}</option>{/each}
+              {#each WHEEL_TEMPLATES as t (t.key)}<option value="tpl:{t.key}">{t.icon} {t.name}{wheelInGame(t.name) ? IN_GAME : ''}</option>{/each}
             </optgroup>
           </select>
         </label>
