@@ -32,6 +32,8 @@ const SIZES = [
   [1280, 720],
   [1366, 768],
   [1920, 1080],
+  // (Narrow and tall, a tablet on its side: the stage takes the width, not the height.)
+  [820, 1180],
 ];
 const rect = (loc) => loc.evaluate((e) => (({ left, top, right, bottom }) => ({ left: Math.round(left), top: Math.round(top), right: Math.round(right), bottom: Math.round(bottom) }))(e.getBoundingClientRect()));
 const same = (a, b) => ['left', 'top', 'right', 'bottom'].every((k) => Math.abs(a[k] - b[k]) <= 1);
