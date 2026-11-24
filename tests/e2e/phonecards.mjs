@@ -289,8 +289,8 @@ try {
     'the player loads',
   );
   assert(
-    (await bobCard.innerText()).includes('🖼 Picture coming…') && (await bobCard.innerText()).includes('🔊 The host will show you this sound'),
-    'a file on its way says “🖼 Picture coming…”; one that won’t come, “the host will show you”',
+    (await bobCard.innerText()).includes('🖼️ Picture coming…') && (await bobCard.innerText()).includes('🔊 The host will show you this sound'),
+    'a file on its way says “🖼️ Picture coming…”; one that won’t come, “the host will show you”',
   );
   await shot(bob, 'open');
 
@@ -497,7 +497,7 @@ try {
   const other = { id: 'pc:c4:2:1', to: [{ seat: 'b' }], open: true, title: 'Other-qz' };
   hostState({ cards: [shared, retry, other] });
   const retried = bob.locator(`.card[data-card="${retry.id}"]`);
-  await retried.getByText('🖼 This picture didn’t load. Ask the host to show you.').waitFor({ state: 'attached' });
+  await retried.getByText('🖼️ This picture didn’t load. Ask the host to show you.').waitFor({ state: 'attached' });
   await retried.getByRole('button', { name: 'Tap to see' }).tap();
   await retried.getByText('Retry-qz').waitFor();
   let ytLoads = 0;

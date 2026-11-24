@@ -1,7 +1,7 @@
-// Which files the 🗜 dialog is open for (Editor.svelte shows it): opened from 🖼 Media, the 📱 preview and the checklist,
-// so none of them hands it down. One file, or several at once (🖼 Media's "files big for phones"). Likewise 🔄 Convert's
-// window (card-files spec §4.11.2), opened from the note at the top, 🖼 Media, a slide item's panel and the checklist,
-// and ✎ Edit's, opened from 🖼 Media, a slide item's panel and its right-click menu.
+// Which files the 🗜 dialog is open for (Editor.svelte shows it): opened from 🖼️ Media, the 📱 preview and the checklist,
+// so none of them hands it down. One file, or several at once (🖼️ Media's "files big for phones"). Likewise 🔄 Convert's
+// window (card-files spec §4.11.2), opened from the note at the top, 🖼️ Media, a slide item's panel and the checklist,
+// and ✎ Edit's, opened from 🖼️ Media, a slide item's panel and its right-click menu.
 import type { AudioEl, Id, VideoEl } from '../model';
 
 export const shrinkDialog = $state<{ open: Id[] | null }>({ open: null });

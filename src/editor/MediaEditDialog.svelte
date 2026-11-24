@@ -68,7 +68,7 @@
   const kind = was.kind;
   const what = kind === 'audio' ? 'sound' : 'video';
   const blob = untrack(() => getBlob(id));
-  /** Its sound won't play here (🖼 Media says so): it's left out of anything made. */
+  /** Its sound won't play here (🖼️ Media says so): it's left out of anything made. */
   const silent = untrack(() => {
     const v = verdictOf(id);
     return typeof v === 'object' && v.is === 'silent' ? v : null;
@@ -643,7 +643,7 @@
         {#if !done}
           <aside inert={working}>
             {#if picture}
-              <h4>🖼 Frame</h4>
+              <h4>🖼️ Frame</h4>
               {#if !can?.ok}
                 <p class="warn small">{NO_REENCODE_HERE}</p>
               {:else if !decodes}
@@ -825,7 +825,7 @@
           <button
             onclick={() => apply('new')}
             disabled={!ok || nothing || keyPending}
-            title={nothing ? nothingYet : 'Keep this file as it is, and add the edited one beside it in 🖼 Media'}>Save as a new file</button
+            title={nothing ? nothingYet : 'Keep this file as it is, and add the edited one beside it in 🖼️ Media'}>Save as a new file</button
           >
         {/if}
         <span class="spacer"></span>

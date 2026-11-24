@@ -8,7 +8,7 @@
 // picture), with no "You're the Player" (everyone has the same part); no phone hears another's prompt or can fetch
 // another's picture. The audience window holds none of it until 🎭 Who was who, which shows names and slices, never a
 // slice's longer words. ↩ Take the cards back lets go of the pictures, 📤 Send puts the same prompts out again. A deal drawn from
-// the ready-made 🗺 Locations wheel replaces it (asked first, its cards out), and neither changes the game: its deal
+// the ready-made 🗺️ Locations wheel replaces it (asked first, its cards out), and neither changes the game: its deal
 // and wheels stay as saved. Needs `npm ci` in buzzer/.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -393,7 +393,7 @@ try {
   );
   await offStream(SECRETS, 'sent again');
 
-  // ---------- A deal drawn from the ready-made 🗺 Locations wheel replaces it ----------
+  // ---------- A deal drawn from the ready-made 🗺️ Locations wheel replaces it ----------
   section('A ready-made wheel');
   await dialog.getByRole('button', { name: '🎭 Deal a new one' }).click();
   await dialog.getByRole('combobox', { name: 'The wheel its cards draw from' }).selectOption('tpl:locations');

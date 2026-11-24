@@ -67,7 +67,7 @@ type ClockNow = { endsAt: number } | { left: number };
 export const CLOCK_SOON_S = 5;
 
 /**
- * The countdown's line over an answer or wager box, `now` on the room's clock: "⏱ 12 s left" (past a minute "⏱ 1:30
+ * The countdown's line over an answer or wager box, `now` on the room's clock: "⏱️ 12 s left" (past a minute "⏱️ 1:30
  * left"), "· paused" while the host has it paused, and at 0 that the host may still take a late one (nothing locks at
  * 0: the host decides when answers lock). soon: CLOCK_SOON_S or fewer left; up: time's up.
  */
@@ -76,5 +76,5 @@ export function clockLine(t: ClockNow, now: number, what: 'answer' | 'wager'): {
   const s = Math.max(0, Math.ceil((paused ? t.left : t.endsAt - now) / 1000));
   if (!s) return { text: `Time’s up: the host may still take a late ${what}`, soon: false, up: true };
   const left = s < 60 ? `${s} s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-  return { text: `⏱ ${left} left${paused ? ' · paused' : ''}`, soon: s <= CLOCK_SOON_S, up: false };
+  return { text: `⏱️ ${left} left${paused ? ' · paused' : ''}`, soon: s <= CLOCK_SOON_S, up: false };
 }

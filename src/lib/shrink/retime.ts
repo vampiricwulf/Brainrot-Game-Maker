@@ -84,7 +84,7 @@ export function cutClips(game: Game, id: Id, cut: Cut): { where: string; start: 
 
 /**
  * The slide items playing file `id` that play only a part `cut` leaves out (they'll play the whole trimmed file):
- * where they are (as 🖼 Media says), and what they play now.
+ * where they are (as 🖼️ Media says), and what they play now.
  */
 export function cutLeavesOut(game: Game, id: Id, cut: Cut): { where: string; start: number; end: number }[] {
   const out: { where: string; start: number; end: number }[] = [];

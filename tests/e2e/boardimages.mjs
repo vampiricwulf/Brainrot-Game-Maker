@@ -95,7 +95,7 @@ try {
     'a picture dropped on a tile asks where it goes, the question first',
   );
   await page.keyboard.press('Enter');
-  await editorTile(1, 1).locator('.kinds', { hasText: '🖼' }).waitFor();
+  await editorTile(1, 1).locator('.kinds', { hasText: '🖼️' }).waitFor();
   assert((await editorTile(1, 1).locator('img.face').count()) === 0 && (await dropAsk.count()) === 0, 'Enter puts it in the question, not on the tile’s face');
   // In the question it sits above the text, which moved into a band under it (not on top of each other).
   await editorTile(1, 1).click();
@@ -279,7 +279,7 @@ try {
   await toastsIn(page, { hasText: '“boing.wav” isn’t a picture file. Board images can be pictures or GIFs.' }).waitFor();
   assert(
     (await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).innerText()) === mediaBefore,
-    'a sound dropped on the board images is refused and not added to 🖼 Media',
+    'a sound dropped on the board images is refused and not added to 🖼️ Media',
   );
 
   await modal.getByRole('button', { name: /Copy all to other rounds/ }).click();

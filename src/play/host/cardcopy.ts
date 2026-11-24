@@ -40,7 +40,7 @@ export const hasPicture = (game: Pick<Game, 'media'>, card: Slide): boolean => c
 export async function copyCardPicture(game: Pick<Game, 'media'>, card: Slide, what: string, to: string): Promise<void> {
   const item = cardItems(game, card).find((i) => i.kind === 'picture' || i.kind === 'gif');
   const src = item && ((item.media && mediaUrls[item.media]) || item.url);
-  if (!src) return toast(`${what}’s picture isn’t loaded here: open the game’s 🖼 Media to find it`, 4000);
+  if (!src) return toast(`${what}’s picture isn’t loaded here: open the game’s 🖼️ Media to find it`, 4000);
   try {
     const png = await pngOf(src);
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);

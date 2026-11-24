@@ -142,7 +142,7 @@
   >
     <div class="modal" role="dialog" aria-label="Full map" use:modal>
       <div class="row head">
-        <b class="modal-title">🗺 Jump to a screen</b>
+        <b class="modal-title">🗺️ Jump to a screen</b>
         <div class="tabs" role="tablist" aria-label="Maps">
           {#each world.maps as m (m.id)}
             <button role="tab" aria-selected={m.id === mapId} class:on={m.id === mapId} onclick={() => (mapId = m.id)}>

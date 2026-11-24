@@ -2,11 +2,11 @@
 // 🤝 Playing a partner clue (docs/PARTNER-CLUES-SPEC.md §6–§8): PARTNER UP! on stream, "Who picked it?", the partner
 // wheel (the picker never on it, the log hiding the spin until it lands, its landing the partner), overruling it with
 // 1–9, Show question ▶ with the parts badge and caption, a second Enter that doesn't start the clock, the 📤 list's
-// chips (a change stays through ⇄ Swap, ↺ follows the parts again), 📋 Copy words (ticked once pressed), ⏱ Start the
+// chips (a change stays through ⇄ Swap, ↺ follows the parts again), 📋 Copy words (ticked once pressed), ⏱️ Start the
 // clock, clicks on the stage (PARTNER UP! asks or shows the question, a card to copy first says so in the status line, then
 // a click starts the clock with ↶ Undo there) that leave the answer hidden until it's judged, Shift+Enter on ✔ Got it giving ✘ Missed, a blank question's
 // own card, Esc before the question keeping the tile, U and the ? list. The 🤝 box holds each action once (🎡 Spin for a
-// partner in front of the names, ↻ Spin again in its place after, ⏱ Start the clock at its foot, ringed while due); the
+// partner in front of the names, ↻ Spin again in its place after, ⏱️ Start the clock at its foot, ringed while due); the
 // blue button is the show's next step only (Show question ▶, Next ▶ with the wheel up, 👁 Reveal answer), asking first
 // with something left (who picked it, the partner, the cards, the pair still playing); a click on a box's button leaves
 // the keys where they were, and the rest of a double-click that redrew the box (who picked it, the question) is dropped:
@@ -385,17 +385,17 @@ try {
   await page.keyboard.press('Enter');
   assert(await toast('The question just went up'), 'a second Enter at once doesn’t start the clock');
   assert((await flowIs(page, '👁 Reveal answer')) && (await stage('.timer').count()) === 0, 'the blue button is 👁 Reveal answer, and no countdown runs');
-  assert((await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '', 'the box has ⏱ Start the clock at its foot, once on the page, in sight');
-  assert(await stepButton(panel, '⏱ Start the clock (45 s)').evaluate((b) => b.classList.contains('ring')), 'ringed, as the step due now');
+  assert((await boxHasAction(panel, '⏱️ Start the clock (45 s)')) === '', 'the box has ⏱️ Start the clock at its foot, once on the page, in sight');
+  assert(await stepButton(panel, '⏱️ Start the clock (45 s)').evaluate((b) => b.classList.contains('ring')), 'ringed, as the step due now');
   assert(
-    (await panel.locator('[data-partner-next]').innerText()) === 'Next: 📋 copy each card to its player, then ⏱ Start the clock',
+    (await panel.locator('[data-partner-next]').innerText()) === 'Next: 📋 copy each card to its player, then ⏱️ Start the clock',
     'its first line says to copy the cards first (no phones here), then start the clock',
   );
   const foot = panel.locator('[data-partner-foot]');
   assert(
     JSON.stringify(await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()))) ===
-      JSON.stringify(['✔ Got it', '✘ Missed', '📋 Copy words', '⏱ Start the clock (45 s)⏎']),
-    `the foot: ✔ Got it and ✘ Missed, then at its right end Card 1’s 📋 Copy words (the card to copy, in view) and ⏱ Start the clock (${await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()).join(' | '))})`,
+      JSON.stringify(['✔ Got it', '✘ Missed', '📋 Copy words', '⏱️ Start the clock (45 s)⏎']),
+    `the foot: ✔ Got it and ✘ Missed, then at its right end Card 1’s 📋 Copy words (the card to copy, in view) and ⏱️ Start the clock (${await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()).join(' | '))})`,
   );
   assert(
     (await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣️ Bob describes → 🎯 Ann guesses',
@@ -458,10 +458,10 @@ try {
         '# 🤝 Partner clue · Movies $400',
         '👁 Reveal answer · N',
         '—',
-        '⏱ Start the clock (45 s) · Enter',
+        '⏱️ Start the clock (45 s) · Enter',
         '✔ Got it',
         '✘ Missed',
-        '⏱ Start the countdown · T',
+        '⏱️ Start the countdown · T',
       ]) && handMenu.filter((l) => l.startsWith('👁 Reveal answer')).length === 1,
     `handing out the cards, its menu has the blue button’s 👁 Reveal answer first (it asks first), then the box's clock, then ✔ / ✘ (their keys wait for the clock) (${handMenu.join(' | ')})`,
   );
@@ -492,15 +492,15 @@ try {
     'a click on the stage with a card to copy by hand says, in the status line, to copy it to Cat first: the answer stays hidden, no clock starts',
   );
   await noCards(page, 'the status line’s note while handing out the cards');
-  // N asks first, as the blue button does: ⏱ Start the clock, and 📋 for each card (Card 1’s ticked). Card names only.
+  // N asks first, as the blue button does: ⏱️ Start the clock, and 📋 for each card (Card 1’s ticked). Card names only.
   await page.keyboard.press('n');
   await checkItem(page, 'handout').waitFor();
   assert(
     (await checkItem(page, 'handout').innerText()).includes('copy each to its player, then start the clock') &&
-      (await quick(page, '⏱ Start the clock (45 s)').count()) === 1 &&
+      (await quick(page, '⏱️ Start the clock (45 s)').count()) === 1 &&
       (await quick(page, '📋 Copy Card 1’s words ✓').count()) === 1 &&
       (await quick(page, '📋 Copy Card 2’s words').count()) === 1,
-    `N while handing out the cards asks first: copy them (Card 1’s ticked), then ⏱ Start the clock (${(await checkItem(page, 'handout').innerText()).replace(/\s+/g, ' ')})`,
+    `N while handing out the cards asks first: copy them (Card 1’s ticked), then ⏱️ Start the clock (${(await checkItem(page, 'handout').innerText()).replace(/\s+/g, ' ')})`,
   );
   await noCards(page, 'the check while handing out the cards');
   assert((await stage('[data-slide="answer"]').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'and the question stays up');
@@ -509,7 +509,7 @@ try {
   // Card 2 copied at the box's foot: the first line says the clock is next, and a click on the stage starts it, the
   // status line saying so with ↶ Undo, which takes it back.
   await panel.locator('[data-partner-foot]').getByRole('button', { name: 'Copy Card 2’s words' }).click();
-  await panel.locator('[data-partner-next]', { hasText: 'Next: ⏱ Start the clock (the cards are copied)' }).waitFor();
+  await panel.locator('[data-partner-next]', { hasText: 'Next: ⏱️ Start the clock (the cards are copied)' }).waitFor();
   // (Past the stage's double-click guard: a click on it under half a second after the last one is that one's rest.)
   await page.waitForTimeout(Math.max(0, 500 - (Date.now() - clickedAt)));
   await stage('[data-slide="1"]').click();
@@ -521,18 +521,18 @@ try {
   );
   await note.getByRole('button', { name: '↶ Undo' }).click();
   await stage('.timer').waitFor({ state: 'detached' });
-  assert((await stepButton(panel, '⏱ Start the clock (45 s)').count()) === 1, 'its ↶ Undo takes the clock back: the cards are handed out again');
+  assert((await stepButton(panel, '⏱️ Start the clock (45 s)').count()) === 1, 'its ↶ Undo takes the clock back: the cards are handed out again');
 
-  // ---------- ⏱ Start the clock ----------
+  // ---------- ⏱️ Start the clock ----------
   await page.keyboard.press('u');
   assert(await toast('Nobody buzzes on a partner clue'), 'U: nobody buzzes on a partner clue');
   await page.waitForTimeout(1100);
-  const startAt = await stepButton(panel, '⏱ Start the clock (45 s)').boundingBox();
+  const startAt = await stepButton(panel, '⏱️ Start the clock (45 s)').boundingBox();
   const gotIt = panel.locator('[data-partner-judge]').getByRole('button', { name: /✔ Got it/ });
   const gotAt = (await gotIt.boundingBox()).x;
   await page.mouse.click(startAt.x + startAt.width / 2, startAt.y + startAt.height / 2);
   await stage('.timer').waitFor();
-  assert(await flowIs(page, '👁 Reveal answer'), 'the box’s ⏱ Start the clock, a moment later, starts the clock; the blue button is still 👁 Reveal answer');
+  assert(await flowIs(page, '👁 Reveal answer'), 'the box’s ⏱️ Start the clock, a moment later, starts the clock; the blue button is still 👁 Reveal answer');
   assert(await mainButton(page).evaluate((b) => b === document.activeElement), 'and the keys are the main button’s again');
   // The same spot clicked again a moment later (a fresh click, not a double-click's): nothing took its place, so it
   // judges nothing, and ✔ Got it is where it was.
@@ -541,7 +541,7 @@ try {
   await page.waitForTimeout(300);
   assert(
     (await panel.locator('[data-judged]').count()) === 0 && (await gotIt.boundingBox()).x === gotAt,
-    'a second click where ⏱ Start the clock was judges nothing: ✔ Got it kept its place',
+    'a second click where ⏱️ Start the clock was judges nothing: ✔ Got it kept its place',
   );
   assert(
     (await panel.locator('[data-partner-next]').innerText()) === 'Did they get it? ✔ Got it or ✘ Missed',
@@ -632,13 +632,13 @@ try {
     `its category is in the theme's text color, as a slide's text is (it was always white, faint on a light theme) (${catColor})`,
   );
   assert((await mainLabel(page)) === '👁 Reveal answer', 'with no cards to hand out, the question is all: the answer is next');
-  // N asks first: the clock hasn't started. Its ⏱ Start the clock shows T, and T there does what T does outside: the
+  // N asks first: the clock hasn't started. Its ⏱️ Start the clock shows T, and T there does what T does outside: the
   // countdown starts, the check closed.
   await page.keyboard.press('n');
   await checkItem(page, 'handout').waitFor();
   assert(
-    (await quick(page, '⏱ Start the clock (45 s)').locator('kbd').allInnerTexts()).join(' ') === 'T ⏎',
-    'N with the clock not started asks first: its ⏱ Start the clock shows T and ⏎',
+    (await quick(page, '⏱️ Start the clock (45 s)').locator('kbd').allInnerTexts()).join(' ') === 'T ⏎',
+    'N with the clock not started asks first: its ⏱️ Start the clock shows T and ⏎',
   );
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('t');
@@ -716,7 +716,7 @@ try {
   assert((await info.innerText()).includes('🤝 Partner clue · Ann · choosing a partner'), 'the host column says whose partner clue it is');
   const cardsInfo = await info.locator('[data-partner-cards-info]').innerText();
   assert(
-    cardsInfo.includes(SECRET) && cardsInfo.includes(`🖼 ${PIC} · picture`) && cardsInfo.includes('This card shows the answer'),
+    cardsInfo.includes(SECRET) && cardsInfo.includes(`🖼️ ${PIC} · picture`) && cardsInfo.includes('This card shows the answer'),
     'and lists each card as text, with its picture’s name (only the host sees this window)',
   );
   await noCards(aud, 'audience: PARTNER UP!');
@@ -748,7 +748,7 @@ try {
   assert((await info.innerText()).includes('Card 1 → Cat (describer)'), 'the host column says who gets each card');
   await noCards(aud, 'audience: the question');
   await page.waitForTimeout(1100);
-  // T, with no card waiting for a phone (they're copied by hand), makes it live as ⏱ Start the clock does, and the first
+  // T, with no card waiting for a phone (they're copied by hand), makes it live as ⏱️ Start the clock does, and the first
   // Enter after it only says so: "T, then Enter" never judges by habit.
   await page.keyboard.press('t');
   await aud.locator('.timer').waitFor();

@@ -36,7 +36,7 @@
   }
   /**
    * A missing file picked again (or the file of a link that expired, stored in the game in its place): every place that
-   * uses it gets it back, as 🖼 Media's 🔗 Replace file…. Undo takes it out.
+   * uses it gets it back, as 🖼️ Media's 🔗 Replace file…. Undo takes it out.
    */
   async function findFile(id: string): Promise<void> {
     const f = await pickFile(ACCEPT.audio);
@@ -98,7 +98,7 @@
       if ((e as { name?: string } | null)?.name === 'AbortError') return;
       const name = nameOf(audio[key]);
       toast(
-        `${name ? `“${name}”` : 'This sound'} didn't play: its file or link may no longer work (🖼 Media › 🌐 Check it still loads).${hasBuiltin(key) ? ' In the game the built-in sound plays instead.' : ''}`,
+        `${name ? `“${name}”` : 'This sound'} didn't play: its file or link may no longer work (🖼️ Media › 🌐 Check it still loads).${hasBuiltin(key) ? ' In the game the built-in sound plays instead.' : ''}`,
       );
     });
   }
@@ -124,7 +124,7 @@
     {@const ref = v ? app.game.media.find((m) => m.id === v) : undefined}
     {@const vol = cueVolume(app.game, key)}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <!-- (data-place: 🖼 Media's "used 3× ▾" and the History's Go there flash it.) -->
+    <!-- (data-place: 🖼️ Media's "used 3× ▾" and the History's Go there flash it.) -->
     <div class="sound" class:off data-place="sound:{key}" oncontextmenu={(e) => showMenu(e, items(key, label))} use:rowKeys={{ menu: () => items(key, label) }}>
       {#if builtin}
         <input type="checkbox" id="cue-{key}" checked={!off} onchange={(e) => setOn(key, e.currentTarget.checked)} aria-label="Play the {label} sound" />
@@ -144,7 +144,7 @@
         >
       {:else if v && missing}
         {@const instead = builtin ? 'plays the built-in sound' : key === 'partner' ? 'the tile-open sound plays' : 'plays nothing'}
-        <!-- Its file isn't here, or (an online link) the site says its link has expired, as 🖼 Media shows it; or it was
+        <!-- Its file isn't here, or (an online link) the site says its link has expired, as 🖼️ Media shows it; or it was
              deleted from the game. -->
         {#if ref?.url && linkLifetime(ref) === 'expired'}
           <span class="missing small" title={ref.url}>⚠ {ref.name}’s link expired: {instead} (add the file again)</span>

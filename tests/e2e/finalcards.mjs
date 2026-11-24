@@ -7,7 +7,7 @@
 // back to the tab). A Final takes cards too (＋ 🤫 Card: its words box in focus, Goes to "everyone playing it"), the
 // checklist's line about an empty one goes to it, 🗑 Delete card offers ↶ Undo (the last one deleted: the question
 // opens, the keys on its tab), 📱 On their phone shows one as a phone gets it, 🔍 Find finds one by its words (its
-// words box) or its name (its Card name box), and 🖼 Media counts a file used only on one as used, where.
+// words box) or its name (its Card name box), and 🖼️ Media counts a file used only on one as used, where.
 // In play, one window: a named tile card is offered by its name; the Final's panel lists its cards under the wager rows
 // (above the step's buttons), each starting with everyone playing it (it follows the ticks, and their Undo), and
 // 📤 Send puts one on those phones beside the wager box, by a press, with neither its name nor a file name ever reaching
@@ -380,11 +380,11 @@ try {
   await focused('main [data-field="card-name"]');
   assert((await leaderTab.getAttribute('aria-selected')) === 'true', 'Enter opens it, its Card name box in focus');
 
-  // 🖼 Media: a file used only on a Final's card is used, there.
+  // 🖼️ Media: a file used only on a Final's card is used, there.
   await host.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const usedBtn = host.locator('[data-place="media:hint"] [data-used]');
   await usedBtn.waitFor();
-  assert((await main.getByRole('button', { name: /^🗑 Delete unused/ }).count()) === 0, '🖼 Media: no 🗑 Delete unused, as nothing is unused');
+  assert((await main.getByRole('button', { name: /^🗑 Delete unused/ }).count()) === 0, '🖼️ Media: no 🗑 Delete unused, as nothing is unused');
   await usedBtn.click();
   const usedAt = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert(
@@ -714,7 +714,7 @@ try {
     await until(() => last()?.answers?.seats?.find((x) => x.id === seat.Bob)?.got === 1),
     'Bob sends his answer: the host took it (the room is told it has it)',
   );
-  // Ann's and Cat's answers aren't in: 👁 Reveal answer asks first (⏱ 10 more seconds). (On a phone's width, 390×844:
+  // Ann's and Cat's answers aren't in: 👁 Reveal answer asks first (⏱️ 10 more seconds). (On a phone's width, 390×844:
   // its lines and its “Don't ask” tick get the card's whole width, and a tap where the blue button was presses nothing.)
   await host.setViewportSize({ width: 390, height: 844 });
   // (A phone has no mouse: its keys and the “Next time: …” line go, as app.css's (hover: none) does.)

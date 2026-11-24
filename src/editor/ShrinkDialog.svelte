@@ -3,7 +3,7 @@
   show keeps the file as it is. A GIF becomes a small looping video; a video gets a smaller picture (720p, 480p or
   360p), a sound is made again, and either can hold only the part the cards play. A file phones can't play (a .mov, a
   FLAC) gets a copy they can. It says what it will make and about how big, makes it (Stop leaves nothing), then says
-  how big it came out (Ctrl+Z takes it back). Several files at once (🖼 Media's "big for phones") get a row each, one
+  how big it came out (Ctrl+Z takes it back). Several files at once (🖼️ Media's "big for phones") get a row each, one
   copy and one step a file. Closed while it works, the work goes on (the header's pill shows how far it got). The
   editor isn't on stream, so files are named here.
   In play (the host panel's 🗜 Make smaller, the pre-game checklist, the two-window host column: §4.9) it's for the game
@@ -221,7 +221,7 @@
     const next = smallerLeft(game, ref) ? '🗜 again makes a smaller one, or add it from a link' : 'Add it from a link instead';
     return `${sizes}: still too big for this buzzer server, which takes files up to ${formatBytes(fileBytes)}. ${next} (Ctrl+Z takes it back).`;
   });
-  const ICON = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
+  const ICON = { image: '🖼️', video: '🎬', audio: '🔊', font: '🔤' } as const;
   /** Where it shows how far it got once this window is closed: the editor's header, or in play the 🗜 button. */
   const goesOn = play ? 'its 🗜 button shows how far it got' : 'the header shows how far it got';
 

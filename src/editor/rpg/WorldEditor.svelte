@@ -1229,7 +1229,7 @@
               ondrop={tabDropped}
               ondragend={() => ((tabDrag = null), (tabDrop = null))}
             >
-              {i === 0 ? '🗺' : '🏠'}
+              {i === 0 ? '🗺️' : '🏠'}
               {m.name}
             </button>
           {/if}

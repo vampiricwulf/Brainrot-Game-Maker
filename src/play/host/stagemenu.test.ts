@@ -28,7 +28,7 @@ describe('the stage’s menu', () => {
         steps: [
           item('◀ Slide', { id: 'slide-', keys: 'Shift+N', disabled: true }),
           item('👁 Reveal answer', { id: 'reveal', keys: 'R' }),
-          item('⏱ Start the countdown', { id: 'clock', keys: 'T' }),
+          item('⏱️ Start the countdown', { id: 'clock', keys: 'T' }),
         ],
         exits: [item('▦ Done ▶ board', { id: 'done', keys: 'Esc' }), item('↩ Put back (keep tile)', { id: 'putback', keys: 'Shift+Esc', disabled: true })],
       },
@@ -41,7 +41,7 @@ describe('the stage’s menu', () => {
       '—',
       '◀ Slide · Shift+N (off)',
       '👁 Reveal answer · R',
-      '⏱ Start the countdown · T',
+      '⏱️ Start the countdown · T',
       '—',
       '▦ Done ▶ board · Esc',
       '↩ Put back (keep tile) · Shift+Esc (off)',
@@ -58,13 +58,13 @@ describe('the stage’s menu', () => {
         heading: 'Movies · $400',
         main: item('👁 Reveal answer', { id: 'main', keys: 'N', onclick: () => (ran = 'main') }),
         // (R's at once: while it's the blue button's step, that's the one.)
-        steps: [item('👁 Reveal answer', { id: 'reveal', keys: 'R' }), item('⏱ Start the countdown', { id: 'clock', keys: 'T' })],
+        steps: [item('👁 Reveal answer', { id: 'reveal', keys: 'R' }), item('⏱️ Start the countdown', { id: 'clock', keys: 'T' })],
         exits: [item('▦ Done ▶ board', { id: 'done', keys: 'Esc' })],
       },
       [item('👁 Reveal answer', { id: 'popreveal', keys: 'R' }), item('± Adjust score')],
       [],
     );
-    expect(lines(m)).toEqual(['# Movies · $400', '👁 Reveal answer · N', '—', '⏱ Start the countdown · T', '—', '± Adjust score', '—', '▦ Done ▶ board · Esc']);
+    expect(lines(m)).toEqual(['# Movies · $400', '👁 Reveal answer · N', '—', '⏱️ Start the countdown · T', '—', '± Adjust score', '—', '▦ Done ▶ board · Esc']);
     const first = m.find((i) => 'label' in i);
     if (first && 'onclick' in first) first.onclick();
     expect(ran).toBe('main');
@@ -142,7 +142,7 @@ describe('the stage’s menu', () => {
       () => (ran = 'all'),
     );
     const m = stageMenuOf(
-      { heading: 'Adventure', steps: [...sel, item('＋ Text here…'), item('🗺 Full map (jump anywhere)', { keys: 'J' }), item('🤝 Regroup', { keys: 'G' })] },
+      { heading: 'Adventure', steps: [...sel, item('＋ Text here…'), item('🗺️ Full map (jump anywhere)', { keys: 'J' }), item('🤝 Regroup', { keys: 'G' })] },
       [],
       [item('↶ Undo', { keys: 'Ctrl+Z' })],
     );
@@ -151,7 +151,7 @@ describe('the stage’s menu', () => {
       '▭ Select in a box · Alt+drag',
       'Select everything here',
       '＋ Text here…',
-      '🗺 Full map (jump anywhere) · J',
+      '🗺️ Full map (jump anywhere) · J',
       '🤝 Regroup · G',
       '—',
       '↶ Undo · Ctrl+Z',

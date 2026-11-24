@@ -562,9 +562,9 @@ try {
   );
   await boardTilesIn(boardIn(page)).first().click();
   assert((await focused()).includes('Reveal answer'), 'opening a clue puts the focus on 👁 Reveal answer');
-  // The status line is read without its glyphs (⏱ is the timer's, not words).
+  // The status line is read without its glyphs (⏱️ is the timer's, not words).
   await page.waitForFunction(() => /Answer hidden/.test(document.getElementById('live-region')?.dataset.said ?? ''));
-  assert(!(await said()).includes('⏱'), `the status line is read without the timer's ⏱ (“${await said()}”)`);
+  assert(!(await said()).includes('⏱️'), `the status line is read without the timer's ⏱️ (“${await said()}”)`);
   // Screen readers hear an award from the page's polite live region (on the page all along, not mounted with its words).
   const region = page.locator('#live-region');
   await page.keyboard.press('1');

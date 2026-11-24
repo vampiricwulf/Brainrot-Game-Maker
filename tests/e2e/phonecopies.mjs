@@ -1,7 +1,7 @@
 // 🗜 Smaller copies for phones (card-files spec §4), end to end in Chromium: the test Chromium here makes WebM (VP9) and
 // Opus only, CI's makes MP4 (H.264) too, and the test follows what the dialog says it makes: a 🤫 card's GIF made into a
-// small looping video from 🖼 Media, which plays; Ctrl+Z and Ctrl+Y; Stop partway leaves nothing; one waiting behind
-// another, the header's pill, and the toast at the end, none naming the file. Then videos and sounds (stage 6): 🖼
+// small looping video from 🖼️ Media, which plays; Ctrl+Z and Ctrl+Y; Stop partway leaves nothing; one waiting behind
+// another, the header's pill, and the toast at the end, none naming the file. Then videos and sounds (stage 6): 🖼️
 // Media's "2 files are big for phones" makes both copies at once; a 4 s 720p WebM made at 480p, which plays and seeks,
 // then only the part its card plays (1 to 3 s); a WAV made an OGG (Opus), or an M4A (AAC) where the browser makes AAC;
 // a video phones can't play (a .mov with a WebM inside) repackaged as a WebM from the 📱 preview (↻, stage 6b.2), and a
@@ -249,8 +249,8 @@ try {
     return r;
   };
 
-  // ---------- 🗜 on 🖼 Media ----------
-  section('🗜 Make smaller… on a GIF in 🖼 Media');
+  // ---------- 🗜 on 🖼️ Media ----------
+  section('🗜 Make smaller… on a GIF in 🖼️ Media');
   await media();
   assert(
     (await card('dance').getByRole('button', { name: '🗜 Make smaller…' }).count()) === 1,
@@ -457,7 +457,7 @@ try {
   await bigButton.waitFor();
   assert(
     (await bigButton.innerText()) === '🗜 2 files are big for phones: make smaller copies…',
-    `🖼 Media says 2 of the cards’ files are big for phones (${await bigButton.innerText()})`,
+    `🖼️ Media says 2 of the cards’ files are big for phones (${await bigButton.innerText()})`,
   );
   const at6 = await historyCount();
   await bigButton.click();
@@ -482,7 +482,7 @@ try {
   await several.getByRole('button', { name: 'Make 2 copies' }).click();
   await row('movie').getByText(/^✓ /).waitFor({ timeout: 120_000 });
   await row('song').getByText(/^✓ /).waitFor({ timeout: 120_000 });
-  assert((await historyCount()) === at6 + 2 && (await bigButton.count()) === 0, 'both are made: one step each, and 🖼 Media no longer says they’re big');
+  assert((await historyCount()) === at6 + 2 && (await bigButton.count()) === 0, 'both are made: one step each, and 🖼️ Media no longer says they’re big');
   // Ctrl+Z with the window still open does what it says: the window closes, and the last copy goes.
   await page.keyboard.press('Control+z');
   await several.waitFor({ state: 'detached' });

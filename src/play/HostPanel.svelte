@@ -1,6 +1,6 @@
 <!--
   Host-only controls (scoring, reveal, navigation). Never part of the audience view. One layout in every state, top to
-  bottom: what's going on (with the 📱 and ⏱ chips on the right), the players, the action row (what this moment needs)
+  bottom: what's going on (with the 📱 and ⏱️ chips on the right), the players, the action row (what this moment needs)
   with the one main button in the NEXT cell at its right (its key on it), the tools and round navigation, a confirmation
   strip when something asks, and the fixed bar (↶ Undo … 🚪 Exit), the same in every state and round. The main button
   (the blue one) is the show's next step, from Play (goon.ts); with something left, it opens the check before going
@@ -215,7 +215,7 @@
     onshowanswer?: (playerId: string) => void;
     /** Seconds typed in the timer box (T uses them too). */
     timerSeconds?: number | null;
-    /** The status line's ⏱ Start (or ▶) started the countdown: a partner clue handing out its cards goes on with it, as with T. */
+    /** The status line's ⏱️ Start (or ▶) started the countdown: a partner clue handing out its cards goes on with it, as with T. */
     ontimerstart?: () => void;
     /** Board-game rounds: the steps to move (Enter moves them too). */
     bgSteps?: number | null;
@@ -266,7 +266,7 @@
     onbackfromend: () => void;
     onrematch: () => void;
     onskipintro: () => void;
-    /** A 🤝 partner clue: 🎡 Spin for a partner, 📤 Send and start or ⏱ Start the clock (Show question ▶ is the blue button's). */
+    /** A 🤝 partner clue: 🎡 Spin for a partner, 📤 Send and start or ⏱️ Start the clock (Show question ▶ is the blue button's). */
     onpartnerspin?: () => void;
     onpartnerclock?: () => void;
     /** ↩ Take back a 🤫 card from every phone it was sent to. */
@@ -469,10 +469,10 @@
       : (clueSecs >= 1 ? clueSecs : 0) || game.settings.defaultTimerSeconds || 30,
   );
   /**
-   * Where a countdown fits, the status line has ⏱ (Start, its seconds box): a clue (a Daily Double's, a partner clue's
+   * Where a countdown fits, the status line has ⏱️ (Start, its seconds box): a clue (a Daily Double's, a partner clue's
    * too), the Final's wagers (phones show the time over the wager box) and question, the tiebreaker and a board game's
    * turns. Elsewhere (a round's title card, the board, a slides round, an RPG round, Game over) the line is for what to do
-   * next: T and the stage menu still start one, and while one is up its ⏱ is there to pause or put it away.
+   * next: T and the stage menu still start one, and while one is up its ⏱️ is there to pause or put it away.
    */
   const clockFits = $derived(
     !!app.live.timer ||
@@ -485,8 +485,8 @@
   /** The countdown is running. */
   const clockRuns = $derived(!!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired);
   /**
-   * What a partner clue's ⏱ Start the clock counts down from: a paused countdown's time left, else the seconds typed in
-   * the ⏱ box (as T takes them), else the clue's or the game's.
+   * What a partner clue's ⏱️ Start the clock counts down from: a paused countdown's time left, else the seconds typed in
+   * the ⏱️ box (as T takes them), else the clue's or the game's.
    */
   const clockSecs = $derived.by(() => {
     const t = app.live.timer;
@@ -891,7 +891,7 @@
     const p = partnerShares(partnerValue, partnerRules(info.clue), partner, got).find((x) => x.id === id)?.points;
     return p === undefined ? null : `${p > 0 ? '+' : ''}${formatPoints(p, sym)}`;
   }
-  /** ⏱'s ✕ where no clock fits (it goes with the countdown): the focus goes on to the main button, as after ✔ / ✘. */
+  /** ⏱️'s ✕ where no clock fits (it goes with the countdown): the focus goes on to the main button, as after ✔ / ✘. */
   function clockHidden(): void {
     const a = document.activeElement;
     if (!a || a === document.body) focusMain();
@@ -1274,7 +1274,7 @@
     {#if clockFits}
       <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} onstart={ontimerstart} onhidden={clockHidden} />
     {:else}
-      <!-- (⏱'s height kept, not its width: the line is one height at every moment, so nothing under it moves.) -->
+      <!-- (⏱️'s height kept, not its width: the line is one height at every moment, so nothing under it moves.) -->
       <span class="clockroom" aria-hidden="true"><input tabindex="-1" disabled /></span>
     {/if}
   </div>

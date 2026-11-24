@@ -80,12 +80,12 @@ try {
     `a picture dropped on a sound slot is refused with a toast, said as ＋ Add files… says it (${await toast.innerText()})`,
   );
 
-  // ---------- SHELL-2: a picture dropped where nothing takes it (beside the slide, on a page's header) goes into 🖼 Media ----------
+  // ---------- SHELL-2: a picture dropped where nothing takes it (beside the slide, on a page's header) goes into 🖼️ Media ----------
   await drop(page.locator('.editor > header'), [['stray.png', 'image/png']]);
-  await page.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('Added “stray.png” to 🖼 Media'));
+  await page.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('Added “stray.png” to 🖼️ Media'));
   assert(
-    (await mediaCount()) === 2 && (await toast.innerText()) === 'Added “stray.png” to 🖼 Media',
-    `a picture dropped where nothing takes it is added to 🖼 Media, with a short toast (${await toast.innerText()})`,
+    (await mediaCount()) === 2 && (await toast.innerText()) === 'Added “stray.png” to 🖼️ Media',
+    `a picture dropped where nothing takes it is added to 🖼️ Media, with a short toast (${await toast.innerText()})`,
   );
   await page.locator('main').click({ position: { x: 2, y: 2 } });
   await page.keyboard.press('Control+z');
@@ -109,7 +109,7 @@ try {
   await page.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('wall-copy.png'));
   assert(
     (await toast.innerText()) ===
-      '“wall-copy.png” is already in 🖼 Media as “wall.png”: using that one. “notes.txt” isn’t a picture, video, sound or font file.' &&
+      '“wall-copy.png” is already in 🖼️ Media as “wall.png”: using that one. “notes.txt” isn’t a picture, video, sound or font file.' &&
       (await mediaCount()) === 1,
     `＋ Add files… with a file already in the game and one it can’t use: one toast says both (${await toast.innerText()})`,
   );
@@ -461,7 +461,7 @@ try {
   await chromiumClicks();
 
   // ---------- A picture copied on a slide pastes onto the board images ----------
-  await page.getByRole('button', { name: '🖼 Image' }).click();
+  await page.getByRole('button', { name: '🖼️ Image' }).click();
   await drop(page.getByRole('dialog', { name: 'Choose image' }), [['sticker.png', 'image/png']]);
   await page
     .locator('.canvas')
@@ -624,7 +624,7 @@ try {
       (await b.getByRole('button', { name: '🖼️ Media (1)' }).count()) === 1 && nothingMissing,
       '🔗 Find file… on a missing sound’s row puts that file back (same name, no second copy) and the checklist stops saying a file is missing',
     );
-    // 🗑 Deleted in 🖼 Media: its row says so, and how to bring it back (it has no file left to find).
+    // 🗑 Deleted in 🖼️ Media: its row says so, and how to bring it back (it has no file left to find).
     await b.getByRole('button', { name: '🖼️ Media (1)' }).click();
     await b
       .locator('.card', { hasText: 'intro-music.wav' })
@@ -634,7 +634,7 @@ try {
     await row.getByText('⚠ Its file was deleted: plays the built-in sound (Undo in 🕘 History, or Change…)').waitFor();
     assert(
       (await row.getByRole('button', { name: '🔗 Find file…' }).count()) === 0,
-      'deleted in 🖼 Media, a sound’s row says its file was deleted: Undo in 🕘 History, or Change…',
+      'deleted in 🖼️ Media, a sound’s row says its file was deleted: Undo in 🕘 History, or Change…',
     );
     await fresh.close();
   }

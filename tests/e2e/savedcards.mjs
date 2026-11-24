@@ -5,7 +5,7 @@
 // In the editor, 🤫 Cards (2) sits right after 🎡 Wheels, Dice & Deals: ＋ Add card opens a new one with its words box in
 // focus, the checklist's line about an empty card goes to it (it flashes), typing and renaming are named undo steps, a
 // name that repeats what's on the card says so, and the list's right-click ⧉ Duplicate, Alt+↓, F2 and Delete (with ↶ Undo)
-// work as they do for wheels (a rename there ended by a click elsewhere leaves the keys where the click put them). 📱 On their phone shows a card as a phone gets it, 🔍 Find finds one by its words, and 🖼 Media
+// work as they do for wheels (a rename there ended by a click elsewhere leaves the keys where the click put them). 📱 On their phone shows a card as a phone gets it, 🔍 Find finds one by its words, and 🖼️ Media
 // counts a file used only on a card as used.
 // In play, one window: 🤫 Send a card… › One made in the editor lists them by name and counted, never what's on them
 // (a tile's card once the tile is played, under its own heading), Lasts follows the card picked, and 📤 Send puts it on
@@ -407,12 +407,12 @@ try {
   await host.waitForFunction(() => document.activeElement?.matches('main [data-field="card"]'));
   assert((await row('Wild card').getAttribute('aria-current')) === 'true', 'Enter opens it, its words box in focus');
 
-  // ---------- 🖼 Media: a file used only on a card is used ----------
+  // ---------- 🖼️ Media: a file used only on a card is used ----------
   await host.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const unusedBtn = host.getByRole('main').getByRole('button', { name: /^🗑 Delete unused/ });
   const tipFile = host.locator('[data-place="media:tip"]');
   await tipFile.waitFor();
-  assert((await unusedBtn.count()) === 0, '🖼 Media: no 🗑 Delete unused, as nothing is unused');
+  assert((await unusedBtn.count()) === 0, '🖼️ Media: no 🗑 Delete unused, as nothing is unused');
   const usedBtn = tipFile.locator('[data-used]');
   await usedBtn.click();
   const usedAt = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
@@ -638,7 +638,7 @@ try {
   assert((await preview.innerText()).includes(WILD), 'What’s on it: Wild card’s words');
   await dialog.getByRole('combobox', { name: 'The card to send' }).selectOption('saved:sc_tip');
   assert(
-    await until(async () => (await preview.innerText()).includes(TIP) && (await preview.innerText()).includes('🖼 picture · zfnqj-tip.png')),
+    await until(async () => (await preview.innerText()).includes(TIP) && (await preview.innerText()).includes('🖼️ picture · zfnqj-tip.png')),
     `Tip A: its words, and its picture by name (${await words(preview)})`,
   );
   await host.keyboard.press('Escape');

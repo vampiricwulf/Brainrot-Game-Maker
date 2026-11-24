@@ -194,7 +194,7 @@ export type GoActs = {
   /** Show question ▶ on PARTNER UP!, and the partner wheel put away (its landing is the partner). */
   partnerShow: () => void;
   closeWheel: () => void;
-  /** 📤 Send and start or ⏱ Start the clock (false: a moment after the question it waits, saying so). */
+  /** 📤 Send and start or ⏱️ Start the clock (false: a moment after the question it waits, saying so). */
   partnerClock: () => void | false;
   /** 📋 Copy a card's words (or picture), to paste to its players: never on screen. */
   copyCard: (cardId: Id) => void;
@@ -285,7 +285,7 @@ export type PartnerNow = {
   copy: { id: Id; name: string; to: Id[]; phoneless: boolean; what: 'words' | 'picture' | null; copied?: boolean }[];
   /** 📤 Send and start won't fit in the buzzer room: why. */
   full?: string;
-  /** What ⏱ Start the clock counts down from. */
+  /** What ⏱️ Start the clock counts down from. */
   secs: number;
   /** The countdown: up (running or paused, its seconds left), run out, or none. */
   clock: { left: number; running: boolean } | 'out' | null;
@@ -759,8 +759,8 @@ function answersItems(c: GoCtx): LeftItem[] {
 
 /**
  * The Final's typed answers still coming in, at 👁 Reveal answer (3.4 I): those playing it with a phone here. Only while
- * their time runs (or no clock was started: its ⏱ starts one). Once the clock has run out or is paused, N goes on and
- * the answers lock, as the clock's own line does: asked again, its ⏱ would only start the clock over, so with a phone
+ * their time runs (or no clock was started: its ⏱️ starts one). Once the clock has run out or is paused, N goes on and
+ * the answers lock, as the clock's own line does: asked again, its ⏱️ would only start the clock over, so with a phone
  * that never sends, the blue button, N and Enter would never get to the answer.
  */
 function finalAnswersItems(c: GoCtx): LeftItem[] {
@@ -770,7 +770,7 @@ function finalAnswersItems(c: GoCtx): LeftItem[] {
   if (!f || !ans || f.answersLocked || c.session.finalStep !== 'question') return [];
   if (t === 'out' || (t && (!t.running || t.left <= 0))) return [];
   const items = comingItems(c, (id) => !!ans[id], f.players, FLOW.reveal.label);
-  // (The clock running: ⏸ Pause the clock (T), as in the clock's own check. Its ⏱ 10 more seconds is ⇧T then.)
+  // (The clock running: ⏸ Pause the clock (T), as in the clock's own check. Its ⏱️ 10 more seconds is ⇧T then.)
   return t && c.clockUp ? items.map((i) => ({ ...i, quick: [...i.quick, pauseQuick(c)] })) : items;
 }
 
@@ -784,7 +784,7 @@ const pauseQuick = (c: GoCtx): Quick => ({
 });
 
 /**
- * The Final's think clock still running, at 👁 Reveal answer: the answer would cut it short. ⏱ Let it run (⏎) closes the
+ * The Final's think clock still running, at 👁 Reveal answer: the answer would cut it short. ⏱️ Let it run (⏎) closes the
  * check, the clock going on; ⏸ Pause the clock (T, as outside) closes it with the clock paused, so the next 👁 Reveal
  * answer goes on at once; 👁 Reveal anyway (R) shows it. Stopped or run out: it goes on at once.
  */
@@ -797,7 +797,7 @@ function finalClockItems(c: GoCtx): LeftItem[] {
       kind: 'first',
       text: `The clock is still running (${t.left} s left).`,
       anyway: FLOW.reveal.anyway,
-      quick: [{ label: '⏱ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label} (N)` }, pauseQuick(c)],
+      quick: [{ label: '⏱️ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label} (N)` }, pauseQuick(c)],
     },
   ];
 }
@@ -834,13 +834,13 @@ export function phoneAnswers(
 }
 
 /**
- * Answers still coming from phones, of `ids` (those with a phone here, or whose answer is in): ⏱ 10 more seconds (or a
+ * Answers still coming from phones, of `ids` (those with a phone here, or whose answer is in): ⏱️ 10 more seconds (or a
  * countdown). Names and counts only, never the words, counted as the ✍ box counts them (phoneAnswers).
  */
 function comingItems(c: GoCtx, sent: (id: Id) => boolean, ids: Id[], step: string): LeftItem[] {
   const a = phoneAnswers(c.session.players, ids, c.phones, sent, c.final.teams);
   if (!a.missing.length) return [];
-  const verb = c.clockUp ? '⏱ 10 more seconds' : '⏱ Start the countdown';
+  const verb = c.clockUp ? '⏱️ 10 more seconds' : '⏱️ Start the countdown';
   return [
     {
       id: 'answers',
@@ -1968,7 +1968,7 @@ export function leftNow(c: GoCtx, step: Step): LeftItem[] {
 const quieted = (c: GoCtx, i: LeftItem): boolean => !!i.quiet && (c.session.goonQuiet ?? []).includes(i.quiet);
 
 /**
- * The Final's 👁 Reveal answer: typed answers still coming (their ⏱ 10 more seconds says the clock's part), else the
+ * The Final's 👁 Reveal answer: typed answers still coming (their ⏱️ 10 more seconds says the clock's part), else the
  * clock still running. One at a time: the panel's room for the check is small in one window.
  */
 function finalRevealItems(c: GoCtx): LeftItem[] {

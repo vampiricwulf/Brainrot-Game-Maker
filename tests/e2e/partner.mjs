@@ -331,8 +331,8 @@ try {
     JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', 'Answer']),
     `a partner clue's tabs: Question · 🤫 Card 1 · Answer (${await tabNames()})`,
   );
-  assert((await settings.locator('select').first().inputValue()) === 'describe', 'it starts as 🗣 Describe it');
-  assert((await dialog.getByLabel('⏱ Countdown (s)').inputValue()) === '45', 'with a 45 s countdown');
+  assert((await settings.locator('select').first().inputValue()) === 'describe', 'it starts as 🗣️ Describe it');
+  assert((await dialog.getByLabel('⏱️ Countdown (s)').inputValue()) === '45', 'with a 45 s countdown');
   assert((await summary()) === 'got → describer +$400, guesser +$200 · missed → guesser −$200', `the points in money on this tile (${await summary()})`);
   // The game and who describes are in view on that line; the rest is under ▸ More rules, folded at first.
   assert(
@@ -585,10 +585,10 @@ try {
   assert((await card.inputValue()) === 'Shrek' && (await dialog.getByLabel('Goes to').inputValue()) === 'both', 'with their words and who they go to');
 
   // ---------- Pictures from this computer on the cards, and a second partner clue with a card of its own ----------
-  /** 🖼 Image › ⬆ Upload image file… on the slide open in the clue: a picture named `name`. */
+  /** 🖼️ Image › ⬆ Upload image file… on the slide open in the clue: a picture named `name`. */
   async function addPicture(name, r, g, b) {
     const before = await dialog.locator('.slide .el img').count();
-    await dialog.getByRole('button', { name: '🖼 Image' }).click();
+    await dialog.getByRole('button', { name: '🖼️ Image' }).click();
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser'),
       page.getByRole('dialog', { name: 'Choose image' }).getByRole('button', { name: '⬆ Upload image file…' }).click(),
@@ -697,7 +697,7 @@ try {
       infoText.includes('This card shows the answer') &&
       infoText.includes('Card 2 → the describer') &&
       infoText.includes(ONIONS) &&
-      infoText.includes(`🖼 ${PIC2} · picture`),
+      infoText.includes(`🖼️ ${PIC2} · picture`),
     `the host column (not on stream) lists the cards as text, with who they go to and their pictures’ names (${infoText})`,
   );
   await page.keyboard.press('w');
@@ -734,9 +734,9 @@ try {
   await page.keyboard.up('Enter');
   assert(
     (await flowIs(page, '👁 Reveal answer')) &&
-      (await stepButton(panel, '⏱ Start the clock (45 s)').count()) === 1 &&
+      (await stepButton(panel, '⏱️ Start the clock (45 s)').count()) === 1 &&
       (await aud.locator('.timer').count()) === 0,
-    'Enter held down shows the question once, and its repeats (even a second later) don’t start the clock (the box’s ⏱ Start the clock next)',
+    'Enter held down shows the question once, and its repeats (even a second later) don’t start the clock (the box’s ⏱️ Start the clock next)',
   );
   assert((await flat(aud.locator('[data-partner-badge]'))) === '🗣️ Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
   await never(viewers, hidden, 'the question');
@@ -766,7 +766,7 @@ try {
   assert((await page.evaluate(() => navigator.clipboard.readText())) === `🤫 For Cat only (Movies $400, card 2): ${ONIONS}`, 'and copies the card for Cat');
   await never(viewers, hidden, 'handing out the cards');
 
-  // ---------- ⏱ Start the clock, then Enter again at once, then held down: no score ----------
+  // ---------- ⏱️ Start the clock, then Enter again at once, then held down: no score ----------
   // (The keys back to back: the guard is the second after the clock starts.)
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');

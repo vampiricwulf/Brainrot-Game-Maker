@@ -317,7 +317,7 @@ export function linkItem(raw: string): SlideElement | string {
   return newEmbedEl(link.playUrls[0] ?? link.source, kind === 'video' ? 'remoteVideo' : kind === 'audio' ? 'remoteAudio' : 'remoteImage');
 }
 
-/** A file from the game's 🖼 Media as an item on a card. */
+/** A file from the game's 🖼️ Media as an item on a card. */
 export function fileItem(ref: Pick<MediaRef, 'id' | 'kind'>): SlideElement | null {
   return ref.kind === 'image' ? newImageEl(ref.id) : ref.kind === 'video' ? newVideoEl(ref.id) : ref.kind === 'audio' ? newAudioEl(ref.id) : null;
 }

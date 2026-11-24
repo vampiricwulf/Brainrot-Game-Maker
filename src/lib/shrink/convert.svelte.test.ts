@@ -34,7 +34,7 @@ const TS: MediaFacts = {
 };
 
 vi.mock('../app.svelte', async (orig) => ({ ...(await orig<typeof import('../app.svelte')>()), toast: vi.fn() }));
-// (🖼 Media's card for it flashes: there's no page here.)
+// (🖼️ Media's card for it flashes: there's no page here.)
 vi.mock('../nav.svelte', async (orig) => ({ ...(await orig<typeof import('../nav.svelte')>()), flash: vi.fn() }));
 vi.mock('./facts', async (orig) => ({ ...(await orig<typeof import('./facts')>()), readFacts: async () => ({ ...TS, ...at.facts }) }));
 vi.mock('./probe', async (orig) => ({ ...(await orig<typeof import('./probe')>()), probe: async () => ({ ok: true, aac: false, opus: true }) }));
@@ -176,7 +176,7 @@ describe('🔄 a converted file put in its place', () => {
     const ids = ['party', 'b', 'c'].map((id) => queueConvert(g, id, 'batch1')!);
     await Promise.all(ids.map(ended));
     expect(vi.mocked(toast).mock.calls.map((c) => c[0])).toEqual([
-      '🔄 2 files converted (1 couldn’t be: 🖼 Media says why). Ctrl+Z puts the old ones back, one at a time.',
+      '🔄 2 files converted (1 couldn’t be: 🖼️ Media says why). Ctrl+Z puts the old ones back, one at a time.',
     ]);
     expect(labels()).toEqual(['Repackaged a video as MP4 (nothing lost)', 'Repackaged a video as MP4 (nothing lost)']);
   });

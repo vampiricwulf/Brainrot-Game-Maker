@@ -168,7 +168,7 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       const n = questionSlides(r).length;
       questionSlides(r).forEach((sl, j) =>
         look(
-          '🖼',
+          '🖼️',
           slideWords(sl),
           `${rn} › Slide${n > 1 ? ` ${j + 1}` : ''}`,
           { tab: 'round', round: r.id, part: { kind: 'slides', ...(j ? { slide: r.extraSlides![j - 1].id } : {}) } },
@@ -209,7 +209,7 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         const place = { tab: 'world', world: w.id, map: m.id, screen: s.id } as const;
         const where = `${w.name} › ${m.name}`;
         // (Found by its notes: where says which screen it is.)
-        look('🗺', [s.name, s.hostNotes], match(s.name) ? `${where} › Screen` : `${where} › Screen “${s.name}”`, place);
+        look('🗺️', [s.name, s.hostNotes], match(s.name) ? `${where} › Screen` : `${where} › Screen “${s.name}”`, place);
         // What's on it, in each of its looks (and what its characters say): the screen editor opens on that look, with
         // the thing that has the words selected (as History's Go there).
         for (const v of [{ id: undefined as string | undefined, name: '', slide: s.slide }, ...(s.variants ?? [])]) {
@@ -261,7 +261,7 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       field([[c.name, 'main [data-field="card-name"]']]) ?? 'main [data-field="card"]',
     ),
   );
-  for (const m of libraryMedia(game)) look('🖼', [m.name], 'Media', { tab: 'media', media: m.id });
+  for (const m of libraryMedia(game)) look('🖼️', [m.name], 'Media', { tab: 'media', media: m.id });
   const tb = game.tiebreaker;
   if (tb) {
     look(

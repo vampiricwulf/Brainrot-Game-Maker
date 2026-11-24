@@ -8,7 +8,7 @@
 //    too, Enter in it sends the card and starts the clock, then R in it reveals anyway; the page never holds the
 //    card's words while it's open;
 // 3. the Final, one window: with its think clock running, 👁 Reveal answer by N, a stage click, the stage's menu or the
-//    blue button asks first (⏱ Let it run, the ⏎ one, keeps the clock going; ⏸ Pause the clock, T, pauses it;
+//    blue button asks first (⏱️ Let it run, the ⏎ one, keeps the clock going; ⏸ Pause the clock, T, pauses it;
 //    👁 Reveal anyway shows the answer); with the clock paused or run out it goes on at once (3b). In its reveals, N with
 //    the spotlit player not judged yet opens the check (a must: no “anyway”), C in it judges them and closes it, the
 //    spotlight staying on them with their verdict on stage, then N goes on. On a touch tablet (3c) the check and the
@@ -509,7 +509,7 @@ try {
     await page.keyboard.press('n');
     await status('Question on screen');
     // The think clock running: 👁 Reveal answer asks first, by N, by a click on the stage, by the stage's menu and by
-    // the blue button (⏱ Let it run, the ⏎ one; 👁 Reveal anyway, R), the answer hidden meanwhile.
+    // the blue button (⏱️ Let it run, the ⏎ one; 👁 Reveal anyway, R), the answer hidden meanwhile.
     const answerUp = () => stageBoxIn(page).locator('.stage', { hasText: 'The final answer' }).count();
     const clockRuns = () => hostPanelIn(page).locator('.tc button[aria-label="Pause timer"]').count();
     const clockLine = checkItem(page, 'clock');
@@ -517,20 +517,20 @@ try {
     await clockLine.waitFor();
     assert(
       /^The clock is still running \(\d+ s left\)\.$/.test((await clockLine.locator('.text').innerText()).trim()) &&
-        (await quick(page, '⏱ Let it run').innerText()).includes('⏎') &&
+        (await quick(page, '⏱️ Let it run').innerText()).includes('⏎') &&
         (await anyway(page).innerText()).startsWith('👁 Reveal anyway') &&
         (await answerUp()) === 0,
-      `N with the Final’s clock running asks first (“${(await clockLine.locator('.text').innerText()).trim()}”): ⏱ Let it run ⏎, 👁 Reveal anyway, the answer hidden`,
+      `N with the Final’s clock running asks first (“${(await clockLine.locator('.text').innerText()).trim()}”): ⏱️ Let it run ⏎, 👁 Reveal anyway, the answer hidden`,
     );
     const stubs = await toolStubs(page);
     assert(!stubs.length, `1280×720: the Final's clock check covers the tools row whole, no tool cut off beside it (${stubs.join(', ') || 'none'})`);
-    const inSight = (await quickInSight(page, '⏱ Let it run')) + (await quickInSight(page, '⏸ Pause the clock'));
-    assert(inSight === '', `1280×720, one window: ⏱ Let it run and ⏸ Pause the clock are in sight, nothing scrolled${inSight ? ` (${inSight})` : ''}`);
-    // Enter in it: ⏱ Let it run, the clock still running, the answer still hidden.
+    const inSight = (await quickInSight(page, '⏱️ Let it run')) + (await quickInSight(page, '⏸ Pause the clock'));
+    assert(inSight === '', `1280×720, one window: ⏱️ Let it run and ⏸ Pause the clock are in sight, nothing scrolled${inSight ? ` (${inSight})` : ''}`);
+    // Enter in it: ⏱️ Let it run, the clock still running, the answer still hidden.
     await goOnCheck(page, { ready: true }).waitFor();
     await page.keyboard.press('Enter');
     await goOnCheck(page).waitFor({ state: 'detached' });
-    assert((await answerUp()) === 0 && (await clockRuns()) === 1, 'Enter (⏱ Let it run) closes it: the clock still running, the answer hidden');
+    assert((await answerUp()) === 0 && (await clockRuns()) === 1, 'Enter (⏱️ Let it run) closes it: the clock still running, the answer hidden');
     await stageBoxIn(page).locator('.stage').click();
     await clockLine.waitFor();
     // (Its seconds follow the clock while it's open.)

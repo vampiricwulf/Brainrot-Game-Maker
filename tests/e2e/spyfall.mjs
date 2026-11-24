@@ -1,6 +1,6 @@
-// 🕵 Odd one out (Spyfall), end to end in one window (docs/PARTNER-CLUES-SPEC.md §11, §14.2, §14.4, §15, milestone P4):
+// 🕵️ Odd one out (Spyfall), end to end in one window (docs/PARTNER-CLUES-SPEC.md §11, §14.2, §14.4, §15, milestone P4):
 // the built app hosts a game against the real buzzer room (buzzer/ under `wrangler dev`, local). The editor's
-// 📋 Ready-made deal… adds Odd one out with its 🗺 Locations wheel. In play, one window (the host page is what viewers
+// 📋 Ready-made deal… adds Odd one out with its 🗺️ Locations wheel. In play, one window (the host page is what viewers
 // see), six players: Ann, Bob, Cat and Dan dealt in with their phones, Eve dealt in with no phone yet, and Fay not dealt
 // in (her phone is in the room), plus a phone that never takes a seat. 🎭 Deal: nothing reaches the room, also through
 // a host reload; dealing again (another spy) changes nothing on the host page. 📤 Send: each dealt-in phone gets its
@@ -231,7 +231,7 @@ try {
   await openGameFile(host, gameFile);
   await host.getByText(/^Opened “/).waitFor();
 
-  // ---------- The editor: 📋 Ready-made deal… → 🕵 Odd one out, with its 🗺 Locations wheel ----------
+  // ---------- The editor: 📋 Ready-made deal… → 🕵️ Odd one out, with its 🗺️ Locations wheel ----------
   section('Editor');
   await host.getByRole('button', { name: /Wheels, Dice & Deals/ }).click();
   await host.getByRole('button', { name: '📋 Ready-made deal…' }).click();
@@ -239,7 +239,7 @@ try {
   const deals = host.getByRole('list', { name: 'Deals' });
   const wheels = host.getByRole('list', { name: 'Wheels' });
   assert(await until(async () => (await deals.getByRole('button', { name: 'Odd one out' }).count()) === 1), 'the ready-made deal goes in: Odd one out');
-  assert((await wheels.getByRole('button', { name: 'Locations' }).count()) === 1, 'with the 🗺 Locations wheel, as the game had none like it');
+  assert((await wheels.getByRole('button', { name: 'Locations' }).count()) === 1, 'with the 🗺️ Locations wheel, as the game had none like it');
   const editor = host.locator('[data-deal-editor]');
   assert(
     (await editor.getByLabel('Villager’s card draws from the wheel').inputValue()) === 'shared' &&

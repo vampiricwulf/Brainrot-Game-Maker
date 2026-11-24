@@ -1,7 +1,7 @@
 // ✎ Edit video and sound (card-files spec §4.11, stage 6b.3), end to end in the test Chromium, with files made here
 // (a few hundred KB each; the test Chromium makes and plays VP8, VP9 and Opus only, so the MP4 here holds VP9 and
 // Opus, and H.264 / AAC are checked by hand).
-// 1. An MP4 used by two slide items (1.5–3.5 and 0.2–0.8), trimmed to 1.2–3.0 in 🖼 Media: nothing re-encoded, the
+// 1. An MP4 used by two slide items (1.5–3.5 and 0.2–0.8), trimmed to 1.2–3.0 in 🖼️ Media: nothing re-encoded, the
 //    dialog names the item the trim leaves out, the file lasts 1.8 s and starts on the source's 1.2 s frame, item 1
 //    plays from 0.3 to the end and item 2 plays it all; History says “Trimmed a video to 0:01–0:03”; Ctrl+Z, Ctrl+Y.
 // 2. A WebM trimmed 1.3–2.5: Exact (re-encoded) by default, 1.2 s; or Quick from the key frame at 1.0, 1.5 s, and an
@@ -194,7 +194,7 @@ try {
   const card = (name) => page.locator('.card', { has: page.locator('button.nm', { hasText: new RegExp(`^${name.replace(/[.()]/g, '\\$&')}$`) }) });
   const dialog = page.locator('[data-media-edit]');
   const clueEditor = page.getByRole('dialog', { name: 'Edit clue' });
-  /** ✎ Edit video… / ✎ Edit sound… on a file's card in 🖼 Media (named as the slide's item bar names it): its window, once
+  /** ✎ Edit video… / ✎ Edit sound… on a file's card in 🖼️ Media (named as the slide's item bar names it): its window, once
    * it has read the file. */
   const editFromMedia = async (name) => {
     await media();
@@ -261,7 +261,7 @@ try {
     walk(g.cards);
     return out;
   };
-  /** A stored file's bytes (from its card in 🖼 Media). */
+  /** A stored file's bytes (from its card in 🖼️ Media). */
   const bytesOf = async (id) => {
     await media();
     const b64 = await page.locator(`[data-place="media:${id}"]`).evaluate(async (el) => {
@@ -299,7 +299,7 @@ try {
   section('1. An MP4 trimmed, nothing re-encoded');
   const hue12 = (await hueAt(fx, files.clip, 1.2)).hue;
   {
-    // 🖼 Media's cards: a sound's player sits in its box, so its name row and Replace everywhere… are where a video's are.
+    // 🖼️ Media's cards: a sound's player sits in its box, so its name row and Replace everywhere… are where a video's are.
     await media();
     const at = (name) =>
       card(name).evaluate((c) => {

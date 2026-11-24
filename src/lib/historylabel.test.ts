@@ -174,7 +174,7 @@ describe('step labels', () => {
     const moved = step((g) => (screens(g)[1].col = 3));
     // Where it is starts with the round that plays the world (its name is on the page); a world two rounds play is
     // named itself.
-    expect(moved).toMatchObject({ label: 'Moved screen “Town” to D1', icon: '🗺', where: 'Adventure › Overworld' });
+    expect(moved).toMatchObject({ label: 'Moved screen “Town” to D1', icon: '🗺️', where: 'Adventure › Overworld' });
     const shared = sample();
     shared.rounds.push(newRpgRound(shared, 'Adventure 2'));
     const movedShared = structuredClone(shared);
@@ -254,7 +254,7 @@ describe('step labels', () => {
     expect(label((e) => ((e[1] as ShapeEl).stroke = '#ff0000'))).toBe('Changed color of shape “Line”');
     expect(label((e) => ((e[2] as ShapeEl).radius = 20))).toBe('Changed corners of shape “Rectangle”');
     expect(label((e) => ((e[2] as ShapeEl).shape = 'ellipse'))).toBe('Changed type of shape “Ellipse”');
-    // A freehand line (✏ Freehand line) is called so, not a “drawing” (a 🖌 Drawpad picture is “Drawing”).
+    // A freehand line (✏️ Freehand line) is called so, not a “drawing” (a 🖌 Drawpad picture is “Drawing”).
     expect(label((e) => ((e[5] as ShapeEl).stroke = '#ff0000'))).toBe('Changed color of shape “Freehand line”');
     expect(label((e) => ((e[5] as ShapeEl).strokeWidth = 9))).toBe('Changed thickness of shape “Freehand line”');
     expect(label((e) => ((e[0] as TextEl).uppercase = false))).toMatch(/^Changed all caps of text box/);
@@ -649,7 +649,7 @@ describe('placeAt', () => {
   });
 });
 
-describe('🖼 Media’s “used 3× ▾”', () => {
+describe('🖼️ Media’s “used 3× ▾”', () => {
   it('names each place a file is used in the History’s words, once each, with where it goes', () => {
     const g = sample();
     const b = board(g);

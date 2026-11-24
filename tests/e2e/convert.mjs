@@ -1,11 +1,11 @@
 // Whether a video or sound really plays in this browser, and 🔄 Convert for one that doesn't (card-files spec §4.12,
 // stages 6b.1 and 6b.2), end to end in the test Chromium, with files made here.
 // Part 1: an MKV with VP9 and Opus (which plays though its type says it may not), one whose sound is AC-3 (which the
-// test Chromium doesn't play), an AC-3 sound alone and bytes no app can read (named .mov), added in 🖼 Media. Each card says what
+// test Chromium doesn't play), an AC-3 sound alone and bytes no app can read (named .mov), added in 🖼️ Media. Each card says what
 // was found once the file is checked: nothing, "plays without its sound here", "won't play here" (its title says why),
 // or today's "may not play" and toast, word for word, for the one the app can't read; why is a line on the card too. So
 // does the checklist, counting and naming nothing. A reload checks the files again.
-// Part 2: a camcorder-like .mts (an MP3 sound in MPEG-TS, which the test Chromium doesn't open) added in 🖼 Media gets the note at
+// Part 2: a camcorder-like .mts (an MP3 sound in MPEG-TS, which the test Chromium doesn't open) added in 🖼️ Media gets the note at
 // the top, and 🔄 repackages it as an MP4 in its place (Ctrl+Z and Ctrl+Y); the AC-3 MKV dropped on a slide in the clue
 // editor (its toast points to the item's panel) becomes a WebM without its sound, on that item; the AC-3 sound alone
 // gets only OK; two .mts at once go through 🔄 Convert's window, one step each; the VP9 MKV on a 🤫 card gets ↻ from the
@@ -79,7 +79,7 @@ try {
       'Its sound is AC-3 (Dolby Digital), which this browser can’t play or convert. To keep its sound, convert it with a video app first (HandBrake is free).',
     `its title says why, and what to do (${talk.title})`,
   );
-  // (In sight on the card too: a title needs a mouse, and the checklist says 🖼 Media says why.)
+  // (In sight on the card too: a title needs a mouse, and the checklist says 🖼️ Media says why.)
   const whyOn = async (name) => ((await card(name).locator('[data-why]').count()) ? (await card(name).locator('[data-why]').innerText()).trim() : '');
   assert((await whyOn('talk.mkv')) === talk.title, `and a line on its card says it (${await whyOn('talk.mkv')})`);
 
@@ -121,9 +121,9 @@ try {
   // The checklist counts them, naming none.
   const lines = async () => (await page.locator('nav .problem').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
   const want = [
-    '1 video/audio file won’t play in this browser, and it can’t convert it: 🖼 Media says why',
-    '1 video plays without its sound in this browser (🖼 Media says why)',
-    '1 video/audio file this browser may not play: 🖼 Media says what to do',
+    '1 video/audio file won’t play in this browser, and it can’t convert it: 🖼️ Media says why',
+    '1 video plays without its sound in this browser (🖼️ Media says why)',
+    '1 video/audio file this browser may not play: 🖼️ Media says what to do',
   ];
   await page.waitForFunction(
     (want) => want.every((w) => [...document.querySelectorAll('nav .problem')].some((b) => b.textContent.replace(/\s+/g, ' ').includes(w))),
@@ -177,7 +177,7 @@ try {
     return g;
   };
   const refNamed = (g, name) => g.media.find((m) => m.name === name);
-  /** Files dropped on 🖼 Media (as the page's ＋ Add files…). */
+  /** Files dropped on 🖼️ Media (as the page's ＋ Add files…). */
   const dropOnMedia = async (list) => {
     const dt = await page.evaluateHandle(
       (list) => {
@@ -202,7 +202,7 @@ try {
   };
   const lineOf = (text) => page.locator('nav .problem', { hasText: text });
 
-  // 1. party.mts dropped on 🖼 Media: the note says why, and 🔄 repackages it as an MP4 in its place.
+  // 1. party.mts dropped on 🖼️ Media: the note says why, and 🔄 repackages it as an MP4 in its place.
   await dropOnMedia([{ name: 'party.mts', type: 'video/mp2t', buffer: party }]);
   await notice.waitFor({ timeout: 60_000 });
   assert(
@@ -212,7 +212,7 @@ try {
   await toasted('⚠ A video you just added won’t play in this browser: see the note at the top.');
   assert(true, 'and a toast points at it, naming nothing');
   const partyId = (await card('party.mts').getAttribute('data-place')).slice('media:'.length);
-  await lineOf('1 video/audio file won’t play in this browser: 🔄 Convert it in 🖼 Media').waitFor();
+  await lineOf('1 video/audio file won’t play in this browser: 🔄 Convert it in 🖼️ Media').waitFor();
   assert(true, 'the checklist says 🔄 can convert it');
   await notice.getByRole('button', { name: '🔄 Convert it (quick, nothing lost)' }).click();
   await toasted('🔄 It plays here now: MP4, ');
@@ -486,7 +486,7 @@ try {
   // 6. No toast, History row or pill named a file.
   const named = (list) => list.filter((t) => NAMES.some((n) => t.includes(n)));
   const allToasts = await toastsSeen();
-  // (Today's toasts may name one: “talk.mkv” is already in 🖼 Media, the file added again.)
+  // (Today's toasts may name one: “talk.mkv” is already in 🖼️ Media, the file added again.)
   const ours = allToasts.filter((t) => /^(⚠ A |⚠ \d+ files|🔄|↻|Stopped)/.test(t));
   assert(ours.length >= 6 && !named(ours).length, `no toast of 🔄’s names a file (${ours.join(' | ')}; others: ${named(allToasts).join(' | ')})`);
   const rows6 = (await historyRows()).filter((t) => /^(Repackaged|Converted)/.test(t));

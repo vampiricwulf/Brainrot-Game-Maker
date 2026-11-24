@@ -1808,7 +1808,7 @@ function renderBuzz(v: PhoneView): void {
 let clockTick = 0;
 
 /**
- * The host's countdown over the answer or wager box that's up ("⏱ 12 s left", amber in its last seconds; at 0 that the
+ * The host's countdown over the answer or wager box that's up ("⏱️ 12 s left", amber in its last seconds; at 0 that the
  * host may still take a late one: nothing locks). Kept up to date while it runs; none without a box or a countdown.
  */
 function drawClock(): void {

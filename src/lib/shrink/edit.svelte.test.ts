@@ -210,7 +210,7 @@ describe('✎ Only this item, and Save as a new file', () => {
     made();
     const job = queueFileEdit(g, 'clip', plan({ end: 2 }), 'new')!;
     await ended(job);
-    expect((jobs.ended[job] as { done: string }).done).toBe('✂ Saved as a new file in 🖼 Media: the original is unchanged.');
+    expect((jobs.ended[job] as { done: string }).done).toBe('✂ Saved as a new file in 🖼️ Media: the original is unchanged.');
     expect(g.media.map((m) => m.name)).toEqual(['Clip.webm', 'Clip (phones).webm', 'Clip (edited).webm']);
     expect(now().map((el) => times(el))).toEqual([
       ['clip', 1.5, 2],
@@ -220,7 +220,7 @@ describe('✎ Only this item, and Save as a new file', () => {
     expect(labels()).toEqual(['Saved an edited copy of a video (trimmed to 0:00–0:02)']);
   });
 
-  it('applyFileEdit by itself: the ref keeps its place in 🖼 Media, its name following its type', () => {
+  it('applyFileEdit by itself: the ref keeps its place in 🖼️ Media, its name following its type', () => {
     g.media.unshift({ id: 'm1', name: 'Party.mkv', mime: 'video/x-matroska', size: 9, kind: 'video' });
     const { ref } = applyFileEdit(g, 'm1', 'm2', { mime: 'video/mp4', size: 5 }, { cut: null }, 'all');
     expect([g.media[0], ref.name]).toEqual([{ id: 'm2', name: 'Party.mp4', mime: 'video/mp4', size: 5, kind: 'video' }, 'Party.mp4']);

@@ -33,7 +33,7 @@ describe('the host screen’s words for each step', () => {
       handOut: '📤 Hand out the cards',
       sendAndStart: '📤 Send and start [⏎]',
       sendCards: '📤 Send the cards (clock running) [⏎]',
-      startClock: '⏱ Start the clock (45 s) [⏎]',
+      startClock: '⏱️ Start the clock (45 s) [⏎]',
       tiebreakerClue: '❓ Tiebreaker clue',
       rollOff: '🎲 Tiebreaker roll-off [O]',
       keepPlaying: 'Keep playing',

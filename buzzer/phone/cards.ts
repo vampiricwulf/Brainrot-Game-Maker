@@ -55,7 +55,7 @@ export function isGif(m: CardMedia): boolean {
 
 /** What a picture, video or sound is called on the card ("Picture"; an embed is a video). */
 export const mediaWord = (kind: CardMedia['kind']): string => (kind === 'image' ? 'picture' : kind === 'audio' ? 'sound' : 'video');
-const icon = (kind: CardMedia['kind']) => (kind === 'image' ? '🖼' : kind === 'audio' ? '🔊' : '🎞');
+const icon = (kind: CardMedia['kind']) => (kind === 'image' ? '🖼️' : kind === 'audio' ? '🔊' : '🎞');
 const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** A text alternative: the slide item's own name, else "Picture" (or "Video", "Sound"). */
@@ -63,7 +63,7 @@ export const mediaName = (m: CardMedia): string => ('name' in m && m.name?.trim(
 /** What an item is to the player: a GIF sent as a video ('gifs') is a picture, as it shows like one. */
 export const shownKind = (m: CardMedia): CardMedia['kind'] => ('gif' in m && m.gif === true ? 'image' : m.kind);
 
-/** A file on its way: "🖼 Picture coming…". */
+/** A file on its way: "🖼️ Picture coming…". */
 export const comingLine = (kind: CardMedia['kind']): string => `${icon(kind)} ${upper(mediaWord(kind))} coming…`;
 /** A file whose download says how far it got over this (its Content-Length) shows how much has come. */
 export const SHOW_PCT_BYTES = 4 * 1024 * 1024;

@@ -267,7 +267,7 @@
       <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="row tools" role="toolbar" aria-label="Drawing tools">
-      <button class:on={tool === 'pen'} aria-pressed={tool === 'pen'} onclick={() => (tool = 'pen')} title="Pen (B)">✏ Pen</button>
+      <button class:on={tool === 'pen'} aria-pressed={tool === 'pen'} onclick={() => (tool = 'pen')} title="Pen (B)">✏️ Pen</button>
       <button class:on={tool === 'fill'} aria-pressed={tool === 'fill'} onclick={() => (tool = 'fill')} title="Filled shape: draw its outline (F)"
         >⬟ Filled shape</button
       >

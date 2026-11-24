@@ -101,7 +101,7 @@
     /** single: one-window mode · mirror: host's copy in dual mode (muted) · audience: the stream window */
     role?: MediaRole;
     /**
-     * An editor's preview (🎨 Theme, 🖼 Board images): its media keeps out of where a game left mid-clue had its own, and
+     * An editor's preview (🎨 Theme, 🖼️ Board images): its media keeps out of where a game left mid-clue had its own, and
      * its board shows no host marks (it's how the stream looks).
      */
     demo?: boolean;
@@ -222,7 +222,7 @@
   const ptMember = $derived(ptSolo && game.settings.buzzTeams ? pt?.member : undefined);
   const ptGiver = $derived(ptRoles?.giver ? byId[ptRoles.giver] : undefined);
   const ptGuesser = $derived(ptRoles?.guesser ? byId[ptRoles.guesser] : undefined);
-  /** The parts badge over the question: "🗣 Bob describes → 🎯 Ann guesses" (Solo: "🤝 Ann · Solo!"). */
+  /** The parts badge over the question: "🗣️ Bob describes → 🎯 Ann guesses" (Solo: "🤝 Ann · Solo!"). */
   const ptBadge = $derived(!!pt && pt.stage !== 'pick' && (ptSolo || (!!ptGiver && !!ptGuesser)));
   /** Its miss let the others steal it, and nobody has yet: "🔔 Steal! Ann and Bob missed it" in the badge's place. */
   const ptStealOut = $derived.by(() => {

@@ -788,7 +788,7 @@
     const n = round.categories.length;
     return menuOf({
       heading: categoryLabel(cat),
-      verbs: [{ label: '🖼 Image…', onclick: () => (catPicker = ci) }],
+      verbs: [{ label: '🖼️ Image…', onclick: () => (catPicker = ci) }],
       duplicate: menuItem.duplicate(
         () => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))),
         { disabled: n >= 10, keys: false },
@@ -969,7 +969,7 @@
   <span class="spacer"></span>
   <button onclick={() => (importing = true)} title="Paste clues from Google Sheets or Excel, or open a CSV / TSV file">📥 Import clues…</button>
   <button onclick={() => (decorOpen = true)} title="Logos, stickers and GIFs placed anywhere on this round's board">
-    🖼 Board images{round.decor?.length ? ` (${round.decor.length})` : '…'}
+    🖼️ Board images{round.decor?.length ? ` (${round.decor.length})` : '…'}
   </button>
 </div>
 
@@ -1108,7 +1108,7 @@
   <!-- Where a picture dropped on a tile goes. The focus starts on the question (Enter); Esc cancels. -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div class="drop-ask row" role="group" aria-label="Where the dropped picture goes" bind:this={dropAskEl} onkeydown={(e) => e.key === 'Escape' && closeDrop()}>
-    <span>🖼 {n === 1 ? 'A picture' : `${n} pictures`} on {tileName(dropAt)}{n > 1 ? ' (and the tiles after it)' : ''}:</span>
+    <span>🖼️ {n === 1 ? 'A picture' : `${n} pictures`} on {tileName(dropAt)}{n > 1 ? ' (and the tiles after it)' : ''}:</span>
     <button class="ghost small" onclick={closeDrop}>Cancel</button>
     <button class="small" onclick={() => dropChosen('face')}>Use as the tile's face (on the board before it's picked)</button>
     <button class="primary small" onclick={() => dropChosen('question')}>Put {n === 1 ? 'it' : 'them'} in the question</button>
@@ -1190,7 +1190,7 @@
             <button
               class="ghost small"
               onclick={() => (cat.image = undefined)}
-              title="Clear the picture: the name shows instead (the picture stays in 🖼 Media)"
+              title="Clear the picture: the name shows instead (the picture stays in 🖼️ Media)"
               aria-label="⌫ Clear {categoryLabel(cat)}'s picture">⌫ Clear</button
             >
           </div>
@@ -1211,7 +1211,7 @@
               class="ghost small"
               onclick={() => (catPicker = ci)}
               title="Use an image for this category (or drop one here)"
-              aria-label="Image for {categoryLabel(cat)}">🖼</button
+              aria-label="Image for {categoryLabel(cat)}">🖼️</button
             >
             {#if catPicker === ci}
               <MediaPicker kind="image" onpick={(id) => ((cat.image = id), (catPicker = null))} onclose={() => (catPicker = null)} />
@@ -1296,7 +1296,7 @@
           {#if !clue.empty}
             <span class="q" class:missing={!tool && !q && !kinds.length}>{q || (kinds.length || tool ? '' : 'No question yet')}</span>
             {#if kinds.length}
-              <span class="kinds">{kinds.map((k) => ({ image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐', text: '' })[k]).join(' ')}</span>
+              <span class="kinds">{kinds.map((k) => ({ image: '🖼️', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐', text: '' })[k]).join(' ')}</span>
             {/if}
             {#if !a && !tool}<span class="missing small">No answer</span>{/if}
             {#if cardTodo}<span class="missing small">{cardTodo === 'none' ? 'No card' : `Card ${cardTodo} empty`}</span>{/if}

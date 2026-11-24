@@ -287,7 +287,7 @@ try {
   await page.keyboard.press('Shift+Enter');
   sc = await scores();
   assert(sc.Cat === '$0' && sc.Ann === '−$400', 'nor does Shift+Enter');
-  // No clock running (no cards): N asks first, ⏱ Start the clock its fix; a click on the stage starts it, as ⏱ Start the
+  // No clock running (no cards): N asks first, ⏱️ Start the clock its fix; a click on the stage starts it, as ⏱️ Start the
   // clock does (the status line says so), and leaves the answer hidden.
   await page.keyboard.press('n');
   await checkItem(page, 'handout').waitFor();
@@ -354,7 +354,7 @@ try {
   assert(
     (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' &&
       (await flowIs(page, '👁 Reveal answer')) &&
-      (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '',
+      (await boxHasAction(panel, '⏱️ Start the clock (45 s)')) === '',
     'Ctrl+Z brings the buttons back (Bob still scored), and the clock to start (in the box’s foot too)',
   );
   await page.keyboard.press('Control+z');
@@ -450,10 +450,10 @@ try {
   await panel.waitFor();
   assert(
     (await flowIs(page, '👁 Reveal answer')) &&
-      (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '' &&
+      (await boxHasAction(panel, '⏱️ Start the clock (45 s)')) === '' &&
       (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' &&
       (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
-    'a reload while handing out the cards: the list as it was, the change kept, the box’s ⏱ Start the clock next',
+    'a reload while handing out the cards: the list as it was, the change kept, the box’s ⏱️ Start the clock next',
   );
   await page.keyboard.press('Enter');
   await stage('.timer').waitFor();
@@ -523,7 +523,7 @@ try {
   await wait(300);
   assert(
     (await flowIs(page, '👁 Reveal answer')) &&
-      (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '' &&
+      (await boxHasAction(panel, '⏱️ Start the clock (45 s)')) === '' &&
       (await aud.locator('.timer').count()) === 0 &&
       JSON.stringify(await scores()) === held &&
       (await panel.locator('[data-judged]').count()) === 0,

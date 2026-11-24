@@ -260,7 +260,7 @@ async function bigWorld() {
   await jump.waitFor({ state: 'detached' });
 
   // The map on stream: just the part viewers know (and a cell around it), with big cells.
-  await host.getByRole('button', { name: '🗺 Map on stream' }).click();
+  await host.getByRole('button', { name: '🗺️ Map on stream' }).click();
   await aud.locator('.map-ov .cell').first().waitFor();
   const ov = await aud.locator('.map-ov').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(/^rgb\(/.test(ov), `the map on stream is solid, the screen behind doesn’t show through (${ov})`);
@@ -282,7 +282,7 @@ async function bigWorld() {
   await host.waitForTimeout(500);
   const spent = (await busy()) - before;
   assert(spent < 1.5, `ten moves with the map on stream keep the audience window quick (${spent.toFixed(2)}s of script)`);
-  await host.getByRole('button', { name: '🗺 Map on stream' }).click();
+  await host.getByRole('button', { name: '🗺️ Map on stream' }).click();
 
   // Walking in from the south edge, the avatars stand clear of the stats strip.
   await host.keyboard.press('Numpad2');
@@ -585,7 +585,7 @@ async function bigWorld() {
   assert((await there()).includes('Dungeon 1') && (await cues(aud)).includes('doorway'), 'through the door, with the Doorway sound');
   await host.waitForFunction(() => (document.getElementById('live-region')?.dataset.said ?? '').includes('Party went through Dungeon door to Dungeon 1'));
   assert(true, 'and screen readers hear where it led');
-  await host.getByRole('button', { name: '🗺 Map on stream' }).click();
+  await host.getByRole('button', { name: '🗺️ Map on stream' }).click();
   await aud.locator('.map-ov').waitFor();
   assert(
     (await aud.locator('.map-ov').innerText()).includes('This map is hidden from viewers') && !(await aud.locator('.map-ov .cell').count()),
@@ -1422,7 +1422,7 @@ try {
   await page.keyboard.press('Shift+F10');
   const rpgMenu = await menuLines(page);
   assert(
-    rpgMenu.includes('🗺 Full map (jump anywhere) · J') && rpgMenu.includes('🤝 Regroup · G'),
+    rpgMenu.includes('🗺️ Full map (jump anywhere) · J') && rpgMenu.includes('🤝 Regroup · G'),
     `Shift+F10 on the stage: the round’s menu (${rpgMenu.join(' | ')})`,
   );
   await page.keyboard.press('Escape');
@@ -1566,7 +1566,7 @@ try {
   await page.keyboard.press('Escape');
 
   // The drawpad: draw a whole object (several strokes, a filled shape, undo), then insert it as one object.
-  await page.getByRole('button', { name: '✏ Draw' }).click();
+  await page.getByRole('button', { name: '✏️ Draw' }).click();
   const pad = page.getByRole('dialog', { name: 'Draw on Start' });
   await pad.waitFor();
   const padBox = await pad.getByLabel('Drawing area').boundingBox();
@@ -1584,7 +1584,7 @@ try {
     [0.45, 0.5],
     [0.3, 0.5],
   ]);
-  await pad.getByRole('button', { name: '✏ Pen' }).click();
+  await pad.getByRole('button', { name: '✏️ Pen' }).click();
   await stroke([
     [0.32, 0.55],
     [0.5, 0.6],

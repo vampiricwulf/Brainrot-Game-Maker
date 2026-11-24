@@ -44,7 +44,7 @@
         const ref = await addMediaFile(editedGame(), file);
         // Another kind (the file dialog's "All files"): kept in the library, but not used here (a video as the theme's
         // background, a picture as a sound, shows or plays nothing), as a dropped one isn't.
-        if (ref.kind !== kind) return void toast(`That's ${AN[ref.kind]}, not ${AN[kind]}: it's in 🖼 Media, but not used here.`);
+        if (ref.kind !== kind) return void toast(`That's ${AN[ref.kind]}, not ${AN[kind]}: it's in 🖼️ Media, but not used here.`);
         checkAdded(ref);
         await onpick(ref.id);
       });

@@ -300,7 +300,7 @@ function finish(explicit: { label: string | null; opts: StepOptions } | null): v
   if (!ops.length && !blobs.length) return;
   // (A file replaced by one with the same name and size changes only its bytes.)
   const file: Place = { tab: 'media', media: blobs[0]?.id };
-  const d = ops.length ? describe(ops, before, after, label) : { label: label ?? 'Replaced a file', icon: '🖼', where: 'Media', place: file, undoPlace: file };
+  const d = ops.length ? describe(ops, before, after, label) : { label: label ?? 'Replaced a file', icon: '🖼️', where: 'Media', place: file, undoPlace: file };
   // An editor's own place on another tab than the changes (Clue text restyles every clue from the Theme page), or on
   // another row of the same list (a 🤫 card moved: the slot that changed first holds the card it swapped with): where it
   // is says that tab too, as Undo and Redo show it (the label names the row).

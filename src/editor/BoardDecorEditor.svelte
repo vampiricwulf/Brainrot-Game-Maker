@@ -190,7 +190,7 @@
       let i = 0;
       for (const file of Array.from(files)) {
         try {
-          // Checked before it's stored: a video or a sound mustn't end up in 🖼 Media unused.
+          // Checked before it's stored: a video or a sound mustn't end up in 🖼️ Media unused.
           if (fileKind(file) !== 'image') {
             toast(`${wrongFile(file.name, 'image')} Board images can be pictures or GIFs.`);
             continue;
@@ -505,7 +505,7 @@
     <header>
       <div>
         <div class="hint">{roundName(round, game.rounds.indexOf(round))}</div>
-        <h2 class="modal-title">🖼 Board images</h2>
+        <h2 class="modal-title">🖼️ Board images</h2>
       </div>
       <div class="pop">
         <button onclick={() => (picking = 'add')}>＋ Add image</button>

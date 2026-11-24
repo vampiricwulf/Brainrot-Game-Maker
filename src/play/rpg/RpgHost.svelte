@@ -431,7 +431,7 @@
           },
           { label: '▦ Show in split view', disabled: s.parties.length < 2 || !!s.split, onclick: () => (s.split = true) },
           { label: '🤝 Regroup everyone with this party', disabled: s.parties.length < 2, onclick: () => regroupAll(game, session, pt.id) },
-          { label: '🗺 Move this party…', onclick: () => ((mapSend = { players: [...pt.members], label: pt.name }), (mapOpen = true)) },
+          { label: '🗺️ Move this party…', onclick: () => ((mapSend = { players: [...pt.members], label: pt.name }), (mapOpen = true)) },
         ],
         rename: menuItem.rename(() => (ask = { what: 'party', party: pt.id }), { keys: false }),
       }),
@@ -465,9 +465,9 @@
 {#if world && st}
   <div class="rh">
     <div class="row top">
-      <b class="where">🗺 {here ? `${here.map.name} · ${here.screen.name}` : 'Nowhere'}</b>
+      <b class="where">🗺️ {here ? `${here.map.name} · ${here.screen.name}` : 'Nowhere'}</b>
       <!-- One window: the notes' slot, there on every screen, note or none, and one line (cut short, the whole of it in
-           its tooltip): a screen's note never pushes 🗺 Map on stream to a second line, so the buttons, the pad and the
+           its tooltip): a screen's note never pushes 🗺️ Map on stream to a second line, so the buttons, the pad and the
            minimap keep their places from screen to screen. -->
       {#if !dual}
         {@const notes = [here?.screen.hostNotes, now.round?.hostNotes && `Round: ${now.round.hostNotes}`].filter(Boolean).join('\n')}
@@ -529,7 +529,7 @@
         class:on={st.mapShown}
         aria-pressed={!!st.mapShown}
         onclick={() => toggleMap(game, session)}
-        title="V: show the map to viewers (on the audience's screen), or hide it">🗺 Map on stream</button
+        title="V: show the map to viewers (on the audience's screen), or hide it">🗺️ Map on stream</button
       >
     </div>
 
@@ -764,7 +764,7 @@
             onclick={() => (drawpad = true)}
             title="Draw an object over this screen (as many strokes as it takes), then insert it: make it an item, a zone, a hazard… (or drop a picture on the stage)"
           >
-            ✏ Draw
+            ✏️ Draw
           </button>
           <span class="muted small drop-hint">or drop a picture on the stage</span>
           <span class="spacer"></span>
@@ -912,7 +912,7 @@
   .fold {
     flex-shrink: 0;
   }
-  /* In a narrow panel the hint gives its line back (✏ Draw's tooltip says it too): the pad and the map stay higher up. */
+  /* In a narrow panel the hint gives its line back (✏️ Draw's tooltip says it too): the pad and the map stay higher up. */
   @container (width < 560px) {
     .drop-hint {
       display: none;

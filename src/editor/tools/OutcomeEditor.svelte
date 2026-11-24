@@ -92,7 +92,7 @@
         {#if media}
           {#if media.kind === 'image' && mediaUrls[media.id]}<img src={mediaUrls[media.id]} alt="" onerror={imgFallback} draggable="false" />{/if}
           <span class="small">{media.name}</span>
-          <button class="ghost small" onclick={() => (outcome.media = undefined)} aria-label="⌫ Clear {media.name}" title="Clear it (it stays in 🖼 Media)"
+          <button class="ghost small" onclick={() => (outcome.media = undefined)} aria-label="⌫ Clear {media.name}" title="Clear it (it stays in 🖼️ Media)"
             >⌫ Clear</button
           >
         {/if}
@@ -104,7 +104,7 @@
               onclick={() => (picking = k)}
               use:mediaDrop={{ kind: ['image', 'video', 'audio'], onpick: (id) => (outcome.media = id) }}
               title="Add {what} (or drop one here)"
-              aria-label="Add {what}">{k === 'image' ? '🖼' : k === 'video' ? '🎬' : '🔊'}</button
+              aria-label="Add {what}">{k === 'image' ? '🖼️' : k === 'video' ? '🎬' : '🔊'}</button
             >
             {#if picking === k}
               <MediaPicker kind={k} onpick={(id) => ((outcome.media = id), (picking = null))} onclose={() => (picking = null)} />
@@ -112,7 +112,7 @@
           </div>
         {/each}
         <label class="check small">
-          ⏱ Timer
+          ⏱️ Timer
           <input
             type="number"
             min="0"

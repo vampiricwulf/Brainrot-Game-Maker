@@ -22,7 +22,7 @@ describe('what moved in this version', () => {
       '🎲 Roll for it (O)',
       '▸ Buzzer options',
       '✅ Before you start',
-      '⏱ Start the countdown',
+      '⏱️ Start the countdown',
       '⋯ Tools',
     ])
       expect(game).toContain(w);

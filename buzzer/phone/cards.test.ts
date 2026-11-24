@@ -138,9 +138,9 @@ describe('a card’s lines', () => {
     expect(mediaName({ kind: 'image', url: 'https://a.test/x.png' })).toBe('Picture');
     expect(mediaName({ kind: 'image', url: 'https://a.test/x.png', name: 'The ogre' })).toBe('The ogre');
     expect(mediaName({ kind: 'audio', pending: true })).toBe('Sound');
-    expect(comingLine('image')).toBe('🖼 Picture coming…');
+    expect(comingLine('image')).toBe('🖼️ Picture coming…');
     expect(comingLine('video')).toBe('🎞 Video coming…');
-    expect(missingLine('image')).toBe('🖼 The host will show you this picture');
+    expect(missingLine('image')).toBe('🖼️ The host will show you this picture');
     expect(missingLine('audio')).toBe('🔊 The host will show you this sound');
     expect(brokenLine('embed')).toBe('🎞 This video didn’t load. Ask the host to show you.');
     expect(arrivedLine('image')).toBe('Your picture is here');
@@ -150,7 +150,7 @@ describe('a card’s lines', () => {
     const MB = 1024 * 1024;
     expect(waitLine('video', 40 * MB * 0.4, 40 * MB)).toBe('🎞 Video coming… 40%');
     expect(waitLine('audio', 5 * MB, 5 * MB)).toBe('🔊 Sound coming… 100%');
-    expect(waitLine('image', 0, 4 * MB + 1)).toBe('🖼 Picture coming… 0%');
+    expect(waitLine('image', 0, 4 * MB + 1)).toBe('🖼️ Picture coming… 0%');
     // (Whole percents, never more than there is.)
     expect(pctOf(10 * MB - 1, 10 * MB)).toBe(99);
     expect(pctOf(11 * MB, 10 * MB)).toBe(100);

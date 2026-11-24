@@ -24,13 +24,13 @@ const WHY: Record<LeftOut, string> = {
 };
 
 /**
- * What of a card won't reach the phones, counted ("🖼 1 video won't reach the phones (too big for the buzzer server)"),
+ * What of a card won't reach the phones, counted ("🖼️ 1 video won't reach the phones (too big for the buzzer server)"),
  * or ''.
  */
 export function leftLine(left: { kind: CardItem['kind']; why: LeftOut }[]): string {
   if (!left.length) return '';
   const why = [...new Set(left.map((l) => WHY[l.why]))].join('; ');
-  return `🖼 ${countItems(left.map((l) => l.kind))} won’t reach the phones (${why})`;
+  return `🖼️ ${countItems(left.map((l) => l.kind))} won’t reach the phones (${why})`;
 }
 
 /** The kinds of a card's items that go but are big for phones on mobile data (phoneCard's `slow`), for slowLine. */

@@ -73,8 +73,8 @@
   const pt = $derived(session.phase === 'clue' && info ? session.partner : null);
   const ptName = (id?: string) => (id ? (session.players.find((p) => p.id === id)?.name ?? '?') : '');
   const ITEM: Record<CardItem['kind'], [string, string]> = {
-    picture: ['🖼', 'picture'],
-    gif: ['🖼', 'GIF'],
+    picture: ['🖼️', 'picture'],
+    gif: ['🖼️', 'GIF'],
     video: ['🎞', 'video'],
     sound: ['🔊', 'sound'],
     embed: ['🌐', 'online video'],
@@ -382,7 +382,7 @@
     <div class="meta"><span class="cat">{rpg.round.name}</span></div>
     {#if here && rpg.st}
       <div class="label">On screen</div>
-      <div class="q">🗺 {here.map.name} · {here.screen.name}</div>
+      <div class="q">🗺️ {here.map.name} · {here.screen.name}</div>
       {@render hostNote('Screen notes', here.screen.hostNotes)}
       {#if rpg.st.parties.length > 1}
         <div class="label">Parties</div>

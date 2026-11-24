@@ -52,7 +52,7 @@ describe('adding files', () => {
     const b = await addMediaFile(game, new File(['same bytes'], 'copy of meme.png', { type: 'image/png' }));
     expect(b).toBe(a);
     expect(game.media).toHaveLength(1);
-    expect(app.toast).toContain('already in 🖼 Media');
+    expect(app.toast).toContain('already in 🖼️ Media');
     // Other bytes of the same size are another file.
     const c = await addMediaFile(game, new File(['other byte'], 'meme.png', { type: 'image/png' }));
     expect(c.id).not.toBe(a.id);

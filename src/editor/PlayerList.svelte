@@ -352,7 +352,7 @@
                 class="tiny unpic"
                 onclick={() => (p.avatar = undefined)}
                 aria-label="Clear {p.name}'s picture"
-                title="Clear the picture: the colored token shows instead (it stays in 🖼 Media)">⌫</button
+                title="Clear the picture: the colored token shows instead (it stays in 🖼️ Media)">⌫</button
               >{/if}
             {#if picking === p.id}
               <MediaPicker kind="image" onpick={(id) => ((p.avatar = id), (picking = null))} onclose={() => (picking = null)} />

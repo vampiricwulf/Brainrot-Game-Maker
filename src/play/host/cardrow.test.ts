@@ -54,7 +54,7 @@ describe('what of a card is big, or too big, counted', () => {
   });
 
   it('one over the server’s limit is too big for the buzzer server (not “for phones”)', () => {
-    expect(leftLine([{ kind: 'video', why: 'big' }])).toBe('🖼 1 video won’t reach the phones (too big for the buzzer server)');
+    expect(leftLine([{ kind: 'video', why: 'big' }])).toBe('🖼️ 1 video won’t reach the phones (too big for the buzzer server)');
   });
 });
 

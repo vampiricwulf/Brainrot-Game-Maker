@@ -183,7 +183,7 @@ await page.locator('.cat textarea').first().fill('Links');
 // ---------- A host that allows downloads: the file is saved in the game ----------
 await page.locator('.tile').nth(0).click();
 await page.locator('.quick textarea').first().fill('Saved and live media');
-await page.getByRole('button', { name: '🖼 Image' }).click();
+await page.getByRole('button', { name: '🖼️ Image' }).click();
 await page.locator('.picker').getByText('Direct file link, e.g. https://files.catbox.moe/abc123.png').waitFor();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://litter.catbox.moe/frog1.png');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
@@ -211,7 +211,7 @@ assert(
 );
 {
   // A second sound goes beside the first, not on top of it (only one of them could be clicked); Ctrl+Z takes it off.
-  // (The same link: no second file in 🖼 Media.)
+  // (The same link: no second file in 🖼️ Media.)
   const speakers = () =>
     page
       .locator('.canvas .hit')
@@ -259,7 +259,7 @@ await page.getByRole('button', { name: 'Done' }).click();
 
 // ---------- A picture that plays from its link: the image editor asks for a copy first ----------
 await page.locator('.tile').nth(2).click();
-await page.getByRole('button', { name: '🖼 Image' }).click();
+await page.getByRole('button', { name: '🖼️ Image' }).click();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/pic3.png');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
 await page.locator('.canvas img').waitFor();
@@ -429,7 +429,7 @@ for (const [row, name] of [
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
 await page.locator('.tile').nth(3).click();
 await page.locator('.quick textarea').first().fill('Flaky host');
-await page.getByRole('button', { name: '🖼 Image' }).click();
+await page.getByRole('button', { name: '🖼️ Image' }).click();
 // Cancel while it's still working: the cursor goes back to the field, so Esc still closes only the picker.
 await page.locator('.picker').getByLabel('Paste a link').fill('https://slow.test/big.png');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
@@ -449,7 +449,7 @@ await page.getByRole('tab', { name: /^Answer slide/ }).click();
 await toastsIn(page, { hasText: 'Stopped downloading the link' }).waitFor();
 assert(true, 'a 🌐 Link download stopped by going to the Answer slide says so');
 await page.getByRole('tab', { name: 'Question slide' }).click();
-await page.getByRole('button', { name: '🖼 Image' }).click();
+await page.getByRole('button', { name: '🖼️ Image' }).click();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/flaky5.png');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
 await page.locator('.canvas img[src="https://files.catbox.moe/flaky5.png"]').waitFor();

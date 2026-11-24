@@ -52,7 +52,7 @@ try {
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Welcome and rules/ }).click();
   await toastsIn(page, { hasText: 'at the start of the game: drag its tab to move it' }).waitFor();
-  assert((await roundNames())[0] === 'Introduction', 'the 🖼 Welcome and rules template goes first, and says so');
+  assert((await roundNames())[0] === 'Introduction', 'the 🖼️ Welcome and rules template goes first, and says so');
   await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   await page.waitForFunction(() => document.querySelectorAll('nav > button.round-tab').length === 2);
   await page.getByRole('button', { name: '＋ Add round' }).click();
@@ -176,7 +176,7 @@ try {
   );
   await page.keyboard.press('Shift+N');
   await stage.locator('[data-slide="1"]').waitFor();
-  // H, H: the keys come back to a button the app picked (the main button: a slides round's status line has no ⏱ Start).
+  // H, H: the keys come back to a button the app picked (the main button: a slides round's status line has no ⏱️ Start).
   // Space and Enter there press nothing (no slide goes on, no countdown starts).
   await page.keyboard.press('h');
   await hostPanelIn(page).waitFor({ state: 'detached' });

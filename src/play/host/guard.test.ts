@@ -40,7 +40,7 @@ describe('the host panel’s click guard', () => {
     const { at: at3, guard: g3 } = guarded();
     g3.press('main:▶ Show question', 1, { step: true, x: 1200, y: 600 });
     at3.t += 700;
-    expect(g3.press('main:⏱ Start the clock', 1, { step: true, x: 1200, y: 600 })).toBe('go');
+    expect(g3.press('main:⏱️ Start the clock', 1, { step: true, x: 1200, y: 600 })).toBe('go');
   });
 
   it('lets a fresh click through, whatever came just before', () => {

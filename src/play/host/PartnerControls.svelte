@@ -10,7 +10,7 @@
   The box holds every action of it, once, beside the choices it's an alternative to: its first line says what's next,
   🎡 Spin for a partner comes in front of the players to choose from by hand (↻ Spin again in its place after), and its
   bottom row, always in view, has ✔ Got it / ✘ Missed, then at its right end, while the cards are handed out, 📋 for the
-  cards copied by hand and 📤 Send and start or ⏱ Start the clock, where nothing takes its place when it goes. The blue
+  cards copied by hand and 📤 Send and start or ⏱️ Start the clock, where nothing takes its place when it goes. The blue
   button is the show's next step only (Show question ▶, Next ▶ with the wheel up, 👁 Reveal answer…: goon.ts); pressed
   with something left here, the check offers it, and the action due now wears the ring.
 -->
@@ -120,7 +120,7 @@
     dual?: boolean;
     /** 🎡 Spin for a partner (W): the partner wheel, spun. */
     onspin: () => void;
-    /** ⏱ Start the clock: the countdown starts. */
+    /** ⏱️ Start the clock: the countdown starts. */
     onclock: () => void;
     /** What the shares are of: the Amount box (the tile's value, unless the host changed it). */
     value: number;
@@ -138,7 +138,7 @@
     selected?: Id[];
     /** A steal's chip: that player answers it (picked, as with their number). */
     onpick?: (id: Id) => void;
-    /** What ⏱ Start the clock counts down from (its words say it): a paused countdown's time left, else its seconds. */
+    /** What ⏱️ Start the clock counts down from (its words say it): a paused countdown's time left, else its seconds. */
     clockSecs?: number;
     /** The action due now ('partnerspin', 'describerspin', 'handout'): its button wears the ring (goon.ts ringOf). */
     ring?: string | null;
@@ -253,7 +253,7 @@
     }
     pairOnly(session, s);
   }
-  /** The game's icon and verbs ("🗣", "describes", "guesses"). */
+  /** The game's icon and verbs ("🗣️", "describes", "guesses"). */
   const G = $derived(PARTNER_GAMES[rules.game]);
   /**
    * Who plays which part, in words: "Bob describes · Ann guesses". Before the pair is known, who plays it then: "The
@@ -515,7 +515,7 @@
       const off = s.stage === 'pick' ? unsent.flatMap((c) => lefts(c).filter((l) => l.why === 'nofiles')) : [];
       return off.length
         ? {
-            text: `🖼 ${countItems(off.map((l) => l.kind))} from this computer won’t reach the phones: this buzzer server isn’t taking files right now (📋 Copy picture)`,
+            text: `🖼️ ${countItems(off.map((l) => l.kind))} from this computer won’t reach the phones: this buzzer server isn’t taking files right now (📋 Copy picture)`,
             ready: false,
           }
         : null;
@@ -525,7 +525,7 @@
     if (files.up >= files.files - files.failed)
       return files.up
         ? {
-            text: `🖼 ${fileKinds((c) => items(c).filter((i) => 'file' in i.goes))} ready in the buzzer room (no phone gets ${files.up === 1 ? 'it' : 'them'} until you send)`,
+            text: `🖼️ ${fileKinds((c) => items(c).filter((i) => 'file' in i.goes))} ready in the buzzer room (no phone gets ${files.up === 1 ? 'it' : 'them'} until you send)`,
             ready: false,
           }
         : null;
@@ -536,7 +536,7 @@
     const withFiles = unsent.filter((c) => waiting(c).length > 0);
     const left = files.files - files.up - files.failed;
     const whose = withFiles.length === 1 ? (left === 1 ? 'its card' : 'their card') : 'their cards';
-    return { text: `🖼 ${fileKinds(waiting)} ${left === 1 ? 'goes' : 'go'} up when you send ${whose}`, ready: true };
+    return { text: `🖼️ ${fileKinds(waiting)} ${left === 1 ? 'goes' : 'go'} up when you send ${whose}`, ready: true };
   });
 
   /**
@@ -625,7 +625,7 @@
     }
     return { text: out.join(' · '), ...(late.length ? { warn: true } : {}) };
   }
-  /** What of a card won't reach the phones, counted ("🖼 1 video won't reach the phones (too big for the buzzer server)"). */
+  /** What of a card won't reach the phones, counted ("🖼️ 1 video won't reach the phones (too big for the buzzer server)"). */
   const leftOf = (card: ClueCard): string => leftLine(lefts(card));
   /** What of it goes but is big for phones on mobile data, counted ("📶 1 video is big: …"). */
   const slowOf = (card: ClueCard): string => (cardsOn ? slowLine(slowKinds(phoneOf(card).items)) : '');
@@ -717,13 +717,13 @@
             : '';
     return nextStep(VERBS.partnerSpin, onspin, why ? { title: why, disabled: true } : { disabled: false });
   });
-  /** The countdown is running (T, or the status line's ⏱ Start): with cards still to send, only they're left to go. */
+  /** The countdown is running (T, or the status line's ⏱️ Start): with cards still to send, only they're left to go. */
   const clockRuns = $derived(!!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired);
-  /** What a click on 📤 Send and start (or ⏱ Start the clock) says within a second of the question going up. */
+  /** What a click on 📤 Send and start (or ⏱️ Start the clock) says within a second of the question going up. */
   const handSoon = $derived(`The question just went up: click again to ${unsentToGo.length ? 'send the cards' : 'start the clock'}`);
   /**
    * The cards handed out (until the clock runs, it's judged, or the answer shows): 📤 Send and start when phones get cards
-   * not sent yet, else ⏱ Start the clock: Enter's too (⏎). A click within a second of the question waits, as Enter does.
+   * not sent yet, else ⏱️ Start the clock: Enter's too (⏎). A click within a second of the question waits, as Enter does.
    */
   const handStep = $derived.by((): NextAction | null => {
     if (s.stage !== 'distribute' || verdict.judged || session.revealed) return null;
@@ -788,8 +788,8 @@
       if (unsentToGo.length)
         return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: 📤 Send and start' };
       // (Each 📋 pressed: the clock is next, and a click on the stage starts it.)
-      if (toCopy.length && !toCopy.every(({ card }) => copied(card))) return { text: `Next: 📋 copy each card to its ${noun}, then ⏱ Start the clock` };
-      return { text: toCopy.length ? 'Next: ⏱ Start the clock (the cards are copied)' : 'Next: ⏱ Start the clock' };
+      if (toCopy.length && !toCopy.every(({ card }) => copied(card))) return { text: `Next: 📋 copy each card to its ${noun}, then ⏱️ Start the clock` };
+      return { text: toCopy.length ? 'Next: ⏱️ Start the clock (the cards are copied)' : 'Next: ⏱️ Start the clock' };
     }
     // (The verdict due: ✔ Got it and ✘ Missed an equal pair at the foot, neither blue, the keys where they were.)
     return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it? ✔ Got it or ✘ Missed' };
@@ -1268,7 +1268,7 @@
     {/if}
     <!-- The box's foot, in view as the rows above scroll: ✔ Got it / ✘ Missed, quiet until the clock runs, with what each
          gives (a click judges while handing out the cards too; the keys wait for the clock), and while the cards are
-         handed out, the next step at its right end (📋 for the cards to copy by hand, then 📤 Send and start or ⏱ Start
+         handed out, the next step at its right end (📋 for the cards to copy by hand, then 📤 Send and start or ⏱️ Start
          the clock): when it goes, nothing moves into its place, so a second click there never judges. Judged, the line
          reads the marks; an Undo brings the buttons back. (Clicked, they go off: partnerJudge, in partner.svelte.ts, gives the keys to the
          main button.) A steal's row takes its place, its marks first: the players list above keeps its room, the

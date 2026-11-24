@@ -362,7 +362,7 @@ try {
   await worldHit.click();
   await toastsIn(page, { hasText: "isn't played by any round" }).waitFor();
   assert(
-    (await toast()).includes('add an RPG round (＋ Add round › 🗺 RPG) and pick it there'),
+    (await toast()).includes('add an RPG round (＋ Add round › 🗺️ RPG) and pick it there'),
     `with no RPG round left, Find’s toast for a world no round plays says to add one (${await toast()})`,
   );
   // (Once Find has given up waiting for the screen, after 30 frames.)
@@ -616,7 +616,7 @@ try {
         text.includes('one order') &&
         text.includes('🏁 Make it the start') &&
         text.includes('📋 Paste slide') &&
-        text.includes('✏ Freehand line…') &&
+        text.includes('✏️ Freehand line…') &&
         text.includes('✓ Done cropping') &&
         text.includes('Replace everywhere…') &&
         text.includes('Plays from') &&
@@ -625,7 +625,7 @@ try {
         text.includes('＋ Add tiebreaker') &&
         text.includes('＋ Add space') &&
         text.includes('Ways out'),
-      `the Editor part opens with “What moved” (the menus’ one order, the new names, the slide editor's bar, tabs' group and Shape ▾, the image and video windows, 🖼 Media's cards, a video's Plays row, a card's ⧉, the partner rules, the tiebreaker, a board-game space's buttons, Ways out)`,
+      `the Editor part opens with “What moved” (the menus’ one order, the new names, the slide editor's bar, tabs' group and Shape ▾, the image and video windows, 🖼️ Media's cards, a video's Plays row, a card's ⧉, the partner rules, the tiebreaker, a board-game space's buttons, Ways out)`,
     );
   }
   // A long key that wraps is a whole chip on each line (not two half-boxes).

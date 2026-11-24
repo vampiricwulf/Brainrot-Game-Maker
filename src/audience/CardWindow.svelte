@@ -82,7 +82,7 @@
     document.title = name ? `🤫 For ${name} only` : '🤫 Card window';
   });
 
-  const ICON = { image: '🖼', video: '🎞', audio: '🔊' } as const;
+  const ICON = { image: '🖼️', video: '🎞', audio: '🔊' } as const;
   const WORD = { image: 'picture', video: 'video', audio: 'sound' } as const;
   /** Where a picture, video or sound plays from: the host's file, or its link. */
   const src = (m: WindowItem): string | undefined => ('file' in m ? urls[m.file] : 'url' in m ? m.url : undefined);

@@ -405,7 +405,7 @@
           >
         {:else}<span class="muted">Rolling…</span>{/if}
       {:else if o.kind === 'popup'}
-        <b>🖼 {o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}</b>
+        <b>🖼️ {o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}</b>
         {#if o.value}<span class="muted small">worth {o.value}</span>{/if}
         <!-- (Its 👁 Reveal answer is the blue button's.) -->
         {#if o.answer && o.revealed}<button onclick={() => (o.revealed = false)} title="R">🙈 Hide answer</button>{/if}
@@ -468,7 +468,8 @@
           {#each outcomeActions(f.face.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}
               >{describeAction(game, a, undefined, teams)}</button
             >{/each}
-          {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱ Start {f.face.timerSeconds}s</button>{/if}
+          {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱️ Start {f.face.timerSeconds}s</button
+            >{/if}
         </div>
         {@const card = cards.get(`${actionKey}-die${f.i}`)}
         {#if card && !cardDone(card.key)}
@@ -483,7 +484,7 @@
             {#each outcomeActions(r.seg.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}
                 >{describeAction(game, a, undefined, teams)}</button
               >{/each}
-            {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
+            {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱️ Start {r.seg.timerSeconds}s</button>{/if}
           </div>
           {@const card = cards.get(`${actionKey}-${r.w.key}`)}
           {#if card && !cardDone(card.key)}
@@ -540,7 +541,7 @@
             {/each}
           {/if}
           {#if outcome?.timerSeconds}
-            <button class="small" onclick={() => startTimer(app.live, outcome!.timerSeconds!)}>⏱ Start {outcome.timerSeconds}s</button>
+            <button class="small" onclick={() => startTimer(app.live, outcome!.timerSeconds!)}>⏱️ Start {outcome.timerSeconds}s</button>
           {/if}
         </div>
       {/if}

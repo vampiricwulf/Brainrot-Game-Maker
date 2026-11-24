@@ -41,7 +41,7 @@ export interface MediaRef {
   file?: string;
   /**
    * Added for 🗜: this file is a smaller copy of `of`, made for phones only (never shown on stream, never sent to viewers'
-   * windows, not listed in 🖼 Media). from/to: the stretch of the original it holds (seconds; to null: to the end), for a
+   * windows, not listed in 🖼️ Media). from/to: the stretch of the original it holds (seconds; to null: to the end), for a
    * copy of the part the cards play. One at most per file.
    */
   phoneCopy?: { of: Id; from?: number; to?: number | null; width?: number; height?: number };
@@ -464,7 +464,7 @@ export interface PartnerGameInfo {
 }
 
 /**
- * The ready-made games (partner-clues spec §2.2). (🗣 and ✏ have U+FE0F after them, so they show in colour, not as a
+ * The ready-made games (partner-clues spec §2.2). (🗣️ and ✏️ have U+FE0F after them, so they show in colour, not as a
  * grey outline where the system's first font has them as text; ⚙ stays a sign.) In every one the partner gives and the picker guesses, and a miss never
  * costs the partner.
  */
@@ -1740,7 +1740,7 @@ export function initials(name: string): string {
 
 /** A category's name for the host (log, notes, lists), even when the board shows an image instead. */
 export function categoryLabel(cat: Category): string {
-  return cat.title.trim() || (cat.image ? '🖼 Image category' : 'Category');
+  return cat.title.trim() || (cat.image ? '🖼️ Image category' : 'Category');
 }
 
 export function newCategory(rows: number, title = ''): Category {

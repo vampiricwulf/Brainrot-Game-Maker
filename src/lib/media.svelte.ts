@@ -384,7 +384,7 @@ export async function addMediaFile(
   const { mime, kind, blob } = await checkedFile(file, name);
   const twin = await identicalMedia(game, blob, kind);
   if (twin) {
-    if (!quiet) toast(`“${twin.name}” is already in 🖼 Media: using that one`);
+    if (!quiet) toast(`“${twin.name}” is already in 🖼️ Media: using that one`);
     return twin;
   }
   // Same name as a file already in the game (e.g. every pasted screenshot is "image.png"): randomize it.

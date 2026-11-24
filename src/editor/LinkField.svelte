@@ -194,7 +194,7 @@
       {#if drive.step === 'ask'}
         <p class="small">Is this Google Drive file a picture, or a video or sound?</p>
         <div class="row">
-          <button class="small" onclick={() => go('image')}>🖼 Picture</button>
+          <button class="small" onclick={() => go('image')}>🖼️ Picture</button>
           <button class="small" onclick={() => drive && (drive = { ...drive, step: 'video' })}>🎬 Video or sound</button>
         </div>
       {:else}

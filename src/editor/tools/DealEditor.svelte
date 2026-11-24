@@ -233,7 +233,7 @@
       </select>
     </label>
     <p class="muted small"
-      >“A wheel slice everyone shares” is drawn once for the deal (🕵 the location everyone but the spy knows); “a wheel slice of their own” gives each player
+      >“A wheel slice everyone shares” is drawn once for the deal (🕵️ the location everyone but the spy knows); “a wheel slice of their own” gives each player
       their own (🧠 a prompt each), none twice while there are enough.</p
     >
   {/if}

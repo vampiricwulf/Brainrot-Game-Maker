@@ -861,7 +861,7 @@
   <!-- Which part of the board to edit: buttons that say which is shown (not tabs, which promise arrow keys). -->
   <div class="tabs" role="group" aria-label="Edit">
     <button aria-pressed={view === 'spaces'} class:on={view === 'spaces'} onclick={() => (view = 'spaces')}>⬤ Spaces ({round.spaces.length})</button>
-    <button aria-pressed={view === 'backdrop'} class:on={view === 'backdrop'} onclick={() => (view = 'backdrop')}>🖼 Board backdrop</button>
+    <button aria-pressed={view === 'backdrop'} class:on={view === 'backdrop'} onclick={() => (view = 'backdrop')}>🖼️ Board backdrop</button>
     <button aria-pressed={view === 'zones'} class:on={view === 'zones'} onclick={() => (view = 'zones')}>🌀 Off-board zones ({round.zones.length})</button>
     {#if view === 'backdrop' && round.spaces.length}
       <button
@@ -1051,7 +1051,7 @@
             <label class="check small">Color <ColorBox bind:value={sel.color} aria-label="Space color" /></label>
             <div class="pop">
               <button class="small" onclick={() => (pickingIcon = !pickingIcon)} use:mediaDrop={{ kind: 'image', onpick: (id) => sel && (sel.icon = id) }}>
-                {#if sel.icon && mediaUrls[sel.icon]}<img class="ic" src={mediaUrls[sel.icon]} alt="" draggable="false" />{:else}🖼{/if} Icon
+                {#if sel.icon && mediaUrls[sel.icon]}<img class="ic" src={mediaUrls[sel.icon]} alt="" draggable="false" />{:else}🖼️{/if} Icon
               </button>
               {#if pickingIcon}
                 <MediaPicker kind="image" onpick={(id) => ((sel.icon = id), (pickingIcon = false))} onclose={() => (pickingIcon = false)} />

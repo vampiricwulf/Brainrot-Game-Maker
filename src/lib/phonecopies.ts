@@ -5,7 +5,7 @@ import type { Game, Id, MediaRef } from './model';
 import { playTimes } from './phonecard';
 import { allCardSlides } from './usage';
 
-/** The files a person sees and picks from (🖼 Media, the pickers, Find): every one but the 🗜 copies for phones. */
+/** The files a person sees and picks from (🖼️ Media, the pickers, Find): every one but the 🗜 copies for phones. */
 export const libraryMedia = (game: Pick<Game, 'media'>): MediaRef[] => game.media.filter((m) => !m.phoneCopy);
 
 /** These files and their 🗜 copies for phones (deleting a file takes its copy with it). */

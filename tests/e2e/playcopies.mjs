@@ -270,7 +270,7 @@ try {
     .waitFor();
   const rowSays = (await row('dance').innerText()).replace(/\s+/g, ' ');
   assert(
-    /^🖼 a GIF · 2\.\d MB → about \d+ KB \(a looping video\)$/.test(rowSays),
+    /^🖼️ a GIF · 2\.\d MB → about \d+ KB \(a looping video\)$/.test(rowSays),
     `one window: its row is the file’s kind and size, and its copy’s (${rowSays})`,
   );
   assert((await dialog.locator('img, video, audio, canvas').count()) === 0, 'no preview, no thumbnail');
@@ -359,7 +359,7 @@ try {
   const left = tilePart.locator('[data-card-left="1"]');
   await left.waitFor();
   assert(
-    (await left.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)',
+    (await left.innerText()) === '🖼️ 1 GIF won’t reach the phones (too big for the buzzer server)',
     `one window: its panel line counts it, never naming it (${await left.innerText()})`,
   );
   const panelButton = left.locator('..').getByRole('button', { name: '🗜 Make smaller' });
@@ -380,7 +380,7 @@ try {
     .getByText(/^→ about /)
     .waitFor();
   const panelRow = (await row('twirl').innerText()).replace(/\s+/g, ' ');
-  assert(/^🖼 a GIF · 1\.\d MB → about \d+ KB \(a looping video\)$/.test(panelRow), `its window names no file: the kind and size only (${panelRow})`);
+  assert(/^🖼️ a GIF · 1\.\d MB → about \d+ KB \(a looping video\)$/.test(panelRow), `its window names no file: the kind and size only (${panelRow})`);
   assert((await dialog.locator('img, video, audio, canvas').count()) === 0, 'and shows no preview');
   assert(!(await dialog.innerText()).includes('Ctrl+Z'), 'nor offers a Ctrl+Z that does nothing here');
   await namesNone('one window, its window open');

@@ -9,7 +9,7 @@ import { boxFor, fixMime, isLossless, type Fix } from './playable';
 import type { OutBox, RunAudio, RunPlan, RunVideo, Want } from './run';
 import { aOrAn, codecName, fixBoxName } from './words';
 
-/** 🖼 Media offers 🗜 for a file over this (bytes). */
+/** 🖼️ Media offers 🗜 for a file over this (bytes). */
 export const SHRINK_OFFER_BYTES = 2 * 1024 * 1024;
 /** A GIF's copy: a picture no bigger than this on its long side. */
 export const GIF_LONG_SIDE = 720;

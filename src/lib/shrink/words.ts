@@ -1,6 +1,6 @@
 // What the app says about a video or sound that doesn't play in this browser (card-files spec §4.12.7): why, in plain
 // words (its file type, its picture's or sound's codec), and what the host can do about it. Pure, so every string is
-// tested. 🖼 Media and the editor may name the file around these; these words never do.
+// tested. 🖼️ Media and the editor may name the file around these; these words never do.
 import type { Box } from './facts';
 import { isPcm } from './facts';
 import type { Fix, FixBox, Verdict } from './playable';

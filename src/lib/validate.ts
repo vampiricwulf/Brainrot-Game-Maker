@@ -443,7 +443,7 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
 
   const known = new Set(game.media.map((m) => m.id));
   const usage = mediaUsage(game);
-  // (A file used only on 🤫 cards: an older copy's 🗑 Delete unused would delete it. 🖼 Media's 🗑 Delete unused says so
+  // (A file used only on 🤫 cards: an older copy's 🗑 Delete unused would delete it. 🖼️ Media's 🗑 Delete unused says so
   // in its tooltip, not here: there's nothing to fix.)
   const partners = boardRounds(game).flatMap((r) => playableClues(r).filter((c) => c.type === 'partner'));
   if (partners.length && !game.settings.buzzer)
@@ -465,7 +465,7 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   // A file's uses other than as a 🔊 Sounds cue (on slides, tiles, wheels…): those lines say where; the cue's says 🔊 Sounds.
   const cueUses = (id: string) => Object.values(game.audio ?? {}).filter((x) => x === id).length;
   const otherUses = (id: string) => (usage.get(id) ?? 0) - cueUses(id);
-  // Deleted from 🖼 Media but still on slides: they show nothing (and aren't saved with the game).
+  // Deleted from 🖼️ Media but still on slides: they show nothing (and aren't saved with the game).
   const deleted = [...usage.keys()].filter((id) => !known.has(id) && otherUses(id) > 0);
   if (deleted.length) {
     // Where the first is still used ("Introduction › Slide 1 › Image"): named, and the line goes there.
@@ -502,7 +502,7 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   // (A cue's file used on a slide too: that slide shows nothing, so it's said here as well.)
   const others = [...missing].filter((id) => !cues.has(id) || otherUses(id) > 0);
   if (others.length) {
-    // (A player-only file has no 🖼 Media: it names where the first one used was, which shows nothing now.)
+    // (A player-only file has no 🖼️ Media: it names where the first one used was, which shows nothing now.)
     const path = others.map((id) => mediaPath(game, id)).find((p) => !!p);
     const at = path ? placeAt(game, path) : null;
     const crumbs = at?.crumbs ?? [];
@@ -514,7 +514,7 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   // Videos and sounds this browser won't play, or plays without their sound: as worked out from what's inside them
   // (`room.plays`), else as their type says. (A live link already played when it was added; its type is often unknown
   // from the address.)
-  // (🔄 Convert can fix some: the line says so and gets a button; for the others, 🖼 Media says why.)
+  // (🔄 Convert can fix some: the line says so and gets a button; for the others, 🖼️ Media says why.)
   const convert: Id[] = [];
   let fails = 0;
   let silent = 0;
@@ -530,26 +530,26 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   const them = (n: number) => (n === 1 ? 'it' : 'them');
   if (convert.length)
     out.push({
-      text: `${plural(convert.length, 'video/audio file')} won’t play in this browser: 🔄 Convert ${them(convert.length)} in 🖼 Media`,
+      text: `${plural(convert.length, 'video/audio file')} won’t play in this browser: 🔄 Convert ${them(convert.length)} in 🖼️ Media`,
       tab: 'media',
       level: 'warn',
       convert,
     });
   if (fails)
     out.push({
-      text: `${plural(fails, 'video/audio file')} won’t play in this browser, and it can’t convert ${them(fails)}: 🖼 Media says why`,
+      text: `${plural(fails, 'video/audio file')} won’t play in this browser, and it can’t convert ${them(fails)}: 🖼️ Media says why`,
       tab: 'media',
       level: 'warn',
     });
   if (silent)
     out.push({
-      text: `${plural(silent, 'video')} play${silent === 1 ? 's' : ''} without ${silent === 1 ? 'its' : 'their'} sound in this browser (🖼 Media says why)`,
+      text: `${plural(silent, 'video')} play${silent === 1 ? 's' : ''} without ${silent === 1 ? 'its' : 'their'} sound in this browser (🖼️ Media says why)`,
       tab: 'media',
       level: 'warn',
     });
   if (unsure)
     out.push({
-      text: `${plural(unsure, 'video/audio file')} this browser may not play: 🖼 Media says what to do`,
+      text: `${plural(unsure, 'video/audio file')} this browser may not play: 🖼️ Media says what to do`,
       tab: 'media',
       level: 'warn',
     });

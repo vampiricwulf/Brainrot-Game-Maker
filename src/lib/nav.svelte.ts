@@ -119,7 +119,7 @@ export function placeKey(p: Place): string | null {
 
 /**
  * Once what a request opens is on screen, scroll the [data-place] thing into view and flash it. `unfold`: a fold it's
- * in opens first (it was asked for by name, as 🖼 Media's "used 3× ▾" does).
+ * in opens first (it was asked for by name, as 🖼️ Media's "used 3× ▾" does).
  */
 export function flash(key: string, { unfold = false } = {}): void {
   void settled().then(() => {

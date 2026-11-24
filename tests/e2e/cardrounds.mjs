@@ -396,7 +396,7 @@ try {
     'what’s typed is hidden as it’s typed (viewers see this window)',
   );
   assert(
-    !(await sendMenu.getByRole('combobox', { name: 'A file from the game’s 🖼 Media' }).count()),
+    !(await sendMenu.getByRole('combobox', { name: 'A file from the game’s 🖼️ Media' }).count()),
     'and the game’s files (by name) aren’t offered in one window',
   );
   await sendMenu.getByRole('button', { name: 'Bob', exact: true }).click();
@@ -634,9 +634,9 @@ try {
     'two windows: a quick card is the first choice, with no warning about viewers',
   );
   await sendMenu.getByRole('textbox', { name: 'The card’s words' }).fill(QUICK);
-  // A picture from this computer: it goes into the game's 🖼 Media, but never to the viewers' windows (nor its name).
+  // A picture from this computer: it goes into the game's 🖼️ Media, but never to the viewers' windows (nor its name).
   await sendMenu.locator('input[type=file]').setInputFiles({ name: QUICK_FILE, mimeType: 'image/png', buffer: png(90, 30, 160, 200, 120) });
-  await sendMenu.locator('[aria-label="On the card"]').getByText('🖼 picture').waitFor();
+  await sendMenu.locator('[aria-label="On the card"]').getByText('🖼️ picture').waitFor();
   await sendMenu.getByRole('button', { name: 'Cat', exact: true }).click();
   await sleep(500);
   assert(

@@ -99,7 +99,7 @@ export interface Described {
   undoPlace: Place | null;
 }
 
-const MEDIA_ICON: Record<MediaKind, string> = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' };
+const MEDIA_ICON: Record<MediaKind, string> = { image: '🖼️', video: '🎬', audio: '🔊', font: '🔤' };
 const SIDE_NAME = { q: 'Question', a: 'Answer' } as const;
 
 type Obj = Record<string, unknown>;
@@ -171,7 +171,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         part({ kind: 'values' });
       } else if (path[2] === 'decor') {
         at.crumbs.push('Board images');
-        at.icon = '🖼';
+        at.icon = '🖼️';
         part({ kind: 'decor' });
         const el = byId<SlideElement>(r.decor, path[3]);
         if (!el) return;
@@ -314,7 +314,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         slide(z.slide, 5, (element) => ({ tab: 'round', round: id, part: { kind: 'zone', zone: z.id, inSlide: true, element } }));
       } else if (path[2] === 'slide') {
         at.crumbs.push('Backdrop');
-        at.icon = '🖼';
+        at.icon = '🖼️';
         part({ kind: 'backdrop' });
         slide(r.slide, 3, (element) => ({ tab: 'round', round: id, part: { kind: 'backdrop', element } }));
       }
@@ -324,7 +324,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
   function world(): void {
     const w = byId<NonNullable<Game['worlds']>[number]>(game.worlds, path[1]);
     if (!w) return;
-    reached(2, 'world', w.name, '🗺');
+    reached(2, 'world', w.name, '🗺️');
     // Where it is starts with the round that plays the world, when one does (its name is the one on the page).
     const plays = game.rounds.flatMap((r, i) => (r.mode === 'rpg' && r.world === w.id ? [roundName(r, i)] : []));
     if (plays.length === 1) at.crumbs[at.crumbs.length - 1] = plays[0];
@@ -452,7 +452,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     }
     case 'media': {
       at.crumbs.push('Media');
-      at.icon = '🖼';
+      at.icon = '🖼️';
       go({ tab: 'media' });
       const m = byId<Game['media'][number]>(game.media, path[1]);
       if (!m) break;
@@ -524,7 +524,7 @@ function useWord(path: readonly Seg[], at: At): string | null {
 }
 
 /**
- * 🖼 Media's "used 3× ▾": each place in `game` that uses file `id`, in the History's words ("Jeopardy! › Memes › $200 ›
+ * 🖼️ Media's "used 3× ▾": each place in `game` that uses file `id`, in the History's words ("Jeopardy! › Memes › $200 ›
  * Question", "Theme › background picture", "Sounds › Round intro"), and the place it goes to (null: nowhere to open).
  * An item named after the file isn't named again; the same words twice are one line.
  */

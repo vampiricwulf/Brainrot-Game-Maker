@@ -435,7 +435,7 @@ try {
     await at.getByLabel(/^(Slide|Board) background color$/).press('Escape');
     return { bgs, title };
   };
-  await page.getByRole('button', { name: '🖼 Board backdrop' }).click();
+  await page.getByRole('button', { name: '🖼️ Board backdrop' }).click();
   let reset = await resetBg(page.locator('.se-wrap'));
   assert(
     reset.bgs.every((c) => c === 'rgb(29, 94, 58)') && reset.title === 'Back to the default background',

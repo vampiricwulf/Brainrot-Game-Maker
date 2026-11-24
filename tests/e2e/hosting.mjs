@@ -143,7 +143,7 @@ try {
   await tile(1).click();
   // A right-click on the stage: the moment's menu, the blue button's step first, on its own (N: it asks first when
   // something's left, as the blue button does), then the clue's own actions with their keys (no second 👁 Reveal
-  // answer), the ways out, then ↶ Undo and ⏸ Cover. Its ⏱ Start the countdown does what T does.
+  // answer), the ways out, then ↶ Undo and ⏸ Cover. Its ⏱️ Start the countdown does what T does.
   const clueMenu = await stageMenu({ close: false });
   assert(
     JSON.stringify(clueMenu) ===
@@ -151,7 +151,7 @@ try {
         '# Category 2 $200',
         '👁 Reveal answer · N',
         '—',
-        '⏱ Start the countdown · T',
+        '⏱️ Start the countdown · T',
         '—',
         '▦ Done ▶ board · Esc',
         '↩ Put back (keep tile) · Shift+Esc',
@@ -161,7 +161,7 @@ try {
       ]),
     `a right-click on a clue’s stage gives its menu, the blue button’s step first (${clueMenu.join(' | ')})`,
   );
-  await openMenu(page).getByRole('menuitem', { name: '⏱ Start the countdown' }).click();
+  await openMenu(page).getByRole('menuitem', { name: '⏱️ Start the countdown' }).click();
   await stage('.timer').waitFor();
   await page.keyboard.press('1');
   await page.keyboard.press('Enter');

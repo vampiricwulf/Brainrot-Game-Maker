@@ -47,7 +47,7 @@
 </script>
 
 <div class="tc row" bind:this={box}>
-  <span class="muted" aria-hidden="true">⏱</span>
+  <span class="muted" aria-hidden="true">⏱️</span>
   {#if t}
     <!-- A running countdown isn't read out every second by the status line; "Time's up" is, once, after a "·" as the
          status line's other parts are (not run on from the words before it). -->

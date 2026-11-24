@@ -87,7 +87,7 @@
   });
   /** A card set to both or everyone else goes to more than one phone: theirs says it isn't theirs alone (as a phone does). */
   const shared = $derived(!!clue && (card.to === 'both' || card.to === 'others'));
-  const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼', gif: '🖼', video: '🎞', sound: '🔊', embed: '▶' };
+  const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼️', gif: '🖼️', video: '🎞', sound: '🔊', embed: '▶' };
   const KIND: Record<PhoneItem['kind'], string> = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' };
 
   /** The size of what goes up for an item (its 🗜 copy, when that's what goes), as people read it ("148.2 MB"). */
@@ -143,7 +143,7 @@
       case 'full':
         return `${what}: the buzzer room held all the files it can. Take a card back, then send this one again.`;
       case 'lost':
-        return `${what} isn’t in this game’s 🖼 Media any more.`;
+        return `${what} isn’t in this game’s 🖼️ Media any more.`;
       case 'many':
         return `${what}: a card shows 6 pictures, videos and sounds at most.`;
     }
@@ -167,7 +167,7 @@
         <div class="box missing">{ICON[it.kind]} The host will show you this {KIND[it.kind]}</div>
       {:else if it.kind === 'picture' || it.kind === 'gif'}
         {@const s = src(it)}
-        {#if s}<img src={s} alt={it.name} referrerpolicy="no-referrer" draggable="false" />{:else}<div class="box">🖼 {it.name}</div>{/if}
+        {#if s}<img src={s} alt={it.name} referrerpolicy="no-referrer" draggable="false" />{:else}<div class="box">🖼️ {it.name}</div>{/if}
       {:else if it.kind === 'embed'}
         <div class="box">▶ {it.name} (plays in its own player when tapped)</div>
       {:else}

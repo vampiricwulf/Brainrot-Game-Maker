@@ -665,7 +665,7 @@ describe('host panel rules', () => {
     const cat = board(game, 0).categories[0];
     cat.title = '';
     cat.image = 'img1';
-    expect(clueName(game, { round: 0, cat: 0, row: 1 })).toBe('🖼 Image category $400');
+    expect(clueName(game, { round: 0, cat: 0, row: 1 })).toBe('🖼️ Image category $400');
   });
 
   it('knows a wheel or dice tile with nothing to ask', () => {

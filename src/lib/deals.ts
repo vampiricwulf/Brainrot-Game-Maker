@@ -1,4 +1,4 @@
-// 🎭 Deals (partner-clues spec §11, §12.2): secret parts for everyone (🕵 Odd one out, 🐺 Secret roles, 🧢 Team
+// 🎭 Deals (partner-clues spec §11, §12.2): secret parts for everyone (🕵️ Odd one out, 🐺 Secret roles, 🧢 Team
 // captain, 🧠 Everyone's own prompt). The host deals one from 🎭 Deal… in the tools row: each player gets one part, at
 // random or as the host picked, and a part's card can show a slice drawn from a saved wheel (each player their own, or
 // one shared by everyone but the odd one out). Nothing goes anywhere until the host presses 📤 Send: then each player's

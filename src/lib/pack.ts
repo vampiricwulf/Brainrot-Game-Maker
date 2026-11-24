@@ -103,7 +103,7 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
       // (A .brainrot with no game.json is a damaged pack: only a .zip gets told to unzip.)
       if (!(file instanceof File && /\.zip$/i.test(file.name))) throw new Error('This pack has no game.json inside.');
       throw new Error(
-        "This .zip doesn't hold a Brainrot game. If someone zipped the game, unzip it and open the .brainrot (or .html) inside. Pictures and sounds in a zip need unzipping before you add them on 🖼 Media.",
+        "This .zip doesn't hold a Brainrot game. If someone zipped the game, unzip it and open the .brainrot (or .html) inside. Pictures and sounds in a zip need unzipping before you add them on 🖼️ Media.",
       );
     }
   }

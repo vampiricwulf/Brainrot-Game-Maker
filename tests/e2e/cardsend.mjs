@@ -297,8 +297,8 @@ try {
     'two windows: a quick card is the first choice, and no warning about viewers',
   );
   assert(
-    (await dialog.getByRole('combobox', { name: 'A file from the game’s 🖼 Media' }).count()) === 1,
-    'two windows: a file from the game’s 🖼 Media can go on it (by name: viewers don’t see this window)',
+    (await dialog.getByRole('combobox', { name: 'A file from the game’s 🖼️ Media' }).count()) === 1,
+    'two windows: a file from the game’s 🖼️ Media can go on it (by name: viewers don’t see this window)',
   );
   assert(!(await dialog.getByRole('button', { name: '👁 Show' }).count()), 'and what’s typed isn’t hidden (no 👁 Show)');
   await dialog.getByRole('textbox', { name: 'The card’s words' }).fill(SPY);
@@ -431,9 +431,9 @@ try {
   await dialog.getByRole('radio', { name: 'A quick card' }).check();
   // (Its bytes differ from the game's copy until it's cleaned: the game's own is used then, as it is for any file.)
   await dialog.locator('input[type=file]').setInputFiles({ name: 'flag.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(FLAG_RAW) });
-  await dialog.locator('[aria-label="On the card"]').getByText('🖼 picture').waitFor();
+  await dialog.locator('[aria-label="On the card"]').getByText('🖼️ picture').waitFor();
   assert(
-    !(await toastsIn(host, { hasText: 'already in 🖼 Media' }).count()),
+    !(await toastsIn(host, { hasText: 'already in 🖼️ Media' }).count()),
     'one window: an SVG already in the game goes on a quick card with no toast naming it',
   );
   await offStream(host, 'the host page in one window', 'an SVG already in the game put on a quick card');
@@ -556,7 +556,7 @@ try {
     await dialog.waitFor();
     await dialog.getByRole('radio', { name: 'A quick card' }).check();
     await dialog.locator('input[type=file]').setInputFiles({ name, mimeType: 'image/png', buffer });
-    await dialog.locator('[aria-label="On the card"]').getByText('🖼 picture').waitFor();
+    await dialog.locator('[aria-label="On the card"]').getByText('🖼️ picture').waitFor();
     await dialog.getByRole('button', { name: 'Bob', exact: true }).click();
     await dialog.getByRole('button', { name: '📤 Send' }).click();
     await dialog.locator('[data-card-said]').getByText(`${label} sent to Bob`).waitFor();
@@ -601,7 +601,7 @@ try {
   const left2 = list.locator('[data-card-left="Card 2"]');
   await left2.waitFor();
   const copyPicture = (await list.getByRole('button', { name: 'Copy Card 2’s picture' }).count()) === 1;
-  const leftLine = `🖼 1 picture won’t reach the phones (didn’t reach the buzzer server): ↻ Send again tries again${copyPicture ? ', or 📋 Copy picture' : ''}`;
+  const leftLine = `🖼️ 1 picture won’t reach the phones (didn’t reach the buzzer server): ↻ Send again tries again${copyPicture ? ', or 📋 Copy picture' : ''}`;
   assert(
     (await left2.innerText()) === leftLine,
     `one the server turns down: its row in the list says so, counted, and what to do (“${await left2.innerText()}”)`,

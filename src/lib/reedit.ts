@@ -1,4 +1,4 @@
-// 🖼 Media › Replace on a file some pictures show an edited copy of (🎨 Edit image): their edits are done again on the
+// 🖼️ Media › Replace on a file some pictures show an edited copy of (🎨 Edit image): their edits are done again on the
 // new file, so the slides show it (with the same crop, captions and stickers), not the old file's edited copy.
 import { addMediaFile, mediaUrls } from './media.svelte';
 import { editedFile, fileBytes } from './gifedit';

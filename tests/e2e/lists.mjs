@@ -387,7 +387,7 @@ try {
   const playerNames = () => values(page.getByLabel(/^Player \d name$/));
   await page.locator('[data-place^="player:"] .num').first().click({ button: 'right' });
   const playerMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
-  const order = ['🎨 Color…', '🖼 Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player'];
+  const order = ['🎨 Color…', '🖼️ Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player'];
   assert(
     playerMenu.length === order.length && order.every((x, i) => playerMenu[i].startsWith(x)),
     `right-click a player: color, picture, start score, rename, move, delete: the editors’ one order (${playerMenu.join(', ')})`,

@@ -65,15 +65,15 @@ describe('a player’s right-click menu', () => {
       '🫥 Hide their avatar',
       '—',
       '✂ Split off (own party)',
-      '🗺 Send to…',
+      '🗺️ Send to…',
       '👥 Join Party 1',
       '🗂 Open their card',
     ]);
     // Cat's party is just her: splitting off does nothing more.
     expect(playerMenu(host, 'c').find((i) => 'label' in i && i.label.startsWith('✂'))).toMatchObject({ disabled: true });
     const ann = playerMenu(host, 'a');
-    expect(labels(ann).slice(8)).toEqual(['✂ Split off the 2 selected', '🗺 Send the 2 selected to…', '👥 Join Party 2 (the 2 selected)', '🗂 Open their card']);
-    click(ann, /^🗺/);
+    expect(labels(ann).slice(8)).toEqual(['✂ Split off the 2 selected', '🗺️ Send the 2 selected to…', '👥 Join Party 2 (the 2 selected)', '🗂 Open their card']);
+    click(ann, /^🗺️/);
     click(ann, '🗂 Open their card');
     expect(asked).toEqual(['send a,b as the 2 selected', 'card a']);
     click(ann, /^👥/);
@@ -272,7 +272,7 @@ describe('a ▶ Play row’s menu (before the game)', () => {
     expect(labels(items)).toEqual([
       'Bob',
       '🎨 Color…',
-      '🖼 Picture…',
+      '🖼️ Picture…',
       '± Start score…',
       '—',
       '✎ Rename',
@@ -284,7 +284,7 @@ describe('a ▶ Play row’s menu (before the game)', () => {
     ]);
     expect(keys(items)).toEqual(['', '', '', '', '', 'F2', '', 'Alt+↑', 'Alt+↓', '', '']);
     expect(items.at(-1)).toMatchObject({ danger: true });
-    for (const l of ['🎨 Color…', '🖼 Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player']) click(items, l);
+    for (const l of ['🎨 Color…', '🖼️ Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player']) click(items, l);
     expect(asked).toEqual(['color', 'picture', 'score', 'rename', 'move -1', 'move 1', 'remove']);
   });
 

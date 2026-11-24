@@ -192,7 +192,7 @@
   let bgMenu = $state(false);
   let bgAt = $state<{ x: number; y: number } | null>(null);
   let bgAnchor = $state<HTMLElement>();
-  /** ✏ Draw is on: the next drag on the canvas draws a line. */
+  /** ✏️ Draw is on: the next drag on the canvas draws a line. */
   let drawing = $state(false);
   /** The drawpad is open: a whole drawing, inserted as one picture. */
   let drawpad = $state(false);
@@ -291,7 +291,7 @@
     for (const i of instances) if (i !== me && !opener(i)) i.clear();
   }
   /**
-   * A dialog from outside this editor is open over it (⚙ Settings, ℹ About, the clue's 🖼 Tile image picker): the keys
+   * A dialog from outside this editor is open over it (⚙ Settings, ℹ About, the clue's 🖼️ Tile image picker): the keys
    * are its. Inside a dialog (the clue editor, a screen edited live), only one open in that dialog counts: an object's
    * card beside it isn't over it.
    */
@@ -364,7 +364,7 @@
   // ---------- Adding elements ----------
   /**
    * `also`: more changes in the same undo step (moving the question's text out of a new picture's way). `keys`: the
-   * keyboard goes on from the slide even when a button has it (a file picked from 🖼 Image, 🎬 Video, 🔊 Sound or 🌐 Link,
+   * keyboard goes on from the slide even when a button has it (a file picked from 🖼️ Image, 🎬 Video, 🔊 Sound or 🌐 Link,
    * whose button takes the focus back as its picker closes, or a file dropped or pasted), so Delete, the arrows and
    * Enter work on the new item.
    */
@@ -464,7 +464,7 @@
   }
 
   async function picked(id: string): Promise<void> {
-    // What the file is, not which button picked it (an .mp4 uploaded through 🖼 Image is a video).
+    // What the file is, not which button picked it (an .mp4 uploaded through 🖼️ Image is a video).
     const own = game.media.find((m) => m.id === id)?.kind;
     const kind = own && own !== 'font' && picker !== 'font' ? own : picker!;
     picker = null;
@@ -1245,11 +1245,11 @@
             <button
               class="small"
               onclick={() => edit(() => delete slide.background.image)}
-              title="Take the picture off (the color stays; the file stays in 🖼 Media)">⌫ Clear picture</button
+              title="Take the picture off (the color stays; the file stays in 🖼️ Media)">⌫ Clear picture</button
             >
           {:else}
             <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the {nouns.page}"
-              >🖼 Add a picture…</button
+              >🖼️ Add a picture…</button
             >
           {/if}
         </div>
@@ -1289,7 +1289,7 @@
     <fieldset class="tools" class:wraps={!!tools} disabled={previewing}>
       <button onclick={() => addText()} title="Add a text box">🅣 Text</button>
       <div class="pop">
-        <button onclick={() => (picker = 'image')} title="Add a picture: upload one, link to one online, or reuse one from this game">🖼 Image</button>
+        <button onclick={() => (picker = 'image')} title="Add a picture: upload one, link to one online, or reuse one from this game">🖼️ Image</button>
         {#if picker === 'image' && !replacing}<MediaPicker kind="image" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">
@@ -1325,7 +1325,7 @@
             <div class="head">Draw</div>
             <button
               onclick={() => ((shapeMenu = false), (drawing = true))}
-              title="Drag on the {nouns.page} to draw one line; hold Shift when letting go to close the shape">✏ Freehand line…</button
+              title="Drag on the {nouns.page} to draw one line; hold Shift when letting go to close the shape">✏️ Freehand line…</button
             >
             <!-- Nothing stays selected behind the drawpad. -->
             <button
@@ -1484,7 +1484,7 @@
                inside its frame), so it can still be started or paused here. -->
           <div class="ribbon preview">PREVIEW · click to stop</div>
         {:else if drawing}
-          <div class="ribbon drawing">✏ DRAWING · drag to draw a line · hold Shift as you let go to close it · Esc to stop</div>
+          <div class="ribbon drawing">✏️ DRAWING · drag to draw a line · hold Shift as you let go to close it · Esc to stop</div>
         {/if}
         {#if notice && notice.at === undoApi.top && !undoApi.pending && !previewing}
           <div class="notice" role="status">

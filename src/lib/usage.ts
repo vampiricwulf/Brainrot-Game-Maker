@@ -61,7 +61,7 @@ export function mediaPath(game: Game, id: string): Path | null {
 }
 
 /**
- * Every place in the game that uses file `id`, as mediaPath's paths, for 🖼 Media's "used 3× ▾": slides' items and
+ * Every place in the game that uses file `id`, as mediaPath's paths, for 🖼️ Media's "used 3× ▾": slides' items and
  * backgrounds, tiles' and categories' pictures, 🔊 Sounds, the theme, wheels, dice, RPG avatars, icons and music… A
  * font's are the texts in it (slides', pictures' captions, the theme's).
  */
@@ -82,14 +82,14 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
           out.push({ slide: cl.questionSlide, where: `${where} (question)` });
           cl.extraSlides?.forEach((slide, j) => out.push({ slide, where: `${where} (question slide ${j + 2})` }));
           out.push({ slide: cl.answerSlide, where: `${where} (answer)` });
-          // A tile's 🤫 cards. (Without them, 🖼 Media's Remove unused would delete the cards' pictures.)
+          // A tile's 🤫 cards. (Without them, 🖼️ Media's Remove unused would delete the cards' pictures.)
           cardSlides(cl).forEach((slide, j) => out.push({ slide, where: `${where} (${clueCardWords(slide, j)})` }));
         });
     else if (isFinal(r)) {
       out.push({ slide: r.questionSlide, where: `${roundName(r, ri)} (question)` });
       r.extraSlides?.forEach((slide, j) => out.push({ slide, where: `${roundName(r, ri)} (question slide ${j + 2})` }));
       out.push({ slide: r.answerSlide, where: `${roundName(r, ri)} (answer)` });
-      // Its 🤫 cards. (Without them, 🖼 Media's Delete unused would delete the cards' pictures.)
+      // Its 🤫 cards. (Without them, 🖼️ Media's Delete unused would delete the cards' pictures.)
       cardSlides(r).forEach((slide, j) => out.push({ slide, where: `${roundName(r, ri)} (${clueCardWords(slide, j)})` }));
     } else if (r.mode === 'slides') questionSlides(r).forEach((slide, j) => out.push({ slide, where: `${roundName(r, ri)} (slide ${j + 1})` }));
   });
@@ -116,9 +116,9 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
   });
   for (const { name, outcome: o } of allOutcomes(game)) for (const s of actionSlides(o.actions)) out.push({ slide: s, where: `${name}: ${o.label}` });
   for (const it of game.items ?? []) for (const s of actionSlides(it.onUse)) out.push({ slide: s, where: `Item: ${it.name}` });
-  // 🎭 Deals: each part's card. (Without them, 🖼 Media's Remove unused would delete the cards' pictures.)
+  // 🎭 Deals: each part's card. (Without them, 🖼️ Media's Remove unused would delete the cards' pictures.)
   for (const d of game.deals ?? []) d.parts.forEach((p, i) => out.push({ slide: p.card, where: `Deal: ${d.name} (${p.name.trim() || `part ${i + 1}`})` }));
-  // 🤫 Cards. (Without them, 🖼 Media's Delete unused would delete the cards' pictures.)
+  // 🤫 Cards. (Without them, 🖼️ Media's Delete unused would delete the cards' pictures.)
   (game.cards ?? []).forEach((c, i) => out.push({ slide: c, where: `Card: ${savedCardName(c, i)}` }));
   if (game.tiebreaker) {
     const qs = questionSlides(game.tiebreaker);

@@ -86,10 +86,10 @@
         class="small ghost notice-x"
         onclick={() => dismissOffer(m.id)}
         aria-label="Keep it as it is"
-        title="Keep it as it is: this note goes (🖼 Media can still convert it)">✕</button
+        title="Keep it as it is: this note goes (🖼️ Media can still convert it)">✕</button
       >
     {:else}
-      <button class="small ghost notice-x" onclick={() => dismissOffer(m.id)} aria-label="OK" title="OK: this note goes (🖼 Media still says it)">✕</button>
+      <button class="small ghost notice-x" onclick={() => dismissOffer(m.id)} aria-label="OK" title="OK: this note goes (🖼️ Media still says it)">✕</button>
     {/if}
   </div>
 {:else if list.length > 1}
@@ -98,12 +98,12 @@
     {#if list.some((x) => fixOf(x.v))}
       <button class="small primary" onclick={() => openMediaDialog({ mode: 'convert', ids: list.map((x) => x.m.id) })}>🔄 Convert them…</button>
     {/if}
-    <button class="small" onclick={() => show(list.map((x) => x.m))}>Show them in 🖼 Media</button>
+    <button class="small" onclick={() => show(list.map((x) => x.m))}>Show them in 🖼️ Media</button>
     <button
       class="small ghost notice-x"
       onclick={() => list.forEach((x) => dismissOffer(x.m.id))}
       aria-label="Keep them as they are"
-      title="Keep them as they are: this note goes (🖼 Media can still convert them)">✕</button
+      title="Keep them as they are: this note goes (🖼️ Media can still convert them)">✕</button
     >
   </div>
 {/if}

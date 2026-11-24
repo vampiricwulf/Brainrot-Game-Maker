@@ -776,7 +776,7 @@
       }
     });
   });
-  // Beside the stage: a toast goes under the host panel's status line, so the 📱 chip and the ⏱ countdown on it stay in
+  // Beside the stage: a toast goes under the host panel's status line, so the 📱 chip and the ⏱️ countdown on it stay in
   // sight (a toast about a phone asking to join says to click that chip).
   $effect(() => {
     void hideControls;
@@ -2076,7 +2076,7 @@
 
   /**
    * A click on the stage during a partner clue's hand-out with nothing to send (or a clue with no cards, its clock not
-   * started): the clock starts, as ⏱ Start the clock does, and the status line says so with ↶ Undo a few seconds, since a
+   * started): the clock starts, as ⏱️ Start the clock does, and the status line says so with ↶ Undo a few seconds, since a
    * host who drives from the stage may not see it happen. That ↶ Undo takes the clock back while nothing has happened
    * since (it isn't a step of the game's Undo).
    */
@@ -2471,7 +2471,7 @@
     putBack: () => cancelClue(),
     partnerShow: () => partnerShow(),
     closeWheel: () => closeOverlay(),
-    // (T on the check's ⏱ Start the clock does what T does outside: the clue goes live, and its first Enter after only
+    // (T on the check's ⏱️ Start the clock does what T does outside: the clue goes live, and its first Enter after only
     // says the clock is running.)
     partnerClock: () => (quickKey && !quickKey.shiftKey && quickKey.key.toLowerCase() === 't' ? clockKey(false) : partnerHandOut(!!quickKey)),
     copyCard: partnerCopy,
@@ -3163,7 +3163,7 @@
       app.playGame.settings.buzzer = buzzer;
     }
     const s = newSession(app.playGame!);
-    // (With their pictures: a picture is only taken off with its −🖼.)
+    // (With their pictures: a picture is only taken off with its −🖼️.)
     s.players = session.players.map(({ id, name, color, avatar }) => ({ id, name, color, startScore: 0, ...(avatar ? { avatar } : {}) }));
     // The same buzzer room: the phones stay joined (not the last game's answers, wagers taken or buzzers mid-clue: the
     // rematch's clues have the same ids).
@@ -3740,7 +3740,7 @@
   /**
    * ↶ Undo and ⏸ Cover the screen, in every moment. (One window: Undo doesn't name its step, as it's on stream.) The
    * countdown too where the moment's own actions don't have it (the board, a round's title card, Game over…): the
-   * status line has ⏱ only where a clock fits, so T and this menu start one anywhere.
+   * status line has ⏱️ only where a clock fits, so T and this menu start one anywhere.
    */
   function standingItems(m: Moment): StageItem[] {
     return [
@@ -3753,7 +3753,7 @@
   /** The countdown, as T does it: start it, or pause or go on with the one up. */
   function clockItem(): StageItem {
     const t = app.live.timer;
-    const label = t && !t.expired ? (t.startedAt === null ? '▶ Go on with the countdown' : '⏸ Pause the countdown') : '⏱ Start the countdown';
+    const label = t && !t.expired ? (t.startedAt === null ? '▶ Go on with the countdown' : '⏸ Pause the countdown') : '⏱️ Start the countdown';
     return { id: 'clock', label, keys: 'T', onclick: () => clockKey(false) };
   }
 
@@ -3837,7 +3837,7 @@
         onclick: () => rollDice(app.live, session, o.preset, o.mover),
       });
     } else if (o.kind === 'popup') {
-      heading = `🖼 ${o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}`;
+      heading = `🖼️ ${o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}`;
       if (o.answer) steps.push({ id: 'reveal', label: o.revealed ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: revealToggle });
     } else if (o.kind === 'rolloff')
       heading = o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first';
@@ -4018,8 +4018,8 @@
       ...selectItems({ players: here.players.length, objects: here.objects.length }, boxNextDrag, () => selectAllHere(at)),
       // The host panel asks for the text (with the controls hidden, they come back for it).
       ...(at ? [{ label: '＋ Text here…', onclick: () => ((hideControls = false), (rpgAsk = { what: 'text', at })) }] : []),
-      { label: '🗺 Full map (jump anywhere)', keys: 'J', onclick: () => (rpgMap = true) },
-      { label: st.mapShown ? '🗺 Hide the map from viewers' : '🗺 Show the map to viewers', keys: 'V', onclick: () => toggleMap(game, session) },
+      { label: '🗺️ Full map (jump anywhere)', keys: 'J', onclick: () => (rpgMap = true) },
+      { label: st.mapShown ? '🗺️ Hide the map from viewers' : '🗺️ Show the map to viewers', keys: 'V', onclick: () => toggleMap(game, session) },
       { label: '🤝 Regroup', keys: 'G', onclick: regroupKey },
     ];
   }
@@ -5113,7 +5113,7 @@
     // next row of the list the keys were in (✔ on one ✍ answer, then the next one's ✔): Enter presses that one too.
     const nextRow = !!el && !!tabbedList?.isConnected && tabbedList.contains(el);
     const guess = (rescuing() || placing) && !nextRow;
-    // (The rescue's guess landing on the main button itself, as after H, H in a slides round, where no ⏱ Start is
+    // (The rescue's guess landing on the main button itself, as after H, H in a slides round, where no ⏱️ Start is
     // first in the panel: Enter there isn't its step either.)
     guessedMain = rescuing() && !nextRow && el?.matches('[data-next]') ? el : null;
     if (tabbing && el) pointed.delete(el);
@@ -6473,7 +6473,7 @@
     opacity: 0;
   }
   /* The host panel beside the stage: messages show over it, not over the stage, at its top under the status line (its
-     📱 chip and ⏱ stay in sight; at its foot they'd cover the nav buttons: 👥 Players, Exit). */
+     📱 chip and ⏱️ stay in sight; at its foot they'd cover the nav buttons: 👥 Players, Exit). */
   :global(body:has(.play.side) .toast) {
     left: auto;
     right: 12px;

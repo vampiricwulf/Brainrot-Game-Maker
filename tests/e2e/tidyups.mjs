@@ -1,5 +1,5 @@
 // @ts-check
-// Small editor and host tidy-ups at 1280×720: a tall window keeps its title and ✕ in sight as it scrolls, and 🖼 Media
+// Small editor and host tidy-ups at 1280×720: a tall window keeps its title and ✕ in sight as it scrolls, and 🖼️ Media
 // offers 🗑 Delete unused only while some file is unused. Icons that are text by default ask for the colour emoji.
 // ⚙ Settings › Undo says when it snaps a number into range and how many changes a lower one forgot. A wheel tile's
 // Which wheel offers the ready-made wheels.
@@ -61,11 +61,11 @@ try {
   await settings.getByRole('button', { name: 'Done' }).click();
   await page.setViewportSize({ width: 1280, height: 720 });
 
-  // ---------- 🖼 Media offers 🗑 Delete unused only while something is unused ----------
+  // ---------- 🖼️ Media offers 🗑 Delete unused only while something is unused ----------
   await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).click();
   const unusedBtn = page.getByRole('main').getByRole('button', { name: /^🗑 Delete unused/ });
   await page.getByRole('button', { name: '＋ Add files…' }).waitFor();
-  assert((await unusedBtn.count()) === 0, 'an empty 🖼 Media has no 🗑 Delete unused (0)');
+  assert((await unusedBtn.count()) === 0, 'an empty 🖼️ Media has no 🗑 Delete unused (0)');
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await chooser.setFiles([{ name: 'spare.png', mimeType: 'image/png', buffer: png(200, 40, 40) }]);
   await page.locator('[data-place^="media:"]').first().waitFor();
@@ -89,9 +89,9 @@ try {
   const rounds = await menuIcons();
   await page.keyboard.press('Escape');
   for (const [icon, name] of [
-    ['🗺', 'RPG'],
-    ['♟', 'Board game'],
-    ['🖼', 'Slides'],
+    ['🗺️', 'RPG'],
+    ['♟️', 'Board game'],
+    ['🖼️', 'Slides'],
   ])
     assert(
       rounds.some((t) => t.startsWith(`${icon}${VS} ${name}`)),
@@ -104,8 +104,8 @@ try {
   for (const [icon, name] of [
     ['😈', 'Punishments'],
     ['🃏', 'Truth or dare'],
-    ['⏱', 'Time limit'],
-    ['🗺', 'Locations'],
+    ['⏱️', 'Time limit'],
+    ['🗺️', 'Locations'],
   ])
     assert(
       ready.some((t) => t.startsWith(`${icon}${VS} ${name}`)),
@@ -115,12 +115,12 @@ try {
   const deals = await menuIcons();
   await page.keyboard.press('Escape');
   assert(
-    deals.some((t) => t.startsWith(`🕵${VS} Odd one out`)),
-    '📋 Ready-made deal…: 🕵 Odd one out too',
+    deals.some((t) => t.startsWith(`🕵️${VS} Odd one out`)),
+    '📋 Ready-made deal…: 🕵️ Odd one out too',
   );
-  // (The sidebar lists 🖼 Media under the rounds, beside 🖼 Slides ones.)
+  // (The sidebar lists 🖼️ Media under the rounds, beside 🖼️ Slides ones.)
   const mediaTab = (await page.locator('nav > button', { hasText: 'Media (' }).innerText()).trim();
-  assert(mediaTab.startsWith(`🖼${VS} Media (`), `the sidebar: 🖼 Media too (${mediaTab})`);
+  assert(mediaTab.startsWith(`🖼️${VS} Media (`), `the sidebar: 🖼️ Media too (${mediaTab})`);
 
   // ---------- ⚙ Settings › Undo says what it did: snapped into range, and the changes it forgot ----------
   await roundTabsIn(page).first().click();

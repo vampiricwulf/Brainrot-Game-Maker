@@ -209,7 +209,7 @@
     for (const m of game.media) if (m.kind === 'font') void mediaUrls[m.id];
     registerGameFonts(game);
   });
-  // Whether each video and sound really plays in this browser, worked out as files arrive or change (🖼 Media and the
+  // Whether each video and sound really plays in this browser, worked out as files arrive or change (🖼️ Media and the
   // checklist say; nothing pops up for files already in a game).
   $effect(() => {
     for (const m of game.media) if (m.kind === 'video' || m.kind === 'audio') void mediaUrls[m.id];
@@ -250,7 +250,7 @@
       if (r) tab = game.rounds.indexOf(r);
       else {
         // (With no RPG round left to pick it in, says how to add one.)
-        const how = rpg.length ? 'pick it in an RPG round' : 'add an RPG round (＋ Add round › 🗺 RPG) and pick it there';
+        const how = rpg.length ? 'pick it in an RPG round' : 'add an RPG round (＋ Add round › 🗺️ RPG) and pick it there';
         toast(`“${game.worlds?.find((w) => w.id === place.world)?.name}” isn't played by any round: ${how} to see it`);
       }
     } else if (place.tab === 'play') {
@@ -982,7 +982,7 @@
 
   /**
    * A file dropped anywhere no other part of the editor takes the drop: a game file opens, like Open… (a theme file shows
-   * on 🎨 Theme); pictures, videos, sounds and fonts go into 🖼 Media, as one undo step (they missed a slide or a tile by a
+   * on 🎨 Theme); pictures, videos, sounds and fonts go into 🖼️ Media, as one undo step (they missed a slide or a tile by a
    * few pixels, say); anything else gets one short line that names it.
    */
   function ondrop(e: DragEvent): void {
@@ -1002,7 +1002,7 @@
     const errors: string[] = [];
     const g = game;
     if (media.length)
-      await stepAsync(media.length === 1 ? `Added “${media[0].name}” to 🖼 Media` : `Added ${media.length} files to 🖼 Media`, async () => {
+      await stepAsync(media.length === 1 ? `Added “${media[0].name}” to 🖼️ Media` : `Added ${media.length} files to 🖼️ Media`, async () => {
         for (const f of media) {
           try {
             const ref = await addMediaFile(g, f, f.name, {}, { quiet: true });

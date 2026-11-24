@@ -159,7 +159,7 @@
   }
 
   // The wager screen comes up with the first wager still to type focused, as a Daily Double's does (else typed digits
-  // select players, or go into the ⏱ seconds box, where Enter starts a countdown). All in (Ctrl+Z back to them): N
+  // select players, or go into the ⏱️ seconds box, where Enter starts a countdown). All in (Ctrl+Z back to them): N
   // goes on.
   $effect(() => {
     if (session.finalStep !== 'wagers') return;

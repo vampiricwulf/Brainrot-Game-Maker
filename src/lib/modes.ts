@@ -1,5 +1,5 @@
 // The round modes a game can mix (spec: docs/GAMES-MAKER-SPEC.md §5.2). Their icons mean the mode and nothing else
-// (⭐ is a Daily Double, 🎲 dice, 🎨 the theme). A sign that's text by default (🗺, ♟, 🖼) has U+FE0F after it, so
+// (⭐ is a Daily Double, 🎲 dice, 🎨 the theme). A sign that's text by default (🗺️, ♟️, 🖼️) has U+FE0F after it, so
 // it shows in colour beside the others, not as a grey outline where the system's first font has it as text.
 import type { RoundMode } from './model';
 

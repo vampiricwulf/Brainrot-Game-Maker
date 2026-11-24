@@ -224,9 +224,9 @@ function batchEnded(batch: string, quiet = false): void {
   const failed = ends.filter((e) => 'failed' in e).length;
   const stopped = ends.length - done - failed;
   if (!done && !failed) return void toast('Stopped: nothing was changed.');
-  if (!done) return void toast(`🔄 ${failed === 1 ? 'The file' : `The ${failed} files`} couldn’t be converted (🖼 Media says why): nothing was changed.`);
+  if (!done) return void toast(`🔄 ${failed === 1 ? 'The file' : `The ${failed} files`} couldn’t be converted (🖼️ Media says why): nothing was changed.`);
   const back = done === 1 ? 'Ctrl+Z puts the old one back.' : 'Ctrl+Z puts the old ones back, one at a time.';
-  const rest = [...(failed ? [`${failed} couldn’t be: 🖼 Media says why`] : []), ...(stopped ? [`${stopped} stopped`] : [])];
+  const rest = [...(failed ? [`${failed} couldn’t be: 🖼️ Media says why`] : []), ...(stopped ? [`${stopped} stopped`] : [])];
   toast(`🔄 ${done} file${done === 1 ? '' : 's'} converted${rest.length ? ` (${rest.join('; ')})` : ''}. ${back}`);
 }
 

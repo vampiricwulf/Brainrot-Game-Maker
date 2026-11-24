@@ -653,7 +653,7 @@
             <button disabled={clue.empty} onclick={() => (tool = { kind: 'dice', id: clue.diceId! })} title="Change these dice">✎ Edit dice</button>
           {/if}
         {/if}
-        <!-- (Under 1300px its words in brackets go, so 🖼 Tile image keeps the row: its name and tooltip keep them.) -->
+        <!-- (Under 1300px its words in brackets go, so 🖼️ Tile image keeps the row: its name and tooltip keep them.) -->
         <label class="check" title="⬚ Empty tile (not played): the board shows a blank here"
           ><input
             type="checkbox"
@@ -707,7 +707,7 @@
           />
         </label>
         <label class="field" title="Countdown when this clue opens. Blank = game default, 0 = no timer.">
-          ⏱ Countdown (s)
+          ⏱️ Countdown (s)
           <!-- Whole seconds, at least 1 (blank: the game's default, 0: none). -->
           <input
             type="number"
@@ -738,14 +738,14 @@
             <button
               class="ghost tiny"
               onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })}
-              title="Clear the tile's picture (it stays in 🖼 Media)">⌫ Clear</button
+              title="Clear the tile's picture (it stays in 🖼️ Media)">⌫ Clear</button
             >
           {:else}
             <button
               onclick={() => (facePicker = true)}
               use:mediaDrop={{ kind: 'image', disabled: clue.empty, onpick: (id) => (clue.tileFace = { ...clue.tileFace, image: id }) }}
               disabled={clue.empty}
-              title="Show an image on the tile (or drop one here)">🖼 Tile image</button
+              title="Show an image on the tile (or drop one here)">🖼️ Tile image</button
             >
           {/if}
           {#if facePicker}
@@ -992,7 +992,7 @@
   .opts .check {
     min-height: 31px;
   }
-  /* (Narrow enough that the Type row, 🖼 Tile image included, is one line on a 1280 laptop.) */
+  /* (Narrow enough that the Type row, 🖼️ Tile image included, is one line on a 1280 laptop.) */
   .opts input[type='number'] {
     width: 9ch;
   }

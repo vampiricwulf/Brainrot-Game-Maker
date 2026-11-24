@@ -286,7 +286,7 @@ function rpgItems(h: PlayerMenuHost, id: string, name: string): MenuEntry[] {
     },
     { sep: true },
     { label: group.length > 1 ? `✂ Split off ${them}` : '✂ Split off (own party)', disabled: ownAlready, onclick: () => say(splitOff(game, session, group)) },
-    { label: group.length > 1 ? `🗺 Send ${them} to…` : '🗺 Send to…', onclick: () => h.sendTo(group, them) },
+    { label: group.length > 1 ? `🗺️ Send ${them} to…` : '🗺️ Send to…', onclick: () => h.sendTo(group, them) },
     ...st.parties
       .filter((pt) => !group.every((m) => pt.members.includes(m)))
       .map((pt) => ({ label: `👥 Join ${pt.name}${group.length > 1 ? ` (${them})` : ''}`, onclick: () => say(joinPartyNow(game, session, group, pt.id)) })),
@@ -327,7 +327,7 @@ export function rosterMenu(name: string, at: number, count: number, noun: 'playe
     heading: name,
     verbs: [
       { label: '🎨 Color…', onclick: acts.color },
-      ...(acts.picture ? [{ label: '🖼 Picture…', onclick: acts.picture }] : []),
+      ...(acts.picture ? [{ label: '🖼️ Picture…', onclick: acts.picture }] : []),
       ...(acts.startScore ? [{ label: '± Start score…', onclick: acts.startScore }] : []),
     ],
     rename: menuItem.rename(acts.rename),

@@ -41,7 +41,7 @@ export function lockedNote(n: number, noun = 'item'): string {
   return `🔒 Skipped ${n} locked ${noun}${n === 1 ? '' : 's'}: unlock ${n === 1 ? 'it' : 'them'} first.`;
 }
 
-export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐' };
+export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼️', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐' };
 /** A layer's icon: what an RPG object is (🧙 a character, 📦 an item…), else what kind of item it is. */
 export function layerIcon(el: SlideElement): string {
   return classIcon(el.role?.class) ?? LAYER_ICON[el.kind];
@@ -84,7 +84,7 @@ export function layerLabel(el: SlideElement, game: Game, onCard = false): string
     case 'audio':
       return game.media.find((m) => m.id === el.media)?.name ?? (el.kind === 'image' ? 'Image' : el.kind === 'video' ? 'Video' : 'Sound');
     case 'shape':
-      // (A line drawn by hand with ✏ Freehand line; closed with Shift, a shape. A 🖌 Drawpad drawing is a picture.)
+      // (A line drawn by hand with ✏️ Freehand line; closed with Shift, a shape. A 🖌 Drawpad drawing is a picture.)
       return el.hotspot ? 'Hotspot' : el.shape === 'path' ? (el.closed ? 'Freehand shape' : 'Freehand line') : SHAPES[el.shape];
     case 'embed':
       return embedName(el.embedKind, el.url) + (isSoundOnly(el) && !onCard ? ' (sound only)' : '');

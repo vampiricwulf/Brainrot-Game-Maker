@@ -135,7 +135,7 @@ try {
   // And a picture whose file then goes missing from this computer (gone from the browser's storage, then a reload),
   // in the slide's corner, away from the video.
   await page.getByRole('tab', { name: /Question/ }).click();
-  await page.getByRole('button', { name: '🖼 Image' }).click();
+  await page.getByRole('button', { name: '🖼️ Image' }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload image file…' }).click()]);
   await fc.setFiles({ name: 'gone.png', mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') });
   const position = inspectorIn(page).locator('section', { hasText: 'Position' });
@@ -633,7 +633,7 @@ try {
   await page.keyboard.press('Escape');
   await page.locator('.canvas.previewing').waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Done' }).click();
-  // 🎨 Theme and 🖼 Board images show the board on a stage of their own: they leave the game's clip where it was too.
+  // 🎨 Theme and 🖼️ Board images show the board on a stage of their own: they leave the game's clip where it was too.
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   await boardIn(page.locator('.preview')).waitFor();
   await roundTabsIn(page).first().click();
@@ -656,7 +656,7 @@ try {
   now = await page.locator(hostSong).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
   assert(
     now.paused && Math.abs(now.t - left) < 0.3,
-    `and after the previews, 🎨 Theme and 🖼 Board images, Resume game has it paused where the game left it (${left.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`,
+    `and after the previews, 🎨 Theme and 🖼️ Board images, Resume game has it paused where the game left it (${left.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`,
   );
 
   // A laptop (1280×720), one window. A clue with two videos and a sound: each row says which clip it is (the two videos'

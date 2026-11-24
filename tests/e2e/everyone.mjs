@@ -304,12 +304,12 @@ try {
   // The phones show it too, over the answer box (a player looking down needn't look up at a stream behind them).
   const clock = (p) => p.locator('#answer-clock');
   await clock(p1)
-    .getByText(/^⏱ \d+ s left$/)
+    .getByText(/^⏱️ \d+ s left$/)
     .waitFor();
   const secs = async (p) => Number((await clock(p).innerText()).match(/\d+/)?.[0]);
   const first = await secs(p1);
   await p1.waitForFunction((n) => Number(document.getElementById('answer-clock').textContent.match(/\d+/)?.[0]) < n, first);
-  assert(first > 0 && first <= 30 && (await clock(p2).isVisible()), `the phones count it down over the answer box (⏱ ${first} s left, then less)`);
+  assert(first > 0 && first <= 30 && (await clock(p2).isVisible()), `the phones count it down over the answer box (⏱️ ${first} s left, then less)`);
   // T pauses it, Shift+T gives it 10 more seconds, T lets it go on: the phones follow.
   await host.keyboard.press('t');
   await clock(p1)
@@ -320,9 +320,9 @@ try {
   await p1.waitForFunction((n) => Number(document.getElementById('answer-clock').textContent.match(/\d+/)?.[0]) === n + 10, paused);
   await host.keyboard.press('t');
   await clock(p1)
-    .getByText(/^⏱ \d+ s left$/)
+    .getByText(/^⏱️ \d+ s left$/)
     .waitFor();
-  assert(true, `paused (⏱ ${paused} s left · paused), 10 more seconds (${paused + 10}), and going again: the phones follow`);
+  assert(true, `paused (⏱️ ${paused} s left · paused), 10 more seconds (${paused + 10}), and going again: the phones follow`);
   await p1.getByLabel(/Your answer/).fill('Siamese');
   await p1.getByRole('button', { name: 'Send answer' }).click();
   await p2.getByLabel(/Your answer/).fill('Bulldog');

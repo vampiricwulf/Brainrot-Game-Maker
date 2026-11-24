@@ -590,8 +590,8 @@ try {
   await answers.locator('[data-answer-row]', { hasText: 'Fleming' }).waitFor();
   assert(true, 'Show question again: Player 1’s phone still says “✔ Sent.”, and the host still has it');
   // The answer on screen: answers lock, each phone keeping its own (after the wager it was locked with). Player 2's
-  // phone sent none: 👁 Reveal answer asks first (⏱ 10 more seconds, Enter). Once the clock has run out, N shows the
-  // answer: it doesn't ask again (its ⏱ would only start the clock over, and the answer would never go up but by R).
+  // phone sent none: 👁 Reveal answer asks first (⏱️ 10 more seconds, Enter). Once the clock has run out, N shows the
+  // answer: it doesn't ask again (its ⏱️ would only start the clock over, and the answer would never go up but by R).
   await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
   await checkItem(host, 'answers').waitFor();
   assert(

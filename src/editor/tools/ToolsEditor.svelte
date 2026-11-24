@@ -182,7 +182,7 @@
 
   /**
    * A ready-made deal, added to the game. One that draws from a wheel gets the game's wheel of that name, or the
-   * ready-made wheel added with it (Locations for 🕵 Odd one out, Secret prompts for 🧠 Everyone's own prompt).
+   * ready-made wheel added with it (Locations for 🕵️ Odd one out, Secret prompts for 🧠 Everyone's own prompt).
    */
   function addDealTemplate(t: DealTemplate): void {
     const wt = WHEEL_TEMPLATES.find((x) => x.key === t.wheel);

@@ -1,7 +1,7 @@
 <!--
   🤫 Send a card… (partner-clues spec §12.2), from the tools row in any round: who gets it (players or teams, people on
   a team, everyone, or ⇄ everyone else), what (one of the editor's 🤫 Cards, a tile's or a Final's 🤫 card made in the
-  editor, or a quick one: words typed or pasted, with a picture, video or sound from this computer, the game's 🖼 Media
+  editor, or a quick one: words typed or pasted, with a picture, video or sound from this computer, the game's 🖼️ Media
   or pasted, or a link; or the slide on screen, as viewers see it), and how long it lasts (until the round ends, or
   until taken back: a 🤫 Card starts as its own). 📤 Send puts it on their phones, through the same buzzer room path as
   a partner clue's cards; without one, 📋 copies it to them, or 🪟 shows it in the card window. Nothing goes but by
@@ -10,7 +10,7 @@
   In one window viewers see this: the 🤫 Cards are listed by name and counted, never said; a tile's are listed by tile
   and name ("Card 2" when it has none) and counted, and only for tiles played or open (the others would say where a
   Daily Double is), and a Final's by the Final's name and theirs only once its category has been on screen (never from
-  its title card); what's typed for a quick card is hidden unless the host asks (👁 Show); the 🖼 Media list (file
+  its title card); what's typed for a quick card is hidden unless the host asks (👁 Show); the 🖼️ Media list (file
   names) and what's on the card picked from the editor are only shown with the audience window open.
   With `preset`, the card an action offered (an RPG object's, an item's, a wheel slice's or a board space's 🤫 button):
   who it starts with and how long it lasts come from the action, the card is fixed (counted, never shown), and it goes
@@ -272,7 +272,7 @@
   const masked = $derived(!dual && !reveal);
   /** The game's pictures, videos and sounds (by name: offered only with the audience window open). */
   const mediaFiles = $derived(libraryMedia(game).filter((m) => m.kind === 'image' || m.kind === 'video' || m.kind === 'audio'));
-  const FILE_ICON: Partial<Record<MediaRef['kind'], string>> = { image: '🖼', video: '🎞', audio: '🔊' };
+  const FILE_ICON: Partial<Record<MediaRef['kind'], string>> = { image: '🖼️', video: '🎞', audio: '🔊' };
   /**
    * The card as it would go: an action's, a 🤫 Card, a tile's or a Final's (as the editor has it), the slide on screen, or
    * the quick one.
@@ -293,10 +293,10 @@
   const hasSomething = $derived(!!slide && slide.elements.some((e) => e.kind !== 'text' || !!e.text.trim()));
   /** The quick card's items, in order, by kind (never named: in one window viewers see this). */
   const itemKinds = $derived(cardItems(game, quickSlide('', items)));
-  const ICON: Record<CardItem['kind'], string> = { picture: '🖼 picture', gif: '🖼 GIF', video: '🎞 video', sound: '🔊 sound', embed: '▶ online video' };
+  const ICON: Record<CardItem['kind'], string> = { picture: '🖼️ picture', gif: '🖼️ GIF', video: '🎞 video', sound: '🔊 sound', embed: '▶ online video' };
 
   /**
-   * A picture, GIF, video or sound from this computer (or pasted): into the game's 🖼 Media, onto the card. A new file
+   * A picture, GIF, video or sound from this computer (or pasted): into the game's 🖼️ Media, onto the card. A new file
    * is kept out of the viewers' windows (they never get a card's own files), and marked so before it joins the game.
    */
   async function addFile(file: File): Promise<void> {
@@ -650,8 +650,8 @@
         {/if}
       </div>
       <div class="row wrap">
-        <button class="small" onclick={() => fileInput?.click()} title="A picture, GIF, video or sound from this computer (it goes into the game’s 🖼 Media)"
-          >🖼 Add a file…</button
+        <button class="small" onclick={() => fileInput?.click()} title="A picture, GIF, video or sound from this computer (it goes into the game’s 🖼️ Media)"
+          >🖼️ Add a file…</button
         >
         <input
           bind:this={fileInput}
@@ -668,7 +668,7 @@
           <!-- (Names files: only with the audience window open, so never on stream.) -->
           <select
             class="small media"
-            aria-label="A file from the game’s 🖼 Media"
+            aria-label="A file from the game’s 🖼️ Media"
             value=""
             onchange={(e) => {
               const ref = mediaFiles.find((m) => m.id === e.currentTarget.value);
@@ -676,7 +676,7 @@
               if (ref) addRef(ref);
             }}
           >
-            <option value="">🖼 From Media…</option>
+            <option value="">🖼️ From Media…</option>
             {#each mediaFiles as m (m.id)}<option value={m.id}>{FILE_ICON[m.kind]} {m.name}</option>{/each}
           </select>
         {/if}

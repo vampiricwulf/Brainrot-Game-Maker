@@ -345,7 +345,7 @@ try {
   await card.locator('li', { hasText: 'Player 2' }).click({ button: 'right' });
   const rowMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0].trim());
   // (The 👥 row's menu, in the editors' one order: what they're set to, ✎ Rename, the moves, then 🗑 Delete.)
-  const rowOrder = ['🎨 Color…', '🖼 Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player'];
+  const rowOrder = ['🎨 Color…', '🖼️ Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player'];
   assert(
     rowMenu.length === rowOrder.length && rowOrder.every((x, i) => rowMenu[i].startsWith(x)),
     `right-click a player's 📱 row: their menu (${rowMenu.join(', ')})`,

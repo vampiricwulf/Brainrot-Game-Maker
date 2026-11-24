@@ -108,7 +108,7 @@ describe('the checklist', () => {
       tab: 'media',
       player: '1 media file missing from this game: ask whoever made it for a new copy',
     });
-    // One used on a clue: a player-only file names where (it has no 🖼 Media to look in).
+    // One used on a clue: a player-only file names where (it has no 🖼️ Media to look in).
     const clue = (game.rounds[0] as BoardRound).categories[0].clues[1];
     clue.questionSlide.elements.push(newImageEl('m2', 100, 100));
     expect(validate(game).find((p) => p.text === '1 media file missing')?.player).toBe(
@@ -121,7 +121,7 @@ describe('the checklist', () => {
     );
   });
 
-  it('a sound deleted from 🖼 Media while also on slides: its own line names the slides (Undo in History), as well as the 🔊 Sounds one', () => {
+  it('a sound deleted from 🖼️ Media while also on slides: its own line names the slides (Undo in History), as well as the 🔊 Sounds one', () => {
     const game = jeopardyGame();
     const intro = newSlidesRound();
     game.rounds.unshift(intro);
@@ -1009,20 +1009,20 @@ describe('videos and sounds this browser won’t play', () => {
     };
     expect(playLines(game, (m) => said[m.id])).toEqual([
       // (c can be converted, a can't.)
-      ['warn', 'media', '1 video/audio file won’t play in this browser: 🔄 Convert it in 🖼 Media'],
-      ['warn', 'media', '1 video/audio file won’t play in this browser, and it can’t convert it: 🖼 Media says why'],
-      ['warn', 'media', '1 video plays without its sound in this browser (🖼 Media says why)'],
+      ['warn', 'media', '1 video/audio file won’t play in this browser: 🔄 Convert it in 🖼️ Media'],
+      ['warn', 'media', '1 video/audio file won’t play in this browser, and it can’t convert it: 🖼️ Media says why'],
+      ['warn', 'media', '1 video plays without its sound in this browser (🖼️ Media says why)'],
       // (e: the app can't read it; f and g: not worked out yet.)
-      ['warn', 'media', '3 video/audio files this browser may not play: 🖼 Media says what to do'],
+      ['warn', 'media', '3 video/audio files this browser may not play: 🖼️ Media says what to do'],
     ]);
     // The one 🔄 can fix is the line's to convert (its button opens 🔄 Convert with it).
     expect(validate(game, { plays: (m) => said[m.id] }).find((p) => p.text.includes('🔄'))?.convert).toEqual(['c']);
     said.f = { ...said.b };
     said.g = { ...said.c };
-    expect(playLines(game, (m) => said[m.id])[0]).toEqual(['warn', 'media', '2 video/audio files won’t play in this browser: 🔄 Convert them in 🖼 Media']);
-    expect(playLines(game, (m) => said[m.id])[2]).toEqual(['warn', 'media', '2 videos play without their sound in this browser (🖼 Media says why)']);
+    expect(playLines(game, (m) => said[m.id])[0]).toEqual(['warn', 'media', '2 video/audio files won’t play in this browser: 🔄 Convert them in 🖼️ Media']);
+    expect(playLines(game, (m) => said[m.id])[2]).toEqual(['warn', 'media', '2 videos play without their sound in this browser (🖼️ Media says why)']);
     // With none worked out, as before.
-    expect(playLines(game)).toEqual([['warn', 'media', '7 video/audio files this browser may not play: 🖼 Media says what to do']]);
+    expect(playLines(game)).toEqual([['warn', 'media', '7 video/audio files this browser may not play: 🖼️ Media says what to do']]);
     vi.unstubAllGlobals();
   });
 

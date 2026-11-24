@@ -27,7 +27,7 @@
 // board's size through a Daily Double's splash and slides, a clue with two sounds on its slide and one with two slides,
 // and at 1110 and 1184px through the two-slide clue (◀ Slide and ▦ Done ▶ board in words, its hint cut short). With 4
 // and 8 players at 1280×720 and 1366×768, a 🤝 partner clue's box holds its actions once each, in sight (🎡 Spin for a
-// partner, ⏱ Start the clock, ✔ Got it, its foot), the blue button (Show question ▶, then 👁 Reveal answer) in sight and
+// partner, ⏱️ Start the clock, ✔ Got it, its foot), the blue button (Show question ▶, then 👁 Reveal answer) in sight and
 // within reach of the foot, nothing above it, the stage one size from PARTNER UP! to ✔ Got it; at 1280×720 a Daily
 // Double's box opens at its top, its Wager row one line ending with True Daily Double, the blue Show question ▶ never
 // greyed (a double-click on it shows the question once); with 8, a 🎯 Pick a player wheel's bar is one row and in sight,
@@ -332,19 +332,19 @@ try {
     }
   });
   assert(gap && (await rightClick(gap.x, gap.y)) === true, 'a right-click on a gap in the host panel gets no browser menu');
-  // ⏱ Start and its seconds box only where a clock fits: not on the board (T and the stage's menu still start one, and
+  // ⏱️ Start and its seconds box only where a clock fits: not on the board (T and the stage's menu still start one, and
   // the status line keeps its height).
   const statusH = async () => Math.round((await statusLineIn(page).boundingBox()).height);
   const boardStatusH = await statusH();
   assert(
     (await page.getByLabel('Timer seconds').count()) === 0 && (await statusLineIn(page).locator('.tc').count()) === 0,
-    'on the board the status line has no ⏱ Start or seconds box',
+    'on the board the status line has no ⏱️ Start or seconds box',
   );
   await page.keyboard.press('t');
   await statusLineIn(page).locator('.tc .left').waitFor();
   assert(
     (await statusH()) === boardStatusH,
-    'T starts a countdown on the board all the same, and its ⏱ shows in the status line to pause or put away (the line one height)',
+    'T starts a countdown on the board all the same, and its ⏱️ shows in the status line to pause or put away (the line one height)',
   );
   await statusLineIn(page).getByRole('button', { name: 'Hide timer' }).click();
   await statusLineIn(page).locator('.tc').waitFor({ state: 'detached' });
@@ -352,13 +352,13 @@ try {
   await stageBoxIn(page)
     .locator('.stage')
     .click({ button: 'right', position: { x: 5, y: 5 } });
-  const clockMenu = page.getByRole('menuitem', { name: /⏱ Start the countdown/ });
+  const clockMenu = page.getByRole('menuitem', { name: /⏱️ Start the countdown/ });
   await clockMenu.waitFor();
   await clockMenu.click();
   await statusLineIn(page).locator('.tc .left').waitFor();
   await statusLineIn(page).getByRole('button', { name: 'Hide timer' }).click();
   await statusLineIn(page).locator('.tc').waitFor({ state: 'detached' });
-  assert(true, 'the stage’s menu on the board has ⏱ Start the countdown (T), which starts one');
+  assert(true, 'the stage’s menu on the board has ⏱️ Start the countdown (T), which starts one');
   // A double-click on the tile in the stage's middle: it opens, and its second click, on the question's words now, turns
   // nothing blue on stream (nor does Ctrl+A).
   const stageMid = await stageBoxIn(page)
@@ -370,14 +370,14 @@ try {
   await page.keyboard.press('Control+a');
   assert(await noSelection(page), `a double-click on a tile, the second click on the question, and Ctrl+A select nothing (${await selectedWords(page)})`);
   states.clue = await look();
-  // (A clue: ⏱ Start and its seconds box are back, the status line one height.)
+  // (A clue: ⏱️ Start and its seconds box are back, the status line one height.)
   const timerBox = await page.getByLabel('Timer seconds').boundingBox();
   assert(
     (await statusH()) === boardStatusH &&
       (await statusLineIn(page)
         .getByRole('button', { name: /^Start \d+s$/ })
         .count()) === 1,
-    'in a clue the status line has ⏱ Start and its seconds box, and keeps its height',
+    'in a clue the status line has ⏱️ Start and its seconds box, and keeps its height',
   );
   assert((await rightClick(timerBox.x + 8, timerBox.y + timerBox.height / 2)) === false, 'a box to type in keeps the browser’s menu (cut, copy, paste)');
   assert((await mainLabel(page)) === '👁 Reveal answer', 'in a clue the main button is 👁 Reveal answer');
@@ -940,7 +940,7 @@ try {
   }
   await p2.setViewportSize({ width: 1280, height: 720 });
   await Promise.all([scoresWin.waitForEvent('close'), hostPanelIn(p2).locator('button[aria-label="Close the scores window"]').click()]);
-  // A toast beside the stage shows under the status line (its 📱 chip and ⏱ countdown stay in sight), over the panel.
+  // A toast beside the stage shows under the status line (its 📱 chip and ⏱️ countdown stay in sight), over the panel.
   await p2.keyboard.press('Enter');
   const bgToast = toastsIn(p2, { hasText: 'Roll first (D), or type the steps' });
   await bgToast.waitFor();
@@ -1527,7 +1527,7 @@ try {
     await ctx.close();
   }
   // The 🤝 box on a laptop, one window, with 4 and 8 players, at 1280×720 and 1366×768: each of its actions is in the box,
-  // once on the page and in sight there (🎡 Spin for a partner in front of the names, ⏱ Start the clock, ✔ Got it), the
+  // once on the page and in sight there (🎡 Spin for a partner in front of the names, ⏱️ Start the clock, ✔ Got it), the
   // box's foot (✔ Got it / ✘ Missed, each card's 📋) and the blue button (Show question ▶, then 👁 Reveal answer) stay in
   // sight, the foot's action within 96 px of the blue button at 1280×720, nothing above the blue button, and the stage
   // keeps one size from PARTNER UP! to ✔ Got it. (With 8 at 1280×720, the wheel spun from the box's own button and put
@@ -1876,7 +1876,7 @@ try {
       await box.locator('[data-card="2"]').waitFor();
       sizes.push(await stageH());
       const out = await hidden('.panel [data-partner-foot] button, .panel [data-next], .panel [data-partner-next]');
-      const has = [await boxHasAction(box, '⏱ Start the clock (45 s)'), await boxHasAction(box, '✔ Got it')].filter(Boolean);
+      const has = [await boxHasAction(box, '⏱️ Start the clock (45 s)'), await boxHasAction(box, '✔ Got it')].filter(Boolean);
       assert(
         !has.length &&
           (await flowIs(pb, '👁 Reveal answer')) &&
@@ -1885,15 +1885,15 @@ try {
             .locator('[data-partner-foot]')
             .getByRole('button', { name: /^Copy Card \d’s words$/ })
             .count()) === 2,
-        `${at}: handing out the cards, ⏱ Start the clock and each card's 📋 Copy words, ✔ Got it and ✘ Missed (the box's foot, once each), its first line and the blue 👁 Reveal answer are in sight${out.length || has.length ? ` (not: ${[...out, ...has].join(', ')})` : ''}`,
+        `${at}: handing out the cards, ⏱️ Start the clock and each card's 📋 Copy words, ✔ Got it and ✘ Missed (the box's foot, once each), its first line and the blue 👁 Reveal answer are in sight${out.length || has.length ? ` (not: ${[...out, ...has].join(', ')})` : ''}`,
       );
       // The foot's action is within reach of the blue button (from its bottom to the blue button's top).
       const reach = await pb.evaluate(() => {
         const slot = document.querySelector('.panel [data-partner-foot] [data-step]').getBoundingClientRect();
         return Math.round(document.querySelector('.panel [data-next]').getBoundingClientRect().top - slot.bottom);
       });
-      console.log(`    (${at}: the 🤝 foot's ⏱ Start the clock is ${reach} px above the blue button)`);
-      if (w === 1280) assert(reach <= 96, `${at}: the 🤝 foot's ⏱ Start the clock is within 96 px of the blue button (${reach} px)`);
+      console.log(`    (${at}: the 🤝 foot's ⏱️ Start the clock is ${reach} px above the blue button)`);
+      if (w === 1280) assert(reach <= 96, `${at}: the 🤝 foot's ⏱️ Start the clock is within 96 px of the blue button (${reach} px)`);
       // (On a laptop with 4 players, Card 1's row too, as before the box had its foot: its first line stays one line.)
       if (count === 4 && w === 1280) {
         const row = await hidden('.panel [data-card="1"] button, .panel [data-partner-panel] [aria-haspopup="menu"]');
@@ -1907,7 +1907,7 @@ try {
         (await hostPanelIn(pb).locator('.flowbeside').count()) === 0 && (await hostPanelIn(pb).locator('[data-flow="reveal"]').count()) === 1,
         `${at}: one 👁 Reveal answer (the blue button), no pair above it`,
       );
-      const startAt = await stepButton(box, '⏱ Start the clock (45 s)').boundingBox();
+      const startAt = await stepButton(box, '⏱️ Start the clock (45 s)').boundingBox();
       const gotAt = async () => (await box.getByRole('button', { name: /✔ Got it/ }).boundingBox()).x;
       const got0 = await gotAt();
       await pb.waitForTimeout(1100);
@@ -1930,7 +1930,7 @@ try {
       );
       assert(
         (await gotAt()) === got0 && there === '',
-        `${at}: the clock running, ✔ Got it keeps its place, and no button took the box's ⏱ Start the clock's (${there})`,
+        `${at}: the clock running, ✔ Got it keeps its place, and no button took the box's ⏱️ Start the clock's (${there})`,
       );
       await box.getByRole('button', { name: /✔ Got it/ }).click();
       await box.locator('[data-judged]').waitFor();

@@ -155,7 +155,7 @@ describe('slides round', () => {
         .filter((r) => r.where.startsWith('Introduction'))
         .map((r) => r.where),
     ).toEqual(['Introduction (slide 1)', 'Introduction (slide 2)', 'Introduction (slide 3)']);
-    const hit = findAll(game, 'Rules').find((h) => h.icon === '🖼');
+    const hit = findAll(game, 'Rules').find((h) => h.icon === '🖼️');
     expect(hit?.place).toEqual({ tab: 'round', round: intro.id, part: { kind: 'slides', slide: intro.extraSlides![0].id } });
     expect(placeAt(game, ['rounds', intro.id, 'extraSlides', intro.extraSlides![1].id]).place).toEqual({
       tab: 'round',

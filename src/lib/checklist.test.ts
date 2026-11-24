@@ -27,7 +27,7 @@ describe('the checklist in the sidebar', () => {
     ]);
     // Anything else, as a file that won't play, isn't one of them.
     expect(
-      checklistLines(game, [{ text: '1 video/audio file this browser may not play: 🖼 Media says what to do', tab: 'media', level: 'warn' }])[0].starter,
+      checklistLines(game, [{ text: '1 video/audio file this browser may not play: 🖼️ Media says what to do', tab: 'media', level: 'warn' }])[0].starter,
     ).toBeUndefined();
   });
   it('says one line a round, and goes to its first unfinished tile', () => {
@@ -175,7 +175,7 @@ describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () =
     const lines = checklistLines(game, [
       { text: 'Jeopardy!: a 🤫 card has a video phones can’t open', tab: 0, level: 'warn', convert: ['v1'] },
       { text: 'Jeopardy!: another 🤫 card has a video phones can’t open', tab: 0, level: 'warn', convert: ['v1', 'v2'] },
-      { text: '2 video/audio files won’t play in this browser: 🔄 Convert them in 🖼 Media', tab: 'media', level: 'warn', convert: ['a', 'b'] },
+      { text: '2 video/audio files won’t play in this browser: 🔄 Convert them in 🖼️ Media', tab: 'media', level: 'warn', convert: ['a', 'b'] },
     ]);
     expect(lines.map((l) => [l.text.split(':')[0], l.convert])).toEqual([
       ['Jeopardy!', ['v1', 'v2']],

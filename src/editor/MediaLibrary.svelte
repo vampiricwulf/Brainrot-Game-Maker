@@ -252,7 +252,7 @@
     const words = filter.toLowerCase().split(/\s+/).filter(Boolean);
     return words.length ? files.filter((m) => words.every((w) => `${m.name} ${m.kind} ${KIND_WORD[m.kind] ?? ''}`.toLowerCase().includes(w))) : files;
   });
-  const icon = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
+  const icon = { image: '🖼️', video: '🎬', audio: '🔊', font: '🔤' } as const;
   const EMBED_ICON: Record<string, string> = { youtube: '▶️', drive: '🎞', streamable: '🎞' };
 
   /** 🌐 Check it still loads: the results by media id. */
@@ -590,7 +590,7 @@
 
   {#if !files.length}
     <div class="empty muted">
-      <span class="ic" aria-hidden="true">🖼</span>
+      <span class="ic" aria-hidden="true">🖼️</span>
       No files yet. Drop pictures, videos, sounds or fonts here, or use ＋ Add files…
     </div>
   {/if}

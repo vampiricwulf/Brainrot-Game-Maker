@@ -11,11 +11,11 @@
 // 5. Mini quest, two windows: the Boss's card, taller than the box, opens with its top under the pinned pad and map
 //    (the round's part takes the empty main-button row, so the box has that room too).
 // 6. Mini quest, one window: the screen's 📝 note has a slot of its own in the top row (cut short, the whole of it in
-//    its tooltip), so the parties, 🗺 Map on stream, the pad and the minimap stay put from a screen with a note to one
+//    its tooltip), so the parties, 🗺️ Map on stream, the pad and the minimap stay put from a screen with a note to one
 //    without.
 // 7. The slide editor in its host's words: objects on a screen in the RPG screen editor, pictures on the board in a
 //    board game's backdrop, items on a slide in a slides round.
-// 8. Race to the finish, 🖼 Board backdrop: the spaces and links show faint over it (clicks go through to the backdrop's
+// 8. Race to the finish, 🖼️ Board backdrop: the spaces and links show faint over it (clicks go through to the backdrop's
 //    pictures), and ⬤ Spaces over it hides them (remembered).
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -145,7 +145,7 @@ try {
       .getByRole('button', { name: /Shopkeeper/ })
       .first()
       .click();
-    // The card comes into sight with the box scrolled to a row's edge: the top row (where, the parties, 🗺 Map on
+    // The card comes into sight with the box scrolled to a row's edge: the top row (where, the parties, 🗺️ Map on
     // stream) all out of sight or all in it, never cut in half under the selection line.
     await rh.getByRole('button', { name: '🛒 Shop' }).waitFor();
     await page.waitForTimeout(300);
@@ -333,7 +333,7 @@ try {
     assert(forest.note && forest.note.text === '', `in the Forest (no note) the slot is there, empty (${JSON.stringify(forest.note)})`);
     assert(
       JSON.stringify(forest.places) === JSON.stringify(village.places),
-      `the parties, 🗺 Map on stream, the pad and the minimap stay put (${JSON.stringify(village.places)} → ${JSON.stringify(forest.places)})`,
+      `the parties, 🗺️ Map on stream, the pad and the minimap stay put (${JSON.stringify(village.places)} → ${JSON.stringify(forest.places)})`,
     );
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-note-forest.png` });
     await ctx.close();
@@ -432,7 +432,7 @@ try {
     await ctx.close();
   }
   {
-    section('Race to the finish, 🖼 Board backdrop: the path faint over it');
+    section('Race to the finish, 🖼️ Board backdrop: the path faint over it');
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     await ctx.route('https://api.github.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
     const page = await ctx.newPage();

@@ -164,12 +164,12 @@ const UNUSED_SAY = 10 * 1024 ** 2;
 
 /**
  * Added to the size questions when much of the file is files nothing in the game uses ('' when it isn't): the same test
- * as 🖼 Media's 🗑 Delete unused. (Only said: in play a quick 🤫 card can still pick one of them.)
+ * as 🖼️ Media's 🗑 Delete unused. (Only said: in play a quick 🤫 card can still pick one of them.)
  */
 export function unusedNote(game: Game): string {
   const usage = mediaUsage(game);
   const bytes = game.media.filter((m) => !m.url && !usage.get(m.id)).reduce((n, m) => n + (m.size || 0), 0);
-  return bytes > UNUSED_SAY ? `\n\n${formatBytes(bytes)} of it is files nothing in the game uses: 🖼 Media › 🗑 Delete unused leaves them out.` : '';
+  return bytes > UNUSED_SAY ? `\n\n${formatBytes(bytes)} of it is files nothing in the game uses: 🖼️ Media › 🗑 Delete unused leaves them out.` : '';
 }
 
 /**

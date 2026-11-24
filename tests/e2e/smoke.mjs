@@ -310,7 +310,7 @@ await posBox.getByLabel('X', { exact: true }).fill(String(x0));
 await posBox.getByLabel('Y', { exact: true }).fill('90');
 
 // Media: upload an image and a short audio clip onto the question slide.
-await page.getByRole('button', { name: '🖼 Image' }).click();
+await page.getByRole('button', { name: '🖼️ Image' }).click();
 let [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload image file…' }).click()]);
 await fc.setFiles({ name: 'pepe.png', mimeType: 'image/png', buffer: bigPng(200, 100) });
 await page.locator('.canvas img').waitFor();
@@ -581,7 +581,7 @@ assert(
 );
 const shapeWidth = (await shapeBtn.boundingBox()).width;
 await shapeBtn.click();
-await page.getByRole('button', { name: '✏ Freehand line…' }).click();
+await page.getByRole('button', { name: '✏️ Freehand line…' }).click();
 assert(
   (await page.locator('.ribbon', { hasText: 'DRAWING' }).count()) === 1 &&
     (await page.getByRole('button', { name: '■ Stop' }).boundingBox()).width === shapeWidth,
@@ -650,7 +650,7 @@ for (let i = 0; i < 2; i++) {
 assert((await hits()) === 2, 'removed the audio and the video again');
 
 // A full-bleed image: its rotate handle stays on screen; locked, it can't be deleted; Alt+click reaches what's under it.
-await page.getByRole('button', { name: '🖼 Image' }).click();
+await page.getByRole('button', { name: '🖼️ Image' }).click();
 await page.locator('.picker .item', { hasText: 'pepe.png' }).click();
 for (const [k, v] of [
   ['X', 0],
@@ -852,7 +852,7 @@ await page.keyboard.press('Control+c');
 await page.keyboard.press('Control+v');
 assert((await finHits()) === 2, 'Ctrl+C / Ctrl+V work on the Final slide');
 await page.keyboard.press('Delete');
-await finSe.getByRole('button', { name: '🖼 Image' }).click();
+await finSe.getByRole('button', { name: '🖼️ Image' }).click();
 await page.locator('.picker .item', { hasText: 'pepe.png' }).click();
 await page.mouse.dblclick(...center(await finSe.locator('.canvas img').boundingBox()));
 await ie.getByRole('button', { name: '😂 Sticker' }).click();

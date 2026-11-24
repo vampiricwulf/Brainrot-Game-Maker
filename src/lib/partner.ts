@@ -585,7 +585,7 @@ const DOING: Record<PartnerGame, { doing: string; did: string; guessed: string }
 };
 
 /**
- * Who plays which part, as one line: "Bob describes → Ann guesses" (`icons`: "🗣 Bob describes → 🎯 Ann guesses";
+ * Who plays which part, as one line: "Bob describes → Ann guesses" (`icons`: "🗣️ Bob describes → 🎯 Ann guesses";
  * `past`: "Bob described → Ann guessed"). Solo: "Ann · Solo!".
  */
 export function partsLine(rules: PartnerRules, names: { giver?: string; guesser?: string; solo?: boolean }, { icons = false, past = false } = {}): string {
@@ -596,7 +596,7 @@ export function partsLine(rules: PartnerRules, names: { giver?: string; guesser?
   return `${giverIcon}${names.giver ?? '?'} ${does} → ${guesserIcon}${names.guesser ?? '?'} ${guesses}`;
 }
 
-/** What the giver's phone says: "🗣 You're describing!" (teams: "🗣 Your team is describing!"). */
+/** What the giver's phone says: "🗣️ You're describing!" (teams: "🗣️ Your team is describing!"). */
 export function giverLine(rules: PartnerRules, team = false): string {
   return `${PARTNER_GAMES[rules.game].icon} ${team ? 'Your team is' : 'You’re'} ${DOING[rules.game].doing}!`;
 }

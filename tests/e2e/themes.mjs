@@ -931,7 +931,7 @@ try {
     thumb.x + thumb.width <= change.x && remove.x + remove.width <= column + 0.5,
     `a wide banner's thumbnail shrinks: Change… and ⌫ Clear stay in the settings column (⌫ Clear ends at ${Math.round(remove.x + remove.width)}, the column at ${Math.round(column)})`,
   );
-  // Its file replaced in 🖼 Media (the same id, new bytes): the card shows the new picture.
+  // Its file replaced in 🖼️ Media (the same id, new bytes): the card shows the new picture.
   const firstSrc = await cardImg.getAttribute('src');
   await host.getByRole('button', { name: /^🖼️ Media/ }).click();
   const [replacing] = await Promise.all([
@@ -948,7 +948,7 @@ try {
     g.drawImage(img, 0, 0, 4, 4);
     return [...g.getImageData(1, 1, 1, 1).data].slice(0, 3).join(',');
   });
-  assert(pixel === '0,0,255', `a file replaced in 🖼 Media reaches the open audience window (its banner is ${pixel})`);
+  assert(pixel === '0,0,255', `a file replaced in 🖼️ Media reaches the open audience window (its banner is ${pixel})`);
   await ctx2.close();
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);

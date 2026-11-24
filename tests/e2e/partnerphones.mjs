@@ -99,7 +99,7 @@ try {
   await dialog.getByLabel('The guesser types their guess on their phone').check();
   // A picture from this computer on the card.
   await dialog.getByRole('tab', { name: '🤫 Card 1' }).click();
-  await dialog.getByRole('button', { name: '🖼 Image' }).click();
+  await dialog.getByRole('button', { name: '🖼️ Image' }).click();
   const [chooser] = await Promise.all([
     host.waitForEvent('filechooser'),
     host.getByRole('dialog', { name: 'Choose image' }).getByRole('button', { name: '⬆ Upload image file…' }).click(),

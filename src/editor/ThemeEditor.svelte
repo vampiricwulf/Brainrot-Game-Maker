@@ -443,7 +443,7 @@
     <details class="sec" open data-sec="board">
       <summary>Board</summary>
       <div class="pics">
-        <!-- (data-place: 🖼 Media's "used 3× ▾" and the History's Go there flash them.) -->
+        <!-- (data-place: 🖼️ Media's "used 3× ▾" and the History's Go there flash them.) -->
         <div class="row pop" data-place="theme:boardImage">
           <span>Background image</span>
           {#if t.boardImage && mediaUrls[t.boardImage]}<img src={mediaUrls[t.boardImage]} alt="" onerror={imgFallback} draggable="false" />{/if}
@@ -456,7 +456,7 @@
           {#if t.boardImage}<button
               class="ghost tiny"
               onclick={() => (t.boardImage = undefined)}
-              title="Clear the background picture (it stays in 🖼 Media)"
+              title="Clear the background picture (it stays in 🖼️ Media)"
               aria-label="⌫ Clear background picture">⌫ Clear</button
             >{/if}
           {#if picking === 'bg'}<MediaPicker kind="image" onpick={(id) => ((t.boardImage = id), (picking = null))} onclose={() => (picking = null)} />{/if}
@@ -473,7 +473,7 @@
           {#if t.banner}<button
               class="ghost tiny"
               onclick={() => (t.banner = undefined)}
-              title="Clear the banner (it stays in 🖼 Media)"
+              title="Clear the banner (it stays in 🖼️ Media)"
               aria-label="⌫ Clear banner">⌫ Clear</button
             >{/if}
           {#if picking === 'banner'}<MediaPicker kind="image" onpick={(id) => ((t.banner = id), (picking = null))} onclose={() => (picking = null)} />{/if}

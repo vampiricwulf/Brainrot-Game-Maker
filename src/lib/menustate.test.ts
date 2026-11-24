@@ -62,7 +62,7 @@ describe('a thing’s menu (menuOf)', () => {
   it('goes in the one order, whatever order its parts are given in', () => {
     const m = menuOf({
       delete: menuItem.delete('row', go),
-      extras: [{ label: '🖼 Image…', onclick: go }],
+      extras: [{ label: '🖼️ Image…', onclick: go }],
       clear: menuItem.clear(go, { label: '⌫ Clear its clues' }),
       insert: [{ label: '＋ Insert left', onclick: go }],
       move: [menuItem.left(go), menuItem.right(go)],
@@ -95,7 +95,7 @@ describe('a thing’s menu (menuOf)', () => {
       '▶ Move right',
       '＋ Insert left',
       '—',
-      '🖼 Image…',
+      '🖼️ Image…',
       '—',
       '[Row 2 · $400]',
       '▲ Move up',

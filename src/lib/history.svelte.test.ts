@@ -305,7 +305,7 @@ describe('undo history: named steps', () => {
       g.worlds![0].maps[0].screens = screens.filter((s) => s !== cave);
     });
     expect(history.entries).toHaveLength(1);
-    expect(history.entries[0]).toMatchObject({ label: 'Deleted screen “Cave”', icon: '🗺' });
+    expect(history.entries[0]).toMatchObject({ label: 'Deleted screen “Cave”', icon: '🗺️' });
     expect(history.entries[0].undoPlace).toMatchObject({ tab: 'world', screen: cave.id });
     // Its label from the ops when there's none.
     step(null, () => (g.worlds![0].maps[0].screens[1].col = 3));

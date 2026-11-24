@@ -87,7 +87,7 @@ export const copyOfWhat = (m: Pick<MediaRef, 'kind' | 'mime' | 'name'>): CopyOf 
 
 /**
  * The files on 🤫 cards that are big for phones (over SLOW_FILE_BYTES, or over what the buzzer server takes) and have no
- * copy yet, that 🗜 can make one of here: 🖼 Media's "🗜 3 files are big for phones" (one step a file).
+ * copy yet, that 🗜 can make one of here: 🖼️ Media's "🗜 3 files are big for phones" (one step a file).
  */
 export function bigForPhones(game: Game, fileBytes: number): MediaRef[] {
   const onCards = new Set(allCardSlides(game).flatMap(({ slide }) => slideMediaIds(slide)));
@@ -684,7 +684,7 @@ export function queueFileEdit(game: Game, id: Id, plan: EditPlan & EditExtra, ho
     if (how === 'all') dismissOffer(id);
     flash(`media:${to}`);
     if (remakeCopy && how === 'all') void remakePhoneCopy(to);
-    if (how === 'new') return { toast: '✂ Saved as a new file in 🖼 Media: the original is unchanged.', media: to };
+    if (how === 'new') return { toast: '✂ Saved as a new file in 🖼️ Media: the original is unchanged.', media: to };
     if (how === 'item')
       return {
         toast: `✂ This item plays its own edited copy now: ${others === 1 ? 'the other place keeps' : `the other ${others} places keep`} the original.`,

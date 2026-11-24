@@ -51,7 +51,7 @@ describe('🤫 cards', () => {
     expect(mediaUsage(game).get('pic')).toBe(1);
     expect(allSlides(game).some((s) => s.where.includes('(card 1)'))).toBe(true);
     expect(allSlides(game, { empty: true }).some((s) => s.where.includes('(card 1)'))).toBe(true);
-    // A named one says its name (🖼 Media's "where used").
+    // A named one says its name (🖼️ Media's "where used").
     clue.cards[0].name = 'Clue tip';
     expect(allSlides(game).map((s) => s.where)).toContain('Jeopardy! · Category 1 #2 (card “Clue tip”)');
   });
@@ -161,7 +161,7 @@ describe('every 🤫 card in the game (allCardSlides)', () => {
   });
 });
 
-describe('where a file is used (🖼 Media’s “used 3× ▾”)', () => {
+describe('where a file is used (🖼️ Media’s “used 3× ▾”)', () => {
   it('finds every place, 🔊 Sounds too, never the library itself; mediaPath still the first, without the sounds', () => {
     const game = jeopardyGame();
     const round = game.rounds[0];

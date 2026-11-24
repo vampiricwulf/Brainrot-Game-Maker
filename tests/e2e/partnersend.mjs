@@ -533,8 +533,8 @@ try {
   await bob.getByText(WORDS1).waitFor();
   const bobCard = bob.locator('.card');
   assert(
-    (await bobCard.innerText()).includes('🖼 Picture coming…') && (await bobCard.innerText()).includes('🎞 Video coming…'),
-    'tapped: its words, “🖼 Picture coming…” and “🎞 Video coming…”',
+    (await bobCard.innerText()).includes('🖼️ Picture coming…') && (await bobCard.innerText()).includes('🎞 Video coming…'),
+    'tapped: its words, “🖼️ Picture coming…” and “🎞 Video coming…”',
   );
   assert(await until(async () => (await textOf(row(1).locator('[data-card-state]'))).includes('✓ seen')), 'the host’s row says ✓ seen');
   await cat.getByRole('button', { name: 'Tap to see' }).waitFor();
@@ -797,12 +797,12 @@ try {
   await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
   const left2 = panel.locator('[data-card-left="2"]');
   assert(
-    (await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)',
-    'the GIF over 3 MB, counted: “🖼 1 GIF won’t reach the phones (too big for the buzzer server)”',
+    (await left2.innerText()) === '🖼️ 1 GIF won’t reach the phones (too big for the buzzer server)',
+    'the GIF over 3 MB, counted: “🖼️ 1 GIF won’t reach the phones (too big for the buzzer server)”',
   );
   assert(await row(2).getByRole('button', { name: '📋 Copy picture' }).isVisible(), 'and its row offers 📋 Copy picture');
   const upBefore = uploads.length;
-  // The status line's ⏱ Start (as T) with cards still to send: the clock only. The box's foot reads 📤 Send the cards
+  // The status line's ⏱️ Start (as T) with cards still to send: the clock only. The box's foot reads 📤 Send the cards
   // (clock running), the status line that Enter sends them, and nothing goes until then.
   await statusLineIn(host)
     .getByRole('button', { name: /^Start \d+s$/ })
@@ -826,7 +826,7 @@ try {
   assert(turned.error === 'This room holds all the card files it can: send fewer pictures and videos at once', `in plain words (“${turned.error}”)`);
   assert(uploads.length - upBefore === 6, 'six uploads (the picture and five GIFs; never the one over 3 MB)');
   await panel.locator('[data-card-left="1"]').waitFor();
-  const fullLine = '🖼 1 GIF won’t reach the phones (the buzzer room holds all the files it can: ↩ take a card back, then ↻ Send again)';
+  const fullLine = '🖼️ 1 GIF won’t reach the phones (the buzzer room holds all the files it can: ↩ take a card back, then ↻ Send again)';
   assert((await panel.locator('[data-card-left="1"]').innerText()) === fullLine, `the panel counts it, and says why: “${fullLine}”`);
   const info = host.locator('.info [data-partner-cards-info]');
   assert(
@@ -845,8 +845,8 @@ try {
     'Bob’s phone shows the picture and the four GIFs that went up',
   );
   assert(
-    (await bob.getByText('🖼 The host will show you this picture').count()) === 2,
-    'and “🖼 The host will show you this picture” for the one turned down and the one too big',
+    (await bob.getByText('🖼️ The host will show you this picture').count()) === 2,
+    'and “🖼️ The host will show you this picture” for the one turned down and the one too big',
   );
   await offStream(aud2, 'the audience window', 'the GIFs');
 

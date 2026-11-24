@@ -273,9 +273,9 @@ try {
   const shapeMenu = page.locator('.shape-menu');
   assert(
     JSON.stringify(await shapeMenu.locator('.head').allInnerTexts()) === JSON.stringify(['Shapes', 'Draw']) &&
-      (await shapeMenu.getByRole('button', { name: '✏ Freehand line…' }).count()) === 1 &&
+      (await shapeMenu.getByRole('button', { name: '✏️ Freehand line…' }).count()) === 1 &&
       (await shapeMenu.getByRole('button', { name: '⬚ Hotspot' }).count()) === 0,
-    'Shape ▾ has its Shapes and Draw sections (✏ Freehand line…, 🖌 Drawpad…), and no ⬚ Hotspot on a clue',
+    'Shape ▾ has its Shapes and Draw sections (✏️ Freehand line…, 🖌 Drawpad…), and no ⬚ Hotspot on a clue',
   );
   await page.keyboard.press('Escape');
 
@@ -444,23 +444,23 @@ try {
     pic && pic.x + pic.w <= 1920 && pic.y + pic.h <= 1080 && pic.x >= 0 && pic.y >= 0,
     `a picture dropped at the corner stays on the slide (${pic?.x}, ${pic?.y})`,
   );
-  assert((await mediaCount()) === before + 1, 'it is in 🖼 Media');
+  assert((await mediaCount()) === before + 1, 'it is in 🖼️ Media');
   await dropAt(await picture('big copy.png', 800, 600, '#ff0000'), 600, 400);
   assert(
-    (await mediaCount()) === before + 1 && (await toast.innerText()).includes('already in 🖼 Media'),
-    'the same picture dropped again isn’t stored twice (the toast says it’s already in 🖼 Media)',
+    (await mediaCount()) === before + 1 && (await toast.innerText()).includes('already in 🖼️ Media'),
+    'the same picture dropped again isn’t stored twice (the toast says it’s already in 🖼️ Media)',
   );
   await page.keyboard.press('Delete');
 
   // ---------- Double-click or Enter opens an item's editor; F2 renames it; the keys stay on the slide after adding ----------
-  // A picture picked in 🖼 Image: the keys are on the slide (not the 🖼 Image button), so Enter opens ✎ Edit image.
-  await clue.getByRole('button', { name: '🖼 Image', exact: true }).click();
+  // A picture picked in 🖼️ Image: the keys are on the slide (not the 🖼️ Image button), so Enter opens ✎ Edit image.
+  await clue.getByRole('button', { name: '🖼️ Image', exact: true }).click();
   await page
     .getByRole('dialog', { name: 'Choose image' })
     .getByRole('button', { name: /big\.png/ })
     .click();
   await page.waitForFunction(() => !!document.activeElement?.closest('.canvas'), null, { timeout: 3000 });
-  assert(true, 'after a picture is added from 🖼 Image, the keys are on the slide');
+  assert(true, 'after a picture is added from 🖼️ Image, the keys are on the slide');
   await page.keyboard.press('Enter');
   const enterIe = page.getByRole('dialog', { name: 'Edit image' });
   await enterIe.waitFor();
@@ -663,7 +663,7 @@ try {
   // The Background box: a picture added shows as a thumbnail (on the toolbar's swatch too), and ⌫ Clear picture takes
   // off only the picture, the color staying (one undo step).
   await clue.getByRole('button', { name: /Background ▾/ }).click();
-  await page.getByRole('button', { name: '🖼 Add a picture…' }).click();
+  await page.getByRole('button', { name: '🖼️ Add a picture…' }).click();
   await page.locator('.picker .item', { hasText: 'big.png' }).first().click();
   const swatchPic = await clue.locator('.toolbar .swatch').evaluate((e) => getComputedStyle(e).backgroundImage);
   assert(swatchPic.startsWith('url('), `the Background button's swatch shows the picture (${swatchPic.slice(0, 24)})`);
@@ -677,7 +677,7 @@ try {
   assert(
     (await undoTitle()).startsWith('Undo: Removed the slide background picture') &&
       (await page.getByLabel('Slide background color').inputValue()) === '#333333' &&
-      (await bgBox.getByRole('button', { name: '🖼 Add a picture…' }).count()) === 1,
+      (await bgBox.getByRole('button', { name: '🖼️ Add a picture…' }).count()) === 1,
     `⌫ Clear picture takes off only the picture, the color staying (${await undoTitle()})`,
   );
   await page.getByLabel('Slide background color').press('Escape');
@@ -689,7 +689,7 @@ try {
   await page.keyboard.press('Control+z');
   await clue.getByRole('button', { name: 'Close' }).click();
 
-  // ---------- 🖼 Media › Replace everywhere… redoes the edited picture's edits on the new file ----------
+  // ---------- 🖼️ Media › Replace everywhere… redoes the edited picture's edits on the new file ----------
   await page.getByRole('button', { name: /^🖼️ Media/ }).click();
   const card = page.locator('.card', { hasText: 'big.png' }).first();
   const chooser = page.waitForEvent('filechooser');
@@ -889,7 +889,7 @@ try {
   await page.keyboard.press('Escape');
   assert((await menu.count()) === 0 && (await page.evaluate(() => document.activeElement?.classList.contains('canvas'))), 'Esc closes it, back on the canvas');
 
-  // ---------- 🖼 Image on a question alone: the picture on top, the question in a band under it (one undo step) ----------
+  // ---------- 🖼️ Image on a question alone: the picture on top, the question in a band under it (one undo step) ----------
   await page.getByRole('button', { name: 'Done' }).click();
   await page.locator('.grid .tile').nth(7).click();
   await clue.waitFor();
@@ -944,7 +944,7 @@ try {
     for (let i = 0; i < 5; i++) await clue.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
     await canvas.locator('.slide .el:has(.text)').nth(1).waitFor({ state: 'detached' });
   }
-  await page.getByRole('button', { name: '🖼 Image' }).click();
+  await page.getByRole('button', { name: '🖼️ Image' }).click();
   await page.getByRole('dialog', { name: 'Choose image' }).dispatchEvent('drop', { dataTransfer: await picture('face.png', 800, 600, '#00aa00') });
   await canvas.locator('.slide .el img').waitFor();
   const laid = await drawn();
@@ -1091,7 +1091,7 @@ try {
       middles.every((c, i) => c.every((v, k) => Math.abs(v - colours[i][k]) <= 2)),
     `Apply makes a GIF again, every frame turned, each as long as before, looping (${r.width}×${r.height}, ${r.numFrames()} frames of ${delays.join(', ')} hundredths)`,
   );
-  // 🖼 Media › Replace everywhere… with another moving GIF: its frames are turned too.
+  // 🖼️ Media › Replace everywhere… with another moving GIF: its frames are turned too.
   await clue.getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: /^🖼️ Media/ }).click();
   const gifChooser = page.waitForEvent('filechooser');

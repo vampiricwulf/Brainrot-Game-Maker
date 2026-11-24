@@ -90,7 +90,7 @@
     flex: 1;
     min-width: 240px;
   }
-  /* (A gap between it and the slide's 🅣 Text / 🖼 Image row, which otherwise sits on its border.) */
+  /* (A gap between it and the slide's 🅣 Text / 🖼️ Image row, which otherwise sits on its border.) */
   .quick {
     margin-bottom: 8px;
   }
