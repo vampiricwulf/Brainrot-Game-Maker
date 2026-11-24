@@ -578,8 +578,10 @@ try {
   await bob.locator('#answer-send').click();
   assert(await until(() => last()?.answers?.seats?.find((x) => x.id === seat.Bob)?.got === 1), 'Bob sends his answer: the host took it (the room is told it has it)');
   // Ann's and Cat's answers aren't in: 👁 Reveal answer asks first (⏱ 10 more seconds). (On a phone's width, 390×844:
-  // its lines and its “Don't ask” tick get the card's whole width, and where the blue button was it has no button.)
+  // its lines and its “Don't ask” tick get the card's whole width, and a tap where the blue button was presses nothing.)
   await host.setViewportSize({ width: 390, height: 844 });
+  // (A phone has no mouse: its keys and the “Next time: …” line go, as app.css's (hover: none) does.)
+  const touchLook = await host.addStyleTag({ content: 'kbd:not(td > kbd), .not-touch { display: none !important; }' });
   await host.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('👁 Reveal answer'));
   const mainAt = await mainButton(host).boundingBox();
   await next('👁 Reveal answer');
@@ -598,10 +600,16 @@ try {
       pad: getComputedStyle(sc).paddingRight,
       tick: !!tick && tick.top >= box.top - 1 && tick.bottom <= box.bottom + 1 && tick.right <= box.right + 1 && tick.height < 40,
       under: t ? t.textContent.trim() : '',
-      main: [Math.round(r.x), Math.round(r.y)],
     };
   }, mainAt);
-  assert(narrow.pad === '0px' && narrow.tick && narrow.under === '', `a phone's width: the answers check's lines and tick take its whole width, and no button where the blue button was (${JSON.stringify(narrow)})`);
+  assert(narrow.pad === '0px' && narrow.tick, `a phone's width: the answers check's lines and tick take its whole width (${JSON.stringify(narrow)})`);
+  // (Its tick's words lie where the blue button was: a nervous second tap there ticks nothing, it only flashes the card.)
+  await host.mouse.click(mainAt.x + mainAt.width / 2, mainAt.y + mainAt.height / 2);
+  await host.waitForTimeout(200);
+  assert(
+    (await goOnCheck(host).locator('.tick-row input').isChecked()) === false && (await checkItem(host, 'answers').count()) === 1,
+    `a phone's width: a tap where the blue button was ticks nothing, the check still asks (under it: ${narrow.under || 'nothing'})`,
+  );
   // Ann's and Cat's come in with the check open: its line says they're all in (not the count from before).
   for (const [p, a] of [[ann, 'Ann-answer'], [cat, 'Cat-answer']]) {
     await p.locator('#answer-in').fill(a);
@@ -612,6 +620,7 @@ try {
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('r');
   await host.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
+  await touchLook.evaluate((el) => el.remove());
   await host.setViewportSize({ width: 1400, height: 900 });
   await next('Start player reveals ▶');
   await host.locator('.fj .pl').first().waitFor();

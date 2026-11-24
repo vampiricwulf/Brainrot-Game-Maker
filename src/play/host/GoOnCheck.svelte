@@ -129,6 +129,9 @@
     el.classList.add('goon-flash');
   });
 
+  /** A tap where the blue button was, on a card that draws no spot for it (a phone). */
+  const onSpot = (e: MouseEvent): boolean =>
+    !!place && !place.spot && !side && !!mainAt && e.detail >= 1 && e.clientX >= mainAt.left && e.clientX <= mainAt.right && e.clientY >= mainAt.top && e.clientY <= mainAt.bottom;
   /** Its last press that went: the rest of that double-click presses nothing more, however old the check. */
   let pressed: CheckPress | null = null;
   /**
@@ -136,6 +139,12 @@
    * press on it that went (`keep`: this one stays open, its item redrawn in place). Else noted, and it goes.
    */
   function held(e: MouseEvent, since = check.at, keep = false): boolean {
+    // (On a phone no spot is drawn, so what's left gets the card's whole width; a tap where the blue button was still
+    // presses nothing there, whatever lies under it now: it flashes the card.)
+    if (onSpot(e)) {
+      onflash();
+      return true;
+    }
     const at = Date.now();
     const p = { at, detail: e.detail, ...(e.detail >= 1 ? { x: e.clientX, y: e.clientY } : {}) };
     if (checkHeld(since, at, e.detail) || checkPressHeld(pressed, p)) return true;
@@ -151,6 +160,17 @@
     const t = e.target instanceof Element ? e.target : null;
     if (t?.closest('button, label, input')) return;
     onflash();
+  }
+  /** The label's own click, passed on to its box: already let through. */
+  let passed = false;
+  /** A click on the tick (its box or its words): held back as its buttons are. */
+  function tickClick(e: MouseEvent): void {
+    if (passed) return;
+    if (held(e)) return e.preventDefault();
+    if (!(e.target instanceof HTMLInputElement)) {
+      passed = true;
+      setTimeout(() => (passed = false));
+    }
   }
   /** Tab and Shift+Tab go round its buttons and its tick. */
   function wrap(e: KeyboardEvent): void {
@@ -223,8 +243,10 @@
     {#each ticks as kind (kind)}
       <!-- (Held back as its buttons are: on a phone the row runs the card's whole width, maybe where the blue button was,
            and a fast second tap there must not turn the check off for the game.) -->
-      <label class="check tick-row"
-        ><input type="checkbox" onclick={(e) => held(e) && e.preventDefault()} onchange={(e) => e.currentTarget.checked && onquiet(kind)} />
+      <!-- (Its keys go to the box in it: Space there is a click on the box, which comes here too.) -->
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <label class="check tick-row" onclick={tickClick}
+        ><input type="checkbox" onchange={(e) => e.currentTarget.checked && onquiet(kind)} />
         {CHECK.dontAsk(CHECK.quiet[kind])}</label
       >
     {/each}
