@@ -8,46 +8,12 @@
 // score pops above the choices. Last, a 🔁 Rematch in the same room keeps the phones' 📱 on stream. (In the editor
 // first: a ✍ tile with an empty choice says so on the board, and Take the choices off leaves the keys on ＋ Multiple choice.)
 // Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, goOnCheck, playWithPlayers, quick, startRoomOn, leaveAnswer, failureShots, freePort } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, goOnCheck, playWithPlayers, quick, startRoomOn, leaveAnswer, failureShots, assert, launchChromium, startBuzzer, until } from './helpers.mjs';
 
 const file = appFile();
-const dir = resolve('buzzer');
-if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-const port = await freePort();
-const inspector = await freePort();
-const persist = mkdtempSync(join(tmpdir(), 'buzzer-answers-'));
-const base = `http://127.0.0.1:${port}`;
-let log = '';
-const wrangler = spawn(
-  join(dir, 'node_modules/.bin/wrangler'),
-  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn'],
-  { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
-);
-wrangler.stdout.on('data', (d) => (log += d));
-wrangler.stderr.on('data', (d) => (log += d));
-const stopWrangler = () => {
-  try {
-    process.kill(-wrangler.pid, 'SIGTERM');
-  } catch {
-    // already gone
-  }
-};
-process.on('exit', stopWrangler);
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1));
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
+const buzzer = await startBuzzer('buzzer-answers-');
+const { base } = buzzer;
 
 let browser;
 const errors = [];
@@ -57,19 +23,7 @@ const watch = (p, name) => {
   return p;
 };
 try {
-  for (let i = 0; ; i++) {
-    if (wrangler.exitCode !== null) throw new Error('wrangler dev exited:\n' + log);
-    try {
-      if ((await fetch(`${base}/api/health`)).ok) break;
-    } catch {
-      // not up yet
-    }
-    if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
-    await sleep(500);
-  }
-
-  const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   const hostCtx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   await hostCtx.addInitScript((server) => {
@@ -242,11 +196,7 @@ try {
     });
   const sightLines = [row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }), row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }), host.locator('.panel .award button', { hasText: 'Award' })];
   let seen = [];
-  for (let i = 0; i < 20; i++) {
-    seen = await Promise.all(sightLines.map(inSight));
-    if (!seen.includes(false)) break;
-    await host.waitForTimeout(100);
-  }
+  await until(async () => !(seen = await Promise.all(sightLines.map(inSight))).includes(false), { timeout: 2_000, every: 100 });
   assert(!seen.includes(false), `at 911×438 both answers' ✔ and ＋ Award are in sight (${seen})`);
   await host.setViewportSize({ width: 1400, height: 900 });
 
@@ -527,6 +477,5 @@ try {
   throw e;
 } finally {
   await browser?.close();
-  stopWrangler();
-  rmSync(persist, { recursive: true, force: true });
+  buzzer.stop();
 }

@@ -2,46 +2,12 @@
 // host on a plain WebSocket, and four phones in Chromium on the real phone page, their sockets passed through Playwright
 // (to slow one down, or to make two buzzes tie). Then private cards and their files through the real Worker and storage,
 // and the limit on new rooms. Needs `npm ci` in buzzer/ first.
-import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { buzzerVars, failureShots, tap, tieThem, freePort } from './helpers.mjs';
+import { failureShots, tap, tieThem, assert, sleep, launchChromium, startBuzzer, untilWith, until } from './helpers.mjs';
 
-const dir = resolve('buzzer');
-if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-const port = await freePort();
-const inspector = await freePort();
-const state = mkdtempSync(join(tmpdir(), 'buzzer-e2e-'));
-const base = `http://127.0.0.1:${port}`;
-let log = '';
-const wrangler = spawn(
-  join(dir, 'node_modules/.bin/wrangler'),
-  // (Its own limits, so the exact sizes below hold whatever wrangler.jsonc says.)
-  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', state, '--log-level', 'warn', ...buzzerVars({ FILE_MB: 16, ROOM_FILES_MB: 64 })],
-  { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
-);
-wrangler.stdout.on('data', (d) => (log += d));
-wrangler.stderr.on('data', (d) => (log += d));
-const stopWrangler = () => {
-  try {
-    process.kill(-wrangler.pid, 'SIGTERM');
-  } catch {
-    // already gone
-  }
-};
-process.on('exit', stopWrangler);
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1));
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
+// (Its own limits, so the exact sizes below hold whatever wrangler.jsonc says.)
+const buzzer = await startBuzzer('buzzer-e2e-', { vars: { FILE_MB: 16, ROOM_FILES_MB: 64 } });
+const { base, port } = buzzer;
 
 /** The fake host: a WebSocket, everything it received, and a way to wait for a message. */
 async function connectHost(code, token) {
@@ -77,22 +43,10 @@ async function connectHost(code, token) {
   };
 }
 
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 let browser;
 const errors = [];
 const pages = [];
 try {
-  for (let i = 0; ; i++) {
-    if (wrangler.exitCode !== null) throw new Error('wrangler dev exited:\n' + log);
-    try {
-      const r = await fetch(`${base}/api/health`);
-      if (r.ok) break;
-    } catch {
-      // not up yet
-    }
-    if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
-    await sleep(500);
-  }
   const health = await (await fetch(`${base}/api/health`)).json();
   assert(health.ok && health.protocol === 1, 'the room server is up (/api/health)');
   assert(
@@ -131,7 +85,7 @@ try {
   };
   setState({});
 
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
   const taps = new Map();
   const phone = async (label, width = 360, height = 740) => {
     const ctx = await browser.newContext({ viewport: { width, height }, hasTouch: true, isMobile: true });
@@ -392,7 +346,7 @@ try {
   const annTap = taps.get(ann);
   const annRoutes = annTap.routes.length;
   annTap.drop();
-  for (let i = 0; i < 80 && annTap.routes.length === annRoutes; i++) await sleep(250);
+  await until(() => annTap.routes.length !== annRoutes, { timeout: 20_000, every: 250 });
   await ann.locator('#overlay').waitFor({ state: 'hidden' });
   setState({ scores: { a: 250, b: 400 } });
   await ann2.locator('#me').getByText('250').waitFor();
@@ -804,7 +758,7 @@ try {
   await kim.getByRole('heading', { name: 'Click your name' }).waitFor();
   await kim.waitForFunction(() => document.activeElement?.id === 'new-btn');
   const kayAsks = () => host.got.findLast((m) => m.t === 'phones').phones.some((p) => p.pendingName === 'Kay');
-  for (let i = 0; i < 40 && kayAsks(); i++) await sleep(250);
+  await until(() => !kayAsks(), { timeout: 10_000, every: 250 });
   await sleep(500);
   assert(!kayAsks(), 'Esc while waiting to be let in takes the request back (the host stops seeing it)');
   assert(true, 'and the keys are on ＋ I’m new');
@@ -835,8 +789,7 @@ try {
   };
   /** Waits (up to 10 s) until Dee's "Not you?" asks with (or without) the lock's warning. */
   const deeWarned = async (on) => {
-    for (const end = Date.now() + 10000; Date.now() < end; await sleep(200)) if ((await deeAsks()).includes('locked the seats') === on) return true;
-    return false;
+    return until(async () => (await deeAsks()).includes('locked the seats') === on, { timeout: 10_000, every: 200 });
   };
   assert(await deeWarned(true), '🔒 a seated phone’s “Not you?” warns that the seats are locked (she couldn’t get back in)');
   setState({ locked: false });
@@ -979,7 +932,7 @@ try {
   let routes = catTap2.routes.length;
   catTap2.stall();
   await cat.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  for (let i = 0; i < 40 && catTap2.routes.length === routes; i++) await sleep(250);
+  await until(() => catTap2.routes.length !== routes, { timeout: 10_000, every: 250 });
   assert(catTap2.routes.length > routes, 'back from the background, a dead connection is noticed in seconds and replaced');
   await big(cat).getByText('Cat').waitFor();
   // A buzz the room never answers: "Sending…", then it starts again at once.
@@ -989,7 +942,7 @@ try {
   catTap2.stall();
   await press(cat);
   await small(cat).getByText('Sending…').waitFor();
-  for (let i = 0; i < 40 && catTap2.routes.length === routes; i++) await sleep(250);
+  await until(() => catTap2.routes.length !== routes, { timeout: 10_000, every: 250 });
   assert(catTap2.routes.length > routes, 'a buzz the room never answered shows "Sending…", and the phone reconnects');
   const resent = await host.wait((m) => m.t === 'buzz' && m.armId === 7 && m.rank === 1, 'the press sent again', 10_000);
   await big(cat).getByText("You're answering!").waitFor();
@@ -1064,7 +1017,7 @@ try {
   });
   const backLine = await awayLine();
   assert(backLine === 'Reconnecting…', `online again, it says "Reconnecting…" as it tries at once (${backLine})`);
-  for (let i = 0; i < 240 && asks < 2; i++) await sleep(250);
+  await until(() => asks >= 2, { timeout: 60_000, every: 250 });
   ann.off('request', checking);
   annTap.blocked = false;
   await ann.locator('#overlay').waitFor({ state: 'hidden' });
@@ -1097,7 +1050,7 @@ try {
   await fay.getByRole('button', { name: 'Fay' }).click();
   await big(fay).getByText('Fay').waitFor();
   assert(true, "24 idle open pages don't lock out a real player: Fay gets her seat");
-  for (let i = 0; i < 30 && idle[0].w.readyState < 2; i++) await sleep(100);
+  await until(() => idle[0].w.readyState >= 2, { timeout: 3_000, every: 100 });
   assert(idle[0].w.readyState >= 2 && idle[0].msgs.some((m) => m.t === 'denied' && m.reason === 'full'), 'the longest idle page made way (told "full": it tries again later)');
   await host.wait((m) => m.t === 'full', 'room full');
   assert(true, 'the host is told the room is full');
@@ -1248,13 +1201,8 @@ try {
     let cs = { title: 'Cards', seats: [{ id: 'a', name: 'Ann', color: '#e5484d' }, { id: 'b', name: 'Bob', color: '#30a46c' }], allowNew: false, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 0, scores: {} };
     const hostState = (patch) => h.send({ t: 'state', state: (cs = { ...cs, ...patch }) });
     hostState({});
-    /** Waits (up to 3 s) until pred() holds. */
-    const until = async (pred, what) => {
-      for (let i = 0; !pred(); i++) {
-        if (i > 150) throw new Error('never: ' + what);
-        await sleep(20);
-      }
-    };
+    /** Waits (up to 3 s) until pred() holds, or fails saying `never: <what>`. */
+    const until = untilWith({ timeout: 3_000, every: 20 });
     /** A phone on a plain socket, seated on seatId: its token and everything it heard. */
     const phoneOn = async (seatId) => {
       const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/${made.code}`);
@@ -1407,6 +1355,5 @@ try {
   process.exitCode = 1;
 } finally {
   await browser?.close();
-  stopWrangler();
-  rmSync(state, { recursive: true, force: true });
+  buzzer.stop();
 }

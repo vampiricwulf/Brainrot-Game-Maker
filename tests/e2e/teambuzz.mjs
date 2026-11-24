@@ -6,50 +6,14 @@
 // member's answer fills in their teammates' boxes. The room kept for another game keeps its teams, through Ctrl+Z before
 // the game and Resume with my edits (an editor Ctrl+Z of ▶ Play's step for it too, but not of the host's own Buzzer mode
 // step); with 24 phones on teams, the next one is told the game is full. Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, openBuzzerOptions, openRules, startRoomOn, stored, tap, tieThem, failureShots, freePort } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, openBuzzerOptions, openRules, startRoomOn, stored, tap, tieThem, failureShots, assert, launchChromium, untilWith, startBuzzer } from './helpers.mjs';
 
 const file = appFile();
-const dir = resolve('buzzer');
-if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const until = async (pred, ms = 15000) => {
-  for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await pred()) return true;
-  return false;
-};
-
-const port = await freePort();
-const inspector = await freePort();
-const persist = mkdtempSync(join(tmpdir(), 'buzzer-teams-'));
-const base = `http://127.0.0.1:${port}`;
-let log = '';
-const wrangler = spawn(
-  join(dir, 'node_modules/.bin/wrangler'),
-  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn'],
-  { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
-);
-wrangler.stdout.on('data', (d) => (log += d));
-wrangler.stderr.on('data', (d) => (log += d));
-const stopWrangler = () => {
-  try {
-    process.kill(-wrangler.pid, 'SIGTERM');
-  } catch {
-    // already gone
-  }
-};
-process.on('exit', stopWrangler);
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1));
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
+const until = untilWith({ every: 100 });
+const buzzer = await startBuzzer('buzzer-teams-');
+const { base, port } = buzzer;
 
 let browser;
 const errors = [];
@@ -59,19 +23,7 @@ const watch = (p, name) => {
   return p;
 };
 try {
-  for (let i = 0; ; i++) {
-    if (wrangler.exitCode !== null) throw new Error('wrangler dev exited:\n' + log);
-    try {
-      if ((await fetch(`${base}/api/health`)).ok) break;
-    } catch {
-      // not up yet
-    }
-    if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
-    await sleep(500);
-  }
-
-  const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   // ---------- The host: buzzer mode with Teams, two teams ----------
   const hostCtx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -703,6 +655,5 @@ try {
   throw e;
 } finally {
   await browser?.close();
-  stopWrangler();
-  rmSync(persist, { recursive: true, force: true });
+  buzzer.stop();
 }

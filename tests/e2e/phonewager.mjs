@@ -10,47 +10,15 @@
 // and N in the reveals puts each on stream before C / X shows the wager. The team's Final has multiple choice (made in
 // its editor): they show on stream under the question (the right one lit with the answer), a member taps one, and the
 // reveal says whether it's the right one. Needs `npm ci` in buzzer/.
-import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, anyway, launchChromium, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway, failureShots, freePort } from './helpers.mjs';
+import { appFile, addClassicRounds, anyway, launchChromium, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway, failureShots, assert, sleep, startBuzzer } from './helpers.mjs';
 
 const file = appFile();
-const dir = resolve('buzzer');
-if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-const port = await freePort();
-const inspector = await freePort();
-const persist = mkdtempSync(join(tmpdir(), 'buzzer-wagers-'));
-const base = `http://127.0.0.1:${port}`;
-let log = '';
-const wrangler = spawn(
-  join(dir, 'node_modules/.bin/wrangler'),
-  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn'],
-  { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
-);
-wrangler.stdout.on('data', (d) => (log += d));
-wrangler.stderr.on('data', (d) => (log += d));
-const stopWrangler = () => {
-  try {
-    process.kill(-wrangler.pid, 'SIGTERM');
-  } catch {
-    // already gone
-  }
-};
-process.on('exit', stopWrangler);
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1));
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
+const buzzer = await startBuzzer('buzzer-wagers-');
+const { base } = buzzer;
 
 let browser;
 const errors = [];
@@ -126,16 +94,6 @@ async function noneOf(p, amounts) {
 }
 
 try {
-  for (let i = 0; ; i++) {
-    if (wrangler.exitCode !== null) throw new Error('wrangler dev exited:\n' + log);
-    try {
-      if ((await fetch(`${base}/api/health`)).ok) break;
-    } catch {
-      // not up yet
-    }
-    if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
-    await sleep(500);
-  }
   browser = await launchChromium();
 
   // ---------- The host: a Daily Double on the board, 3 players, the audience window ----------
@@ -962,6 +920,5 @@ try {
   throw e;
 } finally {
   await browser?.close();
-  stopWrangler();
-  rmSync(persist, { recursive: true, force: true });
+  buzzer.stop();
 }

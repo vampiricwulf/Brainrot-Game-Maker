@@ -6,46 +6,12 @@
 // card's picture with no phone getting it; then 📤 Send and start gives exactly that card to exactly the describer's
 // phone, its picture as the room's file. There it waits behind Tap to see; tapped, it shows its words and its picture,
 // and the host's panel says ✓ seen. The tile closing takes it away. Needs `npm ci` in buzzer/.
-import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn, failureShots, freePort } from './helpers.mjs';
+import { appFile, addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn, failureShots, assert, sleep, launchChromium, startBuzzer, untilWith } from './helpers.mjs';
 
 const file = appFile();
-const dir = resolve('buzzer');
-if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-const port = await freePort();
-const inspector = await freePort();
-const persist = mkdtempSync(join(tmpdir(), 'buzzer-partner-'));
-const base = `http://127.0.0.1:${port}`;
-let log = '';
-const wrangler = spawn(
-  join(dir, 'node_modules/.bin/wrangler'),
-  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn'],
-  { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
-);
-wrangler.stdout.on('data', (d) => (log += d));
-wrangler.stderr.on('data', (d) => (log += d));
-const stopWrangler = () => {
-  try {
-    process.kill(-wrangler.pid, 'SIGTERM');
-  } catch {
-    // already gone
-  }
-};
-process.on('exit', stopWrangler);
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1));
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
+const buzzer = await startBuzzer('buzzer-partner-');
+const { base } = buzzer;
 
 let browser;
 const errors = [];
@@ -62,29 +28,12 @@ const says = (p, text) =>
   p
     .waitForFunction((t) => ['buzz-big', 'buzz-small', 'card-status-big'].some((id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length), text, { timeout: 8000 })
     .then(() => true, () => false);
-/** Waits (up to 8 s) until pred() holds. */
-const until = async (pred) => {
-  for (let i = 0; i < 160; i++) {
-    if (await pred()) return true;
-    await sleep(50);
-  }
-  return false;
-};
+/** Waits (up to 10 s) until pred() holds; false if it never does. */
+const until = untilWith({ timeout: 10_000 });
 const PIC = 'kzv-ogre-pic.png';
 
 try {
-  for (let i = 0; ; i++) {
-    if (wrangler.exitCode !== null) throw new Error('wrangler dev exited:\n' + log);
-    try {
-      if ((await fetch(`${base}/api/health`)).ok) break;
-    } catch {
-      // not up yet
-    }
-    if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
-    await sleep(500);
-  }
-  const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-  browser = await chromium.launch({ executablePath });
+  browser = await launchChromium();
 
   // ---------- The host: Category 1 $400 a partner clue with a card, 3 players, a room ----------
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -301,6 +250,5 @@ try {
   process.exitCode = 1;
 } finally {
   await browser?.close();
-  stopWrangler();
-  rmSync(persist, { recursive: true, force: true });
+  buzzer.stop();
 }

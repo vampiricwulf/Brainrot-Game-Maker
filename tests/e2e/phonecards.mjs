@@ -17,45 +17,12 @@
 // the buzzer's place has what's locked in over it (said too), and the keys go into a box from a covered card or the
 // wager box; an edit not sent yet says so in amber; the end says where you came as one sentence. Needs `npm ci` in
 // buzzer/.
-import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { buzzerVars, failureShots, png, freePort } from './helpers.mjs';
+import { mkdirSync } from 'node:fs';
+import { failureShots, png, assert, sleep, launchChromium, startBuzzer, untilWith } from './helpers.mjs';
 
-const dir = resolve('buzzer');
-if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-const port = await freePort();
-const inspector = await freePort();
-const persist = mkdtempSync(join(tmpdir(), 'buzzer-cards-'));
-const base = `http://127.0.0.1:${port}`;
-let log = '';
-const wrangler = spawn(
-  join(dir, 'node_modules/.bin/wrangler'),
-  // (Its own limits, so the sizes below hold whatever wrangler.jsonc says.)
-  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn', ...buzzerVars({ FILE_MB: 16, ROOM_FILES_MB: 64 })],
-  { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
-);
-wrangler.stdout.on('data', (d) => (log += d));
-wrangler.stderr.on('data', (d) => (log += d));
-const stopWrangler = () => {
-  try {
-    process.kill(-wrangler.pid, 'SIGTERM');
-  } catch {
-    // already gone
-  }
-};
-process.on('exit', stopWrangler);
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1));
-
-function assert(cond, msg) {
-  if (!cond) throw new Error('Assertion failed: ' + msg);
-  console.log('  ✓ ' + msg);
-}
+// (Its own limits, so the sizes below hold whatever wrangler.jsonc says.)
+const buzzer = await startBuzzer('buzzer-cards-', { vars: { FILE_MB: 16, ROOM_FILES_MB: 64 } });
+const { base, port } = buzzer;
 
 /** The fake host: a WebSocket, everything it received, and a way to wait for a message. */
 async function connectHost(code, token) {
@@ -69,14 +36,8 @@ async function connectHost(code, token) {
   return { got, send: (m) => ws.send(JSON.stringify(m)), close: () => ws.close() };
 }
 
-/** Waits (up to 8 s) until pred() holds. */
-const until = async (pred, what) => {
-  for (let i = 0; ; i++) {
-    if (await pred()) return;
-    if (i > 160) throw new Error('never: ' + what);
-    await sleep(50);
-  }
-};
+/** Waits (up to 10 s) until pred() holds, or fails saying `never: <what>`. */
+const until = untilWith({ timeout: 10_000 });
 
 // A 1×1 GIF.
 const GIF = Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64');
@@ -89,16 +50,6 @@ mkdirSync('test-results', { recursive: true });
 // (Not full page: in Chromium that drops a phone's touch emulation, and the page turns into a laptop's.)
 const shot = (p, name) => p.screenshot({ path: `test-results/phonecards-${name}.png`, animations: 'disabled' });
 try {
-  for (let i = 0; ; i++) {
-    if (wrangler.exitCode !== null) throw new Error('wrangler dev exited:\n' + log);
-    try {
-      if ((await fetch(`${base}/api/health`)).ok) break;
-    } catch {
-      // not up yet
-    }
-    if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
-    await sleep(500);
-  }
   const room = await (await fetch(`${base}/api/rooms`, { method: 'POST', headers: { 'CF-Connecting-IP': '198.51.100.40' } })).json();
   const h = await connectHost(room.code, room.hostToken);
   await until(() => h.got.some((m) => m.t === 'welcome'), 'the welcome');
@@ -116,8 +67,7 @@ try {
     return (await r.json()).id;
   };
 
-  const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-  browser = await chromium.launch({ executablePath, args: ['--autoplay-policy=user-gesture-required'] });
+  browser = await launchChromium({ args: ['--autoplay-policy=user-gesture-required'] });
   /** A phone (or, `desk`, a laptop with a mouse) on seat `name`, with the media sites the cards use answered locally. */
   const phone = async (label, name, opts = {}) => {
     const ctx = await browser.newContext(
@@ -1095,6 +1045,5 @@ try {
   process.exitCode = 1;
 } finally {
   await browser?.close();
-  stopWrangler();
-  rmSync(persist, { recursive: true, force: true });
+  buzzer.stop();
 }
