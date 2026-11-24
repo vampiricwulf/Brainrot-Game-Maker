@@ -25,6 +25,8 @@ under the day's heading (Pacific time), and commit that with the hashes as `Chan
 
 ### Changed
 
+- The code is now laid out by Prettier: `npm run format` formats it (now and then a file needs a second run) and `npm run format:check`, now in CI and `npm run gate`, checks it. Nothing in the app changes. (085e9b8, 199c4de, 468ff5e, 15e725e, 9fb1850, 01c43d3, f81b33f)
+- `git blame` can skip the one big reformat commit: run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once (see docs/development.md). (9fb1850)
 - The end-to-end tests find the stage, the host panel and its status line, player rows, award and tools rows and confirmation strip, the board and its tiles, toasts, the Final's controls, the round navigation, the editor's round tabs, the status bar and the slide inspector by a fixed data-* hook (with a helper each in tests/e2e/helpers.mjs) instead of by their CSS classes, so a restyle doesn't break them. The parts carry the hook beside their class, and it never holds a value. (97094b8, 7d6241f, 911bb7f, 6801000)
 - docs/development.md explains the hook helpers, which parts carry a hook and which selectors stay as classes; CLAUDE.md points to it. (b51bf59, f2e4e65)
 - The end-to-end tests share one assert, assertEq, sleep, until, section heading and browser launcher from tests/e2e/helpers.mjs instead of each file's own copy; section headings now print as "---------- … ----------". (a8aabd2, eff78d4, 0924c34)
@@ -3141,6 +3143,7 @@ Commits whose titles don't say what they contain:
 
 | Commit | Title | What it is |
 |---|---|---|
+| 15e725e | Format: run Prettier over the code (no change in behaviour) | The whole code reformatted by `npm run format` (Prettier 3.10.1, 160 columns, strict HTML whitespace; run twice, since three e2e files settle only on a second run) in one commit: 440 files, layout only. Listed in `.git-blame-ignore-revs` so `git blame` skips it |
 | 107407c | Tests: npm run gate runs everything CI checks before a release in one command | The gate leaves out the desktop app's builds and Rust tests, and runs the full e2e suite, which the release doesn't wait for; corrected in c1a356a |
 | 4356683 | Tests: the spaces check parses only the components' markup, and has room on a busy machine | The spaces check is src/lib/spaces.test.ts, which finds words run into the one before them (“▸ More rules· …”); it now reads only the components' markup, not their scripts, and may take 30 s |
 | 2f87f2a | The timer box keeps its corner ✕ (a word there could wrap the status line and shrink the one-window stage) | Takes back the timer box's ✕ Close from ab07118: its ✕ is bare again, as in v2.38.0, and SPEC lists it among the corner ✕s |
