@@ -11,17 +11,6 @@ in Added / Changed / Fixed / Removed, in plain words for the people who make and
 are known, add them to the line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unreleased lines
 under the day's heading (Pacific time), and commit that with the hashes as `Changelog: …`.
 
-## Unreleased
-
-### Changed
-
-- The end-to-end tests find the stage, the host panel and its status line, player rows, award and tools rows and confirmation strip, the board and its tiles, toasts, the Final's controls, the round navigation, the editor's round tabs, the status bar and the slide inspector by a fixed data-* hook (with a helper each in tests/e2e/helpers.mjs) instead of by their CSS classes, so a restyle doesn't break them. The parts carry the hook beside their class, and it never holds a value. (97094b8, 7d6241f, 911bb7f, 6801000)
-- docs/development.md explains the hook helpers, which parts carry a hook and which selectors stay as classes; CLAUDE.md points to it. (b51bf59, f2e4e65)
-
-### Fixed
-
-- The desktop app's Rust tests no longer fail now and then on CI: two of them shared a temp folder while running side by side. (2bfef9d)
-
 ## 2026-11-24
 
 ### Added
@@ -36,6 +25,8 @@ under the day's heading (Pacific time), and commit that with the hashes as `Chan
 
 ### Changed
 
+- The end-to-end tests find the stage, the host panel and its status line, player rows, award and tools rows and confirmation strip, the board and its tiles, toasts, the Final's controls, the round navigation, the editor's round tabs, the status bar and the slide inspector by a fixed data-* hook (with a helper each in tests/e2e/helpers.mjs) instead of by their CSS classes, so a restyle doesn't break them. The parts carry the hook beside their class, and it never holds a value. (97094b8, 7d6241f, 911bb7f, 6801000)
+- docs/development.md explains the hook helpers, which parts carry a hook and which selectors stay as classes; CLAUDE.md points to it. (b51bf59, f2e4e65)
 - The end-to-end tests share one assert, assertEq, sleep, until, section heading and browser launcher from tests/e2e/helpers.mjs instead of each file's own copy; section headings now print as "---------- … ----------". (a8aabd2, eff78d4, 0924c34)
 - The seven phone end-to-end files that started their own buzzer server now use startBuzzer(). (9721e50, e5781cb)
 - The e2e shard check refuses a test file with its own assert, sleep, until loop, Chromium launch or buzzer server start. (4c4a0d8)
@@ -67,6 +58,7 @@ under the day's heading (Pacific time), and commit that with the hashes as `Chan
 
 ### Fixed
 
+- The desktop app's Rust tests no longer fail now and then on CI: two of them shared a temp folder while running side by side. (2bfef9d)
 - The 🚫 No Pass end-to-end test waits for Ctrl+Z to reach the phone before checking it, so it no longer fails now and then on CI. (bc00661)
 - CI: the Pages site no longer fails to deploy with "No artifacts named github-pages were found": it is uploaded in one job and deployed in the next. (5b32160)
 - The reload-cover end-to-end test waits for the resume question's focus before pressing Enter, so it no longer fails now and then on CI. (1e2e629)
