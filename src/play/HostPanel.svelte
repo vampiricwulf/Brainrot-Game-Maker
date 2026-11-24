@@ -2409,6 +2409,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* (The question wraps, a name with no spaces in it too.) */
+  .confirm :global(.ia > .ask) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
   .confirm :global(.ia > button:has(> .words)) {
     display: inline-flex;
     align-items: baseline;
