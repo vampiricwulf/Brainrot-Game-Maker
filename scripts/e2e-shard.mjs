@@ -5,7 +5,9 @@
 //   node scripts/e2e-shard.mjs buzzer    run the files that start a local buzzer server (npm run test:buzzer)
 //   node scripts/e2e-shard.mjs --check   prove the layout below is sound (the build job runs it)
 //
-// A run goes on past a failing file, prints each file's result and time, and exits 1 if any failed. The named shards
+// A run goes on past a failing file, prints each file's result and time, and exits 1 if any failed. In GitHub Actions
+// (GITHUB_STEP_SUMMARY set) it also writes that table to the run's summary page and marks each failed file with an
+// error annotation, so the run page says which file failed without opening the log. The named shards
 // hold about six minutes of tests each (from a full run's times); rest is every tests/e2e/*.mjs file they don't list,
 // so a new file always runs somewhere. buzzer is worked out from the files' source (startBuzzer, startRoomOn or
 // buzzer/'s wrangler), so it never needs a list. When a shard grows past about eight minutes, move a file to another one here.
@@ -15,7 +17,7 @@
 // Before a run it checks that dist/index.html is newer than the source (unless APP_FILE is set). Each file's Chromium
 // gets tests/e2e/fonts.conf (CI's fonts, no Inter) unless FONTCONFIG_FILE is set: helpers.mjs sets it.
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, readdirSync, readFileSync } from 'node:fs';
 import { appFile } from '../tests/e2e/helpers.mjs';
 
 const SHARDS = {
@@ -64,7 +66,7 @@ function check() {
   console.log(`e2e shards: ${want.map((s) => `${s} (${shardFiles(s).length})`).join(', ')}; ${all.length} files, each once`);
 }
 
-function run(files) {
+function run(files, name) {
   try {
     appFile();
   } catch (e) {
@@ -82,14 +84,22 @@ function run(files) {
   for (const r of results) console.log(`  ${r.ok ? 'ok  ' : 'FAIL'} ${r.f}.mjs ${r.s}s`);
   const failed = results.filter((r) => !r.ok);
   console.log(failed.length ? `${failed.length} of ${results.length} failed` : `all ${results.length} passed`);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const total = results.reduce((n, r) => n + r.s, 0);
+    const rows = results.map((r) => `| ${r.f}.mjs | ${r.ok ? 'ok' : '**FAIL**'} | ${r.s} |`);
+    const head = `### E2E shard ${name}: ${failed.length ? `${failed.length} of ${results.length} failed` : `all ${results.length} passed`} (${total}s)`;
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, [head, '', '| File | Result | Seconds |', '| --- | --- | ---: |', ...rows, ''].join('\n') + '\n');
+    for (const r of failed)
+      console.log(`::error file=tests/e2e/${r.f}.mjs,title=e2e ${r.f}.mjs failed::${r.f}.mjs failed in e2e shard ${name}: see its log, and the e2e-debug-${name} artifact for screenshots`);
+  }
   process.exit(failed.length ? 1 : 0);
 }
 
 const arg = process.argv[2];
 if (arg === '--check') check();
-else if (arg === 'all') run(all);
-else if (arg === 'buzzer') run(buzzerFiles());
-else if (arg === 'rest' || named[arg]) run(shardFiles(arg));
+else if (arg === 'all') run(all, 'all');
+else if (arg === 'buzzer') run(buzzerFiles(), 'buzzer');
+else if (arg === 'rest' || named[arg]) run(shardFiles(arg), arg);
 else {
   console.error('Usage: node scripts/e2e-shard.mjs <1–5 | rest | all | buzzer | --check>');
   process.exit(2);

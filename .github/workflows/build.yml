@@ -47,6 +47,9 @@ jobs:
     needs: version
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Where a failing end-to-end test saves its screenshots: inside test-results/, which is uploaded on failure.
+      SCREENSHOTS: test-results/screenshots
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -72,13 +75,12 @@ jobs:
       # The quick end-to-end test (about a minute) gates the release; the full suite runs in the e2e job alongside it.
       - name: Quick end-to-end test (drives the built file from file://)
         run: npm run test:quick
-        env:
-          SCREENSHOTS: test-results/screenshots
       - name: Upload E2E debug output (screenshots + Playwright trace)
         if: failure()
         uses: actions/upload-artifact@v6
         with:
           name: e2e-debug-quick
+          # Everything the tests save there, SCREENSHOTS (test-results/screenshots) included.
           path: test-results/
           if-no-files-found: ignore
       - name: Build the release file with the buzzer server
@@ -108,6 +110,9 @@ jobs:
         shard: [1, 2, 3, 4, 5, rest]
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      # Where a failing end-to-end test saves its screenshots: inside test-results/, which is uploaded on failure.
+      SCREENSHOTS: test-results/screenshots
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -130,14 +135,14 @@ jobs:
           sudo dpkg --configure -a
           timeout 480 npx playwright-core install --with-deps --only-shell chromium
       - name: End-to-end tests, shard ${{ matrix.shard }} (drives the built file from file://)
+        # Also writes a table of each file's result and time to the run's summary page, and marks failed files.
         run: node scripts/e2e-shard.mjs ${{ matrix.shard }}
-        env:
-          SCREENSHOTS: test-results/screenshots
       - name: Upload E2E debug output (screenshots + Playwright trace)
         if: failure()
         uses: actions/upload-artifact@v6
         with:
           name: e2e-debug-${{ matrix.shard }}
+          # Everything the tests save there, SCREENSHOTS (test-results/screenshots) included.
           path: test-results/
           if-no-files-found: ignore
 
