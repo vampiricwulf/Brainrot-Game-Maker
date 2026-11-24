@@ -5,7 +5,7 @@
 // A phone hosting with the buzzer room up (local, under wrangler dev): the 📱 card's rows fit the screen (📱 and ⛔
 // only, their words for screen readers and in their tooltips), nothing scrolls sideways, and Start game ▶ takes a tap.
 import { pathToFileURL } from 'node:url';
-import { appFile, addPlayers, failureShots, startBuzzer, startRoomOn, assert, launchChromium } from './helpers.mjs';
+import { appFile, addPlayers, failureShots, startBuzzer, startRoomOn, assert, launchChromium, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -26,11 +26,11 @@ const shows = (loc) => loc.evaluate((e) => getComputedStyle(e).display !== 'none
  * few lines rather than being cut mid-sentence, and stays in the room above the window, clear of it and its buttons. */
 async function toastOverWindow(page, what) {
   await page.getByRole('button', { name: /Try a sample game/ }).click();
-  await page.locator('.toast', { hasText: 'Added a sample game' }).waitFor();
+  await toastsIn(page, { hasText: 'Added a sample game' }).waitFor();
   await page.getByRole('button', { name: 'Open…' }).click();
   const dlg = page.getByRole('dialog');
   await dlg.waitFor();
-  const t = await page.locator('.toast').evaluate((el) => {
+  const t = await toastsIn(page).evaluate((el) => {
     const r = el.getBoundingClientRect();
     const lh = parseFloat(getComputedStyle(el).lineHeight);
     // (Room at the top of every window for three lines, a tall window's title and ✕ too: its backdrop's padding.)
@@ -92,16 +92,16 @@ try {
     await toastOverWindow(page, 'a phone');
     // A window as tall as the screen (the clue editor): its toast (📋 Copy slide's) still sits above it, not on its
     // title and ✕.
-    await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click();
+    await roundTabsIn(page, { hasText: 'Jeopardy!' }).first().click();
     await page.locator('.grid .tile').first().click();
     const clueDlg = page.getByRole('dialog', { name: 'Edit clue' });
     await clueDlg.waitFor();
     await clueDlg.getByRole('button', { name: /Copy slide/ }).click();
-    const [tb, cb] = [await page.locator('.toast').boundingBox(), await clueDlg.boundingBox()];
+    const [tb, cb] = [await toastsIn(page).boundingBox(), await clueDlg.boundingBox()];
     assert(tb.y + tb.height <= cb.y && cb.y + cb.height >= 844 - 17, `a toast over the clue editor, as tall as the phone's screen, stays above its top (${Math.round(tb.y + tb.height)} ≤ ${Math.round(cb.y)})`);
     await page.keyboard.press('Escape');
     await clueDlg.waitFor({ state: 'detached' });
-    await page.locator('nav > button.round-tab').first().waitFor();
+    await roundTabsIn(page).first().waitFor();
     // The sidebar's list, at most 30% of the height, scrolls: its foot fades to say there's more (🕘 History, cut).
     const nav = page.locator('nav[aria-label="Editor"]');
     await page.waitForFunction(() => {

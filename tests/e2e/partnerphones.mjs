@@ -8,7 +8,7 @@
 // phone, its picture as the room's file. There it waits behind Tap to see; tapped, it shows its words and its picture,
 // and the host's panel says ✓ seen. The tile closing takes it away. Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn, failureShots, assert, sleep, launchChromium, startBuzzer, untilWith } from './helpers.mjs';
+import { appFile, addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn, failureShots, assert, sleep, launchChromium, startBuzzer, untilWith, hostPanelIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const buzzer = await startBuzzer('buzzer-partner-');
@@ -118,8 +118,8 @@ try {
 
   // ---------- PARTNER UP! ----------
   // (The room takes cards, so its phones get the spec's lines for it, greyed: the status line is the button's big line.)
-  await host.locator('.stage-box .tile[aria-label^="Category 1 for $400"]').click();
-  await host.locator('.stage-box [data-partner-up]').waitFor();
+  await stageBoxIn(host).locator('.tile[aria-label^="Category 1 for $400"]').click();
+  await stageBoxIn(host).locator('[data-partner-up]').waitFor();
   assert(await says(ann, '🤝 Your partner clue!'), 'the picker’s phone: “🤝 Your partner clue!”');
   assert(await says(bob, '🤝 Partner clue'), 'the others: “🤝 Partner clue”');
   assert(
@@ -128,7 +128,7 @@ try {
   );
   const last = () => states.at(-1);
   assert(last()?.status?.off === true && last().status.sub === 'Player 1 needs a partner…' && last().status.seatsSub === 'Your partner is being picked…', 'every phone greyed (off), with the small lines under them');
-  assert((await host.locator('.stage-box .join-badge').count()) === 0, 'no join code over PARTNER UP! (nobody buzzes)');
+  assert((await stageBoxIn(host).locator('.join-badge').count()) === 0, 'no join code over PARTNER UP! (nobody buzzes)');
   const panel = host.locator('[data-partner-panel]');
   // The card's details fold into one quiet line; it opens by itself when there's something to see first (the partner
   // has no phone here), and on a click.
@@ -157,14 +157,14 @@ try {
 
   // ---------- The question ----------
   await host.keyboard.press('Enter');
-  await host.locator('.stage-box [data-partner-badge]').waitFor();
+  await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
   assert(await says(bob, '🤝 Player 2 describes → Player 1 guesses'), 'the describer’s phone: who plays which part');
   assert(
     last()?.status?.seatsText === '🎯 You’re guessing!' && last().status.seatsSub === 'Player 2 is describing: type your guess',
     'the guesser’s lines: “🎯 You’re guessing!” · “Player 2 is describing: type your guess”',
   );
   assert(
-    (await host.locator('.panel [data-next]').innerText()).includes('👁 Reveal answer') && (await boxHasAction(panel, '📤 Send and start')) === '',
+    (await hostPanelIn(host).locator('[data-next]').innerText()).includes('👁 Reveal answer') && (await boxHasAction(panel, '📤 Send and start')) === '',
     'the blue button: 👁 Reveal answer; 📤 Send and start (Enter) is the 🤝 box’s, at its foot',
   );
   await sleep(300);
@@ -173,7 +173,7 @@ try {
   // Playwright taps it only when made to.)
   await bob.locator('#buzz').tap({ force: true });
   await sleep(600);
-  assert((await host.locator('.panel .status').innerText()).includes('hand out the cards') && (await host.locator('.stage-box .bell').count()) === 0, 'a tap on a phone does nothing (nobody is answering)');
+  assert((await statusLineIn(host).innerText()).includes('hand out the cards') && (await stageBoxIn(host).locator('.bell').count()) === 0, 'a tap on a phone does nothing (nobody is answering)');
   // The guesser types their guess (from the question on): their phone only.
   await ann.getByLabel(/Your answer/).waitFor();
   assert(!(await bob.getByLabel(/Your answer/).isVisible()), 'the guesser’s phone has a ✍ box for their guess, the describer’s none');
@@ -196,8 +196,8 @@ try {
   await sleep(1100);
   await host.keyboard.press('Enter');
   await host.keyboard.press('Enter');
-  await host.locator('.stage-box .timer').waitFor();
-  await host.locator('.toast', { hasText: 'The cards just went out: press Enter again to give ✔ Got it' }).waitFor();
+  await stageBoxIn(host).locator('.timer').waitFor();
+  await toastsIn(host, { hasText: 'The cards just went out: press Enter again to give ✔ Got it' }).waitFor();
   assert((await panel.locator('[data-judged]').count()) === 0, 'a double Enter on 📤 Send and start sends the cards and starts the clock, and its second Enter judges nothing (it says so)');
   assert(await until(() => last()?.cards?.length === 1 && last().cards[0].media?.[0]?.file), 'the room’s state now holds the card, its picture as the room’s file');
   const sent = last().cards[0];

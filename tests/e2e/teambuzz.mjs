@@ -8,7 +8,7 @@
 // the game and Resume with my edits (an editor Ctrl+Z of ▶ Play's step for it too, but not of the host's own Buzzer mode
 // step); with 24 phones on teams, the next one is told the game is full. Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, openBuzzerOptions, openRules, startRoomOn, stored, tap, tieThem, failureShots, assert, launchChromium, untilWith, startBuzzer } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, openBuzzerOptions, openRules, startRoomOn, stored, tap, tieThem, failureShots, assert, launchChromium, untilWith, startBuzzer, boardIn, boardTilesIn, hostPanelIn, stageBoxIn, statusBarIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 
@@ -263,7 +263,7 @@ try {
   const press = (p) => p.locator('#buzz').dispatchEvent('pointerdown');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
-  await host.locator('.stage-box .board .tile').first().click();
+  await boardTilesIn(boardIn(stageBoxIn(host))).first().click();
   await big(ann).getByText('Get ready…').waitFor();
   await host.keyboard.press('u');
   for (const p of [ann, al, bea]) await big(p).getByText('BUZZ!').waitFor();
@@ -279,7 +279,7 @@ try {
   assert(true, 'the other team sees "Player 1 is answering (Al)"');
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')));
   await host.getByText('🔔 Al (Player 1) buzzed').waitFor();
-  const plate = host.locator('.stage-box .plate');
+  const plate = stageBoxIn(host).locator('.plate');
   await plate.waitFor();
   assert((await plate.innerText()).replace(/\s+/g, ' ').includes('Player 1 is answering · Al'), 'the team is picked in the host panel ("🔔 Al (Player 1) buzzed"), and viewers see "Player 1 is answering · Al"');
 
@@ -335,14 +335,14 @@ try {
     for (const p of [al, bea]) await big(p).getByText('BUZZ!').waitFor({ state: 'detached' });
   }
   // (🎲 Roll for it is in the buzzers' row, beside the tie: O does it too.)
-  await host.locator('.panel [data-buzzrow] button[data-box="rolltie"]').click();
+  await hostPanelIn(host).locator('[data-buzzrow] button[data-box="rolltie"]').click();
   const won = await Promise.race([al, bea].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
   const rolledSecond = won === 0 ? bea : al;
   await small(rolledSecond).getByText('Tie — your team rolled 2nd').waitFor();
   if (won === 1) await small(ann).getByText('Al buzzed for your team · Tie — your team rolled 2nd').waitFor();
   assert((await big(rolledSecond).innerText()) === 'Your team is 2nd', `a tie rolled: the team that rolled 2nd reads “Your team is 2nd · Tie — your team rolled 2nd”${won === 1 ? ' (Ann too, after “Al buzzed for your team”)' : ''}`);
   await host.keyboard.press('Escape');
-  await host.locator('.stage-box').getByText('Tie! Roll for it').waitFor({ state: 'detached' });
+  await stageBoxIn(host).getByText('Tie! Roll for it').waitFor({ state: 'detached' });
 
   // ↺ Reset: Ann buzzes for Player 1 this time; awarded, the team scores.
   await host.getByRole('button', { name: '↺ Reset buzzers' }).click();
@@ -361,7 +361,7 @@ try {
   await host.keyboard.press('Escape');
 
   // ---------- A ✍ clue: one answer per team; a teammate's fills the others' boxes ----------
-  await host.locator('.stage-box .board .tile').nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(host))).nth(1).click();
   for (const p of [ann, al, bea]) await p.locator('#answer-in').waitFor();
   assert((await ann.locator('#answer-label').innerText()) === 'Your team’s answer (only the host and your team see it until the answer is up)', 'a ✍ clue: every member gets the team’s answer box, which says the team sees it too (until the answer is up)');
   // Ann's box has the focus (it takes it as it opens) and she typed nothing: Al's answer for the team fills it.
@@ -390,16 +390,16 @@ try {
   await host.keyboard.press('Escape');
 
   // ---------- The host's words say team: Enter with no team picked ----------
-  await host.locator('.stage-box .board .tile:not(.used)').first().click();
-  await host.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await boardIn(stageBoxIn(host)).locator('.tile:not(.used)').first().click();
+  await statusLineIn(host, { hasText: 'Answer hidden' }).waitFor();
   await host.keyboard.press('Enter');
-  await host.locator('.toast', { hasText: /^Select a team first/ }).waitFor();
+  await toastsIn(host, { hasText: /^Select a team first/ }).waitFor();
   assert(true, 'Enter with no team picked says “Select a team first” (not a player)');
   await host.keyboard.press('Escape');
 
   // ---------- 👥 Teams mid-game (not Players): a new row is a team, and removing one says its phones go ----------
   // (In a clue Bea, then Al, buzzed in: a team taken out leaves the buzz order, the rest move up.)
-  await host.locator('.stage-box .board .tile:not(.used)').first().click();
+  await boardIn(stageBoxIn(host)).locator('.tile:not(.used)').first().click();
   await big(bea).getByText('Get ready…').waitFor();
   await host.keyboard.press('u');
   await big(bea).getByText('BUZZ!').waitFor();
@@ -434,14 +434,14 @@ try {
   await teamsDialog.getByRole('button', { name: 'Remove', exact: true }).click();
   await teamsDialog.getByRole('button', { name: 'Done' }).click();
   await host.keyboard.press('Escape');
-  await host.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(host)).waitFor();
 
   // ---------- 🎡 Wheel › 🎯 Pick a team: viewers see "Pick a team" over the teams ----------
   await host.getByRole('button', { name: '🎡 Wheel' }).click();
   const pickTeam = host.getByRole('button', { name: '🎯 Pick a team', exact: true });
   assert((await pickTeam.getAttribute('title')) === 'A wheel of the teams, in their colors', 'with Teams on, 🎡 Wheel offers 🎯 Pick a team (“A wheel of the teams”)');
   await pickTeam.click();
-  const wheelTitle = host.locator('.stage-box .wrap:has(> .disc.single) > .title');
+  const wheelTitle = stageBoxIn(host).locator('.wrap:has(> .disc.single) > .title');
   await wheelTitle.getByText('Pick a team', { exact: true }).waitFor();
   assert(true, 'the stage (what viewers see) reads “Pick a team” over the wheel, not “Pick a player”');
   await host.keyboard.press('Escape');
@@ -451,7 +451,7 @@ try {
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
-  const roomBar = host.locator('.status-bar .room-bar');
+  const roomBar = statusBarIn(host).locator('.room-bar');
   await roomBar.getByText('Resume game goes back into it').waitFor();
   const barText = (await roomBar.innerText()).replace(/\s+/g, ' ');
   assert(barText.includes(`Buzzer room ${code} is still open (2 teams)`), `Keep & leave: the bar over the editor counts the room's teams (${barText})`);
@@ -485,7 +485,7 @@ try {
   const wasNegative = await negative.isChecked();
   await negative.click();
   await host.keyboard.press('Control+z');
-  await host.locator('.toast', { hasText: /^↶ Undid Rule: Negative scores/ }).waitFor();
+  await toastsIn(host, { hasText: /^↶ Undid Rule: Negative scores/ }).waitFor();
   if ((await negative.isChecked()) !== wasNegative) throw new Error('Ctrl+Z didn’t take back the rule');
   await keptRules.locator('summary').click();
   // A team renamed, then undone, is back as it was (the game in the editor has the kept teams too).
@@ -573,7 +573,7 @@ try {
   const settingUp = ann.locator('main').getByText('The host is setting up — hang on');
   await settingUp.waitFor();
   // An edit undone in the editor: the game is as it was played, so nothing is offered to resume with.
-  const withEdits = host.locator('.status-bar .kept').getByRole('button', { name: 'Resume with my edits' });
+  const withEdits = statusBarIn(host).locator('.kept').getByRole('button', { name: 'Resume with my edits' });
   const gameTitle = host.getByLabel('Game title');
   await gameTitle.fill('Team night');
   await gameTitle.press('Tab');
@@ -586,7 +586,7 @@ try {
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await settingUp.waitFor({ state: 'detached' });
   for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [bea, 'Bea', 'Player 2']]) await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
-  assert(!(await ann.locator('#seats-note').isVisible()) && (await host.locator('.panel').isVisible()), 'Resume with my edits: the game goes on with Teams, every phone still on its team');
+  assert(!(await ann.locator('#seats-note').isVisible()) && (await hostPanelIn(host).isVisible()), 'Resume with my edits: the game goes on with Teams, every phone still on its team');
 
   // ---------- Exit › Discard & leave ends the room (Keep & leave would keep it for Resume) ----------
   await host.getByRole('button', { name: 'Exit' }).click();
@@ -608,7 +608,7 @@ try {
   // (The game in the editor has no sample teams: Ctrl+Z follows only what it undid.)
   await (await openRules(host)).getByLabel('Allow negative scores').click();
   await host.keyboard.press('Control+z');
-  await host.locator('.toast', { hasText: /^↶ Undid Rule: Negative scores/ }).waitFor();
+  await toastsIn(host, { hasText: /^↶ Undid Rule: Negative scores/ }).waitFor();
   const sampleNames = await roster.locator('input.name').evaluateAll((els) => els.map((e) => e.value));
   assert(sampleNames.join() === 'Team 1,Team 2,Team 3', `back in the same room, Ctrl+Z of a rule keeps the sample teams listed (${sampleNames.join(', ')})`);
 

@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
-import { appFile, addClassicRounds, answerReplace, editorReady, exportHtml, openGameFile, playWithPlayers, png, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, editorReady, exportHtml, openGameFile, playWithPlayers, png, failureShots, assert, launchChromium, boardIn, hostPanelIn, playerRowsIn, roundTabsIn, statusBarIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -118,12 +118,12 @@ try {
   await firstPack;
   await player.waitForTimeout(1000);
   assert(packs === 1, `a double click on ⬇ Download as .brainrot downloads the game pack once (${packs})`);
-  await player.locator('.toast', { hasText: '. To edit it, open it in Brainrot Games Maker.' }).waitFor();
+  await toastsIn(player, { hasText: '. To edit it, open it in Brainrot Games Maker.' }).waitFor();
   const getIt = await player.getByRole('link', { name: 'Get Brainrot Games Maker' }).getAttribute('href');
   assert(getIt.endsWith('/Brainrot-Game-Maker/releases/latest'), 'it says to open the pack in Brainrot Games Maker, and the start screen links to where to get it');
   // Ctrl+S out of habit: not the browser's own Save page (a copy of the app, not the game).
   await player.keyboard.press('Control+s');
-  await player.locator('.toast', { hasText: 'This game keeps its progress in this browser by itself' }).waitFor();
+  await toastsIn(player, { hasText: 'This game keeps its progress in this browser by itself' }).waitFor();
   assert(true, 'Ctrl+S on its start screen says the file keeps its progress by itself');
   // Ctrl+O there: never the browser's own Open (what's picked would take the tab).
   const ctrlO = async (p) => {
@@ -135,17 +135,17 @@ try {
     return p.evaluate(() => window.__ctrlO);
   };
   assert((await ctrlO(player)) === true, 'Ctrl+O in the player file is not the browser’s Open');
-  await player.locator('.toast', { hasText: 'This file plays its own game: open others in Brainrot Games Maker' }).waitFor();
+  await toastsIn(player, { hasText: 'This file plays its own game: open others in Brainrot Games Maker' }).waitFor();
 
   // The builder's audience window (OBS's capture) stays up while the player file, opened from disk beside it, resumes
   // its game in one window: that closes only the player file's own audience window.
   await a.getByRole('button', { name: '▶ Play' }).click();
   const [audA] = await Promise.all([a.waitForEvent('popup'), a.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   await a.keyboard.press('Control+s');
-  await a.locator('.toast', { hasText: 'The game saves itself as you play (💾 Save is in the editor)' }).waitFor();
+  await toastsIn(a, { hasText: 'The game saves itself as you play (💾 Save is in the editor)' }).waitFor();
   assert(true, 'Ctrl+S on the pre-game screen says the game saves itself (Save is in the editor)');
   assert((await ctrlO(a)) === true, 'Ctrl+O on the pre-game screen is not the browser’s Open');
-  await a.locator('.toast', { hasText: 'Open… is in the editor, not on the game screen' }).waitFor();
+  await toastsIn(a, { hasText: 'Open… is in the editor, not on the game screen' }).waitFor();
   await a.getByRole('button', { name: '◀ Back to editor' }).click();
   await audA.locator('.soon-text').waitFor();
   await playWithPlayers(player, 2);
@@ -164,25 +164,25 @@ try {
   assert(resumeFocused, 'Keep & leave in the player file: the keys go on from Resume game');
   await player.getByRole('button', { name: 'Resume game' }).click();
   await player.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await player.locator('.panel').waitFor();
+  await hostPanelIn(player).waitFor();
   await player.waitForTimeout(1000);
   assert(!audA.isClosed(), "resuming in one window in the player file leaves the builder's audience window up");
-  await a.locator('.status-bar [data-audience-open]').getByRole('button', { name: 'Close the audience window' }).click();
+  await statusBarIn(a).locator('[data-audience-open]').getByRole('button', { name: 'Close the audience window' }).click();
   await a.getByRole('alertdialog').getByRole('button', { name: 'Close it' }).click();
   if (!audA.isClosed()) await audA.waitForEvent('close', { timeout: 3000 });
   // The player file's start screen between games: its audience window's line, as over the builder's editor.
   await player.bringToFront();
   const [audP] = await Promise.all([player.waitForEvent('popup'), player.keyboard.press('a')]);
-  await audP.locator('.board').waitFor();
+  await boardIn(audP).waitFor();
   await keepAndLeave();
   await audP.locator('.soon-text').waitFor();
   await player.locator('.home').waitFor();
-  await player.locator('.status-bar [data-audience-open]').waitFor();
+  await statusBarIn(player).locator('[data-audience-open]').waitFor();
   assert(true, 'the player file’s start screen says its audience window is up (on “Starting soon”), with its ✕');
   const page = await player.evaluate(() => [document.documentElement.scrollHeight, innerHeight]);
   assert(page[0] <= page[1], `and the line sits over the start screen without making the page scroll (${page.join(' / ')})`);
   await audP.close();
-  await player.locator('.status-bar [data-audience-lost]').waitFor();
+  await statusBarIn(player).locator('[data-audience-lost]').waitFor();
   assert(true, 'and warns when it is closed by accident (viewers see nothing), with Reopen');
 
   // The same file opened twice: one tab plays and saves its game at a time (they'd overwrite each other's), as in the
@@ -229,7 +229,7 @@ try {
   await openGameFile(a, await pack.path());
   await answerReplace(a, 'Discard');
   // (Both round tabs go: .first() waits for that whatever the open's timing, where two still up failed the wait.)
-  await a.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
+  await roundTabsIn(a).first().waitFor({ state: 'detached' });
   assert(dialogs.length === 0, 'Open… asks before replacing a game with unsaved changes (in the page, not a browser dialog)');
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();
   assert((await a.locator('input.title').inputValue()) === 'Two tabs', 'the saved pack opens again with its files');
@@ -283,7 +283,7 @@ try {
   await versions.nth(1).click();
   await a.getByText('Reopened “Two tabs”').waitFor();
   assert((await picWidth()) === 8, 'the version with unsaved changes reopens with them');
-  await a.locator('nav > button.round-tab').first().waitFor({ state: 'detached' }).catch(() => {});
+  await roundTabsIn(a).first().waitFor({ state: 'detached' }).catch(() => {});
 
   // A .json export has no media: opened in another browser, the Media tab offers to put the files back.
   const [json] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: /^More:/ }).click().then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click())]);
@@ -325,7 +325,7 @@ try {
   await exportTold.waitFor();
   const exportSaid = await exportTold.innerText();
   assert(
-    exportSaid.includes('Exported a play-only web page') && /missing and weren't included, so the game plays without them:\s*pic\.png/.test(exportSaid) && !(await c.locator('.toast', { hasText: 'Exported a play-only' }).count()),
+    exportSaid.includes('Exported a play-only web page') && /missing and weren't included, so the game plays without them:\s*pic\.png/.test(exportSaid) && !(await toastsIn(c, { hasText: 'Exported a play-only' }).count()),
     `exported with a file missing: one message says where it went and which file it plays without (${exportSaid.replace(/\s+/g, ' ')})`,
   );
   await exportTold.getByRole('button', { name: 'OK' }).click();
@@ -337,7 +337,7 @@ try {
   const shortPack = short.waitForEvent('download');
   await short.getByRole('button', { name: /Download as \.brainrot/ }).click({ timeout: 20000 });
   await shortPack;
-  await short.locator('.toast', { hasText: '(1 file wasn’t in this copy, so it isn’t in the pack)' }).waitFor();
+  await toastsIn(short, { hasText: '(1 file wasn’t in this copy, so it isn’t in the pack)' }).waitFor();
   assert(true, 'its ⬇ Download as .brainrot says 1 file wasn’t in this copy');
   await short.close();
   await c.getByRole('button', { name: 'Media (2)' }).click();
@@ -361,8 +361,8 @@ try {
   await playWithPlayers(p1, 2);
   await p1.getByRole('button', { name: 'Start game ▶' }).click();
   await p1.getByRole('button', { name: 'Skip intro' }).click();
-  await p1.locator('.panel .p').first().locator('.score').click();
-  await p1.locator('.panel .score-edit').fill('300');
+  await playerRowsIn(p1).first().locator('.score').click();
+  await hostPanelIn(p1).locator('.score-edit').fill('300');
   await p1.keyboard.press('Enter');
   // The tab opened alongside says a game is being played there, and taking over is asked first.
   const p2 = await open('taking over', 'playing', played);
@@ -379,16 +379,16 @@ try {
   await asked.getByRole('button', { name: 'Leave it as it is' }).click();
   await asked.waitFor({ state: 'detached' });
   await p2.waitForTimeout(500);
-  assert((await takeOver.count()) === 1 && (await p1.locator('.panel').count()) > 0, 'Stop that game and edit here asks first: Leave it as it is leaves the game playing');
+  assert((await takeOver.count()) === 1 && (await hostPanelIn(p1).count()) > 0, 'Stop that game and edit here asks first: Leave it as it is leaves the game playing');
   await takeOver.click();
   await asked.getByRole('button', { name: 'Edit here', exact: true }).click();
   await p2.getByRole('button', { name: 'Open…' }).waitFor();
   await p1.getByRole('heading', { name: 'This game is open in another tab' }).waitFor();
-  assert((await p1.locator('.panel').count()) === 0, 'a tab playing the game pauses when another tab takes over (it stops playing it)');
+  assert((await hostPanelIn(p1).count()) === 0, 'a tab playing the game pauses when another tab takes over (it stops playing it)');
   await p2.getByRole('button', { name: 'Resume game' }).click();
   await p2.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await p2.locator('.panel .p').first().waitFor();
-  const scores = await p2.locator('.panel .p .score').allInnerTexts();
+  await playerRowsIn(p2).first().waitFor();
+  const scores = await playerRowsIn(p2).locator('.score').allInnerTexts();
   assert(scores[0].includes('300'), `the other tab resumes it as it was left (${scores.join(', ')})`);
   await played.close();
 
@@ -447,14 +447,14 @@ try {
   // once comes back instead (it lost the change every time before), with its undo history.
   const quick = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   const q = await open('quick reload', true, quick);
-  const rounds = () => q.locator('nav > button.round-tab').count();
+  const rounds = () => roundTabsIn(q).count();
   for (const mode of [/Jeopardy board/, /Final Jeopardy/]) {
     await q.getByRole('button', { name: '＋ Add round' }).click();
     await q.getByRole('menuitem', { name: mode }).click();
   }
   await q.waitForTimeout(1500);
   const cat = (i) => q.locator('.cat textarea').nth(i);
-  await q.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(q).first().click();
   await cat(0).fill('Alpha');
   await cat(0).press('Tab');
   await q.waitForTimeout(1500);
@@ -463,7 +463,7 @@ try {
   await q.waitForTimeout(50);
   await q.reload();
   await q.getByRole('button', { name: 'Open…' }).waitFor();
-  await q.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(q).first().click();
   await cat(1).waitFor();
   assert((await cat(1).inputValue()) === 'Bravo' && (await rounds()) === 2, 'a reload right after a change keeps it');
   await q.locator('body').click({ position: { x: 5, y: 5 } });
@@ -480,7 +480,7 @@ try {
   await q.waitForTimeout(800);
   await q.keyboard.press('Control+z');
   await q.waitForTimeout(300);
-  await q.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(q).first().click();
   assert((await cat(1).inputValue()) === 'Category 2' && (await cat(0).inputValue()) === 'Alpha', 'and after the next ordinary reload the history is still whole');
   await quick.close();
 

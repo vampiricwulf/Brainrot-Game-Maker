@@ -9,7 +9,7 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored, revealAnyway, failureShots, assert, launchChromium, until } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored, revealAnyway, failureShots, assert, launchChromium, until, awardRowIn, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, stageBoxIn, statusBarIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -99,7 +99,7 @@ const sent = () => page.evaluate(() => window.__room.sent);
 const say = (m) => page.evaluate((m) => window.__say(m), m);
 /** Wait until the last state sent to the room matches. */
 const stateIs = (fn, arg) => page.waitForFunction(([src, arg]) => new Function('s', 'arg', `return (${src})(s, arg)`)(window.__state(), arg), [fn.toString(), arg]);
-const pressed = () => page.locator('.panel .p .sel[aria-pressed="true"]').allInnerTexts();
+const pressed = () => playerRowsIn(page).locator('.sel[aria-pressed="true"]').allInnerTexts();
 
 try {
   await page.goto(pathToFileURL(file).href);
@@ -335,17 +335,17 @@ try {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await stateIs((s) => s.phase === 'lobby');
-  await page.locator('.stage-box .board .tile').first().click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).first().click();
   await stateIs((s) => s.phase === 'closed' && !!s.clue);
   const closed = await state();
   assert(closed.clue.caption.includes('$200'), `the room gets the clue's caption (${closed.clue.caption})`);
   assert(
-    (await page.locator('.panel [data-buzzrow] button.ring[data-box="buzzers"]', { hasText: '🔔 Open the buzzers' }).isVisible()) && (await flowIs(page, '👁 Reveal answer')),
+    (await hostPanelIn(page).locator('[data-buzzrow] button.ring[data-box="buzzers"]', { hasText: '🔔 Open the buzzers' }).isVisible()) && (await flowIs(page, '👁 Reveal answer')),
     'the buzzers start closed: 🔔 Open the buzzers (U) is in the buzzers’ row, ringed, and the blue button is 👁 Reveal answer',
   );
   // The buzzers' things are on a row of their own, one height whatever it says: the panel (and the stage over it) keeps
   // its height as people buzz, miss and tie.
-  const panelH = () => page.locator('.panel').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const panelH = () => hostPanelIn(page).evaluate((e) => Math.round(e.getBoundingClientRect().height));
   const heights = { closed: await panelH() };
   // N (👁 Reveal answer) with the buzzers never opened asks first: "First:", 🔔 Open the buzzers U ⏎ in it; Enter opens
   // them and closes it (U alone does it at once, never asking).
@@ -382,7 +382,7 @@ try {
   await shot('rb-3-answering');
   heights.answering = await panelH();
   assert(
-    await page.locator('.panel [data-buzzrow]').evaluate((row) => {
+    await hostPanelIn(page).locator('[data-buzzrow]').evaluate((row) => {
       const award = document.querySelector('.panel .award');
       return !!row.querySelector('[aria-label="Buzz order"]') && !!award && row.getBoundingClientRect().bottom <= award.getBoundingClientRect().top;
     }),
@@ -391,7 +391,7 @@ try {
 
   // Wrong: Player 2 is locked out, and Player 3, next in the buzz order, answers at once (the same opening: there's no
   // new one for a later buzz to jump the queue with).
-  const scoresBefore = await page.locator('.panel .p .score').allInnerTexts();
+  const scoresBefore = await playerRowsIn(page).locator('.score').allInnerTexts();
   await page.keyboard.press('Shift+Enter');
   await stateIs((s, a) => s.phase === 'answering' && s.answering === a.next && s.armId === a.armId && s.lockedOut.join() === a.id, {
     armId: armed.armId,
@@ -401,7 +401,7 @@ try {
   assert((await pressed())[0].includes('Player 3'), 'a wrong answer locks Player 2 out, and Player 3, next in the buzz order, answers (no re-opening)');
   await queue.locator('li.out', { hasText: 'Player 2' }).waitFor();
   heights.missed = await panelH();
-  assert((await page.locator('.panel [data-buzzrow]', { hasText: 'Missed:' }).count()) === 0, 'the queue stays, Player 2 struck out (and not named again as “Missed: Player 2”)');
+  assert((await hostPanelIn(page).locator('[data-buzzrow]', { hasText: 'Missed:' }).count()) === 0, 'the queue stays, Player 2 struck out (and not named again as “Missed: Player 2”)');
   // The ? list says so too (not that the buzzers open for the others).
   await page.keyboard.press('?');
   const wrongKey = page.getByRole('dialog', { name: 'Keyboard shortcuts' }).locator('tr', { hasText: 'Shift+Enter on the one answering' });
@@ -414,13 +414,13 @@ try {
   await page.waitForTimeout(150);
   assert((await pressed())[0].includes('Player 3') && (await pressed()).length === 1, 'a phone buzzing meanwhile doesn’t take Player 3’s turn');
   // ⏭ Skip: Player 3 passes with no points taken; nobody's left in the order, so the buzzers open for the rest.
-  const p3Before = (await page.locator('.panel .p .score').allInnerTexts())[2];
+  const p3Before = (await playerRowsIn(page).locator('.score').allInnerTexts())[2];
   await page.getByRole('button', { name: '⏭ Skip Player 3' }).click();
   await stateIs((s, a) => s.phase === 'armed' && s.armId === a.armId + 1 && [...s.lockedOut].sort().join() === a.out, {
     armId: armed.armId,
     out: [seats[1].id, seats[2].id].sort().join(),
   });
-  assert((await page.locator('.panel .p .score').allInnerTexts())[2] === p3Before && scoresBefore[2] === p3Before, '⏭ Skip passes Player 3 with no points taken, then opens the buzzers for the rest');
+  assert((await playerRowsIn(page).locator('.score').allInnerTexts())[2] === p3Before && scoresBefore[2] === p3Before, '⏭ Skip passes Player 3 with no points taken, then opens the buzzers for the rest');
   await aud.locator('.plate').waitFor({ state: 'detached' });
   assert(true, 'the plate goes');
   // A late buzz for the old opening doesn't count.
@@ -447,7 +447,7 @@ try {
   assert(new Set(Object.values(heights)).size === 1, `the host panel keeps its height through the buzzes (${JSON.stringify(heights)})`);
   await shot('rb-3b-tie');
   assert(
-    (await page.locator('.panel [data-buzzrow] button.ring[data-box="rolltie"]').isVisible()) && (await flowIs(page, '👁 Reveal answer')),
+    (await hostPanelIn(page).locator('[data-buzzrow] button.ring[data-box="rolltie"]').isVisible()) && (await flowIs(page, '👁 Reveal answer')),
     'a tie: 🎲 Roll for it (O) is in the buzzers’ row, ringed; the blue button stays 👁 Reveal answer',
   );
   await page.keyboard.press('o');
@@ -469,7 +469,7 @@ try {
   assert(true, 'judged wrong: the roll goes off the stage (it would cover the question and who answers now), and the second in it answers');
 
   // ---------- The 📱 chip: kick, a new player mid-game ----------
-  const chip = page.locator('.panel .chip');
+  const chip = hostPanelIn(page).locator('.chip');
   assert((await chip.innerText()).startsWith('📱 1/4'), `the host panel shows how many phones joined (${await chip.innerText()})`);
   await chip.click();
   const pop = page.getByRole('region', { name: 'Phone buzzers' });
@@ -482,16 +482,16 @@ try {
   assert((await chip.innerText()).includes('1 asking'), 'the chip says someone is asking to join');
   await pop.getByRole('button', { name: '✔ Add' }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'accept' && m.conn === 'c5'));
-  assert((await page.locator('.panel .p').count()) === 5, 'Amy joins mid-game');
+  assert((await playerRowsIn(page).count()) === 5, 'Amy joins mid-game');
   assert((await page.getByRole('button', { name: '↶ Undo' }).getAttribute('title')).includes('Added Amy'), 'as one undoable step');
   // A phone drops: its player's chip shows 📵, and the phones list how long it's been gone.
   await say({ t: 'phones', phones: [{ conn: 'c2', seatId: seats[1].id, connected: false }, { conn: 'c3', seatId: seats[2].id, connected: true }] });
-  await page.locator(`.panel .p [data-phone-away="${seats[1].id}"]`).waitFor();
-  assert((await page.locator('.panel .p [data-phone-away]').count()) === 1, 'a dropped phone: 📵 on that player’s chip (only theirs)');
+  await playerRowsIn(page).locator(`[data-phone-away="${seats[1].id}"]`).waitFor();
+  assert((await playerRowsIn(page).locator('[data-phone-away]').count()) === 1, 'a dropped phone: 📵 on that player’s chip (only theirs)');
   await pop.locator(`[data-phone-offline="${seats[1].id}"]`).waitFor();
   assert(/^📵 lost \d+:\d\d$/.test(await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()), `and the phones list says “📵 lost 0:01”, the 👥 rows’ word (${await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()})`);
   await say({ t: 'phones', phones: [{ conn: 'c2', seatId: seats[1].id, connected: true }, { conn: 'c3', seatId: seats[2].id, connected: true }] });
-  await page.locator('.panel .p [data-phone-away]').waitFor({ state: 'detached' });
+  await playerRowsIn(page).locator('[data-phone-away]').waitFor({ state: 'detached' });
   assert(true, 'back online, the 📵 goes');
   // Seats locked (nobody new can join): the stage stops inviting everyone to buzz in.
   await aud.locator('.join-badge', { hasText: '📱 Buzz in' }).waitFor();
@@ -502,7 +502,7 @@ try {
   await aud.locator('.join-badge', { hasText: '📱 Buzz in' }).waitFor();
   await page.keyboard.press('Escape');
   assert((await pop.count()) === 0, 'Esc closes the phones list (and nothing else)');
-  assert((await page.locator('.stage-box .board').count()) === 0, 'the clue is still open');
+  assert((await boardIn(stageBoxIn(page)).count()) === 0, 'the clue is still open');
 
   // Wrong (the first in the roll, above), then right: the main button is 👁 Reveal answer (not the buzzers again), and
   // nobody is "next in line".
@@ -510,19 +510,19 @@ try {
   await stateIs((st, a) => st.phase === 'answering' && st.answering === a, r2);
   await page.keyboard.press('Enter');
   await stateIs((st) => st.phase === 'closed' && !!st.done);
-  const mainNow = await page.locator('.panel [data-next]').innerText();
+  const mainNow = await hostPanelIn(page).locator('[data-next]').innerText();
   assert(mainNow.startsWith('👁 Reveal answer'), `after a right answer the main button is 👁 Reveal answer (${mainNow})`);
   assert(
-    (await page.locator('.panel [data-buzzrow] button[data-box="buzzers"]:not(.ring)', { hasText: '🔔 Open the buzzers' }).count()) === 1 && (await page.getByText(/Next in line/).count()) === 0,
+    (await hostPanelIn(page).locator('[data-buzzrow] button[data-box="buzzers"]:not(.ring)', { hasText: '🔔 Open the buzzers' }).count()) === 1 && (await page.getByText(/Next in line/).count()) === 0,
     '🔔 Open the buzzers stays in the buzzers’ row (to open them again for the rest), no ring, and nobody is “→ Next in line”',
   );
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));
   assert(true, 'N does it: the answer is showing');
   // The answer on screen: the buzzers stay closed, and their row says so (no 🔔 Open the buzzers or ↺ Reset that refuse).
-  await page.locator('.panel [data-buzzrow]', { hasText: 'Answer on screen: the buzzers stay closed' }).waitFor();
+  await hostPanelIn(page).locator('[data-buzzrow]', { hasText: 'Answer on screen: the buzzers stay closed' }).waitFor();
   assert(
-    (await page.locator('.panel button', { hasText: '🔔 Open the buzzers' }).count()) === 0 && (await page.locator('.panel button', { hasText: '↺ Reset buzzers' }).count()) === 0,
+    (await hostPanelIn(page).locator('button', { hasText: '🔔 Open the buzzers' }).count()) === 0 && (await hostPanelIn(page).locator('button', { hasText: '↺ Reset buzzers' }).count()) === 0,
     'with the answer on screen the buzzers’ row says they stay closed, with no 🔔 Open the buzzers or ↺ Reset buzzers',
   );
 
@@ -548,7 +548,7 @@ try {
   );
   await free.click();
   await page.waitForFunction((id) => window.__room.sent.some((m) => m.t === 'kick' && m.seatId === id && m.block === false), seats[1].id);
-  await page.locator('.toast', { hasText: 'seat is free' }).waitFor();
+  await toastsIn(page, { hasText: 'seat is free' }).waitFor();
   assert(true, 'Free seat tells the room to free it without a block, and says they can tap their name on the new phone');
   // With 🔒 seats locked a freed seat takes no tap either: the toast says to untick the lock (not that they can tap now).
   await pop.getByLabel(/Lock seats/).check();
@@ -556,19 +556,19 @@ try {
   await pop.locator('li', { hasText: 'Player 3' }).getByText('🔒 locked out').waitFor();
   assert(true, 'with the seats locked, a player with no phone reads “🔒 locked out”');
   await free.click();
-  await page.locator('.toast', { hasText: 'untick Lock seats' }).waitFor();
+  await toastsIn(page, { hasText: 'untick Lock seats' }).waitFor();
   assert(true, 'Free seat with the seats locked says to untick Lock seats so they can tap their name');
   await pop.getByLabel(/Lock seats/).uncheck();
   // ✕ Kick by mistake: for its 2 minutes the row offers ↩ Let back, which lets that phone take the seat again.
   await pop.getByRole('button', { name: 'Kick Player 2: take their seat back from their phone' }).click();
   await page.waitForFunction((id) => window.__room.sent.some((m) => m.t === 'kick' && m.seatId === id && m.block === undefined), seats[1].id);
-  await page.locator('.toast', { hasText: "Took Player 2's seat back from their phone (it can't take it again for 2 minutes)" }).waitFor();
+  await toastsIn(page, { hasText: "Took Player 2's seat back from their phone (it can't take it again for 2 minutes)" }).waitFor();
   await say({ t: 'phones', phones: [] });
   const letBack = pop.getByRole('button', { name: 'Let back: Player 2’s phone' });
   const frees = () => page.evaluate((id) => window.__room.sent.filter((m) => m.t === 'kick' && m.seatId === id && m.block === false).length, seats[1].id);
   const freed = await frees();
   await letBack.click();
-  await page.locator('.toast', { hasText: "Player 2's phone can take the seat again" }).waitFor();
+  await toastsIn(page, { hasText: "Player 2's phone can take the seat again" }).waitFor();
   assert((await frees()) === freed + 1 && (await letBack.count()) === 0, '↩ Let back frees the seat for the kicked phone (no block), and goes');
   await page.keyboard.press('Escape');
 
@@ -596,13 +596,13 @@ try {
   await aud.locator('.join-badge', { hasText: '📱 Buzz in' }).waitFor();
   await page.keyboard.press('Escape');
   // The answer shown before anyone opened the buzzers: ▦ Done ▶ board is next, not a 🔔 Open the buzzers that refuses.
-  await page.locator('.stage-box .board .tile:not(.used)').first().click();
+  await boardIn(stageBoxIn(page)).locator('.tile:not(.used)').first().click();
   await stateIs((s) => s.phase === 'closed' && !!s.clue);
   await page.keyboard.press('r');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));
-  await page.locator('.panel [data-next]', { hasText: '▦ Done ▶ board' }).waitFor();
+  await hostPanelIn(page).locator('[data-next]', { hasText: '▦ Done ▶ board' }).waitFor();
   assert(
-    (await page.locator('.panel button', { hasText: '🔔 Open the buzzers' }).count()) === 0,
+    (await hostPanelIn(page).locator('button', { hasText: '🔔 Open the buzzers' }).count()) === 0,
     'R before the buzzers were opened: the main button is ▦ Done ▶ board, with no 🔔 Open the buzzers',
   );
   await page.keyboard.press('Escape');
@@ -610,7 +610,7 @@ try {
   await shot('rb-4-host');
 
   // ---------- The room ends mid-game (4004): the panel says so, with no code or link of the dead room ----------
-  await page.locator('.stage-box .board .tile:not(.used)').first().click();
+  await boardIn(stageBoxIn(page)).locator('.tile:not(.used)').first().click();
   await stateIs((s) => s.phase === 'closed' && !!s.clue);
   // (Every toast is said to screen readers too, even the same words again: the live region's host keeps the last words
   // said, in data-said. Counted here, as a toast said again while it shows looks the same.)
@@ -622,16 +622,16 @@ try {
     window.__room.gone = 4004;
     window.__drop();
   });
-  const down = page.locator('.panel .phones-down');
+  const down = hostPanelIn(page).locator('.phones-down');
   await down.getByText('This buzzer room has ended').waitFor();
   assert(!(await down.innerText()).includes('right now'), `the panel says the room has ended, not that it can’t be reached “right now” (${await down.innerText()})`);
-  await page.locator('.toast', { hasText: '📱 This buzzer room has ended' }).waitFor();
+  await toastsIn(page, { hasText: '📱 This buzzer room has ended' }).waitFor();
   await page.waitForFunction(() => window.__lostSaid === 1);
   // The game goes on meanwhile: back to the board, another tile, the answer.
   await page.keyboard.press('Escape');
-  await page.locator('.stage-box .board').waitFor();
-  await page.locator('.stage-box .board .tile:not(.used)').first().click();
-  await page.locator('.stage-box .board').waitFor({ state: 'detached' });
+  await boardIn(stageBoxIn(page)).waitFor();
+  await boardIn(stageBoxIn(page)).locator('.tile:not(.used)').first().click();
+  await boardIn(stageBoxIn(page)).waitFor({ state: 'detached' });
   await page.keyboard.press('r');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));
   // (Nothing to wait for, as nothing should be said: past the time the live region takes to say a toast.)
@@ -657,7 +657,7 @@ try {
   await stateIs((s) => s.phase === 'lobby' && !s.clue);
 
   // ---------- The audience window closed by accident: the host panel says so, and Reopen brings it back ----------
-  const lost = page.locator('.panel [data-audience-lost]');
+  const lost = hostPanelIn(page).locator('[data-audience-lost]');
   assert((await lost.count()) === 0, 'no "Audience window closed" strip while it is open');
   await aud.close();
   await lost.waitFor();
@@ -666,7 +666,7 @@ try {
   assert((await lost.count()) === 1, 'and the strip stays');
   const [aud2] = await Promise.all([page.waitForEvent('popup'), lost.getByRole('button', { name: 'Reopen (A)' }).click()]);
   watch(aud2, 'audience 2');
-  await aud2.locator('.board').waitFor();
+  await boardIn(aud2).waitFor();
   await lost.waitFor({ state: 'detached' });
   assert(true, 'Reopen (A) opens it again, the board on it, and the strip goes');
   // A reopened window that still needs a click asks with a small chip in its corner: the stage isn't dimmed (it's on
@@ -691,7 +691,7 @@ try {
   await pop.waitFor();
   await page.waitForTimeout(300);
   const popAt = await pop.boundingBox();
-  const stageAt = await page.locator('.stage-box').boundingBox();
+  const stageAt = await stageBoxIn(page).boundingBox();
   const vp = page.viewportSize();
   assert(
     popAt.y >= stageAt.y + stageAt.height - 1 && popAt.y + popAt.height <= vp.height + 1,
@@ -708,21 +708,21 @@ try {
     await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   };
   await exitKeep();
-  const roomBar = page.locator('.status-bar .room-bar');
+  const roomBar = statusBarIn(page).locator('.room-bar');
   await roomBar.getByText('BCDF').waitFor();
   await stateIs((s) => s.status?.text === 'The host is setting up — hang on');
   await page.waitForTimeout(300);
   assert((await closes()) === 0, 'Keep & leave keeps the buzzer room: phones are told the host is setting up, not that the game is over');
   assert((await roomBar.innerText()).includes('Resume game goes back into it'), 'the bar over the editor says the room is still open, and that Resume game (not ▶ Play) goes back into it');
-  assert((await page.locator('.status-bar').count()) === 1 && (await page.locator('.status-bar .kept').count()) === 1, 'one status bar over the editor: the room and the kept game on it');
+  assert((await statusBarIn(page).count()) === 1 && (await statusBarIn(page).locator('.kept').count()) === 1, 'one status bar over the editor: the room and the kept game on it');
   assert((await page.evaluate(() => document.scrollingElement.scrollHeight <= window.innerHeight)), 'the page itself doesn’t scroll (the bar stays in sight)');
   assert((await page.getByRole('button', { name: 'Resume with my edits' }).count()) === 0, 'nothing was edited: no "Resume with my edits"');
   await page.getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await page.locator('.panel .chip').waitFor();
+  await hostPanelIn(page).locator('.chip').waitFor();
   await page.waitForTimeout(300);
   assert((await page.evaluate(() => window.__room.posts)) === 3 && (await closes()) === 0, 'Resume goes back into the same room BCDF (no new room)');
-  assert((await page.locator('.panel .chip').innerText()).startsWith('📱'), 'the 📱 chip is back in the host panel');
+  assert((await hostPanelIn(page).locator('.chip').innerText()).startsWith('📱'), 'the 📱 chip is back in the host panel');
 
   // ---------- Another game: the room and its players carry over ----------
   await exitKeep();
@@ -757,21 +757,21 @@ try {
   await page.waitForTimeout(450);
   await leaveAnswer(page).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
-  if ((await page.locator('.panel .status').innerText()).includes('Title card')) await page.keyboard.press('n');
-  const plays = page.locator('.fj .wagers input[data-plays]');
+  if ((await statusLineIn(page).innerText()).includes('Title card')) await page.keyboard.press('n');
+  const plays = finalControlsIn(page).locator('.wagers input[data-plays]');
   await plays.first().waitFor();
   // One player plays it, with a phone in a room too old for answers: the panel says they answer out loud.
   for (let i = 1; i < (await plays.count()); i++) await plays.nth(i).uncheck();
   // (On $0 they could wager up to $2,000: the host types their $0.)
-  await page.locator('.fj .wagers input[data-wager]').first().fill('0');
+  await finalControlsIn(page).locator('.wagers input[data-wager]').first().fill('0');
   await say({ t: 'phones', phones: [{ conn: 'c1', seatId: (await state()).seats[0].id, connected: true }] });
-  const outLoud = page.locator('.fj').getByText('This buzzer server can’t take answers from phones (it’s an older one): players answer out loud.');
+  const outLoud = finalControlsIn(page).getByText('This buzzer server can’t take answers from phones (it’s an older one): players answer out loud.');
   await mainButton(page, 'Show question ▶').click();
   await outLoud.waitFor();
   await mainButton(page, '👁 Reveal answer').click();
   // (Its think clock still running: it asks first.)
   await revealAnyway(page);
-  await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
+  await statusLineIn(page, { hasText: 'Answer on screen' }).waitFor();
   assert(await outLoud.isVisible(), 'a Final with a room too old for answers: the panel says players answer out loud');
   // The room back after the question, saying now it takes them (as one started then would): the answers never began,
   // so no ✍ block says none came in. (A new socket's welcome is heard as it opens: once open, the room is back.)
@@ -784,12 +784,12 @@ try {
   });
   await page.waitForFunction((n) => window.__room.sockets.length === n + 1 && window.__room.sockets.at(-1).readyState === 1, socketsNow);
   assert(
-    !(await outLoud.count()) && !(await page.locator('.fj [aria-label="Answers from phones"]').count()),
+    !(await outLoud.count()) && !(await finalControlsIn(page).locator('[aria-label="Answers from phones"]').count()),
     'the room back with answers after the question: no answers block for a Final whose phones were never asked',
   );
   await page.evaluate(() => (window.__room.features = window.__room.older));
   await mainButton(page, 'Start player reveals ▶').click();
-  await page.locator('.fj .pl.cur').waitFor();
+  await finalControlsIn(page).locator('.pl.cur').waitFor();
   await page.keyboard.press('c');
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game'));
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
@@ -803,7 +803,7 @@ try {
 
   // ---------- ⏹ Close the room… (a phone is in it: asked first) ----------
   await roomBar.getByRole('button', { name: '⏹ Close the room…' }).click();
-  await page.locator('.status-bar').getByRole('alertdialog', { name: 'Close the room?' }).getByRole('button', { name: 'Close the room' }).click();
+  await statusBarIn(page).getByRole('alertdialog', { name: 'Close the room?' }).getByRole('button', { name: 'Close the room' }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
   await roomBar.waitFor({ state: 'detached' });
   assert(true, '⏹ Close the room… closes it (phones are told the game is over)');
@@ -824,7 +824,7 @@ try {
     window.__drop();
   });
   await roomBar.waitFor({ state: 'detached' });
-  await page.locator('.toast', { hasText: 'Buzzer room BCDF has ended' }).waitFor();
+  await toastsIn(page, { hasText: 'Buzzer room BCDF has ended' }).waitFor();
   assert(true, 'a room kept in the editor that has ended is forgotten: the bar stops saying it’s open, and the host is told');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await card.getByRole('alert').getByText(/This buzzer room has ended/).waitFor();
@@ -866,11 +866,11 @@ try {
     await page.reload();
     // (One window: it reopens on the game's cover; Go to the editor shows what's kept.)
     await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
-    await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
+    await statusBarIn(page).locator('.kept').getByText('⏸ Kept to resume:').waitFor();
   };
   await playThenReload();
-  assert((await page.locator('.status-bar .room-bar').count()) === 0, 'after a reload mid-game the editor keeps the game to resume (its room isn’t kept on its own)');
-  await page.locator('.status-bar .kept').getByRole('button', { name: 'Discard' }).click();
+  assert((await statusBarIn(page).locator('.room-bar').count()) === 0, 'after a reload mid-game the editor keeps the game to resume (its room isn’t kept on its own)');
+  await statusBarIn(page).locator('.kept').getByRole('button', { name: 'Discard' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Discard', exact: true }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
   assert(true, 'Discard closes the kept game’s buzzer room: its phones are told the game is over (not "hang on" for hours)');
@@ -897,7 +897,7 @@ try {
   const overToBCDF = () => page.evaluate(() => window.__room.sockets.filter((s) => s.url.includes('/ws/BCDF')).flatMap((s) => s.sent).filter((m) => m.t === 'close' || (m.t === 'state' && m.state.over)).length);
   await page.reload();
   await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
-  await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
+  await statusBarIn(page).locator('.kept').getByText('⏸ Kept to resume:').waitFor();
   await page.getByRole('button', { name: '▶ Play' }).click();
   await resumeCard.getByText('Its phones wait in room BCDF').waitFor();
   await page.evaluate(() => (window.__room.code = 'KLMN'));
@@ -905,9 +905,9 @@ try {
   await card.getByLabel('Room code KLMN').waitFor();
   await page.getByRole('button', { name: '◀ Back to editor' }).click();
   await page.waitForFunction(() => window.__room.sockets.some((s) => s.url.includes('/ws/KLMN') && s.sent.some((m) => m.t === 'close')));
-  await page.locator('.toast', { hasText: 'Room KLMN closed (no phone had joined it): Resume game goes back to room BCDF' }).waitFor();
-  assert((await page.locator('.status-bar .room-bar').count()) === 0, '◀ Back to editor closes a room started there that no phone joined, while the kept game’s phones wait in theirs (and says so)');
-  await page.locator('.status-bar .kept').getByRole('button', { name: 'Resume game' }).click();
+  await toastsIn(page, { hasText: 'Room KLMN closed (no phone had joined it): Resume game goes back to room BCDF' }).waitFor();
+  assert((await statusBarIn(page).locator('.room-bar').count()) === 0, '◀ Back to editor closes a room started there that no phone joined, while the kept game’s phones wait in theirs (and says so)');
+  await statusBarIn(page).locator('.kept').getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await page.waitForFunction(() => window.__room.sockets.some((s) => s.url.includes('/ws/BCDF') && s.sent.some((m) => m.t === 'state')));
   await page.waitForTimeout(300);
@@ -915,7 +915,7 @@ try {
   // A kept game's room that has ended isn't waited for: ▶ Resume it keeps the room started here.
   await page.reload();
   await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
-  await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
+  await statusBarIn(page).locator('.kept').getByText('⏸ Kept to resume:').waitFor();
   await page.evaluate(() => (window.__room.ended = ['BCDF']));
   await page.getByRole('button', { name: '▶ Play' }).click();
   await resumeCard.waitFor();
@@ -930,7 +930,7 @@ try {
   await card.getByLabel('Room code PQRS').waitFor();
   const atPQRS = await page.evaluate(() => window.__room.sockets.filter((s) => s.url.includes('/ws/PQRS')).flatMap((s) => s.sent).filter((m) => m.t === 'state').length);
   await resumeCard.getByRole('button', { name: '▶ Resume it' }).click();
-  await page.locator('.panel .chip').waitFor();
+  await hostPanelIn(page).locator('.chip').waitFor();
   await page.waitForFunction((n) => window.__room.sockets.filter((s) => s.url.includes('/ws/PQRS')).flatMap((s) => s.sent).filter((m) => m.t === 'state').length > n, atPQRS);
   await page.waitForTimeout(300);
   assert(
@@ -939,13 +939,13 @@ try {
   );
   // 100 points for the first player on the board: the kept game now has something Start would throw away (saved first).
   await page.keyboard.press('1');
-  await page.locator('.panel .award').getByLabel('Amount').fill('100');
-  await page.locator('.panel .award').getByLabel('Amount').press('Enter');
+  await awardRowIn(page).getByLabel('Amount').fill('100');
+  await awardRowIn(page).getByLabel('Amount').press('Enter');
   await until(async () => (await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100), { timeout: 10_000, every: 100 });
   assert((await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100), 'the points are saved with the game in progress');
   await page.reload();
   await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
-  await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
+  await statusBarIn(page).locator('.kept').getByText('⏸ Kept to resume:').waitFor();
   await page.getByRole('button', { name: '▶ Play' }).click();
   await resumeCard.waitFor();
   const keptSays = (await resumeCard.innerText()).replace(/\s+/g, ' ');

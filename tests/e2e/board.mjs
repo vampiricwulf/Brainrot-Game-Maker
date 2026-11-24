@@ -4,7 +4,7 @@
 // Tiebreaker have the quick Question / Answer fields. Every gesture is one named step, and nothing asks first.
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerReplace, dragBy, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, dragBy, failureShots, assert, launchChromium, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SHOTS;
@@ -27,7 +27,7 @@ const focused = () => page.evaluate(() => document.activeElement?.getAttribute('
 /** The focus comes to this tile ("cat,row") within a few seconds. */
 const focusComes = (t) => page.waitForFunction((t) => document.activeElement?.getAttribute('data-tile') === t, t, { timeout: 3000 }).then(() => true, () => false);
 const catNames = () => page.locator('.cat textarea').evaluateAll((els) => els.map((e) => e.value));
-const tabs = page.locator('nav > button.round-tab');
+const tabs = roundTabsIn(page);
 const roundNames = async () => (await tabs.allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
 const key = async (k) => {
   await page.keyboard.press(k);
@@ -538,7 +538,7 @@ try {
   });
   await tile(0, 1).focus();
   await key('Control+c');
-  const copied = await page.locator('.toast').innerText();
+  const copied = await toastsIn(page).innerText();
   assert(nameSelected && /^Copied Category 1 \$\d+/.test(copied), `Ctrl+C on a tile right after adding a round copies the tile (${copied})`);
 
   // Esc leaves a new text box's text field, then deselects it, then closes the clue.

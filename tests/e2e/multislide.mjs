@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
-import { appFile, failureShots, addClassicRounds, flowButton, mainButton, mainLabel, nameGame, openGameFile, answerReplace, startNewGame, assert, launchChromium } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, flowButton, mainButton, mainLabel, nameGame, openGameFile, answerReplace, startNewGame, assert, launchChromium, boardIn, boardTilesIn, hostPanelIn, stageBoxIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -152,7 +152,7 @@ try {
   assert((await tabs.getByRole('tab').count()) === 5 && (await selected().innerText()) === 'Question 3' && (await focused()), 'Ctrl+D on a tab duplicates the slide');
   await page.keyboard.press('Delete');
   assert((await tabs.getByRole('tab').count()) === 4 && (await focused()), 'Delete on a tab deletes the slide (the focus stays on the tabs)');
-  await page.locator('.toast', { hasText: 'Deleted question slide 3' }).waitFor({ timeout: 3000 });
+  await toastsIn(page, { hasText: 'Deleted question slide 3' }).waitFor({ timeout: 3000 });
   assert(true, 'with a note saying so (Ctrl+Z brings it back)');
   // Many slides: short tab names on one line.
   await addSlide.click();
@@ -246,13 +246,13 @@ try {
   await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  await page.locator('.panel').waitFor();
+  await hostPanelIn(page).waitFor();
   if (await page.getByRole('button', { name: 'Skip intro' }).count()) await page.getByRole('button', { name: 'Skip intro' }).click();
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
   aud.on('pageerror', (e) => errors.push('[audience] ' + e.message));
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
 
-  await page.locator('.stage-box .board .tile').first().click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).first().click();
   const audSlide = aud.locator('.full[data-slide]');
   const audSays = async (n, text) => {
     await aud.locator(`.full[data-slide="${n}"]`).waitFor();
@@ -260,14 +260,14 @@ try {
     return true;
   };
   assert(await audSays(1, 'Lead-in: a meme from 2023'), 'the audience window shows slide 1');
-  assert((await page.locator('.panel [data-slidepos]').innerText()) === 'Slide 1 of 3', 'the host sees “Slide 1 of 3”');
+  assert((await hostPanelIn(page).locator('[data-slidepos]').innerText()) === 'Slide 1 of 3', 'the host sees “Slide 1 of 3”');
   assert((await mainLabel(page)) === 'Next slide ▶' && (await mainButton(page).locator('kbd').innerText()) === 'N', 'the main button is Next slide ▶ (N)');
   assert(await flowButton(page, 'pager', '◀ Slide').isDisabled(), '◀ Slide is off on the first slide');
   assert((await page.locator('.info .q').innerText()) === 'Lead-in: a meme from 2023' && (await page.locator('.info .notes').first().innerText()) === 'It is a YouTube series', 'the host info shows the slide on screen and the next one');
 
   await mainButton(page).click();
   assert(await audSays(2, 'It is a YouTube series'), 'Next slide ▶ moves the audience window to slide 2');
-  assert((await page.locator('.panel [data-slidepos]').innerText()) === 'Slide 2 of 3', 'the host sees “Slide 2 of 3”');
+  assert((await hostPanelIn(page).locator('[data-slidepos]').innerText()) === 'Slide 2 of 3', 'the host sees “Slide 2 of 3”');
   assert((await aud.getByText('Skibidi Toilet').count()) === 0, 'the answer is still hidden');
   await page.screenshot({ path: 'test-results/multislide-host.png' });
 
@@ -275,9 +275,9 @@ try {
   await page.keyboard.press('1');
   await page.keyboard.press('n');
   assert(await audSays(3, 'Toilets with heads'), 'N goes to slide 3');
-  assert((await page.locator('.panel .p.on').count()) === 1, 'moving through the slides leaves the selected player alone');
+  assert((await hostPanelIn(page).locator('.p.on').count()) === 1, 'moving through the slides leaves the selected player alone');
   await page.keyboard.press('1');
-  assert((await page.locator('.panel .p.on').count()) === 0, '1 again lets go of the player');
+  assert((await hostPanelIn(page).locator('.p.on').count()) === 0, '1 again lets go of the player');
   assert((await mainLabel(page)) === '👁 Reveal answer', 'on the last slide the main button is 👁 Reveal answer');
 
   await page.keyboard.press('Shift+N');
@@ -285,7 +285,7 @@ try {
   await flowButton(page, 'pager', '◀ Slide').click();
   assert(await audSays(1, 'Lead-in: a meme from 2023'), '◀ Slide goes back too');
   // Clicking the slide goes on to the next one, then the answer.
-  await page.locator('.stage-box .full').click();
+  await stageBoxIn(page).locator('.full').click();
   assert(await audSays(2, 'It is a YouTube series'), 'clicking the slide shows the next one');
   await page.waitForTimeout(500);
   await page.keyboard.press('n');
@@ -293,19 +293,19 @@ try {
   await mainButton(page).click();
   await aud.locator('.full[data-slide="answer"]').getByText('Skibidi Toilet').waitFor();
   assert(true, '👁 Reveal answer shows the answer in the audience window');
-  assert((await page.locator('.panel [data-slidepos]').count()) === 0, 'with the answer up, no slide position');
+  assert((await hostPanelIn(page).locator('[data-slidepos]').count()) === 0, 'with the answer up, no slide position');
   await page.keyboard.press('r');
   assert(await audSays(3, 'Toilets with heads'), 'hiding the answer goes back to the last slide');
   await page.keyboard.press('r');
   await page.keyboard.press('Escape');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
 
   // Another clue (one slide) plays as always.
-  await page.locator('.stage-box .board .tile').nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).nth(1).click();
   await audSlide.waitFor();
-  assert((await page.locator('.panel [data-slidepos]').count()) === 0 && (await mainLabel(page)) === '👁 Reveal answer', 'a one-slide clue: no slide position, the main button reveals');
+  assert((await hostPanelIn(page).locator('[data-slidepos]').count()) === 0 && (await mainLabel(page)) === '👁 Reveal answer', 'a one-slide clue: no slide position, the main button reveals');
   await page.keyboard.press('Escape');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
 
   // ---------- A game made before clues had more slides ----------
   const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
@@ -337,13 +337,13 @@ try {
   if ((await Promise.race([anyway.waitFor().then(() => 'ask'), start.waitFor().then(() => 'start')])) === 'ask') await anyway.click();
   // (Start asks first when that game has points or tiles played: Start new game.)
   await startNewGame(page);
-  await page.locator('.panel').waitFor();
-  await page.locator('.stage-box .board .tile').first().click();
+  await hostPanelIn(page).waitFor();
+  await boardTilesIn(boardIn(stageBoxIn(page))).first().click();
   // (The audience window closed with the last game: the host's own stage shows what viewers see.)
-  await page.locator('.stage-box .full[data-slide="1"]').getByText('An old question').waitFor();
+  await stageBoxIn(page).locator('.full[data-slide="1"]').getByText('An old question').waitFor();
   assert((await mainLabel(page)) === '👁 Reveal answer', 'it plays as before: the main button reveals');
   await mainButton(page).click();
-  await page.locator('.stage-box .full[data-slide="answer"]').getByText('An old answer').waitFor();
+  await stageBoxIn(page).locator('.full[data-slide="answer"]').getByText('An old answer').waitFor();
   assert(true, 'and the answer shows');
 
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

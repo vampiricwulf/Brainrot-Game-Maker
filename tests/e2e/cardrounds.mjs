@@ -16,7 +16,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, quick, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, quick, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, untilWith, section, hostPanelIn, stageBoxIn, statusBarIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -229,7 +229,7 @@ try {
   let bob = await join('bob', 'Bob');
   const cat = await join('cat', 'Cat');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
   assert(await until(() => (last()?.seats?.length ?? 0) === 4), 'the room has the four players');
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   const to = (...names) => JSON.stringify(names.map((n) => ({ seat: seat[n] })));
@@ -239,7 +239,7 @@ try {
     const found = await shownOf(p, SECRETS);
     assert(!found.length, `${when}: ${name} holds no card’s words or file name${found.length ? ` (found ${found.join(', ')})` : ''}`);
   };
-  const tools = host.locator('.panel .toolsrow');
+  const tools = toolsRowIn(host);
   const sendMenu = host.getByRole('dialog', { name: 'Send a card' });
   const outList = host.getByRole('dialog', { name: 'Cards out' });
   const outButton = tools.locator('[data-cards-out-count]');
@@ -341,8 +341,8 @@ try {
   // ---------- 🤫 Just you: a standard tile's card to the picker, sent by a press ----------
   await host.keyboard.press('p');
   await host.keyboard.press('1');
-  await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
-  const tilePart = host.locator('.panel [data-tile-cards]');
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $200"]').click();
+  const tilePart = hostPanelIn(host).locator('[data-tile-cards]');
   await tilePart.waitFor();
   let tileRow = tilePart.locator('[data-tile-card="1"]');
   assert((await words(tileRow)).includes('Card 1 · 1 line of words, 1 picture'), 'the tile’s card in its panel, counted, never said');
@@ -369,7 +369,7 @@ try {
   assert(await until(() => ann.locator('.card img').evaluate((i) => i.complete && i.naturalWidth > 0).catch(() => false)), 'Ann’s phone gets it, picture and all');
   assert(!(await cardsOn(bob)) && !(await cardsOn(cat)) && !heardOf('bob2', 'Just-') && !heardOf('cat', 'Just-'), 'nobody else gets it');
   await offStream(host, 'the host page in one window', 'a standard tile’s card sent');
-  const privateBadge = host.locator('.stage-box [data-private-badge]');
+  const privateBadge = stageBoxIn(host).locator('[data-private-badge]');
   assert(await until(async () => (await privateBadge.count()) === 1 && (await words(privateBadge)) === '🤫 Ann has a private question'), 'the stream says Ann has a private question (never what it is)');
   assert((await mainLabel(host)) === '👁 Reveal answer', 'the tile plays as usual: 👁 Reveal answer');
 
@@ -398,7 +398,7 @@ try {
   assert(await until(async () => !(await cardsOn(ann))), 'Ann’s phone drops it');
 
   // ---------- 💡 Insider tip: a Daily Double's card to its player, before the wager ----------
-  await host.locator('.stage-box .tile[aria-label^="Movies for $400"]').click();
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $400"]').click();
   await tilePart.waitFor();
   tileRow = tilePart.locator('[data-tile-card="1"]');
   assert((await tileRow.getByRole('button', { name: 'Card 1 to Ann' }).getAttribute('aria-pressed')) === 'true', 'a Daily Double’s card starts with its player, Ann');
@@ -408,8 +408,8 @@ try {
   assert(await until(() => cards().length === 1 && cards()[0].text === INSIDER && JSON.stringify(cards()[0].to) === to('Ann')), 'sent before the wager, to Ann only');
   await tapOpen(ann, INSIDER);
   assert(!heardOf('bob2', 'Insider-') && !heardOf('cat', 'Insider-'), 'only Ann gets it');
-  assert(!(await host.locator('.stage-box [data-private-badge]').count()), 'a Daily Double’s badge already says who plays: no “private question” line');
-  await host.locator('.panel .dd input[type=number]').fill('100');
+  assert(!(await stageBoxIn(host).locator('[data-private-badge]').count()), 'a Daily Double’s badge already says who plays: no “private question” line');
+  await hostPanelIn(host).locator('.dd input[type=number]').fill('100');
   await mainButton(host).click();
   assert(await until(async () => last()?.wager?.open === false && (await mainLabel(host)) === '👁 Reveal answer' && cards().length === 1 && cards()[0].open), 'the question shows (wager $100, locked): the card stays');
   await offStream(host, 'the host page in one window', 'a Daily Double’s card sent');
@@ -505,7 +505,7 @@ try {
   const n0 = states.length;
   const up0 = uploads;
   await objCard.getByRole('button', { name: '🤫 Card for whoever set it off' }).click();
-  const offer = host.locator('.panel [data-card-offer]');
+  const offer = hostPanelIn(host).locator('[data-card-offer]');
   await offer.waitFor();
   const chip = (o, name) => o.getByRole('button', { name: new RegExp(`^${name}( \\(no phone here\\))?$`) });
   assert((await chip(offer, 'Bob').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'false', 'the offer starts with whoever set it off (Bob)');
@@ -616,7 +616,7 @@ try {
   await host.getByRole('button', { name: 'Exit' }).click();
   await sleep(500);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
-  await host.locator('.status-bar .room-bar').getByText(code).waitFor();
+  await statusBarIn(host).locator('.room-bar').getByText(code).waitFor();
   assert(await until(() => win.isClosed()), 'leaving the game (Keep & leave) closes the card window');
   const SETTING_UP = 'The host is setting up — hang on';
   assert(
@@ -746,7 +746,7 @@ try {
   assert(await until(() => last()?.status?.text === SETTING_UP && cards()[0]?.id === lastCard.id), 'Keep & leave: the card stays out, under its id');
   await sleep(1000);
   assert((await dan.getByText(JUST).isVisible()) && !(await dan.getByRole('button', { name: 'Tap to see' }).count()), 'Dan’s phone keeps it open as it was (no new card)');
-  await host.locator('.status-bar .kept').getByRole('button', { name: 'Discard', exact: true }).click();
+  await statusBarIn(host).locator('.kept').getByRole('button', { name: 'Discard', exact: true }).click();
   await host.getByRole('alertdialog').getByRole('button', { name: 'Discard', exact: true }).click();
   assert(await until(() => last()?.status?.text === SETTING_UP && !cards().length), 'the kept game discarded: the room (still open) holds no card');
   assert(await until(async () => !(await cardsOn(dan))), 'Dan’s phone drops it');

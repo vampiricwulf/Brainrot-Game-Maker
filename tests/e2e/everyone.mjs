@@ -10,7 +10,7 @@
 // first: a ✍ tile with an empty choice says so on the board, and Take the choices off leaves the keys on ＋ Multiple choice.)
 // Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, goOnCheck, playWithPlayers, quick, startRoomOn, leaveAnswer, failureShots, assert, launchChromium, startBuzzer, until } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, goOnCheck, playWithPlayers, quick, startRoomOn, leaveAnswer, failureShots, assert, launchChromium, startBuzzer, until, awardRowIn, boardIn, boardTilesIn, hostPanelIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const buzzer = await startBuzzer('buzzer-answers-');
@@ -69,7 +69,7 @@ try {
   await editor.getByRole('button', { name: 'Take the choices off' }).focus();
   await host.keyboard.press('Enter');
   await host.waitForFunction(() => document.activeElement?.textContent?.trim() === '＋ Multiple choice');
-  await host.locator('.toast', { hasText: /^Took the choices off .+ \$200/ }).waitFor();
+  await toastsIn(host, { hasText: /^Took the choices off .+ \$200/ }).waitFor();
   await host.keyboard.press('Control+z');
   await choiceBox('D').waitFor();
   assert((await choiceBox('D').inputValue()) === 'Bern', 'Take the choices off: the keys land on ＋ Multiple choice, a note says so, and Ctrl+Z puts them back');
@@ -98,10 +98,10 @@ try {
   // ---------- Playing the ✍ clue ----------
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
-  await host.locator('.stage-box .board .tile').first().click();
+  await boardTilesIn(boardIn(stageBoxIn(host))).first().click();
   for (const p of [p1, p2]) await p.getByLabel(/Your answer/).waitFor();
   assert((await p1.locator('#clue').innerText()).includes('Name a dog breed') && (await p1.locator('#buzz').isHidden()), 'the phones show the clue and an answer box instead of the buzzer');
-  const pill = host.locator('.stage-box [data-everyone]');
+  const pill = stageBoxIn(host).locator('[data-everyone]');
   await pill.waitFor();
   assert((await pill.getByRole('img').getAttribute('aria-label')) === '0 of 2 answers in', 'the stream says everyone answers (0 of 2 in)');
 
@@ -154,9 +154,9 @@ try {
   const answersBox = host.locator('[aria-label="Answers from phones"]');
   await answersBox.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
   await answersBox.locator('[data-answer-in]', { hasText: 'Player 2 ✔' }).waitFor();
-  const panelText = await host.locator('.panel').innerText();
+  const panelText = await hostPanelIn(host).innerText();
   assert(
-    !panelText.includes('Shiba') && !panelText.includes('Corgi') && (await host.locator('.panel .status [data-viewers]').textContent()).includes('Viewers can see this window: it says who has answered'),
+    !panelText.includes('Shiba') && !panelText.includes('Corgi') && (await statusLineIn(host).locator('[data-viewers]').textContent()).includes('Viewers can see this window: it says who has answered'),
     'in a single window the host panel shows who has answered (✔), not the words, and its ⚠ Viewers see this chip says viewers see it',
   );
   if (process.env.SCREENSHOTS) {
@@ -164,11 +164,11 @@ try {
     await p1.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-phone.png` });
   }
   await host.waitForFunction(() => document.querySelector('.stage-box [data-everyone] [role="img"]')?.getAttribute('aria-label') === '2 of 2 answers in');
-  const stageText = await host.locator('.stage-box').innerText();
+  const stageText = await stageBoxIn(host).innerText();
   assert(!stageText.includes('Shiba') && !stageText.includes('Corgi'), 'the stream shows who has answered (2 of 2), never the words');
   assert(!(await p2.content()).includes('Shiba') && !(await p1.content()).includes('Corgi'), 'no phone sees another’s answer');
 
-  const stageH = () => host.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const stageH = () => stageBoxIn(host).evaluate((e) => Math.round(e.getBoundingClientRect().height));
   const typedH = await stageH();
   await host.keyboard.press('r');
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
@@ -195,7 +195,7 @@ try {
       const r = b.getBoundingClientRect();
       return r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
     });
-  const sightLines = [row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }), row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }), host.locator('.panel .award button', { hasText: 'Award' })];
+  const sightLines = [row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }), row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }), awardRowIn(host).locator('button', { hasText: 'Award' })];
   let seen = [];
   await until(async () => !(seen = await Promise.all(sightLines.map(inSight))).includes(false), { timeout: 2_000, every: 100 });
   assert(!seen.includes(false), `at 911×438 both answers' ✔ and ＋ Award are in sight (${seen})`);
@@ -221,11 +221,11 @@ try {
 
   // ---------- With an audience window: the host panel is off stream ----------
   await host.keyboard.press('Escape');
-  await host.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(host)).waitFor();
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
-  await aud.locator('.board').waitFor();
-  await host.locator('.stage-box .board .tile[data-row="0"][data-cat="1"]').click();
+  await boardIn(aud).waitFor();
+  await boardIn(stageBoxIn(host)).locator('.tile[data-row="0"][data-cat="1"]').click();
   for (const p of [p1, p2]) await p.getByLabel(/Your answer/).waitFor();
   // A countdown (T): this game has none of its own.
   await host.keyboard.press('t');
@@ -308,9 +308,9 @@ try {
   // (At 1024×768: up to 1180px wide the host panel's buttons are a size bigger, ✔ Judge all's kept room too.)
   await host.setViewportSize({ width: 1024, height: 768 });
   await host.keyboard.press('Escape');
-  await host.locator('.stage-box .board').waitFor();
-  await aud.locator('.board').waitFor();
-  await host.locator('.stage-box .board .tile[data-row="0"][data-cat="2"]').click();
+  await boardIn(stageBoxIn(host)).waitFor();
+  await boardIn(aud).waitFor();
+  await boardIn(stageBoxIn(host)).locator('.tile[data-row="0"][data-cat="2"]').click();
   for (const p of [p1, p2]) await p.locator('#answer-choices .choice').nth(3).waitFor();
   assert(
     (await p1.locator('#answer-choices .choice').count()) === 4 &&
@@ -353,7 +353,7 @@ try {
   // A single window: the host panel is on stream again, and shows only who has answered.
   await aud.close();
   await answersBox.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
-  const oneWindow = await host.locator('.panel').innerText();
+  const oneWindow = await hostPanelIn(host).innerText();
   const chips = (await answersBox.locator('[data-answer-in]').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
   assert(
     !oneWindow.includes('Stockholm') && !oneWindow.includes('Paris') && !oneWindow.includes('A 1 ·') && !oneWindow.includes('Judge all') && (await counts.count()) === 0 && JSON.stringify(chips) === JSON.stringify(['Player 1 ✔', 'Player 2 ✔']),
@@ -363,7 +363,7 @@ try {
   const hiddenH = await stageH();
   // While the picks can still change, Enter with nobody picked judges nobody (as before).
   await host.keyboard.press('Enter');
-  await host.locator('.toast', { hasText: 'Select a player first' }).waitFor();
+  await toastsIn(host, { hasText: 'Select a player first' }).waitFor();
   await host.keyboard.press('r');
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
   await p2.locator('#buzz-big').getByText('Answers locked').waitFor();
@@ -373,7 +373,7 @@ try {
   await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).waitFor();
   const shownH = await stageH();
   assert(shownH === hiddenH, `then the panel shows each pick, the counts and ✔ Judge all, and the stage keeps its size (${hiddenH}px, then ${shownH}px)`);
-  const stageStrip = host.locator('.stage-box [data-choices]');
+  const stageStrip = stageBoxIn(host).locator('[data-choices]');
   await stageStrip.locator('.choice.right').waitFor();
   assert(
     (await stageStrip.locator('.choice.right').innerText()).replace(/\s+/g, ' ') === '✔ Stockholm' && (await stageStrip.locator('.choice.dim').count()) === 3,
@@ -391,9 +391,9 @@ try {
   );
   await host.keyboard.press('Escape');
   await goOnCheck(host).waitFor({ state: 'detached' });
-  assert((await host.locator('.stage-box .board').count()) === 0, 'Not yet (Esc) leaves the clue open');
+  assert((await boardIn(stageBoxIn(host)).count()) === 0, 'Not yet (Esc) leaves the clue open');
   const before = await p2.locator('#me').innerText();
-  const picker = (name) => host.locator('.panel .p.picker', { hasText: name });
+  const picker = (name) => hostPanelIn(host).locator('.p.picker', { hasText: name });
   await picker('Player 1').waitFor();
   // Locked, with nobody picked: Enter is ✔ Judge all (its button shows ⏎, gone while a player is picked, when Enter
   // awards them), and one Ctrl+Z takes it all back.
@@ -422,7 +422,7 @@ try {
   // Everyone judged: the keys go on to the main button (not 🙈 Hide answer), where Enter says so.
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   await host.keyboard.press('Enter');
-  await host.locator('.toast', { hasText: 'Everyone is judged: Esc goes back to the board' }).waitFor();
+  await toastsIn(host, { hasText: 'Everyone is judged: Esc goes back to the board' }).waitFor();
   assert(true, 'after ✔ Judge all the keys are on the main button, and Enter there says everyone is judged');
   assert((await stageH()) === hiddenH, `and once judged too (${await stageH()}px)`);
   // Its score pops come in above the choices, not over them: the line they stand on (their box's foot; a pop is there
@@ -451,7 +451,7 @@ try {
 
   // ---------- 🔁 Rematch in the same room: the phones still in it keep their 📱 on stream ----------
   await host.keyboard.press('Escape');
-  await host.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(host)).waitFor();
   for (const next of ['Final', 'End game']) {
     const go = host.locator('.rn > button.next', { hasText: next });
     await go.waitFor();
@@ -467,9 +467,9 @@ try {
   await host.getByRole('button', { name: '🔁 Rematch' }).click();
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
-  await host.locator('.stage-box .board').waitFor();
-  await host.locator('.stage-box .plate .phone').nth(1).waitFor();
-  assert((await host.locator('.stage-box .plate .phone').count()) === 2, 'after 🔁 Rematch in the same room, both plates still show 📱');
+  await boardIn(stageBoxIn(host)).waitFor();
+  await stageBoxIn(host).locator('.plate .phone').nth(1).waitFor();
+  assert((await stageBoxIn(host).locator('.plate .phone').count()) === 2, 'after 🔁 Rematch in the same room, both plates still show 📱');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Everyone answers E2E passed.');

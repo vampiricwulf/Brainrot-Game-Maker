@@ -14,7 +14,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, untilWith, section, stageBoxIn, toastsIn, toolsRowIn } from './helpers.mjs';
 import { clip, fixturePage, flac, gif, noise, wav } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -217,7 +217,7 @@ try {
   const told = () => page.evaluate(() => window.__said.join(' | '));
   await page.waitForFunction(() => window.__said.some((t) => t.includes('🗜 Phones get the smaller copy now:')), null, { timeout: 10_000 }).catch(() => {});
   assert(
-    (await told()).includes('🗜 Making a smaller copy for phones…') && (await told()).includes('🗜 Phones get the smaller copy now:') && !(await page.locator('.toast', { hasText: 'Phones get' }).count()),
+    (await told()).includes('🗜 Making a smaller copy for phones…') && (await told()).includes('🗜 Phones get the smaller copy now:') && !(await toastsIn(page, { hasText: 'Phones get' }).count()),
     `a screen reader is told it started and how it ended, though the window shows it (no toast): ${await told()}`,
   );
   await dialog.getByRole('button', { name: '▶ Watch it' }).click();
@@ -281,7 +281,7 @@ try {
   await pill.filter({ hasText: '(+1 waiting)' }).waitFor();
   assert(true, 'the second waits its turn: “(+1 waiting)”');
   await pill.getByRole('button', { name: 'Stop' }).click();
-  const toast = page.locator('.toast', { hasText: '🗜 Phones get the smaller copy now' });
+  const toast = toastsIn(page, { hasText: '🗜 Phones get the smaller copy now' });
   await toast.waitFor({ timeout: 60_000 });
   const said = await toast.innerText();
   assert(/^🗜 Phones get the smaller copy now: \d+ KB instead of 2\.\d MB \(Ctrl\+Z takes it back\)$/.test(said), `the pill’s Stop stops the first; the second is made, and says so in a toast (${said})`);
@@ -327,7 +327,7 @@ try {
   const putIn = () => page.evaluate((mark) => window.__seen.slice(mark).some((t) => t.startsWith('🗜 Phones get the smaller copy now')), mark);
   assert((await pill.count()) === 1 && (await historyCount()) === atDrag && !(await putIn()), 'a copy made while a drag is held waits for it: not put in yet');
   await page.mouse.up();
-  await page.locator('.toast', { hasText: '🗜 Phones get the smaller copy now' }).waitFor({ timeout: 60_000 });
+  await toastsIn(page, { hasText: '🗜 Phones get the smaller copy now' }).waitFor({ timeout: 60_000 });
   const b1 = await words.boundingBox();
   const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert(Math.round(b1.x - b0.x) === 40 && Math.round(b1.y - b0.y) === 30, `the drag moved the words (${Math.round(b1.x - b0.x)}, ${Math.round(b1.y - b0.y)})`);
@@ -565,13 +565,13 @@ try {
     HTMLMediaElement.prototype.play = () => Promise.reject(new DOMException('The request is not allowed by the user agent', 'NotAllowedError'));
   });
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  await page.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(page).locator('.tile').first().waitFor();
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
   await aud.waitForLoadState('domcontentloaded');
   aud.on('pageerror', (e) => errors.push(`[audience] ${e.message}`));
   await aud.waitForFunction(() => window.__games.length > 0);
 
-  const tools = page.locator('.panel .toolsrow');
+  const tools = toolsRowIn(page);
   await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
   const send = page.getByRole('dialog', { name: 'Send a card' });
   await send.waitFor();

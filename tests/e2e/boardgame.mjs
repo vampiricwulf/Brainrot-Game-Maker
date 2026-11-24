@@ -4,7 +4,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, startNewGame, stepButton, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, startNewGame, stepButton, assert, launchChromium, section, confirmStrip, hostPanelIn, roundTabsIn, stageBoxIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -13,7 +13,7 @@ const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-const toast = () => page.locator('.toast').innerText();
+const toast = () => toastsIn(page).innerText();
 // The editor's board: its spaces are buttons named after them.
 const spaces = page.locator('.canvas [data-space]');
 const space = (name) => page.locator('.canvas').getByRole('button', { name, exact: true });
@@ -347,18 +347,18 @@ try {
   const yes = leaveAnswer(page);
   if (await yes.isVisible()) await yes.click();
   // The round opens on its title card (the host's status line says so): clicking it goes on.
-  await page.locator('.stage-box .title-card').waitFor();
+  await stageBoxIn(page).locator('.title-card').waitFor();
   assert((await page.locator('.status').first().innerText()).includes('Title card'), 'the host panel says the title card is up');
   // Under it the turn box's one slot waits, 🎲 Roll and (a count typed) ▶ Move, as D and Enter do (nobody would see the
   // dice or the move).
   const startFirst = 'Start the round first (N, or click the title card)';
   await page.locator('.bh .move').getByRole('button', { name: /^🎲 Roll/ }).click();
-  assert((await toast()) === startFirst && !(await page.locator('.stage-box .ov').count()), `under the title card, 🎲 Roll says to start the round first (${await toast()})`);
+  assert((await toast()) === startFirst && !(await stageBoxIn(page).locator('.ov').count()), `under the title card, 🎲 Roll says to start the round first (${await toast()})`);
   await page.getByLabel('Steps').fill('3');
   await page.locator('.bh .move').getByRole('button', { name: /^▶ Move/ }).click();
   assert((await toast()) === startFirst && !(await page.locator('.bh .acts').count()), `and so does ▶ Move, moving nobody (${await toast()})`);
   await page.getByLabel('Steps').fill('');
-  await page.locator('.stage-box .title-card').click();
+  await stageBoxIn(page).locator('.title-card').click();
   await page.locator('.bh').waitFor();
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'Player 1 goes first');
   assert((await page.locator('.stage .on-board').count()) === 2, 'both tokens are on the board');
@@ -393,7 +393,7 @@ try {
   await rolledOff.waitFor({ timeout: 15000 });
   const goesFirst = (await rolledOff.innerText()).match(/(Player \d) goes first\./)?.[1];
   await page.keyboard.press('Escape');
-  await page.locator('.stage-box .ov').waitFor({ state: 'detached' });
+  await stageBoxIn(page).locator('.ov').waitFor({ state: 'detached' });
   assert(!!goesFirst && (await page.locator('.stage .turn-banner').innerText()).includes(goesFirst), `O: "${goesFirst} goes first." on the host panel, and it's their turn`);
 
   // Right-click a token: make it their turn (the player the roll-off didn't pick: the winner's item is greyed out), then
@@ -415,39 +415,39 @@ try {
   // them (S): the dice come back without the scores.
   const rolled = await page.getByLabel('Steps').inputValue();
   await page.keyboard.press('s');
-  await page.locator('.stage-box .ov .sb').waitFor();
+  await stageBoxIn(page).locator('.ov .sb').waitFor();
   await page.reload();
   await page.getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await page.waitForFunction((n) => document.querySelector('.bh input[aria-label="Steps"]')?.value === n, rolled);
   assert(
-    (await page.locator('.stage-box .ov').count()) === 1 && (await page.locator('.stage-box .ov .sb').count()) === 0,
+    (await stageBoxIn(page).locator('.ov').count()) === 1 && (await stageBoxIn(page).locator('.ov .sb').count()) === 0,
     `a reload (the scores up over the dice) and Resume keep the roll: Steps still ${rolled}, the dice back on the stage`,
   );
   await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
   const diceTip = await page.getByRole('button', { name: '🎲 Dice' }).getAttribute('title');
   assert(diceTip.includes('round’s own dice'), `and the 🎲 Dice button’s tooltip says D rolls the round’s own dice (${diceTip})`);
   // The dice don't stay on stream into another round.
-  assert((await page.locator('.stage-box .ov').count()) === 1, 'the dice are on the stage');
+  assert((await stageBoxIn(page).locator('.ov').count()) === 1, 'the dice are on the stage');
   await page.getByRole('button', { name: '◀ Previous round' }).click();
   await page.waitForTimeout(450);
-  assert((await page.locator('.stage-box .ov').count()) === 0, 'and gone once the round changes');
+  assert((await stageBoxIn(page).locator('.ov').count()) === 0, 'and gone once the round changes');
   await page.getByRole('button', { name: 'Next round ▶' }).click();
   await page.waitForTimeout(450);
   if (await yes.isVisible()) await yes.click();
-  if (await page.locator('.stage-box .title-card').count()) await page.locator('.stage-box .title-card').click();
+  if (await stageBoxIn(page).locator('.title-card').count()) await stageBoxIn(page).locator('.title-card').click();
   await page.locator('.bh').waitFor();
 
   // D, then S at once (the scores over the dice still rolling): the count still goes in once they land under the scores,
   // and S again brings back the dice with no second roll.
   await page.keyboard.press('d');
   await page.keyboard.press('s');
-  await page.locator('.stage-box .ov .sb').waitFor();
+  await stageBoxIn(page).locator('.ov .sb').waitFor();
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   const underScores = await page.getByLabel('Steps').inputValue();
-  assert((await page.locator('.stage-box .ov .sb').count()) === 1, `dice that land under the scores fill in the steps (${underScores})`);
+  assert((await stageBoxIn(page).locator('.ov .sb').count()) === 1, `dice that land under the scores fill in the steps (${underScores})`);
   await page.keyboard.press('s');
-  await page.locator('.stage-box .ov .sb').waitFor({ state: 'detached' });
+  await stageBoxIn(page).locator('.ov .sb').waitFor({ state: 'detached' });
   assert((await page.getByLabel('Steps').inputValue()) === underScores, 'S again brings the dice back, the count as it was');
   await page.keyboard.press('Escape');
 
@@ -539,7 +539,7 @@ try {
   await checkItem(page, 'move').waitFor();
   assert((await checkItem(page, 'roll').innerText()).startsWith('✓ Player 1 rolled'), `D rolls in it, and its line ticks, saying the roll (${await checkItem(page, 'roll').innerText()})`);
   await page.keyboard.press('Enter');
-  await page.locator('.panel [data-goon="nothing"]').waitFor();
+  await hostPanelIn(page).locator('[data-goon="nothing"]').waitFor();
   assert((await goOnCheck(page).locator('h3').innerText()) === '✓ Player 1’s turn is played', 'Enter moves them in it, and it says the turn is played (no buttons where they landed)');
   await page.keyboard.press('n');
   await page.locator('.stage .turn-banner', { hasText: 'Player 2' }).waitFor();
@@ -587,7 +587,7 @@ try {
   const focusedSpace = () => page.evaluate(() => document.activeElement?.closest('.stage [data-space]')?.getAttribute('aria-label') ?? null);
   // (Player 1's turn: Player 2 is in the Shadow Realm.)
   await page.locator('.bh .ord .nm', { hasText: 'Player 1' }).click();
-  await page.locator('.panel button:visible').first().focus();
+  await hostPanelIn(page).locator('button:visible').first().focus();
   await page.keyboard.press('Shift+Tab');
   const firstStop = await focusedSpace();
   assert(!!firstStop && (await page.locator('.stage [data-space][tabindex="0"]').count()) === 1, `the board is one Tab stop: a space (${firstStop})`);
@@ -606,7 +606,7 @@ try {
   await openMenu(page).waitFor({ state: 'detached' });
   // A click on the board lets the space go: then D and Enter move the token (Enter never opens a card).
   const moved = await page.locator('.last').innerText();
-  await page.locator('.stage-box').click({ position: { x: 12, y: 12 } });
+  await stageBoxIn(page).click({ position: { x: 12, y: 12 } });
   assert(!(await focusedSpace()), 'a click on the board takes the keys off the space');
   await page.keyboard.press('d');
   await page.waitForFunction(() => document.querySelector('[aria-label="Steps"]')?.value !== '');
@@ -620,10 +620,10 @@ try {
   await page.evaluate(() => document.activeElement?.blur?.());
   await page.keyboard.press('d');
   await page.waitForFunction(() => document.querySelector('[aria-label="Steps"]')?.value !== '');
-  await page.locator('.stage-box .ov').click();
+  await stageBoxIn(page).locator('.ov').click();
   await page.waitForFunction((was) => document.querySelector('.last')?.textContent !== was, moved);
   // (The dice fade out in 200 ms.)
-  const diceGone = await page.locator('.stage-box .ov').waitFor({ state: 'detached', timeout: 2000 }).then(() => true, () => false);
+  const diceGone = await stageBoxIn(page).locator('.ov').waitFor({ state: 'detached', timeout: 2000 }).then(() => true, () => false);
   assert((await toast()).includes('Landed on') && diceGone, `a click on the landed dice moves the token, and puts the dice away (${await toast()})`);
   await page.keyboard.press('Control+z');
   // The turn order: a click on a name makes it their turn; a chip dragged before another moves it there (one undo step).
@@ -640,7 +640,7 @@ try {
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
-  await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
+  await roundTabsIn(page, { hasText: 'Board game' }).click();
   await page.getByLabel('Move by').selectOption('step');
   await page.getByRole('button', { name: '▶ Play' }).click();
   // (The game kept above has turns rolled: Start asks before throwing it away, and Start new game goes on.)
@@ -753,7 +753,7 @@ try {
   if (await replace.isVisible().catch(() => false)) await replace.getByRole('button', { name: / anyway$/ }).click();
   await page.getByText(/^Opened “/).waitFor();
   // A movement wheel whose slices name no number: Move by says a spin won't fill in the steps, and so does the checklist.
-  await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
+  await roundTabsIn(page, { hasText: 'Board game' }).click();
   await page.getByLabel('Move by').selectOption({ label: '🎡 Word wheel' });
   const noNumbers = page.locator('.bge .warn', { hasText: 'Its slices have no numbers' });
   // (The checklist is worked out a moment after the change.)
@@ -773,7 +773,7 @@ try {
   await page.waitForTimeout(450); // (the question's double-click guard)
   await startAsk.getByRole('button', { name: 'Start new game' }).click();
   await page.locator('.bh').waitFor();
-  if (await page.locator('.stage-box .title-card').count()) await page.locator('.stage-box .title-card').click();
+  if (await stageBoxIn(page).locator('.title-card').count()) await stageBoxIn(page).locator('.title-card').click();
   assert(
     (await page.locator('.stage [data-space] .n').count()) === 0,
     'no space draws a number in its circle',
@@ -789,7 +789,7 @@ try {
   await page.locator('.stage [data-space="b6"]').click();
   await page.getByRole('dialog', { name: 'Space: Roll a d20' }).getByRole('button', { name: 'Roll d20' }).click();
   await page.waitForTimeout(1800);
-  assert((await page.locator('.stage-box .ov').count()) === 1 && (await page.getByLabel('Steps').inputValue()) === '', 'a space’s d20 roll doesn’t fill in the steps');
+  assert((await stageBoxIn(page).locator('.ov').count()) === 1 && (await page.getByLabel('Steps').inputValue()) === '', 'a space’s d20 roll doesn’t fill in the steps');
   // Esc: the dice go, then the card.
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
@@ -841,7 +841,7 @@ try {
   await aud.setViewportSize({ width: 1280, height: 720 });
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.locator('.bh').waitFor();
-  if (await aud.locator('.title-card').count()) await host.locator('.stage-box .title-card').click().catch(() => {});
+  if (await aud.locator('.title-card').count()) await stageBoxIn(host).locator('.title-card').click().catch(() => {});
   await aud.locator('[data-space="b8"]').waitFor();
   await aud.waitForTimeout(600);
   assert((await aud.locator('.space .label').count()) === 0 && (await host.locator('.stage .space .label').count()) === 0, 'a game saved before names could be hidden: no names in the audience window, nor in the host’s copy');
@@ -901,14 +901,14 @@ try {
       const [frame, label] = sel.split(' | ').map((q) => document.querySelector(q)?.getBoundingClientRect());
       return label && frame ? { left: Math.round(label.left - frame.left), right: Math.round(frame.right - label.right) } : null;
     }, where);
-  await one.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
+  await roundTabsIn(one, { hasText: 'Board game' }).click();
   await one.locator('.canvas [data-space="b9"] .label').waitFor();
   const lavaEditor = await lavaIn('.canvas-box | .canvas [data-space="b9"] .label');
   assert(lavaEditor.right >= 0 && lavaEditor.left >= 0, `a long name at the board's right edge is all on the board in the editor (${JSON.stringify(lavaEditor)})`);
   await one.getByRole('button', { name: '▶ Play' }).click();
   await one.getByRole('button', { name: 'Start game ▶' }).click();
   await one.locator('.bh').waitFor();
-  if (await one.locator('.stage-box .title-card').count()) await one.locator('.stage-box .title-card').click();
+  if (await stageBoxIn(one).locator('.title-card').count()) await stageBoxIn(one).locator('.title-card').click();
   await one.locator('.stage [data-space="b9"] .label').waitFor();
   const lavaStage = await lavaIn('.stage .play-area | .stage [data-space="b9"] .label');
   assert(lavaStage.right >= 0 && lavaStage.left >= 0, `and on the stage (${JSON.stringify(lavaStage)})`);
@@ -941,7 +941,7 @@ try {
     .then(() => true, () => false);
   assert(countBack && !(await one.locator('.fork').count()), `Ctrl+Z of the move to the fork puts its count back (${await stepsBox.inputValue()})`);
   // (Next round ▶ and its answer each ignore a click in their first moment: the second half of a double-click.)
-  const leave = one.locator('.panel .confirm');
+  const leave = confirmStrip(one);
   for (let i = 0; !(await leave.count()); i++) {
     if (i === 10) throw new Error('Assertion failed: Next round ▶ asks “Leave Board game for …?”');
     await one.getByRole('button', { name: 'Next round ▶' }).click();
@@ -963,7 +963,7 @@ try {
   );
   // Its wheel's slices are words: once it lands, the host is told to type the steps (it used to say nothing).
   await stepButton(one, '🎡 Spin to move').click();
-  const typeSteps = one.locator('.toast', { hasText: 'No number on “' });
+  const typeSteps = toastsIn(one, { hasText: 'No number on “' });
   await typeSteps.waitFor({ timeout: 8000 });
   assert(/No number on “(One|Two|Three)”: type the steps/.test(await typeSteps.innerText()) && (await stepsBox.inputValue()) === '', `a wheel of words: “${await typeSteps.innerText()}”, the Steps box left empty`);
   await ctx3.close();

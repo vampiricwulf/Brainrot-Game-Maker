@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, openGameFile, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section, hostPanelIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -81,7 +81,7 @@ try {
     }),
   );
   const last = () => states.at(-1);
-  const toast = (t) => host.locator('.toast', { hasText: t }).waitFor({ timeout: 4000 }).then(() => true, () => false);
+  const toast = (t) => toastsIn(host, { hasText: t }).waitFor({ timeout: 4000 }).then(() => true, () => false);
   await host.goto(pathToFileURL(file).href);
   await openGameFile(host, gameFile);
   await host.getByText(/^Opened “/).waitFor();
@@ -146,28 +146,28 @@ try {
     phones[seat] = p;
   }
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
   const big = (who) => phones[who].locator('#buzz-big').innerText().catch(() => '');
   const small = (who) => phones[who].locator('#buzz-small').innerText().catch(() => '');
   const IDS = { Ann: 'p1', Bob: 'p2', Cat: 'p3', Dan: 'p4' };
-  const scoreOf = async (name) => (await host.locator(`.panel .players [data-player-id="${IDS[name]}"] .score`).innerText()).trim();
-  const panel = host.locator('.panel [data-partner-panel]');
+  const scoreOf = async (name) => (await hostPanelIn(host).locator(`.players [data-player-id="${IDS[name]}"] .score`).innerText()).trim();
+  const panel = hostPanelIn(host).locator('[data-partner-panel]');
   const stealRow = panel.locator('[data-partner-steal]');
-  const badge = host.locator('.stage-box [data-partner-badge]');
+  const badge = stageBoxIn(host).locator('[data-partner-badge]');
   const lockedOut = () => [...(last()?.lockedOut ?? [])].sort().join(',');
 
   // ---------- Ann picks Movies $400, Bob describes, Ann misses ----------
   section('Steal on a miss');
   await host.keyboard.press('p');
   await host.keyboard.press('1');
-  await host.locator('.stage-box .tile[data-clue="q0_1"]').click();
-  await host.locator('.stage-box [data-partner-up]').waitFor();
+  await stageBoxIn(host).locator('.tile[data-clue="q0_1"]').click();
+  await stageBoxIn(host).locator('[data-partner-up]').waitFor();
   await host.keyboard.press('2');
   await host.keyboard.press('Enter');
   await badge.waitFor();
   await sleep(1100);
   await host.keyboard.press('Enter');
-  await host.locator('.stage-box .timer').waitFor();
+  await stageBoxIn(host).locator('.timer').waitFor();
   assert(last()?.phase === 'lobby' && (await phones.Cat.locator('#buzz').getAttribute('aria-disabled')) === 'true', 'nobody buzzes while the two play it (every phone greyed)');
   await sleep(1100);
   await host.keyboard.press('Shift+Enter');
@@ -181,9 +181,9 @@ try {
   await host.screenshot({ path: 'test-results/partner-steal-open.png' });
   // A click on the stage while the steal is on leaves the answer hidden (and the steal open): it says how it goes on, in
   // the status line.
-  const answerUp = host.locator('.stage-box [data-slide="answer"]');
-  await host.locator('.stage-box [data-slide="1"]').click();
-  await host.locator('.panel .status [data-click-note]', { hasText: '🔔 A steal: whoever buzzes in first answers' }).waitFor();
+  const answerUp = stageBoxIn(host).locator('[data-slide="answer"]');
+  await stageBoxIn(host).locator('[data-slide="1"]').click();
+  await statusLineIn(host).locator('[data-click-note]', { hasText: '🔔 A steal: whoever buzzes in first answers' }).waitFor();
   assert(true, 'a click on the stage during the steal says how the steal goes on, in the status line');
   assert((await answerUp.count()) === 0 && (await stealRow.innerText()).includes('🔔 Steal!'), 'and the answer stays hidden, the steal still open');
 
@@ -195,7 +195,7 @@ try {
   assert(await until(async () => (await scoreOf('Cat')) === '$400'), 'Enter: Cat steals it, +$400');
   assert((await stealRow.innerText()).includes('🔔 Cat stole it'), 'the panel: “🔔 Cat stole it”');
   assert(await until(() => last()?.phase === 'closed' && last().done?.by === 'p3'), 'the buzzers close on Cat’s right answer');
-  assert(await until(async () => (await host.locator('.panel .players .p.picker').getAttribute('aria-label')) === 'Cat'), 'Cat picks next');
+  assert(await until(async () => (await hostPanelIn(host).locator('.players .p.picker').getAttribute('aria-label')) === 'Cat'), 'Cat picks next');
 
   // ---------- Undo, redo ----------
   await host.keyboard.press('Control+z');
@@ -226,7 +226,7 @@ try {
     'a host reload keeps the steal open, Dan still answering it',
   );
   assert(await until(() => states.length > before && last()?.phase === 'answering' && last().answering === 'p4' && lockedOut() === 'p1,p2'), 'the room hears the same: Dan answering, Ann and Bob out');
-  await host.locator('.panel [data-next]').focus();
+  await hostPanelIn(host).locator('[data-next]').focus();
   await host.keyboard.press('Shift+Enter');
   assert(await until(async () => (await scoreOf('Dan')) === '−$400'), 'Shift+Enter: Dan misses the steal, −$400');
   assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2,p4'), 'the buzzers open for the rest: Cat alone');
@@ -236,18 +236,18 @@ try {
   // ---------- Cat misses it too: nobody is left to steal it, and the panel says so ----------
   await stealRow.getByRole('button', { name: 'Cat steals it' }).click();
   assert(await until(() => last()?.phase === 'answering' && last().answering === 'p3'), 'the host picks Cat: Cat answers');
-  await host.locator('.panel [data-next]').focus();
+  await hostPanelIn(host).locator('[data-next]').focus();
   await host.keyboard.press('Shift+Enter');
   assert(await until(async () => (await scoreOf('Cat')) === '−$400'), 'Shift+Enter: Cat misses the steal too, −$400');
   assert(
     await until(async () => (await stealRow.innerText()).includes('🔔 Nobody stole it: everyone missed (👁 Reveal answer)') && !(await stealRow.innerText()).includes('🔔 Steal!')),
     'the panel: “Nobody stole it: everyone missed”, no 🔔 Steal! left',
   );
-  assert((await host.locator('.panel .status').innerText()).includes('Answer hidden · nobody stole it: reveal the answer'), 'the status line says nobody stole it, not that the others can answer');
+  assert((await statusLineIn(host).innerText()).includes('Answer hidden · nobody stole it: reveal the answer'), 'the status line says nobody stole it, not that the others can answer');
   await host.keyboard.press('Enter');
   assert(await toast('Everyone missed the steal: R reveals the answer'), 'Enter says everyone missed: R reveals the answer');
   // Nobody left to steal it: a click on the stage shows the answer now.
-  await host.locator('.stage-box [data-slide="1"]').click();
+  await stageBoxIn(host).locator('[data-slide="1"]').click();
   await answerUp.waitFor();
   assert(await until(async () => (await stealRow.innerText()).includes('🔔 Nobody stole it')), 'a click on the stage shows the answer now: “🔔 Nobody stole it”');
   assert(await until(() => last()?.phase === 'closed'), 'and the buzzers close');

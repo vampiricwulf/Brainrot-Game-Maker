@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, openGameFile, packGame, playWithPlayers, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, openGameFile, packGame, playWithPlayers, failureShots, assert, launchChromium, boardIn, boardTilesIn, inspectorIn, roundTabsIn, stageBoxIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
@@ -61,7 +61,7 @@ const waitPaused = (p, sel, v) => p.waitForFunction(([s, want]) => document.quer
 const answer = (p) => p.getByText('The answer text').count();
 const guard = () => page.waitForTimeout(500); // past the stage's double-click guard
 /** The slide editor's panel shows the sound just added (its speaker icon box is a sound's only). */
-const soundPanel = () => page.locator('.insp').getByLabel('Show a speaker icon on the slide').waitFor();
+const soundPanel = () => inspectorIn(page).getByLabel('Show a speaker icon on the slide').waitFor();
 // A stand-in YouTube player (tests have no internet): it answers the app, and notes how it was asked to start.
 const YT = `<!doctype html><script>
   const auto = new URLSearchParams(location.search).get('autoplay');
@@ -96,14 +96,14 @@ try {
   await page.getByRole('button', { name: '🎬 Video' }).click();
   let [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
   await fc.setFiles({ name: 'clip.webm', mimeType: 'video/webm', buffer: clip });
-  await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
+  await inspectorIn(page).getByLabel('Autoplay when the slide appears').uncheck();
   await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'beep.wav', mimeType: 'audio/wav', buffer: wav(4) });
   // (The sound's own panel first: until the file is in, the video's is up, and the box there is the video's.)
   await soundPanel();
-  await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
-  await page.locator('.insp').getByLabel('Show a speaker icon on the slide').check();
+  await inspectorIn(page).getByLabel('Autoplay when the slide appears').uncheck();
+  await inspectorIn(page).getByLabel('Show a speaker icon on the slide').check();
   await page.getByRole('tab', { name: /Answer/ }).click();
   await page.getByRole('button', { name: /Text/ }).first().click();
   await page.keyboard.type('The answer text');
@@ -113,7 +113,7 @@ try {
   await page.getByRole('button', { name: '🖼 Image' }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload image file…' }).click()]);
   await fc.setFiles({ name: 'gone.png', mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') });
-  const position = page.locator('.insp section', { hasText: 'Position' });
+  const position = inspectorIn(page).locator('section', { hasText: 'Position' });
   await position.getByLabel('X', { exact: true }).fill('0');
   await position.getByLabel('Y', { exact: true }).fill('0');
   await page.getByRole('button', { name: 'Done' }).click();
@@ -122,7 +122,7 @@ try {
   await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'song.wav', mimeType: 'audio/wav', buffer: wav(8) });
-  assert(await page.locator('.insp').getByLabel('Autoplay when the slide appears').isChecked(), 'a sound plays by itself when its slide appears, unless told not to');
+  assert(await inspectorIn(page).getByLabel('Autoplay when the slide appears').isChecked(), 'a sound plays by itself when its slide appears, unless told not to');
   await page.getByRole('button', { name: 'Done' }).click();
   // A third clue with a video and a YouTube video that play by themselves, coming in 3 s after the slide.
   await page.locator('.tile').nth(2).click();
@@ -130,9 +130,9 @@ try {
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
   await fc.setFiles({ name: 'later.webm', mimeType: 'video/webm', buffer: clip });
   const comesIn = async () => {
-    await page.locator('.insp').getByLabel('Entrance animation').selectOption('fade');
-    await page.locator('.insp').getByLabel('Delay (s)').fill('3');
-    await page.locator('.insp').getByLabel('Delay (s)').press('Tab');
+    await inspectorIn(page).getByLabel('Entrance animation').selectOption('fade');
+    await inspectorIn(page).getByLabel('Delay (s)').fill('3');
+    await inspectorIn(page).getByLabel('Delay (s)').press('Tab');
   };
   await comesIn();
   await page.getByRole('button', { name: '🌐 Link' }).click();
@@ -149,34 +149,34 @@ try {
   await page.getByRole('button', { name: '🎬 Video' }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
   await fc.setFiles({ name: 'gif.webm', mimeType: 'video/webm', buffer: clip });
-  await page.locator('.insp').getByLabel('Loop', { exact: true }).check();
-  await page.locator('.insp').getByLabel('Start muted').check();
+  await inspectorIn(page).getByLabel('Loop', { exact: true }).check();
+  await inspectorIn(page).getByLabel('Start muted').check();
   await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'cut.wav', mimeType: 'audio/wav', buffer: wav(4) });
   await soundPanel();
-  await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
+  await inspectorIn(page).getByLabel('Autoplay when the slide appears').uncheck();
   // (The Plays row takes seconds or clock time; a time counts once the box is left, or with Enter.)
-  await page.locator('.insp').getByLabel('Plays to').fill('1.5');
-  await page.locator('.insp').getByLabel('Plays to').press('Enter');
-  assert((await page.locator('.insp').getByLabel('Plays to').inputValue()) === '0:01.5', 'Plays to takes 1.5 and says 0:01.5');
+  await inspectorIn(page).getByLabel('Plays to').fill('1.5');
+  await inspectorIn(page).getByLabel('Plays to').press('Enter');
+  assert((await inspectorIn(page).getByLabel('Plays to').inputValue()) === '0:01.5', 'Plays to takes 1.5 and says 0:01.5');
   // Ctrl+Z with the keys still in the box undoes the time (through the history, as in any box), Ctrl+Y puts it back.
-  const playsTo = page.locator('.insp').getByLabel('Plays to');
+  const playsTo = inspectorIn(page).getByLabel('Plays to');
   await playsTo.press('Control+z');
   assert((await playsTo.inputValue()) === '', `Ctrl+Z in Plays to undoes the time it took (it reads “${await playsTo.inputValue()}”)`);
   await playsTo.press('Control+y');
   assert((await playsTo.inputValue()) === '0:01.5', 'and Ctrl+Y puts it back');
   // ↑ / ↓ step it 0.1 s; the row offers ▶ Try it, and says it's only this item.
-  await page.locator('.insp').getByLabel('Plays to').press('ArrowUp');
-  assert((await page.locator('.insp').getByLabel('Plays to').inputValue()) === '0:01.6', '↑ in Plays to steps 0.1 s');
-  await page.locator('.insp').getByLabel('Plays to').press('ArrowDown');
+  await inspectorIn(page).getByLabel('Plays to').press('ArrowUp');
+  assert((await inspectorIn(page).getByLabel('Plays to').inputValue()) === '0:01.6', '↑ in Plays to steps 0.1 s');
+  await inspectorIn(page).getByLabel('Plays to').press('ArrowDown');
   // (Ctrl+Z after a step goes back a step: the typing before it isn't put back in front.)
   await playsTo.press('Control+z');
   assert(/^(|0:01\.[56])$/.test(await playsTo.inputValue()), `Ctrl+Z after ↑ ↓ in Plays to goes back a step (it reads “${await playsTo.inputValue()}”)`);
   await playsTo.press('Control+y');
   assert((await playsTo.inputValue()) === '0:01.5', 'and Ctrl+Y brings it back to 0:01.5');
   assert(
-    (await page.locator('.insp').getByRole('button', { name: '▶ Try it' }).count()) === 1 && (await page.locator('.insp').getByText(/^Only this item/).count()) === 1,
+    (await inspectorIn(page).getByRole('button', { name: '▶ Try it' }).count()) === 1 && (await inspectorIn(page).getByText(/^Only this item/).count()) === 1,
     'the Plays row has ▶ Try it, and a line saying it is only this item',
   );
   await page.getByRole('button', { name: 'Done' }).click();
@@ -222,44 +222,44 @@ try {
       window.__later = { at: performance.timeOrigin + performance.now(), shows: window.__showsAt(e.target.closest('.el')) };
     }, true);
   });
-  await page.locator('.board .tile').nth(2).click();
+  await boardTilesIn(boardIn(page)).nth(2).click();
   await page.waitForFunction(() => !!window.__later);
   const later = await page.evaluate(() => window.__later);
   assert(later.shows !== null && later.at >= later.shows - 1000, `a video that comes in later starts as it shows (${later.shows === null ? 'before its entrance began' : `${Math.round(later.at - later.shows)} ms from it`})`);
-  const yt = await (await page.locator('.stage-box .full iframe').elementHandle()).contentFrame();
+  const yt = await (await stageBoxIn(page).locator('.full iframe').elementHandle()).contentFrame();
   await yt.waitForFunction(() => !!window.__yt);
   assert((await yt.evaluate(() => window.__yt.auto)) === '0', "a YouTube video that comes in later isn't started by its link");
   await yt.waitForFunction(() => window.__yt.plays.length > 0);
   const ytAt = (await yt.evaluate(() => window.__yt.plays))[0];
-  const ytShows = await page.locator('.stage-box .full iframe').evaluate((f) => window.__showsAt(f.closest('.el')));
+  const ytShows = await stageBoxIn(page).locator('.full iframe').evaluate((f) => window.__showsAt(f.closest('.el')));
   assert(ytShows !== null && ytAt >= ytShows - 1000, `it's started as it shows (${ytShows === null ? 'before its entrance began' : `${Math.round(ytAt - ytShows)} ms from it`})`);
   await page.keyboard.press('Shift+Escape');
-  await page.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
   await guard();
   // Its answer shown and hidden again before they come in: they still start by themselves (they came back paused at 0:00).
   const laterVideo = '.stage-box .full video';
-  await page.locator('.board .tile').nth(2).click();
+  await boardTilesIn(boardIn(page)).nth(2).click();
   await page.waitForFunction((s) => (document.querySelector(s)?.readyState ?? 0) >= 1, laterVideo);
   await page.locator('.mc .time', { hasText: '/ 0:10' }).waitFor(); // (the YouTube video's length, from its player)
-  const laterAnswer = page.locator('.stage-box').getByText('The later answer');
+  const laterAnswer = stageBoxIn(page).getByText('The later answer');
   await page.keyboard.press('r');
   await laterAnswer.waitFor();
   await page.keyboard.press('r');
   await laterAnswer.waitFor({ state: 'detached' });
   let ran = await page.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 0.3, laterVideo, { timeout: 15000 }).then(() => true, () => false);
   assert(ran, 'the answer shown and hidden before the video comes in: it still starts by itself');
-  const ytBack = await (await page.locator('.stage-box .full iframe').elementHandle()).contentFrame();
+  const ytBack = await (await stageBoxIn(page).locator('.full iframe').elementHandle()).contentFrame();
   ran = await ytBack.waitForFunction(() => window.__yt?.plays.length > 0, null, { timeout: 15000 }).then(() => true, () => false);
   assert(ran, 'and so does the YouTube video');
   await page.keyboard.press('Shift+Escape');
-  await page.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
   await guard();
 
   // The clue with a looping, muted video (a GIF) under its sound: Space and M are for the sound, and the GIF keeps
   // looping, silent. The sound cut at its Plays to plays again from its start with ▶, not on past the cut.
   const gif = '.stage-box .full video';
   const cut = '.stage-box .full audio';
-  await page.locator('.board .tile').nth(3).click();
+  await boardTilesIn(boardIn(page)).nth(3).click();
   await waitPaused(page, gif, false);
   await page.locator('.mc .item').nth(1).waitFor();
   await page.locator(cut).evaluate((a) => a.addEventListener('play', () => (window.__cutPlayed = true), { once: true }));
@@ -299,17 +299,17 @@ try {
   const back = { volume: await page.locator(cut).evaluate((a) => a.volume), loop: await soundRow.getByRole('button', { name: 'Loop' }).getAttribute('aria-pressed') };
   assert(Math.abs(back.volume - 0.2) < 0.01 && back.loop === 'true', `the answer shown and hidden again: the sound comes back at its volume, looping (${JSON.stringify(back)})`);
   await page.keyboard.press('Shift+Escape');
-  await page.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
   await guard();
 
-  await page.locator('.board .tile').first().click();
+  await boardTilesIn(boardIn(page)).first().click();
   const video = '.stage-box .full video';
   const audio = '.stage-box .full audio';
-  const icon = page.locator('.stage-box .full button.icon');
+  const icon = stageBoxIn(page).locator('.full button.icon');
   await page.locator(video).waitFor();
   const stopped = { video: await paused(page, video), sound: await paused(page, audio) };
   assert(stopped.video && stopped.sound, `the clue opens with its video and sound stopped (${JSON.stringify(stopped)})`);
-  assert((await page.locator('.stage-box .full .missing').count()) === 0, 'one window (what the stream shows): no "Missing image" box for the missing picture');
+  assert((await stageBoxIn(page).locator('.full .missing').count()) === 0, 'one window (what the stream shows): no "Missing image" box for the missing picture');
 
   // One window.
   await page.locator(video).click();
@@ -335,7 +335,7 @@ try {
   const audAudio = '.full audio';
   await aud.locator(audVideo).waitFor();
   assert(
-    (await page.locator('.stage-box .full .missing').count()) === 1 && (await aud.locator('.full .missing').count()) === 0,
+    (await stageBoxIn(page).locator('.full .missing').count()) === 1 && (await aud.locator('.full .missing').count()) === 0,
     "dual mode: the host's copy says the picture is missing; viewers just don't see it",
   );
   await guard();
@@ -359,16 +359,16 @@ try {
 
   // Revealing still works: a click on the slide away from the media.
   await guard();
-  await page.locator('.stage-box .full').click({ position: { x: 10, y: 10 } });
+  await stageBoxIn(page).locator('.full').click({ position: { x: 10, y: 10 } });
   await aud.getByText('The answer text').waitFor();
   assert(true, 'clicking elsewhere on the slide still reveals the answer');
 
   // The clue whose video and YouTube video come in later, the audience window reloaded (OBS, F5) before they show: they
   // still start by themselves there (they were held at 0:00, paused).
   await page.keyboard.press('Escape');
-  await page.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
   await guard();
-  await page.locator('.stage-box .board .tile').nth(2).click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).nth(2).click();
   await aud.waitForFunction(() => (document.querySelector('.full video')?.readyState ?? 0) >= 1);
   await page.locator('.mc .time', { hasText: '/ 0:10' }).waitFor();
   await aud.reload();
@@ -381,9 +381,9 @@ try {
   // The sound that plays by itself, paused by the host: the audience window reloaded (OBS, F5) or closed and opened
   // again keeps it paused where it was, rather than playing it again from 0:00 with sound.
   await page.keyboard.press('Shift+Escape');
-  await page.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
   await guard();
-  await page.locator('.stage-box .board .tile').nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).nth(1).click();
   const song = '.full audio';
   await aud.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 1.5, song);
   await page.locator('.mc').getByRole('button', { name: 'Pause' }).click();
@@ -434,9 +434,9 @@ try {
   // in; then the audience window opened: its copy takes the sound over from there (muted, at 30%, at the host's time,
   // not from 0:00 at full volume), and the host's copy goes silent, staying so when the host unmutes and mutes it.
   await page.keyboard.press('Shift+Escape');
-  await page.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
   await guard();
-  await page.locator('.stage-box .board .tile').nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).nth(1).click();
   await waitPaused(page, hostSong, false);
   await page.waitForFunction((s) => document.querySelector(s).currentTime > 1, hostSong);
   await page.keyboard.press('m');
@@ -496,10 +496,10 @@ try {
   // 🎨 Theme and 🖼 Board images show the board on a stage of their own: they leave the game's clip where it was too.
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   await page.locator('.preview .board').waitFor();
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.getByRole('button', { name: /Board images/ }).click();
   const decor = page.locator('[aria-label="Board images"]');
-  await decor.locator('.board').first().waitFor();
+  await boardIn(decor).first().waitFor();
   await decor.getByRole('button', { name: 'Done' }).click();
   await decor.waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Resume game' }).click();
@@ -529,8 +529,8 @@ try {
       await lp.getByRole('button', { name: what === 'video' ? '🎬 Video' : '🔊 Sound', exact: true }).click();
       const [chooser] = await Promise.all([lp.waitForEvent('filechooser'), lp.getByRole('button', { name: `⬆ Upload ${what === 'video' ? 'video' : 'sound'} file…` }).click()]);
       await chooser.setFiles({ name, mimeType, buffer });
-      await lp.locator('.insp h4', { hasText: what === 'video' ? 'Video' : 'Sound' }).waitFor();
-      await lp.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
+      await inspectorIn(lp).locator('h4', { hasText: what === 'video' ? 'Video' : 'Sound' }).waitFor();
+      await inspectorIn(lp).getByLabel('Autoplay when the slide appears').uncheck();
     };
     await lp.locator('.tile').first().click();
     await upload('video', 'one.webm', 'video/webm', clip);
@@ -570,10 +570,10 @@ try {
     await playWithPlayers(lp, 2);
     await lp.getByRole('button', { name: 'Start game ▶' }).click();
     await lp.getByRole('button', { name: 'Skip intro' }).click();
-    const stageAt = () => lp.locator('.stage-box').evaluate((s) => JSON.stringify(s.getBoundingClientRect()));
+    const stageAt = () => stageBoxIn(lp).evaluate((s) => JSON.stringify(s.getBoundingClientRect()));
     const onBoard = await stageAt();
 
-    await lp.locator('.board .tile').first().click();
+    await boardTilesIn(boardIn(lp)).first().click();
     const rows = lp.locator('.mc .item');
     await rows.nth(2).locator('.time', { hasText: '/ 0:03' }).waitFor();
     const said = await rows.evaluateAll((els) =>
@@ -624,10 +624,10 @@ try {
     await lp.locator('.toolsrow').waitFor();
     assert(true, '⋯ Tools brings the tools row back');
     await lp.keyboard.press('Shift+Escape');
-    await lp.locator('.stage-box .board').waitFor();
+    await boardIn(stageBoxIn(lp)).waitFor();
     await lp.waitForTimeout(500);
 
-    await lp.locator('.board .tile').nth(1).click();
+    await boardTilesIn(boardIn(lp)).nth(1).click();
     await rows.nth(1).waitFor();
     await lp.screenshot({ path: 'test-results/stagemedia-missing.png' });
     const missing = (await rows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
@@ -635,7 +635,7 @@ try {
       missing.join(' | ') === '🎬 This video’s file is missing from this computer. | 🔊 This sound’s file is missing from this computer.',
       `missing files: a row each says so, naming no file (${missing.join(' | ')})`,
     );
-    assert((await lp.locator('.stage-box .full .missing').count()) === 0, 'and the stage (what the stream shows) has no box for them');
+    assert((await stageBoxIn(lp).locator('.full .missing').count()) === 0, 'and the stage (what the stream shows) has no box for them');
     assert((await lp.locator('.toolsfold').count()) === 0 && (await lp.locator('.toolsrow').isVisible()), 'two thin rows leave room for all: the tools row stays out');
     await lapCtx.close();
   }
@@ -664,7 +664,7 @@ try {
     await wp.getByRole('button', { name: '▶ Play' }).click();
     await wp.getByRole('button', { name: 'Start game ▶' }).click();
     await wp.keyboard.press('w');
-    await wp.locator('.stage-box .wheel').waitFor();
+    await stageBoxIn(wp).locator('.wheel').waitFor();
     await wp.keyboard.press('w');
     const prize = '.stage-box .reveal video';
     await waitPaused(wp, prize, false);

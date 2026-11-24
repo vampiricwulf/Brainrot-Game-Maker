@@ -11,7 +11,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway, failureShots, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway, failureShots, assert, launchChromium, section, awardRowIn, confirmStrip, finalControlsIn, hostPanelIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -19,7 +19,7 @@ const page = await (await browser.newContext({ viewport: { width: 1400, height: 
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-const roundNames = async () => (await page.locator('nav > button.round-tab').allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
+const roundNames = async () => (await roundTabsIn(page).allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
 
 try {
   await page.goto(pathToFileURL(file).href);
@@ -27,7 +27,7 @@ try {
   // A slides template goes first too, and says so (taken back after).
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Welcome and rules/ }).click();
-  await page.locator('.toast', { hasText: 'at the start of the game: drag its tab to move it' }).waitFor();
+  await toastsIn(page, { hasText: 'at the start of the game: drag its tab to move it' }).waitFor();
   assert((await roundNames())[0] === 'Introduction', 'the 🖼 Welcome and rules template goes first, and says so');
   await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   await page.waitForFunction(() => document.querySelectorAll('nav > button.round-tab').length === 2);
@@ -84,22 +84,22 @@ try {
   await nameBox.fill('');
   assert((await nameBox.getAttribute('placeholder')) === 'Round 1' && (await roundNames())[0] === 'Round 1', `an empty name's box suggests “Round 1”, its tab's name (${await nameBox.getAttribute('placeholder')})`);
   await nameBox.fill('Introduction');
-  await page.locator('nav > button.round-tab').nth(1).click();
+  await roundTabsIn(page).nth(1).click();
   await nameBox.fill('');
   await page.locator('.tile').first().click();
   const clueHead = await page.getByRole('dialog', { name: 'Edit clue' }).locator('header .hint').first().innerText();
   assert(clueHead === 'Round 2 · Category 1', `the clue editor names it as its tab does (${clueHead})`);
   await page.keyboard.press('Escape');
   await nameBox.fill('Jeopardy!');
-  await page.locator('nav > button.round-tab', { hasText: 'Introduction' }).click();
+  await roundTabsIn(page, { hasText: 'Introduction' }).click();
   // 🎨 Theme opened from here previews the board (its looks are most of the page), not this round's slide.
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   const boardShown = await page.locator('.preview .board').waitFor({ timeout: 5000 }).then(() => true, () => false);
   assert(boardShown, '🎨 Theme opened from a Slides round previews the first board');
   // A Final's line goes to the side with nothing on it (here its answer), from another round.
-  await page.locator('nav > button.round-tab', { hasText: 'Final' }).click();
+  await roundTabsIn(page, { hasText: 'Final' }).click();
   await page.locator('main [data-field="q"]').fill('The final question');
-  await page.locator('nav > button.round-tab', { hasText: 'Introduction' }).click();
+  await roundTabsIn(page, { hasText: 'Introduction' }).click();
   await page.locator('nav .problem', { hasText: 'Final Jeopardy! has no answer' }).click();
   await page.getByRole('tab', { name: /^Answer slide/, selected: true }).waitFor();
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="a"]'), null, { timeout: 3000 });
@@ -111,7 +111,7 @@ try {
   await page.locator('nav .problem', { hasText: 'Tiebreaker: no question, no answer' }).waitFor();
   assert((await page.locator('nav .problem', { hasText: /tiebreaker/i }).count()) === 1, 'an empty tiebreaker is one checklist line, “Tiebreaker: no question, no answer”');
   await page.locator('main [data-field="q"]').fill('How many toilets?');
-  await page.locator('nav > button.round-tab', { hasText: 'Introduction' }).click();
+  await roundTabsIn(page, { hasText: 'Introduction' }).click();
   await page.locator('nav .problem', { hasText: 'The tiebreaker has no answer' }).click();
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="a"]'), null, { timeout: 3000 });
   assert(true, 'a tiebreaker ticked on but left empty is on the checklist, and its line opens the box to fill in');
@@ -119,12 +119,12 @@ try {
   // ---------- Playing it ----------
   await playWithPlayers(page, 2);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  const stage = page.locator('.stage-box');
+  const stage = stageBoxIn(page);
   await stage.locator('[data-slide="1"]').getByText('Welcome to the show').waitFor();
   await page.locator('[data-slidepos]').getByText('Slide 1 of 2').waitFor();
   assert(true, 'the game starts on its first slide (no title card), and the panel says "Slide 1 of 2"');
   await flowButton(page, 'pager', 'Next slide ▶').waitFor();
-  assert((await page.locator('.panel .status .notes').innerText()) === '📝 Say hi to chat', 'one window: the round’s host notes show in the panel');
+  assert((await statusLineIn(page).locator('.notes').innerText()) === '📝 Say hi to chat', 'one window: the round’s host notes show in the panel');
   // The keys are on Next slide ▶: Enter there does what it says, as N does.
   await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   await page.keyboard.press('Enter');
@@ -135,7 +135,7 @@ try {
   // H, H: the keys come back to a button the app picked (the main button: a slides round's status line has no ⏱ Start).
   // Space and Enter there press nothing (no slide goes on, no countdown starts).
   await page.keyboard.press('h');
-  await page.locator('.panel').waitFor({ state: 'detached' });
+  await hostPanelIn(page).waitFor({ state: 'detached' });
   await page.keyboard.press('h');
   await page.waitForFunction(() => !!document.activeElement?.matches('.panel button'));
   const keysOn = await page.evaluate(() => document.activeElement.textContent.trim());
@@ -163,12 +163,12 @@ try {
   // name comes first, its sign after); Esc puts it back on this round. Enter asks first (a round played out goes on at
   // once only when picked with the mouse); Keep playing gives the keys back to the list, on this round again.
   const goTo = page.getByRole('combobox', { name: 'Go to round' });
-  const strip = page.locator('.panel .confirm');
+  const strip = confirmStrip(page);
   const onRound = () => goTo.evaluate((s) => /** @type {HTMLSelectElement} */ (s).selectedOptions[0]?.textContent.trim());
   const keysOnList = () => page.evaluate(() => !!document.activeElement?.matches('select[aria-label="Go to round"]'));
   await goTo.focus();
   await page.keyboard.press('ArrowDown');
-  await page.locator('.toast', { hasText: 'Enter: go to Jeopardy! (it asks first) · Esc: stay' }).waitFor();
+  await toastsIn(page, { hasText: 'Enter: go to Jeopardy! (it asks first) · Esc: stay' }).waitFor();
   assert(
     (await strip.count()) === 0 && (await keysOnList()) && (await onRound()).startsWith('Jeopardy!') && (await stage.locator('[data-slide="2"]').count()) === 1,
     `↓ on Go to round only moves the list (“${await onRound()}”): nothing asked, the keys still there, the round where it was; the status line says Enter goes there`,
@@ -184,7 +184,7 @@ try {
   assert((await strip.count()) === 0, `typing J goes to Jeopardy! in the list (its options: ${(await goTo.locator('option').allInnerTexts()).join(' | ')})`);
   await page.keyboard.press('Enter');
   await strip.getByText('Leave Introduction for Jeopardy!?').waitFor();
-  await page.locator('.toast', { hasText: 'Enter: go to' }).waitFor({ state: 'detached' });
+  await toastsIn(page, { hasText: 'Enter: go to' }).waitFor({ state: 'detached' });
   assert((await stage.locator('[data-slide="2"]').count()) === 1, 'Enter on it asks before leaving the round (it doesn’t jump), its hint put away');
   await page.waitForFunction(() => document.activeElement?.closest('.panel .confirm') && document.activeElement.textContent?.trim() === 'Keep playing');
   await page.keyboard.press('Enter');
@@ -201,7 +201,7 @@ try {
   // A click on the stage on the last slide says so first (leaving the round is on stream), in the status line; the next
   // click goes on.
   await stage.locator('[data-slide="2"]').click();
-  const note = page.locator('.panel .status [data-click-note]');
+  const note = statusLineIn(page).locator('[data-click-note]');
   await note.filter({ hasText: 'Last slide: click again (or Next round ▶) to go on' }).waitFor();
   assert((await stage.locator('[data-slide="2"]').count()) === 1, 'on the last slide a click on the stage says “Last slide: click again (or Next round ▶) to go on”, and the slide stays');
   // (A double-click is one click: the second click counts a moment after the first.)
@@ -237,8 +237,8 @@ try {
   await p2.getByText(/^Opened “/).waitFor();
   await p2.getByRole('button', { name: '▶ Play' }).click();
   await p2.getByRole('button', { name: 'Start game ▶' }).click();
-  await p2.locator('.fj .wagers input[data-wager]').first().waitFor();
-  const wagers = p2.locator('.fj .wagers input[data-wager]');
+  await finalControlsIn(p2).locator('.wagers input[data-wager]').first().waitFor();
+  const wagers = finalControlsIn(p2).locator('.wagers input[data-wager]');
   for (let i = 0; i < 2; i++) await wagers.nth(i).fill('100');
   const press = async (label) => {
     await p2.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !(/** @type {HTMLButtonElement | null} */ (document.querySelector('.panel [data-next]'))?.disabled), label);
@@ -246,12 +246,12 @@ try {
   };
   // One window: the Final's notes (they may give its answer away) stay off the panel on stream while the players write.
   await press('Show question ▶');
-  await p2.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
-  assert((await p2.locator('.panel .status .notes').count()) === 0, 'one window: the Final’s host notes stay off the panel while its question is up');
+  await statusLineIn(p2, { hasText: 'Question on screen' }).waitFor();
+  assert((await statusLineIn(p2).locator('.notes').count()) === 0, 'one window: the Final’s host notes stay off the panel while its question is up');
   await press('👁 Reveal answer');
   // (Its think clock still running: it asks first.)
   await revealAnyway(p2);
-  await p2.locator('.panel .status .notes', { hasText: '📝 Accept Abe Lincoln too' }).waitFor();
+  await statusLineIn(p2).locator('.notes', { hasText: '📝 Accept Abe Lincoln too' }).waitFor();
   assert(true, '…and show there once its answer is up');
   // Two windows: the host's info column (the notes) is up.
   const [aud] = await Promise.all([p2.waitForEvent('popup'), p2.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
@@ -259,10 +259,10 @@ try {
   await p2.locator('.info').waitFor();
   await press('Start player reveals ▶');
   // Both right: $600 each, a tie for first.
-  for (let i = 0; i < 2; i++) await p2.locator('.fj .pl').nth(i).getByRole('button', { name: '✔ Right' }).click();
+  for (let i = 0; i < 2; i++) await finalControlsIn(p2).locator('.pl').nth(i).getByRole('button', { name: '✔ Right' }).click();
   await p2.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next: Outro ▶'));
   await mainButton(p2).click();
-  const s2 = p2.locator('.stage-box');
+  const s2 = stageBoxIn(p2);
   await s2.locator('[data-slide="1"]').getByText('Thanks 1').waitFor();
   const pips = aud.locator('[data-slide-pips]');
   await pips.waitFor();
@@ -288,16 +288,16 @@ try {
   // (Not in the first moments of a round: see the Go to round guard.)
   await p2.waitForTimeout(450);
   await p2.keyboard.press('n');
-  await p2.locator('.panel .status', { hasText: 'Game over' }).waitFor();
+  await statusLineIn(p2, { hasText: 'Game over' }).waitFor();
   // A tie for first: no blue button, every way to settle it in the tie box, ❓ Tiebreaker clue first.
-  const tbClue = p2.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' });
+  const tbClue = hostPanelIn(p2).locator('[data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' });
   assert((await mainButton(p2).count()) === 0 && (await tbClue.isEnabled()), 'a tie for first: no blue button; ❓ Tiebreaker clue is in the tie box');
   await tbClue.click();
-  await p2.locator('.panel .status', { hasText: 'Who won the tiebreaker? Click their 🏆, or press their number then Enter' }).waitFor();
+  await statusLineIn(p2, { hasText: 'Who won the tiebreaker? Click their 🏆, or press their number then Enter' }).waitFor();
   // Who won? the tied players only, one 🏆 each; the Amount row folded behind ± Also give points….
-  const tbWho = await p2.locator('.panel [data-tb-who] button').allInnerTexts();
+  const tbWho = await hostPanelIn(p2).locator('[data-tb-who] button').allInnerTexts();
   assert(
-    tbWho.join() === '🏆 Ann,🏆 Bob' && (await p2.locator('.panel .award').count()) === 0 && (await p2.getByRole('button', { name: '± Also give points…' }).count()) === 1,
+    tbWho.join() === '🏆 Ann,🏆 Bob' && (await awardRowIn(p2).count()) === 0 && (await p2.getByRole('button', { name: '± Also give points…' }).count()) === 1,
     `the tiebreaker asks who won, the tied players only (${tbWho.join(' | ')}), its Amount row folded behind ± Also give points…`,
   );
   assert((await p2.locator('.info .notes').innerText()) === 'Closest without going over wins', 'the tiebreaker’s host notes show in the info column');
@@ -312,59 +312,59 @@ try {
   await p2.waitForTimeout(500);
   await s2.locator('[data-slide="answer"]').click();
   await checkItem(p2, 'tie').waitFor();
-  assert((await goOnCheck(p2).locator('[data-quick]').count()) === 2 && (await p2.locator('.panel .status b').innerText()) === 'Tiebreaker', 'a click on the tiebreaker’s answer asks first, as 🏁 Back to results does: 🏆 each tied player');
+  assert((await goOnCheck(p2).locator('[data-quick]').count()) === 2 && (await statusLineIn(p2).locator('b').innerText()) === 'Tiebreaker', 'a click on the tiebreaker’s answer asks first, as 🏁 Back to results does: 🏆 each tied player');
   await goOnCheck(p2, { ready: true }).waitFor();
   await p2.keyboard.press('Escape');
   await goOnCheck(p2).waitFor({ state: 'detached' });
   // A tied player picked (1) and no winner given: N asks first, in the check (🏆 each tied player, Ann's taking Enter
   // since she's picked), and the tiebreaker stays up; N again (after its first moment) goes back to the results, tied.
   await p2.keyboard.press('1');
-  await p2.locator('.panel .p.on[data-player-id="p1"]').waitFor();
+  await hostPanelIn(p2).locator('.p.on[data-player-id="p1"]').waitFor();
   await p2.keyboard.press('n');
   await checkItem(p2, 'tie').waitFor();
   const tieQuick = await goOnCheck(p2).locator('[data-quick]').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()));
   assert(
-    JSON.stringify(tieQuick) === JSON.stringify(['🏆 Ann won ▶ results⏎', '🏆 Bob won ▶ results']) &&(await p2.locator('.panel .status b').innerText()) === 'Tiebreaker',
+    JSON.stringify(tieQuick) === JSON.stringify(['🏆 Ann won ▶ results⏎', '🏆 Bob won ▶ results']) &&(await statusLineIn(p2).locator('b').innerText()) === 'Tiebreaker',
     `N with nobody its winner asks first: 🏆 each tied player, Ann's (picked) taking Enter; the tiebreaker stays up (${tieQuick.join(' | ')})`,
   );
   await goOnCheck(p2, { ready: true }).waitFor();
   await p2.keyboard.press('n');
-  await p2.locator('.panel .status', { hasText: 'Game over' }).waitFor();
+  await statusLineIn(p2, { hasText: 'Game over' }).waitFor();
   assert((await goOnCheck(p2).count()) === 0, 'and N again goes back to the results, still tied');
   await tbClue.click();
-  await p2.locator('.panel .status', { hasText: 'Who won the tiebreaker?' }).waitFor();
+  await statusLineIn(p2, { hasText: 'Who won the tiebreaker?' }).waitFor();
   // Points given in the tiebreaker settle it (± Also give points…, then the amount): the panel says so.
-  await p2.locator('.panel .status').click();
+  await statusLineIn(p2).click();
   await p2.keyboard.press('1');
   await p2.getByRole('button', { name: '± Also give points…' }).click();
-  await p2.locator('.panel .award').getByLabel('Amount').fill('100');
-  await p2.locator('.panel .award').getByLabel('Amount').press('Enter');
-  await p2.locator('.panel .status', { hasText: 'Nobody is tied for first any more: 🏁 Back to results' }).waitFor();
+  await awardRowIn(p2).getByLabel('Amount').fill('100');
+  await awardRowIn(p2).getByLabel('Amount').press('Enter');
+  await statusLineIn(p2, { hasText: 'Nobody is tied for first any more: 🏁 Back to results' }).waitFor();
   assert(true, '$100 to Ann in the tiebreaker: “Nobody is tied for first any more”');
   // Ctrl+Z takes that back there (the tiebreaker stays up), then the Final's last judgment goes back to its reveals,
   // past the outro after it.
-  await p2.locator('.panel .status').click();
+  await statusLineIn(p2).click();
   await p2.keyboard.press('Control+z');
-  await p2.locator('.panel .status', { hasText: 'Who won the tiebreaker?' }).waitFor();
+  await statusLineIn(p2, { hasText: 'Who won the tiebreaker?' }).waitFor();
   assert((await aud.locator('[data-slide="1"]').innerText()).includes('How many toilets?'), 'Ctrl+Z takes back the tiebreaker’s points there (it stays on stream)');
   await p2.keyboard.press('Control+z');
-  await p2.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();
+  await statusLineIn(p2, { hasText: 'Player reveals' }).waitFor();
   // (The audience window follows a moment later.)
   await aud.locator('.final-label', { hasText: 'TIEBREAKER' }).waitFor({ state: 'detached' });
-  const right = (i) => p2.locator('.fj .pl').nth(i).getByRole('button', { name: '✔ Right' }).getAttribute('aria-pressed');
+  const right = (i) => finalControlsIn(p2).locator('.pl').nth(i).getByRole('button', { name: '✔ Right' }).getAttribute('aria-pressed');
   assert(
     (await right(0)) === 'true' && (await right(1)) === 'false',
     'then Ctrl+Z goes back to the Final’s reveals (an outro after it), its last judgment taken back there; the tiebreaker is off stream',
   );
   // The same from the outro itself: Bob judged again, on to the outro, and Ctrl+Z there goes back to the Final's reveals
   // (not taking his judgment back out of sight).
-  await p2.locator('.fj .pl').nth(1).getByRole('button', { name: '✔ Right' }).click();
+  await finalControlsIn(p2).locator('.pl').nth(1).getByRole('button', { name: '✔ Right' }).click();
   await p2.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next: Outro ▶'));
   await mainButton(p2).click();
   await s2.locator('[data-slide="1"]').getByText('Thanks 1').waitFor();
-  await p2.locator('.panel .status').click();
+  await statusLineIn(p2).click();
   await p2.keyboard.press('Control+z');
-  await p2.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();
+  await statusLineIn(p2, { hasText: 'Player reveals' }).waitFor();
   await aud.locator('[data-slide="1"]', { hasText: 'Thanks 1' }).waitFor({ state: 'detached' });
   assert((await right(0)) === 'true' && (await right(1)) === 'false', 'Ctrl+Z on the outro goes back to the Final’s reveals, its last judgment taken back there');
 

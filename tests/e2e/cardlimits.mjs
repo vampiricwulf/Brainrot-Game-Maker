@@ -16,7 +16,7 @@ import { createServer } from 'node:http';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, roomKeys, shownOf, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, roomKeys, shownOf, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, untilWith, section, stageBoxIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -268,13 +268,13 @@ try {
     await bob.locator('#me').getByText('Bob').waitFor();
     await (await phoneCtx.newCDPSession(bob)).send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: 2 * MB, uploadThroughput: -1 });
     await page.getByRole('button', { name: 'Start game ▶' }).click();
-    await page.locator('.stage-box .tile').first().waitFor();
+    await stageBoxIn(page).locator('.tile').first().waitFor();
     // (The editor named the files: from here on, in play, nothing may.)
     await forgetSeen(page);
     // The host's uploads slowed down too (3 MB/s): 17 MB takes a few seconds.
     await (await ctx.newCDPSession(page)).send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: 3 * MB });
 
-    const tools = page.locator('.panel .toolsrow');
+    const tools = toolsRowIn(page);
     /** 🤫 Send a card… with the editor's 🤫 Card `id` to Bob: the dialog's line about its big file, then 📤 Send. */
     const send = async (id, label) => {
       await tools.getByRole('button', { name: '🤫 Send a card…' }).click();

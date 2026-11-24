@@ -202,12 +202,12 @@ export async function failureShots(name, pages) {
  */
 export async function addClassicRounds(page) {
   await page.getByRole('button', { name: 'Open…' }).waitFor();
-  if (await page.locator('nav > button.round-tab').count()) return;
+  if (await roundTabsIn(page).count()) return;
   for (const mode of [/Jeopardy board/, /Final Jeopardy/]) {
     await page.getByRole('button', { name: '＋ Add round' }).click();
     await page.getByRole('menuitem', { name: mode }).click();
   }
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await noDailyDoubles(page);
 }
 
@@ -457,7 +457,7 @@ export async function openRules(page) {
  * @param {string | RegExp} [name]
  */
 export const mainButton = (page, name) => {
-  const b = page.locator('.panel [data-next]');
+  const b = hostPanelIn(page).locator('[data-next]');
   return name === undefined ? b : b.and(page.getByRole('button', { name, exact: true }));
 };
 
@@ -471,7 +471,7 @@ export const mainButton = (page, name) => {
  * @param {string | RegExp} [name]
  */
 export const flowButton = (page, place, name) => {
-  const b = page.locator(`.panel [data-flow="${place}"]`);
+  const b = hostPanelIn(page).locator(`[data-flow="${place}"]`);
   return (name === undefined ? b : b.and(page.getByRole('button', { name, exact: true }))).first();
 };
 
@@ -483,7 +483,7 @@ export const flowButton = (page, place, name) => {
  * @param {string | RegExp} [name]
  */
 export const stepButton = (box, name) => {
-  const root = typeof (/** @type {any} */ (box).mainFrame) === 'function' ? box.locator('.panel') : box;
+  const root = typeof (/** @type {any} */ (box).mainFrame) === 'function' ? hostPanelIn(box) : box;
   const b = root.locator('[data-step]');
   return name === undefined ? b : b.and(root.getByRole('button', { name, exact: true }));
 };
@@ -506,7 +506,7 @@ export const mainLabel = (page) =>
  * @returns {Promise<string>}
  */
 export async function boxHasAction(box, name) {
-  const all = box.page().locator('.panel').getByRole('button', { name, exact: true });
+  const all = hostPanelIn(box.page()).getByRole('button', { name, exact: true });
   const n = await all.count();
   if (n !== 1) return `${n} buttons say “${name}” in the panel`;
   const b = box.getByRole('button', { name, exact: true });

@@ -16,7 +16,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, goOnCheck, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, until } from './helpers.mjs';
+import { appFile, confirmStrip, goOnCheck, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, until, boardIn, hostPanelIn, stageBoxIn, toastsIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -191,7 +191,7 @@ try {
   const bob = await join('bob', 'Bob');
   const cat = await join('cat', 'Cat');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
 
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   /** The cards in the room's state now. */
@@ -201,14 +201,14 @@ try {
   // ---------- Two windows: the audience window, watched all through ----------
   let [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   const offStream = async (p, name, when) => {
     const found = await shownOf(p, SECRETS);
     assert(!found.length, `${when}: ${name} holds no card’s words or file name${found.length ? ` (found ${found.join(', ')})` : ''}`);
   };
 
   // ---------- 🤫 Send a card…: a quick card to Bob ----------
-  const tools = host.locator('.panel .toolsrow');
+  const tools = toolsRowIn(host);
   await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
   dialog = host.getByRole('dialog', { name: 'Send a card' });
   await dialog.waitFor();
@@ -329,7 +329,7 @@ try {
   // (Its bytes differ from the game's copy until it's cleaned: the game's own is used then, as it is for any file.)
   await dialog.locator('input[type=file]').setInputFiles({ name: 'flag.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(FLAG_RAW) });
   await dialog.locator('[aria-label="On the card"]').getByText('🖼 picture').waitFor();
-  assert(!(await host.locator('.toast', { hasText: 'already in 🖼 Media' }).count()), 'one window: an SVG already in the game goes on a quick card with no toast naming it');
+  assert(!(await toastsIn(host, { hasText: 'already in 🖼 Media' }).count()), 'one window: an SVG already in the game goes on a quick card with no toast naming it');
   await offStream(host, 'the host page in one window', 'an SVG already in the game put on a quick card');
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
@@ -337,10 +337,10 @@ try {
   // ---------- 🤫 Just you: a standard tile's own card, offered to the picker, sent by a press ----------
   await host.keyboard.press('p');
   await host.keyboard.press('1');
-  await host.locator('.stage-box .tile[aria-label^="Songs for $200"]').click();
+  await stageBoxIn(host).locator('.tile[aria-label^="Songs for $200"]').click();
   assert(await until(() => !!last()?.clue), 'a plain tile opens');
   const plainPhase = last().phase;
-  assert(!(await host.locator('.panel [data-tile-cards]').count()), 'a tile with no card has no cards part');
+  assert(!(await hostPanelIn(host).locator('[data-tile-cards]').count()), 'a tile with no card has no cards part');
   // "The slide on screen": what viewers see as it comes up, never its hint (in 20 s) nor its see-through box.
   await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
   dialog = host.getByRole('dialog', { name: 'Send a card' });
@@ -351,18 +351,18 @@ try {
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
   await host.keyboard.press('Escape');
-  await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
-  const tilePart = host.locator('.panel [data-tile-cards]');
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $200"]').click();
+  const tilePart = hostPanelIn(host).locator('[data-tile-cards]');
   await tilePart.waitFor();
   const tileRow = tilePart.locator('[data-tile-card="1"]');
   assert(await until(() => last().phase === plainPhase && !(last().cards ?? []).some((c) => c.text === TIP)), `nothing goes by itself, and the tile plays as any tile does (the buzzers: ${plainPhase})`);
   await offStream(host, 'the host page in one window', 'a tile with a card open');
   // A click on the question (a host who drives from the stage) with the card not sent: the check opens in the panel,
   // “Card 1 hasn't gone to Ann yet.”, the answer still hidden; it names the card, never what's on it. Esc: Not yet.
-  await host.locator('.stage-box .full').click();
+  await stageBoxIn(host).locator('.full').click();
   await goOnCheck(host).waitFor();
   assert(
-    (await goOnCheck(host).innerText()).includes('Card 1 hasn’t gone to Ann yet.') && (await host.locator('.stage-box [data-slide="answer"]').count()) === 0,
+    (await goOnCheck(host).innerText()).includes('Card 1 hasn’t gone to Ann yet.') && (await stageBoxIn(host).locator('[data-slide="answer"]').count()) === 0,
     'a click on the question with the tile’s card not sent asks first, in the panel; the answer stays hidden',
   );
   await offStream(host, 'the host page in one window', 'the check asking about a tile’s card');
@@ -384,10 +384,10 @@ try {
   await askBox.getByRole('button', { name: '↩ Put it back' }).click();
   assert(await until(() => cards().length === 1 && cards()[0].id === c1b.id), 'the tile closed: its card goes, the round’s stays');
   assert(await until(async () => !(await cardsOn(ann))), 'Ann’s phone drops it');
-  assert(!(await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').getAttribute('class')).includes('used'), 'the tile is still playable');
+  assert(!(await stageBoxIn(host).locator('.tile[aria-label^="Movies for $200"]').getAttribute('class')).includes('used'), 'the tile is still playable');
 
   // ---------- 💡 Insider tip: a Daily Double's card to its player, before the wager ----------
-  await host.locator('.stage-box .tile[aria-label^="Movies for $400"]').click();
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $400"]').click();
   await tilePart.waitFor();
   await tilePart.getByRole('button', { name: 'Send card 1' }).click();
   await ann.getByRole('button', { name: 'Tap to see' }).waitFor();

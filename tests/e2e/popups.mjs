@@ -8,7 +8,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, leaveAnswer, failureShots, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, openGameFile, leaveAnswer, failureShots, assert, launchChromium, section, boardIn, boardTilesIn, confirmStrip, hostPanelIn, roundNavIn, stageBoxIn, statusLineIn } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -126,11 +126,11 @@ async function playWithPhones(page, dual) {
     window.__say({ t: 'phones', phones: [{ conn: 'c1', seatId: 'p1', connected: true }, { conn: 'c2', seatId: 'p2', connected: true }, { conn: 'c9', seatId: null, pendingName: 'Zed', connected: true }] }),
   );
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  await page.locator('.panel').waitFor();
+  await hostPanelIn(page).waitFor();
   if (await page.getByRole('button', { name: 'Skip intro' }).count()) await page.getByRole('button', { name: 'Skip intro' }).click();
 }
 
-const chip = (page) => page.locator('.panel button.chip', { hasText: '📱' });
+const chip = (page) => hostPanelIn(page).locator('button.chip', { hasText: '📱' });
 const phones = (page) => page.locator('#phone-pop');
 
 /** Open the 📱 phones list, check it, close it. In a single window it's off the stage. */
@@ -138,7 +138,7 @@ async function checkPhones(page, what, dual) {
   await chip(page).click();
   const r = await wholeAndOnTop(page, phones(page), `the 📱 phones list (${what})`);
   if (!dual) {
-    const stage = await page.locator('.stage-box').boundingBox();
+    const stage = await stageBoxIn(page).boundingBox();
     const side = await page.locator('.play.side').count();
     assert(
       side ? r.x >= stage.x + stage.width - 1 : r.y >= stage.y + stage.height - 1,
@@ -161,8 +161,8 @@ async function rollAsTall(page, what) {
 
 async function nextRound(page) {
   await page.waitForTimeout(450);
-  await page.locator('.rn button', { hasText: '▶' }).click();
-  await page.locator('.panel .confirm').waitFor();
+  await roundNavIn(page).locator('button', { hasText: '▶' }).click();
+  await confirmStrip(page).waitFor();
   await page.waitForTimeout(450);
   await leaveAnswer(page).click();
   await page.waitForTimeout(450);
@@ -183,33 +183,33 @@ try {
       await checkPhones(page, `board, ${how}`, dual);
       await closePhones(page);
       // A clue open: the panel's rows change, the list still fits.
-      await page.locator('.stage-box .board .tile').first().click();
+      await boardTilesIn(boardIn(stageBoxIn(page))).first().click();
       await page.waitForTimeout(300);
       await checkPhones(page, `a clue, ${how}`, dual);
       await closePhones(page);
       await page.keyboard.press('Shift+Escape');
-      await page.locator('.stage-box .board').waitFor();
+      await boardIn(stageBoxIn(page)).waitFor();
 
       // 🎲 Dice: up from its button, whole and on top.
       await page.getByRole('button', { name: '🎲 Dice' }).click();
       const dice = await wholeAndOnTop(page, page.getByRole('dialog', { name: 'Dice' }), `the 🎲 Dice menu (${how})`);
       if (!dual) {
-        const stage = await page.locator('.stage-box').boundingBox();
+        const stage = await stageBoxIn(page).boundingBox();
         assert(dice.y >= stage.y + stage.height - 1, 'and it stays off the stage');
       }
       await rollAsTall(page, how);
       await page.keyboard.press('Escape');
 
       // Go to round: a list the browser draws; its box is in the window and not covered.
-      await wholeAndOnTop(page, page.locator('.panel select[aria-label="Go to round"]'), `the Go to round list (${how})`);
+      await wholeAndOnTop(page, hostPanelIn(page).locator('select[aria-label="Go to round"]'), `the Go to round list (${how})`);
 
       // The RPG round: beside the stage on a wide window.
       await nextRound(page);
-      await page.locator('.panel .status', { hasText: 'Adventure' }).waitFor();
+      await statusLineIn(page, { hasText: 'Adventure' }).waitFor();
       await checkPhones(page, `RPG round, ${how}`, dual);
       await closePhones(page);
       // (Beside the stage the column's buttons are smaller: Roll still matches its field.)
-      await page.locator('.panel .tl').getByRole('button', { name: '🎲 Dice', exact: true }).click();
+      await hostPanelIn(page).locator('.tl').getByRole('button', { name: '🎲 Dice', exact: true }).click();
       await page.getByRole('dialog', { name: 'Dice' }).waitFor();
       await rollAsTall(page, `RPG round, ${how}${(await page.locator('.panel.side').count()) ? ', the panel beside the stage' : ''}`);
       await page.keyboard.press('Escape');
@@ -232,7 +232,7 @@ try {
     assert(scrolls || r.h > 200, 'its rows scroll inside it when they’re taller than the room');
     // Shorter still: the panel scrolls; the list stays whole in the window.
     await page.setViewportSize({ width: 1280, height: 480 });
-    await page.locator('.panel').evaluate((p) => (p.scrollTop = p.scrollHeight));
+    await hostPanelIn(page).evaluate((p) => (p.scrollTop = p.scrollHeight));
     await page.waitForTimeout(200);
     await wholeAndOnTop(page, phones(page), 'a 1280×480 window, the panel scrolled');
     await page.close();

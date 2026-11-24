@@ -11,7 +11,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import JSZip from 'jszip';
-import { appFile, failureShots, addClassicRounds, nameGame, exportHtml, openGameFile, assert, launchChromium } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, nameGame, exportHtml, openGameFile, assert, launchChromium, boardIn, boardTilesIn, inspectorIn, stageBoxIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -138,7 +138,7 @@ async function onFailure(e) {
 process.on('uncaughtException', onFailure);
 process.on('unhandledRejection', onFailure);
 const shot = (name, p = page) => shots && p.screenshot({ path: `${shots}/${name}.png` });
-const toast = () => page.locator('.toast').innerText();
+const toast = () => toastsIn(page).innerText();
 
 await page.goto(url);
 await addClassicRounds(page);
@@ -163,12 +163,12 @@ assert((await page.locator('.canvas img').getAttribute('src')).startsWith('blob:
 await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/beep1.wav');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
-await page.locator('.insp').getByText('Autoplay when the slide appears').waitFor();
+await inspectorIn(page).getByText('Autoplay when the slide appears').waitFor();
 assert(
   (await toast()).includes("This site doesn't let the game save a copy, so it will play from files.catbox.moe during the show. You'll need internet. The desktop app can save a copy."),
   'a files.catbox.moe sound becomes a live link, and the toast says so',
 );
-assert((await page.locator('.insp').getByText('🌐 Plays from files.catbox.moe during the show').count()) === 1, 'the inspector marks the item as playing from the internet');
+assert((await inspectorIn(page).getByText('🌐 Plays from files.catbox.moe during the show').count()) === 1, 'the inspector marks the item as playing from the internet');
 {
   // A second sound goes beside the first, not on top of it (only one of them could be clicked); Ctrl+Z takes it off.
   // (The same link: no second file in 🖼 Media.)
@@ -208,7 +208,7 @@ assert((await box.getByText('In Google Drive: Share → General access → Anyon
 await box.getByRole('button', { name: "▶ Use Google Drive's player" }).click();
 await page.locator('.canvas .card', { hasText: "Google Drive player · click ▶ inside it on the viewers' screen" }).waitFor();
 assert((await page.locator('.canvas iframe').count()) === 0, "the editor shows a card for Drive's player, not the player itself");
-assert((await page.locator('.insp h4', { hasText: 'Google Drive player' }).count()) === 1, 'the inspector names it');
+assert((await inspectorIn(page).locator('h4', { hasText: 'Google Drive player' }).count()) === 1, 'the inspector names it');
 await page.getByRole('button', { name: 'Done' }).click();
 
 // ---------- A picture that plays from its link: the image editor asks for a copy first ----------
@@ -264,7 +264,7 @@ assert((await page.getByText(/Files stored with this game: 1 ·/).count()) === 1
 // A link to a file the game already has (the same bytes) adds nothing, and says which file it reused.
 await page.locator('.library .link').getByLabel('Paste a link').fill('https://litter.catbox.moe/frog2.png');
 await page.locator('.library .link').getByLabel('Paste a link').press('Enter');
-await page.locator('.toast', { hasText: 'That file is already in your game as “frog1.png”, so it was reused.' }).waitFor();
+await toastsIn(page, { hasText: 'That file is already in your game as “frog1.png”, so it was reused.' }).waitFor();
 assert(
   (await page.getByText(/Files stored with this game: 1 ·/).count()) === 1 && (await card('frog2.png').count()) === 0,
   'a link to a file already in the game adds nothing, and the toast says it reused that file (not "Stored in your game")',
@@ -284,7 +284,7 @@ const [tab] = await Promise.all([context.waitForEvent('page'), card('beep1.wav')
 assert(tab.url() === 'https://files.catbox.moe/beep1.wav', `⬇ Download it… opens the file in a tab of its own, to save from there (${tab.url()})`);
 await tab.close();
 await card('beep1.wav').getByRole('button', { name: '💾 Try again' }).click();
-await page.locator('.toast', { hasText: "files.catbox.moe doesn't let the game save a copy." }).waitFor();
+await toastsIn(page, { hasText: "files.catbox.moe doesn't let the game save a copy." }).waitFor();
 assert(
   (await card('beep1.wav').getByText('🌐 files.catbox.moe').count()) === 1 && (await card('beep1.wav').getByRole('button', { name: '⬇ Download it…' }).count()) === 1,
   '💾 Try again says when the site still refuses, and the link keeps working',
@@ -335,7 +335,7 @@ for (const [row, name] of [['Winner', 'isom-voice.m4a'], ['Final round think mus
   await page.locator('.picker').getByLabel('Paste a link').fill(`https://litter.catbox.moe/${name}`);
   await page.locator('.picker').getByLabel('Paste a link').press('Enter');
   await page.locator('.sound', { hasText: row }).locator('.file', { hasText: name }).waitFor();
-  assert((await page.locator('.toast', { hasText: 'Stored in your game:' }).count()) >= 1, `a sound picker takes ${name} (sent as ${name.endsWith('.m4a') ? 'audio/mp4' : 'audio/webm'}) as a sound`);
+  assert((await toastsIn(page, { hasText: 'Stored in your game:' }).count()) >= 1, `a sound picker takes ${name} (sent as ${name.endsWith('.m4a') ? 'audio/mp4' : 'audio/webm'}) as a sound`);
 }
 
 // ---------- A clue whose host will go down during the show, and a player link that isn't valid ----------
@@ -359,7 +359,7 @@ await page.locator('.linkbox').getByLabel('Paste a link').fill('https://slow.tes
 await page.locator('.linkbox').getByLabel('Paste a link').press('Enter');
 await page.locator('.linkbox progress[aria-label="Download progress"]').waitFor();
 await page.getByRole('tab', { name: /^Answer slide/ }).click();
-await page.locator('.toast', { hasText: 'Stopped downloading the link' }).waitFor();
+await toastsIn(page, { hasText: 'Stopped downloading the link' }).waitFor();
 assert(true, 'a 🌐 Link download stopped by going to the Answer slide says so');
 await page.getByRole('tab', { name: 'Question slide' }).click();
 await page.getByRole('button', { name: '🖼 Image' }).click();
@@ -369,13 +369,13 @@ await page.locator('.canvas img[src="https://files.catbox.moe/flaky5.png"]').wai
 await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/flaky5.wav');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
-await page.locator('.insp').getByText('🌐 Plays from files.catbox.moe during the show').waitFor();
+await inspectorIn(page).getByText('🌐 Plays from files.catbox.moe during the show').waitFor();
 await page.getByRole('button', { name: '🌐 Link' }).click();
 await page.locator('.linkbox').getByLabel('Paste a link').fill(`https://drive.google.com/file/d/${DRIVE_VID}/view`);
 await page.locator('.linkbox').getByLabel('Paste a link').press('Enter');
 await page.locator('.linkbox').getByRole('button', { name: '🎬 Video or sound' }).click();
 await page.locator('.linkbox').getByRole('button', { name: "▶ Use Google Drive's player" }).click();
-await page.locator('.insp').getByLabel('Link', { exact: true }).fill('https://example.test/not-a-drive-file');
+await inspectorIn(page).getByLabel('Link', { exact: true }).fill('https://example.test/not-a-drive-file');
 await page.locator('.canvas .card', { hasText: 'Not a valid link for the Google Drive player' }).waitFor();
 assert(true, 'the editor says when a Drive player link is not valid');
 await page.getByRole('button', { name: 'Done' }).click();
@@ -397,16 +397,16 @@ await page.getByRole('button', { name: '▶ Play' }).click();
 await page.getByRole('button', { name: '＋ Add 3 sample players' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.getByRole('button', { name: 'Skip intro' }).click();
-await page.locator('.board .tile').first().waitFor();
+await boardTilesIn(boardIn(page)).first().waitFor();
 const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
-await aud.locator('.board').waitFor();
+await boardIn(aud).waitFor();
 await aud.mouse.click(20, 20); // lets the audience window play sound
 const natural = (loc) => loc.evaluate((i) => new Promise((res) => (i.complete ? res(i.naturalWidth) : (i.onload = () => res(i.naturalWidth)))));
-const catImg = aud.locator('.board img.cat-img');
+const catImg = boardIn(aud).locator('img.cat-img');
 await catImg.waitFor();
 assert((await catImg.getAttribute('src')).startsWith('https://lh3.googleusercontent.com/d/') && (await natural(catImg)) > 0, 'the audience window shows the Drive picture from its link');
 
-await page.locator('.board .tile').nth(0).click();
+await boardTilesIn(boardIn(page)).nth(0).click();
 const audImg = aud.locator('.full img');
 await audImg.waitFor();
 assert((await audImg.getAttribute('src')).startsWith('blob:') && (await natural(audImg)) > 0, 'the saved copy shows in the audience window with its host gone (it was sent as a file)');
@@ -422,15 +422,15 @@ await page.locator('.mc .item').waitFor();
 assert((await page.locator('.mc .item').innerText()).includes('0:'), 'the host controls it like any other sound');
 await shot('links-3-audience', aud);
 await page.keyboard.press('Escape');
-await aud.locator('.board').waitFor();
+await boardIn(aud).waitFor();
 
 // Drive's player: only in the audience window; the host gets a card and restart/stop/open buttons.
-await page.locator('.board .tile').nth(1).click();
+await boardTilesIn(boardIn(page)).nth(1).click();
 const frame = aud.locator(`iframe[src="https://drive.google.com/file/d/${DRIVE_VID}/preview"]`);
 await frame.waitFor();
 assert(true, "the audience window shows Google Drive's player");
-assert((await page.locator('.stage-box iframe').count()) === 0, "the host window doesn't (the sound would play twice)");
-assert((await page.locator('.stage-box .card', { hasText: 'Google Drive player' }).count()) === 1, 'the host sees a card in its place');
+assert((await stageBoxIn(page).locator('iframe').count()) === 0, "the host window doesn't (the sound would play twice)");
+assert((await stageBoxIn(page).locator('.card', { hasText: 'Google Drive player' }).count()) === 1, 'the host sees a card in its place');
 await page.locator('.mc').getByText('click ▶ inside it in the audience window').waitFor();
 assert((await page.locator('.mc').getByText("It can't be paused or sought from here.").count()) === 1, 'the host controls say it cannot be controlled remotely');
 await page.locator('.mc').getByRole('button', { name: '■ Stop' }).click();
@@ -451,13 +451,13 @@ await page.keyboard.press('Escape');
 
 // ---------- The host goes down during the show: viewers never see the host's error messages ----------
 catboxDown = true;
-await page.locator('.board .tile').nth(3).click();
+await boardTilesIn(boardIn(page)).nth(3).click();
 await aud.locator('.full', { hasText: 'Flaky host' }).waitFor();
 await page.locator('.mc').getByText("Couldn't load this media.").waitFor();
 assert((await page.locator('.mc').getByRole('button', { name: '▶ Open link ↗' }).count()) === 1, 'the host controls say the live sound failed and offer its link');
-await page.locator('.stage-box').getByText("Couldn't load the picture from files.catbox.moe").waitFor();
+await stageBoxIn(page).getByText("Couldn't load the picture from files.catbox.moe").waitFor();
 assert(true, "the host's copy of the stage says the live picture couldn't load");
-assert((await page.locator('.stage-box .card', { hasText: 'Not a valid link for the Google Drive player' }).count()) === 1, "and that the Drive player's link isn't valid");
+assert((await stageBoxIn(page).locator('.card', { hasText: 'Not a valid link for the Google Drive player' }).count()) === 1, "and that the Drive player's link isn't valid");
 await aud.waitForFunction(() => !document.querySelector('.full img'));
 const audText = await aud.locator('.full').innerText();
 assert(!/couldn.t load|open the link|not a valid link|files\.catbox\.moe/i.test(audText), `the audience window shows none of it (it says: ${JSON.stringify(audText.trim())})`);
@@ -465,7 +465,7 @@ assert((await aud.locator('.full .fallback, .full .missing, .full .card').count(
 await shot('links-5-host-down', aud);
 await shot('links-5-host-down-host');
 await page.keyboard.press('Escape');
-await aud.locator('.board').waitFor();
+await boardIn(aud).waitFor();
 catboxDown = false;
 
 assert(usercontent.fromPage === 0, 'Drive files were never loaded by the page');
@@ -503,7 +503,7 @@ const samples = player.getByRole('button', { name: '＋ Add 3 sample players' })
 if (await samples.count()) await samples.click();
 await player.getByRole('button', { name: 'Start game ▶' }).click();
 await player.getByRole('button', { name: 'Skip intro' }).click();
-await player.locator('.board .tile').nth(3).click();
+await boardTilesIn(boardIn(player)).nth(3).click();
 const liveImg = player.locator('.full img');
 await liveImg.waitFor();
 assert((await liveImg.getAttribute('src')) === 'https://files.catbox.moe/flaky5.png' && (await natural(liveImg)) > 0, 'the exported game shows the live picture from its link');

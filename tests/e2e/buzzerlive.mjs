@@ -3,7 +3,7 @@
 // `wrangler dev`, local, no Cloudflare account) and two phones play on the real phone page: the queue, a wrong answer,
 // → Next in line, ↺ Reset buzzers, and a tie settled with 🎲 Roll for it. Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, goOnCheck, openBuzzerOptions, openRules, playWithPlayers, quick, startRoomOn, tap, tieThem, failureShots, assert, sleep, launchChromium, startBuzzer } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, goOnCheck, openBuzzerOptions, openRules, playWithPlayers, quick, startRoomOn, tap, tieThem, failureShots, assert, sleep, launchChromium, startBuzzer, boardIn, boardTilesIn, hostPanelIn, playerRowsIn, stageBoxIn, statusBarIn } from './helpers.mjs';
 
 const file = appFile();
 const buzzer = await startBuzzer('buzzer-live-');
@@ -67,7 +67,7 @@ try {
   const big = (p) => p.locator('#buzz-big');
   const small = (p) => p.locator('#buzz-small');
   const press = (p) => p.locator('#buzz').dispatchEvent('pointerdown');
-  const selected = () => host.locator('.panel .p .sel[aria-pressed="true"]').allInnerTexts();
+  const selected = () => playerRowsIn(host).locator('.sel[aria-pressed="true"]').allInnerTexts();
 
   // ---------- The pre-game screen's room survives a reload, and going back to the editor ----------
   await small(p1).getByText('The game starts soon').waitFor();
@@ -117,7 +117,7 @@ try {
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
   // The join code, small, in a corner of the stream: on the board, at the end of the score bar, never over a tile.
-  const badge = host.locator('.stage-box .join-badge');
+  const badge = stageBoxIn(host).locator('.join-badge');
   await badge.waitFor();
   const clash = await host.evaluate(() => {
     const b = document.querySelector('.stage-box .join-badge').getBoundingClientRect();
@@ -129,7 +129,7 @@ try {
   });
   if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-live-board.png` });
   assert((await badge.innerText()).includes(code) && clash === 0, 'the join code shows in a corner of the stream during the game, over no tile or score plate');
-  const plate1 = host.locator('.stage-box .plate', { hasText: 'Player 1' });
+  const plate1 = stageBoxIn(host).locator('.plate', { hasText: 'Player 1' });
 
   // ---------- Any other colour, from the page's own picker: on the phone's buzzer as it moves, to the host with OK ----------
   const plateColour = () => plate1.locator('.name').evaluate((e) => getComputedStyle(e).backgroundColor);
@@ -225,12 +225,12 @@ try {
   await p1.getByRole('button', { name: '🎨 Change your color' }).click();
   assert((await colours.locator('button.own[aria-pressed="true"]').count()) === 1, 'a colour of their own: the palette ticks Pick any color');
   await p1.getByRole('button', { name: '🎨 Change your color' }).click();
-  assert((await host.locator('.stage-box .plate .phone').count()) === 2, 'both plates show 📱: their phones are connected');
+  assert((await stageBoxIn(host).locator('.plate .phone').count()) === 2, 'both plates show 📱: their phones are connected');
   await host.keyboard.press('k');
-  await host.locator('.stage-box .cover-join').getByText(code).waitFor();
+  await stageBoxIn(host).locator('.cover-join').getByText(code).waitFor();
   await host.keyboard.press('k');
   assert(true, 'and on the cover card (K)');
-  await host.locator('.stage-box .board .tile').first().click();
+  await boardTilesIn(boardIn(stageBoxIn(host))).first().click();
   await big(p1).getByText('Get ready…').waitFor();
   assert(true, 'opening a clue tells the phones to get ready (buzzers still closed)');
   await host.keyboard.press('u');
@@ -336,7 +336,7 @@ try {
 
   // ---------- A tie: 🎲 Roll for it sets who answers first ----------
   await host.keyboard.press('Escape');
-  await host.locator('.stage-box .board .tile').nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(host))).nth(1).click();
   await big(p1).getByText('Get ready…').waitFor();
   await host.keyboard.press('u');
   await big(p1).getByText('BUZZ!').waitFor();
@@ -345,7 +345,7 @@ try {
   await press(p1);
   await press(p2);
   // The tied names come in the order their buzzes reached the room, which varies.
-  await host.locator('.panel .tie', { hasText: /^Tie: Player [12] & Player [12]$/ }).waitFor();
+  await hostPanelIn(host).locator('.tie', { hasText: /^Tie: Player [12] & Player [12]$/ }).waitFor();
   await big(p1).getByText('Tie!').waitFor();
   assert((await small(p2).innerText()) === 'The host decides who goes first', 'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host decides who goes first"');
   // N (👁 Reveal answer) in a tie asks first: 🎲 Roll for it O ⏎, or who answers by their number; Enter rolls for it.
@@ -365,11 +365,11 @@ try {
   await host.keyboard.press('Escape');
 
   // ---------- The answer shown with the buzzers open: they close ----------
-  for (let i = 0; i < 3 && !(await host.locator('.stage-box .board .tile').count()); i++) {
+  for (let i = 0; i < 3 && !(await boardTilesIn(boardIn(stageBoxIn(host))).count()); i++) {
     await host.keyboard.press('Escape');
     await host.waitForTimeout(300);
   }
-  await host.locator('.stage-box .board .tile').nth(3).click();
+  await boardTilesIn(boardIn(stageBoxIn(host))).nth(3).click();
   await big(p1).getByText('Get ready…').waitFor();
   await host.keyboard.press('u');
   await big(p1).getByText('BUZZ!').waitFor();
@@ -378,7 +378,7 @@ try {
   await press(p1);
   await host.waitForTimeout(800);
   assert(
-    (await big(p1).innerText()) === 'Clue over' && (await host.locator('.panel .p .sel[aria-pressed="true"]').count()) === 0,
+    (await big(p1).innerText()) === 'Clue over' && (await playerRowsIn(host).locator('.sel[aria-pressed="true"]').count()) === 0,
     'showing the answer closes the buzzers: the phones say "Clue over", and a press then picks nobody',
   );
   await host.keyboard.press('u');
@@ -388,11 +388,11 @@ try {
 
   // ---------- The host's connection drops with the buzzers open ----------
   // (Esc again, back to the board, if the first one only closed the roll.)
-  for (let i = 0; i < 3 && !(await host.locator('.stage-box .board .tile').count()); i++) {
+  for (let i = 0; i < 3 && !(await boardTilesIn(boardIn(stageBoxIn(host))).count()); i++) {
     await host.keyboard.press('Escape');
     await host.waitForTimeout(300);
   }
-  await host.locator('.stage-box .board .tile').nth(2).click();
+  await boardTilesIn(boardIn(stageBoxIn(host))).nth(2).click();
   await big(p1).getByText('Get ready…').waitFor();
   await host.keyboard.press('u');
   await big(p1).getByText('BUZZ!').waitFor();
@@ -433,7 +433,7 @@ try {
   hostTap.stall();
   await host.locator('.room-bar').getByRole('button', { name: '⏹ Close the room…' }).click();
   // Phones are in it: the bar asks first, as the 📱 card does, the safe answer first (with the keys).
-  const closeAsk = host.locator('.status-bar').getByRole('alertdialog', { name: 'Close the room?' });
+  const closeAsk = statusBarIn(host).getByRole('alertdialog', { name: 'Close the room?' });
   await closeAsk.waitFor();
   assert(
     (await closeAsk.getByRole('button').allInnerTexts()).join(' | ') === 'Keep it open | Close the room' &&

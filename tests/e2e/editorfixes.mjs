@@ -9,7 +9,7 @@
 // buttons all one size, and the board's two count lines level. And a reload mid-edit coming back on the page, round and
 // clue it left.
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, answerReplace, clickExportHtml, editorReady, lineOf, openRules, assert, launchChromium } from './helpers.mjs';
+import { appFile, failureShots, answerReplace, clickExportHtml, editorReady, lineOf, openRules, assert, launchChromium, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -23,11 +23,11 @@ page.on('dialog', (d) => {
   return d.accept();
 });
 const header = page.locator('.editor > header');
-const tabs = page.locator('nav > button.round-tab');
+const tabs = roundTabsIn(page);
 const values = (loc) => loc.evaluateAll((els) => els.map((e) => e.value));
 const focused = () => page.evaluate(() => document.activeElement?.getAttribute('data-place') ?? document.activeElement?.tagName);
 const note = page.locator('.history-notice');
-const toastText = async () => ((await page.locator('.toast').count()) ? await page.locator('.toast').innerText() : '');
+const toastText = async () => ((await toastsIn(page).count()) ? await toastsIn(page).innerText() : '');
 /** The focused text box: its label, value, and whether all of it is selected (ready to type over). */
 const typingIn = () =>
   page.evaluate(() => {
@@ -81,13 +81,13 @@ try {
   assert(went.join(' › ') === 'Final Jeopardy › RPG › Slides › Board game › Jeopardy board › ✨', `the arrow keys go from card to card (${went.join(' › ')})`);
   // A template there adds its round, as ＋ Add round's does.
   await page.locator('.first-round .card', { hasText: 'RPG' }).getByRole('button', { name: '3 × 3 dungeon' }).click();
-  await page.locator('nav > button.round-tab').first().waitFor();
+  await roundTabsIn(page).first().waitFor();
   assert((await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')).startsWith('Undo: Added round'), 'a card’s template adds its round, one step');
   await page.keyboard.press('Control+z');
   await page.locator('.first-round').waitFor();
   // A game with no rounds isn't exported: the file couldn't be played (and has no ＋ Add round).
   await clickExportHtml(page);
-  await page.locator('.toast', { hasText: 'Add a round first' }).waitFor();
+  await toastsIn(page, { hasText: 'Add a round first' }).waitFor();
   assert((await page.getByRole('dialog', { name: 'Name your game' }).count()) === 0, 'Export HTML with no rounds says to add one, and exports nothing');
 
   // ---------- Board values and focus ----------
@@ -328,7 +328,7 @@ try {
   await ddGroup.getByRole('button', { name: '🔀 Randomize' }).click();
   const placed = await page.locator('.tile .dd', { hasText: 'DD' }).count();
   assert(placed === 6 && (await dd.inputValue()) === '6', `Daily Doubles are clamped and the box says how many were placed (${placed}, ${await dd.inputValue()})`);
-  await page.locator('.toast', { hasText: 'Daily Doubles' }).waitFor();
+  await toastsIn(page, { hasText: 'Daily Doubles' }).waitFor();
   assert((await toastText()) === 'Placed 6 of 10 Daily Doubles: one a category', `and the note says why there are fewer (${await toastText()})`);
   await dd.fill('0');
   await dd.press('Tab');
@@ -508,7 +508,7 @@ try {
   const importItems = async (name, text, until) => {
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import CSV…' }).click()]);
     await chooser.setFiles({ name, mimeType: 'text/csv', buffer: Buffer.from(text) });
-    await page.locator('.toast', { hasText: until }).waitFor();
+    await toastsIn(page, { hasText: until }).waitFor();
     return toastText();
   };
   const itemNames = () => page.getByLabel('Item name').evaluateAll((els) => els.map((e) => e.value));
@@ -546,7 +546,7 @@ try {
   assert(prev.includes('Jeopardy!'), `the preview starts on the round last open (${prev})`);
   await page.getByLabel('Preview', { exact: true }).selectOption({ label: '❓ A clue' });
   await page.getByLabel('Clue text font').selectOption({ label: 'Bangers (comic)' });
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.locator('.tile').first().click();
   const editorFont = await page.locator('.modal .se .canvas').evaluate((c) => [...c.querySelectorAll('*')].map((e) => getComputedStyle(e).fontFamily).find((f) => f.includes('Bangers')) ?? '');
   assert(editorFont.includes('Bangers'), `the clue text font changes the clues' text (${editorFont})`);
@@ -598,7 +598,7 @@ try {
   await tabs.filter({ hasText: 'Adventure' }).click();
   await page.getByRole('button', { name: 'Screen Forest' }).click();
   await page.keyboard.press('Control+c');
-  await page.locator('.toast', { hasText: 'Copied Forest' }).waitFor();
+  await toastsIn(page, { hasText: 'Copied Forest' }).waitFor();
   // (The sample as it came, a screen only selected and copied: New asks nothing, and keeps it in Recent games.)
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.locator('.data-notice', { hasText: '“Sample game” was replaced.' }).waitFor();
@@ -628,7 +628,7 @@ try {
   const picks = [];
   for (const name of ['Potion', 'Gold coins']) {
     await page.locator('.layers-box .row').filter({ hasText: name }).locator('.name').click();
-    picks.push((await page.locator('.insp select').evaluateAll((els) => els.map((e) => e.selectedOptions[0]?.textContent?.trim()))).join(', '));
+    picks.push((await inspectorIn(page).locator('select').evaluateAll((els) => els.map((e) => e.selectedOptions[0]?.textContent?.trim()))).join(', '));
   }
   assert(picks[0].includes('Potion') && picks[1].includes('Gold') && !picks.join().includes('Deleted'), `a screen pasted into another game keeps its Potion and Gold (${picks.join(' | ')})`);
 
@@ -663,21 +663,21 @@ try {
     await sp.getByRole('button', { name: '🎨 Theme' }).click();
     const onTheme = await mainEl.evaluate((m) => m.scrollTop);
     await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
-    await sp.locator('nav > button.round-tab').filter({ hasText: /^\W*Jeopardy!$/ }).click();
+    await roundTabsIn(sp).filter({ hasText: /^\W*Jeopardy!$/ }).click();
     const onRound = await mainEl.evaluate((m) => m.scrollTop);
     assert(scrolled > 100 && onTheme === 0 && onRound === 0, `🎨 Theme and a round's tab open at the top after a page scrolled down (${scrolled} → ${onTheme}, ${onRound})`);
     // So does a round just added.
     await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
     await sp.getByRole('button', { name: '＋ Add round' }).click();
     await sp.getByRole('menuitem', { name: /Jeopardy board/ }).click();
-    await sp.locator('nav > button.round-tab', { hasText: 'Double Jeopardy!' }).waitFor();
+    await roundTabsIn(sp, { hasText: 'Double Jeopardy!' }).waitFor();
     const onAdded = await mainEl.evaluate((m) => m.scrollTop);
     assert(onAdded === 0, `a round just added opens at the top too (${onAdded})`);
     await sp.keyboard.press('Control+z');
-    await sp.locator('nav > button.round-tab', { hasText: 'Double Jeopardy!' }).waitFor({ state: 'detached' });
-    await sp.locator('nav > button.round-tab').filter({ hasText: /^\W*Jeopardy!$/ }).click();
+    await roundTabsIn(sp, { hasText: 'Double Jeopardy!' }).waitFor({ state: 'detached' });
+    await roundTabsIn(sp).filter({ hasText: /^\W*Jeopardy!$/ }).click();
     // And a round pasted with Ctrl+V on its tab, as the menu's 📋 Paste round does.
-    const tabs = sp.locator('nav > button.round-tab');
+    const tabs = roundTabsIn(sp);
     const before = await tabs.count();
     await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
     await tabs.filter({ hasText: /^\W*Jeopardy!$/ }).focus();
@@ -710,7 +710,7 @@ try {
     wp.on('pageerror', (e) => errors.push(e.message));
     await wp.goto(pathToFileURL(file).href);
     await wp.getByRole('button', { name: /Try a sample game/ }).click();
-    const roundTab = (name) => wp.locator('nav > button.round-tab').filter({ hasText: name }).first();
+    const roundTab = (name) => roundTabsIn(wp).filter({ hasText: name }).first();
     // At 1920 a round's buttons stay put from tab to tab: its header is one width on every round's page.
     const edges = [];
     for (const name of [/Introduction/, /^\W*Jeopardy!$/, /Adventure/, /Board game/, /Final Jeopardy!/]) {
@@ -837,7 +837,7 @@ try {
     rp.on('pageerror', (e) => errors.push(e.message));
     await rp.goto(pathToFileURL(file).href);
     await rp.getByRole('button', { name: /Try a sample game/ }).click();
-    const roundTab = (name) => rp.locator('nav > button.round-tab').filter({ hasText: name }).first();
+    const roundTab = (name) => roundTabsIn(rp).filter({ hasText: name }).first();
     const current = () => rp.locator('nav button[aria-current="page"]').first().innerText();
     const clue = rp.getByRole('dialog', { name: 'Edit clue' });
     await roundTab(/^\W*Jeopardy!$/).click();

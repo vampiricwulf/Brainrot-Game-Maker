@@ -11,7 +11,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, assert, sleep, launchChromium, until } from './helpers.mjs';
+import { appFile, failureShots, boxHasAction, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, assert, sleep, launchChromium, until, hostPanelIn, roundNavIn, stageBoxIn, statusLineIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -149,7 +149,7 @@ try {
   const bea = await person('Bea', 'Blue');
   const bo = await person('Bo', 'Blue');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
   await offStream('the game started');
 
   const says = (p, t) =>
@@ -165,7 +165,7 @@ try {
   const textOf = (loc) => loc.allInnerTexts().then((t) => t.join('\n'));
   const sendOf = (card) => (last()?.cards ?? []).filter((c) => c.id.split(':')[2] === card);
   const viewOf = (name) => heard[name].map((m) => JSON.parse(m)).filter((m) => m.t === 'view').at(-1)?.view ?? {};
-  const panel = host.locator('.panel [data-partner-panel]');
+  const panel = hostPanelIn(host).locator('[data-partner-panel]');
   const row = (n) => panel.locator(`[data-card="${n}"]`).first();
   /** 📱 › the phones list › “Move <name> to another team” › `team`. */
   const move = async (name, team) => {
@@ -177,7 +177,7 @@ try {
   // ---------- PARTNER UP!: Red picked it, Green is the partner (Green describes, Red guesses) ----------
   await host.keyboard.press('p');
   await host.keyboard.press('1');
-  await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $200"]').click();
   await panel.getByText('Red picked it.').waitFor();
   await host.keyboard.press('2');
   assert((await says(al, '🤝 Your team plays this one!')) && (await says(gus, '🤝 Your team plays this one!')) && (await says(bea, '🤝 Red + Green')), 'paired: Red’s and Green’s phones “🤝 Your team plays this one!”, Blue’s “🤝 Red + Green”');
@@ -186,7 +186,7 @@ try {
   await bo.locator('#me').getByText('Bo · Green').waitFor();
   await offStream('PARTNER UP!');
   await mainButton(host).click();
-  await host.locator('.stage-box [data-partner-badge]').waitFor();
+  await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
   assert((await flowIs(host, '👁 Reveal answer')) && (await boxHasAction(panel, '📤 Send and start')) === '', 'the question up: the blue button 👁 Reveal answer, 📤 Send and start in the box’s foot only');
   assert(
     (await panel.getByRole('button', { name: 'Card 1 to Green', exact: true }).getAttribute('aria-pressed')) === 'true' && (await panel.getByRole('button', { name: 'Card 2 to Blue', exact: true }).getAttribute('aria-pressed')) === 'true',
@@ -200,7 +200,7 @@ try {
   // (A click within a second of the question going up sends nothing.)
   await sleep(1100);
   await stepButton(panel, '📤 Send and start').click();
-  await host.locator('.stage-box .timer').waitFor();
+  await stageBoxIn(host).locator('.timer').waitFor();
   assert(await until(() => sendOf('c1')[0]?.media?.[0]?.file && sendOf('c2').length === 1), 'sent: the room’s state holds both cards, card 1’s picture up');
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   const s1 = sendOf('c1')[0];
@@ -262,19 +262,19 @@ try {
   // ---------- One person describes to their own team (§10.2): a team with one phone has nobody to describe to ----------
   await host.keyboard.press('p');
   await host.keyboard.press('1');
-  await host.locator('.stage-box .tile[aria-label^="Songs for $200"]').click();
+  await stageBoxIn(host).locator('.tile[aria-label^="Songs for $200"]').click();
   await panel.getByText('Red picked it.').waitFor();
   await panel.getByLabel('Partner from the same team').check();
   await panel.locator('[data-partner-nobody]').waitFor();
   assert((await textOf(panel.locator('[data-partner-nobody]'))).startsWith('Red has one phone here: nobody to describe to'), 'Red picked it, its own team: “Red has one phone here: nobody to describe to”');
   assert((await flowIs(host, 'Show question ▶')) && (await stepButton(panel, '🎡 Spin for the describer').count()) === 0, 'and no member wheel (it plays Solo): the blue button is Show question ▶');
   await host.keyboard.press('Escape');
-  await host.locator('.stage-box .tile[aria-label^="Songs for $200"]').waitFor();
+  await stageBoxIn(host).locator('.tile[aria-label^="Songs for $200"]').waitFor();
 
   // ---------- Green picks it and plays it: the member wheel over Green's four people ----------
   await host.keyboard.press('p');
   await host.keyboard.press('2');
-  await host.locator('.stage-box .tile[aria-label^="Songs for $200"]').click();
+  await stageBoxIn(host).locator('.tile[aria-label^="Songs for $200"]').click();
   await panel.getByText('Green picked it.').waitFor();
   await panel.getByLabel('Partner from the same team').check();
   assert(await flowIs(host, 'Show question ▶'), 'Green plays it, its own team: the blue button stays Show question ▶');
@@ -286,12 +286,12 @@ try {
   );
   assert(await stepButton(sameRow, '🎡 Spin for the describer').evaluate((b) => b.classList.contains('ring')), 'ringed, as the step due now');
   // (Not “Solo!”: Green has four people, one of them to describe.)
-  const pairLine = await textOf(host.locator('.stage-box [data-partner-up] .pu-and'));
-  const tag = await textOf(host.locator('.panel [data-partner-tag]'));
+  const pairLine = await textOf(stageBoxIn(host).locator('[data-partner-up] .pu-and'));
+  const tag = await textOf(hostPanelIn(host).locator('[data-partner-tag]'));
   assert(pairLine === '· its own team!' && tag === '🤝 Green · its own team', `PARTNER UP! says “Green · its own team!”, as the host's tag does (“${pairLine}”, “${tag}”)`);
-  assert((await textOf(host.locator('.panel .status'))).includes('Partner clue: spin for the describer'), 'and the status row says so too (not to show the question yet)');
+  assert((await textOf(statusLineIn(host))).includes('Partner clue: spin for the describer'), 'and the status row says so too (not to show the question yet)');
   await stepButton(panel, '🎡 Spin for the describer').click();
-  const wheelName = host.locator('.stage-box').getByText('Describer for Green');
+  const wheelName = stageBoxIn(host).getByText('Describer for Green');
   await wheelName.first().waitFor();
   assert(true, 'the member wheel is up: “Describer for Green”');
   const picked = panel.locator('[data-partner-same] button[aria-pressed="true"]');
@@ -312,12 +312,12 @@ try {
   await wheelName.first().waitFor({ state: 'detached' });
   assert(await flowIs(host, 'Show question ▶'), 'the wheel closed: Show question ▶');
   await mainButton(host).click();
-  await host.locator('.stage-box [data-partner-badge]').waitFor();
-  assert((await host.locator('.stage-box [data-partner-badge]').innerText()).includes(`${describerName} describes → 🎯 Green guesses`), 'the badge: who describes, the team guesses');
+  await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
+  assert((await stageBoxIn(host).locator('[data-partner-badge]').innerText()).includes(`${describerName} describes → 🎯 Green guesses`), 'the badge: who describes, the team guesses');
   assert((await panel.getByRole('button', { name: `Card 1 to ${describerName}`, exact: true }).getAttribute('aria-pressed')) === 'true', 'card 1 goes to the describer (their own chip)');
   await sleep(1100);
   await stepButton(panel, '📤 Send and start').click();
-  await host.locator('.stage-box .timer').waitFor();
+  await stageBoxIn(host).locator('.timer').waitFor();
   assert(await until(() => sendOf('d1').length === 2), 'sent: the describer’s card, and a line for the rest of the team');
   const [mine, rest] = [sendOf('d1').find((c) => !c.id.endsWith('~t')), sendOf('d1').find((c) => c.id.endsWith('~t'))];
   const memberId = mine?.to?.[0]?.member;
@@ -342,7 +342,7 @@ try {
   await offStream('one person describing to their team');
 
   // ---------- 🤫 Send a card… to one person, then ⇄ Everyone else: the rest of their team too ----------
-  await host.locator('.panel .toolsrow').getByRole('button', { name: '🤫 Send a card…' }).click();
+  await toolsRowIn(host).getByRole('button', { name: '🤫 Send a card…' }).click();
   const sendBox = host.getByRole('dialog', { name: 'Send a card' });
   const winLine = await sendBox.locator('.winpick').innerText();
   assert(winLine.includes('only one team’s 🤫 cards') && winLine.includes('for a team with no phone'), `its 🪟 Card window is for a team (${winLine.split('.')[0]})`);
@@ -357,7 +357,7 @@ try {
 
   // ---------- The quest next: its players' cards fold says Teams, as the rest of the panel does ----------
   await sleep(450);
-  await host.locator('.rn .next').click();
+  await roundNavIn(host).locator('.next').click();
   await leaveAnswer(host).waitFor();
   await sleep(450); // (an ask's buttons ignore clicks right after they appear)
   await leaveAnswer(host).click();

@@ -4,7 +4,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, clickExportHtml, openGameFile, returningHost, stored, assert, launchChromium, until } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, clickExportHtml, openGameFile, returningHost, stored, assert, launchChromium, until, boardIn, boardTilesIn, hostPanelIn, playerRowsIn, roundTabsIn, stageBoxIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -259,7 +259,7 @@ try {
   }
   await page.setViewportSize({ width: 1280, height: 720 });
   // 📥 Import clues…: the same.
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.getByRole('button', { name: '📥 Import clues…' }).click();
   const importing = page.getByRole('dialog', { name: 'Import clues' });
   await importing.waitFor();
@@ -281,12 +281,12 @@ try {
   assert(kb.style === 'solid' && kb.width >= 2 && kb.color === 'rgb(80, 128, 255)', `the same button reached with Tab shows the accent ring (${JSON.stringify(kb)})`);
 
   // ---------- A toast over a window stays clear of its buttons ----------
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.locator('.grid .tile').first().click();
   const clueDlg = page.getByRole('dialog', { name: 'Edit clue' });
   await clueDlg.waitFor();
   await clueDlg.getByRole('button', { name: /Copy slide/ }).click();
-  const toastBox = await page.locator('.toast').boundingBox();
+  const toastBox = await toastsIn(page).boundingBox();
   const hit = await clueDlg.locator('button:visible').evaluateAll(
     (bs, t) =>
       bs
@@ -297,7 +297,7 @@ try {
   );
   assert(toastBox && hit.length === 0, `a toast while the clue editor is open covers none of its buttons (${hit.join(', ') || 'none'})`);
   // (One line there: what it says fits, not cut off before it says where to paste.)
-  const fits = await page.locator('.toast').evaluate((t) => [t.scrollWidth, t.clientWidth]);
+  const fits = await toastsIn(page).evaluate((t) => [t.scrollWidth, t.clientWidth]);
   assert(fits[0] <= fits[1], `📋 Copy slide's toast over the clue editor fits on its line (${fits.join(' / ')})`);
   // What's said while a window is open is still read: the live region isn't made inert with the page.
   await page.keyboard.press('Control+Enter');
@@ -362,7 +362,7 @@ try {
   // 📊 Stats & Items is always in the sidebar: muted, "(optional)", until an RPG or board game round is there to use it.
   const statsNav = page.getByRole('button', { name: /^📊 Stats & Items/ });
   assert((await statsNav.innerText()).includes('(optional)') && (await statsNav.evaluate((b) => b.classList.contains('optional'))), 'a game of Jeopardy boards lists 📊 Stats & Items muted, “(optional)”');
-  const roundTabs = await page.locator('nav > button.round-tab').count();
+  const roundTabs = await roundTabsIn(page).count();
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /RPG/ }).click();
   await page.waitForFunction(() => ![...document.querySelectorAll('nav > button.optional')].some((b) => b.textContent.includes('Stats & Items')));
@@ -457,7 +457,7 @@ try {
   await saidHas(/Scores off screen/);
   assert(true, 'P, 1 says who picks next, and S whether the scores are on screen');
   assert((await page.getByRole('main').getByRole('heading', { level: 1, name: 'Untitled Game' }).count()) === 1, 'the stage and host panel are the main part, under a heading with the game’s title');
-  await page.locator('.board .tile').first().click();
+  await boardTilesIn(boardIn(page)).first().click();
   assert((await focused()).includes('Reveal answer'), 'opening a clue puts the focus on 👁 Reveal answer');
   // The status line is read without its glyphs (⏱ is the timer's, not words).
   await page.waitForFunction(() => /Answer hidden/.test(document.getElementById('live-region')?.dataset.said ?? ''));
@@ -474,7 +474,7 @@ try {
   await page.keyboard.press('Escape');
   // A button the keys come back to (a window closed with Esc) is pressed by Enter, as one reached with Tab is (Enter
   // isn't an award there, as it is after a click).
-  const rulesBtn = page.locator('.panel').getByRole('button', { name: '⚖ Rules', exact: true });
+  const rulesBtn = hostPanelIn(page).getByRole('button', { name: '⚖ Rules', exact: true });
   const rulesDlg = page.getByRole('dialog', { name: 'Game rules' });
   await rulesBtn.focus();
   await page.keyboard.press('Enter');
@@ -488,9 +488,9 @@ try {
   await page.keyboard.press('Escape');
   await rulesDlg.waitFor({ state: 'detached' });
   // Clicked with the mouse instead, Enter there still awards once Esc gives it the keys back.
-  const scoreOf = (i) => page.locator('.panel .p').nth(i).locator('.score').innerText();
+  const scoreOf = (i) => playerRowsIn(page).nth(i).locator('.score').innerText();
   const scoreNot = (i, was) => page.waitForFunction(([i, was]) => document.querySelectorAll('.panel .p .score')[i]?.textContent?.trim() !== was, [i, was]);
-  await page.locator('.board .tile:not(.used)').first().click();
+  await boardIn(page).locator('.tile:not(.used)').first().click();
   await page.waitForFunction(() => document.activeElement?.textContent?.includes('Reveal answer'));
   let was = await scoreOf(0);
   await rulesBtn.click();
@@ -504,7 +504,7 @@ try {
   assert((await rulesDlg.count()) === 0, 'and 1, Enter award Player 1 there (Enter doesn’t open ⚖ Game rules again)');
   // ＋ Award reached with the keys: it turns off once pressed, and the keys go to a button near it, but 2, Enter still
   // award (not ▦ Done ▶ board, which would close the clue).
-  const awardBtn = page.locator('.panel').getByRole('button', { name: /^＋ Award/ });
+  const awardBtn = hostPanelIn(page).getByRole('button', { name: /^＋ Award/ });
   await page.keyboard.press('1');
   await awardBtn.focus();
   was = await scoreOf(0);
@@ -518,15 +518,15 @@ try {
   await page.keyboard.press('2');
   await page.keyboard.press('Enter');
   await scoreNot(1, was);
-  assert((await page.locator('.board').count()) === 0, `＋ Award pressed with Enter: then 2, Enter award Player 2, and the clue stays open (the keys were on ${await focused()})`);
+  assert((await boardIn(page).count()) === 0, `＋ Award pressed with Enter: then 2, Enter award Player 2, and the clue stays open (the keys were on ${await focused()})`);
   await page.keyboard.press('Escape');
-  await page.locator('.board').waitFor();
+  await boardIn(page).waitFor();
   // Esc on any of a host-panel question's answers cancels the question (as on its Cancel), and goes no further: during
   // a clue it never closes the clue too.
-  const strip = page.locator('.panel [data-ask]');
-  const exitBtn = page.locator('.panel').getByRole('button', { name: '🚪 Exit' });
-  const usedBefore = await page.locator('.board .tile.used').count();
-  await page.locator('.board .tile:not(.used)').first().click();
+  const strip = hostPanelIn(page).locator('[data-ask]');
+  const exitBtn = hostPanelIn(page).getByRole('button', { name: '🚪 Exit' });
+  const usedBefore = await boardIn(page).locator('.tile.used').count();
+  await boardIn(page).locator('.tile:not(.used)').first().click();
   await page.waitForFunction(() => document.activeElement?.textContent?.includes('Reveal answer'));
   await exitBtn.click();
   await page.waitForFunction(() => document.activeElement?.textContent === 'Stay');
@@ -537,12 +537,12 @@ try {
   await strip.waitFor({ state: 'detached' });
   await page.waitForTimeout(300);
   assert(
-    (await page.locator('.board').count()) === 0 && (await exitBtn.evaluate((b) => b === document.activeElement)),
+    (await boardIn(page).count()) === 0 && (await exitBtn.evaluate((b) => b === document.activeElement)),
     'Esc on Keep & leave cancels the question, the keys back on 🚪 Exit, and the clue stays open',
   );
   await page.keyboard.press('Escape');
-  await page.locator('.board').waitFor();
-  assert((await page.locator('.board .tile.used').count()) === usedBefore + 1, 'and Esc then closes the clue, as before');
+  await boardIn(page).waitFor();
+  assert((await boardIn(page).locator('.tile.used').count()) === usedBefore + 1, 'and Esc then closes the clue, as before');
   await exitBtn.click();
   await page.waitForFunction(() => document.activeElement?.textContent === 'Stay');
   await page.keyboard.press('Tab');
@@ -558,22 +558,22 @@ try {
   assert((await focused()).startsWith('Go to '), `leaving the round early asks, Tab reaching its Go to … (${await focused()})`);
   await page.keyboard.press('Escape');
   await strip.waitFor({ state: 'detached' });
-  assert((await page.locator('.board').count()) === 1, 'and Esc there cancels it, the round still on');
+  assert((await boardIn(page).count()) === 1, 'and Esc there cancels it, the round still on');
   // A player's score button and the box it opens are named for the player.
-  const scoreBtn = page.locator('.panel .p').first().locator('button.score');
+  const scoreBtn = playerRowsIn(page).first().locator('button.score');
   assert(/^Player 1’s score: \$\d+$/.test(await scoreBtn.getAttribute('aria-label')), `a player's score button is named for them (${await scoreBtn.getAttribute('aria-label')})`);
   await scoreBtn.focus();
   await page.keyboard.press('Enter');
-  const scoreBox = page.locator('.panel .score-edit');
+  const scoreBox = hostPanelIn(page).locator('.score-edit');
   await scoreBox.waitFor();
   assert((await scoreBox.getAttribute('aria-label')) === 'Player 1’s score', 'and the box it opens is named “Player 1’s score”');
   await scoreBox.press('Escape');
   await scoreBox.waitFor({ state: 'detached' });
   // N and Shift+N on the board (no blue button): they say how to pick a tile.
-  await page.locator('.panel').getByRole('button', { name: '⚖ Rules', exact: true }).focus();
+  await hostPanelIn(page).getByRole('button', { name: '⚖ Rules', exact: true }).focus();
   await page.keyboard.press('n');
   await saidHas(/Pick a tile on the board: click it, or Enter on it/);
-  assert((await page.locator('.toast', { hasText: 'Pick a tile' }).count()) === 1, 'N on the board says how to pick a tile (said and shown)');
+  assert((await toastsIn(page, { hasText: 'Pick a tile' }).count()) === 1, 'N on the board says how to pick a tile (said and shown)');
   await page.evaluate(() => (document.getElementById('live-region').dataset.said = ''));
   await page.keyboard.press('Shift+N');
   await saidHas(/Pick a tile on the board/);
@@ -585,17 +585,17 @@ try {
   await saidHas(/Host controls shown/);
   assert(true, 'H says the host controls are hidden, then shown');
   // Time's up is said as a part of its own of the status line.
-  await page.locator('.board .tile:not(.used)').first().click();
+  await boardIn(page).locator('.tile:not(.used)').first().click();
   await page.waitForFunction(() => document.activeElement?.textContent?.includes('Reveal answer'));
   await page.getByLabel('Timer seconds').fill('1');
   await page.getByLabel('Timer seconds').press('Enter');
   await saidHas(/Time's up/);
   assert(/ · Time's up\.$/.test(await said()), `“Time's up” comes after a “·” in what's said (“${await said()}”)`);
   await page.keyboard.press('Escape');
-  await page.locator('.board').waitFor();
+  await boardIn(page).waitFor();
   // One window: ?, 📜 Log, ⚖ Rules, 🔊 Sound and 👥 Players open in the host panel's own box, scrolling there, and the
   // stage viewers see keeps its size (the panel doesn't grow for them; playcopies.mjs checks 🗜 Make smaller).
-  const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const stageH = () => stageBoxIn(page).evaluate((e) => Math.round(e.getBoundingClientRect().height));
   const boardH = await stageH();
   const panelBox = await page.locator('.play > .panel').boundingBox();
   const inPanel = [];
@@ -603,7 +603,7 @@ try {
     ['?', () => page.keyboard.press('?'), page.getByRole('dialog', { name: 'Keyboard shortcuts' })],
     ['📜 Log', () => page.keyboard.press('l'), page.locator('aside[aria-label="Log"]')],
     ['⚖ Rules', () => rulesBtn.click(), rulesDlg],
-    ['🔊 Sound', () => page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click(), page.getByRole('dialog', { name: 'Streaming the sound' })],
+    ['🔊 Sound', () => hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click(), page.getByRole('dialog', { name: 'Streaming the sound' })],
     ['👥 Players', () => page.getByRole('button', { name: '👥 Players' }).click(), page.getByRole('dialog', { name: 'Players' })],
   ]) {
     await open();
@@ -729,7 +729,7 @@ try {
 
   // ---------- The keys after a move, a menu left with Tab, and New ----------
   const saidNow = () => page.evaluate(() => document.getElementById('live-region')?.dataset.said ?? '');
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   assert((await page.getByRole('group', { name: /^Board: arrow keys move between tiles/ }).count()) === 1, 'the board’s tiles are a group whose name says how the keys reach them');
   await page.locator('.cat textarea').first().fill('Animals');
   await page.getByRole('button', { name: 'More for category 1: Animals' }).focus();
@@ -798,14 +798,14 @@ try {
     });
     const heardHas = (words) => sp.waitForFunction((w) => (document.getElementById('live-region')?.dataset.said ?? '').includes(w), words, { timeout: 4000 });
     // A Daily Double: nothing of its question while its splash is up (a moment past when it would be said).
-    await sp.locator('.stage-box .board .tile[data-clue="c1"]').click();
-    await sp.locator('.stage-box .dd').waitFor();
+    await boardIn(stageBoxIn(sp)).locator('.tile[data-clue="c1"]').click();
+    await stageBoxIn(sp).locator('.dd').waitFor();
     await sp.waitForTimeout(1500);
     assert(!spoken.some((t) => t.includes('Daily Double question')), `a Daily Double's splash: its question isn't said before it shows (${JSON.stringify(spoken)})`);
     await sp.keyboard.press('Escape');
-    await sp.locator('.stage-box .board').waitFor();
+    await boardIn(stageBoxIn(sp)).waitFor();
     // A clue: its question as it shows (after its name), never its answer nor the host's secret words; its answer after R.
-    await sp.locator('.stage-box .board .tile[data-clue="c0"]').click();
+    await boardIn(stageBoxIn(sp)).locator('.tile[data-clue="c0"]').click();
     await heardHas('“Never gonna give you up” is the song of this prank.');
     await sp.waitForTimeout(700);
     assert(
@@ -871,8 +871,8 @@ try {
   });
   assert(tileBg === themeBg, `with forced colors, a board tile on stage keeps the theme's color (${tileBg}, the theme's ${themeBg})`);
   await hc.keyboard.press('1');
-  const sel = hc.locator('.panel .p.on');
-  assert((await sel.count()) === 1 && (await outlined(sel)) && !(await outlined(hc.locator('.panel .p:not(.on)').first())), 'and a selected player in the host panel is outlined');
+  const sel = hostPanelIn(hc).locator('.p.on');
+  assert((await sel.count()) === 1 && (await outlined(sel)) && !(await outlined(hostPanelIn(hc).locator('.p:not(.on)').first())), 'and a selected player in the host panel is outlined');
   // (Two steps: the older one has ↶ Back to here.)
   for (const who of ['2', '1']) {
     await hc.keyboard.press('p');

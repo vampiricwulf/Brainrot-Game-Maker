@@ -4,7 +4,7 @@
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { appFile, addClassicRounds, launchChromium, playWithPlayers, failureShots, assert } from './helpers.mjs';
+import { appFile, addClassicRounds, launchChromium, playWithPlayers, failureShots, assert, boardIn, boardTilesIn, inspectorIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -150,7 +150,7 @@ try {
   const order = async () => (await rows.locator('.txt').allInnerTexts()).join(',');
   assert((await order()) === 'behind.png,through.png,blocker.png', `layers list the top-most first (${await order()})`);
 
-  const pos = modal.locator('.insp section:has(h4:text("Position"))');
+  const pos = inspectorIn(modal).locator('section:has(h4:text("Position"))');
   async function place(name, x, y, w, h) {
     await rows.filter({ hasText: name }).locator('.name').click();
     await pos.getByLabel('X', { exact: true }).fill(String(x));
@@ -245,7 +245,7 @@ try {
     return d;
   });
   await modal.locator('.canvas').dispatchEvent('drop', { dataTransfer: sound });
-  await page.locator('.toast', { hasText: '“boing.wav” isn’t a picture file. Board images can be pictures or GIFs.' }).waitFor();
+  await toastsIn(page, { hasText: '“boing.wav” isn’t a picture file. Board images can be pictures or GIFs.' }).waitFor();
   assert((await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).innerText()) === mediaBefore, 'a sound dropped on the board images is refused and not added to 🖼 Media');
 
   await modal.getByRole('button', { name: /Copy all to other rounds/ }).click();
@@ -283,17 +283,17 @@ try {
   await playWithPlayers(page, 2);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
-  await page.locator('.board .tile').first().waitFor();
-  assert((await page.locator('.board .header .title.has-image img').count()) === 2, 'category headers show their images');
-  assert((await page.locator('.board .header .caption').innerText()).trim().toLowerCase() === 'memes', 'the name shows over the image');
-  const captionShadow = await page.locator('.board .header .caption').evaluate((e) => getComputedStyle(e).textShadow);
+  await boardTilesIn(boardIn(page)).first().waitFor();
+  assert((await boardIn(page).locator('.header .title.has-image img').count()) === 2, 'category headers show their images');
+  assert((await boardIn(page).locator('.header .caption').innerText()).trim().toLowerCase() === 'memes', 'the name shows over the image');
+  const captionShadow = await boardIn(page).locator('.header .caption').evaluate((e) => getComputedStyle(e).textShadow);
   assert(captionShadow.includes('rgba(255, 255, 255, 0.75)') && !captionShadow.includes('rgb(0, 0, 0)'), `on Pastel its dark letters have a light outline, not a black one, to read on a dark picture (${captionShadow})`);
-  assert((await page.locator('.board .tile img').count()) === 3, 'tiles show their images');
+  assert((await boardTilesIn(boardIn(page)).locator('img').count()) === 3, 'tiles show their images');
   assert((await page.locator('.board-screen .banner img').count()) === 1, 'the banner shows above the board');
   const op = await page.locator('.layer.above .el').evaluateAll((els) => els.map((e) => e.style.opacity));
   assert(op.includes('0.5'), `board image opacity carries into the game (${op})`);
 
-  const tiles = page.locator('.board .tile');
+  const tiles = boardTilesIn(boardIn(page));
   const topAt = async (i) =>
     tiles.nth(i).evaluate((t) => {
       const r = t.getBoundingClientRect();
@@ -303,7 +303,7 @@ try {
   assert((await topAt(0)).includes('block'), 'a solid board image covers the tile under it');
   await tiles.nth(0).click({ force: true });
   await page.waitForTimeout(300);
-  assert((await page.locator('.board').count()) === 1, 'clicking a solid board image does not open the tile under it');
+  assert((await boardIn(page).count()) === 1, 'clicking a solid board image does not open the tile under it');
   assert((await topAt(1)) === 'tile', 'a click-through board image lets the tile under it be clicked');
   await shot('bi-3-board');
   await tiles.nth(1).click();

@@ -19,7 +19,7 @@
 //    pictures), and ⬤ Spaces over it hides them (remembered).
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addPlayers, editorReady, goOnCheck, failureShots, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, addPlayers, editorReady, goOnCheck, failureShots, assert, launchChromium, section, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -38,7 +38,7 @@ async function host(template, two) {
   await editorReady(page);
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: new RegExp(template) }).click();
-  await page.locator('nav > button.round-tab').first().waitFor();
+  await roundTabsIn(page).first().waitFor();
   // Its undo step names the template only when the round's name doesn't already ("Added round “Mini quest”").
   const undo = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert(/^Undo: Added round “.+”/.test(undo) && !/“([^”]+)” \(\1\)/.test(undo), `the template's undo step says its name once (${undo})`);
@@ -138,13 +138,13 @@ try {
     assert(top.row[1] <= top.box + 1 || top.row[0] >= top.box - 1, `the Shopkeeper's card open, the top row isn't cut at the box's top (${JSON.stringify(top)})`);
     await rh.getByRole('button', { name: '🛒 Shop' }).click();
     await page.getByRole('button', { name: /^Potion · / }).click();
-    await page.locator('.toast', { hasText: 'Potion' }).waitFor();
+    await toastsIn(page, { hasText: 'Potion' }).waitFor();
     const stage = await stageAt(page);
     await page.getByRole('button', { name: /^Sword · / }).click();
     const ask = page.getByRole('group', { name: /^Short by .+ for Sword\.$/ });
     await ask.waitFor();
     // (Read at once: a toast goes after 3 seconds.)
-    const said = await page.locator('.toast', { hasText: /^Short by/ }).innerText();
+    const said = await toastsIn(page, { hasText: /^Short by/ }).innerText();
     assert(/^Short by .+ for Sword: choose in the shop’s box$/.test(said), `the toast names the item (${said})`);
     const sell = ask.getByRole('button', { name: 'Sell anyway' });
     const inSight = await until(
@@ -328,7 +328,7 @@ try {
     assert(t.includes('Previewing the screen') && !strays(t).length, `▶ Preview says the screen (${strays(t).join(' | ')})`);
     await page.keyboard.press('Escape');
     await page.locator('.layers-box .row').filter({ hasText: 'Gold coins' }).locator('.name').click();
-    await page.locator('.insp section:has(h4:text("Position"))').getByLabel('X', { exact: true }).fill('5000');
+    await inspectorIn(page).locator('section:has(h4:text("Position"))').getByLabel('X', { exact: true }).fill('5000');
     await page.keyboard.press('Enter');
     t = await says();
     assert(t.includes('off the screen') && !strays(t).length, `one off it is “off the screen” (${strays(t).join(' | ')})`);
@@ -366,7 +366,7 @@ try {
     // A picture over the whole board: pressed where a space is drawn, it's the picture that's dragged.
     await page.getByRole('button', { name: '◼ Shape ▾' }).click();
     await page.getByRole('button', { name: '▭ Rectangle' }).click();
-    const pos = page.locator('.insp');
+    const pos = inspectorIn(page);
     for (const [k, v] of [['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
     await pos.getByLabel('X', { exact: true }).press('Tab');
     const c = await path.locator('[data-space]').nth(2).boundingBox();

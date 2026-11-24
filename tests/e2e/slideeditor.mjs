@@ -16,7 +16,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerAsk, answerReplace, leaveAsks, noSelection, selectedWords, failureShots, assert, launchChromium, until } from './helpers.mjs';
+import { appFile, addClassicRounds, answerAsk, answerReplace, leaveAsks, noSelection, selectedWords, failureShots, assert, launchChromium, until, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
 import { gif } from './mediafixtures.mjs';
 
 const { GifReader } = createRequire(import.meta.url)('omggif');
@@ -34,11 +34,11 @@ page.on('dialog', (d) => d.accept());
 const shot = (name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
 
 const canvas = page.locator('.canvas');
-const insp = page.locator('.insp');
+const insp = inspectorIn(page);
 /** The selected item's bar at the top of the side panel: its edit, ⧉ Duplicate, 🔒 Lock, ⋯ and 🗑 Delete. */
 const bar = page.locator('.itembar');
 const lockBtn = bar.getByRole('button', { name: '🔒 Lock' });
-const toast = page.locator('.toast');
+const toast = toastsIn(page);
 /** The clue's ↶ tooltip: "Undo: ‹the newest step› (Ctrl+Z)". */
 const undoTitle = async () => (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) ?? '';
 /** Viewport point for a stage (1920×1080) point. */
@@ -807,7 +807,7 @@ try {
   await answerReplace(page);
   // (The new game, with no rounds, has arrived: until then the old one's round tabs are still there, and
   // addClassicRounds would take them for this game's and add none.)
-  await page.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
+  await roundTabsIn(page).first().waitFor({ state: 'detached' });
   await addClassicRounds(page);
   await page.locator('.grid .tile').first().click();
   await clue.waitFor();

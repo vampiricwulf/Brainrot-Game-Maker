@@ -4,7 +4,7 @@
 // finding the audience window again.
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, confirmStrip, flowButton, goOnCheck, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, checkItem, confirmStrip, flowButton, goOnCheck, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer, failureShots, assert, launchChromium, awardRowIn, finalControlsIn, hostPanelIn, playerRowsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -35,7 +35,7 @@ const shot = async (name, p = page) => shots && (await p.screenshot({ path: `${s
  * window it's on stream: its words and tooltips never hold what the panel hides (the video clue's answer, not shown yet).
  */
 async function stageMenu({ close = true } = {}) {
-  await page.locator('.stage-box').click({ button: 'right', position: { x: 12, y: 12 } });
+  await stageBoxIn(page).click({ button: 'right', position: { x: 12, y: 12 } });
   const lines = await menuLines(page);
   const said = await openMenu(page).evaluate((m) => [m.innerText, ...[...m.querySelectorAll('[title]')].map((e) => e.title)].join(' '));
   assert(!said.includes('The answer text'), `the stage’s menu (${lines[0]}) shows nothing the panel hides`);
@@ -46,7 +46,7 @@ async function stageMenu({ close = true } = {}) {
 }
 const stage = (sel, opts) => page.locator(`.stage-box ${sel}`, opts);
 const tile = (i) => stage('.board .tile').nth(i);
-const status = () => page.locator('.panel .status').innerText();
+const status = () => statusLineIn(page).innerText();
 const focused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName);
 const video = () => stage('.full video').first().evaluate((m) => ({ paused: m.paused, t: m.currentTime, muted: m.muted }));
 const timerNum = () => stage('.timer .num').innerText();
@@ -151,7 +151,7 @@ try {
   assert((await focused()) === 'Category 2 for $200, played', `after the clue, the keys go on from its tile (${await focused()})`);
   assert((await stage('.board .tile:not([tabindex="-1"])').count()) === 1, 'the board is one Tab stop (a roving tabindex)');
   // ↶ Reopen in the status line (pressed with the keys): the keys go to that tile, not the panel's first button.
-  await page.locator('.panel .status').getByRole('button', { name: '↶ Reopen Category 2 $200' }).focus();
+  await statusLineIn(page).getByRole('button', { name: '↶ Reopen Category 2 $200' }).focus();
   await page.keyboard.press('Enter');
   await page.waitForTimeout(150);
   assert((await focused()) === 'Category 2 for $200', `↶ Reopen Category 2 $200: the keys go to the tile put back (${await focused()})`);
@@ -182,37 +182,37 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('.panel .award input'));
   await page.keyboard.press('Escape');
   assert(await page.evaluate(() => !!document.activeElement?.matches('.stage-box .board .tile[tabindex="0"]')), `Esc in the Amount box opened with ± Adjust score: the keys go to the board's tile (${await focused()})`);
-  await page.locator('.panel .award').getByRole('button', { name: '✕ Close' }).click();
+  await awardRowIn(page).getByRole('button', { name: '✕ Close' }).click();
   // The Amount box takes no sign: ↓ in the empty box doesn't go below 0, and a typed −100 is 100 (Award or Deduct gives
   // the sign).
   await page.getByRole('button', { name: '± Adjust score' }).click();
   await page.waitForFunction(() => document.activeElement?.matches('.panel .award input'));
   await page.keyboard.press('ArrowDown');
-  const down = await page.locator('.panel .award input').inputValue();
+  const down = await awardRowIn(page).locator('input').inputValue();
   assert(!down.startsWith('-'), `↓ in the empty Amount box doesn't make it negative (${down})`);
-  await page.locator('.panel .award input').fill('-100');
-  await page.locator('.panel .award input').evaluate((e) => e.blur());
+  await awardRowIn(page).locator('input').fill('-100');
+  await awardRowIn(page).locator('input').evaluate((e) => e.blur());
   await page.keyboard.press('1');
-  await page.locator('.panel .award').getByRole('button', { name: /Deduct .*−\$100/ }).waitFor();
-  assert((await page.locator('.panel .award input').inputValue()) === '100', 'a typed −100 in the Amount box reads 100, and Deduct takes $100');
-  await page.locator('.panel .award input').fill('');
-  await page.locator('.panel .award').getByRole('button', { name: 'Clear selection' }).click();
-  await page.locator('.panel .award').getByRole('button', { name: '✕ Close' }).click();
+  await awardRowIn(page).getByRole('button', { name: /Deduct .*−\$100/ }).waitFor();
+  assert((await awardRowIn(page).locator('input').inputValue()) === '100', 'a typed −100 in the Amount box reads 100, and Deduct takes $100');
+  await awardRowIn(page).locator('input').fill('');
+  await awardRowIn(page).getByRole('button', { name: 'Clear selection' }).click();
+  await awardRowIn(page).getByRole('button', { name: '✕ Close' }).click();
   // On the board, one player's pop sits over their plate. (± Adjust score puts the keys in the Amount box: the points
   // first, then who gets them.)
   await page.getByRole('button', { name: '± Adjust score' }).click();
   await page.keyboard.type('100');
-  assert((await page.locator('.panel .award input').inputValue()) === '100', '± Adjust score puts the keys in the Amount box (typed 100)');
+  assert((await awardRowIn(page).locator('input').inputValue()) === '100', '± Adjust score puts the keys in the Amount box (typed 100)');
   assert(
-    await page.locator('.panel .p .key').evaluateAll((ks) => ks.length === 3 && ks.every((k) => getComputedStyle(k).visibility === 'hidden')),
+    await playerRowsIn(page).locator('.key').evaluateAll((ks) => ks.length === 3 && ks.every((k) => getComputedStyle(k).visibility === 'hidden')),
     'while the keys are in the Amount box, the chips show no number keys (those type points there)',
   );
   // Enter with nobody picked yet: who gets them next (not "Select a player first").
   await page.keyboard.press('Enter');
-  await page.locator('.toast', { hasText: 'Now pick who gets +$100 (1–3), then Enter' }).waitFor();
+  await toastsIn(page, { hasText: 'Now pick who gets +$100 (1–3), then Enter' }).waitFor();
   assert(await page.evaluate(() => !document.activeElement?.closest('input')), 'Enter in the Amount box with nobody picked says to pick who gets the points, and gives the keys back');
   await page.keyboard.press('2');
-  await page.locator('.panel .award').getByRole('button', { name: /Award/ }).click();
+  await awardRowIn(page).getByRole('button', { name: /Award/ }).click();
   const pop = stage('.pop.anchored');
   await pop.waitFor();
   // (Once it has flown in.)
@@ -241,21 +241,21 @@ try {
   assert((await pop50.count()) === 1, 'the +$50 pops up on stage');
   // Redo with nothing to redo says so, as Undo does. (Then Undo: the scores stay as they were.)
   await page.keyboard.press('Control+y');
-  await page.locator('.toast', { hasText: 'Nothing to redo' }).waitFor();
+  await toastsIn(page, { hasText: 'Nothing to redo' }).waitFor();
   await page.keyboard.press('Control+z');
-  await page.locator('.toast', { hasText: 'Undid' }).waitFor();
+  await toastsIn(page, { hasText: 'Undid' }).waitFor();
   assert(true, 'then 50, Enter gives them $50; Ctrl+Y with nothing to redo says “Nothing to redo”');
   // (Its pop goes with the Undo, not 2 s later: nothing on stage says +$50 once the score is back.)
   await pop50.waitFor({ state: 'detached', timeout: 900 });
   assert(true, 'Ctrl+Z takes the +$50 pop off the stage at once');
   // Opening a score to fix it moves no other chip: the box is as wide as the score it stands in for.
-  const chipBox = async (i) => page.locator('.panel .p').nth(i).boundingBox();
+  const chipBox = async (i) => playerRowsIn(page).nth(i).boundingBox();
   const [w0, x1] = [(await chipBox(0)).width, (await chipBox(1)).x];
-  await page.locator('.panel .p').nth(0).locator('.score').click();
-  await page.locator('.panel .score-edit').waitFor();
+  await playerRowsIn(page).nth(0).locator('.score').click();
+  await hostPanelIn(page).locator('.score-edit').waitFor();
   const [w0e, x1e] = [(await chipBox(0)).width, (await chipBox(1)).x];
-  await page.locator('.panel .score-edit').press('Escape');
-  await page.locator('.panel .score-edit').waitFor({ state: 'detached' });
+  await hostPanelIn(page).locator('.score-edit').press('Escape');
+  await hostPanelIn(page).locator('.score-edit').waitFor({ state: 'detached' });
   assert(Math.abs(w0e - w0) < 1 && Math.abs(x1e - x1) < 1, `a score's box keeps its chip's width, and the next chip stays put (${w0}→${w0e}, ${x1}→${x1e})`);
 
   // ---------- Daily Double: Enter in the wager box shows the question, not the answer ----------
@@ -263,17 +263,17 @@ try {
   await tile(3).click();
   await page.locator('.dd input[type=number]').waitFor();
   // Whoever picks now is picked already: number keys type the wager, so the chips show no keys.
-  const ddKeys = page.locator('.panel .dd .chip .key');
+  const ddKeys = hostPanelIn(page).locator('.dd .chip .key');
   assert(
-    (await page.locator('.panel .dd .chip[aria-pressed="true"]').count()) === 1 &&
+    (await hostPanelIn(page).locator('.dd .chip[aria-pressed="true"]').count()) === 1 &&
       (await ddKeys.count()) === 3 &&
       (await ddKeys.evaluateAll((ks) => ks.every((k) => getComputedStyle(k).visibility === 'hidden'))) &&
-      (await page.locator('.panel .dd').innerText()).includes('Who found it? Click another to change.'),
+      (await hostPanelIn(page).locator('.dd').innerText()).includes('Who found it? Click another to change.'),
     'a Daily Double with a player picked already: the chips show no number keys (those type the wager now), “Click another to change.”',
   );
   // Every player button in a box opens the player's menu, as their score chip does: a right-click, Shift+F10 (the focus
   // back on it after), a long press on a touch screen (its tap doesn't pick them). Headed by the name only.
-  const ddChip = page.locator('.panel .dd .chip[data-player-id]').nth(1);
+  const ddChip = hostPanelIn(page).locator('.dd .chip[data-player-id]').nth(1);
   const ddName = await ddChip.evaluate((el) => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim());
   await ddChip.click({ button: 'right' });
   const chipMenu = await menuLines(page);
@@ -289,11 +289,11 @@ try {
   await page.keyboard.press('Escape');
   await openMenu(page).waitFor({ state: 'detached' });
   assert((await page.evaluate(() => document.activeElement?.dataset.playerId)) === (await ddChip.getAttribute('data-player-id')), 'Esc gives the chip the keys back');
-  const pickedBefore = await page.locator('.panel .dd .chip[aria-pressed="true"]').innerText();
+  const pickedBefore = await hostPanelIn(page).locator('.dd .chip[aria-pressed="true"]').innerText();
   await longPress(ddChip);
   assert((await menuLines(page))[0] === `# ${ddName}`, 'a long press on it opens it too');
   await page.keyboard.press('Escape');
-  assert((await page.locator('.panel .dd .chip[aria-pressed="true"]').innerText()) === pickedBefore, 'and the tap that ends the press doesn’t pick them');
+  assert((await hostPanelIn(page).locator('.dd .chip[aria-pressed="true"]').innerText()) === pickedBefore, 'and the tap that ends the press doesn’t pick them');
   // The stage's menu on the Daily Double: Show question ▶ first (the blue button's, never greyed: with no wager it keeps
   // the keys in the Wager box), once only, then who found it (the one picked greyed), the way out.
   const ddMenu = await stageMenu();
@@ -306,15 +306,15 @@ try {
   // the Wager box (the click never takes them, so the next digits type the wager, not who found it).
   await page.locator('.dd input[type=number]').focus();
   await stage('.dd-text').click();
-  await page.locator('.panel .status [data-click-note]', { hasText: 'Type a wager' }).waitFor();
+  await statusLineIn(page).locator('[data-click-note]', { hasText: 'Type a wager' }).waitFor();
   assert(
-    (await page.evaluate(() => document.activeElement?.matches('.dd input[type=number]'))) && (await stage('.dd-text').count()) === 1 && !(await page.locator('.toast', { hasText: 'Type a wager' }).count()),
+    (await page.evaluate(() => document.activeElement?.matches('.dd input[type=number]'))) && (await stage('.dd-text').count()) === 1 && !(await toastsIn(page, { hasText: 'Type a wager' }).count()),
     'a click on the Daily Double’s splash with no wager says so in the status line (not a message at the foot), the splash stays, and the keys stay in the Wager box',
   );
   // A wager below 0 (the box's min doesn't stop a typed minus) says so, not "over the max" with the limit ignored.
   await page.locator('.dd input[type=number]').fill('-500');
   await page.keyboard.press('Enter');
-  await page.locator('.panel .status [data-click-note]', { hasText: 'A wager can’t be below 0: type 0 or more' }).waitFor();
+  await statusLineIn(page).locator('[data-click-note]', { hasText: 'A wager can’t be below 0: type 0 or more' }).waitFor();
   assert(
     (await mainButton(page, 'Show question ▶').isEnabled()) && (await page.evaluate(() => document.activeElement?.matches('.dd input[type=number]'))),
     'a Daily Double wager below 0 says so in the status line, not “over the max”: the question waits, the keys stay in the Wager box (the blue button never greyed)',
@@ -324,14 +324,14 @@ try {
   // Enter again at once (a double press, or Enter on the button the keys went to): its player isn't judged yet.
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
-  await page.locator('.toast', { hasText: 'The question just went up: press Enter again to judge' }).waitFor();
-  assert((await page.locator('.panel .p .mark:not(.empty)').count()) === 0, 'a second Enter right after it doesn’t judge the Daily Double’s player (it says to press it again)');
+  await toastsIn(page, { hasText: 'The question just went up: press Enter again to judge' }).waitFor();
+  assert((await playerRowsIn(page).locator('.mark:not(.empty)').count()) === 0, 'a second Enter right after it doesn’t judge the Daily Double’s player (it says to press it again)');
   await page.waitForTimeout(400);
   assert((await status()).includes('Answer hidden') && (await flowButton(page, 'reveal', '👁 Reveal answer').count()) === 1, 'Enter in the Daily Double wager box shows the question, the answer stays hidden');
   // ✘ on its player (nobody else answers a Daily Double): its countdown stops, with no TIME'S UP after; Ctrl+Z brings it back.
   await page.keyboard.press('t');
   await stage('.timer').waitFor();
-  await page.locator('.panel .p').getByRole('button', { name: /^Wrong:/ }).click();
+  await playerRowsIn(page).getByRole('button', { name: /^Wrong:/ }).click();
   await stage('.timer').waitFor({ state: 'detached' });
   await page.keyboard.press('Control+z');
   await stage('.timer').waitFor();
@@ -341,15 +341,15 @@ try {
   // (Once the question has been up a moment: an Enter right after it only says to press it again.)
   await page.waitForTimeout(1000);
   const ddWho = pickedBefore.match(/Player \d+/)[0];
-  const ddOn = page.locator(`.panel .p[aria-label="${ddWho}"]`);
+  const ddOn = hostPanelIn(page).locator(`.p[aria-label="${ddWho}"]`);
   const ddKey = (await ddOn.locator('.key').innerText()).trim();
   if (!(await ddOn.evaluate((e) => e.classList.contains('on')))) await page.keyboard.press(ddKey);
-  await page.locator('.panel .p.on').waitFor();
+  await hostPanelIn(page).locator('.p.on').waitFor();
   await page.keyboard.press(ddKey);
-  await page.locator('.panel .p.on').waitFor({ state: 'detached' });
+  await hostPanelIn(page).locator('.p.on').waitFor({ state: 'detached' });
   await page.keyboard.press('Enter');
-  await page.locator(`.panel .p[aria-label="${ddWho}"] .mark.right`).waitFor();
-  assert((await page.locator('.toast', { hasText: 'Select a player first' }).count()) === 0, `a Daily Double: ${ddKey} (letting ${ddWho} go), then Enter, still judges ${ddWho} right`);
+  await hostPanelIn(page).locator(`.p[aria-label="${ddWho}"] .mark.right`).waitFor();
+  assert((await toastsIn(page, { hasText: 'Select a player first' }).count()) === 0, `a Daily Double: ${ddKey} (letting ${ddWho} go), then Enter, still judges ${ddWho} right`);
   await page.keyboard.press('Escape');
 
   // ---------- ✔ / ✘ on a player's chip: shown there, and the same one isn't taken twice; the nav buttons stay put ----------
@@ -375,11 +375,11 @@ try {
   );
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('2');
-  await page.locator('.panel [data-goon="nothing"]').waitFor();
+  await hostPanelIn(page).locator('[data-goon="nothing"]').waitFor();
   assert((await checkItem(page, 'picked').innerText()).startsWith('✓') && (await status()).includes('Answer is showing'), 'in the check 2 still picks (lets Player 2 go): the item ticks off in its place, ✓ Nothing left, and it waits');
   await page.keyboard.press('Escape');
   await goOnCheck(page).waitFor({ state: 'detached' });
-  const chip = page.locator('.panel .p').first();
+  const chip = playerRowsIn(page).first();
   await chip.getByRole('button', { name: /^Wrong:/ }).click();
   await chip.locator('.mark').waitFor();
   assert(
@@ -392,7 +392,7 @@ try {
   // step, with one pop for the change. Another player's ✘ on the clue is their own, and stays.
   const money = (t) => Number(t.trim().replace('−', '-').replace(/[$,]/g, ''));
   const scoreOf = async (c) => money(await c.locator('.score').innerText());
-  const chip2 = page.locator('.panel .p').nth(1);
+  const chip2 = playerRowsIn(page).nth(1);
   await chip2.getByRole('button', { name: /^Wrong:/ }).click();
   await chip2.locator('.mark.wrong').waitFor();
   const [wrong1, wrong2] = [await scoreOf(chip), await scoreOf(chip2)];
@@ -413,7 +413,7 @@ try {
     (await scoreOf(chip)) === wrong1 && (await chip.locator('.mark').innerText()).trim() === '✘ −$400' && (await scoreOf(chip2)) === wrong2,
     'one Ctrl+Z takes the switch back to the ✘ (the other player’s ✘ untouched)',
   );
-  assert((await page.locator('.toast').innerText()).includes('Undid +$800 (Player 1, ✘ → ✔)'), `the undo says it was a change of verdict (${await page.locator('.toast').innerText()})`);
+  assert((await toastsIn(page).innerText()).includes('Undid +$800 (Player 1, ✘ → ✔)'), `the undo says it was a change of verdict (${await toastsIn(page).innerText()})`);
   await page.keyboard.press('Control+Shift+z');
   await chip.locator('.mark.right').waitFor();
   // ✘ after ✔: back the other way, −$800 from the ✔.
@@ -439,13 +439,13 @@ try {
   // A $0 tile is still judged: ✔ marks the player (a 0 result), rather than "Enter an amount first".
   await tile(2).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
-  const zeroChip = page.locator('.panel .p').nth(1);
+  const zeroChip = playerRowsIn(page).nth(1);
   await zeroChip.getByRole('button', { name: 'Right: Player 2 +$0' }).click();
   await zeroChip.locator('.mark.right').waitFor();
   assert(
     (await zeroChip.locator('.mark').innerText()).trim() === '✔' &&
       (await zeroChip.getByRole('button', { name: /^Right:/ }).isDisabled()) &&
-      (await page.locator('.toast', { hasText: 'Enter an amount first' }).count()) === 0,
+      (await toastsIn(page, { hasText: 'Enter an amount first' }).count()) === 0,
     'a $0 tile is judged: ✔ marks the player on their chip (no points), with no “Enter an amount first”',
   );
   await page.keyboard.press('Escape');
@@ -504,9 +504,9 @@ try {
 
   // ---------- 📜 Log in the host panel (single window) ----------
   // (The keys on a panel button first: H puts them on the stage, where viewers see no focus ring.)
-  await page.locator('.panel').getByRole('button', { name: '⚖ Rules', exact: true }).focus();
+  await hostPanelIn(page).getByRole('button', { name: '⚖ Rules', exact: true }).focus();
   await page.keyboard.press('h');
-  await page.locator('.panel').waitFor({ state: 'detached' });
+  await hostPanelIn(page).waitFor({ state: 'detached' });
   await page.waitForFunction(() => !!document.activeElement?.closest('.stage-box'));
   const ring = await page.evaluate(() => {
     const a = document.activeElement;
@@ -531,12 +531,12 @@ try {
   const log = page.locator('aside.in-panel');
   await log.waitFor();
   const lb = await log.boundingBox();
-  const sb = await page.locator('.stage-box').boundingBox();
+  const sb = await stageBoxIn(page).boundingBox();
   assert(lb.y >= sb.y + sb.height - 1, 'single window: L opens the log in the host panel, never over the stage (controls back)');
   await shot('host-2-log');
   await page.keyboard.press('Escape');
   await log.waitFor({ state: 'detached' });
-  await page.locator('.panel').waitFor({ state: 'detached' });
+  await hostPanelIn(page).waitFor({ state: 'detached' });
   assert(true, 'closing the log hides the controls again (H had hidden them)');
   // A Daily Double with the controls hidden: they come back for its wager (typed digits would pick players), and go again.
   // (The stage grows back to full size as the controls go: the tile is clicked once it has stopped moving.)
@@ -559,7 +559,7 @@ try {
   assert(await page.locator('.dd input[type=number]').evaluate((e) => e === document.activeElement), 'controls hidden: a Daily Double brings them back, the wager box focused');
   await page.keyboard.type('100');
   await page.keyboard.press('Enter');
-  await page.locator('.panel').waitFor({ state: 'detached' });
+  await hostPanelIn(page).waitFor({ state: 'detached' });
   assert(true, 'and they hide again once the wager is in');
   // (The wager box gone, the keys don't land on the hidden “Show controls”: with them it shows, on stream. After the
   // focus rescue's turn, a moment after the panel goes.)
@@ -603,12 +603,12 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await status()).includes('Title card')) await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen · taking wagers'));
-  assert((await page.locator('.panel .award').count()) === 0, 'no award row during the Final (it has its own scoring)');
+  assert((await awardRowIn(page).count()) === 0, 'no award row during the Final (it has its own scoring)');
   // No step between the category and the wagers: the wager screen is up at once, with who plays on it.
   await page.waitForFunction(() => document.activeElement?.matches('.fj .wagers input[data-wager]'));
   assert(await page.evaluate(() => document.activeElement.value === ''), 'the Final comes up with the focus in the first wager box still to fill');
   // ◀ Back to the round before, from the keyboard: the keys go on from its board (the button is gone).
-  const backBtn = page.locator('.fj button', { hasText: '◀ Previous round' });
+  const backBtn = finalControlsIn(page).locator('button', { hasText: '◀ Previous round' });
   await backBtn.focus();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
@@ -624,32 +624,32 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen · taking wagers'));
   // Everyone sat out: the panel says so, and its button goes on (no wagers to take). Ticked back in (last first),
   // the players keep the reveal order lowest score first (checked at the reveals).
-  const ticks = page.locator('.fj .wagers input[data-plays]');
+  const ticks = finalControlsIn(page).locator('.wagers input[data-plays]');
   const playing = [];
   for (let i = 0; i < (await ticks.count()); i++) if (await ticks.nth(i).isChecked()) playing.push(i);
   for (const i of playing) await ticks.nth(i).uncheck();
-  await page.locator('.fj .nobody', { hasText: 'Nobody is playing this Final' }).waitFor();
+  await finalControlsIn(page).locator('.nobody', { hasText: 'Nobody is playing this Final' }).waitFor();
   assert((await mainLabel(page)).includes('Finish game'), 'nobody playing the Final: it says so, and offers to go on (Finish game)');
   for (const i of [...playing].reverse()) await ticks.nth(i).check();
-  assert((await page.locator('.fj .nobody').count()) === 0, 'and ticked back in, the Final is played as usual');
-  const boxes = page.locator('.fj .wagers input[data-wager]');
+  assert((await finalControlsIn(page).locator('.nobody').count()) === 0, 'and ticked back in, the Final is played as usual');
+  const boxes = finalControlsIn(page).locator('.wagers input[data-wager]');
   assert((await boxes.count()) === playing.length, 'each player ticked in has their wager box on the same screen');
   const wagersMenu = await stageMenu();
   assert(
     wagersMenu[1] === 'Show question ▶ · N' && wagersMenu.some((l) => l.startsWith('◀ Previous round')),
     `the Final’s wagers: its menu’s first item is Show question ▶, never greyed (a wager missing, N puts the keys in its box) (${wagersMenu.join(' | ')})`,
   );
-  await page.locator('.panel .status').click();
+  await statusLineIn(page).click();
   await page.keyboard.press('n');
-  await page.locator('.panel .status [data-click-note]', { hasText: /Waiting on .+: type their wagers?, or untick them to sit out/ }).waitFor();
+  await statusLineIn(page).locator('[data-click-note]', { hasText: /Waiting on .+: type their wagers?, or untick them to sit out/ }).waitFor();
   assert(
     (await page.evaluate(() => document.activeElement?.matches('.fj .wagers input[data-wager]') && document.activeElement.value === '')) &&
-      !(await page.locator('.toast', { hasText: 'Waiting on' }).count()),
+      !(await toastsIn(page, { hasText: 'Waiting on' }).count()),
     'N with a wager missing says whose in the status line (not a toast at the foot) and goes to that box',
   );
   const n = await boxes.count();
   for (let i = 0; i < n; i++) await boxes.nth(i).fill(String(100 + i));
-  await page.locator('.panel .status').click();
+  await statusLineIn(page).click();
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Question on screen'));
   await page.keyboard.press('Control+z');
@@ -670,50 +670,50 @@ try {
   // Enter with the keys on the main button (where N leaves them) says which key goes on: no step runs on Enter.
   await mainButton(page).focus();
   await page.keyboard.press('Enter');
-  await page.locator('.toast', { hasText: 'Press N for 👁 Reveal answer' }).waitFor();
+  await toastsIn(page, { hasText: 'Press N for 👁 Reveal answer' }).waitFor();
   assert((await status()).includes('Question on screen'), 'Enter on the Final’s main button says to press N for it, and the step stays');
   await page.keyboard.press('n');
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
-  const revealScores = (await page.locator('.fj .pl .pscore').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
+  const revealScores = (await finalControlsIn(page).locator('.pl .pscore').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
   assert(revealScores.every((v, i) => !i || v >= revealScores[i - 1]), `players ticked back in keep the reveal order lowest score first (${revealScores.join(', ')})`);
   // The main button is N's next step until everyone is judged (finishing early is the quiet Finish now…, at the left of
   // the box's foot beside "3 still to judge", away from the verdicts), and the how-to is open the first time.
   const revealMain = () => mainLabel(page);
   const early = page.locator('.fj > .row:last-child > *').evaluateAll((els) => els.map((e) => e.textContent.trim()).filter(Boolean).slice(0, 2));
   assert(
-    /^(Show wager|Next player) ▶$/.test(await revealMain()) && (await page.locator('.fj button.ghost', { hasText: 'Finish now…' }).count()) === 1 && /^Finish now…,\d+ still to judge$/.test((await early).join()),
+    /^(Show wager|Next player) ▶$/.test(await revealMain()) && (await finalControlsIn(page).locator('button.ghost', { hasText: 'Finish now…' }).count()) === 1 && /^Finish now…,\d+ still to judge$/.test((await early).join()),
     `in the reveals the main button is the next step (${await revealMain()}); Finish now… a quiet one at the left of the box's foot, beside how many are still to judge (${(await early).join(' | ')})`,
   );
-  assert(await page.locator('.fj details.how').evaluate((d) => d.open), 'the reveals’ how-to is open the first time');
+  assert(await finalControlsIn(page).locator('details.how').evaluate((d) => d.open), 'the reveals’ how-to is open the first time');
   const revealsMenu = await stageMenu();
   assert(
     /^(Show wager|Next player) ▶ · N$/.test(revealsMenu[1]) && revealsMenu.some((l) => l.startsWith('✔ Right · C')) && revealsMenu.some((l) => l.startsWith('✘ Wrong · X')) && revealsMenu.includes('Finish now…'),
     `the reveals: its menu’s first item is N’s step, then ✔ Right C and ✘ Wrong X, and finishing early (${revealsMenu.join(' | ')})`,
   );
   // Not chosen yet: outlined at full strength (dimmed, they read too faintly).
-  const unchosen = await page.locator('.fj .pl').first().getByRole('button', { name: '✘ Wrong' }).evaluate((b) => [getComputedStyle(b).opacity, getComputedStyle(b).backgroundColor]);
+  const unchosen = await finalControlsIn(page).locator('.pl').first().getByRole('button', { name: '✘ Wrong' }).evaluate((b) => [getComputedStyle(b).opacity, getComputedStyle(b).backgroundColor]);
   assert(unchosen[0] === '1' && unchosen[1] === 'rgba(0, 0, 0, 0)', `an unchosen ✘ Wrong is outlined, not dimmed (${unchosen.join(', ')})`);
   const right = await cues(page, 'right');
   const wrong = await cues(page, 'wrong');
-  await page.locator('.fj .pl').first().getByRole('button', { name: '✔ Right' }).click();
-  await page.locator('.fj .pl').nth(1).getByRole('button', { name: '✘ Wrong' }).click();
+  await finalControlsIn(page).locator('.pl').first().getByRole('button', { name: '✔ Right' }).click();
+  await finalControlsIn(page).locator('.pl').nth(1).getByRole('button', { name: '✘ Wrong' }).click();
   await page.waitForTimeout(200);
   assert((await cues(page, 'right')) === right + 1 && (await cues(page, 'wrong')) === wrong + 1, 'the reveal’s ✔ Right / ✘ Wrong buttons play their sounds');
 
   // ---------- A tie for first: no fanfare until it's settled; O rolls off the tied leaders ----------
-  await page.locator('.fj .pl').nth(2).getByRole('button', { name: '✔ Right' }).click();
+  await finalControlsIn(page).locator('.pl').nth(2).getByRole('button', { name: '✔ Right' }).click();
   assert((await revealMain()).includes('Finish game'), 'with everyone judged, Finish game is the main button');
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Game over'));
   // No tie: the keys rest on the end box, with no ring, not on its first button (◀ Back to final reveals).
   await page.waitForFunction(() => document.activeElement?.matches('.panel .end'));
-  assert((await page.locator('.panel .end').evaluate((e) => getComputedStyle(e).outlineStyle)) === 'none', 'the end screen with no tie: the keys rest on the end box, no ring on ◀ Back to final reveals');
+  assert((await hostPanelIn(page).locator('.end').evaluate((e) => getComputedStyle(e).outlineStyle)) === 'none', 'the end screen with no tie: the keys rest on the end box, no ring on ◀ Back to final reveals');
   // (Typed with a symbol, a comma or a word too: the score box reads them all as 500.)
   const typed = ['$500', '500', '500 pts'];
   for (let i = 0; i < 3; i++) {
-    await page.locator('.panel .p').nth(i).locator('.score').click();
-    await page.locator('.panel .score-edit').fill(typed[i]);
+    await playerRowsIn(page).nth(i).locator('.score').click();
+    await hostPanelIn(page).locator('.score-edit').fill(typed[i]);
     await page.keyboard.press('Enter');
   }
   await page.locator('.tie').waitFor();
@@ -724,7 +724,7 @@ try {
     `a tie at the end: its menu has every way to settle it, then the end screen’s buttons (${tieMenu.join(' | ')})`,
   );
   // The tie box has every way too, in the menu's order (❓ greyed: this game has no tiebreaker clue); no blue button.
-  const tieBox = await page.locator('.panel [data-tie] button').evaluateAll((bs) =>
+  const tieBox = await hostPanelIn(page).locator('[data-tie] button').evaluateAll((bs) =>
     bs.map((b) => `${[...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim()}${b.disabled ? ' (off)' : ''}`),
   );
   assert(
@@ -732,12 +732,12 @@ try {
     `the tie box holds every way to settle it, and the end screen has no blue button (${tieBox.join(' | ')})`,
   );
   // Its heading is one line, and the roll-off's O is a boxed keycap (it read like a zero).
-  const tieHead = await page.locator('.panel [data-tie] > div').first().evaluate((d) => ({ text: d.textContent.trim(), h: d.getBoundingClientRect().height }));
-  const capO = await page.locator('.panel [data-tie] kbd').evaluate((k) => getComputedStyle(k).borderTopStyle);
+  const tieHead = await hostPanelIn(page).locator('[data-tie] > div').first().evaluate((d) => ({ text: d.textContent.trim(), h: d.getBoundingClientRect().height }));
+  const capO = await hostPanelIn(page).locator('[data-tie] kbd').evaluate((k) => getComputedStyle(k).borderTopStyle);
   assert(/^Tie for first: Player 1, Player 2 & Player 3$/.test(tieHead.text) && tieHead.h < 30 && capO === 'solid', `the tie box's heading is one line, its O a keycap (${JSON.stringify(tieHead)}, ${capO})`);
   // After the show, all on the left, in one place tie or not: the way back, 📋 Copy standings, ▶ Next game…, then
   // 🔁 Rematch last and set apart; nothing takes the empty main cell's place. The status line says to settle the tie.
-  const endRow = await page.locator('.panel .end > .row').last().evaluate((row) => {
+  const endRow = await hostPanelIn(page).locator('.end > .row').last().evaluate((row) => {
     const bs = [...row.querySelectorAll('button')];
     const r = bs.map((b) => b.getBoundingClientRect());
     return { words: bs.map((b) => b.textContent.trim()), gap: Math.round(r.at(-1).left - r.at(-2).right), right: Math.round(r.at(-1).right), panel: Math.round(row.closest('.panel').getBoundingClientRect().right) };
@@ -749,7 +749,7 @@ try {
   const winner = await cues(page, 'winner');
   // Back to the reveals and finish again, tied this time: "Tie for first" gets no fanfare.
   await page.getByRole('button', { name: '◀ Back to final reveals' }).click();
-  assert(!(await page.locator('.fj details.how').evaluate((d) => d.open)), 'the how-to is folded after the first time');
+  assert(!(await finalControlsIn(page).locator('details.how').evaluate((d) => d.open)), 'the how-to is folded after the first time');
   // (Everything the screen reader is told from here on.)
   await page.evaluate(() => {
     window.__said = [];
@@ -758,7 +758,7 @@ try {
   });
   const toldOf = (re) => page.waitForFunction((src) => window.__said.some((s) => new RegExp(src).test(s)), re.source);
   // (One window: the stage keeps the reveals' size on through the results and a roll-off, landed and closed.)
-  const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const stageH = () => stageBoxIn(page).evaluate((e) => Math.round(e.getBoundingClientRect().height));
   const endSizes = [await stageH()];
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await page.locator('.tie').waitFor();
@@ -776,13 +776,13 @@ try {
   await page.waitForFunction(() => document.activeElement?.closest('.panel [data-tie]') && !document.querySelector('.panel [data-next]'));
   await page.keyboard.press('Enter');
   await page.keyboard.press('n');
-  await page.locator('.toast', { hasText: 'Tie for first: settle it in the tie box (O: a roll-off)' }).waitFor();
+  await toastsIn(page, { hasText: 'Tie for first: settle it in the tie box (O: a roll-off)' }).waitFor();
   assert((await status()).includes('Game over') && !(await stage('.wrap .title').count()), 'a tie at the end: Enter starts nothing, N says to settle it in the tie box (O: a roll-off), nothing starts');
-  await page.locator('.panel .status').click();
+  await statusLineIn(page).click();
   await page.keyboard.press('o');
   await stage('.wrap .title').waitFor();
   assert((await stage('.wrap .title').innerText()).includes('Tiebreaker roll-off'), 'O on a tie for first rolls off the tied leaders (not "Who goes first?")');
-  await page.locator('.panel .muted', { hasText: 'won the tiebreaker roll-off' }).waitFor({ timeout: 15000 });
+  await hostPanelIn(page).locator('.muted', { hasText: 'won the tiebreaker roll-off' }).waitFor({ timeout: 15000 });
   assert(/🏆 Player \d wins · the show is over: 📋 Copy standings for chat, or 🚪 Exit/.test(await status()), `settled, the status line says who won and that the show is over (${await status()})`);
   endSizes.push(await stageH());
   await page.waitForTimeout(300);
@@ -810,26 +810,26 @@ try {
         };
       }),
   );
-  const pickerChips = await page.locator('.panel .p.picker').count();
+  const pickerChips = await hostPanelIn(page).locator('.p.picker').count();
   assert(!!savedPicker && pickerChips === 0, `Game over: a picker is still set, but no chip wears the ★ “picks next” (nobody picks now) (${pickerChips})`);
   // Off the board too (here Game over), fixing a score opens its box as wide as the score: no chip moves.
   {
     const [g0, gx1] = [(await chipBox(0)).width, (await chipBox(1)).x];
-    await page.locator('.panel .p').nth(0).locator('.score').click();
-    await page.locator('.panel .score-edit').waitFor();
+    await playerRowsIn(page).nth(0).locator('.score').click();
+    await hostPanelIn(page).locator('.score-edit').waitFor();
     const [g0e, gx1e] = [(await chipBox(0)).width, (await chipBox(1)).x];
-    await page.locator('.panel .score-edit').press('Escape');
-    await page.locator('.panel .score-edit').waitFor({ state: 'detached' });
+    await hostPanelIn(page).locator('.score-edit').press('Escape');
+    await hostPanelIn(page).locator('.score-edit').waitFor({ state: 'detached' });
     assert(Math.abs(g0e - g0) < 1 && Math.abs(gx1e - gx1) < 1, `Game over: a score's box keeps its chip's width too (${g0}→${g0e}, ${gx1}→${gx1e})`);
   }
   const [scoresWin] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);
   watch(scoresWin, 'scores');
   await scoresWin.locator('.strip .plate').first().waitFor();
   assert((await scoresWin.locator('.strip .plate.picker').count()) === 0, `the scores window lights nobody on the results (the host panel has ${pickerChips} picker)`);
-  await Promise.all([scoresWin.waitForEvent('close'), page.locator('.panel button[aria-label="Close the scores window"]').click()]);
+  await Promise.all([scoresWin.waitForEvent('close'), hostPanelIn(page).locator('button[aria-label="Close the scores window"]').click()]);
 
   // ---------- Ctrl+Z on the results: what was done there undoes there; a Final judgment goes back to its reveals ----------
-  await page.locator('.panel .status').click();
+  await statusLineIn(page).click();
   await page.keyboard.press('Control+z');
   await page.locator('.tie').waitFor();
   assert((await status()).includes('Game over'), 'Ctrl+Z on the results takes the roll-off back there (the tie is back)');
@@ -845,7 +845,7 @@ try {
     await page.waitForTimeout(150);
   }
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
-  const judged = () => page.locator('.fj .pl').nth(2).getByRole('button', { name: '✔ Right' }).getAttribute('aria-pressed');
+  const judged = () => finalControlsIn(page).locator('.pl').nth(2).getByRole('button', { name: '✔ Right' }).getAttribute('aria-pressed');
   assert((await judged()) === 'false', 'a Final judgment undone from the results goes back to the reveals, that player unjudged there');
   await page.keyboard.press('Control+Shift+z');
   await page.waitForFunction(() => document.querySelectorAll('.fj .pl')[2]?.querySelector('button[aria-pressed="true"]'));
@@ -868,19 +868,19 @@ try {
   const [aud] = await Promise.all([page.waitForEvent('popup'), ask.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   watch(aud, 'audience');
   await aud.locator('.cover').waitFor();
-  await page.locator('.panel .cover-toggle.on').waitFor();
+  await hostPanelIn(page).locator('.cover-toggle.on').waitFor();
   assert(true, 'resumed into the audience window, the cover still on');
   await shot('host-3-resumed');
 
   // ---------- View results after a reload finds that audience window again (what's fixed there reaches the stream) ----------
-  await page.locator('.panel .status').click();
+  await statusLineIn(page).click();
   await page.keyboard.press('k');
   await aud.locator('.cover').waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await aud.locator('.end h1').waitFor();
   await page.reload();
   await page.getByRole('button', { name: 'View results' }).click();
-  await page.locator('.panel button', { hasText: '📺 Audience ●' }).waitFor();
+  await hostPanelIn(page).locator('button', { hasText: '📺 Audience ●' }).waitFor();
   await page.getByRole('button', { name: '◀ Back to final reveals' }).click();
   await aud.locator('.end h1').waitFor({ state: 'detached' });
   assert(true, 'View results after a reload re-attaches the audience window: going back to the reveals leaves the results on stream');

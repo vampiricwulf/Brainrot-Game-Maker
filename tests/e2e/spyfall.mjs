@@ -21,7 +21,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, untilWith, section, boardIn, roundNavIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -189,7 +189,7 @@ try {
   for (const name of ['Ann', 'Bob', 'Cat', 'Dan', 'Fay']) await join(name);
   const watcher = await open('watcher');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   const nameOf = Object.fromEntries(Object.entries(seat).map(([n, id]) => [id, n]));
   const cardsOn = (p) => p.locator('.card').count();
@@ -198,7 +198,7 @@ try {
   // ---------- One window: the host page is what viewers see ----------
   // (The editor showed the wheel's places: from here on, what the host page shows is what's on stream.)
   await host.evaluate(() => (window.__seen.length = 0));
-  const reveal = host.locator('.stage-box [data-who-was-who]');
+  const reveal = stageBoxIn(host).locator('[data-who-was-who]');
   /** The deal autosave holds for the game in progress (who got which: the test's own look, never on screen). */
   const savedDeal = async () => (await stored(host))?.session?.deal ?? null;
   const handsOf = (d) => d.hands.map((h) => ({ name: nameOf[h.to.seat], part: h.part, slice: h.slice }));
@@ -211,7 +211,7 @@ try {
     assert(!shown.length, `${when}: nor the spy’s words or any place${shown.length ? ` (found ${shown.join(', ')})` : ''}`);
   };
   const flat = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
-  const tools = host.locator('.panel .toolsrow');
+  const tools = toolsRowIn(host);
   const dialog = host.getByRole('dialog', { name: 'Deal' });
   const openDeal = async () => {
     // (Its button says how the deal stands once there's one: “🎭 Odd one out · sent”.)
@@ -475,7 +475,7 @@ try {
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
   await sleep(450); // the round buttons ignore clicks right after they appear
-  await host.locator('.rn button', { hasText: 'Previous round' }).click();
+  await roundNavIn(host).locator('button', { hasText: 'Previous round' }).click();
   assert(await until(async () => (await stored(host))?.session?.currentRound === 0), '◀ Previous round: back in Round 1');
   await openDeal();
   assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards went when that round ended: 📤 Send puts them out again for this round'), 'back in that round, its cards still went when that round ended (not “taken back”)');
@@ -495,7 +495,7 @@ try {
   section('Two windows');
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   const audReveal = aud.locator('[data-who-was-who]');
   await audReveal.waitFor();
   assert((await flat(audReveal)).includes(`${spy} Spy`), 'the audience window, opened with Who was who up, shows it');

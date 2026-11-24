@@ -6,7 +6,7 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { appFile, failureShots, addClassicRounds, answerReplace, dragBy, openGameFile, assert, launchChromium } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerReplace, dragBy, openGameFile, assert, launchChromium, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -103,7 +103,7 @@ try {
     'the right clue, on its question side',
   );
   assert((await clue.locator('.layers .row').count()) === 1, 'with the text box gone (only the question is left)');
-  assert((await page.locator('.toast').innerText()).includes('↶ Undid Added text box'), 'and a toast over the window names it (the note would be under it)');
+  assert((await toastsIn(page).innerText()).includes('↶ Undid Added text box'), 'and a toast over the window names it (the note would be under it)');
   await key('Control+z');
   assert((await page.getByPlaceholder('Type the question…').inputValue()) === '', 'the next Ctrl+Z takes the question back');
   await page.keyboard.press('Control+z');
@@ -156,12 +156,12 @@ try {
   assert((await nowMarks()) === 1, `one Now mark after an undo: the ● Now line, no Now pill under it too (${await nowMarks()})`);
   await page.locator('.hist .hr.origin .pick').click();
   await page.waitForTimeout(250);
-  assert((await page.locator('nav button.round-tab').count()) === 0, 'the first row undoes everything, back to the new game');
+  assert((await roundTabsIn(page).count()) === 0, 'the first row undoes everything, back to the new game');
   assert((await page.locator('.hist .hr.undone').count()) === (await rows.count()) - 1, 'every step shows as undone, above ● Now');
   assert((await nowMarks()) === 1, `and one at the start of the history (${await nowMarks()})`);
   await rows.nth(1).locator('.pick').click();
   await page.waitForTimeout(250);
-  assert((await page.locator('nav button.round-tab').count()) === 2 && (await page.locator('.hist .hr.undone').count()) === 1, 'a row redoes everything up to it');
+  assert((await roundTabsIn(page).count()) === 2 && (await page.locator('.hist .hr.undone').count()) === 1, 'a row redoes everything up to it');
   // A screen reader hears it, and an undo or redo made here (only ● Now moves on screen).
   const saidHas = (re) => page.waitForFunction((src) => new RegExp(src).test(document.getElementById('live-region')?.dataset.said ?? ''), re.source);
   await saidHas(/Back to the start of the history\. Now just after “Renamed round “Round of memes””\.$/);
@@ -177,7 +177,7 @@ try {
   const stepItems = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert(['↷ Redo up to here', 'Go there ›', '📋 Copy step name'].every((x) => stepItems.includes(x)), `an undone step's menu redoes up to it, goes there and copies its name (${stepItems.join(' | ')})`);
   await page.getByRole('menuitem', { name: '📋 Copy step name' }).click();
-  await page.locator('.toast', { hasText: 'Copied the step’s name' }).waitFor();
+  await toastsIn(page, { hasText: 'Copied the step’s name' }).waitFor();
   assert((await page.evaluate(() => navigator.clipboard.readText())) === 'Deleted category “Category 4”', '📋 Copy step name copies its name');
   await rows.nth(1).click({ button: 'right' });
   assert(await page.getByRole('menuitem', { name: '↶ Go back to just after this' }).isDisabled(), 'the step the game is at: Go back to just after this is greyed');
@@ -228,7 +228,7 @@ try {
 
   // ＋ Add round is a step of its own: a name and a field typed right after it are steps too, so one Ctrl+Z never
   // takes the whole new round.
-  const roundCount = await page.locator('nav button.round-tab').count();
+  const roundCount = await roundTabsIn(page).count();
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Final Jeopardy/ }).click();
   await page.locator('[data-round-name]:focus').waitFor();
@@ -238,7 +238,7 @@ try {
   await clickAway();
   await key('Control+z');
   assert(
-    (await page.locator('nav button.round-tab').count()) === roundCount + 1 && (await page.getByLabel('Round name').inputValue()) === 'The Big Finish' && !(await page.locator('[data-field="final-category"]').inputValue()),
+    (await roundTabsIn(page).count()) === roundCount + 1 && (await page.getByLabel('Round name').inputValue()) === 'The Big Finish' && !(await page.locator('[data-field="final-category"]').inputValue()),
     `one Ctrl+Z right after adding a Final and typing its name and category takes back only the category (${await notice.innerText()})`,
   );
 
@@ -306,7 +306,7 @@ try {
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await chooser.setFiles([{ name: 'tiny.png', mimeType: 'image/png', buffer: png(255, 0, 0) }]);
   await page.locator('.card img').waitFor();
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.locator('.cat').first().getByTitle(/Use an image/).click();
   await page.getByRole('button', { name: /tiny\.png/ }).first().click();
   await page.getByRole('button', { name: /🖼️ Media/ }).click();
@@ -352,12 +352,12 @@ try {
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(page, 'Discard');
   await page.getByRole('button', { name: '↶ Reopen previous game' }).click();
-  await page.locator('.toast', { hasText: 'Reopened “' }).waitFor();
+  await toastsIn(page, { hasText: 'Reopened “' }).waitFor();
   assert((await historyTab.innerText()) === kept, `New, then ↶ Reopen previous game keeps them too (${kept})`);
 
   // ---------- Changes made while hosting are steps too ----------
   // (The board wants a Daily Double again: addClassicRounds asked for none.)
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.getByLabel('How many Daily Doubles').fill('1');
   await page.getByLabel('How many Daily Doubles').press('Tab');
   await page.getByRole('button', { name: '▶ Play' }).click();
@@ -368,7 +368,7 @@ try {
   assert((await played.innerText()).includes('Placed 1 Daily Double in Round of memes') && (await played.locator('.play').count()) === 1, 'Daily Doubles placed before a game are a step, with a ▶');
   assert((await page.locator('.hist .mark').first().innerText()).includes('Played'), 'and pressing ▶ Play is marked');
   await key('Control+z');
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   assert(!(await page.locator('.tile .dd').count()), 'Ctrl+Z takes the Daily Double back off the board');
 
   // ---------- A game opened starts afresh ----------
@@ -384,7 +384,7 @@ try {
   assert((await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).isDisabled()) && (await rows.count()) === 1, 'and nothing to undo');
 
   // ---------- A long jump asks first, right under the step clicked ----------
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   for (let i = 0; i < 11; i++) {
     await page.getByTitle('Double every row value').click();
     await page.getByTitle('Halve every row value').click();
@@ -399,7 +399,7 @@ try {
   assert((await page.locator('.hist .hr.undone').count()) === 22 && !(await ask.count()), 'and goes back once asked');
 
   // ---------- Files dropped and where they go: one step ----------
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   const dt = await page.evaluateHandle((files) => {
     const d = new DataTransfer();
     for (const [name, bytes] of files) d.items.add(new File([new Uint8Array(bytes)], name, { type: 'image/png' }));
@@ -419,7 +419,7 @@ try {
   assert(images === 1 && !names.some((n) => /red|blue/.test(n)), `and one Ctrl+Z takes the images and their files back (${names})`);
 
   // ---------- A new change that drops undone steps says so, and its ↶ Undo brings them back ----------
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   const [was2, was5] = [await catName(2).inputValue(), await catName(5).inputValue()];
   await clickAway();
   await catName(2).fill('Alpha');
@@ -433,7 +433,7 @@ try {
   await notice.filter({ hasText: 'Dropped 2 undone steps' }).waitFor({ timeout: 3000 });
   assert(true, 'a change made after two undos says it dropped the 2 undone steps');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
-  await page.locator('.toast', { hasText: '↶ Brought back 2 undone steps: ↷ Redo redoes them' }).waitFor();
+  await toastsIn(page, { hasText: '↶ Brought back 2 undone steps: ↷ Redo redoes them' }).waitFor();
   assert(
     (await catName(5).inputValue()) === was5 &&
       (await catName(2).inputValue()) === was2 &&
@@ -482,7 +482,7 @@ try {
   await page.keyboard.press('Tab');
   assert(await onBringBack(), 'and Tab from there comes back to it');
   await page.keyboard.press('Enter');
-  await page.locator('.toast', { hasText: '↶ Brought back 1 undone step' }).waitFor();
+  await toastsIn(page, { hasText: '↶ Brought back 1 undone step' }).waitFor();
   assert(
     (await clue.isVisible()) && (await page.getByPlaceholder('Type the question…').inputValue()) === asked,
     'in the clue editor too: the note is over the window, and its ↶ Undo works there',
@@ -503,7 +503,7 @@ try {
   await notice.filter({ hasText: 'dropped 1 undone step' }).waitFor({ timeout: 3000 });
   assert(/^Deleted category “.+” · dropped 1 undone step/.test(await notice.innerText()), `a deletion that drops an undone step says both in its note (${await notice.innerText()})`);
   await notice.getByRole('button', { name: '↶ Undo' }).click();
-  await page.locator('.toast', { hasText: /^↶ Undid Deleted category “.+”, and brought back 1 undone step/ }).waitFor();
+  await toastsIn(page, { hasText: /^↶ Undid Deleted category “.+”, and brought back 1 undone step/ }).waitFor();
   assert(
     (await page.locator('.cat').count()) === cats &&
       (await header.getByRole('button', { name: 'Redo (Ctrl+Y)' }).getAttribute('title')) === 'Redo: Renamed category “Gamma” (Ctrl+Y)',

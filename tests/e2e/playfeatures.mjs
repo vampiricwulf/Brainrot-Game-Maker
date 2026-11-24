@@ -4,7 +4,7 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, editorReady, exportHtml, openGameFile, playWithPlayers, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, editorReady, exportHtml, openGameFile, playWithPlayers, failureShots, assert, launchChromium, boardIn, boardTilesIn, hostPanelIn, playerRowsIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -97,7 +97,7 @@ try {
   assert((await keyNote.innerText()).includes(': Values.'), 'green values on Classic: the note names them');
 
   // ---------- Play: players on the pre-game screen; Start places a Daily Double the board wants but hasn't got ----------
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.getByLabel('How many Daily Doubles').fill('1');
   await page.getByLabel('How many Daily Doubles').press('Tab');
   await playWithPlayers(page, 3);
@@ -137,37 +137,37 @@ try {
   });
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.evaluate(() => (Math.random = window.__random));
-  await page.locator('.toast', { hasText: '⭐ Placed 1 Daily Double at random in Jeopardy!' }).waitFor();
+  await toastsIn(page, { hasText: '⭐ Placed 1 Daily Double at random in Jeopardy!' }).waitFor();
   assert(true, 'Start game places it at random and says so');
-  await page.locator('.stage-box .title-card').waitFor();
+  await stageBoxIn(page).locator('.title-card').waitFor();
   assert((await played(page, 'roundIntro')) === 1, 'the round intro plays its built-in sound with the title card');
   await page.getByRole('button', { name: 'Skip intro' }).click();
   // A double-click on a tile opens it, and nothing more (its second click doesn't reveal the answer).
-  const status = () => page.locator('.panel .status').innerText();
+  const status = () => statusLineIn(page).innerText();
   // (Where a tile is on the stage, as a part of its width and height: a double-click there later lands on it.)
-  const stageBox = () => page.locator('.stage-box .stage').boundingBox();
-  const spot = await (async (s, t) => [(t.x + t.width / 2 - s.x) / s.width, (t.y + t.height / 2 - s.y) / s.height])(await stageBox(), await page.locator('.stage-box .board .tile').nth(8).boundingBox());
+  const stageBox = () => stageBoxIn(page).locator('.stage').boundingBox();
+  const spot = await (async (s, t) => [(t.x + t.width / 2 - s.x) / s.width, (t.y + t.height / 2 - s.y) / s.height])(await stageBox(), await boardTilesIn(boardIn(stageBoxIn(page))).nth(8).boundingBox());
   // (One window: the board is on stream, so it marks no tile.)
-  assert((await page.locator('.stage-box .board .tile.host-mark').count()) === 0, 'one window: the board marks no Daily Double');
+  assert((await boardIn(stageBoxIn(page)).locator('.tile.host-mark').count()) === 0, 'one window: the board marks no Daily Double');
   // A double-click on a score plate makes that player the picker once (it doesn't take it away again).
-  const plate2 = page.locator('.stage-box .bar .plate').nth(1);
+  const plate2 = stageBoxIn(page).locator('.bar .plate').nth(1);
   await plate2.dblclick();
   await page.waitForTimeout(300);
   assert(await plate2.evaluate((e) => e.classList.contains('picker')), 'a double-click on a score plate makes them the picker, once');
-  await page.locator('.stage-box .board .tile').first().dblclick();
+  await boardTilesIn(boardIn(stageBoxIn(page))).first().dblclick();
   await page.waitForTimeout(300);
   assert((await status()).includes('Answer hidden'), `a double-click on a tile opens it, the answer stays hidden (${await status()})`);
   assert((await played(page, 'tileOpen')) === 0, 'the tile-open sound is off, so nothing plays');
 
   // Who's answering: the one player picked during a clue.
   await page.keyboard.press('2');
-  await page.locator('.stage-box .plate').waitFor();
-  assert((await page.locator('.stage-box .plate').innerText()).includes('Player 2') && (await page.locator('.stage-box .plate').innerText()).includes('is answering'), 'the stage says who is answering');
-  const pressed = () => page.locator('.panel .p .sel[aria-pressed="true"]').allInnerTexts();
+  await stageBoxIn(page).locator('.plate').waitFor();
+  assert((await stageBoxIn(page).locator('.plate').innerText()).includes('Player 2') && (await stageBoxIn(page).locator('.plate').innerText()).includes('is answering'), 'the stage says who is answering');
+  const pressed = () => playerRowsIn(page).locator('.sel[aria-pressed="true"]').allInnerTexts();
   assert((await page.getByRole('button', { name: '↺ Reset buzzers' }).count()) === 0, 'no buzzer controls outside buzzer mode');
   await shot('pf-1-answering');
   await page.keyboard.press('1');
-  await page.locator('.stage-box .plate').waitFor({ state: 'detached' });
+  await stageBoxIn(page).locator('.plate').waitFor({ state: 'detached' });
   assert((await pressed()).length === 2, 'two picked: nobody in particular is answering, the plate goes');
   await page.keyboard.press('1');
   await page.keyboard.press('Shift+Enter');
@@ -194,13 +194,13 @@ try {
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#reveal')));
   assert(true, 'revealing the answer plays the reveal sound');
   // A double-click on the answer goes back to the board, and doesn't open the tile then under the pointer.
-  await page.locator('.stage-box .full[data-slide="answer"]').waitFor();
+  await stageBoxIn(page).locator('.full[data-slide="answer"]').waitFor();
   const sb = await stageBox();
   await page.mouse.dblclick(sb.x + spot[0] * sb.width, sb.y + spot[1] * sb.height);
   assert((await status()).includes('Pick a tile'), `a double-click on the answer goes back to the board, no other tile opens (${await status()})`);
   // With the audience window open, the host's own board marks the Daily Double Start placed at random; viewers' doesn't.
-  const marked = page.locator('.stage-box .board .tile.host-mark');
-  await aud.locator('.board .tile').first().waitFor();
+  const marked = boardIn(stageBoxIn(page)).locator('.tile.host-mark');
+  await boardTilesIn(boardIn(aud)).first().waitFor();
   assert(
     (await marked.count()) === 1 &&
       (await marked.getAttribute('data-mark')) === '⭐' &&
@@ -282,11 +282,11 @@ try {
   await scores.locator('.clock .timer.paused').waitFor();
   const dims = await scores.locator('.clock .timer.paused').evaluate((e) => [getComputedStyle(e).opacity, getComputedStyle(e.querySelector('.num')).opacity, getComputedStyle(e).backgroundColor]);
   assert(dims.join() === '1,0.6,rgb(0, 0, 0)', `T pauses it: the box stays solid, its digits dim (${dims.join(', ')})`);
-  assert(await page.locator('.panel button[aria-label="Close the scores window"]').isVisible(), 'the host panel’s ▭ button says it closes it');
+  assert(await hostPanelIn(page).locator('button[aria-label="Close the scores window"]').isVisible(), 'the host panel’s ▭ button says it closes it');
   await shot('pf-3-scores', scores);
   await shot('pf-4-host');
   assert((await scores.evaluate(() => window.__plays.length)) === 0, 'the scores window never plays a sound');
-  await Promise.all([scores.waitForEvent('close'), page.locator('.panel button[aria-label="Close the scores window"]').click()]);
+  await Promise.all([scores.waitForEvent('close'), hostPanelIn(page).locator('button[aria-label="Close the scores window"]').click()]);
   assert(true, 'and the ▭ button closes it');
 
   // ---------- The ? list closes on Esc or ? pressed in the audience window too ----------
@@ -382,15 +382,15 @@ try {
     const look = (sel) => sp.locator(`.stage-box ${sel}`).evaluate((e) => getComputedStyle(e).backgroundImage);
     // One window: the stage under every screen is the key too, so a clue zooming in has no black frame round it.
     const keyRgb = key === 'green' ? 'rgb(0, 255, 0)' : 'rgb(255, 0, 255)';
-    const stageBg = await sp.locator('.stage-box .stage').evaluate((e) => getComputedStyle(e).backgroundColor);
+    const stageBg = await stageBoxIn(sp).locator('.stage').evaluate((e) => getComputedStyle(e).backgroundColor);
     assert(stageBg === keyRgb, `on a ${key} key, the one-window stage is the key under its screens (${stageBg})`);
-    await sp.locator('.stage-box .tile[data-clue="q_dd"]').click();
-    await sp.locator('.stage-box .dd-text').waitFor();
+    await stageBoxIn(sp).locator('.tile[data-clue="q_dd"]').click();
+    await stageBoxIn(sp).locator('.dd-text').waitFor();
     const ddLook = await look('.full.dd');
-    await sp.locator('.stage-box .dd-text').click();
+    await stageBoxIn(sp).locator('.dd-text').click();
     await sp.keyboard.press('Escape');
-    await sp.locator('.stage-box .tile[data-clue="q_pt"]').click();
-    await sp.locator('.stage-box [data-partner-up]').waitFor();
+    await stageBoxIn(sp).locator('.tile[data-clue="q_pt"]').click();
+    await stageBoxIn(sp).locator('[data-partner-up]').waitFor();
     const ptLook = await look('[data-partner-up]');
     assert(ddLook.includes(want) && ptLook.includes(want), `on a ${key} key, the Daily Double splash and PARTNER UP! both take the colors it leaves alone (${ddLook} · ${ptLook})`);
     await splashContext.close();

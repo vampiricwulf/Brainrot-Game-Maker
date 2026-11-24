@@ -16,7 +16,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, anyway, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, menuLines, notYet, openGameFile, openMenu, quick, stepButton, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, failureShots, anyway, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, menuLines, notYet, openGameFile, openMenu, quick, stepButton, assert, launchChromium, section, awardRowIn, boardIn, hostPanelIn, stageBoxIn, statusLineIn, toastsIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -78,8 +78,8 @@ async function noCards(p, when) {
 }
 const stage = (sel) => page.locator(`.stage-box ${sel}`);
 const tile = (cat, row) => stage(`.tile[data-clue="q${cat}_${row}"]`);
-const panel = page.locator('.panel [data-partner-panel]');
-const toast = (t) => page.locator('.toast', { hasText: t }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+const panel = hostPanelIn(page).locator('[data-partner-panel]');
+const toast = (t) => toastsIn(page, { hasText: t }).waitFor({ timeout: 3000 }).then(() => true, () => false);
 const chip = (name) => panel.getByRole('button', { name, exact: true });
 
 try {
@@ -93,7 +93,7 @@ try {
   // ---------- PARTNER UP!, and who picked it ----------
   section('One window');
   // (The tools row steps back while the 🤝 box is open: the ghost look, the same words, the same place.)
-  const diceTool = page.locator('.panel .toolsrow .tl .pop > button', { hasText: '🎲 Dice' });
+  const diceTool = toolsRowIn(page).locator('.tl .pop > button', { hasText: '🎲 Dice' });
   const toolLook = () => diceTool.evaluate((b) => [getComputedStyle(b).backgroundColor, Math.round(b.getBoundingClientRect().x)].join());
   const onBoard = await toolLook();
   await tile(0, 1).click();
@@ -106,7 +106,7 @@ try {
   assert((await stage('[data-partner-up]').innerText()).replace(/\s+/g, ' ').includes('PARTNER UP!'), 'the tile opens on PARTNER UP! on stream');
   assert((await panel.innerText()).includes('Who picked it?'), 'nobody was marked to pick: the panel asks who picked it');
   assert((await flowIs(page, 'Show question ▶')) && !(await mainButton(page).isDisabled()), 'the blue button is Show question ▶, never greyed');
-  assert((await page.locator('.panel .status').innerText()).includes('Partner clue: who picked it? (1–4)'), 'the status row asks who picked it too (not to spin yet)');
+  assert((await statusLineIn(page).innerText()).includes('Partner clue: who picked it? (1–4)'), 'the status row asks who picked it too (not to spin yet)');
   // N asks first: who picked it, a must (no "anyway"), the players by their number.
   await page.keyboard.press('n');
   await checkItem(page, 'picker').waitFor();
@@ -136,10 +136,10 @@ try {
   await panel.getByText('Ann picked it.').waitFor();
   await page.waitForTimeout(300);
   assert((await stage('.wheel').count()) === 0 && (await stepButton(panel, '🎡 Spin for a partner').count()) === 1, 'a double-click on a name says who picked it and never spins the wheel');
-  assert((await page.locator('.panel .status').innerText()).includes('Partner clue: spin for a partner'), 'Ann picked it: the status row says to spin for a partner');
+  assert((await statusLineIn(page).innerText()).includes('Partner clue: spin for a partner'), 'Ann picked it: the status row says to spin for a partner');
   assert((await stage('[data-partner-up]').innerText()).includes('Ann') && (await stage('.pu-plate.waiting').count()) === 1, 'Ann picked it; the stage shows her plate and a pulsing “?”');
-  assert((await page.locator('.panel [data-partner-tag]').innerText()).trim() === '🤝 Ann', 'the status row’s tag says whose partner clue it is');
-  assert((await page.locator('.panel .players').count()) === 0, 'no award row before the question');
+  assert((await hostPanelIn(page).locator('[data-partner-tag]').innerText()).trim() === '🤝 Ann', 'the status row’s tag says whose partner clue it is');
+  assert((await hostPanelIn(page).locator('.players').count()) === 0, 'no award row before the question');
   await noCards(page, 'PARTNER UP!');
 
   // ---------- The partner wheel ----------
@@ -157,7 +157,7 @@ try {
   assert((await stepButton(panel, '🎡 Spin for a partner').isDisabled()) && (await stepButton(panel, '🎡 Spin for a partner').getAttribute('title')) === 'Still spinning', 'greyed while the wheel turns: “Still spinning”');
   const slices = await stage('.wheel text').evaluateAll((els) => els.map((e) => e.textContent.trim()));
   assert(slices.length === 3 && !slices.includes('Ann') && slices.includes('Bob'), `the wheel is of the others: Ann isn’t on it (${slices.join(', ')})`);
-  assert((await page.locator('.panel [data-tool-controls]').innerText()).includes('Partner for Ann'), 'its name says who it’s for');
+  assert((await hostPanelIn(page).locator('[data-tool-controls]').innerText()).includes('Partner for Ann'), 'its name says who it’s for');
   assert((await chip('Bob is the partner').isDisabled()) && !(await chip('Bob is the partner').getAttribute('aria-pressed')).includes('true'), 'the partner chips wait while it spins');
   await page.keyboard.press('l');
   await page.locator('aside .tab', { hasText: 'Rolls' }).click();
@@ -170,13 +170,13 @@ try {
   const againAt = await stepButton(panel, '↻ Spin again').boundingBox();
   const firstInRow = await panel.locator('[data-partner-row] button').first().evaluate((b) => b.matches('[data-step]') && b.textContent.includes('↻ Spin again'));
   assert(firstInRow && Math.abs(againAt.x - spinAt.x) < 1, 'landed: the same button in the same place reads ↻ Spin again');
-  assert((await page.locator('.panel [data-partner-tag]').innerText()).includes(`Ann + ${landed}`), 'the tag says the pair');
+  assert((await hostPanelIn(page).locator('[data-partner-tag]').innerText()).includes(`Ann + ${landed}`), 'the tag says the pair');
   await page.keyboard.press('l');
   const shown = await page.waitForFunction((who) => document.querySelector('aside .roll')?.textContent.includes(who), landed, { timeout: 2000 }).then(() => true, () => false);
   assert(shown && !(await page.locator('aside .roll').first().innerText()).includes('spinning'), 'and the log shows the spin once it has landed');
   await page.keyboard.press('Escape');
   assert(await flowIs(page, 'Next ▶'), 'landed: the blue button is Next ▶, and the wheel’s box has no Close of its own');
-  assert((await page.locator('.panel [data-tool-controls]').getByRole('button', { name: /Close/ }).count()) === 0, 'the wheel’s box has no Close (the blue button’s Next ▶, or Esc, puts it away)');
+  assert((await hostPanelIn(page).locator('[data-tool-controls]').getByRole('button', { name: /Close/ }).count()) === 0, 'the wheel’s box has no Close (the blue button’s Next ▶, or Esc, puts it away)');
   await page.keyboard.press('Escape');
   await stage('.wheel').waitFor({ state: 'detached' });
   assert((await stage('[data-partner-up]').innerText()).includes(landed), 'Esc closes the wheel onto the pair');
@@ -195,10 +195,10 @@ try {
   await panel.locator('[data-partner-readiness]').waitFor();
   assert((await stage('[data-partner-up]').count()) === 1, 'Enter on its line opens it, and the question stays put');
   // (The keys off it again, onto the panel: Enter is the main button's.)
-  await page.locator('.panel .status').click();
+  await statusLineIn(page).click();
   const panelText = await panel.innerText();
   assert(panelText.includes('🗣️ Bob describes · 🎯 Ann guesses') && panelText.includes('Card 1 → Bob (describer) · Card 2 → nobody yet'), `the panel says who plays which part and where the cards go (${panelText.replace(/\n/g, ' | ')})`);
-  const viewers = page.locator('.panel .status [data-viewers]');
+  const viewers = statusLineIn(page).locator('[data-viewers]');
   assert(
     (await viewers.innerText()).startsWith('⚠ Viewers see this') && (await viewers.textContent()).includes('⚠ Viewers can see this window: they can read a card’s name here') && !panelText.includes('Viewers can see'),
     'and the status line’s ⚠ Viewers see this chip says viewers can see it (its sentence for screen readers), not a line in the box',
@@ -227,7 +227,7 @@ try {
       (await panel.locator('[data-partner-next]').innerText()) === 'Pair set: Show question ▶ (the blue button, or N) puts the question up',
     'and only there: the box has no copy at its foot, its first line names the blue button',
   );
-  assert((await page.locator('.panel [data-flow="putback"] kbd').innerText()) === '⇧Esc', 'PARTNER UP!’s ↩ Put back (keep tile) shows its key, ⇧Esc');
+  assert((await hostPanelIn(page).locator('[data-flow="putback"] kbd').innerText()) === '⇧Esc', 'PARTNER UP!’s ↩ Put back (keep tile) shows its key, ⇧Esc');
   await page.keyboard.press('Enter');
   await stage('[data-partner-badge]').waitFor();
   const questionUpAt = Date.now();
@@ -294,7 +294,7 @@ try {
     (await foot.getByRole('button', { name: 'Copy Card 1’s words (copied)' }).count()) === 1 && (await foot.locator('[data-copied]').count()) === 1 && (await panel.locator('[data-card] [data-copied]').count()) === 0,
     '📋 copied: Card 1’s 📋 at the foot shows ✓, Card 2’s not',
   );
-  const note = page.locator('.panel .status [data-click-note]');
+  const note = statusLineIn(page).locator('[data-click-note]');
   // (Past the second after the question went up, in which a click is the rest of the one that put it up: it says
   // “The question just went up”, as a second Enter does.)
   await page.waitForTimeout(Math.max(0, 1100 - (Date.now() - questionUpAt)));
@@ -302,7 +302,7 @@ try {
   const clickedAt = Date.now();
   await note.filter({ hasText: 'Copy the card to Cat first (📋 in the 🤝 box), then click again to start the clock' }).waitFor();
   assert(
-    (await stage('[data-slide="answer"]').count()) === 0 && (await stage('.timer').count()) === 0 && (await goOnCheck(page).count()) === 0 && !(await page.locator('.toast', { hasText: 'Copy the card' }).count()),
+    (await stage('[data-slide="answer"]').count()) === 0 && (await stage('.timer').count()) === 0 && (await goOnCheck(page).count()) === 0 && !(await toastsIn(page, { hasText: 'Copy the card' }).count()),
     'a click on the stage with a card to copy by hand says, in the status line, to copy it to Cat first: the answer stays hidden, no clock starts',
   );
   await noCards(page, 'the status line’s note while handing out the cards');
@@ -356,7 +356,7 @@ try {
   // and pressing it while they play asks first, so clicking it over and over never shows the answer mid-turn.
   const verdicts = await panel.locator('[data-partner-judge] button').evaluateAll((bs) => bs.slice(0, 2).map((b) => (b.classList.contains('good') ? 'good' : b.classList.contains('bad') ? 'bad' : b.className)));
   assert(
-    verdicts.join() === 'good,bad' && (await page.locator('.panel button.primary:visible').count()) === 1 && (await flowIs(page, '👁 Reveal answer')),
+    verdicts.join() === 'good,bad' && (await hostPanelIn(page).locator('button.primary:visible').count()) === 1 && (await flowIs(page, '👁 Reveal answer')),
     `the clock running: ✔ Got it and ✘ Missed an equal pair, the one blue button 👁 Reveal answer (${verdicts.join(', ')})`,
   );
   await mainButton(page).click();
@@ -367,9 +367,9 @@ try {
   );
   await notYet(page).click();
   await goOnCheck(page).waitFor({ state: 'detached' });
-  assert((await page.locator('.panel .players').count()) === 1, 'the players’ chips are there, as on any clue');
+  assert((await hostPanelIn(page).locator('.players').count()) === 1, 'the players’ chips are there, as on any clue');
   assert(
-    (await page.locator('.panel .award').count()) === 0 && (await page.getByRole('button', { name: '± Other points…' }).isVisible()),
+    (await awardRowIn(page).count()) === 0 && (await page.getByRole('button', { name: '± Other points…' }).isVisible()),
     'the Amount row folds behind ± Other points… (✔ Got it / ✘ Missed give the points)',
   );
   // With the clock running they're still describing: a click on the stage asks the same, never the answer.
@@ -461,7 +461,7 @@ try {
   // With the controls hidden, the stage's menu still has the blue button's step first, then the box's: 🎡 Spin for a
   // partner spins the wheel.
   await page.keyboard.press('h');
-  await page.locator('.panel').waitFor({ state: 'detached' });
+  await hostPanelIn(page).waitFor({ state: 'detached' });
   await stage('[data-partner-up]').click({ button: 'right' });
   const hiddenMenu = await menuLines(page);
   assert(
@@ -471,7 +471,7 @@ try {
   await noCards(page, 'the stage’s menu with the controls hidden');
   await openMenu(page).getByRole('menuitem', { name: '🎡 Spin for a partner' }).click();
   await stage('.wheel').waitFor();
-  assert((await page.locator('.panel').count()) === 0, 'and spins the wheel from there, the controls still hidden');
+  assert((await hostPanelIn(page).count()) === 0, 'and spins the wheel from there, the controls still hidden');
   await page.keyboard.press('h');
   await page.keyboard.press('Escape');
   await stage('.wheel').waitFor({ state: 'detached' });
@@ -489,7 +489,7 @@ try {
   section('Two windows');
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
   aud.on('pageerror', (e) => errors.push(`[audience] ${e.message}`));
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   await tile(0, 3).click();
   await aud.locator('[data-partner-up]').waitFor();
   assert((await aud.locator('[data-partner-up]').innerText()).includes('Ann'), 'PARTNER UP! goes on stream');
@@ -518,7 +518,7 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent.includes('Show question ▶'));
   // (The pair set, a click on the host's copy of PARTNER UP! is Show question ▶: the question goes up on stream.)
   await page.waitForTimeout(500);
-  await page.locator('.stage-box [data-partner-up]').click();
+  await stageBoxIn(page).locator('[data-partner-up]').click();
   await aud.locator('[data-partner-badge]').waitFor();
   assert((await info.innerText()).includes('Card 1 → Cat (describer)'), 'the host column says who gets each card');
   await noCards(aud, 'audience: the question');
@@ -537,7 +537,7 @@ try {
   await aud.locator('[data-slide="answer"]').waitFor();
   await noCards(aud, 'audience: the answer');
   await page.keyboard.press('Escape');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   await noCards(aud, 'audience: back on the board');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);

@@ -9,7 +9,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, failureShots, launchChromium, leaveAnswer, openGameFile, recordSeen, stored, assert, sleep, untilWith, section } from './helpers.mjs';
+import { appFile, confirmStrip, failureShots, launchChromium, leaveAnswer, openGameFile, recordSeen, stored, assert, sleep, untilWith, section, roundTabsIn, stageBoxIn, toastsIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -91,7 +91,7 @@ try {
 
   // ---------- 📥 Import rounds…: the other game's deal, with the wheel it draws from ----------
   section('Import rounds…');
-  const tabs = () => host.locator('nav > button.round-tab').allInnerTexts();
+  const tabs = () => roundTabsIn(host).allInnerTexts();
   const tabsBefore = await tabs();
   await host.getByRole('button', { name: '＋ Add round' }).click();
   const [chooser] = await Promise.all([host.waitForEvent('filechooser'), host.getByRole('menuitem', { name: '📥 Import rounds…' }).click()]);
@@ -121,7 +121,7 @@ try {
   await pick.getByLabel(/Their round/).uncheck();
   await pick.locator('[data-import-deal]').getByRole('checkbox').check();
   await pick.getByRole('button', { name: 'Import 1 deal' }).click();
-  const again = host.locator('.toast', { hasText: 'Nothing imported' });
+  const again = toastsIn(host, { hasText: 'Nothing imported' });
   await again.waitFor({ timeout: 3000 });
   const againText = (await again.innerText()).replace(/\s+/g, ' ').trim();
   assert(againText.includes('Nothing imported: “Spy night” is in this game already') && !againText.includes('Used'), `importing it again brings nothing, and says so (“${againText}”)`);
@@ -133,8 +133,8 @@ try {
   // ---------- In play, no phones ----------
   await host.getByRole('button', { name: '▶ Play' }).click();
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
-  const tools = host.locator('.panel .toolsrow');
+  await stageBoxIn(host).locator('.tile').first().waitFor();
+  const tools = toolsRowIn(host);
   const dealButton = tools.locator('[data-deal-tool]');
   const dialog = host.getByRole('dialog', { name: 'Deal' });
   const openDeal = async () => {

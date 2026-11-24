@@ -14,7 +14,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section, hostPanelIn, stageBoxIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -162,7 +162,7 @@ try {
   // ---------- Start game: the missing partner clue and the Daily Double go on, one toast, never one tile ----------
   section('Start game');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
   assert(
     await toast('🤝 Placed 1 partner clue at random in Round 1 · ⭐ Placed 1 Daily Double at random in Round 1'),
     'one toast for both: 🤝 1 partner clue and ⭐ 1 Daily Double placed at random',
@@ -184,8 +184,8 @@ try {
   const big = (who) => phones[who].locator('#buzz-big').innerText().catch(() => '');
   const small = (who) => phones[who].locator('#buzz-small').innerText().catch(() => '');
   const IDS = { Ann: 'p1', Bob: 'p2', Cat: 'p3', Dan: 'p4' };
-  const scoreOf = async (name) => (await host.locator(`.panel .players [data-player-id="${IDS[name]}"] .score`).innerText()).trim();
-  const panel = host.locator('.panel [data-partner-panel]');
+  const scoreOf = async (name) => (await hostPanelIn(host).locator(`.players [data-player-id="${IDS[name]}"] .score`).innerText()).trim();
+  const panel = hostPanelIn(host).locator('[data-partner-panel]');
   const stealRow = panel.locator('[data-partner-steal]');
   const lockedOut = () => [...(last()?.lockedOut ?? [])].sort().join(',');
   const money = (v) => (v < 0 ? `−$${-v}` : `$${v}`);
@@ -193,16 +193,16 @@ try {
   const play = async (id) => {
     await host.keyboard.press('p');
     await host.keyboard.press('1');
-    await host.locator(`.stage-box .tile[data-clue="${id}"]`).click();
-    await host.locator('.stage-box [data-partner-up]').waitFor();
+    await stageBoxIn(host).locator(`.tile[data-clue="${id}"]`).click();
+    await stageBoxIn(host).locator('[data-partner-up]').waitFor();
     await host.keyboard.press('2');
     await panel.locator('[data-partner-next]', { hasText: 'Pair set' }).waitFor();
     await host.keyboard.press('Enter');
-    await host.locator('.stage-box [data-partner-badge]').waitFor();
+    await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
     // (A second Enter at once is held back: the double-Enter guard.)
     await sleep(1100);
     await host.keyboard.press('Enter');
-    await host.locator('.stage-box .timer').waitFor();
+    await stageBoxIn(host).locator('.timer').waitFor();
     await sleep(1100);
   };
 

@@ -11,7 +11,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, recordSeen, stored, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, openGameFile, recordSeen, stored, failureShots, assert, sleep, launchChromium, untilWith, section, stageBoxIn, statusLineIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -56,10 +56,10 @@ try {
   await host.getByText(/^Opened “/).waitFor();
   await host.getByRole('button', { name: '▶ Play' }).click();
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
 
   const flat = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
-  const tools = host.locator('.panel .toolsrow');
+  const tools = toolsRowIn(host);
   // (🎭 Deal… says how the deal stands once there's one: “🎭 Captain · handed out”.)
   const dealButton = tools.locator('[data-deal-tool]');
   const dialog = host.getByRole('dialog', { name: 'Deal' });
@@ -196,7 +196,7 @@ try {
 
   // ---------- 🎭 Who was who: a click on the stage takes it off ----------
   section('Who was who');
-  const reveal = host.locator('.stage-box [data-who-was-who]');
+  const reveal = stageBoxIn(host).locator('[data-who-was-who]');
   await dialog.locator('[data-deal-reveal]').click();
   await reveal.waitFor();
   assert((await flat(reveal)).includes(`${next.captain} Captain`), 'on the stage: who was captain');
@@ -207,7 +207,7 @@ try {
     (await dealButton.getAttribute('data-deal-tool')) === 'on screen' && dealTip.endsWith(' · on screen: viewers see who was who. Click it on the stage, or 🙈 Hide who was who here'),
     `the 🎭 Deal… button says it's on screen, and how to take it off (${dealTip})`,
   );
-  const tile = host.locator('.stage-box .tile').first();
+  const tile = stageBoxIn(host).locator('.tile').first();
   assert(!(await clickable(tile)), 'while it’s up, it covers the board');
   await sleep(500);
   await reveal.click();
@@ -226,15 +226,15 @@ try {
   await host.keyboard.press('Control+z');
   await reveal.waitFor();
   // (Enter on a tile reached with the keyboard opens it under Who was who: it goes, the question would be under it.)
-  await host.locator('.stage-box .tile[data-clue="b"]').focus();
+  await stageBoxIn(host).locator('.tile[data-clue="b"]').focus();
   await host.keyboard.press('Enter');
-  assert(await until(async () => (await host.locator('.panel .status').innerText()).includes('Answer hidden')), 'Enter on a tile under it opens the tile');
+  assert(await until(async () => (await statusLineIn(host).innerText()).includes('Answer hidden')), 'Enter on a tile under it opens the tile');
   assert(await until(async () => !(await reveal.count())), 'and takes Who was who off the screen');
   await host.keyboard.press('Escape');
   await tile.waitFor();
   assert(await clickable(tile), 'the board takes clicks again');
   await tile.click();
-  assert(await until(async () => !(await host.locator('.stage-box .tile').count())), 'a tile opens');
+  assert(await until(async () => !(await stageBoxIn(host).locator('.tile').count())), 'a tile opens');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Team captain tests passed');

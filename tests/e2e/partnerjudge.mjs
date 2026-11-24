@@ -9,7 +9,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, checkItem, flowButton, flowIs, goOnCheck, mainLabel, openGameFile, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, failureShots, boxHasAction, checkItem, flowButton, flowIs, goOnCheck, mainLabel, openGameFile, assert, launchChromium, section, awardRowIn, boardIn, hostPanelIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -53,16 +53,16 @@ page.on('dialog', (d) => (errors.push('dialog: ' + d.message()), d.accept()));
 
 const stage = (sel) => page.locator(`.stage-box ${sel}`);
 const tile = (cat, row) => stage(`.tile[data-clue="q${cat}_${row}"]`);
-const panel = page.locator('.panel [data-partner-panel]');
+const panel = hostPanelIn(page).locator('[data-partner-panel]');
 const judgeRow = panel.locator('[data-partner-judge]');
 const gotBtn = judgeRow.getByRole('button', { name: /✔ Got it/ });
 const missBtn = judgeRow.getByRole('button', { name: /✘ Missed/ });
-const toast = (t) => page.locator('.toast', { hasText: t }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+const toast = (t) => toastsIn(page, { hasText: t }).waitFor({ timeout: 3000 }).then(() => true, () => false);
 const chip = (name) => panel.getByRole('button', { name, exact: true });
 const IDS = { Ann: 'p1', Bob: 'p2', Cat: 'p3', Dan: 'p4' };
-const scoreOf = async (name) => (await page.locator(`.panel .players [data-player-id="${IDS[name]}"] .score`).innerText()).trim();
+const scoreOf = async (name) => (await hostPanelIn(page).locator(`.players [data-player-id="${IDS[name]}"] .score`).innerText()).trim();
 const scores = async () => Object.fromEntries(await Promise.all(Object.keys(IDS).map(async (k) => [k, await scoreOf(k)])));
-const picker = async () => page.locator('.panel .players .p.picker').getAttribute('aria-label').catch(() => null);
+const picker = async () => hostPanelIn(page).locator('.players .p.picker').getAttribute('aria-label').catch(() => null);
 const flat = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
 const wait = (ms) => page.waitForTimeout(ms);
 /** P, then their number: who picks next. */
@@ -90,7 +90,7 @@ async function resume() {
 }
 /** Toggle a rule in ⚖ Rules mid-game. */
 async function rule(label, on) {
-  await page.locator('.panel').getByRole('button', { name: '⚖ Rules', exact: true }).click();
+  await hostPanelIn(page).getByRole('button', { name: '⚖ Rules', exact: true }).click();
   const box = page.getByLabel(label);
   if (on) await box.check();
   else await box.uncheck();
@@ -191,7 +191,7 @@ try {
   await wait(1100);
   await stage('[data-slide="1"]').click();
   await stage('.timer').waitFor();
-  await page.locator('.panel .status [data-click-note]', { hasText: 'Clock started' }).waitFor();
+  await statusLineIn(page).locator('[data-click-note]', { hasText: 'Clock started' }).waitFor();
   assert((await stage('[data-slide="answer"]').count()) === 0 && (await panel.locator('[data-judged]').count()) === 0, 'no clock: a click on the stage starts it (“Clock started” in the status line), and leaves the answer hidden');
   await wait(1100);
   await page.keyboard.press('Enter');
@@ -207,7 +207,7 @@ try {
   await page.keyboard.press('Shift+Enter');
   assert(await toast('Start the clock first (Enter), or click ✘ Missed'), 'Shift+Enter while handing out the cards judges nothing');
   assert((await scoreOf('Bob')) === '$0', 'and gives nothing');
-  const amountRow = page.locator('.panel .award');
+  const amountRow = awardRowIn(page);
   assert((await amountRow.count()) === 0 && (await page.getByRole('button', { name: '± Other points…' }).count()) === 1, 'the Amount row is folded behind ± Other points…');
   await page.keyboard.press('2');
   await amountRow.waitFor();
@@ -247,7 +247,7 @@ try {
   await rule('Show quick ✔/✘ buttons (one click for right or wrong)', true);
   await picks(1);
   await play(1, 3, 2);
-  const quick = (who, k) => page.locator(`.panel .players [data-player-id="${IDS[who]}"] button.quick.${k}`);
+  const quick = (who, k) => hostPanelIn(page).locator(`.players [data-player-id="${IDS[who]}"] button.quick.${k}`);
   assert((await quick('Cat', 'right').count()) === 0 && (await quick('Dan', 'right').count()) === 0, 'the quick ✔/✘ are only on the two players’ chips');
   assert(
     (await quick('Ann', 'right').getAttribute('aria-label')) === 'Right: Ann +$400' && (await quick('Bob', 'right').getAttribute('aria-label')) === 'Right: Bob +$800' && (await quick('Bob', 'wrong').getAttribute('aria-label')) === 'Wrong: Bob $0' && (await quick('Ann', 'wrong').getAttribute('aria-label')) === 'Wrong: Ann −$400',
@@ -325,7 +325,7 @@ try {
   section('Two windows');
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
   aud.on('pageerror', (e) => errors.push(`[audience] ${e.message}`));
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   await picks(1);
   await tile(2, 2).click();
   await aud.locator('[data-partner-up]').waitFor();
@@ -341,7 +341,7 @@ try {
   assert((await aud.locator('.pops .pop').count()) === 2 && (await aud.locator('.timer').count()) === 0, 'the audience window gets both pops, and the countdown stops');
   assert(!(await aud.locator('body').innerText()).includes('Judged'), 'the panel’s judge row stays in the host window');
   await page.keyboard.press('Escape');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
 
   // Enter held down in the audience window (the host clicked it to allow sound, and kept typing there): its first press
   // shows the question, and its repeats, even seconds later, neither start the clock nor score.
@@ -364,7 +364,7 @@ try {
     'Enter held down in the audience window shows the question once: its repeats don’t start the clock or score',
   );
   await page.keyboard.press('Escape');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner clue judging tests passed');

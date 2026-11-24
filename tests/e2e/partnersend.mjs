@@ -16,7 +16,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, confirmStrip, flowIs, mainButton, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stepButton, stored, assert, sleep, launchChromium, until, section } from './helpers.mjs';
+import { appFile, failureShots, boxHasAction, confirmStrip, flowIs, mainButton, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stepButton, stored, assert, sleep, launchChromium, until, section, boardIn, hostPanelIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -255,7 +255,7 @@ try {
   const cat = await join('cat', 'Cat');
   const dan = await join('dan', 'Dan');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
 
   /** The phone's status line comes to say `text`: its greyed button's big line, or over its cards. */
   const says = (p, t) =>
@@ -284,7 +284,7 @@ try {
     return v ?? {};
   };
 
-  const panel = host.locator('.panel [data-partner-panel]');
+  const panel = hostPanelIn(host).locator('[data-partner-panel]');
   const row = (n) => panel.locator(`[data-card="${n}"]`).first();
   // (A chip's name says whether its card went to that player, and was seen: "Card 1 to Bob, seen".)
   const chip = (name) => panel.getByRole('button', { name: new RegExp(`^${name}(, sent|, seen)?$`) });
@@ -292,7 +292,7 @@ try {
   // ---------- Two windows: the audience window, watched all through ----------
   let [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   /** No card's words, file names or link in the audience window (nor anything it said), now or since it opened. */
   const offStream = async (p, name, when) => {
     const found = await shownOf(p, SECRETS);
@@ -313,8 +313,8 @@ try {
   // ---------- PARTNER UP! (Ann picked it), paired with Bob, the question, and a card given to Cat ----------
   await host.keyboard.press('p');
   await host.keyboard.press('1');
-  await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
-  await host.locator('.stage-box [data-partner-up]').waitFor();
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $200"]').click();
+  await stageBoxIn(host).locator('[data-partner-up]').waitFor();
   await panel.getByText('Ann picked it.').waitFor();
   assert(await says(dan, '🤝 Partner clue'), 'PARTNER UP!: every phone greys out with the roles line');
   await nothingSent('the tile open');
@@ -329,9 +329,9 @@ try {
     await new Promise((r) => requestAnimationFrame(() => r()));
     document.querySelector('.panel [data-partner-foot] [data-step]').click();
   });
-  await host.locator('.stage-box [data-partner-badge]').waitFor();
+  await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
   assert(await flowIs(host, '👁 Reveal answer'), 'the question up: the blue button is 👁 Reveal answer');
-  await host.locator('.toast', { hasText: 'The question just went up: click again to send the cards' }).waitFor();
+  await toastsIn(host, { hasText: 'The question just went up: click again to send the cards' }).waitFor();
   assert((await boxHasAction(panel, '📤 Send and start')) === '', 'a click on the box’s own 📤 Send and start (in sight at its foot, the only one) within a second of the question sends nothing, and says so');
   for (const [p, name] of [[bob, 'Bob, the describer'], [dan, 'Dan']]) assert(await says(p, '🤝 Bob describes → Ann guesses'), `${name}: “🤝 Bob describes → Ann guesses”`);
   assert((await says(ann, '🎯 You’re guessing!')) && (await small(ann)) === 'Bob is describing: say it out loud', 'Ann, the guesser: “🎯 You’re guessing!” · “Bob is describing: say it out loud”');
@@ -374,7 +374,7 @@ try {
   await host.route('**/api/rooms/*/files', (r) => (holding && r.request().method() === 'POST' ? void held.push(r) : r.continue()));
   // (The 🤝 box's own 📤 Send and start, well over a second after the question: it sends.)
   await stepButton(panel, '📤 Send and start').click();
-  await host.locator('.stage-box .timer').waitFor();
+  await stageBoxIn(host).locator('.timer').waitFor();
   assert(await until(() => sendOf('c1').length === 1 && sendOf('c2').length === 1), 'sent: the room’s state holds card 1 and card 2');
   const s1 = sendOf('c1')[0];
   const s2 = sendOf('c2')[0];
@@ -490,7 +490,7 @@ try {
   assert(!(await host.getByRole('alertdialog').count()), `⇄ Swap asks first, in the panel, in place of the older question (${await textOf(swapAsk)})`);
   await swapAsk.getByRole('button', { name: 'Don’t swap' }).click();
   await swapAsk.waitFor({ state: 'detached' });
-  assert((await host.locator('.stage-box [data-partner-badge]', { hasText: 'Bob describes' }).count()) === 1, 'Don’t swap: Bob still describes');
+  assert((await stageBoxIn(host).locator('[data-partner-badge]', { hasText: 'Bob describes' }).count()) === 1, 'Don’t swap: Bob still describes');
 
   // ---------- 📤 Send changes: Dan added, then Bob taken off ----------
   await chip('Card 1 to Dan').click();
@@ -581,30 +581,30 @@ try {
   section('Over the caps');
   const [aud2] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud2, 'audience 2');
-  await aud2.locator('.board').waitFor();
+  await boardIn(aud2).waitFor();
   await host.keyboard.press('p');
   await host.keyboard.press('1');
-  await host.locator('.stage-box .tile[aria-label^="Movies for $400"]').click();
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $400"]').click();
   await panel.getByText('Ann picked it.').waitFor();
   await host.keyboard.press('2');
   await mainButton(host).click();
-  await host.locator('.stage-box [data-partner-badge]').waitFor();
+  await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
   const left2 = panel.locator('[data-card-left="2"]');
   assert((await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)', 'the GIF over 3 MB, counted: “🖼 1 GIF won’t reach the phones (too big for the buzzer server)”');
   assert(await row(2).getByRole('button', { name: '📋 Copy picture' }).isVisible(), 'and its row offers 📋 Copy picture');
   const upBefore = uploads.length;
   // The status line's ⏱ Start (as T) with cards still to send: the clock only. The box's foot reads 📤 Send the cards
   // (clock running), the status line that Enter sends them, and nothing goes until then.
-  await host.locator('.panel .status').getByRole('button', { name: /^Start \d+s$/ }).click();
-  await host.locator('.stage-box .timer').waitFor();
+  await statusLineIn(host).getByRole('button', { name: /^Start \d+s$/ }).click();
+  await stageBoxIn(host).locator('.timer').waitFor();
   await sleep(300);
   assert(
     (await flowIs(host, '👁 Reveal answer')) &&
       (await boxHasAction(panel, '📤 Send the cards (clock running)')) === '' &&
-      /Clock running: Enter sends the \d+ cards/.test(await textOf(host.locator('.panel .status'))) &&
+      /Clock running: Enter sends the \d+ cards/.test(await textOf(statusLineIn(host))) &&
       !sends().length &&
       uploads.length === upBefore,
-    `the clock started with cards to send: 📤 Send the cards (clock running) in the box only, and nothing sent (“${await textOf(host.locator('.panel .status'))}”)`,
+    `the clock started with cards to send: 📤 Send the cards (clock running) in the box only, and nothing sent (“${await textOf(statusLineIn(host))}”)`,
   );
   // (A click within a second of the question going up sends nothing.)
   await sleep(1100);
@@ -620,7 +620,7 @@ try {
   const info = host.locator('.info [data-partner-cards-info]');
   assert((await info.innerText()).includes(`📋 copy it: ${turned.error}`) && (await info.innerText()).includes('📋 copy it: too big for the buzzer server (3 MB at most)'), 'the two-window host column names them, with why');
   await row(1).getByRole('button', { name: '📋 Copy picture' }).click();
-  await host.locator('.toast', { hasText: 'Card 1’s picture copied: paste it to Bob' }).waitFor();
+  await toastsIn(host, { hasText: 'Card 1’s picture copied: paste it to Bob' }).waitFor();
   const copied = await host.evaluate(async () => (await navigator.clipboard.read()).flatMap((i) => i.types));
   assert(copied.includes('image/png'), '📋 Copy picture puts the card’s picture on the clipboard, to paste to Bob');
   await until(async () => (await bob.getByRole('button', { name: 'Tap to see' }).count()) === 2);

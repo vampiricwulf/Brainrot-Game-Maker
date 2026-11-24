@@ -2,7 +2,7 @@
 // new file to download, for the HTML file, then says on the page what to do with it), "Not now" puts it away for that
 // version, and ℹ About checks on demand. The copy online offers a reload instead.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, launchChromium, lineOf, playWithPlayers, failureShots, assert } from './helpers.mjs';
+import { appFile, addClassicRounds, launchChromium, lineOf, playWithPlayers, failureShots, assert, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -300,7 +300,7 @@ try {
     await hp.waitForTimeout(300);
     await hp.keyboard.press('Shift');
     assert(calls === 7 && (await hn.innerText()).includes('99.2.2 is out'), 'a newer version (99.2.3) found while they work leaves the notice at 99.2.2 for now');
-    await hp.locator('nav > button.round-tab').nth(1).click();
+    await roundTabsIn(hp).nth(1).click();
     await hp.locator('.data-notice', { hasText: '99.2.3 is out' }).waitFor({ timeout: 2000 });
     assert(true, 'and going to another round shows it at once');
     // A press whose release never reaches the page (a right-click whose native menu takes it, alt-tab while holding a
@@ -333,7 +333,7 @@ try {
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
     await hp.clock.fastForward('00:05');
-    await hp.locator('nav > button.round-tab').first().click();
+    await roundTabsIn(hp).first().click();
     assert(calls === 11 && (await hs.count()) === 1, 'a newer version found while the download’s steps show leaves them as they are');
     // With ⚙ Settings' box unticked, it doesn't ask again.
     await hp.getByRole('button', { name: /^More:/ }).click();
@@ -405,7 +405,7 @@ try {
     await playWithPlayers(wp, 2);
     await wp.evaluate(() => (window.open = () => null));
     await wp.getByRole('button', { name: /Separate audience window/ }).click();
-    await wp.locator('.toast', { hasText: 'The browser blocked the popup. Allow popups for this site and try again.' }).waitFor();
+    await toastsIn(wp, { hasText: 'The browser blocked the popup. Allow popups for this site and try again.' }).waitFor();
     assert(true, 'online, a blocked popup says to allow popups for this site');
     await web.close();
   }

@@ -4,7 +4,7 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, answerAsk, exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer, showChecklist, assert, launchChromium } from './helpers.mjs';
+import { appFile, failureShots, answerAsk, exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer, showChecklist, assert, launchChromium, boardIn, boardTilesIn, confirmStrip, hostPanelIn, playerRowsIn, roundNavIn, roundTabsIn, stageBoxIn, statusBarIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -234,7 +234,7 @@ try {
   assert(await page.locator('.pregame').count() === 0, 'Ctrl+Enter starts the game');
   await page.getByRole('button', { name: 'Skip intro' }).click();
   assert((await page.locator('main.play').innerText()).includes('Cyz'), 'with the name just typed in (Cyz)');
-  assert((await page.locator('.stage-box .plate', { hasText: 'Bo' }).locator('.score').innerText()) === '$251', 'Bo starts on the whole start score ($251)');
+  assert((await stageBoxIn(page).locator('.plate', { hasText: 'Bo' }).locator('.score').innerText()) === '$251', 'Bo starts on the whole start score ($251)');
 
   // ---------- ⚖ Game rules mid-game, and raising Most players from 👥 Players ----------
   await page.getByRole('button', { name: '⚖ Rules' }).click();
@@ -272,7 +272,7 @@ try {
     const how = await Promise.race([chooser.then((c) => (c ? 'picker' : 'none')), openList.waitFor().then(() => 'list')]);
     assert(how !== 'none', `game over › ▶ Next game… goes to the editor's Open… (${how === 'list' ? 'Recent games' : 'the file picker'})`);
     if (how === 'list') await page.keyboard.press('Escape');
-    await page.locator('.status-bar .kept').getByText('Finished game').waitFor();
+    await statusBarIn(page).locator('.kept').getByText('Finished game').waitFor();
     await page.getByRole('button', { name: 'View results' }).click();
     await page.locator('.end h1').waitFor();
     assert(true, 'and the results stay viewable from the editor (View results)');
@@ -393,7 +393,7 @@ try {
   assert((await aud1.locator('.activate').count()) === 0, 'a click there takes its “Click to enable sound” away, and the host gets a ✓');
   await back.click();
   // ◀ Back to editor keeps the audience window (OBS's capture source) up, on the Starting soon card; its ✕ closes it.
-  const audOpen = page.locator('.status-bar [data-audience-open]');
+  const audOpen = statusBarIn(page).locator('[data-audience-open]');
   await audOpen.waitFor();
   await page.waitForTimeout(400);
   assert(!aud1.isClosed() && (await aud1.locator('.soon-text').count()) === 1, '◀ Back to editor keeps the audience window up, on the Starting soon card');
@@ -409,15 +409,15 @@ try {
   assert((await page.locator('.mode.on', { hasText: 'Separate audience window' }).count()) === 1, 'the next ▶ Play has the audience window picked again');
   const [aud2] = await Promise.all([page.waitForEvent('popup'), openAndStart.click()]);
   await page.getByRole('button', { name: 'Skip intro' }).click();
-  await aud2.locator('.board').waitFor();
+  await boardIn(aud2).waitFor();
   assert(true, '📺 Open audience window & start opens it and starts the game');
 
   // ---------- Exit asks once: keep the game to resume, or discard it ----------
   await page.getByRole('button', { name: /Exit/ }).first().click();
-  assert((await page.locator('.panel .confirm').innerText()).includes('keep it to resume later?'), 'Exit asks whether to keep the game to resume later');
+  assert((await confirmStrip(page).innerText()).includes('keep it to resume later?'), 'Exit asks whether to keep the game to resume later');
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
-  const kept = page.locator('.status-bar .kept');
+  const kept = statusBarIn(page).locator('.kept');
   await kept.waitFor();
   const keptBox = await kept.boundingBox();
   assert(keptBox.height <= 44, `the game kept to resume is one line over the editor (${Math.round(keptBox.height)}px)`);
@@ -443,8 +443,8 @@ try {
   // Back to single window for the rest.
   await page.locator('.mode', { hasText: 'Single window' }).click();
   await resumeCard.getByRole('button', { name: '▶ Resume it' }).click();
-  await page.locator('.board').waitFor();
-  assert((await page.locator('.board .tile.used').count()) === 0 && (await page.locator('.panel').count()) === 1, '▶ Resume it plays on with the kept game');
+  await boardIn(page).waitFor();
+  assert((await boardIn(page).locator('.tile.used').count()) === 0 && (await hostPanelIn(page).count()) === 1, '▶ Resume it plays on with the kept game');
   await page.getByRole('button', { name: /Exit/ }).first().click();
   // Exit asks Stay · Discard & leave · Keep & leave: the one that throws the game away in red, set apart from Keep.
   const discardLeave = page.getByRole('button', { name: 'Discard & leave', exact: true });
@@ -458,7 +458,7 @@ try {
   await play.click();
   await start.click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
-  await page.locator('.board .tile').first().click();
+  await boardTilesIn(boardIn(page)).first().click();
   await page.keyboard.press('1');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Escape');
@@ -469,16 +469,16 @@ try {
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Jeopardy board/ }).click();
   await noDailyDoubles(page);
-  const second = page.locator('nav > button.round-tab').nth(1);
+  const second = roundTabsIn(page).nth(1);
   await second.click({ button: 'right' });
   assert((await page.getByRole('menuitem', { name: '▶ Test this round' }).count()) === 1, 'a round tab\'s right-click menu has ▶ Test this round');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '▶ Test this round' }).click();
-  await page.locator('.rn .test').waitFor();
-  assert((await page.locator('.rn .test').innerText()).includes('Testing this round'), 'the round plays at once, marked 🧪 Testing this round');
+  await roundNavIn(page).locator('.test').waitFor();
+  assert((await roundNavIn(page).locator('.test').innerText()).includes('Testing this round'), 'the round plays at once, marked 🧪 Testing this round');
   await page.getByRole('button', { name: 'Skip intro' }).click();
-  await page.locator('.board').waitFor();
-  assert((await page.locator('.panel .p').count()) === 2, 'with the game\'s players');
+  await boardIn(page).waitFor();
+  assert((await playerRowsIn(page).count()) === 2, 'with the game\'s players');
   // Its end screen has no ▶ Next game… (that would keep the throwaway test as the game to resume).
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'End game ▶' }).click();
@@ -490,15 +490,15 @@ try {
     'a tested round’s end screen has no ▶ Next game… or 🔁 Rematch (either would keep the test as the game to resume)',
   );
   await page.getByRole('button', { name: /Exit/ }).first().click();
-  assert((await page.locator('.panel .confirm').innerText()).includes('Nothing from this test is kept'), 'leaving a test says nothing is kept');
+  assert((await confirmStrip(page).innerText()).includes('Nothing from this test is kept'), 'leaving a test says nothing is kept');
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: '◀ Back to editor', exact: true }).click();
   await kept.waitFor();
-  assert((await page.locator('nav > button.round-tab').nth(1).getAttribute('aria-current')) === 'page', 'Exit comes back to the editor on the round tested');
+  assert((await roundTabsIn(page).nth(1).getAttribute('aria-current')) === 'page', 'Exit comes back to the editor on the round tested');
   await kept.getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-  await page.locator('.board').waitFor();
-  assert((await page.locator('.board .tile.used').count()) === 1, 'the game kept to resume is as it was (the test never replaced it)');
+  await boardIn(page).waitFor();
+  assert((await boardIn(page).locator('.tile.used').count()) === 1, 'the game kept to resume is as it was (the test never replaced it)');
   await page.getByRole('button', { name: /Exit/ }).first().click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Discard & leave', exact: true }).click();
@@ -529,7 +529,7 @@ try {
   await page.waitForTimeout(450);
   await noRoom.getByRole('button', { name: 'Start without phones' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
-  const phonesChip = page.locator('.panel .chip', { hasText: '📱 Phones off' });
+  const phonesChip = hostPanelIn(page).locator('.chip', { hasText: '📱 Phones off' });
   await phonesChip.waitFor();
   assert((await phonesChip.getAttribute('title')) === 'No buzzer room: click to start one', 'Start without phones plays on; the 📱 Phones off chip says “No buzzer room: click to start one”');
   await page.getByRole('button', { name: /Exit/ }).first().click();
@@ -560,7 +560,7 @@ try {
   await settingsDlg.getByRole('button', { name: 'Done' }).click();
   await start.click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
-  await page.locator('.board .tile').first().click();
+  await boardTilesIn(boardIn(page)).first().click();
   await page.getByRole('button', { name: /Reveal|Show answer/ }).first().waitFor();
   assert(
     (await page.getByRole('button', { name: '↺ Reset buzzers' }).count()) === 0 && (await page.getByRole('button', { name: '🔔 Open the buzzers' }).count()) === 0,
@@ -598,7 +598,7 @@ try {
   const setUp = await playerNames();
   // Ctrl+S says what keeps the setup: nothing yet, until the game starts (a refresh starts it again).
   await player.keyboard.press('Control+s');
-  await player.locator('.toast', { hasText: 'The game is kept in this browser once it starts: until then, a refresh starts the setup again' }).waitFor();
+  await toastsIn(player, { hasText: 'The game is kept in this browser once it starts: until then, a refresh starts the setup again' }).waitFor();
   assert(true, 'Ctrl+S on its pre-game screen says the game is kept once it starts, and a refresh before that starts the setup again');
   // Its ? list promises no Ctrl+Z here (a player-only file has no undo history).
   await player.evaluate(() => document.activeElement?.blur());

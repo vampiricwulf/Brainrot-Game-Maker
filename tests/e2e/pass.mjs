@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, openGameFile, startBuzzer, startRoomOn, failureShots, assert, sleep, until, launchChromium, section } from './helpers.mjs';
+import { appFile, editorReady, openGameFile, startBuzzer, startRoomOn, failureShots, assert, sleep, until, launchChromium, section, boardIn, hostPanelIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -97,11 +97,11 @@ const big = (p) => p.locator('#buzz-big').innerText();
 const passBtn = (p) => p.locator('#pass');
 /** Pass is up and can be pressed (in sight), saying `words`. */
 const passSays = async (p, words) => (await passBtn(p).isVisible()) && (await passBtn(p).innerText()) === words;
-const row = (page) => page.locator('.panel [data-buzzrow]');
-const main = (page) => page.locator('.panel [data-next]');
+const row = (page) => hostPanelIn(page).locator('[data-buzzrow]');
+const main = (page) => hostPanelIn(page).locator('[data-next]');
 const ringed = (page) => main(page).evaluate((b) => b.classList.contains('ring'));
 const stageSize = (page) =>
-  page.locator('.stage-box .stage').evaluate((s) => {
+  stageBoxIn(page).locator('.stage').evaluate((s) => {
     const r = s.getBoundingClientRect();
     return `${Math.round(r.width)}x${Math.round(r.height)}`;
   });
@@ -120,11 +120,11 @@ const shot = async (p, name) => shots && (await p.screenshot({ path: `${shots}/$
 
 async function start(page) {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  await page.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
 }
 async function openTile(page, id) {
-  await page.locator(`.stage-box .board .tile[data-clue="${id}"]`).click();
-  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await boardIn(stageBoxIn(page)).locator(`.tile[data-clue="${id}"]`).click();
+  await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
 }
 
 try {
@@ -243,7 +243,7 @@ try {
   // Her buzz does nothing now.
   await ann.locator('#buzz').click({ force: true });
   await sleep(600);
-  assert((await big(ann)) === 'You passed' && (await page.locator('.panel .buzz-queue').count()) === 0, 'a press on her buzzer does nothing while she has passed');
+  assert((await big(ann)) === 'You passed' && (await hostPanelIn(page).locator('.buzz-queue').count()) === 0, 'a press on her buzzer does nothing while she has passed');
   // Taken back: she can buzz again.
   await passBtn(ann).click();
   await ann.locator('#buzz.armed').waitFor();
@@ -256,7 +256,8 @@ try {
   await row(page).getByText('Passed 2 of 3: Ann, Bob').waitFor();
   assert(!(await ringed(page)), 'two of three passed: no ring yet');
   // Who passed shows on the players' chips too: faded, "passed" in the mark's place (the chip keeps its width).
-  const chip = (name) => page.locator('.panel .players .p', { has: page.locator('.who', { hasText: name }) });
+  const chip = (name) => hostPanelIn(page).locator('.players .p', { has: page.locator('.who', { hasText: name }) });
+  /** @type {(name: string) => Promise<[string | false, string]>} */
   const fade = async (name) => [await chip(name).evaluate((e) => e.classList.contains('passed') && getComputedStyle(e).opacity), (await chip(name).locator('.mark').innerText()).trim()];
   assert(
     JSON.stringify(await fade('Ann')) === JSON.stringify(['0.55', 'passed']) && JSON.stringify(await fade('Bob')) === JSON.stringify(['0.55', 'passed']) && (await fade('Cat'))[0] === false,
@@ -264,7 +265,7 @@ try {
   );
   // The countdown going as the last one passes: it stops (no "Time's up" for nobody on stream); Ctrl+Z brings it back.
   await page.keyboard.press('t');
-  await page.locator('.stage-box .timer').waitFor();
+  await stageBoxIn(page).locator('.timer').waitFor();
   const size1 = await settledStageSize(page);
   if (shots)
     for (const [w, h] of [[1366, 768], [1920, 1080], [1280, 720]]) {
@@ -274,22 +275,22 @@ try {
     }
   await cat.keyboard.press('p');
   await row(page).getByText('Everyone passed: reveal the answer').waitFor();
-  await page.locator('.stage-box .timer').waitFor({ state: 'detached' });
+  await stageBoxIn(page).locator('.timer').waitFor({ state: 'detached' });
   assert(true, 'everyone passed with the countdown going: it stops');
   await page.keyboard.press('Control+z');
-  await page.locator('.stage-box .timer .num').waitFor();
+  await stageBoxIn(page).locator('.timer .num').waitFor();
   // Cat's phone hears of the undo through the room, a moment after the host's stage shows it.
-  const undone = async () => [+(await page.locator('.stage-box .timer .num').innerText()), await big(cat)];
+  const undone = async () => [+(await stageBoxIn(page).locator('.timer .num').innerText()), await big(cat)];
   assert(
     await until(async () => { const [n, b] = await undone(); return n > 0 && b === 'You passed'; }, 5_000),
     `Ctrl+Z brings the countdown back, with the passes as they were (${JSON.stringify(await undone())})`,
   );
   await page.keyboard.press('Control+y');
-  await page.locator('.stage-box .timer').waitFor({ state: 'detached' });
+  await stageBoxIn(page).locator('.timer').waitFor({ state: 'detached' });
   assert(true, 'and Ctrl+Y stops it again');
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.classList.contains('ring'));
   assert(
-    (await main(page).innerText()).startsWith('👁 Reveal answer') && (await page.locator('.panel .status .say').innerText()).includes('everyone passed'),
+    (await main(page).innerText()).startsWith('👁 Reveal answer') && (await statusLineIn(page).locator('.say').innerText()).includes('everyone passed'),
     'Cat passes with P: the host’s row says Everyone passed, 👁 Reveal answer wears the ring, the status line says so',
   );
   await shot(page, 'host-1280-everyone-passed');
@@ -302,13 +303,13 @@ try {
   );
   await shot(bob, 'bob-360-everyone-passed');
   assert(
-    !(await page.locator('.panel .status .say').innerText()).includes('reveal the answer'),
+    !(await statusLineIn(page).locator('.say').innerText()).includes('reveal the answer'),
     'the status line says where the clue stands (everyone passed); the buzzers’ row alone says to reveal the answer',
   );
   // Enter with nobody selected: nobody is left to award, so it says N reveals the answer (not “Select a player first”).
   await page.keyboard.press('Enter');
-  await page.locator('.toast', { hasText: 'Everyone passed: N reveals the answer' }).waitFor();
-  assert((await page.locator('.toast', { hasText: 'Select a player first' }).count()) === 0, 'Enter after everyone passed: the hint names N, not “Select a player first”');
+  await toastsIn(page, { hasText: 'Everyone passed: N reveals the answer' }).waitFor();
+  assert((await toastsIn(page, { hasText: 'Select a player first' }).count()) === 0, 'Enter after everyone passed: the hint names N, not “Select a player first”');
   const size2 = await settledStageSize(page);
   assert(size0 === size1 && size1 === size2, `one window: the stage keeps its size as players pass and everyone has (${size0}, ${size1}, ${size2})`);
   await shot(cat, 'cat-desk-passed');
@@ -320,7 +321,7 @@ try {
 
   // Cat buzzes and is wrong: out of the clue; with Ann and Bob passed, everyone left passed.
   await cat.keyboard.press(' ');
-  await page.locator('.panel .status', { hasText: /Cat/ }).first().waitFor().catch(() => {});
+  await statusLineIn(page, { hasText: /Cat/ }).first().waitFor().catch(() => {});
   await cat.locator('#buzz.first').waitFor();
   assert(await passBtn(cat).evaluate((b) => getComputedStyle(b).visibility === 'hidden' && !b.hidden), 'Cat answering: Pass keeps its place, out of sight');
   await page.keyboard.press('Shift+Enter');
@@ -351,7 +352,7 @@ try {
   await page.keyboard.press('Control+z');
   await row(page).getByText('Everyone passed: reveal the answer').waitFor();
   await ann.locator('#pass.passed').waitFor();
-  await page.locator('.toast', { hasText: 'Undid ↺ Reset buzzers' }).waitFor();
+  await toastsIn(page, { hasText: 'Undid ↺ Reset buzzers' }).waitFor();
   assert((await big(ann)) === 'You passed' && (await big(bob)) === 'You passed' && (await chip('Cat').locator('.mark').innerText()).includes('✘'), 'Ctrl+Z of ↺ Reset buzzers: Ann and Bob passed again, Cat still out, everyone passed');
   await page.keyboard.press('Control+y');
   await ann.locator('#buzz.armed').waitFor();
@@ -374,20 +375,20 @@ try {
   await row(page).getByText('Passed 1 of 3: Bob').waitFor();
   // The answer up: Pass can't be pressed.
   await page.keyboard.press('r');
-  await page.locator('.stage-box [data-slide="answer"]').waitFor();
+  await stageBoxIn(page).locator('[data-slide="answer"]').waitFor();
   await bob.waitForFunction(() => document.querySelector('#pass')?.classList.contains('gone'));
   assert((await bob.locator('#buzz-big').innerText()) !== 'You passed', 'the answer up: the clue is over on the phones, Pass out of sight');
 
   // ---------- 2. No Pass on a clue everyone must play, nor on a ✍ clue ----------
   section('Clues everyone plays');
   await page.keyboard.press('Escape');
-  await page.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
   await openTile(page, 'c1_0');
   await ann.locator('#buzz.armed').waitFor();
   assert((await passBtn(ann).isHidden()) && (await passBtn(cat).isHidden()), 'a clue ticked 🚫 No Pass (everyone must play): BUZZ! and no Pass');
   await page.keyboard.press('Escape');
-  await page.locator('.stage-box .board').waitFor();
-  await page.locator('.stage-box .board .tile[data-clue="c2_0"]').click();
+  await boardIn(stageBoxIn(page)).waitFor();
+  await boardIn(stageBoxIn(page)).locator('.tile[data-clue="c2_0"]').click();
   await ann.locator('#answer-form').waitFor();
   assert(await passBtn(ann).isHidden(), 'a ✍ clue: the answer box, no Pass');
   await page.keyboard.press('Escape');
@@ -420,13 +421,13 @@ try {
   await shot(al, 'al-360-team-passed');
   await al.locator('#buzz').click({ force: true });
   await sleep(500);
-  assert((await t.page.locator('.panel .buzz-queue').count()) === 0, 'Al can’t buzz for the team now');
+  assert((await hostPanelIn(t.page).locator('.buzz-queue').count()) === 0, 'Al can’t buzz for the team now');
   await passBtn(al).click();
   await al.locator('#buzz.armed').waitFor();
   assert((await big(zoe)) === 'BUZZ!', 'Al takes the pass back for the team: BUZZ! on both phones');
   await passBtn(bea).click();
   await passBtn(al).click();
-  await t.page.locator('.panel [data-buzzrow]').getByText('Everyone passed: reveal the answer').waitFor();
+  await hostPanelIn(t.page).locator('[data-buzzrow]').getByText('Everyone passed: reveal the answer').waitFor();
   assert(true, 'both teams passed: everyone passed');
 
   assert(!errors.length, `no page errors (${errors.join(' | ')})`);

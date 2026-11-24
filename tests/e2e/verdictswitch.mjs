@@ -2,7 +2,7 @@
 // A verdict switched on a clue (✔ after ✘): a tile reopened and the page reloaded mid-clue switches only marks from
 // this opening, and 📜 Log › Scores' ↷ Restore on the mark a switch took back takes the switch back (never counted twice).
 import { pathToFileURL } from "node:url";
-import { addClassicRounds, appFile, playWithPlayers, stored, failureShots, assert, launchChromium, until } from "./helpers.mjs";
+import { addClassicRounds, appFile, playWithPlayers, stored, failureShots, assert, launchChromium, until, boardIn, boardTilesIn, playerRowsIn, stageBoxIn } from "./helpers.mjs";
 
 const file = appFile();
 const browser = await launchChromium();
@@ -13,8 +13,8 @@ const page = await context.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("dialog", (d) => d.accept());
-const tile = (i) => page.locator(".stage-box .board .tile").nth(i);
-const chip = () => page.locator(".panel .p").first();
+const tile = (i) => boardTilesIn(boardIn(stageBoxIn(page))).nth(i);
+const chip = () => playerRowsIn(page).first();
 const money = (t) => Number(t.trim().replace("−", "-").replace(/[$,]/g, ""));
 const scoreOf = async () => money(await chip().locator(".score").innerText());
 const opened = () =>
@@ -49,7 +49,7 @@ try {
   const missed = await scoreOf();
   await page.waitForTimeout(700); // past Not yet's bounce guard
   await page.keyboard.press("Escape");
-  await page.locator(".stage-box .board").waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
   await tile(0).click({ button: "right", force: true });
   await page.getByRole("menuitem", { name: /Reopen this tile/ }).click();
   await tile(0).click();
@@ -81,7 +81,7 @@ try {
   );
   await page.waitForTimeout(700);
   await page.keyboard.press("Escape");
-  await page.locator(".stage-box .board").waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
 
   // ---------- 📜 Log › Scores: ↷ Restore on the ✘ a switch took back takes the switch back ----------
   await tile(1).click();

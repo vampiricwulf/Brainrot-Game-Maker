@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, clickExportHtml, editorReady, packGame, failureShots, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, addClassicRounds, addPlayers, answerReplace, clickExportHtml, editorReady, packGame, failureShots, assert, launchChromium, section, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
 import { gif, noise } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -171,7 +171,7 @@ try {
   // (An export isn't a Save: New asks first.)
   await w.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(w, 'Discard');
-  await w.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
+  await roundTabsIn(w).first().waitFor({ state: 'detached' });
   await w.locator('input.title').fill('Something else');
   // Open… lists Recent games (New kept the exported game there); Browse for a game file… picks a file.
   const chooser = w.waitForEvent('filechooser');
@@ -181,7 +181,7 @@ try {
   await (await chooser).setFiles(htmlPath);
   // (A game with a title of its own counts as work: Open… asks before replacing it.)
   await answerReplace(w, 'Discard');
-  await w.locator('nav > button.round-tab').first().waitFor();
+  await roundTabsIn(w).first().waitFor();
   assert((await w.locator('input.title').inputValue()) === 'Exported Quiz', 'an exported .html opens in the editor');
   await web.close();
 
@@ -212,7 +212,7 @@ try {
     ['Started.html', readFileSync(htmlPath, 'utf8')],
   );
   const d = await newPage(desk, 'desktop');
-  await d.locator('nav > button.round-tab').first().waitFor();
+  await roundTabsIn(d).first().waitFor();
   assert((await d.locator('input.title').inputValue()) === 'Exported Quiz', 'the game file the app was started with opens');
 
   // Save twice: the same file, the older copy kept as .bak.
@@ -228,7 +228,7 @@ try {
   // Another game with the same title gets its own file.
   await d.getByRole('button', { name: 'New', exact: true }).click();
   // New replaces the game once the old one is kept in Recent games: wait for it to go, or the title typed next lands in it.
-  await d.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
+  await roundTabsIn(d).first().waitFor({ state: 'detached' });
   await addClassicRounds(d);
   await d.locator('input.title').fill('Quiz');
   await d.waitForTimeout(300);
@@ -342,7 +342,7 @@ try {
   const savedAt = rows.findIndex((t) => t.includes('Saved “From-a-second-launch.brainrot”'));
   const typedAt = rows.findIndex((t) => t.includes('Typed while saving'));
   assert(typedAt >= 0 && savedAt === typedAt + 1, 'the history shows the save where the game was when it started, with the change typed meanwhile after it');
-  await d.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(d).first().click();
 
   // ---------- 💧 Pick from the screen, in the app's color picker (the browser's eyedropper does nothing in the app on
   // some PCs) ----------
@@ -383,13 +383,13 @@ try {
   await d.waitForFunction((v) => document.querySelector('[data-k="value"] input[type=color]').value === v, valueBefore);
   assert((await undoTitle()) === stepBefore, `…as one step (${picked}), which Ctrl+Z takes back`);
   // A slide's text color.
-  await d.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(d).first().click();
   await d.locator('.grid .tile').first().click();
   const clueDlg = d.getByRole('dialog', { name: 'Edit clue' });
   await clueDlg.waitFor();
   const canvasBox = await d.locator('.canvas').first().boundingBox();
   await d.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
-  const textColor = d.locator('.insp .color input[type=color]');
+  const textColor = inspectorIn(d).locator('.color input[type=color]');
   await textColor.waitFor();
   const textBefore = await textColor.inputValue();
   const clueUndo = clueDlg.getByRole('button', { name: 'Undo (Ctrl+Z)' });
@@ -461,7 +461,7 @@ try {
   await second.click();
   await pickWith(taken);
   await colorPicker.getByRole('button', { name: '✓ Done' }).click();
-  await d.locator('.toast', { hasText: 'Another player already has that color' }).waitFor();
+  await toastsIn(d, { hasText: 'Another player already has that color' }).waitFor();
   const shows = await second.inputValue();
   assert(shows === own, `💧 for a player's color: one another player has is turned down, and the box keeps theirs (${own}; it shows ${shows})`);
   await d.getByRole('button', { name: '◀ Back to editor' }).click();
@@ -499,11 +499,11 @@ try {
     window.__opened = { name: 'Next-show.json', bytes: new TextEncoder().encode('{}') };
     window.__emit('open-file');
   });
-  await d.locator('.toast', { hasText: 'That game file opens when you go back to the editor.' }).waitFor();
+  await toastsIn(d, { hasText: 'That game file opens when you go back to the editor.' }).waitFor();
   assert(true, 'a game file given during a game says it opens back in the editor');
   await d.evaluate(() => (window.__opened = null));
   await d.evaluate(() => window.__installDone());
-  await d.locator('.toast', { hasText: "Version 99.0.0 didn't install: the editor says why when you go back." }).waitFor();
+  await toastsIn(d, { hasText: "Version 99.0.0 didn't install: the editor says why when you go back." }).waitFor();
   assert((await d.getByRole('alertdialog').count()) === 0, 'an update that fails once a game has started pops nothing up over it: a toast says the editor says why');
   await d.getByRole('button', { name: '◀ Back to editor' }).click();
   await failed.waitFor();
@@ -521,7 +521,7 @@ try {
   await d.getByRole('button', { name: '▶ Play' }).click();
   await d.getByRole('button', { name: 'Start game ▶' }).waitFor();
   await d.evaluate(() => window.__installDone());
-  await d.locator('.toast', { hasText: 'Version 99.0.0 is ready' }).waitFor();
+  await toastsIn(d, { hasText: 'Version 99.0.0 is ready' }).waitFor();
   assert(!(await calls(d)).includes('restart_app'), 'an update that finishes once a game has started doesn’t restart the app');
   await d.getByRole('button', { name: '◀ Back to editor' }).click();
   await notice.getByRole('button', { name: '⟳ Restart into 99.0.0' }).waitFor();

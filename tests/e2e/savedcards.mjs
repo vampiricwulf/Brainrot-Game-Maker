@@ -18,7 +18,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, launchChromium, untilWith, section, boardIn, stageBoxIn, statusBarIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -389,7 +389,7 @@ try {
   const bob = await join('bob', 'Bob');
   const cat = await join('cat', 'Cat');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   const cardsOn = (p) => p.locator('.card').count();
   const offStream = async (p, name, when) => {
@@ -397,7 +397,7 @@ try {
     assert(!found.length, `${when}: ${name} holds no card’s words or file name${found.length ? ` (found ${found.join(', ')})` : ''}`);
   };
 
-  const tools = host.locator('.panel .toolsrow');
+  const tools = toolsRowIn(host);
   const openSend = async () => {
     await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
     const d = host.getByRole('dialog', { name: 'Send a card' });
@@ -467,7 +467,7 @@ try {
   await dialog.waitFor({ state: 'detached' });
 
   // ---------- A tile played: its card is listed too, under its own heading ----------
-  await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $200"]').click();
   assert(await until(() => !!last()?.clue), 'Movies $200 opens');
   await host.keyboard.press('Escape');
   assert(await until(() => !last()?.clue), 'and closes, back to the board');
@@ -512,7 +512,7 @@ try {
   section('Two windows');
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   dialog = await openSend();
   assert(await dialog.getByRole('radio', { name: 'One made in the editor' }).isChecked(), 'two windows, a game with 🤫 Cards: One made in the editor is the first choice');
   const wildOption = await dialog.locator('option[value="saved:sc_wild"]').innerText();
@@ -584,13 +584,13 @@ try {
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await editorReady(host);
-  const roomBar = host.locator('.status-bar .room-bar');
+  const roomBar = statusBarIn(host).locator('.room-bar');
   await roomBar.getByRole('button', { name: '⏹ Close the room…' }).click();
   // (Bob's phone is in it: asked first.)
-  await host.locator('.status-bar').getByRole('alertdialog', { name: 'Close the room?' }).getByRole('button', { name: 'Close the room' }).click();
+  await statusBarIn(host).getByRole('alertdialog', { name: 'Close the room?' }).getByRole('button', { name: 'Close the room' }).click();
   await roomBar.waitFor({ state: 'detached' });
   await host.evaluate(() => (window.__seen.length = 0));
-  await host.locator('.status-bar .kept').getByRole('button', { name: 'Resume game' }).click();
+  await statusBarIn(host).locator('.kept').getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await host.locator('.play .panel').waitFor();
   dialog = await openSend();

@@ -6,7 +6,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, launchChromium, openGameFile, assert } from './helpers.mjs';
+import { appFile, failureShots, launchChromium, openGameFile, assert, boardIn, stageBoxIn, statusLineIn } from './helpers.mjs';
 
 const url = pathToFileURL(appFile()).href;
 const browser = await launchChromium();
@@ -47,15 +47,15 @@ try {
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.locator('.mode', { hasText: 'Single window' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  await page.locator('.stage-box .board .tile[data-clue="qa"]').click();
-  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await boardIn(stageBoxIn(page)).locator('.tile[data-clue="qa"]').click();
+  await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
 
   // The stage's place in the game at each size (what a capture of the stage crops to).
   const stageAt = {};
   for (const [w, h] of SIZES) {
     await page.setViewportSize({ width: w, height: h });
     await page.waitForTimeout(200);
-    stageAt[w] = await rect(page.locator('.stage-box .stage'));
+    stageAt[w] = await rect(stageBoxIn(page).locator('.stage'));
   }
 
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -86,7 +86,7 @@ try {
   // The question focuses the picked mode a frame after it shows; Enter before that would go nowhere.
   await page.waitForFunction(() => document.activeElement?.matches('.mode-ask .mode.on'));
   await page.keyboard.press('Enter');
-  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
   assert(true, 'and Enter goes back into the game');
 
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));

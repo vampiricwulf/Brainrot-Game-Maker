@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, answerAsk, dragBy, editorReady, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerAsk, dragBy, editorReady, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer, assert, launchChromium, section, hostPanelIn, roundTabsIn, stageBoxIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -21,7 +21,7 @@ page.on('dialog', (d) => {
   return d.accept();
 });
 const where = () => page.locator('.rh .where').innerText();
-const toast = () => page.locator('.toast').innerText();
+const toast = () => toastsIn(page).innerText();
 
 /** A big world (20×20 screens) from a file, with four players and an audience window. */
 async function bigWorld() {
@@ -104,7 +104,7 @@ async function bigWorld() {
   const area = await aud.locator('.rpg .play-area').boundingBox();
   assert(strip && area && area.y + area.height <= strip.y + 1 && area.height > 500, `the stats strip doesn’t cover the screen (screen ends at ${Math.round(area.y + area.height)}, strip starts at ${Math.round(strip.y)})`);
   const cues = (p) => p.evaluate(() => window.__plays.filter((s) => s.includes('#')).map((s) => s.split('#').pop()));
-  const said = () => host.locator('.toast').innerText();
+  const said = () => toastsIn(host).innerText();
   const there = () => host.locator('.rh .where').innerText();
 
   // The minimap: the cells around the party, big enough to read, and one Tab stop (the arrow keys go between screens).
@@ -253,7 +253,7 @@ async function bigWorld() {
   assert((await heapPick.innerText()) === '✋ Bob picks up 🪙10', `with nobody picked, a pile goes to the first one here with room (${await heapPick.innerText()})`);
   await heap.locator('.who').getByRole('button', { name: 'Ann' }).click();
   await heapPick.click();
-  await host.locator('.toast', { hasText: 'Ann can’t carry any more Gold' }).waitFor();
+  await toastsIn(host, { hasText: 'Ann can’t carry any more Gold' }).waitFor();
   assert(await heap.isVisible(), 'picking up with a full purse says so and keeps the card open');
   await host.keyboard.press('Escape');
   await heap.waitFor({ state: 'detached' });
@@ -272,7 +272,7 @@ async function bigWorld() {
   await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click();
   // With its card open, its menu (here from the stage: the list gives way to the card) shows the Delete key on 🗑 Remove
   // (the key takes off the object whose card is open).
-  await host.locator('.stage-box .rpg .hit[data-object="el_cat"]').click({ button: 'right' });
+  await stageBoxIn(host).locator('.rpg .hit[data-object="el_cat"]').click({ button: 'right' });
   const catOpenMenu = await menuLines(host);
   await host.keyboard.press('Escape');
   await openMenu(host).waitFor({ state: 'detached' });
@@ -284,7 +284,7 @@ async function bigWorld() {
   assert(/answer \(hidden from viewers\)/i.test(await hostInfo.innerText()) && !(await aud.locator('body').innerText()).includes('A piano'), 'a question pop-up shows the host its answer before it’s revealed, and not viewers');
   // Its blue button is 👁 Reveal answer (no copy in its box), and its box keeps ✕ Close to put it away unseen. The box is
   // beside the pad, right over the card of the object it came from.
-  const popBox = host.locator('.panel [data-tool-controls]');
+  const popBox = hostPanelIn(host).locator('[data-tool-controls]');
   assert((await host.locator('.rh .side > [data-tool-controls] + div [role="dialog"][aria-label="Object: Riddle cat"]').count()) === 1, 'the pop-up’s box is beside the pad, over the Riddle cat’s card');
   assert(
     (await flowIs(host, '👁 Reveal answer')) && (await popBox.getByRole('button', { name: '✕ Close', exact: true }).count()) === 1 && (await popBox.getByRole('button', { name: '👁 Reveal answer' }).count()) === 0,
@@ -443,12 +443,12 @@ async function boxSelect() {
       await aud.waitForLoadState('domcontentloaded');
     }
     await p.getByRole('button', { name: 'Start game ▶' }).click();
-    await p.locator('.stage-box .rpg .avatar[data-player-id="p2"]').waitFor();
+    await stageBoxIn(p).locator('.rpg .avatar[data-player-id="p2"]').waitFor();
     return { p, aud };
   }
   /** A point of the screen on the stage (1920×1080) in the window. */
   const at = async (p, x, y) => {
-    const r = await p.locator('.stage-box .rpg .pane').first().boundingBox();
+    const r = await stageBoxIn(p).locator('.rpg .pane').first().boundingBox();
     return { x: r.x + (x * r.width) / 1920, y: r.y + (y * r.height) / 1080 };
   };
   /** Press at one point of the screen, move to another, and (unless `hold`) let go. */
@@ -462,9 +462,9 @@ async function boxSelect() {
   const line = (p) => p.locator('.rh [data-rpg-sel]');
   const says = (p, words) => line(p).filter({ hasText: words }).waitFor();
   const again = (p) => line(p).getByRole('button', { name: '↩ Select them again' });
-  const av = (p, id) => p.locator(`.stage-box .rpg .avatar[data-player-id="${id}"]`);
-  const hitBox = (p, id) => p.locator(`.stage-box .rpg .hit[data-object="${id}"]`).boundingBox();
-  const undoSays = (p) => p.locator('.panel .fixed').getByRole('button', { name: '↶ Undo' }).getAttribute('title');
+  const av = (p, id) => stageBoxIn(p).locator(`.rpg .avatar[data-player-id="${id}"]`);
+  const hitBox = (p, id) => stageBoxIn(p).locator(`.rpg .hit[data-object="${id}"]`).boundingBox();
+  const undoSays = (p) => hostPanelIn(p).locator('.fixed').getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   /** Ann (p1) and Bob (p2) stand on the rug, side by side, done gliding there. */
   const RUG = [['p1', 680], ['p2', 840]];
   async function settled(p) {
@@ -491,14 +491,14 @@ async function boxSelect() {
     // ---- Two windows ----
     const { p: host, aud } = await playIt(ctx, true);
     await standOnRug(host);
-    assert((await host.locator('.stage-box .rpg .hit[data-object="el_spawn"]').count()) === 1, 'two windows: the host’s copy draws the arrival point (viewers never see it)');
+    assert((await stageBoxIn(host).locator('.rpg .hit[data-object="el_spawn"]').count()) === 1, 'two windows: the host’s copy draws the arrival point (viewers never see it)');
     await box(host, [560, 280], [1420, 900], { hold: true });
     // Live: the rings light up as it's drawn, on the host's copy only.
-    await host.locator('.stage-box .rpg .hit.picked[data-object="el_sword"]').waitFor();
-    const mid = { band: await host.locator('.stage-box .rpg .band.mirror').count(), rings: await host.locator('.stage-box .rpg .avatar.picked').count(), viewers: await aud.locator('.band, .picked, .outlined').count() };
+    await stageBoxIn(host).locator('.rpg .hit.picked[data-object="el_sword"]').waitFor();
+    const mid = { band: await stageBoxIn(host).locator('.rpg .band.mirror').count(), rings: await stageBoxIn(host).locator('.rpg .avatar.picked').count(), viewers: await aud.locator('.band, .picked, .outlined').count() };
     await host.mouse.up();
     await says(host, 'Selected: Ann, Bob · Sword —');
-    const ringed = await host.locator('.stage-box .rpg .hit.picked').evaluateAll((l) => l.map((e) => e.dataset.object));
+    const ringed = await stageBoxIn(host).locator('.rpg .hit.picked').evaluateAll((l) => l.map((e) => e.dataset.object));
     assert(
       mid.band === 1 && mid.rings === 2 && !mid.viewers && ringed.join() === 'el_sword',
       `two windows: a box picks Ann, Bob and the Sword, not the Lava under them, the door beside them or the arrival point; a yellow box and live rings on the host’s copy, nothing for viewers (${JSON.stringify(mid)}, ${ringed})`,
@@ -506,7 +506,7 @@ async function boxSelect() {
     // Shift+drag from an empty spot adds (the Gold pile); Shift+click adds what a box never catches (the door).
     await host.keyboard.down('Shift');
     await box(host, [1450, 200], [1700, 450]);
-    await host.locator('.stage-box .rpg .hit[data-object="el_door"]').click();
+    await stageBoxIn(host).locator('.rpg .hit[data-object="el_door"]').click();
     await host.keyboard.up('Shift');
     await says(host, 'Selected: Ann, Bob · Sword, Gold pile, Door —');
     assert(true, 'Shift+drag from an empty spot adds to what’s selected, and Shift+click adds the door a box leaves out');
@@ -525,7 +525,7 @@ async function boxSelect() {
     await host.keyboard.press('Escape');
     await host.mouse.up();
     await says(host, 'Selected: Ann, Bob · Sword, Gold pile, Door —');
-    assert((await host.locator('.stage-box .rpg .band').count()) === 0, 'Esc while drawing a box puts back what was selected (the box had replaced it live)');
+    assert((await stageBoxIn(host).locator('.rpg .band').count()) === 0, 'Esc while drawing a box puts back what was selected (the box had replaced it live)');
 
     // ---- One window ----
     await aud.close();
@@ -533,8 +533,8 @@ async function boxSelect() {
     await host.keyboard.press('Escape');
     await again(host).waitFor();
     await box(host, [560, 280], [1420, 900], { hold: true });
-    await host.locator('.stage-box .rpg .hit.outlined[data-object="el_sword"]').waitFor();
-    const held = { band: await host.locator('.stage-box .rpg .band:not(.mirror)').count(), outlined: await host.locator('.stage-box .rpg .outlined').count(), rings: await host.locator('.stage-box .rpg .picked').count() };
+    await stageBoxIn(host).locator('.rpg .hit.outlined[data-object="el_sword"]').waitFor();
+    const held = { band: await stageBoxIn(host).locator('.rpg .band:not(.mirror)').count(), outlined: await stageBoxIn(host).locator('.rpg .outlined').count(), rings: await stageBoxIn(host).locator('.rpg .picked').count() };
     // (From the moment it's let go: how long the outlines stay.)
     await host.evaluate(() => {
       const t0 = performance.now();
@@ -573,14 +573,14 @@ async function boxSelect() {
     // Pressing one of a selected group outlines it all before it moves; one Ctrl+Z puts the whole move back.
     await again(host).click();
     await says(host, 'Selected: Ann, Bob —');
-    await host.locator('.stage-box .rpg .hit[data-object="el_sword"]').click({ modifiers: ['Shift'] });
+    await stageBoxIn(host).locator('.rpg .hit[data-object="el_sword"]').click({ modifiers: ['Shift'] });
     await says(host, 'Selected: Ann, Bob · Sword —');
     const sword = await hitBox(host, 'el_sword');
     const ann = await av(host, 'p1').boundingBox();
     await host.mouse.move(ann.x + ann.width / 2, ann.y + ann.height / 2);
     await host.mouse.down();
-    await host.locator('.stage-box .rpg .outlined').nth(2).waitFor();
-    const pressed = await host.locator('.stage-box .rpg .outlined').count();
+    await stageBoxIn(host).locator('.rpg .outlined').nth(2).waitFor();
+    const pressed = await stageBoxIn(host).locator('.rpg .outlined').count();
     await host.mouse.move(ann.x + ann.width / 2 + 60, ann.y + ann.height / 2 - 40, { steps: 6 });
     await host.mouse.up();
     await host.waitForFunction(() => document.querySelector('.panel .fixed button[title^="Undo: Move Ann, Bob & Sword"]'));
@@ -615,12 +615,12 @@ async function boxSelect() {
     // A big object dragged alone says, once a game, how to lock it or box over it.
     await host.keyboard.press('Escape');
     await box(host, [200, 900], [260, 900]);
-    await host.locator('.toast', { hasText: 'Moved Lava · 🔒 Lock it in the editor, or Alt+drag to draw a box over it' }).waitFor();
+    await toastsIn(host, { hasText: 'Moved Lava · 🔒 Lock it in the editor, or Alt+drag to draw a box over it' }).waitFor();
     await host.keyboard.press('Control+z');
-    await host.locator('.toast', { hasText: 'Undid Move Lava' }).waitFor();
+    await toastsIn(host, { hasText: 'Undid Move Lava' }).waitFor();
     await box(host, [200, 900], [260, 900]);
     await host.waitForFunction(() => document.querySelector('.panel .fixed button[title^="Undo: Move Lava"]'));
-    assert(!(await host.locator('.toast', { hasText: 'Lock it' }).count()), 'the big-object hint shows the first time only');
+    assert(!(await toastsIn(host, { hasText: 'Lock it' }).count()), 'the big-object hint shows the first time only');
     await host.keyboard.press('Control+z');
     // On the Meadow, a drag on its screen-sized picture draws a box, moves nothing and leaves no step.
     await host.getByRole('button', { name: 'Go East', exact: true }).click();
@@ -628,7 +628,7 @@ async function boxSelect() {
     const step = await undoSays(host);
     const pic = await hitBox(host, 'el_bg');
     await box(host, [1200, 300], [1600, 600], { hold: true });
-    const drawn = await host.locator('.stage-box .rpg .band').count();
+    const drawn = await stageBoxIn(host).locator('.rpg .band').count();
     await host.mouse.up();
     assert(
       drawn === 1 && (await undoSays(host)) === step && JSON.stringify(await hitBox(host, 'el_bg')) === JSON.stringify(pic) && !(await host.getByRole('dialog', { name: 'Object: Meadow picture' }).count()),
@@ -723,7 +723,7 @@ try {
   await page.getByRole('button', { name: '＋ Add shop' }).click();
 
   // The RPG round: its world starts with one screen; add one to the east.
-  await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
+  await roundTabsIn(page, { hasText: 'Adventure' }).click();
   {
     // SLIDES-2: past the right and bottom edges, a ＋ column and row; a click (or the arrows past the edge and Enter)
     // grows the map with a screen there, one step.
@@ -863,7 +863,7 @@ try {
   // A screen has no slide tabs: 📋 Copy screen's note says where it pastes (not “by the slide tabs”), in a screen's words.
   await page.getByRole('button', { name: 'More for this screen' }).click();
   await page.getByRole('menu').getByRole('menuitem', { name: '📋 Copy screen' }).click();
-  const slideCopied = (await page.locator('.toast', { hasText: 'Screen copied' }).last().innerText()).trim();
+  const slideCopied = (await toastsIn(page, { hasText: 'Screen copied' }).last().innerText()).trim();
   assert(slideCopied === 'Screen copied: on another one, right-click an empty spot › 📋 Paste over this screen', `on a screen, 📋 Copy screen says where to paste it (${slideCopied})`);
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
@@ -888,7 +888,7 @@ try {
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
   await page.getByRole('button', { name: 'Delete shop' }).nth(1).click();
-  await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
+  await roundTabsIn(page, { hasText: 'Adventure' }).click();
   await page.getByRole('button', { name: 'Screen Start' }).click();
   await page.getByRole('button', { name: '✎ Edit screen' }).click();
   const canvasBox = await page.locator('.canvas').boundingBox();
@@ -911,7 +911,7 @@ try {
     'adding the Mini quest to a game with an adventure keeps ▸ Advanced shut: “Its own world (separate from Adventure)”',
   );
   await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
-  await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
+  await roundTabsIn(page, { hasText: 'Adventure' }).click();
   // A character's Shop box makes a shop right there, and says where shops are set up.
   await page.getByRole('button', { name: 'Screen Start' }).click();
   await page.getByRole('button', { name: '✎ Edit screen' }).click();
@@ -930,7 +930,7 @@ try {
   assert((await page.locator('[data-action]').count()) === 2, 'with a roll and an HP −1 button for the fight');
   // Leaving for 📊 Stats & Items and coming back opens the same screen again.
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
-  await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
+  await roundTabsIn(page, { hasText: 'Adventure' }).click();
   assert(await page.getByRole('button', { name: '◀ Back to the map' }).isVisible(), 'coming back to the round opens the screen being edited');
   // (The game below has neither of them.)
   for (const name of ['Enemy', 'Old Man']) {
@@ -951,17 +951,17 @@ try {
   const yes = leaveAnswer(page);
   if (await yes.isVisible()) await yes.click();
   // The round opens on its title card. The pad and the minimap don't move the party under it (nobody would see it).
-  await page.locator('.stage-box .title-card').waitFor();
+  await stageBoxIn(page).locator('.title-card').waitFor();
   await page.getByRole('button', { name: 'Go East', exact: true }).click();
-  await page.locator('.toast', { hasText: 'Start the round first' }).waitFor();
+  await toastsIn(page, { hasText: 'Start the round first' }).waitFor();
   await page.locator('.rh .mapbox .cell[aria-label="Overworld · Screen B1"]').dblclick();
-  assert((await where()).includes('Start') && (await page.locator('.stage-box .title-card').count()) === 1, `under the title card the pad and a double-click on the minimap don’t move the party (${await where()})`);
+  assert((await where()).includes('Start') && (await stageBoxIn(page).locator('.title-card').count()) === 1, `under the title card the pad and a double-click on the minimap don’t move the party (${await where()})`);
   await page.getByRole('button', { name: 'Go East', exact: true }).click();
-  await page.locator('.toast', { hasText: 'Start the round first' }).waitFor();
+  await toastsIn(page, { hasText: 'Start the round first' }).waitFor();
   // Clicking it goes on (and puts the pad's hint away).
-  await page.locator('.stage-box .title-card').click();
+  await stageBoxIn(page).locator('.title-card').click();
   await page.locator('.rh').waitFor();
-  assert((await page.locator('.toast', { hasText: 'Start the round first' }).count()) === 0, 'starting the round puts the pad’s “Start the round first” away');
+  assert((await toastsIn(page, { hasText: 'Start the round first' }).count()) === 0, 'starting the round puts the pad’s “Start the round first” away');
   assert((await where()).includes('Start'), `the party starts on the start screen (${await where()})`);
   assert((await page.locator('.rpg .avatar').count()) === 2, 'both avatars are on the stage');
   assert((await page.locator('.rpg .strip .card').count()) === 2, 'the stats strip shows every player');
@@ -989,7 +989,7 @@ try {
   assert(true, 'right-click ＋ Text here… asks in the host panel, then adds the text and opens its card');
   await spot.getByRole('button', { name: '🗑 Remove' }).click();
   // The stage is a Tab stop: Shift+F10 there opens the round's own menu, or the selected player's.
-  await page.locator('.stage-box .rpg[tabindex="0"]').focus();
+  await stageBoxIn(page).locator('.rpg[tabindex="0"]').focus();
   await page.keyboard.press('Shift+F10');
   const rpgMenu = await menuLines(page);
   assert(rpgMenu.includes('🗺 Full map (jump anywhere) · J') && rpgMenu.includes('🤝 Regroup · G'), `Shift+F10 on the stage: the round’s menu (${rpgMenu.join(' | ')})`);
@@ -1065,7 +1065,7 @@ try {
   const full = page.getByRole('dialog', { name: 'Full map' });
   await full.waitFor();
   // (One window: over the host panel under the stage, never the stage: the host's map names screens not found yet.)
-  const [fb, sb] = [await full.boundingBox(), await page.locator('.stage-box').boundingBox()];
+  const [fb, sb] = [await full.boundingBox(), await stageBoxIn(page).boundingBox()];
   assert(fb.y >= sb.y + sb.height - 1, `one window: the full map opens over the host panel, not the stage (map at y ${Math.round(fb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`);
   const [tb, xb] = [await full.locator('.modal-title').boundingBox(), await full.getByRole('button', { name: 'Close' }).boundingBox()];
   assert(xb.y < tb.y + tb.height && xb.x + xb.width > fb.x + fb.width - 40, `its ✕ stays at the top right, on the title's line (✕ at ${Math.round(xb.x)},${Math.round(xb.y)}; title at y ${Math.round(tb.y)})`);
@@ -1113,7 +1113,7 @@ try {
   await page.getByRole('button', { name: 'Edit Pick a player for this spin' }).click();
   // (From the tools row: its box's Spin!; the blue button over it is Next ▶, which only puts it away.)
   assert(await flowIs(page, 'Next ▶'), 'a wheel from the tools row in an RPG round: the blue button is Next ▶');
-  await stepButton(page.locator('.panel [data-tool-controls]'), '🎡 Spin!').click();
+  await stepButton(hostPanelIn(page).locator('[data-tool-controls]'), '🎡 Spin!').click();
   await page.waitForFunction(() => document.querySelectorAll('.stage .many .chip').length === 2, null, { timeout: 12000 });
   assert(true, 'both wheels land, each showing its result');
   assert((await page.locator('.tc .result').innerText()).includes(' · '), 'the host sees both results');
@@ -1162,7 +1162,7 @@ try {
   // The step is named in words (Ctrl+Z says it), and Ctrl+Shift+Z makes it a zone again.
   await lava.locator('.cls', { hasText: 'Zone' }).waitFor();
   await page.keyboard.press('Control+z');
-  await page.locator('.toast', { hasText: /^Undid Lava: Zone$/ }).waitFor();
+  await toastsIn(page, { hasText: /^Undid Lava: Zone$/ }).waitFor();
   await page.keyboard.press('Control+Shift+z');
   await lava.locator('.cls', { hasText: 'Zone' }).waitFor();
   await lava.getByRole('button', { name: '👁 Reveal to viewers' }).click();
@@ -1473,7 +1473,7 @@ try {
   await page.getByRole('dialog', { name: 'Object: Lava' }).waitFor();
   await page.keyboard.press('Delete');
   assert(
-    !(await page.getByRole('dialog', { name: 'Object: Lava' }).count()) && (await page.locator('.toast').innerText()) === 'Removed Lava · Ctrl+Z brings it back',
+    !(await page.getByRole('dialog', { name: 'Object: Lava' }).count()) && (await toastsIn(page).innerText()) === 'Removed Lava · Ctrl+Z brings it back',
     'Delete takes the object whose card is open off the screen',
   );
   await page.keyboard.press('Control+z');
@@ -1509,7 +1509,7 @@ try {
     p.on('pageerror', (e) => errors.push(`[1280 screen] ${e.message}`));
     await p.goto(pathToFileURL(file).href);
     await p.getByRole('button', { name: /Try a sample game/ }).first().click();
-    await p.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
+    await roundTabsIn(p, { hasText: 'Adventure' }).click();
     // (Map settings unfolded, so the map is further down the page.)
     await p.locator('summary', { hasText: 'Map settings' }).click();
     const scrolled = await p.locator('main').evaluate((m) => ((m.scrollTop = 220), m.scrollTop));

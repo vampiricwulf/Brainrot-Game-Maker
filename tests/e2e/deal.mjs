@@ -14,7 +14,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, failureShots, assert, sleep, launchChromium, until } from './helpers.mjs';
+import { appFile, flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, failureShots, assert, sleep, launchChromium, until, boardIn, hostPanelIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -190,7 +190,7 @@ try {
   };
   for (const s of ['Ann', 'Bob', 'Cat', 'Dan']) await join(s);
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   const cards = () => last()?.cards ?? [];
   const cardsOn = (p) => p.locator('.card').count();
@@ -198,14 +198,14 @@ try {
   // ---------- Two windows: the audience window, watched until Who was who ----------
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   const offStream = async (p, name, when) => {
     const found = await shownOf(p, SECRETS);
     assert(!found.length, `${when}: ${name} holds no card’s words or location${found.length ? ` (found ${found.join(', ')})` : ''}`);
   };
 
   // ---------- 🎭 Deal…: Bob picked as the spy, dealt, nothing sent ----------
-  const tools = host.locator('.panel .toolsrow');
+  const tools = toolsRowIn(host);
   // (🎭 Deal… says how the deal stands once there's one: “🎭 Odd one out · sent”.)
   const dealTool = tools.locator('[data-deal-tool]');
   const openDeal = async () => {
@@ -326,12 +326,12 @@ try {
   assert((await dialog.locator('[data-deal-group="phones"]').getByRole('button').allInnerTexts()).map((t) => t.trim()).join() === '📤 Send', 'taken back: 📤 Send in its place, in On phones');
   assert(await until(async () => !(await cardsOn(phones.Bob)) && !(await cardsOn(phones.Ann))), 'the phones drop them');
   await dialog.locator('[data-deal-reveal]').click();
-  await host.locator('.stage-box [data-who-was-who]').waitFor();
-  assert((await flat(host.locator('.stage-box [data-who-was-who]'))).includes('Bob Spy'), 'Who was who after the cards came back: on the stage');
+  await stageBoxIn(host).locator('[data-who-was-who]').waitFor();
+  assert((await flat(stageBoxIn(host).locator('[data-who-was-who]'))).includes('Bob Spy'), 'Who was who after the cards came back: on the stage');
 
   // ---------- The phones full: a tile's card and a partner clue's say why they can't go ----------
   await dialog.locator('[data-deal-hide]').click();
-  await host.locator('.stage-box [data-who-was-who]').waitFor({ state: 'detached' });
+  await stageBoxIn(host).locator('[data-who-was-who]').waitFor({ state: 'detached' });
   // (Who was who showed the location on stream, as it should: the host page is watched again from here.)
   await forgetSeen(host);
   await host.keyboard.press('Escape');
@@ -366,8 +366,8 @@ try {
   const fullLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…, or take back another one';
   await host.keyboard.press('p');
   await host.keyboard.press('1');
-  await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
-  const tilePart = host.locator('.panel [data-tile-cards]');
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $200"]').click();
+  const tilePart = hostPanelIn(host).locator('[data-tile-cards]');
   await tilePart.waitFor();
   assert(await tilePart.getByRole('button', { name: 'Send card 1' }).isDisabled(), 'a tile’s card can’t go');
   assert((await tilePart.locator('[data-cards-full]').innerText()) === fullLine, `and its panel says why, in sight: “${fullLine}”`);
@@ -375,8 +375,8 @@ try {
   await host.keyboard.press('Escape');
   await host.keyboard.press('p');
   await host.keyboard.press('1');
-  await host.locator('.stage-box .tile[aria-label^="Movies for $400"]').click();
-  const partner = host.locator('.panel [data-partner-panel]');
+  await stageBoxIn(host).locator('.tile[aria-label^="Movies for $400"]').click();
+  const partner = hostPanelIn(host).locator('[data-partner-panel]');
   await partner.getByText('Ann picked it.').waitFor();
   await host.keyboard.press('3');
   await mainButton(host).click();

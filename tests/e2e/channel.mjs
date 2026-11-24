@@ -4,7 +4,7 @@
 // desktop app (http://tauri.localhost), not file://.
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
-import { appFile, addClassicRounds, playWithPlayers, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, playWithPlayers, failureShots, assert, launchChromium, boardIn, boardTilesIn, hostPanelIn, statusBarIn } from './helpers.mjs';
 
 const file = appFile();
 const html = readFileSync(file);
@@ -36,13 +36,13 @@ try {
   await playWithPlayers(host, 2);
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
-  await host.locator('.board .tile').first().waitFor();
+  await boardTilesIn(boardIn(host)).first().waitFor();
 
   // An audience page with no opener (like a window the desktop app creates itself).
   const aud = await context.newPage();
   aud.on('pageerror', (e) => errors.push('[audience] ' + e.message));
   await aud.goto(base + '#audience');
-  await aud.locator('.board .header .title', { hasText: 'Channel Test' }).waitFor({ timeout: 8000 });
+  await boardIn(aud).locator('.header .title', { hasText: 'Channel Test' }).waitFor({ timeout: 8000 });
   assert(true, 'audience connects over the BroadcastChannel and shows the board');
   // A only opens or focuses: with an audience already connected over the channel, it opens no second window.
   let extraPages = 0;
@@ -52,7 +52,7 @@ try {
   await host.waitForTimeout(500);
   assert(extraPages === 0, 'A opens no second audience window while one is connected over the channel');
 
-  await host.locator('.board .tile').first().click();
+  await boardTilesIn(boardIn(host)).first().click();
   await aud.locator('.full').waitFor();
   assert(true, 'audience follows the host into a clue');
   await host.keyboard.press('1');
@@ -60,7 +60,7 @@ try {
   await aud.getByText('+$200').waitFor();
   assert(true, 'score pops reach the audience over the channel');
   await host.keyboard.press('Escape');
-  await aud.locator('.board .tile.used').first().waitFor();
+  await boardIn(aud).locator('.tile.used').first().waitFor();
   assert(true, 'used tile shows in the audience window');
   // A file dropped on the audience window is ignored: the browser would open it in place of the stream.
   const dropIgnored = await aud.evaluate(() => {
@@ -103,7 +103,7 @@ try {
     };
   });
   await hostR.goto(base);
-  await hostR.locator('.status-bar [data-audience-open]').waitFor({ timeout: 8000 });
+  await statusBarIn(hostR).locator('[data-audience-open]').waitFor({ timeout: 8000 });
   assert(true, 'a new host page finds the audience window left open');
   // A tab opened alongside says taking over closes that window: found before this page held the lock, it counts.
   const other = await context.newPage();
@@ -118,7 +118,7 @@ try {
   await other.close();
   await hostR.getByRole('button', { name: 'Resume game' }).click();
   await hostR.locator('.mode-ask .mode', { hasText: 'Separate audience window' }).click();
-  await aud.locator('.board .header .title', { hasText: 'Channel Test' }).waitFor({ timeout: 8000 });
+  await boardIn(aud).locator('.header .title', { hasText: 'Channel Test' }).waitFor({ timeout: 8000 });
   await hostR.waitForTimeout(800);
   assert(rPopups === 0, 'resuming in the audience window uses that one: the game is back on it, no new window');
   await hostR.close({ runBeforeUnload: true });
@@ -133,7 +133,7 @@ try {
   await host2.getByRole('button', { name: 'Resume game' }).click();
   const [aud2] = await Promise.all([host2.waitForEvent('popup'), host2.locator('.mode-ask .mode', { hasText: 'Separate audience window' }).click()]);
   aud2.on('pageerror', (e) => errors.push('[audience 2] ' + e.message));
-  await aud2.locator('.board').waitFor();
+  await boardIn(aud2).waitFor();
   const clickOnce = host2.getByText('Click the audience window once');
   // (On a busy machine the window can say it may play sound before the ask shows: then there's nothing to click.)
   const asked = await clickOnce.waitFor({ timeout: 5000 }).then(() => true, () => false);
@@ -151,10 +151,10 @@ try {
   let popups = 0;
   host2.on('popup', () => popups++);
   await host2.keyboard.press('Enter');
-  await host2.locator('.panel').waitFor();
+  await hostPanelIn(host2).waitFor();
   await host2.waitForTimeout(1200);
   assert(popups === 0 && !aud2.isClosed(), 'Enter resumes in it: the audience window from before the reload is found again (no second window)');
-  assert((await aud2.locator('.board').count()) === 1, 'and shows the game');
+  assert((await boardIn(aud2).count()) === 1, 'and shows the game');
   assert((await clickOnce.count()) === 0, 'it says it may play sound: no false "Click the audience window once"');
 
   // A page the host opened (as from a media link) that says hello as the scores window, with no key or a wrong one,
@@ -179,7 +179,7 @@ try {
         w.document.body.append(s);
       }),
   );
-  const closeScores = host2.locator('.panel button[aria-label="Close the scores window"]');
+  const closeScores = hostPanelIn(host2).locator('button[aria-label="Close the scores window"]');
   assert(foreign.length === 0 && (await closeScores.count()) === 0, `a page the host opened that says hello as the scores window gets nothing (${foreign.join(', ')})`);
   // The real scores window (Shift+A), left open while the host page reloads, is taken back: it knows the page's key.
   const [sc] = await Promise.all([host2.waitForEvent('popup'), host2.keyboard.press('Shift+A')]);
@@ -190,7 +190,7 @@ try {
   await host2.locator('.mode-ask .mode.on').waitFor();
   await host2.waitForFunction(() => document.activeElement?.classList.contains('on'));
   await host2.keyboard.press('Enter');
-  await host2.locator('.panel').waitFor();
+  await hostPanelIn(host2).waitFor();
   await closeScores.waitFor();
   await sc.locator('.strip .plate').first().waitFor();
   assert(true, 'a scores window left open while the host page reloads is taken back, and shows the scores');
@@ -203,8 +203,8 @@ try {
   await host2.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
   await host2.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await aud2.locator('.cover-card', { hasText: 'Be right back' }).waitFor();
-  assert(!aud2.isClosed() && (await aud2.locator('.board').count()) === 0, 'Keep & leave: the audience window stays up, under the cover card');
-  const audItem = host2.locator('.status-bar [data-audience-open]');
+  assert(!aud2.isClosed() && (await boardIn(aud2).count()) === 0, 'Keep & leave: the audience window stays up, under the cover card');
+  const audItem = statusBarIn(host2).locator('[data-audience-open]');
   await audItem.waitFor();
   assert((await audItem.innerText()).includes('“Be right back”'), `the bar over the editor says the audience window is up, on “Be right back” (${await audItem.innerText()})`);
   // ▶ Play and ◀ Back to editor: still there.
@@ -214,7 +214,7 @@ try {
   await host2.waitForTimeout(300);
   assert(!aud2.isClosed() && (await aud2.locator('.cover-card').count()) === 1, '◀ Back to editor keeps it too');
   // The kept game discarded: the break is over, viewers see "Starting soon" for the next game.
-  await host2.locator('.status-bar .kept').getByRole('button', { name: 'Discard' }).click();
+  await statusBarIn(host2).locator('.kept').getByRole('button', { name: 'Discard' }).click();
   await host2.getByRole('alertdialog').getByRole('button', { name: 'Discard' }).click();
   await aud2.locator('.cover-card').waitFor({ state: 'detached' });
   assert((await aud2.locator('.soon-text').count()) === 1 && (await audItem.innerText()).includes('“Starting soon”'), 'the kept game discarded: Starting soon, there and in the bar');
@@ -224,7 +224,7 @@ try {
   if (!aud2.isClosed()) await aud2.waitForEvent('close', { timeout: 3000 });
   assert(aud2.isClosed(), 'and the bar’s ✕ closes it');
   await host2.waitForTimeout(900);
-  assert((await host2.locator('.status-bar [data-audience-lost]').count()) === 0, 'closed by the host: no "Audience window closed" warning');
+  assert((await statusBarIn(host2).locator('[data-audience-lost]').count()) === 0, 'closed by the host: no "Audience window closed" warning');
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));
   console.log('Channel sync test passed');
 } catch (e) {

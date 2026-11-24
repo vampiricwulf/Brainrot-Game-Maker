@@ -77,7 +77,7 @@ async function answerDialog(action, accept) {
 /** Exit asks inline (a browser dialog would show on stream): answers Leave and returns what it asked. */
 async function exitGame() {
   await page.getByRole('button', { name: 'Exit' }).click();
-  const asked = await page.locator('.panel .confirm').innerText();
+  const asked = await confirmStrip(page).innerText();
   // The ask ignores the second half of a double-click on Exit.
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
@@ -86,7 +86,7 @@ async function exitGame() {
 
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { appFile, failureDir, failureShots, addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton, assert, launchChromium } from './helpers.mjs';
+import { appFile, failureDir, failureShots, addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton, assert, launchChromium, awardRowIn, boardIn, boardTilesIn, confirmStrip, finalControlsIn, hostPanelIn, inspectorIn, playerRowsIn, roundTabsIn, stageBoxIn, toastsIn, toolsRowIn } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -170,8 +170,8 @@ async function webm() {
   return Buffer.from(b64, 'base64');
 }
 const shot = (name) => shots && page.screenshot({ path: `${shots}/${name}.png` });
-const scoreOf = (i) => page.locator('.panel .p').nth(i).locator('.score').innerText();
-const tile = (i) => page.locator('.stage-box .board .tile').nth(i);
+const scoreOf = (i) => playerRowsIn(page).nth(i).locator('.score').innerText();
+const tile = (i) => boardTilesIn(boardIn(stageBoxIn(page))).nth(i);
 // Used tiles stay enabled in the host's view (so they can be right-clicked back), but are marked used.
 const isUsed = (i) => tile(i).evaluate((e) => e.classList.contains('used') && e.getAttribute('aria-disabled') === 'true');
 
@@ -222,12 +222,12 @@ await page.locator('.tile').first().click();
 // Select the slide's main text box on the canvas, then type in the inspector.
 async function typeOnSlide(text) {
   await page.locator('.canvas .hit').first().click();
-  await page.locator('.insp textarea').fill(text);
+  await inspectorIn(page).locator('textarea').fill(text);
 }
 await typeOnSlide('This frog became a meme');
 
 // Resize with the right-middle handle: width grows, left edge stays put.
-const posBox = page.locator('.insp section:has(h4:text("Position"))');
+const posBox = inspectorIn(page).locator('section:has(h4:text("Position"))');
 const num = (label) => posBox.getByLabel(label, { exact: true }).inputValue().then(Number);
 const [x0, w0] = [await num('X'), await num('W')];
 const h = page.locator('.frame .handle').nth(4).boundingBox();
@@ -369,10 +369,10 @@ assert(dims2.join('×') === '100×100', 'cancelled edits leave the slide image a
 await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
 [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
 await fc.setFiles({ name: 'beep.wav', mimeType: 'audio/wav', buffer: wav(3) });
-await page.locator('.insp').getByText('Autoplay when the slide appears').waitFor();
-await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
+await inspectorIn(page).getByText('Autoplay when the slide appears').waitFor();
+await inspectorIn(page).getByLabel('Autoplay when the slide appears').uncheck();
 assert(true, 'audio added with autoplay off');
-await page.locator('.insp').getByLabel('Show a speaker icon on the slide').check();
+await inspectorIn(page).getByLabel('Show a speaker icon on the slide').check();
 await page.getByRole('tab', { name: /Answer/ }).click();
 await typeOnSlide('Who is Pepe?');
 await shot('1-clue-editor');
@@ -381,7 +381,7 @@ await page.getByRole('button', { name: 'Done' }).click();
 // ---------- Slide editor ergonomics, on a scratch clue (category 4, $400) ----------
 await page.locator('.tile').nth(9).click();
 const hits = () => page.locator('.canvas .hit').count();
-const insp = page.locator('.insp');
+const insp = inspectorIn(page);
 const rect = (loc) => loc.evaluate((e) => e.getBoundingClientRect().toJSON());
 // Laptop screens: the slide fits beside the inspector, fully on screen, never over the fields above it.
 for (const [w, h] of [[1280, 720], [1366, 768], [1536, 864]]) {
@@ -713,7 +713,7 @@ assert((await page.locator('.ra .mode-chip').innerText()).includes('Final Jeopar
 const finSe = page.locator('.se');
 const finHits = () => finSe.locator('.canvas .hit').count();
 await finSe.locator('.canvas .hit').first().click();
-await finSe.locator('.insp textarea').fill('FINAL QUESTION TEXT');
+await inspectorIn(finSe).locator('textarea').fill('FINAL QUESTION TEXT');
 await finSe.locator('.canvas .hit').first().click();
 await page.keyboard.press('Control+c');
 await page.keyboard.press('Control+v');
@@ -824,19 +824,19 @@ await page.locator('.round-name').waitFor();
 assert((await page.locator('.round-name').evaluate((e) => getComputedStyle(e).color)) === 'rgb(57, 255, 20)', 'theme applies in play (neon values)');
 assert((await page.locator('.round-name').innerText()) === 'Jeopardy!', 'round intro title card shows');
 await page.locator('.title-card').click();
-await page.locator('.board .tile').first().waitFor();
+await boardTilesIn(boardIn(page)).first().waitFor();
 await page.getByRole('button', { name: /Reveal category 1 of/ }).waitFor();
 assert(true, 'clicking the title card advances the intro');
-assert((await page.locator('.board .header .title').count()) === 0, 'categories hidden until revealed');
+assert((await boardIn(page).locator('.header .title').count()) === 0, 'categories hidden until revealed');
 await page.keyboard.press('n');
-await page.locator('.board .header .title').first().waitFor();
-assert((await page.locator('.board .header .title').count()) === 1, 'N reveals one category at a time');
+await boardIn(page).locator('.header .title').first().waitFor();
+assert((await boardIn(page).locator('.header .title').count()) === 1, 'N reveals one category at a time');
 await page.getByRole('button', { name: 'Skip intro' }).click();
-assert((await page.locator('.board .header .title').count()) === 6, 'skip intro shows the full board');
+assert((await boardIn(page).locator('.header .title').count()) === 6, 'skip intro shows the full board');
 assert((await page.locator('.score-area.bar-top').count()) === 1, 'score bar sits on top per the theme');
 await shot('3-board');
 
-await page.locator('.board .tile').first().click();
+await boardTilesIn(boardIn(page)).first().click();
 await page.locator('.full').waitFor();
 assert(await page.getByText('This frog became a meme').isVisible(), 'question shown');
 assert(await page.locator('.full img').isVisible(), 'question image shown');
@@ -848,7 +848,7 @@ assert(true, 'audio plays from the host controls');
 await page.locator('.mc .item button').first().click();
 await page.waitForFunction(() => document.querySelector('.mc .item button')?.textContent?.includes('▶'));
 // The sound's icon on the slide plays and pauses it; it doesn't reveal the answer.
-const soundIcon = page.locator('.stage-box .full button.icon');
+const soundIcon = stageBoxIn(page).locator('.full button.icon');
 await soundIcon.click();
 await page.waitForFunction(() => document.querySelector('.mc .item button')?.textContent?.includes('⏸'));
 assert((await page.getByText('Who is Pepe?').count()) === 0, "clicking the slide's sound icon plays it, without revealing the answer");
@@ -866,7 +866,7 @@ assert((await scoreOf(2)) === '$0', 'third player untouched');
 // Enter in the Amount box hands the keys back: the next number selects a player instead of typing "3502".
 await page.keyboard.press('2');
 assert((await page.locator('.award input').inputValue()) === '350', 'Amount keeps 350 after Enter (the box lets go of the keys)');
-assert((await page.locator('.panel .p').nth(1).locator('.sel').getAttribute('aria-pressed')) === 'true', 'the next number key selects player 2');
+assert((await playerRowsIn(page).nth(1).locator('.sel').getAttribute('aria-pressed')) === 'true', 'the next number key selects player 2');
 await page.keyboard.press('2');
 assert(await page.getByText('Pick who answered').isVisible(), 'with nobody selected the panel explains how to score');
 await page.keyboard.press('Enter');
@@ -874,35 +874,35 @@ await page.getByText('Select a player first').waitFor();
 assert(true, 'Enter with nobody selected says why nothing happened');
 // Picking someone puts it away (then nobody again, as before).
 await page.keyboard.press('1');
-assert((await page.locator('.toast', { hasText: 'Select a player first' }).count()) === 0, 'picking a player puts “Select a player first” away');
+assert((await toastsIn(page, { hasText: 'Select a player first' }).count()) === 0, 'picking a player puts “Select a player first” away');
 await page.keyboard.press('1');
-await page.locator('.panel .p').nth(2).locator('button.wrong').click();
+await playerRowsIn(page).nth(2).locator('button.wrong').click();
 assert((await scoreOf(2)) === '−$200', 'quick wrong deducts the clue value');
 // Marked on this clue: the chip says so, and the same quick button is off (a second ✘ would take the points again).
 assert(
-  (await page.locator('.panel .p').nth(2).locator('.mark').innerText()) === '✘ −$200' && (await page.locator('.panel .p').nth(2).locator('button.wrong').isDisabled()),
+  (await playerRowsIn(page).nth(2).locator('.mark').innerText()) === '✘ −$200' && (await playerRowsIn(page).nth(2).locator('button.wrong').isDisabled()),
   'a player marked ✘ shows “✘ −$200” on their chip, and their ✘ is off for this clue',
 );
-assert(await page.locator('.panel .p').nth(1).locator('button.right').isDisabled(), 'a player already awarded on this clue can’t be ✔ again (＋ Award still can)');
+assert(await playerRowsIn(page).nth(1).locator('button.right').isDisabled(), 'a player already awarded on this clue can’t be ✔ again (＋ Award still can)');
 // One-click correct: awards the value and makes that player the picker. (Marked ✘ already: a switch, the ✘ taken back.)
-await page.locator('.panel .p').nth(2).locator('button.right').click();
+await playerRowsIn(page).nth(2).locator('button.right').click();
 assert((await scoreOf(2)) === '$200', 'quick ✔ after their ✘ switches the verdict: the clue value, the ✘ taken back');
-assert(await page.locator('.panel .p').nth(2).evaluate((e) => e.classList.contains('picker')), 'the player marked right becomes the picker (★)');
+assert(await playerRowsIn(page).nth(2).evaluate((e) => e.classList.contains('picker')), 'the player marked right becomes the picker (★)');
 await page.keyboard.press('Control+z');
 assert((await scoreOf(2)) === '−$200', 'Ctrl+Z takes the quick ✔ back');
-assert((await page.locator('.toast').innerText()).includes('Undid +$400 (Player 3, ✘ → ✔)'), 'the undo toast says what was undone');
+assert((await toastsIn(page).innerText()).includes('Undid +$400 (Player 3, ✘ → ✔)'), 'the undo toast says what was undone');
 assert(
-  (await page.locator('.toast button').count()) === 0 && (await page.locator('.toast').evaluate((e) => getComputedStyle(e).pointerEvents)) === 'none',
+  (await toastsIn(page).locator('button').count()) === 0 && (await toastsIn(page).evaluate((e) => getComputedStyle(e).pointerEvents)) === 'none',
   'the toast has no buttons and lets clicks through to the host nav row under it',
 );
 // Points were given for this clue, so it can't be cancelled back onto the board (it could be scored twice).
 assert(await flowButton(page, 'putback').isDisabled(), 'Put back (keep tile) is off once points were given');
 await page.keyboard.press('Shift+Escape');
 await page.getByText('Points were given for this clue').waitFor();
-assert((await page.locator('.stage-box .full').count()) === 1, 'Shift+Esc keeps a scored clue open and says why');
+assert((await stageBoxIn(page).locator('.full').count()) === 1, 'Shift+Esc keeps a scored clue open and says why');
 await shot('4-clue-scored');
 
-await page.locator('.stage-box .full').click();
+await stageBoxIn(page).locator('.full').click();
 await page.getByText('Who is Pepe?').waitFor();
 assert(true, 'clicking the question slide reveals the answer');
 await page.waitForTimeout(500); // past the double-click guard
@@ -913,20 +913,20 @@ await flowButton(page, 'reveal', '👁 Reveal answer').click();
 await page.getByText('Who is Pepe?').waitFor();
 assert(await flowButton(page, 'reveal', '🙈 Hide answer').isVisible(), 'reveal button turns into Hide answer');
 await page.keyboard.press('Escape');
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 assert(await isUsed(0), 'tile marked used after returning to board');
 // A used tile can be put back: right-click it on the host's board (its own menu, which says who scored it), then play it again.
 await tile(0).click({ button: 'right', force: true });
 assert((await page.getByRole('menu').innerText()).includes('Player 1 +$350, Player 2 +$350, Player 3 −$200'), 'right-clicking a used tile says who scored it');
 await page.getByRole('menuitem', { name: '↶ Reopen this tile' }).click();
 assert(!(await isUsed(0)), 'its menu puts a used tile back on the board');
-assert((await page.locator('.toast').innerText()).includes('Memes $200 is back on the board'), 'reopening says which tile came back');
+assert((await toastsIn(page).innerText()).includes('Memes $200 is back on the board'), 'reopening says which tile came back');
 await tile(0).click();
 await page.locator('.full').waitFor();
 // Player 3 picked with no points (on this play of it): ＋ Award is green, never blue, and ▦ Done ▶ board (the blue button
 // once the answer shows) asks first, offering the points there; Not yet leaves the clue as it was.
 await page.keyboard.press('3');
-assert((await page.locator('.panel .award button.primary').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'someone picked: ＋ Award is green, the blue button is still 👁 Reveal answer');
+assert((await awardRowIn(page).locator('button.primary').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'someone picked: ＋ Award is green, the blue button is still 👁 Reveal answer');
 await page.keyboard.press('r');
 await page.getByText('Who is Pepe?').waitFor();
 await mainButton(page, '▦ Done ▶ board').click();
@@ -938,27 +938,27 @@ assert(
 await goOnCheck(page, { ready: true }).waitFor();
 await notYet(page).click();
 await goOnCheck(page).waitFor({ state: 'detached' });
-assert((await page.locator('.stage-box .full').count()) === 1, 'Not yet leaves the clue open');
+assert((await stageBoxIn(page).locator('.full').count()) === 1, 'Not yet leaves the clue open');
 await page.waitForTimeout(700); // past Not yet's bounce guard: an Esc right after it does nothing
 await page.keyboard.press('Escape');
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 assert(await isUsed(0), 'the reopened tile is used again after playing it (Esc closes at once, asking nothing)');
 await tile(0).click({ force: true });
 assert((await page.locator('.full').count()) === 0, 'clicking a used tile does nothing');
 
 // YouTube tile: either it embeds, or the host gets the "Open on YouTube" fallback.
-await page.locator('.board .tile').nth(1).click();
+await boardTilesIn(boardIn(page)).nth(1).click();
 await page.locator('.mc .item').waitFor();
 await page.waitForFunction(() => /Open on YouTube|↗/.test(document.querySelector('.mc')?.textContent ?? ''), null, { timeout: 15000 });
 assert(true, 'YouTube clue offers the Open-on-YouTube button to the host');
 await shot('5b-youtube');
 await page.keyboard.press('Escape');
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 // A misclicked tile can be cancelled without using it up (Shift+Esc or the Cancel button).
 await tile(2).click();
 await page.locator('.full').waitFor();
 await page.keyboard.press('Shift+Escape');
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 assert(!(await isUsed(2)), 'Shift+Esc cancels a clue and keeps its tile playable');
 await page.getByRole('button', { name: /↶ Reopen Category 2/ }).waitFor();
 assert(true, 'the host panel offers to reopen the last tile closed');
@@ -977,21 +977,21 @@ await page.keyboard.press('Enter');
 await page.waitForFunction(() => !document.querySelectorAll('.stage-box .board .tile')[0].classList.contains('used'));
 assert((await isUsed(1)) && (await tile(0).evaluate((b) => b === document.activeElement)), 'Enter puts the tile picked back, and only that one; the keys go to that tile (not ↶ Reopen a tile…)');
 await page.keyboard.press('1');
-assert((await page.locator('.panel .p').nth(0).locator('.sel').getAttribute('aria-pressed')) === 'true', 'number keys work right after reopening from the menu');
+assert((await playerRowsIn(page).nth(0).locator('.sel').getAttribute('aria-pressed')) === 'true', 'number keys work right after reopening from the menu');
 await page.keyboard.press('1');
 await tile(0).click();
 await page.locator('.full').waitFor();
 await page.keyboard.press('Escape');
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 
 // Putting a tile back is a step too, in order with score changes: Ctrl+Z takes back both reopens, then the score.
 await page.keyboard.press('Control+z');
-assert((await page.locator('.toast').innerText()).includes('Undid Memes $200 back on the board'), 'Ctrl+Z first takes back the tile reopened last');
+assert((await toastsIn(page).innerText()).includes('Undid Memes $200 back on the board'), 'Ctrl+Z first takes back the tile reopened last');
 await page.keyboard.press('Control+z');
 await page.keyboard.press('Control+z');
 assert((await scoreOf(2)) === '$0', 'Ctrl+Z undoes the last score change');
 // Esc while editing a score cancels the edit.
-await page.locator('.panel .p').nth(2).locator('.score').click();
+await playerRowsIn(page).nth(2).locator('.score').click();
 await page.keyboard.type('777');
 await page.keyboard.press('Escape');
 assert((await scoreOf(2)) === '$0', 'Esc while editing a score leaves it unchanged');
@@ -1002,7 +1002,7 @@ await page.waitForTimeout(300);
 await page.reload();
 // (A one-window game, the window on stream: it reopens on the game's cover, not the editor with the clues to play.)
 await page.locator('.boot-cover').waitFor();
-assert((await page.locator('.board .tile').count()) === 0, 'reloaded mid-game in one window: the cover, no board of clues on screen');
+assert((await boardTilesIn(boardIn(page)).count()) === 0, 'reloaded mid-game in one window: the cover, no board of clues on screen');
 // On a phone the title's shadow shrinks with the words (a fixed 6px read as a second copy of them).
 await page.setViewportSize({ width: 390, height: 844 });
 {
@@ -1018,18 +1018,18 @@ await page.locator('.boot-cover').getByRole('button', { name: 'Resume game' }).c
 // Resume asks how the game is shown, with the same cards as before the game.
 assert((await page.locator('.mode-ask .mode').count()) === 2, 'Resume asks: single window or the audience window');
 await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 assert((await scoreOf(0)) === '$350', 'scores survive a reload');
 assert(await isUsed(0), 'used tiles survive a reload');
 
 // Dual-window mode: the audience window never shows the answer before reveal.
 const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
-await aud.locator('.board').waitFor();
+await boardIn(aud).waitFor();
 assert(true, 'audience window opened and synced the board');
 await page.keyboard.press('a');
 await page.waitForTimeout(300);
 assert(!aud.isClosed(), 'A never closes the audience window (it only opens or focuses it)');
-await page.locator('.board .tile').nth(2).click();
+await boardTilesIn(boardIn(page)).nth(2).click();
 await page.locator('.info .a').waitFor();
 assert((await page.locator('.info .a').innerText()) === '—', 'host info panel shows the answer slot');
 await aud.locator('.full').waitFor();
@@ -1039,14 +1039,14 @@ await page.keyboard.press('Enter');
 await aud.getByText('+$200').waitFor();
 assert(true, 'score pop shows in the audience window');
 await page.keyboard.press('Escape');
-await aud.locator('.board').waitFor();
-await aud.locator('.board .tile.used').nth(1).waitFor();
-assert(await aud.locator('.board .tile').nth(2).evaluate((e) => e.classList.contains('used')), 'audience board shows the used tile');
+await boardIn(aud).waitFor();
+await boardIn(aud).locator('.tile.used').nth(1).waitFor();
+assert(await boardTilesIn(boardIn(aud)).nth(2).evaluate((e) => e.classList.contains('used')), 'audience board shows the used tile');
 if (shots) await aud.screenshot({ path: `${shots}/6-audience.png` });
 if (shots) await page.screenshot({ path: `${shots}/7-host-dual.png` });
 // Closing it asks inline (a browser dialog would show on stream): Keep it, then Close it.
 await page.getByRole('button', { name: '📺 Audience ●' }).click();
-assert((await page.locator('.panel .confirm').innerText()).includes('stream capture goes black'), 'closing the audience window asks first, inline');
+assert((await confirmStrip(page).innerText()).includes('stream capture goes black'), 'closing the audience window asks first, inline');
 await page.getByRole('button', { name: 'Keep it' }).click();
 await page.waitForTimeout(200);
 assert(!aud.isClosed(), 'Keep it leaves the audience window open');
@@ -1057,12 +1057,12 @@ if (!aud.isClosed()) await aud.waitForEvent('close', { timeout: 3000 });
 assert(aud.isClosed(), 'audience window closes from the host');
 
 // Wheel tile: the wheel opens full-screen; spin lands on the heavy slice; its score effect can be skipped.
-await page.locator('.board .tile').nth(4).click();
+await boardTilesIn(boardIn(page)).nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 assert(true, 'wheel tile opens the wheel overlay');
 // Its box: the wheel's name, Spin! first (its own, ringed while it's to do), and no Close: putting it away is the blue
 // button's, ▦ Done ▶ board on a tile with nothing to ask.
-const toolBox = page.locator('.panel [data-tool-controls]');
+const toolBox = hostPanelIn(page).locator('[data-tool-controls]');
 // (Each button's words, then its key cap.)
 const toolBar = () =>
   toolBox.locator('> .row').first().locator('button').evaluateAll((bs) =>
@@ -1086,7 +1086,7 @@ await page.getByText('Never spun: the tile stays on the board').waitFor();
 assert(!(await isUsed(4)), 'closing a wheel tile before it spins keeps the tile on the board');
 // (Spun at a laptop's 1280×720, where the one-window panel keeps one height and its action part scrolls.)
 await page.setViewportSize({ width: 1280, height: 720 });
-await page.locator('.board .tile').nth(4).click();
+await boardTilesIn(boardIn(page)).nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 await page.waitForTimeout(500); // past the double-click guard (a double-click on the tile doesn't spin it too)
 // The box's Spin!: landed, the keys are on the blue button (▦ Done ▶ board), as after W.
@@ -1128,22 +1128,22 @@ assert(
 await page.setViewportSize({ width: 1400, height: 900 });
 await shot('10-wheel');
 await page.waitForTimeout(500);
-await page.locator('.stage-box .ov').click();
+await stageBoxIn(page).locator('.ov').click();
 await page.locator('.ov').waitFor({ state: 'detached' });
 assert(true, 'clicking the landed wheel closes it');
 await page.keyboard.press('Escape');
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 
 // Daily Double: splash, wager (TV cap), then the question with the wager prefilled. (Past the double-click guard: the
 // click that closed the wheel went back to the board.)
 await page.waitForTimeout(500);
-await page.locator('.board .tile').nth(3).click();
+await boardTilesIn(boardIn(page)).nth(3).click();
 await page.locator('.dd-text').waitFor();
 assert(true, 'Daily Double splash shows');
 // Esc on the splash backs out without burning the Daily Double (the question never showed).
-await page.locator('.stage-box .dd-text').click();
+await stageBoxIn(page).locator('.dd-text').click();
 await page.keyboard.press('Escape');
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 assert(!(await isUsed(3)), 'Esc on the Daily Double splash keeps the tile');
 await tile(3).click();
 await page.locator('.dd-text').waitFor();
@@ -1152,7 +1152,7 @@ await page.locator('.dd input[type=number]').fill('99999');
 const ddLimit = page.locator('.dd').getByLabel('Ignore the limit');
 // (Show question ▶ is the blue button only: the box's Wager row ends with True Daily Double.)
 assert(
-  !(await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()) && (await stepButton(page.locator('.panel .dd')).count()) === 0,
+  !(await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()) && (await stepButton(hostPanelIn(page).locator('.dd')).count()) === 0,
   'the limit holds by default: Ignore the limit unticked (Show question ▶ only on the blue button)',
 );
 // (Player 2 has $350: the game's wager floor, set to 500 in ⚖ Game rules, is their max.)
@@ -1180,7 +1180,7 @@ await page.getByRole('dialog', { name: 'Players' }).waitFor({ state: 'detached' 
 await page.locator('.dd-badge').waitFor({ state: 'detached' });
 await page.keyboard.press('Control+z');
 await page.locator('.dd-badge', { hasText: 'Player 2' }).waitFor();
-assert((await page.locator('.panel .p .sel[aria-pressed="true"]').allInnerTexts()).join().includes('Player 2'), 'the Daily Double’s player taken out and Ctrl+Z: theirs again, its badge on stream and them picked');
+assert((await playerRowsIn(page).locator('.sel[aria-pressed="true"]').allInnerTexts()).join().includes('Player 2'), 'the Daily Double’s player taken out and Ctrl+Z: theirs again, its badge on stream and them picked');
 // (Past the second in which an Enter right after the question went up doesn't judge yet.)
 await page.waitForTimeout(1100);
 await page.keyboard.press('Enter');
@@ -1194,11 +1194,11 @@ await page.getByText("TIME'S UP!").waitFor({ timeout: 5000 });
 assert(true, "countdown runs out and shows TIME'S UP");
 // A double-click on "Done ▶ board" never reaches the round navigation (it sits elsewhere, and is guarded).
 await flowButton(page, 'done', '▦ Done ▶ board').dblclick();
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 await page.waitForTimeout(300);
 assert((await page.locator('.final-label').count()) === 0 && (await page.locator('.round-name').count()) === 0, 'double-clicking Done stays on this round');
 assert(await noSelection(page), `and selects no words (${await selectedWords(page)})`);
-if (await page.locator('.panel .backdrop').count()) await page.locator('.panel .backdrop').click();
+if (await hostPanelIn(page).locator('.backdrop').count()) await hostPanelIn(page).locator('.backdrop').click();
 
 // Moving on with tiles left takes an inline second click.
 await page.waitForTimeout(450); // round buttons ignore clicks right after they appear
@@ -1215,25 +1215,25 @@ await page.locator('.title-card .round-name').waitFor();
 assert(/final brainrot/i.test(await page.locator('.title-card .round-name').innerText()), 'the Final opens on its title card');
 await page.keyboard.press('n');
 await page.locator('.round-name').waitFor({ state: 'detached' });
-await page.locator('.fj').waitFor();
+await finalControlsIn(page).waitFor();
 // …and it can be undone: back to the board without a second round intro.
 await page.getByRole('button', { name: '◀ Previous round (Jeopardy!)' }).click();
-await page.locator('.board').waitFor();
-assert((await page.locator('.round-name').count()) === 0 && (await page.locator('.board .header .title').count()) === 6, 'back from Final shows the board again, no intro');
+await boardIn(page).waitFor();
+assert((await page.locator('.round-name').count()) === 0 && (await boardIn(page).locator('.header .title').count()) === 6, 'back from Final shows the board again, no intro');
 await page.waitForTimeout(450);
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
 await page.waitForTimeout(450);
 await page.getByRole('button', { name: 'Go to Final Brainrot ▶', exact: true }).click();
 
 // Final Jeopardy: eligible players, private wagers, one-by-one reveal.
-await page.locator('.fj').waitFor();
+await finalControlsIn(page).waitFor();
 assert((await page.locator('.round-name').count()) === 0, 'coming back to the Final skips its title card');
-assert((await page.locator('.stage-box .full').innerText()).toUpperCase().includes('FINAL BRAINROT'), 'renamed final round shows on screen');
+assert((await stageBoxIn(page).locator('.full').innerText()).toUpperCase().includes('FINAL BRAINROT'), 'renamed final round shows on screen');
 assert(!(await page.locator('.final-label').count()), 'with no category, its name shows once (no small label over it)');
-const eligible = await page.locator('.fj .wagers input[data-plays]:checked').count();
+const eligible = await finalControlsIn(page).locator('.wagers input[data-plays]:checked').count();
 assert(eligible === 2, 'players with $0 sit out of a Final that says so');
 await page.getByText('Make your wagers…').waitFor();
-const wagers = page.locator('.fj .wagers input[data-wager]');
+const wagers = finalControlsIn(page).locator('.wagers input[data-wager]');
 await wagers.nth(0).fill('300');
 await wagers.nth(1).fill('0');
 await mainButton(page, 'Show question ▶').click();
@@ -1248,15 +1248,15 @@ await flowButton(page, 'reveal', '🙈 Hide answer').click();
 await mainButton(page, '👁 Reveal answer').waitFor();
 assert(true, 'final answer can be hidden again');
 await page.waitForTimeout(500);
-await page.locator('.stage-box .full').click();
+await stageBoxIn(page).locator('.full').click();
 await mainButton(page, 'Start player reveals ▶').waitFor();
 assert(true, 'clicking the final question reveals its answer');
 await mainButton(page, 'Start player reveals ▶').click();
 await page.locator('.spot').waitFor();
 assert((await page.locator('.spot-wager').innerText()).includes('???'), 'wager hidden until shown');
-const rows = page.locator('.fj .pl');
+const rows = finalControlsIn(page).locator('.pl');
 // The reveal order: a row dragged by its grip above another moves up; Alt+↓ on its name moves it back down.
-const revealOrder = () => page.locator('.fj .pl .name').allInnerTexts();
+const revealOrder = () => finalControlsIn(page).locator('.pl .name').allInnerTexts();
 const revealed = await revealOrder();
 const topRow = await rows.nth(0).boundingBox();
 await dragBy(page, rows.nth(1).locator('.grip'), { x: topRow.x + 40, y: topRow.y + 3 });
@@ -1264,7 +1264,7 @@ assert((await revealOrder()).join() === [...revealed].reverse().join(), 'a revea
 // Each row shows the key that spotlights it: the player's number, as on the chips (not the row's place).
 const keyed = await rows.evaluateAll((els) => els.map((e) => [e.querySelector('.key')?.textContent, e.querySelector('.name')?.textContent]));
 assert(keyed.length === 2 && keyed.every(([k, name]) => name === `Player ${k}`) && keyed[0][0] === '2', `each reveal row shows its spotlight key, the player's number (${keyed.map((x) => x.join(' ')).join(', ')})`);
-await page.locator('.fj .pl .name').first().focus();
+await finalControlsIn(page).locator('.pl .name').first().focus();
 await page.keyboard.press('Alt+ArrowDown');
 assert((await revealOrder()).join() === revealed.join(), 'Alt+↓ on its name moves it back down');
 await rows.nth(0).getByRole('button', { name: '✔ Right' }).click();
@@ -1280,7 +1280,7 @@ assert(finishMsg === '' && (await page.locator('.end h1').count()) === 0, 'Finis
 await page.getByRole('button', { name: 'Keep judging' }).click();
 assert((await page.locator('.spot').count()) === 1 && (await page.getByRole('button', { name: 'Finish now…' }).isVisible()), 'Keep judging keeps the reveals going');
 // The spotlit row's Show wager is the blue button's now: its slot is left empty (the other rows keep theirs, out of turn).
-const spotWager = page.locator('.fj .pl.cur button[aria-label^="Show wager"]');
+const spotWager = finalControlsIn(page).locator('.pl.cur button[aria-label^="Show wager"]');
 assert(
   (await flowIs(page, 'Show wager ▶')) && (await spotWager.evaluate((b) => getComputedStyle(b).visibility)) === 'hidden',
   'the reveals: the blue button is Show wager ▶, and the spotlit row’s own Show wager is empty meanwhile',
@@ -1298,7 +1298,7 @@ assert(true, 'Undo takes back the judgment of a 0 wager too');
 await page.keyboard.press('x');
 await page.locator('.spot-result').waitFor();
 await page.keyboard.press('n');
-await page.locator('.fj .armed').waitFor();
+await finalControlsIn(page).locator('.armed').waitFor();
 assert((await page.locator('.end h1').count()) === 0, 'with everyone judged, the first N only arms finishing');
 await page.keyboard.press('n');
 await page.locator('.end h1').waitFor();
@@ -1309,9 +1309,9 @@ await page.locator('.spot').waitFor();
 assert(await page.getByRole('button', { name: 'Finish game ▶' }).isVisible(), 'the end screen goes back to the final reveals');
 await page.getByRole('button', { name: 'Finish game ▶' }).click();
 await page.locator('.end h1').waitFor();
-assert((await page.locator('.panel .p').count()) === 3, 'score chips stay on the end screen so scores can be fixed');
+assert((await playerRowsIn(page).count()) === 3, 'score chips stay on the end screen so scores can be fixed');
 // P1 550+300 = 850 ties P2 850-0 = 850.
-assert(await page.locator('.panel [data-tie]').getByText('Tie for first:').isVisible(), 'tie for first is detected');
+assert(await hostPanelIn(page).locator('[data-tie]').getByText('Tie for first:').isVisible(), 'tie for first is detected');
 assert(
   (await page.locator('.end h1').innerText()).startsWith('Tie for first: Player') && (await page.locator('.end canvas').count()) === 0,
   'the stream shows the tie, not a winner, and no confetti until it is settled',
@@ -1324,26 +1324,26 @@ assert(!(await page.locator('.stage').innerText()).includes('Who goes first'), '
 await page.keyboard.press('Escape');
 await page.waitForFunction(() => /Player \d wins!/.test(document.querySelector('.end h1')?.textContent ?? ''));
 const rollWinner = (await page.locator('.end h1').innerText()).replace(/ wins!.*/s, '');
-assert((await page.locator('.panel').innerText()).includes(`${rollWinner} won the tiebreaker roll-off`), `the roll-off's winner (${rollWinner}) wins the game`);
+assert((await hostPanelIn(page).innerText()).includes(`${rollWinner} won the tiebreaker roll-off`), `the roll-off's winner (${rollWinner}) wins the game`);
 assert((await page.locator('.end li').first().innerText()).includes(rollWinner), 'and is first in the standings');
 await page.getByRole('button', { name: 'Undo' }).click();
-await page.locator('.panel [data-tie]').getByText('Tie for first:').waitFor();
+await hostPanelIn(page).locator('[data-tie]').getByText('Tie for first:').waitFor();
 await page.getByRole('button', { name: '🤝 Declare co-winners' }).click();
 await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes("It's a tie"));
 assert(true, 'co-winners declared on the winner screen');
 await shot('9-winner');
 // They settle that tie only: scores fixed into a different tie leave that one open (Undo puts them back).
 const fixScore = async (i, to) => {
-  await page.locator('.panel .p').nth(i).locator('.score').click();
-  await page.locator('.panel .score-edit').fill(to);
+  await playerRowsIn(page).nth(i).locator('.score').click();
+  await hostPanelIn(page).locator('.score-edit').fill(to);
   await page.keyboard.press('Enter');
 };
 await fixScore(1, '0');
 await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes('Player 1 wins'));
 await fixScore(2, '850');
-await page.locator('.panel [data-tie]').getByText('Tie for first:').waitFor();
+await hostPanelIn(page).locator('[data-tie]').getByText('Tie for first:').waitFor();
 assert(
-  (await page.locator('.end h1').innerText()).startsWith('Tie for first: Player 1 & Player 3') && !(await page.locator('.panel').innerText()).includes('Co-winners declared'),
+  (await page.locator('.end h1').innerText()).startsWith('Tie for first: Player 1 & Player 3') && !(await hostPanelIn(page).innerText()).includes('Co-winners declared'),
   'co-winners declared for one tie don’t settle a different one (a score fixed since): it is open again',
 );
 await page.keyboard.press('Control+z');
@@ -1364,7 +1364,7 @@ assert(await flowIs(page, 'Next ▶'), 'a wheel from the tools row: the blue but
 await stepButton(toolBox, '🎡 Spin!').click();
 await page.locator('.ac').waitFor({ timeout: 8000 });
 const deltaText = await page.locator('.ac .delta').first().innerText();
-const allScores = async () => (await page.locator('.panel .p .score').allInnerTexts()).join();
+const allScores = async () => (await playerRowsIn(page).locator('.score').allInnerTexts()).join();
 const scoresAre = (want) => page.waitForFunction((w) => [...document.querySelectorAll('.panel .p .score')].map((e) => e.innerText).join() === w, want);
 const unbankrupt = await allScores();
 await page.locator('.ac').getByRole('button', { name: 'Confirm' }).click();
@@ -1407,7 +1407,7 @@ await page.keyboard.press('Escape');
 // The built-in player wheel: a slice per player; the host can make the winner the picker.
 await page.getByRole('button', { name: '🎡 Wheel' }).click();
 await page.getByRole('button', { name: '🎯 Pick a player' }).click();
-const slices = await page.locator('.stage-box svg text').allTextContents();
+const slices = await stageBoxIn(page).locator('svg text').allTextContents();
 assert(slices.join() === 'Player 1,Player 2,Player 3', `the player wheel has a slice per player (${slices.join(', ')})`);
 await stepButton(toolBox, '🎡 Spin!').click();
 const makePicker = page.getByRole('button', { name: /^★ Make .+ the picker$/ });
@@ -1417,11 +1417,11 @@ const wheelPick = (await page.locator('.tc .result b').innerText()).trim();
 if (await makePicker.count()) await makePicker.click();
 await page.getByText(`★ ${wheelPick} picks the next clue.`).waitFor();
 // (On the Game over screen no chip wears the ★ "picks next", even so: nobody picks now, and it would read as the winner's.)
-assert((await page.locator('.panel .p.picker').count()) === 0, `the wheel landed on ${wheelPick}, who is now the picker (no ★ on a chip at Game over)`);
+assert((await hostPanelIn(page).locator('.p.picker').count()) === 0, `the wheel landed on ${wheelPick}, who is now the picker (no ★ on a chip at Game over)`);
 await page.keyboard.press('Escape');
 
 // ✎ Edit a wheel for one spin: leave players out, and the saved wheels stay as they are unless saved.
-const sliceTexts = () => page.locator('.stage-box svg text').allTextContents();
+const sliceTexts = () => stageBoxIn(page).locator('svg text').allTextContents();
 const wheelMenu = async () => {
   await page.getByRole('button', { name: '🎡 Wheel' }).click();
   return page.locator('.tl .menu');
@@ -1562,7 +1562,7 @@ await page.getByRole('button', { name: 'Skip intro' }).click();
 await page.getByRole('button', { name: '👥 Players' }).click();
 // A row dragged by its grip goes above another (and with it the player's number key), and back.
 const playerRows = page.locator('.modal .player');
-const chipNames = () => page.locator('.panel .p .sel').allInnerTexts();
+const chipNames = () => playerRowsIn(page).locator('.sel').allInnerTexts();
 // (Measured once the window has finished opening, with both rows in sight: a row measured mid-animation, or before the
 // drag scrolls, sends the drop somewhere else.)
 await playerRows.nth(2).waitFor();
@@ -1580,11 +1580,11 @@ assert((await chipNames())[2].includes('Player 3'), 'and dragged below the last 
 await page.getByRole('button', { name: 'Remove Player 3' }).click();
 const removeAsk = page.locator('.modal .ask');
 await removeAsk.waitFor();
-assert((await removeAsk.innerText()).startsWith('Remove Player 3 ($0)?') && (await page.locator('.panel .p').count()) === 3, 'removing a player mid-game asks first (inline)');
+assert((await removeAsk.innerText()).startsWith('Remove Player 3 ($0)?') && (await playerRowsIn(page).count()) === 3, 'removing a player mid-game asks first (inline)');
 await removeAsk.getByRole('button', { name: 'Remove', exact: true }).click();
-assert((await page.locator('.panel .p').count()) === 2, 'the removed player leaves the host panel');
+assert((await playerRowsIn(page).count()) === 2, 'the removed player leaves the host panel');
 await page.getByRole('button', { name: '↩ Restore' }).click();
-assert((await page.locator('.panel .p').count()) === 3, 'a removed player can be restored');
+assert((await playerRowsIn(page).count()) === 3, 'a removed player can be restored');
 await page.getByRole('button', { name: 'Done', exact: true }).click();
 
 // Leaving a game keeps it, and the next game starts clean (no leftover overlay or countdown).
@@ -1601,14 +1601,14 @@ await page.locator('.resume-card').getByText('⏸ Game in progress:').waitFor();
 assert((await page.getByRole('alertdialog').count()) === 0, 'Play with a saved game in progress asks nothing: the pre-game screen offers ▶ Resume it');
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.getByRole('button', { name: 'Skip intro' }).click();
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 assert((await page.locator('.ov').count()) === 0 && (await page.locator('.timer').count()) === 0, "a new game doesn't inherit the last game's overlay or timer");
 await tile(0).click();
 await page.locator('.full').waitFor();
 await page.keyboard.press('1');
 await page.keyboard.press('Enter');
 await page.keyboard.press('Escape');
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 await exitGame();
 await page.getByRole('button', { name: 'Resume game' }).waitFor();
 await page.getByRole('button', { name: '▶ Play' }).click();
@@ -1618,7 +1618,7 @@ await page.waitForTimeout(300);
 await page.reload();
 await page.getByRole('button', { name: 'Resume game' }).click();
 await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 assert((await scoreOf(0)) === '$200' && (await isUsed(0)), 'Exit, reload, Resume: scores and used tiles are kept');
 // A reload right after a host action keeps it too (its write waits a moment for more clicks: the page keeps a copy).
 const worth = Number((await tile(1).innerText()).replace(/\D/g, ''));
@@ -1627,11 +1627,11 @@ await page.locator('.full').waitFor();
 await page.keyboard.press('1');
 await page.keyboard.press('Enter');
 await page.keyboard.press('Escape');
-await page.locator('.stage-box .board .tile.used').nth(1).waitFor();
+await boardIn(stageBoxIn(page)).locator('.tile.used').nth(1).waitFor();
 await page.reload();
 await page.getByRole('button', { name: 'Resume game' }).click();
 await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
-await page.locator('.board').waitFor();
+await boardIn(page).waitFor();
 assert((await scoreOf(0)) === `$${200 + worth}` && (await isUsed(1)), `a reload right after a host action keeps it ($${200 + worth})`);
 await exitGame();
 
@@ -1644,7 +1644,7 @@ const packPath = await dl.path();
 // Just saved, so New asks nothing; the game it replaces can be reopened.
 await page.getByRole('button', { name: 'New' }).click();
 await page.getByRole('button', { name: '↶ Reopen previous game' }).waitFor();
-assert((await page.locator('nav > button.round-tab').count()) === 0 && (await page.locator('.first-round').isVisible()), 'a new game starts with no rounds, on the first screen');
+assert((await roundTabsIn(page).count()) === 0 && (await page.locator('.first-round').isVisible()), 'a new game starts with no rounds, on the first screen');
 // Its line for opening a game lists the one just replaced, under Recent.
 await page.locator('.first-round .open-line').getByRole('button', { name: / · \d+ rounds? · / }).waitFor();
 assert(true, 'the first screen’s Recent games list the game New replaced (title · rounds · when)');
@@ -1729,12 +1729,12 @@ const rulesText = await player.evaluate(() => document.body.textContent);
 assert(rulesText.includes('start a timer any time with T') && !rulesText.includes('clue editor'), 'the exported file’s ⚖ Game rules don’t send the host to a clue editor it doesn’t have');
 await player.getByRole('button', { name: 'Start game ▶' }).click();
 await player.getByRole('button', { name: 'Skip intro' }).click();
-await player.locator('.board .tile').first().click();
+await boardTilesIn(boardIn(player)).first().click();
 await player.locator('.full img').waitFor();
 const imgOk = await player.locator('.full img').first().evaluate((i) => new Promise((res) => (i.complete ? res(i.naturalWidth > 0) : (i.onload = () => res(true)))));
 assert(imgOk, 'exported game plays with its embedded (edited) image');
 // Its 🎭 Deal… and 🤫 Send a card… don't send the host to an editor it doesn't have.
-const toolsRow = player.locator('.panel .toolsrow');
+const toolsRow = toolsRowIn(player);
 await toolsRow.getByRole('button', { name: '🎭 Deal…' }).click();
 const dealText = await player.getByRole('dialog', { name: 'Deal' }).innerText();
 await toolsRow.getByRole('button', { name: '🤫 Send a card…' }).click();

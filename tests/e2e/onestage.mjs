@@ -9,7 +9,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, leaveAnswer, mainButton, openGameFile, returningHost, revealAnyway, failureShots, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, confirmStrip, leaveAnswer, mainButton, openGameFile, returningHost, revealAnyway, failureShots, assert, launchChromium, section, boardIn, finalControlsIn, hostPanelIn, playerRowsIn, roundNavIn, stageBoxIn, statusLineIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -125,14 +125,14 @@ try {
     // A double-click on Start game ▶ in one window: its second click lands on the host panel (❔ Help, 📺 Audience
     // nearby) and does nothing there: no audience window, no question asked.
     await page.getByRole('button', { name: 'Start game ▶' }).dblclick();
-    await page.locator('.panel').waitFor();
+    await hostPanelIn(page).waitFor();
     await page.waitForTimeout(500);
     assert(
-      context.pages().length === 1 && (await page.locator('.panel .confirm').count()) === 0 && (await page.locator('[role=dialog]').count()) === 0,
+      context.pages().length === 1 && (await confirmStrip(page).count()) === 0 && (await page.locator('[role=dialog]').count()) === 0,
       `${w}×${h}: a double-click on Start game ▶ in one window opens no audience window and asks nothing (${context.pages().length} pages)`,
     );
     await page.getByRole('button', { name: 'Skip intro' }).click();
-    await page.locator('.stage-box .board .tile:not([disabled])').first().waitFor();
+    await boardIn(stageBoxIn(page)).locator('.tile:not([disabled])').first().waitFor();
 
     const sizes = {};
     const measure = async (k) => {
@@ -141,24 +141,24 @@ try {
     };
     const toBoard = async () => {
       await page.keyboard.press('Escape');
-      await page.locator('.stage-box .board').waitFor();
+      await boardIn(stageBoxIn(page)).waitFor();
     };
     const nextRound = async (status) => {
       await page.waitForTimeout(450);
-      await page.locator('.rn button', { hasText: '▶' }).click();
+      await roundNavIn(page).locator('button', { hasText: '▶' }).click();
       await confirmStrip(page).waitFor();
       await page.waitForTimeout(450);
       await leaveAnswer(page).click();
-      if (status) await page.locator('.panel .status', { hasText: status }).waitFor();
+      if (status) await statusLineIn(page, { hasText: status }).waitFor();
     };
-    const tile = (cat, row) => page.locator(`.stage-box .board .tile[data-cat="${cat}"][data-row="${row}"]`);
+    const tile = (cat, row) => boardIn(stageBoxIn(page)).locator(`.tile[data-cat="${cat}"][data-row="${row}"]`);
 
     await measure('board');
     // The windows in the panel (on the board, the panel as it is all game).
-    await panelWindow(page, w, h, 'Players', () => page.locator('.panel .fixed').getByRole('button', { name: '👥 Players' }).click());
-    await panelWindow(page, w, h, 'Game rules', () => page.locator('.panel .fixed').getByRole('button', { name: '⚖ Rules' }).click());
+    await panelWindow(page, w, h, 'Players', () => hostPanelIn(page).locator('.fixed').getByRole('button', { name: '👥 Players' }).click());
+    await panelWindow(page, w, h, 'Game rules', () => hostPanelIn(page).locator('.fixed').getByRole('button', { name: '⚖ Rules' }).click());
     await panelWindow(page, w, h, 'Keyboard shortcuts', async () => {
-      await page.locator('.panel .status').click();
+      await statusLineIn(page).click();
       await page.keyboard.press('?');
     });
 
@@ -166,43 +166,43 @@ try {
     await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
     await measure('clue');
     await page.keyboard.press('r');
-    await page.locator('.stage-box [data-slide="answer"]').waitFor();
+    await stageBoxIn(page).locator('[data-slide="answer"]').waitFor();
     await measure('answer');
     await toBoard();
 
     await tile(4, 0).click();
-    await page.locator('.stage-box .dd-text').waitFor();
+    await stageBoxIn(page).locator('.dd-text').waitFor();
     await measure('Daily Double splash');
-    await page.locator('.panel .dd .chip', { hasText: 'Ann' }).click();
-    await page.locator('.panel .dd input[type=number]').fill('100');
+    await hostPanelIn(page).locator('.dd .chip', { hasText: 'Ann' }).click();
+    await hostPanelIn(page).locator('.dd input[type=number]').fill('100');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
     await measure('Daily Double question');
     await toBoard();
 
-    const box = page.locator('.panel [data-partner-panel]');
+    const box = hostPanelIn(page).locator('[data-partner-panel]');
     await tile(0, 1).click();
-    await page.locator('.stage-box [data-partner-up]').waitFor();
+    await stageBoxIn(page).locator('[data-partner-up]').waitFor();
     await measure('PARTNER UP!');
     await page.keyboard.press('1');
     await box.getByText('Ann picked it.').waitFor();
     await page.keyboard.press('w');
-    await page.locator('.stage-box .wheel').waitFor();
+    await stageBoxIn(page).locator('.wheel').waitFor();
     await box.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 10000 });
     await measure('partner wheel');
     await page.keyboard.press('Escape');
-    await page.locator('.stage-box .wheel').waitFor({ state: 'detached' });
+    await stageBoxIn(page).locator('.wheel').waitFor({ state: 'detached' });
     await page.keyboard.press('Enter');
-    await page.locator('.stage-box [data-partner-badge]').waitFor();
+    await stageBoxIn(page).locator('[data-partner-badge]').waitFor();
     await measure('partner cards out');
     await box.getByRole('button', { name: /✔ Got it/ }).click();
     await box.locator('[data-judged]').waitFor();
     await measure('partner judged');
     await page.keyboard.press('r');
-    await page.locator('.stage-box [data-slide="answer"]').waitFor();
+    await stageBoxIn(page).locator('[data-slide="answer"]').waitFor();
     await toBoard();
     // (The scores now, as they go into the Final: Ann, Bob, Cy.)
-    const pts = (await page.locator('.panel .p .score').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
+    const pts = (await playerRowsIn(page).locator('.score').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
     const top = Math.max(...pts);
 
     await nextRound('Adventure');
@@ -212,10 +212,10 @@ try {
     await measure('board-game round');
 
     await nextRound();
-    await page.locator('.fj .wagers input[data-wager]').first().waitFor();
+    await finalControlsIn(page).locator('.wagers input[data-wager]').first().waitFor();
     await measure('Final wagers');
     // (Wagers that bring everyone level when all are right: a tie for first, for the tiebreaker.)
-    for (const [i, id] of ['p1', 'p2', 'p3'].entries()) await page.locator(`.fj .wagers input[data-wager="${id}"]`).fill(String(top - pts[i]));
+    for (const [i, id] of ['p1', 'p2', 'p3'].entries()) await finalControlsIn(page).locator(`.wagers input[data-wager="${id}"]`).fill(String(top - pts[i]));
     for (const label of ['Show question ▶', '👁 Reveal answer', 'Start player reveals ▶']) {
       await page.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l), label);
       if (label === '👁 Reveal answer') await measure('Final question');
@@ -223,14 +223,14 @@ try {
       // (Its think clock still running: it asks first.)
       if (label === '👁 Reveal answer') await revealAnyway(page);
     }
-    await page.locator('.fj .pl').first().waitFor();
+    await finalControlsIn(page).locator('.pl').first().waitFor();
     await measure('Final reveals');
-    for (let i = 0; i < 3; i++) await page.locator('.fj .pl').nth(i).getByRole('button', { name: '✔ Right' }).click();
+    for (let i = 0; i < 3; i++) await finalControlsIn(page).locator('.pl').nth(i).getByRole('button', { name: '✔ Right' }).click();
     await mainButton(page).click();
-    await page.locator('.panel .status', { hasText: 'Game over' }).waitFor();
+    await statusLineIn(page, { hasText: 'Game over' }).waitFor();
     await measure('results');
-    await page.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' }).click();
-    await page.locator('.stage-box', { hasText: 'Tiebreaker question' }).waitFor();
+    await hostPanelIn(page).locator('[data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' }).click();
+    await stageBoxIn(page, { hasText: 'Tiebreaker question' }).waitFor();
     await measure('tiebreaker');
 
     const all = Object.entries(sizes);

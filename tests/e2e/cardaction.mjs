@@ -11,7 +11,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, flowButton, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots, assert, sleep, launchChromium, until } from './helpers.mjs';
+import { appFile, confirmStrip, flowButton, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots, assert, sleep, launchChromium, until, hostPanelIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
 import { wav } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -152,7 +152,7 @@ try {
   await objCard.waitFor();
   await objCard.locator('.who').getByRole('button', { name: 'Bob', exact: true }).click();
   await objCard.getByRole('button', { name: '🤫 Card for whoever set it off' }).click();
-  const offer = host.locator('.panel [data-card-offer]');
+  const offer = hostPanelIn(host).locator('[data-card-offer]');
   await offer.waitFor();
   const chip = (o, name) => o.getByRole('button', { name: new RegExp(`^${name}( \\(no phone here\\))?$`) });
   assert((await offer.evaluate((o) => o.previousElementSibling?.getAttribute('aria-label'))) === 'Object: Spy master', 'it shows right under the object’s card, where its button was pressed');
@@ -162,7 +162,7 @@ try {
   assert(!JSON.stringify(states).includes('jhxvb'), 'no file name goes to the room');
   await bob.getByRole('button', { name: 'Tap to see' }).waitFor();
   await until(async () => !(await offer.count()));
-  const tools = host.locator('.panel .toolsrow');
+  const tools = toolsRowIn(host);
   assert((await tools.locator('[data-cards-out-count]').innerText()).trim() === '🤫 1 card out', 'it is in the cards out, counted');
   await host.keyboard.press('Escape');
 
@@ -272,7 +272,7 @@ try {
   await solo.getByRole('button', { name: '▶ Play' }).click();
   await solo.getByRole('button', { name: 'Start game ▶' }).click();
   await solo.locator('.rh').waitFor();
-  const tools2 = solo.locator('.panel .toolsrow');
+  const tools2 = toolsRowIn(solo);
   await tools2.getByRole('button', { name: '🤫 Send a card…' }).click();
   const soloSend = solo.getByRole('dialog', { name: 'Send a card' });
   const [win2] = await Promise.all([solo.waitForEvent('popup'), soloSend.getByRole('button', { name: 'Card window for Cat' }).click()]);
@@ -286,7 +286,7 @@ try {
   const spyCard = solo.getByRole('dialog', { name: 'Object: Spy master' });
   await spyCard.locator('.who').getByRole('button', { name: 'Cat', exact: true }).click();
   await spyCard.getByRole('button', { name: '🤫 Card for whoever set it off' }).click();
-  const offer2 = solo.locator('.panel [data-card-offer]');
+  const offer2 = hostPanelIn(solo).locator('[data-card-offer]');
   await offer2.waitFor();
   assert(!(await offer2.getByRole('button', { name: '📤 Send' }).count()) && (await offer2.getByRole('button', { name: '📋 Copy words' }).count()) === 1, 'no phones: the offer has no 📤 Send, and copies the card (📋)');
   await offer2.getByRole('button', { name: '🪟 Show Cat' }).click();
@@ -314,7 +314,7 @@ try {
   await leaveAnswer(solo).waitFor();
   await sleep(600);
   await leaveAnswer(solo).click();
-  await solo.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(solo).locator('.tile').first().waitFor();
   await win2.getByText('Nothing private right now').waitFor();
   assert(true, 'the next round: the offered card (until the round ends) goes from the card window');
   // The buzzer room's limit (8 cards at once) is for phones: with none, the card window takes more.
@@ -349,14 +349,14 @@ try {
   await fillSend.waitFor({ state: 'detached' });
   await solo.keyboard.press('p');
   await solo.keyboard.press('3');
-  await solo.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
-  const soloTile = solo.locator('.panel [data-tile-cards] [data-tile-card="1"]');
+  await stageBoxIn(solo).locator('.tile[aria-label^="Movies for $200"]').click();
+  const soloTile = hostPanelIn(solo).locator('[data-tile-cards] [data-tile-card="1"]');
   await soloTile.waitFor();
   assert(!(await soloTile.getByRole('button', { name: 'Send card 1' }).count()), 'no phones: a tile’s card has no 📤 Send');
   await soloTile.getByRole('button', { name: 'Show card 1 to Cat' }).click();
   await win2.getByText(TIP).waitFor();
   assert((await soloTile.innerText()).includes('in the 🪟 card window'), 'with the card window open for Cat (who picked it), 🪟 Show puts the tile’s card there, and its row says so');
-  const soloBadge = solo.locator('.stage-box [data-private-badge]');
+  const soloBadge = stageBoxIn(solo).locator('[data-private-badge]');
   assert(await until(async () => (await soloBadge.count()) === 1 && (await soloBadge.innerText()).includes('Cat') && (await soloBadge.innerText()).includes('has a private question')), 'the stream says Cat has a private question');
   assert(!(await shownOf(solo, SECRETS)).length, 'one window: the host page holds none of the card’s words');
   // 🤫 Send a card… with that card, to Cat, to last the round: it can go (the one out lasts only until the tile closes),
@@ -398,7 +398,7 @@ try {
   assert(await win2.getByText('Extra card 9').isVisible(), 'the tile closed: its card goes from the card window (the round’s stay)');
   assert(!(await confirmStrip(solo).count()), 'and the question left unanswered goes with the tile');
   await solo.getByRole('button', { name: '↶ Reopen Movies $200' }).click();
-  await solo.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
+  await stageBoxIn(solo).locator('.tile[aria-label^="Movies for $200"]').click();
   await soloTile.waitFor();
   assert(!(await confirmStrip(solo).count()), 'opened again, the tile asks nothing by itself');
   await solo.keyboard.press('Shift+Escape');
@@ -406,8 +406,8 @@ try {
 
   await solo.keyboard.press('p');
   await solo.keyboard.press('1');
-  await solo.locator('.stage-box .tile[aria-label^="Movies for $400"]').click();
-  const soloPartner = solo.locator('.panel [data-partner-panel]');
+  await stageBoxIn(solo).locator('.tile[aria-label^="Movies for $400"]').click();
+  const soloPartner = hostPanelIn(solo).locator('[data-partner-panel]');
   await soloPartner.getByText('Ann picked it.').waitFor();
   await solo.keyboard.press('3');
   await mainButton(solo).click();

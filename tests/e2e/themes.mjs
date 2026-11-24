@@ -8,7 +8,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png, assert, launchChromium } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png, assert, launchChromium, boardIn, boardTilesIn, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 // (CI sets SCREENSHOTS: a failure leaves its picture in the run's e2e-debug files.)
@@ -25,12 +25,12 @@ const shot = (name, p = page) => shots && p.screenshot({ path: `${shots}/${name}
 const RED = 'rgb(255, 0, 0)';
 const CLASSIC_TILE = 'rgb(6, 12, 233)';
 /** A board's tile background (row, column) in `where` (the Theme page's preview, the stage…). */
-const bg = (where, row, cat) => where.locator(`.board .tile[data-row="${row}"][data-cat="${cat}"]`).first().evaluate((e) => getComputedStyle(e).backgroundColor);
-const headerBg = (where, cat) => where.locator('.board .header').nth(cat).evaluate((e) => getComputedStyle(e).backgroundColor);
+const bg = (where, row, cat) => boardIn(where).locator(`.tile[data-row="${row}"][data-cat="${cat}"]`).first().evaluate((e) => getComputedStyle(e).backgroundColor);
+const headerBg = (where, cat) => boardIn(where).locator('.header').nth(cat).evaluate((e) => getComputedStyle(e).backgroundColor);
 const preview = page.locator('.preview');
 const themePage = () => page.getByRole('button', { name: '🎨 Theme' }).click();
 const card = (name) => page.locator('.mine .card', { hasText: name });
-const lastToast = () => page.locator('.toast').last().innerText();
+const lastToast = () => toastsIn(page).last().innerText();
 const savebar = page.locator('.savebar');
 const menu = page.getByRole('menu');
 /** The Values color box (its value as #rrggbb). */
@@ -38,7 +38,7 @@ const valuesBox = () => page.getByLabel('Values', { exact: true });
 /** Past the round's intro, to the board. */
 async function skipIntro(p) {
   await p.getByRole('button', { name: 'Skip intro' }).click();
-  await p.locator('.board .tile').first().waitFor();
+  await boardTilesIn(boardIn(p)).first().waitFor();
 }
 async function openSection(name) {
   const d = page.locator('details.sec', { has: page.locator('summary', { hasText: name }) });
@@ -52,8 +52,8 @@ try {
   await page.locator('.grid .tile').nth(2 * (await page.locator('.cat').count())).click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '⭐ Daily Double', exact: true }).click();
   await themePage();
-  await preview.locator('.board .tile').first().waitFor();
-  assert((await preview.locator('.board .tile.host-mark').count()) === 0, 'the Theme page’s preview has no host-only tile badges (a Daily Double is placed)');
+  await boardTilesIn(boardIn(preview)).first().waitFor();
+  assert((await boardIn(preview).locator('.tile.host-mark').count()) === 0, 'the Theme page’s preview has no host-only tile badges (a Daily Double is placed)');
   // Sharing folds into one line, and My themes with none is one line: the settings start higher up.
   assert(
     (await page.locator('[data-share-fold]').getAttribute('aria-expanded')) === 'false' &&
@@ -102,7 +102,7 @@ try {
     await preview.locator('.full .slide .text', { hasText: /this is how a clue looks on stream/i }).waitFor();
     assert(true, 'the Final with nothing written shows the sample words too');
     await pick.selectOption(was);
-    await preview.locator('.board .tile').first().waitFor();
+    await boardTilesIn(boardIn(preview)).first().waitFor();
   }
 
   // ---------- The app's own color picker (never Chromium's): Hex or RGB, live, one undo step, Esc ----------
@@ -217,7 +217,7 @@ try {
   // ---------- A plain game looks as it always did ----------
   // (Row 1: the preview plays every other category's first tile.)
   assert((await bg(preview, 1, 0)) === CLASSIC_TILE && (await bg(preview, 1, 1)) === CLASSIC_TILE, 'a game without the new looks: every tile the tile color');
-  const plainShadow = await preview.locator('.board .tile').first().evaluate((e) => getComputedStyle(e).boxShadow);
+  const plainShadow = await boardTilesIn(boardIn(preview)).first().evaluate((e) => getComputedStyle(e).boxShadow);
   assert(plainShadow.includes('rgba(0, 0, 0, 0.35)') && plainShadow.includes('3px'), `and the same dark 3px edge inside each tile (${plainShadow})`);
 
   // ---------- Clue text: Undo stays on the Theme page; a kept color too close to new tiles is pointed out ----------
@@ -258,7 +258,7 @@ try {
   await page.waitForFunction(() => /^'jb-\w+', sans-serif$/.test(document.querySelector('label[data-k="boardFont"] select').value));
   const ownFont = await namesFont.inputValue();
   assert((await namesFont.locator('option:checked').innerText()) === 'Channel Font (uploaded)', `＋ Category names… (Your own font file) uploads a font file and puts it on the category names (${ownFont})`);
-  const previewFont = await preview.locator('.board .header').first().evaluate((e) => getComputedStyle(e).fontFamily);
+  const previewFont = await boardIn(preview).locator('.header').first().evaluate((e) => getComputedStyle(e).fontFamily);
   assert(previewFont.includes(ownFont.split(',')[0].replace(/'/g, '')), `the preview's category names are in it (${previewFont})`);
   const listed = (name) => page.getByRole('combobox', { name }).locator('option', { hasText: 'Channel Font (uploaded)' }).count();
   assert((await listed('Values & scores')) === 1 && (await listed('Clue text font')) === 1, 'and it is listed for the values and the clue text too');
@@ -276,7 +276,7 @@ try {
   assert((await bg(preview, 1, 1)) === RED && (await bg(preview, 2, 1)) === RED && (await bg(preview, 2, 0)) === CLASSIC_TILE, 'by column: every other column');
   await page.getByRole('combobox', { name: 'Alternating tiles' }).selectOption('checker');
   await page.getByRole('combobox', { name: 'Played tiles' }).selectOption('hidden');
-  const played = await preview.locator('.board .tile.used').first().evaluate((e) => getComputedStyle(e).backgroundColor);
+  const played = await boardIn(preview).locator('.tile.used').first().evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(played === 'rgba(0, 0, 0, 0)', `played tiles can be hidden (${played})`);
   const usedColor = page.locator('label[data-k="tileUsed"]');
   await usedColor.getByText('(not shown: Played tiles is Hidden)').waitFor();
@@ -286,7 +286,7 @@ try {
   assert((await menu.innerText()).startsWith('Used tiles\n'), 'and its right-click menu is still called Used tiles');
   await page.keyboard.press('Escape');
   await page.getByLabel('Rounded corners (0)').fill('20');
-  assert((await preview.locator('.board .tile').first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'rounded tile corners');
+  assert((await boardTilesIn(boardIn(preview)).first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'rounded tile corners');
   await openSection('Categories');
   await page.getByLabel('Alternate colors').check();
   await page.getByLabel('Second category color').fill('#00ff00');
@@ -377,7 +377,7 @@ try {
   await answerReplace(page, 'Discard').catch(() => {});
   // (The new game, with no rounds, has arrived: until then the old one's round tabs are still there, and
   // addClassicRounds would take them for this game's and add none.)
-  await page.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
+  await roundTabsIn(page).first().waitFor({ state: 'detached' });
   await addClassicRounds(page);
   await themePage();
   await card('Checker party').waitFor();
@@ -536,7 +536,7 @@ try {
   assert(notThemeText.includes('This is a game, not a theme') && !notThemeText.includes('damaged'), `a game pack picked in Import theme… is called a game (${notThemeText.replace(/\s+/g, ' ')})`);
   await notTheme.getByRole('button', { name: 'OK' }).click();
   // A theme file dropped on the editor, or picked with Open…, shows on the Theme page first, like Import theme….
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   const themeText = readFileSync(themePath, 'utf8');
   const dt = await page.evaluateHandle((text) => {
     const d = new DataTransfer();
@@ -548,13 +548,13 @@ try {
   assert((await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page', 'a theme file dropped on the editor opens the Theme page');
   assert((await bg(imported, 1, 0)) === RED, 'and previews the theme first');
   await imported.getByRole('button', { name: 'Cancel' }).click();
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await openGameFile(page, themePath);
   await imported.waitFor();
   assert((await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page', 'Open… with a theme file does the same (no “not a game” error)');
   await imported.getByRole('button', { name: 'Cancel' }).click();
   // ...and one whose name ends in .json (renamed, or saved so by a browser): it's still a theme, not a broken game.
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   const asJson = await page.evaluateHandle((text) => {
     const d = new DataTransfer();
     d.items.add(new File([text], 'Checkers.brainrot-theme.json', { type: 'application/json' }));
@@ -603,7 +603,7 @@ try {
   await bannerChooser.setFiles(bannerPath);
   await page.getByRole('dialog', { name: /Theme “Banner show”/ }).getByRole('button', { name: '💾 Save to my themes' }).click();
   await card('Banner show').waitFor();
-  const bannerSaved = await page.locator('.toast', { hasText: 'Saved “Banner show”' }).innerText();
+  const bannerSaved = await toastsIn(page, { hasText: 'Saved “Banner show”' }).innerText();
   assert(bannerSaved.includes('📥 Import the file again and 🎨 Use in this game'), `saving a theme file with a picture says how to bring it in (${bannerSaved})`);
 
   // ---------- An exported HTML file ----------
@@ -641,11 +641,11 @@ try {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await skipIntro(page);
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
-  await aud.locator('.board .tile').first().waitFor();
+  await boardTilesIn(boardIn(aud)).first().waitFor();
   await aud.waitForTimeout(300);
   assert((await bg(aud, 0, 0)) === CLASSIC_TILE && (await bg(aud, 0, 1)) === RED, 'the audience window shows the alternating tiles');
   assert((await headerBg(aud, 1)) === 'rgb(0, 255, 0)', 'and the alternating categories');
-  assert((await aud.locator('.board .tile').first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'and the rounded corners');
+  assert((await boardTilesIn(boardIn(aud)).first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'and the rounded corners');
   await shot('3-audience', aud);
   await aud.close();
 

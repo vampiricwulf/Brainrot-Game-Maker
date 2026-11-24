@@ -18,7 +18,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, png, stepButton, assert, launchChromium, section } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, png, stepButton, assert, launchChromium, section, awardRowIn, boardIn, confirmStrip, hostPanelIn, playerRowsIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -167,18 +167,18 @@ async function roomGame(names, teams) {
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   await card.getByLabel('Room code BCDF').waitFor();
   await p.getByRole('button', { name: 'Start game ▶' }).click();
-  await p.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(p).locator('.tile').first().waitFor();
   const state = () => p.evaluate(() => window.__state());
   return {
     p,
     stage: (sel) => p.locator(`.stage-box ${sel}`),
-    panel: p.locator('.panel [data-partner-panel]'),
+    panel: hostPanelIn(p).locator('[data-partner-panel]'),
     state,
     sent: () => p.evaluate(() => window.__room.sent),
     say: (m) => p.evaluate((m) => window.__say(m), m),
     /** Wait until the last state sent to the room matches. */
     stateIs: (fn) => p.waitForFunction((src) => !!window.__state() && new Function('s', `return (${src})(s)`)(window.__state()), fn.toString()),
-    toast: (t) => p.locator('.toast', { hasText: t }).waitFor({ timeout: 5000 }).then(() => true, () => false),
+    toast: (t) => toastsIn(p, { hasText: t }).waitFor({ timeout: 5000 }).then(() => true, () => false),
   };
 }
 
@@ -410,7 +410,7 @@ try {
   const history = await page.locator('main').innerText();
   for (const label of ['Made Movies $400 a partner clue', 'Copied the answer onto card 1 of Movies $400', 'Edited card 2 “Ogres are like onions”', 'Card 1 of Movies $400 goes to both of them', 'Made Movies $400 a Help a friend partner clue'])
     assert(history.includes(label), `the history says “${label}”`);
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
 
   // ---------- Off and on again, and a reload ----------
   await tile.click({ button: 'right' });
@@ -457,7 +457,7 @@ try {
   await dialog.locator('[data-field="a"]').fill('Leopard');
   await dialog.locator('select').first().selectOption('partner');
   await settings.waitFor();
-  await page.locator('.toast', { hasText: 'Card 1 is a copy of the answer' }).waitFor();
+  await toastsIn(page, { hasText: 'Card 1 is a copy of the answer' }).waitFor();
   const madeUndo = await page.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
   assert(
     (await card.inputValue()) === 'Leopard' && (await dialog.getByRole('button', { name: '⧉ Same as the answer' }).count()) === 0 && /^Undo: Made Movies \$\d+ a partner clue \(card: a copy of the answer\)/.test(madeUndo),
@@ -479,20 +479,20 @@ try {
   const stage = (sel, opts) => page.locator(`.stage-box ${sel}`, opts);
   const tileOf = (value) => stage(`.tile[aria-label^="Movies for ${value}"]`);
   await tileOf('$400').waitFor();
-  const panel = page.locator('.panel [data-partner-panel]');
+  const panel = hostPanelIn(page).locator('[data-partner-panel]');
   const chip = (name) => panel.getByRole('button', { name, exact: true });
   const pressed = (name) => chip(name).getAttribute('aria-pressed');
-  const toast = (t) => page.locator('.toast', { hasText: t }).waitFor({ timeout: 5000 }).then(() => true, () => false);
+  const toast = (t) => toastsIn(page, { hasText: t }).waitFor({ timeout: 5000 }).then(() => true, () => false);
   const judged = panel.locator('[data-judged]');
   const gotBtn = panel.locator('[data-partner-judge]').getByRole('button', { name: /✔ Got it/ });
-  const scoreOf = (name) => page.locator(`.panel .players .p[aria-label="${name}"] .score`).innerText().then((t) => t.trim());
+  const scoreOf = (name) => hostPanelIn(page).locator(`.players .p[aria-label="${name}"] .score`).innerText().then((t) => t.trim());
   const scores = async () => Object.fromEntries(await Promise.all(['Ann', 'Bob', 'Cat', 'Dan'].map(async (n) => [n, await scoreOf(n)])));
-  const picker = () => page.locator('.panel .players .p.picker').getAttribute('aria-label', { timeout: 1000 }).catch(() => null);
+  const picker = () => hostPanelIn(page).locator('.players .p.picker').getAttribute('aria-label', { timeout: 1000 }).catch(() => null);
   const flat = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
 
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
   aud.on('pageerror', (e) => errors.push(`[audience] ${e.message}`));
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   const [sc] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);
   sc.on('pageerror', (e) => errors.push(`[scores] ${e.message}`));
   await sc.locator('.strip .plate').first().waitFor();
@@ -618,17 +618,17 @@ try {
   await never(viewers, [ONIONS, PIC2, 'zorbu', ...CARD_ONLY], 'the answer');
   assert((await mainLabel(page)) === '▦ Done ▶ board', 'then ▦ Done');
   await mainButton(page).click();
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   await never(viewers, [ONIONS, PIC2, 'zorbu', ...CARD_ONLY], 'back on the board');
   await page.screenshot({ path: 'test-results/partner-two-windows.png' });
 
   // Back to one window: the scores window, then the audience window (it asks first).
-  await Promise.all([sc.waitForEvent('close'), page.locator('.panel button[aria-label="Close the scores window"]').click()]);
-  await page.locator('.panel').getByRole('button', { name: '📺 Audience ●' }).click();
+  await Promise.all([sc.waitForEvent('close'), hostPanelIn(page).locator('button[aria-label="Close the scores window"]').click()]);
+  await hostPanelIn(page).getByRole('button', { name: '📺 Audience ●' }).click();
   // (A confirmation ignores a click in its first moment, against a double-click: click until the window goes.)
   for (let i = 0; !aud.isClosed(); i++) {
     if (i > 20) throw new Error('the audience window never closed');
-    await page.locator('.panel .confirm').getByRole('button', { name: 'Close it' }).click({ timeout: 5000 });
+    await confirmStrip(page).getByRole('button', { name: 'Close it' }).click({ timeout: 5000 });
     await aud.waitForEvent('close', { timeout: 250 }).catch(() => {});
   }
 
@@ -640,7 +640,7 @@ try {
   await stage('[data-partner-up]').waitFor();
   await page.keyboard.press('1');
   await panel.getByText('Ann picked it.').waitFor();
-  assert((await page.locator('.panel .status [data-viewers]').getAttribute('title')).includes('⚠ Viewers can see this window'), 'the status line’s ⚠ Viewers see this chip says viewers can see this window');
+  assert((await statusLineIn(page).locator('[data-viewers]').getAttribute('title')).includes('⚠ Viewers can see this window'), 'the status line’s ⚠ Viewers see this chip says viewers can see this window');
   await never(host, CARD_ONLY, 'PARTNER UP!');
   /** Reload the page and resume the game in one window (the game's cover card shows first, with Resume game). */
   const resume = async () => {
@@ -721,7 +721,7 @@ try {
   await never(host, CARD_ONLY, '▦ Done ▶ board (all of it, from the tile opening)');
   // (The check sees what comes and goes: the toasts, and what screen readers were told, long after they went.)
   const heard = await page.evaluate(() => window.__seen.join('\n'));
-  assert(heard.includes('Card 1’s words copied: paste them to Bob.') && (await page.locator('.toast', { hasText: 'words copied' }).count()) === 0, 'the check above heard every toast and announcement, gone since');
+  assert(heard.includes('Card 1’s words copied: paste them to Bob.') && (await toastsIn(page, { hasText: 'words copied' }).count()) === 0, 'the check above heard every toast and announcement, gone since');
   await page.screenshot({ path: 'test-results/partner-one-window.png' });
 
   // ---------- Phone buzzers, against a fake room: nobody buzzes, and the room never gets a card ----------
@@ -761,7 +761,7 @@ try {
     // (The partner clue's panel keeps one height: the buzzers' row isn't kept for the stage's size, and the Amount row
     // is folded behind ± Other points….)
     assert(
-      (await p.locator('.panel [data-buzzrow]').count()) === 0 && (await p.locator('.panel .award').count()) === 0 && (await p.getByRole('button', { name: '± Other points…' }).count()) === 1,
+      (await hostPanelIn(p).locator('[data-buzzrow]').count()) === 0 && (await awardRowIn(p).count()) === 0 && (await p.getByRole('button', { name: '± Other points…' }).count()) === 1,
       'no buzzers’ row, nothing to open: the Amount row folded behind ± Other points…',
     );
     await p.keyboard.press('u');
@@ -769,10 +769,10 @@ try {
     // A phone buzzing anyway (an older phone page, say): nobody is picked to answer.
     await say({ t: 'buzz', armId: st.armId, seatId: 'p3', rank: 1, afterMs: 0 });
     await say({ t: 'queue', armId: st.armId, queue: [{ seatId: 'p3', afterMs: 0 }] });
-    await p.locator('.panel .players').waitFor();
+    await hostPanelIn(p).locator('.players').waitFor();
     await p.waitForTimeout(300);
     // (div.plate: the answering player's plate, not a score plate.)
-    assert((await p.locator('.panel .p .sel[aria-pressed="true"]').count()) === 0 && (await rs('div.plate').count()) === 0 && (await state()).phase === 'lobby', 'a buzz from a phone picks nobody');
+    assert((await playerRowsIn(p).locator('.sel[aria-pressed="true"]').count()) === 0 && (await rs('div.plate').count()) === 0 && (await state()).phase === 'lobby', 'a buzz from a phone picks nobody');
     await p.waitForTimeout(Math.max(0, shown + 1100 - Date.now()));
     await p.keyboard.press('Enter');
     await rs('.timer').waitFor();

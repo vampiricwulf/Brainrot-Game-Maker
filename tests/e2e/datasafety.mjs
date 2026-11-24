@@ -3,7 +3,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, answerReplace, editorReady, exportHtml, lineOf, nameGame, noDailyDoubles, openGameFile, png, assert, launchChromium } from './helpers.mjs';
+import { appFile, failureShots, answerReplace, editorReady, exportHtml, lineOf, nameGame, noDailyDoubles, openGameFile, png, assert, launchChromium, boardIn, boardTilesIn, hostPanelIn, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -151,7 +151,7 @@ try {
   assert(!page.isClosed(), 'and staying keeps the page');
   // Room again: the next change writes what failed too, and only then says ✓ Autosaved.
   await page.evaluate(() => (window.__full = false));
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.locator('.cat textarea').nth(2).fill('After');
   await page.locator('.cat textarea').nth(3).click();
   await autosaved.waitFor();
@@ -192,7 +192,7 @@ try {
   await page.getByRole('button', { name: 'New', exact: true }).click();
   const reopenBtn = page.getByRole('button', { name: '↶ Reopen previous game' });
   await reopenBtn.waitFor();
-  assert((await page.locator('nav button.round-tab').count()) === 0, 'New after a Save asks nothing, and offers ↶ Reopen previous game');
+  assert((await roundTabsIn(page).count()) === 0, 'New after a Save asks nothing, and offers ↶ Reopen previous game');
   await shot('datasafety-reopen');
   // An empty game is replaced without a word, and isn't kept.
   await reopenBtn.click();
@@ -217,23 +217,23 @@ try {
   assert((await page.locator('.cat textarea').first().inputValue()) === 'Unsaved', 'New with unsaved changes asks: Cancel keeps the game');
   const [first] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'New', exact: true }).click().then(() => answerReplace(page, 'Save first'))]);
   await reopenBtn.waitFor();
-  assert(first.suggestedFilename() === 'Safe-Game.brainrot' && (await page.locator('nav button.round-tab').count()) === 0, 'Save first saves, then starts the new game');
+  assert(first.suggestedFilename() === 'Safe-Game.brainrot' && (await roundTabsIn(page).count()) === 0, 'Save first saves, then starts the new game');
 
   // ---------- The sample as it came: New asks nothing (it's kept in Recent games); once changed, it asks ----------
   await page.getByRole('button', { name: /Try a sample game/ }).click();
-  await page.locator('nav button.round-tab').first().waitFor();
+  await roundTabsIn(page).first().waitFor();
   assert(!(await saveDot()), 'the sample as it came: 💾 Save has no dot');
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.locator('.data-notice', { hasText: '“Sample game” was replaced.' }).waitFor();
   // (Its toast, “Added a sample game: press ▶ Play to try it…”, was about the game New just replaced: it goes with it.)
-  assert((await page.locator('.toast', { hasText: 'Added a sample game' }).count()) === 0, 'New puts away the sample’s “press ▶ Play to try it” toast');
+  assert((await toastsIn(page, { hasText: 'Added a sample game' }).count()) === 0, 'New puts away the sample’s “press ▶ Play to try it” toast');
   await editorReady(page);
-  assert((await page.locator('nav button.round-tab').count()) === 0, 'New over the untouched sample asks nothing, and keeps it in Recent games (↶ Reopen previous game)');
+  assert((await roundTabsIn(page).count()) === 0, 'New over the untouched sample asks nothing, and keeps it in Recent games (↶ Reopen previous game)');
   await reopenBtn.click();
   await page.getByText('Reopened “Sample game”').waitFor();
   await editorReady(page);
   // (The sample's Jeopardy! round, not its Final Jeopardy!.)
-  await page.locator('nav button.round-tab').and(page.getByRole('button', { name: 'Jeopardy!', exact: true })).click();
+  await roundTabsIn(page).and(page.getByRole('button', { name: 'Jeopardy!', exact: true })).click();
   await page.locator('.cat textarea').first().fill('Changed');
   await page.locator('.cat textarea').nth(1).click();
   // 💾 Save • and the browser's note keep their spaces, and where the header shows their words, the note is never cut
@@ -425,7 +425,7 @@ try {
   // (The game open was saved with Save first, as its history remembers: nothing to ask.)
   await openGameFile(page, resolve('test-results/datasafety-hand.json'));
   await page.getByText(/^Opened “/).waitFor();
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   assert((await page.locator('.tile').count()) === 30, 'a hand-edited game missing its row values, a slide and a color, with a category id twice, opens with them filled in');
   await page.locator('[data-tile="2,0"]').click();
   const plainText = page.getByRole('dialog', { name: 'Edit clue' }).locator('[data-field="q"]');
@@ -439,7 +439,7 @@ try {
   writeFileSync(resolve('test-results/datasafety-short.json'), JSON.stringify(game));
   await openGameFile(page, resolve('test-results/datasafety-short.json'));
   await page.getByText('Opened “Short clues”').waitFor();
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   assert((await page.locator('.tile').count()) === 30 && !errors.length, 'a category short of clues opens with empty tiles in their place');
   game.rounds[0].mode = 'quiz';
   writeFileSync(resolve('test-results/datasafety-bad.json'), JSON.stringify(game));
@@ -502,17 +502,17 @@ try {
   // ---------- Storage full during a game: the game in progress isn't saved, so closing the tab asks first ----------
   // (The game itself saved to a file first, wanting no Daily Doubles, which Start would place in it: only the game in
   // progress is left to lose.)
-  await page.locator('nav button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await noDailyDoubles(page);
   await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click()]);
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
-  await page.locator('.board .tile').first().waitFor();
+  await boardTilesIn(boardIn(page)).first().waitFor();
   await page.evaluate(() => (window.__full = true));
-  await page.locator('.board .tile').first().click();
+  await boardTilesIn(boardIn(page)).first().click();
   await page.getByText("Storage is full, so autosave stopped: the game in progress isn't being saved").waitFor();
-  assert((await page.locator('.panel .unsaved').innerText()) === '⚠ Not saving', 'storage full during a game: it says the game in progress isn’t being saved (not "use Save"), and the host panel keeps saying so');
+  assert((await hostPanelIn(page).locator('.unsaved').innerText()) === '⚠ Not saving', 'storage full during a game: it says the game in progress isn’t being saved (not "use Save"), and the host panel keeps saying so');
   const leaveGame = new Promise((r) => (page.once('dialog', (d) => (r(d.type()), d.dismiss())), page.once('close', () => r('closed'))));
   await page.close({ runBeforeUnload: true });
   assert((await leaveGame) === 'beforeunload' && !page.isClosed(), 'closing the tab then asks first, though the game itself was saved');
@@ -523,7 +523,7 @@ try {
   // (The ask ignores clicks for 400 ms after it shows: the second half of a double-click on Exit.)
   await page.waitForTimeout(450);
   await discard.click();
-  await page.locator('.toast', { hasText: 'Game discarded' }).waitFor();
+  await toastsIn(page, { hasText: 'Game discarded' }).waitFor();
   const leaveEditor = new Promise((r) => (page.once('dialog', (d) => (r(d.type()), d.dismiss())), page.once('close', () => r('closed'))));
   await page.close({ runBeforeUnload: true });
   assert((await leaveEditor) === 'closed', 'so closing the tab asks nothing once the game in progress is discarded');

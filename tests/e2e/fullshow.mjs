@@ -15,7 +15,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, checkItem, confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots, assert, sleep, launchChromium, section, until } from './helpers.mjs';
+import { appFile, anyway, checkItem, confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots, assert, sleep, launchChromium, section, until, awardRowIn, finalControlsIn, hostPanelIn, playerRowsIn, roundNavIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -173,9 +173,9 @@ async function show(how) {
   };
   /** Where it got to (when a wait runs out). */
   const where = async () => {
-    const status = (await host.locator('.panel .status').innerText().catch(() => '?')).replace(/\s+/g, ' ');
+    const status = (await statusLineIn(host).innerText().catch(() => '?')).replace(/\s+/g, ' ');
     const main = (await mainButton(host).count()) ? await mainLabel(host) : '(none)';
-    const toast = (await host.locator('.toast').allInnerTexts().catch(() => [])).join(' / ');
+    const toast = (await toastsIn(host).allInnerTexts().catch(() => [])).join(' / ');
     return `main button “${main}”, status “${status}”${toast ? `, toast “${toast}”` : ''}`;
   };
   /** Waits for the state `what` describes (`check` holds), or fails saying which step didn't bring it. */
@@ -185,11 +185,11 @@ async function show(how) {
   const label = async () => ((await mainButton(host).count()) ? await mainLabel(host) : '');
   const mainIs = (l) => async () => (await label()) === l;
   const noMain = async () => (await mainButton(host).count()) === 0;
-  const statusHas = (t) => async () => (await host.locator('.panel .status').innerText()).includes(t);
+  const statusHas = (t) => async () => (await statusLineIn(host).innerText()).includes(t);
   const stageHas = (sel) => async () => (await host.locator(`.stage-box ${sel}`).count()) > 0;
-  const marked = async () => (await host.locator('.panel .mark.right').count()) === 1;
+  const marked = async () => (await hostPanelIn(host).locator('.mark.right').count()) === 1;
   /** The tool's own 🎡 Spin! / ↻ Spin again (its box's slot: the blue button only puts it away). */
-  const slot = () => stepButton(host.locator('.panel [data-tool-controls]'));
+  const slot = () => stepButton(hostPanelIn(host).locator('[data-tool-controls]'));
   const slotSays = async (l) => (await slot().count()) === 1 && (await slot().innerText()).startsWith(l);
   /** A wheel tile's wheel up, not spun: its box's 🎡 Spin!, and the blue button Show question ▶. */
   const toolUp = async () => (await slotSays('🎡 Spin!')) && (await mainIs('Show question ▶')());
@@ -216,7 +216,7 @@ async function show(how) {
   };
   let lastStage = 0;
   /** A click mid-stage (or on `loc` there: a tile), a moment after the one before, then the state it brings. */
-  const stageClick = async (what, check, loc = host.locator('.stage-box')) => {
+  const stageClick = async (what, check, loc = stageBoxIn(host)) => {
     const wait = lastStage + STAGE_GAP - Date.now();
     if (wait > 0) await sleep(wait);
     await click(loc, `on the stage: ${what}`, check);
@@ -227,7 +227,7 @@ async function show(how) {
     await reach(`the main button saying ${l}`, mainIs(l));
     await click(mainButton(host), `${l}: ${what}`, check);
   };
-  const tile = (name) => host.locator(`.stage-box .tile[aria-label^="${name}"]`);
+  const tile = (name) => stageBoxIn(host).locator(`.tile[aria-label^="${name}"]`);
   /** Where the board's keys are (the tile they're on). */
   const keysOn = (name) => async () => (await host.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '')).startsWith(name);
   /** A phone buzzes in once its buzzer is open: the host has them answering. */
@@ -235,14 +235,14 @@ async function show(how) {
     const p = phones[name];
     await p.locator('#buzz-big', { hasText: 'BUZZ!' }).waitFor();
     await p.locator('#buzz').dispatchEvent('pointerdown');
-    await reach(`${name} answering`, async () => (await host.locator('.panel .p .sel[aria-pressed="true"]').allInnerTexts()).some((t) => t.includes(name)));
+    await reach(`${name} answering`, async () => (await playerRowsIn(host).locator('.sel[aria-pressed="true"]').allInnerTexts()).some((t) => t.includes(name)));
   };
-  const award = host.locator('.panel .award button.good');
-  const gotIt = host.locator('.panel [data-partner-judge]').getByRole('button', { name: /^✔ Got it/ });
+  const award = awardRowIn(host).locator('button.good');
+  const gotIt = hostPanelIn(host).locator('[data-partner-judge]').getByRole('button', { name: /^✔ Got it/ });
   /** A score: on the stage's plates, or (at the end) on the panel's chips. */
   const scoreOf = async (name) => {
-    const plate = host.locator('.stage-box .plate', { hasText: name });
-    const t = (await plate.count()) ? await plate.first().innerText() : await host.locator(`.panel .p[aria-label="${name}"] .score`).innerText();
+    const plate = stageBoxIn(host).locator('.plate', { hasText: name });
+    const t = (await plate.count()) ? await plate.first().innerText() : await hostPanelIn(host).locator(`.p[aria-label="${name}"] .score`).innerText();
     return Number(t.replace(/[^\d-]/g, '') || 0);
   };
   /** The answer (R, or a click on the stage), then the board (Esc, or a click), or what `check` says comes next. */
@@ -280,7 +280,7 @@ async function show(how) {
     await key('Enter', 'Ann’s points', marked);
   } else {
     await stageClick('the clue', mainIs('👁 Reveal answer'), tile('Memes for $200'));
-    await host.locator('.stage-box .join-badge').waitFor();
+    await stageBoxIn(host).locator('.join-badge').waitFor();
     assert(true, 'a clue anyone may buzz on shows the join code');
     await buzz('Ann');
     await click(award, 'Ann’s points', marked);
@@ -303,7 +303,7 @@ async function show(how) {
     await ann.locator('#wager-form').waitFor();
     await ann.locator('#wager-in').fill('300');
     await ann.locator('#wager-send').click();
-    await reach('Ann’s wager from her phone', async () => (await host.locator('.panel .dd [data-dd-phone]', { hasText: '📱 from phone' }).count()) === 1);
+    await reach('Ann’s wager from her phone', async () => (await hostPanelIn(host).locator('.dd [data-dd-phone]', { hasText: '📱 from phone' }).count()) === 1);
     await main('Show question ▶', 'its question', mainIs('👁 Reveal answer'));
     await click(award, 'Ann’s points', marked);
   }
@@ -335,7 +335,7 @@ async function show(how) {
   // (The blue button is the show's next step only: Show question ▶, Next ▶ while the wheel is up, then 👁 Reveal answer.
   // The spin and the send are the 🤝 box's: W and Enter, or a click there.)
   await begin('A partner clue, its card to a phone');
-  const pbox = host.locator('.panel [data-partner-panel]');
+  const pbox = hostPanelIn(host).locator('[data-partner-panel]');
   const partnerUp = async () => (await stageHas('[data-partner-up]')()) && (await mainIs('Show question ▶')());
   /** The partner wheel landed: the blue button is Next ▶, no longer greyed. */
   const landed = async () => (await mainIs('Next ▶')()) && !(await mainButton(host).isDisabled());
@@ -397,7 +397,7 @@ async function show(how) {
 
   // ---------- A slides round: three slides, then on ----------
   await begin('A slides round');
-  const pips = (t) => async () => (await host.locator('.stage-box [data-slide-pips]').getAttribute('aria-label').catch(() => '')) === t;
+  const pips = (t) => async () => (await stageBoxIn(host).locator('[data-slide-pips]').getAttribute('aria-label').catch(() => '')) === t;
   const titleCard = stageHas('.title-card');
   // (A host looks at the first slide: the round's ▶ takes no press within a moment of it.)
   await sleep(NEW_ROW);
@@ -409,7 +409,7 @@ async function show(how) {
     await stageClick('its second slide', pips('Slide 2 of 3'));
     await stageClick('its last slide', pips('Slide 3 of 3'));
     // (On the last slide a click says so first, in the status line; the next one goes on.)
-    await stageClick('“Last slide: click again”', async () => (await host.locator('.panel .status [data-click-note]', { hasText: 'Last slide: click again' }).count()) === 1);
+    await stageClick('“Last slide: click again”', async () => (await statusLineIn(host).locator('[data-click-note]', { hasText: 'Last slide: click again' }).count()) === 1);
     await sleep(CLICK_AGAIN);
     await stageClick('the board game’s title card', titleCard);
   }
@@ -436,7 +436,7 @@ async function show(how) {
     await main('Next turn ▶', 'Bob’s turn', bobs);
   }
   await sleep(NEW_ROW);
-  await click(host.locator('.rn button.next'), 'leaving asks first', async () => (await confirmStrip(host).count()) > 0);
+  await click(roundNavIn(host).locator('button.next'), 'leaving asks first', async () => (await confirmStrip(host).count()) > 0);
   await sleep(NEW_ROW);
   await click(leaveAnswer(host), 'the Final’s title card', mainIs('Start the round ▶'));
 
@@ -444,7 +444,7 @@ async function show(how) {
   await begin('The Final');
   const [lead, second] = [...NAMES].sort((a, b) => scores[b] - scores[a]);
   const wagers = Object.fromEntries(NAMES.map((p) => [p, p === lead ? scores[lead] - scores[second] : 0]));
-  const wagerScreen = async () => (await host.locator('.fj .wagers').count()) > 0;
+  const wagerScreen = async () => (await finalControlsIn(host).locator('.wagers').count()) > 0;
   if (byKeys) {
     await key('n', 'the wagers', wagerScreen);
     await key('n', 'the keys in the first wager box', () => host.evaluate(() => !!document.activeElement?.matches('input[data-wager]')));
@@ -467,7 +467,7 @@ async function show(how) {
       await ph.locator('#wager-send.sent', { hasText: '✔ Sent' }).waitFor();
     }
     // (The host has them all: the blue button is never greyed, so its wager screen's own line says so.)
-    await reach('every wager in on the host', async () => (await host.locator('.fj .row .muted', { hasText: /^Waiting on/ }).count()) === 0);
+    await reach('every wager in on the host', async () => (await finalControlsIn(host).locator('.row .muted', { hasText: /^Waiting on/ }).count()) === 0);
     await main('Show question ▶', 'the question', mainIs('👁 Reveal answer'));
     // (The think clock still running: the click asks first, and 👁 Reveal anyway shows it. The one check of the run:
     // nothing else opens it, before or after.)
@@ -479,14 +479,14 @@ async function show(how) {
     await stageClick('the reveals', mainIs('Show wager ▶'));
   }
   // (Their wager up: their verdict due, ✔ Right / ✘ Wrong in their row only; the blue button is what follows it.)
-  const spotRow = host.locator('.fj .pl.cur');
+  const spotRow = finalControlsIn(host).locator('.pl.cur');
   const due = async () => (await spotRow.locator('button.good:not(:disabled):not([aria-pressed="true"])').count()) === 1 && (await spotRow.locator('[aria-pressed="true"]').count()) === 0;
   for (let i = 0; i < NAMES.length; i++) {
     const last = i === NAMES.length - 1;
     const judging = async () => (await due()) && (await mainIs(last ? 'Finish game ▶' : 'Next player ▶')());
     if (byKeys) await key('n', 'their wager', judging);
     else await main('Show wager ▶', 'their wager', judging);
-    const who = (await host.locator('.fj .pl.cur .name').innerText()).trim();
+    const who = (await finalControlsIn(host).locator('.pl.cur .name').innerText()).trim();
     const next = async () => (await spotRow.locator('[aria-pressed="true"]').count()) === 1 && (await mainIs(last ? 'Finish game ▶' : 'Next player ▶')());
     if (byKeys) await key(who === lead ? 'x' : 'c', `${who} judged`, next);
     else await click(spotRow.locator(who === lead ? 'button.bad' : 'button.good'), `${who} judged`, next);
@@ -494,7 +494,7 @@ async function show(how) {
     if (byKeys) await key('n', 'the next player', mainIs('Show wager ▶'));
     else await main('Next player ▶', 'the next player', mainIs('Show wager ▶'));
   }
-  const armed = async () => (await host.locator('.fj .armed').count()) > 0;
+  const armed = async () => (await finalControlsIn(host).locator('.armed').count()) > 0;
   const over = statusHas('Game over');
   // (N once more says everyone is judged: again to finish. The button finishes at once.)
   if (byKeys) {
@@ -510,16 +510,16 @@ async function show(how) {
   const settled = statusHas(`🏆 ${winner} won`);
   // (No blue button on the end screen: every way to settle the tie is in its box.)
   await reach('the end screen, no blue button', noMain);
-  await click(host.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' }), 'the tiebreaker clue', mainIs('👁 Reveal answer'));
-  assert((await host.locator('.stage-box .join-badge').count()) === 0, 'no join code on the tiebreaker clue (answered out loud: nobody buzzes)');
+  await click(hostPanelIn(host).locator('[data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' }), 'the tiebreaker clue', mainIs('👁 Reveal answer'));
+  assert((await stageBoxIn(host).locator('.join-badge').count()) === 0, 'no join code on the tiebreaker clue (answered out loud: nobody buzzes)');
   if (byKeys) {
     await key('r', 'its answer', mainIs('🏁 Back to results'));
-    await key(String(NAMES.indexOf(winner) + 1), `${winner} picked`, async () => (await host.locator('.panel .p .sel[aria-pressed="true"]').count()) === 1);
+    await key(String(NAMES.indexOf(winner) + 1), `${winner} picked`, async () => (await playerRowsIn(host).locator('.sel[aria-pressed="true"]').count()) === 1);
     await key('Enter', `${winner} the winner`, settled);
     await key('n', 'the results', over);
   } else {
     await stageClick('its answer', mainIs('🏁 Back to results'));
-    await click(host.locator('.panel [data-tb-who]').getByRole('button', { name: `🏆 ${winner}` }), `${winner} the winner`, settled);
+    await click(hostPanelIn(host).locator('[data-tb-who]').getByRole('button', { name: `🏆 ${winner}` }), `${winner} the winner`, settled);
     await main('🏁 Back to results', 'the results', over);
   }
   assert(true, `${winner} won the tiebreaker, and the show is over`);

@@ -6,7 +6,7 @@ import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer, returningHost, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer, returningHost, failureShots, assert, launchChromium, hostPanelIn, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -17,8 +17,8 @@ const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => d.accept());
-const tabs = () => page.locator('nav > button.round-tab').allInnerTexts();
-const toast = () => page.locator('.toast').last().innerText();
+const tabs = () => roundTabsIn(page).allInnerTexts();
+const toast = () => toastsIn(page).last().innerText();
 
 try {
   // ---------- A first run: nothing moved for a new user ----------
@@ -81,10 +81,10 @@ try {
     'Try a sample game puts the focus on its first round’s tab (its name isn’t selected to type over)',
   );
   // Its toast stays in the editor: it would cover ▶ Play's Start game.
-  assert((await page.locator('.toast').count()) === 1, 'the sample game says what it added');
+  assert((await toastsIn(page).count()) === 1, 'the sample game says what it added');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.getByRole('button', { name: /Start game/ }).waitFor();
-  assert((await page.locator('.toast').count()) === 0, 'and its toast doesn’t follow into ▶ Play');
+  assert((await toastsIn(page).count()) === 0, 'and its toast doesn’t follow into ▶ Play');
   await page.getByRole('button', { name: '◀ Back to editor' }).click();
   let t = await tabs();
   assert(t.length === 5 && t[0].includes('Introduction') && t[1].includes('Jeopardy!') && t[4].includes('Final'), `the sample game has an introduction, a board, an adventure, a board game and a Final (${t.join(' | ')})`);
@@ -92,11 +92,11 @@ try {
   await page.locator('.problems:not(.warn) .problem.info', { hasText: 'Partner clues: without phone buzzers' }).waitFor({ timeout: 3000 });
   assert((await page.locator('.problems .problem').count()) === 1, 'and nothing to fix on the checklist (one note, for its partner clue)');
   await page.keyboard.press('Control+z');
-  assert((await page.locator('nav > button.round-tab').count()) === 0, 'Ctrl+Z takes the whole sample back');
+  assert((await roundTabsIn(page).count()) === 0, 'Ctrl+Z takes the whole sample back');
   await page.keyboard.press('Control+y');
-  assert((await page.locator('nav > button.round-tab').count()) === 5, 'and Ctrl+Y brings it back');
+  assert((await roundTabsIn(page).count()) === 5, 'and Ctrl+Y brings it back');
   // Its board game's special spaces show their names on the board, and their card knows their kind.
-  await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
+  await roundTabsIn(page, { hasText: 'Board game' }).click();
   const named = await page.locator('.canvas .label:not([data-name-hidden])').allInnerTexts();
   assert(['Bonus', 'Go back', 'Nap time', 'Roll again'].every((n) => named.includes(n)) && !named.some((n) => /^Space \d/.test(n)), `the sample board game shows its special spaces’ names, not the plain ones’ (${named.join(', ')})`);
   await page.locator('.canvas').getByRole('button', { name: 'Bonus', exact: true }).click();
@@ -104,9 +104,9 @@ try {
   assert(kind === '⭐ Star (bonus points)', `its Bonus space’s Make it a… box says ⭐ Star, from its +100 button (${kind})`);
   // In its Final, "…in this round" is the Final's own slides, not every board question. It starts on "Questions +
   // answers in this round" (its answer): with one question slide, "Questions in this round" is none.
-  await page.locator('nav > button.round-tab', { hasText: 'Final' }).click();
+  await roundTabsIn(page, { hasText: 'Final' }).click();
   await page.locator('.canvas .hit').first().click();
-  const applyStyle = page.locator('.insp').getByRole('button', { name: 'Apply', exact: true });
+  const applyStyle = inspectorIn(page).getByRole('button', { name: 'Apply', exact: true });
   const scope = page.getByRole('combobox', { name: 'Which slides get this style' });
   assert((await scope.inputValue()) === 'round-qa', `in the Final, Use this style elsewhere starts on "Questions + answers in this round" (${await scope.inputValue()})`);
   await applyStyle.click();
@@ -114,7 +114,7 @@ try {
   await scope.selectOption('round-q');
   await applyStyle.click();
   assert((await page.locator('.notice').innerText()).includes('There are no other slides in that group yet'), '"Questions in this round" restyles none of the board’s questions (it has one question slide)');
-  await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click();
+  await roundTabsIn(page, { hasText: 'Jeopardy!' }).first().click();
   // Its board's 🤝 Partner clues box counts the partner clue on it, and its 🔀 Randomize works.
   {
     const ptBox = page.locator('[data-partner-count]');
@@ -138,7 +138,7 @@ try {
     document.querySelector('.modal.import').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
   });
   await importDlg.getByRole('status').getByText('“clues.xlsx” can’t be read here: copy its cells and paste them, or save the sheet as CSV.').waitFor();
-  assert((await page.locator('.toast', { hasText: 'Drop pictures' }).count()) === 0, 'an Excel file dropped on it says how to bring its clues in, in its own status line');
+  assert((await toastsIn(page, { hasText: 'Drop pictures' }).count()) === 0, 'an Excel file dropped on it says how to bring its clues in, in its own status line');
   // A CSV file dropped on it is read in, as Choose file… does.
   await page.evaluate(() => {
     const data = new DataTransfer();
@@ -146,7 +146,7 @@ try {
     document.querySelector('.modal.import').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
   });
   await importDlg.getByText('clues.csv').waitFor();
-  assert((await importDlg.innerText()).includes('2 clues found') && (await page.locator('.toast', { hasText: 'Drop pictures' }).count()) === 0, 'a sheet dropped on it is read in, and shows how many clues it has');
+  assert((await importDlg.innerText()).includes('2 clues found') && (await toastsIn(page, { hasText: 'Drop pictures' }).count()) === 0, 'a sheet dropped on it is read in, and shows how many clues it has');
   const previewTile = await importDlg.locator('.tile.new').first().innerText();
   assert(/^\$[\d,]+ · H2O is this$/.test(previewTile), `the preview shows each imported tile's value with its question (${previewTile})`);
   await page.getByLabel('Replace the board').check();
@@ -174,7 +174,7 @@ try {
   assert((await page.locator('[data-tile="1,1"]').innerText()).includes('Cheesy triangles'), 'and fills its tiles top down');
   const pasteStep = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert(pasteStep === 'Undo: Pasted 2 clues into “Snacks” (Ctrl+Z)', `its step is named for what it did (${pasteStep})`);
-  assert((await page.locator('.toast', { hasText: 'Pasted 2 clues' }).count()) === 0, 'the note at the bottom says it, with no toast on top of it');
+  assert((await toastsIn(page, { hasText: 'Pasted 2 clues' }).count()) === 0, 'the note at the bottom says it, with no toast on top of it');
   // Ctrl+Z in the renamed box takes the paste back (it was the browser's own undo of the name typed before).
   await page.keyboard.press('Control+z');
   await page.waitForFunction((n) => document.querySelector('[data-cat-name="1"]')?.value === n, oldName, { timeout: 3000 }).catch(() => {});
@@ -202,7 +202,7 @@ try {
   await importDlg.getByRole('button', { name: 'Cancel' }).click();
 
   // ---------- Find ----------
-  await page.locator('nav > button.round-tab').nth(2).click();
+  await roundTabsIn(page).nth(2).click();
   await page.keyboard.press('Control+f');
   const find = page.getByRole('combobox', { name: 'Find' });
   await find.fill('cheesy');
@@ -212,7 +212,7 @@ try {
   await find.press('Tab');
   assert(await page.evaluate(() => document.activeElement?.matches('[role="dialog"] .modal-x')), 'Tab past Find’s box (with a result) goes round to its ✕, not out of the window');
   await page.keyboard.press('Escape');
-  assert(await page.locator('nav > button.round-tab').nth(2).evaluate((t) => t === document.activeElement), 'Esc on Find gives the focus back to the round tab it was opened from');
+  assert(await roundTabsIn(page).nth(2).evaluate((t) => t === document.activeElement), 'Esc on Find gives the focus back to the round tab it was opened from');
   await page.keyboard.press('Control+f');
   await find.press('Enter');
   await page.locator('.clue-editor, [aria-label*="Clue"]').first().waitFor({ timeout: 3000 }).catch(() => {});
@@ -263,17 +263,17 @@ try {
   await page.keyboard.press('Escape');
   // A world no round plays (its round deleted, no RPG round left): Find says how to add one to see it, and the focus
   // goes back to what had it before Find, as on Esc. Not when it's been put somewhere while Find waited for the screen.
-  const adventure = page.locator('nav > button.round-tab', { hasText: 'Adventure' });
+  const adventure = roundTabsIn(page, { hasText: 'Adventure' });
   await adventure.click({ button: 'right' });
   await page.getByRole('menuitem', { name: /Delete round/ }).click();
   await adventure.waitFor({ state: 'detached' });
-  const firstTab = page.locator('nav > button.round-tab').first();
+  const firstTab = roundTabsIn(page).first();
   await firstTab.focus();
   await page.keyboard.press('Control+f');
   await find.fill('cave');
   const worldHit = page.getByRole('option', { name: /Sample world/ }).first();
   await worldHit.click();
-  await page.locator('.toast', { hasText: "isn't played by any round" }).waitFor();
+  await toastsIn(page, { hasText: "isn't played by any round" }).waitFor();
   assert((await toast()).includes('add an RPG round (＋ Add round › 🗺 RPG) and pick it there'), `with no RPG round left, Find’s toast for a world no round plays says to add one (${await toast()})`);
   // (Once Find has given up waiting for the screen, after 30 frames.)
   assert(
@@ -318,7 +318,7 @@ try {
   assert((await page.locator('.canvas [data-space]').count()) === 20, 'the 20-space loop template has 20 spaces');
   t = await tabs();
   assert(t.at(-1).includes('Final'), 'a template round goes before the Final');
-  await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click({ button: 'right' });
+  await roundTabsIn(page, { hasText: 'Jeopardy!' }).first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: '📋 Copy round' }).click();
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Paste round “Jeopardy!”/ }).click();
@@ -328,7 +328,7 @@ try {
   const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert((await undoTitle()) === 'Undo: Pasted round “Jeopardy! (copy)” (Ctrl+Z)', `its step is named after the round it added (${await undoTitle()})`);
   // From a round's menu, after it: the copy's name has the focus too.
-  await page.locator('nav > button.round-tab', { hasText: 'Jeopardy!' }).first().click({ button: 'right' });
+  await roundTabsIn(page, { hasText: 'Jeopardy!' }).first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: /Paste round “Jeopardy!” after it/ }).click();
   await page.waitForFunction(() => document.activeElement?.hasAttribute('data-round-name') && document.activeElement.value === 'Jeopardy! (copy 2)', null, { timeout: 3000 });
   assert((await undoTitle()) === 'Undo: Pasted round “Jeopardy! (copy 2)” (Ctrl+Z)', 'Paste round after it (a tab’s menu) puts the focus on the copy’s name, and its step names it');
@@ -347,7 +347,7 @@ try {
   await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n - 1, rounds);
 
   // ---------- Board-game space buttons in the editor ----------
-  await page.locator('nav > button.round-tab', { hasText: 'Board game' }).first().click();
+  await roundTabsIn(page, { hasText: 'Board game' }).first().click();
   await page.locator('.canvas').getByRole('button', { name: 'Space 2', exact: true }).click();
   await page.getByRole('button', { name: '＋ Add button' }).last().click();
   assert((await page.getByRole('menuitem', { name: '⏭ Skip next turn' }).count()) === 1, 'a space offers ⏭ Skip next turn');
@@ -645,7 +645,7 @@ try {
   // (Ticked, the rolling line goes from the check, and the tick with it: a click, not Playwright's check(), which waits
   // to see it ticked.)
   await goOnCheck(page).getByLabel('Don’t ask about rolling again this game').click();
-  await page.locator('.panel [data-goon="nothing"]').waitFor();
+  await hostPanelIn(page).locator('[data-goon="nothing"]').waitFor();
   await page.keyboard.press('n');
   await page.locator('.stage .turn-banner', { hasText: 'Ann' }).waitFor();
   await page.keyboard.press('n');
@@ -665,7 +665,7 @@ try {
   await page.getByRole('button', { name: /^▶ Move Cat/ }).click();
   await page.locator('.bh .acts').getByRole('button', { name: 'Roll again' }).click();
   // It says the space's name once, and that Next turn gives Cat another go.
-  const ran = await page.locator('.toast', { hasText: /^Roll again/ }).innerText();
+  const ran = await toastsIn(page, { hasText: /^Roll again/ }).innerText();
   assert(ran === 'Roll again: Cat', `the toast says Roll again once (${ran})`);
   await page.locator('.bh [data-turn-next]', { hasText: 'rolls again' }).waitFor({ timeout: 3000 }).catch(() => {});
   const first = await page.locator('.bh [data-turn-next]').innerText();

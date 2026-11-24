@@ -4,7 +4,7 @@
 // ⚙ Settings › Undo says when it snaps a number into range and how many changes a lower one forgot. A wheel tile's
 // Which wheel offers the ready-made wheels.
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, appFile, failureShots, launchChromium, png, assert, until } from './helpers.mjs';
+import { addClassicRounds, appFile, failureShots, launchChromium, png, assert, until, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -103,7 +103,7 @@ try {
   assert(mediaTab.startsWith(`🖼${VS} Media (`), `the sidebar: 🖼 Media too (${mediaTab})`);
 
   // ---------- ⚙ Settings › Undo says what it did: snapped into range, and the changes it forgot ----------
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   for (let i = 0; i < 15; i++) {
     await page.getByRole('button', { name: '×2', exact: true }).click();
     await page.getByRole('button', { name: '÷2', exact: true }).click();
@@ -142,7 +142,7 @@ try {
   await undoBox.fill('2500');
   await settings.getByRole('button', { name: 'Done' }).click();
   await settings.waitFor({ state: 'detached' });
-  const doneToast = page.locator('.toast', { hasText: 'Undo:' });
+  const doneToast = toastsIn(page, { hasText: 'Undo:' });
   await doneToast.waitFor();
   assert((await doneToast.innerText()) === 'Undo: set to 2000, the highest it goes.', `typed, then Done: a toast says it (“${await doneToast.innerText()}”)`);
   settings = await openSettings();
@@ -155,12 +155,12 @@ try {
   await undoBox.fill('2');
   await page.keyboard.press('Escape');
   await settings.waitFor({ state: 'detached' });
-  const toast = page.locator('.toast');
+  const toast = toastsIn(page);
   await toast.waitFor();
   assert((await toast.innerText()) === 'Undo: set to 20, the lowest it goes. Forgot the 3 oldest changes in 🕘 History.', `closed with Esc, a toast says it (“${await toast.innerText()}”)`);
   assert((await steps()) === 20, '🕘 History keeps 20');
   // A note read under the box is never said again as the window goes: not after another number and Esc, nor on Done.
-  const stale = page.locator('.toast').filter({ hasText: /^Undo: set to 20, the lowest it goes\.$/ });
+  const stale = toastsIn(page).filter({ hasText: /^Undo: set to 20, the lowest it goes\.$/ });
   settings = await openSettings();
   await undoBox.fill('5');
   await undoBox.press('Tab');
@@ -180,7 +180,7 @@ try {
   assert(!(await stale.count()), '5, Tab (its note shows), then Done: the note isn’t said again in a toast');
 
   // ---------- A wheel tile's Which wheel offers the ready-made wheels, and picking one adds it to the game ----------
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.locator('[data-tile="1,2"]').click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '🎡 Wheel tile…' }).click();
   const clueBox = page.getByRole('dialog', { name: 'Edit clue' });

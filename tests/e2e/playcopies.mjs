@@ -13,7 +13,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, seenWhere, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, seenWhere, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, launchChromium, untilWith, section, hostPanelIn, stageBoxIn } from './helpers.mjs';
 import { gif, noise, wav } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -221,9 +221,9 @@ try {
   await ann.getByRole('button', { name: 'Ann', exact: true }).click();
   await ann.locator('#me').getByText('Ann').waitFor();
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  await page.locator('.stage-box .tile').first().waitFor();
-  await page.locator('.stage-box .tile[aria-label^="Memes for $200"]').click();
-  const tilePart = page.locator('.panel [data-tile-cards]');
+  await stageBoxIn(page).locator('.tile').first().waitFor();
+  await stageBoxIn(page).locator('.tile[aria-label^="Memes for $200"]').click();
+  const tilePart = hostPanelIn(page).locator('[data-tile-cards]');
   await tilePart.waitFor();
 
   // Two windows: the host column names the file, and so does its 🗜 window.
@@ -259,7 +259,7 @@ try {
   assert((await left.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)', `one window: its panel line counts it, never naming it (${await left.innerText()})`);
   const panelButton = left.locator('..').getByRole('button', { name: '🗜 Make smaller' });
   assert((await panelButton.getAttribute('title')) === 'Make smaller copies of these files for phones', 'and has 🗜 Make smaller, titled for what it does');
-  const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const stageH = () => stageBoxIn(page).evaluate((e) => Math.round(e.getBoundingClientRect().height));
   const stageWas = await stageH();
   await panelButton.click();
   await dialog.waitFor();

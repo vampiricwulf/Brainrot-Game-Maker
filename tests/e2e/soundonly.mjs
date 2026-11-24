@@ -7,7 +7,7 @@
 // copy still offers it). Before YouTube says how long a video is, players see just the speaker. On a 🤫 card Sound only
 // isn't offered (a phone plays it in YouTube's own player).
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, playWithPlayers, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, playWithPlayers, failureShots, assert, launchChromium, boardIn, boardTilesIn, inspectorIn, stageBoxIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
@@ -21,7 +21,7 @@ const guard = () => page.waitForTimeout(500); // past the stage's double-click g
 async function back() {
   await page.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.blur());
   await page.keyboard.press('Shift+Escape');
-  await page.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(page)).waitFor();
   await guard();
 }
 
@@ -92,7 +92,7 @@ const cards = (p, stage) => p.locator(`${stage} .card, ${stage} [style*="ytimg"]
 try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
-  const insp = page.locator('.insp');
+  const insp = inspectorIn(page);
   const addYouTube = async (url) => {
     await page.getByRole('button', { name: '🌐 Link' }).click();
     await page.locator('.linkbox').getByLabel('Paste a link').fill(url);
@@ -183,7 +183,7 @@ try {
 
   // One window (the stage is what the stream shows).
   const one = '.stage-box .full';
-  await page.locator('.board .tile').first().click();
+  await boardTilesIn(boardIn(page)).first().click();
   await page.locator(`${one} iframe`).waitFor({ state: 'attached' });
   await page.locator('.mc .time', { hasText: '/ 1:40' }).waitFor();
   assert(await unseen(page, one), 'one window: the player is on the stage, full size, but unseen');
@@ -202,14 +202,14 @@ try {
   await back();
 
   // The failing one: no card on the stage viewers see; the host's media row offers it on YouTube.
-  await page.locator('.board .tile').nth(2).click();
+  await boardTilesIn(boardIn(page)).nth(2).click();
   await page.locator('.mc .item.failed').waitFor();
   assert((await cards(page, one)) === 0 && (await page.locator(`${one} iframe`).count()) === 0, "one window: a player that fails shows no card on the stage");
   assert((await page.locator('.mc').getByRole('button', { name: /Open on YouTube/ }).count()) === 1, "the host's media row offers it on YouTube");
   await back();
 
   // Its length not known yet: players see just the speaker (never "0:00 / 0:00"); once it plays, the bar.
-  await page.locator('.board .tile').nth(3).click();
+  await boardTilesIn(boardIn(page)).nth(3).click();
   await page.locator(`${one} iframe`).waitFor({ state: 'attached' });
   await page.locator(`${one} .spk`).waitFor();
   await page.waitForTimeout(300);
@@ -228,7 +228,7 @@ try {
   aud.on('pageerror', (e) => errors.push('[audience] ' + e.message));
   const full = '.full';
   await aud.locator('.board, .full').first().waitFor();
-  await page.locator('.board .tile').first().click();
+  await boardTilesIn(boardIn(page)).first().click();
   await aud.locator(`${full} iframe`).waitFor({ state: 'attached' });
   await page.locator('.mc .time', { hasText: '/ 1:40' }).waitFor();
   assert(await unseen(aud, full), 'the audience window: the player is there, full size, but unseen');
@@ -254,7 +254,7 @@ try {
   await back();
 
   // Players see nothing: the audience window has no speaker nor bar; the host's copy shows a faint speaker.
-  await page.locator('.stage-box .board .tile').nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).nth(1).click();
   await aud.locator(`${full} iframe`).waitFor({ state: 'attached' });
   await page.locator('.mc .time', { hasText: '/ 1:40' }).waitFor();
   assert(await unseen(aud, full), 'set to show nothing: the player is unseen');
@@ -265,7 +265,7 @@ try {
   await back();
 
   // The failing one: viewers get no card; the host's own copy does (to open it on YouTube).
-  await page.locator('.stage-box .board .tile').nth(2).click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).nth(2).click();
   await page.locator('.mc .item.failed').waitFor();
   await page.locator(`${one} .card`).waitFor();
   await aud.waitForTimeout(500);

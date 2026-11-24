@@ -7,7 +7,7 @@
 import { createServer } from 'node:http';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip, failureShots, assert, launchChromium, awardRowIn, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const fileUrl = pathToFileURL(file).href;
@@ -119,18 +119,18 @@ try {
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     const startedAt = Date.now();
     await page.getByRole('button', { name: 'Skip intro' }).click();
-    await page.locator('.board .tile').first().waitFor();
-    await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
+    await boardTilesIn(boardIn(page)).first().waitFor();
+    await hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click();
     await dialog(page).waitFor();
     assert(true, 'the sound help opens from the host panel');
     assert((await dialog(page).getByText('plays in this window').count()) === 1, 'it says the sound plays in this window');
     await page.keyboard.press('1');
     await page.waitForTimeout(150);
-    const firstPlayer = page.locator('.panel .p').first().locator('.sel');
+    const firstPlayer = playerRowsIn(page).first().locator('.sel');
     assert((await firstPlayer.getAttribute('aria-pressed')) !== 'true', 'shortcuts are off while the help is open');
     assert(await dialog(page).evaluate((d) => d.contains(document.activeElement)), 'focus moves into the help');
     await dialog(page).getByRole('button', { name: 'Close' }).click();
-    const soundButton = page.locator('.panel').getByRole('button', { name: '🔊 Sound' });
+    const soundButton = hostPanelIn(page).getByRole('button', { name: '🔊 Sound' });
     assert(await soundButton.evaluate((b) => b === document.activeElement), 'closing it puts focus back on the button that opened it');
     await page.keyboard.press('1');
     assert((await firstPlayer.getAttribute('aria-pressed')) === 'true', 'and back on once it is closed');
@@ -146,7 +146,7 @@ try {
     // (navigator.userActivation): so nothing looks into it until its page has loaded (its app has started by then). (On a
     // busy machine the first look for its board landed before its app started, and the window never asked for a click.)
     await aud.waitForLoadState('domcontentloaded');
-    await aud.locator('.board').waitFor();
+    await boardIn(aud).waitFor();
     // Its "click once" note only shows while the mouse is over it (so it stays off the stream).
     await aud.mouse.move(200, 200);
     const clickOnce = page.getByText('Click the audience window once so it can play sound');
@@ -154,7 +154,7 @@ try {
     await clickOnce.waitFor();
     await aud.locator('.activate').waitFor();
     assert((await clickOnce.count()) === 1 && (await aud.locator('.activate').count()) === 1, 'before any click or sound, both windows ask for a click');
-    await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
+    await hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click();
     assert((await dialog(page).getByText('plays in the audience window').count()) === 1, 'dual mode: it says the sound plays in the audience window');
     assert((await dialog(page).getByText('Open the audience window, click once inside it').count()) === 1, 'and the Discord steps share the audience window');
     const hostPlays = await page.evaluate(() => window.__plays);
@@ -226,7 +226,7 @@ try {
       "dual mode: the host warns that the audience window can't play sound yet, with no slide media, once (the checklist's line)",
     );
     // Pre-game: viewers see a "Starting soon" card, not the board (it would give the categories away).
-    assert((await aud.locator('.soon-text').count()) === 1 && (await aud.locator('.board').count()) === 0, 'pre-game: the audience window holds on a "Starting soon" card');
+    assert((await aud.locator('.soon-text').count()) === 1 && (await boardIn(aud).count()) === 0, 'pre-game: the audience window holds on a "Starting soon" card');
     // The "Click to enable sound" overlay stays until the window is clicked, the mouse still or not.
     await aud.waitForTimeout(1700);
     assert((await aud.locator('.activate').count()) === 1, 'the audience window keeps its "Click to enable sound" overlay while the mouse is still');
@@ -268,7 +268,7 @@ try {
     await aud.locator('.aud').click({ position: { x: 40, y: 40 } });
     await page.getByText(/Click the audience window once|blocked a sound/).waitFor({ state: 'detached' });
     assert(true, 'clicking the audience window clears the warning');
-    await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
+    await hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click();
     const before = await aud.evaluate(() => window.__plays);
     await testSound(page, 'Sound played in the audience window');
     assert((await aud.evaluate(() => window.__plays)) > before, 'after the click, the audience window plays the test sound');
@@ -280,7 +280,7 @@ try {
     assert(true, 'a missing output device is reported to the host');
     await testSound(page, 'Sound played in the audience window');
     assert((await aud.evaluate(() => window.__sinks)).slice(-1)[0] === '', 'the audience window falls back to the default device');
-    assert((await page.locator('.panel').getByText('wasn\'t found, so the sound plays on the default device').count()) === 1, 'the host panel warns about the missing device too');
+    assert((await hostPanelIn(page).getByText('wasn\'t found, so the sound plays on the default device').count()) === 1, 'the host panel warns about the missing device too');
     await picker.selectOption({ label: 'Default (system)' });
     await dialog(page).getByText("couldn't use").waitFor({ state: 'detached' });
     assert(true, 'choosing the default device clears the warning');
@@ -292,11 +292,11 @@ try {
     await page.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
     await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
     await aud.locator('.soon-text').waitFor();
-    await page.locator('nav > button.round-tab').first().click();
+    await roundTabsIn(page).first().click();
     await page.getByRole('button', { name: '▶ Test this round', exact: true }).click();
     await page.getByRole('button', { name: 'Skip intro' }).click();
-    await page.locator('.board .tile').first().waitFor();
-    await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
+    await boardTilesIn(boardIn(page)).first().waitFor();
+    await hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click();
     await dialog(page).waitFor();
     assert((await dialog(page).getByText('plays in this window').count()) === 1, 'a test round with the audience window up: it says the sound plays in this window');
     const audPlays = await aud.evaluate(() => window.__plays);
@@ -346,11 +346,11 @@ try {
 
     // A test round never opens the audience window (📺 still picked): viewers see this window, so the steps share it.
     await page.getByRole('button', { name: '◀ Back to editor', exact: true }).click();
-    await page.locator('nav > button.round-tab').first().click();
+    await roundTabsIn(page).first().click();
     await page.getByRole('button', { name: '▶ Test this round', exact: true }).click();
     await page.getByRole('button', { name: 'Skip intro' }).click();
-    await page.locator('.board .tile').first().waitFor();
-    await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
+    await boardTilesIn(boardIn(page)).first().waitFor();
+    await hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click();
     await dialog(page).waitFor();
     assert(
       (await dialog(page).getByText('Click once anywhere in this window').count()) === 1 && (await dialog(page).getByText(/audience (window|view)/).count()) === 0,
@@ -574,7 +574,7 @@ try {
     assert((await fixWarning(page, FAILED_WARNING).count()) === 1, 'the pre-game screen warns that the fix didn’t start');
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     await page.getByRole('button', { name: 'Skip intro' }).click();
-    const warning = fixWarning(page.locator('.panel'), FAILED_WARNING);
+    const warning = fixWarning(hostPanelIn(page), FAILED_WARNING);
     await warning.waitFor();
     assert((await dialog(page).count()) === 0, 'the host panel warns too, without opening the Sound help');
     assert((await warning.getByText('Restart Brainrot Games Maker to try again').count()) === 1, 'the warning says a restart should bring it back');
@@ -712,7 +712,7 @@ try {
     await called(page, 'save_file');
     const saveCall = (await calls(page, 'save_file'))[0];
     assert(saveCall.name === 'Untitled-Game.brainrot' && saveCall.bytes > 0 && saveCall.mode === 'backup', `Save sends the pack to the app, replacing the game's last save with a backup kept (${JSON.stringify(saveCall)})`);
-    await page.locator('.toast', { hasText: 'Saved to C:\\Games\\BrainrotSaves\\Untitled-Game.brainrot' }).waitFor();
+    await toastsIn(page, { hasText: 'Saved to C:\\Games\\BrainrotSaves\\Untitled-Game.brainrot' }).waitFor();
     assert(true, 'and says where it went');
     // ⚙ Settings: Save makes a new file each time instead (Game (2).brainrot…).
     await page.getByRole('button', { name: /^More:/ }).click();
@@ -796,7 +796,7 @@ try {
     gone = true;
     const preview = page.getByRole('button', { name: 'Preview Round intro' });
     await preview.click();
-    await page.locator('.toast', { hasText: "“intro.wav” didn't play: its file or link may no longer work" }).waitFor();
+    await toastsIn(page, { hasText: "“intro.wav” didn't play: its file or link may no longer work" }).waitFor();
     assert((await preview.getAttribute('aria-pressed')) === 'false', 'a sound whose link stopped working says so when previewed (and its ▶ comes back)');
     await playWithPlayers(page, 2);
     await page.evaluate(() => (window.__plays = []));
@@ -807,7 +807,7 @@ try {
       'at Start the round intro tries its link, and once that fails the built-in sound plays in its place',
     );
     await page.getByRole('button', { name: 'Skip intro' }).click();
-    await page.locator('.board .tile').first().waitFor();
+    await boardTilesIn(boardIn(page)).first().waitFor();
     await page.keyboard.press('d');
     await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#dice')));
     const plays = await page.evaluate(() => window.__plays);
@@ -852,15 +852,15 @@ try {
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     await page.waitForFunction(introPlaying, true);
     await page.getByRole('button', { name: 'Skip intro' }).click();
-    await page.locator('.board .tile').first().waitFor();
+    await boardTilesIn(boardIn(page)).first().waitFor();
     assert(await page.evaluate(introPlaying, true), 'a 30 s round intro plays on over the board once the title card is skipped');
     // Points given on the board before the first tile: their sound plays over the intro, which still stops at the tile.
     await page.keyboard.press('1');
-    await page.locator('.panel .award').getByLabel('Amount').fill('100');
-    await page.locator('.panel .award').getByLabel('Amount').press('Enter');
+    await awardRowIn(page).getByLabel('Amount').fill('100');
+    await awardRowIn(page).getByLabel('Amount').press('Enter');
     await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#right')));
     assert(await page.evaluate(introPlaying, true), 'points given on the board play their sound, and the intro goes on');
-    await page.locator('.board .tile').first().click();
+    await boardTilesIn(boardIn(page)).first().click();
     await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#tileOpen')));
     assert(await page.evaluate(introPlaying, false), 'opening a tile stops it (the tile-open sound plays on its own)');
     await context.close();
@@ -885,7 +885,7 @@ try {
     await page.waitForTimeout(450);
     await confirmStrip(page).getByRole('button', { name: 'Go to Final Jeopardy! ▶' }).click();
     await page.getByRole('button', { name: 'Start the round ▶' }).click();
-    const wagers = page.locator('.fj .wagers input[data-wager]');
+    const wagers = finalControlsIn(page).locator('.wagers input[data-wager]');
     await wagers.first().waitFor();
     for (let i = 0; i < (await wagers.count()); i++) await wagers.nth(i).fill('0');
     await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Show question ▶'));
@@ -914,7 +914,7 @@ try {
     const widths = await Promise.all([stop, page.getByRole('button', { name: '🤫 Send a card…', exact: true })].map(async (b) => Math.round((await b.boundingBox()).width)));
     assert(widths[0] < 60 && widths[1] > 100, `1260px wide: 🔇 Stop sounds shows as 🔇 (still named in full), 🤫 Send a card… in full (${widths.join(' / ')}px wide)`);
     // (Shown as 🔇 or 🎭 alone, a tools button's tooltip still starts with its name.)
-    const tips = await Promise.all(['🔇 Stop sounds', '🤫 Send a card…', '🎭 Deal…'].map((name) => page.locator('.panel').getByRole('button', { name, exact: true }).getAttribute('title')));
+    const tips = await Promise.all(['🔇 Stop sounds', '🤫 Send a card…', '🎭 Deal…'].map((name) => hostPanelIn(page).getByRole('button', { name, exact: true }).getAttribute('title')));
     assert(
       tips.every((t, i) => t.startsWith(['🔇 Stop sounds (Shift+M): ', '🤫 Send a card…: ', '🎭 Deal…: '][i])),
       `the tools row’s tooltips name each button first (${tips.join(' | ')})`,
@@ -1005,7 +1005,7 @@ try {
     await playWithPlayers(page, 2);
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     await page.getByRole('button', { name: 'Skip intro' }).click();
-    await page.locator('.board .tile').first().waitFor();
+    await boardTilesIn(boardIn(page)).first().waitFor();
     const introPlayed = () => window.__plays.some((s) => s.endsWith('#roundIntro'));
     await page.evaluate(() => (window.__plays = []));
     await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
@@ -1016,7 +1016,7 @@ try {
     await page.waitForFunction(introPlayed);
     await page.getByRole('button', { name: 'Start the round ▶' }).click();
     // Nobody plays the first one: its main button goes straight on to the second.
-    for (const name of ['Player 1', 'Player 2']) await page.locator('.fj .wagers .wrow', { hasText: name }).locator('input[data-plays]').uncheck();
+    for (const name of ['Player 1', 'Player 2']) await finalControlsIn(page).locator('.wagers .wrow', { hasText: name }).locator('input[data-plays]').uncheck();
     await page.evaluate(() => (window.__plays = []));
     await page.waitForTimeout(450);
     await page.getByRole('button', { name: 'Next: Final round 2 ▶' }).click();

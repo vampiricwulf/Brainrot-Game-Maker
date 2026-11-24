@@ -16,7 +16,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, showChecklist, stored, leaveAnswer, revealAnyway, assert, launchChromium, section, until } from './helpers.mjs';
+import { appFile, failureShots, addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, showChecklist, stored, leaveAnswer, revealAnyway, assert, launchChromium, section, until, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, roundNavIn, stageBoxIn, statusBarIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -29,12 +29,12 @@ page.on('pageerror', (e) => errors.push(e.message));
 page.on('dialog', (d) => (dialogs.push(d.message()), d.accept()));
 const stageSize = async () => {
   await page.waitForTimeout(400);
-  const b = await page.locator('.stage-box .stage').boundingBox();
+  const b = await stageBoxIn(page).locator('.stage').boundingBox();
   return `${Math.round(b.width)}x${Math.round(b.height)}`;
 };
 const nextRound = async () => {
   await page.waitForTimeout(450);
-  await page.locator('.rn button').last().click();
+  await roundNavIn(page).locator('button').last().click();
   await page.waitForTimeout(450);
   const yes = leaveAnswer(page);
   if (await yes.isVisible()) await yes.click();
@@ -256,7 +256,7 @@ async function crowd() {
   await aud.setViewportSize({ width: 1280, height: 720 });
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
-  await aud.locator('.board .header .title').first().waitFor();
+  await boardIn(aud).locator('.header .title').first().waitFor();
   await aud.waitForTimeout(800);
 
   // Every score whole on its plate (none cut to "$1,60"), and every name on one line ("…" if it must).
@@ -275,12 +275,12 @@ async function crowd() {
   assert(Math.min(...nameSizes) >= 28, `names stay readable (${Math.min(...nameSizes)}px at the smallest, in stage pixels)`);
 
   // Ten columns of values: all whole, one size for the board, not shrunk to nothing.
-  const vals = await aud.locator('.board .tile .face').evaluateAll((els) =>
+  const vals = await boardTilesIn(boardIn(aud)).locator('.face').evaluateAll((els) =>
     els.map((e) => ({ size: parseFloat(getComputedStyle(e).fontSize), over: e.firstElementChild.scrollWidth > e.clientWidth + 1 })),
   );
   assert(vals.length === 50 && !vals.some((v) => v.over), '10 categories: every value fits its tile');
   assert(new Set(vals.map((v) => v.size)).size === 1 && vals[0].size >= 40, `one size for every value on the board (${vals[0].size}px)`);
-  const cats = await aud.locator('.board .header .title').evaluateAll((els) => els.map((e) => ({ name: e.textContent.replace(/\u00ad/g, ''), px: parseFloat(getComputedStyle(e).fontSize) })));
+  const cats = await boardIn(aud).locator('.header .title').evaluateAll((els) => els.map((e) => ({ name: e.textContent.replace(/\u00ad/g, ''), px: parseFloat(getComputedStyle(e).fontSize) })));
   // (No more than the editor's checklist called too long for a 10-column board go smaller, and never below 20.)
   const flagged = Number(tooLong.match(/(\d+) category names are too long/)?.[1] ?? 1);
   const small = cats.filter((c) => c.px < 30);
@@ -290,7 +290,7 @@ async function crowd() {
   );
   // A word is broken only when it can't be whole even at 20 px, and never leaves fewer than 4 letters on a line
   // ("SUPERCALI-FRAGI-…", never "UNIVE-RSE").
-  const broken = await aud.locator('.board .header .title > div').evaluateAll((els) =>
+  const broken = await boardIn(aud).locator('.header .title > div').evaluateAll((els) =>
     els.flatMap((inner) => {
       const node = inner.firstChild;
       const text = node?.textContent ?? '';
@@ -329,13 +329,13 @@ async function crowd() {
     broken.length > 0 && broken.every((b) => !b.whole && b.pieces.every((p) => p.length >= 4)),
     `long words on the board break only when they must, at 4 letters or more a piece (${broken.map((b) => b.pieces.join('-')).join(', ')})`,
   );
-  const catsOver = await aud.locator('.board .header .title').evaluateAll((els) =>
+  const catsOver = await boardIn(aud).locator('.header .title').evaluateAll((els) =>
     els.filter((e) => e.firstElementChild.scrollHeight > e.clientHeight + 1).map((e) => `${e.textContent} ${e.firstElementChild.scrollHeight}/${e.clientHeight} ${e.style.fontSize} ${e.style.hyphens}`),
   );
   assert(catsOver.length === 0, `and they all fit their cells ${catsOver.join(' | ')}`);
 
   // The mouse left still over the board (after the click that allows sound): the cursor goes, over a tile too.
-  const t5 = await aud.locator('.board .tile').nth(5).boundingBox();
+  const t5 = await boardTilesIn(boardIn(aud)).nth(5).boundingBox();
   const at = { x: t5.x + t5.width / 2, y: t5.y + t5.height / 2 };
   await aud.mouse.move(at.x, at.y);
   await aud.locator('.aud.idle').waitFor();
@@ -365,7 +365,7 @@ async function crowd() {
   assert(!covered.length, `a countdown on the board covers no category, tile or plate (${covered.join(' | ')})`);
 
   // A long clue with the countdown up: the slide moves down under it, so the countdown never covers its first line.
-  await host.locator('.stage-box .board .tile').first().click();
+  await boardTilesIn(boardIn(stageBoxIn(host))).first().click();
   await aud.locator('.slide-area').waitFor();
   await host.keyboard.press('t');
   await aud.locator('.timer').waitFor();
@@ -387,7 +387,7 @@ async function crowd() {
   await aud.locator('.slide-area .inner').dblclick();
 
   // A pop for the last player (a long name): it stays on the stage, above the caption, and its points always show.
-  await host.locator('.panel .p').nth(11).locator('.sel').click();
+  await playerRowsIn(host).nth(11).locator('.sel').click();
   await host.keyboard.press('Enter');
   await aud.locator('.pop').waitFor();
   // (Once it has flown in.)
@@ -397,7 +397,7 @@ async function crowd() {
   assert(pop.x >= 0 && pop.x + pop.width <= 1280 && pop.y + pop.height <= cap.y, `the score pop stays on the stage, above the caption (${JSON.stringify(pop)})`);
   assert((await aud.locator('.pop .amt').innerText()).includes('$200'), 'with its points shown in full');
   await host.keyboard.press('Escape');
-  await aud.locator('.board .tile').first().waitFor();
+  await boardTilesIn(boardIn(aud)).first().waitFor();
   await aud.waitForTimeout(300);
   const onBar = await aud.locator('.pop').boundingBox();
   assert(onBar.x >= 0 && onBar.x + onBar.width <= 1280.5, `back on the board, the pop over the last plate stays on the stage (${JSON.stringify(onBar)})`);
@@ -407,7 +407,7 @@ async function crowd() {
   // it is by then, and one reloaded after it (or the scores window) shows only the red 0 clock. (On a clue: the board's
   // status line has no ⏱ box, no clock fits there.)
   const secs = host.getByLabel('Timer seconds');
-  const crowdTile = (id) => host.locator(`.stage-box .board .tile[data-clue="${id}"]`);
+  const crowdTile = (id) => boardIn(stageBoxIn(host)).locator(`.tile[data-clue="${id}"]`);
   assert((await secs.count()) === 0, 'the board’s status line has no ⏱ seconds box');
   await crowdTile('q2_1').click();
   await host.locator('.tc button', { hasText: 'Start 30s' }).waitFor();
@@ -443,12 +443,12 @@ async function crowd() {
     .waitForFunction(() => +(document.querySelector('.timer:not(.done) .num')?.textContent ?? 0) > 55, null, { timeout: 3000 })
     .then(() => true, () => false);
   assert(started, 'a countdown of 60 seconds typed on one clue starts at 60');
-  await host.locator('.panel .p').nth(2).locator('.sel').click();
+  await playerRowsIn(host).nth(2).locator('.sel').click();
   await host.keyboard.press('Enter');
   await host.keyboard.press('Escape');
   await crowdTile('q1_0').waitFor();
   await crowdTile('q1_0').click();
-  await host.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await statusLineIn(host, { hasText: 'Answer hidden' }).waitFor();
   if (await host.getByRole('button', { name: 'Hide timer' }).isVisible()) await host.getByRole('button', { name: 'Hide timer' }).click();
   await host.locator('.tc button', { hasText: /^Start \d+s$/ }).waitFor();
   assert(
@@ -473,7 +473,7 @@ async function crowd() {
     'a second tab opened mid-game says taking over stops the game and closes its audience window',
   );
   await other.close();
-  assert(!aud.isClosed() && (await host.locator('.panel .p').count()) === 12, 'closing that tab leaves the game and its audience window as they were');
+  assert(!aud.isClosed() && (await playerRowsIn(host).count()) === 12, 'closing that tab leaves the game and its audience window as they were');
   // Words selected in the host's column don't stay blue once the audience window closes (this window is the stream then).
   await host.locator('.info .q').dblclick({ position: { x: 4, y: 8 } });
   assert(!(await noSelection(host)), 'two windows: a word in the host’s column selects');
@@ -576,11 +576,11 @@ async function viewers() {
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   const skip = host.getByRole('button', { name: 'Skip intro' });
   if (await skip.isVisible().catch(() => false)) await skip.click();
-  await aud.locator('.board .tile').first().waitFor();
+  await boardTilesIn(boardIn(aud)).first().waitFor();
   for (let i = 0; i < 12; i++) {
-    await host.locator('.panel .p').nth(i).locator('button.score').click();
-    await host.locator('.panel .p .score-edit').fill(String(SCORES[i]));
-    await host.locator('.panel .p .score-edit').press('Enter');
+    await playerRowsIn(host).nth(i).locator('button.score').click();
+    await playerRowsIn(host).locator('.score-edit').fill(String(SCORES[i]));
+    await playerRowsIn(host).locator('.score-edit').press('Enter');
   }
   const badge = aud.locator('.join-badge');
   await badge.waitFor();
@@ -622,16 +622,16 @@ async function viewers() {
   // the stage comes up still, what viewers see keeps to Reduce motion on stream, off here.)
   await host.emulateMedia({ reducedMotion: 'reduce' });
   await host.evaluate(() => (window.__entrances = []));
-  await host.locator('.board .tile').first().click();
+  await boardTilesIn(boardIn(host)).first().click();
   // (Two windows: a click on the host's copy of the splash with no wager typed says what's missing in the status line,
   // the keys stay in the Wager box, and nothing changes on stream. Past the double-click guard of the tile's click.)
-  await host.locator('.stage-box .dd-text').waitFor();
+  await stageBoxIn(host).locator('.dd-text').waitFor();
   await host.waitForTimeout(500);
-  await host.locator('.stage-box .dd-text').click();
-  await host.locator('.panel .status [data-click-note]').waitFor();
+  await stageBoxIn(host).locator('.dd-text').click();
+  await statusLineIn(host).locator('[data-click-note]').waitFor();
   assert(
     (await host.evaluate(() => !!document.activeElement?.matches('.dd input[type=number]'))) && (await aud.locator('.dd-text').count()) === 1 && (await aud.locator('.dd-badge').count()) === 0,
-    `two windows: a click on the host’s copy of the Daily Double splash says what’s missing (${await host.locator('.panel .status [data-click-note]').innerText()}), the keys stay in the Wager box, the splash stays on stream`,
+    `two windows: a click on the host’s copy of the Daily Double splash says what’s missing (${await statusLineIn(host).locator('[data-click-note]').innerText()}), the keys stay in the Wager box, the splash stays on stream`,
   );
   await host.locator('.dd .chip').nth(2).click();
   await host.locator('.dd input[type=number]').fill('0');
@@ -647,11 +647,11 @@ async function viewers() {
   await aud.waitForTimeout(300);
   assert((await badge.count()) === 0, 'nor its answer');
   await host.keyboard.press('Escape');
-  await aud.locator('.board .tile').first().waitFor();
+  await boardTilesIn(boardIn(aud)).first().waitFor();
   await badge.waitFor();
   // A clue in the usual text box (its frame nearly the whole slide): the code goes in a corner its words leave free.
   await cameIn('full');
-  await host.locator('.board .tile').nth(1).click();
+  await boardTilesIn(boardIn(host)).nth(1).click();
   await aud.locator('.slide-area').waitFor();
   await badge.waitFor();
   const clueCorner = await badge.getAttribute('data-corner');
@@ -665,7 +665,7 @@ async function viewers() {
   const again = await cameIn('full');
   assert(opened.join() === 'scale(0.15)' && again.join() === 'scale(0.98),scale(0.98)', `a clue opened from the board zooms in; its answer and its question again (R, R) come in quietly (${opened} | ${again})`);
   await host.keyboard.press('Escape');
-  await aud.locator('.board .tile').first().waitFor();
+  await boardTilesIn(boardIn(aud)).first().waitFor();
   await badge.waitFor();
   assert((await cameIn('board-screen')).join() === 'opacity 0', 'back on the board, it fades in');
 
@@ -676,9 +676,9 @@ async function viewers() {
   await aud.locator('.final-sub').waitFor();
   const catFont = await aud.locator('.slide [style*="font-family"]', { hasText: 'Famous Brainrot' }).first().evaluate((e) => e.style.fontFamily);
   assert(/Anton/.test(catFont), `the Final's category is in the theme's clue font (${catFont})`);
-  const boxes = host.locator('.fj .wagers input[data-wager]');
+  const boxes = finalControlsIn(host).locator('.wagers input[data-wager]');
   for (let i = 0; i < (await boxes.count()); i++) await boxes.nth(i).fill('0');
-  await host.locator('.fj').click({ position: { x: 2, y: 2 } });
+  await finalControlsIn(host).click({ position: { x: 2, y: 2 } });
   await aud.locator('.tick').nth(11).waitFor();
   const overScore = await aud.locator('.plate').evaluateAll((els) =>
     els.filter((p) => {
@@ -722,7 +722,7 @@ async function viewers() {
   await mainButton(host, 'Start player reveals ▶').click();
   const wrongs = await host.getByRole('button', { name: '✘ Wrong' }).count();
   for (let k = 0; k < wrongs; k++) {
-    const main = host.locator('.panel [data-next]');
+    const main = hostPanelIn(host).locator('[data-next]');
     if (/Show wager/.test(await main.innerText())) await main.click();
     await host.getByRole('button', { name: '✘ Wrong' }).nth(k).click();
     if (/Next player/.test(await main.innerText())) await main.click();
@@ -795,8 +795,8 @@ async function reloadMidGame() {
   await page.getByRole('button', { name: '▶ Play' }).click();
   await page.locator('.mode', { hasText: 'Single window' }).click();
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  await page.locator('.stage-box .board .tile[data-clue="qa"]').click();
-  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await boardIn(stageBoxIn(page)).locator('.tile[data-clue="qa"]').click();
+  await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
   const cover = page.getByRole('region', { name: 'Game paused' });
   const editorSeen = () => page.evaluate(() => window.__editorSeen);
   const reloadToCover = async () => {
@@ -819,27 +819,27 @@ async function reloadMidGame() {
   await page.waitForFunction(() => !!document.activeElement?.matches('.mode-ask .mode.on'));
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/stream-reload-ask.png` });
   await page.keyboard.press('Enter');
-  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
   assert((await cover.count()) === 0 && (await editorSeen()) === 0, 'Resume game goes back into the game, the clue still open');
   // ⏸ Cover on (K), then a reload: Resume game comes back covered.
   await page.keyboard.press('k');
-  await page.locator('.stage-box .cover').waitFor();
+  await stageBoxIn(page).locator('.cover').waitFor();
   await reloadToCover();
   await cover.getByRole('button', { name: 'Resume game' }).click();
   await page.waitForFunction(() => !!document.activeElement?.matches('.mode-ask .mode.on'));
   await page.keyboard.press('Enter');
-  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
-  assert((await page.locator('.stage-box .cover').count()) === 1 && (await editorSeen()) === 0, 'with ⏸ Cover on, a reload and Resume game come back covered, the editor never shown');
+  await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
+  assert((await stageBoxIn(page).locator('.cover').count()) === 1 && (await editorSeen()) === 0, 'with ⏸ Cover on, a reload and Resume game come back covered, the editor never shown');
   // Go to the editor: the editor, the game kept to resume.
   await reloadToCover();
   await cover.getByRole('button', { name: 'Go to the editor' }).click();
   await page.locator('nav[aria-label="Editor"]').waitFor();
-  assert((await page.locator('.status-bar .kept').innerText()).includes('Kept to resume'), 'Go to the editor shows the editor, the game kept to resume');
+  assert((await statusBarIn(page).locator('.kept').innerText()).includes('Kept to resume'), 'Go to the editor shows the editor, the game kept to resume');
   // Keep & leave, then a reload: the editor, as before.
-  await page.locator('.status-bar .kept').getByRole('button', { name: 'Resume game' }).click();
+  await statusBarIn(page).locator('.kept').getByRole('button', { name: 'Resume game' }).click();
   await page.waitForFunction(() => !!document.activeElement?.matches('.mode-ask .mode.on'));
   await page.keyboard.press('Enter');
-  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
   await page.getByRole('button', { name: '🚪 Exit' }).click();
   // (Past the question's guard against a double click.)
   await page.waitForTimeout(450);
@@ -849,9 +849,9 @@ async function reloadMidGame() {
   await page.locator('nav[aria-label="Editor"]').waitFor();
   assert((await cover.count()) === 0, 'Keep & leave, then a reload: the editor, as before');
   // With a separate audience window (the one on stream), a reload mid-game opens the editor, as before.
-  await page.locator('.status-bar .kept').getByRole('button', { name: 'Resume game' }).click();
+  await statusBarIn(page).locator('.kept').getByRole('button', { name: 'Resume game' }).click();
   const [aud] = await Promise.all([ctx.waitForEvent('page'), page.locator('.mode-ask .mode', { hasText: 'Separate audience window' }).click()]);
-  await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+  await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
   await page.reload();
   await page.locator('nav[aria-label="Editor"]').waitFor();
   assert((await cover.count()) === 0, 'with an audience window, a reload mid-game opens the editor, as before');
@@ -951,7 +951,7 @@ async function tileTools() {
   await clueOpen();
   const noted = await stageH();
   assert(
-    noted === onBoard && (await host.locator('.panel .status .notes').getAttribute('title')).includes(NOTE),
+    noted === onBoard && (await statusLineIn(host).locator('.notes').getAttribute('title')).includes(NOTE),
     `single window in buzzer mode, a clue with a long host note keeps the stage's size (${onBoard} / ${noted} px; the note on one line, all of it in its tooltip)`,
   );
   // Undo of a right answer: its countdown comes back with the time it had left.
@@ -973,10 +973,10 @@ async function tileTools() {
   for (const [key, missed] of [['1', 'Ann'], ['2', 'Ann, Bob'], ['3', 'Ann, Bob, Cy']]) {
     await host.keyboard.press(key);
     await host.keyboard.press('Shift+Enter');
-    await host.locator('.panel [data-buzzrow]', { hasText: `Missed: ${missed}` }).waitFor();
+    await hostPanelIn(host).locator('[data-buzzrow]', { hasText: `Missed: ${missed}` }).waitFor();
   }
   assert(
-    (await mainLabel(host)) === '👁 Reveal answer' && (await host.locator('.panel button', { hasText: '🔔 Open the buzzers' }).count()) === 0,
+    (await mainLabel(host)) === '👁 Reveal answer' && (await hostPanelIn(host).locator('button', { hasText: '🔔 Open the buzzers' }).count()) === 0,
     `everyone missed: the main button is 👁 Reveal answer, with no 🔔 Open the buzzers (${await mainLabel(host)})`,
   );
   await host.keyboard.press('Escape');
@@ -986,18 +986,18 @@ async function tileTools() {
   const sentBefore = await host.evaluate(() => window.__states.length);
   await tileOf('qw').click();
   await stage('.ov .wheel').waitFor();
-  await host.locator('.panel [data-buzzrow]', { hasText: 'The buzzers wait for the question (after the wheel)' }).waitFor();
+  await hostPanelIn(host).locator('[data-buzzrow]', { hasText: 'The buzzers wait for the question (after the wheel)' }).waitFor();
   // Enter with the keys on its blue Show question ▶ (where the tile put them) judges nobody: it names the key that spins.
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   assert((await mainLabel(host)) === 'Show question ▶', `a wheel tile's blue button is Show question ▶ (${await mainLabel(host)})`);
   await host.keyboard.press('Enter');
-  await host.locator('.toast', { hasText: 'Spin the wheel first: W' }).waitFor();
+  await toastsIn(host, { hasText: 'Spin the wheel first: W' }).waitFor();
   assert(!(await host.locator('.tc .result').count()), 'Enter on a wheel tile not spun yet says to spin it first (W), not “Select a player first”');
   // Before the spin there's no 👁 Reveal answer (it would skip the question), and R says to spin first.
   const revealBtn = flowButton(host, 'reveal', '👁 Reveal answer');
   assert((await revealBtn.count()) === 0, 'a wheel tile’s wheel not spun yet: no 👁 Reveal answer in the panel');
   await host.keyboard.press('r');
-  await host.locator('.toast', { hasText: 'Spin first (W), or press R again to show the answer anyway' }).waitFor();
+  await toastsIn(host, { hasText: 'Spin first (W), or press R again to show the answer anyway' }).waitFor();
   assert((await stage('[data-slide="answer"]').count()) === 0, 'and R says to spin first, the answer still hidden');
   const toolSizes = [await stageH()];
   // With the controls hidden, N does what a click on the wheel does: it spins it (not the answer, behind the wheel).
@@ -1013,7 +1013,7 @@ async function tileTools() {
   await host.locator('.tc .result').waitFor();
   // Landed, the wheel still up: no 👁 Reveal answer yet (its question is next), and R says to close it first.
   await host.keyboard.press('r');
-  await host.locator('.toast', { hasText: 'Close the wheel first (Esc): the question’s next, or press R again to show the answer anyway' }).waitFor();
+  await toastsIn(host, { hasText: 'Close the wheel first (Esc): the question’s next, or press R again to show the answer anyway' }).waitFor();
   assert(
     (await revealBtn.count()) === 0 && (await stage('[data-slide="answer"]').count()) === 0,
     'landed with the wheel still up: no 👁 Reveal answer, and R says to close the wheel first, the answer still hidden',
@@ -1039,9 +1039,9 @@ async function tileTools() {
   await stage('[data-slide="answer"]').waitFor();
   await stage('.timer').waitFor({ state: 'detached' });
   // Nobody buzzed: the answer closed the buzzers, and their row says so (not "✔ Answered: reveal the answer").
-  await host.locator('.panel [data-buzzrow]', { hasText: 'Answer on screen: the buzzers stay closed' }).waitFor();
+  await hostPanelIn(host).locator('[data-buzzrow]', { hasText: 'Answer on screen: the buzzers stay closed' }).waitFor();
   assert(
-    (await host.locator('.panel button', { hasText: '🔔 Open the buzzers' }).count()) === 0 && (await host.locator('.panel button', { hasText: '↺ Reset buzzers' }).count()) === 0,
+    (await hostPanelIn(host).locator('button', { hasText: '🔔 Open the buzzers' }).count()) === 0 && (await hostPanelIn(host).locator('button', { hasText: '↺ Reset buzzers' }).count()) === 0,
     'the answer shown with the buzzers open: the buzzers’ row says they stay closed, with no 🔔 Open the buzzers or ↺ Reset buzzers (both would refuse)',
   );
   // The saved wheel (W), over the answer: closing it starts no countdown over the answer.
@@ -1054,10 +1054,10 @@ async function tileTools() {
   // not Clue over).
   await host.keyboard.press('r');
   await stage('[data-slide="answer"]').waitFor({ state: 'detached' });
-  await host.locator('.panel [data-buzzrow] button[data-box="buzzers"]', { hasText: '🔔 Open the buzzers' }).waitFor();
+  await hostPanelIn(host).locator('[data-buzzrow] button[data-box="buzzers"]', { hasText: '🔔 Open the buzzers' }).waitFor();
   await host.waitForFunction(() => { const s = window.__states.at(-1); return s && !s.answerShown && !s.done; });
   assert(
-    !(await host.locator('.panel [data-buzzrow]').innerText()).includes('Answered') && (await flowIs(host, '👁 Reveal answer')),
+    !(await hostPanelIn(host).locator('[data-buzzrow]').innerText()).includes('Answered') && (await flowIs(host, '👁 Reveal answer')),
     'the answer hidden again: 🔔 Open the buzzers is back in the buzzers’ row (the blue button 👁 Reveal answer), and the phones aren’t told the clue is over',
   );
   await host.keyboard.press('Escape');
@@ -1077,14 +1077,14 @@ async function tileTools() {
   await stage('.slide-area').waitFor();
   await host.keyboard.press('1');
   await host.keyboard.press('Shift+Enter');
-  const missedAnn = host.locator('.panel [data-buzzrow]', { hasText: 'Missed: Ann' });
+  const missedAnn = hostPanelIn(host).locator('[data-buzzrow]', { hasText: 'Missed: Ann' });
   await missedAnn.waitFor();
   await host.keyboard.press('w');
   await stage('.ov .wheel').waitFor();
   assert(
     (await stage('.slide-area').count()) === 1 &&
       (await missedAnn.count()) === 1 &&
-      (await host.locator('.panel [data-buzzrow]', { hasText: 'The buzzers wait' }).count()) === 0 &&
+      (await hostPanelIn(host).locator('[data-buzzrow]', { hasText: 'The buzzers wait' }).count()) === 0 &&
       (await host.evaluate(() => window.__states.at(-1)?.phase)) !== 'lobby',
     'dice rolled over a wheel tile’s wheel: a wheel opened later isn’t the tile’s own (the question stays on stream, Ann stays missed)',
   );
@@ -1098,16 +1098,16 @@ async function tileTools() {
   // (Its wager box: the status line's ⚠ Viewers see this chip says viewers see the wager as it's typed, its sentence for
   // screen readers and in its tooltip, and the line stays one line.)
   const boardH = await stageH();
-  const statusH = async () => Math.round((await host.locator('.panel .status').boundingBox()).height);
+  const statusH = async () => Math.round((await statusLineIn(host).boundingBox()).height);
   const boardStatus = await statusH();
   await tileOf('qdd').click();
   const wager = host.locator('.dd input[type=number]');
   await wager.waitFor();
-  const viewers = host.locator('.panel .status [data-viewers]');
+  const viewers = statusLineIn(host).locator('[data-viewers]');
   assert(
     (await viewers.locator('.sr-only').textContent()) === '⚠ Viewers can see this: they see this window, the wager as you type it too.' &&
       (await viewers.getAttribute('title')).includes('the wager as you type it too') &&
-      !(await host.locator('.panel .dd').innerText()).includes('Viewers can see') &&
+      !(await hostPanelIn(host).locator('.dd').innerText()).includes('Viewers can see') &&
       (await statusH()) === boardStatus,
     'single window, a Daily Double’s wager: the status line’s ⚠ Viewers see this chip says viewers see the wager as it’s typed (for screen readers and in its tooltip), on the line’s one line',
   );
@@ -1124,19 +1124,19 @@ async function tileTools() {
   // A wheel tile with nothing to ask: no question to wait for while its wheel is up.
   await tileOf('qo').click();
   await stage('.ov .wheel').waitFor();
-  await host.locator('.panel [data-buzzrow]', { hasText: 'Nothing to buzz on: this tile is just its wheel' }).waitFor();
-  assert((await host.locator('.panel button', { hasText: '↺ Reset buzzers' }).count()) === 0, 'a wheel tile with nothing to ask: the buzzers’ row says there’s nothing to buzz on, with no ↺ Reset buzzers');
+  await hostPanelIn(host).locator('[data-buzzrow]', { hasText: 'Nothing to buzz on: this tile is just its wheel' }).waitFor();
+  assert((await hostPanelIn(host).locator('button', { hasText: '↺ Reset buzzers' }).count()) === 0, 'a wheel tile with nothing to ask: the buzzers’ row says there’s nothing to buzz on, with no ↺ Reset buzzers');
   // R and U there: nothing to reveal and nothing to buzz on (no "Answer is showing", no "Clue over" on the phones).
   await host.keyboard.press('r');
-  await host.locator('.toast', { hasText: 'Nothing to reveal: this tile is just its wheel' }).waitFor();
+  await toastsIn(host, { hasText: 'Nothing to reveal: this tile is just its wheel' }).waitFor();
   assert(
-    !(await host.locator('.panel .status').innerText()).includes('Answer is showing') &&
-      (await host.locator('.panel [data-buzzrow]', { hasText: 'Nothing to buzz on' }).count()) === 1 &&
+    !(await statusLineIn(host).innerText()).includes('Answer is showing') &&
+      (await hostPanelIn(host).locator('[data-buzzrow]', { hasText: 'Nothing to buzz on' }).count()) === 1 &&
       (await host.evaluate(() => window.__states.at(-1)?.phase)) === 'lobby',
     'R on a wheel tile with nothing to ask says there’s nothing to reveal (no "Answer is showing", the phones stay in the lobby)',
   );
   await host.keyboard.press('u');
-  await host.locator('.toast', { hasText: 'Nothing to buzz on: this tile is just its wheel' }).waitFor();
+  await toastsIn(host, { hasText: 'Nothing to buzz on: this tile is just its wheel' }).waitFor();
   assert(true, 'and U says there’s nothing to buzz on (not "Close the wheel first: the question isn’t on screen yet")');
   await host.keyboard.press('Escape');
   await tileOf('qd').waitFor();
@@ -1195,7 +1195,7 @@ async function tileTools() {
   await host.keyboard.press('Shift+Escape');
   await tileOf('qy').waitFor();
   await stage('.ov').waitFor({ state: 'detached' });
-  const question = host.locator('.stage-box').getByText('Third wheel question').first();
+  const question = stageBoxIn(host).getByText('Third wheel question').first();
   assert((await used('qy')) === false && (await question.count()) === 0, 'Shift+Esc with a wheel tile’s wheel up puts the tile back and takes the wheel down, without its question');
   // Its score effect given and the wheel closed (the question up): ↩ Put back waits for an Undo all the same.
   await tileOf('qy').click();
@@ -1212,7 +1212,7 @@ async function tileTools() {
   const cancel = flowButton(host, 'putback');
   assert(await cancel.isDisabled(), 'its points given and its wheel closed: ↩ Put back (keep tile) still waits for an Undo');
   await host.keyboard.press('Control+z');
-  await host.locator('.panel [data-flow="putback"]:enabled').waitFor();
+  await hostPanelIn(host).locator('[data-flow="putback"]:enabled').waitFor();
   await cancel.click();
   await tileOf('qy').waitFor();
   assert((await used('qy')) === false, 'undone, it puts the tile back');
@@ -1220,7 +1220,7 @@ async function tileTools() {
   await tileOf('qy').click();
   await stage('.ov .wheel').waitFor();
   await host.keyboard.press('r');
-  await host.locator('.toast', { hasText: 'Spin first (W)' }).waitFor();
+  await toastsIn(host, { hasText: 'Spin first (W)' }).waitFor();
   await host.keyboard.press('r');
   await stage('[data-slide="answer"]').waitFor();
   assert(true, 'R again before the spin shows the answer anyway');
@@ -1230,20 +1230,20 @@ async function tileTools() {
   // ▦ Done ▶ board while a wheel tile's own wheel waits to spin: the wheel goes with the tile.
   await tileOf('qy').click();
   await stage('.ov .wheel').waitFor();
-  await host.locator('.panel button.done-board').click();
+  await hostPanelIn(host).locator('button.done-board').click();
   await tileOf('qy').waitFor();
   await stage('.ov').waitFor({ state: 'detached' });
   assert(await used('qy'), '▦ Done ▶ board with a wheel tile’s wheel still up takes the wheel off the stage with the tile');
   // Esc while its wheel spins: it lands first, and offers its score effect (as W, D and a click wait for it).
   await tileOf('qs').click();
   await stage('.ov .wheel').waitFor();
-  const wheelSaid = () => host.locator('.panel .status .say').innerText();
+  const wheelSaid = () => statusLineIn(host).locator('.say').innerText();
   assert((await wheelSaid()) === '🎡 Wheel tile · spin it (W)', `a wheel tile with nothing to ask: the status line says “${await wheelSaid()}”, not “No question on this tile”`);
   await host.keyboard.press('w');
-  await host.locator('.panel [data-next]:disabled').waitFor();
+  await hostPanelIn(host).locator('[data-next]:disabled').waitFor();
   assert((await wheelSaid()) === '🎡 Wheel tile · spun', `spinning, it says “${await wheelSaid()}”`);
   await host.keyboard.press('Escape');
-  await host.locator('.toast', { hasText: 'Still spinning: wait for it to land' }).waitFor();
+  await toastsIn(host, { hasText: 'Still spinning: wait for it to land' }).waitFor();
   assert((await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0, 'Esc while a wheel tile’s wheel spins says to wait for it to land, and the wheel stays');
   await host.locator('.ac').waitFor({ timeout: 8000 });
   // Landed: the keys go back to its blue button (not to the side button they fell to while Spin! was off).
@@ -1257,7 +1257,7 @@ async function tileTools() {
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   assert(await cancel.isDisabled(), 'its score effect given: the keys go back to ▦ Done ▶ board, and ↩ Put back (keep tile) waits for an Undo');
   await host.keyboard.press('Shift+Escape');
-  await host.locator('.toast', { hasText: 'Points were given for this clue' }).waitFor();
+  await toastsIn(host, { hasText: 'Points were given for this clue' }).waitFor();
   assert((await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0, 'and so does Shift+Esc (the wheel stays, the tile open)');
   await host.keyboard.press('Control+z');
   await host.locator('.ac').waitFor();
@@ -1270,7 +1270,7 @@ async function tileTools() {
   await stage('.ov').waitFor();
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   // The status line says what the tile is and what's next, not "No question on this tile".
-  const said = () => host.locator('.panel .status .say').innerText();
+  const said = () => statusLineIn(host).locator('.say').innerText();
   assert((await said()) === '🎲 Dice tile · roll it (D)', `the status line: “${await said()}”`);
   await host.keyboard.press('d');
   await host.locator('.tc .result').waitFor();
@@ -1294,7 +1294,7 @@ async function tileTools() {
   assert((await mainLabel(host)) === '▦ Done ▶ board', 'after a reload the rolled dice are back, with ▦ Done ▶ board');
   await host.keyboard.press('Escape');
   await tileOf('qz').waitFor();
-  assert((await used('qz')) && (await host.locator('.panel .status', { hasText: '🎲 Dice tile' }).count()) === 0, 'and closing them finishes the tile, as before the reload');
+  assert((await used('qz')) && (await statusLineIn(host, { hasText: '🎲 Dice tile' }).count()) === 0, 'and closing them finishes the tile, as before the reload');
   await ctx.close();
 }
 
@@ -1396,9 +1396,9 @@ async function finalBar() {
       const [bar, label, sub] = [await box('.score-area'), await box('.final-label'), await box('.final-sub')];
       assert(bar.top < 1 && label.top >= bar.bottom && sub.bottom <= 1080, `the wagers: plates at the top, the Final's name under them and “Make your wagers…” on the stage (bar to ${Math.round(bar.bottom)}, name from ${Math.round(label.top)}, words to ${Math.round(sub.bottom)})`);
     } else assert(!(await st('.score-area').count()), 'the wagers: no plates');
-    const wagers = host.locator('.fj .wagers input[data-wager]');
+    const wagers = finalControlsIn(host).locator('.wagers input[data-wager]');
     for (let i = 0; i < 3; i++) await wagers.nth(i).fill('0');
-    await host.locator('.fj').click({ position: { x: 2, y: 2 } });
+    await finalControlsIn(host).click({ position: { x: 2, y: 2 } });
     if (scoreBar === 'top') {
       // Each wager's ✔ on the stage, whole: under its plate (over it, the stage's top edge would cut it off).
       await st('.score-area .tick').nth(2).waitFor();
@@ -1422,7 +1422,7 @@ async function finalBar() {
       } else assert(!(await st('.score-area').count()) && card.bottom <= 1080, `reveal ${n}: no plates, the card on the stage`);
     }
     assert(new Set(widths).size === 1 && widths[0] <= 1920, `the reveal card keeps one width for Ann, Bartholomew Montgomery and Cy (${widths.join(', ')})`);
-    const hint = await host.locator('.panel details.how').textContent();
+    const hint = await hostPanelIn(host).locator('details.how').textContent();
     assert(hint.includes('or on the stage') === (scoreBar !== 'hidden'), `the panel's how-to says the stage's plates spotlight only when they're there (${scoreBar})`);
     await ctx.close();
   }
@@ -1431,7 +1431,7 @@ async function finalBar() {
 /** The next round, from a host page. */
 async function nextRoundOf(p) {
   await p.waitForTimeout(450);
-  await p.locator('.rn button').last().click();
+  await roundNavIn(p).locator('button').last().click();
   await p.waitForTimeout(450);
   const yes = leaveAnswer(p);
   if (await yes.isVisible()) await yes.click();
@@ -1513,9 +1513,9 @@ try {
       look();
     }));
   };
-  const hoverTile = page.locator('.stage-box .board .tile').nth(4);
+  const hoverTile = boardTilesIn(boardIn(stageBoxIn(page))).nth(4);
   const tileBg = await hoverTile.evaluate((e) => getComputedStyle(e).backgroundColor);
-  const hoverPlate = page.locator('.stage-box .plate').first();
+  const hoverPlate = stageBoxIn(page).locator('.plate').first();
   const plateBg = await hoverPlate.evaluate((e) => getComputedStyle(e).backgroundColor);
   const onTile = await hovered(hoverTile);
   const onPlate = await hovered(hoverPlate);
@@ -1523,7 +1523,7 @@ try {
 
   // A clue opening keeps the stage's size (the ✔ / ✘ buttons don't wrap the player row).
   const board = await stageSize();
-  await page.locator('.stage-box .board .tile').nth(0).click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).nth(0).click();
   assert((await stageSize()) === board, `opening a clue keeps the stage at ${board}`);
   assert((await page.locator('.stage .caption').innerText()).includes('$200'), 'the clue screen has its category and value caption');
   await page.keyboard.press('1');
@@ -1542,7 +1542,7 @@ try {
     pop && pop.x + pop.width / 2 > plate.x && pop.x + pop.width / 2 < plate.x + plate.width && pop.y >= bar.y && pop.y + pop.height <= num.y + 1,
     `back on the board, the score pop sits on its player’s plate, above the score, inside the score bar (off the tiles) (${JSON.stringify({ pop, bar: bar.y, num: num.y })})`,
   );
-  await page.locator('.stage-box .board .tile').nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(page))).nth(1).click();
   // (Well before the pop's own 2.2 s, after its fade-out.)
   await page.waitForTimeout(700);
   assert(!(await page.locator('.stage .pop').count()), 'a new clue clears the score pops');
@@ -1551,7 +1551,7 @@ try {
   await page.keyboard.press('b');
   await page.locator('.stage .cover-card').waitFor();
   assert((await page.locator('.stage .cover-card').innerText()).includes('Snack break'), 'B covers the screen with the cover text');
-  assert((await page.locator('.panel .status').innerText()).includes('Category 2'), 'B does not leave the clue');
+  assert((await statusLineIn(page).innerText()).includes('Category 2'), 'B does not leave the clue');
   await page.keyboard.press('b');
   await page.keyboard.press('Escape');
 
@@ -1560,7 +1560,7 @@ try {
   await page.keyboard.press('h');
   await page.locator('.play > .panel').waitFor({ state: 'detached' });
   // (No cursor over the stage while the mouse is still; it's back once it moves.)
-  const stillCursor = await page.locator('.stage-box .board .tile:not(.used)').first().evaluate((e) => getComputedStyle(e).cursor);
+  const stillCursor = await boardIn(stageBoxIn(page)).locator('.tile:not(.used)').first().evaluate((e) => getComputedStyle(e).cursor);
   await page.mouse.move(300, 200);
   await page.mouse.move(310, 210);
   // (Read while "Show controls" shows: the mouse counts as moving for a moment only.)
@@ -1570,7 +1570,7 @@ try {
   // (It moves there once the host panel's box is measured, a frame after it opens.)
   await page.locator('.in-panel [role="dialog"]').waitFor({ timeout: 3000 }).catch(() => {});
   const keys = await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).boundingBox();
-  const stage = await page.locator('.stage-box').boundingBox();
+  const stage = await stageBoxIn(page).boundingBox();
   assert(keys.y >= stage.y + stage.height - 1, 'the keyboard shortcuts show under the stage, not over it');
   assert((await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).innerText()).includes('RPG'), 'the shortcuts are grouped by round');
   await page.keyboard.press('Escape');
@@ -1580,7 +1580,7 @@ try {
   await page.locator('.show-controls.shown').waitFor({ state: 'detached' });
   const touch = await context.newCDPSession(page);
   await touch.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
-  const tile = await page.locator('.stage-box .board .tile:not(.used)').first().boundingBox();
+  const tile = await boardIn(stageBoxIn(page)).locator('.tile:not(.used)').first().boundingBox();
   await page.evaluate(() => ((window.__clicks = 0), addEventListener('click', () => window.__clicks++, true)));
   const at = { x: Math.round(tile.x + tile.width / 2), y: Math.round(tile.y + tile.height / 2) };
   await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
@@ -1590,7 +1590,7 @@ try {
   await touch.send('Emulation.setTouchEmulationEnabled', { enabled: false });
   await touch.detach();
   await page.keyboard.press('h');
-  assert((await page.locator('.panel .status').innerText()).includes('Pick a tile'), 'controls hidden, a tap on the touch screen shows Show controls, and the tile it landed on stays shut');
+  assert((await statusLineIn(page).innerText()).includes('Pick a tile'), 'controls hidden, a tap on the touch screen shows Show controls, and the tile it landed on stays shut');
 
   // 📊 Scoreboard: copy the standings.
   await page.getByRole('button', { name: '📊 Scoreboard' }).click();
@@ -1605,21 +1605,21 @@ try {
   // Its title card comes first: the stage already has the Final's size, and the status line says what's on screen.
   await page.locator('.title-card .round-name').waitFor();
   const finalSize = await stageSize();
-  const status = await page.locator('.panel .status').innerText();
+  const status = await statusLineIn(page).innerText();
   assert(status.includes('Title card') && !status.includes('Category on screen'), `the status line says the title card is up (${status})`);
   await page.getByRole('button', { name: 'Start the round ▶' }).click();
   await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
   assert((await stageSize()) === finalSize, `starting the Final keeps the stage at ${finalSize}`);
-  assert((await page.locator('.panel .status').innerText()).includes('Category on screen'), 'then the category is on screen');
+  assert((await statusLineIn(page).innerText()).includes('Category on screen'), 'then the category is on screen');
   assert(!(await page.locator('.stage .final-label').count()), 'a Final without a category shows its name once');
   assert((await stageSize()) === finalSize, `taking wagers keeps the stage at ${finalSize}`);
-  assert((await page.locator('.panel [data-viewers]').getAttribute('title')).includes('the wagers as you type them'), 'the status line’s ⚠ Viewers see this chip says viewers see the wager boxes');
-  assert((await page.locator('.panel .status').innerText()).includes('viewers can see them'), 'so does the status line');
+  assert((await hostPanelIn(page).locator('[data-viewers]').getAttribute('title')).includes('the wagers as you type them'), 'the status line’s ⚠ Viewers see this chip says viewers see the wager boxes');
+  assert((await statusLineIn(page).innerText()).includes('viewers can see them'), 'so does the status line');
   assert((await page.locator('.stage .score-area .plate').count()) === 3, 'the scores stay on screen while wagers are taken');
   const ticks = await page.locator('.stage .score-area .tick').count();
-  const boxes = page.locator('.fj .wagers input[data-wager]');
+  const boxes = finalControlsIn(page).locator('.wagers input[data-wager]');
   for (let i = 0; i < 3; i++) await boxes.nth(i).fill('0');
-  await page.locator('.fj').click({ position: { x: 2, y: 2 } });
+  await finalControlsIn(page).click({ position: { x: 2, y: 2 } });
   await page.waitForTimeout(200);
   assert((await page.locator('.stage .score-area .tick').count()) === 3 && ticks < 3, 'a ✔ shows on each plate once that wager is in');
   // The ▭ scores window shows them too; its 3 plates stay put when the question's countdown comes beside them.

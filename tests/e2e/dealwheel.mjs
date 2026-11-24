@@ -13,7 +13,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section } from './helpers.mjs';
+import { appFile, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section, boardIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -122,7 +122,7 @@ try {
     phones[name] = p;
   }
   await host.getByRole('button', { name: 'Start game ▶' }).click();
-  await host.locator('.stage-box .tile').first().waitFor();
+  await stageBoxIn(host).locator('.tile').first().waitFor();
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   const nameOf = Object.fromEntries(Object.entries(seat).map(([n, id]) => [id, n]));
   const tokenOf = (p) => p.evaluate((c) => JSON.parse(localStorage.getItem(`brainrot-buzzer:${c}`)).token, code);
@@ -135,7 +135,7 @@ try {
   // ---------- The audience window, watched until Who was who ----------
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
-  await aud.locator('.board').waitFor();
+  await boardIn(aud).waitFor();
   const offStream = async (words, when) => {
     const found = await shownOf(aud, words);
     assert(!found.length, `${when}: the audience window holds none of it${found.length ? ` (found ${found.join(', ')})` : ''}`);
@@ -148,7 +148,7 @@ try {
 
   // ---------- 🎭 Deal…: the saved deal, its words changed for this deal only ----------
   section('Dealing');
-  const tools = host.locator('.panel .toolsrow');
+  const tools = toolsRowIn(host);
   const dialog = host.getByRole('dialog', { name: 'Deal' });
   await tools.getByRole('button', { name: '🎭 Deal…' }).click();
   await dialog.waitFor();

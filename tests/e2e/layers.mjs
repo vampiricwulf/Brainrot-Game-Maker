@@ -3,7 +3,7 @@
 // the Layers list), restacking, locking (clicks go through), hiding while editing, drag-to-select.
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, failureShots, assert, launchChromium, inspectorIn } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -39,7 +39,7 @@ try {
     if (alt) await page.keyboard.up('Alt');
   };
   const inspectorKind = async () =>
-    (await page.locator('.insp textarea').count()) ? 'text' : (await page.locator('.insp h4', { hasText: 'Image' }).count()) ? 'image' : 'none';
+    (await inspectorIn(page).locator('textarea').count()) ? 'text' : (await inspectorIn(page).locator('h4', { hasText: 'Image' }).count()) ? 'image' : 'none';
 
   // ↺ Reset background is always in the Background ▾ box (disabled until there's a background): a button appearing
   // on the first color change shifted things, and that closed the browser's color picker mid-typing.
@@ -51,15 +51,15 @@ try {
 
   // Write the question, then cover the whole slide with a picture.
   await page.locator('.canvas .hit').first().click();
-  await page.locator('.insp textarea').fill('Under the picture');
+  await inspectorIn(page).locator('textarea').fill('Under the picture');
   const dt = await page.evaluateHandle((b64) => {
     const d = new DataTransfer();
     d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'cover.png', { type: 'image/png' }));
     return d;
   }, PNG);
   await canvas.dispatchEvent('drop', { dataTransfer: dt });
-  await page.locator('.insp h4', { hasText: 'Image' }).waitFor();
-  const pos = page.locator('.insp section:has(h4:text("Position"))');
+  await inspectorIn(page).locator('h4', { hasText: 'Image' }).waitFor();
+  const pos = inspectorIn(page).locator('section:has(h4:text("Position"))');
   for (const [k, v] of /** @type {[string, number][]} */ ([['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
   await page.keyboard.press('Escape');
   await page.locator('.canvas img').first().click({ trial: true }).catch(() => {});
@@ -240,18 +240,18 @@ try {
   // "Use this style elsewhere" copies the text look to the other questions in the category, the default
   // (it used to crash on text without an outline or glow).
   await layers.filter({ hasText: 'Under the picture' }).locator('.name').click();
-  await page.locator('.insp input[type=color]').first().fill('#ff00aa');
-  await page.locator('.insp').getByRole('button', { name: 'Apply', exact: true }).click();
+  await inspectorIn(page).locator('input[type=color]').first().fill('#ff00aa');
+  await inspectorIn(page).getByRole('button', { name: 'Apply', exact: true }).click();
   await page.getByText(/Style applied to 4 slides/).waitFor();
   assert(true, '"Use this style elsewhere" restyles the other 4 questions in the category');
   await page.getByRole('button', { name: 'Next ▶' }).click();
   await page.locator('.canvas .hit').first().click();
-  assert((await page.locator('.insp input[type=color]').first().inputValue()) === '#ff00aa', 'the next clue (down the category) got the new text color');
+  assert((await inspectorIn(page).locator('input[type=color]').first().inputValue()) === '#ff00aa', 'the next clue (down the category) got the new text color');
   // The text's style buttons wrap by whole groups: ⤓ ended up alone under B at this size.
   {
     /** How far apart the group's buttons are up and down (a wrapped one is a line lower). */
     const tops = async (names) => {
-      const ys = await Promise.all(names.map(async (n) => (await page.locator('.insp').getByRole('button', { name: n, exact: true }).boundingBox()).y));
+      const ys = await Promise.all(names.map(async (n) => (await inspectorIn(page).getByRole('button', { name: n, exact: true }).boundingBox()).y));
       return Math.round(Math.max(...ys) - Math.min(...ys));
     };
     const rows = [
@@ -261,7 +261,7 @@ try {
     ];
     assert(rows.every((r) => r < 8), `the text style buttons wrap by whole groups (each group's spread up and down: ${rows.join(', ')} px)`);
     // One meaning per sign in the panel: ⤒ ⤓ are only the layer order's (named as the item's menu names them).
-    const signs = await page.locator('.insp button').evaluateAll((bs) => bs.filter((b) => /[⤒⤓↕]/.test(b.textContent)).map((b) => `${b.textContent.trim()}=${b.getAttribute('aria-label')}`));
+    const signs = await inspectorIn(page).locator('button').evaluateAll((bs) => bs.filter((b) => /[⤒⤓↕]/.test(b.textContent)).map((b) => `${b.textContent.trim()}=${b.getAttribute('aria-label')}`));
     assert(signs.join('|') === '⤒ To front=Bring to front|⤓ To back=Send to back', `⤒ and ⤓ mean only Bring to front and Send to back in the panel (${signs.join(', ')})`);
   }
 
@@ -274,7 +274,7 @@ try {
       return d;
     }, PNG);
     await canvas.dispatchEvent('drop', { dataTransfer: dt2 });
-    await page.locator('.insp h4', { hasText: 'Image' }).waitFor();
+    await inspectorIn(page).locator('h4', { hasText: 'Image' }).waitFor();
     for (const [k, v] of /** @type {[string, number][]} */ ([['X', 300], ['Y', 200], ['W', 600], ['H', 400]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
     await page.evaluate(() => {
       window.__nativeDrag = [];

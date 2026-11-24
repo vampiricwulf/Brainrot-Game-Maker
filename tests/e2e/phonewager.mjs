@@ -13,7 +13,7 @@
 // reveal says whether it's the right one. Needs `npm ci` in buzzer/.
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, anyway, launchChromium, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway, failureShots, assert, sleep, startBuzzer } from './helpers.mjs';
+import { appFile, addClassicRounds, anyway, launchChromium, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer, revealAnyway, failureShots, assert, sleep, startBuzzer, awardRowIn, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -121,17 +121,17 @@ try {
   await host.getByRole('button', { name: 'Skip intro' }).click();
 
   // ---------- A Daily Double ----------
-  await host.locator('.stage-box .board .tile').nth(3).click();
-  const dd = host.locator('.panel .dd', { hasText: 'Who found it?' });
+  await boardTilesIn(boardIn(stageBoxIn(host))).nth(3).click();
+  const dd = hostPanelIn(host).locator('.dd', { hasText: 'Who found it?' });
   await dd.waitFor();
   assert((await form(ann).isHidden()) && (await form(bo).isHidden()), 'nobody picked for the Daily Double yet: no phone has a wager box');
   assert((await dd.innerText()).includes('Who found it? Pick a player.'), 'the host is asked “Who found it? Pick a player.”');
   // The blue Show question ▶ is never greyed: pressed with nobody picked, the question waits and the status line says why.
   assert((await mainButton(host, 'Show question ▶').isEnabled()) && (await dd.getByRole('button', { name: 'Show question ▶' }).count()) === 0, 'nobody picked: the blue Show question ▶ is not greyed (and the box has no copy of it)');
   await mainButton(host, 'Show question ▶').click();
-  await host.locator('.panel .status [data-click-note]', { hasText: 'Who found it? Click their name (the keys stay in the Wager box)' }).waitFor();
+  await statusLineIn(host).locator('[data-click-note]', { hasText: 'Who found it? Click their name (the keys stay in the Wager box)' }).waitFor();
   assert(
-    (await dd.count()) === 1 && !(await host.locator('.toast', { hasText: 'Who found it?' }).count()),
+    (await dd.count()) === 1 && !(await toastsIn(host, { hasText: 'Who found it?' }).count()),
     'pressed with nobody picked: the question waits, and the status line (not a toast at the foot) says to click who found it',
   );
   assert(await dd.getByRole('button', { name: 'True Daily Double' }).isDisabled(), 'True Daily Double is off (with no amount) until a player is picked');
@@ -155,7 +155,7 @@ try {
   assert(true, 'the host sees the phone can send it ("📱 waiting…")');
   // Show question ▶ with the wager still to come: the keys stay in the Wager box, and the status line says whose phone.
   await mainButton(host, 'Show question ▶').click();
-  await host.locator('.panel .status [data-click-note]', { hasText: 'Waiting on Player 1’s phone: type their wager here if it doesn’t come' }).waitFor();
+  await statusLineIn(host).locator('[data-click-note]', { hasText: 'Waiting on Player 1’s phone: type their wager here if it doesn’t come' }).waitFor();
   await host.waitForFunction(() => document.activeElement?.matches('.dd input[type=number]'));
   assert((await dd.count()) === 1 && (await mainButton(host, 'Show question ▶').isEnabled()), 'Show question ▶ with the wager to come: the question waits, the keys in the Wager box (never greyed)');
 
@@ -239,7 +239,7 @@ try {
     `Show question locks it: she's on the spot, so her phone says “You're answering!” in her colour, her wager under it (${await small(ann).innerText()})`,
   );
   // The host fixes it in the Amount box (the question is up): the phone has the host's amount, not the one it sent.
-  const amountBox = host.locator('.panel .award').getByLabel('Amount');
+  const amountBox = awardRowIn(host).getByLabel('Amount');
   await amountBox.fill('500');
   await small(ann).getByText('Your wager: $500').waitFor();
   assert(true, 'the host fixes the wager in the Amount box: the phone says “Your wager: $500”, not the $700 it sent');
@@ -255,10 +255,10 @@ try {
   await host.keyboard.press('Shift+Tab');
   assert(await host.getByRole('button', { name: 'Right: Player 1 +$700' }).evaluate((e) => e === document.activeElement), 'Shift+Tab takes the keys to her ✔');
   await host.keyboard.press('Shift+Enter');
-  await host.locator('.panel .mark.wrong').waitFor();
-  assert((await host.locator('.panel .mark.right').count()) === 0, 'Shift+Enter there marks her wrong (− Deduct), not right');
+  await hostPanelIn(host).locator('.mark.wrong').waitFor();
+  assert((await hostPanelIn(host).locator('.mark.right').count()) === 0, 'Shift+Enter there marks her wrong (− Deduct), not right');
   await host.keyboard.press('Control+z');
-  await host.locator('.panel .mark.wrong').waitFor({ state: 'detached' });
+  await hostPanelIn(host).locator('.mark.wrong').waitFor({ state: 'detached' });
   // Right: Player 1 has 700 to wager in the Final.
   await host.getByRole('button', { name: 'Right: Player 1 +$700' }).click();
   await ann.locator('#me').getByText('Player 1 · $700').waitFor();
@@ -273,8 +273,8 @@ try {
   await host.waitForTimeout(450);
   await leaveAnswer(host).click();
   await host.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
-  if ((await host.locator('.panel .status').innerText()).includes('Title card')) await host.keyboard.press('n');
-  const rows = host.locator('.fj .wagers');
+  if ((await statusLineIn(host).innerText()).includes('Title card')) await host.keyboard.press('n');
+  const rows = finalControlsIn(host).locator('.wagers');
   await rows.waitFor();
   const row = (name) => rows.locator('.wrow', { hasText: name });
   const box = (name) => row(name).locator('input[data-wager]');
@@ -300,9 +300,9 @@ try {
   await host.setViewportSize({ width: 1000, height: 900 });
   await host.keyboard.press('n');
   const waitNote = 'Waiting on Player 1’s phone, Player 2’s phone & Player 3: type their wagers, or untick them to sit out';
-  await host.locator('.panel .status [data-click-note]', { hasText: waitNote }).waitFor();
-  const noteCut = await host.locator('.panel .status [data-click-note] .nt').evaluate((e) => e.scrollWidth > e.clientWidth + 1);
-  await host.locator('.toast', { hasText: waitNote }).waitFor({ timeout: 2000 });
+  await statusLineIn(host).locator('[data-click-note]', { hasText: waitNote }).waitFor();
+  const noteCut = await statusLineIn(host).locator('[data-click-note] .nt').evaluate((e) => e.scrollWidth > e.clientWidth + 1);
+  await toastsIn(host, { hasText: waitNote }).waitFor({ timeout: 2000 });
   assert(noteCut, 'a note cut off in the status line (a narrow window) is said in full at the foot too');
   await host.setViewportSize({ width: 1400, height: 900 });
   assert(
@@ -311,9 +311,9 @@ try {
   );
   assert(!(await host.getByLabel('Ignore the limits').isChecked()), 'the Final starts with Ignore the limits unticked');
   await host.waitForFunction(() => document.activeElement?.closest('.wrow')?.textContent?.includes('Player 1'));
-  assert((await goOnCheck(host).count()) === 0 && (await host.locator('.panel .status').innerText()).includes('taking wagers'), 'N there: the keys in Player 1’s wager box, no check, the question not up');
+  assert((await goOnCheck(host).count()) === 0 && (await statusLineIn(host).innerText()).includes('taking wagers'), 'N there: the keys in Player 1’s wager box, no check, the question not up');
   // (The keys back to the host, as phones send.)
-  await host.locator('.panel .status').click();
+  await statusLineIn(host).click();
   assert(
     (await row('Player 2').locator('[data-phone-wager]', { hasText: '📱 … waiting' }).count()) === 1 && (await row('Player 3').getByText('📱').count()) === 0,
     'the host sees whose phone can send one (“📱 …”); a player without a phone has no 📱',
@@ -446,7 +446,7 @@ try {
   );
   await ansBox.fill('Alexander\nFleming\n(penicillin)');
   await ann.locator('#answer-state').getByText(sentLine, { exact: true }).waitFor();
-  const answers = host.locator('.fj [aria-label="Answers from phones"]');
+  const answers = finalControlsIn(host).locator('[aria-label="Answers from phones"]');
   await answers.locator('[data-answer-row]', { hasText: 'Fleming' }).waitFor();
   assert(
     (await answers.locator('[data-answer-row] .text bdi').first().innerText()) === 'Alexander\nFleming\n(penicillin)',
@@ -463,13 +463,13 @@ try {
   await shot('pw-6-answer-phone', ann);
   // Back to the wagers (↶ Undo), to the round before and to the Final again: the question was seen, the phones stay locked.
   await host.getByRole('button', { name: '↶ Undo' }).click();
-  await host.locator('.fj button', { hasText: '◀ Previous round' }).click();
-  await host.locator('.stage-box .board').waitFor();
+  await finalControlsIn(host).locator('button', { hasText: '◀ Previous round' }).click();
+  await boardIn(stageBoxIn(host)).waitFor();
   await host.waitForTimeout(450);
   await host.locator('.rn > button').last().click();
   await host.waitForTimeout(450);
   await leaveAnswer(host).click();
-  await host.locator('.fj').getByText('📱 The question was on screen: phones can’t send wagers any more').waitFor();
+  await finalControlsIn(host).getByText('📱 The question was on screen: phones can’t send wagers any more').waitFor();
   await big(ann).getByText('Wager locked').waitFor();
   assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'back at the wagers after a trip to the round before, the phones stay locked (the question was seen)');
   // The question again: her answer came back with the Final, on her phone and in the host's panel.
@@ -489,21 +489,21 @@ try {
   await goOnCheck(host).waitFor({ state: 'detached' });
   // The countdown on and his answer still missing, 👁 Reveal answer asks again: ⇧T gives 10 more seconds, and T pauses
   // the clock (as in the clock's own check), closing it; T outside starts it again.
-  await host.locator('.panel .tc button[aria-label="Pause timer"]').waitFor();
+  await hostPanelIn(host).locator('.tc button[aria-label="Pause timer"]').waitFor();
   await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
   await checkItem(host, 'answers').waitFor();
   assert((await quick(host, '⏸ Pause the clock').innerText()).includes('T'), 'the countdown on, the answers check offers ⏸ Pause the clock, its key T');
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('t');
   await goOnCheck(host).waitFor({ state: 'detached', timeout: 3000 });
-  await host.locator('.panel .tc button[aria-label="Start timer"]').waitFor({ timeout: 3000 });
+  await hostPanelIn(host).locator('.tc button[aria-label="Start timer"]').waitFor({ timeout: 3000 });
   assert(await big(ann).getByText('Answers locked').count() === 0, 'T in it pauses the clock and closes it, the answers still open');
   await host.keyboard.press('t');
-  await host.locator('.panel .tc button[aria-label="Pause timer"]').waitFor();
-  const less = host.locator('.panel').getByRole('button', { name: '10 seconds less' });
+  await hostPanelIn(host).locator('.tc button[aria-label="Pause timer"]').waitFor();
+  const less = hostPanelIn(host).getByRole('button', { name: '10 seconds less' });
   // (−10 until it's run out.)
   await less.waitFor();
-  await less.evaluate(async (b) => {
+  await less.evaluate(async (/** @type {HTMLButtonElement} */ b) => {
     while (!b.disabled && b.isConnected) {
       b.click();
       await new Promise((r) => setTimeout(r, 50));
@@ -520,7 +520,7 @@ try {
   await shot('pw-6-locked-phone', ann);
   // The reveals: N puts Player 1's answer on stream, then C judges her and her wager goes up with it.
   await mainButton(host).filter({ hasText: 'Start player reveals ▶' }).click();
-  const rev = (name) => host.locator('.fj .pl', { hasText: name });
+  const rev = (name) => finalControlsIn(host).locator('.pl', { hasText: name });
   await rev('Player 1').locator('[data-typed]').waitFor();
   assert(
     (await rev('Player 1').locator('[data-typed]').innerText()) === '“Alexander / Fleming / (penicillin)”' && (await rev('Player 2').innerText()).includes('no typed answer'),
@@ -601,7 +601,7 @@ try {
   await host2.getByRole('button', { name: 'Done' }).click();
   // Its Final has multiple choice, made in its editor under the ✍ switch: B is right.
   const CHOICES = ['Alpha-wqz', 'Bravo-wqz', 'Charlie-wqz', 'Delta-wqz'];
-  await host2.locator('nav > button.round-tab').nth(1).click();
+  await roundTabsIn(host2).nth(1).click();
   await host2.getByRole('button', { name: '＋ Multiple choice' }).click();
   await host2.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choice A');
   // (Its box: the row around it is named for it too.)
@@ -629,12 +629,12 @@ try {
   await host2.getByRole('button', { name: 'Skip intro' }).click();
   /** The host panel's text has none of these amounts (as "$300"). */
   const panelHides = async (amounts) => {
-    const t = await host2.locator('.panel').innerText();
+    const t = await hostPanelIn(host2).innerText();
     return amounts.every((n) => !t.includes(`$${n.toLocaleString('en-US')}`));
   };
   // A Daily Double in one window: the box doesn't show the amount the phone sent (typed over, it's the host's).
-  await host2.locator('.stage-box .board .tile').nth(3).click();
-  const dd2 = host2.locator('.panel .dd', { hasText: 'Who found it?' });
+  await boardTilesIn(boardIn(stageBoxIn(host2))).nth(3).click();
+  const dd2 = hostPanelIn(host2).locator('.dd', { hasText: 'Who found it?' });
   await dd2.locator('.chip', { hasText: 'Player 1' }).click();
   await form(al).waitFor();
   assert((await dd2.locator('[data-dd-phones]').innerText()).includes('A phone on the team can send its wager'), 'teams: the phones’ line says a phone on the team can send its wager');
@@ -655,17 +655,17 @@ try {
   await al.locator('#wager-state').getByText('The host has your team’s wager as $400').waitFor();
   await sendWager(al, 345);
   await dd2.getByText('📱 from phone · sent by Al').waitFor();
-  await host2.locator('.panel [data-next]').click();
+  await hostPanelIn(host2).locator('[data-next]').click();
   await host2.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
-  const amountIn = host2.locator('.panel .award input');
+  const amountIn = awardRowIn(host2).locator('input');
   const named345 = () => host2.locator('.panel [title*="345"], .panel [aria-label*="345"]').count();
   assert(
-    (await panelHides([345])) && (await host2.locator('.panel .ddtag').innerText()) === 'DD 📱' && (await amountIn.inputValue()) === '' && (await amountIn.getAttribute('placeholder')) === 'hidden' && (await named345()) === 0,
+    (await panelHides([345])) && (await hostPanelIn(host2).locator('.ddtag').innerText()) === 'DD 📱' && (await amountIn.inputValue()) === '' && (await amountIn.getAttribute('placeholder')) === 'hidden' && (await named345()) === 0,
     'one window: once its question shows, the phone’s wager stays hidden in the panel (“DD 📱”, the Amount box “hidden”, no amount on the buttons)',
   );
   // The answer up, the blue button (▦ Done ▶ board) asks first, its player not judged: the check names no amount either.
   await host2.keyboard.press('r');
-  await host2.locator('.stage-box [data-slide="answer"]').waitFor();
+  await stageBoxIn(host2).locator('[data-slide="answer"]').waitFor();
   await host2.keyboard.press('n');
   await checkItem(host2, 'dd').waitFor();
   assert(
@@ -675,7 +675,7 @@ try {
   await host2.keyboard.press('Escape');
   await goOnCheck(host2).waitFor({ state: 'detached' });
   await host2.getByRole('button', { name: 'Show wager' }).click();
-  await host2.locator('.panel .ddtag', { hasText: '$345' }).waitFor();
+  await hostPanelIn(host2).locator('.ddtag', { hasText: '$345' }).waitFor();
   assert((await amountIn.inputValue()) === '345', 'Show wager shows it in the panel too');
   await host2.waitForTimeout(700); // past Not yet's bounce guard: an Esc right after it does nothing
   await host2.keyboard.press('Escape');
@@ -685,14 +685,14 @@ try {
   await host2.waitForTimeout(450);
   await leaveAnswer(host2).click();
   await host2.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
-  if ((await host2.locator('.panel .status').innerText()).includes('Title card')) await host2.keyboard.press('n');
-  const rows2 = host2.locator('.fj .wagers');
+  if ((await statusLineIn(host2).innerText()).includes('Title card')) await host2.keyboard.press('n');
+  const rows2 = finalControlsIn(host2).locator('.wagers');
   await rows2.waitFor();
   await form(al).waitFor();
   // Phones send the wagers: the list holds the keys (not the next button, the panel's box scrolled to it), so the box
   // stays at its top and its first line (“Waiting on Player 1’s phone…”) reads whole, on stream.
   const keysHeld = await host2.waitForFunction(() => document.activeElement?.matches('.fj .wagers'), null, { timeout: 5000 }).then(() => true, () => false);
-  const cut = await host2.locator('.fj [data-wagers-line]').evaluate((e) => {
+  const cut = await finalControlsIn(host2).locator('[data-wagers-line]').evaluate((e) => {
     for (let p = e.parentElement; p; p = p.parentElement) if (/(auto|scroll)/.test(getComputedStyle(p).overflowY)) return Math.round(p.getBoundingClientRect().top - e.getBoundingClientRect().top);
     return 0;
   });
@@ -770,7 +770,7 @@ try {
   await amyChoices.filter({ hasText: CHOICES[1] }).click();
   await al.locator('#answer-state').getByText('✔ Amy picked B for your team').waitFor();
   await shot('pw-11-final-choices-phone', al);
-  const answers2 = host2.locator('.fj [aria-label="Answers from phones"]');
+  const answers2 = finalControlsIn(host2).locator('[aria-label="Answers from phones"]');
   await answers2.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
   const head2 = await answers2.getByRole('status').innerText();
   const chips2 = await answers2.locator('[data-answer-in]').allInnerTexts();
@@ -786,7 +786,7 @@ try {
    */
   const typedHidden = async (when) => {
     const found = await shownOf(host2, [PICKED]);
-    const panel = await host2.locator('.panel').innerText();
+    const panel = await hostPanelIn(host2).innerText();
     const elsewhere = await host2.evaluate(
       (w) =>
         (window.__seen ?? [])
@@ -802,7 +802,7 @@ try {
   };
   await typedHidden('the question');
   // The stream (one window: the host's stage) has the 4 choices under the question, none lit; with the answer, B.
-  const stageStrip = host2.locator('.stage-box [data-choices]');
+  const stageStrip = stageBoxIn(host2).locator('[data-choices]');
   assert(
     (await stageStrip.locator('.choice').count()) === 4 && (await stageStrip.locator('.choice.right').count()) === 0,
     'the stage shows the Final’s 4 choices under the question, none lit',
@@ -814,7 +814,7 @@ try {
   assert(true, 'with the answer, the one marked ✔ Right (B) lights up');
   await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();
   await stageStrip.waitFor({ state: 'detached' });
-  const rev1 = host2.locator('.fj .pl', { hasText: 'Player 1' });
+  const rev1 = finalControlsIn(host2).locator('.pl', { hasText: 'Player 1' });
   const revIn = rev1.locator('input[data-reveal-wager]');
   await revIn.waitFor();
   assert((await revIn.inputValue()) === '' && (await revIn.getAttribute('placeholder')) === 'hidden' && (await panelHides([450])), 'the reveals in one window: the row’s box keeps the phone’s amount hidden');
@@ -835,14 +835,14 @@ try {
     (await rev1.locator('[data-typed]').innerText()) === '✍ hidden' && !(await rev1.locator('[data-pick-hint]').count()),
     'the row’s answer: “✍ hidden” (one window) until it’s on screen, and nothing yet of whether it’s right',
   );
-  assert((await host2.locator('.panel button.ring').count()) === 0, 'nor a ring on the verdict its pick points to (viewers see this panel)');
+  assert((await hostPanelIn(host2).locator('button.ring').count()) === 0, 'nor a ring on the verdict its pick points to (viewers see this panel)');
   await typedHidden('the reveals, before Show answer');
   // C before N showed it: judging puts the answer up too, with the wager (never a blank line under ✔ CORRECT).
   await host2.keyboard.press('c');
-  const spotAnswer = host2.locator('.stage-box .spot-answer');
+  const spotAnswer = stageBoxIn(host2).locator('.spot-answer');
   await spotAnswer.filter({ hasText: CHOICES[1] }).waitFor();
   assert(
-    (await spotAnswer.locator('.pick-letter').innerText()) === 'B' && (await host2.locator('.stage-box .spot-result').innerText()) === '✔ CORRECT',
+    (await spotAnswer.locator('.pick-letter').innerText()) === 'B' && (await stageBoxIn(host2).locator('.spot-result').innerText()) === '✔ CORRECT',
     'C before the answer is up: the stage’s spotlight has the team’s pick (its letter and its words) with ✔ CORRECT',
   );
   assert(
@@ -855,7 +855,7 @@ try {
   // Show answer was empty while the blue button did it.
   await host2.keyboard.press('n');
   await mainButton(host2).filter({ hasText: 'Show answer ▶' }).waitFor();
-  const rev2 = host2.locator('.fj .pl', { hasText: 'Player 2' });
+  const rev2 = finalControlsIn(host2).locator('.pl', { hasText: 'Player 2' });
   assert(await rev2.locator('button[aria-label="Show answer: Player 2"]').evaluate((b) => getComputedStyle(b).visibility === 'hidden'), 'the spotlit row’s Show answer is empty while the blue button is Show answer ▶');
   await host2.keyboard.press('n');
   await rev2.locator('[data-pick-hint]', { hasText: '✘ not B' }).waitFor();
@@ -866,7 +866,7 @@ try {
   assert(hintLines === 1 && pickCut <= 0, `the row's pick reads whole and “✘ not B” stays on one line beside it (${hintLines} line, cut ${pickCut}px)`);
   const rowRings = await rev2.locator('button.ring').allInnerTexts();
   assert(
-    (await flowIs(host2, 'Finish game ▶')) && rowRings.join() === '✘ Wrong' && (await host2.locator('.panel button.ring').count()) === 1,
+    (await flowIs(host2, 'Finish game ▶')) && rowRings.join() === '✘ Wrong' && (await hostPanelIn(host2).locator('button.ring').count()) === 1,
     `a pick that isn't the ✔ Right one: the row's ✔ Right and ✘ Wrong stay in their places, neither blue, ✘ Wrong ringed (one ring), and the blue button Finish game ▶ (the row: ${rowRings.join()})`,
   );
 
@@ -880,13 +880,13 @@ try {
   await host2.getByRole('button', { name: '🔁 Rematch' }).click();
   await host2.getByRole('button', { name: 'Start game ▶' }).click();
   await host2.getByRole('button', { name: 'Skip intro' }).click();
-  await host2.locator('.stage-box .board').waitFor();
+  await boardIn(stageBoxIn(host2)).waitFor();
   await host2.waitForTimeout(450);
   await host2.locator('.rn > button').last().click();
   await host2.waitForTimeout(450);
   await leaveAnswer(host2).click();
   await host2.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
-  if ((await host2.locator('.panel .status').innerText()).includes('Title card')) await host2.keyboard.press('n');
+  if ((await statusLineIn(host2).innerText()).includes('Title card')) await host2.keyboard.press('n');
   await rows2.locator('.wrow', { hasText: 'Player 2' }).locator('input[data-plays]').uncheck();
   await big(cy).getByText('You sit this one out').waitFor();
   // Player 1 is at $0 after the rematch: they can still wager up to $2,000, so their phone sends one.
@@ -908,7 +908,7 @@ try {
   await host2.keyboard.press('r');
   await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();
   // (The reveals change nothing there: the same two lines as under the question.)
-  await host2.locator('.fj .pl').first().waitFor();
+  await finalControlsIn(host2).locator('.pl').first().waitFor();
   assert(
     (await big(cy).innerText()) === 'You sit this one out' && (await small(cy).innerText()) === 'Your team isn’t in this one',
     `and through the reveals (${await big(cy).innerText()} · ${await small(cy).innerText()})`,

@@ -14,7 +14,7 @@
 // so what plays in Chrome or Edge on Windows or Mac, and converting to MP4 (H.264) or M4A (AAC), are checked by hand.)
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, editorReady, recordSeen, stored, failureShots, assert, launchChromium, section, until } from './helpers.mjs';
+import { appFile, addClassicRounds, editorReady, recordSeen, stored, failureShots, assert, launchChromium, section, until, inspectorIn } from './helpers.mjs';
 import { clip, fixturePage, noise, readBack, ts, withMpeg2Picture } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -217,9 +217,9 @@ try {
     return d;
   }, talkFile.buffer.toString('base64'));
   await clueEditor.locator('.canvas').dispatchEvent('drop', { dataTransfer: talkDrop });
-  await page.locator('.insp h4', { hasText: 'Video' }).waitFor();
+  await inspectorIn(page).locator('h4', { hasText: 'Video' }).waitFor();
   // Once its check lands, the item's panel says so, with 🔄.
-  const playsNote = page.locator('.insp [data-plays-note]');
+  const playsNote = inspectorIn(page).locator('[data-plays-note]');
   await playsNote.waitFor({ timeout: 60_000 });
   const noteSays = (await playsNote.innerText()).replace(/\s+/g, ' ').trim();
   assert(noteSays === '⚠ It plays without its sound here (AC-3 (Dolby Digital)). 🔄 Convert…', `the item’s panel: “${noteSays}”`);
@@ -338,7 +338,7 @@ try {
     return d;
   }, files.find((f) => f.name === 'clip.mkv').buffer.toString('base64'));
   await page.locator('main .canvas').dispatchEvent('drop', { dataTransfer: clipDrop });
-  await page.locator('.insp h4', { hasText: 'Video' }).waitFor();
+  await inspectorIn(page).locator('h4', { hasText: 'Video' }).waitFor();
   await page.getByRole('button', { name: '📱 On their phone' }).click();
   const phone = page.getByRole('complementary', { name: 'Card on their phone' });
   const kindNote = phone.locator('.notes li.warn', { hasText: 'phones can’t play this kind of video' });
@@ -380,7 +380,7 @@ try {
     return d;
   }, files.find((f) => f.name === 'talk.mkv').buffer.toString('base64'));
   await page.locator('main .canvas').dispatchEvent('drop', { dataTransfer: talkCardDrop });
-  await page.locator('.insp h4', { hasText: 'Video' }).waitFor();
+  await inspectorIn(page).locator('h4', { hasText: 'Video' }).waitFor();
   if (!(await phone.isVisible())) await page.getByRole('button', { name: '📱 On their phone' }).click();
   const talkNote = phone.locator('.notes li.warn', { hasText: 'phones can’t play this kind of video' });
   const copyIt = talkNote.getByRole('button', { name: '🗜 Make a copy phones can play' });

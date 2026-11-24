@@ -5,7 +5,7 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerReplace, macClicks, openGameFile, failureShots, assert, launchChromium } from './helpers.mjs';
+import { appFile, addClassicRounds, answerReplace, macClicks, openGameFile, failureShots, assert, launchChromium, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -42,7 +42,7 @@ async function drop(locator, list) {
   await page.waitForTimeout(250);
 }
 const mediaCount = async () => Number((await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).innerText()).match(/\d+/)[0]);
-const toast = page.locator('.toast');
+const toast = toastsIn(page);
 const notice = page.locator('.history-notice');
 
 try {
@@ -280,7 +280,7 @@ try {
   );
 
   // ---------- Slide right-click menus ----------
-  await page.locator('nav > button.round-tab').first().click();
+  await roundTabsIn(page).first().click();
   await page.locator('.grid .tile').first().click();
   const canvas = page.locator('.canvas');
   const stageBox = () => canvas.locator('.stage').boundingBox();
@@ -294,10 +294,10 @@ try {
   };
   const menu = page.locator('[aria-label="Slide item menu"]');
   const layers = page.locator('.layers-box .row');
-  const pos = page.locator('.insp section:has(h4:text("Position"))');
+  const pos = inspectorIn(page).locator('section:has(h4:text("Position"))');
   // Shrink the main text so the slide has empty spots.
   await page.locator('.canvas .hit').first().click();
-  await page.locator('.insp textarea').fill('Main text');
+  await inspectorIn(page).locator('textarea').fill('Main text');
   for (const [k, v] of [['X', 600], ['Y', 400], ['W', 600], ['H', 200]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
   await page.keyboard.press('Escape');
   await rightClick(200, 900);
@@ -305,8 +305,8 @@ try {
   assert((await menu.getByRole('menuitem', { name: /Paste here/ }).isDisabled()) && !(await menu.getByText('Nothing here').count()), 'an empty spot has a menu (Paste here is off: nothing copied)');
   await shot('em-3-empty-menu');
   await menu.getByRole('menuitem', { name: '＋ Text here' }).click();
-  assert((await layers.count()) === 2 && (await page.locator('.insp textarea').count()) === 1, '＋ Text here adds a text box');
-  await page.locator('.insp textarea').fill('Second');
+  assert((await layers.count()) === 2 && (await inspectorIn(page).locator('textarea').count()) === 1, '＋ Text here adds a text box');
+  await inspectorIn(page).locator('textarea').fill('Second');
   await layers.filter({ hasText: 'Second' }).waitFor();
   const x2 = Number(await pos.getByLabel('X', { exact: true }).inputValue());
   const w2 = Number(await pos.getByLabel('W', { exact: true }).inputValue());
@@ -375,7 +375,7 @@ try {
   // Renamed, then its text box clicked: Backspace types there, and deletes no item.
   await second.locator('.name').dblclick();
   await layerName.fill('Subtitle');
-  await page.locator('.insp textarea').click();
+  await inspectorIn(page).locator('textarea').click();
   await page.keyboard.press('End');
   await page.keyboard.press('Backspace');
   await page.waitForFunction(() => document.activeElement?.matches('.insp textarea') && document.activeElement.value === 'Secon');
