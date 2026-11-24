@@ -19,7 +19,8 @@
 // so a new file always runs somewhere. buzzer is worked out from the files' source (startBuzzer, startRoomOn or
 // buzzer/'s wrangler), so it never needs a list. When a shard grows past about eight minutes, move a file to another one here.
 // --check fails unless every named file exists, no file is in two shards, build.yml's e2e matrix runs exactly
-// these shards, and every file uses appFile() and failureShots() from helpers.mjs.
+// these shards, and every file uses appFile() and failureShots() from helpers.mjs, and helpers.mjs's assert, sleep,
+// until, section, launchChromium() and startBuzzer() rather than a copy of its own.
 //
 // Before a run it checks that dist/index.html is newer than the source (unless APP_FILE is set). Each file's Chromium
 // gets tests/e2e/fonts.conf (CI's fonts, no Inter) unless FONTCONFIG_FILE is set: helpers.mjs sets it.
@@ -67,6 +68,12 @@ function check() {
     if (/process\.env\.APP_FILE|dist\/index\.html/.test(src)) bad.push(`${f}.mjs reads APP_FILE or dist/index.html itself: use appFile()`);
     if (/newPage\(/.test(src) && !/failureShots\(/.test(src)) bad.push(`${f}.mjs opens pages but never calls failureShots()`);
     if (/process\.env\.SHOTS\b[^\n]*failure/.test(src)) bad.push(`${f}.mjs takes its failure picture only when SHOTS is set: use failureShots()`);
+    // The small shared steps too, so a fix to one (what a failure prints, how Chromium starts) reaches every file.
+    if (/^\s*(?:async\s+)?function (assert|assertEq|sleep|section)\b|^\s*const (assert|assertEq|sleep|section) = /m.test(src))
+      bad.push(`${f}.mjs has its own ${RegExp.$1 || RegExp.$2}(): use the one in helpers.mjs`);
+    if (/^\s*(?:async\s+)?function until\b|^\s*const until = async\b/m.test(src)) bad.push(`${f}.mjs has its own until() loop: use until() or untilWith() from helpers.mjs`);
+    if (/CHROMIUM_PATH|chromium\.launch\(/.test(src)) bad.push(`${f}.mjs launches Chromium itself: use launchChromium()`);
+    if (/node_modules\/\.bin\/wrangler/.test(src)) bad.push(`${f}.mjs starts the buzzer server itself: use startBuzzer()`);
   }
   if (bad.length) {
     console.error(bad.join('\n'));
