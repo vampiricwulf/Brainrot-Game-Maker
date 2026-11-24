@@ -121,7 +121,7 @@ try {
     await ctx.close();
   }
   for (const two of [true, false]) {
-    console.log(`Mini quest, ${two ? 'two windows' : 'one window'}:`);
+    section(`Mini quest, ${two ? 'two windows' : 'one window'}`);
     const { ctx, page } = await host('Mini quest', two);
     await page.keyboard.press('n');
     const rh = page.locator('.rh');

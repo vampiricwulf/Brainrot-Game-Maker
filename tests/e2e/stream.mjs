@@ -1343,7 +1343,7 @@ async function soonOver() {
 async function finalBar() {
   const slide = (id, t) => ({ background: {}, elements: [{ id, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
   for (const scoreBar of ['top', 'hidden']) {
-    console.log(`Score bar ${scoreBar}, from the board to the Final's reveals:`);
+    section(`Score bar ${scoreBar}, from the board to the Final's reveals`);
     const game = {
       id: `g_bar_${scoreBar}`, version: 2, title: 'Bar',
       settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' } },
