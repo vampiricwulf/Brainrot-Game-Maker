@@ -96,9 +96,7 @@
         <textarea rows="1" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value || undefined)}></textarea>
       </label>
     </div>
-    <p class="muted small">
-      An adventure is a map of screens (places) the players walk between.
-    </p>
+    <p class="muted small">An adventure is a map of screens (places) the players walk between.</p>
     {#if sharing}
       <p class="muted small" data-world-shared>
         {sharing} other round{sharing === 1 ? '' : 's'} play{sharing === 1 ? 's' : ''} this adventure too: it carries on where it was left (the start only

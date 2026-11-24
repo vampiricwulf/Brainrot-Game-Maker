@@ -438,9 +438,7 @@
           {pt.name} ({pt.members.length})
         </button>
       {/each}
-      <button class="small" onclick={split} title="The selected players become their own party">
-        ✂ Split off selected
-      </button>
+      <button class="small" onclick={split} title="The selected players become their own party">✂ Split off selected</button>
       {#if st.parties.length > 1}
         <button class="small" onclick={() => regroupAll(game, session)} title="G: everyone back together, here">🤝 Regroup</button>
         <button class="small" class:on={st.split} aria-pressed={!!st.split} onclick={toggleSplit} title="Show every party's screen at once">▦ Split view</button>

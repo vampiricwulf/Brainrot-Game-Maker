@@ -229,9 +229,7 @@
     </div>
     {@render teamsNote()}
     {#if settings.buzzTeams && remote.status === 'online' && !roomHasTeams()}
-      <p class="warn small" role="alert">
-        ⚠ This buzzer server doesn't know teams yet (it needs updating): phones join as players, one each.
-      </p>
+      <p class="warn small" role="alert">⚠ This buzzer server doesn't know teams yet (it needs updating): phones join as players, one each.</p>
     {/if}
     <!-- 3. Who's in: who's asking to join first, then each player's phone. -->
     <PhoneList {session} {max} {onadd} {onreject} {onkick} teams={!!settings.buzzTeams} {onkickmember} {onmove} {onmenu} {onrename} />
