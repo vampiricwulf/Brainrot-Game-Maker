@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addBundledRound, bringAlong, bundleRound, copiesMessage, copyRound, mergedMessage, placeFor, settleFiles, uniqueName } from './roundcopy';
+import { addBundledRound, addDealFrom, bringAlong, dealWheelName, bundleRound, copiesMessage, copyRound, mergedMessage, placeFor, settleFiles, uniqueName } from './roundcopy';
 import { keepScreen } from './rpg';
 import { clipboard } from './clipboard.svelte';
 import { isBoard, isRpg, newFinalRound, newGame, newImageEl, newRound, type Game } from './model';
@@ -7,6 +7,8 @@ import { clone } from './ops';
 import { addSampleGame, dungeonRound, miniQuestRound } from './samples';
 import { presetStat } from './rpgpresets';
 import { newWheel } from './tools';
+import { DEAL_TEMPLATES, dealFromTemplate } from './deals';
+import { WHEEL_TEMPLATES, wheelFromTemplate } from './wheeltemplates';
 
 describe('rounds between games', () => {
   it('a board round takes its wheel (and the wheel’s picture) and its tile images along', () => {
@@ -253,5 +255,73 @@ describe('rounds between games', () => {
     const b = newGame();
     addBundledRound(b, bundle);
     expect(b.media.map((m) => m.id)).toEqual(['font0002xyz']);
+  });
+});
+
+describe('🎭 deals between games (Import rounds…)', () => {
+  const spy = DEAL_TEMPLATES.find((t) => t.key === 'spy')!;
+  const places = WHEEL_TEMPLATES.find((t) => t.key === 'locations')!;
+  /** A game with the ready-made Odd one out and its Locations wheel, as 📋 Ready-made deal… adds them. */
+  const withSpy = () => {
+    const g = newGame();
+    const w = wheelFromTemplate(places, '$');
+    g.wheels.push(w);
+    g.deals = [dealFromTemplate(spy, spy.name, w.id)];
+    return g;
+  };
+
+  it('a deal comes with the wheel it draws from (and that wheel’s picture), under fresh ids', () => {
+    const a = withSpy();
+    a.wheels[0].segments[0].media = 'm1';
+    a.media.push({ id: 'm1', name: 'beach.png', mime: 'image/png', size: 1, kind: 'image' });
+    a.wheels.push(newWheel('Unused'));
+    const b = newGame();
+    const d = addDealFrom(b, a, a.deals![0])!;
+    expect(dealWheelName(a, a.deals![0])).toBe('Locations');
+    expect(b.wheels.map((w) => w.name)).toEqual(['Locations']);
+    expect(d.wheel).toBe(b.wheels[0].id);
+    expect(b.media.map((m) => m.id)).toEqual(['m1']);
+    expect(b.deals!.map((x) => x.name)).toEqual(['Odd one out']);
+    expect(d.id).not.toBe(a.deals![0].id);
+    expect(d.parts.map((p) => p.id)).not.toContain(a.deals![0].parts[0].id);
+  });
+
+  it('a deal whose wheel has the id of another wheel here points at its copy', () => {
+    const a = withSpy();
+    const b = newGame();
+    b.wheels.push({ ...clone(a.wheels[0]), name: 'Other', segments: [] });
+    const copied: string[] = [];
+    const d = addDealFrom(b, a, a.deals![0], copied)!;
+    expect(b.wheels).toHaveLength(2);
+    expect(d.wheel).toBe(b.wheels[1].id);
+    expect(d.wheel).not.toBe(a.wheels[0].id);
+    expect(copied).toEqual(['“Locations” wheel']);
+  });
+
+  it('this game’s own ready-made wheel is used; one of the name with other slices comes in as a copy', () => {
+    const a = withSpy();
+    const b = withSpy();
+    b.deals = [];
+    const d = addDealFrom(b, a, a.deals![0])!;
+    expect(b.wheels).toHaveLength(1);
+    expect(d.wheel).toBe(b.wheels[0].id);
+    const c = newGame();
+    c.wheels.push({ ...newWheel('Locations'), id: 'w_mine' });
+    const copied: string[] = [];
+    const d2 = addDealFrom(c, a, a.deals![0], copied)!;
+    expect(c.wheels.map((w) => w.name)).toEqual(['Locations', 'Locations (copy)']);
+    expect(d2.wheel).toBe(c.wheels[1].id);
+    expect(copied).toEqual(['“Locations” wheel']);
+  });
+
+  it('the same deal twice is added once; another of its name is named apart', () => {
+    const a = withSpy();
+    const b = withSpy();
+    expect(addDealFrom(b, a, a.deals![0])).toBeNull();
+    expect(b.deals).toHaveLength(1);
+    const other = clone(a.deals![0]);
+    other.parts[0].count = 2;
+    expect(addDealFrom(b, { ...a, deals: [other] }, other)!.name).toBe('Odd one out (copy)');
+    expect(b.deals!.map((x) => x.name)).toEqual(['Odd one out', 'Odd one out (copy)']);
   });
 });

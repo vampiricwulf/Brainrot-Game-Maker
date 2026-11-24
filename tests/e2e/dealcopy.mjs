@@ -2,6 +2,7 @@
 // viewers see). Its lists mark the ready-made Odd one out and Locations wheel as already in this game (it has its own
 // copies). Dealt and ✔ handed out, the cards are copied to each player (📋), so there's no "Lasts" choice to make
 // and ↩ Take the cards back says it only marks them; the next round leaves the deal handed out, its 📋 rows still there.
+// 📥 Import rounds… lists the other game's deal as a row to tick, and brings it with the wheel it draws from (one step).
 // Needs no buzzer room.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -55,6 +56,29 @@ const game = {
 const gameFile = resolve('test-results/dealcopy.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
+// Another game, to 📥 Import rounds… from: a round, and its own deal drawn from its own wheel (a wheel no round uses).
+const other = {
+  id: 'g_other',
+  version: 2,
+  title: 'Other night',
+  settings,
+  players: game.players,
+  rounds: [board('o1', 'Their round')],
+  media: [], audio: {}, dice: [], theme: {},
+  wheels: [{ id: 'w_places', name: 'Places', segments: ['Moon', 'Mars'].map((label, i) => ({ id: `p${i}`, label, color: '#3cb44b', weight: 1 })), spinDurationMs: 3000, removeAfterLanding: false }],
+  deals: [
+    {
+      id: 'deal_o', name: 'Spy night', wheel: 'w_places',
+      parts: [
+        { id: 'ospy', name: 'Spy', count: 1, card: slide(text('Find the place')) },
+        { id: 'ovil', name: 'Crew', count: 'rest', draw: 'shared', card: slide(text('The place:')) },
+      ],
+    },
+  ],
+};
+const otherFile = resolve('test-results/dealcopy-other.json');
+writeFileSync(otherFile, JSON.stringify(other));
+
 let browser;
 const errors = [];
 
@@ -70,6 +94,34 @@ try {
   await host.goto(pathToFileURL(file).href);
   await openGameFile(host, gameFile);
   await host.getByText(/^Opened “/).waitFor();
+
+  // ---------- 📥 Import rounds…: the other game's deal, with the wheel it draws from ----------
+  console.log('Import rounds…:');
+  const tabs = () => host.locator('nav > button.round-tab').allInnerTexts();
+  const tabsBefore = await tabs();
+  await host.getByRole('button', { name: '＋ Add round' }).click();
+  const [chooser] = await Promise.all([host.waitForEvent('filechooser'), host.getByRole('menuitem', { name: '📥 Import rounds…' }).click()]);
+  await chooser.setFiles(otherFile);
+  const pick = host.getByRole('dialog', { name: 'Import rounds' });
+  const hintText = (await pick.locator('[data-import-hint]').innerText()).replace(/\s+/g, ' ').trim();
+  assert(hintText === 'Tick the rounds and 🎭 deals to bring in. What they use comes along: RPG worlds, wheels, dice, stats, items, shops and files. That game’s 🤫 Cards tab, sounds and theme stay in it.', `its hint says what comes along and what stays (“${hintText}”)`);
+  const dealRow = pick.locator('[data-import-deal]');
+  assert((await dealRow.innerText()).replace(/\s+/g, ' ').trim() === '🎭 Spy night Deal, with its 🎡 Places wheel', `the other game’s deal is a row to tick, with the wheel it draws from (${await dealRow.innerText()})`);
+  // (A game of one round has it ticked already: only the deal, this time.)
+  await pick.getByLabel(/Their round/).uncheck();
+  await dealRow.getByRole('checkbox').check();
+  await pick.getByRole('button', { name: 'Import 1 deal' }).click();
+  await host.getByText('Imported 1 deal from “Other night”').waitFor({ timeout: 3000 });
+  assert(JSON.stringify(await tabs()) === JSON.stringify(tabsBefore), 'Import 1 deal: the toast says so, and no round comes in');
+  await host.getByRole('button', { name: /Wheels, Dice & Deals/ }).click();
+  const dealList = host.getByRole('list', { name: 'Deals' });
+  const wheelList = host.getByRole('list', { name: 'Wheels' });
+  assert((await dealList.getByRole('button', { name: 'Spy night' }).count()) === 1 && (await wheelList.getByRole('button', { name: 'Places' }).count()) === 1, 'the 🎡 tab has the deal Spy night, and its wheel Places');
+  await dealList.getByRole('button', { name: 'Spy night' }).click();
+  const drawn = host.locator('[data-deal-editor]').getByRole('combobox', { name: /Wheel its cards draw from/ });
+  assert((await drawn.locator('option:checked').innerText()) === 'Places', 'and the deal draws from that wheel');
+  await host.keyboard.press('Control+z');
+  assert(await until(async () => !(await dealList.getByRole('button', { name: 'Spy night' }).count()) && !(await wheelList.getByRole('button', { name: 'Places' }).count())), 'Ctrl+Z takes the deal and its wheel out, as one step');
 
   // ---------- In play, no phones ----------
   await host.getByRole('button', { name: '▶ Play' }).click();

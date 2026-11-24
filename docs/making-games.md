@@ -34,7 +34,9 @@ video, audio or YouTube, arranged freely.
   to start from (each one's tooltip says what it is).
 - **📥 Import rounds…** brings rounds in from a `.brainrot` file or from a game exported as a web page. The worlds,
   wheels, dice, stats, items, shops and files a round uses come along with it. If something with the same name
-  already exists but differs, it comes in as a copy (for example "Potion (copy)").
+  already exists but differs, it comes in as a copy (for example "Potion (copy)"). The other game's 🎭 deals are listed
+  too: one ticked comes with the wheel it draws from (this game's own when it has the same wheel). That game's 🤫 Cards tab,
+  sounds and theme stay in it.
 - **＋ Add tiebreaker (optional)**, at the end of the round list, adds a tiebreaker clue.
 - The **Checklist** at the foot of the list on the left says what's left to do before ▶ Play (⚠, counted in its
   heading) and notes worth a look (ℹ). It stays in view however many rounds there are; click a line to go and fix it.

@@ -1,10 +1,11 @@
 // Whole rounds between games: Copy round / Paste round, and Import rounds…. A round takes along what
 // it uses from its game (an RPG round its world; any round the wheels, dice, stats, items and shops its tiles,
 // objects and spaces point at, and the files it all shows), and the game it goes into adds the ones it hasn't got.
+// Import rounds… brings 🎭 deals the same way, each with the wheel it draws from (and the files its cards show).
 import { clipboard, mediaShownBy, type RoundBundle } from './clipboard.svelte';
 import { uniqueMediaName } from './medianame';
 import { uploadedFamily } from './fonts';
-import { isRpg, newId, roundName, type Game, type MediaRef, type Round } from './model';
+import { isRpg, newId, roundName, type DealPreset, type Game, type MediaRef, type Round } from './model';
 import { clone, reidRound } from './ops';
 import { withCopies } from './phonecopies';
 
@@ -86,6 +87,8 @@ const KINDS = [
 ] as const;
 type Kind = (typeof KINDS)[number][0];
 type Named = { id: string; name: string };
+/** What a round (or a deal) takes along: a RoundBundle's things, without the round. */
+type Things = Pick<RoundBundle, Kind | 'media'>;
 
 /** The same content? (Key order aside: an edit can add a field after the others.) */
 export function sameContent(a: unknown, b: unknown): boolean {
@@ -113,12 +116,12 @@ const pasted = new Map<string, CopyIds>();
  * another copy of the same game), give it a new id, and every reference to it in the bundle too. Returns the bundle so
  * changed, and which things got a new id.
  */
-function settleIds(game: Game, b: RoundBundle, ids: CopyIds): { b: RoundBundle; changed: Set<string> } {
+function settleIds<T extends Things>(game: Game, b: T, ids: CopyIds): { b: T; changed: Set<string> } {
   let json = JSON.stringify(b);
   const changed = new Set<string>();
   for (let again = true; again; ) {
     again = false;
-    const cur = JSON.parse(json) as RoundBundle;
+    const cur = JSON.parse(json) as T;
     for (const [kind] of KINDS)
       for (const x of cur[kind] as Named[]) {
         const mine = (game[kind] as Named[] | undefined)?.find((y) => y.id === x.id);
@@ -140,16 +143,19 @@ function settleIds(game: Game, b: RoundBundle, ids: CopyIds): { b: RoundBundle; 
 const noIds = (v: unknown): unknown =>
   Array.isArray(v) ? v.map(noIds) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'id').map(([k, x]) => [k, noIds(x)])) : v;
 
+/** The kinds settleNames matches by name: a round's stats, items and shops; a deal's wheel too. */
+type NameKind = 'statFields' | 'items' | 'shops' | 'wheels';
+const ROUND_NAMES: readonly NameKind[] = ['statFields', 'items', 'shops'];
+
 /**
- * Where the bundle brings a stat, item or shop this game hasn't got but has one of the same name: a stat of the same type
- * is this game's own (one HP bar, not two, as the templates do), and so is an item or shop that's the same apart from its
- * ids. Any other comes in under a new id (`copies`: named apart and said to be a copy); a copy made for an earlier round
- * from the same place is used again. Runs before settleIds, so what's this game's own reads as the same there. Returns
- * the bundle so changed, the names of this game's ones it now uses, and the copies' ids.
+ * Where the bundle brings a stat, item or shop (of `kinds`) this game hasn't got but has one of the same name: a stat of
+ * the same type is this game's own (one HP bar, not two, as the templates do), and so is an item, shop or wheel that's the
+ * same apart from its ids. Any other comes in under a new id (`copies`: named apart and said to be a copy); a copy made
+ * for an earlier round from the same place is used again. Runs before settleIds, so what's this game's own reads as the
+ * same there. Returns the bundle so changed, the names of this game's ones it now uses, and the copies' ids.
  */
-function settleNames(game: Game, bundle: RoundBundle, ids: CopyIds): { b: RoundBundle; merged: string[]; copies: Set<string> } {
+function settleNames<T extends Things>(game: Game, bundle: T, ids: CopyIds, kinds: readonly NameKind[] = ROUND_NAMES): { b: T; merged: string[]; copies: Set<string> } {
   type Thing = Named & { type?: string; currency?: boolean };
-  const kinds = ['statFields', 'items', 'shops'] as const;
   let json = JSON.stringify(bundle);
   const swap = (from: string, to: string) => (json = json.split(JSON.stringify(from)).join(JSON.stringify(to)));
   const key = (name: string) => name.trim().toLowerCase();
@@ -160,7 +166,7 @@ function settleNames(game: Game, bundle: RoundBundle, ids: CopyIds): { b: RoundB
   // (Stats first: an item or shop then matches this game's when it uses this game's stats.)
   for (const kind of kinds) {
     const mine = (game[kind] ?? []) as Thing[];
-    for (const x of ((JSON.parse(json) as RoundBundle)[kind] ?? []) as Thing[]) {
+    for (const x of ((JSON.parse(json) as T)[kind] ?? []) as Thing[]) {
       if (mine.some((y) => y.id === x.id)) continue;
       // A copy made for an earlier round from the same place.
       const before = ids.get(x.id);
@@ -183,26 +189,20 @@ function settleNames(game: Game, bundle: RoundBundle, ids: CopyIds): { b: RoundB
       }
     }
   }
-  const b = JSON.parse(json) as Record<(typeof kinds)[number], Thing[] | undefined>;
+  const b = JSON.parse(json) as Record<NameKind, Thing[] | undefined>;
   for (const kind of kinds) {
     const mine = (game[kind] ?? []) as Thing[];
     b[kind] = b[kind]?.map((x) => (ours.has(x.id) ? clone(mine.find((y) => y.id === x.id)!) : x));
   }
-  return { b: b as unknown as RoundBundle, merged, copies };
+  return { b: b as unknown as T, merged, copies };
 }
 
 /**
- * Put a copy of a bundled round into `game` at `at` (fresh ids, so it never mixes with the original), adding the world,
- * wheels, dice, stats, items, shops and files it uses that the game hasn't got. One with the id of one here but other
- * content (from another copy of this game), or the name of one here but other content, comes in as a copy with its own
- * id; `copied` hears what each is ("“Adventure” world"). A stat of a name and type this game has (and an item or shop the
- * same as this game's) is this game's own: `merged` hears its name. `ids` keeps those copies' ids, so more rounds from
- * the same place share them (by default, one set per copied round). Returns the new round.
+ * Add what `bundle` brings to `game` where it hasn't got it, settled first (settleNames, then settleIds): see
+ * addBundledRound. Returns the bundle as settled, its references pointing at what the game now has.
  */
-export function addBundledRound(game: Game, bundle: RoundBundle, at = game.rounds.length, copied?: string[], ids?: CopyIds, merged?: string[]): Round {
-  const key = `${bundle.from}\n${bundle.round.id}`;
-  if (!ids) pasted.set(key, (ids = pasted.get(key) ?? new Map()));
-  const named = settleNames(game, bundle, ids);
+function addThings<T extends Things>(game: Game, bundle: T, ids: CopyIds, copied?: string[], merged?: string[], kinds?: readonly NameKind[]): T {
+  const named = settleNames(game, bundle, ids, kinds);
   const { b, changed } = settleIds(game, named.b, ids);
   for (const id of named.copies) changed.add(id);
   for (const n of named.merged) if (!merged?.includes(n)) merged?.push(n);
@@ -219,6 +219,21 @@ export function addBundledRound(game: Game, bundle: RoundBundle, at = game.round
     (game as Record<Kind, Named[]>)[kind] = [...list, ...extra];
   }
   addMedia(game, b.media);
+  return b;
+}
+
+/**
+ * Put a copy of a bundled round into `game` at `at` (fresh ids, so it never mixes with the original), adding the world,
+ * wheels, dice, stats, items, shops and files it uses that the game hasn't got. One with the id of one here but other
+ * content (from another copy of this game), or the name of one here but other content, comes in as a copy with its own
+ * id; `copied` hears what each is ("“Adventure” world"). A stat of a name and type this game has (and an item or shop the
+ * same as this game's) is this game's own: `merged` hears its name. `ids` keeps those copies' ids, so more rounds from
+ * the same place share them (by default, one set per copied round). Returns the new round.
+ */
+export function addBundledRound(game: Game, bundle: RoundBundle, at = game.rounds.length, copied?: string[], ids?: CopyIds, merged?: string[]): Round {
+  const key = `${bundle.from}\n${bundle.round.id}`;
+  if (!ids) pasted.set(key, (ids = pasted.get(key) ?? new Map()));
+  const b = addThings(game, bundle, ids, copied, merged);
   const round = reidRound(clone(b.round));
   // A round of the same name (pasted twice, or into its own game) is told apart.
   const name = uniqueName(game.rounds.map((r, i) => roundName(r, i)), roundName(round));
@@ -226,6 +241,37 @@ export function addBundledRound(game: Game, bundle: RoundBundle, at = game.round
   game.rounds.splice(at, 0, round);
   // (As the game holds it: a live game wraps what goes into it.)
   return game.rounds[at];
+}
+
+/**
+ * The wheel a 🎭 deal of `source` draws from, for Import rounds…: its name, or '' (none, or one the game hasn't got).
+ */
+export const dealWheelName = (source: Pick<Game, 'wheels'>, deal: Pick<DealPreset, 'wheel'>): string => (deal.wheel ? (source.wheels.find((w) => w.id === deal.wheel)?.name ?? '') : '');
+
+/**
+ * Import rounds…: a copy of `source`'s 🎭 deal into `game` (fresh ids, a name of its own), with the wheel it draws from,
+ * what that wheel uses, and the files its cards show, as a round brings them (addBundledRound; `copied`, `ids` and
+ * `merged` as there). Its wheel is this game's own when this game has one of its name that's the same apart from its
+ * ids (a ready-made wheel added to both). Null when this game already has the same deal (by name, the same apart from
+ * its ids): nothing is added.
+ */
+export function addDealFrom(game: Game, source: Game, deal: DealPreset, copied?: string[], ids: CopyIds = new Map(), merged?: string[]): DealPreset | null {
+  const d = clone(deal);
+  const { wheels, dice, shops, items, statFields, media } = usedBy(source, d);
+  const b = addThings(game, { deal: d, worlds: [], wheels, dice, shops, items, statFields, media }, ids, copied, merged, [...ROUND_NAMES, 'wheels']);
+  const key = (name: string) => name.trim().toLowerCase();
+  const plain = (x: DealPreset) => noIds({ ...x, name: '' });
+  if ((game.deals ?? []).some((x) => key(x.name) === key(b.deal.name) && sameContent(plain(x), plain(b.deal)))) return null;
+  const out = clone(b.deal);
+  out.id = newId();
+  for (const p of out.parts) {
+    p.id = newId();
+    for (const e of p.card.elements) e.id = newId();
+  }
+  out.name = uniqueName((game.deals ?? []).map((x) => x.name), out.name);
+  game.deals = [...(game.deals ?? []), out];
+  // (As the game holds it: a live game wraps what goes into it.)
+  return game.deals[game.deals.length - 1];
 }
 
 /** What to say about things that came in as copies ("Brought the file’s “Adventure” world as a copy…"), or ''. */
