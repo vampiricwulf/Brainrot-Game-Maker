@@ -106,9 +106,12 @@ tests. Each takes where to look (a page, a locator or a frame) and `locator()`'s
 | `inspectorIn` | `data-inspector` | `.insp` |
 
 New code uses the helpers; older selectors move over as they're touched (the shard check doesn't enforce it). A hook
-goes on every element that has its class, so the two find the same things, and it never carries a value: no card
-words, answers, picks or names. The classes stay for the CSS. A new hook is worth it only for a part many tests find;
-for the rest, a role, label or text (`getByRole`, `getByText`) is better than a class.
+goes on every element the "Was" selector finds, so the two find the same things (the editor's own `.tile`s, outside a
+`.board`, have none), and it never carries a value: no card words, answers, picks or names. The classes stay for the
+CSS. Child selectors (`.play > .panel`, `.rn > button`), a class plus its state (`.panel.side`, `.round-tab.active`) and
+selectors inside `page.evaluate()` stay as classes, though inside one the hook works too (`[data-host-status]`). A new
+hook is worth it only for a part many tests find; for the rest, a role, label or text (`getByRole`, `getByText`) is
+better than a class.
 
 Type-checking: `npm run check:e2e` checks every e2e file that starts with `// @ts-check` against `helpers.mjs`'s
 JSDoc types and Playwright's (not strict; `tests/e2e/window.d.ts` allows the tests' own `window.__…` hooks). Inside a
