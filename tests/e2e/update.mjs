@@ -44,12 +44,13 @@ try {
   await notice.waitFor();
   assert((await notice.innerText()).includes('Brainrot Games Maker 99.0.0 is out'), `the editor says a newer version is out (${(await notice.innerText()).split('\n')[0]})`);
   // On a laptop's screen (1280×720, 1366×768 and a little shorter, a 1024×768 one) the first screen's 📂 Open a game…
-  // stays in view under it, with room to spare. Measured with CI's fonts (tests/e2e/fonts.conf, which launchChromium()
-  // uses): a wider UI font, such as Inter, moves it down.
+  // stays in view under it, with room to spare. Measured with CI's fonts (tests/e2e/fonts.conf, which helpers.mjs sets);
+  // at 1280×720 there's room for a taller UI font: with Inter, as some Linux desktops have, it comes out 22px lower.
   for (const [w, h] of [[1280, 720], [1366, 768], [1366, 764], [1024, 768], [1280, 800], [1366, 801], [1280, 840]]) {
     await page.setViewportSize({ width: w, height: h });
     const openLine = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
-    assert(openLine <= h - 12, `with the notice up, 📂 Open a game… is in a ${w}×${h} window (${openLine})`);
+    const room = h <= 720 ? 22 : 12;
+    assert(openLine <= h - room, `with the notice up, 📂 Open a game… is in a ${w}×${h} window, ${room}px to spare (${openLine})`);
   }
   // (A notice that appears with its words isn't always read: screen readers hear it from the page's live region.)
   await page.waitForFunction(() => document.getElementById('live-region')?.dataset.said?.includes('Brainrot Games Maker 99.0.0 is out.'), null, { timeout: 3000 });

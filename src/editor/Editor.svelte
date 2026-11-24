@@ -1736,6 +1736,13 @@
       padding-block: 13px;
     }
   }
+  /* (1280×720: right under the header, so a taller UI font than CI's, Inter on some Linux desktops, still leaves it in
+     view.) */
+  @media (max-height: 740px) {
+    .first-round {
+      margin-top: 0;
+    }
+  }
   .first-round h2,
   .first-round p {
     margin: 0;
