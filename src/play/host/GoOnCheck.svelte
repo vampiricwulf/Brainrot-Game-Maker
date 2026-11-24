@@ -4,8 +4,8 @@
   the status line and the fixed bar. It says what's left, a button per fix, Not yet and a quiet "… anyway"; "First:" in
   the panel's frame when what's left is the box's next step, "Before you go on" in the warning frame when going on would
   lose something. Where the blue button was it holds no button, only the step's name: a nervous second click there
-  presses nothing. Play holds its state and its keys; this draws it. Its buttons take no click while it's new
-  (checkHeld), and a done item keeps its line, ticked, its buttons inert, so nothing moves under the pointer.
+  presses nothing. Play holds its state and its keys; this draws it. Its buttons and its tick take no click while it's
+  new (checkHeld), and a done item keeps its line, ticked, its buttons inert, so nothing moves under the pointer.
 -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
@@ -221,7 +221,12 @@
     <!-- (Under what's left, not in the pinned foot: in a short panel the first fix stays in sight above the foot.) -->
     {#if teach && left.length}<p class="teach not-touch">{teach}</p>{/if}
     {#each ticks as kind (kind)}
-      <label class="check tick-row"><input type="checkbox" onchange={(e) => e.currentTarget.checked && onquiet(kind)} /> {CHECK.dontAsk(CHECK.quiet[kind])}</label>
+      <!-- (Held back as its buttons are: on a phone the row runs the card's whole width, maybe where the blue button was,
+           and a fast second tap there must not turn the check off for the game.) -->
+      <label class="check tick-row"
+        ><input type="checkbox" onclick={(e) => held(e) && e.preventDefault()} onchange={(e) => e.currentTarget.checked && onquiet(kind)} />
+        {CHECK.dontAsk(CHECK.quiet[kind])}</label
+      >
     {/each}
   </div>
   <div class="foot">

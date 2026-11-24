@@ -834,16 +834,39 @@ try {
   const pp = await ctxP.newPage();
   pp.on('pageerror', (e) => errors.push(`[phone] ${e.message}`));
   await start(pp);
+  const mainAt = await mainButton(pp, 'Next turn ▶').boundingBox();
+  // (A fast second tap that lands on its “Don't ask” tick, as the check opens: held back, as its buttons are.)
+  const fastTick = pp.evaluate(
+    () =>
+      new Promise((done) => {
+        const o = new MutationObserver(() => {
+          const box = document.querySelector('#goon-check .tick-row input');
+          if (!box) return;
+          o.disconnect();
+          box.closest('label').click();
+          done(box.checked);
+        });
+        o.observe(document.body, { childList: true, subtree: true });
+      }),
+  );
   await mainButton(pp, 'Next turn ▶').click();
   await checkItem(pp, 'roll').waitFor();
-  await pp.waitForTimeout(300);
+  assert((await fastTick) === false, 'a phone: a tap on the check’s “Don’t ask” tick as it opens ticks nothing');
+  await goOnCheck(pp, { ready: true }).waitFor();
   const fit = await goOnCheck(pp).evaluate((card) => {
-    const sc = card.querySelector('.scroll').getBoundingClientRect();
-    const tick = card.querySelector('.tick-row')?.getBoundingClientRect();
-    const text = card.querySelector('.text').getBoundingClientRect();
-    return { tick: !!tick, inside: !!tick && tick.bottom <= sc.bottom + 1 && tick.right <= sc.right + 1, wide: Math.round(text.right - sc.left), w: Math.round(sc.width), spot: !!card.querySelector('.spot') };
+    const sc = card.querySelector('.scroll');
+    const box = sc.getBoundingClientRect();
+    const tick = card.querySelector('.tick-row');
+    const r = tick?.getBoundingClientRect();
+    return { tick: !!tick && !tick.querySelector('input').checked, inside: !!r && r.bottom <= box.bottom + 1 && r.right <= box.right + 1, pad: getComputedStyle(sc).paddingRight };
   });
-  assert(fit.tick && fit.inside && !fit.spot, `a phone: the check's “Don't ask” tick is whole in its card, nothing kept beside it for the blue button (${JSON.stringify(fit)})`);
+  assert(fit.tick && fit.inside && fit.pad === '0px', `a phone: the check still asks, its “Don't ask” tick whole in its card, nothing kept beside it for the blue button (${JSON.stringify(fit)})`);
+  // (No spot is drawn on a phone, but where the blue button was, the check has no button.)
+  const under = await pp.evaluate(({ x, y, width, height }) => {
+    const t = document.elementFromPoint(x + width / 2, y + height / 2)?.closest('button, label, input');
+    return t ? t.textContent.trim() || t.outerHTML.slice(0, 60) : '';
+  }, mainAt);
+  assert(under === '', `a phone: where the blue button was, the check has no button (${under})`);
   await ctxP.close();
 
   // ---------- The check's ▶ Run, for a landing whose action is for the players picked ----------
