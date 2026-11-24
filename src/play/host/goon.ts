@@ -40,6 +40,7 @@ import { boardNow, decidingAction, isMover, landingRan, moverDiceName, moverResu
 import { CHECK_GUARD_MS } from './guard';
 import type { FlowPlace } from './slots.svelte';
 import { CHECK, FLOW, VERBS, type FlowVerb, type Verb } from './verbs';
+import { keyNote } from '../../lib/touch.svelte';
 
 /** Keys and clicks on the check are ignored this long after it opens (Esc isn't): a fast N, N or a double-click can't skip it. */
 export { CHECK_GUARD_MS };
@@ -780,7 +781,7 @@ const pauseQuick = (c: GoCtx): Quick => ({
   key: 'T',
   then: 'close',
   run: () => c.act.clock(false),
-  after: `Clock paused: ${FLOW.reveal.label} (N) shows it now`,
+  after: `Clock paused: ${FLOW.reveal.label}${keyNote('N')} shows it now`,
 });
 
 /**
@@ -797,7 +798,10 @@ function finalClockItems(c: GoCtx): LeftItem[] {
       kind: 'first',
       text: `The clock is still running (${t.left} s left).`,
       anyway: FLOW.reveal.anyway,
-      quick: [{ label: '⏱️ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label} (N)` }, pauseQuick(c)],
+      quick: [
+        { label: '⏱️ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label}${keyNote('N')}` },
+        pauseQuick(c),
+      ],
     },
   ];
 }
@@ -855,7 +859,7 @@ function comingItems(c: GoCtx, sent: (id: Id) => boolean, ids: Id[], step: strin
           enter: true,
           then: 'close',
           run: () => c.act.clock(c.clockUp),
-          after: `${c.clockUp ? '10 more seconds' : 'The countdown is on'}… then ${step} (N)`,
+          after: `${c.clockUp ? '10 more seconds' : 'The countdown is on'}… then ${step}${keyNote('N')}`,
         },
       ],
     },
@@ -874,7 +878,7 @@ function allIn(c: GoCtx, sent: (id: Id) => boolean, ids: Id[]): boolean {
 /** Phone buzzers at 👁 Reveal answer: never opened, or a tie left to the host (3.4 B). */
 function buzzItems(c: GoCtx): LeftItem[] {
   if (!c.buzzing) return [];
-  const then = `then ${FLOW.reveal.label} (N)`;
+  const then = `then ${FLOW.reveal.label}${keyNote('N')}`;
   if (c.tie.length >= 2)
     return [
       {
@@ -931,7 +935,7 @@ function cardItems(c: GoCtx, final = false): LeftItem[] {
         enter: true,
         then: 'close',
         run: () => c.act.sendCard(k.id),
-        after: `Sent… then ${then} (N)`,
+        after: `Sent… then ${then}${keyNote('N')}`,
         ...(k.full ? { why: k.full } : {}),
         aria: `Send ${k.name} to ${named(c, k.to)}`,
       },
@@ -955,8 +959,8 @@ function partnerOf(c: GoCtx) {
   return s && c.partner && info && s.clue === info.clue.id ? { s, p: c.partner } : null;
 }
 
-/** What follows a send or the clock, said in the status line. */
-const PLAYING = '✔ Got it (Enter) or ✘ Missed (Shift+Enter) once they’ve played';
+/** What follows a send or the clock, said in the status line (with their keys, but on a touch screen). */
+const PLAYING = (): string => `✔ Got it${keyNote('Enter')} or ✘ Missed${keyNote('Shift+Enter')} once they’ve played`;
 
 /**
  * PARTNER UP!, at Show question ▶ (3.4 H): who picked it, the partner (or who describes), and with nobody to partner
@@ -987,7 +991,7 @@ function pickItems(c: GoCtx): LeftItem[] {
     ];
   }
   const picker = name(c, s.pickerId ?? '');
-  const next = `${FLOW.showQuestion.label} (N) next`;
+  const next = `${FLOW.showQuestion.label}${keyNote('N')} next`;
   if (step === 'spin')
     return [
       {
@@ -1126,7 +1130,7 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
     enter: true,
     then: 'close',
     run: c.act.partnerClock,
-    after: `Clock running: ${PLAYING}`,
+    after: `Clock running: ${PLAYING()}`,
   });
   // (A ✓ once it was copied, for who gets it now.)
   const copyQ = p.copy.flatMap((k): Quick[] =>
@@ -1164,7 +1168,7 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
               enter: true,
               then: 'close',
               run: c.act.partnerClock,
-              after: `${many ? 'Cards' : 'Card'} sent, clock running: ${PLAYING}`,
+              after: `${many ? 'Cards' : 'Card'} sent, clock running: ${PLAYING()}`,
               ...(p.full ? { why: p.full } : {}),
               aria: running ? `Send ${cards} to their phones (the clock goes on)` : `Send ${cards} to their phones and start the clock`,
             },
@@ -1272,7 +1276,11 @@ function toolItems(c: GoCtx): LeftItem[] {
   const { o } = t;
   if (o.kind === 'popup') return popupItems(c, o);
   const out: LeftItem[] = [];
-  const then = t.own ? (t.question ? `then ${FLOW.showQuestion.label} (N)` : `then ${FLOW.done.label} (N)`) : `then ${FLOW.next.label} (N)`;
+  const then = t.own
+    ? t.question
+      ? `then ${FLOW.showQuestion.label}${keyNote('N')}`
+      : `then ${FLOW.done.label}${keyNote('N')}`
+    : `then ${FLOW.next.label}${keyNote('N')}`;
   if (t.own && o.kind === 'wheel' && !wheelSpentUp(o, c.session, c.game)) {
     const spin = (label: string): Quick => ({ label, key: 'W', enter: true, then: 'close', run: c.act.spin, after: `Spinning… ${then}` });
     if (!o.spin)
@@ -1496,7 +1504,7 @@ export function wagersLine(s: Session, game: Game, phones: readonly Id[], limits
   if (whole.length) return { text: `Not a whole number: ${names(whole)}`, ok: false };
   if (over.length) return { text: `Over the max: ${names(over)}`, ok: false };
   const n = f.players.length;
-  return { text: `✓ ${n === 1 ? 'The wager is in' : `All ${n} wagers in`}: ${FLOW.showQuestion.label} (N)`, ok: true };
+  return { text: `✓ ${n === 1 ? 'The wager is in' : `All ${n} wagers in`}: ${FLOW.showQuestion.label}${keyNote('N')}`, ok: true };
 }
 
 /**
@@ -1510,7 +1518,7 @@ function verdictItems(c: GoCtx, step: Step): LeftItem[] {
   const id = r.id;
   const who = name(c, id);
   const likely = likelyVerdict(c, id);
-  const next = `${step.verb.label} (N) next`;
+  const next = `${step.verb.label}${keyNote('N')} next`;
   return [
     {
       id: 'verdict',
@@ -1809,7 +1817,7 @@ function landingItems(c: GoCtx, t: Turn): LeftItem[] {
           enter: true,
           then: 'close',
           run: c.act.boardLanding,
-          after: `${Whose} ${decideWord(decides)}… press the outcome, then ${FLOW.nextTurn.label} (N)`,
+          after: `${Whose} ${decideWord(decides)}… press the outcome, then ${FLOW.nextTurn.label}${keyNote('N')}`,
           ...(why ? { why } : {}),
           aria: `Start ${secret ? 'the space' : shown}: its ${decideWord(decides)}`,
         }
@@ -1820,7 +1828,7 @@ function landingItems(c: GoCtx, t: Turn): LeftItem[] {
             enter: true,
             then: 'close',
             run: c.act.boardLanding,
-            after: `${Whose} actions are on… then ${FLOW.nextTurn.label} (N) when it’s played out`,
+            after: `${Whose} actions are on… then ${FLOW.nextTurn.label}${keyNote('N')} when it’s played out`,
             ...(why ? { why } : {}),
             aria: `Run ${whose} actions`,
           };

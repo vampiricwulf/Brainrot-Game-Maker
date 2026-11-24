@@ -11,6 +11,7 @@
   import { tick, type Snippet } from 'svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
+  import { clickWord, keyNote, touchScreen } from '../../lib/touch.svelte';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
@@ -162,24 +163,28 @@
     }
     return nextStep({ label: rollWords, key: 'D' }, roll, { title: `D: ${what}` });
   });
-  /** The turn box's first line: what to do next, in words a mouse host can follow. */
+  /** The turn box's first line: what to do next, in words a mouse host can follow (on a touch screen, taps, no keys). */
   const firstLine = $derived.by(() => {
     if (!round || !bs) return '';
-    if (fork) return `${playerName(session, fork.playerId)} is at a fork: pick the way below first, or click the space on the stage.`;
+    if (fork) return `${playerName(session, fork.playerId)} is at a fork: pick the way below first, or ${clickWord()} the space on the stage.`;
     const off = turnId ? offBoard(session, round, bs, turnId) : null;
     if (off) return `${off}.`;
     if (moved) {
       // (The landing's actions not run yet: its buttons are below. Next turn ▶ asks first, while they aren't.)
       const left = !!landed?.onLand?.length && !!last && !landingRan(session, last);
-      if (left && landed) return `${turnName} landed on ${shown(landed.id)}: its buttons are below, then Next turn ▶ (N).`;
+      if (left && landed) return `${turnName} landed on ${shown(landed.id)}: its buttons are below, then Next turn ▶${keyNote('N')}.`;
       // (A Roll again run: Next turn comes back to them.)
-      return bs.again && bs.again === turnId ? `${turnName} rolls again: Next turn ▶ (N).` : `${turnName}’s turn is played: Next turn ▶ (N).`;
+      return bs.again && bs.again === turnId
+        ? `${turnName} rolls again: Next turn ▶${keyNote('N')}.`
+        : `${turnName}’s turn is played: Next turn ▶${keyNote('N')}.`;
     }
     if (round.mover.kind === 'step')
-      return stepWays.length ? `${turnName}’s turn: → the way on (Enter, or click the space on the stage).` : `${turnName}’s turn: no way on from here.`;
+      return stepWays.length
+        ? `${turnName}’s turn: → the way on (${touchScreen.on ? 'or tap' : 'Enter, or click'} the space on the stage).`
+        : `${turnName}’s turn: no way on from here.`;
     return round.mover.kind === 'wheel'
-      ? `${turnName}’s turn: 🎡 Spin, then ▶ Move (or click the wheel).`
-      : `${turnName}’s turn: 🎲 Roll, then ▶ Move (or click the dice).`;
+      ? `${turnName}’s turn: 🎡 Spin, then ▶ Move (or ${clickWord()} the wheel).`
+      : `${turnName}’s turn: 🎲 Roll, then ▶ Move (or ${clickWord()} the dice).`;
   });
   // The stage's menu: the turn box's own actions (its slot, or the one way on), then ✎ Edit board and 🔀 Shuffle. (Next
   // turn ▶ is the blue button's step: the moment's own.)

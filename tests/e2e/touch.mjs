@@ -4,8 +4,27 @@
 // and no "or drop it here", but the keys window still lists the keys. A computer shows all of it, and no note.
 // A phone hosting with the buzzer room up (local, under wrangler dev): the 📱 card's rows fit the screen (📱 and ⛔
 // only, their words for screen readers and in their tooltips), nothing scrolls sideways, and Start game ▶ takes a tap.
+// A board game hosted on a touch screen: its status line and its turn box name the buttons (🎲 Roll, ▶ Move, ◀ Previous
+// turn), never a key (D, Enter, Shift+N, N); with a mouse they keep their keys.
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addPlayers, failureShots, startBuzzer, startRoomOn, assert, launchChromium, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addPlayers,
+  failureShots,
+  startBuzzer,
+  startRoomOn,
+  assert,
+  assertEq,
+  launchChromium,
+  openGameFile,
+  roundTabsIn,
+  section,
+  statusLineIn,
+  stepButton,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -57,7 +76,128 @@ async function toastOverWindow(page, what) {
   await dlg.waitFor({ state: 'detached' });
 }
 
+/** A board game moved by a d6, for two: opened from a file and started (`.bh`, its turn box, up). */
+const sp = (id, name, x, y, next) => ({ id, name, x, y, color: '#4363d8', next });
+const boardGame = {
+  id: 'g_touch_board',
+  version: 2,
+  title: 'Touch board',
+  settings: {
+    allowNegativeScores: true,
+    deductOnWrong: true,
+    defaultTimerSeconds: null,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: true,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+    maxPlayers: 8,
+  },
+  players: [
+    { id: 'p1', name: 'Ann', color: '#e6194b' },
+    { id: 'p2', name: 'Bob', color: '#3cb44b' },
+  ],
+  rounds: [
+    {
+      id: 'r_bg',
+      name: 'Board game',
+      mode: 'boardgame',
+      slide: { background: { color: '#1d5e3a' }, elements: [] },
+      spaces: ['Start', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Finish'].map((n, i, all) =>
+        sp(`b${i}`, n, 200 + (i % 4) * 450, i < 4 ? 300 : 700, i + 1 < all.length ? [`b${i + 1}`] : []),
+      ),
+      mover: { kind: 'dice', dice: 'd6' },
+      zones: [],
+    },
+  ],
+  media: [],
+  audio: {},
+  dice: [],
+  theme: {},
+  wheels: [],
+};
+mkdirSync(resolve('test-results'), { recursive: true });
+const boardFile = resolve('test-results/touch-board.json');
+writeFileSync(boardFile, JSON.stringify(boardGame));
+/** Keys a touch screen's words must not name: D, Enter, Shift+N, (N), a click. */
+const KEYS = /Shift|Enter|Ctrl|\((N|D|W|Enter)\)|\bD rolls|\bclick/;
+/** The board game's status line and turn box, in `opts`'s window: what they say before a roll and once moved. */
+async function boardWords(opts) {
+  const { ctx, page } = await open(opts);
+  await openGameFile(page, boardFile);
+  await page.getByText(/^Opened “/).waitFor();
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  const fresh = page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' });
+  await fresh
+    .or(page.getByRole('button', { name: 'Start game ▶' }))
+    .first()
+    .waitFor();
+  if (await fresh.isVisible()) await fresh.click();
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.locator('.bh').waitFor();
+  const how = statusLineIn(page).locator('.hint').first();
+  const first = page.locator('.bh [data-turn-next]');
+  const out = {
+    touch: await page.evaluate(() => matchMedia('(hover: none)').matches),
+    how: (await how.innerText()).trim(),
+    howTitle: await how.getAttribute('title'),
+    first: (await first.innerText()).trim(),
+    sw: await page.evaluate(() => document.documentElement.scrollWidth),
+    iw: await page.evaluate(() => innerWidth),
+  };
+  // 🎲 Roll, then ▶ Move: the turn is played. (Pressed in the page: on a phone the panel's pinned rows sit over the turn
+  // box as a pointer would reach it; this checks the words, not the reach.)
+  /** @param {import('playwright-core').Locator} b */
+  const press = (b) => b.evaluate((e) => /** @type {HTMLElement} */ (e).click());
+  await press(stepButton(page).first());
+  const move = stepButton(page).filter({ hasText: '▶ Move' });
+  await move.waitFor({ timeout: 8000 });
+  await page.waitForFunction(() => !document.querySelector('.bh [data-step]')?.hasAttribute('disabled'));
+  await press(move);
+  await first.filter({ hasText: 'turn is played' }).waitFor({ timeout: 10000 });
+  out.played = (await first.innerText()).trim();
+  out.playedTitle = await first.getAttribute('title');
+  await ctx.close();
+  return out;
+}
+
 try {
+  // ---------- A board game hosted on a touch screen, and with a mouse ----------
+  section('A board game: buttons on a touch screen, keys with a mouse');
+  for (const [what, opts] of /** @type {[string, import('playwright-core').BrowserContextOptions][]} */ ([
+    ['a phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }],
+    ['a tablet', { viewport: { width: 1280, height: 720 }, hasTouch: true, isMobile: true }],
+  ])) {
+    const w = await boardWords(opts);
+    assert(w.touch, `${what} is a touch screen with no mouse (hover: none)`);
+    assertEq(
+      w.how,
+      '🎲 Roll, then ▶ Move · ◀ Previous turn to go back · tap a token to select them, drag it to send them',
+      `${what}: the board game's status line names its buttons`,
+    );
+    assert(!KEYS.test(w.how), `${what}: and no keys (${w.how})`);
+    assertEq(w.first, 'Ann’s turn: 🎲 Roll, then ▶ Move (or tap the dice).', `${what}: the turn box's first line says tap`);
+    assertEq(w.played, 'Ann’s turn is played: Next turn ▶.', `${what}: once moved, Next turn ▶ with no (N)`);
+    assert(![w.first, w.played, w.playedTitle].some((t) => KEYS.test(t ?? '')), `${what}: the turn box names no keys, nor does its tooltip`);
+    assert(w.sw === w.iw, `${what}: nothing scrolls sideways (${w.sw} wide in ${w.iw})`);
+  }
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 1920, height: 1080 },
+  ]) {
+    const what = `a computer at ${viewport.width}×${viewport.height}`;
+    const w = await boardWords({ viewport });
+    assert(!w.touch, `${what} has a mouse (hover: hover)`);
+    assertEq(
+      w.how,
+      'D rolls or spins, then ▶ Move (Enter) · Shift+N turn back · click a token to select them, drag it to send them',
+      `${what}: the board game's status line keeps its keys`,
+    );
+    assertEq(w.first, 'Ann’s turn: 🎲 Roll, then ▶ Move (or click the dice).', `${what}: the turn box's first line says click`);
+    assertEq(w.played, 'Ann’s turn is played: Next turn ▶ (N).', `${what}: once moved, Next turn ▶ (N)`);
+  }
+
   // ---------- A phone ----------
   {
     const { ctx, page } = await open({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });

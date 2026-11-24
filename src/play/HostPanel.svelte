@@ -22,6 +22,7 @@
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { endLine, tiebreakLine } from './host/endlines';
   import { movedNew } from './whatmoved.svelte';
+  import { clickWord, keyNote, touchScreen } from '../lib/touch.svelte';
   import {
     categoryLabel,
     clueCardWords,
@@ -421,7 +422,27 @@
     const o = info && tileToolUp(app.live, info.clue) ? toolOverlay(app.live) : null;
     if (!o) return what;
     const fresh = o.kind === 'wheel' ? !o.spin : o.kind === 'dice' && !o.roll;
-    return fresh ? `${what} · ${dice ? 'roll it (D)' : 'spin it (W)'}` : `${what} · ${dice ? 'rolled' : 'spun'}`;
+    return fresh ? `${what} · ${dice ? `roll it${keyNote('D')}` : `spin it${keyNote('W')}`}` : `${what} · ${dice ? 'rolled' : 'spun'}`;
+  });
+  /** A title card's or the round intro's how-to on the status line: a click (or N), or a tap on a touch screen. */
+  const goOnSay = $derived(touchScreen.on ? 'tap the screen to go on' : 'click the screen (or N) to go on');
+  /**
+   * A board game's how-to on the status line: its keys, or on a touch screen (no keys) its buttons: the turn box's
+   * 🎲 Roll / 🎡 Spin then ▶ Move, and ◀ Previous turn beside Next turn ▶.
+   */
+  const boardHow = $derived.by((): string => {
+    const step = round?.mode === 'boardgame' && round.mover.kind === 'step';
+    if (!touchScreen.on)
+      return `${step ? 'Pick the way (→ buttons, the space, or Enter when there’s one)' : 'D rolls or spins, then ▶ Move (Enter)'} · Shift+N turn back · click a token to select them, drag it to send them`;
+    const roll = round?.mode === 'boardgame' && round.mover.kind === 'wheel' ? VERBS.boardSpin.label : VERBS.boardRoll.label;
+    return `${step ? 'Pick the way (→ buttons, or tap the space)' : `${roll}, then ▶ Move`} · ${VERBS.prevTurn.label} to go back · tap a token to select them, drag it to send them`;
+  });
+  /** A slides round's how-to on the status line: N and Shift+N, or on a touch screen the buttons beside the stage. */
+  const slidesHow = $derived.by((): string => {
+    const more = !!slidePos && slidePos.at < slidePos.of;
+    if (touchScreen.on)
+      return `${more ? `${VERBS.nextSlide.label} (or a tap on the stage) shows the next slide` : 'The last slide: the blue button goes on (or two taps on the stage)'} · ${VERBS.prevSlide.label} the one before`;
+    return `${more ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N goes on (or two clicks on the stage)'} · Shift+N the one before`;
   });
   /** What the status line says of the open clue: where it is. */
   const clueSay = $derived.by((): string => {
@@ -1117,16 +1138,20 @@
           <span class="muted"
             >Revealing the categories: {Math.min(intro.revealed, cats)} of {cats}
             <span class="hint"
-              >· {game.settings.roundIntro.categoryReveal === 'auto' ? 'they come up on their own' : 'click the screen (or N) for the next'}</span
+              >· {game.settings.roundIntro.categoryReveal === 'auto'
+                ? 'they come up on their own'
+                : `${clickWord()} the screen${touchScreen.on ? '' : ' (or N)'} for the next`}</span
             ></span
           >
         {:else}
-          <span class="muted">Round intro <span class="hint">· click the screen (or N) to go on</span></span>
+          <span class="muted">Round intro <span class="hint">· {goOnSay}</span></span>
         {/if}
       {:else if done}
         <span class="done">Round complete!</span>
       {:else}
-        <span class="muted">Pick a tile on the board. <span class="hint">(arrows + Enter)</span></span>
+        <span class="muted"
+          >Pick a tile on the board.{#if !touchScreen.on}{' '}<span class="hint">(arrows + Enter)</span>{/if}</span
+        >
       {/if}
       {#if !session.intro && lastClosedRef && session.lastClosed}
         {@const id = session.lastClosed}
@@ -1192,7 +1217,7 @@
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
       {#if session.intro?.stage === 'title'}
         <!-- Its title card is up: viewers don't see the category yet. -->
-        <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>
+        <span class="muted">Title card <span class="hint">· {goOnSay}</span></span>
       {:else}
         <!-- (Cut short on a narrow window, with the Final's own 🤫 cards' ⚠ chip: its tooltip has it whole.) -->
         <span class="muted say" title={finalStepText[session.finalStep ?? 'wagers']}>{finalStepText[session.finalStep ?? 'wagers']}</span>
@@ -1204,26 +1229,21 @@
         >{/if}
     {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
       <b>{round?.name}</b>
-      <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>
+      <span class="muted">Title card <span class="hint">· {goOnSay}</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
       <span class="muted hint"
-        >Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars · drag a box to select several</span
+        >{touchScreen.on
+          ? 'Move with the pad · tap objects on the stage · drag avatars · drag a box to select several'
+          : 'Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars · drag a box to select several'}</span
       >
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
-      <span class="muted hint">
-        {round?.mode === 'boardgame' && round.mover.kind === 'step'
-          ? 'Pick the way (→ buttons, the space, or Enter when there’s one)'
-          : 'D rolls or spins, then ▶ Move (Enter)'} · Shift+N turn back · click a token to select them, drag it to send them
-      </span>
+      <span class="muted hint">{boardHow}</span>
     {:else if session.phase === 'slides'}
       <b>{round?.name}</b>
       {#if slidePos}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
-      <span class="muted hint"
-        >{slidePos && slidePos.at < slidePos.of ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N goes on (or two clicks on the stage)'} ·
-        Shift+N the one before</span
-      >
+      <span class="muted hint">{slidesHow}</span>
       {#if round?.mode === 'slides' && round.hostNotes?.trim() && !dual}<span
           class="notes"
           title="Host notes (viewers can see them in this window): {round.hostNotes}">📝 {round.hostNotes}</span
@@ -1232,7 +1252,7 @@
       <b>Tiebreaker</b>
       {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <!-- (Who won, by the 🏆 row, then back to the results; points given there may settle it too.) -->
-      {@const tbSay = tiebreakLine(session)}
+      {@const tbSay = tiebreakLine(session, touchScreen.on)}
       <span class="muted say" title={tbSay}>{tbSay}</span>
       {#if game.tiebreaker?.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {game.tiebreaker.hostNotes}"
           >📝 {game.tiebreaker.hostNotes}</span

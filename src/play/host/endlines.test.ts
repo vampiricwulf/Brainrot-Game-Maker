@@ -42,4 +42,13 @@ describe('the status line at the end and in the tiebreaker', () => {
     applyScore(s, g, ['b'], 100, 'x');
     expect(tiebreakLine(s)).toBe('Nobody is tied for first any more: 🏁 Back to results (N)');
   });
+
+  it('on a touch screen: the buttons, no keys', () => {
+    const { g, s } = setup();
+    applyScore(s, g, ['a', 'b'], 500, 'x');
+    startTiebreaker(s);
+    expect(tiebreakLine(s, true)).toBe('Who won the tiebreaker? Tap their 🏆');
+    Object.assign(s, { rollOffWinner: 'a', tieAmong: ['a', 'b'], tiebreakClue: true });
+    expect(tiebreakLine(s, true)).toBe('🏆 Ann won · 🏁 Back to results');
+  });
 });

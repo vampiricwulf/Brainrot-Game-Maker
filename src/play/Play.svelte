@@ -2,6 +2,7 @@
   import { focusRescue, rescuing } from '../lib/focusrescue';
   import { modal, takeFocus } from '../lib/modal';
   import { scrollMore } from '../lib/scrollmore';
+  import { keyNote } from '../lib/touch.svelte';
   import { app, hint, sceneFrom, toast, toastMs } from '../lib/app.svelte';
   import { clockNow } from '../lib/clocknow.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
@@ -3998,7 +3999,7 @@
           keys: 'Enter',
           // (One space a turn: Enter takes the way on, or says which ways there are.)
           ...(!bgSteps && round?.mode === 'boardgame' && round.mover.kind !== 'step'
-            ? { disabled: true, hint: `${wheel ? 'Spin' : 'Roll'} first (D), or type the steps` }
+            ? { disabled: true, hint: `${wheel ? 'Spin' : 'Roll'} first${keyNote('D')}, or type the steps` }
             : {}),
           onclick: () => void boardEnter(),
         },

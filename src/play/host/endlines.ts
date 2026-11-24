@@ -22,11 +22,12 @@ export function endLine(session: Session): string {
 
 /**
  * The tiebreaker clue: who won it, by their 🏆 (or their number, then Enter), then back to the results; once won,
- * "🏆 Bob won · 🏁 Back to results (N)" (another 🏆 changes it). Points given there may settle it too.
+ * "🏆 Bob won · 🏁 Back to results (N)" (another 🏆 changes it). Points given there may settle it too. `touch`: a touch
+ * screen, no keys: the buttons only ("Tap their 🏆").
  */
-export function tiebreakLine(session: Session): string {
+export function tiebreakLine(session: Session, touch = false): string {
   const tied = tiedForFirst(session);
-  const back = `${FLOW.backToResults.label} (N)`;
+  const back = `${FLOW.backToResults.label}${touch ? '' : ' (N)'}`;
   const won =
     session.tiebreakClue &&
     tiebreakHolds(
@@ -37,5 +38,5 @@ export function tiebreakLine(session: Session): string {
       : undefined;
   if (won) return `🏆 ${won.name} won · ${back}`;
   if (!tied.length) return `Nobody is tied for first any more: ${back}`;
-  return 'Who won the tiebreaker? Click their 🏆, or press their number then Enter';
+  return touch ? 'Who won the tiebreaker? Tap their 🏆' : 'Who won the tiebreaker? Click their 🏆, or press their number then Enter';
 }
