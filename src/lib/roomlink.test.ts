@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { BUZZ_PROTOCOL, FILES_LIST_MAX, mbText, parseFileLimits, type HostState } from './buzzproto';
-import { closedText, parseNewRoom, parseRoomMsg, retryDelay, RoomLink, PING_MS, PROBE_MS, SILENT_MS, STATE_MS, type LinkDeps, type SocketLike } from './roomlink';
+import {
+  closedText,
+  parseNewRoom,
+  parseRoomMsg,
+  retryDelay,
+  RoomLink,
+  PING_MS,
+  PROBE_MS,
+  SILENT_MS,
+  STATE_MS,
+  type LinkDeps,
+  type SocketLike,
+} from './roomlink';
 
 class FakeSocket implements SocketLike {
   readyState = 0;
@@ -87,7 +99,9 @@ describe('parseRoomMsg', () => {
   it('takes the messages the protocol has', () => {
     expect(parseRoomMsg(JSON.stringify(welcome))).toEqual(welcome);
     expect(parseRoomMsg('{"t":"buzz","armId":3,"seatId":"a","rank":1,"afterMs":120}')).toEqual({ t: 'buzz', armId: 3, seatId: 'a', rank: 1, afterMs: 120 });
-    expect(parseRoomMsg('{"t":"phones","phones":[{"conn":"c1","seatId":null,"pendingName":"Zed","connected":true},{"conn":"c2","seatId":"a","connected":false}]}')).toEqual({
+    expect(
+      parseRoomMsg('{"t":"phones","phones":[{"conn":"c1","seatId":null,"pendingName":"Zed","connected":true},{"conn":"c2","seatId":"a","connected":false}]}'),
+    ).toEqual({
       t: 'phones',
       phones: [
         { conn: 'c1', seatId: null, pendingName: 'Zed', connected: true },
@@ -96,7 +110,9 @@ describe('parseRoomMsg', () => {
     });
     expect(parseRoomMsg('{"t":"pong","at":1,"serverNow":2}')).toEqual({ t: 'pong', at: 1, serverNow: 2 });
     expect(parseRoomMsg('{"t":"error","message":"nope"}')).toEqual({ t: 'error', message: 'nope' });
-    expect(parseRoomMsg('{"t":"queue","armId":2,"queue":[{"seatId":"a","afterMs":0,"rolled":1},{"seatId":"b","afterMs":0,"rolled":2}],"tie":["a","b"]}')).toEqual({
+    expect(
+      parseRoomMsg('{"t":"queue","armId":2,"queue":[{"seatId":"a","afterMs":0,"rolled":1},{"seatId":"b","afterMs":0,"rolled":2}],"tie":["a","b"]}'),
+    ).toEqual({
       t: 'queue',
       armId: 2,
       queue: [
@@ -108,18 +124,44 @@ describe('parseRoomMsg', () => {
   });
 
   it("takes a phone's wager (added later), checked: a whole number, 0 or more, and its count", () => {
-    expect(parseRoomMsg('{"t":"wager","id":"final:r1","seatId":"a","amount":500,"n":1}')).toEqual({ t: 'wager', id: 'final:r1', seatId: 'a', amount: 500, n: 1 });
-    expect(parseRoomMsg('{"t":"wager","id":"final:r1","seatId":"a","amount":0,"n":2,"by":"Al"}')).toEqual({ t: 'wager', id: 'final:r1', seatId: 'a', amount: 0, n: 2, by: 'Al' });
+    expect(parseRoomMsg('{"t":"wager","id":"final:r1","seatId":"a","amount":500,"n":1}')).toEqual({
+      t: 'wager',
+      id: 'final:r1',
+      seatId: 'a',
+      amount: 500,
+      n: 1,
+    });
+    expect(parseRoomMsg('{"t":"wager","id":"final:r1","seatId":"a","amount":0,"n":2,"by":"Al"}')).toEqual({
+      t: 'wager',
+      id: 'final:r1',
+      seatId: 'a',
+      amount: 0,
+      n: 2,
+      by: 'Al',
+    });
     for (const bad of ['{"amount":-1,"n":1}', '{"amount":1.5,"n":1}', '{"amount":"5","n":1}', '{"amount":5,"n":0}', '{"amount":5}'])
       expect(parseRoomMsg(JSON.stringify({ t: 'wager', id: 'x', seatId: 'a', ...JSON.parse(bad) }))).toBeNull();
     expect(parseRoomMsg('{"t":"wager","id":"","seatId":"a","amount":5,"n":1}')).toBeNull();
   });
 
   it("takes a phone's answer (added later), with the choice it picked ('choices')", () => {
-    expect(parseRoomMsg('{"t":"answer","id":"c1@k","seatId":"a","text":"Oslo","n":1,"pick":"B2"}')).toEqual({ t: 'answer', id: 'c1@k', seatId: 'a', text: 'Oslo', n: 1, pick: 'B2' });
+    expect(parseRoomMsg('{"t":"answer","id":"c1@k","seatId":"a","text":"Oslo","n":1,"pick":"B2"}')).toEqual({
+      t: 'answer',
+      id: 'c1@k',
+      seatId: 'a',
+      text: 'Oslo',
+      n: 1,
+      pick: 'B2',
+    });
     // (A pick that can't be one is dropped; the words stay.)
     for (const pick of ['', 7, 'x'.repeat(65)])
-      expect(parseRoomMsg(JSON.stringify({ t: 'answer', id: 'c1@k', seatId: 'a', text: 'Oslo', n: 1, pick }))).toEqual({ t: 'answer', id: 'c1@k', seatId: 'a', text: 'Oslo', n: 1 });
+      expect(parseRoomMsg(JSON.stringify({ t: 'answer', id: 'c1@k', seatId: 'a', text: 'Oslo', n: 1, pick }))).toEqual({
+        t: 'answer',
+        id: 'c1@k',
+        seatId: 'a',
+        text: 'Oslo',
+        n: 1,
+      });
   });
 
   it("takes who passed (added later, 'pass'): the whole list, teams' who on it; a bad one is dropped", () => {
@@ -145,7 +187,11 @@ describe('parseRoomMsg', () => {
         { seatId: 'b', afterMs: 9 },
       ],
     });
-    expect(parseRoomMsg('{"t":"phones","phones":[{"conn":"c1","seatId":"a","connected":true,"member":"m1","name":"Ann"},{"conn":"c2","seatId":"a","connected":true,"member":"m2"}]}')).toEqual({
+    expect(
+      parseRoomMsg(
+        '{"t":"phones","phones":[{"conn":"c1","seatId":"a","connected":true,"member":"m1","name":"Ann"},{"conn":"c2","seatId":"a","connected":true,"member":"m2"}]}',
+      ),
+    ).toEqual({
       t: 'phones',
       phones: [
         { conn: 'c1', seatId: 'a', connected: true, member: 'm1', name: 'Ann' },
@@ -157,10 +203,22 @@ describe('parseRoomMsg', () => {
   it('takes the cards fields (added later): a card a phone showed, and the card files the room holds', () => {
     const id = 'c'.repeat(64);
     expect(parseRoomMsg('{"t":"cardSeen","id":"pc:x:y:1","seatId":"a"}')).toEqual({ t: 'cardSeen', id: 'pc:x:y:1', seatId: 'a' });
-    expect(parseRoomMsg('{"t":"cardSeen","id":"pc:x:y:1","seatId":"a","member":"m1","by":"Zoe","evil":1}')).toEqual({ t: 'cardSeen', id: 'pc:x:y:1', seatId: 'a', member: 'm1', by: 'Zoe' });
+    expect(parseRoomMsg('{"t":"cardSeen","id":"pc:x:y:1","seatId":"a","member":"m1","by":"Zoe","evil":1}')).toEqual({
+      t: 'cardSeen',
+      id: 'pc:x:y:1',
+      seatId: 'a',
+      member: 'm1',
+      by: 'Zoe',
+    });
     expect(parseRoomMsg(JSON.stringify({ t: 'files', ids: [id] }))).toEqual({ t: 'files', ids: [id] });
     expect(parseRoomMsg('{"t":"files","ids":[]}')).toEqual({ t: 'files', ids: [] });
-    for (const bad of ['{"t":"cardSeen","id":"","seatId":"a"}', `{"t":"cardSeen","id":"${'x'.repeat(101)}","seatId":"a"}`, '{"t":"cardSeen","id":"c"}', '{"t":"files","ids":["nope"]}', '{"t":"files"}'])
+    for (const bad of [
+      '{"t":"cardSeen","id":"","seatId":"a"}',
+      `{"t":"cardSeen","id":"${'x'.repeat(101)}","seatId":"a"}`,
+      '{"t":"cardSeen","id":"c"}',
+      '{"t":"files","ids":["nope"]}',
+      '{"t":"files"}',
+    ])
       expect(parseRoomMsg(bad), bad).toBeNull();
   });
 
@@ -184,7 +242,11 @@ describe('parseRoomMsg', () => {
       { fileBytes: 1, roomBytes: 2 },
     ])
       expect(parseRoomMsg(JSON.stringify({ ...welcome, limits: bad })), JSON.stringify(bad)).toEqual(welcome);
-    expect(parseFileLimits({ fileBytes: 2 ** 40, roomBytes: 2 ** 40, roomFiles: FILES_LIST_MAX })).toEqual({ fileBytes: 2 ** 40, roomBytes: 2 ** 40, roomFiles: FILES_LIST_MAX });
+    expect(parseFileLimits({ fileBytes: 2 ** 40, roomBytes: 2 ** 40, roomFiles: FILES_LIST_MAX })).toEqual({
+      fileBytes: 2 ** 40,
+      roomBytes: 2 ** 40,
+      roomFiles: FILES_LIST_MAX,
+    });
   });
 
   it('a limit in words: whole MB, or one decimal rounded down', () => {
@@ -211,7 +273,12 @@ describe('parseRoomMsg', () => {
       ],
     });
     expect(parseRoomMsg('{"t":"cardsLate","late":[]}')).toEqual({ t: 'cardsLate', late: [] });
-    for (const bad of ['{"t":"cardsLate"}', '{"t":"cardsLate","late":[{"id":"","seatId":"a"}]}', '{"t":"cardsLate","late":[{"id":"c"}]}', '{"t":"cardsLate","late":[7]}'])
+    for (const bad of [
+      '{"t":"cardsLate"}',
+      '{"t":"cardsLate","late":[{"id":"","seatId":"a"}]}',
+      '{"t":"cardsLate","late":[{"id":"c"}]}',
+      '{"t":"cardsLate","late":[7]}',
+    ])
       expect(parseRoomMsg(bad), bad).toBeNull();
   });
 
@@ -233,7 +300,13 @@ describe('parseRoomMsg', () => {
     ])
       expect(parseRoomMsg(bad), bad).toBeNull();
     expect(parseRoomMsg({ t: 'pong', at: 1, serverNow: 2 })).toBeNull();
-    expect(parseRoomMsg('{"t":"buzz","armId":3,"seatId":"a","rank":1,"afterMs":0,"evil":"<script>"}')).toEqual({ t: 'buzz', armId: 3, seatId: 'a', rank: 1, afterMs: 0 });
+    expect(parseRoomMsg('{"t":"buzz","armId":3,"seatId":"a","rank":1,"afterMs":0,"evil":"<script>"}')).toEqual({
+      t: 'buzz',
+      armId: 3,
+      seatId: 'a',
+      rank: 1,
+      afterMs: 0,
+    });
     expect(parseNewRoom({ code: 'BCDF', hostToken: 'x' })).toEqual({ code: 'BCDF', hostToken: 'x' });
     expect(parseNewRoom({ code: 'bcdf', hostToken: 'x' })).toBeNull();
     expect(parseNewRoom({ code: 'BCDF', hostToken: '' })).toBeNull();
@@ -543,7 +616,7 @@ describe('RoomLink', () => {
     expect(link.closedCode).toBe(0);
   });
 
-  it('says why the room turned the host away in plain words, not the server\'s', async () => {
+  it("says why the room turned the host away in plain words, not the server's", async () => {
     expect(closedText(4004, 'no such room')).toMatch(/^This buzzer room has ended/);
     expect(closedText(4000, 'replaced')).toMatch(/open in another window/);
     expect(closedText(4003, 'wrong host token')).toMatch(/start a new one$/);

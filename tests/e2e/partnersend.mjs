@@ -16,7 +16,34 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, confirmStrip, flowIs, mainButton, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stepButton, stored, assert, sleep, launchChromium, until, section, boardIn, hostPanelIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  boxHasAction,
+  confirmStrip,
+  flowIs,
+  mainButton,
+  openGameFile,
+  packGame,
+  png,
+  recordSeen,
+  roomStored,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  stepButton,
+  stored,
+  assert,
+  sleep,
+  launchChromium,
+  until,
+  section,
+  boardIn,
+  hostPanelIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -78,7 +105,23 @@ const SECRETS = ['qkzvx', 'zfnqj', 'dQw4w9WgXcQ'];
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
-const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  ...box(y),
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
 const play = { autoplay: false, loop: false, muted: false, volume: 1 };
 const video = (media, y) => ({ ...box(y), kind: 'video', media, fit: 'contain', ...play });
@@ -147,7 +190,8 @@ try {
     ref('huge', 'zfnqj-huge.gif', 'image/gif', 'image'),
   ];
   // (Four of them and the rest fit in 10 MiB, five don't; the one too big is over 3 MiB.)
-  if (!(files.gif1.length > 2.15e6 && files.gif1.length < 2.4e6 && files.huge.length > 3 * 1024 * 1024)) throw new Error(`The GIF fixtures came out ${files.gif1.length} and ${files.huge.length} bytes: five have to be 2.15–2.4 MB, one over 3 MiB`);
+  if (!(files.gif1.length > 2.15e6 && files.gif1.length < 2.4e6 && files.huge.length > 3 * 1024 * 1024))
+    throw new Error(`The GIF fixtures came out ${files.gif1.length} and ${files.huge.length} bytes: five have to be 2.15–2.4 MB, one over 3 MiB`);
   const rules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
   const plain = (id, q, a) => ({ id, value: null, type: 'standard', questionSlide: slide(text(q)), answerSlide: slide(text(a)) });
   const partnerClue = (id, q, a, cards) => ({ ...plain(id, q, a), type: 'partner', partner: { ...rules }, timerSeconds: 60, cards });
@@ -157,16 +201,31 @@ try {
     version: 2,
     title: 'Partner cards',
     settings: {
-      allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      stream: { clueCaption: true },
+      buzzer: true,
     },
     players: ['Ann', 'Bob', 'Cat', 'Dan'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
     rounds: [
       {
-        id: 'r1', name: 'Round 1', mode: 'board', values, dailyDoubleCount: 0,
+        id: 'r1',
+        name: 'Round 1',
+        mode: 'board',
+        values,
+        dailyDoubleCount: 0,
         categories: [
           {
-            id: 'cat0', title: 'Movies',
+            id: 'cat0',
+            title: 'Movies',
             clues: [
               partnerClue('q_send', 'Describe this movie quietly', 'Shrek', [
                 { id: 'c1', to: 'giver', ...slide(text(WORDS1), image('big', 300), video('clip', 600), youtube(YT, 900)) },
@@ -174,7 +233,11 @@ try {
                 { id: 'c3', to: 'nobody', ...slide(text(WORDS3), image('third', 400)) },
               ]),
               partnerClue('q_gifs', 'Describe these animals', 'Cats', [
-                { id: 'g1', to: 'giver', ...slide(text('Gifs-qkzvx words', 0), image('first', 100), ...[1, 2, 3, 4, 5].map((i) => image(`gif${i}`, 100 + i * 150))) },
+                {
+                  id: 'g1',
+                  to: 'giver',
+                  ...slide(text('Gifs-qkzvx words', 0), image('first', 100), ...[1, 2, 3, 4, 5].map((i) => image(`gif${i}`, 100 + i * 150))),
+                },
                 { id: 'g2', to: 'giver', ...slide(text('Huge-qkzvx words'), image('huge', 400)) },
               ]),
             ],
@@ -183,7 +246,11 @@ try {
         ],
       },
     ],
-    media, audio: {}, wheels: [], dice: [], theme: {},
+    media,
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
   };
   const packPath = resolve('test-results/partner-send.brainrot');
   writeFileSync(packPath, await packGame(game, files));
@@ -260,10 +327,25 @@ try {
   /** The phone's status line comes to say `text`: its greyed button's big line, or over its cards. */
   const says = (p, t) =>
     p
-      .waitForFunction((t) => ['buzz-big', 'card-status-big'].some((id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length), t, { timeout: 8000 })
-      .then(() => true, () => false);
+      .waitForFunction(
+        (t) =>
+          ['buzz-big', 'card-status-big'].some(
+            (id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length,
+          ),
+        t,
+        { timeout: 8000 },
+      )
+      .then(
+        () => true,
+        () => false,
+      );
   /** Its small line under that. */
-  const small = (p) => p.evaluate(() => (document.getElementById('buzz')?.getClientRects().length ? document.getElementById('buzz-small') : document.getElementById('card-status-small'))?.textContent ?? '');
+  const small = (p) =>
+    p.evaluate(
+      () =>
+        (document.getElementById('buzz')?.getClientRects().length ? document.getElementById('buzz-small') : document.getElementById('card-status-small'))
+          ?.textContent ?? '',
+    );
   /** Waits (up to `ms`) until pred() holds. */
   /** The room's answers to the uploads, once `n` came and each was read. */
   const answered = (n) => until(() => answers.length === n && answers.every((a) => a.read));
@@ -272,7 +354,10 @@ try {
   /** A card file, fetched from the room as this phone would (its token, or `token`, in a header): the HTTP status. */
   const fetchAs = async (p, id, token) => {
     const t = token ?? (await tokenOf(p));
-    return p.evaluate(async ([u, t]) => (await fetch(u, { headers: { Authorization: `Bearer ${t}` }, cache: 'no-store' })).status, [`${base}/api/rooms/${code}/files/${id}`, t]);
+    return p.evaluate(
+      async ([u, t]) => (await fetch(u, { headers: { Authorization: `Bearer ${t}` }, cache: 'no-store' })).status,
+      [`${base}/api/rooms/${code}/files/${id}`, t],
+    );
   };
   /** What's in these elements now (nothing when there are none: never waits for them). */
   const textOf = (loc) => loc.allInnerTexts().then((t) => t.join('\n'));
@@ -280,7 +365,10 @@ try {
   const sends = () => (last()?.cards ?? []).map((c) => ({ ...c, card: c.id.split(':')[2] }));
   const sendOf = (card) => sends().filter((c) => c.card === card);
   const viewOf = (label) => {
-    const v = heard[label].map((m) => JSON.parse(m)).filter((m) => m.t === 'view').at(-1)?.view;
+    const v = heard[label]
+      .map((m) => JSON.parse(m))
+      .filter((m) => m.t === 'view')
+      .at(-1)?.view;
     return v ?? {};
   };
 
@@ -305,7 +393,13 @@ try {
     const phones = JSON.stringify(heard);
     const stored = (await roomStored(persist, 'qkzvx')) || (await roomStored(persist, 'zfnqj'));
     assert(
-      states.length > 0 && !all.includes('"cards"') && !all.includes('qkzvx') && !all.includes('zfnqj') && !phones.includes('qkzvx') && !uploads.length && !stored,
+      states.length > 0 &&
+        !all.includes('"cards"') &&
+        !all.includes('qkzvx') &&
+        !all.includes('zfnqj') &&
+        !phones.includes('qkzvx') &&
+        !uploads.length &&
+        !stored,
       `${when}: no card in the room’s state, in what it saved or on a phone, and no file uploaded`,
     );
   };
@@ -319,7 +413,10 @@ try {
   assert(await says(dan, '🤝 Partner clue'), 'PARTNER UP!: every phone greys out with the roles line');
   await nothingSent('the tile open');
   await host.keyboard.press('2');
-  assert((await says(ann, '🤝 You two play this one!')) && (await says(dan, '🤝 Ann + Bob')), 'paired: Ann and Bob “🤝 You two play this one!”, the others “🤝 Ann + Bob”');
+  assert(
+    (await says(ann, '🤝 You two play this one!')) && (await says(dan, '🤝 Ann + Bob')),
+    'paired: Ann and Bob “🤝 You two play this one!”, the others “🤝 Ann + Bob”',
+  );
   await nothingSent('paired');
   await offStream(aud, 'the audience window', 'PARTNER UP!');
   // Show question ▶ (the blue button), then the 🤝 box's 📤 Send and start within a second of it: nothing goes, and it says why. (Both
@@ -332,21 +429,37 @@ try {
   await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
   assert(await flowIs(host, '👁 Reveal answer'), 'the question up: the blue button is 👁 Reveal answer');
   await toastsIn(host, { hasText: 'The question just went up: click again to send the cards' }).waitFor();
-  assert((await boxHasAction(panel, '📤 Send and start')) === '', 'a click on the box’s own 📤 Send and start (in sight at its foot, the only one) within a second of the question sends nothing, and says so');
-  for (const [p, name] of [[bob, 'Bob, the describer'], [dan, 'Dan']]) assert(await says(p, '🤝 Bob describes → Ann guesses'), `${name}: “🤝 Bob describes → Ann guesses”`);
-  assert((await says(ann, '🎯 You’re guessing!')) && (await small(ann)) === 'Bob is describing: say it out loud', 'Ann, the guesser: “🎯 You’re guessing!” · “Bob is describing: say it out loud”');
+  assert(
+    (await boxHasAction(panel, '📤 Send and start')) === '',
+    'a click on the box’s own 📤 Send and start (in sight at its foot, the only one) within a second of the question sends nothing, and says so',
+  );
+  for (const [p, name] of [
+    [bob, 'Bob, the describer'],
+    [dan, 'Dan'],
+  ])
+    assert(await says(p, '🤝 Bob describes → Ann guesses'), `${name}: “🤝 Bob describes → Ann guesses”`);
+  assert(
+    (await says(ann, '🎯 You’re guessing!')) && (await small(ann)) === 'Bob is describing: say it out loud',
+    'Ann, the guesser: “🎯 You’re guessing!” · “Bob is describing: say it out loud”',
+  );
   assert((await chip('Card 2 to Ann').getAttribute('aria-pressed')) === 'true', 'Card 2 starts with Ann (the guesser)');
   await chip('Card 2 to Cat').click();
   await chip('Card 2 to Ann').click();
   await row(2).getByText('(changed)').waitFor();
-  assert((await chip('Card 2 to Cat').getAttribute('aria-pressed')) === 'true' && (await chip('Card 2 to Ann').getAttribute('aria-pressed')) === 'false', 'Card 2 given to Cat instead of Ann');
+  assert(
+    (await chip('Card 2 to Cat').getAttribute('aria-pressed')) === 'true' && (await chip('Card 2 to Ann').getAttribute('aria-pressed')) === 'false',
+    'Card 2 given to Cat instead of Ann',
+  );
   await sleep(300);
   await nothingSent('the question up, a card given to someone else');
   await offStream(aud, 'the audience window', 'handing out the cards');
   // (Once autosave holds it: its write waits a moment for more clicks, and the copy written as the page goes away isn't
   // always kept by a browser under test.)
   const catSeat = last().seats.find((x) => x.name === 'Cat').id;
-  assert(await until(async () => JSON.stringify((await stored(host))?.session?.partner?.deal?.c2) === JSON.stringify([{ seat: catSeat }])), 'autosave holds card 2 given to Cat');
+  assert(
+    await until(async () => JSON.stringify((await stored(host))?.session?.partner?.deal?.c2) === JSON.stringify([{ seat: catSeat }])),
+    'autosave holds card 2 given to Cat',
+  );
 
   // ---------- A host reload in the 📤 Hand out the cards step, nothing sent or got ready: no upload, the list as it was ----------
   /** The host reloads and resumes in one window (`reloaded` runs once the page is back, before Resume game). */
@@ -361,7 +474,10 @@ try {
   let n = states.length;
   await resume();
   assert(await until(() => states.length > n), 'reloaded: the host is back in the room');
-  assert((await chip('Card 2 to Cat').getAttribute('aria-pressed')) === 'true' && (await stepButton(panel, '📤 Send and start').count()) === 1, 'a reload in the 📤 Hand out the cards step: the list as it was (card 2 to Cat), nothing sent');
+  assert(
+    (await chip('Card 2 to Cat').getAttribute('aria-pressed')) === 'true' && (await stepButton(panel, '📤 Send and start').count()) === 1,
+    'a reload in the 📤 Hand out the cards step: the list as it was (card 2 to Cat), nothing sent',
+  );
   await nothingSent('reloaded in the 📤 Hand out the cards step');
   [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
@@ -384,27 +500,52 @@ try {
     'card 1 to Bob’s seat only, card 2 to Cat’s only (not Ann’s, whose it was), and card 3 (to nobody) not at all',
   );
   assert(
-    s1.text === WORDS1 && s1.role === 'Describer' && s1.hint === 'Describe it to Ann: don’t say what’s on it!' && JSON.stringify(s1.media) === JSON.stringify([{ kind: 'image', pending: true }, { kind: 'video', pending: true }, { kind: 'embed', site: 'youtube', url: YT }]),
+    s1.text === WORDS1 &&
+      s1.role === 'Describer' &&
+      s1.hint === 'Describe it to Ann: don’t say what’s on it!' &&
+      JSON.stringify(s1.media) ===
+        JSON.stringify([
+          { kind: 'image', pending: true },
+          { kind: 'video', pending: true },
+          { kind: 'embed', site: 'youtube', url: YT },
+        ]),
     'card 1 goes at once with its words, its part and hint, its YouTube link, and its picture and video “coming”',
   );
   assert(!JSON.stringify(states).includes('zfnqj') && !JSON.stringify(states).includes(WORDS3), 'no file name ever goes to the room, nor card 3’s words');
   assert(await until(() => roomStored(persist, 'Ogre-qkzvx')), 'the room saved the card it was sent (so its saved state is where to look)');
   assert(!(await roomStored(persist, 'Third-qkzvx')), 'and never card 3, which wasn’t sent');
   assert(await until(() => uploads.length === 1), 'one upload starts (one at a time)');
-  assert(uploads[0].type === 'image/webp' && uploads[0].bytes < files.big.length, `the picture goes up shrunk on this computer, as WebP (${uploads[0].bytes} bytes from ${files.big.length})`);
+  assert(
+    uploads[0].type === 'image/webp' && uploads[0].bytes < files.big.length,
+    `the picture goes up shrunk on this computer, as WebP (${uploads[0].bytes} bytes from ${files.big.length})`,
+  );
 
   // The describer's phone: the card in the button's place, behind Tap to see.
   const cover = bob.getByRole('button', { name: 'Tap to see' });
   await cover.waitFor();
-  assert((await bob.locator('#buzz').isHidden()) && !(await bob.getByText(WORDS1).isVisible()) && (await bob.locator('#card-status-big').innerText()) === '🤝 Bob describes → Ann guesses', 'Bob’s phone: the card in the button’s place, covered, the roles line over it');
+  assert(
+    (await bob.locator('#buzz').isHidden()) &&
+      !(await bob.getByText(WORDS1).isVisible()) &&
+      (await bob.locator('#card-status-big').innerText()) === '🤝 Bob describes → Ann guesses',
+    'Bob’s phone: the card in the button’s place, covered, the roles line over it',
+  );
   await cover.tap();
   await bob.getByText(WORDS1).waitFor();
   const bobCard = bob.locator('.card');
-  assert((await bobCard.innerText()).includes('🖼 Picture coming…') && (await bobCard.innerText()).includes('🎞 Video coming…'), 'tapped: its words, “🖼 Picture coming…” and “🎞 Video coming…”');
+  assert(
+    (await bobCard.innerText()).includes('🖼 Picture coming…') && (await bobCard.innerText()).includes('🎞 Video coming…'),
+    'tapped: its words, “🖼 Picture coming…” and “🎞 Video coming…”',
+  );
   assert(await until(async () => (await textOf(row(1).locator('[data-card-state]'))).includes('✓ seen')), 'the host’s row says ✓ seen');
   await cat.getByRole('button', { name: 'Tap to see' }).waitFor();
-  for (const [p, label, name] of [[ann, 'ann', 'Ann (the guesser)'], [dan, 'dan', 'Dan']]) {
-    assert(!(await p.locator('.card').count()) && (await p.locator('#buzz').getAttribute('aria-disabled')) === 'true' && !heard[label].join('').includes('qkzvx'), `${name}: no card, the button greyed`);
+  for (const [p, label, name] of [
+    [ann, 'ann', 'Ann (the guesser)'],
+    [dan, 'dan', 'Dan'],
+  ]) {
+    assert(
+      !(await p.locator('.card').count()) && (await p.locator('#buzz').getAttribute('aria-disabled')) === 'true' && !heard[label].join('').includes('qkzvx'),
+      `${name}: no card, the button greyed`,
+    );
   }
   await offStream(aud, 'the audience window', 'sent');
 
@@ -419,7 +560,10 @@ try {
   const cat2 = await join('cat2', 'Cat');
   const lateLine = 'A card went to your seat before this phone joined. Ask the host to send it again.';
   await cat2.locator('#cards-late').getByText(lateLine).waitFor();
-  assert(!(await cat2.locator('.card').count()) && !heard.cat2.join('').includes('qkzvx') && viewOf('cat2').cards?.late === 1, 'a phone that took Cat’s seat after the send gets nothing of the card, only a note that it missed one');
+  assert(
+    !(await cat2.locator('.card').count()) && !heard.cat2.join('').includes('qkzvx') && viewOf('cat2').cards?.late === 1,
+    'a phone that took Cat’s seat after the send gets nothing of the card, only a note that it missed one',
+  );
   const lateRow = 'Cat’s new phone hasn’t got it: ↻ Send again';
   assert(await until(async () => (await textOf(row(2).locator('[data-card-state]'))).includes(lateRow)), `and the host’s row says so: “${lateRow}”`);
 
@@ -432,7 +576,10 @@ try {
   let before = 0;
   const sentAt = states.length;
   await resume(() => (before = uploads.length));
-  assert(await until(() => sendOf('c1')[0]?.media?.[0]?.file && sendOf('c1')[0].media[1]?.file && sendOf('c2')[0]?.media?.[0]?.file), 'after the reload the uploads finish: card 1’s picture and video, card 2’s picture');
+  assert(
+    await until(() => sendOf('c1')[0]?.media?.[0]?.file && sendOf('c1')[0].media[1]?.file && sendOf('c2')[0]?.media?.[0]?.file),
+    'after the reload the uploads finish: card 1’s picture and video, card 2’s picture',
+  );
   assert(
     states.slice(sentAt).every((x) => x.cards?.length === 2) && sendOf('c1')[0].id === s1.id && sendOf('c2')[0].id === s2.id,
     'every state the room got since the reload holds both cards, under the same ids (the room never takes them off the phones)',
@@ -440,13 +587,19 @@ try {
   // (A response's body is read after the room's state may already have its id.)
   await answered(3);
   const ok = answers.filter((a) => a.status === 200);
-  assert(uploads.length - before === 3 && ok.length === 3, `three uploads after the reload, and nothing for card 3 (${uploads.length - before} uploads, ${ok.length} taken)`);
+  assert(
+    uploads.length - before === 3 && ok.length === 3,
+    `three uploads after the reload, and nothing for card 3 (${uploads.length - before} uploads, ${ok.length} taken)`,
+  );
   const pic1 = sendOf('c1')[0].media[0].file;
   const vid1 = sendOf('c1')[0].media[1].file;
   const pic2 = sendOf('c2')[0].media[0].file;
   assert(ok.map((a) => a.id).join() === [pic1, vid1, pic2].join(), 'in the order they sit on the cards, each under the id the room gave it');
   assert(await until(() => viewOf('bob').cards?.list?.[0]?.media?.[0]?.mime === 'image/webp'), 'the room tells the phone the picture is the WebP that went up');
-  assert(!(await cat2.locator('.card').count()) && viewOf('cat2').cards?.late === 1 && (await cat2.locator('#cards-late').isVisible()), 'the phone that came late is still late after the host’s reload: no card');
+  assert(
+    !(await cat2.locator('.card').count()) && viewOf('cat2').cards?.late === 1 && (await cat2.locator('#cards-late').isVisible()),
+    'the phone that came late is still late after the host’s reload: no card',
+  );
   assert((await fetchAs(cat2, pic2)) === 404, 'and the room won’t give it the card’s picture');
   assert(await until(async () => (await textOf(row(2).locator('[data-card-state]'))).includes(lateRow)), 'the host’s row says so again after the reload');
 
@@ -456,13 +609,22 @@ try {
     const img = document.querySelector('.card img');
     return !!img && img.src.startsWith('blob:') && img.complete && img.naturalWidth === 1600;
   });
-  assert((await bob.locator('.card img').getAttribute('alt')) === 'Picture', 'Bob’s card: the picture arrives, 1600 px wide (shrunk from 3000), from a blob: address');
+  assert(
+    (await bob.locator('.card img').getAttribute('alt')) === 'Picture',
+    'Bob’s card: the picture arrives, 1600 px wide (shrunk from 3000), from a blob: address',
+  );
   const vid = bob.locator('.card video');
-  assert(await until(() => vid.evaluate((v) => !v.paused && v.currentTime > 0 && v.muted && v.src.startsWith('blob:'))), 'the video file plays as it arrives in the open card, muted, from a blob: address');
+  assert(
+    await until(() => vid.evaluate((v) => !v.paused && v.currentTime > 0 && v.muted && v.src.startsWith('blob:'))),
+    'the video file plays as it arrives in the open card, muted, from a blob: address',
+  );
   await bob.getByRole('button', { name: /YouTube video/ }).tap();
   const frame = bob.locator('.card iframe');
   await frame.waitFor();
-  assert((await frame.getAttribute('src')).startsWith('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ'), 'the YouTube clip plays in YouTube’s player once tapped');
+  assert(
+    (await frame.getAttribute('src')).startsWith('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ'),
+    'the YouTube clip plays in YouTube’s player once tapped',
+  );
   assert(!(await bob.locator('body').innerText()).includes('zfnqj'), 'and no file name on the phone');
   await bob.screenshot({ path: 'test-results/partnersend-card.png' });
   assert((await shownOf(host, SECRETS)).length === 0, 'the host page in one window holds no card’s words, file names or link');
@@ -471,14 +633,30 @@ try {
   await row(2).getByRole('button', { name: 'Send card 2 again' }).click();
   await cat2.getByRole('button', { name: 'Tap to see' }).waitFor();
   const again = sendOf('c2');
-  assert(again.length === 1 && again[0].id !== s2.id && JSON.stringify(again[0].to) === JSON.stringify([{ seat: seat.Cat }]) && sendOf('c1')[0].id === s1.id, '↻ Send again: card 2 under a new id, to Cat’s seat (card 1 keeps its id)');
+  assert(
+    again.length === 1 && again[0].id !== s2.id && JSON.stringify(again[0].to) === JSON.stringify([{ seat: seat.Cat }]) && sendOf('c1')[0].id === s1.id,
+    '↻ Send again: card 2 under a new id, to Cat’s seat (card 1 keeps its id)',
+  );
   assert(await until(async () => (await cat2.locator('.card img').count()) === 1), 'the new phone gets it, picture and all');
   assert((await fetchAs(cat2, pic2)) === 200 && !(await cat2.locator('#cards-late').isVisible()), 'it can fetch the picture now, and the note is gone');
   assert(await until(async () => !(await textOf(row(2).locator('[data-card-state]'))).includes('hasn’t got it')), 'and so is the row’s warning');
 
   // ---------- No phone can fetch a file of a card it wasn't sent ----------
-  assert((await fetchAs(bob, pic2)) === 404 && (await fetchAs(cat2, pic1)) === 404 && (await fetchAs(cat2, vid1)) === 404 && (await fetchAs(bob, pic1)) === 200 && (await fetchAs(bob, vid1)) === 200, 'Bob can’t fetch card 2’s picture, nor Cat card 1’s files; each can fetch their own');
-  assert((await fetchAs(ann, pic1)) === 404 && (await fetchAs(ann, pic2)) === 404 && (await fetchAs(dan, vid1)) === 404 && (await fetchAs(cat, pic2, catToken)) === 404, 'Ann, Dan and Cat’s old phone (with the token it had) can fetch none');
+  assert(
+    (await fetchAs(bob, pic2)) === 404 &&
+      (await fetchAs(cat2, pic1)) === 404 &&
+      (await fetchAs(cat2, vid1)) === 404 &&
+      (await fetchAs(bob, pic1)) === 200 &&
+      (await fetchAs(bob, vid1)) === 200,
+    'Bob can’t fetch card 2’s picture, nor Cat card 1’s files; each can fetch their own',
+  );
+  assert(
+    (await fetchAs(ann, pic1)) === 404 &&
+      (await fetchAs(ann, pic2)) === 404 &&
+      (await fetchAs(dan, vid1)) === 404 &&
+      (await fetchAs(cat, pic2, catToken)) === 404,
+    'Ann, Dan and Cat’s old phone (with the token it had) can fetch none',
+  );
 
   // ---------- ⇄ Swap with card 1 out asks first, in the panel (never a box over the stage); Don't swap keeps it ----------
   // (Over ↩ Put back (keep tile)'s question, left unanswered: the newer question shows, and the older one goes.)
@@ -500,12 +678,22 @@ try {
   await dan.getByRole('button', { name: 'Tap to see' }).waitFor();
   const changed = sendOf('c1');
   const toDan = changed.find((c) => c.to.some((t) => t.seat === seat.Dan));
-  assert(changed.length === 2 && changed.some((c) => c.id === s1.id && c.to.length === 1 && c.to[0].seat === seat.Bob) && toDan && toDan.id !== s1.id && toDan.to.length === 1, '📤 Send changes: Dan gets card 1 under a new id, Bob keeps his');
+  assert(
+    changed.length === 2 &&
+      changed.some((c) => c.id === s1.id && c.to.length === 1 && c.to[0].seat === seat.Bob) &&
+      toDan &&
+      toDan.id !== s1.id &&
+      toDan.to.length === 1,
+    '📤 Send changes: Dan gets card 1 under a new id, Bob keeps his',
+  );
   assert(await bob.getByText(WORDS1).isVisible(), 'Bob’s card stays as it was (open)');
   await chip('Card 1 to Bob').click();
   await row(1).getByRole('button', { name: 'Send card 1’s changes' }).click();
   await bob.locator('.card').waitFor({ state: 'detached' });
-  assert(sendOf('c1').length === 1 && sendOf('c1')[0].id === toDan.id && (await dan.locator('.card').count()) === 1, 'Bob taken off: card 1 goes from his phone, and Dan’s keeps its id');
+  assert(
+    sendOf('c1').length === 1 && sendOf('c1')[0].id === toDan.id && (await dan.locator('.card').count()) === 1,
+    'Bob taken off: card 1 goes from his phone, and Dan’s keeps its id',
+  );
   assert(await until(async () => (await fetchAs(bob, pic1)) === 404), 'Bob can’t fetch its picture any more');
   assert((await fetchAs(dan, pic1)) === 200, 'Dan can');
 
@@ -543,10 +731,19 @@ try {
   assert(readied, `after the reload it finishes: “ready in the buzzer room” (the panel says “${await textOf(panel.locator('[data-partner-files]'))}”)`);
   await answered(4);
   const ready = answers.filter((a) => a.status === 200).at(-1).id;
-  assert(uploads.length === before + 5 && ![pic1, vid1, pic2].includes(ready), `one upload more (card 3’s picture, the cut-off one again) (${uploads.length - before} uploads)`);
+  assert(
+    uploads.length === before + 5 && ![pic1, vid1, pic2].includes(ready),
+    `one upload more (card 3’s picture, the cut-off one again) (${uploads.length - before} uploads)`,
+  );
   await sleep(500);
   assert(!sendOf('c3').length && !JSON.stringify(states).includes(WORDS3), 'got ready: card 3 is in no state');
-  for (const [p, name] of [[ann, 'Ann'], [bob, 'Bob'], [cat2, 'Cat'], [dan, 'Dan']]) assert((await fetchAs(p, ready)) === 404, `${name} can’t fetch a file that was only got ready`);
+  for (const [p, name] of [
+    [ann, 'Ann'],
+    [bob, 'Bob'],
+    [cat2, 'Cat'],
+    [dan, 'Dan'],
+  ])
+    assert((await fetchAs(p, ready)) === 404, `${name} can’t fetch a file that was only got ready`);
 
   // ---------- A row's 📤 Send: card 3, got ready, to Ann ----------
   await chip('Card 3 to Ann').click();
@@ -554,12 +751,21 @@ try {
   await row(3).getByRole('button', { name: 'Send card 3' }).click();
   await ann.getByRole('button', { name: 'Tap to see' }).waitFor();
   const s3 = sendOf('c3');
-  assert(s3.length === 1 && JSON.stringify(s3[0].to) === JSON.stringify([{ seat: seat.Ann }]) && s3[0].media?.[0]?.file === ready, '📤 Send on its row: card 3 to Ann, with the picture that was got ready');
-  assert(states.slice(n).every((x) => !(x.cards ?? []).some((c) => c.id.split(':')[2] === 'c3' && c.media?.[0]?.pending)), 'its picture was in the room already: it never shows as coming');
+  assert(
+    s3.length === 1 && JSON.stringify(s3[0].to) === JSON.stringify([{ seat: seat.Ann }]) && s3[0].media?.[0]?.file === ready,
+    '📤 Send on its row: card 3 to Ann, with the picture that was got ready',
+  );
+  assert(
+    states.slice(n).every((x) => !(x.cards ?? []).some((c) => c.id.split(':')[2] === 'c3' && c.media?.[0]?.pending)),
+    'its picture was in the room already: it never shows as coming',
+  );
   await ann.getByRole('button', { name: 'Tap to see' }).tap();
   await ann.getByText(WORDS3).waitFor();
   assert(await until(async () => (await ann.locator('.card img[src^="blob:"]').count()) === 1), 'Ann opens it: its words and its picture');
-  assert(uploads.length === before + 5 && (await fetchAs(ann, ready)) === 200 && (await fetchAs(dan, ready)) === 404, 'nothing went up again; Ann can fetch the picture now, Dan still can’t');
+  assert(
+    uploads.length === before + 5 && (await fetchAs(ann, ready)) === 200 && (await fetchAs(dan, ready)) === 404,
+    'nothing went up again; Ann can fetch the picture now, Dan still can’t',
+  );
 
   // ---------- ↩ Take back card 2 ----------
   await row(2).getByRole('button', { name: 'Take card 2 back' }).click();
@@ -590,12 +796,17 @@ try {
   await mainButton(host).click();
   await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
   const left2 = panel.locator('[data-card-left="2"]');
-  assert((await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)', 'the GIF over 3 MB, counted: “🖼 1 GIF won’t reach the phones (too big for the buzzer server)”');
+  assert(
+    (await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)',
+    'the GIF over 3 MB, counted: “🖼 1 GIF won’t reach the phones (too big for the buzzer server)”',
+  );
   assert(await row(2).getByRole('button', { name: '📋 Copy picture' }).isVisible(), 'and its row offers 📋 Copy picture');
   const upBefore = uploads.length;
   // The status line's ⏱ Start (as T) with cards still to send: the clock only. The box's foot reads 📤 Send the cards
   // (clock running), the status line that Enter sends them, and nothing goes until then.
-  await statusLineIn(host).getByRole('button', { name: /^Start \d+s$/ }).click();
+  await statusLineIn(host)
+    .getByRole('button', { name: /^Start \d+s$/ })
+    .click();
   await stageBoxIn(host).locator('.timer').waitFor();
   await sleep(300);
   assert(
@@ -618,15 +829,25 @@ try {
   const fullLine = '🖼 1 GIF won’t reach the phones (the buzzer room holds all the files it can: ↩ take a card back, then ↻ Send again)';
   assert((await panel.locator('[data-card-left="1"]').innerText()) === fullLine, `the panel counts it, and says why: “${fullLine}”`);
   const info = host.locator('.info [data-partner-cards-info]');
-  assert((await info.innerText()).includes(`📋 copy it: ${turned.error}`) && (await info.innerText()).includes('📋 copy it: too big for the buzzer server (3 MB at most)'), 'the two-window host column names them, with why');
+  assert(
+    (await info.innerText()).includes(`📋 copy it: ${turned.error}`) &&
+      (await info.innerText()).includes('📋 copy it: too big for the buzzer server (3 MB at most)'),
+    'the two-window host column names them, with why',
+  );
   await row(1).getByRole('button', { name: '📋 Copy picture' }).click();
   await toastsIn(host, { hasText: 'Card 1’s picture copied: paste it to Bob' }).waitFor();
   const copied = await host.evaluate(async () => (await navigator.clipboard.read()).flatMap((i) => i.types));
   assert(copied.includes('image/png'), '📋 Copy picture puts the card’s picture on the clipboard, to paste to Bob');
   await until(async () => (await bob.getByRole('button', { name: 'Tap to see' }).count()) === 2);
   while (await bob.getByRole('button', { name: 'Tap to see' }).count()) await bob.getByRole('button', { name: 'Tap to see' }).first().tap();
-  assert(await until(async () => (await bob.locator('.card img[src^="blob:"]').count()) === 5, 60000), 'Bob’s phone shows the picture and the four GIFs that went up');
-  assert((await bob.getByText('🖼 The host will show you this picture').count()) === 2, 'and “🖼 The host will show you this picture” for the one turned down and the one too big');
+  assert(
+    await until(async () => (await bob.locator('.card img[src^="blob:"]').count()) === 5, 60000),
+    'Bob’s phone shows the picture and the four GIFs that went up',
+  );
+  assert(
+    (await bob.getByText('🖼 The host will show you this picture').count()) === 2,
+    'and “🖼 The host will show you this picture” for the one turned down and the one too big',
+  );
   await offStream(aud2, 'the audience window', 'the GIFs');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);

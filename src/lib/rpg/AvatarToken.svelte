@@ -79,7 +79,10 @@
     border-radius: 8px;
     border: 3px solid #000;
     /* At least 36px on the 1920 stage (13-14px on a 720p stream), for the usual 120px token. */
-    font: max(calc(var(--s) * 0.22), min(36px, calc(var(--s) * 0.3))) 'Anton', 'Oswald', sans-serif;
+    font:
+      max(calc(var(--s) * 0.22), min(36px, calc(var(--s) * 0.3))) 'Anton',
+      'Oswald',
+      sans-serif;
     text-shadow: 1px 1px 0 #000;
     position: relative;
     /* One line, a little wider than the avatar: a long name ends in "…" instead of running into the next player's

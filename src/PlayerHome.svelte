@@ -58,7 +58,9 @@
     try {
       const { where, missing } = await savePack($state.snapshot(game), (done, total) => (packPct = total ? Math.floor((done / total) * 100) : null));
       const one = missing.length === 1;
-      const left = missing.length ? ` (${missing.length} file${one ? ' wasn’t' : 's weren’t'} in this copy, so ${one ? 'it isn’t' : 'they aren’t'} in the pack)` : '';
+      const left = missing.length
+        ? ` (${missing.length} file${one ? ' wasn’t' : 's weren’t'} in this copy, so ${one ? 'it isn’t' : 'they aren’t'} in the pack)`
+        : '';
       toast(`${where}. To edit it, open it in Brainrot Games Maker${left}.`, 6000);
     } catch (e) {
       // (The save picker closed: nothing to say.)
@@ -101,7 +103,9 @@
       <li>Press <b>?</b> during the game for the keys.</li>
     </ul>
     {#if online}
-      <p class="muted small">🌐 {online} item{online === 1 ? '' : 's'} in this game play{online === 1 ? 's' : ''} from the internet, so stay online while you play.</p>
+      <p class="muted small"
+        >🌐 {online} item{online === 1 ? '' : 's'} in this game play{online === 1 ? 's' : ''} from the internet, so stay online while you play.</p
+      >
     {/if}
     {#if !app.storageOk}
       <p class="warn small">This browser isn't saving progress here (its storage is blocked or full), so a refresh restarts the game.</p>
@@ -122,7 +126,9 @@
     display: grid;
     place-items: center;
     padding: 16px;
-    background: var(--board-image, none) center / cover no-repeat, radial-gradient(circle at 50% 30%, var(--tile), #000 80%);
+    background:
+      var(--board-image, none) center / cover no-repeat,
+      radial-gradient(circle at 50% 30%, var(--tile), #000 80%);
   }
   .card {
     width: min(560px, 100%);

@@ -2,9 +2,48 @@
 // operations, playing through them, and everything that walks a clue's slides.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { migrateGame, newFinalRound, newId, newImageEl, questionSlides, setSlideText, slideText, slidesOfClue, textSlide, type BoardRound, type Clue, type Game, type TextEl } from './model';
-import { addClueSlide, clearClue, clone, clueHasContent, copyClue, deleteClueSlide, duplicateClueSlide, insertClueSlide, moveClueSlide, reidRound, textStyleTargets } from './ops';
-import { backToBoard, clueSlideIndex, finalNext, newSession, openClue, reveal, shownQuestionSlide, slidePosition, startTiebreaker, stepSlide, toolOnlyClue, unreveal } from './session';
+import {
+  migrateGame,
+  newFinalRound,
+  newId,
+  newImageEl,
+  questionSlides,
+  setSlideText,
+  slideText,
+  slidesOfClue,
+  textSlide,
+  type BoardRound,
+  type Clue,
+  type Game,
+  type TextEl,
+} from './model';
+import {
+  addClueSlide,
+  clearClue,
+  clone,
+  clueHasContent,
+  copyClue,
+  deleteClueSlide,
+  duplicateClueSlide,
+  insertClueSlide,
+  moveClueSlide,
+  reidRound,
+  textStyleTargets,
+} from './ops';
+import {
+  backToBoard,
+  clueSlideIndex,
+  finalNext,
+  newSession,
+  openClue,
+  reveal,
+  shownQuestionSlide,
+  slidePosition,
+  startTiebreaker,
+  stepSlide,
+  toolOnlyClue,
+  unreveal,
+} from './session';
 import { allSlides, mediaUsage } from './usage';
 import { diff } from './historyops';
 import { describe as describeStep, itemPlace, placeAt } from './historylabel';
@@ -411,4 +450,3 @@ describe('a Final’s question slides', () => {
     expect(allSlides(game).some((s) => s.where.endsWith('(question slide 2)'))).toBe(true);
   });
 });
-

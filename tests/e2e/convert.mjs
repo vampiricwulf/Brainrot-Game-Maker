@@ -57,18 +57,26 @@ try {
     const m = meta(name);
     await page.waitForFunction((el) => !['', 'checking'].includes(el.dataset.verdict ?? ''), await m.elementHandle(), { timeout: 60_000 });
     const warn = m.locator('.warn');
-    return { verdict: await m.getAttribute('data-verdict'), text: (await m.innerText()).replace(/\s+/g, ' '), title: (await warn.count()) ? ((await warn.getAttribute('title')) ?? '') : '' };
+    return {
+      verdict: await m.getAttribute('data-verdict'),
+      text: (await m.innerText()).replace(/\s+/g, ' '),
+      title: (await warn.count()) ? ((await warn.getAttribute('title')) ?? '') : '',
+    };
   };
 
   // An MKV this browser plays: no "may not play" (its type alone said it may not), and phones' 🤫 cards would want a WebM.
   const clipMkv = await checked('clip.mkv');
-  assert(clipMkv.verdict === 'plays' && !clipMkv.text.includes('play'), `clip.mkv (VP9, Opus) plays: its card says nothing of it once checked (“${clipMkv.text}”)`);
+  assert(
+    clipMkv.verdict === 'plays' && !clipMkv.text.includes('play'),
+    `clip.mkv (VP9, Opus) plays: its card says nothing of it once checked (“${clipMkv.text}”)`,
+  );
 
   // Its sound is AC-3: the picture plays, silent.
   const talk = await checked('talk.mkv');
   assert(talk.verdict === 'silent' && talk.text.endsWith('· ⚠ plays without its sound here'), `talk.mkv (VP9, AC-3): “${talk.text}”`);
   assert(
-    talk.title === 'Its sound is AC-3 (Dolby Digital), which this browser can’t play or convert. To keep its sound, convert it with a video app first (HandBrake is free).',
+    talk.title ===
+      'Its sound is AC-3 (Dolby Digital), which this browser can’t play or convert. To keep its sound, convert it with a video app first (HandBrake is free).',
     `its title says why, and what to do (${talk.title})`,
   );
   // (In sight on the card too: a title needs a mouse, and the checklist says 🖼 Media says why.)
@@ -78,20 +86,37 @@ try {
   // A sound alone in AC-3: it won't play at all.
   const mka = await checked('ac3.mka');
   assert(mka.verdict === 'fails' && mka.text.endsWith('· ⚠ won’t play here'), `ac3.mka: “${mka.text}”`);
-  assert(mka.title === 'It’s AC-3 (Dolby Digital), which this browser can’t play or convert. Convert it to MP3 or M4A with an audio or video app first.', `its title says why (${mka.title})`);
+  assert(
+    mka.title === 'It’s AC-3 (Dolby Digital), which this browser can’t play or convert. Convert it to MP3 or M4A with an audio or video app first.',
+    `its title says why (${mka.title})`,
+  );
   assert((await whyOn('ac3.mka')) === mka.title && !(await whyOn('clip.mkv')), 'so does a line on its card (none on the one that plays)');
 
   // Bytes the app can't read: as before, its type alone says.
   const fake = await checked('fake.mov');
-  const advice = 'This browser may not play MOV files, and the app can’t read this one to convert it: convert it to MP4 (H.264) with another program (HandBrake is free), then Replace everywhere…';
-  assert(fake.verdict === 'unknown' && fake.text.endsWith('· may not play') && fake.title === advice, `fake.mov: still “${fake.text}”, its title says what to do (${fake.title})`);
+  const advice =
+    'This browser may not play MOV files, and the app can’t read this one to convert it: convert it to MP4 (H.264) with another program (HandBrake is free), then Replace everywhere…';
+  assert(
+    fake.verdict === 'unknown' && fake.text.endsWith('· may not play') && fake.title === advice,
+    `fake.mov: still “${fake.text}”, its title says what to do (${fake.title})`,
+  );
   const fakeLine = (await card('fake.mov').locator('[data-cant-read]').innerText()).trim();
   assert(fakeLine === `⚠ ${advice}`, `and a line on its card says it, where it stays (${fakeLine})`);
   const fakeReplace = card('fake.mov').locator('.foot').getByRole('button', { name: 'Replace everywhere…' });
   assert(await fakeReplace.evaluate((b) => b.classList.contains('primary')), 'with Replace everywhere… the strong button on its card');
-  assert((await card('talk.mkv').locator('[data-cant-read]').count()) === 0 && !(await card('clip.mkv').locator('.foot').getByRole('button', { name: 'Replace everywhere…' }).evaluate((b) => b.classList.contains('primary'))), 'files the app reads get neither');
+  assert(
+    (await card('talk.mkv').locator('[data-cant-read]').count()) === 0 &&
+      !(await card('clip.mkv')
+        .locator('.foot')
+        .getByRole('button', { name: 'Replace everywhere…' })
+        .evaluate((b) => b.classList.contains('primary'))),
+    'files the app reads get neither',
+  );
   const toasts = await page.evaluate(() => window.__seen.filter((t) => t.startsWith('⚠ This browser may not play')));
-  assert(toasts.includes('⚠ This browser may not play "fake.mov" (video/quicktime). Try converting it to MP4 (H.264) or MP3.'), `and today’s toast, word for word (${toasts.join(' | ')})`);
+  assert(
+    toasts.includes('⚠ This browser may not play "fake.mov" (video/quicktime). Try converting it to MP4 (H.264) or MP3.'),
+    `and today’s toast, word for word (${toasts.join(' | ')})`,
+  );
 
   // The checklist counts them, naming none.
   const lines = async () => (await page.locator('nav .problem').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
@@ -100,7 +125,11 @@ try {
     '1 video plays without its sound in this browser (🖼 Media says why)',
     '1 video/audio file this browser may not play: 🖼 Media says what to do',
   ];
-  await page.waitForFunction((want) => want.every((w) => [...document.querySelectorAll('nav .problem')].some((b) => b.textContent.replace(/\s+/g, ' ').includes(w))), want, { timeout: 20_000 });
+  await page.waitForFunction(
+    (want) => want.every((w) => [...document.querySelectorAll('nav .problem')].some((b) => b.textContent.replace(/\s+/g, ' ').includes(w))),
+    want,
+    { timeout: 20_000 },
+  );
   const got = (await lines()).filter((t) => /browser/.test(t));
   assert(got.length === 3 && want.every((w) => got.some((t) => t.includes(w))), `the checklist: ${got.join(' | ')}`);
   assert(!got.some((t) => /clip|talk|ac3|fake/.test(t)), 'and names no file');
@@ -114,7 +143,9 @@ try {
   const again = await Promise.all(['clip.mkv', 'talk.mkv', 'ac3.mka', 'fake.mov'].map(async (n) => (await checked(n)).verdict));
   assert(again.join() === 'plays,silent,fails,unknown', `after a reload, each is checked again: ${again.join(', ')}`);
   // (Toasts only: the card's own line for fake.mov says it again, where it stays.)
-  const after = await page.evaluate(() => window.__seen.filter((t, i) => t.startsWith('⚠ This browser') && !window.__seenWhere[i]?.el.includes('data-cant-read')));
+  const after = await page.evaluate(() =>
+    window.__seen.filter((t, i) => t.startsWith('⚠ This browser') && !window.__seenWhere[i]?.el.includes('data-cant-read')),
+  );
   assert(!after.length, `with no toast (${after.join(' | ')})`);
   assert(!(await page.locator('[data-convert-notice]').count()), 'nor any note at the top: those are for files just added');
 
@@ -127,27 +158,35 @@ try {
   const toastsSeen = () => page.evaluate(() => (window.__seen ?? []).filter((_, i) => window.__seenWhere?.[i]?.el.includes('class="toast')));
   const toasted = (want) =>
     page
-      .waitForFunction((want) => (window.__seen ?? []).some((t, i) => t.startsWith(want) && window.__seenWhere?.[i]?.el.includes('class="toast')), want, { timeout: 30_000 })
+      .waitForFunction((want) => (window.__seen ?? []).some((t, i) => t.startsWith(want) && window.__seenWhere?.[i]?.el.includes('class="toast')), want, {
+        timeout: 30_000,
+      })
       .catch(async (e) => {
         throw new Error(`No toast “${want}”; the toasts were: ${(await toastsSeen()).join(' | ')} (${e.message})`);
       });
   /** The editor's game as autosave last stored it, once `ok(game)` holds. */
   const draftWhen = async (ok, what) => {
-    const g = await until(async () => {
-      const g = await stored(page, 'editorDraft');
-      return g && ok(g) ? g : null;
-    }, { timeout: 15_000, every: 100 });
+    const g = await until(
+      async () => {
+        const g = await stored(page, 'editorDraft');
+        return g && ok(g) ? g : null;
+      },
+      { timeout: 15_000, every: 100 },
+    );
     if (!g) throw new Error(`The stored game never got to: ${what}`);
     return g;
   };
   const refNamed = (g, name) => g.media.find((m) => m.name === name);
   /** Files dropped on 🖼 Media (as the page's ＋ Add files…). */
   const dropOnMedia = async (list) => {
-    const dt = await page.evaluateHandle((list) => {
-      const d = new DataTransfer();
-      for (const f of list) d.items.add(new File([Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0))], f.name, { type: f.type }));
-      return d;
-    }, list.map((f) => ({ name: f.name, type: f.type, b64: Buffer.from(f.buffer).toString('base64') })));
+    const dt = await page.evaluateHandle(
+      (list) => {
+        const d = new DataTransfer();
+        for (const f of list) d.items.add(new File([Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0))], f.name, { type: f.type }));
+        return d;
+      },
+      list.map((f) => ({ name: f.name, type: f.type, b64: Buffer.from(f.buffer).toString('base64') })),
+    );
     await page.locator('.library').dispatchEvent('drop', { dataTransfer: dt });
   };
   const undoKey = async (key) => {
@@ -181,16 +220,21 @@ try {
   assert(/^🔄 It plays here now: MP4, \d+ KB \(was \d+ KB\)\. Ctrl\+Z puts the old one back\.$/.test(said), `🔄 Convert it: “${said}”`);
   await card('party.mp4').waitFor();
   const conv = refNamed(await draftWhen((g) => !!refNamed(g, 'party.mp4'), 'party.mp4'), 'party.mp4');
-  assert(conv.mime === 'video/mp4' && conv.id !== partyId && !refNamed(await stored(page, 'editorDraft'), 'party.mts'), `it’s party.mp4 now, video/mp4, a new id, in party.mts’s place (${JSON.stringify(conv)})`);
-  const plays = await card('party.mp4').locator('video').evaluate(
-    (v) =>
-      new Promise((ok) => {
-        if (v.readyState >= 1) return ok(v.duration);
-        v.onloadedmetadata = () => ok(v.duration);
-        v.onerror = () => ok(null);
-        v.load();
-      }),
+  assert(
+    conv.mime === 'video/mp4' && conv.id !== partyId && !refNamed(await stored(page, 'editorDraft'), 'party.mts'),
+    `it’s party.mp4 now, video/mp4, a new id, in party.mts’s place (${JSON.stringify(conv)})`,
   );
+  const plays = await card('party.mp4')
+    .locator('video')
+    .evaluate(
+      (v) =>
+        new Promise((ok) => {
+          if (v.readyState >= 1) return ok(v.duration);
+          v.onloadedmetadata = () => ok(v.duration);
+          v.onerror = () => ok(null);
+          v.load();
+        }),
+    );
   assert(Math.abs(plays - 3) < 0.2, `and it plays here (${plays} s)`);
   await notice.waitFor({ state: 'detached' });
   await lineOf('won’t play in this browser: 🔄').waitFor({ state: 'detached' });
@@ -231,7 +275,10 @@ try {
   await page.keyboard.press('Escape');
   await clueEditor.waitFor({ state: 'detached' });
   await notice.waitFor();
-  assert((await noticeText()).startsWith('⚠ “talk.mkv” plays without its sound in this browser: its sound is AC-3 (Dolby Digital)'), `the note: ${await noticeText()}`);
+  assert(
+    (await noticeText()).startsWith('⚠ “talk.mkv” plays without its sound in this browser: its sound is AC-3 (Dolby Digital)'),
+    `the note: ${await noticeText()}`,
+  );
   // From the keys: the focus stays on what takes the button's place (Stop), and goes to the editor's tab once the
   // note goes, never to the page.
   await notice.getByRole('button', { name: '🔄 Convert it without its sound (quick)' }).focus();
@@ -246,20 +293,27 @@ try {
   await page
     .waitForFunction(() => document.activeElement?.matches('.editor nav [aria-current="page"]'), null, { timeout: 10_000 })
     .catch(async () => {
-      throw new Error(`Once the note went the focus was on ${await page.evaluate(() => (document.activeElement === document.body ? 'the page' : document.activeElement?.outerHTML.slice(0, 80)))}`);
+      throw new Error(
+        `Once the note went the focus was on ${await page.evaluate(() => (document.activeElement === document.body ? 'the page' : document.activeElement?.outerHTML.slice(0, 80)))}`,
+      );
     });
   const lost = await page.evaluate(() => (window.__noticeWatch.disconnect(), window.__lostFocus));
   assert(lost === 0, `🔄 from the keys: the focus never fell to the page (${lost}), and is on the editor’s tab once the note goes`);
   const silentGame = await draftWhen((g) => !!refNamed(g, 'talk.webm'), 'talk.webm');
   const webm = refNamed(silentGame, 'talk.webm');
-  assert(webm.mime === 'video/webm' && webm.id !== talkId && itemMedia(silentGame) === webm.id, `the item is on the new file, talk.webm, video/webm (${JSON.stringify(webm)})`);
+  assert(
+    webm.mime === 'video/webm' && webm.id !== talkId && itemMedia(silentGame) === webm.id,
+    `the item is on the new file, talk.webm, video/webm (${JSON.stringify(webm)})`,
+  );
   await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
-  const webmBytes = await card('talk.webm').locator('video').evaluate(async (v) => {
-    const b = new Uint8Array(await (await fetch(v.src)).arrayBuffer());
-    let bin = '';
-    for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000));
-    return btoa(bin);
-  });
+  const webmBytes = await card('talk.webm')
+    .locator('video')
+    .evaluate(async (v) => {
+      const b = new Uint8Array(await (await fetch(v.src)).arrayBuffer());
+      let bin = '';
+      for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000));
+      return btoa(bin);
+    });
   const read = await readBack(fx, Buffer.from(webmBytes, 'base64'));
   assert(read.video === 'vp9' && read.audio === null && read.format === 'WebM', `with its picture and no sound track (${JSON.stringify(read)})`);
   assert((await historyRows()).includes('Repackaged a video as WebM without its sound'), 'History: “Repackaged a video as WebM without its sound”');
@@ -278,7 +332,8 @@ try {
   await dropOnMedia([{ name: 'ac3.mka', type: 'audio/x-matroska', buffer: files.find((f) => f.name === 'ac3.mka').buffer }]);
   await notice.waitFor();
   assert(
-    (await noticeText()) === '⚠ “ac3.mka” won’t play in this browser: it’s AC-3 (Dolby Digital), which this browser can’t play or convert. Convert it to MP3 or M4A with an audio or video app first.',
+    (await noticeText()) ===
+      '⚠ “ac3.mka” won’t play in this browser: it’s AC-3 (Dolby Digital), which this browser can’t play or convert. Convert it to MP3 or M4A with an audio or video app first.',
     `the note says why and what to do (${await noticeText()})`,
   );
   assert(
@@ -303,16 +358,24 @@ try {
   const win = page.getByRole('dialog', { name: '🔄 Convert 2 files' });
   await win.waitFor();
   const rows = win.locator('[data-convert-row]');
-  await win.getByText(/^About \d+ KB · MP4 \(MP3\)$/).nth(1).waitFor({ timeout: 30_000 });
+  await win
+    .getByText(/^About \d+ KB · MP4 \(MP3\)$/)
+    .nth(1)
+    .waitFor({ timeout: 30_000 });
   const rowTexts = (await rows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
   assert(
     rowTexts.length === 2 &&
-      rowTexts.every((t) => t.includes('This browser can’t open MPEG-TS files, but its sound (MP3) is fine: it can be repackaged as an MP4 in seconds, with nothing lost.')) &&
+      rowTexts.every((t) =>
+        t.includes('This browser can’t open MPEG-TS files, but its sound (MP3) is fine: it can be repackaged as an MP4 in seconds, with nothing lost.'),
+      ) &&
       /^🎬 two-a\.mts · 2 s · \d+ KB/.test(rowTexts[0]),
     `a row each: ${rowTexts.join(' | ')}`,
   );
   await win.getByRole('button', { name: 'Repackage 2 files' }).click();
-  await win.getByText(/^✓ MP4 · \d+ KB$/).nth(1).waitFor({ timeout: 60_000 });
+  await win
+    .getByText(/^✓ MP4 · \d+ KB$/)
+    .nth(1)
+    .waitFor({ timeout: 60_000 });
   const waited = await page.evaluate(() => (window.__seen ?? []).some((t) => t.includes('(+1 waiting)')));
   assert(waited, 'the header’s pill said “(+1 waiting)” while the first was made');
   await toasted('🔄 2 files converted. Ctrl+Z puts the old ones back, one at a time.');
@@ -332,11 +395,14 @@ try {
   assert(!(await card('clip.mkv').locator('[data-repack]').count()), 'clip.mkv on no 🤫 card: no ↻ on its card');
   await page.locator('nav > button', { hasText: '🤫 Cards' }).click();
   await page.getByRole('button', { name: '＋ Add card' }).click();
-  const clipDrop = await page.evaluateHandle((b64) => {
-    const d = new DataTransfer();
-    d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'clip.mkv', { type: 'video/x-matroska' }));
-    return d;
-  }, files.find((f) => f.name === 'clip.mkv').buffer.toString('base64'));
+  const clipDrop = await page.evaluateHandle(
+    (b64) => {
+      const d = new DataTransfer();
+      d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'clip.mkv', { type: 'video/x-matroska' }));
+      return d;
+    },
+    files.find((f) => f.name === 'clip.mkv').buffer.toString('base64'),
+  );
   await page.locator('main .canvas').dispatchEvent('drop', { dataTransfer: clipDrop });
   await inspectorIn(page).locator('h4', { hasText: 'Video' }).waitFor();
   await page.getByRole('button', { name: '📱 On their phone' }).click();
@@ -344,12 +410,12 @@ try {
   const kindNote = phone.locator('.notes li.warn', { hasText: 'phones can’t play this kind of video' });
   const repack = kindNote.getByRole('button', { name: '↻ Repackage as WebM (for everyone, nothing lost)' });
   await repack.waitFor({ timeout: 30_000 });
-  await lineOf('has a video phones can\'t open: repackage it as a WebM (↻, nothing lost)').waitFor();
+  await lineOf("has a video phones can't open: repackage it as a WebM (↻, nothing lost)").waitFor();
   assert(true, 'the checklist’s line says ↻ too');
   // Before the game there's no ↻: its line there offers 🗜, a copy phones can play.
   await page.getByRole('button', { name: '▶ Play' }).click();
   const preChecks = page.locator('[data-checks]');
-  const kindLine = preChecks.locator('li', { hasText: 'has a video phones can\'t play: make a copy they can play (🗜)' });
+  const kindLine = preChecks.locator('li', { hasText: "has a video phones can't play: make a copy they can play (🗜)" });
   await kindLine.waitFor({ state: 'attached', timeout: 30_000 });
   assert(
     (await kindLine.getByRole('button', { name: '🗜 Make smaller' }).count()) === 1 && !(await preChecks.innerText()).includes('↻'),
@@ -367,18 +433,21 @@ try {
   await toasted('↻ Repackaged as WebM: nothing lost, and phones can open it now. Ctrl+Z puts the old one back.');
   const clipGame = await draftWhen((g) => !!refNamed(g, 'clip.webm'), 'clip.webm');
   assert(refNamed(clipGame, 'clip.webm').mime === 'video/webm' && !refNamed(clipGame, 'clip.mkv'), '↻: clip.webm in its place, and the 📱 note is gone');
-  await lineOf('phones can\'t open').waitFor({ state: 'detached' });
+  await lineOf("phones can't open").waitFor({ state: 'detached' });
   assert(true, 'and the checklist’s line');
 
   // 5b. talk.mkv (VP9, AC-3: it plays here without its sound) on a 🤫 card: phones can't open an MKV and nothing makes
   // its sound, so the 📱 preview's 🗜 makes a copy they can play, without its sound (it was refused).
   await page.locator('nav > button', { hasText: '🤫 Cards' }).click();
   await page.getByRole('button', { name: '＋ Add card' }).click();
-  const talkCardDrop = await page.evaluateHandle((b64) => {
-    const d = new DataTransfer();
-    d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'talk.mkv', { type: 'video/x-matroska' }));
-    return d;
-  }, files.find((f) => f.name === 'talk.mkv').buffer.toString('base64'));
+  const talkCardDrop = await page.evaluateHandle(
+    (b64) => {
+      const d = new DataTransfer();
+      d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'talk.mkv', { type: 'video/x-matroska' }));
+      return d;
+    },
+    files.find((f) => f.name === 'talk.mkv').buffer.toString('base64'),
+  );
   await page.locator('main .canvas').dispatchEvent('drop', { dataTransfer: talkCardDrop });
   await inspectorIn(page).locator('h4', { hasText: 'Video' }).waitFor();
   if (!(await phone.isVisible())) await page.getByRole('button', { name: '📱 On their phone' }).click();
@@ -403,10 +472,14 @@ try {
   await dropOnMedia([{ name: 'dvd.mts', type: 'video/mp2t', buffer: dvd }]);
   const dvdSays = await checked('dvd.mts');
   const dvdWhy = 'Its video is MPEG-2, which this browser can’t play or convert. Convert it to MP4 (H.264) with a video app first (HandBrake is free).';
-  assert(dvdSays.verdict === 'fails' && dvdSays.text.endsWith('· ⚠ won’t play here') && (await whyOn('dvd.mts')) === dvdWhy, `dvd.mts (MPEG-2, MP3): “${dvdSays.text}”, and why (${await whyOn('dvd.mts')})`);
+  assert(
+    dvdSays.verdict === 'fails' && dvdSays.text.endsWith('· ⚠ won’t play here') && (await whyOn('dvd.mts')) === dvdWhy,
+    `dvd.mts (MPEG-2, MP3): “${dvdSays.text}”, and why (${await whyOn('dvd.mts')})`,
+  );
   const dvdFoot = card('dvd.mts').locator('.foot');
   assert(
-    !(await dvdFoot.getByRole('button', { name: /🔄|↻/ }).count()) && (await dvdFoot.getByRole('button', { name: 'Replace everywhere…' }).evaluate((b) => b.classList.contains('primary'))),
+    !(await dvdFoot.getByRole('button', { name: /🔄|↻/ }).count()) &&
+      (await dvdFoot.getByRole('button', { name: 'Replace everywhere…' }).evaluate((b) => b.classList.contains('primary'))),
     'no 🔄 Convert: Replace everywhere… is its strong button',
   );
 

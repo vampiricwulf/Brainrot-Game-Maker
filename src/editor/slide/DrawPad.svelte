@@ -168,7 +168,10 @@
   /** The drawn part (erased pixels don't count), cropped with a little room. */
   function contentBox(ctx: CanvasRenderingContext2D): { x: number; y: number; w: number; h: number } | null {
     const data = ctx.getImageData(0, 0, SLIDE_W, SLIDE_H).data;
-    let x0 = SLIDE_W, y0 = SLIDE_H, x1 = -1, y1 = -1;
+    let x0 = SLIDE_W,
+      y0 = SLIDE_H,
+      x1 = -1,
+      y1 = -1;
     // Every other pixel is plenty to find the edges.
     for (let y = 0; y < SLIDE_H; y += 2)
       for (let x = 0; x < SLIDE_W; x += 2)
@@ -265,11 +268,14 @@
     </div>
     <div class="row tools" role="toolbar" aria-label="Drawing tools">
       <button class:on={tool === 'pen'} aria-pressed={tool === 'pen'} onclick={() => (tool = 'pen')} title="Pen (B)">✏ Pen</button>
-      <button class:on={tool === 'fill'} aria-pressed={tool === 'fill'} onclick={() => (tool = 'fill')} title="Filled shape: draw its outline (F)">⬟ Filled shape</button>
+      <button class:on={tool === 'fill'} aria-pressed={tool === 'fill'} onclick={() => (tool = 'fill')} title="Filled shape: draw its outline (F)"
+        >⬟ Filled shape</button
+      >
       <button class:on={tool === 'erase'} aria-pressed={tool === 'erase'} onclick={() => (tool = 'erase')} title="Eraser (E)">🧽 Eraser</button>
       <span class="sep"></span>
       {#each COLORS as c (c)}
-        <button class="swatch" class:on={color === c} aria-pressed={color === c} style:background={c} onclick={() => (color = c)} aria-label="Color {c}"></button>
+        <button class="swatch" class:on={color === c} aria-pressed={color === c} style:background={c} onclick={() => (color = c)} aria-label="Color {c}"
+        ></button>
       {/each}
       <ColorBox bind:value={color} aria-label="Pen color" />
       <span class="sep"></span>

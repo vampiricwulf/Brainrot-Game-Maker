@@ -170,7 +170,11 @@ async function next(): Promise<void> {
   };
   try {
     const r = await w(ctl);
-    end = stop.signal.aborted ? { stopped: true } : 'failed' in r ? { failed: r.failed, ...(r.toast ? { toast: r.toast } : {}) } : { done: r.toast, ...(r.media ? { media: r.media } : {}) };
+    end = stop.signal.aborted
+      ? { stopped: true }
+      : 'failed' in r
+        ? { failed: r.failed, ...(r.toast ? { toast: r.toast } : {}) }
+        : { done: r.toast, ...(r.media ? { media: r.media } : {}) };
   } catch (e) {
     end = stop.signal.aborted || (e as Error)?.name === 'AbortError' ? { stopped: true } : wentWrong(job);
     if (!('stopped' in end)) console.warn('A file job failed', e);
@@ -187,7 +191,8 @@ async function next(): Promise<void> {
   // (A dialog showing it says how it ended: no toast then, but a screen reader still hears it. One of several started
   // together: a toast says how they all went, once the last one ends.)
   const quiet = quietly.delete(j.id);
-  const said = 'done' in end ? end.done : 'failed' in end ? (end.toast ?? (job.kind === 'phone' ? `🗜 ${end.failed}` : end.failed)) : 'Stopped: nothing was changed.';
+  const said =
+    'done' in end ? end.done : 'failed' in end ? (end.toast ?? (job.kind === 'phone' ? `🗜 ${end.failed}` : end.failed)) : 'Stopped: nothing was changed.';
   const together = !!job.batch && (batches.get(job.batch)?.length ?? 0) > 1;
   if (!quiet) {
     if (state.watched.includes(j.id) || together) announce(said);
@@ -200,7 +205,11 @@ async function next(): Promise<void> {
 /** How a job that broke ends (something went wrong that it didn't foresee). */
 function wentWrong(j: Job): JobEnd {
   if (j.kind === 'phone') return { failed: 'The copy didn’t come out right: nothing was changed.' };
-  if (j.kind === 'convert') return { failed: 'It didn’t come out right: nothing was changed.', toast: `🔄 A ${j.what} couldn’t be converted: it didn’t come out right. Nothing was changed.` };
+  if (j.kind === 'convert')
+    return {
+      failed: 'It didn’t come out right: nothing was changed.',
+      toast: `🔄 A ${j.what} couldn’t be converted: it didn’t come out right. Nothing was changed.`,
+    };
   return { failed: 'The edit didn’t come out right: nothing was changed.' };
 }
 

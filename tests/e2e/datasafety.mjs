@@ -3,7 +3,25 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, answerReplace, editorReady, exportHtml, lineOf, nameGame, noDailyDoubles, openGameFile, png, assert, launchChromium, boardIn, boardTilesIn, hostPanelIn, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  answerReplace,
+  editorReady,
+  exportHtml,
+  lineOf,
+  nameGame,
+  noDailyDoubles,
+  openGameFile,
+  png,
+  assert,
+  launchChromium,
+  boardIn,
+  boardTilesIn,
+  hostPanelIn,
+  roundTabsIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -34,7 +52,10 @@ const saveBtn = header.getByRole('button', { name: 'Save', exact: true });
 const saveDot = () => saveBtn.getAttribute('data-changed').then((d) => d !== null);
 const historyCount = async () => Number((await page.getByRole('button', { name: /🕘 History/ }).innerText()).match(/\((\d+)\)/)?.[1] ?? 0);
 const mediaWidth = () =>
-  page.locator('.card img').first().evaluate((i) => new Promise((r) => (i.complete && i.naturalWidth ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
+  page
+    .locator('.card img')
+    .first()
+    .evaluate((i) => new Promise((r) => (i.complete && i.naturalWidth ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
 /** How wide the picture stored for file `id` is (0: none stored). */
 const storedWidth = (id) =>
   page.evaluate(
@@ -73,7 +94,10 @@ try {
     await p.goto(url);
     await p.locator('header').getByText('⚠ Autosave unavailable here: use Save').waitFor();
     const first = await p.locator('.first-round').innerText();
-    assert(first.includes("This browser isn't keeping your game") && !first.includes('kept in this browser'), 'with storage blocked from the start, the first screen says the game isn’t kept, to 💾 Save it');
+    assert(
+      first.includes("This browser isn't keeping your game") && !first.includes('kept in this browser'),
+      'with storage blocked from the start, the first screen says the game isn’t kept, to 💾 Save it',
+    );
     // In a narrow window the header's warning gives way like the saved note: one line, cut short (its tooltip says it
     // all), so the header doesn't grow taller and push the editor down.
     for (const width of [860, 800, 740]) {
@@ -95,7 +119,10 @@ try {
     await p.goto(url);
     const slow = p.getByText('This is taking longer than usual: the browser’s storage may not be answering.');
     await slow.waitFor({ timeout: 15000 });
-    assert((await p.getByRole('button', { name: '⟳ Reload' }).count()) === 1, 'storage that never answers: after a while the loading screen says so, with ⟳ Reload');
+    assert(
+      (await p.getByRole('button', { name: '⟳ Reload' }).count()) === 1,
+      'storage that never answers: after a while the loading screen says so, with ⟳ Reload',
+    );
     await hung.close();
   }
 
@@ -169,23 +196,40 @@ try {
   // ---------- ℹ About says whether the browser keeps the storage ----------
   await page.getByRole('button', { name: /^More:/ }).click();
   await page.getByRole('menuitem', { name: 'ℹ About' }).click();
-  await page.getByRole('dialog', { name: 'About Brainrot Games Maker' }).getByText(/^Storage: (kept|may be cleared)/).waitFor();
+  await page
+    .getByRole('dialog', { name: 'About Brainrot Games Maker' })
+    .getByText(/^Storage: (kept|may be cleared)/)
+    .waitFor();
   assert(true, 'ℹ About says whether the storage is kept for good');
   // Where it's kept, as it is: shared by every copy of the app opened from a file, and what goes to the buzzer server.
   const where = await page.getByRole('dialog', { name: 'About Brainrot Games Maker' }).innerText();
   assert(
-    where.includes('every copy of this app opened from a file shares it') && where.includes('except to the buzzer server while phones play') && !where.includes('this file in another folder'),
+    where.includes('every copy of this app opened from a file shares it') &&
+      where.includes('except to the buzzer server while phones play') &&
+      !where.includes('this file in another folder'),
     'ℹ About says every copy of the app opened from a file shares the storage, and what goes to the buzzer server',
   );
   await page.keyboard.press('Escape');
 
   // ---------- The first Save asks for a name ----------
-  const [pack] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click().then(() => nameGame(page, 'Safe Game'))]);
-  assert(pack.suggestedFilename() === 'Safe-Game.brainrot' && (await page.locator('input.title').inputValue()) === 'Safe Game', 'the first Save of an untitled game asks for its name, and names the file after it');
+  const [pack] = await Promise.all([
+    page.waitForEvent('download'),
+    page
+      .getByRole('button', { name: 'Save', exact: true })
+      .click()
+      .then(() => nameGame(page, 'Safe Game')),
+  ]);
+  assert(
+    pack.suggestedFilename() === 'Safe-Game.brainrot' && (await page.locator('input.title').inputValue()) === 'Safe Game',
+    'the first Save of an untitled game asks for its name, and names the file after it',
+  );
   const packPath = resolve('test-results/datasafety.brainrot');
   await pack.saveAs(packPath);
   await page.waitForFunction(() => !document.querySelector('header button.save-file[data-changed]'));
-  assert(/^Last saved as a file at \d/.test(await saveBtn.getAttribute('title')), `saved: 💾 Save has no dot, and its tooltip says when (${await saveBtn.getAttribute('title')})`);
+  assert(
+    /^Last saved as a file at \d/.test(await saveBtn.getAttribute('title')),
+    `saved: 💾 Save has no dot, and its tooltip says when (${await saveBtn.getAttribute('title')})`,
+  );
 
   // ---------- New keeps the game it replaces ----------
   // Just saved: New asks nothing.
@@ -197,7 +241,10 @@ try {
   // An empty game is replaced without a word, and isn't kept.
   await reopenBtn.click();
   await page.getByText('Reopened “Safe Game”').waitFor();
-  assert((await page.locator('.cat textarea').first().inputValue()) === 'While full' && (await historyCount()) === 5, '↶ Reopen previous game brings it back with its undo history');
+  assert(
+    (await page.locator('.cat textarea').first().inputValue()) === 'While full' && (await historyCount()) === 5,
+    '↶ Reopen previous game brings it back with its undo history',
+  );
   await page.keyboard.press('Control+z');
   assert((await page.locator('input.title').inputValue()) === 'Untitled Game', 'and Ctrl+Z goes on through it (the name given at Save)');
   await page.keyboard.press('Control+y');
@@ -215,7 +262,13 @@ try {
   await shot('datasafety-ask');
   await answerReplace(page, 'Cancel');
   assert((await page.locator('.cat textarea').first().inputValue()) === 'Unsaved', 'New with unsaved changes asks: Cancel keeps the game');
-  const [first] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'New', exact: true }).click().then(() => answerReplace(page, 'Save first'))]);
+  const [first] = await Promise.all([
+    page.waitForEvent('download'),
+    page
+      .getByRole('button', { name: 'New', exact: true })
+      .click()
+      .then(() => answerReplace(page, 'Save first')),
+  ]);
   await reopenBtn.waitFor();
   assert(first.suggestedFilename() === 'Safe-Game.brainrot' && (await roundTabsIn(page).count()) === 0, 'Save first saves, then starts the new game');
 
@@ -233,7 +286,9 @@ try {
   await page.getByText('Reopened “Sample game”').waitFor();
   await editorReady(page);
   // (The sample's Jeopardy! round, not its Final Jeopardy!.)
-  await roundTabsIn(page).and(page.getByRole('button', { name: 'Jeopardy!', exact: true })).click();
+  await roundTabsIn(page)
+    .and(page.getByRole('button', { name: 'Jeopardy!', exact: true }))
+    .click();
   await page.locator('.cat textarea').first().fill('Changed');
   await page.locator('.cat textarea').nth(1).click();
   // 💾 Save • and the browser's note keep their spaces, and where the header shows their words, the note is never cut
@@ -289,7 +344,10 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('[role="dialog"] button.pick'));
   const firstPick = await page.evaluate(() => document.activeElement.querySelector('b').textContent);
   await page.keyboard.press('ArrowDown');
-  assert(await page.evaluate((t) => document.activeElement?.matches('button.pick') && document.activeElement.querySelector('b').textContent !== t, firstPick), 'Open…: the keys on the first game, ↓ goes to the next');
+  assert(
+    await page.evaluate((t) => document.activeElement?.matches('button.pick') && document.activeElement.querySelector('b').textContent !== t, firstPick),
+    'Open…: the keys on the first game, ↓ goes to the next',
+  );
   await page.keyboard.press('Delete');
   const deleteAsk = page.getByRole('alertdialog').filter({ hasText: 'from Recent games?' });
   await deleteAsk.waitFor();
@@ -299,7 +357,8 @@ try {
   await openDialog.getByRole('button', { name: /^Safe Game/ }).click({ button: 'right' });
   const rowMenu = page.getByRole('menu');
   assert(
-    (await rowMenu.getByRole('menuitem', { name: /▶ Open/ }).count()) === 1 && (await rowMenu.getByRole('menuitem', { name: /🗑 Delete from Recent games…/ }).count()) === 1,
+    (await rowMenu.getByRole('menuitem', { name: /▶ Open/ }).count()) === 1 &&
+      (await rowMenu.getByRole('menuitem', { name: /🗑 Delete from Recent games…/ }).count()) === 1,
     'a right-click on a recent game gives its menu: ▶ Open, 🗑 Delete from Recent games…',
   );
   await page.keyboard.press('Escape');
@@ -336,7 +395,8 @@ try {
   assert(
     (await openDialog.isVisible()) &&
       (await openDialog.locator('button.pick').count()) === rowsBefore - 1 &&
-      ((await openDialog.locator('button.pick').count()) > 0 || (await openDialog.getByText('None yet: a game New or Open… replaces is kept here.').count()) === 1),
+      ((await openDialog.locator('button.pick').count()) > 0 ||
+        (await openDialog.getByText('None yet: a game New or Open… replaces is kept here.').count()) === 1),
     `🗑 Delete takes a game off the list, and Open… stays open (${rowsBefore} → ${await openDialog.locator('button.pick').count()} games)`,
   );
   await page.keyboard.press('Escape');
@@ -349,7 +409,9 @@ try {
   await page.evaluate(() => {
     window.__opening = [];
     const editor = document.querySelector('.editor');
-    new MutationObserver(() => window.__opening.push({ text: editor.querySelector('header').textContent, inert: editor.querySelector(':scope > .body').inert })).observe(editor, {
+    new MutationObserver(() =>
+      window.__opening.push({ text: editor.querySelector('header').textContent, inert: editor.querySelector(':scope > .body').inert }),
+    ).observe(editor, {
       subtree: true,
       childList: true,
       characterData: true,
@@ -357,22 +419,29 @@ try {
     });
   });
   await openGameFile(page, { name: 'Holiday photos.brainrot', mimeType: 'application/octet-stream', buffer: Buffer.from('not a game at all') });
-  const notGame = page.getByRole('alertdialog').filter({ hasText: '“Holiday photos.brainrot” isn’t a game this app can open. Game files are made with 💾 Save' });
+  const notGame = page
+    .getByRole('alertdialog')
+    .filter({ hasText: '“Holiday photos.brainrot” isn’t a game this app can open. Game files are made with 💾 Save' });
   await notGame.waitFor();
   assert(
     (await page.evaluate(() => window.__opening)).some((s) => s.text.includes('📂 Opening “Holiday photos.brainrot”…') && s.inert),
     'while a game file is read, the header says it is opening it, and the game can’t be changed meanwhile',
   );
-  assert((await page.getByRole('dialog', { name: /^Open “/ }).count()) === 0, 'a file that isn’t a game says so, without asking Save first / Discard about the game open');
+  assert(
+    (await page.getByRole('dialog', { name: /^Open “/ }).count()) === 0,
+    'a file that isn’t a game says so, without asking Save first / Discard about the game open',
+  );
   await notGame.getByRole('button', { name: 'OK' }).click();
   assert((await page.locator('.cat textarea').first().inputValue()) === 'Not saved yet', 'and the game open stays as it was');
 
   // ---------- A game pack dropped as .zip opens ----------
   // (The pack's own first category: the board shows it once the game has opened. The game open before has the same
   // title, so that alone doesn't tell.)
-  const packCat = JSON.parse(await (await import('jszip')).default.loadAsync(readFileSync(packPath)).then((z) => z.file('game.json').async('text'))).rounds[0].categories[0].title;
+  const packCat = JSON.parse(await (await import('jszip')).default.loadAsync(readFileSync(packPath)).then((z) => z.file('game.json').async('text'))).rounds[0]
+    .categories[0].title;
   // (And takes edits again: they'd be lost while it's still opening.)
-  const showsPack = () => page.waitForFunction((v) => document.querySelector('.cat textarea')?.value === v && !document.querySelector('.editor > .body')?.inert, packCat);
+  const showsPack = () =>
+    page.waitForFunction((v) => document.querySelector('.cat textarea')?.value === v && !document.querySelector('.editor > .body')?.inert, packCat);
   const zipped = await page.evaluateHandle((b64) => {
     const dt = new DataTransfer();
     dt.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'Safe Game.zip', { type: 'application/zip' }));
@@ -381,7 +450,10 @@ try {
   await page.locator('.body').dispatchEvent('drop', { dataTransfer: zipped });
   await answerReplace(page, 'Discard');
   await showsPack();
-  assert((await page.locator('input.title').inputValue()) === 'Safe Game', 'a game pack dropped on the editor as .zip opens, as Browse for a game file… takes it');
+  assert(
+    (await page.locator('input.title').inputValue()) === 'Safe Game',
+    'a game pack dropped on the editor as .zip opens, as Browse for a game file… takes it',
+  );
   // On a tile of the board (where a picture dropped goes on the clue), a game file opens too.
   await page.locator('.cat textarea').first().fill('Changed');
   await page.locator('.cat textarea').nth(1).click();
@@ -393,7 +465,10 @@ try {
   await page.locator('.tile').first().dispatchEvent('drop', { dataTransfer: onTile });
   await answerReplace(page, 'Discard');
   await showsPack();
-  assert((await page.getByRole('dialog', { name: /Where the dropped picture goes/ }).count()) === 0, 'a game file dropped on a board tile opens, and isn’t taken for a picture');
+  assert(
+    (await page.getByRole('dialog', { name: /Where the dropped picture goes/ }).count()) === 0,
+    'a game file dropped on a board tile opens, and isn’t taken for a picture',
+  );
   // Dropped on the Open… window (its foot says to drop one anywhere), a game file opens and the window goes, as after
   // Browse… (it stayed up over the game, with its lists from before).
   await page.locator('.cat textarea').first().fill('Changed');
@@ -426,11 +501,17 @@ try {
   await openGameFile(page, resolve('test-results/datasafety-hand.json'));
   await page.getByText(/^Opened “/).waitFor();
   await roundTabsIn(page).first().click();
-  assert((await page.locator('.tile').count()) === 30, 'a hand-edited game missing its row values, a slide and a color, with a category id twice, opens with them filled in');
+  assert(
+    (await page.locator('.tile').count()) === 30,
+    'a hand-edited game missing its row values, a slide and a color, with a category id twice, opens with them filled in',
+  );
   await page.locator('[data-tile="2,0"]').click();
   const plainText = page.getByRole('dialog', { name: 'Edit clue' }).locator('[data-field="q"]');
   await plainText.waitFor();
-  assert((await plainText.inputValue()) === 'Who painted the Mona Lisa?' && !errors.length, 'a text item with nothing but its words opens in the clue editor, as a new text box');
+  assert(
+    (await plainText.inputValue()) === 'Who painted the Mona Lisa?' && !errors.length,
+    'a text item with nothing but its words opens in the clue editor, as a new text box',
+  );
   await page.keyboard.press('Escape');
   // A category short of clues (or with none) gets empty tiles: the board opens whole, no broken page.
   game.rounds[0].categories[0].clues = game.rounds[0].categories[0].clues.slice(0, 2);
@@ -463,21 +544,30 @@ try {
   await replace.setFiles([{ name: 'blue.png', mimeType: 'image/png', buffer: png(0, 0, 255, 80, 40) }]);
   // The games kept in Recent games have this file too (the same pack, opened again): they keep the old picture.
   await page.waitForFunction((id) => document.querySelector('.card [data-media-name]')?.getAttribute('data-media-name') !== id, red);
-  assert((await storedWidth(red)) === 40 && (await storedWidth(await cardId())) === 80, 'Replace everywhere… on a file games in Recent games share gives this game the new one as a file of its own: theirs is unchanged');
+  assert(
+    (await storedWidth(red)) === 40 && (await storedWidth(await cardId())) === 80,
+    'Replace everywhere… on a file games in Recent games share gives this game the new one as a file of its own: theirs is unchanged',
+  );
   await page.waitForTimeout(800);
   const player = await context.newPage();
   player.on('pageerror', (e) => errors.push(`[player] ${e.message}`));
   await player.goto(pathToFileURL(exported).href);
   await player.getByRole('button', { name: '▶ Play' }).waitFor();
   const home = await player.locator('.home').innerText();
-  assert(home.includes("host's copy") && home.includes('1 board · 22 clues') && !home.includes('editor'), 'the player file says it is the host’s copy, and counts its rounds (22 clues: the short categories’ empty tiles aren’t clues)');
+  assert(
+    home.includes("host's copy") && home.includes('1 board · 22 clues') && !home.includes('editor'),
+    'the player file says it is the host’s copy, and counts its rounds (22 clues: the short categories’ empty tiles aren’t clues)',
+  );
   if (process.env.SHOTS) await player.screenshot({ path: `${process.env.SHOTS}/datasafety-player.png` });
   await player.close();
   await page.reload();
   await page.getByRole('button', { name: /🖼️ Media/ }).click();
   assert((await mediaWidth()) === 80, 'opening an older export leaves the builder’s replaced file alone');
   const html1 = readFileSync(exported, 'utf8');
-  assert(html1.includes('Loading the game…') && /data-size="\d+"/.test(html1), 'an exported file says it is loading while it is read, and how long its pack is');
+  assert(
+    html1.includes('Loading the game…') && /data-size="\d+"/.test(html1),
+    'an exported file says it is loading while it is read, and how long its pack is',
+  );
   // Cut off halfway (an unfinished download): it says so.
   const packAt = html1.indexOf('id="jb-pack"');
   const packEnd = html1.indexOf('</script>', packAt);
@@ -496,7 +586,10 @@ try {
   big.on('pageerror', (e) => errors.push(`[too big] ${e.message}`));
   await big.goto(pathToFileURL(resolve('test-results/datasafety-toobig.html')).href);
   await big.getByText('This game is too big for this browser to open').waitFor();
-  assert((await big.getByRole('button', { name: 'Open…' }).count()) === 0, 'an exported file whose game is too big to read says so, instead of opening the editor');
+  assert(
+    (await big.getByRole('button', { name: 'Open…' }).count()) === 0,
+    'an exported file whose game is too big to read says so, instead of opening the editor',
+  );
   await big.close();
 
   // ---------- Storage full during a game: the game in progress isn't saved, so closing the tab asks first ----------
@@ -512,7 +605,10 @@ try {
   await page.evaluate(() => (window.__full = true));
   await boardTilesIn(boardIn(page)).first().click();
   await page.getByText("Storage is full, so autosave stopped: the game in progress isn't being saved").waitFor();
-  assert((await hostPanelIn(page).locator('.unsaved').innerText()) === '⚠ Not saving', 'storage full during a game: it says the game in progress isn’t being saved (not "use Save"), and the host panel keeps saying so');
+  assert(
+    (await hostPanelIn(page).locator('.unsaved').innerText()) === '⚠ Not saving',
+    'storage full during a game: it says the game in progress isn’t being saved (not "use Save"), and the host panel keeps saying so',
+  );
   const leaveGame = new Promise((r) => (page.once('dialog', (d) => (r(d.type()), d.dismiss())), page.once('close', () => r('closed'))));
   await page.close({ runBeforeUnload: true });
   assert((await leaveGame) === 'beforeunload' && !page.isClosed(), 'closing the tab then asks first, though the game itself was saved');

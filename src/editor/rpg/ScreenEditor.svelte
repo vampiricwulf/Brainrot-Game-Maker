@@ -33,9 +33,7 @@
   /** A catalog item placed on the screen: its icon (or its name as text), ready to be picked up. */
   function itemObject(itemId: string): SlideElement {
     const it = game.items?.find((i) => i.id === itemId);
-    const el: SlideElement = it?.icon
-      ? newImageEl(it.icon, 200, 200)
-      : { ...newTextEl(`📦 ${it?.name ?? 'Item'}`), x: 760, y: 480, w: 400, h: 120, size: 60 };
+    const el: SlideElement = it?.icon ? newImageEl(it.icon, 200, 200) : { ...newTextEl(`📦 ${it?.name ?? 'Item'}`), x: 760, y: 480, w: 400, h: 120, size: 60 };
     el.name = it?.name ?? 'Item';
     el.role = { class: 'item', item: itemId, qty: 1 };
     return clear(el);
@@ -94,7 +92,11 @@
   function menuextras(el: SlideElement): { label: string; title?: string; onclick: () => void }[] {
     const buttons = !!el.role && el.role.class !== 'spawn' && el.role.class !== 'blocker';
     return [
-      { label: `${el.secret ? '✓ ' : ''}🤫 Secret`, title: 'Viewers don’t see it until you reveal it in play', onclick: () => (el.secret = el.secret ? undefined : true) },
+      {
+        label: `${el.secret ? '✓ ' : ''}🤫 Secret`,
+        title: 'Viewers don’t see it until you reveal it in play',
+        onclick: () => (el.secret = el.secret ? undefined : true),
+      },
       ...(buttons
         ? [
             {

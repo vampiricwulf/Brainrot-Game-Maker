@@ -1,8 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cleanLink, cssUrl, driveUrls, embedName, embedOpenUrl, imageFallback, isLinkProblem, isMediaHost, isWebUrl, linkLifetime,
-  linkMessages, nameFromUrl, parseDrive, parseMediaLink, playerFor, youtubeId, youtubePlayerUrl,
-  type LinkKind, type LinkProblem, type LinkProblemCode, type MediaLink,
+  cleanLink,
+  cssUrl,
+  driveUrls,
+  embedName,
+  embedOpenUrl,
+  imageFallback,
+  isLinkProblem,
+  isMediaHost,
+  isWebUrl,
+  linkLifetime,
+  linkMessages,
+  nameFromUrl,
+  parseDrive,
+  parseMediaLink,
+  playerFor,
+  youtubeId,
+  youtubePlayerUrl,
+  type LinkKind,
+  type LinkProblem,
+  type LinkProblemCode,
+  type MediaLink,
 } from './links';
 
 const ID = '1AbCdEfGhIjKlMnOpQrStUvWxYz012345'; // modern 33-character id
@@ -19,8 +37,7 @@ describe('cleanLink', () => {
 });
 
 describe('parseDrive', () => {
-  const ok = (link: string, id = ID, resourceKey?: string) =>
-    expect(parseDrive(link), link).toEqual(resourceKey ? { id, resourceKey } : { id });
+  const ok = (link: string, id = ID, resourceKey?: string) => expect(parseDrive(link), link).toEqual(resourceKey ? { id, resourceKey } : { id });
 
   it('reads every file link shape', () => {
     ok(`https://drive.google.com/file/d/${ID}/view?usp=sharing`);
@@ -109,15 +126,26 @@ const rows: Row[] = [
   ['tenor media', 'https://media.tenor.com/abcDEF/cat.gif', { fetchUrls: ['https://media.tenor.com/abcDEF/cat.gif'], kindHint: 'image' }],
   ['no extension', 'https://example.com/media/12345', { fetchUrls: ['https://example.com/media/12345'], kindHint: undefined }],
   // GitHub pages → the raw file.
-  ['github blob', 'https://github.com/me/repo/blob/main/sounds/ding.mp3', { fetchUrls: ['https://raw.githubusercontent.com/me/repo/main/sounds/ding.mp3'], kindHint: 'audio' }],
-  ['github raw=true', 'https://github.com/me/repo/raw/v1.2/img/a%20b.png?raw=true', { fetchUrls: ['https://raw.githubusercontent.com/me/repo/v1.2/img/a%20b.png'] }],
+  [
+    'github blob',
+    'https://github.com/me/repo/blob/main/sounds/ding.mp3',
+    { fetchUrls: ['https://raw.githubusercontent.com/me/repo/main/sounds/ding.mp3'], kindHint: 'audio' },
+  ],
+  [
+    'github raw=true',
+    'https://github.com/me/repo/raw/v1.2/img/a%20b.png?raw=true',
+    { fetchUrls: ['https://raw.githubusercontent.com/me/repo/v1.2/img/a%20b.png'] },
+  ],
   // Dropbox share pages → the file host, keeping rlkey/st, dropping dl.
   [
     'dropbox scl/fi',
     'https://www.dropbox.com/scl/fi/abc123/clip.mp4?rlkey=KEY9&st=ST1&dl=0',
     {
       fetchUrls: ['https://dl.dropboxusercontent.com/scl/fi/abc123/clip.mp4?rlkey=KEY9&st=ST1'],
-      playUrls: ['https://dl.dropboxusercontent.com/scl/fi/abc123/clip.mp4?rlkey=KEY9&st=ST1', 'https://www.dropbox.com/scl/fi/abc123/clip.mp4?rlkey=KEY9&st=ST1&raw=1'],
+      playUrls: [
+        'https://dl.dropboxusercontent.com/scl/fi/abc123/clip.mp4?rlkey=KEY9&st=ST1',
+        'https://www.dropbox.com/scl/fi/abc123/clip.mp4?rlkey=KEY9&st=ST1&raw=1',
+      ],
       host: 'Dropbox',
     },
   ],
@@ -134,7 +162,11 @@ const rows: Row[] = [
       temporary: { when: expect.stringMatching(/^on /) as unknown as string, expiresAt: parseInt(FUTURE, 16) * 1000 },
     },
   ],
-  ['discord media host', discord('media.discordapp.net', `?ex=${FUTURE}&is=1&hm=2`), { fetchUrls: [discord('media.discordapp.net', `?ex=${FUTURE}&is=1&hm=2`), discord('cdn.discordapp.com', `?ex=${FUTURE}&is=1&hm=2`)] }],
+  [
+    'discord media host',
+    discord('media.discordapp.net', `?ex=${FUTURE}&is=1&hm=2`),
+    { fetchUrls: [discord('media.discordapp.net', `?ex=${FUTURE}&is=1&hm=2`), discord('cdn.discordapp.com', `?ex=${FUTURE}&is=1&hm=2`)] },
+  ],
   ['discord unsigned', discord('cdn.discordapp.com', ''), 'discord-unsigned'],
   ['discord half-signed', discord('cdn.discordapp.com', `?ex=${FUTURE}`), 'discord-unsigned'],
   ['discord expired', discord('cdn.discordapp.com', `?ex=${PAST}&is=1&hm=2`), 'expired'],
@@ -147,9 +179,22 @@ const rows: Row[] = [
   ['imgur album', 'https://imgur.com/a/AbC123x', 'album'],
   ['imgur gallery', 'https://imgur.com/gallery/funny-AbC123x', 'album'],
   // GIPHY
-  ['giphy page', 'https://giphy.com/gifs/funny-cat-dancing-l0HlBO7eyXzSZkJri', { fetchUrls: ['https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.mp4'], kindHint: 'video', gif: true, host: 'GIPHY' }],
-  ['giphy page for a picture', 'https://giphy.com/gifs/funny-cat-dancing-l0HlBO7eyXzSZkJri', { fetchUrls: ['https://i.giphy.com/l0HlBO7eyXzSZkJri.gif'], kindHint: 'image' }, 'image'],
-  ['giphy media v1', 'https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjEx/3o7TKSjRrfIPjeiVyM/giphy.gif?cid=1', { fetchUrls: ['https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.mp4'] }],
+  [
+    'giphy page',
+    'https://giphy.com/gifs/funny-cat-dancing-l0HlBO7eyXzSZkJri',
+    { fetchUrls: ['https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.mp4'], kindHint: 'video', gif: true, host: 'GIPHY' },
+  ],
+  [
+    'giphy page for a picture',
+    'https://giphy.com/gifs/funny-cat-dancing-l0HlBO7eyXzSZkJri',
+    { fetchUrls: ['https://i.giphy.com/l0HlBO7eyXzSZkJri.gif'], kindHint: 'image' },
+    'image',
+  ],
+  [
+    'giphy media v1',
+    'https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjEx/3o7TKSjRrfIPjeiVyM/giphy.gif?cid=1',
+    { fetchUrls: ['https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.mp4'] },
+  ],
   ['giphy i.', 'https://i.giphy.com/3o7TKSjRrfIPjeiVyM.webp', { fetchUrls: ['https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.mp4'] }],
   ['giphy clip keeps its sound', 'https://giphy.com/clips/show-name-abcDEF123', { gif: false, kindHint: 'video' }],
   // Tenor, Streamable, YouTube
@@ -161,13 +206,25 @@ const rows: Row[] = [
   ['youtube on a slide', 'https://youtu.be/dQw4w9WgXcQ?t=42', { embed: 'youtube', host: 'YouTube' }],
   ['youtube in a picker', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'embed-only', 'audio'],
   // Pixeldrain, tmpfiles, uguu
-  ['pixeldrain page', 'https://pixeldrain.com/u/AbCdEf12', { fetchUrls: ['https://pixeldrain.com/api/file/AbCdEf12'], noLive: { problem: 'hotlink', message: expect.any(String) as unknown as string } }],
+  [
+    'pixeldrain page',
+    'https://pixeldrain.com/u/AbCdEf12',
+    { fetchUrls: ['https://pixeldrain.com/api/file/AbCdEf12'], noLive: { problem: 'hotlink', message: expect.any(String) as unknown as string } },
+  ],
   ['pixeldrain list', 'https://pixeldrain.com/l/AbCdEf12', 'folder'],
-  ['tmpfiles page', 'https://tmpfiles.org/1234567/clip.mp4', { fetchUrls: ['https://tmpfiles.org/dl/1234567/clip.mp4'], temporary: { when: 'in about an hour' } }],
+  [
+    'tmpfiles page',
+    'https://tmpfiles.org/1234567/clip.mp4',
+    { fetchUrls: ['https://tmpfiles.org/dl/1234567/clip.mp4'], temporary: { when: 'in about an hour' } },
+  ],
   ['tmpfiles dl', 'https://tmpfiles.org/dl/1234567/clip.mp4', { fetchUrls: ['https://tmpfiles.org/dl/1234567/clip.mp4'] }],
   ['uguu', 'https://h.uguu.se/AbCdEf.mp3', { temporary: { when: 'in about 3 hours' }, kindHint: 'audio' }],
   // Microsoft, Box, MEGA
-  ['sharepoint', 'https://contoso.sharepoint.com/:v:/g/personal/me/EAbCd?e=xyz', { fetchUrls: ['https://contoso.sharepoint.com/:v:/g/personal/me/EAbCd?e=xyz&download=1'] }],
+  [
+    'sharepoint',
+    'https://contoso.sharepoint.com/:v:/g/personal/me/EAbCd?e=xyz',
+    { fetchUrls: ['https://contoso.sharepoint.com/:v:/g/personal/me/EAbCd?e=xyz&download=1'] },
+  ],
   ['onedrive short', 'https://1drv.ms/v/s!AbCdEf', 'onedrive-personal'],
   ['onedrive live', 'https://onedrive.live.com/?cid=1&id=2', 'onedrive-personal'],
   ['box share page', 'https://app.box.com/s/abc123', 'box-viewer'],

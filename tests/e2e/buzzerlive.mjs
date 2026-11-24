@@ -3,7 +3,30 @@
 // `wrangler dev`, local, no Cloudflare account) and two phones play on the real phone page: the queue, a wrong answer,
 // → Next in line, ↺ Reset buzzers, and a tie settled with 🎲 Roll for it. Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, goOnCheck, openBuzzerOptions, openRules, playWithPlayers, quick, startRoomOn, tap, tieThem, failureShots, assert, sleep, launchChromium, startBuzzer, boardIn, boardTilesIn, hostPanelIn, playerRowsIn, stageBoxIn, statusBarIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  checkItem,
+  goOnCheck,
+  openBuzzerOptions,
+  openRules,
+  playWithPlayers,
+  quick,
+  startRoomOn,
+  tap,
+  tieThem,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  startBuzzer,
+  boardIn,
+  boardTilesIn,
+  hostPanelIn,
+  playerRowsIn,
+  stageBoxIn,
+  statusBarIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const buzzer = await startBuzzer('buzzer-live-');
@@ -102,7 +125,11 @@ try {
     strike: getComputedStyle(e, '::after').backgroundImage.includes('gradient'),
   }));
   assert(
-    (await takenSwatch.isDisabled()) && takenLook.opacity === '1' && takenLook.border === 'dashed' && takenLook.strike && (await colours.locator('[aria-pressed="true"]').count()) === 1,
+    (await takenSwatch.isDisabled()) &&
+      takenLook.opacity === '1' &&
+      takenLook.border === 'dashed' &&
+      takenLook.strike &&
+      (await colours.locator('[aria-pressed="true"]').count()) === 1,
     `the phone shows the colours: its own ticked, Player 2’s in its own colour, struck through with a dashed edge (not a darker colour to pick) (${JSON.stringify(takenLook)})`,
   );
   // A tap on it says why nothing happens; the colours stay open.
@@ -134,7 +161,14 @@ try {
   // ---------- Any other colour, from the page's own picker: on the phone's buzzer as it moves, to the host with OK ----------
   const plateColour = () => plate1.locator('.name').evaluate((e) => getComputedStyle(e).backgroundColor);
   const seatOf = (p) => p.evaluate(() => getComputedStyle(document.getElementById('buzz')).getPropertyValue('--seat').trim());
-  const plateIs = (rgb) => host.waitForFunction((rgb) => [...document.querySelectorAll('.stage-box .plate')].some((p) => p.textContent.includes('Player 1') && getComputedStyle(p.querySelector('.name')).backgroundColor === rgb), rgb);
+  const plateIs = (rgb) =>
+    host.waitForFunction(
+      (rgb) =>
+        [...document.querySelectorAll('.stage-box .plate')].some(
+          (p) => p.textContent.includes('Player 1') && getComputedStyle(p.querySelector('.name')).backgroundColor === rgb,
+        ),
+      rgb,
+    );
   const picker = p1.getByRole('dialog', { name: 'Pick any color' });
   const hexBox = picker.getByLabel('Hex');
   const okBtn = picker.getByRole('button', { name: 'OK' });
@@ -160,13 +194,21 @@ try {
   await p1.mouse.up();
   const afterDrag = await seatOf(p1);
   assert(
-    midDrag !== '#f0e442' && afterDrag !== midDrag && (await hexBox.inputValue()) === afterDrag && Math.abs(Number(/^Color (\d+)%/.exec(await sq.getAttribute('aria-valuetext'))?.[1]) - 80) <= 1,
+    midDrag !== '#f0e442' &&
+      afterDrag !== midDrag &&
+      (await hexBox.inputValue()) === afterDrag &&
+      Math.abs(Number(/^Color (\d+)%/.exec(await sq.getAttribute('aria-valuetext'))?.[1]) - 80) <= 1,
     `dragging the square shows on the phone’s buzzer as it moves (${midDrag}, then ${afterDrag}), and in the Hex box`,
   );
   // A small phone held upright: the sheet leaves the top of the buzzer in sight, so the colour shows there as it moves.
-  for (const [width, height] of [[320, 568], [360, 640]]) {
+  for (const [width, height] of [
+    [320, 568],
+    [360, 640],
+  ]) {
     await p1.setViewportSize({ width, height });
-    const seen = await p1.evaluate(() => document.getElementById('any').getBoundingClientRect().top - Math.max(0, document.getElementById('buzz').getBoundingClientRect().top));
+    const seen = await p1.evaluate(
+      () => document.getElementById('any').getBoundingClientRect().top - Math.max(0, document.getElementById('buzz').getBoundingClientRect().top),
+    );
     if (process.env.SCREENSHOTS) await p1.screenshot({ path: `${process.env.SCREENSHOTS}/buzzer-any-color-${width}x${height}.png` });
     assert(seen >= 60, `at ${width}x${height} the picker leaves ${Math.round(seen)}px of the buzzer in sight above it`);
   }
@@ -185,14 +227,19 @@ try {
   await hue.focus();
   await p1.keyboard.press('Shift+ArrowRight');
   await p1.keyboard.press('ArrowRight');
-  assert(Number(await hue.getAttribute('aria-valuenow')) === Math.min(360, h0 + 11) && (await seatOf(p1)) !== afterDrag, 'the arrow keys move the hue strip (Shift: ten at a time), the buzzer with it');
+  assert(
+    Number(await hue.getAttribute('aria-valuenow')) === Math.min(360, h0 + 11) && (await seatOf(p1)) !== afterDrag,
+    'the arrow keys move the hue strip (Shift: ten at a time), the buzzer with it',
+  );
   await sleep(400);
   assert((await plateColour()) === 'rgb(240, 228, 66)', 'nothing is sent while it moves: the plate on the stream is still yellow');
   // Cancel: the colour they had, the palette still open.
   await picker.getByRole('button', { name: 'Cancel' }).click();
   await picker.waitFor({ state: 'hidden' });
   assert(
-    (await seatOf(p1)) === '#f0e442' && (await colours.isVisible()) && (await p1.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.dataset.own)) === '',
+    (await seatOf(p1)) === '#f0e442' &&
+      (await colours.isVisible()) &&
+      (await p1.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.dataset.own)) === '',
     'Cancel puts the yellow back on the buzzer, the palette still open and the keys back on ＋',
   );
   await p1.getByRole('button', { name: '🎨 Change your color' }).click();
@@ -200,11 +247,17 @@ try {
   await openAny();
   await hexBox.fill('#56B4E9');
   await picker.getByText('Another player has this color').waitFor();
-  assert((await okBtn.isDisabled()) && (await seatOf(p1)) === '#56b4e9', 'Player 2’s sky blue typed in: shown on the buzzer, but OK is off: "Another player has this color"');
+  assert(
+    (await okBtn.isDisabled()) && (await seatOf(p1)) === '#56b4e9',
+    'Player 2’s sky blue typed in: shown on the buzzer, but OK is off: "Another player has this color"',
+  );
   await p1.touchscreen.tap(195, 40);
   await picker.waitFor({ state: 'hidden' });
   await sleep(400);
-  assert((await seatOf(p1)) === '#f0e442' && (await plateColour()) === 'rgb(240, 228, 66)', 'a tap off it just shuts it: still yellow, on the phone and the stream');
+  assert(
+    (await seatOf(p1)) === '#f0e442' && (await plateColour()) === 'rgb(240, 228, 66)',
+    'a tap off it just shuts it: still yellow, on the phone and the stream',
+  );
   // A tap off it keeps a free colour, as the browser's own picker did.
   await openAny();
   await hexBox.fill('abcdef');
@@ -230,7 +283,9 @@ try {
   await stageBoxIn(host).locator('.cover-join').getByText(code).waitFor();
   await host.keyboard.press('k');
   assert(true, 'and on the cover card (K)');
-  await boardTilesIn(boardIn(stageBoxIn(host))).first().click();
+  await boardTilesIn(boardIn(stageBoxIn(host)))
+    .first()
+    .click();
   await big(p1).getByText('Get ready…').waitFor();
   assert(true, 'opening a clue tells the phones to get ready (buzzers still closed)');
   await host.keyboard.press('u');
@@ -242,7 +297,10 @@ try {
   await press(p2);
   await big(p2).getByText("You're answering!").waitFor();
   await small(p1).getByText('Player 2 is answering').waitFor();
-  assert((await big(p1).innerText()) === 'You can still buzz' && (await small(p1).innerText()).includes('next in line'), 'the other phone is told it can still buzz to be next in line');
+  assert(
+    (await big(p1).innerText()) === 'You can still buzz' && (await small(p1).innerText()).includes('next in line'),
+    'the other phone is told it can still buzz to be next in line',
+  );
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 2')));
   assert((await selected()).length === 1, 'the first phone in is picked in the host panel; the other phone sees who is answering');
   await press(p1);
@@ -250,12 +308,18 @@ try {
   assert(/^\d\.\d\d s behind Player 2$/.test(await small(p1).innerText()), `a second buzz still counts: "You're 2nd — ${await small(p1).innerText()}"`);
   const queue = host.getByRole('list', { name: 'Buzz order' });
   await queue.locator('li', { hasText: 'Player 1' }).waitFor();
-  assert((await queue.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(/ \+.*$/, '')).join() === '1. Player 2,2. Player 1', 'the host panel lists both, fastest first');
+  assert(
+    (await queue.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(/ \+.*$/, '')).join() === '1. Player 2,2. Player 1',
+    'the host panel lists both, fastest first',
+  );
   // The host picks Player 1 too (to give both points): that's not letting Player 2 go, so the buzzers stay shut.
   await host.keyboard.press('1');
   await host.waitForFunction(() => document.querySelectorAll('.panel .p .sel[aria-pressed="true"]').length === 2);
   await host.waitForTimeout(600);
-  assert((await big(p2).innerText()) === "You're answering!" && !(await big(p1).innerText()).includes('BUZZ'), 'picking a second player while one answers doesn’t open the buzzers again');
+  assert(
+    (await big(p2).innerText()) === "You're answering!" && !(await big(p1).innerText()).includes('BUZZ'),
+    'picking a second player while one answers doesn’t open the buzzers again',
+  );
   await host.keyboard.press('1');
   await host.waitForFunction(() => document.querySelectorAll('.panel .p .sel[aria-pressed="true"]').length === 1);
 
@@ -271,10 +335,23 @@ try {
     'a wrong answer (on $0, nothing to take) locks Player 2 out (their phone says ✘ Wrong, in red), and Player 1, next in the buzz order, answers without buzzing again',
   );
   // Undone, redone, undone, and wrong again: the buzz order stays, and Player 1 answers again (the buzzers don't open).
-  const order = () => queue.locator('li').evaluateAll((ls) => ls.map((l) => l.textContent.replace(/\s+/g, ' ').replace(/ \+.*$/, '').trim() + (l.classList.contains('now') ? '*' : '')).join());
+  const order = () =>
+    queue.locator('li').evaluateAll((ls) =>
+      ls
+        .map(
+          (l) =>
+            l.textContent
+              .replace(/\s+/g, ' ')
+              .replace(/ \+.*$/, '')
+              .trim() + (l.classList.contains('now') ? '*' : ''),
+        )
+        .join(),
+    );
   const answering = async (p, other) => {
     await big(p).getByText("You're answering!").waitFor();
-    await big(other).getByText(/You're 2nd|Wait|✘ Wrong/).waitFor();
+    await big(other)
+      .getByText(/You're 2nd|Wait|✘ Wrong/)
+      .waitFor();
   };
   await host.keyboard.press('Control+z');
   await answering(p2, p1);
@@ -323,11 +400,19 @@ try {
   await host.getByRole('button', { name: '⏭ Skip Player 1' }).click();
   await big(p2).getByText("You're answering!").waitFor();
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 2')));
-  assert((await p1.locator('#me').innerText()) === p1Score && (await small(p1).innerText()) === 'Player 2 is answering', '⏭ Skip: the one answering passes with no points taken, and the next in the buzz order answers');
+  assert(
+    (await p1.locator('#me').innerText()) === p1Score && (await small(p1).innerText()) === 'Player 2 is answering',
+    '⏭ Skip: the one answering passes with no points taken, and the next in the buzz order answers',
+  );
   await host.keyboard.press('Enter');
-  await p2.locator('#me').getByText(/^Player 2 · \$[1-9]/).waitFor();
+  await p2
+    .locator('#me')
+    .getByText(/^Player 2 · \$[1-9]/)
+    .waitFor();
   assert(true, 'Player 2 (locked out before the reset) buzzes in, is awarded, and their phone shows the new score');
-  await big(p2).getByText(/^✔ Right! \+\u2060?\$[1-9]/).waitFor();
+  await big(p2)
+    .getByText(/^✔ Right! \+\u2060?\$[1-9]/)
+    .waitFor();
   await big(p1).getByText('Player 2 got it').waitFor();
   assert(
     (await small(p1).innerText()) === 'Wait for the next clue' && (await p2.locator('#buzz.right').count()) === 1,
@@ -336,7 +421,9 @@ try {
 
   // ---------- A tie: 🎲 Roll for it sets who answers first ----------
   await host.keyboard.press('Escape');
-  await boardTilesIn(boardIn(stageBoxIn(host))).nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(host)))
+    .nth(1)
+    .click();
   await big(p1).getByText('Get ready…').waitFor();
   await host.keyboard.press('u');
   await big(p1).getByText('BUZZ!').waitFor();
@@ -345,9 +432,14 @@ try {
   await press(p1);
   await press(p2);
   // The tied names come in the order their buzzes reached the room, which varies.
-  await hostPanelIn(host).locator('.tie', { hasText: /^Tie: Player [12] & Player [12]$/ }).waitFor();
+  await hostPanelIn(host)
+    .locator('.tie', { hasText: /^Tie: Player [12] & Player [12]$/ })
+    .waitFor();
   await big(p1).getByText('Tie!').waitFor();
-  assert((await small(p2).innerText()) === 'The host decides who goes first', 'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host decides who goes first"');
+  assert(
+    (await small(p2).innerText()) === 'The host decides who goes first',
+    'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host decides who goes first"',
+  );
   // N (👁 Reveal answer) in a tie asks first: 🎲 Roll for it O ⏎, or who answers by their number; Enter rolls for it.
   await host.keyboard.press('n');
   await checkItem(host, 'tie').waitFor();
@@ -355,11 +447,21 @@ try {
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('Enter');
   await goOnCheck(host).waitFor({ state: 'detached' });
-  const won = await Promise.race([p1, p2].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
+  const won = await Promise.race(
+    [p1, p2].map((p, i) =>
+      big(p)
+        .getByText("You're answering!")
+        .waitFor({ timeout: 30_000 })
+        .then(() => i),
+    ),
+  );
   const [rollWin, rollSecond] = won === 0 ? [p1, p2] : [p2, p1];
   await small(rollWin).getByText('You won the roll').waitFor();
   await small(rollSecond).getByText('Tie — you rolled 2nd').waitFor();
-  assert((await big(rollSecond).innerText()) === "You're 2nd", `the roll sets the order: Player ${won + 1} answers, the other "You're 2nd — Tie — you rolled 2nd"`);
+  assert(
+    (await big(rollSecond).innerText()) === "You're 2nd",
+    `the roll sets the order: Player ${won + 1} answers, the other "You're 2nd — Tie — you rolled 2nd"`,
+  );
   await queue.getByText('🎲 2nd').waitFor();
   assert(true, 'the host panel queue shows the roll order (🎲 1st, 🎲 2nd)');
   await host.keyboard.press('Escape');
@@ -369,7 +471,9 @@ try {
     await host.keyboard.press('Escape');
     await host.waitForTimeout(300);
   }
-  await boardTilesIn(boardIn(stageBoxIn(host))).nth(3).click();
+  await boardTilesIn(boardIn(stageBoxIn(host)))
+    .nth(3)
+    .click();
   await big(p1).getByText('Get ready…').waitFor();
   await host.keyboard.press('u');
   await big(p1).getByText('BUZZ!').waitFor();
@@ -392,7 +496,9 @@ try {
     await host.keyboard.press('Escape');
     await host.waitForTimeout(300);
   }
-  await boardTilesIn(boardIn(stageBoxIn(host))).nth(2).click();
+  await boardTilesIn(boardIn(stageBoxIn(host)))
+    .nth(2)
+    .click();
   await big(p1).getByText('Get ready…').waitFor();
   await host.keyboard.press('u');
   await big(p1).getByText('BUZZ!').waitFor();
@@ -402,11 +508,15 @@ try {
   await p1.locator('#host-note').waitFor();
   await host.locator('.phones-down').getByText('Phones not connected').waitFor();
   await host.getByRole('button', { name: '📱 ⚠ Phones not connected' }).waitFor();
-  assert(true, "the host's line drops: phones are told, and the host panel says phones can't buzz (no stale \"Buzzers open\" or 2/2)");
+  assert(true, 'the host\'s line drops: phones are told, and the host panel says phones can\'t buzz (no stale "Buzzers open" or 2/2)');
   await press(p1);
   await big(p1).getByText("You're answering!").waitFor();
   hostTap.blocked = false;
-  await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')), null, { timeout: 30_000 });
+  await host.waitForFunction(
+    () => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')),
+    null,
+    { timeout: 30_000 },
+  );
   await small(p2).getByText('Player 1 is answering').waitFor();
   await p1.locator('#host-note').waitFor({ state: 'hidden' });
   assert(true, 'back online, the host picks the player who buzzed while it was away');
@@ -417,7 +527,10 @@ try {
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await small(p1).getByText('The host is setting up — hang on').waitFor();
-  assert((await fetch(`${base}/api/rooms/${code}`)).status !== 404 && (await p1.locator('main').getByText('The game is over').count()) === 0, 'Keep & leave keeps the room: phones say the host is setting up (not that the game is over)');
+  assert(
+    (await fetch(`${base}/api/rooms/${code}`)).status !== 404 && (await p1.locator('main').getByText('The game is over').count()) === 0,
+    'Keep & leave keeps the room: phones say the host is setting up (not that the game is over)',
+  );
   // A phone that comes in now and waits on the seat list never saw the game start: when the room closes it's told so.
   const late = watch(await (await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true })).newPage(), 'late phone');
   await late.goto(`${base}/${code}`);
@@ -449,7 +562,8 @@ try {
   assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, '⏹ Close the room… closes it once the host’s line is back: phones say the game is over');
   await late.locator('main').getByText('The host closed this room').waitFor();
   assert(
-    (await late.locator('main').innerText()).includes('If the game is still on, ask for the new code') && (await late.locator('main').getByText('The game is over').count()) === 0,
+    (await late.locator('main').innerText()).includes('If the game is still on, ask for the new code') &&
+      (await late.locator('main').getByText('The game is over').count()) === 0,
     'a phone that never saw the game start is told the host closed the room (ask for the new code), not that the game is over',
   );
   // Woken up, it finds the room gone at once: "The game is over", not "Reconnecting…" over and over.

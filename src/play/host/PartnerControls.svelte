@@ -20,11 +20,61 @@
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
-  import { cardSlides, clueCardName, clueCardWords, formatPoints, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
-    cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markCopied, markReady, marksText, pairOnly, partnerCandidates, partnerPickStep,
-    partnerRoles, partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
-    sentTo, setDescriber, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts, toKey, toName, wasCopied,
+    cardSlides,
+    clueCardName,
+    clueCardWords,
+    formatPoints,
+    PARTNER_GAMES,
+    type CardTo,
+    type Clue,
+    type ClueCard,
+    type Game,
+    type Id,
+    type PartnerState,
+    type Session,
+  } from '../../lib/model';
+  import {
+    cardCopyText,
+    cardId,
+    cardRecipients,
+    cardSends,
+    cardSummary,
+    countItems,
+    describer,
+    goesToLabel,
+    lowerWord,
+    markCopied,
+    markReady,
+    marksText,
+    pairOnly,
+    partnerCandidates,
+    partnerPickStep,
+    partnerRoles,
+    partnerRules,
+    partnerShares,
+    partnerVerdict,
+    partWho,
+    partWordOf,
+    partWords,
+    recipientsText,
+    resetRecipients,
+    sameTeam,
+    sendAgain,
+    sendCards,
+    sendChanges,
+    sendState,
+    sentSeats,
+    sentTo,
+    setDescriber,
+    setPartner,
+    setPartnerPicker,
+    setRecipients,
+    sharesText,
+    swapParts,
+    toKey,
+    toName,
+    wasCopied,
   } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
   import { clueName, nameList, partnerSteal, stealersLeft } from '../../lib/session';
@@ -133,9 +183,11 @@
    * partner row comes where the names were), so a click on that spot waits a second too (a slow double-click).
    */
   const guard = panelGuard();
-  const guarded = (control: string, run: () => void, redraw = false) => (e: MouseEvent) => {
-    if (guard.press(`partner:${control}`, e.detail, { x: e.clientX, y: e.clientY, redraw }) === 'go') run();
-  };
+  const guarded =
+    (control: string, run: () => void, redraw = false) =>
+    (e: MouseEvent) => {
+      if (guard.press(`partner:${control}`, e.detail, { x: e.clientX, y: e.clientY, redraw }) === 'go') run();
+    };
   // The question going up (Enter, the blue button, the check): the box's 📤 Send and start waits a second after it too.
   let stageWas = untrack(() => s.stage);
   $effect(() => {
@@ -160,7 +212,10 @@
     const moved = was.filter(({ card }) => old && sentSeats(session, s, card.id).includes(old) && sendState(session, s, card) === 'changed');
     if (!moved.length || !old) return;
     const which = moved.map(({ card, n }) => clueCardWords(card, n - 1)).join(' and ');
-    void ask(`${name(old)} already has ${which}: take it back and send it to ${name(id)}?`, { ok: '📤 Send changes', cancel: `Leave it with ${name(old)}` }).then((yes) => {
+    void ask(`${name(old)} already has ${which}: take it back and send it to ${name(id)}?`, {
+      ok: '📤 Send changes',
+      cancel: `Leave it with ${name(old)}`,
+    }).then((yes) => {
       if (!yes || session.partner !== s) return;
       // (Never more cards than the buzzer room takes.)
       const go = (t: Session) => moved.forEach(({ card }) => sendChanges(t, t.partner!, card));
@@ -178,7 +233,11 @@
   function partnerMenu(e: MouseEvent): void {
     dropMenu(e, [
       { heading: `${name(s.pickerId)}’s partner` },
-      ...candidates.map((p) => ({ label: p.id === s.pickerId ? `${p.name} (Solo)` : p.name, disabled: p.id === s.partnerId, onclick: () => choosePartner(p.id) })),
+      ...candidates.map((p) => ({
+        label: p.id === s.pickerId ? `${p.name} (Solo)` : p.name,
+        disabled: p.id === s.partnerId,
+        onclick: () => choosePartner(p.id),
+      })),
     ]);
   }
   function includePicker(on: boolean): void {
@@ -213,7 +272,9 @@
   async function swap(): Promise<void> {
     if (verdict.judged) return;
     // A card that follows a part went out already: they keep what they saw, and nothing moves until 📤 Send changes.
-    const sent = sentCards().filter(({ card }) => !s.deal?.[card.id] && (card.to === 'giver' || card.to === 'guesser') && sendState(session, s, card) === 'sent');
+    const sent = sentCards().filter(
+      ({ card }) => !s.deal?.[card.id] && (card.to === 'giver' || card.to === 'guesser') && sendState(session, s, card) === 'sent',
+    );
     if (sent.length) {
       const { card, n } = sent[0];
       // (Saw: their phone showed it. Has: it went to them, unopened as far as the room knows.)
@@ -221,8 +282,18 @@
       const sentNow = sentSeats(session, s, card.id);
       const who = nameList(sentNow.map(name));
       const part = `the ${lowerWord(words[card.to as 'giver' | 'guesser'])}’s`;
-      const did = seen.length && seen.length === sentNow.length ? 'already saw' : seen.length ? `already ${sentNow.length > 1 ? 'have' : 'has'} (${nameList(seen.map(name))} saw it)` : sentNow.length > 1 ? 'already have' : 'already has';
-      const yes = await ask(`${who} ${did} ${clueCardWords(card, n - 1)} (${part}). Swap anyway? They keep it; 📤 Send changes gives it to whoever plays that part now.`, { ok: '⇄ Swap', cancel: 'Don’t swap' });
+      const did =
+        seen.length && seen.length === sentNow.length
+          ? 'already saw'
+          : seen.length
+            ? `already ${sentNow.length > 1 ? 'have' : 'has'} (${nameList(seen.map(name))} saw it)`
+            : sentNow.length > 1
+              ? 'already have'
+              : 'already has';
+      const yes = await ask(
+        `${who} ${did} ${clueCardWords(card, n - 1)} (${part}). Swap anyway? They keep it; 📤 Send changes gives it to whoever plays that part now.`,
+        { ok: '⇄ Swap', cancel: 'Don’t swap' },
+      );
       if (!yes || session.partner !== s || verdict.judged) return;
     }
     swapParts(s);
@@ -331,14 +402,17 @@
   function lateFor(card: ClueCard): { seat: Id; by?: string }[] {
     const ids = new Set(cardSends(s, card.id).map((x) => cardId(s.clue, x)));
     const out: { seat: Id; by?: string }[] = [];
-    for (const l of remote.cardsLate) if (ids.has(sendOf(l.id)) && !l.id.endsWith('~t') && !out.some((x) => x.seat === l.seatId && x.by === l.by)) out.push({ seat: l.seatId, by: l.by });
+    for (const l of remote.cardsLate)
+      if (ids.has(sendOf(l.id)) && !l.id.endsWith('~t') && !out.some((x) => x.seat === l.seatId && x.by === l.by)) out.push({ seat: l.seatId, by: l.by });
     return out;
   }
   /** The players who saw a card (its sends still out), by seat: not one whose phone now is late for it. */
   function seenBy(card: ClueCard): Id[] {
     const seen = session.remote?.cardsSeen ?? {};
     const late = new Set(lateFor(card).map((l) => l.seat));
-    const seats = new Set(cardSends(s, card.id).flatMap((x) => (Array.isArray(seen[cardId(s.clue, x)]) ? seen[cardId(s.clue, x)] : []).map((w) => w.split('/')[0])));
+    const seats = new Set(
+      cardSends(s, card.id).flatMap((x) => (Array.isArray(seen[cardId(s.clue, x)]) ? seen[cardId(s.clue, x)] : []).map((w) => w.split('/')[0])),
+    );
     return session.players.map((p) => p.id).filter((id) => seats.has(id) && !late.has(id));
   }
   /** Who a card shown in the card window went to (names only). */
@@ -362,7 +436,8 @@
    * card is in it (a card out, until the tile closes), or the seat 🪟 Show would put it there for.
    */
   const inWindow = (card: ClueCard) => cardsOut(game, session).find((c) => 'clue' in c.content && c.content.clue === clue.id && c.content.card === card.id);
-  const windowSeat = (to: CardTo[]): Id | null => (!cardsOn && cardWindow.open && cardWindow.seat && to.some((t) => t.seat === cardWindow.seat) ? cardWindow.seat : null);
+  const windowSeat = (to: CardTo[]): Id | null =>
+    !cardsOn && cardWindow.open && cardWindow.seat && to.some((t) => t.seat === cardWindow.seat) ? cardWindow.seat : null;
   /**
    * 🪟 Show: the card in the card window, for its player alone, until the tile closes (the same path as a tile's card).
    * No phone gets cards then, so the buzzer room's limit doesn't apply.
@@ -375,7 +450,12 @@
   /** ↻ Send again: under a new id, so a phone that came late (a new phone for the seat) gets it too. */
   function again(card: ClueCard, n: number): void {
     retryFiles(game, session, [card]);
-    if (sendAgain(session, s, card)) announce(`${clueCardWords(card, n - 1, true)} sent again to ${sentTo(session, s, card.id).map((t) => toName(session, t)).join(', ')}`);
+    if (sendAgain(session, s, card))
+      announce(
+        `${clueCardWords(card, n - 1, true)} sent again to ${sentTo(session, s, card.id)
+          .map((t) => toName(session, t))
+          .join(', ')}`,
+      );
   }
   /** 📤 Send changes for this card, made on a copy of the session. */
   const changesGo = (card: ClueCard) => (t: Session) => sendChanges(t, t.partner!, card);
@@ -414,7 +494,10 @@
     retryFiles(game, session, unsent);
     // (One the room let go of since it went up, after a ↩ Take back or 10 unused minutes, goes up again.)
     unputGone(game, session, unsent);
-    markReady(s, unsent.map((c) => c.id));
+    markReady(
+      s,
+      unsent.map((c) => c.id),
+    );
     announce('Getting the cards’ files ready');
   }
 
@@ -430,12 +513,24 @@
     if (!cardsOn) return null;
     if (!filesOn) {
       const off = s.stage === 'pick' ? unsent.flatMap((c) => lefts(c).filter((l) => l.why === 'nofiles')) : [];
-      return off.length ? { text: `🖼 ${countItems(off.map((l) => l.kind))} from this computer won’t reach the phones: this buzzer server isn’t taking files right now (📋 Copy picture)`, ready: false } : null;
+      return off.length
+        ? {
+            text: `🖼 ${countItems(off.map((l) => l.kind))} from this computer won’t reach the phones: this buzzer server isn’t taking files right now (📋 Copy picture)`,
+            ready: false,
+          }
+        : null;
     }
     if (!files.files) return null;
     const items = (c: ClueCard) => phoneCard(game, c, can).items.filter((i) => i.file);
-    if (files.up >= files.files - files.failed) return files.up ? { text: `🖼 ${fileKinds((c) => items(c).filter((i) => 'file' in i.goes))} ready in the buzzer room (no phone gets ${files.up === 1 ? 'it' : 'them'} until you send)`, ready: false } : null;
-    if (files.going) return { text: `⇡ getting ${Math.min(files.files, files.up + 1)} of ${files.files - files.failed} ready${pctText(files.progress)}…`, ready: false };
+    if (files.up >= files.files - files.failed)
+      return files.up
+        ? {
+            text: `🖼 ${fileKinds((c) => items(c).filter((i) => 'file' in i.goes))} ready in the buzzer room (no phone gets ${files.up === 1 ? 'it' : 'them'} until you send)`,
+            ready: false,
+          }
+        : null;
+    if (files.going)
+      return { text: `⇡ getting ${Math.min(files.files, files.up + 1)} of ${files.files - files.failed} ready${pctText(files.progress)}…`, ready: false };
     const waiting = (c: ClueCard) => items(c).filter((i) => !i.why && 'pending' in i.goes);
     // (Named by the cards they're on: "its card" when one card has them all.)
     const withFiles = unsent.filter((c) => waiting(c).length > 0);
@@ -516,7 +611,13 @@
     const seen = seenBy(card);
     const late = lateFor(card);
     const f = cardFileCounts(game, session, card);
-    const out = [st === 'changed' ? 'changed, not sent yet' : seen.length ? `✓ seen${seen.length < sentSeats(session, s, card.id).length ? ` by ${seen.map(name).join(', ')}` : ''}` : 'sent'];
+    const out = [
+      st === 'changed'
+        ? 'changed, not sent yet'
+        : seen.length
+          ? `✓ seen${seen.length < sentSeats(session, s, card.id).length ? ` by ${seen.map(name).join(', ')}` : ''}`
+          : 'sent',
+    ];
     if (filesOn && f.going) out.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}${pctText(f.progress)}…`);
     if (late.length) {
       const whose = late.map((l) => (l.by ? `${l.by}’s phone (${name(l.seat)})` : `${name(l.seat)}’s new phone`));
@@ -551,7 +652,14 @@
   /** 📋 Copy picture: the card's first picture (or GIF, as a still), to paste into a DM. */
   function copyPicture(card: ClueCard, n: number): Promise<void> {
     copiedFor(card);
-    return copyCardPicture(game, card, clueCardWords(card, n - 1, true), recipients(card).map((t) => toName(session, t)).join(', ') || 'them');
+    return copyCardPicture(
+      game,
+      card,
+      clueCardWords(card, n - 1, true),
+      recipients(card)
+        .map((t) => toName(session, t))
+        .join(', ') || 'them',
+    );
   }
 
   /**
@@ -559,14 +667,27 @@
    * once each card to copy is copied, a click on the stage starts the clock.
    */
   function copiedFor(card: ClueCard): void {
-    if (session.partner) markCopied(session.partner, card.id, recipients(card).map((t) => t.seat));
+    if (session.partner)
+      markCopied(
+        session.partner,
+        card.id,
+        recipients(card).map((t) => t.seat),
+      );
   }
-  const copied = (card: ClueCard): boolean => wasCopied(s, card.id, recipients(card).map((t) => t.seat));
+  const copied = (card: ClueCard): boolean =>
+    wasCopied(
+      s,
+      card.id,
+      recipients(card).map((t) => t.seat),
+    );
   /** A 📋's tooltip, saying so once it was pressed. */
   const copyTip = (card: ClueCard, tip: string): string => (copied(card) ? `✓ Copied (a click copies it again) · ${tip}` : tip);
 
   // One window: the status line's ⚠ Viewers see this chip says what viewers can read here.
-  offerExposed(() => `⚠ Viewers can see this window: they can read a card’s name here, never what’s on it${app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.`);
+  offerExposed(
+    () =>
+      `⚠ Viewers can see this window: they can read a card’s name here, never what’s on it${app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.`,
+  );
 
   // ---------- The steps: in the box, and the main button's ----------
 
@@ -582,9 +703,18 @@
     const step = pickStepIs;
     if (!step || step === 'show') return null;
     if (step === 'describer')
-      return nextStep(VERBS.describerSpin, onmemberspin, { title: spinning ? 'Still spinning' : `W: the wheel spins over the people on ${name(s.pickerId)} with a phone here`, disabled: spinning });
+      return nextStep(VERBS.describerSpin, onmemberspin, {
+        title: spinning ? 'Still spinning' : `W: the wheel spins over the people on ${name(s.pickerId)} with a phone here`,
+        disabled: spinning,
+      });
     const why =
-      step === 'picker' ? `${noun === 'team' ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})` : step === 'nobody' ? nobodyText : spinning ? 'Still spinning' : '';
+      step === 'picker'
+        ? `${noun === 'team' ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})`
+        : step === 'nobody'
+          ? nobodyText
+          : spinning
+            ? 'Still spinning'
+            : '';
     return nextStep(VERBS.partnerSpin, onspin, why ? { title: why, disabled: true } : { disabled: false });
   });
   /** The countdown is running (T, or the status line's ⏱ Start): with cards still to send, only they're left to go. */
@@ -599,8 +729,15 @@
     if (s.stage !== 'distribute' || verdict.judged || session.revealed) return null;
     // (Never more cards than the buzzer room takes: ↩ Take one back first. The clock started by T: the cards only.)
     if (unsentToGo.length)
-      return nextStep(clockRuns ? VERBS.sendCards : VERBS.sendAndStart, onclock, allFull ? { title: cardsFullText(game, session, sendAll), disabled: true } : { disabled: false, final: handSoon });
-    return nextStep(VERBS.startClock(clockSecs), onclock, { title: cardsOn ? 'Enter: the countdown starts' : 'Enter: the countdown starts (copy the cards to their players first)', final: handSoon });
+      return nextStep(
+        clockRuns ? VERBS.sendCards : VERBS.sendAndStart,
+        onclock,
+        allFull ? { title: cardsFullText(game, session, sendAll), disabled: true } : { disabled: false, final: handSoon },
+      );
+    return nextStep(VERBS.startClock(clockSecs), onclock, {
+      title: cardsOn ? 'Enter: the countdown starts' : 'Enter: the countdown starts (copy the cards to their players first)',
+      final: handSoon,
+    });
   });
   /**
    * The partner's wheel again, in 🎡 Spin for a partner's place once the partner is chosen (by it or by hand): its landing
@@ -644,8 +781,12 @@
     if (steal && !steal.by && stealLeft.length && !session.revealed) return { text: 'Next: who steals it?' };
     if (verdict.judged || steal) return { text: `Next: ${session.revealed ? VERBS.done.label : VERBS.reveal.label} (the blue button, or N)` };
     if (handStep) {
-      if (unsentToGo.length && clockRuns) return { text: toCopy.length ? `Clock running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards` : 'Clock running: 📤 Send the cards' };
-      if (unsentToGo.length) return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: 📤 Send and start' };
+      if (unsentToGo.length && clockRuns)
+        return {
+          text: toCopy.length ? `Clock running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards` : 'Clock running: 📤 Send the cards',
+        };
+      if (unsentToGo.length)
+        return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: 📤 Send and start' };
       // (Each 📋 pressed: the clock is next, and a click on the stage starts it.)
       if (toCopy.length && !toCopy.every(({ card }) => copied(card))) return { text: `Next: 📋 copy each card to its ${noun}, then ⏱ Start the clock` };
       return { text: toCopy.length ? 'Next: ⏱ Start the clock (the cards are copied)' : 'Next: ⏱ Start the clock' };
@@ -661,7 +802,13 @@
     const out: StageItem[] = [];
     const swapItem: StageItem = { label: '⇄ Swap', disabled: roles.solo || verdict.judged, onclick: () => void swap() };
     if (s.stage === 'pick') {
-      if (!picker) return session.players.map((p, i) => ({ id: `picker:${p.id}`, label: `★ ${p.name} picked it`, keys: i < 9 ? String(i + 1) : undefined, onclick: () => choosePicker(p.id) }));
+      if (!picker)
+        return session.players.map((p, i) => ({
+          id: `picker:${p.id}`,
+          label: `★ ${p.name} picked it`,
+          keys: i < 9 ? String(i + 1) : undefined,
+          onclick: () => choosePicker(p.id),
+        }));
       // (As in the box: the wheel first, then the people on the team to describe, while the team plays it.)
       if (!s.partnerId && pickStep) out.push(stepItem(pickStep, 'spin'));
       else if (candidates.length && !sameTeamOn) out.push(stepItem(againStep, 'spin'));
@@ -704,7 +851,8 @@
     data-player-id={id}
     {onclick}
   >
-    {#if key && key <= 9}<span class="key">{key}</span>{/if}{p?.name}{#if on}&nbsp;✓{/if}{#if partOf(id)}<span class="part">{partOf(id)}</span>{/if}{#if nophone}<span class="part" aria-hidden="true">📵</span>{/if}
+    {#if key && key <= 9}<span class="key">{key}</span>{/if}{p?.name}{#if on}&nbsp;✓{/if}{#if partOf(id)}<span class="part">{partOf(id)}</span
+      >{/if}{#if nophone}<span class="part" aria-hidden="true">📵</span>{/if}
   </button>
 {/snippet}
 
@@ -732,7 +880,12 @@
     <div class="row small" data-partner-files>
       <span class:warn={!filesOn}>{filesLine.text}</span>
       {#if filesLine.ready}
-        <button class="small" onclick={getReady} title="Puts the cards’ pictures and videos in the buzzer room now, so sending is instant. No phone gets them until you send their card.">⇡ Get it ready now</button>
+        <button
+          class="small"
+          onclick={getReady}
+          title="Puts the cards’ pictures and videos in the buzzer room now, so sending is instant. No phone gets them until you send their card."
+          >⇡ Get it ready now</button
+        >
       {/if}
     </div>
   {/if}
@@ -744,7 +897,9 @@
 {/snippet}
 
 {#snippet parts()}
-  <span class="parts" data-partner-parts>{roles.solo && !(sameTeamOn && (member || people.length > 1)) ? '🎯' : G.icon} {partsSaid.replace(' · ', ' · 🎯 ')}</span>
+  <span class="parts" data-partner-parts
+    >{roles.solo && !(sameTeamOn && (member || people.length > 1)) ? '🎯' : G.icon} {partsSaid.replace(' · ', ' · 🎯 ')}</span
+  >
   <button
     class="small ghost"
     onclick={swap}
@@ -753,7 +908,8 @@
       ? 'Solo: one player plays both parts'
       : verdict.judged
         ? 'It’s judged: undo that first (Ctrl+Z) to change the parts'
-        : `Turn the parts round: the ${lowerWord(words.giver)} becomes the ${lowerWord(words.guesser)} (the cards that follow a part go with it, and so do the points)`}>⇄ Swap</button
+        : `Turn the parts round: the ${lowerWord(words.giver)} becomes the ${lowerWord(words.guesser)} (the cards that follow a part go with it, and so do the points)`}
+    >⇄ Swap</button
   >
 {/snippet}
 
@@ -763,14 +919,28 @@
       <b>🤝 Partner clue!</b>
       {#if picker}
         <span>{picker.name} picked it.</span>
-        <button class="ghost small" aria-haspopup="menu" onclick={pickerMenu} disabled={!!wheel} title={wheel ? 'Close the wheel first' : VERBS.pickerChange.title}>{VERBS.pickerChange.label}</button>
+        <button
+          class="ghost small"
+          aria-haspopup="menu"
+          onclick={pickerMenu}
+          disabled={!!wheel}
+          title={wheel ? 'Close the wheel first' : VERBS.pickerChange.title}>{VERBS.pickerChange.label}</button
+        >
       {/if}
       {@render firstLine()}
     </div>
     {#if !picker}
       <div class="row">
         {#each session.players as p, i (p.id)}
-          {@render chip(p.id, false, `${p.name} picked it`, guarded(`pick:${p.id}`, () => choosePicker(p.id), true), false, i < 9 ? `Key ${i + 1}` : '', i + 1)}
+          {@render chip(
+            p.id,
+            false,
+            `${p.name} picked it`,
+            guarded(`pick:${p.id}`, () => choosePicker(p.id), true),
+            false,
+            i < 9 ? `Key ${i + 1}` : '',
+            i + 1,
+          )}
         {/each}
       </div>
     {:else}
@@ -792,11 +962,22 @@
             `${p.name} is the partner`,
             guarded(`partner:${p.id}`, () => choosePartner(p.id)),
             spinning || off,
-            off ? `${p.name} picked it: tick “${p.name} can be on the wheel” to make it Solo` : spinning ? 'Still spinning' : i < 9 ? `Key ${i + 1}: overrule the wheel` : '',
+            off
+              ? `${p.name} picked it: tick “${p.name} can be on the wheel” to make it Solo`
+              : spinning
+                ? 'Still spinning'
+                : i < 9
+                  ? `Key ${i + 1}: overrule the wheel`
+                  : '',
             i + 1,
           )}
         {/each}
-        <label class="check small" title={wheel ? 'Close the wheel first (✎ Edit wheel puts them on it for one spin)' : 'Put the player who picked it on the partner wheel too: if it lands on them, they play it alone (Solo)'}>
+        <label
+          class="check small"
+          title={wheel
+            ? 'Close the wheel first (✎ Edit wheel puts them on it for one spin)'
+            : 'Put the player who picked it on the partner wheel too: if it lands on them, they play it alone (Solo)'}
+        >
           <input type="checkbox" checked={!!s.includePicker} disabled={!!wheel} onchange={(e) => includePicker(e.currentTarget.checked)} />
           {picker.name} can be on the wheel <span class="muted">(alone if it lands on them)</span>
         </label>
@@ -805,7 +986,12 @@
         <!-- Teams: the picker's own team plays it, one of them describing to the rest (spec §10.2): the describer's wheel
              first, in front of the people to choose from. -->
         <div class="row" data-partner-same>
-          <label class="check small" title={wheel ? 'Close the wheel first' : `${picker.name} plays it: one person on it is the ${lowerWord(words.giver)} for the rest, chosen by a wheel of the people on it (one award to the team)`}>
+          <label
+            class="check small"
+            title={wheel
+              ? 'Close the wheel first'
+              : `${picker.name} plays it: one person on it is the ${lowerWord(words.giver)} for the rest, chosen by a wheel of the people on it (one award to the team)`}
+          >
             <input type="checkbox" checked={sameTeamOn} disabled={!!wheel} onchange={(e) => setSameTeam(e.currentTarget.checked)} />
             Partner from the same team
           </label>
@@ -826,7 +1012,9 @@
             {/each}
             {#if member && !memberHere}<span class="warn small">{member.name} isn’t on {picker.name} here any more: choose again</span>{/if}
           {:else if sameTeamOn}
-            <span class="warn small" data-partner-nobody>{picker.name} has {people.length ? 'one phone' : 'no phone'} here: {nobodyTo} (it plays Solo; untick to play team against team)</span>
+            <span class="warn small" data-partner-nobody
+              >{picker.name} has {people.length ? 'one phone' : 'no phone'} here: {nobodyTo} (it plays Solo; untick to play team against team)</span
+            >
           {/if}
         </div>
       {/if}
@@ -845,7 +1033,9 @@
       </details>
     {:else}
       <div class="row small" data-partner-cards>
-        <span class="muted">🤫 No cards on this clue: {autoClock ? 'the question starts the clock' : 'start the clock yourself (T) once the question is up'}.</span>
+        <span class="muted"
+          >🤫 No cards on this clue: {autoClock ? 'the question starts the clock' : 'start the clock yourself (T) once the question is up'}.</span
+        >
       </div>
     {/if}
   {:else}
@@ -855,7 +1045,8 @@
         <b
           title={cardsOn
             ? `📤 Send each card to its ${noun}s’ phones (📋 copy it to anyone without one). The points follow the parts, not the cards.`
-            : `📋 Copy each card to its ${noun}s (paste it in a DM): phones only show who plays. The points follow the parts, not the cards.`}>{VERBS.handOut.label}</b
+            : `📋 Copy each card to its ${noun}s (paste it in a DM): phones only show who plays. The points follow the parts, not the cards.`}
+          >{VERBS.handOut.label}</b
         >
       {:else}
         <b>🤝 Partner clue</b>
@@ -867,7 +1058,8 @@
         aria-haspopup="menu"
         onclick={partnerMenu}
         disabled={verdict.judged}
-        title={verdict.judged ? 'It’s judged: undo that first (Ctrl+Z) to choose another partner' : VERBS.partnerChange.title}>{VERBS.partnerChange.label}</button
+        title={verdict.judged ? 'It’s judged: undo that first (Ctrl+Z) to choose another partner' : VERBS.partnerChange.title}
+        >{VERBS.partnerChange.label}</button
       >
     </div>
     {#if verdict.judged}
@@ -875,8 +1067,17 @@
       {#each cards as card, i (card.id)}
         {@const out = cardSends(s, card.id).length > 0}
         <div class="row small" data-card={i + 1}>
-          {clueCardName(card, i)} → {out ? sentTo(session, s, card.id).map((t) => toName(session, t)).join(', ') : recipientsText(session, s, rules, card)}{#if out && seenBy(card).length}{' '}✓ seen{/if}
-          {#if out}<button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take {clueCardWords(card, i)} back" title="Takes it off the phones it went to">↩ Take back</button>{/if}
+          {clueCardName(card, i)} → {out
+            ? sentTo(session, s, card.id)
+                .map((t) => toName(session, t))
+                .join(', ')
+            : recipientsText(session, s, rules, card)}{#if out && seenBy(card).length}{' '}✓ seen{/if}
+          {#if out}<button
+              class="ghost small"
+              onclick={() => ontakeback(card.id)}
+              aria-label="Take {clueCardWords(card, i)} back"
+              title="Takes it off the phones it went to">↩ Take back</button
+            >{/if}
         </div>
       {/each}
     {:else if cards.length}
@@ -904,12 +1105,25 @@
           {@const seenNow = st === 'unsent' ? [] : seenBy(card)}
           <!-- One row a card: what's on it (counted), who gets it, how it stands on their phones, and its buttons. Its
                state is in its name, and each chip's, for a screen reader. -->
-          <div class="row card" data-card={n} role="group" aria-label={`${W}: ${state ? state.text : cardsOn ? 'not sent' : recipientsText(session, s, rules, card)}`}>
+          <div
+            class="row card"
+            data-card={n}
+            role="group"
+            aria-label={`${W}: ${state ? state.text : cardsOn ? 'not sent' : recipientsText(session, s, rules, card)}`}
+          >
             <b class="cname" title={nm}>{nm}</b>
             <span class="muted small">· {cardSummary(game, card)}</span>
             <span aria-hidden="true">→</span>
             {#if memberTo && member}
-              {@render personChip(member.name, has(to, memberTo), `${W} to ${member.name}${seenNow.includes(memberTo.seat) && sentTo(session, s, card.id).some((t) => t.member?.id === member.id) ? ', seen' : sentTo(session, s, card.id).some((t) => t.member?.id === member.id) ? ', sent' : ''}`, () => toggle(card, memberTo), false, lowerWord(words.giver), `Only ${member.name}’s phone gets it`)}
+              {@render personChip(
+                member.name,
+                has(to, memberTo),
+                `${W} to ${member.name}${seenNow.includes(memberTo.seat) && sentTo(session, s, card.id).some((t) => t.member?.id === member.id) ? ', seen' : sentTo(session, s, card.id).some((t) => t.member?.id === member.id) ? ', sent' : ''}`,
+                () => toggle(card, memberTo),
+                false,
+                lowerWord(words.giver),
+                `Only ${member.name}’s phone gets it`,
+              )}
             {/if}
             {#each session.players as p (p.id)}
               {@const nophone = cardsOn && !hasPhone(p.id)}
@@ -933,51 +1147,109 @@
               )}
             {/each}
             {#if others.length}
-              <button class="chip ghost" aria-pressed={others.every((id) => has(to, seatTo(id)))} onclick={() => everyoneElse(card)} aria-label="{W} to everyone else">Everyone else</button>
+              <button
+                class="chip ghost"
+                aria-pressed={others.every((id) => has(to, seatTo(id)))}
+                onclick={() => everyoneElse(card)}
+                aria-label="{W} to everyone else">Everyone else</button
+              >
             {/if}
             <button class="chip ghost" aria-pressed={!to.length} onclick={() => setRecipients(session, s, card, [])} aria-label="{W} to nobody">Nobody</button>
             {#if !to.length}<span class="muted small">nobody yet</span>{/if}
             {#if changed}
               <span class="muted small">(changed)</span>
-              <button class="ghost small" onclick={() => resetRecipients(s, card.id)} title="Back to who it goes to by default: {goesToLabel(rules, card.to, false)}" aria-label="{W}: back to {goesToLabel(rules, card.to, false)}">↺</button>
+              <button
+                class="ghost small"
+                onclick={() => resetRecipients(s, card.id)}
+                title="Back to who it goes to by default: {goesToLabel(rules, card.to, false)}"
+                aria-label="{W}: back to {goesToLabel(rules, card.to, false)}">↺</button
+              >
             {/if}
             {#if state}<span class="small" class:warn={state.warn} data-card-state>{state.text}</span>{/if}
             <span class="spacer"></span>
             {#if cardsOn}
               {#if st === 'unsent'}
                 {@const full = to.length > 0 && sendFull(card)}
-                <button class="small" onclick={() => sendOne(card, n)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session, sendGo(card)) : to.length ? `Sends it to ${to.map((t) => toName(session, t)).join(', ')} now (the countdown doesn’t start)` : 'Choose who gets it first'}>📤 Send</button>
+                <button
+                  class="small"
+                  onclick={() => sendOne(card, n)}
+                  disabled={!to.length || full}
+                  aria-label="Send {w}"
+                  title={full
+                    ? cardsFullText(game, session, sendGo(card))
+                    : to.length
+                      ? `Sends it to ${to.map((t) => toName(session, t)).join(', ')} now (the countdown doesn’t start)`
+                      : 'Choose who gets it first'}>📤 Send</button
+                >
               {:else}
                 {#if st === 'changed'}
                   {@const full = changesFull(card)}
-                  <button class="small" onclick={() => changes(card, n)} disabled={full} aria-label="Send {w}’s changes" title={full ? cardsFullText(game, session, changesGo(card)) : 'Sends it to whoever you added, and takes it back from whoever you took off'}>📤 Send changes</button>
+                  <button
+                    class="small"
+                    onclick={() => changes(card, n)}
+                    disabled={full}
+                    aria-label="Send {w}’s changes"
+                    title={full ? cardsFullText(game, session, changesGo(card)) : 'Sends it to whoever you added, and takes it back from whoever you took off'}
+                    >📤 Send changes</button
+                  >
                 {:else}
-                  <button class="small" onclick={() => again(card, n)} aria-label="Send {w} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>
+                  <button
+                    class="small"
+                    onclick={() => again(card, n)}
+                    aria-label="Send {w} again"
+                    title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now"
+                    >↻ Send again</button
+                  >
                 {/if}
-                <button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take {w} back" title="Takes it off every phone it went to">↩ Take back</button>
+                <button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take {w} back" title="Takes it off every phone it went to"
+                  >↩ Take back</button
+                >
               {/if}
             {:else if inWindow(card)}
               {@const shown = inWindow(card)!}
               <span class="small" data-card-state>· in the 🪟 card window ({sentToTextOf(shown.to)})</span>
-              <button class="ghost small" onclick={() => oncardtakeback(shown.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">↩ Take back</button>
+              <button class="ghost small" onclick={() => oncardtakeback(shown.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window"
+                >↩ Take back</button
+              >
             {:else if windowSeat(to)}
               {@const seat = windowSeat(to)!}
-              <button class="small" onclick={() => showInWindow(card, n, seat)} aria-label="Show {w} to {name(seat)}" title="Shows it in the 🪟 card window, to {name(seat)} alone, until the tile closes">🪟 Show {name(seat)}</button>
+              <button
+                class="small"
+                onclick={() => showInWindow(card, n, seat)}
+                aria-label="Show {w} to {name(seat)}"
+                title="Shows it in the 🪟 card window, to {name(seat)} alone, until the tile closes">🪟 Show {name(seat)}</button
+              >
             {/if}
             {#if copying && !atFoot}
               {@const done = !!to.length && copyable && copied(card)}
-              <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
-                title={!to.length ? 'Choose who gets it first' : copyable ? copyTip(card, `Copies “For ${to.map((t) => toName(session, t)).join(', ')} only…” with the card’s words and links, to paste in a DM`) : 'This card has no words or links: 📋 Copy picture'}
-                >📋 Copy words</button
+              <button
+                class="small"
+                class:copied={done}
+                data-copied={done || undefined}
+                onclick={() => copyWords(card, n)}
+                disabled={!to.length || !copyable}
+                title={!to.length
+                  ? 'Choose who gets it first'
+                  : copyable
+                    ? copyTip(card, `Copies “For ${to.map((t) => toName(session, t)).join(', ')} only…” with the card’s words and links, to paste in a DM`)
+                    : 'This card has no words or links: 📋 Copy picture'}>📋 Copy words</button
               >
             {/if}
             {#if pics && canCopyPicture && (copying || !!left) && atFoot !== 'picture'}
               {@const done = !!to.length && !copyable && copied(card)}
-              <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyPicture(card, n)} disabled={!to.length} title={to.length ? copyTip(card, 'Copies the card’s picture, to paste in a DM') : 'Choose who gets it first'}>📋 Copy picture</button>
+              <button
+                class="small"
+                class:copied={done}
+                data-copied={done || undefined}
+                onclick={() => copyPicture(card, n)}
+                disabled={!to.length}
+                title={to.length ? copyTip(card, 'Copies the card’s picture, to paste in a DM') : 'Choose who gets it first'}>📋 Copy picture</button
+              >
             {/if}
           </div>
           <!-- (🗜 Make smaller: the files of it that are big, or too big for the buzzer server, made smaller for phones.) -->
-          {#if left}<div class="small warn left"><span data-card-left={n}>{left}</span><ShrinkButton {game} items={phoneOf(card).items} which="big" /></div>{/if}
+          {#if left}<div class="small warn left"><span data-card-left={n}>{left}</span><ShrinkButton {game} items={phoneOf(card).items} which="big" /></div
+            >{/if}
           {#if slow}<div class="small muted"><span data-card-slow={n}>{slow}</span><ShrinkButton {game} items={phoneOf(card).items} which="slow" /></div>{/if}
         {/each}
       </div>
@@ -990,7 +1262,8 @@
     {#if guess}
       <div class="row small" data-partner-guess>
         ✍ {name(guess.seat)}{guess.by ? ` (${guess.by})` : ''}
-        {#if dual || session.revealed}guessed: <b dir="auto" class:selectable={dual}>“{foldLines(guess.text)}”</b>{:else}sent a guess (viewers can see this window: it shows here once the answer is up){/if}
+        {#if dual || session.revealed}guessed: <b dir="auto" class:selectable={dual}>“{foldLines(guess.text)}”</b>{:else}sent a guess (viewers can see this
+          window: it shows here once the answer is up){/if}
       </div>
     {/if}
     <!-- The box's foot, in view as the rows above scroll: ✔ Got it / ✘ Missed, quiet until the clock runs, with what each
@@ -1030,13 +1303,27 @@
               {@const W = clueCardWords(card, i, true)}
               {@const done = copied(card)}
               {#if cardWords(card) || cardLinks(game, card).length}
-                <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyWords(card, i + 1)} aria-label="Copy {W}’s words{done ? ' (copied)' : ''}"
-                  title={copyTip(card, `Copies “For ${recipients(card).map((t) => toName(session, t)).join(', ')} only…” with the card’s words and links, to paste in a DM`)}
-                  >📋 {toCopy.length > 1 ? clueCardName(card, i) : 'Copy words'}</button
+                <button
+                  class="small"
+                  class:copied={done}
+                  data-copied={done || undefined}
+                  onclick={() => copyWords(card, i + 1)}
+                  aria-label="Copy {W}’s words{done ? ' (copied)' : ''}"
+                  title={copyTip(
+                    card,
+                    `Copies “For ${recipients(card)
+                      .map((t) => toName(session, t))
+                      .join(', ')} only…” with the card’s words and links, to paste in a DM`,
+                  )}>📋 {toCopy.length > 1 ? clueCardName(card, i) : 'Copy words'}</button
                 >
               {:else if canCopyPicture && cardItems(game, card).some((it) => it.kind === 'picture' || it.kind === 'gif')}
-                <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyPicture(card, i + 1)} aria-label="Copy {W}’s picture{done ? ' (copied)' : ''}" title={copyTip(card, 'Copies the card’s picture, to paste in a DM')}
-                  >📋 {toCopy.length > 1 ? clueCardName(card, i) : 'Copy picture'}</button
+                <button
+                  class="small"
+                  class:copied={done}
+                  data-copied={done || undefined}
+                  onclick={() => copyPicture(card, i + 1)}
+                  aria-label="Copy {W}’s picture{done ? ' (copied)' : ''}"
+                  title={copyTip(card, 'Copies the card’s picture, to paste in a DM')}>📋 {toCopy.length > 1 ? clueCardName(card, i) : 'Copy picture'}</button
                 >
               {/if}
             {/each}

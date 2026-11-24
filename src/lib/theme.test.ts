@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { contrast, obsKeyed } from './colors';
-import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedRoundColors, keyedThemeColors, lookNumber, otherStageKey, presetTheme, rightFill, roundStageColors, splashColors, STAGE_KEYS, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
+import {
+  altTile,
+  EXTRA_LOOKS,
+  headerBackground,
+  isThemeColor,
+  isThemeFont,
+  keyedRoundColors,
+  keyedThemeColors,
+  lookNumber,
+  otherStageKey,
+  presetTheme,
+  rightFill,
+  roundStageColors,
+  splashColors,
+  STAGE_KEYS,
+  stageText,
+  themeReadability,
+  themeStyle,
+  tileBackground,
+  type Theme,
+} from './theme';
 import { migrateGame, newGame } from './model';
 import { categoryBox } from './boardfit';
 import { newBoardGameRound } from './boardgame';
@@ -41,7 +61,12 @@ describe('stage text', () => {
 });
 
 /** A theme's CSS variables as a map. */
-const vars = (t: Theme) => Object.fromEntries(themeStyle(t).split('; ').map((kv) => kv.split(/: (.*)/s).slice(0, 2)));
+const vars = (t: Theme) =>
+  Object.fromEntries(
+    themeStyle(t)
+      .split('; ')
+      .map((kv) => kv.split(/: (.*)/s).slice(0, 2)),
+  );
 
 describe('more looks', () => {
   it('a game without them draws exactly as before', () => {
@@ -198,7 +223,12 @@ describe('colors OBS would key out', () => {
     const t: Theme = { ...presetTheme('dark'), stageBg: 'green', tileUsed: '#00ff00', glow: '#00ff00', tile2: '#00ff00', headerLine: '#00ff00' };
     expect(keyedThemeColors(t)).toEqual(['Used tiles', 'Tile glow', 'Line under the categories']);
     expect(keyedThemeColors({ ...t, usedLook: 'dim', glow: 'none', tilePattern: 'rows', headerLine: 'none' })).toEqual(['Second tile color']);
-    expect(keyedThemeColors({ ...t, tileUsed: 'rgb(0, 200, 0)', clueColor: '#33ee33' }, 'green')).toEqual(['Used tiles', 'Tile glow', 'Clue text color', 'Line under the categories']);
+    expect(keyedThemeColors({ ...t, tileUsed: 'rgb(0, 200, 0)', clueColor: '#33ee33' }, 'green')).toEqual([
+      'Used tiles',
+      'Tile glow',
+      'Clue text color',
+      'Line under the categories',
+    ]);
     // A glow or a border of size 0 doesn't show.
     const sized: Theme = { ...presetTheme('dark'), stageBg: 'magenta', glow: '#ff00e6', tileBorder: '#ff00ff' };
     expect(keyedThemeColors(sized)).toEqual(['Tile glow', 'Border color']);
@@ -220,8 +250,23 @@ describe('colors OBS would key out', () => {
     const neon = presetTheme('neon');
     expect(keyedThemeColors(neon, 'green', false)).toEqual(['Values']);
     expect(keyedThemeColors(neon, 'magenta', false)).toEqual(['Tiles & slide background']);
-    const t: Theme = { ...presetTheme('dark'), stageBg: 'green', tileUsed: '#00ff00', glow: '#00ff00', tilePattern: 'rows', tile2: '#00ff00', tileGradient: '#00ff00', tileBorder: '#00ff00' };
-    expect(keyedThemeColors({ ...t, boardText: '#00ff00', headerBg: '#00ff00', header2: '#00ff00', headerGradient: '#00ff00', headerLine: '#00ff00' }, 'green', false)).toEqual([]);
+    const t: Theme = {
+      ...presetTheme('dark'),
+      stageBg: 'green',
+      tileUsed: '#00ff00',
+      glow: '#00ff00',
+      tilePattern: 'rows',
+      tile2: '#00ff00',
+      tileGradient: '#00ff00',
+      tileBorder: '#00ff00',
+    };
+    expect(
+      keyedThemeColors(
+        { ...t, boardText: '#00ff00', headerBg: '#00ff00', header2: '#00ff00', headerGradient: '#00ff00', headerLine: '#00ff00' },
+        'green',
+        false,
+      ),
+    ).toEqual([]);
     expect(keyedThemeColors({ ...t, scoreBarBg: '#00ff00', clueColor: '#00ff00' }, 'green', false)).toEqual(['Score bar', 'Clue text color']);
   });
 
@@ -283,9 +328,19 @@ describe('colors OBS would key out', () => {
     expect(otherStageKey(dark)).toBe('green');
     const game = newGame();
     game.rounds = [newRpgRound(game)];
-    expect(otherStageKey(dark, roundStageColors(game).map(([, c]) => c))).toBeUndefined();
+    expect(
+      otherStageKey(
+        dark,
+        roundStageColors(game).map(([, c]) => c),
+      ),
+    ).toBeUndefined();
     game.worlds![0].maps[0].screens[0].slide.background = { color: '#2b2b38' };
-    expect(otherStageKey(dark, roundStageColors(game).map(([, c]) => c))).toBe('green');
+    expect(
+      otherStageKey(
+        dark,
+        roundStageColors(game).map(([, c]) => c),
+      ),
+    ).toBe('green');
   });
 
   it('the Daily Double and PARTNER UP! splashes swap colors where the key would take their own', () => {

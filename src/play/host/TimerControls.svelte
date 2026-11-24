@@ -53,7 +53,9 @@
          status line's other parts are (not run on from the words before it). -->
     {#if t.expired}<span class="sr-only">{'· '}</span>{/if}
     <b class="left" class:done={t.expired} data-quiet={t.expired ? undefined : ''}>{t.expired ? "Time's up" : `${left}s`}</b>
-    <button class="small" onclick={toggle} disabled={t.expired} title="T" aria-label={t.startedAt === null ? 'Start timer' : 'Pause timer'}>{t.startedAt === null ? '▶' : '⏸'}</button>
+    <button class="small" onclick={toggle} disabled={t.expired} title="T" aria-label={t.startedAt === null ? 'Start timer' : 'Pause timer'}
+      >{t.startedAt === null ? '▶' : '⏸'}</button
+    >
     <!-- Change the time left without starting over. -->
     <button class="small ghost" onclick={() => addTime(app.live, -10)} disabled={t.expired} title="10 seconds less" aria-label="10 seconds less">−10</button>
     <button class="small ghost" onclick={() => addTime(app.live, 10)} title="10 seconds more (Shift+T)" aria-label="10 seconds more">+10</button>

@@ -107,7 +107,11 @@ export function placePopup(p: PlaceInput): Placement {
   const maxWidth = Math.max(0, view.right - view.left);
   const w = Math.min(p.width, maxWidth);
   const across = inner && inner.right - inner.left >= w ? inner : view;
-  const left = clamp(clamp(p.align === 'end' ? p.anchor.right - w : p.anchor.left, across.left, across.right - w), view.left, Math.max(view.left, view.right - w));
+  const left = clamp(
+    clamp(p.align === 'end' ? p.anchor.right - w : p.anchor.left, across.left, across.right - w),
+    view.left,
+    Math.max(view.left, view.right - w),
+  );
   return { left: Math.round(left), top: Math.round(top), maxHeight, maxWidth, side };
 }
 
@@ -174,7 +178,19 @@ export function anchored(node: HTMLElement, options: AnchoredOptions = {}): { up
     const k = [a.left, a.top, a.right, a.bottom, vk, height, width, box?.left, box?.top, box?.right, box?.bottom, o.side, o.align, o.beside].join();
     if (k === key) return;
     key = k;
-    const p = placePopup({ anchor: a, width, height, view, within: box, side: o.side, align: o.align, gap: o.gap, margin: o.margin, minHeight: o.minHeight, beside: o.beside });
+    const p = placePopup({
+      anchor: a,
+      width,
+      height,
+      view,
+      within: box,
+      side: o.side,
+      align: o.align,
+      gap: o.gap,
+      margin: o.margin,
+      minHeight: o.minHeight,
+      beside: o.beside,
+    });
     s.maxHeight = `${p.maxHeight}px`;
     s.maxWidth = `${p.maxWidth}px`;
     s.left = `${p.left}px`;

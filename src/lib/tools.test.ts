@@ -3,12 +3,33 @@ import { jeopardyGame } from './testgame';
 import { newId } from './model';
 import { applyScore, newSession, score } from './session';
 import {
-  actionDeltas, activeSegments, applyAction, describeRoll, diceCount, initials, newWheel, outcomeText, parseDice, planRollOff, rollPreset, rollResult, segmentAngles, sliceAt,
-  sliceLabel, spinSeconds, spinTarget, uniqueLabels, weightedIndex, wheelUsedUp, isRespin, MIN_WEIGHT, sliceWeight,
+  actionDeltas,
+  activeSegments,
+  applyAction,
+  describeRoll,
+  diceCount,
+  initials,
+  newWheel,
+  outcomeText,
+  parseDice,
+  planRollOff,
+  rollPreset,
+  rollResult,
+  segmentAngles,
+  sliceAt,
+  sliceLabel,
+  spinSeconds,
+  spinTarget,
+  uniqueLabels,
+  weightedIndex,
+  wheelUsedUp,
+  isRespin,
+  MIN_WEIGHT,
+  sliceWeight,
 } from './tools';
 
 function seeded(seed = 42) {
-  return () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  return () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 }
 
 describe('wheel', () => {
@@ -22,7 +43,10 @@ describe('wheel', () => {
 
   it('sizes slices by weight', () => {
     const a = segmentAngles([{ weight: 1 }, { weight: 3 }]);
-    expect(a).toEqual([{ start: 0, end: 90 }, { start: 90, end: 360 }]);
+    expect(a).toEqual([
+      { start: 0, end: 90 },
+      { start: 90, end: 360 },
+    ]);
   });
 
   it('plans a spin that stops on the chosen slice, always moving forward', () => {
@@ -69,7 +93,10 @@ describe('roll-off', () => {
     const seq = [5, 5, 2, 1, 4].map((v) => (v - 1) / 6 + 0.01);
     let i = 0;
     const plan = planRollOff(['A', 'B', 'C'], 6, () => seq[i++]);
-    expect(plan.rounds.map((r) => r.players)).toEqual([['A', 'B', 'C'], ['A', 'B']]);
+    expect(plan.rounds.map((r) => r.players)).toEqual([
+      ['A', 'B', 'C'],
+      ['A', 'B'],
+    ]);
     expect(plan.winner).toBe('B');
     expect(plan.ranking).toEqual(['B', 'A', 'C']);
   });
@@ -79,7 +106,10 @@ describe('roll-off', () => {
     const seq = [6, 3, 3, 1, 2, 5].map((v) => (v - 1) / 6 + 0.01);
     let i = 0;
     const plan = planRollOff(['A', 'B', 'C', 'D'], 6, () => seq[i++], true);
-    expect(plan.rounds.map((r) => r.players)).toEqual([['A', 'B', 'C', 'D'], ['B', 'C']]);
+    expect(plan.rounds.map((r) => r.players)).toEqual([
+      ['A', 'B', 'C', 'D'],
+      ['B', 'C'],
+    ]);
     expect(plan.ranking).toEqual(['A', 'C', 'B', 'D']);
     expect(plan.winner).toBe('A');
     // Without full, B and C stay level (in the order given).
@@ -237,7 +267,13 @@ describe('what a result is called', () => {
     expect(rollResult(one)).toBe('2');
     expect(outcomeText(one)).toBe('2');
     // Its outcome on the second die: that die's number, not the total.
-    const two = { dice: [{ sides: 6, value: 4, face: { label: 'Sip' } }, { sides: 6, value: 5, face: pic }], total: 9 };
+    const two = {
+      dice: [
+        { sides: 6, value: 4, face: { label: 'Sip' } },
+        { sides: 6, value: 5, face: pic },
+      ],
+      total: 9,
+    };
     expect(describeRoll(two)).toBe('Sip, 5');
     expect(outcomeText(two)).toBe('5');
     const plain = { dice: [3, 5].map((value) => ({ sides: 6, value })), total: 8, totalOutcome: { label: '', details: 'Everyone drinks' } };
@@ -254,7 +290,14 @@ describe('what a roll comes to', () => {
     const truth = { label: 'Truth', details: 'Tell us a secret' };
     const minus = { label: '-200', scoreAction: { kind: 'add' as const, amount: -200 } };
     const plain = { label: 'Blank' };
-    const r = { dice: [{ sides: 6, value: 1, face: plain }, { sides: 6, value: 2, face: truth }, { sides: 6, value: 3, face: minus }], total: 6 };
+    const r = {
+      dice: [
+        { sides: 6, value: 1, face: plain },
+        { sides: 6, value: 2, face: truth },
+        { sides: 6, value: 3, face: minus },
+      ],
+      total: 6,
+    };
     expect(rollOutcome(r)).toEqual({ main: truth, others: [{ i: 2, face: minus }] });
     expect(rollOutcome({ ...r, totalOutcome: plain })).toEqual({ main: plain, others: [] });
   });

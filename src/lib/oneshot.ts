@@ -46,7 +46,9 @@ let shot: Shot | null = null;
 
 function part(e: MouseEvent): void {
   const now = Date.now();
-  const v = shot && judgePart(shot, { type: e.type, detail: e.detail, x: e.clientX, y: e.clientY, mouse: !(e instanceof PointerEvent) || e.pointerType === 'mouse' }, now);
+  const v =
+    shot &&
+    judgePart(shot, { type: e.type, detail: e.detail, x: e.clientX, y: e.clientY, mouse: !(e instanceof PointerEvent) || e.pointerType === 'mouse' }, now);
   if (v === 'end') shot = null;
   if (!shot || v !== 'drop') return;
   shot.at = now;

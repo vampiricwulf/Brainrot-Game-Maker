@@ -54,7 +54,14 @@
   <svg width={SLIDE_W} height={SLIDE_H}>
     <!-- White, as the line is saved (a closed shape keeps a white edge). -->
     {#if points.length > 1}
-      <polyline points={points.map((p) => p.join(',')).join(' ')} fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+      <polyline
+        points={points.map((p) => p.join(',')).join(' ')}
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
     {/if}
   </svg>
 </div>

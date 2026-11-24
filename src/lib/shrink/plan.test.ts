@@ -299,7 +299,15 @@ describe('videoOptions: which size is picked', () => {
 
 describe('cardSpan: the part of a file its cards play', () => {
   it('runs from the earliest start to the latest stop of every use', () => {
-    expect(cardSpan([{ start: 12, end: 20 }, { start: 30, end: 45 }], 92)).toEqual({ span: { from: 12, to: 45 }, ticked: true });
+    expect(
+      cardSpan(
+        [
+          { start: 12, end: 20 },
+          { start: 30, end: 45 },
+        ],
+        92,
+      ),
+    ).toEqual({ span: { from: 12, to: 45 }, ticked: true });
     expect(cardSpan([{ start: 1, end: 3 }], 4)).toEqual({ span: { from: 1, to: 3 }, ticked: true });
     expect(cardSpan([{ end: 30 }], 100)).toEqual({ span: { from: 0, to: 30 }, ticked: true });
   });
@@ -355,10 +363,18 @@ describe('planVideoCopy', () => {
 
   it('makes another sound AAC for an MP4, at 128 kbps (96 for one channel), 2 channels at most', () => {
     const opus = video(1920, 1080, 60, 400 * MiB, { audio: { ...track, codec: 'opus', bps: null, channels: 6, label: null } });
-    expect(ok(planVideoCopy(opus, CAN, ALL, small, null, true)).run.audio).toEqual({ codec: 'aac', bitrate: 128_000, forceTranscode: true, numberOfChannels: 2 });
+    expect(ok(planVideoCopy(opus, CAN, ALL, small, null, true)).run.audio).toEqual({
+      codec: 'aac',
+      bitrate: 128_000,
+      forceTranscode: true,
+      numberOfChannels: 2,
+    });
     const mono = video(1920, 1080, 60, 400 * MiB, { audio: { ...track, codec: 'mp3', bps: null, channels: 1, label: null } });
     expect(ok(planVideoCopy(mono, CAN, ALL, small, null, true)).run.audio).toEqual({ codec: 'aac', bitrate: 96_000, forceTranscode: true });
-    expect(ok(planVideoCopy(video(1920, 1080, 60, 1, { audio: null }), CAN, ALL, small, null, true))).toMatchObject({ format: 'Made as an MP4 (H.264), which every phone plays.', out: { sound: false } });
+    expect(ok(planVideoCopy(video(1920, 1080, 60, 1, { audio: null }), CAN, ALL, small, null, true))).toMatchObject({
+      format: 'Made as an MP4 (H.264), which every phone plays.',
+      out: { sound: false },
+    });
   });
 
   it('without H.264 (or AAC for its sound): a WebM, VP9 else VP8, its Opus or Vorbis sound copied, else made Opus', () => {
@@ -369,12 +385,21 @@ describe('planVideoCopy', () => {
     expect([p.mime, p.ext]).toEqual(['video/webm', 'webm']);
     expect(p.format).toMatch(/^Made as a WebM \(VP9, Opus\)\. This browser makes WebM videos: some iPhones may not play them\./);
     const vorbis = video(1920, 1080, 60, 1, { audio: { ...track, codec: 'vorbis', bps: null, channels: 2, label: null } });
-    expect(ok(planVideoCopy(vorbis, OPUS, { avc: false, vp9: false, vp8: true }, phones, null, true)).run).toMatchObject({ video: { codec: 'vp8' }, audio: {} });
+    expect(ok(planVideoCopy(vorbis, OPUS, { avc: false, vp9: false, vp8: true }, phones, null, true)).run).toMatchObject({
+      video: { codec: 'vp8' },
+      audio: {},
+    });
     // A sound it can't make Opus of, or no video encoder at all.
-    expect(planVideoCopy(big, { ok: true, aac: true, opus: false }, { avc: false, vp9: true, vp8: true }, phones, null, true)).toEqual({ refuse: CANT_MAKE_SOUND });
+    expect(planVideoCopy(big, { ok: true, aac: true, opus: false }, { avc: false, vp9: true, vp8: true }, phones, null, true)).toEqual({
+      refuse: CANT_MAKE_SOUND,
+    });
     expect(planVideoCopy(big, CAN, { avc: false, vp9: false, vp8: false }, phones, null, true)).toEqual({ refuse: NO_ENCODER });
     // A sound no browser here reads (an MKV's Dolby Digital): the copy goes without it, not not at all.
-    const ac3 = video(1280, 720, 10, 1, { box: 'mkv', video: { ...track, codec: 'vp9', width: 1280, height: 720, rotation: 0, hdr: false }, audio: { ...track, codec: 'ac3', decodes: false, cpt: false, bps: 448_000, channels: 6, label: null } });
+    const ac3 = video(1280, 720, 10, 1, {
+      box: 'mkv',
+      video: { ...track, codec: 'vp9', width: 1280, height: 720, rotation: 0, hdr: false },
+      audio: { ...track, codec: 'ac3', decodes: false, cpt: false, bps: 448_000, channels: 6, label: null },
+    });
     const silent = ok(planVideoCopy(ac3, OPUS, { avc: false, vp9: true, vp8: true }, phones, null, false));
     expect(silent.run).toMatchObject({ box: 'webm', video: { codec: 'vp9' }, audio: { discard: true } });
     expect(silent.out.sound).toBe(false);
@@ -418,9 +443,17 @@ describe('planSoundCopy', () => {
   });
 
   it('leaves a picture out, keeps 2 channels at most, and holds only the part the cards play when asked', () => {
-    const withArt = sound(60, 10 * MiB, { video: { ...track, codec: 'avc', width: 300, height: 300, rotation: 0, hdr: false }, audio: { ...track, codec: 'flac', channels: 6, label: null } });
+    const withArt = sound(60, 10 * MiB, {
+      video: { ...track, codec: 'avc', width: 300, height: 300, rotation: 0, hdr: false },
+      audio: { ...track, codec: 'flac', channels: 6, label: null },
+    });
     const p = ok(planSoundCopy(withArt, CAN, { from: 3, to: 20 }, true));
-    expect(p.run).toEqual({ box: 'm4a', video: { discard: true }, audio: { codec: 'aac', bitrate: 128_000, forceTranscode: true, numberOfChannels: 2 }, trim: { start: 3, end: 20 } });
+    expect(p.run).toEqual({
+      box: 'm4a',
+      video: { discard: true },
+      audio: { codec: 'aac', bitrate: 128_000, forceTranscode: true, numberOfChannels: 2 },
+      trim: { start: 3, end: 20 },
+    });
     expect(p.out).toEqual({ seconds: 17, sound: true });
   });
 
@@ -437,7 +470,11 @@ describe('planSoundCopy', () => {
   it('a sound the app can’t decode is decoded by the browser instead, 15 minutes at most', () => {
     const odd = sound(60, 10 * MiB, { audio: { ...track, codec: 'ac3', decodes: false, channels: 2, label: null } });
     expect(ok(planSoundCopy(odd, CAN, null, false)).here).toEqual({ codec: 'aac', bitrate: 128_000 });
-    expect(ok(planSoundCopy({ ...odd, box: null, audio: null, seconds: null }, CAN, null, false))).toMatchObject({ here: { codec: 'aac' }, estimate: 0, out: { seconds: null } });
+    expect(ok(planSoundCopy({ ...odd, box: null, audio: null, seconds: null }, CAN, null, false))).toMatchObject({
+      here: { codec: 'aac' },
+      estimate: 0,
+      out: { seconds: null },
+    });
     expect(planSoundCopy({ ...odd, seconds: 16 * 60 }, CAN, null, false)).toEqual({ refuse: SOUND_TOO_LONG });
     expect(ok(planSoundCopy(sound(60, 10 * MiB), CAN, null, true))).not.toHaveProperty('here');
   });
@@ -524,7 +561,13 @@ describe('how 🔄 Convert makes a file that plays here', () => {
 
   it('a quick fix copies every track as it is, forced: never re-encoded behind the host’s back', () => {
     const p = planFor(facts('mkv', pic('vp9'), snd('opus'), { element: { opens: 'yes', picture: true, sound: 'yes' } }), 'video', 'video/x-matroska');
-    expect(p).toMatchObject({ run: { box: 'webm', copy: { mode: 'forced', shiftTolerance: 0.1 } }, mime: 'video/webm', copied: true, cut: null, label: 'Repackaged a video as WebM (nothing lost)' });
+    expect(p).toMatchObject({
+      run: { box: 'webm', copy: { mode: 'forced', shiftTolerance: 0.1 } },
+      mime: 'video/webm',
+      copied: true,
+      cut: null,
+      label: 'Repackaged a video as WebM (nothing lost)',
+    });
     expect(p.run.video).toBeUndefined();
     expect(p.run.audio).toBeUndefined();
     expect(p.out).toEqual({ seconds: 10, width: 1280, height: 720, sound: true });
@@ -545,14 +588,23 @@ describe('how 🔄 Convert makes a file that plays here', () => {
   });
 
   it('a sound it can’t play is left out (discarded), and its share comes off the size', () => {
-    const f = facts('mkv', pic('vp9', { bps: 600_000 }), snd('ac3', { bps: 400_000, decodes: false, cpt: false }), { element: { opens: 'yes', picture: true, sound: 'no' } });
+    const f = facts('mkv', pic('vp9', { bps: 600_000 }), snd('ac3', { bps: 400_000, decodes: false, cpt: false }), {
+      element: { opens: 'yes', picture: true, sound: 'no' },
+    });
     const p = planFor(f, 'video', 'video/x-matroska');
-    expect(p).toMatchObject({ run: { box: 'webm', audio: { discard: true }, copy: { mode: 'forced' } }, copied: true, label: 'Repackaged a video as WebM without its sound', format: 'WebM (VP9, no sound)' });
+    expect(p).toMatchObject({
+      run: { box: 'webm', audio: { discard: true }, copy: { mode: 'forced' } },
+      copied: true,
+      label: 'Repackaged a video as WebM without its sound',
+      format: 'WebM (VP9, no sound)',
+    });
     expect(p.out.sound).toBe(false);
     // 1 MB, less 10 s at 400 kbps (500 KB).
     expect(p.estimate).toBe(510_000);
     // A sound whose own rate the file doesn't say: the file's 800 kbps less the picture's 600 (250 KB for 10 s).
-    const unsaid = facts('mkv', pic('vp9', { bps: 600_000 }), snd('ac3', { bps: null, decodes: false, cpt: false }), { element: { opens: 'yes', picture: true, sound: 'no' } });
+    const unsaid = facts('mkv', pic('vp9', { bps: 600_000 }), snd('ac3', { bps: null, decodes: false, cpt: false }), {
+      element: { opens: 'yes', picture: true, sound: 'no' },
+    });
     expect(planFor(unsaid, 'video', 'video/x-matroska').estimate).toBe(760_000);
   });
 
@@ -576,11 +628,21 @@ describe('how 🔄 Convert makes a file that plays here', () => {
     // Uncompressed sound in a MOV that doesn't play: Opus (96 kbps for one channel), the picture kept.
     const pcm = facts('mov', pic('vp9'), snd('pcm-s16', { cpt: false, channels: 1 }), { element: { opens: 'yes', picture: true, sound: 'no' } });
     const q = planFor(pcm, 'video', 'video/quicktime');
-    expect([q.run.box, q.run.video, q.run.audio, q.label]).toEqual(['webm', undefined, { codec: 'opus', bitrate: 96_000, forceTranscode: true }, 'Converted a video to WebM']);
+    expect([q.run.box, q.run.video, q.run.audio, q.label]).toEqual([
+      'webm',
+      undefined,
+      { codec: 'opus', bitrate: 96_000, forceTranscode: true },
+      'Converted a video to WebM',
+    ]);
   });
 
   it('says what else to know: another sound track, subtitles, an HDR picture made again', () => {
-    const f = facts('mp4', { ...pic('hevc', { cpt: false }), hdr: true }, { ...snd('opus'), label: 'English' }, { moreAudio: 1, subtitles: true, element: { opens: 'yes', picture: false, sound: 'yes' } });
+    const f = facts(
+      'mp4',
+      { ...pic('hevc', { cpt: false }), hdr: true },
+      { ...snd('opus'), label: 'English' },
+      { moreAudio: 1, subtitles: true, element: { opens: 'yes', picture: false, sound: 'yes' } },
+    );
     expect(planFor(f, 'video', 'video/mp4').notes).toEqual([
       'It has 2 sound tracks: the converted file keeps “English” only.',
       'Its subtitles aren’t kept.',
@@ -589,7 +651,9 @@ describe('how 🔄 Convert makes a file that plays here', () => {
   });
 
   it('a picture’s bitrate for the show: 8 Mbps at 1080p, 5 at 720p, by its pixels, a fifth less for VP9, never past what the source has', () => {
-    expect([videoBitrate(1920, 1080, 'avc'), videoBitrate(1280, 720, 'avc'), videoBitrate(854, 480, 'avc'), videoBitrate(640, 360, 'avc')]).toEqual([8_000_000, 5_000_000, 2_223_958, 1_250_000]);
+    expect([videoBitrate(1920, 1080, 'avc'), videoBitrate(1280, 720, 'avc'), videoBitrate(854, 480, 'avc'), videoBitrate(640, 360, 'avc')]).toEqual([
+      8_000_000, 5_000_000, 2_223_958, 1_250_000,
+    ]);
     expect(videoBitrate(1280, 720, 'vp9')).toBe(4_000_000);
     expect(videoBitrate(320, 180, 'avc')).toBe(1_200_000);
     // A 2 Mbps source: 2.2 Mbps at most (3 Mbps from HEVC to H.264); never under 300 kbps.
@@ -617,7 +681,11 @@ describe('✎ Edit: what an edit makes', () => {
     hdr: false,
     ...(o.fps ? { fps: o.fps } : {}),
   });
-  const snd = (codec: string, o: Partial<TrackFacts> & { channels?: number } = {}) => ({ ...t(codec, { bps: 128_000, ...o }), channels: o.channels ?? 2, label: null });
+  const snd = (codec: string, o: Partial<TrackFacts> & { channels?: number } = {}) => ({
+    ...t(codec, { bps: 128_000, ...o }),
+    channels: o.channels ?? 2,
+    label: null,
+  });
   const facts = (box: MediaFacts['box'], video: MediaFacts['video'], audio: MediaFacts['audio'], o: Partial<MediaFacts> = {}): MediaFacts => ({
     box,
     seconds: 10,
@@ -653,13 +721,21 @@ describe('✎ Edit: what an edit makes', () => {
     // (Cut only at the end: no end in the trim when it's kept to the end.)
     expect(plan(mp4, { start: 2 }).run.trim).toEqual({ start: 2 });
     // A MOV's trim copies too, into an MP4.
-    expect(plan(facts('mov', pic('hevc'), snd('aac')), { start: 1, end: 4 }).run).toEqual({ box: 'mp4', trim: { start: 1, end: 4 }, copy: { shiftTolerance: 0.1 } });
+    expect(plan(facts('mov', pic('hevc'), snd('aac')), { start: 1, end: 4 }).run).toEqual({
+      box: 'mp4',
+      trim: { start: 1, end: 4 },
+      copy: { shiftTolerance: 0.1 },
+    });
   });
 
   it('a WebM cut within a tenth of a second of a key frame copies; else the picture is made again, or a quick trim starts at the key frame', () => {
     expect(plan(webm, { start: 1.05 }, { key: 1 }).copied).toBe(true);
     const exact = plan(webm, { start: 1.3, end: 2.5 }, { key: 1 });
-    expect(exact).toMatchObject({ copied: false, cut: { from: 1.3, to: 2.5 }, run: { box: 'webm', trim: { start: 1.3, end: 2.5 }, video: { codec: 'vp9', width: 1920, height: 1080, forceTranscode: true, bitrateMode: 'variable' } } });
+    expect(exact).toMatchObject({
+      copied: false,
+      cut: { from: 1.3, to: 2.5 },
+      run: { box: 'webm', trim: { start: 1.3, end: 2.5 }, video: { codec: 'vp9', width: 1920, height: 1080, forceTranscode: true, bitrateMode: 'variable' } },
+    });
     expect(exact.run.audio).toBeUndefined();
     const quick = plan(webm, { start: 1.3, end: 2.5, quick: true }, { key: 1 });
     expect(quick).toMatchObject({ copied: true, cut: { from: 1, to: 2.5, length: 10 }, run: { trim: { start: 1, end: 2.5 } }, out: { seconds: 1.5 } });
@@ -668,7 +744,11 @@ describe('✎ Edit: what an edit makes', () => {
     expect(quickTrimAt(webm, edit(webm, { start: 1.3 }), 1, 'video', CHROMIUM)).toBe(1);
     expect(quickTrimAt(webm, edit(webm, { start: 1.05 }), 1, 'video', CHROMIUM)).toBeNull();
     expect(quickTrimAt(mp4, edit(mp4, { start: 1.3 }), 1, 'video', CHROMIUM)).toBeNull();
-    expect([needsKey(webm, edit(webm, { start: 1.3 }), 'video', CHROMIUM), needsKey(webm, edit(webm, { end: 5 }), 'video', CHROMIUM), needsKey(mp4, edit(mp4, { start: 1 }), 'video', CHROMIUM)]).toEqual([true, false, false]);
+    expect([
+      needsKey(webm, edit(webm, { start: 1.3 }), 'video', CHROMIUM),
+      needsKey(webm, edit(webm, { end: 5 }), 'video', CHROMIUM),
+      needsKey(mp4, edit(mp4, { start: 1 }), 'video', CHROMIUM),
+    ]).toEqual([true, false, false]);
     // An MKV of WebM's codecs goes in a WebM, and is cut the same way.
     expect(plan(facts('mkv', pic('vp9'), snd('opus')), { start: 1.3 }, { key: 1 }).run.box).toBe('webm');
   });
@@ -735,7 +815,11 @@ describe('✎ Edit: what an edit makes', () => {
     expect(crop.run).toMatchObject({ box: 'webm', video: { crop: { left: 480, top: 0, width: 960, height: 1080 }, width: 960, height: 1080 } });
     expect([crop.notes, crop.aspect]).toEqual([[], { was: 16 / 9, now: 960 / 1080 }]);
     // H.264 goes with AAC: an Opus sound becomes AAC where it can be made.
-    expect(plan(webm, { short: 720 }, { can: WINDOWS, enc: AVC }).run).toMatchObject({ box: 'mp4', video: { codec: 'avc' }, audio: { codec: 'aac', bitrate: 128_000 } });
+    expect(plan(webm, { short: 720 }, { can: WINDOWS, enc: AVC }).run).toMatchObject({
+      box: 'mp4',
+      video: { codec: 'avc' },
+      audio: { codec: 'aac', bitrate: 128_000 },
+    });
     // Where it can't (an H.264 encoder but no AAC one, as Chrome on Linux): VP9 in a WebM, the Opus copied as it is.
     const noAac = plan(webm, { short: 720 }, { can: CHROMIUM, enc: AVC });
     expect([noAac.run.box, noAac.run.video?.codec, noAac.run.audio, noAac.format]).toEqual(['webm', 'vp9', undefined, 'WebM (VP9, Opus)']);
@@ -765,7 +849,9 @@ describe('✎ Edit: what an edit makes', () => {
     expect(plan(vorbis, { start: 1 }).copied).toBe(false);
     // One it can't decode: refused, saying what to do.
     expect(refusal(facts('mkv', pic('avc'), snd('vorbis', { decodes: false })), { start: 1 })).toBe(cantSound('vorbis', 'mp4'));
-    expect(cantSound('aac', 'webm')).toBe('This browser can’t re-encode its sound (AAC) for a WebM: untick Keep its sound, or edit it in Chrome or Edge on Windows or Mac.');
+    expect(cantSound('aac', 'webm')).toBe(
+      'This browser can’t re-encode its sound (AAC) for a WebM: untick Keep its sound, or edit it in Chrome or Edge on Windows or Mac.',
+    );
     expect(plan(mp4, { start: 1, sound: false }).run.audio).toEqual({ discard: true });
   });
 
@@ -779,9 +865,13 @@ describe('✎ Edit: what an edit makes', () => {
       format: 'MP3 (MP3)',
       out: { seconds: 5, sound: true },
     });
-    const boxes = [facts('wav', null, snd('pcm-s16')), facts('ogg', null, snd('opus')), facts('webm', null, snd('opus')), facts('adts', null, snd('aac')), facts('flac', null, snd('flac'))].map(
-      (f) => [plan(f, { start: 1 }, { kind: 'audio' }).run.box, plan(f, { start: 1 }, { kind: 'audio' }).mime],
-    );
+    const boxes = [
+      facts('wav', null, snd('pcm-s16')),
+      facts('ogg', null, snd('opus')),
+      facts('webm', null, snd('opus')),
+      facts('adts', null, snd('aac')),
+      facts('flac', null, snd('flac')),
+    ].map((f) => [plan(f, { start: 1 }, { kind: 'audio' }).run.box, plan(f, { start: 1 }, { kind: 'audio' }).mime]);
     expect(boxes).toEqual([
       ['wav', 'audio/wav'],
       ['ogg', 'audio/ogg'],
@@ -863,12 +953,28 @@ describe('✎ Edit: what an edit makes', () => {
   });
 
   it('times: typed, and shown', () => {
-    expect(['12', '12.4', '1:02', '1:02.5', '0:5', '1:02:03', ' 3,5 ', '1:75', 'abc', '', '-1'].map(parseClock)).toEqual([12, 12.4, 62, 62.5, 5, 3723, 3.5, null, null, null, null]);
+    expect(['12', '12.4', '1:02', '1:02.5', '0:5', '1:02:03', ' 3,5 ', '1:75', 'abc', '', '-1'].map(parseClock)).toEqual([
+      12,
+      12.4,
+      62,
+      62.5,
+      5,
+      3723,
+      3.5,
+      null,
+      null,
+      null,
+      null,
+    ]);
     expect([clockTenths(12.44, true), clockTenths(1, true), clockTenths(61.25), clockTenths(61)]).toEqual(['0:12.4', '0:01.0', '1:01.3', '1:01']);
     expect([clockText(12.4), clockText(92), clockText(3723)]).toEqual(['0:12', '1:32', '1:02:03']);
   });
 
   it('an edited copy’s name: “(edited)” and its own type’s extension', () => {
-    expect([editedName('Clip.mkv', 'video/webm'), editedName('Intro', 'audio/mpeg'), editedName('a.b.mp4', 'video/mp4')]).toEqual(['Clip (edited).webm', 'Intro (edited).mp3', 'a.b (edited).mp4']);
+    expect([editedName('Clip.mkv', 'video/webm'), editedName('Intro', 'audio/mpeg'), editedName('a.b.mp4', 'video/mp4')]).toEqual([
+      'Clip (edited).webm',
+      'Intro (edited).mp3',
+      'a.b (edited).mp4',
+    ]);
   });
 });

@@ -69,7 +69,10 @@ export function fileMime(head: Uint8Array, headerType: string | null, name: stri
 
 /** The start of a file as text, without a byte-order mark or leading whitespace. */
 function textHead(b: Uint8Array): string {
-  return new TextDecoder().decode(b.subarray(0, 512)).replace(/^\uFEFF/, '').trimStart();
+  return new TextDecoder()
+    .decode(b.subarray(0, 512))
+    .replace(/^\uFEFF/, '')
+    .trimStart();
 }
 
 /** Is this the start of a web page (Drive's warning pages, a share page…), not a file? */
@@ -83,11 +86,29 @@ export function kindOfMime(mime: string): LinkKind | null {
 }
 
 const MIME_EXT: Record<string, string> = {
-  'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/bmp': 'bmp', 'image/avif': 'avif',
-  'image/heic': 'heic', 'image/svg+xml': 'svg', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
-  'video/x-matroska': 'mkv', 'video/ogg': 'ogv', 'video/x-msvideo': 'avi', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3',
-  'audio/aac': 'aac', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/flac': 'flac', 'audio/webm': 'weba',
-  'audio/x-matroska': 'mka', 'video/mp2t': 'mts',
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/bmp': 'bmp',
+  'image/avif': 'avif',
+  'image/heic': 'heic',
+  'image/svg+xml': 'svg',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/quicktime': 'mov',
+  'video/x-matroska': 'mkv',
+  'video/ogg': 'ogv',
+  'video/x-msvideo': 'avi',
+  'audio/mp4': 'm4a',
+  'audio/mpeg': 'mp3',
+  'audio/aac': 'aac',
+  'audio/ogg': 'ogg',
+  'audio/wav': 'wav',
+  'audio/flac': 'flac',
+  'audio/webm': 'weba',
+  'audio/x-matroska': 'mka',
+  'video/mp2t': 'mts',
 };
 
 /** The media type a file name's extension stands for, or null. */
@@ -105,7 +126,11 @@ export function withExtension(name: string, mime: string): string {
   const dot = name.lastIndexOf('.');
   const cur = dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
   const same =
-    cur === ext || (ext === 'jpg' && cur === 'jpeg') || (ext === 'mp4' && cur === 'm4v') || (ext === 'ogg' && (cur === 'oga' || cur === 'opus')) || (ext === 'mts' && cur === 'm2ts');
+    cur === ext ||
+    (ext === 'jpg' && cur === 'jpeg') ||
+    (ext === 'mp4' && cur === 'm4v') ||
+    (ext === 'ogg' && (cur === 'oga' || cur === 'opus')) ||
+    (ext === 'mts' && cur === 'm2ts');
   if (same) return name;
   // A known media extension that disagrees (e.g. ".png" on a JPEG) is replaced; anything else is kept.
   const base = dot > 0 && MEDIA_EXT.test(cur) ? name.slice(0, dot) : name;
@@ -143,7 +168,10 @@ export function filenameFromDisposition(header: string | null | undefined): stri
 
 function clean(name: string): string | null {
   const base = name.split(/[\\/]/).pop() ?? '';
-  const safe = base.replace(/[:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 120);
+  const safe = base
+    .replace(/[:*?"<>|\u0000-\u001f]/g, '_')
+    .trim()
+    .slice(0, 120);
   return safe || null;
 }
 
@@ -186,7 +214,8 @@ export function readDrivePage(html: string, status: number, finalUrl = ''): { re
     const url = new URL(href, 'https://drive.google.com/');
     if (url.protocol === 'https:' && /(^|\.)google(usercontent)?\.com$/.test(url.hostname)) return { retry: url.href };
   }
-  if (/too many users|quota (has been )?exceeded|download quota|uc-error-subcaption/i.test(html)) return { problem: 'drive-quota', message: linkMessages.driveQuota };
+  if (/too many users|quota (has been )?exceeded|download quota|uc-error-subcaption/i.test(html))
+    return { problem: 'drive-quota', message: linkMessages.driveQuota };
   if (/cannot ?download|can(?:no|')t be downloaded|download(?:ing)? (?:is |has been )?disabled|only (?:view|see) this file/i.test(html))
     return { problem: 'drive-no-download', message: linkMessages.driveNoDownload };
   let host = '';

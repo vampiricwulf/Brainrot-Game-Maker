@@ -11,11 +11,34 @@ export interface DriveRef {
 
 export type LinkProblemCode =
   // Recognised links that can't be used as they are
-  | 'not-link' | 'folder' | 'google-doc' | 'google-photos' | 'no-file' | 'short-link' | 'album' | 'discord-unsigned'
-  | 'expired' | 'onedrive-personal' | 'box-viewer' | 'encrypted' | 'tenor-page' | 'embed-only'
+  | 'not-link'
+  | 'folder'
+  | 'google-doc'
+  | 'google-photos'
+  | 'no-file'
+  | 'short-link'
+  | 'album'
+  | 'discord-unsigned'
+  | 'expired'
+  | 'onedrive-personal'
+  | 'box-viewer'
+  | 'encrypted'
+  | 'tenor-page'
+  | 'embed-only'
   // Found out while downloading or trying the link
-  | 'html-page' | 'not-media' | 'wrong-kind' | 'hotlink' | 'unreachable' | 'http' | 'save-failed'
-  | 'drive-private' | 'drive-quota' | 'drive-no-download' | 'drive-page' | 'drive-browser' | 'drive-image';
+  | 'html-page'
+  | 'not-media'
+  | 'wrong-kind'
+  | 'hotlink'
+  | 'unreachable'
+  | 'http'
+  | 'save-failed'
+  | 'drive-private'
+  | 'drive-quota'
+  | 'drive-no-download'
+  | 'drive-page'
+  | 'drive-browser'
+  | 'drive-image';
 
 /** A link we recognise but can't use as media, with what to tell the user. */
 export interface LinkProblem {
@@ -111,7 +134,7 @@ export function youtubeStart(url: string): number | undefined {
     if (/^\d+$/.test(t)) return +t;
     const m = t.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/);
     if (!m) return undefined;
-    return (+(m[1] ?? 0)) * 3600 + (+(m[2] ?? 0)) * 60 + (+(m[3] ?? 0));
+    return +(m[1] ?? 0) * 3600 + +(m[2] ?? 0) * 60 + +(m[3] ?? 0);
   } catch {
     return undefined;
   }
@@ -168,7 +191,10 @@ export function parseDrive(link: string): DriveRef | LinkProblem | null {
   if (!u) return null;
   const host = u.hostname.toLowerCase();
   if (host === 'photos.google.com' || host === 'photos.app.goo.gl')
-    return { problem: 'google-photos', message: `That's a Google Photos link. Download the picture or video and add it to the game, or put it in Google Drive. ${DRIVE_SHARE_HINT}` };
+    return {
+      problem: 'google-photos',
+      message: `That's a Google Photos link. Download the picture or video and add it to the game, or put it in Google Drive. ${DRIVE_SHARE_HINT}`,
+    };
   if (host === 'goo.gl') return { problem: 'short-link', message: 'Short goo.gl links no longer work. Paste the full Google Drive link.' };
   if (!DRIVE_HOSTS.has(host)) return null;
   const path = u.pathname;
@@ -209,7 +235,8 @@ const rk = (ref: DriveRef, sep: '?' | '&') => (ref.resourceKey ? `${sep}resource
 /** URLs for a Drive file. Which of these work where is documented on each. */
 export const driveUrls = {
   /** The Drive page (open in a normal browser tab/window). `t` = start time in seconds. */
-  view: (ref: DriveRef, t?: number) => `https://drive.google.com/file/d/${ref.id}/view${rk(ref, '?')}${t ? `${ref.resourceKey ? '&' : '?'}t=${Math.round(t)}` : ''}`,
+  view: (ref: DriveRef, t?: number) =>
+    `https://drive.google.com/file/d/${ref.id}/view${rk(ref, '?')}${t ? `${ref.resourceKey ? '&' : '?'}t=${Math.round(t)}` : ''}`,
   /** Drive's own player, for an iframe or a popup window (not controllable from the app). */
   preview: (ref: DriveRef) => `https://drive.google.com/file/d/${ref.id}/preview${rk(ref, '?')}`,
   /**
@@ -239,10 +266,13 @@ export const article = (w: string): string => (/^[aeiou]/i.test(w) ? 'an' : 'a')
 /** The messages people see about links (plain English, one place). */
 export const linkMessages = {
   notLink: "That doesn't look like a link. Paste a link that starts with https://",
-  catboxAlbum: "That's a Catbox album page, not a file. Open it, right-click the file, choose Copy link. It should look like https://files.catbox.moe/abc123.mp4",
+  catboxAlbum:
+    "That's a Catbox album page, not a file. Open it, right-click the file, choose Copy link. It should look like https://files.catbox.moe/abc123.mp4",
   imgurAlbum: "That's an Imgur album. Open the picture, right-click it, choose Copy image address (i.imgur.com/...).",
-  discordUnsigned: 'This Discord link is incomplete. In Discord, right-click the file, choose Copy Link, and paste the whole link (it ends in ex=...&is=...&hm=...).',
-  discordExpired: (date: string) => `This Discord link expired on ${date}. Discord links only last about a day. Copy a fresh one, or download the file and add it.`,
+  discordUnsigned:
+    'This Discord link is incomplete. In Discord, right-click the file, choose Copy Link, and paste the whole link (it ends in ex=...&is=...&hm=...).',
+  discordExpired: (date: string) =>
+    `This Discord link expired on ${date}. Discord links only last about a day. Copy a fresh one, or download the file and add it.`,
   folder: "That's a folder link. Open the file itself and copy its link.",
   onedrive: "OneDrive personal links can't be played by other apps. Download the file and add it, or upload it to catbox.moe.",
   box: "That Box link opens Box's viewer, not the file. Download the file and add it.",
@@ -250,7 +280,8 @@ export const linkMessages = {
   tenor: "That's a Tenor page. Right-click the GIF and choose Copy image address (media.tenor.com/...).",
   streamableOnly: 'Streamable videos can only go on a slide, with the 🌐 Link button.',
   youtubeOnly: 'YouTube videos can only go on a slide, with the 🌐 Link button.',
-  htmlPage: "That link opens a web page, not a picture, video or sound file. Use the site's direct link, or right-click the media and choose Copy image/video address.",
+  htmlPage:
+    "That link opens a web page, not a picture, video or sound file. Use the site's direct link, or right-click the media and choose Copy image/video address.",
   notMedia: "That link isn't a picture, video or sound the game can play.",
   heic: "That link is a HEIC photo (the iPhone's format), which the game can't show. Convert it to JPG or PNG, then add the file.",
   avi: "That link is an AVI video, which the game can't play. Convert it to MP4, then add the file.",
@@ -288,7 +319,7 @@ export const linkMessages = {
   driveQuota:
     "Google Drive says too many people viewed or downloaded this file recently, so it's locked for now (up to 24 hours). Try again later, or download it in your browser and add the file.",
   driveNoDownload:
-    "The owner turned off downloads for this Drive file. In Drive's Share ⚙ settings, tick \"Viewers and commenters can see the option to download\", or use Google Drive's player on a slide.",
+    'The owner turned off downloads for this Drive file. In Drive\'s Share ⚙ settings, tick "Viewers and commenters can see the option to download", or use Google Drive\'s player on a slide.',
   drivePage: `Google Drive sent a web page instead of the file. ${DRIVE_SHARE_HINT}`,
   driveBrowser: "Drive videos and sounds can't play inside the browser version. Download the file and add it, or use the desktop app.",
   driveImage: `Couldn't show that Google Drive picture. ${DRIVE_SHARE_HINT}`,
@@ -343,7 +374,10 @@ export function parseMediaLink(raw: string, want?: LinkKind | 'font', now = Date
   if (youtubeId(source)) return want ? problem('embed-only', linkMessages.youtubeOnly) : { ...direct(), host: 'YouTube', embed: 'youtube', kindHint: 'video' };
   if (host === 'streamable.com') {
     const id = (segs[0] === 'e' || segs[0] === 'o' ? segs[1] : segs[0])?.match(/^[a-z0-9]+$/i)?.[0];
-    if (id) return want ? problem('embed-only', linkMessages.streamableOnly) : { ...direct(`https://streamable.com/${id}`), host: 'Streamable', embed: 'streamable', kindHint: 'video' };
+    if (id)
+      return want
+        ? problem('embed-only', linkMessages.streamableOnly)
+        : { ...direct(`https://streamable.com/${id}`), host: 'Streamable', embed: 'streamable', kindHint: 'video' };
   }
   if (host.endsWith('.streamable.com') && u.searchParams.has('Expires')) {
     const expiresAt = Number(u.searchParams.get('Expires')) * 1000 || undefined;
@@ -406,7 +440,9 @@ export function parseMediaLink(raw: string, want?: LinkKind | 'font', now = Date
 
   // Imgur: .gifv is a page around an .mp4; imgur.com/ID is a page around i.imgur.com/ID.*
   if (host === 'i.imgur.com' && /\.gifv$/i.test(path))
-    return want === 'image' ? direct(source.replace(/\.gifv(?=$|\?)/i, '.gif')) : { ...direct(source.replace(/\.gifv(?=$|\?)/i, '.mp4')), kindHint: 'video', gif: true };
+    return want === 'image'
+      ? direct(source.replace(/\.gifv(?=$|\?)/i, '.gif'))
+      : { ...direct(source.replace(/\.gifv(?=$|\?)/i, '.mp4')), kindHint: 'video', gif: true };
   if (host === 'imgur.com' || host === 'm.imgur.com') {
     if (['a', 'gallery', 't', 'r', 'user'].includes(segs[0] ?? '')) return problem('album', linkMessages.imgurAlbum);
     const m = segs.length === 1 ? segs[0].match(/^([a-z0-9]{5,8})(\.[a-z0-9]+)?$/i) : null;
@@ -422,10 +458,13 @@ export function parseMediaLink(raw: string, want?: LinkKind | 'font', now = Date
   // GIPHY: pages and every media host → the file itself (a looping muted MP4, or the GIF for a picture spot).
   // (i.giphy.com/ID.gif; media*.giphy.com/media/[v1.…/]ID/giphy.gif; giphy.com/gifs/some-slug-ID)
   const giphyId =
-    host === 'giphy.com' && /^(gifs|stickers|clips|embed)$/.test(segs[0] ?? '') ? segs[1]?.split('-').pop()
-    : /^(media\d*|i)\.giphy\.com$/.test(host)
-      ? segs.length === 1 ? segs[0].replace(/\.\w+$/, '') : segs.filter((s) => s !== 'media' && !/^v1\./.test(s)).at(-2)
-      : undefined;
+    host === 'giphy.com' && /^(gifs|stickers|clips|embed)$/.test(segs[0] ?? '')
+      ? segs[1]?.split('-').pop()
+      : /^(media\d*|i)\.giphy\.com$/.test(host)
+        ? segs.length === 1
+          ? segs[0].replace(/\.\w+$/, '')
+          : segs.filter((s) => s !== 'media' && !/^v1\./.test(s)).at(-2)
+        : undefined;
   if (giphyId && /^[a-z0-9]+$/i.test(giphyId)) {
     if (want === 'image') return { ...direct(`https://i.giphy.com/${giphyId}.gif`), host: 'GIPHY' };
     // Clips have sound; GIFs and stickers are silent loops.

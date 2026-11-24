@@ -4,7 +4,25 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, clickExportHtml, openGameFile, returningHost, stored, assert, launchChromium, until, boardIn, boardTilesIn, hostPanelIn, playerRowsIn, roundTabsIn, stageBoxIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  addClassicRounds,
+  clickExportHtml,
+  openGameFile,
+  returningHost,
+  stored,
+  assert,
+  launchChromium,
+  until,
+  boardIn,
+  boardTilesIn,
+  hostPanelIn,
+  playerRowsIn,
+  roundTabsIn,
+  stageBoxIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -15,15 +33,20 @@ page.on('pageerror', (e) => errors.push(e.message));
 const dialogs = [];
 page.on('dialog', (d) => (dialogs.push(d.message()), d.accept()));
 /** The focused element's accessible-ish name (aria-label or text). */
-const focused = () => page.evaluate(() => {
-  const el = document.activeElement;
-  return el && el !== document.body ? (el.getAttribute('aria-label') || el.textContent || '').trim() : 'BODY';
-});
+const focused = () =>
+  page.evaluate(() => {
+    const el = document.activeElement;
+    return el && el !== document.body ? (el.getAttribute('aria-label') || el.textContent || '').trim() : 'BODY';
+  });
 const focusInside = (sel) => page.evaluate((s) => !!document.querySelector(s)?.contains(document.activeElement), sel);
 /** WCAG contrast of an element's text on its background color. */
 const contrastOf = (loc) =>
   loc.evaluate((el) => {
-    const rgb = (c) => c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+    const rgb = (c) =>
+      c
+        .match(/\d+(\.\d+)?/g)
+        .slice(0, 3)
+        .map(Number);
     const lum = (c) => {
       const [r, g, b] = rgb(c).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -35,7 +58,11 @@ const contrastOf = (loc) =>
 /** The same, on the first background under the text (a link, a key chip on a button); 0 if it's faded (opacity). */
 const inkOn = (loc) =>
   loc.evaluate((el) => {
-    const rgb = (c) => c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+    const rgb = (c) =>
+      c
+        .match(/\d+(\.\d+)?/g)
+        .slice(0, 3)
+        .map(Number);
     const lum = (c) => {
       const [r, g, b] = rgb(c).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -90,27 +117,41 @@ try {
   const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
   await about.waitFor();
   assert(
-    (await about.getByRole('link', { name: /How to host/ }).getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker/blob/main/docs/hosting.md',
+    (await about.getByRole('link', { name: /How to host/ }).getAttribute('href')) ===
+      'https://github.com/vampiricwulf/Brainrot-Game-Maker/blob/main/docs/hosting.md',
     'the ⋯ menu’s 📖 How to host opens the hosting guide in a new tab, and ℹ About links to it',
   );
   assert(
-    (await more.getAttribute('aria-label')).includes('Keyboard shortcuts, How to host (guide), About') && (await more.getAttribute('title')).includes('📖 How to host (guide), ℹ About'),
+    (await more.getAttribute('aria-label')).includes('Keyboard shortcuts, How to host (guide), About') &&
+      (await more.getAttribute('title')).includes('📖 How to host (guide), ℹ About'),
     '⋯’s name and tooltip list 📖 How to host (guide) with the rest of its menu',
   );
   await page.keyboard.press('Escape');
-  assert((await page.getByRole('dialog').count()) === 0 && (await more.evaluate((b) => b === document.activeElement)), 'Esc on ℹ About gives the focus back too');
+  assert(
+    (await page.getByRole('dialog').count()) === 0 && (await more.evaluate((b) => b === document.activeElement)),
+    'Esc on ℹ About gives the focus back too',
+  );
   // ❔ Help, between 🔍 Find and ⋯: the keys, the game's keys, the tips, the guide and ℹ About, in that order.
   const help = page.getByRole('button', { name: /^Help:/ });
   await help.click();
   const helpText = (await page.getByRole('menu').innerText()).replace(/\s+/g, ' ');
   const helpAt = ['Keyboard shortcuts', 'Keys during the game', 'Show all tips again', 'How to host (guide)', 'About'].map((w) => helpText.indexOf(w));
-  assert(helpAt.every((n, i) => n >= 0 && (i === 0 || n > helpAt[i - 1])), `❔ Help lists the keys, the game's keys, the tips, the guide and ℹ About (${helpText})`);
+  assert(
+    helpAt.every((n, i) => n >= 0 && (i === 0 || n > helpAt[i - 1])),
+    `❔ Help lists the keys, the game's keys, the tips, the guide and ℹ About (${helpText})`,
+  );
   await page.getByRole('menuitem', { name: /Keys during the game/ }).click();
   const gameKeys = page.getByRole('dialog', { name: /keyboard shortcuts/i });
   await gameKeys.waitFor();
-  assert((await gameKeys.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true', '❔ Help › 🎮 Keys during the game opens the keys window on During the game');
+  assert(
+    (await gameKeys.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true',
+    '❔ Help › 🎮 Keys during the game opens the keys window on During the game',
+  );
   // Its name says which keys it shows, as its switch does.
-  assert((await gameKeys.getAttribute('aria-label')) === 'Keyboard shortcuts during the game', `the keys window on During the game is named for it (${await gameKeys.getAttribute('aria-label')})`);
+  assert(
+    (await gameKeys.getAttribute('aria-label')) === 'Keyboard shortcuts during the game',
+    `the keys window on During the game is named for it (${await gameKeys.getAttribute('aria-label')})`,
+  );
   await gameKeys.getByRole('button', { name: 'Editor', exact: true }).click();
   assert((await gameKeys.getAttribute('aria-label')) === 'Editor keyboard shortcuts', 'switched to Editor, it’s named Editor keyboard shortcuts');
   await page.keyboard.press('Escape');
@@ -120,7 +161,9 @@ try {
   await more.click();
   const copies = await page.locator('.cm').evaluate((m) => ({
     heading: m.querySelector('.heading')?.textContent,
-    items: [...m.querySelectorAll('[role="menuitem"]')].slice(0, 2).map((b) => [b.getAttribute('aria-label'), document.getElementById(b.getAttribute('aria-describedby'))?.textContent]),
+    items: [...m.querySelectorAll('[role="menuitem"]')]
+      .slice(0, 2)
+      .map((b) => [b.getAttribute('aria-label'), document.getElementById(b.getAttribute('aria-describedby'))?.textContent]),
   }));
   assert(
     copies.heading === 'Save a copy as' &&
@@ -150,7 +193,10 @@ try {
   await page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).click();
   // (Named for the part shown: it switches to During the game below.)
   const sheet = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
-  assert((await sheet.getByRole('button', { name: 'Close' }).count()) === 1 && (await sheet.getByRole('button', { name: 'Done' }).count()) === 1, '⌨ Keyboard shortcuts: a ✕ named Close and a Done');
+  assert(
+    (await sheet.getByRole('button', { name: 'Close' }).count()) === 1 && (await sheet.getByRole('button', { name: 'Done' }).count()) === 1,
+    '⌨ Keyboard shortcuts: a ✕ named Close and a Done',
+  );
   // Enter in its filter is the filter's; Enter on the window closes it.
   await sheet.getByLabel('Filter shortcuts').press('Enter');
   assert((await sheet.count()) === 1, 'Enter in the keys window’s filter leaves it open');
@@ -158,10 +204,16 @@ try {
   // Everywhere (N first, Shift+click, where Enter is Next, O's place in a buzzer tie said in its row).
   await sheet.getByRole('button', { name: 'During the game', exact: true }).click();
   const heads = await sheet.locator('section h3').allInnerTexts();
-  const blueRows = await sheet.locator('section', { has: page.getByRole('heading', { name: 'The blue button and the check' }) }).locator('tr td:first-child').allInnerTexts();
+  const blueRows = await sheet
+    .locator('section', { has: page.getByRole('heading', { name: 'The blue button and the check' }) })
+    .locator('tr td:first-child')
+    .allInnerTexts();
   assert(
     heads.map((h) => h.toLowerCase()).indexOf('the blue button and the check') === heads.map((h) => h.toLowerCase()).indexOf('everywhere') + 1 &&
-      blueRows[0] === 'N' && blueRows.includes('Shift+click on the blue button') && blueRows.includes('Enter') && blueRows.includes('W, D, U, O, C, X, T in the check'),
+      blueRows[0] === 'N' &&
+      blueRows.includes('Shift+click on the blue button') &&
+      blueRows.includes('Enter') &&
+      blueRows.includes('W, D, U, O, C, X, T in the check'),
     `the game's keys: the blue button's and the check's group, under its heading after Everywhere (${blueRows.join(' | ')})`,
   );
   await sheet.getByRole('heading', { name: '⌨ Keyboard shortcuts' }).click();
@@ -184,7 +236,14 @@ try {
       const together = !!main && r(main).right >= r(f).right - 1 && r(main).left - r(cancel).right <= 12;
       const rest = [...f.children].filter((el) => el !== cancel && el !== main && !el.classList.contains('spacer') && r(el).width);
       const apart = rest.every((el) => r(el).right < r(cancel).left - 24);
-      return { dom: bs.map((b) => b.textContent.trim()), visual, mainClass: bs.at(-1)?.className ?? '', together, apart, rest: rest.map((el) => el.textContent.trim()) };
+      return {
+        dom: bs.map((b) => b.textContent.trim()),
+        visual,
+        mainClass: bs.at(-1)?.className ?? '',
+        together,
+        apart,
+        rest: rest.map((el) => el.textContent.trim()),
+      };
     });
   await page.getByRole('button', { name: /Save/ }).first().click();
   const naming = page.getByRole('dialog', { name: 'Name your game' });
@@ -210,7 +269,10 @@ try {
   await replacing.waitFor();
   foot = await footer(replacing);
   assert(
-    foot.dom.join('|') === 'Start new anyway|Cancel|Save first' && foot.visual.join('|') === 'Start new anyway|Cancel|Save first' && foot.together && foot.apart,
+    foot.dom.join('|') === 'Start new anyway|Cancel|Save first' &&
+      foot.visual.join('|') === 'Start new anyway|Cancel|Save first' &&
+      foot.together &&
+      foot.apart,
     `Start a new game?: Start new anyway at the left, Cancel and Save first together at the right (${foot.visual.join(' · ')})`,
   );
   await replacing.getByRole('button', { name: 'Cancel' }).click();
@@ -219,9 +281,15 @@ try {
   const opening = page.getByRole('dialog', { name: 'Open a game' });
   await opening.waitFor();
   foot = await footer(opening);
-  const hintLines = await opening.locator('.modal-foot .hint').evaluate((h) => Math.round(h.getBoundingClientRect().height / (parseFloat(getComputedStyle(h).fontSize) * 1.25)));
+  const hintLines = await opening
+    .locator('.modal-foot .hint')
+    .evaluate((h) => Math.round(h.getBoundingClientRect().height / (parseFloat(getComputedStyle(h).fontSize) * 1.25)));
   assert(
-    foot.visual.join('|') === 'Cancel|Browse for a game file…' && foot.together && foot.apart && foot.rest[0] === 'or drop a game file on the editor' && hintLines === 1,
+    foot.visual.join('|') === 'Cancel|Browse for a game file…' &&
+      foot.together &&
+      foot.apart &&
+      foot.rest[0] === 'or drop a game file on the editor' &&
+      hintLines === 1,
     `📂 Open a game: “or drop a game file on the editor” at the left on one line, Cancel and Browse for a game file… together at the right (${JSON.stringify(foot)}, ${hintLines} line)`,
   );
   await opening.getByRole('button', { name: 'Cancel' }).click();
@@ -243,17 +311,26 @@ try {
         gap: Math.round(r(cancel).top - Math.max(...left.map((el) => r(el).bottom))),
       };
     });
-  for (const [w, h] of [[390, 844], [360, 740]]) {
+  for (const [w, h] of [
+    [390, 844],
+    [360, 740],
+  ]) {
     await page.setViewportSize({ width: w, height: h });
     await page.getByRole('button', { name: /New/ }).first().click();
     await replacing.waitFor();
     const nf = await narrowFoot(replacing);
-    assert(nf.inside && nf.above && nf.together && nf.gap <= 12, `at ${w}×${h}, Start a new game?'s foot wraps: Start new anyway above, Cancel and Save first together at the right, all in the window (${JSON.stringify(nf)})`);
+    assert(
+      nf.inside && nf.above && nf.together && nf.gap <= 12,
+      `at ${w}×${h}, Start a new game?'s foot wraps: Start new anyway above, Cancel and Save first together at the right, all in the window (${JSON.stringify(nf)})`,
+    );
     await replacing.getByRole('button', { name: 'Cancel' }).click();
     await page.keyboard.press('Control+o');
     await opening.waitFor();
     const of = await narrowFoot(opening);
-    assert(of.inside && of.above && of.together && of.gap <= 12, `at ${w}×${h}, 📂 Open a game's foot wraps: the hint above, Cancel and Browse together at the right, all in the window (${JSON.stringify(of)})`);
+    assert(
+      of.inside && of.above && of.together && of.gap <= 12,
+      `at ${w}×${h}, 📂 Open a game's foot wraps: the hint above, Cancel and Browse together at the right, all in the window (${JSON.stringify(of)})`,
+    );
     await opening.getByRole('button', { name: 'Cancel' }).click();
     await opening.waitFor({ state: 'detached' });
   }
@@ -264,21 +341,28 @@ try {
   const importing = page.getByRole('dialog', { name: 'Import clues' });
   await importing.waitFor();
   foot = await footer(importing);
-  assert(foot.visual.join('|') === 'Cancel|Import' && foot.together && foot.mainClass.includes('primary'), `📥 Import clues: Cancel and Import together at the right (${foot.visual.join(' · ')})`);
+  assert(
+    foot.visual.join('|') === 'Cancel|Import' && foot.together && foot.mainClass.includes('primary'),
+    `📥 Import clues: Cancel and Import together at the right (${foot.visual.join(' · ')})`,
+  );
   await importing.getByRole('button', { name: 'Cancel' }).click();
   await importing.waitFor({ state: 'detached' });
 
   // ---------- One focus ring, for the keyboard ----------
-  const ring = () => page.evaluate(() => {
-    const cs = getComputedStyle(document.activeElement);
-    return { style: cs.outlineStyle, color: cs.outlineColor, width: parseFloat(cs.outlineWidth) };
-  });
+  const ring = () =>
+    page.evaluate(() => {
+      const cs = getComputedStyle(document.activeElement);
+      return { style: cs.outlineStyle, color: cs.outlineColor, width: parseFloat(cs.outlineWidth) };
+    });
   await page.getByRole('button', { name: '🔊 Sounds' }).click();
   assert((await ring()).style === 'none', 'a button clicked with the mouse shows no focus ring');
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
   const kb = await ring();
-  assert(kb.style === 'solid' && kb.width >= 2 && kb.color === 'rgb(80, 128, 255)', `the same button reached with Tab shows the accent ring (${JSON.stringify(kb)})`);
+  assert(
+    kb.style === 'solid' && kb.width >= 2 && kb.color === 'rgb(80, 128, 255)',
+    `the same button reached with Tab shows the accent ring (${JSON.stringify(kb)})`,
+  );
 
   // ---------- A toast over a window stays clear of its buttons ----------
   await roundTabsIn(page).first().click();
@@ -302,13 +386,19 @@ try {
   // What's said while a window is open is still read: the live region isn't made inert with the page.
   await page.keyboard.press('Control+Enter');
   await page.waitForFunction(() => document.getElementById('live-region')?.dataset.said?.endsWith('Category 1 $400.'), null, { timeout: 3000 });
-  assert(!(await page.locator('#live-region').evaluate((r) => !!r.closest('[inert]'))), 'Ctrl+Enter in the clue editor says which tile it’s on, in a live region the window leaves usable');
+  assert(
+    !(await page.locator('#live-region').evaluate((r) => !!r.closest('[inert]'))),
+    'Ctrl+Enter in the clue editor says which tile it’s on, in a live region the window leaves usable',
+  );
   await page.keyboard.press('Escape');
   await clueDlg.waitFor({ state: 'detached' });
 
   // ---------- Board editor: names and focus ----------
   const firstTile = page.locator('.tile').first();
-  assert(/^Category 1, \$200: no question yet, no answer$/.test(await firstTile.getAttribute('aria-label')), `a tile is named by category, value and question (${await firstTile.getAttribute('aria-label')})`);
+  assert(
+    /^Category 1, \$200: no question yet, no answer$/.test(await firstTile.getAttribute('aria-label')),
+    `a tile is named by category, value and question (${await firstTile.getAttribute('aria-label')})`,
+  );
   await page.locator('.cat textarea').first().fill('Memes');
   // Its moves and Delete are in its ⋯ menu (named after the category).
   await page.getByRole('button', { name: 'More for category 1: Memes' }).click();
@@ -346,13 +436,17 @@ try {
   await page.getByLabel('Play the Right sound').uncheck();
   const offName = page.locator('.sound.off .what b').first();
   const offContrast = await offName.evaluate((el) => {
-    const rgb = (c) => c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+    const rgb = (c) =>
+      c
+        .match(/\d+(\.\d+)?/g)
+        .slice(0, 3)
+        .map(Number);
     const lum = (c) => {
       const [r, g, b] = rgb(c).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     };
     const [a, b] = [lum(getComputedStyle(el).color), lum(getComputedStyle(el.closest('.sound')).backgroundColor)].sort((x, y) => y - x);
-    return (a + 0.05) / (b + 0.05) * (getComputedStyle(el.closest('.what')).opacity === '1' ? 1 : 0);
+    return ((a + 0.05) / (b + 0.05)) * (getComputedStyle(el.closest('.what')).opacity === '1' ? 1 : 0);
   });
   assert(offContrast >= 4.5, `a switched-off sound’s name reads at ${offContrast.toFixed(2)}:1`);
   await page.getByLabel('Play the Right sound').check();
@@ -361,7 +455,10 @@ try {
   assert((await page.getByRole('main').getByRole('heading', { level: 1 }).count()) === 1, 'the editor has a main part with a heading naming the game');
   // 📊 Stats & Items is always in the sidebar: muted, "(optional)", until an RPG or board game round is there to use it.
   const statsNav = page.getByRole('button', { name: /^📊 Stats & Items/ });
-  assert((await statsNav.innerText()).includes('(optional)') && (await statsNav.evaluate((b) => b.classList.contains('optional'))), 'a game of Jeopardy boards lists 📊 Stats & Items muted, “(optional)”');
+  assert(
+    (await statsNav.innerText()).includes('(optional)') && (await statsNav.evaluate((b) => b.classList.contains('optional'))),
+    'a game of Jeopardy boards lists 📊 Stats & Items muted, “(optional)”',
+  );
   const roundTabs = await roundTabsIn(page).count();
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /RPG/ }).click();
@@ -403,7 +500,10 @@ try {
   await page.keyboard.press('Enter');
   assert((await names.count()) === before, 'and its Undo brings them back');
   await page.waitForFunction(() => document.activeElement?.matches('.pregame input.name') && document.activeElement.value === 'Player 2');
-  assert(await page.evaluate(() => document.activeElement.selectionStart === document.activeElement.selectionEnd), 'the keys go to the name of the one brought back (not selected), not the page');
+  assert(
+    await page.evaluate(() => document.activeElement.selectionStart === document.activeElement.selectionEnd),
+    'the keys go to the name of the one brought back (not selected), not the page',
+  );
   await page.getByRole('button', { name: /^Delete Player 2$/ }).click();
   await undoNote.getByRole('button', { name: 'Dismiss' }).focus();
   await page.keyboard.press('Enter');
@@ -456,7 +556,10 @@ try {
   await page.keyboard.press('s');
   await saidHas(/Scores off screen/);
   assert(true, 'P, 1 says who picks next, and S whether the scores are on screen');
-  assert((await page.getByRole('main').getByRole('heading', { level: 1, name: 'Untitled Game' }).count()) === 1, 'the stage and host panel are the main part, under a heading with the game’s title');
+  assert(
+    (await page.getByRole('main').getByRole('heading', { level: 1, name: 'Untitled Game' }).count()) === 1,
+    'the stage and host panel are the main part, under a heading with the game’s title',
+  );
   await boardTilesIn(boardIn(page)).first().click();
   assert((await focused()).includes('Reveal answer'), 'opening a clue puts the focus on 👁 Reveal answer');
   // The status line is read without its glyphs (⏱ is the timer's, not words).
@@ -518,7 +621,10 @@ try {
   await page.keyboard.press('2');
   await page.keyboard.press('Enter');
   await scoreNot(1, was);
-  assert((await boardIn(page).count()) === 0, `＋ Award pressed with Enter: then 2, Enter award Player 2, and the clue stays open (the keys were on ${await focused()})`);
+  assert(
+    (await boardIn(page).count()) === 0,
+    `＋ Award pressed with Enter: then 2, Enter award Player 2, and the clue stays open (the keys were on ${await focused()})`,
+  );
   await page.keyboard.press('Escape');
   await boardIn(page).waitFor();
   // Esc on any of a host-panel question's answers cancels the question (as on its Cancel), and goes no further: during
@@ -561,7 +667,10 @@ try {
   assert((await boardIn(page).count()) === 1, 'and Esc there cancels it, the round still on');
   // A player's score button and the box it opens are named for the player.
   const scoreBtn = playerRowsIn(page).first().locator('button.score');
-  assert(/^Player 1’s score: \$\d+$/.test(await scoreBtn.getAttribute('aria-label')), `a player's score button is named for them (${await scoreBtn.getAttribute('aria-label')})`);
+  assert(
+    /^Player 1’s score: \$\d+$/.test(await scoreBtn.getAttribute('aria-label')),
+    `a player's score button is named for them (${await scoreBtn.getAttribute('aria-label')})`,
+  );
   await scoreBtn.focus();
   await page.keyboard.press('Enter');
   const scoreBox = hostPanelIn(page).locator('.score-edit');
@@ -611,7 +720,10 @@ try {
     await page.waitForTimeout(300);
     const r = await box.boundingBox();
     inPanel.push(`${what} ${await stageH()}px, top ${Math.round(r.y)}`);
-    assert((await stageH()) === boardH && r.y >= panelBox.y - 1 && r.y + r.height <= 720 + 1, `one window, ${what} open: the stage keeps its size (${boardH}px) and the window is in the panel (${inPanel.at(-1)}, the panel from ${Math.round(panelBox.y)})`);
+    assert(
+      (await stageH()) === boardH && r.y >= panelBox.y - 1 && r.y + r.height <= 720 + 1,
+      `one window, ${what} open: the stage keeps its size (${boardH}px) and the window is in the panel (${inPanel.at(-1)}, the panel from ${Math.round(panelBox.y)})`,
+    );
     if (what === '👥 Players') break;
     await page.keyboard.press('Escape');
     await box.waitFor({ state: 'detached' });
@@ -620,9 +732,15 @@ try {
   const playersDlg = page.getByRole('dialog', { name: 'Players' });
   const ariaFocused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? 'BODY');
   const rowNames = () => playersDlg.locator('input.name').evaluateAll((els) => els.map((e) => e.value).join());
-  await playersDlg.getByRole('button', { name: /^Remove / }).first().click();
+  await playersDlg
+    .getByRole('button', { name: /^Remove / })
+    .first()
+    .click();
   const removeAsk = await playersDlg.locator('.ask button').allInnerTexts();
-  assert((await focused()) === 'Keep' && removeAsk.join(' | ') === 'Keep | Remove', `removing a player mid-game asks with the focus on Keep, before Remove, as every ask puts the safe answer first (${removeAsk.join(' | ')})`);
+  assert(
+    (await focused()) === 'Keep' && removeAsk.join(' | ') === 'Keep | Remove',
+    `removing a player mid-game asks with the focus on Keep, before Remove, as every ask puts the safe answer first (${removeAsk.join(' | ')})`,
+  );
   await playersDlg.getByRole('button', { name: 'Keep' }).click();
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Remove Player 1');
   assert(true, 'Keep gives the keys back to that player’s −');
@@ -656,9 +774,15 @@ try {
   const ask = page.getByRole('alertdialog');
   await ask.waitFor();
   assert((await ask.getAttribute('aria-modal')) === 'true', 'an in-app question is aria-modal');
-  assert((await ask.innerText()).includes('Its scores and used tiles are deleted') && (await focused()) === 'Keep', 'Discarding a saved game asks in the app, the focus on “Keep”');
+  assert(
+    (await ask.innerText()).includes('Its scores and used tiles are deleted') && (await focused()) === 'Keep',
+    'Discarding a saved game asks in the app, the focus on “Keep”',
+  );
   const askFoot = await footer(ask);
-  assert(askFoot.visual.join('|') === 'Keep|Discard' && askFoot.dom[0] === 'Keep', `its safe answer is on the left, the answer rightmost (${askFoot.visual.join(' · ')})`);
+  assert(
+    askFoot.visual.join('|') === 'Keep|Discard' && askFoot.dom[0] === 'Keep',
+    `its safe answer is on the left, the answer rightmost (${askFoot.visual.join(' · ')})`,
+  );
   assert((await ask.getByRole('heading', { name: /^Discard the saved game .*\?$/ }).count()) === 1, 'and its question is its title');
   await page.keyboard.press('Escape');
   assert((await ask.count()) === 0 && (await page.getByRole('button', { name: 'Resume game' }).isVisible()), 'Esc keeps the saved game');
@@ -681,11 +805,19 @@ try {
       const h = document.querySelector('header');
       const buttons = [...h.querySelectorAll('button')];
       const right = (name) => buttons.find((b) => (b.getAttribute('aria-label') ?? b.textContent).startsWith(name)).getBoundingClientRect().right;
-      return { over: h.scrollWidth - h.clientWidth, play: right('▶ Play'), help: right('Help'), lines: new Set(buttons.map((b) => Math.round(b.getBoundingClientRect().top))).size };
+      return {
+        over: h.scrollWidth - h.clientWidth,
+        play: right('▶ Play'),
+        help: right('Help'),
+        lines: new Set(buttons.map((b) => Math.round(b.getBoundingClientRect().top))).size,
+      };
     });
   await page.setViewportSize({ width: 912, height: 513 });
   const fit912 = await headerFit();
-  assert(fit912.over <= 0 && fit912.lines === 1 && fit912.play <= 912 && fit912.help <= 912, `at 912px the header is one line, ❔ Help and ▶ Play in it (${JSON.stringify(fit912)})`);
+  assert(
+    fit912.over <= 0 && fit912.lines === 1 && fit912.play <= 912 && fit912.help <= 912,
+    `at 912px the header is one line, ❔ Help and ▶ Play in it (${JSON.stringify(fit912)})`,
+  );
   await page.setViewportSize({ width: 853, height: 480 });
   const fit = await headerFit();
   assert(fit.over <= 0 && fit.play <= 853 && fit.help <= 853, `at 150% zoom (853px) the header fits and ❔ Help and ▶ Play show (${JSON.stringify(fit)})`);
@@ -697,10 +829,19 @@ try {
       await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
       const h = document.querySelector('.editor > header');
       const edge = h.getBoundingClientRect().right - parseFloat(getComputedStyle(h).paddingRight);
-      const named = (n) => [...h.querySelectorAll('button')].find((b) => (b.getAttribute('aria-label') ?? b.textContent.trim()).startsWith(n)).getBoundingClientRect();
+      const named = (n) =>
+        [...h.querySelectorAll('button')].find((b) => (b.getAttribute('aria-label') ?? b.textContent.trim()).startsWith(n)).getBoundingClientRect();
       const [find, help, more, play] = ['Find', 'Help', 'More', '▶ Play'].map(named);
       const note = h.querySelector('.autosave').getBoundingClientRect();
-      return { lines: new Set([find, help, more, play].map((r) => Math.round(r.top))).size, gap: Math.round(edge - play.right), order: find.left < help.left && help.left < more.left && more.left < play.left, noteRight: Math.round(note.right), findLeft: Math.round(find.left), noteTop: Math.round(note.top), playTop: Math.round(play.top) };
+      return {
+        lines: new Set([find, help, more, play].map((r) => Math.round(r.top))).size,
+        gap: Math.round(edge - play.right),
+        order: find.left < help.left && help.left < more.left && more.left < play.left,
+        noteRight: Math.round(note.right),
+        findLeft: Math.round(find.left),
+        noteTop: Math.round(note.top),
+        playTop: Math.round(play.top),
+      };
     });
     assert(
       ends.lines === 1 && ends.gap === 0 && ends.order && (ends.noteTop !== ends.playTop || ends.noteRight <= ends.findLeft),
@@ -717,7 +858,10 @@ try {
     const play = [...h.querySelectorAll('button')].find((b) => b.textContent.includes('Play')).getBoundingClientRect();
     return { over: h.scrollWidth - h.clientWidth, right, page: document.documentElement.scrollWidth, playRight: play.right };
   });
-  assert(fit720.over <= 0 && fit720.right <= 720 && fit720.page <= 720 && fit720.playRight <= 720, `at 200% zoom (720px) every header button is on screen and the page doesn’t scroll sideways (${JSON.stringify(fit720)})`);
+  assert(
+    fit720.over <= 0 && fit720.right <= 720 && fit720.page <= 720 && fit720.playRight <= 720,
+    `at 200% zoom (720px) every header button is on screen and the page doesn’t scroll sideways (${JSON.stringify(fit720)})`,
+  );
   // (640×360, as 1280×720 at 200%: the round list, a bar across the top, keeps to 30% of the height and scrolls.)
   await page.setViewportSize({ width: 640, height: 360 });
   const navH = await page.locator('.editor nav').evaluate(async (n) => {
@@ -730,7 +874,10 @@ try {
   // ---------- The keys after a move, a menu left with Tab, and New ----------
   const saidNow = () => page.evaluate(() => document.getElementById('live-region')?.dataset.said ?? '');
   await roundTabsIn(page).first().click();
-  assert((await page.getByRole('group', { name: /^Board: arrow keys move between tiles/ }).count()) === 1, 'the board’s tiles are a group whose name says how the keys reach them');
+  assert(
+    (await page.getByRole('group', { name: /^Board: arrow keys move between tiles/ }).count()) === 1,
+    'the board’s tiles are a group whose name says how the keys reach them',
+  );
   await page.locator('.cat textarea').first().fill('Animals');
   await page.getByRole('button', { name: 'More for category 1: Animals' }).focus();
   await page.keyboard.press('Enter');
@@ -760,22 +907,83 @@ try {
 
   // ---------- What's on stream is said: the question as it shows, the answer once it's revealed ----------
   {
-    const text = (id, t, more = {}) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true, ...more });
+    const text = (id, t, more = {}) => ({
+      id,
+      kind: 'text',
+      text: t,
+      x: 160,
+      y: 340,
+      w: 1600,
+      h: 400,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 1,
+      font: 'Arial',
+      size: 72,
+      weight: 700,
+      italic: false,
+      underline: false,
+      uppercase: false,
+      color: '#fff',
+      align: 'center',
+      vAlign: 'middle',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      autoFit: true,
+      ...more,
+    });
     const slide = (id, t, more = []) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t), ...more] });
-    const clue = (id, q, a, more = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(`q${id}`, q, [text(`s${id}`, 'Psst: host only', { y: 800, secret: true })]), answerSlide: slide(`a${id}`, a), ...more });
+    const clue = (id, q, a, more = {}) => ({
+      id,
+      value: null,
+      type: 'standard',
+      questionSlide: slide(`q${id}`, q, [text(`s${id}`, 'Psst: host only', { y: 800, secret: true })]),
+      answerSlide: slide(`a${id}`, a),
+      ...more,
+    });
     const said = {
-      id: 'g_said', version: 2, title: 'Said Night',
-      settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+      id: 'g_said',
+      version: 2,
+      title: 'Said Night',
+      settings: {
+        allowNegativeScores: true,
+        deductOnWrong: true,
+        defaultTimerSeconds: 15,
+        finalTimerSeconds: 30,
+        currencySymbol: '$',
+        rollOffDie: 20,
+        pickerFollowsAward: true,
+        timerAutoStart: false,
+        roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+        maxPlayers: 8,
+      },
       players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b'][i], startScore: 0 })),
       rounds: [
         {
-          id: 'r_board', name: 'Jeopardy!', mode: 'board', values: [200, 400], dailyDoubleCount: 0,
+          id: 'r_board',
+          name: 'Jeopardy!',
+          mode: 'board',
+          values: [200, 400],
+          dailyDoubleCount: 0,
           categories: [
-            { id: 'cat0', title: 'Memes', clues: [clue('c0', '“Never gonna give you up” is the song of this prank', 'Rickroll'), clue('c1', 'A Daily Double question', 'Its answer', { type: 'dailyDouble' })] },
+            {
+              id: 'cat0',
+              title: 'Memes',
+              clues: [
+                clue('c0', '“Never gonna give you up” is the song of this prank', 'Rickroll'),
+                clue('c1', 'A Daily Double question', 'Its answer', { type: 'dailyDouble' }),
+              ],
+            },
           ],
         },
       ],
-      media: [], audio: {}, theme: {}, wheels: [], dice: [], statFields: [], items: [],
+      media: [],
+      audio: {},
+      theme: {},
+      wheels: [],
+      dice: [],
+      statFields: [],
+      items: [],
     };
     mkdirSync(resolve('test-results'), { recursive: true });
     const saidFile = resolve('test-results/a11y-said.json');
@@ -801,7 +1009,10 @@ try {
     await boardIn(stageBoxIn(sp)).locator('.tile[data-clue="c1"]').click();
     await stageBoxIn(sp).locator('.dd').waitFor();
     await sp.waitForTimeout(1500);
-    assert(!spoken.some((t) => t.includes('Daily Double question')), `a Daily Double's splash: its question isn't said before it shows (${JSON.stringify(spoken)})`);
+    assert(
+      !spoken.some((t) => t.includes('Daily Double question')),
+      `a Daily Double's splash: its question isn't said before it shows (${JSON.stringify(spoken)})`,
+    );
     await sp.keyboard.press('Escape');
     await boardIn(stageBoxIn(sp)).waitFor();
     // A clue: its question as it shows (after its name), never its answer nor the host's secret words; its answer after R.
@@ -809,7 +1020,8 @@ try {
     await heardHas('“Never gonna give you up” is the song of this prank.');
     await sp.waitForTimeout(700);
     assert(
-      spoken.some((t) => /Memes \$200 · Answer hidden\. “Never gonna give you up” is the song of this prank\./.test(t)) && !spoken.some((t) => /Rickroll|Psst/.test(t)),
+      spoken.some((t) => /Memes \$200 · Answer hidden\. “Never gonna give you up” is the song of this prank\./.test(t)) &&
+        !spoken.some((t) => /Rickroll|Psst/.test(t)),
       `opening a clue says its question, after its name (“${spoken.at(-1)}”), never its answer nor a secret text box`,
     );
     await sp.keyboard.press('r');
@@ -830,9 +1042,16 @@ try {
   await noHover.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
   await hc.locator('nav > button', { hasText: '🕘 History' }).click();
   const goThere = hc.locator('main .list .hr:not(.current) .gobtn').first();
-  assert((await goThere.evaluate((b) => getComputedStyle(b).visibility)) === 'visible', 'on a screen without hover, 🕘 History’s Go there › shows on every row');
+  assert(
+    (await goThere.evaluate((b) => getComputedStyle(b).visibility)) === 'visible',
+    'on a screen without hover, 🕘 History’s Go there › shows on every row',
+  );
   await hc.getByRole('button', { name: '🎨 Theme' }).click();
-  const outlined = (loc) => loc.evaluate((e) => { const cs = getComputedStyle(e); return cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2; });
+  const outlined = (loc) =>
+    loc.evaluate((e) => {
+      const cs = getComputedStyle(e);
+      return cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2;
+    });
   const chosen = hc.locator('.preset[aria-pressed="true"]');
   const other = hc.locator('.preset[aria-pressed="false"]').first();
   assert((await outlined(chosen)) && !(await outlined(other)), 'with forced colors, the chosen theme preset is outlined (the others aren’t)');
@@ -863,16 +1082,22 @@ try {
   await hc.getByRole('button', { name: 'Start game ▶' }).click();
   await hc.getByRole('button', { name: 'Skip intro' }).click();
   // What viewers see follows the game's theme, not the host's display: a board tile keeps the theme's color.
-  const [tileBg, themeBg] = await hc.locator('.stage .tile').first().evaluate((e) => {
-    const cs = getComputedStyle(e);
-    const c = document.createElement('canvas').getContext('2d');
-    const norm = (v) => ((c.fillStyle = '#000'), (c.fillStyle = v), c.fillStyle);
-    return [norm(cs.backgroundColor), norm(cs.getPropertyValue('--tile-bg').trim() || cs.getPropertyValue('--tile').trim())];
-  });
+  const [tileBg, themeBg] = await hc
+    .locator('.stage .tile')
+    .first()
+    .evaluate((e) => {
+      const cs = getComputedStyle(e);
+      const c = document.createElement('canvas').getContext('2d');
+      const norm = (v) => ((c.fillStyle = '#000'), (c.fillStyle = v), c.fillStyle);
+      return [norm(cs.backgroundColor), norm(cs.getPropertyValue('--tile-bg').trim() || cs.getPropertyValue('--tile').trim())];
+    });
   assert(tileBg === themeBg, `with forced colors, a board tile on stage keeps the theme's color (${tileBg}, the theme's ${themeBg})`);
   await hc.keyboard.press('1');
   const sel = hostPanelIn(hc).locator('.p.on');
-  assert((await sel.count()) === 1 && (await outlined(sel)) && !(await outlined(hostPanelIn(hc).locator('.p:not(.on)').first())), 'and a selected player in the host panel is outlined');
+  assert(
+    (await sel.count()) === 1 && (await outlined(sel)) && !(await outlined(hostPanelIn(hc).locator('.p:not(.on)').first())),
+    'and a selected player in the host panel is outlined',
+  );
   // (Two steps: the older one has ↶ Back to here.)
   for (const who of ['2', '1']) {
     await hc.keyboard.press('p');

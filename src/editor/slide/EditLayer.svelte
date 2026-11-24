@@ -138,7 +138,10 @@
     // starts a selection box: a full-slide question mustn't be dragged off when you meant to select.
     if (el && el.kind === 'text' && !selected.includes(el.id) && !onDrawnText(el, e)) {
       const empty = (x: SlideElement) => x.kind === 'text' && !selected.includes(x.id) && !onDrawnText(x, e);
-      const under = elementsAt(visible.filter((x) => !x.locked), p).find((x) => !empty(x));
+      const under = elementsAt(
+        visible.filter((x) => !x.locked),
+        p,
+      ).find((x) => !empty(x));
       if (!under) {
         lastDown = el;
         startMarquee(e, p, { click: el });
@@ -355,9 +358,14 @@
   }
 
   const HANDLES: [number, number][] = [
-    [-1, -1], [0, -1], [1, -1],
-    [-1, 0], [1, 0],
-    [-1, 1], [0, 1], [1, 1],
+    [-1, -1],
+    [0, -1],
+    [1, -1],
+    [-1, 0],
+    [1, 0],
+    [-1, 1],
+    [0, 1],
+    [1, 1],
   ];
   const cursor = (hx: number, hy: number) => (hx === 0 ? 'ns-resize' : hy === 0 ? 'ew-resize' : hx === hy ? 'nwse-resize' : 'nesw-resize');
   /**
@@ -442,14 +450,16 @@
             class="handle"
             style:left="{((hx + 1) / 2) * 100}%"
             style:top="{((hy + 1) / 2) * 100}%"
-            style:translate="{shift(hx, shortW)} {shift(hy, shortH)}"
+            style:translate="{shift(hx, shortW)}
+            {shift(hy, shortH)}"
             style:cursor={cursor(hx, hy)}
             onpointerdown={(e) => handleDown(e, hx, hy)}
             role="presentation"
           ></div>
         {/each}
         <div class="rot-stem"></div>
-        <div class="rot" onpointerdown={rotateDown} role="presentation" title="Rotate (it settles on level near 0° and 90°; Shift: steps of 15°; Alt: freely)"></div>
+        <div class="rot" onpointerdown={rotateDown} role="presentation" title="Rotate (it settles on level near 0° and 90°; Shift: steps of 15°; Alt: freely)"
+        ></div>
       {/if}
       {#if el.locked}<div class="lock">🔒</div>{/if}
     </div>

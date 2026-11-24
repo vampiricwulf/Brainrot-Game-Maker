@@ -11,7 +11,11 @@ describe('rounds from a template or the sample game', () => {
   it('take the theme’s clue text, as a blank round does', () => {
     const game = newGame();
     game.theme.clueFont = 'Bangers';
-    for (const label of ['Classic board, 6 × 5', 'Welcome and rules']) addTemplate(game, TEMPLATES.find((t) => t.label === label)!);
+    for (const label of ['Classic board, 6 × 5', 'Welcome and rules'])
+      addTemplate(
+        game,
+        TEMPLATES.find((t) => t.label === label)!,
+      );
     const at = addSample(game);
     const fonts = fontsOf(game, 0);
     expect(at).toBe(2);

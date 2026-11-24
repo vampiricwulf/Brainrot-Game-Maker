@@ -80,7 +80,11 @@
   );
 </script>
 
-<div class="itembar" role="group" aria-label={one ? `Selected: ${layerLabel(one, game, card)}` : items.length ? `${countOf(items.length, say)} selected` : 'Nothing selected'}>
+<div
+  class="itembar"
+  role="group"
+  aria-label={one ? `Selected: ${layerLabel(one, game, card)}` : items.length ? `${countOf(items.length, say)} selected` : 'Nothing selected'}
+>
   <div class="what">
     {#if one}
       <span class="ic" aria-hidden="true">{layerIcon(one)}</span><span class="name" title={layerLabel(one, game, card)}>{layerLabel(one, game, card)}</span>
@@ -95,7 +99,8 @@
       onclick={(e) => onmenu(e.currentTarget)}
       aria-haspopup="menu"
       aria-label={one ? `More for ${layerLabel(one, game, card)}` : items.length ? `More for the selected ${say.things}` : `More for this ${say.page}`}
-      title={items.length ? 'Its menu: the same as a right-click on it (Shift+F10)' : `The ${say.page}’s menu: the same as a right-click on an empty spot`}>⋯</button
+      title={items.length ? 'Its menu: the same as a right-click on it (Shift+F10)' : `The ${say.page}’s menu: the same as a right-click on an empty spot`}
+      >⋯</button
     >
   </div>
   <div class="rows">

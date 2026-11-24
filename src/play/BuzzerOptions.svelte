@@ -61,7 +61,10 @@
 {#snippet arm()}
   <label>
     <span>Open the buzzers</span>
-    <select value={settings.buzzArm ?? 'open'} onchange={(e) => onset('buzzArm', e.currentTarget.value === 'host' ? 'host' : undefined, 'When the buzzers open')}>
+    <select
+      value={settings.buzzArm ?? 'open'}
+      onchange={(e) => onset('buzzArm', e.currentTarget.value === 'host' ? 'host' : undefined, 'When the buzzers open')}
+    >
       <option value="open">When the clue opens</option>
       <option value="host">When I press U (after reading it)</option>
     </select>

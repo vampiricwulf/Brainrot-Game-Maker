@@ -7,7 +7,25 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
-import { appFile, failureShots, addClassicRounds, flowButton, mainButton, mainLabel, nameGame, openGameFile, answerReplace, startNewGame, assert, launchChromium, boardIn, boardTilesIn, hostPanelIn, stageBoxIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  addClassicRounds,
+  flowButton,
+  mainButton,
+  mainLabel,
+  nameGame,
+  openGameFile,
+  answerReplace,
+  startNewGame,
+  assert,
+  launchChromium,
+  boardIn,
+  boardTilesIn,
+  hostPanelIn,
+  stageBoxIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -35,8 +53,13 @@ try {
   const addSlide = dialog.getByRole('button', { name: '＋ Add slide' });
   // ＋ Add slide and ＋ 🤫 Card are the size of the slide's other buttons.
   {
-    const sizes = await Promise.all(['＋ Add slide', '＋ 🤫 Card', '⧉ Duplicate slide'].map(async (name) => (await dialog.getByRole('button', { name }).boundingBox()).height));
-    assert(sizes.every((h) => h === sizes[2]), `＋ Add slide and ＋ 🤫 Card are as tall as ⧉ Duplicate slide (${sizes.join(', ')})`);
+    const sizes = await Promise.all(
+      ['＋ Add slide', '＋ 🤫 Card', '⧉ Duplicate slide'].map(async (name) => (await dialog.getByRole('button', { name }).boundingBox()).height),
+    );
+    assert(
+      sizes.every((h) => h === sizes[2]),
+      `＋ Add slide and ＋ 🤫 Card are as tall as ⧉ Duplicate slide (${sizes.join(', ')})`,
+    );
   }
   const undo = () => page.keyboard.press('Control+z');
   const redo = () => page.keyboard.press('Control+y');
@@ -50,7 +73,14 @@ try {
   /** Click away from the text fields (Ctrl+Z in a field with typing of its own undoes the typing first). */
   const away = () => dialog.locator('header .value').click();
   /** The slide tab that's open comes to be this one within a few seconds. */
-  const opens = (name) => tabs.locator('[role="tab"][aria-selected="true"]', { hasText: name }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+  const opens = (name) =>
+    tabs
+      .locator('[role="tab"][aria-selected="true"]', { hasText: name })
+      .waitFor({ timeout: 3000 })
+      .then(
+        () => true,
+        () => false,
+      );
   // Ctrl+D, and whether the page kept it from the browser (which would bookmark the page).
   await page.evaluate(() => window.addEventListener('keydown', (e) => e.key.toLowerCase() === 'd' && (window.__lastD = e.defaultPrevented)));
   const ctrlD = async () => {
@@ -60,7 +90,10 @@ try {
   };
 
   // One slide: the plain tabs, then the slide's group (＋ Add slide…), its 🗑 Delete slide greyed.
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', 'Answer slide (hidden until revealed)']), 'a clue starts with its one question slide and the answer');
+  assert(
+    JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', 'Answer slide (hidden until revealed)']),
+    'a clue starts with its one question slide and the answer',
+  );
   assert(await dialog.getByRole('button', { name: '🗑 Delete slide' }).isDisabled(), 'on a one-slide clue, the slide group’s 🗑 Delete slide is there, greyed');
   await q.fill('This started as a lead-in');
   await dialog.locator('[data-field="a"]').fill('Skibidi Toilet');
@@ -68,21 +101,33 @@ try {
   await tabs.getByRole('tab', { name: 'Answer slide (hidden until revealed)' }).click();
   assert((await ctrlD()) && (await tabs.getByRole('tab').count()) === 2, 'Ctrl+D on the Answer tab does nothing (nor the browser’s Bookmark this page)');
   await tabs.getByRole('tab', { name: 'Question slide' }).click();
-  assert((await ctrlD()) && JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Answer']), 'Ctrl+D on the only question slide’s tab duplicates it');
+  assert(
+    (await ctrlD()) && JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Answer']),
+    'Ctrl+D on the only question slide’s tab duplicates it',
+  );
   await away();
   await undo();
-  assert((await opens('Question slide')) && (await q.inputValue()) === 'This started as a lead-in', 'Ctrl+Z takes the copy back, the slide it was made from open');
+  assert(
+    (await opens('Question slide')) && (await q.inputValue()) === 'This started as a lead-in',
+    'Ctrl+Z takes the copy back, the slide it was made from open',
+  );
 
   await addSlide.click();
   assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Answer']), '＋ Add slide makes Question 1 · Question 2 · Answer');
   assert((await tabs.getByRole('tab', { name: 'Question 2' }).getAttribute('aria-selected')) === 'true', 'the new slide is open');
   assert(await q.evaluate((e) => e === document.activeElement), 'its question field has the focus, ready to type');
   assert((await q.inputValue()) === '', 'the new slide starts empty');
-  assert((await dialog.locator('label.field', { has: page.locator('[data-field="q"]') }).innerText()).includes('slide 2 of 2'), 'the Question field says which slide it is');
+  assert(
+    (await dialog.locator('label.field', { has: page.locator('[data-field="q"]') }).innerText()).includes('slide 2 of 2'),
+    'the Question field says which slide it is',
+  );
   await q.fill('It is a YouTube series');
   await addSlide.click();
   await q.fill('Toilets with heads');
-  assert((await dialog.locator('label.field', { has: page.locator('[data-field="q"]') }).innerText()).includes('slide 3 of 3'), 'the Question field says Slide 3 of 3');
+  assert(
+    (await dialog.locator('label.field', { has: page.locator('[data-field="q"]') }).innerText()).includes('slide 3 of 3'),
+    'the Question field says Slide 3 of 3',
+  );
 
   await page.screenshot({ path: 'test-results/multislide-editor.png' });
   // The first slide still has its own text.
@@ -101,7 +146,10 @@ try {
   assert((await tabs.getByRole('tab').count()) === 4 && (await opens('Question 2')), 'Ctrl+Z takes the copy back, the slide it was copied from open');
   await tabs.getByRole('tab', { name: 'Question 3' }).click();
   await dialog.getByRole('button', { name: 'Move slide earlier' }).click();
-  assert((await q.inputValue()) === 'Toilets with heads' && (await tabs.getByRole('tab', { name: 'Question 2' }).getAttribute('aria-selected')) === 'true', '◀ moves the slide earlier (it stays open)');
+  assert(
+    (await q.inputValue()) === 'Toilets with heads' && (await tabs.getByRole('tab', { name: 'Question 2' }).getAttribute('aria-selected')) === 'true',
+    '◀ moves the slide earlier (it stays open)',
+  );
   await away();
   await undo();
   assert((await opens('Question 3')) && (await q.inputValue()) === 'Toilets with heads', 'Ctrl+Z puts it back in its place, and shows it there');
@@ -124,16 +172,23 @@ try {
   assert((await tabs.getByRole('tab').count()) === 3, `a double-click on 🗑 Delete slide deletes one slide (${await tabNames()})`);
   await away();
   await undo();
-  assert((await tabs.getByRole('tab').count()) === 4 && (await opens('Question 2')) && (await q.inputValue()) === 'It is a YouTube series', 'and Ctrl+Z brings it back');
+  assert(
+    (await tabs.getByRole('tab').count()) === 4 && (await opens('Question 2')) && (await q.inputValue()) === 'It is a YouTube series',
+    'and Ctrl+Z brings it back',
+  );
   await tabs.getByRole('tab', { name: 'Question 3' }).click();
 
   // ---------- The tabs' keys ----------
   const selected = () => tabs.locator('[role="tab"][aria-selected="true"]');
-  const focused = () => page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab' && document.activeElement.getAttribute('aria-selected') === 'true');
+  const focused = () =>
+    page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab' && document.activeElement.getAttribute('aria-selected') === 'true');
   assert((await tabs.locator('[role="tab"][tabindex="0"]').count()) === 1, 'the tabs are one Tab stop (the open slide’s)');
   await tabs.getByRole('tab', { name: 'Question 3' }).focus();
   await page.keyboard.press('ArrowLeft');
-  assert((await selected().innerText()) === 'Question 2' && (await focused()) && (await q.inputValue()) === 'It is a YouTube series', '← opens the slide before, with the focus on its tab');
+  assert(
+    (await selected().innerText()) === 'Question 2' && (await focused()) && (await q.inputValue()) === 'It is a YouTube series',
+    '← opens the slide before, with the focus on its tab',
+  );
   await page.keyboard.press('End');
   assert((await selected().innerText()) === 'Answer', 'End: the answer');
   await page.keyboard.press('Home');
@@ -149,7 +204,10 @@ try {
   await tabs.getByRole('tab', { name: 'Question 2' }).click();
   assert((await q.inputValue()) === 'It is a YouTube series', 'Ctrl+Z puts it back');
   await page.keyboard.press('Control+d');
-  assert((await tabs.getByRole('tab').count()) === 5 && (await selected().innerText()) === 'Question 3' && (await focused()), 'Ctrl+D on a tab duplicates the slide');
+  assert(
+    (await tabs.getByRole('tab').count()) === 5 && (await selected().innerText()) === 'Question 3' && (await focused()),
+    'Ctrl+D on a tab duplicates the slide',
+  );
   await page.keyboard.press('Delete');
   assert((await tabs.getByRole('tab').count()) === 4 && (await focused()), 'Delete on a tab deletes the slide (the focus stays on the tabs)');
   await toastsIn(page, { hasText: 'Deleted question slide 3' }).waitFor({ timeout: 3000 });
@@ -172,20 +230,36 @@ try {
     const group = dialog.getByRole('group', { name: 'This slide' });
     await page.setViewportSize({ width: 1280, height: 720 });
     const [t, g, d] = await Promise.all([tabs.boundingBox(), group.boundingBox(), dialog.boundingBox()]);
-    assert(!!t && !!g && !!d && Math.abs(t.y + t.height - (g.y + g.height)) < 8 && g.x >= t.x + t.width - 1 && g.x + g.width <= d.x + d.width, 'at 1280×720 the slide’s group is on the tabs’ line, right after them');
+    assert(
+      !!t && !!g && !!d && Math.abs(t.y + t.height - (g.y + g.height)) < 8 && g.x >= t.x + t.width - 1 && g.x + g.width <= d.x + d.width,
+      'at 1280×720 the slide’s group is on the tabs’ line, right after them',
+    );
     await page.setViewportSize({ width: 1400, height: 900 });
     const first = await tabs.getByRole('tab', { name: 'Question 1' }).getAttribute('title');
     assert(first.startsWith('Question 1 · “Lead-in: a meme from 2023”'), `a tab’s tooltip gives its slide’s first words (${first.split('\n')[0]})`);
     // A right-click on a tab opens it, with its menu in the one order.
     await tabs.getByRole('tab', { name: 'Question 2' }).click({ button: 'right' });
     const items = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((x) => x.split('\n')[0].trim());
-    const want = ['⧉ Duplicate slide', '📋 Copy slide', '📋 Paste as a new slide after it', '📋 Paste over it', '◀ Move earlier', '▶ Move later', '🗑 Delete slide'];
-    assert(JSON.stringify(items) === JSON.stringify(want) && (await selected().innerText()) === 'Question 2', `a right-click on a tab opens it and gives its menu (${items.join(' | ')})`);
+    const want = [
+      '⧉ Duplicate slide',
+      '📋 Copy slide',
+      '📋 Paste as a new slide after it',
+      '📋 Paste over it',
+      '◀ Move earlier',
+      '▶ Move later',
+      '🗑 Delete slide',
+    ];
+    assert(
+      JSON.stringify(items) === JSON.stringify(want) && (await selected().innerText()) === 'Question 2',
+      `a right-click on a tab opens it and gives its menu (${items.join(' | ')})`,
+    );
     await page.getByRole('menuitem', { name: /📋 Copy slide/ }).click();
     // 📋 Paste slide: the copy as a new slide right after the open one, one undo step.
     await group.getByRole('button', { name: '📋 Paste slide' }).click();
     assert(
-      JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Question 3', 'Question 4', 'Answer']) && (await selected().innerText()) === 'Question 3' && (await q.inputValue()) === 'It is a YouTube series',
+      JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Question 3', 'Question 4', 'Answer']) &&
+        (await selected().innerText()) === 'Question 3' &&
+        (await q.inputValue()) === 'It is a YouTube series',
       '📋 Paste slide puts the copy in as a new slide after the open one, and opens it',
     );
     await away();
@@ -194,7 +268,10 @@ try {
     // Ctrl+V on a tab pastes it after that slide too.
     await tabs.getByRole('tab', { name: 'Question 1' }).click();
     await page.keyboard.press('Control+v');
-    assert((await tabs.getByRole('tab').count()) === 5 && (await selected().innerText()) === 'Question 2' && (await q.inputValue()) === 'It is a YouTube series', 'Ctrl+V on a tab pastes the copied slide after it');
+    assert(
+      (await tabs.getByRole('tab').count()) === 5 && (await selected().innerText()) === 'Question 2' && (await q.inputValue()) === 'It is a YouTube series',
+      'Ctrl+V on a tab pastes the copied slide after it',
+    );
     await away();
     await undo();
     // The ▾ beside it pastes over the open slide instead (the Answer here), with Undo.
@@ -212,7 +289,10 @@ try {
   // The history names each step.
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
-  await page.getByRole('button', { name: /History/ }).first().click();
+  await page
+    .getByRole('button', { name: /History/ })
+    .first()
+    .click();
   const history = await page.locator('main').innerText();
   for (const label of ['Added question slide 2 to Lore $200', 'Added question slide 3 to Lore $200', 'Edited question “Lead-in: a meme from 2023”'])
     assert(history.includes(label), `the history says “${label}”`);
@@ -222,7 +302,10 @@ try {
   // ---------- Save, then open the pack again ----------
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Save', exact: true }).click().then(() => nameGame(page, 'Slides Night')),
+    page
+      .getByRole('button', { name: 'Save', exact: true })
+      .click()
+      .then(() => nameGame(page, 'Slides Night')),
   ]);
   const packPath = resolve('test-results/multislide.brainrot');
   await download.saveAs(packPath);
@@ -236,7 +319,10 @@ try {
   await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
   await page.locator('.tile').first().click();
   await dialog.waitFor();
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Question 3', 'Answer']), 'the reopened pack has the clue’s three question slides');
+  assert(
+    JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Question 3', 'Answer']),
+    'the reopened pack has the clue’s three question slides',
+  );
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
 
@@ -252,7 +338,9 @@ try {
   aud.on('pageerror', (e) => errors.push('[audience] ' + e.message));
   await boardIn(aud).waitFor();
 
-  await boardTilesIn(boardIn(stageBoxIn(page))).first().click();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .first()
+    .click();
   const audSlide = aud.locator('.full[data-slide]');
   const audSays = async (n, text) => {
     await aud.locator(`.full[data-slide="${n}"]`).waitFor();
@@ -263,7 +351,11 @@ try {
   assert((await hostPanelIn(page).locator('[data-slidepos]').innerText()) === 'Slide 1 of 3', 'the host sees “Slide 1 of 3”');
   assert((await mainLabel(page)) === 'Next slide ▶' && (await mainButton(page).locator('kbd').innerText()) === 'N', 'the main button is Next slide ▶ (N)');
   assert(await flowButton(page, 'pager', '◀ Slide').isDisabled(), '◀ Slide is off on the first slide');
-  assert((await page.locator('.info .q').innerText()) === 'Lead-in: a meme from 2023' && (await page.locator('.info .notes').first().innerText()) === 'It is a YouTube series', 'the host info shows the slide on screen and the next one');
+  assert(
+    (await page.locator('.info .q').innerText()) === 'Lead-in: a meme from 2023' &&
+      (await page.locator('.info .notes').first().innerText()) === 'It is a YouTube series',
+    'the host info shows the slide on screen and the next one',
+  );
 
   await mainButton(page).click();
   assert(await audSays(2, 'It is a YouTube series'), 'Next slide ▶ moves the audience window to slide 2');
@@ -301,21 +393,81 @@ try {
   await boardIn(aud).waitFor();
 
   // Another clue (one slide) plays as always.
-  await boardTilesIn(boardIn(stageBoxIn(page))).nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .nth(1)
+    .click();
   await audSlide.waitFor();
-  assert((await hostPanelIn(page).locator('[data-slidepos]').count()) === 0 && (await mainLabel(page)) === '👁 Reveal answer', 'a one-slide clue: no slide position, the main button reveals');
+  assert(
+    (await hostPanelIn(page).locator('[data-slidepos]').count()) === 0 && (await mainLabel(page)) === '👁 Reveal answer',
+    'a one-slide clue: no slide position, the main button reveals',
+  );
   await page.keyboard.press('Escape');
   await boardIn(aud).waitFor();
 
   // ---------- A game made before clues had more slides ----------
-  const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+  const text = (id, t) => ({
+    id,
+    kind: 'text',
+    text: t,
+    x: 160,
+    y: 340,
+    w: 1600,
+    h: 400,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 1,
+    font: 'Arial',
+    size: 72,
+    weight: 700,
+    italic: false,
+    underline: false,
+    uppercase: false,
+    color: '#fff',
+    align: 'center',
+    vAlign: 'middle',
+    lineHeight: 1.2,
+    letterSpacing: 0,
+    autoFit: true,
+  });
   const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t)] });
   const old = {
-    id: 'g_old', version: 2, title: 'Old Night',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8 },
+    id: 'g_old',
+    version: 2,
+    title: 'Old Night',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: null,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+    },
     players: [{ id: 'p1', name: 'Ann', color: '#e6194b' }],
-    rounds: [{ id: 'r1', name: 'Old Board', mode: 'board', values: [100], dailyDoubleCount: 0, categories: [{ id: 'c1', title: 'Old', clues: [{ id: 'k1', value: null, type: 'standard', questionSlide: slide('q1', 'An old question'), answerSlide: slide('a1', 'An old answer') }] }] }],
-    media: [], audio: {}, theme: {}, wheels: [], dice: [],
+    rounds: [
+      {
+        id: 'r1',
+        name: 'Old Board',
+        mode: 'board',
+        values: [100],
+        dailyDoubleCount: 0,
+        categories: [
+          {
+            id: 'c1',
+            title: 'Old',
+            clues: [{ id: 'k1', value: null, type: 'standard', questionSlide: slide('q1', 'An old question'), answerSlide: slide('a1', 'An old answer') }],
+          },
+        ],
+      },
+    ],
+    media: [],
+    audio: {},
+    theme: {},
+    wheels: [],
+    dice: [],
   };
   const oldFile = resolve('test-results/multislide-old.json');
   writeFileSync(oldFile, JSON.stringify(old));
@@ -327,7 +479,11 @@ try {
   await page.getByRole('button', { name: 'Old Board', exact: true }).click();
   await page.locator('.tile').first().click();
   await dialog.waitFor();
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', 'Answer slide (hidden until revealed)']) && (await q.inputValue()) === 'An old question', 'an older game opens with its one question slide');
+  assert(
+    JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', 'Answer slide (hidden until revealed)']) &&
+      (await q.inputValue()) === 'An old question',
+    'an older game opens with its one question slide',
+  );
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
   await page.getByRole('button', { name: '▶ Play' }).click();
@@ -338,7 +494,9 @@ try {
   // (Start asks first when that game has points or tiles played: Start new game.)
   await startNewGame(page);
   await hostPanelIn(page).waitFor();
-  await boardTilesIn(boardIn(stageBoxIn(page))).first().click();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .first()
+    .click();
   // (The audience window closed with the last game: the host's own stage shows what viewers see.)
   await stageBoxIn(page).locator('.full[data-slide="1"]').getByText('An old question').waitFor();
   assert((await mainLabel(page)) === '👁 Reveal answer', 'it plays as before: the main button reveals');

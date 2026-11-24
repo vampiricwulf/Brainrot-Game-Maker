@@ -228,12 +228,15 @@
                   onclick={() => onpick?.({ map: m.id, screen: s.id }, s)}
                   onpointerdown={grab ? (e) => dotsDown(e, { map: m.id, screen: s.id }, here) : undefined}
                   oncontextmenu={onmenu ? (e) => onmenu(e, { map: m.id, screen: s.id }, s) : undefined}
-                  title={audience ? undefined : `${s.name}${k === 'unknown' ? ' (not discovered)' : ''}${grab ? ' · drag the players to another screen to move them' : ''}${onpick ? ' · arrow keys: the next screen' : ''}`}
+                  title={audience
+                    ? undefined
+                    : `${s.name}${k === 'unknown' ? ' (not discovered)' : ''}${grab ? ' · drag the players to another screen to move them' : ''}${onpick ? ' · arrow keys: the next screen' : ''}`}
                   aria-label={audience ? undefined : `${m.name} · ${s.name}`}
                 >
                   {#if !audience || k === 'visited'}<span class="nm">{s.name}</span>{/if}
                   <span class="dots">
-                    {#each here as p (p.id)}<span class="dot" style:background={p.color} style:color={textOn(p.color)} title={p.name}>{initial(p.name)}</span>{/each}
+                    {#each here as p (p.id)}<span class="dot" style:background={p.color} style:color={textOn(p.color)} title={p.name}>{initial(p.name)}</span
+                      >{/each}
                   </span>
                   {#each arrows.get(s.id) ?? [] as d (d)}
                     <span class="arrow" style:left="{50 + DIR_VEC[d][0] * 42}%" style:top="{50 + DIR_VEC[d][1] * 40}%">{DIR_ARROW[d]}</span>
@@ -423,7 +426,10 @@
     height: 13px;
     border-radius: 50%;
     border: 1px solid #000;
-    font: 700 1px/1 'Inter', system-ui, sans-serif;
+    font:
+      700 1px/1 'Inter',
+      system-ui,
+      sans-serif;
     font-size: 7px; /* glyph: a player's initials in their dot (the name is in its tooltip) */
     letter-spacing: -0.5px;
     overflow: hidden;
@@ -453,7 +459,9 @@
     position: absolute;
     transform: translate(-50%, -50%);
     color: #ffcc00;
-    text-shadow: 0 0 3px #000, 0 0 3px #000;
+    text-shadow:
+      0 0 3px #000,
+      0 0 3px #000;
     font-weight: 900;
     pointer-events: none;
   }

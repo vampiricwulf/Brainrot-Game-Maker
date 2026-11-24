@@ -73,10 +73,12 @@ try {
   await unusedBtn.click();
   await page.locator('[data-place^="media:"]').waitFor({ state: 'detached' });
   assert((await unusedBtn.count()) === 0, 'and once it is deleted, the button goes again');
-  const kept = await page.waitForFunction(() => document.activeElement && document.activeElement !== document.body, null, { timeout: 3000 }).then(
-    () => true,
-    () => false,
-  );
+  const kept = await page
+    .waitForFunction(() => document.activeElement && document.activeElement !== document.body, null, { timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(kept, 'the keys stay on the page, not lost with the button');
 
   // ---------- Icons that are text by default ask for the colour emoji (U+FE0F), so none is a grey outline ----------
@@ -86,18 +88,36 @@ try {
   await page.getByRole('button', { name: '＋ Add round' }).click();
   const rounds = await menuIcons();
   await page.keyboard.press('Escape');
-  for (const [icon, name] of [['🗺', 'RPG'], ['♟', 'Board game'], ['🖼', 'Slides']])
-    assert(rounds.some((t) => t.startsWith(`${icon}${VS} ${name}`)), `＋ Add round: ${icon} ${name} asks for the colour emoji`);
+  for (const [icon, name] of [
+    ['🗺', 'RPG'],
+    ['♟', 'Board game'],
+    ['🖼', 'Slides'],
+  ])
+    assert(
+      rounds.some((t) => t.startsWith(`${icon}${VS} ${name}`)),
+      `＋ Add round: ${icon} ${name} asks for the colour emoji`,
+    );
   await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
   await page.getByRole('button', { name: '📋 Ready-made wheel…' }).click();
   const ready = await menuIcons();
   await page.keyboard.press('Escape');
-  for (const [icon, name] of [['😈', 'Punishments'], ['🃏', 'Truth or dare'], ['⏱', 'Time limit'], ['🗺', 'Locations']])
-    assert(ready.some((t) => t.startsWith(`${icon}${VS} ${name}`)), `📋 Ready-made wheel…: ${icon} ${name} too`);
+  for (const [icon, name] of [
+    ['😈', 'Punishments'],
+    ['🃏', 'Truth or dare'],
+    ['⏱', 'Time limit'],
+    ['🗺', 'Locations'],
+  ])
+    assert(
+      ready.some((t) => t.startsWith(`${icon}${VS} ${name}`)),
+      `📋 Ready-made wheel…: ${icon} ${name} too`,
+    );
   await page.getByRole('button', { name: '📋 Ready-made deal…' }).click();
   const deals = await menuIcons();
   await page.keyboard.press('Escape');
-  assert(deals.some((t) => t.startsWith(`🕵${VS} Odd one out`)), '📋 Ready-made deal…: 🕵 Odd one out too');
+  assert(
+    deals.some((t) => t.startsWith(`🕵${VS} Odd one out`)),
+    '📋 Ready-made deal…: 🕵 Odd one out too',
+  );
   // (The sidebar lists 🖼 Media under the rounds, beside 🖼 Slides ones.)
   const mediaTab = (await page.locator('nav > button', { hasText: 'Media (' }).innerText()).trim();
   assert(mediaTab.startsWith(`🖼${VS} Media (`), `the sidebar: 🖼 Media too (${mediaTab})`);
@@ -135,7 +155,10 @@ try {
   assert(!(await said.count()), '20 with only 20 kept: nothing to say');
   await undoBox.fill('0');
   await undoBox.press('Tab');
-  assert((await undoBox.inputValue()) === '300' && (await said.innerText()) === 'Set to 300, the default (20 is the lowest it goes).', `0 is the default, said so (“${await said.innerText()}”)`);
+  assert(
+    (await undoBox.inputValue()) === '300' && (await said.innerText()) === 'Set to 300, the default (20 is the lowest it goes).',
+    `0 is the default, said so (“${await said.innerText()}”)`,
+  );
   // Typed, then Done straight away: the window goes, and a toast says what the box did.
   await undoBox.fill('20');
   await undoBox.press('Tab');
@@ -157,7 +180,10 @@ try {
   await settings.waitFor({ state: 'detached' });
   const toast = toastsIn(page);
   await toast.waitFor();
-  assert((await toast.innerText()) === 'Undo: set to 20, the lowest it goes. Forgot the 3 oldest changes in 🕘 History.', `closed with Esc, a toast says it (“${await toast.innerText()}”)`);
+  assert(
+    (await toast.innerText()) === 'Undo: set to 20, the lowest it goes. Forgot the 3 oldest changes in 🕘 History.',
+    `closed with Esc, a toast says it (“${await toast.innerText()}”)`,
+  );
   assert((await steps()) === 20, '🕘 History keeps 20');
   // A note read under the box is never said again as the window goes: not after another number and Esc, nor on Done.
   const stale = toastsIn(page).filter({ hasText: /^Undo: set to 20, the lowest it goes\.$/ });
@@ -186,19 +212,30 @@ try {
   const clueBox = page.getByRole('dialog', { name: 'Edit clue' });
   await clueBox.waitFor();
   const which = clueBox.getByLabel('Which wheel');
-  const groups = await which.evaluate((sel) => [...sel.querySelectorAll('optgroup')].map((g) => `${g.label}: ${[...g.children].map((o) => o.textContent).join(', ')}`));
+  const groups = await which.evaluate((sel) =>
+    [...sel.querySelectorAll('optgroup')].map((g) => `${g.label}: ${[...g.children].map((o) => o.textContent).join(', ')}`),
+  );
   const readyGroup = groups.find((g) => g.startsWith('Ready-made (adds a copy to the game): ')) ?? '';
-  assert(readyGroup.includes('🎰 Point wheel') && readyGroup.includes('💰 Double or nothing'), `Which wheel has a “Ready-made (adds a copy to the game)” group (${readyGroup.slice(0, 80)}…)`);
+  assert(
+    readyGroup.includes('🎰 Point wheel') && readyGroup.includes('💰 Double or nothing'),
+    `Which wheel has a “Ready-made (adds a copy to the game)” group (${readyGroup.slice(0, 80)}…)`,
+  );
   await which.selectOption({ label: '🎰 Point wheel' });
   const pickedWheel = () => which.evaluate((sel) => /** @type {HTMLSelectElement} */ (sel).selectedOptions[0]?.textContent ?? '');
   await until(async () => (await pickedWheel()) === 'Point wheel', { timeout: 5_000, every: 100 });
   const undoTitle = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
-  assert((await pickedWheel()) === 'Point wheel' && undoTitle.startsWith('Undo: Added wheel “Point wheel”'), `picking 🎰 Point wheel adds it to the game and the tile uses it, one step (${undoTitle})`);
+  assert(
+    (await pickedWheel()) === 'Point wheel' && undoTitle.startsWith('Undo: Added wheel “Point wheel”'),
+    `picking 🎰 Point wheel adds it to the game and the tile uses it, one step (${undoTitle})`,
+  );
   assert((await clueBox.getByRole('button', { name: '✎ Edit wheel' }).count()) === 1, 'and ✎ Edit wheel can change it');
   await page.keyboard.press('Control+z');
   await until(async () => !(await pickedWheel()).includes('Point wheel'), { timeout: 5_000, every: 100 });
   const left = await which.evaluate((sel) => [.../** @type {HTMLSelectElement} */ (sel).options].map((o) => o.textContent));
-  assert((await pickedWheel()) === 'Choose a wheel…' && !left.includes('Point wheel'), `one Ctrl+Z takes the wheel off the tile and out of the game (${await pickedWheel()})`);
+  assert(
+    (await pickedWheel()) === 'Choose a wheel…' && !left.includes('Point wheel'),
+    `one Ctrl+Z takes the wheel off the tile and out of the game (${await pickedWheel()})`,
+  );
   await page.keyboard.press('Escape');
   await clueBox.waitFor({ state: 'detached' });
 

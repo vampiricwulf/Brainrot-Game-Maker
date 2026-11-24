@@ -118,9 +118,36 @@ describe('judged, and the lines that say so', () => {
   });
 
   it('says what each button gives, the marks, the phones’ result and the log’s reason', () => {
-    expect(sharesText([{ id: 'b', points: 400 }, { id: 'a', points: 200 }], name, '$')).toBe('Bob +$400 · Ann +$200');
-    expect(sharesText([{ id: 'b', points: 0 }, { id: 'a', points: -200 }], name, '$')).toBe('Ann −$200');
-    expect(sharesText([{ id: 'b', points: 0 }, { id: 'a', points: 0 }], name, '$')).toBe('no points');
+    expect(
+      sharesText(
+        [
+          { id: 'b', points: 400 },
+          { id: 'a', points: 200 },
+        ],
+        name,
+        '$',
+      ),
+    ).toBe('Bob +$400 · Ann +$200');
+    expect(
+      sharesText(
+        [
+          { id: 'b', points: 0 },
+          { id: 'a', points: -200 },
+        ],
+        name,
+        '$',
+      ),
+    ).toBe('Ann −$200');
+    expect(
+      sharesText(
+        [
+          { id: 'b', points: 0 },
+          { id: 'a', points: 0 },
+        ],
+        name,
+        '$',
+      ),
+    ).toBe('no points');
     const got = { b: { right: true, delta: 400 }, a: { right: true, delta: 200 } };
     const missed = { a: { right: false, delta: -200 }, b: { right: false, delta: 0 } };
     expect(marksText(pair(), got, name, '$')).toBe('Bob ✔ +$400 · Ann ✔ +$200');

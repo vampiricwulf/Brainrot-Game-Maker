@@ -81,7 +81,9 @@ export function newBoardGameRound(name = 'Board game'): BoardGameRound {
   pts.push([1620, 540]);
   for (let i = 4; i >= 0; i--) pts.push([360 + i * 300, 780]);
   pts.push([300, 540]);
-  pts.forEach(([x, y], i) => spaces.push(newBoardSpace(x, y, i === 0 ? 'Start' : `Space ${i + 1}`, i === 0 ? '#ffcc00' : SPACE_COLORS[i % SPACE_COLORS.length])));
+  pts.forEach(([x, y], i) =>
+    spaces.push(newBoardSpace(x, y, i === 0 ? 'Start' : `Space ${i + 1}`, i === 0 ? '#ffcc00' : SPACE_COLORS[i % SPACE_COLORS.length])),
+  );
   spaces.forEach((s, i) => (s.next = [spaces[(i + 1) % spaces.length].id]));
   return { id: newId(), name, mode: 'boardgame', slide, spaces, mover: { kind: 'dice', dice: 'd6' }, zones: [] };
 }
@@ -103,7 +105,8 @@ export function spaceShown(round: BoardGameRound, bs: BoardGameState, id: Id | u
 }
 
 /** A space's name in what the host is told (toasts, the log). `hide`: in one window, a secret one not revealed yet is “? (secret)”. */
-export const spaceSaid = (bs: BoardGameState, s: BoardSpace | undefined, hide: boolean): string => (!s ? '?' : hide && unrevealed(bs, s) ? '? (secret)' : s.name);
+export const spaceSaid = (bs: BoardGameState, s: BoardSpace | undefined, hide: boolean): string =>
+  !s ? '?' : hide && unrevealed(bs, s) ? '? (secret)' : s.name;
 
 export function startSpace(round: BoardGameRound): BoardSpace | undefined {
   return spaceById(round, round.start) ?? round.spaces[0];
@@ -135,8 +138,11 @@ export function spaceListNames(round: BoardGameRound): Map<Id, string> {
     const before = many(names, s.name) ? previousOf(round, s.id)[0] : undefined;
     return before ? `${s.name} (after ${before.name})` : s.name;
   });
-  const nth = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'}`;
-  return new Map(round.spaces.map((s, i) => [s.id, many(where, where[i]) ? `${s.name} (${nth(names.slice(0, i + 1).filter((n) => n === s.name).length)})` : where[i]]));
+  const nth = (n: number) =>
+    `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'}`;
+  return new Map(
+    round.spaces.map((s, i) => [s.id, many(where, where[i]) ? `${s.name} (${nth(names.slice(0, i + 1).filter((n) => n === s.name).length)})` : where[i]]),
+  );
 }
 
 /**
@@ -399,7 +405,7 @@ export function stepsIn(label: string): number | null {
   const m = label.match(/([-−]?)(\d+)/);
   if (!m) return null;
   const n = parseInt(m[2], 10);
-  return (m[1] || /\bback|[←◀◁⬅⇦⇐↩⏪]/i.test(label)) ? -n : n;
+  return m[1] || /\bback|[←◀◁⬅⇦⇐↩⏪]/i.test(label) ? -n : n;
 }
 
 /** A count of steps as a move takes it: a whole number, at most MAX_STEPS either way (0 for nonsense). */
@@ -516,13 +522,24 @@ export function rimSpots(n: number, r: number): { dx: number; dy: number }[] {
  * move together (so they stay rows); along the rim, a token that would slip under the turn banner or the strip comes
  * down (or up) just enough. Nothing goes off the sides.
  */
-export function placeTokens(x: number, y: number, n: number, top: number, bottom: number, near: { x: number; y: number }[] = []): { r: number; spots: { x: number; y: number }[] } {
-  const clear = (rel: { dx: number; dy: number }[], r: number) => rel.every((s) => near.every((o) => Math.hypot(x + s.dx - o.x, y + s.dy - o.y) >= SPACE_R + r - TUCK));
+export function placeTokens(
+  x: number,
+  y: number,
+  n: number,
+  top: number,
+  bottom: number,
+  near: { x: number; y: number }[] = [],
+): { r: number; spots: { x: number; y: number }[] } {
+  const clear = (rel: { dx: number; dy: number }[], r: number) =>
+    rel.every((s) => near.every((o) => Math.hypot(x + s.dx - o.x, y + s.dy - o.y) >= SPACE_R + r - TUCK));
   let r = tokenRadius(n);
   let rel = rimSpots(n, r);
   let rows = n > RIM_MAX;
   if (!rows && !clear(rel, r)) {
-    const fit = [32, 24].filter((s) => s < r).map((s) => ({ r: s, rel: rimSpots(n, s) })).find((f) => clear(f.rel, f.r));
+    const fit = [32, 24]
+      .filter((s) => s < r)
+      .map((s) => ({ r: s, rel: rimSpots(n, s) }))
+      .find((f) => clear(f.rel, f.r));
     if (fit) ({ r, rel } = fit);
     else [r, rel, rows] = [24, rowSpots(n, 24), true];
   }
@@ -574,14 +591,32 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   // One end is the finish (a race); more than one, and players get stuck at the others.
   const ends = round.spaces.filter((s) => !s.next.some((id) => spaceById(round, id)));
   if (ends.length > 1)
-    out.push({ text: `${name}: the path ends at ${nameList(ends.map((s) => s.name), 3)} (players stop there)`, tab, level: 'info', place: at(ends[0]) });
+    out.push({
+      text: `${name}: the path ends at ${nameList(
+        ends.map((s) => s.name),
+        3,
+      )} (players stop there)`,
+      tab,
+      level: 'info',
+      place: at(ends[0]),
+    });
   if (round.mover.kind === 'wheel' && !game.wheels.some((w) => w.id === (round.mover as { wheel: Id }).wheel))
     out.push({ text: `${name}: the movement wheel no longer exists`, tab, level: 'warn', place: at() });
   if (moverWheelNoNumbers(game, round))
-    out.push({ text: `${name}: the movement wheel’s slices have no numbers, so a spin won’t fill in the steps (name them “3”, “Move 3”, “Back 2”)`, tab, level: 'warn', place: at() });
+    out.push({
+      text: `${name}: the movement wheel’s slices have no numbers, so a spin won’t fill in the steps (name them “3”, “Move 3”, “Back 2”)`,
+      tab,
+      level: 'warn',
+      place: at(),
+    });
   if (moverDiceGone(game, round)) out.push({ text: `${name}: the movement dice no longer exist (pick others in Move by)`, tab, level: 'warn', place: at() });
   if (moverDiceUnknown(round))
-    out.push({ text: `${name}: Move by “${round.mover.kind === 'dice' ? round.mover.dice : ''}” isn’t dice the app knows: it rolls a d6 (try “2d6”, or pick saved dice)`, tab, level: 'warn', place: at() });
+    out.push({
+      text: `${name}: Move by “${round.mover.kind === 'dice' ? round.mover.dice : ''}” isn’t dice the app knows: it rolls a d6 (try “2d6”, or pick saved dice)`,
+      tab,
+      level: 'warn',
+      place: at(),
+    });
   // (No space is ever under the stats strip: in play the board is scaled into the room the strip leaves.) The turn
   // banner, the win notes and the zones' labels do go over the board: along the top (with the strip at the top, the
   // bottom).
@@ -589,7 +624,10 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   const under = round.spaces.filter((s) => (low ? SLIDE_H - s.y : s.y) - SPACE_R < LABELS_H);
   if (under.length)
     out.push({
-      text: `${name}: ${nameList(under.map((s) => s.name), 3)} can be hidden under the turn banner on stream (move ${under.length === 1 ? 'it' : 'them'} ${low ? 'up' : 'down'} a little)`,
+      text: `${name}: ${nameList(
+        under.map((s) => s.name),
+        3,
+      )} can be hidden under the turn banner on stream (move ${under.length === 1 ? 'it' : 'them'} ${low ? 'up' : 'down'} a little)`,
       tab,
       level: 'info',
       place: at(under[0]),
@@ -597,10 +635,13 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   // A deleted space, zone, item… (or nothing chosen).
   const nowhere = round.spaces.flatMap((s) => [...(s.onPass ?? []), ...(s.onLand ?? [])].filter((a) => actionProblem(game, a, { board: round })).map(() => s));
   if (nowhere.length) {
-    const said = (on: string) => `${name}: ${nowhere.length === 1 ? `a button on ${on} points nowhere` : `${nowhere.length} buttons on spaces point nowhere (on ${on})`}`;
+    const said = (on: string) =>
+      `${name}: ${nowhere.length === 1 ? `a button on ${on} points nowhere` : `${nowhere.length} buttons on spaces point nowhere (on ${on})`}`;
     // (Where viewers read it, a secret space isn't named.)
     const hid = new Set(nowhere.filter((s) => s.secret).map((s) => s.id)).size;
-    const hidOn = [nameList(nowhere.filter((s) => !s.secret).map((s) => s.name)), hid === 1 ? 'a secret space' : `${hid} secret spaces`].filter(Boolean).join(' and ');
+    const hidOn = [nameList(nowhere.filter((s) => !s.secret).map((s) => s.name)), hid === 1 ? 'a secret space' : `${hid} secret spaces`]
+      .filter(Boolean)
+      .join(' and ');
     const quiet = hid ? { quiet: { text: said(hidOn) } } : {};
     out.push({ text: said(nameList(nowhere.map((s) => s.name))), tab, level: 'warn', place: at(nowhere[0]), ...quiet });
   }
@@ -636,8 +677,24 @@ export interface SpaceKindContext {
 }
 
 /** The kinds of space a space can be made, for the editor's "Make it a…": label, hint, what it fills in. */
-export const SPACE_KINDS: { kind: SpaceKind; label: string; hint: string; name: string; mark: string; color: string; onLand: (c: SpaceKindContext) => Omit<Action, 'id'>[] }[] = [
-  { kind: 'shop', label: '🛒 Shop', hint: 'Landing opens a shop', name: 'Shop', mark: '🛒', color: '#3cb44b', onLand: (c) => [{ do: 'shop', shop: c.shop ?? '' }] },
+export const SPACE_KINDS: {
+  kind: SpaceKind;
+  label: string;
+  hint: string;
+  name: string;
+  mark: string;
+  color: string;
+  onLand: (c: SpaceKindContext) => Omit<Action, 'id'>[];
+}[] = [
+  {
+    kind: 'shop',
+    label: '🛒 Shop',
+    hint: 'Landing opens a shop',
+    name: 'Shop',
+    mark: '🛒',
+    color: '#3cb44b',
+    onLand: (c) => [{ do: 'shop', shop: c.shop ?? '' }],
+  },
   {
     kind: 'boss',
     label: '👹 Boss / fight',
@@ -661,9 +718,33 @@ export const SPACE_KINDS: { kind: SpaceKind; label: string; hint: string; name: 
     color: '#4363d8',
     onLand: () => [{ do: 'question', question: textSlide('Write the question here'), answer: textSlide('The answer'), value: 100 }],
   },
-  { kind: 'skip', label: '⏭ Skip a turn', hint: 'Landing misses the next turn', name: 'Skip a turn', mark: '⏭', color: '#911eb4', onLand: () => [{ do: 'skip', turns: 1, who: 'party' }] },
-  { kind: 'back', label: '↩ Go back', hint: 'Landing moves them back 3 (change the number in its button)', name: 'Back 3', mark: '↩', color: '#f58231', onLand: () => [{ do: 'steps', steps: -3, who: 'party' }] },
-  { kind: 'star', label: '⭐ Star (bonus points)', hint: 'Landing scores 100', name: 'Star', mark: '⭐', color: '#ffcc00', onLand: () => [{ do: 'score', amount: 100, who: 'party' }] },
+  {
+    kind: 'skip',
+    label: '⏭ Skip a turn',
+    hint: 'Landing misses the next turn',
+    name: 'Skip a turn',
+    mark: '⏭',
+    color: '#911eb4',
+    onLand: () => [{ do: 'skip', turns: 1, who: 'party' }],
+  },
+  {
+    kind: 'back',
+    label: '↩ Go back',
+    hint: 'Landing moves them back 3 (change the number in its button)',
+    name: 'Back 3',
+    mark: '↩',
+    color: '#f58231',
+    onLand: () => [{ do: 'steps', steps: -3, who: 'party' }],
+  },
+  {
+    kind: 'star',
+    label: '⭐ Star (bonus points)',
+    hint: 'Landing scores 100',
+    name: 'Star',
+    mark: '⭐',
+    color: '#ffcc00',
+    onLand: () => [{ do: 'score', amount: 100, who: 'party' }],
+  },
 ];
 
 /**

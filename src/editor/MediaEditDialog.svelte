@@ -215,7 +215,9 @@
   const remakeOn = $derived(remake ?? !(ok && ok.estimate < SLOW_FILE_BYTES && !!fileType(ok.mime)?.startsWith(`${kind}/`)));
   /** Opened from a slide item whose file has other uses: Only this item, or all of them. */
   const oneOf = $derived(!!item && uses > 1);
-  const itemRange = $derived(item && ((item.startAt ?? 0) > 0 || (item.endAt !== undefined && item.endAt > (item.startAt ?? 0))) ? playRange(item.startAt, item.endAt) : null);
+  const itemRange = $derived(
+    item && ((item.startAt ?? 0) > 0 || (item.endAt !== undefined && item.endAt > (item.startAt ?? 0))) ? playRange(item.startAt, item.endAt) : null,
+  );
 
   // ---------- The preview ----------
   let media = $state<HTMLVideoElement | HTMLAudioElement>();
@@ -311,7 +313,13 @@
   // ---------- Crop and size ----------
   let cropping = $state(false);
   let cropAspect = $state<'free' | number>('free');
-  const ASPECTS: ['free' | number, string][] = [['free', 'Free'], [16 / 9, '16:9'], [4 / 3, '4:3'], [1, '1:1'], [9 / 16, '9:16']];
+  const ASPECTS: ['free' | number, string][] = [
+    ['free', 'Free'],
+    [16 / 9, '16:9'],
+    [4 / 3, '4:3'],
+    [1, '1:1'],
+    [9 / 16, '9:16'],
+  ];
   const cropPx = $derived(facts ? cropPixels(facts, edit) : null);
   const cw = $derived(cropPx?.width ?? W);
   const ch = $derived(cropPx?.height ?? H);
@@ -391,9 +399,14 @@
   });
   const doneText = $derived.by(() => {
     if (!done || !madeRef) return '';
-    if (how === 'new') return `✓ Saved as “${madeRef.name}” (${[...(asked?.seconds ? [lengthText(asked.seconds)] : []), formatBytes(madeRef.size)].join(', ')}): the original is unchanged.`;
+    if (how === 'new')
+      return `✓ Saved as “${madeRef.name}” (${[...(asked?.seconds ? [lengthText(asked.seconds)] : []), formatBytes(madeRef.size)].join(', ')}): the original is unchanged.`;
     if (how === 'item') return '✓ This item plays its own edited copy now.';
-    const bits = [...(asked?.seconds ? [lengthText(asked.seconds)] : []), ...(asked?.w ? [`${asked.w}×${asked.h}`] : []), `${formatBytes(madeRef.size)} (was ${formatBytes(was.size)})`];
+    const bits = [
+      ...(asked?.seconds ? [lengthText(asked.seconds)] : []),
+      ...(asked?.w ? [`${asked.w}×${asked.h}`] : []),
+      `${formatBytes(madeRef.size)} (was ${formatBytes(was.size)})`,
+    ];
     return `✓ ${bits.join(' · ')}. Ctrl+Z puts the old one back.`;
   });
 
@@ -407,7 +420,11 @@
     if (now === footWas) return;
     footWas = now;
     if (focusLost())
-      (foot?.querySelector<HTMLElement>('[data-stop]') ?? foot?.querySelector<HTMLElement>('button.primary:not(:disabled)') ?? foot?.querySelector<HTMLElement>('button:not(:disabled)'))?.focus();
+      (
+        foot?.querySelector<HTMLElement>('[data-stop]') ??
+        foot?.querySelector<HTMLElement>('button.primary:not(:disabled)') ??
+        foot?.querySelector<HTMLElement>('button:not(:disabled)')
+      )?.focus();
   });
 
   // ---------- Closing ----------
@@ -477,9 +494,7 @@
   const reach = $derived(
     `${uses ? `Changes the file everywhere it’s used (${uses} place${uses === 1 ? '' : 's'}), on stream too.` : 'Changes the file.'}${was.size > 500 * 1024 * 1024 ? ' The old file stays in this browser’s storage while Undo can bring it back.' : ''}`,
   );
-  const hint = $derived(
-    [was.name, ...(length ? [lengthText(length)] : []), ...(picture ? [`${W}×${H}`] : []), formatBytes(was.size)].join(' · '),
-  );
+  const hint = $derived([was.name, ...(length ? [lengthText(length)] : []), ...(picture ? [`${W}×${H}`] : []), formatBytes(was.size)].join(' · '));
   const nothingYet = $derived(picture ? 'Nothing to change yet: trim, crop or resize it first.' : 'Nothing to change yet: trim it first.');
   const silentWhy = silent ? (codecName(silent.why.sound) ?? 'its sound’s format') : '';
 </script>
@@ -504,7 +519,12 @@
         <button class="ghost" onclick={redo} disabled={!canRedo} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
         <button class="ghost apart" onclick={reset} disabled={!facts || nothing} title="Take every change off (Ctrl+Z puts them back)">Reset</button>
       {/if}
-      <button class="ghost modal-x" onclick={close} aria-label="Close" title={working ? 'Close: the edit carries on (the header shows how far it got)' : 'Close (Esc)'}>✕</button>
+      <button
+        class="ghost modal-x"
+        onclick={close}
+        aria-label="Close"
+        title={working ? 'Close: the edit carries on (the header shows how far it got)' : 'Close (Esc)'}>✕</button
+      >
     </header>
     {#if !done}<p class="muted small" data-edit-reach>{reach}</p>{/if}
 
@@ -531,7 +551,14 @@
                   aria-label={watching ? 'The edited video' : 'The video'}
                 ></video>
                 {#if !watching && !done && edit.crop && (cropping || cropPx)}
-                  <CropBox crop={edit.crop as Box} aspect={cropAspect} ratio={W / H} still={!cropping || working} onbegin={flush} onchange={(c) => (edit.crop = c)} />
+                  <CropBox
+                    crop={edit.crop as Box}
+                    aspect={cropAspect}
+                    ratio={W / H}
+                    still={!cropping || working}
+                    onbegin={flush}
+                    onchange={(c) => (edit.crop = c)}
+                  />
                 {/if}
               {:else}
                 <span class="ic" aria-hidden="true">🔊</span>
@@ -595,12 +622,14 @@
                     <legend class="small muted">How it’s cut</legend>
                     <label class="check small">
                       <input type="radio" name="trim-how" checked={!planned.quick} disabled={!reencodes} onchange={() => change(() => (edit.quick = false))} />
-                      {reencodes ? 'Exact trim (re-encodes the video: a little less sharp, and slower)' : `Exact trim (this browser can’t re-encode ${codecName(facts.video?.codec) ?? 'this video'})`}
+                      {reencodes
+                        ? 'Exact trim (re-encodes the video: a little less sharp, and slower)'
+                        : `Exact trim (this browser can’t re-encode ${codecName(facts.video?.codec) ?? 'this video'})`}
                     </label>
                     <label class="check small">
                       <input type="radio" name="trim-how" checked={planned.quick} onchange={() => change(() => (edit.quick = true))} />
-                      Quick trim, nothing re-encoded: it starts at {clockTenths(quickAt, true)}, the nearest point before {clockTenths(edit.start, true)} where this video can be cut as
-                      it is
+                      Quick trim, nothing re-encoded: it starts at {clockTenths(quickAt, true)}, the nearest point before {clockTenths(edit.start, true)} where this
+                      video can be cut as it is
                     </label>
                   </fieldset>
                 {/if}
@@ -628,12 +657,13 @@
                   aria-pressed={cropping}
                   onclick={() => (cropping ? (cropping = false) : startCrop())}
                   disabled={!reencodes}
-                  bind:this={cropButton}
-                  ><span class:hide={cropping}>✂ Crop</span><span class:hide={!cropping}>✓ Done cropping</span></button
+                  bind:this={cropButton}><span class:hide={cropping}>✂ Crop</span><span class:hide={!cropping}>✓ Done cropping</span></button
                 >
                 {#if cropping || edit.crop}
                   {#each ASPECTS as [a, l] (l)}
-                    <button class="small" class:on={cropAspect === a} aria-pressed={cropAspect === a} onclick={() => setAspect(a)} disabled={!reencodes}>{l}</button>
+                    <button class="small" class:on={cropAspect === a} aria-pressed={cropAspect === a} onclick={() => setAspect(a)} disabled={!reencodes}
+                      >{l}</button
+                    >
                   {/each}
                   <button class="small" onclick={removeCrop}>Remove crop</button>
                 {/if}
@@ -642,16 +672,37 @@
 
               <h4>📐 Size</h4>
               <div class="row" role="group" aria-label="Size">
-                <button class="small" class:on={shortNow === null && pctNow === null} aria-pressed={shortNow === null && pctNow === null} onclick={() => setShort(null)} disabled={!reencodes && shortNow === null && pctNow === null}
-                  >Keep ({cw}×{ch})</button
+                <button
+                  class="small"
+                  class:on={shortNow === null && pctNow === null}
+                  aria-pressed={shortNow === null && pctNow === null}
+                  onclick={() => setShort(null)}
+                  disabled={!reencodes && shortNow === null && pctNow === null}>Keep ({cw}×{ch})</button
                 >
                 {#each sizes as s (s)}
                   {@const o = outputSize(facts, { ...edit, short: s, scale: null })}
-                  <button class="small" class:on={shortNow === s} aria-pressed={shortNow === s} title="{o.w}×{o.h}" onclick={() => setShort(s)} disabled={!reencodes}>{s}p</button>
+                  <button
+                    class="small"
+                    class:on={shortNow === s}
+                    aria-pressed={shortNow === s}
+                    title="{o.w}×{o.h}"
+                    onclick={() => setShort(s)}
+                    disabled={!reencodes}>{s}p</button
+                  >
                 {/each}
                 <label class="pct small"
                   >or
-                  <input type="number" min="1" max="100" step="1" value={pctShown} onchange={typedPct} disabled={!reencodes} aria-label="Size, percent of the picture" data-size-pct />
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    step="1"
+                    value={pctShown}
+                    onchange={typedPct}
+                    disabled={!reencodes}
+                    aria-label="Size, percent of the picture"
+                    data-size-pct
+                  />
                   %</label
                 >
               </div>
@@ -705,7 +756,8 @@
               {/each}
               {#if leftOut.length > 3}<p class="warn small">and {leftOut.length - 3} more</p>{/if}
               {#if uses > items}
-                <p class="muted small">🔊 Sounds, wheels, dice and RPG music that use it have no Plays from / to of their own: they’ll play the trimmed file.</p>
+                <p class="muted small">🔊 Sounds, wheels, dice and RPG music that use it have no Plays from / to of their own: they’ll play the trimmed file.</p
+                >
               {/if}
             {/if}
 
@@ -713,7 +765,9 @@
               {#if ok.estimate > fileBytes}
                 <p class="warn small" data-edit-phones>📱 Over this buzzer server’s {mbText(fileBytes)}: phones need a smaller copy (🗜) or a shorter trim</p>
               {:else if ok.estimate > SLOW_FILE_BYTES}
-                <p class="small" data-edit-phones>📱 About {formatBytes(ok.estimate)}: phones on mobile data may wait for it (🗜 can make a smaller copy for phones after)</p>
+                <p class="small" data-edit-phones
+                  >📱 About {formatBytes(ok.estimate)}: phones on mobile data may wait for it (🗜 can make a smaller copy for phones after)</p
+                >
               {/if}
               {#if copy}
                 <label class="check small">
@@ -762,12 +816,16 @@
               : 'Ctrl+Z (or 🕘 History) puts the old file back.'}</span
         >
         {#if oneOf}
-          <button onclick={() => apply('item')} disabled={!ok || nothing || keyPending} title={nothing ? nothingYet : 'Only the item this was opened from gets the edited file'}
-            >Only this item</button
+          <button
+            onclick={() => apply('item')}
+            disabled={!ok || nothing || keyPending}
+            title={nothing ? nothingYet : 'Only the item this was opened from gets the edited file'}>Only this item</button
           >
         {:else if !item}
-          <button onclick={() => apply('new')} disabled={!ok || nothing || keyPending} title={nothing ? nothingYet : 'Keep this file as it is, and add the edited one beside it in 🖼 Media'}
-            >Save as a new file</button
+          <button
+            onclick={() => apply('new')}
+            disabled={!ok || nothing || keyPending}
+            title={nothing ? nothingYet : 'Keep this file as it is, and add the edited one beside it in 🖼 Media'}>Save as a new file</button
           >
         {/if}
         <span class="spacer"></span>

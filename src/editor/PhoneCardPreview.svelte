@@ -48,10 +48,25 @@
    * one with no room open.
    */
   const server = $derived(
-    !buzzerBase() ? 'none' : remote.code && remote.status === 'online' ? (roomHasCards() ? (roomHasFiles() ? 'files' : 'nofiles') : 'older') : limits.off ? 'nofiles' : 'unknown',
+    !buzzerBase()
+      ? 'none'
+      : remote.code && remote.status === 'online'
+        ? roomHasCards()
+          ? roomHasFiles()
+            ? 'files'
+            : 'nofiles'
+          : 'older'
+        : limits.off
+          ? 'nofiles'
+          : 'unknown',
   );
   const pc = $derived(
-    phoneCard(game, card, { files: server === 'nofiles' || server === 'older' ? null : {}, fileBytes: limits.limits.fileBytes, stored: (id) => id in mediaUrls, gifs: limits.gifs }),
+    phoneCard(game, card, {
+      files: server === 'nofiles' || server === 'older' ? null : {},
+      fileBytes: limits.limits.fileBytes,
+      stored: (id) => id in mediaUrls,
+      gifs: limits.gifs,
+    }),
   );
   /**
    * Its lines as its part's phone shows them (anyone but the two: the line for them), "the picker" and "the partner" for
@@ -62,7 +77,12 @@
     if (!clue || clue.type !== 'partner') return {};
     const rules = partnerRules(clue);
     const s = { pickerId: 'picker', partnerId: 'partner', giver: rules.giver };
-    const to = card.to === 'giver' || card.to === 'guesser' ? [(card.to === 'giver') === (rules.giver === 'partner') ? 'partner' : 'picker'] : card.to === 'others' ? ['someone else'] : [];
+    const to =
+      card.to === 'giver' || card.to === 'guesser'
+        ? [(card.to === 'giver') === (rules.giver === 'partner') ? 'partner' : 'picker']
+        : card.to === 'others'
+          ? ['someone else']
+          : [];
     return cardLines(rules, s, card, to, (id) => `the ${id}`);
   });
   /** A card set to both or everyone else goes to more than one phone: theirs says it isn't theirs alone (as a phone does). */
@@ -174,7 +194,9 @@
       {/if}
       {#if it.why}<li class="warn">{why(it, it.why)}{@render shrinkButton(it)}</li>
       {:else if it.slow}<li class="slow">
-          {isSize(it)}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).{@render shrinkButton(it)}
+          {isSize(it)}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).{@render shrinkButton(
+            it,
+          )}
         </li>{/if}
       {#if copy && it.sends === copy.id && !it.why}
         {@const shape = `${copy.phoneCopy?.width ? `${copy.phoneCopy.width}×${copy.phoneCopy.height} ` : ''}${typeWord(copy.mime)}`}
@@ -185,18 +207,32 @@
           {#if mediaUrls[copy.id]}
             {@const heard = copy.kind === 'audio'}
             <!-- (A sound's copy is listened to.) -->
-            <button class="small ghost" onclick={() => (watching = watching === it.el ? null : it.el)} title={heard ? 'Listen to the copy phones get' : 'Watch the copy phones get'}
+            <button
+              class="small ghost"
+              onclick={() => (watching = watching === it.el ? null : it.el)}
+              title={heard ? 'Listen to the copy phones get' : 'Watch the copy phones get'}
               >{watching === it.el ? (heard ? '⏹ Stop' : '⏹ Stop watching') : heard ? '▶ Listen' : '▶ Watch it'}</button
             >
           {/if}
           <button class="small ghost" onclick={() => openShrinkDialog(copy.phoneCopy!.of)} title="Make its copy for phones again">🗜 Make it again</button>
-          <button class="small ghost" onclick={() => removePhoneCopy(game, copy.phoneCopy!.of)} title="Phones get the file itself (Undo brings the copy back)">🗑 Remove it</button>
+          <button class="small ghost" onclick={() => removePhoneCopy(game, copy.phoneCopy!.of)} title="Phones get the file itself (Undo brings the copy back)"
+            >🗑 Remove it</button
+          >
           {#if watching === it.el && mediaUrls[copy.id]}
             {#if copy.kind === 'audio'}
               <audio class="watch" src={mediaUrls[copy.id]} autoplay controls aria-label="The copy phones get"></audio>
             {:else}
               <!-- svelte-ignore a11y_media_has_caption -->
-              <video class="watch" src={mediaUrls[copy.id]} autoplay playsinline loop={looping} muted={looping} controls={!looping} aria-label="The copy phones get"></video>
+              <video
+                class="watch"
+                src={mediaUrls[copy.id]}
+                autoplay
+                playsinline
+                loop={looping}
+                muted={looping}
+                controls={!looping}
+                aria-label="The copy phones get"
+              ></video>
             {/if}
           {/if}
         </li>
@@ -206,11 +242,17 @@
         {@const t = timesOf(it)}
         <li data-copy-note>
           📱 Its smaller copy holds {part(copy.phoneCopy.from, copy.phoneCopy.to)} only, and this card plays {part(t.start, t.end)}: phones get the whole file.
-          <button class="small ghost" onclick={() => openShrinkDialog(copy.phoneCopy!.of)} title="Make its copy for phones again, holding what this card plays too">🗜 Make it again</button>
+          <button
+            class="small ghost"
+            onclick={() => openShrinkDialog(copy.phoneCopy!.of)}
+            title="Make its copy for phones again, holding what this card plays too">🗜 Make it again</button
+          >
         </li>
       {/if}
     {/each}
-    {#if (pc.title ? 1 : 0) + (pc.text ? 1 : 0) + pc.items.filter((i) => i.why !== 'many').length > 1}<li>Phones show the words and pictures one under another: where things sit on the slide isn’t kept.</li>{/if}
+    {#if (pc.title ? 1 : 0) + (pc.text ? 1 : 0) + pc.items.filter((i) => i.why !== 'many').length > 1}<li
+        >Phones show the words and pictures one under another: where things sit on the slide isn’t kept.</li
+      >{/if}
   </ul>
 </aside>
 
@@ -223,7 +265,9 @@
       data-repack
       onclick={() => queueConvert(game, it.media!)}
       disabled={!!jobFor(it.media!)}
-      title="Puts the same {tracksOf(repack)} in {aOrAn(fixBoxName(repack.box))}, which phones can play. The show uses it too; nothing is re-encoded, so nothing is lost. Ctrl+Z puts the old one back."
+      title="Puts the same {tracksOf(repack)} in {aOrAn(
+        fixBoxName(repack.box),
+      )}, which phones can play. The show uses it too; nothing is re-encoded, so nothing is lost. Ctrl+Z puts the old one back."
       >{jobFor(it.media!) ? '↻ Repackaging…' : `↻ Repackage as ${fixBoxName(repack.box)} (for everyone, nothing lost)`}</button
     >
   {:else if canShrink(it) && (it.slow || it.why === 'big')}

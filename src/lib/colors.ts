@@ -32,7 +32,11 @@ export function nextFreeColor(used: string[]): string {
   const free = PLAYER_PALETTE.find((c) => !isColorTaken(c, used));
   if (free) return free;
   for (;;) {
-    const c = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    const c =
+      '#' +
+      Math.floor(Math.random() * 0xffffff)
+        .toString(16)
+        .padStart(6, '0');
     if (!isColorTaken(c, used)) return c;
   }
 }
@@ -54,13 +58,26 @@ export function toHex(c: string | undefined): string | null {
   if (!c) return null;
   const s = c.trim();
   const short = /^#([0-9a-f]{3})[0-9a-f]?$/i.exec(s)?.[1];
-  if (short) return '#' + [...short].map((d) => d + d).join('').toLowerCase();
+  if (short)
+    return (
+      '#' +
+      [...short]
+        .map((d) => d + d)
+        .join('')
+        .toLowerCase()
+    );
   const long = /^#([0-9a-f]{6})(?:[0-9a-f]{2})?$/i.exec(s)?.[1];
   if (long) return '#' + long.toLowerCase();
   const rgb = /^rgba?\(\s*([\d.]+%?)[\s,]+([\d.]+%?)[\s,]+([\d.]+%?)\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/i.exec(s);
   if (rgb) {
     const ch = (v: string) => Math.max(0, Math.min(255, Math.round(v.endsWith('%') ? (parseFloat(v) * 255) / 100 : parseFloat(v))));
-    return '#' + rgb.slice(1, 4).map((v) => ch(v).toString(16).padStart(2, '0')).join('');
+    return (
+      '#' +
+      rgb
+        .slice(1, 4)
+        .map((v) => ch(v).toString(16).padStart(2, '0'))
+        .join('')
+    );
   }
   // A name (or hsl()): as the browser reads it.
   if (typeof document === 'undefined' || !/^[a-z]{3,24}$|^hsla?\(/i.test(s)) return null;
@@ -106,7 +123,16 @@ export function mixHex(a: string, b: string, amount: number): string {
   const x = parseHex(a);
   const y = parseHex(b);
   if (!x || !y) return a;
-  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * amount).toString(16).padStart(2, '0')).join('');
+  return (
+    '#' +
+    x
+      .map((v, i) =>
+        Math.round(v + (y[i] - v) * amount)
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')
+  );
 }
 
 /** Colour vision as simulated (Machado et al. 2009, full strength), in linear RGB. */
@@ -152,7 +178,10 @@ export function colorDistance(a: string, b: string, vision: Vision = 'normal'): 
 }
 
 /** A 0–255 color as OBS's Chroma Key filter sees it: its Cb and Cr (BT.709, as in OBS's chroma_key_filter_v2.effect). */
-const obsCbCr = ([r, g, b]: [number, number, number]) => [(-0.100644 * r - 0.338572 * g + 0.439216 * b) / 255, (0.439216 * r - 0.398942 * g - 0.040274 * b) / 255];
+const obsCbCr = ([r, g, b]: [number, number, number]) => [
+  (-0.100644 * r - 0.338572 * g + 0.439216 * b) / 255,
+  (0.439216 * r - 0.398942 * g - 0.040274 * b) / 255,
+];
 
 /**
  * A color OBS's Chroma Key filter makes see-through with this key color, at its default Similarity (400) and

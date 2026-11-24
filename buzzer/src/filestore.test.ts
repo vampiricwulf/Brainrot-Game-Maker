@@ -1,7 +1,18 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import type { FileLimits, HostCard, HostState, RoomToHost } from '../../src/lib/buzzproto';
-import { FILE_PART_BYTES, FileStore, SEND_STALL_MS, SENDS_AT_ONCE, SENDS_PER_PHONE, UPLOAD_MAX_MS, UPLOADS_AT_ONCE, type FileRoom, type PieceSource, type Took } from './filestore';
+import {
+  FILE_PART_BYTES,
+  FileStore,
+  SEND_STALL_MS,
+  SENDS_AT_ONCE,
+  SENDS_PER_PHONE,
+  UPLOAD_MAX_MS,
+  UPLOADS_AT_ONCE,
+  type FileRoom,
+  type PieceSource,
+  type Took,
+} from './filestore';
 import { FILE_MAKE_ROOM_MS } from './limits';
 import { Room, type RoomFile } from './room';
 
@@ -55,8 +66,26 @@ function body(bytes: Uint8Array, o: { pauseAt?: number; breakAt?: number } = {})
 }
 
 const seats = [{ id: 'a', name: 'Ann', color: '#ff0000' }];
-const state = (cards?: HostCard[]): HostState => ({ title: 'Q', seats, allowNew: false, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 0, scores: {}, ...(cards ? { cards } : {}) });
-const cardWith = (file: string): HostCard => ({ id: 'pc:c1:1:1', to: [{ seat: 'a' }], open: true, text: 'SHREK', media: [{ kind: 'image', file, mime: 'image/png' }] });
+const state = (cards?: HostCard[]): HostState => ({
+  title: 'Q',
+  seats,
+  allowNew: false,
+  phase: 'lobby',
+  armId: 0,
+  clue: null,
+  answering: null,
+  lockedOut: [],
+  earlyLockMs: 0,
+  scores: {},
+  ...(cards ? { cards } : {}),
+});
+const cardWith = (file: string): HostCard => ({
+  id: 'pc:c1:1:1',
+  to: [{ seat: 'a' }],
+  open: true,
+  text: 'SHREK',
+  media: [{ kind: 'image', file, mime: 'image/png' }],
+});
 
 /**
  * A FileStore over fake storage (counting the bytes it holds at any moment, and the pieces given out and not yet
@@ -146,7 +175,10 @@ function setup(limits: FileLimits = LIMITS) {
     },
   });
   /** The room as BuzzRoom passes it: null once it ended, or a new room took its code. */
-  const roomNow = (epoch = r.epoch) => (): FileRoom | null => (r.epoch === epoch ? r.room : null);
+  const roomNow =
+    (epoch = r.epoch) =>
+    (): FileRoom | null =>
+      r.epoch === epoch ? r.room : null;
   const upload = (b: PieceSource, size: number | null, mime = 'video/mp4') => store.upload({ mime, size, who: '198.51.100.1', body: b, room: roomNow() });
   return { t, stored, s, host, r, budget, store, upload, roomNow, makeRoom, files: () => r.room.saved.files ?? {} };
 }
@@ -473,7 +505,12 @@ describe('downloads', () => {
     const g = setup();
     const bytes = randomBytes(2.5 * MB);
     const { id } = await g.upload(body(bytes), bytes.length);
-    const res = await g.store.send(id!, 'tok', () => g.files()[id!], () => true);
+    const res = await g.store.send(
+      id!,
+      'tok',
+      () => g.files()[id!],
+      () => true,
+    );
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('video/mp4');
     expect(res.headers.get('X-File-Bytes')).toBe(String(bytes.length));
@@ -482,17 +519,49 @@ describe('downloads', () => {
     const old = randomBytes(MB + 10);
     g.stored.set(`file:${sha(old)}:0`, old.subarray(0, MB));
     g.stored.set(`file:${sha(old)}:1`, old.subarray(MB));
-    const back = await g.store.send(sha(old), 'tok', () => file(old.length, 2), () => true);
+    const back = await g.store.send(
+      sha(old),
+      'tok',
+      () => file(old.length, 2),
+      () => true,
+    );
     expect(Buffer.from(await back.arrayBuffer()).equals(old)).toBe(true);
   });
 
   it('404 when the room says no, it ended, or its first piece is missing', async () => {
     const g = setup();
     const { id } = await g.upload(body(randomBytes(MB)), MB);
-    expect((await g.store.send(id!, 'tok', () => null, () => true)).status).toBe(404);
-    expect((await g.store.send(id!, 'tok', () => g.files()[id!], () => false)).status).toBe(404);
+    expect(
+      (
+        await g.store.send(
+          id!,
+          'tok',
+          () => null,
+          () => true,
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await g.store.send(
+          id!,
+          'tok',
+          () => g.files()[id!],
+          () => false,
+        )
+      ).status,
+    ).toBe(404);
     g.s.missing.add('p:u1:0');
-    expect((await g.store.send(id!, 'tok', () => g.files()[id!], () => true)).status).toBe(404);
+    expect(
+      (
+        await g.store.send(
+          id!,
+          'tok',
+          () => g.files()[id!],
+          () => true,
+        )
+      ).status,
+    ).toBe(404);
   });
 
   it('a piece gone partway (the file deleted, or the room ended): the body ends in an error', async () => {
@@ -500,17 +569,32 @@ describe('downloads', () => {
     const { id } = await g.upload(body(randomBytes(3 * MB)), 3 * MB);
     const f = g.files()[id!];
     g.s.missing.add('p:u1:2');
-    const cut = await g.store.send(id!, 'tok', () => f, () => true);
+    const cut = await g.store.send(
+      id!,
+      'tok',
+      () => f,
+      () => true,
+    );
     await expect(cut.arrayBuffer()).rejects.toThrow();
     g.s.missing.clear();
     let live = true;
-    const ended = await g.store.send(id!, 'tok', () => f, () => live);
+    const ended = await g.store.send(
+      id!,
+      'tok',
+      () => f,
+      () => live,
+    );
     const reader = ended.body!.getReader();
     expect((await reader.read()).value!.byteLength).toBe(MB);
     live = false;
     await expect(reader.read()).rejects.toThrow();
     // A size that doesn't add up is an error too, never a short or long body.
-    const wrong = await g.store.send(id!, 'tok', () => ({ ...f, bytes: f.bytes + 1 }), () => true);
+    const wrong = await g.store.send(
+      id!,
+      'tok',
+      () => ({ ...f, bytes: f.bytes + 1 }),
+      () => true,
+    );
     await expect(wrong.arrayBuffer()).rejects.toThrow();
   });
 
@@ -539,7 +623,17 @@ describe('downloads', () => {
     expect(Buffer.from(await after!.arrayBuffer()).equals(bytes)).toBe(true);
     // And a 404 never keeps one: with every place free again, more of them in a row than there are places.
     await Promise.all([...open.slice(2), next!].map((r) => r.body!.cancel()));
-    for (let i = 0; i < SENDS_AT_ONCE + 2; i++) expect((await g.store.send(id!, 'tok', () => null, () => true)).status).toBe(404);
+    for (let i = 0; i < SENDS_AT_ONCE + 2; i++)
+      expect(
+        (
+          await g.store.send(
+            id!,
+            'tok',
+            () => null,
+            () => true,
+          )
+        ).status,
+      ).toBe(404);
     expect((await g.store.send(id!, 'tok', f, () => true)).status).toBe(200);
   });
 
@@ -549,7 +643,14 @@ describe('downloads', () => {
     const f = () => g.files()[id!];
     const open = await Promise.all(Array.from({ length: SENDS_AT_ONCE }, (_, i) => g.store.send(id!, `seat-${i}`, f, () => true)));
     let answer: Response | null = null;
-    void g.store.send(id!, 'stranger', () => null, () => true).then((r) => (answer = r));
+    void g.store
+      .send(
+        id!,
+        'stranger',
+        () => null,
+        () => true,
+      )
+      .then((r) => (answer = r));
     for (let i = 0; i < 3; i++) await tick();
     expect(answer!.status).toBe(404);
     await Promise.all(open.map((r) => r.body!.cancel()));

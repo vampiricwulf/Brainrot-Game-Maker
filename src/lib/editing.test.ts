@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { aspectCrop, freeOffset, freeSpot, isMediaLink, knobPlacement, knobPoint, moreSpot, officeTextPaste, placeNewPicture, placePicture, placeSpeaker, playRange, playsAt, playsStep, playsText, SnapshotHistory } from './editing';
+import {
+  aspectCrop,
+  freeOffset,
+  freeSpot,
+  isMediaLink,
+  knobPlacement,
+  knobPoint,
+  moreSpot,
+  officeTextPaste,
+  placeNewPicture,
+  placePicture,
+  placeSpeaker,
+  playRange,
+  playsAt,
+  playsStep,
+  playsText,
+  SnapshotHistory,
+} from './editing';
 import { newAudioEl, newImageEl, newTextEl, newVideoEl } from './model';
 
 describe('slide undo history', () => {
@@ -36,7 +53,10 @@ describe('slide undo history', () => {
 
 describe('placement', () => {
   it('offsets new items until none sits exactly on an existing one', () => {
-    const existing = [{ x: 100, y: 100 }, { x: 130, y: 130 }];
+    const existing = [
+      { x: 100, y: 100 },
+      { x: 130, y: 130 },
+    ];
     expect(freeOffset([{ x: 100, y: 100 }], existing)).toBe(2);
     expect(freeOffset([{ x: 500, y: 100 }], existing)).toBe(0);
     expect(freeOffset([{ x: 460, y: 390 }], [{ x: 460, y: 390 }], 40)).toBe(1);
@@ -46,7 +66,14 @@ describe('placement', () => {
     const box = { x: 460, y: 700, w: 1000, h: 300 };
     const placed: { x: number; y: number }[] = [];
     for (let i = 0; i < 6; i++) placed.push(freeSpot(box, placed));
-    expect(placed).toEqual([{ x: 460, y: 700 }, { x: 500, y: 740 }, { x: 540, y: 780 }, { x: 580, y: 780 }, { x: 620, y: 780 }, { x: 660, y: 780 }]);
+    expect(placed).toEqual([
+      { x: 460, y: 700 },
+      { x: 500, y: 740 },
+      { x: 540, y: 780 },
+      { x: 580, y: 780 },
+      { x: 620, y: 780 },
+      { x: 660, y: 780 },
+    ]);
     expect(freeSpot(box, [{ x: 0, y: 0 }])).toEqual({ x: 460, y: 700 });
   });
 
@@ -108,8 +135,7 @@ describe('media links', () => {
 describe('aspect-locked crop', () => {
   const sq = { x: 0.25, y: 0.25, w: 0.5, h: 0.5 };
   const ratio = (b: { w: number; h: number }) => b.h / b.w;
-  const inside = (b: { x: number; y: number; w: number; h: number }) =>
-    b.x >= -1e-9 && b.y >= -1e-9 && b.x + b.w <= 1 + 1e-9 && b.y + b.h <= 1 + 1e-9;
+  const inside = (b: { x: number; y: number; w: number; h: number }) => b.x >= -1e-9 && b.y >= -1e-9 && b.x + b.w <= 1 + 1e-9 && b.y + b.h <= 1 + 1e-9;
 
   it('edge handles resize (height drives width for n/s) and stay centred', () => {
     const b = aspectCrop('n', sq, 0, 0.1, 1);
@@ -204,8 +230,7 @@ describe('a clip’s Start at and Stop at', () => {
 
 describe('placing a new picture', () => {
   const question = { id: 'q', kind: 'text', x: 120, y: 90, w: 1680, h: 900 };
-  const overlaps = (a: { x: number; y: number; w: number; h: number }, b: typeof a) =>
-    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const overlaps = (a: { x: number; y: number; w: number; h: number }, b: typeof a) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
   it('puts it above the question alone, and the question in a band below it', () => {
     const { box, text } = placePicture([question, { id: 'a', kind: 'audio', x: 1700, y: 860, w: 140, h: 140 }], 1100, 700);

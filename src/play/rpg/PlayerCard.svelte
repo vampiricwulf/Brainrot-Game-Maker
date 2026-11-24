@@ -24,11 +24,34 @@
   import { offerIn } from '../host/offered.svelte';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
-  import { formatPoints, newId, type BoardGameRound, type BoardGameState, type Game, type Player, type Session, type World, type WorldState } from '../../lib/model';
+  import {
+    formatPoints,
+    newId,
+    type BoardGameRound,
+    type BoardGameState,
+    type Game,
+    type Player,
+    type Session,
+    type World,
+    type WorldState,
+  } from '../../lib/model';
   import { applyScore, score } from '../../lib/session';
   import { blip } from '../../lib/live';
   import {
-    addStat, clampStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, setStat, statFields, statNumber, statRoom, statValue,
+    addStat,
+    clampStat,
+    currencyFields,
+    entryName,
+    formatStat,
+    giveItem,
+    inventory,
+    itemDef,
+    logged,
+    setStat,
+    statFields,
+    statNumber,
+    statRoom,
+    statValue,
   } from '../../lib/toolset';
   import Avatar from '../../lib/rpg/Avatar.svelte';
   import InlineAsk from '../host/InlineAsk.svelte';
@@ -92,9 +115,12 @@
       // (Past its limit already, as after a Buy anyway: says where it is.)
       const now = statNumber(game, session, p.id, f);
       const lim = delta > 0 ? f.max : f.min;
-      toast(now === lim ? `${name}’s ${f.name} is already at its ${delta > 0 ? 'max' : 'min'} (${lim})` : `${name}’s ${f.name} is at ${now}, ${delta > 0 ? 'above its max' : 'below its min'} (${lim})`);
-    }
-    else if (delta < 0 && !f.currency) blip(app.live, 'hurt');
+      toast(
+        now === lim
+          ? `${name}’s ${f.name} is already at its ${delta > 0 ? 'max' : 'min'} (${lim})`
+          : `${name}’s ${f.name} is at ${now}, ${delta > 0 ? 'above its max' : 'below its min'} (${lim})`,
+      );
+    } else if (delta < 0 && !f.currency) blip(app.live, 'hurt');
   }
 
   /** Set a stat (a number stays within the field's min and max: the log says what it became). */
@@ -162,7 +188,14 @@
     logged(session, `${name} uses ${def.name}`, () => {
       const before = JSON.stringify([session, app.live]);
       // (A board game's: its step says a Send to a secret space both ways, for one window.)
-      said = actions.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a, 'use', teams)}`, bs ? `${name} uses ${def.name}: ${describeAction(game, a, 'use', teams, bs)}` : undefined));
+      said = actions.map((a) =>
+        runAction(
+          ctx,
+          a,
+          `${name} uses ${def.name}: ${describeAction(game, a, 'use', teams)}`,
+          bs ? `${name} uses ${def.name}: ${describeAction(game, a, 'use', teams, bs)}` : undefined,
+        ),
+      );
       did = offered || JSON.stringify([session, app.live]) !== before;
       if (did && !def.wearable) change(entryId, `used ${def.name}`, (list, i) => (list[i].qty > 1 ? list[i].qty-- : list.splice(i, 1)));
     });
@@ -290,7 +323,12 @@
         onclick={() => logged(session, `${name} ${pos.hidden ? 'shown' : 'hidden'}`, () => (w.positions[p.id].hidden = !pos.hidden))}>🫥</button
       >
     {/if}
-    <button class="tiny" title="Show {p.name}'s sheet on screen (I)" aria-label="Show {p.name}'s sheet on screen" onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: p.id })}>📺</button>
+    <button
+      class="tiny"
+      title="Show {p.name}'s sheet on screen (I)"
+      aria-label="Show {p.name}'s sheet on screen"
+      onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: p.id })}>📺</button
+    >
   </div>
   {#if fields.length}
     <!-- Two stats a line (name, value, name, value), so a card stays short. -->
@@ -327,7 +365,15 @@
               value={Array.isArray(v) ? v.join(', ') : ''}
               placeholder="tag, tag"
               aria-label="{p.name} {f.name}"
-              onchange={(e) => set(f.id, [...new Set(e.currentTarget.value.split(',').map((t) => t.trim()).filter(Boolean))])}
+              onchange={(e) =>
+                set(f.id, [
+                  ...new Set(
+                    e.currentTarget.value
+                      .split(',')
+                      .map((t) => t.trim())
+                      .filter(Boolean),
+                  ),
+                ])}
             />
           {:else}
             <input class="txt" value={String(v)} aria-label="{p.name} {f.name}" onchange={(e) => set(f.id, e.currentTarget.value)} />
@@ -351,13 +397,20 @@
               heading: `${entryName(game, e)}${e.qty > 1 ? ` ×${e.qty}` : ''}`,
               verbs: [
                 ...(def?.wearable
-                  ? [{ label: e.equipped ? 'Unequip' : 'Equip', onclick: () => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped)) }]
+                  ? [
+                      {
+                        label: e.equipped ? 'Unequip' : 'Equip',
+                        onclick: () => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped)),
+                      },
+                    ]
                   : []),
                 ...(def?.onUse?.length ? [{ label: 'Use…', onclick: () => (using = e.id) }] : []),
               ],
               // (Where it goes: to another player, or onto the stage.)
               move: [
-                ...session.players.filter((x) => x.id !== p.id).map((o) => ({ label: `Give ${e.qty > 1 ? howMany(e.id, e.qty) + ' ' : ''}to ${o.name}`, onclick: () => give(e.id, o.id) })),
+                ...session.players
+                  .filter((x) => x.id !== p.id)
+                  .map((o) => ({ label: `Give ${e.qty > 1 ? howMany(e.id, e.qty) + ' ' : ''}to ${o.name}`, onclick: () => give(e.id, o.id) })),
                 ...(pos ? [{ label: '⬇ Drop it here', onclick: () => drop(e.id) }] : []),
               ],
               // (Off this player: the item stays in the game.)
@@ -383,7 +436,12 @@
         <!-- The buttons stay together: on the name's line, or all on the next one. -->
         <span class="acts">
           {#if def?.wearable}
-            <button class="tiny" class:on={e.equipped} aria-pressed={!!e.equipped} onclick={() => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped))}>
+            <button
+              class="tiny"
+              class:on={e.equipped}
+              aria-pressed={!!e.equipped}
+              onclick={() => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped))}
+            >
               {e.equipped ? 'Unequip' : 'Equip'}
             </button>
           {/if}
@@ -414,13 +472,25 @@
             <option value="">Give →</option>
             {#each session.players.filter((x) => x.id !== p.id) as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
           </select>
-          {#if pos}<button class="tiny" title="Drop it on this screen (it can be picked up again)" aria-label="Drop {entryName(game, e)} on this screen" onclick={() => drop(e.id)}>⬇</button>{/if}
-          <button class="tiny danger" title="Remove {e.qty > 1 ? 'that many' : 'it'} (Undo brings it back)" aria-label="Remove {entryName(game, e)}" onclick={() => remove(e.id)}>🗑</button>
+          {#if pos}<button
+              class="tiny"
+              title="Drop it on this screen (it can be picked up again)"
+              aria-label="Drop {entryName(game, e)} on this screen"
+              onclick={() => drop(e.id)}>⬇</button
+            >{/if}
+          <button
+            class="tiny danger"
+            title="Remove {e.qty > 1 ? 'that many' : 'it'} (Undo brings it back)"
+            aria-label="Remove {entryName(game, e)}"
+            onclick={() => remove(e.id)}>🗑</button
+          >
         </span>
       </div>
       {#if using === e.id && def?.onUse?.length}
         <InlineAsk
-          text="{name} uses {def.name}: {def.onUse.map((a) => describeAction(game, a, 'use', teams, hide ? bs : undefined)).join(', ')}. {def.wearable ? 'Use it?' : 'Use it up?'}"
+          text="{name} uses {def.name}: {def.onUse.map((a) => describeAction(game, a, 'use', teams, hide ? bs : undefined)).join(', ')}. {def.wearable
+            ? 'Use it?'
+            : 'Use it up?'}"
           ok="Use"
           onok={() => use(e.id)}
           oncancel={() => (using = null)}
@@ -487,7 +557,9 @@
   }
   @keyframes flash {
     50% {
-      box-shadow: 0 0 0 4px var(--c), 0 0 18px var(--c);
+      box-shadow:
+        0 0 0 4px var(--c),
+        0 0 18px var(--c);
     }
   }
   .it .nm[draggable='true'] {

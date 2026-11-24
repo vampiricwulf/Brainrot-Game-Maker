@@ -93,8 +93,7 @@ interface Voice {
 
 const notes = (freqs: number[], step: number, len: number, more: Partial<Voice> = {}): Voice[] =>
   freqs.map((freq, i) => ({ at: i * step, len, freq, wave: 'bell', decay: 6, ...more }));
-const chord = (freqs: number[], at: number, len: number, more: Partial<Voice> = {}): Voice[] =>
-  freqs.map((freq) => ({ at, len, freq, wave: 'bell', ...more }));
+const chord = (freqs: number[], at: number, len: number, more: Partial<Voice> = {}): Voice[] => freqs.map((freq) => ({ at, len, freq, wave: 'bell', ...more }));
 
 // Note frequencies.
 const G4 = 392,
@@ -110,18 +109,12 @@ const G4 = 392,
 const CLATTER = [0, 0.05, 0.11, 0.16, 0.24, 0.3, 0.39, 0.47, 0.58, 0.7, 0.84];
 
 const VOICES: Partial<Record<CueKey, Voice[]>> = {
-  roundIntro: [
-    ...notes([G4, C5, E5], 0.13, 0.2, { decay: 3 }),
-    ...chord([C5, E5, G5], 0.39, 0.8, { decay: 2.5, vol: 0.7 }),
-  ],
+  roundIntro: [...notes([G4, C5, E5], 0.13, 0.2, { decay: 3 }), ...chord([C5, E5, G5], 0.39, 0.8, { decay: 2.5, vol: 0.7 })],
   tileOpen: [
     { at: 0, len: 0.16, freq: 500, to: 1400, vol: 0.5 },
     { at: 0.12, len: 0.28, freq: 1400, wave: 'bell', decay: 10, vol: 0.6 },
   ],
-  dailyDouble: [
-    { at: 0, len: 0.55, freq: 300, to: 1200, vol: 0.35 },
-    ...chord([C6, E6, G6], 0.5, 0.9, { decay: 3, vol: 0.55 }),
-  ],
+  dailyDouble: [{ at: 0, len: 0.55, freq: 300, to: 1200, vol: 0.35 }, ...chord([C6, E6, G6], 0.5, 0.9, { decay: 3, vol: 0.55 })],
   buzz: [{ at: 0, len: 0.32, freq: 330, wave: 'buzz', vol: 0.45, decay: 1.5 }],
   right: notes([C6, E6, G6], 0.08, 0.4, { decay: 5 }),
   wrong: [
@@ -159,10 +152,7 @@ const VOICES: Partial<Record<CueKey, Voice[]>> = {
     { at: 0.065, len: 0.28, freq: E6, wave: 'bell', vol: 0.45, decay: 10 },
   ],
   hurt: [{ at: 0, len: 0.2, freq: 320, to: 150, wave: 'buzz', vol: 0.4, decay: 9 }],
-  winner: [
-    ...notes([G4, G4, G4], 0.14, 0.12, { decay: 4 }),
-    ...chord([C5, E5, G5], 0.42, 1.1, { decay: 1.8, vol: 0.6 }),
-  ],
+  winner: [...notes([G4, G4, G4], 0.14, 0.12, { decay: 4 }), ...chord([C5, E5, G5], 0.42, 1.1, { decay: 1.8, vol: 0.6 })],
 };
 
 /** Samples of one built-in sound (-1…1). The noise is the same every time. */
@@ -171,7 +161,7 @@ export function cueSamples(key: CueKey, rate = 22050): Float32Array {
   const seconds = Math.max(0, ...voices.map((v) => v.at + v.len));
   const out = new Float32Array(Math.ceil(rate * seconds));
   let seed = 12345;
-  const noise = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x3fffffff) - 1;
+  const noise = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x3fffffff - 1;
   for (const v of voices) {
     const start = Math.round(v.at * rate);
     const n = Math.round(v.len * rate);

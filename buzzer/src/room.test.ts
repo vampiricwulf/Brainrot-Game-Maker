@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import type { HostCard, HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
-import { ANSWER_LINES, ANSWER_MAX, CARDS_BYTES, CARDS_MAX, cleanAnswer, clip, cleanName, foldLines, MAX_PHONES, OLD_FILE_LIMITS, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
+import {
+  ANSWER_LINES,
+  ANSWER_MAX,
+  CARDS_BYTES,
+  CARDS_MAX,
+  cleanAnswer,
+  clip,
+  cleanName,
+  foldLines,
+  MAX_PHONES,
+  OLD_FILE_LIMITS,
+  ROOM_FILES_MAX,
+} from '../../src/lib/buzzproto';
 import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS, FILE_MAX_AGE_MS } from './limits';
 
 /** The limits these tests run with (the room's caps). */
@@ -48,7 +60,19 @@ const seats = [
 ];
 
 function state(over: Partial<HostState> = {}): HostState {
-  return { title: 'Quiz night', seats, allowNew: false, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 1000, scores: { a: 100 }, ...over };
+  return {
+    title: 'Quiz night',
+    seats,
+    allowNew: false,
+    phase: 'lobby',
+    armId: 0,
+    clue: null,
+    answering: null,
+    lockedOut: [],
+    earlyLockMs: 1000,
+    scores: { a: 100 },
+    ...over,
+  };
 }
 
 /** A room with a clock and timers the test runs (tick), counting tokens and inboxes for the host and each phone. */
@@ -117,7 +141,24 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = [], limits = OLD_F
   });
   const hostLast = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type).at(-1) as Extract<RoomToHost, { t: T }> | undefined;
   const hostAll = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type) as Extract<RoomToHost, { t: T }>[];
-  return { t, tick, timers: () => timers.length, room, host, hostLast, hostAll, send, phone, phoneOf, phoneSaves, dropped, filesDropped, piecesDropped, wakes, saves: () => saves };
+  return {
+    t,
+    tick,
+    timers: () => timers.length,
+    room,
+    host,
+    hostLast,
+    hostAll,
+    send,
+    phone,
+    phoneOf,
+    phoneSaves,
+    dropped,
+    filesDropped,
+    piecesDropped,
+    wakes,
+    saves: () => saves,
+  };
 }
 
 /** Host connected and sent a state; phones a, b, c seated on seats a, b, c. */
@@ -130,7 +171,8 @@ function game(over: Partial<HostState> = {}) {
     p.send({ t: 'join', seatId: seats[i].id });
     return p;
   });
-  const arm = (armId: number, extra: Partial<HostState> = {}) => g.send({ t: 'state', state: state({ phase: 'armed', armId, clue: { text: 'Q?' }, ...over, ...extra }) });
+  const arm = (armId: number, extra: Partial<HostState> = {}) =>
+    g.send({ t: 'state', state: state({ phase: 'armed', armId, clue: { text: 'Q?' }, ...over, ...extra }) });
   return { ...g, pa, pb, pc, arm };
 }
 
@@ -138,12 +180,22 @@ describe('host', () => {
   it('is welcomed and keeps the latest state', () => {
     const g = setup();
     g.room.hostOpen();
-    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs', 'choices', 'pass'] });
+    expect(g.host[0]).toEqual({
+      t: 'welcome',
+      code: 'BCDF',
+      protocol: 1,
+      serverNow: 10_000,
+      features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs', 'choices', 'pass'],
+    });
     // 'files' only while the server takes card files (index.ts knows its setting and budget), and with it the
     // server's limits.
     const f = setup(undefined, [], { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 });
     f.room.hostOpen(true);
-    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs', 'choices', 'pass'], limits: { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 } });
+    expect(f.host[0]).toMatchObject({
+      t: 'welcome',
+      features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs', 'choices', 'pass'],
+      limits: { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 },
+    });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -456,7 +508,7 @@ describe('seats', () => {
     expect(catBack.last('joined')?.seatId).toBe('c');
   });
 
-  it('a kick keeps the address off that seat too: a new device id doesn\'t get round it', () => {
+  it("a kick keeps the address off that seat too: a new device id doesn't get round it", () => {
     const g = setup();
     g.room.hostOpen();
     g.send({ t: 'state', state: state() });
@@ -1104,7 +1156,12 @@ describe('the race', () => {
     k.t.now += GRACE_MS + 1000;
     k.phoneOf('pb').send({ t: 'buzz', armId: 1 });
     expect(k.room.saved.state?.answering).toBe('a');
-    expect(k.hostAll('queue').at(-1)?.queue.map((q) => q.seatId)).toEqual(['a', 'b']);
+    expect(
+      k
+        .hostAll('queue')
+        .at(-1)
+        ?.queue.map((q) => q.seatId),
+    ).toEqual(['a', 'b']);
   });
 
   it('a buzz for an old arm is late and never counts', () => {
@@ -1396,7 +1453,10 @@ describe('untrusted input', () => {
     expect(g.pa.msgs()).toEqual([]);
     // The oversized phone ping above was dropped but the same ping is fine for the host (under 32 KB); a state too big
     // to take is refused out loud (the host shows it), not dropped in silence.
-    expect(g.host.slice(hostBefore)).toEqual([{ t: 'pong', at: 1, serverNow: 10_000 }, { t: 'error', message: TOO_BIG }]);
+    expect(g.host.slice(hostBefore)).toEqual([
+      { t: 'pong', at: 1, serverNow: 10_000 },
+      { t: 'error', message: TOO_BIG },
+    ]);
     expect(g.room.saved.state?.title).toBe('Quiz night');
   });
 
@@ -1493,7 +1553,7 @@ describe('untrusted input', () => {
     expect(g.room.floodBlocked('198.51.100.1')).toBe(false);
     expect(g.room.floodBlocked(undefined)).toBe(false);
     g.t.now += FLOOD_BLOCK_MS;
-    expect(g.room.floodBlocked('203.0.113.66')).toBe(false);    // A burst far over the limit is closed at once.
+    expect(g.room.floodBlocked('203.0.113.66')).toBe(false); // A burst far over the limit is closed at once.
     const burst = g.phone('burst');
     const got: unknown[] = [];
     for (let i = 0; i <= FLOOD_BURST; i++) got.push(burst.send({ t: 'ping', at: i }));
@@ -1575,7 +1635,15 @@ describe('teams', () => {
     const g = setup();
     g.room.hostOpen();
     const st = (x: Partial<HostState> = {}) =>
-      state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...over, ...x });
+      state({
+        teams: true,
+        seats: [
+          { id: 'a', name: 'Red', color: '#ff0000' },
+          { id: 'b', name: 'Blue', color: '#0000ff' },
+        ],
+        ...over,
+        ...x,
+      });
     g.send({ t: 'state', state: st() });
     const join = (conn: string, seatId: string, name: string) => {
       const p = g.phone(conn);
@@ -1966,7 +2034,12 @@ describe('colours', () => {
 });
 
 describe('answers (everyone answers on their phone)', () => {
-  const ask = (x: Partial<NonNullable<HostState['answers']>> = {}): HostState['answers'] => ({ id: 'clue1', open: true, seats: [{ id: 'a' }, { id: 'b' }], ...x });
+  const ask = (x: Partial<NonNullable<HostState['answers']>> = {}): HostState['answers'] => ({
+    id: 'clue1',
+    open: true,
+    seats: [{ id: 'a' }, { id: 'b' }],
+    ...x,
+  });
   const said = (msgs: unknown[]) => JSON.stringify(msgs);
 
   it('a phone sends its answer: the host hears it, that phone sees it, no other phone does', () => {
@@ -2019,7 +2092,17 @@ describe('answers (everyone answers on their phone)', () => {
     expect(g.pb.last('answered')).toMatchObject({ ok: true });
     expect(g.hostAll('answer').map((m) => m.text)).toEqual(['Siamese', 'Corgi']);
     // The judgment undone: open again.
-    g.send({ t: 'state', state: state({ answers: ask({ seats: [{ id: 'a', got: 1 }, { id: 'b', got: 1 }] }) }) });
+    g.send({
+      t: 'state',
+      state: state({
+        answers: ask({
+          seats: [
+            { id: 'a', got: 1 },
+            { id: 'b', got: 1 },
+          ],
+        }),
+      }),
+    });
     expect(g.pa.last('view')!.view.answer).toMatchObject({ open: true });
   });
 
@@ -2088,10 +2171,18 @@ describe('answers (everyone answers on their phone)', () => {
     expect(g.hostAll('answer')).toHaveLength(1);
   });
 
-  it("teams: someone who joins a team after its answer was sent is told one is in, not what it says", () => {
+  it('teams: someone who joins a team after its answer was sent is told one is in, not what it says', () => {
     const g = setup();
     g.room.hostOpen();
-    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    const st = (x: Partial<HostState> = {}) =>
+      state({
+        teams: true,
+        seats: [
+          { id: 'a', name: 'Red', color: '#ff0000' },
+          { id: 'b', name: 'Blue', color: '#0000ff' },
+        ],
+        ...x,
+      });
     g.send({ t: 'state', state: st() });
     const join = (conn: string, seatId: string, name: string) => {
       const p = g.phone(conn);
@@ -2138,7 +2229,15 @@ describe('answers (everyone answers on their phone)', () => {
     it('are kept only as 2 to 6 choices, each with its own id and words, never which is right', () => {
       expect(kept(four.map((c, i) => (i === 1 ? { ...c, right: true } : c)))).toEqual(four);
       // Words cleaned and cut as a name is; one choice, seven, an id twice, an empty one or a bad id: none at all.
-      expect(kept([{ id: 'a', text: '  Pa\u200bris  ' }, { id: 'b', text: 'x'.repeat(100) }])).toEqual([{ id: 'a', text: 'Paris' }, { id: 'b', text: `${'x'.repeat(79)}…` }]);
+      expect(
+        kept([
+          { id: 'a', text: '  Pa\u200bris  ' },
+          { id: 'b', text: 'x'.repeat(100) },
+        ]),
+      ).toEqual([
+        { id: 'a', text: 'Paris' },
+        { id: 'b', text: `${'x'.repeat(79)}…` },
+      ]);
       for (const bad of [
         four.slice(0, 1),
         [...four, ...four.map((c) => ({ ...c, id: c.id + 'x' }))].slice(0, 7),
@@ -2175,7 +2274,12 @@ describe('answers (everyone answers on their phone)', () => {
       g.pa.send({ t: 'answer', id: 'clue1', pick: 'C3' });
       g.room.hostClose();
       g.room.hostOpen();
-      expect(g.hostAll('answer').filter((m) => m.seatId === 'a').at(-1)).toEqual({ t: 'answer', id: 'clue1', seatId: 'a', text: 'Oslo', n: 2, pick: 'C3' });
+      expect(
+        g
+          .hostAll('answer')
+          .filter((m) => m.seatId === 'a')
+          .at(-1),
+      ).toEqual({ t: 'answer', id: 'clue1', seatId: 'a', text: 'Oslo', n: 2, pick: 'C3' });
     });
 
     it('a phone seated after the pick was sent is told one is in, not which', () => {
@@ -2258,7 +2362,18 @@ describe('wagers', () => {
     expect(g.hostAll('wager')).toHaveLength(0);
     // Sent, then the host shows the question: locked. The phone still sees what was locked in.
     g.pa.send({ t: 'wager', id: 'final:r9', amount: 40 });
-    g.send({ t: 'state', state: state({ wager: final({ open: false, seats: [{ id: 'a', max: 100, amount: 40, got: 1 }, { id: 'b', max: 50 }] }) }) });
+    g.send({
+      t: 'state',
+      state: state({
+        wager: final({
+          open: false,
+          seats: [
+            { id: 'a', max: 100, amount: 40, got: 1 },
+            { id: 'b', max: 50 },
+          ],
+        }),
+      }),
+    });
     g.pa.send({ t: 'wager', id: 'final:r9', amount: 90 });
     expect(g.pa.last('wagered')).toMatchObject({ ok: false, reason: 'closed' });
     expect(g.pa.last('view')!.view.wager).toMatchObject({ open: false, mine: true, amount: 40, sent: true });
@@ -2299,9 +2414,29 @@ describe('wagers', () => {
     const g = game();
     g.send({ t: 'state', state: state({ wager: final() }) });
     g.pa.send({ t: 'wager', id: 'final:r9', amount: 500 });
-    g.send({ t: 'state', state: state({ wager: final({ seats: [{ id: 'a', max: 1000, amount: 500, got: 1 }, { id: 'b', max: 50 }] }) }) });
+    g.send({
+      t: 'state',
+      state: state({
+        wager: final({
+          seats: [
+            { id: 'a', max: 1000, amount: 500, got: 1 },
+            { id: 'b', max: 50 },
+          ],
+        }),
+      }),
+    });
     expect(g.pa.last('view')!.view.wager).toMatchObject({ amount: 500, sent: true });
-    g.send({ t: 'state', state: state({ wager: final({ seats: [{ id: 'a', max: 1000, got: 1 }, { id: 'b', max: 50 }] }) }) });
+    g.send({
+      t: 'state',
+      state: state({
+        wager: final({
+          seats: [
+            { id: 'a', max: 1000, got: 1 },
+            { id: 'b', max: 50 },
+          ],
+        }),
+      }),
+    });
     const w = g.pa.last('view')!.view.wager!;
     expect(w.amount).toBeUndefined();
     expect(w.sent).toBeUndefined();
@@ -2314,7 +2449,17 @@ describe('wagers', () => {
     const g = game();
     g.send({ t: 'state', state: state({ wager: final() }) });
     g.pa.send({ t: 'wager', id: 'final:r9', amount: 80 });
-    g.send({ t: 'state', state: state({ wager: final({ seats: [{ id: 'a', max: 100, amount: 30, fromHost: true, got: 1 }, { id: 'b', max: 50 }] }) }) });
+    g.send({
+      t: 'state',
+      state: state({
+        wager: final({
+          seats: [
+            { id: 'a', max: 100, amount: 30, fromHost: true, got: 1 },
+            { id: 'b', max: 50 },
+          ],
+        }),
+      }),
+    });
     expect(g.pa.last('view')!.view.wager).toEqual({ id: 'final:r9', kind: 'final', open: true, mine: true, max: 100, amount: 30, host: true });
     // Sent again: theirs again (n goes on from what the host took).
     g.pa.send({ t: 'wager', id: 'final:r9', amount: 70 });
@@ -2351,7 +2496,17 @@ describe('wagers', () => {
     g.room.hostOpen();
     expect(g.hostLast('wager')).toMatchObject({ seatId: 'a', amount: 60, n: 1 });
     // The host took it (got 1): back again, it isn't sent twice.
-    g.send({ t: 'state', state: state({ wager: final({ seats: [{ id: 'a', max: 100, amount: 60, got: 1 }, { id: 'b', max: 50 }] }) }) });
+    g.send({
+      t: 'state',
+      state: state({
+        wager: final({
+          seats: [
+            { id: 'a', max: 100, amount: 60, got: 1 },
+            { id: 'b', max: 50 },
+          ],
+        }),
+      }),
+    });
     g.room.hostClose();
     g.room.hostOpen();
     expect(g.hostAll('wager')).toHaveLength(1);
@@ -2371,7 +2526,15 @@ describe('wagers', () => {
   it('teams: one wager per team, any member sends it, every member sees it and who sent it', () => {
     const g = setup();
     g.room.hostOpen();
-    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    const st = (x: Partial<HostState> = {}) =>
+      state({
+        teams: true,
+        seats: [
+          { id: 'a', name: 'Red', color: '#ff0000' },
+          { id: 'b', name: 'Blue', color: '#0000ff' },
+        ],
+        ...x,
+      });
     g.send({ t: 'state', state: st() });
     const join = (conn: string, seatId: string, name: string) => {
       const p = g.phone(conn);
@@ -2397,7 +2560,15 @@ describe('wagers', () => {
   it('teams: someone who joins a team after the wagers began is told one is in, not how much', () => {
     const g = setup();
     g.room.hostOpen();
-    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    const st = (x: Partial<HostState> = {}) =>
+      state({
+        teams: true,
+        seats: [
+          { id: 'a', name: 'Red', color: '#ff0000' },
+          { id: 'b', name: 'Blue', color: '#0000ff' },
+        ],
+        ...x,
+      });
     g.send({ t: 'state', state: st() });
     const join = (conn: string, seatId: string, name: string) => {
       const p = g.phone(conn);
@@ -2408,7 +2579,17 @@ describe('wagers', () => {
     g.send({ t: 'state', state: st({ wager: final() }) });
     ann.send({ t: 'wager', id: 'final:r9', amount: 4747 });
     // The host takes it.
-    g.send({ t: 'state', state: st({ wager: final({ seats: [{ id: 'a', max: 100, amount: 4747, got: 1 }, { id: 'b', max: 50 }] }) }) });
+    g.send({
+      t: 'state',
+      state: st({
+        wager: final({
+          seats: [
+            { id: 'a', max: 100, amount: 4747, got: 1 },
+            { id: 'b', max: 50 },
+          ],
+        }),
+      }),
+    });
     g.t.now += 1000;
     // Bea from Blue changes her name and joins Red to read their wager: she sees one is in, never the amount.
     const spy = join('spy', 'a', 'Bea');
@@ -2432,7 +2613,15 @@ describe('wagers', () => {
   it('teams: someone the host moves onto a team after its wager or answer came in is told one is in, never the amount or the words', () => {
     const g = setup();
     g.room.hostOpen();
-    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    const st = (x: Partial<HostState> = {}) =>
+      state({
+        teams: true,
+        seats: [
+          { id: 'a', name: 'Red', color: '#ff0000' },
+          { id: 'b', name: 'Blue', color: '#0000ff' },
+        ],
+        ...x,
+      });
     g.send({ t: 'state', state: st() });
     const join = (conn: string, seatId: string, name: string) => {
       const p = g.phone(conn);
@@ -2446,7 +2635,12 @@ describe('wagers', () => {
     g.t.now += 1000;
     g.send({ t: 'state', state: st({ wager: final() }) });
     bea.send({ t: 'wager', id: 'final:r9', amount: 999 });
-    const taken = final({ seats: [{ id: 'a', max: 100 }, { id: 'b', max: 50, amount: 999, got: 1 }] });
+    const taken = final({
+      seats: [
+        { id: 'a', max: 100 },
+        { id: 'b', max: 50, amount: 999, got: 1 },
+      ],
+    });
     g.send({ t: 'state', state: st({ wager: taken }) });
     expect(bea.last('view')!.view.wager).toMatchObject({ amount: 999 });
     // Al (Red) moved to Blue during the wagers: told Blue's is in, never how much.
@@ -2493,10 +2687,25 @@ describe('wagers', () => {
         kind: 'final',
         open: 1,
         limit: true,
-        seats: [{ id: 'a', max: 1e12, amount: -5, fromHost: 'yes', got: 2 }, { id: 'zzz', max: 1 }, { id: 'a', max: 3 }, 'x', { id: 'b', max: 'x', amount: 7, fromHost: true }],
+        seats: [
+          { id: 'a', max: 1e12, amount: -5, fromHost: 'yes', got: 2 },
+          { id: 'zzz', max: 1 },
+          { id: 'a', max: 3 },
+          'x',
+          { id: 'b', max: 'x', amount: 7, fromHost: true },
+        ],
       },
     })?.wager;
-    expect(w).toEqual({ id: 'final:r9', kind: 'final', open: false, limit: true, seats: [{ id: 'a', max: 1e9, got: 2 }, { id: 'b', max: 0, amount: 7, fromHost: true }] });
+    expect(w).toEqual({
+      id: 'final:r9',
+      kind: 'final',
+      open: false,
+      limit: true,
+      seats: [
+        { id: 'a', max: 1e9, got: 2 },
+        { id: 'b', max: 0, amount: 7, fromHost: true },
+      ],
+    });
     expect(cleanState({ ...state(), wager: { id: 'x', kind: 'other', open: true, seats: [] } })?.wager).toBeUndefined();
     expect(cleanState({ ...state(), wager: { id: 'x'.repeat(101), kind: 'dd', open: true, seats: [] } })?.wager).toBeUndefined();
   });
@@ -2505,7 +2714,15 @@ describe('wagers', () => {
 describe('private cards', () => {
   const said = (msgs: unknown[]) => JSON.stringify(msgs);
   /** Bob's card (a partner clue's describer), as the host sends it. */
-  const card = (x: Partial<HostCard> = {}): HostCard => ({ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, role: 'Describer', hint: 'Describe it to Ann', text: 'SHREK', ...x });
+  const card = (x: Partial<HostCard> = {}): HostCard => ({
+    id: 'pc:c1:1:1',
+    to: [{ seat: 'b' }],
+    open: true,
+    role: 'Describer',
+    hint: 'Describe it to Ann',
+    text: 'SHREK',
+    ...x,
+  });
   /** A game a second on (the phones took their seats before anything is sent), its cards sent with `send`. */
   function sent(over: Partial<HostState> = {}) {
     const g = game(over);
@@ -2517,7 +2734,15 @@ describe('private cards', () => {
   function teams() {
     const g = setup();
     g.room.hostOpen();
-    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    const st = (x: Partial<HostState> = {}) =>
+      state({
+        teams: true,
+        seats: [
+          { id: 'a', name: 'Red', color: '#ff0000' },
+          { id: 'b', name: 'Blue', color: '#0000ff' },
+        ],
+        ...x,
+      });
     g.send({ t: 'state', state: st() });
     const join = (conn: string, seatId: string, name: string) => {
       const p = g.phone(conn);
@@ -2622,7 +2847,11 @@ describe('private cards', () => {
   it('teams: by member, by team (everyone on it sees it) and by team except some', () => {
     const g = teams();
     const al = g.memberOf('al')!;
-    g.sendCards([card({ id: 'one', to: [{ seat: 'a', member: al }], text: 'ONLY AL' }), card({ id: 'rest', to: [{ seat: 'a', except: [al] }], text: 'NOT AL' }), card({ id: 'blue', to: [{ seat: 'b' }], text: 'BLUE' })]);
+    g.sendCards([
+      card({ id: 'one', to: [{ seat: 'a', member: al }], text: 'ONLY AL' }),
+      card({ id: 'rest', to: [{ seat: 'a', except: [al] }], text: 'NOT AL' }),
+      card({ id: 'blue', to: [{ seat: 'b' }], text: 'BLUE' }),
+    ]);
     expect(g.al.last('view')!.view.cards).toEqual({ list: [expect.objectContaining({ id: 'one', text: 'ONLY AL' })] });
     expect(g.al.last('view')!.view.cards!.list[0].team).toBeUndefined();
     expect(g.ann.last('view')!.view.cards).toEqual({ list: [expect.objectContaining({ id: 'rest', text: 'NOT AL', team: true })] });
@@ -2760,7 +2989,19 @@ describe('private cards', () => {
 
   it('greys the phones: status.off, and a small line for everyone (sub) and for its seats (seatsSub)', () => {
     const g = sent();
-    g.send({ t: 'state', state: state({ status: { text: '🤝 Bob describes → Ann guesses', sub: 'Nobody buzzes on this one', seats: ['a'], seatsText: '🎯 You’re guessing!', seatsSub: 'Bob is describing', off: true } }) });
+    g.send({
+      t: 'state',
+      state: state({
+        status: {
+          text: '🤝 Bob describes → Ann guesses',
+          sub: 'Nobody buzzes on this one',
+          seats: ['a'],
+          seatsText: '🎯 You’re guessing!',
+          seatsSub: 'Bob is describing',
+          off: true,
+        },
+      }),
+    });
     expect(g.pa.last('view')!.view).toMatchObject({ status: '🎯 You’re guessing!', statusSub: 'Bob is describing', statusOff: true });
     expect(g.pb.last('view')!.view).toMatchObject({ status: '🤝 Bob describes → Ann guesses', statusSub: 'Nobody buzzes on this one', statusOff: true });
     // The seat list's note is only the line for everyone.
@@ -2777,50 +3018,91 @@ describe('private cards', () => {
     expect(clean('nope')).toBeUndefined();
     expect(clean([])).toBeUndefined();
     // Ids: a string up to 100, once each; to: seats in the game (a card to nobody is dropped).
-    expect(clean([card({ id: '' }), card({ id: 'x'.repeat(101) }), card({ to: [{ seat: 'zz' }] }), card({ to: [] }), card(), card({ text: 'dup' })])).toEqual([card()]);
+    expect(clean([card({ id: '' }), card({ id: 'x'.repeat(101) }), card({ to: [{ seat: 'zz' }] }), card({ to: [] }), card(), card({ text: 'dup' })])).toEqual([
+      card(),
+    ]);
     // At most CARDS_MAX.
     expect(clean(Array.from({ length: 12 }, (_, i) => card({ id: `c${i}` })))).toHaveLength(CARDS_MAX);
     // Lines cut; empty ones left out; open unless false; tap only when false.
-    const long = clean([{ id: 'c', to: [{ seat: 'a' }], open: 'x', role: 'R'.repeat(30), hint: 'H'.repeat(300), title: 'T'.repeat(100), text: ' ' + 'W'.repeat(1200), tap: 'no' }])![0];
+    const long = clean([
+      { id: 'c', to: [{ seat: 'a' }], open: 'x', role: 'R'.repeat(30), hint: 'H'.repeat(300), title: 'T'.repeat(100), text: ' ' + 'W'.repeat(1200), tap: 'no' },
+    ])![0];
     expect([long.role!.length, long.hint!.length, long.title!.length, long.text!.length]).toEqual([24, 200, 80, 1000]);
     expect(long.open).toBe(true);
     expect(long).not.toHaveProperty('tap');
-    expect(clean([card({ role: '  ', tap: false, open: false })])![0]).toStrictEqual({ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: false, hint: 'Describe it to Ann', text: 'SHREK', tap: false });
+    expect(clean([card({ role: '  ', tap: false, open: false })])![0]).toStrictEqual({
+      id: 'pc:c1:1:1',
+      to: [{ seat: 'b' }],
+      open: false,
+      hint: 'Describe it to Ann',
+      text: 'SHREK',
+      tap: false,
+    });
     // Members: a bad id never widens a card to the whole team; a bad `except` never sends it to someone left out.
-    const to = clean([card({ to: [{ seat: 'a', member: 'm1' }, { seat: 'a', member: 'm'.repeat(65) }, { seat: 'b', except: ['m2', 7] } as never, { seat: 'c', except: ['m3', 'm3'] }] })])![0].to;
-    expect(to).toEqual([{ seat: 'a', member: 'm1' }, { seat: 'c', except: ['m3'] }]);
+    const to = clean([
+      card({
+        to: [
+          { seat: 'a', member: 'm1' },
+          { seat: 'a', member: 'm'.repeat(65) },
+          { seat: 'b', except: ['m2', 7] } as never,
+          { seat: 'c', except: ['m3', 'm3'] },
+        ],
+      }),
+    ])![0].to;
+    expect(to).toEqual([
+      { seat: 'a', member: 'm1' },
+      { seat: 'c', except: ['m3'] },
+    ]);
   });
 
   it('cleanState: links https only (no user name or password, 2048 at most), embeds from the list, at most 6 media', () => {
     const media = (m: unknown[]) => cleanState({ ...state(), cards: [card({ media: m as never })] })?.cards?.[0].media;
     const ok = 'https://i.example.com/shrek.gif';
-    expect(media([
-      { kind: 'image', url: ok, name: ' shrek.gif ' },
-      { kind: 'image', url: 'http://i.example.com/a.png' },
-      { kind: 'image', url: 'javascript:alert(1)' },
-      { kind: 'image', url: 'data:image/png;base64,AAAA' },
-      { kind: 'video', url: 'https://user:pw@example.com/a.mp4' },
-      { kind: 'audio', url: `https://example.com/${'a'.repeat(2048)}.mp3` },
-    ])).toEqual([{ kind: 'image', url: ok, name: 'shrek.gif' }]);
-    expect(media([
-      { kind: 'embed', site: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', start: 30, end: -1 },
-      { kind: 'embed', site: 'evilsite', url: 'https://evil.example.com' },
-      { kind: 'embed', site: 'drive', url: 'ftp://drive.google.com/x' },
-      { kind: 'svg', url: ok },
-      { kind: 'video', url: 'https://example.com/a.mp4', start: 2, end: 9, extra: 'dropped' },
-    ])).toEqual([
+    expect(
+      media([
+        { kind: 'image', url: ok, name: ' shrek.gif ' },
+        { kind: 'image', url: 'http://i.example.com/a.png' },
+        { kind: 'image', url: 'javascript:alert(1)' },
+        { kind: 'image', url: 'data:image/png;base64,AAAA' },
+        { kind: 'video', url: 'https://user:pw@example.com/a.mp4' },
+        { kind: 'audio', url: `https://example.com/${'a'.repeat(2048)}.mp3` },
+      ]),
+    ).toEqual([{ kind: 'image', url: ok, name: 'shrek.gif' }]);
+    expect(
+      media([
+        { kind: 'embed', site: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', start: 30, end: -1 },
+        { kind: 'embed', site: 'evilsite', url: 'https://evil.example.com' },
+        { kind: 'embed', site: 'drive', url: 'ftp://drive.google.com/x' },
+        { kind: 'svg', url: ok },
+        { kind: 'video', url: 'https://example.com/a.mp4', start: 2, end: 9, extra: 'dropped' },
+      ]),
+    ).toEqual([
       { kind: 'embed', site: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', start: 30 },
       { kind: 'video', url: 'https://example.com/a.mp4', start: 2, end: 9 },
     ]);
     expect(media(Array.from({ length: 9 }, () => ({ kind: 'image', url: ok })))).toHaveLength(6);
     // Still uploading, or not coming.
-    expect(media([{ kind: 'image', pending: true }, { kind: 'video', missing: true }, { kind: 'audio', pending: 'yes' }])).toEqual([{ kind: 'image', pending: true }, { kind: 'video', missing: true }]);
+    expect(
+      media([
+        { kind: 'image', pending: true },
+        { kind: 'video', missing: true },
+        { kind: 'audio', pending: 'yes' },
+      ]),
+    ).toEqual([
+      { kind: 'image', pending: true },
+      { kind: 'video', missing: true },
+    ]);
     expect(cardLink(' https://example.com/a b.png ')).toBe('https://example.com/a%20b.png');
     expect(cardLink('HTTPS://EXAMPLE.COM/x')).toBe('https://example.com/x');
   });
 
   it('cleanState: at most 12 KB of cards: media go first (marked missing), from the last card back, then cards', () => {
-    const big = (i: number) => card({ id: `c${i}`, text: 'w'.repeat(900), media: Array.from({ length: 6 }, (_, j) => ({ kind: 'image' as const, url: `https://example.com/${i}-${j}-${'p'.repeat(400)}.png` })) });
+    const big = (i: number) =>
+      card({
+        id: `c${i}`,
+        text: 'w'.repeat(900),
+        media: Array.from({ length: 6 }, (_, j) => ({ kind: 'image' as const, url: `https://example.com/${i}-${j}-${'p'.repeat(400)}.png` })),
+      });
     const cards = cleanState({ ...state(), cards: Array.from({ length: 8 }, (_, i) => big(i)) })!.cards!;
     expect(new TextEncoder().encode(JSON.stringify(cards)).length).toBeLessThanOrEqual(CARDS_BYTES);
     // The first cards keep their pictures; later ones have theirs marked missing; the text stays.
@@ -2841,7 +3123,8 @@ describe('card files', () => {
   const pic = (file: string): HostCard['media'] => [{ kind: 'image', file, mime: 'image/png' }];
   const card = (x: Partial<HostCard> = {}): HostCard => ({ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, text: 'SHREK', ...x });
   /** A file stored, its pieces under its own id here (so the room's deletes read as ids). */
-  const add = (g: { room: Room; t: { now: number } }, id: string, mime: string, bytes: number, parts: number) => g.room.fileStored(id, id, mime, bytes, parts, g.t.now);
+  const add = (g: { room: Room; t: { now: number } }, id: string, mime: string, bytes: number, parts: number) =>
+    g.room.fileStored(id, id, mime, bytes, parts, g.t.now);
   function sent() {
     const g = game();
     g.t.now += 1000;
@@ -2997,7 +3280,15 @@ describe('card files', () => {
   it('teams: a member’s token, only while they’re on the card’s team since before it went out', () => {
     const g = setup();
     g.room.hostOpen();
-    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    const st = (x: Partial<HostState> = {}) =>
+      state({
+        teams: true,
+        seats: [
+          { id: 'a', name: 'Red', color: '#ff0000' },
+          { id: 'b', name: 'Blue', color: '#0000ff' },
+        ],
+        ...x,
+      });
     g.send({ t: 'state', state: st() });
     const ann = g.phone('ann');
     ann.send({ t: 'join', seatId: 'a', name: 'Ann' });
@@ -3023,14 +3314,23 @@ describe('card files', () => {
     // (The host says the type and kind; the room's own wins.)
     g.sendCards([card({ media: [{ kind: 'video', file: F1, mime: 'text/html', name: 'shrek.gif' }] })]);
     expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([{ kind: 'image', file: F1, mime: 'image/gif', name: 'shrek.gif' }]);
-    expect(cleanState({ ...state(), cards: [card({ media: [{ kind: 'image', file: 'not-a-hash', mime: 'image/png' }] })] })!.cards![0]).not.toHaveProperty('media');
+    expect(cleanState({ ...state(), cards: [card({ media: [{ kind: 'image', file: 'not-a-hash', mime: 'image/png' }] })] })!.cards![0]).not.toHaveProperty(
+      'media',
+    );
   });
 
   it('a GIF sent as a video ("gifs") keeps its mark only on a stored video', () => {
     const g = sent();
     add(g, F1, 'video/webm', 1000, 1);
     add(g, F2, 'image/gif', 1000, 1);
-    g.sendCards([card({ media: [{ kind: 'image', file: F1, mime: 'video/webm', gif: true }, { kind: 'image', file: F2, mime: 'image/gif', gif: true }] })]);
+    g.sendCards([
+      card({
+        media: [
+          { kind: 'image', file: F1, mime: 'video/webm', gif: true },
+          { kind: 'image', file: F2, mime: 'image/gif', gif: true },
+        ],
+      }),
+    ]);
     expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([
       { kind: 'video', file: F1, mime: 'video/webm', gif: true },
       { kind: 'image', file: F2, mime: 'image/gif' },
@@ -3175,7 +3475,10 @@ describe('verdicts on a buzz-in clue', () => {
   });
 
   it('keeps only well-formed ones for seats in the game', () => {
-    const st = cleanState({ ...state(), verdicts: { a: { right: true, delta: 400, extra: 1 }, zz: { right: true, delta: 1 }, b: { right: 'yes', delta: 1 }, c: { right: false, delta: 1.5 } } });
+    const st = cleanState({
+      ...state(),
+      verdicts: { a: { right: true, delta: 400, extra: 1 }, zz: { right: true, delta: 1 }, b: { right: 'yes', delta: 1 }, c: { right: false, delta: 1.5 } },
+    });
     expect(st?.verdicts).toEqual({ a: { right: true, delta: 400 } });
     expect(cleanState({ ...state(), verdicts: { zz: { right: true, delta: 1 } } })?.verdicts).toBeUndefined();
   });
@@ -3356,7 +3659,14 @@ describe('passes', () => {
     const g = setup();
     g.room.hostOpen();
     const st = (x: Partial<HostState> = {}) =>
-      state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+      state({
+        teams: true,
+        seats: [
+          { id: 'a', name: 'Red', color: '#ff0000' },
+          { id: 'b', name: 'Blue', color: '#0000ff' },
+        ],
+        ...x,
+      });
     g.send({ t: 'state', state: st() });
     const join = (conn: string, seatId: string, name: string) => {
       const p = g.phone(conn);

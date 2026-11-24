@@ -69,7 +69,12 @@ function setup(game: PartnerGame = 'describe', opts: { typeGuess?: boolean; team
 
 /** Everything the room is told now, with or without files. */
 const told = (g: Game, session: Session, files: Record<string, string> | null = {}) =>
-  JSON.stringify(hostState(g, session, buzzIdle(newBuzz(2)), 0, { status: phoneStatus(g, session, false, { cards: true }), cards: partnerCards(g, session, { fileBytes: FILE_BYTES, files }) }));
+  JSON.stringify(
+    hostState(g, session, buzzIdle(newBuzz(2)), 0, {
+      status: phoneStatus(g, session, false, { cards: true }),
+      cards: partnerCards(g, session, { fileBytes: FILE_BYTES, files }),
+    }),
+  );
 
 describe('nothing goes to the room until the host sends it', () => {
   it('the tile opening, the wheel, ⇄ Swap, the chips and Show question send nothing, and upload nothing', () => {
@@ -100,7 +105,14 @@ describe('nothing goes to the room until the host sends it', () => {
     s.stage = 'distribute';
     expect(sendCards(session, s, [one], 1000)).toEqual([one]);
     expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([
-      { id: `pc:${clue.id}:${one.id}:1000`, to: [{ seat: 'b' }], open: true, role: 'Describer', hint: 'Describe it to Ann: don’t say what’s on it!', text: 'CARD-ONE-xyzzy' },
+      {
+        id: `pc:${clue.id}:${one.id}:1000`,
+        to: [{ seat: 'b' }],
+        open: true,
+        role: 'Describer',
+        hint: 'Describe it to Ann: don’t say what’s on it!',
+        text: 'CARD-ONE-xyzzy',
+      },
     ]);
     expect(told(g, session)).not.toMatch(/plugh|secret-pic/);
     // Sending it again by mistake sends nothing new.
@@ -254,7 +266,15 @@ describe('one card per part (spec §12.3: each phone gets its own lines)', () =>
     sendCards(session, s, [one], 1000);
     const id = cardId(clue.id, { card: one.id, at: 1000 });
     expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([
-      { id: `${id}~g`, to: [{ seat: 'b' }], open: true, role: 'Describer', hint: 'Describe it to Ann: don’t say what’s on it!', shared: true, text: 'CARD-ONE-xyzzy' },
+      {
+        id: `${id}~g`,
+        to: [{ seat: 'b' }],
+        open: true,
+        role: 'Describer',
+        hint: 'Describe it to Ann: don’t say what’s on it!',
+        shared: true,
+        text: 'CARD-ONE-xyzzy',
+      },
       { id: `${id}~o`, to: [{ seat: 'c' }], open: true, hint: 'A card from the host: don’t show it to Ann', shared: true, text: 'CARD-ONE-xyzzy' },
     ]);
     // Each is the send, for ✓ seen.
@@ -320,7 +340,14 @@ describe('one person describes to their own team (spec §10.2)', () => {
     sendCards(session, s, [one], 1000);
     const id = cardId(clue.id, { card: one.id, at: 1000 });
     expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([
-      { id, to: [{ seat: 'a', member: 'mZoe' }], open: true, role: 'Describer', hint: 'Describe it to your team: don’t say what’s on it!', text: 'CARD-ONE-xyzzy' },
+      {
+        id,
+        to: [{ seat: 'a', member: 'mZoe' }],
+        open: true,
+        role: 'Describer',
+        hint: 'Describe it to your team: don’t say what’s on it!',
+        text: 'CARD-ONE-xyzzy',
+      },
       { id: `${id}~t`, to: [{ seat: 'a', except: ['mZoe'] }], open: true, role: 'Guesser', hint: '🎯 Your team is guessing! Zoe is describing', tap: false },
     ]);
     expect(sendState(session, s, one)).toBe('sent');
@@ -329,7 +356,10 @@ describe('one person describes to their own team (spec §10.2)', () => {
     expect(sendState(session, s, one)).toBe('changed');
     expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })![0].to).toEqual([{ seat: 'a', member: 'mZoe' }]);
     sendChanges(session, s, one, 2000);
-    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'a', member: 'mMax' }], [{ seat: 'a', except: ['mMax'] }]]);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.to)).toEqual([
+      [{ seat: 'a', member: 'mMax' }],
+      [{ seat: 'a', except: ['mMax'] }],
+    ]);
   });
 
   it('the phones’ lines say who describes; the team’s line goes to Zoe too, so it never says she guesses', () => {
@@ -508,7 +538,10 @@ describe('phoneStatus with a room that takes cards (spec §8.2, §19.4)', () => 
     const { g, session, s } = setup('draw', { typeGuess: true, teams: true });
     setPartner(session, s, 'b', 'wheel');
     s.stage = 'distribute';
-    expect(phoneStatus(g, session, false, { cards: true })).toMatchObject({ seatsText: '🎯 Your team is guessing!', seatsSub: 'Bob is drawing: type your guess' });
+    expect(phoneStatus(g, session, false, { cards: true })).toMatchObject({
+      seatsText: '🎯 Your team is guessing!',
+      seatsSub: 'Bob is drawing: type your guess',
+    });
   });
 });
 
@@ -555,7 +588,14 @@ describe('the guesser types their guess (spec §5.4)', () => {
 
 describe('a card’s words and fitting the room', () => {
   it('every text box, a hidden one too, cut at 1000 characters with "…"', () => {
-    const slide = { background: {}, elements: [{ ...newTextEl('Top'), y: 0 }, { ...newTextEl('Hidden from viewers'), y: 100, secret: true }, { ...newTextEl('x'.repeat(2000)), y: 200 }] };
+    const slide = {
+      background: {},
+      elements: [
+        { ...newTextEl('Top'), y: 0 },
+        { ...newTextEl('Hidden from viewers'), y: 100, secret: true },
+        { ...newTextEl('x'.repeat(2000)), y: 200 },
+      ],
+    };
     const t = phoneCard({ media: [] }, slide, ANY_SERVER).text!;
     expect(t.startsWith('Hidden from viewers\nxxx')).toBe(true);
     expect([...t]).toHaveLength(1000);

@@ -2,7 +2,24 @@
 // (action lists), dice faces, a board game's zones, 🤫 cards made ahead. Pure: the editors wrap each change in a history
 // step.
 import { clampToBoard, nextSpaceName } from './boardgame';
-import { CARD_NAME_MAX, DEAL_PART_MAX, newId, type Action, type BoardGameRound, type BoardSpace, type BoardZone, type DealPart, type DicePreset, type Die, type ItemDef, type SavedCard, type Shop, type Slide, type StatField, type WheelSegment } from './model';
+import {
+  CARD_NAME_MAX,
+  DEAL_PART_MAX,
+  newId,
+  type Action,
+  type BoardGameRound,
+  type BoardSpace,
+  type BoardZone,
+  type DealPart,
+  type DicePreset,
+  type Die,
+  type ItemDef,
+  type SavedCard,
+  type Shop,
+  type Slide,
+  type StatField,
+  type WheelSegment,
+} from './model';
 import { clone } from './ops';
 
 /** Move the entry at `from` to `to` (the others close up). False when that's no move. */

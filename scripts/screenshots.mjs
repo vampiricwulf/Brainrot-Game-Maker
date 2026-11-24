@@ -16,7 +16,10 @@ const page = await (await browser.newContext({ viewport: { width: 1600, height: 
 page.on('dialog', (d) => d.accept(d.type() === 'prompt' ? d.defaultValue() : undefined));
 const shot = async (name) => {
   // (Once the toasts have gone: the Daily Double's would cover the host panel's bar.)
-  await page.locator('.toast').waitFor({ state: 'detached' }).catch(() => {});
+  await page
+    .locator('.toast')
+    .waitFor({ state: 'detached' })
+    .catch(() => {});
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${out}/${name}.png` });
   console.log('  📸', name);
@@ -27,7 +30,11 @@ const addRound = async (mode) => {
 };
 const nextRound = async () => {
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: /▶$/ }).filter({ hasText: /Next round|Adventure|Board game|Final/ }).last().click();
+  await page
+    .getByRole('button', { name: /▶$/ })
+    .filter({ hasText: /Next round|Adventure|Board game|Final/ })
+    .last()
+    .click();
   await page.waitForTimeout(450);
   // (Clues left: the leaving question's answer names the round it goes to, “Go to Adventure ▶”.)
   const go = page.getByRole('button', { name: /^Go to .* ▶$/ });
@@ -41,7 +48,10 @@ try {
   await shot('first-round');
 
   // A Jeopardy board with named categories, and a Final.
-  await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
+  await page
+    .locator('.first-round')
+    .getByRole('button', { name: /Jeopardy board/ })
+    .click();
   const cats = ['Memes', 'Skibidi Lore', 'Minecraft', 'Rizz', 'Speedruns', 'Anime'];
   for (const [i, c] of cats.entries()) await page.locator('.cat textarea').nth(i).fill(c);
   // The Memes column's clues, typed the keyboard way (Tab to the answer, Ctrl+Enter to the next clue).
@@ -86,7 +96,10 @@ try {
   await shot('boardgame-editor');
 
   // Every change so far, in the History tab.
-  await page.getByRole('button', { name: /History/ }).first().click();
+  await page
+    .getByRole('button', { name: /History/ })
+    .first()
+    .click();
   await shot('history');
 
   // Play with three players.
@@ -137,7 +150,10 @@ try {
   if (await card.count()) await card.click();
   await card.waitFor({ state: 'detached' });
   await page.getByLabel('Steps').fill('3');
-  await page.locator('.bh .move').getByRole('button', { name: /^▶ Move/ }).click();
+  await page
+    .locator('.bh .move')
+    .getByRole('button', { name: /^▶ Move/ })
+    .click();
   await page.waitForTimeout(1600);
   await shot('play-boardgame');
   console.log('screenshots: done');

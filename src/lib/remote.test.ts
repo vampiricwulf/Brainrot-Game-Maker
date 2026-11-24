@@ -290,7 +290,12 @@ describe('uploadCardFile', () => {
     const blob = new Blob(['hello'], { type: 'image/png' });
     const up = uploadCardFile(blob, 'image/png', { onProgress: (p) => said.push(p) });
     const x = FakeXhr.made[0];
-    expect([x.method, x.url, x.headers, x.body]).toEqual(['POST', 'https://buzz.test/api/rooms/BCDF/files', { Authorization: 'Bearer tok', 'Content-Type': 'image/png' }, blob]);
+    expect([x.method, x.url, x.headers, x.body]).toEqual([
+      'POST',
+      'https://buzz.test/api/rooms/BCDF/files',
+      { Authorization: 'Bearer tok', 'Content-Type': 'image/png' },
+      blob,
+    ]);
     x.went(2, 5);
     x.went(5, 5);
     x.answer(200, { id: ID });

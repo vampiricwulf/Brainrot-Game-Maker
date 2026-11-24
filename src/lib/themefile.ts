@@ -55,7 +55,17 @@ export function themeName(v: unknown): string {
 /** A theme's colors (a game's theme is checked against them too, see model.ts repairTheme). */
 export const THEME_COLORS = ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'scoreBarBg'] as const;
 /** …and those it can do without. */
-export const OPTIONAL_THEME_COLORS = ['stageText', 'clueColor', 'tile2', 'tileGradient', 'tileBorder', 'headerBg', 'header2', 'headerGradient', 'bgGradient'] as const;
+export const OPTIONAL_THEME_COLORS = [
+  'stageText',
+  'clueColor',
+  'tile2',
+  'tileGradient',
+  'tileBorder',
+  'headerBg',
+  'header2',
+  'headerGradient',
+  'bgGradient',
+] as const;
 const NUMBERS = Object.keys(LOOK_RANGES) as Ranged[];
 function oneOf<T extends string>(v: unknown, options: readonly T[]): T | undefined {
   return options.includes(v as T) ? (v as T) : undefined;
@@ -146,7 +156,15 @@ export async function themeFileText(name: string, theme: Theme, media: readonly 
   // A picture that isn't in the file isn't the theme's.
   if (t.boardImage && !files.some((f) => f.id === t.boardImage)) delete t.boardImage;
   if (t.banner && !files.some((f) => f.id === t.banner)) delete t.banner;
-  const file = { format: THEME_FORMAT, version: THEME_VERSION, app: 'Brainrot Games Maker', name: themeName(name) || 'My theme', theme: t, media: files, ...(leftOut.length ? { leftOut } : {}) };
+  const file = {
+    format: THEME_FORMAT,
+    version: THEME_VERSION,
+    app: 'Brainrot Games Maker',
+    name: themeName(name) || 'My theme',
+    theme: t,
+    media: files,
+    ...(leftOut.length ? { leftOut } : {}),
+  };
   return { text: JSON.stringify(file, null, 1), leftOut };
 }
 
@@ -169,8 +187,7 @@ const GAME_NOT_THEME = 'This is a game, not a theme: open it with Open…, or ta
 function sharedTheme(data: unknown, from: 'file' | 'code'): SharedTheme {
   if (!isObj(data)) throw new ThemeError(from === 'file' ? 'This file isn’t a Brainrot theme.' : 'That code isn’t a Brainrot theme code.');
   if (data.format !== THEME_FORMAT) {
-    if (Array.isArray(data.rounds))
-      throw new ThemeError(GAME_NOT_THEME);
+    if (Array.isArray(data.rounds)) throw new ThemeError(GAME_NOT_THEME);
     throw new ThemeError(from === 'file' ? 'This file isn’t a Brainrot theme.' : 'That code isn’t a Brainrot theme code.');
   }
   const version = typeof data.version === 'number' ? data.version : 1;
@@ -200,7 +217,12 @@ function sharedTheme(data: unknown, from: 'file' | 'code'): SharedTheme {
   const has = (id: string | undefined) => !!id && media.some((m) => m.ref.id === id && m.ref.kind === 'image');
   if (!has(theme.boardImage)) delete theme.boardImage;
   if (!has(theme.banner)) delete theme.banner;
-  const leftOut = Array.isArray(data.leftOut) ? data.leftOut.filter((x): x is string => typeof x === 'string').map(themeName).slice(0, 20) : [];
+  const leftOut = Array.isArray(data.leftOut)
+    ? data.leftOut
+        .filter((x): x is string => typeof x === 'string')
+        .map(themeName)
+        .slice(0, 20)
+    : [];
   return { name: themeName(data.name) || 'Shared theme', theme, media, leftOut };
 }
 
@@ -288,7 +310,7 @@ export function findCodes(text: string): { plain: boolean; body: string }[] {
   let body = m[2];
   const found = [body];
   // Only a line it fills to its end goes on to the next one.
-  for (let i = 0; i < lines.length - 1 && lines[i].trim() === ''; ) {
+  for (let i = 0; i < lines.length - 1 && lines[i].trim() === '';) {
     const run = /^\s*([A-Za-z0-9_-]+)/.exec(lines[++i])?.[1];
     if (!run) break;
     body += run;

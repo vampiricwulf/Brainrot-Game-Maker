@@ -18,7 +18,30 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, launchChromium, untilWith, section, boardIn, stageBoxIn, statusBarIn, toolsRowIn, hostPanelIn } from './helpers.mjs';
+import {
+  appFile,
+  editorReady,
+  forgetSeen,
+  macClicks,
+  openGameFile,
+  packGame,
+  png,
+  recordSeen,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  stored,
+  failureShots,
+  assert,
+  launchChromium,
+  untilWith,
+  section,
+  boardIn,
+  stageBoxIn,
+  statusBarIn,
+  toolsRowIn,
+  hostPanelIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -34,7 +57,23 @@ const SECRETS = ['qkzvx', 'zfnqj'];
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
-const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  ...box(y),
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
 const slide = (...elements) => ({ background: {}, elements });
 
@@ -64,16 +103,31 @@ try {
     version: 2,
     title: 'Cards made ahead',
     settings: {
-      allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      stream: { clueCaption: true },
+      buzzer: true,
     },
     players: ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i] })),
     rounds: [
       {
-        id: 'r1', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 0,
+        id: 'r1',
+        name: 'Round 1',
+        mode: 'board',
+        values: [200, 400],
+        dailyDoubleCount: 0,
         categories: [
           {
-            id: 'cat0', title: 'Movies',
+            id: 'cat0',
+            title: 'Movies',
             clues: [
               plain('q_tile', 'A plain question', 'Plain answer', { cards: [{ id: 't1', to: 'picker', ...slide(text('Tile-qkzvx words')) }] }),
               plain('q_plain', 'Another question', 'Another answer'),
@@ -82,7 +136,11 @@ try {
         ],
       },
     ],
-    media, audio: {}, wheels: [], dice: [], theme: {},
+    media,
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
     // Only Tip A uses the picture.
     cards: [
       { id: 'sc_wild', name: 'Wild card', until: 'host', ...slide(text(WILD)) },
@@ -128,7 +186,10 @@ try {
   section('The editor’s 🤫 Cards tab');
   const navTexts = await host.locator('nav > button').allInnerTexts();
   const at = (re) => navTexts.findIndex((t) => re.test(t.trim()));
-  assert(at(/^🤫 Cards \(2\)$/) >= 0 && at(/^🤫 Cards \(2\)$/) === at(/Wheels, Dice & Deals/) + 1, `🤫 Cards (2) sits right after 🎡 Wheels, Dice & Deals (${navTexts.join(' | ')})`);
+  assert(
+    at(/^🤫 Cards \(2\)$/) >= 0 && at(/^🤫 Cards \(2\)$/) === at(/Wheels, Dice & Deals/) + 1,
+    `🤫 Cards (2) sits right after 🎡 Wheels, Dice & Deals (${navTexts.join(' | ')})`,
+  );
   const cardsTab = host.locator('nav > button', { hasText: '🤫 Cards' });
   await cardsTab.click();
   const editor = host.locator('[data-card-editor]');
@@ -136,18 +197,32 @@ try {
   assert((await host.locator('main .page-header h2').innerText()).trim() === 'Cards', 'its page is called Cards');
   const list = host.getByRole('list', { name: 'Cards' });
   /** The cards in the list, in order. */
-  const names = () => list.getByRole('button').allInnerTexts().then((t) => t.map((s) => s.trim()).join(', '));
-  const listIs = (want) => host.waitForFunction((want) => [...document.querySelectorAll('[data-saved-card]')].map((b) => b.textContent.trim()).join(', ') === want, want);
+  const names = () =>
+    list
+      .getByRole('button')
+      .allInnerTexts()
+      .then((t) => t.map((s) => s.trim()).join(', '));
+  const listIs = (want) =>
+    host.waitForFunction((want) => [...document.querySelectorAll('[data-saved-card]')].map((b) => b.textContent.trim()).join(', ') === want, want);
   const row = (name) => list.getByRole('button', { name, exact: true });
   assert((await names()) === 'Wild card, Tip A', `the list: Wild card, Tip A (${await names()})`);
   assert((await row('Wild card').getAttribute('aria-current')) === 'true', 'the first is open');
-  assert((await editor.getByLabel('Card name').inputValue()) === 'Wild card' && (await editor.getByLabel('Stays until you take it back').isChecked()), 'its name, and Stays until you take it back');
+  assert(
+    (await editor.getByLabel('Card name').inputValue()) === 'Wild card' && (await editor.getByLabel('Stays until you take it back').isChecked()),
+    'its name, and Stays until you take it back',
+  );
   // Enter on a card in the list goes into it: its name, selected.
   await row('Tip A').focus();
   await host.keyboard.press('Enter');
   await host.waitForFunction(() => {
     const e = document.activeElement;
-    return e instanceof HTMLInputElement && e.matches('main [data-field="card-name"]') && e.value === 'Tip A' && e.selectionStart === 0 && e.selectionEnd === e.value.length;
+    return (
+      e instanceof HTMLInputElement &&
+      e.matches('main [data-field="card-name"]') &&
+      e.value === 'Tip A' &&
+      e.selectionStart === 0 &&
+      e.selectionEnd === e.value.length
+    );
   });
   assert((await row('Tip A').getAttribute('aria-current')) === 'true', 'Enter on a card in the list opens it, the typing in its name (all of it selected)');
   await row('Wild card').click();
@@ -177,7 +252,10 @@ try {
   await editor.waitFor({ state: 'detached' });
   await empty.click();
   await host.waitForFunction((id) => !!document.querySelector(`[data-place="card:${id}"].flash`), newId);
-  assert((await cardsTab.getAttribute('aria-current')) === 'page' && (await row('Private card 3').getAttribute('aria-current')) === 'true', 'the checklist’s “is empty” line opens 🤫 Cards at that card, flashing it');
+  assert(
+    (await cardsTab.getAttribute('aria-current')) === 'page' && (await row('Private card 3').getAttribute('aria-current')) === 'true',
+    'the checklist’s “is empty” line opens 🤫 Cards at that card, flashing it',
+  );
 
   // ---------- Typing, renaming, and a name that gives the card away ----------
   const wordsBox = host.locator('main [data-field="card"]');
@@ -210,7 +288,9 @@ try {
   await host.getByRole('menuitem', { name: /Duplicate/ }).click();
   await listIs('Wild card, Tip A, Tip A (copy), Private card 3');
   assert(true, 'right-click › ⧉ Duplicate: Tip A (copy), right after it');
-  await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Tip A (copy)' && document.activeElement.getAttribute('aria-current') === 'true');
+  await host.waitForFunction(
+    () => document.activeElement?.textContent?.trim() === 'Tip A (copy)' && document.activeElement.getAttribute('aria-current') === 'true',
+  );
   assert(true, 'the copy is open, and its row has the focus (the next key acts on it)');
   await host.keyboard.press('Alt+ArrowDown');
   await listIs('Wild card, Tip A, Private card 3, Tip A (copy)');
@@ -226,7 +306,9 @@ try {
   await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Tip B');
   await host.keyboard.press('Delete');
   await listIs('Wild card, Tip A, Private card 3');
-  await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Private card 3' && document.activeElement.getAttribute('aria-current') === 'true');
+  await host.waitForFunction(
+    () => document.activeElement?.textContent?.trim() === 'Private card 3' && document.activeElement.getAttribute('aria-current') === 'true',
+  );
   assert(true, 'the card before it (it was the last) opens and its row takes the keys, so a second Delete acts there');
   const notice = host.locator('.history-notice');
   await notice.waitFor();
@@ -241,7 +323,11 @@ try {
     await listIs(want);
   }
   assert(true, 'Ctrl+Z takes back the rename, the move and the copy, one at a time');
-  const openCard = () => host.locator('[data-saved-card][aria-current="true"]').innerText().then((t) => t.trim());
+  const openCard = () =>
+    host
+      .locator('[data-saved-card][aria-current="true"]')
+      .innerText()
+      .then((t) => t.trim());
   assert(await until(async () => (await openCard()) === 'Tip A'), `the copy taken back: Tip A, the card copied, is open (${await openCard()})`);
   // A move up: the slot that changed first holds the card it swapped with, but Undo shows the card moved.
   await row('Private card 3').focus();
@@ -266,7 +352,10 @@ try {
   const phone = host.getByRole('complementary', { name: 'Card on their phone' });
   await phone.locator('img').waitFor();
   const after = await phoneBtn.boundingBox();
-  assert(after.x === xBefore && after.y >= 0 && after.y + after.height <= 900, `📱 stays where it was across the page, on screen (x ${xBefore} → ${after.x}, y ${after.y})`);
+  assert(
+    after.x === xBefore && after.y >= 0 && after.y + after.height <= 900,
+    `📱 stays where it was across the page, on screen (x ${xBefore} → ${after.x}, y ${after.y})`,
+  );
   assert((await phone.innerText()).includes(TIP), '📱 On their phone: its words and its picture, as a phone gets them');
   // On a laptop it sits above the inspector, beside the slide, as in the clue editor's 🤫 card tab: the slide keeps its
   // size, and with an item selected its bar (✎ Edit, Duplicate, Lock, Delete) stays in sight beside the slide too.
@@ -274,7 +363,11 @@ try {
   await host.locator('main .se [data-layer] .name').first().click();
   const itemBar = host.locator('main .se .itembar').first();
   assert(await until(async () => ((await itemBar.getAttribute('aria-label')) ?? '').startsWith('Selected: ')), 'a click on a layer selects its item');
-  for (const [w, h] of [[1280, 720], [1366, 768], [1400, 900]]) {
+  for (const [w, h] of [
+    [1280, 720],
+    [1366, 768],
+    [1400, 900],
+  ]) {
     await host.setViewportSize({ width: w, height: h });
     await host.waitForTimeout(200);
     const p = await phone.boundingBox();
@@ -323,12 +416,12 @@ try {
   const usedBtn = tipFile.locator('[data-used]');
   await usedBtn.click();
   const usedAt = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
-  assert((await usedBtn.innerText()).trim() === 'used 1× ▾' && usedAt.some((t) => t.startsWith('Cards › Tip A')), `zfnqj-tip.png is used 1×, on the 🤫 card Tip A (${usedAt.join(' | ')})`);
-  await host.keyboard.press('Escape');
   assert(
-    (await host.locator('nav .problem', { hasText: /only on 🤫 cards|Older copies/ }).count()) === 0,
-    'the checklist has no line about it',
+    (await usedBtn.innerText()).trim() === 'used 1× ▾' && usedAt.some((t) => t.startsWith('Cards › Tip A')),
+    `zfnqj-tip.png is used 1×, on the 🤫 card Tip A (${usedAt.join(' | ')})`,
   );
+  await host.keyboard.press('Escape');
+  assert((await host.locator('nav .problem', { hasText: /only on 🤫 cards|Older copies/ }).count()) === 0, 'the checklist has no line about it');
 
   // ---------- Renamed in the list, then something else clicked: the keys stay there ----------
   await cardsTab.click();
@@ -337,7 +430,10 @@ try {
   await nameBox.click();
   await host.keyboard.press('End');
   await host.keyboard.press('Backspace');
-  assert(await until(async () => (await nameBox.inputValue()) === 'Mission '), `renamed in the list, then its Card name box clicked: Backspace types there (${await nameBox.inputValue()})`);
+  assert(
+    await until(async () => (await nameBox.inputValue()) === 'Mission '),
+    `renamed in the list, then its Card name box clicked: Backspace types there (${await nameBox.inputValue()})`,
+  );
   await listIs('Wild card, Tip A, Mission');
   assert(true, 'and deletes no card');
   await row('Mission').dblclick();
@@ -350,7 +446,9 @@ try {
   await row('Private card 3').dblclick();
   await list.getByLabel('Card name', { exact: true }).fill('Private card 3');
   await row('Wild card').click();
-  await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Wild card' && document.activeElement.getAttribute('aria-current') === 'true');
+  await host.waitForFunction(
+    () => document.activeElement?.textContent?.trim() === 'Wild card' && document.activeElement.getAttribute('aria-current') === 'true',
+  );
   assert(true, 'renamed, then another card clicked, with a Mac’s clicks: that card is open, and its row has the keys');
   await chromiumClicks();
 
@@ -445,20 +543,33 @@ try {
   await dialog.locator('[data-card-said]').getByText('Card 1 sent to Bob').waitFor();
   assert(await until(() => cards().length === 1), 'sent: the room’s state holds one card');
   const c1 = cards()[0];
-  assert(/^sc:/.test(c1.id) && JSON.stringify(c1.to) === JSON.stringify([{ seat: seat.Bob }]) && c1.text.includes('Wild-qkzvx'), 'Card 1 goes to Bob’s seat only, with its words');
+  assert(
+    /^sc:/.test(c1.id) && JSON.stringify(c1.to) === JSON.stringify([{ seat: seat.Bob }]) && c1.text.includes('Wild-qkzvx'),
+    'Card 1 goes to Bob’s seat only, with its words',
+  );
   assert(!JSON.stringify(states).includes('Wild card') && !JSON.stringify(states).includes('zfnqj'), 'neither its name nor a file name ever goes to the room');
   const cover = bob.getByRole('button', { name: 'Tap to see' });
   await cover.waitFor();
   assert(!(await bob.getByText(WILD).isVisible()), 'Bob’s phone: the card behind Tap to see');
   await cover.tap();
   await bob.getByText(WILD).waitFor();
-  for (const [p, label] of [[ann, 'ann'], [cat, 'cat']]) assert(!(await cardsOn(p)) && !heard[label].join('').includes('qkzvx'), `${label === 'ann' ? 'Ann' : 'Cat'}’s phone: no card, and nothing of it`);
+  for (const [p, label] of [
+    [ann, 'ann'],
+    [cat, 'cat'],
+  ])
+    assert(!(await cardsOn(p)) && !heard[label].join('').includes('qkzvx'), `${label === 'ann' ? 'Ann' : 'Cat'}’s phone: no card, and nothing of it`);
 
   // ---------- Not twice to the same players ----------
   const sendBtn = dialog.getByRole('button', { name: '📤 Send' });
   assert(await sendBtn.isDisabled(), '📤 Send is off: Wild card is out to Bob already');
-  assert((await dialog.locator('[data-card-already]').innerText()).includes('Card 1 is out to them already'), `it says so (${await dialog.locator('[data-card-already]').innerText()})`);
-  assert((await pick.locator('option:checked').innerText()) === 'Wild card · 1 line of words · out', `the option says it’s out (${await pick.locator('option:checked').innerText()})`);
+  assert(
+    (await dialog.locator('[data-card-already]').innerText()).includes('Card 1 is out to them already'),
+    `it says so (${await dialog.locator('[data-card-already]').innerText()})`,
+  );
+  assert(
+    (await pick.locator('option:checked').innerText()) === 'Wild card · 1 line of words · out',
+    `the option says it’s out (${await pick.locator('option:checked').innerText()})`,
+  );
   await dialog.getByRole('button', { name: 'Ann', exact: true }).click();
   assert(await until(() => sendBtn.isEnabled()), 'Bob and Ann: 📤 Send is on again');
   await dialog.getByRole('button', { name: 'Ann', exact: true }).click();
@@ -472,7 +583,10 @@ try {
   await host.keyboard.press('Escape');
   assert(await until(() => !last()?.clue), 'and closes, back to the board');
   dialog = await openSend();
-  const groups = await dialog.getByRole('combobox', { name: 'The card to send' }).locator('optgroup').evaluateAll((gs) => gs.map((g) => g.label));
+  const groups = await dialog
+    .getByRole('combobox', { name: 'The card to send' })
+    .locator('optgroup')
+    .evaluateAll((gs) => gs.map((g) => g.label));
   assert(JSON.stringify(groups) === JSON.stringify(['🤫 Cards', 'On tiles']), `the 🤫 Cards, then On tiles (${groups.join(' | ')})`);
   const onTiles = await dialog.locator('optgroup[label="On tiles"] option').allInnerTexts();
   assert(JSON.stringify(onTiles) === JSON.stringify(['Movies $200 · Card 1 · 1 line of words']), `On tiles: the played tile’s card (${onTiles.join(' | ')})`);
@@ -514,7 +628,10 @@ try {
   watch(aud, 'audience');
   await boardIn(aud).waitFor();
   dialog = await openSend();
-  assert(await dialog.getByRole('radio', { name: 'One made in the editor' }).isChecked(), 'two windows, a game with 🤫 Cards: One made in the editor is the first choice');
+  assert(
+    await dialog.getByRole('radio', { name: 'One made in the editor' }).isChecked(),
+    'two windows, a game with 🤫 Cards: One made in the editor is the first choice',
+  );
   const wildOption = await dialog.locator('option[value="saved:sc_wild"]').innerText();
   assert(wildOption.endsWith(' · out to Bob'), `Wild card · out to Bob (${wildOption})`);
   const preview = dialog.locator('[data-card-preview]');
@@ -528,7 +645,10 @@ try {
   await dialog.waitFor({ state: 'detached' });
   await outButton.click();
   await outList.waitFor();
-  assert((await outList.locator('[data-card-out="Card 1"] [data-card-from]').innerText()).trim() === '· 🤫 Wild card', 'the cards out: Card 1 is the Wild card');
+  assert(
+    (await outList.locator('[data-card-out="Card 1"] [data-card-from]').innerText()).trim() === '· 🤫 Wild card',
+    'the cards out: Card 1 is the Wild card',
+  );
   await host.keyboard.press('Escape');
   await outList.waitFor({ state: 'detached' });
   await offStream(aud, 'the audience window', 'a 🤫 Card sent and looked at');
@@ -632,7 +752,10 @@ try {
   await outButton.click();
   await outList.waitFor();
   const noPhones = await words(outList.locator('[data-card-out] [data-card-state]'));
-  assert(noPhones.includes('changed in the editor') && noPhones.includes('↩ Take it back and show it again') && !noPhones.includes('↻'), `no phones: the cards out say it changed in the editor, and to ↩ Take it back and show it again (${noPhones})`);
+  assert(
+    noPhones.includes('changed in the editor') && noPhones.includes('↩ Take it back and show it again') && !noPhones.includes('↻'),
+    `no phones: the cards out say it changed in the editor, and to ↩ Take it back and show it again (${noPhones})`,
+  );
   assert((await outList.getByRole('button', { name: /^Send .+ again$/ }).count()) === 0, 'and offer no ↻ Send again');
   await outList.getByRole('button', { name: /^Take .+ back$/ }).click();
   await tools.locator('[data-cards-out-count="0"]').waitFor();

@@ -3,8 +3,40 @@ import { linkMoverDice, migrateGame, newGame, type BoardGameRound, type BoardGam
 import { goToRound, newSession, rebaseSession } from './session';
 import { newWheel } from './tools';
 import {
-  waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, closeUpOver, moverPreset, moverWheelNoNumbers, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, stepsIn, MAX_STEPS, placeTokens, tokenRadius, spaceListShown, newSpaceSpot,
+  waysOn,
+  ensureBoard,
+  movePlayer,
+  moveInOrder,
+  newBoardGameRound,
+  newBoardSpace,
+  nextSpaceName,
+  nextTurn,
+  skipTurns,
+  sendTo,
+  shownSpace,
+  HOP_MS,
+  walk,
+  waysNow,
+  currentPlayer,
+  boardGameProblems,
+  closeUpOver,
+  moverPreset,
+  moverWheelNoNumbers,
+  nameShown,
+  setNameShown,
+  nameShownLabel,
+  setAllNamesShown,
+  allNamesLabel,
+  rimSpots,
+  spaceNumber,
+  spaceToward,
+  clampSteps,
+  stepsIn,
+  MAX_STEPS,
+  placeTokens,
+  tokenRadius,
+  spaceListShown,
+  newSpaceSpot,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -165,7 +197,12 @@ describe('board game: moving', () => {
     // Two, and players get stuck at one: the line names them and goes to the first.
     round.spaces[8].next = [];
     expect(boardGameProblems(game, round, 'Board', 1)).toEqual([
-      { text: 'Board: the path ends at “Space 9” and “Shortcut” (players stop there)', tab: 1, level: 'info', place: { tab: 'round', round: round.id, part: { kind: 'space', space: round.spaces[8].id } } },
+      {
+        text: 'Board: the path ends at “Space 9” and “Shortcut” (players stop there)',
+        tab: 1,
+        level: 'info',
+        place: { tab: 'round', round: round.id, part: { kind: 'space', space: round.spaces[8].id } },
+      },
     ]);
   });
 
@@ -203,7 +240,12 @@ describe('board game: moving', () => {
     round.mover = { kind: 'wheel', wheel: wheel.id };
     expect(moverWheelNoNumbers(game, round)).toBe(true);
     expect(boardGameProblems(game, round, 'Board', 1)).toEqual([
-      { text: 'Board: the movement wheel’s slices have no numbers, so a spin won’t fill in the steps (name them “3”, “Move 3”, “Back 2”)', tab: 1, level: 'warn', place: { tab: 'round', round: round.id } },
+      {
+        text: 'Board: the movement wheel’s slices have no numbers, so a spin won’t fill in the steps (name them “3”, “Move 3”, “Back 2”)',
+        tab: 1,
+        level: 'warn',
+        place: { tab: 'round', round: round.id },
+      },
     ]);
     // One with a number will do (the rest can be words on purpose), as will ＋ Add wheel…'s “Option 1”…
     wheel.segments[1].label = 'Back 2';
@@ -373,7 +415,14 @@ describe('board game: skipped turns and rolling again', () => {
 
 describe('board game: tokens on a space', () => {
   it('sit along the top of its rim, clear of its number and name, and apart from each other', () => {
-    for (const [n, r] of [[1, 42], [2, 42], [3, 42], [4, 32], [6, 32], [8, 32]]) {
+    for (const [n, r] of [
+      [1, 42],
+      [2, 42],
+      [3, 42],
+      [4, 32],
+      [6, 32],
+      [8, 32],
+    ]) {
       const spots = rimSpots(n, r);
       expect(spots).toHaveLength(n);
       for (const s of spots) {
@@ -387,7 +436,10 @@ describe('board game: tokens on a space', () => {
   });
 
   it('keep off a space nearby: 7 or 8 on the 20-space loop’s Start stay clear of Space 2, smaller, along the rim', () => {
-    const near = [{ x: 489, y: 250 }, { x: 300, y: 443 }];
+    const near = [
+      { x: 489, y: 250 },
+      { x: 300, y: 443 },
+    ];
     for (const n of [7, 8]) {
       const { r, spots } = placeTokens(300, 250, n, 0, 1080, near);
       for (const s of spots) {
@@ -447,14 +499,21 @@ describe('board game: what spaces show', () => {
     expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
     round.spaces[1].y = 60;
     expect(boardGameProblems(game, round, 'Board', 1)).toEqual([
-      { text: 'Board: “Space 2” can be hidden under the turn banner on stream (move it down a little)', tab: 1, level: 'info', place: { tab: 'round', round: round.id, part: { kind: 'space', space: round.spaces[1].id } } },
+      {
+        text: 'Board: “Space 2” can be hidden under the turn banner on stream (move it down a little)',
+        tab: 1,
+        level: 'info',
+        place: { tab: 'round', round: round.id, part: { kind: 'space', space: round.spaces[1].id } },
+      },
     ]);
     game.theme.scoreBar = 'top';
     round.spaces[1].y = 300;
     expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
     round.spaces[7].y = 1040;
     round.spaces[8].y = 1000;
-    expect(boardGameProblems(game, round, 'Board', 1).map((p) => p.text)).toEqual(['Board: “Space 8” and “Space 9” can be hidden under the turn banner on stream (move them up a little)']);
+    expect(boardGameProblems(game, round, 'Board', 1).map((p) => p.text)).toEqual([
+      'Board: “Space 8” and “Space 9” can be hidden under the turn banner on stream (move them up a little)',
+    ]);
   });
 });
 
@@ -511,7 +570,9 @@ describe('board game: the steps a wheel slice or a die face says', () => {
   it('reads the number, going back when the label says back, points left or has a minus', () => {
     const says = (labels: string[]) => labels.map((l) => stepsIn(l));
     expect(says(['3', 'Move 3', '+2', 'Forward 4', '→ 2'])).toEqual([3, 3, 2, 4, 2]);
-    expect(says(['Back 2', 'Move back 2', 'Go back 2', '2 back', 'Backtrack 3', '← 2', '◀ 2', '◀️ 2', '⬅ 2', '↩ 3', '-2', '−2'])).toEqual([-2, -2, -2, -2, -3, -2, -2, -2, -2, -3, -2, -2]);
+    expect(says(['Back 2', 'Move back 2', 'Go back 2', '2 back', 'Backtrack 3', '← 2', '◀ 2', '◀️ 2', '⬅ 2', '↩ 3', '-2', '−2'])).toEqual([
+      -2, -2, -2, -2, -3, -2, -2, -2, -2, -3, -2, -2,
+    ]);
     // "back" inside a word isn't back; no number is null.
     expect(says(['Payback 3', 'Feedback 1', 'Back to Start', 'Lose a turn', ''])).toEqual([3, 1, null, null, null]);
   });
@@ -607,7 +668,11 @@ describe('the host’s lists of spaces', () => {
     Object.assign(round.spaces[7], { name: 'Treasure', secret: true });
     const bs: BoardGameState = { order: [], turn: 0, positions: {} };
     const hidden = spaceListShown(round, bs, true);
-    expect([hidden.get(round.spaces[2].id), hidden.get(round.spaces[7].id), hidden.get(round.spaces[3].id)]).toEqual(['? (secret) (after Space 2)', '? (secret) (after Space 7)', 'Space 4']);
+    expect([hidden.get(round.spaces[2].id), hidden.get(round.spaces[7].id), hidden.get(round.spaces[3].id)]).toEqual([
+      '? (secret) (after Space 2)',
+      '? (secret) (after Space 7)',
+      'Space 4',
+    ]);
     expect([...hidden.values()].join()).not.toMatch(/Trap Door|Treasure/);
     // With an audience window, or once revealed: the names.
     expect(spaceListShown(round, bs, false).get(round.spaces[2].id)).toBe('Trap Door');

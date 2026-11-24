@@ -32,6 +32,8 @@ describe('addedLine', () => {
     expect(addedLine([], [{ name: 'song.mp3', as: 'song.mp3' }], ['“notes.txt” isn’t a picture, video, sound or font file.'])).toBe(
       '“song.mp3” is already in 🖼 Media: using that one. “notes.txt” isn’t a picture, video, sound or font file.',
     );
-    expect(addedLine(['a.png', 'b.png'], [], ['“c.txt” isn’t a picture, video, sound or font file.'])).toBe('Added 2 files. “c.txt” isn’t a picture, video, sound or font file.');
+    expect(addedLine(['a.png', 'b.png'], [], ['“c.txt” isn’t a picture, video, sound or font file.'])).toBe(
+      'Added 2 files. “c.txt” isn’t a picture, video, sound or font file.',
+    );
   });
 });

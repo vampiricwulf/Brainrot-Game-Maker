@@ -6,7 +6,22 @@ import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer, returningHost, failureShots, assert, launchChromium, hostPanelIn, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  checkItem,
+  goOnCheck,
+  openRules,
+  openThemeShare,
+  leaveAnswer,
+  returningHost,
+  failureShots,
+  assert,
+  launchChromium,
+  hostPanelIn,
+  inspectorIn,
+  roundTabsIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -31,7 +46,10 @@ try {
     await fp.getByRole('button', { name: 'Open…' }).waitFor();
     await fp.waitForTimeout(300);
     const seen = await fp.evaluate(() => [localStorage.getItem('jb.whatMovedSeen.editor'), localStorage.getItem('jb.whatMovedSeen.game')]);
-    assert((await fp.locator('[data-moved-dot]').count()) === 0 && seen.every((v) => v), `a first run has no ❔ Help dot, in the editor or the game (${seen.join(', ')})`);
+    assert(
+      (await fp.locator('[data-moved-dot]').count()) === 0 && seen.every((v) => v),
+      `a first run has no ❔ Help dot, in the editor or the game (${seen.join(', ')})`,
+    );
     await fp.keyboard.press('?');
     const moved = fp.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).locator('[data-what-moved]');
     await moved.waitFor();
@@ -41,17 +59,33 @@ try {
     // plays is said in the header's line, and the slide's Text box sits under the slide tabs that pick it.
     await fp.getByRole('button', { name: /Try a sample game/ }).click();
     await fp.locator('.canvas').waitFor();
-    for (const [w, h] of [[1280, 720], [1366, 768]]) {
+    for (const [w, h] of [
+      [1280, 720],
+      [1366, 768],
+    ]) {
       await fp.setViewportSize({ width: w, height: h });
       await fp.waitForTimeout(300);
-      const box = await fp.locator('main .canvas').evaluate((c) => { const r = c.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width), scrolled: c.closest('main').scrollTop }; });
+      const box = await fp.locator('main .canvas').evaluate((c) => {
+        const r = c.getBoundingClientRect();
+        return { top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width), scrolled: c.closest('main').scrollTop };
+      });
       assert(box.scrolled === 0 && box.bottom <= h && box.width >= 500, `${w}×${h}: the sample's first slide shows whole (${JSON.stringify(box)})`);
     }
-    assert((await fp.locator('.page-header .sub').innerText()).includes('Viewers see these slides one after another'), 'a slides round says how it plays in its header line');
-    const order = await fp.evaluate(() => { const tabs = document.querySelector('main [role="tablist"]'); const q = document.querySelector('main [data-field="q"]'); return !!tabs && !!q && !!(tabs.compareDocumentPosition(q) & Node.DOCUMENT_POSITION_FOLLOWING); });
+    assert(
+      (await fp.locator('.page-header .sub').innerText()).includes('Viewers see these slides one after another'),
+      'a slides round says how it plays in its header line',
+    );
+    const order = await fp.evaluate(() => {
+      const tabs = document.querySelector('main [role="tablist"]');
+      const q = document.querySelector('main [data-field="q"]');
+      return !!tabs && !!q && !!(tabs.compareDocumentPosition(q) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
     assert(order, 'and its Text (slide 1 of 2) box comes after the slide tabs');
     // ＋ Add round under the sample's five rounds at 1280×720 and 1366×768: 📥 Import rounds… and 📋 Paste round in sight.
-    for (const [w, h] of [[1280, 720], [1366, 768]]) {
+    for (const [w, h] of [
+      [1280, 720],
+      [1366, 768],
+    ]) {
       await fp.setViewportSize({ width: w, height: h });
       await fp.getByRole('button', { name: '＋ Add round' }).click();
       const menu = fp.getByRole('menu');
@@ -77,7 +111,11 @@ try {
   await page.getByRole('button', { name: /Try a sample game/ }).click();
   await page.waitForTimeout(100);
   assert(
-    await page.evaluate(() => document.activeElement?.closest('nav')?.querySelector('[data-place^="round:"]') === document.activeElement && !document.activeElement.hasAttribute('data-round-name')),
+    await page.evaluate(
+      () =>
+        document.activeElement?.closest('nav')?.querySelector('[data-place^="round:"]') === document.activeElement &&
+        !document.activeElement.hasAttribute('data-round-name'),
+    ),
     'Try a sample game puts the focus on its first round’s tab (its name isn’t selected to type over)',
   );
   // Its toast stays in the editor: it would cover ▶ Play's Start game.
@@ -87,7 +125,10 @@ try {
   assert((await toastsIn(page).count()) === 0, 'and its toast doesn’t follow into ▶ Play');
   await page.getByRole('button', { name: '◀ Back to editor' }).click();
   let t = await tabs();
-  assert(t.length === 5 && t[0].includes('Introduction') && t[1].includes('Jeopardy!') && t[4].includes('Final'), `the sample game has an introduction, a board, an adventure, a board game and a Final (${t.join(' | ')})`);
+  assert(
+    t.length === 5 && t[0].includes('Introduction') && t[1].includes('Jeopardy!') && t[4].includes('Final'),
+    `the sample game has an introduction, a board, an adventure, a board game and a Final (${t.join(' | ')})`,
+  );
   // (Nothing to fix. One note: its 🤝 partner clue's card is copied to the player, as there are no phone buzzers.)
   await page.locator('.problems:not(.warn) .problem.info', { hasText: 'Partner clues: without phone buzzers' }).waitFor({ timeout: 3000 });
   assert((await page.locator('.problems .problem').count()) === 1, 'and nothing to fix on the checklist (one note, for its partner clue)');
@@ -98,7 +139,10 @@ try {
   // Its board game's special spaces show their names on the board, and their card knows their kind.
   await roundTabsIn(page, { hasText: 'Board game' }).click();
   const named = await page.locator('.canvas .label:not([data-name-hidden])').allInnerTexts();
-  assert(['Bonus', 'Go back', 'Nap time', 'Roll again'].every((n) => named.includes(n)) && !named.some((n) => /^Space \d/.test(n)), `the sample board game shows its special spaces’ names, not the plain ones’ (${named.join(', ')})`);
+  assert(
+    ['Bonus', 'Go back', 'Nap time', 'Roll again'].every((n) => named.includes(n)) && !named.some((n) => /^Space \d/.test(n)),
+    `the sample board game shows its special spaces’ names, not the plain ones’ (${named.join(', ')})`,
+  );
   await page.locator('.canvas').getByRole('button', { name: 'Bonus', exact: true }).click();
   const kind = await page.locator('.side [data-space-kind] option:checked').innerText();
   assert(kind === '⭐ Star (bonus points)', `its Bonus space’s Make it a… box says ⭐ Star, from its +100 button (${kind})`);
@@ -108,18 +152,27 @@ try {
   await page.locator('.canvas .hit').first().click();
   const applyStyle = inspectorIn(page).getByRole('button', { name: 'Apply', exact: true });
   const scope = page.getByRole('combobox', { name: 'Which slides get this style' });
-  assert((await scope.inputValue()) === 'round-qa', `in the Final, Use this style elsewhere starts on "Questions + answers in this round" (${await scope.inputValue()})`);
+  assert(
+    (await scope.inputValue()) === 'round-qa',
+    `in the Final, Use this style elsewhere starts on "Questions + answers in this round" (${await scope.inputValue()})`,
+  );
   await applyStyle.click();
   assert((await page.locator('.notice').innerText()).includes('Style applied to 1 slide'), 'which restyles its answer');
   await scope.selectOption('round-q');
   await applyStyle.click();
-  assert((await page.locator('.notice').innerText()).includes('There are no other slides in that group yet'), '"Questions in this round" restyles none of the board’s questions (it has one question slide)');
+  assert(
+    (await page.locator('.notice').innerText()).includes('There are no other slides in that group yet'),
+    '"Questions in this round" restyles none of the board’s questions (it has one question slide)',
+  );
   await roundTabsIn(page, { hasText: 'Jeopardy!' }).first().click();
   // Its board's 🤝 Partner clues box counts the partner clue on it, and its 🔀 Randomize works.
   {
     const ptBox = page.locator('[data-partner-count]');
     const n = await ptBox.getByRole('spinbutton', { name: 'How many partner clues' }).inputValue();
-    assert(n === '1' && (await ptBox.getByRole('button', { name: 'Randomize partner clues' }).isEnabled()), `the sample board's Partner clues box says 1, as on the board (${n})`);
+    assert(
+      n === '1' && (await ptBox.getByRole('button', { name: 'Randomize partner clues' }).isEnabled()),
+      `the sample board's Partner clues box says 1, as on the board (${n})`,
+    );
   }
 
   // ---------- Import clues ----------
@@ -138,22 +191,33 @@ try {
     document.querySelector('.modal.import').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
   });
   await importDlg.getByRole('status').getByText('“clues.xlsx” can’t be read here: copy its cells and paste them, or save the sheet as CSV.').waitFor();
-  assert((await toastsIn(page, { hasText: 'Drop pictures' }).count()) === 0, 'an Excel file dropped on it says how to bring its clues in, in its own status line');
+  assert(
+    (await toastsIn(page, { hasText: 'Drop pictures' }).count()) === 0,
+    'an Excel file dropped on it says how to bring its clues in, in its own status line',
+  );
   // A CSV file dropped on it is read in, as Choose file… does.
   await page.evaluate(() => {
     const data = new DataTransfer();
-    data.items.add(new File(['category,value,question,answer\nScience,200,H2O is this,Water\nScience,600,CO2 is this,Carbon dioxide'], 'clues.csv', { type: 'text/csv' }));
+    data.items.add(
+      new File(['category,value,question,answer\nScience,200,H2O is this,Water\nScience,600,CO2 is this,Carbon dioxide'], 'clues.csv', { type: 'text/csv' }),
+    );
     document.querySelector('.modal.import').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
   });
   await importDlg.getByText('clues.csv').waitFor();
-  assert((await importDlg.innerText()).includes('2 clues found') && (await toastsIn(page, { hasText: 'Drop pictures' }).count()) === 0, 'a sheet dropped on it is read in, and shows how many clues it has');
+  assert(
+    (await importDlg.innerText()).includes('2 clues found') && (await toastsIn(page, { hasText: 'Drop pictures' }).count()) === 0,
+    'a sheet dropped on it is read in, and shows how many clues it has',
+  );
   const previewTile = await importDlg.locator('.tile.new').first().innerText();
   assert(/^\$[\d,]+ · H2O is this$/.test(previewTile), `the preview shows each imported tile's value with its question (${previewTile})`);
   await page.getByLabel('Replace the board').check();
   await page.getByRole('button', { name: 'Import 2 clues' }).click();
   const cats = await page.locator('.cat textarea').evaluateAll((els) => els.map((e) => e.value));
   assert(cats.length === 1 && cats[0] === 'Science', `replacing makes the board the imported categories (${cats})`);
-  assert((await page.locator('.values input[aria-label^="Row"]').evaluateAll((els) => els.map((e) => e.value))).join() === '200,600', 'with the imported values as its rows');
+  assert(
+    (await page.locator('.values input[aria-label^="Row"]').evaluateAll((els) => els.map((e) => e.value))).join() === '200,600',
+    'with the imported values as its rows',
+  );
   await page.keyboard.press('Control+z');
   assert((await page.locator('.cat textarea').count()) === 4, 'one Ctrl+Z puts the board back');
 
@@ -195,7 +259,9 @@ try {
   }, wholeSheet);
   await importDlg.waitFor();
   assert(
-    (await importDlg.getByLabel('Clues to import').inputValue()) === wholeSheet && (await importDlg.getByLabel('Fill empty tiles').isChecked()) && !(await page.locator('[data-tile="2,0"]').innerText()).includes('Big ship'),
+    (await importDlg.getByLabel('Clues to import').inputValue()) === wholeSheet &&
+      (await importDlg.getByLabel('Fill empty tiles').isChecked()) &&
+      !(await page.locator('[data-tile="2,0"]').innerText()).includes('Big ship'),
     'a sheet of two categories pasted on a name opens 📥 Import clues with it (Fill empty tiles), and changes nothing yet',
   );
   await importDlg.getByRole('button', { name: 'Clear' }).click();
@@ -210,12 +276,24 @@ try {
   assert(opts.length === 1, `Ctrl+F finds a clue by its words (${opts.join(' | ')})`);
   // Tab past the box goes round to ✕ (the results are reached with ↑/↓), and Esc gives the keys back to the tab.
   await find.press('Tab');
-  assert(await page.evaluate(() => document.activeElement?.matches('[role="dialog"] .modal-x')), 'Tab past Find’s box (with a result) goes round to its ✕, not out of the window');
+  assert(
+    await page.evaluate(() => document.activeElement?.matches('[role="dialog"] .modal-x')),
+    'Tab past Find’s box (with a result) goes round to its ✕, not out of the window',
+  );
   await page.keyboard.press('Escape');
-  assert(await roundTabsIn(page).nth(2).evaluate((t) => t === document.activeElement), 'Esc on Find gives the focus back to the round tab it was opened from');
+  assert(
+    await roundTabsIn(page)
+      .nth(2)
+      .evaluate((t) => t === document.activeElement),
+    'Esc on Find gives the focus back to the round tab it was opened from',
+  );
   await page.keyboard.press('Control+f');
   await find.press('Enter');
-  await page.locator('.clue-editor, [aria-label*="Clue"]').first().waitFor({ timeout: 3000 }).catch(() => {});
+  await page
+    .locator('.clue-editor, [aria-label*="Clue"]')
+    .first()
+    .waitFor({ timeout: 3000 })
+    .catch(() => {});
   assert((await page.locator('nav > button.round-tab.active').innerText()).includes('Jeopardy!'), 'Enter goes to its round');
   await page.keyboard.press('Escape');
   await page.keyboard.press('Control+f');
@@ -228,7 +306,10 @@ try {
   await page.keyboard.press('Control+f');
   await find.fill('nachos');
   assert((await page.getByRole('option').first().getAttribute('tabindex')) === '-1', 'Find’s results are not Tab stops');
-  assert((await find.getAttribute('aria-activedescendant')) === (await page.getByRole('option').first().getAttribute('id')), 'the box points at the picked result');
+  assert(
+    (await find.getAttribute('aria-activedescendant')) === (await page.getByRole('option').first().getAttribute('id')),
+    'the box points at the picked result',
+  );
   await find.press('Enter');
   await page.waitForFunction(() => document.activeElement?.getAttribute('data-field') === 'a', null, { timeout: 3000 });
   assert(true, 'an Answer found by Find has the focus in the Answer field');
@@ -236,7 +317,10 @@ try {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Control+f');
   await find.fill('snacks');
-  await page.getByRole('option', { name: /Category/ }).first().click();
+  await page
+    .getByRole('option', { name: /Category/ })
+    .first()
+    .click();
   await page.waitForFunction(() => document.activeElement?.closest('[data-place^="category:"]'), null, { timeout: 3000 });
   assert(true, 'and a category its name');
   // A character's line: its screen opens, with the character picked (its Layers row has the focus).
@@ -256,7 +340,10 @@ try {
   await page.keyboard.press('Control+f');
   await found.nth(3).waitFor();
   await page.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
-  assert((await found.and(page.locator('[aria-selected="true"]')).getAttribute('id')) === 'find-hit-0', 'Find opened again over a resting pointer keeps its top result picked');
+  assert(
+    (await found.and(page.locator('[aria-selected="true"]')).getAttribute('id')) === 'find-hit-0',
+    'Find opened again over a resting pointer keeps its top result picked',
+  );
   await page.mouse.move(fourth.x + 60, fourth.y + fourth.height / 2);
   await page.locator('#find-hit-3[aria-selected="true"]').waitFor();
   assert(true, 'and moving the pointer over a result picks it');
@@ -274,7 +361,10 @@ try {
   const worldHit = page.getByRole('option', { name: /Sample world/ }).first();
   await worldHit.click();
   await toastsIn(page, { hasText: "isn't played by any round" }).waitFor();
-  assert((await toast()).includes('add an RPG round (＋ Add round › 🗺 RPG) and pick it there'), `with no RPG round left, Find’s toast for a world no round plays says to add one (${await toast()})`);
+  assert(
+    (await toast()).includes('add an RPG round (＋ Add round › 🗺 RPG) and pick it there'),
+    `with no RPG round left, Find’s toast for a world no round plays says to add one (${await toast()})`,
+  );
   // (Once Find has given up waiting for the screen, after 30 frames.)
   assert(
     await firstTab.evaluate(async (t) => {
@@ -306,12 +396,19 @@ try {
     // The menu's order: the five kinds, then 📥 Import rounds… and 📋 Paste round, then the templates, one line each.
     const items = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.trim());
     const at = (re) => items.findIndex((x) => re.test(x));
-    assert(at(/Import rounds…/) === 5 && at(/^📋 Paste round$/) === 6 && at(/20-space loop/) > 6 && items.every((x) => !x.includes('\n')), `＋ Add round: Import rounds… and Paste round right under the five kinds, every entry one line (${items.join(' | ')})`);
+    assert(
+      at(/Import rounds…/) === 5 && at(/^📋 Paste round$/) === 6 && at(/20-space loop/) > 6 && items.every((x) => !x.includes('\n')),
+      `＋ Add round: Import rounds… and Paste round right under the five kinds, every entry one line (${items.join(' | ')})`,
+    );
   }
   await page.keyboard.press('End');
   assert((await page.evaluate(() => document.activeElement?.textContent)).includes('The sample game'), 'End in a menu goes to its last item');
   await page.keyboard.press('Home');
-  assert((await page.evaluate(() => document.activeElement?.getAttribute('role'))) === 'menuitem' && (await page.evaluate(() => document.activeElement?.parentElement?.querySelector('button:not(:disabled)') === document.activeElement)), 'Home to its first');
+  assert(
+    (await page.evaluate(() => document.activeElement?.getAttribute('role'))) === 'menuitem' &&
+      (await page.evaluate(() => document.activeElement?.parentElement?.querySelector('button:not(:disabled)') === document.activeElement)),
+    'Home to its first',
+  );
   await page.getByRole('menuitem', { name: /20-space loop/ }).click();
   await page.waitForTimeout(100);
   assert(await page.evaluate(() => document.activeElement?.hasAttribute('data-round-name')), 'a template round has the focus on its name');
@@ -323,15 +420,23 @@ try {
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Paste round “Jeopardy!”/ }).click();
   t = await tabs();
-  assert(t.some((x) => x.includes('Jeopardy! (copy)')), `Paste round adds a copy (${t.join(' | ')})`);
+  assert(
+    t.some((x) => x.includes('Jeopardy! (copy)')),
+    `Paste round adds a copy (${t.join(' | ')})`,
+  );
   assert((await page.locator('[data-cat-name="1"]').inputValue()) === 'Snacks', 'with its clues');
   const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert((await undoTitle()) === 'Undo: Pasted round “Jeopardy! (copy)” (Ctrl+Z)', `its step is named after the round it added (${await undoTitle()})`);
   // From a round's menu, after it: the copy's name has the focus too.
   await roundTabsIn(page, { hasText: 'Jeopardy!' }).first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: /Paste round “Jeopardy!” after it/ }).click();
-  await page.waitForFunction(() => document.activeElement?.hasAttribute('data-round-name') && document.activeElement.value === 'Jeopardy! (copy 2)', null, { timeout: 3000 });
-  assert((await undoTitle()) === 'Undo: Pasted round “Jeopardy! (copy 2)” (Ctrl+Z)', 'Paste round after it (a tab’s menu) puts the focus on the copy’s name, and its step names it');
+  await page.waitForFunction(() => document.activeElement?.hasAttribute('data-round-name') && document.activeElement.value === 'Jeopardy! (copy 2)', null, {
+    timeout: 3000,
+  });
+  assert(
+    (await undoTitle()) === 'Undo: Pasted round “Jeopardy! (copy 2)” (Ctrl+Z)',
+    'Paste round after it (a tab’s menu) puts the focus on the copy’s name, and its step names it',
+  );
   // The sample game added to a game that has rounds: its rounds of the same names are told apart ("Board game (2)" is
   // the template's), and taken back after.
   const rounds = (await tabs()).length;
@@ -339,7 +444,10 @@ try {
   await page.getByRole('menuitem', { name: /The sample game/ }).click();
   await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n + 4, rounds);
   const added = (await tabs()).slice(rounds).map((x) => x.replace(/^\S+\s/, '').trim());
-  assert(added.join('|') === 'Jeopardy! (2)|Adventure (2)|Board game (3)|Final Jeopardy! (2)', `the sample game added to a game with rounds names its rounds apart (${added.join(', ')})`);
+  assert(
+    added.join('|') === 'Jeopardy! (2)|Adventure (2)|Board game (3)|Final Jeopardy! (2)',
+    `the sample game added to a game with rounds names its rounds apart (${added.join(', ')})`,
+  );
   await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n, rounds);
   // (And the second paste: the sample's board game is played below, 3 rounds in.)
@@ -375,7 +483,10 @@ try {
   const mine = page.locator('.mine .card', { hasText: 'Neon nights' }).locator('.use');
   await mine.click();
   assert(await mine.evaluate((b) => b.getAttribute('aria-pressed') === 'true'), 'using my saved theme puts it back (it is the theme chosen)');
-  assert(await page.getByRole('button', { name: 'Brainrot Neon', exact: true }).evaluate((b) => !b.classList.contains('on')), 'not the preset it was saved from');
+  assert(
+    await page.getByRole('button', { name: 'Brainrot Neon', exact: true }).evaluate((b) => !b.classList.contains('on')),
+    'not the preset it was saved from',
+  );
   await mine.click();
   await page.getByText('This game already looks like “Neon nights”').waitFor({ timeout: 3000 });
   assert(true, 'using it again says nothing changed');
@@ -390,7 +501,10 @@ try {
 
   // ---------- Wheels, Dice & Deals: its tab's whole name, the ready-made menus, what the number boxes keep ----------
   const toolsTab = page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' });
-  assert(await toolsTab.evaluate((b) => b.scrollWidth <= b.clientWidth && !!b.title), 'the 🎡 Wheels, Dice & Deals tab shows its whole name (on two lines where it must), with a tooltip');
+  assert(
+    await toolsTab.evaluate((b) => b.scrollWidth <= b.clientWidth && !!b.title),
+    'the 🎡 Wheels, Dice & Deals tab shows its whole name (on two lines where it must), with a tooltip',
+  );
   await toolsTab.click();
   {
     // (Its empty page's words: no "…." where a sentence ends on a button's name.)
@@ -401,33 +515,50 @@ try {
     await page.getByRole('button', { name: menu }).click();
     const items = page.locator('.cm [role="menuitem"]');
     await items.first().waitFor();
-    const cut = await items.evaluateAll((els) => els.filter((b) => b.querySelector('.label').scrollWidth > b.querySelector('.label').clientWidth || !b.title).map((b) => b.textContent.trim()));
+    const cut = await items.evaluateAll((els) =>
+      els.filter((b) => b.querySelector('.label').scrollWidth > b.querySelector('.label').clientWidth || !b.title).map((b) => b.textContent.trim()),
+    );
     assert(cut.length === 0, `${menu}: each one's whole name shows, what it is in its tooltip${cut.length ? ` (not: ${cut.join(', ')})` : ''}`);
     await page.keyboard.press('Escape');
     await page.locator('.cm').waitFor({ state: 'detached' });
   }
   await page.getByRole('button', { name: '＋ Add wheel' }).click();
   const spin = page.getByLabel('Spin (s)');
-  for (const [typed, kept] of [['999', '30'], ['0.2', '1'], ['7', '7']]) {
+  for (const [typed, kept] of [
+    ['999', '30'],
+    ['0.2', '1'],
+    ['7', '7'],
+  ]) {
     await spin.fill(typed);
     await spin.press('Tab');
     assert((await spin.inputValue()) === kept, `a spin of ${typed} s is kept as ${kept} s, and the box says so`);
   }
   {
     // A slice's ⋯, 🗑 and its % sit on the middle of its label box, as on the other pages' rows.
-    const mids = await page.locator('.seg').first().evaluate((row) => {
-      const mid = (e) => {
-        const r = e.getBoundingClientRect();
-        return Math.round(r.top + r.height / 2);
-      };
-      const text = (e) => {
-        const range = document.createRange();
-        range.selectNodeContents(e);
-        return mid(range);
-      };
-      return { label: mid(row.querySelector('input.label')), more: mid(row.querySelector('.row-tools button')), del: mid(row.querySelector('.row-tools .del')), pct: text(row.querySelector('.pct')) };
-    });
-    assert(Math.max(...Object.values(mids)) - Math.min(...Object.values(mids)) <= 1, `a slice’s ⋯, 🗑 and % line up with its label box (${JSON.stringify(mids)})`);
+    const mids = await page
+      .locator('.seg')
+      .first()
+      .evaluate((row) => {
+        const mid = (e) => {
+          const r = e.getBoundingClientRect();
+          return Math.round(r.top + r.height / 2);
+        };
+        const text = (e) => {
+          const range = document.createRange();
+          range.selectNodeContents(e);
+          return mid(range);
+        };
+        return {
+          label: mid(row.querySelector('input.label')),
+          more: mid(row.querySelector('.row-tools button')),
+          del: mid(row.querySelector('.row-tools .del')),
+          pct: text(row.querySelector('.pct')),
+        };
+      });
+    assert(
+      Math.max(...Object.values(mids)) - Math.min(...Object.values(mids)) <= 1,
+      `a slice’s ⋯, 🗑 and % line up with its label box (${JSON.stringify(mids)})`,
+    );
   }
   await page.locator('.seg input.label').first().fill('');
   assert((await page.getByText('No label on slice 1: it lands as “Slice 1”.').count()) === 1, 'a slice left without a label is pointed out');
@@ -470,7 +601,10 @@ try {
   await page.getByRole('button', { name: /^More:/ }).click();
   // (On the way: in a browser, ⚙ Settings has no autosaves, and its hint says so; it names the buzzer server.)
   const settingsHint = await page.getByRole('menuitem', { name: '⚙ Settings', exact: true }).getAttribute('title');
-  assert(!settingsHint.includes('Autosaves') && settingsHint.includes('the phone buzzer server'), `⋯ › ⚙ Settings says what’s in it in a browser (${settingsHint})`);
+  assert(
+    !settingsHint.includes('Autosaves') && settingsHint.includes('the phone buzzer server'),
+    `⋯ › ⚙ Settings says what’s in it in a browser (${settingsHint})`,
+  );
   await page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).click();
   {
     // After this update the Editor part starts with what moved, open: the menus' one order, the lists' ⋯, the new names.
@@ -495,10 +629,13 @@ try {
     );
   }
   // A long key that wraps is a whole chip on each line (not two half-boxes).
-  const chips = await page.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).locator('kbd').evaluateAll((ks) => ({
-    wrapped: ks.filter((k) => k.getClientRects().length > 1).length,
-    cloned: ks.every((k) => getComputedStyle(k).boxDecorationBreak === 'clone'),
-  }));
+  const chips = await page
+    .getByRole('dialog', { name: 'Editor keyboard shortcuts' })
+    .locator('kbd')
+    .evaluateAll((ks) => ({
+      wrapped: ks.filter((k) => k.getClientRects().length > 1).length,
+      cloned: ks.every((k) => getComputedStyle(k).boxDecorationBreak === 'clone'),
+    }));
   assert(chips.cloned, `the shortcuts' key chips are whole on each line they wrap to (${chips.wrapped} wrap here)`);
   await page.getByLabel('Filter shortcuts').fill('ctrl+f');
   const rows = await page.locator('[role="dialog"] tr').allInnerTexts();
@@ -517,19 +654,33 @@ try {
   await sheet.getByText('Nothing matches “spin for a partner” here.').waitFor();
   await sheet.getByRole('button', { name: /^\d+ in During the game ▸$/ }).click();
   await sheet.locator('tr', { hasText: 'W on a partner clue' }).waitFor();
-  assert((await sheet.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true', 'a filter with no match in the Editor part offers the During the game part’s, a click away');
+  assert(
+    (await sheet.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true',
+    'a filter with no match in the Editor part offers the During the game part’s, a click away',
+  );
   await page.getByLabel('Filter shortcuts').press('End');
   await page.keyboard.press('?');
-  assert((await page.getByLabel('Filter shortcuts').inputValue()) === 'spin for a partner?' && (await sheet.count()) === 1, '? typed in the filter is a question mark');
+  assert(
+    (await page.getByLabel('Filter shortcuts').inputValue()) === 'spin for a partner?' && (await sheet.count()) === 1,
+    '? typed in the filter is a question mark',
+  );
   // During the game: the blue button's keys and the check's, in their own group (found whole by its name), and O in a
   // buzzer tie.
   await page.getByLabel('Filter shortcuts').fill('blue button and the check');
   const blueKeys = await sheet.locator('section', { hasText: 'The blue button and the check' }).locator('tr td:first-child').allInnerTexts();
   assert(
-    blueKeys[0] === 'N' && ['Shift+click on the blue button', 'Enter', 'Enter in the check', 'N in the check', 'Esc in the check', 'Don’t ask about … again this game'].every((k) => blueKeys.includes(k)),
+    blueKeys[0] === 'N' &&
+      ['Shift+click on the blue button', 'Enter', 'Enter in the check', 'N in the check', 'Esc in the check', 'Don’t ask about … again this game'].every((k) =>
+        blueKeys.includes(k),
+      ),
     `the game's keys have the blue button's group: N, Shift+click, where Enter is Next, the check's keys and its tick (${blueKeys.join(' | ')})`,
   );
-  assert((await sheet.locator('section', { hasText: 'The blue button and the check' }).locator('tr').first().innerText()).includes('N again goes on anyway, except into an answer'), 'N: the blue button, asking first, N again goes on anyway except into an answer');
+  assert(
+    (await sheet.locator('section', { hasText: 'The blue button and the check' }).locator('tr').first().innerText()).includes(
+      'N again goes on anyway, except into an answer',
+    ),
+    'N: the blue button, asking first, N again goes on anyway except into an answer',
+  );
   await page.getByLabel('Filter shortcuts').fill('o in a buzzer tie');
   await sheet.locator('tr', { hasText: '🎲 Roll for it' }).first().waitFor();
   await sheet.getByRole('button', { name: 'Editor', exact: true }).click();
@@ -538,7 +689,13 @@ try {
   await page.keyboard.press('Escape');
 
   // ---------- Rounds and a theme from another game ----------
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /^More:/ }).click().then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click())]);
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page
+      .getByRole('button', { name: /^More:/ })
+      .click()
+      .then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click()),
+  ]);
   // (Saved under its own name: the file's name says it's a game.)
   const other = join(tmpdir(), `editorfeatures-${Date.now()}.json`);
   copyFileSync(await download.path(), other);
@@ -547,7 +704,10 @@ try {
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: '📥 Import rounds…' }).click()]);
   // (As Open… does, it lists the web page a game was exported as, and the desktop app's backups.)
   const accept = ((await chooser.element().getAttribute('accept')) ?? '').split(',');
-  assert(['.brainrot', '.json', '.html', '.bak'].every((x) => accept.includes(x)), `Import rounds… can pick an exported page or a backup (${accept.join(',')})`);
+  assert(
+    ['.brainrot', '.json', '.html', '.bak'].every((x) => accept.includes(x)),
+    `Import rounds… can pick an exported page or a backup (${accept.join(',')})`,
+  );
   await chooser.setFiles(other);
   const pick = page.getByRole('dialog', { name: 'Import rounds' });
   await pick.getByLabel(/Adventure/).check();
@@ -580,7 +740,13 @@ try {
   await chooser2.setFiles(other);
   await page.waitForTimeout(300);
   // (That game's theme came from “Neon nights”, saved on this computer: that card is the one chosen, as it was there.)
-  assert(await page.locator('.mine .card', { hasText: 'Neon nights' }).locator('.use').evaluate((b) => b.getAttribute('aria-pressed') === 'true'), 'Use a theme from another game takes its theme');
+  assert(
+    await page
+      .locator('.mine .card', { hasText: 'Neon nights' })
+      .locator('.use')
+      .evaluate((b) => b.getAttribute('aria-pressed') === 'true'),
+    'Use a theme from another game takes its theme',
+  );
   assert((await page.getByRole('button', { name: 'Pastel', exact: true }).getAttribute('aria-pressed')) === 'false', 'and Pastel is no longer chosen');
 
   // ---------- Pre-game: ⚖ Game rules › Most players ----------
@@ -599,7 +765,10 @@ try {
 
   // ---------- Playing the sample's board game ----------
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  await page.getByRole('button', { name: 'Skip intro' }).click().catch(() => {});
+  await page
+    .getByRole('button', { name: 'Skip intro' })
+    .click()
+    .catch(() => {});
   for (let i = 0; i < 3 && !(await page.locator('.bh').count()); i++) {
     await page.waitForTimeout(450);
     await page.getByRole('button', { name: 'Next round ▶' }).click();
@@ -625,7 +794,10 @@ try {
   // (Ctrl+Z put back her walk onto Go back, its 5 spaces still being stepped: the check's line says Moving… until her
   // token is there, then what's left.)
   await checkItem(page, 'landing').filter({ hasText: 'Ann landed on Go back' }).waitFor({ timeout: 3000 });
-  assert((await checkItem(page, 'landing').innerText()).includes('Ann landed on Go back: its actions haven’t run.'), `N after its button was undone asks first: Go back’s actions haven’t run (${await checkItem(page, 'landing').innerText()})`);
+  assert(
+    (await checkItem(page, 'landing').innerText()).includes('Ann landed on Go back: its actions haven’t run.'),
+    `N after its button was undone asks first: Go back’s actions haven’t run (${await checkItem(page, 'landing').innerText()})`,
+  );
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('n');
   await goOnCheck(page).waitFor({ state: 'detached' });
@@ -634,7 +806,10 @@ try {
   await page.getByRole('button', { name: /^▶ Move Bob/ }).click();
   await page.locator('.bh .acts').getByRole('button', { name: 'Skip next turn' }).click();
   // (The turn order's one line, folded: its marks are there too.)
-  assert((await page.locator('.bh [data-turn-order]').innerText()).includes('Bob ⏭'), `the turn order shows Bob skips (${await page.locator('.bh [data-turn-order]').innerText()})`);
+  assert(
+    (await page.locator('.bh [data-turn-order]').innerText()).includes('Bob ⏭'),
+    `the turn order shows Bob skips (${await page.locator('.bh [data-turn-order]').innerText()})`,
+  );
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-skip.png` });
   // His landing ran: N goes on. Cat hasn't rolled: N asks, and “Don't ask about rolling again this game” turns that off,
   // leaving nothing to ask; then N goes on, and on again from Ann's turn not rolled, passing over Bob.
@@ -649,13 +824,19 @@ try {
   await page.keyboard.press('n');
   await page.locator('.stage .turn-banner', { hasText: 'Ann' }).waitFor();
   await page.keyboard.press('n');
-  assert((await page.locator('.stage .turn-banner').innerText()).includes('Cat') && !(await goOnCheck(page).count()), 'Next turn passes over Bob (Ann → Cat), rolling no longer asked about');
+  assert(
+    (await page.locator('.stage .turn-banner').innerText()).includes('Cat') && !(await goOnCheck(page).count()),
+    'Next turn passes over Bob (Ann → Cat), rolling no longer asked about',
+  );
   // The keys window (?) lists what the check doesn't ask about this game, with Ask again; asked again, it's gone there.
   await page.keyboard.press('?');
   const playKeys = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   const quiet = playKeys.locator('[data-quiet]');
   await quiet.waitFor();
-  assert((await quiet.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim()).join() === 'rolling Ask again', `the keys window says rolling isn’t asked about this game (${await quiet.innerText()})`);
+  assert(
+    (await quiet.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim()).join() === 'rolling Ask again',
+    `the keys window says rolling isn’t asked about this game (${await quiet.innerText()})`,
+  );
   await quiet.getByRole('button', { name: 'Ask again: rolling' }).click();
   await quiet.waitFor({ state: 'detached' });
   await page.keyboard.press('Escape');
@@ -667,7 +848,10 @@ try {
   // It says the space's name once, and that Next turn gives Cat another go.
   const ran = await toastsIn(page, { hasText: /^Roll again/ }).innerText();
   assert(ran === 'Roll again: Cat', `the toast says Roll again once (${ran})`);
-  await page.locator('.bh [data-turn-next]', { hasText: 'rolls again' }).waitFor({ timeout: 3000 }).catch(() => {});
+  await page
+    .locator('.bh [data-turn-next]', { hasText: 'rolls again' })
+    .waitFor({ timeout: 3000 })
+    .catch(() => {});
   const first = await page.locator('.bh [data-turn-next]').innerText();
   assert(first === 'Cat rolls again: Next turn ▶ (N).', `the turn box says Cat rolls again (${first})`);
   await page.keyboard.press('n');

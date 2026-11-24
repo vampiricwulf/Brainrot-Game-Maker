@@ -55,7 +55,8 @@ export const CHECK_GUARD_MS = 600;
  * A click on the check (or on its step, come in place of "… anyway") at `at`, with `detail` its count in a row: held
  * back while it's new (`since`), and the rest of the press that opened it (a triple-click's third) a while longer.
  */
-export const checkHeld = (since: number, at: number, detail: number): boolean => at - since < CHECK_GUARD_MS || restOfPress(since, at, detail, 2 * CHECK_GUARD_MS);
+export const checkHeld = (since: number, at: number, detail: number): boolean =>
+  at - since < CHECK_GUARD_MS || restOfPress(since, at, detail, 2 * CHECK_GUARD_MS);
 
 /**
  * The check's last press that went (a fix, its "… anyway", its step): when, where (a click's place; none for a key on

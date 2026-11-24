@@ -13,7 +13,23 @@
   import { anchored } from './anchored';
   import { closeColorPicker, colorPicker, pickColor, type PickerSession } from './pickerstate.svelte';
   import { textOn } from './colors';
-  import { barAt, fromBar, fromSquare, hexSoFar, hexToHsv, hsvToHex, hsvToRgb, nudge, readChannel, readHex, rgbToHex, rgbToHsv, squareAt, type Hsv, type Rgb } from './colormath';
+  import {
+    barAt,
+    fromBar,
+    fromSquare,
+    hexSoFar,
+    hexToHsv,
+    hsvToHex,
+    hsvToRgb,
+    nudge,
+    readChannel,
+    readHex,
+    rgbToHex,
+    rgbToHsv,
+    squareAt,
+    type Hsv,
+    type Rgb,
+  } from './colormath';
   import { tabbables } from './modal';
   import { prefs, savePrefs } from './prefs.svelte';
   import { canPickFromScreen, pickScreenColor } from './screencolor';
@@ -400,7 +416,9 @@
     </p>
     <div class="foot">
       {#if fromScreen}
-        <button class="small" onclick={fromTheScreen} aria-busy={picking} title="Then click anywhere on the screen to take its color">💧 Pick from the screen</button>
+        <button class="small" onclick={fromTheScreen} aria-busy={picking} title="Then click anywhere on the screen to take its color"
+          >💧 Pick from the screen</button
+        >
       {/if}
       <span class="was-now">
         <button

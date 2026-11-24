@@ -23,7 +23,10 @@ if (!server) {
   console.error('Usage: node measure-files.mjs <server> [--sizes 16,48,90] [--runs 1] [--gap <seconds>] [--analytics [account-id]] [--name <worker>]');
   process.exit(1);
 }
-const sizes = String(opt('sizes', '16,48,90')).split(',').map(Number).filter((n) => n > 0);
+const sizes = String(opt('sizes', '16,48,90'))
+  .split(',')
+  .map(Number)
+  .filter((n) => n > 0);
 const runs = Number(opt('runs', 1));
 const gap = opt('gap', null) === null ? null : Number(opt('gap')) * 1000;
 const analytics = opt('analytics', null);
@@ -57,13 +60,34 @@ function socket(url) {
     for (const end = Date.now() + ms; !heard.some(pred); await sleep(25)) if (Date.now() > end) throw new Error(`never: ${what}`);
     return heard.findLast(pred);
   };
-  return { ws, heard, until, opened: new Promise((ok, fail) => (ws.addEventListener('open', ok, { once: true }), ws.addEventListener('error', () => fail(new Error(`socket failed: ${url}`)), { once: true }))) };
+  return {
+    ws,
+    heard,
+    until,
+    opened: new Promise(
+      (ok, fail) => (
+        ws.addEventListener('open', ok, { once: true }),
+        ws.addEventListener('error', () => fail(new Error(`socket failed: ${url}`)), { once: true })
+      ),
+    ),
+  };
 }
 const host = socket(`${wsBase}/ws/${made.code}?host=${encodeURIComponent(made.hostToken)}`);
 await host.opened;
 const welcome = await host.until((m) => m.t === 'welcome', 'welcome');
 if (!welcome.features?.includes('files')) throw new Error(`the server isn't taking card files (${welcome.features?.join(', ')})`);
-let state = { title: 'Measure', seats: [{ id: 'a', name: 'Phone', color: '#30a46c' }], allowNew: false, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 0, scores: {} };
+let state = {
+  title: 'Measure',
+  seats: [{ id: 'a', name: 'Phone', color: '#30a46c' }],
+  allowNew: false,
+  phase: 'lobby',
+  armId: 0,
+  clue: null,
+  answering: null,
+  lockedOut: [],
+  earlyLockMs: 0,
+  scores: {},
+};
 const send = (patch) => host.ws.send(JSON.stringify({ t: 'state', state: (state = { ...state, ...patch }) }));
 send({});
 const phone = socket(`${wsBase}/ws/${made.code}`);
@@ -102,7 +126,13 @@ try {
       const length = down.headers.get('Content-Length');
       const got = Buffer.from(await down.arrayBuffer());
       const same = createHash('sha256').update(got).digest('hex') === hash;
-      rows.push({ label: `down-${tag}`, at, status: down.status, ms: performance.now() - t, note: down.status !== 200 ? '' : `${same ? 'same bytes' : 'different bytes'}, Content-Length ${length ?? 'missing'}` });
+      rows.push({
+        label: `down-${tag}`,
+        at,
+        status: down.status,
+        ms: performance.now() - t,
+        note: down.status !== 200 ? '' : `${same ? 'same bytes' : 'different bytes'}, Content-Length ${length ?? 'missing'}`,
+      });
       console.log(`${clock()} down-${tag}: ${down.status} ${rows.at(-1).note}`);
       send({ cards: null });
       host.ws.send(JSON.stringify({ t: 'forget', files: [hash] }));
@@ -166,9 +196,17 @@ for (const r of rows) {
   const bad = [...w, ...c].map((x) => x.dimensions.status).filter((s) => s !== 'success');
   const counter = c.filter((x) => !room.includes(x));
   console.log(
-    [r.label, r.at.toISOString().slice(11, 23), r.status, fmt(r.ms), fmt(most(w, (x) => x.max.cpuTime)), fmt(most(room, (x) => x.quantiles.cpuTimeP999)), fmt(most(counter, (x) => x.quantiles.cpuTimeP999)), bad.join(','), r.note].join(
-      '\t',
-    ),
+    [
+      r.label,
+      r.at.toISOString().slice(11, 23),
+      r.status,
+      fmt(r.ms),
+      fmt(most(w, (x) => x.max.cpuTime)),
+      fmt(most(room, (x) => x.quantiles.cpuTimeP999)),
+      fmt(most(counter, (x) => x.quantiles.cpuTimeP999)),
+      bad.join(','),
+      r.note,
+    ].join('\t'),
   );
 }
 process.exit(0);

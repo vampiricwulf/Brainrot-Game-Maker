@@ -17,7 +17,10 @@ import {
  * Opus sound when `opus` (silence-sized packets; nothing here decodes them).
  */
 export async function mux(format: 'mp4' | 'webm' | 'mkv', target: BufferTarget | StreamTarget, opus = false): Promise<void> {
-  const out = new Output({ format: format === 'mp4' ? new Mp4OutputFormat({ fastStart: false }) : format === 'mkv' ? new MkvOutputFormat() : new WebMOutputFormat(), target });
+  const out = new Output({
+    format: format === 'mp4' ? new Mp4OutputFormat({ fastStart: false }) : format === 'mkv' ? new MkvOutputFormat() : new WebMOutputFormat(),
+    target,
+  });
   const src = new EncodedVideoPacketSource('vp9');
   out.addVideoTrack(src);
   const sound = opus ? new EncodedAudioPacketSource('opus') : null;
@@ -31,7 +34,10 @@ export async function mux(format: 'mp4' | 'webm' | 'mkv', target: BufferTarget |
     if (sound)
       for (let k = 0; k < 5; k++) {
         const at = i / 10 + k * 0.02;
-        await sound.add(new EncodedPacket(new Uint8Array([0xf8, 0xff, 0xfe]), 'key', at, 0.02), i || k ? undefined : { decoderConfig: { codec: 'opus', numberOfChannels: 2, sampleRate: 48_000 } });
+        await sound.add(
+          new EncodedPacket(new Uint8Array([0xf8, 0xff, 0xfe]), 'key', at, 0.02),
+          i || k ? undefined : { decoderConfig: { codec: 'opus', numberOfChannels: 2, sampleRate: 48_000 } },
+        );
       }
   }
   await out.finalize();
@@ -49,6 +55,7 @@ export async function muxTs(target: BufferTarget | StreamTarget, seconds = 2): P
   await out.start();
   const frame = Uint8Array.from(atob(MP3_FRAME), (c) => c.charCodeAt(0));
   const d = 1152 / 44_100;
-  for (let k = 0; k * d < seconds; k++) await src.add(new EncodedPacket(frame, 'key', k * d, d), k ? undefined : { decoderConfig: { codec: 'mp3', numberOfChannels: 1, sampleRate: 44_100 } });
+  for (let k = 0; k * d < seconds; k++)
+    await src.add(new EncodedPacket(frame, 'key', k * d, d), k ? undefined : { decoderConfig: { codec: 'mp3', numberOfChannels: 1, sampleRate: 44_100 } });
   await out.finalize();
 }

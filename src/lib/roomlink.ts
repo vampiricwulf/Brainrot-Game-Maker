@@ -2,8 +2,24 @@
 // same code and host token after a drop), send the host's state, and pass on what the room says. No Svelte here, so it
 // can be tested with a fake WebSocket; remote.svelte.ts makes it reactive for the app.
 import {
-  ANSWER_MAX, BUZZ_PROTOCOL, CARD_ID_MAX, CARD_MEMBER_MAX, CHOICE_ID_MAX, FILES_LIST_MAX, isFileId, isRoomCode, parseFileLimits, socketUrl, type CardLate, type FileLimits, type HostMsg, type HostState, type NewRoom,
-  type PhoneInfo, type QueuedBuzz, type RoomToHost,
+  ANSWER_MAX,
+  BUZZ_PROTOCOL,
+  CARD_ID_MAX,
+  CARD_MEMBER_MAX,
+  CHOICE_ID_MAX,
+  FILES_LIST_MAX,
+  isFileId,
+  isRoomCode,
+  parseFileLimits,
+  socketUrl,
+  type CardLate,
+  type FileLimits,
+  type HostMsg,
+  type HostState,
+  type NewRoom,
+  type PhoneInfo,
+  type QueuedBuzz,
+  type RoomToHost,
 } from './buzzproto';
 
 export type RoomStatus = 'off' | 'connecting' | 'online' | 'reconnecting' | 'error';
@@ -139,11 +155,19 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
     case 'full':
       return { t: 'full' };
     case 'wager':
-      return isStr(m.id, 100) && m.id && isStr(m.seatId) && Number.isSafeInteger(m.amount) && (m.amount as number) >= 0 && Number.isSafeInteger(m.n) && (m.n as number) >= 1
+      return isStr(m.id, 100) &&
+        m.id &&
+        isStr(m.seatId) &&
+        Number.isSafeInteger(m.amount) &&
+        (m.amount as number) >= 0 &&
+        Number.isSafeInteger(m.n) &&
+        (m.n as number) >= 1
         ? { t: 'wager', id: m.id, seatId: m.seatId, amount: m.amount as number, n: m.n as number, ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}) }
         : null;
     case 'color':
-      return isStr(m.seatId) && typeof m.color === 'string' && /^#[0-9a-f]{6}$/i.test(m.color) ? { t: 'color', seatId: m.seatId, color: m.color.toLowerCase() } : null;
+      return isStr(m.seatId) && typeof m.color === 'string' && /^#[0-9a-f]{6}$/i.test(m.color)
+        ? { t: 'color', seatId: m.seatId, color: m.color.toLowerCase() }
+        : null;
     case 'answer':
       return isStr(m.id, 100) && m.id && isStr(m.seatId) && isStr(m.text, ANSWER_MAX * 4) && m.text && Number.isSafeInteger(m.n) && (m.n as number) >= 1
         ? {
@@ -184,7 +208,12 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
         if (typeof x !== 'object' || !x) return null;
         const l = x as Record<string, unknown>;
         if (!isStr(l.id, CARD_ID_MAX) || !l.id || !isStr(l.seatId)) return null;
-        late.push({ id: l.id, seatId: l.seatId, ...(isStr(l.member, CARD_MEMBER_MAX) && l.member ? { member: l.member } : {}), ...(isStr(l.by, 100) && l.by ? { by: l.by } : {}) });
+        late.push({
+          id: l.id,
+          seatId: l.seatId,
+          ...(isStr(l.member, CARD_MEMBER_MAX) && l.member ? { member: l.member } : {}),
+          ...(isStr(l.by, 100) && l.by ? { by: l.by } : {}),
+        });
       }
       return { t: 'cardsLate', late };
     }

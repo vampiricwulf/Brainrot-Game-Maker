@@ -29,7 +29,8 @@ function wav(seconds: number, channels = 1): Blob {
   b.setUint16(34, 16, true);
   text(36, 'data');
   b.setUint32(40, n * channels * 2, true);
-  for (let i = 0; i < n; i++) for (let c = 0; c < channels; c++) b.setInt16(44 + (i * channels + c) * 2, Math.round(8000 * Math.sin((i / rate) * 2 * Math.PI * 440)), true);
+  for (let i = 0; i < n; i++)
+    for (let c = 0; c < channels; c++) b.setInt16(44 + (i * channels + c) * 2, Math.round(8000 * Math.sin((i / rate) * 2 * Math.PI * 440)), true);
   return new Blob([b.buffer], { type: 'audio/wav' });
 }
 
@@ -130,7 +131,9 @@ describe('convertBlob', () => {
   it('turns down a file it can’t read, and a track it can’t make as planned', async () => {
     await expect(convertBlob(new Blob([new Uint8Array(500)]), COPY, 'audio/mp4', ctl().ctl)).rejects.toMatchObject({ name: 'RunError', reason: 'unreadable' });
     // (Node has no Opus encoder.)
-    const e = await convertBlob(wav(1), { box: 'ogg', audio: { codec: 'opus', bitrate: 96_000, forceTranscode: true } }, 'audio/ogg', ctl().ctl).catch((x) => x);
+    const e = await convertBlob(wav(1), { box: 'ogg', audio: { codec: 'opus', bitrate: 96_000, forceTranscode: true } }, 'audio/ogg', ctl().ctl).catch(
+      (x) => x,
+    );
     expect(e).toBeInstanceOf(RunError);
     expect(e.reason).toBe('no-encoder');
   });
@@ -165,7 +168,9 @@ describe('checkMade', () => {
     const shows = async () => ({ opens: true, picture: true });
     expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: false }, shows)).toBeNull();
     expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: true }, shows)).toMatch(/no sound/);
-    expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: false }, async () => ({ opens: true, picture: false }))).toMatch(/no picture here/);
+    expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: false }, async () => ({ opens: true, picture: false }))).toMatch(
+      /no picture here/,
+    );
   });
 });
 

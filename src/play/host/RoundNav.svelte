@@ -17,13 +17,8 @@
   import { app, clearToast, hint } from '../../lib/app.svelte';
   import { cardsHeld } from '../../lib/sentcards';
 
-  let {
-    game,
-    session,
-    onprev,
-    onnext,
-    ongoto,
-  }: { game: Game; session: Session; onprev: () => void; onnext: () => void; ongoto?: (index: number) => void } = $props();
+  let { game, session, onprev, onnext, ongoto }: { game: Game; session: Session; onprev: () => void; onnext: () => void; ongoto?: (index: number) => void } =
+    $props();
 
   const round = $derived(game.rounds[session.currentRound]);
   const board = $derived(!!round && isBoard(round));
@@ -179,7 +174,13 @@
         ? `Leave ${here} and end the game?`
         : `Leave ${here} for ${name}?`;
     const also = goesWith(here);
-    setAsk({ text: also ? `${text} ${also}` : text, ok: (end ? VERBS.endGame : VERBS.goToRound(name)).label, cancel: board && !left ? 'Stay' : VERBS.keepPlaying.label, onok: yes, oncancel: stop });
+    setAsk({
+      text: also ? `${text} ${also}` : text,
+      ok: (end ? VERBS.endGame : VERBS.goToRound(name)).label,
+      cancel: board && !left ? 'Stay' : VERBS.keepPlaying.label,
+      onok: yes,
+      oncancel: stop,
+    });
   }
 
   function yes(): void {
@@ -219,7 +220,9 @@
   <!-- Played out, it's the blue button instead (one of them, not two): its room stays here, unseen, so ◀ Previous round
        and Go to round keep their places. (A final round's long name is cut short, never its ▶: in full in its tooltip.) -->
   {#if !done}
-    <button class="ghost next" onclick={next} title={`${nextName} · ${board ? `${left} clue${left === 1 ? '' : 's'} not played yet` : 'asks first'}`}><span class="nm">{nextName}</span> ▶</button>
+    <button class="ghost next" onclick={next} title={`${nextName} · ${board ? `${left} clue${left === 1 ? '' : 's'} not played yet` : 'asks first'}`}
+      ><span class="nm">{nextName}</span> ▶</button
+    >
   {:else}
     <span class="next room" aria-hidden="true"><span class="nm">{nextName}</span> ▶</span>
   {/if}

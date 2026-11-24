@@ -8,7 +8,24 @@
 // phone, its picture as the room's file. There it waits behind Tap to see; tapped, it shows its words and its picture,
 // and the host's panel says ✓ seen. The tile closing takes it away. Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn, failureShots, assert, sleep, launchChromium, startBuzzer, untilWith, hostPanelIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  boxHasAction,
+  playWithPlayers,
+  png,
+  startRoomOn,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  startBuzzer,
+  untilWith,
+  hostPanelIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const buzzer = await startBuzzer('buzzer-partner-');
@@ -27,8 +44,18 @@ const watch = (p, name) => {
  */
 const says = (p, text) =>
   p
-    .waitForFunction((t) => ['buzz-big', 'buzz-small', 'card-status-big'].some((id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length), text, { timeout: 8000 })
-    .then(() => true, () => false);
+    .waitForFunction(
+      (t) =>
+        ['buzz-big', 'buzz-small', 'card-status-big'].some(
+          (id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length,
+        ),
+      text,
+      { timeout: 8000 },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
 /** Waits (up to 8 s) until pred() holds; false if it never does. */
 const until = untilWith({ timeout: 8_000 });
 const PIC = 'kzv-ogre-pic.png';
@@ -73,17 +100,26 @@ try {
   // A picture from this computer on the card.
   await dialog.getByRole('tab', { name: '🤫 Card 1' }).click();
   await dialog.getByRole('button', { name: '🖼 Image' }).click();
-  const [chooser] = await Promise.all([host.waitForEvent('filechooser'), host.getByRole('dialog', { name: 'Choose image' }).getByRole('button', { name: '⬆ Upload image file…' }).click()]);
+  const [chooser] = await Promise.all([
+    host.waitForEvent('filechooser'),
+    host.getByRole('dialog', { name: 'Choose image' }).getByRole('button', { name: '⬆ Upload image file…' }).click(),
+  ]);
   await chooser.setFiles({ name: PIC, mimeType: 'image/png', buffer: png(200, 60, 20, 640, 480) });
   await dialog.locator('.slide .el img').first().waitFor();
   await dialog.getByRole('button', { name: '📱 On their phone' }).click();
   const preview = dialog.getByRole('complementary', { name: 'Card on their phone' });
   const previewText = await preview.innerText();
   await host.screenshot({ path: 'test-results/partner-phone-preview.png' });
-  assert(previewText.includes('Card-only-zz words') && (await preview.locator('img').count()) === 1, 'the card tab’s 📱 preview shows the card as a phone gets it: its words, then its picture');
+  assert(
+    previewText.includes('Card-only-zz words') && (await preview.locator('img').count()) === 1,
+    'the card tab’s 📱 preview shows the card as a phone gets it: its words, then its picture',
+  );
   // Beside the slide editor, never over its toolbar or its Layers' buttons.
   const [pBox, seBox] = [await preview.boundingBox(), await dialog.locator('.se').boundingBox()];
-  assert(pBox.x >= seBox.x + seBox.width - 1, `the preview sits beside the slide editor, not over it (preview at x ${Math.round(pBox.x)}, the editor ends at ${Math.round(seBox.x + seBox.width)})`);
+  assert(
+    pBox.x >= seBox.x + seBox.width - 1,
+    `the preview sits beside the slide editor, not over it (preview at x ${Math.round(pBox.x)}, the editor ends at ${Math.round(seBox.x + seBox.width)})`,
+  );
   await host.getByRole('button', { name: 'Done' }).click();
   await playWithPlayers(host, 3);
   const card = host.getByRole('region', { name: 'Phone buzzers' });
@@ -113,7 +149,10 @@ try {
   const nothingSent = (when) => {
     const all = JSON.stringify(states);
     const phones = JSON.stringify(heard);
-    assert(!all.includes('"cards"') && !all.includes('Card-only-zz') && !phones.includes('Card-only-zz') && !uploads.length, `${when}: no card in the room’s state or on a phone, and no file uploaded`);
+    assert(
+      !all.includes('"cards"') && !all.includes('Card-only-zz') && !phones.includes('Card-only-zz') && !uploads.length,
+      `${when}: no card in the room’s state or on a phone, and no file uploaded`,
+    );
   };
 
   // ---------- PARTNER UP! ----------
@@ -123,11 +162,16 @@ try {
   assert(await says(ann, '🤝 Your partner clue!'), 'the picker’s phone: “🤝 Your partner clue!”');
   assert(await says(bob, '🤝 Partner clue'), 'the others: “🤝 Partner clue”');
   assert(
-    (await bob.locator('#buzz-big').innerText()) === '🤝 Partner clue' && (await bob.locator('#buzz-small').innerText()) === 'Player 1 needs a partner…' && (await bob.locator('#buzz').getAttribute('aria-disabled')) === 'true',
+    (await bob.locator('#buzz-big').innerText()) === '🤝 Partner clue' &&
+      (await bob.locator('#buzz-small').innerText()) === 'Player 1 needs a partner…' &&
+      (await bob.locator('#buzz').getAttribute('aria-disabled')) === 'true',
     'every phone’s button greyed and disabled, the small line under it',
   );
   const last = () => states.at(-1);
-  assert(last()?.status?.off === true && last().status.sub === 'Player 1 needs a partner…' && last().status.seatsSub === 'Your partner is being picked…', 'every phone greyed (off), with the small lines under them');
+  assert(
+    last()?.status?.off === true && last().status.sub === 'Player 1 needs a partner…' && last().status.seatsSub === 'Your partner is being picked…',
+    'every phone greyed (off), with the small lines under them',
+  );
   assert((await stageBoxIn(host).locator('.join-badge').count()) === 0, 'no join code over PARTNER UP! (nobody buzzes)');
   const panel = host.locator('[data-partner-panel]');
   // The card's details fold into one quiet line; it opens by itself when there's something to see first (the partner
@@ -139,20 +183,35 @@ try {
   await host.keyboard.press('3');
   await host.waitForFunction(() => /** @type {HTMLDetailsElement | null} */ (document.querySelector('[data-partner-cards-fold]'))?.open);
   f = await folded();
-  assert(f.says === '🤫 1 card · 📵 Player 3 has no phone here: you’ll copy theirs', `Player 3 the partner, with no phone here: it opens by itself and says so (${f.says})`);
+  assert(
+    f.says === '🤫 1 card · 📵 Player 3 has no phone here: you’ll copy theirs',
+    `Player 3 the partner, with no phone here: it opens by itself and says so (${f.says})`,
+  );
   await host.screenshot({ path: 'test-results/partner-phones-up.png' });
   nothingSent('the tile open');
   await host.keyboard.press('2');
-  assert(await says(ann, '🤝 You two play this one!') && (await says(bob, '🤝 You two play this one!')), 'paired: both phones say “🤝 You two play this one!”');
+  assert(
+    (await says(ann, '🤝 You two play this one!')) && (await says(bob, '🤝 You two play this one!')),
+    'paired: both phones say “🤝 You two play this one!”',
+  );
   f = await folded();
   assert(f.open && f.says === '🤫 1 card · 📱 phones get it when you send', `Player 2 instead: it stays open, its line back to how the card goes (${f.says})`);
-  assert((await panel.locator('[data-partner-files]').innerText()).includes('1 picture goes up when you send its card'), 'it counts the card’s picture that goes up when its card is sent (never names it)');
+  assert(
+    (await panel.locator('[data-partner-files]').innerText()).includes('1 picture goes up when you send its card'),
+    'it counts the card’s picture that goes up when its card is sent (never names it)',
+  );
   assert((await panel.locator('[data-partner-readiness]').innerText()).includes('📱 Player 2: phone here'), 'the readiness line: “📱 Player 2: phone here”');
   nothingSent('paired');
   // Before the question shows, no phone gets its words (nor a ✍ box), though the guesser types their guess later.
-  for (const [p, name] of [[ann, 'the picker'], [bob, 'the partner']]) {
+  for (const [p, name] of [
+    [ann, 'the picker'],
+    [bob, 'the partner'],
+  ]) {
     const words = await p.locator('body').innerText();
-    assert(!words.includes('quietly-qq') && !words.includes('Card-only-zz') && !(await p.getByLabel(/Your answer/).isVisible()), `before the question, ${name}’s phone has no question words, no card and no ✍ box`);
+    assert(
+      !words.includes('quietly-qq') && !words.includes('Card-only-zz') && !(await p.getByLabel(/Your answer/).isVisible()),
+      `before the question, ${name}’s phone has no question words, no card and no ✍ box`,
+    );
   }
 
   // ---------- The question ----------
@@ -173,7 +232,10 @@ try {
   // Playwright taps it only when made to.)
   await bob.locator('#buzz').tap({ force: true });
   await sleep(600);
-  assert((await statusLineIn(host).innerText()).includes('hand out the cards') && (await stageBoxIn(host).locator('.bell').count()) === 0, 'a tap on a phone does nothing (nobody is answering)');
+  assert(
+    (await statusLineIn(host).innerText()).includes('hand out the cards') && (await stageBoxIn(host).locator('.bell').count()) === 0,
+    'a tap on a phone does nothing (nobody is answering)',
+  );
   // The guesser types their guess (from the question on): their phone only.
   await ann.getByLabel(/Your answer/).waitFor();
   assert(!(await bob.getByLabel(/Your answer/).isVisible()), 'the guesser’s phone has a ✍ box for their guess, the describer’s none');
@@ -182,15 +244,24 @@ try {
   await ann.locator('#answer-state').getByText('✔ Sent').waitFor();
   const guessLine = panel.locator('[data-partner-guess]');
   await guessLine.waitFor();
-  assert((await guessLine.innerText()).includes('Player 1 sent a guess') && !(await panel.innerText()).includes('Shrek-ish'), 'the host hears the guess: in one window, that it came, never the words before the answer is up');
+  assert(
+    (await guessLine.innerText()).includes('Player 1 sent a guess') && !(await panel.innerText()).includes('Shrek-ish'),
+    'the host hears the guess: in one window, that it came, never the words before the answer is up',
+  );
   assert(!(await bob.locator('body').innerText()).includes('Card-only-zz'), 'the describer’s phone has no card yet');
 
   // ---------- ⇡ Get it ready: the picture goes up, and no phone gets anything ----------
   await panel.getByRole('button', { name: '⇡ Get it ready now' }).click();
   assert(await until(() => uploads.length === 1), 'the picture goes up to the buzzer room (one upload)');
-  assert(await until(async () => (await panel.locator('[data-partner-files]').innerText()).includes('ready in the buzzer room')), 'the panel says it’s ready, counted (never named)');
+  assert(
+    await until(async () => (await panel.locator('[data-partner-files]').innerText()).includes('ready in the buzzer room')),
+    'the panel says it’s ready, counted (never named)',
+  );
   await sleep(300);
-  assert(!JSON.stringify(states).includes('"cards"') && !JSON.stringify(heard).includes('Card-only-zz'), 'got ready: still no card in the room’s state, nor on a phone');
+  assert(
+    !JSON.stringify(states).includes('"cards"') && !JSON.stringify(heard).includes('Card-only-zz'),
+    'got ready: still no card in the room’s state, nor on a phone',
+  );
 
   // ---------- 📤 Send and start (Enter, a moment after the question), and a double Enter that judges nothing ----------
   await sleep(1100);
@@ -198,8 +269,14 @@ try {
   await host.keyboard.press('Enter');
   await stageBoxIn(host).locator('.timer').waitFor();
   await toastsIn(host, { hasText: 'The cards just went out: press Enter again to give ✔ Got it' }).waitFor();
-  assert((await panel.locator('[data-judged]').count()) === 0, 'a double Enter on 📤 Send and start sends the cards and starts the clock, and its second Enter judges nothing (it says so)');
-  assert(await until(() => last()?.cards?.length === 1 && last().cards[0].media?.[0]?.file), 'the room’s state now holds the card, its picture as the room’s file');
+  assert(
+    (await panel.locator('[data-judged]').count()) === 0,
+    'a double Enter on 📤 Send and start sends the cards and starts the clock, and its second Enter judges nothing (it says so)',
+  );
+  assert(
+    await until(() => last()?.cards?.length === 1 && last().cards[0].media?.[0]?.file),
+    'the room’s state now holds the card, its picture as the room’s file',
+  );
   const sent = last().cards[0];
   assert(
     sent.to.length === 1 && sent.to[0].seat === last().seats[1].id && sent.text === 'Card-only-zz words' && sent.role === 'Describer' && /^pc:/.test(sent.id),
@@ -209,14 +286,20 @@ try {
   assert(uploads.length === 1, 'and nothing was uploaded again');
   assert(await until(() => heard.bob.some((m) => m.includes('Card-only-zz'))), 'the describer’s phone gets the card');
   const view = JSON.parse(heard.bob.filter((m) => m.includes('Card-only-zz')).at(-1)).view;
-  assert(view.cards.list[0].media[0].file === sent.media[0].file && !('to' in view.cards.list[0]), 'with its picture as a file to fetch, and never who else it went to');
+  assert(
+    view.cards.list[0].media[0].file === sent.media[0].file && !('to' in view.cards.list[0]),
+    'with its picture as a file to fetch, and never who else it went to',
+  );
   assert(!JSON.stringify(heard.ann).includes('Card-only-zz'), 'the guesser’s phone never gets it');
   assert((await panel.locator('[data-card="1"] [data-card-state]').innerText()).includes('sent'), 'its row says it’s sent');
   await host.screenshot({ path: 'test-results/partner-phones-sent.png' });
   // On the describer's phone: in the button's place, behind Tap to see.
   const cover = bob.getByRole('button', { name: 'Tap to see' });
   await cover.waitFor();
-  assert((await bob.locator('#buzz').isHidden()) && !(await bob.getByText('Card-only-zz words').isVisible()), 'the describer’s phone shows the card in the button’s place, covered');
+  assert(
+    (await bob.locator('#buzz').isHidden()) && !(await bob.getByText('Card-only-zz words').isVisible()),
+    'the describer’s phone shows the card in the button’s place, covered',
+  );
   await cover.tap();
   await bob.getByText('Card-only-zz words').waitFor();
   const pic = bob.locator('.card img');
@@ -224,14 +307,22 @@ try {
     const img = /** @type {HTMLImageElement | null} */ (document.querySelector('.card img'));
     return !!img && img.src.startsWith('blob:') && img.complete && img.naturalWidth === 640;
   });
-  assert((await pic.getAttribute('alt')) === 'Picture' && !(await bob.locator('body').innerText()).includes(PIC), 'tapped: its words and its picture, fetched from the room (never its file name)');
+  assert(
+    (await pic.getAttribute('alt')) === 'Picture' && !(await bob.locator('body').innerText()).includes(PIC),
+    'tapped: its words and its picture, fetched from the room (never its file name)',
+  );
   await bob.screenshot({ path: 'test-results/partner-phones-card.png' });
   assert(await until(async () => (await panel.locator('[data-card="1"] [data-card-state]').innerText()).includes('✓ seen')), 'the host’s row says ✓ seen');
-  assert(!(await ann.locator('.card').count()) && (await ann.getByLabel(/Your answer/).isVisible()), 'the guesser’s phone has no card, only its box for the guess');
+  assert(
+    !(await ann.locator('.card').count()) && (await ann.getByLabel(/Your answer/).isVisible()),
+    'the guesser’s phone has no card, only its box for the guess',
+  );
   await sleep(1100);
   await host.keyboard.press('Enter');
   assert(
-    (await says(bob, '✔ Got it! Player 2 +$400 · Player 1 +$200')) && last()?.status?.text === '✔ Got it! Player 2 +$400 · Player 1 +$200' && !last().status.seats,
+    (await says(bob, '✔ Got it! Player 2 +$400 · Player 1 +$200')) &&
+      last()?.status?.text === '✔ Got it! Player 2 +$400 · Player 1 +$200' &&
+      !last().status.seats,
     'judged: every phone says “✔ Got it! Player 2 +$400 · Player 1 +$200”',
   );
   assert(last()?.cards?.length === 1 && last().answers?.open === false, 'the card stays out after judging, and the guess box is locked');
@@ -241,7 +332,10 @@ try {
   await host.keyboard.press('Escape');
   assert(await says(ann, 'Your pick! Tell the host which clue'), 'back on the board, the phones are as before');
   assert(await until(() => !('cards' in (last() ?? {}))), 'and the room’s state has no card any more');
-  assert(await until(async () => !(await bob.locator('.card').count()) && (await bob.locator('#buzz').isVisible())), 'and the describer’s phone drops it, its button back');
+  assert(
+    await until(async () => !(await bob.locator('.card').count()) && (await bob.locator('#buzz').isVisible())),
+    'and the describer’s phone drops it, its button back',
+  );
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner clue phones E2E passed.');

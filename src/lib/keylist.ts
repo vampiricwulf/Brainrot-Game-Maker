@@ -58,7 +58,12 @@ const plain = (name: string): string =>
  * all shows whole), the groups with none left out. A row whose words name a renamed button is found by its old name
  * too, and says so (`was`).
  */
-export function filterKeys(groups: readonly KeyGroup[], filter: string, mac = false, renamed: readonly [string, string][] = RENAMED): { title: string; rows: KeyRow[] }[] {
+export function filterKeys(
+  groups: readonly KeyGroup[],
+  filter: string,
+  mac = false,
+  renamed: readonly [string, string][] = RENAMED,
+): { title: string; rows: KeyRow[] }[] {
   const words = filter.toLowerCase().split(/\s+/).filter(Boolean);
   const has = (t: string) => words.every((w) => t.includes(w));
   const out: { title: string; rows: KeyRow[] }[] = [];

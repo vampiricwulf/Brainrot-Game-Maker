@@ -86,7 +86,47 @@ async function exitGame() {
 
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { appFile, failureDir, failureShots, addClassicRounds, answerAsk, answerReplace, anyway, leaveAsks, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, openRules, exportHtml, quick, selectedWords, stepButton, assert, launchChromium, awardRowIn, boardIn, boardTilesIn, confirmStrip, finalControlsIn, hostPanelIn, inspectorIn, playerRowsIn, roundTabsIn, stageBoxIn, toastsIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  failureDir,
+  failureShots,
+  addClassicRounds,
+  answerAsk,
+  answerReplace,
+  anyway,
+  leaveAsks,
+  boxHasAction,
+  checkItem,
+  dragBy,
+  flowButton,
+  flowIs,
+  goOnCheck,
+  mainButton,
+  mainLabel,
+  nameGame,
+  noSelection,
+  notYet,
+  openGameFile,
+  openRules,
+  exportHtml,
+  quick,
+  selectedWords,
+  stepButton,
+  assert,
+  launchChromium,
+  awardRowIn,
+  boardIn,
+  boardTilesIn,
+  confirmStrip,
+  finalControlsIn,
+  hostPanelIn,
+  inspectorIn,
+  playerRowsIn,
+  roundTabsIn,
+  stageBoxIn,
+  toastsIn,
+  toolsRowIn,
+} from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -110,7 +150,11 @@ function bigPng(w, h) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(w, 0);
   ihdr.writeUInt32BE(h, 4);
-  ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
   const raw = Buffer.alloc((w * 3 + 1) * h);
   for (let y = 0; y < h; y++) {
     raw[y * (w * 3 + 1)] = 0;
@@ -121,27 +165,29 @@ function bigPng(w, h) {
       raw[o + 2] = Math.round((y / h) * 255);
     }
   }
-  return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    chunk('IHDR', ihdr),
-    chunk('IDAT', deflateSync(raw)),
-    chunk('IEND', Buffer.alloc(0)),
-  ]);
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
 function png() {
   // 2×2 red PNG
-  return Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR42mP8z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==',
-    'base64',
-  );
+  return Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR42mP8z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==', 'base64');
 }
 function wav(seconds) {
   const rate = 8000;
   const n = rate * seconds;
   const b = Buffer.alloc(44 + n);
-  b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVE', 8); b.write('fmt ', 12);
-  b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(rate, 24);
-  b.writeUInt32LE(rate, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write('data', 36); b.writeUInt32LE(n, 40);
+  b.write('RIFF', 0);
+  b.writeUInt32LE(36 + n, 4);
+  b.write('WAVE', 8);
+  b.write('fmt ', 12);
+  b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(1, 20);
+  b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(rate, 24);
+  b.writeUInt32LE(rate, 28);
+  b.writeUInt16LE(1, 32);
+  b.writeUInt16LE(8, 34);
+  b.write('data', 36);
+  b.writeUInt32LE(n, 40);
   for (let i = 0; i < n; i++) b[44 + i] = 128 + Math.round(40 * Math.sin((i / rate) * 2 * Math.PI * 440));
   return b;
 }
@@ -182,9 +228,14 @@ await page.getByRole('button', { name: /^More:/ }).click();
 await page.getByRole('menuitem', { name: 'ℹ About' }).click();
 const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
 const aboutText = await about.innerText();
-assert(/Version\s+\d+\.\d+\.\d+ \(single HTML file\)/.test(aboutText) && /Build\s+(\w{7}, )?\d{4}-\d\d-\d\d/.test(aboutText), 'About shows the version and build');
 assert(
-  aboutText.includes("kept in this browser's storage") && (await about.getByRole('button', { name: /Open folder/ }).count()) === 0 && (await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0,
+  /Version\s+\d+\.\d+\.\d+ \(single HTML file\)/.test(aboutText) && /Build\s+(\w{7}, )?\d{4}-\d\d-\d\d/.test(aboutText),
+  'About shows the version and build',
+);
+assert(
+  aboutText.includes("kept in this browser's storage") &&
+    (await about.getByRole('button', { name: /Open folder/ }).count()) === 0 &&
+    (await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0,
   'in a browser, About says the data stays in the browser (no folders, no desktop notice)',
 );
 {
@@ -309,13 +360,19 @@ await shot('1a-image-editor');
 assert((await ie.locator('header .hint').first().innerText()).includes('100×100'), 'image editor output is 100×100 after rotate + 1:1 crop');
 await ie.getByRole('button', { name: 'Apply' }).click();
 await ie.waitFor({ state: 'detached' });
-const dims = await page.locator('.canvas img').first().evaluate((i) => new Promise((res) => (i.complete ? res([i.naturalWidth, i.naturalHeight]) : (i.onload = () => res([i.naturalWidth, i.naturalHeight])))));
+const dims = await page
+  .locator('.canvas img')
+  .first()
+  .evaluate((i) => new Promise((res) => (i.complete ? res([i.naturalWidth, i.naturalHeight]) : (i.onload = () => res([i.naturalWidth, i.naturalHeight])))));
 assert(dims[0] === 100 && dims[1] === 100, `edited image replaces the original on the slide (${dims.join('×')})`);
 // Double-clicking the image on the slide reopens the image editor.
 const center = (b) => [b.x + b.width / 2, b.y + b.height / 2];
 await page.mouse.dblclick(...center(await page.locator('.canvas img').first().boundingBox()));
 await ie.locator('.canvas-host canvas').waitFor();
-assert((await ie.locator('#ie-text').count()) === 0 && (await ie.getByRole('button', { name: 'Use original' }).count()) === 1, 'double-click reopens the edits non-destructively (original kept)');
+assert(
+  (await ie.locator('#ie-text').count()) === 0 && (await ie.getByRole('button', { name: 'Use original' }).count()) === 1,
+  'double-click reopens the edits non-destructively (original kept)',
+);
 // Esc inside the caption field only leaves the field; the edits are still there.
 await ie.getByRole('button', { name: '🅣 Text' }).click();
 await imgbox.click({ position: await at(0.3, 0.92) });
@@ -332,7 +389,10 @@ await page.mouse.down();
 await page.mouse.move(c0.x + c0.width / 2, c0.y + c0.height * 0.3, { steps: 4 });
 await page.mouse.up();
 const c1 = await cropBox();
-assert(c1.height < c0.height - 10 && Math.abs(c1.width / c1.height - 1) < 0.03, `1:1 crop: dragging the top edge shrinks the box and keeps it square (${Math.round(c1.width)}×${Math.round(c1.height)})`);
+assert(
+  c1.height < c0.height - 10 && Math.abs(c1.width / c1.height - 1) < 0.03,
+  `1:1 crop: dragging the top edge shrinks the box and keeps it square (${Math.round(c1.width)}×${Math.round(c1.height)})`,
+);
 await page.mouse.move(...center(await ie.locator('.ch.se').boundingBox()));
 await page.mouse.down();
 await page.mouse.move(c1.x + c1.width + 900, c1.y + c1.height + 40, { steps: 4 });
@@ -364,7 +424,10 @@ await discardAsk.getByRole('button', { name: 'Discard' }).click();
 await ie.waitFor({ state: 'detached' });
 assert(confirms.length === asked, 'Cancel with unsaved edits asks first, in the editor');
 assert(!(await leaveAsks(page)), 'and once they’re discarded, closing the tab asks nothing');
-const dims2 = await page.locator('.canvas img').first().evaluate((i) => [i.naturalWidth, i.naturalHeight]);
+const dims2 = await page
+  .locator('.canvas img')
+  .first()
+  .evaluate((i) => [i.naturalWidth, i.naturalHeight]);
 assert(dims2.join('×') === '100×100', 'cancelled edits leave the slide image as it was');
 await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
 [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
@@ -384,19 +447,32 @@ const hits = () => page.locator('.canvas .hit').count();
 const insp = inspectorIn(page);
 const rect = (loc) => loc.evaluate((e) => e.getBoundingClientRect().toJSON());
 // Laptop screens: the slide fits beside the inspector, fully on screen, never over the fields above it.
-for (const [w, h] of [[1280, 720], [1366, 768], [1536, 864]]) {
+for (const [w, h] of [
+  [1280, 720],
+  [1366, 768],
+  [1536, 864],
+]) {
   await page.setViewportSize({ width: w, height: h });
   await frames();
   const cv = await rect(page.locator('.canvas'));
   const notes = await rect(page.locator('.quick textarea').nth(2));
-  const onTop = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.quick') !== null, [notes.x + notes.width / 2, notes.y + notes.height / 2]);
-  assert(cv.bottom <= h && cv.top >= notes.bottom && onTop, `${w}×${h}: the slide canvas fits on screen and covers nothing (canvas ${Math.round(cv.top)}–${Math.round(cv.bottom)})`);
+  const onTop = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.closest('.quick') !== null,
+    [notes.x + notes.width / 2, notes.y + notes.height / 2],
+  );
+  assert(
+    cv.bottom <= h && cv.top >= notes.bottom && onTop,
+    `${w}×${h}: the slide canvas fits on screen and covers nothing (canvas ${Math.round(cv.top)}–${Math.round(cv.bottom)})`,
+  );
 }
 await page.setViewportSize({ width: 1400, height: 900 });
 await frames();
 // Double-click a text box: the cursor lands in its text field. Typing with the box selected goes there too.
 await page.mouse.dblclick(...center(await page.locator('.canvas .hit').first().boundingBox()));
-assert(await page.evaluate(() => document.activeElement === document.querySelector('.insp textarea')), 'double-clicking a text box puts the cursor in its text field');
+assert(
+  await page.evaluate(() => document.activeElement === document.querySelector('.insp textarea')),
+  'double-clicking a text box puts the cursor in its text field',
+);
 await page.locator('.canvas .hit').first().click();
 await page.keyboard.type('Typed');
 assert((await insp.locator('textarea').inputValue()) === 'Typed', 'typing with a text box selected edits its text');
@@ -414,9 +490,18 @@ const mainFit = () =>
   page.evaluate(() => {
     const t = document.querySelector('.canvas .text');
     const i = t.firstElementChild;
-    return { fits: i.scrollHeight <= t.clientHeight, lines: Math.round(i.scrollHeight / parseFloat(getComputedStyle(i).lineHeight)), size: parseFloat(t.style.fontSize) };
+    return {
+      fits: i.scrollHeight <= t.clientHeight,
+      lines: Math.round(i.scrollHeight / parseFloat(getComputedStyle(i).lineHeight)),
+      size: parseFloat(t.style.fontSize),
+    };
   });
-await page.locator('.quick textarea').first().fill('Which famous frog meme started life in a 2005 comic by Matt Furie, became a symbol of everything online, and then got its own documentary film about who owns a meme? Name it.');
+await page
+  .locator('.quick textarea')
+  .first()
+  .fill(
+    'Which famous frog meme started life in a 2005 comic by Matt Furie, became a symbol of everything online, and then got its own documentary film about who owns a meme? Name it.',
+  );
 let fit = await mainFit();
 assert(fit.fits && fit.size < 110, `a 180-character question shrinks to fit straight away (${fit.size}px)`);
 await page.locator('.canvas .hit').first().click();
@@ -443,7 +528,10 @@ await page.mouse.up();
 await page.keyboard.up('Shift');
 assert((await num('X')) > sx0 + 20 && (await num('Y')) === sy0, 'Shift pressed during a drag keeps the move on one axis');
 await page.keyboard.down('Shift');
-await page.locator('.canvas .hit').first().click({ position: { x: 20, y: 20 } });
+await page
+  .locator('.canvas .hit')
+  .first()
+  .click({ position: { x: 20, y: 20 } });
 from = center(await secondBox.boundingBox());
 await page.mouse.move(...from);
 await page.mouse.down();
@@ -475,7 +563,10 @@ await page.getByRole('button', { name: '▶ Preview' }).click();
 await page.keyboard.press('Backspace');
 assert((await insp.count()) === 0, 'the inspector hides while previewing');
 await page.keyboard.press('Escape');
-assert((await page.getByRole('button', { name: '▶ Preview' }).count()) === 1 && (await hits()) === 2, 'Esc stops the preview, and Backspace during it deleted nothing');
+assert(
+  (await page.getByRole('button', { name: '▶ Preview' }).count()) === 1 && (await hits()) === 2,
+  'Esc stops the preview, and Backspace during it deleted nothing',
+);
 
 // Esc closes what's open over the slide (the Shape menu, draw mode, the link box), not the clue editor.
 const clueOpen = async () => (await page.locator('[aria-label="Edit clue"]').count()) === 1;
@@ -483,14 +574,17 @@ const shapeBtn = page.getByRole('button', { name: '◼ Shape ▾' });
 await shapeBtn.click();
 await page.keyboard.press('Escape');
 assert(
-  (await page.getByRole('button', { name: '▭ Rectangle' }).count()) === 0 && (await clueOpen()) && (await shapeBtn.evaluate((b) => b === document.activeElement)),
+  (await page.getByRole('button', { name: '▭ Rectangle' }).count()) === 0 &&
+    (await clueOpen()) &&
+    (await shapeBtn.evaluate((b) => b === document.activeElement)),
   'Esc closes the Shape menu (focus goes back to its button), not the clue',
 );
 const shapeWidth = (await shapeBtn.boundingBox()).width;
 await shapeBtn.click();
 await page.getByRole('button', { name: '✏ Freehand line…' }).click();
 assert(
-  (await page.locator('.ribbon', { hasText: 'DRAWING' }).count()) === 1 && (await page.getByRole('button', { name: '■ Stop' }).boundingBox()).width === shapeWidth,
+  (await page.locator('.ribbon', { hasText: 'DRAWING' }).count()) === 1 &&
+    (await page.getByRole('button', { name: '■ Stop' }).boundingBox()).width === shapeWidth,
   "draw mode says so on the slide, and ■ Stop takes the Shape button's place at the same width (the toolbar doesn't move)",
 );
 // The line shows as it's drawn in the color it's saved with (it was yellow, then turned white on letting go).
@@ -519,11 +613,20 @@ await page.keyboard.press('e');
 await page.keyboard.press('Delete');
 assert((await page.getByRole('button', { name: '🧽 Eraser' }).getAttribute('aria-pressed')) === 'true', 'E in the drawpad picks its eraser');
 await page.keyboard.press('Escape');
-assert((await page.locator('[aria-label="Drawpad"]').count()) === 0 && (await hits()) === 2 && (await clueOpen()), 'keys in the drawpad stay there, and Esc closes just the drawpad');
+assert(
+  (await page.locator('[aria-label="Drawpad"]').count()) === 0 && (await hits()) === 2 && (await clueOpen()),
+  'keys in the drawpad stay there, and Esc closes just the drawpad',
+);
 
 // Preview plays sound: the audio clip and the video play unmuted, and stop with the preview.
 await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
-assert(await page.locator('.picker').getByLabel('Paste a link').evaluate((e) => e === document.activeElement), 'a picker opens with its link field ready for a paste');
+assert(
+  await page
+    .locator('.picker')
+    .getByLabel('Paste a link')
+    .evaluate((e) => e === document.activeElement),
+  'a picker opens with its link field ready for a paste',
+);
 await page.locator('.picker .item', { hasText: 'beep.wav' }).click();
 await page.getByRole('button', { name: '🎬 Video' }).click();
 [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
@@ -549,10 +652,19 @@ assert((await hits()) === 2, 'removed the audio and the video again');
 // A full-bleed image: its rotate handle stays on screen; locked, it can't be deleted; Alt+click reaches what's under it.
 await page.getByRole('button', { name: '🖼 Image' }).click();
 await page.locator('.picker .item', { hasText: 'pepe.png' }).click();
-for (const [k, v] of [['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]]) await posBox.getByLabel(k, { exact: true }).fill(String(v));
+for (const [k, v] of [
+  ['X', 0],
+  ['Y', 0],
+  ['W', 1920],
+  ['H', 1080],
+])
+  await posBox.getByLabel(k, { exact: true }).fill(String(v));
 const cvBox = await rect(page.locator('.canvas'));
 const rot = await rect(page.locator('.frame .rot'));
-assert(rot.top >= cvBox.top && rot.bottom <= cvBox.bottom && rot.left >= cvBox.left && rot.right <= cvBox.right, 'a full-bleed image keeps its rotate handle inside the canvas');
+assert(
+  rot.top >= cvBox.top && rot.bottom <= cvBox.bottom && rot.left >= cvBox.left && rot.right <= cvBox.right,
+  'a full-bleed image keeps its rotate handle inside the canvas',
+);
 // The handles are drawn above the image's own hit box, so each one (the knob inside the image, the
 // inner half of a resize handle) is what the pointer gets, even just off the slide on the pasteboard.
 const onTopAt = (sel, dx, dy) =>
@@ -578,7 +690,10 @@ await page.mouse.move(...knobAt);
 await page.mouse.down();
 await page.mouse.move(knobAt[0] + 150, knobAt[1] + 60, { steps: 5 });
 await page.mouse.up();
-assert((await num('Rotation°')) !== 0 && (await num('X')) === 0 && (await num('Y')) === 0, `dragging that handle rotates the image in place (${await num('Rotation°')}°)`);
+assert(
+  (await num('Rotation°')) !== 0 && (await num('X')) === 0 && (await num('Y')) === 0,
+  `dragging that handle rotates the image in place (${await num('Rotation°')}°)`,
+);
 await posBox.getByLabel('Rotation°').fill('0');
 await page.locator('.itembar').getByRole('button', { name: '🔒 Lock' }).click();
 // Clicks on the slide go through a locked item, so select it in the Layers list (its top row).
@@ -611,7 +726,10 @@ assert(/^Style applied to (9|10) slides/.test(styled), `"Questions + answers in 
 await page.locator('.notice').getByRole('button', { name: 'Undo' }).click();
 await page.getByRole('combobox', { name: 'Which slides get this style' }).selectOption('round-q');
 await insp.getByRole('button', { name: 'Apply' }).click();
-assert(confirms.length === confirmsBefore && (await page.locator('.notice').innerText()).includes('Style applied'), 'Use this style elsewhere restyles at once (no browser dialog), then offers Undo');
+assert(
+  confirms.length === confirmsBefore && (await page.locator('.notice').innerText()).includes('Style applied'),
+  'Use this style elsewhere restyles at once (no browser dialog), then offers Undo',
+);
 await page.locator('.notice').getByRole('button', { name: 'Undo' }).click();
 
 // Copy/paste: the copy lands offset, Ctrl+X cuts, newer text or a link on the clipboard wins.
@@ -623,13 +741,19 @@ assert((await hits()) === 4 && (await xNow()) === xCopied + 30, 'a pasted copy l
 await page.keyboard.press('Control+x');
 assert((await hits()) === 3 && (await page.locator('.notice').innerText()).startsWith('Cut '), 'Ctrl+X cuts the selected item (and says so)');
 const pasteText = (text, type = 'text/plain') =>
-  page.evaluate(([t, ty]) => {
-    const dt = new DataTransfer();
-    dt.setData(ty, t);
-    document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
-  }, [text, type]);
+  page.evaluate(
+    ([t, ty]) => {
+      const dt = new DataTransfer();
+      dt.setData(ty, t);
+      document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+    },
+    [text, type],
+  );
 await pasteText('Some newer words');
-assert((await hits()) === 4 && (await insp.locator('textarea').inputValue()) === 'Some newer words', 'text copied elsewhere since pastes as that text, not the old items');
+assert(
+  (await hits()) === 4 && (await insp.locator('textarea').inputValue()) === 'Some newer words',
+  'text copied elsewhere since pastes as that text, not the old items',
+);
 await pasteText('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 await page.locator('.canvas .card').waitFor();
 assert((await hits()) === 5, 'a pasted YouTube link becomes a YouTube element');
@@ -650,10 +774,13 @@ assert((await page.locator('.linkbox').count()) === 0, 'a link dropped from anot
 await page.getByRole('button', { name: '▶ Preview' }).click();
 assert(await page.getByRole('button', { name: '🅣 Text' }).isDisabled(), "the toolbar can't add items while previewing");
 const ytFrame = await rect(page.locator('.canvas iframe'));
-const ytHit = await page.evaluate(([x, y]) => {
-  const e = document.elementFromPoint(x, y);
-  return e ? `${e.tagName.toLowerCase()}.${[...e.classList].join('.')}` : 'nothing';
-}, [ytFrame.x + ytFrame.width * 0.75, ytFrame.y + ytFrame.height * 0.75]); // clear of the dropped image
+const ytHit = await page.evaluate(
+  ([x, y]) => {
+    const e = document.elementFromPoint(x, y);
+    return e ? `${e.tagName.toLowerCase()}.${[...e.classList].join('.')}` : 'nothing';
+  },
+  [ytFrame.x + ytFrame.width * 0.75, ytFrame.y + ytFrame.height * 0.75],
+); // clear of the dropped image
 assert(ytHit.startsWith('iframe'), `the YouTube embed can be clicked in the preview (${ytHit})`);
 const cvNow = await rect(page.locator('.canvas'));
 await page.mouse.click(cvNow.right - 4, cvNow.bottom - 4);
@@ -679,7 +806,10 @@ for (const n of [1, 2, 3]) {
   }
   await page.getByRole('tab', { name: /Answer/ }).click();
   await page.keyboard.press('Control+Enter');
-  assert((await page.getByRole('tab', { name: /Question/ }).getAttribute('aria-selected')) === 'true', `Ctrl+Enter moves to the next clue on its Question slide`);
+  assert(
+    (await page.getByRole('tab', { name: /Question/ }).getAttribute('aria-selected')) === 'true',
+    `Ctrl+Enter moves to the next clue on its Question slide`,
+  );
 }
 assert((await page.getByText('Click to type the question').count()) === 0, 'the empty-slide placeholder is gone once there is text');
 await page.getByRole('button', { name: 'Done' }).click();
@@ -687,9 +817,12 @@ await page.getByRole('button', { name: 'Done' }).click();
 // fast enough to do this inside the old 1.5 s window half the time, and the clue editor reopened over the board.)
 await page.getByRole('button', { name: '🎨 Theme' }).click();
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
-assert((await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0, 'a tab opened right after a redo doesn\'t reopen the redone clue');
+assert((await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0, "a tab opened right after a redo doesn't reopen the redone clue");
 const col6 = await Promise.all([5, 11, 17].map((i) => page.locator('.tile').nth(i).innerText()));
-assert(col6.every((t, i) => t.includes(`Q${i + 1} question`) && !t.includes('No answer')), 'three clues written from the keyboard show on the board with their answers');
+assert(
+  col6.every((t, i) => t.includes(`Q${i + 1} question`) && !t.includes('No answer')),
+  'three clues written from the keyboard show on the board with their answers',
+);
 
 // A second clue with a YouTube link (should fall back to "Open on YouTube" if it can't embed).
 await page.locator('.tile').nth(1).click();
@@ -725,7 +858,10 @@ await page.mouse.dblclick(...center(await finSe.locator('.canvas img').boundingB
 await ie.getByRole('button', { name: '😂 Sticker' }).click();
 await imgbox.click({ position: await at(0.5, 0.5) });
 await page.keyboard.press('Delete');
-assert((await ie.getByRole('button', { name: 'Delete sticker' }).count()) === 0 && (await finHits()) === 2, 'Delete in an image editor opened from the Final only removes the sticker');
+assert(
+  (await ie.getByRole('button', { name: 'Delete sticker' }).count()) === 0 && (await finHits()) === 2,
+  'Delete in an image editor opened from the Final only removes the sticker',
+);
 await ie.getByRole('button', { name: 'Cancel' }).click();
 await ie.waitFor({ state: 'detached' });
 await finSe.locator('.canvas .hit').last().click();
@@ -748,7 +884,9 @@ const previewing = await page.getByLabel('Preview', { exact: true }).evaluate((e
 assert(previewing.includes('Final'), `the theme preview starts on the round last open (${previewing})`);
 await page.getByLabel('Preview', { exact: true }).selectOption({ index: 0 });
 await boardIn(page.locator('.preview')).waitFor();
-const previewTile = await boardTilesIn(boardIn(page.locator('.preview'))).nth(1).evaluate((e) => getComputedStyle(e).backgroundColor);
+const previewTile = await boardTilesIn(boardIn(page.locator('.preview')))
+  .nth(1)
+  .evaluate((e) => getComputedStyle(e).backgroundColor);
 assert(previewTile === 'rgb(22, 0, 46)', `theme preview uses the neon tile color (${previewTile})`);
 await shot('2a-theme');
 
@@ -762,8 +900,14 @@ await segs.nth(3).getByRole('button', { name: 'Delete slice' }).click();
 await segs.nth(2).getByRole('button', { name: 'Delete slice' }).click();
 await segs.nth(0).locator('input.label').fill('Bankrupt');
 await segs.nth(0).locator('.w input').fill('100000');
-await segs.nth(0).getByRole('button', { name: /^▸ More/ }).click();
-await segs.nth(0).getByLabel(/Affects score/).check();
+await segs
+  .nth(0)
+  .getByRole('button', { name: /^▸ More/ })
+  .click();
+await segs
+  .nth(0)
+  .getByLabel(/Affects score/)
+  .check();
 await segs.nth(0).locator('.more select').selectOption('setScore');
 await segs.nth(1).locator('input.label').fill('Sing a song');
 assert((await segs.count()) === 2, 'wheel editor: slices added/removed, weights and score effect set');
@@ -794,7 +938,10 @@ assert(new Set(colors).size === 3, 'players got unique colors');
 await openRules(page);
 const floorBox = page.locator('[data-wager-floor]');
 const floorLine = floorBox.locator('xpath=following-sibling::span');
-assert((await floorBox.inputValue()) === '2000' && (await floorLine.innerText()) === '$2,000 for a player with less', 'the wager floor starts at 2000, said with the points symbol');
+assert(
+  (await floorBox.inputValue()) === '2000' && (await floorLine.innerText()) === '$2,000 for a player with less',
+  'the wager floor starts at 2000, said with the points symbol',
+);
 await floorBox.fill('500');
 await floorBox.press('Tab');
 assert((await floorLine.innerText()) === '$500 for a player with less', `set to 500, its line says $500 (${await floorLine.innerText()})`);
@@ -887,7 +1034,12 @@ assert(await playerRowsIn(page).nth(1).locator('button.right').isDisabled(), 'a 
 // One-click correct: awards the value and makes that player the picker. (Marked ✘ already: a switch, the ✘ taken back.)
 await playerRowsIn(page).nth(2).locator('button.right').click();
 assert((await scoreOf(2)) === '$200', 'quick ✔ after their ✘ switches the verdict: the clue value, the ✘ taken back');
-assert(await playerRowsIn(page).nth(2).evaluate((e) => e.classList.contains('picker')), 'the player marked right becomes the picker (★)');
+assert(
+  await playerRowsIn(page)
+    .nth(2)
+    .evaluate((e) => e.classList.contains('picker')),
+  'the player marked right becomes the picker (★)',
+);
 await page.keyboard.press('Control+z');
 assert((await scoreOf(2)) === '−$200', 'Ctrl+Z takes the quick ✔ back');
 assert((await toastsIn(page).innerText()).includes('Undid +$400 (Player 3, ✘ → ✔)'), 'the undo toast says what was undone');
@@ -926,13 +1078,18 @@ await page.locator('.full').waitFor();
 // Player 3 picked with no points (on this play of it): ＋ Award is green, never blue, and ▦ Done ▶ board (the blue button
 // once the answer shows) asks first, offering the points there; Not yet leaves the clue as it was.
 await page.keyboard.press('3');
-assert((await awardRowIn(page).locator('button.primary').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'someone picked: ＋ Award is green, the blue button is still 👁 Reveal answer');
+assert(
+  (await awardRowIn(page).locator('button.primary').count()) === 0 && (await flowIs(page, '👁 Reveal answer')),
+  'someone picked: ＋ Award is green, the blue button is still 👁 Reveal answer',
+);
 await page.keyboard.press('r');
 await page.getByText('Who is Pepe?').waitFor();
 await mainButton(page, '▦ Done ▶ board').click();
 await checkItem(page, 'picked').waitFor();
 assert(
-  (await goOnCheck(page).getAttribute('data-goon')) === 'loss' && (await quick(page, '＋ Award Player 3 $200 ▶ board').isVisible()) && (await quick(page, '＋ Award').evaluate((b) => !b.classList.contains('primary'))),
+  (await goOnCheck(page).getAttribute('data-goon')) === 'loss' &&
+    (await quick(page, '＋ Award Player 3 $200 ▶ board').isVisible()) &&
+    (await quick(page, '＋ Award').evaluate((b) => !b.classList.contains('primary'))),
   '▦ Done ▶ board with Player 3 picked and no points asks first: “Before you go on”, with ＋ Award Player 3 $200 ▶ board (green, not blue)',
 );
 await goOnCheck(page, { ready: true }).waitFor();
@@ -975,7 +1132,10 @@ assert((await isUsed(0)) && (await isUsed(1)), 'looking through the reopen menu 
 await page.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Memes $200');
 await page.keyboard.press('Enter');
 await page.waitForFunction(() => !document.querySelectorAll('.stage-box .board .tile')[0].classList.contains('used'));
-assert((await isUsed(1)) && (await tile(0).evaluate((b) => b === document.activeElement)), 'Enter puts the tile picked back, and only that one; the keys go to that tile (not ↶ Reopen a tile…)');
+assert(
+  (await isUsed(1)) && (await tile(0).evaluate((b) => b === document.activeElement)),
+  'Enter puts the tile picked back, and only that one; the keys go to that tile (not ↶ Reopen a tile…)',
+);
 await page.keyboard.press('1');
 assert((await playerRowsIn(page).nth(0).locator('.sel').getAttribute('aria-pressed')) === 'true', 'number keys work right after reopening from the menu');
 await page.keyboard.press('1');
@@ -1033,7 +1193,10 @@ await boardTilesIn(boardIn(page)).nth(2).click();
 await page.locator('.info .a').waitFor();
 assert((await page.locator('.info .a').innerText()) === '—', 'host info panel shows the answer slot');
 await aud.locator('.full').waitFor();
-assert((await page.getByText(/Click to type/).count()) + (await aud.getByText(/Click to type/).count()) === 0, "an empty slide shows no editor placeholder in play");
+assert(
+  (await page.getByText(/Click to type/).count()) + (await aud.getByText(/Click to type/).count()) === 0,
+  'an empty slide shows no editor placeholder in play',
+);
 await page.keyboard.press('1');
 await page.keyboard.press('Enter');
 await aud.getByText('+$200').waitFor();
@@ -1041,7 +1204,12 @@ assert(true, 'score pop shows in the audience window');
 await page.keyboard.press('Escape');
 await boardIn(aud).waitFor();
 await boardIn(aud).locator('.tile.used').nth(1).waitFor();
-assert(await boardTilesIn(boardIn(aud)).nth(2).evaluate((e) => e.classList.contains('used')), 'audience board shows the used tile');
+assert(
+  await boardTilesIn(boardIn(aud))
+    .nth(2)
+    .evaluate((e) => e.classList.contains('used')),
+  'audience board shows the used tile',
+);
 if (shots) await aud.screenshot({ path: `${shots}/6-audience.png` });
 if (shots) await page.screenshot({ path: `${shots}/7-host-dual.png` });
 // Closing it asks inline (a browser dialog would show on stream): Keep it, then Close it.
@@ -1065,19 +1233,39 @@ assert(true, 'wheel tile opens the wheel overlay');
 const toolBox = hostPanelIn(page).locator('[data-tool-controls]');
 // (Each button's words, then its key cap.)
 const toolBar = () =>
-  toolBox.locator('> .row').first().locator('button').evaluateAll((bs) =>
-    bs.map((b) => [[...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim(), b.querySelector('kbd')?.textContent].filter(Boolean).join(' ')),
-  );
+  toolBox
+    .locator('> .row')
+    .first()
+    .locator('button')
+    .evaluateAll((bs) =>
+      bs.map((b) =>
+        [
+          [...b.childNodes]
+            .filter((n) => n.nodeName !== 'KBD')
+            .map((n) => n.textContent)
+            .join('')
+            .trim(),
+          b.querySelector('kbd')?.textContent,
+        ]
+          .filter(Boolean)
+          .join(' '),
+      ),
+    );
 let bar = await toolBar();
 assert(
-  bar[0] === '🎡 Spin! W' && !bar.some((b) => b.includes('Close')) && (await flowIs(page, '▦ Done ▶ board')) && (await stepButton(toolBox, '🎡 Spin!').evaluate((b) => b.classList.contains('ring'))),
+  bar[0] === '🎡 Spin! W' &&
+    !bar.some((b) => b.includes('Close')) &&
+    (await flowIs(page, '▦ Done ▶ board')) &&
+    (await stepButton(toolBox, '🎡 Spin!').evaluate((b) => b.classList.contains('ring'))),
   `a wheel tile's box: Spin! first, ringed, no Close; the blue button is ▦ Done ▶ board (${bar.join(' | ')})`,
 );
 // The blue button before it's spun asks first: Spin! (W), or closing without it, the tile staying on the board.
 await mainButton(page, '▦ Done ▶ board').click();
 await checkItem(page, 'tool').waitFor();
 assert(
-  (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await quick(page, '🎡 Spin!').isVisible()) && (await anyway(page).innerText()).includes('Close without spinning (the tile stays on the board)'),
+  (await goOnCheck(page).getAttribute('data-goon')) === 'first' &&
+    (await quick(page, '🎡 Spin!').isVisible()) &&
+    (await anyway(page).innerText()).includes('Close without spinning (the tile stays on the board)'),
   'the blue button on a wheel tile not spun yet asks first (“First:”), with Spin! and a way to close it unspun',
 );
 await goOnCheck(page, { ready: true }).waitFor();
@@ -1156,7 +1344,10 @@ assert(
   'the limit holds by default: Ignore the limit unticked (Show question ▶ only on the blue button)',
 );
 // (Player 2 has $350: the game's wager floor, set to 500 in ⚖ Game rules, is their max.)
-assert((await page.locator('.dd .max').innerText()) === 'Max $500 (their score, or $500 if they have less)', `the box says the max and the rule, from the game's floor (${await page.locator('.dd .max').innerText()})`);
+assert(
+  (await page.locator('.dd .max').innerText()) === 'Max $500 (their score, or $500 if they have less)',
+  `the box says the max and the rule, from the game's floor (${await page.locator('.dd .max').innerText()})`,
+);
 // With the limit on, a wager over the cap stays: the blue button is never greyed; pressed, the keys stay in the Wager box
 // and the status line says why.
 assert(await mainButton(page, 'Show question ▶').isEnabled(), 'with the limit on, the blue Show question ▶ is still not greyed');
@@ -1167,7 +1358,7 @@ assert((await page.locator('.dd-text').count()) === 1, 'a wager over the cap wit
 await page.locator('.dd input[type=number]').fill('500');
 await mainButton(page, 'Show question ▶').click();
 await page.locator('.dd-badge').waitFor();
-assert(!(await page.locator('.dd-badge').innerText()).includes('500'), 'viewers don\'t see the Daily Double wager until the host shows it');
+assert(!(await page.locator('.dd-badge').innerText()).includes('500'), "viewers don't see the Daily Double wager until the host shows it");
 await page.getByRole('button', { name: 'Show wager' }).click();
 assert((await page.locator('.dd-badge').innerText()).includes('$500'), 'Show wager puts it on screen');
 assert((await awardRowIn(page).locator('input').inputValue()) === '500', 'wager prefilled as the amount');
@@ -1180,7 +1371,10 @@ await page.getByRole('dialog', { name: 'Players' }).waitFor({ state: 'detached' 
 await page.locator('.dd-badge').waitFor({ state: 'detached' });
 await page.keyboard.press('Control+z');
 await page.locator('.dd-badge', { hasText: 'Player 2' }).waitFor();
-assert((await playerRowsIn(page).locator('.sel[aria-pressed="true"]').allInnerTexts()).join().includes('Player 2'), 'the Daily Double’s player taken out and Ctrl+Z: theirs again, its badge on stream and them picked');
+assert(
+  (await playerRowsIn(page).locator('.sel[aria-pressed="true"]').allInnerTexts()).join().includes('Player 2'),
+  'the Daily Double’s player taken out and Ctrl+Z: theirs again, its badge on stream and them picked',
+);
 // (Past the second in which an Enter right after the question went up doesn't judge yet.)
 await page.waitForTimeout(1100);
 await page.keyboard.press('Enter');
@@ -1219,7 +1413,10 @@ await finalControlsIn(page).waitFor();
 // …and it can be undone: back to the board without a second round intro.
 await page.getByRole('button', { name: '◀ Previous round (Jeopardy!)' }).click();
 await boardIn(page).waitFor();
-assert((await page.locator('.round-name').count()) === 0 && (await boardIn(page).locator('.header .title').count()) === 6, 'back from Final shows the board again, no intro');
+assert(
+  (await page.locator('.round-name').count()) === 0 && (await boardIn(page).locator('.header .title').count()) === 6,
+  'back from Final shows the board again, no intro',
+);
 await page.waitForTimeout(450);
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
 await page.waitForTimeout(450);
@@ -1263,7 +1460,10 @@ await dragBy(page, rows.nth(1).locator('.grip'), { x: topRow.x + 40, y: topRow.y
 assert((await revealOrder()).join() === [...revealed].reverse().join(), 'a reveal row dragged above another moves up');
 // Each row shows the key that spotlights it: the player's number, as on the chips (not the row's place).
 const keyed = await rows.evaluateAll((els) => els.map((e) => [e.querySelector('.key')?.textContent, e.querySelector('.name')?.textContent]));
-assert(keyed.length === 2 && keyed.every(([k, name]) => name === `Player ${k}`) && keyed[0][0] === '2', `each reveal row shows its spotlight key, the player's number (${keyed.map((x) => x.join(' ')).join(', ')})`);
+assert(
+  keyed.length === 2 && keyed.every(([k, name]) => name === `Player ${k}`) && keyed[0][0] === '2',
+  `each reveal row shows its spotlight key, the player's number (${keyed.map((x) => x.join(' ')).join(', ')})`,
+);
 await finalControlsIn(page).locator('.pl .name').first().focus();
 await page.keyboard.press('Alt+ArrowDown');
 assert((await revealOrder()).join() === revealed.join(), 'Alt+↓ on its name moves it back down');
@@ -1278,7 +1478,10 @@ const finishMsg = await answerDialog(async () => {
 }, false);
 assert(finishMsg === '' && (await page.locator('.end h1').count()) === 0, 'Finish with a player unjudged asks first, inline (no browser dialog on stream)');
 await page.getByRole('button', { name: 'Keep judging' }).click();
-assert((await page.locator('.spot').count()) === 1 && (await page.getByRole('button', { name: 'Finish now…' }).isVisible()), 'Keep judging keeps the reveals going');
+assert(
+  (await page.locator('.spot').count()) === 1 && (await page.getByRole('button', { name: 'Finish now…' }).isVisible()),
+  'Keep judging keeps the reveals going',
+);
 // The spotlit row's Show wager is the blue button's now: its slot is left empty (the other rows keep theirs, out of turn).
 const spotWager = finalControlsIn(page).locator('.pl.cur button[aria-label^="Show wager"]');
 assert(
@@ -1343,7 +1546,8 @@ await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?
 await fixScore(2, '850');
 await hostPanelIn(page).locator('[data-tie]').getByText('Tie for first:').waitFor();
 assert(
-  (await page.locator('.end h1').innerText()).startsWith('Tie for first: Player 1 & Player 3') && !(await hostPanelIn(page).innerText()).includes('Co-winners declared'),
+  (await page.locator('.end h1').innerText()).startsWith('Tie for first: Player 1 & Player 3') &&
+    !(await hostPanelIn(page).innerText()).includes('Co-winners declared'),
   'co-winners declared for one tie don’t settle a different one (a score fixed since): it is open again',
 );
 await page.keyboard.press('Control+z');
@@ -1430,9 +1634,15 @@ await (await wheelMenu()).getByRole('button', { name: 'Edit Pick a player, then 
 const editBox = page.getByRole('group', { name: 'Edit this wheel' });
 await editBox.getByLabel('Include Player 1').uncheck();
 await editBox.getByLabel('Include Player 3').uncheck();
-assert((await sliceTexts()).join() === 'Player 2' && (await editBox.locator('.pct').allInnerTexts()).join() === '—,100%,—', 'unticking players takes them off the wheel, and the chances follow');
+assert(
+  (await sliceTexts()).join() === 'Player 2' && (await editBox.locator('.pct').allInnerTexts()).join() === '—,100%,—',
+  'unticking players takes them off the wheel, and the chances follow',
+);
 await stepButton(toolBox, '🎡 Spin!').click();
-await page.getByText('★ Player 2 picks the next clue.').or(page.getByRole('button', { name: '★ Make Player 2 the picker' })).waitFor({ timeout: 10000 });
+await page
+  .getByText('★ Player 2 picks the next clue.')
+  .or(page.getByRole('button', { name: '★ Make Player 2 the picker' }))
+  .waitFor({ timeout: 10000 });
 assert(true, 'the edited player wheel can only land on the players left on it');
 await page.keyboard.press('Escape');
 await (await wheelMenu()).getByRole('button', { name: '🎯 Pick a player' }).click();
@@ -1448,7 +1658,10 @@ assert((await sliceTexts()).length === punishment.length - 1, 'a saved wheel can
 await editBox.getByRole('button', { name: '💾 Save as new wheel…' }).click();
 // (Asked in the panel's way: Cancel first, the answer last.)
 const naming = editBox.getByRole('group', { name: 'Name for the new wheel' });
-assert((await naming.getByRole('button').allInnerTexts()).map((t) => t.trim()).join(' | ') === 'Cancel | 💾 Save', 'Save as new wheel… asks Cancel first, 💾 Save last');
+assert(
+  (await naming.getByRole('button').allInnerTexts()).map((t) => t.trim()).join(' | ') === 'Cancel | 💾 Save',
+  'Save as new wheel… asks Cancel first, 💾 Save last',
+);
 await editBox.getByRole('textbox', { name: 'Name for the new wheel' }).fill('Punishment lite');
 await answerAsk(editBox.getByRole('button', { name: '💾 Save', exact: true }));
 await page.getByRole('button', { name: '💾 Replace “Punishment lite”…' }).waitFor();
@@ -1468,7 +1681,10 @@ const overwriteMsg = await answerDialog(async () => {
   // Cancel first, with the keys (Enter there never replaces); Replace last, in red.
   await replaceAsk.waitFor();
   const words = (await replaceAsk.getByRole('button').allInnerTexts()).map((t) => t.trim());
-  assert(words.join(' | ') === 'Cancel | Replace' && (await replaceAsk.getByRole('button', { name: 'Cancel' }).evaluate((b) => b === document.activeElement)), `Replace asks Cancel first, with the keys (${words.join(' | ')})`);
+  assert(
+    words.join(' | ') === 'Cancel | Replace' && (await replaceAsk.getByRole('button', { name: 'Cancel' }).evaluate((b) => b === document.activeElement)),
+    `Replace asks Cancel first, with the keys (${words.join(' | ')})`,
+  );
   await answerAsk(replaceAsk.getByRole('button', { name: 'Replace', exact: true }));
 }, true);
 assert(overwriteMsg === '', 'Replace asks inline (no browser dialog on stream)');
@@ -1491,7 +1707,10 @@ await page.keyboard.press('Escape');
 await page.getByRole('button', { name: '📜 Log' }).click();
 await page.getByRole('button', { name: /Rolls \(/ }).click();
 const rollsText = await page.locator('aside .list').innerText();
-assert(rollsText.includes('goes first') && rollsText.includes('Punishment Wheel') && rollsText.includes('2d6') && rollsText.includes('Pick a player'), 'roll log lists the wheels, dice and roll-off');
+assert(
+  rollsText.includes('goes first') && rollsText.includes('Punishment Wheel') && rollsText.includes('2d6') && rollsText.includes('Pick a player'),
+  'roll log lists the wheels, dice and roll-off',
+);
 assert(rollsText.includes('For: Player 3'), 'roll log keeps the "who it was for" tag');
 await page.keyboard.press('Escape');
 await page.getByRole('button', { name: '📊 Scoreboard' }).click();
@@ -1515,9 +1734,7 @@ const pickerName = await page.evaluate(
 assert(pickerName === winnerName, `roll-off winner (${winnerName}) is the current picker (${pickerName})`);
 
 // Game over: share the standings, then a rematch with the same players.
-await page.evaluate(() =>
-  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => void (window.__copied = t) } }),
-);
+await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => void (window.__copied = t) } }));
 await page.getByRole('button', { name: '📋 Copy standings' }).click();
 const copied = await page.evaluate(() => window.__copied);
 assert(
@@ -1554,7 +1771,10 @@ await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
 const rematchNames = await page.locator('.pregame .player input.name').evaluateAll((els) => els.map((e) => e.value));
 // (Every start score at 0: the column is folded away behind ± Start scores.)
 const rematchStarts = await page.locator('.pregame .player input.score').count();
-assert(rematchNames.join() === 'Player 1,Player 2,Player 3' && rematchStarts === 0, 'Rematch goes to pre-game with the same players at 0 (start scores folded away)');
+assert(
+  rematchNames.join() === 'Player 1,Player 2,Player 3' && rematchStarts === 0,
+  'Rematch goes to pre-game with the same players at 0 (start scores folded away)',
+);
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.getByRole('button', { name: 'Skip intro' }).click();
 
@@ -1580,7 +1800,10 @@ assert((await chipNames())[2].includes('Player 3'), 'and dragged below the last 
 await page.getByRole('button', { name: 'Remove Player 3' }).click();
 const removeAsk = page.locator('.modal .ask');
 await removeAsk.waitFor();
-assert((await removeAsk.innerText()).startsWith('Remove Player 3 ($0)?') && (await playerRowsIn(page).count()) === 3, 'removing a player mid-game asks first (inline)');
+assert(
+  (await removeAsk.innerText()).startsWith('Remove Player 3 ($0)?') && (await playerRowsIn(page).count()) === 3,
+  'removing a player mid-game asks first (inline)',
+);
 await removeAsk.getByRole('button', { name: 'Remove', exact: true }).click();
 assert((await playerRowsIn(page).count()) === 2, 'the removed player leaves the host panel');
 await page.getByRole('button', { name: '↩ Restore' }).click();
@@ -1602,7 +1825,10 @@ assert((await page.getByRole('alertdialog').count()) === 0, 'Play with a saved g
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.getByRole('button', { name: 'Skip intro' }).click();
 await boardIn(page).waitFor();
-assert((await page.locator('.ov').count()) === 0 && (await page.locator('.timer').count()) === 0, "a new game doesn't inherit the last game's overlay or timer");
+assert(
+  (await page.locator('.ov').count()) === 0 && (await page.locator('.timer').count()) === 0,
+  "a new game doesn't inherit the last game's overlay or timer",
+);
 await tile(0).click();
 await page.locator('.full').waitFor();
 await page.keyboard.press('1');
@@ -1638,7 +1864,13 @@ await exitGame();
 // Pack round trip: save the pack, start a new game, open it again (named .jbr, the old extension, which still opens).
 await page.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
 // (Its first Save asks for a name: kept as "Untitled Game".)
-const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save', exact: true }).click().then(() => nameGame(page))]);
+const [dl] = await Promise.all([
+  page.waitForEvent('download'),
+  page
+    .getByRole('button', { name: 'Save', exact: true })
+    .click()
+    .then(() => nameGame(page)),
+]);
 assert(dl.suggestedFilename().endsWith('.brainrot'), 'Save downloads a .brainrot pack');
 const packPath = await dl.path();
 // Just saved, so New asks nothing; the game it replaces can be reopened.
@@ -1646,13 +1878,22 @@ await page.getByRole('button', { name: 'New' }).click();
 await page.getByRole('button', { name: '↶ Reopen previous game' }).waitFor();
 assert((await roundTabsIn(page).count()) === 0 && (await page.locator('.first-round').isVisible()), 'a new game starts with no rounds, on the first screen');
 // Its line for opening a game lists the one just replaced, under Recent.
-await page.locator('.first-round .open-line').getByRole('button', { name: / · \d+ rounds? · / }).waitFor();
+await page
+  .locator('.first-round .open-line')
+  .getByRole('button', { name: / · \d+ rounds? · / })
+  .waitFor();
 assert(true, 'the first screen’s Recent games list the game New replaced (title · rounds · when)');
 // The note stays while nothing is changed (its history has started by now)…
 await page.waitForTimeout(1000);
-assert((await page.getByRole('button', { name: '↶ Reopen previous game' }).count()) === 1, 'the “was replaced · ↶ Reopen previous game” note stays while the new game is unchanged');
+assert(
+  (await page.getByRole('button', { name: '↶ Reopen previous game' }).count()) === 1,
+  'the “was replaced · ↶ Reopen previous game” note stays while the new game is unchanged',
+);
 // The "Add your first round" screen, then a Final from the nav.
-await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
+await page
+  .locator('.first-round')
+  .getByRole('button', { name: /Jeopardy board/ })
+  .click();
 // …and goes with the first change to the new game (the game stays in Open… → Recent games).
 await page.locator('.data-notice', { hasText: 'was replaced' }).waitFor({ state: 'detached' });
 assert(true, 'the first change to the new game puts the “was replaced” note away');
@@ -1666,7 +1907,10 @@ await page.getByRole('button', { name: '▶ Play' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
 assert(await page.getByRole('button', { name: 'Start game ▶' }).isDisabled(), 'Start is disabled with no players');
 // (Worked out once the screen is up.)
-await page.locator('.actions [data-checks-pointer]').getByText(/to check/).waitFor();
+await page
+  .locator('.actions [data-checks-pointer]')
+  .getByText(/to check/)
+  .waitFor();
 assert(true, 'pre-game lists what is unfinished (✅ Before you start, the bar pointing to it)');
 assert((await page.locator('.checks li', { hasText: '1 Daily Double not placed yet' }).count()) === 1, 'pre-game flags the missing Daily Double');
 await page.locator('.checks li', { hasText: 'Daily Double not placed yet' }).getByRole('button', { name: '🎲 Place now' }).click();
@@ -1702,7 +1946,12 @@ assert((await page.locator('.card .missing').count()) === 0, 'media from the pac
 const discardMsg = await answerDialog(() => page.getByRole('button', { name: 'Discard' }).click(), true);
 assert(discardMsg.includes('Discard the saved game'), 'Discard asks before deleting the saved game');
 await page.getByRole('button', { name: 'Resume game' }).waitFor({ state: 'detached' });
-const playFocused = await page.waitForFunction(() => document.activeElement?.matches('.editor button.play'), null, { timeout: 5000 }).then(() => true, () => false);
+const playFocused = await page
+  .waitForFunction(() => document.activeElement?.matches('.editor button.play'), null, { timeout: 5000 })
+  .then(
+    () => true,
+    () => false,
+  );
 assert(playFocused, 'and the keys go on from ▶ Play');
 
 // Standalone player-only HTML export: opens straight into a Play screen with everything embedded.
@@ -1714,7 +1963,11 @@ await html.saveAs(exported);
 {
   // Not the maker's link preview, nor its no-JavaScript line (the file's own loading line says what to do).
   const text = (await import('node:fs')).readFileSync(exported, 'utf8');
-  assert(!/<meta [^>]*(og:|twitter:|name="description")|<noscript id="no-js"/.test(text) && /<div id="app"><style>[^<]*<\/style><div[^>]*><div>Loading the game…/.test(text), 'the exported file leaves out the site’s link preview and no-JavaScript line');
+  assert(
+    !/<meta [^>]*(og:|twitter:|name="description")|<noscript id="no-js"/.test(text) &&
+      /<div id="app"><style>[^<]*<\/style><div[^>]*><div>Loading the game…/.test(text),
+    'the exported file leaves out the site’s link preview and no-JavaScript line',
+  );
 }
 const player = await context.newPage();
 player.on('pageerror', (e) => errors.push('[exported] ' + e.message));
@@ -1726,12 +1979,18 @@ assert((await player.getByRole('button', { name: /Export HTML|Save/ }).count()) 
 await player.getByRole('button', { name: '▶ Play' }).click();
 await player.getByRole('button', { name: 'Start game ▶' }).waitFor();
 const rulesText = await player.evaluate(() => document.body.textContent);
-assert(rulesText.includes('start a timer any time with T') && !rulesText.includes('clue editor'), 'the exported file’s ⚖ Game rules don’t send the host to a clue editor it doesn’t have');
+assert(
+  rulesText.includes('start a timer any time with T') && !rulesText.includes('clue editor'),
+  'the exported file’s ⚖ Game rules don’t send the host to a clue editor it doesn’t have',
+);
 await player.getByRole('button', { name: 'Start game ▶' }).click();
 await player.getByRole('button', { name: 'Skip intro' }).click();
 await boardTilesIn(boardIn(player)).first().click();
 await player.locator('.full img').waitFor();
-const imgOk = await player.locator('.full img').first().evaluate((i) => new Promise((res) => (i.complete ? res(i.naturalWidth > 0) : (i.onload = () => res(true)))));
+const imgOk = await player
+  .locator('.full img')
+  .first()
+  .evaluate((i) => new Promise((res) => (i.complete ? res(i.naturalWidth > 0) : (i.onload = () => res(true)))));
 assert(imgOk, 'exported game plays with its embedded (edited) image');
 // Its 🎭 Deal… and 🤫 Send a card… don't send the host to an editor it doesn't have.
 const toolsRow = toolsRowIn(player);

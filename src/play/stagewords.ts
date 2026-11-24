@@ -16,8 +16,7 @@ function sentences(els: TextEl[]): string {
     .join(' ');
 }
 
-const readable = (slide: Slide): TextEl[] =>
-  slide.elements.filter((e): e is TextEl => e.kind === 'text' && !e.secret && e.opacity > 0 && !!e.text.trim());
+const readable = (slide: Slide): TextEl[] => slide.elements.filter((e): e is TextEl => e.kind === 'text' && !e.secret && e.opacity > 0 && !!e.text.trim());
 
 /** Seconds after the slide appears that a box comes in (its entrance's delay; 0 = with the slide). */
 const delayOf = (e: TextEl): number => Math.max(0, e.entrance?.delay ?? 0);
@@ -39,11 +38,7 @@ export function laterWords(slide: Slide): { after: number; words: string }[] {
  * answer, is another); null: none (no such slide up, it's hidden for now, or it has no words). A text box that
  * comes in later (an entrance delay) isn't in `words`: it's in `later`, to be said when viewers see it.
  */
-export function stageWords(
-  session: Session,
-  game: Game,
-  live: Live,
-): { key: string; words: string; later?: { after: number; words: string }[] } | null {
+export function stageWords(session: Session, game: Game, live: Live): { key: string; words: string; later?: { after: number; words: string }[] } | null {
   // (Anything over the stage hides its slide: a wheel, dice, a roll-off, the scores, a sheet, a shop, a pop-up.)
   if (live.pregame || live.cover || live.overlay) return null;
   // (A round's title card, over everything but a board's.)

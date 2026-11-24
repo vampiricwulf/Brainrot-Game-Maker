@@ -12,7 +12,23 @@
   import type { BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
   import BoardSpaceButtons from './BoardSpaceButtons.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
-  import { boardEdit, editAllNames, editBothWays, editConnect, editDelete, editDeleteAll, editDisconnect, editKeep, editPick, editPicked, editReverse, editShowName, editSpace, editStart, setEditing } from './boardedit.svelte';
+  import {
+    boardEdit,
+    editAllNames,
+    editBothWays,
+    editConnect,
+    editDelete,
+    editDeleteAll,
+    editDisconnect,
+    editKeep,
+    editPick,
+    editPicked,
+    editReverse,
+    editShowName,
+    editSpace,
+    editStart,
+    setEditing,
+  } from './boardedit.svelte';
   import { VERBS } from '../host/verbs';
 
   let { game, session, round, bs, dual }: { game: Game; session: Session; round: BoardGameRound; bs: BoardGameState; dual: boolean } = $props();
@@ -57,10 +73,13 @@
     <span class="muted small">
       {dual ? 'Viewers see the changes as you make them (not the dashed marks).' : 'Viewers see this: the board changes as you edit it, with its dashed marks.'}
       {dual ? 'Hidden names show dimmed, here only.' : 'Hidden names show dimmed while you edit (on the stage too), and go again when you’re done.'}
-      The changes last for this game only{app.playerOnly ? '' : ', unless you press 💾 Keep in game'}. Each one is a step: <span class="not-touch">Ctrl+Z</span><span class="touch-only">↶ Undo</span> takes it back.
+      The changes last for this game only{app.playerOnly ? '' : ', unless you press 💾 Keep in game'}. Each one is a step:
+      <span class="not-touch">Ctrl+Z</span><span class="touch-only">↶ Undo</span> takes it back.
     </span>
     <!-- Back to playing (the panel's main cell is empty while editing: no Next turn ▶ under the edits). -->
-    <button class="small done" onclick={() => setEditing(false)} title={VERBS.doneEditing.title}>{VERBS.doneEditing.label} <kbd aria-hidden="true">{VERBS.doneEditing.key}</kbd></button>
+    <button class="small done" onclick={() => setEditing(false)} title={VERBS.doneEditing.title}
+      >{VERBS.doneEditing.label} <kbd aria-hidden="true">{VERBS.doneEditing.key}</kbd></button
+    >
   </div>
   {#if bs.zoneShown}
     <div class="row">
@@ -69,26 +88,49 @@
     </div>
   {/if}
   <div class="row">
-    <button class="small" class:on={boardEdit.adding} aria-pressed={boardEdit.adding} onclick={() => (boardEdit.adding = !boardEdit.adding)} title="Then click the board where it goes">＋ Space</button>
+    <button
+      class="small"
+      class:on={boardEdit.adding}
+      aria-pressed={boardEdit.adding}
+      onclick={() => (boardEdit.adding = !boardEdit.adding)}
+      title="Then click the board where it goes">＋ Space</button
+    >
     <!-- (A touch screen has no Shift: this makes a tap on a space add it or leave it out, as Shift+click does.) -->
     <button
       class="small touch-only"
       class:on={boardEdit.several}
       aria-pressed={boardEdit.several}
       onclick={() => (boardEdit.several = !boardEdit.several)}
-      title="While it's on, a tap on a space adds it to the ones selected, or leaves it out (as Shift+click does)">{boardEdit.several ? '☑' : '☐'} Select several</button
+      title="While it's on, a tap on a space adds it to the ones selected, or leaves it out (as Shift+click does)"
+      >{boardEdit.several ? '☑' : '☐'} Select several</button
     >
     <span class="muted small">Names:</span>
-    <button class="small" data-names-all="show" disabled={round.spaces.every(nameShown)} onclick={() => editAllNames(game, session, true)} title="Viewers see every space's name">
+    <button
+      class="small"
+      data-names-all="show"
+      disabled={round.spaces.every(nameShown)}
+      onclick={() => editAllNames(game, session, true)}
+      title="Viewers see every space's name"
+    >
       Show all
     </button>
-    <button class="small" data-names-all="hide" disabled={!round.spaces.some(nameShown)} onclick={() => editAllNames(game, session, false)} title="Viewers see no space's name">
+    <button
+      class="small"
+      data-names-all="hide"
+      disabled={!round.spaces.some(nameShown)}
+      onclick={() => editAllNames(game, session, false)}
+      title="Viewers see no space's name"
+    >
       Hide all
     </button>
     <span class="spacer"></span>
     <!-- (An exported player-only file has no editor to keep it in.) -->
     {#if !app.playerOnly}
-      <button class="small" onclick={() => editKeep(game, session)} title="Copy this board as it is now (its spaces, links and buttons) into the game in the editor, so it's there next time">
+      <button
+        class="small"
+        onclick={() => editKeep(game, session)}
+        title="Copy this board as it is now (its spaces, links and buttons) into the game in the editor, so it's there next time"
+      >
         💾 Keep in game
       </button>
     {/if}
@@ -103,8 +145,14 @@
       {:else if boardEdit.several}
         Tap spaces to add them or leave them out · turn ☑ Select several off to drag them together
       {:else}
-        <span class="not-touch">Click a space or a link to pick it · drag a space to move it · Shift+click selects several · Alt+drag connects · Ctrl+click or double-click the board to add one · right-click for more</span>
-        <span class="touch-only">Tap a space or a link to pick it · drag a space to move it · ☐ Select several, then tap spaces · ＋ Space, then tap the board to add one · long-press for more</span>
+        <span class="not-touch"
+          >Click a space or a link to pick it · drag a space to move it · Shift+click selects several · Alt+drag connects · Ctrl+click or double-click the board
+          to add one · right-click for more</span
+        >
+        <span class="touch-only"
+          >Tap a space or a link to pick it · drag a space to move it · ☐ Select several, then tap spaces · ＋ Space, then tap the board to add one · long-press
+          for more</span
+        >
       {/if}
     </span>
   </div>
@@ -118,7 +166,11 @@
       <span class="muted small touch-only">With ☑ Select several on, a tap adds a space or leaves it out · turn it off, then drag one to move them all</span>
       <span class="spacer"></span>
       <button class="small" onclick={() => editPick(boardEdit.sel)} title="Keep only the space whose settings are below">Just this one</button>
-      <button class="ghost small danger" onclick={() => editDeleteAll(game, session, picked, hide)} title="Delete them (Ctrl+Z brings them back; players on them move to a space that stays)">🗑 Delete {picked.length} spaces</button>
+      <button
+        class="ghost small danger"
+        onclick={() => editDeleteAll(game, session, picked, hide)}
+        title="Delete them (Ctrl+Z brings them back; players on them move to a space that stays)">🗑 Delete {picked.length} spaces</button
+      >
     </div>
   {/if}
   {#if sel}
@@ -135,7 +187,14 @@
           onchange={(e) => {
             const v = e.currentTarget.value.trim();
             const was = s.name;
-            if (v && v !== was) editSpace(game, session, s.id, (h) => (h && unrevealed(bs, s) ? 'Renamed space “? (secret)”' : `Renamed space “${was}” to “${v}”`), (x) => (x.name = v));
+            if (v && v !== was)
+              editSpace(
+                game,
+                session,
+                s.id,
+                (h) => (h && unrevealed(bs, s) ? 'Renamed space “? (secret)”' : `Renamed space “${was}” to “${v}”`),
+                (x) => (x.name = v),
+              );
             else e.currentTarget.value = s.name;
           }}
           onkeydown={(e) => {
@@ -144,13 +203,27 @@
         />
       </label>
       {#if quiet(s)}
-        <button class="ghost tiny" aria-pressed={!masked} onclick={() => (shownFor = masked ? s.id : null)} title={masked ? 'Shows its name here (viewers see it too)' : 'Hide its name again'}
-          >{masked ? '👁 Show' : '🙈 Hide'}</button
+        <button
+          class="ghost tiny"
+          aria-pressed={!masked}
+          onclick={() => (shownFor = masked ? s.id : null)}
+          title={masked ? 'Shows its name here (viewers see it too)' : 'Hide its name again'}>{masked ? '👁 Show' : '🙈 Hide'}</button
         >
       {/if}
       <label class="small">
         Color
-        <ColorBox value={s.color} aria-label="Space color" onchange={(e) => editSpace(game, session, s.id, (h) => `Color of “${spaceSaid(bs, s, h)}”`, (x) => (x.color = e.currentTarget.value))} />
+        <ColorBox
+          value={s.color}
+          aria-label="Space color"
+          onchange={(e) =>
+            editSpace(
+              game,
+              session,
+              s.id,
+              (h) => `Color of “${spaceSaid(bs, s, h)}”`,
+              (x) => (x.color = e.currentTarget.value),
+            )}
+        />
       </label>
       <label class="check small">
         <input
@@ -160,7 +233,13 @@
             const on = e.currentTarget.checked;
             // (Its name stays out of a single window's step either way: it's, or it was, a secret not revealed yet.)
             const named = (h: boolean) => (h && !bs.revealed?.includes(s.id) ? '? (secret)' : s.name);
-            editSpace(game, session, s.id, (h) => `${on ? 'Secret' : 'Not secret'}: “${named(h)}”`, (x) => (x.secret = on || undefined));
+            editSpace(
+              game,
+              session,
+              s.id,
+              (h) => `${on ? 'Secret' : 'Not secret'}: “${named(h)}”`,
+              (x) => (x.secret = on || undefined),
+            );
           }}
         />
         Secret
@@ -177,25 +256,48 @@
         onchange={(e) => {
           const k = SPACE_KINDS.find((x) => x.kind === e.currentTarget.value);
           e.currentTarget.value = '';
-          if (k) editSpace(game, session, s.id, (h) => `Made “${spaceSaid(bs, s, h)}” a ${k.label.replace(/^\S+\s/, '')} space`, (x) => applySpaceKind(x, k.kind, { shop: game.shops?.[0]?.id, hp: numberStat(game, 'HP')?.id }));
+          if (k)
+            editSpace(
+              game,
+              session,
+              s.id,
+              (h) => `Made “${spaceSaid(bs, s, h)}” a ${k.label.replace(/^\S+\s/, '')} space`,
+              (x) => applySpaceKind(x, k.kind, { shop: game.shops?.[0]?.id, hp: numberStat(game, 'HP')?.id }),
+            );
         }}
       >
         <option value="">✨ Make it a…</option>
         {#each SPACE_KINDS as k (k.kind)}
-          <option value={k.kind} disabled={k.kind === 'shop' && !game.shops?.length} title={k.kind === 'shop' && !game.shops?.length ? 'The game has no shop yet (make one in 📊 Stats & Items)' : k.hint}>{k.label}</option>
+          <option
+            value={k.kind}
+            disabled={k.kind === 'shop' && !game.shops?.length}
+            title={k.kind === 'shop' && !game.shops?.length ? 'The game has no shop yet (make one in 📊 Stats & Items)' : k.hint}>{k.label}</option
+          >
         {/each}
       </select>
-      <button class="small" onclick={() => (boardEdit.buttons = s.id)} title="What it does when passed or landed on, and its host notes">⚙ Buttons ({(s.onPass?.length ?? 0) + (s.onLand?.length ?? 0)})…</button>
+      <button class="small" onclick={() => (boardEdit.buttons = s.id)} title="What it does when passed or landed on, and its host notes"
+        >⚙ Buttons ({(s.onPass?.length ?? 0) + (s.onLand?.length ?? 0)})…</button
+      >
       <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id)}>🏁 Make it the start</button>
       <span class="spacer"></span>
-      <button class="ghost small danger" onclick={() => editDelete(game, session, s.id, hide)} title="Delete (Ctrl+Z brings it back){here.length ? `: ${here.map((p) => p.name).join(', ')} move to the space before it` : ''}">🗑 Delete space</button>
+      <button
+        class="ghost small danger"
+        onclick={() => editDelete(game, session, s.id, hide)}
+        title="Delete (Ctrl+Z brings it back){here.length ? `: ${here.map((p) => p.name).join(', ')} move to the space before it` : ''}">🗑 Delete space</button
+      >
     </div>
     <div class="row">
       <span class="muted small">Leads to:</span>
       {#each s.next as n (n)}
         <span class="chip">
-          {spaceById(round, n)?.next.includes(s.id) ? '↔' : '→'} {name(n)}
-          <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: s.id, to: n })} aria-label="Disconnect {said(s)} from {name(n)}" title="Disconnect">✂</button>
+          {spaceById(round, n)?.next.includes(s.id) ? '↔' : '→'}
+          {name(n)}
+          <button
+            class="ghost tiny"
+            onclick={() => editDisconnect(game, session, { from: s.id, to: n })}
+            aria-label="Disconnect {said(s)} from {name(n)}"
+            title="Disconnect">✂</button
+          >
         </span>
       {:else}
         <span class="muted small">nothing (the path ends)</span>
@@ -205,11 +307,22 @@
         {#each into as f (f.id)}
           <span class="chip">
             ← {said(f)}
-            <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: f.id, to: s.id })} aria-label="Disconnect {said(f)} from {said(s)}" title="Disconnect">✂</button>
+            <button
+              class="ghost tiny"
+              onclick={() => editDisconnect(game, session, { from: f.id, to: s.id })}
+              aria-label="Disconnect {said(f)} from {said(s)}"
+              title="Disconnect">✂</button
+            >
           </span>
         {/each}
       {/if}
-      <button class="small" class:on={boardEdit.connecting} aria-pressed={boardEdit.connecting} onclick={() => (boardEdit.connecting = !boardEdit.connecting)} title="Then click the space it should lead to (or Alt+drag from it to that space on the stage)">🔗 Connect to…</button>
+      <button
+        class="small"
+        class:on={boardEdit.connecting}
+        aria-pressed={boardEdit.connecting}
+        onclick={() => (boardEdit.connecting = !boardEdit.connecting)}
+        title="Then click the space it should lead to (or Alt+drag from it to that space on the stage)">🔗 Connect to…</button
+      >
       <select
         class="small"
         aria-label="Connect {said(s)} to"
@@ -290,7 +403,9 @@
     margin-left: auto;
   }
   kbd {
-    font: 10px/1 ui-monospace, monospace;
+    font:
+      10px/1 ui-monospace,
+      monospace;
     padding: 1px 3px;
     margin-left: 3px;
     border: 1px solid currentColor;

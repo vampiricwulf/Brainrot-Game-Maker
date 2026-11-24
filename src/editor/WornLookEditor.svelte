@@ -98,12 +98,46 @@
         </label>
       {/if}
     </div>
-    <label class="slider">Left ↔ right<input type="range" min="-1.2" max="1.2" step="0.01" value={place.x} oninput={(e) => (w.x = +e.currentTarget.value)} aria-label="Left or right" /></label>
-    <label class="slider">Up ↕ down<input type="range" min="-1.2" max="1.2" step="0.01" value={place.y} oninput={(e) => (w.y = +e.currentTarget.value)} aria-label="Up or down" /></label>
-    <label class="slider">Size<input type="range" min="0.1" max="2.5" step="0.01" value={place.w} oninput={(e) => (w.w = +e.currentTarget.value)} aria-label="Size" /></label>
-    <label class="slider">Turn<input type="range" min="-180" max="180" step="1" value={place.rotate} oninput={(e) => (w.rotate = +e.currentTarget.value)} aria-label="Turn" /></label>
+    <label class="slider"
+      >Left ↔ right<input
+        type="range"
+        min="-1.2"
+        max="1.2"
+        step="0.01"
+        value={place.x}
+        oninput={(e) => (w.x = +e.currentTarget.value)}
+        aria-label="Left or right"
+      /></label
+    >
+    <label class="slider"
+      >Up ↕ down<input
+        type="range"
+        min="-1.2"
+        max="1.2"
+        step="0.01"
+        value={place.y}
+        oninput={(e) => (w.y = +e.currentTarget.value)}
+        aria-label="Up or down"
+      /></label
+    >
+    <label class="slider"
+      >Size<input type="range" min="0.1" max="2.5" step="0.01" value={place.w} oninput={(e) => (w.w = +e.currentTarget.value)} aria-label="Size" /></label
+    >
+    <label class="slider"
+      >Turn<input
+        type="range"
+        min="-180"
+        max="180"
+        step="1"
+        value={place.rotate}
+        oninput={(e) => (w.rotate = +e.currentTarget.value)}
+        aria-label="Turn"
+      /></label
+    >
     <div class="row">
-      <label class="check small"><input type="checkbox" checked={place.behind} onchange={(e) => (w.behind = e.currentTarget.checked || undefined)} /> Behind the avatar (a cape, wings)</label>
+      <label class="check small"
+        ><input type="checkbox" checked={place.behind} onchange={(e) => (w.behind = e.currentTarget.checked || undefined)} /> Behind the avatar (a cape, wings)</label
+      >
       <button class="ghost small" onclick={reset} title="Back to where {w.slot} items go">Reset position</button>
     </div>
   </div>
@@ -116,7 +150,8 @@
         <div class="pad-avatar" style:left="{SLIDE_W / 2}px" style:top="{SLIDE_H / 2}px">
           <AvatarToken player={sample} size={PAD_AVATAR} worn={[]} name={false} />
         </div>
-        <div class="pad-hint" style:left="{SLIDE_W / 2 + SLOT_PLACE[w.slot].x * PAD_AVATAR}px" style:top="{SLIDE_H / 2 + SLOT_PLACE[w.slot].y * PAD_AVATAR}px"></div>
+        <div class="pad-hint" style:left="{SLIDE_W / 2 + SLOT_PLACE[w.slot].x * PAD_AVATAR}px" style:top="{SLIDE_H / 2 + SLOT_PLACE[w.slot].y * PAD_AVATAR}px"
+        ></div>
       </Stage>
     {/snippet}
   </DrawPad>

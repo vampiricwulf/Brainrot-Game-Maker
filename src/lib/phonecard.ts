@@ -42,7 +42,9 @@ export function cardItems(game: Pick<Game, 'media'>, slide: Slide): CardItem[] {
       const name = own || (file ? nameFromUrl(e.url) : embedName(e.embedKind, e.url));
       const kind =
         e.embedKind === 'remoteImage'
-          ? isGif(name) || isGif(e.url.split(/[?#]/)[0]) ? 'gif' : 'picture'
+          ? isGif(name) || isGif(e.url.split(/[?#]/)[0])
+            ? 'gif'
+            : 'picture'
           : e.embedKind === 'remoteVideo'
             ? 'video'
             : e.embedKind === 'remoteAudio'
@@ -170,7 +172,8 @@ export function copyCovers(copy: NonNullable<MediaRef['phoneCopy']>, t: { start?
  */
 export function copyNote(kind: PhoneItem['kind'], o: { gifs: boolean; fixes: boolean; size: string; shape: string }): string {
   if (kind === 'gif' && o.gifs) return `📱 Phones get it as a small looping video (${o.size}).`;
-  if (kind === 'gif') return `📱 Phones get its smaller video instead (${o.size}, ${o.shape}): this buzzer server is older, so it plays as a video, not like the GIF.`;
+  if (kind === 'gif')
+    return `📱 Phones get its smaller video instead (${o.size}, ${o.shape}): this buzzer server is older, so it plays as a video, not like the GIF.`;
   return `📱 Phones get ${o.fixes ? 'a copy they can play instead' : 'its smaller copy instead'} (${o.size}, ${o.shape}).`;
 }
 

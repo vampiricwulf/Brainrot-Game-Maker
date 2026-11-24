@@ -94,8 +94,8 @@
         ? 'The buzzer room isn’t reachable right now: phones can’t buzz'
         : remote.status === 'off'
           ? 'No buzzer room: click to start one'
-          : 'Phone buzzers: who has joined'}
-  >{label}</button>
+          : 'Phone buzzers: who has joined'}>{label}</button
+  >
   {#if open}
     <div
       class="pop"

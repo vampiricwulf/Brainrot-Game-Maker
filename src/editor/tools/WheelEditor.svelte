@@ -37,7 +37,15 @@
     const from = test?.rotation ?? 0;
     const index = weightedIndex(segments.map((s: { weight: number }) => s.weight));
     const to = spinTarget(segments, index, from);
-    test = { kind: 'wheel', nonce: 'test', name: wheel.name, segments, rotation: to, spin: { from, to, startedAt: Date.now(), duration: wheel.spinDurationMs }, result: index };
+    test = {
+      kind: 'wheel',
+      nonce: 'test',
+      name: wheel.name,
+      segments,
+      rotation: to,
+      spin: { from, to, startedAt: Date.now(), duration: wheel.spinDurationMs },
+      result: index,
+    };
   }
 
   const name = (s: WheelSegment) => s.label.trim() || 'untitled';
@@ -166,7 +174,10 @@
           data-place="slice:{seg.id}"
           ondragover={(e) => rows.over(e, seg.id)}
           ondrop={(e) => {
-            const m = rows.drop(e, wheel.segments.map((x) => x.id));
+            const m = rows.drop(
+              e,
+              wheel.segments.map((x) => x.id),
+            );
             if (m) move(m.from, m.to);
           }}
           oncontextmenu={(e) => rowMenu(e, i)}
@@ -206,16 +217,25 @@
             />
           </label>
           <span class="pct muted">{pct[i]?.toFixed(0)}%</span>
-          <RowTools menu={() => rowItems(i)} name="slice {name(seg)}" remove={() => remove(i)} deleteLabel="Delete slice" off={wheel.segments.length <= 2 ? 'A wheel needs two slices' : undefined} />
+          <RowTools
+            menu={() => rowItems(i)}
+            name="slice {name(seg)}"
+            remove={() => remove(i)}
+            deleteLabel="Delete slice"
+            off={wheel.segments.length <= 2 ? 'A wheel needs two slices' : undefined}
+          />
         </div>
       {/each}
     </div>
     {#if blank.length}
       <p class="warn small" role="status">
-        ⚠ No label on slice{blank.length > 1 ? 's' : ''} {blank.join(', ')}: {blank.length > 1 ? 'they land' : 'it lands'} as {blank.map((n) => `“Slice ${n}”`).join(', ')}.
+        ⚠ No label on slice{blank.length > 1 ? 's' : ''}
+        {blank.join(', ')}: {blank.length > 1 ? 'they land' : 'it lands'} as {blank.map((n) => `“Slice ${n}”`).join(', ')}.
       </p>
     {/if}
-    <p class="muted small">Enter in a label adds the next slice · drag ⋮⋮ or Alt+↑/↓ to reorder · ⋯ for more (↻ Spin again, ⧉ Duplicate) · click a slice on the wheel to find it</p>
+    <p class="muted small"
+      >Enter in a label adds the next slice · drag ⋮⋮ or Alt+↑/↓ to reorder · ⋯ for more (↻ Spin again, ⧉ Duplicate) · click a slice on the wheel to find it</p
+    >
     <div class="row">
       <button onclick={() => wheel.segments.push(newSegment(`Option ${wheel.segments.length + 1}`, wheel.segments.length))}>＋ Add slice</button>
       <button
@@ -225,14 +245,19 @@
     </div>
     <details>
       <summary class="muted small">Add many at once (one per line)</summary>
-      <textarea rows="4" bind:value={paste} aria-label="Slices to add, one per line" placeholder={'Sing a song x3\nDo 10 push-ups\nSpeak in rhymes\n(x3 = three times as likely)'}></textarea>
+      <textarea
+        rows="4"
+        bind:value={paste}
+        aria-label="Slices to add, one per line"
+        placeholder={'Sing a song x3\nDo 10 push-ups\nSpeak in rhymes\n(x3 = three times as likely)'}></textarea>
       <button
         class="small"
         onclick={() => {
           // Like the quick wheel in play: "Sing a song x3" is a slice three times the size.
           for (const o of parseQuickWheel(paste)) wheel.segments.push({ ...newSegment(o.label, wheel.segments.length), weight: o.weight });
           paste = '';
-        }}>Add lines</button>
+        }}>Add lines</button
+      >
     </details>
   </div>
 
@@ -242,7 +267,11 @@
     <div class="preview" onclick={previewClick} title="Click a slice to find it in the list">
       <Stage>
         <div class="bg"></div>
-        <WheelView o={test ?? { kind: 'wheel', nonce: 'p', name: wheel.name, segments: wheel.segments, rotation: 0, spin: null, result: null }} game={app.game} role="mirror" />
+        <WheelView
+          o={test ?? { kind: 'wheel', nonce: 'p', name: wheel.name, segments: wheel.segments, rotation: 0, spin: null, result: null }}
+          game={app.game}
+          role="mirror"
+        />
       </Stage>
     </div>
     <button onclick={testSpin}>🎡 Test spin</button>

@@ -1,6 +1,22 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { boardRounds, cardSlides, categoryLabel, clueCardWords, isBoard, isBoardGame, isFinal, questionSlides, roundName, savedCardName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
+import {
+  boardRounds,
+  cardSlides,
+  categoryLabel,
+  clueCardWords,
+  isBoard,
+  isBoardGame,
+  isFinal,
+  questionSlides,
+  roundName,
+  savedCardName,
+  type Action,
+  type EmbedEl,
+  type Game,
+  type Outcome,
+  type Slide,
+} from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -95,7 +111,8 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
     const name = roundName(r, ri);
     out.push({ slide: r.slide, where: `${name} (board)` });
     for (const z of r.zones) out.push({ slide: z.slide, where: `${name} · ${z.name}` });
-    for (const sp of r.spaces) for (const s of actionSlides([...(sp.onPass ?? []), ...(sp.onLand ?? [])])) out.push({ slide: s, where: `${name} · ${sp.name}` });
+    for (const sp of r.spaces)
+      for (const s of actionSlides([...(sp.onPass ?? []), ...(sp.onLand ?? [])])) out.push({ slide: s, where: `${name} · ${sp.name}` });
   });
   for (const { name, outcome: o } of allOutcomes(game)) for (const s of actionSlides(o.actions)) out.push({ slide: s, where: `${name}: ${o.label}` });
   for (const it of game.items ?? []) for (const s of actionSlides(it.onUse)) out.push({ slide: s, where: `Item: ${it.name}` });
@@ -134,7 +151,8 @@ export function allCardSlides(game: Game): SlideRef[] {
     for (const m of w.maps)
       for (const sc of m.screens)
         for (const look of [{ name: '', slide: sc.slide }, ...(sc.variants ?? [])])
-          for (const el of look.slide.elements) sent(el.role?.actions, `${w.name} · ${m.name} · ${sc.name}${look.name ? ` (${look.name})` : ''} · ${el.name || 'object'}`);
+          for (const el of look.slide.elements)
+            sent(el.role?.actions, `${w.name} · ${m.name} · ${sc.name}${look.name ? ` (${look.name})` : ''} · ${el.name || 'object'}`);
   for (const { name, outcome: o } of allOutcomes(game)) sent(o.actions, `${name}: ${o.label}`);
   for (const it of game.items ?? []) sent(it.onUse, `Item: ${it.name}`);
   for (const d of game.deals ?? []) d.parts.forEach((p, i) => out.push({ slide: p.card, where: `Deal: ${d.name} (${p.name.trim() || `part ${i + 1}`})` }));
@@ -234,9 +252,7 @@ export function extraMediaRefs(game: Game): string[] {
 }
 
 export function allEmbeds(game: Game): { el: EmbedEl; where: string }[] {
-  return allSlides(game).flatMap(({ slide, where }) =>
-    slide.elements.flatMap((e) => (e.kind === 'embed' ? [{ el: e, where }] : [])),
-  );
+  return allSlides(game).flatMap(({ slide, where }) => slide.elements.flatMap((e) => (e.kind === 'embed' ? [{ el: e, where }] : [])));
 }
 
 /** How many things the game plays from the internet: the live-link files it uses, and online players. */

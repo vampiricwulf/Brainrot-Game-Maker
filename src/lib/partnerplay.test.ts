@@ -2,7 +2,19 @@
 // 🤫 card goes to, the session's guards (ownPlayers), the partner wheel and the phones' line.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { gameRules, newImageEl, newTextEl, PARTNER_GAMES, setSlideText, type BoardRound, type CardGoesTo, type ClueCard, type Game, type PartnerGame, type PartnerState } from './model';
+import {
+  gameRules,
+  newImageEl,
+  newTextEl,
+  PARTNER_GAMES,
+  setSlideText,
+  type BoardRound,
+  type CardGoesTo,
+  type ClueCard,
+  type Game,
+  type PartnerGame,
+  type PartnerState,
+} from './model';
 import {
   addCard,
   cardCopyText,
@@ -28,7 +40,18 @@ import {
 } from './partner';
 import { cardItems, cardLinks, cardWords } from './phonecard';
 import {
-  awardOpen, backToBoard, backToLastRound, goToRound, migrateSession, newSession, openClue, ownPlayers, rebaseSession, removePlayer, reveal, stepSlide,
+  awardOpen,
+  backToBoard,
+  backToLastRound,
+  goToRound,
+  migrateSession,
+  newSession,
+  openClue,
+  ownPlayers,
+  rebaseSession,
+  removePlayer,
+  reveal,
+  stepSlide,
 } from './session';
 import { buzzIdle, hostState, newBuzz, phoneStatus } from './buzz';
 import { newLive, overlayDoneAt } from './live';
@@ -255,13 +278,22 @@ describe('who gets each card', () => {
   });
 });
 
-const clueRules = () => ({ game: 'describe' as const, giver: 'partner' as const, got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true });
+const clueRules = () => ({
+  game: 'describe' as const,
+  giver: 'partner' as const,
+  got: { giver: 100, guesser: 50 },
+  missed: { giver: 0, guesser: -50 },
+  partnerSafe: true,
+});
 
 describe('what a card holds, counted and copied', () => {
   function withMedia() {
     const x = setup();
     const g: Game = x.g;
-    g.media.push({ id: 'm1', name: 'shrek.png', mime: 'image/png', size: 10, kind: 'image' }, { id: 'm2', name: 'dance.gif', mime: 'image/gif', size: 10, kind: 'image' });
+    g.media.push(
+      { id: 'm1', name: 'shrek.png', mime: 'image/png', size: 10, kind: 'image' },
+      { id: 'm2', name: 'dance.gif', mime: 'image/gif', size: 10, kind: 'image' },
+    );
     const card: ClueCard = x.card;
     const below = { ...newImageEl('m2'), y: 900, x: 10 };
     const above = { ...newImageEl('m1'), y: 100, x: 50 };
@@ -314,7 +346,23 @@ describe('what a card holds, counted and copied', () => {
   it('copies its words for who it’s for, with its links', () => {
     const { g, card } = withMedia();
     card.elements.push({ ...newTextEl(''), id: 'x' });
-    card.elements.push({ id: 'yt', kind: 'embed', url: 'https://youtu.be/abc', embedKind: 'youtube', x: 0, y: 950, w: 10, h: 10, rotation: 0, opacity: 1, zIndex: 1, autoplay: false, loop: false, muted: false, volume: 1 });
+    card.elements.push({
+      id: 'yt',
+      kind: 'embed',
+      url: 'https://youtu.be/abc',
+      embedKind: 'youtube',
+      x: 0,
+      y: 950,
+      w: 10,
+      h: 10,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 1,
+      autoplay: false,
+      loop: false,
+      muted: false,
+      volume: 1,
+    });
     expect(cardLinks(g, card)).toEqual(['https://youtu.be/abc']);
     expect(cardCopyText(g, card, 1, 'Movies $400', ['Bob'])).toBe('🤫 For Bob only (Movies $400, card 1): Shrek\nOgres are like onions\nhttps://youtu.be/abc');
     expect(cardCopyText(g, card, 2, 'Movies $400', ['Bob', 'Cat', 'Dan'])).toMatch(/^🤫 For Bob, Cat and Dan only \(Movies \$400, card 2\): /);
@@ -476,7 +524,11 @@ describe('the phones’ line (no card content, ever)', () => {
     const { g, session } = setup();
     openClue(session, REF, g);
     const s = session.partner!;
-    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann needs a partner…', seats: ['a'], seatsText: '🤝 Your partner clue! Your partner is being picked…' });
+    expect(phoneStatus(g, session)).toEqual({
+      text: '🤝 Partner clue: Ann needs a partner…',
+      seats: ['a'],
+      seatsText: '🤝 Your partner clue! Your partner is being picked…',
+    });
     setPartner(session, s, 'b', 'wheel');
     expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann + Bob', seats: ['a', 'b'], seatsText: '🤝 You two play this one!' });
     s.stage = 'distribute';

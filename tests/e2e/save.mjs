@@ -5,7 +5,25 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
-import { appFile, addClassicRounds, answerReplace, editorReady, exportHtml, openGameFile, playWithPlayers, png, failureShots, assert, launchChromium, boardIn, hostPanelIn, playerRowsIn, roundTabsIn, statusBarIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  answerReplace,
+  editorReady,
+  exportHtml,
+  openGameFile,
+  playWithPlayers,
+  png,
+  failureShots,
+  assert,
+  launchChromium,
+  boardIn,
+  hostPanelIn,
+  playerRowsIn,
+  roundTabsIn,
+  statusBarIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
@@ -43,7 +61,10 @@ try {
 
   // Copy B opens alongside: one tab edits at a time, so B waits, paused, until told to take over.
   const b = await open('B', false);
-  assert((await b.getByRole('heading', { name: 'This game is open in another tab' }).count()) === 1, 'a second tab opens paused (it never overwrites the first one’s draft)');
+  assert(
+    (await b.getByRole('heading', { name: 'This game is open in another tab' }).count()) === 1,
+    'a second tab opens paused (it never overwrites the first one’s draft)',
+  );
   await b.getByRole('button', { name: 'Edit here instead' }).click();
   await b.getByRole('button', { name: 'Media (2)' }).waitFor();
   await a.getByRole('button', { name: 'Edit here instead' }).waitFor();
@@ -60,7 +81,10 @@ try {
   assert(true, 'a paused tab says when the other tab has closed');
   await a.getByRole('button', { name: 'Edit here', exact: true }).click();
   await a.getByRole('button', { name: 'Open…' }).click();
-  await a.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: /^Untitled Game/ }).click();
+  await a
+    .getByRole('dialog', { name: 'Open a game' })
+    .getByRole('button', { name: /^Untitled Game/ })
+    .click();
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();
   assert(true, 'Open… → Recent games reopens the game the other tab replaced');
   await editorReady(a);
@@ -68,7 +92,10 @@ try {
   await a.waitForTimeout(1000);
   await a.reload();
   await a.getByRole('button', { name: 'Media (2)' }).click();
-  const loaded = await a.locator('.card img').first().evaluate((i) => new Promise((r) => (i.complete ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
+  const loaded = await a
+    .locator('.card img')
+    .first()
+    .evaluate((i) => new Promise((r) => (i.complete ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
   assert(loaded === 4, "another tab's New doesn't delete this tab's stored media");
 
   // Save: every file goes in the pack, nothing reported missing, the pack opens.
@@ -76,8 +103,14 @@ try {
   const [pack] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: 'Save', exact: true }).click()]);
   const zip = await JSZip.loadAsync(readFileSync(await pack.path()), { checkCRC32: true });
   const names = Object.keys(zip.files);
-  assert(names.includes('game.json') && names.filter((n) => n.startsWith('media/')).length === 2, `the pack has game.json and both files (${names.join(', ')})`);
-  assert((await zip.file(names.find((n) => n.endsWith('.mp3'))).async('uint8array')).length === 3 * 1024 * 1024, 'the sound is complete in the pack (checksums verified)');
+  assert(
+    names.includes('game.json') && names.filter((n) => n.startsWith('media/')).length === 2,
+    `the pack has game.json and both files (${names.join(', ')})`,
+  );
+  assert(
+    (await zip.file(names.find((n) => n.endsWith('.mp3'))).async('uint8array')).length === 3 * 1024 * 1024,
+    'the sound is complete in the pack (checksums verified)',
+  );
   assert(!dialogs.some((d) => /missing/i.test(d)), 'nothing reported missing');
   await a.getByRole('button', { name: 'Save', exact: true }).waitFor();
   assert(await a.getByRole('button', { name: 'Save', exact: true }).isEnabled(), 'the Save button is back when done');
@@ -94,7 +127,10 @@ try {
   const clueBox = a.getByRole('dialog', { name: 'Edit clue' });
   await clueBox.waitFor();
   const [fromClue] = await Promise.all([a.waitForEvent('download'), a.keyboard.press('Control+s')]);
-  assert(fromClue.suggestedFilename() === 'Two-tabs.brainrot' && (await clueBox.isVisible()), 'Ctrl+S in the clue editor saves the game, the clue editor stays open');
+  assert(
+    fromClue.suggestedFilename() === 'Two-tabs.brainrot' && (await clueBox.isVisible()),
+    'Ctrl+S in the clue editor saves the game, the clue editor stays open',
+  );
   await a.keyboard.press('Escape');
   await clueBox.waitFor({ state: 'hidden' });
   // (Unsaved changes again, for Open… to ask about below.)
@@ -120,7 +156,10 @@ try {
   assert(packs === 1, `a double click on ⬇ Download as .brainrot downloads the game pack once (${packs})`);
   await toastsIn(player, { hasText: '. To edit it, open it in Brainrot Games Maker.' }).waitFor();
   const getIt = await player.getByRole('link', { name: 'Get Brainrot Games Maker' }).getAttribute('href');
-  assert(getIt.endsWith('/Brainrot-Game-Maker/releases/latest'), 'it says to open the pack in Brainrot Games Maker, and the start screen links to where to get it');
+  assert(
+    getIt.endsWith('/Brainrot-Game-Maker/releases/latest'),
+    'it says to open the pack in Brainrot Games Maker, and the start screen links to where to get it',
+  );
   // Ctrl+S out of habit: not the browser's own Save page (a copy of the app, not the game).
   await player.keyboard.press('Control+s');
   await toastsIn(player, { hasText: 'This game keeps its progress in this browser by itself' }).waitFor();
@@ -160,7 +199,10 @@ try {
   await keepAndLeave();
   const resumeFocused = await player
     .waitForFunction(() => document.activeElement?.textContent?.trim() === 'Resume game', null, { timeout: 5000 })
-    .then(() => true, () => false);
+    .then(
+      () => true,
+      () => false,
+    );
   assert(resumeFocused, 'Keep & leave in the player file: the keys go on from Resume game');
   await player.getByRole('button', { name: 'Resume game' }).click();
   await player.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
@@ -206,13 +248,23 @@ try {
   sandboxed.on('pageerror', (e) => errors.push(`[sandboxed] ${e.message}`));
   const frameHost = resolve('test-results/save-sandboxed.html');
   const inFrame = async (src) => {
-    writeFileSync(frameHost, `<!doctype html><body style="margin:0"><iframe sandbox="allow-scripts" src="${src}" style="border:0;width:100vw;height:100vh"></iframe>`);
+    writeFileSync(
+      frameHost,
+      `<!doctype html><body style="margin:0"><iframe sandbox="allow-scripts" src="${src}" style="border:0;width:100vw;height:100vh"></iframe>`,
+    );
     await sandboxed.goto(pathToFileURL(frameHost).href);
     return sandboxed.frameLocator('iframe');
   };
   const sp = await inFrame(pathToFileURL(saved).href);
   await sp.getByRole('button', { name: '▶ Play' }).waitFor({ timeout: 20000 });
-  const refused = await sandboxed.frames()[1].evaluate(() => navigator.locks.request('probe', () => {}).then(() => 'granted', (e) => e.name));
+  const refused = await sandboxed.frames()[1].evaluate(() =>
+    navigator.locks
+      .request('probe', () => {})
+      .then(
+        () => 'granted',
+        (e) => e.name,
+      ),
+  );
   assert(
     refused === 'SecurityError' &&
       (await sp.getByText("This browser isn't saving progress here").count()) === 1 &&
@@ -238,10 +290,19 @@ try {
   // The picture is replaced by a bigger one after the save; then the saved (older) copy is opened.
   const picWidth = async (page = a) => {
     await page.getByRole('button', { name: /Media \(/ }).click();
-    return page.locator('.card img').first().evaluate((i) => new Promise((r) => (i.complete && i.naturalWidth ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
+    return page
+      .locator('.card img')
+      .first()
+      .evaluate((i) => new Promise((r) => (i.complete && i.naturalWidth ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
   };
   await a.getByRole('button', { name: /Media \(/ }).click();
-  const [swap] = await Promise.all([a.waitForEvent('filechooser'), a.locator('.card', { has: a.locator('img') }).getByRole('button', { name: 'Replace everywhere…' }).click()]);
+  const [swap] = await Promise.all([
+    a.waitForEvent('filechooser'),
+    a
+      .locator('.card', { has: a.locator('img') })
+      .getByRole('button', { name: 'Replace everywhere…' })
+      .click(),
+  ]);
   await swap.setFiles([{ name: 'pic.png', mimeType: 'image/png', buffer: png(0, 0, 255, 8, 8) }]);
   await a.waitForTimeout(800);
   assert((await picWidth()) === 8, 'the picture is replaced after the save');
@@ -258,7 +319,11 @@ try {
   assert((await picWidth()) === 4, 'the older copy opens with its own picture');
   // …and the newer game, reopened from Recent games, still has its own.
   await a.getByRole('button', { name: 'Open…' }).click();
-  await a.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: /Two tabs/ }).first().click();
+  await a
+    .getByRole('dialog', { name: 'Open a game' })
+    .getByRole('button', { name: /Two tabs/ })
+    .first()
+    .click();
   await a.getByText('Reopened “Two tabs”').waitFor();
   assert((await picWidth()) === 8, 'the newer game reopened from Recent games keeps its replaced picture');
   await a.waitForTimeout(800);
@@ -283,10 +348,19 @@ try {
   await versions.nth(1).click();
   await a.getByText('Reopened “Two tabs”').waitFor();
   assert((await picWidth()) === 8, 'the version with unsaved changes reopens with them');
-  await roundTabsIn(a).first().waitFor({ state: 'detached' }).catch(() => {});
+  await roundTabsIn(a)
+    .first()
+    .waitFor({ state: 'detached' })
+    .catch(() => {});
 
   // A .json export has no media: opened in another browser, the Media tab offers to put the files back.
-  const [json] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: /^More:/ }).click().then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click())]);
+  const [json] = await Promise.all([
+    a.waitForEvent('download'),
+    a
+      .getByRole('button', { name: /^More:/ })
+      .click()
+      .then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click()),
+  ]);
   const jsonPath = resolve('test-results/save-export.json');
   await json.saveAs(jsonPath);
   const fresh = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -300,21 +374,32 @@ try {
   assert((await c.getByRole('button', { name: '🔗 Replace file…' }).count()) === 2, 'each missing file offers 🔗 Replace file…');
   // Find missing files: matched by name (the sound only, for now).
   const [pickMany] = await Promise.all([c.waitForEvent('filechooser'), c.getByRole('button', { name: '🔗 Find missing files…' }).click()]);
-  await pickMany.setFiles([{ name: 'song.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(1000, 2) }, { name: 'other.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(10, 3) }]);
+  await pickMany.setFiles([
+    { name: 'song.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(1000, 2) },
+    { name: 'other.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(10, 3) },
+  ]);
   await c.getByText(/Reconnected 1 file\. Still missing: pic\.png/).waitFor();
-  assert((await c.getByText('1 file is missing from this browser').count()) === 1, 'Find missing files reconnects files by name and says what is still missing');
+  assert(
+    (await c.getByText('1 file is missing from this browser').count()) === 1,
+    'Find missing files reconnects files by name and says what is still missing',
+  );
   assert(
     (await c.getByText('Files stored with this game: 1 · 1000 B (1 more missing).').count()) === 1,
     'the stored-files count leaves out the missing one, and says it',
   );
   // One step, named for what it did: Undo takes the file out again, Redo puts it back.
-  await c.waitForFunction(() => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.startsWith('Undo: Reconnected 1 file '));
+  await c.waitForFunction(() =>
+    document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.startsWith('Undo: Reconnected 1 file '),
+  );
   await c.evaluate(() => document.activeElement?.blur?.());
   await c.keyboard.press('Control+z');
   await c.getByText('2 files are missing from this browser').waitFor();
   await c.keyboard.press('Control+y');
   await c.getByText('1 file is missing from this browser').waitFor();
-  assert((await c.locator('.card', { hasText: 'song.mp3' }).count()) === 1, 'reconnecting is one step "Reconnected 1 file" that Undo takes back (the file keeps its name)');
+  assert(
+    (await c.locator('.card', { hasText: 'song.mp3' }).count()) === 1,
+    'reconnecting is one step "Reconnected 1 file" that Undo takes back (the file keeps its name)',
+  );
   // ⬇ Export as a web page with a file still missing: one message says where the file went and what it plays without
   // (a toast under the missing files' window was cut to one line).
   // (A file to play needs a round.)
@@ -325,7 +410,9 @@ try {
   await exportTold.waitFor();
   const exportSaid = await exportTold.innerText();
   assert(
-    exportSaid.includes('Exported a play-only web page') && /missing and weren't included, so the game plays without them:\s*pic\.png/.test(exportSaid) && !(await toastsIn(c, { hasText: 'Exported a play-only' }).count()),
+    exportSaid.includes('Exported a play-only web page') &&
+      /missing and weren't included, so the game plays without them:\s*pic\.png/.test(exportSaid) &&
+      !(await toastsIn(c, { hasText: 'Exported a play-only' }).count()),
     `exported with a file missing: one message says where it went and which file it plays without (${exportSaid.replace(/\s+/g, ' ')})`,
   );
   await exportTold.getByRole('button', { name: 'OK' }).click();
@@ -350,7 +437,10 @@ try {
   const [right] = await Promise.all([c.waitForEvent('filechooser'), pic.getByRole('button', { name: '🔗 Replace file…' }).click()]);
   await right.setFiles([{ name: 'pic.png', mimeType: 'image/png', buffer: PNG }]);
   await c.locator('.missing-box').waitFor({ state: 'detached' });
-  assert((await c.locator('.card img').count()) === 1 && (await c.getByRole('button', { name: '🔗 Replace file…' }).count()) === 0, 'after Replace file… nothing is missing and the picture shows');
+  assert(
+    (await c.locator('.card img').count()) === 1 && (await c.getByRole('button', { name: '🔗 Replace file…' }).count()) === 0,
+    'after Replace file… nothing is missing and the picture shows',
+  );
   await fresh.close();
 
   // A game being played in a tab that another tab takes over: it's saved and left there (only one tab plays and saves
@@ -379,7 +469,10 @@ try {
   await asked.getByRole('button', { name: 'Leave it as it is' }).click();
   await asked.waitFor({ state: 'detached' });
   await p2.waitForTimeout(500);
-  assert((await takeOver.count()) === 1 && (await hostPanelIn(p1).count()) > 0, 'Stop that game and edit here asks first: Leave it as it is leaves the game playing');
+  assert(
+    (await takeOver.count()) === 1 && (await hostPanelIn(p1).count()) > 0,
+    'Stop that game and edit here asks first: Leave it as it is leaves the game playing',
+  );
   await takeOver.click();
   await asked.getByRole('button', { name: 'Edit here', exact: true }).click();
   await p2.getByRole('button', { name: 'Open…' }).waitFor();
@@ -473,7 +566,10 @@ try {
   await q.keyboard.press('Control+y');
   await q.waitForTimeout(300);
   const redone = await cat(1).inputValue();
-  assert(undone === 'Alpha,Category 2' && redone === 'Bravo', `and its undo history: Ctrl+Z takes back just the last change (${undone}), Ctrl+Y redoes it (${redone})`);
+  assert(
+    undone === 'Alpha,Category 2' && redone === 'Bravo',
+    `and its undo history: Ctrl+Z takes back just the last change (${undone}), Ctrl+Y redoes it (${redone})`,
+  );
   await q.waitForTimeout(1500); // the autosave catches up
   await q.reload();
   await q.getByRole('button', { name: 'Open…' }).waitFor();
@@ -481,7 +577,10 @@ try {
   await q.keyboard.press('Control+z');
   await q.waitForTimeout(300);
   await roundTabsIn(q).first().click();
-  assert((await cat(1).inputValue()) === 'Category 2' && (await cat(0).inputValue()) === 'Alpha', 'and after the next ordinary reload the history is still whole');
+  assert(
+    (await cat(1).inputValue()) === 'Category 2' && (await cat(0).inputValue()) === 'Alpha',
+    'and after the next ordinary reload the history is still whole',
+  );
   await quick.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

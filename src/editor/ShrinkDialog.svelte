@@ -204,7 +204,14 @@
     if (!play && madeIn) undoClosing(e, onclose);
   }
 
-  const phaseText = (p: string): string => (p === 'waiting' ? 'Waiting for the other file to finish…' : p === 'checking' ? 'Checking it plays…' : p === 'storing' ? 'Storing it in the game…' : 'Making it…');
+  const phaseText = (p: string): string =>
+    p === 'waiting'
+      ? 'Waiting for the other file to finish…'
+      : p === 'checking'
+        ? 'Checking it plays…'
+        : p === 'storing'
+          ? 'Storing it in the game…'
+          : 'Making it…';
   const madeRef = $derived(ended && 'done' in ended && ended.media ? game.media.find((m) => m.id === ended.media) : undefined);
   /** What it says once the copy is in: how big, and that phones get it, or (an encoder went over) that it's still too big. */
   const doneText = $derived.by(() => {
@@ -272,10 +279,14 @@
       {:else}
         <p class="muted">
           {many ? 'Phones get the copies; the show keeps the files as they are.' : 'Phones get the copy; the show keeps the file as it is.'}
-          {#if app.playerOnly}{many ? 'These copies are for this game only: the file can’t keep them.' : 'This copy is for this game only: the file can’t keep it.'}
+          {#if app.playerOnly}{many
+              ? 'These copies are for this game only: the file can’t keep them.'
+              : 'This copy is for this game only: the file can’t keep it.'}
           {:else if kept && app.pregame}Ctrl+Z takes {many ? 'them back, one at a time' : 'it back'}.{/if}
         </p>
-        <p class="warn" data-shrink-stutter>This works your computer hard for a minute or two; your stream may stutter. Best done in the editor before the show.</p>
+        <p class="warn" data-shrink-stutter
+          >This works your computer hard for a minute or two; your stream may stutter. Best done in the editor before the show.</p
+        >
       {/if}
       {#if cant}<p class="warn">{cant}</p>{/if}
       <ul class="rows">
@@ -286,11 +297,20 @@
             <li data-shrink-row={r.id}>
               <label>
                 {#if r.plan && !('refuse' in r.plan) && !r.job}
-                  <input type="checkbox" bind:checked={r.on} aria-label={secret ? `Make a copy of ${rowName(m)} (${formatBytes(m.size)})` : `Make a copy of ${m.name}`} />
+                  <input
+                    type="checkbox"
+                    bind:checked={r.on}
+                    aria-label={secret ? `Make a copy of ${rowName(m)} (${formatBytes(m.size)})` : `Make a copy of ${m.name}`}
+                  />
                 {/if}
-                <span>{ICON[m.kind]} {#if secret}{rowName(m)}{:else}<b>{m.name}</b>{/if} · {formatBytes(m.size)}</span>
+                <span
+                  >{ICON[m.kind]}
+                  {#if secret}{rowName(m)}{:else}<b>{m.name}</b>{/if} · {formatBytes(m.size)}</span
+                >
               </label>
-              {#if st}<div class={st.cls} role="status">{st.text}{#if st.pct}{' '}<span aria-hidden="true">{st.pct}</span>{/if}</div>
+              {#if st}<div class={st.cls} role="status"
+                  >{st.text}{#if st.pct}{' '}<span aria-hidden="true">{st.pct}</span>{/if}</div
+                >
               {:else if !r.plan}{#if !cant}<div class="muted">Reading the file…</div>{/if}
               {:else if 'refuse' in r.plan}<div class="warn">{r.plan.refuse}.</div>
               {:else}<div class="muted">→ {rowPlan(r.plan)}</div>{/if}
@@ -302,16 +322,24 @@
       <p>That file is no longer in the game.</p>
     {:else}
       <p class="what">
-        <b>{ref.name}</b> · {formatBytes(ref.size)}{#if info}{' '}· {lengthText(info.seconds)} · {info.width}×{info.height}{/if}{#if av?.facts.seconds}{' '}· {lengthText(av.facts.seconds)}{/if}{#if av?.facts.video}{' '}· {av.facts.video.width}×{av.facts.video.height}{/if}
+        <b>{ref.name}</b> · {formatBytes(ref.size)}{#if info}{' '}· {lengthText(info.seconds)} · {info.width}×{info.height}{/if}{#if av?.facts.seconds}{' '}· {lengthText(
+            av.facts.seconds,
+          )}{/if}{#if av?.facts.video}{' '}· {av.facts.video.width}×{av.facts.video.height}{/if}
       </p>
       <p class="muted">Phones get the copy; the show keeps this file as it is.</p>
       {#if av && !av.playable}<p class="muted">Phones can’t play this kind of file as it is: the copy is one they can.</p>{/if}
       {#if copy && copy.size > fileBytes}
         <p class="warn">
-          📱 Its copy ({formatBytes(copy.size)}) is too big for this buzzer server, which takes files up to {formatBytes(fileBytes)}{again ? ': making it again puts a smaller one in its place' : ''}.
+          📱 Its copy ({formatBytes(copy.size)}) is too big for this buzzer server, which takes files up to {formatBytes(fileBytes)}{again
+            ? ': making it again puts a smaller one in its place'
+            : ''}.
         </p>
       {:else if copy}
-        <p class="muted">📱 Phones get {ref && !phonesTake(ref) ? 'a copy they can play' : 'its smaller copy'} now ({formatBytes(copy.size)}){again ? ': making it again puts a new one in its place' : ''}.</p>
+        <p class="muted"
+          >📱 Phones get {ref && !phonesTake(ref) ? 'a copy they can play' : 'its smaller copy'} now ({formatBytes(copy.size)}){again
+            ? ': making it again puts a new one in its place'
+            : ''}.</p
+        >
       {/if}
 
       {#if job}
@@ -353,7 +381,10 @@
             <fieldset class="choices">
               <legend>How big a picture phones get</legend>
               {#each opts.choices as c, i (c.name)}
-                <label><input type="radio" name="shrink-size" checked={i === sel} onchange={() => (sel = i)} /> {c.name} · {c.width}×{c.height} · about {formatBytes(c.estimate)}</label>
+                <label
+                  ><input type="radio" name="shrink-size" checked={i === sel} onchange={() => (sel = i)} />
+                  {c.name} · {c.width}×{c.height} · about {formatBytes(c.estimate)}</label
+                >
               {/each}
             </fieldset>
           {:else if !('refuse' in avp)}
@@ -389,7 +420,9 @@
           <button class="primary" onclick={onclose}>Close</button>
         {:else}
           <button class="ghost" onclick={onclose}>Cancel</button>
-          <button class="primary" onclick={makeAll} disabled={reading || !picked.length || !!cant}>Make {picked.length === 1 ? 'a copy' : `${picked.length} copies`}</button>
+          <button class="primary" onclick={makeAll} disabled={reading || !picked.length || !!cant}
+            >Make {picked.length === 1 ? 'a copy' : `${picked.length} copies`}</button
+          >
         {/if}
       {:else if job}
         <button class="ghost" onclick={onclose} title="Close this window: it carries on (the header shows how far it got)">Keep working</button>
@@ -403,12 +436,7 @@
         <button class="primary" onclick={onclose}>Close</button>
       {:else}
         <button class="ghost" onclick={onclose}>Cancel</button>
-        <button
-          class="primary"
-          onclick={make}
-          disabled={!canMake}
-          >{copy ? 'Make it again' : ended && 'failed' in ended ? 'Try again' : 'Make it'}</button
-        >
+        <button class="primary" onclick={make} disabled={!canMake}>{copy ? 'Make it again' : ended && 'failed' in ended ? 'Try again' : 'Make it'}</button>
       {/if}
     </div>
   </div>

@@ -14,7 +14,7 @@ import { addSampleGame } from './samples';
 /** A seeded random: the same picks every run. */
 function seeded(seed = 7): () => number {
   let s = seed;
-  return () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
+  return () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
 }
 
 /** A board of 6 × 5 tiles, every one written ("Q c.r" / "A c.r"), no Daily Doubles placed. */
@@ -84,7 +84,8 @@ describe('🔀 Randomize (randomizePartnerTiles)', () => {
     for (let i = 0; i < 600; i++) {
       const { r } = board();
       randomizePartnerTiles(r, 6, seeded(i + 1));
-      for (const [ci, c] of r.categories.entries()) c.clues.forEach((cl, row) => cl.type === 'partner' && hits.set(`${ci}.${row}`, (hits.get(`${ci}.${row}`) ?? 0) + 1));
+      for (const [ci, c] of r.categories.entries())
+        c.clues.forEach((cl, row) => cl.type === 'partner' && hits.set(`${ci}.${row}`, (hits.get(`${ci}.${row}`) ?? 0) + 1));
     }
     // 30 tiles, one a category each time: each about 600 / 5 = 120 times.
     expect(hits.size).toBe(30);
@@ -293,15 +294,23 @@ describe('the checks', () => {
     expect(partnerTilesShort(r)).toBeNull();
     r.partnerCount = 2;
     expect(partnerTilesShort(r)).toEqual({ want: 2, placed: 0, most: 30 });
-    const texts = () => validate(g).filter((p) => p.tab === 0).map((p) => p.text);
+    const texts = () =>
+      validate(g)
+        .filter((p) => p.tab === 0)
+        .map((p) => p.text);
     expect(texts()).toContain('Jeopardy!: 2 partner clues not placed yet (Start game puts them on the board at random)');
     randomizePartnerTiles(r, 2, seeded());
     expect(partnerTilesShort(r)).toBeNull();
-    placePartner(r, r.categories.flatMap((c) => c.clues).find((cl) => cl.type === 'standard')!);
+    placePartner(
+      r,
+      r.categories.flatMap((c) => c.clues).find((cl) => cl.type === 'standard')!,
+    );
     expect(partnerTilesOver(r)).toEqual({ want: 2, placed: 3 });
     expect(texts()).toContain('Jeopardy!: 3 partner clues placed, but 🤝 Partner clues says 2 (all 3 play)');
     r.partnerCount = 40;
-    expect(texts()).toContain('Jeopardy!: 🤝 Partner clues says 40, but only 30 tiles have a written question and answer for one (partner clues never go on a Daily Double)');
+    expect(texts()).toContain(
+      'Jeopardy!: 🤝 Partner clues says 40, but only 30 tiles have a written question and answer for one (partner clues never go on a Daily Double)',
+    );
   });
 
   it('the checklist counts them as clues to write, not things to fix', () => {
@@ -452,7 +461,10 @@ describe('made by hand, Card 1 is a copy of the answer (as one placed at random)
     r.partnerCardFrom = 'answer';
     const cards = () => cardSlides(pasted).map((k) => [slideText(k), k.to, k.hint ?? '']);
     // Card 1 to the giver with its own phone line, Card 2 to the guesser with one: the copy goes on Card 1, all else stays.
-    c.cards = [{ ...newCard('giver'), hint: 'Read it to {guesser}' }, { ...newCard('guesser'), hint: 'Listen' }];
+    c.cards = [
+      { ...newCard('giver'), hint: 'Read it to {guesser}' },
+      { ...newCard('guesser'), hint: 'Listen' },
+    ];
     let pasted = copyClue(c);
     expect(pastedCardDue(r, pasted)).toBe(true);
     expect(pastedPartnerCard(r, pasted)).toBe(true);
@@ -485,7 +497,11 @@ describe('made by hand, Card 1 is a copy of the answer (as one placed at random)
     const c = r.categories[0].clues[1];
     setClueType(r, c, 'partner');
     const line = checklistLines(g, validate(g)).find((l) => l.round === r.id)!;
-    expect(line.answerCard).toEqual({ tab: 'round', round: r.id, part: { kind: 'clue', category: r.categories[0].id, clue: c.id, side: 'card', slide: c.cards![0].id } });
+    expect(line.answerCard).toEqual({
+      tab: 'round',
+      round: r.id,
+      part: { kind: 'clue', category: r.categories[0].id, clue: c.id, side: 'card', slide: c.cards![0].id },
+    });
     const hit = answerCardAt(g, line.answerCard!)!;
     expect([hit.card, hit.name]).toEqual([c.cards![0], `card 1 of ${r.categories[0].title} $${r.values[1]}`]);
     setSlideText(c.cards![0], 'Ogre');
@@ -500,7 +516,9 @@ describe('the lines beside the boxes, one shape', () => {
     expect(placedLine(0, 0, 0)).toBe('0 on the board');
     expect(placedLine(0, 6, 6, ['one a category, 6 at most', ''])).toBe('0 on the board · Start places 6 at random (one a category, 6 at most)');
     // Short of it with nothing more to place: why the rest can't go, never “all placed”.
-    expect(placedLine(0, 0, 3, ['on written tiles, 0 at most'], 'write a question and answer on more tiles first')).toBe('0 on the board · 3 can’t go yet: write a question and answer on more tiles first');
+    expect(placedLine(0, 0, 3, ['on written tiles, 0 at most'], 'write a question and answer on more tiles first')).toBe(
+      '0 on the board · 3 can’t go yet: write a question and answer on more tiles first',
+    );
     expect(placedLine(3, 0, 3, [], 'never said')).toBe('3 on the board · all placed');
   });
 

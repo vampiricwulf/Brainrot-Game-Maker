@@ -61,7 +61,13 @@ describe('copying an RPG screen into another game', () => {
     const a = newGame();
     const hp = newStatField('HP');
     const gold = { ...newStatField('Gold'), currency: true };
-    const potion: ItemDef = { id: newId(), name: 'Potion', icon: 'm2', stackable: true, onUse: [{ id: newId(), do: 'stat', field: hp.id, op: 'add', amount: 3 }] };
+    const potion: ItemDef = {
+      id: newId(),
+      name: 'Potion',
+      icon: 'm2',
+      stackable: true,
+      onUse: [{ id: newId(), do: 'stat', field: hp.id, op: 'add', amount: 3 }],
+    };
     const shop: Shop = { id: newId(), name: 'Shop', currency: gold.id, stock: [{ item: potion.id, qty: null }] };
     a.statFields = [newStatField('Unused'), hp, gold];
     a.items = [{ id: newId(), name: 'Sword', stackable: false }, potion];

@@ -68,8 +68,16 @@
   let cmpStat = $state<number | null>(null);
   // (A stat both have, and not HP when there's another: a fight compares Power, not health.)
   const shared = $derived(numberFields.filter((f) => npcStats.some((s) => s.name === f.name)));
-  const cf = $derived(numberFields.find((f) => f.id === cmpField) ?? shared.find((f) => !/^(hp|health|life|lives)$/i.test(f.name.trim())) ?? shared[0] ?? numberFields[0]);
-  const ns = $derived(cmpStat ?? Math.max(0, npcStats.findIndex((s) => s.name === cf?.name)));
+  const cf = $derived(
+    numberFields.find((f) => f.id === cmpField) ?? shared.find((f) => !/^(hp|health|life|lives)$/i.test(f.name.trim())) ?? shared[0] ?? numberFields[0],
+  );
+  const ns = $derived(
+    cmpStat ??
+      Math.max(
+        0,
+        npcStats.findIndex((s) => s.name === cf?.name),
+      ),
+  );
 
   /** Its buttons, in the order (and the words) its menu lists them too (one window: never naming a secret object they reveal). */
   const acts = $derived(objectActs(game, session, el.id, ctx, picked, !dual));
@@ -162,7 +170,8 @@
         {#each OBJECT_CLASSES as [v, l, hint] (v)}<option value={v} title={hint}>{l}</option>{/each}
       </select>
       {#if onedit}<button class="small" onclick={onedit} title="Move, resize, restyle, or give it actions and dialogue">✎ Edit</button>{/if}
-      {#if onkeep}<button class="small" onclick={onkeep} title="Save its screen, with this, in the game in the editor, so it's there next time">💾 Keep</button>{/if}
+      {#if onkeep}<button class="small" onclick={onkeep} title="Save its screen, with this, in the game in the editor, so it's there next time">💾 Keep</button
+        >{/if}
     </div>
     <div class="row who">
       <span class="muted small">For{picked ? '' : ' everyone here'}:</span>
@@ -229,7 +238,8 @@
             {@const pv = statNumber(game, session, id, cf)}
             {@const nv = npcStats[ns]?.value ?? 0}
             <span class="vs" class:win={pv > nv} class:lose={pv < nv}>
-              {session.players.find((p) => p.id === id)?.name} {pv} vs {nv}
+              {session.players.find((p) => p.id === id)?.name}
+              {pv} vs {nv}
             </span>
           {/each}
         {/if}
@@ -244,7 +254,9 @@
       <button class="small" onclick={() => setObjectShown(game, session, el.id, !seen)}>{seen ? '🙈 Hide from viewers' : '👁 Reveal to viewers'}</button>
     {/if}
     <button class="small ghost danger" onclick={take} title="Take it off the screen (Delete; Undo brings it back)">🗑 Remove</button>
-    <span class="muted small">Drag avatars on the stage to move them{role?.class === 'item' || role?.class === 'currency' ? ', or this onto one to pick it up' : ''}.</span>
+    <span class="muted small"
+      >Drag avatars on the stage to move them{role?.class === 'item' || role?.class === 'currency' ? ', or this onto one to pick it up' : ''}.</span
+    >
   </div>
 </div>
 

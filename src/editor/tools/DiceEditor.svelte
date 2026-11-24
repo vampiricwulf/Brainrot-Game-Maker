@@ -59,7 +59,11 @@
     return menuOf({
       heading: `Die ${i + 1} · ${d.count}d${d.sides}`,
       duplicate: menuItem.duplicate(() => dupDie(d, i), { label: '⧉ Duplicate die' }),
-      delete: menuItem.delete('die', () => removeDie(i), { disabled: preset.dice.length <= 1, keys: false, hint: preset.dice.length <= 1 ? 'Dice need a die' : undefined }),
+      delete: menuItem.delete('die', () => removeDie(i), {
+        disabled: preset.dice.length <= 1,
+        keys: false,
+        hint: preset.dice.length <= 1 ? 'Dice need a die' : undefined,
+      }),
     });
   }
   const dupDie = (d: Die, i: number) => step(`Duplicated a die of “${preset.name}”`, () => preset.dice.splice(i + 1, 0, copyDie(d)));
@@ -77,7 +81,8 @@
       delete: menuItem.delete('range', () => removeTotal(t, i), { keys: false }),
     });
   }
-  const dupTotal = (t: Total, i: number) => step(`Duplicated ${rangeName(t).toLowerCase()} of “${preset.name}”`, () => preset.totalOutcomes?.splice(i + 1, 0, copyTotal(t)));
+  const dupTotal = (t: Total, i: number) =>
+    step(`Duplicated ${rangeName(t).toLowerCase()} of “${preset.name}”`, () => preset.totalOutcomes?.splice(i + 1, 0, copyTotal(t)));
   function removeTotal(t: Total, i: number): void {
     step(`Deleted ${rangeName(t).toLowerCase()} of “${preset.name}”`, () => preset.totalOutcomes?.splice(i, 1), { notify: true });
   }
@@ -93,7 +98,13 @@
   <div class="left">
     <label class="field">Dice name<input bind:value={preset.name} /></label>
     {#each preset.dice as d, i (d.id)}
-      <div class="die" role="group" aria-label="Die {i + 1}" oncontextmenu={(e) => menuOn(e, () => dieItems(d, i))} use:rowKeys={{ duplicate: () => dupDie(d, i), menu: () => dieItems(d, i) }}>
+      <div
+        class="die"
+        role="group"
+        aria-label="Die {i + 1}"
+        oncontextmenu={(e) => menuOn(e, () => dieItems(d, i))}
+        use:rowKeys={{ duplicate: () => dupDie(d, i), menu: () => dieItems(d, i) }}
+      >
         <div class="row">
           <!-- Kept to what a die can be (1–20 of them, d2–d1000), and the box shows what was kept. -->
           <label class="check"
@@ -129,10 +140,22 @@
           <!-- (What it rolls, as players see it written.) -->
           <span class="muted roll" aria-hidden="true">{d.count}d{d.sides}</span>
           <label class="check" title="Give each side its own label, details or effect (up to 100 sides)">
-            <input type="checkbox" checked={!!d.customFaces} disabled={d.sides > 100 && !d.customFaces} onchange={(e) => setCustom(d, e.currentTarget.checked)} /> Custom faces
+            <input
+              type="checkbox"
+              checked={!!d.customFaces}
+              disabled={d.sides > 100 && !d.customFaces}
+              onchange={(e) => setCustom(d, e.currentTarget.checked)}
+            /> Custom faces
           </label>
           <span class="spacer"></span>
-          <RowTools menu={() => dieItems(d, i)} name="die {i + 1}" remove={() => removeDie(i)} deleteLabel="Delete die {i + 1}" deleteWords="Delete die" off={preset.dice.length <= 1 ? 'Dice need a die' : undefined} />
+          <RowTools
+            menu={() => dieItems(d, i)}
+            name="die {i + 1}"
+            remove={() => removeDie(i)}
+            deleteLabel="Delete die {i + 1}"
+            deleteWords="Delete die"
+            off={preset.dice.length <= 1 ? 'Dice need a die' : undefined}
+          />
         </div>
         {#if d.customFaces}
           <div class="faces">
@@ -144,7 +167,8 @@
           {@const faces = d.customFaces.length}
           <details class="fill">
             <summary class="muted small">Fill faces from a list (one per line)</summary>
-            <textarea rows="4" bind:value={pasted[d.id]} aria-label="Face labels, one per line" placeholder={'Take a sip\nPick a victim\nSing a song\n…'}></textarea>
+            <textarea rows="4" bind:value={pasted[d.id]} aria-label="Face labels, one per line" placeholder={'Take a sip\nPick a victim\nSing a song\n…'}
+            ></textarea>
             <div class="row">
               <button class="small" onclick={() => fill(d)} disabled={!lines.length}>
                 Fill {lines.length > 1 ? `faces 1–${Math.min(lines.length, faces)}` : 'face 1'}
@@ -152,7 +176,9 @@
               {#if lines.length >= 2 && lines.length !== d.sides && lines.length <= 100}
                 <button class="small" onclick={() => fill(d, true)}>Fill and make it a d{lines.length}</button>
               {/if}
-              {#if lines.length > faces}<span class="muted small">{lines.length - faces} line{lines.length - faces === 1 ? '' : 's'} more than it has sides</span>{/if}
+              {#if lines.length > faces}<span class="muted small"
+                  >{lines.length - faces} line{lines.length - faces === 1 ? '' : 's'} more than it has sides</span
+                >{/if}
             </div>
           </details>
         {/if}
@@ -166,7 +192,13 @@
     <h4>Outcomes by total (optional)</h4>
     <p class="muted small">e.g. 2–4 → "Take a sip", 12 → "Pick a victim". Anything, not just points.</p>
     {#each preset.totalOutcomes ?? [] as t, i (t.id)}
-      <div class="face" role="group" aria-label={rangeName(t)} oncontextmenu={(e) => menuOn(e, () => totalItems(t, i))} use:rowKeys={{ duplicate: () => dupTotal(t, i), menu: () => totalItems(t, i) }}>
+      <div
+        class="face"
+        role="group"
+        aria-label={rangeName(t)}
+        oncontextmenu={(e) => menuOn(e, () => totalItems(t, i))}
+        use:rowKeys={{ duplicate: () => dupTotal(t, i), menu: () => totalItems(t, i) }}
+      >
         <!-- From above To: they swap round (a range 9–4 is 4–9). -->
         <!-- (Emptied, a box keeps its number: a blank From would catch every total, a blank To none.) -->
         <input
@@ -191,7 +223,8 @@
         onclick={() => {
           preset.totalOutcomes ??= [];
           preset.totalOutcomes.push({ id: newId(), min: 1, max: 1, outcome: { label: '' } });
-        }}>＋ Add range</button>
+        }}>＋ Add range</button
+      >
     </div>
   </div>
   <div class="right">
@@ -199,7 +232,11 @@
       <Stage>
         <div class="bg"></div>
         <!-- Before a test roll: the dice waiting to be rolled, as viewers see them. -->
-        {#key test?.nonce}<DiceView o={test ?? { kind: 'dice', nonce: 'p', name: preset.name, preset, roll: null, startedAt: 0, duration: 0 }} game={app.game} role="mirror" />{/key}
+        {#key test?.nonce}<DiceView
+            o={test ?? { kind: 'dice', nonce: 'p', name: preset.name, preset, roll: null, startedAt: 0, duration: 0 }}
+            game={app.game}
+            role="mirror"
+          />{/key}
       </Stage>
     </div>
     <button onclick={testRoll}>🎲 Test roll</button>

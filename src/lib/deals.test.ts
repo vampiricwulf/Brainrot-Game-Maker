@@ -67,13 +67,28 @@ const NAMES = ['Ann', 'Bob', 'Cat', 'Dan', 'Eve', 'Fay'];
 /** Six players (a…f), a Locations wheel and a Prompts wheel. */
 function setup(n = 6) {
   const g = jeopardyGame();
-  g.players = NAMES.slice(0, n).map((name, i) => ({ id: name[0].toLowerCase(), name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4'][i] }));
-  const places = wheelFromTemplate(WHEEL_TEMPLATES.find((t) => t.key === 'locations')!, '$');
-  const prompts = wheelFromTemplate(WHEEL_TEMPLATES.find((t) => t.key === 'prompts')!, '$');
+  g.players = NAMES.slice(0, n).map((name, i) => ({
+    id: name[0].toLowerCase(),
+    name,
+    color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4'][i],
+  }));
+  const places = wheelFromTemplate(
+    WHEEL_TEMPLATES.find((t) => t.key === 'locations')!,
+    '$',
+  );
+  const prompts = wheelFromTemplate(
+    WHEEL_TEMPLATES.find((t) => t.key === 'prompts')!,
+    '$',
+  );
   g.wheels.push(places, prompts);
   const session = newSession(g);
   const pool: CardTo[] = session.players.map((p) => ({ seat: p.id }));
-  const tpl = (key: string, wheel?: string) => dealFromTemplate(DEAL_TEMPLATES.find((t) => t.key === key)!, undefined, wheel);
+  const tpl = (key: string, wheel?: string) =>
+    dealFromTemplate(
+      DEAL_TEMPLATES.find((t) => t.key === key)!,
+      undefined,
+      wheel,
+    );
   return { g, session, pool, places, prompts, tpl };
 }
 
@@ -194,7 +209,9 @@ describe('🎭 dealing: random, in the deal’s numbers, never two parts for one
     expect(dealProblem(g, tpl('spy'), pool)).toBe('Choose a wheel for Villager’s cards to draw from');
     // Picks count: two picked for "the rest" leave too few for a wolf and a seer.
     const roles = tpl('roles');
-    expect(dealProblem(g, roles, pool.slice(0, 3), { picks: { [roles.parts[2].id]: [{ seat: 'a' }, { seat: 'b' }] } })).toBe('The parts need 4 players: 3 are dealt in');
+    expect(dealProblem(g, roles, pool.slice(0, 3), { picks: { [roles.parts[2].id]: [{ seat: 'a' }, { seat: 'b' }] } })).toBe(
+      'The parts need 4 players: 3 are dealt in',
+    );
   });
 });
 
@@ -254,7 +271,10 @@ describe('🎡 cards drawn from a saved wheel', () => {
 
   it('more players than slices: each slice once before any comes again; Spin again is never drawn', () => {
     const { g, pool, tpl } = setup();
-    const w = wheelFromTemplate(WHEEL_TEMPLATES.find((t) => t.key === 'coin')!, '$');
+    const w = wheelFromTemplate(
+      WHEEL_TEMPLATES.find((t) => t.key === 'coin')!,
+      '$',
+    );
     w.segments.push({ id: 'again', label: 'Spin again', color: '#000000', weight: 5 });
     g.wheels.push(w);
     const deal = tpl('prompt', w.id);
@@ -283,7 +303,11 @@ describe('🎡 cards drawn from a saved wheel', () => {
     g.media.push({ id: 'pic', name: 'beach.png', mime: 'image/png', size: 100, kind: 'image' });
     const card = textSlide('The location:');
     const s = handSlide(g, card, { label: 'Beach', details: 'Sand, sea and sun', media: 'pic' });
-    expect(phoneCard(g, s, { fileBytes: FILE_BYTES, files: {} })).toMatchObject({ title: 'Beach', text: 'The location:\nSand, sea and sun', media: [{ kind: 'image', pending: true }] });
+    expect(phoneCard(g, s, { fileBytes: FILE_BYTES, files: {} })).toMatchObject({
+      title: 'Beach',
+      text: 'The location:\nSand, sea and sun',
+      media: [{ kind: 'image', pending: true }],
+    });
     setSlideText(card, 'changed');
     expect(phoneCard(g, s, { fileBytes: FILE_BYTES, files: {} }).text).toBe('The location:\nSand, sea and sun');
   });
@@ -302,7 +326,9 @@ describe('🎡 cards drawn from a saved wheel', () => {
     const picked = hands(dealHands(g, deal, [...red, ...blue], { perTeam: true, picks: { [deal.parts[0].id]: [red[2]] }, rand: seeded(1) }));
     expect(picked.find((x) => x.to.seat === 'a')!.to.member!.id).toBe('r3');
     expect(picked.find((x) => x.to.seat === 'b')).toBeTruthy();
-    expect(dealProblem(g, { ...deal, parts: [{ ...deal.parts[0], count: 3 }] }, [...red, ...blue], { perTeam: true })).toBe('The parts need 3 players on each team: 2 are dealt in');
+    expect(dealProblem(g, { ...deal, parts: [{ ...deal.parts[0], count: 3 }] }, [...red, ...blue], { perTeam: true })).toBe(
+      'The parts need 3 players on each team: 2 are dealt in',
+    );
   });
 });
 
@@ -403,7 +429,9 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     sendDeal(g, session, 'host', 1000);
     for (let i = 0; i < CARDS_MAX - 6; i++) sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide(`c${i}`) }, until: 'host' });
     expect(roomCardsFull(g, session)).toBe(true);
-    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, 6 of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…, or take back another one`);
+    expect(cardsFullText(g, session)).toBe(
+      `${CARDS_MAX} cards are out on the phones, 6 of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…, or take back another one`,
+    );
   });
 
   it('more cards out than the phones hold (shown in the 🪟 card window before the room took cards): one card’s refusal counts them all, and how many to take back', () => {
@@ -421,10 +449,14 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     // With the deal's out too: taking those back, or as many others.
     session.cards = session.cards!.slice(4);
     sendDeal(g, session, 'host', 1000);
-    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX + 2} cards are out on the phones, 6 of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…, or take back 3 others`);
+    expect(cardsFullText(g, session)).toBe(
+      `${CARDS_MAX + 2} cards are out on the phones, 6 of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…, or take back 3 others`,
+    );
     // More to go than the deal's: they aren't enough by themselves.
     quick(4);
-    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX + 6} cards are out on the phones, 6 of them the 🎭 deal’s: ↩ Take 7 back first (the deal’s go together, in 🎭 Deal…)`);
+    expect(cardsFullText(g, session)).toBe(
+      `${CARDS_MAX + 6} cards are out on the phones, 6 of them the 🎭 deal’s: ↩ Take 7 back first (the deal’s go together, in 🎭 Deal…)`,
+    );
   });
 
   it('a deal that wouldn’t fit: its refusal counts the cards out, what the deal adds, and how many to take back, sent or not', () => {
@@ -474,7 +506,9 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     sendCards(session, s, [pc.cards![0]], 2000);
     const next = (t: Session) => sendCards(t, t.partner!, [pc.cards![1]], 3000);
     expect(roomCardsFull(g, session, next)).toBe(true);
-    expect(cardsFullText(g, session, next)).toBe(`${CARDS_MAX} cards are out on the phones, 5 of them the 🎭 deal’s and 1 this partner clue’s: ↩ Take the cards back in 🎭 Deal…, or take back another one`);
+    expect(cardsFullText(g, session, next)).toBe(
+      `${CARDS_MAX} cards are out on the phones, 5 of them the 🎭 deal’s and 1 this partner clue’s: ↩ Take the cards back in 🎭 Deal…, or take back another one`,
+    );
     // The deal back, a second partner card out: the deal's refusal says where those are.
     takeBackDeal(g, session);
     sendCards(session, s, [pc.cards![1]], 3000);
@@ -496,7 +530,14 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     g.players = Array.from({ length: CARDS_MAX + 2 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, color: '#e6194b' }));
     const session = newSession(g);
     const deal = dealFromTemplate(DEAL_TEMPLATES.find((t) => t.key === 'roles')!);
-    const r = dealtOf(dealHands(g, deal, session.players.map((p) => ({ seat: p.id })), { rand: seeded(3) }));
+    const r = dealtOf(
+      dealHands(
+        g,
+        deal,
+        session.players.map((p) => ({ seat: p.id })),
+        { rand: seeded(3) },
+      ),
+    );
     startDeal(session, deal, r.hands, r.dealtIn, 500);
     expect(cardsLeftOff(g, session)).toEqual([]);
     const sent = sendDeal(g, session, 'host', 1000);
@@ -515,10 +556,19 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
       g.players = Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `P${i}`, color: '#e6194b' }));
       const session = newSession(g);
       // Quick cards first (to the 🪟 card window, say): the room counts them, so they're let through.
-      const quick = (n === CARDS_MAX ? [0, 1] : [0]).map((i) => sendCard(g, session, { to: [{ seat: 'p0' }], content: { slide: quickSlide(`q${i}`) }, until: 'host' }, 100 + i, roomCardsFull(g, session))!);
+      const quick = (n === CARDS_MAX ? [0, 1] : [0]).map((i) =>
+        sendCard(g, session, { to: [{ seat: 'p0' }], content: { slide: quickSlide(`q${i}`) }, until: 'host' }, 100 + i, roomCardsFull(g, session))!,
+      );
       expect(quick.every(Boolean)).toBe(true);
       const deal = dealFromTemplate(DEAL_TEMPLATES.find((t) => t.key === 'roles')!);
-      const r = dealtOf(dealHands(g, deal, session.players.map((p) => ({ seat: p.id })), { rand: seeded(3) }));
+      const r = dealtOf(
+        dealHands(
+          g,
+          deal,
+          session.players.map((p) => ({ seat: p.id })),
+          { rand: seeded(3) },
+        ),
+      );
       startDeal(session, deal, r.hands, r.dealtIn, 500);
       const sent = sendDeal(g, session, 'host', 1000);
       expect(sent).toHaveLength(n);
@@ -566,10 +616,19 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
 });
 
 describe('one window: the phones that came after the cards went are counted blind to parts', () => {
-  const phone = (seatId: string, connected = true, member?: string): PhoneInfo => ({ conn: `${seatId}${member ?? ''}`, seatId, connected, ...(member ? { member } : {}) });
+  const phone = (seatId: string, connected = true, member?: string): PhoneInfo => ({
+    conn: `${seatId}${member ?? ''}`,
+    seatId,
+    connected,
+    ...(member ? { member } : {}),
+  });
   /** The room's late list: the phones here sent one of the deal's cards before they came. */
   const lateFor = (g: Game, session: Session, here: PhoneInfo[]): CardLate[] =>
-    dealOut(g, session).flatMap((c) => here.filter((p) => p.connected && c.to.some((t) => t.seat === p.seatId && (!t.member || t.member.id === p.member))).map((p) => ({ id: sentCardId(c), seatId: p.seatId!, ...(p.member ? { member: p.member } : {}) })));
+    dealOut(g, session).flatMap((c) =>
+      here
+        .filter((p) => p.connected && c.to.some((t) => t.seat === p.seatId && (!t.member || t.member.id === p.member)))
+        .map((p) => ({ id: sentCardId(c), seatId: p.seatId!, ...(p.member ? { member: p.member } : {}) })),
+    );
   /** Team captain, no teams, three players (Ann, Bob, Cat): one of them captain, the others no part (no card). */
   const captainDeal = (captain: string) => {
     const { g, session, pool, tpl } = setup(3);
@@ -662,7 +721,10 @@ describe('one window: the phones that came after the cards went are counted blin
     expect(dealPhonesLate(d, [phone('a', true, 'm1'), phone('b', true, 'm2')])).toBe(1);
     // Each team's people dealt in: Mia and Max. Someone joining a team since isn't dealt in, and gets nothing.
     const per = setup(2);
-    const people = [{ seat: 'a', member: { id: 'm1', name: 'Mia' } }, { seat: 'b', member: { id: 'm2', name: 'Max' } }];
+    const people = [
+      { seat: 'a', member: { id: 'm1', name: 'Mia' } },
+      { seat: 'b', member: { id: 'm2', name: 'Max' } },
+    ];
     const pr = dealtOf(dealHands(per.g, deal, people, { perTeam: true }));
     const pd = startDeal(per.session, deal, pr.hands, pr.dealtIn, 500);
     sendDeal(per.g, per.session, 'host', 1000);

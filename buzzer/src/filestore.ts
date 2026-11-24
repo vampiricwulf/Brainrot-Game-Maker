@@ -127,7 +127,7 @@ interface Job {
 /** Reads the rest of an upload and throws it away (stopping after `max` bytes more). */
 async function drain(body: PieceSource, max: number): Promise<void> {
   try {
-    for (let n = 0; n <= max; ) {
+    for (let n = 0; n <= max;) {
       const piece = await body.next();
       if (!piece) return;
       n += piece.byteLength;

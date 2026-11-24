@@ -21,10 +21,7 @@ export const asks = $state<Ask[]>([]);
  * Asks a yes/no question: true for `ok`, false for `cancel` (also Esc and the ✕). `until`: once that's settled, the
  * question goes away by itself, answered false (it no longer matters).
  */
-export function ask(
-  text: string,
-  opts: { title?: string; ok?: string; cancel?: string; danger?: boolean; until?: Promise<unknown> } = {},
-): Promise<boolean> {
+export function ask(text: string, opts: { title?: string; ok?: string; cancel?: string; danger?: boolean; until?: Promise<unknown> } = {}): Promise<boolean> {
   return new Promise((resolve) => {
     const a: Ask = { text, title: opts.title, ok: opts.ok ?? 'OK', cancel: opts.cancel ?? 'Cancel', danger: opts.danger, answer: resolve };
     asks.push(a);

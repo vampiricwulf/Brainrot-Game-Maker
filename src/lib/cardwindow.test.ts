@@ -194,7 +194,10 @@ describe('the card window’s messages reach it alone', () => {
   afterAll(() => vi.unstubAllGlobals());
 
   /** Every message the viewers' windows and the channel got, as text (blobs as their size). */
-  const viewersGot = () => JSON.stringify([opened['jb-audience']?.msgs, opened['jb-audience-scores']?.msgs, FakeChannel.posted], (_k, v) => (v instanceof Blob ? `blob:${v.size}` : v));
+  const viewersGot = () =>
+    JSON.stringify([opened['jb-audience']?.msgs, opened['jb-audience-scores']?.msgs, FakeChannel.posted], (_k, v) =>
+      v instanceof Blob ? `blob:${v.size}` : v,
+    );
 
   it('the audience window, the channel and the scores window never get a card window message or what’s on a card', async () => {
     const sync = await import('./sync.svelte');
@@ -220,7 +223,11 @@ describe('the card window’s messages reach it alone', () => {
     feed(g, session);
     const win = opened['jb-cards'];
     const got = () => win.msgs.filter((m) => m.type === 'private-cards') as unknown as { cards: { text?: string }[] }[];
-    expect(got().at(-1)!.cards.map((c) => c.text)).toEqual(['TIP-xyzzy', 'SPY-plugh']);
+    expect(
+      got()
+        .at(-1)!
+        .cards.map((c) => c.text),
+    ).toEqual(['TIP-xyzzy', 'SPY-plugh']);
     const files = win.msgs.find((m) => m.type === 'private-files') as unknown as { items: { id: string; blob: Blob }[] };
     expect(files.items.map((i) => i.id)).toEqual(['m1']);
     // The same again isn't sent again; a change is.
@@ -234,9 +241,9 @@ describe('the card window’s messages reach it alone', () => {
     // A hello from any other window (the audience window, a page opened from a media link) gets nothing.
     for (const l of listeners.message) l({ source: opened['jb-audience'], data: { type: 'private-hello' } });
     sync.pushSession(session);
-    sync.pushLive({ ...((await import('./live')).newLive()) });
+    sync.pushLive({ ...(await import('./live')).newLive() });
     // (Both at once, as one message: still without the cards.)
-    sync.pushState(session, { ...((await import('./live')).newLive()) });
+    sync.pushState(session, { ...(await import('./live')).newLive() });
 
     // Nothing of it reached the viewers' windows or the channel, then or since. (The game itself goes to them, its
     // files too, as ever: AudienceView never draws a card.)
@@ -326,7 +333,11 @@ describe('the game reaches the viewers’ windows whole once, then as what chang
     // The first time: the whole game, with its file.
     let before = counts();
     sync.pushGame(g);
-    expect(since(before).map((msgs) => msgs.map((m) => m.type))).toEqual([['media', 'game'], ['media', 'game'], ['media', 'game']]);
+    expect(since(before).map((msgs) => msgs.map((m) => m.type))).toEqual([
+      ['media', 'game'],
+      ['media', 'game'],
+      ['media', 'game'],
+    ]);
 
     // A picture added to a quick 🤫 card in play, and the title changed: only the title goes, to each.
     sync.hideFromViewers(['mX']);

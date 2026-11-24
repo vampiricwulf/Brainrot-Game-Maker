@@ -169,7 +169,10 @@ export function toggleSeam(map: WorldMap, s: Screen, d: Dir8): boolean | null {
   const n = gridNeighbour(map, s, d);
   if (!n) return null;
   const block = !seamBlocked(map, s, d);
-  for (const [x, side] of [[s, d], [n, OPPOSITE[d]]] as const) {
+  for (const [x, side] of [
+    [s, d],
+    [n, OPPOSITE[d]],
+  ] as const) {
     const exits = { ...(x.exits ?? {}) };
     const rule = exits[side];
     if (rule?.kind === 'warp') continue;

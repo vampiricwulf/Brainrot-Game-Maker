@@ -1,9 +1,44 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). Its words select, to
      copy into chat: this column is never on stream. -->
 <script lang="ts">
-  import { categoryLabel, clueCardName, finalName, formatPoints, questionSlides, slideText, type ClueCard, type Game, type Id, type Session } from '../lib/model';
-  import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
-  import { cardId, cardSends, cardSlides, finalGoesToLabel, partnerRules, recipientsText, sameAsAnswer, sendState, sentTo, tileGoesToLabel, toName } from '../lib/partner';
+  import {
+    categoryLabel,
+    clueCardName,
+    finalName,
+    formatPoints,
+    questionSlides,
+    slideText,
+    type ClueCard,
+    type Game,
+    type Id,
+    type Session,
+  } from '../lib/model';
+  import {
+    clueSlideIndex,
+    coWinnersHold,
+    currentClueInfo,
+    currentFinal,
+    nameList,
+    ownPlayers,
+    places,
+    playerName,
+    slidesRound,
+    tiedLeaders,
+    toolOnlyClue,
+  } from '../lib/session';
+  import {
+    cardId,
+    cardSends,
+    cardSlides,
+    finalGoesToLabel,
+    partnerRules,
+    recipientsText,
+    sameAsAnswer,
+    sendState,
+    sentTo,
+    tileGoesToLabel,
+    toName,
+  } from '../lib/partner';
   import { cardsOut, sentCardId, sentState, sentToText } from '../lib/sentcards';
   import { cardWords, phoneCard, sendsOf, type CardItem, type PhoneItem } from '../lib/phonecard';
   import { buzzerOn, remote, roomHasCards } from '../lib/remote.svelte';
@@ -37,7 +72,13 @@
   // player gets). Never a slide or a player: a card's video here could be taken for the stage's (mediactl's one map).
   const pt = $derived(session.phase === 'clue' && info ? session.partner : null);
   const ptName = (id?: string) => (id ? (session.players.find((p) => p.id === id)?.name ?? '?') : '');
-  const ITEM: Record<CardItem['kind'], [string, string]> = { picture: ['🖼', 'picture'], gif: ['🖼', 'GIF'], video: ['🎞', 'video'], sound: ['🔊', 'sound'], embed: ['🌐', 'online video'] };
+  const ITEM: Record<CardItem['kind'], [string, string]> = {
+    picture: ['🖼', 'picture'],
+    gif: ['🖼', 'GIF'],
+    video: ['🎞', 'video'],
+    sound: ['🔊', 'sound'],
+    embed: ['🌐', 'online video'],
+  };
   /** The cards go to phones (a buzzer room that takes them), not only by 📋 copying. */
   const phones = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards());
   /** What the phones can get now (its server's biggest file too). */
@@ -62,7 +103,12 @@
     if (it.why === 'many') return '📋 copy it: a card shows 6 at most';
     const job = uploads.jobs[sendsOf(it) ?? ''];
     const pct = job?.progress === undefined ? '' : ` ${Math.floor(job.progress * 100)}%`;
-    if (it.file) return 'file' in it.goes ? '✔ goes to phones (up)' : job?.state === 'uploading' ? `✔ goes to phones (uploading…${pct})` : '✔ goes to phones (from this computer)';
+    if (it.file)
+      return 'file' in it.goes
+        ? '✔ goes to phones (up)'
+        : job?.state === 'uploading'
+          ? `✔ goes to phones (uploading…${pct})`
+          : '✔ goes to phones (from this computer)';
     return '✔ goes to phones (its link)';
   }
   /** A still of a picture or GIF, for the host's eyes (never a player: a card's video here could be taken for the stage's). */
@@ -75,7 +121,9 @@
     if (st === 'edited') return ' · changed in the editor since it was sent (off the phones)';
     const seen = session.remote?.cardsSeen ?? {};
     const any = cardSends(pt, card.id).some((x) => (seen[cardId(pt.clue, x)] ?? []).length);
-    return ` · sent to ${sentTo(session, pt, card.id).map((t) => toName(session, t)).join(', ')}${st === 'changed' ? ' (changed since)' : ''}${any ? ' · ✓ seen' : ''}`;
+    return ` · sent to ${sentTo(session, pt, card.id)
+      .map((t) => toName(session, t))
+      .join(', ')}${st === 'changed' ? ' (changed since)' : ''}${any ? ' · ✓ seen' : ''}`;
   }
   /**
    * Any other tile's card (🤫 Just you, 💡 Insider tip) or a Final's (`holder`: the clue's or the Final round's id): who
@@ -105,7 +153,11 @@
   }
   /** That player's phone showed their card. */
   const handSeen = (to: { seat: string; member?: { id: string } }) =>
-    dealCards.some((c) => c.to.some((t) => t.seat === to.seat && t.member?.id === to.member?.id) && (session.remote?.cardsSeen?.[sentCardId(c)] ?? []).includes(to.member ? `${to.seat}/${to.member.id}` : to.seat));
+    dealCards.some(
+      (c) =>
+        c.to.some((t) => t.seat === to.seat && t.member?.id === to.member?.id) &&
+        (session.remote?.cardsSeen?.[sentCardId(c)] ?? []).includes(to.member ? `${to.seat}/${to.member.id}` : to.seat),
+    );
   const ask = $derived.by(() => {
     const o = app.live.overlay;
     return o?.kind === 'popup' && o.answer ? { q: o.slide, a: o.answer, revealed: !!o.revealed, value: o.value } : null;
@@ -132,8 +184,13 @@
       <div class="small item">
         {#if src}<img class="thumb" {src} alt="" referrerpolicy="no-referrer" draggable="false" />{/if}
         <span
-          >{ITEM[it.kind][0]} {it.name} · {ITEM[it.kind][1]} · <span class:muted={!it.why}>{reach(it)}</span
-          >{#if phones}<ShrinkButton {game} items={[it]} which={it.slow ? 'slow' : 'big'} title="Make a smaller copy of this file for phones" />{/if}</span
+          >{ITEM[it.kind][0]}
+          {it.name} · {ITEM[it.kind][1]} · <span class:muted={!it.why}>{reach(it)}</span>{#if phones}<ShrinkButton
+              {game}
+              items={[it]}
+              which={it.slow ? 'slow' : 'big'}
+              title="Make a smaller copy of this file for phones"
+            />{/if}</span
         >
       </div>
     {/each}
@@ -164,7 +221,12 @@
       <div class="label">🎭 {deal.name} · {dealWhere()}{deal.shown ? ' · Who was who on screen' : ''}</div>
       <!-- (A player taken out keeps their part in the deal, for a restore: not listed while they're out.) -->
       {#each deal.hands.filter((x) => session.players.some((p) => p.id === x.to.seat)) as h (toKey(h.to))}
-        <div class="small"><b>{h.to.member ? `${h.to.member.name} (${ptName(h.to.seat)})` : ptName(h.to.seat)}</b> → {h.part}{h.slice ? ` · ${h.slice}` : ''}{phones && handSeen(h.to) ? ' · ✓ seen' : ''}</div>
+        <div class="small"
+          ><b>{h.to.member ? `${h.to.member.name} (${ptName(h.to.seat)})` : ptName(h.to.seat)}</b> → {h.part}{h.slice ? ` · ${h.slice}` : ''}{phones &&
+          handSeen(h.to)
+            ? ' · ✓ seen'
+            : ''}</div
+        >
       {/each}
     </div>
   {/if}
@@ -295,7 +357,8 @@
             {@const p = session.players.find((x) => x.id === id)}
             <li>
               <span class="dot" style:background={p?.color}></span>{p?.name}
-              <b>{session.final.wagers[id] !== undefined ? formatPoints(session.final.wagers[id], sym) : taking ? 'waiting…' : '—'}</b>{#if session.final.wagerFrom?.[id] === 'phone'}<span title="Sent from their phone">{' '}📱</span>{/if}
+              <b>{session.final.wagers[id] !== undefined ? formatPoints(session.final.wagers[id], sym) : taking ? 'waiting…' : '—'}</b
+              >{#if session.final.wagerFrom?.[id] === 'phone'}<span title="Sent from their phone">{' '}📱</span>{/if}
               {session.final.results[id] === 'right' ? '✔' : session.final.results[id] === 'wrong' ? '✘' : ''}
             </li>
           {/each}

@@ -67,10 +67,7 @@ function dosTime(d: Date): { time: number; date: number } {
  * Build a zip (stored, but for entries marked `deflate`). Entries whose data can't be read are left out and reported in `failed`.
  * `onProgress(done, total)` reports bytes checksummed.
  */
-export async function buildZip(
-  entries: ZipEntry[],
-  onProgress?: (done: number, total: number) => void,
-): Promise<{ blob: Blob; failed: string[] }> {
+export async function buildZip(entries: ZipEntry[], onProgress?: (done: number, total: number) => void): Promise<{ blob: Blob; failed: string[] }> {
   const enc = new TextEncoder();
   const { time, date } = dosTime(new Date());
   const total = entries.reduce((n, e) => n + e.data.size, 0);

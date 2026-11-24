@@ -15,7 +15,19 @@
   import RowTools from '../RowTools.svelte';
   import { isTextField } from '../../lib/undokeys';
   import { announce } from '../../lib/announce';
-  import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type CardWho, type SlideElement, type World } from '../../lib/model';
+  import {
+    newId,
+    PLAYER_WHEEL,
+    setSlideText,
+    slideText,
+    textSlide,
+    type Action,
+    type ActionKind,
+    type BoardGameRound,
+    type CardWho,
+    type SlideElement,
+    type World,
+  } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { itemDef, itemQty, MAX_UNSTACKED, statFields } from '../../lib/toolset';
   import { typedSteps } from '../../lib/actions';
@@ -175,16 +187,16 @@
     const n = actions?.length ?? 0;
     const k = clipboard.actions.length;
     return menuOf({
-        heading: LABEL[a.do],
-        duplicate: menuItem.duplicate(() => duplicate(a)),
-        move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === n - 1 })],
-        // (The whole set, to paste on another object, item, space or slice.)
-        extras: [
-          { label: '📋 Copy buttons', onclick: copyAll },
-          { label: k ? `📋 Paste ${k} button${k === 1 ? '' : 's'}` : '📋 Paste buttons', onclick: paste, disabled: !k },
-        ],
-        delete: menuItem.delete('button', () => remove(a), { keys: false }),
-      });
+      heading: LABEL[a.do],
+      duplicate: menuItem.duplicate(() => duplicate(a)),
+      move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === n - 1 })],
+      // (The whole set, to paste on another object, item, space or slice.)
+      extras: [
+        { label: '📋 Copy buttons', onclick: copyAll },
+        { label: k ? `📋 Paste ${k} button${k === 1 ? '' : 's'}` : '📋 Paste buttons', onclick: paste, disabled: !k },
+      ],
+      delete: menuItem.delete('button', () => remove(a), { keys: false }),
+    });
   }
   function rowMenu(e: MouseEvent, a: Action, i: number): void {
     if (!isTextField(e.target)) showMenu(e, rowItems(a, i));
@@ -217,7 +229,8 @@
       }
       // (From another game: the stats, items, shops and wheels copied with them come along, see adoptUsedBy. Any other
       // is picked again here.)
-      if (a.do === 'stat' && !numbers.some((f) => f.id === a.field) && !clipboard.statFields.some((f) => f.id === a.field && f.type === 'number')) a.field = numbers[0]?.id ?? '';
+      if (a.do === 'stat' && !numbers.some((f) => f.id === a.field) && !clipboard.statFields.some((f) => f.id === a.field && f.type === 'number'))
+        a.field = numbers[0]?.id ?? '';
       if (a.do === 'item' && !game.items?.some((x) => x.id === a.item) && !clipboard.items.some((x) => x.id === a.item)) a.item = game.items?.[0]?.id ?? '';
       if (a.do === 'shop' && !game.shops?.some((x) => x.id === a.shop) && !clipboard.shops.some((x) => x.id === a.shop)) a.shop = game.shops?.[0]?.id ?? '';
       if (a.do === 'wheel' && a.wheel !== PLAYER_WHEEL && !toolHere(game, a.wheel)) a.wheel = game.wheels[0]?.id ?? PLAYER_WHEEL;
@@ -235,12 +248,14 @@
     dropMenu(
       e,
       // Board spaces send players to a space (there are no screens); Reveal / Hide need objects on the same screen.
-      KINDS.filter(([k]) => (BOARD_ONLY.includes(k) ? !!board : k === 'move' ? !board : k === 'reveal' || k === 'hide' ? objects.length > 0 : true)).map(([k, l]) => ({
-        label: l,
-        onclick: () => add(k),
-        disabled: k === 'move' && !firstMap,
-        hint: k === 'move' && !firstMap ? (world ? 'Add a screen to a map first' : 'Add an RPG round (a world of screens) first') : undefined,
-      })),
+      KINDS.filter(([k]) => (BOARD_ONLY.includes(k) ? !!board : k === 'move' ? !board : k === 'reveal' || k === 'hide' ? objects.length > 0 : true)).map(
+        ([k, l]) => ({
+          label: l,
+          onclick: () => add(k),
+          disabled: k === 'move' && !firstMap,
+          hint: k === 'move' && !firstMap ? (world ? 'Add a screen to a map first' : 'Add an RPG round (a world of screens) first') : undefined,
+        }),
+      ),
     );
   }
 
@@ -282,7 +297,10 @@
       role="listitem"
       ondragover={(e) => rows.over(e, a.id)}
       ondrop={(e) => {
-        const m = rows.drop(e, (actions ?? []).map((x) => x.id));
+        const m = rows.drop(
+          e,
+          (actions ?? []).map((x) => x.id),
+        );
         if (m) move(m.from, m.to);
       }}
       oncontextmenu={(e) => rowMenu(e, a, i)}
@@ -308,13 +326,25 @@
         {#if a.do === 'stat'}
           <select bind:value={a.field} aria-label="Stat">
             {#if !numbers.some((f) => f.id === a.field)}
-              <option value={a.field}>{a.field && !game.statFields?.some((f) => f.id === a.field) ? '⚠ Deleted stat — pick another' : numbers.length ? '— choose —' : 'Add a number stat in 📊 Stats & Items'}</option>
+              <option value={a.field}
+                >{a.field && !game.statFields?.some((f) => f.id === a.field)
+                  ? '⚠ Deleted stat — pick another'
+                  : numbers.length
+                    ? '— choose —'
+                    : 'Add a number stat in 📊 Stats & Items'}</option
+              >
             {/if}
             {#each numbers as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
           </select>
           <select bind:value={a.op} aria-label="Change"><option value="add">add</option><option value="set">set to</option></select>
           <!-- (Emptied, a number box keeps its number: "HP = null" would set HP to 0.) -->
-          <input type="number" bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))} onchange={(e) => shown(e, a.amount)} aria-label="Amount" class="n" />
+          <input
+            type="number"
+            bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))}
+            onchange={(e) => shown(e, a.amount)}
+            aria-label="Amount"
+            class="n"
+          />
           {@render who(a)}
         {:else if a.do === 'item'}
           <select bind:value={a.op} aria-label="Give or take"><option value="give">Give</option><option value="take">Take</option></select>
@@ -335,7 +365,13 @@
           </select>
           {@render who(a)}
         {:else if a.do === 'score'}
-          <input type="number" bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))} onchange={(e) => shown(e, a.amount)} aria-label="Points" class="n" />
+          <input
+            type="number"
+            bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))}
+            onchange={(e) => shown(e, a.amount)}
+            aria-label="Points"
+            class="n"
+          />
           {@render who(a)}
         {:else if a.do === 'wheel'}
           {#each [a.wheel, ...(a.also ?? [])] as id, wi (wi)}
@@ -353,19 +389,42 @@
               <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
               {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
             </select>
-            {#if wi > 0}<button class="ghost tiny danger" onclick={() => (a.also = a.also?.filter((_, j) => j !== wi - 1))} aria-label="Remove wheel {wi + 1}" title="Remove this wheel from the button (Undo brings it back)">🗑</button>{/if}
+            {#if wi > 0}<button
+                class="ghost tiny danger"
+                onclick={() => (a.also = a.also?.filter((_, j) => j !== wi - 1))}
+                aria-label="Remove wheel {wi + 1}"
+                title="Remove this wheel from the button (Undo brings it back)">🗑</button
+              >{/if}
           {/each}
-          <button class="small" onclick={() => (a.also = [...(a.also ?? []), game.wheels[0]?.id ?? PLAYER_WHEEL])} title="Spin several wheels at once">＋ Add wheel</button>
+          <button class="small" onclick={() => (a.also = [...(a.also ?? []), game.wheels[0]?.id ?? PLAYER_WHEEL])} title="Spin several wheels at once"
+            >＋ Add wheel</button
+          >
         {:else if a.do === 'dice'}
           <input bind:value={a.dice} aria-label="Dice" placeholder="d20, 2d6…" list="dice-presets" />
-          <datalist id="dice-presets">{#each game.dice as d (d.id)}<option value={d.name}></option>{/each}</datalist>
+          <datalist id="dice-presets"
+            >{#each game.dice as d (d.id)}<option value={d.name}></option>{/each}</datalist
+          >
         {:else if a.do === 'popup'}
-          <input value={slideText(a.slide)} oninput={(e) => setSlideText(a.slide, e.currentTarget.value)} placeholder="Text on the slide" aria-label="Slide text" />
+          <input
+            value={slideText(a.slide)}
+            oninput={(e) => setSlideText(a.slide, e.currentTarget.value)}
+            placeholder="Text on the slide"
+            aria-label="Slide text"
+          />
           <button class="small" onclick={() => (editing = { action: a, which: 'slide' })}>Edit slide…</button>
         {:else if a.do === 'card'}
           <!-- (Only offered when it runs: the host checks who gets it and presses 📤 Send. The editor isn't on stream.) -->
-          <input value={slideText(a.slide)} oninput={(e) => setSlideText(a.slide, e.currentTarget.value)} placeholder="What’s on the card (only who gets it sees it)" aria-label="Card words" />
-          <button class="small" onclick={() => (editing = { action: a, which: 'slide' })} title="Pictures, videos, sounds, links: on their phones under the words">Edit card…</button>
+          <input
+            value={slideText(a.slide)}
+            oninput={(e) => setSlideText(a.slide, e.currentTarget.value)}
+            placeholder="What’s on the card (only who gets it sees it)"
+            aria-label="Card words"
+          />
+          <button
+            class="small"
+            onclick={() => (editing = { action: a, which: 'slide' })}
+            title="Pictures, videos, sounds, links: on their phones under the words">Edit card…</button
+          >
           <select bind:value={() => a.to ?? 'trigger', (v) => (a.to = v)} aria-label="Who gets it" title="Who it starts with: you can change it before 📤 Send">
             {#each cardWho as [v, label] (v)}<option value={v}>{label}</option>{/each}
           </select>
@@ -376,7 +435,14 @@
         {:else if a.do === 'question'}
           <input value={slideText(a.question)} oninput={(e) => setSlideText(a.question, e.currentTarget.value)} placeholder="Question" aria-label="Question" />
           <input value={slideText(a.answer)} oninput={(e) => setSlideText(a.answer, e.currentTarget.value)} placeholder="Answer" aria-label="Answer" />
-          <label class="small">Worth<input type="number" bind:value={() => a.value, (v) => keepNum(v, (n) => (a.value = n))} onchange={(e) => shown(e, a.value)} class="n" /></label>
+          <label class="small"
+            >Worth<input
+              type="number"
+              bind:value={() => a.value, (v) => keepNum(v, (n) => (a.value = n))}
+              onchange={(e) => shown(e, a.value)}
+              class="n"
+            /></label
+          >
           <button class="small" onclick={() => (editing = { action: a, which: 'question' })}>Edit slides…</button>
         {:else if a.do === 'sound'}
           <div class="pop">
@@ -477,10 +543,14 @@
     <button class="small" onclick={openMenu} aria-haspopup="menu" data-add-action>{addLabel}</button>
     <span class="spacer"></span>
     {#if actions?.length}
-      <button class="ghost small" onclick={copyAll} title="Copy these buttons, to paste them on another object, item, space or slice (in any game)">📋 Copy buttons</button>
+      <button class="ghost small" onclick={copyAll} title="Copy these buttons, to paste them on another object, item, space or slice (in any game)"
+        >📋 Copy buttons</button
+      >
     {/if}
     {#if clipboard.actions.length}
-      <button class="ghost small" onclick={paste} title="Add the copied buttons here">📋 Paste {clipboard.actions.length} button{clipboard.actions.length === 1 ? '' : 's'}</button>
+      <button class="ghost small" onclick={paste} title="Add the copied buttons here"
+        >📋 Paste {clipboard.actions.length} button{clipboard.actions.length === 1 ? '' : 's'}</button
+      >
     {/if}
   </div>
 </div>
@@ -488,7 +558,11 @@
 {#if editing}
   {@const e = editing}
   {#if e.action.do === 'popup' || e.action.do === 'card'}
-    <SlideModal slide={e.action.slide} title={e.action.do === 'card' ? '🤫 Card (on the phones of whoever gets it)' : 'Pop-up slide'} onclose={() => (editing = null)} />
+    <SlideModal
+      slide={e.action.slide}
+      title={e.action.do === 'card' ? '🤫 Card (on the phones of whoever gets it)' : 'Pop-up slide'}
+      onclose={() => (editing = null)}
+    />
   {:else if e.action.do === 'question'}
     <!-- A fresh editor for the answer, with the answer slide's own undo history. -->
     {#key e.which}

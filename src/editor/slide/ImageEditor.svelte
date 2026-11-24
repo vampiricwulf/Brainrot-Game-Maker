@@ -19,8 +19,22 @@
   import InlineAsk from '../../play/host/InlineAsk.svelte';
   import { isMenuKey, showMenu } from '../../lib/menustate.svelte';
   import {
-    angleToOutput, angleToSource, defaultEdits, fitCrop, itemAt, loadImage, migrateEdits, orientedSize, outputSize, placedOverlays,
-    renderEdited, sizeToOutput, STICKERS, toOutput, toSource, turnCrop,
+    angleToOutput,
+    angleToSource,
+    defaultEdits,
+    fitCrop,
+    itemAt,
+    loadImage,
+    migrateEdits,
+    orientedSize,
+    outputSize,
+    placedOverlays,
+    renderEdited,
+    sizeToOutput,
+    STICKERS,
+    toOutput,
+    toSource,
+    turnCrop,
   } from '../../lib/imageedit';
   import { editedFile, fileBytes, gifFrames } from '../../lib/gifedit';
   import { holdUnapplied } from '../../lib/unapplied.svelte';
@@ -226,7 +240,11 @@
   }
 
   // `moved`: a caption or sticker only becomes an undo step once it really moves (a click just selects it).
-  let drag: { kind: 'stroke' } | { kind: 'item'; id: string; dx: number; dy: number; moved: boolean } | { kind: 'crop'; mode: string; sx: number; sy: number; o: { x: number; y: number; w: number; h: number } } | null = null;
+  let drag:
+    | { kind: 'stroke' }
+    | { kind: 'item'; id: string; dx: number; dy: number; moved: boolean }
+    | { kind: 'crop'; mode: string; sx: number; sy: number; o: { x: number; y: number; w: number; h: number } }
+    | null = null;
 
   let measurer: CanvasRenderingContext2D | null = null;
   /** A caption's line width as the canvas draws it. */
@@ -246,7 +264,18 @@
   function addCaption(p: { x: number; y: number }): void {
     commit();
     const at = onSource(p);
-    const t = { id: newId(), text: 'YOUR TEXT', x: at.x, y: at.y, size: 0.09 / sizeK, color: '#ffffff', stroke: '#000000', strokeWidth: 0.12, font: 'Impact, Anton, sans-serif', rotation: angleToSource(0, edits) };
+    const t = {
+      id: newId(),
+      text: 'YOUR TEXT',
+      x: at.x,
+      y: at.y,
+      size: 0.09 / sizeK,
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeWidth: 0.12,
+      font: 'Impact, Anton, sans-serif',
+      rotation: angleToSource(0, edits),
+    };
     edits.texts.push(t);
     selectedId = t.id;
     setTimeout(() => (document.getElementById('ie-text') as HTMLTextAreaElement | null)?.select(), 0);
@@ -318,7 +347,10 @@
           Object.assign(c, aspectCrop(mode, o, dx, dy, oriented.w / oriented.h / cropAspect));
           return;
         }
-        let x1 = o.x, y1 = o.y, x2 = o.x + o.w, y2 = o.y + o.h;
+        let x1 = o.x,
+          y1 = o.y,
+          x2 = o.x + o.w,
+          y2 = o.y + o.h;
         if (mode.includes('w')) x1 = Math.min(x2 - 0.02, Math.max(0, o.x + dx));
         if (mode.includes('e')) x2 = Math.max(x1 + 0.02, Math.min(1, o.x + o.w + dx));
         if (mode.includes('n')) y1 = Math.min(y2 - 0.02, Math.max(0, o.y + dy));
@@ -361,7 +393,7 @@
   /** ⟲ / ⟳ 90°: the crop turns with the picture (the same part stays cropped, its shape turned too). */
   function rotateBy(d: 90 | -90): void {
     commit();
-    edits.rotate = (((edits.rotate + d) % 360) + 540) % 360 - 180;
+    edits.rotate = ((((edits.rotate + d) % 360) + 540) % 360) - 180;
     if (edits.crop) edits.crop = turnCrop(edits.crop, d > 0 ? 1 : -1);
     if (cropAspect !== 'free') cropAspect = 1 / cropAspect;
   }
@@ -583,7 +615,13 @@
       <button class="ghost apart" onclick={resetAll} disabled={saving} title="Take every edit off (Ctrl+Z puts them back)">Reset</button>
       {#if el.editedMedia}<button class="ghost" onclick={revert} title="Show the picture as it was, without its edits, and close">Use original</button>{/if}
       <button class="ghost apart" onclick={cancel} title="Esc">Cancel</button>
-      <button class="primary" onclick={apply} disabled={saving || !img || unchanged} title={unchanged ? 'Nothing changed yet: crop, draw, add text or a sticker' : 'Ctrl+Enter'}>{saving ? `Saving…${progress === null ? '' : ` ${Math.round(progress * 100)}%`}` : 'Apply'}</button>
+      <button
+        class="primary"
+        onclick={apply}
+        disabled={saving || !img || unchanged}
+        title={unchanged ? 'Nothing changed yet: crop, draw, add text or a sticker' : 'Ctrl+Enter'}
+        >{saving ? `Saving…${progress === null ? '' : ` ${Math.round(progress * 100)}%`}` : 'Apply'}</button
+      >
       <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
 
@@ -618,7 +656,12 @@
           <div class="canvas-host" bind:this={host}></div>
           {#if tool === 'crop' && edits.crop}
             {@const c = edits.crop}
-            <div class="shade" style:clip-path="polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 {c.y * 100}%, {c.x * 100}% {c.y * 100}%, {c.x * 100}% {(c.y + c.h) * 100}%, {(c.x + c.w) * 100}% {(c.y + c.h) * 100}%, {(c.x + c.w) * 100}% {c.y * 100}%, 0 {c.y * 100}%)"></div>
+            <div
+              class="shade"
+              style:clip-path="polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 {c.y * 100}%, {c.x * 100}% {c.y * 100}%, {c.x * 100}% {(c.y + c.h) * 100}%, {(c.x +
+                c.w) *
+                100}% {(c.y + c.h) * 100}%, {(c.x + c.w) * 100}% {c.y * 100}%, 0 {c.y * 100}%)"
+            ></div>
             <div
               class="crop"
               style:left="{c.x * 100}%"
@@ -688,20 +731,54 @@
             <option value="Impact, Anton, sans-serif">Impact (meme)</option>
             {#each fonts as f}<option value={f.css}>{f.label}</option>{/each}
           </select>
-          <label class="field">Size<input type="range" min="0.02" max="0.3" step="0.005" value={selText.size * sizeK} oninput={(e) => (selText!.size = +e.currentTarget.value / sizeK)} /></label>
+          <label class="field"
+            >Size<input
+              type="range"
+              min="0.02"
+              max="0.3"
+              step="0.005"
+              value={selText.size * sizeK}
+              oninput={(e) => (selText!.size = +e.currentTarget.value / sizeK)}
+            /></label
+          >
           <div class="row">
             <label class="check small">Fill <ColorBox bind:value={selText.color} /></label>
             <label class="check small">Outline <ColorBox bind:value={selText.stroke} /></label>
           </div>
           <label class="field">Outline width<input type="range" min="0" max="0.3" step="0.01" bind:value={selText.strokeWidth} /></label>
           {@const turn = Math.round(angleToOutput(selText.rotation, edits))}
-          <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selText!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
+          <label class="field"
+            >Rotation {turn}°<input
+              type="range"
+              min="-180"
+              max="180"
+              value={turn}
+              oninput={(e) => (selText!.rotation = angleToSource(+e.currentTarget.value, edits))}
+            /></label
+          >
           <button class="small danger" onclick={removeSelected} title="Delete this caption (Delete; Ctrl+Z brings it back)">🗑 Delete text</button>
         {:else if selSticker}
           <h4>This sticker {selSticker.emoji}</h4>
-          <label class="field">Size<input type="range" min="0.03" max="0.6" step="0.01" value={selSticker.size * sizeK} oninput={(e) => (selSticker!.size = +e.currentTarget.value / sizeK)} /></label>
+          <label class="field"
+            >Size<input
+              type="range"
+              min="0.03"
+              max="0.6"
+              step="0.01"
+              value={selSticker.size * sizeK}
+              oninput={(e) => (selSticker!.size = +e.currentTarget.value / sizeK)}
+            /></label
+          >
           {@const turn = Math.round(angleToOutput(selSticker.rotation, edits))}
-          <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selSticker!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
+          <label class="field"
+            >Rotation {turn}°<input
+              type="range"
+              min="-180"
+              max="180"
+              value={turn}
+              oninput={(e) => (selSticker!.rotation = angleToSource(+e.currentTarget.value, edits))}
+            /></label
+          >
           <button class="small danger" onclick={removeSelected} title="Delete this sticker (Delete; Ctrl+Z brings it back)">🗑 Delete sticker</button>
         {/if}
 
@@ -722,9 +799,21 @@
           <summary><h4>Adjust</h4></summary>
           {#each SLIDERS as [k, label, min, max, def]}
             <label class="field slider">
-              <span>{label} <span class="muted">{edits[k]}</span>{#if edits[k] !== def}<button class="tiny ghost" onclick={() => (commit(), ((edits as unknown as Record<string, number>)[k] = def))} aria-label="Reset {label}" title="Reset">↺</button>{/if}</span>
-              <input type="range" {min} {max} value={edits[k] as number}
-                oninput={(e) => ((edits as unknown as Record<string, number>)[k] = +e.currentTarget.value)} />
+              <span
+                >{label} <span class="muted">{edits[k]}</span>{#if edits[k] !== def}<button
+                    class="tiny ghost"
+                    onclick={() => (commit(), ((edits as unknown as Record<string, number>)[k] = def))}
+                    aria-label="Reset {label}"
+                    title="Reset">↺</button
+                  >{/if}</span
+              >
+              <input
+                type="range"
+                {min}
+                {max}
+                value={edits[k] as number}
+                oninput={(e) => ((edits as unknown as Record<string, number>)[k] = +e.currentTarget.value)}
+              />
             </label>
           {/each}
         </details>
@@ -831,14 +920,46 @@
     border: 2px solid var(--accent);
     translate: -50% -50%;
   }
-  .ch.nw { left: 0; top: 0; cursor: nwse-resize; }
-  .ch.ne { left: 100%; top: 0; cursor: nesw-resize; }
-  .ch.sw { left: 0; top: 100%; cursor: nesw-resize; }
-  .ch.se { left: 100%; top: 100%; cursor: nwse-resize; }
-  .ch.n { left: 50%; top: 0; cursor: ns-resize; }
-  .ch.s { left: 50%; top: 100%; cursor: ns-resize; }
-  .ch.e { left: 100%; top: 50%; cursor: ew-resize; }
-  .ch.w { left: 0; top: 50%; cursor: ew-resize; }
+  .ch.nw {
+    left: 0;
+    top: 0;
+    cursor: nwse-resize;
+  }
+  .ch.ne {
+    left: 100%;
+    top: 0;
+    cursor: nesw-resize;
+  }
+  .ch.sw {
+    left: 0;
+    top: 100%;
+    cursor: nesw-resize;
+  }
+  .ch.se {
+    left: 100%;
+    top: 100%;
+    cursor: nwse-resize;
+  }
+  .ch.n {
+    left: 50%;
+    top: 0;
+    cursor: ns-resize;
+  }
+  .ch.s {
+    left: 50%;
+    top: 100%;
+    cursor: ns-resize;
+  }
+  .ch.e {
+    left: 100%;
+    top: 50%;
+    cursor: ew-resize;
+  }
+  .ch.w {
+    left: 0;
+    top: 50%;
+    cursor: ew-resize;
+  }
   .sel {
     position: absolute;
     width: 16px;

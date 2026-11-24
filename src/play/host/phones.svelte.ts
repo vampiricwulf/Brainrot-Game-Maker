@@ -15,13 +15,48 @@ import { windowCards } from '../../lib/cardwindow';
 import { cardWindow, feedCardWindow } from '../../lib/cardwindow.svelte';
 import { overlayDoneAt } from '../../lib/live';
 import {
-  buzzIdle, buzzMissed, buzzTake, buzzVerdicts, phoneTimer, everyoneAnswerAsk, finalAnswerAsk, hostState, partnerAnswerAsk, passAsk, partnerAnswerId,
-  hostCards, phoneStatus, SEAT_NAME_MAX, sendOf, SETTING_UP, teamsOn, wagerAsk, whoBuzzed, type BuzzState,
+  buzzIdle,
+  buzzMissed,
+  buzzTake,
+  buzzVerdicts,
+  phoneTimer,
+  everyoneAnswerAsk,
+  finalAnswerAsk,
+  hostState,
+  partnerAnswerAsk,
+  passAsk,
+  partnerAnswerId,
+  hostCards,
+  phoneStatus,
+  SEAT_NAME_MAX,
+  sendOf,
+  SETTING_UP,
+  teamsOn,
+  wagerAsk,
+  whoBuzzed,
+  type BuzzState,
 } from '../../lib/buzz';
 import { clip, type HostState, type WagerAsk, type AnswerAsk } from '../../lib/buzzproto';
 import {
-  acceptPhone, buzzerBase, buzzerOn, closeRoom, inRoom, kept, kickMember, kickSeat, moveMember, remote, resendHostState, roomClockOffset, roomHasAnswers,
-  roomHasCards, roomHasChoices, roomHasWagers, roomLink, sendHostState, startRoom,
+  acceptPhone,
+  buzzerBase,
+  buzzerOn,
+  closeRoom,
+  inRoom,
+  kept,
+  kickMember,
+  kickSeat,
+  moveMember,
+  remote,
+  resendHostState,
+  roomClockOffset,
+  roomHasAnswers,
+  roomHasCards,
+  roomHasChoices,
+  roomHasWagers,
+  roomLink,
+  sendHostState,
+  startRoom,
 } from '../../lib/remote.svelte';
 import { usableChoices } from '../../lib/choices';
 import { clearRoom, saveRoom, type SavedRoom } from '../../lib/persist';
@@ -120,16 +155,18 @@ export function createPhones(host: PhonesHost) {
   let clueArmFloor = 0;
   const queueRows = $derived(
     // (Not a seat taken out since: its row goes, the ranks close up. An Undo bringing it back brings its row back.)
-    (roomQueue?.queue ?? []).filter((q) => session.players.some((p) => p.id === q.seatId)).map((q, i) => ({
-      id: q.seatId,
-      rank: i + 1,
-      // Teams: who on the team buzzed, "Ann (Red team)".
-      name: whoBuzzed(session.players.find((p) => p.id === q.seatId)?.name ?? '?', q.by),
-      by: q.by,
-      after: q.arrivedLate ? 'faster, but arrived late' : q.afterMs ? `+${(q.afterMs / 1000).toFixed(2)} s` : '',
-      rolled: q.rolled,
-      out: buzz.lockedOut.includes(q.seatId),
-    })),
+    (roomQueue?.queue ?? [])
+      .filter((q) => session.players.some((p) => p.id === q.seatId))
+      .map((q, i) => ({
+        id: q.seatId,
+        rank: i + 1,
+        // Teams: who on the team buzzed, "Ann (Red team)".
+        name: whoBuzzed(session.players.find((p) => p.id === q.seatId)?.name ?? '?', q.by),
+        by: q.by,
+        after: q.arrivedLate ? 'faster, but arrived late' : q.afterMs ? `+${(q.afterMs / 1000).toFixed(2)} s` : '',
+        rolled: q.rolled,
+        out: buzz.lockedOut.includes(q.seatId),
+      })),
   );
   /**
    * Pass: the open clue takes passes from phones (an ordinary buzz-in clue, its buzzers out: passAsk), and who passed in
@@ -137,9 +174,7 @@ export function createPhones(host: PhonesHost) {
    */
   const passNow = $derived(phonesOn && buzzing && !toolFirst ? passAsk(game, session, buzz) : null);
   let roomPasses = $state.raw<RoomPasses | null>(null);
-  const passed = $derived(
-    passNow && roomPasses?.id === passNow.id ? roomPasses.seats.filter((x) => session.players.some((p) => p.id === x.seatId)) : [],
-  );
+  const passed = $derived(passNow && roomPasses?.id === passNow.id ? roomPasses.seats.filter((x) => session.players.some((p) => p.id === x.seatId)) : []);
   /** "Passed: Ann, Bob" in the buzzers' row (teams: "Red team (Zoe)"), in the players' order. */
   const passNames = $derived(
     session.players
@@ -197,7 +232,12 @@ export function createPhones(host: PhonesHost) {
   function passOn(b: BuzzState, id: string): string | null {
     // (With the answer on screen nobody else gets a turn: it's no question any more.)
     const queue = !session.revealed && roomQueue && roomQueue.armId > clueArmFloor ? roomQueue.queue.map((q) => ({ id: q.seatId, by: q.by })) : [];
-    const after = buzzMissed(b, id, session.players.map((p) => p.id), queue);
+    const after = buzzMissed(
+      b,
+      id,
+      session.players.map((p) => p.id),
+      queue,
+    );
     setBuzz(after);
     return after.phase === 'answering' ? after.answering : null;
   }
@@ -242,11 +282,14 @@ export function createPhones(host: PhonesHost) {
     if (o?.kind !== 'rolloff') return;
     const nonce = o.nonce;
     const s = session;
-    later(() => {
-      if (app.session !== s) return;
-      const now = app.live.overlay;
-      if (now?.kind !== 'rolloff' || now.nonce === nonce) rollOffResult(s, o);
-    }, overlayDoneAt(o) - Date.now() + 200);
+    later(
+      () => {
+        if (app.session !== s) return;
+        const now = app.live.overlay;
+        if (now?.kind !== 'rolloff' || now.nonce === nonce) rollOffResult(s, o);
+      },
+      overlayDoneAt(o) - Date.now() + 200,
+    );
   }
 
   async function startPhoneRoom(): Promise<void> {
@@ -351,7 +394,13 @@ export function createPhones(host: PhonesHost) {
     const p = session.players.find((x) => x.id === seatId);
     // (Any color: a palette one, or any other, from the phone's ＋ Pick any color.)
     if (!p || p.color.toLowerCase() === color || !/^#[0-9a-f]{6}$/.test(color)) return;
-    if (isColorTaken(color, session.players.filter((x) => x.id !== seatId).map((x) => x.color))) return;
+    if (
+      isColorTaken(
+        color,
+        session.players.filter((x) => x.id !== seatId).map((x) => x.color),
+      )
+    )
+      return;
     // (Not an undo step: Ctrl+Z is the host's, for what they did.)
     p.color = color;
   }
@@ -441,7 +490,9 @@ export function createPhones(host: PhonesHost) {
     // (Not added at all: their phone would never hear it, and wait to be let in for good.)
     if (remote.status !== 'online') return roomOffline();
     if (session.players.length >= game.settings.maxPlayers)
-      return toast(`The game is full: ${game.settings.maxPlayers} ${pregameTeams ? 'teams' : 'players'} at most (⚖ Game rules › Most ${pregameTeams ? 'teams' : 'players'})`);
+      return toast(
+        `The game is full: ${game.settings.maxPlayers} ${pregameTeams ? 'teams' : 'players'} at most (⚖ Game rules › Most ${pregameTeams ? 'teams' : 'players'})`,
+      );
     let who = clip(name.trim(), SEAT_NAME_MAX) || `Player ${session.players.length + 1}`;
     // Never a second "Ann": the new one is "Ann 2".
     const taken = (n: string) => session.players.some((x) => x.name.trim().toLowerCase() === n.toLowerCase());
@@ -471,11 +522,15 @@ export function createPhones(host: PhonesHost) {
     if (letBack) return toast(`${playerName(session, seatId)}'s phone can take the seat again`, 4000);
     // 🔒 Locked seats take no tap on a name, a freed one's too: the lock has to come off for them to get back in.
     if (free && session.remote?.locked)
-      toast(`${playerName(session, seatId)}'s seat is free, but 🔒 seats are locked: untick Lock seats so they can tap their name on their new phone (lock them again once they're in)`, 6000);
+      toast(
+        `${playerName(session, seatId)}'s seat is free, but 🔒 seats are locked: untick Lock seats so they can tap their name on their new phone (lock them again once they're in)`,
+        6000,
+      );
     else if (free) {
       // A 🤫 card out to that seat: the new phone is late for it (the room never gives it to a new phone by itself).
       const s = partner;
-      const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [clueCardWords(c, i)] : [])) : [];
+      const out =
+        s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [clueCardWords(c, i)] : [])) : [];
       // (And the cards out with 🤫 Send a card… or from a tile's panel, by their labels: "Card 3".)
       if (phoneCards) out.push(...listedCards(game, session).flatMap((c) => (c.to.some((t) => t.seat === seatId) ? [c.label] : [])));
       // (A 🎭 deal's: for everyone dealt in, a part or not, the same words, while any of its cards is held, whoever was
@@ -483,8 +538,7 @@ export function createPhones(host: PhonesHost) {
       if (phoneCards && dealHeld(game, session).length && dealtIn(session.deal!).some((t) => t.seat === seatId)) out.push('🎭 the deal (in 🎭 Deal…)');
       if (out.length) toast(`${playerName(session, seatId)}'s seat is free: once they're on the new phone, ↻ Send again ${nameList(out)}`, 6000);
       else toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
-    }
-    else if (game.settings.buzzTeams) toast(`Everyone's phone is off ${playerName(session, seatId)} (they can't join it again for 2 minutes)`, 4000);
+    } else if (game.settings.buzzTeams) toast(`Everyone's phone is off ${playerName(session, seatId)} (they can't join it again for 2 minutes)`, 4000);
     else toast(`Took ${playerName(session, seatId)}'s seat back from their phone (it can't take it again for 2 minutes)`, 4000);
   }
 
@@ -533,7 +587,14 @@ export function createPhones(host: PhonesHost) {
   // The pre-game screen's room is saved on its own (nothing else is before Start game): a reload gets back into it.
   $effect(() => {
     if (!app.pregame || !session.remote || !phonesOn) return;
-    const r: SavedRoom = { gameId: game.id, remote: $state.snapshot(session.remote), players: $state.snapshot(session.players), screen: 'pregame', savedAt: Date.now(), settings: $state.snapshot(game.settings) };
+    const r: SavedRoom = {
+      gameId: game.id,
+      remote: $state.snapshot(session.remote),
+      players: $state.snapshot(session.players),
+      screen: 'pregame',
+      savedAt: Date.now(),
+      settings: $state.snapshot(game.settings),
+    };
     untrack(() => !keepRoomOpen && void saveRoom(r));
   });
 
@@ -591,7 +652,9 @@ export function createPhones(host: PhonesHost) {
     const told = closeRoom();
     session.remote = null;
     void clearRoom();
-    toast(told ? 'Buzzer room closed: the phones were told' : 'Buzzer room closed: it’s out of reach right now; the phones are told if it answers within a minute');
+    toast(
+      told ? 'Buzzer room closed: the phones were told' : 'Buzzer room closed: it’s out of reach right now; the phones are told if it answers within a minute',
+    );
   }
 
   /** 🔒 Lock seats: no new phone takes a seat or asks to join; players already in (teams: people on one) come back. */
@@ -617,7 +680,10 @@ export function createPhones(host: PhonesHost) {
   // (the panel line and the 📱 chip keep saying it).
   let lostSaid = '';
   $effect(() => {
-    const lost = phonesOn && !app.pregame && remote.status === 'error' && remote.closedCode && session.remote?.code === remote.code ? `${remote.code}:${remote.closedCode}` : '';
+    const lost =
+      phonesOn && !app.pregame && remote.status === 'error' && remote.closedCode && session.remote?.code === remote.code
+        ? `${remote.code}:${remote.closedCode}`
+        : '';
     untrack(() => {
       if (lost && lost !== lostSaid) toast(`📱 ${remote.error}`, 6000);
       lostSaid = lost;
@@ -648,9 +714,11 @@ export function createPhones(host: PhonesHost) {
     // badge stops inviting everyone.
     const seated = session.players.every((p) => remote.phones.some((ph) => ph.seatId === p.id));
     const closed =
-      !!room && (!!session.remote?.locked || (!teamsOn(game.settings) && seated && (!game.settings.phoneJoin || session.players.length >= game.settings.maxPlayers)));
+      !!room &&
+      (!!session.remote?.locked || (!teamsOn(game.settings) && seated && (!game.settings.phoneJoin || session.players.length >= game.settings.maxPlayers)));
     untrack(() => {
-      if (live.room?.code !== room?.code || live.room?.link !== room?.link || !!live.room?.closed !== closed) live.room = room && (closed ? { ...room, closed } : room);
+      if (live.room?.code !== room?.code || live.room?.link !== room?.link || !!live.room?.closed !== closed)
+        live.room = room && (closed ? { ...room, closed } : room);
     });
   });
 
@@ -679,28 +747,90 @@ export function createPhones(host: PhonesHost) {
   }
 
   return {
-    get phonesOn() { return phonesOn; },
-    get roomQueue() { return roomQueue; },
-    set roomQueue(q: RoomQueue | null) { roomQueue = q; },
-    get clueArmFloor() { return clueArmFloor; },
-    set clueArmFloor(n: number) { clueArmFloor = n; },
-    get roomPasses() { return roomPasses; },
-    set roomPasses(p: RoomPasses | null) { roomPasses = p; },
-    get keepRoomOpen() { return keepRoomOpen; },
-    set keepRoomOpen(on: boolean) { keepRoomOpen = on; },
-    get queueRows() { return queueRows; },
-    get passNow() { return passNow; },
-    get passed() { return passed; },
-    get passNames() { return passNames; },
-    get tie() { return tie; },
-    get nextInLine() { return nextInLine; },
-    get wagerPhones() { return wagerPhones; },
-    get wagerNote() { return wagerNote; },
-    get choicesNote() { return choicesNote; },
-    get answersNote() { return answersNote; },
-    get phonesDown() { return phonesDown; },
-    setBuzzSetting, ordinal, roomQueueIn, passOn, dropBuzzRoll, skipAnswering, takeNext, rollTie, startPhoneRoom, roomState, roomAnswer, roomCardSeen,
-    roomColor, roomWager, roomBuzz, addPhonePlayer, kickPhone, kickTeamMember, moveTeamMember, backToEditor, keepRoomInEditor, closePhoneRoom,
-    lockSeats, exitGame, nextGame,
+    get phonesOn() {
+      return phonesOn;
+    },
+    get roomQueue() {
+      return roomQueue;
+    },
+    set roomQueue(q: RoomQueue | null) {
+      roomQueue = q;
+    },
+    get clueArmFloor() {
+      return clueArmFloor;
+    },
+    set clueArmFloor(n: number) {
+      clueArmFloor = n;
+    },
+    get roomPasses() {
+      return roomPasses;
+    },
+    set roomPasses(p: RoomPasses | null) {
+      roomPasses = p;
+    },
+    get keepRoomOpen() {
+      return keepRoomOpen;
+    },
+    set keepRoomOpen(on: boolean) {
+      keepRoomOpen = on;
+    },
+    get queueRows() {
+      return queueRows;
+    },
+    get passNow() {
+      return passNow;
+    },
+    get passed() {
+      return passed;
+    },
+    get passNames() {
+      return passNames;
+    },
+    get tie() {
+      return tie;
+    },
+    get nextInLine() {
+      return nextInLine;
+    },
+    get wagerPhones() {
+      return wagerPhones;
+    },
+    get wagerNote() {
+      return wagerNote;
+    },
+    get choicesNote() {
+      return choicesNote;
+    },
+    get answersNote() {
+      return answersNote;
+    },
+    get phonesDown() {
+      return phonesDown;
+    },
+    setBuzzSetting,
+    ordinal,
+    roomQueueIn,
+    passOn,
+    dropBuzzRoll,
+    skipAnswering,
+    takeNext,
+    rollTie,
+    startPhoneRoom,
+    roomState,
+    roomAnswer,
+    roomCardSeen,
+    roomColor,
+    roomWager,
+    roomBuzz,
+    addPhonePlayer,
+    kickPhone,
+    kickTeamMember,
+    moveTeamMember,
+    backToEditor,
+    keepRoomInEditor,
+    closePhoneRoom,
+    lockSeats,
+    exitGame,
+    nextGame,
   };
 }

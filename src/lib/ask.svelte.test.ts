@@ -25,7 +25,10 @@ describe('splitAsk', () => {
   });
   it('titles a message with its first sentence or line', () => {
     expect(splitAsk({ text: 'Save failed: the disk is full' })).toEqual({ title: 'Save failed: the disk is full', body: '' });
-    expect(splitAsk({ text: 'Saved.\n\nThese files were missing:\na.png\nb.png' })).toEqual({ title: 'Saved.', body: 'These files were missing:\na.png\nb.png' });
+    expect(splitAsk({ text: 'Saved.\n\nThese files were missing:\na.png\nb.png' })).toEqual({
+      title: 'Saved.',
+      body: 'These files were missing:\na.png\nb.png',
+    });
   });
   it('keeps a given title, with all the text below it', () => {
     expect(splitAsk({ title: 'Delete it?', text: 'Gone for good.' })).toEqual({ title: 'Delete it?', body: 'Gone for good.' });

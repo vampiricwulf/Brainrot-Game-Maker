@@ -19,7 +19,12 @@ import type { CopyPlan } from './plan';
 import { convertBlob } from './run';
 
 /** Where the test steps in: when the copy is made (release), and once its bytes are stored. */
-const at = vi.hoisted(() => ({ release: null as (() => void) | null, stored: null as (() => void) | null, hw: false, hardware: undefined as boolean | undefined }));
+const at = vi.hoisted(() => ({
+  release: null as (() => void) | null,
+  stored: null as (() => void) | null,
+  hw: false,
+  hardware: undefined as boolean | undefined,
+}));
 
 vi.mock('./gif', () => ({
   gifInfo: () => ({ width: 64, height: 36, frames: 10, seconds: 1 }),
@@ -38,7 +43,7 @@ vi.mock('./probe', async (orig) => ({
 vi.mock('./run', async (orig) => ({ ...(await orig<typeof import('./run')>()), checkMade: async () => null, convertBlob: vi.fn() }));
 vi.mock('../desktop.svelte', async (orig) => ({
   ...(await orig<typeof import('../desktop.svelte')>()),
-  whileWriting: async <T,>(fn: () => Promise<T>): Promise<T> => {
+  whileWriting: async <T>(fn: () => Promise<T>): Promise<T> => {
     const r = await fn();
     at.stored?.();
     return r;
@@ -101,7 +106,8 @@ describe('a 🗜 copy put in the game', () => {
     const was = prefs.buzzerServer;
     prefs.buzzerServer = 'https://a.test';
     noteServerFiles('https://a.test', { files: { fileBytes: 50, roomBytes: 1000, roomFiles: 32 } });
-    const over = (next: string) => `🗜 Made a smaller copy, but it’s still too big for this buzzer server (100 B; it takes 50 B): ${next} (Ctrl+Z takes it back)`;
+    const over = (next: string) =>
+      `🗜 Made a smaller copy, but it’s still too big for this buzzer server (100 B; it takes 50 B): ${next} (Ctrl+Z takes it back)`;
     try {
       // A GIF's comes out the same each time: no "🗜 again".
       const job = queuePhoneCopy('gif')!;
@@ -111,7 +117,13 @@ describe('a 🗜 copy put in the game', () => {
       expect(jobs.ended[job]).toMatchObject({ done: over('add it from a link instead') });
       expect(copies()).toEqual(['gif']);
       // A video's at 480p: there's a smaller picture.
-      vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(100)], { type: 'video/webm' }), mime: 'video/webm', seconds: 2, width: 854, height: 480 });
+      vi.mocked(convertBlob).mockResolvedValue({
+        blob: new Blob([new Uint8Array(100)], { type: 'video/webm' }),
+        mime: 'video/webm',
+        seconds: 2,
+        width: 854,
+        height: 480,
+      });
       const vid = queuePhoneCopy('mov', plan(false))!;
       await ended(vid);
       expect(jobs.ended[vid]).toMatchObject({ done: over('🗜 again makes a smaller one, or add it from a link') });
@@ -155,7 +167,13 @@ describe('a 🗜 copy put in the game', () => {
   });
 
   it('isn’t put in when it came out hardly smaller than a file phones play as it is (one they can’t play goes in)', async () => {
-    vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(3800)], { type: 'video/webm' }), mime: 'video/webm', seconds: 2, width: 64, height: 36 });
+    vi.mocked(convertBlob).mockResolvedValue({
+      blob: new Blob([new Uint8Array(3800)], { type: 'video/webm' }),
+      mime: 'video/webm',
+      seconds: 2,
+      width: 64,
+      height: 36,
+    });
     const job = queuePhoneCopy('mov', plan(true))!;
     await ended(job);
     expect(jobs.ended[job]).toEqual({ failed: 'It came out hardly smaller (4 KB of 4 KB): nothing was changed.' });
@@ -227,7 +245,12 @@ describe('a 🗜 copy made in play', () => {
     await made();
     at.release!();
     await ended(job);
-    expect([copiesIn(p), copies(), labels(), history.entries.map((e) => e.during)]).toEqual([['gif'], ['gif'], ['Made a smaller copy of a GIF for phones'], ['play']]);
+    expect([copiesIn(p), copies(), labels(), history.entries.map((e) => e.during)]).toEqual([
+      ['gif'],
+      ['gif'],
+      ['Made a smaller copy of a GIF for phones'],
+      ['play'],
+    ]);
     expect(jobs.ended[job]).toMatchObject({ done: expect.stringMatching(/^🗜 Phones get the smaller copy now: .* \(Ctrl\+Z takes it back\)$/) });
     // (The same copy in both: the same bytes, under the same id.)
     expect(p.media.find((m) => m.phoneCopy)!.id).toBe(g.media.find((m) => m.phoneCopy)!.id);
@@ -303,11 +326,23 @@ describe('a 🗜 copy made in play', () => {
     await ended(job);
     at.hw = true;
     at.release = null;
-    vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(100)], { type: 'video/webm' }), mime: 'video/webm', seconds: 2, width: 64, height: 36 });
+    vi.mocked(convertBlob).mockResolvedValue({
+      blob: new Blob([new Uint8Array(100)], { type: 'video/webm' }),
+      mime: 'video/webm',
+      seconds: 2,
+      width: 64,
+      height: 36,
+    });
     const v: CopyPlan = { ...plan(false), run: { box: 'webm', video: { codec: 'vp9', width: 64, height: 36, bitrate: 200_000 } } };
     const vjob = queuePhoneCopy('mov', v, { hardware: true })!;
     await ended(vjob);
-    expect(vi.mocked(convertBlob).mock.calls.at(-1)![1].video).toEqual({ codec: 'vp9', width: 64, height: 36, bitrate: 200_000, hardwareAcceleration: 'prefer-hardware' });
+    expect(vi.mocked(convertBlob).mock.calls.at(-1)![1].video).toEqual({
+      codec: 'vp9',
+      width: 64,
+      height: 36,
+      bitrate: 200_000,
+      hardwareAcceleration: 'prefer-hardware',
+    });
     // (Not asked: as ever, even where it could.)
     const again = queuePhoneCopy('gif')!;
     await made();
@@ -323,7 +358,12 @@ describe('🗜 Make smaller in play', () => {
     vi.stubGlobal('VideoEncoder', class {});
     try {
       registerBlob('linked', new Blob([new Uint8Array(5000)], { type: 'image/gif' }));
-      const game = { media: [{ ...GIF }, { id: 'linked', name: 'cat.gif', mime: 'image/gif', size: 5000, kind: 'image' as const, source: 'https://files.catbox.moe/abc123.gif' }] };
+      const game = {
+        media: [
+          { ...GIF },
+          { id: 'linked', name: 'cat.gif', mime: 'image/gif', size: 5000, kind: 'image' as const, source: 'https://files.catbox.moe/abc123.gif' },
+        ],
+      };
       expect([shrinkHere(game, 'gif'), shrinkHere(game, 'linked'), shrinkHere(game, 'gone')]).toEqual([true, false, false]);
     } finally {
       vi.unstubAllGlobals();

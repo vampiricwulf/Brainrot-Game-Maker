@@ -8,7 +8,23 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png, assert, launchChromium, boardIn, boardTilesIn, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  addClassicRounds,
+  answerReplace,
+  exportHtml,
+  openGameFile,
+  openThemeShare,
+  playWithPlayers,
+  png,
+  assert,
+  launchChromium,
+  boardIn,
+  boardTilesIn,
+  roundTabsIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 // (CI sets SCREENSHOTS: a failure leaves its picture in the run's e2e-debug files.)
@@ -25,8 +41,16 @@ const shot = (name, p = page) => shots && p.screenshot({ path: `${shots}/${name}
 const RED = 'rgb(255, 0, 0)';
 const CLASSIC_TILE = 'rgb(6, 12, 233)';
 /** A board's tile background (row, column) in `where` (the Theme page's preview, the stage…). */
-const bg = (where, row, cat) => boardIn(where).locator(`.tile[data-row="${row}"][data-cat="${cat}"]`).first().evaluate((e) => getComputedStyle(e).backgroundColor);
-const headerBg = (where, cat) => boardIn(where).locator('.header').nth(cat).evaluate((e) => getComputedStyle(e).backgroundColor);
+const bg = (where, row, cat) =>
+  boardIn(where)
+    .locator(`.tile[data-row="${row}"][data-cat="${cat}"]`)
+    .first()
+    .evaluate((e) => getComputedStyle(e).backgroundColor);
+const headerBg = (where, cat) =>
+  boardIn(where)
+    .locator('.header')
+    .nth(cat)
+    .evaluate((e) => getComputedStyle(e).backgroundColor);
 const preview = page.locator('.preview');
 const themePage = () => page.getByRole('button', { name: '🎨 Theme' }).click();
 const card = (name) => page.locator('.mine .card', { hasText: name });
@@ -49,7 +73,10 @@ try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
   // A Daily Double placed: the preview shows the board as viewers see it, without the host's ⭐ in its corner.
-  await page.locator('.grid .tile').nth(2 * (await page.locator('.cat').count())).click({ button: 'right' });
+  await page
+    .locator('.grid .tile')
+    .nth(2 * (await page.locator('.cat').count()))
+    .click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '⭐ Daily Double', exact: true }).click();
   await themePage();
   await boardTilesIn(boardIn(preview)).first().waitFor();
@@ -61,7 +88,10 @@ try {
       (await page.locator('[data-share-fold]').innerText()).includes('Share or bring in a theme · file, code, another game'),
     'Share is one folded line: “▸ Share or bring in a theme · file, code, another game”',
   );
-  assert((await page.locator('.mine .empty').innerText()) === 'None yet: 💾 Save as new theme… keeps this look for any game.', 'My themes with none saved is one line');
+  assert(
+    (await page.locator('.mine .empty').innerText()) === 'None yet: 💾 Save as new theme… keeps this look for any game.',
+    'My themes with none saved is one line',
+  );
   // A click on the preview finds the setting of what's under it: it opens and flashes.
   const clickOn = async (sel) => {
     const r = await preview.locator(sel).first().boundingBox();
@@ -96,7 +126,10 @@ try {
     await page.mouse.click(r.x + 4, r.y + r.height / 2);
     await page.waitForFunction(() => document.querySelector('[data-place="theme:tile"]')?.classList.contains('flash'));
     const onSlide = await flashed();
-    assert(onText.join() === 'theme:clueColor' && onSlide.join() === 'theme:tile', `on ❓ A clue the clue's text finds Clue text and the slide's edge Tiles & slide background (${onText} | ${onSlide})`);
+    assert(
+      onText.join() === 'theme:clueColor' && onSlide.join() === 'theme:tile',
+      `on ❓ A clue the clue's text finds Clue text and the slide's edge Tiles & slide background (${onText} | ${onSlide})`,
+    );
     // The Final, nothing written yet: the same sample words under a sample category.
     await pick.selectOption(await pick.locator('option', { hasText: 'Final' }).first().getAttribute('value'));
     await preview.locator('.full .slide .text', { hasText: /this is how a clue looks on stream/i }).waitFor();
@@ -119,7 +152,9 @@ try {
   await picker.waitFor();
   assert(!(await chromiums()), "a click on a color box opens the app's picker, not Chromium's");
   assert(
-    (await picker.locator('h3').innerText()) === 'Values' && (await formats.allInnerTexts()).join('|') === 'Hex|RGB' && (await formats.first().getAttribute('aria-pressed')) === 'true',
+    (await picker.locator('h3').innerText()) === 'Values' &&
+      (await formats.allInnerTexts()).join('|') === 'Hex|RGB' &&
+      (await formats.first().getAttribute('aria-pressed')) === 'true',
     'it is headed with the box’s name, and shows Hex and RGB side by side, Hex chosen',
   );
   const square = await picker.getByRole('slider', { name: 'Saturation and brightness' }).boundingBox();
@@ -131,13 +166,22 @@ try {
   await page.mouse.up();
   await page.keyboard.press('Escape');
   await picker.waitFor({ state: 'detached' });
-  assert((await values.inputValue()) === valueBefore && (await undoTitle()) === stepBefore && (await onValues()), 'Esc puts back the color it had, with no undo step, and the keys are on the box again');
+  assert(
+    (await values.inputValue()) === valueBefore && (await undoTitle()) === stepBefore && (await onValues()),
+    'Esc puts back the color it had, with no undo step, and the keys are on the box again',
+  );
   await page.keyboard.press('Enter');
   await picker.waitFor();
-  assert(!(await chromiums()) && (await hexBox.evaluate((e) => document.activeElement === e)), 'Enter on the box opens it too (not Chromium’s), with the keys in its Hex box');
+  assert(
+    !(await chromiums()) && (await hexBox.evaluate((e) => document.activeElement === e)),
+    'Enter on the box opens it too (not Chromium’s), with the keys in its Hex box',
+  );
   await page.keyboard.type('12AB3G');
   await page.keyboard.press('Enter');
-  assert((await hexBox.getAttribute('aria-invalid')) === 'true' && (await picker.isVisible()) && (await values.inputValue()) === valueBefore, 'a hex that isn’t one is shown as such, and isn’t used (Enter keeps the picker open)');
+  assert(
+    (await hexBox.getAttribute('aria-invalid')) === 'true' && (await picker.isVisible()) && (await values.inputValue()) === valueBefore,
+    'a hex that isn’t one is shown as such, and isn’t used (Enter keeps the picker open)',
+  );
   await hexBox.fill('12AB34');
   await page.keyboard.press('Enter');
   await picker.waitFor({ state: 'detached' });
@@ -158,7 +202,10 @@ try {
   await hexBox.click({ position: { x: 30, y: 10 } });
   await page.evaluate(() => navigator.clipboard.writeText('#00FF00'));
   await page.keyboard.press('Control+v');
-  assert((await values.inputValue()) === '#00ff00' && (await hexBox.inputValue()) === '#00ff00', 'a color pasted there takes the old one’s place, wherever the cursor was');
+  assert(
+    (await values.inputValue()) === '#00ff00' && (await hexBox.inputValue()) === '#00ff00',
+    'a color pasted there takes the old one’s place, wherever the cursor was',
+  );
   await page.keyboard.press('Escape');
   await picker.waitFor({ state: 'detached' });
   // A right-click on its box closes it (keeping the color): the box's menu shows over the page, not under the picker.
@@ -166,10 +213,13 @@ try {
   await picker.waitFor();
   await values.click({ button: 'right' });
   await menu.waitFor();
-  const firstItem = await menu.getByRole('menuitem').first().evaluate((e) => {
-    const r = e.getBoundingClientRect();
-    return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
-  });
+  const firstItem = await menu
+    .getByRole('menuitem')
+    .first()
+    .evaluate((e) => {
+      const r = e.getBoundingClientRect();
+      return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+    });
   assert((await picker.count()) === 0 && firstItem, 'a right-click on its box closes it, and the box’s menu can be used');
   await page.keyboard.press('Escape');
   await menu.waitFor({ state: 'detached' });
@@ -201,7 +251,8 @@ try {
   await formats.last().click();
   const rgbBoxes = picker.getByRole('spinbutton');
   assert(
-    (await formats.last().getAttribute('aria-pressed')) === 'true' && (await rgbBoxes.evaluateAll((bs) => bs.map((b) => `${b.ariaLabel} ${b.value}`).join(', '))) === 'Red 255, Green 204, Blue 0',
+    (await formats.last().getAttribute('aria-pressed')) === 'true' &&
+      (await rgbBoxes.evaluateAll((bs) => bs.map((b) => `${b.ariaLabel} ${b.value}`).join(', '))) === 'Red 255, Green 204, Blue 0',
     'a click on its label opens it; RGB shows the color’s three numbers',
   );
   await rgbBoxes.nth(2).fill('255');
@@ -210,26 +261,44 @@ try {
   await picker.getByRole('button', { name: '✓ Done' }).click();
   await picker.waitFor({ state: 'detached' });
   assert(
-    (await values.inputValue()) === valueBefore && (await undoTitle()) === stepBefore && JSON.parse(await page.evaluate(() => localStorage.getItem('jb.prefs'))).colorFormat === 'rgb',
+    (await values.inputValue()) === valueBefore &&
+      (await undoTitle()) === stepBefore &&
+      JSON.parse(await page.evaluate(() => localStorage.getItem('jb.prefs'))).colorFormat === 'rgb',
     '↺ puts back the color it was (✓ Done then makes no step), and RGB is remembered',
   );
 
   // ---------- A plain game looks as it always did ----------
   // (Row 1: the preview plays every other category's first tile.)
   assert((await bg(preview, 1, 0)) === CLASSIC_TILE && (await bg(preview, 1, 1)) === CLASSIC_TILE, 'a game without the new looks: every tile the tile color');
-  const plainShadow = await boardTilesIn(boardIn(preview)).first().evaluate((e) => getComputedStyle(e).boxShadow);
+  const plainShadow = await boardTilesIn(boardIn(preview))
+    .first()
+    .evaluate((e) => getComputedStyle(e).boxShadow);
   assert(plainShadow.includes('rgba(0, 0, 0, 0.35)') && plainShadow.includes('3px'), `and the same dark 3px edge inside each tile (${plainShadow})`);
 
   // ---------- Clue text: Undo stays on the Theme page; a kept color too close to new tiles is pointed out ----------
   const clueFont = page.getByRole('combobox', { name: 'Clue text font' });
   // (What an undo or redo did: the note under the page, or a toast over a window opened on top of it.)
-  const said = (text) => page.locator('.history-notice', { hasText: text }).or(toastsIn(page, { hasText: text })).first().waitFor();
-  const onThemePage = async () => (await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page' && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0;
+  const said = (text) =>
+    page
+      .locator('.history-notice', { hasText: text })
+      .or(toastsIn(page, { hasText: text }))
+      .first()
+      .waitFor();
+  const onThemePage = async () =>
+    (await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page' &&
+    (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0;
   await clueFont.selectOption({ label: 'Anton' });
   await page.keyboard.press('Control+z');
   await said('Undid Clue text font');
-  assert((await onThemePage()) && (await clueFont.inputValue()) === '', 'Ctrl+Z of a Clue text font (it restyles every clue) stays on the Theme page, no clue editor opens');
-  const undidNote = await page.locator('.history-notice', { hasText: 'Undid Clue text font' }).or(toastsIn(page, { hasText: 'Undid Clue text font' })).first().innerText();
+  assert(
+    (await onThemePage()) && (await clueFont.inputValue()) === '',
+    'Ctrl+Z of a Clue text font (it restyles every clue) stays on the Theme page, no clue editor opens',
+  );
+  const undidNote = await page
+    .locator('.history-notice', { hasText: 'Undid Clue text font' })
+    .or(toastsIn(page, { hasText: 'Undid Clue text font' }))
+    .first()
+    .innerText();
   assert(/· Theme\b/.test(undidNote) && !undidNote.includes('Question'), `and its note says it was on the Theme page, not at a clue (${undidNote})`);
   await page.keyboard.press('Control+y');
   await said('Redid Clue text font');
@@ -245,7 +314,10 @@ try {
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
   await clueWarn.waitFor({ state: 'detached' });
-  assert((await bg(preview, 1, 0)) === CLASSIC_TILE && (await page.getByLabel('Clue text color').inputValue()) === '#ffffff', 'Ctrl+Z twice: Classic and the clues’ own color again');
+  assert(
+    (await bg(preview, 1, 0)) === CLASSIC_TILE && (await page.getByLabel('Clue text color').inputValue()) === '#ffffff',
+    'Ctrl+Z twice: Classic and the clues’ own color again',
+  );
 
   // ---------- Fonts: your own font file ----------
   const namesFont = page.getByRole('combobox', { name: 'Category names' });
@@ -253,12 +325,22 @@ try {
   await page.getByRole('button', { name: '＋ Category names…' }).click();
   const fontPicker = page.getByRole('dialog', { name: 'Choose font' });
   const [fontChooser] = await Promise.all([page.waitForEvent('filechooser'), fontPicker.getByRole('button', { name: '⬆ Upload font file…' }).click()]);
-  await fontChooser.setFiles({ name: 'Channel Font.woff2', mimeType: 'font/woff2', buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')) });
+  await fontChooser.setFiles({
+    name: 'Channel Font.woff2',
+    mimeType: 'font/woff2',
+    buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')),
+  });
   await fontPicker.waitFor({ state: 'detached' });
   await page.waitForFunction(() => /^'jb-\w+', sans-serif$/.test(document.querySelector('label[data-k="boardFont"] select').value));
   const ownFont = await namesFont.inputValue();
-  assert((await namesFont.locator('option:checked').innerText()) === 'Channel Font (uploaded)', `＋ Category names… (Your own font file) uploads a font file and puts it on the category names (${ownFont})`);
-  const previewFont = await boardIn(preview).locator('.header').first().evaluate((e) => getComputedStyle(e).fontFamily);
+  assert(
+    (await namesFont.locator('option:checked').innerText()) === 'Channel Font (uploaded)',
+    `＋ Category names… (Your own font file) uploads a font file and puts it on the category names (${ownFont})`,
+  );
+  const previewFont = await boardIn(preview)
+    .locator('.header')
+    .first()
+    .evaluate((e) => getComputedStyle(e).fontFamily);
   assert(previewFont.includes(ownFont.split(',')[0].replace(/'/g, '')), `the preview's category names are in it (${previewFont})`);
   const listed = (name) => page.getByRole('combobox', { name }).locator('option', { hasText: 'Channel Font (uploaded)' }).count();
   assert((await listed('Values & scores')) === 1 && (await listed('Clue text font')) === 1, 'and it is listed for the values and the clue text too');
@@ -276,7 +358,10 @@ try {
   assert((await bg(preview, 1, 1)) === RED && (await bg(preview, 2, 1)) === RED && (await bg(preview, 2, 0)) === CLASSIC_TILE, 'by column: every other column');
   await page.getByRole('combobox', { name: 'Alternating tiles' }).selectOption('checker');
   await page.getByRole('combobox', { name: 'Played tiles' }).selectOption('hidden');
-  const played = await boardIn(preview).locator('.tile.used').first().evaluate((e) => getComputedStyle(e).backgroundColor);
+  const played = await boardIn(preview)
+    .locator('.tile.used')
+    .first()
+    .evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(played === 'rgba(0, 0, 0, 0)', `played tiles can be hidden (${played})`);
   const usedColor = page.locator('label[data-k="tileUsed"]');
   await usedColor.getByText('(not shown: Played tiles is Hidden)').waitFor();
@@ -286,13 +371,21 @@ try {
   assert((await menu.innerText()).startsWith('Used tiles\n'), 'and its right-click menu is still called Used tiles');
   await page.keyboard.press('Escape');
   await page.getByLabel('Rounded corners (0)').fill('20');
-  assert((await boardTilesIn(boardIn(preview)).first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'rounded tile corners');
+  assert(
+    (await boardTilesIn(boardIn(preview))
+      .first()
+      .evaluate((e) => getComputedStyle(e).borderRadius)) === '20px',
+    'rounded tile corners',
+  );
   await openSection('Categories');
   await page.getByLabel('Alternate colors').check();
   await page.getByLabel('Second category color').fill('#00ff00');
   assert((await headerBg(preview, 0)) === CLASSIC_TILE && (await headerBg(preview, 1)) === 'rgb(0, 255, 0)', 'alternating category colors');
   // White names on bright green: a note says they're hard to read (under Categories, and under Colors).
-  assert((await page.getByRole('status').filter({ hasText: 'category names are hard to read' }).count()) === 2, 'category names too close to an alternate color: a note says so');
+  assert(
+    (await page.getByRole('status').filter({ hasText: 'category names are hard to read' }).count()) === 2,
+    'category names too close to an alternate color: a note says so',
+  );
   // A look switched off for a moment and on again keeps the color picked for it.
   await page.getByLabel('Line under the categories color').fill('#ff0000');
   await page.getByLabel('Line under them').uncheck();
@@ -304,14 +397,20 @@ try {
   await page.waitForFunction(() => document.querySelector('[aria-label="Line under the categories color"]')?.value === '#000000');
   await page.getByLabel('Line under them').uncheck();
   await page.getByLabel('Line under them').check();
-  assert((await page.getByLabel('Line under the categories color').inputValue()) === '#000000', 'one back to its default black, unticked and ticked again, is black');
+  assert(
+    (await page.getByLabel('Line under the categories color').inputValue()) === '#000000',
+    'one back to its default black, unticked and ticked again, is black',
+  );
   await page.getByLabel('Tile glow', { exact: true }).check();
   // (Its size is beside it, in Colors: not in Tiles.)
   const glowRow = await page.evaluate(() => {
     const top = (el) => Math.round(el.getBoundingClientRect().top);
     const glow = document.querySelector('details.sec[data-sec="colors"] [data-k="glow"]');
     const size = document.querySelector('details.sec[data-sec="colors"] [data-k="glowSize"]');
-    return { beside: !!size && glow.nextElementSibling === size && Math.abs(top(size) - top(glow)) < 40, inTiles: !!document.querySelector('details.sec[data-sec="tiles"] [data-k="glowSize"]') };
+    return {
+      beside: !!size && glow.nextElementSibling === size && Math.abs(top(size) - top(glow)) < 40,
+      inTiles: !!document.querySelector('details.sec[data-sec="tiles"] [data-k="glowSize"]'),
+    };
   });
   assert(glowRow.beside && !glowRow.inTiles, `Glow size sits beside the Tile glow tick, in Colors (${JSON.stringify(glowRow)})`);
   await page.getByLabel('Tile glow color').fill('#ffd700');
@@ -323,22 +422,34 @@ try {
   await page.getByRole('combobox', { name: 'Plate corners' }).selectOption('pill');
   // A pill's round ends don't cut the names.
   // (The name strip's padding and the name's own, which leaves a slanted font's last letter room.)
-  const namePad = await preview.locator('.plate .name').first().evaluate((e) => parseFloat(getComputedStyle(e).paddingLeft) + parseFloat(getComputedStyle(e.querySelector('.nm')).paddingLeft));
+  const namePad = await preview
+    .locator('.plate .name')
+    .first()
+    .evaluate((e) => parseFloat(getComputedStyle(e).paddingLeft) + parseFloat(getComputedStyle(e.querySelector('.nm')).paddingLeft));
   assert(namePad >= 28, `pill plates keep the names clear of their round ends (${namePad}px)`);
   await page.getByRole('button', { name: '↺ Plain score plates' }).click();
   assert((await page.getByRole('combobox', { name: 'Plate corners' }).inputValue()) === '', '↺ Plain score plates takes them back');
   await page.getByLabel('Glow on the leader').check();
   assert((await page.locator('summary', { hasText: 'Tiles' }).innerText()).includes('changed'), 'a section with looks of its own says it’s changed');
   const classic = page.locator('.preset', { hasText: 'Classic' });
-  assert((await classic.innerText()).includes('· edited') && (await classic.getAttribute('aria-pressed')) === 'false', 'the preset it started from says “edited”, and isn’t shown as chosen');
+  assert(
+    (await classic.innerText()).includes('· edited') && (await classic.getAttribute('aria-pressed')) === 'false',
+    'the preset it started from says “edited”, and isn’t shown as chosen',
+  );
   assert((await savebar.innerText()).includes('Classic') && (await savebar.innerText()).includes('edited'), 'the bar says which theme it started from, edited');
-  assert((await savebar.getByRole('button', { name: /Save changes/ }).count()) === 0, 'from a built-in theme only Save as new theme… is offered (a preset is never overwritten)');
+  assert(
+    (await savebar.getByRole('button', { name: /Save changes/ }).count()) === 0,
+    'from a built-in theme only Save as new theme… is offered (a preset is never overwritten)',
+  );
   await shot('1-theme-page');
 
   // ---------- 💾 Save as new theme… ----------
   await page.getByRole('button', { name: '💾 Save as new theme…' }).click();
   const naming = page.getByRole('dialog', { name: '💾 Save as new theme' });
-  assert((await naming.innerText()).includes('Kept in this browser, for any game'), 'the name window says where it’s kept: in this browser (it said “on this computer”)');
+  assert(
+    (await naming.innerText()).includes('Kept in this browser, for any game'),
+    'the name window says where it’s kept: in this browser (it said “on this computer”)',
+  );
   // Its name is filled in and selected, so what's typed takes its place (it went on the end: "Untitled Game themeMy show").
   const nameBox = naming.getByLabel('Theme name');
   await page.waitForFunction(() => {
@@ -355,20 +466,36 @@ try {
     const right = bar.getBoundingClientRect().right;
     return [...bar.querySelectorAll('button')].map((b) => Math.round(right - b.getBoundingClientRect().right));
   });
-  assert(barFit.length === 2 && barFit.every((gap) => gap >= 0), `a long theme name's Save changes button stays inside the bar (room left: ${barFit.join(', ')} px)`);
-  assert(await card('Checker party').locator('.use').evaluate((b) => b.getAttribute('aria-pressed') === 'true'), 'a saved theme shows in My themes, marked as the one this game looks like');
+  assert(
+    barFit.length === 2 && barFit.every((gap) => gap >= 0),
+    `a long theme name's Save changes button stays inside the bar (room left: ${barFit.join(', ')} px)`,
+  );
+  assert(
+    await card('Checker party')
+      .locator('.use')
+      .evaluate((b) => b.getAttribute('aria-pressed') === 'true'),
+    'a saved theme shows in My themes, marked as the one this game looks like',
+  );
   // (Chosen: the one selected look, its name still readable on the tint: 4.5:1.)
-  const chosenInk = await card('Checker party').locator('.use .nm').evaluate((e) => {
-    const lum = (c) => {
-      const [r, g, b] = c.match(/\d+(\.\d+)?/g).slice(0, 3).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    };
-    const [a, b] = [lum(getComputedStyle(e).color), lum(getComputedStyle(e.closest('.use')).backgroundColor)].sort((x, y) => y - x);
-    return (a + 0.05) / (b + 0.05);
-  });
+  const chosenInk = await card('Checker party')
+    .locator('.use .nm')
+    .evaluate((e) => {
+      const lum = (c) => {
+        const [r, g, b] = c
+          .match(/\d+(\.\d+)?/g)
+          .slice(0, 3)
+          .map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const [a, b] = [lum(getComputedStyle(e).color), lum(getComputedStyle(e.closest('.use')).backgroundColor)].sort((x, y) => y - x);
+      return (a + 0.05) / (b + 0.05);
+    });
   assert(chosenInk >= 4.5, `the chosen theme's name reads at ${chosenInk.toFixed(2)}:1 on its tint`);
   assert((await card('Checker party').locator('.tag').innerText()) === '★', 'marked as yours');
-  assert((await classic.getAttribute('aria-pressed')) === 'false' && !(await classic.innerText()).includes('edited'), 'and the game’s theme is that one now, not an edited Classic');
+  assert(
+    (await classic.getAttribute('aria-pressed')) === 'false' && !(await classic.innerText()).includes('edited'),
+    'and the game’s theme is that one now, not an edited Classic',
+  );
 
   // ---------- Kept after a reload, used in another game ----------
   await page.waitForTimeout(400);
@@ -385,22 +512,35 @@ try {
   assert((await bg(preview, 1, 0)) === CLASSIC_TILE, 'the new game starts plain');
   await values.click();
   await picker.waitFor();
-  assert((await formats.last().getAttribute('aria-pressed')) === 'true' && (await rgbBoxes.count()) === 3, 'the color picker opens with RGB after a reload, as it was last left');
+  assert(
+    (await formats.last().getAttribute('aria-pressed')) === 'true' && (await rgbBoxes.count()) === 3,
+    'the color picker opens with RGB after a reload, as it was last left',
+  );
   await formats.first().click();
   await page.keyboard.press('Escape');
   await picker.waitFor({ state: 'detached' });
   await card('Checker party').locator('.use').click();
-  assert((await bg(preview, 1, 0)) === RED && (await headerBg(preview, 1)) === 'rgb(0, 255, 0)', 'using it puts its alternating tiles and categories on this game');
+  assert(
+    (await bg(preview, 1, 0)) === RED && (await headerBg(preview, 1)) === 'rgb(0, 255, 0)',
+    'using it puts its alternating tiles and categories on this game',
+  );
   await page.keyboard.press('Control+z');
   assert((await bg(preview, 1, 0)) === CLASSIC_TILE, 'Ctrl+Z takes it back in one step');
   await page.keyboard.press('Control+y');
   assert((await bg(preview, 1, 0)) === RED, 'Ctrl+Y puts it back');
 
   // ---------- Rename ----------
-  await card('Checker party').getByRole('button', { name: /More for/ }).click();
+  await card('Checker party')
+    .getByRole('button', { name: /More for/ })
+    .click();
   await page.getByRole('menuitem', { name: '✎ Rename' }).click();
   const renaming = page.getByRole('dialog', { name: '✎ Rename theme' });
-  await page.waitForFunction(() => document.activeElement instanceof HTMLInputElement && document.activeElement.selectionEnd === document.activeElement.value.length && document.activeElement.selectionStart === 0);
+  await page.waitForFunction(
+    () =>
+      document.activeElement instanceof HTMLInputElement &&
+      document.activeElement.selectionEnd === document.activeElement.value.length &&
+      document.activeElement.selectionStart === 0,
+  );
   await page.keyboard.type('Checkers');
   assert((await renaming.getByLabel('Theme name').inputValue()) === 'Checkers', 'and so does ✎ Rename (its old name selected)');
   await renaming.getByRole('button', { name: 'Rename' }).click();
@@ -410,11 +550,17 @@ try {
   // ---------- The saved theme put on is the one chosen; Save changes ----------
   const checkers = card('Checkers').locator('.use');
   assert((await checkers.getAttribute('aria-pressed')) === 'true', 'a saved theme put on a game is the card chosen');
-  assert((await page.locator('.preset[aria-pressed="true"]').count()) === 0 && (await page.locator('.card.based').count()) === 0, 'not the preset it was made from');
+  assert(
+    (await page.locator('.preset[aria-pressed="true"]').count()) === 0 && (await page.locator('.card.based').count()) === 0,
+    'not the preset it was made from',
+  );
   const saveChanges = savebar.getByRole('button', { name: '💾 Save changes to “Checkers”' });
   assert(await saveChanges.isDisabled(), 'Save changes waits for a change');
   await valuesBox().fill('#00ffff');
-  assert((await savebar.innerText()).includes('edited') && (await card('Checkers').innerText()).includes('· edited'), 'changed: the bar and the card say “edited”');
+  assert(
+    (await savebar.innerText()).includes('edited') && (await card('Checkers').innerText()).includes('· edited'),
+    'changed: the bar and the card say “edited”',
+  );
   assert((await checkers.getAttribute('aria-pressed')) === 'true', 'and it is still the theme chosen');
   await saveChanges.click();
   const overwrite = page.getByRole('alertdialog').filter({ hasText: 'Overwrite “Checkers” with this look?' });
@@ -433,7 +579,10 @@ try {
   assert((await valuesBox().inputValue()) === '#ffcc00', 'Classic is still Classic');
   assert((await savebar.getByRole('button').allInnerTexts()).join('|') === '💾 Save as new theme…', 'from a preset, only Save as new theme…');
   await valuesBox().fill('#123456');
-  assert((await page.locator('.card.based').count()) === 1 && (await savebar.getByRole('button', { name: /Save changes/ }).count()) === 0, 'changed: Classic is marked as where it started (dashed), still only Save as new theme…');
+  assert(
+    (await page.locator('.card.based').count()) === 1 && (await savebar.getByRole('button', { name: /Save changes/ }).count()) === 0,
+    'changed: Classic is marked as where it started (dashed), still only Save as new theme…',
+  );
   await page.keyboard.press('Control+z');
   await checkers.click();
 
@@ -441,20 +590,29 @@ try {
   await page.locator('.preset', { hasText: 'Dark' }).click({ button: 'right' });
   await menu.waitFor();
   const presetMenu = (await menu.innerText()).split('\n').map((l) => l.trim());
-  assert(presetMenu.includes('🎨 Use in this game') && presetMenu.includes('💾 Save a copy as my theme…') && presetMenu.includes('📋 Copy theme code'), `right-click on a built-in theme: use, save a copy, share (${presetMenu.join(' / ')})`);
+  assert(
+    presetMenu.includes('🎨 Use in this game') && presetMenu.includes('💾 Save a copy as my theme…') && presetMenu.includes('📋 Copy theme code'),
+    `right-click on a built-in theme: use, save a copy, share (${presetMenu.join(' / ')})`,
+  );
   assert(!presetMenu.some((l) => /Overwrite|Save changes|Delete|Rename/.test(l)), 'and no way to overwrite, rename or delete it');
   await page.keyboard.press('Escape');
   await checkers.click({ button: 'right' });
   await menu.waitFor();
   const mineMenu = (await menu.innerText()).split('\n').map((l) => l.trim());
-  assert(['🎨 Use in this game', '💾 Save changes to it…', '✎ Rename', '⧉ Duplicate', '⬇ Export theme file', '🗑 Delete theme…'].every((l) => mineMenu.includes(l)), `right-click on one of My themes: its ⋯ menu (${mineMenu.join(' / ')})`);
+  assert(
+    ['🎨 Use in this game', '💾 Save changes to it…', '✎ Rename', '⧉ Duplicate', '⬇ Export theme file', '🗑 Delete theme…'].every((l) => mineMenu.includes(l)),
+    `right-click on one of My themes: its ⋯ menu (${mineMenu.join(' / ')})`,
+  );
   assert(await menu.getByRole('menuitem', { name: '💾 Save changes to it…' }).isDisabled(), 'Save changes to it… waits for a change there too');
   await page.keyboard.press('Escape');
   // Shift+F10 on a focused card opens the same menu, and Esc gives the card the focus back.
   await page.locator('.preset', { hasText: 'Pastel' }).focus();
   await page.keyboard.press('Shift+F10');
   await menu.waitFor();
-  assert((await menu.innerText()).includes('Pastel (built-in)') && (await page.evaluate(() => document.activeElement?.getAttribute('role'))) === 'menuitem', 'Shift+F10 on a focused card opens its menu, focus on the first item');
+  assert(
+    (await menu.innerText()).includes('Pastel (built-in)') && (await page.evaluate(() => document.activeElement?.getAttribute('role'))) === 'menuitem',
+    'Shift+F10 on a focused card opens its menu, focus on the first item',
+  );
   await page.keyboard.press('Escape');
   assert(await page.locator('.preset', { hasText: 'Pastel' }).evaluate((e) => e === document.activeElement), 'Esc closes it, the focus back on the card');
   await checkers.focus();
@@ -476,25 +634,37 @@ try {
   // A section: reset it all.
   await page.locator('details.sec[data-sec="colors"] > summary').click({ button: 'right' });
   await menu.getByRole('menuitem', { name: '↺ Reset Colors to Checkers' }).click();
-  assert((await page.getByLabel('Category names', { exact: true }).inputValue()) === '#ffffff' && !(await savebar.innerText()).includes('edited'), 'right-click a section: Reset Colors to Checkers');
+  assert(
+    (await page.getByLabel('Category names', { exact: true }).inputValue()) === '#ffffff' && !(await savebar.innerText()).includes('edited'),
+    'right-click a section: Reset Colors to Checkers',
+  );
   // Shift+F10 on a setting.
   await openSection('Score plates');
   await page.getByRole('combobox', { name: 'Plate corners' }).focus();
   await page.keyboard.press('Shift+F10');
   await menu.waitFor();
-  assert((await menu.innerText()).includes('Plate corners') && (await menu.innerText()).includes('Reset Score plates to Checkers'), 'Shift+F10 on a setting opens its menu');
+  assert(
+    (await menu.innerText()).includes('Plate corners') && (await menu.innerText()).includes('Reset Score plates to Checkers'),
+    'Shift+F10 on a setting opens its menu',
+  );
   await page.keyboard.press('Escape');
   await shot('1b-menus');
 
   // ---------- ⬇ Export theme / 📥 Import theme… ----------
   await openThemeShare(page);
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⬇ Export theme' }).click()]);
-  assert(download.suggestedFilename() === 'Checkers.brainrot-theme', `Export theme writes a .brainrot-theme file named after the theme (${download.suggestedFilename()})`);
+  assert(
+    download.suggestedFilename() === 'Checkers.brainrot-theme',
+    `Export theme writes a .brainrot-theme file named after the theme (${download.suggestedFilename()})`,
+  );
   const themePath = resolve('test-results/themes-checkers.brainrot-theme');
   mkdirSync(resolve('test-results'), { recursive: true });
   await download.saveAs(themePath);
   const data = JSON.parse(readFileSync(themePath, 'utf8'));
-  assert(data.format === 'brainrot-theme' && data.version === 1 && data.theme.tilePattern === 'checker' && data.theme.tile2 === '#ff0000', 'the file is JSON with its format, version and the looks');
+  assert(
+    data.format === 'brainrot-theme' && data.version === 1 && data.theme.tilePattern === 'checker' && data.theme.tile2 === '#ff0000',
+    'the file is JSON with its format, version and the looks',
+  );
   await page.getByRole('button', { name: /^Classic/ }).click();
   assert((await bg(preview, 1, 0)) === CLASSIC_TILE, 'a preset takes the extra looks off');
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import theme…' }).click()]);
@@ -511,7 +681,11 @@ try {
   const themeFoot = await imported.locator('.modal-foot').evaluate((f) => {
     const r = (b) => b.getBoundingClientRect();
     const [save, cancel, use] = f.querySelectorAll('button');
-    return { names: [save, cancel, use].map((b) => b.textContent.trim()).join(' | '), together: r(use).left - r(cancel).right <= 12 && r(use).right >= r(f).right - 1, apart: r(save).right < r(cancel).left - 24 };
+    return {
+      names: [save, cancel, use].map((b) => b.textContent.trim()).join(' | '),
+      together: r(use).left - r(cancel).right <= 12 && r(use).right >= r(f).right - 1,
+      apart: r(save).right < r(cancel).left - 24,
+    };
   });
   assert(
     themeFoot.names === '💾 Save to my themes | Cancel | 🎨 Use in this game' && themeFoot.together && themeFoot.apart,
@@ -521,7 +695,11 @@ try {
   assert((await bg(preview, 1, 0)) === RED, 'Use in this game puts it on the game');
   // A bad file is refused with a message, and the game is untouched.
   const [bad] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import theme…' }).click()]);
-  await bad.setFiles({ name: 'broken.brainrot-theme', mimeType: 'application/json', buffer: Buffer.from('{"format":"brainrot-theme","theme":{"tile":"url(evil)"}}') });
+  await bad.setFiles({
+    name: 'broken.brainrot-theme',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{"format":"brainrot-theme","theme":{"tile":"url(evil)"}}'),
+  });
   const refused = page.getByRole('alertdialog').filter({ hasText: 'can’t be used as a theme' });
   await refused.waitFor();
   assert((await refused.innerText()).includes('no colors'), 'a bad theme file is refused, saying why');
@@ -533,7 +711,10 @@ try {
   const notTheme = page.getByRole('alertdialog').filter({ hasText: 'can’t be used as a theme' });
   await notTheme.waitFor();
   const notThemeText = await notTheme.innerText();
-  assert(notThemeText.includes('This is a game, not a theme') && !notThemeText.includes('damaged'), `a game pack picked in Import theme… is called a game (${notThemeText.replace(/\s+/g, ' ')})`);
+  assert(
+    notThemeText.includes('This is a game, not a theme') && !notThemeText.includes('damaged'),
+    `a game pack picked in Import theme… is called a game (${notThemeText.replace(/\s+/g, ' ')})`,
+  );
   await notTheme.getByRole('button', { name: 'OK' }).click();
   // A theme file dropped on the editor, or picked with Open…, shows on the Theme page first, like Import theme….
   await roundTabsIn(page).first().click();
@@ -545,13 +726,19 @@ try {
   }, themeText);
   await page.locator('nav').dispatchEvent('drop', { dataTransfer: dt });
   await imported.waitFor();
-  assert((await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page', 'a theme file dropped on the editor opens the Theme page');
+  assert(
+    (await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page',
+    'a theme file dropped on the editor opens the Theme page',
+  );
   assert((await bg(imported, 1, 0)) === RED, 'and previews the theme first');
   await imported.getByRole('button', { name: 'Cancel' }).click();
   await roundTabsIn(page).first().click();
   await openGameFile(page, themePath);
   await imported.waitFor();
-  assert((await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page', 'Open… with a theme file does the same (no “not a game” error)');
+  assert(
+    (await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page',
+    'Open… with a theme file does the same (no “not a game” error)',
+  );
   await imported.getByRole('button', { name: 'Cancel' }).click();
   // ...and one whose name ends in .json (renamed, or saved so by a browser): it's still a theme, not a broken game.
   await roundTabsIn(page).first().click();
@@ -562,7 +749,10 @@ try {
   }, themeText);
   await page.locator('nav').dispatchEvent('drop', { dataTransfer: asJson });
   await imported.waitFor();
-  assert((await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page', 'a theme file named .json opens on the Theme page too');
+  assert(
+    (await page.getByRole('button', { name: '🎨 Theme' }).getAttribute('aria-current')) === 'page',
+    'a theme file named .json opens on the Theme page too',
+  );
   await imported.getByRole('button', { name: 'Cancel' }).click();
 
   // ---------- 📋 Copy theme code / ⌨ Paste theme code… ----------
@@ -587,7 +777,9 @@ try {
   assert((await page.locator('.mine .card').count()) === 2, 'Save to my themes adds it under a name of its own');
 
   // ---------- Delete ----------
-  await card('Checkers 2').getByRole('button', { name: /More for/ }).click();
+  await card('Checkers 2')
+    .getByRole('button', { name: /More for/ })
+    .click();
   await page.getByRole('menuitem', { name: '🗑 Delete theme…' }).click();
   const ask = page.getByRole('alertdialog').filter({ hasText: 'Delete “Checkers 2”' });
   await ask.getByRole('button', { name: 'Delete' }).click();
@@ -601,10 +793,16 @@ try {
   writeFileSync(bannerPath, JSON.stringify(withBanner));
   const [bannerChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import theme…' }).click()]);
   await bannerChooser.setFiles(bannerPath);
-  await page.getByRole('dialog', { name: /Theme “Banner show”/ }).getByRole('button', { name: '💾 Save to my themes' }).click();
+  await page
+    .getByRole('dialog', { name: /Theme “Banner show”/ })
+    .getByRole('button', { name: '💾 Save to my themes' })
+    .click();
   await card('Banner show').waitFor();
   const bannerSaved = await toastsIn(page, { hasText: 'Saved “Banner show”' }).innerText();
-  assert(bannerSaved.includes('📥 Import the file again and 🎨 Use in this game'), `saving a theme file with a picture says how to bring it in (${bannerSaved})`);
+  assert(
+    bannerSaved.includes('📥 Import the file again and 🎨 Use in this game'),
+    `saving a theme file with a picture says how to bring it in (${bannerSaved})`,
+  );
 
   // ---------- An exported HTML file ----------
   // (Its values in a font file of its own: the file's first screen shows its logo in it from the start.)
@@ -612,7 +810,11 @@ try {
   await page.getByRole('button', { name: '＋ Values & scores…' }).click();
   const valuePicker = page.getByRole('dialog', { name: 'Choose font' });
   const [valueChooser] = await Promise.all([page.waitForEvent('filechooser'), valuePicker.getByRole('button', { name: '⬆ Upload font file…' }).click()]);
-  await valueChooser.setFiles({ name: 'Score Font.woff2', mimeType: 'font/woff2', buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')) });
+  await valueChooser.setFiles({
+    name: 'Score Font.woff2',
+    mimeType: 'font/woff2',
+    buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')),
+  });
   await valuePicker.waitFor({ state: 'detached' });
   await page.waitForFunction(() => /^'jb-\w+', sans-serif$/.test(document.querySelector('label[data-k="valueFont"] select').value));
   const html = await exportHtml(page, 'Theme test');
@@ -623,12 +825,22 @@ try {
   await player.goto(pathToFileURL(saved).href);
   await player.getByRole('button', { name: '▶ Play' }).waitFor({ timeout: 20000 });
   const logoFont = await player
-    .waitForFunction(() => {
-      const fam = getComputedStyle(document.querySelector('.home .logo')).fontFamily.split(',')[0].replace(/['"]/g, '').trim();
-      return [...document.fonts].some((f) => f.family.replace(/['"]/g, '') === fam && f.status === 'loaded') && fam;
-    }, null, { timeout: 5000 })
-    .then((h) => h.jsonValue(), () => '');
-  assert(logoFont.startsWith('jb-'), `the exported file's first screen shows its logo in the game's own values font from the start (${logoFont || 'not loaded'})`);
+    .waitForFunction(
+      () => {
+        const fam = getComputedStyle(document.querySelector('.home .logo')).fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+        return [...document.fonts].some((f) => f.family.replace(/['"]/g, '') === fam && f.status === 'loaded') && fam;
+      },
+      null,
+      { timeout: 5000 },
+    )
+    .then(
+      (h) => h.jsonValue(),
+      () => '',
+    );
+  assert(
+    logoFont.startsWith('jb-'),
+    `the exported file's first screen shows its logo in the game's own values font from the start (${logoFont || 'not loaded'})`,
+  );
   await player.getByRole('button', { name: '▶ Play' }).click();
   await player.getByRole('button', { name: '＋ Add player' }).click();
   await player.getByRole('button', { name: 'Start game ▶' }).click();
@@ -645,7 +857,12 @@ try {
   await aud.waitForTimeout(300);
   assert((await bg(aud, 0, 0)) === CLASSIC_TILE && (await bg(aud, 0, 1)) === RED, 'the audience window shows the alternating tiles');
   assert((await headerBg(aud, 1)) === 'rgb(0, 255, 0)', 'and the alternating categories');
-  assert((await boardTilesIn(boardIn(aud)).first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'and the rounded corners');
+  assert(
+    (await boardTilesIn(boardIn(aud))
+      .first()
+      .evaluate((e) => getComputedStyle(e).borderRadius)) === '20px',
+    'and the rounded corners',
+  );
   await shot('3-audience', aud);
   await aud.close();
 
@@ -675,22 +892,34 @@ try {
   await host.locator('.preset', { hasText: 'Pastel' }).click();
   // (Pastel's purple values.)
   const PASTEL_VALUE = 'rgb(122, 76, 255)';
-  await soon.waitForFunction((c) => getComputedStyle(document.querySelector('.soon .round-name')).color === c, PASTEL_VALUE, { timeout: 10000 }).catch(() => {});
+  await soon
+    .waitForFunction((c) => getComputedStyle(document.querySelector('.soon .round-name')).color === c, PASTEL_VALUE, { timeout: 10000 })
+    .catch(() => {});
   const soonColor = await soonTitle.evaluate((e) => getComputedStyle(e).color);
   assert(soonColor === PASTEL_VALUE, `a theme put on in the editor shows on the audience window’s Starting soon card (${soonColor})`);
   // Pastel's dark words on the card get its light shadow (a hard black one doubled them), and a score below zero (Jordan's,
   // in the Theme page's preview) a black one on its dark red band (it had a pale copy of itself).
   const soonShadow = await soon.locator('.soon-text').evaluate((e) => getComputedStyle(e).textShadow);
-  const negShadow = await host.locator('.preview .score.neg').first().evaluate((e) => getComputedStyle(e).textShadow);
-  assert(soonShadow.startsWith('rgba(255, 255, 255, 0.75)') && negShadow.startsWith('rgb(0, 0, 0)'), `on Pastel: the Starting soon words' shadow is light (${soonShadow}), a score below zero's black (${negShadow})`);
+  const negShadow = await host
+    .locator('.preview .score.neg')
+    .first()
+    .evaluate((e) => getComputedStyle(e).textShadow);
+  assert(
+    soonShadow.startsWith('rgba(255, 255, 255, 0.75)') && negShadow.startsWith('rgb(0, 0, 0)'),
+    `on Pastel: the Starting soon words' shadow is light (${soonShadow}), a score below zero's black (${negShadow})`,
+  );
   // A wide banner: on the card too, and its thumbnail leaves Change… and ⌫ Clear in the settings column (not under the preview).
   const bannerRow = host.locator('.row.pop', { hasText: 'Banner above the board' });
-  const wide = await host.evaluateHandle((b64) => {
-    const d = new DataTransfer();
-    d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'logo.png', { type: 'image/png' }));
-    return d;
-  }, png(255, 140, 0, 160, 16).toString('base64'));
-  for (const type of ['dragenter', 'dragover', 'drop']) await bannerRow.getByRole('button', { name: 'Choose a banner above the board' }).dispatchEvent(type, { dataTransfer: wide });
+  const wide = await host.evaluateHandle(
+    (b64) => {
+      const d = new DataTransfer();
+      d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'logo.png', { type: 'image/png' }));
+      return d;
+    },
+    png(255, 140, 0, 160, 16).toString('base64'),
+  );
+  for (const type of ['dragenter', 'dragover', 'drop'])
+    await bannerRow.getByRole('button', { name: 'Choose a banner above the board' }).dispatchEvent(type, { dataTransfer: wide });
   const cardImg = soon.locator('.soon .card-img');
   await cardImg.waitFor();
   assert(true, 'a banner put on in the editor shows on the Starting soon card');
@@ -698,11 +927,17 @@ try {
   const thumb = await bannerRow.locator('img').boundingBox();
   const change = await bannerRow.getByRole('button', { name: 'Change the banner above the board' }).boundingBox();
   const remove = await bannerRow.getByRole('button', { name: '⌫ Clear banner', exact: true }).boundingBox();
-  assert(thumb.x + thumb.width <= change.x && remove.x + remove.width <= column + 0.5, `a wide banner's thumbnail shrinks: Change… and ⌫ Clear stay in the settings column (⌫ Clear ends at ${Math.round(remove.x + remove.width)}, the column at ${Math.round(column)})`);
+  assert(
+    thumb.x + thumb.width <= change.x && remove.x + remove.width <= column + 0.5,
+    `a wide banner's thumbnail shrinks: Change… and ⌫ Clear stay in the settings column (⌫ Clear ends at ${Math.round(remove.x + remove.width)}, the column at ${Math.round(column)})`,
+  );
   // Its file replaced in 🖼 Media (the same id, new bytes): the card shows the new picture.
   const firstSrc = await cardImg.getAttribute('src');
   await host.getByRole('button', { name: /^🖼️ Media/ }).click();
-  const [replacing] = await Promise.all([host.waitForEvent('filechooser'), host.locator('.card').first().getByRole('button', { name: 'Replace everywhere…' }).click()]);
+  const [replacing] = await Promise.all([
+    host.waitForEvent('filechooser'),
+    host.locator('.card').first().getByRole('button', { name: 'Replace everywhere…' }).click(),
+  ]);
   await replacing.setFiles({ name: 'logo2.png', mimeType: 'image/png', buffer: png(0, 0, 255, 160, 16) });
   await soon.waitForFunction((was) => document.querySelector('.soon .card-img')?.getAttribute('src') !== was, firstSrc, { timeout: 10000 }).catch(() => {});
   const pixel = await cardImg.evaluate(async (img) => {

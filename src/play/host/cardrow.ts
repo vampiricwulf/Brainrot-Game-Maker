@@ -94,7 +94,9 @@ export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boo
   const seats = [...new Set(c.to.map((t) => t.seat))];
   const seen = seenSeats(session, c);
   const late: { seat: Id; by?: string }[] = [];
-  if (phones) for (const l of remote.cardsLate) if (l.id === sentCardId(c) && !late.some((x) => x.seat === l.seatId && x.by === l.by)) late.push({ seat: l.seatId, by: l.by });
+  if (phones)
+    for (const l of remote.cardsLate)
+      if (l.id === sentCardId(c) && !late.some((x) => x.seat === l.seatId && x.by === l.by)) late.push({ seat: l.seatId, by: l.by });
   const out = [seen.length ? `✓ seen${seen.length < seats.length ? ` by ${nameList(seen.map(name))}` : ''}` : 'sent'];
   const slide = sentSlide(game, c);
   const f = slide && filesOn ? cardFileCounts(game, session, slide) : null;

@@ -504,7 +504,14 @@ export class Room {
     this.lastLate = '';
     this.lastPasses = '';
     const features = ROOM_FEATURES.filter((f) => f !== 'files' || files);
-    this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now(), features, ...(files ? { limits: { ...this.deps.limits } } : {}) });
+    this.deps.toHost({
+      t: 'welcome',
+      code: this.code,
+      protocol: BUZZ_PROTOCOL,
+      serverNow: this.deps.now(),
+      features,
+      ...(files ? { limits: { ...this.deps.limits } } : {}),
+    });
     this.tellFiles();
     this.settle();
     this.sync();
@@ -633,7 +640,8 @@ export class Room {
       }
     } else if (race && same && next.phase === 'answering' && next.answering && race.graceUntil === undefined) {
       // The host picked who answers (a tie settled, the next in line, a key): that seat goes first.
-      if (next.answering !== race.winner || (next.rollOrder && next.rollOrder.join() !== race.rolled?.join())) this.hostPick(race, next.answering, next.rollOrder, next.lockedOut);
+      if (next.answering !== race.winner || (next.rollOrder && next.rollOrder.join() !== race.rolled?.join()))
+        this.hostPick(race, next.answering, next.rollOrder, next.lockedOut);
     } else if (next.phase === 'armed' && (!race || !same || race.decided)) {
       this.newRace(next.armId, now);
     }
@@ -689,10 +697,11 @@ export class Room {
     // closed tile leaves nothing of its cards in the room. Their files follow (unused ones are cleaned up later).
     const cardIds = new Set((next.cards ?? []).map((c) => c.id));
     const kept = this.s.cards ?? { at: {}, seen: {} };
-    for (const id of Object.keys(kept.at)) if (!cardIds.has(id)) {
-      delete kept.at[id];
-      delete kept.seen[id];
-    }
+    for (const id of Object.keys(kept.at))
+      if (!cardIds.has(id)) {
+        delete kept.at[id];
+        delete kept.seen[id];
+      }
     for (const id of cardIds) kept.at[id] ??= now;
     if (cardIds.size) this.s.cards = kept;
     else delete this.s.cards;
@@ -700,11 +709,12 @@ export class Room {
     this.tellPasses();
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {
-      for (const p of this.phones.values()) if (p.pendingName !== undefined) {
-        delete p.pendingName;
-        this.deps.savePhone(strip(p));
-        this.deps.toPhone(p.conn, { t: 'denied', reason: 'no-new' });
-      }
+      for (const p of this.phones.values())
+        if (p.pendingName !== undefined) {
+          delete p.pendingName;
+          this.deps.savePhone(strip(p));
+          this.deps.toPhone(p.conn, { t: 'denied', reason: 'no-new' });
+        }
     }
     this.save();
     this.announce();
@@ -1158,7 +1168,16 @@ export class Room {
       this.tellFull();
       return false;
     }
-    const p: Phone = { conn, seatId: null, rate: { start: 0, count: 0 }, joins: { start: 0, count: 0 }, probes: [], strikes: 0, active: now, ...(ip ? { ip } : {}) };
+    const p: Phone = {
+      conn,
+      seatId: null,
+      rate: { start: 0, count: 0 },
+      joins: { start: 0, count: 0 },
+      probes: [],
+      strikes: 0,
+      active: now,
+      ...(ip ? { ip } : {}),
+    };
     if (this.floodBlocked(ip)) p.flooded = true;
     if (this.countedPhones() >= MAX_PHONES) p.hold = true;
     this.phones.set(conn, p);
@@ -1277,14 +1296,16 @@ export class Room {
       delete p.flooded;
       this.deps.savePhone(strip(p));
     }
-    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager' || m.t === 'answer' || m.t === 'cardSeen' || m.t === 'pass') p.active = this.deps.now();
+    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager' || m.t === 'answer' || m.t === 'cardSeen' || m.t === 'pass')
+      p.active = this.deps.now();
     if ((m.t === 'join' || m.t === 'new') && typeof m.device === 'string' && m.device && m.device.length <= 64 && p.device !== m.device) {
       p.device = m.device;
       this.deps.savePhone(strip(p));
     }
     switch (m.t) {
       case 'join':
-        if (typeof m.seatId !== 'string' || (m.token !== undefined && typeof m.token !== 'string') || (m.name !== undefined && typeof m.name !== 'string')) return;
+        if (typeof m.seatId !== 'string' || (m.token !== undefined && typeof m.token !== 'string') || (m.name !== undefined && typeof m.name !== 'string'))
+          return;
         // (Too many tries: told so, not left waiting for an answer that never comes.)
         if (this.allow(p.joins, JOIN_RATE, 60_000)) this.join(p, m.seatId, m.token, m.name);
         else this.deps.toPhone(p.conn, { t: 'denied', reason: 'slow-down' });
@@ -1398,11 +1419,12 @@ export class Room {
       // while it was away hears it was kicked, not "tap your name again": that would be refused too.)
       if (held !== token) return deny(held ? 'taken' : this.blockedFrom(p, seatId) ? 'blocked' : 'bad-token');
       // Coming back: the socket that held it (another tab, a dead connection) is detached.
-      for (const o of this.phones.values()) if (o !== p && o.seatId === seatId) {
-        o.seatId = null;
-        o.lastView = o.lastSeats = undefined;
-        this.deps.savePhone(strip(o));
-      }
+      for (const o of this.phones.values())
+        if (o !== p && o.seatId === seatId) {
+          o.seatId = null;
+          o.lastView = o.lastSeats = undefined;
+          this.deps.savePhone(strip(o));
+        }
       if (p.seatId) this.freeSeat(p.seatId);
       delete p.pendingName;
       delete p.hold;
@@ -1428,7 +1450,11 @@ export class Room {
   private blockedFrom(p: Phone, seatId: string): boolean {
     const block = this.s.blocks?.[seatId];
     if (!block || block.until <= this.deps.now()) return false;
-    return block.conns.includes(p.conn) || (!!p.device && block.devices.includes(p.device)) || (!!p.ip && !!block.ips?.includes(p.ip) && !(p.device && block.spared?.includes(p.device)));
+    return (
+      block.conns.includes(p.conn) ||
+      (!!p.device && block.devices.includes(p.device)) ||
+      (!!p.ip && !!block.ips?.includes(p.ip) && !(p.device && block.spared?.includes(p.device)))
+    );
   }
 
   /**
@@ -1649,7 +1675,11 @@ export class Room {
     const out = !!p.member && !!this.s.clueOut?.includes(p.member);
     const can = mine
       ? open
-      : open && !out && !st.lockedOut.includes(seatId) && !(st.phase === 'answering' && st.answering === seatId) && !(race && race.armId === st.armId && race.queue.some((b) => b.seatId === seatId));
+      : open &&
+        !out &&
+        !st.lockedOut.includes(seatId) &&
+        !(st.phase === 'answering' && st.answering === seatId) &&
+        !(race && race.armId === st.armId && race.queue.some((b) => b.seatId === seatId));
     return {
       id: ask.id,
       ...(mine ? { passed: true as const } : {}),
@@ -1767,7 +1797,12 @@ export class Room {
     const now = this.deps.now();
     const sent = this.s.wagers?.id === id ? this.s.wagers : (this.s.wagers = { id, seats: {}, at: now });
     const member = st.teams && p.member ? this.s.members?.[p.member] : undefined;
-    const w: SentWager = { amount, n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1, at: now, ...(member && p.member ? { member: p.member, by: member.name } : {}) };
+    const w: SentWager = {
+      amount,
+      n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1,
+      at: now,
+      ...(member && p.member ? { member: p.member, by: member.name } : {}),
+    };
     sent.seats[p.seatId] = w;
     this.deps.toPhone(p.conn, { t: 'wagered', id, ok: true, amount });
     this.tellWager(id, p.seatId, w);
@@ -1783,7 +1818,8 @@ export class Room {
     const out = this.s.state?.lockedOut ?? [];
     let slack = 0;
     for (const p of this.phones.values())
-      if (p.seatId && !out.includes(p.seatId) && !this.passed(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId)) slack = Math.max(slack, slackFor(this.rtt(p.conn)));
+      if (p.seatId && !out.includes(p.seatId) && !this.passed(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId))
+        slack = Math.max(slack, slackFor(this.rtt(p.conn)));
     return Math.min(now + MAX_GRACE_MS, Math.max(now + GRACE_MS, race.armedAt + key + slack));
   }
 
@@ -1886,7 +1922,17 @@ export class Room {
       // A tie the host settled by picking: no time behind the one picked (it was a tie).
       else if (!q.rolled && race.winner && race.queue[0]?.seatId === race.winner && race.settled?.includes(q.seatId) && race.settled.includes(race.winner))
         r = { t: 'result', armId: race.armId, outcome: 'late', rank, behind: name(race.winner), tied: true };
-      else r = { t: 'result', armId: race.armId, outcome: 'late', rank, afterMs: Math.max(0, race.queue[i].key - aheadKey), behind: name(ahead ?? ''), ...rolled, ...(q.arrivedLate ? { arrivedLate: true } : {}) };
+      else
+        r = {
+          t: 'result',
+          armId: race.armId,
+          outcome: 'late',
+          rank,
+          afterMs: Math.max(0, race.queue[i].key - aheadKey),
+          behind: name(ahead ?? ''),
+          ...rolled,
+          ...(q.arrivedLate ? { arrivedLate: true } : {}),
+        };
       const member = race.queue[i].member;
       for (const p of this.phones.values()) {
         if (p.seatId !== q.seatId) continue;
@@ -1950,7 +1996,15 @@ export class Room {
         const out = !!p.member && !!this.s.clueOut?.includes(p.member);
         // A buzz now would still get in line: someone else answers out of a race this seat hasn't buzzed in.
         const canQueue =
-          !out && !this.passed(p.seatId) && st.phase === 'answering' && !st.answerShown && !!race && race.armId === st.armId && st.answering !== p.seatId && !st.lockedOut.includes(p.seatId) && !race.queue.some((b) => b.seatId === p.seatId);
+          !out &&
+          !this.passed(p.seatId) &&
+          st.phase === 'answering' &&
+          !st.answerShown &&
+          !!race &&
+          race.armId === st.armId &&
+          st.answering !== p.seatId &&
+          !st.lockedOut.includes(p.seatId) &&
+          !race.queue.some((b) => b.seatId === p.seatId);
         const asked = st.answers && this.s.answers?.id === st.answers.id ? this.s.answers : undefined;
         let typed = asked?.seats[p.seatId];
         // The same for answers: seated (teams: on the team) since the answers began, only what it sent itself.
@@ -1960,9 +2014,16 @@ export class Room {
         if (ansHidden) typed = undefined;
         // Only the cards sent to this phone that it isn't late for (see Cards above). The host hears which it's late for.
         const { view: cards, lateIds } = this.cardsFor(p);
-        for (const id of lateIds) if (!cardsLate.some((x) => x.id === id && x.seatId === p.seatId && x.member === p.member)) cardsLate.push({ id, seatId: p.seatId, ...(me ? { member: me.id, by: me.name } : {}) });
+        for (const id of lateIds)
+          if (!cardsLate.some((x) => x.id === id && x.seatId === p.seatId && x.member === p.member))
+            cardsLate.push({ id, seatId: p.seatId, ...(me ? { member: me.id, by: me.name } : {}) });
         const pass = this.passView(p);
-        const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed, ansHidden, cards), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}), ...(pass ? { pass } : {}) };
+        const view = {
+          ...phoneView(st, p.seatId, me, by, sent, late, typed, ansHidden, cards),
+          hostHere: this.hostHere,
+          ...(canQueue ? { canQueue: true } : {}),
+          ...(pass ? { pass } : {}),
+        };
         if (out && view.you) view.you = { ...view.you, lockedOut: true, out: true };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
@@ -2142,7 +2203,8 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
   }
   if (isObj(x.verdicts)) {
     const verdicts: Record<string, AnswerVerdict> = {};
-    for (const [k, v] of Object.entries(x.verdicts)) if (ids.has(k) && isObj(v) && typeof v.right === 'boolean' && Number.isSafeInteger(v.delta)) verdicts[k] = { right: v.right, delta: v.delta as number };
+    for (const [k, v] of Object.entries(x.verdicts))
+      if (ids.has(k) && isObj(v) && typeof v.right === 'boolean' && Number.isSafeInteger(v.delta)) verdicts[k] = { right: v.right, delta: v.delta as number };
     if (Object.keys(verdicts).length) extra.verdicts = verdicts;
   }
   if (isObj(x.timer)) {
@@ -2153,7 +2215,14 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
   if (isObj(x.pass) && typeof x.pass.id === 'string' && x.pass.id && x.pass.id.length <= 100) extra.pass = { id: x.pass.id };
   if (x.over === true) extra.over = true;
   if (extra.over && typeof x.winner === 'string' && ids.has(x.winner)) extra.winner = x.winner;
-  if (isObj(x.wager) && typeof x.wager.id === 'string' && x.wager.id && x.wager.id.length <= 100 && (x.wager.kind === 'dd' || x.wager.kind === 'final') && Array.isArray(x.wager.seats)) {
+  if (
+    isObj(x.wager) &&
+    typeof x.wager.id === 'string' &&
+    x.wager.id &&
+    x.wager.id.length <= 100 &&
+    (x.wager.kind === 'dd' || x.wager.kind === 'final') &&
+    Array.isArray(x.wager.seats)
+  ) {
     const amount = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= WAGER_MAX ? (v as number) : undefined);
     const wseats: WagerSeat[] = [];
     for (const w of x.wager.seats.slice(0, 64)) {
@@ -2203,7 +2272,8 @@ function cleanCards(raw: unknown[], seats: Set<string>, files: Record<string, Ro
       }
       if (t.except !== undefined) {
         // Everyone but some: never sent to anyone left out because their id didn't check.
-        if (Array.isArray(t.except) && t.except.length <= CARD_TO_MAX && t.except.every(id)) to.push({ seat: t.seat, ...(t.except.length ? { except: [...new Set(t.except)] } : {}) });
+        if (Array.isArray(t.except) && t.except.length <= CARD_TO_MAX && t.except.every(id))
+          to.push({ seat: t.seat, ...(t.except.length ? { except: [...new Set(t.except)] } : {}) });
         continue;
       }
       to.push({ seat: t.seat });

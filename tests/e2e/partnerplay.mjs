@@ -16,7 +16,33 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, anyway, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, menuLines, notYet, openGameFile, openMenu, quick, stepButton, assert, launchChromium, section, awardRowIn, boardIn, hostPanelIn, stageBoxIn, statusLineIn, toastsIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  anyway,
+  boxHasAction,
+  checkItem,
+  flowIs,
+  goOnCheck,
+  mainButton,
+  mainLabel,
+  menuLines,
+  notYet,
+  openGameFile,
+  openMenu,
+  quick,
+  stepButton,
+  assert,
+  launchChromium,
+  section,
+  awardRowIn,
+  boardIn,
+  hostPanelIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+  toolsRowIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -28,12 +54,39 @@ mkdirSync(resolve('test-results'), { recursive: true });
 const SECRET = 'Ogres-xyzzy-onions';
 const PIC = 'zorbulon-secret.png';
 let n = 0;
-const text = (t, y = 90) => ({ id: `t${n++}`, kind: 'text', text: t, x: 120, y, w: 1680, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 90) => ({
+  id: `t${n++}`,
+  kind: 'text',
+  text: t,
+  x: 120,
+  y,
+  w: 1680,
+  h: 400,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (...els) => ({ background: {}, elements: els });
 const rules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
 const cards = () => [
   { id: `c${n++}`, to: 'giver', ...slide(text('Shrek')) },
-  { id: `c${n++}`, to: 'nobody', ...slide(text(SECRET), { id: `i${n++}`, kind: 'image', media: 'm_z', fit: 'contain', x: 600, y: 600, w: 400, h: 300, rotation: 0, opacity: 1, zIndex: 2 }) },
+  {
+    id: `c${n++}`,
+    to: 'nobody',
+    ...slide(text(SECRET), { id: `i${n++}`, kind: 'image', media: 'm_z', fit: 'contain', x: 600, y: 600, w: 400, h: 300, rotation: 0, opacity: 1, zIndex: 2 }),
+  },
 ];
 const values = [200, 400, 600, 800];
 const clue = (c, r) => {
@@ -51,13 +104,39 @@ const clue = (c, r) => {
   };
 };
 const game = {
-  id: 'g_partner', version: 2, title: 'Partner night',
-  settings: { allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true } },
+  id: 'g_partner',
+  version: 2,
+  title: 'Partner night',
+  settings: {
+    allowNegativeScores: true,
+    deductOnWrong: false,
+    defaultTimerSeconds: 30,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+    maxPlayers: 8,
+    stream: { clueCaption: true },
+  },
   players: ['Ann', 'Bob', 'Cat', 'Dan'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
-  rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values, dailyDoubleCount: 0, categories: ['Movies', 'Songs'].map((title, c) => ({ id: `cat${c}`, title, clues: values.map((_, r) => clue(c, r)) })) }],
+  rounds: [
+    {
+      id: 'r1',
+      name: 'Round 1',
+      mode: 'board',
+      values,
+      dailyDoubleCount: 0,
+      categories: ['Movies', 'Songs'].map((title, c) => ({ id: `cat${c}`, title, clues: values.map((_, r) => clue(c, r)) })),
+    },
+  ],
   media: [{ id: 'm_z', name: PIC, mime: 'image/png', size: 0, kind: 'image', url: 'https://example.invalid/zorbulon-secret.png' }],
   // (Its own text color on slides and scores: the blank question's card follows it.)
-  audio: {}, wheels: [], dice: [], theme: { stageText: '#ffe066' },
+  audio: {},
+  wheels: [],
+  dice: [],
+  theme: { stageText: '#ffe066' },
 };
 const gameFile = resolve('test-results/partner-play.json');
 writeFileSync(gameFile, JSON.stringify(game));
@@ -70,7 +149,12 @@ page.on('dialog', (d) => (errors.push('dialog: ' + d.message()), d.accept()));
 
 /** Everything a page shows or says: its text, its labels and titles (screen readers, tooltips). */
 const pageWords = (p) =>
-  p.evaluate(() => [document.body.innerText, ...[...document.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? ''])].join('\n'));
+  p.evaluate(() =>
+    [
+      document.body.innerText,
+      ...[...document.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? '']),
+    ].join('\n'),
+  );
 /** The page never holds a card's own words or its picture's name. */
 async function noCards(p, when) {
   const words = await pageWords(p);
@@ -79,7 +163,13 @@ async function noCards(p, when) {
 const stage = (sel) => stageBoxIn(page).locator(sel);
 const tile = (cat, row) => stage(`.tile[data-clue="q${cat}_${row}"]`);
 const panel = hostPanelIn(page).locator('[data-partner-panel]');
-const toast = (t) => toastsIn(page, { hasText: t }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+const toast = (t) =>
+  toastsIn(page, { hasText: t })
+    .waitFor({ timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
 const chip = (name) => panel.getByRole('button', { name, exact: true });
 
 try {
@@ -122,7 +212,10 @@ try {
   await page.waitForTimeout(500);
   await stage('[data-partner-up]').click();
   await checkItem(page, 'picker').waitFor();
-  assert((await stage('[data-slide="1"]').count()) === 0 && (await anyway(page).count()) === 0, 'a click on PARTNER UP! asks who picked it too (no “anyway”), the question still off');
+  assert(
+    (await stage('[data-slide="1"]').count()) === 0 && (await anyway(page).count()) === 0,
+    'a click on PARTNER UP! asks who picked it too (no “anyway”), the question still off',
+  );
   await notYet(page).click();
   await goOnCheck(page).waitFor({ state: 'detached' });
   // A double-click on a name: its first click says who picked it, and the rest of it, landing on the 🎡 Spin for a partner
@@ -135,9 +228,15 @@ try {
   });
   await panel.getByText('Ann picked it.').waitFor();
   await page.waitForTimeout(300);
-  assert((await stage('.wheel').count()) === 0 && (await stepButton(panel, '🎡 Spin for a partner').count()) === 1, 'a double-click on a name says who picked it and never spins the wheel');
+  assert(
+    (await stage('.wheel').count()) === 0 && (await stepButton(panel, '🎡 Spin for a partner').count()) === 1,
+    'a double-click on a name says who picked it and never spins the wheel',
+  );
   assert((await statusLineIn(page).innerText()).includes('Partner clue: spin for a partner'), 'Ann picked it: the status row says to spin for a partner');
-  assert((await stage('[data-partner-up]').innerText()).includes('Ann') && (await stage('.pu-plate.waiting').count()) === 1, 'Ann picked it; the stage shows her plate and a pulsing “?”');
+  assert(
+    (await stage('[data-partner-up]').innerText()).includes('Ann') && (await stage('.pu-plate.waiting').count()) === 1,
+    'Ann picked it; the stage shows her plate and a pulsing “?”',
+  );
   assert((await hostPanelIn(page).locator('[data-partner-tag]').innerText()).trim() === '🤝 Ann', 'the status row’s tag says whose partner clue it is');
   assert((await hostPanelIn(page).locator('.players').count()) === 0, 'no award row before the question');
   await noCards(page, 'PARTNER UP!');
@@ -145,20 +244,41 @@ try {
   // ---------- The partner wheel ----------
   assert(await flowIs(page, 'Show question ▶'), `the blue button stays Show question ▶ (${await mainLabel(page)})`);
   // (The friend's case: the wheel is in the 🤝 box, in front of the names it's an alternative to, and only there.)
-  assert((await boxHasAction(panel, '🎡 Spin for a partner')) === '', `the 🤝 box has 🎡 Spin for a partner, once on the page and in sight (${await boxHasAction(panel, '🎡 Spin for a partner')})`);
+  assert(
+    (await boxHasAction(panel, '🎡 Spin for a partner')) === '',
+    `the 🤝 box has 🎡 Spin for a partner, once on the page and in sight (${await boxHasAction(panel, '🎡 Spin for a partner')})`,
+  );
   assert(await stepButton(panel, '🎡 Spin for a partner').evaluate((b) => b.classList.contains('ring')), 'ringed, as the step due now');
-  const row = await panel.locator('[data-partner-row] button').evaluateAll((bs) => bs.map((b) => (b.matches('[data-step]') ? 'step' : b.getAttribute('aria-label'))));
-  assert(row[0] === 'step' && row.slice(1).join() === 'Ann is the partner,Bob is the partner,Cat is the partner,Dan is the partner', `in front of the players to choose from by hand (${row.join(', ')})`);
+  const row = await panel
+    .locator('[data-partner-row] button')
+    .evaluateAll((bs) => bs.map((b) => (b.matches('[data-step]') ? 'step' : b.getAttribute('aria-label'))));
+  assert(
+    row[0] === 'step' && row.slice(1).join() === 'Ann is the partner,Bob is the partner,Cat is the partner,Dan is the partner',
+    `in front of the players to choose from by hand (${row.join(', ')})`,
+  );
   const spinAt = await stepButton(panel, '🎡 Spin for a partner').boundingBox();
   await stepButton(panel, '🎡 Spin for a partner').click();
   await stage('.wheel').waitFor();
-  assert(await page.evaluate(() => !document.activeElement?.closest('[data-partner-panel]')), 'a click on it spins the wheel, and the keys aren’t left on it (Enter and W mean what they meant)');
-  assert((await mainLabel(page)) === 'Next ▶' && (await mainButton(page).isDisabled()), 'the blue button is Next ▶ while the wheel is up, greyed while it turns');
-  assert((await stepButton(panel, '🎡 Spin for a partner').isDisabled()) && (await stepButton(panel, '🎡 Spin for a partner').getAttribute('title')) === 'Still spinning', 'greyed while the wheel turns: “Still spinning”');
+  assert(
+    await page.evaluate(() => !document.activeElement?.closest('[data-partner-panel]')),
+    'a click on it spins the wheel, and the keys aren’t left on it (Enter and W mean what they meant)',
+  );
+  assert(
+    (await mainLabel(page)) === 'Next ▶' && (await mainButton(page).isDisabled()),
+    'the blue button is Next ▶ while the wheel is up, greyed while it turns',
+  );
+  assert(
+    (await stepButton(panel, '🎡 Spin for a partner').isDisabled()) &&
+      (await stepButton(panel, '🎡 Spin for a partner').getAttribute('title')) === 'Still spinning',
+    'greyed while the wheel turns: “Still spinning”',
+  );
   const slices = await stage('.wheel text').evaluateAll((els) => els.map((e) => e.textContent.trim()));
   assert(slices.length === 3 && !slices.includes('Ann') && slices.includes('Bob'), `the wheel is of the others: Ann isn’t on it (${slices.join(', ')})`);
   assert((await hostPanelIn(page).locator('[data-tool-controls]').innerText()).includes('Partner for Ann'), 'its name says who it’s for');
-  assert((await chip('Bob is the partner').isDisabled()) && !(await chip('Bob is the partner').getAttribute('aria-pressed')).includes('true'), 'the partner chips wait while it spins');
+  assert(
+    (await chip('Bob is the partner').isDisabled()) && !(await chip('Bob is the partner').getAttribute('aria-pressed')).includes('true'),
+    'the partner chips wait while it spins',
+  );
   await page.keyboard.press('l');
   await page.locator('aside .tab', { hasText: 'Rolls' }).click();
   assert((await page.locator('aside .roll').first().innerText()).includes('… spinning'), '📜 Log › Rolls doesn’t give the spin away while it spins');
@@ -168,15 +288,26 @@ try {
   assert(['Bob', 'Cat', 'Dan'].includes(landed), `its landing is the partner (${landed})`);
   // (The wheel's own bar is over the box now: the same place in the row, at the same left edge.)
   const againAt = await stepButton(panel, '↻ Spin again').boundingBox();
-  const firstInRow = await panel.locator('[data-partner-row] button').first().evaluate((b) => b.matches('[data-step]') && b.textContent.includes('↻ Spin again'));
+  const firstInRow = await panel
+    .locator('[data-partner-row] button')
+    .first()
+    .evaluate((b) => b.matches('[data-step]') && b.textContent.includes('↻ Spin again'));
   assert(firstInRow && Math.abs(againAt.x - spinAt.x) < 1, 'landed: the same button in the same place reads ↻ Spin again');
   assert((await hostPanelIn(page).locator('[data-partner-tag]').innerText()).includes(`Ann + ${landed}`), 'the tag says the pair');
   await page.keyboard.press('l');
-  const shown = await page.waitForFunction((who) => document.querySelector('aside .roll')?.textContent.includes(who), landed, { timeout: 2000 }).then(() => true, () => false);
+  const shown = await page
+    .waitForFunction((who) => document.querySelector('aside .roll')?.textContent.includes(who), landed, { timeout: 2000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(shown && !(await page.locator('aside .roll').first().innerText()).includes('spinning'), 'and the log shows the spin once it has landed');
   await page.keyboard.press('Escape');
   assert(await flowIs(page, 'Next ▶'), 'landed: the blue button is Next ▶, and the wheel’s box has no Close of its own');
-  assert((await hostPanelIn(page).locator('[data-tool-controls]').getByRole('button', { name: /Close/ }).count()) === 0, 'the wheel’s box has no Close (the blue button’s Next ▶, or Esc, puts it away)');
+  assert(
+    (await hostPanelIn(page).locator('[data-tool-controls]').getByRole('button', { name: /Close/ }).count()) === 0,
+    'the wheel’s box has no Close (the blue button’s Next ▶, or Esc, puts it away)',
+  );
   await page.keyboard.press('Escape');
   await stage('.wheel').waitFor({ state: 'detached' });
   assert((await stage('[data-partner-up]').innerText()).includes(landed), 'Esc closes the wheel onto the pair');
@@ -189,7 +320,10 @@ try {
   // the keys on it, opens it (and shows no question).
   const fold = panel.locator('[data-partner-cards-fold]');
   const foldSays = (await fold.locator('summary').innerText()).trim();
-  assert(foldSays === '🤫 2 cards · 📋 you’ll copy them' && !(await fold.evaluate((d) => /** @type {HTMLDetailsElement} */ (d).open)), `PARTNER UP!'s cards fold into one line (${foldSays})`);
+  assert(
+    foldSays === '🤫 2 cards · 📋 you’ll copy them' && !(await fold.evaluate((d) => /** @type {HTMLDetailsElement} */ (d).open)),
+    `PARTNER UP!'s cards fold into one line (${foldSays})`,
+  );
   await fold.locator('summary').focus();
   await page.keyboard.press('Enter');
   await panel.locator('[data-partner-readiness]').waitFor();
@@ -197,10 +331,15 @@ try {
   // (The keys off it again, onto the panel: Enter is the main button's.)
   await statusLineIn(page).click();
   const panelText = await panel.innerText();
-  assert(panelText.includes('🗣️ Bob describes · 🎯 Ann guesses') && panelText.includes('Card 1 → Bob (describer) · Card 2 → nobody yet'), `the panel says who plays which part and where the cards go (${panelText.replace(/\n/g, ' | ')})`);
+  assert(
+    panelText.includes('🗣️ Bob describes · 🎯 Ann guesses') && panelText.includes('Card 1 → Bob (describer) · Card 2 → nobody yet'),
+    `the panel says who plays which part and where the cards go (${panelText.replace(/\n/g, ' | ')})`,
+  );
   const viewers = statusLineIn(page).locator('[data-viewers]');
   assert(
-    (await viewers.innerText()).startsWith('⚠ Viewers see this') && (await viewers.textContent()).includes('⚠ Viewers can see this window: they can read a card’s name here') && !panelText.includes('Viewers can see'),
+    (await viewers.innerText()).startsWith('⚠ Viewers see this') &&
+      (await viewers.textContent()).includes('⚠ Viewers can see this window: they can read a card’s name here') &&
+      !panelText.includes('Viewers can see'),
     'and the status line’s ⚠ Viewers see this chip says viewers can see it (its sentence for screen readers), not a line in the box',
   );
   await noCards(page, 'paired');
@@ -212,8 +351,19 @@ try {
   const pairedMenu = await menuLines(page);
   assert(
     JSON.stringify(pairedMenu.slice(0, 7)) ===
-      JSON.stringify(['# 🤝 Partner clue · Movies $400', 'Show question ▶ · N', '—', '↻ Spin again · W', 'Make Bob the partner · 2 (off)', 'Make Cat the partner · 3', 'Make Dan the partner · 4']) &&
-      pairedMenu.filter((l) => l.startsWith('Show question ▶')).length === 1 && pairedMenu.includes('⇄ Swap') && pairedMenu.includes('↩ Put back (keep tile) · Shift+Esc') && pairedMenu.at(-1) === '⏸ Cover the screen · K',
+      JSON.stringify([
+        '# 🤝 Partner clue · Movies $400',
+        'Show question ▶ · N',
+        '—',
+        '↻ Spin again · W',
+        'Make Bob the partner · 2 (off)',
+        'Make Cat the partner · 3',
+        'Make Dan the partner · 4',
+      ]) &&
+      pairedMenu.filter((l) => l.startsWith('Show question ▶')).length === 1 &&
+      pairedMenu.includes('⇄ Swap') &&
+      pairedMenu.includes('↩ Put back (keep tile) · Shift+Esc') &&
+      pairedMenu.at(-1) === '⏸ Cover the screen · K',
     `a right-click on PARTNER UP! gives the moment’s menu, the blue button’s step first (${pairedMenu.join(' | ')})`,
   );
   await noCards(page, 'the stage’s menu on PARTNER UP!');
@@ -223,7 +373,8 @@ try {
   // ---------- Show question ▶, and a second Enter ----------
   assert(await flowIs(page, 'Show question ▶'), 'paired: Show question ▶ is the blue button');
   assert(
-    (await panel.getByRole('button', { name: /Show question/ }).count()) === 0 && (await panel.locator('[data-partner-foot]').count()) === 0 &&
+    (await panel.getByRole('button', { name: /Show question/ }).count()) === 0 &&
+      (await panel.locator('[data-partner-foot]').count()) === 0 &&
       (await panel.locator('[data-partner-next]').innerText()) === 'Pair set: Show question ▶ (the blue button, or N) puts the question up',
     'and only there: the box has no copy at its foot, its first line names the blue button',
   );
@@ -242,36 +393,59 @@ try {
   );
   const foot = panel.locator('[data-partner-foot]');
   assert(
-    JSON.stringify(await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()))) === JSON.stringify(['✔ Got it', '✘ Missed', '📋 Copy words', '⏱ Start the clock (45 s)⏎']),
+    JSON.stringify(await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()))) ===
+      JSON.stringify(['✔ Got it', '✘ Missed', '📋 Copy words', '⏱ Start the clock (45 s)⏎']),
     `the foot: ✔ Got it and ✘ Missed, then at its right end Card 1’s 📋 Copy words (the card to copy, in view) and ⏱ Start the clock (${await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()).join(' | '))})`,
   );
-  assert((await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣️ Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
+  assert(
+    (await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣️ Bob describes → 🎯 Ann guesses',
+    'the stream shows who plays which part',
+  );
   assert((await stage('.caption').innerText()).trim().endsWith('· 🤝'), `and the caption marks it (${await stage('.caption').innerText()})`);
   assert((await stage('[data-slide="1"]').innerText()).includes('Describe this movie'), 'the question is on stream');
   const list = (await panel.innerText()).replace(/\s+/g, ' ');
   assert(list.includes('Card 1 · 1 line of words') && list.includes('Card 2 · 1 line of words, 1 picture'), `the 📤 list counts what’s on each card (${list})`);
 
   // ---------- Who gets each card ----------
-  assert((await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'true' && (await chip('Card 1 to Ann').getAttribute('aria-pressed')) === 'false', 'Card 1 starts with the describer, Bob');
+  assert(
+    (await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'true' && (await chip('Card 1 to Ann').getAttribute('aria-pressed')) === 'false',
+    'Card 1 starts with the describer, Bob',
+  );
   await chip('Card 1 to Cat').click();
-  assert((await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'), 'a chip gives it to Cat as well, and the row says it changed');
+  assert(
+    (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
+    'a chip gives it to Cat as well, and the row says it changed',
+  );
   await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
-  assert((await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣️ Ann describes → 🎯 Bob guesses', '⇄ Swap turns the parts round on stream');
-  assert((await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'true' && (await chip('Card 1 to Ann').getAttribute('aria-pressed')) === 'false', 'a row you changed stays as it was');
+  assert(
+    (await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣️ Ann describes → 🎯 Bob guesses',
+    '⇄ Swap turns the parts round on stream',
+  );
+  assert(
+    (await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'true' && (await chip('Card 1 to Ann').getAttribute('aria-pressed')) === 'false',
+    'a row you changed stays as it was',
+  );
   await panel.getByRole('button', { name: 'Card 1: back to the describer' }).click();
-  assert((await chip('Card 1 to Ann').getAttribute('aria-pressed')) === 'true' && (await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'false', '↺ follows the parts again: the describer is Ann now');
+  assert(
+    (await chip('Card 1 to Ann').getAttribute('aria-pressed')) === 'true' && (await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'false',
+    '↺ follows the parts again: the describer is Ann now',
+  );
   await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
   assert((await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'true', 'swapped back, it’s Bob’s again');
   assert(await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy words' }).isDisabled(), 'a card for nobody yet has nothing to copy');
   // (Card 1's 📋 is at the box's foot while the cards are handed out: its row leaves it out, so there's one.)
-  assert(!(await panel.locator('[data-card="1"]').getByRole('button', { name: '📋 Copy words' }).count()), 'Card 1’s row leaves its 📋 Copy words to the box’s foot');
+  assert(
+    !(await panel.locator('[data-card="1"]').getByRole('button', { name: '📋 Copy words' }).count()),
+    'Card 1’s row leaves its 📋 Copy words to the box’s foot',
+  );
   await foot.getByRole('button', { name: 'Copy Card 1’s words' }).click();
   assert(await toast('Card 1’s words copied: paste them to Bob'), '📋 Copy words says who to paste it to (not what)');
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   assert(copied === '🤫 For Bob only (Movies $400, card 1): Shrek', `and copies the card for Bob (${copied})`);
   await chip('Card 2 to Cat').click();
   assert(
-    (await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy picture' }).count()) === 1 && !(await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy words' }).count()),
+    (await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy picture' }).count()) === 1 &&
+      !(await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy words' }).count()),
     'a card with a picture offers 📋 Copy picture in its row (its words at the foot)',
   );
   await noCards(page, 'handing out the cards');
@@ -280,8 +454,15 @@ try {
   const handMenu = await menuLines(page);
   assert(
     JSON.stringify(handMenu.slice(0, 7)) ===
-      JSON.stringify(['# 🤝 Partner clue · Movies $400', '👁 Reveal answer · N', '—', '⏱ Start the clock (45 s) · Enter', '✔ Got it', '✘ Missed', '⏱ Start the countdown · T']) &&
-      handMenu.filter((l) => l.startsWith('👁 Reveal answer')).length === 1,
+      JSON.stringify([
+        '# 🤝 Partner clue · Movies $400',
+        '👁 Reveal answer · N',
+        '—',
+        '⏱ Start the clock (45 s) · Enter',
+        '✔ Got it',
+        '✘ Missed',
+        '⏱ Start the countdown · T',
+      ]) && handMenu.filter((l) => l.startsWith('👁 Reveal answer')).length === 1,
     `handing out the cards, its menu has the blue button’s 👁 Reveal answer first (it asks first), then the box's clock, then ✔ / ✘ (their keys wait for the clock) (${handMenu.join(' | ')})`,
   );
   await noCards(page, 'the stage’s menu handing out the cards');
@@ -291,7 +472,9 @@ try {
   // isn't copied yet never puts the answer on stream: the status line says to copy it first (names only), the box's 📋
   // flash, and the clock doesn't start.
   assert(
-    (await foot.getByRole('button', { name: 'Copy Card 1’s words (copied)' }).count()) === 1 && (await foot.locator('[data-copied]').count()) === 1 && (await panel.locator('[data-card] [data-copied]').count()) === 0,
+    (await foot.getByRole('button', { name: 'Copy Card 1’s words (copied)' }).count()) === 1 &&
+      (await foot.locator('[data-copied]').count()) === 1 &&
+      (await panel.locator('[data-card] [data-copied]').count()) === 0,
     '📋 copied: Card 1’s 📋 at the foot shows ✓, Card 2’s not',
   );
   const note = statusLineIn(page).locator('[data-click-note]');
@@ -302,7 +485,10 @@ try {
   const clickedAt = Date.now();
   await note.filter({ hasText: 'Copy the card to Cat first (📋 in the 🤝 box), then click again to start the clock' }).waitFor();
   assert(
-    (await stage('[data-slide="answer"]').count()) === 0 && (await stage('.timer').count()) === 0 && (await goOnCheck(page).count()) === 0 && !(await toastsIn(page, { hasText: 'Copy the card' }).count()),
+    (await stage('[data-slide="answer"]').count()) === 0 &&
+      (await stage('.timer').count()) === 0 &&
+      (await goOnCheck(page).count()) === 0 &&
+      !(await toastsIn(page, { hasText: 'Copy the card' }).count()),
     'a click on the stage with a card to copy by hand says, in the status line, to copy it to Cat first: the answer stays hidden, no clock starts',
   );
   await noCards(page, 'the status line’s note while handing out the cards');
@@ -329,7 +515,10 @@ try {
   await stage('[data-slide="1"]').click();
   await stage('.timer').waitFor();
   await note.filter({ hasText: 'Clock started' }).waitFor();
-  assert((await stage('[data-slide="answer"]').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'each card copied: a click on the stage starts the clock (“Clock started” in the status line), the answer still hidden');
+  assert(
+    (await stage('[data-slide="answer"]').count()) === 0 && (await flowIs(page, '👁 Reveal answer')),
+    'each card copied: a click on the stage starts the clock (“Clock started” in the status line), the answer still hidden',
+  );
   await note.getByRole('button', { name: '↶ Undo' }).click();
   await stage('.timer').waitFor({ state: 'detached' });
   assert((await stepButton(panel, '⏱ Start the clock (45 s)').count()) === 1, 'its ↶ Undo takes the clock back: the cards are handed out again');
@@ -350,11 +539,19 @@ try {
   await page.waitForTimeout(700);
   await page.mouse.click(startAt.x + startAt.width / 2, startAt.y + startAt.height / 2);
   await page.waitForTimeout(300);
-  assert((await panel.locator('[data-judged]').count()) === 0 && (await gotIt.boundingBox()).x === gotAt, 'a second click where ⏱ Start the clock was judges nothing: ✔ Got it kept its place');
-  assert((await panel.locator('[data-partner-next]').innerText()) === 'Did they get it? ✔ Got it or ✘ Missed', 'the box’s first line asks if they got it, and how');
+  assert(
+    (await panel.locator('[data-judged]').count()) === 0 && (await gotIt.boundingBox()).x === gotAt,
+    'a second click where ⏱ Start the clock was judges nothing: ✔ Got it kept its place',
+  );
+  assert(
+    (await panel.locator('[data-partner-next]').innerText()) === 'Did they get it? ✔ Got it or ✘ Missed',
+    'the box’s first line asks if they got it, and how',
+  );
   // The verdict due: ✔ Got it and ✘ Missed an equal pair in the box, neither blue; the blue button stays 👁 Reveal answer,
   // and pressing it while they play asks first, so clicking it over and over never shows the answer mid-turn.
-  const verdicts = await panel.locator('[data-partner-judge] button').evaluateAll((bs) => bs.slice(0, 2).map((b) => (b.classList.contains('good') ? 'good' : b.classList.contains('bad') ? 'bad' : b.className)));
+  const verdicts = await panel
+    .locator('[data-partner-judge] button')
+    .evaluateAll((bs) => bs.slice(0, 2).map((b) => (b.classList.contains('good') ? 'good' : b.classList.contains('bad') ? 'bad' : b.className)));
   assert(
     verdicts.join() === 'good,bad' && (await hostPanelIn(page).locator('button.primary:visible').count()) === 1 && (await flowIs(page, '👁 Reveal answer')),
     `the clock running: ✔ Got it and ✘ Missed an equal pair, the one blue button 👁 Reveal answer (${verdicts.join(', ')})`,
@@ -362,7 +559,9 @@ try {
   await mainButton(page).click();
   await checkItem(page, 'playing').waitFor();
   assert(
-    (await checkItem(page, 'playing').innerText()).includes('still playing') && (await quick(page, '✔ Got it').count()) === 1 && (await stage('[data-slide="answer"]').count()) === 0,
+    (await checkItem(page, 'playing').innerText()).includes('still playing') &&
+      (await quick(page, '✔ Got it').count()) === 1 &&
+      (await stage('[data-slide="answer"]').count()) === 0,
     'pressing it while they play asks first (✔ Got it ▶ reveal, ✘ Missed), the answer still hidden',
   );
   await notYet(page).click();
@@ -405,28 +604,42 @@ try {
   await panel.getByText('Ann picked it.').waitFor();
   assert((await panel.innerText()).includes('No cards on this clue'), 'a clue with no cards says so');
   // (The countdown doesn't start by itself in this game: the question doesn't start it either.)
-  assert((await panel.innerText()).includes('No cards on this clue: start the clock yourself (T) once the question is up.'), 'and, the countdown not starting by itself, to start the clock with T');
+  assert(
+    (await panel.innerText()).includes('No cards on this clue: start the clock yourself (T) once the question is up.'),
+    'and, the countdown not starting by itself, to start the clock with T',
+  );
   await page.keyboard.press('4');
   // A double-click on the blue Show question ▶: the question goes up (no cards: straight to the judging), and the rest
   // of the double-click, landing on the box's ✔ Got it, is dropped. (Its two clicks sent from the page.)
   await page.evaluate(async () => {
     document.querySelector('.panel [data-next]').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
     await new Promise((r) => requestAnimationFrame(() => r()));
-    document.querySelector('.panel [data-partner-panel] [data-partner-judge] button:not([data-step])').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 }));
+    document
+      .querySelector('.panel [data-partner-panel] [data-partner-judge] button:not([data-step])')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 }));
   });
   await stage('[data-partner-card]').waitFor();
   assert((await panel.locator('[data-judged]').count()) === 0, 'a double-click on Show question ▶ puts the question up and judges nothing');
   assert(!(await stage('.timer').count()), 'the question is up, and no countdown runs');
   const card = (await stage('[data-partner-card]').innerText()).replace(/\s+/g, ' ');
-  assert(card.includes('Describe it!') && card.includes('Ann') && card.includes('Dan') && card.includes('MOVIES'), `a blank question shows a card of its own: the game, the two, the category (${card})`);
+  assert(
+    card.includes('Describe it!') && card.includes('Ann') && card.includes('Dan') && card.includes('MOVIES'),
+    `a blank question shows a card of its own: the game, the two, the category (${card})`,
+  );
   const catColor = await stage('[data-partner-card] .pc-cat').evaluate((e) => getComputedStyle(e).color);
-  assert(catColor === 'rgb(255, 224, 102)', `its category is in the theme's text color, as a slide's text is (it was always white, faint on a light theme) (${catColor})`);
+  assert(
+    catColor === 'rgb(255, 224, 102)',
+    `its category is in the theme's text color, as a slide's text is (it was always white, faint on a light theme) (${catColor})`,
+  );
   assert((await mainLabel(page)) === '👁 Reveal answer', 'with no cards to hand out, the question is all: the answer is next');
   // N asks first: the clock hasn't started. Its ⏱ Start the clock shows T, and T there does what T does outside: the
   // countdown starts, the check closed.
   await page.keyboard.press('n');
   await checkItem(page, 'handout').waitFor();
-  assert((await quick(page, '⏱ Start the clock (45 s)').locator('kbd').allInnerTexts()).join(' ') === 'T ⏎', 'N with the clock not started asks first: its ⏱ Start the clock shows T and ⏎');
+  assert(
+    (await quick(page, '⏱ Start the clock (45 s)').locator('kbd').allInnerTexts()).join(' ') === 'T ⏎',
+    'N with the clock not started asks first: its ⏱ Start the clock shows T and ⏎',
+  );
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('t');
   await goOnCheck(page).waitFor({ state: 'detached' });
@@ -447,7 +660,10 @@ try {
   await stage('[data-partner-card]').waitFor();
   await stage('.timer .num').waitFor();
   const back = Number(await stage('.timer .num').innerText());
-  assert(back > 0 && back <= left && !(await stage('.timer.paused').count()), `Ctrl+Z: the question is back with its countdown going, with the time it had left (${left} → ${back} s)`);
+  assert(
+    back > 0 && back <= left && !(await stage('.timer.paused').count()),
+    `Ctrl+Z: the question is back with its countdown going, with the time it had left (${left} → ${back} s)`,
+  );
   await page.keyboard.press('Control+Shift+z');
   await stage('[data-partner-up]').waitFor();
   assert((await stage('.timer').count()) === 0, 'Ctrl+Shift+Z takes Dan out again, and the countdown with him');
@@ -482,7 +698,10 @@ try {
   assert((await page.getByText('W on a partner clue').count()) === 1, 'the ? list has the partner clue’s keys');
   // (As at the start: with nobody marked as its picker yet, the first number says who picked it, not the partner.)
   const partnerKey = page.getByRole('dialog', { name: 'Keyboard shortcuts' }).locator('tr', { hasText: 'W on a partner clue' });
-  assert((await partnerKey.innerText()).includes('who picked it: their number first'), 'and says that with nobody marked as its picker, their number comes first');
+  assert(
+    (await partnerKey.innerText()).includes('who picked it: their number first'),
+    'and says that with nobody marked as its picker, their number comes first',
+  );
   await page.keyboard.press('Escape');
 
   // ---------- Two windows: the audience window never gets a card; the host column lists them ----------
@@ -496,12 +715,18 @@ try {
   const info = page.locator('.info');
   assert((await info.innerText()).includes('🤝 Partner clue · Ann · choosing a partner'), 'the host column says whose partner clue it is');
   const cardsInfo = await info.locator('[data-partner-cards-info]').innerText();
-  assert(cardsInfo.includes(SECRET) && cardsInfo.includes(`🖼 ${PIC} · picture`) && cardsInfo.includes('This card shows the answer'), 'and lists each card as text, with its picture’s name (only the host sees this window)');
+  assert(
+    cardsInfo.includes(SECRET) && cardsInfo.includes(`🖼 ${PIC} · picture`) && cardsInfo.includes('This card shows the answer'),
+    'and lists each card as text, with its picture’s name (only the host sees this window)',
+  );
   await noCards(aud, 'audience: PARTNER UP!');
   // N with no partner yet asks first: a must (no "anyway"), and W in it spins the wheel.
   await page.keyboard.press('n');
   await checkItem(page, 'partner').waitFor();
-  assert((await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await anyway(page).count()) === 0, 'N with no partner yet asks first (“First:” Ann needs a partner), with no “anyway”');
+  assert(
+    (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await anyway(page).count()) === 0,
+    'N with no partner yet asks first (“First:” Ann needs a partner), with no “anyway”',
+  );
   const needs = await checkItem(page, 'partner').innerText();
   assert(needs.includes('Ann needs a partner.') && !needs.includes('partner first'), `its line says it once, under “First:” (${needs})`);
   await goOnCheck(page, { ready: true }).waitFor();

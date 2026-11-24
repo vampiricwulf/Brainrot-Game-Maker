@@ -5,7 +5,24 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { migrateGame, setSlideText, type BoardRound, type Game } from './model';
 import { setPartner, setPartnerGame, stealOn } from './partner';
-import { applyScore, awardOpen, backToBoard, clueMarks, judgePartner, logZero, migrateSession, newSession, openClue, ownPlayers, partnerSteal, redo, removePlayer, stealersLeft, toggleUsed, undo } from './session';
+import {
+  applyScore,
+  awardOpen,
+  backToBoard,
+  clueMarks,
+  judgePartner,
+  logZero,
+  migrateSession,
+  newSession,
+  openClue,
+  ownPlayers,
+  partnerSteal,
+  redo,
+  removePlayer,
+  stealersLeft,
+  toggleUsed,
+  undo,
+} from './session';
 import { phoneStatus } from './buzz';
 
 const REF = { round: 0, cat: 0, row: 1 };

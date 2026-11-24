@@ -98,7 +98,16 @@ export const DIR_VEC: Record<Dir8, [number, number]> = {
   nw: [-1, -1],
 };
 export const DIR_ARROW: Record<Dir8, string> = { n: '↑', ne: '↗', e: '→', se: '↘', s: '↓', sw: '↙', w: '←', nw: '↖' };
-export const DIR_NAME: Record<Dir8, string> = { n: 'North', ne: 'North-east', e: 'East', se: 'South-east', s: 'South', sw: 'South-west', w: 'West', nw: 'North-west' };
+export const DIR_NAME: Record<Dir8, string> = {
+  n: 'North',
+  ne: 'North-east',
+  e: 'East',
+  se: 'South-east',
+  s: 'South',
+  sw: 'South-west',
+  w: 'West',
+  nw: 'North-west',
+};
 export const OPPOSITE: Record<Dir8, Dir8> = { n: 's', ne: 'sw', e: 'w', se: 'nw', s: 'n', sw: 'ne', w: 'e', nw: 'se' };
 const diagonal = (d: Dir8) => d.length === 2;
 
@@ -183,7 +192,8 @@ export function clearSpot(x: number, y: number, w: number, h: number, boxes: rea
   const clear = (s: { x: number; y: number }) => !boxes.some((b) => overlaps({ ...s, w, h }, b));
   if (clear({ x, y })) return { x, y };
   const spots: { x: number; y: number }[] = [];
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) spots.push({ x: Math.round(40 + (c * (SLIDE_W - 80 - w)) / 5), y: Math.round(40 + (r * (SLIDE_H - 80 - h)) / 3) });
+  for (let r = 0; r < 4; r++)
+    for (let c = 0; c < 6; c++) spots.push({ x: Math.round(40 + (c * (SLIDE_W - 80 - w)) / 5), y: Math.round(40 + (r * (SLIDE_H - 80 - h)) / 3) });
   return spots.filter(clear).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0] ?? { x, y };
 }
 
@@ -198,7 +208,14 @@ export function ensureWorld(session: Session, game: Game, round: RpgRound): Worl
     const party = { id: newId(), name: 'Party', members: session.players.map((p) => p.id) };
     session.worlds[world.id] = { positions: {}, parties: [party], active: party.id, knowledge: {}, objects: {}, added: {}, mapShown: false };
     const st = session.worlds[world.id];
-    place(game, st, world, session.players.map((p) => p.id), start, null);
+    place(
+      game,
+      st,
+      world,
+      session.players.map((p) => p.id),
+      start,
+      null,
+    );
     discover(st, world, start);
   }
   const st = session.worlds[world.id];
@@ -320,8 +337,7 @@ export function place(game: Game, st: WorldState, world: World, players: string[
   const screen = map?.screens.find((s) => s.id === to.screen);
   if (!screen) return;
   const els = allElements(st, screen);
-  const anchor =
-    (arriveAt && els.find((e) => e.id === arriveAt)) || (!via ? els.find((e) => e.role?.class === 'spawn') : undefined);
+  const anchor = (arriveAt && els.find((e) => e.id === arriveAt)) || (!via ? els.find((e) => e.role?.class === 'spawn') : undefined);
   let cx = SLIDE_W / 2;
   let cy = SLIDE_H / 2 + 120;
   if (anchor) {
@@ -797,7 +813,8 @@ export function rpgProblems(game: Game, round: RpgRound, name: string, tab: numb
     at.el
       ? { tab: 'world', world: world.id, map: at.map.id, screen: at.screen.id, look: at.look, inSlide: true, element: at.el.id }
       : { tab: 'world', world: world.id, map: at.map.id, screen: at.screen.id };
-  if (!world.maps.some((m) => m.screens.length)) out.push({ text: `${name}: ${world.name} has no screens`, tab, level: 'warn', place: { tab: 'world', world: world.id } });
+  if (!world.maps.some((m) => m.screens.length))
+    out.push({ text: `${name}: ${world.name} has no screens`, tab, level: 'warn', place: { tab: 'world', world: world.id } });
   const objects = objectsWhere(world);
   const loose = objects.filter(({ el }) => el.role?.class === 'doorway' && !(el.role.to && findIn(world, el.role.to)));
   if (loose.length) {
@@ -806,7 +823,11 @@ export function rpgProblems(game: Game, round: RpgRound, name: string, tab: numb
     out.push({ text: `${name}: ${text}`, tab, level: 'warn', place: place(loose[0]) });
   }
   // Sides sent to a screen that was deleted since.
-  const ways = world.maps.flatMap((map) => map.screens.flatMap((screen) => DIRS.filter((d) => screen.exits?.[d]?.kind === 'warp' && !findIn(world, (screen.exits[d] as { to: ScreenRef }).to)).map(() => ({ map, screen }))));
+  const ways = world.maps.flatMap((map) =>
+    map.screens.flatMap((screen) =>
+      DIRS.filter((d) => screen.exits?.[d]?.kind === 'warp' && !findIn(world, (screen.exits[d] as { to: ScreenRef }).to)).map(() => ({ map, screen })),
+    ),
+  );
   if (ways.length) {
     const from = nameList(ways.map((w) => w.screen.name));
     const text = ways.length === 1 ? `a way out of ${from} leads nowhere` : `${ways.length} ways out lead nowhere (from ${from})`;
@@ -818,7 +839,9 @@ export function rpgProblems(game: Game, round: RpgRound, name: string, tab: numb
     const what = first.el.name?.trim() ? `“${first.el.name.trim()}”` : 'an object';
     const one = (what: string) => `${name}: ${what} on “${first.screen.name}” has a button or setting that points nowhere`;
     const text =
-      nowhere.length === 1 ? one(what) : `${name}: ${nowhere.length} objects have a button or setting that points nowhere (on ${nameList(nowhere.map((o) => o.screen.name))})`;
+      nowhere.length === 1
+        ? one(what)
+        : `${name}: ${nowhere.length} objects have a button or setting that points nowhere (on ${nameList(nowhere.map((o) => o.screen.name))})`;
     // (Where viewers read it, a secret object isn't named: "a hidden object", as the host panel says it.)
     const quiet = nowhere.length === 1 && first.el.secret && !neverShown(first.el) ? { quiet: { text: one('a hidden object') } } : {};
     out.push({ text, tab, level: 'warn', place: place(first), ...quiet });

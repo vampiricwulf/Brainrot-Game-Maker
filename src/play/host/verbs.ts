@@ -31,7 +31,10 @@ export const FLOW = {
   revealCategories: { label: 'Reveal categories ▶', title: 'The categories come up' },
   revealCategory: (n: number, of: number): FlowVerb => ({ label: `Reveal category ${n} of ${of} ▶`, title: 'The next category comes up' }),
   // Slides: a clue's question slides, a slides round.
-  nextSlide: (at: number, of: number): FlowVerb => ({ label: 'Next slide ▶', title: `Slide ${at + 1} of ${of} (Shift+N: the slide before) · or click the slide` }),
+  nextSlide: (at: number, of: number): FlowVerb => ({
+    label: 'Next slide ▶',
+    title: `Slide ${at + 1} of ${of} (Shift+N: the slide before) · or click the slide`,
+  }),
   // A clue.
   reveal: { label: '👁 Reveal answer', title: 'The answer goes on screen (R shows or hides it at once) · or click the slide', anyway: '👁 Reveal anyway' },
   done: { label: '▦ Done ▶ board', title: 'Back to the board, the tile used (Esc closes at once)', anyway: '▦ Done anyway' },

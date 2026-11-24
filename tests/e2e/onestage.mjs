@@ -9,7 +9,26 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, leaveAnswer, mainButton, openGameFile, returningHost, revealAnyway, failureShots, assert, launchChromium, section, boardIn, finalControlsIn, hostPanelIn, playerRowsIn, roundNavIn, stageBoxIn, statusLineIn } from './helpers.mjs';
+import {
+  appFile,
+  confirmStrip,
+  leaveAnswer,
+  mainButton,
+  openGameFile,
+  returningHost,
+  revealAnyway,
+  failureShots,
+  assert,
+  launchChromium,
+  section,
+  boardIn,
+  finalControlsIn,
+  hostPanelIn,
+  playerRowsIn,
+  roundNavIn,
+  stageBoxIn,
+  statusLineIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -17,7 +36,30 @@ const errors = [];
 
 // Every kind of round: a board (a Daily Double, a partner clue), an RPG round, a board game and a Final, three players
 // at 500 (the Final at 0 wagers, all right: a tie for first, and the tiebreaker).
-const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (id, t) => ({
+  id,
+  kind: 'text',
+  text: t,
+  x: 160,
+  y: 340,
+  w: 1600,
+  h: 400,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  font: 'Arial',
+  size: 72,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#fff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t)] });
 let n = 0;
 const clue = (q, a, more = {}) => ({ id: `c${++n}`, value: null, type: 'standard', questionSlide: slide(`q${n}`, q), answerSlide: slide(`a${n}`, a), ...more });
@@ -25,34 +67,94 @@ const partner = { game: 'describe', giver: 'partner', got: { giver: 100, guesser
 const partnerCards = ['giver', 'guesser'].map((to, k) => ({ id: `pc${k}`, to, ...slide(`pcs${k}`, `Card ${k + 1}`) }));
 const cats = ['Memes', 'Skibidi Lore', 'Minecraft', 'Rizz', 'Speedruns'];
 const board = {
-  id: 'r_board', name: 'Jeopardy!', mode: 'board', values: [200, 400, 600, 800, 1000], dailyDoubleCount: 1,
+  id: 'r_board',
+  name: 'Jeopardy!',
+  mode: 'board',
+  values: [200, 400, 600, 800, 1000],
+  dailyDoubleCount: 1,
   categories: cats.map((c, ci) => ({
     id: `cat${ci}`,
     title: c,
     clues: [0, 1, 2, 3, 4].map((ri) =>
-      ci === 4 && ri === 0 ? clue('A Daily Double', 'Its answer', { type: 'dailyDouble' })
-      : ci === 0 && ri === 1 ? clue('Describe it', 'The partner answer', { id: 'c_partner', type: 'partner', partner, timerSeconds: 45, cards: partnerCards })
-      : clue(`${c} ${ri}`, `Answer ${ci}.${ri}`),
+      ci === 4 && ri === 0
+        ? clue('A Daily Double', 'Its answer', { type: 'dailyDouble' })
+        : ci === 0 && ri === 1
+          ? clue('Describe it', 'The partner answer', { id: 'c_partner', type: 'partner', partner, timerSeconds: 45, cards: partnerCards })
+          : clue(`${c} ${ri}`, `Answer ${ci}.${ri}`),
     ),
   })),
 };
 const screens = [0, 1].map((c) => ({ id: `sc_${c}`, name: `Field ${c}`, col: c, row: 0, slide: { background: { color: '#553322' }, elements: [] } }));
 const sp = (id, name, x, y, next) => ({ id, name, x, y, color: '#4363d8', next });
 const game = {
-  id: 'g_onestage', version: 2, title: 'One Stage Night',
-  settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+  id: 'g_onestage',
+  version: 2,
+  title: 'One Stage Night',
+  settings: {
+    allowNegativeScores: true,
+    deductOnWrong: true,
+    defaultTimerSeconds: 15,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+    maxPlayers: 8,
+  },
   players: ['Ann', 'Bob', 'Cy'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: 500 })),
   rounds: [
     board,
     { id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' },
-    { id: 'r_bg', name: 'Board game', mode: 'boardgame', slide: { background: { color: '#1d5e3a' }, elements: [] }, spaces: [sp('b0', 'Start', 300, 300, ['b1']), sp('b1', 'Middle', 900, 300, ['b2']), sp('b2', 'Finish', 1500, 300, [])], mover: { kind: 'dice', dice: 'dp1' }, zones: [] },
-    { id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Internet History', questionSlide: slide('fq', 'The first video'), answerSlide: slide('fa', 'Me at the zoo'), timerSeconds: 30, allowNonPositive: true },
+    {
+      id: 'r_bg',
+      name: 'Board game',
+      mode: 'boardgame',
+      slide: { background: { color: '#1d5e3a' }, elements: [] },
+      spaces: [sp('b0', 'Start', 300, 300, ['b1']), sp('b1', 'Middle', 900, 300, ['b2']), sp('b2', 'Finish', 1500, 300, [])],
+      mover: { kind: 'dice', dice: 'dp1' },
+      zones: [],
+    },
+    {
+      id: 'r_final',
+      name: 'Final Jeopardy!',
+      mode: 'final',
+      category: 'Internet History',
+      questionSlide: slide('fq', 'The first video'),
+      answerSlide: slide('fa', 'Me at the zoo'),
+      timerSeconds: 30,
+      allowNonPositive: true,
+    },
   ],
-  media: [], audio: {}, theme: {}, wheels: [],
+  media: [],
+  audio: {},
+  theme: {},
+  wheels: [],
   dice: [{ id: 'dp1', name: 'Move die', dice: [{ id: 'd1', sides: 6, count: 1 }], showTotal: true }],
-  statFields: [], items: [],
+  statFields: [],
+  items: [],
   tiebreaker: { questionSlide: slide('tq', 'Tiebreaker question'), answerSlide: slide('ta', 'Tiebreaker answer') },
-  worlds: [{ id: 'w1', name: 'World', maps: [{ id: 'm1', name: 'Overworld', cols: 2, rows: 1, screens, visibility: 'discovered', showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut' }] }],
+  worlds: [
+    {
+      id: 'w1',
+      name: 'World',
+      maps: [
+        {
+          id: 'm1',
+          name: 'Overworld',
+          cols: 2,
+          rows: 1,
+          screens,
+          visibility: 'discovered',
+          showExits: true,
+          revealNeighbors: true,
+          diagonals: true,
+          wrap: false,
+          transition: 'cut',
+        },
+      ],
+    },
+  ],
 };
 mkdirSync(resolve('test-results'), { recursive: true });
 const gameFile = resolve('test-results/onestage.json');
@@ -100,7 +202,10 @@ async function panelWindow(page, w, h, name, open) {
     await dialog.evaluate((d) => (d.scrollTop = d.scrollHeight));
     await page.waitForTimeout(150);
     const foot = await look();
-    assert(foot.title && foot.done && !foot.fade, `${w}×${h}, ${name}: scrolled to its foot, the title and Done are still in sight, and no fade (${JSON.stringify(foot)})`);
+    assert(
+      foot.title && foot.done && !foot.fade,
+      `${w}×${h}, ${name}: scrolled to its foot, the title and Done are still in sight, and no fade (${JSON.stringify(foot)})`,
+    );
   }
   await dialog.getByRole('button', { name: 'Done', exact: true }).click();
   await dialog.waitFor({ state: 'detached' });
@@ -207,7 +312,10 @@ try {
 
     await nextRound('Adventure');
     await measure('RPG round');
-    assert(!(await page.locator('.play').evaluate((p) => p.classList.contains('side'))), `${w}×${h}: the RPG round's controls are under the stage, as every round's`);
+    assert(
+      !(await page.locator('.play').evaluate((p) => p.classList.contains('side'))),
+      `${w}×${h}: the RPG round's controls are under the stage, as every round's`,
+    );
     await nextRound('Board game');
     await measure('board-game round');
 
@@ -215,7 +323,10 @@ try {
     await finalControlsIn(page).locator('.wagers input[data-wager]').first().waitFor();
     await measure('Final wagers');
     // (Wagers that bring everyone level when all are right: a tie for first, for the tiebreaker.)
-    for (const [i, id] of ['p1', 'p2', 'p3'].entries()) await finalControlsIn(page).locator(`.wagers input[data-wager="${id}"]`).fill(String(top - pts[i]));
+    for (const [i, id] of ['p1', 'p2', 'p3'].entries())
+      await finalControlsIn(page)
+        .locator(`.wagers input[data-wager="${id}"]`)
+        .fill(String(top - pts[i]));
     for (const label of ['Show question ▶', '👁 Reveal answer', 'Start player reveals ▶']) {
       await page.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l), label);
       if (label === '👁 Reveal answer') await measure('Final question');

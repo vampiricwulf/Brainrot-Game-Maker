@@ -115,7 +115,14 @@ export function dungeonRound(game: Game, name = 'Dungeon'): RpgRound {
     ['Dark hall', 'Great hall', 'Armory'],
     ['Cell', 'Entrance', 'Guard room'],
   ];
-  const world = gridWorld(`${name} world`, 'Dungeon', 3, 3, (c, r) => names[r][c], (c, r) => (r === 0 && c === 1 ? '#5a4a12' : ['#23232e', '#2b2638', '#1f2a2e'][(c + r) % 3]));
+  const world = gridWorld(
+    `${name} world`,
+    'Dungeon',
+    3,
+    3,
+    (c, r) => names[r][c],
+    (c, r) => (r === 0 && c === 1 ? '#5a4a12' : ['#23232e', '#2b2638', '#1f2a2e'][(c + r) % 3]),
+  );
   const map = world.maps[0];
   const at = (c: number, r: number) => map.screens.find((s) => s.col === c && s.row === r)!;
   at(1, 0).slide.elements.push(thing('💰', 'Treasure chest', 850, 520, { class: 'item', item: potion(game).id, qty: 1 }));
@@ -158,7 +165,14 @@ export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
     { item: drink.id, qty: null },
     { item: sword.id, qty: 3 },
   ];
-  const world = gridWorld(`${name} world`, 'Valley', 3, 1, (c) => ['Village', 'Forest', 'Boss lair'][c], (c) => ['#2f6b3a', '#1d4a26', '#3a1420'][c]);
+  const world = gridWorld(
+    `${name} world`,
+    'Valley',
+    3,
+    1,
+    (c) => ['Village', 'Forest', 'Boss lair'][c],
+    (c) => ['#2f6b3a', '#1d4a26', '#3a1420'][c],
+  );
   const [village, forest, lair] = world.maps[0].screens;
   // (Up and to the side: everyone starts in a row through the middle.)
   village.slide.elements.push(
@@ -186,7 +200,14 @@ export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
 /** The sample's little world: a village, a forest with a chest, and a cave with a talking cat. */
 function sampleWorld(game: Game): RpgRound {
   const coin = gold(game);
-  const world = gridWorld('Sample world', 'Countryside', 3, 1, (c) => ['Village', 'Forest', 'Cave'][c], (c) => ['#2f6b3a', '#1d4a26', '#2b2b38'][c]);
+  const world = gridWorld(
+    'Sample world',
+    'Countryside',
+    3,
+    1,
+    (c) => ['Village', 'Forest', 'Cave'][c],
+    (c) => ['#2f6b3a', '#1d4a26', '#2b2b38'][c],
+  );
   const [village, forest, cave] = world.maps[0].screens;
   village.slide.elements.push(words('Walk east with the arrows →', 820, 60, '#ffe119'));
   village.hostNotes = 'The arrow keys (or the pad) move the party. Click a thing on a screen for its card.';
@@ -268,7 +289,14 @@ export function raceRound(name = 'Race'): BoardGameRound {
   for (let i = 0; i < 6; i++) pts.push([260 + i * 280, 260]);
   for (let i = 5; i >= 0; i--) pts.push([260 + i * 280, 540]);
   for (let i = 0; i < 6; i++) pts.push([260 + i * 280, 820]);
-  r.spaces = pts.map(([x, y], i) => newBoardSpace(x, y, i === 0 ? 'Start' : i === pts.length - 1 ? 'Finish' : `Space ${i + 1}`, i === 0 || i === pts.length - 1 ? '#ffcc00' : SPACE_COLORS[i % SPACE_COLORS.length]));
+  r.spaces = pts.map(([x, y], i) =>
+    newBoardSpace(
+      x,
+      y,
+      i === 0 ? 'Start' : i === pts.length - 1 ? 'Finish' : `Space ${i + 1}`,
+      i === 0 || i === pts.length - 1 ? '#ffcc00' : SPACE_COLORS[i % SPACE_COLORS.length],
+    ),
+  );
   r.spaces.forEach((s, i) => (s.next = r.spaces[i + 1] ? [r.spaces[i + 1].id] : []));
   const finish = r.spaces[r.spaces.length - 1];
   setNameShown(r.spaces[0], true);
@@ -316,7 +344,13 @@ export const TEMPLATES: Template[] = [
   { mode: 'board', label: 'Classic board, 6 × 5', hint: '$200 to $1,000', make: () => newRound('Jeopardy!', 6) },
   { mode: 'board', label: 'Double board, 6 × 5', hint: '$400 to $2,000', make: () => newRound('Double Jeopardy!', 6, [400, 800, 1200, 1600, 2000]) },
   { mode: 'board', label: 'Quick board, 4 × 3', hint: 'A short round: $100 to $300', make: () => newRound('Quick round', 4, [100, 200, 300]), first: true },
-  { mode: 'rpg', label: 'Mini quest', hint: 'A village shop, gold to find and a boss to fight: everything an adventure needs, ready to play', make: (g) => miniQuestRound(g), first: true },
+  {
+    mode: 'rpg',
+    label: 'Mini quest',
+    hint: 'A village shop, gold to find and a boss to fight: everything an adventure needs, ready to play',
+    make: (g) => miniQuestRound(g),
+    first: true,
+  },
   { mode: 'rpg', label: '3 × 3 dungeon', hint: 'Nine rooms, a treasure chest and a spider', make: (g) => dungeonRound(g), first: true },
   {
     mode: 'boardgame',
@@ -353,12 +387,44 @@ function introRound(welcome = 'Welcome to the show!'): Round {
  */
 export function addSampleGame(game: Game): number {
   const at = game.rounds.length;
-  const board = writtenBoard('Jeopardy!', [200, 400, 600], [
-    ['Memes', [['This Shiba Inu became the face of a cryptocurrency', 'Doge'], ['“Never gonna give you up” is the song of this prank', 'Rickrolling'], ['This frog says “feels good man”', 'Pepe']]],
-    ['Gaming', [['A plumber in a red cap', 'Mario'], ['Blocks, creepers and diamonds', 'Minecraft'], ['“The cake is a lie” comes from this game', 'Portal']]],
-    ['Internet', [['The site with the little blue bird, now called X', 'Twitter'], ['Short videos with a music note logo', 'TikTok'], ['Where streamers go live in purple', 'Twitch']]],
-    ['Brainrot', [['A toilet with a head, singing', 'Skibidi Toilet'], ['Extra points of charm', 'Rizz'], ['Weird things happen “only in” this US state, says the meme', 'Ohio']]],
-  ]);
+  const board = writtenBoard(
+    'Jeopardy!',
+    [200, 400, 600],
+    [
+      [
+        'Memes',
+        [
+          ['This Shiba Inu became the face of a cryptocurrency', 'Doge'],
+          ['“Never gonna give you up” is the song of this prank', 'Rickrolling'],
+          ['This frog says “feels good man”', 'Pepe'],
+        ],
+      ],
+      [
+        'Gaming',
+        [
+          ['A plumber in a red cap', 'Mario'],
+          ['Blocks, creepers and diamonds', 'Minecraft'],
+          ['“The cake is a lie” comes from this game', 'Portal'],
+        ],
+      ],
+      [
+        'Internet',
+        [
+          ['The site with the little blue bird, now called X', 'Twitter'],
+          ['Short videos with a music note logo', 'TikTok'],
+          ['Where streamers go live in purple', 'Twitch'],
+        ],
+      ],
+      [
+        'Brainrot',
+        [
+          ['A toilet with a head, singing', 'Skibidi Toilet'],
+          ['Extra points of charm', 'Rizz'],
+          ['Weird things happen “only in” this US state, says the meme', 'Ohio'],
+        ],
+      ],
+    ],
+  );
   board.categories[3].clues[2].type = 'dailyDouble';
   // A 🤝 partner clue: Describe it, its card the answer (the describer's to describe).
   const pc = board.categories[2].clues[1];
@@ -376,8 +442,7 @@ export function addSampleGame(game: Game): number {
   // (Its introduction only in a game of its own: added to a game with rounds, it would land in the middle.)
   game.rounds.push(...(at ? [] : [introRound('Welcome to the sample game!')]), board, rpg, bg, final);
   // Red, green and yellow: far apart in hue, so no two look alike (on the blue theme two blues did).
-  if (!game.players.length)
-    game.players = ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: newId(), name, color: PLAYER_PALETTE[[0, 6, 2][i]] }));
+  if (!game.players.length) game.players = ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: newId(), name, color: PLAYER_PALETTE[[0, 6, 2][i]] }));
   if (!game.title.trim() || game.title === 'Untitled Game') game.title = 'Sample game';
   return at;
 }

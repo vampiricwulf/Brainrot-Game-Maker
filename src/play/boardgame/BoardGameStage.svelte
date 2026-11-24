@@ -108,7 +108,14 @@
       // banner, the win notes or the stats strip comes down just enough to stay in sight; near the bottom, it goes up
       // above the stats strip; at a side, a crowd moves in. A crowd next to another space keeps off it (smaller tokens).
       // The board itself stays as it is.
-      const { r, spots } = placeTokens(sp.x, sp.y, ids.length, clearTop, SLIDE_H - clearBottom, round.spaces.filter((o) => o.id !== sp.id));
+      const { r, spots } = placeTokens(
+        sp.x,
+        sp.y,
+        ids.length,
+        clearTop,
+        SLIDE_H - clearBottom,
+        round.spaces.filter((o) => o.id !== sp.id),
+      );
       ids.forEach((id, i) => out.push({ id, ...spots[i], r }));
     }
     return out;
@@ -230,57 +237,57 @@
 <div class="bg">
   {#if round && bs}
     <div class="play-area" class:eases={fitEases} style:transform="translate({area.x}px, {area.y}px) scale({area.scale})">
-    {#if zone}
-      {#key zone.id}
-        <div class="layer" in:fade={{ duration: 300 }}>
-          <SlideView slide={zone.slide} mode="play" {role} fallbackBg="#2a0845" />
-          <div class="zone-players">
-            {#each inZone(zone.id) as p (p.id)}
-              <div class="tok"><AvatarToken player={p} size={130} worn={wornItems(game, session, p.id)} /></div>
-            {/each}
-          </div>
-        </div>
-      {/key}
-    {:else}
-      <div
-        class="layer"
-        class:clickable={!!onspace}
-        bind:this={layerEl}
-        onclick={onspace ? boardClick : undefined}
-        onkeydown={keyed ? spaceKey : undefined}
-        onfocusin={keyed ? spaceFocus : undefined}
-        role="presentation"
-      >
-        <SlideView slide={round.slide} mode="play" {role} fallbackBg="#1d5e3a" />
-        <BoardSpaces {round} {audience} revealed={bs.revealed ?? []} marked={ways} {lit} allNames={editing} keys={keyed} {tabStop} />
-        {#each tokens as t (t.id)}
-          {@const p = session.players.find((x) => x.id === t.id)}
-          {@const d = drag?.id === t.id ? drag : null}
-          {#if p}
-            <div
-              class="tok on-board"
-              class:current={t.id === turnId}
-              class:grab={!!ontoken}
-              class:dragging={!!d?.moved}
-              class:picked={mirror && selected.includes(p.id)}
-              class:drop-on={dropHover.at === `player:${p.id}`}
-              style:left="{d ? d.x : t.x}px"
-              style:top="{d ? d.y : t.y}px"
-              data-player={p.name}
-              data-player-id={p.id}
-              onpointerdown={(e) => tokenDown(e, t)}
-              onpointermove={tokenMove}
-              onpointerup={tokenUp}
-              onpointercancel={tokenCancel}
-              role="presentation"
-            >
-              <AvatarToken player={p} size={t.r * 2} worn={wornItems(game, session, p.id)} name={false} />
+      {#if zone}
+        {#key zone.id}
+          <div class="layer" in:fade={{ duration: 300 }}>
+            <SlideView slide={zone.slide} mode="play" {role} fallbackBg="#2a0845" />
+            <div class="zone-players">
+              {#each inZone(zone.id) as p (p.id)}
+                <div class="tok"><AvatarToken player={p} size={130} worn={wornItems(game, session, p.id)} /></div>
+              {/each}
             </div>
-          {/if}
-        {/each}
-        {#if editing}<BoardEditLayer {game} {session} {round} hide={audience} />{/if}
-      </div>
-    {/if}
+          </div>
+        {/key}
+      {:else}
+        <div
+          class="layer"
+          class:clickable={!!onspace}
+          bind:this={layerEl}
+          onclick={onspace ? boardClick : undefined}
+          onkeydown={keyed ? spaceKey : undefined}
+          onfocusin={keyed ? spaceFocus : undefined}
+          role="presentation"
+        >
+          <SlideView slide={round.slide} mode="play" {role} fallbackBg="#1d5e3a" />
+          <BoardSpaces {round} {audience} revealed={bs.revealed ?? []} marked={ways} {lit} allNames={editing} keys={keyed} {tabStop} />
+          {#each tokens as t (t.id)}
+            {@const p = session.players.find((x) => x.id === t.id)}
+            {@const d = drag?.id === t.id ? drag : null}
+            {#if p}
+              <div
+                class="tok on-board"
+                class:current={t.id === turnId}
+                class:grab={!!ontoken}
+                class:dragging={!!d?.moved}
+                class:picked={mirror && selected.includes(p.id)}
+                class:drop-on={dropHover.at === `player:${p.id}`}
+                style:left="{d ? d.x : t.x}px"
+                style:top="{d ? d.y : t.y}px"
+                data-player={p.name}
+                data-player-id={p.id}
+                onpointerdown={(e) => tokenDown(e, t)}
+                onpointermove={tokenMove}
+                onpointerup={tokenUp}
+                onpointercancel={tokenCancel}
+                role="presentation"
+              >
+                <AvatarToken player={p} size={t.r * 2} worn={wornItems(game, session, p.id)} name={false} />
+              </div>
+            {/if}
+          {/each}
+          {#if editing}<BoardEditLayer {game} {session} {round} hide={audience} />{/if}
+        </div>
+      {/if}
     </div>
     <!-- Whose turn, how to win, who's in a zone: one thin row along the top (the bottom when the stats strip is at the top). -->
     <div class="labels" class:low={bar === 'top'} bind:clientHeight={labelsH}>
@@ -414,7 +421,10 @@
     padding: 4px 20px;
     border-radius: 12px;
     border: 4px solid #000;
-    font: 38px 'Anton', 'Oswald', sans-serif;
+    font:
+      38px 'Anton',
+      'Oswald',
+      sans-serif;
     white-space: nowrap;
   }
   .zones {
@@ -437,7 +447,10 @@
     background: rgba(42, 8, 69, 0.9);
     border: 3px solid #b388ff;
     color: #fff;
-    font: 28px 'Anton', 'Oswald', sans-serif;
+    font:
+      28px 'Anton',
+      'Oswald',
+      sans-serif;
   }
   .win {
     align-self: center;

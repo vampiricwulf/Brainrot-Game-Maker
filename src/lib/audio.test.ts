@@ -48,8 +48,7 @@ describe('parseSavedOutput', () => {
     expect(parseSavedOutput('{"deviceId":"abc","label":"CABLE Input"}')).toEqual({ deviceId: 'abc', label: 'CABLE Input' });
   });
   it('falls back to the default device for nothing, junk or the wrong shape', () => {
-    for (const raw of [null, undefined, '', 'not json', '{"label":"x"}', '42', 'null'])
-      expect(parseSavedOutput(raw)).toEqual({ deviceId: '', label: '' });
+    for (const raw of [null, undefined, '', 'not json', '{"label":"x"}', '42', 'null']) expect(parseSavedOutput(raw)).toEqual({ deviceId: '', label: '' });
   });
   it('tolerates a missing label', () => {
     expect(parseSavedOutput('{"deviceId":"abc"}')).toEqual({ deviceId: 'abc', label: '' });

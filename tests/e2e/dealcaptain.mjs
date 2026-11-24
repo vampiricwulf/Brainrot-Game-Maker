@@ -11,7 +11,21 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, recordSeen, stored, failureShots, assert, sleep, launchChromium, untilWith, section, stageBoxIn, statusLineIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  openGameFile,
+  recordSeen,
+  stored,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  untilWith,
+  section,
+  stageBoxIn,
+  statusLineIn,
+  toolsRowIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -19,7 +33,30 @@ mkdirSync('test-results', { recursive: true });
 const until = untilWith({ every: 100 });
 
 let ids = 0;
-const text = (t) => ({ id: `e${ids++}`, x: 100, y: 40, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1, kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t) => ({
+  id: `e${ids++}`,
+  x: 100,
+  y: 40,
+  w: 800,
+  h: 160,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (...elements) => ({ background: {}, elements });
 const plain = (id) => ({ id, value: null, type: 'standard', questionSlide: slide(text('A question')), answerSlide: slide(text('An answer')) });
 const NAMES = ['Ann', 'Bob', 'Cat', 'Dan', 'Eve'];
@@ -28,12 +65,37 @@ const game = {
   version: 2,
   title: 'Captain night',
   settings: {
-    allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true },
+    allowNegativeScores: true,
+    deductOnWrong: false,
+    defaultTimerSeconds: 30,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+    maxPlayers: 8,
+    stream: { clueCaption: true },
   },
   players: NAMES.map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4'][i] })),
-  rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: [{ id: 'c1', title: 'Movies', clues: [plain('a'), plain('b')] }, { id: 'c2', title: 'Games', clues: [plain('c'), plain('d')] }] }],
-  media: [], audio: {}, wheels: [], dice: [], theme: {},
+  rounds: [
+    {
+      id: 'r1',
+      name: 'Round 1',
+      mode: 'board',
+      values: [200, 400],
+      dailyDoubleCount: 0,
+      categories: [
+        { id: 'c1', title: 'Movies', clues: [plain('a'), plain('b')] },
+        { id: 'c2', title: 'Games', clues: [plain('c'), plain('d')] },
+      ],
+    },
+  ],
+  media: [],
+  audio: {},
+  wheels: [],
+  dice: [],
+  theme: {},
 };
 const gameFile = resolve('test-results/dealcaptain.json');
 writeFileSync(gameFile, JSON.stringify(game));
@@ -96,7 +158,14 @@ try {
   assert((await flat(dialog.locator('[data-deal-counts]'))) === 'Dealt to 5: Captain ×1', '“Dealt to 5: Captain ×1”: everyone dealt in, one part');
   const handOut = dialog.locator('[data-deal-send]');
   assert((await handOut.innerText()).trim() === '✔ Hand them out' && (await clickable(handOut)), 'no phones: ✔ Hand them out, in view');
-  const where = () => host.evaluate(() => JSON.stringify([document.querySelector('.stage-box').getBoundingClientRect(), document.scrollingElement.scrollTop, document.querySelector('.play')?.scrollTop]));
+  const where = () =>
+    host.evaluate(() =>
+      JSON.stringify([
+        document.querySelector('.stage-box').getBoundingClientRect(),
+        document.scrollingElement.scrollTop,
+        document.querySelector('.play')?.scrollTop,
+      ]),
+    );
   const stageBefore = await where();
   await handOut.click();
   await dialog.locator('.hands').waitFor();
@@ -108,7 +177,10 @@ try {
   );
   assert((await where()) === stageBefore, `bringing it into view moves only the box: the stage keeps its place and size (${await where()} vs ${stageBefore})`);
   const rows = await dialog.locator('.hands .row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
-  assert(JSON.stringify(rows) === JSON.stringify(NAMES.map((n) => `${n} 📋 Copy 🪟`)), `the list names all five dealt in, each with 📋 Copy and 🪟 (${rows.join(' | ')})`);
+  assert(
+    JSON.stringify(rows) === JSON.stringify(NAMES.map((n) => `${n} 📋 Copy 🪟`)),
+    `the list names all five dealt in, each with 📋 Copy and 🪟 (${rows.join(' | ')})`,
+  );
   let d = null;
   const nameOf = (seat) => NAMES[Number(seat.slice(1)) - 1];
   assert(await until(async () => (d = await savedDeal())?.stage === 'sent'), 'the deal is kept with the game in progress (autosave)');
@@ -119,7 +191,10 @@ try {
     const copied = await until(async () => (await host.evaluate(() => navigator.clipboard.readText())).startsWith(`🤫 For ${n} only`), 5000);
     const got = await host.evaluate(() => navigator.clipboard.readText());
     assert(
-      copied && (n === captain ? got.includes('You’re the Captain') && got.includes('your team only answers when you say so') : got.endsWith('no part for you this time')),
+      copied &&
+        (n === captain
+          ? got.includes('You’re the Captain') && got.includes('your team only answers when you say so')
+          : got.endsWith('no part for you this time')),
       `${n}’s 📋 Copy: ${n === captain ? 'the captain’s brief' : '“no part for you this time”'}`,
     );
   }
@@ -154,7 +229,18 @@ try {
     await dialog.locator('.hands').waitFor();
     await sleep(800);
     // (Each sentence once, in order: how the live region bunched them depends on how fast the clicks came.)
-    const said = await host.evaluate(() => [...new Set(window.__seen.flatMap((s) => s.split(/(?<=[.!?…])\s+/)).map((s) => s.trim()).filter(Boolean))].sort().join('\n'));
+    const said = await host.evaluate(() =>
+      [
+        ...new Set(
+          window.__seen
+            .flatMap((s) => s.split(/(?<=[.!?…])\s+/))
+            .map((s) => s.trim())
+            .filter(Boolean),
+        ),
+      ]
+        .sort()
+        .join('\n'),
+    );
     const page = await snapshot();
     const was = d.id;
     if (!(await until(async () => (d = await savedDeal())?.stage === 'sent' && d.id !== was))) throw new Error('the new deal never reached autosave');
@@ -164,9 +250,18 @@ try {
   let next = first;
   for (let i = 0; i < 25 && next.captain === first.captain; i++) next = await dealAgain();
   assert(next.captain !== first.captain, `another captain now (${first.captain}, then ${next.captain})`);
-  assert(next.page === first.page, `the deal’s window, the tools row and the stage read the same whoever is captain${next.page === first.page ? '' : `:\n${first.page}\n---\n${next.page}`}`);
-  assert(next.said === first.said, `and so did everything the page showed or said on the way${next.said === first.said ? '' : `:\n${first.said}\n---\n${next.said}`}`);
-  assert(!/\b(Ann|Bob|Cat|Dan|Eve)\b[^\n]*Captain|Captain[^\n]*\b(Ann|Bob|Cat|Dan|Eve)\b/.test(`${next.page}\n${next.said}`), 'no line names anyone with “Captain”');
+  assert(
+    next.page === first.page,
+    `the deal’s window, the tools row and the stage read the same whoever is captain${next.page === first.page ? '' : `:\n${first.page}\n---\n${next.page}`}`,
+  );
+  assert(
+    next.said === first.said,
+    `and so did everything the page showed or said on the way${next.said === first.said ? '' : `:\n${first.said}\n---\n${next.said}`}`,
+  );
+  assert(
+    !/\b(Ann|Bob|Cat|Dan|Eve)\b[^\n]*Captain|Captain[^\n]*\b(Ann|Bob|Cat|Dan|Eve)\b/.test(`${next.page}\n${next.said}`),
+    'no line names anyone with “Captain”',
+  );
 
   // ---------- The captain taken out: the panel reads as it would for anyone else ----------
   section('The captain taken out');
@@ -189,8 +284,14 @@ try {
     await players.locator('.ask').getByRole('button', { name: 'Remove', exact: true }).click();
   });
   const others = NAMES.filter((n) => n !== next.captain).map((n) => `${n} 📋 Copy 🪟`);
-  assert(await until(async () => JSON.stringify(await handRows()) === JSON.stringify(others)), `the list still names the other four, each with 📋 Copy and 🪟 (${(await handRows()).join(' | ')})`);
-  assert((await flat(status)) === statusWas && (await dialog.getByRole('button', { name: '↩ Take the cards back' }).isVisible()), `“${statusWas}” as before, with ↩ Take the cards back`);
+  assert(
+    await until(async () => JSON.stringify(await handRows()) === JSON.stringify(others)),
+    `the list still names the other four, each with 📋 Copy and 🪟 (${(await handRows()).join(' | ')})`,
+  );
+  assert(
+    (await flat(status)) === statusWas && (await dialog.getByRole('button', { name: '↩ Take the cards back' }).isVisible()),
+    `“${statusWas}” as before, with ↩ Take the cards back`,
+  );
   await inPlayers(() => players.getByRole('button', { name: '↩ Restore' }).click());
   assert(await until(async () => (await handRows()).length === 5), '↩ Restore: the captain is back on the list');
 
@@ -204,7 +305,8 @@ try {
   await dialog.waitFor({ state: 'detached' });
   const dealTip = await dealButton.getAttribute('title');
   assert(
-    (await dealButton.getAttribute('data-deal-tool')) === 'on screen' && dealTip.endsWith(' · on screen: viewers see who was who. Click it on the stage, or 🙈 Hide who was who here'),
+    (await dealButton.getAttribute('data-deal-tool')) === 'on screen' &&
+      dealTip.endsWith(' · on screen: viewers see who was who. Click it on the stage, or 🙈 Hide who was who here'),
     `the 🎭 Deal… button says it's on screen, and how to take it off (${dealTip})`,
   );
   const tile = stageBoxIn(host).locator('.tile').first();

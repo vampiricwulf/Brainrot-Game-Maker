@@ -16,5 +16,7 @@ export function withCopies(game: Pick<Game, 'media'>, ids: readonly Id[]): Id[] 
 
 /** Where each of a file's videos and sounds on 🤫 cards starts and stops playing (its Start at and Stop at, seconds). */
 export function cardUses(game: Game, id: Id): { start?: number; end?: number }[] {
-  return allCardSlides(game).flatMap(({ slide }) => slide.elements.flatMap((e) => ((e.kind === 'video' || e.kind === 'audio') && e.media === id ? [playTimes(e)] : [])));
+  return allCardSlides(game).flatMap(({ slide }) =>
+    slide.elements.flatMap((e) => ((e.kind === 'video' || e.kind === 'audio') && e.media === id ? [playTimes(e)] : [])),
+  );
 }

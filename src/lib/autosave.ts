@@ -9,7 +9,12 @@ import { buildPack, MAX_PACK_READ } from './pack';
 
 /** The short tag of a game's id that its autosaves carry. */
 export function autosaveTag(gameId: string): string {
-  return gameId.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 6) || 'game';
+  return (
+    gameId
+      .replace(/[^a-z0-9]/gi, '')
+      .toLowerCase()
+      .slice(0, 6) || 'game'
+  );
 }
 
 export function autosaveName(game: Pick<Game, 'title' | 'id'>, slot: number): string {

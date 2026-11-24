@@ -70,7 +70,10 @@ export function windowContent(game: Pick<Game, 'media'>, slide: Slide): Pick<Win
     if (it.file && it.media && it.why !== 'lost') {
       const e = slide.elements.find((x) => x.id === it.el);
       const name = e?.name?.trim();
-      const t = e && (e.kind === 'video' || e.kind === 'audio') ? { ...(e.startAt !== undefined ? { start: e.startAt } : {}), ...(e.endAt !== undefined ? { end: e.endAt } : {}) } : {};
+      const t =
+        e && (e.kind === 'video' || e.kind === 'audio')
+          ? { ...(e.startAt !== undefined ? { start: e.startAt } : {}), ...(e.endAt !== undefined ? { end: e.endAt } : {}) }
+          : {};
       media.push({ kind, file: it.media, ...(name ? { name } : {}), ...t });
     } else media.push({ kind, missing: true });
   }
@@ -100,7 +103,10 @@ export function windowCards(game: Game, session: Session, seat: Id): WindowCard[
       const card = cardSlides(clue).find((c) => c.id === send.card);
       const to = wholeSeat(send.to, seat);
       if (!card || cardHash(card) !== send.hash || !to.length) continue;
-      out.push({ at: send.at, card: { id: cardId(clue.id, send), ...cardLines(rules, s, card, to, nameOf), ...windowContent(game, card), open: !session.revealed } });
+      out.push({
+        at: send.at,
+        card: { id: cardId(clue.id, send), ...cardLines(rules, s, card, to, nameOf), ...windowContent(game, card), open: !session.revealed },
+      });
     }
   }
   for (const c of cardsOut(game, session)) {
@@ -112,7 +118,10 @@ export function windowCards(game: Game, session: Session, seat: Id): WindowCard[
     const k = c.content;
     const card = partner && 'clue' in k && k.clue === partner.clue.id ? cardSlides(partner.clue).find((x) => x.id === k.card) : undefined;
     const lines = partner && card ? cardLines(partner.rules, partner.s, card, to, nameOf) : {};
-    out.push({ at: c.at, card: { id: sentCardId(c), ...(c.role ? { role: c.role } : {}), ...lines, ...windowContent(game, slide), open: c.until !== 'tile' || !session.revealed } });
+    out.push({
+      at: c.at,
+      card: { id: sentCardId(c), ...(c.role ? { role: c.role } : {}), ...lines, ...windowContent(game, slide), open: c.until !== 'tile' || !session.revealed },
+    });
   }
   return out
     .sort((a, b) => a.at - b.at)

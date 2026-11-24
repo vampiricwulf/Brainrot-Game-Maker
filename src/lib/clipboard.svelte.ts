@@ -75,7 +75,25 @@ export const clipboard = $state<{
   token: string;
   /** The readable text/plain part of that copy. */
   text: string;
-}>({ elements: [], slide: null, slideNewest: false, screen: null, clue: null, category: null, spaces: [], actions: [], round: null, media: [], wheels: [], dice: [], items: [], shops: [], statFields: [], token: '', text: '' });
+}>({
+  elements: [],
+  slide: null,
+  slideNewest: false,
+  screen: null,
+  clue: null,
+  category: null,
+  spaces: [],
+  actions: [],
+  round: null,
+  media: [],
+  wheels: [],
+  dice: [],
+  items: [],
+  shops: [],
+  statFields: [],
+  token: '',
+  text: '',
+});
 
 /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
 const CLIP_TYPE = 'application/x-brainrot-slide-items';
@@ -112,7 +130,14 @@ export function holdMedia(game: Game): void {
   // (And the uploaded fonts their text uses.)
   const fonts = mediaShownBy([clipboard.elements, s], [...game.media, ...clipboard.media]).filter((m) => m.kind === 'font');
   // (A screen copied on the map, a clue on the board, or a set of buttons, keeps its files too.)
-  const all = [...refs, ...fonts, ...mediaShownBy([clipboard.screen, clipboard.clue, clipboard.spaces, clipboard.actions, ...USED.map((k) => clipboard[k]), clipboard.round], clipboard.media)];
+  const all = [
+    ...refs,
+    ...fonts,
+    ...mediaShownBy(
+      [clipboard.screen, clipboard.clue, clipboard.spaces, clipboard.actions, ...USED.map((k) => clipboard[k]), clipboard.round],
+      clipboard.media,
+    ),
+  ];
   clipboard.media = clone(once(all));
 }
 
@@ -125,7 +150,7 @@ export function holdUsedBy(game: Game, x: unknown): void {
   // currency, a wheel's slices at items and other wheels… (as a copied round's, see bundleRound).
   const pick = (json: string) => USED.map((k) => listOf(game, k).filter((t) => json.includes(t.id)));
   let found = pick(JSON.stringify(x ?? null));
-  for (let n = -1; n !== found.flat().length; ) {
+  for (let n = -1; n !== found.flat().length;) {
     n = found.flat().length;
     found = pick(JSON.stringify([x, found]));
   }
@@ -144,7 +169,7 @@ export const toolHere = (game: Game, id: string | undefined): boolean =>
 export function adoptUsedBy(game: Game, x: unknown): void {
   const missing = (json: string) => USED.map((k) => listOf(clipboard, k).filter((t) => json.includes(t.id) && !listOf(game, k).some((y) => y.id === t.id)));
   let add = missing(JSON.stringify(x ?? null));
-  for (let n = -1; n !== add.flat().length; ) {
+  for (let n = -1; n !== add.flat().length;) {
     n = add.flat().length;
     add = missing(JSON.stringify([x, add]));
   }
@@ -152,13 +177,27 @@ export function adoptUsedBy(game: Game, x: unknown): void {
     if (add[i].length) (game as Record<Used, { id: string }[]>)[k] = [...listOf(game, k), ...clone(add[i])];
   });
   for (const m of mediaShownBy([x, add], clipboard.media))
-    if (!game.media.some((y) => y.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((y) => y.name), m.name) });
+    if (!game.media.some((y) => y.id === m.id))
+      game.media.push({
+        ...clone(m),
+        name: uniqueMediaName(
+          game.media.map((y) => y.name),
+          m.name,
+        ),
+      });
 }
 
 /** Pasting what was copied in another game: add the files it shows that this game doesn't have. */
 export function adoptMedia(game: Game, ids: string[]): void {
   for (const m of clipboard.media)
-    if (ids.includes(m.id) && !game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
+    if (ids.includes(m.id) && !game.media.some((x) => x.id === m.id))
+      game.media.push({
+        ...clone(m),
+        name: uniqueMediaName(
+          game.media.map((x) => x.name),
+          m.name,
+        ),
+      });
 }
 
 /** Copy items to the in-app clipboard, and mark the system clipboard (`data`, when there is one) as ours. */

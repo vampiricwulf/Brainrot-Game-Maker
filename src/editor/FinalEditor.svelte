@@ -164,154 +164,172 @@
 
   // "This round" is this Final's own slides (as a Slides round's is); "the whole game" is every clue's. It starts on
   // questions + answers (stylescope): a Final mostly has one question slide, so its other questions are none.
-  const styleTargets = (el: TextEl, scope: string) => (scope.startsWith('game') ? textStyleTargets(app.game, null, el, scope) : ownTextTargets(round, el, scope));
+  const styleTargets = (el: TextEl, scope: string) =>
+    scope.startsWith('game') ? textStyleTargets(app.game, null, el, scope) : ownTextTargets(round, el, scope);
 </script>
 
 <!-- (One box for the page under the header: the slide refits as the fields above it grow or shrink, see fitheight.) -->
 <div>
-<div class="grid">
-  <label class="field">
-    Round name
-    <input bind:value={round.name} placeholder="Final Jeopardy!" maxlength="40" data-round-name />
-  </label>
-  <label class="field">Category<input bind:value={round.category} placeholder="e.g. Internet History" data-field="final-category" /></label>
-  <label class="field">Think time (seconds)<input
-      type="number"
-      min="5"
-      value={round.timerSeconds ?? 30}
-      oninput={(e) => {
-        // Emptied to type a new number: it keeps the one it had.
-        const v = Math.floor(+e.currentTarget.value);
-        if (e.currentTarget.value.trim() !== '' && v > 0) round.timerSeconds = v;
-      }}
-      onchange={(e) => {
-        // At least 5 seconds (what the game plays).
-        round.timerSeconds = Math.max(5, round.timerSeconds ?? 30);
-        e.currentTarget.value = String(round.timerSeconds);
-      }}
-    /></label>
-  <label class="check">
-    <input type="checkbox" checked={round.allowNonPositive ?? false} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
-    Players with a score of 0 or less can play it
-  </label>
-  <label
-    class="check"
-    title="With phone buzzers: once the question shows, each player in it types their answer on their phone (on a team, anyone on it) until you show the answer. Only you see them until you reveal each one. Off, or without phone buzzers: they answer out loud or on paper."
-  >
-    <input type="checkbox" checked={!round.phoneAnswersOff} onchange={(e) => setPhoneAnswers(e.currentTarget.checked)} data-final-typed />
-    ✍ Players type their answers on their phones
-  </label>
-  <!-- (Shown for the same place as a clue's: the Final is always played by everyone in it, so it's ticked and fixed.) -->
-  <label class="check" title="🚫 No Pass (everyone must play): always on here, since everyone in the Final plays it; their phones never offer Pass">
-    <input type="checkbox" checked disabled aria-label="🚫 No Pass (everyone must play)" data-must-fixed />
-    🚫 No Pass (everyone must play)
-  </label>
-  <!-- (Wagers go up to their score, or the game's floor in ⚖ Game rules; the wager screen says so, by its Ignore the limits.) -->
-  <span class="hint">
-    While the category is up you tick who plays and enter each wager in private (with phone buzzers, players send
-    theirs from their phone), then they're revealed player by player.
-  </span>
-  {#if !round.phoneAnswersOff}
-    <!-- Its multiple choices, used while players type their answers on their phones. -->
-    <div class="choices"><ChoicesEditor owner={round} where={() => finalName(round)} place={{ tab: 'round', round: round.id }} final /></div>
-  {:else if round.choices?.length}
-    <!-- Unticked, they're kept but unused: shown dimmed and out of reach, saying so (with none, nothing shows). -->
-    <div class="choices off" data-choices-off>
-      <span class="hint">Off while players don’t type their answers: tick ✍ above to use these choices (they’re kept).</span>
-      <div class="dim" inert><ChoicesEditor owner={round} where={() => finalName(round)} place={{ tab: 'round', round: round.id }} final /></div>
-    </div>
-  {/if}
-</div>
-<!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->
-<div class="quick" class:four={!!card}>
-  <label class="field">
-    {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
-    <textarea bind:this={qField} rows="2" data-field="q" placeholder="Type the final question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
-  </label>
-  <label class="field">
-    Answer (hidden until revealed)
-    <textarea rows="2" data-field="a" placeholder="Type the answer…" value={slideText(round.answerSlide)} oninput={(e) => setSlideText(round.answerSlide, e.currentTarget.value) && followClueText(app.game, [round.answerSlide])}></textarea>
-  </label>
-  {#if card}
-    <!-- (The card open, else the last one opened: Card 1 at first. A long name is cut. While it's empty, ⧉ Same as the
+  <div class="grid">
+    <label class="field">
+      Round name
+      <input bind:value={round.name} placeholder="Final Jeopardy!" maxlength="40" data-round-name />
+    </label>
+    <label class="field">Category<input bind:value={round.category} placeholder="e.g. Internet History" data-field="final-category" /></label>
+    <label class="field"
+      >Think time (seconds)<input
+        type="number"
+        min="5"
+        value={round.timerSeconds ?? 30}
+        oninput={(e) => {
+          // Emptied to type a new number: it keeps the one it had.
+          const v = Math.floor(+e.currentTarget.value);
+          if (e.currentTarget.value.trim() !== '' && v > 0) round.timerSeconds = v;
+        }}
+        onchange={(e) => {
+          // At least 5 seconds (what the game plays).
+          round.timerSeconds = Math.max(5, round.timerSeconds ?? 30);
+          e.currentTarget.value = String(round.timerSeconds);
+        }}
+      /></label
+    >
+    <label class="check">
+      <input type="checkbox" checked={round.allowNonPositive ?? false} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
+      Players with a score of 0 or less can play it
+    </label>
+    <label
+      class="check"
+      title="With phone buzzers: once the question shows, each player in it types their answer on their phone (on a team, anyone on it) until you show the answer. Only you see them until you reveal each one. Off, or without phone buzzers: they answer out loud or on paper."
+    >
+      <input type="checkbox" checked={!round.phoneAnswersOff} onchange={(e) => setPhoneAnswers(e.currentTarget.checked)} data-final-typed />
+      ✍ Players type their answers on their phones
+    </label>
+    <!-- (Shown for the same place as a clue's: the Final is always played by everyone in it, so it's ticked and fixed.) -->
+    <label class="check" title="🚫 No Pass (everyone must play): always on here, since everyone in the Final plays it; their phones never offer Pass">
+      <input type="checkbox" checked disabled aria-label="🚫 No Pass (everyone must play)" data-must-fixed />
+      🚫 No Pass (everyone must play)
+    </label>
+    <!-- (Wagers go up to their score, or the game's floor in ⚖ Game rules; the wager screen says so, by its Ignore the limits.) -->
+    <span class="hint">
+      While the category is up you tick who plays and enter each wager in private (with phone buzzers, players send theirs from their phone), then they're
+      revealed player by player.
+    </span>
+    {#if !round.phoneAnswersOff}
+      <!-- Its multiple choices, used while players type their answers on their phones. -->
+      <div class="choices"><ChoicesEditor owner={round} where={() => finalName(round)} place={{ tab: 'round', round: round.id }} final /></div>
+    {:else if round.choices?.length}
+      <!-- Unticked, they're kept but unused: shown dimmed and out of reach, saying so (with none, nothing shows). -->
+      <div class="choices off" data-choices-off>
+        <span class="hint">Off while players don’t type their answers: tick ✍ above to use these choices (they’re kept).</span>
+        <div class="dim" inert><ChoicesEditor owner={round} where={() => finalName(round)} place={{ tab: 'round', round: round.id }} final /></div>
+      </div>
+    {/if}
+  </div>
+  <!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->
+  <div class="quick" class:four={!!card}>
+    <label class="field">
+      {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
+      <textarea
+        bind:this={qField}
+        rows="2"
+        data-field="q"
+        placeholder="Type the final question…"
+        value={slideText(qslide)}
+        oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
+    </label>
+    <label class="field">
+      Answer (hidden until revealed)
+      <textarea
+        rows="2"
+        data-field="a"
+        placeholder="Type the answer…"
+        value={slideText(round.answerSlide)}
+        oninput={(e) => setSlideText(round.answerSlide, e.currentTarget.value) && followClueText(app.game, [round.answerSlide])}></textarea>
+    </label>
+    {#if card}
+      <!-- (The card open, else the last one opened: Card 1 at first. A long name is cut. While it's empty, ⧉ Same as the
          answer sits in its box's corner.) -->
-    <div class="cardq" class:empty={!slideHasContent(card)}>
-      <label class="field">
-        🤫 {clip(clueCardName(card, cardAt), 24)} words (only who you send it to sees them)
-        <textarea
-          bind:this={cardField}
-          rows="2"
-          dir="auto"
-          data-field="card"
-          placeholder="Type what they’ll see…"
-          value={slideText(card)}
-          oninput={(e) => setSlideText(card, e.currentTarget.value) && followClueText(app.game, [card])}
-        ></textarea>
-      </label>
-      {#if !slideHasContent(card)}<SameAsAnswer answer={round.answerSlide} oncopy={copyAnswer} />{/if}
-    </div>
-  {/if}
-  <label class="field">
-    Host notes (off stream, except in a single window)
-    <textarea rows="2" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
-  </label>
-</div>
-<SlideTabs
-  bind:this={tabs}
-  holder={round}
-  bind:side
-  bind:qi
-  bind:ci
-  bind:onCard
-  what={`“${finalName(round)}”`}
-  place={(sd, slide) => ({ tab: 'round', round: round.id, part: { kind: 'final', side: sd, slide } })}
-  cards={{
-    list: cards,
-    onadd: newCardTab,
-    onname: () => void tick().then(() => bar?.focusName()),
-    title: (c, i) => `🤫 ${clueCardName(c, i)}: only the players you send it to see it, never on stream. It starts with ${finalGoesToLabel(c.to, false)}. F2: rename it`,
-    place: (id) => ({ tab: 'round', round: round.id, part: { kind: 'final', side: 'card', slide: id } }),
-    onduplicate: duplicateCardTab,
-    onmove: moveCardTab,
-    ondelete: deleteCardTab,
-    onsame: copyAnswer,
-    onphone: () => (phoneView = !phoneView),
-    phone: phoneView,
-  }}
-  onadded={() => void tick().then(() => qField?.focus())}
-/>
-{#if shown === 'card' && card}
-  <CardBar
-    bind:this={bar}
-    {card}
-    index={cardAt}
-    goesList={FINAL_GOES_TO}
-    goesTo={finalGoesToLabel}
-    goesTitle="Who this card starts with in the Final’s panel: everyone ticked to play it on the wager screen (it follows the ticks), or nobody until you choose. You can give it to anyone then"
-    question={qslides}
-    answer={round.answerSlide}
-    bind:phoneView
-    ongoes={setGoesTo}
-    ondone={() => void tabs?.focusTab()}
+      <div class="cardq" class:empty={!slideHasContent(card)}>
+        <label class="field">
+          🤫 {clip(clueCardName(card, cardAt), 24)} words (only who you send it to sees them)
+          <textarea
+            bind:this={cardField}
+            rows="2"
+            dir="auto"
+            data-field="card"
+            placeholder="Type what they’ll see…"
+            value={slideText(card)}
+            oninput={(e) => setSlideText(card, e.currentTarget.value) && followClueText(app.game, [card])}></textarea>
+        </label>
+        {#if !slideHasContent(card)}<SameAsAnswer answer={round.answerSlide} oncopy={copyAnswer} />{/if}
+      </div>
+    {/if}
+    <label class="field">
+      Host notes (off stream, except in a single window)
+      <textarea rows="2" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
+    </label>
+  </div>
+  <SlideTabs
+    bind:this={tabs}
+    holder={round}
+    bind:side
+    bind:qi
+    bind:ci
+    bind:onCard
+    what={`“${finalName(round)}”`}
+    place={(sd, slide) => ({ tab: 'round', round: round.id, part: { kind: 'final', side: sd, slide } })}
+    cards={{
+      list: cards,
+      onadd: newCardTab,
+      onname: () => void tick().then(() => bar?.focusName()),
+      title: (c, i) =>
+        `🤫 ${clueCardName(c, i)}: only the players you send it to see it, never on stream. It starts with ${finalGoesToLabel(c.to, false)}. F2: rename it`,
+      place: (id) => ({ tab: 'round', round: round.id, part: { kind: 'final', side: 'card', slide: id } }),
+      onduplicate: duplicateCardTab,
+      onmove: moveCardTab,
+      ondelete: deleteCardTab,
+      onsame: copyAnswer,
+      onphone: () => (phoneView = !phoneView),
+      phone: phoneView,
+    }}
+    onadded={() => void tick().then(() => qField?.focus())}
   />
-{/if}
-<!-- (📱 On their phone sits beside the slide editor, never over its toolbar or inspector.) -->
-<div class="card-edit">
-  {#key `${round.id}-${slideKey}`}
-    <SlideEditor
-      slide={shown === 'card' && card ? card : side === 'q' ? qslide : round.answerSlide}
-      styletargets={styleTargets}
-      stylescope="round-qa"
-      quickfield={shown}
-      placeholder={shown === 'card' ? 'Click to type what they’ll see' : side === 'q' ? 'Click to type the final question' : 'Click to type the final answer'}
-      badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 16).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : side === 'a' ? 'ANSWER' : undefined}
-      tabbed
-      fitheight
+  {#if shown === 'card' && card}
+    <CardBar
+      bind:this={bar}
+      {card}
+      index={cardAt}
+      goesList={FINAL_GOES_TO}
+      goesTo={finalGoesToLabel}
+      goesTitle="Who this card starts with in the Final’s panel: everyone ticked to play it on the wager screen (it follows the ticks), or nobody until you choose. You can give it to anyone then"
+      question={qslides}
+      answer={round.answerSlide}
+      bind:phoneView
+      ongoes={setGoesTo}
+      ondone={() => void tabs?.focusTab()}
     />
-  {/key}
-  <!-- (No clue: a Final's card has no role or hint line, and is each player's own, as sessionCards sends it.) -->
-  {#if shown === 'card' && card && phoneView}<PhoneCardPreview game={app.game} {card} />{/if}
-</div>
+  {/if}
+  <!-- (📱 On their phone sits beside the slide editor, never over its toolbar or inspector.) -->
+  <div class="card-edit">
+    {#key `${round.id}-${slideKey}`}
+      <SlideEditor
+        slide={shown === 'card' && card ? card : side === 'q' ? qslide : round.answerSlide}
+        styletargets={styleTargets}
+        stylescope="round-qa"
+        quickfield={shown}
+        placeholder={shown === 'card' ? 'Click to type what they’ll see' : side === 'q' ? 'Click to type the final question' : 'Click to type the final answer'}
+        badge={shown === 'card' && card
+          ? `🤫 ${clip(clueCardName(card, cardAt), 16).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT`
+          : side === 'a'
+            ? 'ANSWER'
+            : undefined}
+        tabbed
+        fitheight
+      />
+    {/key}
+    <!-- (No clue: a Final's card has no role or hint line, and is each player's own, as sessionCards sends it.) -->
+    {#if shown === 'card' && card && phoneView}<PhoneCardPreview game={app.game} {card} />{/if}
+  </div>
 </div>
 
 <style>

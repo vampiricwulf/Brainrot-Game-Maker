@@ -19,7 +19,11 @@
    * The other RPG rounds, which play other worlds: this round's adventure is separate from theirs (one line says so;
    * the world settings stay under ▸ Advanced).
    */
-  const separate = $derived(rpgRounds(game).filter((r) => r.world !== round.world && r.id !== round.id).map((r) => r.name.trim() || 'another round'));
+  const separate = $derived(
+    rpgRounds(game)
+      .filter((r) => r.world !== round.world && r.id !== round.id)
+      .map((r) => r.name.trim() || 'another round'),
+  );
   /**
    * ▸ Advanced (the world this round plays): folded, as this computer last left it, and open by itself when it matters
    * here (another round plays this world, or this round has none).
@@ -43,7 +47,10 @@
   function copyWorld(w: World): void {
     const at = round.start;
     step(`Duplicated world “${w.name}”`, () => {
-      const copy = duplicateWorld(w, (game.worlds ?? []).map((x) => x.name));
+      const copy = duplicateWorld(
+        w,
+        (game.worlds ?? []).map((x) => x.name),
+      );
       const list = game.worlds ?? [];
       list.splice(list.indexOf(w) + 1, 0, copy);
       game.worlds = list;
@@ -93,14 +100,15 @@
       <!-- (Beside the name and the start, so the map starts higher up on a small screen.) -->
       <label class="field notes">
         Host notes (off stream, except in a single window)
-        <textarea rows="1" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value || undefined)}></textarea>
+        <textarea rows="1" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value || undefined)}
+        ></textarea>
       </label>
     </div>
     <p class="muted small">An adventure is a map of screens (places) the players walk between.</p>
     {#if sharing}
       <p class="muted small" data-world-shared>
-        {sharing} other round{sharing === 1 ? '' : 's'} play{sharing === 1 ? 's' : ''} this adventure too: it carries on where it was left (the start only
-        applies the first time).
+        {sharing} other round{sharing === 1 ? '' : 's'} play{sharing === 1 ? 's' : ''} this adventure too: it carries on where it was left (the start only applies
+        the first time).
       </p>
     {:else if world && separate.length}
       <p class="muted small" data-world-own>Its own world (separate from {[...new Set(separate)].join(', ')}).</p>
@@ -108,11 +116,12 @@
     <!-- Open by itself only when it matters here: another round plays this world, or this round has none. -->
     <details class="adv" open={adv.open} ontoggle={(e) => adv.set(e.currentTarget.open)}>
       <summary
-        >{adv.open ? '▾' : '▸'} Advanced: carry this adventure into another round{#if !adv.open && world}<span class="muted">{' '}· World “{world.name}”</span>{/if}</summary
+        >{adv.open ? '▾' : '▸'} Advanced: carry this adventure into another round{#if !adv.open && world}<span class="muted">{' '}· World “{world.name}”</span
+          >{/if}</summary
       >
       <p class="muted small">
-        The maps and screens belong to a “world”. Another RPG round can play the same world, so the adventure carries on where it was left; or
-        give this round a world of its own.
+        The maps and screens belong to a “world”. Another RPG round can play the same world, so the adventure carries on where it was left; or give this round a
+        world of its own.
       </p>
       <div class="top">
         <label class="field">
@@ -146,7 +155,11 @@
                 menuOf({
                   heading: world.name,
                   rename: menuItem.rename(renameWorld, { label: '✎ Rename world', keys: false }),
-                  duplicate: menuItem.duplicate(() => copyWorld(world), { label: '⧉ Duplicate world', keys: false, hint: 'This round plays the copy; another round can keep the original' }),
+                  duplicate: menuItem.duplicate(() => copyWorld(world), {
+                    label: '⧉ Duplicate world',
+                    keys: false,
+                    hint: 'This round plays the copy; another round can keep the original',
+                  }),
                   delete: menuItem.delete('world', () => deleteWorld(world), {
                     disabled: sharing > 0,
                     hint: sharing ? 'Another round plays this world' : 'With all its maps and screens',

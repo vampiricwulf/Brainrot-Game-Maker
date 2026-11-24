@@ -64,14 +64,20 @@
     align-items: center;
   }
   .name {
-    font: 90px 'Anton', 'Oswald', sans-serif;
+    font:
+      90px 'Anton',
+      'Oswald',
+      sans-serif;
     padding: 4px 30px;
     border-radius: 14px;
     line-height: 1.1;
   }
   .score {
     margin-top: 10px;
-    font: 60px 'Anton', 'Oswald', sans-serif;
+    font:
+      60px 'Anton',
+      'Oswald',
+      sans-serif;
     color: #ffcc00;
   }
   .cols {

@@ -15,8 +15,14 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Ctrl+F', 'Find: clues, screens, spaces, items, wheels… anywhere in the game (↑ / ↓ and Enter go there)'],
       ['Esc', 'Close the window, picker or menu that’s open'],
       ['Enter in ℹ About or this list', 'Close it, as Done does (not in its filter or on one of its buttons)'],
-      ['?', 'This list, the keys during the game beside it (not while typing, nor with a window such as the clue editor open: close it first). ❔ Help at the top right opens it too'],
-      ['Drop a file', 'On a Choose… button, an icon, an avatar or an open picker: use it there. A game file dropped anywhere else opens (a .brainrot-theme file: on 🎨 Theme)'],
+      [
+        '?',
+        'This list, the keys during the game beside it (not while typing, nor with a window such as the clue editor open: close it first). ❔ Help at the top right opens it too',
+      ],
+      [
+        'Drop a file',
+        'On a Choose… button, an icon, an avatar or an open picker: use it there. A game file dropped anywhere else opens (a .brainrot-theme file: on 🎨 Theme)',
+      ],
       ['Ctrl+V in a picker', 'Use a copied picture (or sound, video) file'],
       [
         'Right-click, ⋯ or Shift+F10',
@@ -45,15 +51,27 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Enter or F2', 'Edit the clue'],
       ['Delete / Backspace', 'Clear the clue'],
       ['Ctrl+C / Ctrl+V', 'Copy a whole clue / paste it over this one (between rounds and games)'],
-      ['Alt+← / → on a tile or a category’s name', 'Move the category left / right, the keys going with it (on a Mac, only on a tile: in the name, Option+arrows move by word)'],
+      [
+        'Alt+← / → on a tile or a category’s name',
+        'Move the category left / right, the keys going with it (on a Mac, only on a tile: in the name, Option+arrows move by word)',
+      ],
       ['Alt+↑ / ↓ on a tile', 'Move its row up / down'],
       ['Drag a tile onto another', 'Swap the clues (with Ctrl: copy it there)'],
       ['Drag a category', 'Move it'],
-      ['Right-click a tile', 'Edit; Make it a… (standard, ⭐ Daily Double, 🤝 partner clue, 🎡 wheel or 🎲 dice tile, ✍ Everyone answers, ⬚ empty); copy, paste; its row (“Row 2 · $400”: move, insert above or below, delete); clear it last'],
+      [
+        'Right-click a tile',
+        'Edit; Make it a… (standard, ⭐ Daily Double, 🤝 partner clue, 🎡 wheel or 🎲 dice tile, ✍ Everyone answers, ⬚ empty); copy, paste; its row (“Row 2 · $400”: move, insert above or below, delete); clear it last',
+      ],
       ['Ctrl+C / Ctrl+V on a category’s ⋯', 'Copy the whole category / paste it over this one (between rounds and games)'],
-      ['Right-click a category, or Shift+F10 in its name', 'Its image, duplicate, copy, paste, move, insert beside it, clear or delete it (in its name only when you’re not typing in it: then it’s the browser’s Cut, Copy and Paste)'],
+      [
+        'Right-click a category, or Shift+F10 in its name',
+        'Its image, duplicate, copy, paste, move, insert beside it, clear or delete it (in its name only when you’re not typing in it: then it’s the browser’s Cut, Copy and Paste)',
+      ],
       ['Right-click a row value, or Shift+F10 in it', 'Its row: move, insert above or below, or delete it'],
-      ['Drop pictures', 'On a tile: it asks, in the question (Enter) or as the tile’s face, shown instead of the value (several go on the tiles after it). On a category: its image'],
+      [
+        'Drop pictures',
+        'On a tile: it asks, in the question (Enter) or as the tile’s face, shown instead of the value (several go on the tiles after it). On a category: its image',
+      ],
       ['Paste lines on a category’s name', 'Fill its column, top down (copied from a spreadsheet: question, answer; a first line alone is the name)'],
     ],
   },
@@ -63,9 +81,15 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Ctrl+Enter', 'Next clue'],
       ['Ctrl+Shift+Enter', 'Previous clue'],
       ['Alt+arrows', 'The clue above, below or beside (as on the board)'],
-      ['On a slide’s tab', '← / →: the slide beside it (Home / End: the first / last); on a question slide: Alt+← / →: move it; Ctrl+D: duplicate; Delete: delete it'],
+      [
+        'On a slide’s tab',
+        '← / →: the slide beside it (Home / End: the first / last); on a question slide: Alt+← / →: move it; Ctrl+D: duplicate; Delete: delete it',
+      ],
       ['Ctrl+C / Ctrl+V on a slide’s tab', 'Copy the whole slide / paste the copied slide as a new slide after it (before the answer from the Answer’s tab)'],
-      ['Right-click a slide’s tab, or Shift+F10 on it', 'Its menu: duplicate, copy, paste as new or over it, move, delete (a 🤫 card’s: ⧉ Same as the answer, 📱 On their phone, rename, duplicate, move, delete)'],
+      [
+        'Right-click a slide’s tab, or Shift+F10 on it',
+        'Its menu: duplicate, copy, paste as new or over it, move, delete (a 🤫 card’s: ⧉ Same as the answer, 📱 On their phone, rename, duplicate, move, delete)',
+      ],
       ['On a 🤫 card’s tab', 'F2 or double-click: its Card name (a Final’s cards too); Ctrl+D: duplicate the card; Alt+← / →: move it'],
       ['Esc', 'Done (not while typing on the slide)'],
     ],
@@ -78,11 +102,17 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Alt+drag', 'Always draw a selection box, wherever it starts'],
       ['Alt+click', 'The next item down the stack under the pointer'],
       ['Tab / Shift+Tab', 'Select the next item down / up the stack'],
-      ['Double-click or Enter', 'Open the item’s editor: a text box’s text, a picture’s ✎ Edit image, a video’s or sound’s ✎ Edit video / sound (or its Plays from), a link’s Link box, a shape’s Fill (a line’s Color)'],
+      [
+        'Double-click or Enter',
+        'Open the item’s editor: a text box’s text, a picture’s ✎ Edit image, a video’s or sound’s ✎ Edit video / sound (or its Plays from), a link’s Link box, a shape’s Fill (a line’s Color)',
+      ],
       ['Type, or F2', 'Edit the selected text box’s text'],
       ['F2 on another item', 'Rename it, in the Layers list'],
       ['⋯ by the selection, or in the bar at the top of the panel', 'The same menu as a right-click (the bar’s, with nothing selected: the slide’s)'],
-      ['Right-click or Shift+F10', 'The item’s menu: ✎ Edit, use another file, rename, duplicate, cut, copy, paste, restack, align, lock, hide or delete. On an empty spot (or beside a text box’s words): the slide’s, to add text or paste there, copy the slide or paste over it, its 🎨 Background… and Select all'],
+      [
+        'Right-click or Shift+F10',
+        'The item’s menu: ✎ Edit, use another file, rename, duplicate, cut, copy, paste, restack, align, lock, hide or delete. On an empty spot (or beside a text box’s words): the slide’s, to add text or paste there, copy the slide or paste over it, its 🎨 Background… and Select all',
+      ],
       ['Arrows / Shift+arrows', 'Nudge the selection 1 / 10 pixels'],
       ['Ctrl+arrows / Ctrl+Shift+arrows', 'Resize the selection 1 / 10 pixels (→ ↓ bigger, ← ↑ smaller; pictures keep their shape)'],
       ['Shift while dragging', 'Move along one axis only (while rotating: snap to 15°)'],
@@ -112,7 +142,10 @@ export const EDITOR_KEYS: KeyGroup[] = [
     keys: [
       ['Ctrl+Enter', 'Apply the image edits, or Insert drawing'],
       ['Ctrl+Z / Ctrl+Y', 'Undo / redo inside the image editor or the drawing'],
-      ['M / C / D / T / S', 'Image editor: ✋ Select (to select and move captions and stickers) / ✂ Crop (C again: done cropping) / 🖌 Draw / 🅣 Text / 😂 Sticker'],
+      [
+        'M / C / D / T / S',
+        'Image editor: ✋ Select (to select and move captions and stickers) / ✂ Crop (C again: done cropping) / 🖌 Draw / 🅣 Text / 😂 Sticker',
+      ],
       ['Double-click a caption', 'Image editor: the cursor in its words'],
       ['Right-click or Shift+F10 a caption or sticker', 'Image editor: ✎ Edit text, ⧉ Duplicate, 🗑 Delete'],
       ['Delete', 'Delete the selected sticker or text from the image'],
@@ -151,7 +184,10 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Ctrl+A', 'Select every screen on the map'],
       ['Ctrl+C / Ctrl+V', 'Copy a screen / paste it (on the cell you’re on, when it’s empty)'],
       ['F2', 'Rename the screen'],
-      ['Right-click a screen', 'Edit it, 🏁 Make it the start, rename, duplicate, copy, paste, move it (Alt+arrows) or to another map, a new look; its column’s and its row’s own groups (insert beside, delete); delete it last'],
+      [
+        'Right-click a screen',
+        'Edit it, 🏁 Make it the start, rename, duplicate, copy, paste, move it (Alt+arrows) or to another map, a new look; its column’s and its row’s own groups (insert beside, delete); delete it last',
+      ],
       ['On a map’s tab', 'F2 or double-click: rename it; Alt+← / →: move it; Ctrl+D: duplicate; Delete: delete it'],
       ['Alt+← / → in a look’s name, Ctrl+D, Shift+F10', 'Move the look, duplicate it, its menu'],
       ['Delete / Backspace', 'Delete the selected screens'],
@@ -174,7 +210,10 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Ctrl+D', 'Duplicate the selected spaces'],
       ['Ctrl+C / Ctrl+V', 'Copy the selected spaces / paste them (with their buttons, on any board, in any game)'],
       ['F2', 'Rename the space'],
-      ['Right-click', 'A space’s menu (connect, 🏁 Make it the start, Make it a…, rename, duplicate, copy, paste, add after, delete), several spaces’ menu, a link’s menu, or add or paste spaces there'],
+      [
+        'Right-click',
+        'A space’s menu (connect, 🏁 Make it the start, Make it a…, rename, duplicate, copy, paste, add after, delete), several spaces’ menu, a link’s menu, or add or paste spaces there',
+      ],
       ['Delete / Backspace', 'Delete the selected spaces (or disconnect the picked link)'],
       ['Esc', 'Clear the selection (or stop connecting)'],
       ['Drop a picture', 'On a space: its icon. On the board: its background'],
@@ -184,7 +223,10 @@ export const EDITOR_KEYS: KeyGroup[] = [
   {
     title: '▶ Play, before the game',
     keys: [
-      ['Ctrl+Enter', 'Start the game (from anywhere on the pre-game screen). With a game in progress it would throw away, it asks first: Ctrl+Enter again a moment later answers Start new game'],
+      [
+        'Ctrl+Enter',
+        'Start the game (from anywhere on the pre-game screen). With a game in progress it would throw away, it asks first: Ctrl+Enter again a moment later answers Start new game',
+      ],
       ['Ctrl+Z / Ctrl+Y', 'Undo / redo the changes made there (players, rules, buzzers, On stream)'],
       ['Enter in a player’s name', 'Add the next player (as ＋ Add player does), typing in their name'],
     ],
@@ -192,9 +234,15 @@ export const EDITOR_KEYS: KeyGroup[] = [
   {
     title: 'Lists',
     keys: [
-      ['Alt+↑ / ↓ or drag ⋮⋮', 'Move the row up / down: stats, items, shops and what they sell, buttons, wheels, dice, deals and their parts, 🤫 cards, slices, choices, players, zones'],
+      [
+        'Alt+↑ / ↓ or drag ⋮⋮',
+        'Move the row up / down: stats, items, shops and what they sell, buttons, wheels, dice, deals and their parts, 🤫 cards, slices, choices, players, zones',
+      ],
       ['Ctrl+D', 'Duplicate the row: a stat, item, shop, button, wheel, dice, deal or one of its parts, a die or a range of totals, 🤫 card, slice or zone'],
-      ['Right-click a row, its ⋯, or Shift+F10 in it', 'Its menu (duplicate, move up or down, delete…): stats, items, shops, buttons, zones, slices (↻ Spin again too), deal parts, dice and ranges, choices (✔ Mark right), 🔊 sounds (▶ Test, 📁 Choose file…, ↺ Built-in), wheels, dice and deals, 🤫 cards, Checklist lines, the Tiebreaker'],
+      [
+        'Right-click a row, its ⋯, or Shift+F10 in it',
+        'Its menu (duplicate, move up or down, delete…): stats, items, shops, buttons, zones, slices (↻ Spin again too), deal parts, dice and ranges, choices (✔ Mark right), 🔊 sounds (▶ Test, 📁 Choose file…, ↺ Built-in), wheels, dice and deals, 🤫 cards, Checklist lines, the Tiebreaker',
+      ],
       ['Enter / Backspace in a deal part’s name', 'Add the next part / delete an empty one'],
       ['Right-click what a shop sells, or a player', 'Move it up or down, remove it from the shop / rename or delete the player (▶ Play, before the game)'],
       ['Drag an item’s 📦 icon onto a shop', 'Sell it there (a picture file dropped on the icon is its icon instead)'],

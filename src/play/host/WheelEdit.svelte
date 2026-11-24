@@ -106,7 +106,8 @@
       <tbody>
         {#each rows as s, i (s.id)}
           <tr class:off={s.off || used.has(s.id)}>
-            <td><input type="checkbox" checked={!s.off} aria-label={`Include ${s.label}`} onchange={(e) => ((s.off = !e.currentTarget.checked), apply())} /></td>
+            <td><input type="checkbox" checked={!s.off} aria-label={`Include ${s.label}`} onchange={(e) => ((s.off = !e.currentTarget.checked), apply())} /></td
+            >
             <td>
               {#if o.players}
                 <span class="dot" style:background={s.color}></span>
@@ -133,10 +134,19 @@
                 onchange={(e) => ((s.weight = Math.max(0, +e.currentTarget.value || 0)), apply())}
               />
             </td>
-            <td class="pct">{#if used.has(s.id) && !s.off}<span class="muted small" title="It already landed: Restore brings it back">landed</span>{:else}{chance(s)}{/if}</td>
+            <td class="pct"
+              >{#if used.has(s.id) && !s.off}<span class="muted small" title="It already landed: Restore brings it back">landed</span>{:else}{chance(
+                  s,
+                )}{/if}</td
+            >
             <td>
               {#if !o.players}
-                <button class="ghost small danger" aria-label={`Remove ${s.label}`} title="Remove this slice from this spin (↺ Reset slices brings it back)" onclick={() => ((rows = rows.filter((x) => x !== s)), apply())}>🗑</button>
+                <button
+                  class="ghost small danger"
+                  aria-label={`Remove ${s.label}`}
+                  title="Remove this slice from this spin (↺ Reset slices brings it back)"
+                  onclick={() => ((rows = rows.filter((x) => x !== s)), apply())}>🗑</button
+                >
               {/if}
             </td>
           </tr>
@@ -153,7 +163,9 @@
     <span class="spacer"></span>
     <button class="small" onclick={() => ask('save')}>💾 Save as new wheel…</button>
     {#if preset}
-      <button class="small" onclick={() => ask('overwrite')} title="Puts these slices in the saved “{preset.name}”, for the rest of the game (it asks first)">💾 Replace “{preset.name}”…</button>
+      <button class="small" onclick={() => ask('overwrite')} title="Puts these slices in the saved “{preset.name}”, for the rest of the game (it asks first)"
+        >💾 Replace “{preset.name}”…</button
+      >
     {/if}
   </div>
   <!-- (Cancel first, the answer last; in the name box Enter saves and Esc cancels. Replace is red, and Cancel has the
@@ -163,7 +175,14 @@
       <InlineAsk field="Name for the new wheel" value={saveName} ok="💾 Save" onok={saveAs} oncancel={() => (saveName = null)} />
     {/key}
   {:else if askOverwrite && preset}
-    <InlineAsk text="Replace the slices of “{preset.name}” with these {on.length}?" ok="Replace" danger focusCancel onok={overwrite} oncancel={() => (askOverwrite = false)} />
+    <InlineAsk
+      text="Replace the slices of “{preset.name}” with these {on.length}?"
+      ok="Replace"
+      danger
+      focusCancel
+      onok={overwrite}
+      oncancel={() => (askOverwrite = false)}
+    />
   {/if}
 </fieldset>
 

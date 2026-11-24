@@ -3,7 +3,22 @@
 // historylabel.test.ts.
 import { opPath, type Json, type Op, type Seg } from './historyops';
 import { LAYER_ICON, layerLabel, short } from './layerlabel';
-import { categoryLabel, clueCardName, clueValue, formatPoints, roundName, savedCardName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement, WAGER_FLOOR } from './model';
+import {
+  categoryLabel,
+  clueCardName,
+  clueValue,
+  formatPoints,
+  roundName,
+  savedCardName,
+  type Action,
+  type DealPart,
+  type Game,
+  type MediaKind,
+  type Round,
+  type Slide,
+  type SlideElement,
+  WAGER_FLOOR,
+} from './model';
 import { describeAction } from './actions';
 import { ROUND_MODES } from './modes';
 import { OBJECT_CLASSES } from './rpg';
@@ -191,7 +206,13 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
           at.crumbs.push('Choices');
           const n = clue.choices?.findIndex((c) => c.id === path[7]) ?? -1;
           if (n < 0) return;
-          reached(8, 'choice', `choice ${letter(n)} of ${categoryLabel(cat)} ${formatPoints(clueValue(r, row, clue), game.settings.currencySymbol)}`, '✍', false);
+          reached(
+            8,
+            'choice',
+            `choice ${letter(n)} of ${categoryLabel(cat)} ${formatPoints(clueValue(r, row, clue), game.settings.currencySymbol)}`,
+            '✍',
+            false,
+          );
           return;
         }
         if (path[6] === 'cards') {
@@ -212,7 +233,12 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         // (A clue with more question slides: "Question 1".)
         at.crumbs.push(side === 'q' && clue.extraSlides?.length ? `${SIDE_NAME.q} 1` : SIDE_NAME[side]);
         part({ kind: 'clue', category: cat.id, clue: clue.id, side });
-        slide(clue[path[6] as 'questionSlide'], 7, (element) => ({ tab: 'round', round: id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, element } }), side);
+        slide(
+          clue[path[6] as 'questionSlide'],
+          7,
+          (element) => ({ tab: 'round', round: id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, element } }),
+          side,
+        );
       }
     } else if (r.mode === 'final') {
       if (path[2] === 'choices') {
@@ -1014,7 +1040,11 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
 
   if (at.noun === 'screen' && only('col', 'row')) {
     const ids = [...things].map((t) => t.split('/').pop()!);
-    const find = (g: Game, id: string) => (g.worlds ?? []).flatMap((w) => w.maps).flatMap((m) => m.screens).find((s) => s.id === id);
+    const find = (g: Game, id: string) =>
+      (g.worlds ?? [])
+        .flatMap((w) => w.maps)
+        .flatMap((m) => m.screens)
+        .find((s) => s.id === id);
     if (ids.length === 1) {
       const s = find(after, ids[0]);
       return `Moved ${what(at)} to ${cell(s?.col, s?.row)}`;
@@ -1075,9 +1105,10 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     if (added.length === 1 && !gone.length) return `Connected ${at.name} → ${spaceName(added[0])}`;
     if (gone.length === 1 && !added.length) return `Disconnected ${at.name} → ${spaceName(gone[0])}`;
   }
-  if (own && at.noun === 'clue' && k === 'type')return TILE_TYPES[v as string]?.(tile) ?? `Changed the type of ${tile}`;
+  if (own && at.noun === 'clue' && k === 'type') return TILE_TYPES[v as string]?.(tile) ?? `Changed the type of ${tile}`;
   if (own && at.noun === 'clue' && k === 'empty') return v ? `Left ${tile} empty` : `Made ${tile} playable again`;
-  if (own && at.noun === 'clue' && k === 'timerSeconds') return typeof v === 'number' ? `Changed the countdown of ${tile} to ${v} s` : `Took the countdown off ${tile}`;
+  if (own && at.noun === 'clue' && k === 'timerSeconds')
+    return typeof v === 'number' ? `Changed the countdown of ${tile} to ${v} s` : `Took the countdown off ${tile}`;
   // (Its words or its picture, or the whole of it.)
   if (at.noun === 'clue' && (own ? k === 'tileFace' : op.p.length === at.depth + 1 && op.p[at.depth] === 'tileFace')) return `Changed the tile face of ${tile}`;
   if (own && at.noun === 'clue' && k === 'everyone') return v ? `Made ${tile} ✍ Everyone answers` : `Took ✍ Everyone answers off ${tile}`;
@@ -1094,8 +1125,7 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   }
   // (A picture taken off: not a change to it.)
   if (own && k === 'image' && v === undefined && (op as Op & { t: 'set' }).b !== undefined) return `Removed the image of ${what(at)}`;
-  if (own && (k === 'name' || k === 'title' || (k === 'label' && at.noun === 'slice')))
-    return `Renamed ${nounOf(at)}${quoted(typeof v === 'string' ? v : '')}`;
+  if (own && (k === 'name' || k === 'title' || (k === 'label' && at.noun === 'slice'))) return `Renamed ${nounOf(at)}${quoted(typeof v === 'string' ? v : '')}`;
   // (A multiple choice's words: which one, not what it says now.)
   if (at.noun === 'choice' && k === 'text') return `Edited ${at.name}`;
   if (typeof k === 'string' && TEXTS.has(k)) {

@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { gameRules, newClue, newFinalRound, newImageEl, newRound, setSlideText, slideText, textSlide, type Clue, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
+import {
+  gameRules,
+  newClue,
+  newFinalRound,
+  newImageEl,
+  newRound,
+  setSlideText,
+  slideText,
+  textSlide,
+  type Clue,
+  type FinalRound,
+  type TextEl,
+  type BoardRound,
+  type Game,
+} from './model';
 import { clueSlides, followClueText } from './cluetext';
 import { addCard, setPartnerGame } from './partner';
 
@@ -71,7 +85,7 @@ describe('use this style elsewhere', () => {
     expect([target.color, target.size, target.text]).toEqual(['#ffffff', 110, 'Keep me']);
   });
 
-  it("in a Final round or the tiebreaker, “this round” is its own slides, not every board clue", () => {
+  it('in a Final round or the tiebreaker, “this round” is its own slides, not every board clue', () => {
     const game = jeopardyGame();
     const final = game.rounds.find((r): r is FinalRound => r.mode === 'final')!;
     final.extraSlides = [{ ...textSlide('More'), id: 'x1' }];
@@ -182,7 +196,10 @@ describe('moving clues around the board', () => {
     clearClue(c);
     expect(clueHasContent(c)).toBe(false);
     // ✍ multiple choices with words are written content too (empty ones aren't).
-    c.choices = [{ id: 'a', text: '' }, { id: 'b', text: ' ' }];
+    c.choices = [
+      { id: 'a', text: '' },
+      { id: 'b', text: ' ' },
+    ];
     expect(clueClearable(c)).toBe(false);
     c.choices[1].text = 'Oslo';
     expect([clueClearable(c), clueHasContent(c)]).toEqual([true, true]);
@@ -387,7 +404,13 @@ describe('🤝 partner clues on the board', () => {
     const id = clue.cards![0].id;
     clearClue(clue);
     expect(clue.cards).toHaveLength(1);
-    expect([clue.cards![0].id, clue.cards![0].to, slideText(clue.cards![0]), clue.cards![0].elements.length, clue.cards![0].name]).toEqual([id, 'both', '', 1, 'Clue tip']);
+    expect([clue.cards![0].id, clue.cards![0].to, slideText(clue.cards![0]), clue.cards![0].elements.length, clue.cards![0].name]).toEqual([
+      id,
+      'both',
+      '',
+      1,
+      'Clue tip',
+    ]);
     expect(clue.type).toBe('partner');
     expect(clue.partner).toEqual(gameRules('describe'));
   });
@@ -496,7 +519,6 @@ describe('a category copied and pasted', () => {
     expect(r.categories[1].clues).toHaveLength(rows);
   });
 });
-
 
 describe('🚫 No Pass on a tile', () => {
   it("is the author's on an ordinary buzz-in tile, and fixed on (with why) where everyone in it plays anyway", () => {

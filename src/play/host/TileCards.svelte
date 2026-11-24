@@ -17,7 +17,19 @@
   import { phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
   import { textOn } from '../../lib/colors';
   import {
-    cardSlides, clueCardName, clueCardWords, finalName, type CardGoesTo, type CardTo, type Clue, type ClueCard, type FinalRound, type Game, type Id, type SentCard, type Session,
+    cardSlides,
+    clueCardName,
+    clueCardWords,
+    finalName,
+    type CardGoesTo,
+    type CardTo,
+    type Clue,
+    type ClueCard,
+    type FinalRound,
+    type Game,
+    type Id,
+    type SentCard,
+    type Session,
   } from '../../lib/model';
   import { cardCopyText, cardSummary, finalGoesToLabel, tileGoesToLabel } from '../../lib/partner';
   import { cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
@@ -123,7 +135,10 @@
   }
 
   // One window: the status line's ⚠ Viewers see this chip says what viewers can read here.
-  offerExposed(() => `⚠ Viewers can see this window: they can read a card’s name here, never what’s on it${app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.`);
+  offerExposed(
+    () =>
+      `⚠ Viewers can see this window: they can read a card’s name here, never what’s on it${app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.`,
+  );
 </script>
 
 {#snippet chip(card: ClueCard, i: number, id: Id, on: boolean)}
@@ -136,7 +151,11 @@
     style:color={on ? textOn(p?.color ?? '#888') : undefined}
     aria-pressed={on}
     aria-label="{clueCardWords(card, i, true)} to {p?.name}{nophone ? ' (no phone here)' : ''}"
-    title={nophone ? `${p?.name} has no phone here: copy the card to ${teams ? 'the team' : 'them'} (📋), or show it in the 🪟 card window` : teams ? `Every phone on ${p?.name} gets it` : undefined}
+    title={nophone
+      ? `${p?.name} has no phone here: copy the card to ${teams ? 'the team' : 'them'} (📋), or show it in the 🪟 card window`
+      : teams
+        ? `Every phone on ${p?.name} gets it`
+        : undefined}
     onclick={() => toggle(card, id)}
   >
     {p?.name}{#if on}&nbsp;✓{/if}{#if nophone}<span class="part" aria-hidden="true">📵</span>{/if}
@@ -166,44 +185,91 @@
     {@const left = pc ? leftLine(pc.left) : ''}
     {@const slow = pc ? slowLine(slowKinds(pc.items)) : ''}
     {@const state = out ? sentLine(game, session, out, filesOn, off, cardsOn) : null}
-    <div class="row card" data-tile-card={n} role="group" aria-label="{clueCardWords(card, i, true)}: {state ? `${out?.label}, ${state.text}` : cardsOn ? 'not sent' : sentToText(session, to, teams)}">
+    <div
+      class="row card"
+      data-tile-card={n}
+      role="group"
+      aria-label="{clueCardWords(card, i, true)}: {state ? `${out?.label}, ${state.text}` : cardsOn ? 'not sent' : sentToText(session, to, teams)}"
+    >
       <b class="cname" title={nm}>{nm}</b>
       <span class="muted small">· {cardSummary(game, card)}</span>
       <span aria-hidden="true">→</span>
       {#if out && state}
         <span>{sentToText(session, out.to, teams)}</span>
         <!-- (Without phones, an orange row is a card changed in the editor since: it's out of the window, and says what to do.) -->
-        <span class="small" class:warn={state.warn} data-card-state>· {cardsOn || state.warn ? state.text : 'in the 🪟 card window'} · listed as {out.label}</span>
+        <span class="small" class:warn={state.warn} data-card-state
+          >· {cardsOn || state.warn ? state.text : 'in the 🪟 card window'} · listed as {out.label}</span
+        >
       {:else}
         {#each session.players as p (p.id)}
-          {@render chip(card, i, p.id, to.some((t) => t.seat === p.id))}
+          {@render chip(
+            card,
+            i,
+            p.id,
+            to.some((t) => t.seat === p.id),
+          )}
         {/each}
         {#if !to.length}<span class="muted small" title="It starts with {startsWith(card.to)}">nobody yet</span>{/if}
       {/if}
       <span class="spacer"></span>
       {#if cardsOn}
         {#if out}
-          {#if !off}<button class="small" onclick={() => again(out, card, i)} aria-label="Send {w} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>{/if}
-          <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it off every phone it went to">↩ Take back</button>
+          {#if !off}<button
+              class="small"
+              onclick={() => again(out, card, i)}
+              aria-label="Send {w} again"
+              title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now"
+              >↻ Send again</button
+            >{/if}
+          <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it off every phone it went to"
+            >↩ Take back</button
+          >
         {:else}
-          <button class="small" class:ring={ring === `card:${card.id}`} data-box="card:{card.id}" onclick={() => send(card, i)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${sentToText(session, to, teams)} now, ${lasts}${aside}` : 'Choose who gets it first'}>📤 Send</button>
+          <button
+            class="small"
+            class:ring={ring === `card:${card.id}`}
+            data-box="card:{card.id}"
+            onclick={() => send(card, i)}
+            disabled={!to.length || full}
+            aria-label="Send {w}"
+            title={full
+              ? cardsFullText(game, session)
+              : to.length
+                ? `Sends it to ${sentToText(session, to, teams)} now, ${lasts}${aside}`
+                : 'Choose who gets it first'}>📤 Send</button
+          >
         {/if}
       {:else if out}
-        <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">↩ Take back</button>
+        <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">↩ Take back</button
+        >
       {:else if windowSeat(to)}
         {@const seat = windowSeat(to)!}
-        <button class="small" onclick={() => send(card, i, [{ seat }])} aria-label="Show {w} to {nameOf(seat)}" title="Shows it in the 🪟 card window, to {nameOf(seat)} alone, {lasts}">🪟 Show {nameOf(seat)}</button>
+        <button
+          class="small"
+          onclick={() => send(card, i, [{ seat }])}
+          aria-label="Show {w} to {nameOf(seat)}"
+          title="Shows it in the 🪟 card window, to {nameOf(seat)} alone, {lasts}">🪟 Show {nameOf(seat)}</button
+        >
       {/if}
       {#if copying}
         <button
           class="small"
           onclick={() => copyWords(card, i, to)}
           disabled={!to.length || !copyable}
-          title={!to.length ? 'Choose who gets it first' : copyable ? 'Copies “For … only” with the card’s words and links, to paste in a DM' : 'This card has no words or links: 📋 Copy picture'}>📋 Copy words</button
+          title={!to.length
+            ? 'Choose who gets it first'
+            : copyable
+              ? 'Copies “For … only” with the card’s words and links, to paste in a DM'
+              : 'This card has no words or links: 📋 Copy picture'}>📋 Copy words</button
         >
       {/if}
       {#if hasPicture(game, card) && canCopyPicture && (copying || !!left)}
-        <button class="small" onclick={() => copyCardPicture(game, card, clueCardWords(card, i, true), sentToText(session, to, teams))} disabled={!to.length} title="Copies the card’s picture, to paste in a DM">📋 Copy picture</button>
+        <button
+          class="small"
+          onclick={() => copyCardPicture(game, card, clueCardWords(card, i, true), sentToText(session, to, teams))}
+          disabled={!to.length}
+          title="Copies the card’s picture, to paste in a DM">📋 Copy picture</button
+        >
       {/if}
     </div>
     <!-- (🗜 Make smaller: the files of it that are big, or too big for the buzzer server, made smaller for phones.) -->

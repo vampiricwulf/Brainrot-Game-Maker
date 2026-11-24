@@ -29,8 +29,7 @@
 
 {#if capture}
   <div class="w bad" role="alert" title={capture.compat ? `Compatibility setting: ${capture.compat}` : undefined}>
-    ⚠ Brainrot Games Maker is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and
-    start it normally.
+    ⚠ Brainrot Games Maker is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and start it normally.
     <button class="small ghost" onclick={onhelp}>🔊 Help</button>
   </div>
 {/if}

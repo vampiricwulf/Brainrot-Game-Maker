@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { addBundledRound, addDealFrom, bringAlong, dealWheelName, bundleRound, copiesMessage, copyRound, mergedMessage, placeFor, settleFiles, uniqueName, type CopyIds } from './roundcopy';
+import {
+  addBundledRound,
+  addDealFrom,
+  bringAlong,
+  dealWheelName,
+  bundleRound,
+  copiesMessage,
+  copyRound,
+  mergedMessage,
+  placeFor,
+  settleFiles,
+  uniqueName,
+  type CopyIds,
+} from './roundcopy';
 import { keepScreen } from './rpg';
 import { clipboard } from './clipboard.svelte';
 import { isBoard, isRpg, newFinalRound, newGame, newImageEl, newRound, type Game } from './model';
@@ -16,7 +29,10 @@ describe('rounds between games', () => {
     const w = newWheel('Spin');
     w.segments[0].media = 'm1';
     a.wheels.push(w, newWheel('Unused'));
-    a.media.push({ id: 'm1', name: 'a.png', mime: 'image/png', size: 1, kind: 'image' }, { id: 'm2', name: 'b.png', mime: 'image/png', size: 1, kind: 'image' });
+    a.media.push(
+      { id: 'm1', name: 'a.png', mime: 'image/png', size: 1, kind: 'image' },
+      { id: 'm2', name: 'b.png', mime: 'image/png', size: 1, kind: 'image' },
+    );
     a.media.push({ id: 'm3', name: 'x.png', mime: 'image/png', size: 1, kind: 'image' });
     const r = newRound('Board', 2);
     r.categories[0].clues[0].type = 'wheel';
@@ -37,7 +53,10 @@ describe('rounds between games', () => {
 
   it('a Final takes its 🤫 cards’ files along, and its copy gets fresh card ids', () => {
     const a = newGame();
-    a.media.push({ id: 'm1', name: 'hint.png', mime: 'image/png', size: 1, kind: 'image' }, { id: 'm2', name: 'unused.png', mime: 'image/png', size: 1, kind: 'image' });
+    a.media.push(
+      { id: 'm1', name: 'hint.png', mime: 'image/png', size: 1, kind: 'image' },
+      { id: 'm2', name: 'unused.png', mime: 'image/png', size: 1, kind: 'image' },
+    );
     const f = newFinalRound();
     f.cards = [{ id: 'fc1', name: 'Leader hint', background: {}, elements: [{ ...newImageEl('m1'), id: 'e1' }], to: 'playing' }];
     a.rounds.push(f);
@@ -221,7 +240,11 @@ describe('rounds between games', () => {
     const r = newRound('R', 1);
     r.categories[0].image = 'f1';
     other.rounds.push(r);
-    const held = new Map([['f1', new Blob(['new'])], ['f2', new Blob(['old'])], ['f3', new Blob(['xyz'])]]);
+    const held = new Map([
+      ['f1', new Blob(['new'])],
+      ['f2', new Blob(['old'])],
+      ['f3', new Blob(['xyz'])],
+    ]);
     const mine = (id: string): Blob | undefined => (id === 'f1' || id === 'f2' ? new Blob(['old']) : undefined);
     const { game, store, copies } = await settleFiles(other, held, mine);
     const f1 = game.media[0].id;
@@ -245,7 +268,10 @@ describe('rounds between games', () => {
   it('a round takes the uploaded fonts its text uses (named only by their family)', async () => {
     const { uploadedFamily } = await import('./fonts');
     const a = newGame();
-    a.media.push({ id: 'font0002xyz', name: 'Bebas.woff2', mime: 'font/woff2', size: 3, kind: 'font' }, { id: 'font0003unused', name: 'Other.woff2', mime: 'font/woff2', size: 3, kind: 'font' });
+    a.media.push(
+      { id: 'font0002xyz', name: 'Bebas.woff2', mime: 'font/woff2', size: 3, kind: 'font' },
+      { id: 'font0003unused', name: 'Other.woff2', mime: 'font/woff2', size: 3, kind: 'font' },
+    );
     const r = newRound('Board', 1);
     const el = r.categories[0].clues[0].questionSlide.elements[0];
     if (el.kind === 'text') el.font = `'${uploadedFamily('font0002xyz')}', sans-serif`;

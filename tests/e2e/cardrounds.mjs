@@ -16,7 +16,33 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, quick, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, leaveAnswer, failureShots, assert, sleep, launchChromium, untilWith, section, hostPanelIn, stageBoxIn, statusBarIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  goOnCheck,
+  mainButton,
+  mainLabel,
+  openGameFile,
+  packGame,
+  png,
+  quick,
+  recordSeen,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  stepButton,
+  stored,
+  leaveAnswer,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  untilWith,
+  section,
+  hostPanelIn,
+  stageBoxIn,
+  statusBarIn,
+  toolsRowIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -40,7 +66,23 @@ const LATE = 'A card went to your seat before this phone joined. Ask the host to
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
-const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  ...box(y),
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
 const slide = (...elements) => ({ background: {}, elements });
 
@@ -75,7 +117,18 @@ try {
   const plain = (id, q, a, extra = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(text(q)), answerSlide: slide(text(a)), ...extra });
   const values = [200, 400];
   const spy = {
-    ...box(300), x: 900, w: 200, h: 200, id: 'el_spy', name: 'Spy master', kind: 'shape', shape: 'rect', fill: '#aa5500', stroke: '#000', strokeWidth: 0, radius: 0,
+    ...box(300),
+    x: 900,
+    w: 200,
+    h: 200,
+    id: 'el_spy',
+    name: 'Spy master',
+    kind: 'shape',
+    shape: 'rect',
+    fill: '#aa5500',
+    stroke: '#000',
+    strokeWidth: 0,
+    radius: 0,
     role: { class: 'npc', actions: [{ id: 'a_mission', do: 'card', slide: slide(text(MISSION), image('map', 400)), to: 'trigger' }] },
   };
   const space = (id, name, x, y, next, more = {}) => ({ id, name, x, y, color: '#4363d8', next, ...more });
@@ -84,46 +137,100 @@ try {
     version: 2,
     title: 'Cards in every round',
     settings: {
-      allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      stream: { clueCaption: true },
+      buzzer: true,
     },
     players: ['Ann', 'Bob', 'Cat', 'Dan'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
     rounds: [
       {
-        id: 'r1', name: 'Round 1', mode: 'board', values, dailyDoubleCount: 1,
+        id: 'r1',
+        name: 'Round 1',
+        mode: 'board',
+        values,
+        dailyDoubleCount: 1,
         categories: [
           {
-            id: 'cat0', title: 'Movies',
+            id: 'cat0',
+            title: 'Movies',
             clues: [
               plain('q_just', 'A plain question', 'Plain answer', { cards: [{ id: 'j1', to: 'picker', ...slide(text(JUST), image('just', 400)) }] }),
               plain('q_dd', 'A Daily Double question', 'DD answer', { type: 'dailyDouble', cards: [{ id: 'd1', to: 'picker', ...slide(text(INSIDER)) }] }),
             ],
           },
-          { id: 'cat1', title: 'Songs', clues: [plain('q_song', 'A song clue', 'A song'), plain('q_note', 'Another song clue', 'Another song', { cards: [{ id: 'n1', to: 'nobody', ...slide(text(NOTE)) }] })] },
+          {
+            id: 'cat1',
+            title: 'Songs',
+            clues: [
+              plain('q_song', 'A song clue', 'A song'),
+              plain('q_note', 'Another song clue', 'Another song', { cards: [{ id: 'n1', to: 'nobody', ...slide(text(NOTE)) }] }),
+            ],
+          },
         ],
       },
       { id: 'r2', name: 'Adventure', mode: 'rpg', world: 'w1' },
       {
-        id: 'r3', name: 'Board game', mode: 'boardgame', slide: { background: { color: '#1d5e3a' }, elements: [] },
+        id: 'r3',
+        name: 'Board game',
+        mode: 'boardgame',
+        slide: { background: { color: '#1d5e3a' }, elements: [] },
         spaces: [
           space('b0', 'Start', 400, 420, ['b1']),
           space('b1', 'Mission', 800, 420, ['b2'], { onLand: [{ id: 'a_secret', do: 'card', slide: slide(text(SECRET)), to: 'trigger' }] }),
           space('b2', 'Space 3', 1200, 420, ['b3']),
           space('b3', 'Space 4', 800, 720, ['b0']),
         ],
-        mover: { kind: 'dice', dice: 'd6' }, zones: [],
+        mover: { kind: 'dice', dice: 'd6' },
+        zones: [],
       },
     ],
-    worlds: [{
-      id: 'w1', name: 'World',
-      maps: [{ id: 'm1', name: 'Map', cols: 1, rows: 1, visibility: 'full', showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut',
-        screens: [{ id: 's1', name: 'Village', col: 0, row: 0, slide: { background: { color: '#234' }, elements: [spy] } }] }],
-    }],
-    items: [], statFields: [],
-    wheels: [{ id: 'w_whisper', name: 'Whisper wheel', spinDurationMs: 300, removeAfterLanding: false, segments: [
-      { id: 'sw', label: 'Whisper', color: '#e6194b', weight: 1, actions: [{ id: 'a_whisper', do: 'card', slide: slide(text(WHISPER)), to: 'trigger' }] },
-    ] }],
-    media, audio: {}, dice: [], theme: {},
+    worlds: [
+      {
+        id: 'w1',
+        name: 'World',
+        maps: [
+          {
+            id: 'm1',
+            name: 'Map',
+            cols: 1,
+            rows: 1,
+            visibility: 'full',
+            showExits: true,
+            revealNeighbors: true,
+            diagonals: true,
+            wrap: false,
+            transition: 'cut',
+            screens: [{ id: 's1', name: 'Village', col: 0, row: 0, slide: { background: { color: '#234' }, elements: [spy] } }],
+          },
+        ],
+      },
+    ],
+    items: [],
+    statFields: [],
+    wheels: [
+      {
+        id: 'w_whisper',
+        name: 'Whisper wheel',
+        spinDurationMs: 300,
+        removeAfterLanding: false,
+        segments: [
+          { id: 'sw', label: 'Whisper', color: '#e6194b', weight: 1, actions: [{ id: 'a_whisper', do: 'card', slide: slide(text(WHISPER)), to: 'trigger' }] },
+        ],
+      },
+    ],
+    media,
+    audio: {},
+    dice: [],
+    theme: {},
   };
   const packPath = resolve('test-results/card-rounds.brainrot');
   writeFileSync(packPath, await packGame(game, files));
@@ -204,7 +311,11 @@ try {
     return p;
   };
   /** The phone's last view from the room. */
-  const viewOf = (label) => heard[label].map((m) => JSON.parse(m)).filter((m) => m.t === 'view').at(-1)?.view ?? {};
+  const viewOf = (label) =>
+    heard[label]
+      .map((m) => JSON.parse(m))
+      .filter((m) => m.t === 'view')
+      .at(-1)?.view ?? {};
   /** Whether a phone has heard anything of these words. */
   const heardOf = (label, w) => heard[label].join('').includes(w);
   const cardsOn = (p) => p.locator('.card').count();
@@ -270,7 +381,9 @@ try {
   await openSend();
   const pick = sendMenu.getByRole('combobox', { name: 'The card to send' });
   assert(
-    (await sendMenu.getByRole('radio', { name: 'One made in the editor' }).isDisabled()) && (await sendMenu.getByRole('radio', { name: 'A quick card' }).isChecked()) && !(await pick.count()),
+    (await sendMenu.getByRole('radio', { name: 'One made in the editor' }).isDisabled()) &&
+      (await sendMenu.getByRole('radio', { name: 'A quick card' }).isChecked()) &&
+      !(await pick.count()),
     'one window, no tile played yet: no card made in the editor to choose (listing them would tell viewers where the Daily Double is)',
   );
   assert((await sendMenu.locator('[data-saved-note]').innerText()).includes('not played yet are listed with the audience window open'), 'and it says why');
@@ -278,11 +391,20 @@ try {
   assert(await sendMenu.getByRole('radio', { name: 'The slide on screen' }).isDisabled(), 'on the board, nothing is on screen to send');
   const typedBox = sendMenu.getByRole('textbox', { name: 'The card’s words' });
   await typedBox.fill(TYPED);
-  assert((await typedBox.evaluate((el) => /** @type {any} */ (getComputedStyle(el)).webkitTextSecurity)) === 'disc', 'what’s typed is hidden as it’s typed (viewers see this window)');
-  assert(!(await sendMenu.getByRole('combobox', { name: 'A file from the game’s 🖼 Media' }).count()), 'and the game’s files (by name) aren’t offered in one window');
+  assert(
+    (await typedBox.evaluate((el) => /** @type {any} */ (getComputedStyle(el)).webkitTextSecurity)) === 'disc',
+    'what’s typed is hidden as it’s typed (viewers see this window)',
+  );
+  assert(
+    !(await sendMenu.getByRole('combobox', { name: 'A file from the game’s 🖼 Media' }).count()),
+    'and the game’s files (by name) aren’t offered in one window',
+  );
   await sendMenu.getByRole('button', { name: 'Bob', exact: true }).click();
   await sleep(500);
-  assert(!JSON.stringify(states).includes('"cards"') && !Object.values(heard).join('').includes('Typed-'), 'typing the card and choosing who gets it sends nothing');
+  assert(
+    !JSON.stringify(states).includes('"cards"') && !Object.values(heard).join('').includes('Typed-'),
+    'typing the card and choosing who gets it sends nothing',
+  );
   await sendMenu.getByRole('button', { name: '📤 Send' }).click();
   await sendMenu.locator('[data-card-said]').getByText('Card 1 sent to Bob').waitFor();
   assert(await until(() => cards().length === 1), 'sent: the room’s state holds one card');
@@ -290,7 +412,11 @@ try {
   assert(/^sc:/.test(note1.id) && JSON.stringify(note1.to) === to('Bob') && note1.text === TYPED, 'to Bob’s seat only, with its words, under its own id');
   await tapOpen(bob, TYPED);
   assert(true, 'Bob’s phone gets it');
-  for (const [p, label] of [[ann, 'ann'], [cat, 'cat']]) assert(!(await cardsOn(p)) && !heardOf(label, 'Typed-'), `${label === 'ann' ? 'Ann' : 'Cat'}’s phone: no card, and nothing of it`);
+  for (const [p, label] of [
+    [ann, 'ann'],
+    [cat, 'cat'],
+  ])
+    assert(!(await cardsOn(p)) && !heardOf(label, 'Typed-'), `${label === 'ann' ? 'Ann' : 'Cat'}’s phone: no card, and nothing of it`);
   await offStream(host, 'the host page in one window', 'a card sent from the tools row');
   await closeMenu(sendMenu);
 
@@ -303,7 +429,11 @@ try {
     const rows = [...ul.children].map((li) => {
       const status = li.querySelector('.ok, .away, .muted');
       const lh = parseFloat(getComputedStyle(li).lineHeight) || 18;
-      return { h: Math.round(status?.getBoundingClientRect().height ?? 0), lh, out: [...li.querySelectorAll('button')].some((b) => b.getBoundingClientRect().right > right + 0.5) };
+      return {
+        h: Math.round(status?.getBoundingClientRect().height ?? 0),
+        lh,
+        out: [...li.querySelectorAll('button')].some((b) => b.getBoundingClientRect().right > right + 0.5),
+      };
     });
     return { rows, ul: ul.scrollWidth - ul.clientWidth, pop: box.scrollWidth - box.clientWidth };
   });
@@ -317,14 +447,23 @@ try {
   await host.getByRole('button', { name: 'Close the phones list' }).click();
   bob = await join('bob2', 'Bob');
   await bob.locator('#cards-late').getByText(LATE).waitFor();
-  assert(!(await cardsOn(bob)) && !heardOf('bob2', 'Typed-') && viewOf('bob2').cards?.late === 1, 'a new phone that took Bob’s seat after the send gets nothing of the card, only a note that it missed one');
+  assert(
+    !(await cardsOn(bob)) && !heardOf('bob2', 'Typed-') && viewOf('bob2').cards?.late === 1,
+    'a new phone that took Bob’s seat after the send gets nothing of the card, only a note that it missed one',
+  );
 
   // ---------- The list of cards out, in one window: labels only ----------
   assert((await outButton.innerText()).trim() === '🤫 1 card out', 'the tools row only counts the cards out');
   await outButton.click();
   await outList.waitFor();
-  assert(await until(async () => (await rowText('Card 1')).includes('Card 1 → Bob · ✓ seen · Bob’s new phone hasn’t got it: ↻ Send again · until the round ends')), `its row: who, seen (by his old phone), the new phone late, how long (${await rowText('Card 1')})`);
-  assert((await outList.locator('.exposed').innerText()).includes('never what’s on it'), 'one window: the list says viewers see who got each card, never what’s on it');
+  assert(
+    await until(async () => (await rowText('Card 1')).includes('Card 1 → Bob · ✓ seen · Bob’s new phone hasn’t got it: ↻ Send again · until the round ends')),
+    `its row: who, seen (by his old phone), the new phone late, how long (${await rowText('Card 1')})`,
+  );
+  assert(
+    (await outList.locator('.exposed').innerText()).includes('never what’s on it'),
+    'one window: the list says viewers see who got each card, never what’s on it',
+  );
   await offStream(host, 'the host page in one window', 'the list of cards out open');
   await outList.getByRole('button', { name: 'Send Card 1 again' }).click();
   assert(await until(() => cards().length === 1 && cards()[0].id !== note1.id), '↻ Send again: the card goes under a new id');
@@ -351,26 +490,45 @@ try {
   assert(!cards().length && uploads === 0, 'opening the tile sends nothing, and uploads nothing');
   // Not sent yet: its 📤 Send wears the ring (what's next before the answer), and N (👁 Reveal answer) asks first,
   // "First: Card 1 hasn't gone to Ann yet." (its name and who it's for, never its words), 📤 Send it ⏎ there.
-  assert(await tileRow.getByRole('button', { name: 'Send card 1' }).evaluate((b) => b.classList.contains('ring')), 'the card not sent yet: its 📤 Send wears the ring');
+  assert(
+    await tileRow.getByRole('button', { name: 'Send card 1' }).evaluate((b) => b.classList.contains('ring')),
+    'the card not sent yet: its 📤 Send wears the ring',
+  );
   await host.keyboard.press('n');
   await goOnCheck(host).waitFor();
   assert(
-    (await goOnCheck(host).getAttribute('data-goon')) === 'first' && (await goOnCheck(host).innerText()).includes('Card 1 hasn’t gone to Ann yet.') && (await quick(host, '📤 Send it').innerText()).includes('⏎'),
+    (await goOnCheck(host).getAttribute('data-goon')) === 'first' &&
+      (await goOnCheck(host).innerText()).includes('Card 1 hasn’t gone to Ann yet.') &&
+      (await quick(host, '📤 Send it').innerText()).includes('⏎'),
     'N with the tile’s card not sent asks first: “First: Card 1 hasn’t gone to Ann yet.”, 📤 Send it ⏎',
   );
   await offStream(host, 'the host page in one window', 'the check asking about a tile’s card');
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('Enter');
   await goOnCheck(host).waitFor({ state: 'detached' });
-  assert(await until(() => cards().length === 1 && cards()[0].text === JUST), 'sent from the check (Enter, as the box’s 📤 Send): the room holds the tile’s card');
+  assert(
+    await until(() => cards().length === 1 && cards()[0].text === JUST),
+    'sent from the check (Enter, as the box’s 📤 Send): the room holds the tile’s card',
+  );
   assert(JSON.stringify(cards()[0].to) === to('Ann') && cards()[0].open, 'to Ann only, open');
   assert(await until(() => !!cards()[0]?.media?.[0]?.file && uploads === 1), 'its picture from this computer goes up once');
   await tapOpen(ann, JUST);
-  assert(await until(() => ann.locator('.card img').evaluate((i) => i.complete && i.naturalWidth > 0).catch(() => false)), 'Ann’s phone gets it, picture and all');
+  assert(
+    await until(() =>
+      ann
+        .locator('.card img')
+        .evaluate((i) => i.complete && i.naturalWidth > 0)
+        .catch(() => false),
+    ),
+    'Ann’s phone gets it, picture and all',
+  );
   assert(!(await cardsOn(bob)) && !(await cardsOn(cat)) && !heardOf('bob2', 'Just-') && !heardOf('cat', 'Just-'), 'nobody else gets it');
   await offStream(host, 'the host page in one window', 'a standard tile’s card sent');
   const privateBadge = stageBoxIn(host).locator('[data-private-badge]');
-  assert(await until(async () => (await privateBadge.count()) === 1 && (await words(privateBadge)) === '🤫 Ann has a private question'), 'the stream says Ann has a private question (never what it is)');
+  assert(
+    await until(async () => (await privateBadge.count()) === 1 && (await words(privateBadge)) === '🤫 Ann has a private question'),
+    'the stream says Ann has a private question (never what it is)',
+  );
   assert((await mainLabel(host)) === '👁 Reveal answer', 'the tile plays as usual: 👁 Reveal answer');
 
   // ---------- The slide on screen, as a card (what viewers see: nothing hidden from them goes) ----------
@@ -379,7 +537,10 @@ try {
   await sendMenu.getByRole('button', { name: 'Bob', exact: true }).click();
   await sendMenu.getByRole('button', { name: '📤 Send' }).click();
   await sendMenu.locator('[data-card-said]').getByText('Card 2 sent to Bob').waitFor();
-  assert(await until(() => cards().length === 2 && cards()[1].text === 'A plain question' && JSON.stringify(cards()[1].to) === to('Bob')), 'the slide on screen goes as a card, to Bob only');
+  assert(
+    await until(() => cards().length === 2 && cards()[1].text === 'A plain question' && JSON.stringify(cards()[1].to) === to('Bob')),
+    'the slide on screen goes as a card, to Bob only',
+  );
   await closeMenu(sendMenu);
   await outButton.click();
   await outList.waitFor();
@@ -401,17 +562,26 @@ try {
   await stageBoxIn(host).locator('.tile[aria-label^="Movies for $400"]').click();
   await tilePart.waitFor();
   tileRow = tilePart.locator('[data-tile-card="1"]');
-  assert((await tileRow.getByRole('button', { name: 'Card 1 to Ann' }).getAttribute('aria-pressed')) === 'true', 'a Daily Double’s card starts with its player, Ann');
+  assert(
+    (await tileRow.getByRole('button', { name: 'Card 1 to Ann' }).getAttribute('aria-pressed')) === 'true',
+    'a Daily Double’s card starts with its player, Ann',
+  );
   await sleep(600);
   assert(!cards().length, 'opening it sends nothing');
   await tileRow.getByRole('button', { name: 'Send card 1' }).click();
-  assert(await until(() => cards().length === 1 && cards()[0].text === INSIDER && JSON.stringify(cards()[0].to) === to('Ann')), 'sent before the wager, to Ann only');
+  assert(
+    await until(() => cards().length === 1 && cards()[0].text === INSIDER && JSON.stringify(cards()[0].to) === to('Ann')),
+    'sent before the wager, to Ann only',
+  );
   await tapOpen(ann, INSIDER);
   assert(!heardOf('bob2', 'Insider-') && !heardOf('cat', 'Insider-'), 'only Ann gets it');
   assert(!(await stageBoxIn(host).locator('[data-private-badge]').count()), 'a Daily Double’s badge already says who plays: no “private question” line');
   await hostPanelIn(host).locator('.dd input[type=number]').fill('100');
   await mainButton(host).click();
-  assert(await until(async () => last()?.wager?.open === false && (await mainLabel(host)) === '👁 Reveal answer' && cards().length === 1 && cards()[0].open), 'the question shows (wager $100, locked): the card stays');
+  assert(
+    await until(async () => last()?.wager?.open === false && (await mainLabel(host)) === '👁 Reveal answer' && cards().length === 1 && cards()[0].open),
+    'the question shows (wager $100, locked): the card stays',
+  );
   await offStream(host, 'the host page in one window', 'a Daily Double’s card sent');
   await mainButton(host).click();
   assert(await until(() => cards()[0]?.open === false), 'Reveal: “the answer’s on screen” on it');
@@ -451,27 +621,42 @@ try {
   const audClean = async (when) => {
     await offStream(aud, 'the audience window', when);
     const leaks = await aud.evaluate(() => window.__leaks);
-    assert(!leaks.length, `${when}: the audience window never got a card window’s message nor a typed card’s words${leaks.length ? ` (${leaks.join(' | ')})` : ''}`);
+    assert(
+      !leaks.length,
+      `${when}: the audience window never got a card window’s message nor a typed card’s words${leaks.length ? ` (${leaks.join(' | ')})` : ''}`,
+    );
   };
 
   // ---------- 🤫 Send a card… to Cat: a quick card, typed ----------
   await openSend();
-  assert((await sendMenu.getByRole('radio', { name: 'A quick card' }).isChecked()) && !(await sendMenu.locator('.exposed').count()), 'two windows: a quick card is the first choice, with no warning about viewers');
+  assert(
+    (await sendMenu.getByRole('radio', { name: 'A quick card' }).isChecked()) && !(await sendMenu.locator('.exposed').count()),
+    'two windows: a quick card is the first choice, with no warning about viewers',
+  );
   await sendMenu.getByRole('textbox', { name: 'The card’s words' }).fill(QUICK);
   // A picture from this computer: it goes into the game's 🖼 Media, but never to the viewers' windows (nor its name).
   await sendMenu.locator('input[type=file]').setInputFiles({ name: QUICK_FILE, mimeType: 'image/png', buffer: png(90, 30, 160, 200, 120) });
   await sendMenu.locator('[aria-label="On the card"]').getByText('🖼 picture').waitFor();
   await sendMenu.getByRole('button', { name: 'Cat', exact: true }).click();
   await sleep(500);
-  assert(!cards().length && !JSON.stringify(states).includes('Quick-') && !JSON.stringify(states).includes(QUICK_FILE), 'typing the card, adding its picture and choosing Cat sends nothing');
+  assert(
+    !cards().length && !JSON.stringify(states).includes('Quick-') && !JSON.stringify(states).includes(QUICK_FILE),
+    'typing the card, adding its picture and choosing Cat sends nothing',
+  );
   const upQ = uploads;
   await sendMenu.getByRole('button', { name: '📤 Send' }).click();
   await sendMenu.locator('[data-card-said]').getByText('Card 1 sent to Cat').waitFor();
-  assert(await until(() => cards().length === 1 && cards()[0].text === QUICK && JSON.stringify(cards()[0].to) === to('Cat')), 'sent: to Cat’s seat only, with its words');
+  assert(
+    await until(() => cards().length === 1 && cards()[0].text === QUICK && JSON.stringify(cards()[0].to) === to('Cat')),
+    'sent: to Cat’s seat only, with its words',
+  );
   assert(await until(() => !!cards()[0]?.media?.[0]?.file && uploads === upQ + 1), 'its picture goes up with it');
   await sleep(500);
   const audGames = await aud.evaluate(() => window.__games);
-  assert(audGames.length > 0 && audGames.every((names) => !names.some((n) => n.includes('zqxwv'))), `the audience window’s copy of the game never lists the quick card’s picture (${audGames.at(-1)?.join(', ')})`);
+  assert(
+    audGames.length > 0 && audGames.every((names) => !names.some((n) => n.includes('zqxwv'))),
+    `the audience window’s copy of the game never lists the quick card’s picture (${audGames.at(-1)?.join(', ')})`,
+  );
   let quick1 = cards()[0];
   await tapOpen(cat, QUICK);
   assert(!(await cardsOn(ann)) && !(await cardsOn(bob)) && !heardOf('ann', 'zqxwv') && !heardOf('bob2', 'zqxwv'), 'Ann’s and Bob’s phones get nothing of it');
@@ -508,10 +693,16 @@ try {
   const offer = hostPanelIn(host).locator('[data-card-offer]');
   await offer.waitFor();
   const chip = (o, name) => o.getByRole('button', { name: new RegExp(`^${name}( \\(no phone here\\))?$`) });
-  assert((await chip(offer, 'Bob').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'false', 'the offer starts with whoever set it off (Bob)');
+  assert(
+    (await chip(offer, 'Bob').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'false',
+    'the offer starts with whoever set it off (Bob)',
+  );
   assert((await offer.locator('[data-offer-card]').innerText()).includes('1 line of words, 1 picture'), 'it counts what’s on the card');
   await sleep(1000);
-  assert(cards().length === 1 && !JSON.stringify(states.slice(n0)).includes('Mission-') && !heardOf('bob2', 'Mission-') && uploads === up0, 'pressing the button sent nothing: no card in the room, no file uploaded');
+  assert(
+    cards().length === 1 && !JSON.stringify(states.slice(n0)).includes('Mission-') && !heardOf('bob2', 'Mission-') && uploads === up0,
+    'pressing the button sent nothing: no card in the room, no file uploaded',
+  );
   await offer.getByRole('button', { name: '📤 Send' }).click();
   assert(await until(() => cards().length === 2), 'confirmed with 📤 Send: the room holds it');
   const mission = cards()[1];
@@ -520,7 +711,10 @@ try {
   await tapOpen(bob, MISSION);
   assert(!heardOf('ann', 'Mission-') && !heardOf('cat', 'Mission-'), 'nobody else gets it');
   const missionPic = cards()[1].media[0].file;
-  assert((await fetchAs(bob, missionPic)) === 200 && (await fetchAs(ann, missionPic)) === 404 && (await fetchAs(cat, missionPic)) === 404, 'only Bob’s phone can fetch its picture from the room');
+  assert(
+    (await fetchAs(bob, missionPic)) === 200 && (await fetchAs(ann, missionPic)) === 404 && (await fetchAs(cat, missionPic)) === 404,
+    'only Bob’s phone can fetch its picture from the room',
+  );
   assert(await until(async () => !(await offer.count())), 'the offer goes once sent');
   await host.keyboard.press('Escape');
 
@@ -535,7 +729,10 @@ try {
   const slice = tc.getByRole('button', { name: '🤫 Card for whoever set it off' });
   await slice.click();
   await offer.waitFor();
-  assert((await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Bob').getAttribute('aria-pressed')) === 'false', 'the slice’s offer starts with the player the spin was for (Ann)');
+  assert(
+    (await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Bob').getAttribute('aria-pressed')) === 'false',
+    'the slice’s offer starts with the player the spin was for (Ann)',
+  );
   await offer.getByRole('button', { name: 'Skip' }).click();
   await sleep(1000);
   assert(!(await offer.count()) && cards().length === 2 && !JSON.stringify(states).includes('Whisper-'), 'Skip: the offer goes, and nothing is sent');
@@ -545,7 +742,8 @@ try {
   await openSend();
   await sendMenu.getByRole('radio', { name: 'until I take it back' }).check();
   assert(
-    (await offer.getByRole('radio', { name: 'until the round ends' }).isChecked()) && (await sendMenu.getByRole('radio', { name: 'until I take it back' }).isChecked()),
+    (await offer.getByRole('radio', { name: 'until the round ends' }).isChecked()) &&
+      (await sendMenu.getByRole('radio', { name: 'until I take it back' }).isChecked()),
     'the offer and 🤫 Send a card… each keep their own “Lasts” choice',
   );
   await closeMenu(sendMenu);
@@ -568,7 +766,10 @@ try {
   await win.getByText('For Dan only').waitFor();
   await win.getByText(WHISPER).waitFor();
   assert(!(await win.getByText(QUICK).count()) && !(await win.getByText(MISSION).count()), 'the card window shows Dan’s card, not Cat’s nor Bob’s');
-  assert((await tools.locator('[data-card-window-warn]').innerText()).includes('share only the game window with viewers'), 'a ⚠ line: share only the game window with viewers');
+  assert(
+    (await tools.locator('[data-card-window-warn]').innerText()).includes('share only the game window with viewers'),
+    'a ⚠ line: share only the game window with viewers',
+  );
   // Switched to Cat: hers only.
   await tools.getByRole('button', { name: /🪟 Cards: Dan/ }).click();
   await host.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: 'Card window for Cat' }).click();
@@ -580,9 +781,15 @@ try {
   await win.getByText('For Dan only').waitFor();
   await win.getByText(WHISPER).waitFor();
   const audMsgs = await aud.evaluate(() => window.__msgs);
-  assert(audMsgs.includes('session') && !audMsgs.some((t) => t.startsWith('private-')), `the audience window gets the game’s state and never a card window message (${[...new Set(audMsgs)].join(', ')})`);
+  assert(
+    audMsgs.includes('session') && !audMsgs.some((t) => t.startsWith('private-')),
+    `the audience window gets the game’s state and never a card window message (${[...new Set(audMsgs)].join(', ')})`,
+  );
   const winMsgs = await win.evaluate(() => window.__msgs);
-  assert(winMsgs.length > 0 && winMsgs.every((t) => t.startsWith('private-')), `the card window gets only its own messages (${[...new Set(winMsgs)].join(', ')})`);
+  assert(
+    winMsgs.length > 0 && winMsgs.every((t) => t.startsWith('private-')),
+    `the card window gets only its own messages (${[...new Set(winMsgs)].join(', ')})`,
+  );
   await audClean('the card window open');
 
   // =====================================================================================================================
@@ -638,7 +845,10 @@ try {
   await host.locator('.bh').waitFor();
   assert(await until(() => cards().length === 1 && cards()[0].id === forDan.id), 'Resume game: Dan’s card is out again, under the same id');
   await dan.locator('#cards-late').getByText(LATE).waitFor();
-  assert(!(await cardsOn(dan)) && !heardOf('dan', 'zqxwv') && viewOf('dan').cards?.late === 1, 'Dan’s phone, seated after the card went to his seat, gets nothing of it, only the note');
+  assert(
+    !(await cardsOn(dan)) && !heardOf('dan', 'zqxwv') && viewOf('dan').cards?.late === 1,
+    'Dan’s phone, seated after the card went to his seat, gets nothing of it, only the note',
+  );
 
   // ---------- 🪟 The card window again, for Dan; one window from here ----------
   await openSend();
@@ -658,14 +868,26 @@ try {
   const n1 = states.length;
   await spaceCard.getByRole('button', { name: '🤫 Card for whoever landed there' }).click();
   await offer.waitFor();
-  assert((await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Dan').getAttribute('aria-pressed')) === 'false', 'the offer starts with whoever landed (Ann)');
-  assert((await offer.evaluate((o) => o.previousElementSibling?.getAttribute('aria-label'))) === 'Space: Mission', 'it shows right under the space’s card, where its button was pressed');
-  assert((await offer.locator('.exposed').innerText()).includes('never what’s on it'), 'one window: the offer says viewers see who gets the card, never what’s on it');
+  assert(
+    (await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Dan').getAttribute('aria-pressed')) === 'false',
+    'the offer starts with whoever landed (Ann)',
+  );
+  assert(
+    (await offer.evaluate((o) => o.previousElementSibling?.getAttribute('aria-label'))) === 'Space: Mission',
+    'it shows right under the space’s card, where its button was pressed',
+  );
+  assert(
+    (await offer.locator('.exposed').innerText()).includes('never what’s on it'),
+    'one window: the offer says viewers see who gets the card, never what’s on it',
+  );
   await offStream(host, 'the host page in one window', 'a board space’s card offered');
   await sleep(1000);
   assert(cards().length === 1 && !JSON.stringify(states.slice(n1)).includes('Secret-') && !heardOf('ann', 'Secret-'), 'pressing the button sent nothing');
   await offer.getByRole('button', { name: '📤 Send' }).click();
-  assert(await until(() => cards().length === 2 && cards()[1].text === SECRET && JSON.stringify(cards()[1].to) === to('Ann')), 'confirmed with 📤 Send: to Ann’s seat only');
+  assert(
+    await until(() => cards().length === 2 && cards()[1].text === SECRET && JSON.stringify(cards()[1].to) === to('Ann')),
+    'confirmed with 📤 Send: to Ann’s seat only',
+  );
   const secret = cards()[1];
   await tapOpen(ann, SECRET);
   assert(!heardOf('bob2', 'Secret-') && !heardOf('cat', 'Secret-') && !heardOf('dan', 'Secret-'), 'nobody else gets it');
@@ -689,7 +911,10 @@ try {
     'every state since the reload holds both cards under the same ids (nothing is sent again)',
   );
   assert(!(await offer.count()), 'the offer left waiting is gone, and was never sent');
-  assert((await ann.getByText(SECRET).isVisible()) && !(await cardsOn(dan)) && viewOf('dan').cards?.late === 1, 'Ann’s phone keeps her card through the reload; Dan’s phone is still late');
+  assert(
+    (await ann.getByText(SECRET).isVisible()) && !(await cardsOn(dan)) && viewOf('dan').cards?.late === 1,
+    'Ann’s phone keeps her card through the reload; Dan’s phone is still late',
+  );
   await win2.getByText('The host’s page closed').waitFor();
   assert(!(await win2.getByText(FOR_DAN).count()), 'the card window let go of the card when the host’s page went');
   assert((await outButton.innerText()).trim() === '🤫 2 cards out', 'one window: the tools row counts the cards out');
@@ -700,7 +925,10 @@ try {
   await openSend();
   await sendMenu.getByRole('button', { name: 'Card window for Dan' }).click();
   await win2.getByText(FOR_DAN).waitFor();
-  assert((await win2.getByText('For Dan only').count()) === 1 && !(await win2.getByText(SECRET).count()), '🪟 again: the card window shows Dan’s card again, and only his');
+  assert(
+    (await win2.getByText('For Dan only').count()) === 1 && !(await win2.getByText(SECRET).count()),
+    '🪟 again: the card window shows Dan’s card again, and only his',
+  );
   await sleep(500);
   assert(popups === 0 && ctx.pages().length === 2, 'in the same window (no second one opens)');
   await closeMenu(sendMenu);
@@ -708,8 +936,14 @@ try {
   // ---------- The list of cards out in one window; ↻ Send again reaches Dan's phone; ↩ Take back ----------
   await outButton.click();
   await outList.waitFor();
-  assert((await rowText('Card 1')).includes('Card 1 → Dan') && (await rowText('Card 2')).includes('Card 2 → Ann'), 'the list keeps its labels through the reload');
-  assert(await until(async () => (await rowText('Card 1')).includes('Dan’s new phone hasn’t got it')), `and says Dan’s phone came late (${await rowText('Card 1')})`);
+  assert(
+    (await rowText('Card 1')).includes('Card 1 → Dan') && (await rowText('Card 2')).includes('Card 2 → Ann'),
+    'the list keeps its labels through the reload',
+  );
+  assert(
+    await until(async () => (await rowText('Card 1')).includes('Dan’s new phone hasn’t got it')),
+    `and says Dan’s phone came late (${await rowText('Card 1')})`,
+  );
   await offStream(host, 'the host page in one window', 'the list of cards out, after the reload');
   await outList.getByRole('button', { name: 'Send Card 1 again' }).click();
   assert(
@@ -735,23 +969,43 @@ try {
   await pick.selectOption({ label: 'Movies $200 · Card 1 · 1 line of words, 1 picture' });
   await chip(sendMenu, 'Dan').click();
   await sendMenu.getByRole('button', { name: '📤 Send' }).click();
-  assert(await until(() => cards().length === 1 && JSON.stringify(cards()[0].to) === to('Dan') && !!cards()[0].media?.[0]?.file), 'a tile’s card, with its picture, to Dan');
+  assert(
+    await until(() => cards().length === 1 && JSON.stringify(cards()[0].to) === to('Dan') && !!cards()[0].media?.[0]?.file),
+    'a tile’s card, with its picture, to Dan',
+  );
   const lastCard = cards()[0];
   await closeMenu(sendMenu);
   await tapOpen(dan, JUST);
-  assert(await until(() => dan.locator('.card img').evaluate((i) => i.complete && i.naturalWidth > 0).catch(() => false)), 'his phone shows it, picture and all');
+  assert(
+    await until(() =>
+      dan
+        .locator('.card img')
+        .evaluate((i) => i.complete && i.naturalWidth > 0)
+        .catch(() => false),
+    ),
+    'his phone shows it, picture and all',
+  );
   await host.getByRole('button', { name: 'Exit' }).click();
   await sleep(500);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   assert(await until(() => last()?.status?.text === SETTING_UP && cards()[0]?.id === lastCard.id), 'Keep & leave: the card stays out, under its id');
   await sleep(1000);
-  assert((await dan.getByText(JUST).isVisible()) && !(await dan.getByRole('button', { name: 'Tap to see' }).count()), 'Dan’s phone keeps it open as it was (no new card)');
+  assert(
+    (await dan.getByText(JUST).isVisible()) && !(await dan.getByRole('button', { name: 'Tap to see' }).count()),
+    'Dan’s phone keeps it open as it was (no new card)',
+  );
   await statusBarIn(host).locator('.kept').getByRole('button', { name: 'Discard', exact: true }).click();
   await host.getByRole('alertdialog').getByRole('button', { name: 'Discard', exact: true }).click();
   assert(await until(() => last()?.status?.text === SETTING_UP && !cards().length), 'the kept game discarded: the room (still open) holds no card');
   assert(await until(async () => !(await cardsOn(dan))), 'Dan’s phone drops it');
   // (Stored as a plain copy: a reload doesn't send the discarded game's card again, and autosave keeps working.)
-  assert(await until(async () => { const r = await stored(host, 'playSession:room'); return !!r && !r.cards; }), 'the room is saved without the discarded game’s cards');
+  assert(
+    await until(async () => {
+      const r = await stored(host, 'playSession:room');
+      return !!r && !r.cards;
+    }),
+    'the room is saved without the discarded game’s cards',
+  );
   assert(await host.locator('.editor > header').getByText('✓ Kept in this browser').isVisible(), 'autosave still works');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);

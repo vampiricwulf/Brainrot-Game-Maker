@@ -33,7 +33,10 @@ const AC3_FRAME =
  * back), a key frame every `keyEvery` seconds, with a sound when `audio`: an Opus tone (true or 'opus'), or AC-3
  * silence ('ac3'). In a WebM, an MKV (`box: 'mkv'`, which holds AC-3) or an MP4 (`box: 'mp4'`). Returns its bytes.
  */
-export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, codec = 'vp8', bitrate = 1_000_000, keyEvery = 1, audio = true, box = 'webm', hue = false } = {}) {
+export async function clip(
+  page,
+  { w = 320, h = 240, seconds = 2, fps = 30, codec = 'vp8', bitrate = 1_000_000, keyEvery = 1, audio = true, box = 'webm', hue = false } = {},
+) {
   const b64 = await page.evaluate(
     async (o) => {
       const M = window.Mediabunny;
@@ -44,7 +47,9 @@ export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, code
       const g = canvas.getContext('2d');
       const small = Object.assign(document.createElement('canvas'), { width: Math.ceil(o.w / 8), height: Math.ceil(o.h / 8) });
       const sg = small.getContext('2d');
-      const video = o.codec ? new M.CanvasSource(canvas, { codec: o.codec, quality: new M.Quality({ bitrate: o.bitrate }), keyFrameInterval: o.keyEvery }) : null;
+      const video = o.codec
+        ? new M.CanvasSource(canvas, { codec: o.codec, quality: new M.Quality({ bitrate: o.bitrate }), keyFrameInterval: o.keyEvery })
+        : null;
       if (video) out.addVideoTrack(video, { frameRate: o.fps });
       const opus = o.audio === true || o.audio === 'opus';
       const sound = opus ? new M.AudioSampleSource({ codec: 'opus', quality: new M.Quality({ bitrate: 64_000 }) }) : null;
@@ -56,7 +61,10 @@ export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, code
         const frame = Uint8Array.from(atob(o.ac3Frame), (c) => c.charCodeAt(0));
         const d = 1536 / 48_000;
         for (let k = 0; k * d < o.seconds; k++)
-          await ac3.add(new M.EncodedPacket(frame, 'key', k * d, d), k ? undefined : { decoderConfig: { codec: 'ac-3', numberOfChannels: 1, sampleRate: 48_000 } });
+          await ac3.add(
+            new M.EncodedPacket(frame, 'key', k * d, d),
+            k ? undefined : { decoderConfig: { codec: 'ac-3', numberOfChannels: 1, sampleRate: 48_000 } },
+          );
       }
       // (A sound alone: no frames, and the Opus tone below is a second at a time all the same.)
       const step = video ? 1 / o.fps : 1;
@@ -125,7 +133,11 @@ export async function ts(page, { seconds = 3 } = {}) {
       await out.start();
       const frame = Uint8Array.from(atob(o.frame), (c) => c.charCodeAt(0));
       const d = 1152 / 44_100;
-      for (let k = 0; k * d < o.seconds; k++) await src.add(new M.EncodedPacket(frame, 'key', k * d, d), k ? undefined : { decoderConfig: { codec: 'mp3', numberOfChannels: 1, sampleRate: 44_100 } });
+      for (let k = 0; k * d < o.seconds; k++)
+        await src.add(
+          new M.EncodedPacket(frame, 'key', k * d, d),
+          k ? undefined : { decoderConfig: { codec: 'mp3', numberOfChannels: 1, sampleRate: 44_100 } },
+        );
       await out.finalize();
       const bytes = new Uint8Array(target.buffer);
       let bin = '';

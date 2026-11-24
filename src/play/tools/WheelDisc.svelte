@@ -59,7 +59,7 @@
   /** As big as the slice's width allows, and small enough for the label to fit between the hub and the rim. */
   const fontFor = (span: number, label: string) => Math.max(14, Math.min(56, span * 1.6, LEN / (CHAR * Math.max(4, label.length))));
   /** On the left half (where it is right now), a label is turned the other way round so it never reads upside down. */
-  const flipped = (mid: number) => ((((mid + rot) % 360) + 360) % 360) > 180;
+  const flipped = (mid: number) => (((mid + rot) % 360) + 360) % 360 > 180;
 </script>
 
 <svg viewBox="-470 -500 940 1000" class="wheel">
@@ -81,8 +81,8 @@
           dominant-baseline="middle"
           textLength={CHAR * size * label.length > LEN * 0.92 ? LEN : undefined}
           lengthAdjust="spacingAndGlyphs"
-          transform="rotate({flipped(mid) ? 90 : -90} 0 {-MID})"
-        >{label}</text>
+          transform="rotate({flipped(mid) ? 90 : -90} 0 {-MID})">{label}</text
+        >
       </g>
     {/each}
     <circle class="rim" r="60" fill="#111" stroke-width="8" />

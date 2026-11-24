@@ -67,7 +67,15 @@
    * measured as it opened, kept free of buttons. Under the stage, where its left edge would cut a button of the tools row
    * (its foot lies over that row), it's the panel's whole width instead: it covers the row, no stub of a tool beside it.
    */
-  let place = $state<{ right: number; bottom: number; width: number; maxH: number; minH: number; spot: { right: number; bottom: number; width: number; height: number } | null; pad: number }>();
+  let place = $state<{
+    right: number;
+    bottom: number;
+    width: number;
+    maxH: number;
+    minH: number;
+    spot: { right: number; bottom: number; width: number; height: number } | null;
+    pad: number;
+  }>();
   function measure(): void {
     const panel = el?.closest<HTMLElement>('.panel');
     if (!el || !panel) return;
@@ -92,7 +100,10 @@
     // squeezed to half its width and cut; its guard still keeps a fast second tap there from pressing what's under it.)
     const main = mainAt;
     const keep = !!main && (side || width >= 460);
-    const spot = main && keep ? { right: Math.max(0, cardRight - main.right - 4), bottom: Math.max(0, cardBottom - main.bottom - 4), width: main.width + 8, height: main.height + 8 } : null;
+    const spot =
+      main && keep
+        ? { right: Math.max(0, cardRight - main.right - 4), bottom: Math.max(0, cardBottom - main.bottom - 4), width: main.width + 8, height: main.height + 8 }
+        : null;
     place = {
       right,
       bottom,
@@ -131,7 +142,15 @@
 
   /** A tap where the blue button was, on a card that draws no spot for it (a phone). */
   const onSpot = (e: MouseEvent): boolean =>
-    !!place && !place.spot && !side && !!mainAt && e.detail >= 1 && e.clientX >= mainAt.left && e.clientX <= mainAt.right && e.clientY >= mainAt.top && e.clientY <= mainAt.bottom;
+    !!place &&
+    !place.spot &&
+    !side &&
+    !!mainAt &&
+    e.detail >= 1 &&
+    e.clientX >= mainAt.left &&
+    e.clientX <= mainAt.right &&
+    e.clientY >= mainAt.top &&
+    e.clientY <= mainAt.bottom;
   /** Its last press that went: the rest of that double-click presses nothing more, however old the check. */
   let pressed: CheckPress | null = null;
   /**
@@ -214,7 +233,9 @@
       {#each check.items as item (item.id)}
         <div class="item" class:done={!!item.done} data-goon-item={item.id}>
           <!-- (The space as an expression: Svelte drops a plain space at a block's end, which read “✓Player 1 rolled 2”.) -->
-          <p class="text">{#if item.done}<span class="tick">{item.done}</span>{' '}{/if}{item.text}</p>
+          <p class="text"
+            >{#if item.done}<span class="tick">{item.done}</span>{' '}{/if}{item.text}</p
+          >
           {#each linesOf(item) as line, li (li)}
             <div class="quick" inert={!!item.done}>
               {#if line.who}<span class="who">{line.who}</span>{/if}
@@ -230,7 +251,8 @@
                   aria-label={q.aria}
                   data-quick
                   onclick={(e) => quick(e, q, item)}
-                  >{q.label}{#each caps(q) as k (k)} <kbd aria-hidden="true">{k}</kbd>{/each}</button
+                  >{q.label}{#each caps(q) as k (k)}
+                    <kbd aria-hidden="true">{k}</kbd>{/each}</button
                 >
               {/each}
             </div>
@@ -268,7 +290,14 @@
   </div>
   {#if place?.spot}
     <!-- Where the blue button was: its step's name, never a button. -->
-    <div class="spot" aria-hidden="true" style:right="{place.spot.right}px" style:bottom="{place.spot.bottom}px" style:min-width="{place.spot.width}px" style:min-height="{place.spot.height}px">
+    <div
+      class="spot"
+      aria-hidden="true"
+      style:right="{place.spot.right}px"
+      style:bottom="{place.spot.bottom}px"
+      style:min-width="{place.spot.width}px"
+      style:min-height="{place.spot.height}px"
+    >
       <span class="step">{check.step.verb.label}</span>
       <small>{must ? CHECK.comesOnce : left.length ? CHECK.waits : ''}</small>
     </div>
@@ -376,7 +405,9 @@
     font-size: 12px;
   }
   kbd {
-    font: 11px/1 ui-monospace, monospace;
+    font:
+      11px/1 ui-monospace,
+      monospace;
     padding: 1px 4px;
     margin-left: 4px;
     border: 1px solid currentColor;

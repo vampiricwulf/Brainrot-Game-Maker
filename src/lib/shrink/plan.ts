@@ -28,7 +28,8 @@ export const TOO_LONG = 'This GIF is too long to turn into a video here';
 export const NO_ENCODER = 'This browser can’t make this copy: try Chrome, Edge, Firefox or the desktop app';
 export const NOT_SMALLER = 'A video of it wouldn’t be much smaller: nothing was changed';
 /** Said under the choice when this browser makes WebM only. */
-export const WEBM_NOTE = 'This browser makes WebM videos: some iPhones may not play them. For a copy every phone plays, make it in Chrome or Edge on Windows or Mac, or in the desktop app.';
+export const WEBM_NOTE =
+  'This browser makes WebM videos: some iPhones may not play them. For a copy every phone plays, make it in Chrome or Edge on Windows or Mac, or in the desktop app.';
 
 /** What a copy is called: "Dance.gif" → "Dance (phones).mp4" (its own type's extension: packs name files by it). */
 export function copyName(name: string, ext: string): string {
@@ -109,12 +110,15 @@ export function formatLine(plan: Pick<GifPlan, 'codec'>, sound?: string): string
 
 /** A copy's type in a word: "MP4", "WebM". */
 export const typeWord = (mime: string): string =>
-  ({ 'video/mp4': 'MP4', 'video/webm': 'WebM', 'audio/mp4': 'M4A', 'audio/ogg': 'OGG', 'audio/mpeg': 'MP3', 'audio/wav': 'WAV', 'audio/flac': 'FLAC' })[mime.split(';')[0]] ?? mime;
+  ({ 'video/mp4': 'MP4', 'video/webm': 'WebM', 'audio/mp4': 'M4A', 'audio/ogg': 'OGG', 'audio/mpeg': 'MP3', 'audio/wav': 'WAV', 'audio/flac': 'FLAC' })[
+    mime.split(';')[0]
+  ] ?? mime;
 
 /** What's copied, for History and toasts (never its name: they can be on stream). */
 export type CopyOf = 'video' | 'GIF' | 'sound';
 /** History: "Made a smaller copy of a GIF for phones" (`playable` false: phones couldn't play the file as it is). */
-export const madeLabel = (what: CopyOf, playable = true): string => (playable ? `Made a smaller copy of a ${what} for phones` : `Made a copy of a ${what} that phones can play`);
+export const madeLabel = (what: CopyOf, playable = true): string =>
+  playable ? `Made a smaller copy of a ${what} for phones` : `Made a copy of a ${what} that phones can play`;
 /** History: "Removed a GIF's smaller copy for phones". */
 export const removedLabel = (what: CopyOf): string => `Removed a ${what}’s smaller copy for phones`;
 
@@ -159,13 +163,15 @@ export const CANT_READ_PICTURE = 'The app can’t read this video’s picture, s
 export const CANT_MAKE_SOUND = 'This browser can’t make this video’s sound for phones. Try Chrome or Edge on Windows or Mac, or add it from a link';
 export const SOUND_TOO_LONG = 'This browser can only make a copy of a sound like this one up to 15 minutes long';
 /** Said under the choice when a sound's copy is Opus. */
-export const OPUS_NOTE = 'Its sound is Opus: some iPhones may not play it. For a copy every phone plays, make it in Chrome or Edge on Windows or Mac, or in the desktop app.';
+export const OPUS_NOTE =
+  'Its sound is Opus: some iPhones may not play it. For a copy every phone plays, make it in Chrome or Edge on Windows or Mac, or in the desktop app.';
 /** Said under the choices when even the smallest is over what the buzzer server takes. */
 export const STILL_TOO_BIG = 'Still too big for this buzzer server: try only the part the cards play, or add it from a link.';
 /** Its copy came out too big for the buzzer server, and none smaller can be made of it. */
 export const NO_SMALLER = 'Its copy came out too big for this buzzer server, and there’s no smaller one to make: add it from a link instead';
 /** The same, but one of only the part its cards play would be smaller. */
-export const NO_SMALLER_PART = 'Its copy came out too big for this buzzer server, and there’s no smaller one of all of it: try only the part the cards play, or add it from a link';
+export const NO_SMALLER_PART =
+  'Its copy came out too big for this buzzer server, and there’s no smaller one of all of it: try only the part the cards play, or add it from a link';
 
 /** One of a video's copies: its preset, its picture's size and its bitrate. */
 export interface VideoChoice {
@@ -363,7 +369,14 @@ const trimOf = (span: Span | null): Pick<RunPlan, 'trim'> => (span ? { trim: { s
  * what it can make sound with (`can`): an MP4 (H.264, its sound AAC, copied when it is) when it can, else a WebM (VP9,
  * else VP8, its sound Opus or Vorbis copied, else Opus). At most MAX_FPS frames a second, a key frame every KEY_EVERY.
  */
-export function planVideoCopy(f: MediaFacts, can: Can, enc: Encoders, choice: VideoChoice, span: Span | null, playable: boolean): CopyPlan | { refuse: string } {
+export function planVideoCopy(
+  f: MediaFacts,
+  can: Can,
+  enc: Encoders,
+  choice: VideoChoice,
+  span: Span | null,
+  playable: boolean,
+): CopyPlan | { refuse: string } {
   if (!f.box) return { refuse: CANT_READ_FILE };
   if (!f.video) return { refuse: f.hiddenVideo ? CANT_READ_PICTURE : NO_PICTURE };
   if (!f.video.decodes) return { refuse: CANT_READ_VIDEO };
@@ -372,7 +385,12 @@ export function planVideoCopy(f: MediaFacts, can: Can, enc: Encoders, choice: Vi
   // copy goes without it, as the file itself plays here, rather than not at all.
   const lost = f.audio && !f.audio.decodes && !['aac', 'opus', 'vorbis'].includes(f.audio.codec ?? '') ? f.audio : null;
   const a = lost ? null : f.audio;
-  const made = (codec: 'aac' | 'opus'): RunAudio => ({ codec, bitrate: a?.channels === 1 ? MONO_BPS : SOUND_BPS, forceTranscode: true, ...(a && a.channels > 2 ? { numberOfChannels: 2 } : {}) });
+  const made = (codec: 'aac' | 'opus'): RunAudio => ({
+    codec,
+    bitrate: a?.channels === 1 ? MONO_BPS : SOUND_BPS,
+    forceTranscode: true,
+    ...(a && a.channels > 2 ? { numberOfChannels: 2 } : {}),
+  });
   let codec: 'avc' | 'vp9' | 'vp8';
   let audio: RunAudio | undefined = lost ? { discard: true } : undefined;
   let sound = '';
@@ -497,7 +515,12 @@ export function avOptions(r: AvRead, trim: boolean, fileBytes: number): ReturnTy
  */
 export function avPlan(r: AvRead, trim: boolean, choice: VideoChoice | null): CopyPlan | { refuse: string } {
   const span = trim && r.span ? r.span.span : null;
-  const p = r.kind === 'audio' ? planSoundCopy(r.facts, r.can, span, r.playable) : choice ? planVideoCopy(r.facts, r.can, r.enc[`${choice.width}×${choice.height}`] ?? NO_ENCODERS, choice, span, r.playable) : { refuse: NOT_MUCH_SMALLER };
+  const p =
+    r.kind === 'audio'
+      ? planSoundCopy(r.facts, r.can, span, r.playable)
+      : choice
+        ? planVideoCopy(r.facts, r.can, r.enc[`${choice.width}×${choice.height}`] ?? NO_ENCODERS, choice, span, r.playable)
+        : { refuse: NOT_MUCH_SMALLER };
   const { k } = overBy(r.kind, r.facts, r.over);
   return 'refuse' in p || k === 1 ? p : { ...p, estimate: Math.round(p.estimate * k) };
 }
@@ -546,7 +569,12 @@ export interface EditPlan {
  * Mbps (a fifth less for VP9), never more than the source's own rate a pixel allows (half as much again from HEVC,
  * AV1 or VP9 to H.264, a tenth otherwise), and 300 kbps at least.
  */
-export function videoBitrate(w: number, h: number, codec: 'avc' | 'vp9' | 'vp8', src?: { bps: number | null; w: number; h: number; codec: string | null }): number {
+export function videoBitrate(
+  w: number,
+  h: number,
+  codec: 'avc' | 'vp9' | 'vp8',
+  src?: { bps: number | null; w: number; h: number; codec: string | null },
+): number {
   let bps = Math.min(8_000_000, Math.max(1_200_000, (5_000_000 * w * h) / (1280 * 720))) * (codec === 'vp9' ? 0.8 : 1);
   if (src?.bps && src.w > 0 && src.h > 0) {
     const k = codec === 'avc' && (src.codec === 'hevc' || src.codec === 'av1' || src.codec === 'vp9') ? 1.5 : 1.1;
@@ -593,8 +621,8 @@ export function planConvert(f: MediaFacts, fix: Fix, can: Can, kind: 'video' | '
     audio = { codec, bitrate: a.channels === 1 ? MONO_BPS : SOUND_BPS, forceTranscode: true, ...(a.channels > 2 ? { numberOfChannels: 2 } : {}) };
   }
   // About how big: the file as it is, less what's left out, when nothing is made again; else the rates it's made at.
-  const abps = !a || dropped ? 0 : audio?.bitrate ?? trackBps(f, 'audio');
-  const vbps = !v ? 0 : video?.bitrate ?? trackBps(f, 'video');
+  const abps = !a || dropped ? 0 : (audio?.bitrate ?? trackBps(f, 'audio'));
+  const vbps = !v ? 0 : (video?.bitrate ?? trackBps(f, 'video'));
   let estimate: number;
   if (lossless) {
     const less = (dropped && secs ? (trackBps(f, 'audio') * secs) / 8 : 0) + (f.video && !v && secs ? (trackBps(f, 'video') * secs) / 8 : 0);
@@ -605,11 +633,14 @@ export function planConvert(f: MediaFacts, fix: Fix, can: Can, kind: 'video' | '
     ...(a ? [dropped ? 'no sound' : (codecName(fix.audio === 'encode' ? fix.to?.audio : a.codec) ?? 'its sound')] : []),
   ];
   const notes: string[] = [];
-  if (a && !dropped && f.moreAudio) notes.push(`It has ${f.moreAudio + 1} sound tracks: the converted file keeps ${a.label ? `“${a.label}”` : 'the first'} only.`);
+  if (a && !dropped && f.moreAudio)
+    notes.push(`It has ${f.moreAudio + 1} sound tracks: the converted file keeps ${a.label ? `“${a.label}”` : 'the first'} only.`);
   if (f.subtitles) notes.push('Its subtitles aren’t kept.');
   if (v?.hdr && fix.video === 'encode') notes.push('It’s an HDR video (iPhones film in HDR): converting it may make its colors look a little dull.');
   if (v && fix.video === 'encode' && fix.box === 'mp4' && fix.to?.video !== 'avc')
-    notes.push('This browser can’t make H.264 videos, so the video is VP9 in an MP4: it plays in Chrome, Edge, Firefox and the desktop app; some iPhones may not play it.');
+    notes.push(
+      'This browser can’t make H.264 videos, so the video is VP9 in an MP4: it plays in Chrome, Edge, Firefox and the desktop app; some iPhones may not play it.',
+    );
   return {
     run: {
       box: fix.box,
@@ -665,7 +696,8 @@ const SOUND_SLACK = 0.2;
 const GiB = 1024 ** 3;
 
 export const CANT_READ_EDIT = 'The app can’t read this file, so it can’t edit it.';
-export const CANT_READ_PICTURE_EDIT = 'The app can’t read this video’s picture, so it can’t edit it: convert it to MP4 (H.264) with a video app first (HandBrake is free).';
+export const CANT_READ_PICTURE_EDIT =
+  'The app can’t read this video’s picture, so it can’t edit it: convert it to MP4 (H.264) with a video app first (HandBrake is free).';
 export const NO_REENCODE_HERE =
   'Cropping and resizing need Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address. Trimming works here.';
 export const CANT_SIZE = 'This browser can’t make a video this size: pick a smaller size.';
@@ -673,11 +705,14 @@ export const CANT_SIZE = 'This browser can’t make a video this size: pick a sm
 export const CANT_CUT_SOUND = 'This browser can’t cut this sound there as it is: move the start a little. Nothing was changed.';
 export const TOO_SHORT = 'Keep at least a tenth of a second.';
 /** Said when a video's picture is made again as VP9 in an MP4 (there's no H.264 encoder here). */
-export const VP9_IN_MP4 = 'This browser can’t make H.264 videos, so the video is VP9 in an MP4: it plays in Chrome, Edge, Firefox and the desktop app; some iPhones may not play it.';
+export const VP9_IN_MP4 =
+  'This browser can’t make H.264 videos, so the video is VP9 in an MP4: it plays in Chrome, Edge, Firefox and the desktop app; some iPhones may not play it.';
 /** Said when a video that wasn't a WebM is saved as one (there's no H.264 encoder here). */
-export const WEBM_EDIT_NOTE = 'This browser makes WebM videos: some iPhones may not play them. For one every phone plays, edit it in Chrome or Edge on Windows or Mac, or in the desktop app.';
+export const WEBM_EDIT_NOTE =
+  'This browser makes WebM videos: some iPhones may not play them. For one every phone plays, edit it in Chrome or Edge on Windows or Mac, or in the desktop app.';
 /** "This browser can't re-encode HEVC (H.265) video: only trimming works here…". */
-export const cantReencode = (codec: string | null): string => `This browser can’t re-encode ${codecName(codec) ?? 'this'} video: only trimming works here, which keeps the video as it is.`;
+export const cantReencode = (codec: string | null): string =>
+  `This browser can’t re-encode ${codecName(codec) ?? 'this'} video: only trimming works here, which keeps the video as it is.`;
 /** "This browser can't re-encode its sound (AAC) for a WebM: untick Keep its sound…". */
 export const cantSound = (codec: string | null, box: OutBox): string =>
   `This browser can’t re-encode its sound (${codecName(codec) ?? 'its format'}) for ${aOrAn(fixBoxName(box))}: untick Keep its sound, or edit it in Chrome or Edge on Windows or Mac.`;
@@ -716,7 +751,8 @@ const resizes = (f: MediaFacts, e: FileEdit): boolean => {
 };
 
 /** `e`'s scale (percent) when it makes the picture smaller (null: none, or 100% or more). */
-export const scaleOf = (e: Pick<FileEdit, 'scale'>): number | null => (e.scale != null && Number.isFinite(e.scale) && e.scale >= 1 && e.scale < 100 ? e.scale : null);
+export const scaleOf = (e: Pick<FileEdit, 'scale'>): number | null =>
+  e.scale != null && Number.isFinite(e.scale) && e.scale >= 1 && e.scale < 100 ? e.scale : null;
 
 /** Whether `e` changes nothing (Apply has nothing to do). */
 export function isNoEdit(e: FileEdit, f: MediaFacts, silent = false): boolean {
@@ -793,7 +829,9 @@ export function editLabel(kind: 'video' | 'audio', e: FileEdit, f: MediaFacts, h
 
 /** A file type's extension: "mp4", "webm", "m4a". */
 export const extFor = (mime: string): string =>
-  ({ 'video/mp4': 'mp4', 'video/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/flac': 'flac' })[mime.split(';')[0]] ?? 'bin';
+  ({ 'video/mp4': 'mp4', 'video/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/flac': 'flac' })[
+    mime.split(';')[0]
+  ] ?? 'bin';
 
 /** What an edited copy is called: "Clip.webm" → "Clip (edited).mp4" (its own type's extension). */
 export function editedName(name: string, mime: string): string {
@@ -846,7 +884,14 @@ export const needsKey = (f: MediaFacts, e: FileEdit, kind: 'video' | 'audio', ca
  * makes the picture again: H.264 in an MP4 where this browser can, else VP9 or VP8 (in a WebM, or with its sound
  * copied in an MP4). Or why it can't be made here.
  */
-export function planEdit(f: MediaFacts, e: FileEdit, can: Can, enc: Encoders, keyAt: number | null, kind: 'video' | 'audio'): (EditPlan & EditExtra) | { refuse: string } {
+export function planEdit(
+  f: MediaFacts,
+  e: FileEdit,
+  can: Can,
+  enc: Encoders,
+  keyAt: number | null,
+  kind: 'video' | 'audio',
+): (EditPlan & EditExtra) | { refuse: string } {
   if (!f.box) return { refuse: CANT_READ_EDIT };
   const length = f.seconds ?? 0;
   const v = kind === 'video' ? f.video : null;
@@ -888,7 +933,12 @@ export function planEdit(f: MediaFacts, e: FileEdit, can: Can, enc: Encoders, ke
       fit: 'fill',
       codec,
       // (Its own rate, or the file's less its sound's when its picture's isn't said: never more a pixel than it has.)
-      bitrate: videoBitrate(size!.w, size!.h, codec, { bps: v.bps ?? (length ? Math.max(0, (f.size * 8) / length - (a?.bps ?? 0)) : null), w: v.width, h: v.height, codec: v.codec }),
+      bitrate: videoBitrate(size!.w, size!.h, codec, {
+        bps: v.bps ?? (length ? Math.max(0, (f.size * 8) / length - (a?.bps ?? 0)) : null),
+        w: v.width,
+        h: v.height,
+        codec: v.codec,
+      }),
       bitrateMode: 'variable',
       keyFrameInterval: KEY_EVERY,
       forceTranscode: true,
@@ -936,10 +986,7 @@ export function planEdit(f: MediaFacts, e: FileEdit, can: Can, enc: Encoders, ke
   else if (encodeVideo && vcodec !== 'avc' && copyBox !== 'webm') notes.push(WEBM_EDIT_NOTE);
   if (estimate > 2 * GiB) notes.push(`About ${(estimate / GiB).toFixed(1)} GB: a .brainrot pack this big can’t be opened again (2 GB at most).`);
 
-  const names = [
-    ...(v ? [codecName(vcodec) ?? 'its video'] : []),
-    ...(a ? [keep ? (codecName(acodec) ?? 'its sound') : 'no sound'] : []),
-  ];
+  const names = [...(v ? [codecName(vcodec) ?? 'its video'] : []), ...(a ? [keep ? (codecName(acodec) ?? 'its sound') : 'no sound'] : [])];
   const cut = cutting ? { from, to: end, length } : null;
   const done = { ...e, start: from, end };
   const labels = { all: editLabel(kind, done, f, 'all'), item: editLabel(kind, done, f, 'item'), new: editLabel(kind, done, f, 'new') };

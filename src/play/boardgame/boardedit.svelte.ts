@@ -121,7 +121,12 @@ export function editAdd(game: Game, session: Session, at: { x: number; y: number
   const after = spaceById(round, boardEdit.sel ?? undefined);
   const name = nextSpaceName(round);
   let id = '';
-  edit(game, session, (h) => `Added space “${name}”${after ? ` after ${nm(game, session, after, h)}` : ''}`, () => (id = addLiveSpace(round, at, after).id));
+  edit(
+    game,
+    session,
+    (h) => `Added space “${name}”${after ? ` after ${nm(game, session, after, h)}` : ''}`,
+    () => (id = addLiveSpace(round, at, after).id),
+  );
   boardEdit.adding = false;
   boardEdit.link = null;
   editPick(id);
@@ -143,7 +148,12 @@ export function editDelete(game: Game, session: Session, id: string, hide = fals
   if (!round) return;
   if (round.spaces.length <= 1) return void toast('A board needs a space: add another before deleting this one');
   const res: { done?: Deleted } = {};
-  edit(game, session, (h) => `Deleted space ${nm(game, session, spaceById(round, id), h)}`, () => (res.done = deleteLiveSpace(session, round, bs, id, (s) => said(game, session, s, true)) ?? undefined));
+  edit(
+    game,
+    session,
+    (h) => `Deleted space ${nm(game, session, spaceById(round, id), h)}`,
+    () => (res.done = deleteLiveSpace(session, round, bs, id, (s) => said(game, session, s, true)) ?? undefined),
+  );
   // (The log says who moved where: the step's own name is fixed before it runs, so it's said here too.)
   const last = session.actionLog?.at(-1);
   const { done } = res;
@@ -169,16 +179,23 @@ export function editDeleteAll(game: Game, session: Session, ids: string[], hide 
   if (!ids.length) return;
   if (round.spaces.length <= ids.length) return void toast('A board needs a space: leave one out of the selection (Shift+click it)');
   const done: Deleted[] = [];
-  logged(session, `Deleted ${ids.length} spaces`, () => {
-    for (const id of ids) {
-      const d = deleteLiveSpace(session, round, bs, id, (s) => said(game, session, s, true));
-      if (d) done.push(d);
-    }
-  }, game);
+  logged(
+    session,
+    `Deleted ${ids.length} spaces`,
+    () => {
+      for (const id of ids) {
+        const d = deleteLiveSpace(session, round, bs, id, (s) => said(game, session, s, true));
+        if (d) done.push(d);
+      }
+    },
+    game,
+  );
   // (The log says who moved where, as one space's delete does: each player moved, where they ended up.)
   const moved = [...new Set(done.flatMap((d) => d.moved.map((m) => m.playerId)))].filter((pid) => session.players.some((p) => p.id === pid));
   const line = (h: boolean) => {
-    const m = moved.map((pid) => `${session.players.find((p) => p.id === pid)?.name ?? '?'} moved to ${said(game, session, spaceById(round, bs?.positions[pid]?.space), h)}`);
+    const m = moved.map(
+      (pid) => `${session.players.find((p) => p.id === pid)?.name ?? '?'} moved to ${said(game, session, spaceById(round, bs?.positions[pid]?.space), h)}`,
+    );
     return `Deleted ${ids.length} spaces${m.length ? ` (${m.join('; ')})` : ''}`;
   };
   const [text, quiet] = [line(false), line(true)];
@@ -201,7 +218,12 @@ export function editConnect(game: Game, session: Session, from: string, to: stri
   if (from === to) return;
   const [a, b] = [spaceById(round, from), spaceById(round, to)];
   if (a?.next.includes(to)) return void toast(`${nm(game, session, a, hide)} already leads to ${nm(game, session, b, hide)}`);
-  edit(game, session, (h) => `Connected ${said(game, session, a, h)} → ${said(game, session, b, h)}`, () => connectSpaces(round, from, to));
+  edit(
+    game,
+    session,
+    (h) => `Connected ${said(game, session, a, h)} → ${said(game, session, b, h)}`,
+    () => connectSpaces(round, from, to),
+  );
   editPick(null);
   boardEdit.link = { from, to };
 }
@@ -209,7 +231,12 @@ export function editConnect(game: Game, session: Session, from: string, to: stri
 export function editDisconnect(game: Game, session: Session, l: LinkRef): void {
   const { round } = boardNow(game, session);
   if (!round) return;
-  edit(game, session, (h) => `Disconnected ${arrow(game, session, l, h)}`, () => disconnectSpaces(round, l.from, l.to));
+  edit(
+    game,
+    session,
+    (h) => `Disconnected ${arrow(game, session, l, h)}`,
+    () => disconnectSpaces(round, l.from, l.to),
+  );
   boardEdit.link = null;
 }
 
@@ -217,13 +244,23 @@ export function editBothWays(game: Game, session: Session, l: LinkRef): void {
   const { round } = boardNow(game, session);
   if (!round) return;
   const both = !!spaceById(round, l.to)?.next.includes(l.from);
-  edit(game, session, (h) => `Made ${arrow(game, session, l, h)} ${both ? 'one way' : 'both ways'}`, () => toggleBothWays(round, l.from, l.to));
+  edit(
+    game,
+    session,
+    (h) => `Made ${arrow(game, session, l, h)} ${both ? 'one way' : 'both ways'}`,
+    () => toggleBothWays(round, l.from, l.to),
+  );
 }
 
 export function editReverse(game: Game, session: Session, l: LinkRef): void {
   const { round } = boardNow(game, session);
   if (!round) return;
-  edit(game, session, (h) => `Reversed ${arrow(game, session, l, h)}`, () => reverseLink(round, l.from, l.to));
+  edit(
+    game,
+    session,
+    (h) => `Reversed ${arrow(game, session, l, h)}`,
+    () => reverseLink(round, l.from, l.to),
+  );
   boardEdit.link = { from: l.to, to: l.from };
 }
 
@@ -243,7 +280,12 @@ export function editShowName(game: Game, session: Session, id: string, on: boole
   const { round } = boardNow(game, session);
   const s = round && spaceById(round, id);
   if (!round || !s) return;
-  edit(game, session, (h) => nameShownLabel({ name: said(game, session, s, h) }, on), () => setNameShown(s, on));
+  edit(
+    game,
+    session,
+    (h) => nameShownLabel({ name: said(game, session, s, h) }, on),
+    () => setNameShown(s, on),
+  );
 }
 
 /** Show or hide every space's name. */
@@ -257,7 +299,12 @@ export function editStart(game: Game, session: Session, id: string): void {
   const { round } = boardNow(game, session);
   const s = round && spaceById(round, id);
   if (!round || !s) return;
-  edit(game, session, (h) => `Made ${nm(game, session, s, h)} Start`, () => (round.start = id));
+  edit(
+    game,
+    session,
+    (h) => `Made ${nm(game, session, s, h)} Start`,
+    () => (round.start = id),
+  );
 }
 
 /**
@@ -268,5 +315,8 @@ export function editKeep(game: Game, session: Session): void {
   const { round } = boardNow(game, session);
   if (!round) return;
   if (app.game.id !== game.id) return void toast('The editor has a different game open, so there’s nowhere to keep it');
-  toast(step(`Kept the board of “${round.name}” from the show`, () => keepBoard(game, app.game, round.id), { during: 'play' }), 4000);
+  toast(
+    step(`Kept the board of “${round.name}” from the show`, () => keepBoard(game, app.game, round.id), { during: 'play' }),
+    4000,
+  );
 }

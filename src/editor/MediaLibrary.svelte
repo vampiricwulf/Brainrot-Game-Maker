@@ -3,7 +3,19 @@
   import PageHeader from './PageHeader.svelte';
   import { tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { ACCEPT, addMediaFile, canPlay, formatBytes, imgFallback, mediaUrls, missingMedia, noCopyLinks, relinkMissing, replaceMediaFile, stashMedia } from '../lib/media.svelte';
+  import {
+    ACCEPT,
+    addMediaFile,
+    canPlay,
+    formatBytes,
+    imgFallback,
+    mediaUrls,
+    missingMedia,
+    noCopyLinks,
+    relinkMissing,
+    replaceMediaFile,
+    stashMedia,
+  } from '../lib/media.svelte';
   import { attachBlobSwap, nameStep, step, stepAsync } from '../lib/history.svelte';
   import { flash, focusPlace, goTo, placeKey } from '../lib/nav.svelte';
   import { filePlaces, type Place } from '../lib/historylabel';
@@ -96,7 +108,11 @@
   }
 
   /** The one fix a file's card offers, in its foot and its menu: 🔄 Convert… first, else ↻ Make it a…, else 🗜. */
-  function fixOf(m: MediaRef, v: ReturnType<typeof verdictOf> | undefined, copy: MediaRef | undefined): (MenuItem & { kind: 'convert' | 'repack' | 'shrink'; strong: boolean }) | null {
+  function fixOf(
+    m: MediaRef,
+    v: ReturnType<typeof verdictOf> | undefined,
+    copy: MediaRef | undefined,
+  ): (MenuItem & { kind: 'convert' | 'repack' | 'shrink'; strong: boolean }) | null {
     const busy = !!jobFor(m.id);
     if (typeof v === 'object' && (v.is === 'fails' || v.is === 'silent') && v.fix)
       return {
@@ -168,7 +184,9 @@
     const offer = editOffer(m);
     return menuOf({
       heading: m.name,
-      open: offer ? [{ label: editLabel(m), onclick: () => openMediaDialog({ mode: 'edit', id: m.id }), disabled: offer === 'busy', hint: editHint(m) }] : undefined,
+      open: offer
+        ? [{ label: editLabel(m), onclick: () => openMediaDialog({ mode: 'edit', id: m.id }), disabled: offer === 'busy', hint: editHint(m) }]
+        : undefined,
       verbs: [
         missingFile
           ? { label: '🔗 Replace file…', onclick: () => void replace(m), hint: "Pick the file again (or another one) to fix every place it's used" }
@@ -298,13 +316,18 @@
     if (!refs.length) return;
     const n = usage.get(refs[0].id) ?? 0;
     const used = refs.filter((m) => usage.get(m.id)).length;
-    const label = refs.length === 1 ? `Deleted file “${refs[0].name}”${n ? ` (used ${n}×)` : ''}` : `Deleted ${refs.length} files${used ? ` (${used} in use)` : ''}`;
-    remove(refs.map((m) => m.id), label);
+    const label =
+      refs.length === 1 ? `Deleted file “${refs[0].name}”${n ? ` (used ${n}×)` : ''}` : `Deleted ${refs.length} files${used ? ` (${used} in use)` : ''}`;
+    remove(
+      refs.map((m) => m.id),
+      label,
+    );
   }
   let library = $state<HTMLDivElement>();
   function onkey(e: KeyboardEvent): void {
     // (A card's "Select" checkbox isn't typing: Delete and Esc act on the selection there too.)
-    if (!picked.length || e.defaultPrevented || (e.target as HTMLElement).closest?.('input:not([type="checkbox"]), textarea, select, [contenteditable]')) return;
+    if (!picked.length || e.defaultPrevented || (e.target as HTMLElement).closest?.('input:not([type="checkbox"]), textarea, select, [contenteditable]'))
+      return;
     // (Not with a window or a menu open, nor for something else in focus: a round's tab, the header's buttons…)
     const at = document.activeElement;
     if (document.querySelector('[role="dialog"], [role="menu"]') || (at && at !== document.body && !library?.contains(at))) return;
@@ -324,7 +347,10 @@
     renaming = null;
     const want = name.trim();
     if (want && want !== m.name) {
-      const to = uniqueMediaName(game.media.filter((x) => x.id !== m.id).map((x) => x.name), want);
+      const to = uniqueMediaName(
+        game.media.filter((x) => x.id !== m.id).map((x) => x.name),
+        want,
+      );
       step(`Renamed file “${m.name}” to “${to}”`, () => {
         // (Its own name is kept: the file on disk still has it.)
         m.file ??= m.name;
@@ -392,7 +418,9 @@
         : edited.plain
           ? ` (${n} edited picture${n === 1 ? '' : 's'}: ${edited.plain} show${edited.plain === 1 ? 's' : ''} it without the edits)`
           : ` (with the edits of ${n} edited picture${n === 1 ? '' : 's'} done again)`;
-      toast(`"${f.name}" is in place: everything that used this file shows it now${note}${kept ? ' (the copy kept in Recent games still has the old one)' : ''}`);
+      toast(
+        `"${f.name}" is in place: everything that used this file shows it now${note}${kept ? ' (the copy kept in Recent games still has the old one)' : ''}`,
+      );
     } catch (e) {
       toast((e as Error).message);
     }
@@ -493,15 +521,17 @@
 >
   <PageHeader title="Media">
     {#snippet sub()}
-      Files stored with this game: {stored.length} · {formatBytes(total)}{#if copies}{' '}({copies} phone cop{copies === 1 ? 'y' : 'ies'}){/if}{#if missing.length}{' '}({missing.length} more missing){/if}.
+      Files stored with this game: {stored.length} · {formatBytes(total)}{#if copies}{' '}({copies} phone cop{copies === 1
+          ? 'y'
+          : 'ies'}){/if}{#if missing.length}{' '}({missing.length} more missing){/if}.
       {#if links}🌐 {links} more play{links === 1 ? 's' : ''} from the internet.{/if}
       {#if total > 100 * 1024 ** 2}<span class="warn">Large games are fine as .brainrot packs but make big standalone HTML exports.</span>{/if}
     {/snippet}
   </PageHeader>
   {#if missing.length}
     <div class="missing-box" role="alert">
-      ⚠ {missing.length} file{missing.length === 1 ? ' is' : 's are'} missing from this browser (e.g. after opening a .json export, which
-      has no media). Pick the files again to put them back:
+      ⚠ {missing.length} file{missing.length === 1 ? ' is' : 's are'} missing from this browser (e.g. after opening a .json export, which has no media). Pick the
+      files again to put them back:
       <button class="small" onclick={findMissing}>🔗 Find missing files…</button>
       <span class="hint">(matched by file name; or use 🔗 Replace file… on each one below)</span>
     </div>
@@ -528,8 +558,13 @@
     {#if unused.length}
       <button
         class="ghost danger"
-        onclick={() => remove(unused.map((m) => m.id), `Deleted ${unused.length} unused file${unused.length === 1 ? '' : 's'}`)}
-        title="Delete the files nothing in the game uses (Undo brings them back). Files used only on 🤫 cards count as used here; an older copy of the app doesn’t know about cards, and its 🗑 Delete unused would delete them">🗑 Delete unused ({unused.length})</button
+        onclick={() =>
+          remove(
+            unused.map((m) => m.id),
+            `Deleted ${unused.length} unused file${unused.length === 1 ? '' : 's'}`,
+          )}
+        title="Delete the files nothing in the game uses (Undo brings them back). Files used only on 🤫 cards count as used here; an older copy of the app doesn’t know about cards, and its 🗑 Delete unused would delete them"
+        >🗑 Delete unused ({unused.length})</button
       >
     {/if}
   </div>
@@ -538,11 +573,13 @@
       {#if picked.length}
         <span>{picked.length} selected</span>
         <button class="small ghost" onclick={() => (picked = [])} title="Esc">Clear selection</button>
-        <button class="small ghost danger del" onclick={removePicked} title="Delete the selected files (Delete key; Undo brings them back)">🗑 Delete {picked.length === 1 ? '1 file' : `${picked.length} files`}</button>
+        <button class="small ghost danger del" onclick={removePicked} title="Delete the selected files (Delete key; Undo brings them back)"
+          >🗑 Delete {picked.length === 1 ? '1 file' : `${picked.length} files`}</button
+        >
       {:else}
         <span class="hint">
-          Click a card to select it, Ctrl+click or Shift+click for more, right-click it (or ⋯) for its menu. Double-click a name (or F2) to
-          rename it. Drop a file on a card to replace it everywhere it's used.
+          Click a card to select it, Ctrl+click or Shift+click for more, right-click it (or ⋯) for its menu. Double-click a name (or F2) to rename it. Drop a
+          file on a card to replace it everywhere it's used.
         </span>
       {/if}
       <span class="spacer"></span>
@@ -635,8 +672,8 @@
               data-media-name={m.id}
               title="{m.name} · double-click or F2 to rename"
               ondblclick={() => (renaming = m.id)}
-              onkeydown={(e) => e.key === 'F2' && (e.preventDefault(), (renaming = m.id))}
-            >{m.name}</button>
+              onkeydown={(e) => e.key === 'F2' && (e.preventDefault(), (renaming = m.id))}>{m.name}</button
+            >
             <button
               class="ghost small more"
               onclick={(e) => {
@@ -658,7 +695,9 @@
         <div class="meta muted" data-verdict={typeof v === 'object' ? v.is : v}>
           {m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)} ·
           {#if n}
-            <button class="used" data-used onclick={(e) => dropMenu(e, usedItems(m))} aria-haspopup="menu" title="Where it’s used: click one to go there">used {n}× ▾</button>
+            <button class="used" data-used onclick={(e) => dropMenu(e, usedItems(m))} aria-haspopup="menu" title="Where it’s used: click one to go there"
+              >used {n}× ▾</button
+            >
           {:else}unused{/if}
           <!-- (Worked out from what's inside it once it's been checked; till then, or when the app can't read it, its type says.) -->
           {#if typeof v === 'object' && v.is === 'fails'}<span class="warn" title={whyLine(v)}>{' '}· ⚠ won’t play here</span>
@@ -680,9 +719,8 @@
         {#if copy}
           <div class="meta copy" data-phone-copy>
             <span title="Phones get this copy on 🤫 cards; the show keeps the file as it is"
-              >📱 Phone copy · {formatBytes(copy.size)}{copy.phoneCopy?.width ? ` · ${copy.phoneCopy.width}×${copy.phoneCopy.height}` : ''} {typeWord(copy.mime)}{partOf(copy)
-                ? ` · ${partOf(copy)}`
-                : ''}</span
+              >📱 Phone copy · {formatBytes(copy.size)}{copy.phoneCopy?.width ? ` · ${copy.phoneCopy.width}×${copy.phoneCopy.height}` : ''}
+              {typeWord(copy.mime)}{partOf(copy) ? ` · ${partOf(copy)}` : ''}</span
             >
             {#if mediaUrls[copy.id]}
               <button
@@ -693,7 +731,12 @@
               >
             {/if}
             <button class="small ghost" onclick={() => openShrinkDialog(m.id)} disabled={!!job} title="Make its copy for phones again">🗜 Again</button>
-            <button class="small ghost danger" onclick={() => removePhoneCopy(game, m.id)} aria-label="Remove its copy for phones" title="Remove its copy: phones get the file itself (Undo brings the copy back)">🗑</button>
+            <button
+              class="small ghost danger"
+              onclick={() => removePhoneCopy(game, m.id)}
+              aria-label="Remove its copy for phones"
+              title="Remove its copy: phones get the file itself (Undo brings the copy back)">🗑</button
+            >
           </div>
         {/if}
         {#if onCards.has(m.id) && shrinkable(m) && !copy && m.size > SHRINK_OFFER_BYTES && phonesGetLink(m)}
@@ -704,10 +747,16 @@
           {#if exp}<div class="meta warn">⏳ {exp}</div>{/if}
           <!-- The site refused a copy (noCopyLinks): the way to keep it is the file itself, downloaded in a tab of its own
                and put in with Replace everywhere…. -->
-          {#if noCopyLinks.has(m.id)}<div class="meta muted" data-no-copy>Its site doesn’t let the game save a copy: ⬇ download it, then put it in with Replace everywhere…</div>{/if}
+          {#if noCopyLinks.has(m.id)}<div class="meta muted" data-no-copy
+              >Its site doesn’t let the game save a copy: ⬇ download it, then put it in with Replace everywhere…</div
+            >{/if}
           <div class="acts">
             {#if noCopyLinks.has(m.id)}
-              <button class="small" onclick={() => downloadLink(m)} title="Opens the file in a new tab: save it there (Ctrl+S), then put it in the game with Replace everywhere…">⬇ Download it…</button>
+              <button
+                class="small"
+                onclick={() => downloadLink(m)}
+                title="Opens the file in a new tab: save it there (Ctrl+S), then put it in the game with Replace everywhere…">⬇ Download it…</button
+              >
               <SaveCopyButton id={m.id} label="💾 Try again" ghost title="Try storing it in the game again, in case the site allows it now" />
             {:else}
               <SaveCopyButton id={m.id} />
@@ -725,14 +774,20 @@
              · the one fix that applies. -->
         <div class="foot">
           {#if editOffer(m)}
-            <button class="ghost small" data-edit-media onclick={() => openMediaDialog({ mode: 'edit', id: m.id })} disabled={editOffer(m) === 'busy'} title={editHint(m)}
-              >{editLabel(m)}</button
+            <button
+              class="ghost small"
+              data-edit-media
+              onclick={() => openMediaDialog({ mode: 'edit', id: m.id })}
+              disabled={editOffer(m) === 'busy'}
+              title={editHint(m)}>{editLabel(m)}</button
             >
           {:else}
             <span class="ghost small slot" aria-hidden="true">✎ Edit…</span>
           {/if}
           {#if !m.url && !mediaUrls[m.id]}
-            <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
+            <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used"
+              >🔗 Replace file…</button
+            >
           {:else}
             <!-- (The way out for one nothing here can fix: the app can't read it, or can't convert it, or a link whose
                  site refuses the game a copy: the file downloaded from ⬇ Download it…) -->
@@ -764,8 +819,8 @@
   {#if embeds.length}
     <h3>🌐 Online players on slides (need internet during the game)</h3>
     <p class="muted">
-      YouTube may refuse to play inside a file opened from disk; the host always gets an "Open on YouTube" button for it. Google
-      Drive's and Streamable's players show on the audience screen, where you click ▶ inside them.
+      YouTube may refuse to play inside a file opened from disk; the host always gets an "Open on YouTube" button for it. Google Drive's and Streamable's
+      players show on the audience screen, where you click ▶ inside them.
     </p>
     <table>
       <tbody>
@@ -776,7 +831,11 @@
             <td class="url" title={el.url}>{el.url}</td>
             <td class="muted">{where}</td>
             <!-- (One name with the slide editor's: it opens the link in its own window.) -->
-            <td><button class="small" onclick={() => openMediaPopup(embedOpenUrl(el.embedKind, el.url, el.startAt))} title="Open it in its own window">Test link ↗</button></td>
+            <td
+              ><button class="small" onclick={() => openMediaPopup(embedOpenUrl(el.embedKind, el.url, el.startAt))} title="Open it in its own window"
+                >Test link ↗</button
+              ></td
+            >
           </tr>
         {/each}
       </tbody>

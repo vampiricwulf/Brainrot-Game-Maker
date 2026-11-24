@@ -253,18 +253,35 @@
           {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
           <span class="txt">{layerLabel(el, game, card)}</span>
           <!-- (Nowhere on the slide: this list is the only way to find it.) -->
-          {#if offStage(el)}<span class="off-slide" title="Off the {say.page}: players won't see it. Move it back with the X and Y fields.">⚠ off the {say.page}</span>{/if}
+          {#if offStage(el)}<span class="off-slide" title="Off the {say.page}: players won't see it. Move it back with the X and Y fields."
+              >⚠ off the {say.page}</span
+            >{/if}
         </button>
       {/if}
-      <button class="ico" class:on={!isHidden} onclick={() => toggleHidden(el)} aria-label={`${isHidden ? 'Show while editing' : 'Hide while editing'}: ${name}`} title={isHidden ? 'Show while editing' : 'Hide while editing (still shows in the game)'}>
+      <button
+        class="ico"
+        class:on={!isHidden}
+        onclick={() => toggleHidden(el)}
+        aria-label={`${isHidden ? 'Show while editing' : 'Hide while editing'}: ${name}`}
+        title={isHidden ? 'Show while editing' : 'Hide while editing (still shows in the game)'}
+      >
         {isHidden ? '◌' : '👁'}
       </button>
-      <button class="ico" class:on={!!el.locked} onclick={() => toggleLock(el)} aria-label={`${el.locked ? 'Unlock' : 'Lock'}: ${name}`} aria-pressed={!!el.locked} title={el.locked ? 'Unlock' : `Lock: clicks on the ${say.page} go through it to what is underneath`}>
+      <button
+        class="ico"
+        class:on={!!el.locked}
+        onclick={() => toggleLock(el)}
+        aria-label={`${el.locked ? 'Unlock' : 'Lock'}: ${name}`}
+        aria-pressed={!!el.locked}
+        title={el.locked ? 'Unlock' : `Lock: clicks on the ${say.page} go through it to what is underneath`}
+      >
         {el.locked ? '🔒' : '🔓'}
       </button>
       <span class="updown">
         <button class="ico up" onclick={() => nudge(el, -1, '.up')} disabled={i === 0} aria-label="Bring forward: {name}" title="Bring forward">▲</button>
-        <button class="ico down" onclick={() => nudge(el, 1, '.down')} disabled={i === top.length - 1} aria-label="Send backward: {name}" title="Send backward">▼</button>
+        <button class="ico down" onclick={() => nudge(el, 1, '.down')} disabled={i === top.length - 1} aria-label="Send backward: {name}" title="Send backward"
+          >▼</button
+        >
       </span>
     </div>
   {:else}

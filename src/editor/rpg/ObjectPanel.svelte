@@ -27,7 +27,14 @@
   };
 
   /** What a class change can throw away, as the Undo notice names it. */
-  const DROPPED_NAMES: Record<string, string> = { to: 'destination', locked: 'lock', dialogue: 'dialogue slide', shop: 'shop', stats: 'stats', actions: 'buttons' };
+  const DROPPED_NAMES: Record<string, string> = {
+    to: 'destination',
+    locked: 'lock',
+    dialogue: 'dialogue slide',
+    shop: 'shop',
+    stats: 'stats',
+    actions: 'buttons',
+  };
 
   function setClass(c: string): void {
     // Only what the new class uses carries over: a character turned into a doorway mustn't keep its 💬 Talk and 🛒 Shop
@@ -49,9 +56,13 @@
       if (c === 'spawn' || c === 'blocker') el.name ||= c === 'spawn' ? 'Arrival point' : 'No-go area';
     };
     // Throwing away something written (a dialogue, a shop, buttons) says so, with Undo: one arrow key on the select does it.
-    const dropped = Object.keys(old).filter((k) => DROPPED_NAMES[k] && !keep.has(k) && old[k] != null && old[k] !== false && !(Array.isArray(old[k]) && !(old[k] as unknown[]).length));
+    const dropped = Object.keys(old).filter(
+      (k) => DROPPED_NAMES[k] && !keep.has(k) && old[k] != null && old[k] !== false && !(Array.isArray(old[k]) && !(old[k] as unknown[]).length),
+    );
     if (!dropped.length) return apply();
-    step(`${el.name?.trim() || 'Object'}: now ${classLabel(c as ObjectClass | '')} (removed its ${dropped.map((k) => DROPPED_NAMES[k]).join(', ')})`, apply, { notify: true });
+    step(`${el.name?.trim() || 'Object'}: now ${classLabel(c as ObjectClass | '')} (removed its ${dropped.map((k) => DROPPED_NAMES[k]).join(', ')})`, apply, {
+      notify: true,
+    });
   }
 
   const target = $derived(el.role?.to ? findIn(world, el.role.to) : null);
@@ -108,7 +119,8 @@
           <select bind:value={r.arrive} aria-label="Arrive at">
             <option value={undefined}>The screen’s arrival point (or the middle)</option>
             {#if r.arrive && !target.screen.slide.elements.some((e) => e.id === r.arrive)}<option value={r.arrive}>⚠ Deleted object — pick another</option>{/if}
-            {#each target.screen.slide.elements.filter((e) => e.name || e.role) as o (o.id)}<option value={o.id}>{o.name || classLabel(o.role?.class)}</option>{/each}
+            {#each target.screen.slide.elements.filter((e) => e.name || e.role) as o (o.id)}<option value={o.id}>{o.name || classLabel(o.role?.class)}</option
+              >{/each}
           </select>
         </label>
       {/if}
@@ -139,7 +151,9 @@
             <!-- A stat no longer ticked as a currency is still the one it gives. -->
             <option value={r.field}>{game.statFields?.find((f) => f.id === r.field)?.name ?? '⚠ Deleted currency — pick another'}</option>
           {/if}
-          {#each currencyFields(game) as f (f.id)}<option value={f.id}>{f.name}</option>{:else}<option value={undefined}>Add a currency in 📊 Stats & Items</option>{/each}
+          {#each currencyFields(game) as f (f.id)}<option value={f.id}>{f.name}</option>{:else}<option value={undefined}
+              >Add a currency in 📊 Stats & Items</option
+            >{/each}
         </select>
       </div>
     {:else if r.class === 'npc'}
@@ -155,8 +169,12 @@
         {#if r.stats?.length}<label class="check small"><input type="checkbox" bind:checked={r.statsShown} /> Viewers see its stats</label>{/if}
       </div>
       <div class="row">
-        <button class="small" onclick={() => ((r.dialogue ??= textSlide('')), (dialogueOpen = true))}>{r.dialogue ? '✎ Edit dialogue slide…' : '＋ Add dialogue slide'}</button>
-        {#if r.dialogue}<button class="ghost small danger" onclick={removeDialogue} aria-label="Delete dialogue" title="Delete dialogue (Undo brings it back)">🗑</button>{/if}
+        <button class="small" onclick={() => ((r.dialogue ??= textSlide('')), (dialogueOpen = true))}
+          >{r.dialogue ? '✎ Edit dialogue slide…' : '＋ Add dialogue slide'}</button
+        >
+        {#if r.dialogue}<button class="ghost small danger" onclick={removeDialogue} aria-label="Delete dialogue" title="Delete dialogue (Undo brings it back)"
+            >🗑</button
+          >{/if}
       </div>
     {/if}
     {#if r.class === 'npc' || r.class === 'shop'}
@@ -175,7 +193,8 @@
   </label>
   <label class="field">
     Host notes (off stream, except in a single window)
-    <textarea rows="2" value={el.hostNotes ?? ''} oninput={(e) => (el.hostNotes = e.currentTarget.value || undefined)} placeholder="What it really does…"></textarea>
+    <textarea rows="2" value={el.hostNotes ?? ''} oninput={(e) => (el.hostNotes = e.currentTarget.value || undefined)} placeholder="What it really does…"
+    ></textarea>
   </label>
 </section>
 

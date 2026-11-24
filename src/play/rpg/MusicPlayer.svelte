@@ -32,10 +32,11 @@
     const url = src;
     if (current && current.dataset.src === (url ?? '')) return;
     const old = current;
-    if (old) fade(old, 0, () => {
-      old.pause();
-      players.splice(players.indexOf(old), 1);
-    });
+    if (old)
+      fade(old, 0, () => {
+        old.pause();
+        players.splice(players.indexOf(old), 1);
+      });
     current = null;
     if (!url) return;
     const el = new Audio();

@@ -7,11 +7,42 @@
 import { app, hint, toast } from '../../lib/app.svelte';
 import { clueCardWords, formatPoints, newId } from '../../lib/model';
 import {
-  backToBoard, clueName, clueScored, currentClueInfo, nameList, playerName, score, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft,
+  backToBoard,
+  clueName,
+  clueScored,
+  currentClueInfo,
+  nameList,
+  playerName,
+  score,
+  ownPlayers,
+  clueMarks,
+  judgePartner,
+  partnerSteal,
+  stealersLeft,
 } from '../../lib/session';
 import {
-  cardCopyText, cardId, cardRecipients, cardSends, cardSlides, lowerWord, markCopied, marksText, sentSeats, partnerCandidates, partnerRoles, partnerRules,
-  partnerShares, partnerVerdict, partWords, recipientsText, sendCards, setDescriber, setPartner, setPartnerPicker, takeBack, toName,
+  cardCopyText,
+  cardId,
+  cardRecipients,
+  cardSends,
+  cardSlides,
+  lowerWord,
+  markCopied,
+  marksText,
+  sentSeats,
+  partnerCandidates,
+  partnerRoles,
+  partnerRules,
+  partnerShares,
+  partnerVerdict,
+  partWords,
+  recipientsText,
+  sendCards,
+  setDescriber,
+  setPartner,
+  setPartnerPicker,
+  takeBack,
+  toName,
 } from '../../lib/partner';
 import { cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
 import { copyCardPicture } from './cardcopy';
@@ -103,7 +134,9 @@ export function createPartner(host: PartnerHost) {
   const phoneCards = $derived(phonesOn && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards());
   /** The open partner clue's cards that 📤 Send and start would send: not sent yet, with someone to go to. */
   const unsentCards = (): ReturnType<typeof cardSlides> =>
-    partner && info && phoneCards ? cardSlides(info.clue).filter((c) => !cardSends(partner, c.id).length && cardRecipients(session, partner, c).length > 0) : [];
+    partner && info && phoneCards
+      ? cardSlides(info.clue).filter((c) => !cardSends(partner, c.id).length && cardRecipients(session, partner, c).length > 0)
+      : [];
 
   /** The partner wheel is up on stage (not the member wheel): the picker's phone says it's spinning for their partner. */
   function partnerWheelUp(): boolean {
@@ -125,7 +158,8 @@ export function createPartner(host: PartnerHost) {
     const s = partner;
     if (!s || s.stage !== 'pick') return;
     if (!s.pickerId) return hint(`${pregameTeams ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})`);
-    if (!partnerCandidates(session, s).length) return hint(`Nobody to partner with: tick “${playerName(session, s.pickerId)} can be on the wheel” to play it Solo, or ${VERBS.putBack.label} · ⇧Esc`);
+    if (!partnerCandidates(session, s).length)
+      return hint(`Nobody to partner with: tick “${playerName(session, s.pickerId)} can be on the wheel” to play it Solo, or ${VERBS.putBack.label} · ⇧Esc`);
     if (toolBusy()) return;
     // (The scores over it: the wheel comes back first.)
     if (app.live.overlay?.kind === 'scoreboard') app.live.overlay = app.live.overlay.under ?? null;
@@ -140,7 +174,16 @@ export function createPartner(host: PartnerHost) {
    */
   function describerWanted(): boolean {
     const s = partner;
-    return !!s && s.stage === 'pick' && teamsOn(game.settings) && phoneCards && !!s.pickerId && s.partnerId === s.pickerId && !s.member && roomMembers(s.pickerId).length > 1;
+    return (
+      !!s &&
+      s.stage === 'pick' &&
+      teamsOn(game.settings) &&
+      phoneCards &&
+      !!s.pickerId &&
+      s.partnerId === s.pickerId &&
+      !s.member &&
+      roomMembers(s.pickerId).length > 1
+    );
   }
 
   /**
@@ -156,7 +199,8 @@ export function createPartner(host: PartnerHost) {
     if (app.live.overlay?.kind === 'scoreboard') app.live.overlay = app.live.overlay.under ?? null;
     const o = app.live.overlay;
     // (A new wheel when someone joined or left the team since it opened, unless the host edited this one.)
-    const same = o?.kind === 'wheel' && o.partnerFor === s.clue && !!o.members && (!!o.pool || o.segments.map((x) => x.id).join() === people.map((m) => m.id).join());
+    const same =
+      o?.kind === 'wheel' && o.partnerFor === s.clue && !!o.members && (!!o.pool || o.segments.map((x) => x.id).join() === people.map((m) => m.id).join());
     if (!same) {
       const team = session.players.find((p) => p.id === s.pickerId);
       openMemberWheel(app.live, s, `${partWords(partnerRules(info!.clue)).giver} for ${team?.name ?? '?'}`, team?.color ?? '#888888', people);
@@ -170,7 +214,14 @@ export function createPartner(host: PartnerHost) {
    * The wheel notes the spin it applied (partnerLanded, kept through a reload), so a partner the host chose after the
    * landing stays, and a spin still going when the page reloaded applies when it lands.
    */
-  function partnerLanded(o: { nonce: string; partnerFor?: string; members?: true; spin: { startedAt: number } | null; result: number | null; segments: { id: string; label: string }[] }): void {
+  function partnerLanded(o: {
+    nonce: string;
+    partnerFor?: string;
+    members?: true;
+    spin: { startedAt: number } | null;
+    result: number | null;
+    segments: { id: string; label: string }[];
+  }): void {
     if (!o.partnerFor || !o.spin || o.result === null) return;
     const live = toolOverlay(app.live);
     // (Closed or replaced meanwhile: closing it applied its landing already.)
@@ -186,13 +237,22 @@ export function createPartner(host: PartnerHost) {
     }
     const id = o.segments[o.result]?.id;
     if (!s || s.clue !== o.partnerFor || s.stage !== 'pick' || !id || !setPartner(session, s, id, 'wheel')) return;
-    announce(id === s.pickerId ? `${playerName(session, id)} plays it alone` : `${playerName(session, id)} is ${playerName(session, s.pickerId ?? '')}’s partner`);
+    announce(
+      id === s.pickerId ? `${playerName(session, id)} plays it alone` : `${playerName(session, id)} is ${playerName(session, s.pickerId ?? '')}’s partner`,
+    );
   }
   // Each spin of the partner wheel, wherever it was started (W, Spin!, a click on the stage): its landing, when it lands.
   $effect(() => {
     const o = toolOverlay(app.live);
     if (o?.kind !== 'wheel' || !o.partnerFor || !o.spin || o.result === null) return;
-    const landing = { nonce: o.nonce, partnerFor: o.partnerFor, members: o.members, spin: { startedAt: o.spin.startedAt }, result: o.result, segments: $state.snapshot(o.segments) };
+    const landing = {
+      nonce: o.nonce,
+      partnerFor: o.partnerFor,
+      members: o.members,
+      spin: { startedAt: o.spin.startedAt },
+      result: o.result,
+      segments: $state.snapshot(o.segments),
+    };
     const wait = overlayDoneAt(o) - Date.now();
     if (wait <= 0) return void untrack(() => partnerLanded(landing));
     const t = setTimeout(() => partnerLanded(landing), wait);
@@ -278,7 +338,12 @@ export function createPartner(host: PartnerHost) {
     const go = (t: Session) => sendCards(t, t.partner!, unsent);
     if (unsent.length && roomCardsFull(game, session, go)) return hint(cardsFullText(game, session, go));
     const went = phoneCards ? sendCards(session, s, unsent) : [];
-    if (went.length) announce(went.map((c) => `${clueCardWords(c, cardSlides(info.clue).indexOf(c), true)} sent to ${recipientsText(session, s, partnerRules(info.clue), c)}`).join('. '));
+    if (went.length)
+      announce(
+        went
+          .map((c) => `${clueCardWords(c, cardSlides(info.clue).indexOf(c), true)} sent to ${recipientsText(session, s, partnerRules(info.clue), c)}`)
+          .join('. '),
+      );
     s.stage = 'live';
     partnerClockAt = Date.now();
     partnerSentWithClock = went.length > 0;
@@ -364,7 +429,8 @@ export function createPartner(host: PartnerHost) {
     return !!steal && !steal.by && stealersLeft(session.players, steal, partnerMarks).length > 0;
   }
   /** How a steal goes on. */
-  const stealHint = (): string => `🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)`;
+  const stealHint = (): string =>
+    `🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)`;
 
   /**
    * 📤 Send and start (or ⏱ Start the clock) by Enter or the check: never within a second of the question going up, so a
@@ -392,8 +458,13 @@ export function createPartner(host: PartnerHost) {
     const to = cardRecipients(session, s, card).map((t) => toName(session, t));
     const W = clueCardWords(card, i, true);
     // (Noted, as the 🤝 box's 📋 notes it: once each card is copied, a click on the stage starts the clock.)
-    markCopied(s, card.id, cardRecipients(session, s, card).map((t) => t.seat));
-    if (cardWords(card) || cardLinks(game, card).length) void copyText(cardCopyText(game, card, i + 1, clueName(game, session.currentClue), to), `${W}’s words copied: paste them to ${to.join(', ') || 'them'}`);
+    markCopied(
+      s,
+      card.id,
+      cardRecipients(session, s, card).map((t) => t.seat),
+    );
+    if (cardWords(card) || cardLinks(game, card).length)
+      void copyText(cardCopyText(game, card, i + 1, clueName(game, session.currentClue), to), `${W}’s words copied: paste them to ${to.join(', ') || 'them'}`);
     else void copyCardPicture(game, card, W, to.join(', ') || 'them');
   }
 
@@ -419,7 +490,11 @@ export function createPartner(host: PartnerHost) {
    */
   function partnerTooSoon(e: KeyboardEvent): boolean {
     if (!partner || partner.stage !== 'live' || Date.now() - partnerClockAt >= KEY_GUARD_MS) return false;
-    const again = selected.length ? 'press Enter again to give the points' : e.shiftKey ? 'press Shift+Enter again for ✘ Missed' : 'press Enter again to give ✔ Got it';
+    const again = selected.length
+      ? 'press Enter again to give the points'
+      : e.shiftKey
+        ? 'press Shift+Enter again for ✘ Missed'
+        : 'press Enter again to give ✔ Got it';
     // (A clue with no cards and ⚖ the countdown not starting by itself: only the question went up.)
     hint(`${partnerSentWithClock ? 'The cards just went out' : app.live.timer?.startedAt ? 'The clock just started' : 'The question just went up'}: ${again}`);
     return true;
@@ -450,8 +525,16 @@ export function createPartner(host: PartnerHost) {
       stopTimer('right');
     }
     // (A 0 is a mark in the log, not a pop on stream.)
-    for (const p of groupPops(events.filter((e) => e.delta), session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
-    const each = events.map((e) => `${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${formatPoints(score(session, e.playerId), sym)}`);
+    for (const p of groupPops(
+      events.filter((e) => e.delta),
+      session.players,
+      sym,
+      game.theme?.value || '#ffcc00',
+    ))
+      pop(p);
+    const each = events.map(
+      (e) => `${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${formatPoints(score(session, e.playerId), sym)}`,
+    );
     // Steal on a miss: the others can answer it now (the buzzers open for them: the buzz effect, as for any clue).
     const steal = events.some((e) => e.steal);
     announce(`${got ? 'Got it' : 'Missed'}: ${each.join('; ')}${steal ? `. A steal: ${phonesOn ? 'the others can buzz in' : 'who steals it?'}` : ''}`);
@@ -503,7 +586,13 @@ export function createPartner(host: PartnerHost) {
     }
     if (s.stage === 'distribute') {
       if (e.shiftKey)
-        hint(session.revealed ? 'The answer is showing: click ✔ Got it or ✘ Missed, or Esc goes back to the board' : unsentCards().length ? 'Send the cards first (Enter), or click ✘ Missed' : 'Start the clock first (Enter), or click ✘ Missed');
+        hint(
+          session.revealed
+            ? 'The answer is showing: click ✔ Got it or ✘ Missed, or Esc goes back to the board'
+            : unsentCards().length
+              ? 'Send the cards first (Enter), or click ✘ Missed'
+              : 'Start the clock first (Enter), or click ✘ Missed',
+        );
       else if (session.revealed) hint('The answer is showing: Esc goes back to the board');
       // (A tool over it, from the tools row: Enter puts it away, as its blue Next ▶ does.)
       else if (mainNow?.id === 'tool' || mainNow?.id === 'popreveal') goOn('enter', mainNow);
@@ -580,7 +669,9 @@ export function createPartner(host: PartnerHost) {
     const s = partner;
     const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (cardSends(s, c.id).length ? [{ c, n: i + 1 }] : [])) : [];
     if (s && info && out.length) {
-      const seenIds = new Set(out.flatMap(({ c }) => cardSends(s, c.id).flatMap((x) => (session.remote?.cardsSeen?.[cardId(s.clue, x)] ?? []).map((w) => w.split('/')[0]))));
+      const seenIds = new Set(
+        out.flatMap(({ c }) => cardSends(s, c.id).flatMap((x) => (session.remote?.cardsSeen?.[cardId(s.clue, x)] ?? []).map((w) => w.split('/')[0]))),
+      );
       const phones = new Set(app.live.phones ?? []);
       const sentIds = [...new Set(out.flatMap(({ c }) => sentSeats(session, s, c.id)))];
       const saw = sentIds.filter((id) => seenIds.has(id));
@@ -593,7 +684,10 @@ export function createPartner(host: PartnerHost) {
           : out.some(({ c }) => c.name?.trim())
             ? nameList(out.map(({ c, n }) => clueCardWords(c, n - 1)))
             : `cards ${nameList(out.map((x) => String(x.n)))}`;
-      const said = [saw.length ? `${names(saw)} already saw ${which}` : '', got.length ? `${names(got)} got ${which} but ${got.length > 1 ? 'haven’t' : 'hasn’t'} opened it` : ''].filter(Boolean);
+      const said = [
+        saw.length ? `${names(saw)} already saw ${which}` : '',
+        got.length ? `${names(got)} got ${which} but ${got.length > 1 ? 'haven’t' : 'hasn’t'} opened it` : '',
+      ].filter(Boolean);
       if (said.length) return void (keepAsk = { clue: info.clue.id, text: `${said.join('; ')}. Put the tile back anyway?` });
     }
     // The same for a card sent from the tile's own panel, or shown in the 🪟 card window (a partner card's too, with no
@@ -622,20 +716,74 @@ export function createPartner(host: PartnerHost) {
   );
 
   return {
-    get partner() { return partner; },
-    get phoneCards() { return phoneCards; },
-    get partnerMarks() { return partnerMarks; },
-    get partnerJudged() { return partnerJudged; },
-    get keepQuestion() { return keepQuestion; },
-    get keepAsk() { return keepAsk; },
-    set keepAsk(v: typeof keepAsk) { keepAsk = v; },
-    get partnerShownAt() { return partnerShownAt; },
-    set partnerShownAt(v: number) { partnerShownAt = v; },
-    get partnerClockAt() { return partnerClockAt; },
-    set partnerClockAt(v: number) { partnerClockAt = v; },
-    get partnerLiveByT() { return partnerLiveByT; },
-    set partnerLiveByT(v: boolean) { partnerLiveByT = v; },
-    back, cancelClue, cardTakeBack, checkJudge, dealGone, describerWanted, dropPartnerWheel, memberSpin, partnerChoose, partnerClock, partnerCopy, partnerDescriber, partnerEnter, partnerHandOut,
-    partnerJudge, partnerLanded, partnerNumber, partnerPicker, partnerQuick, partnerShow, partnerSolo, partnerSpin, partnerTakeBack, partnerTimerStarted, partnerValue, partnerWheelUp, stealHint, stealOpen, toolGoing, unsentCards,
+    get partner() {
+      return partner;
+    },
+    get phoneCards() {
+      return phoneCards;
+    },
+    get partnerMarks() {
+      return partnerMarks;
+    },
+    get partnerJudged() {
+      return partnerJudged;
+    },
+    get keepQuestion() {
+      return keepQuestion;
+    },
+    get keepAsk() {
+      return keepAsk;
+    },
+    set keepAsk(v: typeof keepAsk) {
+      keepAsk = v;
+    },
+    get partnerShownAt() {
+      return partnerShownAt;
+    },
+    set partnerShownAt(v: number) {
+      partnerShownAt = v;
+    },
+    get partnerClockAt() {
+      return partnerClockAt;
+    },
+    set partnerClockAt(v: number) {
+      partnerClockAt = v;
+    },
+    get partnerLiveByT() {
+      return partnerLiveByT;
+    },
+    set partnerLiveByT(v: boolean) {
+      partnerLiveByT = v;
+    },
+    back,
+    cancelClue,
+    cardTakeBack,
+    checkJudge,
+    dealGone,
+    describerWanted,
+    dropPartnerWheel,
+    memberSpin,
+    partnerChoose,
+    partnerClock,
+    partnerCopy,
+    partnerDescriber,
+    partnerEnter,
+    partnerHandOut,
+    partnerJudge,
+    partnerLanded,
+    partnerNumber,
+    partnerPicker,
+    partnerQuick,
+    partnerShow,
+    partnerSolo,
+    partnerSpin,
+    partnerTakeBack,
+    partnerTimerStarted,
+    partnerValue,
+    partnerWheelUp,
+    stealHint,
+    stealOpen,
+    toolGoing,
+    unsentCards,
   };
 }

@@ -174,7 +174,13 @@
     showMenu(ev, [
       { heading: e.label },
       applied
-        ? { label: '↶ Go back to just after this', onclick: () => pick(i + 1), disabled: current, keys: 'Enter', hint: current ? 'The game is here now' : undefined }
+        ? {
+            label: '↶ Go back to just after this',
+            onclick: () => pick(i + 1),
+            disabled: current,
+            keys: 'Enter',
+            hint: current ? 'The game is here now' : undefined,
+          }
         : { label: '↷ Redo up to here', onclick: () => pick(i + 1), keys: 'Enter' },
       { label: 'Go there ›', onclick: () => goThere(e, applied), disabled: !(applied ? e.place : e.undoPlace), keys: 'G' },
       { sep: true },
@@ -209,7 +215,9 @@
       <button onclick={() => undo('list')} disabled={!history.canUndo} title={history.undoTitle}>↶ Undo</button>
       <button onclick={() => redo('list')} disabled={!history.canRedo} title={history.redoTitle}>↷ Redo</button>
       <!-- (At the far end, apart from ↶ ↷: it can't be undone.) -->
-      <button class="ghost danger clear" onclick={() => (clearing = true)} disabled={!history.entries.length} title="Clear every step (asks first)">🗑 Clear history…</button>
+      <button class="ghost danger clear" onclick={() => (clearing = true)} disabled={!history.entries.length} title="Clear every step (asks first)"
+        >🗑 Clear history…</button
+      >
     {/snippet}
   </PageHeader>
   <!-- (Also while a filter is typed, with fewer steps: it still hides them, so its box and ✕ Show all stay.) -->
@@ -280,7 +288,9 @@
             title="{e.label}{e.where ? `\n${e.where}` : ''}\n{second(e.ts)} · {applied ? 'Go back to just after this step' : 'Redo up to this step'}"
           >
             <span class="ic" aria-hidden="true">{applied ? e.icon : '↷'}</span>
-            <span class="lb">{e.label}{#if e.during}<span class="play" title="Made during a game">▶</span>{/if}</span>
+            <span class="lb"
+              >{e.label}{#if e.during}<span class="play" title="Made during a game">▶</span>{/if}</span
+            >
             <span class="wh muted">{e.where}</span>
           </button>
           <span class="go">
@@ -295,7 +305,13 @@
       {/if}
     {/each}
     <div class="hr origin" class:current={history.index === 0}>
-      <button class="pick" tabindex={history.index === 0 ? 0 : -1} onclick={() => pick(0)} aria-current={history.index === 0 ? 'step' : undefined} title="Undo everything back to here">
+      <button
+        class="pick"
+        tabindex={history.index === 0 ? 0 : -1}
+        onclick={() => pick(0)}
+        aria-current={history.index === 0 ? 'step' : undefined}
+        title="Undo everything back to here"
+      >
         <span class="ic" aria-hidden="true">◌</span>
         <span class="lb">{ICON[history.origin.kind]} {history.origin.label}</span>
         <span class="wh muted">{history.entries.length ? 'Undo everything back to here' : ''}</span>
@@ -307,7 +323,9 @@
     {@render ask(0)}
   </div>
   <p class="foot muted">
-    {history.trimmed ? `Older steps weren't kept (the history keeps the last ${maxSteps()} steps).` : `The history keeps the last ${maxSteps()} steps and survives a reload.`}
+    {history.trimmed
+      ? `Older steps weren't kept (the history keeps the last ${maxSteps()} steps).`
+      : `The history keeps the last ${maxSteps()} steps and survives a reload.`}
     {#if kept.n}
       {kept.n === 1 ? 'A removed file' : `${kept.n} removed files`} ({formatBytes(kept.bytes)}) {kept.n === 1 ? 'is' : 'are'} kept so
       {kept.n === 1 ? 'its step' : 'their steps'} can be undone.

@@ -88,7 +88,14 @@
   const replaces = $derived(canReplace && selected.length === 1 && (one?.kind === 'image' || one?.kind === 'video' || one?.kind === 'audio'));
   /** The items here to pick from: when stacked, or on an empty spot beside a text box's words (it's under there). */
   const picks = $derived(stack.length > 1 || (!selected.length && stack.length > 0));
-  const ALIGNS: [Align, string][] = [['left', 'Left'], ['hcenter', 'Center'], ['right', 'Right'], ['top', 'Top'], ['vcenter', 'Middle'], ['bottom', 'Bottom']];
+  const ALIGNS: [Align, string][] = [
+    ['left', 'Left'],
+    ['hcenter', 'Center'],
+    ['right', 'Right'],
+    ['top', 'Top'],
+    ['vcenter', 'Middle'],
+    ['bottom', 'Bottom'],
+  ];
   /** Align ▸ is open. */
   let aligning = $state(false);
 
@@ -115,8 +122,18 @@
   }}
   role="presentation"
 ></div>
-<div class="menu" style:left="{left}px" style:top="{top}px" bind:clientWidth={w} bind:clientHeight={h} role="menu" aria-label="{Page(say)} {say.thing} menu" use:dropdown={onclose}>
-  <div class="head">{selected.length > 1 ? countOf(selected.length, say) : selected.length ? layerLabel(selected[0], game) : (where ?? `This ${say.page}`)}</div>
+<div
+  class="menu"
+  style:left="{left}px"
+  style:top="{top}px"
+  bind:clientWidth={w}
+  bind:clientHeight={h}
+  role="menu"
+  aria-label="{Page(say)} {say.thing} menu"
+  use:dropdown={onclose}
+>
+  <div class="head">{selected.length > 1 ? countOf(selected.length, say) : selected.length ? layerLabel(selected[0], game) : (where ?? `This ${say.page}`)}</div
+  >
   {#if picks}
     <div class="sub">Select {aThing(say)} here</div>
     {#each stack as el (el.id)}
@@ -171,7 +188,9 @@
       <hr />
     {/if}
     <!-- (F2 renames in the Layers list; on a text box it edits its words, so it's not this item's key there.) -->
-    <button role="menuitem" onclick={() => act('rename')} disabled={selected.length > 1}>✎ Rename{#if one && one.kind !== 'text'}<kbd>F2</kbd>{/if}</button>
+    <button role="menuitem" onclick={() => act('rename')} disabled={selected.length > 1}
+      >✎ Rename{#if one && one.kind !== 'text'}<kbd>F2</kbd>{/if}</button
+    >
     <button role="menuitem" onclick={() => act('duplicate')}>⧉ Duplicate<kbd>{key('Ctrl+D')}</kbd></button>
     <button role="menuitem" onclick={() => act('cut')} disabled={!anyUnlocked}>✂ Cut<kbd>{key('Ctrl+X')}</kbd></button>
     <button role="menuitem" onclick={() => act('copy')}>📋 Copy<kbd>{key('Ctrl+C')}</kbd></button>
@@ -188,7 +207,9 @@
     <button role="menuitem" onclick={() => act('hide')} title="Only here, while you edit: it still shows in the game">👁 Hide while editing</button>
     {#each extras as x (x.label)}<button role="menuitem" onclick={() => (x.onclick(), onclose())} title={x.title}>{x.label}</button>{/each}
     <hr />
-    <button role="menuitem" class="danger" onclick={() => act('delete')} disabled={!anyUnlocked} title={anyUnlocked ? undefined : 'Locked: unlock it first'}>🗑 Delete<kbd>Delete</kbd></button>
+    <button role="menuitem" class="danger" onclick={() => act('delete')} disabled={!anyUnlocked} title={anyUnlocked ? undefined : 'Locked: unlock it first'}
+      >🗑 Delete<kbd>Delete</kbd></button
+    >
   {:else}
     {#if slideExtras?.only}
       <!-- (The slide's one item, a new clue's text box: what it's most often right-clicked for costs nothing.) -->
@@ -202,12 +223,20 @@
     {/if}
     <button role="menuitem" onclick={() => act('paste')} disabled={!canPaste}>📋 Paste here<kbd>{key('Ctrl+V')}</kbd></button>
     {#if slideExtras}
-      <button role="menuitem" onclick={() => act('copy-slide')} title={say.page === 'slide' ? 'The whole slide, to paste over another one or as a new slide by the slide tabs' : `The whole ${say.page}, to paste over another one`}>📋 Copy {say.page}</button>
+      <button
+        role="menuitem"
+        onclick={() => act('copy-slide')}
+        title={say.page === 'slide'
+          ? 'The whole slide, to paste over another one or as a new slide by the slide tabs'
+          : `The whole ${say.page}, to paste over another one`}>📋 Copy {say.page}</button
+      >
       <button
         role="menuitem"
         onclick={() => act('paste-over')}
         disabled={!slideExtras.canPasteSlide}
-        title={slideExtras.canPasteSlide ? `Everything on this ${say.page} is replaced by the copied one (Undo brings it back)` : `Copy a ${say.page} first (📋 Copy ${say.page})`}>📋 Paste over this {say.page}</button
+        title={slideExtras.canPasteSlide
+          ? `Everything on this ${say.page} is replaced by the copied one (Undo brings it back)`
+          : `Copy a ${say.page} first (📋 Copy ${say.page})`}>📋 Paste over this {say.page}</button
       >
       <hr />
       <button role="menuitem" onclick={() => act('background')}>🎨 Background…</button>

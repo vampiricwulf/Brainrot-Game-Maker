@@ -34,7 +34,11 @@ describe('the sample game', () => {
     expect(partners[0].cards).toHaveLength(1);
     expect(slideHasContent(partners[0].cards![0])).toBe(true);
     // Nothing to fix: only the note that without phone buzzers the host copies the cards to the players.
-    expect(validate(game).filter((p) => p.level === 'info').map((p) => p.text)).toEqual(['Partner clues: without phone buzzers you copy the cards to the players yourself']);
+    expect(
+      validate(game)
+        .filter((p) => p.level === 'info')
+        .map((p) => p.text),
+    ).toEqual(['Partner clues: without phone buzzers you copy the cards to the players yourself']);
   });
 
   it('keeps the players and title already there', () => {
@@ -86,7 +90,11 @@ describe('round templates', () => {
       const r = t.make(game);
       expect(r.mode).toBe(t.mode);
       game.rounds.push(r);
-      if (t.mode !== 'board') expect(validate(game).filter((p) => p.level === 'warn'), t.label).toEqual([]);
+      if (t.mode !== 'board')
+        expect(
+          validate(game).filter((p) => p.level === 'warn'),
+          t.label,
+        ).toEqual([]);
       if (isRpg(r)) expect(game.worlds?.find((w) => w.id === r.world)?.maps[0].screens).toHaveLength(t.label === 'Mini quest' ? 3 : 9);
     }
   });
@@ -152,13 +160,21 @@ describe('round templates', () => {
       if (!isBoardGame(r)) throw new Error('not a board game');
       // (A space is 116 px across; its name sits under it, 6 px down, about 40 px tall at 30 px; a lone token is drawn
       // over its top, as BoardSpaces and the stage draw them.)
-      const into = (o: { x: number; y: number }, l: number, t: number, rt: number, b: number) => Math.hypot(o.x - Math.max(l, Math.min(o.x, rt)), o.y - Math.max(t, Math.min(o.y, b))) < 58;
+      const into = (o: { x: number; y: number }, l: number, t: number, rt: number, b: number) =>
+        Math.hypot(o.x - Math.max(l, Math.min(o.x, rt)), o.y - Math.max(t, Math.min(o.y, b))) < 58;
       const [tok] = rimSpots(1, tokenRadius(1));
       for (const s of r.spaces) {
         const others = r.spaces.filter((o) => o !== s);
         const w = s.name.length * 18 + 20;
-        if (nameShown(s)) expect(others.filter((o) => into(o, s.x - w / 2, s.y + 64, s.x + w / 2, s.y + 104)).map((o) => o.name), `${label}: under ${s.name}`).toEqual([]);
-        expect(others.filter((o) => Math.hypot(o.x - (s.x + tok.dx), o.y - (s.y + tok.dy)) < 58).map((o) => o.name), `${label}: a token on ${s.name}`).toEqual([]);
+        if (nameShown(s))
+          expect(
+            others.filter((o) => into(o, s.x - w / 2, s.y + 64, s.x + w / 2, s.y + 104)).map((o) => o.name),
+            `${label}: under ${s.name}`,
+          ).toEqual([]);
+        expect(
+          others.filter((o) => Math.hypot(o.x - (s.x + tok.dx), o.y - (s.y + tok.dy)) < 58).map((o) => o.name),
+          `${label}: a token on ${s.name}`,
+        ).toEqual([]);
       }
     }
   });
@@ -175,7 +191,11 @@ describe('round templates', () => {
     r.spaces[16].name = 'Go back';
     r.spaces[10].next = [r.spaces[11].id, r.spaces[16].id];
     const now = spaceListNames(r);
-    expect([now.get(r.spaces[11].id), now.get(r.spaces[16].id), now.get(r.spaces[17].id)]).toEqual(['Go back (2nd)', 'Go back (3rd)', 'Go back (after Go back)']);
+    expect([now.get(r.spaces[11].id), now.get(r.spaces[16].id), now.get(r.spaces[17].id)]).toEqual([
+      'Go back (2nd)',
+      'Go back (3rd)',
+      'Go back (after Go back)',
+    ]);
   });
 
   it('the race names Start and Finish on the board, and Finish (🏆) gives the first one there points: the most points wins the game', () => {

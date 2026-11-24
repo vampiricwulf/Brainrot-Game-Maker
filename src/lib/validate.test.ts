@@ -1,6 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newAudioEl, newImageEl, newSlidesRound, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type FinalRound, type Game, type SavedCard, type Slide } from './model';
+import {
+  newAudioEl,
+  newImageEl,
+  newSlidesRound,
+  newTextEl,
+  newVideoEl,
+  questionSlides,
+  setSlideText,
+  textSlide,
+  type Action,
+  type BoardRound,
+  type FinalRound,
+  type Game,
+  type SavedCard,
+  type Slide,
+} from './model';
 import { newWheel } from './tools';
 import { newBoardGameRound } from './boardgame';
 import { newRpgRound, newVariant } from './rpg';
@@ -31,7 +46,10 @@ describe('the checklist', () => {
   it("goes to a Final's side that has nothing on it", () => {
     const game = jeopardyGame();
     const final = game.rounds[1];
-    const places = () => validate(game).filter((p) => p.tab === 1).map((p) => p.place);
+    const places = () =>
+      validate(game)
+        .filter((p) => p.tab === 1)
+        .map((p) => p.place);
     expect(places()).toEqual([
       { tab: 'round', round: final.id, part: { kind: 'final', side: 'q' } },
       { tab: 'round', round: final.id, part: { kind: 'final', side: 'a' } },
@@ -78,7 +96,12 @@ describe('the checklist', () => {
     game.audio.wrong = 'gone';
     expect(validate(game).filter((p) => p.text.includes('missing'))).toEqual([
       // (A player-only file has no 🔊 Sounds: its own words.)
-      { text: '1 sound file missing: see 🔊 Sounds', tab: 'sounds', level: 'warn', player: '1 sound file missing from this game (the built-in sound plays instead)' },
+      {
+        text: '1 sound file missing: see 🔊 Sounds',
+        tab: 'sounds',
+        level: 'warn',
+        player: '1 sound file missing from this game (the built-in sound plays instead)',
+      },
     ]);
     game.media.push({ id: 'm2', name: 'pic.png', kind: 'image' } as never);
     expect(validate(game).find((p) => p.text === '1 media file missing')).toMatchObject({
@@ -93,7 +116,9 @@ describe('the checklist', () => {
     );
     // One deleted but still on a tile too: its own words in a player-only file (not two identical lines).
     (game.rounds[0] as BoardRound).categories[0].clues[0].tileFace = { image: 'deleted1' };
-    expect(validate(game).find((p) => p.text.includes('deleted file'))?.player).toBe('1 file used on slides but missing from this game: ask whoever made it for a new copy');
+    expect(validate(game).find((p) => p.text.includes('deleted file'))?.player).toBe(
+      '1 file used on slides but missing from this game: ask whoever made it for a new copy',
+    );
   });
 
   it('a sound deleted from 🖼 Media while also on slides: its own line names the slides (Undo in History), as well as the 🔊 Sounds one', () => {
@@ -119,7 +144,9 @@ describe('the checklist', () => {
     (game.rounds[0] as BoardRound).categories[0].clues[0].questionSlide.elements.push(newAudioEl('m3'));
     const lines = validate(game, { plays: () => ({ is: 'plays', repack: null }) }).filter((p) => p.text.includes('missing'));
     expect(lines.map((p) => p.text)).toEqual(['1 sound file missing: see 🔊 Sounds', '1 media file missing']);
-    expect(lines[1].player).toBe('1 media file missing from this game (on Jeopardy! › Category 1 › $200 › Question › tone.wav): ask whoever made it for a new copy');
+    expect(lines[1].player).toBe(
+      '1 media file missing from this game (on Jeopardy! › Category 1 › $200 › Question › tone.wav): ask whoever made it for a new copy',
+    );
   });
 
   it('names where a deleted file is still used, and its line goes there', () => {
@@ -134,7 +161,9 @@ describe('the checklist', () => {
       place: { tab: 'round', round: intro.id, part: { kind: 'slides', element: pic.id } },
     });
     (game.rounds[1] as BoardRound).categories[0].clues[0].tileFace = { image: 'gone1' };
-    expect(validate(game).find((p) => p.text.includes('deleted file'))?.text).toMatch(/^1 deleted file still used on Introduction › Slide 1 › Image and 1 more place: .* off those slides$/);
+    expect(validate(game).find((p) => p.text.includes('deleted file'))?.text).toMatch(
+      /^1 deleted file still used on Introduction › Slide 1 › Image and 1 more place: .* off those slides$/,
+    );
   });
 
   it('where viewers read it (▶ Play in one window), a deleted or missing file on a tile’s 🤫 card doesn’t say which tile', () => {
@@ -187,10 +216,20 @@ describe('✍ multiple choice', () => {
     const round = game.rounds[0] as BoardRound;
     const [a, b, c, d] = round.categories[0].clues;
     for (const cl of [a, b, c, d]) cl.everyone = true;
-    a.choices = [{ id: '1', text: 'Paris', right: true }, { id: '2', text: '' }, { id: '3', text: 'Oslo' }];
+    a.choices = [
+      { id: '1', text: 'Paris', right: true },
+      { id: '2', text: '' },
+      { id: '3', text: 'Oslo' },
+    ];
     b.choices = [{ id: '1', text: 'Paris' }];
-    c.choices = [{ id: '1', text: 'Oslo', right: true }, { id: '2', text: ' oslo ' }];
-    d.choices = [{ id: '1', text: 'Paris' }, { id: '2', text: 'Oslo' }];
+    c.choices = [
+      { id: '1', text: 'Oslo', right: true },
+      { id: '2', text: ' oslo ' },
+    ];
+    d.choices = [
+      { id: '1', text: 'Paris' },
+      { id: '2', text: 'Oslo' },
+    ];
     const mine = () => validate(game).filter((p) => p.text.includes('choice'));
     const at = (cl: typeof a) => ({ tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[0].id, clue: cl.id } });
     expect(mine()).toEqual([
@@ -200,7 +239,10 @@ describe('✍ multiple choice', () => {
       { text: 'Jeopardy!: 1 ✍ clue with choices but none marked ✔ Right (you judge each answer)', tab: 0, level: 'info', place: at(d) },
     ]);
     // Counted per tile; ✍ unticked (kept, unused), or another type: not counted.
-    b.choices = [{ id: '1', text: '' }, { id: '2', text: 'Oslo' }];
+    b.choices = [
+      { id: '1', text: '' },
+      { id: '2', text: 'Oslo' },
+    ];
     delete c.everyone;
     d.type = 'dailyDouble';
     expect(mine().map((p) => p.text)).toEqual(['Jeopardy!: 2 ✍ clues with an empty choice']);
@@ -211,7 +253,11 @@ describe('✍ multiple choice', () => {
     game.settings.buzzer = true;
     const i = game.rounds.findIndex((r) => r.mode === 'final');
     const fin = game.rounds[i] as FinalRound;
-    fin.choices = [{ id: '1', text: 'Paris' }, { id: '2', text: '' }, { id: '3', text: 'paris' }];
+    fin.choices = [
+      { id: '1', text: 'Paris' },
+      { id: '2', text: '' },
+      { id: '3', text: 'paris' },
+    ];
     const mine = () => validate(game).filter((p) => p.text.includes('choice'));
     const place = { tab: 'round', round: fin.id };
     expect(mine()).toEqual([
@@ -230,10 +276,17 @@ describe('✍ multiple choice', () => {
     const game = jeopardyGame();
     const line = () => validate(game).find((p) => p.text.startsWith('Multiple choice:'));
     const clue = (game.rounds[0] as BoardRound).categories[0].clues[0];
-    clue.choices = [{ id: '1', text: 'Paris' }, { id: '2', text: 'Oslo' }];
+    clue.choices = [
+      { id: '1', text: 'Paris' },
+      { id: '2', text: 'Oslo' },
+    ];
     expect(line()).toBeUndefined();
     clue.everyone = true;
-    expect(line()).toEqual({ text: 'Multiple choice: without phone buzzers, the choices show on stream and players say the letter', tab: 'play', level: 'info' });
+    expect(line()).toEqual({
+      text: 'Multiple choice: without phone buzzers, the choices show on stream and players say the letter',
+      tab: 'play',
+      level: 'info',
+    });
     game.settings.buzzer = true;
     expect(line()).toBeUndefined();
     // A Final's too (while its players would type their answers).
@@ -260,9 +313,24 @@ describe('buttons on items, wheels and dice', () => {
     dice.totalOutcomes = [{ id: 't1', min: 1, max: 6, outcome: { label: 'Spin', actions: [{ id: 'a3', do: 'wheel', wheel: 'nope' }] } }];
     game.dice = [dice];
     const ps = validate(game);
-    expect(ps).toContainEqual({ text: 'Item “Potion”: a Use button points nowhere (its shop no longer exists)', tab: 'stats', level: 'warn', place: { tab: 'stats', item: 'potion' } });
-    expect(ps).toContainEqual({ text: 'Wheel “Chaos”: a slice\'s button points nowhere (no item chosen)', tab: 'tools', level: 'warn', place: { tab: 'tools', wheel: wheel.id } });
-    expect(ps).toContainEqual({ text: 'Dice “Fate”: a button points nowhere (its wheel no longer exists)', tab: 'tools', level: 'warn', place: { tab: 'tools', dice: dice.id } });
+    expect(ps).toContainEqual({
+      text: 'Item “Potion”: a Use button points nowhere (its shop no longer exists)',
+      tab: 'stats',
+      level: 'warn',
+      place: { tab: 'stats', item: 'potion' },
+    });
+    expect(ps).toContainEqual({
+      text: "Wheel “Chaos”: a slice's button points nowhere (no item chosen)",
+      tab: 'tools',
+      level: 'warn',
+      place: { tab: 'tools', wheel: wheel.id },
+    });
+    expect(ps).toContainEqual({
+      text: 'Dice “Fate”: a button points nowhere (its wheel no longer exists)',
+      tab: 'tools',
+      level: 'warn',
+      place: { tab: 'tools', dice: dice.id },
+    });
     potion.onUse = [];
     wheel.segments[1].actions = [];
     dice.totalOutcomes = [];
@@ -324,7 +392,11 @@ describe('🤝 partner clues', () => {
     game.settings.buzzer = true;
     setSlideText(clue.answerSlide, 'Shrek');
     const card = clue.cards![0];
-    const at = (id: string) => ({ tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[0].id, clue: clue.id, side: 'card', slide: id } });
+    const at = (id: string) => ({
+      tab: 'round',
+      round: round.id,
+      part: { kind: 'clue', category: round.categories[0].id, clue: clue.id, side: 'card', slide: id },
+    });
     card.name = 'Tip';
     expect(mine(game).map((p) => p.text)).toEqual(["Movies $400: card “Tip” is empty: there's nothing on it to send"]);
     setSlideText(card, 'Ogre');
@@ -339,16 +411,22 @@ describe('🤝 partner clues', () => {
         tab: 0,
         level: 'info',
         place: at(card.id),
-        quiet: { text: 'A tile in Jeopardy!: the name of card “Shrek tip” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel' },
+        quiet: {
+          text: 'A tile in Jeopardy!: the name of card “Shrek tip” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel',
+        },
       },
     ]);
     // (Its own words too.)
     card.name = 'Ogre hint';
-    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: the name of card “Ogre hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel']);
+    expect(mine(game).map((p) => p.text)).toEqual([
+      'Movies $400: the name of card “Ogre hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel',
+    ]);
     // (The question too: a Daily Double's cards are in the panel during its wager, before the question is shown.)
     setSlideText(clue.questionSlide, 'Swamp');
     card.name = 'Swamp tip';
-    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: the name of card “Swamp tip” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel']);
+    expect(mine(game).map((p) => p.text)).toEqual([
+      'Movies $400: the name of card “Swamp tip” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel',
+    ]);
     card.name = 'Clue tip';
     expect(mine(game)).toEqual([]);
     // Card 1 called "Card 2" beside an unnamed card 2: said once, going to the second.
@@ -371,7 +449,15 @@ describe('🤝 partner clues', () => {
     game.settings.buzzer = true;
     const pic = newImageEl('link1');
     clue.cards![0].elements.push(pic);
-    game.media.push({ id: 'link1', name: 'shrek.png', mime: 'image/png', size: 0, kind: 'image', url: 'https://cdn.example.com/shrek.png', expiresAt: Date.now() - 1000 });
+    game.media.push({
+      id: 'link1',
+      name: 'shrek.png',
+      mime: 'image/png',
+      size: 0,
+      kind: 'image',
+      url: 'https://cdn.example.com/shrek.png',
+      expiresAt: Date.now() - 1000,
+    });
     expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has an online link that has expired: add that file again']);
     game.media[0].expiresAt = Date.now() + 60_000;
     expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has an online link that stops working soon: save a copy or add the file']);
@@ -397,7 +483,9 @@ describe('🤝 partner clues', () => {
     ]);
     // The buzzer server's own limit: too big says its number, and with a server that takes it, it's only a note (over
     // 16 MB, phones on mobile data may wait for it).
-    expect(mine(game, { fileBytes: 24 * 1024 * 1024 }).map((p) => p.text)[0]).toBe('Movies $400: card 1 has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 24.0 MB): add it from a link instead');
+    expect(mine(game, { fileBytes: 24 * 1024 * 1024 }).map((p) => p.text)[0]).toBe(
+      'Movies $400: card 1 has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 24.0 MB): add it from a link instead',
+    );
     expect(mine(game, { fileBytes: 40 * 1024 * 1024 }).map((p) => [p.level, p.text])).toEqual([
       ['info', 'Movies $400: card 1 has a video of 40.0 MB: phones on mobile data may wait a while for it (WiFi is fine)'],
       ['warn', "Movies $400: card 1 has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link"],
@@ -415,7 +503,10 @@ describe('🤝 partner clues', () => {
     setSlideText(card, 'Shrek');
     card.elements.push({ ...newImageEl('pic'), y: 30 });
     game.media.push({ id: 'pic', name: 'ogre.png', mime: 'image/png', size: 1000, kind: 'image' });
-    const warned = (filesOff: boolean) => validate(game, { filesOff }).filter((p) => p.text.startsWith('Movies $400: card 1')).map((p) => p.text);
+    const warned = (filesOff: boolean) =>
+      validate(game, { filesOff })
+        .filter((p) => p.text.startsWith('Movies $400: card 1'))
+        .map((p) => p.text);
     expect(warned(false)).toEqual([]);
     expect(warned(true)).toEqual([
       "Movies $400: card 1 has a picture that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)",
@@ -430,7 +521,16 @@ describe('🤝 partner clues', () => {
     game.media.push({ id: 'big', name: 'huge-clip.mp4', mime: 'video/mp4', size: 40 * 1024 * 1024, kind: 'video' });
     const card = (): Slide => ({ background: {}, elements: [newTextEl('A secret'), { ...newVideoEl('big'), y: 10 }] });
     const send = (id: string): Action => ({ id, do: 'card', slide: card() });
-    game.deals = [{ id: 'd1', name: 'Mafia', parts: [{ id: 'p1', name: 'Boss', count: 1, card: card() }, { id: 'p2', name: 'Town', count: 'rest', card: textSlide('Fine') }] }];
+    game.deals = [
+      {
+        id: 'd1',
+        name: 'Mafia',
+        parts: [
+          { id: 'p1', name: 'Boss', count: 1, card: card() },
+          { id: 'p2', name: 'Town', count: 'rest', card: textSlide('Fine') },
+        ],
+      },
+    ];
     game.items = [{ id: 'i1', name: 'Map', stackable: false, onUse: [send('b1')] }];
     game.wheels = [{ ...newWheel('Prizes'), id: 'w1' }];
     // (Two slices with the same trouble: said once.)
@@ -467,9 +567,27 @@ describe('🤝 partner clues', () => {
         place: { tab: 'world', world: world.id, map: world.maps[0].id, screen: world.maps[0].screens[0].id, look: undefined, inSlide: true, element: chest.id },
         player: `Quest: a 🤫 card on “Chest” on “Start” ${shown}`,
       },
-      { text: `Item “Map”: a Use button’s 🤫 card ${too}`, tab: 'stats', level: 'warn', place: { tab: 'stats', item: 'i1' }, player: `Item “Map”: a Use button’s 🤫 card ${shown}` },
-      { text: `Wheel “Prizes”: a slice’s 🤫 card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', wheel: 'w1' }, player: `Wheel “Prizes”: a slice’s 🤫 card ${shown}` },
-      { text: `Deal “Mafia”: Boss’s card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', deal: 'd1' }, player: `Deal “Mafia”: Boss’s card ${shown}` },
+      {
+        text: `Item “Map”: a Use button’s 🤫 card ${too}`,
+        tab: 'stats',
+        level: 'warn',
+        place: { tab: 'stats', item: 'i1' },
+        player: `Item “Map”: a Use button’s 🤫 card ${shown}`,
+      },
+      {
+        text: `Wheel “Prizes”: a slice’s 🤫 card ${too}`,
+        tab: 'tools',
+        level: 'warn',
+        place: { tab: 'tools', wheel: 'w1' },
+        player: `Wheel “Prizes”: a slice’s 🤫 card ${shown}`,
+      },
+      {
+        text: `Deal “Mafia”: Boss’s card ${too}`,
+        tab: 'tools',
+        level: 'warn',
+        place: { tab: 'tools', deal: 'd1' },
+        player: `Deal “Mafia”: Boss’s card ${shown}`,
+      },
     ]);
     vi.unstubAllGlobals();
   });
@@ -485,19 +603,33 @@ describe('🤝 partner clues', () => {
     board.spaces[2].onLand = [send('b2')];
     game.rounds.push(board);
     const rpg = newRpgRound(game, 'Quest');
-    const idol = { ...newImageEl('m0'), name: 'Golden Idol', secret: true, role: { class: 'interactable' as const, actions: [send('b3'), { id: 's', do: 'shop' as const, shop: 'gone' }] } };
+    const idol = {
+      ...newImageEl('m0'),
+      name: 'Golden Idol',
+      secret: true,
+      role: { class: 'interactable' as const, actions: [send('b3'), { id: 's', do: 'shop' as const, shop: 'gone' }] },
+    };
     game.worlds![0].maps[0].screens[0].slide.elements.push(idol);
     game.rounds.push(rpg);
     const lines = validate(game, OLD).filter((p) => p.level === 'warn' && /card|points nowhere/.test(p.text));
     const big = 'has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB)';
     expect(lines.map((p) => [p.text, p.quiet?.text])).toEqual([
-      ['Movies $400 is a Describe it partner clue with no card: the describer has nothing to describe', 'A tile in Jeopardy! is a Describe it partner clue with no card: the describer has nothing to describe'],
+      [
+        'Movies $400 is a Describe it partner clue with no card: the describer has nothing to describe',
+        'A tile in Jeopardy! is a Describe it partner clue with no card: the describer has nothing to describe',
+      ],
       ['Race: a button on “Dragon Lair” points nowhere', 'Race: a button on a secret space points nowhere'],
       [`Race: a 🤫 card on “Dragon Lair” ${big}: add it from a link instead`, `Race: a 🤫 card on a secret space ${big}: add it from a link instead`],
       // (A space that isn't secret is named, as before.)
       [`Race: a 🤫 card on “${board.spaces[2].name}” ${big}: add it from a link instead`, undefined],
-      ['Quest: “Golden Idol” on “Start” has a button or setting that points nowhere', 'Quest: a hidden object on “Start” has a button or setting that points nowhere'],
-      [`Quest: a 🤫 card on “Golden Idol” on “Start” ${big}: add it from a link instead`, `Quest: a 🤫 card on a hidden object on “Start” ${big}: add it from a link instead`],
+      [
+        'Quest: “Golden Idol” on “Start” has a button or setting that points nowhere',
+        'Quest: a hidden object on “Start” has a button or setting that points nowhere',
+      ],
+      [
+        `Quest: a 🤫 card on “Golden Idol” on “Start” ${big}: add it from a link instead`,
+        `Quest: a 🤫 card on a hidden object on “Start” ${big}: add it from a link instead`,
+      ],
     ]);
     // A player-only file's words too.
     expect(lines[2].quiet?.player).toBe(`Race: a 🤫 card on a secret space ${big}: the host shows it on stream instead`);
@@ -529,13 +661,18 @@ describe('a Final’s 🤫 cards', () => {
   it('warns of an empty one by its name or its place, going to that card', () => {
     const { game, final, card } = finalGame();
     const empty = addCard(final, 'playing')!;
-    expect(mine(game)).toEqual([{ text: "Final Jeopardy!: card 2 is empty: there's nothing on it to send", tab: 1, level: 'warn', place: at(final, empty.id), sameAsAnswer: true }]);
+    expect(mine(game)).toEqual([
+      { text: "Final Jeopardy!: card 2 is empty: there's nothing on it to send", tab: 1, level: 'warn', place: at(final, empty.id), sameAsAnswer: true },
+    ]);
     // (With no answer, nothing to copy.)
     setSlideText(final.answerSlide, '');
     expect(mine(game).find((p) => p.text.includes('card 2 is empty'))?.sameAsAnswer).toBeUndefined();
     setSlideText(final.answerSlide, 'Shrek');
     setSlideText(card, '');
-    expect(mine(game).map((p) => p.text)).toEqual(["Final Jeopardy!: card “Leader hint” is empty: there's nothing on it to send", "Final Jeopardy!: card 2 is empty: there's nothing on it to send"]);
+    expect(mine(game).map((p) => p.text)).toEqual([
+      "Final Jeopardy!: card “Leader hint” is empty: there's nothing on it to send",
+      "Final Jeopardy!: card 2 is empty: there's nothing on it to send",
+    ]);
   });
 
   it('warns of more than six, going to the seventh', () => {
@@ -544,7 +681,9 @@ describe('a Final’s 🤫 cards', () => {
     expect(mine(game)).toEqual([]);
     const seventh = { ...final.cards![0], id: 'c7', name: undefined };
     final.cards!.push(seventh);
-    expect(mine(game)).toEqual([{ text: 'Final Jeopardy! has 7 cards: a Final holds 6 (＋ 🤫 Card adds no more)', tab: 1, level: 'warn', place: at(final, 'c7') }]);
+    expect(mine(game)).toEqual([
+      { text: 'Final Jeopardy! has 7 cards: a Final holds 6 (＋ 🤫 Card adds no more)', tab: 1, level: 'warn', place: at(final, 'c7') },
+    ]);
   });
 
   it('warns of what won’t reach a phone, as a tile’s card', () => {
@@ -561,13 +700,18 @@ describe('a Final’s 🤫 cards', () => {
         tab: 1,
         level: 'warn',
         place: at(final, card.id),
-        player: 'Final Jeopardy!: card “Leader hint” has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB): the host shows it on stream instead',
+        player:
+          'Final Jeopardy!: card “Leader hint” has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB): the host shows it on stream instead',
       },
     ]);
     expect(mine(game, true).map((p) => p.text)).toContain(
       "Final Jeopardy!: card “Leader hint” has a picture that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)",
     );
-    expect(mine(game, true).map((p) => p.text).join()).not.toMatch(/zfnqj|ogre/);
+    expect(
+      mine(game, true)
+        .map((p) => p.text)
+        .join(),
+    ).not.toMatch(/zfnqj|ogre/);
     vi.unstubAllGlobals();
   });
 
@@ -585,11 +729,20 @@ describe('a Final’s 🤫 cards', () => {
     // Its question: in the panel from the wagers on, while the question is still hidden.
     setSlideText(final.questionSlide, 'Bald eagle');
     card.name = 'Bald eagle hint';
-    expect(mine(game).map((p) => p.text)).toEqual(['Final Jeopardy!: the name of card “Bald eagle hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel']);
+    expect(mine(game).map((p) => p.text)).toEqual([
+      'Final Jeopardy!: the name of card “Bald eagle hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel',
+    ]);
     card.name = 'Card 2';
     const second = addCard(final, 'nobody')!;
     setSlideText(second, 'Side bet');
-    expect(mine(game)).toEqual([{ text: 'Final Jeopardy! has two cards called “Card 2”: in the host panel you can’t tell them apart', tab: 1, level: 'info', place: at(final, second.id) }]);
+    expect(mine(game)).toEqual([
+      {
+        text: 'Final Jeopardy! has two cards called “Card 2”: in the host panel you can’t tell them apart',
+        tab: 1,
+        level: 'info',
+        place: at(final, second.id),
+      },
+    ]);
   });
 });
 
@@ -600,7 +753,9 @@ describe('🤫 Cards (the editor’s tab)', () => {
   it('warns of an empty card, going to it', () => {
     const game = jeopardyGame();
     game.cards = [card('sc1', 'Tip A', newTextEl(' ')), card('sc2', '', newTextEl('Bring a spoon'))];
-    expect(mine(game)).toEqual([{ text: "🤫 Card “Tip A” is empty: there's nothing on it to send", tab: 'cards', level: 'warn', place: { tab: 'cards', card: 'sc1' } }]);
+    expect(mine(game)).toEqual([
+      { text: "🤫 Card “Tip A” is empty: there's nothing on it to send", tab: 'cards', level: 'warn', place: { tab: 'cards', card: 'sc1' } },
+    ]);
     // One left blank is named by its place in the list.
     game.cards[1].elements = [];
     expect(mine(game).map((p) => p.text)).toContain("🤫 Card “Untitled card 2” is empty: there's nothing on it to send");
@@ -622,7 +777,8 @@ describe('🤫 Cards (the editor’s tab)', () => {
         tab: 'cards',
         level: 'warn',
         place: { tab: 'cards', card: 'sc1' },
-        player: '🤫 Card “Tip A” has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB): the host shows it on stream instead',
+        player:
+          '🤫 Card “Tip A” has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB): the host shows it on stream instead',
       },
     ]);
     game.cards[0].elements = [newTextEl('A secret'), { ...newImageEl('pic'), y: 10 }];
@@ -646,7 +802,17 @@ describe('🤫 Cards (the editor’s tab)', () => {
       // (A picture is shrunk before it goes: never a note.)
       { id: 'pic', name: 'zfnqj.png', mime: 'image/png', size: 30 * MB, kind: 'image' },
     );
-    game.cards = [card('sc1', 'Tip', newTextEl('A secret'), { ...newVideoEl('mid'), y: 10 }, { ...newVideoEl('big'), y: 20 }, { ...newImageEl('gif'), y: 30 }, { ...newImageEl('pic'), y: 40 })];
+    game.cards = [
+      card(
+        'sc1',
+        'Tip',
+        newTextEl('A secret'),
+        { ...newVideoEl('mid'), y: 10 },
+        { ...newVideoEl('big'), y: 20 },
+        { ...newImageEl('gif'), y: 30 },
+        { ...newImageEl('pic'), y: 40 },
+      ),
+    ];
     const lines = validate(game, { fileBytes: 24 * MB }).filter((p) => p.tab === 'cards');
     expect(lines.map((p) => [p.level, p.text, p.player])).toEqual([
       ['info', '🤫 Card “Tip” has a video of 17.0 MB: phones on mobile data may wait a while for it (WiFi is fine)', undefined],
@@ -664,7 +830,11 @@ describe('🤫 Cards (the editor’s tab)', () => {
     // (Never a file's name: the checklist can be on stream.)
     expect(JSON.stringify(lines)).not.toContain('zfnqj');
     // An older server's 16 MB: both videos and the GIF are too big, nothing is a note.
-    expect(validate(game, OLD).filter((p) => p.tab === 'cards').map((p) => p.level)).toEqual(['warn', 'warn', 'warn']);
+    expect(
+      validate(game, OLD)
+        .filter((p) => p.tab === 'cards')
+        .map((p) => p.level),
+    ).toEqual(['warn', 'warn', 'warn']);
     vi.unstubAllGlobals();
   });
 
@@ -681,15 +851,31 @@ describe('🤫 Cards (the editor’s tab)', () => {
     const lines = validate(game, { fileBytes: 24 * MB, canShrink }).filter((p) => p.tab === 'cards');
     expect(lines.map((p) => [p.level, p.text, p.shrink])).toEqual([
       ['info', '🤫 Card “Tip” has a GIF of 20.0 MB: phones on mobile data may wait a while for it (WiFi is fine)', 'gif'],
-      ['warn', '🤫 Card “Tip” has a GIF too big to send to phones (30.0 MB; this buzzer server takes files up to 24.0 MB): make a smaller copy for phones (🗜) or add it from a link', 'big'],
+      [
+        'warn',
+        '🤫 Card “Tip” has a GIF too big to send to phones (30.0 MB; this buzzer server takes files up to 24.0 MB): make a smaller copy for phones (🗜) or add it from a link',
+        'big',
+      ],
     ]);
     expect(JSON.stringify(lines.map((p) => [p.text, p.player]))).not.toContain('zfnqj');
     // The pre-game screen (no 🗜 there): as before.
-    expect(validate(game, { fileBytes: 24 * MB }).filter((p) => p.tab === 'cards').map((p) => p.text)[1]).toMatch(/: add it from a link instead$/);
+    expect(
+      validate(game, { fileBytes: 24 * MB })
+        .filter((p) => p.tab === 'cards')
+        .map((p) => p.text)[1],
+    ).toMatch(/: add it from a link instead$/);
     // A copy of the big one, here: it goes, small enough, so no line; its bytes not here: the GIF itself again.
     game.media.push({ id: 'bigc', name: 'zfnqj-big (phones).webm', mime: 'video/webm', size: 1 * MB, kind: 'video', phoneCopy: { of: 'big' } });
-    expect(validate(game, { fileBytes: 24 * MB, canShrink }).filter((p) => p.tab === 'cards').map((p) => p.shrink)).toEqual(['gif']);
-    expect(validate(game, { fileBytes: 24 * MB, canShrink, stored: (id) => id !== 'bigc' }).filter((p) => p.tab === 'cards').map((p) => p.shrink)).toEqual(['gif', 'big']);
+    expect(
+      validate(game, { fileBytes: 24 * MB, canShrink })
+        .filter((p) => p.tab === 'cards')
+        .map((p) => p.shrink),
+    ).toEqual(['gif']);
+    expect(
+      validate(game, { fileBytes: 24 * MB, canShrink, stored: (id) => id !== 'bigc' })
+        .filter((p) => p.tab === 'cards')
+        .map((p) => p.shrink),
+    ).toEqual(['gif', 'big']);
     vi.unstubAllGlobals();
   });
 
@@ -701,10 +887,16 @@ describe('🤫 Cards (the editor’s tab)', () => {
     const canShrink = (m: { kind: string }) => m.kind === 'video';
     const said = (room = {}) => validate(game, room).filter((p) => p.tab === 'cards');
     expect(said({ canShrink }).map((p) => [p.level, p.text, p.shrink])).toEqual([
-      ['warn', "🤫 Card “Tip” has a video phones can't play: make a copy they can play (🗜), or add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link", 'mov'],
+      [
+        'warn',
+        "🤫 Card “Tip” has a video phones can't play: make a copy they can play (🗜), or add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link",
+        'mov',
+      ],
     ]);
     // Where 🗜 can't: as before.
-    expect(said().map((p) => [p.text, p.shrink])).toEqual([["🤫 Card “Tip” has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link", undefined]]);
+    expect(said().map((p) => [p.text, p.shrink])).toEqual([
+      ["🤫 Card “Tip” has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link", undefined],
+    ]);
     game.media.push({ id: 'movc', name: 'zfnqj (phones).webm', mime: 'video/webm', size: 4000, kind: 'video', phoneCopy: { of: 'mov' } });
     expect(said({ canShrink })).toEqual([]);
     vi.unstubAllGlobals();
@@ -719,14 +911,35 @@ describe('🤫 Cards (the editor’s tab)', () => {
     const plays = (): Verdict => ({ is: 'plays', repack: { video: 'keep', audio: 'keep', box: 'webm' } });
     const lines = validate(game, { canShrink, plays }).filter((p) => p.tab === 'cards');
     expect(lines.map((p) => [p.level, p.text, p.shrink, p.convert])).toEqual([
-      ['warn', "🤫 Card “Tip” has a video phones can't open: repackage it as a WebM (↻, nothing lost), or add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link", undefined, ['mkv']],
+      [
+        'warn',
+        "🤫 Card “Tip” has a video phones can't open: repackage it as a WebM (↻, nothing lost), or add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link",
+        undefined,
+        ['mkv'],
+      ],
     ]);
     // Not worked out yet, or nothing to repackage it as: 🗜, as before.
-    expect(validate(game, { canShrink }).filter((p) => p.tab === 'cards').map((p) => [p.shrink, p.convert])).toEqual([['mkv', undefined]]);
-    expect(validate(game, { canShrink, plays: () => ({ is: 'plays', repack: null }) }).filter((p) => p.tab === 'cards').map((p) => p.shrink)).toEqual(['mkv']);
+    expect(
+      validate(game, { canShrink })
+        .filter((p) => p.tab === 'cards')
+        .map((p) => [p.shrink, p.convert]),
+    ).toEqual([['mkv', undefined]]);
+    expect(
+      validate(game, { canShrink, plays: () => ({ is: 'plays', repack: null }) })
+        .filter((p) => p.tab === 'cards')
+        .map((p) => p.shrink),
+    ).toEqual(['mkv']);
     // Before the game (no ↻ there): 🗜's words and button, though ↻ could repackage it.
-    expect(validate(game, { canShrink, plays, repack: false }).filter((p) => p.tab === 'cards').map((p) => [p.text, p.shrink, p.convert])).toEqual([
-      ["🤫 Card “Tip” has a video phones can't play: make a copy they can play (🗜), or add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link", 'mkv', undefined],
+    expect(
+      validate(game, { canShrink, plays, repack: false })
+        .filter((p) => p.tab === 'cards')
+        .map((p) => [p.text, p.shrink, p.convert]),
+    ).toEqual([
+      [
+        "🤫 Card “Tip” has a video phones can't play: make a copy they can play (🗜), or add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link",
+        'mkv',
+        undefined,
+      ],
     ]);
     vi.unstubAllGlobals();
   });
@@ -757,13 +970,30 @@ describe('🤫 Cards (the editor’s tab)', () => {
   it('notes two cards with one name once, going to the second', () => {
     const game = jeopardyGame();
     game.cards = [card('sc1', 'Tip A', newTextEl('One')), card('sc2', 'tip a ', newTextEl('Two')), card('sc3', 'Tip A', newTextEl('Three'))];
-    expect(mine(game)).toEqual([{ text: 'Two 🤫 cards are called “tip a”: in 🤫 Send a card… you can’t tell them apart', tab: 'cards', level: 'info', place: { tab: 'cards', card: 'sc2' } }]);
+    expect(mine(game)).toEqual([
+      {
+        text: 'Two 🤫 cards are called “tip a”: in 🤫 Send a card… you can’t tell them apart',
+        tab: 'cards',
+        level: 'info',
+        place: { tab: 'cards', card: 'sc2' },
+      },
+    ]);
   });
 });
 
 describe('videos and sounds this browser won’t play', () => {
-  const ref = (id: string, kind: 'video' | 'audio' = 'video', more: Partial<Game['media'][number]> = {}) => ({ id, name: `${id}.mkv`, mime: 'video/x-matroska', size: 10, kind, ...more });
-  const playLines = (game: Game, plays?: NonNullable<Parameters<typeof validate>[1]>['plays']) => validate(game, { plays }).filter((p) => p.text.includes('browser')).map((p) => [p.level, p.tab, p.text]);
+  const ref = (id: string, kind: 'video' | 'audio' = 'video', more: Partial<Game['media'][number]> = {}) => ({
+    id,
+    name: `${id}.mkv`,
+    mime: 'video/x-matroska',
+    size: 10,
+    kind,
+    ...more,
+  });
+  const playLines = (game: Game, plays?: NonNullable<Parameters<typeof validate>[1]>['plays']) =>
+    validate(game, { plays })
+      .filter((p) => p.text.includes('browser'))
+      .map((p) => [p.level, p.tab, p.text]);
 
   it('as worked out from what’s inside them: won’t play, plays without its sound, or (not worked out yet) as their type says', () => {
     // (Its type alone says none of these play here.)
@@ -821,7 +1051,10 @@ describe('what a game uses phones for (▶ Play’s 📱 card, with phone buzzer
     round.categories[2].clues[0].cards = [];
     const mc = round.categories[3].clues[0];
     mc.everyone = true;
-    mc.choices = [{ id: '1', text: 'Paris' }, { id: '2', text: 'Oslo' }];
+    mc.choices = [
+      { id: '1', text: 'Paris' },
+      { id: '2', text: 'Oslo' },
+    ];
     expect(phoneUses(game)).toEqual({ partner: 2, cards: false, deals: false, choices: true });
     expect(phoneUsesLine(phoneUses(game))).toBe(
       'This game uses phones for 🤝 partner cards (2 clues) and ✍ multiple choice. Without phone buzzers you copy the cards to the players yourself, and they say the letter.',
@@ -833,8 +1066,12 @@ describe('what a game uses phones for (▶ Play’s 📱 card, with phone buzzer
     const fin = game.rounds.find((r) => r.mode === 'final') as FinalRound;
     addCard(fin, 'playing');
     game.deals = [{ id: 'd', name: 'Spy', parts: [] }] as never;
-    expect(phoneUsesLine(phoneUses(game))).toBe('This game uses phones for 🤫 secret cards and 🎭 deals. Without phone buzzers you copy the cards and the parts to the players yourself.');
-    expect(phoneUsesLine({ partner: 1, cards: false, deals: false, choices: false })).toBe('This game uses phones for 🤝 partner cards (1 clue). Without phone buzzers you copy the cards to the players yourself.');
+    expect(phoneUsesLine(phoneUses(game))).toBe(
+      'This game uses phones for 🤫 secret cards and 🎭 deals. Without phone buzzers you copy the cards and the parts to the players yourself.',
+    );
+    expect(phoneUsesLine({ partner: 1, cards: false, deals: false, choices: false })).toBe(
+      'This game uses phones for 🤝 partner cards (1 clue). Without phone buzzers you copy the cards to the players yourself.',
+    );
     expect(phoneUsesLine({ partner: 0, cards: false, deals: false, choices: true })).toBe(
       'This game uses phones for ✍ multiple choice. Without phone buzzers the choices show on stream and players say the letter.',
     );

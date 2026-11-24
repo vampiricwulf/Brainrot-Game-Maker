@@ -26,7 +26,9 @@ export const usePicker = (size: number, canPick: boolean): boolean => canPick &&
 /** The save picker was closed without saving (the save is called off, with nothing to say). */
 export const isCancel = (e: unknown): boolean => e instanceof DOMException && e.name === 'AbortError';
 
-type SavePicker = (opts: { suggestedName: string }) => Promise<{ name: string; createWritable(): Promise<WritableStream<Uint8Array> & { abort?(): Promise<void> }> }>;
+type SavePicker = (opts: {
+  suggestedName: string;
+}) => Promise<{ name: string; createWritable(): Promise<WritableStream<Uint8Array> & { abort?(): Promise<void> }> }>;
 
 /**
  * A big file, through the browser's save picker (where there is one), written to disk as it's read: a download of
@@ -171,7 +173,11 @@ export function safeFilename(title: string): string {
     .trim()
     .replace(/\s+/g, '-');
   // Cut by characters, not UTF-16 units, so a letter outside the basic range is never split in half.
-  const cut = Array.from(name).slice(0, 60).join('').replace(/^-+|-+$/g, '') || 'game';
+  const cut =
+    Array.from(name)
+      .slice(0, 60)
+      .join('')
+      .replace(/^-+|-+$/g, '') || 'game';
   return /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(cut) ? `_${cut}` : cut;
 }
 

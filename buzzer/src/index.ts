@@ -97,7 +97,10 @@ const json = (body: unknown, status = 200): Response =>
 /** `bytes` random bytes as base64url. */
 function randomToken(bytes = 16): string {
   const b = crypto.getRandomValues(new Uint8Array(bytes));
-  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return btoa(String.fromCharCode(...b))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 
 function randomCode(): string {
@@ -178,7 +181,12 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
     if (!file?.ok || !file.body) return json({ error: 'not found' }, 404);
     return new Response(file.body, {
       // (no-transform: Cloudflare compressing it would drop its Content-Length.)
-      headers: { 'Content-Type': file.headers.get('Content-Type') ?? '', 'Cache-Control': 'no-store, no-transform', 'X-Content-Type-Options': 'nosniff', ...CORS },
+      headers: {
+        'Content-Type': file.headers.get('Content-Type') ?? '',
+        'Cache-Control': 'no-store, no-transform',
+        'X-Content-Type-Options': 'nosniff',
+        ...CORS,
+      },
     });
   }
   if (!filesBudget(env.FILES_MB_PER_DAY)) return json({ error: FILES_OFF }, 503);
@@ -256,8 +264,7 @@ export default {
       if (!isRoomCode(code)) return new Response('No such room', { status: 404, headers: CORS });
       // Every socket, the host's too: a wrong host token is turned away differently from a missing room, so it could
       // be used to look rooms up.
-      if (!(await env.SOCKET_LIMIT.limit({ key: ip })).success)
-        return new Response(TOO_MANY_LOOKUPS, { status: 429, headers: CORS });
+      if (!(await env.SOCKET_LIMIT.limit({ key: ip })).success) return new Response(TOO_MANY_LOOKUPS, { status: 429, headers: CORS });
       return env.BUZZ_ROOM.getByName(code).fetch(request);
     }
 
@@ -313,8 +320,17 @@ export class BuzzRoom extends DurableObject<Env> {
       // (The ticket is the hour it was counted under: a refund goes back there.)
       return typeof took === 'string' ? took : { ok: true, ticket: took.hour };
     },
-    refund: (who, n, hour) => this.env.ROOM_COUNTER.getByName('rooms').refundBytes(who, n, typeof hour === 'number' ? hour : undefined).catch(() => {}),
-    busyText: async (took, who, n) => filesBusy(took, await this.env.ROOM_COUNTER.getByName('rooms').bytesFreeIn(who, n).catch(() => WINDOW_HOURS)),
+    refund: (who, n, hour) =>
+      this.env.ROOM_COUNTER.getByName('rooms')
+        .refundBytes(who, n, typeof hour === 'number' ? hour : undefined)
+        .catch(() => {}),
+    busyText: async (took, who, n) =>
+      filesBusy(
+        took,
+        await this.env.ROOM_COUNTER.getByName('rooms')
+          .bytesFreeIn(who, n)
+          .catch(() => WINDOW_HOURS),
+      ),
   });
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -465,7 +481,12 @@ export class BuzzRoom extends DurableObject<Env> {
    */
   private async download(token: string, id: string): Promise<Response> {
     const epoch = this.epoch;
-    const file = await this.files.send(id, token, () => this.room?.fileFor(token, id) ?? null, () => !!this.meta && this.epoch === epoch);
+    const file = await this.files.send(
+      id,
+      token,
+      () => this.room?.fileFor(token, id) ?? null,
+      () => !!this.meta && this.epoch === epoch,
+    );
     const n = Number(file.headers.get('X-File-Bytes'));
     if (!file.ok || !file.body || !Number.isSafeInteger(n) || n <= 0) return file;
     // (Here, not in the Worker: piped there, a phone letting go partway never reached this end, and the download kept
@@ -518,7 +539,13 @@ export class BuzzRoom extends DurableObject<Env> {
       const ip = request.headers.get('CF-Connecting-IP') ?? undefined;
       const conn = randomToken(9);
       this.ctx.acceptWebSocket(server, [conn]);
-      server.serializeAttachment({ role: 'phone', conn, seatId: null, ...(ip ? { ip } : {}), ...(this.room.floodBlocked(ip) ? { flooded: true } : {}) } satisfies Attachment);
+      server.serializeAttachment({
+        role: 'phone',
+        conn,
+        seatId: null,
+        ...(ip ? { ip } : {}),
+        ...(this.room.floodBlocked(ip) ? { flooded: true } : {}),
+      } satisfies Attachment);
       if (!this.room.phoneOpen(conn, ip)) {
         server.send(JSON.stringify({ t: 'denied', reason: 'full' } satisfies RoomToPhone));
         server.close(4001, 'full');

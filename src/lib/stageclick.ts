@@ -85,7 +85,8 @@ export const CLICK = {
   lastSlide: (next: string) => `Last slide: click again (or ${next}) to go on`,
   finish: (next: string) => `Everyone is judged: click again (or ${next}) to go on`,
   soon: 'The question just went up: click again to start the clock',
-  copy: (names: string, cards: number) => `Copy ${cards === 1 ? 'the card' : 'the cards'} to ${names} first (📋 in the 🤝 box), then click again to start the clock`,
+  copy: (names: string, cards: number) =>
+    `Copy ${cards === 1 ? 'the card' : 'the cards'} to ${names} first (📋 in the 🤝 box), then click again to start the clock`,
   allIn: (step: string) => `All wagers in: ${step} (N)`,
   steal: (how: string) => `${how} · R shows the answer anyway`,
   spent: 'Every slice has landed: Restore them to spin again',

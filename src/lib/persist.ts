@@ -265,7 +265,13 @@ function dropPlayRescue(stores = rescueStores()): void {
  * IndexedDB write, see rescueDraft). Too big for the storage with its game: the session alone (the stored game is used).
  */
 export function rescuePlay(game: Game, session: Session, cover = false, overlay?: Overlay, toolTile?: string): void {
-  const base = { session, savedAt: (playRescuedAt = Date.now()), ...(cover ? { cover } : {}), ...(overlay ? { overlay } : {}), ...(overlay && toolTile ? { toolTile } : {}) };
+  const base = {
+    session,
+    savedAt: (playRescuedAt = Date.now()),
+    ...(cover ? { cover } : {}),
+    ...(overlay ? { overlay } : {}),
+    ...(overlay && toolTile ? { toolTile } : {}),
+  };
   for (const s of rescueStores())
     try {
       s.setItem(playRescueKey(), JSON.stringify({ ...base, game } satisfies SavedPlay));
@@ -325,7 +331,14 @@ export const savePlay = (game: Game, session: Session, cover = false, overlay?: 
     const savedAt = Date.now();
     playWrites++;
     try {
-      await set(playKey, { game, session, savedAt, ...(cover ? { cover } : {}), ...(overlay ? { overlay } : {}), ...(overlay && toolTile ? { toolTile } : {}) } satisfies SavedPlay);
+      await set(playKey, {
+        game,
+        session,
+        savedAt,
+        ...(cover ? { cover } : {}),
+        ...(overlay ? { overlay } : {}),
+        ...(overlay && toolTile ? { toolTile } : {}),
+      } satisfies SavedPlay);
     } catch (err) {
       // (Failed once it was cleared: there's nothing left to keep, so nothing to try again.)
       if (gen === playGen) throw err;
@@ -436,10 +449,12 @@ async function probe(): Promise<void> {
 }
 
 export async function testStorage(): Promise<boolean> {
-  return (await safe(async () => {
-    await probe();
-    return true;
-  })) ?? false;
+  return (
+    (await safe(async () => {
+      await probe();
+      return true;
+    })) ?? false
+  );
 }
 
 let keepAsked = false;

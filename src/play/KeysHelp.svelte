@@ -75,7 +75,9 @@
 
   let tipsShown = $state(false);
   // In a browser in one window, the guide's new tab would be what the capture shows.
-  const guideTitle = $derived(`The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams${inTauri() ? ' (in your browser)' : area ? ' (a new tab: in a single window viewers see it while it’s in front)' : ''}`);
+  const guideTitle = $derived(
+    `The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams${inTauri() ? ' (in your browser)' : area ? ' (a new tab: in a single window viewers see it while it’s in front)' : ''}`,
+  );
 </script>
 
 <svelte:window

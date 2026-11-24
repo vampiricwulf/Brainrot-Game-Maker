@@ -1,10 +1,41 @@
 // Host actions that open / drive the tool overlays (wheel, dice, roll-off, scoreboard).
-import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Id, type PartnerState, type ScoreAction, type Session, type TeamMember, type WheelPreset, type WheelSegment } from './model';
+import {
+  categoryLabel,
+  isBoard,
+  newId,
+  PLAYER_WHEEL,
+  type DicePreset,
+  type Game,
+  type Id,
+  type PartnerState,
+  type ScoreAction,
+  type Session,
+  type TeamMember,
+  type WheelPreset,
+  type WheelSegment,
+} from './model';
 import { mixHex } from './colors';
 import { overlayDoneAt, toolOverlay, type ExtraWheel, type Live, type Overlay, type ScoreDraft } from './live';
 import {
-  actionDeltas, activeSegments, applyAction, describeRoll, faceText, isRespin, logRoll, needsSource, newSegment, onSlices, outcomeText, planRollOff, rollOutcome, rollPreset, sliceLabel,
-  spinTarget, weightedIndex, wheelUsedUp, type PoolSlice,
+  actionDeltas,
+  activeSegments,
+  applyAction,
+  describeRoll,
+  faceText,
+  isRespin,
+  logRoll,
+  needsSource,
+  newSegment,
+  onSlices,
+  outcomeText,
+  planRollOff,
+  rollOutcome,
+  rollPreset,
+  sliceLabel,
+  spinTarget,
+  weightedIndex,
+  wheelUsedUp,
+  type PoolSlice,
 } from './tools';
 import { templateSegments, type WheelTemplate } from './wheeltemplates';
 
@@ -83,7 +114,12 @@ export function openMemberWheel(live: Live, s: PartnerState, name: string, color
     name,
     members: true,
     // (From the team's colour lighter and darker in turn, so neighbours differ.)
-    segments: people.map((m, i) => ({ id: m.id, label: m.name, color: i % 2 ? mixHex(color, '#000000', 0.15 + (0.35 * i) / n) : mixHex(color, '#ffffff', (0.45 * i) / n), weight: 1 })),
+    segments: people.map((m, i) => ({
+      id: m.id,
+      label: m.name,
+      color: i % 2 ? mixHex(color, '#000000', 0.15 + (0.35 * i) / n) : mixHex(color, '#ffffff', (0.45 * i) / n),
+      weight: 1,
+    })),
     rotation: 0,
     spin: null,
     result: null,
@@ -164,10 +200,12 @@ export function scoreCards(o: Overlay | null | undefined, now = Date.now()): Sco
   if (!o.spin) return [];
   const out: ScoreCard[] = [];
   const main = o.result !== null ? o.segments[o.result] : undefined;
-  if (!o.players && !o.members && main?.scoreAction) out.push({ key, action: main.scoreAction, reason: `Wheel: ${o.name} → ${sliceLabel(main, o.result!)}`, rollTotal: 0, kind: 'wheel' });
+  if (!o.players && !o.members && main?.scoreAction)
+    out.push({ key, action: main.scoreAction, reason: `Wheel: ${o.name} → ${sliceLabel(main, o.result!)}`, rollTotal: 0, kind: 'wheel' });
   for (const w of o.extra ?? []) {
     const seg = w.spin && w.result !== null ? w.segments[w.result] : undefined;
-    if (seg?.scoreAction) out.push({ key: `${key}-${w.key}`, action: seg.scoreAction, reason: `Wheel: ${w.name} → ${sliceLabel(seg, w.result!)}`, rollTotal: 0, kind: 'wheel' });
+    if (seg?.scoreAction)
+      out.push({ key: `${key}-${w.key}`, action: seg.scoreAction, reason: `Wheel: ${w.name} → ${sliceLabel(seg, w.result!)}`, rollTotal: 0, kind: 'wheel' });
   }
   return out;
 }
@@ -224,7 +262,11 @@ export function draftPick(live: Live, session: Session, card: ScoreCard, id: Id,
   const next: ScoreDraft = source
     ? // (The player stolen from, or swapped with, isn't one it's for.)
       { targets: d.targets.filter((x) => x !== id), source: id, touched: true }
-    : { targets: d.targets.includes(id) ? d.targets.filter((x) => x !== id) : one ? [id] : [...d.targets, id], ...(d.source ? { source: d.source } : {}), touched: true };
+    : {
+        targets: d.targets.includes(id) ? d.targets.filter((x) => x !== id) : one ? [id] : [...d.targets, id],
+        ...(d.source ? { source: d.source } : {}),
+        touched: true,
+      };
   // (Only this spin's cards are kept: an older spin's go.)
   const o = toolOverlay(live);
   const keep = o ? cardsKey(o) : '';
@@ -485,7 +527,17 @@ export function rollDice(live: Live, session: Session, preset: DicePreset, mover
   const p = JSON.parse(JSON.stringify(preset)) as DicePreset;
   const roll = rollPreset(p);
   const logged = logRoll(session, 'dice', p.name, describeRoll(roll));
-  live.overlay = { kind: 'dice', nonce: newId(), name: p.name, preset: p, roll, startedAt: Date.now(), duration: 1300, ...(mover ? { mover } : {}), rollId: logged.id };
+  live.overlay = {
+    kind: 'dice',
+    nonce: newId(),
+    name: p.name,
+    preset: p,
+    roll,
+    startedAt: Date.now(),
+    duration: 1300,
+    ...(mover ? { mover } : {}),
+    rollId: logged.id,
+  };
 }
 
 /** Quick dice like "2d6" that aren't saved with the game. */
@@ -494,7 +546,14 @@ export function quickDice(sides: number, count: number, name = `${count > 1 ? co
 }
 
 /** armId: for a buzzer tie ('buzz'), the opening it settles. */
-export function startRollOff(live: Live, session: Session, playerIds: string[], sides: number, purpose: 'first' | 'tiebreak' | 'buzz' = 'first', armId?: number): void {
+export function startRollOff(
+  live: Live,
+  session: Session,
+  playerIds: string[],
+  sides: number,
+  purpose: 'first' | 'tiebreak' | 'buzz' = 'first',
+  armId?: number,
+): void {
   if (!playerIds.length) return;
   // A blank die is a d20, and a die has at least 2 sides (a d1 would tie every round).
   sides = Math.min(1000, Math.max(2, Math.floor(sides) || 20));

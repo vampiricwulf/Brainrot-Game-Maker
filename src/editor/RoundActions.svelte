@@ -36,7 +36,12 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="ra" oncontextmenu={(e) => menu && showMenu(e, menu())}>
-  <PageHeader title={roundName(round, index)} chip="{mode.icon} {mode.label}" chipTitle={mode.hint} sub="Round {index + 1} of {count}{round.mode === 'slides' ? SLIDES_NOTE : ''}">
+  <PageHeader
+    title={roundName(round, index)}
+    chip="{mode.icon} {mode.label}"
+    chipTitle={mode.hint}
+    sub="Round {index + 1} of {count}{round.mode === 'slides' ? SLIDES_NOTE : ''}"
+  >
     {#snippet actions()}
       {#if ontest}
         <button
@@ -46,11 +51,29 @@
         >
       {/if}
       <!-- Short labels, so the round's name keeps its line on a small laptop (the full words are their names and tips). -->
-      <button class="ghost" disabled={index === 0} onclick={() => onmove(-1)} aria-label="▲ Move round up" title="Move up: play this round earlier (Alt+↑ on its tab)">▲</button>
-      <button class="ghost" disabled={index >= count - 1} onclick={() => onmove(1)} aria-label="▼ Move round down" title="Move down: play this round later (Alt+↓ on its tab)">▼</button>
+      <button
+        class="ghost"
+        disabled={index === 0}
+        onclick={() => onmove(-1)}
+        aria-label="▲ Move round up"
+        title="Move up: play this round earlier (Alt+↑ on its tab)">▲</button
+      >
+      <button
+        class="ghost"
+        disabled={index >= count - 1}
+        onclick={() => onmove(1)}
+        aria-label="▼ Move round down"
+        title="Move down: play this round later (Alt+↓ on its tab)">▼</button
+      >
       <button class="ghost" onclick={onduplicate} aria-label="⧉ Duplicate round" title="Duplicate: a copy of this round, right after it">⧉ Duplicate</button>
       {#if menu}
-        <button class="ghost" aria-haspopup="menu" onclick={(e) => dropMenu(e, menu())} aria-label="More for this round" title="Rename, copy, paste after it… (or right-click this bar or the round’s tab)">⋯</button>
+        <button
+          class="ghost"
+          aria-haspopup="menu"
+          onclick={(e) => dropMenu(e, menu())}
+          aria-label="More for this round"
+          title="Rename, copy, paste after it… (or right-click this bar or the round’s tab)">⋯</button
+        >
       {/if}
       <button class="ghost danger del" onclick={ondelete} aria-label="🗑 Delete round" title="Delete this round (Undo brings it back)">🗑 Delete</button>
     {/snippet}

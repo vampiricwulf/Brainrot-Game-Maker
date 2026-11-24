@@ -25,7 +25,13 @@ const tile = (cat, row) => page.locator(`[data-tile="${cat},${row}"]`);
 const tileText = (cat, row) => tile(cat, row).innerText();
 const focused = () => page.evaluate(() => document.activeElement?.getAttribute('data-tile') ?? document.activeElement?.getAttribute('aria-label'));
 /** The focus comes to this tile ("cat,row") within a few seconds. */
-const focusComes = (t) => page.waitForFunction((t) => document.activeElement?.getAttribute('data-tile') === t, t, { timeout: 3000 }).then(() => true, () => false);
+const focusComes = (t) =>
+  page
+    .waitForFunction((t) => document.activeElement?.getAttribute('data-tile') === t, t, { timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
 const catNames = () => page.locator('.cat textarea').evaluateAll((els) => els.map((e) => e.value));
 const tabs = roundTabsIn(page);
 const roundNames = async () => (await tabs.allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
@@ -74,9 +80,15 @@ try {
     await rows.fill('5');
     await rows.press('Tab');
     seen.push(await at());
-    assert(seen.every((x) => x === first), `the two boxes never move as their hints grow, partner clues turn on or the rows change (${first} → ${seen.join(' / ')})`);
+    assert(
+      seen.every((x) => x === first),
+      `the two boxes never move as their hints grow, partner clues turn on or the rows change (${first} → ${seen.join(' / ')})`,
+    );
     const values = await page.getByLabel('Row 1 value').boundingBox();
-    assert((await page.getByLabel('How many Daily Doubles').boundingBox()).y > values.y + values.height, 'they sit on a line of their own under the row values');
+    assert(
+      (await page.getByLabel('How many Daily Doubles').boundingBox()).y > values.y + values.height,
+      'they sit on a line of their own under the row values',
+    );
     await pt.fill('0');
     await pt.press('Tab');
     await dd.fill('0');
@@ -131,20 +143,29 @@ try {
   assert((await tileText(2, 1)).includes('Who is Pepe?'), 'Ctrl+C / Ctrl+V copy a whole clue to another tile');
   assert((await undoTitle()).startsWith('Undo: Pasted a clue on Category 3 $400'), `pasting is one named step (${await undoTitle()})`);
   await key('Delete');
-  assert(!(await tileText(2, 1)).includes('Who is Pepe?') && (await notice.innerText()).startsWith('Cleared Category 3 $400'), 'Delete clears the clue, with a note');
+  assert(
+    !(await tileText(2, 1)).includes('Who is Pepe?') && (await notice.innerText()).startsWith('Cleared Category 3 $400'),
+    'Delete clears the clue, with a note',
+  );
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.waitForTimeout(200);
   assert((await tileText(2, 1)).includes('Who is Pepe?'), "and the note's Undo puts it back");
   await tile(2, 1).click({ button: 'right' });
   const menu = page.getByRole('menu');
   const items = await menu.getByRole('menuitem').allInnerTexts();
-  assert(['Copy clue', 'Paste clue here', 'Clear clue', 'Insert above', 'Delete row 2'].every((x) => items.some((i) => i.includes(x))), 'the tile menu copies, pastes, clears and does rows');
+  assert(
+    ['Copy clue', 'Paste clue here', 'Clear clue', 'Insert above', 'Delete row 2'].every((x) => items.some((i) => i.includes(x))),
+    'the tile menu copies, pastes, clears and does rows',
+  );
   {
     // The menus' one order: Edit, Make it a…, Copy / Paste, the row's own group (headed, its delete at its end), Clear last.
     const at = (x) => items.findIndex((i) => i.includes(x));
     const order = ['Edit clue', 'Standard', 'Copy clue', 'Paste clue here', 'Move up', 'Insert above', 'Delete row 2', 'Clear clue'].map(at);
     const heads = await menu.locator('.heading').allInnerTexts();
-    assert(order.every((n, i) => n >= 0 && (i === 0 || n > order[i - 1])) && items.at(-1).includes('Clear clue') && heads.includes('Row 2 · $400'), `the tile menu goes in the one order (${items.join(' | ')})`);
+    assert(
+      order.every((n, i) => n >= 0 && (i === 0 || n > order[i - 1])) && items.at(-1).includes('Clear clue') && heads.includes('Row 2 · $400'),
+      `the tile menu goes in the one order (${items.join(' | ')})`,
+    );
   }
   await menu.getByRole('menuitem', { name: /Clear clue/ }).click();
   assert(!(await tileText(2, 1)).includes('Who is Pepe?'), 'Clear clue from the menu');
@@ -180,17 +201,28 @@ try {
   // ---------- ED-17: categories ----------
   await page.locator('.cat').nth(1).locator('.grip').click({ button: 'right' });
   const catItems = await menu.getByRole('menuitem').allInnerTexts();
-  assert(['Move left', 'Insert category left', 'Insert category right', 'Duplicate', 'Image', 'Clear its clues', 'Delete category'].every((x) => catItems.some((i) => i.includes(x))), 'right-clicking a category offers its menu');
+  assert(
+    ['Move left', 'Insert category left', 'Insert category right', 'Duplicate', 'Image', 'Clear its clues', 'Delete category'].every((x) =>
+      catItems.some((i) => i.includes(x)),
+    ),
+    'right-clicking a category offers its menu',
+  );
   await menu.getByRole('menuitem', { name: /Insert category left/ }).click();
   await page.waitForTimeout(200);
-  assert((await catNames()).length === 7 && (await catNames())[1] === 'New category', `Insert puts a new category there, named "New category" (${(await catNames()).join(', ')})`);
+  assert(
+    (await catNames()).length === 7 && (await catNames())[1] === 'New category',
+    `Insert puts a new category there, named "New category" (${(await catNames()).join(', ')})`,
+  );
   assert((await focused()) === 'Category 2 name', 'with its name ready to type');
   await page.locator('.cat').nth(1).locator('.grip').click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Delete category/ }).click();
   assert((await catNames()).length === 6 && (await notice.innerText()).startsWith('Deleted category “New category”'), 'Delete is done at once, with a note');
   await page.locator('.cat').nth(0).locator('.grip').click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Clear its clues/ }).click();
-  assert((await tileText(0, 0)).includes('No question yet') && (await notice.innerText()).startsWith('Cleared the clues of “Category 1”'), 'Clear its clues, with a note');
+  assert(
+    (await tileText(0, 0)).includes('No question yet') && (await notice.innerText()).startsWith('Cleared the clues of “Category 1”'),
+    'Clear its clues, with a note',
+  );
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.waitForTimeout(200);
   const grip = page.locator('.cat').nth(0).locator('.grip');
@@ -214,14 +246,25 @@ try {
       `the category menu: ⧉ Duplicate · 📋 Copy category · 📋 Paste category here · 📋 Paste as new category right (greyed until one is copied) (${items.join(' | ')})`,
     );
     const kbd = (name) => menu.getByRole('menuitem', { name }).locator('kbd').allInnerTexts();
-    assert((await kbd(/Copy category/)).length === 0 && (await kbd(/Paste category here/)).length === 0, 'right-clicked off the ⋯, Copy / Paste category show no Ctrl+C / Ctrl+V (they copy and paste only on the ⋯)');
+    assert(
+      (await kbd(/Copy category/)).length === 0 && (await kbd(/Paste category here/)).length === 0,
+      'right-clicked off the ⋯, Copy / Paste category show no Ctrl+C / Ctrl+V (they copy and paste only on the ⋯)',
+    );
     await page.keyboard.press('Escape');
     await page.locator('.cat').nth(0).locator('textarea').first().focus();
     await page.keyboard.press('Shift+F10');
-    assert((await menu.getByRole('menuitem', { name: /Copy category/ }).isVisible()) && (await kbd(/Copy category/)).length === 0 && (await kbd(/Paste category here/)).length === 0, 'Shift+F10 in the name: no Ctrl+C / Ctrl+V beside Copy / Paste category (there they copy and paste text)');
+    assert(
+      (await menu.getByRole('menuitem', { name: /Copy category/ }).isVisible()) &&
+        (await kbd(/Copy category/)).length === 0 &&
+        (await kbd(/Paste category here/)).length === 0,
+      'Shift+F10 in the name: no Ctrl+C / Ctrl+V beside Copy / Paste category (there they copy and paste text)',
+    );
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: /^More for category 1/ }).click();
-    assert((await kbd(/Copy category/)).join('').includes('C') && (await kbd(/Paste category here/)).join('').includes('V'), 'from the ⋯ the menu shows Ctrl+C / Ctrl+V beside Copy / Paste category');
+    assert(
+      (await kbd(/Copy category/)).join('').includes('C') && (await kbd(/Paste category here/)).join('').includes('V'),
+      'from the ⋯ the menu shows Ctrl+C / Ctrl+V beside Copy / Paste category',
+    );
     await page.keyboard.press('Escape');
     await page.locator('.cat').nth(0).locator('.grip').click({ button: 'right' });
     await menu.getByRole('menuitem', { name: /Copy category/ }).click();
@@ -231,9 +274,18 @@ try {
     await more6.focus();
     await page.keyboard.press('Control+v');
     await page.waitForTimeout(200);
-    assert((await catNames())[5] === 'Category 1' && (await tileText(5, 0)) === first && (await undoTitle()).startsWith('Undo: Pasted category “Category 1” over “Category 6”'), `Ctrl+V on a category's ⋯ pastes the copied one over it, name and clues, as one named step (${(await catNames())[5]}, ${await undoTitle()})`);
+    assert(
+      (await catNames())[5] === 'Category 1' &&
+        (await tileText(5, 0)) === first &&
+        (await undoTitle()).startsWith('Undo: Pasted category “Category 1” over “Category 6”'),
+      `Ctrl+V on a category's ⋯ pastes the copied one over it, name and clues, as one named step (${(await catNames())[5]}, ${await undoTitle()})`,
+    );
     // BOARD-4: a note says so even over a column with nothing in it (it was the one paste with no word but the stale Copied toast).
-    assert((await notice.innerText()).startsWith('Pasted category “Category 1” over “Category 6”') && (await notice.getByRole('button', { name: '↶ Undo' }).count()) === 1, `pasting over an empty column, a note says so and offers ↶ Undo (${await notice.innerText()})`);
+    assert(
+      (await notice.innerText()).startsWith('Pasted category “Category 1” over “Category 6”') &&
+        (await notice.getByRole('button', { name: '↶ Undo' }).count()) === 1,
+      `pasting over an empty column, a note says so and offers ↶ Undo (${await notice.innerText()})`,
+    );
     await page.locator('main').click({ position: { x: 4, y: 4 } });
     await key('Control+z');
     assert((await catNames())[5] === 'Category 6' && (await tileText(5, 0)) === before6, 'Ctrl+Z puts it back');
@@ -242,7 +294,10 @@ try {
     await page.keyboard.press('Control+c');
     await page.locator('.cat').nth(5).locator('.grip').click({ button: 'right' });
     await menu.getByRole('menuitem', { name: /Paste category here/ }).click();
-    assert((await catNames())[5] === 'Category 2' && (await tileText(5, 0)) === (await tileText(1, 0)), 'Ctrl+C on a category’s ⋯ copies it, its menu’s Paste puts it over another');
+    assert(
+      (await catNames())[5] === 'Category 2' && (await tileText(5, 0)) === (await tileText(1, 0)),
+      'Ctrl+C on a category’s ⋯ copies it, its menu’s Paste puts it over another',
+    );
     await page.locator('main').click({ position: { x: 4, y: 4 } });
     await key('Control+z');
     assert((await catNames())[5] === 'Category 6', 'and Ctrl+Z puts that back too');
@@ -253,14 +308,22 @@ try {
     await page.waitForTimeout(200);
     const names = await catNames();
     assert(
-      names.length === count + 1 && names[1] === 'Category 2' && names[2] === 'Category 2' && (await tileText(1, 0)) === (await tileText(2, 0)) && (await tileText(0, 0)) === first,
+      names.length === count + 1 &&
+        names[1] === 'Category 2' &&
+        names[2] === 'Category 2' &&
+        (await tileText(1, 0)) === (await tileText(2, 0)) &&
+        (await tileText(0, 0)) === first,
       `📋 Paste as new category right: a new column right of it with the copied category, the rest moved along (${names.join(', ')})`,
     );
     assert(
-      (await notice.innerText()).startsWith('Pasted category “Category 2” as a new category right of “Category 1”') && (await undoTitle()).startsWith('Undo: Pasted category “Category 2” as a new category right of “Category 1”'),
+      (await notice.innerText()).startsWith('Pasted category “Category 2” as a new category right of “Category 1”') &&
+        (await undoTitle()).startsWith('Undo: Pasted category “Category 2” as a new category right of “Category 1”'),
       `with a note and one named step (${await notice.innerText()})`,
     );
-    assert(await page.evaluate(() => /^More for category 2/.test(document.activeElement?.getAttribute('aria-label') ?? '')), 'the keys go to the new category’s ⋯');
+    assert(
+      await page.evaluate(() => /^More for category 2/.test(document.activeElement?.getAttribute('aria-label') ?? '')),
+      'the keys go to the new category’s ⋯',
+    );
     await page.locator('main').click({ position: { x: 4, y: 4 } });
     await key('Control+z');
     assert((await catNames()).join('|') === names.filter((_, i) => i !== 1).join('|'), 'one Ctrl+Z takes the new column away');
@@ -284,7 +347,13 @@ try {
   await page.locator('main').click({ position: { x: 4, y: 4 } });
   // A right-click on a made-up name (which the app selects as the keys go in) opens the category menu, not the browser's.
   await page.getByLabel('Category 3 name').click({ button: 'right' });
-  const catMenuShown = await menu.getByRole('menuitem', { name: /Delete category/ }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+  const catMenuShown = await menu
+    .getByRole('menuitem', { name: /Delete category/ })
+    .waitFor({ timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(catMenuShown, 'right-clicking a made-up category name opens the category menu');
   await page.keyboard.press('Escape');
   // Typing in the name: a right-click there is the browser's cut, copy and paste (no menu of ours); Shift+F10 is still the category's.
@@ -293,7 +362,16 @@ try {
   await page.getByLabel('Category 3 name').click({ button: 'right' });
   assert((await menu.count()) === 0, 'a right-click in a category name being typed in leaves it to the browser’s Cut / Copy / Paste');
   await page.keyboard.press('Shift+F10');
-  assert(await menu.getByRole('menuitem', { name: /Delete category/ }).waitFor({ timeout: 3000 }).then(() => true, () => false), 'Shift+F10 in the name still opens the category menu');
+  assert(
+    await menu
+      .getByRole('menuitem', { name: /Delete category/ })
+      .waitFor({ timeout: 3000 })
+      .then(
+        () => true,
+        () => false,
+      ),
+    'Shift+F10 in the name still opens the category menu',
+  );
   await page.keyboard.press('Escape');
   await page.locator('main').click({ position: { x: 4, y: 4 } });
 
@@ -302,10 +380,16 @@ try {
   await menu.getByRole('menuitem', { name: /Insert above/ }).click();
   await page.waitForTimeout(200);
   const values = () => page.locator('.values input[aria-label^="Row"]').evaluateAll((els) => els.map((e) => e.value).join(','));
-  assert((await values()) === '200,400,600,800,1000,1200' && (await tileText(0, 1)).includes('Who is Pepe?'), `Insert above: the clues move down, the values stay (${await values()})`);
+  assert(
+    (await values()) === '200,400,600,800,1000,1200' && (await tileText(0, 1)).includes('Who is Pepe?'),
+    `Insert above: the clues move down, the values stay (${await values()})`,
+  );
   await page.getByLabel('Row 2 value').click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Move up/ }).click();
-  assert((await tileText(0, 0)).includes('Who is Pepe?') && (await undoTitle()).startsWith('Undo: Moved row 2 up'), '▲ Move up in the row’s menu moves its clues, one step');
+  assert(
+    (await tileText(0, 0)).includes('Who is Pepe?') && (await undoTitle()).startsWith('Undo: Moved row 2 up'),
+    '▲ Move up in the row’s menu moves its clues, one step',
+  );
   await tile(0, 1).click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Delete row 2/ }).click();
   assert((await values()) === '200,400,600,800,1000' && (await notice.innerText()).startsWith('Deleted row 2'), 'Delete row, with a note');
@@ -314,7 +398,10 @@ try {
   // The last row's tiles go with it: the focus goes to the tile above.
   await tile(0, 4).click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Delete row 5/ }).click();
-  assert((await values()) === '200,400,600,800' && (await focusComes('0,3')), `after Delete row on the last row, the focus is on the tile above (${await focused()})`);
+  assert(
+    (await values()) === '200,400,600,800' && (await focusComes('0,3')),
+    `after Delete row on the last row, the focus is on the tile above (${await focused()})`,
+  );
   await key('ArrowUp');
   assert((await focused()) === '0,2', 'and the arrows go on from there');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
@@ -322,29 +409,51 @@ try {
   assert((await values()) === '200,400,600,800,1000', 'Undo brings the last row back');
   await tile(0, 0).click({ button: 'right' });
   await menu.getByRole('menuitem', { name: /Move down/ }).click();
-  assert((await focusComes('0,1')) && (await tileText(0, 1)).includes('Who is Pepe?'), `after ▼ Move down from a tile's menu, the focus goes with the tile (${await focused()})`);
+  assert(
+    (await focusComes('0,1')) && (await tileText(0, 1)).includes('Who is Pepe?'),
+    `after ▼ Move down from a tile's menu, the focus goes with the tile (${await focused()})`,
+  );
   await key('ArrowUp');
   assert((await focused()) === '0,0', 'and the arrows go on from there');
   // Alt+arrows on a tile move its row or its category, and on a category's name the category; the keys go with them.
   await key('ArrowDown');
   await key('Alt+ArrowUp');
-  assert((await focusComes('0,0')) && (await tileText(0, 0)).includes('Who is Pepe?') && (await undoTitle()).startsWith('Undo: Moved row 2 up'), `Alt+↑ on a tile moves its row, the keys going with it (${await focused()})`);
+  assert(
+    (await focusComes('0,0')) && (await tileText(0, 0)).includes('Who is Pepe?') && (await undoTitle()).startsWith('Undo: Moved row 2 up'),
+    `Alt+↑ on a tile moves its row, the keys going with it (${await focused()})`,
+  );
   await key('Alt+ArrowRight');
-  assert((await focusComes('1,0')) && (await catNames()).slice(0, 2).join('|') === 'Category 2|Category 1' && (await tileText(1, 0)).includes('Who is Pepe?'), `Alt+→ on a tile moves its category (${await focused()})`);
+  assert(
+    (await focusComes('1,0')) && (await catNames()).slice(0, 2).join('|') === 'Category 2|Category 1' && (await tileText(1, 0)).includes('Who is Pepe?'),
+    `Alt+→ on a tile moves its category (${await focused()})`,
+  );
   await key('ArrowUp');
   await key('Alt+ArrowLeft');
-  assert((await catNames()).slice(0, 2).join('|') === 'Category 1|Category 2' && (await focused()) === 'Category 1 name', `Alt+← in a category's name moves it back, the keys staying in its name (${await focused()})`);
+  assert(
+    (await catNames()).slice(0, 2).join('|') === 'Category 1|Category 2' && (await focused()) === 'Category 1 name',
+    `Alt+← in a category's name moves it back, the keys staying in its name (${await focused()})`,
+  );
   // The tile menu's Make it a…: the kind it is ticked; 🎡 Wheel tile… makes it one and opens the clue at Which wheel.
   await tile(2, 3).click({ button: 'right' });
   const kinds = (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert(
-    ['✓ Standard', '⭐ Daily Double', '🤝 Partner clue', '🎡 Wheel tile…', '🎲 Dice tile…', '✍ Everyone answers', '🚫 No Pass', '⬚ Empty tile'].every((x) => kinds.includes(x)) && (await menu.getByText('Make it a…').count()) === 1,
+    ['✓ Standard', '⭐ Daily Double', '🤝 Partner clue', '🎡 Wheel tile…', '🎲 Dice tile…', '✍ Everyone answers', '🚫 No Pass', '⬚ Empty tile'].every((x) =>
+      kinds.includes(x),
+    ) && (await menu.getByText('Make it a…').count()) === 1,
     `a tile's menu has Make it a…, the kind it is ticked (${kinds.join(' | ')})`,
   );
   await menu.getByRole('menuitem', { name: '🎡 Wheel tile…' }).click();
   await page.getByRole('dialog', { name: 'Edit clue' }).waitFor();
-  const atPicker = await page.waitForFunction(() => document.activeElement?.closest('label')?.textContent?.includes('Which wheel'), null, { timeout: 3000 }).then(() => true, () => false);
-  assert(atPicker && (await undoTitle()).startsWith('Undo: Made Category 3 $800 a wheel tile'), '🎡 Wheel tile… makes it one (one step) and opens the clue with the keys in Which wheel');
+  const atPicker = await page
+    .waitForFunction(() => document.activeElement?.closest('label')?.textContent?.includes('Which wheel'), null, { timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  assert(
+    atPicker && (await undoTitle()).startsWith('Undo: Made Category 3 $800 a wheel tile'),
+    '🎡 Wheel tile… makes it one (one step) and opens the clue with the keys in Which wheel',
+  );
   await key('Escape');
   await key('Control+z');
   assert(!(await tileText(2, 3)).includes('🎡'), 'Ctrl+Z makes it a standard tile again');
@@ -356,7 +465,11 @@ try {
   await tabs.nth(0).focus();
   await key('Alt+ArrowDown');
   assert((await roundNames()).join('|') === 'Double Jeopardy!|Jeopardy!|Final Jeopardy!', 'Alt+↓ on a tab moves its round later');
-  assert((await page.evaluate(() => document.activeElement?.textContent?.trim())).endsWith('Jeopardy!') && (await page.locator('.round-tab:focus').innerText()).includes(' Jeopardy!'), 'and the tab keeps the focus');
+  assert(
+    (await page.evaluate(() => document.activeElement?.textContent?.trim())).endsWith('Jeopardy!') &&
+      (await page.locator('.round-tab:focus').innerText()).includes(' Jeopardy!'),
+    'and the tab keeps the focus',
+  );
   await key('Alt+ArrowUp');
   assert((await roundNames()).join('|') === 'Jeopardy!|Double Jeopardy!|Final Jeopardy!', 'Alt+↑ moves it back');
   await key('F2');
@@ -368,13 +481,29 @@ try {
   await key('Enter');
   assert((await roundNames())[1] === 'Brainrot', 'and so does a double-click');
   await key('Control+d');
-  assert((await roundNames()).join('|') === 'Memes|Brainrot|Brainrot (copy)|Final Jeopardy!' && (await page.locator('.round-tab:focus').innerText()).includes('(copy)'), 'Ctrl+D duplicates it, focus on the copy');
+  assert(
+    (await roundNames()).join('|') === 'Memes|Brainrot|Brainrot (copy)|Final Jeopardy!' &&
+      (await page.locator('.round-tab:focus').innerText()).includes('(copy)'),
+    'Ctrl+D duplicates it, focus on the copy',
+  );
   await key('Delete');
-  assert((await roundNames()).join('|') === 'Memes|Brainrot|Final Jeopardy!' && (await notice.innerText()).startsWith('Deleted round “Brainrot (copy)”'), 'Delete deletes it at once, with a note');
-  await dragBy(page, tabs.nth(0), { x: (await tabs.nth(1).boundingBox()).x + 20, y: (await tabs.nth(1).boundingBox()).y + (await tabs.nth(1).boundingBox()).height - 3 });
-  assert((await roundNames()).join('|') === 'Brainrot|Memes|Final Jeopardy!' && (await undoTitle()).startsWith('Undo: Moved round “Memes” later'), 'a tab drags to a new place, one step');
+  assert(
+    (await roundNames()).join('|') === 'Memes|Brainrot|Final Jeopardy!' && (await notice.innerText()).startsWith('Deleted round “Brainrot (copy)”'),
+    'Delete deletes it at once, with a note',
+  );
+  await dragBy(page, tabs.nth(0), {
+    x: (await tabs.nth(1).boundingBox()).x + 20,
+    y: (await tabs.nth(1).boundingBox()).y + (await tabs.nth(1).boundingBox()).height - 3,
+  });
+  assert(
+    (await roundNames()).join('|') === 'Brainrot|Memes|Final Jeopardy!' && (await undoTitle()).startsWith('Undo: Moved round “Memes” later'),
+    'a tab drags to a new place, one step',
+  );
   await tabs.nth(0).click({ button: 'right' });
-  assert((await menu.getByRole('menuitem').allInnerTexts()).some((i) => i.includes('Rename')), 'the tab menu can rename');
+  assert(
+    (await menu.getByRole('menuitem').allInnerTexts()).some((i) => i.includes('Rename')),
+    'the tab menu can rename',
+  );
   await page.keyboard.press('Escape');
   assert(!dialogs.length, 'and nothing asked first');
 
@@ -389,26 +518,37 @@ try {
   await page.locator('main').click({ position: { x: 4, y: 4 } });
   await page.waitForTimeout(800);
   await key('Control+z');
-  assert((await page.getByPlaceholder('Type the answer…').inputValue()) === '' && (await page.getByRole('tab', { name: /Answer slide/ }).getAttribute('aria-selected')) === 'true', 'undoing the answer shows the answer slide');
+  assert(
+    (await page.getByPlaceholder('Type the answer…').inputValue()) === '' &&
+      (await page.getByRole('tab', { name: /Answer slide/ }).getAttribute('aria-selected')) === 'true',
+    'undoing the answer shows the answer slide',
+  );
   await shot('final-1280');
   // The Final can have more question slides too: ＋ Add slide, typed on with the quick field, then deleted.
   await page.getByRole('tab', { name: /Question slide/ }).click();
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Question 2' }).waitFor();
-  assert((await undoTitle()).startsWith('Undo: Added question slide 2 to “Final Jeopardy!”'), `＋ Add slide on the Final is one named step (${await undoTitle()})`);
+  assert(
+    (await undoTitle()).startsWith('Undo: Added question slide 2 to “Final Jeopardy!”'),
+    `＋ Add slide on the Final is one named step (${await undoTitle()})`,
+  );
   // At 1280 and 1366 beside the sidebar, the slide's row fits: the group drops under the tabs rather than run off the
   // right edge, so 🗑 Delete slide is whole and the page doesn't scroll sideways.
   const rowFits = () =>
     page.evaluate(() => {
       const del = [...document.querySelectorAll('main button')].find((b) => b.textContent.trim() === '🗑 Delete slide');
       let sideways = false;
-      for (let el = del.parentElement; el; el = el.parentElement) if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== 'hidden') sideways = true;
+      for (let el = del.parentElement; el; el = el.parentElement)
+        if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== 'hidden') sideways = true;
       return { right: del.getBoundingClientRect().right, width: innerWidth, sideways };
     });
   for (const width of [1280, 1366]) {
     await page.setViewportSize({ width, height: 720 });
     const fit = await rowFits();
-    assert(fit.right <= fit.width && !fit.sideways, `at ${width}, the Final's slide row fits: 🗑 Delete slide whole (right edge ${Math.round(fit.right)}), no sideways scroll`);
+    assert(
+      fit.right <= fit.width && !fit.sideways,
+      `at ${width}, the Final's slide row fits: 🗑 Delete slide whole (right edge ${Math.round(fit.right)}), no sideways scroll`,
+    );
   }
   // On a wide screen, many slides scroll their tabs: the group stays on the tabs' line rather than wrap under them.
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -419,9 +559,17 @@ try {
   const wide = await page.evaluate(() => {
     const list = document.querySelector('main .tabs .tablist');
     const group = list.parentElement.querySelector('.group');
-    return { list: list.getBoundingClientRect().top, group: group.getBoundingClientRect().top, del: group.querySelector('.danger').getBoundingClientRect().right, width: innerWidth };
+    return {
+      list: list.getBoundingClientRect().top,
+      group: group.getBoundingClientRect().top,
+      del: group.querySelector('.danger').getBoundingClientRect().right,
+      width: innerWidth,
+    };
   });
-  assert(Math.abs(wide.group - wide.list) < 8 && wide.del <= wide.width, `at 1920 with 10 slides, the slide's group stays beside the tabs (tabs' top ${wide.list}, group's ${wide.group})`);
+  assert(
+    Math.abs(wide.group - wide.list) < 8 && wide.del <= wide.width,
+    `at 1920 with 10 slides, the slide's group stays beside the tabs (tabs' top ${wide.list}, group's ${wide.group})`,
+  );
   for (let n = 10; n >= 3; n--) {
     await page.getByRole('tab', { name: new RegExp(`^Q(uestion )?${n}$`) }).click();
     await page.getByRole('button', { name: '🗑 Delete slide' }).click();
@@ -436,8 +584,17 @@ try {
   await page.getByRole('tab', { name: 'Question 1', selected: true }).waitFor({ timeout: 3000 });
   await page.locator('main').click({ position: { x: 4, y: 4 } });
   await key('Control+z');
-  const movedBack = await page.getByRole('tab', { name: 'Question 2', selected: true }).waitFor({ timeout: 3000 }).then(() => true, () => false);
-  assert(movedBack && (await page.getByPlaceholder('Type the final question…').inputValue()) === 'Then the real question', 'Ctrl+Z puts the Final’s moved slide back, and shows it there');
+  const movedBack = await page
+    .getByRole('tab', { name: 'Question 2', selected: true })
+    .waitFor({ timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  assert(
+    movedBack && (await page.getByPlaceholder('Type the final question…').inputValue()) === 'Then the real question',
+    'Ctrl+Z puts the Final’s moved slide back, and shows it there',
+  );
   await page.getByRole('button', { name: '🗑 Delete slide' }).click();
   await page.getByRole('tab', { name: 'Question slide' }).waitFor();
   assert(await slideShows('Best meme of 2020?'), '🗑 Delete slide leaves the first question slide as it was');
@@ -445,7 +602,10 @@ try {
   await page.getByRole('tab', { name: 'Question slide' }).click();
   await page.keyboard.press('Control+d');
   await page.getByRole('tab', { name: 'Question 2' }).waitFor({ timeout: 3000 });
-  assert((await undoTitle()).startsWith('Undo: Duplicated question slide 1 of “Final Jeopardy!”'), `Ctrl+D on the Final's only question slide's tab duplicates it (${await undoTitle()})`);
+  assert(
+    (await undoTitle()).startsWith('Undo: Duplicated question slide 1 of “Final Jeopardy!”'),
+    `Ctrl+D on the Final's only question slide's tab duplicates it (${await undoTitle()})`,
+  );
   await page.keyboard.press('Control+z');
   await page.getByRole('tab', { name: 'Question slide' }).waitFor({ timeout: 3000 });
   // A key on a round's tab is the tab's alone, even with a slide item selected.
@@ -455,12 +615,21 @@ try {
   await tabs.nth(0).focus();
   await key('ArrowDown');
   await key('Delete');
-  assert((await roundNames()).length === 2 && (await page.locator('.canvas .hit').count()) === slideItems && (await undoTitle()).startsWith('Undo: Deleted round'), 'Delete on a round tab deletes the round, not the selected slide item too');
+  assert(
+    (await roundNames()).length === 2 && (await page.locator('.canvas .hit').count()) === slideItems && (await undoTitle()).startsWith('Undo: Deleted round'),
+    'Delete on a round tab deletes the round, not the selected slide item too',
+  );
   await key('Control+z');
   // Off, the tiebreaker's menu starts with what a click on it does: ＋ Add tiebreaker (no ❓ Open it, no Turn it off).
   const tbMenu = async () => {
-    await page.locator('nav').getByRole('button', { name: /tiebreaker/i }).click({ button: 'right' });
-    const items = await page.getByRole('menu').getByRole('menuitem').evaluateAll((els) => els.map((e) => `${e.innerText.split('\n')[0]}${e.classList.contains('danger') ? ' (red)' : ''}`));
+    await page
+      .locator('nav')
+      .getByRole('button', { name: /tiebreaker/i })
+      .click({ button: 'right' });
+    const items = await page
+      .getByRole('menu')
+      .getByRole('menuitem')
+      .evaluateAll((els) => els.map((e) => `${e.innerText.split('\n')[0]}${e.classList.contains('danger') ? ' (red)' : ''}`));
     await page.keyboard.press('Escape');
     return items;
   };
@@ -469,7 +638,10 @@ try {
   // ＋ Add tiebreaker (optional) turns it on in one named step, with the keys in its question box.
   await page.getByRole('button', { name: 'Add tiebreaker (optional)' }).click();
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'), null, { timeout: 3000 });
-  assert((await page.getByLabel('Include a tiebreaker clue').isChecked()) && (await undoTitle()).startsWith('Undo: Tiebreaker on'), `＋ Add tiebreaker turns it on, one step (${await undoTitle()})`);
+  assert(
+    (await page.getByLabel('Include a tiebreaker clue').isChecked()) && (await undoTitle()).startsWith('Undo: Tiebreaker on'),
+    `＋ Add tiebreaker turns it on, one step (${await undoTitle()})`,
+  );
   // On, it opens it, and 🗑 Turn it off (it takes the clue away) is last and red.
   const tbOn = await tbMenu();
   assert(tbOn.join('|') === '❓ Open it|🗑 Turn it off (red)', `on, its menu is ❓ Open it, then 🗑 Turn it off last in red (${tbOn.join(' · ')})`);
@@ -483,21 +655,39 @@ try {
   assert(tbTab === '❓ Tiebreaker', `and so does its button in the round list once it’s on (${tbTab})`);
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'), null, { timeout: 3000 }).catch(() => {});
   await page.keyboard.type('How many rizz?');
-  assert((await page.getByPlaceholder('Type the tiebreaker question…').inputValue()) === 'How many rizz?', 'ticking Include a tiebreaker clue puts the keys in its question box');
+  assert(
+    (await page.getByPlaceholder('Type the tiebreaker question…').inputValue()) === 'How many rizz?',
+    'ticking Include a tiebreaker clue puts the keys in its question box',
+  );
   assert(await slideShows('How many rizz?'), "the Tiebreaker's quick field writes on its slide");
   // At 1280 (and around it) its two tabs show whole: the slide's buttons drop under them rather than squeeze them.
   for (const width of [1260, 1280, 1300]) {
     await page.setViewportSize({ width, height: 720 });
-    const whole = await page.waitForFunction(() => { const l = document.querySelector('main .tabs .tablist'); return l.scrollWidth <= l.clientWidth; }, null, { timeout: 3000 }).then(() => true, () => false);
+    const whole = await page
+      .waitForFunction(
+        () => {
+          const l = document.querySelector('main .tabs .tablist');
+          return l.scrollWidth <= l.clientWidth;
+        },
+        null,
+        { timeout: 3000 },
+      )
+      .then(
+        () => true,
+        () => false,
+      );
     assert(whole, `at ${width}, the tiebreaker's “Answer slide (hidden until revealed)” tab isn't cut under ＋ Add slide`);
   }
   await page.setViewportSize({ width: 1280, height: 720 });
   // Like a clue, the tiebreaker can have more question slides: ＋ Add slide opens a second one, its quick field types on it.
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Question 2' }).waitFor();
-  assert((await undoTitle()).startsWith('Undo: Added question slide 2 to the tiebreaker'), `＋ Add slide on the tiebreaker is one named step (${await undoTitle()})`);
+  assert(
+    (await undoTitle()).startsWith('Undo: Added question slide 2 to the tiebreaker'),
+    `＋ Add slide on the tiebreaker is one named step (${await undoTitle()})`,
+  );
   await page.getByPlaceholder('Type the tiebreaker question…').fill('Second clue line');
-  assert(await slideShows('Second clue line'), "the quick field writes on the open (second) question slide");
+  assert(await slideShows('Second clue line'), 'the quick field writes on the open (second) question slide');
   await page.getByRole('tab', { name: 'Question 1' }).click();
   assert(await slideShows('How many rizz?'), 'its first question slide keeps its words');
   await page.getByRole('tab', { name: 'Question 2' }).click();
@@ -525,10 +715,16 @@ try {
   await tile(0, 0).focus();
   await key('Control+v');
   await tile(0, 0).click();
-  const wheelShown = await page.locator('select').nth(1).evaluate((s) => s.options[s.selectedIndex].text);
+  const wheelShown = await page
+    .locator('select')
+    .nth(1)
+    .evaluate((s) => s.options[s.selectedIndex].text);
   await key('Escape');
   await page.getByRole('button', { name: /Wheels, Dice & Deals/ }).click();
-  assert(wheelShown === 'Wheel 1' && (await page.locator('[data-tool]').allInnerTexts()).join() === 'Wheel 1', 'a wheel tile pasted in another game brings its wheel');
+  assert(
+    wheelShown === 'Wheel 1' && (await page.locator('[data-tool]').allInnerTexts()).join() === 'Wheel 1',
+    'a wheel tile pasted in another game brings its wheel',
+  );
 
   // Right after a round is added (its name selected, ready to type), Ctrl+C on a tile copies the tile, not the name.
   await addRound(/Jeopardy board/);
@@ -549,21 +745,33 @@ try {
   await key('Escape');
   const clueOpen = await page.getByRole('dialog', { name: 'Edit clue' }).count();
   await key('Escape');
-  assert(clueOpen === 1 && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0, 'Esc steps out of a text field, the selection, then the clue');
+  assert(
+    clueOpen === 1 && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 0,
+    'Esc steps out of a text field, the selection, then the clue',
+  );
 
   // Daily Doubles placed from the menu: a step that names the tile, and the ⭐ count goes up with them.
   const ddBox = page.getByLabel('How many Daily Doubles');
-  for (const [c, r] of [[4, 3], [5, 3]]) {
+  for (const [c, r] of [
+    [4, 3],
+    [5, 3],
+  ]) {
     await tile(c, r).click({ button: 'right' });
     await menu.waitFor();
     await menu.getByRole('menuitem', { name: '⭐ Daily Double', exact: true }).click();
   }
   assert((await undoTitle()).startsWith('Undo: Made Category 6 $800 a Daily Double'), `making a Daily Double names the tile (${await undoTitle()})`);
-  assert((await ddBox.inputValue()) === '2' && (await page.getByText('2 on the board · all placed').count()) === 1, 'placing more Daily Doubles than ⭐ says raises the count');
+  assert(
+    (await ddBox.inputValue()) === '2' && (await page.getByText('2 on the board · all placed').count()) === 1,
+    'placing more Daily Doubles than ⭐ says raises the count',
+  );
   await page.locator('main').click({ position: { x: 4, y: 4 } });
   await key('Control+z');
   await key('Control+z');
-  assert((await ddBox.inputValue()) === '1' && (await page.getByText('0 on the board · Start places 1 at random').count()) === 1, 'Ctrl+Z takes both back, count and all');
+  assert(
+    (await ddBox.inputValue()) === '1' && (await page.getByText('0 on the board · Start places 1 at random').count()) === 1,
+    'Ctrl+Z takes both back, count and all',
+  );
   // A clue's own countdown is whole seconds (0: none), its own value never below 0.
   await tile(2, 2).click();
   const clueDlg = page.getByRole('dialog', { name: 'Edit clue' });
@@ -581,8 +789,14 @@ try {
     await field.press('Tab');
     return field.inputValue();
   };
-  assert((await typed(secs, '-5')) === '1' && (await typed(secs, '2.4')) === '2' && (await typed(secs, '0')) === '0', "a clue's countdown can't be negative or a fraction (0 stays: no countdown)");
-  assert((await typed(clueDlg.getByLabel('Value'), '-300')) === '0' && (await clueDlg.locator('header .value').innerText()) === '$0', "a clue's value can't be negative");
+  assert(
+    (await typed(secs, '-5')) === '1' && (await typed(secs, '2.4')) === '2' && (await typed(secs, '0')) === '0',
+    "a clue's countdown can't be negative or a fraction (0 stays: no countdown)",
+  );
+  assert(
+    (await typed(clueDlg.getByLabel('Value'), '-300')) === '0' && (await clueDlg.locator('header .value').innerText()) === '$0',
+    "a clue's value can't be negative",
+  );
   // Those fields save as they're typed in: Esc in one closes the clue, as from the quick fields.
   await clueDlg.getByLabel('Value').focus();
   await key('Escape');

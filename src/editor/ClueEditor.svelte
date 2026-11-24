@@ -6,7 +6,23 @@
   import { announce } from '../lib/announce';
   import { take, type ClueSide, type Place, type RoundPart } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { addClueSlide, answerCardDue, CARD_COPIED, cardFromAnswer, deleteClueSlide, duplicateClueSlide, followDailyDoubles, insertClueSlide, moveClueSlide, neighbourClue, noPassFixed, setClueType, setNoPass, stepClue, textStyleTargets } from '../lib/ops';
+  import {
+    addClueSlide,
+    answerCardDue,
+    CARD_COPIED,
+    cardFromAnswer,
+    deleteClueSlide,
+    duplicateClueSlide,
+    followDailyDoubles,
+    insertClueSlide,
+    moveClueSlide,
+    neighbourClue,
+    noPassFixed,
+    setClueType,
+    setNoPass,
+    stepClue,
+    textStyleTargets,
+  } from '../lib/ops';
   import { clipboard, copySlide, takeCopiedSlide } from '../lib/clipboard.svelte';
   import { isMenuKey, keyMenu, showMenu } from '../lib/menustate.svelte';
   import { slideTabMenu, slideTabTitle } from '../lib/slidetabs';
@@ -72,7 +88,13 @@
   const mustWhy = $derived(clue ? noPassFixed(clue) : '');
   const sym = $derived(app.game.settings.currencySymbol);
 
-  const TYPE_WORDS: Record<ClueType, string> = { standard: 'a standard tile', dailyDouble: 'a Daily Double', wheel: 'a wheel tile', dice: 'a dice tile', partner: 'a partner clue' };
+  const TYPE_WORDS: Record<ClueType, string> = {
+    standard: 'a standard tile',
+    dailyDouble: 'a Daily Double',
+    wheel: 'a wheel tile',
+    dice: 'a dice tile',
+    partner: 'a partner clue',
+  };
   /** The tile as the board shows it ("Memes $400"), for the history. */
   const tileName = () => `${categoryLabel(cat)} ${formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}`;
   /**
@@ -110,7 +132,8 @@
   let phoneView = $state(false);
   const cards = $derived(clue && !clue.empty ? cardSlides(clue) : []);
   /** Who a card starts with, in words: a partner clue's parts ("the describer"), or on any other tile "the picker"… */
-  const goesTo = (to: CardGoesTo, long = true): string => (clue.type === 'partner' ? goesToLabel(partnerRules(clue), to, long) : tileGoesToLabel(clue.type, to, long));
+  const goesTo = (to: CardGoesTo, long = true): string =>
+    clue.type === 'partner' ? goesToLabel(partnerRules(clue), to, long) : tileGoesToLabel(clue.type, to, long);
   const cardAt = $derived(Math.min(ci, Math.max(0, cards.length - 1)));
   const card = $derived<ClueCard | undefined>(cards[cardAt]);
   /**
@@ -417,7 +440,15 @@
     const tpl = kind === 'wheel' && sel.value.startsWith(TPL) ? WHEEL_TEMPLATES.find((t) => TPL + t.key === sel.value) : undefined;
     if (tpl) {
       // (Named after it, numbered when the game has one by that name; ✎ Edit wheel changes anything after.)
-      const w = wheelFromTemplate(tpl, game.settings.currencySymbol, uniqueName(game.wheels.map((x) => x.name), tpl.name, false));
+      const w = wheelFromTemplate(
+        tpl,
+        game.settings.currencySymbol,
+        uniqueName(
+          game.wheels.map((x) => x.name),
+          tpl.name,
+          false,
+        ),
+      );
       record(
         `Added wheel “${w.name}”`,
         () => {
@@ -580,23 +611,23 @@
         {#if clue.type === 'wheel'}
           <label class="field">
             Which wheel
-          <select bind:this={toolBox} value={clue.wheelId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('wheel', e.currentTarget)}>
-            <option value="">Choose a wheel…</option>
-            {#if clue.wheelId && clue.wheelId !== PLAYER_WHEEL && !app.game.wheels.some((w) => w.id === clue.wheelId)}
-              <option value={clue.wheelId}>⚠ Deleted wheel — pick another</option>
-            {/if}
-            <option value={PLAYER_WHEEL}>🎯 Pick a player (built in)</option>
-            {#if app.game.wheels.length}
-              <optgroup label="This game's wheels">
-                {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
+            <select bind:this={toolBox} value={clue.wheelId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('wheel', e.currentTarget)}>
+              <option value="">Choose a wheel…</option>
+              {#if clue.wheelId && clue.wheelId !== PLAYER_WHEEL && !app.game.wheels.some((w) => w.id === clue.wheelId)}
+                <option value={clue.wheelId}>⚠ Deleted wheel — pick another</option>
+              {/if}
+              <option value={PLAYER_WHEEL}>🎯 Pick a player (built in)</option>
+              {#if app.game.wheels.length}
+                <optgroup label="This game's wheels">
+                  {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
+                </optgroup>
+              {/if}
+              <!-- (Picked, one is added to the game: as 🎡 Wheels, Dice & Deals › 📋 Ready-made wheel… does.) -->
+              <optgroup label="Ready-made (adds a copy to the game)">
+                {#each WHEEL_TEMPLATES as t (t.key)}<option value="{TPL}{t.key}">{t.icon} {t.name}</option>{/each}
               </optgroup>
-            {/if}
-            <!-- (Picked, one is added to the game: as 🎡 Wheels, Dice & Deals › 📋 Ready-made wheel… does.) -->
-            <optgroup label="Ready-made (adds a copy to the game)">
-              {#each WHEEL_TEMPLATES as t (t.key)}<option value="{TPL}{t.key}">{t.icon} {t.name}</option>{/each}
-            </optgroup>
-            <option value={NEW}>＋ Add wheel…</option>
-          </select>
+              <option value={NEW}>＋ Add wheel…</option>
+            </select>
           </label>
           {#if clue.wheelId && app.game.wheels.some((w) => w.id === clue.wheelId)}
             <button disabled={clue.empty} onclick={() => (tool = { kind: 'wheel', id: clue.wheelId! })} title="Change this wheel's slices">✎ Edit wheel</button>
@@ -604,31 +635,34 @@
         {:else if clue.type === 'dice'}
           <label class="field">
             Which dice
-          <select bind:this={toolBox} value={clue.diceId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('dice', e.currentTarget)}>
-            <option value="">Choose dice…</option>
-            {#if clue.diceId && !tileDice(app.game, clue.diceId)}<option value={clue.diceId}>⚠ Deleted dice — pick another</option>{/if}
-            {#if app.game.dice.length}
-              <optgroup label="This game's dice">
-                {#each app.game.dice as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
+            <select bind:this={toolBox} value={clue.diceId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('dice', e.currentTarget)}>
+              <option value="">Choose dice…</option>
+              {#if clue.diceId && !tileDice(app.game, clue.diceId)}<option value={clue.diceId}>⚠ Deleted dice — pick another</option>{/if}
+              {#if app.game.dice.length}
+                <optgroup label="This game's dice">
+                  {#each app.game.dice as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
+                </optgroup>
+              {/if}
+              <optgroup label="Standard dice">
+                {#each QUICK_DICE as d (d.label)}<option value="{STD_DICE}{d.label}">🎲 {d.label}</option>{/each}
               </optgroup>
-            {/if}
-            <optgroup label="Standard dice">
-              {#each QUICK_DICE as d (d.label)}<option value="{STD_DICE}{d.label}">🎲 {d.label}</option>{/each}
-            </optgroup>
-            <option value={NEW}>＋ Add dice…</option>
-          </select>
+              <option value={NEW}>＋ Add dice…</option>
+            </select>
           </label>
           {#if clue.diceId && app.game.dice.some((d) => d.id === clue.diceId)}
             <button disabled={clue.empty} onclick={() => (tool = { kind: 'dice', id: clue.diceId! })} title="Change these dice">✎ Edit dice</button>
           {/if}
         {/if}
         <!-- (Under 1300px its words in brackets go, so 🖼 Tile image keeps the row: its name and tooltip keep them.) -->
-        <label class="check" title="⬚ Empty tile (not played): the board shows a blank here"><input
+        <label class="check" title="⬚ Empty tile (not played): the board shows a blank here"
+          ><input
             type="checkbox"
             bind:this={emptyBox}
             aria-label="⬚ Empty tile (not played)"
             bind:checked={() => !!clue.empty, (v) => ((clue.empty = v), !v && followDailyDoubles(round))}
-          /> ⬚ Empty tile<span class="more-words">{' '}(not played)</span></label>
+          />
+          ⬚ Empty tile<span class="more-words">{' '}(not played)</span></label
+        >
         {#if clue.type === 'standard'}
           <label
             class="check"
@@ -638,7 +672,8 @@
               disabled={clue.empty}
               aria-label="✍ Everyone answers (in secret, on their phones)"
               bind:checked={() => !!clue.everyone, (v) => (v ? (clue.everyone = true) : delete clue.everyone)}
-            /> ✍ Everyone answers<span class="more-words">{' '}(in secret, on their phones)</span></label
+            />
+            ✍ Everyone answers<span class="more-words">{' '}(in secret, on their phones)</span></label
           >
         {/if}
         <!-- No Pass (everyone must play): the author's choice on an ordinary buzz-in tile; a ✍ clue (and its multiple
@@ -654,7 +689,8 @@
             aria-label="🚫 No Pass (everyone must play)"
             data-must-fixed={mustWhy ? '' : undefined}
             bind:checked={() => !!mustWhy || !!clue.mustPlay, (v) => setNoPass(clue, v)}
-          /> 🚫 No Pass<span class="more-words wide-words">{' '}(everyone must play)</span></label
+          />
+          🚫 No Pass<span class="more-words wide-words">{' '}(everyone must play)</span></label
         >
         <label class="field">
           Value
@@ -699,7 +735,11 @@
         <div class="pop">
           {#if clue.tileFace?.image}
             <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} draggable="false" />
-            <button class="ghost tiny" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Clear the tile's picture (it stays in 🖼 Media)">⌫ Clear</button>
+            <button
+              class="ghost tiny"
+              onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })}
+              title="Clear the tile's picture (it stays in 🖼 Media)">⌫ Clear</button
+            >
           {:else}
             <button
               onclick={() => (facePicker = true)}
@@ -727,8 +767,8 @@
       {/if}
       {#if !clue.empty && (clue.type === 'wheel' || clue.type === 'dice')}
         <p class="hint">
-          When this tile is picked, the {clue.type} appears full-screen for the host to {clue.type === 'wheel' ? 'spin' : 'roll'}. The question slide
-          below is optional; it shows after the {clue.type} is closed.
+          When this tile is picked, the {clue.type} appears full-screen for the host to {clue.type === 'wheel' ? 'spin' : 'roll'}. The question slide below is
+          optional; it shows after the {clue.type} is closed.
         </p>
       {/if}
       {#if clue.empty}
@@ -746,8 +786,7 @@
               rows="2"
               placeholder={at ? 'Type what this slide adds…' : 'Type the question…'}
               value={slideText(qslide)}
-              oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}
-            ></textarea>
+              oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
           </label>
           <label class="field">
             Answer (hidden until revealed)
@@ -758,8 +797,7 @@
               rows="2"
               placeholder="Type the answer…"
               value={slideText(clue.answerSlide)}
-              oninput={(e) => setSlideText(clue.answerSlide, e.currentTarget.value) && followClueText(app.game, [clue.answerSlide])}
-            ></textarea>
+              oninput={(e) => setSlideText(clue.answerSlide, e.currentTarget.value) && followClueText(app.game, [clue.answerSlide])}></textarea>
           </label>
           {#if card}
             <!-- (The card open, else the last one opened: Card 1 at first. A long name is cut: the modal's height is
@@ -774,8 +812,7 @@
                   rows="2"
                   placeholder="Type what they’ll see…"
                   value={slideText(card)}
-                  oninput={(e) => setSlideText(card, e.currentTarget.value) && followClueText(app.game, [card])}
-                ></textarea>
+                  oninput={(e) => setSlideText(card, e.currentTarget.value) && followClueText(app.game, [card])}></textarea>
               </label>
               {#if !slideHasContent(card)}<SameAsAnswer answer={clue.answerSlide} oncopy={copyAnswer} />{/if}
             </div>
@@ -806,8 +843,7 @@
                   qslides.length > 1
                     ? `Question slide ${i + 1} of ${qslides.length}: viewers see them in this order, then the answer. On the tab: Alt+←/→ move it, Ctrl+D duplicates it, Delete deletes it; right-click: its menu`
                     : 'Right-click: its menu',
-                )}
-                >{qslides.length > SHORT_TABS ? `Q${i + 1}` : qslides.length > 1 ? `Question ${i + 1}` : 'Question slide'}</button
+                )}>{qslides.length > SHORT_TABS ? `Q${i + 1}` : qslides.length > 1 ? `Question ${i + 1}` : 'Question slide'}</button
               >
             {/each}
             {#each cards as c, i (c.id)}
@@ -824,8 +860,10 @@
                 onclick={() => ((side = 'card'), (ci = i))}
                 ondblclick={() => ((side = 'card'), (ci = i), focusName())}
                 oncontextmenu={(e) => rightClick(e, qslides.length + i)}
-                title="🤫 {clueCardName(c, i)}: only the players you hand it to see it, never on stream. It starts with {goesTo(c.to, false)}. F2: rename it; right-click: its menu"
-                >{shortCards ? `🤫 ${i + 1}` : `🤫 ${clueCardName(c, i)}`}</button
+                title="🤫 {clueCardName(c, i)}: only the players you hand it to see it, never on stream. It starts with {goesTo(
+                  c.to,
+                  false,
+                )}. F2: rename it; right-click: its menu">{shortCards ? `🤫 ${i + 1}` : `🤫 ${clueCardName(c, i)}`}</button
               >
             {/each}
             <button
@@ -845,7 +883,9 @@
             count={shown === 'card' ? cards.length : qslides.length}
             copied={!!clipboard.slide}
             full={cards.length >= MAX_CARDS}
-            addTitle={shown === 'q' ? 'Add a question slide after this one: lead in, then show more before the answer' : 'Add a question slide before the answer'}
+            addTitle={shown === 'q'
+              ? 'Add a question slide after this one: lead in, then show more before the answer'
+              : 'Add a question slide before the answer'}
             onadd={addSlide}
             onduplicate={duplicateOpen}
             oncopy={copyOpen}
@@ -862,7 +902,8 @@
                   ? `A clue holds ${MAX_CARDS} cards`
                   : clue.type === 'partner'
                     ? 'Add a 🤫 card: a slide only the players you hand it to see (never on stream)'
-                    : 'Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel when this tile is played (a private question, a tip before a Daily Double’s wager…)'}>＋ 🤫 Card</button
+                    : 'Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel when this tile is played (a private question, a tip before a Daily Double’s wager…)'}
+                >＋ 🤫 Card</button
               >
             {/snippet}
           </SlideGroup>
@@ -890,8 +931,18 @@
               styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope, cat)}
               stylecategory
               quickfield={shown}
-              placeholder={shown === 'card' ? 'Click to type what they’ll see' : shown === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
-              badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 16).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : shown === 'a' ? 'ANSWER' : undefined}
+              placeholder={shown === 'card'
+                ? 'Click to type what they’ll see'
+                : shown === 'a'
+                  ? 'Click to type the answer'
+                  : at
+                    ? 'Click to type what this slide adds'
+                    : 'Click to type the question'}
+              badge={shown === 'card' && card
+                ? `🤫 ${clip(clueCardName(card, cardAt), 16).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT`
+                : shown === 'a'
+                  ? 'ANSWER'
+                  : undefined}
               fill
               tabbed
             />

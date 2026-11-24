@@ -55,7 +55,12 @@ describe('✎ Edit image: captions, stickers and strokes stay on the picture', (
   });
   it('goes there and back for any turn, flip and crop', () => {
     const edits = e({ rotate: 37, flipV: true, crop: { x: 0.1, y: 0.2, w: 0.6, h: 0.5 } });
-    for (const p of [{ x: 0.3, y: 0.4 }, { x: 0, y: 1 }, { x: 0.9, y: 0.05 }]) close(toSource(toOutput(p, 640, 480, edits), 640, 480, edits), p);
+    for (const p of [
+      { x: 0.3, y: 0.4 },
+      { x: 0, y: 1 },
+      { x: 0.9, y: 0.05 },
+    ])
+      close(toSource(toOutput(p, 640, 480, edits), 640, 480, edits), p);
     for (const a of [-170, -5, 0, 44, 179]) expect(angleToSource(angleToOutput(a, edits), edits)).toBeCloseTo(a, 6);
   });
   it('a crop makes them bigger with the picture', () => {
@@ -102,10 +107,21 @@ describe('✎ Edit image: captions, stickers and strokes stay on the picture', (
 });
 
 describe('image editor: what a click picks', () => {
-  const caption = { id: 'c', text: 'A LONG MEME CAPTION', x: 0.5, y: 0.2, size: 0.05, color: '#fff', stroke: '#000', strokeWidth: 0.1, font: 'Impact', rotation: 0 };
+  const caption = {
+    id: 'c',
+    text: 'A LONG MEME CAPTION',
+    x: 0.5,
+    y: 0.2,
+    size: 0.05,
+    color: '#fff',
+    stroke: '#000',
+    strokeWidth: 0.1,
+    font: 'Impact',
+    rotation: 0,
+  };
   const sticker = { id: 's', emoji: '🔥', x: 0.5, y: 0.8, size: 0.1, rotation: 0 };
   const edits = { texts: [caption], stickers: [sticker] };
-  it("a caption is hit along its whole line, not in a circle around its middle", () => {
+  it('a caption is hit along its whole line, not in a circle around its middle', () => {
     // 1000 wide: 19 letters × 50 × 0.6 ≈ 570 px wide, 75 px tall.
     expect(itemAt({ x: 0.75, y: 0.2 }, 1000, 1000, edits)).toBe('c');
     expect(itemAt({ x: 0.5, y: 0.3 }, 1000, 1000, edits)).toBeNull();

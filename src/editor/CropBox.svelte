@@ -75,10 +75,20 @@
   const c = $derived(crop);
 </script>
 
-<div class="cropbox" class:still bind:this={host} onpointermove={move} onpointerup={() => (drag = null)} onpointercancel={() => (drag = null)} role="presentation">
+<div
+  class="cropbox"
+  class:still
+  bind:this={host}
+  onpointermove={move}
+  onpointerup={() => (drag = null)}
+  onpointercancel={() => (drag = null)}
+  role="presentation"
+>
   <div
     class="shade"
-    style:clip-path="polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 {c.y * 100}%, {c.x * 100}% {c.y * 100}%, {c.x * 100}% {(c.y + c.h) * 100}%, {(c.x + c.w) * 100}% {(c.y + c.h) * 100}%, {(c.x + c.w) * 100}% {c.y * 100}%, 0 {c.y * 100}%)"
+    style:clip-path="polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 {c.y * 100}%, {c.x * 100}% {c.y * 100}%, {c.x * 100}% {(c.y + c.h) * 100}%, {(c.x + c.w) * 100}% {(c.y +
+      c.h) *
+      100}%, {(c.x + c.w) * 100}% {c.y * 100}%, 0 {c.y * 100}%)"
   ></div>
   {#if !still}
     <!-- (A button, so the keyboard can move it too.) -->
@@ -139,12 +149,44 @@
     translate: -50% -50%;
     box-sizing: border-box;
   }
-  .ch.nw { left: 0; top: 0; cursor: nwse-resize; }
-  .ch.ne { left: 100%; top: 0; cursor: nesw-resize; }
-  .ch.sw { left: 0; top: 100%; cursor: nesw-resize; }
-  .ch.se { left: 100%; top: 100%; cursor: nwse-resize; }
-  .ch.n { left: 50%; top: 0; cursor: ns-resize; }
-  .ch.s { left: 50%; top: 100%; cursor: ns-resize; }
-  .ch.e { left: 100%; top: 50%; cursor: ew-resize; }
-  .ch.w { left: 0; top: 50%; cursor: ew-resize; }
+  .ch.nw {
+    left: 0;
+    top: 0;
+    cursor: nwse-resize;
+  }
+  .ch.ne {
+    left: 100%;
+    top: 0;
+    cursor: nesw-resize;
+  }
+  .ch.sw {
+    left: 0;
+    top: 100%;
+    cursor: nesw-resize;
+  }
+  .ch.se {
+    left: 100%;
+    top: 100%;
+    cursor: nwse-resize;
+  }
+  .ch.n {
+    left: 50%;
+    top: 0;
+    cursor: ns-resize;
+  }
+  .ch.s {
+    left: 50%;
+    top: 100%;
+    cursor: ns-resize;
+  }
+  .ch.e {
+    left: 100%;
+    top: 50%;
+    cursor: ew-resize;
+  }
+  .ch.w {
+    left: 0;
+    top: 50%;
+    cursor: ew-resize;
+  }
 </style>

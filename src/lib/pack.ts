@@ -63,7 +63,7 @@ export const MAX_PACK_READ = 2 ** 31 - 1;
 
 /** Said when a pack is whole but too big to open (see MAX_PACK_READ). */
 export const TOO_BIG_PACK =
-  "This game pack is over 2 GB: more than a browser can open in one piece (the file itself is likely fine). Ask for a smaller copy, its big videos moved to 🌐 links or trimmed.";
+  'This game pack is over 2 GB: more than a browser can open in one piece (the file itself is likely fine). Ask for a smaller copy, its big videos moved to 🌐 links or trimmed.';
 
 /** Said when a game file (or an exported one) didn't arrive whole. */
 export const CUT_OFF = "This file is incomplete: it probably didn't finish downloading or uploading. Ask for it again.";

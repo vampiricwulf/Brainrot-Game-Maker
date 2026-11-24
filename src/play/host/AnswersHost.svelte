@@ -89,7 +89,11 @@
    * clue's is the status line's ⚠ Viewers see this chip.
    */
   const onStream = $derived(
-    dual ? ' · only you see them' : hideUntilShown ? ' · viewers see this window: each answer shows here as you reveal it. Open the 📺 audience window to read them before they go on screen' : '',
+    dual
+      ? ' · only you see them'
+      : hideUntilShown
+        ? ' · viewers see this window: each answer shows here as you reveal it. Open the 📺 audience window to read them before they go on screen'
+        : '',
   );
   offerExposed(() => (hideUntilShown ? null : '⚠ Viewers can see this window: it says who has answered, and the answers show here once the answer is up.'));
   /** The answer is on screen now (the Final: its answer step; a ✍ clue: revealed), not hidden again. */
@@ -122,8 +126,9 @@
     <b>{title}{choices.length ? ' · multiple choice' : ''}</b>
     <!-- (A single window's ✍ clue: the line keeps the room it takes once locked, its longest, so it never wraps anew.) -->
     <span class="muted small slot"
-      ><span role="status">{tally}{onStream}{open ? '' : locked}</span
-      >{#if keepRoom}<span class="room" aria-hidden="true">{tally} · locked (the answer was on screen)</span>{/if}</span
+      ><span role="status">{tally}{onStream}{open ? '' : locked}</span>{#if keepRoom}<span class="room" aria-hidden="true"
+          >{tally} · locked (the answer was on screen)</span
+        >{/if}</span
     >
   </div>
   {#if note}<p class="small note">{note}</p>{/if}
@@ -141,7 +146,8 @@
         onclick={onjudgeall}
         title="Right (+ the clue's value) for every {rightLetter}, wrong for every other choice (− the value, if the rules take points). Players with no answer, or words that match no choice, are left for you. One Ctrl+Z takes it all back.{enterJudges
           ? ' (Enter, with nobody selected)'
-          : ''}">✔ Judge all: {rightLetter} is right{#if enterJudges}{' '}<kbd aria-hidden="true">⏎</kbd>{/if}</button
+          : ''}"
+        >✔ Judge all: {rightLetter} is right{#if enterJudges}{' '}<kbd aria-hidden="true">⏎</kbd>{/if}</button
       >
     </p>
   {:else if keepRoom && onjudgeall && right}
@@ -167,9 +173,11 @@
             <!-- (Each answer keeps its own direction in a <bdi>: a right-to-left one sits by the name, not at the row's far end.
                  The spaces go before the spans: one inside a span's start would be dropped.) -->
             <span class="text" class:muted={!a || (!!a.pick && !picked)} class:selectable={dual}
-              >{#if a}{#if picked}<b><bdi>{picked}</bdi></b>{:else}“<bdi>{a.text}</bdi>”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}{#if a.by}{' '}<span
-                    class="muted small">· {a.by}</span
-                  >{/if}{:else if phones.includes(p.id)}{open ? 'waiting…' : 'no answer'}{:else}no phone connected{/if}</span
+              >{#if a}{#if picked}<b><bdi>{picked}</bdi></b>{:else}“<bdi>{a.text}</bdi>”{#if named}{' '}<span class="muted"
+                      >= {letter(choices.findIndex((c) => c.id === named))}</span
+                    >{/if}{/if}{#if a.by}{' '}<span class="muted small">· {a.by}</span>{/if}{:else if phones.includes(p.id)}{open
+                  ? 'waiting…'
+                  : 'no answer'}{:else}no phone connected{/if}</span
             >
             {#if j}
               <span class="mark" class:right={j > 0} class:wrong={j < 0}>{j > 0 ? '✔ Right' : '✘ Wrong'}</span>
@@ -188,13 +196,8 @@
     <!-- The Final in a single window: on one line, who has answered (✔), never the words. -->
     <p class="small in">
       {#each listed as p (p.id)}
-        <span
-          class="who"
-          style:background={p.color}
-          style:color={textOn(p.color)}
-          data-answer-in={p.id}
-          data-player-id={p.id}
-          title={inTitle(p.id)}>{p.name} {inMark(p.id)}</span
+        <span class="who" style:background={p.color} style:color={textOn(p.color)} data-answer-in={p.id} data-player-id={p.id} title={inTitle(p.id)}
+          >{p.name} {inMark(p.id)}</span
         >
       {/each}
     </p>
@@ -224,7 +227,9 @@
     visibility: hidden;
   }
   kbd {
-    font: 11px/1 ui-monospace, monospace;
+    font:
+      11px/1 ui-monospace,
+      monospace;
     padding: 1px 4px;
     margin-left: 4px;
     border: 1px solid currentColor;

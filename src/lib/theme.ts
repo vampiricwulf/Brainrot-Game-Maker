@@ -300,7 +300,11 @@ export function lookVars(t: Theme): Record<string, string> {
   const tileBg = fill(t.tile, t.tileGradient, angle);
   const header = fill(color(t.headerBg, t.tile), t.headerGradient, angle);
   const value =
-    t.valueShadow === 'none' ? 'none' : t.valueShadow === 'soft' ? '0 0 14px var(--tile-shadow, #000), 0 0 4px var(--tile-shadow, #000)' : '5px 5px 0 var(--tile-shadow, #000)';
+    t.valueShadow === 'none'
+      ? 'none'
+      : t.valueShadow === 'soft'
+        ? '0 0 14px var(--tile-shadow, #000), 0 0 4px var(--tile-shadow, #000)'
+        : '5px 5px 0 var(--tile-shadow, #000)';
   return {
     '--tile-bg': tileBg,
     '--tile-bg-2': t.tilePattern ? fill(color(t.tile2, t.tile), t.tileGradient, angle) : tileBg,
@@ -474,7 +478,17 @@ export function boardLayout(t: Theme | undefined, hasBanner = !!t?.banner): { ba
   const b = hasBanner ? Math.min(BANNER_MAX, Math.max(BANNER_MIN, t?.bannerHeight ?? BANNER_DEFAULT)) : 0;
   const banner = (top: number) => (b ? { top, height: b } : undefined);
   if (bar === 'top')
-    return { score: { top: 0, height: SCORE_H }, banner: banner(SCORE_H), board: { top: SCORE_H + b, height: 1080 - SCORE_H - b }, bg: { top: SCORE_H, height: 1080 - SCORE_H } };
+    return {
+      score: { top: 0, height: SCORE_H },
+      banner: banner(SCORE_H),
+      board: { top: SCORE_H + b, height: 1080 - SCORE_H - b },
+      bg: { top: SCORE_H, height: 1080 - SCORE_H },
+    };
   if (bar === 'hidden') return { banner: banner(0), board: { top: b, height: 1080 - b }, bg: { top: 0, height: 1080 } };
-  return { banner: banner(0), board: { top: b, height: 1080 - SCORE_H - b }, score: { top: 1080 - SCORE_H, height: SCORE_H }, bg: { top: 0, height: 1080 - SCORE_H } };
+  return {
+    banner: banner(0),
+    board: { top: b, height: 1080 - SCORE_H - b },
+    score: { top: 1080 - SCORE_H, height: SCORE_H },
+    bg: { top: 0, height: 1080 - SCORE_H },
+  };
 }

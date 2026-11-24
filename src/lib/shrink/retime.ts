@@ -21,7 +21,8 @@ const round2 = (n: number): number => Math.round(n * 100) / 100;
 function itemsOn(node: unknown, id: Id, only: VideoEl | AudioEl | undefined, out: (VideoEl | AudioEl)[] = []): (VideoEl | AudioEl)[] {
   if (!node || typeof node !== 'object') return out;
   const o = node as Record<string, unknown>;
-  if ((o.kind === 'video' || o.kind === 'audio') && o.media === id && (!only || (o as unknown) === only || o.id === only.id)) out.push(o as unknown as VideoEl | AudioEl);
+  if ((o.kind === 'video' || o.kind === 'audio') && o.media === id && (!only || (o as unknown) === only || o.id === only.id))
+    out.push(o as unknown as VideoEl | AudioEl);
   for (const v of Object.values(o)) if (v && typeof v === 'object') itemsOn(v, id, only, out);
   return out;
 }

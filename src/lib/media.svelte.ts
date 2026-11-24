@@ -225,18 +225,69 @@ export async function pruneMedia(games: (Game | null | undefined)[], held: Reado
 }
 
 const EXT_KIND: Record<string, MediaKind> = {
-  png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', svg: 'image', avif: 'image', bmp: 'image',
-  mp4: 'video', webm: 'video', mov: 'video', mkv: 'video', ogv: 'video', m4v: 'video', mts: 'video', m2ts: 'video',
-  mp3: 'audio', wav: 'audio', ogg: 'audio', oga: 'audio', m4a: 'audio', aac: 'audio', flac: 'audio', opus: 'audio',
-  weba: 'audio', mka: 'audio', ttf: 'font', otf: 'font', woff: 'font', woff2: 'font',
+  png: 'image',
+  jpg: 'image',
+  jpeg: 'image',
+  gif: 'image',
+  webp: 'image',
+  svg: 'image',
+  avif: 'image',
+  bmp: 'image',
+  mp4: 'video',
+  webm: 'video',
+  mov: 'video',
+  mkv: 'video',
+  ogv: 'video',
+  m4v: 'video',
+  mts: 'video',
+  m2ts: 'video',
+  mp3: 'audio',
+  wav: 'audio',
+  ogg: 'audio',
+  oga: 'audio',
+  m4a: 'audio',
+  aac: 'audio',
+  flac: 'audio',
+  opus: 'audio',
+  weba: 'audio',
+  mka: 'audio',
+  ttf: 'font',
+  otf: 'font',
+  woff: 'font',
+  woff2: 'font',
 };
 
 const EXT_MIME: Record<string, string> = {
-  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
-  avif: 'image/avif', bmp: 'image/bmp', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
-  mkv: 'video/x-matroska', ogv: 'video/ogg', m4v: 'video/mp4', mts: 'video/mp2t', m2ts: 'video/mp2t', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg',
-  oga: 'audio/ogg', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', opus: 'audio/opus', weba: 'audio/webm',
-  mka: 'audio/x-matroska', ttf: 'font/ttf', otf: 'font/otf', woff: 'font/woff', woff2: 'font/woff2',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  avif: 'image/avif',
+  bmp: 'image/bmp',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+  mkv: 'video/x-matroska',
+  ogv: 'video/ogg',
+  m4v: 'video/mp4',
+  mts: 'video/mp2t',
+  m2ts: 'video/mp2t',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  flac: 'audio/flac',
+  opus: 'audio/opus',
+  weba: 'audio/webm',
+  mka: 'audio/x-matroska',
+  ttf: 'font/ttf',
+  otf: 'font/otf',
+  woff: 'font/woff',
+  woff2: 'font/woff2',
 };
 
 export function extOf(name: string): string {
@@ -337,7 +388,17 @@ export async function addMediaFile(
     return twin;
   }
   // Same name as a file already in the game (e.g. every pasted screenshot is "image.png"): randomize it.
-  const ref: MediaRef = { id: newId(), name: uniqueMediaName(game.media.map((m) => m.name), name), mime, size: blob.size, kind, ...extra };
+  const ref: MediaRef = {
+    id: newId(),
+    name: uniqueMediaName(
+      game.media.map((m) => m.name),
+      name,
+    ),
+    mime,
+    size: blob.size,
+    kind,
+    ...extra,
+  };
   await putMedia(ref.id, blob.type ? blob : new Blob([blob], { type: mime }));
   game.media.push(ref);
   return ref;
@@ -381,7 +442,10 @@ function explain(e: unknown, link: MediaLink): LinkError {
 /** Add a file that plays from its link (the site won't let the game save a copy). */
 function addLinkRef(game: Game, url: string, kind: LinkKind, link: MediaLink, extra: Pick<MediaRef, 'source' | 'expiresAt'>): MediaRef {
   const base = link.drive ? `Google Drive ${kind === 'image' ? 'picture' : kind}` : nameFromUrl(url);
-  const name = uniqueMediaName(game.media.map((m) => m.name), base);
+  const name = uniqueMediaName(
+    game.media.map((m) => m.name),
+    base,
+  );
   const ref: MediaRef = { id: newId(), name, mime: mimeFromName(name) ?? '', size: 0, kind, url, ...extra };
   mediaUrls[ref.id] = url;
   game.media.push(ref);
@@ -590,7 +654,11 @@ export function moveToFile(game: Game, from: string, to: string, made: { mime: s
  */
 export function renameForType(game: Game, ref: MediaRef, mime: string): void {
   const name = swapExtension(ref.name, mime);
-  if (name !== ref.name) ref.name = uniqueMediaName(game.media.filter((m) => m !== ref).map((m) => m.name), name);
+  if (name !== ref.name)
+    ref.name = uniqueMediaName(
+      game.media.filter((m) => m !== ref).map((m) => m.name),
+      name,
+    );
   if (ref.file !== undefined) ref.file = swapExtension(ref.file, mime);
   if (ref.file === ref.name) delete ref.file;
 }
@@ -625,7 +693,11 @@ export async function replaceMediaFile(game: Game, id: string, file: File, keepN
   }
   // A file the user renamed keeps the name they gave it (the new file's name is its own name now).
   if (ref.file !== undefined) ref.file = file.name;
-  else if (!keepName) ref.name = uniqueMediaName(game.media.filter((m) => m.id !== to).map((m) => m.name), file.name);
+  else if (!keepName)
+    ref.name = uniqueMediaName(
+      game.media.filter((m) => m.id !== to).map((m) => m.name),
+      file.name,
+    );
   if (ref.file === ref.name) delete ref.file;
   return ref;
 }

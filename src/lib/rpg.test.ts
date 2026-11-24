@@ -218,7 +218,11 @@ describe('RPG: what the audience sees', () => {
     scr.slide.elements.push(coin, door, sign);
     expect(screenElements(st, scr, true).map((e) => e.id)).toEqual([sign.id]);
     // The host sees everything, hidden things marked secret (drawn faded).
-    expect(screenElements(st, scr, false).filter((e) => e.secret).map((e) => e.id)).toEqual([coin.id, door.id]);
+    expect(
+      screenElements(st, scr, false)
+        .filter((e) => e.secret)
+        .map((e) => e.id),
+    ).toEqual([coin.id, door.id]);
     st.objects[coin.id] = { shown: true };
     expect(audienceSees(coin, st.objects[coin.id])).toBe(true);
     st.objects[coin.id] = { taken: true };
@@ -446,7 +450,7 @@ describe('RPG: things pointing at deleted screens, items and shops', () => {
     world.maps[0].screens[1].exits = { e: { kind: 'warp', to: at(world, 'A1') }, w: { kind: 'warp', to: { map: world.maps[1].id, screen: 'gone' } } };
     world.maps[0].screens[2].exits = { s: { kind: 'warp', to: { map: world.maps[1].id, screen: 'gone' } } };
     const b1 = world.maps[0].screens[1].name;
-    expect(rpgProblems(game, round, "Quest", 0).map((p) => p.text)).toContain(`Quest: 3 ways out lead nowhere (from “A1”, “${b1}” and 1 more)`);
+    expect(rpgProblems(game, round, 'Quest', 0).map((p) => p.text)).toContain(`Quest: 3 ways out lead nowhere (from “A1”, “${b1}” and 1 more)`);
   });
 
   it('lists objects whose item or buttons point nowhere', () => {
@@ -493,7 +497,9 @@ describe('RPG: things pointing at deleted screens, items and shops', () => {
     const other = newTextEl('🚪');
     other.role = { class: 'doorway', to: { map: 'gone', screen: 'gone' } };
     world.maps[0].screens[0].slide.elements.push(other);
-    expect(rpgProblems(game, round, 'Quest', 0).map((p) => p.text)).toEqual([`Quest: 2 doorways lead nowhere (on “${world.maps[0].screens[0].name}” and “B1”)`]);
+    expect(rpgProblems(game, round, 'Quest', 0).map((p) => p.text)).toEqual([
+      `Quest: 2 doorways lead nowhere (on “${world.maps[0].screens[0].name}” and “B1”)`,
+    ]);
   });
 });
 

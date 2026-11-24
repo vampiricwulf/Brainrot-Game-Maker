@@ -34,7 +34,19 @@ export interface Prefs {
   v?: number;
 }
 
-export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, buzzerServer: '', checkUpdates: true, display: 'single', liveChecklist: true, colorFormat: 'hex', v: 2 };
+export const DEFAULT_PREFS: Prefs = {
+  autosaveMinutes: 5,
+  autosaveKeep: 3,
+  overwriteSave: true,
+  undoSteps: 300,
+  reduceMotion: false,
+  buzzerServer: '',
+  checkUpdates: true,
+  display: 'single',
+  liveChecklist: true,
+  colorFormat: 'hex',
+  v: 2,
+};
 /** The range ⚙ Settings allows for undoSteps. */
 export const UNDO_STEPS = { min: 20, max: 2000 };
 

@@ -208,33 +208,67 @@
     animation-name: spin;
   }
   @keyframes fade {
-    from { opacity: 0; }
+    from {
+      opacity: 0;
+    }
   }
   @keyframes pop {
-    from { scale: 0; opacity: 0; }
+    from {
+      scale: 0;
+      opacity: 0;
+    }
   }
   @keyframes slide-left {
-    from { translate: -2200px 0; }
+    from {
+      translate: -2200px 0;
+    }
   }
   @keyframes slide-right {
-    from { translate: 2200px 0; }
+    from {
+      translate: 2200px 0;
+    }
   }
   @keyframes slide-up {
-    from { translate: 0 1300px; }
+    from {
+      translate: 0 1300px;
+    }
   }
   @keyframes slide-down {
-    from { translate: 0 -1300px; }
+    from {
+      translate: 0 -1300px;
+    }
   }
   @keyframes typewriter {
-    from { clip-path: inset(0 100% 0 0); }
-    to { clip-path: inset(0 0 0 0); }
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
   }
   @keyframes shake {
-    0%, 100% { translate: 0 0; }
-    10%, 30%, 50%, 70%, 90% { translate: -24px 0; }
-    20%, 40%, 60%, 80% { translate: 24px 0; }
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      translate: -24px 0;
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+      translate: 24px 0;
+    }
   }
   @keyframes spin {
-    from { rotate: -360deg; scale: 0; }
+    from {
+      rotate: -360deg;
+      scale: 0;
+    }
   }
 </style>

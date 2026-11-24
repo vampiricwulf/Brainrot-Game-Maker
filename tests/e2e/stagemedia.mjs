@@ -12,7 +12,22 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, openGameFile, packGame, playWithPlayers, failureShots, assert, launchChromium, boardIn, boardTilesIn, inspectorIn, roundTabsIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  openGameFile,
+  packGame,
+  playWithPlayers,
+  failureShots,
+  assert,
+  launchChromium,
+  boardIn,
+  boardTilesIn,
+  inspectorIn,
+  roundTabsIn,
+  stageBoxIn,
+  toolsRowIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
@@ -26,9 +41,19 @@ function wav(seconds) {
   const rate = 8000;
   const n = rate * seconds;
   const b = Buffer.alloc(44 + n);
-  b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVE', 8); b.write('fmt ', 12);
-  b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(rate, 24);
-  b.writeUInt32LE(rate, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write('data', 36); b.writeUInt32LE(n, 40);
+  b.write('RIFF', 0);
+  b.writeUInt32LE(36 + n, 4);
+  b.write('WAVE', 8);
+  b.write('fmt ', 12);
+  b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(1, 20);
+  b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(rate, 24);
+  b.writeUInt32LE(rate, 28);
+  b.writeUInt16LE(1, 32);
+  b.writeUInt16LE(8, 34);
+  b.write('data', 36);
+  b.writeUInt32LE(n, 40);
   for (let i = 0; i < n; i++) b[44 + i] = 128 + Math.round(40 * Math.sin((i / rate) * 2 * Math.PI * 440));
   return b;
 }
@@ -122,7 +147,10 @@ try {
   await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'song.wav', mimeType: 'audio/wav', buffer: wav(8) });
-  assert(await inspectorIn(page).getByLabel('Autoplay when the slide appears').isChecked(), 'a sound plays by itself when its slide appears, unless told not to');
+  assert(
+    await inspectorIn(page).getByLabel('Autoplay when the slide appears').isChecked(),
+    'a sound plays by itself when its slide appears, unless told not to',
+  );
   await page.getByRole('button', { name: 'Done' }).click();
   // A third clue with a video and a YouTube video that play by themselves, coming in 3 s after the slide.
   await page.locator('.tile').nth(2).click();
@@ -176,7 +204,10 @@ try {
   await playsTo.press('Control+y');
   assert((await playsTo.inputValue()) === '0:01.5', 'and Ctrl+Y brings it back to 0:01.5');
   assert(
-    (await inspectorIn(page).getByRole('button', { name: '▶ Try it' }).count()) === 1 && (await inspectorIn(page).getByText(/^Only this item/).count()) === 1,
+    (await inspectorIn(page).getByRole('button', { name: '▶ Try it' }).count()) === 1 &&
+      (await inspectorIn(page)
+        .getByText(/^Only this item/)
+        .count()) === 1,
     'the Plays row has ▶ Try it, and a line saying it is only this item',
   );
   await page.getByRole('button', { name: 'Done' }).click();
@@ -217,22 +248,34 @@ try {
       const a = box.getAnimations()[0];
       return a && a.startTime !== null ? performance.timeOrigin + a.startTime + parseFloat(getComputedStyle(box).animationDelay) * 1000 : null;
     };
-    document.addEventListener('play', (e) => {
-      if (window.__later || !e.target.matches('.stage-box .full video')) return;
-      window.__later = { at: performance.timeOrigin + performance.now(), shows: window.__showsAt(e.target.closest('.el')) };
-    }, true);
+    document.addEventListener(
+      'play',
+      (e) => {
+        if (window.__later || !e.target.matches('.stage-box .full video')) return;
+        window.__later = { at: performance.timeOrigin + performance.now(), shows: window.__showsAt(e.target.closest('.el')) };
+      },
+      true,
+    );
   });
   await boardTilesIn(boardIn(page)).nth(2).click();
   await page.waitForFunction(() => !!window.__later);
   const later = await page.evaluate(() => window.__later);
-  assert(later.shows !== null && later.at >= later.shows - 1000, `a video that comes in later starts as it shows (${later.shows === null ? 'before its entrance began' : `${Math.round(later.at - later.shows)} ms from it`})`);
+  assert(
+    later.shows !== null && later.at >= later.shows - 1000,
+    `a video that comes in later starts as it shows (${later.shows === null ? 'before its entrance began' : `${Math.round(later.at - later.shows)} ms from it`})`,
+  );
   const yt = await (await stageBoxIn(page).locator('.full iframe').elementHandle()).contentFrame();
   await yt.waitForFunction(() => !!window.__yt);
   assert((await yt.evaluate(() => window.__yt.auto)) === '0', "a YouTube video that comes in later isn't started by its link");
   await yt.waitForFunction(() => window.__yt.plays.length > 0);
   const ytAt = (await yt.evaluate(() => window.__yt.plays))[0];
-  const ytShows = await stageBoxIn(page).locator('.full iframe').evaluate((f) => window.__showsAt(f.closest('.el')));
-  assert(ytShows !== null && ytAt >= ytShows - 1000, `it's started as it shows (${ytShows === null ? 'before its entrance began' : `${Math.round(ytAt - ytShows)} ms from it`})`);
+  const ytShows = await stageBoxIn(page)
+    .locator('.full iframe')
+    .evaluate((f) => window.__showsAt(f.closest('.el')));
+  assert(
+    ytShows !== null && ytAt >= ytShows - 1000,
+    `it's started as it shows (${ytShows === null ? 'before its entrance began' : `${Math.round(ytAt - ytShows)} ms from it`})`,
+  );
   await page.keyboard.press('Shift+Escape');
   await boardIn(stageBoxIn(page)).waitFor();
   await guard();
@@ -246,10 +289,20 @@ try {
   await laterAnswer.waitFor();
   await page.keyboard.press('r');
   await laterAnswer.waitFor({ state: 'detached' });
-  let ran = await page.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 0.3, laterVideo, { timeout: 15000 }).then(() => true, () => false);
+  let ran = await page
+    .waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 0.3, laterVideo, { timeout: 15000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(ran, 'the answer shown and hidden before the video comes in: it still starts by itself');
   const ytBack = await (await stageBoxIn(page).locator('.full iframe').elementHandle()).contentFrame();
-  ran = await ytBack.waitForFunction(() => window.__yt?.plays.length > 0, null, { timeout: 15000 }).then(() => true, () => false);
+  ran = await ytBack
+    .waitForFunction(() => window.__yt?.plays.length > 0, null, { timeout: 15000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(ran, 'and so does the YouTube video');
   await page.keyboard.press('Shift+Escape');
   await boardIn(stageBoxIn(page)).waitFor();
@@ -264,10 +317,18 @@ try {
   await page.locator('.mc .item').nth(1).waitFor();
   await page.locator(cut).evaluate((a) => a.addEventListener('play', () => (window.__cutPlayed = true), { once: true }));
   await page.keyboard.press(' ');
-  const heard = await page.waitForFunction(() => window.__cutPlayed, null, { timeout: 5000 }).then(() => true, () => false);
+  const heard = await page
+    .waitForFunction(() => window.__cutPlayed, null, { timeout: 5000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(heard && !(await paused(page, gif)), 'Space plays the sound, not the GIF over it (it keeps looping)');
   const soundRow = page.locator('.mc .item', { has: page.locator('.ic', { hasText: '🔊' }) });
-  await page.waitForFunction((s) => { const a = document.querySelector(s); return a.paused && a.currentTime >= 1.4; }, cut);
+  await page.waitForFunction((s) => {
+    const a = document.querySelector(s);
+    return a.paused && a.currentTime >= 1.4;
+  }, cut);
   await soundRow.getByRole('button', { name: 'Play' }).waitFor();
   await page.locator(cut).evaluate((a) => a.addEventListener('play', () => (window.__cutFrom = a.currentTime), { once: true }));
   await soundRow.getByRole('button', { name: 'Play' }).click();
@@ -275,17 +336,32 @@ try {
   const cutFrom = await page.evaluate(() => window.__cutFrom);
   assert(cutFrom < 0.5, `▶ on a sound stopped at its Plays to plays it again from its start (from ${cutFrom.toFixed(2)} s)`);
   await page.keyboard.press('m');
-  const hushed = await page.waitForFunction((s) => document.querySelector(s).muted, cut, { timeout: 5000 }).then(() => true, () => false);
+  const hushed = await page
+    .waitForFunction((s) => document.querySelector(s).muted, cut, { timeout: 5000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(hushed && (await page.locator(gif).evaluate((v) => v.muted)), 'M mutes the sound, and the GIF stays silent');
   // Turned down to 20% and set to 🔁 Loop: the answer shown and hidden again (R, R), it comes back so (not at 100%, once).
   await soundRow.getByRole('slider', { name: 'Volume' }).fill('0.2');
   await page.waitForFunction((s) => Math.abs(document.querySelector(s).volume - 0.2) < 0.01, cut);
-  await soundRow.getByRole('slider', { name: 'Volume' }).and(page.locator('[aria-valuetext="20%"]')).waitFor({ timeout: 5000 }).catch(() => {});
+  await soundRow
+    .getByRole('slider', { name: 'Volume' })
+    .and(page.locator('[aria-valuetext="20%"]'))
+    .waitFor({ timeout: 5000 })
+    .catch(() => {});
   // A screen reader hears which row is which, and the sliders' values as people say them.
   const rowNames = await page.locator('.mc .item').evaluateAll((els) => els.map((e) => `${e.getAttribute('role')} ${e.getAttribute('aria-label')}`).sort());
-  const said = { volume: await soundRow.getByRole('slider', { name: 'Volume' }).getAttribute('aria-valuetext'), seek: await soundRow.getByRole('slider', { name: 'Seek' }).getAttribute('aria-valuetext') };
+  const said = {
+    volume: await soundRow.getByRole('slider', { name: 'Volume' }).getAttribute('aria-valuetext'),
+    seek: await soundRow.getByRole('slider', { name: 'Seek' }).getAttribute('aria-valuetext'),
+  };
   assert(
-    rowNames.join() === 'group Audio,group Video' && said.volume === '20%' && /^0:0\d of 0:04$/.test(said.seek) && (await soundRow.getByRole('button', { name: 'Back 5 seconds' }).count()) === 1,
+    rowNames.join() === 'group Audio,group Video' &&
+      said.volume === '20%' &&
+      /^0:0\d of 0:04$/.test(said.seek) &&
+      (await soundRow.getByRole('button', { name: 'Back 5 seconds' }).count()) === 1,
     `the media rows are named Video and Audio, the sliders read “20%” and “0:01 of 0:04”, −5 is “Back 5 seconds” (${rowNames.join(', ')}; ${JSON.stringify(said)})`,
   );
   await soundRow.getByRole('button', { name: 'Loop' }).click();
@@ -296,8 +372,14 @@ try {
   await page.keyboard.press('r');
   await page.locator(cut).waitFor({ state: 'attached' });
   await page.waitForFunction((s) => document.querySelector(s).readyState >= 1, cut);
-  const back = { volume: await page.locator(cut).evaluate((a) => a.volume), loop: await soundRow.getByRole('button', { name: 'Loop' }).getAttribute('aria-pressed') };
-  assert(Math.abs(back.volume - 0.2) < 0.01 && back.loop === 'true', `the answer shown and hidden again: the sound comes back at its volume, looping (${JSON.stringify(back)})`);
+  const back = {
+    volume: await page.locator(cut).evaluate((a) => a.volume),
+    loop: await soundRow.getByRole('button', { name: 'Loop' }).getAttribute('aria-pressed'),
+  };
+  assert(
+    Math.abs(back.volume - 0.2) < 0.01 && back.loop === 'true',
+    `the answer shown and hidden again: the sound comes back at its volume, looping (${JSON.stringify(back)})`,
+  );
   await page.keyboard.press('Shift+Escape');
   await boardIn(stageBoxIn(page)).waitFor();
   await guard();
@@ -309,7 +391,10 @@ try {
   await page.locator(video).waitFor();
   const stopped = { video: await paused(page, video), sound: await paused(page, audio) };
   assert(stopped.video && stopped.sound, `the clue opens with its video and sound stopped (${JSON.stringify(stopped)})`);
-  assert((await stageBoxIn(page).locator('.full .missing').count()) === 0, 'one window (what the stream shows): no "Missing image" box for the missing picture');
+  assert(
+    (await stageBoxIn(page).locator('.full .missing').count()) === 0,
+    'one window (what the stream shows): no "Missing image" box for the missing picture',
+  );
 
   // One window.
   await page.locator(video).click();
@@ -341,14 +426,20 @@ try {
   await guard();
   await page.locator(video).click();
   await waitPaused(aud, audVideo, false);
-  assert((await answer(page)) === 0 && (await answer(aud)) === 0, 'dual mode: clicking the video on the host plays it in the audience window, answer still hidden');
+  assert(
+    (await answer(page)) === 0 && (await answer(aud)) === 0,
+    'dual mode: clicking the video on the host plays it in the audience window, answer still hidden',
+  );
   assert(await page.locator(video).evaluate((m) => m.muted), "the host's copy stays silent");
   await guard();
   await icon.click();
   await waitPaused(aud, audAudio, false);
   await page.waitForFunction(() => document.querySelector('.stage-box .full button.icon')?.textContent === '⏸');
-  assert(true, "dual mode: the speaker icon plays the sound in the audience window, and shows ⏸ to the host");
-  assert((await aud.locator('.full button.icon').count()) === 0 && (await aud.locator('.full .icon').innerText()) === '🔊', 'the audience sees the plain speaker icon');
+  assert(true, 'dual mode: the speaker icon plays the sound in the audience window, and shows ⏸ to the host');
+  assert(
+    (await aud.locator('.full button.icon').count()) === 0 && (await aud.locator('.full .icon').innerText()) === '🔊',
+    'the audience sees the plain speaker icon',
+  );
   await guard();
   await icon.click();
   await waitPaused(aud, audAudio, true);
@@ -359,7 +450,9 @@ try {
 
   // Revealing still works: a click on the slide away from the media.
   await guard();
-  await stageBoxIn(page).locator('.full').click({ position: { x: 10, y: 10 } });
+  await stageBoxIn(page)
+    .locator('.full')
+    .click({ position: { x: 10, y: 10 } });
   await aud.getByText('The answer text').waitFor();
   assert(true, 'clicking elsewhere on the slide still reveals the answer');
 
@@ -368,14 +461,26 @@ try {
   await page.keyboard.press('Escape');
   await boardIn(stageBoxIn(page)).waitFor();
   await guard();
-  await boardTilesIn(boardIn(stageBoxIn(page))).nth(2).click();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .nth(2)
+    .click();
   await aud.waitForFunction(() => (document.querySelector('.full video')?.readyState ?? 0) >= 1);
   await page.locator('.mc .time', { hasText: '/ 0:10' }).waitFor();
   await aud.reload();
-  ran = await aud.waitForFunction(() => (document.querySelector('.full video')?.currentTime ?? 0) > 0.3, null, { timeout: 15000 }).then(() => true, () => false);
+  ran = await aud
+    .waitForFunction(() => (document.querySelector('.full video')?.currentTime ?? 0) > 0.3, null, { timeout: 15000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(ran, 'the audience window reloaded before the video comes in: it still starts by itself there');
   const ytAud = await (await aud.locator('.full iframe').elementHandle()).contentFrame();
-  ran = await ytAud.waitForFunction(() => window.__yt?.plays.length > 0, null, { timeout: 15000 }).then(() => true, () => false);
+  ran = await ytAud
+    .waitForFunction(() => window.__yt?.plays.length > 0, null, { timeout: 15000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(ran, 'and so does the YouTube video');
 
   // The sound that plays by itself, paused by the host: the audience window reloaded (OBS, F5) or closed and opened
@@ -383,7 +488,9 @@ try {
   await page.keyboard.press('Shift+Escape');
   await boardIn(stageBoxIn(page)).waitFor();
   await guard();
-  await boardTilesIn(boardIn(stageBoxIn(page))).nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .nth(1)
+    .click();
   const song = '.full audio';
   await aud.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 1.5, song);
   await page.locator('.mc').getByRole('button', { name: 'Pause' }).click();
@@ -393,16 +500,22 @@ try {
   await aud.waitForFunction((s) => Math.abs(document.querySelector(s).volume - 0.4) < 0.01, song);
   const at = await aud.locator(song).evaluate((a) => a.currentTime);
   const heldAt = (p) =>
-    p.waitForFunction(([s, t]) => {
-      const a = document.querySelector(s);
-      return !!a && a.paused && a.readyState >= 1 && Math.abs(a.currentTime - t) < 0.3;
-    }, [song, at]);
+    p.waitForFunction(
+      ([s, t]) => {
+        const a = document.querySelector(s);
+        return !!a && a.paused && a.readyState >= 1 && Math.abs(a.currentTime - t) < 0.3;
+      },
+      [song, at],
+    );
   await aud.reload();
   await heldAt(aud);
   // (Past the moment its autoplay could start it again.)
   await aud.waitForTimeout(1700);
   let now = await aud.locator(song).evaluate((a) => ({ paused: a.paused, t: a.currentTime, volume: a.volume }));
-  assert(now.paused && Math.abs(now.t - at) < 0.3, `a reloaded audience window keeps the paused sound where it was (${at.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`);
+  assert(
+    now.paused && Math.abs(now.t - at) < 0.3,
+    `a reloaded audience window keeps the paused sound where it was (${at.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`,
+  );
   assert(Math.abs(now.volume - 0.4) < 0.01, `and at the volume the host left it at (${now.volume})`);
   await page.locator('.mc').getByRole('button', { name: 'Play' }).waitFor();
   assert(true, "and the host's media row still says it's paused");
@@ -421,7 +534,13 @@ try {
   await aud2.close();
   await page.locator('[data-audience-lost]').waitFor();
   await page.waitForFunction((s) => document.querySelector(s)?.muted === false, hostSong);
-  const row = await page.locator('.mc .item').waitFor({ timeout: 5000 }).then(() => true, () => false);
+  const row = await page
+    .locator('.mc .item')
+    .waitFor({ timeout: 5000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(row, "the audience window closed mid-clue: the host's copy has sound again, and keeps its media row");
   await page.keyboard.press(' ');
   await waitPaused(page, hostSong, false);
@@ -436,7 +555,9 @@ try {
   await page.keyboard.press('Shift+Escape');
   await boardIn(stageBoxIn(page)).waitFor();
   await guard();
-  await boardTilesIn(boardIn(stageBoxIn(page))).nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .nth(1)
+    .click();
   await waitPaused(page, hostSong, false);
   await page.waitForFunction((s) => document.querySelector(s).currentTime > 1, hostSong);
   await page.keyboard.press('m');
@@ -449,11 +570,24 @@ try {
   await aud3.waitForLoadState('domcontentloaded');
   await aud3.waitForFunction((s) => (document.querySelector(s)?.readyState ?? 0) >= 1, song);
   const tookOver = await aud3
-    .waitForFunction((s) => { const a = document.querySelector(s); return a.muted && Math.abs(a.volume - 0.3) < 0.01 && a.currentTime > 1; }, song, { timeout: 10000 })
-    .then(() => true, () => false);
+    .waitForFunction(
+      (s) => {
+        const a = document.querySelector(s);
+        return a.muted && Math.abs(a.volume - 0.3) < 0.01 && a.currentTime > 1;
+      },
+      song,
+      { timeout: 10000 },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
   const [hostT, audT] = await Promise.all([page.locator(hostSong).evaluate((a) => a.currentTime), aud3.locator(song).evaluate((a) => a.currentTime)]);
   const audWas = await aud3.locator(song).evaluate((a) => ({ muted: a.muted, volume: a.volume }));
-  assert(tookOver && Math.abs(hostT - audT) < 1, `the audience window opened mid-clue picks the sound up where the host had it: muted, at 30%, at its time (host ${hostT.toFixed(1)} s, audience ${audT.toFixed(1)} s, ${JSON.stringify(audWas)})`);
+  assert(
+    tookOver && Math.abs(hostT - audT) < 1,
+    `the audience window opened mid-clue picks the sound up where the host had it: muted, at 30%, at its time (host ${hostT.toFixed(1)} s, audience ${audT.toFixed(1)} s, ${JSON.stringify(audWas)})`,
+  );
   await page.waitForFunction((s) => document.querySelector(s)?.muted === true, hostSong);
   const mute = page.locator('.mc').getByRole('button', { name: 'Mute' });
   await page.waitForFunction(() => document.querySelector('.mc [aria-label="Mute"]')?.getAttribute('aria-pressed') === 'true');
@@ -482,7 +616,13 @@ try {
   await page.locator('.tile').nth(1).click();
   await page.getByRole('button', { name: '▶ Preview' }).click();
   const previewSong = '.canvas.previewing audio:not([data-old])';
-  const started = () => page.waitForFunction((s) => { const a = document.querySelector(s); return !!a && !a.paused && a.currentTime > 0; }, previewSong).then(() => page.locator(previewSong).evaluate((a) => a.currentTime));
+  const started = () =>
+    page
+      .waitForFunction((s) => {
+        const a = document.querySelector(s);
+        return !!a && !a.paused && a.currentTime > 0;
+      }, previewSong)
+      .then(() => page.locator(previewSong).evaluate((a) => a.currentTime));
   let from = await started();
   assert(from < 2, `the preview plays it from the start, not from where the game left it (${from.toFixed(1)} s)`);
   await page.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 3, previewSong);
@@ -504,14 +644,20 @@ try {
   await decor.waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Resume game' }).click();
   await page.getByRole('button', { name: /Single window/ }).click();
-  await page.waitForFunction(([s, t]) => {
-    const a = document.querySelector(s);
-    return !!a && a.paused && a.readyState >= 1 && Math.abs(a.currentTime - t) < 0.3;
-  }, [hostSong, left]);
+  await page.waitForFunction(
+    ([s, t]) => {
+      const a = document.querySelector(s);
+      return !!a && a.paused && a.readyState >= 1 && Math.abs(a.currentTime - t) < 0.3;
+    },
+    [hostSong, left],
+  );
   // (Past the moment its autoplay could start it again.)
   await page.waitForTimeout(1700);
   now = await page.locator(hostSong).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
-  assert(now.paused && Math.abs(now.t - left) < 0.3, `and after the previews, 🎨 Theme and 🖼 Board images, Resume game has it paused where the game left it (${left.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`);
+  assert(
+    now.paused && Math.abs(now.t - left) < 0.3,
+    `and after the previews, 🎨 Theme and 🖼 Board images, Resume game has it paused where the game left it (${left.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`,
+  );
 
   // A laptop (1280×720), one window. A clue with two videos and a sound: each row says which clip it is (the two videos'
   // rows looked the same), and only the row the keys reach names them in its tooltips (Space and M reach one clip, not
@@ -527,9 +673,14 @@ try {
     await addClassicRounds(lp);
     const upload = async (what, name, mimeType, buffer) => {
       await lp.getByRole('button', { name: what === 'video' ? '🎬 Video' : '🔊 Sound', exact: true }).click();
-      const [chooser] = await Promise.all([lp.waitForEvent('filechooser'), lp.getByRole('button', { name: `⬆ Upload ${what === 'video' ? 'video' : 'sound'} file…` }).click()]);
+      const [chooser] = await Promise.all([
+        lp.waitForEvent('filechooser'),
+        lp.getByRole('button', { name: `⬆ Upload ${what === 'video' ? 'video' : 'sound'} file…` }).click(),
+      ]);
       await chooser.setFiles({ name, mimeType, buffer });
-      await inspectorIn(lp).locator('h4', { hasText: what === 'video' ? 'Video' : 'Sound' }).waitFor();
+      await inspectorIn(lp)
+        .locator('h4', { hasText: what === 'video' ? 'Video' : 'Sound' })
+        .waitFor();
       await inspectorIn(lp).getByLabel('Autoplay when the slide appears').uncheck();
     };
     await lp.locator('.tile').first().click();
@@ -580,12 +731,18 @@ try {
       els.map((e) => ({
         name: e.getAttribute('aria-label'),
         tag: e.querySelector('.nm')?.textContent ?? '',
-        titles: [...e.querySelectorAll('button')].map((b) => b.title).filter(Boolean).join('|'),
+        titles: [...e.querySelectorAll('button')]
+          .map((b) => b.title)
+          .filter(Boolean)
+          .join('|'),
       })),
     );
     const keys = said.filter((r) => /Space|\(M\)|\(←\)|\(→\)/.test(r.titles));
     assert(
-      said.map((r) => `${r.name}:${r.tag}`).join() === 'Video 1:1,Video 2:2,Audio:' && keys.length === 1 && keys[0].name === 'Video 1' && /^Space\|.*Mute \(M\)/.test(keys[0].titles),
+      said.map((r) => `${r.name}:${r.tag}`).join() === 'Video 1:1,Video 2:2,Audio:' &&
+        keys.length === 1 &&
+        keys[0].name === 'Video 1' &&
+        /^Space\|.*Mute \(M\)/.test(keys[0].titles),
       `three clips: the videos' rows say 1 and 2, and only the row the keys reach names them (${JSON.stringify(said)})`,
     );
     const fit = await lp.evaluate(() => {
@@ -595,7 +752,10 @@ try {
       return { exitBottom: Math.round(r.bottom), tools: tools ? getComputedStyle(tools).display : 'none', fold: !!document.querySelector('.toolsfold') };
     });
     await lp.screenshot({ path: 'test-results/stagemedia-laptop.png' });
-    assert(fit.exitBottom <= 720 && fit.tools === 'none' && fit.fold, `at 1280×720 the tools row folds behind ⋯ Tools, and 🚪 Exit is in sight (${JSON.stringify(fit)})`);
+    assert(
+      fit.exitBottom <= 720 && fit.tools === 'none' && fit.fold,
+      `at 1280×720 the tools row folds behind ⋯ Tools, and 🚪 Exit is in sight (${JSON.stringify(fit)})`,
+    );
     assert((await stageAt()) === onBoard, `and the stage keeps its size (${onBoard} / ${await stageAt()})`);
     // The window grown with the clue up (fullscreen, a snapped window let go): measured again, the tools row is back
     // where there's room. And shrunk again: folded again, 🚪 Exit still in sight.
@@ -603,12 +763,19 @@ try {
       lp.evaluate(() => {
         const exit = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Exit'));
         const tools = document.querySelector('.toolsrow');
-        return { exitBottom: Math.round(exit.getBoundingClientRect().bottom), tools: tools ? getComputedStyle(tools).display : 'none', fold: !!document.querySelector('.toolsfold') };
+        return {
+          exitBottom: Math.round(exit.getBoundingClientRect().bottom),
+          tools: tools ? getComputedStyle(tools).display : 'none',
+          fold: !!document.querySelector('.toolsfold'),
+        };
       });
     await lp.setViewportSize({ width: 1280, height: 1000 });
     await lp.waitForTimeout(400);
     const grown = await fitNow();
-    assert(grown.exitBottom <= 1000 && grown.tools !== 'none' && !grown.fold, `grown to 1280×1000 with the clue up: the tools row is back, ⋯ Tools gone (${JSON.stringify(grown)})`);
+    assert(
+      grown.exitBottom <= 1000 && grown.tools !== 'none' && !grown.fold,
+      `grown to 1280×1000 with the clue up: the tools row is back, ⋯ Tools gone (${JSON.stringify(grown)})`,
+    );
     await lp.setViewportSize({ width: 1280, height: 720 });
     await lp.waitForTimeout(400);
     const shrunk = await fitNow();
@@ -647,13 +814,36 @@ try {
     const wp = await wheelCtx.newPage();
     wp.on('pageerror', (e) => errors.push('[wheel] ' + e.message));
     const wheelGame = {
-      id: 'g_wheel_clip', version: 2, title: 'Wheel clip',
-      settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8 },
+      id: 'g_wheel_clip',
+      version: 2,
+      title: 'Wheel clip',
+      settings: {
+        allowNegativeScores: true,
+        deductOnWrong: true,
+        defaultTimerSeconds: null,
+        finalTimerSeconds: 30,
+        currencySymbol: '$',
+        rollOffDie: 20,
+        pickerFollowsAward: true,
+        timerAutoStart: false,
+        roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+        maxPlayers: 8,
+      },
       players: [{ id: 'p1', name: 'Ann', color: '#e6194b' }],
       rounds: [{ id: 'r_show', name: 'Show', mode: 'slides', questionSlide: { background: { color: '#223344' }, elements: [] } }],
       media: [{ id: 'm_clip', name: 'prize.webm', mime: 'video/webm', size: clip.length, kind: 'video' }],
-      audio: {}, dice: [], theme: {},
-      wheels: [{ id: 'w_prize', name: 'Prize wheel', spinDurationMs: 300, removeAfterLanding: false, segments: [{ id: 's_clip', label: 'A clip', color: '#e6194b', weight: 1, media: 'm_clip' }] }],
+      audio: {},
+      dice: [],
+      theme: {},
+      wheels: [
+        {
+          id: 'w_prize',
+          name: 'Prize wheel',
+          spinDurationMs: 300,
+          removeAfterLanding: false,
+          segments: [{ id: 's_clip', label: 'A clip', color: '#e6194b', weight: 1, media: 'm_clip' }],
+        },
+      ],
     };
     mkdirSync(resolve('test-results'), { recursive: true });
     const wheelPack = resolve('test-results/stagemedia-wheel.brainrot');
@@ -674,7 +864,12 @@ try {
     await wp.keyboard.press(' ');
     await waitPaused(wp, prize, true);
     await wp.keyboard.press('m');
-    const quiet = await wp.waitForFunction((s) => document.querySelector(s).muted, prize, { timeout: 5000 }).then(() => true, () => false);
+    const quiet = await wp
+      .waitForFunction((s) => document.querySelector(s).muted, prize, { timeout: 5000 })
+      .then(
+        () => true,
+        () => false,
+      );
     assert(quiet, 'and Space pauses it, M mutes it');
     await wheelCtx.close();
   }

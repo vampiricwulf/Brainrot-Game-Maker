@@ -22,8 +22,40 @@
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { endLine, tiebreakLine } from './host/endlines';
   import { movedNew } from './whatmoved.svelte';
-  import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isBoardGame, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
+  import {
+    categoryLabel,
+    clueCardWords,
+    clueValue,
+    finalName,
+    formatPoints,
+    isBoard,
+    isBoardGame,
+    typedPoints,
+    wholePoints,
+    type Game,
+    type Session,
+  } from '../lib/model';
+  import {
+    answerShowing,
+    awardOpen,
+    clueMarks,
+    clueName,
+    clueScored,
+    currentClueInfo,
+    currentFinal,
+    findClueRef,
+    ownPlayers,
+    partnerSteal,
+    roundComplete,
+    score,
+    setScore,
+    slidePosition,
+    stealersLeft,
+    tiebreakHolds,
+    tiedForFirst,
+    toolOnlyClue,
+    usedTiles,
+  } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import { localMedia } from '../lib/mediactl.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
@@ -375,7 +407,9 @@
    * it spins for who describes first, as the main button says). A room that takes cards, as PartnerControls has it.
    */
   const describers = $derived(
-    partner?.pickerId && teams && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards() ? roomMembers(partner.pickerId).length : 0,
+    partner?.pickerId && teams && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards()
+      ? roomMembers(partner.pickerId).length
+      : 0,
   );
   /**
    * A wheel or dice tile with nothing to ask: what it is and what's next, as W or D does it (spin it, roll it), then
@@ -395,11 +429,15 @@
     if (session.revealed) return 'Answer is showing';
     if (ddWager) return 'Daily Double: who found it, and their wager';
     if (partner?.stage === 'pick') return pickLine;
-    if (steal && !steal.by) return stealersLeft(session.players, steal, marks).length ? 'Answer hidden · 🔔 a steal: the others can answer' : 'Answer hidden · nobody stole it: reveal the answer';
+    if (steal && !steal.by)
+      return stealersLeft(session.players, steal, marks).length
+        ? 'Answer hidden · 🔔 a steal: the others can answer'
+        : 'Answer hidden · nobody stole it: reveal the answer';
     if (partnerJudged) return 'Answer hidden · judged';
     if (allPassed) return 'Answer hidden · everyone passed';
     // (T started the clock with phone cards still to send: Enter sends them.)
-    if (partner?.stage === 'distribute' && partnerUnsent && clockRuns) return `Clock running: Enter sends the ${partnerUnsent === 1 ? 'card' : `${partnerUnsent} cards`}`;
+    if (partner?.stage === 'distribute' && partnerUnsent && clockRuns)
+      return `Clock running: Enter sends the ${partnerUnsent === 1 ? 'card' : `${partnerUnsent} cards`}`;
     const sent = sentNote ? ` · ${sentNote}` : '';
     return partner?.stage === 'distribute' ? `Answer hidden · hand out the cards${sent}` : `Answer hidden${sent}`;
   });
@@ -567,7 +605,12 @@
   const slidePos = $derived(setup ? null : slidePosition(session, game));
   /** The tiebreaker clue's winner, picked (while they're still tied for first: an older roll-off's doesn't count). */
   const tbWinner = $derived(
-    session.phase === 'tiebreaker' && session.tiebreakClue && tiebreakHolds(session, tiedForFirst(session).map((p) => p.id))
+    session.phase === 'tiebreaker' &&
+      session.tiebreakClue &&
+      tiebreakHolds(
+        session,
+        tiedForFirst(session).map((p) => p.id),
+      )
       ? session.players.find((p) => p.id === session.rollOffWinner)
       : undefined,
   );
@@ -602,8 +645,7 @@
   const ddHidden = $derived(!dual && session.dd?.stage === 'question' && session.dd.draftFrom === 'phone' && !session.dd.shown);
   /** 0 is an amount too: a Daily Double wagered at 0 or a clue worth 0 (a 0 result), the tiebreaker's winner (no points). */
   const zeroOk = $derived(
-    amount === 0 &&
-      ((session.phase === 'clue' && (own ? !own.setup : info?.value === 0 && !toolOnly)) || session.phase === 'tiebreaker'),
+    amount === 0 && ((session.phase === 'clue' && (own ? !own.setup : info?.value === 0 && !toolOnly)) || session.phase === 'tiebreaker'),
   );
   const canAward = $derived(!!selected.length && (!!amount || zeroOk));
   /** Why ＋ Award and − Deduct are off (their tooltip). */
@@ -651,7 +693,13 @@
   const ask = $derived.by((): HostAsk | null => {
     if (askExit && app.test)
       // ▶ Test this round: nothing is kept, so nothing to ask but whether to stop.
-      return { text: 'Stop testing? Nothing from this test is kept.', ok: '◀ Back to editor', cancel: 'Stay', onok: () => onexit(false), oncancel: () => (askExit = false) };
+      return {
+        text: 'Stop testing? Nothing from this test is kept.',
+        ok: '◀ Back to editor',
+        cancel: 'Stay',
+        onok: () => onexit(false),
+        oncancel: () => (askExit = false),
+      };
     if (askExit && session.phase === 'end')
       return {
         text: 'Leave the results screen? (Copy the standings first if you want to keep them.)',
@@ -725,7 +773,12 @@
    */
   let amountFrom: HTMLElement | null = null;
   function amountDone(box: HTMLInputElement): void {
-    const to = session.phase === 'board' ? (amountFrom?.isConnected ? amountFrom : document.querySelector<HTMLElement>('.play .stage-box .tile[data-clue][tabindex="0"]')) : null;
+    const to =
+      session.phase === 'board'
+        ? amountFrom?.isConnected
+          ? amountFrom
+          : document.querySelector<HTMLElement>('.play .stage-box .tile[data-clue][tabindex="0"]')
+        : null;
     amountFrom = null;
     if (to) to.focus({ preventScroll: true });
     else box.blur();
@@ -907,8 +960,21 @@
     const keys = st.key ? `N${st.enterIsNext ? ' or Enter' : ''}` : 'Click it (N says so)';
     const title = st.busy ?? [st.verb.title, keys, mayAsk(st) ? CHECK.shiftClick : '', goon?.first ? `first: ${goon.first}` : ''].filter(Boolean).join(' · ');
     // (◀ Previous turn beside Next turn ▶: another flow step, quiet, never asking.)
-    const also = st.also?.map((a): NextAction => ({ label: a.verb.label, ...(a.verb.key ? { key: a.verb.key } : {}), ...(a.verb.title ? { title: a.verb.title } : {}), run: a.run }));
-    return { label: st.verb.label, ...(st.key ? { key: st.key } : {}), title, disabled: !!st.busy, ...(st.flow ? { flow: st.flow } : {}), ...(also?.length ? { also } : {}), run: () => goon?.main('main') };
+    const also = st.also?.map((a): NextAction => ({
+      label: a.verb.label,
+      ...(a.verb.key ? { key: a.verb.key } : {}),
+      ...(a.verb.title ? { title: a.verb.title } : {}),
+      run: a.run,
+    }));
+    return {
+      label: st.verb.label,
+      ...(st.key ? { key: st.key } : {}),
+      title,
+      disabled: !!st.busy,
+      ...(st.flow ? { flow: st.flow } : {}),
+      ...(also?.length ? { also } : {}),
+      run: () => goon?.main('main'),
+    };
   });
   const next = $derived(blue);
   /**
@@ -1034,7 +1100,11 @@
       <!-- Over the line's start, up to its chips and buttons, so nothing in the line moves and the one-window stage keeps
            its size. (Read out by Play when it's said.) -->
       <span class="clicknote" data-click-note data-quiet style:width={noteW ? `${noteW}px` : undefined} title={clicknote.text}
-        ><span class="nt" bind:this={noteEl}>{clicknote.text}</span>{#if clicknote.undo}<button class="small ghost" onclick={clicknote.undo} title="Takes it back">↶ Undo</button>{/if}</span
+        ><span class="nt" bind:this={noteEl}>{clicknote.text}</span>{#if clicknote.undo}<button
+            class="small ghost"
+            onclick={clicknote.undo}
+            title="Takes it back">↶ Undo</button
+          >{/if}</span
       >
     {/if}
     {#if session.phase === 'board'}
@@ -1046,7 +1116,9 @@
         {#if intro.stage === 'categories' && cats}
           <span class="muted"
             >Revealing the categories: {Math.min(intro.revealed, cats)} of {cats}
-            <span class="hint">· {game.settings.roundIntro.categoryReveal === 'auto' ? 'they come up on their own' : 'click the screen (or N) for the next'}</span></span
+            <span class="hint"
+              >· {game.settings.roundIntro.categoryReveal === 'auto' ? 'they come up on their own' : 'click the screen (or N) for the next'}</span
+            ></span
           >
         {:else}
           <span class="muted">Round intro <span class="hint">· click the screen (or N) to go on</span></span>
@@ -1068,7 +1140,11 @@
           class="small ghost"
           aria-haspopup="menu"
           title="Put a used tile back on the board (or right-click it on the board)"
-          onclick={(e) => dropMenu(e, [{ heading: 'Reopen a tile (back on the board)' }, ...used.map((t) => ({ label: clueName(game, t.ref), onclick: () => reopenPicked(t.id) }))])}
+          onclick={(e) =>
+            dropMenu(e, [
+              { heading: 'Reopen a tile (back on the board)' },
+              ...used.map((t) => ({ label: clueName(game, t.ref), onclick: () => reopenPicked(t.id) })),
+            ])}
         >
           ↶ Reopen a tile… ▾
         </button>
@@ -1109,7 +1185,9 @@
       <span class="muted">·</span>
       <!-- (Cut short on a narrow window, never wrapping the line: its tooltip has it whole.) -->
       <span class="say" class:muted={!session.revealed || toolOnly} class:revealed={session.revealed && !toolOnly} title={clueSay}>{clueSay}</span>
-      {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {info.clue.hostNotes}">📝 {info.clue.hostNotes}</span>{/if}
+      {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {info.clue.hostNotes}"
+          >📝 {info.clue.hostNotes}</span
+        >{/if}
     {:else if session.phase === 'final'}
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
       {#if session.intro?.stage === 'title'}
@@ -1120,13 +1198,18 @@
         <span class="muted say" title={finalStepText[session.finalStep ?? 'wagers']}>{finalStepText[session.finalStep ?? 'wagers']}</span>
       {/if}
       <!-- (Once its answer is up: the notes may give it away while the players are still writing theirs.) -->
-      {#if finalRound?.hostNotes?.trim() && !dual && !session.intro && (session.finalStep === 'answer' || session.finalStep === 'reveal')}<span class="notes" title="Host notes (viewers can see them in this window): {finalRound.hostNotes}">📝 {finalRound.hostNotes}</span>{/if}
+      {#if finalRound?.hostNotes?.trim() && !dual && !session.intro && (session.finalStep === 'answer' || session.finalStep === 'reveal')}<span
+          class="notes"
+          title="Host notes (viewers can see them in this window): {finalRound.hostNotes}">📝 {finalRound.hostNotes}</span
+        >{/if}
     {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
       <b>{round?.name}</b>
       <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
-      <span class="muted hint">Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars · drag a box to select several</span>
+      <span class="muted hint"
+        >Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars · drag a box to select several</span
+      >
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
       <span class="muted hint">
@@ -1138,16 +1221,22 @@
       <b>{round?.name}</b>
       {#if slidePos}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <span class="muted hint"
-        >{slidePos && slidePos.at < slidePos.of ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N goes on (or two clicks on the stage)'} · Shift+N the one before</span
+        >{slidePos && slidePos.at < slidePos.of ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N goes on (or two clicks on the stage)'} ·
+        Shift+N the one before</span
       >
-      {#if round?.mode === 'slides' && round.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {round.hostNotes}">📝 {round.hostNotes}</span>{/if}
+      {#if round?.mode === 'slides' && round.hostNotes?.trim() && !dual}<span
+          class="notes"
+          title="Host notes (viewers can see them in this window): {round.hostNotes}">📝 {round.hostNotes}</span
+        >{/if}
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
       {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <!-- (Who won, by the 🏆 row, then back to the results; points given there may settle it too.) -->
       {@const tbSay = tiebreakLine(session)}
       <span class="muted say" title={tbSay}>{tbSay}</span>
-      {#if game.tiebreaker?.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {game.tiebreaker.hostNotes}">📝 {game.tiebreaker.hostNotes}</span>{/if}
+      {#if game.tiebreaker?.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {game.tiebreaker.hostNotes}"
+          >📝 {game.tiebreaker.hostNotes}</span
+        >{/if}
     {:else}
       <!-- (Who won and that the show is over, or the tie to settle; cut short on a narrow window, whole in its tooltip.) -->
       {@const said = endLine(session)}
@@ -1164,7 +1253,8 @@
     {/if}
     {#if app.live.cover}<span class="covered">⏸ Viewers see the cover</span>{/if}
     {#if app.playUnstored && !app.test}
-      <span class="unsaved" title="Storage is full or blocked: the scores aren't being saved, so closing or reloading this window loses them">⚠ Not saving</span>
+      <span class="unsaved" title="Storage is full or blocked: the scores aren't being saved, so closing or reloading this window loses them">⚠ Not saving</span
+      >
     {/if}
     {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}
     <span class="spacer"></span>
@@ -1176,8 +1266,9 @@
         aria-expanded={toolsOut}
         aria-controls="host-tools"
         onclick={() => (toolsOut = !toolsOut)}
-        title={toolsOut ? `Fold the tools row away: the ${rows} rows get its room` : `The tools row (🎲 Dice, 🎡 Wheel, 📊 Scoreboard…), folded away so the ${rows} rows have its room`}
-        >⋯ Tools</button
+        title={toolsOut
+          ? `Fold the tools row away: the ${rows} rows get its room`
+          : `The tools row (🎲 Dice, 🎡 Wheel, 📊 Scoreboard…), folded away so the ${rows} rows have its room`}>⋯ Tools</button
       >
     {/if}
     {#if clockFits}
@@ -1302,11 +1393,10 @@
                 : was === false
                   ? `Change to right: ${p.name} ${gets} (the ✘ taken back)`
                   : partner && !steal
-                  ? `Got it: ${p.name} only, ${gets} (their share)`
-                  : steal
-                    ? `Stole it: ${p.name} ${gets}`
-                    : `Right: ${p.name} ${gets}`}
-              >✔</button
+                    ? `Got it: ${p.name} only, ${gets} (their share)`
+                    : steal
+                      ? `Stole it: ${p.name} ${gets}`
+                      : `Right: ${p.name} ${gets}`}>✔</button
             >
             <button
               class="small quick wrong"
@@ -1318,9 +1408,8 @@
                 : was === true
                   ? `Change to wrong: ${p.name} ${loses} (the ✔ taken back)`
                   : partner && !steal
-                  ? `Missed: ${p.name} only, ${loses} (their share)`
-                  : `Wrong: ${p.name} ${loses}`}
-              >✘</button
+                    ? `Missed: ${p.name} only, ${loses} (their share)`
+                    : `Wrong: ${p.name} ${loses}`}>✘</button
             >
           {:else if chipSlots && game.settings.deductOnWrong}
             <!-- (Hidden copies with the same classes: exactly as wide as the real ones.) -->
@@ -1350,7 +1439,9 @@
           : setup
             ? 'Shift+Esc (or Esc): the question never showed, so the tile stays on the board'
             : VERBS.putBack.title}
-        >{putBackWords[0]}<span class="w1">{putBackWords[1]}</span><span class="w2">{putBackWords[2]}</span>{#if keyed}{' '}<kbd aria-hidden="true">{VERBS.putBack.key}</kbd>{/if}</button
+        >{putBackWords[0]}<span class="w1">{putBackWords[1]}</span><span class="w2">{putBackWords[2]}</span>{#if keyed}{' '}<kbd aria-hidden="true"
+            >{VERBS.putBack.key}</kbd
+          >{/if}</button
       >
     </span>
   {/snippet}
@@ -1368,7 +1459,9 @@
       <span class="slots" class:paged={!!slidePos} data-flow-slots>
         {#if slidePos}
           {#if !up}
-            <button class="ghost back-slide" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{@render iconWord(VERBS.prevSlide.label)}</button>
+            <button class="ghost back-slide" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}
+              >{@render iconWord(VERBS.prevSlide.label)}</button
+            >
           {:else}
             {@render kept(VERBS.prevSlide.label)}
           {/if}
@@ -1388,28 +1481,37 @@
             <button class="ghost" data-flow="reveal" onclick={onreveal} title={VERBS.hide.title}>{@render iconWord(VERBS.hide.label)}</button>
           {:else if tb}
             <!-- (A skip, while the blue button reveals: it asks first while nobody has won it, as the blue one would.) -->
-            <button class="ghost done-board" data-flow="done" onclick={() => (goon ? goon.flowDone() : ontiebreakerdone())}>{@render iconWord(FLOW.backToResults.label)}</button>
+            <button class="ghost done-board" data-flow="done" onclick={() => (goon ? goon.flowDone() : ontiebreakerdone())}
+              >{@render iconWord(FLOW.backToResults.label)}</button
+            >
           {:else if !(toolOnly && app.live.overlay) && next?.flow !== 'done'}
             <!-- (A wheel/dice tile with nothing to ask has one way out: the blue ▦ Done ▶ board.) -->
-            <button class="ghost done-board" data-flow="done" onclick={() => (goon ? goon.flowDone() : onback())} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
+            <button class="ghost done-board" data-flow="done" onclick={() => (goon ? goon.flowDone() : onback())} title={VERBS.done.title}
+              >{@render iconWord(VERBS.done.label)}</button
+            >
           {/if}
         </span>
       </span>
     {:else if session.phase === 'slides' && slidePos}
       <!-- (Beside the blue Next slide ▶: the slides' pager.) -->
-      <button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{VERBS.prevSlide.label}</button>
+      <button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}
+        >{VERBS.prevSlide.label}</button
+      >
     {/if}
   {/snippet}
 
   <!-- An unused place in the flow row: its button, unseen, so the others keep theirs. -->
-  {#snippet kept(label: string)}<span class="kept" aria-hidden="true" inert><button class="ghost" tabindex="-1">{@render iconWord(label)}</button></span>{/snippet}
+  {#snippet kept(label: string)}<span class="kept" aria-hidden="true" inert><button class="ghost" tabindex="-1">{@render iconWord(label)}</button></span
+    >{/snippet}
 
   <!-- A button's sign, then its words (the words go on a narrow window: see .word). -->
   {#snippet iconWord(label: string)}{label.slice(0, label.indexOf(' '))} <span class="word">{label.slice(label.indexOf(' ') + 1)}</span>{/snippet}
 
   {#snippet away(id: string, name: string)}
     {#if phoneAwaySince(id) !== null}
-      <span class="away" data-phone-away={id} role="img" aria-label="{name}’s phone is offline" title="{name}’s phone is offline (the 📱 chip lists the phones)">📵</span>
+      <span class="away" data-phone-away={id} role="img" aria-label="{name}’s phone is offline" title="{name}’s phone is offline (the 📱 chip lists the phones)"
+        >📵</span
+      >
     {/if}
   {/snippet}
 
@@ -1430,7 +1532,17 @@
 
       {#if ddWager}
         {#key info?.clue.id}
-          <DDControls {game} {session} {dual} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onshow={() => goon?.main('enter')} oncancel={oncancelclue} lead={putBack} />
+          <DDControls
+            {game}
+            {session}
+            {dual}
+            bind:override={wagerLimitsOff}
+            phones={wagerPhones}
+            phoneNote={wagerNote}
+            onshow={() => goon?.main('enter')}
+            oncancel={oncancelclue}
+            lead={putBack}
+          />
         {/key}
       {/if}
 
@@ -1446,7 +1558,7 @@
             onspin={onpartnerspin}
             onclock={onpartnerclock}
             ontakeback={onpartnertakeback}
-            oncardtakeback={oncardtakeback}
+            {oncardtakeback}
             onmemberspin={onpartnermemberspin}
             onjudge={onpartnerjudge}
             ring={goon?.ring}
@@ -1516,7 +1628,18 @@
 
       {#if session.phase === 'boardgame'}
         <div class="mode-host bgame" use:scrollMore>
-          <BoardHost {game} {session} bind:selected bind:steps={bgSteps} bind:space={bgSpace} {dual} {side} ring={goon?.ring} mover={moverUp ? toolBox : undefined} onhistory={() => onlog('history')} />
+          <BoardHost
+            {game}
+            {session}
+            bind:selected
+            bind:steps={bgSteps}
+            bind:space={bgSpace}
+            {dual}
+            {side}
+            ring={goon?.ring}
+            mover={moverUp ? toolBox : undefined}
+            onhistory={() => onlog('history')}
+          />
         </div>
       {/if}
 
@@ -1578,7 +1701,9 @@
               aria-pressed={won}
               data-player-id={p.id}
               onclick={() => ontiebreakwin(p.id)}
-              title={won ? `${p.name} won the tiebreaker (another 🏆 changes it)` : `${p.name} won the tiebreaker: no points, the tie is settled${k <= 9 ? ` (or press ${k}, then Enter)` : ''}`}
+              title={won
+                ? `${p.name} won the tiebreaker (another 🏆 changes it)`
+                : `${p.name} won the tiebreaker: no points, the tie is settled${k <= 9 ? ` (or press ${k}, then Enter)` : ''}`}
               >🏆 {p.name}{#if enter}{' '}<kbd aria-hidden="true">⏎</kbd>{/if}</button
             >
           {/each}
@@ -1737,7 +1862,8 @@
              check open over it, it says so to screen readers: the check is what it opened. -->
         {#each n.also ?? [] as a (a.label)}
           <button class="also" data-next-also disabled={a.disabled} onclick={() => a.run()} title={a.title ?? a.key}>
-            {a.label}{#if a.key} <kbd aria-hidden="true">{a.key}</kbd>{/if}
+            {a.label}{#if a.key}
+              <kbd aria-hidden="true">{a.key}</kbd>{/if}
           </button>
         {/each}
         <span class="mainroom">
@@ -1758,7 +1884,8 @@
             onclick={(e) => clickNext(e, n)}
             title={n.title ?? n.key}
           >
-            {n.label}{#if n.key} <kbd aria-hidden="true">{n.key}</kbd>{/if}
+            {n.label}{#if n.key}
+              <kbd aria-hidden="true">{n.key}</kbd>{/if}
           </button>
         </span>
       </div>
@@ -1766,7 +1893,9 @@
     {#if cellRoom.length}
       <!-- (The cell's room in an RPG or board-game round: see cellRoom. Unseen, no height.) -->
       <span class="cellroom" aria-hidden="true" inert>
-        {#each cellRoom as row, i (i)}<span>{#each row as b (b.label)}<button tabindex="-1">{b.label} <kbd aria-hidden="true">{b.key}</kbd></button>{/each}</span>{/each}
+        {#each cellRoom as row, i (i)}<span
+            >{#each row as b (b.label)}<button tabindex="-1">{b.label} <kbd aria-hidden="true">{b.key}</kbd></button>{/each}</span
+          >{/each}
       </span>
     {/if}
   </div>
@@ -1792,7 +1921,18 @@
     <div class="askslot">
       <div class="confirm" data-confirm-strip role="alert">
         {#key ask}
-          <InlineAsk text={ask.text} ok={ask.ok} cancel={ask.cancel} danger={ask.danger} alt={ask.alt} onalt={ask.onalt} altDanger={ask.altDanger} focusCancel onok={ask.onok} oncancel={ask.oncancel} />
+          <InlineAsk
+            text={ask.text}
+            ok={ask.ok}
+            cancel={ask.cancel}
+            danger={ask.danger}
+            alt={ask.alt}
+            onalt={ask.onalt}
+            altDanger={ask.altDanger}
+            focusCancel
+            onok={ask.onok}
+            oncancel={ask.oncancel}
+          />
         {/key}
       </div>
     </div>
@@ -1818,7 +1958,9 @@
     </span>
     <span class="divider" aria-hidden="true"></span>
     <span class="group g-lists">
-      <button onclick={() => onlog()} class:on={logOpen} aria-pressed={logOpen} title={logOpen ? 'L: close the log' : 'L: the history, scores and rolls'}>📜 <span class="txt">Log</span></button>
+      <button onclick={() => onlog()} class:on={logOpen} aria-pressed={logOpen} title={logOpen ? 'L: close the log' : 'L: the history, scores and rolls'}
+        >📜 <span class="txt">Log</span></button
+      >
       <!-- The game's rules go with its players (Most players). -->
       <button onclick={onplayers} title={teams ? 'Teams' : 'Players'}>👥 <span class="txt">{teams ? 'Teams' : 'Players'}</span></button>
       <button onclick={onrules} title="⚖ Game rules: scoring, most players, timers, the round intro">⚖ <span class="txt">Rules</span></button>
@@ -1846,7 +1988,8 @@
         class:on={dual}
         aria-pressed={dual}
         title={dual ? 'The audience window is open: click to close it (A brings it to the front)' : 'A opens or focuses it'}
-      >📺 <span class="txt">Audience</span>{dual ? ' ●' : ''}</button>
+        >📺 <span class="txt">Audience</span>{dual ? ' ●' : ''}</button
+      >
       <!-- (Its word goes where the bar has no room for it: see .sw.) -->
       <button
         class="sw"
@@ -1874,7 +2017,18 @@
   </div>
   {#if goon?.check && !goon.check.held}
     {@const g = goon}
-    <GoOnCheck check={g.check!} {side} lit={g.lit} flash={g.flash} onquick={g.quick} onanyway={g.anyway} onstep={g.takeStep} onnotyet={g.notYet} onquiet={g.quiet} onflash={g.flashIt} />
+    <GoOnCheck
+      check={g.check!}
+      {side}
+      lit={g.lit}
+      flash={g.flash}
+      onquick={g.quick}
+      onanyway={g.anyway}
+      onstep={g.takeStep}
+      onnotyet={g.notYet}
+      onquiet={g.quiet}
+      onflash={g.flashIt}
+    />
   {/if}
 </div>
 
@@ -2187,7 +2341,9 @@
   /* The keycap look for every key hint in the panel, its boxes' too (as weak as a bare kbd rule, so a box's own kbd
      rule still wins). */
   :where(.panel) :global(kbd) {
-    font: 11px/1 ui-monospace, monospace;
+    font:
+      11px/1 ui-monospace,
+      monospace;
     padding: 1px 4px;
     margin-left: 4px;
     border: 1px solid currentColor;
@@ -2322,8 +2478,7 @@
   }
   /* A situation's box open: the tools row in the ghost look (its words and edges as they are). What's on keeps its
      look (📊 Scoreboard pressed, a deal out, a warning), and under the mouse it's a button as ever. */
-  .panel.quiettools > .toolsrow
-    :global(:is(.tl > button, .tl > .pop > button, .rn > button):not([aria-pressed='true'], .on, .warn, :hover, :disabled)) {
+  .panel.quiettools > .toolsrow :global(:is(.tl > button, .tl > .pop > button, .rn > button):not([aria-pressed='true'], .on, .warn, :hover, :disabled)) {
     background: transparent;
   }
   .side > .act {

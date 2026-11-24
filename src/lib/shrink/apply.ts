@@ -92,7 +92,14 @@ export const copyOfWhat = (m: Pick<MediaRef, 'kind' | 'mime' | 'name'>): CopyOf 
 export function bigForPhones(game: Game, fileBytes: number): MediaRef[] {
   const onCards = new Set(allCardSlides(game).flatMap(({ slide }) => slideMediaIds(slide)));
   return game.media.filter(
-    (m) => onCards.has(m.id) && shrinkable(m) && !!mediaUrls[m.id] && !phoneCopyOf(game, m) && !phonesGetLink(m) && !jobFor(m.id) && m.size > Math.min(SLOW_FILE_BYTES, fileBytes),
+    (m) =>
+      onCards.has(m.id) &&
+      shrinkable(m) &&
+      !!mediaUrls[m.id] &&
+      !phoneCopyOf(game, m) &&
+      !phonesGetLink(m) &&
+      !jobFor(m.id) &&
+      m.size > Math.min(SLOW_FILE_BYTES, fileBytes),
   );
 }
 
@@ -197,7 +204,9 @@ function runFailed(e: RunError, what: CopyOf): string {
     case 'unreadable':
       return `${CANT_READ_FILE}: nothing was changed.`;
     case 'undecodable':
-      return what === 'sound' ? 'This browser can’t read this sound’s format. Add it as MP3 or M4A, or from a link: nothing was changed.' : `${CANT_READ_VIDEO}: nothing was changed.`;
+      return what === 'sound'
+        ? 'This browser can’t read this sound’s format. Add it as MP3 or M4A, or from a link: nothing was changed.'
+        : `${CANT_READ_VIDEO}: nothing was changed.`;
     case 'no-encoder':
       return 'This browser can’t make this copy: nothing was changed.';
     case 'too-long':
@@ -237,7 +246,13 @@ async function putIn(
   if (ctl.signal.aborted) throw stopped();
   // Still the editor (or the game being played), the same game, and the very file it was made from.
   const here = (): Game | null =>
-    c.play ? (app.screen === 'play' && app.playGame?.id === gameId ? app.playGame : null) : app.screen === 'editor' && !app.editGame && app.game.id === gameId ? app.game : null;
+    c.play
+      ? app.screen === 'play' && app.playGame?.id === gameId
+        ? app.playGame
+        : null
+      : app.screen === 'editor' && !app.editGame && app.game.id === gameId
+        ? app.game
+        : null;
   const same = () => !!here()?.media.some((m) => m.id === of) && getBlob(of) === src;
   // (Not while a step is being made, a drag or a file being stored: the copy's would join it, and take its name.)
   await whenSettled();
@@ -272,11 +287,23 @@ async function putIn(
   const limit = fileLimitsNow().limits.fileBytes;
   if (made.blob.size > limit) {
     const g = here();
-    const next = g && smallerLeft(g, g.media.find((m) => m.id === of)) ? '🗜 again makes a smaller one, or add it from a link' : 'add it from a link instead';
-    return { toast: `🗜 Made a smaller copy, but it’s still too big for this buzzer server (${size}; it takes ${formatBytes(limit)}): ${next}${back}`, media: id };
+    const next =
+      g &&
+      smallerLeft(
+        g,
+        g.media.find((m) => m.id === of),
+      )
+        ? '🗜 again makes a smaller one, or add it from a link'
+        : 'add it from a link instead';
+    return {
+      toast: `🗜 Made a smaller copy, but it’s still too big for this buzzer server (${size}; it takes ${formatBytes(limit)}): ${next}${back}`,
+      media: id,
+    };
   }
   return {
-    toast: c.playable ? `🗜 Phones get the smaller copy now: ${size} instead of ${formatBytes(src.size)}${back}` : `🗜 Phones get a copy they can play now: ${size}${back}`,
+    toast: c.playable
+      ? `🗜 Phones get the smaller copy now: ${size} instead of ${formatBytes(src.size)}${back}`
+      : `🗜 Phones get a copy they can play now: ${size}${back}`,
     media: id,
   };
 }
@@ -323,7 +350,18 @@ export function queuePhoneCopy(of: Id, plan?: CopyPlan, opts: { hardware?: boole
       ctl.phase('working');
       const made = await gifToVideo(bytes, info, p, { signal: ctl.signal, onProgress: ctl.progress, hardware });
       if (!smallEnough(made.blob.size, src.size)) return { failed: NOT_SMALLER };
-      return putIn(ctl, { of, src, gameId, what, made, want: { seconds: made.seconds, width: p.width, height: p.height, sound: false }, ext: p.ext, range: null, playable: true, play });
+      return putIn(ctl, {
+        of,
+        src,
+        gameId,
+        what,
+        made,
+        want: { seconds: made.seconds, width: p.width, height: p.height, sound: false },
+        ext: p.ext,
+        range: null,
+        playable: true,
+        play,
+      });
     });
   if (!plan) return null;
   return addJob({ kind: 'phone', what, media: of, gameId, copying: false }, async (ctl) => {
@@ -404,9 +442,12 @@ async function roomFor(bytes: number): Promise<boolean> {
   const left = est.quota - est.usage;
   if (left >= 1.2 * bytes) return true;
   const gb = (n: number) => `${(n / 1024 ** 3).toFixed(1)} GB`;
-  return ask(`This needs about ${gb(bytes)} of room, and this browser has about ${gb(Math.max(0, left))} left for the app's files. The new file would be kept in memory only until you 💾 Save. Go ahead?`, {
-    ok: 'Go ahead',
-  });
+  return ask(
+    `This needs about ${gb(bytes)} of room, and this browser has about ${gb(Math.max(0, left))} left for the app's files. The new file would be kept in memory only until you 💾 Save. Go ahead?`,
+    {
+      ok: 'Go ahead',
+    },
+  );
 }
 
 /**
@@ -429,7 +470,10 @@ export function queueConvert(game: Game, id: Id, batch?: string): string | null 
   const gameId = game.id;
   const failed = (why: RunReason | 'unreadable-now' | 'no-picture') => {
     const reason = convertReason(why);
-    return { failed: `${reason[0].toUpperCase()}${reason.slice(1)}: nothing was changed.`, toast: `🔄 A ${what} couldn’t be converted: ${reason}. Nothing was changed.` };
+    return {
+      failed: `${reason[0].toUpperCase()}${reason.slice(1)}: nothing was changed.`,
+      toast: `🔄 A ${what} couldn’t be converted: ${reason}. Nothing was changed.`,
+    };
   };
   return addJob({ kind: 'convert', what, media: id, gameId, batch, copying: isLossless(fix) }, async (ctl) => {
     const facts = await readFacts(src, { duration: 'compute' });
@@ -480,7 +524,10 @@ export function queueConvert(game: Game, id: Id, batch?: string): string | null 
     const box = fixBoxName(fix.box);
     if (v.is === 'plays') return { toast: `↻ Repackaged as ${box}: nothing lost, and phones can open it now. Ctrl+Z puts the old one back.`, media: to };
     const silent = fix.audio === 'drop' ? ' (without its sound)' : '';
-    return { toast: `🔄 It plays here now${silent}: ${box}, ${formatBytes(made.blob.size)} (was ${formatBytes(src.size)}). Ctrl+Z puts the old one back.`, media: to };
+    return {
+      toast: `🔄 It plays here now${silent}: ${box}, ${formatBytes(made.blob.size)} (was ${formatBytes(src.size)}). Ctrl+Z puts the old one back.`,
+      media: to,
+    };
   });
 }
 
@@ -639,7 +686,10 @@ export function queueFileEdit(game: Game, id: Id, plan: EditPlan & EditExtra, ho
     if (remakeCopy && how === 'all') void remakePhoneCopy(to);
     if (how === 'new') return { toast: '✂ Saved as a new file in 🖼 Media: the original is unchanged.', media: to };
     if (how === 'item')
-      return { toast: `✂ This item plays its own edited copy now: ${others === 1 ? 'the other place keeps' : `the other ${others} places keep`} the original.`, media: to };
+      return {
+        toast: `✂ This item plays its own edited copy now: ${others === 1 ? 'the other place keeps' : `the other ${others} places keep`} the original.`,
+        media: to,
+      };
     const length = made.seconds ?? plan.out.seconds;
     const bits = [
       ...(length ? [lengthText(length)] : []),

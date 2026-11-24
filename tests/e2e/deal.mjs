@@ -14,7 +14,29 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, failureShots, assert, sleep, launchChromium, until, boardIn, hostPanelIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  flowIs,
+  forgetSeen,
+  mainButton,
+  openGameFile,
+  packGame,
+  recordSeen,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  stepButton,
+  stored,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  until,
+  boardIn,
+  hostPanelIn,
+  stageBoxIn,
+  toolsRowIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -27,7 +49,30 @@ const PLACES = ['Beach-wqzj', 'Airport-wqzj', 'Casino-wqzj'];
 const SECRETS = ['qkzvx', 'wqzj'];
 
 let ids = 0;
-const text = (t, y = 40) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1, kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  id: `e${ids++}`,
+  x: 100,
+  y,
+  w: 800,
+  h: 160,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (...elements) => ({ background: {}, elements });
 
 /** Waits (up to `ms`) until pred() holds. */
@@ -45,9 +90,17 @@ const watch = (p, name) => {
 try {
   browser = await launchChromium();
 
-  const plain = (id, extra = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(text('A question')), answerSlide: slide(text('An answer')), ...extra });
+  const plain = (id, extra = {}) => ({
+    id,
+    value: null,
+    type: 'standard',
+    questionSlide: slide(text('A question')),
+    answerSlide: slide(text('An answer')),
+    ...extra,
+  });
   const partnerClue = {
-    type: 'partner', timerSeconds: 60,
+    type: 'partner',
+    timerSeconds: 60,
     partner: { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' },
     cards: [
       { id: 'p1', to: 'giver', ...slide(text('Describe it')) },
@@ -59,16 +112,50 @@ try {
     version: 2,
     title: 'Deals',
     settings: {
-      allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      stream: { clueCaption: true },
+      buzzer: true,
     },
     players: ['Ann', 'Bob', 'Cat', 'Dan'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
-    rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: [{ id: 'cat0', title: 'Movies', clues: [plain('q1', { cards: [{ id: 't1', to: 'picker', ...slide(text('A tip')) }] }), plain('q2', partnerClue)] }] }],
-    media: [], audio: {}, dice: [], theme: {},
-    wheels: [{ id: 'w_loc', name: 'Places', segments: PLACES.map((label, i) => ({ id: `s${i}`, label, color: '#e6194b', weight: 1 })), spinDurationMs: 3000, removeAfterLanding: false }],
+    rounds: [
+      {
+        id: 'r1',
+        name: 'Round 1',
+        mode: 'board',
+        values: [200, 400],
+        dailyDoubleCount: 0,
+        categories: [
+          { id: 'cat0', title: 'Movies', clues: [plain('q1', { cards: [{ id: 't1', to: 'picker', ...slide(text('A tip')) }] }), plain('q2', partnerClue)] },
+        ],
+      },
+    ],
+    media: [],
+    audio: {},
+    dice: [],
+    theme: {},
+    wheels: [
+      {
+        id: 'w_loc',
+        name: 'Places',
+        segments: PLACES.map((label, i) => ({ id: `s${i}`, label, color: '#e6194b', weight: 1 })),
+        spinDurationMs: 3000,
+        removeAfterLanding: false,
+      },
+    ],
     deals: [
       {
-        id: 'deal1', name: 'Odd one out', wheel: 'w_loc',
+        id: 'deal1',
+        name: 'Odd one out',
+        wheel: 'w_loc',
         parts: [
           { id: 'spy', name: 'Spy', count: 1, card: slide(text(SPY)) },
           { id: 'vil', name: 'Villager', count: 'rest', draw: 'shared', card: slide(text('The location:')) },
@@ -112,8 +199,15 @@ try {
   await deals.getByRole('button', { name: 'Odd one out' }).click();
   const editor = host.locator('[data-deal-editor]');
   await editor.waitFor();
-  assert((await editor.getByLabel('Part 1’s name').inputValue()) === 'Spy' && (await editor.getByLabel('Part 2’s name').inputValue()) === 'Villager', 'the saved deal’s parts: Spy and Villager');
-  assert((await editor.getByLabel('How many get Villager').inputValue()) === 'rest' && (await editor.getByLabel('Villager’s card draws from the wheel').inputValue()) === 'shared', 'the Villagers are the rest, and share a slice of the wheel');
+  assert(
+    (await editor.getByLabel('Part 1’s name').inputValue()) === 'Spy' && (await editor.getByLabel('Part 2’s name').inputValue()) === 'Villager',
+    'the saved deal’s parts: Spy and Villager',
+  );
+  assert(
+    (await editor.getByLabel('How many get Villager').inputValue()) === 'rest' &&
+      (await editor.getByLabel('Villager’s card draws from the wheel').inputValue()) === 'shared',
+    'the Villagers are the rest, and share a slice of the wheel',
+  );
   // Edit card… opens it as the 🤫 Cards are laid out, 📱 On their phone beside it: its part, its words, a sample slice.
   await editor.locator('[data-part]').nth(1).getByRole('button', { name: 'Edit card…' }).click();
   const cardWin = host.getByRole('dialog', { name: '🎭 Villager’s card (only its players see it)' });
@@ -121,15 +215,23 @@ try {
   const onPhone = cardWin.locator('.phone-preview');
   const sample = (await onPhone.locator('[data-sample]').innerText()).trim();
   assert(
-    (await cardWin.getByRole('button', { name: '📱 On their phone' }).getAttribute('aria-pressed')) === 'true' && (await onPhone.innerText()).includes('You’re the Villager') && PLACES.some((p) => sample.startsWith('+ a slice of ') && sample.includes(`: ${p}`)),
+    (await cardWin.getByRole('button', { name: '📱 On their phone' }).getAttribute('aria-pressed')) === 'true' &&
+      (await onPhone.innerText()).includes('You’re the Villager') &&
+      PLACES.some((p) => sample.startsWith('+ a slice of ') && sample.includes(`: ${p}`)),
     `a part's Edit card… shows it on their phone, with its part and a sample slice (${sample})`,
   );
   await cardWin.getByRole('button', { name: 'Done' }).click();
   await cardWin.waitFor({ state: 'detached' });
   await host.getByRole('button', { name: '📋 Ready-made deal…' }).click();
   await host.getByRole('menuitem', { name: /Secret roles/ }).click();
-  assert(await until(async () => (await deals.getByRole('button').allInnerTexts()).map((t) => t.trim()).join('|') === 'Odd one out|Secret roles'), 'a ready-made deal goes in: Secret roles');
-  assert((await editor.getByLabel('Part 3’s name').inputValue()) === 'Villager' && (await editor.getByLabel('Part 1’s name').inputValue()) === 'Wolf', 'with a wolf, a seer and villagers');
+  assert(
+    await until(async () => (await deals.getByRole('button').allInnerTexts()).map((t) => t.trim()).join('|') === 'Odd one out|Secret roles'),
+    'a ready-made deal goes in: Secret roles',
+  );
+  assert(
+    (await editor.getByLabel('Part 3’s name').inputValue()) === 'Villager' && (await editor.getByLabel('Part 1’s name').inputValue()) === 'Wolf',
+    'with a wolf, a seer and villagers',
+  );
   // A part's row, as the other lists': Alt+↑/↓ and Ctrl+D in it, Enter in its name for the next part, Backspace in an
   // empty one, and ⋯ for its menu (the same as a right-click on it).
   const undoTitle = () => host.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
@@ -156,14 +258,26 @@ try {
   assert(await until(async () => (await partNames()) === 'Wolf,Seer,Villager'), `and both undo (${await partNames()})`);
   await editor.getByRole('button', { name: 'More for Seer' }).click();
   const partMenu = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
-  assert(['✎ Edit card…', '⧉ Duplicate', '▲ Move up', '▼ Move down', '🗑 Delete part'].every((x) => partMenu.some((t) => t.startsWith(x))), `a part's ⋯: its menu (${partMenu.join(', ')})`);
+  assert(
+    ['✎ Edit card…', '⧉ Duplicate', '▲ Move up', '▼ Move down', '🗑 Delete part'].every((x) => partMenu.some((t) => t.startsWith(x))),
+    `a part's ⋯: its menu (${partMenu.join(', ')})`,
+  );
   await host.keyboard.press('Escape');
   // A part's choices are steps named after the part, not "Changed count of deal".
   await editor.getByLabel('How many get Wolf').selectOption('2');
-  assert(await until(async () => (await undoTitle()).startsWith('Undo: How many get Wolf in “Secret roles”: ×2')), `how many get a part is a step named after it (${await undoTitle()})`);
+  assert(
+    await until(async () => (await undoTitle()).startsWith('Undo: How many get Wolf in “Secret roles”: ×2')),
+    `how many get a part is a step named after it (${await undoTitle()})`,
+  );
   await editor.getByLabel('Wolf’s card draws from the wheel').selectOption('shared');
-  assert(await until(async () => (await undoTitle()).startsWith('Undo: Wolf’s card in “Secret roles”: + a wheel slice everyone shares')), `and so is its card's wheel (${await undoTitle()})`);
-  assert(await until(() => editor.getByRole('combobox', { name: '🎡 Wheel its cards draw from' }).evaluate((e) => e === document.activeElement)), 'a slice with no wheel chosen yet takes the author to the 🎡 wheel box');
+  assert(
+    await until(async () => (await undoTitle()).startsWith('Undo: Wolf’s card in “Secret roles”: + a wheel slice everyone shares')),
+    `and so is its card's wheel (${await undoTitle()})`,
+  );
+  assert(
+    await until(() => editor.getByRole('combobox', { name: '🎡 Wheel its cards draw from' }).evaluate((e) => e === document.activeElement)),
+    'a slice with no wheel chosen yet takes the author to the 🎡 wheel box',
+  );
   await host.keyboard.press('Control+z');
   await host.keyboard.press('Control+z');
   assert(await until(async () => (await editor.getByLabel('How many get Wolf').inputValue()) === '1'), 'Ctrl+Z takes them back');
@@ -228,9 +342,15 @@ try {
   await info.waitFor();
   const infoText = await flat(info);
   const place = PLACES.find((p) => infoText.includes(p));
-  assert(infoText.includes('Bob → Spy') && ['Ann', 'Cat', 'Dan'].every((n) => infoText.includes(`${n} → Villager · ${place}`)), `the column beside the stage says who got which (${infoText})`);
+  assert(
+    infoText.includes('Bob → Spy') && ['Ann', 'Cat', 'Dan'].every((n) => infoText.includes(`${n} → Villager · ${place}`)),
+    `the column beside the stage says who got which (${infoText})`,
+  );
   await sleep(600);
-  assert(!cards().length && !JSON.stringify(states).includes('qkzvx') && !JSON.stringify(states).includes('wqzj'), 'dealt, not sent: nothing of it reaches the room');
+  assert(
+    !cards().length && !JSON.stringify(states).includes('qkzvx') && !JSON.stringify(states).includes('wqzj'),
+    'dealt, not sent: nothing of it reaches the room',
+  );
   for (const s of ['Ann', 'Bob', 'Cat', 'Dan']) assert(!(await cardsOn(phones[s])), `${s}’s phone: no card yet`);
   await offStream(aud, 'the audience window', 'dealt');
   assert((await dealTool.getAttribute('data-deal-tool')) === 'not sent', 'dealt: the tools row’s 🎭 says not sent');
@@ -240,25 +360,38 @@ try {
   assert(await until(() => cards().length === 4), 'sent: the room holds four cards');
   await host.locator('[data-deal-tool="sent"]').waitFor();
   const toolWords = async () => (await dealTool.innerText()).replace(/\s+/g, ' ').trim();
-  assert((await toolWords()) === '🎭 Odd one out · sent' && !(await dealTool.evaluate((b) => b.classList.contains('warn'))), `sent: the tools row says so, “${await toolWords()}”`);
+  assert(
+    (await toolWords()) === '🎭 Odd one out · sent' && !(await dealTool.evaluate((b) => b.classList.contains('warn'))),
+    `sent: the tools row says so, “${await toolWords()}”`,
+  );
   // Grouped by purpose: the cards on the phones, what viewers see, then this deal, apart (🗑 End this deal last).
   const groups = await dialog.locator('[data-deal-group]').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
   assert(
-    JSON.stringify(groups) === JSON.stringify(['On phones ↻ Send again ↩ Take the cards back', 'On stream 🎭 Show who was who', 'This deal 🎭 Deal a new one 🗑 End this deal']),
+    JSON.stringify(groups) ===
+      JSON.stringify(['On phones ↻ Send again ↩ Take the cards back', 'On stream 🎭 Show who was who', 'This deal 🎭 Deal a new one 🗑 End this deal']),
     `the deal’s buttons in three groups (${groups.join(' | ')})`,
   );
   const sent = cards();
   assert(new Set(sent.map((c) => c.id)).size === 4 && sent.every((c) => c.to.length === 1 && !c.shared), 'each its own id, to one player, never marked shared');
   const bobs = sent.find((c) => c.to[0].seat === seat.Bob);
-  assert(bobs.title === 'You’re the Spy' && bobs.text === SPY && !bobs.role && !JSON.stringify(bobs).includes('wqzj'), 'Bob’s: the spy’s card, its part under Tap to see, with no location');
-  assert(sent.filter((c) => c !== bobs).every((c) => c.title === 'You’re the Villager' && c.text === `The location:\n${place}`), `the others’: the location they share (${place})`);
+  assert(
+    bobs.title === 'You’re the Spy' && bobs.text === SPY && !bobs.role && !JSON.stringify(bobs).includes('wqzj'),
+    'Bob’s: the spy’s card, its part under Tap to see, with no location',
+  );
+  assert(
+    sent.filter((c) => c !== bobs).every((c) => c.title === 'You’re the Villager' && c.text === `The location:\n${place}`),
+    `the others’: the location they share (${place})`,
+  );
   await phones.Bob.getByRole('button', { name: 'Tap to see' }).tap();
   await phones.Bob.getByText(SPY).waitFor();
   await phones.Bob.getByText('You’re the Spy').waitFor();
   await phones.Ann.getByRole('button', { name: 'Tap to see' }).tap();
   await phones.Ann.getByText(place).waitFor();
   await phones.Ann.getByText('You’re the Villager').waitFor();
-  assert(!heard.Ann.join('').includes('qkzvx') && !heard.Cat.join('').includes('qkzvx') && !heard.Bob.join('').includes('wqzj'), 'no phone gets anyone else’s card');
+  assert(
+    !heard.Ann.join('').includes('qkzvx') && !heard.Cat.join('').includes('qkzvx') && !heard.Bob.join('').includes('wqzj'),
+    'no phone gets anyone else’s card',
+  );
   assert(await until(async () => /✓ seen by 2 of 4/.test(await flat(dialog.locator('[data-deal-status]')))), 'the panel counts who saw theirs');
   await offStream(aud, 'the audience window', 'sent');
 
@@ -268,8 +401,14 @@ try {
   assert(await until(async () => (await flat(dialog.locator('[data-deal-status]'))).includes(danLine)), `Dan’s phone gone: the panel says “${danLine}”`);
   assert(await dealTool.evaluate((b) => b.classList.contains('warn')), 'and the tools row’s 🎭 is orange: a phone missed its card');
   const rows = await dialog.locator('.hands .row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
-  assert(rows.length === 4 && rows.includes('Dan · 📵 no phone here 📋 Copy 🪟'), `two windows: everyone dealt in is listed, Dan with 📵 and 🪟 (${rows.join(' | ')})`);
-  assert(rows.filter((r) => !r.startsWith('Dan ')).every((r) => r.includes('📋 Copy') && !r.includes('🪟') && !r.includes('📵')), 'the others, with their phones: 📋 Copy, no 🪟 and no 📵');
+  assert(
+    rows.length === 4 && rows.includes('Dan · 📵 no phone here 📋 Copy 🪟'),
+    `two windows: everyone dealt in is listed, Dan with 📵 and 🪟 (${rows.join(' | ')})`,
+  );
+  assert(
+    rows.filter((r) => !r.startsWith('Dan ')).every((r) => r.includes('📋 Copy') && !r.includes('🪟') && !r.includes('📵')),
+    'the others, with their phones: 📋 Copy, no 🪟 and no 📵',
+  );
 
   // ---------- ↻ Send again: every card under a new id ----------
   await dialog.getByRole('button', { name: '↻ Send again' }).click();
@@ -305,15 +444,25 @@ try {
   await hostPanelIn(host).waitFor();
   assert(await until(() => states.length > n && cards().length === 4), 'reloaded: back in the room with the four cards');
   const odd = states.slice(n).filter((s) => JSON.stringify((s.cards ?? []).map((c) => c.id)) !== JSON.stringify(again));
-  assert(!odd.length, `under the same ids (no phone is told anything new)${odd.length ? `: ${JSON.stringify(again)} vs ${odd.map((s) => JSON.stringify((s.cards ?? []).map((c) => c.id))).join(' | ')}` : ''}`);
+  assert(
+    !odd.length,
+    `under the same ids (no phone is told anything new)${odd.length ? `: ${JSON.stringify(again)} vs ${odd.map((s) => JSON.stringify((s.cards ?? []).map((c) => c.id))).join(' | ')}` : ''}`,
+  );
   dialog = await openDeal();
-  assert((await flat(dialog.locator('[data-deal-counts]'))) === 'Dealt to 4: Spy ×1, Villager ×3' && !(await host.locator('[data-deal-info]').count()), 'one window: the panel counts the parts, and nothing says who got which');
+  assert(
+    (await flat(dialog.locator('[data-deal-counts]'))) === 'Dealt to 4: Spy ×1, Villager ×3' && !(await host.locator('[data-deal-info]').count()),
+    'one window: the panel counts the parts, and nothing says who got which',
+  );
   assert((await dialog.locator('.exposed').count()) === 1, 'one window: it warns that viewers see it');
   await dialog.getByRole('button', { name: '🎭 Deal a new one' }).click();
-  assert(!(await dialog.locator('summary').count()) && (await flat(dialog.locator('[data-deal-part="1"]'))).includes('Card: 1 line of words'), 'one window: no choosing who gets a part, and a part’s card is only counted');
+  assert(
+    !(await dialog.locator('summary').count()) && (await flat(dialog.locator('[data-deal-part="1"]'))).includes('Card: 1 line of words'),
+    'one window: no choosing who gets a part, and a part’s card is only counted',
+  );
   await dialog.getByRole('combobox', { name: 'The deal' }).selectOption('tpl:prompt');
   assert(
-    (await dialog.getByRole('combobox', { name: 'The wheel its cards draw from' }).inputValue()) === 'tpl:prompts' && !(await dialog.locator('[data-deal-problem]').count()),
+    (await dialog.getByRole('combobox', { name: 'The wheel its cards draw from' }).inputValue()) === 'tpl:prompts' &&
+      !(await dialog.locator('[data-deal-problem]').count()),
     'a ready-made deal draws from its ready-made wheel when the game has none like it',
   );
   await dialog.getByRole('button', { name: 'Back to “Odd one out”' }).click();
@@ -323,7 +472,10 @@ try {
   await dialog.getByRole('button', { name: '↩ Take the cards back' }).click();
   assert(await until(() => !cards().length), '↩ Take the cards back: the room holds none of them');
   await host.locator('[data-deal-tool="cards back"]').waitFor();
-  assert((await dialog.locator('[data-deal-group="phones"]').getByRole('button').allInnerTexts()).map((t) => t.trim()).join() === '📤 Send', 'taken back: 📤 Send in its place, in On phones');
+  assert(
+    (await dialog.locator('[data-deal-group="phones"]').getByRole('button').allInnerTexts()).map((t) => t.trim()).join() === '📤 Send',
+    'taken back: 📤 Send in its place, in On phones',
+  );
   assert(await until(async () => !(await cardsOn(phones.Bob)) && !(await cardsOn(phones.Ann))), 'the phones drop them');
   await dialog.locator('[data-deal-reveal]').click();
   await stageBoxIn(host).locator('[data-who-was-who]').waitFor();
@@ -351,7 +503,8 @@ try {
   // The deal would fill the phones: its panel says so before 📤 Send, its cards back or dealt anew.
   dialog = await openDeal();
   const fills = dialog.locator('[data-deal-fills]');
-  const fillsText = '⚠ This fills the phones: they hold 8 cards at once, all phones together. Until you ↩ Take the cards back (or the round ends), no other 🤫 card can go to a phone, a partner clue’s included.';
+  const fillsText =
+    '⚠ This fills the phones: they hold 8 cards at once, all phones together. Until you ↩ Take the cards back (or the round ends), no other 🤫 card can go to a phone, a partner clue’s included.';
   assert((await flat(fills)) === fillsText, `its cards back, 📤 Send would fill the phones: the panel says so first (“${fillsText}”)`);
   await dialog.getByRole('button', { name: '🎭 Deal a new one' }).click();
   await dialog.getByRole('combobox', { name: 'The deal' }).selectOption('saved:deal1');
@@ -389,7 +542,8 @@ try {
     'a partner clue’s: its 📤 Send and the box’s 📤 Send and start are off (the blue button is 👁 Reveal answer)',
   );
   const pFull = partner.locator('[data-cards-full]');
-  const bothLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s, and this sends 2: they hold 8 at once, all phones together, so ↩ Take 2 back first (the deal’s go together, in 🎭 Deal…)';
+  const bothLine =
+    '8 cards are out on the phones, 4 of them the 🎭 deal’s, and this sends 2: they hold 8 at once, all phones together, so ↩ Take 2 back first (the deal’s go together, in 🎭 Deal…)';
   assert((await pFull.innerText()) === bothLine, `and its panel says why, for 📤 Send and start, in sight: “${bothLine}”`);
   // Two quick cards back: both fit, and 📤 Send and start sends them (8 out), the clock running.
   await tools.locator('[data-cards-out-count]').click();
@@ -423,15 +577,22 @@ try {
   );
   await sendRow(1).click();
   assert(await until(() => cards().length === 8), 'card 1 goes: 8 out');
-  const oneLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s and 1 this partner clue’s: ↩ Take the cards back in 🎭 Deal…, or take back another one';
-  assert(await until(async () => (await sendRow(2).isDisabled()) && (await pFull.count()) === 1 && (await pFull.innerText()) === oneLine), `card 2 can’t go now, and the line says why: “${oneLine}”`);
+  const oneLine =
+    '8 cards are out on the phones, 4 of them the 🎭 deal’s and 1 this partner clue’s: ↩ Take the cards back in 🎭 Deal…, or take back another one';
+  assert(
+    await until(async () => (await sendRow(2).isDisabled()) && (await pFull.count()) === 1 && (await pFull.innerText()) === oneLine),
+    `card 2 can’t go now, and the line says why: “${oneLine}”`,
+  );
   // Card 2 to nobody: nothing is refused. Card 1 given to Bob too: its 📤 Send changes is off, and the line says why.
   await partner.getByRole('button', { name: 'Card 2 to nobody' }).click();
   assert(await until(async () => !(await pFull.count())), 'card 2 to nobody: the line goes');
   await pRow.getByRole('button', { name: /^Card 1 to Bob/ }).click();
   const changesBtn = partner.getByRole('button', { name: 'Send card 1’s changes' });
   await changesBtn.waitFor();
-  assert(await until(async () => (await changesBtn.isDisabled()) && (await pFull.count()) === 1 && (await pFull.innerText()) === oneLine), `card 1 changed: 📤 Send changes is off, and the line says why: “${oneLine}”`);
+  assert(
+    await until(async () => (await changesBtn.isDisabled()) && (await pFull.count()) === 1 && (await pFull.innerText()) === oneLine),
+    `card 1 changed: 📤 Send changes is off, and the line says why: “${oneLine}”`,
+  );
   await offStream(host, 'the host page in one window', 'the phones full');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);

@@ -54,7 +54,12 @@ export function linesAt(text: string, size: number, w: number): number {
 /** Every word of `text` fits a line `w` wide at `size` px, and all its lines fit `h`. */
 function wholeAt(text: string, size: number, w: number, h: number): boolean {
   const per = Math.max(1, Math.floor(w / (CHAR * size)));
-  return text.trim().split(/\s+/).every((word) => word.length <= per) && linesAt(text, size, w) * size * LINE <= h;
+  return (
+    text
+      .trim()
+      .split(/\s+/)
+      .every((word) => word.length <= per) && linesAt(text, size, w) * size * LINE <= h
+  );
 }
 
 /**

@@ -7,8 +7,38 @@
   import { fade as fadeIn, fly as flyIn, scale as scaleIn } from '../lib/motion.svelte';
   import type { ScaleParams, TransitionConfig } from 'svelte/transition';
   import { textOn } from '../lib/colors';
-  import { categoryLabel, finalName, formatPoints, isBoard, isFinal, PARTNER_GAMES, questionSlides, newTextEl, roundName, type ClueRef, type Player, type Slide, type Game, type Session } from '../lib/model';
-  import { blankSlide, clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, partnerSteal, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
+  import {
+    categoryLabel,
+    finalName,
+    formatPoints,
+    isBoard,
+    isFinal,
+    PARTNER_GAMES,
+    questionSlides,
+    newTextEl,
+    roundName,
+    type ClueRef,
+    type Player,
+    type Slide,
+    type Game,
+    type Session,
+  } from '../lib/model';
+  import {
+    blankSlide,
+    clueSlideIndex,
+    coWinnersHold,
+    currentClueInfo,
+    currentFinal,
+    nameList,
+    ownPlayers,
+    partnerSteal,
+    shownQuestionSlide,
+    places,
+    score,
+    slidesRound,
+    standings,
+    tiedLeaders,
+  } from '../lib/session';
   import { partnerRoles, partnerRules } from '../lib/partner';
   import { onMount, untrack } from 'svelte';
   import { joinSpot, type Ink, type Rect } from '../lib/joinspot';
@@ -136,7 +166,10 @@
   /** The Final's category, in the theme's clue text (🎨 Theme → Clue text) like its question and answer. */
   const finalCategorySlide = $derived.by(() => {
     // (In the room between the Final's label and "Make your wagers…", not the whole slide: a long one ran under both.)
-    const slide: Slide = { background: {}, elements: [newTextEl(finalRound ? finalRound.category || finalName(finalRound) : '', { x: 120, y: 170, w: 1680, h: 540 })] };
+    const slide: Slide = {
+      background: {},
+      elements: [newTextEl(finalRound ? finalRound.category || finalName(finalRound) : '', { x: 120, y: 170, w: 1680, h: 540 })],
+    };
     const t = slide.elements[0];
     if (t?.kind === 'text') {
       if (game.theme?.clueFont) t.font = game.theme.clueFont;
@@ -197,7 +230,9 @@
     return st && !st.by ? st.out.flatMap((id) => (byId[id] ? [byId[id]] : [])) : null;
   });
   /** 🤫 Just you: who the open tile's own card went to ("Ann has a private question"): names only, never what's on it. */
-  const privateFor = $derived(session.phase === 'clue' && info && !session.revealed ? (live.tileCardFor ?? []).flatMap((id) => (byId[id] ? [byId[id]] : [])) : []);
+  const privateFor = $derived(
+    session.phase === 'clue' && info && !session.revealed ? (live.tileCardFor ?? []).flatMap((id) => (byId[id] ? [byId[id]] : [])) : [],
+  );
   const spotlight = $derived(session.final?.current ? byId[session.final.current] : undefined);
   /**
    * The Final's question with phones taking answers: who plays it, for "✍ Answers on phones" (only when one of them has
@@ -239,7 +274,9 @@
   /** The clue's caption is up (bottom left): pops along the foot go above it. */
   const captionUp = $derived(!!stream?.clueCaption && session.phase === 'clue' && !own?.setup);
   /** The clue's caption: "Movies · $400" ("Movies · Daily Double", a partner clue's "Movies · $400 · 🤝"). */
-  const captionText = $derived(info ? `${categoryLabel(info.category)} · ${session.dd ? 'Daily Double' : formatPoints(info.value, sym)}${pt ? ' · 🤝' : ''}` : '');
+  const captionText = $derived(
+    info ? `${categoryLabel(info.category)} · ${session.dd ? 'Daily Double' : formatPoints(info.value, sym)}${pt ? ' · 🤝' : ''}` : '',
+  );
   const decorBehind = $derived((round?.decor ?? []).filter((d) => d.behind));
   const decorAbove = $derived((round?.decor ?? []).filter((d) => !d.behind));
   /** The round's title card, for an RPG, board-game or Final round (a board round has its own, before the tiles fill in). */
@@ -408,16 +445,18 @@
     if (codeSpot !== 'corner') return null;
     const tb = session.phase === 'tiebreaker' ? game.tiebreaker : undefined;
     const sr = slidesRound(session, game);
-    const slide = sr && !introName ? shownQuestionSlide(session, sr) :
-      session.phase === 'clue' && info && !introName
-        ? session.revealed
-          ? info.clue.answerSlide
-          : shownQuestionSlide(session, info.clue)
-        : tb && !introName
-          ? session.tiebreakerRevealed
-            ? tb.answerSlide
-            : shownQuestionSlide(session, tb)
-          : undefined;
+    const slide =
+      sr && !introName
+        ? shownQuestionSlide(session, sr)
+        : session.phase === 'clue' && info && !introName
+          ? session.revealed
+            ? info.clue.answerSlide
+            : shownQuestionSlide(session, info.clue)
+          : tb && !introName
+            ? session.tiebreakerRevealed
+              ? tb.answerSlide
+              : shownQuestionSlide(session, tb)
+            : undefined;
     if (!slide) return { corner: 'br' as const, small: false };
     const taken: Rect[] = [];
     if (band) taken.push({ x: 0, y: 0, w: 1920, h: band });
@@ -488,507 +527,540 @@
 {/snippet}
 
 <div class="theme" style={themeCss} style:--right={rightBg}>
-<!-- The board's background color under every screen, there all along: a clue zooms in over it, the board fades back in
+  <!-- The board's background color under every screen, there all along: a clue zooms in over it, the board fades back in
      over it, and so do the Final, the slides and the end (each covers it once it's in). A light theme doesn't blink to
      black between them. On a keyed stage, the key, as round the board. -->
-<div class="board-under" style:background={keyColor}></div>
-{#if live.pregame}
-  <!-- The host is still on the pre-game screen. -->
-  <div class="full title-card" in:fade={{ duration: 300 }}>
-    <div class="soon" class:has-room={!!live.room}>
-      {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
-      <!-- A long title shrinks to two or three lines instead of pushing the join code off the stage. -->
-      <div class="round-name" use:autofit={{ size: live.room ? 110 : 150, min: live.room ? 48 : 64, enabled: true, text: `${game.title}|${!!live.room}` }}>{game.title}</div>
-      <div class="soon-text">{live.rematch ? 'Rematch! ' : ''}{stream?.soonText?.trim() || 'Starting soon…'}</div>
-      {#if soonLeft !== null}<div class="soon-count">{soonLeft ? mmss(soonLeft) : 'Starting now!'}</div>{/if}
-      {#if live.lineup?.length}
-        <!-- Who's playing (teams: with the members who joined from their phones). -->
-        <ul class="lineup" class:small={live.lineup.length > 6}>
-          {#each live.lineup as p, i (i)}
-            <li style:--c={p.color}>
-              <span class="lineup-name">{#if p.phone}<span class="lineup-phone" title="Phone buzzer connected">📱</span>{' '}{/if}{p.name}</span>
-              {#if p.members?.length}<span class="lineup-members">{p.members.join(', ')}</span>{/if}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-      {#if live.room}
-        <!-- Phone buzzers: viewers who play join from their phone. -->
-        <div class="join">
-          <QrCode text={live.room.link} size={240} label="QR code to join on your phone" />
-          <div class="join-text">
-            <div class="join-how">📱 Buzz from your phone</div>
-            <div class="join-code">{live.room.code}</div>
-            <div class="join-link">{live.room.link.replace(/^https?:\/\//, '')}</div>
+  <div class="board-under" style:background={keyColor}></div>
+  {#if live.pregame}
+    <!-- The host is still on the pre-game screen. -->
+    <div class="full title-card" in:fade={{ duration: 300 }}>
+      <div class="soon" class:has-room={!!live.room}>
+        {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
+        <!-- A long title shrinks to two or three lines instead of pushing the join code off the stage. -->
+        <div class="round-name" use:autofit={{ size: live.room ? 110 : 150, min: live.room ? 48 : 64, enabled: true, text: `${game.title}|${!!live.room}` }}
+          >{game.title}</div
+        >
+        <div class="soon-text">{live.rematch ? 'Rematch! ' : ''}{stream?.soonText?.trim() || 'Starting soon…'}</div>
+        {#if soonLeft !== null}<div class="soon-count">{soonLeft ? mmss(soonLeft) : 'Starting now!'}</div>{/if}
+        {#if live.lineup?.length}
+          <!-- Who's playing (teams: with the members who joined from their phones). -->
+          <ul class="lineup" class:small={live.lineup.length > 6}>
+            {#each live.lineup as p, i (i)}
+              <li style:--c={p.color}>
+                <span class="lineup-name"
+                  >{#if p.phone}<span class="lineup-phone" title="Phone buzzer connected">📱</span>{' '}{/if}{p.name}</span
+                >
+                {#if p.members?.length}<span class="lineup-members">{p.members.join(', ')}</span>{/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        {#if live.room}
+          <!-- Phone buzzers: viewers who play join from their phone. -->
+          <div class="join">
+            <QrCode text={live.room.link} size={240} label="QR code to join on your phone" />
+            <div class="join-text">
+              <div class="join-how">📱 Buzz from your phone</div>
+              <div class="join-code">{live.room.code}</div>
+              <div class="join-link">{live.room.link.replace(/^https?:\/\//, '')}</div>
+            </div>
           </div>
-        </div>
-      {/if}
+        {/if}
+      </div>
     </div>
-  </div>
-{:else if introName}
-  <div
-    class="full title-card"
-    class:clickable={!!onact}
-    onclick={() => act('intro')}
-    role="presentation"
-    in:scale={{ start: 0.3, duration: 600 }}
-    out:fade={{ duration: 250 }}
-  >
-    <div class="round-name">{introName}</div>
-  </div>
-{:else if session.phase === 'board'}
-  {#if session.intro?.stage === 'title'}
+  {:else if introName}
     <div
       class="full title-card"
       class:clickable={!!onact}
       onclick={() => act('intro')}
       role="presentation"
-      in:scale|global={{ start: 0.3, duration: 600 }}
+      in:scale={{ start: 0.3, duration: 600 }}
       out:fade={{ duration: 250 }}
     >
-      <div class="round-name">{round ? roundName(round, session.currentRound) : ''}</div>
+      <div class="round-name">{introName}</div>
     </div>
-  {:else}
-    <div class="board-screen" in:fade|global={{ duration: 200 }}>
-      <div class="board-bg" style:top="{layout.bg.top}px" style:height="{layout.bg.height}px" style:background={game.theme?.boardImage ? undefined : keyColor}></div>
-      {#if decorBehind.length}<div class="layer behind"><DecorLayer items={decorBehind} /></div>{/if}
-      {#if layout.banner && bannerUrl}
-        <div class="banner" style:top="{layout.banner.top}px" style:height="{layout.banner.height}px">
-          <img src={bannerUrl} alt="" draggable="false" style:object-fit={game.theme.bannerFit ?? 'contain'} onerror={imgFallback} />
-        </div>
-      {/if}
+  {:else if session.phase === 'board'}
+    {#if session.intro?.stage === 'title'}
       <div
-        class="board-area bar-{bar}"
-        class:clickable={!!onact && !!session.intro}
-        style:top="{layout.board.top + boardDown}px"
-        style:height="{layout.board.height - boardDown}px"
-        onclick={() => session.intro && act('intro')}
+        class="full title-card"
+        class:clickable={!!onact}
+        onclick={() => act('intro')}
         role="presentation"
+        in:scale|global={{ start: 0.3, duration: 600 }}
+        out:fade={{ duration: 250 }}
       >
-        <!-- (The host's own board with the audience window open marks its Daily Doubles, 🤝 and ✍ tiles. The editor's
-             previews show the board as viewers see it: no marks.) -->
-        <Board {game} {session} {onpick} {ontilemenu} hostMarks={role === 'mirror' && !demo} />
+        <div class="round-name">{round ? roundName(round, session.currentRound) : ''}</div>
       </div>
-      {#if layout.score}
-        <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px">
-          <ScoreBar {game} {session} phones={live.phones} {onpicker} host={!!onact} reserve={barReserve} />
+    {:else}
+      <div class="board-screen" in:fade|global={{ duration: 200 }}>
+        <div class="board-bg" style:top="{layout.bg.top}px" style:height="{layout.bg.height}px" style:background={game.theme?.boardImage ? undefined : keyColor}
+        ></div>
+        {#if decorBehind.length}<div class="layer behind"><DecorLayer items={decorBehind} /></div>{/if}
+        {#if layout.banner && bannerUrl}
+          <div class="banner" style:top="{layout.banner.top}px" style:height="{layout.banner.height}px">
+            <img src={bannerUrl} alt="" draggable="false" style:object-fit={game.theme.bannerFit ?? 'contain'} onerror={imgFallback} />
+          </div>
+        {/if}
+        <div
+          class="board-area bar-{bar}"
+          class:clickable={!!onact && !!session.intro}
+          style:top="{layout.board.top + boardDown}px"
+          style:height="{layout.board.height - boardDown}px"
+          onclick={() => session.intro && act('intro')}
+          role="presentation"
+        >
+          <!-- (The host's own board with the audience window open marks its Daily Doubles, 🤝 and ✍ tiles. The editor's
+             previews show the board as viewers see it: no marks.) -->
+          <Board {game} {session} {onpick} {ontilemenu} hostMarks={role === 'mirror' && !demo} />
         </div>
-      {/if}
-      {#if decorAbove.length}<div class="layer above"><DecorLayer items={decorAbove} /></div>{/if}
-    </div>
-  {/if}
-{:else if session.phase === 'clue' && info}
-  {#if session.dd?.stage === 'splash'}
-    <!-- The background fills the stage at once; only what's on it spins in (no black corners). The host's click on it is
+        {#if layout.score}
+          <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px">
+            <ScoreBar {game} {session} phones={live.phones} {onpicker} host={!!onact} reserve={barReserve} />
+          </div>
+        {/if}
+        {#if decorAbove.length}<div class="layer above"><DecorLayer items={decorAbove} /></div>{/if}
+      </div>
+    {/if}
+  {:else if session.phase === 'clue' && info}
+    {#if session.dd?.stage === 'splash'}
+      <!-- The background fills the stage at once; only what's on it spins in (no black corners). The host's click on it is
          its Show question ▶ (who found it and the wager missing: the status line says so), and never takes the keys out of
          the Wager box. -->
-    <div
-      class="full dd"
-      class:clickable={!!onact}
-      style:--splash-1={splash.dd[0]}
-      style:--splash-2={splash.dd[1]}
-      onmousedown={(e) => onact && e.preventDefault()}
-      onclick={() => act('dd')}
-      role="presentation"
-    >
-      <div class="dd-in" in:scale|global={{ start: 0.05, duration: 700 }}>
-        <div class="dd-text">DAILY<br />DOUBLE!</div>
-        {#if ddPlayer}
-          <div class="dd-player" style:background={ddPlayer.color} style:color={textOn(ddPlayer.color)}>{ddPlayer.name}</div>
+      <div
+        class="full dd"
+        class:clickable={!!onact}
+        style:--splash-1={splash.dd[0]}
+        style:--splash-2={splash.dd[1]}
+        onmousedown={(e) => onact && e.preventDefault()}
+        onclick={() => act('dd')}
+        role="presentation"
+      >
+        <div class="dd-in" in:scale|global={{ start: 0.05, duration: 700 }}>
+          <div class="dd-text">DAILY<br />DOUBLE!</div>
+          {#if ddPlayer}
+            <div class="dd-player" style:background={ddPlayer.color} style:color={textOn(ddPlayer.color)}>{ddPlayer.name}</div>
+          {/if}
+        </div>
+      </div>
+    {:else if pt?.stage === 'pick'}
+      <!-- 🤝 PARTNER UP!: who picked it, and a "?" until the wheel (or the host) chooses their partner; then the two
+         plates come together. -->
+      <!-- (The host's click on it, its "?" too: Show question ▶, asking first for who picked it and the partner.) -->
+      <div
+        class="full partner-up"
+        class:clickable={!!onact}
+        data-partner-up
+        style:--splash-1={splash.partner[0]}
+        style:--splash-2={splash.partner[1]}
+        onclick={() => act('partnerup')}
+        role="presentation"
+      >
+        <div class="pu-in" in:scale|global={{ start: 0.05, duration: 700 }}>
+          <div class="pu-text">PARTNER<br />UP!</div>
+          {@render pairPlates(true)}
+        </div>
+      </div>
+    {:else}
+      <!-- A wheel or dice tile's question waits for its tool to close (it would show through), then comes in with its countdown.
+         (The scores up over the tool: it's still to close. Not for dice or a wheel opened later over the question.) -->
+      {@const waiting = tileToolUp(live, info.clue) && !session.revealed}
+      <!-- The question slide the host is on (a clue can have several: the first one zooms in, the next ones come in quietly). -->
+      {@const at = clueSlideIndex(session, info.clue)}
+      {#key `${info.clue.id}-${session.revealed}-${waiting}-${at}`}
+        <div
+          class="full"
+          class:clickable={!!onact}
+          onclick={() => act(session.revealed ? 'back' : 'reveal')}
+          role="presentation"
+          data-slide={session.revealed ? 'answer' : at + 1}
+          in:scale|global={clueIn(info.clue.id, waiting)}
+        >
+          {#if waiting}
+            <!-- (Nothing until the tool closes.) -->
+          {:else if pt && ptGame && !session.revealed && blankSlide(shownQuestionSlide(session, info.clue))}
+            <!-- A partner clue with nothing on its question slide: a card of its own, the game's name, the two and the
+               category. -->
+            <div class="partner-card" data-partner-card>
+              <div class="pu-text small">{ptGame.label === 'Custom' ? 'Partner clue' : ptGame.label}!</div>
+              {@render pairPlates(false)}
+              <div class="pc-cat">{categoryLabel(info.category)}</div>
+            </div>
+          {:else}<div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`} use:inkOf
+              ><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div
+            >{/if}
+        </div>
+      {/key}
+      <!-- A clue with several question slides: where it is (● ● ○), so viewers know there's more to come. -->
+      {@const of = questionSlides(info.clue).length}
+      {#if of > 1 && !session.revealed && !waiting}{@render slidePips(at, of)}{/if}
+      {#if stream?.clueCaption && !waiting}
+        <!-- (With the slide pips showing, it stops short of them: 24px in, 22px padding a side, a 16px gap; with the join
+           code in the corner, short of that, about 420px wide.) -->
+        {@const pipsMax = of > 1 && !session.revealed ? 960 - pipsW(of) / 2 - 24 - 44 - 16 : 1500}
+        {@const captionMax = `${Math.min(pipsMax, codeShown && live.room && spot?.corner === 'br' ? 1920 - 24 - 44 - 16 - (spot.small ? 300 : 440) - 24 : 1500)}px`}
+        <div class="caption" style:max-width={captionMax} style:bottom={foot ? `${foot}px` : undefined}>{captionText}</div>
+      {/if}
+      {#if session.dd?.stage === 'question' && ddPlayer}
+        <div class="dd-badge" style:border-color={ddPlayer.color}>
+          <span style:color={ddPlayer.color}>{ddPlayer.name}</span> · Daily Double{#if session.dd.shown}{` · ${formatPoints(session.dd.wager ?? 0, sym)}`}{/if}
+        </div>
+      {/if}
+      {#if ptBadge && ptGame}
+        <!-- Who plays which part, in their colours and in words (colour is never the only sign). -->
+        <div class="dd-badge partner-badge" data-partner-badge>
+          {#if ptStealOut}
+            🔔 Steal! {#each ptStealOut as p, i (p.id)}{i ? ' and ' : ''}<span style:color={p.color}>{p.name}</span>{/each} missed it
+          {:else if ptSolo && ptPicker && ptMember}
+            {ptGame.icon} <span style:color={ptPicker.color}>{ptMember.name}</span>
+            {ptGame.verb} → 🎯 <span style:color={ptPicker.color}>{ptPicker.name}</span>
+            {ptGame.guessVerb}
+          {:else if ptSolo && ptPicker}
+            🤝 <span style:color={ptPicker.color}>{ptPicker.name}</span> · Solo!
+          {:else if ptGiver && ptGuesser}
+            {ptGame.icon} <span style:color={ptGiver.color}>{ptGiver.name}</span>
+            {ptGame.verb} → 🎯 <span style:color={ptGuesser.color}>{ptGuesser.name}</span>
+            {ptGame.guessVerb}
+          {/if}
+        </div>
+      {/if}
+      {#if privateFor.length && !waiting}
+        <!-- 🤫 Just you: who has a private question (in their colours and by name; never what's on the card). -->
+        <div class="dd-badge private-badge" data-private-badge>
+          🤫 {#each privateFor as p, i (p.id)}{i ? (i === privateFor.length - 1 ? ' and ' : ', ') : ''}<span style:color={p.color}>{p.name}</span>{/each}
+          {privateFor.length > 1 ? 'have' : 'has'} a private question
+        </div>
+      {/if}
+    {/if}
+  {:else if session.phase === 'final'}
+    {#key session.finalStep}
+      <!-- The host's clicks: on the wagers, who they wait on (never the question; the keys stay in the wager box); the
+         question's next slide or answer; the reveals starting; the spotlit player's card, their next step. -->
+      <!-- (The score bar where the theme puts it, as on the board: Top moves the rest down under it; Hidden leaves it out,
+         the reveal card says each player's total and the host spotlights from the panel or the number keys.) -->
+      <div
+        class="full final-screen bar-{bar}"
+        class:clickable={!!onact && session.finalStep !== 'reveal'}
+        onmousedown={(e) => onact && session.finalStep === 'wagers' && e.preventDefault()}
+        onclick={() =>
+          session.finalStep === 'wagers'
+            ? act('wagers')
+            : session.finalStep === 'question'
+              ? act('reveal')
+              : session.finalStep === 'answer'
+                ? act('final-next')
+                : undefined}
+        role="presentation"
+        in:fade|global={{ duration: 400 }}
+      >
+        {#if session.finalStep === 'wagers'}
+          {#if finalLabelShown}<div class="final-label">{finalLabel}</div>{/if}
+          <div class="final-cat"><SlideView slide={finalCategorySlide} /></div>
+          <div class="final-sub">Make your wagers…</div>
+          <!-- The scores stay up while players decide what to wager (a ✔ once a wager is in). -->
+          {#if bar !== 'hidden'}<div class="score-area"><ScoreBar {game} {session} phones={live.phones} host={!!onact} lit={null} {ticks} /></div>{/if}
+        {:else if session.finalStep === 'question'}
+          {#if finalRound}
+            {@const fAt = clueSlideIndex(session, finalRound)}
+            {@const fOf = questionSlides(finalRound).length}
+            <div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`} data-slide={fAt + 1}>
+              <SlideView slide={shownQuestionSlide(session, finalRound)} {role} />
+            </div>
+            <!-- Several question slides: where it is (● ○), as on a clue. -->
+            {#if fOf > 1}{@render slidePips(fAt, fOf)}{/if}
+          {/if}
+        {:else if session.finalStep === 'answer'}
+          {#if finalRound}<div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`}
+              ><SlideView slide={finalRound.answerSlide} {role} /></div
+            >{/if}
+        {:else if session.finalStep === 'reveal'}
+          <div class="reveal" class:clickable={!!onact && !!spotlight} onclick={() => spotlight && act('spotlight')} role="presentation">
+            <div class="final-label small">{finalLabel}</div>
+            {#if spotlight && session.final}
+              {@const f = session.final}
+              {@const res = f.results[spotlight.id]}
+              <!-- (Viewers get only answers already shown; one window reads the host's session, so it's checked here too.) -->
+              {@const shown = f.answerShown?.[spotlight.id] ? f.answers?.[spotlight.id] : undefined}
+              <!-- (A multiple choice's pick, or words that name one: its letter and its words.) -->
+              {@const usable = finalRound && !finalRound.phoneAnswersOff ? usableChoices(finalRound.choices) : []}
+              {@const pickAt = shown && usable.length ? usable.findIndex((c) => c.id === pickOf(shown, usable)) : -1}
+              {#key spotlight.id}
+                <div class="spot" class:typed={!!f.answers} in:fly|global={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
+                  {#if f.answers}
+                    <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
+                  {:else}
+                    <!-- One width all through the Final, the longest name's (the card's frame doesn't jump from one player to
+                       the next): every player's name laid in the same place, unseen, under the one shown. -->
+                    <div class="spot-head">
+                      {#each f.players as id (id)}<div class="spot-size" data-n={byId[id]?.name ?? ''} aria-hidden="true"></div>{/each}
+                      <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
+                    </div>
+                  {/if}
+                  {#if f.answers}
+                    <!-- What they typed on their phone, once the host puts it up (its room kept: the card doesn't jump). Typed over
+                       a few lines: three at most (more go on the third, " / " between), each line its own; one paragraph if they don't fit. -->
+                    {@const typedLines = shown ? foldLines(shown.text, flatAnswer === shown.text ? 1 : 3) : ''}
+                    <div
+                      class="spot-answer"
+                      dir="auto"
+                      data-spot-answer
+                      use:autofit={{
+                        size: 72,
+                        min: 28,
+                        enabled: true,
+                        text: pickAt >= 0 ? `${pickAt} ${usable[pickAt].text}` : typedLines,
+                        onfit: (r) => {
+                          if (r.overflow && shown && pickAt < 0 && typedLines.includes('\n')) flatAnswer = shown.text;
+                        },
+                      }}
+                    >
+                      {#if shown && pickAt >= 0}
+                        <span><span class="pick-letter" style:background={chipBg} style:color={chipInk}>{letter(pickAt)}</span> {usable[pickAt].text}</span>
+                      {:else if shown}<span class="lines">“{typedLines}”</span>{:else}<span class="hold" aria-hidden="true">&nbsp;</span>{/if}
+                    </div>
+                  {/if}
+                  <div class="spot-wager">
+                    <!-- (No wager in yet: it stays ??? until the host types it, never $0.) -->
+                    {#if f.shown[spotlight.id] && typeof f.wagers[spotlight.id] === 'number'}
+                      Wagered <b>{formatPoints(f.wagers[spotlight.id], sym)}</b>
+                    {:else}
+                      Wager: ???
+                    {/if}
+                  </div>
+                  {#if res}
+                    <div class="spot-result {res}" in:scale={{ start: 2, duration: 350 }}>{res === 'right' ? '✔ CORRECT' : '✘ WRONG'}</div>
+                  {:else}
+                    <!-- Its room kept: the card doesn't jump when the result comes in. -->
+                    <div class="spot-hold" aria-hidden="true">✔ CORRECT</div>
+                  {/if}
+                  <div class="spot-score">{formatPoints(score(session, spotlight.id), sym)}</div>
+                </div>
+              {/key}
+            {/if}
+          </div>
+          {#if bar !== 'hidden'}
+            <div class="score-area">
+              <ScoreBar
+                {game}
+                {session}
+                phones={live.phones}
+                onpicker={onspotlight}
+                hint="Click to spotlight this player (right-click: judge them)"
+                host={!!onact}
+                lit={session.final?.current ?? null}
+              />
+            </div>
+          {/if}
         {/if}
       </div>
-    </div>
-  {:else if pt?.stage === 'pick'}
-    <!-- 🤝 PARTNER UP!: who picked it, and a "?" until the wheel (or the host) chooses their partner; then the two
-         plates come together. -->
-    <!-- (The host's click on it, its "?" too: Show question ▶, asking first for who picked it and the partner.) -->
-    <div
-      class="full partner-up"
-      class:clickable={!!onact}
-      data-partner-up
-      style:--splash-1={splash.partner[0]}
-      style:--splash-2={splash.partner[1]}
-      onclick={() => act('partnerup')}
-      role="presentation"
-    >
-      <div class="pu-in" in:scale|global={{ start: 0.05, duration: 700 }}>
-        <div class="pu-text">PARTNER<br />UP!</div>
-        {@render pairPlates(true)}
+    {/key}
+  {:else if session.phase === 'rpg'}
+    <RpgStage {game} {session} {role} {selected} {selectedObjects} {onobject} {onavatar} {onobjectmove} {onpickup} {ongroupmove} {onband} />
+  {:else if session.phase === 'boardgame'}
+    <BoardGameStage {game} {session} {role} {selected} {ontoken} {onspace} {onspacecard} />
+  {:else if session.phase === 'slides' && slidesRound(session, game)}
+    {@const sr = slidesRound(session, game)!}
+    {@const srAt = clueSlideIndex(session, sr)}
+    {@const srOf = questionSlides(sr).length}
+    {#key `${sr.id}-${srAt}`}
+      <div class="full" class:clickable={!!onact} onclick={() => act('reveal')} role="presentation" data-slide={srAt + 1} in:fade|global={{ duration: 300 }}>
+        <div class="slide-area" style:scale={fit?.scale} use:inkOf><SlideView slide={shownQuestionSlide(session, sr)} {role} /></div>
       </div>
-    </div>
-  {:else}
-    <!-- A wheel or dice tile's question waits for its tool to close (it would show through), then comes in with its countdown.
-         (The scores up over the tool: it's still to close. Not for dice or a wheel opened later over the question.) -->
-    {@const waiting = tileToolUp(live, info.clue) && !session.revealed}
-    <!-- The question slide the host is on (a clue can have several: the first one zooms in, the next ones come in quietly). -->
-    {@const at = clueSlideIndex(session, info.clue)}
-    {#key `${info.clue.id}-${session.revealed}-${waiting}-${at}`}
+    {/key}
+    {#if srOf > 1}{@render slidePips(srAt, srOf)}{/if}
+  {:else if session.phase === 'tiebreaker' && game.tiebreaker}
+    {@const tb = game.tiebreaker}
+    {@const tbAt = clueSlideIndex(session, tb)}
+    {@const tbOf = questionSlides(tb).length}
+    {#key `${session.tiebreakerRevealed}-${tbAt}`}
+      <!-- (Its answer up, a click goes back to the results, through the check: “Nobody has won the tiebreaker…”.) -->
       <div
         class="full"
         class:clickable={!!onact}
-        onclick={() => act(session.revealed ? 'back' : 'reveal')}
+        onclick={() => act(session.tiebreakerRevealed ? 'back' : 'reveal')}
         role="presentation"
-        data-slide={session.revealed ? 'answer' : at + 1}
-        in:scale|global={clueIn(info.clue.id, waiting)}
+        data-slide={session.tiebreakerRevealed ? 'answer' : tbAt + 1}
+        in:fade|global={{ duration: 300 }}
       >
-        {#if waiting}
-          <!-- (Nothing until the tool closes.) -->
-        {:else if pt && ptGame && !session.revealed && blankSlide(shownQuestionSlide(session, info.clue))}
-          <!-- A partner clue with nothing on its question slide: a card of its own, the game's name, the two and the
-               category. -->
-          <div class="partner-card" data-partner-card>
-            <div class="pu-text small">{ptGame.label === 'Custom' ? 'Partner clue' : ptGame.label}!</div>
-            {@render pairPlates(false)}
-            <div class="pc-cat">{categoryLabel(info.category)}</div>
-          </div>
-        {:else}<div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`} use:inkOf
-            ><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div
-          >{/if}
+        <div class="slide-area" style:scale={fit?.scale} use:inkOf
+          ><SlideView slide={session.tiebreakerRevealed ? tb.answerSlide : shownQuestionSlide(session, tb)} {role} /></div
+        >
+        <div class="final-label small">TIEBREAKER</div>
       </div>
     {/key}
-    <!-- A clue with several question slides: where it is (● ● ○), so viewers know there's more to come. -->
-    {@const of = questionSlides(info.clue).length}
-    {#if of > 1 && !session.revealed && !waiting}{@render slidePips(at, of)}{/if}
-    {#if stream?.clueCaption && !waiting}
-      <!-- (With the slide pips showing, it stops short of them: 24px in, 22px padding a side, a 16px gap; with the join
-           code in the corner, short of that, about 420px wide.) -->
-      {@const pipsMax = of > 1 && !session.revealed ? 960 - pipsW(of) / 2 - 24 - 44 - 16 : 1500}
-      {@const captionMax = `${Math.min(pipsMax, codeShown && live.room && spot?.corner === 'br' ? 1920 - 24 - 44 - 16 - (spot.small ? 300 : 440) - 24 : 1500)}px`}
-      <div class="caption" style:max-width={captionMax} style:bottom={foot ? `${foot}px` : undefined}>{captionText}</div>
-    {/if}
-    {#if session.dd?.stage === 'question' && ddPlayer}
-      <div class="dd-badge" style:border-color={ddPlayer.color}>
-        <span style:color={ddPlayer.color}>{ddPlayer.name}</span> · Daily Double{#if session.dd.shown}{` · ${formatPoints(session.dd.wager ?? 0, sym)}`}{/if}
-      </div>
-    {/if}
-    {#if ptBadge && ptGame}
-      <!-- Who plays which part, in their colours and in words (colour is never the only sign). -->
-      <div class="dd-badge partner-badge" data-partner-badge>
-        {#if ptStealOut}
-          🔔 Steal! {#each ptStealOut as p, i (p.id)}{i ? ' and ' : ''}<span style:color={p.color}>{p.name}</span>{/each} missed it
-        {:else if ptSolo && ptPicker && ptMember}
-          {ptGame.icon} <span style:color={ptPicker.color}>{ptMember.name}</span> {ptGame.verb} → 🎯 <span style:color={ptPicker.color}>{ptPicker.name}</span>
-          {ptGame.guessVerb}
-        {:else if ptSolo && ptPicker}
-          🤝 <span style:color={ptPicker.color}>{ptPicker.name}</span> · Solo!
-        {:else if ptGiver && ptGuesser}
-          {ptGame.icon} <span style:color={ptGiver.color}>{ptGiver.name}</span> {ptGame.verb} → 🎯 <span style:color={ptGuesser.color}>{ptGuesser.name}</span>
-          {ptGame.guessVerb}
-        {/if}
-      </div>
-    {/if}
-    {#if privateFor.length && !waiting}
-      <!-- 🤫 Just you: who has a private question (in their colours and by name; never what's on the card). -->
-      <div class="dd-badge private-badge" data-private-badge>
-        🤫 {#each privateFor as p, i (p.id)}{i ? (i === privateFor.length - 1 ? ' and ' : ', ') : ''}<span style:color={p.color}>{p.name}</span>{/each}
-        {privateFor.length > 1 ? 'have' : 'has'} a private question
-      </div>
-    {/if}
+    <!-- Several question slides: where it is (● ● ○), as on a clue. -->
+    {#if tbOf > 1 && !session.tiebreakerRevealed}{@render slidePips(tbAt, tbOf)}{/if}
+  {:else if session.phase === 'end'}
+    {@const ranked = places(session)}
+    <!-- Everything's at full size while it fits (6 places); with more, it shrinks just enough for the last one to show. -->
+    {@const k = Math.min(1, 1040 / (300 + 120 * ranked.length))}
+    {@const heading = tieOpen
+      ? `Tie for first: ${nameList(winners.map((w) => w.name))}!`
+      : winners.length > 1
+        ? `It's a tie: ${nameList(winners.map((w) => w.name))}!`
+        : winners.length
+          ? `${winners[0].name} wins!`
+          : 'Game over'}
+    <div class="full end" in:fade={{ duration: 500 }} style:--k={k}>
+      {#if !tieOpen}<Confetti colors={[...winners.map((w) => w.color), game.theme?.value ?? '#ffcc00', '#ffffff']} keepOut={{ left: 410, right: 1510 }} />{/if}
+      <!-- Long names (a tie of two) shrink the heading instead of pushing the last places off the bottom. -->
+      <h1 use:autofit={{ size: Math.round(110 * k), min: Math.round(44 * k), enabled: true, text: heading }}><span dir="auto">{heading}</span></h1>
+      <ol>
+        {#each ranked as { player, score: s, place }, i (player.id)}
+          <li style:--c={player.color} in:fly|global={{ y: 60, delay: 300 + (ranked.length - i) * 250, duration: 500 }}>
+            <span class="rank">{place}</span>
+            <span class="nm" style:background={player.color} style:color={textOn(player.color)}>{player.name}</span>
+            <span class="sc">{formatPoints(s, sym)}</span>
+          </li>
+        {/each}
+      </ol>
+    </div>
   {/if}
-{:else if session.phase === 'final'}
-  {#key session.finalStep}
-    <!-- The host's clicks: on the wagers, who they wait on (never the question; the keys stay in the wager box); the
-         question's next slide or answer; the reveals starting; the spotlit player's card, their next step. -->
-    <!-- (The score bar where the theme puts it, as on the board: Top moves the rest down under it; Hidden leaves it out,
-         the reveal card says each player's total and the host spotlights from the panel or the number keys.) -->
-    <div
-      class="full final-screen bar-{bar}"
-      class:clickable={!!onact && session.finalStep !== 'reveal'}
-      onmousedown={(e) => onact && session.finalStep === 'wagers' && e.preventDefault()}
-      onclick={() =>
-        session.finalStep === 'wagers' ? act('wagers') : session.finalStep === 'question' ? act('reveal') : session.finalStep === 'answer' ? act('final-next') : undefined}
-      role="presentation"
-      in:fade|global={{ duration: 400 }}
-    >
-      {#if session.finalStep === 'wagers'}
-        {#if finalLabelShown}<div class="final-label">{finalLabel}</div>{/if}
-        <div class="final-cat"><SlideView slide={finalCategorySlide} /></div>
-        <div class="final-sub">Make your wagers…</div>
-        <!-- The scores stay up while players decide what to wager (a ✔ once a wager is in). -->
-        {#if bar !== 'hidden'}<div class="score-area"><ScoreBar {game} {session} phones={live.phones} host={!!onact} lit={null} {ticks} /></div>{/if}
-      {:else if session.finalStep === 'question'}
-        {#if finalRound}
-          {@const fAt = clueSlideIndex(session, finalRound)}
-          {@const fOf = questionSlides(finalRound).length}
-          <div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`} data-slide={fAt + 1}>
-            <SlideView slide={shownQuestionSlide(session, finalRound)} {role} />
-          </div>
-          <!-- Several question slides: where it is (● ○), as on a clue. -->
-          {#if fOf > 1}{@render slidePips(fAt, fOf)}{/if}
-        {/if}
-      {:else if session.finalStep === 'answer'}
-        {#if finalRound}<div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`}><SlideView slide={finalRound.answerSlide} {role} /></div>{/if}
-      {:else if session.finalStep === 'reveal'}
-        <div class="reveal" class:clickable={!!onact && !!spotlight} onclick={() => spotlight && act('spotlight')} role="presentation">
-          <div class="final-label small">{finalLabel}</div>
-          {#if spotlight && session.final}
-            {@const f = session.final}
-            {@const res = f.results[spotlight.id]}
-            <!-- (Viewers get only answers already shown; one window reads the host's session, so it's checked here too.) -->
-            {@const shown = f.answerShown?.[spotlight.id] ? f.answers?.[spotlight.id] : undefined}
-            <!-- (A multiple choice's pick, or words that name one: its letter and its words.) -->
-            {@const usable = finalRound && !finalRound.phoneAnswersOff ? usableChoices(finalRound.choices) : []}
-            {@const pickAt = shown && usable.length ? usable.findIndex((c) => c.id === pickOf(shown, usable)) : -1}
-            {#key spotlight.id}
-              <div class="spot" class:typed={!!f.answers} in:fly|global={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
-                {#if f.answers}
-                  <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
-                {:else}
-                  <!-- One width all through the Final, the longest name's (the card's frame doesn't jump from one player to
-                       the next): every player's name laid in the same place, unseen, under the one shown. -->
-                  <div class="spot-head">
-                    {#each f.players as id (id)}<div class="spot-size" data-n={byId[id]?.name ?? ''} aria-hidden="true"></div>{/each}
-                    <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
-                  </div>
-                {/if}
-                {#if f.answers}
-                  <!-- What they typed on their phone, once the host puts it up (its room kept: the card doesn't jump). Typed over
-                       a few lines: three at most (more go on the third, " / " between), each line its own; one paragraph if they don't fit. -->
-                  {@const typedLines = shown ? foldLines(shown.text, flatAnswer === shown.text ? 1 : 3) : ''}
-                  <div
-                    class="spot-answer"
-                    dir="auto"
-                    data-spot-answer
-                    use:autofit={{
-                      size: 72,
-                      min: 28,
-                      enabled: true,
-                      text: pickAt >= 0 ? `${pickAt} ${usable[pickAt].text}` : typedLines,
-                      onfit: (r) => {
-                        if (r.overflow && shown && pickAt < 0 && typedLines.includes('\n')) flatAnswer = shown.text;
-                      },
-                    }}
-                  >
-                    {#if shown && pickAt >= 0}
-                      <span><span class="pick-letter" style:background={chipBg} style:color={chipInk}>{letter(pickAt)}</span> {usable[pickAt].text}</span>
-                    {:else if shown}<span class="lines">“{typedLines}”</span>{:else}<span class="hold" aria-hidden="true">&nbsp;</span>{/if}
-                  </div>
-                {/if}
-                <div class="spot-wager">
-                  <!-- (No wager in yet: it stays ??? until the host types it, never $0.) -->
-                  {#if f.shown[spotlight.id] && typeof f.wagers[spotlight.id] === 'number'}
-                    Wagered <b>{formatPoints(f.wagers[spotlight.id], sym)}</b>
-                  {:else}
-                    Wager: ???
-                  {/if}
-                </div>
-                {#if res}
-                  <div class="spot-result {res}" in:scale={{ start: 2, duration: 350 }}>{res === 'right' ? '✔ CORRECT' : '✘ WRONG'}</div>
-                {:else}
-                  <!-- Its room kept: the card doesn't jump when the result comes in. -->
-                  <div class="spot-hold" aria-hidden="true">✔ CORRECT</div>
-                {/if}
-                <div class="spot-score">{formatPoints(score(session, spotlight.id), sym)}</div>
-              </div>
-            {/key}
-          {/if}
+
+  {#if strip}
+    <!-- The question's multiple choices, A to F as the phones letter them; with the answer, the right one lit. -->
+    <div class="choices" data-choices style:--cols={strip.cols} style:height="{strip.h - 40}px" in:fade={{ duration: 300 }}>
+      {#each strip.list as c, i (c.id)}
+        <div class="choice" class:right={strip.right === c.id} class:dim={!!strip.right && strip.right !== c.id}>
+          <span class="letter" style:background={chipBg} style:color={chipInk}>{strip.right === c.id ? '✔' : letter(i)}</span>
+          <span class="words" dir="auto" use:autofit={{ size: 56, min: 24, enabled: true, group: `choices:${strip.key}`, text: `${c.text}|${strip.cols}` }}
+            ><span>{c.text}</span></span
+          >
         </div>
-        {#if bar !== 'hidden'}
-          <div class="score-area">
-            <ScoreBar {game} {session} phones={live.phones} onpicker={onspotlight} hint="Click to spotlight this player (right-click: judge them)" host={!!onact} lit={session.final?.current ?? null} />
-          </div>
-        {/if}
-      {/if}
-    </div>
-  {/key}
-{:else if session.phase === 'rpg'}
-  <RpgStage {game} {session} {role} {selected} {selectedObjects} {onobject} {onavatar} {onobjectmove} {onpickup} {ongroupmove} {onband} />
-{:else if session.phase === 'boardgame'}
-  <BoardGameStage {game} {session} {role} {selected} {ontoken} {onspace} {onspacecard} />
-{:else if session.phase === 'slides' && slidesRound(session, game)}
-  {@const sr = slidesRound(session, game)!}
-  {@const srAt = clueSlideIndex(session, sr)}
-  {@const srOf = questionSlides(sr).length}
-  {#key `${sr.id}-${srAt}`}
-    <div class="full" class:clickable={!!onact} onclick={() => act('reveal')} role="presentation" data-slide={srAt + 1} in:fade|global={{ duration: 300 }}>
-      <div class="slide-area" style:scale={fit?.scale} use:inkOf><SlideView slide={shownQuestionSlide(session, sr)} {role} /></div>
-    </div>
-  {/key}
-  {#if srOf > 1}{@render slidePips(srAt, srOf)}{/if}
-{:else if session.phase === 'tiebreaker' && game.tiebreaker}
-  {@const tb = game.tiebreaker}
-  {@const tbAt = clueSlideIndex(session, tb)}
-  {@const tbOf = questionSlides(tb).length}
-  {#key `${session.tiebreakerRevealed}-${tbAt}`}
-    <!-- (Its answer up, a click goes back to the results, through the check: “Nobody has won the tiebreaker…”.) -->
-    <div
-      class="full"
-      class:clickable={!!onact}
-      onclick={() => act(session.tiebreakerRevealed ? 'back' : 'reveal')}
-      role="presentation"
-      data-slide={session.tiebreakerRevealed ? 'answer' : tbAt + 1}
-      in:fade|global={{ duration: 300 }}
-    >
-      <div class="slide-area" style:scale={fit?.scale} use:inkOf><SlideView slide={session.tiebreakerRevealed ? tb.answerSlide : shownQuestionSlide(session, tb)} {role} /></div>
-      <div class="final-label small">TIEBREAKER</div>
-    </div>
-  {/key}
-  <!-- Several question slides: where it is (● ● ○), as on a clue. -->
-  {#if tbOf > 1 && !session.tiebreakerRevealed}{@render slidePips(tbAt, tbOf)}{/if}
-{:else if session.phase === 'end'}
-  {@const ranked = places(session)}
-  <!-- Everything's at full size while it fits (6 places); with more, it shrinks just enough for the last one to show. -->
-  {@const k = Math.min(1, 1040 / (300 + 120 * ranked.length))}
-  {@const heading = tieOpen
-    ? `Tie for first: ${nameList(winners.map((w) => w.name))}!`
-    : winners.length > 1
-      ? `It's a tie: ${nameList(winners.map((w) => w.name))}!`
-      : winners.length
-        ? `${winners[0].name} wins!`
-        : 'Game over'}
-  <div class="full end" in:fade={{ duration: 500 }} style:--k={k}>
-    {#if !tieOpen}<Confetti colors={[...winners.map((w) => w.color), game.theme?.value ?? '#ffcc00', '#ffffff']} keepOut={{ left: 410, right: 1510 }} />{/if}
-    <!-- Long names (a tie of two) shrink the heading instead of pushing the last places off the bottom. -->
-    <h1 use:autofit={{ size: Math.round(110 * k), min: Math.round(44 * k), enabled: true, text: heading }}><span dir="auto">{heading}</span></h1>
-    <ol>
-      {#each ranked as { player, score: s, place }, i (player.id)}
-        <li style:--c={player.color} in:fly|global={{ y: 60, delay: 300 + (ranked.length - i) * 250, duration: 500 }}>
-          <span class="rank">{place}</span>
-          <span class="nm" style:background={player.color} style:color={textOn(player.color)}>{player.name}</span>
-          <span class="sc">{formatPoints(s, sym)}</span>
-        </li>
       {/each}
-    </ol>
-  </div>
-{/if}
+    </div>
+  {/if}
 
-{#if strip}
-  <!-- The question's multiple choices, A to F as the phones letter them; with the answer, the right one lit. -->
-  <div class="choices" data-choices style:--cols={strip.cols} style:height="{strip.h - 40}px" in:fade={{ duration: 300 }}>
-    {#each strip.list as c, i (c.id)}
-      <div class="choice" class:right={strip.right === c.id} class:dim={!!strip.right && strip.right !== c.id}>
-        <span class="letter" style:background={chipBg} style:color={chipInk}>{strip.right === c.id ? '✔' : letter(i)}</span>
-        <span class="words" dir="auto" use:autofit={{ size: 56, min: 24, enabled: true, group: `choices:${strip.key}`, text: `${c.text}|${strip.cols}` }}
-          ><span>{c.text}</span></span
-        >
-      </div>
-    {/each}
-  </div>
-{/if}
+  {#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'slides' || session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'end')}
+    <TimerDisplay timer={live.timer} middle={timerBar ? timerBar.top + timerBar.height / 2 : undefined} />
+  {/if}
 
-{#if live.timer && (session.phase === 'clue' || session.phase === 'final' || session.phase === 'tiebreaker' || session.phase === 'slides' || session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'end')}
-  <TimerDisplay timer={live.timer} middle={timerBar ? timerBar.top + timerBar.height / 2 : undefined} />
-{/if}
+  {#if answering}
+    <AnsweringPlate player={answering} by={live.buzz?.by} />
+  {:else if live.answers && session.phase === 'clue' && !session.revealed}
+    <!-- A ✍ clue: everyone answers on their phone; a dot per player fills in once theirs is in (never the words). -->
+    <div class="everyone" data-everyone in:fly={{ y: -60, duration: 250 }}>
+      <span>✍ Everyone answers</span>
+      <span class="dots" role="img" aria-label="{live.answers.in.length} of {session.players.length} answers in">
+        {#each session.players as p (p.id)}<span class="dot" class:in={live.answers.in.includes(p.id)} style:--c={p.color} title={p.name}></span>{/each}
+      </span>
+    </div>
+  {:else if live.answers && finalAnswering.length}
+    <!-- The Final's question: its players type their answer on their phone (not "everyone": some may sit it out). -->
+    <div class="everyone" data-everyone in:fly={{ y: -60, duration: 250 }}>
+      <span>✍ Answers on phones</span>
+      <span class="dots" role="img" aria-label="{live.answers.in.length} of {finalAnswering.length} answers in">
+        {#each finalAnswering as p (p.id)}<span class="dot" class:in={live.answers.in.includes(p.id)} style:--c={p.color} title={p.name}></span>{/each}
+      </span>
+    </div>
+  {/if}
 
-{#if answering}
-  <AnsweringPlate player={answering} by={live.buzz?.by} />
-{:else if live.answers && session.phase === 'clue' && !session.revealed}
-  <!-- A ✍ clue: everyone answers on their phone; a dot per player fills in once theirs is in (never the words). -->
-  <div class="everyone" data-everyone in:fly={{ y: -60, duration: 250 }}>
-    <span>✍ Everyone answers</span>
-    <span class="dots" role="img" aria-label="{live.answers.in.length} of {session.players.length} answers in">
-      {#each session.players as p (p.id)}<span class="dot" class:in={live.answers.in.includes(p.id)} style:--c={p.color} title={p.name}></span>{/each}
-    </span>
-  </div>
-{:else if live.answers && finalAnswering.length}
-  <!-- The Final's question: its players type their answer on their phone (not "everyone": some may sit it out). -->
-  <div class="everyone" data-everyone in:fly={{ y: -60, duration: 250 }}>
-    <span>✍ Answers on phones</span>
-    <span class="dots" role="img" aria-label="{live.answers.in.length} of {finalAnswering.length} answers in">
-      {#each finalAnswering as p (p.id)}<span class="dot" class:in={live.answers.in.includes(p.id)} style:--c={p.color} title={p.name}></span>{/each}
-    </span>
-  </div>
-{/if}
-
-<!-- 🎭 Who was who: only once the host shows it (names and parts; nothing of the deal reaches this before that). On the
+  <!-- 🎭 Who was who: only once the host shows it (names and parts; nothing of the deal reaches this before that). On the
      host's stage a click takes it off. -->
-{#if whoWasWho}
-  <DealReveal name={whoWasWho.name} lines={whoWasWho.lines} onclick={onact ? () => act('whowaswho') : undefined} />
-{/if}
+  {#if whoWasWho}
+    <DealReveal name={whoWasWho.name} lines={whoWasWho.lines} onclick={onact ? () => act('whowaswho') : undefined} />
+  {/if}
 
-<!-- (While the host edits the board, the dice stay up on their stage but let clicks through to the board: a click picks
+  <!-- (While the host edits the board, the dice stay up on their stage but let clicks through to the board: a click picks
      a space there, it doesn't move anyone.) -->
-{#if live.overlay}
-  {@const editing = !!onact && boardEdit.on && session.phase === 'boardgame'}
-  <ToolOverlay o={live.overlay} {game} {session} {role} passthrough={editing} onclick={onact && !editing ? () => act('overlay') : undefined} {onshopbuy} />
-{/if}
+  {#if live.overlay}
+    {@const editing = !!onact && boardEdit.on && session.phase === 'boardgame'}
+    <ToolOverlay o={live.overlay} {game} {session} {role} passthrough={editing} onclick={onact && !editing ? () => act('overlay') : undefined} {onshopbuy} />
+  {/if}
 
-<!--
+  <!--
   On the board a player's pop sits on their plate's name, above its score (a group's in the middle of the bar), inside
   the score bar's band whether it's at the top or the foot: never over a row of tiles. Elsewhere they sit near the foot
   of the stage.
 -->
-<div
-  class="pops"
-  style:top={popsOnBar ? `${popsOnBar.top + POP_BAR_INSET}px` : undefined}
-  style:bottom={popsOnBar ? undefined : `${(foot || 40) + (captionUp ? 90 : 0)}px`}
-  class:on-bar={!!popsOnBar}
->
-  {#each live.pops as p (p.id)}
-    {@const at = popsOnBar ? popX(p.playerId) : null}
-    <div
-      class="pop"
-      class:anchored={at !== null}
-      style:left={at !== null ? `${at}px` : undefined}
-      style:background={p.color}
-      style:color={textOn(p.color)}
-      in:fly={{ y: barTop ? -60 : 60, duration: 250 }}
-      out:fade
-    >
-      {#if p.who}<span class="who">{p.who}</span> <span class="amt">{p.amount}</span>{:else}<span class="who">{p.text}</span>{/if}
-    </div>
-  {/each}
-</div>
-
-{#if codeShown && live.room}
   <div
-    class="join-badge"
-    class:on-bar={codeSpot === 'bar'}
-    use:joinWidth={codeSpot === 'bar'}
-    class:small={spot?.small}
-    data-corner={spot?.corner}
-    style:top={codeSpot === 'bar' && layout.score ? `${layout.score.top + layout.score.height / 2}px` : spot?.corner.startsWith('t') ? '24px' : undefined}
-    style:bottom={spot?.corner.startsWith('t') ? 'auto' : undefined}
-    style:left={spot?.corner.endsWith('l') ? '24px' : undefined}
-    style:right={codeSpot === 'bar' && timerBar ? `${24 + TIMER_ROOM}px` : spot?.corner.endsWith('l') ? 'auto' : undefined}
+    class="pops"
+    style:top={popsOnBar ? `${popsOnBar.top + POP_BAR_INSET}px` : undefined}
+    style:bottom={popsOnBar ? undefined : `${(foot || 40) + (captionUp ? 90 : 0)}px`}
+    class:on-bar={!!popsOnBar}
   >
-    <!-- Nobody new can join (seats locked, or all taken): it doesn't invite everyone watching, it's the players' code. -->
-    {#if spot?.small}<span class="jb-code">📱 {live.room.code}</span>
-    {:else}<span class="jb-how">{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz in'}</span>
-      <span class="jb-code">{live.room.code}</span>{/if}
-    <!-- In the corner there's room for where to go, too. -->
-    {#if codeSpot === 'corner' && !spot?.small && !live.room.closed}<span class="jb-link">{live.room.link.replace(/^https?:\/\//, '').replace(/\/[^/]*$/, '')}</span>{/if}
+    {#each live.pops as p (p.id)}
+      {@const at = popsOnBar ? popX(p.playerId) : null}
+      <div
+        class="pop"
+        class:anchored={at !== null}
+        style:left={at !== null ? `${at}px` : undefined}
+        style:background={p.color}
+        style:color={textOn(p.color)}
+        in:fly={{ y: barTop ? -60 : 60, duration: 250 }}
+        out:fade
+      >
+        {#if p.who}<span class="who">{p.who}</span> <span class="amt">{p.amount}</span>{:else}<span class="who">{p.text}</span>{/if}
+      </div>
+    {/each}
   </div>
-{/if}
 
-<!-- Buzzers opened by the host (📱 Phone buzzers: "When I press U"): viewers see it, a light around the stage and a
-     moment's "🔔 Buzz now!". -->
-{#if buzzNow}
-  <div class="buzz-now" data-buzz-now aria-hidden="true">
-    {#key live.buzz?.armId}<div class="bn-pill" in:scale={{ start: 0.6, duration: 250 }}>🔔 Buzz now!</div>{/key}
-  </div>
-{/if}
-
-<!-- Panic button: viewers see only the cover card (the host's copy shows it faded, to keep working underneath). -->
-{#if live.cover}
-  <div class="cover" class:host={role === 'mirror'}>
-    <div class="cover-in">
-      {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
-      <div class="cover-card"><span class="pause" aria-hidden="true"></span><span class="cover-text" use:autofit={{ size: 120, min: 56, enabled: true, text: coverText }}>{coverText}</span></div>
-      {#if live.room && !stream?.hideJoinCode}
-        <div class="cover-join">{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz from your phone'}: <b>{live.room.code}</b> · {live.room.link.replace(/^https?:\/\//, '')}</div>
-      {/if}
+  {#if codeShown && live.room}
+    <div
+      class="join-badge"
+      class:on-bar={codeSpot === 'bar'}
+      use:joinWidth={codeSpot === 'bar'}
+      class:small={spot?.small}
+      data-corner={spot?.corner}
+      style:top={codeSpot === 'bar' && layout.score ? `${layout.score.top + layout.score.height / 2}px` : spot?.corner.startsWith('t') ? '24px' : undefined}
+      style:bottom={spot?.corner.startsWith('t') ? 'auto' : undefined}
+      style:left={spot?.corner.endsWith('l') ? '24px' : undefined}
+      style:right={codeSpot === 'bar' && timerBar ? `${24 + TIMER_ROOM}px` : spot?.corner.endsWith('l') ? 'auto' : undefined}
+    >
+      <!-- Nobody new can join (seats locked, or all taken): it doesn't invite everyone watching, it's the players' code. -->
+      {#if spot?.small}<span class="jb-code">📱 {live.room.code}</span>
+      {:else}<span class="jb-how">{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz in'}</span>
+        <span class="jb-code">{live.room.code}</span>{/if}
+      <!-- In the corner there's room for where to go, too. -->
+      {#if codeSpot === 'corner' && !spot?.small && !live.room.closed}<span class="jb-link"
+          >{live.room.link.replace(/^https?:\/\//, '').replace(/\/[^/]*$/, '')}</span
+        >{/if}
     </div>
-  </div>
-{/if}
+  {/if}
 
-<!-- Game sound cues: played (and reported if the browser blocks it) where the sound belongs, never in the host's mirror. -->
-{#if role !== 'mirror'}
-  {#each cues as c (c.nonce)}
-    {@const url = failed.includes(c.nonce) ? soundUrl(c.fallback) : (soundUrl(c.media) ?? soundUrl(c.fallback))}
-    {#if url}
-      <audio
-        use:loudness={c.volume ?? 1}
-        use:autoPlay={url}
-        use:holdWhile={!!live.cover}
-        onended={() => cueDone(c.nonce)}
-        onerror={() => c.fallback && !failed.includes(c.nonce) && (failed = [...failed, c.nonce])}
-      ></audio>
-    {/if}
-  {/each}
-{/if}
-<!-- The dice, wheel and board-move sounds, timed with the animations. -->
-{#if role !== 'mirror'}<CuePlayer {game} {session} {live} />{/if}
+  <!-- Buzzers opened by the host (📱 Phone buzzers: "When I press U"): viewers see it, a light around the stage and a
+     moment's "🔔 Buzz now!". -->
+  {#if buzzNow}
+    <div class="buzz-now" data-buzz-now aria-hidden="true">
+      {#key live.buzz?.armId}<div class="bn-pill" in:scale={{ start: 0.6, duration: 250 }}>🔔 Buzz now!</div>{/key}
+    </div>
+  {/if}
+
+  <!-- Panic button: viewers see only the cover card (the host's copy shows it faded, to keep working underneath). -->
+  {#if live.cover}
+    <div class="cover" class:host={role === 'mirror'}>
+      <div class="cover-in">
+        {#if bannerUrl}<img class="card-img" src={bannerUrl} alt="" draggable="false" onerror={imgFallback} />{/if}
+        <div class="cover-card"
+          ><span class="pause" aria-hidden="true"></span><span class="cover-text" use:autofit={{ size: 120, min: 56, enabled: true, text: coverText }}
+            >{coverText}</span
+          ></div
+        >
+        {#if live.room && !stream?.hideJoinCode}
+          <div class="cover-join"
+            >{live.room.closed ? '📱 Players’ buzzers' : '📱 Buzz from your phone'}: <b>{live.room.code}</b> · {live.room.link.replace(/^https?:\/\//, '')}</div
+          >
+        {/if}
+      </div>
+    </div>
+  {/if}
+
+  <!-- Game sound cues: played (and reported if the browser blocks it) where the sound belongs, never in the host's mirror. -->
+  {#if role !== 'mirror'}
+    {#each cues as c (c.nonce)}
+      {@const url = failed.includes(c.nonce) ? soundUrl(c.fallback) : (soundUrl(c.media) ?? soundUrl(c.fallback))}
+      {#if url}
+        <audio
+          use:loudness={c.volume ?? 1}
+          use:autoPlay={url}
+          use:holdWhile={!!live.cover}
+          onended={() => cueDone(c.nonce)}
+          onerror={() => c.fallback && !failed.includes(c.nonce) && (failed = [...failed, c.nonce])}
+        ></audio>
+      {/if}
+    {/each}
+  {/if}
+  <!-- The dice, wheel and board-move sounds, timed with the animations. -->
+  {#if role !== 'mirror'}<CuePlayer {game} {session} {live} />{/if}
 </div>
 
 <style>
@@ -1065,7 +1137,9 @@
     content: '';
     position: absolute;
     inset: 0;
-    box-shadow: inset 0 0 0 10px var(--value, #ffcc00), inset 0 0 60px 20px color-mix(in srgb, var(--value, #ffcc00) 55%, transparent);
+    box-shadow:
+      inset 0 0 0 10px var(--value, #ffcc00),
+      inset 0 0 60px 20px color-mix(in srgb, var(--value, #ffcc00) 55%, transparent);
     animation: bn-glow 1.4s ease-in-out infinite alternate;
   }
   .bn-pill {
@@ -1077,7 +1151,10 @@
     border-radius: 999px;
     background: var(--value, #ffcc00);
     color: #000;
-    font: 64px 'Anton', 'Oswald', sans-serif;
+    font:
+      64px 'Anton',
+      'Oswald',
+      sans-serif;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
     animation: bn-out 0.5s ease-in 2s forwards;
   }
@@ -1113,7 +1190,10 @@
     align-items: center;
     gap: 50px;
     padding: 0 60px;
-    font: 120px 'Anton', 'Oswald', sans-serif;
+    font:
+      120px 'Anton',
+      'Oswald',
+      sans-serif;
     color: var(--value);
     text-align: center;
     text-shadow: 6px 6px 0 #000;
@@ -1151,7 +1231,9 @@
     left: 0;
     width: 1920px;
     z-index: 0;
-    background: var(--board-image, none) center / cover no-repeat, var(--board-bg, var(--board-gap));
+    background:
+      var(--board-image, none) center / cover no-repeat,
+      var(--board-bg, var(--board-gap));
   }
   /* (The board's color, not its picture: the quiet fade between a clue's slides dips to it too.) */
   .board-under {

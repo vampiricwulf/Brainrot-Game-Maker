@@ -1,5 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addMyTheme, changeMyTheme, deleteMyTheme, freshThemeName, loadMyThemes, missingFonts, themeMedia, usesUploadedFonts, withMyTheme, type SavedTheme } from './mytheme';
+import {
+  addMyTheme,
+  changeMyTheme,
+  deleteMyTheme,
+  freshThemeName,
+  loadMyThemes,
+  missingFonts,
+  themeMedia,
+  usesUploadedFonts,
+  withMyTheme,
+  type SavedTheme,
+} from './mytheme';
 import type { Theme } from './theme';
 import { uploadedFamily } from './fonts';
 import { newGame } from './model';
@@ -147,7 +158,10 @@ describe('my themes (several, named)', () => {
   });
 
   it('damaged entries are left out, the rest load', () => {
-    store.set('brainrot.myThemes', JSON.stringify([{ id: 'a', name: 'ok', theme: presetTheme('dark') }, { id: 'b', theme: { tile: 'red; background: url(x)' } }, 'junk', null]));
+    store.set(
+      'brainrot.myThemes',
+      JSON.stringify([{ id: 'a', name: 'ok', theme: presetTheme('dark') }, { id: 'b', theme: { tile: 'red; background: url(x)' } }, 'junk', null]),
+    );
     expect(loadMyThemes().map((m) => m.name)).toEqual(['ok']);
     store.set('brainrot.myThemes', '{not json');
     expect(loadMyThemes()).toEqual([]);
@@ -159,7 +173,7 @@ describe('my themes (several, named)', () => {
     expect(freshThemeName(list, 'Fresh')).toBe('Fresh');
   });
 
-  it("a copy of a 60-character name stays as long and different (it was cut back to the same name)", () => {
+  it('a copy of a 60-character name stays as long and different (it was cut back to the same name)', () => {
     const long = 'Party night with a really long name that keeps going on and on';
     const first = addMyTheme([], long, presetTheme('neon'))!;
     expect(first[0].name).toBe('Party night with a really long name that keeps going on and');

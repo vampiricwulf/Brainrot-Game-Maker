@@ -1,6 +1,20 @@
 // Running actions (games-maker spec §7.10): the host pressed an object's, item's or wheel slice's button. State
 // changes go through toolset.logged() (undoable); show-only effects (wheels, pop-ups, sounds, timers) go to Live.
-import { formatPoints, newId, PLAYER_WHEEL, type Action, type BoardGameRound, type BoardGameState, type CardWho, type Game, type Session, type Slide, type Who, type World, type WorldState } from './model';
+import {
+  formatPoints,
+  newId,
+  PLAYER_WHEEL,
+  type Action,
+  type BoardGameRound,
+  type BoardGameState,
+  type CardWho,
+  type Game,
+  type Session,
+  type Slide,
+  type Who,
+  type World,
+  type WorldState,
+} from './model';
 import { movePlayer, sendTo, skipTurns, spaceById, spaceSaid } from './boardgame';
 import { blip, playSound, startTimer, type Live } from './live';
 import { addWheel, openPlayerWheel, openWheel, playerWheelName, quickDice, rollDice } from './overlay';
@@ -178,7 +192,10 @@ export function describeAction(game: Game, a: Action, on?: ActionOn, teams = fal
       return `Play ${game.media.find((m) => m.id === a.media)?.name ?? 'sound'}`;
     // Where it goes, and what it shows or hides and where (it may be on another screen than the stage shows).
     case 'move': {
-      const s = game.worlds?.flatMap((w) => w.maps).find((m) => m.id === a.to.map)?.screens.find((x) => x.id === a.to.screen);
+      const s = game.worlds
+        ?.flatMap((w) => w.maps)
+        .find((m) => m.id === a.to.map)
+        ?.screens.find((x) => x.id === a.to.screen);
       return `Go to ${s?.name || 'a screen'}`;
     }
     case 'reveal':
@@ -378,7 +395,13 @@ export function runAction(ctx: RunContext, a: Action, label?: string, quiet?: st
       // phone but by the host's press). A copy, so editing the button later doesn't change a card already offered.
       if (!ctx.offerCard) return 'Cards can’t be sent from here';
       const to = cardTargets(ctx, a.to);
-      ctx.offerCard({ from: text, ...(quiet && quiet !== text ? { quiet } : {}), slide: JSON.parse(JSON.stringify(a.slide)), to, until: a.until === 'host' ? 'host' : 'round' });
+      ctx.offerCard({
+        from: text,
+        ...(quiet && quiet !== text ? { quiet } : {}),
+        slide: JSON.parse(JSON.stringify(a.slide)),
+        to,
+        until: a.until === 'host' ? 'host' : 'round',
+      });
       // (Short: the offer in the panel says the rest, and a long toast would sit over it.)
       return said;
     }

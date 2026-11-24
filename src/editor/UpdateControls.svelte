@@ -88,13 +88,24 @@
 </script>
 
 {#if desktopApp && selfUpdate && exe && sig}
-  <button class="small primary" onclick={install} disabled={update.status === 'installing'} title={ready ? 'Saves your game and restarts into the new version' : "Downloads it, checks it's the real thing, saves your game and restarts the app"}>
+  <button
+    class="small primary"
+    onclick={install}
+    disabled={update.status === 'installing'}
+    title={ready ? 'Saves your game and restarts into the new version' : "Downloads it, checks it's the real thing, saves your game and restarts the app"}
+  >
     {update.status === 'installing' ? 'Updating…' : ready ? `⟳ Restart into ${release.version}` : `⬆ Update to ${release.version}`}
   </button>
 {:else if desktopApp}
-  <button class="small primary" onclick={() => (settleHeld(release), open(exe ?? release.page))} title="Put the downloaded .exe in place of this one">⬇ Download {release.version}</button>
+  <button class="small primary" onclick={() => (settleHeld(release), open(exe ?? release.page))} title="Put the downloaded .exe in place of this one"
+    >⬇ Download {release.version}</button
+  >
 {:else if online}
-  <button class="small primary" onclick={() => (settleHeld(release), location.reload())} title="This is the online copy: reloading the page gets the new version (just put up, it can take a few minutes to show).">
+  <button
+    class="small primary"
+    onclick={() => (settleHeld(release), location.reload())}
+    title="This is the online copy: reloading the page gets the new version (just put up, it can take a few minutes to show)."
+  >
     ⟳ Reload for {release.version}
   </button>
 {:else if notice && update.downloading === release.version}
@@ -111,7 +122,14 @@
 <!-- The notice's ✕, at its far right (named for what it does: Done puts the steps away, Not now hides the notice).
      (Not now comes up where Done was: a double-click on Done is one click, never Not now too.) -->
 {#if notice && !desktopApp && update.downloading === release.version}
-  <button class="small ghost notice-x" bind:this={doneBtn} use:oneShot onclick={() => (update.downloading = '')} aria-label="Done" title="Done: put these steps away">✕</button>
+  <button
+    class="small ghost notice-x"
+    bind:this={doneBtn}
+    use:oneShot
+    onclick={() => (update.downloading = '')}
+    aria-label="Done"
+    title="Done: put these steps away">✕</button
+  >
 {:else if notice}
   <button class="small ghost notice-x" onclick={() => skipVersion(release.version)} aria-label="Not now" title="Hide until a newer version is out">✕</button>
 {/if}

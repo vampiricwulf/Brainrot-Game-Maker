@@ -86,7 +86,12 @@ export function pointsChoice(rules: PartnerRules): PartnerPoints {
  */
 export function pointsChoices(game: PartnerGame, guesser = 'guesser'): { value: PartnerPoints; label: string }[] {
   const own = game === 'custom' ? [] : [{ value: 'game' as const, label: `As in ${PARTNER_GAMES[game].label}` }];
-  return [...own, { value: 'none', label: 'No penalty' }, { value: 'all', label: `The ${lowerWord(guesser)} loses it all` }, { value: 'custom', label: 'Custom' }];
+  return [
+    ...own,
+    { value: 'none', label: 'No penalty' },
+    { value: 'all', label: `The ${lowerWord(guesser)} loses it all` },
+    { value: 'custom', label: 'Custom' },
+  ];
 }
 
 /** A share typed in a box: a whole number within ±MAX_SHARE% (null: not a number). */
@@ -197,7 +202,10 @@ export function startingCards(game: PartnerGame): ClueCard[] {
  * ＋ 🤫 Card: one more card at the end (on a partner clue it goes to the giver, as a game's first card does; on any other
  * tile, to whoever picked it; a Final passes 'playing'). Returns it, or null at MAX_CARDS.
  */
-export function addCard(holder: Pick<Clue, 'cards'> & Partial<Pick<Clue, 'type'>>, to: CardGoesTo = holder.type === 'partner' ? 'giver' : 'picker'): ClueCard | null {
+export function addCard(
+  holder: Pick<Clue, 'cards'> & Partial<Pick<Clue, 'type'>>,
+  to: CardGoesTo = holder.type === 'partner' ? 'giver' : 'picker',
+): ClueCard | null {
   if (cardSlides(holder).length >= MAX_CARDS) return null;
   const card = newCard(to);
   // (A new list, not a push: on a tile with no cards yet `??=` would hand back the plain list, not the editor's live one.)
@@ -249,7 +257,13 @@ export function goesToLabel(rules: PartnerRules, to: CardGoesTo, long = true): s
   const words = partWords(rules);
   if (to === 'giver' || to === 'guesser') return `the ${lowerWord(words[to])}${long ? ` (${partWho(rules, to)})` : ''}`;
   // ('playing' is a Final's: never on a clue.)
-  return { both: 'both of them', others: 'everyone else', nobody: long ? 'nobody (I’ll choose when playing)' : 'nobody', picker: 'the picker', playing: 'everyone playing' }[to];
+  return {
+    both: 'both of them',
+    others: 'everyone else',
+    nobody: long ? 'nobody (I’ll choose when playing)' : 'nobody',
+    picker: 'the picker',
+    playing: 'everyone playing',
+  }[to];
 }
 
 /** Every Goes to choice, in the order the editor lists them. */
@@ -295,7 +309,9 @@ function words(slide: Slide): string {
 /** A slide's pictures, videos, sounds and links (what a phone gets besides the words), as one line to compare. */
 function filesOf(slide: Slide): string {
   return slide.elements
-    .flatMap((e) => (e.kind === 'image' ? [e.editedMedia ?? e.media] : e.kind === 'video' || e.kind === 'audio' ? [e.media] : e.kind === 'embed' ? [e.url] : []))
+    .flatMap((e) =>
+      e.kind === 'image' ? [e.editedMedia ?? e.media] : e.kind === 'video' || e.kind === 'audio' ? [e.media] : e.kind === 'embed' ? [e.url] : [],
+    )
     .sort()
     .join('\n');
 }
@@ -505,7 +521,11 @@ const sameTo = (a: CardTo[], b: CardTo[]) => a.length === b.length && a.every((t
  * change: the row follows the parts again (⇄ Swap or a new partner moves it).
  */
 export function setRecipients(session: Seats, s: PartnerState, card: Pick<ClueCard, 'id' | 'to'>, to: (Id | CardTo)[]): void {
-  const now = recipientsNow(session, s, to.map((t) => (typeof t === 'string' ? { seat: t } : t)));
+  const now = recipientsNow(
+    session,
+    s,
+    to.map((t) => (typeof t === 'string' ? { seat: t } : t)),
+  );
   if (sameTo(now, defaultRecipients(session, s, card.to))) return resetRecipients(s, card.id);
   (s.deal ??= {})[card.id] = now;
 }
@@ -689,7 +709,9 @@ export function countItems(kinds: CardItem['kind'][]): string {
  * and in one window that panel is on stream: never the words, never an item's name (a file name is often the answer).
  */
 export function cardSummary(game: Pick<Game, 'media'>, slide: Slide): string {
-  const lines = cardWords(slide).split('\n').filter((l) => l.trim()).length;
+  const lines = cardWords(slide)
+    .split('\n')
+    .filter((l) => l.trim()).length;
   const items = cardItems(game, slide);
   const out = lines ? [`${lines} line${lines === 1 ? '' : 's'} of words`] : [];
   for (const kind of Object.keys(ITEM_WORDS) as CardItem['kind'][]) {
@@ -780,7 +802,12 @@ export function sentTo(session: Seats, s: Pick<PartnerState, 'sent'>, card: Id):
  * phones as one card per part, and which card each phone has stays as it was sent (partnerCards).
  */
 const sendTo = (s: PartnerState, to: CardTo[]): CardTo[] =>
-  to.map((t) => ({ seat: t.seat, ...(t.member ? { member: { ...t.member } } : {}), ...(t.except?.length ? { except: [...t.except] } : {}), part: partOfTo(s, t) }));
+  to.map((t) => ({
+    seat: t.seat,
+    ...(t.member ? { member: { ...t.member } } : {}),
+    ...(t.except?.length ? { except: [...t.except] } : {}),
+    part: partOfTo(s, t),
+  }));
 
 /** The new send's time: `now`, after any earlier send of the card (each send of it has its own id). */
 function sendAt(s: Pick<PartnerState, 'sent'>, card: Id, now: number): number {

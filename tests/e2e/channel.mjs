@@ -4,7 +4,18 @@
 // desktop app (http://tauri.localhost), not file://.
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
-import { appFile, addClassicRounds, playWithPlayers, failureShots, assert, launchChromium, boardIn, boardTilesIn, hostPanelIn, statusBarIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  playWithPlayers,
+  failureShots,
+  assert,
+  launchChromium,
+  boardIn,
+  boardTilesIn,
+  hostPanelIn,
+  statusBarIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const html = readFileSync(file);
@@ -12,7 +23,7 @@ const server = createServer((req, res) => {
   res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
   res.end(html);
 }).listen(0);
-const port = (/** @type {import('node:net').AddressInfo} */ (server.address())).port;
+const port = /** @type {import('node:net').AddressInfo} */ (server.address()).port;
 const base = `http://127.0.0.1:${port}/index.html`;
 
 const browser = await launchChromium();
@@ -23,7 +34,10 @@ try {
   const lone = await context.newPage();
   await lone.goto(base + '#audience-scores');
   await lone.getByRole('heading', { name: 'Scores window' }).waitFor();
-  assert((await lone.locator('.msg').innerText()).includes('In OBS, capture this window with Window Capture'), 'a viewers’ window opened on its own says to capture it with Window Capture');
+  assert(
+    (await lone.locator('.msg').innerText()).includes('In OBS, capture this window with Window Capture'),
+    'a viewers’ window opened on its own says to capture it with Window Capture',
+  );
   await lone.close();
 
   const host = await context.newPage();
@@ -136,7 +150,10 @@ try {
   await boardIn(aud2).waitFor();
   const clickOnce = host2.getByText('Click the audience window once');
   // (On a busy machine the window can say it may play sound before the ask shows: then there's nothing to click.)
-  const asked = await clickOnce.waitFor({ timeout: 5000 }).then(() => true, () => false);
+  const asked = await clickOnce.waitFor({ timeout: 5000 }).then(
+    () => true,
+    () => false,
+  );
   if (asked) await aud2.mouse.click(400, 300);
   await clickOnce.waitFor({ state: 'detached' });
   await aud2.locator('.activate').waitFor({ state: 'detached' });
@@ -180,7 +197,10 @@ try {
       }),
   );
   const closeScores = hostPanelIn(host2).locator('button[aria-label="Close the scores window"]');
-  assert(foreign.length === 0 && (await closeScores.count()) === 0, `a page the host opened that says hello as the scores window gets nothing (${foreign.join(', ')})`);
+  assert(
+    foreign.length === 0 && (await closeScores.count()) === 0,
+    `a page the host opened that says hello as the scores window gets nothing (${foreign.join(', ')})`,
+  );
   // The real scores window (Shift+A), left open while the host page reloads, is taken back: it knows the page's key.
   const [sc] = await Promise.all([host2.waitForEvent('popup'), host2.keyboard.press('Shift+A')]);
   sc.on('pageerror', (e) => errors.push('[scores] ' + e.message));
@@ -206,7 +226,10 @@ try {
   assert(!aud2.isClosed() && (await boardIn(aud2).count()) === 0, 'Keep & leave: the audience window stays up, under the cover card');
   const audItem = statusBarIn(host2).locator('[data-audience-open]');
   await audItem.waitFor();
-  assert((await audItem.innerText()).includes('“Be right back”'), `the bar over the editor says the audience window is up, on “Be right back” (${await audItem.innerText()})`);
+  assert(
+    (await audItem.innerText()).includes('“Be right back”'),
+    `the bar over the editor says the audience window is up, on “Be right back” (${await audItem.innerText()})`,
+  );
   // ▶ Play and ◀ Back to editor: still there.
   await host2.getByRole('button', { name: '▶ Play' }).click();
   await host2.getByRole('button', { name: '◀ Back to editor' }).click();
@@ -217,7 +240,10 @@ try {
   await statusBarIn(host2).locator('.kept').getByRole('button', { name: 'Discard' }).click();
   await host2.getByRole('alertdialog').getByRole('button', { name: 'Discard' }).click();
   await aud2.locator('.cover-card').waitFor({ state: 'detached' });
-  assert((await aud2.locator('.soon-text').count()) === 1 && (await audItem.innerText()).includes('“Starting soon”'), 'the kept game discarded: Starting soon, there and in the bar');
+  assert(
+    (await aud2.locator('.soon-text').count()) === 1 && (await audItem.innerText()).includes('“Starting soon”'),
+    'the kept game discarded: Starting soon, there and in the bar',
+  );
   // Its ✕ (asked first) closes it.
   await audItem.getByRole('button', { name: 'Close the audience window' }).click();
   await host2.getByRole('alertdialog').getByRole('button', { name: 'Close it' }).click();

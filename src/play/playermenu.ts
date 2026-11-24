@@ -68,13 +68,25 @@ export function playerMenu(h: PlayerMenuHost, id: string): MenuEntry[] {
   const key = n <= 9 ? String(n) : undefined;
   const verbs = h.verbs?.(id) ?? [];
   const extras: MenuEntry[] = [
-    ...(phase === 'rpg' || phase === 'boardgame' ? [{ label: '📺 Show their sheet', onclick: () => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: id }) }] : []),
+    ...(phase === 'rpg' || phase === 'boardgame'
+      ? [{ label: '📺 Show their sheet', onclick: () => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: id }) }]
+      : []),
     ...(phase === 'rpg' ? rpgItems(h, id, p.name) : phase === 'boardgame' ? boardItems(h, id) : []),
   ];
   const phone = h.phone?.(id) ?? null;
   const noPhone = phone?.down ? 'The buzzer room isn’t reachable right now' : 'No phone has their seat';
   const danger: MenuEntry[] = [
-    ...(phone ? [{ label: '⛔ Kick from phone (2 min)…', danger: true, disabled: !phone.on || !!phone.down, hint: phone.on && !phone.down ? 'Takes their seat back from their phone, which can’t take it again for 2 minutes (it asks first)' : noPhone, onclick: phone.kick }] : []),
+    ...(phone
+      ? [
+          {
+            label: '⛔ Kick from phone (2 min)…',
+            danger: true,
+            disabled: !phone.on || !!phone.down,
+            hint: phone.on && !phone.down ? 'Takes their seat back from their phone, which can’t take it again for 2 minutes (it asks first)' : noPhone,
+            onclick: phone.kick,
+          },
+        ]
+      : []),
     ...(h.remove ? [removeItem(h, id)] : []),
   ];
   return [
@@ -95,8 +107,22 @@ export function playerMenu(h: PlayerMenuHost, id: string): MenuEntry[] {
     ...(phone
       ? [
           { sep: true as const },
-          { label: '📱 Free seat (new phone)', disabled: !phone.on || !phone.canFree || !!phone.down, hint: phone.on && !phone.down ? 'They’re on a new phone or browser: free the seat so they can tap their name there. Blocks nobody.' : noPhone, onclick: phone.free },
-          { label: '↩ Let back', disabled: !phone.letBack || !!phone.down, hint: phone.down ? noPhone : phone.letBack ? 'Let the phone you kicked take this seat again now' : 'For a phone kicked off their seat in the last 2 minutes', onclick: phone.letIn },
+          {
+            label: '📱 Free seat (new phone)',
+            disabled: !phone.on || !phone.canFree || !!phone.down,
+            hint: phone.on && !phone.down ? 'They’re on a new phone or browser: free the seat so they can tap their name there. Blocks nobody.' : noPhone,
+            onclick: phone.free,
+          },
+          {
+            label: '↩ Let back',
+            disabled: !phone.letBack || !!phone.down,
+            hint: phone.down
+              ? noPhone
+              : phone.letBack
+                ? 'Let the phone you kicked take this seat again now'
+                : 'For a phone kicked off their seat in the last 2 minutes',
+            onclick: phone.letIn,
+          },
         ]
       : []),
     ...(danger.length ? [{ sep: true as const }, ...danger] : []),
@@ -116,7 +142,9 @@ function removeItem(h: PlayerMenuHost, id: string): MenuEntry {
     label: `🗑 Remove ${noun}…`,
     danger: true,
     disabled: last,
-    hint: last ? `The game needs at least one ${noun}: add another first` : `${team ? 'Its' : 'Their'} points leave the scoreboard (it asks first; 👥 ${team ? 'Teams' : 'Players'} can restore ${team ? 'it' : 'them'})`,
+    hint: last
+      ? `The game needs at least one ${noun}: add another first`
+      : `${team ? 'Its' : 'Their'} points leave the scoreboard (it asks first; 👥 ${team ? 'Teams' : 'Players'} can restore ${team ? 'it' : 'them'})`,
     onclick: () => h.remove!(id),
   };
 }
@@ -160,14 +188,22 @@ export function verdictVerbs(name: string, v: Verdict): MenuEntry[] {
     {
       label: `${yes} ${v.gets}`,
       disabled: v.marked === true,
-      ...(v.marked === true ? { hint: `${name} is marked right on this clue (＋ Award gives more)` } : v.marked === false ? { hint: `Changes ${name}’s ✘ to ✔ (the ✘ taken back)` } : {}),
+      ...(v.marked === true
+        ? { hint: `${name} is marked right on this clue (＋ Award gives more)` }
+        : v.marked === false
+          ? { hint: `Changes ${name}’s ✘ to ✔ (the ✘ taken back)` }
+          : {}),
       ...(v.enter ? { keys: '⏎' } : {}),
       onclick: v.right,
     },
     {
       label: `${no} ${v.loses}`,
       disabled: v.marked === false,
-      ...(v.marked === false ? { hint: `${name} is marked wrong on this clue (− Deduct takes more)` } : v.marked === true ? { hint: `Changes ${name}’s ✔ to ✘ (the ✔ taken back)` } : {}),
+      ...(v.marked === false
+        ? { hint: `${name} is marked wrong on this clue (− Deduct takes more)` }
+        : v.marked === true
+          ? { hint: `Changes ${name}’s ✔ to ✘ (the ✔ taken back)` }
+          : {}),
       ...(v.enter ? { keys: '⇧⏎' } : {}),
       onclick: v.wrong,
     },
@@ -178,7 +214,11 @@ export function verdictVerbs(name: string, v: Verdict): MenuEntry[] {
  * PARTNER UP!: ★ Ann picked it · 🤝 Make Ann the partner, by their number (who picked it first, then the partner), the
  * one that can't be greyed with why. None in any other moment.
  */
-export function partnerUpVerbs(session: Session, id: string, a: { picked: (id: string) => void; partner: (id: string) => void; spinning: boolean }): MenuEntry[] {
+export function partnerUpVerbs(
+  session: Session,
+  id: string,
+  a: { picked: (id: string) => void; partner: (id: string) => void; spinning: boolean },
+): MenuEntry[] {
   const s = session.partner;
   if (session.phase !== 'clue' || !s || s.stage !== 'pick') return [];
   const name = playerName(session, id);
@@ -236,8 +276,14 @@ function rpgItems(h: PlayerMenuHost, id: string, name: string): MenuEntry[] {
   const ownAlready = !!own && own.members.length === group.length && group.every((m) => own.members.includes(m));
   const say = (text: string | null) => text && toast(text);
   return [
-    { label: pos.down ? '💫 Gets up' : '💫 Knocked out', onclick: () => logged(session, `${name} ${pos.down ? 'gets up' : 'is knocked out'}`, () => (st.positions[id].down = !pos.down)) },
-    { label: pos.hidden ? '🫥 Show their avatar' : '🫥 Hide their avatar', onclick: () => logged(session, `${name} ${pos.hidden ? 'shown' : 'hidden'}`, () => (st.positions[id].hidden = !pos.hidden)) },
+    {
+      label: pos.down ? '💫 Gets up' : '💫 Knocked out',
+      onclick: () => logged(session, `${name} ${pos.down ? 'gets up' : 'is knocked out'}`, () => (st.positions[id].down = !pos.down)),
+    },
+    {
+      label: pos.hidden ? '🫥 Show their avatar' : '🫥 Hide their avatar',
+      onclick: () => logged(session, `${name} ${pos.hidden ? 'shown' : 'hidden'}`, () => (st.positions[id].hidden = !pos.hidden)),
+    },
     { sep: true },
     { label: group.length > 1 ? `✂ Split off ${them}` : '✂ Split off (own party)', disabled: ownAlready, onclick: () => say(splitOff(game, session, group)) },
     { label: group.length > 1 ? `🗺 Send ${them} to…` : '🗺 Send to…', onclick: () => h.sendTo(group, them) },

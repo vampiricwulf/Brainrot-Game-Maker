@@ -71,18 +71,19 @@
         dir="auto"
         placeholder="Type what they’ll see…"
         value={slideText(card)}
-        oninput={(e) => setSlideText(card, e.currentTarget.value)}
-      ></textarea>
+        oninput={(e) => setSlideText(card, e.currentTarget.value)}></textarea>
     </label>
   </div>
   <div class="notes">
     <p class="muted small" id="card-name-note-{uid}">
-      For you to pick it by in 🤫 Send a card…: phones never get it. In one window viewers can read it there, next to who
-      you send it to: call it what it’s for (“Mission 1”), never what’s on it.
+      For you to pick it by in 🤫 Send a card…: phones never get it. In one window viewers can read it there, next to who you send it to: call it what it’s for
+      (“Mission 1”), never what’s on it.
     </p>
     <!-- (Always there, so a screen reader hears the line when it shows.) -->
     <div role="status">
-      {#if repeats}<p class="small info" data-name-repeats>ℹ Its name repeats what’s on the card, and in one window viewers can read a card’s name when you send it.</p>{/if}
+      {#if repeats}<p class="small info" data-name-repeats
+          >ℹ Its name repeats what’s on the card, and in one window viewers can read a card’s name when you send it.</p
+        >{/if}
     </div>
   </div>
   <div class="cardbar row" role="group" aria-label="Card “{savedCardName(card, index)}”">
@@ -98,7 +99,8 @@
       class:on={phoneView}
       aria-pressed={phoneView}
       onclick={togglePhone}
-      title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone">📱 On their phone</button
+      title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone"
+      >📱 On their phone</button
     >
   </div>
   <!-- (📱 On their phone sits beside the slide editor, or above its inspector, never over its toolbar or inspector.

@@ -73,7 +73,11 @@ export function pickLabel(usable: readonly UsableChoice[], id: Id | null | undef
 }
 
 /** How many of `players` picked each choice (by place), and how many answered something that names none (`other`). */
-export function choiceCounts(players: readonly Id[], answers: Readonly<Record<Id, { text: string; pick?: Id }>>, usable: readonly UsableChoice[]): { counts: number[]; other: number } {
+export function choiceCounts(
+  players: readonly Id[],
+  answers: Readonly<Record<Id, { text: string; pick?: Id }>>,
+  usable: readonly UsableChoice[],
+): { counts: number[]; other: number } {
   const counts = usable.map(() => 0);
   let other = 0;
   for (const id of players) {

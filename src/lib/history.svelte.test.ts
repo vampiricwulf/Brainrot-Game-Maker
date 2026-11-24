@@ -412,7 +412,9 @@ describe('undo history: named steps', () => {
     const e = history.entries[history.entries.length - 1];
     expect(e).toMatchObject({ label: 'Moved card “Third” up', where: 'Cards', place: { tab: 'cards', card: 'sc2' }, undoPlace: { tab: 'cards', card: 'sc2' } });
     // (A round's rows: its changes still say where.)
-    step('Renamed a category', () => (board(g).categories[0].title = 'Memes'), { place: { tab: 'round', round: g.rounds[0].id, part: { kind: 'category', category: 'zz' } } });
+    step('Renamed a category', () => (board(g).categories[0].title = 'Memes'), {
+      place: { tab: 'round', round: g.rounds[0].id, part: { kind: 'category', category: 'zz' } },
+    });
     expect(history.entries[history.entries.length - 1].where).toBe('Jeopardy! › Memes');
   });
 
@@ -797,7 +799,9 @@ describe('undo history: 🗜 copies for phones', () => {
       g.media.push(gif());
       applyPhoneCopy(g, 'gif', made('c1'));
     });
-    await stepAsync('Replaced file “dance.gif” with “other.gif”', () => replaceMediaFile(g, 'gif', new File(['GIF89a new'], 'other.gif', { type: 'image/gif' })));
+    await stepAsync('Replaced file “dance.gif” with “other.gif”', () =>
+      replaceMediaFile(g, 'gif', new File(['GIF89a new'], 'other.gif', { type: 'image/gif' })),
+    );
     expect(copies()).toEqual([]);
     expect(history.entries.at(-1)?.label).toBe('Replaced file “dance.gif” with “other.gif”');
     undo();

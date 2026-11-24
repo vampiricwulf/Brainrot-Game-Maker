@@ -51,7 +51,9 @@
       // (Not worked out yet: soon.)
       if (verdictOf(r.id) === undefined) checkSoon(r.id, game);
       const blob = getBlob(r.id);
-      r.facts = blob ? await readFacts(blob, { duration: 'compute' }) : { box: null, seconds: null, size: 0, video: null, audio: null, moreAudio: 0, subtitles: false };
+      r.facts = blob
+        ? await readFacts(blob, { duration: 'compute' })
+        : { box: null, seconds: null, size: 0, video: null, audio: null, moreAudio: 0, subtitles: false };
     }
   });
 
@@ -113,7 +115,12 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="convert-title" use:modal={{ esc: onclose }} data-undo="off">
     <div class="modal-head">
       <h2 class="modal-title" id="convert-title">{title}</h2>
-      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title={working ? 'Close: it carries on (the header shows how far it got)' : 'Close (Esc)'}>✕</button>
+      <button
+        class="ghost modal-x"
+        onclick={onclose}
+        aria-label="Close"
+        title={working ? 'Close: it carries on (the header shows how far it got)' : 'Close (Esc)'}>✕</button
+      >
     </div>
     <ul class="rows">
       {#each rows as r (r.id)}
@@ -124,7 +131,9 @@
           <li data-convert-row={r.id}>
             <label>
               {#if p && !r.job}<input type="checkbox" bind:checked={r.on} aria-label="Convert {m.name}" />{/if}
-              <span>{ICON[m.kind]} <b>{m.name}</b>{#if r.facts?.seconds}{' '}· {lengthText(r.facts.seconds)}{/if} · {formatBytes(m.size)}</span>
+              <span
+                >{ICON[m.kind]} <b>{m.name}</b>{#if r.facts?.seconds}{' '}· {lengthText(r.facts.seconds)}{/if} · {formatBytes(m.size)}</span
+              >
             </label>
             {#if r.job}
               <div><JobProgress job={r.job} compact /></div>

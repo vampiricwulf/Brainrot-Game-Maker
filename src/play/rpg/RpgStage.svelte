@@ -19,7 +19,18 @@
   import { activeParty, DIR_VEC, findIn, focusRef, neverShown, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { wornItems } from '../../lib/toolset';
   import { boxNext, dragGhost, dropHover, dropTarget } from '../dragdrop.svelte';
-  import { avatarRange, avatarSpot, fillsScreen, groupDelta, objectName, objectRange, wayOffEdge, type AvatarDrop, type BandPick, type GroupItem } from './hostops';
+  import {
+    avatarRange,
+    avatarSpot,
+    fillsScreen,
+    groupDelta,
+    objectName,
+    objectRange,
+    wayOffEdge,
+    type AvatarDrop,
+    type BandPick,
+    type GroupItem,
+  } from './hostops';
   import MapView from './MapView.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
   import StatsStrip from './StatsStrip.svelte';
@@ -95,9 +106,7 @@
   });
   const split = $derived(panes.length > 1);
   const party = $derived(st ? activeParty(st) : undefined);
-  const stripPlayers = $derived(
-    session.players.length > 12 && party ? session.players.filter((p) => party.members.includes(p.id)) : session.players,
-  );
+  const stripPlayers = $derived(session.players.length > 12 && party ? session.players.filter((p) => party.members.includes(p.id)) : session.players);
   const bar = $derived(game.theme?.scoreBar ?? 'bottom');
   const placeCaption = $derived(!!game.settings.stream?.placeCaption);
   const music = $derived.by(() => {
@@ -210,7 +219,19 @@
     // Alt (or the menu's ▭ Select in a box): a box, even from a player. (A click is still a click on them.)
     if ((e.altKey || boxNext.on) && boxOK(e) && pressOn(e, { kind: 'avatar', id })) return;
     capture(e);
-    drag = { kind: 'avatar', id, sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y, x: pos.x, y: pos.y, moved: false, pick: false, ...withGroup('avatar', id) };
+    drag = {
+      kind: 'avatar',
+      id,
+      sx: e.clientX,
+      sy: e.clientY,
+      ox: pos.x,
+      oy: pos.y,
+      x: pos.x,
+      y: pos.y,
+      moved: false,
+      pick: false,
+      ...withGroup('avatar', id),
+    };
   }
 
   /** What a dragged avatar is over: a screen (on a map, or another split-view pane) or a party chip, else its own pane. */
@@ -333,7 +354,8 @@
   }
 
   /** The player a dragged item or pile of currency is over (their avatar, or their card on the stats strip). */
-  const pickerOver = (e: PointerEvent) => (drag?.pick ? dropTarget(e.clientX, e.clientY, '[data-player-id]', e.currentTarget as Element)?.dataset.playerId : undefined);
+  const pickerOver = (e: PointerEvent) =>
+    drag?.pick ? dropTarget(e.clientX, e.clientY, '[data-player-id]', e.currentTarget as Element)?.dataset.playerId : undefined;
 
   function objMove(e: PointerEvent): void {
     if (drag?.kind !== 'object') return;
@@ -363,7 +385,16 @@
    * spot (`from` null), or on an avatar or object (Alt, ▭ Select in a box, or one that doesn't move) where it's a click
    * when it doesn't. `keys`: Shift, Ctrl or ⌘ held; `add`: the box adds to the selection (those keys, or a touch).
    */
-  type Press = { id: number; sx: number; sy: number; touch: boolean; keys: boolean; add: boolean; box: boolean; from: { kind: 'avatar' | 'object'; id: string } | null };
+  type Press = {
+    id: number;
+    sx: number;
+    sy: number;
+    touch: boolean;
+    keys: boolean;
+    add: boolean;
+    box: boolean;
+    from: { kind: 'avatar' | 'object'; id: string } | null;
+  };
   let press: Press | null = null;
   /** The box being drawn, in the window's coordinates, and what it can catch (the drawn targets, as they were when it began). */
   let band = $state<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
@@ -373,7 +404,8 @@
   let flashTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** A box starts on a screen, never on the stats strip or the map on stream, under ⏸ Cover, nor while ✎ Edit screen or a window is open over the game. */
-  const boxOK = (e: PointerEvent) => !app.live.cover && !app.editGame && !document.querySelector('.modal[role="dialog"]') && !!(e.target as Element).closest?.('.pane');
+  const boxOK = (e: PointerEvent) =>
+    !app.live.cover && !app.editGame && !document.querySelector('.modal[role="dialog"]') && !!(e.target as Element).closest?.('.pane');
 
   /** A press that may become a box (or stays a click). False when it isn't the host's left button. */
   function pressOn(e: PointerEvent, from: Press['from']): boolean {
@@ -417,7 +449,12 @@
   function tell(phase: BandPick['phase']): void {
     const b = band;
     const got = b ? caughtBy(targets, { x: b.x0, y: b.y0 }, { x: b.x1, y: b.y1 }).map((t) => t.id) : [];
-    onband?.({ players: got.filter((t) => t.startsWith('p:')).map((t) => t.slice(2)), objects: got.filter((t) => t.startsWith('o:')).map((t) => t.slice(2)), add: !!press?.add, phase });
+    onband?.({
+      players: got.filter((t) => t.startsWith('p:')).map((t) => t.slice(2)),
+      objects: got.filter((t) => t.startsWith('o:')).map((t) => t.slice(2)),
+      add: !!press?.add,
+      phase,
+    });
   }
 
   function bandMove(e: PointerEvent): void {
@@ -481,7 +518,12 @@
     if (!band || !rpgEl) return null;
     const r = rpgEl.getBoundingClientRect();
     const k = r.width ? rpgEl.offsetWidth / r.width : 1;
-    return { left: (Math.min(band.x0, band.x1) - r.left) * k, top: (Math.min(band.y0, band.y1) - r.top) * k, width: Math.abs(band.x1 - band.x0) * k, height: Math.abs(band.y1 - band.y0) * k };
+    return {
+      left: (Math.min(band.x0, band.x1) - r.left) * k,
+      top: (Math.min(band.y0, band.y1) - r.top) * k,
+      width: Math.abs(band.x1 - band.x0) * k,
+      height: Math.abs(band.y1 - band.y0) * k,
+    };
   });
   /** One window: outlined on the stage (the box's catch while it's drawn and a moment after, or the group a pressed member drags). */
   const outlined = (kind: 'players' | 'objects', id: string) =>
@@ -582,38 +624,48 @@
 >
   {#if world && st}
     <div class="play-area" class:eases={fitEases} style:transform="translate({area.x}px, {area.y}px) scale({area.scale})">
-    {#each panes as ref, i (ref.screen)}
-      {@const found = findIn(world, ref)}
-      {#if found}
-        <!-- Its screen: the host's right-click or drop puts things on the screen under the pointer. -->
-        <div
-          class="pane"
-          class:drop-on={dropHover.at === `screen:${ref.screen}`}
-          style:transform={split ? paneAt(i, panes.length) : undefined}
-          data-map={ref.map}
-          data-screen={ref.screen}
-        >
-          {#key ref.screen}
-            <div class="screen" in:enter={{ map: ref.map }}>{@render screenPane(ref, found.screen)}</div>
-          {/key}
-          {#if split}
-            <div class="pane-label">
-              {st.parties.find((pt) => pt.members.some((m) => st.positions[m]?.screen === ref.screen))?.name ?? ''}
-              {#if hostCopy || placeCaption}· {found.screen.name}{/if}
-            </div>
-          {:else if placeCaption}
-            <!-- Where the party is, for viewers (an option on the pre-game screen). -->
-            <div class="pane-label place" class:low={bar === 'top'}>📍 {found.screen.name}</div>
-          {/if}
-        </div>
-      {/if}
-    {/each}
+      {#each panes as ref, i (ref.screen)}
+        {@const found = findIn(world, ref)}
+        {#if found}
+          <!-- Its screen: the host's right-click or drop puts things on the screen under the pointer. -->
+          <div
+            class="pane"
+            class:drop-on={dropHover.at === `screen:${ref.screen}`}
+            style:transform={split ? paneAt(i, panes.length) : undefined}
+            data-map={ref.map}
+            data-screen={ref.screen}
+          >
+            {#key ref.screen}
+              <div class="screen" in:enter={{ map: ref.map }}>{@render screenPane(ref, found.screen)}</div>
+            {/key}
+            {#if split}
+              <div class="pane-label">
+                {st.parties.find((pt) => pt.members.some((m) => st.positions[m]?.screen === ref.screen))?.name ?? ''}
+                {#if hostCopy || placeCaption}· {found.screen.name}{/if}
+              </div>
+            {:else if placeCaption}
+              <!-- Where the party is, for viewers (an option on the pre-game screen). -->
+              <div class="pane-label place" class:low={bar === 'top'}>📍 {found.screen.name}</div>
+            {/if}
+          </div>
+        {/if}
+      {/each}
     </div>
     {#if bandBox}
-      <div class="band" class:mirror={hostCopy} style:left="{bandBox.left}px" style:top="{bandBox.top}px" style:width="{bandBox.width}px" style:height="{bandBox.height}px" aria-hidden="true"></div>
+      <div
+        class="band"
+        class:mirror={hostCopy}
+        style:left="{bandBox.left}px"
+        style:top="{bandBox.top}px"
+        style:width="{bandBox.width}px"
+        style:height="{bandBox.height}px"
+        aria-hidden="true"
+      ></div>
     {/if}
     {#if bar !== 'hidden'}
-      <div class="strip bar-{bar}" bind:this={stripEl} bind:clientHeight={stripH}><StatsStrip {game} {session} players={stripPlayers} host={!!onavatar} draggable={!!onavatar} /></div>
+      <div class="strip bar-{bar}" bind:this={stripEl} bind:clientHeight={stripH}
+        ><StatsStrip {game} {session} players={stripPlayers} host={!!onavatar} draggable={!!onavatar} /></div
+      >
     {/if}
     {#if st.mapShown}
       <div class="map-ov bar-{bar}" style:--strip="{stripH}px" transition:fade={{ duration: 200 }}>
@@ -672,7 +724,10 @@
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.7);
     color: #fff;
-    font: 48px 'Anton', 'Oswald', sans-serif;
+    font:
+      48px 'Anton',
+      'Oswald',
+      sans-serif;
   }
   .pane-label.place {
     z-index: 20;
@@ -735,7 +790,10 @@
     background: rgba(0, 0, 0, 0.75);
     border: 3px solid #ffcc00;
     color: #fff;
-    font: 30px 'Anton', 'Oswald', sans-serif;
+    font:
+      30px 'Anton',
+      'Oswald',
+      sans-serif;
     white-space: nowrap;
     z-index: 5500;
     pointer-events: none;

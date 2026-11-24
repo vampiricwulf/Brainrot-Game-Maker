@@ -51,14 +51,16 @@
     if (!n) return;
     // Stopped at its Stop at: it plays again from its start, not on into the part it cuts off.
     if (range.end && n.currentTime >= range.end - 0.05) n.currentTime = start();
-    sinkReady.then(() => n.play()).catch((err: DOMException) => {
-      // Autoplay with sound blocked: fall back to muted playback and tell the host.
-      if (err?.name === 'NotAllowedError' && !n.muted) {
-        n.muted = true;
-        updateMedia(el.id, { blocked: true, muted: true });
-        n.play().catch(() => updateMedia(el.id, { paused: true }));
-      }
-    });
+    sinkReady
+      .then(() => n.play())
+      .catch((err: DOMException) => {
+        // Autoplay with sound blocked: fall back to muted playback and tell the host.
+        if (err?.name === 'NotAllowedError' && !n.muted) {
+          n.muted = true;
+          updateMedia(el.id, { blocked: true, muted: true });
+          n.play().catch(() => updateMedia(el.id, { paused: true }));
+        }
+      });
   }
 
   /** When the slide appeared: an item's entrance delay counts from then. */
@@ -98,7 +100,8 @@
       const there = role === 'single' && mutedFor.split('|')[1] === 'mirror' ? untrack(() => remoteMedia[el.id]) : undefined;
       node.muted = mode === 'edit' || role === 'mirror' || (there ? there.muted && !there.blocked : el.muted);
       // The host's controls and keys go to the copy with the sound (the host's own, once the audience window closes).
-      const n = node, r = role;
+      const n = node,
+        r = role;
       if (mode === 'play')
         untrack(() => {
           setMediaRole(el.id, r);
@@ -222,8 +225,18 @@
     </button>
   {/if}
 {:else if isAudio}
-  <audio bind:this={node} {src} preload="auto" onloadedmetadata={onmeta} ontimeupdate={ontime} onended={onended}
-    onplay={onstate} onpause={onstate} onvolumechange={onstate} onerror={onerror}></audio>
+  <audio
+    bind:this={node}
+    {src}
+    preload="auto"
+    onloadedmetadata={onmeta}
+    ontimeupdate={ontime}
+    {onended}
+    onplay={onstate}
+    onpause={onstate}
+    onvolumechange={onstate}
+    {onerror}
+  ></audio>
   {#if showIcon && clickable}
     <button
       class="icon"
@@ -231,8 +244,8 @@
       onpointerdown={(e) => e.stopPropagation()}
       onclick={toggle}
       title={`${playing ? 'Pause' : 'Play'} ${label}`}
-      aria-label={`${playing ? 'Pause' : 'Play'} ${label}`}
-    >{playing && role === 'mirror' ? '⏸' : '🔊'}</button>
+      aria-label={`${playing ? 'Pause' : 'Play'} ${label}`}>{playing && role === 'mirror' ? '⏸' : '🔊'}</button
+    >
   {:else if showIcon}
     <div class="icon" class:ghost={mode === 'edit' && el.kind === 'audio' && !el.visible} title={label}>🔊</div>
   {/if}
@@ -247,11 +260,11 @@
     preload={mode === 'edit' ? 'metadata' : 'auto'}
     onloadedmetadata={onmeta}
     ontimeupdate={ontime}
-    onended={onended}
+    {onended}
     onplay={onstate}
     onpause={onstate}
     onvolumechange={onstate}
-    onerror={onerror}
+    {onerror}
     class:clickable
     onpointerdown={clickable ? (e) => e.stopPropagation() : undefined}
     onclick={clickable ? toggle : undefined}

@@ -9,7 +9,26 @@ import { forgetGameParts, redoAction, stepText, undoAction } from '../../lib/too
 import { runAction, type CardOffer } from '../../lib/actions';
 import { PLAYER_WHEEL, textSlide, type Action } from '../../lib/model';
 import { prefs } from '../../lib/prefs.svelte';
-import { actsShown, landingRan, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, reorderTurns, revealSpace, rollMover, runLanding, runSpace, sendNow, setTurn, spaceActText, stepWaysHint, turnNow } from './bgops';
+import {
+  actsShown,
+  landingRan,
+  moveCounts,
+  moveNow,
+  moverResult,
+  moverSliceNoNumber,
+  moverSliceWords,
+  offBoard,
+  reorderTurns,
+  revealSpace,
+  rollMover,
+  runLanding,
+  runSpace,
+  sendNow,
+  setTurn,
+  spaceActText,
+  stepWaysHint,
+  turnNow,
+} from './bgops';
 import { describeStep, undo } from '../../lib/session';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
@@ -232,7 +251,9 @@ describe('board game: the host’s moves on the stage', () => {
     s5.onLand = [{ id: 'k', do: 'steps', steps: -2 }];
     sendNow(game, session, ['a'], { space: s5.id });
     expect(runSpace(game, session, newLive(), s5, ['a'], 'onLand', true)).toBe('Space 5: Back 2 spaces: Ann · Landed on ? (secret)');
-    expect(runAction({ game, session, live: newLive(), board: round, bs: bs(), hide: true, selected: [], chosen: ['b'] }, { id: 'f', do: 'steps', steps: 2 })).toBe('Forward 2 spaces: Bob · Landed on ? (secret)');
+    expect(
+      runAction({ game, session, live: newLive(), board: round, bs: bs(), hide: true, selected: [], chosen: ['b'] }, { id: 'f', do: 'steps', steps: 2 }),
+    ).toBe('Forward 2 spaces: Bob · Landed on ? (secret)');
     // A Send to there: the button, its toast and the log.
     s5.onLand = [{ id: 'g', do: 'goto', space: trap.id, who: 'ask' }];
     expect(runSpace(game, session, newLive(), s5, ['c'], 'onLand', true)).toBe('Space 5: Send to ? (secret): Cat');
@@ -251,7 +272,10 @@ describe('board game: the host’s moves on the stage', () => {
     const trap = Object.assign(round.spaces[2], {
       name: 'Trap Door',
       secret: true,
-      onLand: [{ id: 'p', do: 'score', amount: -100, who: 'party' }, { id: 'n', do: 'note', text: 'Trap door! They fall to the Dungeon' }] as Action[],
+      onLand: [
+        { id: 'p', do: 'score', amount: -100, who: 'party' },
+        { id: 'n', do: 'note', text: 'Trap door! They fall to the Dungeon' },
+      ] as Action[],
     });
     expect(actsShown(bs(), trap, trap.onLand, true).map((a) => a.do)).toEqual(['score']);
     // (Two windows: viewers don't see the panel.)
@@ -292,11 +316,16 @@ describe('board game: the host’s moves on the stage', () => {
     const ctx = { game, session, live: newLive(), board: round, bs: bs(), selected: [], chosen: ['b'], offerCard: (o: CardOffer) => offers.push(o) };
     expect(runAction(ctx, card, ...spaceActText(game, bs(), trap, card, 'land', false))).toBe('Trap Door: 🤫 Card for whoever landed there');
     expect(offers[0]).toMatchObject({ from: 'Trap Door: 🤫 Card for whoever landed there', quiet: '? (secret): 🤫 Card for whoever landed there' });
-    expect(runAction({ ...ctx, hide: true }, card, ...spaceActText(game, bs(), trap, card, 'land', false))).toBe('? (secret): 🤫 Card for whoever landed there');
+    expect(runAction({ ...ctx, hide: true }, card, ...spaceActText(game, bs(), trap, card, 'land', false))).toBe(
+      '? (secret): 🤫 Card for whoever landed there',
+    );
     // A space named for what it does says it once; a secret one not revealed keeps its “? (secret)”.
     const again: Action = { id: 'r', do: 'again' };
     expect(spaceActText(game, bs(), Object.assign(round.spaces[6], { name: 'Roll again' }), again, 'land', false)).toEqual(['Roll again', 'Roll again']);
-    expect(spaceActText(game, bs(), Object.assign(round.spaces[7], { name: 'Roll again', secret: true }), again, 'land', false)).toEqual(['Roll again', '? (secret): Roll again']);
+    expect(spaceActText(game, bs(), Object.assign(round.spaces[7], { name: 'Roll again', secret: true }), again, 'land', false)).toEqual([
+      'Roll again',
+      '? (secret): Roll again',
+    ]);
     // Revealing it: its step says so without the name (an Undo hides it again).
     revealSpace(session, bs(), trap);
     expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Reveal ? (secret)');
@@ -388,12 +417,19 @@ describe('board game: the host’s moves on the stage', () => {
 
   it('after “Resume with my edits”, the steps forget the boards and screens they kept (Undo leaves the edits alone)', () => {
     const { session } = playing();
-    session.actionLog = [{ id: 's', ts: 0, text: 'x', before: JSON.stringify({ 'board:r': { spaces: [] }, 'screen:w/m/s': {}, 'map:w/m': {}, stats: { a: 1 } }), after: JSON.stringify({ 'board:r': { spaces: [1] }, stats: { a: 2 } }) }];
+    session.actionLog = [
+      {
+        id: 's',
+        ts: 0,
+        text: 'x',
+        before: JSON.stringify({ 'board:r': { spaces: [] }, 'screen:w/m/s': {}, 'map:w/m': {}, stats: { a: 1 } }),
+        after: JSON.stringify({ 'board:r': { spaces: [1] }, stats: { a: 2 } }),
+      },
+    ];
     forgetGameParts(session);
     expect(JSON.parse(session.actionLog[0].before)).toEqual({ stats: { a: 1 } });
     expect(JSON.parse(session.actionLog[0].after!)).toEqual({ stats: { a: 2 } });
   });
-
 
   it('runs a space’s landing actions for some players as one step', () => {
     const { game, session, round } = playing();
@@ -404,7 +440,12 @@ describe('board game: the host’s moves on the stage', () => {
       { id: 'y', do: 'score', amount: 50, who: 'ask' },
     ];
     runSpace(game, session, newLive(), sp, ['a', 'b']);
-    expect(session.scoreLog.map((e) => [e.playerId, e.delta])).toEqual([['a', 100], ['b', 100], ['a', 50], ['b', 50]]);
+    expect(session.scoreLog.map((e) => [e.playerId, e.delta])).toEqual([
+      ['a', 100],
+      ['b', 100],
+      ['a', 50],
+      ['b', 50],
+    ]);
     expect(session.actionLog?.at(-1)?.text).toBe('Space 3: +$100, +$50');
     // One Undo takes the lot back.
     undoAction(session, game);
@@ -413,8 +454,7 @@ describe('board game: the host’s moves on the stage', () => {
 
   it('moves players by some spaces, makes them miss turns and lets them roll again, each undoable', () => {
     const { game, session, round, bs } = playing();
-    const run = (a: Action, chosen: string[] = []) =>
-      runAction({ game, session, live: newLive(), board: round, bs: bs(), selected: [], chosen }, a);
+    const run = (a: Action, chosen: string[] = []) => runAction({ game, session, live: newLive(), board: round, bs: bs(), selected: [], chosen }, a);
     // Ann is on Start; forward 3 then back 1 (unset who: whoever's turn it is).
     expect(run({ id: '1', do: 'steps', steps: 3 })).toBe('Forward 3 spaces: Ann · Landed on Space 4');
     expect(bs().positions.a).toEqual({ space: round.spaces[3].id });
@@ -498,7 +538,10 @@ describe('board game: the host’s moves on the stage', () => {
     const { game, session, round } = playing();
     const thief = Object.assign(round.spaces[1], {
       name: 'Thief',
-      onLand: [{ id: 't', do: 'score', amount: -100, who: 'selected' }, { id: 'g', do: 'score', amount: 50, who: 'ask' }] as Action[],
+      onLand: [
+        { id: 't', do: 'score', amount: -100, who: 'selected' },
+        { id: 'g', do: 'score', amount: 50, who: 'ask' },
+      ] as Action[],
     });
     moveNow(game, session, 1);
     // Ann landed; the host picked Bob (2), as the landing box's own −$100 button would take it from Bob.

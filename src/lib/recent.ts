@@ -169,7 +169,10 @@ export async function readRecent(key: string): Promise<RecentGame | null> {
 /** Stop keeping a game (it was reopened, or forgotten from the list). */
 export async function forgetRecent(key: string): Promise<void> {
   try {
-    await set(LIST_KEY, (await listRecent()).filter((e) => e.key !== key));
+    await set(
+      LIST_KEY,
+      (await listRecent()).filter((e) => e.key !== key),
+    );
     await del(gameKey(key));
   } catch {
     /* it stays listed: reopening it again is harmless */
@@ -180,4 +183,3 @@ export async function forgetRecent(key: string): Promise<void> {
 export async function recentMedia(): Promise<string[]> {
   return (await listRecent()).flatMap((e) => e.media ?? []);
 }
-

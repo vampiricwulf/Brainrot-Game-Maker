@@ -4,7 +4,33 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, startNewGame, stepButton, assert, launchChromium, section, confirmStrip, hostPanelIn, roundTabsIn, stageBoxIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  addClassicRounds,
+  answerReplace,
+  checkItem,
+  dragBy,
+  goOnCheck,
+  mainButton,
+  mainLabel,
+  menuLines,
+  openGameFile,
+  openMenu,
+  playWithPlayers,
+  png,
+  leaveAnswer,
+  startNewGame,
+  stepButton,
+  assert,
+  launchChromium,
+  section,
+  confirmStrip,
+  hostPanelIn,
+  roundTabsIn,
+  stageBoxIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -51,8 +77,20 @@ try {
     // ＋ Add, then 🗑 Delete space last.
     const order = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
     const at = (x) => order.findIndex((t) => t.startsWith(x));
-    const want = ['🔗 Connect to…', '🏁 Make it the start', '✎ Rename', '⧉ Duplicate space', '📋 Copy space', '📋 Paste', '＋ Add a space after it', '🗑 Delete space'].map(at);
-    assert(want.every((n, i) => n >= 0 && (i === 0 || n > want[i - 1])) && order.at(-1).startsWith('🗑 Delete space'), `a space's menu goes in the one order (${order.join(' | ')})`);
+    const want = [
+      '🔗 Connect to…',
+      '🏁 Make it the start',
+      '✎ Rename',
+      '⧉ Duplicate space',
+      '📋 Copy space',
+      '📋 Paste',
+      '＋ Add a space after it',
+      '🗑 Delete space',
+    ].map(at);
+    assert(
+      want.every((n, i) => n >= 0 && (i === 0 || n > want[i - 1])) && order.at(-1).startsWith('🗑 Delete space'),
+      `a space's menu goes in the one order (${order.join(' | ')})`,
+    );
   }
   await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete space' }).click();
   assert((await spaces.count()) === 12, 'and delete it');
@@ -63,7 +101,11 @@ try {
   const acts = page.locator('.side [data-space-actions]');
   await acts.waitFor();
   const actNames = (await acts.getByRole('button').allInnerTexts()).map((t) => t.trim());
-  const [nameAt, actsAt, kindAt] = await Promise.all([page.getByLabel('Space name').boundingBox(), acts.boundingBox(), page.locator('.side [data-space-kind]').boundingBox()]);
+  const [nameAt, actsAt, kindAt] = await Promise.all([
+    page.getByLabel('Space name').boundingBox(),
+    acts.boundingBox(),
+    page.locator('.side [data-space-kind]').boundingBox(),
+  ]);
   assert(
     (await spaces.count()) === 13 &&
       (await page.getByLabel('Space name').inputValue()) === 'Space 13' &&
@@ -101,14 +143,20 @@ try {
   assert((await undoTitle()).includes('Connected Space 13 → Space 2'), `→ Connect to a space… connects it, named as in play (${await undoTitle()})`);
   await page.getByRole('button', { name: 'Disconnect Space 13 from Space 2' }).click();
   assert((await undoTitle()).includes('Disconnected Space 13 → Space 2'), 'and its ✂ disconnects it');
-  const hit = await page.locator('.canvas line.hit').first().evaluate((e) => [e.getAttribute('data-link'), +e.getAttribute('x1'), +e.getAttribute('y1'), +e.getAttribute('x2'), +e.getAttribute('y2')]);
+  const hit = await page
+    .locator('.canvas line.hit')
+    .first()
+    .evaluate((e) => [e.getAttribute('data-link'), +e.getAttribute('x1'), +e.getAttribute('y1'), +e.getAttribute('x2'), +e.getAttribute('y2')]);
   const k = canvasBox.width / 1920;
   await page.mouse.click(canvasBox.x + ((hit[1] + hit[3]) / 2) * k, canvasBox.y + ((hit[2] + hit[4]) / 2) * k);
   assert((await page.locator('[data-picked-link]').getAttribute('data-picked-link')) === hit[0], 'a click on a link picks it');
   assert(await page.locator('.side [data-edit-link]').isVisible(), 'and its card shows beside the board');
   const linksBefore = await page.locator('.canvas line.hit').count();
   await page.keyboard.press('Delete');
-  assert((await page.locator('.canvas line.hit').count()) === linksBefore - 1 && (await page.locator('[data-picked-link]').count()) === 0, 'Delete disconnects the picked link');
+  assert(
+    (await page.locator('.canvas line.hit').count()) === linksBefore - 1 && (await page.locator('[data-picked-link]').count()) === 0,
+    'Delete disconnects the picked link',
+  );
   assert((await page.locator('.history-notice').innerText()).startsWith('Disconnected'), 'with a note that offers Undo');
   await page.locator('.history-notice').getByRole('button', { name: '↶ Undo' }).click();
   await space('Space 13').dblclick();
@@ -125,11 +173,17 @@ try {
   await (await iconFile).setFiles({ name: 'icon.png', mimeType: 'image/png', buffer: png(200, 40, 40) });
   const iconImg = space('Space 4').locator('img');
   await iconImg.waitFor();
-  assert(await page.locator('.side').getByRole('button', { name: '⌫ Take off icon' }).isVisible(), 'the picture icon is taken off with a button named as an action');
+  assert(
+    await page.locator('.side').getByRole('button', { name: '⌫ Take off icon' }).isVisible(),
+    'the picture icon is taken off with a button named as an action',
+  );
   const iconAt = await space('Space 4').boundingBox();
   await dragBy(page, iconImg, { x: iconAt.x + iconAt.width / 2 + 80, y: iconAt.y + iconAt.height / 2 + 60 });
   const iconTo = await space('Space 4').boundingBox();
-  assert(iconTo.x - iconAt.x > 40 && iconTo.y - iconAt.y > 30, `a space is dragged by its picture (${Math.round(iconAt.x)},${Math.round(iconAt.y)} → ${Math.round(iconTo.x)},${Math.round(iconTo.y)})`);
+  assert(
+    iconTo.x - iconAt.x > 40 && iconTo.y - iconAt.y > 30,
+    `a space is dragged by its picture (${Math.round(iconAt.x)},${Math.round(iconAt.y)} → ${Math.round(iconTo.x)},${Math.round(iconTo.y)})`,
+  );
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
   await space('Space 4').locator('img').waitFor({ state: 'detached' });
@@ -153,22 +207,35 @@ try {
   // The space just clicked (focused by the mouse) shows its dashed selection ring.
   const selRing = await space('Space 6').evaluate((el) => [document.activeElement === el, el.classList.contains('sel'), getComputedStyle(el).outlineStyle]);
   assert(selRing[0] && selRing[1] && selRing[2] === 'dashed', `the clicked space shows it is selected (${selRing.join(', ')})`);
-  const addLabels = await page.locator('.side .actions').getByRole('button', { name: /＋ Add button/ }).allInnerTexts();
-  assert(addLabels.join('|') === '＋ Add button (when passed)|＋ Add button (when landed on)', `the space’s two ＋ Add buttons say which they are (${addLabels.join(' | ')})`);
+  const addLabels = await page
+    .locator('.side .actions')
+    .getByRole('button', { name: /＋ Add button/ })
+    .allInnerTexts();
+  assert(
+    addLabels.join('|') === '＋ Add button (when passed)|＋ Add button (when landed on)',
+    `the space’s two ＋ Add buttons say which they are (${addLabels.join(' | ')})`,
+  );
   // Make it a…: a kind of space fills in its landing buttons, its color and an emoji in it.
   await space('Space 6').click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '⏭ Skip a turn' }).click();
   assert((await undoTitle()).includes('Made “Space 6” a Skip a turn space'), `right-click → Make it a… ⏭ Skip a turn is one named step (${await undoTitle()})`);
-  assert((await page.getByLabel('Space name').inputValue()) === 'Skip a turn' && (await space('Skip a turn').locator('.mark').innerText()) === '⏭', 'it takes the kind’s name and shows ⏭ in its circle');
   assert(
-    (await page.locator('.side [data-show-name]').isChecked()) && (await page.locator('.canvas .label:not([data-name-hidden])').allInnerTexts()).includes('Skip a turn'),
+    (await page.getByLabel('Space name').inputValue()) === 'Skip a turn' && (await space('Skip a turn').locator('.mark').innerText()) === '⏭',
+    'it takes the kind’s name and shows ⏭ in its circle',
+  );
+  assert(
+    (await page.locator('.side [data-show-name]').isChecked()) &&
+      (await page.locator('.canvas .label:not([data-name-hidden])').allInnerTexts()).includes('Skip a turn'),
     'and its name shows on the board (“Show name on the board” ticked): viewers can tell what it is',
   );
   assert((await page.locator('.side [data-space-kind]').inputValue()) === 'skip', 'its card’s Make it a… box says which kind it is');
   assert((await page.locator('.side .actions').nth(1).innerText()).includes('Skip'), 'and skipping a turn is its landing button');
   // A space's buttons are for whoever landed there (or passes it): the host isn't asked who.
   const askOption = (list) => page.locator('.side .actions').nth(list).getByLabel('Who').first().locator('option[value="ask"]').innerText();
-  assert((await askOption(1)) === 'Whoever landed there', `a landing button's Who box says “Whoever landed there”, not “Host picks who” (${await askOption(1)})`);
+  assert(
+    (await askOption(1)) === 'Whoever landed there',
+    `a landing button's Who box says “Whoever landed there”, not “Host picks who” (${await askOption(1)})`,
+  );
   await space('Space 8').click();
   await page.locator('.side [data-space-kind]').selectOption('shop');
   assert((await space('Shop').locator('.mark').innerText()) === '🛒', 'Make it a… 🛒 Shop in the space’s card');
@@ -180,7 +247,11 @@ try {
   await space('Space 4').click();
   await page.locator('.side').getByRole('button', { name: '⑂ Add a fork here' }).click();
   assert((await spaces.count()) === 13 && (await page.getByLabel('Space name').inputValue()) === 'Space 13', '⑂ Add a fork here adds a space, picked');
-  assert((await page.locator('.side [data-leads]').innerText()).includes('→ Space 6') || (await page.locator('.side [data-leads]').innerText()).includes('→ Skip a turn'), 'that leads on to the space after the next one');
+  assert(
+    (await page.locator('.side [data-leads]').innerText()).includes('→ Space 6') ||
+      (await page.locator('.side [data-leads]').innerText()).includes('→ Skip a turn'),
+    'that leads on to the space after the next one',
+  );
   await space('Space 4').click();
   assert((await page.locator('.side').innerText()).includes('A fork'), 'so Space 4 is a fork now');
   assert((await hiddenHeads()) === 0, 'the fork’s arrowheads show too');
@@ -188,7 +259,10 @@ try {
   await page.locator('.side').getByRole('button', { name: '🗑 Delete space' }).click();
   await space('Space 3').click();
   const forkGone = await page.locator('.side [data-leads]').innerText();
-  assert(forkGone.includes('→ Space 5') && forkGone.includes('→ Space 13'), `deleting a fork: the space before it leads both ways (${forkGone.replace(/\s+/g, ' ')})`);
+  assert(
+    forkGone.includes('→ Space 5') && forkGone.includes('→ Space 13'),
+    `deleting a fork: the space before it leads both ways (${forkGone.replace(/\s+/g, ' ')})`,
+  );
   // (The game below has none of them.)
   for (let i = 0; i < 4; i++) await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   assert((await spaces.count()) === 12 && (await page.locator('.canvas .space .mark').count()) === 0, 'Undo takes the fork and the kinds back');
@@ -197,7 +271,10 @@ try {
   // Its name, shown on the board: the box in its card, one named step.
   const shownNames = () => page.locator('.canvas .label:not([data-name-hidden])').allInnerTexts();
   await page.locator('.side [data-show-name]').check();
-  assert((await undoTitle()).includes('Showed the name of “Start”') && (await shownNames()).join() === 'Start', `ticking “Show name on the board” shows only that name (${await undoTitle()})`);
+  assert(
+    (await undoTitle()).includes('Showed the name of “Start”') && (await shownNames()).join() === 'Start',
+    `ticking “Show name on the board” shows only that name (${await undoTitle()})`,
+  );
   await page.locator('.tools [data-names-all="show"]').click();
   assert((await undoTitle()).includes('Showed all space names') && (await shownNames()).length === 12, 'Names on the board: Show all');
   await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
@@ -213,14 +290,27 @@ try {
   assert((await page.getByRole('menu').count()) === 0 && (await addAction.evaluate((b) => b === document.activeElement)), 'and on Esc, back to its button');
   await addAction.click();
   await page.getByRole('menuitem', { name: /Change the score/ }).click();
-  assert(await page.locator('.side .actions').first().getByLabel('Points').evaluate((e) => e === document.activeElement), 'a new button has the focus on its first setting');
+  assert(
+    await page
+      .locator('.side .actions')
+      .first()
+      .getByLabel('Points')
+      .evaluate((e) => e === document.activeElement),
+    'a new button has the focus on its first setting',
+  );
   await page.locator('.side .actions').first().getByLabel('Points').fill('100');
   assert((await askOption(0)) === 'Whoever passes it', `a passing button's Who box says “Whoever passes it” (${await askOption(0)})`);
   await page.locator('.side .actions').first().getByLabel('Who').selectOption('party');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-editor.png` });
 
   // ---------- The keyboard: the board is one tab stop ----------
-  const active = () => page.evaluate(() => ({ label: document.activeElement?.getAttribute('aria-label'), space: !!document.activeElement?.closest('[data-space]'), side: !!document.activeElement?.closest('.side'), tag: document.activeElement?.tagName }));
+  const active = () =>
+    page.evaluate(() => ({
+      label: document.activeElement?.getAttribute('aria-label'),
+      space: !!document.activeElement?.closest('[data-space]'),
+      side: !!document.activeElement?.closest('.side'),
+      tag: document.activeElement?.tagName,
+    }));
   const picked = () => page.locator('.canvas .space.sel').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
   const note = page.locator('.history-notice');
   await page.locator('[data-round-name]').focus();
@@ -250,7 +340,10 @@ try {
   await page.keyboard.press('Control+c');
   assert((await toast()).startsWith('Copied Space 2'), 'Ctrl+C copies the space');
   await page.keyboard.press('Control+v');
-  assert((await spaces.count()) === 13 && (await picked()).join() === 'Space 13' && (await active()).label === 'Space 13', 'Ctrl+V pastes a copy (named afresh), selected, with the focus');
+  assert(
+    (await spaces.count()) === 13 && (await picked()).join() === 'Space 13' && (await active()).label === 'Space 13',
+    'Ctrl+V pastes a copy (named afresh), selected, with the focus',
+  );
   await page.keyboard.press('Control+z');
   assert((await spaces.count()) === 12, 'one Ctrl+Z takes it back');
   // Several: Ctrl+D and the right-click menu.
@@ -258,14 +351,23 @@ try {
   await page.keyboard.press('Shift+ArrowRight');
   assert((await picked()).join() === 'Space 2,Space 3', 'Shift+arrow picks several');
   await page.keyboard.press('Control+d');
-  assert((await spaces.count()) === 14 && (await picked()).length === 2 && !(await picked()).includes('Space 2'), 'Ctrl+D duplicates all of them (the copies are selected)');
+  assert(
+    (await spaces.count()) === 14 && (await picked()).length === 2 && !(await picked()).includes('Space 2'),
+    'Ctrl+D duplicates all of them (the copies are selected)',
+  );
   await page.keyboard.press('Control+z');
   await space('Space 2').click();
   await space('Space 3').click({ modifiers: ['Shift'] });
   await space('Space 3').click({ button: 'right' });
   const several = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
-  assert(['⧉ Duplicate them', '📋 Copy 2 spaces', '🗑 Delete 2 spaces'].every((x) => several.some((t) => t.startsWith(x))), `right-click on several: duplicate, copy, delete (${several.join(', ')})`);
-  await page.getByRole('menu').getByRole('menuitem', { name: /Copy 2 spaces/ }).click();
+  assert(
+    ['⧉ Duplicate them', '📋 Copy 2 spaces', '🗑 Delete 2 spaces'].every((x) => several.some((t) => t.startsWith(x))),
+    `right-click on several: duplicate, copy, delete (${several.join(', ')})`,
+  );
+  await page
+    .getByRole('menu')
+    .getByRole('menuitem', { name: /Copy 2 spaces/ })
+    .click();
   await space('Space 3').focus();
   await page.keyboard.press('Delete');
   assert((await spaces.count()) === 10 && (await note.innerText()).includes('Deleted 2 spaces'), 'Delete deletes them, with the app’s note (and its Undo)');
@@ -280,7 +382,10 @@ try {
   const bar = page.locator('.side [data-space-actions] button');
   const barWords = await bar.allInnerTexts();
   const del = page.locator('.side').getByRole('button', { name: '🗑 Delete 2 spaces' });
-  const [delColor, gap] = await del.evaluate((b) => [getComputedStyle(b).color, b.getBoundingClientRect().left - b.previousElementSibling.getBoundingClientRect().right]);
+  const [delColor, gap] = await del.evaluate((b) => [
+    getComputedStyle(b).color,
+    b.getBoundingClientRect().left - b.previousElementSibling.getBoundingClientRect().right,
+  ]);
   assert(
     barWords.join('|') === '⧉ Duplicate|📋 Copy|Clear selection|🗑 Delete 2 spaces' && delColor === 'rgb(255, 107, 107)' && gap >= 12,
     `several selected: ${barWords.join(' · ')}, 🗑 last in red, apart (${gap}px)`,
@@ -303,11 +408,17 @@ try {
   await dicePop.getByLabel('Dice name').fill('Big dice');
   await dicePop.getByRole('button', { name: 'Close' }).click();
   const diceBox = page.locator('.bge input[list="bg-dice"]');
-  assert((await page.getByLabel('Move by').inputValue()) === 'dice' && (await diceBox.inputValue()) === 'Big dice', 'after ＋ Add dice…, Move by says Dice and the new dice are the ones rolled');
+  assert(
+    (await page.getByLabel('Move by').inputValue()) === 'dice' && (await diceBox.inputValue()) === 'Big dice',
+    'after ＋ Add dice…, Move by says Dice and the new dice are the ones rolled',
+  );
   await page.getByRole('button', { name: '✎ Edit dice' }).click();
   await dicePop.getByLabel('Dice name').fill('Huge dice');
   await dicePop.getByRole('button', { name: 'Close' }).click();
-  assert((await diceBox.inputValue()) === 'Huge dice' && (await page.getByRole('button', { name: '✎ Edit dice' }).count()) === 1, 'renaming the dice keeps them (they are linked by id, not name)');
+  assert(
+    (await diceBox.inputValue()) === 'Huge dice' && (await page.getByRole('button', { name: '✎ Edit dice' }).count()) === 1,
+    'renaming the dice keeps them (they are linked by id, not name)',
+  );
   await diceBox.fill('d6');
   assert(!(await page.getByRole('button', { name: '✎ Edit dice' }).count()), 'typing standard dice rolls those instead');
 
@@ -316,7 +427,9 @@ try {
   const resetBg = async (at) => {
     await at.getByRole('button', { name: /Background ▾/ }).click();
     await at.getByRole('button', { name: '↺ Reset background' }).click();
-    const bgs = await at.locator('.canvas .slide').evaluate((e) => [e, e.closest('.se').querySelector('.swatch')].map((x) => getComputedStyle(x).backgroundColor));
+    const bgs = await at
+      .locator('.canvas .slide')
+      .evaluate((e) => [e, e.closest('.se').querySelector('.swatch')].map((x) => getComputedStyle(x).backgroundColor));
     await at.getByRole('button', { name: /Background ▾/ }).click();
     const title = await at.getByRole('button', { name: '↺ Reset background' }).getAttribute('title');
     await at.getByLabel(/^(Slide|Board) background color$/).press('Escape');
@@ -324,17 +437,26 @@ try {
   };
   await page.getByRole('button', { name: '🖼 Board backdrop' }).click();
   let reset = await resetBg(page.locator('.se-wrap'));
-  assert(reset.bgs.every((c) => c === 'rgb(29, 94, 58)') && reset.title === 'Back to the default background', `the board's backdrop with its background reset shows green in the editor, as on stage (${reset.bgs.join(', ')}; "${reset.title}")`);
+  assert(
+    reset.bgs.every((c) => c === 'rgb(29, 94, 58)') && reset.title === 'Back to the default background',
+    `the board's backdrop with its background reset shows green in the editor, as on stage (${reset.bgs.join(', ')}; "${reset.title}")`,
+  );
 
   // A zone.
   await page.getByRole('button', { name: /Off-board zones/ }).click();
   await page.getByRole('button', { name: '＋ Add zone' }).click();
   assert((await page.getByLabel('Zone name').inputValue()) === 'Shadow Realm', 'the first zone is the Shadow Realm');
-  assert(await page.getByLabel('Zone name').evaluate((e) => e === document.activeElement && e.selectionStart === 0 && e.selectionEnd === e.value.length), '＋ Add zone puts the typing in its name');
+  assert(
+    await page.getByLabel('Zone name').evaluate((e) => e === document.activeElement && e.selectionStart === 0 && e.selectionEnd === e.value.length),
+    '＋ Add zone puts the typing in its name',
+  );
   await page.getByRole('button', { name: 'Edit its screen…' }).click();
   const zoneEditor = page.getByRole('dialog', { name: 'Shadow Realm' });
   reset = await resetBg(zoneEditor);
-  assert(reset.bgs.every((c) => c === 'rgb(42, 8, 69)'), `so does a zone's screen, in its own purple (${reset.bgs.join(', ')})`);
+  assert(
+    reset.bgs.every((c) => c === 'rgb(42, 8, 69)'),
+    `so does a zone's screen, in its own purple (${reset.bgs.join(', ')})`,
+  );
   await zoneEditor.getByRole('button', { name: 'Done' }).click();
 
   // Play with two players, straight to the board game.
@@ -352,10 +474,19 @@ try {
   // Under it the turn box's one slot waits, 🎲 Roll and (a count typed) ▶ Move, as D and Enter do (nobody would see the
   // dice or the move).
   const startFirst = 'Start the round first (N, or click the title card)';
-  await page.locator('.bh .move').getByRole('button', { name: /^🎲 Roll/ }).click();
-  assert((await toast()) === startFirst && !(await stageBoxIn(page).locator('.ov').count()), `under the title card, 🎲 Roll says to start the round first (${await toast()})`);
+  await page
+    .locator('.bh .move')
+    .getByRole('button', { name: /^🎲 Roll/ })
+    .click();
+  assert(
+    (await toast()) === startFirst && !(await stageBoxIn(page).locator('.ov').count()),
+    `under the title card, 🎲 Roll says to start the round first (${await toast()})`,
+  );
   await page.getByLabel('Steps').fill('3');
-  await page.locator('.bh .move').getByRole('button', { name: /^▶ Move/ }).click();
+  await page
+    .locator('.bh .move')
+    .getByRole('button', { name: /^▶ Move/ })
+    .click();
   assert((await toast()) === startFirst && !(await page.locator('.bh .acts').count()), `and so does ▶ Move, moving nobody (${await toast()})`);
   await page.getByLabel('Steps').fill('');
   await stageBoxIn(page).locator('.title-card').click();
@@ -366,22 +497,35 @@ try {
   // 2 ✎ Change”), then ✎ Edit board, 🗂 Spaces… and 📺 The board on a line of their own. Beside the stage (this window is
   // 3:2) the turn's part is at the column's foot instead, by the blue button.
   const besideStage = (await page.locator('.play.side').count()) > 0;
-  const boxParts = await page.locator('.bh').evaluate((b) =>
-    [...b.children].flatMap((c) => ('turnPart' in c.dataset ? ['turn'] : 'turnOrder' in c.dataset ? ['order'] : c.classList.contains('more') ? ['more'] : [])),
-  );
+  const boxParts = await page
+    .locator('.bh')
+    .evaluate((b) =>
+      [...b.children].flatMap((c) =>
+        'turnPart' in c.dataset ? ['turn'] : 'turnOrder' in c.dataset ? ['order'] : c.classList.contains('more') ? ['more'] : [],
+      ),
+    );
   const orderRow = page.locator('.bh [data-turn-order]');
   const orderSays = async () => (await orderRow.innerText()).replace(/\s+/g, ' ').trim();
   assert(
-    boxParts.join() === (besideStage ? 'order,more,turn' : 'turn,order,more') && (await orderSays()) === 'Turn order: Player 1 → Player 2 ✎ Change' && !(await page.locator('.bh .ord').count()),
+    boxParts.join() === (besideStage ? 'order,more,turn' : 'turn,order,more') &&
+      (await orderSays()) === 'Turn order: Player 1 → Player 2 ✎ Change' &&
+      !(await page.locator('.bh .ord').count()),
     `the round's box: the turn (${besideStage ? 'at its foot, beside the stage' : 'first'}), the turn order in one line (${boxParts.join()} · ${await orderSays()})`,
   );
   assert(
-    (await page.locator('.bh .more').getByRole('button', { name: /✎ Edit board/ }).count()) === 1 && (await page.locator('.bh .more').getByLabel("Open a space's card").count()) === 1 && (await page.locator('.bh .move').getByLabel('Send to').count()) === 1,
+    (await page
+      .locator('.bh .more')
+      .getByRole('button', { name: /✎ Edit board/ })
+      .count()) === 1 &&
+      (await page.locator('.bh .more').getByLabel("Open a space's card").count()) === 1 &&
+      (await page.locator('.bh .move').getByLabel('Send to').count()) === 1,
     '✎ Edit board and 🗂 Spaces… are on the line after it; 📍 Send to… is in the turn box',
   );
   await orderRow.getByRole('button', { name: '✎ Change' }).click();
   assert(
-    (await page.locator('.bh .ord').count()) === 2 && (await orderRow.getByRole('button', { name: '🔀 Shuffle' }).count()) === 1 && (await orderRow.getByRole('button', { name: '✎ Change' }).getAttribute('aria-expanded')) === 'true',
+    (await page.locator('.bh .ord').count()) === 2 &&
+      (await orderRow.getByRole('button', { name: '🔀 Shuffle' }).count()) === 1 &&
+      (await orderRow.getByRole('button', { name: '✎ Change' }).getAttribute('aria-expanded')) === 'true',
     '✎ Change opens its chips and 🔀 Shuffle (this computer remembers it open)',
   );
   const stageNames = await page.locator('.stage .space .label').allInnerTexts();
@@ -394,7 +538,10 @@ try {
   const goesFirst = (await rolledOff.innerText()).match(/(Player \d) goes first\./)?.[1];
   await page.keyboard.press('Escape');
   await stageBoxIn(page).locator('.ov').waitFor({ state: 'detached' });
-  assert(!!goesFirst && (await page.locator('.stage .turn-banner').innerText()).includes(goesFirst), `O: "${goesFirst} goes first." on the host panel, and it's their turn`);
+  assert(
+    !!goesFirst && (await page.locator('.stage .turn-banner').innerText()).includes(goesFirst),
+    `O: "${goesFirst} goes first." on the host panel, and it's their turn`,
+  );
 
   // Right-click a token: make it their turn (the player the roll-off didn't pick: the winner's item is greyed out), then
   // Player 1's again.
@@ -480,11 +627,17 @@ try {
   const typoAt = Date.now();
   await page.getByRole('button', { name: /^▶ Move Player 2/ }).click();
   await page.locator('.fork').waitFor();
-  assert((await page.locator('.fork').innerText()).includes('(96 to go)') && Date.now() - typoAt < 3000, `100000 steps are 99, at once (${Date.now() - typoAt} ms)`);
+  assert(
+    (await page.locator('.fork').innerText()).includes('(96 to go)') && Date.now() - typoAt < 3000,
+    `100000 steps are 99, at once (${Date.now() - typoAt} ms)`,
+  );
   // Enter in the steps at a fork doesn't replace the steps left: it says to pick the way.
   await page.getByLabel('Steps').fill('9');
   await page.getByLabel('Steps').press('Enter');
-  assert((await toast()).includes('pick the way first') && (await page.locator('.fork').innerText()).includes('(96 to go)'), 'Enter in the steps at a fork says to pick the way, and keeps the steps left');
+  assert(
+    (await toast()).includes('pick the way first') && (await page.locator('.fork').innerText()).includes('(96 to go)'),
+    'Enter in the steps at a fork says to pick the way, and keeps the steps left',
+  );
 
   // Passing Start offers its action.
   await page.getByLabel('Send to').selectOption({ label: 'Space 12' });
@@ -502,7 +655,10 @@ try {
   await page.getByLabel('Steps').fill('1');
   await page.getByRole('button', { name: /^▶ Move Player 2/ }).click();
   await page.locator('.acts').getByRole('button', { name: '+$100' }).waitFor();
-  assert((await page.locator('.acts').innerText()).includes('Landed on Start (counts as passing)'), 'landing on Start offers its passing button too (“counts as passing”)');
+  assert(
+    (await page.locator('.acts').innerText()).includes('Landed on Start (counts as passing)'),
+    'landing on Start offers its passing button too (“counts as passing”)',
+  );
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(300);
   // Sent back onto Start, though, passes nothing (as being sent back past it doesn't).
@@ -511,7 +667,10 @@ try {
   await page.locator('.bh .move').getByRole('button', { name: '◀ Back 1', exact: true }).click();
   await page.locator('.acts', { hasText: 'Landed on Start' }).waitFor();
   const backOnto = await page.locator('.acts').innerText();
-  assert(!backOnto.includes('counts as passing') && !(await page.locator('.acts').getByRole('button', { name: '+$100' }).count()), `moved back onto Start: no passing button (${backOnto})`);
+  assert(
+    !backOnto.includes('counts as passing') && !(await page.locator('.acts').getByRole('button', { name: '+$100' }).count()),
+    `moved back onto Start: no passing button (${backOnto})`,
+  );
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(300);
@@ -531,16 +690,23 @@ try {
   await page.keyboard.press('n');
   await checkItem(page, 'roll').waitFor();
   assert(
-    (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await checkItem(page, 'roll').innerText()).includes('Player 1’s turn: 🎲 roll, then ▶ move.'),
+    (await goOnCheck(page).getAttribute('data-goon')) === 'first' &&
+      (await checkItem(page, 'roll').innerText()).includes('Player 1’s turn: 🎲 roll, then ▶ move.'),
     'N with the turn not played asks first: roll, then move',
   );
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('d');
   await checkItem(page, 'move').waitFor();
-  assert((await checkItem(page, 'roll').innerText()).startsWith('✓ Player 1 rolled'), `D rolls in it, and its line ticks, saying the roll (${await checkItem(page, 'roll').innerText()})`);
+  assert(
+    (await checkItem(page, 'roll').innerText()).startsWith('✓ Player 1 rolled'),
+    `D rolls in it, and its line ticks, saying the roll (${await checkItem(page, 'roll').innerText()})`,
+  );
   await page.keyboard.press('Enter');
   await hostPanelIn(page).locator('[data-goon="nothing"]').waitFor();
-  assert((await goOnCheck(page).locator('h3').innerText()) === '✓ Player 1’s turn is played', 'Enter moves them in it, and it says the turn is played (no buttons where they landed)');
+  assert(
+    (await goOnCheck(page).locator('h3').innerText()) === '✓ Player 1’s turn is played',
+    'Enter moves them in it, and it says the turn is played (no buttons where they landed)',
+  );
   await page.keyboard.press('n');
   await page.locator('.stage .turn-banner', { hasText: 'Player 2' }).waitFor();
   assert(!(await goOnCheck(page).count()), 'then N is Next turn ▶: four presses for the whole turn, D, Enter, N doing it in three');
@@ -559,13 +725,17 @@ try {
   const token1 = page.locator('.stage .on-board[data-player="Player 1"]');
   // (Their token walks the roll space by space, 380 ms a space: it's grabbed once it stands still, two looks 500 ms
   // apart finding it in the same place.)
-  await page.waitForFunction(() => {
-    const r = document.querySelector('.stage .on-board[data-player="Player 1"]')?.getBoundingClientRect();
-    const at = r ? `${Math.round(r.x)},${Math.round(r.y)}` : null;
-    const still = !!at && window.__token1At === at;
-    window.__token1At = at;
-    return still;
-  }, null, { polling: 500, timeout: 5000 });
+  await page.waitForFunction(
+    () => {
+      const r = document.querySelector('.stage .on-board[data-player="Player 1"]')?.getBoundingClientRect();
+      const at = r ? `${Math.round(r.x)},${Math.round(r.y)}` : null;
+      const still = !!at && window.__token1At === at;
+      window.__token1At = at;
+      return still;
+    },
+    null,
+    { polling: 500, timeout: 5000 },
+  );
   await token1.click();
   assert((await page.locator('.bh .pc.on').count()) === 1, 'clicking a token selects that player');
   await token1.click();
@@ -612,7 +782,10 @@ try {
   await page.waitForFunction(() => document.querySelector('[aria-label="Steps"]')?.value !== '');
   await page.keyboard.press('Enter');
   await page.waitForFunction((was) => document.querySelector('.last')?.textContent !== was, moved);
-  assert((await page.getByRole('dialog', { name: /^Space: / }).count()) === 0, `a click on the board, then D and Enter move the token, and open no card (${await page.locator('.last').innerText()})`);
+  assert(
+    (await page.getByRole('dialog', { name: /^Space: / }).count()) === 0,
+    `a click on the board, then D and Enter move the token, and open no card (${await page.locator('.last').innerText()})`,
+  );
   await page.keyboard.press('Control+z');
   // A click on the landed dice moves the token too, with Enter's checks (Esc only puts them away).
   await page.waitForFunction((was) => document.querySelector('.last')?.textContent === was, moved);
@@ -623,7 +796,13 @@ try {
   await stageBoxIn(page).locator('.ov').click();
   await page.waitForFunction((was) => document.querySelector('.last')?.textContent !== was, moved);
   // (The dice fade out in 200 ms.)
-  const diceGone = await stageBoxIn(page).locator('.ov').waitFor({ state: 'detached', timeout: 2000 }).then(() => true, () => false);
+  const diceGone = await stageBoxIn(page)
+    .locator('.ov')
+    .waitFor({ state: 'detached', timeout: 2000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert((await toast()).includes('Landed on') && diceGone, `a click on the landed dice moves the token, and puts the dice away (${await toast()})`);
   await page.keyboard.press('Control+z');
   // The turn order: a click on a name makes it their turn; a chip dragged before another moves it there (one undo step).
@@ -632,7 +811,10 @@ try {
   const firstChip = await page.locator('.bh .ord').first().boundingBox();
   await dragBy(page, page.locator('.bh .ord', { hasText: 'Player 2' }), { x: firstChip.x + 4, y: firstChip.y + firstChip.height / 2 });
   const order = () => page.locator('.bh .ord .nm').allInnerTexts();
-  assert((await order()).join() === 'Player 2,Player 1' && (await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'a turn-order chip dragged before another moves there, and the turn stays');
+  assert(
+    (await order()).join() === 'Player 2,Player 1' && (await page.locator('.stage .turn-banner').innerText()).includes('Player 1'),
+    'a turn-order chip dragged before another moves there, and the turn stays',
+  );
   await page.keyboard.press('Control+z');
   assert((await order()).join() === 'Player 1,Player 2', 'one Ctrl+Z puts the order back');
 
@@ -665,7 +847,11 @@ try {
   // Enter then doesn't walk them on in the same turn (the → buttons still can, on purpose).
   await page.evaluate(() => document.activeElement?.blur?.());
   await page.keyboard.press('Enter');
-  assert((await toast()).includes('Moved this turn: N for the next turn') && (await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).count()) === 1, `one space a turn: Enter after the move doesn't move them again (${await toast()})`);
+  assert(
+    (await toast()).includes('Moved this turn: N for the next turn') &&
+      (await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).count()) === 1,
+    `one space a turn: Enter after the move doesn't move them again (${await toast()})`,
+  );
   // N, and Player 2's turn not played: Shift+click on Next turn ▶ passes it without asking.
   await page.keyboard.press('n');
   await mainButton(page, 'Next turn ▶').click({ modifiers: ['Shift'] });
@@ -675,7 +861,10 @@ try {
   await page.keyboard.press('n');
   await page.keyboard.press('n');
   await checkItem(page, 'move').waitFor();
-  assert((await checkItem(page, 'move').innerText()).includes('Player 2 hasn’t moved: → Space 2.'), `N with Player 2 not moved asks first (${await checkItem(page, 'move').innerText()})`);
+  assert(
+    (await checkItem(page, 'move').innerText()).includes('Player 2 hasn’t moved: → Space 2.'),
+    `N with Player 2 not moved asks first (${await checkItem(page, 'move').innerText()})`,
+  );
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('n');
   await page.locator('.stage .turn-banner', { hasText: 'Player 1' }).waitFor();
@@ -694,7 +883,13 @@ try {
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(page, 'Discard');
   await page.getByRole('button', { name: /Board game/ }).click();
-  const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /^More:/ }).click().then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click())]);
+  const [json] = await Promise.all([
+    page.waitForEvent('download'),
+    page
+      .getByRole('button', { name: /^More:/ })
+      .click()
+      .then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click()),
+  ]);
   const saved = resolve('test-results/boardgame-save.json');
   await json.saveAs(saved);
   await space('Space 5').click();
@@ -733,14 +928,37 @@ try {
     zones: [],
   };
   const g = {
-    id: 'g_board_e2e', version: 2, title: 'Board check',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
-    players: [{ id: 'p1', name: 'Ann', color: '#e6194b' }, { id: 'p2', name: 'Bob', color: '#3cb44b' }],
-    rounds: [board], media: [], audio: {}, dice: [], theme: {},
+    id: 'g_board_e2e',
+    version: 2,
+    title: 'Board check',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: null,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: true,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+      maxPlayers: 8,
+    },
+    players: [
+      { id: 'p1', name: 'Ann', color: '#e6194b' },
+      { id: 'p2', name: 'Bob', color: '#3cb44b' },
+    ],
+    rounds: [board],
+    media: [],
+    audio: {},
+    dice: [],
+    theme: {},
     wheels: ['Move wheel', 'Word wheel'].map((name, w) => ({
       id: ['w_move', 'w_words'][w],
       name,
-      segments: [['1', '2', '3'], ['One', 'Two', 'Three']][w].map((label, i) => ({ id: `s${w}${i}`, label, color: ['#f00', '#0f0', '#00f'][i], weight: 1 })),
+      segments: [
+        ['1', '2', '3'],
+        ['One', 'Two', 'Three'],
+      ][w].map((label, i) => ({ id: `s${w}${i}`, label, color: ['#f00', '#0f0', '#00f'][i], weight: 1 })),
       spinDurationMs: 800,
       removeAfterLanding: false,
     })),
@@ -769,15 +987,15 @@ try {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   const startAsk = page.locator('.actions [data-start-ask]');
   await startAsk.waitFor();
-  assert((await startAsk.innerText()).includes('Start a new game? The game in progress (Board game, round 2 of 3) is discarded.'), `Start asks before throwing away the game left behind (${await startAsk.innerText()})`);
+  assert(
+    (await startAsk.innerText()).includes('Start a new game? The game in progress (Board game, round 2 of 3) is discarded.'),
+    `Start asks before throwing away the game left behind (${await startAsk.innerText()})`,
+  );
   await page.waitForTimeout(450); // (the question's double-click guard)
   await startAsk.getByRole('button', { name: 'Start new game' }).click();
   await page.locator('.bh').waitFor();
   if (await stageBoxIn(page).locator('.title-card').count()) await stageBoxIn(page).locator('.title-card').click();
-  assert(
-    (await page.locator('.stage [data-space] .n').count()) === 0,
-    'no space draws a number in its circle',
-  );
+  assert((await page.locator('.stage [data-space] .n').count()) === 0, 'no space draws a number in its circle');
   assert((await page.getByRole('button', { name: 'Ann later in the turn order' }).count()) === 1, 'the turn order’s arrows say whose they are');
   // One press spins the movement wheel, and its slice fills in the steps.
   await page.getByRole('button', { name: '🎡 Spin to move' }).click();
@@ -789,7 +1007,10 @@ try {
   await page.locator('.stage [data-space="b6"]').click();
   await page.getByRole('dialog', { name: 'Space: Roll a d20' }).getByRole('button', { name: 'Roll d20' }).click();
   await page.waitForTimeout(1800);
-  assert((await stageBoxIn(page).locator('.ov').count()) === 1 && (await page.getByLabel('Steps').inputValue()) === '', 'a space’s d20 roll doesn’t fill in the steps');
+  assert(
+    (await stageBoxIn(page).locator('.ov').count()) === 1 && (await page.getByLabel('Steps').inputValue()) === '',
+    'a space’s d20 roll doesn’t fill in the steps',
+  );
   // Esc: the dice go, then the card.
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
@@ -806,7 +1027,10 @@ try {
   assert((await toast()).includes('Bob is at a fork: pick the way first'), 'Enter at a fork says to pick the way');
   // One window marks no ways on the stage: the turn box's first line says to click the space there.
   const firstLine = await page.locator('.bh [data-turn-next]').innerText();
-  assert(firstLine.includes('Bob is at a fork') && firstLine.includes('or click the space on the stage'), `one window: the fork doesn't point at a “marked space” (${firstLine})`);
+  assert(
+    firstLine.includes('Bob is at a fork') && firstLine.includes('or click the space on the stage'),
+    `one window: the fork doesn't point at a “marked space” (${firstLine})`,
+  );
   await page.locator('.fork').getByRole('button', { name: '→ Merge' }).click();
   assert((await toast()).includes('Landed on Merge'), 'the fork’s other way leads to where the ways meet');
   // Back 1 from where the ways meet goes back the way Bob came (the Fork), not along the other way.
@@ -823,7 +1047,11 @@ try {
   // Twelve players: the stats strip is one row of compact cards, and it never covers a space (Finish is low down).
   section('Twelve players on the board');
   const crowd = { ...g, id: 'g_board_crowd', title: 'Board crowd', settings: { ...g.settings, maxPlayers: 12 } };
-  crowd.players = ['Ann', 'Bob', 'Cy', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jay', 'Kim', 'Lou'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'][i] }));
+  crowd.players = ['Ann', 'Bob', 'Cy', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jay', 'Kim', 'Lou'].map((name, i) => ({
+    id: `p${i + 1}`,
+    name,
+    color: ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'][i],
+  }));
   // (With a zone to send them all to.)
   crowd.rounds = [{ ...board, zones: [{ id: 'z_shadow', name: 'Shadow Realm', slide: { background: { color: '#2a0845' }, elements: [] } }] }];
   const crowdFile = resolve('test-results/boardgame-crowd.json');
@@ -841,10 +1069,17 @@ try {
   await aud.setViewportSize({ width: 1280, height: 720 });
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.locator('.bh').waitFor();
-  if (await aud.locator('.title-card').count()) await stageBoxIn(host).locator('.title-card').click().catch(() => {});
+  if (await aud.locator('.title-card').count())
+    await stageBoxIn(host)
+      .locator('.title-card')
+      .click()
+      .catch(() => {});
   await aud.locator('[data-space="b8"]').waitFor();
   await aud.waitForTimeout(600);
-  assert((await aud.locator('.space .label').count()) === 0 && (await host.locator('.stage .space .label').count()) === 0, 'a game saved before names could be hidden: no names in the audience window, nor in the host’s copy');
+  assert(
+    (await aud.locator('.space .label').count()) === 0 && (await host.locator('.stage .space .label').count()) === 0,
+    'a game saved before names could be hidden: no names in the audience window, nor in the host’s copy',
+  );
   const cards = aud.locator('.strip .card');
   const tops = await cards.evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
   assert((await cards.count()) === 12 && tops.length === 1, `the stats strip is one row of 12 cards (rows at ${tops.join(', ')})`);
@@ -875,7 +1110,20 @@ try {
   // move that stops at the fork has its "which way?" row in view (the turn's part is at the column's foot; the stage
   // doesn't move). (A second board after it, for the Steps box going into another round.)
   section('A fork under a long turn order, one window at 1280×720');
-  const longNames = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
+  const longNames = [
+    'xXx_DarkLord_Skibidi_420_xXx',
+    'TheRealMcCoy Bartholomew',
+    'Cat',
+    'Mrs. Featherstonehaugh',
+    'EveEveEveEveEveEve',
+    'Fay',
+    'Gustavo Fring Fan Club',
+    'Hal',
+    'Ivy-Rose Montgomery',
+    'JJ',
+    'Kimberly Kardashian',
+    'Louis the Fourteenth',
+  ];
   const long = {
     ...crowd,
     id: 'g_board_long',
@@ -904,7 +1152,10 @@ try {
   await roundTabsIn(one, { hasText: 'Board game' }).click();
   await one.locator('.canvas [data-space="b9"] .label').waitFor();
   const lavaEditor = await lavaIn('.canvas-box | .canvas [data-space="b9"] .label');
-  assert(lavaEditor.right >= 0 && lavaEditor.left >= 0, `a long name at the board's right edge is all on the board in the editor (${JSON.stringify(lavaEditor)})`);
+  assert(
+    lavaEditor.right >= 0 && lavaEditor.left >= 0,
+    `a long name at the board's right edge is all on the board in the editor (${JSON.stringify(lavaEditor)})`,
+  );
   await one.getByRole('button', { name: '▶ Play' }).click();
   await one.getByRole('button', { name: 'Start game ▶' }).click();
   await one.locator('.bh').waitFor();
@@ -914,22 +1165,36 @@ try {
   assert(lavaStage.right >= 0 && lavaStage.left >= 0, `and on the stage (${JSON.stringify(lavaStage)})`);
   await one.locator('.bh [data-turn-order]').getByRole('button', { name: '✎ Change' }).click();
   await one.locator('.bh .ord').first().waitFor();
-  const stageAt = () => one.evaluate(() => ({ stage: Math.round(document.querySelector('.stage-box').getBoundingClientRect().top), scrolled: document.querySelector('main.play').scrollTop }));
+  const stageAt = () =>
+    one.evaluate(() => ({
+      stage: Math.round(document.querySelector('.stage-box').getBoundingClientRect().top),
+      scrolled: document.querySelector('main.play').scrollTop,
+    }));
   const stageBefore = await stageAt();
   // 3 from Start: through Space 2 onto the Fork, with 1 to go.
   await one.getByLabel('Steps').fill('3');
   await one.getByLabel('Steps').press('Enter');
   await one.locator('.fork button.good').first().waitFor();
   const forkInView = await one
-    .waitForFunction(() => {
-      const r = document.querySelector('.fork button.good').getBoundingClientRect();
-      return !!document.elementFromPoint(r.left + 5, r.top + 5)?.closest('.fork');
-    }, null, { timeout: 5000 })
-    .then(() => true, () => false);
+    .waitForFunction(
+      () => {
+        const r = document.querySelector('.fork button.good').getBoundingClientRect();
+        return !!document.elementFromPoint(r.left + 5, r.top + 5)?.closest('.fork');
+      },
+      null,
+      { timeout: 5000 },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
   const forkBox = await one.locator('.fork button.good').first().boundingBox();
   assert(forkInView, `the fork's "which way?" buttons come into view, where a click reaches them (first at y ${Math.round(forkBox.y)})`);
   const stageAfter = await stageAt();
-  assert(JSON.stringify(stageAfter) === JSON.stringify(stageBefore), `and the stage stays where it was (${JSON.stringify(stageBefore)} → ${JSON.stringify(stageAfter)})`);
+  assert(
+    JSON.stringify(stageAfter) === JSON.stringify(stageBefore),
+    `and the stage stays where it was (${JSON.stringify(stageBefore)} → ${JSON.stringify(stageAfter)})`,
+  );
   if (process.env.SHOTS) await one.screenshot({ path: `${process.env.SHOTS}/boardgame-fork-long.png` });
   // Ctrl+Z of that move puts its 3 back in the Steps box. Then on to the next board: its first turn starts with an empty
   // box (the count undone on the last board isn't for this one).
@@ -938,7 +1203,10 @@ try {
   await one.keyboard.press('Control+z');
   const countBack = await one
     .waitForFunction(() => document.querySelector('.bh input[aria-label="Steps"]')?.value === '3', null, { timeout: 5000 })
-    .then(() => true, () => false);
+    .then(
+      () => true,
+      () => false,
+    );
   assert(countBack && !(await one.locator('.fork').count()), `Ctrl+Z of the move to the fork puts its count back (${await stepsBox.inputValue()})`);
   // (Next round ▶ and its answer each ignore a click in their first moment: the second half of a double-click.)
   const leave = confirmStrip(one);
@@ -956,7 +1224,10 @@ try {
   await one.locator('.bh').waitFor();
   const emptied = await one
     .waitForFunction(() => document.querySelector('.bh input[aria-label="Steps"]')?.value === '', null, { timeout: 3000 })
-    .then(() => true, () => false);
+    .then(
+      () => true,
+      () => false,
+    );
   assert(
     emptied && (await stepButton(one, '🎡 Spin to move').count()) === 1 && (await mainLabel(one)) === 'Next turn ▶',
     `the next board starts with an empty Steps box and the slot's 🎡 Spin to move (${await stepsBox.inputValue()}, ${await mainLabel(one)})`,
@@ -965,7 +1236,10 @@ try {
   await stepButton(one, '🎡 Spin to move').click();
   const typeSteps = toastsIn(one, { hasText: 'No number on “' });
   await typeSteps.waitFor({ timeout: 8000 });
-  assert(/No number on “(One|Two|Three)”: type the steps/.test(await typeSteps.innerText()) && (await stepsBox.inputValue()) === '', `a wheel of words: “${await typeSteps.innerText()}”, the Steps box left empty`);
+  assert(
+    /No number on “(One|Two|Three)”: type the steps/.test(await typeSteps.innerText()) && (await stepsBox.inputValue()) === '',
+    `a wheel of words: “${await typeSteps.innerText()}”, the Steps box left empty`,
+  );
   await ctx3.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));

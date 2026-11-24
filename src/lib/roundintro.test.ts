@@ -15,7 +15,11 @@ function setup(): { game: Game; session: ReturnType<typeof newSession> } {
 describe('round intros for every kind of round', () => {
   it('an RPG, board-game or Final round opens on its title card, and N (introNext) goes on to the round', () => {
     const { game, session } = setup();
-    for (const [i, phase] of [[1, 'rpg'], [2, 'boardgame'], [3, 'final']] as const) {
+    for (const [i, phase] of [
+      [1, 'rpg'],
+      [2, 'boardgame'],
+      [3, 'final'],
+    ] as const) {
       goToRound(session, game, i);
       expect(session.phase).toBe(phase);
       expect(session.intro).toEqual({ stage: 'title', revealed: 0 });

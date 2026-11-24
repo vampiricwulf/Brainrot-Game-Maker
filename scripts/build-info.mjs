@@ -7,7 +7,9 @@ export function buildInfo() {
   let commit = (process.env.GITHUB_SHA ?? '').slice(0, 7);
   if (!commit) {
     try {
-      commit = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+      commit = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim();
     } catch {
       commit = '';
     }

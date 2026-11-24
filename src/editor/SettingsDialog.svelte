@@ -58,7 +58,12 @@
     savePrefs();
     const n = prefs.undoSteps;
     // (0 is taken as "the default", as it always was.)
-    const end = n === UNDO_STEPS.min ? ', the lowest it goes' : n === UNDO_STEPS.max ? ', the highest it goes' : `, the default (${UNDO_STEPS.min} is the lowest it goes)`;
+    const end =
+      n === UNDO_STEPS.min
+        ? ', the lowest it goes'
+        : n === UNDO_STEPS.max
+          ? ', the highest it goes'
+          : `, the default (${UNDO_STEPS.min} is the lowest it goes)`;
     const snapped = Number.isFinite(typed) && Math.round(typed) !== n ? `Set to ${n}${end}.` : '';
     const gone = keepLimits();
     const forgot = gone ? (gone === 1 ? 'Forgot the oldest change in 🕘 History.' : `Forgot the ${gone} oldest changes in 🕘 History.`) : '';
@@ -121,16 +126,14 @@
         Save replaces the game’s last save
       </label>
       <p class="hint">
-        On: Save writes Game.brainrot again and keeps the two before it as Game.brainrot.bak and .bak2 (Open… › Browse for a
-        game file… opens them). Another game with the same name never gets replaced: it saves as Game (2).brainrot. Off: every Save makes a new
-        file (Game (2).brainrot, Game (3).brainrot…).
+        On: Save writes Game.brainrot again and keeps the two before it as Game.brainrot.bak and .bak2 (Open… › Browse for a game file… opens them). Another
+        game with the same name never gets replaced: it saves as Game (2).brainrot. Off: every Save makes a new file (Game (2).brainrot, Game (3).brainrot…).
       </p>
     {:else}
       <!-- (Nothing to set in a browser: one line says how it works, instead of a section each.) -->
       <p class="hint">
-        Your game is kept in this browser as you work (✓ Kept in this browser, in the header). A game that 📄 New or 📂 Open…
-        replaces stays in 📂 Open… → Recent games. 💾 Save downloads a .brainrot file: keep it to move the game to another
-        computer or to share it.
+        Your game is kept in this browser as you work (✓ Kept in this browser, in the header). A game that 📄 New or 📂 Open… replaces stays in 📂 Open… →
+        Recent games. 💾 Save downloads a .brainrot file: keep it to move the game to another computer or to share it.
       </p>
     {/if}
 
@@ -147,9 +150,9 @@
         autosaves per game (the oldest is replaced)
       </label>
       <p class="hint">
-        Autosaves go in BrainrotSaves next to the app as “Game (autosave 1, 3f9a1c).brainrot”, “(autosave 2, …)”… (the letters
-        tell games with the same name apart). Only when the game changed since the last one; after you lower the number, the
-        next autosave deletes the extra ones. Open… lists them with your saves.
+        Autosaves go in BrainrotSaves next to the app as “Game (autosave 1, 3f9a1c).brainrot”, “(autosave 2, …)”… (the letters tell games with the same name
+        apart). Only when the game changed since the last one; after you lower the number, the next autosave deletes the extra ones. Open… lists them with your
+        saves.
       </p>
     {/if}
 
@@ -177,8 +180,8 @@
       Reduce motion on stream
     </label>
     <p class="hint">
-      Viewers get no pop-ins, fly-ins, board fill-in or falling confetti: things just appear. The wheel and the dice still
-      spin. The editor and the host’s controls follow your computer’s “reduce motion” setting.
+      Viewers get no pop-ins, fly-ins, board fill-in or falling confetti: things just appear. The wheel and the dice still spin. The editor and the host’s
+      controls follow your computer’s “reduce motion” setting.
     </p>
 
     <h3>Updates</h3>
@@ -187,9 +190,8 @@
       Check for a newer version when the app starts, and every hour while it's open
     </label>
     <p class="hint">
-      Asks GitHub, where new versions are published, each time the app starts and then once an hour, and says so in the
-      editor when one is out.
-      ℹ About can check any time.
+      Asks GitHub, where new versions are published, each time the app starts and then once an hour, and says so in the editor when one is out. ℹ About can
+      check any time.
     </p>
 
     <h3 bind:this={buzzerHead}>Phone buzzers</h3>
@@ -217,7 +219,11 @@
     {#if tested}<p class="small" role="status">{tested}</p>{/if}
     <p class="hint" bind:this={buzzerEnd}>
       Advanced: where phone buzzer rooms are made. Once there's an address, ▶ Play › 📱 Phone buzzers offers Buzzer mode.
-      {DEFAULT_BUZZER_URL ? 'Leave it blank for the one this copy comes with.' : server.trim() ? '' : 'This version of the app has no buzzer server set: phone buzzers need an address here.'}
+      {DEFAULT_BUZZER_URL
+        ? 'Leave it blank for the one this copy comes with.'
+        : server.trim()
+          ? ''
+          : 'This version of the app has no buzzer server set: phone buzzers need an address here.'}
       <a href={BUZZER_GUIDE} target="_blank" rel="noreferrer" onclick={externalLink}>How to set up your own (free, on Cloudflare) ↗</a>
     </p>
 

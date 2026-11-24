@@ -66,72 +66,83 @@
 
 <!-- (One box for the page: the slide refits as the fields above it grow or shrink, see fitheight.) -->
 <div class="tb">
-<PageHeader title="Tiebreaker clue" sub="Optional. If players are tied for first at the end, the host can play this clue to settle it." />
-{#snippet toggle()}
-<label class="check">
-  <input
-    type="checkbox"
-    checked={!!app.game.tiebreaker}
-    onchange={(e) => {
-      const on = e.currentTarget.checked;
-      setTiebreaker(on);
-      // Ticked: the keys go to its question, ready to type (the checkbox's page has gone).
-      if (on) void tick().then(() => qField?.focus());
-    }}
-  /> Include a tiebreaker clue
-</label>
-{/snippet}
-{#if !app.game.tiebreaker}
-  <!-- Off: what it is, with the switch that turns it on. -->
-  <div class="empty">
-    <span class="ic" aria-hidden="true">❓</span>
-    <p><b>No tiebreaker in this game.</b></p>
-    <p class="muted">
-      When two or more players tie for first after the last round, the host can play one more clue (or roll off) to pick the
-      winner. Without one here, the host can still roll off on the end screen.
-    </p>
+  <PageHeader title="Tiebreaker clue" sub="Optional. If players are tied for first at the end, the host can play this clue to settle it." />
+  {#snippet toggle()}
+    <label class="check">
+      <input
+        type="checkbox"
+        checked={!!app.game.tiebreaker}
+        onchange={(e) => {
+          const on = e.currentTarget.checked;
+          setTiebreaker(on);
+          // Ticked: the keys go to its question, ready to type (the checkbox's page has gone).
+          if (on) void tick().then(() => qField?.focus());
+        }}
+      /> Include a tiebreaker clue
+    </label>
+  {/snippet}
+  {#if !app.game.tiebreaker}
+    <!-- Off: what it is, with the switch that turns it on. -->
+    <div class="empty">
+      <span class="ic" aria-hidden="true">❓</span>
+      <p><b>No tiebreaker in this game.</b></p>
+      <p class="muted">
+        When two or more players tie for first after the last round, the host can play one more clue (or roll off) to pick the winner. Without one here, the
+        host can still roll off on the end screen.
+      </p>
+      {@render toggle()}
+    </div>
+  {:else}
     {@render toggle()}
-  </div>
-{:else}
-  {@render toggle()}
-  {@const tb = app.game.tiebreaker}
-  <!-- Quick text: the main text of each slide, so a plain tiebreaker never needs the canvas. -->
-  <div class="quick">
-    <label class="field">
-      {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
-      <textarea bind:this={qField} rows="2" data-field="q" placeholder="Type the tiebreaker question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
-    </label>
-    <label class="field">
-      Answer (hidden until revealed)
-      <textarea rows="2" data-field="a" placeholder="Type the answer…" value={slideText(tb.answerSlide)} oninput={(e) => setSlideText(tb.answerSlide, e.currentTarget.value) && followClueText(app.game, [tb.answerSlide])}></textarea>
-    </label>
-    <!-- (Across both columns: the rule the host judges by, say "closest without going over wins".) -->
-    <label class="field notes">
-      Host notes (off stream, except in a single window)
-      <textarea rows="1" data-field="notes" value={tb.hostNotes ?? ''} oninput={(e) => (tb.hostNotes = e.currentTarget.value)}></textarea>
-    </label>
-  </div>
-  <SlideTabs
-    holder={tb}
-    bind:side={tbSide}
-    bind:qi
-    what="the tiebreaker"
-    place={(sd, slide) => ({ tab: 'tiebreaker', side: sd, slide })}
-    onadded={() => void tick().then(() => qField?.focus())}
-  />
-  {#key slideKey}
-    <SlideEditor
-      slide={tbSide === 'q' ? qslide : tb.answerSlide}
-      styletargets={styleTargets}
-      stylescope="round-qa"
-      quickfield={tbSide}
-      placeholder={tbSide === 'q' ? 'Click to type the tiebreaker question' : 'Click to type the tiebreaker answer'}
-      badge={tbSide === 'a' ? 'ANSWER' : undefined}
-      tabbed
-      fitheight
+    {@const tb = app.game.tiebreaker}
+    <!-- Quick text: the main text of each slide, so a plain tiebreaker never needs the canvas. -->
+    <div class="quick">
+      <label class="field">
+        {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
+        <textarea
+          bind:this={qField}
+          rows="2"
+          data-field="q"
+          placeholder="Type the tiebreaker question…"
+          value={slideText(qslide)}
+          oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
+      </label>
+      <label class="field">
+        Answer (hidden until revealed)
+        <textarea
+          rows="2"
+          data-field="a"
+          placeholder="Type the answer…"
+          value={slideText(tb.answerSlide)}
+          oninput={(e) => setSlideText(tb.answerSlide, e.currentTarget.value) && followClueText(app.game, [tb.answerSlide])}></textarea>
+      </label>
+      <!-- (Across both columns: the rule the host judges by, say "closest without going over wins".) -->
+      <label class="field notes">
+        Host notes (off stream, except in a single window)
+        <textarea rows="1" data-field="notes" value={tb.hostNotes ?? ''} oninput={(e) => (tb.hostNotes = e.currentTarget.value)}></textarea>
+      </label>
+    </div>
+    <SlideTabs
+      holder={tb}
+      bind:side={tbSide}
+      bind:qi
+      what="the tiebreaker"
+      place={(sd, slide) => ({ tab: 'tiebreaker', side: sd, slide })}
+      onadded={() => void tick().then(() => qField?.focus())}
     />
-  {/key}
-{/if}
+    {#key slideKey}
+      <SlideEditor
+        slide={tbSide === 'q' ? qslide : tb.answerSlide}
+        styletargets={styleTargets}
+        stylescope="round-qa"
+        quickfield={tbSide}
+        placeholder={tbSide === 'q' ? 'Click to type the tiebreaker question' : 'Click to type the tiebreaker answer'}
+        badge={tbSide === 'a' ? 'ANSWER' : undefined}
+        tabbed
+        fitheight
+      />
+    {/key}
+  {/if}
 </div>
 
 <style>

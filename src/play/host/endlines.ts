@@ -27,7 +27,14 @@ export function endLine(session: Session): string {
 export function tiebreakLine(session: Session): string {
   const tied = tiedForFirst(session);
   const back = `${FLOW.backToResults.label} (N)`;
-  const won = session.tiebreakClue && tiebreakHolds(session, tied.map((p) => p.id)) ? session.players.find((p) => p.id === session.rollOffWinner) : undefined;
+  const won =
+    session.tiebreakClue &&
+    tiebreakHolds(
+      session,
+      tied.map((p) => p.id),
+    )
+      ? session.players.find((p) => p.id === session.rollOffWinner)
+      : undefined;
   if (won) return `🏆 ${won.name} won · ${back}`;
   if (!tied.length) return `Nobody is tied for first any more: ${back}`;
   return 'Who won the tiebreaker? Click their 🏆, or press their number then Enter';

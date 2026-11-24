@@ -248,7 +248,14 @@ export async function readFacts(blob: Blob, opts: { duration?: 'metadata' | 'com
           height: await v.getDisplayHeight(),
           rotation: await quietly(v.getRotation(), 0 as const),
           hdr: await quietly(v.hasHighDynamicRange(), false),
-          ...(opts.fps ? { fps: await quietly(v.computePacketStats(50).then((s) => s.averagePacketRate || null), null) } : {}),
+          ...(opts.fps
+            ? {
+                fps: await quietly(
+                  v.computePacketStats(50).then((s) => s.averagePacketRate || null),
+                  null,
+                ),
+              }
+            : {}),
         }
       : null;
     const audio = a

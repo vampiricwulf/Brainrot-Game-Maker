@@ -11,7 +11,31 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, assert, sleep, launchChromium, until, hostPanelIn, roundNavIn, stageBoxIn, statusLineIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  boxHasAction,
+  flowIs,
+  mainButton,
+  openGameFile,
+  packGame,
+  png,
+  recordSeen,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  stepButton,
+  leaveAnswer,
+  assert,
+  sleep,
+  launchChromium,
+  until,
+  hostPanelIn,
+  roundNavIn,
+  stageBoxIn,
+  statusLineIn,
+  toolsRowIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -24,7 +48,23 @@ const SECRETS = ['qkzvt', 'zfnqt'];
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
-const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  ...box(y),
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (...elements) => ({ background: {}, elements });
 
 const buzzer = await startBuzzer('buzzer-partnerteams-');
@@ -52,20 +92,38 @@ try {
     version: 2,
     title: 'Partner teams',
     settings: {
-      allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true, buzzTeams: true,
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      stream: { clueCaption: true },
+      buzzer: true,
+      buzzTeams: true,
     },
     players: ['Red', 'Green', 'Blue'].map((name, i) => ({ id: `t${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i] })),
     rounds: [
       {
-        id: 'r1', name: 'Round 1', mode: 'board', values, dailyDoubleCount: 0,
+        id: 'r1',
+        name: 'Round 1',
+        mode: 'board',
+        values,
+        dailyDoubleCount: 0,
         categories: [
           {
-            id: 'cat0', title: 'Movies',
+            id: 'cat0',
+            title: 'Movies',
             clues: [
               {
                 ...plain('q_team', 'Describe this sea creature', 'Octopus'),
-                type: 'partner', partner: { ...rules }, timerSeconds: 60,
+                type: 'partner',
+                partner: { ...rules },
+                timerSeconds: 60,
                 cards: [
                   { id: 'c1', to: 'giver', ...slide(text(WORDS1), { ...box(400), kind: 'image', media: 'kelp', fit: 'contain' }) },
                   { id: 'c2', to: 'others', ...slide(text(WORDS2)) },
@@ -75,10 +133,17 @@ try {
             ],
           },
           {
-            id: 'cat1', title: 'Songs',
+            id: 'cat1',
+            title: 'Songs',
             clues: [
               // One person on the picker's team describes to the rest of it.
-              { ...plain('q_same', 'Describe this fish', 'Clownfish'), type: 'partner', partner: { ...rules }, timerSeconds: 60, cards: [{ id: 'd1', to: 'giver', ...slide(text(WORDS3)) }] },
+              {
+                ...plain('q_same', 'Describe this fish', 'Clownfish'),
+                type: 'partner',
+                partner: { ...rules },
+                timerSeconds: 60,
+                cards: [{ id: 'd1', to: 'giver', ...slide(text(WORDS3)) }],
+              },
               plain('q_song1', 'A plain clue', 'Plain'),
             ],
           },
@@ -86,9 +151,32 @@ try {
       },
     ],
     media: [{ id: 'kelp', name: 'zfnqt-kelp.png', mime: 'image/png', size: kelp.length, kind: 'image' }],
-    audio: {}, wheels: [], dice: [], theme: {},
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
     // A quest after the board: its host panel says Teams too.
-    worlds: [{ id: 'w1', name: 'World', maps: [{ id: 'm1', name: 'Map', cols: 1, rows: 1, visibility: 'full', showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut', screens: [{ id: 's1', name: 'Camp', col: 0, row: 0, slide: slide() }] }] }],
+    worlds: [
+      {
+        id: 'w1',
+        name: 'World',
+        maps: [
+          {
+            id: 'm1',
+            name: 'Map',
+            cols: 1,
+            rows: 1,
+            visibility: 'full',
+            showExits: true,
+            revealNeighbors: true,
+            diagonals: true,
+            wrap: false,
+            transition: 'cut',
+            screens: [{ id: 's1', name: 'Camp', col: 0, row: 0, slide: slide() }],
+          },
+        ],
+      },
+    ],
   };
   game.rounds.push({ id: 'r2', name: 'Quest', mode: 'rpg', world: 'w1' });
   const packPath = resolve('test-results/partner-teams.brainrot');
@@ -154,17 +242,34 @@ try {
 
   const says = (p, t) =>
     p
-      .waitForFunction((t) => ['buzz-big', 'card-status-big'].some((id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length), t, { timeout: 8000 })
-      .then(() => true, () => false);
+      .waitForFunction(
+        (t) =>
+          ['buzz-big', 'card-status-big'].some(
+            (id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length,
+          ),
+        t,
+        { timeout: 8000 },
+      )
+      .then(
+        () => true,
+        () => false,
+      );
   /** Waits (up to `ms`) until pred() holds. */
   const tokenOf = (p) => p.evaluate((c) => JSON.parse(localStorage.getItem(`brainrot-buzzer:${c}`)).token, code);
   const fetchAs = async (p, id) => {
     const t = await tokenOf(p);
-    return p.evaluate(async ([u, t]) => (await fetch(u, { headers: { Authorization: `Bearer ${t}` }, cache: 'no-store' })).status, [`${base}/api/rooms/${code}/files/${id}`, t]);
+    return p.evaluate(
+      async ([u, t]) => (await fetch(u, { headers: { Authorization: `Bearer ${t}` }, cache: 'no-store' })).status,
+      [`${base}/api/rooms/${code}/files/${id}`, t],
+    );
   };
   const textOf = (loc) => loc.allInnerTexts().then((t) => t.join('\n'));
   const sendOf = (card) => (last()?.cards ?? []).filter((c) => c.id.split(':')[2] === card);
-  const viewOf = (name) => heard[name].map((m) => JSON.parse(m)).filter((m) => m.t === 'view').at(-1)?.view ?? {};
+  const viewOf = (name) =>
+    heard[name]
+      .map((m) => JSON.parse(m))
+      .filter((m) => m.t === 'view')
+      .at(-1)?.view ?? {};
   const panel = hostPanelIn(host).locator('[data-partner-panel]');
   const row = (n) => panel.locator(`[data-card="${n}"]`).first();
   /** 📱 › the phones list › “Move <name> to another team” › `team`. */
@@ -180,20 +285,30 @@ try {
   await stageBoxIn(host).locator('.tile[aria-label^="Movies for $200"]').click();
   await panel.getByText('Red picked it.').waitFor();
   await host.keyboard.press('2');
-  assert((await says(al, '🤝 Your team plays this one!')) && (await says(gus, '🤝 Your team plays this one!')) && (await says(bea, '🤝 Red + Green')), 'paired: Red’s and Green’s phones “🤝 Your team plays this one!”, Blue’s “🤝 Red + Green”');
+  assert(
+    (await says(al, '🤝 Your team plays this one!')) && (await says(gus, '🤝 Your team plays this one!')) && (await says(bea, '🤝 Red + Green')),
+    'paired: Red’s and Green’s phones “🤝 Your team plays this one!”, Blue’s “🤝 Red + Green”',
+  );
   // Bo moves onto Green before anything is sent.
   await move('Bo', 'Green');
   await bo.locator('#me').getByText('Bo · Green').waitFor();
   await offStream('PARTNER UP!');
   await mainButton(host).click();
   await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
-  assert((await flowIs(host, '👁 Reveal answer')) && (await boxHasAction(panel, '📤 Send and start')) === '', 'the question up: the blue button 👁 Reveal answer, 📤 Send and start in the box’s foot only');
   assert(
-    (await panel.getByRole('button', { name: 'Card 1 to Green', exact: true }).getAttribute('aria-pressed')) === 'true' && (await panel.getByRole('button', { name: 'Card 2 to Blue', exact: true }).getAttribute('aria-pressed')) === 'true',
+    (await flowIs(host, '👁 Reveal answer')) && (await boxHasAction(panel, '📤 Send and start')) === '',
+    'the question up: the blue button 👁 Reveal answer, 📤 Send and start in the box’s foot only',
+  );
+  assert(
+    (await panel.getByRole('button', { name: 'Card 1 to Green', exact: true }).getAttribute('aria-pressed')) === 'true' &&
+      (await panel.getByRole('button', { name: 'Card 2 to Blue', exact: true }).getAttribute('aria-pressed')) === 'true',
     'card 1 goes to Green (the describing team), card 2 to Blue (everyone else)',
   );
   await sleep(300);
-  assert(!JSON.stringify(states).includes('"cards"') && !JSON.stringify(heard).includes('qkzvt'), 'nothing of a card in the room’s state or on a phone before the send');
+  assert(
+    !JSON.stringify(states).includes('"cards"') && !JSON.stringify(heard).includes('qkzvt'),
+    'nothing of a card in the room’s state or on a phone before the send',
+  );
   await offStream('the question up');
 
   // ---------- 📤 Send and start ----------
@@ -205,14 +320,28 @@ try {
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   const s1 = sendOf('c1')[0];
   const pic = s1.media[0].file;
-  assert(JSON.stringify(s1.to) === JSON.stringify([{ seat: seat.Green }]) && JSON.stringify(sendOf('c2')[0].to) === JSON.stringify([{ seat: seat.Blue }]), 'card 1 to the Green team, card 2 to the Blue team');
-  for (const [p, name] of [[gus, 'Gus'], [bo, 'Bo (moved onto Green before the send)']]) {
+  assert(
+    JSON.stringify(s1.to) === JSON.stringify([{ seat: seat.Green }]) && JSON.stringify(sendOf('c2')[0].to) === JSON.stringify([{ seat: seat.Blue }]),
+    'card 1 to the Green team, card 2 to the Blue team',
+  );
+  for (const [p, name] of [
+    [gus, 'Gus'],
+    [bo, 'Bo (moved onto Green before the send)'],
+  ]) {
     await p.getByRole('button', { name: 'Tap to see' }).waitFor();
     assert((await p.locator('.card-head').textContent()) === '🤫 Only your team can see this', `${name}: card 1, “🤫 Only your team can see this”`);
   }
-  assert((await says(al, '🎯 Your team is guessing!')) && !(await al.locator('.card').count()) && (await al.locator('#buzz').getAttribute('aria-disabled')) === 'true', 'Al (Red, guessing): no card, his button greyed, “🎯 Your team is guessing!”');
+  assert(
+    (await says(al, '🎯 Your team is guessing!')) &&
+      !(await al.locator('.card').count()) &&
+      (await al.locator('#buzz').getAttribute('aria-disabled')) === 'true',
+    'Al (Red, guessing): no card, his button greyed, “🎯 Your team is guessing!”',
+  );
   await bea.getByRole('button', { name: 'Tap to see' }).waitFor();
-  assert(!heard.Al.join('').includes('qkzvt') && !heard.Bea.join('').includes('Kelp-qkzvt') && !heard.Gus.join('').includes('Reef-qkzvt'), 'each phone only ever heard its own team’s card');
+  assert(
+    !heard.Al.join('').includes('qkzvt') && !heard.Bea.join('').includes('Kelp-qkzvt') && !heard.Gus.join('').includes('Reef-qkzvt'),
+    'each phone only ever heard its own team’s card',
+  );
   await gus.getByRole('button', { name: 'Tap to see' }).tap();
   await gus.getByText(WORDS1).waitFor();
   await gus.waitForFunction(() => {
@@ -221,19 +350,28 @@ try {
   });
   assert(true, 'Gus opens it: its words and its picture');
   assert(await until(async () => (await textOf(row(1).locator('[data-card-state]'))).includes('✓ seen')), 'the host’s row says ✓ seen');
-  assert((await fetchAs(bo, pic)) === 200 && (await fetchAs(al, pic)) === 404 && (await fetchAs(bea, pic)) === 404, 'Bo can fetch its picture; Al and Bea can’t');
+  assert(
+    (await fetchAs(bo, pic)) === 200 && (await fetchAs(al, pic)) === 404 && (await fetchAs(bea, pic)) === 404,
+    'Bo can fetch its picture; Al and Bea can’t',
+  );
   await offStream('sent');
 
   // ---------- Gwen joins Green mid-clue; the host moves Bea onto Green ----------
   const gwen = await person('Gwen', 'Green');
   const lateLine = 'A card went to your team before this phone joined. Ask the host to send it again.';
   await gwen.locator('#cards-late').getByText(lateLine).waitFor();
-  assert(!(await gwen.locator('.card').count()) && !heard.Gwen.join('').includes('qkzvt') && viewOf('Gwen').cards?.late === 1, 'Gwen joins Green mid-clue: nothing of the card, only a note that she missed one');
+  assert(
+    !(await gwen.locator('.card').count()) && !heard.Gwen.join('').includes('qkzvt') && viewOf('Gwen').cards?.late === 1,
+    'Gwen joins Green mid-clue: nothing of the card, only a note that she missed one',
+  );
   assert((await fetchAs(gwen, pic)) === 404, 'and the room won’t give her its picture');
   await move('Bea', 'Green');
   await bea.locator('#me').getByText('Bea · Green').waitFor();
   await bea.locator('#cards-late').getByText(lateLine).waitFor();
-  assert(!(await bea.locator('.card').count()) && !heard.Bea.join('').includes('Kelp-qkzvt'), 'Bea moved onto Green after the send: Blue’s card goes from her phone, and she doesn’t get Green’s');
+  assert(
+    !(await bea.locator('.card').count()) && !heard.Bea.join('').includes('Kelp-qkzvt'),
+    'Bea moved onto Green after the send: Blue’s card goes from her phone, and she doesn’t get Green’s',
+  );
   assert((await fetchAs(bea, pic)) === 404, 'nor its picture');
   assert((await gus.locator('.card').count()) === 1 && (await bo.locator('.card').count()) === 1, 'Gus and Bo keep theirs');
   await offStream('a phone joined, someone moved');
@@ -244,9 +382,18 @@ try {
   await bea.getByRole('button', { name: 'Tap to see' }).waitFor();
   assert(true, '↻ Send again: Gwen and Bea get card 1');
   const again = sendOf('c1');
-  assert(again.length === 1 && again[0].id !== s1.id && JSON.stringify(again[0].to) === JSON.stringify([{ seat: seat.Green }]), 'under a new id, to the Green team');
-  assert((await fetchAs(gwen, pic)) === 200 && (await fetchAs(bea, pic)) === 200 && !(await gwen.locator('#cards-late').isVisible()), 'they can fetch its picture now, and the note is gone');
-  assert(await until(async () => (await gus.locator('.card').count()) === 1 && (await bo.locator('.card').count()) === 1), 'Gus and Bo have it too (once each)');
+  assert(
+    again.length === 1 && again[0].id !== s1.id && JSON.stringify(again[0].to) === JSON.stringify([{ seat: seat.Green }]),
+    'under a new id, to the Green team',
+  );
+  assert(
+    (await fetchAs(gwen, pic)) === 200 && (await fetchAs(bea, pic)) === 200 && !(await gwen.locator('#cards-late').isVisible()),
+    'they can fetch its picture now, and the note is gone',
+  );
+  assert(
+    await until(async () => (await gus.locator('.card').count()) === 1 && (await bo.locator('.card').count()) === 1),
+    'Gus and Bo have it too (once each)',
+  );
   await offStream('sent again');
 
   // ---------- Judged, the answer, back to the board ----------
@@ -256,7 +403,13 @@ try {
   await host.keyboard.press('r');
   await host.keyboard.press('Escape');
   assert(await until(() => !last()?.cards), 'back on the board: no card in the room’s state');
-  for (const [p, name] of [[gus, 'Gus'], [bo, 'Bo'], [gwen, 'Gwen'], [bea, 'Bea']]) assert(await until(async () => !(await p.locator('.card').count())), `${name}’s phone drops it`);
+  for (const [p, name] of [
+    [gus, 'Gus'],
+    [bo, 'Bo'],
+    [gwen, 'Gwen'],
+    [bea, 'Bea'],
+  ])
+    assert(await until(async () => !(await p.locator('.card').count())), `${name}’s phone drops it`);
   await offStream('the whole clue');
 
   // ---------- One person describes to their own team (§10.2): a team with one phone has nobody to describe to ----------
@@ -266,8 +419,14 @@ try {
   await panel.getByText('Red picked it.').waitFor();
   await panel.getByLabel('Partner from the same team').check();
   await panel.locator('[data-partner-nobody]').waitFor();
-  assert((await textOf(panel.locator('[data-partner-nobody]'))).startsWith('Red has one phone here: nobody to describe to'), 'Red picked it, its own team: “Red has one phone here: nobody to describe to”');
-  assert((await flowIs(host, 'Show question ▶')) && (await stepButton(panel, '🎡 Spin for the describer').count()) === 0, 'and no member wheel (it plays Solo): the blue button is Show question ▶');
+  assert(
+    (await textOf(panel.locator('[data-partner-nobody]'))).startsWith('Red has one phone here: nobody to describe to'),
+    'Red picked it, its own team: “Red has one phone here: nobody to describe to”',
+  );
+  assert(
+    (await flowIs(host, 'Show question ▶')) && (await stepButton(panel, '🎡 Spin for the describer').count()) === 0,
+    'and no member wheel (it plays Solo): the blue button is Show question ▶',
+  );
   await host.keyboard.press('Escape');
   await stageBoxIn(host).locator('.tile[aria-label^="Songs for $200"]').waitFor();
 
@@ -281,14 +440,20 @@ try {
   const sameRow = panel.locator('[data-partner-same]');
   const sameButtons = await sameRow.locator('button').evaluateAll((bs) => bs.map((b) => (b.matches('[data-step]') ? 'step' : 'chip')));
   assert(
-    (await boxHasAction(sameRow, '🎡 Spin for the describer')) === '' && (await textOf(sameRow)).includes('Who describes:') && sameButtons[0] === 'step' && sameButtons.length === 5,
+    (await boxHasAction(sameRow, '🎡 Spin for the describer')) === '' &&
+      (await textOf(sameRow)).includes('Who describes:') &&
+      sameButtons[0] === 'step' &&
+      sameButtons.length === 5,
     `the 🤝 box's “Who describes:” row has 🎡 Spin for the describer, once and in sight, in front of Green's four people (${sameButtons.join(', ')})`,
   );
   assert(await stepButton(sameRow, '🎡 Spin for the describer').evaluate((b) => b.classList.contains('ring')), 'ringed, as the step due now');
   // (Not “Solo!”: Green has four people, one of them to describe.)
   const pairLine = await textOf(stageBoxIn(host).locator('[data-partner-up] .pu-and'));
   const tag = await textOf(hostPanelIn(host).locator('[data-partner-tag]'));
-  assert(pairLine === '· its own team!' && tag === '🤝 Green · its own team', `PARTNER UP! says “Green · its own team!”, as the host's tag does (“${pairLine}”, “${tag}”)`);
+  assert(
+    pairLine === '· its own team!' && tag === '🤝 Green · its own team',
+    `PARTNER UP! says “Green · its own team!”, as the host's tag does (“${pairLine}”, “${tag}”)`,
+  );
   assert((await textOf(statusLineIn(host))).includes('Partner clue: spin for the describer'), 'and the status row says so too (not to show the question yet)');
   await stepButton(panel, '🎡 Spin for the describer').click();
   const wheelName = stageBoxIn(host).getByText('Describer for Green');
@@ -304,8 +469,14 @@ try {
   );
   const describerName = (await picked.innerText()).replace(/\s*✓.*$/s, '').trim();
   assert(['Gus', 'Bo', 'Gwen', 'Bea'].includes(describerName), `the describer is someone on Green (${describerName})`);
-  assert(!(last()?.seats ?? []).some((x) => x.name === describerName) && !JSON.stringify(last()?.status ?? {}).includes('Solo'), 'never a player, nor Solo on the phones');
-  assert((await says(gus, '🤝 Your team plays this one!')) && (await says(al, `🤝 ${describerName} describes → Green guesses`)), `Green’s phones: “🤝 Your team plays this one!”; Red’s: “🤝 ${describerName} describes → Green guesses”`);
+  assert(
+    !(last()?.seats ?? []).some((x) => x.name === describerName) && !JSON.stringify(last()?.status ?? {}).includes('Solo'),
+    'never a player, nor Solo on the phones',
+  );
+  assert(
+    (await says(gus, '🤝 Your team plays this one!')) && (await says(al, `🤝 ${describerName} describes → Green guesses`)),
+    `Green’s phones: “🤝 Your team plays this one!”; Red’s: “🤝 ${describerName} describes → Green guesses”`,
+  );
   // (The wheel up: the blue button is Next ▶, which puts it away; Esc does too. Then Show question ▶.)
   assert(await flowIs(host, 'Next ▶'), 'the wheel landed: the blue button is Next ▶');
   await host.keyboard.press('Escape');
@@ -313,16 +484,30 @@ try {
   assert(await flowIs(host, 'Show question ▶'), 'the wheel closed: Show question ▶');
   await mainButton(host).click();
   await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
-  assert((await stageBoxIn(host).locator('[data-partner-badge]').innerText()).includes(`${describerName} describes → 🎯 Green guesses`), 'the badge: who describes, the team guesses');
-  assert((await panel.getByRole('button', { name: `Card 1 to ${describerName}`, exact: true }).getAttribute('aria-pressed')) === 'true', 'card 1 goes to the describer (their own chip)');
+  assert(
+    (await stageBoxIn(host).locator('[data-partner-badge]').innerText()).includes(`${describerName} describes → 🎯 Green guesses`),
+    'the badge: who describes, the team guesses',
+  );
+  assert(
+    (await panel.getByRole('button', { name: `Card 1 to ${describerName}`, exact: true }).getAttribute('aria-pressed')) === 'true',
+    'card 1 goes to the describer (their own chip)',
+  );
   await sleep(1100);
   await stepButton(panel, '📤 Send and start').click();
   await stageBoxIn(host).locator('.timer').waitFor();
   assert(await until(() => sendOf('d1').length === 2), 'sent: the describer’s card, and a line for the rest of the team');
   const [mine, rest] = [sendOf('d1').find((c) => !c.id.endsWith('~t')), sendOf('d1').find((c) => c.id.endsWith('~t'))];
   const memberId = mine?.to?.[0]?.member;
-  assert(!!memberId && JSON.stringify(mine.to) === JSON.stringify([{ seat: seat.Green, member: memberId }]) && mine.text === WORDS3, 'the card to that one person on Green, by member');
-  assert(JSON.stringify(rest.to) === JSON.stringify([{ seat: seat.Green, except: [memberId] }]) && !JSON.stringify(rest).includes('qkzvt') && rest.hint === `🎯 Your team is guessing! ${describerName} is describing`, 'the rest of Green: a line, nothing of the card');
+  assert(
+    !!memberId && JSON.stringify(mine.to) === JSON.stringify([{ seat: seat.Green, member: memberId }]) && mine.text === WORDS3,
+    'the card to that one person on Green, by member',
+  );
+  assert(
+    JSON.stringify(rest.to) === JSON.stringify([{ seat: seat.Green, except: [memberId] }]) &&
+      !JSON.stringify(rest).includes('qkzvt') &&
+      rest.hint === `🎯 Your team is guessing! ${describerName} is describing`,
+    'the rest of Green: a line, nothing of the card',
+  );
   const greens = { Gus: gus, Bo: bo, Gwen: gwen, Bea: bea };
   const zoe = greens[describerName];
   await zoe.getByRole('button', { name: 'Tap to see' }).waitFor();
@@ -345,12 +530,21 @@ try {
   await toolsRowIn(host).getByRole('button', { name: '🤫 Send a card…' }).click();
   const sendBox = host.getByRole('dialog', { name: 'Send a card' });
   const winLine = await sendBox.locator('.winpick').innerText();
-  assert(winLine.includes('only one team’s 🤫 cards') && winLine.includes('for a team with no phone'), `its 🪟 Card window is for a team (${winLine.split('.')[0]})`);
+  assert(
+    winLine.includes('only one team’s 🤫 cards') && winLine.includes('for a team with no phone'),
+    `its 🪟 Card window is for a team (${winLine.split('.')[0]})`,
+  );
   await sendBox.getByRole('button', { name: 'Gus on Green', exact: true }).click();
   await sendBox.getByRole('button', { name: '⇄ Everyone else' }).click();
   const chipOn = async (name) => (await sendBox.getByRole('button', { name, exact: typeof name === 'string' }).getAttribute('aria-pressed')) === 'true';
   assert(
-    !(await chipOn('Gus on Green')) && !(await chipOn('Green')) && (await chipOn('Bo on Green')) && (await chipOn('Gwen on Green')) && (await chipOn('Bea on Green')) && (await chipOn('Red')) && (await chipOn(/^Blue( \(no phone here\))?$/)),
+    !(await chipOn('Gus on Green')) &&
+      !(await chipOn('Green')) &&
+      (await chipOn('Bo on Green')) &&
+      (await chipOn('Gwen on Green')) &&
+      (await chipOn('Bea on Green')) &&
+      (await chipOn('Red')) &&
+      (await chipOn(/^Blue( \(no phone here\))?$/)),
     '⇄ Everyone else after Gus alone: the rest of Green (Bo, Gwen, Bea), Red and Blue',
   );
   await host.keyboard.press('Escape');

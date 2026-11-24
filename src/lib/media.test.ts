@@ -40,7 +40,9 @@ describe('adding files', () => {
 
   it('refuses any other file in the editor’s words (as a file dropped on it is)', async () => {
     const game = newGame();
-    await expect(addMediaFile(game, new File(['hi'], 'notes.txt', { type: 'text/plain' }))).rejects.toThrow('“notes.txt” isn’t a picture, video, sound or font file.');
+    await expect(addMediaFile(game, new File(['hi'], 'notes.txt', { type: 'text/plain' }))).rejects.toThrow(
+      '“notes.txt” isn’t a picture, video, sound or font file.',
+    );
     expect(game.media).toEqual([]);
   });
 
@@ -68,7 +70,16 @@ describe('adding files', () => {
     const game = newGame();
     const ref = await addMediaFile(game, new File(['png'], 'pic.png', { type: 'image/png' }));
     expect(game.media).toEqual([ref]);
-    const history: SavedHistory = { v: 1, gameId: game.id, rev: 'r', origin: { kind: 'new', label: 'New game', ts: 0 }, ids: [], index: 0, trimmed: 0, marks: [] };
+    const history: SavedHistory = {
+      v: 1,
+      gameId: game.id,
+      rev: 'r',
+      origin: { kind: 'new', label: 'New game', ts: 0 },
+      ids: [],
+      index: 0,
+      trimmed: 0,
+      marks: [],
+    };
     await saveEditor(() => ({ draft: game, history, steps: [], dropped: [] }));
     expect(failed).toHaveLength(2);
     watchWrites(() => {});
@@ -90,7 +101,7 @@ describe('files the undo history can bring back', () => {
     expect(getBlob('removed')).toBeUndefined();
   });
 
-  it('stashes a file\'s bytes and puts them back', async () => {
+  it("stashes a file's bytes and puts them back", async () => {
     const before = new Blob(['old']);
     const after = new Blob(['new']);
     registerBlob('pic', before);
@@ -222,7 +233,12 @@ describe('🔄 a converted file in its place', () => {
 
   it('renameForType: a media extension follows the new type, kept unique; a name without one is kept, and its own name likewise', () => {
     const game = newGame();
-    game.media.push(vid(), { id: 'other', name: 'Party.mp4', mime: 'video/mp4', size: 1, kind: 'video' }, vid({ id: 'v3', name: 'Intro' }), vid({ id: 'v4', name: 'Clip', file: 'clip.m2ts' }));
+    game.media.push(
+      vid(),
+      { id: 'other', name: 'Party.mp4', mime: 'video/mp4', size: 1, kind: 'video' },
+      vid({ id: 'v3', name: 'Intro' }),
+      vid({ id: 'v4', name: 'Clip', file: 'clip.m2ts' }),
+    );
     renameForType(game, game.media[0], 'video/mp4');
     expect(game.media[0].name).not.toBe('Party.mp4');
     expect(game.media[0].name).toMatch(/^Party.*\.mp4$/);

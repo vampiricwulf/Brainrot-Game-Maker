@@ -73,7 +73,8 @@ let upTo = 0;
 let saying: ReturnType<typeof setTimeout> | null = null;
 
 /** Today's toast for a file whose type alone says it may not play. */
-const mayNotPlay = (m: { name: string; mime: string }) => toast(`⚠ This browser may not play "${m.name}" (${m.mime}). Try converting it to MP4 (H.264) or MP3.`);
+const mayNotPlay = (m: { name: string; mime: string }) =>
+  toast(`⚠ This browser may not play "${m.name}" (${m.mime}). Try converting it to MP4 (H.264) or MP3.`);
 
 /**
  * After a video or sound is added (or put in place of another). In the editor, a stored one is checked soon: when it
@@ -136,7 +137,10 @@ function sayFresh(): void {
       ? `see the note at the top once ${over.length > 1 ? 'these windows are' : 'this window is'} closed`
       : 'see the note at the top';
   if (said.length > 1) toast(`⚠ ${severalText(said.map((f) => f.is))}: ${see}.`);
-  else toast(`⚠ A ${one.kind === 'audio' ? 'sound' : 'video'} you just added ${one.is === 'silent' ? 'plays without its sound' : 'won’t play'} in this browser: ${see}.`);
+  else
+    toast(
+      `⚠ A ${one.kind === 'audio' ? 'sound' : 'video'} you just added ${one.is === 'silent' ? 'plays without its sound' : 'won’t play'} in this browser: ${see}.`,
+    );
 }
 
 /** Check every video and sound stored in `game` that hasn't been (the editor, as files arrive). */

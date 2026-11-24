@@ -55,7 +55,10 @@ describe('passing on a clue', () => {
   });
 
   it('everyone passed: says so (and that the pass can still be taken back), never what comes next', () => {
-    expect(passedLines({ passed: true, all: true, can: true }, false, null)).toEqual({ big: 'You passed', small: 'Everyone passed · take the pass back to buzz' });
+    expect(passedLines({ passed: true, all: true, can: true }, false, null)).toEqual({
+      big: 'You passed',
+      small: 'Everyone passed · take the pass back to buzz',
+    });
     expect(passedLines({ passed: true, all: true }, false, null).small).toBe('Everyone passed');
     expect(passedLines({ passed: true, all: true, can: true }, true, null).big).toBe('Your team passed');
     for (const all of [true, false]) expect(passedLines({ passed: true, all, can: true }, false, null).small).not.toMatch(/answer|next|reveal/i);

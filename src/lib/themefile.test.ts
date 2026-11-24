@@ -104,7 +104,9 @@ describe('theme codes', () => {
 describe('what an exported theme file left out', () => {
   it('says why for each file: only the ones over the size are “too big”', () => {
     expect(leftOutLine(['big.png'], [])).toBe('big.png (too big)');
-    expect(leftOutLine(['big.png', 'huge.jpg'], ['logo.png', 'category font (not in this game)'])).toBe('big.png, huge.jpg (too big), logo.png, category font (not in this game)');
+    expect(leftOutLine(['big.png', 'huge.jpg'], ['logo.png', 'category font (not in this game)'])).toBe(
+      'big.png, huge.jpg (too big), logo.png, category font (not in this game)',
+    );
     expect(leftOutLine([], ['logo.png'])).toBe('logo.png');
     expect(leftOutLine([], [])).toBe('');
   });
@@ -230,7 +232,13 @@ describe('checking a theme from outside', () => {
 describe('a shared theme in a game', () => {
   it('its pictures and fonts under new ids when this browser has others under theirs', () => {
     const t = { ...fancy, boardImage: 'a', banner: 'b', boardFont: "'jb-fnt00001', sans-serif", clueFont: undefined };
-    const out = renameThemeFiles(t, new Map([['a', 'z1'], ['fnt00001', 'new00002']]));
+    const out = renameThemeFiles(
+      t,
+      new Map([
+        ['a', 'z1'],
+        ['fnt00001', 'new00002'],
+      ]),
+    );
     expect(out).toMatchObject({ boardImage: 'z1', banner: 'b', boardFont: "'jb-new00002', sans-serif" });
   });
 

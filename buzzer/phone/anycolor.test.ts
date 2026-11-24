@@ -34,7 +34,18 @@ describe('typedHex', () => {
 
 describe('words', () => {
   it('names hues round the strip', () => {
-    expect([0, 30, 60, 120, 180, 220, 270, 320, 350, 360].map(hueName)).toEqual(['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink', 'red', 'red']);
+    expect([0, 30, 60, 120, 180, 220, 270, 320, 350, 360].map(hueName)).toEqual([
+      'red',
+      'orange',
+      'yellow',
+      'green',
+      'cyan',
+      'blue',
+      'purple',
+      'pink',
+      'red',
+      'red',
+    ]);
   });
   it('says dark, pale, grey, black and white', () => {
     expect(colorWords(hexToHsv('#123456')!)).toBe('dark blue');

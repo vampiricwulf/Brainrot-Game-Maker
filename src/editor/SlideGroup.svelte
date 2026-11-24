@@ -62,10 +62,15 @@
     class="ghost small"
     onclick={onduplicate}
     disabled={tab === 'a' || (card && full)}
-    title={tab === 'a' ? 'The answer is one slide: ＋ Add slide adds a question slide' : card && full ? 'It holds as many cards as it can' : `A copy of this ${kind}, right after it (Ctrl+D on its tab)`}
-    >⧉ Duplicate {what}</button
+    title={tab === 'a'
+      ? 'The answer is one slide: ＋ Add slide adds a question slide'
+      : card && full
+        ? 'It holds as many cards as it can'
+        : `A copy of this ${kind}, right after it (Ctrl+D on its tab)`}>⧉ Duplicate {what}</button
   >
-  <button class="ghost small" onclick={oncopy} title="The whole slide, to paste as a new slide or over another one, here or in another game (Ctrl+C on its tab)">📋 Copy slide</button>
+  <button class="ghost small" onclick={oncopy} title="The whole slide, to paste as a new slide or over another one, here or in another game (Ctrl+C on its tab)"
+    >📋 Copy slide</button
+  >
   <span class="split">
     <button
       class="ghost small"
@@ -116,8 +121,11 @@
     use:oneShot
     onclick={ondelete}
     disabled={tab === 'a' || (tab === 'q' && count < 2)}
-    title={tab === 'a' ? 'The answer slide stays (empty it instead)' : tab === 'q' && count < 2 ? `The only ${kind} stays (empty it instead)` : `Delete this ${kind} (Ctrl+Z brings it back)`}
-    >🗑 Delete {what}</button
+    title={tab === 'a'
+      ? 'The answer slide stays (empty it instead)'
+      : tab === 'q' && count < 2
+        ? `The only ${kind} stays (empty it instead)`
+        : `Delete this ${kind} (Ctrl+Z brings it back)`}>🗑 Delete {what}</button
   >
 </div>
 

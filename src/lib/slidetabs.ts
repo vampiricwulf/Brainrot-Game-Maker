@@ -48,7 +48,10 @@ export interface SlideTabMenu {
  * ◀ ▶ and 🗑 Delete card (no paste: Ctrl+V there pastes items on the card, as on its slide).
  */
 export function slideTabMenu(m: SlideTabMenu, act: SlideTabActs): MenuEntry[] {
-  const copy = menuItem.copy(act.copy, { label: '📋 Copy slide', hint: 'The whole slide, to paste as a new slide or over another one (in this game or another)' });
+  const copy = menuItem.copy(act.copy, {
+    label: '📋 Copy slide',
+    hint: 'The whole slide, to paste as a new slide or over another one (in this game or another)',
+  });
   const off = !m.copied ? { disabled: true, hint: 'Copy a slide first (📋 Copy slide)' } : {};
   /** The paste as a new slide: Ctrl+V on the tab does it, unless items were copied since (it pastes those). */
   const asNew = m.copied && m.newest === false ? { keys: false as const, hint: 'Ctrl+V on the tab pastes the items you copied since, onto the slide' } : {};
@@ -61,7 +64,12 @@ export function slideTabMenu(m: SlideTabMenu, act: SlideTabActs): MenuEntry[] {
     return menuOf({
       heading: m.name,
       verbs: [
-        { label: '⧉ Same as the answer', onclick: () => act.sameAsAnswer?.(), disabled: !c.empty || !c.answer, hint: !c.empty ? 'Only on an empty card' : !c.answer ? 'The answer slide is empty' : 'A copy of the answer slide on this card, once' },
+        {
+          label: '⧉ Same as the answer',
+          onclick: () => act.sameAsAnswer?.(),
+          disabled: !c.empty || !c.answer,
+          hint: !c.empty ? 'Only on an empty card' : !c.answer ? 'The answer slide is empty' : 'A copy of the answer slide on this card, once',
+        },
         { label: `${c.phone ? '✓ ' : ''}📱 On their phone`, onclick: () => act.phone?.(), hint: 'The card exactly as a player’s phone gets it' },
       ],
       rename: menuItem.rename(() => act.rename?.()),
@@ -87,7 +95,10 @@ export function slideTabMenu(m: SlideTabMenu, act: SlideTabActs): MenuEntry[] {
     heading: m.name,
     duplicate: menuItem.duplicate(act.duplicate, { label: '⧉ Duplicate slide', hint: 'A copy of it, right after it' }),
     copy,
-    paste: [menuItem.paste(() => act.paste(false), { label: '📋 Paste as a new slide after it', ...off, ...asNew }), { label: '📋 Paste over it', onclick: () => act.paste(true), ...off }],
+    paste: [
+      menuItem.paste(() => act.paste(false), { label: '📋 Paste as a new slide after it', ...off, ...asNew }),
+      { label: '📋 Paste over it', onclick: () => act.paste(true), ...off },
+    ],
     move: moves(slide),
     delete: menuItem.delete('slide', act.remove, { disabled: m.count < 2, hint: m.count < 2 ? `The only ${slide} stays (empty it instead)` : undefined }),
   });

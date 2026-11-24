@@ -29,7 +29,22 @@ describe('stamping the changelog', () => {
 
   it("merges into the day's heading when it has one, the moved lines first in each section and the sections in order", () => {
     const today = ['## 2026-11-22', '', '### Changed', '', '- Pushed this morning (ddd4444)', '', '### Fixed', '', '- An earlier fix (eee5555)', ''];
-    const added = ['## Unreleased', '', '### Removed', '', '- A thing gone (fff6666)', '', '### Fixed', '', '- A later fix (aaa1111)', '', '### Added', '', '- A new thing (bbb2222)', ''];
+    const added = [
+      '## Unreleased',
+      '',
+      '### Removed',
+      '',
+      '- A thing gone (fff6666)',
+      '',
+      '### Fixed',
+      '',
+      '- A later fix (aaa1111)',
+      '',
+      '### Added',
+      '',
+      '- A new thing (bbb2222)',
+      '',
+    ];
     const r = stampChangelog(file(added, today, older), '2026-11-22')!;
     expect(r.merged).toBe(true);
     expect(r.moved).toBe(3);

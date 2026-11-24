@@ -5,9 +5,42 @@ import { addScreenBeside, ensureWorld, newRpgRound, splitParty } from '../../lib
 import { goToRound, newSession, score } from '../../lib/session';
 import { currencyFields, inventory, newStatField, statNumber, undoAction } from '../../lib/toolset';
 import {
-  addLive, avatarRange, avatarSpot, bigObject, centredOn, droppedObject, dropEntry, everythingOn, fillsScreen, giveEntry, groupDelta, hiddenNames, joinPartyNow, liveText, moveChoices, moveGroup,
-  moveObject, nameSecret, objectActs, objectMenu, objectRange, objectSay, partyOn, pickUp, regroupAll, removeObject, selectionWords, sendPartiesOn, sendPlayers, setObjectShown, shortList, splitOff, START_FIRST,
-  staysWords, stepParty, wayOffEdge,
+  addLive,
+  avatarRange,
+  avatarSpot,
+  bigObject,
+  centredOn,
+  droppedObject,
+  dropEntry,
+  everythingOn,
+  fillsScreen,
+  giveEntry,
+  groupDelta,
+  hiddenNames,
+  joinPartyNow,
+  liveText,
+  moveChoices,
+  moveGroup,
+  moveObject,
+  nameSecret,
+  objectActs,
+  objectMenu,
+  objectRange,
+  objectSay,
+  partyOn,
+  pickUp,
+  regroupAll,
+  removeObject,
+  selectionWords,
+  sendPartiesOn,
+  sendPlayers,
+  setObjectShown,
+  shortList,
+  splitOff,
+  START_FIRST,
+  staysWords,
+  stepParty,
+  wayOffEdge,
 } from './hostops';
 import { newLive } from '../../lib/live';
 import type { MenuEntry } from '../../lib/menustate.svelte';
@@ -32,7 +65,8 @@ function setup(): { game: Game; session: Session; st: WorldState } {
 
 /** The avatars' boxes (token and nameplate) on a screen. */
 const avatars = (st: WorldState) => Object.values(st.positions).map((p) => ({ x: p.x - 60, y: p.y - 60, w: 120, h: 150 }));
-const covers = (el: SlideElement, b: { x: number; y: number; w: number; h: number }) => el.x < b.x + b.w && b.x < el.x + el.w && el.y < b.y + b.h && b.y < el.y + el.h;
+const covers = (el: SlideElement, b: { x: number; y: number; w: number; h: number }) =>
+  el.x < b.x + b.w && b.x < el.x + el.w && el.y < b.y + b.h && b.y < el.y + el.h;
 
 describe('improvising on the RPG stage', () => {
   it('puts typed text where no avatar stands', () => {
@@ -223,7 +257,14 @@ describe('objects and items on the RPG stage', () => {
     const { game, session, st, potion } = withLoot();
     const said: string[] = [];
     const items = objectMenu(game, session, potion.id, { open: () => said.push('open'), removed: (t) => said.push(t) });
-    expect(items.map((i) => ('label' in i ? i.label : 'heading' in i ? i.heading : '—'))).toEqual(['Potion', '🗂 Open its card', '—', '🙈 Hide from viewers', '—', '🗑 Remove']);
+    expect(items.map((i) => ('label' in i ? i.label : 'heading' in i ? i.heading : '—'))).toEqual([
+      'Potion',
+      '🗂 Open its card',
+      '—',
+      '🙈 Hide from viewers',
+      '—',
+      '🗑 Remove',
+    ]);
     for (const i of items) if ('onclick' in i) i.onclick();
     expect(said).toEqual(['open', 'Removed Potion · Ctrl+Z brings it back']);
     expect(st.objects[potion.id]).toEqual({ shown: false, taken: true });
@@ -240,7 +281,13 @@ describe('objects and items on the RPG stage', () => {
     const run = { live: newLive(), selected: [] };
     expect(objectActs(game, session, potion.id, run, null).map((a) => a.label)).toEqual(['✋ Ann picks up Potion']);
     const closed: string[] = [];
-    const items = objectMenu(game, session, potion.id, { run, open: () => closed.push('open'), edit: () => closed.push('edit'), closed: () => closed.push('closed'), removed: () => {} });
+    const items = objectMenu(game, session, potion.id, {
+      run,
+      open: () => closed.push('open'),
+      edit: () => closed.push('edit'),
+      closed: () => closed.push('closed'),
+      removed: () => {},
+    });
     expect(lines(items)).toEqual(['Potion', '✋ Ann picks up Potion', '—', '🗂 Open its card', '✎ Edit', '—', '🙈 Hide from viewers', '—', '🗑 Remove']);
     // (The Delete key takes off only the object whose card is open: its key shows then, not from the stage or list.)
     expect(items.at(-1)).toMatchObject({ danger: true });
@@ -267,7 +314,10 @@ describe('objects and items on the RPG stage', () => {
         class: 'npc' as const,
         dialogue: textSlide('Hello'),
         shop: 'shop1',
-        actions: [{ id: 'h', do: 'stat' as const, field: 'hp', op: 'add' as const, amount: -1, who: 'ask' as const }, { id: 's', do: 'score' as const, amount: 500, who: 'ask' as const }],
+        actions: [
+          { id: 'h', do: 'stat' as const, field: 'hp', op: 'add' as const, amount: -1, who: 'ask' as const },
+          { id: 's', do: 'score' as const, amount: 500, who: 'ask' as const },
+        ],
       },
     };
     screen.slide.elements.push(cat);
@@ -305,7 +355,12 @@ describe('objects and items on the RPG stage', () => {
     const { game, session, st } = setup();
     const screen = game.worlds![0].maps[0].screens[0];
     game.statFields = [{ ...newStatField('HP'), id: 'hp' }];
-    const trap = { ...newShapeEl('rect'), name: 'Trap', secret: true, role: { class: 'hazard' as const, actions: [{ id: 'h', do: 'stat' as const, field: 'hp', op: 'add' as const, amount: -1, who: 'all' as const }] } };
+    const trap = {
+      ...newShapeEl('rect'),
+      name: 'Trap',
+      secret: true,
+      role: { class: 'hazard' as const, actions: [{ id: 'h', do: 'stat' as const, field: 'hp', op: 'add' as const, amount: -1, who: 'all' as const }] },
+    };
     screen.slide.elements.push(trap);
     expect(nameSecret(st, screen, trap)).toBe(true);
     expect(objectSay(trap, true, (n) => `${n}: Zone`)).toEqual(['Trap: Zone', 'A hidden object: Zone']);
@@ -315,7 +370,10 @@ describe('objects and items on the RPG stage', () => {
     addLive(game, session, drawn, 'Add a drawing');
     expect(nameSecret(st, screen, drawn)).toBe(false);
     objectActs(game, session, trap.id, { live: newLive(), selected: [] }, null)[0].run();
-    expect([stepText(session.actionLog!.at(-1)!, false), stepText(session.actionLog!.at(-1)!, true)]).toEqual(['Trap: HP −1 (Ann, Bob & Cat)', 'A hidden object: HP −1 (Ann, Bob & Cat)']);
+    expect([stepText(session.actionLog!.at(-1)!, false), stepText(session.actionLog!.at(-1)!, true)]).toEqual([
+      'Trap: HP −1 (Ann, Bob & Cat)',
+      'A hidden object: HP −1 (Ann, Bob & Cat)',
+    ]);
     setObjectShown(game, session, trap.id, true);
     expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Reveal a hidden object');
     expect(st.objects[trap.id]?.shown).toBe(true);
@@ -324,10 +382,19 @@ describe('objects and items on the RPG stage', () => {
     expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Hide Trap');
     // One window, its card masked: its menu has no buttons of its card's (they're behind its card's 👁 Show).
     // Nor ✎ Edit: the live editor lists it by name, on stream (as on its card, it waits behind 👁 Show).
-    const menu = objectMenu(game, session, trap.id, { run: { live: newLive(), selected: [] }, oneWindow: true, alias: '🙈 Hidden object 1', edit: () => {}, open: () => {}, removed: () => {} });
+    const menu = objectMenu(game, session, trap.id, {
+      run: { live: newLive(), selected: [] },
+      oneWindow: true,
+      alias: '🙈 Hidden object 1',
+      edit: () => {},
+      open: () => {},
+      removed: () => {},
+    });
     expect(lines(menu)).toEqual(['🙈 Hidden object 1', '🗂 Open its card', '—', '👁 Reveal to viewers', '—', '🗑 Remove']);
     // (Two windows: viewers don't see the menu.)
-    expect(lines(objectMenu(game, session, trap.id, { oneWindow: false, alias: '🙈 Hidden object 1', edit: () => {}, open: () => {}, removed: () => {} }))).toContain('✎ Edit');
+    expect(
+      lines(objectMenu(game, session, trap.id, { oneWindow: false, alias: '🙈 Hidden object 1', edit: () => {}, open: () => {}, removed: () => {} })),
+    ).toContain('✎ Edit');
   });
 
   it('in one window, a visible object’s Reveal of a secret one never names it: its card, its menu, the toast, the Log and Redo', () => {
@@ -339,13 +406,23 @@ describe('objects and items on the RPG stage', () => {
     const lever = {
       ...newShapeEl('rect'),
       name: 'Lever',
-      role: { class: 'hazard' as const, actions: [{ id: 'r1', do: 'reveal' as const, object: idol.id }, { id: 'r2', do: 'reveal' as const, object: boss.id }] },
+      role: {
+        class: 'hazard' as const,
+        actions: [
+          { id: 'r1', do: 'reveal' as const, object: idol.id },
+          { id: 'r2', do: 'reveal' as const, object: boss.id },
+        ],
+      },
     };
     screen.slide.elements.push(idol, boss, lever);
     expect([...hiddenNames(st, screen).values()]).toEqual(['🙈 Hidden object 1']);
     const run = { live: newLive(), selected: [] };
     // Two windows (viewers don't see the panel): named, as before.
-    expect(objectActs(game, session, lever.id, run, null).map((a) => a.label)).toEqual(['Reveal Golden Idol (Start)', 'Reveal spoiler-final-boss.png (Start)', '▶ Run all']);
+    expect(objectActs(game, session, lever.id, run, null).map((a) => a.label)).toEqual([
+      'Reveal Golden Idol (Start)',
+      'Reveal spoiler-final-boss.png (Start)',
+      '▶ Run all',
+    ]);
     // One window: what the panel calls it, else "a hidden object", on its card and in its menu.
     const acts = objectActs(game, session, lever.id, run, null, true);
     expect(acts.map((a) => a.label)).toEqual(['Reveal 🙈 Hidden object 1 (Start)', 'Reveal a hidden object (Start)', '▶ Run all']);
@@ -475,7 +552,12 @@ describe('dragging a selection together on the RPG stage', () => {
     expect([st.objects[chest.id].x, st.objects[chest.id].y]).toEqual([900, 350]);
     undoAction(session, game);
     const back = Object.values(session.worlds!)[0];
-    expect([back.positions.p0.x, back.positions.p0.y, back.positions.p1.x, back.positions.p1.y]).toEqual([before.ann.x, before.ann.y, before.bob.x, before.bob.y]);
+    expect([back.positions.p0.x, back.positions.p0.y, back.positions.p1.x, back.positions.p1.y]).toEqual([
+      before.ann.x,
+      before.ann.y,
+      before.bob.x,
+      before.bob.y,
+    ]);
     expect(back.objects[chest.id]?.x).toBeUndefined();
     // Nothing that's there: no step.
     expect(moveGroup(game, session, { nobody: { x: 1, y: 1 } }, {})).toBeNull();
@@ -507,7 +589,9 @@ describe('dragging a selection together on the RPG stage', () => {
     addLive(game, session, chest, 'Chest');
     addLive(game, session, sword, 'Sword');
     st.objects[sword.id] = { shown: true };
-    expect(moveGroup(game, session, { p0: { x: 300, y: 600 } }, { [chest.id]: { x: 900, y: 300 }, [sword.id]: { x: 500, y: 300 } })).toBe('Move Ann, Chest & Sword');
+    expect(moveGroup(game, session, { p0: { x: 300, y: 600 } }, { [chest.id]: { x: 900, y: 300 }, [sword.id]: { x: 500, y: 300 } })).toBe(
+      'Move Ann, Chest & Sword',
+    );
     const step = session.actionLog!.at(-1)!;
     expect([stepText(step, false), stepText(step, true)]).toEqual(['Move Ann, Chest & Sword', 'Move Ann, Sword & a hidden object']);
     moveObject(game, session, chest.id, { x: 950, y: 300 });
@@ -538,7 +622,8 @@ describe('dragging a selection together on the RPG stage', () => {
     const ring = { ...newShapeEl('rect'), name: 'Ring', secret: true, role: { class: 'item' as const } };
     screen.slide.elements.push(ring);
     expect([...hiddenNames(st, screen).entries()]).toEqual([[ring.id, '🙈 Hidden object 1']]);
-    const heading = (oneWindow: boolean) => objectMenu(game, session, ring.id, { open: () => {}, removed: () => {}, oneWindow, alias: '🙈 Hidden object 1' })[0];
+    const heading = (oneWindow: boolean) =>
+      objectMenu(game, session, ring.id, { open: () => {}, removed: () => {}, oneWindow, alias: '🙈 Hidden object 1' })[0];
     expect([heading(false), heading(true)]).toEqual([{ heading: 'Ring' }, { heading: '🙈 Hidden object 1' }]);
   });
 

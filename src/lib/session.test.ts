@@ -1,16 +1,94 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { MAX_POINTS, migrateGame, WAGER_FLOOR, wagerFloor, newFinalRound, newGame, newId, newRound, textSlide, type BoardRound, type FinalRound, type Game } from './model';
+import {
+  MAX_POINTS,
+  migrateGame,
+  WAGER_FLOOR,
+  wagerFloor,
+  newFinalRound,
+  newGame,
+  newId,
+  newRound,
+  textSlide,
+  type BoardRound,
+  type FinalRound,
+  type Game,
+} from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
-  applyScore, answerShowing, backToBoard, ddCap, finalAdjustWager, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, forgetRedo, roundComplete, score, setScore, toggleEvent, undo,
-  backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
-  toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
-  finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
-  blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown, finalTakeNewcomers, finalReached, reveal, unreveal,
-  finalShowAnswer, typedAnswer, finalRevealNow, switchVerdict, switchNet, switchChain, logZero,
+  applyScore,
+  answerShowing,
+  backToBoard,
+  ddCap,
+  finalAdjustWager,
+  finalJudge,
+  toggleReveal,
+  finalNext,
+  finalWagerCap,
+  goToRound,
+  introNext,
+  randomizeDailyDoubles,
+  tiedLeaders,
+  newSession,
+  openClue,
+  redo,
+  forgetRedo,
+  roundComplete,
+  score,
+  setScore,
+  toggleEvent,
+  undo,
+  backToLastRound,
+  finalAdvance,
+  finalUnjudged,
+  findClueRef,
+  rebaseSession,
+  removePlayer,
+  restorePlayer,
+  startIntro,
+  stepOf,
+  toggleStep,
+  toggleUsed,
+  usedTiles,
+  describeStep,
+  awardOpen,
+  clueMarks,
+  clueScored,
+  places,
+  clueName,
+  standings,
+  finalWagersOk,
+  finalWagerProblems,
+  finalChoose,
+  finalWagerRefused,
+  finalSetWager,
+  finalWagerEditable,
+  wagerFromPhone,
+  finalShow,
+  migrateSession,
+  finalStepFix,
+  wagerSentBy,
+  forViewers,
+  blankSlide,
+  toolOnlyClue,
+  finalBack,
+  rosterChange,
+  nameList,
+  coWinnersHold,
+  winnerKnown,
+  finalTakeNewcomers,
+  finalReached,
+  reveal,
+  unreveal,
+  finalShowAnswer,
+  typedAnswer,
+  finalRevealNow,
+  switchVerdict,
+  switchNet,
+  switchChain,
+  logZero,
 } from './session';
 import { finalNextStep, logged, redoAction, revealStep, undoAction } from './toolset';
 import { newRpgRound } from './rpg';
@@ -224,7 +302,7 @@ describe('flow', () => {
     const round = board(game, 0);
     round.categories[0].clues.forEach((c) => (c.empty = true));
     let seed = 1;
-    const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     expect(randomizeDailyDoubles(round, 3, rand)).toBe(3);
     const dds = round.categories.map((c) => c.clues.filter((cl) => cl.type === 'dailyDouble').length);
     expect(dds[0]).toBe(0);
@@ -320,8 +398,21 @@ describe('multi-round games', () => {
   it('plays through 3 rounds of different sizes, then Final', () => {
     const game = jeopardyGame();
     game.players.push({ id: 'a', name: 'A', color: '#111111' });
-    const sizes: [number, number][] = [[6, 5], [4, 3], [8, 7]];
-    game.rounds = [...sizes.map(([cats, rows], i) => newRound(`R${i + 1}`, cats, Array.from({ length: rows }, (_, k) => (k + 1) * 100))), newFinalRound()];
+    const sizes: [number, number][] = [
+      [6, 5],
+      [4, 3],
+      [8, 7],
+    ];
+    game.rounds = [
+      ...sizes.map(([cats, rows], i) =>
+        newRound(
+          `R${i + 1}`,
+          cats,
+          Array.from({ length: rows }, (_, k) => (k + 1) * 100),
+        ),
+      ),
+      newFinalRound(),
+    ];
     const session = newSession(game);
     sizes.forEach(([cats, rows], i) => {
       expect(board(game, i).categories).toHaveLength(cats);
@@ -544,17 +635,29 @@ describe('host panel rules', () => {
     applyScore(session, game, [a, b], 850, 'x');
     expect(places(session).map((r) => r.place)).toEqual([1, 1, 3]);
     applyScore(session, game, [c], 900, 'x');
-    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([[c, 1], [a, 2], [b, 2]]);
+    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([
+      [c, 1],
+      [a, 2],
+      [b, 2],
+    ]);
   });
 
   it('a tiebreaker winner who is no longer first shares their place again', () => {
     const { game, session, a, b, c } = setup();
     applyScore(session, game, [a, b], 1000, 'x');
     session.rollOffWinner = b;
-    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([[b, 1], [a, 2], [c, 3]]);
+    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([
+      [b, 1],
+      [a, 2],
+      [c, 3],
+    ]);
     // A score fixed later puts C ahead of both.
     applyScore(session, game, [c], 1200, 'x');
-    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([[c, 1], [a, 2], [b, 2]]);
+    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([
+      [c, 1],
+      [a, 2],
+      [b, 2],
+    ]);
   });
 
   it('names image-only categories for the host', () => {
@@ -1108,7 +1211,12 @@ describe('final wagers', () => {
     // A Daily Double's wager: not the host's box, not the wager until it's shown.
     const dd = forViewers({ dd: { stage: 'question' as const, playerId: a, wager: 900, draft: 900, draftFrom: 'phone' as const, draftBy: 'Al' } }).dd;
     expect(dd).toEqual({ stage: 'question', playerId: a });
-    expect(forViewers({ dd: { stage: 'question' as const, playerId: a, wager: 900, shown: true } }).dd).toEqual({ stage: 'question', playerId: a, wager: 900, shown: true });
+    expect(forViewers({ dd: { stage: 'question' as const, playerId: a, wager: 900, shown: true } }).dd).toEqual({
+      stage: 'question',
+      playerId: a,
+      wager: 900,
+      shown: true,
+    });
   });
 
   it('keeps a wager editable until it is shown or judged', () => {
@@ -1501,7 +1609,11 @@ describe('co-winners', () => {
     session.rollOffWinner = 'a';
     session.tieAmong = ['a', 'b'];
     expect([tiedLeaders(session), winnerKnown(session)]).toEqual([[], true]);
-    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([['a', 1], ['b', 2], ['c', 3]]);
+    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([
+      ['a', 1],
+      ['b', 2],
+      ['c', 3],
+    ]);
     // Cat fixed up to $200 (she never rolled): a three-way tie, open again, everyone level.
     setScore(session, 'c', 200);
     expect(tiedLeaders(session).map((p) => p.id)).toEqual(['a', 'b', 'c']);
@@ -1518,7 +1630,13 @@ describe('co-winners', () => {
 
 describe('names', () => {
   it('lists players as one says them ("Ann, Bob & Cy")', () => {
-    expect([[], ['Ann'], ['Ann', 'Bob'], ['Ann', 'Bob', 'Cy'], ['Ann', 'Bob', 'Cy', 'Dee']].map(nameList)).toEqual(['', 'Ann', 'Ann & Bob', 'Ann, Bob & Cy', 'Ann, Bob, Cy & Dee']);
+    expect([[], ['Ann'], ['Ann', 'Bob'], ['Ann', 'Bob', 'Cy'], ['Ann', 'Bob', 'Cy', 'Dee']].map(nameList)).toEqual([
+      '',
+      'Ann',
+      'Ann & Bob',
+      'Ann, Bob & Cy',
+      'Ann, Bob, Cy & Dee',
+    ]);
   });
 
   it('names a group award that way in the history', () => {

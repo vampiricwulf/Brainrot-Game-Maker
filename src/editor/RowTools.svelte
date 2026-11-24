@@ -34,9 +34,22 @@
 </script>
 
 <span class="row-tools">
-  <button class="ghost {size} more" aria-haspopup="menu" aria-label="More for {name}" title="Move, duplicate and more (or right-click the row)" onclick={(e) => dropMenu(e, menu())}>⋯</button>
+  <button
+    class="ghost {size} more"
+    aria-haspopup="menu"
+    aria-label="More for {name}"
+    title="Move, duplicate and more (or right-click the row)"
+    onclick={(e) => dropMenu(e, menu())}>⋯</button
+  >
   {#if remove}
-    <button class="ghost {size} danger del" use:oneShot onclick={remove} disabled={!!off} aria-label={deleteLabel} title={off ?? `${deleteLabel ?? 'Delete'} (Undo brings it back)`}>🗑{deleteWords ? ` ${deleteWords}` : ''}</button>
+    <button
+      class="ghost {size} danger del"
+      use:oneShot
+      onclick={remove}
+      disabled={!!off}
+      aria-label={deleteLabel}
+      title={off ?? `${deleteLabel ?? 'Delete'} (Undo brings it back)`}>🗑{deleteWords ? ` ${deleteWords}` : ''}</button
+    >
   {/if}
 </span>
 

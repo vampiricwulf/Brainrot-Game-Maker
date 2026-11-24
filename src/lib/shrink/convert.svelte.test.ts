@@ -23,7 +23,15 @@ import { checkMade, convertBlob, RunError } from './run';
 /** Where the test steps in: once the file is made (release), and once its bytes are stored. */
 const at = vi.hoisted(() => ({ release: null as (() => void) | null, stored: null as (() => void) | null, facts: null as Partial<MediaFacts> | null }));
 const track = { str: null, decodes: true, bps: 64_000, cpt: true };
-const TS: MediaFacts = { box: 'ts', seconds: 3, size: 900, video: null, audio: { ...track, codec: 'mp3', channels: 1, label: null }, moreAudio: 0, subtitles: false };
+const TS: MediaFacts = {
+  box: 'ts',
+  seconds: 3,
+  size: 900,
+  video: null,
+  audio: { ...track, codec: 'mp3', channels: 1, label: null },
+  moreAudio: 0,
+  subtitles: false,
+};
 
 vi.mock('../app.svelte', async (orig) => ({ ...(await orig<typeof import('../app.svelte')>()), toast: vi.fn() }));
 // (🖼 Media's card for it flashes: there's no page here.)
@@ -33,7 +41,7 @@ vi.mock('./probe', async (orig) => ({ ...(await orig<typeof import('./probe')>()
 vi.mock('./run', async (orig) => ({ ...(await orig<typeof import('./run')>()), checkMade: vi.fn(async () => null), convertBlob: vi.fn() }));
 vi.mock('../desktop.svelte', async (orig) => ({
   ...(await orig<typeof import('../desktop.svelte')>()),
-  whileWriting: async <T,>(fn: () => Promise<T>): Promise<T> => {
+  whileWriting: async <T>(fn: () => Promise<T>): Promise<T> => {
     const r = await fn();
     at.stored?.();
     return r;
@@ -58,7 +66,8 @@ const stored = (id: string, v: Verdict, size = 900) => {
   markChecked(b, v);
   return b;
 };
-const made = (size = 600) => vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(size)], { type: 'video/mp4' }), mime: 'video/mp4', seconds: 3 });
+const made = (size = 600) =>
+  vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(size)], { type: 'video/mp4' }), mime: 'video/mp4', seconds: 3 });
 
 beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -127,7 +136,10 @@ describe('🔄 a converted file put in its place', () => {
     vi.mocked(convertBlob).mockRejectedValue(new RunError('cannot-copy'));
     const job = queueConvert(g, 'party')!;
     await ended(job);
-    expect(jobs.ended[job]).toEqual({ failed: 'It couldn’t be repackaged as it is: nothing was changed.', toast: '🔄 A video couldn’t be converted: it couldn’t be repackaged as it is. Nothing was changed.' });
+    expect(jobs.ended[job]).toEqual({
+      failed: 'It couldn’t be repackaged as it is: nothing was changed.',
+      toast: '🔄 A video couldn’t be converted: it couldn’t be repackaged as it is. Nothing was changed.',
+    });
     expect(vi.mocked(toast).mock.calls.at(-1)?.[0]).toBe('🔄 A video couldn’t be converted: it couldn’t be repackaged as it is. Nothing was changed.');
     expect([g.media.map((m) => m.id), labels(), checks.offers]).toEqual([['party', 'partyc'], [], ['party']]);
   });
@@ -163,7 +175,9 @@ describe('🔄 a converted file put in its place', () => {
       .mockResolvedValueOnce({ blob: new Blob([new Uint8Array(500)], { type: 'video/mp4' }), mime: 'video/mp4', seconds: 3 });
     const ids = ['party', 'b', 'c'].map((id) => queueConvert(g, id, 'batch1')!);
     await Promise.all(ids.map(ended));
-    expect(vi.mocked(toast).mock.calls.map((c) => c[0])).toEqual(['🔄 2 files converted (1 couldn’t be: 🖼 Media says why). Ctrl+Z puts the old ones back, one at a time.']);
+    expect(vi.mocked(toast).mock.calls.map((c) => c[0])).toEqual([
+      '🔄 2 files converted (1 couldn’t be: 🖼 Media says why). Ctrl+Z puts the old ones back, one at a time.',
+    ]);
     expect(labels()).toEqual(['Repackaged a video as MP4 (nothing lost)', 'Repackaged a video as MP4 (nothing lost)']);
   });
 
@@ -198,7 +212,11 @@ describe('🔄 never joining a step made meanwhile, and never put in over other 
     g.title = 'Dragged';
     at.release!();
     await new Promise((ok) => setTimeout(ok, 400));
-    expect([jobs.list.map((j) => [j.id, j.phase]), Object.keys(mediaUrls).length, g.media.map((m) => m.id)]).toEqual([[[job, 'checking']], files, ['party', 'partyc']]);
+    expect([jobs.list.map((j) => [j.id, j.phase]), Object.keys(mediaUrls).length, g.media.map((m) => m.id)]).toEqual([
+      [[job, 'checking']],
+      files,
+      ['party', 'partyc'],
+    ]);
     end();
     await ended(job);
     expect(history.entries.map((e) => e.label)).toEqual(['Renamed the game “Dragged”', 'Repackaged a video as MP4 (nothing lost)']);
@@ -236,7 +254,10 @@ describe('🔄 never joining a step made meanwhile, and never put in over other 
     const files = Object.keys(mediaUrls).length;
     const job = queueConvert(g, 'party')!;
     await ended(job);
-    expect(jobs.ended[job]).toEqual({ failed: 'It didn’t come out right: nothing was changed.', toast: '🔄 A video couldn’t be converted: it didn’t come out right. Nothing was changed.' });
+    expect(jobs.ended[job]).toEqual({
+      failed: 'It didn’t come out right: nothing was changed.',
+      toast: '🔄 A video couldn’t be converted: it didn’t come out right. Nothing was changed.',
+    });
     expect([g.media.map((m) => m.id), labels(), Object.keys(mediaUrls).length]).toEqual([['party', 'partyc'], [], files]);
   });
 

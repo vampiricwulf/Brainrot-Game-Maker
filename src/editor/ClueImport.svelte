@@ -84,11 +84,18 @@
     const name = roundName(round, app.game.rounds.indexOf(round));
     // One note (with Undo), at the board: not "… › Row values" because the import set the rows too.
     const left = p.left ? ` (${p.left} didn’t fit)` : '';
-    step(`Imported ${p.placed} clue${p.placed === 1 ? '' : 's'} into round “${name}”${left}`, () => {
+    step(
+      `Imported ${p.placed} clue${p.placed === 1 ? '' : 's'} into round “${name}”${left}`,
+      () => {
         applyPlan(round, p);
         // The imported clues take the theme's clue text, as clues added on the board do (one with a look of its own keeps it).
-        followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap(textSlidesOf)));
-      }, { notify: true, place: { tab: 'round', round: round.id } });
+        followClueText(
+          app.game,
+          round.categories.flatMap((c) => c.clues.flatMap(textSlidesOf)),
+        );
+      },
+      { notify: true, place: { tab: 'round', round: round.id } },
+    );
     drafts.delete(round.id);
     onclose();
   }
@@ -136,8 +143,7 @@
       rows="6"
       placeholder={'Memes\t200\tThis dog started it all\tWhat is Doge?\nMemes\t400\tNever gonna give you up\tWho is Rick Astley?'}
       aria-label="Clues to import"
-      data-autofocus
-    ></textarea>
+      data-autofocus></textarea>
 
     <div class="row">
       <label class="check"><input type="radio" bind:group={mode} value="fill" /> Fill empty tiles</label>
@@ -151,7 +157,8 @@
         {:else if !clues.length}
           No clues found (each row needs a question or an answer)
         {:else if plan}
-          {clues.length} clue{clues.length === 1 ? '' : 's'} found · {plan.placed} go on the board{plan.left ? ` · ${plan.left} don’t fit` : ''}{plan.leftOut.length
+          {clues.length} clue{clues.length === 1 ? '' : 's'} found · {plan.placed} go on the board{plan.left ? ` · ${plan.left} don’t fit` : ''}{plan.leftOut
+            .length
             ? ` (only 10 categories fit on a board: ${plan.leftOut.map((n) => `“${n}”`).join(', ')} ${plan.leftOut.length === 1 ? 'is' : 'are'} left out)`
             : ''}{clues.some((c) => c.answer) ? '' : ' · none has an answer: is there an “Answer” column?'}
         {/if}
@@ -175,13 +182,16 @@
         {/each}
       </div>
       <p class="hint">
-        {mode === 'fill' ? 'Highlighted tiles get the imported clues. Tiles with something on them stay as they are.' : 'The board becomes the imported categories (rows and values too).'}
+        {mode === 'fill'
+          ? 'Highlighted tiles get the imported clues. Tiles with something on them stay as they are.'
+          : 'The board becomes the imported categories (rows and values too).'}
       </p>
     {/if}
 
     <div class="modal-foot">
       <button class="ghost" onclick={close}>Cancel</button>
-      <button class="primary" onclick={apply} disabled={!plan?.placed}>Import {plan?.placed ? `${plan.placed} clue${plan.placed === 1 ? '' : 's'}` : ''}</button>
+      <button class="primary" onclick={apply} disabled={!plan?.placed}>Import {plan?.placed ? `${plan.placed} clue${plan.placed === 1 ? '' : 's'}` : ''}</button
+      >
     </div>
   </div>
 </div>

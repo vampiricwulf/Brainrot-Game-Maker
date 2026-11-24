@@ -139,7 +139,9 @@
       </div>
       <span class="spacer"></span>
       {#if off}
-        <span class="muted small">Off{#if v}{' '}<span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span>
+        <span class="muted small"
+          >Off{#if v}{' '}<span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span
+        >
       {:else if v && missing}
         {@const instead = builtin ? 'plays the built-in sound' : key === 'partner' ? 'the tile-open sound plays' : 'plays nothing'}
         <!-- Its file isn't here, or (an online link) the site says its link has expired, as 🖼 Media shows it; or it was
@@ -153,9 +155,13 @@
         {/if}
         <!-- (Not for a file deleted from the game: there's nothing left to put it back in.) -->
         {#if ref}
-          <button class="small primary" onclick={() => findFile(v)}
-            title={ref.url ? 'Pick the file on this computer: the game keeps it in place of the link, everywhere it’s used' : "Pick the file again: every place it's used gets it back"}
-            >🔗 Find file…</button>
+          <button
+            class="small primary"
+            onclick={() => findFile(v)}
+            title={ref.url
+              ? 'Pick the file on this computer: the game keeps it in place of the link, everywhere it’s used'
+              : "Pick the file again: every place it's used gets it back"}>🔗 Find file…</button
+          >
         {/if}
       {:else if v}
         <span class="file" title={nameOf(v)}>🔊 {nameOf(v)}</span>
@@ -164,22 +170,43 @@
       {/if}
       {#if cueHere(app.game, key)}
         <label class="vol small" title="Volume">
-          <input type="range" min="0" max="1" step="0.05" value={vol} oninput={(e) => setVolume(key, +e.currentTarget.value)} aria-label="{label} volume" aria-valuetext="{Math.round(vol * 100)}%" />
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={vol}
+            oninput={(e) => setVolume(key, +e.currentTarget.value)}
+            aria-label="{label} volume"
+            aria-valuetext="{Math.round(vol * 100)}%"
+          />
           <span class="pct">{Math.round(vol * 100)}%</span>
         </label>
-        <button class="small ghost" onclick={() => preview(key)} title={previewing === key ? 'Stop' : 'Preview'} aria-label="Preview {label}"
-          aria-pressed={previewing === key}>{previewing === key ? '■' : '▶'}</button>
+        <button
+          class="small ghost"
+          onclick={() => preview(key)}
+          title={previewing === key ? 'Stop' : 'Preview'}
+          aria-label="Preview {label}"
+          aria-pressed={previewing === key}>{previewing === key ? '■' : '▶'}</button
+        >
       {/if}
       {#if v && !off}
-        <button class="small ghost" onclick={() => (audio[key] = undefined)} title={builtin ? 'Back to the built-in sound' : 'Take its file off (it plays nothing)'}
+        <button
+          class="small ghost"
+          onclick={() => (audio[key] = undefined)}
+          title={builtin ? 'Back to the built-in sound' : 'Take its file off (it plays nothing)'}
           aria-label={builtin ? `Back to the built-in ${label} sound` : `Remove the ${label} sound`}
         >
           {builtin ? '↺ Built-in' : '⌫ Clear file'}
         </button>
       {/if}
       <div class="pop">
-        <button class="small" onclick={() => (picking = key)} use:mediaDrop={{ kind: 'audio', onpick: (id) => choose(key, id) }}
-          aria-label="{v ? 'Change' : 'Choose'} file for {label}">
+        <button
+          class="small"
+          onclick={() => (picking = key)}
+          use:mediaDrop={{ kind: 'audio', onpick: (id) => choose(key, id) }}
+          aria-label="{v ? 'Change' : 'Choose'} file for {label}"
+        >
           {v ? 'Change…' : 'Choose file…'}
         </button>
         {#if picking === key}

@@ -12,7 +12,9 @@ import { addCard } from './partner';
 
 // (Its categories named too, as a finished board's are: a default "Category N" is a note of its own.)
 const fill = (r: BoardRound) =>
-  r.categories.forEach((c, i) => ((c.title = `Topic ${i + 1}`), c.clues.forEach((cl) => (setSlideText(cl.questionSlide, 'Q?'), setSlideText(cl.answerSlide, 'A')))));
+  r.categories.forEach(
+    (c, i) => ((c.title = `Topic ${i + 1}`), c.clues.forEach((cl) => (setSlideText(cl.questionSlide, 'Q?'), setSlideText(cl.answerSlide, 'A')))),
+  );
 
 describe('the checklist in the sidebar', () => {
   it('marks a new game’s own lines (no title, players or rounds yet), which the first screen covers', () => {
@@ -24,7 +26,9 @@ describe('the checklist in the sidebar', () => {
       ['No rounds yet', true],
     ]);
     // Anything else, as a file that won't play, isn't one of them.
-    expect(checklistLines(game, [{ text: '1 video/audio file this browser may not play: 🖼 Media says what to do', tab: 'media', level: 'warn' }])[0].starter).toBeUndefined();
+    expect(
+      checklistLines(game, [{ text: '1 video/audio file this browser may not play: 🖼 Media says what to do', tab: 'media', level: 'warn' }])[0].starter,
+    ).toBeUndefined();
   });
   it('says one line a round, and goes to its first unfinished tile', () => {
     const game = jeopardyGame();
@@ -34,10 +38,18 @@ describe('the checklist in the sidebar', () => {
     // A new board's Daily Double, not placed yet, isn't one more thing to fix: Start game places it.
     board.dailyDoubleCount = 1;
     board.categories.forEach((c) => c.clues.forEach((cl) => (cl.type = 'standard')));
-    expect(lines().filter((l) => l.tab === 0).map((l) => l.text)).toEqual(['Jeopardy!: 30 clues to finish']);
+    expect(
+      lines()
+        .filter((l) => l.tab === 0)
+        .map((l) => l.text),
+    ).toEqual(['Jeopardy!: 30 clues to finish']);
     // (Daily Doubles: below.)
     board.dailyDoubleCount = 0;
-    expect(lines().filter((l) => l.tab === 0).map((l) => l.text)).toEqual(['Jeopardy!: 30 clues to finish']);
+    expect(
+      lines()
+        .filter((l) => l.tab === 0)
+        .map((l) => l.text),
+    ).toEqual(['Jeopardy!: 30 clues to finish']);
     expect(lines().filter((l) => l.tab === 2)).toHaveLength(1);
     fill(board);
     board.categories[2].clues[3].answerSlide.elements = [];
@@ -45,7 +57,11 @@ describe('the checklist in the sidebar', () => {
     const line = lines().find((l) => l.tab === 0)!;
     expect(line.text).toBe('Jeopardy!: 1 clue to finish, 1 more to fix');
     expect(line.details).toHaveLength(2);
-    expect(line.place).toEqual({ tab: 'round', round: board.id, part: { kind: 'clue', category: board.categories[2].id, clue: board.categories[2].clues[3].id, onBoard: true } });
+    expect(line.place).toEqual({
+      tab: 'round',
+      round: board.id,
+      part: { kind: 'clue', category: board.categories[2].id, clue: board.categories[2].clues[3].id, onBoard: true },
+    });
     // Only a nameless category left: that problem as it is, going to the category.
     setSlideText(board.categories[2].clues[3].answerSlide, 'A');
     const only = lines().find((l) => l.tab === 0)!;
@@ -68,12 +84,19 @@ describe('two or three things to fix in one line', () => {
     setSlideText(final.questionSlide, 'Q?');
     expect(line().text).toBe('Final Jeopardy! has no answer');
     // Four: counted.
-    const lines = checklistLines(game, ['a', 'b', 'c', 'd'].map((x) => ({ text: `Final Jeopardy!: ${x}`, tab: 0, level: 'warn' as const })));
+    const lines = checklistLines(
+      game,
+      ['a', 'b', 'c', 'd'].map((x) => ({ text: `Final Jeopardy!: ${x}`, tab: 0, level: 'warn' as const })),
+    );
     expect(lines.map((l) => l.text)).toEqual(['Final Jeopardy!: 4 things to fix']);
     // Too long for the sidebar, or one not starting with the name: counted too.
     const long = checklistLines(game, [
       { text: 'Final Jeopardy! has no answer', tab: 0, level: 'warn' },
-      { text: "Final Jeopardy! was switched off in the old game: kept because something is written in it, and plays last. Delete the round if it shouldn't play", tab: 0, level: 'info' },
+      {
+        text: "Final Jeopardy! was switched off in the old game: kept because something is written in it, and plays last. Delete the round if it shouldn't play",
+        tab: 0,
+        level: 'info',
+      },
     ]);
     expect(long[0].text).toBe('Final Jeopardy!: 2 things to fix');
   });
@@ -117,7 +140,9 @@ describe('a board still under its default category names', () => {
     fill(board);
     board.categories[4].title = 'Category 5';
     board.categories[5].title = ' Category 6 ';
-    expect(lines().map((l) => [l.text, l.level])).toEqual([['Jeopardy!: 2 categories still have made-up names like “Category 5” (the names show on stream)', 'info']]);
+    expect(lines().map((l) => [l.text, l.level])).toEqual([
+      ['Jeopardy!: 2 categories still have made-up names like “Category 5” (the names show on stream)', 'info'],
+    ]);
     expect(lines()[0].place).toEqual({ tab: 'round', round: board.id, part: { kind: 'category', category: board.categories[4].id } });
     // One: said by its name. A picture category, or a name of the author's own that starts the same, isn't one.
     board.categories[5].image = 'm1';
@@ -165,9 +190,11 @@ describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () =
     board.categories.forEach((c) => c.clues.forEach((cl) => (cl.type = 'standard')));
     board.dailyDoubleCount = 2;
     board.categories[1].clues[4].type = 'dailyDouble';
-    expect(checklistLines(game, validate(game)).filter((l) => l.tab === 0).map((l) => l.text)).toEqual([
-      'Jeopardy!: 1 Daily Double not placed yet (Start game puts it on the board at random)',
-    ]);
+    expect(
+      checklistLines(game, validate(game))
+        .filter((l) => l.tab === 0)
+        .map((l) => l.text),
+    ).toEqual(['Jeopardy!: 1 Daily Double not placed yet (Start game puts it on the board at random)']);
     // A note, not a warning.
     expect(checklistLines(game, validate(game)).find((l) => l.tab === 0)?.level).toBe('info');
     board.categories[3].clues[2].type = 'dailyDouble';
@@ -217,9 +244,15 @@ describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () =
     game.rounds.push(race);
     race.spaces[3].onLand = [{ id: 'g', do: 'goto', space: 'gone', who: 'ask' }];
     const lines = checklistLines(game, validate(game));
-    expect(lines.find((l) => l.tab === 0)).toMatchObject({ text: 'Quest: a way out of “Cave” leads nowhere', place: { tab: 'world', world: world.id, map: map.id, screen: cave.id } });
+    expect(lines.find((l) => l.tab === 0)).toMatchObject({
+      text: 'Quest: a way out of “Cave” leads nowhere',
+      place: { tab: 'world', world: world.id, map: map.id, screen: cave.id },
+    });
     // (The Race's Finish is where the path is meant to end: nothing to say about it.)
-    expect(lines.find((l) => l.tab === 1)).toMatchObject({ text: 'Race: a button on “Space 4” points nowhere', place: { tab: 'round', round: race.id, part: { kind: 'space', space: race.spaces[3].id } } });
+    expect(lines.find((l) => l.tab === 1)).toMatchObject({
+      text: 'Race: a button on “Space 4” points nowhere',
+      place: { tab: 'round', round: race.id, part: { kind: 'space', space: race.spaces[3].id } },
+    });
     race.spaces[3].onLand = undefined;
     expect(lines.length - checklistLines(game, validate(game)).length).toBe(1);
   });
@@ -322,7 +355,11 @@ describe('🤝 partner clues in the checklist', () => {
     expect(line().details).toHaveLength(2);
     expect(line().place).toEqual({ tab: 'round', round: board.id, part: { kind: 'clue', category: board.categories[1].id, clue: clue.id, onBoard: true } });
     // Its ⧉ is for the first empty card, the tile having an answer.
-    expect(line().answerCard).toEqual({ tab: 'round', round: board.id, part: { kind: 'clue', category: board.categories[1].id, clue: clue.id, side: 'card', slide: clue.cards![0].id } });
+    expect(line().answerCard).toEqual({
+      tab: 'round',
+      round: board.id,
+      part: { kind: 'clue', category: board.categories[1].id, clue: clue.id, side: 'card', slide: clue.cards![0].id },
+    });
     // A named empty card is still a clue to finish, not a thing to fix.
     clue.cards![1].name = 'Clue tip';
     expect(line().details).toContain(`${board.categories[1].title} $600: card “Clue tip” is empty: there's nothing on it to send`);

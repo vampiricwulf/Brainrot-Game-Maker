@@ -5,7 +5,19 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerReplace, macClicks, openGameFile, failureShots, assert, launchChromium, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  answerReplace,
+  macClicks,
+  openGameFile,
+  failureShots,
+  assert,
+  launchChromium,
+  inspectorIn,
+  roundTabsIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -28,7 +40,8 @@ const files = (list) =>
     ([fs, b64]) => {
       const d = new DataTransfer();
       // (Each file's own bytes: the same bytes added twice are one file in the game. A PNG ignores what follows its end.)
-      for (const [name, type] of fs) d.items.add(new File([type === 'image/png' ? Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) : 'x', name], name, { type }));
+      for (const [name, type] of fs)
+        d.items.add(new File([type === 'image/png' ? Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) : 'x', name], name, { type }));
       return d;
     },
     [list, PNG],
@@ -70,7 +83,10 @@ try {
   // ---------- SHELL-2: a picture dropped where nothing takes it (beside the slide, on a page's header) goes into 🖼 Media ----------
   await drop(page.locator('.editor > header'), [['stray.png', 'image/png']]);
   await page.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('Added “stray.png” to 🖼 Media'));
-  assert((await mediaCount()) === 2 && (await toast.innerText()) === 'Added “stray.png” to 🖼 Media', `a picture dropped where nothing takes it is added to 🖼 Media, with a short toast (${await toast.innerText()})`);
+  assert(
+    (await mediaCount()) === 2 && (await toast.innerText()) === 'Added “stray.png” to 🖼 Media',
+    `a picture dropped where nothing takes it is added to 🖼 Media, with a short toast (${await toast.innerText()})`,
+  );
   await page.locator('main').click({ position: { x: 2, y: 2 } });
   await page.keyboard.press('Control+z');
   assert((await mediaCount()) === 1, 'one Ctrl+Z takes it back out');
@@ -92,7 +108,9 @@ try {
   ]);
   await page.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('wall-copy.png'));
   assert(
-    (await toast.innerText()) === '“wall-copy.png” is already in 🖼 Media as “wall.png”: using that one. “notes.txt” isn’t a picture, video, sound or font file.' && (await mediaCount()) === 1,
+    (await toast.innerText()) ===
+      '“wall-copy.png” is already in 🖼 Media as “wall.png”: using that one. “notes.txt” isn’t a picture, video, sound or font file.' &&
+      (await mediaCount()) === 1,
     `＋ Add files… with a file already in the game and one it can’t use: one toast says both (${await toast.innerText()})`,
   );
 
@@ -166,12 +184,22 @@ try {
   const foot0 = (await cards.nth(0).locator('.foot button').allInnerTexts()).map((t) => t.trim());
   assert(foot0.join(' | ') === 'Replace everywhere…', `a picture's card foot: Replace everywhere… (${foot0.join(' | ')})`);
   // (Under an empty place as high as ✎ Edit…, so it's at the height a video's or a sound's is.)
-  const slot = await cards.nth(0).locator('.foot').evaluate((f) => {
-    const [first, replace] = [f.children[0], [...f.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Replace everywhere…')];
-    return { hidden: getComputedStyle(first).visibility === 'hidden', h: Math.round(first.getBoundingClientRect().height), rh: Math.round(replace.getBoundingClientRect().height), below: replace.getBoundingClientRect().top > first.getBoundingClientRect().bottom };
-  });
+  const slot = await cards
+    .nth(0)
+    .locator('.foot')
+    .evaluate((f) => {
+      const [first, replace] = [f.children[0], [...f.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Replace everywhere…')];
+      return {
+        hidden: getComputedStyle(first).visibility === 'hidden',
+        h: Math.round(first.getBoundingClientRect().height),
+        rh: Math.round(replace.getBoundingClientRect().height),
+        below: replace.getBoundingClientRect().top > first.getBoundingClientRect().bottom,
+      };
+    });
   assert(slot.hidden && slot.h === slot.rh && slot.below, `a picture's Replace everywhere… sits under ✎ Edit…'s empty place (${JSON.stringify(slot)})`);
-  const delAt = await cards.evaluateAll((cs) => cs.map((c) => Math.round(c.getBoundingClientRect().right - c.querySelector('.name-row .del').getBoundingClientRect().right)));
+  const delAt = await cards.evaluateAll((cs) =>
+    cs.map((c) => Math.round(c.getBoundingClientRect().right - c.querySelector('.name-row .del').getBoundingClientRect().right)),
+  );
   assert(new Set(delAt).size === 1, `🗑 is in the same spot on every card (${delAt.join(', ')} px from the right)`);
   // "used 1× ▾" lists where it's used; a click on one goes there and flashes it.
   await cards.nth(0).getByRole('button', { name: 'used 1× ▾' }).click();
@@ -205,12 +233,18 @@ try {
   assert((await names())[0] === 'wall.png', 'Ctrl+Z puts the old file back');
 
   await cards.nth(0).locator('.thumb').click();
-  await cards.nth(2).locator('.thumb').click({ modifiers: ['Shift'] });
+  await cards
+    .nth(2)
+    .locator('.thumb')
+    .click({ modifiers: ['Shift'] });
   assert((await page.locator('.card.picked').count()) === 3, 'click, then Shift+click selects the run');
   // A filter's hidden cards are never taken into a Shift+click run.
   await cards.nth(0).locator('.thumb').click();
   await page.getByRole('searchbox', { name: 'Filter files' }).fill('pasted');
-  await cards.nth(0).locator('.thumb').click({ modifiers: ['Shift'] });
+  await cards
+    .nth(0)
+    .locator('.thumb')
+    .click({ modifiers: ['Shift'] });
   await page.getByRole('searchbox', { name: 'Filter files' }).fill('');
   assert((await page.locator('.card.picked').count()) === 1, 'a Shift+click with a filter on picks no hidden card');
   // A filter that hides a selected card takes it out of the selection: Delete selected never takes a file not on show.
@@ -224,8 +258,14 @@ try {
     'a card hidden by the filter leaves the selection (only the one ticked with the filter on stays selected)',
   );
   await cards.nth(0).locator('.thumb').click();
-  await cards.nth(2).locator('.thumb').click({ modifiers: ['Shift'] });
-  await cards.nth(1).locator('.thumb').click({ modifiers: ['Control'] });
+  await cards
+    .nth(2)
+    .locator('.thumb')
+    .click({ modifiers: ['Shift'] });
+  await cards
+    .nth(1)
+    .locator('.thumb')
+    .click({ modifiers: ['Control'] });
   assert((await page.locator('.card.picked').count()) === 2, 'Ctrl+click takes one away');
   await shot('em-2-media');
   await page.getByRole('button', { name: '🗑 Delete 2 files' }).click();
@@ -252,15 +292,23 @@ try {
   // A file added here scrolls into view and flashes (on a full page it landed below the fold, with no sign).
   await page.evaluate(() => {
     window.__flashed = [];
-    new MutationObserver((rs) => rs.forEach((r) => r.target.classList.contains('flash') && window.__flashed.push(r.target.dataset.place))).observe(document.body, {
-      attributes: true,
-      attributeFilter: ['class'],
-      subtree: true,
-    });
+    new MutationObserver((rs) => rs.forEach((r) => r.target.classList.contains('flash') && window.__flashed.push(r.target.dataset.place))).observe(
+      document.body,
+      {
+        attributes: true,
+        attributeFilter: ['class'],
+        subtree: true,
+      },
+    );
   });
   await drop(page.locator('.library'), [['added.png', 'image/png']]);
   const addedPlace = await cards.filter({ hasText: 'added.png' }).getAttribute('data-place');
-  const flashed = await page.waitForFunction((p) => window.__flashed.includes(p), addedPlace, { timeout: 5000 }).then(() => true, () => false);
+  const flashed = await page
+    .waitForFunction((p) => window.__flashed.includes(p), addedPlace, { timeout: 5000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(flashed, 'a file added on the Media page flashes its new card');
   await page.keyboard.press('Control+z');
   await cards.filter({ hasText: 'added.png' }).waitFor({ state: 'detached' });
@@ -275,7 +323,7 @@ try {
   await drop(cards.nth(1), [['Trivia Night.html', 'text/html']]);
   await okAsk('no game inside');
   assert(
-    (await cards.count()) === 3 && (await names())[1] === 'Show logo.png' && !(await toast.allInnerTexts()).some((t) => t.includes('isn\'t a supported')),
+    (await cards.count()) === 3 && (await names())[1] === 'Show logo.png' && !(await toast.allInnerTexts()).some((t) => t.includes("isn't a supported")),
     'a theme file or an exported .html game dropped on the Media page goes to the editor, which opens it (not refused as media)',
   );
 
@@ -298,11 +346,20 @@ try {
   // Shrink the main text so the slide has empty spots.
   await page.locator('.canvas .hit').first().click();
   await inspectorIn(page).locator('textarea').fill('Main text');
-  for (const [k, v] of [['X', 600], ['Y', 400], ['W', 600], ['H', 200]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+  for (const [k, v] of [
+    ['X', 600],
+    ['Y', 400],
+    ['W', 600],
+    ['H', 200],
+  ])
+    await pos.getByLabel(k, { exact: true }).fill(String(v));
   await page.keyboard.press('Escape');
   await rightClick(200, 900);
   await menu.waitFor();
-  assert((await menu.getByRole('menuitem', { name: /Paste here/ }).isDisabled()) && !(await menu.getByText('Nothing here').count()), 'an empty spot has a menu (Paste here is off: nothing copied)');
+  assert(
+    (await menu.getByRole('menuitem', { name: /Paste here/ }).isDisabled()) && !(await menu.getByText('Nothing here').count()),
+    'an empty spot has a menu (Paste here is off: nothing copied)',
+  );
   await shot('em-3-empty-menu');
   await menu.getByRole('menuitem', { name: '＋ Text here' }).click();
   assert((await layers.count()) === 2 && (await inspectorIn(page).locator('textarea').count()) === 1, '＋ Text here adds a text box');
@@ -317,7 +374,10 @@ try {
   // Items: Copy, then Paste on an empty spot puts it there.
   await rightClick(1300 / 2 + 250, 500);
   await menu.waitFor();
-  assert((await menu.getByRole('menuitem', { name: /Copy/ }).count()) === 1 && (await menu.getByRole('menuitem', { name: /Cut/ }).count()) === 1, 'an item has Cut and Copy');
+  assert(
+    (await menu.getByRole('menuitem', { name: /Copy/ }).count()) === 1 && (await menu.getByRole('menuitem', { name: /Cut/ }).count()) === 1,
+    'an item has Cut and Copy',
+  );
   await shot('em-4-item-menu');
   await menu.getByRole('menuitem', { name: /Copy/ }).click();
   await rightClick(1700, 150);
@@ -371,7 +431,10 @@ try {
   const stepBefore = await lastStep();
   await second.locator('.name').dblclick();
   await layerName.press('Enter');
-  assert((await second.count()) === 1 && (await lastStep()) === stepBefore, 'opening the rename and pressing Enter changes nothing: no step, and it keeps its automatic label');
+  assert(
+    (await second.count()) === 1 && (await lastStep()) === stepBefore,
+    'opening the rename and pressing Enter changes nothing: no step, and it keeps its automatic label',
+  );
   // Renamed, then its text box clicked: Backspace types there, and deletes no item.
   await second.locator('.name').dblclick();
   await layerName.fill('Subtitle');
@@ -380,21 +443,30 @@ try {
   await page.keyboard.press('Backspace');
   await page.waitForFunction(() => document.activeElement?.matches('.insp textarea') && document.activeElement.value === 'Secon');
   await page.keyboard.type('d');
-  assert((await layers.count()) === 2 && (await layers.filter({ hasText: 'Subtitle' }).count()) === 1, 'renamed, then its text box clicked: Backspace types there, and deletes no item');
+  assert(
+    (await layers.count()) === 2 && (await layers.filter({ hasText: 'Subtitle' }).count()) === 1,
+    'renamed, then its text box clicked: Backspace types there, and deletes no item',
+  );
   // Renamed, then the other item clicked where a button clicked doesn't take the focus (Safari, a Mac): that one has the keys.
   const chromiumClicks = await macClicks(page);
   const other = (await layers.allInnerTexts()).findIndex((t) => !t.includes('Subtitle'));
   await layers.filter({ hasText: 'Subtitle' }).locator('.name').dblclick();
   await layerName.fill('Subtitle');
   await layers.nth(other).locator('.name').click();
-  await page.waitForFunction((i) => document.activeElement === document.querySelectorAll('.layers-box .row')[i]?.querySelector('button.name[aria-pressed="true"]'), other);
+  await page.waitForFunction(
+    (i) => document.activeElement === document.querySelectorAll('.layers-box .row')[i]?.querySelector('button.name[aria-pressed="true"]'),
+    other,
+  );
   assert(true, 'renamed, then the other item clicked, with a Mac’s clicks: that one is picked, and its row has the keys (not the one renamed)');
   await chromiumClicks();
 
   // ---------- A picture copied on a slide pastes onto the board images ----------
   await page.getByRole('button', { name: '🖼 Image' }).click();
   await drop(page.getByRole('dialog', { name: 'Choose image' }), [['sticker.png', 'image/png']]);
-  await page.locator('.canvas').click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page
+    .locator('.canvas')
+    .click({ position: { x: 5, y: 5 } })
+    .catch(() => {});
   await layers.filter({ hasText: 'sticker.png' }).locator('.name').click();
   await page.keyboard.press('Control+c');
   await page.getByRole('button', { name: 'Done' }).click();
@@ -402,7 +474,10 @@ try {
   const decor = page.locator('[aria-label="Board images"]');
   await decor.waitFor();
   await page.keyboard.press('Control+v');
-  assert((await decor.locator('.layers-box .row, .row[data-layer]').count()) >= 1 && (await decor.getByText('sticker.png').count()) >= 1, 'Ctrl+V pastes the slide picture onto the board');
+  assert(
+    (await decor.locator('.layers-box .row, .row[data-layer]').count()) >= 1 && (await decor.getByText('sticker.png').count()) >= 1,
+    'Ctrl+V pastes the slide picture onto the board',
+  );
   await page.keyboard.press('Control+c');
   await page.keyboard.press('Control+x');
   assert((await decor.getByText('sticker.png').count()) === 0, 'Ctrl+X cuts it off the board');
@@ -416,7 +491,10 @@ try {
   await page.getByRole('menuitem', { name: /Board game/ }).click();
   const space3 = page.locator('.canvas').getByRole('button', { name: 'Space 3', exact: true });
   await drop(space3, [['coin.png', 'image/png']]);
-  assert((await space3.locator('img').count()) === 1 && (await page.locator('.side img.ic').count()) === 1, 'a picture dropped on a space is its icon (and selects it)');
+  assert(
+    (await space3.locator('img').count()) === 1 && (await page.locator('.side img.ic').count()) === 1,
+    'a picture dropped on a space is its icon (and selects it)',
+  );
   const board = page.locator('.canvas-box .canvas');
   await drop(board.locator('.backdrop'), [['grass.png', 'image/png']]);
   assert((await board.locator('.backdrop img, .backdrop [style*="background-image"]').count()) >= 1, 'on the empty board, it is the background');
@@ -428,11 +506,15 @@ try {
   await page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).click();
   const sheet = page.getByRole('dialog', { name: 'Editor keyboard shortcuts' });
   await sheet.waitFor();
-  for (const area of ['Clue', 'Slide', 'Map (RPG)', 'Board game', 'Lists']) assert((await sheet.getByRole('heading', { name: area, exact: true }).count()) === 1, `the sheet has ${area}`);
+  for (const area of ['Clue', 'Slide', 'Map (RPG)', 'Board game', 'Lists'])
+    assert((await sheet.getByRole('heading', { name: area, exact: true }).count()) === 1, `the sheet has ${area}`);
   await shot('em-5-shortcuts');
   await page.keyboard.press('Escape');
   assert((await sheet.count()) === 0, 'Esc closes it');
-  await page.locator('body').click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page
+    .locator('body')
+    .click({ position: { x: 5, y: 5 } })
+    .catch(() => {});
   await page.keyboard.press('Shift+Slash');
   assert((await sheet.count()) === 1, '? opens it');
   await page.keyboard.press('Shift+Slash');
@@ -447,15 +529,22 @@ try {
     await media.click();
     await drop(page.locator('.library'), [[name, 'image/png']]);
     await card(name).locator('img').waitFor();
-    await card(name).getByRole('button', { name: /^Delete / }).click();
-    await page.waitForFunction((n) => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.includes(`Deleted file “${n}”`), name);
+    await card(name)
+      .getByRole('button', { name: /^Delete / })
+      .click();
+    await page.waitForFunction(
+      (n) => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.includes(`Deleted file “${n}”`),
+      name,
+    );
   }
   const blurAll = () => page.evaluate(() => document.activeElement?.blur?.());
   await addAndRemove('keep.png');
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(page, 'Discard');
   await page.getByRole('button', { name: '↶ Reopen previous game' }).click();
-  await page.waitForFunction(() => document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.includes('Deleted file “keep.png”'));
+  await page.waitForFunction(() =>
+    document.querySelector('.editor > header button[title^="Undo:"]')?.getAttribute('title')?.includes('Deleted file “keep.png”'),
+  );
   // (Any cleanup of files runs a little after a game is replaced.)
   await page.waitForTimeout(800);
   await blurAll();
@@ -464,14 +553,19 @@ try {
   await card('keep.png').locator('img').waitFor();
   assert((await page.locator('.missing-box').count()) === 0, 'a reopened game’s undo history still has its files (Undo of a removed file shows it)');
   // Delete another kept game from Recent games: this game's own history keeps its files.
-  await card('keep.png').getByRole('button', { name: /^Delete / }).click();
+  await card('keep.png')
+    .getByRole('button', { name: /^Delete / })
+    .click();
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(page, 'Discard');
   await addAndRemove('other.png');
   await page.getByRole('button', { name: 'Open…' }).click();
   const openDlg = page.getByRole('dialog', { name: 'Open a game' });
   await openDlg.waitFor();
-  await openDlg.getByRole('button', { name: /^Delete “/ }).first().click();
+  await openDlg
+    .getByRole('button', { name: /^Delete “/ })
+    .first()
+    .click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true }).click();
   await page.waitForTimeout(800);
   if (await openDlg.count()) await page.keyboard.press('Escape');
@@ -479,7 +573,10 @@ try {
   await page.keyboard.press('Control+z');
   await media.click();
   await card('other.png').locator('img').waitFor();
-  assert((await page.locator('.missing-box').count()) === 0 && !!(await undoTitle()), '🗑 Delete in Open… keeps the files this game’s undo history can bring back');
+  assert(
+    (await page.locator('.missing-box').count()) === 0 && !!(await undoTitle()),
+    '🗑 Delete in Open… keeps the files this game’s undo history can bring back',
+  );
 
   // ---------- 🔊 Sounds: a sound whose file is missing (a .json export has none) is picked again on its own row ----------
   {
@@ -493,7 +590,13 @@ try {
     const [fc] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
     await fc.setFiles({ name: 'intro-music.wav', mimeType: 'audio/wav', buffer: Buffer.from('intro') });
     await a.getByText('🔊 intro-music.wav').waitFor();
-    const [json] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: /^More:/ }).click().then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click())]);
+    const [json] = await Promise.all([
+      a.waitForEvent('download'),
+      a
+        .getByRole('button', { name: /^More:/ })
+        .click()
+        .then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click()),
+    ]);
     const fresh = await browser.newContext({ viewport: { width: 1400, height: 900 } });
     const b = await fresh.newPage();
     b.on('pageerror', (e) => errors.push(`[fresh] ${e.message}`));
@@ -513,17 +616,26 @@ try {
     // (The checklist is worked out again a moment later.)
     const nothingMissing = await b
       .waitForFunction(() => ![...document.querySelectorAll('.problems .problem')].some((p) => p.textContent.includes('missing')), null, { timeout: 5000 })
-      .then(() => true, () => false);
+      .then(
+        () => true,
+        () => false,
+      );
     assert(
       (await b.getByRole('button', { name: '🖼️ Media (1)' }).count()) === 1 && nothingMissing,
       '🔗 Find file… on a missing sound’s row puts that file back (same name, no second copy) and the checklist stops saying a file is missing',
     );
     // 🗑 Deleted in 🖼 Media: its row says so, and how to bring it back (it has no file left to find).
     await b.getByRole('button', { name: '🖼️ Media (1)' }).click();
-    await b.locator('.card', { hasText: 'intro-music.wav' }).getByRole('button', { name: /^Delete / }).click();
+    await b
+      .locator('.card', { hasText: 'intro-music.wav' })
+      .getByRole('button', { name: /^Delete / })
+      .click();
     await b.getByRole('button', { name: '🔊 Sounds' }).click();
     await row.getByText('⚠ Its file was deleted: plays the built-in sound (Undo in 🕘 History, or Change…)').waitFor();
-    assert((await row.getByRole('button', { name: '🔗 Find file…' }).count()) === 0, 'deleted in 🖼 Media, a sound’s row says its file was deleted: Undo in 🕘 History, or Change…');
+    assert(
+      (await row.getByRole('button', { name: '🔗 Find file…' }).count()) === 0,
+      'deleted in 🖼 Media, a sound’s row says its file was deleted: Undo in 🕘 History, or Change…',
+    );
     await fresh.close();
   }
 

@@ -31,7 +31,21 @@
   import { addMediaFile } from '../../lib/media.svelte';
   import { type Dir8, type Screen, type ScreenRef, type ScreenVariant, type World, type WorldMap } from '../../lib/model';
   import { clone } from '../../lib/ops';
-  import { DIR_ARROW, DIR_NAME, DIRS, exitOf, hasWayRule, newScreen, newVariant, newWorldMap, sameRef, screenAt, screenGrid, waysLine, waysShown } from '../../lib/rpg';
+  import {
+    DIR_ARROW,
+    DIR_NAME,
+    DIRS,
+    exitOf,
+    hasWayRule,
+    newScreen,
+    newVariant,
+    newWorldMap,
+    sameRef,
+    screenAt,
+    screenGrid,
+    waysLine,
+    waysShown,
+  } from '../../lib/rpg';
   import { RememberedFold } from '../../lib/fold.svelte';
   import {
     copyScreen,
@@ -157,7 +171,11 @@
       world.maps = world.maps.filter((x) => x.id !== m.id);
       const first = wasStart ? (world.maps.find((x) => x.screens.length)?.screens[0] ?? undefined) : undefined;
       const loose = refsText(refsTo(game, world, ids));
-      const notes = [`Deleted map “${m.name}”`, first && `the party now starts at ${first.name}`, loose && `${loose} now lead${loose.startsWith('1 ') && !loose.includes(' and ') ? 's' : ''} nowhere`];
+      const notes = [
+        `Deleted map “${m.name}”`,
+        first && `the party now starts at ${first.name}`,
+        loose && `${loose} now lead${loose.startsWith('1 ') && !loose.includes(' and ') ? 's' : ''} nowhere`,
+      ];
       nameStep(notes.filter(Boolean).join(' · '), { notify: true });
     });
     mapId = world.maps[0].id;
@@ -208,7 +226,10 @@
         heading: m.name,
         rename: menuItem.rename(() => (renaming = m.id), { keys: 'F2 or double-click' }),
         duplicate: menuItem.duplicate(() => copyMap(m), { label: '⧉ Duplicate map' }),
-        move: [menuItem.left(() => moveMap(i, i - 1), { disabled: i === 0 }), menuItem.right(() => moveMap(i, i + 1), { disabled: i === world.maps.length - 1 })],
+        move: [
+          menuItem.left(() => moveMap(i, i - 1), { disabled: i === 0 }),
+          menuItem.right(() => moveMap(i, i + 1), { disabled: i === world.maps.length - 1 }),
+        ],
         delete: menuItem.delete('map', () => removeMap(m), { disabled: world.maps.length <= 1 }),
       }),
     );
@@ -298,7 +319,11 @@
       map.screens = map.screens.filter((s) => !ids.has(s.id));
       const first = wasStart ? (world.maps[0]?.screens[0] ?? world.maps.find((x) => x.screens.length)?.screens[0]) : undefined;
       const loose = refsText(refsTo(game, world, ids));
-      const notes = [`Deleted ${what}`, first && `the party now starts at ${first.name}`, loose && `${loose} now lead${loose.startsWith('1 ') && !loose.includes(' and ') ? 's' : ''} nowhere`];
+      const notes = [
+        `Deleted ${what}`,
+        first && `the party now starts at ${first.name}`,
+        loose && `${loose} now lead${loose.startsWith('1 ') && !loose.includes(' and ') ? 's' : ''} nowhere`,
+      ];
       nameStep(notes.filter(Boolean).join(' · '), { notify: true });
     });
     selIds = [];
@@ -313,7 +338,10 @@
   function goneNotes(ids: Set<string>, wasStart: boolean): string {
     const first = wasStart ? (world.maps[0]?.screens[0] ?? world.maps.find((x) => x.screens.length)?.screens[0]) : undefined;
     const loose = refsText(refsTo(game, world, ids));
-    return [first && `the party now starts at ${first.name}`, loose && `${loose} now lead${loose.startsWith('1 ') && !loose.includes(' and ') ? 's' : ''} nowhere`]
+    return [
+      first && `the party now starts at ${first.name}`,
+      loose && `${loose} now lead${loose.startsWith('1 ') && !loose.includes(' and ') ? 's' : ''} nowhere`,
+    ]
       .filter(Boolean)
       .map((n) => ` · ${n}`)
       .join('');
@@ -353,8 +381,15 @@
   function moveOnGrid(list: Screen[], dc: number, dr: number): void {
     const size = `${map.cols}×${map.rows}`;
     const moved = step(null, () => {
-      const ok = moveScreens(map, list.map((s) => s.id), dc, dr, true);
-      if (ok && `${map.cols}×${map.rows}` !== size) nameStep(`${list.length === 1 ? `Moved screen “${list[0].name}”` : `Moved ${list.length} screens`} (the map grew to ${map.cols}×${map.rows})`);
+      const ok = moveScreens(
+        map,
+        list.map((s) => s.id),
+        dc,
+        dr,
+        true,
+      );
+      if (ok && `${map.cols}×${map.rows}` !== size)
+        nameStep(`${list.length === 1 ? `Moved screen “${list[0].name}”` : `Moved ${list.length} screens`} (the map grew to ${map.cols}×${map.rows})`);
       // (Several: the ones moved, not the ones swapped out of their way too.)
       else if (ok && list.length > 1) nameStep(`Moved ${list.length} screens`);
       return ok;
@@ -404,7 +439,12 @@
     if (!list.length) return;
     const focused = !!gridEl?.contains(document.activeElement);
     const moved = step(null, () => {
-      const ok = moveScreens(map, list.map((s) => s.id), dc, dr);
+      const ok = moveScreens(
+        map,
+        list.map((s) => s.id),
+        dc,
+        dr,
+      );
       // (Several: the ones moved, not the ones swapped out of their way too.)
       if (ok && list.length > 1) nameStep(`Moved ${list.length} screens`);
       return ok;
@@ -457,7 +497,10 @@
     const wasStart = goneList.some(isStart);
     step(null, () => {
       deleteLine(map, axis, at);
-      nameStep(`Deleted ${axis === 'col' ? `column ${colName(at)}` : `row ${at + 1}`} of map “${map.name}”${with_}${gone ? goneNotes(new Set(goneList.map((s) => s.id)), wasStart) : ''}`, { notify: true });
+      nameStep(
+        `Deleted ${axis === 'col' ? `column ${colName(at)}` : `row ${at + 1}`} of map “${map.name}”${with_}${gone ? goneNotes(new Set(goneList.map((s) => s.id)), wasStart) : ''}`,
+        { notify: true },
+      );
     });
     selIds = selIds.filter((id) => map.screens.some((s) => s.id === id));
   }
@@ -501,7 +544,10 @@
     const several = picked.length > 1 ? picked : null;
     const list = several ?? [s];
     const others = world.maps.filter((m) => m.id !== map.id);
-    const pasteItem = menuItem.paste(() => paste(), { label: clipboard.screen ? `📋 Paste “${clipboard.screen.name}”` : '📋 Paste screen', disabled: !clipboard.screen });
+    const pasteItem = menuItem.paste(() => paste(), {
+      label: clipboard.screen ? `📋 Paste “${clipboard.screen.name}”` : '📋 Paste screen',
+      disabled: !clipboard.screen,
+    });
     showMenu(
       e,
       menuOf(
@@ -526,7 +572,10 @@
               copy: menuItem.copy(() => copyToClipboard(s), { label: '📋 Copy screen' }),
               paste: pasteItem,
               move: [...nudgeItems(list), ...others.map((m) => ({ label: `→ Move to ${m.name}`, onclick: () => moveAcross(list, map, m) }))],
-              extras: [{ label: '＋ Add look (a copy)', onclick: () => addLook(s) }, ...others.map((m) => ({ label: `⧉ Copy to ${m.name}`, onclick: () => copyAcross(s, m) }))],
+              extras: [
+                { label: '＋ Add look (a copy)', onclick: () => addLook(s) },
+                ...others.map((m) => ({ label: `⧉ Copy to ${m.name}`, onclick: () => copyAcross(s, m) })),
+              ],
               lines: lineGroups(s.col, s.row),
               delete: menuItem.delete('screen', () => removeScreens(list)),
             },
@@ -540,7 +589,10 @@
       e,
       menuOf({
         verbs: [{ label: '＋ Add a screen here', onclick: () => addScreen(c, r) }],
-        paste: menuItem.paste(() => paste([c, r]), { label: clipboard.screen ? `📋 Paste “${clipboard.screen.name}” here` : '📋 Paste screen here', disabled: !clipboard.screen }),
+        paste: menuItem.paste(() => paste([c, r]), {
+          label: clipboard.screen ? `📋 Paste “${clipboard.screen.name}” here` : '📋 Paste screen here',
+          disabled: !clipboard.screen,
+        }),
         extras: sel ? [{ label: `⇄ Move ${sel.name} here`, onclick: () => moveOnGrid([sel], c - sel.col, r - sel.row) }] : [],
         lines: lineGroups(c, r),
       }),
@@ -597,7 +649,10 @@
     if (from && to.id === from.id) return void toast('Pick another screen (or Esc)');
     picking = null;
     if (!p || !from) return;
-    step(`${DIR_NAME[p.dir]} of “${from.name}” leads to “${to.name}”`, () => (from.exits = { ...(from.exits ?? {}), [p.dir]: { kind: 'warp', to: { map: map.id, screen: to.id } } }));
+    step(
+      `${DIR_NAME[p.dir]} of “${from.name}” leads to “${to.name}”`,
+      () => (from.exits = { ...(from.exits ?? {}), [p.dir]: { kind: 'warp', to: { map: map.id, screen: to.id } } }),
+    );
     mapId = p.map;
     selectOnly(from);
   }
@@ -632,7 +687,13 @@
     return menuOf({
       heading: v.name,
       open: [{ label: '✎ Edit this look', onclick: () => ((lookId = v.id), (editing = true)) }],
-      verbs: [{ label: '⇄ Make it the main look', onclick: () => step(`Made “${v.name}” the main look of ${s.name}`, () => makeMainLook(s, v, world)), hint: 'Its own picture takes its place' }],
+      verbs: [
+        {
+          label: '⇄ Make it the main look',
+          onclick: () => step(`Made “${v.name}” the main look of ${s.name}`, () => makeMainLook(s, v, world)),
+          hint: 'Its own picture takes its place',
+        },
+      ],
       duplicate: menuItem.duplicate(() => copyLook(s, v), { label: '⧉ Duplicate this look' }),
       move: [menuItem.left(() => shiftLook(s, v, i, i - 1), { disabled: i === 0 }), menuItem.right(() => shiftLook(s, v, i, i + 1), { disabled: i === n - 1 })],
       delete: menuItem.delete('look', () => removeLook(s, v), { keys: false }),
@@ -689,7 +750,9 @@
       map.screens = map.screens.filter((s) => s.col < cols && s.row < rows);
       map.cols = cols;
       map.rows = rows;
-      nameStep(`Resized map “${map.name}” to ${cols}×${rows}${gone}${outside ? goneNotes(new Set(outsideList.map((s) => s.id)), wasStart) : ''}`, { notify: !!outside });
+      nameStep(`Resized map “${map.name}” to ${cols}×${rows}${gone}${outside ? goneNotes(new Set(outsideList.map((s) => s.id)), wasStart) : ''}`, {
+        notify: !!outside,
+      });
     });
   }
 
@@ -1103,7 +1166,13 @@
       <span class="next" role="group" aria-label="Screens next door">
         {#each NEXT as [d, arrow] (d)}
           {@const n = gridNeighbour(map, sel, d)}
-          <button class="ghost small" onclick={() => goNext(d)} disabled={!n} aria-label="Edit the screen {DIR_NAME[d].toLowerCase()}" title={n ? `${n.name} (Alt+${arrow})` : `Nothing to the ${DIR_NAME[d].toLowerCase()}`}>
+          <button
+            class="ghost small"
+            onclick={() => goNext(d)}
+            disabled={!n}
+            aria-label="Edit the screen {DIR_NAME[d].toLowerCase()}"
+            title={n ? `${n.name} (Alt+${arrow})` : `Nothing to the ${DIR_NAME[d].toLowerCase()}`}
+          >
             {arrow}
           </button>
         {/each}
@@ -1116,72 +1185,89 @@
     <!-- (＋ Add map is beside the tab list, not in it: only tabs belong there.) -->
     <div class="tabs">
       <div class="tablist" role="tablist" aria-label="Maps">
-      {#each world.maps as m, i (m.id)}
-        {#if renaming === m.id}
-          <input
-            class="tab-name"
-            value={m.name}
-            aria-label="Map name"
-            use:focusAll
-            onkeydown={(e) => {
-              if (e.key === 'Enter') rename(m, e.currentTarget.value);
-              else if (e.key === 'Escape') rename(m, m.name);
-            }}
-            onblur={(e) => renaming === m.id && rename(m, e.currentTarget.value, !e.relatedTarget)}
-          />
-        {:else}
-          <button
-            role="tab"
-            class:on={m.id === map?.id}
-            class:drop-before={tabDrop?.id === m.id && !tabDrop.after}
-            class:drop-after={tabDrop?.id === m.id && tabDrop.after}
-            class:drop-on={drag?.on && over?.kind === 'tab' && over.map === m.id}
-            aria-selected={m.id === map?.id}
-            data-place="map:{m.id}"
-            data-map-tab={m.id}
-            draggable="true"
-            title={i === 0 ? 'The main map · double-click to rename, drag to reorder, right-click for more' : 'Double-click to rename, drag to reorder, right-click for more'}
-            onclick={(e) => {
-              showMap(m);
-              // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a tab renamed.)
-              e.currentTarget.focus();
-            }}
-            ondblclick={() => (renaming = m.id)}
-            onkeydown={(e) => mapTabKey(e, m, i)}
-            oncontextmenu={(e) => mapMenu(e, m, i)}
-            ondragstart={(e) => {
-              tabDrag = m.id;
-              e.dataTransfer?.setData('text/x-map', m.id);
-              if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-            }}
-            ondragover={(e) => tabOver(e, m)}
-            ondrop={tabDropped}
-            ondragend={() => ((tabDrag = null), (tabDrop = null))}
-          >
-            {i === 0 ? '🗺' : '🏠'} {m.name}
-          </button>
-        {/if}
-      {/each}
+        {#each world.maps as m, i (m.id)}
+          {#if renaming === m.id}
+            <input
+              class="tab-name"
+              value={m.name}
+              aria-label="Map name"
+              use:focusAll
+              onkeydown={(e) => {
+                if (e.key === 'Enter') rename(m, e.currentTarget.value);
+                else if (e.key === 'Escape') rename(m, m.name);
+              }}
+              onblur={(e) => renaming === m.id && rename(m, e.currentTarget.value, !e.relatedTarget)}
+            />
+          {:else}
+            <button
+              role="tab"
+              class:on={m.id === map?.id}
+              class:drop-before={tabDrop?.id === m.id && !tabDrop.after}
+              class:drop-after={tabDrop?.id === m.id && tabDrop.after}
+              class:drop-on={drag?.on && over?.kind === 'tab' && over.map === m.id}
+              aria-selected={m.id === map?.id}
+              data-place="map:{m.id}"
+              data-map-tab={m.id}
+              draggable="true"
+              title={i === 0
+                ? 'The main map · double-click to rename, drag to reorder, right-click for more'
+                : 'Double-click to rename, drag to reorder, right-click for more'}
+              onclick={(e) => {
+                showMap(m);
+                // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a tab renamed.)
+                e.currentTarget.focus();
+              }}
+              ondblclick={() => (renaming = m.id)}
+              onkeydown={(e) => mapTabKey(e, m, i)}
+              oncontextmenu={(e) => mapMenu(e, m, i)}
+              ondragstart={(e) => {
+                tabDrag = m.id;
+                e.dataTransfer?.setData('text/x-map', m.id);
+                if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+              }}
+              ondragover={(e) => tabOver(e, m)}
+              ondrop={tabDropped}
+              ondragend={() => ((tabDrag = null), (tabDrop = null))}
+            >
+              {i === 0 ? '🗺' : '🏠'}
+              {m.name}
+            </button>
+          {/if}
+        {/each}
       </div>
       <button class="ghost" onclick={addMap} title="A dungeon, a shop, an interior, the Shadow Realm… joined to the rest by doorways">＋ Add map</button>
     </div>
 
     {#if map}
       <details class="settings">
-        <summary title="Its name and size, what viewers see of it, how moving looks, its music">Map settings: {map.name} ({map.cols}×{map.rows}) <span class="muted small">· size, what viewers see, music</span></summary>
+        <summary title="Its name and size, what viewers see of it, how moving looks, its music"
+          >Map settings: {map.name} ({map.cols}×{map.rows}) <span class="muted small">· size, what viewers see, music</span></summary
+        >
         <div class="grid">
           <label class="field">Name<input bind:value={map.name} /></label>
           <label class="field">
-            Columns<input type="number" min="1" max="16" value={map.cols} onchange={(e) => {
+            Columns<input
+              type="number"
+              min="1"
+              max="16"
+              value={map.cols}
+              onchange={(e) => {
                 const n = sizeTyped(e.currentTarget, map.cols);
                 if (n) resize(n, map.rows);
-              }} />
+              }}
+            />
           </label>
           <label class="field">
-            Rows<input type="number" min="1" max="16" value={map.rows} onchange={(e) => {
+            Rows<input
+              type="number"
+              min="1"
+              max="16"
+              value={map.rows}
+              onchange={(e) => {
                 const n = sizeTyped(e.currentTarget, map.rows);
                 if (n) resize(map.cols, n);
-              }} />
+              }}
+            />
           </label>
           <label class="field">
             Audience sees
@@ -1208,12 +1294,18 @@
         </div>
         <div class="row">
           <div class="pop">
-            <button class="small" onclick={() => (musicFor = 'map')} use:mediaDrop={{ kind: 'audio', onpick: (id) => (map.music = id) }}>🎵 {map.music ? 'Change map music' : 'Map music…'}</button>
+            <button class="small" onclick={() => (musicFor = 'map')} use:mediaDrop={{ kind: 'audio', onpick: (id) => (map.music = id) }}
+              >🎵 {map.music ? 'Change map music' : 'Map music…'}</button
+            >
             {#if musicFor === 'map'}<MediaPicker kind="audio" onpick={(id) => ((map.music = id), (musicFor = null))} onclose={() => (musicFor = null)} />{/if}
           </div>
           {#if map.music}<button class="ghost small" onclick={() => (map.music = undefined)}>No music</button>{/if}
           <span class="spacer"></span>
-          {#if world.maps.length > 1}<button class="ghost small danger" onclick={() => removeMap(map)} title="Delete this map and its screens (Undo brings them back)">🗑 Delete map</button>{/if}
+          {#if world.maps.length > 1}<button
+              class="ghost small danger"
+              onclick={() => removeMap(map)}
+              title="Delete this map and its screens (Undo brings them back)">🗑 Delete map</button
+            >{/if}
         </div>
       </details>
 
@@ -1257,7 +1349,8 @@
                         onclick={() => emptyClick(c, r)}
                         onfocus={() => (cursor = [c, r])}
                         aria-label="Add a screen at column {c + 1}, row {r + 1} (the map grows)"
-                        title="Add a screen here: the map grows by a {c >= map.cols && r >= map.rows ? 'column and a row' : c >= map.cols ? 'column' : 'row'}">＋</button
+                        title="Add a screen here: the map grows by a {c >= map.cols && r >= map.rows ? 'column and a row' : c >= map.cols ? 'column' : 'row'}"
+                        >＋</button
                       >
                     {:else if s}
                       {@const code = /^Screen ([A-Z]\d+)$/.exec(s.name)?.[1]}
@@ -1286,7 +1379,9 @@
                         title={picking ? `Lead there: ${s.name}` : `${s.name}: click for settings, double-click to edit, drag to move`}
                       >
                         <div class="thumb"><Stage><SlideView slide={s.slide} mode="edit" /></Stage></div>
-                        <span class="nm">{#if code}<span class="long">{'Screen '}</span>{code}{:else}{s.name}{/if}</span>
+                        <span class="nm"
+                          >{#if code}<span class="long">{'Screen '}</span>{code}{:else}{s.name}{/if}</span
+                        >
                         {#if isStart(s)}<span class="start" title="The party starts here">🏁</span>{/if}
                         {#if doorways(s).length || DIRS.some((d) => warpSide(s, d))}<span class="door" title="Has doorways or warps">🚪</span>{/if}
                       </button>
@@ -1317,7 +1412,8 @@
               {#if dragFrom?.id === map.id && over?.kind === 'cell'}
                 <!-- Near the right or bottom edge, a column (or row) past it to drop on: the map grows. -->
                 {#each ring(over.col, over.row) as [c, r] (`${c},${r}`)}
-                  <div class="ghost-cell" style:left={alongX(c)} style:top={alongY(r)} style:width={span(map.cols, tailX)} style:height={span(map.rows, tailY)}></div>
+                  <div class="ghost-cell" style:left={alongX(c)} style:top={alongY(r)} style:width={span(map.cols, tailX)} style:height={span(map.rows, tailY)}
+                  ></div>
                 {/each}
               {/if}
               {#if plan}
@@ -1368,7 +1464,9 @@
               <button class="small primary" onclick={() => ((lookId = null), (editing = true))} title="Enter">✎ Edit screen</button>
               <button class="small" onclick={() => duplicateScreens([sel])} title="Ctrl+D">⧉ Duplicate</button>
               <span class="spacer"></span>
-              <button class="ghost small danger" onclick={() => removeScreens([sel])} title="Delete this screen (Delete key; Undo brings it back)">🗑 Delete screen</button>
+              <button class="ghost small danger" onclick={() => removeScreens([sel])} title="Delete this screen (Delete key; Undo brings it back)"
+                >🗑 Delete screen</button
+              >
             </div>
             {#if onstart}
               <div class="row">
@@ -1421,39 +1519,46 @@
                  allows them, or one has a rule). -->
             <div class="row ways" data-ways-out>
               <span class="small"><b>Ways out:</b> <span class="muted">{waysLine(map, sel, wayName, grid)}</span></span>
-              <button class="ghost small" aria-expanded={ways.open} onclick={() => ways.set(!ways.open)} title="Where each side of this screen leads">{ways.open ? '▾ Done' : '▸ Change…'}</button>
+              <button class="ghost small" aria-expanded={ways.open} onclick={() => ways.set(!ways.open)} title="Where each side of this screen leads"
+                >{ways.open ? '▾ Done' : '▸ Change…'}</button
+              >
             </div>
             {#if ways.open}
-            <p class="muted small">
-              By default each side leads to the screen next to it on the grid. Block a side (or click ⛔ between two screens on the map), or
-              send it anywhere (another map too).
-            </p>
-            <table class="exits">
-              <tbody>
-                {#each waysShown(map, sel) as d (d)}
-                  {@const rule = sel.exits?.[d]}
-                  {@const e = exitOf(map, sel, d)}
-                  <tr>
-                    <td title={DIR_NAME[d]}>{DIR_ARROW[d]}</td>
-                    <td>
-                      <select value={rule?.kind ?? 'auto'} onchange={(ev) => setExit(sel, d, ev.currentTarget.value)} aria-label="{DIR_NAME[d]} exit">
-                        <option value="auto">{e.kind === 'open' ? `→ ${screenName(e.to)}` : e.kind === 'none' ? '— nothing there' : 'Grid'}</option>
-                        <option value="blocked">Blocked</option>
-                        <option value="warp">Leads somewhere else…</option>
-                      </select>
-                      {#if rule?.kind === 'warp'}
-                        <ScreenPicker {world} value={rule.to} label="to" onchange={(ref) => ref && (rule.to = ref)} />
-                        <button class="ghost small" class:on={picking?.screen === sel.id && picking.dir === d} aria-pressed={picking?.screen === sel.id && picking.dir === d} onclick={() => (picking = { map: map.id, screen: sel.id, dir: d })}>
-                          🎯 Pick on the map
-                        </button>
-                      {:else if rule?.kind === 'blocked'}
-                        <input class="note" bind:value={rule.note} placeholder="Why (e.g. a river)" aria-label="{DIR_NAME[d]} blocked because" />
-                      {/if}
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
+              <p class="muted small">
+                By default each side leads to the screen next to it on the grid. Block a side (or click ⛔ between two screens on the map), or send it anywhere
+                (another map too).
+              </p>
+              <table class="exits">
+                <tbody>
+                  {#each waysShown(map, sel) as d (d)}
+                    {@const rule = sel.exits?.[d]}
+                    {@const e = exitOf(map, sel, d)}
+                    <tr>
+                      <td title={DIR_NAME[d]}>{DIR_ARROW[d]}</td>
+                      <td>
+                        <select value={rule?.kind ?? 'auto'} onchange={(ev) => setExit(sel, d, ev.currentTarget.value)} aria-label="{DIR_NAME[d]} exit">
+                          <option value="auto">{e.kind === 'open' ? `→ ${screenName(e.to)}` : e.kind === 'none' ? '— nothing there' : 'Grid'}</option>
+                          <option value="blocked">Blocked</option>
+                          <option value="warp">Leads somewhere else…</option>
+                        </select>
+                        {#if rule?.kind === 'warp'}
+                          <ScreenPicker {world} value={rule.to} label="to" onchange={(ref) => ref && (rule.to = ref)} />
+                          <button
+                            class="ghost small"
+                            class:on={picking?.screen === sel.id && picking.dir === d}
+                            aria-pressed={picking?.screen === sel.id && picking.dir === d}
+                            onclick={() => (picking = { map: map.id, screen: sel.id, dir: d })}
+                          >
+                            🎯 Pick on the map
+                          </button>
+                        {:else if rule?.kind === 'blocked'}
+                          <input class="note" bind:value={rule.note} placeholder="Why (e.g. a river)" aria-label="{DIR_NAME[d]} blocked because" />
+                        {/if}
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
             {/if}
             {#if doorways(sel).length}
               <h4>Doorways</h4>
@@ -1463,8 +1568,14 @@
             {/if}
             <div class="row">
               <div class="pop">
-                <button class="small" onclick={() => (musicFor = 'screen')} use:mediaDrop={{ kind: 'audio', onpick: (id) => sel && (sel.music = id) }}>🎵 {sel.music ? 'Change screen music' : 'Screen music…'}</button>
-                {#if musicFor === 'screen'}<MediaPicker kind="audio" onpick={(id) => ((sel.music = id), (musicFor = null))} onclose={() => (musicFor = null)} />{/if}
+                <button class="small" onclick={() => (musicFor = 'screen')} use:mediaDrop={{ kind: 'audio', onpick: (id) => sel && (sel.music = id) }}
+                  >🎵 {sel.music ? 'Change screen music' : 'Screen music…'}</button
+                >
+                {#if musicFor === 'screen'}<MediaPicker
+                    kind="audio"
+                    onpick={(id) => ((sel.music = id), (musicFor = null))}
+                    onclose={() => (musicFor = null)}
+                  />{/if}
               </div>
               {#if sel.music}<button class="ghost small" onclick={() => (sel.music = undefined)}>No music</button>{/if}
             </div>
@@ -1481,20 +1592,25 @@
                 right end, never alone under ⧉ Duplicate.) -->
               <span class="row end">
                 <button class="ghost small" onclick={() => (selIds = [])} title="Esc">Clear selection</button>
-                <button class="ghost small danger del" onclick={() => removeScreens(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} screens</button>
+                <button class="ghost small danger del" onclick={() => removeScreens(picked)} title="Delete them (Delete key; Undo brings them back)"
+                  >🗑 Delete {picked.length} screens</button
+                >
               </span>
             </div>
           {:else}
-            <Tips id="rpg-map" hint="Click a ＋ to add a screen (past the edge, the map grows), click a screen for its settings, double-click it to edit its picture and objects.">
+            <Tips
+              id="rpg-map"
+              hint="Click a ＋ to add a screen (past the edge, the map grows), click a screen for its settings, double-click it to edit its picture and objects."
+            >
               <ul>
                 <li>Drag a screen to move it (onto another to swap them, onto a map's tab to move it there). Drop pictures on the map to make screens.</li>
                 <li>
-                  Screens next to each other are connected: click ⛔ between two to block the way, or send sides elsewhere in <b>Ways out</b>.
-                  Add dungeons, shops and interiors as more maps (＋ Add map) and join them with doorways (<b>🚪 Doorway</b> on a screen).
+                  Screens next to each other are connected: click ⛔ between two to block the way, or send sides elsewhere in <b>Ways out</b>. Add dungeons,
+                  shops and interiors as more maps (＋ Add map) and join them with doorways (<b>🚪 Doorway</b> on a screen).
                 </li>
                 <li>
-                  Keys: arrows move around the grid, Enter edits (or adds), Alt+arrows move the screen, Delete deletes it, Ctrl+D
-                  duplicates, Ctrl+C / Ctrl+V copy and paste it, F2 renames, Esc deselects.
+                  Keys: arrows move around the grid, Enter edits (or adds), Alt+arrows move the screen, Delete deletes it, Ctrl+D duplicates, Ctrl+C / Ctrl+V
+                  copy and paste it, F2 renames, Esc deselects.
                 </li>
                 <li>Shift/Ctrl+click or draw a box to pick several (from an empty cell, or Alt+drag from anywhere), or Ctrl+A for all of them.</li>
               </ul>
@@ -1514,7 +1630,7 @@
     {#if over?.kind === 'tab'}
       {@const to = world.maps.find((m) => m.id === (over as { map: string }).map)}
       <span class="tip">{to && to.id !== dragFrom?.id ? `Move to ${to.name}` : 'Drop on a cell'}</span>
-    {:else if plan && (over?.kind === 'cell' && (over.col < 0 || over.row < 0))}
+    {:else if plan && over?.kind === 'cell' && (over.col < 0 || over.row < 0)}
       <span class="tip" class:bad={!plan.ok}>{plan.text}</span>
     {/if}
   </div>

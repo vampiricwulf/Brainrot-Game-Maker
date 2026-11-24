@@ -80,21 +80,38 @@
         add(`${o.nonce}:${i}:${spin.startedAt}`, () => {
           // The ticks for the main wheel only: two wheels ticking at once is just noise.
           const end = spin.startedAt + spin.duration;
-          if (i === 0) schedule(`${o.nonce}:${i}:${spin.startedAt}`, 'wheelTick', tickTimes(w.segments, spin).map((t) => spin.startedAt + t));
+          if (i === 0)
+            schedule(
+              `${o.nonce}:${i}:${spin.startedAt}`,
+              'wheelTick',
+              tickTimes(w.segments, spin).map((t) => spin.startedAt + t),
+            );
           schedule(`${o.nonce}:${i}:${spin.startedAt}`, 'wheelLand', [end]);
         });
       }
     } else if (o?.kind === 'dice' && o.roll) {
       add(o.nonce, () => schedule(o.nonce, 'dice', Date.now() < o.startedAt + o.duration ? [Math.max(o.startedAt, Date.now())] : []));
     } else if (o?.kind === 'rolloff') {
-      add(o.nonce, () => schedule(o.nonce, 'dice', o.rounds.map((_, i) => o.startedAt + i * o.roundMs)));
+      add(o.nonce, () =>
+        schedule(
+          o.nonce,
+          'dice',
+          o.rounds.map((_, i) => o.startedAt + i * o.roundMs),
+        ),
+      );
     }
     // A board game's move: a step sound for each space the token hops to.
     const round = game.rounds[session.currentRound];
     const hop = session.phase === 'boardgame' && round ? session.boardgames?.[round.id]?.hop : undefined;
     if (hop) {
       const id = `hop:${hop.playerId}:${hop.at}`;
-      add(id, () => schedule(id, 'move', hop.path.slice(1).map((_, i) => hop.at + (i + 1) * HOP_MS)));
+      add(id, () =>
+        schedule(
+          id,
+          'move',
+          hop.path.slice(1).map((_, i) => hop.at + (i + 1) * HOP_MS),
+        ),
+      );
     }
     for (const [id, list] of waiting)
       if (!ids.has(id)) {

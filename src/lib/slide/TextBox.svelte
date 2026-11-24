@@ -42,9 +42,7 @@
   const chars = $derived(typewriter && !ghost ? typewriterChars(el.text) : []);
   const times = $derived(typewriter ? typewriterTimes(chars.length, typewriter.delay, typewriter.duration) : []);
   // Everything besides the words that changes the text's layout (the words are watched directly).
-  const layoutKey = $derived(
-    `${el.font}|${el.w}x${el.h}|${el.lineHeight}|${el.letterSpacing}|${el.uppercase}|${el.weight}|${el.italic}|${pad}|${ghost}`,
-  );
+  const layoutKey = $derived(`${el.font}|${el.w}x${el.h}|${el.lineHeight}|${el.letterSpacing}|${el.uppercase}|${el.weight}|${el.italic}|${pad}|${ghost}`);
 </script>
 
 <div
@@ -66,7 +64,7 @@
   style:font-style={el.italic ? 'italic' : 'normal'}
   style:text-decoration={el.underline ? 'underline' : 'none'}
   style:text-transform={el.uppercase ? 'uppercase' : 'none'}
-  style:color={color}
+  style:color
   style:text-align={el.align}
   style:line-height={el.lineHeight}
   style:letter-spacing="{el.letterSpacing}px"
@@ -78,7 +76,11 @@
   style:border-radius={el.background ? `${el.background.radius}px` : undefined}
 >
   <!-- (On one line: the text keeps its spaces and line breaks, so none may sneak in around it.) -->
-  <div class="inner" class:ghost dir="auto">{#if chars.length}{#each chars as c, i}<span class="tw" style:animation-delay="{times[i]}s">{c}</span>{/each}{:else}{ghost ? placeholder : el.text}{/if}</div>
+  <div class="inner" class:ghost dir="auto"
+    >{#if chars.length}{#each chars as c, i}<span class="tw" style:animation-delay="{times[i]}s">{c}</span>{/each}{:else}{ghost
+        ? placeholder
+        : el.text}{/if}</div
+  >
 </div>
 {#if edit && fitted.overflow && el.text}
   <div class="nofit" title="Make the box bigger or the text shorter">⚠ Text doesn't fit</div>
@@ -117,7 +119,9 @@
     border-radius: 10px;
     background: var(--bad-fill, #d13a40);
     color: #fff;
-    font: 700 30px system-ui, sans-serif;
+    font:
+      700 30px system-ui,
+      sans-serif;
     pointer-events: none;
   }
 </style>

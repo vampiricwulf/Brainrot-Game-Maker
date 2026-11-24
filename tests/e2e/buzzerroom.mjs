@@ -17,10 +17,11 @@ async function connectHost(code, token) {
   ws.addEventListener('message', (e) => {
     const m = JSON.parse(e.data);
     got.push(m);
-    for (const w of [...waiters]) if (w.pred(m)) {
-      waiters.splice(waiters.indexOf(w), 1);
-      w.ok(m);
-    }
+    for (const w of [...waiters])
+      if (w.pred(m)) {
+        waiters.splice(waiters.indexOf(w), 1);
+        w.ok(m);
+      }
   });
   await new Promise((ok, fail) => {
     ws.addEventListener('open', ok, { once: true });
@@ -78,7 +79,18 @@ try {
     { id: 'b', name: 'Bob', color: '#30a46c' },
     { id: 'c', name: 'Cat', color: '#ffc53d' },
   ];
-  let hs = { title: 'Buzzer test', seats, allowNew: true, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 1200, scores: { a: 200 } };
+  let hs = {
+    title: 'Buzzer test',
+    seats,
+    allowNew: true,
+    phase: 'lobby',
+    armId: 0,
+    clue: null,
+    answering: null,
+    lockedOut: [],
+    earlyLockMs: 1200,
+    scores: { a: 200 },
+  };
   const setState = (patch) => {
     hs = { ...hs, ...patch };
     host.send({ t: 'state', state: hs });
@@ -151,9 +163,16 @@ try {
   assert(!overflow, 'nothing overflows at 320px');
   const soundWords = await bob.evaluate(() => {
     const header = document.querySelector('header');
-    return { size: getComputedStyle(document.querySelector('#sound small')).fontSize, fits: header.scrollWidth <= header.clientWidth, title: document.getElementById('title').getBoundingClientRect().width };
+    return {
+      size: getComputedStyle(document.querySelector('#sound small')).fontSize,
+      fits: header.scrollWidth <= header.clientWidth,
+      title: document.getElementById('title').getBoundingClientRect().width,
+    };
   });
-  assert(soundWords.size === '13px' && soundWords.fits && soundWords.title >= 60, `the header’s “Sound on” is 13px, and the header still fits at 320px with room for the title (${JSON.stringify(soundWords)})`);
+  assert(
+    soundWords.size === '13px' && soundWords.fits && soundWords.title >= 60,
+    `the header’s “Sound on” is 13px, and the header still fits at 320px with room for the title (${JSON.stringify(soundWords)})`,
+  );
 
   // Dee is new: she asks, the host adds her and accepts.
   const dee = await phone('dee');
@@ -162,7 +181,10 @@ try {
   // No name yet: the name screen itself says so (not the hidden seat list).
   await dee.getByRole('button', { name: 'Ask to join' }).click();
   await dee.locator('#new-err').getByText('Type your name first.').waitFor();
-  assert(await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).evaluate((el) => el === document.activeElement), '"Ask to join" with no name says to type one, on the name screen');
+  assert(
+    await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).evaluate((el) => el === document.activeElement),
+    '"Ask to join" with no name says to type one, on the name screen',
+  );
   /** Where the name form's reason is: right under the box (before Ask to join), and the box points at it. */
   const errUnderBox = (p, form = 'new') =>
     p.evaluate((f) => {
@@ -175,10 +197,15 @@ try {
   // seat, if it's her, is a Back away).
   await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).fill('ann');
   await dee.getByRole('button', { name: 'Ask to join' }).click();
-  await dee.locator('#new-err').getByText('A player already has that name: add a letter, or pick another. If it’s you, go Back and tap your name.', { exact: true }).waitFor();
+  await dee
+    .locator('#new-err')
+    .getByText('A player already has that name: add a letter, or pick another. If it’s you, go Back and tap your name.', { exact: true })
+    .waitFor();
   assert(
     (await dee.locator('#s-new').isVisible()) &&
-      (await dee.getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true }).evaluate((el) => el === document.activeElement && el.value === 'ann' && el.selectionStart === 0 && el.selectionEnd === 3)) &&
+      (await dee
+        .getByRole('textbox', { name: 'Your name (everyone sees it)', exact: true })
+        .evaluate((el) => el === document.activeElement && el.value === 'ann' && el.selectionStart === 0 && el.selectionEnd === 3)) &&
       (await dee.locator('#seats-note').innerText()) === '',
     'a new player asking with a name a player has stays on the name form, the reason under the box, the name selected (not sent back to the list)',
   );
@@ -208,7 +235,10 @@ try {
   setState({ seats: [...seats, { id: 'd', name: 'Dee', color: '#3d68ea' }] });
   host.send({ t: 'accept', conn: deeConn, seatId: 'd' });
   await big(dee).getByText('Dee').waitFor();
-  const seated = await host.wait((m) => m.t === 'phones' && ['a', 'b', 'd'].every((s) => m.phones.some((p) => p.seatId === s && p.connected)), 'three seated phones');
+  const seated = await host.wait(
+    (m) => m.t === 'phones' && ['a', 'b', 'd'].every((s) => m.phones.some((p) => p.seatId === s && p.connected)),
+    'three seated phones',
+  );
   assert(seated.phones.length === 3, 'the host sees three seated phones');
 
   // A clue opens, buzzers closed: Bob buzzes early and is locked out for a moment.
@@ -240,14 +270,19 @@ try {
   const first = await host.wait((m) => m.t === 'buzz' && m.armId === 1 && m.rank === 1, 'the winner');
   const second = await host.wait((m) => m.t === 'buzz' && m.armId === 1 && m.rank === 2, 'the runner-up');
   assert(first.seatId === 'a' && second.seatId === 'd' && second.afterMs >= 100, `Ann reacted first and wins; Dee is 2nd (${second.afterMs} ms slower)`);
-  assert(taps.get(ann).sent[0]?.reactMs >= 0 && taps.get(dee).sent[0]?.reactMs >= 0, `phones send their reaction time with the buzz (Ann ${taps.get(ann).sent[0]?.reactMs} ms)`);
+  assert(
+    taps.get(ann).sent[0]?.reactMs >= 0 && taps.get(dee).sent[0]?.reactMs >= 0,
+    `phones send their reaction time with the buzz (Ann ${taps.get(ann).sent[0]?.reactMs} ms)`,
+  );
   assert(!host.got.some((m) => m.t === 'buzz' && m.seatId === 'b'), `Bob's buzz while locked didn't count (${lockedNow})`);
   const queue1 = await host.wait((m) => m.t === 'queue' && m.armId === 1 && m.queue.length === 2, 'the queue');
   assert(queue1.queue.map((q) => q.seatId).join() === 'a,d', 'the host gets the queue, fastest first');
   const [winner, loser] = [ann, dee];
   const winnerName = 'Ann';
   await big(winner).getByText("You're answering!").waitFor();
-  await small(winner).getByText(/^You were first by \d\.\d\d s$/).waitFor();
+  await small(winner)
+    .getByText(/^You were first by \d\.\d\d s$/)
+    .waitFor();
   // The assertive alert is emptied once said, so a screen reader browsing later doesn't find a stale "You're answering!".
   await winner.waitForFunction(() => {
     const said = window.alertSeen.lastIndexOf("You're answering!");
@@ -255,7 +290,10 @@ try {
   });
   assert(true, 'the "You\'re answering!" alert is said, then cleared');
   await big(loser).getByText("You're 2nd").waitFor();
-  assert(/^\d\.\d\d s behind Ann$/.test(await small(loser).innerText()), `"You were first by …" for Ann, "You're 2nd — ${await small(loser).innerText()}" for Dee`);
+  assert(
+    /^\d\.\d\d s behind Ann$/.test(await small(loser).innerText()),
+    `"You were first by …" for Ann, "You're 2nd — ${await small(loser).innerText()}" for Dee`,
+  );
   await small(bob).getByText(`${winnerName} is answering`).waitFor();
   await shot(winner, 'first');
   await shot(loser, 'late');
@@ -268,7 +306,7 @@ try {
   await press(winner);
   await press(bob);
   const bobWins = await host.wait((m) => m.t === 'buzz' && m.armId === 2 && m.rank === 1, 'arm 2 winner');
-  assert(bobWins.seatId === 'b', 'the locked-out player can\'t buzz; Bob wins the re-arm');
+  assert(bobWins.seatId === 'b', "the locked-out player can't buzz; Bob wins the re-arm");
   await big(bob).getByText("You're answering!").waitFor();
 
   // A slow network doesn't lose: Cat's phone is 200 ms behind each way, Dee's isn't. Cat presses first; her buzz
@@ -382,7 +420,10 @@ try {
   await bob.evaluate(([k, v]) => localStorage.setItem(k, v), [key, bobSaved]);
   await bob.reload();
   await bob.locator('#seats-note').getByText('The host took you off that seat').waitFor();
-  assert((await bob.evaluate((k) => localStorage.getItem(k), key)) === null, 'the revoked token is refused, saying the host took Bob off that seat (and forgotten)');
+  assert(
+    (await bob.evaluate((k) => localStorage.getItem(k), key)) === null,
+    'the revoked token is refused, saying the host took Bob off that seat (and forgotten)',
+  );
   // A kicked phone can't just tap the same name again (a troll with the code from the stream), even after a reload.
   await bob.getByRole('button', { name: 'Bob' }).click();
   await bob.locator('#seats-note').getByText('The host took you off that seat').waitFor();
@@ -396,7 +437,10 @@ try {
   await oldMo.getByRole('button', { name: 'Mo' }).click();
   await big(oldMo).getByText('Mo').waitFor();
   await oldMo.context().close();
-  pages.splice(pages.findIndex(([, p]) => p === oldMo), 1);
+  pages.splice(
+    pages.findIndex(([, p]) => p === oldMo),
+    1,
+  );
   const mo = await phone('mo');
   await mo.goto(`${base}/${room.code}`);
   const moSeat = mo.getByRole('button', { name: /^Mo:/ });
@@ -408,7 +452,10 @@ try {
   await big(mo).getByText('Mo').waitFor();
   assert(true, 'the host frees it (no block): Mo takes his seat on the new phone, from the same address');
   await mo.context().close();
-  pages.splice(pages.findIndex(([, p]) => p === mo), 1);
+  pages.splice(
+    pages.findIndex(([, p]) => p === mo),
+    1,
+  );
   setState({ seats: hs.seats.filter((x) => x.id !== 'm') });
 
   // ---------- On a desktop browser: a mouse and a keyboard, no touch ----------
@@ -460,10 +507,15 @@ try {
   await kim.getByRole('heading', { name: 'Click your name' }).waitFor();
   const kimSeat = kim.locator('#seat-list .seat[data-seat="k"]');
   assert(
-    (await kimSeat.locator('kbd').innerText()) === '5' && (await kimSeat.getAttribute('aria-keyshortcuts')) === '5' && (await kim.getByRole('button', { name: 'Kim', exact: true }).count()) === 1,
+    (await kimSeat.locator('kbd').innerText()) === '5' &&
+      (await kimSeat.getAttribute('aria-keyshortcuts')) === '5' &&
+      (await kim.getByRole('button', { name: 'Kim', exact: true }).count()) === 1,
     'desktop: "Click your name", each seat with its number key (5 for Kim; the key isn’t part of its name)',
   );
-  assert((await bob.getByRole('heading', { name: 'Tap your name' }).isVisible()) && (await bob.locator('#seat-list kbd').first().isHidden()), 'a phone still says "Tap your name", with no number keys');
+  assert(
+    (await bob.getByRole('heading', { name: 'Tap your name' }).isVisible()) && (await bob.locator('#seat-list kbd').first().isHidden()),
+    'a phone still says "Tap your name", with no number keys',
+  );
   await kim.keyboard.press('1'); // Ann's seat: taken, so nothing
   await kim.keyboard.press('5');
   await big(kim).getByText('Kim').waitFor();
@@ -473,7 +525,9 @@ try {
   assert((await kim.evaluate(() => window.audioMade)) >= 1, 'Kim joins with the keys alone (the code, Enter, 5): her page may play sound from then on');
   const keysHint = kim.locator('#keys');
   assert(
-    (await keysHint.innerText()) === 'Press Space to buzz' && (await kim.locator('#buzz').getAttribute('aria-keyshortcuts')) === 'Space' && (await kim.locator('#buzz').getAttribute('aria-describedby')) === 'keys',
+    (await keysHint.innerText()) === 'Press Space to buzz' &&
+      (await kim.locator('#buzz').getAttribute('aria-keyshortcuts')) === 'Space' &&
+      (await kim.locator('#buzz').getAttribute('aria-describedby')) === 'keys',
     'the buzzer says "Press Space to buzz" (to a screen reader too: its shortcut and description)',
   );
   assert((await ann.locator('#keys').isHidden()) && (await ann.locator('#buzz').getAttribute('aria-keyshortcuts')) === null, 'a phone shows no key hint');
@@ -497,7 +551,8 @@ try {
   await kim.getByRole('button', { name: 'Not you? Change player' }).click();
   await kim.getByRole('group', { name: 'Give up this player and pick again?' }).waitFor();
   assert(
-    (await kim.getByRole('button', { name: 'Not you? Change player' }).getAttribute('aria-expanded')) === 'true' && (await kim.getByRole('button', { name: 'Give up Kim', exact: true }).isVisible()),
+    (await kim.getByRole('button', { name: 'Not you? Change player' }).getAttribute('aria-expanded')) === 'true' &&
+      (await kim.getByRole('button', { name: 'Give up Kim', exact: true }).isVisible()),
     '“Not you?” asks on the page, under the link: Keep playing, or Give up Kim',
   );
   await kim.getByRole('button', { name: 'Keep playing', exact: true }).click();
@@ -532,13 +587,24 @@ try {
       const r = (id) => document.getElementById(id).getBoundingClientRect();
       const inside = (b) => b.left >= 0 && b.top >= 0 && b.right <= innerWidth + 0.5 && b.bottom <= innerHeight + 0.5;
       const b = r('buzz');
-      return { scroll: document.documentElement.scrollHeight - innerHeight, size: Math.round(b.width), mid: Math.round(b.left + b.width / 2 - innerWidth / 2), shown: ['buzz', 'me', 'keys', 'leave'].every((id) => inside(r(id))) };
+      return {
+        scroll: document.documentElement.scrollHeight - innerHeight,
+        size: Math.round(b.width),
+        mid: Math.round(b.left + b.width / 2 - innerWidth / 2),
+        shown: ['buzz', 'me', 'keys', 'leave'].every((id) => inside(r(id))),
+      };
     });
   const laptop = await fit();
-  assert(laptop.scroll <= 0 && laptop.shown && laptop.size >= 450, `1280×720 with a long clue: no scrolling, the button (${laptop.size}px), the hint, the name and score all on screen`);
+  assert(
+    laptop.scroll <= 0 && laptop.shown && laptop.size >= 450,
+    `1280×720 with a long clue: no scrolling, the button (${laptop.size}px), the hint, the name and score all on screen`,
+  );
   await kim.setViewportSize({ width: 1920, height: 1080 });
   const big1080 = await fit();
-  assert(big1080.scroll <= 0 && big1080.shown && big1080.size >= 500 && Math.abs(big1080.mid) <= 2, `1920×1080: the button (${big1080.size}px) in the middle, everything on screen`);
+  assert(
+    big1080.scroll <= 0 && big1080.shown && big1080.size >= 500 && Math.abs(big1080.mid) <= 2,
+    `1920×1080: the button (${big1080.size}px) in the middle, everything on screen`,
+  );
   await kim.setViewportSize({ width: 1280, height: 720 });
 
   // Space held down (the keys repeat): one buzz, and the page never scrolls.
@@ -583,10 +649,14 @@ try {
   await colours.waitFor();
   await kim.keyboard.press('Tab');
   await kim.waitForFunction(() => document.activeElement?.classList.contains('swatch'));
-  for (let i = 0; i < 12 && (await kim.evaluate(() => document.activeElement?.getAttribute('aria-pressed') === 'true')); i++) await kim.keyboard.press('ArrowRight');
+  for (let i = 0; i < 12 && (await kim.evaluate(() => document.activeElement?.getAttribute('aria-pressed') === 'true')); i++)
+    await kim.keyboard.press('ArrowRight');
   const picked = await kim.evaluate(() => document.activeElement?.dataset.color);
   await kim.keyboard.press('Space');
-  await host.wait((m) => host.got.indexOf(m) >= colourMsgs && m.t === 'color' && m.seatId === 'k' && m.color === picked?.toLowerCase(), 'Kim’s colour picked with the keys');
+  await host.wait(
+    (m) => host.got.indexOf(m) >= colourMsgs && m.t === 'color' && m.seatId === 'k' && m.color === picked?.toLowerCase(),
+    'Kim’s colour picked with the keys',
+  );
   await colours.waitFor({ state: 'hidden' });
   await kim.waitForFunction(() => document.activeElement?.id === 'buzz');
   await sleep(300);
@@ -634,7 +704,10 @@ try {
   await kim.locator('#color-btn').focus();
   setState({ status: null, wager: null, clue: { text: 'The longest river in Africa' }, answers: { id: 'ka', open: true, seats: [{ id: 'k' }] } });
   await kim.waitForFunction(() => document.activeElement?.id === 'answer-in');
-  assert((await kim.locator('#answer-keys').innerText()) === 'Enter sends · Shift+Enter for a new line', 'the answer box takes the keys as it opens (from 🎨 too, where Tab had left them), and says Enter sends');
+  assert(
+    (await kim.locator('#answer-keys').innerText()) === 'Enter sends · Shift+Enter for a new line',
+    'the answer box takes the keys as it opens (from 🎨 too, where Tab had left them), and says Enter sends',
+  );
   n = await kimBuzzes();
   await kim.keyboard.type('Blue Nile');
   await kim.keyboard.press('Enter');
@@ -703,7 +776,10 @@ try {
   await kim.keyboard.press('Escape');
   await anyBox.waitFor({ state: 'hidden' });
   await kim.waitForFunction(() => document.activeElement?.dataset.own === '');
-  assert((await kimBuzzColour()) === anyPicked && (await colours.isVisible()) && coloursSent().length === 0, 'Esc puts the colour back, nothing sent, the keys on ＋ in the palette');
+  assert(
+    (await kimBuzzColour()) === anyPicked && (await colours.isVisible()) && coloursSent().length === 0,
+    'Esc puts the colour back, nothing sent, the keys on ＋ in the palette',
+  );
   // The host turns colour picking off while it's open: it shuts, the colour it was back, nothing sent.
   await kim.keyboard.press('Enter');
   await anyBox.waitFor();
@@ -766,7 +842,10 @@ try {
   await kim.waitForFunction(() => document.activeElement?.dataset.seat === 'k');
   assert(true, '↑ from ＋ I’m new goes up the list (to Kim, the last free seat)');
   await kimCtx.close();
-  pages.splice(pages.findIndex(([, p]) => p === kim), 1);
+  pages.splice(
+    pages.findIndex(([, p]) => p === kim),
+    1,
+  );
   setState({ phase: 'lobby', clue: null, answering: null, lockedOut: [], colorPick: undefined, seats: hs.seats.filter((x) => x.id !== 'k') });
 
   // 🔒 Lock seats: nobody new gets a seat.
@@ -775,7 +854,8 @@ try {
   assert(await bob.getByRole('button', { name: 'Bob' }).isDisabled(), '🔒 seats locked: free seats are greyed out');
   assert(await bob.getByRole('button', { name: "＋ I'm new" }).isHidden(), '🔒 and nobody can ask to join');
   assert(
-    (await bob.getByRole('heading', { name: 'Seats are locked', exact: true }).isVisible()) && !(await bob.locator('#live').innerText()).includes('Tap your name'),
+    (await bob.getByRole('heading', { name: 'Seats are locked', exact: true }).isVisible()) &&
+      !(await bob.locator('#live').innerText()).includes('Tap your name'),
     '🔒 with no name Bob can tap, the heading says the seats are locked (not “Tap your name”)',
   );
   await shot(bob, 'seats-locked');
@@ -820,15 +900,28 @@ try {
   // Multiple choice on a short phone, 6 choices (one of 3 lines) under a caption, a question of 2 lines and the timer:
   // after a tap, “✔ Sent: B…” under them is scrolled into sight (it was under the bottom of the screen).
   await dee.setViewportSize({ width: 360, height: 640 });
-  const six = ['Penicillin', 'Aspirin', 'Insulin', 'The smallpox vaccine, first given to a boy in 1796 by a country doctor', 'Morphine', 'Quinine'].map((text, i) => ({ id: `c${i}`, text }));
-  setState({ clue: { text: 'This pain reliever was first made from willow bark, and Bayer sold it from 1899', caption: 'Medicine · $600' }, timer: { left: 30000 }, answers: { id: 'mc6', open: true, seats: [{ id: 'd' }], choices: six } });
+  const six = ['Penicillin', 'Aspirin', 'Insulin', 'The smallpox vaccine, first given to a boy in 1796 by a country doctor', 'Morphine', 'Quinine'].map(
+    (text, i) => ({ id: `c${i}`, text }),
+  );
+  setState({
+    clue: { text: 'This pain reliever was first made from willow bark, and Bayer sold it from 1899', caption: 'Medicine · $600' },
+    timer: { left: 30000 },
+    answers: { id: 'mc6', open: true, seats: [{ id: 'd' }], choices: six },
+  });
   await dee.locator('#answer-choices .choice').nth(5).waitFor();
   await dee.locator('#answer-choices .choice', { hasText: 'Aspirin' }).click();
-  await dee.locator('#answer-state').getByText(/^✔ Sent: B\./).waitFor();
-  await dee.waitForFunction(() => {
-    const r = document.getElementById('answer-state').getBoundingClientRect();
-    return r.top >= 0 && r.bottom <= innerHeight + 0.5;
-  }, null, { timeout: 5000 });
+  await dee
+    .locator('#answer-state')
+    .getByText(/^✔ Sent: B\./)
+    .waitFor();
+  await dee.waitForFunction(
+    () => {
+      const r = document.getElementById('answer-state').getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= innerHeight + 0.5;
+    },
+    null,
+    { timeout: 5000 },
+  );
   assert(true, 'a choice tapped on a short phone: its “✔ Sent: B” line is scrolled into sight');
   await shot(dee, 'choice-sent-360x640');
   setState({ clue: null, timer: null, answers: null });
@@ -853,7 +946,10 @@ try {
     return !e.hidden && r.top >= 0 && r.bottom <= innerHeight + 0.5;
   });
   assert(away, "a phone opening the link sees “The host isn't connected right now” on screen");
-  pages.splice(pages.findIndex(([, p]) => p === ida), 1);
+  pages.splice(
+    pages.findIndex(([, p]) => p === ida),
+    1,
+  );
   await ida.context().close();
   assert(
     (await dee.locator('#host-note').innerText()) === 'The host’s connection dropped: waiting for them…',
@@ -880,15 +976,26 @@ try {
 
   // On a short phone with a long clue up, "Not you?" opens its question below the screen: the page goes down to it.
   await dee.setViewportSize({ width: 360, height: 640 });
-  setState({ phase: 'closed', armId: 61, clue: { text: 'This planet is red and has the largest volcano in the solar system, Olympus Mons, three times Everest.' } });
+  setState({
+    phase: 'closed',
+    armId: 61,
+    clue: { text: 'This planet is red and has the largest volcano in the solar system, Olympus Mons, three times Everest.' },
+  });
   await big(dee).getByText('Get ready…').waitFor();
   await dee.getByRole('button', { name: 'Not you? Change player' }).click();
   const inView = await dee
-    .waitForFunction(() => {
-      const r = document.getElementById('leave-yes').getBoundingClientRect();
-      return r.top >= 0 && r.bottom <= innerHeight + 0.5;
-    }, null, { timeout: 2000 })
-    .then(() => true, () => false);
+    .waitForFunction(
+      () => {
+        const r = document.getElementById('leave-yes').getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= innerHeight + 0.5;
+      },
+      null,
+      { timeout: 2000 },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
   assert(inView, '“Not you?” on a short phone with a clue up: the question and Give up Dee come into view');
   await dee.getByRole('button', { name: 'Keep playing', exact: true }).click();
   await dee.locator('#leave-ask').waitFor({ state: 'hidden' });
@@ -903,7 +1010,10 @@ try {
   await dee.waitForFunction(() => document.activeElement?.id === 'leave-no');
   await dee.keyboard.press('Escape');
   await dee.locator('#leave-ask').waitFor({ state: 'hidden' });
-  assert((await dee.evaluate(() => document.activeElement?.id)) === 'leave', '“Not you?” with the keys: they go to Keep playing; Esc takes the question away, the keys back on the link');
+  assert(
+    (await dee.evaluate(() => document.activeElement?.id)) === 'leave',
+    '“Not you?” with the keys: they go to Keep playing; Esc takes the question away, the keys back on the link',
+  );
   await dee.getByRole('button', { name: 'Not you? Change player' }).click();
   await dee.getByRole('button', { name: 'Give up Dee', exact: true }).click();
   await dee.getByRole('heading', { name: 'Tap your name' }).waitFor();
@@ -988,7 +1098,10 @@ try {
   annTap.drop();
   // While away, the page behind the overlay is inert and the screen reader hears what the overlay says.
   await ann.waitForFunction(
-    () => !document.getElementById('overlay').hidden && document.querySelector('main').inert && document.getElementById('live').textContent.startsWith(document.getElementById('overlay-text').textContent),
+    () =>
+      !document.getElementById('overlay').hidden &&
+      document.querySelector('main').inert &&
+      document.getElementById('live').textContent.startsWith(document.getElementById('overlay-text').textContent),
   );
   assert(true, 'reconnecting: the buzzer behind the overlay is inert and #live starts with the overlay text');
   // Still away after a few tries, with the phone's own network up (the browser says it's online): it's the buzzer
@@ -1051,7 +1164,10 @@ try {
   await big(fay).getByText('Fay').waitFor();
   assert(true, "24 idle open pages don't lock out a real player: Fay gets her seat");
   await until(() => idle[0].w.readyState >= 2, { timeout: 3_000, every: 100 });
-  assert(idle[0].w.readyState >= 2 && idle[0].msgs.some((m) => m.t === 'denied' && m.reason === 'full'), 'the longest idle page made way (told "full": it tries again later)');
+  assert(
+    idle[0].w.readyState >= 2 && idle[0].msgs.some((m) => m.t === 'denied' && m.reason === 'full'),
+    'the longest idle page made way (told "full": it tries again later)',
+  );
   await host.wait((m) => m.t === 'full', 'room full');
   assert(true, 'the host is told the room is full');
   for (const x of idle) x.w.close();
@@ -1081,7 +1197,12 @@ try {
         if (tops.size > 1) broken.push(m[0]);
       }
     }
-    return { buzz: inside(document.getElementById('buzz')), me: inside(document.getElementById('me')), broken, wide: document.documentElement.scrollWidth > innerWidth };
+    return {
+      buzz: inside(document.getElementById('buzz')),
+      me: inside(document.getElementById('me')),
+      broken,
+      wide: document.documentElement.scrollWidth > innerWidth,
+    };
   });
   await sleep(500); // after the flash
   const png = await gus.screenshot({ path: process.env.SCREENSHOTS ? `${process.env.SCREENSHOTS}/buzzer-landscape.png` : undefined });
@@ -1096,12 +1217,18 @@ try {
   await hal.goto(`${base}/${room.code}`);
   await hal.getByRole('button', { name: longName }).click();
   await big(hal).getByText(longName).waitFor();
-  const sideways = async () => hal.evaluate(() => document.documentElement.scrollWidth > innerWidth || document.getElementById('buzz-big').scrollWidth > document.getElementById('buzz').clientWidth);
+  const sideways = async () =>
+    hal.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth || document.getElementById('buzz-big').scrollWidth > document.getElementById('buzz').clientWidth,
+    );
   const wide = [await sideways()];
   setState({ phase: 'armed', armId: 10, clue: { text: 'Q10' } });
   await big(hal).getByText('BUZZ!').waitFor();
   wide.push(await sideways());
-  for (const [w, h] of [[375, 667], [568, 320]]) {
+  for (const [w, h] of [
+    [375, 667],
+    [568, 320],
+  ]) {
     await hal.setViewportSize({ width: w, height: h });
     wide.push(await sideways());
   }
@@ -1161,7 +1288,9 @@ try {
   await big(dee).getByText('You came 3rd').waitFor();
   await big(jo).getByText('You came 4th').waitFor();
   assert(
-    (await jo.locator('#keys').isHidden()) && (await jo.locator('#buzz').getAttribute('aria-keyshortcuts')) === null && (await jo.locator('#buzz').getAttribute('aria-describedby')) === null,
+    (await jo.locator('#keys').isHidden()) &&
+      (await jo.locator('#buzz').getAttribute('aria-keyshortcuts')) === null &&
+      (await jo.locator('#buzz').getAttribute('aria-describedby')) === null,
     'on a laptop, once the game is over: no "Press Space to buzz" under the place (nor for a screen reader)',
   );
 
@@ -1192,13 +1321,30 @@ try {
     const h = await connectHost(made.code, made.hostToken);
     const welcome = await h.wait((m) => m.t === 'welcome', 'welcome');
     assert(welcome.features.includes('cards') && welcome.features.includes('files'), `the room takes cards and files (${welcome.features.join(', ')})`);
-    assert(welcome.limits?.fileBytes === 16 * 1024 * 1024 && welcome.limits.roomBytes === 64 * 1024 * 1024, `and says how big (${JSON.stringify(welcome.limits)})`);
+    assert(
+      welcome.limits?.fileBytes === 16 * 1024 * 1024 && welcome.limits.roomBytes === 64 * 1024 * 1024,
+      `and says how big (${JSON.stringify(welcome.limits)})`,
+    );
     const pre = await fetch(`${base}/api/rooms/${made.code}/files`, {
       method: 'OPTIONS',
       headers: { Origin: 'null', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,content-type' },
     });
     assert(/authorization/i.test(pre.headers.get('access-control-allow-headers') ?? ''), 'CORS lets the app send its token in a header');
-    let cs = { title: 'Cards', seats: [{ id: 'a', name: 'Ann', color: '#e5484d' }, { id: 'b', name: 'Bob', color: '#30a46c' }], allowNew: false, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 0, scores: {} };
+    let cs = {
+      title: 'Cards',
+      seats: [
+        { id: 'a', name: 'Ann', color: '#e5484d' },
+        { id: 'b', name: 'Bob', color: '#30a46c' },
+      ],
+      allowNew: false,
+      phase: 'lobby',
+      armId: 0,
+      clue: null,
+      answering: null,
+      lockedOut: [],
+      earlyLockMs: 0,
+      scores: {},
+    };
     const hostState = (patch) => h.send({ t: 'state', state: (cs = { ...cs, ...patch }) });
     hostState({});
     /** Waits (up to 3 s) until pred() holds, or fails saying `never: <what>`. */
@@ -1230,10 +1376,17 @@ try {
       `a viewer when every seat is taken: the heading says so, a line of its own under it what to do, and each name is just “Taken” (${await viewer.locator('#seats-status').innerText()})`,
     );
     await viewer.context().close();
-    pages.splice(pages.findIndex(([, p]) => p === viewer), 1);
+    pages.splice(
+      pages.findIndex(([, p]) => p === viewer),
+      1,
+    );
     const filesUrl = (code, id) => `${base}/api/rooms/${code}/files${id ? `/${id}` : ''}`;
     const up = (body, type, token = made.hostToken, code = made.code) =>
-      fetch(filesUrl(code), { method: 'POST', headers: { Origin: 'null', 'Content-Type': type, ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body });
+      fetch(filesUrl(code), {
+        method: 'POST',
+        headers: { Origin: 'null', 'Content-Type': type, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body,
+      });
     const get = (id, token) => fetch(filesUrl(made.code, id), token ? { headers: { Authorization: `Bearer ${token}` } } : {});
     const bytes = randomBytes(2.5 * 1024 * 1024);
     const hash = createHash('sha256').update(bytes).digest('hex');
@@ -1245,7 +1398,10 @@ try {
       (await up(bytes, 'image/svg+xml')).status,
       (await up(randomBytes(16 * 1024 * 1024 + 1), 'video/mp4')).status,
     ];
-    assert(refusals.join() === '401,401,401,415,415,413', `uploads need the host token, a picture, video or sound type, and 16 MB at most (${refusals.join()})`);
+    assert(
+      refusals.join() === '401,401,401,415,415,413',
+      `uploads need the host token, a picture, video or sound type, and 16 MB at most (${refusals.join()})`,
+    );
     // (The token is checked before the body is read: a wrong one over 16 MB is turned away for its token.)
     assert((await up(randomBytes(16 * 1024 * 1024 + 1), 'video/mp4', 'wrong')).status === 401, 'a wrong token is turned away before its body is read');
     // A file that doesn't say how big it is streams on to the room, which stops reading it past 16 MB; nothing at all is
@@ -1258,7 +1414,12 @@ try {
           c.enqueue(bytes.subarray(sent, (sent += 256 * 1024)));
         },
       });
-      return fetch(filesUrl(made.code), { method: 'POST', duplex: 'half', headers: { 'Content-Type': 'video/mp4', Authorization: `Bearer ${made.hostToken}` }, body });
+      return fetch(filesUrl(made.code), {
+        method: 'POST',
+        duplex: 'half',
+        headers: { 'Content-Type': 'video/mp4', Authorization: `Bearer ${made.hostToken}` },
+        body,
+      });
     };
     const streamed = await unsized(randomBytes(16 * 1024 * 1024 + 1));
     const nothing = await up(new Uint8Array(0), 'video/mp4');
@@ -1284,12 +1445,19 @@ try {
     const twinHash = createHash('sha256').update(twin).digest('hex');
     const both = await Promise.all([up(twin, 'image/png'), up(twin, 'image/png')]);
     const bothIds = await Promise.all(both.map(async (r) => (r.status === 200 ? (await r.json()).id : r.status)));
-    assert(bothIds.every((x) => x === twinHash), `the same file uploaded twice at once: both get its id (${bothIds.join(', ')})`);
+    assert(
+      bothIds.every((x) => x === twinHash),
+      `the same file uploaded twice at once: both get its id (${bothIds.join(', ')})`,
+    );
     const listed = await h.wait((m) => m.t === 'files' && m.ids.includes(twinHash), 'the files list with the twin');
     assert(listed.ids.filter((x) => x === twinHash).length === 1, 'and the room holds it once');
     // Got ready, not sent: nobody gets it.
     assert((await get(hash, bob.token)).status === 404, 'a file got ready but not sent is served to nobody');
-    hostState({ cards: [{ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, role: 'Describer', text: 'SHREK', media: [{ kind: 'image', file: hash, mime: 'image/png' }] }] });
+    hostState({
+      cards: [
+        { id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, role: 'Describer', text: 'SHREK', media: [{ kind: 'image', file: hash, mime: 'image/png' }] },
+      ],
+    });
     await until(() => bob.view()?.cards, 'Bob gets his card');
     assert(bob.view().cards.list[0].text === 'SHREK' && bob.view().cards.list[0].media[0].file === hash, "Bob's phone gets his card, its picture as a file");
     const got = await get(hash, bob.token);
@@ -1302,7 +1470,12 @@ try {
         got.headers.get('x-content-type-options') === 'nosniff',
       `served with its type, its Content-Length (${got.headers.get('content-length')}), no-store, no-transform and nosniff`,
     );
-    const others = [(await get(hash, ann.token)).status, (await get(hash)).status, (await get(hash, made.hostToken)).status, (await fetch(`${filesUrl(made.code, hash)}?token=${bob.token}`)).status];
+    const others = [
+      (await get(hash, ann.token)).status,
+      (await get(hash)).status,
+      (await get(hash, made.hostToken)).status,
+      (await fetch(`${filesUrl(made.code, hash)}?token=${bob.token}`)).status,
+    ];
     assert(others.join() === '404,404,404,404', `Ann's phone, no token, the host's token and a token in the address get 404 (${others.join()})`);
     assert(!JSON.stringify(ann.heard).includes('SHREK'), "Ann's phone never hears Bob's card");
     // A phone that takes Bob's seat after the card went out is late: no card, no file.
@@ -1310,7 +1483,10 @@ try {
     await sleep(100);
     const late = await phoneOn('b');
     await until(() => late.view()?.cards, 'the late phone hears it missed one');
-    assert(late.view().cards.late === 1 && !late.view().cards.list.length && !JSON.stringify(late.heard).includes('SHREK'), 'a phone seated after the card went out only hears it missed one');
+    assert(
+      late.view().cards.late === 1 && !late.view().cards.list.length && !JSON.stringify(late.heard).includes('SHREK'),
+      'a phone seated after the card went out only hears it missed one',
+    );
     assert((await get(hash, late.token)).status === 404, 'and cannot fetch its file');
     // The tile closes: the card goes, and nobody gets the file.
     hostState({ cards: null });
@@ -1332,7 +1508,10 @@ try {
     if (r.status === 429) refused = { body: await r.json(), cors: r.headers.get('access-control-allow-origin') };
   }
   assert(statuses.join() === '200,200,200,200,200,200,429', `the 7th new room in a minute from one address is refused (${statuses.join()})`);
-  assert(refused.body.error === 'Too many new rooms — wait a minute' && refused.cors === '*', 'with a 429 the app can read: "Too many new rooms — wait a minute"');
+  assert(
+    refused.body.error === 'Too many new rooms — wait a minute' && refused.cors === '*',
+    'with a 429 the app can read: "Too many new rooms — wait a minute"',
+  );
   // IPv6 counts by the first 56 bits: a new address in the same /56 for every room is still one address.
   const v6 = [];
   for (let i = 0; i < 7; i++)

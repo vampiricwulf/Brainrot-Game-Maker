@@ -16,7 +16,22 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, answerAsk, answerReplace, leaveAsks, noSelection, selectedWords, failureShots, assert, launchChromium, until, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  answerAsk,
+  answerReplace,
+  leaveAsks,
+  noSelection,
+  selectedWords,
+  failureShots,
+  assert,
+  launchChromium,
+  until,
+  inspectorIn,
+  roundTabsIn,
+  toastsIn,
+} from './helpers.mjs';
 import { gif } from './mediafixtures.mjs';
 
 const { GifReader } = createRequire(import.meta.url)('omggif');
@@ -40,7 +55,8 @@ const bar = page.locator('.itembar');
 const lockBtn = bar.getByRole('button', { name: '🔒 Lock' });
 const toast = toastsIn(page);
 /** The clue's ↶ tooltip: "Undo: ‹the newest step› (Ctrl+Z)". */
-const undoTitle = async () => (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) ?? '';
+const undoTitle = async () =>
+  (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) ?? '';
 /** Viewport point for a stage (1920×1080) point. */
 async function at(x, y) {
   const r = await canvas.locator('.stage').boundingBox();
@@ -63,7 +79,14 @@ async function click(x, y) {
 /** Every item on the slide as drawn: [left, top, width, height] in stage px, with its id. */
 const drawn = () =>
   canvas.locator('.slide .el').evaluateAll((els) =>
-    els.map((e) => ({ id: e.dataset.el, img: !!e.querySelector('img'), x: parseFloat(e.style.left), y: parseFloat(e.style.top), w: parseFloat(e.style.width), h: parseFloat(e.style.height) })),
+    els.map((e) => ({
+      id: e.dataset.el,
+      img: !!e.querySelector('img'),
+      x: parseFloat(e.style.left),
+      y: parseFloat(e.style.top),
+      w: parseFloat(e.style.width),
+      h: parseFloat(e.style.height),
+    })),
   );
 const position = insp.locator('section', { hasText: 'Position' });
 const posField = (name) => position.getByLabel(name, { exact: true });
@@ -114,7 +137,10 @@ try {
   const clue = page.getByRole('dialog', { name: 'Edit clue' });
   await clue.waitFor();
   await clue.getByRole('button', { name: /Background ▾/ }).click();
-  assert((await page.getByLabel('Slide background color').inputValue()) === '#ffd6e7', "the background color shows the Pastel theme's tile color, not the Classic blue");
+  assert(
+    (await page.getByLabel('Slide background color').inputValue()) === '#ffd6e7',
+    "the background color shows the Pastel theme's tile color, not the Classic blue",
+  );
   await page.getByLabel('Slide background color').press('Escape');
 
   // ---------- A right-click beside the question's words: the slide's own menu ----------
@@ -127,20 +153,40 @@ try {
     const slideMenu = await items();
     const slideWant = ['✎ Edit text', 'Align', '＋ Text here', '📋 Paste here', '📋 Copy slide', '📋 Paste over this slide', '🎨 Background…', 'Select all'];
     assert(
-      (await menu.locator('.head').innerText()).trim() === 'This slide' && (await menu.locator('.pick').count()) === 1 && JSON.stringify(slideMenu) === JSON.stringify(slideWant),
+      (await menu.locator('.head').innerText()).trim() === 'This slide' &&
+        (await menu.locator('.pick').count()) === 1 &&
+        JSON.stringify(slideMenu) === JSON.stringify(slideWant),
       `beside the full-slide question's words, a right-click gives the slide's menu, the text box to pick in it and its ✎ Edit text and Align first (${slideMenu.join(' | ')})`,
     );
     // 🎨 Background… opens the toolbar's Background box where the menu was.
     await menu.getByRole('menuitem', { name: '🎨 Background…' }).click();
     const bgBox = await page.getByRole('group', { name: 'Background' }).boundingBox();
-    assert(!!bgBox && Math.abs(bgBox.x - p.x) < 40 && Math.abs(bgBox.y - p.y) < 40, `🎨 Background… opens the Background box at the pointer (${Math.round(bgBox?.x ?? 0)},${Math.round(bgBox?.y ?? 0)} for ${Math.round(p.x)},${Math.round(p.y)})`);
+    assert(
+      !!bgBox && Math.abs(bgBox.x - p.x) < 40 && Math.abs(bgBox.y - p.y) < 40,
+      `🎨 Background… opens the Background box at the pointer (${Math.round(bgBox?.x ?? 0)},${Math.round(bgBox?.y ?? 0)} for ${Math.round(p.x)},${Math.round(p.y)})`,
+    );
     await page.keyboard.press('Escape');
     // On its words, the text box's own menu, in the editors' one order.
     const q = await at(960, 540);
     await page.mouse.click(q.x, q.y, { button: 'right' });
     await menu.waitFor();
     const itemMenu = await items();
-    const itemWant = ['✎ Edit text', '✎ Rename', '⧉ Duplicate', '✂ Cut', '📋 Copy', '📋 Paste', '⤒ Bring to front', '↑ Bring forward', '↓ Send backward', '⤓ Send to back', 'Align', '🔒 Lock', '👁 Hide while editing', '🗑 Delete'];
+    const itemWant = [
+      '✎ Edit text',
+      '✎ Rename',
+      '⧉ Duplicate',
+      '✂ Cut',
+      '📋 Copy',
+      '📋 Paste',
+      '⤒ Bring to front',
+      '↑ Bring forward',
+      '↓ Send backward',
+      '⤓ Send to back',
+      'Align',
+      '🔒 Lock',
+      '👁 Hide while editing',
+      '🗑 Delete',
+    ];
     assert(JSON.stringify(itemMenu) === JSON.stringify(itemWant), `on its words, the text box's menu in one order (${itemMenu.join(' | ')})`);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
@@ -152,7 +198,11 @@ try {
   // On Pastel the words are drawn in its dark slide text: the Color box shows that colour (it said white), and white
   // picked there is white (it stayed the theme's dark colour).
   const textColor = insp.locator('input[type=color]').first();
-  const drawnColor = () => canvas.locator('.slide .el .text').first().evaluate((e) => getComputedStyle(e).color);
+  const drawnColor = () =>
+    canvas
+      .locator('.slide .el .text')
+      .first()
+      .evaluate((e) => getComputedStyle(e).color);
   const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
   const pastelText = await textColor.inputValue();
   assert(pastelText !== '#ffffff' && (await drawnColor()) === rgb(pastelText), `the Color box shows the dark colour the text is drawn in (${pastelText})`);
@@ -179,7 +229,10 @@ try {
   await page.keyboard.type(' there');
   await page.keyboard.press('Control+i');
   await page.keyboard.press('Control+z');
-  assert((await italic()) === 'false' && (await textField.inputValue()) === 'Hi there', `Ctrl+Z after typing and Ctrl+I takes back the italic, the words staying (${await textField.inputValue()})`);
+  assert(
+    (await italic()) === 'false' && (await textField.inputValue()) === 'Hi there',
+    `Ctrl+Z after typing and Ctrl+I takes back the italic, the words staying (${await textField.inputValue()})`,
+  );
   await page.keyboard.press('Control+z');
   assert((await textField.inputValue()) === 'Hi', `and the next Ctrl+Z the typing (${await textField.inputValue()})`);
   const size = insp.locator('label.field', { hasText: 'Max size' }).locator('input');
@@ -202,11 +255,17 @@ try {
   // The selected item's bar, pinned at the top of the panel: its name, its edit, ⧉ Duplicate, 🔒 Lock, then 🗑 Delete apart.
   {
     const names = (await bar.getByRole('button').allInnerTexts()).map((t) => t.trim());
-    assert(JSON.stringify(names) === JSON.stringify(['⋯', '✎ Edit text', '⧉ Duplicate', '🔒 Lock', '🗑 Delete']), `the bar has the text box's buttons (${names.join(' | ')})`);
+    assert(
+      JSON.stringify(names) === JSON.stringify(['⋯', '✎ Edit text', '⧉ Duplicate', '🔒 Lock', '🗑 Delete']),
+      `the bar has the text box's buttons (${names.join(' | ')})`,
+    );
     const [b, p] = await Promise.all([bar.boundingBox(), page.locator('.side').boundingBox()]);
     assert(!!b && !!p && Math.abs(b.y - p.y) < 2, 'it is at the top of the side panel');
     const del = await bar.getByRole('button', { name: '🗑 Delete' }).boundingBox();
-    assert(b.x + b.width - (del.x + del.width) < 14, `its 🗑 Delete is at its right end (${Math.round(b.x + b.width - del.x - del.width)} px in), on whichever line`);
+    assert(
+      b.x + b.width - (del.x + del.width) < 14,
+      `its 🗑 Delete is at its right end (${Math.round(b.x + b.width - del.x - del.width)} px in), on whichever line`,
+    );
   }
 
   // ---------- Shape ▾ in sections: Shapes, then Draw (⬚ Hotspot is an RPG screen's) ----------
@@ -226,21 +285,33 @@ try {
   {
     const more = canvas.getByRole('button', { name: 'More for the selection' });
     const [m, corner] = [await more.boundingBox(), await at(1700, 700)];
-    assert(!!m && m.x > corner.x && m.y + m.height < corner.y, `a ⋯ sits just outside the selection's top-right corner (${Math.round(m?.x ?? 0)},${Math.round(m?.y ?? 0)} by ${Math.round(corner.x)},${Math.round(corner.y)})`);
+    assert(
+      !!m && m.x > corner.x && m.y + m.height < corner.y,
+      `a ⋯ sits just outside the selection's top-right corner (${Math.round(m?.x ?? 0)},${Math.round(m?.y ?? 0)} by ${Math.round(corner.x)},${Math.round(corner.y)})`,
+    );
     await more.click();
     const menu = page.getByRole('menu', { name: 'Slide item menu' });
     await menu.waitFor();
-    assert((await menu.locator('.head').innerText()).trim() === 'Rectangle' && (await insp.locator('h4', { hasText: 'Shape' }).count()) === 1, 'it opens the rectangle’s menu, the rectangle still selected');
+    assert(
+      (await menu.locator('.head').innerText()).trim() === 'Rectangle' && (await insp.locator('h4', { hasText: 'Shape' }).count()) === 1,
+      'it opens the rectangle’s menu, the rectangle still selected',
+    );
     await page.keyboard.press('Escape');
     await menu.waitFor({ state: 'detached' });
     // A small item in the slide's top-right corner (a logo): the ⋯ goes beside its left edge, not over its middle.
     const n0 = (await drawn()).length;
     await addRect(1820, 0, 100, 100);
     const [m2, logo] = [await more.boundingBox(), await at(1820, 0)];
-    assert(!!m2 && m2.x + m2.width <= logo.x + 1, `a corner item's ⋯ sits beside its left edge (${Math.round(m2?.x ?? 0)}+${Math.round(m2?.width ?? 0)} by ${Math.round(logo.x)})`);
+    assert(
+      !!m2 && m2.x + m2.width <= logo.x + 1,
+      `a corner item's ⋯ sits beside its left edge (${Math.round(m2?.x ?? 0)}+${Math.round(m2?.width ?? 0)} by ${Math.round(logo.x)})`,
+    );
     await bar.getByRole('button', { name: '🗑 Delete' }).click();
     await click(1550, 800);
-    assert((await insp.locator('h4', { hasText: 'Shape' }).count()) === 1 && (await drawn()).length === n0, 'and with it deleted, the first rectangle is selected again');
+    assert(
+      (await insp.locator('h4', { hasText: 'Shape' }).count()) === 1 && (await drawn()).length === n0,
+      'and with it deleted, the first rectangle is selected again',
+    );
   }
   await page.keyboard.press('Escape');
   const text0 = (await drawn())[0];
@@ -258,14 +329,20 @@ try {
   await drag([1450, 750], [1800, 1000], { alt: true });
   const rect = (await drawn()).find((e) => e.w === 300);
   assert(rect.x === 1400 && rect.y === 700, 'Alt+drag starting on the rectangle draws a box instead of moving it');
-  assert((await page.locator('.side').innerText()).includes('2 items selected'), 'and selects what the box touches (the rectangle, and the text box it reaches past the bottom of)');
+  assert(
+    (await page.locator('.side').innerText()).includes('2 items selected'),
+    'and selects what the box touches (the rectangle, and the text box it reaches past the bottom of)',
+  );
 
   // ---------- Snapping while resizing ----------
   await addRect(100, 100, 200, 100);
   await addRect(500, 300, 100, 300);
   // Pull the tall one's left edge to just right of the first one's right edge (x 300): it snaps there.
   await drag([500, 450], [306, 450]);
-  assert(Number(await posField('X').inputValue()) === 300 && Number(await posField('W').inputValue()) === 300, 'a pulled edge snaps to another item’s edge (x 300)');
+  assert(
+    Number(await posField('X').inputValue()) === 300 && Number(await posField('W').inputValue()) === 300,
+    'a pulled edge snaps to another item’s edge (x 300)',
+  );
   await setNumber(posField('X'), 500);
   await setNumber(posField('W'), 100);
 
@@ -274,7 +351,10 @@ try {
   // The text box is locked, so Ctrl+A takes the four rectangles.
   await click(960, 540);
   await lockBtn.click();
-  assert((await lockBtn.getAttribute('aria-pressed')) === 'true' && (await bar.getByRole('button', { name: '🗑 Delete' }).isDisabled()), "the bar's 🔒 Lock locks it (pressed), and its 🗑 Delete is greyed");
+  assert(
+    (await lockBtn.getAttribute('aria-pressed')) === 'true' && (await bar.getByRole('button', { name: '🗑 Delete' }).isDisabled()),
+    "the bar's 🔒 Lock locks it (pressed), and its 🗑 Delete is greyed",
+  );
   // (Esc deselects, the keys on the bar.)
   await page.keyboard.press('Escape');
   await page.waitForTimeout(100);
@@ -283,11 +363,17 @@ try {
   assert(side.includes('4 items selected'), 'Ctrl+A selects the four rectangles' + (side.includes('4 items') ? '' : ` (${side.slice(0, 80)})`));
   const rects = async () => (await drawn()).filter((e) => e.id !== text0.id);
   await page.getByRole('button', { name: 'Line up their top edges' }).click();
-  assert(new Set((await rects()).map((e) => e.y)).size === 1 && (await rects())[0].y === 50, 'Top lines them up with the highest one (y 50), not the slide’s edge');
+  assert(
+    new Set((await rects()).map((e) => e.y)).size === 1 && (await rects())[0].y === 50,
+    'Top lines them up with the highest one (y 50), not the slide’s edge',
+  );
   await page.getByRole('button', { name: '↔ Space evenly' }).click();
   const xs = (await rects()).sort((a, b) => a.x - b.x);
   const gaps = xs.slice(1).map((e, i) => e.x - (xs[i].x + xs[i].w));
-  assert(Math.max(...gaps) - Math.min(...gaps) <= 1 && xs[0].x === 100 && xs[3].x + xs[3].w === 1700, `Space evenly leaves equal gaps between them (${gaps.join(', ')})`);
+  assert(
+    Math.max(...gaps) - Math.min(...gaps) <= 1 && xs[0].x === 100 && xs[3].x + xs[3].w === 1700,
+    `Space evenly leaves equal gaps between them (${gaps.join(', ')})`,
+  );
   // Delete with the focus still on that button is nothing (it used to delete the four); on the canvas it deletes.
   await page.keyboard.press('Delete');
   assert((await rects()).length === 4, 'Delete on a focused side-panel button leaves the selected items alone');
@@ -298,13 +384,29 @@ try {
   assert((await undoTitle()).startsWith('Undo: Sent 4 shapes to the back'), `⤓ To back sends the four to the back, named so (${await undoTitle()})`);
   assert((await bar.innerText()).includes('4 items selected'), 'the bar says how many are selected');
   await lockBtn.click();
-  assert((await page.locator('.layers .row').getByRole('button', { name: /^Unlock: / }).count()) === 5, 'Lock locks all four (and the text box stays locked)');
+  assert(
+    (await page
+      .locator('.layers .row')
+      .getByRole('button', { name: /^Unlock: / })
+      .count()) === 5,
+    'Lock locks all four (and the text box stays locked)',
+  );
   await lockBtn.click();
-  assert((await page.locator('.layers .row').getByRole('button', { name: /^Unlock: / }).count()) === 1, 'pressed again it unlocks them');
+  assert(
+    (await page
+      .locator('.layers .row')
+      .getByRole('button', { name: /^Unlock: / })
+      .count()) === 1,
+    'pressed again it unlocks them',
+  );
   await canvas.focus();
   await page.keyboard.press('Delete');
   // (Clicks go through the locked text box: the Layers list unlocks it.)
-  await page.locator('.layers .row').first().getByRole('button', { name: /^Unlock: / }).click();
+  await page
+    .locator('.layers .row')
+    .first()
+    .getByRole('button', { name: /^Unlock: / })
+    .click();
   await shot('slideeditor-aligned');
 
   // ---------- Room for text effects ----------
@@ -317,7 +419,10 @@ try {
   // ---------- Typewriter ----------
   await insp.locator('textarea').fill('Hello world');
   await insp.getByLabel('Entrance animation').selectOption('typewriter');
-  assert((await insp.getByLabel('Entrance animation').locator('option:checked').innerText()) === 'Typewriter (letter by letter)', 'a text box’s typewriter is called Typewriter (letter by letter)');
+  assert(
+    (await insp.getByLabel('Entrance animation').locator('option:checked').innerText()) === 'Typewriter (letter by letter)',
+    'a text box’s typewriter is called Typewriter (letter by letter)',
+  );
   const duration = insp.locator('label.field', { hasText: 'Duration (s)' }).locator('input');
   await setNumber(duration, 1.5);
   await page.getByRole('button', { name: '▶ Preview' }).click();
@@ -335,16 +440,25 @@ try {
   const before = await mediaCount();
   await dropAt(await picture('big.png', 800, 600, '#ff0000'), 1900, 1070);
   const pic = (await drawn()).find((e) => e.img);
-  assert(pic && pic.x + pic.w <= 1920 && pic.y + pic.h <= 1080 && pic.x >= 0 && pic.y >= 0, `a picture dropped at the corner stays on the slide (${pic?.x}, ${pic?.y})`);
+  assert(
+    pic && pic.x + pic.w <= 1920 && pic.y + pic.h <= 1080 && pic.x >= 0 && pic.y >= 0,
+    `a picture dropped at the corner stays on the slide (${pic?.x}, ${pic?.y})`,
+  );
   assert((await mediaCount()) === before + 1, 'it is in 🖼 Media');
   await dropAt(await picture('big copy.png', 800, 600, '#ff0000'), 600, 400);
-  assert((await mediaCount()) === before + 1 && (await toast.innerText()).includes('already in 🖼 Media'), 'the same picture dropped again isn’t stored twice (the toast says it’s already in 🖼 Media)');
+  assert(
+    (await mediaCount()) === before + 1 && (await toast.innerText()).includes('already in 🖼 Media'),
+    'the same picture dropped again isn’t stored twice (the toast says it’s already in 🖼 Media)',
+  );
   await page.keyboard.press('Delete');
 
   // ---------- Double-click or Enter opens an item's editor; F2 renames it; the keys stay on the slide after adding ----------
   // A picture picked in 🖼 Image: the keys are on the slide (not the 🖼 Image button), so Enter opens ✎ Edit image.
   await clue.getByRole('button', { name: '🖼 Image', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Choose image' }).getByRole('button', { name: /big\.png/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Choose image' })
+    .getByRole('button', { name: /big\.png/ })
+    .click();
   await page.waitForFunction(() => !!document.activeElement?.closest('.canvas'), null, { timeout: 3000 });
   assert(true, 'after a picture is added from 🖼 Image, the keys are on the slide');
   await page.keyboard.press('Enter');
@@ -407,20 +521,34 @@ try {
   await ie.getByRole('button', { name: 'Remove crop' }).click();
   await ie.getByRole('button', { name: '✂ Crop' }).click();
   assert(
-    (await ie.getByRole('button', { name: '16:9' }).getAttribute('aria-pressed')) === 'false' && (await ie.getByRole('button', { name: 'Free', exact: true }).getAttribute('aria-pressed')) === 'true',
+    (await ie.getByRole('button', { name: '16:9' }).getAttribute('aria-pressed')) === 'false' &&
+      (await ie.getByRole('button', { name: 'Free', exact: true }).getAttribute('aria-pressed')) === 'true',
     'after Remove crop, a new crop starts Free',
   );
   await ie.getByRole('button', { name: 'Remove crop' }).click();
   // Its header in the windows' one order (↶ ↷, Reset apart, Cancel, Apply, ✕); the tools' keys C, D, T, S and M, shown in
   // their tooltips; ✂ Crop pressed reads ✓ Done cropping, and C again (or a click on it) is done cropping.
   const ieHeads = (await ie.locator('header button').allInnerTexts()).map((t) => t.trim());
-  assert(ieHeads.join(' | ') === '↶ Undo | ↷ Redo | Reset | Cancel | Apply | ✕', `the image window's header: ↶ Undo, ↷ Redo, Reset, Cancel, Apply, ✕ (${ieHeads.join(' | ')})`);
+  assert(
+    ieHeads.join(' | ') === '↶ Undo | ↷ Redo | Reset | Cancel | Apply | ✕',
+    `the image window's header: ↶ Undo, ↷ Redo, Reset, Cancel, Apply, ✕ (${ieHeads.join(' | ')})`,
+  );
   const pressed = async (name) => (await ie.getByRole('button', { name, exact: true }).getAttribute('aria-pressed')) === 'true';
   await page.keyboard.press('c');
-  assert((await pressed('✓ Done cropping')) && (await ie.getByRole('button', { name: '✓ Done cropping' }).getAttribute('title')) === 'Done cropping (C)', 'C picks ✂ Crop, which reads ✓ Done cropping');
+  assert(
+    (await pressed('✓ Done cropping')) && (await ie.getByRole('button', { name: '✓ Done cropping' }).getAttribute('title')) === 'Done cropping (C)',
+    'C picks ✂ Crop, which reads ✓ Done cropping',
+  );
   await page.keyboard.press('c');
-  assert((await pressed('✋ Select')) && (await ie.getByRole('button', { name: '✂ Crop', exact: true }).getAttribute('title')) === 'Crop (C)', 'C again is done cropping: ✋ Select, and ✂ Crop says its key');
-  for (const [k, name] of [['d', '🖌 Draw'], ['t', '🅣 Text'], ['s', '😂 Sticker']]) {
+  assert(
+    (await pressed('✋ Select')) && (await ie.getByRole('button', { name: '✂ Crop', exact: true }).getAttribute('title')) === 'Crop (C)',
+    'C again is done cropping: ✋ Select, and ✂ Crop says its key',
+  );
+  for (const [k, name] of [
+    ['d', '🖌 Draw'],
+    ['t', '🅣 Text'],
+    ['s', '😂 Sticker'],
+  ]) {
     await page.keyboard.press(k);
     assert(await pressed(name), `${k.toUpperCase()} picks ${name}`);
   }
@@ -447,14 +575,20 @@ try {
   // (Its headings are drawn in capitals; their words are what the panel says.)
   const panelHeads = (await ie.locator('aside h4').allTextContents()).map((t) => t.trim());
   assert(
-    panelHeads.includes('This caption') && panelHeads.includes('Whole picture') && (await ie.getByLabel(/^Straighten/).count()) === 1 && (await ie.getByLabel(/^Picture size/).count()) === 1,
+    panelHeads.includes('This caption') &&
+      panelHeads.includes('Whole picture') &&
+      (await ie.getByLabel(/^Straighten/).count()) === 1 &&
+      (await ie.getByLabel(/^Picture size/).count()) === 1,
     `the caption's own sliders under This caption, the picture's under Whole picture: Straighten, Picture size (${panelHeads.join(' | ')})`,
   );
   // A caption's right-click menu: ✎ Edit text puts the cursor in its words; ⧉ Duplicate makes a second one.
   const capAt = await ie.locator('.sel').boundingBox();
   await page.mouse.click(capAt.x + capAt.width / 2, capAt.y + capAt.height / 2, { button: 'right' });
   const capMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
-  assert(['✎ Edit text', '⧉ Duplicate', '🗑 Delete'].every((x) => capMenu.includes(x)), `a caption's menu: ✎ Edit text, ⧉ Duplicate, 🗑 Delete (${capMenu.join(' | ')})`);
+  assert(
+    ['✎ Edit text', '⧉ Duplicate', '🗑 Delete'].every((x) => capMenu.includes(x)),
+    `a caption's menu: ✎ Edit text, ⧉ Duplicate, 🗑 Delete (${capMenu.join(' | ')})`,
+  );
   await page.getByRole('menuitem', { name: /✎ Edit text/ }).click();
   await page.waitForFunction(() => document.activeElement?.id === 'ie-text', null, { timeout: 3000 });
   assert(true, '✎ Edit text puts the cursor in the caption’s words');
@@ -478,7 +612,10 @@ try {
   await bar.getByRole('button', { name: '✎ Edit image…' }).click();
   const applyBtn = page.getByRole('dialog', { name: 'Edit image' }).getByRole('button', { name: 'Apply', exact: true });
   await page.waitForTimeout(300);
-  assert((await applyBtn.isDisabled()) && (await applyBtn.getAttribute('title')).startsWith('Nothing changed yet'), `with nothing changed, Apply is greyed: “${await applyBtn.getAttribute('title')}”`);
+  assert(
+    (await applyBtn.isDisabled()) && (await applyBtn.getAttribute('title')).startsWith('Nothing changed yet'),
+    `with nothing changed, Apply is greyed: “${await applyBtn.getAttribute('title')}”`,
+  );
   await page.keyboard.press('Control+Enter');
   await page.getByRole('dialog', { name: 'Edit image' }).waitFor({ state: 'detached', timeout: 3000 });
   await page.waitForTimeout(300);
@@ -501,7 +638,10 @@ try {
   await page.keyboard.press('Control+Shift+ArrowRight');
   await page.waitForTimeout(100);
   const bigger = (await drawn()).find((e) => e.id === editPic.id);
-  assert(bigger.w === pre.w + 10 && Math.abs(bigger.w / bigger.h - pre.w / pre.h) < 0.05 && bigger.x === pre.x, `Ctrl+Shift+→ makes the picture 10 pixels wider, keeping its shape (${pre.w}×${pre.h} → ${bigger.w}×${bigger.h})`);
+  assert(
+    bigger.w === pre.w + 10 && Math.abs(bigger.w / bigger.h - pre.w / pre.h) < 0.05 && bigger.x === pre.x,
+    `Ctrl+Shift+→ makes the picture 10 pixels wider, keeping its shape (${pre.w}×${pre.h} → ${bigger.w}×${bigger.h})`,
+  );
   await page.keyboard.press('Control+Shift+ArrowLeft');
   await page.waitForTimeout(100);
   assert((await drawn()).find((e) => e.id === editPic.id).w === pre.w, 'and Ctrl+Shift+← narrows it back');
@@ -529,7 +669,10 @@ try {
   assert(swatchPic.startsWith('url('), `the Background button's swatch shows the picture (${swatchPic.slice(0, 24)})`);
   await clue.getByRole('button', { name: /Background ▾/ }).click();
   const bgBox = page.getByRole('group', { name: 'Background' });
-  assert((await bgBox.locator('img.bg-thumb').count()) === 1 && (await bgBox.getByRole('button', { name: 'Change…' }).count()) === 1, 'the Background box shows the picture, with Change…');
+  assert(
+    (await bgBox.locator('img.bg-thumb').count()) === 1 && (await bgBox.getByRole('button', { name: 'Change…' }).count()) === 1,
+    'the Background box shows the picture, with Change…',
+  );
   await bgBox.getByRole('button', { name: '⌫ Clear picture' }).click();
   assert(
     (await undoTitle()).startsWith('Undo: Removed the slide background picture') &&
@@ -572,14 +715,23 @@ try {
     g.drawImage(img, 0, 0);
     return { w: img.naturalWidth, h: img.naturalHeight, px: Array.from(g.getImageData(1, 1, 1, 1).data.slice(0, 3)) };
   });
-  assert(shown.w === 300 && shown.h === 400 && shown.px[2] > 200 && shown.px[0] < 50, `the slide shows the new (blue) file, turned as edited (${shown.w}×${shown.h})`);
+  assert(
+    shown.w === 300 && shown.h === 400 && shown.px[2] > 200 && shown.px[0] < 50,
+    `the slide shows the new (blue) file, turned as edited (${shown.w}×${shown.h})`,
+  );
   await clue.getByRole('button', { name: 'Close' }).click();
 
-  await page.locator('nav').getByRole('button', { name: /🕘 History/ }).click();
+  await page
+    .locator('nav')
+    .getByRole('button', { name: /🕘 History/ })
+    .click();
   const labels = (await page.locator('.hist .hr').allInnerTexts()).join('\n');
   assert(labels.includes('Slide background color #333333'), 'History: “Slide background color #333333”');
   assert(labels.includes('Added an outline to text box'), 'History: “Added an outline to text box …”');
-  assert(!/\b\d+ changes\b/.test(labels), 'no “N changes” steps' + (labels.match(/.*\b\d+ changes\b.*/)?.[0] ? ` (${labels.match(/.*\b\d+ changes\b.*/)[0]})` : ''));
+  assert(
+    !/\b\d+ changes\b/.test(labels),
+    'no “N changes” steps' + (labels.match(/.*\b\d+ changes\b.*/)?.[0] ? ` (${labels.match(/.*\b\d+ changes\b.*/)[0]})` : ''),
+  );
 
   // ---------- Pastes, Tab through the items, the keyboard's menu, nudging off the slide ----------
   await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
@@ -612,7 +764,10 @@ try {
   const count = (await drawn()).length;
   await paste({ 'text/plain': '2 slide items', 'application/x-brainrot-slide-items': 'from-another-tab' }, false);
   await page.waitForTimeout(300);
-  assert((await toast.innerText()).includes('copy them again') && (await drawn()).length === count, 'items copied in another tab ask to be copied again (no "2 slide items" text)');
+  assert(
+    (await toast.innerText()).includes('copy them again') && (await drawn()).length === count,
+    'items copied in another tab ask to be copied again (no "2 slide items" text)',
+  );
 
   await addRect(1700, 500, 100, 100);
   await canvas.focus();
@@ -652,7 +807,10 @@ try {
   const items0 = (await drawn()).length;
   await qBox.focus();
   await page.keyboard.press('Control+v');
-  assert((await qBox.inputValue()) === question && (await drawn()).length === items0 + 1, `Ctrl+V in the Question box pastes the copied item on the slide (the question stays “${question}”)`);
+  assert(
+    (await qBox.inputValue()) === question && (await drawn()).length === items0 + 1,
+    `Ctrl+V in the Question box pastes the copied item on the slide (the question stays “${question}”)`,
+  );
   /** A paste of a picture (and `words`, if any) in the box: whether the page took it (else it's the box's own paste). */
   const pastePicture = (box, words = '') =>
     box.evaluate(async (el, words) => {
@@ -739,7 +897,10 @@ try {
   await insp.locator('textarea').fill('Who is this?');
   // A YouTube link pasted there goes the same way (the player covered the question).
   await context.route(/i\.ytimg\.com/, (r) =>
-    r.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64') }),
+    r.fulfill({
+      contentType: 'image/png',
+      body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64'),
+    }),
   );
   await canvas.focus();
   await page.evaluate(() => {
@@ -789,7 +950,10 @@ try {
   const laid = await drawn();
   const newPic = laid.find((e) => e.img);
   const qText = laid.find((e) => !e.img);
-  assert(newPic.y + newPic.h <= qText.y && qText.y + qText.h <= 1080 && qText.h >= 300, `a new picture goes above the question, the text in a band under it (picture ${newPic.y}–${newPic.y + newPic.h}, text ${qText.y}–${qText.y + qText.h})`);
+  assert(
+    newPic.y + newPic.h <= qText.y && qText.y + qText.h <= 1080 && qText.h >= 300,
+    `a new picture goes above the question, the text in a band under it (picture ${newPic.y}–${newPic.y + newPic.h}, text ${qText.y}–${qText.y + qText.h})`,
+  );
   await canvas.focus();
   await page.keyboard.press('Control+z');
   await canvas.locator('.slide .el img').waitFor({ state: 'detached' });
@@ -814,7 +978,10 @@ try {
   await canvas.focus();
   await page.keyboard.press('Control+v');
   await canvas.locator('.slide .el img').waitFor();
-  assert((await mediaCount()) === 1 && (await undoTitle()).startsWith('Undo: Pasted image “face.png”'), `a picture pasted from another game brings its file, named by it (${await undoTitle()})`);
+  assert(
+    (await mediaCount()) === 1 && (await undoTitle()).startsWith('Undo: Pasted image “face.png”'),
+    `a picture pasted from another game brings its file, named by it (${await undoTitle()})`,
+  );
   await page.keyboard.press('Control+z');
   await canvas.locator('.slide .el img').waitFor({ state: 'detached' });
   assert((await mediaCount()) === 0, `one Ctrl+Z takes the picture and its file away (${await undoTitle()})`);
@@ -824,23 +991,39 @@ try {
   await insp.getByRole('button', { name: 'Upload a font file' }).click();
   const fontPicker = page.getByRole('dialog', { name: 'Choose font' });
   const [fontChooser] = await Promise.all([page.waitForEvent('filechooser'), fontPicker.getByRole('button', { name: '⬆ Upload font file…' }).click()]);
-  await fontChooser.setFiles({ name: 'Channel Font.woff2', mimeType: 'font/woff2', buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')) });
+  await fontChooser.setFiles({
+    name: 'Channel Font.woff2',
+    mimeType: 'font/woff2',
+    buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')),
+  });
   const fontSaid = toast.filter({ hasText: /^Font added/ });
   await fontSaid.waitFor();
   assert(
-    (await fontSaid.innerText()) === 'Font added and used for this text box' && (await insp.getByLabel('Font', { exact: true }).locator('option:checked').innerText()) === 'Channel Font (uploaded)',
+    (await fontSaid.innerText()) === 'Font added and used for this text box' &&
+      (await insp.getByLabel('Font', { exact: true }).locator('option:checked').innerText()) === 'Channel Font (uploaded)',
     `a font uploaded from the text box's ＋ is used for it, and the note says so (“${await fontSaid.innerText()}”)`,
   );
 
   // ---------- 🎨 Edit image on a moving GIF: every frame is edited, so it keeps moving ----------
   // (40×30, three frames of one colour each, for 0.1, 0.2 and 0.3 s, looping for ever.)
-  const moving = gif(40, 30, [1, 2, 3].map((i) => ({ px: new Uint8Array(40 * 30).fill(i), delay: i * 10 })));
+  const moving = gif(
+    40,
+    30,
+    [1, 2, 3].map((i) => ({ px: new Uint8Array(40 * 30).fill(i), delay: i * 10 })),
+  );
   const colours = [1, 2, 3].map((i) => [(i * 37) & 255, (i * 91) & 255, (i * 53) & 255]);
-  await dropAt(await page.evaluateHandle((bytes) => {
-    const d = new DataTransfer();
-    d.items.add(new File([new Uint8Array(bytes)], 'moving.gif', { type: 'image/gif' }));
-    return d;
-  }, [...moving]), 900, 500);
+  await dropAt(
+    await page.evaluateHandle(
+      (bytes) => {
+        const d = new DataTransfer();
+        d.items.add(new File([new Uint8Array(bytes)], 'moving.gif', { type: 'image/gif' }));
+        return d;
+      },
+      [...moving],
+    ),
+    900,
+    500,
+  );
   await canvas.locator('.slide .el img').waitFor();
   const gifPic = (await drawn()).find((e) => e.img);
   await click(gifPic.x + gifPic.w / 2, gifPic.y + gifPic.h / 2);
@@ -870,7 +1053,11 @@ try {
     d.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
     for (let i = 0; i < 5; i++) await Promise.resolve();
     const b = (t) => [...d.querySelectorAll('header button')].find((x) => x.textContent.trim() === t);
-    return { hint: d.querySelector('header .hint').textContent, off: ['↶ Undo', '↷ Redo', 'Reset'].map((t) => b(t).disabled), label: d.querySelector('header button.primary').textContent };
+    return {
+      hint: d.querySelector('header .hint').textContent,
+      off: ['↶ Undo', '↷ Redo', 'Reset'].map((t) => b(t).disabled),
+      label: d.querySelector('header button.primary').textContent,
+    };
   });
   assert(
     whileSaving.hint.endsWith('output 30×40px') && whileSaving.off.every(Boolean) && whileSaving.label.startsWith('Saving'),
@@ -880,10 +1067,14 @@ try {
   const editedSaid = toast.filter({ hasText: /^Image edited/ });
   await editedSaid.waitFor();
   assert(
-    /^Image edited \(original kept\): \d+ K?B, was \d+ K?B$/.test(await editedSaid.innerText()) && (await mediaCount()) === gifsBefore + 1 && (await editedSaid.count()) === 1,
+    /^Image edited \(original kept\): \d+ K?B, was \d+ K?B$/.test(await editedSaid.innerText()) &&
+      (await mediaCount()) === gifsBefore + 1 &&
+      (await editedSaid.count()) === 1,
     `a save stopped by closing the window changes nothing; the next one says how big the GIF came out (“${await editedSaid.innerText()}”, ${(await mediaCount()) - gifsBefore} file added)`,
   );
-  const editedGif = await canvas.locator(`.slide .el[data-el="${gifPic.id}"] img`).evaluate(async (img) => Array.from(new Uint8Array(await (await fetch(img.src)).arrayBuffer())));
+  const editedGif = await canvas
+    .locator(`.slide .el[data-el="${gifPic.id}"] img`)
+    .evaluate(async (img) => Array.from(new Uint8Array(await (await fetch(img.src)).arrayBuffer())));
   const r = new GifReader(new Uint8Array(editedGif));
   const delays = [...Array(r.numFrames())].map((_, i) => r.frameInfo(i).delay);
   const middles = [...Array(r.numFrames())].map((_, i) => {
@@ -893,7 +1084,11 @@ try {
     return [px[at], px[at + 1], px[at + 2]];
   });
   assert(
-    r.width === 30 && r.height === 40 && delays.join() === '10,20,30' && r.loopCount() === 0 && middles.every((c, i) => c.every((v, k) => Math.abs(v - colours[i][k]) <= 2)),
+    r.width === 30 &&
+      r.height === 40 &&
+      delays.join() === '10,20,30' &&
+      r.loopCount() === 0 &&
+      middles.every((c, i) => c.every((v, k) => Math.abs(v - colours[i][k]) <= 2)),
     `Apply makes a GIF again, every frame turned, each as long as before, looping (${r.width}×${r.height}, ${r.numFrames()} frames of ${delays.join(', ')} hundredths)`,
   );
   // 🖼 Media › Replace everywhere… with another moving GIF: its frames are turned too.
@@ -901,14 +1096,31 @@ try {
   await page.getByRole('button', { name: /^🖼️ Media/ }).click();
   const gifChooser = page.waitForEvent('filechooser');
   await page.locator('.card', { hasText: 'moving.gif' }).first().getByRole('button', { name: 'Replace everywhere…' }).click();
-  await (await gifChooser).setFiles({ name: 'moving2.gif', mimeType: 'image/gif', buffer: gif(40, 30, [1, 2].map((i) => ({ px: new Uint8Array(40 * 30).fill(i), delay: 50 }))) });
+  await (
+    await gifChooser
+  ).setFiles({
+    name: 'moving2.gif',
+    mimeType: 'image/gif',
+    buffer: gif(
+      40,
+      30,
+      [1, 2].map((i) => ({ px: new Uint8Array(40 * 30).fill(i), delay: 50 })),
+    ),
+  });
   await toast.filter({ hasText: 'edits of 1 edited picture done again' }).waitFor();
   await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
   await page.locator('.grid .tile').first().click();
   const replaced = new GifReader(
-    new Uint8Array(await canvas.locator(`.slide .el[data-el="${gifPic.id}"] img`).evaluate(async (img) => Array.from(new Uint8Array(await (await fetch(img.src)).arrayBuffer())))),
+    new Uint8Array(
+      await canvas
+        .locator(`.slide .el[data-el="${gifPic.id}"] img`)
+        .evaluate(async (img) => Array.from(new Uint8Array(await (await fetch(img.src)).arrayBuffer()))),
+    ),
   );
-  assert(replaced.numFrames() === 2 && replaced.width === 30 && replaced.height === 40, `Replace with another moving GIF redoes the turn on each of its frames (${replaced.numFrames()} frames, ${replaced.width}×${replaced.height})`);
+  assert(
+    replaced.numFrames() === 2 && replaced.width === 30 && replaced.height === 40,
+    `Replace with another moving GIF redoes the turn on each of its frames (${replaced.numFrames()} frames, ${replaced.width}×${replaced.height})`,
+  );
 
   // ---------- 🖌 Drawpad on a laptop (1280×720): the whole slide fits, its bottom edge in reach ----------
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -921,7 +1133,13 @@ try {
     const r = c.getBoundingClientRect();
     const w = c.closest('.pad-wrap');
     const b = w.getBoundingClientRect();
-    return { bottom: Math.round(r.bottom), wrapBottom: Math.round(b.bottom), window: innerHeight, scrolls: w.scrollHeight > w.clientHeight + 1, ratio: +(r.width / r.height).toFixed(3) };
+    return {
+      bottom: Math.round(r.bottom),
+      wrapBottom: Math.round(b.bottom),
+      window: innerHeight,
+      scrolls: w.scrollHeight > w.clientHeight + 1,
+      ratio: +(r.width / r.height).toFixed(3),
+    };
   });
   assert(
     fits.bottom <= fits.wrapBottom && fits.bottom <= fits.window && !fits.scrolls && Math.abs(fits.ratio - 16 / 9) < 0.01,
@@ -929,7 +1147,10 @@ try {
   );
   // Its header goes as the image and video windows' do: ↶ ↷, Reset apart, Cancel, Insert drawing, ✕.
   const padHeads = (await pad.locator('.head button').allInnerTexts()).map((t) => t.trim());
-  assert(padHeads.join(' | ') === '↶ Undo | ↷ Redo | Reset | Cancel | Insert drawing | ✕', `the Drawpad's header: ↶ Undo, ↷ Redo, Reset, Cancel, Insert drawing, ✕ (${padHeads.join(' | ')})`);
+  assert(
+    padHeads.join(' | ') === '↶ Undo | ↷ Redo | Reset | Cancel | Insert drawing | ✕',
+    `the Drawpad's header: ↶ Undo, ↷ Redo, Reset, Cancel, Insert drawing, ✕ (${padHeads.join(' | ')})`,
+  );
   // A stroke along its bottom edge: the drawing goes in at the slide's bottom.
   const pb = await padArea.boundingBox();
   await page.mouse.move(pb.x + pb.width * 0.3, pb.y + pb.height - 2);

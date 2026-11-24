@@ -20,7 +20,25 @@
   import { lastAction, logged, stepText } from '../../lib/toolset';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { actsShown, boardNow, busyZones, isMover, landingRan, moveNow, moverDiceName, offBoard, playerName, reorderTurns, revealSpace, rollMover, runLanding, sendNow, setTurn, spaceActText, turnOrder } from './bgops';
+  import {
+    actsShown,
+    boardNow,
+    busyZones,
+    isMover,
+    landingRan,
+    moveNow,
+    moverDiceName,
+    offBoard,
+    playerName,
+    reorderTurns,
+    revealSpace,
+    rollMover,
+    runLanding,
+    sendNow,
+    setTurn,
+    spaceActText,
+    turnOrder,
+  } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { START_FIRST } from '../rpg/hostops';
   import { offerMenu, step as nextStep, type NextAction } from '../host/slots.svelte';
@@ -78,14 +96,27 @@
   // (The space landed on shows its passing buttons with its own, once: not here too after a loop round it.)
   const passed = $derived(
     round && last
-      ? last.passed.filter((id) => id !== last.landed).map((id) => spaceById(round, id)).filter((s): s is BoardSpace => !!s?.onPass?.length)
+      ? last.passed
+          .filter((id) => id !== last.landed)
+          .map((id) => spaceById(round, id))
+          .filter((s): s is BoardSpace => !!s?.onPass?.length)
       : [],
   );
   /** One-space boards: where the player whose turn it is can go (not straight back along a two-way link). */
   const turnSpace = $derived(turnId ? bs?.positions[turnId]?.space : undefined);
   const stepWays = $derived(round && bs && turnSpace ? waysOn(round, turnSpace, turnId ? bs.prev?.[turnId] : undefined) : []);
   // (A 🤫 card its landing box's buttons offer shows under the turn, where they were pressed.)
-  const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, hide: !dual, selected, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session, 'land') });
+  const ctx = $derived<RunContext>({
+    game,
+    session,
+    live: app.live,
+    board: round,
+    bs,
+    hide: !dual,
+    selected,
+    teams: buzzerOn(game.settings) && teamsOn(game.settings),
+    offerCard: offerIn(session, 'land'),
+  });
   const recent = $derived(lastAction(session, session.currentRound));
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
@@ -121,10 +152,13 @@
     if (!round || round.mover.kind === 'step') return null;
     const what = round.mover.kind === 'dice' ? moverDiceName(game, round) : 'the movement wheel';
     if (fork) return nextStep({ label: rollWords, key: 'D' }, roll, { disabled: true, title: 'Pick the way first: below, or the space on the stage' });
-    if (rolling) return nextStep({ label: rollWords, key: 'D' }, roll, { disabled: true, title: `Still ${round.mover.kind === 'wheel' ? 'spinning' : 'rolling'}…` });
+    if (rolling)
+      return nextStep({ label: rollWords, key: 'D' }, roll, { disabled: true, title: `Still ${round.mover.kind === 'wheel' ? 'spinning' : 'rolling'}…` });
     if (steps) {
       const n = steps;
-      return nextStep({ label: `${n < 0 ? '◀ Back' : '▶ Move'} ${turnName}: ${Math.abs(n)}`, key: '⏎' }, () => move(n), { title: `Enter: move ${turnName} ${n < 0 ? 'back ' : ''}${Math.abs(n)} space${Math.abs(n) === 1 ? '' : 's'}` });
+      return nextStep({ label: `${n < 0 ? '◀ Back' : '▶ Move'} ${turnName}: ${Math.abs(n)}`, key: '⏎' }, () => move(n), {
+        title: `Enter: move ${turnName} ${n < 0 ? 'back ' : ''}${Math.abs(n)} space${Math.abs(n) === 1 ? '' : 's'}`,
+      });
     }
     return nextStep({ label: rollWords, key: 'D' }, roll, { title: `D: ${what}` });
   });
@@ -141,7 +175,8 @@
       // (A Roll again run: Next turn comes back to them.)
       return bs.again && bs.again === turnId ? `${turnName} rolls again: Next turn ▶ (N).` : `${turnName}’s turn is played: Next turn ▶ (N).`;
     }
-    if (round.mover.kind === 'step') return stepWays.length ? `${turnName}’s turn: → the way on (Enter, or click the space on the stage).` : `${turnName}’s turn: no way on from here.`;
+    if (round.mover.kind === 'step')
+      return stepWays.length ? `${turnName}’s turn: → the way on (Enter, or click the space on the stage).` : `${turnName}’s turn: no way on from here.`;
     return round.mover.kind === 'wheel'
       ? `${turnName}’s turn: 🎡 Spin, then ▶ Move (or click the wheel).`
       : `${turnName}’s turn: 🎲 Roll, then ▶ Move (or click the dice).`;
@@ -150,11 +185,26 @@
   // turn ▶ is the blue button's step: the moment's own.)
   offerMenu('turn', () => {
     if (!bs || !round) return [];
-    if (boardEdit.on) return [stepItem(nextStep(VERBS.doneEditing, () => setEditing(false)), 'edit')];
+    if (boardEdit.on)
+      return [
+        stepItem(
+          nextStep(VERBS.doneEditing, () => setEditing(false)),
+          'edit',
+        ),
+      ];
     const out: StageItem[] = [];
     if (slot) out.push(stepItem(slot, steps ? 'move' : 'roll'));
-    else if (stepWays.length === 1 && !moved && !fork) out.push(stepItem(nextStep(VERBS.stepTo(shown(stepWays[0])), () => move(1, stepWays[0], turnId)), 'move'));
-    out.push({ id: 'edit', label: '✎ Edit board', keys: 'E', onclick: () => setEditing(true) }, { label: '🔀 Shuffle', hint: 'The turn order, shuffled (whose turn it is stays theirs)', onclick: shuffle });
+    else if (stepWays.length === 1 && !moved && !fork)
+      out.push(
+        stepItem(
+          nextStep(VERBS.stepTo(shown(stepWays[0])), () => move(1, stepWays[0], turnId)),
+          'move',
+        ),
+      );
+    out.push(
+      { id: 'edit', label: '✎ Edit board', keys: 'E', onclick: () => setEditing(true) },
+      { label: '🔀 Shuffle', hint: 'The turn order, shuffled (whose turn it is stays theirs)', onclick: shuffle },
+    );
     return out;
   });
 
@@ -300,54 +350,71 @@
       <span class="muted small">Turn order:</span>
       {#if orderFold.open}
         <span class="body">
-        <span class="order" role="list" aria-label="Turn order" bind:this={orderEl}>
-          {#each bs.order as id, i (id)}
-            {@const p = session.players.find((x) => x.id === id)}
-            {#if p}
-              {@const line = turnDrag.lineAt(id)}
-              <span
-                class="ord"
-                class:cur={id === turnId}
-                class:drop-before={line === 'before'}
-                class:drop-after={line === 'after'}
-                class:dragging={turnDrag.dragging === id}
-                style:border-color={p.color}
-                data-player-id={id}
-                role="listitem"
-                draggable="true"
-                ondragstart={(e) => turnDrag.start(e, id)}
-                ondragover={(e) => turnDrag.over(e, id)}
-                ondrop={(e) => {
-                  const m = turnDrag.drop(e, bs.order);
-                  if (m) reorderTurns(game, session, m.from, m.to);
-                }}
-                ondragend={() => turnDrag.end()}
-              >
-                <span class="grip" aria-hidden="true">⋮⋮</span>
-                <button class="ghost tiny earlier" onclick={() => reorder(i, -1, '.earlier')} disabled={i === 0} aria-label="{p.name} earlier in the turn order">◀</button>
-                <button
-                  class="nm"
-                  style:background={id === turnId ? p.color : undefined}
-                  style:color={id === turnId ? textOn(p.color) : undefined}
-                  aria-current={id === turnId ? 'true' : undefined}
-                  onclick={() => setTurn(game, session, id)}
-                  onkeydown={(e) => {
-                    // Alt+←/→ moves them in the order.
-                    if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    reorder(i, e.key === 'ArrowLeft' ? -1 : 1);
+          <span class="order" role="list" aria-label="Turn order" bind:this={orderEl}>
+            {#each bs.order as id, i (id)}
+              {@const p = session.players.find((x) => x.id === id)}
+              {#if p}
+                {@const line = turnDrag.lineAt(id)}
+                <span
+                  class="ord"
+                  class:cur={id === turnId}
+                  class:drop-before={line === 'before'}
+                  class:drop-after={line === 'after'}
+                  class:dragging={turnDrag.dragging === id}
+                  style:border-color={p.color}
+                  data-player-id={id}
+                  role="listitem"
+                  draggable="true"
+                  ondragstart={(e) => turnDrag.start(e, id)}
+                  ondragover={(e) => turnDrag.over(e, id)}
+                  ondrop={(e) => {
+                    const m = turnDrag.drop(e, bs.order);
+                    if (m) reorderTurns(game, session, m.from, m.to);
                   }}
-                  title={id === turnId ? `${p.name}’s turn · drag (or Alt+←/→) to move them in the order` : `Click: ${p.name}’s turn · drag (or Alt+←/→) to move them in the order`}
-                >{p.name}</button>
-                {#if bs.skips?.[id]}<span class="mark" role="img" aria-label="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}" title="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}">⏭{bs.skips[id] > 1 ? bs.skips[id] : ''}</span>{/if}
-                {#if bs.again === id}<span class="mark" role="img" aria-label="Rolls again" title="Rolls again: Next turn comes back to them">🔁</span>{/if}
-                <button class="ghost tiny later" onclick={() => reorder(i, 1, '.later')} disabled={i === bs.order.length - 1} aria-label="{p.name} later in the turn order">▶</button>
-              </span>
-            {/if}
-          {/each}
-        </span>
-        <button class="ghost small" onclick={shuffle} title="The turn order, shuffled (whose turn it is stays theirs)">🔀 Shuffle</button>
+                  ondragend={() => turnDrag.end()}
+                >
+                  <span class="grip" aria-hidden="true">⋮⋮</span>
+                  <button
+                    class="ghost tiny earlier"
+                    onclick={() => reorder(i, -1, '.earlier')}
+                    disabled={i === 0}
+                    aria-label="{p.name} earlier in the turn order">◀</button
+                  >
+                  <button
+                    class="nm"
+                    style:background={id === turnId ? p.color : undefined}
+                    style:color={id === turnId ? textOn(p.color) : undefined}
+                    aria-current={id === turnId ? 'true' : undefined}
+                    onclick={() => setTurn(game, session, id)}
+                    onkeydown={(e) => {
+                      // Alt+←/→ moves them in the order.
+                      if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      reorder(i, e.key === 'ArrowLeft' ? -1 : 1);
+                    }}
+                    title={id === turnId
+                      ? `${p.name}’s turn · drag (or Alt+←/→) to move them in the order`
+                      : `Click: ${p.name}’s turn · drag (or Alt+←/→) to move them in the order`}>{p.name}</button
+                  >
+                  {#if bs.skips?.[id]}<span
+                      class="mark"
+                      role="img"
+                      aria-label="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}"
+                      title="Misses {bs.skips[id] === 1 ? 'their next turn' : `${bs.skips[id]} turns`}">⏭{bs.skips[id] > 1 ? bs.skips[id] : ''}</span
+                    >{/if}
+                  {#if bs.again === id}<span class="mark" role="img" aria-label="Rolls again" title="Rolls again: Next turn comes back to them">🔁</span>{/if}
+                  <button
+                    class="ghost tiny later"
+                    onclick={() => reorder(i, 1, '.later')}
+                    disabled={i === bs.order.length - 1}
+                    aria-label="{p.name} later in the turn order">▶</button
+                  >
+                </span>
+              {/if}
+            {/each}
+          </span>
+          <button class="ghost small" onclick={shuffle} title="The turn order, shuffled (whose turn it is stays theirs)">🔀 Shuffle</button>
         </span>
       {:else}
         {@const said = orderLine.map((o) => `${o.name}${o.marks ? ` ${o.marks}` : ''}`).join(' → ')}
@@ -362,7 +429,8 @@
         aria-expanded={orderFold.open}
         use:oneShot
         onclick={() => orderFold.set(!orderFold.open)}
-        title={orderFold.open ? 'Fold the turn order back to one line' : 'Change the turn order: drag a name, or 🔀 Shuffle; click a name for their turn'}>✎ Change</button
+        title={orderFold.open ? 'Fold the turn order back to one line' : 'Change the turn order: drag a name, or 🔀 Shuffle; click a name for their turn'}
+        >✎ Change</button
       >
     </div>
 
@@ -374,7 +442,8 @@
         aria-pressed={boardEdit.on}
         onclick={() => setEditing(!boardEdit.on)}
         title={boardEdit.on ? 'E or Esc: back to playing' : 'E: add, move, delete and connect spaces while you play (this game only, unless you keep it)'}
-      >✎ Edit board <kbd aria-hidden="true">E</kbd></button>
+        >✎ Edit board <kbd aria-hidden="true">E</kbd></button
+      >
       {#if !boardEdit.on}
         <!-- A space's card (its actions, Put … here, Reveal) without the mouse: the same as clicking it on the stage. -->
         <select
@@ -419,13 +488,21 @@
         {/if}
       {/if}
       <span class="spacer"></span>
-      {#if recent}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {stepText(recent, !dual)}</button>{/if}
-      <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>{showPlayers ? '▾' : '▸'} {ctx.teams ? 'Teams' : 'Players'}</button>
+      {#if recent}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history"
+          >Last: {stepText(recent, !dual)}</button
+        >{/if}
+      <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}
+        >{showPlayers ? '▾' : '▸'} {ctx.teams ? 'Teams' : 'Players'}</button
+      >
     </div>
 
     {#if round.winNotes || (round.hostNotes && !dual) || (!dual && zones.some((z) => z.hostNotes))}
       <div class="row">
-        {#if round.winNotes}<span class="notes" title={round.winPublic ? 'Shown on the board' : dual ? 'Only you see this' : 'Not on the board (viewers can see it here, in this window)'}>🏆 {round.winNotes}{round.winPublic ? '' : dual ? ' (secret)' : ' (not on the board)'}</span>{/if}
+        {#if round.winNotes}<span
+            class="notes"
+            title={round.winPublic ? 'Shown on the board' : dual ? 'Only you see this' : 'Not on the board (viewers can see it here, in this window)'}
+            >🏆 {round.winNotes}{round.winPublic ? '' : dual ? ' (secret)' : ' (not on the board)'}</span
+          >{/if}
         {#if round.hostNotes && !dual}<span class="notes">📝 {round.hostNotes}</span>{/if}
         {#if !dual}
           {#each zones.filter((z) => z.hostNotes) as z (z.id)}<span class="notes">🌀 {z.name}: 📝 {z.hostNotes}</span>{/each}
@@ -471,7 +548,8 @@
             {#each stepWays as w (w)}
               <!-- (The only way on is Enter's, until they've moved.) -->
               <button class="good" class:ring={ring === 'turnslot' && stepWays.length === 1} onclick={() => move(1, w, turnId)}
-                >→ {shown(w)}{#if stepWays.length === 1 && !moved} <kbd aria-hidden="true">⏎</kbd>{/if}</button
+                >→ {shown(w)}{#if stepWays.length === 1 && !moved}
+                  <kbd aria-hidden="true">⏎</kbd>{/if}</button
               >
             {/each}
           {/if}
@@ -498,7 +576,9 @@
             />
           </label>
           <!-- (A negative count, typed or a wheel's "Back 2", moves back: the buttons say which way they go.) -->
-          <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>{steps && steps < 0 ? '▶ Forward' : '◀ Back'} {steps ? Math.abs(steps) : ''}</button>
+          <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}
+            >{steps && steps < 0 ? '▶ Forward' : '◀ Back'} {steps ? Math.abs(steps) : ''}</button
+          >
         {/if}
         <span class="spacer"></span>
         <select
@@ -537,7 +617,9 @@
         <div class="row acts" data-landing {@attach (el) => (void last, el.scrollIntoView({ block: 'nearest' }))}>
           {#each passed as s (s.id)}
             <span class="muted small">Passed {shown(s.id)}:</span>
-            {#each actsShown(bs, s, s.onPass, !dual) as a (a.id)}<button class="small" onclick={() => run(s, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
+            {#each actsShown(bs, s, s.onPass, !dual) as a (a.id)}<button class="small" onclick={() => run(s, a, last.playerId, 'pass')}
+                >{actText(a, 'pass')}</button
+              >{/each}
           {/each}
           {#if landed}
             <!-- Landing on a space counts as passing it too (landing on Start still pays), unless sent back onto it
@@ -546,7 +628,9 @@
             <!-- (One window: a secret space's 📝 notes wait for 👁 Reveal space, as its name does: actsShown.) -->
             {@const landOn = actsShown(bs, landed, landed.onLand, !dual)}
             <span class="small"
-              >Landed on <b>{shown(landed.id)}</b>{!dual && unrevealed(bs, landed) ? ' (secret)' : ''}{passOn.length ? ' (counts as passing)' : ''}{landOn.length || passOn.length ? ':' : '.'}</span
+              >Landed on <b>{shown(landed.id)}</b>{!dual && unrevealed(bs, landed) ? ' (secret)' : ''}{passOn.length
+                ? ' (counts as passing)'
+                : ''}{landOn.length || passOn.length ? ':' : '.'}</span
             >
             {#each passOn as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
             {#each landOn as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'land')}>{actText(a, 'land')}</button>{/each}
@@ -743,7 +827,9 @@
     padding: 0 4px;
   }
   kbd {
-    font: 10px/1 ui-monospace, monospace;
+    font:
+      10px/1 ui-monospace,
+      monospace;
     padding: 1px 3px;
     margin-left: 3px;
     border: 1px solid currentColor;

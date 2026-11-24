@@ -31,4 +31,12 @@
   });
 </script>
 
-<input type="color" bind:this={box} bind:value {...rest} onchange={changed} onclick={clicked} data-picking={(box && colorPicker.open?.box === box) || undefined} />
+<input
+  type="color"
+  bind:this={box}
+  bind:value
+  {...rest}
+  onchange={changed}
+  onclick={clicked}
+  data-picking={(box && colorPicker.open?.box === box) || undefined}
+/>

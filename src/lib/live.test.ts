@@ -99,7 +99,15 @@ describe('a wheel or dice tile', () => {
     live.overlay = { kind: 'scoreboard', nonce: 's', under: live.overlay };
     expect(tileToolUp(live, clue)).toBe(true);
     // Dice rolled over the wheel: the question no longer waits on a wheel.
-    live.overlay = { kind: 'dice', nonce: 'd', name: 'd6', preset: { id: 'd6', name: 'd6', showTotal: false, dice: [] }, roll: null, startedAt: 0, duration: 0 };
+    live.overlay = {
+      kind: 'dice',
+      nonce: 'd',
+      name: 'd6',
+      preset: { id: 'd6', name: 'd6', showTotal: false, dice: [] },
+      roll: null,
+      startedAt: 0,
+      duration: 0,
+    };
     expect(tileToolUp(live, clue)).toBe(false);
     live.overlay = null;
     expect(tileToolUp(live, clue)).toBe(false);

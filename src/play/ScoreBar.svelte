@@ -55,7 +55,13 @@
    * plate, else 8px).
    */
   const shown = $derived(
-    plateScores(session.players.map((p) => score(session, p.id)), sym, reserve, 1920, game.theme?.plateShape === 'pill' ? 24 : 8),
+    plateScores(
+      session.players.map((p) => score(session, p.id)),
+      sym,
+      reserve,
+      1920,
+      game.theme?.plateShape === 'pill' ? 24 : 8,
+    ),
   );
   const NAME = 36;
   const NAME_MIN = 28;
@@ -77,10 +83,14 @@
       title={onpicker ? hint : undefined}
     >
       <span class="name" style:background={p.color} style:color={textOn(p.color)} title={p.name}>
-        <span class="fit" use:autofit={{ size: NAME, min: NAME_MIN, noBreak: true, enabled: true, text: p.name }}><span class="nm" dir="auto">{p.name}</span></span>
+        <span class="fit" use:autofit={{ size: NAME, min: NAME_MIN, noBreak: true, enabled: true, text: p.name }}
+          ><span class="nm" dir="auto">{p.name}</span></span
+        >
       </span>
       <span class="score" class:neg={s < 0}>
-        <span class="fit" use:autofit={{ size: 64, min: 22, noBreak: true, enabled: true, text: String(s) }}><span class="nm" title={formatPoints(s, sym)}>{shown[i]}</span></span>
+        <span class="fit" use:autofit={{ size: 64, min: 22, noBreak: true, enabled: true, text: String(s) }}
+          ><span class="nm" title={formatPoints(s, sym)}>{shown[i]}</span></span
+        >
       </span>
       {#if phones.includes(p.id)}<span class="phone" title="Phone buzzer connected" aria-label="Phone buzzer connected">📱</span>{/if}
       {#if ticks.includes(p.id)}<span class="tick" title="Wager in">✔</span>{/if}
@@ -111,7 +121,9 @@
     /* (Not clipped: the ✔ of a wager in sits over the top edge. The name strip has the corners' curve itself.) */
     background: var(--tile);
     cursor: pointer;
-    transition: box-shadow 0.2s, transform 0.2s;
+    transition:
+      box-shadow 0.2s,
+      transform 0.2s;
   }
   /* (Not the buttons' hover colour: viewers see these plates too, in a single window.) */
   .plate:hover {
@@ -125,15 +137,22 @@
     cursor: default;
   }
   .plate.picker {
-    box-shadow: 0 0 0 6px #fff, 0 0 40px 12px var(--c);
+    box-shadow:
+      0 0 0 6px #fff,
+      0 0 40px 12px var(--c);
     transform: translateY(-6px);
   }
   /* The theme's leader glow, in the value color. */
   .plate.lead {
-    box-shadow: 0 0 0 4px var(--value), 0 0 44px 14px var(--value);
+    box-shadow:
+      0 0 0 4px var(--value),
+      0 0 44px 14px var(--value);
   }
   .plate.lead.picker {
-    box-shadow: 0 0 0 6px #fff, 0 0 40px 12px var(--c), 0 0 70px 24px var(--value);
+    box-shadow:
+      0 0 0 6px #fff,
+      0 0 40px 12px var(--c),
+      0 0 70px 24px var(--value);
   }
   /* One line, the same height on every plate: the scores line up. */
   .name {

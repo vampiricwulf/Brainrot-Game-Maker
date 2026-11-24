@@ -10,7 +10,22 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, clickExportHtml, editorReady, packGame, failureShots, assert, launchChromium, section, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  addPlayers,
+  answerReplace,
+  clickExportHtml,
+  editorReady,
+  packGame,
+  failureShots,
+  assert,
+  launchChromium,
+  section,
+  inspectorIn,
+  roundTabsIn,
+  toastsIn,
+} from './helpers.mjs';
 import { gif, noise } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -69,7 +84,10 @@ function fakeDesktop() {
           return { path: `C:\\Games\\BrainrotSaves\\${name}`, fallback: false };
         }
         case 'list_saves':
-          return [...saves.keys()].filter((n) => /\.(brainrot|jbr|json|html)$/i.test(n)).map(entry).sort((a, b) => b.modified - a.modified);
+          return [...saves.keys()]
+            .filter((n) => /\.(brainrot|jbr|json|html)$/i.test(n))
+            .map(entry)
+            .sort((a, b) => b.modified - a.modified);
         case 'read_save':
           // (The app's own message, as a string: a save moved since the list was made, or locked by another program.)
           if (window.__readFail?.[args.name]) throw window.__readFail[args.name];
@@ -86,7 +104,13 @@ function fakeDesktop() {
           return null;
         case 'data_folders': {
           const at = (path) => ({ path, exists: true });
-          return { data: at('C:\\Data'), settings: at('C:\\Settings'), saves: at('C:\\Games\\BrainrotSaves'), savesDocuments: at('C:\\Docs\\BrainrotSaves'), oldData: at('C:\\Old') };
+          return {
+            data: at('C:\\Data'),
+            settings: at('C:\\Settings'),
+            saves: at('C:\\Games\\BrainrotSaves'),
+            savesDocuments: at('C:\\Docs\\BrainrotSaves'),
+            oldData: at('C:\\Old'),
+          };
         }
         case 'opened_file':
           return window.__opened?.name ?? null;
@@ -118,25 +142,77 @@ function fakeDesktop() {
 
 /** A game with two GIFs over 2 MB: a short one, whose copy is quick, and a long one (noise, made here). */
 async function copiesGame() {
-  const dance = gif(320, 240, Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })));
+  const dance = gif(
+    320,
+    240,
+    Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })),
+  );
   const long = gif(1024, 720, [
     ...Array.from({ length: 2 }, () => ({ px: noise(1024 * 720), delay: 2 })),
     ...Array.from({ length: 1998 }, (_, i) => ({ x: (i * 16) % 1008, y: (Math.floor(i / 63) * 16) % 704, w: 16, h: 16, px: noise(256), delay: 2 })),
   ]);
   const box = (id, y) => ({ id, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
-  const text = { ...box('e0', 40), kind: 'text', text: 'Q', font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true };
+  const text = {
+    ...box('e0', 40),
+    kind: 'text',
+    text: 'Q',
+    font: 'Arial',
+    size: 90,
+    weight: 700,
+    italic: false,
+    underline: false,
+    uppercase: false,
+    color: '#ffffff',
+    align: 'center',
+    vAlign: 'middle',
+    lineHeight: 1.2,
+    letterSpacing: 0,
+    autoFit: true,
+  };
   const game = {
     id: 'g_copies',
     version: 2,
     title: 'Copies',
-    settings: { allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true } },
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      stream: { clueCaption: true },
+    },
     players: [],
-    rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values: [200], dailyDoubleCount: 0, categories: [{ id: 'c0', title: 'Memes', clues: [{ id: 'q1', value: null, type: 'standard', questionSlide: { background: {}, elements: [text] }, answerSlide: { background: {}, elements: [] } }] }] }],
+    rounds: [
+      {
+        id: 'r1',
+        name: 'Round 1',
+        mode: 'board',
+        values: [200],
+        dailyDoubleCount: 0,
+        categories: [
+          {
+            id: 'c0',
+            title: 'Memes',
+            clues: [
+              { id: 'q1', value: null, type: 'standard', questionSlide: { background: {}, elements: [text] }, answerSlide: { background: {}, elements: [] } },
+            ],
+          },
+        ],
+      },
+    ],
     media: [
       { id: 'dance', name: 'dance.gif', mime: 'image/gif', size: dance.length, kind: 'image' },
       { id: 'long', name: 'long.gif', mime: 'image/gif', size: long.length, kind: 'image' },
     ],
-    audio: {}, wheels: [], dice: [], theme: {},
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
     // (Both on 🤫 cards: 🗜 is offered only for files phones get.)
     cards: [
       { id: 'sc_tip', name: 'Tip', background: {}, elements: [{ ...box('e1', 300), kind: 'image', media: 'dance', fit: 'contain' }] },
@@ -223,7 +299,10 @@ try {
   await d.waitForFunction(() => window.__saves.has('Quiz.brainrot'));
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await d.waitForFunction(() => window.__saves.has('Quiz.brainrot.bak'));
-  assert((await calls(d)).filter((c) => c.startsWith('save_file')).every((c) => c === 'save_file Quiz.brainrot backup'), 'Save replaces the game’s own save, keeping a backup');
+  assert(
+    (await calls(d)).filter((c) => c.startsWith('save_file')).every((c) => c === 'save_file Quiz.brainrot backup'),
+    'Save replaces the game’s own save, keeping a backup',
+  );
 
   // Another game with the same title gets its own file.
   await d.getByRole('button', { name: 'New', exact: true }).click();
@@ -236,7 +315,10 @@ try {
   await d.waitForFunction(() => window.__saves.has('Quiz (2).brainrot'));
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await d.waitForFunction(() => window.__saves.has('Quiz (2).brainrot.bak'));
-  await d.locator('nav').getByRole('button', { name: /🕘 History/ }).click();
+  await d
+    .locator('nav')
+    .getByRole('button', { name: /🕘 History/ })
+    .click();
   assert((await d.locator('.mark', { hasText: 'Saved “Quiz (2).brainrot”' }).count()) > 0, 'the history says the file the save was written as');
   assert(
     JSON.stringify(await saveNames(d)) === JSON.stringify(['Quiz (2).brainrot', 'Quiz (2).brainrot.bak', 'Quiz.brainrot', 'Quiz.brainrot.bak']),
@@ -270,11 +352,17 @@ try {
   // A save's menu: ▶ Open, 📁 Show in folder.
   await calls(d);
   await d.keyboard.press('Shift+F10');
-  await d.getByRole('menu').getByRole('menuitem', { name: /📁 Show in folder/ }).click();
+  await d
+    .getByRole('menu')
+    .getByRole('menuitem', { name: /📁 Show in folder/ })
+    .click();
   await d.waitForFunction(() => window.__calls.includes('open_data_folder'));
   assert(true, 'Shift+F10 on a save gives its menu; 📁 Show in folder shows BrainrotSaves');
   const listed = await list.locator('button.save b').allInnerTexts();
-  assert(listed.includes('Exported Quiz.html') && !listed.some((n) => n.endsWith('.bak')), `Open… lists the exported game, not the backups (${listed.join(', ')})`);
+  assert(
+    listed.includes('Exported Quiz.html') && !listed.some((n) => n.endsWith('.bak')),
+    `Open… lists the exported game, not the backups (${listed.join(', ')})`,
+  );
   await d.screenshot({ path: 'test-results/desktop-open.png' });
   // Each save's date and size stay inside its row (they go under a long name instead), the date as Recent games says it.
   const rowHints = await list.locator('button.save').evaluateAll((bs) =>
@@ -308,9 +396,13 @@ try {
   await d.waitForTimeout(300);
   await d.getByRole('button', { name: /^More:/ }).click();
   await d.getByRole('menuitem', { name: /Export JSON/ }).click();
-  await d.waitForFunction(() => window.__saves.has('From-a-second-launch.json'), null, { polling: 100 }).catch(async (e) => {
-    throw new Error(`Export JSON wrote no From-a-second-launch.json (saved: ${await d.evaluate(() => [...window.__saves.keys()].join(', '))}; title: ${await d.locator('input.title').inputValue()})\n${e.message}`);
-  });
+  await d
+    .waitForFunction(() => window.__saves.has('From-a-second-launch.json'), null, { polling: 100 })
+    .catch(async (e) => {
+      throw new Error(
+        `Export JSON wrote no From-a-second-launch.json (saved: ${await d.evaluate(() => [...window.__saves.keys()].join(', '))}; title: ${await d.locator('input.title').inputValue()})\n${e.message}`,
+      );
+    });
   await d.locator('input.title').fill('Before');
   await d.evaluate(() => {
     window.__opened = { name: 'From-a-second-launch.json', bytes: window.__saves.get('From-a-second-launch.json').bytes };
@@ -335,7 +427,10 @@ try {
   assert(true, 'a change typed while Save was writing the file is unsaved: New asks about it');
   assert((await unsavedAsk.innerText()).includes('keeps it on this PC'), '…and says Recent games keep it on this PC');
   await unsavedAsk.getByRole('button', { name: 'Cancel' }).click();
-  await d.locator('nav').getByRole('button', { name: /🕘 History/ }).click();
+  await d
+    .locator('nav')
+    .getByRole('button', { name: /🕘 History/ })
+    .click();
   await d.locator('.list > .mark').first().waitFor();
   // (Newest first.)
   const rows = await d.locator('.list > .mark, .list > .hr').allInnerTexts();
@@ -365,13 +460,19 @@ try {
   const stepBefore = await undoTitle();
   await valuesBox.click();
   await pickWith(null);
-  assert((await valuesBox.inputValue()) === valueBefore && (await drop.evaluate((b) => document.activeElement === b)), 'Esc on the screen changes nothing, and the keys are back on the 💧');
+  assert(
+    (await valuesBox.inputValue()) === valueBefore && (await drop.evaluate((b) => document.activeElement === b)),
+    'Esc on the screen changes nothing, and the keys are back on the 💧',
+  );
   await d.keyboard.press('Escape');
   await colorPicker.waitFor({ state: 'detached' });
   assert((await undoTitle()) === stepBefore, '…and Esc in the color picker makes no step either');
   await valuesBox.click();
   await pickWith('#12ab34');
-  assert((await valuesBox.inputValue()) === '#12ab34' && (await colorPicker.getByLabel('Hex color').inputValue()) === '#12ab34', 'a color picked on the screen goes in the box (and the picker shows it)');
+  assert(
+    (await valuesBox.inputValue()) === '#12ab34' && (await colorPicker.getByLabel('Hex color').inputValue()) === '#12ab34',
+    'a color picked on the screen goes in the box (and the picker shows it)',
+  );
   await colorPicker.getByRole('button', { name: '✓ Done' }).click();
   await colorPicker.waitFor({ state: 'detached' });
   await d.waitForFunction((before) => {
@@ -414,7 +515,10 @@ try {
     return dt;
   });
   const stage = await d.locator('.canvas .stage').first().boundingBox();
-  await d.locator('.canvas').first().dispatchEvent('drop', { dataTransfer: dropped, clientX: stage.x + stage.width * 0.15, clientY: stage.y + stage.height * 0.2 });
+  await d
+    .locator('.canvas')
+    .first()
+    .dispatchEvent('drop', { dataTransfer: dropped, clientX: stage.x + stage.width * 0.15, clientY: stage.y + stage.height * 0.2 });
   const pic = d.locator('.canvas .slide .el img').first();
   await pic.waitFor();
   const picBox = await pic.boundingBox();
@@ -432,7 +536,10 @@ try {
   // (Esc closes the picker only, not the image editor under it; then a second try, kept.)
   await d.keyboard.press('Escape');
   await colorPicker.waitFor({ state: 'detached' });
-  assert((await fill.inputValue()) === fillBefore && (await ie.isVisible()), 'Esc in the color picker over the image editor puts the Fill back, and leaves the editor open');
+  assert(
+    (await fill.inputValue()) === fillBefore && (await ie.isVisible()),
+    'Esc in the color picker over the image editor puts the Fill back, and leaves the editor open',
+  );
   // (This time from the word Fill: a press on a label's words starts the step of its box.)
   await ie.locator('label', { hasText: 'Fill' }).click({ position: { x: 4, y: 8 } });
   await pickWith('#12ab34');
@@ -472,7 +579,10 @@ try {
   await d.getByRole('button', { name: /^More:/ }).click();
   await d.getByRole('menuitem', { name: /About/ }).click();
   const aboutDlg = d.getByRole('dialog', { name: 'About Brainrot Games Maker' });
-  await aboutDlg.getByRole('button', { name: /^Open folder:/ }).first().waitFor();
+  await aboutDlg
+    .getByRole('button', { name: /^Open folder:/ })
+    .first()
+    .waitFor();
   const folderNames = await aboutDlg.getByRole('button', { name: /^Open folder:/ }).evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')));
   assert(folderNames.length === 5 && new Set(folderNames).size === 5, `ℹ About's 📂 buttons each say which folder they open (${folderNames.join(' | ')})`);
   // A failed update says why until it's read.
@@ -504,7 +614,10 @@ try {
   await d.evaluate(() => (window.__opened = null));
   await d.evaluate(() => window.__installDone());
   await toastsIn(d, { hasText: "Version 99.0.0 didn't install: the editor says why when you go back." }).waitFor();
-  assert((await d.getByRole('alertdialog').count()) === 0, 'an update that fails once a game has started pops nothing up over it: a toast says the editor says why');
+  assert(
+    (await d.getByRole('alertdialog').count()) === 0,
+    'an update that fails once a game has started pops nothing up over it: a toast says the editor says why',
+  );
   await d.getByRole('button', { name: '◀ Back to editor' }).click();
   await failed.waitFor();
   assert(true, '…and back in the editor, it does');
@@ -577,7 +690,10 @@ try {
   await lostAsk.getByRole('button', { name: 'Stay' }).click();
   await lostAsk.waitFor({ state: 'detached' });
   const stayed = await calls(d);
-  assert(stayed.includes('hold_close') && !stayed.includes('close_app'), `storage full: closing asks first, and Stay keeps the window open (${stayed.join(', ')})`);
+  assert(
+    stayed.includes('hold_close') && !stayed.includes('close_app'),
+    `storage full: closing asks first, and Stay keeps the window open (${stayed.join(', ')})`,
+  );
   // (Storage that can't be read either asks the same.)
   await d.evaluate(() => {
     window.__unreadable = true;
@@ -610,7 +726,10 @@ try {
   await drawingAsk.getByRole('button', { name: 'Stay' }).click();
   await drawingAsk.waitFor({ state: 'detached' });
   const kept = await calls(d);
-  assert(kept.includes('hold_close') && !kept.includes('close_app') && (await pad.isVisible()), `a drawing not inserted: closing asks first, and Stay keeps the window and the drawing (${kept.join(', ')})`);
+  assert(
+    kept.includes('hold_close') && !kept.includes('close_app') && (await pad.isVisible()),
+    `a drawing not inserted: closing asks first, and Stay keeps the window and the drawing (${kept.join(', ')})`,
+  );
   await pad.getByRole('button', { name: 'Cancel' }).click();
   await pad.locator('[data-ask][data-ready]').waitFor();
   await pad.getByRole('button', { name: 'Discard', exact: true }).click();
@@ -660,7 +779,10 @@ try {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   const atClose = await d.evaluate(() => window.__draftAtClose);
   // (An MP4 where the browser makes H.264, as CI's does; a WebM in the test Chromium here.)
-  assert(atClose?.some((n) => /^dance \(phones\)\.(mp4|webm)$/.test(n)), `Wait: the app closes once the copy is made, with it written (${atClose?.join(', ')})`);
+  assert(
+    atClose?.some((n) => /^dance \(phones\)\.(mp4|webm)$/.test(n)),
+    `Wait: the app closes once the copy is made, with it written (${atClose?.join(', ')})`,
+  );
 
   // ⬆ Update pressed in ℹ About for a version the hourly check holds for a pause: from then on it's the version known,
   // so the editor's notice names it (not the one the start-up check found).

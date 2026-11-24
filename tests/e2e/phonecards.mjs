@@ -58,11 +58,26 @@ try {
     { id: 'b', name: 'Bob', color: '#30a46c' },
     { id: 'c', name: 'Cat', color: '#3d68ea' },
   ];
-  let hs = { title: 'Cards', seats, allowNew: false, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 0, scores: { a: 200, b: 100 } };
+  let hs = {
+    title: 'Cards',
+    seats,
+    allowNew: false,
+    phase: 'lobby',
+    armId: 0,
+    clue: null,
+    answering: null,
+    lockedOut: [],
+    earlyLockMs: 0,
+    scores: { a: 200, b: 100 },
+  };
   const hostState = (patch) => h.send({ t: 'state', state: (hs = { ...hs, ...patch }) });
   hostState({});
   const upload = async (body, type) => {
-    const r = await fetch(`${base}/api/rooms/${room.code}/files`, { method: 'POST', headers: { 'Content-Type': type, Authorization: `Bearer ${room.hostToken}` }, body });
+    const r = await fetch(`${base}/api/rooms/${room.code}/files`, {
+      method: 'POST',
+      headers: { 'Content-Type': type, Authorization: `Bearer ${room.hostToken}` },
+      body,
+    });
     if (r.status !== 200) throw new Error(`upload: HTTP ${r.status} ${await r.text()}`);
     return (await r.json()).id;
   };
@@ -71,7 +86,9 @@ try {
   /** A phone (or, `desk`, a laptop with a mouse) on seat `name`, with the media sites the cards use answered locally. */
   const phone = async (label, name, opts = {}) => {
     const ctx = await browser.newContext(
-      opts.desk ? { viewport: { width: 1280, height: 800 }, reducedMotion: opts.reducedMotion } : { viewport: { width: 390, height: 760 }, hasTouch: true, isMobile: true, reducedMotion: opts.reducedMotion },
+      opts.desk
+        ? { viewport: { width: 1280, height: 800 }, reducedMotion: opts.reducedMotion }
+        : { viewport: { width: 390, height: 760 }, hasTouch: true, isMobile: true, reducedMotion: opts.reducedMotion },
     );
     await ctx.route('https://img.test/**', (r) => r.fulfill({ body: png(240, 180, 40, 160, 90), contentType: 'image/png' }));
     await ctx.route('https://www.youtube-nocookie.com/**', (r) => r.fulfill({ body: PLAYER, contentType: 'text/html' }));
@@ -93,12 +110,28 @@ try {
   const small = (p) => p.locator('#buzz-small');
 
   // ---------- Nobody buzzes: every button greyed, with who plays which part ----------
-  const parts = { text: '🤝 Bob describes → Ann guesses', off: true, sub: 'Nobody buzzes on this one', seats: ['a'], seatsText: '🎯 You’re guessing!', seatsSub: 'Bob is describing: say it out loud' };
+  const parts = {
+    text: '🤝 Bob describes → Ann guesses',
+    off: true,
+    sub: 'Nobody buzzes on this one',
+    seats: ['a'],
+    seatsText: '🎯 You’re guessing!',
+    seatsSub: 'Bob is describing: say it out loud',
+  };
   hostState({ status: parts });
   await big(bob).getByText(parts.text).waitFor();
-  assert((await small(bob).innerText()) === parts.sub && (await bob.locator('#buzz').getAttribute('class')) === 'off', 'a greyed button: who plays which part as its big line, what’s going on under it');
-  assert((await bob.locator('#buzz').getAttribute('aria-disabled')) === 'true' && (await bob.locator('#buzz').getAttribute('aria-label')).startsWith(parts.text), 'disabled to a screen reader too, its big line read as its name');
-  assert((await big(ann).innerText()) === '🎯 You’re guessing!' && (await small(ann).innerText()) === parts.sub.replace(parts.sub, parts.seatsSub), 'the guesser’s phone says what’s theirs');
+  assert(
+    (await small(bob).innerText()) === parts.sub && (await bob.locator('#buzz').getAttribute('class')) === 'off',
+    'a greyed button: who plays which part as its big line, what’s going on under it',
+  );
+  assert(
+    (await bob.locator('#buzz').getAttribute('aria-disabled')) === 'true' && (await bob.locator('#buzz').getAttribute('aria-label')).startsWith(parts.text),
+    'disabled to a screen reader too, its big line read as its name',
+  );
+  assert(
+    (await big(ann).innerText()) === '🎯 You’re guessing!' && (await small(ann).innerText()) === parts.sub.replace(parts.sub, parts.seatsSub),
+    'the guesser’s phone says what’s theirs',
+  );
   assert(!(await cat.locator('#keys').isVisible()), 'a laptop doesn’t offer Space to buzz while nobody buzzes');
   const sent = h.got.length;
   // (Disabled to a screen reader, so Playwright won't tap it unless made to.)
@@ -166,21 +199,37 @@ try {
   hostState({ cards: [card] });
   const bobCard = bob.locator('.card');
   await bobCard.waitFor();
-  assert((await bob.locator('#buzz').isHidden()) && (await bob.locator('#card-status-big').innerText()) === parts.text, 'the card takes the button’s place, the status line over it');
+  assert(
+    (await bob.locator('#buzz').isHidden()) && (await bob.locator('#card-status-big').innerText()) === parts.text,
+    'the card takes the button’s place, the status line over it',
+  );
   const lines = await bobCard.innerText();
   assert(
-    lines.includes('Only you can see this'.toUpperCase()) && lines.includes('You’re the Describer') && lines.includes('Describe it to Ann') && !lines.includes('ogre-zz') && !lines.includes('SHREK'),
+    lines.includes('Only you can see this'.toUpperCase()) &&
+      lines.includes('You’re the Describer') &&
+      lines.includes('Describe it to Ann') &&
+      !lines.includes('ogre-zz') &&
+      !lines.includes('SHREK'),
     'its part and hint show; its words wait behind the cover',
   );
   const cover = bob.getByRole('button', { name: 'Tap to see' });
   assert(await cover.evaluate((el) => el === document.activeElement), 'the keys (and a screen reader) go to Tap to see as it comes');
-  assert((await bob.locator('#news').innerText()) === 'A card only you can see' && !(await bob.locator('#live').innerText()).includes('card'), 'its arrival is said once: “A card only you can see”');
+  assert(
+    (await bob.locator('#news').innerText()) === 'A card only you can see' && !(await bob.locator('#live').innerText()).includes('card'),
+    'its arrival is said once: “A card only you can see”',
+  );
   assert(!h.got.some((m) => m.t === 'cardSeen'), 'the room isn’t told it was seen before the tap');
-  for (const [p, who] of [[ann, 'Ann'], [cat, 'Cat']]) assert(!(await p.locator('.card').count()) && !(await p.locator('body').innerText()).includes('ogre-zz'), `${who}’s phone gets nothing of it`);
+  for (const [p, who] of [
+    [ann, 'Ann'],
+    [cat, 'Cat'],
+  ])
+    assert(!(await p.locator('.card').count()) && !(await p.locator('body').innerText()).includes('ogre-zz'), `${who}’s phone gets nothing of it`);
   await until(() => bob.fileGets.length >= 2, 'the files are fetched');
   const token = await bob.evaluate((code) => JSON.parse(localStorage.getItem(`brainrot-buzzer:${code}`)).token, room.code);
   assert(
-    bob.fileGets.every((g) => g.auth === `Bearer ${token}` && !g.url.includes(token)) && bob.fileGets.some((g) => g.url.endsWith(pic)) && bob.fileGets.some((g) => g.url.endsWith(vid)),
+    bob.fileGets.every((g) => g.auth === `Bearer ${token}` && !g.url.includes(token)) &&
+      bob.fileGets.some((g) => g.url.endsWith(pic)) &&
+      bob.fileGets.some((g) => g.url.endsWith(vid)),
     'its files are fetched with the phone’s own token in a header, never in the address',
   );
   await shot(bob, 'covered');
@@ -189,7 +238,10 @@ try {
 
   await cover.tap();
   await bob.getByText('Green ogre-zz, lives in a swamp').waitFor();
-  assert((await bob.locator('.card-title').innerText()) === 'SHREK' && (await bob.locator('.card-title').getAttribute('class')).includes('huge'), 'Tap to see: its title, huge, and its words');
+  assert(
+    (await bob.locator('.card-title').innerText()) === 'SHREK' && (await bob.locator('.card-title').getAttribute('class')).includes('huge'),
+    'Tap to see: its title, huge, and its words',
+  );
   assert(await bob.locator('.card-title').evaluate((el) => el === document.activeElement), 'the keys go to its words as it opens');
   await until(() => h.got.some((m) => m.t === 'cardSeen' && m.id === card.id && m.seatId === 'b'), 'cardSeen');
   assert(true, 'the room tells the host Bob saw it');
@@ -200,7 +252,10 @@ try {
   await bob.unroute(`**/api/rooms/*/files/${pic}`, cutOnce);
   const linked = bob.locator('img[src="https://img.test/donkey.png"]');
   await until(() => linked.evaluate((img) => img.complete && img.naturalWidth > 0), 'the linked picture shows');
-  assert((await linked.getAttribute('referrerpolicy')) === 'no-referrer' && (await linked.getAttribute('alt')) === 'Picture', 'a picture from a link loads from there, with no referrer');
+  assert(
+    (await linked.getAttribute('referrerpolicy')) === 'no-referrer' && (await linked.getAttribute('alt')) === 'Picture',
+    'a picture from a link loads from there, with no referrer',
+  );
   const video = bob.locator('.card video');
   await until(() => video.evaluate((v) => !v.paused && v.currentTime > 0), 'the video plays');
   assert(
@@ -213,7 +268,13 @@ try {
   await bob.getByRole('button', { name: /YouTube video/ }).tap();
   const frame = bob.locator('.card iframe');
   await frame.waitFor();
-  const fa = await frame.evaluate((f) => ({ src: f.src, sandbox: f.getAttribute('sandbox'), ref: f.getAttribute('referrerpolicy'), allow: f.getAttribute('allow'), title: f.title }));
+  const fa = await frame.evaluate((f) => ({
+    src: f.src,
+    sandbox: f.getAttribute('sandbox'),
+    ref: f.getAttribute('referrerpolicy'),
+    allow: f.getAttribute('allow'),
+    title: f.title,
+  }));
   assert(
     fa.src === 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&autoplay=1&start=5' &&
       fa.sandbox === 'allow-scripts allow-same-origin allow-presentation' &&
@@ -223,7 +284,10 @@ try {
       fa.title === 'YouTube video',
     `tapped: YouTube’s no-cookie player from the link’s time, sandboxed, with the referrer YouTube needs${fa.ref ? '' : JSON.stringify(fa)}`,
   );
-  await until(async () => (await bob.frames()).some((f) => f.url().startsWith('https://www.youtube-nocookie.com/') && f.url() !== 'about:blank'), 'the player loads');
+  await until(
+    async () => (await bob.frames()).some((f) => f.url().startsWith('https://www.youtube-nocookie.com/') && f.url() !== 'about:blank'),
+    'the player loads',
+  );
   assert(
     (await bobCard.innerText()).includes('🖼 Picture coming…') && (await bobCard.innerText()).includes('🔊 The host will show you this sound'),
     'a file on its way says “🖼 Picture coming…”; one that won’t come, “the host will show you”',
@@ -233,23 +297,32 @@ try {
   // The file on its way arrives: it fills in (said, as the card is open).
   const later = await upload(png(200, 60, 160, 200, 120), 'image/png');
   hostState({ cards: [{ ...card, media: card.media.map((m) => ('pending' in m ? { kind: 'image', file: later, mime: 'image/png' } : m)) }] });
-  await until(() => bob.locator('.card img[src^="blob:"]').count().then((n) => n === 2), 'the second file fills in');
-  assert(!(await bobCard.innerText()).includes('Picture coming…') && (await bob.locator('#news').innerText()) === 'Your picture is here', 'the picture on its way fills in, and that’s said');
+  await until(
+    () =>
+      bob
+        .locator('.card img[src^="blob:"]')
+        .count()
+        .then((n) => n === 2),
+    'the second file fills in',
+  );
+  assert(
+    !(await bobCard.innerText()).includes('Picture coming…') && (await bob.locator('#news').innerText()) === 'Your picture is here',
+    'the picture on its way fills in, and that’s said',
+  );
   assert((await frame.count()) === 1 && (await video.evaluate((v) => !v.paused)), 'the rest of the card isn’t drawn again (the player and the video carry on)');
 
   // CSP: a frame from anywhere else is refused.
-  const refused = await bob.evaluate(
-    () =>
-      new Promise((ok) => {
-        document.addEventListener('securitypolicyviolation', (e) => ok(e.violatedDirective), { once: true });
-        const f = document.createElement('iframe');
-        f.src = 'https://example.com/';
-        document.body.append(f);
-        setTimeout(() => ok('none'), 3000);
-      }).then((d) => {
-        document.querySelector('body > iframe')?.remove();
-        return d;
-      }),
+  const refused = await bob.evaluate(() =>
+    new Promise((ok) => {
+      document.addEventListener('securitypolicyviolation', (e) => ok(e.violatedDirective), { once: true });
+      const f = document.createElement('iframe');
+      f.src = 'https://example.com/';
+      document.body.append(f);
+      setTimeout(() => ok('none'), 3000);
+    }).then((d) => {
+      document.querySelector('body > iframe')?.remove();
+      return d;
+    }),
   );
   assert(refused === 'frame-src', 'the page’s content policy refuses a frame from another site');
 
@@ -262,7 +335,10 @@ try {
   // ---------- Revealed: the card stays, marked ----------
   hostState({ cards: [{ ...card, open: false }], status: { text: '🤝 Bob described → Ann guessed', off: true } });
   await bob.locator('.card-shown').getByText('The answer’s on screen').waitFor();
-  assert((await bob.locator('#card-status-big').innerText()) === '🤝 Bob described → Ann guessed', 'the answer up: the card stays, marked “The answer’s on screen”');
+  assert(
+    (await bob.locator('#card-status-big').innerText()) === '🤝 Bob described → Ann guessed',
+    'the answer up: the card stays, marked “The answer’s on screen”',
+  );
 
   // ---------- The card goes ----------
   // (Covered: hidden, so read straight from the page.)
@@ -270,23 +346,54 @@ try {
   hostState({ cards: null, status: parts });
   await bobCard.waitFor({ state: 'detached' });
   assert(await bob.locator('#buzz').isVisible(), 'the card goes, and the greyed button is back');
-  assert(await bob.evaluate((u) => fetch(u).then(() => false, () => true), blob), 'its blob: addresses are let go');
+  assert(
+    await bob.evaluate(
+      (u) =>
+        fetch(u).then(
+          () => false,
+          () => true,
+        ),
+      blob,
+    ),
+    'its blob: addresses are let go',
+  );
 
   // ---------- The guesser: a hint card over her box, a GIF held still (she asked for less motion) ----------
   const gif = await upload(GIF, 'image/gif');
-  const hint = { id: 'pc:c1:2:2', to: [{ seat: 'a' }], open: true, role: 'Guesser', text: 'A hint', media: [{ kind: 'image', file: gif, mime: 'image/gif', name: 'Dance' }] };
-  hostState({ cards: [hint], answers: { id: 'c1', open: true, seats: [{ id: 'a' }] }, clue: { text: 'Describe this movie' }, status: { ...parts, seatsSub: 'Bob is describing: type your guess' } });
+  const hint = {
+    id: 'pc:c1:2:2',
+    to: [{ seat: 'a' }],
+    open: true,
+    role: 'Guesser',
+    text: 'A hint',
+    media: [{ kind: 'image', file: gif, mime: 'image/gif', name: 'Dance' }],
+  };
+  hostState({
+    cards: [hint],
+    answers: { id: 'c1', open: true, seats: [{ id: 'a' }] },
+    clue: { text: 'Describe this movie' },
+    status: { ...parts, seatsSub: 'Bob is describing: type your guess' },
+  });
   await ann.getByLabel(/Your answer/).waitFor();
   await ann.locator('.card').waitFor();
   assert(
-    (await ann.locator('#answer-head').innerText()) === '🎯 You’re guessing!' && (await ann.locator('#answer-sub').innerText()) === 'Bob is describing: type your guess',
+    (await ann.locator('#answer-head').innerText()) === '🎯 You’re guessing!' &&
+      (await ann.locator('#answer-sub').innerText()) === 'Bob is describing: type your guess',
     'the guesser’s box says what’s theirs over it',
   );
-  const order = await ann.evaluate(() => document.getElementById('cards').compareDocumentPosition(document.getElementById('answer-form')) & Node.DOCUMENT_POSITION_FOLLOWING);
-  assert(!!order && (await ann.getByLabel(/Your answer/).evaluate((el) => el === document.activeElement || document.activeElement === document.body)), 'a card sits above the box, and doesn’t take its keys');
+  const order = await ann.evaluate(
+    () => document.getElementById('cards').compareDocumentPosition(document.getElementById('answer-form')) & Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  assert(
+    !!order && (await ann.getByLabel(/Your answer/).evaluate((el) => el === document.activeElement || document.activeElement === document.body)),
+    'a card sits above the box, and doesn’t take its keys',
+  );
   await ann.getByRole('button', { name: 'Tap to see' }).tap();
   await ann.locator('.card canvas[role="img"][aria-label="Dance"]').waitFor();
-  assert((await ann.locator('.card img').isHidden()) && (await ann.getByRole('button', { name: '▶ Play Dance' }).isVisible()), 'with reduced motion, a GIF shows still with ▶ Play');
+  assert(
+    (await ann.locator('.card img').isHidden()) && (await ann.getByRole('button', { name: '▶ Play Dance' }).isVisible()),
+    'with reduced motion, a GIF shows still with ▶ Play',
+  );
   await ann.getByRole('button', { name: '▶ Play Dance' }).tap();
   assert(await ann.locator('.card img').isVisible(), '▶ Play shows it moving');
   await shot(ann, 'guesser');
@@ -305,7 +412,10 @@ try {
   await cat.keyboard.press(' ');
   await cat.getByText('Laptop-qq words').waitFor();
   assert(true, 'a Space press on Click to see does');
-  assert((await cat.evaluate(() => document.documentElement.scrollWidth <= innerWidth)) && (await cat.locator('#cards').boundingBox()).x > 500, 'side by side on a laptop: the card on the right, nothing wider than the window');
+  assert(
+    (await cat.evaluate(() => document.documentElement.scrollWidth <= innerWidth)) && (await cat.locator('#cards').boundingBox()).x > 500,
+    'side by side on a laptop: the card on the right, nothing wider than the window',
+  );
   await shot(cat, 'laptop');
   await bob.setViewportSize({ width: 760, height: 390 });
   hostState({ cards: [{ ...card, id: 'pc:c1:1:4' }] });
@@ -329,7 +439,9 @@ try {
   hostState({ cards: [{ ...card, id: 'pc:c1:1:5' }] });
   await until(() => h.got.some((m) => m.t === 'cardSeen' && m.id === 'pc:c1:1:5'), 'cardSeen for the card sent again');
   assert(
-    (await bob.getByText('Green ogre-zz, lives in a swamp').isVisible()) && !(await bob.getByRole('button', { name: 'Tap to see' }).isVisible()) && !(await bob.evaluate(() => window.buzzes.length)),
+    (await bob.getByText('Green ogre-zz, lives in a swamp').isVisible()) &&
+      !(await bob.getByRole('button', { name: 'Tap to see' }).isVisible()) &&
+      !(await bob.evaluate(() => window.buzzes.length)),
     '↻ Send again: a phone that had the card open keeps it open, doesn’t buzz again, and the room hears it was seen',
   );
   assert(
@@ -337,15 +449,31 @@ try {
     'as it was: its YouTube player still framed, its video still there with its sound on',
   );
   hostState({ cards: [{ ...card, id: 'pc:c1:1:5', shared: true, hint: 'Describe it to Ann and Cat: don’t say what’s on it!' }] });
-  await until(() => bob.locator('.card-head').textContent().then((t) => t.includes('and the others the host chose')), 'the card says others can see it');
+  await until(
+    () =>
+      bob
+        .locator('.card-head')
+        .textContent()
+        .then((t) => t.includes('and the others the host chose')),
+    'the card says others can see it',
+  );
   assert(
-    (await player.evaluate((f) => f.isConnected)) && (await bob.locator('.card-hint').textContent()) === 'Describe it to Ann and Cat: don’t say what’s on it!' && (await bob.getByText('Green ogre-zz').isVisible()),
+    (await player.evaluate((f) => f.isConnected)) &&
+      (await bob.locator('.card-hint').textContent()) === 'Describe it to Ann and Cat: don’t say what’s on it!' &&
+      (await bob.getByText('Green ogre-zz').isVisible()),
     'who else can see it, or its hint, changing: those lines change in place (an open player carries on)',
   );
   // 🙈 Hide, under its new id: it stays covered as it's drawn again.
   await bob.getByRole('button', { name: '🙈 Hide' }).tap();
   hostState({ cards: [{ ...card, id: 'pc:c1:1:5', shared: true }] });
-  await until(() => bob.locator('.card-hint').textContent().then((t) => t === card.hint), 'its hint back');
+  await until(
+    () =>
+      bob
+        .locator('.card-hint')
+        .textContent()
+        .then((t) => t === card.hint),
+    'its hint back',
+  );
   assert(
     (await bob.getByRole('button', { name: 'Tap to see' }).isVisible()) && !(await bob.getByText('Green ogre-zz').isVisible()),
     'hidden after it came again, it stays covered as the page is drawn again',
@@ -356,7 +484,16 @@ try {
   const refuse = (r) => r.fulfill({ status: 403, body: '' });
   await bob.route(`**/api/rooms/*/files/${shy}`, refuse);
   const shared = { ...card, id: 'pc:c1:1:5', shared: true };
-  const retry = { id: 'pc:c4:1:1', to: [{ seat: 'b' }], open: true, title: 'Retry-qz', media: [{ kind: 'image', file: shy, mime: 'image/png', name: 'Shy' }, { kind: 'embed', site: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ' }] };
+  const retry = {
+    id: 'pc:c4:1:1',
+    to: [{ seat: 'b' }],
+    open: true,
+    title: 'Retry-qz',
+    media: [
+      { kind: 'image', file: shy, mime: 'image/png', name: 'Shy' },
+      { kind: 'embed', site: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ' },
+    ],
+  };
   const other = { id: 'pc:c4:2:1', to: [{ seat: 'b' }], open: true, title: 'Other-qz' };
   hostState({ cards: [shared, retry, other] });
   const retried = bob.locator(`.card[data-card="${retry.id}"]`);
@@ -405,7 +542,10 @@ try {
   await until(() => bob.evaluate(() => document.querySelector('#card-list > .card')?.dataset.card === 'pc:c4:2:2'), 'the card of words at the top');
   const moved = bob.locator('.card[data-card="pc:c4:2:2"]');
   const wordsH = await moved.locator('.card-title').evaluate((e) => Math.round(e.getBoundingClientRect().height));
-  assert(wordsH > 20 && (await moved.getByText('Other-qz').isVisible()), `↻ Send again: an open card of words only moves to the top, its words in sight (${wordsH}px high)`);
+  assert(
+    wordsH > 20 && (await moved.getByText('Other-qz').isVisible()),
+    `↻ Send again: an open card of words only moves to the top, its words in sight (${wordsH}px high)`,
+  );
   hostState({ cards: [shared] });
   await again.waitFor({ state: 'detached' });
 
@@ -413,7 +553,14 @@ try {
   hostState({ phase: 'armed', armId: 1, clue: { text: 'This planet is known as the Red Planet' }, status: undefined });
   await ann.locator('#buzz.armed').waitFor();
   const was = await ann.locator('#buzz').boundingBox();
-  const spy = { id: 'pc:x:1:1', to: [{ seat: 'a' }], open: true, title: 'Spy-qz', text: 'Blend in', media: [{ kind: 'image', url: 'https://img.test/spy.png' }] };
+  const spy = {
+    id: 'pc:x:1:1',
+    to: [{ seat: 'a' }],
+    open: true,
+    title: 'Spy-qz',
+    text: 'Blend in',
+    media: [{ kind: 'image', url: 'https://img.test/spy.png' }],
+  };
   // (And one for the laptop, in a window too narrow for side by side.)
   await cat.setViewportSize({ width: 700, height: 1000 });
   await cat.locator('#buzz.armed').waitFor();
@@ -426,7 +573,10 @@ try {
   await ann.touchscreen.tap(was.x + was.width / 2, was.y + 40);
   await until(() => h.got.slice(before).some((m) => m.t === 'buzz' && m.seatId === 'a'), 'Ann’s buzz');
   assert(
-    under.y >= now.y + now.height && now.y <= was.y + 40 && !(await ann.getByText('Spy-qz').isVisible()) && !h.got.some((m) => m.t === 'cardSeen' && m.id === spy.id),
+    under.y >= now.y + now.height &&
+      now.y <= was.y + 40 &&
+      !(await ann.getByText('Spy-qz').isVisible()) &&
+      !h.got.some((m) => m.t === 'cardSeen' && m.id === spy.id),
     'a card that comes with the buzzers open goes under BUZZ!: a tap where it was still buzzes, and the card stays covered',
   );
   assert(
@@ -463,7 +613,14 @@ try {
   // On its side with a long clue: the clue scrolls in less room, and the card under it keeps room for its Tap to see.
   await ann.setViewportSize({ width: 740, height: 340 });
   hostState({ clue: { text: 'This planet, fourth from the Sun, is known as the Red Planet for the rusty dust on its face. '.repeat(6) + 'Name it.' } });
-  await until(() => ann.locator('#clue').textContent().then((t) => t.endsWith('Name it.')), 'the long clue');
+  await until(
+    () =>
+      ann
+        .locator('#clue')
+        .textContent()
+        .then((t) => t.endsWith('Name it.')),
+    'the long clue',
+  );
   await until(() => ann.evaluate(() => getComputedStyle(document.getElementById('s-buzz')).display === 'grid'), 'side by side');
   const tall = await ann.evaluate(() => {
     const [cards, cover] = [document.getElementById('cards'), document.querySelector('.card-cover')];
@@ -488,18 +645,33 @@ try {
   await ann.locator('#buzz.armed').waitFor();
   await until(() => ann.evaluate(() => document.activeElement?.id === 'buzz'), 'the keys go to BUZZ!');
   assert(
-    !(await ann.getByText('Spy-qz').isVisible()) && (await ann.getByRole('button', { name: 'Tap to see' }).isVisible()) && (await ann.locator('#clue').boundingBox()).y >= 0,
+    !(await ann.getByText('Spy-qz').isVisible()) &&
+      (await ann.getByRole('button', { name: 'Tap to see' }).isVisible()) &&
+      (await ann.locator('#clue').boundingBox()).y >= 0,
     'a card left open closes as the buzzers open for the next clue, the clue still on screen',
   );
 
   // ---------- The guesser typing in her box as a card comes over it: her tap doesn't open it ----------
-  const guessParts = { phase: 'lobby', clue: { text: 'Describe this movie' }, answers: { id: 'c2', open: true, seats: [{ id: 'a' }] }, status: { ...parts, seatsSub: 'Bob is describing: type your guess' } };
+  const guessParts = {
+    phase: 'lobby',
+    clue: { text: 'Describe this movie' },
+    answers: { id: 'c2', open: true, seats: [{ id: 'a' }] },
+    status: { ...parts, seatsSub: 'Bob is describing: type your guess' },
+  };
   hostState({ ...guessParts, cards: [{ ...card, id: 'pc:c1:1:5' }] });
   await ann.getByLabel(/Your answer/).waitFor();
   await ann.locator('.card').waitFor({ state: 'detached' });
   // (Where her box was, before the card pushes it down.)
   const box = await ann.locator('#answer-form').boundingBox();
-  const guess = { to: [{ seat: 'a' }], open: true, role: 'Guesser', hint: 'Bob describes it: type your guess', title: 'Hint-qz', text: 'It’s a cartoon from 2001', media: [{ kind: 'image', url: 'https://img.test/hint.png' }] };
+  const guess = {
+    to: [{ seat: 'a' }],
+    open: true,
+    role: 'Guesser',
+    hint: 'Bob describes it: type your guess',
+    title: 'Hint-qz',
+    text: 'It’s a cartoon from 2001',
+    media: [{ kind: 'image', url: 'https://img.test/hint.png' }],
+  };
   // The cover ignores taps for a moment as it comes. The page notes whether it still had when the tap landed: on a very
   // slow machine it may not, and the tap opens the card; then another card comes and the tap is tried again.
   let [fresh, tap] = [false, null];
@@ -569,7 +741,11 @@ try {
   // ---------- A laptop's taller window: a box barely moves as a card comes beside it, and stays put as it opens ----------
   hostState({ clue: { text: 'Describe this movie' }, answers: { id: 'c3', open: true, seats: [{ id: 'c' }] } });
   await cat.getByLabel(/Your answer/).waitFor();
-  const boxTop = () => cat.locator('#answer-form').boundingBox().then((r) => Math.round(r.y));
+  const boxTop = () =>
+    cat
+      .locator('#answer-form')
+      .boundingBox()
+      .then((r) => Math.round(r.y));
   const tops = [await boxTop()];
   hostState({ cards: [...hs.cards, { ...guess, id: 'pc:c3:1:1', to: [{ seat: 'c' }], title: 'Laptop-hint-qz' }] });
   await cat.locator('.card').waitFor();
@@ -602,7 +778,10 @@ try {
   hostState({ cards: [long] });
   await bob.locator(`.card[data-card="${long.id}"] .card-cover:not(.just-in)`).waitFor();
   await bob.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-  assert(await bob.evaluate(() => scrollY > 0 && scrollY + innerHeight >= document.documentElement.scrollHeight - 1), '(the page scrolls, and it’s at its end)');
+  assert(
+    await bob.evaluate(() => scrollY > 0 && scrollY + innerHeight >= document.documentElement.scrollHeight - 1),
+    '(the page scrolls, and it’s at its end)',
+  );
   const at = await bob.locator('.card-cover').boundingBox();
   await bob.touchscreen.tap(at.x + at.width / 2, Math.max(at.y, 0) + 20);
   await bob.getByText('A long secret phrase for the describer').waitFor();
@@ -629,11 +808,21 @@ try {
     await r.fulfill({ response: res });
   };
   await bob.route('**/api/rooms/*/files/*', slowly);
-  const pics = { id: 'pc:c6:1:1', to: [{ seat: 'b' }], open: true, title: 'Three-qz', media: three.map((file, i) => ({ kind: 'image', file, mime: 'image/png', name: `Pic ${i + 1}` })) };
+  const pics = {
+    id: 'pc:c6:1:1',
+    to: [{ seat: 'b' }],
+    open: true,
+    title: 'Three-qz',
+    media: three.map((file, i) => ({ kind: 'image', file, mime: 'image/png', name: `Pic ${i + 1}` })),
+  };
   hostState({ cards: [pics] });
   await bob.locator(`.card[data-card="${pics.id}"]`).getByRole('button', { name: 'Tap to see' }).tap();
   await until(
-    () => bob.evaluate(() => [...document.querySelectorAll('.card img[alt^="Pic "]')].filter((i) => i.src.startsWith('blob:') && i.complete && i.naturalWidth > 0).length === 3),
+    () =>
+      bob.evaluate(
+        () =>
+          [...document.querySelectorAll('.card img[alt^="Pic "]')].filter((i) => i.src.startsWith('blob:') && i.complete && i.naturalWidth > 0).length === 3,
+      ),
     'the three pictures',
   );
   assert(most === 2, `a card’s three files: all three come, two downloading at once (${most} at most)`);
@@ -648,15 +837,24 @@ try {
   await dee.goto(`${base}/${room.code}`);
   await dee.getByRole('button', { name: 'Bob', exact: true }).click();
   await dee.locator('#cards-late').getByText('A card went to your seat before this phone joined. Ask the host to send it again.').waitFor();
-  assert(!(await dee.locator('.card').count()) && (await dee.locator('#buzz').isVisible()), 'a phone that took the seat after the card went out is told it missed one, and gets nothing of it');
+  assert(
+    !(await dee.locator('.card').count()) && (await dee.locator('#buzz').isVisible()),
+    'a phone that took the seat after the card went out is told it missed one, and gets nothing of it',
+  );
   // On its side: the note takes only its own room (none kept for a card), and BUZZ! stays in the middle.
   await dee.setViewportSize({ width: 740, height: 340 });
   await until(() => dee.evaluate(() => getComputedStyle(document.getElementById('s-buzz')).display === 'grid'), 'side by side');
   const note = await dee.evaluate(() => {
     const [b, h] = [document.getElementById('buzz').getBoundingClientRect(), document.querySelector('header').getBoundingClientRect()];
-    return { h: Math.round(document.getElementById('cards').getBoundingClientRect().height), off: Math.round((b.top + b.bottom) / 2 - (h.bottom + innerHeight) / 2) };
+    return {
+      h: Math.round(document.getElementById('cards').getBoundingClientRect().height),
+      off: Math.round((b.top + b.bottom) / 2 - (h.bottom + innerHeight) / 2),
+    };
   });
-  assert(note.h < 100 && Math.abs(note.off) <= 2, `on its side, the note beside BUZZ! keeps no room for a card, and BUZZ! stays in the middle (${JSON.stringify(note)})`);
+  assert(
+    note.h < 100 && Math.abs(note.off) <= 2,
+    `on its side, the note beside BUZZ! keeps no room for a card, and BUZZ! stays in the middle (${JSON.stringify(note)})`,
+  );
 
   // ---------- A long question fits the phone: smaller words, then ▼ More; the place kept as BUZZ! lights ----------
   const story =
@@ -669,7 +867,13 @@ try {
   const fit = await ann.evaluate(() => {
     const r = (id) => document.getElementById(id).getBoundingClientRect();
     const inside = (b) => b.top >= 0 && b.bottom <= innerHeight;
-    return { buzz: inside(r('buzz')), me: inside(r('me')), wide: document.documentElement.scrollWidth > innerWidth, cap: r('clue-cap').bottom <= r('clue').top, font: getComputedStyle(document.getElementById('clue')).fontSize };
+    return {
+      buzz: inside(r('buzz')),
+      me: inside(r('me')),
+      wide: document.documentElement.scrollWidth > innerWidth,
+      cap: r('clue-cap').bottom <= r('clue').top,
+      font: getComputedStyle(document.getElementById('clue')).fontSize,
+    };
   });
   assert(
     fit.buzz && fit.me && !fit.wide && fit.cap && (await more.textContent()) === '▼ More' && fit.font === '15px',
@@ -701,7 +905,12 @@ try {
     words.setStart(c.firstChild, c.firstChild.length - 'the world.'.length);
     words.setEnd(c.firstChild, c.firstChild.length);
     const [w, b, p] = [words.getBoundingClientRect(), c.getBoundingClientRect(), document.getElementById('clue-more').getBoundingClientRect()];
-    return { inside: w.top >= b.top && w.bottom <= b.bottom, clear: w.bottom <= p.top, faded: c.classList.contains('more'), name: document.getElementById('clue-more').getAttribute('aria-label') };
+    return {
+      inside: w.top >= b.top && w.bottom <= b.bottom,
+      clear: w.bottom <= p.top,
+      faded: c.classList.contains('more'),
+      name: document.getElementById('clue-more').getAttribute('aria-label'),
+    };
   });
   assert(
     (await more.textContent()) === '▲ Top' && end.inside && end.clear && !end.faded && end.name === 'Back to the top of the question',
@@ -712,7 +921,8 @@ try {
   await settled(ann);
   assert((await more.textContent()) === '▼ More', '▲ Top goes back to its start');
   // Part way down: BUZZ! lighting, then a new score, don't fit it again (it stays where the player was, BUZZ! too).
-  const place = () => ann.evaluate(() => [document.getElementById('clue').scrollTop, Object.values(document.getElementById('buzz').getBoundingClientRect().toJSON()).join()]);
+  const place = () =>
+    ann.evaluate(() => [document.getElementById('clue').scrollTop, Object.values(document.getElementById('buzz').getBoundingClientRect().toJSON()).join()]);
   const partWay = await ann.evaluate(() => {
     const c = document.getElementById('clue');
     c.scrollTop = Math.round(c.scrollHeight / 3);
@@ -768,7 +978,12 @@ try {
   const grown = await ann.evaluate(() => {
     const b = document.getElementById('answer-in');
     const s = document.getElementById('answer-send').getBoundingClientRect();
-    return { lines: b.value.split('\n').length, whole: b.scrollHeight <= b.clientHeight + 1, h: Math.round(b.getBoundingClientRect().height), send: s.bottom <= innerHeight && s.top >= 0 };
+    return {
+      lines: b.value.split('\n').length,
+      whole: b.scrollHeight <= b.clientHeight + 1,
+      h: Math.round(b.getBoundingClientRect().height),
+      send: s.bottom <= innerHeight && s.top >= 0,
+    };
   });
   await ann.locator('#answer-send').tap();
   await ann.locator('#answer-state').getByText('✔ Sent').waitFor();
@@ -788,7 +1003,14 @@ try {
   }
   // Multiple choice under it: the line a tap brings (“✔ Sent: B…”) never fits the question again, so the buttons stay
   // under the finger for the next tap.
-  hostState({ answers: { id: 'long2', open: true, seats: [{ id: 'a' }], choices: ['Penicillin', 'Aspirin', 'Insulin', 'Quinine'].map((text, i) => ({ id: `m${i}`, text })) } });
+  hostState({
+    answers: {
+      id: 'long2',
+      open: true,
+      seats: [{ id: 'a' }],
+      choices: ['Penicillin', 'Aspirin', 'Insulin', 'Quinine'].map((text, i) => ({ id: `m${i}`, text })),
+    },
+  });
   const picks = ann.locator('#answer-choices .choice');
   await picks.nth(3).waitFor();
   const pickTops = () =>
@@ -796,7 +1018,9 @@ try {
       () =>
         new Promise((ok) =>
           requestAnimationFrame(() =>
-            requestAnimationFrame(() => ok([...document.querySelectorAll('#answer-choices .choice')].map((b) => Math.round(b.getBoundingClientRect().top)).join())),
+            requestAnimationFrame(() =>
+              ok([...document.querySelectorAll('#answer-choices .choice')].map((b) => Math.round(b.getBoundingClientRect().top)).join()),
+            ),
           ),
         ),
     );
@@ -808,20 +1032,38 @@ try {
   // A question of three lines over four choices on a small phone: smaller, and whole (no ▼ More over its last line).
   await ann.setViewportSize({ width: 320, height: 568 });
   const threeLines = 'Which of these cities\nis the capital\nof Australia?';
-  hostState({ clue: { text: threeLines, caption: 'Geography · $400' }, answers: { id: 'three', open: true, seats: [{ id: 'a' }], choices: ['Sydney', 'Canberra', 'Perth', 'Darwin'].map((text, i) => ({ id: `t${i}`, text })) } });
-  await until(() => ann.locator('#clue').textContent().then((t) => t === threeLines), 'the three-line question');
+  hostState({
+    clue: { text: threeLines, caption: 'Geography · $400' },
+    answers: { id: 'three', open: true, seats: [{ id: 'a' }], choices: ['Sydney', 'Canberra', 'Perth', 'Darwin'].map((text, i) => ({ id: `t${i}`, text })) },
+  });
+  await until(
+    () =>
+      ann
+        .locator('#clue')
+        .textContent()
+        .then((t) => t === threeLines),
+    'the three-line question',
+  );
   const lines3 = await ann.evaluate(
     () =>
       new Promise((ok) =>
         requestAnimationFrame(() =>
           requestAnimationFrame(() => {
             const c = document.getElementById('clue');
-            ok({ fits: c.scrollHeight <= c.clientHeight, more: !document.getElementById('clue-more').hidden, font: parseFloat(getComputedStyle(c).fontSize), room: c.style.getPropertyValue('--clue-room') });
+            ok({
+              fits: c.scrollHeight <= c.clientHeight,
+              more: !document.getElementById('clue-more').hidden,
+              font: parseFloat(getComputedStyle(c).fontSize),
+              room: c.style.getPropertyValue('--clue-room'),
+            });
           }),
         ),
       ),
   );
-  assert(lines3.fits && !lines3.more && lines3.font < 17, `a three-line question over four choices on a 320×568 phone: smaller, and whole, with no ▼ More (${JSON.stringify(lines3)})`);
+  assert(
+    lines3.fits && !lines3.more && lines3.font < 17,
+    `a three-line question over four choices on a 320×568 phone: smaller, and whole, with no ▼ More (${JSON.stringify(lines3)})`,
+  );
   /** Where the box's last button ends (the page at its top), and whether the question shows whole, once drawn. */
   const boxEnd = (sel) =>
     ann.evaluate(
@@ -831,27 +1073,48 @@ try {
           requestAnimationFrame(() =>
             requestAnimationFrame(() => {
               const c = document.getElementById('clue');
-              ok({ bottom: Math.round(document.querySelector(sel).getBoundingClientRect().bottom), whole: c.scrollHeight <= c.clientHeight && document.getElementById('clue-more').hidden });
+              ok({
+                bottom: Math.round(document.querySelector(sel).getBoundingClientRect().bottom),
+                whole: c.scrollHeight <= c.clientHeight && document.getElementById('clue-more').hidden,
+              });
             }),
           );
         }),
       sel,
     );
   // Six choices: tighter, all six on the screen with the question whole.
-  hostState({ answers: { id: 'six', open: true, seats: [{ id: 'a' }], choices: ['Sydney', 'Canberra', 'Perth', 'Darwin', 'Hobart', 'Adelaide'].map((text, i) => ({ id: `s${i}`, text })) } });
+  hostState({
+    answers: {
+      id: 'six',
+      open: true,
+      seats: [{ id: 'a' }],
+      choices: ['Sydney', 'Canberra', 'Perth', 'Darwin', 'Hobart', 'Adelaide'].map((text, i) => ({ id: `s${i}`, text })),
+    },
+  });
   await picks.nth(5).waitFor();
   const six = await boxEnd('#answer-choices .choice:last-child');
-  assert(six.bottom <= 568 && six.whole, `six choices under a three-line question on a 320×568 phone: the sixth is on the screen, the question whole (${JSON.stringify(six)})`);
+  assert(
+    six.bottom <= 568 && six.whole,
+    `six choices under a three-line question on a 320×568 phone: the sixth is on the screen, the question whole (${JSON.stringify(six)})`,
+  );
   // A covered card over the box is small: Send, or the last of four choices, stays on the screen.
-  hostState({ cards: [{ id: 'pc:over:1', to: [{ seat: 'a' }], open: true, title: 'Your part', text: 'x' }], answers: { id: 'over1', open: true, seats: [{ id: 'a' }] } });
+  hostState({
+    cards: [{ id: 'pc:over:1', to: [{ seat: 'a' }], open: true, title: 'Your part', text: 'x' }],
+    answers: { id: 'over1', open: true, seats: [{ id: 'a' }] },
+  });
   await ann.locator('.card-cover').waitFor();
   await ann.locator('#answer-send').waitFor();
   const overSend = await boxEnd('#answer-send');
   await ann.setViewportSize({ width: 360, height: 640 });
-  hostState({ answers: { id: 'over2', open: true, seats: [{ id: 'a' }], choices: ['Sydney', 'Canberra', 'Perth', 'Darwin'].map((text, i) => ({ id: `o${i}`, text })) } });
+  hostState({
+    answers: { id: 'over2', open: true, seats: [{ id: 'a' }], choices: ['Sydney', 'Canberra', 'Perth', 'Darwin'].map((text, i) => ({ id: `o${i}`, text })) },
+  });
   await picks.nth(3).waitFor();
   const overPick = await boxEnd('#answer-choices .choice:last-child');
-  assert(overSend.bottom <= 568 && overPick.bottom <= 640, `a covered card over the box: Send on a 320×568 phone, and the last of four choices on a 360×640 one, stay on the screen (${overSend.bottom}, ${overPick.bottom})`);
+  assert(
+    overSend.bottom <= 568 && overPick.bottom <= 640,
+    `a covered card over the box: Send on a 320×568 phone, and the last of four choices on a 360×640 one, stay on the screen (${overSend.bottom}, ${overPick.bottom})`,
+  );
   hostState({ cards: null, answers: null });
   await ann.locator('.card').waitFor({ state: 'detached' });
   // A shorter question on a bigger phone, with a long link and "A) … B) …" lines: whole, left-aligned, the lines kept.
@@ -859,7 +1122,14 @@ try {
   const quiz =
     'In his notes, kept at https://www.example.com/archive/lab-notes/supercalifragilisticexpialidocious-pneumonoultramicroscopicsilicovolcanoconiosis?page=1928, the scientist wrote down, in his own untidy hand, where he first found the mould that changed medicine for good. Which of these did he find it on?\nA) A dish of bacteria\nB) A slice of bread\nC) An orange';
   hostState({ phase: 'closed', armId: 32, clue: { text: quiz, caption: 'Science · $400' }, answers: null });
-  await until(() => ann.locator('#clue').textContent().then((t) => t === quiz), 'the shorter question');
+  await until(
+    () =>
+      ann
+        .locator('#clue')
+        .textContent()
+        .then((t) => t === quiz),
+    'the shorter question',
+  );
   const whole = await ann.evaluate(() => {
     const c = document.getElementById('clue');
     const line = (s) => {
@@ -891,7 +1161,10 @@ try {
     const c = document.getElementById('clue');
     return { over: c.scrollHeight - c.clientHeight, pill: !document.getElementById('clue-more').hidden, keys: c.tabIndex === 0 };
   });
-  assert(narrow.over > 0 && narrow.pill && narrow.keys, `the question’s column narrower mid-clue: what no longer fits gets ▼ More and the keys (${JSON.stringify(narrow)})`);
+  assert(
+    narrow.over > 0 && narrow.pill && narrow.keys,
+    `the question’s column narrower mid-clue: what no longer fits gets ▼ More and the keys (${JSON.stringify(narrow)})`,
+  );
   await ann.evaluate(() => document.getElementById('clue').parentElement.style.removeProperty('width'));
   // A laptop: Tab goes from the question to ▼ More, and Enter there scrolls it, never buzzes (an early buzz locks).
   await cat.setViewportSize({ width: 900, height: 450 });
@@ -908,13 +1181,24 @@ try {
   const ring = await cat.evaluate(() => {
     const c = document.getElementById('clue');
     const s = getComputedStyle(c);
-    return { on: document.activeElement === c && c.matches(':focus-visible'), more: c.classList.contains('more'), ring: s.outlineStyle, mask: s.maskImage ?? s.webkitMaskImage };
+    return {
+      on: document.activeElement === c && c.matches(':focus-visible'),
+      more: c.classList.contains('more'),
+      ring: s.outlineStyle,
+      mask: s.maskImage ?? s.webkitMaskImage,
+    };
   });
-  assert(ring.on && ring.more && ring.ring === 'solid' && ring.mask === 'none', `the keys on the question show its ring: its bottom edge isn’t faded meanwhile (${JSON.stringify(ring)})`);
+  assert(
+    ring.on && ring.more && ring.ring === 'solid' && ring.mask === 'none',
+    `the keys on the question show its ring: its bottom edge isn’t faded meanwhile (${JSON.stringify(ring)})`,
+  );
   await cat.keyboard.press('Tab');
   await toEnd(cat, () => cat.keyboard.press('Enter'));
   assert(
-    (await cat.locator('#clue-more').textContent()) === '▲ Top' && (await onPill()) && (await big(cat).innerText()) !== 'Too early' && !h.got.slice(heard).some((m) => m.t === 'buzz' && m.seatId === 'c'),
+    (await cat.locator('#clue-more').textContent()) === '▲ Top' &&
+      (await onPill()) &&
+      (await big(cat).innerText()) !== 'Too early' &&
+      !h.got.slice(heard).some((m) => m.t === 'buzz' && m.seatId === 'c'),
     'Enter on ▼ More scrolls the question to its end, where it says ▲ Top with the keys still on it: no buzz, no “Too early”',
   );
   await cat.emulateMedia({ reducedMotion: null });
@@ -939,7 +1223,9 @@ try {
   // Typed, not sent yet: it says so (typing alone sends nothing).
   const typedAnswer = await colour(cat, 'answer-state');
   assert(
-    typedAnswer[0] === 'Not sent yet: click Send answer to send it.' && typedAnswer[1] === 'rgb(255, 210, 122)' && !h.got.some((m) => m.t === 'answer' && m.seatId === 'c'),
+    typedAnswer[0] === 'Not sent yet: click Send answer to send it.' &&
+      typedAnswer[1] === 'rgb(255, 210, 122)' &&
+      !h.got.some((m) => m.t === 'answer' && m.seatId === 'c'),
     `an answer typed but not sent: “Not sent yet…”, in amber (${typedAnswer.join(', ')})`,
   );
   await cat.keyboard.press('Enter');
@@ -980,19 +1266,33 @@ try {
     const b = document.getElementById('buzz');
     return { keys: document.activeElement === b, outline: getComputedStyle(b).outlineStyle };
   });
-  assert(touchRing.keys && touchRing.outline === 'none', `a touch phone: BUZZ! takes the keys as answers lock, with no ring that looks like its lit border (${JSON.stringify(touchRing)})`);
+  assert(
+    touchRing.keys && touchRing.outline === 'none',
+    `a touch phone: BUZZ! takes the keys as answers lock, with no ring that looks like its lit border (${JSON.stringify(touchRing)})`,
+  );
   // The Final: the wager box takes the keys from the card's cover; an amount typed over the one sent says it isn't sent.
   hostState({
     clue: null,
     answers: null,
     status: { text: 'Final Jeopardy! · Space' },
     cards: [spyFor('c'), spyFor('a')],
-    wager: { id: 'fin1', kind: 'final', open: true, seats: [{ id: 'a', max: 1000 }, { id: 'c', max: 1000 }] },
+    wager: {
+      id: 'fin1',
+      kind: 'final',
+      open: true,
+      seats: [
+        { id: 'a', max: 1000 },
+        { id: 'c', max: 1000 },
+      ],
+    },
   });
   await until(() => keysAt(cat).then((k) => k === 'wager-in'), 'the keys in the wager box');
   await cat.keyboard.type('300');
   const typedWager = await colour(cat, 'wager-state');
-  assert(typedWager[0] === 'Not sent yet: click Send wager to send it.' && typedWager[1] === 'rgb(255, 210, 122)', `a wager typed but not sent: “Not sent yet…”, in amber (${typedWager.join(', ')})`);
+  assert(
+    typedWager[0] === 'Not sent yet: click Send wager to send it.' && typedWager[1] === 'rgb(255, 210, 122)',
+    `a wager typed but not sent: “Not sent yet…”, in amber (${typedWager.join(', ')})`,
+  );
   await cat.keyboard.press('Enter');
   await cat.locator('#wager-state').getByText('You can change it until the question shows.', { exact: true }).waitFor();
   await cat.locator('#wager-in').fill('900');
@@ -1004,12 +1304,22 @@ try {
   await cat.locator('#wager-in').fill('300');
   const sentAgain = await colour(cat, 'wager-state');
   assert(
-    sentAgain[0] === 'You can change it until the question shows.' && sentAgain[1] !== 'rgb(255, 210, 122)' && (await cat.locator('#wager-send').innerText()) === '✔ Sent',
+    sentAgain[0] === 'You can change it until the question shows.' &&
+      sentAgain[1] !== 'rgb(255, 210, 122)' &&
+      (await cat.locator('#wager-send').innerText()) === '✔ Sent',
     `the amount sent typed back: the quiet “✔ Sent” again, and the line under it quiet too (${sentAgain.join(', ')})`,
   );
   // The question: the answer box takes the keys from the wager box; Ann (on paper) sees her wager locked over her card.
   hostState({
-    wager: { id: 'fin1', kind: 'final', open: false, seats: [{ id: 'a', max: 1000, amount: 500 }, { id: 'c', max: 1000, amount: 300 }] },
+    wager: {
+      id: 'fin1',
+      kind: 'final',
+      open: false,
+      seats: [
+        { id: 'a', max: 1000, amount: 500 },
+        { id: 'c', max: 1000, amount: 300 },
+      ],
+    },
     clue: { text: 'Name the first man on the Moon' },
     answers: { id: 'fin1a', open: true, seats: [{ id: 'c' }] },
   });
@@ -1034,7 +1344,10 @@ try {
   hostState({ over: true, wager: null, answers: null, clue: null, cards: null, status: undefined });
   await big(ann).getByText('You came 1st').waitFor();
   const came = { live: await ann.locator('#live').textContent(), name: await ann.locator('#buzz').getAttribute('aria-label') };
-  assert(came.live === 'You came 1st with 4,321 🎉.' && came.name === came.live, `the end: “You came 1st with 4,321 🎉.”, one sentence (${JSON.stringify(came)})`);
+  assert(
+    came.live === 'You came 1st with 4,321 🎉.' && came.name === came.live,
+    `the end: “You came 1st with 4,321 🎉.”, one sentence (${JSON.stringify(came)})`,
+  );
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Phone cards E2E passed.');

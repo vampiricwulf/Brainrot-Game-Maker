@@ -144,38 +144,41 @@
   {@const { kind, entry } = notice}
   <!-- (A note of its own for dropped steps: one shown before a window opened is inert under it, and this one is over it.) -->
   {#key kind === 'dropped'}
-  <div
-    class="history-notice note-pill"
-    class:over={kind === 'dropped'}
-    data-over-modal={kind === 'dropped' || undefined}
-    data-tab-over-modal={kind === 'dropped' || undefined}
-    use:giveBack
-    role="region"
-    aria-label="Last change"
-    title={kind === 'dropped' ? 'A new change drops the steps you undid (↷): Undo takes it back and brings them back (over a window, Shift+Tab reaches it)' : [entry.label, entry.where].filter(Boolean).join(' · ')}
-  >
-    <span class="text">
+    <div
+      class="history-notice note-pill"
+      class:over={kind === 'dropped'}
+      data-over-modal={kind === 'dropped' || undefined}
+      data-tab-over-modal={kind === 'dropped' || undefined}
+      use:giveBack
+      role="region"
+      aria-label="Last change"
+      title={kind === 'dropped'
+        ? 'A new change drops the steps you undid (↷): Undo takes it back and brings them back (over a window, Shift+Tab reaches it)'
+        : [entry.label, entry.where].filter(Boolean).join(' · ')}
+    >
+      <span class="text">
+        {#if kind === 'dropped'}
+          {#if notice.named}{entry.label} ·{/if}
+          {notice.named ? 'dropped' : 'Dropped'}
+          {notice.count} undone {notice.count === 1 ? 'step' : 'steps'}
+        {:else if kind === 'made'}
+          {entry.label}
+        {:else}
+          {kind === 'undid' ? '↶ Undid' : '↷ Redid'} <b>{entry.label}</b>
+        {/if}
+        {#if entry.where && kind !== 'dropped'}<span class="muted">· {entry.where}</span>{/if}
+      </span>
       {#if kind === 'dropped'}
-        {#if notice.named}{entry.label} ·{/if}
-        {notice.named ? 'dropped' : 'Dropped'} {notice.count} undone {notice.count === 1 ? 'step' : 'steps'}
-      {:else if kind === 'made'}
-        {entry.label}
+        <button class="small" onclick={bringBack} data-bring-back>↶ Undo</button>
+      {:else if kind === 'undid'}
+        <button class="small" onclick={() => redo('button')}>↷ Redo</button>
+      {:else if kind === 'redid'}
+        <button class="small" onclick={() => undo('button')}>↶ Undo</button>
       {:else}
-        {kind === 'undid' ? '↶ Undid' : '↷ Redid'} <b>{entry.label}</b>
+        <button class="small" onclick={undoMade}>↶ Undo</button>
       {/if}
-      {#if entry.where && kind !== 'dropped'}<span class="muted">· {entry.where}</span>{/if}
-    </span>
-    {#if kind === 'dropped'}
-      <button class="small" onclick={bringBack} data-bring-back>↶ Undo</button>
-    {:else if kind === 'undid'}
-      <button class="small" onclick={() => redo('button')}>↷ Redo</button>
-    {:else if kind === 'redid'}
-      <button class="small" onclick={() => undo('button')}>↶ Undo</button>
-    {:else}
-      <button class="small" onclick={undoMade}>↶ Undo</button>
-    {/if}
-    <button class="small ghost" onclick={showHistory} title="Every change to this game">🕘 History</button>
-  </div>
+      <button class="small ghost" onclick={showHistory} title="Every change to this game">🕘 History</button>
+    </div>
   {/key}
 {/if}
 

@@ -53,17 +53,15 @@ export function wareMenu(game: Game, session: Session, o: ShopOverlay, selected:
   const out = left !== null && left <= 0;
   return [
     { heading: `${def.name} · ${formatPrice(game, shop, shopPrice(game, shop, item))}${left === null ? '' : out ? ' · sold out' : ` · ${left} left`}` },
-    ...session.players.map(
-      (p): MenuEntry => ({
-        label: `🛒 Buy for ${p.name}`,
-        disabled: out,
-        onclick: () => {
-          o.buyer = p.id;
-          o.short = undefined;
-          shopBuy(game, session, o, selected, item);
-        },
-      }),
-    ),
+    ...session.players.map((p): MenuEntry => ({
+      label: `🛒 Buy for ${p.name}`,
+      disabled: out,
+      onclick: () => {
+        o.buyer = p.id;
+        o.short = undefined;
+        shopBuy(game, session, o, selected, item);
+      },
+    })),
     { sep: true },
     { label: '📦 Change the stock…', hint: 'How many are left (blank: unlimited), asked in the shop’s box', onclick: stock },
   ];

@@ -44,7 +44,10 @@
     void tick().then(() => {
       const a = document.activeElement;
       if (!had || (a && a !== document.body)) return;
-      const to = note?.querySelector<HTMLElement>('[data-stop]') ?? note?.querySelector<HTMLElement>('button') ?? document.querySelector<HTMLElement>('.editor nav [aria-current="page"]');
+      const to =
+        note?.querySelector<HTMLElement>('[data-stop]') ??
+        note?.querySelector<HTMLElement>('button') ??
+        document.querySelector<HTMLElement>('.editor nav [aria-current="page"]');
       had = !!note && !!to && note.contains(to);
       to?.focus();
     });
@@ -68,13 +71,23 @@
       <button class="small ghost" onclick={() => stopJob(job.id)} title="Stop it: nothing is changed" data-stop>Stop</button>
     {:else if fix}
       {#if isLossless(fix)}
-        <button class="small primary" onclick={() => queueConvert(game, m.id)} title="Put a copy that plays here in its place, everywhere it's used (Ctrl+Z puts the old one back)"
+        <button
+          class="small primary"
+          onclick={() => queueConvert(game, m.id)}
+          title="Put a copy that plays here in its place, everywhere it's used (Ctrl+Z puts the old one back)"
           >{fix.audio === 'drop' ? '🔄 Convert it without its sound (quick)' : '🔄 Convert it (quick, nothing lost)'}</button
         >
       {:else}
-        <button class="small primary" onclick={() => openMediaDialog({ mode: 'convert', ids: [m.id] })} title="See what converting it takes first">🔄 Convert it…</button>
+        <button class="small primary" onclick={() => openMediaDialog({ mode: 'convert', ids: [m.id] })} title="See what converting it takes first"
+          >🔄 Convert it…</button
+        >
       {/if}
-      <button class="small ghost notice-x" onclick={() => dismissOffer(m.id)} aria-label="Keep it as it is" title="Keep it as it is: this note goes (🖼 Media can still convert it)">✕</button>
+      <button
+        class="small ghost notice-x"
+        onclick={() => dismissOffer(m.id)}
+        aria-label="Keep it as it is"
+        title="Keep it as it is: this note goes (🖼 Media can still convert it)">✕</button
+      >
     {:else}
       <button class="small ghost notice-x" onclick={() => dismissOffer(m.id)} aria-label="OK" title="OK: this note goes (🖼 Media still says it)">✕</button>
     {/if}

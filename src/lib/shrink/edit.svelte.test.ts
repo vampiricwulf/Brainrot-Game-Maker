@@ -33,11 +33,15 @@ const CLIP: MediaFacts = {
 vi.mock('../app.svelte', async (orig) => ({ ...(await orig<typeof import('../app.svelte')>()), toast: vi.fn() }));
 vi.mock('../nav.svelte', async (orig) => ({ ...(await orig<typeof import('../nav.svelte')>()), flash: vi.fn() }));
 vi.mock('./facts', async (orig) => ({ ...(await orig<typeof import('./facts')>()), readFacts: async () => CLIP }));
-vi.mock('./probe', async (orig) => ({ ...(await orig<typeof import('./probe')>()), probe: async () => ({ ok: true, aac: false, opus: true }), encodersFor: async () => ({ avc: false, vp9: true, vp8: true }) }));
+vi.mock('./probe', async (orig) => ({
+  ...(await orig<typeof import('./probe')>()),
+  probe: async () => ({ ok: true, aac: false, opus: true }),
+  encodersFor: async () => ({ avc: false, vp9: true, vp8: true }),
+}));
 vi.mock('./run', async (orig) => ({ ...(await orig<typeof import('./run')>()), checkMade: vi.fn(async () => null), convertBlob: vi.fn() }));
 vi.mock('../desktop.svelte', async (orig) => ({
   ...(await orig<typeof import('../desktop.svelte')>()),
-  whileWriting: async <T,>(fn: () => Promise<T>): Promise<T> => {
+  whileWriting: async <T>(fn: () => Promise<T>): Promise<T> => {
     const r = await fn();
     at.stored?.();
     return r;
@@ -59,7 +63,8 @@ const plan = (e: Partial<FileEdit>, key: number | null = 1): EditPlan & EditExtr
 };
 const labels = () => history.entries.map((e) => e.label).filter((l) => /^(Trimmed|Edited|Saved an edited)/.test(l ?? ''));
 const ended = (id: string) => vi.waitFor(() => expect(jobs.ended[id]).toBeDefined(), { timeout: 5000 });
-const made = (size = 600, mime = 'video/webm') => vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(size)], { type: mime }), mime, seconds: 1.5, width: 720, height: 720 });
+const made = (size = 600, mime = 'video/webm') =>
+  vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(size)], { type: mime }), mime, seconds: 1.5, width: 720, height: 720 });
 const times = (el: VideoEl) => [el.media, el.startAt, el.endAt];
 
 beforeEach(() => {
@@ -135,7 +140,12 @@ describe('✎ an edit put in the file’s place', () => {
     expect([...heldMedia()].filter((id) => id === to || id === 'clip').sort()).toEqual([to, 'clip'].sort());
     undo();
     const [a, b, c] = now();
-    expect([times(a), times(b), times(c), [a.w, a.h]]).toEqual([['clip', 1.5, 2], ['clip', 0.2, 0.6], ['clip', undefined, undefined], [1280, 720]]);
+    expect([times(a), times(b), times(c), [a.w, a.h]]).toEqual([
+      ['clip', 1.5, 2],
+      ['clip', 0.2, 0.6],
+      ['clip', undefined, undefined],
+      [1280, 720],
+    ]);
     expect(g.media.map((m) => m.id)).toEqual(['clip', 'clipc']);
     redo();
     expect([now()[0].media, now()[0].startAt, g.media.map((m) => m.id)]).toEqual([to, 0.5, [to]]);
@@ -147,17 +157,28 @@ describe('✎ an edit put in the file’s place', () => {
     now()[0].startAt = 0.5;
     const job = queueFileEdit(g, 'clip', plan({ start: 1, end: 3 }), 'all')!;
     await ended(job);
-    expect((jobs.ended[job] as { done: string }).done).toMatch(/ 1 slide item played a part you cut out: it plays the whole clip now\. 1 slide item loses the part you cut off\.$/);
+    expect((jobs.ended[job] as { done: string }).done).toMatch(
+      / 1 slide item played a part you cut out: it plays the whole clip now\. 1 slide item loses the part you cut off\.$/,
+    );
   });
 
   it('a sound trimmed says so', async () => {
     g.media[0] = { id: 'clip', name: 'Tone.wav', mime: 'audio/wav', size: 900, kind: 'audio' };
     made(500, 'audio/wav');
-    const p = planEdit({ ...CLIP, box: 'wav', video: null, audio: { ...track, codec: 'pcm-s16', channels: 1, label: null } }, { ...noEdit(CLIP), start: 1, end: 2.5 }, CAN, VP, null, 'audio');
+    const p = planEdit(
+      { ...CLIP, box: 'wav', video: null, audio: { ...track, codec: 'pcm-s16', channels: 1, label: null } },
+      { ...noEdit(CLIP), start: 1, end: 2.5 },
+      CAN,
+      VP,
+      null,
+      'audio',
+    );
     if ('refuse' in p) throw new Error(p.refuse);
     const job = queueFileEdit(g, 'clip', p, 'all')!;
     await ended(job);
-    expect((jobs.ended[job] as { done: string }).done).toBe('✂ Sound trimmed: 1.5 s, 500 B (was 900 B). Ctrl+Z puts the old one back. 1 slide item played a part you cut out: it plays the whole clip now.');
+    expect((jobs.ended[job] as { done: string }).done).toBe(
+      '✂ Sound trimmed: 1.5 s, 500 B (was 900 B). Ctrl+Z puts the old one back. 1 slide item played a part you cut out: it plays the whole clip now.',
+    );
     expect(labels()).toEqual(['Trimmed a sound to 0:01–0:03']);
   });
 });
@@ -243,7 +264,14 @@ describe('✎ when it can’t go in', () => {
   it('a sound that can’t be cut there as it is (and this browser can’t make its kind) says so, never a video’s size', async () => {
     g.media[0] = { id: 'clip', name: 'Memo.mp3', mime: 'audio/mpeg', size: 900, kind: 'audio' };
     vi.mocked(convertBlob).mockRejectedValueOnce(new RunError('no-encoder'));
-    const p = planEdit({ ...CLIP, box: 'mp3', video: null, audio: { ...track, codec: 'mp3', channels: 1, label: null } }, { ...noEdit(CLIP), start: 1, end: 3 }, CAN, VP, null, 'audio');
+    const p = planEdit(
+      { ...CLIP, box: 'mp3', video: null, audio: { ...track, codec: 'mp3', channels: 1, label: null } },
+      { ...noEdit(CLIP), start: 1, end: 3 },
+      CAN,
+      VP,
+      null,
+      'audio',
+    );
     if ('refuse' in p) throw new Error(p.refuse);
     const job = queueFileEdit(g, 'clip', p, 'all')!;
     await ended(job);
@@ -256,7 +284,11 @@ describe('✎ when it can’t go in', () => {
     const job = queueFileEdit(g, 'clip', plan({ end: 3 }), 'all', undefined, true)!;
     await ended(job);
     // (This one would hardly be smaller: 🗜 says so, naming nothing.)
-    await vi.waitFor(() => expect(vi.mocked(toast).mock.calls.map((c) => c[0])).toContain('🗜 Its copy for phones wasn’t made again: a copy of it wouldn’t be much smaller: nothing was changed.'));
+    await vi.waitFor(() =>
+      expect(vi.mocked(toast).mock.calls.map((c) => c[0])).toContain(
+        '🗜 Its copy for phones wasn’t made again: a copy of it wouldn’t be much smaller: nothing was changed.',
+      ),
+    );
   });
 
   it('a file that didn’t come out right isn’t put in: nothing is stored or changed', async () => {
@@ -305,7 +337,11 @@ describe('✎ never joining a step made meanwhile, and never put in over other b
     g.title = 'Dragged';
     at.release!();
     await new Promise((ok) => setTimeout(ok, 400));
-    expect([jobs.list.map((j) => [j.id, j.phase]), Object.keys(mediaUrls).length, g.media.map((m) => m.id)]).toEqual([[[job, 'checking']], files, ['clip', 'clipc']]);
+    expect([jobs.list.map((j) => [j.id, j.phase]), Object.keys(mediaUrls).length, g.media.map((m) => m.id)]).toEqual([
+      [[job, 'checking']],
+      files,
+      ['clip', 'clipc'],
+    ]);
     end();
     await ended(job);
     expect(history.entries.map((e) => e.label)).toEqual(['Renamed the game “Dragged”', 'Trimmed a video to 0:01–0:03']);

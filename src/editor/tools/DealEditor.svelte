@@ -41,7 +41,10 @@
   function duplicate(i: number): void {
     const p = deal.parts[i];
     if (!p || deal.parts.length >= DEAL_PARTS_MAX) return;
-    const copy = copyDealPart(p, deal.parts.map((x) => x.name));
+    const copy = copyDealPart(
+      p,
+      deal.parts.map((x) => x.name),
+    );
     step(`Duplicated part “${partName(p, i)}”`, () => deal.parts.splice(i + 1, 0, copy));
     focusName(copy.id);
   }
@@ -113,16 +116,17 @@
     step(`“${deal.name}” draws from ${game.wheels.find((w) => w.id === id)?.name ?? 'no wheel'}`, () => (deal.wheel = id || undefined));
   }
   function setPerTeam(on: boolean): void {
-    step(on ? `“${deal.name}” is dealt within each team` : `“${deal.name}” is dealt to everyone together`, () => (on ? (deal.perTeam = true) : delete deal.perTeam));
+    step(on ? `“${deal.name}” is dealt within each team` : `“${deal.name}” is dealt to everyone together`, () =>
+      on ? (deal.perTeam = true) : delete deal.perTeam,
+    );
   }
 </script>
 
 <div class="de" data-deal-editor>
   <label class="field">Deal name<input bind:value={deal.name} /></label>
   <p class="muted small">
-    Secret parts for everyone: in play, <b>🎭 Deal…</b> in the tools row gives each player one part, at random (or as you
-    choose, with the audience window open), and each part's 🤫 card goes to its players' phones only when you send it.
-    Afterwards <b>🎭 Show who was who</b> shows everyone's part on screen.
+    Secret parts for everyone: in play, <b>🎭 Deal…</b> in the tools row gives each player one part, at random (or as you choose, with the audience window
+    open), and each part's 🤫 card goes to its players' phones only when you send it. Afterwards <b>🎭 Show who was who</b> shows everyone's part on screen.
   </p>
 
   <div class="parts" role="list" aria-label="Parts" bind:this={partsEl}>
@@ -137,7 +141,10 @@
         data-part={part.id}
         ondragover={(e) => rows.over(e, part.id)}
         ondrop={(e) => {
-          const m = rows.drop(e, deal.parts.map((x) => x.id));
+          const m = rows.drop(
+            e,
+            deal.parts.map((x) => x.id),
+          );
           if (m) move(m.from, m.to);
         }}
         oncontextmenu={(e) => partMenu(e, i)}
@@ -163,40 +170,77 @@
             onkeydown={(e) => nameKey(e, i)}
           />
           <label class="inline"
-            >How many get it<select aria-label="How many get {partName(part, i)}" value={String(part.count)} onchange={(e) => setCount(part, i, e.currentTarget.value)}>
+            >How many get it<select
+              aria-label="How many get {partName(part, i)}"
+              value={String(part.count)}
+              onchange={(e) => setCount(part, i, e.currentTarget.value)}
+            >
               {#each COUNTS as n (n)}<option value={String(n)}>{countText(n)}</option>{/each}
               <option value="rest">{countText('rest')}</option>
             </select></label
           >
-          <RowTools menu={() => partItems(i)} name={partName(part, i)} remove={() => remove(i)} deleteLabel="Delete {partName(part, i)}" off={deal.parts.length < 2 ? 'A deal needs a part' : undefined} />
+          <RowTools
+            menu={() => partItems(i)}
+            name={partName(part, i)}
+            remove={() => remove(i)}
+            deleteLabel="Delete {partName(part, i)}"
+            off={deal.parts.length < 2 ? 'A deal needs a part' : undefined}
+          />
         </div>
         <div class="row">
-          <input class="grow" value={slideText(part.card)} placeholder="What its card says (only its players see it)" aria-label="{partName(part, i)}’s card words" oninput={(e) => setSlideText(part.card, e.currentTarget.value)} />
-          <button class="small" onclick={() => (editing = part)} title="Pictures, videos, sounds, links: on their phones under the words. 📱 On their phone shows the card as they get it">Edit card…</button>
+          <input
+            class="grow"
+            value={slideText(part.card)}
+            placeholder="What its card says (only its players see it)"
+            aria-label="{partName(part, i)}’s card words"
+            oninput={(e) => setSlideText(part.card, e.currentTarget.value)}
+          />
+          <button
+            class="small"
+            onclick={() => (editing = part)}
+            title="Pictures, videos, sounds, links: on their phones under the words. 📱 On their phone shows the card as they get it">Edit card…</button
+          >
           <label class="inline"
-            >Their card also shows<select aria-label="{partName(part, i)}’s card draws from the wheel" value={part.draw ?? ''} onchange={(e) => setDraw(part, i, e.currentTarget.value)}>
+            >Their card also shows<select
+              aria-label="{partName(part, i)}’s card draws from the wheel"
+              value={part.draw ?? ''}
+              onchange={(e) => setDraw(part, i, e.currentTarget.value)}
+            >
               <option value="">nothing more</option>
               <option value="shared">a wheel slice everyone shares</option>
               <option value="own">a wheel slice of their own</option>
             </select></label
           >
         </div>
-        <div class="muted small">Card: {cardSummary(game, part.card)}{part.draw === 'shared' ? ', then the slice drawn for everyone who shares it' : part.draw === 'own' ? ', then their own slice of the wheel' : ''}</div>
+        <div class="muted small"
+          >Card: {cardSummary(game, part.card)}{part.draw === 'shared'
+            ? ', then the slice drawn for everyone who shares it'
+            : part.draw === 'own'
+              ? ', then their own slice of the wheel'
+              : ''}</div
+        >
       </div>
     {/each}
   </div>
   {#if deal.parts.length < DEAL_PARTS_MAX}<div class="row"><button onclick={() => add()}>＋ Add part</button></div>{/if}
 
   {#if draws}
-    <label class="field">🎡 Wheel its cards draw from
+    <label class="field"
+      >🎡 Wheel its cards draw from
       <select bind:this={wheelEl} value={deal.wheel ?? ''} onchange={(e) => setWheel(e.currentTarget.value)}>
         <option value="">Choose a saved wheel…</option>
         {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
       </select>
     </label>
-    <p class="muted small">“A wheel slice everyone shares” is drawn once for the deal (🕵 the location everyone but the spy knows); “a wheel slice of their own” gives each player their own (🧠 a prompt each), none twice while there are enough.</p>
+    <p class="muted small"
+      >“A wheel slice everyone shares” is drawn once for the deal (🕵 the location everyone but the spy knows); “a wheel slice of their own” gives each player
+      their own (🧠 a prompt each), none twice while there are enough.</p
+    >
   {/if}
-  <label class="check"><input type="checkbox" checked={!!deal.perTeam} onchange={(e) => setPerTeam(e.currentTarget.checked)} /> Teams: deal within each team, to the people on it (a captain for each team)</label>
+  <label class="check"
+    ><input type="checkbox" checked={!!deal.perTeam} onchange={(e) => setPerTeam(e.currentTarget.checked)} /> Teams: deal within each team, to the people on it (a
+    captain for each team)</label
+  >
 
   {#each problems as p (p)}<p class="warn small" role="status">⚠ This deal: {p}</p>{/each}
 </div>

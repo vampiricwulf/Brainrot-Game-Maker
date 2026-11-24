@@ -9,7 +9,38 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored, revealAnyway, failureShots, assert, launchChromium, until, awardRowIn, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, stageBoxIn, statusBarIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  addPlayers,
+  answerReplace,
+  checkItem,
+  exportHtml,
+  flowIs,
+  goOnCheck,
+  mainButton,
+  openBuzzerOptions,
+  openRules,
+  playWithPlayers,
+  quick,
+  leaveAnswer,
+  stored,
+  revealAnyway,
+  failureShots,
+  assert,
+  launchChromium,
+  until,
+  awardRowIn,
+  boardIn,
+  boardTilesIn,
+  finalControlsIn,
+  hostPanelIn,
+  playerRowsIn,
+  stageBoxIn,
+  statusBarIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -64,7 +95,15 @@ await context.addInitScript(() => {
         }
         this.readyState = 1;
         this.onopen?.({});
-        this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: url.match(/\/ws\/(\w+)/)?.[1] ?? 'BCDF', protocol: 1, serverNow: Date.now(), ...(room.features ? { features: room.features } : {}) }) });
+        this.onmessage?.({
+          data: JSON.stringify({
+            t: 'welcome',
+            code: url.match(/\/ws\/(\w+)/)?.[1] ?? 'BCDF',
+            protocol: 1,
+            serverNow: Date.now(),
+            ...(room.features ? { features: room.features } : {}),
+          }),
+        });
       }, 20);
     }
     send(d) {
@@ -98,7 +137,8 @@ const state = () => page.evaluate(() => window.__state());
 const sent = () => page.evaluate(() => window.__room.sent);
 const say = (m) => page.evaluate((m) => window.__say(m), m);
 /** Wait until the last state sent to the room matches. */
-const stateIs = (fn, arg) => page.waitForFunction(([src, arg]) => new Function('s', 'arg', `return (${src})(s, arg)`)(window.__state(), arg), [fn.toString(), arg]);
+const stateIs = (fn, arg) =>
+  page.waitForFunction(([src, arg]) => new Function('s', 'arg', `return (${src})(s, arg)`)(window.__state(), arg), [fn.toString(), arg]);
 const pressed = () => playerRowsIn(page).locator('.sel[aria-pressed="true"]').allInnerTexts();
 
 try {
@@ -115,7 +155,10 @@ try {
   await settings.getByLabel('Buzzer server').fill('buzz.test');
   await settings.getByLabel('Buzzer server').press('Tab');
   await page.waitForFunction(() => document.querySelector('input[aria-label="Buzzer server"]').value === 'https://buzz.test');
-  assert((await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).buzzerServer)) === 'https://buzz.test', 'an address typed without https:// is saved with it, and the box shows it');
+  assert(
+    (await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).buzzerServer)) === 'https://buzz.test',
+    'an address typed without https:// is saved with it, and the box shows it',
+  );
   await settings.getByRole('button', { name: 'Test' }).click();
   await settings.getByText('✔ The buzzer server is answering').waitFor();
   assert((await page.evaluate(() => window.__room.health)) === 1, 'Test asks the server’s /api/health');
@@ -129,7 +172,8 @@ try {
   const failed = settings.getByText(/^✘ Nothing answered at/);
   await failed.waitFor();
   assert(
-    (await failed.innerText()) === '✘ Nothing answered at https://nowhere.invalid. Check the address (the one Cloudflare shows for your buzzer server) and that you’re online.',
+    (await failed.innerText()) ===
+      '✘ Nothing answered at https://nowhere.invalid. Check the address (the one Cloudflare shows for your buzzer server) and that you’re online.',
     `a failed Test says where it asked and what to check (${await failed.innerText()})`,
   );
   for (const at of ['top', 'end']) {
@@ -138,7 +182,12 @@ try {
       const box = d.getBoundingClientRect();
       return [...d.querySelectorAll(':scope > .modal-foot button')].every((b) => {
         const r = b.getBoundingClientRect();
-        return r.height > 0 && r.top >= box.top && r.bottom <= box.bottom && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('button') === b;
+        return (
+          r.height > 0 &&
+          r.top >= box.top &&
+          r.bottom <= box.bottom &&
+          document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('button') === b
+        );
       });
     });
     const scrolls = await settings.evaluate((d) => d.scrollHeight > d.clientHeight);
@@ -150,7 +199,10 @@ try {
     await settings.getByRole('button', { name: 'Back to the defaults…' }).click();
     const q = settings.locator('.reset-ask');
     const text = await q.innerText();
-    const [qw, fw] = await settings.evaluate((d) => [d.querySelector('.reset-ask').getBoundingClientRect().width, d.querySelector('.modal-foot').getBoundingClientRect().width]);
+    const [qw, fw] = await settings.evaluate((d) => [
+      d.querySelector('.reset-ask').getBoundingClientRect().width,
+      d.querySelector('.modal-foot').getBoundingClientRect().width,
+    ]);
     assert(
       text.includes('Put every setting here back? The buzzer server address is cleared.') && !text.includes('built-in') && qw > fw * 0.6,
       `Back to the defaults… says the buzzer server address is cleared (no built-in one here), across the foot (${Math.round(qw)} of ${Math.round(fw)}px)`,
@@ -184,12 +236,18 @@ try {
   // ---------- Pre-game: players; 📋 Game rules has no buzzer options (they're on the 📱 Phone buzzers card) ----------
   await playWithPlayers(page, 3);
   const rules = await openRules(page);
-  assert((await rules.getByLabel(/Buzzer mode/).count()) === 0 && (await rules.getByLabel('Open the buzzers').count()) === 0, '📋 Game rules has no buzzer options');
+  assert(
+    (await rules.getByLabel(/Buzzer mode/).count()) === 0 && (await rules.getByLabel('Open the buzzers').count()) === 0,
+    '📋 Game rules has no buzzer options',
+  );
 
   // ---------- Pre-game: Buzzer mode, its options, start the room ----------
   const card = page.getByRole('region', { name: 'Phone buzzers' });
   await card.waitFor();
-  assert((await card.getByLabel('Open the buzzers').count()) === 0 && (await card.getByRole('button', { name: '▶ Start the room' }).count()) === 0, 'with Buzzer mode off the card only offers to turn it on');
+  assert(
+    (await card.getByLabel('Open the buzzers').count()) === 0 && (await card.getByRole('button', { name: '▶ Start the room' }).count()) === 0,
+    'with Buzzer mode off the card only offers to turn it on',
+  );
   await card.getByLabel(/Buzzer mode/).check();
   // In the order it's used: the tick box, ▶ Start the room right under it, then the options folded, what's set on its line.
   const optionsFold = card.locator('[data-buzzer-options]');
@@ -223,13 +281,22 @@ try {
   {
     const code = await card.getByLabel('Room code BCDF').boundingBox();
     const bar = await page.locator('.pregame .actions').boundingBox();
-    assert(code.y >= 0 && code.y + code.height <= bar.y, `at 1280×720 the room code scrolls into sight above the Start bar (${Math.round(code.y)}–${Math.round(code.y + code.height)}, the bar at ${Math.round(bar.y)})`);
-    assert((await page.locator('.actions .room-note').innerText()).includes('Room BCDF · 0 of 3 joined'), 'and the Start bar shows the code and who has joined');
+    assert(
+      code.y >= 0 && code.y + code.height <= bar.y,
+      `at 1280×720 the room code scrolls into sight above the Start bar (${Math.round(code.y)}–${Math.round(code.y + code.height)}, the bar at ${Math.round(bar.y)})`,
+    );
+    assert(
+      (await page.locator('.actions .room-note').innerText()).includes('Room BCDF · 0 of 3 joined'),
+      'and the Start bar shows the code and who has joined',
+    );
     // Each 👥 row says how its phone is, in its name chip's place: the row keeps its one line at 1280.
     const words = await page.locator('.pregame [data-phone-word]').allInnerTexts();
     const nameBox = await page.getByLabel('Player 1 name').boundingBox();
     const del = await page.getByRole('button', { name: 'Delete Player 1' }).boundingBox();
-    assert(words.join('|') === '📱 waiting|📱 waiting|📱 waiting' && del.y < nameBox.y + nameBox.height, `with the room up each 👥 row says how its phone is (${words.join(', ')}), on its one line at 1280`);
+    assert(
+      words.join('|') === '📱 waiting|📱 waiting|📱 waiting' && del.y < nameBox.y + nameBox.height,
+      `with the room up each 👥 row says how its phone is (${words.join(', ')}), on its one line at 1280`,
+    );
   }
   await page.setViewportSize({ width: 1400, height: 900 });
   assert((await page.evaluate(() => window.__room.posts)) === 2, 'Start the room asks the server for a room');
@@ -254,7 +321,8 @@ try {
   const barLine = page.locator('.actions [data-room-line]');
   await barLine.getByText('Zed wants to join').waitFor();
   assert(
-    (await barLine.getByRole('button', { name: '✔ Add' }).count()) === 1 && (await barLine.getByRole('button', { name: 'Turn Zed away' }).innerText()) === '✕ No',
+    (await barLine.getByRole('button', { name: '✔ Add' }).count()) === 1 &&
+      (await barLine.getByRole('button', { name: 'Turn Zed away' }).innerText()) === '✕ No',
     'the Start bar says “📱 Zed wants to join [✔ Add] [✕ No]”',
   );
   // Two asking: the bar says how many, and Show ↓ takes the keys to the card's list of them.
@@ -267,7 +335,10 @@ try {
   assert(true, 'two asking: the bar says “📱 2 want to join [Show ↓]”, and Show ↓ takes the keys to the card’s list');
   await say({ t: 'phones', phones: [c1, zedAsks] });
   await barLine.getByText('Zed wants to join').waitFor();
-  assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF open: 1 of 3 joined' }).count()) === 1, '✅ Before you start ticks the room off once a phone has joined');
+  assert(
+    (await page.locator('.live-check li.done', { hasText: 'Room BCDF open: 1 of 3 joined' }).count()) === 1,
+    '✅ Before you start ticks the room off once a phone has joined',
+  );
   assert((await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('📱 in'), 'a joined player shows 📱 in (the 👥 rows’ word)');
   assert((await page.locator('.pregame [data-phone-word]').allInnerTexts()).join('|') === '📱 in|📱 waiting|📱 waiting', 'and their 👥 row says 📱 in');
   // A 📱 row opens the 👥 row's menu (the same one), and F2 there renames them.
@@ -275,7 +346,10 @@ try {
   const rowMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0].trim());
   // (The 👥 row's menu, in the editors' one order: what they're set to, ✎ Rename, the moves, then 🗑 Delete.)
   const rowOrder = ['🎨 Color…', '🖼 Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player'];
-  assert(rowMenu.length === rowOrder.length && rowOrder.every((x, i) => rowMenu[i].startsWith(x)), `right-click a player's 📱 row: their menu (${rowMenu.join(', ')})`);
+  assert(
+    rowMenu.length === rowOrder.length && rowOrder.every((x, i) => rowMenu[i].startsWith(x)),
+    `right-click a player's 📱 row: their menu (${rowMenu.join(', ')})`,
+  );
   await page.keyboard.press('Escape');
   await page.getByRole('menu').waitFor({ state: 'detached' });
   assert((await card.locator('li', { hasText: 'Player 2' }).innerText()).includes('📱 waiting'), 'the others are 📱 waiting');
@@ -286,10 +360,16 @@ try {
     window.__drop();
   });
   await card.getByText('⚠ Reconnecting to the buzzer room…').waitFor();
-  assert((await page.locator('.actions .room-note').innerText()).includes('Room BCDF · ⚠ reconnecting'), 'reconnecting: the Start bar says so instead of “1 of 3 joined”');
+  assert(
+    (await page.locator('.actions .room-note').innerText()).includes('Room BCDF · ⚠ reconnecting'),
+    'reconnecting: the Start bar says so instead of “1 of 3 joined”',
+  );
   assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF' }).count()) === 0, '✅ Before you start no longer ticks the room off');
   assert(!(await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('📱 in'), 'and Player 1 isn’t shown as 📱 in from the stale list');
-  assert((await page.locator('.pregame [data-phone-word]').allInnerTexts()).every((w) => w === '📱 out of reach'), 'and the 👥 rows say 📱 out of reach');
+  assert(
+    (await page.locator('.pregame [data-phone-word]').allInnerTexts()).every((w) => w === '📱 out of reach'),
+    'and the 👥 rows say 📱 out of reach',
+  );
   const p2Row = await card.locator('li', { hasText: 'Player 2' }).innerText();
   assert(p2Row.includes('📱 out of reach') && !p2Row.includes('waiting'), 'nor Player 2 as waiting for a phone: the room is out of reach');
   assert(
@@ -305,7 +385,10 @@ try {
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'accept'));
   const all = await sent();
   const accept = all.find((m) => m.t === 'accept');
-  const before = all.slice(0, all.indexOf(accept)).reverse().find((m) => m.t === 'state').state;
+  const before = all
+    .slice(0, all.indexOf(accept))
+    .reverse()
+    .find((m) => m.t === 'state').state;
   const zed = before.seats.find((s) => s.name === 'Zed');
   assert(zed && accept.conn === 'c9' && accept.seatId === zed.id, 'Add makes Zed a player, tells the room the seat, then accepts the phone');
   assert((await page.locator('.pregame input.name').count()) === 4, 'Zed is in the player list');
@@ -328,19 +411,25 @@ try {
   await aud.locator('.lineup li').nth(3).waitFor();
   const soonBox = await aud.locator('.soon').boundingBox();
   const stageBox = await aud.locator('.title-card').boundingBox();
-  assert(soonBox.y >= stageBox.y - 1 && soonBox.y + soonBox.height <= stageBox.y + stageBox.height + 1, `the card's lineup, code and QR code all fit on the stage (${Math.round(soonBox.height)} of ${Math.round(stageBox.height)} px)`);
+  assert(
+    soonBox.y >= stageBox.y - 1 && soonBox.y + soonBox.height <= stageBox.y + stageBox.height + 1,
+    `the card's lineup, code and QR code all fit on the stage (${Math.round(soonBox.height)} of ${Math.round(stageBox.height)} px)`,
+  );
   await shot('rb-2-soon', aud);
 
   // ---------- A clue: the host opens the buzzers, a phone buzzes ----------
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await stateIs((s) => s.phase === 'lobby');
-  await boardTilesIn(boardIn(stageBoxIn(page))).first().click();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .first()
+    .click();
   await stateIs((s) => s.phase === 'closed' && !!s.clue);
   const closed = await state();
   assert(closed.clue.caption.includes('$200'), `the room gets the clue's caption (${closed.clue.caption})`);
   assert(
-    (await hostPanelIn(page).locator('[data-buzzrow] button.ring[data-box="buzzers"]', { hasText: '🔔 Open the buzzers' }).isVisible()) && (await flowIs(page, '👁 Reveal answer')),
+    (await hostPanelIn(page).locator('[data-buzzrow] button.ring[data-box="buzzers"]', { hasText: '🔔 Open the buzzers' }).isVisible()) &&
+      (await flowIs(page, '👁 Reveal answer')),
     'the buzzers start closed: 🔔 Open the buzzers (U) is in the buzzers’ row, ringed, and the blue button is 👁 Reveal answer',
   );
   // The buzzers' things are on a row of their own, one height whatever it says: the panel (and the stage over it) keeps
@@ -352,7 +441,9 @@ try {
   await page.keyboard.press('n');
   await checkItem(page, 'buzzers').waitFor();
   assert(
-    (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await quick(page, '🔔 Open the buzzers').innerText()).includes('⏎') && (await panelH()) === heights.closed,
+    (await goOnCheck(page).getAttribute('data-goon')) === 'first' &&
+      (await quick(page, '🔔 Open the buzzers').innerText()).includes('⏎') &&
+      (await panelH()) === heights.closed,
     'N with the buzzers never opened asks first (“First:”, 🔔 Open the buzzers U ⏎), over the panel: its height the same',
   );
   await goOnCheck(page, { ready: true }).waitFor();
@@ -373,7 +464,14 @@ try {
   assert((await pressed()).join() === '2Player 2' || (await pressed())[0].includes('Player 2'), 'Player 2 is selected in the host panel');
   // A later buzz joins the queue.
   await say({ t: 'buzz', armId: armed.armId, seatId: seats[2].id, rank: 2, afterMs: 120 });
-  await say({ t: 'queue', armId: armed.armId, queue: [{ seatId: seats[1].id, afterMs: 0 }, { seatId: seats[2].id, afterMs: 120 }] });
+  await say({
+    t: 'queue',
+    armId: armed.armId,
+    queue: [
+      { seatId: seats[1].id, afterMs: 0 },
+      { seatId: seats[2].id, afterMs: 120 },
+    ],
+  });
   const queue = page.getByRole('list', { name: 'Buzz order' });
   await queue.locator('li', { hasText: 'Player 3' }).waitFor();
   const rows = (await queue.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
@@ -382,10 +480,12 @@ try {
   await shot('rb-3-answering');
   heights.answering = await panelH();
   assert(
-    await hostPanelIn(page).locator('[data-buzzrow]').evaluate((row) => {
-      const award = document.querySelector('.panel .award');
-      return !!row.querySelector('[aria-label="Buzz order"]') && !!award && row.getBoundingClientRect().bottom <= award.getBoundingClientRect().top;
-    }),
+    await hostPanelIn(page)
+      .locator('[data-buzzrow]')
+      .evaluate((row) => {
+        const award = document.querySelector('.panel .award');
+        return !!row.querySelector('[aria-label="Buzz order"]') && !!award && row.getBoundingClientRect().bottom <= award.getBoundingClientRect().top;
+      }),
     'the buzz order, who buzzed and ⏭ Skip are on the buzzers’ row, above the Amount row',
   );
 
@@ -401,7 +501,10 @@ try {
   assert((await pressed())[0].includes('Player 3'), 'a wrong answer locks Player 2 out, and Player 3, next in the buzz order, answers (no re-opening)');
   await queue.locator('li.out', { hasText: 'Player 2' }).waitFor();
   heights.missed = await panelH();
-  assert((await hostPanelIn(page).locator('[data-buzzrow]', { hasText: 'Missed:' }).count()) === 0, 'the queue stays, Player 2 struck out (and not named again as “Missed: Player 2”)');
+  assert(
+    (await hostPanelIn(page).locator('[data-buzzrow]', { hasText: 'Missed:' }).count()) === 0,
+    'the queue stays, Player 2 struck out (and not named again as “Missed: Player 2”)',
+  );
   // The ? list says so too (not that the buzzers open for the others).
   await page.keyboard.press('?');
   const wrongKey = page.getByRole('dialog', { name: 'Keyboard shortcuts' }).locator('tr', { hasText: 'Shift+Enter on the one answering' });
@@ -420,7 +523,10 @@ try {
     armId: armed.armId,
     out: [seats[1].id, seats[2].id].sort().join(),
   });
-  assert((await playerRowsIn(page).locator('.score').allInnerTexts())[2] === p3Before && scoresBefore[2] === p3Before, '⏭ Skip passes Player 3 with no points taken, then opens the buzzers for the rest');
+  assert(
+    (await playerRowsIn(page).locator('.score').allInnerTexts())[2] === p3Before && scoresBefore[2] === p3Before,
+    '⏭ Skip passes Player 3 with no points taken, then opens the buzzers for the rest',
+  );
   await aud.locator('.plate').waitFor({ state: 'detached' });
   assert(true, 'the plate goes');
   // A late buzz for the old opening doesn't count.
@@ -428,7 +534,10 @@ try {
   await say({ t: 'buzz', armId: armed.armId, seatId: seats[0].id, rank: 1, afterMs: 0 });
   await page.waitForTimeout(150);
   assert((await pressed()).length === 0, 'a buzz from an earlier opening is ignored');
-  assert((await sent()).slice(n).some((m) => m.t === 'state'), 'and the room hears the host’s state again');
+  assert(
+    (await sent()).slice(n).some((m) => m.t === 'state'),
+    'and the room hears the host’s state again',
+  );
   // The host picks by hand with a number key too.
   await page.keyboard.press('4');
   await stateIs((s, id) => s.answering === id, (await state()).seats[3].id);
@@ -440,7 +549,15 @@ try {
 
   // A tie: the room picks nobody; 🎲 Roll for it sets the answering order.
   const tieArm = (await state()).armId;
-  await say({ t: 'queue', armId: tieArm, queue: [{ seatId: seats[0].id, afterMs: 0 }, { seatId: seats[1].id, afterMs: 4 }], tie: [seats[0].id, seats[1].id] });
+  await say({
+    t: 'queue',
+    armId: tieArm,
+    queue: [
+      { seatId: seats[0].id, afterMs: 0 },
+      { seatId: seats[1].id, afterMs: 4 },
+    ],
+    tie: [seats[0].id, seats[1].id],
+  });
   await page.getByText('Tie: Player 1 & Player 2').waitFor();
   assert((await pressed()).length === 0, 'a tie: nobody is picked, the host panel says "Tie: Player 1 & Player 2"');
   heights.tie = await panelH();
@@ -455,7 +572,10 @@ try {
   assert(true, 'Roll for it rolls on stream for the tied players');
   await stateIs((s, a) => s.phase === 'answering' && s.armId === a && s.rollOrder?.length === 2 && s.rollOrder[0] === s.answering, tieArm);
   const rolled = (await state()).rollOrder;
-  assert(rolled.slice().sort().join() === [seats[0].id, seats[1].id].sort().join(), 'the roll sets the answering order of the tied players (sent to the room as rollOrder)');
+  assert(
+    rolled.slice().sort().join() === [seats[0].id, seats[1].id].sort().join(),
+    'the roll sets the answering order of the tied players (sent to the room as rollOrder)',
+  );
   await say({ t: 'queue', armId: tieArm, queue: rolled.map((id, i) => ({ seatId: id, afterMs: 0, rolled: i + 1 })) });
   await queue.getByText('🎲 2nd').waitFor();
   assert((await pressed())[0].includes(rolled[0] === seats[0].id ? 'Player 1' : 'Player 2'), 'the first in the roll answers; the queue shows 🎲 1st, 🎲 2nd');
@@ -485,19 +605,37 @@ try {
   assert((await playerRowsIn(page).count()) === 5, 'Amy joins mid-game');
   assert((await page.getByRole('button', { name: '↶ Undo' }).getAttribute('title')).includes('Added Amy'), 'as one undoable step');
   // A phone drops: its player's chip shows 📵, and the phones list how long it's been gone.
-  await say({ t: 'phones', phones: [{ conn: 'c2', seatId: seats[1].id, connected: false }, { conn: 'c3', seatId: seats[2].id, connected: true }] });
+  await say({
+    t: 'phones',
+    phones: [
+      { conn: 'c2', seatId: seats[1].id, connected: false },
+      { conn: 'c3', seatId: seats[2].id, connected: true },
+    ],
+  });
   await playerRowsIn(page).locator(`[data-phone-away="${seats[1].id}"]`).waitFor();
   assert((await playerRowsIn(page).locator('[data-phone-away]').count()) === 1, 'a dropped phone: 📵 on that player’s chip (only theirs)');
   await pop.locator(`[data-phone-offline="${seats[1].id}"]`).waitFor();
-  assert(/^📵 lost \d+:\d\d$/.test(await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()), `and the phones list says “📵 lost 0:01”, the 👥 rows’ word (${await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()})`);
-  await say({ t: 'phones', phones: [{ conn: 'c2', seatId: seats[1].id, connected: true }, { conn: 'c3', seatId: seats[2].id, connected: true }] });
+  assert(
+    /^📵 lost \d+:\d\d$/.test(await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()),
+    `and the phones list says “📵 lost 0:01”, the 👥 rows’ word (${await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()})`,
+  );
+  await say({
+    t: 'phones',
+    phones: [
+      { conn: 'c2', seatId: seats[1].id, connected: true },
+      { conn: 'c3', seatId: seats[2].id, connected: true },
+    ],
+  });
   await playerRowsIn(page).locator('[data-phone-away]').waitFor({ state: 'detached' });
   assert(true, 'back online, the 📵 goes');
   // Seats locked (nobody new can join): the stage stops inviting everyone to buzz in.
   await aud.locator('.join-badge', { hasText: '📱 Buzz in' }).waitFor();
   await pop.getByLabel(/Lock seats/).check();
   await aud.locator('.join-badge', { hasText: '📱 Players’ buzzers' }).waitFor();
-  assert((await aud.locator('.join-badge .jb-link').count()) === 0, 'with the seats locked, the stage’s badge says “📱 Players’ buzzers” (no “Buzz in” for everyone watching)');
+  assert(
+    (await aud.locator('.join-badge .jb-link').count()) === 0,
+    'with the seats locked, the stage’s badge says “📱 Players’ buzzers” (no “Buzz in” for everyone watching)',
+  );
   await pop.getByLabel(/Lock seats/).uncheck();
   await aud.locator('.join-badge', { hasText: '📱 Buzz in' }).waitFor();
   await page.keyboard.press('Escape');
@@ -513,7 +651,8 @@ try {
   const mainNow = await hostPanelIn(page).locator('[data-next]').innerText();
   assert(mainNow.startsWith('👁 Reveal answer'), `after a right answer the main button is 👁 Reveal answer (${mainNow})`);
   assert(
-    (await hostPanelIn(page).locator('[data-buzzrow] button[data-box="buzzers"]:not(.ring)', { hasText: '🔔 Open the buzzers' }).count()) === 1 && (await page.getByText(/Next in line/).count()) === 0,
+    (await hostPanelIn(page).locator('[data-buzzrow] button[data-box="buzzers"]:not(.ring)', { hasText: '🔔 Open the buzzers' }).count()) === 1 &&
+      (await page.getByText(/Next in line/).count()) === 0,
     '🔔 Open the buzzers stays in the buzzers’ row (to open them again for the rest), no ring, and nobody is “→ Next in line”',
   );
   await page.keyboard.press('n');
@@ -522,7 +661,8 @@ try {
   // The answer on screen: the buzzers stay closed, and their row says so (no 🔔 Open the buzzers or ↺ Reset that refuse).
   await hostPanelIn(page).locator('[data-buzzrow]', { hasText: 'Answer on screen: the buzzers stay closed' }).waitFor();
   assert(
-    (await hostPanelIn(page).locator('button', { hasText: '🔔 Open the buzzers' }).count()) === 0 && (await hostPanelIn(page).locator('button', { hasText: '↺ Reset buzzers' }).count()) === 0,
+    (await hostPanelIn(page).locator('button', { hasText: '🔔 Open the buzzers' }).count()) === 0 &&
+      (await hostPanelIn(page).locator('button', { hasText: '↺ Reset buzzers' }).count()) === 0,
     'with the answer on screen the buzzers’ row says they stay closed, with no 🔔 Open the buzzers or ↺ Reset buzzers',
   );
 
@@ -533,7 +673,10 @@ try {
   await page.evaluate(() => window.__drop());
   await page.waitForFunction(() => document.querySelector('.panel .chip')?.textContent.includes('⚠'));
   assert(true, 'a dropped connection shows ⚠ on the chip');
-  await page.waitForFunction((n) => window.__room.sockets.length === n + 1 && !document.querySelector('.panel .chip')?.textContent.includes('⚠'), socketsBefore);
+  await page.waitForFunction(
+    (n) => window.__room.sockets.length === n + 1 && !document.querySelector('.panel .chip')?.textContent.includes('⚠'),
+    socketsBefore,
+  );
   assert((await page.evaluate(() => window.__room.sockets.at(-1).url)) === 'wss://buzz.test/ws/BCDF?host=secret-token', 'it reconnects to the same room');
   assert((await page.evaluate(() => window.__room.posts)) === 2, 'without making a new one');
 
@@ -543,7 +686,8 @@ try {
   const free = pop.getByRole('button', { name: 'Free seat: Player 2’s (moved phone)' });
   await free.waitFor();
   assert(
-    (await pop.getByRole('button', { name: 'Kick Player 2: take their seat back from their phone' }).innerText()) === '⛔ Kick' && (await free.innerText()) === '📱 Free seat',
+    (await pop.getByRole('button', { name: 'Kick Player 2: take their seat back from their phone' }).innerText()) === '⛔ Kick' &&
+      (await free.innerText()) === '📱 Free seat',
     'a seat whose phone is gone offers 📱 Free seat (its “new phone” left out in the narrow list) before ⛔ Kick',
   );
   await free.click();
@@ -624,7 +768,10 @@ try {
   });
   const down = hostPanelIn(page).locator('.phones-down');
   await down.getByText('This buzzer room has ended').waitFor();
-  assert(!(await down.innerText()).includes('right now'), `the panel says the room has ended, not that it can’t be reached “right now” (${await down.innerText()})`);
+  assert(
+    !(await down.innerText()).includes('right now'),
+    `the panel says the room has ended, not that it can’t be reached “right now” (${await down.innerText()})`,
+  );
   await toastsIn(page, { hasText: '📱 This buzzer room has ended' }).waitFor();
   await page.waitForFunction(() => window.__lostSaid === 1);
   // The game goes on meanwhile: back to the board, another tile, the answer.
@@ -650,7 +797,10 @@ try {
   await page.evaluate(() => (window.__room.gone = 0));
   await pop.getByRole('button', { name: 'Start a new room' }).click();
   await page.waitForFunction(() => /^📱 \d/.test(document.querySelector('.panel .chip')?.textContent ?? ''));
-  assert((await page.evaluate(() => window.__room.posts)) === 3 && (await pop.getByRole('button', { name: '📋 Copy link' }).count()) === 1, 'Start a new room makes one, and 📋 Copy link is back');
+  assert(
+    (await page.evaluate(() => window.__room.posts)) === 3 && (await pop.getByRole('button', { name: '📋 Copy link' }).count()) === 1,
+    'Start a new room makes one, and 📋 Copy link is back',
+  );
   await page.keyboard.press('Escape');
   await pop.waitFor({ state: 'detached' });
   await page.keyboard.press('Escape');
@@ -661,7 +811,10 @@ try {
   assert((await lost.count()) === 0, 'no "Audience window closed" strip while it is open');
   await aud.close();
   await lost.waitFor();
-  assert((await lost.innerText()).includes('Audience window closed: viewers see nothing'), 'closing the audience window by accident: the host panel says viewers see nothing');
+  assert(
+    (await lost.innerText()).includes('Audience window closed: viewers see nothing'),
+    'closing the audience window by accident: the host panel says viewers see nothing',
+  );
   await page.waitForTimeout(1000);
   assert((await lost.count()) === 1, 'and the strip stays');
   const [aud2] = await Promise.all([page.waitForEvent('popup'), lost.getByRole('button', { name: 'Reopen (A)' }).click()]);
@@ -676,7 +829,10 @@ try {
   if (await chip2.count()) {
     const chipBox = await chip2.boundingBox();
     const vpAud = aud2.viewportSize();
-    assert(chipBox.width < vpAud.width / 3 && chipBox.height < 60 && chipBox.x > vpAud.width / 2 && chipBox.y > vpAud.height / 2, `"Click to enable sound" is a small chip in the corner (${Math.round(chipBox.width)}×${Math.round(chipBox.height)}), no dimming layer over the stage`);
+    assert(
+      chipBox.width < vpAud.width / 3 && chipBox.height < 60 && chipBox.x > vpAud.width / 2 && chipBox.y > vpAud.height / 2,
+      `"Click to enable sound" is a small chip in the corner (${Math.round(chipBox.width)}×${Math.round(chipBox.height)}), no dimming layer over the stage`,
+    );
   } else console.log('  - (this window may already play sound: no chip to check)');
 
   // ---------- One window: the phones list opens over the host panel, never the stage viewers see ----------
@@ -713,9 +869,15 @@ try {
   await stateIs((s) => s.status?.text === 'The host is setting up — hang on');
   await page.waitForTimeout(300);
   assert((await closes()) === 0, 'Keep & leave keeps the buzzer room: phones are told the host is setting up, not that the game is over');
-  assert((await roomBar.innerText()).includes('Resume game goes back into it'), 'the bar over the editor says the room is still open, and that Resume game (not ▶ Play) goes back into it');
-  assert((await statusBarIn(page).count()) === 1 && (await statusBarIn(page).locator('.kept').count()) === 1, 'one status bar over the editor: the room and the kept game on it');
-  assert((await page.evaluate(() => document.scrollingElement.scrollHeight <= window.innerHeight)), 'the page itself doesn’t scroll (the bar stays in sight)');
+  assert(
+    (await roomBar.innerText()).includes('Resume game goes back into it'),
+    'the bar over the editor says the room is still open, and that Resume game (not ▶ Play) goes back into it',
+  );
+  assert(
+    (await statusBarIn(page).count()) === 1 && (await statusBarIn(page).locator('.kept').count()) === 1,
+    'one status bar over the editor: the room and the kept game on it',
+  );
+  assert(await page.evaluate(() => document.scrollingElement.scrollHeight <= window.innerHeight), 'the page itself doesn’t scroll (the bar stays in sight)');
   assert((await page.getByRole('button', { name: 'Resume with my edits' }).count()) === 0, 'nothing was edited: no "Resume with my edits"');
   await page.getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
@@ -735,7 +897,10 @@ try {
   await page.getByRole('button', { name: '▶ Play' }).click();
   const keepAsk = page.getByRole('alertdialog', { name: 'Keep buzzer room BCDF and its 5 players?' });
   await keepAsk.waitFor();
-  assert((await page.evaluate(() => document.activeElement?.textContent.trim())) === 'Keep room & players', '▶ Play asks: keep buzzer room BCDF and its 5 players? (Keep room & players focused)');
+  assert(
+    (await page.evaluate(() => document.activeElement?.textContent.trim())) === 'Keep room & players',
+    '▶ Play asks: keep buzzer room BCDF and its 5 players? (Keep room & players focused)',
+  );
   await page.keyboard.press('Enter');
   await card.getByLabel('Room code BCDF').waitFor();
   assert((await page.locator('.pregame input.name').count()) === 5, 'the 5 players come along');
@@ -748,7 +913,10 @@ try {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   const replaceAsk = page.locator('.actions [data-start-ask]');
   await replaceAsk.waitFor();
-  assert((await replaceAsk.innerText()).includes('The game in progress (Jeopardy!, round 1 of 2) is discarded'), 'Start with Buzz Night kept to resume asks first: the game in progress is discarded');
+  assert(
+    (await replaceAsk.innerText()).includes('The game in progress (Jeopardy!, round 1 of 2) is discarded'),
+    'Start with Buzz Night kept to resume asks first: the game in progress is discarded',
+  );
   await page.waitForTimeout(450);
   await replaceAsk.getByRole('button', { name: 'Start new game' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
@@ -813,7 +981,10 @@ try {
   const buzzerMode = card.getByLabel(/Buzzer mode/);
   await buzzerMode.waitFor();
   await page.locator('.pregame input.name').nth(4).waitFor();
-  assert((await page.locator('.pregame input.name').count()) === 5, 'the 5 players kept with the room are this game’s own now: still listed once the room is closed');
+  assert(
+    (await page.locator('.pregame input.name').count()) === 5,
+    'the 5 players kept with the room are this game’s own now: still listed once the room is closed',
+  );
   if (!(await buzzerMode.isChecked())) await buzzerMode.check();
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   await card.getByLabel('Room code BCDF').waitFor();
@@ -827,9 +998,14 @@ try {
   await toastsIn(page, { hasText: 'Buzzer room BCDF has ended' }).waitFor();
   assert(true, 'a room kept in the editor that has ended is forgotten: the bar stops saying it’s open, and the host is told');
   await page.getByRole('button', { name: '▶ Play' }).click();
-  await card.getByRole('alert').getByText(/This buzzer room has ended/).waitFor();
+  await card
+    .getByRole('alert')
+    .getByText(/This buzzer room has ended/)
+    .waitFor();
   assert(
-    (await card.getByRole('button', { name: '▶ Start the room' }).isVisible()) && (await card.getByLabel('Room code BCDF').count()) === 0 && (await card.getByRole('img', { name: /QR code/ }).count()) === 0,
+    (await card.getByRole('button', { name: '▶ Start the room' }).isVisible()) &&
+      (await card.getByLabel('Room code BCDF').count()) === 0 &&
+      (await card.getByRole('img', { name: /QR code/ }).count()) === 0,
     '▶ Play then says it ended and offers a new room: no code, link or QR code of the dead one',
   );
 
@@ -869,7 +1045,10 @@ try {
     await statusBarIn(page).locator('.kept').getByText('⏸ Kept to resume:').waitFor();
   };
   await playThenReload();
-  assert((await statusBarIn(page).locator('.room-bar').count()) === 0, 'after a reload mid-game the editor keeps the game to resume (its room isn’t kept on its own)');
+  assert(
+    (await statusBarIn(page).locator('.room-bar').count()) === 0,
+    'after a reload mid-game the editor keeps the game to resume (its room isn’t kept on its own)',
+  );
   await statusBarIn(page).locator('.kept').getByRole('button', { name: 'Discard' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Discard', exact: true }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
@@ -884,17 +1063,31 @@ try {
   await page.evaluate(() => (window.__room.code = 'GHJK'));
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   await card.getByLabel('Room code GHJK').waitFor();
-  assert(await resumeCard.getByText('Its phones wait in room BCDF').isVisible(), 'after a reload mid-game the pre-game screen says ▶ Resume it goes back to the game’s room, a room started here or not');
+  assert(
+    await resumeCard.getByText('Its phones wait in room BCDF').isVisible(),
+    'after a reload mid-game the pre-game screen says ▶ Resume it goes back to the game’s room, a room started here or not',
+  );
   const from = await page.evaluate(() => window.__room.sockets.length);
   await resumeCard.getByRole('button', { name: '▶ Resume it' }).click();
   await page.waitForFunction((from) => window.__room.sockets.slice(from).some((s) => s.url.includes('/ws/BCDF') && s.sent.some((m) => m.t === 'state')), from);
   await page.waitForFunction(() => window.__room.sockets.some((s) => s.url.includes('/ws/GHJK') && s.sent.some((m) => m.t === 'close')));
   assert(
-    await page.evaluate((from) => !window.__room.sockets.slice(from).some((s) => s.url.includes('/ws/BCDF') && s.sent.some((m) => m.t === 'close' || (m.t === 'state' && m.state.over))), from),
+    await page.evaluate(
+      (from) =>
+        !window.__room.sockets.slice(from).some((s) => s.url.includes('/ws/BCDF') && s.sent.some((m) => m.t === 'close' || (m.t === 'state' && m.state.over))),
+      from,
+    ),
     'and it does: the game plays on in room BCDF (its phones aren’t told it’s over), and the empty room GHJK is closed',
   );
   // So does ◀ Back to editor: the editor's Resume game then goes back to room BCDF too.
-  const overToBCDF = () => page.evaluate(() => window.__room.sockets.filter((s) => s.url.includes('/ws/BCDF')).flatMap((s) => s.sent).filter((m) => m.t === 'close' || (m.t === 'state' && m.state.over)).length);
+  const overToBCDF = () =>
+    page.evaluate(
+      () =>
+        window.__room.sockets
+          .filter((s) => s.url.includes('/ws/BCDF'))
+          .flatMap((s) => s.sent)
+          .filter((m) => m.t === 'close' || (m.t === 'state' && m.state.over)).length,
+    );
   await page.reload();
   await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
   await statusBarIn(page).locator('.kept').getByText('⏸ Kept to resume:').waitFor();
@@ -906,7 +1099,10 @@ try {
   await page.getByRole('button', { name: '◀ Back to editor' }).click();
   await page.waitForFunction(() => window.__room.sockets.some((s) => s.url.includes('/ws/KLMN') && s.sent.some((m) => m.t === 'close')));
   await toastsIn(page, { hasText: 'Room KLMN closed (no phone had joined it): Resume game goes back to room BCDF' }).waitFor();
-  assert((await statusBarIn(page).locator('.room-bar').count()) === 0, '◀ Back to editor closes a room started there that no phone joined, while the kept game’s phones wait in theirs (and says so)');
+  assert(
+    (await statusBarIn(page).locator('.room-bar').count()) === 0,
+    '◀ Back to editor closes a room started there that no phone joined, while the kept game’s phones wait in theirs (and says so)',
+  );
   await statusBarIn(page).locator('.kept').getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await page.waitForFunction(() => window.__room.sockets.some((s) => s.url.includes('/ws/BCDF') && s.sent.some((m) => m.t === 'state')));
@@ -922,16 +1118,30 @@ try {
   await page.waitForFunction(() => window.__room.lookups > 0);
   await page.locator('.live-check li', { hasText: 'start the room' }).waitFor();
   assert(
-    (await resumeCard.getByText('Its phones wait in room').count()) === 0 && (await page.locator('.live-check li', { hasText: 'wait in room BCDF' }).count()) === 0,
+    (await resumeCard.getByText('Its phones wait in room').count()) === 0 &&
+      (await page.locator('.live-check li', { hasText: 'wait in room BCDF' }).count()) === 0,
     'a kept game whose room has ended: the pre-game screen doesn’t say its phones wait there, and ✅ Before you start says to start the room',
   );
   await page.evaluate(() => (window.__room.code = 'PQRS'));
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   await card.getByLabel('Room code PQRS').waitFor();
-  const atPQRS = await page.evaluate(() => window.__room.sockets.filter((s) => s.url.includes('/ws/PQRS')).flatMap((s) => s.sent).filter((m) => m.t === 'state').length);
+  const atPQRS = await page.evaluate(
+    () =>
+      window.__room.sockets
+        .filter((s) => s.url.includes('/ws/PQRS'))
+        .flatMap((s) => s.sent)
+        .filter((m) => m.t === 'state').length,
+  );
   await resumeCard.getByRole('button', { name: '▶ Resume it' }).click();
   await hostPanelIn(page).locator('.chip').waitFor();
-  await page.waitForFunction((n) => window.__room.sockets.filter((s) => s.url.includes('/ws/PQRS')).flatMap((s) => s.sent).filter((m) => m.t === 'state').length > n, atPQRS);
+  await page.waitForFunction(
+    (n) =>
+      window.__room.sockets
+        .filter((s) => s.url.includes('/ws/PQRS'))
+        .flatMap((s) => s.sent)
+        .filter((m) => m.t === 'state').length > n,
+    atPQRS,
+  );
   await page.waitForTimeout(300);
   assert(
     await page.evaluate(() => !window.__room.sockets.some((s) => s.url.includes('/ws/PQRS') && s.sent.some((m) => m.t === 'close'))),
@@ -942,14 +1152,20 @@ try {
   await awardRowIn(page).getByLabel('Amount').fill('100');
   await awardRowIn(page).getByLabel('Amount').press('Enter');
   await until(async () => (await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100), { timeout: 10_000, every: 100 });
-  assert((await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100), 'the points are saved with the game in progress');
+  assert(
+    (await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100),
+    'the points are saved with the game in progress',
+  );
   await page.reload();
   await page.locator('.boot-cover').getByRole('button', { name: 'Go to the editor' }).click();
   await statusBarIn(page).locator('.kept').getByText('⏸ Kept to resume:').waitFor();
   await page.getByRole('button', { name: '▶ Play' }).click();
   await resumeCard.waitFor();
   const keptSays = (await resumeCard.innerText()).replace(/\s+/g, ' ');
-  assert(/⏸ Game in progress: .+ · .+ \$100.* · saved /.test(keptSays), `the card says what the kept game is: its round, its scores, when it was saved (${keptSays})`);
+  assert(
+    /⏸ Game in progress: .+ · .+ \$100.* · saved /.test(keptSays),
+    `the card says what the kept game is: its round, its scores, when it was saved (${keptSays})`,
+  );
   await card.getByLabel(/Buzzer mode/).uncheck();
   // (The players added before the reload are the game's own only once the game itself is saved, which a slow machine
   // may not have done by then: a fresh game needs some to start.)
@@ -982,7 +1198,9 @@ try {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.waitForTimeout(300);
   assert(
-    (await page.locator('.pregame').count()) === 1 && (await discard.count()) === 1 && (await discard.getByRole('button', { name: 'Not yet' }).evaluate((b) => b === document.activeElement)),
+    (await page.locator('.pregame').count()) === 1 &&
+      (await discard.count()) === 1 &&
+      (await discard.getByRole('button', { name: 'Not yet' }).evaluate((b) => b === document.activeElement)),
     'a click on Start game ▶ while it asks doesn’t answer the question (its red Start new game does): the keys go to Not yet',
   );
   await page.keyboard.press('Control+Enter');

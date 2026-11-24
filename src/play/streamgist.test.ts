@@ -10,7 +10,9 @@ describe('▶ Play’s 📺 On stream fold, closed', () => {
   });
 
   it('a countdown running, the join code hidden with phones on, the RPG caption only with an RPG round', () => {
-    expect(streamGist({ hideJoinCode: true, placeCaption: true }, { countdown: '4:12', phones: true })).toBe('“Starting soon” card · countdown 4:12 · cover card · join code hidden');
+    expect(streamGist({ hideJoinCode: true, placeCaption: true }, { countdown: '4:12', phones: true })).toBe(
+      '“Starting soon” card · countdown 4:12 · cover card · join code hidden',
+    );
     expect(streamGist({ hideJoinCode: true, placeCaption: true }, { rpg: true })).toBe('“Starting soon” card · cover card · captions on');
   });
 

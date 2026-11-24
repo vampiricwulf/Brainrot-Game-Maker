@@ -12,14 +12,70 @@ const url = pathToFileURL(appFile()).href;
 const browser = await launchChromium();
 const errors = [];
 
-const slide = (t) => ({ background: {}, elements: [{ id: `t_${t.replace(/\W/g, '')}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
+const slide = (t) => ({
+  background: {},
+  elements: [
+    {
+      id: `t_${t.replace(/\W/g, '')}`,
+      kind: 'text',
+      text: t,
+      x: 120,
+      y: 90,
+      w: 1680,
+      h: 900,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 1,
+      font: 'Arial',
+      size: 110,
+      weight: 700,
+      italic: false,
+      underline: false,
+      uppercase: false,
+      color: '#ffffff',
+      align: 'center',
+      vAlign: 'middle',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      autoFit: true,
+    },
+  ],
+});
 const clue = (id, q) => ({ id, value: null, type: 'standard', questionSlide: slide(q), answerSlide: slide(`${q}: the answer`) });
 const game = {
-  id: 'g_reloadcover', version: 2, title: 'Reload cover',
-  settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 20, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' } },
-  players: [['Ann', '#e6194b'], ['Bob', '#3cb44b']].map(([name, color], i) => ({ id: `p${i + 1}`, name, color })),
-  rounds: [{ id: 'r_b', name: 'Board', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: [{ id: 'c0', title: 'Facts', clues: [clue('qa', 'Question one'), clue('qb', 'Question two')] }] }],
-  media: [], audio: {}, dice: [], theme: {}, wheels: [],
+  id: 'g_reloadcover',
+  version: 2,
+  title: 'Reload cover',
+  settings: {
+    allowNegativeScores: true,
+    deductOnWrong: true,
+    defaultTimerSeconds: 20,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+  },
+  players: [
+    ['Ann', '#e6194b'],
+    ['Bob', '#3cb44b'],
+  ].map(([name, color], i) => ({ id: `p${i + 1}`, name, color })),
+  rounds: [
+    {
+      id: 'r_b',
+      name: 'Board',
+      mode: 'board',
+      values: [200, 400],
+      dailyDoubleCount: 0,
+      categories: [{ id: 'c0', title: 'Facts', clues: [clue('qa', 'Question one'), clue('qb', 'Question two')] }],
+    },
+  ],
+  media: [],
+  audio: {},
+  dice: [],
+  theme: {},
+  wheels: [],
 };
 mkdirSync(resolve('test-results'), { recursive: true });
 const gameFile = resolve('test-results/reloadcover.json');
@@ -32,7 +88,12 @@ const SIZES = [
   // (Narrow and tall, a tablet on its side: the stage takes the width, not the height.)
   [820, 1180],
 ];
-const rect = (loc) => loc.evaluate((e) => (({ left, top, right, bottom }) => ({ left: Math.round(left), top: Math.round(top), right: Math.round(right), bottom: Math.round(bottom) }))(e.getBoundingClientRect()));
+const rect = (loc) =>
+  loc.evaluate((e) =>
+    (({ left, top, right, bottom }) => ({ left: Math.round(left), top: Math.round(top), right: Math.round(right), bottom: Math.round(bottom) }))(
+      e.getBoundingClientRect(),
+    ),
+  );
 const same = (a, b) => ['left', 'top', 'right', 'bottom'].every((k) => Math.abs(a[k] - b[k]) <= 1);
 const inside = (a, b) => a.left >= b.left - 0.5 && a.right <= b.right + 0.5 && a.top >= b.top - 0.5 && a.bottom <= b.bottom + 0.5;
 
@@ -74,15 +135,24 @@ try {
       `${w}×${h}: a capture of just the stage shows the whole card and none of Resume game / Go to the editor (${JSON.stringify({ stage: st, card, host })})`,
     );
     const box = await rect(cover.locator('.cover-stage'));
-    assert(same(box, st) && fs >= (st.right - st.left) * 0.05, `${w}×${h}: the card's box is the stage's size and place, its words sized to it (${JSON.stringify({ box, fs })})`);
+    assert(
+      same(box, st) && fs >= (st.right - st.left) * 0.05,
+      `${w}×${h}: the card's box is the stage's size and place, its words sized to it (${JSON.stringify({ box, fs })})`,
+    );
   }
-  assert((await cover.getByRole('button', { name: 'Resume game' }).count()) === 1 && (await cover.getByRole('button', { name: 'Go to the editor' }).count()) === 1, 'Resume game and Go to the editor are there');
+  assert(
+    (await cover.getByRole('button', { name: 'Resume game' }).count()) === 1 && (await cover.getByRole('button', { name: 'Go to the editor' }).count()) === 1,
+    'Resume game and Go to the editor are there',
+  );
   // Resume game's question (how the game is shown) fits under the box too, scrolling there, never over the card.
   await page.setViewportSize({ width: 1280, height: 720 });
   await cover.getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode').first().waitFor();
   const [box, host] = [await rect(cover.locator('.cover-stage')), await rect(cover.locator('.cover-host'))];
-  assert(same(box, stageAt[1280]) && host.top >= box.bottom && host.bottom <= 720, `Resume game's question stays under the box, the box where it was (${JSON.stringify({ box, host })})`);
+  assert(
+    same(box, stageAt[1280]) && host.top >= box.bottom && host.bottom <= 720,
+    `Resume game's question stays under the box, the box where it was (${JSON.stringify({ box, host })})`,
+  );
   // The question focuses the picked mode a frame after it shows; Enter before that would go nowhere.
   await page.waitForFunction(() => document.activeElement?.matches('.mode-ask .mode.on'));
   await page.keyboard.press('Enter');

@@ -68,7 +68,9 @@ describe('the keys filter', () => {
       '◀ Prev round': '◀ Previous round',
     });
     // The game's keys: S is found by "scores", and says it was 📊 Scores.
-    const s = filterKeys(hostKeys(false), 'scores').flatMap((g) => g.rows).find((r) => r.keys === 'S');
+    const s = filterKeys(hostKeys(false), 'scores')
+      .flatMap((g) => g.rows)
+      .find((r) => r.keys === 'S');
     expect(s).toMatchObject({ words: '📊 Scoreboard on screen, or off it again', was: '📊 Scores' });
   });
 });
@@ -93,7 +95,8 @@ describe('the game’s keys: the blue button and the check', () => {
     expect(row('Shift+click on the blue button')).toMatch(/Its step at once, without asking/);
     expect(found('enter wager box').some((r) => r.startsWith('Enter: Next only on a round’s title card'))).toBe(true);
     expect(row('O in a buzzer tie')).toMatch(/🎲 Roll for it/);
-    for (const k of ['Enter in the check', 'Shift+Enter in the check', 'N in the check', 'R in the check', 'Esc in the check', 'A double press']) expect(row(k), k).toBeTruthy();
+    for (const k of ['Enter in the check', 'Shift+Enter in the check', 'N in the check', 'R in the check', 'Esc in the check', 'A double press'])
+      expect(row(k), k).toBeTruthy();
     // (Esc's bounce, and Enter never "anyway".)
     expect(row('Esc in the check')).toContain('a second Esc right after does nothing');
     expect(row('Enter in the check')).toContain('never “… anyway”');

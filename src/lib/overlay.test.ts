@@ -5,8 +5,33 @@ import { PLAYER_WHEEL, type BoardRound, type Game, type ScoreAction } from './mo
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
-  addWheel, applyScoreCard, draftDeltas, draftPick, editWheel, openCategories, openCategoryWheel, openDice, openPartnerWheel, openPlayerWheel, openQuickWheel, quickDice, removeWheel,
-  openWheel, resetWheelEdits, rollDice, scoreCards, scoreCardsLeft, scoreDraft, spinFor, spinningRolls, spinSegments, spinWheel, startRollOff, toggleScoreboard, wheelEdited, wheelPool,
+  addWheel,
+  applyScoreCard,
+  draftDeltas,
+  draftPick,
+  editWheel,
+  openCategories,
+  openCategoryWheel,
+  openDice,
+  openPartnerWheel,
+  openPlayerWheel,
+  openQuickWheel,
+  quickDice,
+  removeWheel,
+  openWheel,
+  resetWheelEdits,
+  rollDice,
+  scoreCards,
+  scoreCardsLeft,
+  scoreDraft,
+  spinFor,
+  spinningRolls,
+  spinSegments,
+  spinWheel,
+  startRollOff,
+  toggleScoreboard,
+  wheelEdited,
+  wheelPool,
   wheelSpentUp,
 } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
@@ -117,7 +142,10 @@ describe('editing a wheel for one spin', () => {
     pool[0].off = true; // Ann sits this one out
     pool[1].weight = 3;
     editWheel(o, pool, session, game);
-    expect(o.segments.map((s) => [s.label, s.weight])).toEqual([['Bob', 3], ['Cat', 1]]);
+    expect(o.segments.map((s) => [s.label, s.weight])).toEqual([
+      ['Bob', 3],
+      ['Cat', 1],
+    ]);
     // A player who joins later gets a normal chance; Ann stays out.
     session.players.push({ id: 'd', name: 'Dee', color: '#ffffff', startScore: 0 });
     const seen = new Set<string>();
@@ -128,13 +156,18 @@ describe('editing a wheel for one spin', () => {
     expect(o.segments.map((s) => s.id)).toEqual(['b', 'c', 'd']);
     expect(seen.has('a')).toBe(false);
     // The edit box shows everyone, Ann switched off.
-    expect(wheelPool(o, session, game).map((s) => [s.id, !!s.off])).toEqual([['a', true], ['b', false], ['c', false], ['d', false]]);
+    expect(wheelPool(o, session, game).map((s) => [s.id, !!s.off])).toEqual([
+      ['a', true],
+      ['b', false],
+      ['c', false],
+      ['d', false],
+    ]);
     resetWheelEdits(o, session, game);
     expect(o.pool).toBeUndefined();
     expect(o.segments.map((s) => s.id)).toEqual(['a', 'b', 'c', 'd']);
   });
 
-  it("never changes the saved wheel", () => {
+  it('never changes the saved wheel', () => {
     const { game, session, live } = withPlayers();
     const w = newWheel('Dares', ['A', 'B', 'C']);
     game.wheels.push(w);
@@ -150,7 +183,11 @@ describe('editing a wheel for one spin', () => {
       spinWheel(live, session, game);
       expect(['A', 'B!']).toContain(o.segments[o.result!].label);
     }
-    expect(w.segments.map((s) => [s.label, s.weight])).toEqual([['A', 1], ['B', 1], ['C', 1]]);
+    expect(w.segments.map((s) => [s.label, s.weight])).toEqual([
+      ['A', 1],
+      ['B', 1],
+      ['C', 1],
+    ]);
   });
 });
 
@@ -254,7 +291,12 @@ describe('several wheels at once', () => {
     const o = live.overlay!;
     if (o.kind !== 'wheel') throw new Error('no wheel');
     for (let i = 0; i < 3; i++) spinWheel(live, session, game);
-    expect(session.rollLog?.filter((r) => r.name === 'Once').map((r) => r.result).sort()).toEqual(['A', 'B']);
+    expect(
+      session.rollLog
+        ?.filter((r) => r.name === 'Once')
+        .map((r) => r.result)
+        .sort(),
+    ).toEqual(['A', 'B']);
     // And it has no result this spin (its last one isn't counted again).
     expect([o.extra![0].spin, o.extra![0].result]).toEqual([null, null]);
   });
@@ -263,7 +305,13 @@ describe('several wheels at once', () => {
 describe('roll-off die', () => {
   it('rolls a d20 for a blank die box and at least a d2, so it never ties forever', () => {
     const { session, live } = withPlayers();
-    for (const [sides, want] of [[null, 20], [0, 20], [1, 2], [6.7, 6], [5000, 1000]] as const) {
+    for (const [sides, want] of [
+      [null, 20],
+      [0, 20],
+      [1, 2],
+      [6.7, 6],
+      [5000, 1000],
+    ] as const) {
       startRollOff(live, session, ['a', 'b', 'c'], sides as unknown as number);
       const o = live.overlay!;
       if (o.kind !== 'rolloff') throw new Error('no roll-off');
@@ -308,7 +356,11 @@ describe('Reset on a wheel that is not saved', () => {
     editWheel(o, pool, session, game);
     expect(o.segments.map((s) => s.label)).toEqual(['A', 'C']);
     resetWheelEdits(o, session, game);
-    expect(o.segments.map((s) => [s.label, s.weight])).toEqual([['A', 1], ['B', 1], ['C', 1]]);
+    expect(o.segments.map((s) => [s.label, s.weight])).toEqual([
+      ['A', 1],
+      ['B', 1],
+      ['C', 1],
+    ]);
   });
 });
 
@@ -328,7 +380,11 @@ describe('🤝 the partner wheel, and the rolls 📜 Log hides while they spin',
     session.players = session.players.filter((p) => p.id !== 'c');
     expect(spinSegments(o, session, game).map((x) => x.id)).toEqual(['b', 'd']);
     const pool = wheelPool(o, session, game);
-    expect(pool.map((x) => [x.id, !!x.off])).toEqual([['a', true], ['b', false], ['d', false]]);
+    expect(pool.map((x) => [x.id, !!x.off])).toEqual([
+      ['a', true],
+      ['b', false],
+      ['d', false],
+    ]);
     for (let i = 0; i < 200; i++) {
       spinWheel(live, session, game);
       expect(['b', 'd']).toContain(o.segments[o.result!].id);
@@ -349,8 +405,15 @@ describe('🤝 the partner wheel, and the rolls 📜 Log hides while they spin',
     expect(o.segments.map((x) => x.id)).toEqual(['a', 'b', 'c']);
     expect(wheelEdited(o, session)).toBe(true);
     resetWheelEdits(o, session, game);
-    expect(o.segments.map((x) => [x.id, x.weight])).toEqual([['b', 1], ['c', 1]]);
-    expect(wheelPool(o, session, game).map((x) => [x.id, !!x.off])).toEqual([['a', true], ['b', false], ['c', false]]);
+    expect(o.segments.map((x) => [x.id, x.weight])).toEqual([
+      ['b', 1],
+      ['c', 1],
+    ]);
+    expect(wheelPool(o, session, game).map((x) => [x.id, !!x.off])).toEqual([
+      ['a', true],
+      ['b', false],
+      ['c', false],
+    ]);
     expect(spinSegments(o, session, game).map((x) => x.id)).toEqual(['b', 'c']);
     expect(wheelEdited(o, session)).toBe(false);
     // The picker can be on it: back with them on.

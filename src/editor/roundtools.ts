@@ -34,7 +34,12 @@ export function addTemplate(game: Game, t: Template): number {
     // Its clues take the theme's clue text, as a blank round's do.
     followClueText(game, clueSlides({ ...game, rounds: [round], tiebreaker: undefined }));
     // A second "Jeopardy!" is "Jeopardy! (2)".
-    if (round.name) round.name = uniqueName(game.rounds.map((r, i) => roundName(r, i)), round.name, false);
+    if (round.name)
+      round.name = uniqueName(
+        game.rounds.map((r, i) => roundName(r, i)),
+        round.name,
+        false,
+      );
     const at = placeFor(game, round);
     game.rounds.splice(at, 0, round);
     nameStep(templateStep(roundName(round, at), t.label));
@@ -115,7 +120,13 @@ export async function pickOtherGame(): Promise<Game | null> {
 }
 
 /** The ＋ Add round menu: the blank modes, a round from elsewhere (imported or pasted), then the templates (one line each). */
-export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) => void, shown: (at: number) => void, importRounds: () => void, sample?: () => void): MenuEntry[] {
+export function addRoundItems(
+  game: Game,
+  add: (mode: keyof typeof ROUND_MODES) => void,
+  shown: (at: number) => void,
+  importRounds: () => void,
+  sample?: () => void,
+): MenuEntry[] {
   const b = clipboard.round;
   // (Its introduction comes only in an empty game: see addSampleGame.)
   const sampleHint = game.rounds.length
@@ -125,7 +136,11 @@ export function addRoundItems(game: Game, add: (mode: keyof typeof ROUND_MODES) 
     ...Object.entries(ROUND_MODES).map(([mode, m]) => ({ label: `${m.icon} ${m.label}`, hint: m.hint, onclick: () => add(mode as keyof typeof ROUND_MODES) })),
     { sep: true },
     // (Up here, under the kinds, so a short window shows them: they bring in what the author already has.)
-    { label: '📥 Import rounds…', hint: 'From another game’s .brainrot file (or its play-only web page), with their worlds, wheels, items and files; its 🎭 deals too, with their wheels', onclick: importRounds },
+    {
+      label: '📥 Import rounds…',
+      hint: 'From another game’s .brainrot file (or its play-only web page), with their worlds, wheels, items and files; its 🎭 deals too, with their wheels',
+      onclick: importRounds,
+    },
     {
       label: b ? `📋 Paste round “${bundleName(b)}”` : '📋 Paste round',
       hint: b ? undefined : 'Copy a round first (right-click its tab)',

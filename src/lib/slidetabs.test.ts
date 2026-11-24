@@ -18,7 +18,8 @@ const acts = (): SlideTabActs & { done: string[] } => {
   };
 };
 /** The items as shown: "label [key]", greyed ones marked "(off)". */
-const shown = (m: MenuEntry[]) => m.map((e) => ('heading' in e ? `# ${e.heading}` : 'sep' in e ? '—' : `${e.label}${e.keys ? ` [${e.keys}]` : ''}${e.disabled ? ' (off)' : ''}`));
+const shown = (m: MenuEntry[]) =>
+  m.map((e) => ('heading' in e ? `# ${e.heading}` : 'sep' in e ? '—' : `${e.label}${e.keys ? ` [${e.keys}]` : ''}${e.disabled ? ' (off)' : ''}`));
 const item = (m: MenuEntry[], label: string) => m.find((e) => 'label' in e && e.label === label) as Extract<MenuEntry, { label: string }>;
 
 describe("a slide tab's menu", () => {
@@ -65,11 +66,21 @@ describe("a slide tab's menu", () => {
   });
   it('the answer: copy, its pastes and a question slide before it', () => {
     const m = slideTabMenu({ tab: 'a', name: 'Answer slide', at: 0, count: 1, copied: true }, acts());
-    expect(shown(m)).toEqual(['# Answer slide', '📋 Copy slide [Ctrl+C]', '📋 Paste as a new slide before it [Ctrl+V]', '📋 Paste over it', '—', '＋ Add a question slide before it']);
+    expect(shown(m)).toEqual([
+      '# Answer slide',
+      '📋 Copy slide [Ctrl+C]',
+      '📋 Paste as a new slide before it [Ctrl+V]',
+      '📋 Paste over it',
+      '—',
+      '＋ Add a question slide before it',
+    ]);
   });
   it('a 🤫 card: its own verbs, rename, duplicate, copy, the moves and delete, no paste', () => {
     const a = acts();
-    const m = slideTabMenu({ tab: 'card', name: '🤫 Clue tip', at: 0, count: 2, copied: true, card: { empty: true, answer: true, phone: true, full: false } }, a);
+    const m = slideTabMenu(
+      { tab: 'card', name: '🤫 Clue tip', at: 0, count: 2, copied: true, card: { empty: true, answer: true, phone: true, full: false } },
+      a,
+    );
     expect(shown(m)).toEqual([
       '# 🤫 Clue tip',
       '⧉ Same as the answer',
@@ -87,7 +98,10 @@ describe("a slide tab's menu", () => {
     item(m, '⧉ Same as the answer').onclick();
     item(m, '🗑 Delete card').onclick();
     expect(a.done).toEqual(['same', 'remove']);
-    const full = slideTabMenu({ tab: 'card', name: 'Card 1', at: 0, count: 6, copied: false, card: { empty: false, answer: true, phone: false, full: true } }, acts());
+    const full = slideTabMenu(
+      { tab: 'card', name: 'Card 1', at: 0, count: 6, copied: false, card: { empty: false, answer: true, phone: false, full: true } },
+      acts(),
+    );
     expect(item(full, '⧉ Same as the answer').disabled && item(full, '⧉ Duplicate card').disabled).toBe(true);
   });
   it('a slides round says slide, never question slide', () => {

@@ -47,27 +47,45 @@ describe('whether a file plays here, and what would fix it', () => {
   it('in the test Chromium: MP3 in an MPEG-TS doesn’t open; the same sound goes in an MP4 (a video) or an MP3 (a sound)', () => {
     const f = facts('ts', null, snd('mp3'), refused);
     const why = { box: 'ts', fine: { sound: 'mp3' } };
-    expect(verdict(f, CHROMIUM, 'video', 'video/mp2t', CHROMIUM_ENC)).toEqual({ is: 'fails', fix: { audio: 'keep', box: 'mp4' }, why: { kind: 'video', ...why } });
-    expect(verdict(f, CHROMIUM, 'audio', 'video/mp2t', CHROMIUM_ENC)).toEqual({ is: 'fails', fix: { audio: 'keep', box: 'mp3' }, why: { kind: 'audio', ...why } });
+    expect(verdict(f, CHROMIUM, 'video', 'video/mp2t', CHROMIUM_ENC)).toEqual({
+      is: 'fails',
+      fix: { audio: 'keep', box: 'mp4' },
+      why: { kind: 'video', ...why },
+    });
+    expect(verdict(f, CHROMIUM, 'audio', 'video/mp2t', CHROMIUM_ENC)).toEqual({
+      is: 'fails',
+      fix: { audio: 'keep', box: 'mp3' },
+      why: { kind: 'audio', ...why },
+    });
   });
 
   it('a TS whose picture the reader leaves out (MPEG-2: a DVD, a TV recording) can’t be fixed: its sound alone would lose the picture', () => {
     const f = { ...facts('ts', null, snd('mp3'), refused), hiddenVideo: 'mpeg2' };
     const v = verdict(f, CHROMIUM, 'video', 'video/mp2t', CHROMIUM_ENC);
     expect(v).toEqual({ is: 'fails', fix: null, why: { kind: 'video', video: 'mpeg2', fine: { sound: 'mp3' }, cant: 'undecodable' } });
-    expect(whyLine(v)).toBe('Its video is MPEG-2, which this browser can’t play or convert. Convert it to MP4 (H.264) with a video app first (HandBrake is free).');
+    expect(whyLine(v)).toBe(
+      'Its video is MPEG-2, which this browser can’t play or convert. Convert it to MP4 (H.264) with a video app first (HandBrake is free).',
+    );
     // (One with no sound either: still a video it can't read, not one whose type alone says.)
     expect(verdict({ ...facts('ts', null, null), hiddenVideo: 'mpeg2' }, CHROME, 'video', 'video/mp2t', CHROME_ENC).is).toBe('fails');
   });
 
   it('in the test Chromium: an AC-3 sound alone can’t be fixed', () => {
     const f = facts('mkv', null, snd('ac3', { decodes: false, cpt: false }), refused);
-    expect(verdict(f, CHROMIUM, 'audio', 'audio/x-matroska', CHROMIUM_ENC)).toEqual({ is: 'fails', fix: null, why: { kind: 'audio', sound: 'ac3', cant: 'undecodable' } });
+    expect(verdict(f, CHROMIUM, 'audio', 'audio/x-matroska', CHROMIUM_ENC)).toEqual({
+      is: 'fails',
+      fix: null,
+      why: { kind: 'audio', sound: 'ac3', cant: 'undecodable' },
+    });
   });
 
   it('in the test Chromium: an MKV of H.264 and AAC can’t be fixed (no file made of it would play here either)', () => {
     const f = facts('mkv', pic('avc', { decodes: false, cpt: false }), snd('aac', { decodes: false, cpt: false }), refused);
-    expect(verdict(f, CHROMIUM, 'video', 'video/x-matroska', CHROMIUM_ENC)).toEqual({ is: 'fails', fix: null, why: { kind: 'video', video: 'avc', sound: 'aac', cant: 'undecodable' } });
+    expect(verdict(f, CHROMIUM, 'video', 'video/x-matroska', CHROMIUM_ENC)).toEqual({
+      is: 'fails',
+      fix: null,
+      why: { kind: 'video', video: 'avc', sound: 'aac', cant: 'undecodable' },
+    });
   });
 
   it('bytes the app can’t read: unknown (their type alone says), and so is a file with nothing in it to judge', () => {
@@ -81,9 +99,15 @@ describe('whether a file plays here, and what would fix it', () => {
     // (No element asked: an MP4 or WebM goes by its tracks.)
     expect(verdict(facts('webm', pic('vp9'), snd('opus')), CHROMIUM, 'video', 'video/webm')).toEqual({ is: 'plays', repack: null });
     // The element's word beats canPlayType: an HEVC picture that plays here (its hardware does) plays.
-    expect(verdict(facts('mp4', pic('hevc', { cpt: false }), snd('aac'), played()), CHROME, 'video', 'video/mp4', CHROME_ENC)).toEqual({ is: 'plays', repack: null });
+    expect(verdict(facts('mp4', pic('hevc', { cpt: false }), snd('aac'), played()), CHROME, 'video', 'video/mp4', CHROME_ENC)).toEqual({
+      is: 'plays',
+      repack: null,
+    });
     // A sound whose bytes it decoded plays, whatever canPlayType said.
-    expect(verdict(facts('mov', pic('avc'), snd('pcm-s16', { cpt: false }), played()), CHROME, 'video', 'video/quicktime', CHROME_ENC)).toEqual({ is: 'plays', repack: null });
+    expect(verdict(facts('mov', pic('avc'), snd('pcm-s16', { cpt: false }), played()), CHROME, 'video', 'video/quicktime', CHROME_ENC)).toEqual({
+      is: 'plays',
+      repack: null,
+    });
   });
 
   it('repack: only when its own type isn’t one phones take for its kind, or isn’t what it really is; never into FLAC', () => {
@@ -118,12 +142,19 @@ describe('whether a file plays here, and what would fix it', () => {
     });
     // H.264 beside it: AAC, in an MP4.
     const g = facts('mov', pic('avc'), snd('pcm-s16'), played({ sound: 'no' }));
-    expect(verdict(g, CHROME, 'video', 'video/quicktime', CHROME_ENC)).toMatchObject({ is: 'silent', fix: { video: 'keep', audio: 'encode', box: 'mp4', to: { audio: 'aac' } } });
+    expect(verdict(g, CHROME, 'video', 'video/quicktime', CHROME_ENC)).toMatchObject({
+      is: 'silent',
+      fix: { video: 'keep', audio: 'encode', box: 'mp4', to: { audio: 'aac' } },
+    });
   });
 
   it('silent: an MP4 or WebM that plays silently gains nothing by leaving its sound out', () => {
     const f = facts('webm', pic('vp9'), snd('ac3', { decodes: false, cpt: false }));
-    expect(verdict(f, CHROMIUM, 'video', 'video/webm', CHROMIUM_ENC)).toEqual({ is: 'silent', fix: null, why: { kind: 'video', sound: 'ac3', fine: { video: 'vp9' }, cant: 'undecodable' } });
+    expect(verdict(f, CHROMIUM, 'video', 'video/webm', CHROMIUM_ENC)).toEqual({
+      is: 'silent',
+      fix: null,
+      why: { kind: 'video', sound: 'ac3', fine: { video: 'vp9' }, cant: 'undecodable' },
+    });
     expect(verdict({ ...f, box: 'mp4' }, CHROMIUM, 'video', 'video/mp4', CHROMIUM_ENC)).toMatchObject({ is: 'silent', fix: null });
   });
 
@@ -147,12 +178,20 @@ describe('whether a file plays here, and what would fix it', () => {
     });
     // Opus beside it: VP9 in a WebM (an H.264 picture goes with AAC or MP3 only).
     const opus = facts('mp4', pic('hevc', { cpt: false }), snd('opus'), played({ picture: false }));
-    expect(verdict(opus, CHROME, 'video', 'video/mp4', CHROME_ENC)).toMatchObject({ fix: { video: 'encode', audio: 'keep', box: 'webm', to: { video: 'vp9' } } });
+    expect(verdict(opus, CHROME, 'video', 'video/mp4', CHROME_ENC)).toMatchObject({
+      fix: { video: 'encode', audio: 'keep', box: 'webm', to: { video: 'vp9' } },
+    });
     // Both made again, with no H.264 here: VP9 and Opus.
     const both = facts('mp4', pic('hevc', { cpt: false }), snd('pcm-s16', { cpt: false }), played({ picture: false, sound: 'no' }));
-    expect(verdict(both, CHROMIUM, 'video', 'video/mp4', CHROMIUM_ENC)).toMatchObject({ fix: { video: 'encode', audio: 'encode', box: 'webm', to: { video: 'vp9', audio: 'opus' } } });
+    expect(verdict(both, CHROMIUM, 'video', 'video/mp4', CHROMIUM_ENC)).toMatchObject({
+      fix: { video: 'encode', audio: 'encode', box: 'webm', to: { video: 'vp9', audio: 'opus' } },
+    });
     // An HEVC MP4 that didn't open: its picture is why (MP4s open here).
-    expect(verdict(facts('mp4', pic('hevc'), snd('aac'), refused), CHROME, 'video', 'video/mp4', CHROME_ENC)).toMatchObject({ is: 'fails', fix: { video: 'encode', audio: 'keep' }, why: { video: 'hevc' } });
+    expect(verdict(facts('mp4', pic('hevc'), snd('aac'), refused), CHROME, 'video', 'video/mp4', CHROME_ENC)).toMatchObject({
+      is: 'fails',
+      fix: { video: 'encode', audio: 'keep' },
+      why: { video: 'hevc' },
+    });
   });
 
   it('fails: its sound left out beside a picture when it can’t be made again; a TS that doesn’t open says so', () => {
@@ -167,11 +206,22 @@ describe('whether a file plays here, and what would fix it', () => {
 
   it('fails with no fix: ProRes, no WebCodecs, no encoder', () => {
     const prores = facts('mov', pic('prores', { decodes: false, cpt: false }), snd('aac'), refused);
-    expect(verdict(prores, CHROME, 'video', 'video/quicktime', CHROME_ENC)).toEqual({ is: 'fails', fix: null, why: { kind: 'video', video: 'prores', fine: { sound: 'aac' }, cant: 'prores' } });
+    expect(verdict(prores, CHROME, 'video', 'video/quicktime', CHROME_ENC)).toEqual({
+      is: 'fails',
+      fix: null,
+      why: { kind: 'video', video: 'prores', fine: { sound: 'aac' }, cant: 'prores' },
+    });
     const hevc = facts('mp4', pic('hevc', { cpt: false }), snd('aac'), played({ picture: false }));
     expect(verdict(hevc, PLAIN, 'video', 'video/mp4')).toMatchObject({ is: 'fails', fix: null, why: { video: 'hevc', cant: 'no-webcodecs' } });
-    expect(verdict(hevc, CHROME, 'video', 'video/mp4', { avc: false, vp9: false, vp8: false })).toMatchObject({ is: 'fails', fix: null, why: { cant: 'no-encoder' } });
-    expect(verdict({ ...hevc, video: pic('hevc', { cpt: false, decodes: false }) }, CHROME, 'video', 'video/mp4', CHROME_ENC)).toMatchObject({ fix: null, why: { cant: 'undecodable' } });
+    expect(verdict(hevc, CHROME, 'video', 'video/mp4', { avc: false, vp9: false, vp8: false })).toMatchObject({
+      is: 'fails',
+      fix: null,
+      why: { cant: 'no-encoder' },
+    });
+    expect(verdict({ ...hevc, video: pic('hevc', { cpt: false, decodes: false }) }, CHROME, 'video', 'video/mp4', CHROME_ENC)).toMatchObject({
+      fix: null,
+      why: { cant: 'undecodable' },
+    });
   });
 
   it('with no WebCodecs (an http:// page), copies still fix: a repackage, or a sound left out', () => {
@@ -193,9 +243,21 @@ describe('whether a file plays here, and what would fix it', () => {
 
 describe('the file type a fix makes', () => {
   it('a sound keeps its family; a video is a WebM when both tracks are WebM’s, else an MP4', () => {
-    expect([boxFor('audio', null, 'mp3'), boxFor('audio', null, 'aac'), boxFor('audio', null, 'vorbis'), boxFor('audio', null, 'flac'), boxFor('audio', null, 'pcm-s24')]).toEqual(['mp3', 'm4a', 'ogg', 'flac', 'wav']);
+    expect([
+      boxFor('audio', null, 'mp3'),
+      boxFor('audio', null, 'aac'),
+      boxFor('audio', null, 'vorbis'),
+      boxFor('audio', null, 'flac'),
+      boxFor('audio', null, 'pcm-s24'),
+    ]).toEqual(['mp3', 'm4a', 'ogg', 'flac', 'wav']);
     expect(boxFor('audio', null, 'ac3')).toBeNull();
-    expect([boxFor('video', 'vp9', 'opus'), boxFor('video', 'av1', null), boxFor('video', 'vp9', 'aac'), boxFor('video', 'avc', 'opus'), boxFor('video', null, 'mp3')]).toEqual(['webm', 'webm', 'mp4', 'mp4', 'mp4']);
+    expect([
+      boxFor('video', 'vp9', 'opus'),
+      boxFor('video', 'av1', null),
+      boxFor('video', 'vp9', 'aac'),
+      boxFor('video', 'avc', 'opus'),
+      boxFor('video', null, 'mp3'),
+    ]).toEqual(['webm', 'webm', 'mp4', 'mp4', 'mp4']);
     // (Nothing that plays holds VP9 with PCM, or Vorbis in an MP4.)
     expect(boxFor('video', 'vp9', 'pcm-s16')).toBeNull();
     expect(boxFor('video', 'avc', 'vorbis')).toBeNull();

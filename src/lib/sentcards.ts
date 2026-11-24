@@ -120,7 +120,9 @@ export function cleanTo(session: Pick<Session, 'players'>, to: CardTo[]): CardTo
       continue;
     }
     for (const t of mine) {
-      const one: CardTo = t.member ? { seat: p.id, member: { id: t.member.id, name: t.member.name } } : { seat: p.id, ...(t.except?.length ? { except: [...t.except] } : {}) };
+      const one: CardTo = t.member
+        ? { seat: p.id, member: { id: t.member.id, name: t.member.name } }
+        : { seat: p.id, ...(t.except?.length ? { except: [...t.except] } : {}) };
       if (!out.some((x) => toKey(x) === toKey(one))) out.push(one);
     }
   }
@@ -216,7 +218,8 @@ export function sendCard(game: CardGame, session: Session, card: CardToSend, now
   const to = cleanTo(session, card.to);
   // (A plain copy: the slide may be the dialog's live state.)
   const k = card.content;
-  const content: SentCard['content'] = 'slide' in k ? { slide: JSON.parse(JSON.stringify(k.slide)) } : 'saved' in k ? { saved: k.saved } : { clue: k.clue, card: k.card };
+  const content: SentCard['content'] =
+    'slide' in k ? { slide: JSON.parse(JSON.stringify(k.slide)) } : 'saved' in k ? { saved: k.saved } : { clue: k.clue, card: k.card };
   const slide = sentSlide(game, { content });
   if (!to.length || !slide) return null;
   const round = card.until === 'round' ? roundNow(game, session) : undefined;
@@ -283,7 +286,11 @@ export function finalRecipients(session: Pick<Session, 'players' | 'final'>, car
 /** Who a card went to, in words ("Ann, Bob", "Mia (Red Team)"): names only, never what's on it. */
 export function sentToText(session: Pick<Session, 'players'>, to: CardTo[], teams = false): string {
   const name = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
-  return to.map((t) => (t.member ? `${t.member.name}${teams ? ` (${name(t.seat)})` : ''}` : t.except?.length ? `the rest of ${name(t.seat)}` : name(t.seat))).join(', ') || 'nobody';
+  return (
+    to
+      .map((t) => (t.member ? `${t.member.name}${teams ? ` (${name(t.seat)})` : ''}` : t.except?.length ? `the rest of ${name(t.seat)}` : name(t.seat)))
+      .join(', ') || 'nobody'
+  );
 }
 
 // ---------- A card made in 🤫 Send a card… ----------
@@ -336,7 +343,12 @@ export function repairSentCards(session: Session): void {
   const okTo = (to: unknown) =>
     Array.isArray(to) &&
     to.length > 0 &&
-    to.every((t) => typeof t?.seat === 'string' && (t.member === undefined || isMember(t.member)) && (t.except === undefined || (Array.isArray(t.except) && t.except.every((x: unknown) => typeof x === 'string'))));
+    to.every(
+      (t) =>
+        typeof t?.seat === 'string' &&
+        (t.member === undefined || isMember(t.member)) &&
+        (t.except === undefined || (Array.isArray(t.except) && t.except.every((x: unknown) => typeof x === 'string'))),
+    );
   // (Each shape tested in the order sentSlide reads them: `{ saved, slide: 5 }` is a damaged slide, not a 🤫 Card.)
   const okContent = (x: unknown) => {
     if (typeof x !== 'object' || !x) return false;

@@ -13,9 +13,21 @@ const at = vi.hoisted(() => ({ reading: 0, most: 0 }));
 const track = { str: null, decodes: true, bps: null, cpt: true };
 /** What's in a file, by its first byte: 1 a WebM of VP9 and Opus, 2 an MKV of the same, 3 an MKV whose sound is AC-3. */
 const FACTS: Record<number, Partial<MediaFacts>> = {
-  1: { box: 'webm', video: { ...track, codec: 'vp9', width: 160, height: 90, rotation: 0, hdr: false }, audio: { ...track, codec: 'opus', channels: 2, label: null } },
-  2: { box: 'mkv', video: { ...track, codec: 'vp9', width: 160, height: 90, rotation: 0, hdr: false }, audio: { ...track, codec: 'opus', channels: 2, label: null } },
-  3: { box: 'mkv', video: { ...track, codec: 'vp9', width: 160, height: 90, rotation: 0, hdr: false }, audio: { ...track, codec: 'ac3', decodes: false, cpt: false, channels: 2, label: null } },
+  1: {
+    box: 'webm',
+    video: { ...track, codec: 'vp9', width: 160, height: 90, rotation: 0, hdr: false },
+    audio: { ...track, codec: 'opus', channels: 2, label: null },
+  },
+  2: {
+    box: 'mkv',
+    video: { ...track, codec: 'vp9', width: 160, height: 90, rotation: 0, hdr: false },
+    audio: { ...track, codec: 'opus', channels: 2, label: null },
+  },
+  3: {
+    box: 'mkv',
+    video: { ...track, codec: 'vp9', width: 160, height: 90, rotation: 0, hdr: false },
+    audio: { ...track, codec: 'ac3', decodes: false, cpt: false, channels: 2, label: null },
+  },
   // 4 an MKA, its sound AC-3 alone (it won't play at all).
   4: { box: 'mkv', video: null, audio: { ...track, codec: 'ac3', decodes: false, cpt: false, channels: 2, label: null } },
 };
@@ -29,7 +41,11 @@ vi.mock('./facts', async (orig) => ({
     return { box: null, seconds: 2, size: blob.size, video: null, audio: null, moreAudio: 0, subtitles: false, ...FACTS[first] };
   }),
   // (The page element: it plays the picture, and the sound when it isn't AC-3.)
-  elementTest: vi.fn(async (blob: Blob) => ({ opens: 'yes', picture: true, sound: [3, 4].includes(new Uint8Array(await blob.arrayBuffer())[0]) ? 'no' : 'yes' })),
+  elementTest: vi.fn(async (blob: Blob) => ({
+    opens: 'yes',
+    picture: true,
+    sound: [3, 4].includes(new Uint8Array(await blob.arrayBuffer())[0]) ? 'no' : 'yes',
+  })),
 }));
 vi.mock('../app.svelte', async (orig) => ({ ...(await orig<typeof import('../app.svelte')>()), toast: vi.fn() }));
 vi.mock('./probe', async (orig) => ({
@@ -39,10 +55,17 @@ vi.mock('./probe', async (orig) => ({
 }));
 
 const file = (first: number) => new Blob([new Uint8Array([first, 0, 0, 0])]);
-const ref = (id: string, kind: MediaRef['kind'] = 'video', more: Partial<MediaRef> = {}): MediaRef => ({ id, name: `${id}.mkv`, mime: 'video/x-matroska', size: 4, kind, ...more });
+const ref = (id: string, kind: MediaRef['kind'] = 'video', more: Partial<MediaRef> = {}): MediaRef => ({
+  id,
+  name: `${id}.mkv`,
+  mime: 'video/x-matroska',
+  size: 4,
+  kind,
+  ...more,
+});
 /** Once nothing is waiting to be checked. */
 const settled = (ids: string[]) => vi.waitFor(() => expect(ids.map((id) => verdictOf(id)).includes('checking')).toBe(false), { timeout: 5000 });
-const is = (id: string) => (v => (typeof v === 'object' ? v.is : v))(verdictOf(id));
+const is = (id: string) => ((v) => (typeof v === 'object' ? v.is : v))(verdictOf(id));
 
 /** What an element's canPlayType says (canPlay: today's warning, by type alone). */
 const cpt = vi.hoisted(() => ({ says: '' }));
@@ -64,14 +87,40 @@ afterEach(() => vi.unstubAllGlobals());
 describe('checking whether files play here', () => {
   it('checks each stored video and sound once, one at a time; not links, 🗜 copies for phones, pictures or missing files', async () => {
     const g = app.game;
-    g.media.push(ref('webm'), ref('mkv'), ref('talk'), ref('song', 'audio'), ref('link', 'video', { url: 'https://example.com/a.mkv' }), ref('copy', 'video', { phoneCopy: { of: 'mkv' } }), ref('pic', 'image'), ref('gone'));
-    for (const [id, first] of [['webm', 1], ['mkv', 2], ['talk', 3], ['song', 1], ['copy', 1], ['pic', 1]] as const) registerBlob(id, file(first));
+    g.media.push(
+      ref('webm'),
+      ref('mkv'),
+      ref('talk'),
+      ref('song', 'audio'),
+      ref('link', 'video', { url: 'https://example.com/a.mkv' }),
+      ref('copy', 'video', { phoneCopy: { of: 'mkv' } }),
+      ref('pic', 'image'),
+      ref('gone'),
+    );
+    for (const [id, first] of [
+      ['webm', 1],
+      ['mkv', 2],
+      ['talk', 3],
+      ['song', 1],
+      ['copy', 1],
+      ['pic', 1],
+    ] as const)
+      registerBlob(id, file(first));
     const before = checks.version;
     checkGame(g);
     checkGame(g);
     expect(is('mkv')).toBe('checking');
     await settled(['webm', 'mkv', 'talk', 'song']);
-    expect(['webm', 'mkv', 'talk', 'song', 'link', 'copy', 'pic', 'gone'].map(is)).toEqual(['plays', 'plays', 'silent', 'plays', undefined, undefined, undefined, undefined]);
+    expect(['webm', 'mkv', 'talk', 'song', 'link', 'copy', 'pic', 'gone'].map(is)).toEqual([
+      'plays',
+      'plays',
+      'silent',
+      'plays',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
     expect([vi.mocked(readFacts).mock.calls.length, at.most]).toEqual([4, 1]);
     // (The page element only for the MKVs: a WebM's codecs tell.)
     expect(vi.mocked(elementTest).mock.calls.length).toBe(2);
@@ -158,7 +207,9 @@ describe('a file just added: 🔄 offered when it won’t play here', () => {
     registerBlob('t4', new Blob([new Uint8Array([4, 4])]));
     for (const id of ['t3', 't4']) checkAdded(app.game.media.find((m) => m.id === id)!);
     await settled(['t3', 't4']);
-    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ 2 files you just added won’t play in this browser, or play without their sound: see the note at the top.']));
+    await vi.waitFor(() =>
+      expect(toasts()).toEqual(['⚠ 2 files you just added won’t play in this browser, or play without their sound: see the note at the top.']),
+    );
     // Two that won't play at all.
     vi.mocked(toast).mockClear();
     app.game.media.push(ref('t5', 'audio'), ref('t6', 'audio'));
@@ -175,7 +226,8 @@ describe('a file just added: 🔄 offered when it won’t play here', () => {
       hidden: false,
       addEventListener: () => {},
       createElement: () => ({ canPlayType: () => cpt.says }),
-      querySelectorAll: (s: string) => (s === '[aria-modal="true"]' ? panels.map((p) => ({ querySelector: (q: string) => (p && q === '[data-plays-note] button' ? {} : null) })) : []),
+      querySelectorAll: (s: string) =>
+        s === '[aria-modal="true"]' ? panels.map((p) => ({ querySelector: (q: string) => (p && q === '[data-plays-note] button' ? {} : null) })) : [],
     });
 
   it('added in the clue editor (a window over the note at the top): the toast points to its panel’s 🔄 Convert…', async () => {
@@ -193,14 +245,18 @@ describe('a file just added: 🔄 offered when it won’t play here', () => {
     registerBlob('w1', new Blob([new Uint8Array([3, 8])]));
     checkAdded(app.game.media.find((m) => m.id === 'w1')!);
     await settled(['w1']);
-    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: see the note at the top once these windows are closed.']));
+    await vi.waitFor(() =>
+      expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: see the note at the top once these windows are closed.']),
+    );
     vi.mocked(toast).mockClear();
     windows(false);
     app.game.media.push(ref('w2'));
     registerBlob('w2', new Blob([new Uint8Array([3, 9])]));
     checkAdded(app.game.media.find((m) => m.id === 'w2')!);
     await settled(['w2']);
-    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: see the note at the top once this window is closed.']));
+    await vi.waitFor(() =>
+      expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: see the note at the top once this window is closed.']),
+    );
   });
 
   it('one dismissed before its toast isn’t counted; one added after it landed isn’t waited for', async () => {

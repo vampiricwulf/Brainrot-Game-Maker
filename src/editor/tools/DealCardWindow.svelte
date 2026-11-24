@@ -41,7 +41,13 @@
     <div class="body">
       <label class="field">
         Words (only its players see them)
-        <textarea data-field="card" rows="2" dir="auto" placeholder="Type what they’ll see…" value={slideText(part.card)} oninput={(e) => setSlideText(part.card, e.currentTarget.value)}></textarea>
+        <textarea
+          data-field="card"
+          rows="2"
+          dir="auto"
+          placeholder="Type what they’ll see…"
+          value={slideText(part.card)}
+          oninput={(e) => setSlideText(part.card, e.currentTarget.value)}></textarea>
       </label>
       <div class="cardbar row">
         <span class="muted small">Its players get it on their phones when you send the deal (🎭 Deal… in the tools row, during the game).</span>
@@ -51,11 +57,18 @@
           class:on={phoneView}
           aria-pressed={phoneView}
           onclick={() => (phoneView = !phoneView)}
-          title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone">📱 On their phone</button
+          title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone"
+          >📱 On their phone</button
         >
       </div>
       <div class="card-edit">
-        <SlideEditor slide={part.card} quickfield="card" placeholder="Click to type what they’ll see" badge="🎭 {name.toUpperCase()} · ONLY ITS PLAYERS SEE IT" fill />
+        <SlideEditor
+          slide={part.card}
+          quickfield="card"
+          placeholder="Click to type what they’ll see"
+          badge="🎭 {name.toUpperCase()} · ONLY ITS PLAYERS SEE IT"
+          fill
+        />
         {#if phoneView}<PhoneCardPreview game={app.game} card={onPhone.slide} role={deal.parts.length > 1 ? name : undefined} sample={onPhone.sample} />{/if}
       </div>
     </div>

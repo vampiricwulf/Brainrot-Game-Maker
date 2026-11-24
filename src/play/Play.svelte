@@ -7,16 +7,95 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { isTextField } from '../lib/undokeys';
   import { oneShot, restOfPress } from '../lib/oneshot';
-  import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PARTNER_GAMES, PLAYER_WHEEL, questionSlides, roundName, wholePoints, type ClueRef } from '../lib/model';
   import {
-    applyScore, awardOpen, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep, finalAdvance,
-    finalBack, finalJudge, finalRevealNow, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext,
-    nameList, newSession, openClue, playerName, redo, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleUsed, undo, blankSlide, toolOnlyClue,
-    stepSlide, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown, finalTakeNewcomers, forViewers,
-    coWinnersHold, ownPlayers, clueMarks, partnerSteal, stealersLeft, slidePosition, switchNet, switchVerdict,
+    blankName,
+    clueCardWords,
+    finalName,
+    formatPoints,
+    getClue,
+    isBoard,
+    isBoardGame,
+    isFinal,
+    isRpg,
+    isSlides,
+    MAX_PLAYERS,
+    newId,
+    PARTNER_GAMES,
+    PLAYER_WHEEL,
+    questionSlides,
+    roundName,
+    wholePoints,
+    type ClueRef,
+  } from '../lib/model';
+  import {
+    applyScore,
+    awardOpen,
+    backToLastRound,
+    currentFinal,
+    clueName,
+    clueReason,
+    clueScored,
+    currentClueInfo,
+    ddShowQuestion,
+    describeStep,
+    finalAdvance,
+    finalBack,
+    finalJudge,
+    finalRevealNow,
+    finalShow,
+    finalShowAnswer,
+    finalTag,
+    finalUnjudged,
+    findClueRef,
+    hasWager,
+    typedAnswer,
+    goToRound,
+    introNext,
+    nameList,
+    newSession,
+    openClue,
+    playerName,
+    redo,
+    restorePlayer,
+    answerShowing,
+    score,
+    skipIntro,
+    startIntro,
+    toggleUsed,
+    undo,
+    blankSlide,
+    toolOnlyClue,
+    stepSlide,
+    finalStepFix,
+    startTiebreaker,
+    stepOf,
+    logZero,
+    tiebreakHolds,
+    tiedForFirst,
+    tiedLeaders,
+    winnerKnown,
+    finalTakeNewcomers,
+    forViewers,
+    coWinnersHold,
+    ownPlayers,
+    clueMarks,
+    partnerSteal,
+    stealersLeft,
+    slidePosition,
+    switchNet,
+    switchVerdict,
   } from '../lib/session';
   import {
-    cardRecipients, cardSlides, partnerCandidates, partnerPlayers, partnerRules, partnerShares, sendCards, sharesText, stealOn, wasCopied,
+    cardRecipients,
+    cardSlides,
+    partnerCandidates,
+    partnerPlayers,
+    partnerRules,
+    partnerShares,
+    sendCards,
+    sharesText,
+    stealOn,
+    wasCopied,
   } from '../lib/partner';
   import { cardLinks, cardWords } from '../lib/phonecard';
   import { canCopyPicture, hasPicture } from './host/cardcopy';
@@ -26,24 +105,105 @@
   import { dropOffersBut } from './host/offered.svelte';
   import { forgetRecipients, recipientsOf } from './host/tilecardpicks.svelte';
   import {
-    anywayLabel, answerRow, asked, ddWaits, doneSay, doneStep, escBounce, finalWaits, goOnDecision, inside, leftNow, mainStep, everyonePassed, mergeItems, ringNow, swallowSay, todo, type Check, type GoActs, type GoCtx,
-    type FinalNow, type GoPanel, type PartnerNow, type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
+    anywayLabel,
+    answerRow,
+    asked,
+    ddWaits,
+    doneSay,
+    doneStep,
+    escBounce,
+    finalWaits,
+    goOnDecision,
+    inside,
+    leftNow,
+    mainStep,
+    everyonePassed,
+    mergeItems,
+    ringNow,
+    swallowSay,
+    todo,
+    type Check,
+    type GoActs,
+    type GoCtx,
+    type FinalNow,
+    type GoPanel,
+    type PartnerNow,
+    type GoSource,
+    type Inside,
+    type LeftItem,
+    type QuietKind,
+    type Quick,
+    type Step,
   } from './host/goon';
-  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
-    answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzReset, buzzTake, cardsFullText, newBuzz, roomCardsFull, teamsOn, whoBuzzed, type BuzzState,
+    addTime,
+    newLive,
+    overlayDoneAt,
+    startTimer,
+    tileToolUp,
+    timerRemaining,
+    timerResumed,
+    toggleTimer,
+    toolOverlay,
+    type Live,
+    type StageAction,
+    type TimerState,
+  } from '../lib/live';
+  import {
+    answerRoundId,
+    buzzArm,
+    buzzClueOpened,
+    buzzDone,
+    buzzIdle,
+    buzzReset,
+    buzzTake,
+    cardsFullText,
+    newBuzz,
+    roomCardsFull,
+    teamsOn,
+    whoBuzzed,
+    type BuzzState,
   } from '../lib/buzz';
   import { KICK_BLOCK_MS } from '../lib/buzzproto';
   import {
-    buzzerOn, closeRoom, endRoom, inRoom, kept, onRoomAnswer, onRoomBuzz, onRoomCardSeen, onRoomColor, onRoomPasses, onRoomQueue, onRoomWager, rejectPhone,
-    rejoinRoom, remote, roomCanFree, roomHasAnswers, roomMembers,
+    buzzerOn,
+    closeRoom,
+    endRoom,
+    inRoom,
+    kept,
+    onRoomAnswer,
+    onRoomBuzz,
+    onRoomCardSeen,
+    onRoomColor,
+    onRoomPasses,
+    onRoomQueue,
+    onRoomWager,
+    rejectPhone,
+    rejoinRoom,
+    remote,
+    roomCanFree,
+    roomHasAnswers,
+    roomMembers,
   } from '../lib/remote.svelte';
   import { judgeAllPlan, usableChoices } from '../lib/choices';
   import { clearRoom, type SavedRoom } from '../lib/persist';
   import type { RoomQueue } from '../lib/roomlink';
   import PhoneRoom from './PhoneRoom.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
-  import { applyScoreCard, openDice, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
+  import {
+    applyScoreCard,
+    openDice,
+    openPlayerWheel,
+    openWheel,
+    quickDice,
+    rollDice,
+    scoreCardsLeft,
+    spinningRolls,
+    spinWheel,
+    startRollOff,
+    toggleScoreboard,
+    wheelSpentUp,
+  } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort } from '../lib/validate';
@@ -78,12 +238,46 @@
   import { cueHere, playCue } from './cues';
   import { BUILTIN } from '../lib/sounds';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { finalNextStep, logged, playStep, redoAction, redoFrom, revealStep, setPicker, stepText, undoAction, whoWasWhoStep, type Undone } from '../lib/toolset';
+  import {
+    finalNextStep,
+    logged,
+    playStep,
+    redoAction,
+    redoFrom,
+    revealStep,
+    setPicker,
+    stepText,
+    undoAction,
+    whoWasWhoStep,
+    type Undone,
+  } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
-    addLive, bigObject, droppedFile, dropEntry, everythingOn, giveEntry, joinPartyNow, moveGroup, moveObject, objectAt, objectMenu, objectName, pickUp,
-    removeObject, rpgNow, selectionWords, sendPlayers, START_FIRST, staysWords, stepParty, toggleMap, type AvatarDrop, type BandPick, type RpgAsk,
+    addLive,
+    bigObject,
+    droppedFile,
+    dropEntry,
+    everythingOn,
+    giveEntry,
+    joinPartyNow,
+    moveGroup,
+    moveObject,
+    objectAt,
+    objectMenu,
+    objectName,
+    pickUp,
+    removeObject,
+    rpgNow,
+    selectionWords,
+    sendPlayers,
+    START_FIRST,
+    staysWords,
+    stepParty,
+    toggleMap,
+    type AvatarDrop,
+    type BandPick,
+    type RpgAsk,
     type StagePoint,
   } from './rpg/hostops';
   import { isMenuKey, showMenu, type MenuEntry } from '../lib/menustate.svelte';
@@ -91,7 +285,20 @@
   import { longPress } from '../lib/longpress';
   import { currentPlayer, ensureBoard, HOP_MS, spaceSaid, waysNow } from '../lib/boardgame';
   import { ensureWorld, focusRef, refindPositions } from '../lib/rpg';
-  import { boardNow, isMover, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, rollMover, revealSpace, runSpace, sendNow, setTurn } from './boardgame/bgops';
+  import {
+    boardNow,
+    isMover,
+    moveCounts,
+    moveNow,
+    moverResult,
+    moverSliceNoNumber,
+    moverSliceWords,
+    rollMover,
+    revealSpace,
+    runSpace,
+    sendNow,
+    setTurn,
+  } from './boardgame/bgops';
   import { boardEdit, setEditing } from './boardgame/boardedit.svelte';
   import { partnerUpVerbs, playerMenu, revealVerbs, type SeatPhone } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
@@ -447,7 +654,11 @@
     const clueId = everyone && info ? answerRoundId(session, info.clue.id) : null;
     const id = clueId && !(ans?.id === clueId && ans.locked) ? clueId : null;
     const fin = !clueId && finalTyped && session.finalStep === 'question' && !session.final?.answersLocked ? session.final : undefined;
-    const inNow = fin ? fin.players.filter((p) => fin.answers?.[p]) : id && ans?.id === id ? session.players.filter((p) => ans.seats[p.id]).map((p) => p.id) : [];
+    const inNow = fin
+      ? fin.players.filter((p) => fin.answers?.[p])
+      : id && ans?.id === id
+        ? session.players.filter((p) => ans.seats[p.id]).map((p) => p.id)
+        : [];
     untrack(() => {
       if (!id && !fin) return void (app.live.answers && delete app.live.answers);
       const was = app.live.answers?.in ?? [];
@@ -459,7 +670,15 @@
   // who has a private question, never what's on it. (Not a Daily Double's or a partner clue's: their badges say who plays.)
   $effect(() => {
     const plain = session.phase === 'clue' && !!info && !session.dd && !session.partner && !session.revealed;
-    const seats = plain ? [...new Set(cardsOut(game, session).filter((c) => c.until === 'tile').flatMap((c) => c.to.map((t) => t.seat)))] : [];
+    const seats = plain
+      ? [
+          ...new Set(
+            cardsOut(game, session)
+              .filter((c) => c.until === 'tile')
+              .flatMap((c) => c.to.map((t) => t.seat)),
+          ),
+        ]
+      : [];
     const ids = session.players.map((p) => p.id).filter((id) => seats.includes(id));
     untrack(() => {
       const was = app.live.tileCardFor ?? [];
@@ -521,9 +740,7 @@
   // Final's) or a partner to choose needs them: they come back for it, and hide again once it's done (unless the host
   // pressed H meanwhile).
   const needControls = $derived(
-    panelWindow ||
-      !!ownPlayers(session)?.setup ||
-      (session.phase === 'final' && session.finalStep === 'wagers' && session.intro?.stage !== 'title'),
+    panelWindow || !!ownPlayers(session)?.setup || (session.phase === 'final' && session.finalStep === 'wagers' && session.intro?.stage !== 'title'),
   );
   let hideAgain = false;
 
@@ -902,13 +1119,7 @@
   /** Open the audience window, or bring it to the front if it's already open. Never closes it. */
   async function openAudience(): Promise<boolean> {
     const ok = await openAudienceWindow(audienceTitle(game));
-    if (!ok)
-      toast(
-        inTauri()
-          ? "Couldn't open the audience window. Try again, or use single-window mode."
-          : popupBlocked(),
-        5000,
-      );
+    if (!ok) toast(inTauri() ? "Couldn't open the audience window. Try again, or use single-window mode." : popupBlocked(), 5000);
     return ok;
   }
 
@@ -972,7 +1183,13 @@
     if (session.phase === 'clue' && session.currentClue)
       return (
         clueReason(game, session.currentClue) +
-        (session.dd?.stage === 'question' ? ' (Daily Double)' : partnerSteal(session) ? ' (a steal)' : session.partner && session.partner.stage !== 'pick' ? ' (partner clue)' : '')
+        (session.dd?.stage === 'question'
+          ? ' (Daily Double)'
+          : partnerSteal(session)
+            ? ' (a steal)'
+            : session.partner && session.partner.stage !== 'pick'
+              ? ' (partner clue)'
+              : '')
       );
     if (session.phase === 'final') {
       const f = currentFinal(session, game);
@@ -1037,7 +1254,9 @@
     // Screen readers: what changed, and where that leaves each player.
     for (const e of shown) {
       const total = formatPoints(score(session, e.playerId), sym);
-      announce(`${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}${switched ? ` (changed to ${sign > 0 ? 'right' : 'wrong'})` : ''}, now ${total}`);
+      announce(
+        `${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}${switched ? ` (changed to ${sign > 0 ? 'right' : 'wrong'})` : ''}, now ${total}`,
+      );
     }
     // Awarding control of the board follows TV rules: the last correct player picks next.
     // (Kept on the award, so undoing it gives the picker back.)
@@ -1102,7 +1321,10 @@
     playCue(app.live, game, right.length ? 'right' : 'wrong');
     for (const p of groupPops(events, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
     // (Each player's name and total, never what they picked.)
-    for (const e of events) announce(`${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${formatPoints(score(session, e.playerId), sym)}`);
+    for (const e of events)
+      announce(
+        `${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${formatPoints(score(session, e.playerId), sym)}`,
+      );
     const first = right.find((e) => e.playerId === plan.right[0]);
     if (!picked && first && game.settings.pickerFollowsAward !== false && session.currentPickerId !== first.playerId) {
       first.picker = { was: session.currentPickerId, now: first.playerId };
@@ -1136,7 +1358,8 @@
     // (Tied, settled or not: picking the other one replaces a wrong pick, as a step of its own.)
     if (!tiedForFirst(session).some((p) => p.id === id)) return hint(`${playerName(session, id)} isn’t tied for first`);
     const tied = tiedForFirst(session).map((p) => p.id);
-    if (session.rollOffWinner === id && session.tiebreakClue && tiebreakHolds(session, tied)) return hint(`${playerName(session, id)} already won the tiebreaker: 🏁 Back to results`);
+    if (session.rollOffWinner === id && session.tiebreakClue && tiebreakHolds(session, tied))
+      return hint(`${playerName(session, id)} already won the tiebreaker: 🏁 Back to results`);
     logged(session, `${playerName(session, id)} won the tiebreaker clue`, () => {
       session.rollOffWinner = id;
       session.tieAmong = tied;
@@ -1164,7 +1387,9 @@
   /** The key the notes name, and where it's set (a player-only file has no 🎨 Theme). */
   const keyWhere = $derived(app.playerOnly ? game.theme?.stageBg : `${game.theme?.stageBg}, 🎨 Theme › Stage background`);
   /** The other key, which the notes offer only when it would leave the theme's colors, every player's and the rounds' alone. */
-  const otherKey = $derived(game.theme ? otherStageKey(game.theme, [...session.players.map((p) => p.color), ...roundColors.map(([, c]) => c)], hasBoard) : undefined);
+  const otherKey = $derived(
+    game.theme ? otherStageKey(game.theme, [...session.players.map((p) => p.color), ...roundColors.map(([, c]) => c)], hasBoard) : undefined,
+  );
 
   const info = $derived(currentClueInfo(session, game));
 
@@ -1331,7 +1556,15 @@
     // would take its decided buzz for this one. Open, it's a new opening; otherwise the latest one.
     const floor = session.remote?.armId ?? 0;
     // The answer is on screen: nobody buzzes any more (a wrong answer then doesn't open them for the rest).
-    if (b.phase === 'armed' && session.phase === 'clue' && session.revealed) b = { phase: 'closed', armId: Math.max(floor, b.armId - 1), answering: null, lockedOut: [...b.lockedOut], done: true, ...(b.passAt !== undefined ? { passAt: b.passAt } : {}) };
+    if (b.phase === 'armed' && session.phase === 'clue' && session.revealed)
+      b = {
+        phase: 'closed',
+        armId: Math.max(floor, b.armId - 1),
+        answering: null,
+        lockedOut: [...b.lockedOut],
+        done: true,
+        ...(b.passAt !== undefined ? { passAt: b.passAt } : {}),
+      };
     // (A clue's first opening moves up with it: they're still never opened.)
     if (b.armId < floor) {
       const armId = b.phase === 'armed' ? floor + 1 : floor;
@@ -1433,7 +1666,8 @@
     if (all || buzz.phase === 'answering') {
       // (A partner clue's steal: open for everyone but the ones who missed it, the two who played it.)
       const steal = partnerSteal(session);
-      if (selected.length || buzz.lockedOut.length) toast(steal ? `Buzzers open for everyone but ${nameList(steal.out.map((id) => playerName(session, id)))}` : 'Buzzers open for everyone');
+      if (selected.length || buzz.lockedOut.length)
+        toast(steal ? `Buzzers open for everyone but ${nameList(steal.out.map((id) => playerName(session, id)))}` : 'Buzzers open for everyone');
       // One step: Ctrl+Z puts the buzzers back as they were, with the buzz order and the round of passes it ended.
       const before = $state.snapshot(buzz) as BuzzState;
       const queue = $state.snapshot(phones.roomQueue) as RoomQueue | null;
@@ -1456,25 +1690,65 @@
   // ---------- Phone buzzers (host/phones.svelte.ts) ----------
 
   const phones = createPhones({
-    get game() { return game; },
-    get session() { return session; },
-    get buzz() { return buzz; },
-    get buzzing() { return buzzing; },
-    get info() { return info; },
-    get everyone() { return everyone; },
-    get finalRound() { return finalRound; },
-    get finalTyped() { return finalTyped; },
-    get toolFirst() { return toolFirst; },
-    get markSince() { return markSince; },
-    get wagerLimitsOff() { return wagerLimitsOff; },
-    get partner() { return partner; },
-    get phoneCards() { return phoneCards; },
-    get pregameTeams() { return pregameTeams; },
-    get dual() { return dual; },
-    get keptRoom() { return keptRoom; },
-    get selected() { return selected; },
-    set selected(ids: string[]) { selected = ids; },
-    buzzPlayer, setBuzz, later, catchUp, rollOffResult,
+    get game() {
+      return game;
+    },
+    get session() {
+      return session;
+    },
+    get buzz() {
+      return buzz;
+    },
+    get buzzing() {
+      return buzzing;
+    },
+    get info() {
+      return info;
+    },
+    get everyone() {
+      return everyone;
+    },
+    get finalRound() {
+      return finalRound;
+    },
+    get finalTyped() {
+      return finalTyped;
+    },
+    get toolFirst() {
+      return toolFirst;
+    },
+    get markSince() {
+      return markSince;
+    },
+    get wagerLimitsOff() {
+      return wagerLimitsOff;
+    },
+    get partner() {
+      return partner;
+    },
+    get phoneCards() {
+      return phoneCards;
+    },
+    get pregameTeams() {
+      return pregameTeams;
+    },
+    get dual() {
+      return dual;
+    },
+    get keptRoom() {
+      return keptRoom;
+    },
+    get selected() {
+      return selected;
+    },
+    set selected(ids: string[]) {
+      selected = ids;
+    },
+    buzzPlayer,
+    setBuzz,
+    later,
+    catchUp,
+    rollOffResult,
     partnerWheelUp: () => partnerWheelUp(),
     oncancel: (fix, at) => oncancel(fix, at),
     onexit: (keep) => onexit(keep),
@@ -1493,9 +1767,30 @@
   const answersNote = $derived(phones.answersNote);
   const phonesDown = $derived(phones.phonesDown);
   const {
-    setBuzzSetting, ordinal, roomQueueIn, passOn, dropBuzzRoll, skipAnswering, takeNext, rollTie, startPhoneRoom, roomState, roomAnswer, roomCardSeen,
-    roomColor, roomWager, roomBuzz, addPhonePlayer, kickPhone, kickTeamMember, moveTeamMember, backToEditor, closePhoneRoom,
-    lockSeats, exitGame, nextGame,
+    setBuzzSetting,
+    ordinal,
+    roomQueueIn,
+    passOn,
+    dropBuzzRoll,
+    skipAnswering,
+    takeNext,
+    rollTie,
+    startPhoneRoom,
+    roomState,
+    roomAnswer,
+    roomCardSeen,
+    roomColor,
+    roomWager,
+    roomBuzz,
+    addPhonePlayer,
+    kickPhone,
+    kickTeamMember,
+    moveTeamMember,
+    backToEditor,
+    closePhoneRoom,
+    lockSeats,
+    exitGame,
+    nextGame,
   } = phones;
   if (untrack(() => !!onnextgame) && !app.playerOnly) setContext(NEXT_GAME, nextGame);
   // (⤢ Full map, ⚙ Buttons…: in one window, over the host panel too.)
@@ -1571,7 +1866,10 @@
   const rollOffsApplied = new Set<string>();
 
   /** The roll-off's result: who picks first, or (a tiebreaker for tied winners) who wins the game. */
-  function rollOffResult(s: typeof session, o: { nonce: string; winner: string; ranking: string[]; purpose?: 'first' | 'tiebreak' | 'buzz'; armId?: number }): void {
+  function rollOffResult(
+    s: typeof session,
+    o: { nonce: string; winner: string; ranking: string[]; purpose?: 'first' | 'tiebreak' | 'buzz'; armId?: number },
+  ): void {
     if (rollOffsApplied.has(o.nonce)) return;
     rollOffsApplied.add(o.nonce);
     if (o.purpose === 'buzz') {
@@ -1604,11 +1902,14 @@
     const nonce = o.nonce;
     const result = { nonce: o.nonce, winner: o.winner, ranking: o.ranking, purpose };
     const s = session;
-    later(() => {
-      // Only in this game, and only if that roll-off is still the one on screen (or was closed after finishing).
-      if (app.session !== s) return;
-      if (app.live.overlay?.kind !== 'rolloff' || app.live.overlay.nonce === nonce) rollOffResult(s, result);
-    }, overlayDoneAt(o) - Date.now() + 200);
+    later(
+      () => {
+        // Only in this game, and only if that roll-off is still the one on screen (or was closed after finishing).
+        if (app.session !== s) return;
+        if (app.live.overlay?.kind !== 'rolloff' || app.live.overlay.nonce === nonce) rollOffResult(s, result);
+      },
+      overlayDoneAt(o) - Date.now() + 200,
+    );
   }
 
   /** Reveal or hide the answer (R / the host button / clicking the slide). */
@@ -1824,7 +2125,10 @@
   function clickMenu(text: string): void {
     if (!stagePt) return hint(text);
     const m = momentMenu();
-    showMenu(new MouseEvent('contextmenu', { clientX: stagePt.x, clientY: stagePt.y }), [{ heading: text }, ...stageMenuOf({ ...m, main: mainItem() }, [], standingItems(m))]);
+    showMenu(new MouseEvent('contextmenu', { clientX: stagePt.x, clientY: stagePt.y }), [
+      { heading: text },
+      ...stageMenuOf({ ...m, main: mainItem() }, [], standingItems(m)),
+    ]);
   }
 
   /**
@@ -1943,25 +2247,67 @@
   // ---------- 🤝 Partner clues (host/partner.svelte.ts; docs/PARTNER-CLUES-SPEC.md §6, §7) ----------
 
   const partners = createPartner({
-    get game() { return game; },
-    get session() { return session; },
-    get info() { return info; },
-    get phonesOn() { return phonesOn; },
-    get pregameTeams() { return pregameTeams; },
-    get sym() { return sym; },
-    get mainNow() { return mainNow; },
-    get timerSeconds() { return timerSeconds; },
-    get selected() { return selected; },
-    set selected(ids: string[]) { selected = ids; },
-    get amount() { return amount; },
-    set amount(n: number | null) { amount = n; },
-    get ringOff() { return ringOff; },
-    set ringOff(on: boolean) { ringOff = on; },
-    get cardsAsked() { return cardsAsked; },
-    set cardsAsked(text: string) { cardsAsked = text; },
-    get quickKey() { return quickKey; },
+    get game() {
+      return game;
+    },
+    get session() {
+      return session;
+    },
+    get info() {
+      return info;
+    },
+    get phonesOn() {
+      return phonesOn;
+    },
+    get pregameTeams() {
+      return pregameTeams;
+    },
+    get sym() {
+      return sym;
+    },
+    get mainNow() {
+      return mainNow;
+    },
+    get timerSeconds() {
+      return timerSeconds;
+    },
+    get selected() {
+      return selected;
+    },
+    set selected(ids: string[]) {
+      selected = ids;
+    },
+    get amount() {
+      return amount;
+    },
+    set amount(n: number | null) {
+      amount = n;
+    },
+    get ringOff() {
+      return ringOff;
+    },
+    set ringOff(on: boolean) {
+      ringOff = on;
+    },
+    get cardsAsked() {
+      return cardsAsked;
+    },
+    set cardsAsked(text: string) {
+      cardsAsked = text;
+    },
+    get quickKey() {
+      return quickKey;
+    },
     timerSteps,
-    toolBusy, roomState, goOn, award, stopTimer, pop, clueTimer, clockKey, autoTimer,
+    toolBusy,
+    roomState,
+    goOn,
+    award,
+    stopTimer,
+    pop,
+    clueTimer,
+    clockKey,
+    autoTimer,
   });
   const partner = $derived(partners.partner);
   const phoneCards = $derived(partners.phoneCards);
@@ -1969,8 +2315,36 @@
   const partnerJudged = $derived(partners.partnerJudged);
   const keepQuestion = $derived(partners.keepQuestion);
   const {
-    back, cancelClue, cardTakeBack, checkJudge, dealGone, describerWanted, dropPartnerWheel, memberSpin, partnerChoose, partnerClock, partnerCopy, partnerDescriber, partnerEnter, partnerHandOut,
-    partnerJudge, partnerLanded, partnerNumber, partnerPicker, partnerQuick, partnerShow, partnerSolo, partnerSpin, partnerTakeBack, partnerTimerStarted, partnerValue, partnerWheelUp, stealHint, stealOpen, toolGoing, unsentCards,
+    back,
+    cancelClue,
+    cardTakeBack,
+    checkJudge,
+    dealGone,
+    describerWanted,
+    dropPartnerWheel,
+    memberSpin,
+    partnerChoose,
+    partnerClock,
+    partnerCopy,
+    partnerDescriber,
+    partnerEnter,
+    partnerHandOut,
+    partnerJudge,
+    partnerLanded,
+    partnerNumber,
+    partnerPicker,
+    partnerQuick,
+    partnerShow,
+    partnerSolo,
+    partnerSpin,
+    partnerTakeBack,
+    partnerTimerStarted,
+    partnerValue,
+    partnerWheelUp,
+    stealHint,
+    stealOpen,
+    toolGoing,
+    unsentCards,
   } = partners;
 
   // ---------- The blue button and the check before going on (host/goon.ts, docs/SPEC.md §6.2) ----------
@@ -2010,7 +2384,13 @@
     const card = cards[i];
     const over = phoneCards && roomCardsFull(game, session);
     if (over) return toast(cardsFullText(game, session), 4000);
-    const c = sendCard(game, session, { to: cardTo(h, card), content: { clue: h.holder.id, card: card.id }, until: h.final ? 'round' : 'tile' }, Date.now(), over);
+    const c = sendCard(
+      game,
+      session,
+      { to: cardTo(h, card), content: { clue: h.holder.id, card: card.id }, until: h.final ? 'round' : 'tile' },
+      Date.now(),
+      over,
+    );
     if (!c) return toast(`Choose who gets ${clueCardWords(card, i)} first`);
     announce(`${clueCardWords(card, i, true)} sent to ${sentToText(session, c.to, pregameTeams)}`);
   }
@@ -2025,7 +2405,10 @@
     if (!events.length) return;
     playCue(app.live, game, 'wrong');
     for (const p of groupPops(events, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
-    for (const e of events) announce(`${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${formatPoints(score(session, e.playerId), sym)}`);
+    for (const e of events)
+      announce(
+        `${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${formatPoints(score(session, e.playerId), sym)}`,
+      );
     selected = [];
     answersJudged();
   }
@@ -2227,7 +2610,10 @@
           })
         : [],
       ...(unsent.length && roomCardsFull(game, session, go) ? { full: cardsFullText(game, session, go) } : {}),
-      secs: t && !t.expired && t.startedAt === null ? Math.max(1, Math.ceil(timerRemaining(t))) : timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30,
+      secs:
+        t && !t.expired && t.startedAt === null
+          ? Math.max(1, Math.ceil(timerRemaining(t)))
+          : timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30,
       clock: !t ? null : t.expired ? 'out' : { left: Math.max(0, Math.ceil(timerRemaining(t))), running: t.startedAt !== null },
       judged: partnerJudged,
       got: sharesText(partnerShares(partnerValue(), rules, s, true, partnerMarks), (id) => playerName(session, id), sym),
@@ -2276,7 +2662,10 @@
       ddPhone: !!session.dd?.playerId && wagerPhones.includes(session.dd.playerId),
       partner: partnerNow,
       final: { teams: pregameTeams, wagerPhones, clock: finalClock() },
-      board: session.phase === 'boardgame' ? { editing: boardEdit.on, steps: bgSteps, noNumber: bgNoNumber, question: bgQuestion?.turn === bgAmountKey ? bgQuestion : null } : null,
+      board:
+        session.phase === 'boardgame'
+          ? { editing: boardEdit.on, steps: bgSteps, noNumber: bgNoNumber, question: bgQuestion?.turn === bgAmountKey ? bgQuestion : null }
+          : null,
       act: goActs,
     };
   });
@@ -2361,7 +2750,8 @@
     return `${session.phase}|${session.currentRound}|${openClueKey ?? ''}|${session.revealed}|${session.slide ?? 0}|${session.intro?.stage ?? ''}|${session.dd?.stage ?? ''}|${over}|${session.finalStep ?? ''}|${session.final?.current ?? ''}|${!!session.tiebreakerRevealed}|${turn}`;
   });
   /** What the check's items say (to redraw it only when that changes: a number key moving its ⏎ too). */
-  const itemsSaid = (items: LeftItem[]) => JSON.stringify(items.map((i) => [i.id, i.done ?? '', i.text, i.quick.map((q) => [q.label, q.why ?? '', !!q.enter, !!q.ring])]));
+  const itemsSaid = (items: LeftItem[]) =>
+    JSON.stringify(items.map((i) => [i.id, i.done ?? '', i.text, i.quick.map((q) => [q.label, q.why ?? '', !!q.enter, !!q.ring])]));
   // What's left follows what happens meanwhile: an item done elsewhere keeps its line, ticked; new ones join at the end.
   $effect(() => {
     const ck = check;
@@ -2400,7 +2790,15 @@
     // (The strip's question, if one asks, goes as its cancel: the strip and the check never show together.)
     partners.keepAsk = null;
     const a = document.activeElement;
-    check = { step: st, items, openedBy: source, at: Date.now(), held: d === 'hold', opener: a instanceof HTMLElement && a !== document.body ? a : null, moment: momentNow };
+    check = {
+      step: st,
+      items,
+      openedBy: source,
+      at: Date.now(),
+      held: d === 'hold',
+      opener: a instanceof HTMLElement && a !== document.body ? a : null,
+      moment: momentNow,
+    };
     if (d === 'hold') return holdNote();
     if (hideControls) {
       hideAgain = false;
@@ -2636,7 +3034,11 @@
     const scored = session.scoreLog.filter((x) => !x.undone && x.clueId === clue.id);
     showMenu(e, [
       { heading: clueName(game, ref) },
-      { heading: scored.length ? scored.map((x) => `${playerName(session, x.playerId)} ${x.delta < 0 ? '' : '+'}${formatPoints(x.delta, sym)}`).join(', ') : 'No points given' },
+      {
+        heading: scored.length
+          ? scored.map((x) => `${playerName(session, x.playerId)} ${x.delta < 0 ? '' : '+'}${formatPoints(x.delta, sym)}`).join(', ')
+          : 'No points given',
+      },
       { label: '↶ Reopen this tile', onclick: () => toggleTile(clue.id) },
       { sep: true },
       cover,
@@ -2668,7 +3070,8 @@
       if (at && at !== document.body && at.isConnected && !(at as HTMLButtonElement).disabled) return;
       const tile = document.querySelector<HTMLElement>('.play .stage-box .tile[tabindex="0"]:not(:disabled)');
       // (The end screen with no tie: the end box itself, with no ring, not its first button, ◀ Back to final reveals.)
-      const end = session.phase === 'end' && !document.querySelector('.play .panel [data-tie]') ? document.querySelector<HTMLElement>('.play .panel .end') : null;
+      const end =
+        session.phase === 'end' && !document.querySelector('.play .panel [data-tie]') ? document.querySelector<HTMLElement>('.play .panel .end') : null;
       const to =
         tile ??
         document.querySelector<HTMLElement>('.play .panel [data-next]:not(:disabled)') ??
@@ -2833,8 +3236,7 @@
         finishArmed = true;
         announce(`Everyone is judged: press N again to ${game.rounds[session.currentRound + 1] ? 'go on' : 'finish'}`);
       }
-    } else if (r === 'waiting' && session.final?.current)
-      hint(`Mark ${playerName(session, session.final.current)} right (C) or wrong (X) first`);
+    } else if (r === 'waiting' && session.final?.current) hint(`Mark ${playerName(session, session.final.current)} right (C) or wrong (X) first`);
   }
 
   /** Judge a player in the final reveal (their wager goes up with it). */
@@ -2865,7 +3267,8 @@
   }
 
   /** The action log goes back into earlier rounds too: Undo and Redo say where, since nobody can see it happen. */
-  const inRound = (a: ActionEvent) => (a.round !== undefined && a.round !== session.currentRound ? ` (in ${game.rounds[a.round]?.name ?? 'another round'})` : '');
+  const inRound = (a: ActionEvent) =>
+    a.round !== undefined && a.round !== session.currentRound ? ` (in ${game.rounds[a.round]?.name ?? 'another round'})` : '';
 
   /** What ↶ Undo would take back next, and ↷ Redo bring back (their tooltips say it). */
   const undoText = $derived.by(() => {
@@ -2882,7 +3285,14 @@
     const a = session.actionRedo?.at(-1);
     if (from === 'action' && a) return `${stepText(a, !dual)}${inRound(a)}`;
     const top = session.scoreLog.find((e) => e.id === session.redoStack.at(-1));
-    return top ? describeStep(session, session.scoreLog.filter((e) => e.undone && stepOf(e) === stepOf(top) && session.redoStack.includes(e.id)), sym, !dual) : null;
+    return top
+      ? describeStep(
+          session,
+          session.scoreLog.filter((e) => e.undone && stepOf(e) === stepOf(top) && session.redoStack.includes(e.id)),
+          sym,
+          !dual,
+        )
+      : null;
   });
 
   /**
@@ -3014,7 +3424,18 @@
 
   const NUMPAD: Record<string, Dir8> = { Numpad8: 'n', Numpad9: 'ne', Numpad6: 'e', Numpad3: 'se', Numpad2: 's', Numpad1: 'sw', Numpad4: 'w', Numpad7: 'nw' };
   const ALTKEY: Record<string, Dir8> = {
-    q: 'nw', w: 'n', e: 'ne', a: 'w', d: 'e', z: 'sw', x: 's', c: 'se', arrowup: 'n', arrowdown: 's', arrowleft: 'w', arrowright: 'e',
+    q: 'nw',
+    w: 'n',
+    e: 'ne',
+    a: 'w',
+    d: 'e',
+    z: 'sw',
+    x: 's',
+    c: 'se',
+    arrowup: 'n',
+    arrowdown: 's',
+    arrowleft: 'w',
+    arrowright: 'e',
   };
 
   function rpgStep(d: Dir8): void {
@@ -3233,7 +3654,9 @@
    * One that works in the panel (a box to type in) brings the controls back first.
    */
   function momentVerbs(id: string, at: Element | null): MenuEntry[] {
-    const fromBoxes = (boxVerbs?.(id, at) ?? []).map(({ panel, ...v }): MenuEntry => (panel ? { ...v, onclick: () => ((hideControls = false), void tick().then(v.onclick)) } : v));
+    const fromBoxes = (boxVerbs?.(id, at) ?? []).map(({ panel, ...v }): MenuEntry =>
+      panel ? { ...v, onclick: () => ((hideControls = false), void tick().then(v.onclick)) } : v,
+    );
     return [
       ...fromBoxes,
       ...partnerUpVerbs(session, id, { picked: partnerPicker, partner: partnerChoose, spinning: toolGoing() }),
@@ -3285,10 +3708,18 @@
     let at = !t || t === document.body ? (main ?? document.querySelector<HTMLElement>('.play .stage-box')) : t;
     // The RPG stage itself: the selected player's menu (their avatar on screen), else the selected object's, else its own.
     if (at?.matches('.stage-box .rpg')) {
-      const pick = selected[0] ? `[data-player-id="${selected[0]}"]` : (rpgSelObjects[0] ?? rpgObject) ? `[data-object="${rpgSelObjects[0] ?? rpgObject}"]` : null;
+      const pick = selected[0]
+        ? `[data-player-id="${selected[0]}"]`
+        : (rpgSelObjects[0] ?? rpgObject)
+          ? `[data-object="${rpgSelObjects[0] ?? rpgObject}"]`
+          : null;
       at = (pick && at.querySelector<HTMLElement>(pick)) || at;
     }
-    if (!at?.closest('.play') || !at.closest('[data-player-id], .tile[data-clue], .stage-box, .panel :is([data-next], [data-next-also], [data-step], [data-flow])')) return false;
+    if (
+      !at?.closest('.play') ||
+      !at.closest('[data-player-id], .tile[data-clue], .stage-box, .panel :is([data-next], [data-next-also], [data-step], [data-flow])')
+    )
+      return false;
     const r = at.getBoundingClientRect();
     byMenuKey = true;
     try {
@@ -3346,14 +3777,31 @@
   function clueSteps(): StageItem[] {
     if (!info) return [];
     const out: StageItem[] = [];
-    if (tie.length && buzzing) out.push({ id: 'rolltie', label: VERBS.rollForIt.label, keys: VERBS.rollForIt.key, hint: VERBS.rollForIt.title, onclick: rollTie });
+    if (tie.length && buzzing)
+      out.push({ id: 'rolltie', label: VERBS.rollForIt.label, keys: VERBS.rollForIt.key, hint: VERBS.rollForIt.title, onclick: rollTie });
     const pos = slidePosition(session, game);
-    if (pos) out.push({ id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: answerShowing(session) || pos.at <= 1, onclick: () => slideStep(-1) });
+    if (pos)
+      out.push({ id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: answerShowing(session) || pos.at <= 1, onclick: () => slideStep(-1) });
     if (!toolOnlyClue(info.clue)) {
       const first = toolFirst ? `Close the ${info.clue.type === 'dice' ? 'dice' : 'wheel'} first: the question’s next` : undefined;
-      out.push({ id: 'reveal', label: session.revealed ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', disabled: !!first, ...(first ? { hint: first } : {}), onclick: revealToggle });
+      out.push({
+        id: 'reveal',
+        label: session.revealed ? VERBS.hide.label : VERBS.reveal.label,
+        keys: 'R',
+        disabled: !!first,
+        ...(first ? { hint: first } : {}),
+        onclick: revealToggle,
+      });
     }
-    if (buzzing) out.push({ id: 'buzzers', label: VERBS.openBuzzers.label, keys: 'U', hint: VERBS.openBuzzers.title, disabled: buzz.phase !== 'closed' || session.revealed, onclick: () => openBuzzers() });
+    if (buzzing)
+      out.push({
+        id: 'buzzers',
+        label: VERBS.openBuzzers.label,
+        keys: 'U',
+        hint: VERBS.openBuzzers.title,
+        disabled: buzz.phase !== 'closed' || session.revealed,
+        onclick: () => openBuzzers(),
+      });
     out.push(clockItem());
     return out;
   }
@@ -3381,11 +3829,18 @@
       });
     } else if (o.kind === 'dice') {
       heading = `🎲 ${o.name}`;
-      steps.push({ id: 'roll', label: (o.roll ? VERBS.rollAgain : VERBS.roll).label, keys: 'D', disabled: busy, onclick: () => rollDice(app.live, session, o.preset, o.mover) });
+      steps.push({
+        id: 'roll',
+        label: (o.roll ? VERBS.rollAgain : VERBS.roll).label,
+        keys: 'D',
+        disabled: busy,
+        onclick: () => rollDice(app.live, session, o.preset, o.mover),
+      });
     } else if (o.kind === 'popup') {
       heading = `🖼 ${o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}`;
       if (o.answer) steps.push({ id: 'reveal', label: o.revealed ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: revealToggle });
-    } else if (o.kind === 'rolloff') heading = o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first';
+    } else if (o.kind === 'rolloff')
+      heading = o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first';
     else if (o.kind === 'scoreboard') heading = '📊 Scoreboard on screen';
     else if (o.kind === 'sheet') heading = `📺 ${playerName(session, o.playerId)}’s sheet`;
     else if (o.kind === 'shop') heading = `🛒 ${game.shops?.find((s) => s.id === o.shopId)?.name ?? 'Shop'}`;
@@ -3411,7 +3866,12 @@
       if (!s.pickerId)
         return {
           heading,
-          steps: session.players.map((p, i) => ({ id: `picker:${p.id}`, label: `★ ${p.name} picked it`, keys: i < 9 ? String(i + 1) : undefined, onclick: () => partnerNumber(i + 1) })),
+          steps: session.players.map((p, i) => ({
+            id: `picker:${p.id}`,
+            label: `★ ${p.name} picked it`,
+            keys: i < 9 ? String(i + 1) : undefined,
+            onclick: () => partnerNumber(i + 1),
+          })),
           exits,
         };
       const going = toolGoing();
@@ -3448,9 +3908,19 @@
       const full = unsent.length > 0 && roomCardsFull(game, session, go);
       const running = !!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired;
       const t = app.live.timer;
-      const secs = t && !t.expired && t.startedAt === null ? Math.max(1, Math.ceil(timerRemaining(t))) : timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30;
+      const secs =
+        t && !t.expired && t.startedAt === null
+          ? Math.max(1, Math.ceil(timerRemaining(t)))
+          : timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30;
       const verb = unsent.length ? (running ? VERBS.sendCards : VERBS.sendAndStart) : VERBS.startClock(secs);
-      steps.push({ id: 'hand', label: verb.label, keys: 'Enter', disabled: full, ...(full ? { hint: cardsFullText(game, session, go) } : {}), onclick: partnerClock });
+      steps.push({
+        id: 'hand',
+        label: verb.label,
+        keys: 'Enter',
+        disabled: full,
+        ...(full ? { hint: cardsFullText(game, session, go) } : {}),
+        onclick: partnerClock,
+      });
     }
     const live = s.stage === 'live' && !judged;
     const steal = !!partnerSteal(session);
@@ -3464,7 +3934,13 @@
 
   /** ▦ Done ▶ board as a way out (while the blue button is still 👁 Reveal answer or a slide): it asks as the blue one would. */
   function doneItem(): StageItem {
-    return { id: 'done', label: VERBS.done.label, keys: 'Esc', hint: 'Back to the board, the tile used (asking first when something’s left: Esc closes at once)', onclick: () => doneSkip('menu') };
+    return {
+      id: 'done',
+      label: VERBS.done.label,
+      keys: 'Esc',
+      hint: 'Back to the board, the tile used (asking first when something’s left: Esc closes at once)',
+      onclick: () => doneSkip('menu'),
+    };
   }
 
   /**
@@ -3513,13 +3989,17 @@
     return {
       heading,
       steps: [
-        ...(round?.mode === 'boardgame' && round.mover.kind !== 'step' ? [{ id: 'roll', label: (wheel ? VERBS.boardSpin : VERBS.boardRoll).label, keys: 'D', onclick: dKey }] : []),
+        ...(round?.mode === 'boardgame' && round.mover.kind !== 'step'
+          ? [{ id: 'roll', label: (wheel ? VERBS.boardSpin : VERBS.boardRoll).label, keys: 'D', onclick: dKey }]
+          : []),
         {
           id: 'move',
           label: bgSteps ? VERBS.move(bgSteps).label : '▶ Move',
           keys: 'Enter',
           // (One space a turn: Enter takes the way on, or says which ways there are.)
-          ...(!bgSteps && round?.mode === 'boardgame' && round.mover.kind !== 'step' ? { disabled: true, hint: `${wheel ? 'Spin' : 'Roll'} first (D), or type the steps` } : {}),
+          ...(!bgSteps && round?.mode === 'boardgame' && round.mover.kind !== 'step'
+            ? { disabled: true, hint: `${wheel ? 'Spin' : 'Roll'} first (D), or type the steps` }
+            : {}),
           onclick: () => void boardEnter(),
         },
         { id: 'turn-', label: VERBS.prevTurn.label, keys: 'Shift+N', onclick: () => nKey(true) },
@@ -3553,7 +4033,14 @@
     if (!st) return undefined;
     const first = leftMain[0]?.text;
     const hint = st.busy ?? [st.verb.title, first ? `first: ${first}` : ''].filter(Boolean).join(' · ');
-    return { id: 'main', label: st.verb.label, ...(st.key ? { keys: 'N' } : {}), ...(st.busy ? { disabled: true } : {}), ...(hint ? { hint } : {}), onclick: () => goOn('menu', st) };
+    return {
+      id: 'main',
+      label: st.verb.label,
+      ...(st.key ? { keys: 'N' } : {}),
+      ...(st.busy ? { disabled: true } : {}),
+      ...(hint ? { hint } : {}),
+      onclick: () => goOn('menu', st),
+    };
   }
 
   /** The moment on screen: its heading, its own actions as the keys do them, its ways out (the blue button's step: mainItem). */
@@ -3569,7 +4056,8 @@
     if (partner) return partnerMoment(partner);
     // A Daily Double's splash: who found it and the wager are typed in its box; Show question ▶ is the blue button's (with
     // one missing, the keys go to the Wager box).
-    if (session.phase === 'clue' && info && session.dd?.stage === 'splash') return { heading: `⭐ Daily Double · ${clueName(game, session.currentClue!)}`, steps: [], exits: [putBackItem('Esc')] };
+    if (session.phase === 'clue' && info && session.dd?.stage === 'splash')
+      return { heading: `⭐ Daily Double · ${clueName(game, session.currentClue!)}`, steps: [], exits: [putBackItem('Esc')] };
     if (session.phase === 'clue' && info)
       return {
         heading: `${session.dd ? '⭐ Daily Double · ' : ''}${clueName(game, session.currentClue!)}`,
@@ -3581,7 +4069,10 @@
     if (session.phase === 'slides') {
       // (The next slide, then the next round, are the blue button's.)
       const pos = slidePosition(session, game);
-      return { heading: here, steps: [{ id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: !pos || pos.at <= 1, onclick: () => slideStep(-1) }] };
+      return {
+        heading: here,
+        steps: [{ id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: !pos || pos.at <= 1, onclick: () => slideStep(-1) }],
+      };
     }
     if (session.phase === 'final') return finalMoment();
     if (session.phase === 'tiebreaker') {
@@ -3609,7 +4100,17 @@
         heading: 'Game over · tie for first',
         steps: [
           { id: 'tbclue', label: VERBS.tiebreakerClue.label, disabled: !ready, onclick: tiebreaker },
-          { id: 'rolloff', label: VERBS.rollOff.label, keys: 'O', onclick: () => rolloff(ties.map((p) => p.id), game.settings.rollOffDie || 20, 'tiebreak') },
+          {
+            id: 'rolloff',
+            label: VERBS.rollOff.label,
+            keys: 'O',
+            onclick: () =>
+              rolloff(
+                ties.map((p) => p.id),
+                game.settings.rollOffDie || 20,
+                'tiebreak',
+              ),
+          },
           {
             id: 'cowinners',
             label: VERBS.coWinners.label,
@@ -3846,22 +4347,51 @@
   // ---------- Pre-game (host/pregame.svelte.ts) ----------
 
   const pregame = createPregame({
-    get game() { return game; },
-    get session() { return session; },
+    get game() {
+      return game;
+    },
+    get session() {
+      return session;
+    },
     phones,
-    get phonesOn() { return phonesOn; },
-    get dual() { return dual; },
-    get showSound() { return showSound; },
-    get showKeys() { return showKeys; },
-    set showKeys(on: boolean) { showKeys = on; },
-    get checksEl() { return checksEl; },
-    get left() { return left; },
+    get phonesOn() {
+      return phonesOn;
+    },
+    get dual() {
+      return dual;
+    },
+    get showSound() {
+      return showSound;
+    },
+    get showKeys() {
+      return showKeys;
+    },
+    set showKeys(on: boolean) {
+      showKeys = on;
+    },
+    get checksEl() {
+      return checksEl;
+    },
+    get left() {
+      return left;
+    },
     samples,
     startScores,
-    get gameRev() { return gameRev; },
-    get gameCopy() { return gameCopy; },
-    get onresume() { return onresume; },
-    openAudience, openScores, flashTo, start, startPhoneRoom, closePhoneRoom,
+    get gameRev() {
+      return gameRev;
+    },
+    get gameCopy() {
+      return gameCopy;
+    },
+    get onresume() {
+      return onresume;
+    },
+    openAudience,
+    openScores,
+    flashTo,
+    start,
+    startPhoneRoom,
+    closePhoneRoom,
   });
   const allIn = $derived(pregame.allIn);
   const asksNow = $derived(pregame.asksNow);
@@ -3886,38 +4416,109 @@
   const wantAudience = $derived(pregame.wantAudience);
   const warnings = $derived(pregame.warnings);
   const {
-    addSamplePlayers, cardLabel, editorHasIt, fields, lineAnswer, partnerShort, pickDisplay, placeDailyDoubles, placePartnerTiles, pregameKey, raiseMost, recheckNow,
-    rename, resumeKept, showAsks, setStream, startAnyway, startClicked, startRoomHere, streamFold, teamMembers, tipsShown, titleFocus, toChecks,
+    addSamplePlayers,
+    cardLabel,
+    editorHasIt,
+    fields,
+    lineAnswer,
+    partnerShort,
+    pickDisplay,
+    placeDailyDoubles,
+    placePartnerTiles,
+    pregameKey,
+    raiseMost,
+    recheckNow,
+    rename,
+    resumeKept,
+    showAsks,
+    setStream,
+    startAnyway,
+    startClicked,
+    startRoomHere,
+    streamFold,
+    teamMembers,
+    tipsShown,
+    titleFocus,
+    toChecks,
   } = pregame;
 
   // ---------- Players mid-game, and a board game's moves (host/midgame.svelte.ts) ----------
 
   const midgame = createMidgame({
-    get game() { return game; },
-    get session() { return session; },
-    get partner() { return partner; },
-    get dual() { return dual; },
-    get pregameTeams() { return pregameTeams; },
-    get showLog() { return showLog; },
-    get bgAmountKey() { return bgAmountKey; },
-    get bgNoNumber() { return bgNoNumber; },
-    get selected() { return selected; },
-    set selected(ids: string[]) { selected = ids; },
-    get amount() { return amount; },
-    set amount(n: number | null) { amount = n; },
-    get bgSteps() { return bgSteps; },
-    set bgSteps(n: number | null) { bgSteps = n; },
-    get showPlayers() { return showPlayers; },
-    set showPlayers(on: boolean) { showPlayers = on; },
-    get hideControls() { return hideControls; },
-    set hideControls(on: boolean) { hideControls = on; },
-    catchUp, stopPairClock, dropPartnerWheel,
+    get game() {
+      return game;
+    },
+    get session() {
+      return session;
+    },
+    get partner() {
+      return partner;
+    },
+    get dual() {
+      return dual;
+    },
+    get pregameTeams() {
+      return pregameTeams;
+    },
+    get showLog() {
+      return showLog;
+    },
+    get bgAmountKey() {
+      return bgAmountKey;
+    },
+    get bgNoNumber() {
+      return bgNoNumber;
+    },
+    get selected() {
+      return selected;
+    },
+    set selected(ids: string[]) {
+      selected = ids;
+    },
+    get amount() {
+      return amount;
+    },
+    set amount(n: number | null) {
+      amount = n;
+    },
+    get bgSteps() {
+      return bgSteps;
+    },
+    set bgSteps(n: number | null) {
+      bgSteps = n;
+    },
+    get showPlayers() {
+      return showPlayers;
+    },
+    set showPlayers(on: boolean) {
+      showPlayers = on;
+    },
+    get hideControls() {
+      return hideControls;
+    },
+    set hideControls(on: boolean) {
+      hideControls = on;
+    },
+    catchUp,
+    stopPairClock,
+    dropPartnerWheel,
   });
   const removingPlayer = $derived(midgame.removingPlayer);
   const bgQuestion = $derived(midgame.bgQuestion);
   const {
-    regroupKey, removeFromGame, keepPlayer, commitRoster, openPlayers, closePlayers, playersEsc,
-    boardEnter, boardMover, boardTurn, boardMoveBy, boardLanding, boardEditKey,
+    regroupKey,
+    removeFromGame,
+    keepPlayer,
+    commitRoster,
+    openPlayers,
+    closePlayers,
+    playersEsc,
+    boardEnter,
+    boardMover,
+    boardTurn,
+    boardMoveBy,
+    boardLanding,
+    boardEditKey,
   } = midgame;
 
   // What the keyboard moved the focus to: with Tab (or Shift+Tab), or the app after a key (a window closed, ▲▼, a
@@ -3972,7 +4573,8 @@
     const t = e.target instanceof HTMLElement ? e.target : null;
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
     // but Space still ticks it (not the media), and Enter is its own (the wager boxes' Enter, next to "Ignore the limits").
-    if (t?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t?.matches('input'))) return;
+    if (t?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t?.matches('input')))
+      return;
     // An Esc right after Not yet (a bounce) does nothing: it never closes the clue.
     if (!check && e.key === 'Escape' && !e.shiftKey && escBounce(notYetAt, Date.now(), otherInputAt)) {
       e.preventDefault();
@@ -3987,7 +4589,8 @@
     }
     // A held key is one press, as a partner clue's Enter (N would run through every slide on stream, R flash the answer):
     // only the arrows repeat (seeking, the party's moves, the numpad's too), and Tab and the page keys keep their own.
-    if (e.repeat && (e.key.length === 1 || e.key === 'Enter' || e.key === 'Escape') && !(session.phase === 'rpg' && NUMPAD[e.code])) return void e.preventDefault();
+    if (e.repeat && (e.key.length === 1 || e.key === 'Enter' || e.key === 'Escape') && !(session.phase === 'rpg' && NUMPAD[e.code]))
+      return void e.preventDefault();
     // Players picked on the board (2, then Enter with the keys on a tile): the points next, in the Amount box. The tile
     // doesn't open, and 1, 2… still pick more first. (A played tile with points typed: Enter awards, below.)
     if (e.key === 'Enter' && session.phase === 'board' && selected.length && t?.matches('.tile[data-clue]') && (!t.matches('.used') || !amount)) {
@@ -4002,7 +4605,13 @@
     // Enter or Space on a button reached with the keyboard (see tabbedTo) presses it (a tile opens), and on a fold's line
     // opens or closes it (PARTNER UP!'s cards). On a button clicked with the mouse, Enter still awards. (Not Shift+Enter:
     // it's ✘ Missed or − Deduct wherever the keys are, never a press of the ✔ Got it or ＋ Award they're on.)
-    if ((e.key === ' ' || (e.key === 'Enter' && !e.shiftKey)) && t && t.matches('button, [role="button"], summary') && (t === tabbedTo || t.matches('.tile[data-clue]:not(.used)'))) return;
+    if (
+      (e.key === ' ' || (e.key === 'Enter' && !e.shiftKey)) &&
+      t &&
+      t.matches('button, [role="button"], summary') &&
+      (t === tabbedTo || t.matches('.tile[data-clue]:not(.used)'))
+    )
+      return;
     if (e.key === '?') {
       showKeys = true;
       return;
@@ -4192,7 +4801,13 @@
           if (revealAsked !== `${o?.nonce}:${step}`) {
             revealAsked = `${o?.nonce}:${step}`;
             const first =
-              step === 'going' ? `Still ${dice ? 'rolling' : 'spinning'}: wait for it to land` : step === 'landed' ? `Close the ${dice ? 'dice' : 'wheel'} first (Esc): the question’s next` : dice ? 'Roll first (D)' : 'Spin first (W)';
+              step === 'going'
+                ? `Still ${dice ? 'rolling' : 'spinning'}: wait for it to land`
+                : step === 'landed'
+                  ? `Close the ${dice ? 'dice' : 'wheel'} first (Esc): the question’s next`
+                  : dice
+                    ? 'Roll first (D)'
+                    : 'Spin first (W)';
             hint(`${first}, or press R again to show the answer anyway`);
             break;
           }
@@ -4234,8 +4849,17 @@
         }
         // On a tie for first at the end: the tied leaders roll for the win (not "Who goes first?").
         const ties = session.phase === 'end' && !coWinnersHold(session) ? tiedLeaders(session) : [];
-        if (ties.length) rolloff(ties.map((p) => p.id), game.settings.rollOffDie || 20, 'tiebreak');
-        else rolloff(session.players.map((p) => p.id), game.settings.rollOffDie || 20);
+        if (ties.length)
+          rolloff(
+            ties.map((p) => p.id),
+            game.settings.rollOffDie || 20,
+            'tiebreak',
+          );
+        else
+          rolloff(
+            session.players.map((p) => p.id),
+            game.settings.rollOffDie || 20,
+          );
         break;
       }
       case 's':
@@ -4393,8 +5017,7 @@
       // to pick at a fork, its landing not run: one check walks it). Shift+N: the turn before, never asking.
       if (e.shiftKey) boardTurn(-1);
       else if (mainNow) goOn('n', mainNow);
-    }
-    else if (session.phase === 'final' && session.finalStep === 'reveal') {
+    } else if (session.phase === 'final' && session.finalStep === 'reveal') {
       // The reveals: N the blue button (the spotlit one's answer or wager, the next player), asking for the spotlit one's
       // verdict first; with everyone judged, N twice finishes (finishArmed). Shift+N: the player before.
       if (e.shiftKey) {
@@ -4532,8 +5155,17 @@
         {:else}
           <!-- (A double-click on it, or F2 while it has the keys, renames it too.) -->
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <h1 tabindex="-1" use:titleFocus ondblclick={() => (pregame.renaming = true)} onkeydown={(e) => e.key === 'F2' && (e.preventDefault(), (pregame.renaming = true))}>{game.title}</h1>
-          <button class="ghost small" onclick={() => (pregame.renaming = true)} title="The game's name shows on stream (the title card, the audience window) · F2 or a double-click on it">✎ Rename</button>
+          <h1
+            tabindex="-1"
+            use:titleFocus
+            ondblclick={() => (pregame.renaming = true)}
+            onkeydown={(e) => e.key === 'F2' && (e.preventDefault(), (pregame.renaming = true))}>{game.title}</h1
+          >
+          <button
+            class="ghost small"
+            onclick={() => (pregame.renaming = true)}
+            title="The game's name shows on stream (the title card, the audience window) · F2 or a double-click on it">✎ Rename</button
+          >
           {#if untitled}<span class="warn small" data-warn="untitled">Name your game: its title shows on stream.</span>{/if}
         {/if}
       </div>
@@ -4544,13 +5176,18 @@
              up a fresh one below (Start replaces it, asking first when it would lose points or tiles played). -->
         <div class="resume-card" role="group" aria-label="Game in progress">
           <span>
-            ⏸ Game in progress: <b>{kept.game.title}</b>{#if keptWhere.name}{` · ${keptWhere.name}${keptWhere.at ? ` (${keptWhere.at})` : ''}`}{/if}{#if scores}{` · ${scores}`}{/if}
+            ⏸ Game in progress: <b>{kept.game.title}</b
+            >{#if keptWhere.name}{` · ${keptWhere.name}${keptWhere.at ? ` (${keptWhere.at})` : ''}`}{/if}{#if scores}{` · ${scores}`}{/if}
             <span class="muted small">· saved {savedWhen(kept.savedAt)}</span>
             {#if keptRoom}<span class="small">· 📱 Its phones wait in room <b>{keptRoom}</b>: ▶ Resume it goes back to them.</span>{/if}
           </span>
           <button class="primary" use:oneShot onclick={() => void resumeKept(false)}>▶ Resume it</button>
           {#if !app.playerOnly && kept.game.id === app.game.id && editsDiffer}
-            <button use:oneShot onclick={() => void resumeKept(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+            <button
+              use:oneShot
+              onclick={() => void resumeKept(true)}
+              title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept."
+            >
               Resume with my edits
             </button>
           {/if}
@@ -4566,14 +5203,13 @@
             <!-- Phone buzzer teams: each row is a team, and people join it from their phone with their own name. -->
             <h2 id="pregame-players">👥 Teams</h2>
             <p class="hint">
-              Each row is a team; people join it from their phone{app.playerOnly ? '' : ' (kept with the game for next time)'}. Names and
-              colors can still change during the game.
+              Each row is a team; people join it from their phone{app.playerOnly ? '' : ' (kept with the game for next time)'}. Names and colors can still
+              change during the game.
             </p>
           {:else}
             <h2 id="pregame-players">👥 Players</h2>
             <p class="hint">
-              Who's playing{app.playerOnly ? '' : ' (kept with the game for next time)'}. Names and colors can still change during the
-              game.
+              Who's playing{app.playerOnly ? '' : ' (kept with the game for next time)'}. Names and colors can still change during the game.
             </p>
           {/if}
           <!-- Deleting is done at once: the note under the list offers Undo. -->
@@ -4591,23 +5227,27 @@
           />
           {#if keyedOut.length && game.theme?.stageBg}
             <p class="warn small" data-warn="chroma">
-              ⚠ {nameList(keyedOut.map((p) => p.name || 'A player'))}’s color is close to the chroma key ({keyWhere}): OBS would key it out on
-              stream. Pick another color{otherKey && !app.playerOnly ? `, or a ${otherKey} key` : ''}.
+              ⚠ {nameList(keyedOut.map((p) => p.name || 'A player'))}’s color is close to the chroma key ({keyWhere}): OBS would key it out on stream. Pick
+              another color{otherKey && !app.playerOnly ? `, or a ${otherKey} key` : ''}.
             </p>
           {/if}
           {#if keyedTheme.length && game.theme.stageBg}
             <p class="warn small" data-warn="chroma-theme">
-              ⚠ Some of the theme’s colors are close to the chroma key ({keyWhere}): OBS would make them see-through on stream
-              ({keyedTheme.join(', ').toLowerCase()}).{app.playerOnly
+              ⚠ Some of the theme’s colors are close to the chroma key ({keyWhere}): OBS would make them see-through on stream ({keyedTheme
+                .join(', ')
+                .toLowerCase()}).{app.playerOnly
                 ? `${otherKey ? ` A ${otherKey} key would keep them.` : ''} Ask whoever made it for a copy with other colors.`
                 : ` Pick others in 🎨 Theme${otherKey ? `, or a ${otherKey} key` : ''}.`}
             </p>
           {/if}
           {#if keyedRounds.length && game.theme.stageBg}
             <p class="warn small" data-warn="chroma-rounds">
-              ⚠ Some of the rounds’ colors are close to the chroma key ({keyWhere}): OBS would make them see-through on stream
-              ({keyedRounds.join(', ')}).{app.playerOnly
-                ? otherKey ? ` A ${otherKey} key would keep them.` : ''
+              ⚠ Some of the rounds’ colors are close to the chroma key ({keyWhere}): OBS would make them see-through on stream ({keyedRounds.join(
+                ', ',
+              )}).{app.playerOnly
+                ? otherKey
+                  ? ` A ${otherKey} key would keep them.`
+                  : ''
                 : ` Pick others in their round’s editor${otherKey ? `, or a ${otherKey} key` : ''}.`}
             </p>
           {/if}
@@ -4665,7 +5305,9 @@
               {:else}
                 <span class="good-ink">📺 Audience window open ✓</span>
                 <button class="small" onclick={() => void openAudience()} title="Bring it to the front (A)">Bring it forward</button>
-                <button class="small ghost aud-close" onclick={() => (pregame.askCloseAud = true)} title="Close it (asks first: your stream capture goes black)">Close it</button>
+                <button class="small ghost aud-close" onclick={() => (pregame.askCloseAud = true)} title="Close it (asks first: your stream capture goes black)"
+                  >Close it</button
+                >
               {/if}
             </div>
           {:else if wantAudience && !audience.lost}
@@ -4693,19 +5335,25 @@
               <div class="field" role="group" aria-labelledby="pregame-soon">
                 <span id="pregame-soon">Countdown on the “Starting soon” card</span>
                 <div class="row">
-                {#if app.live.soonAt}
-                  <span class="small soon-left" role="timer">{soonLeft ? `Starting in ${Math.floor(soonLeft / 60)}:${String(soonLeft % 60).padStart(2, '0')}` : 'Starting now!'}</span>
-                  <button onclick={() => (app.live.soonAt = undefined)} aria-label="Stop countdown">■ Stop</button>
-                {:else}
-                  <label class="check small">
-                    <input type="number" min="1" max="120" class="mins" bind:value={pregame.soonMinutes} aria-label="Countdown minutes" /> min
-                  </label>
-                  <button disabled={!pregame.soonMinutes || pregame.soonMinutes < 0} onclick={() => (app.live.soonAt = Date.now() + pregame.soonMinutes * 60_000)}>
-                    ▶ Start countdown
-                  </button>
-                {/if}
+                  {#if app.live.soonAt}
+                    <span class="small soon-left" role="timer"
+                      >{soonLeft ? `Starting in ${Math.floor(soonLeft / 60)}:${String(soonLeft % 60).padStart(2, '0')}` : 'Starting now!'}</span
+                    >
+                    <button onclick={() => (app.live.soonAt = undefined)} aria-label="Stop countdown">■ Stop</button>
+                  {:else}
+                    <label class="check small">
+                      <input type="number" min="1" max="120" class="mins" bind:value={pregame.soonMinutes} aria-label="Countdown minutes" /> min
+                    </label>
+                    <button
+                      disabled={!pregame.soonMinutes || pregame.soonMinutes < 0}
+                      onclick={() => (app.live.soonAt = Date.now() + pregame.soonMinutes * 60_000)}
+                    >
+                      ▶ Start countdown
+                    </button>
+                  {/if}
                 </div>
-                {#if !dual}<span class="hint small">The card and its countdown show in the 📺 audience window (in one window, viewers see this screen).</span>{/if}
+                {#if !dual}<span class="hint small">The card and its countdown show in the 📺 audience window (in one window, viewers see this screen).</span
+                  >{/if}
               </div>
               <label class="field">
                 Cover card (K)
@@ -4720,7 +5368,12 @@
                 <input
                   type="checkbox"
                   checked={!!stream.clueCaption}
-                  onchange={(e) => setStream('clueCaption', e.currentTarget.checked || undefined, `Category and value caption on clues ${e.currentTarget.checked ? 'on' : 'off'}`)}
+                  onchange={(e) =>
+                    setStream(
+                      'clueCaption',
+                      e.currentTarget.checked || undefined,
+                      `Category and value caption on clues ${e.currentTarget.checked ? 'on' : 'off'}`,
+                    )}
                 />
                 Show the category and value on clue screens (“MEMES · $400”)
               </label>
@@ -4729,7 +5382,12 @@
                   <input
                     type="checkbox"
                     checked={!!stream.placeCaption}
-                    onchange={(e) => setStream('placeCaption', e.currentTarget.checked || undefined, `Screen name caption in RPG rounds ${e.currentTarget.checked ? 'on' : 'off'}`)}
+                    onchange={(e) =>
+                      setStream(
+                        'placeCaption',
+                        e.currentTarget.checked || undefined,
+                        `Screen name caption in RPG rounds ${e.currentTarget.checked ? 'on' : 'off'}`,
+                      )}
                   />
                   Show the screen's name in RPG rounds
                 </label>
@@ -4739,12 +5397,20 @@
                   <input
                     type="checkbox"
                     checked={!stream.hideJoinCode}
-                    onchange={(e) => setStream('hideJoinCode', e.currentTarget.checked ? undefined : true, `Join code in a corner of the stream ${e.currentTarget.checked ? 'on' : 'off'}`)}
+                    onchange={(e) =>
+                      setStream(
+                        'hideJoinCode',
+                        e.currentTarget.checked ? undefined : true,
+                        `Join code in a corner of the stream ${e.currentTarget.checked ? 'on' : 'off'}`,
+                      )}
                   />
                   Show the phone buzzers' join code in a corner during the game (and on the cover card), while the room is open
                 </label>
               {/if}
-              <label class="check" title={app.playerOnly ? 'Kept on this computer' : 'The same as ⚙ Settings › Reduce motion on stream (kept on this computer)'}>
+              <label
+                class="check"
+                title={app.playerOnly ? 'Kept on this computer' : 'The same as ⚙ Settings › Reduce motion on stream (kept on this computer)'}
+              >
                 <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
                 Reduce motion on stream (no pop-ins, fly-ins or confetti)
               </label>
@@ -4824,7 +5490,13 @@
         {/if}
         {#if keptGame && !pregame.startAsk}
           <!-- (Start replaces it: said by Start, as the card above it may be scrolled away.) -->
-          <span class="muted small" data-kept-note title={keptLoses ? 'Start game asks before replacing it; ▶ Resume it (at the top) plays on with it' : 'Start game replaces it; ▶ Resume it (at the top) plays on with it'}>⏸ A game in progress is kept</span>
+          <span
+            class="muted small"
+            data-kept-note
+            title={keptLoses
+              ? 'Start game asks before replacing it; ▶ Resume it (at the top) plays on with it'
+              : 'Start game replaces it; ▶ Resume it (at the top) plays on with it'}>⏸ A game in progress is kept</span
+          >
         {/if}
         {#if !session.players.length}<span class="muted small">Add {pregameTeams ? 'teams' : 'players'} to start</span>{/if}
         {#if checks.length}
@@ -4936,7 +5608,9 @@
         data-no-rescue>Show controls</button
       >
       {#if heldNote}<div class="toast note-pill" data-toast role="status" data-goon-held>{CHECK.hiddenNote}</div>
-      {:else if hideNote}<div class="toast note-pill" data-toast role="status">{coarse ? 'Tap the screen, then Show controls (top right), to bring the controls back' : 'Press H to bring the controls back'}</div>{/if}
+      {:else if hideNote}<div class="toast note-pill" data-toast role="status"
+          >{coarse ? 'Tap the screen, then Show controls (top right), to bring the controls back' : 'Press H to bring the controls back'}</div
+        >{/if}
     {:else}
       <HostPanel
         {game}
@@ -5046,7 +5720,9 @@
             </button>
           {/if}
           {#if nextInLine}
-            <button onclick={() => takeNext(nextInLine.id, nextInLine.by)} title="They answer now (the buzzers stay open for the others until then)">→ Next in line: {nextInLine.name}</button>
+            <button onclick={() => takeNext(nextInLine.id, nextInLine.by)} title="They answer now (the buzzers stay open for the others until then)"
+              >→ Next in line: {nextInLine.name}</button
+            >
           {/if}
           {#if queueRows.length}
             <ol class="buzz-queue" aria-label="Buzz order">
@@ -5077,14 +5753,35 @@
           {/if}
         {/snippet}
         {#snippet tools()}
-          <ToolLauncher {game} {session} {dual} onrolloff={rolloff} onstopsounds={introNonce && app.live.sound ? stopSounds : undefined} oncardtakeback={cardTakeBack} ondealgone={dealGone} />
+          <ToolLauncher
+            {game}
+            {session}
+            {dual}
+            onrolloff={rolloff}
+            onstopsounds={introNonce && app.live.sound ? stopSounds : undefined}
+            oncardtakeback={cardTakeBack}
+            ondealgone={dealGone}
+          />
         {/snippet}
       </HostPanel>
     {/if}
   </main>
   {#if showLog && (dual || panelBox)}
     <!-- Single window: in the host panel's own box (scrolling there), never over the stage viewers see. -->
-    <ScoreLog {game} {session} {sym} hide={!dual} bind:tab={logTab} area={panelBox} beside={dual ? logBeside : null} spinning={spinningIds} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
+    <ScoreLog
+      {game}
+      {session}
+      {sym}
+      hide={!dual}
+      bind:tab={logTab}
+      area={panelBox}
+      beside={dual ? logBeside : null}
+      spinning={spinningIds}
+      onreopen={toggleTile}
+      onback={undoBackTo}
+      onredoto={redoUpTo}
+      onclose={() => (showLog = false)}
+    />
   {/if}
   {#if showPlayers}
     <!-- Every click, change or dropped row (a player dragged to a new place) in here ends a step (see commitRoster, in host/midgame.svelte.ts). -->
@@ -5101,8 +5798,23 @@
       ondrop={() => commitRoster()}
     >
       <!-- Phone buzzer teams: each row is a team, as before the game (a new one is "Team 4", not "Player 4"). -->
-      <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal use:scrollMore bind:this={midgame.playersBox}>
-        <div class="row" data-head><h2 class="modal-title">{pregameTeams ? '👥 Teams' : '👥 Players'}</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={pregameTeams ? 'Teams' : 'Players'}
+        use:modal
+        use:scrollMore
+        bind:this={midgame.playersBox}
+      >
+        <div class="row" data-head
+          ><h2 class="modal-title">{pregameTeams ? '👥 Teams' : '👥 Players'}</h2><span class="spacer"></span><button
+            class="ghost modal-x"
+            onclick={closePlayers}
+            aria-label="Close"
+            title="Close (Esc)">✕</button
+          ></div
+        >
         <p class="muted">Add, remove, rename or recolor {pregameTeams ? 'teams' : 'players'}. To change a score, click it in the host panel.</p>
         <PlayerList
           bind:players={session.players}
@@ -5118,8 +5830,9 @@
           {@const n = pregameTeams && session.remote ? teamMembers(p.id).length : 0}
           <div class="ask" role="alert">
             <span>
-              Remove <b>{p.name}</b> ({formatPoints(score(session, p.id), sym)})? {pregameTeams ? 'Its' : 'Their'} points leave the scoreboard. You
-              can restore {pregameTeams ? 'it' : 'them'} here.
+              Remove <b>{p.name}</b> ({formatPoints(score(session, p.id), sym)})? {pregameTeams ? 'Its' : 'Their'} points leave the scoreboard. You can restore {pregameTeams
+                ? 'it'
+                : 'them'} here.
               <!-- (Its phones lose their place on it: a restored team is picked again from the phones.) -->
               {#if n}{n === 1 ? 'The 1 person on it goes' : `The ${n} people on it go`} back to picking a team on their phone{n === 1 ? '' : 's'}.{/if}
             </span>
@@ -5140,7 +5853,8 @@
                     restorePlayer(session, p.id);
                     // (This button goes with it: the keys go to their row's −.)
                     void tick().then(() => midgame.playersBox?.querySelector<HTMLElement>(`[data-place="player:${p.id}"] button.del`)?.focus());
-                  }}>↩ Restore</button>
+                  }}>↩ Restore</button
+                >
               </span>
             {/each}
           </div>
@@ -5151,7 +5865,13 @@
   {/if}
 {/if}
 {#if showKeys}
-  <KeysHelp area={app.pregame ? null : panelBox} first={keysFirst} silenced={app.pregame ? [] : (session.goonQuiet ?? [])} onaskagain={askAgain} onclose={() => (showKeys = false)} />
+  <KeysHelp
+    area={app.pregame ? null : panelBox}
+    first={keysFirst}
+    silenced={app.pregame ? [] : (session.goonQuiet ?? [])}
+    onaskagain={askAgain}
+    onclose={() => (showKeys = false)}
+  />
 {/if}
 {#if showRules && !app.pregame}
   <!-- ⚖ Game rules mid-game: changes count at once, and are kept with the game in the editor (undoable there). -->
@@ -5165,7 +5885,13 @@
     role="presentation"
     onclick={(e) => e.target === e.currentTarget && (showRules = false)}
   >
-    <div class="modal rules-modal" role="dialog" aria-label="Game rules" use:modal={{ esc: () => (showRules = false), enter: () => (showRules = false) }} use:scrollMore>
+    <div
+      class="modal rules-modal"
+      role="dialog"
+      aria-label="Game rules"
+      use:modal={{ esc: () => (showRules = false), enter: () => (showRules = false) }}
+      use:scrollMore
+    >
       <div class="row" data-head>
         <h2 class="modal-title">⚖ Game rules</h2>
         <span class="spacer"></span>
@@ -5199,9 +5925,8 @@
         <ul>
           {#if !wantAudience}
             <li class="lead exposed">
-              🖥 Viewers see this page now (one window): everything on it is on stream. In the game they see the wagers as you type
-              them, the players' typed answers once the answer is up, and host notes. H hides the controls; the 📺 audience
-              window keeps them secret.
+              🖥 Viewers see this page now (one window): everything on it is on stream. In the game they see the wagers as you type them, the players' typed
+              answers once the answer is up, and host notes. H hides the controls; the 📺 audience window keeps them secret.
             </li>
           {:else}
             <li class:done={dual}>
@@ -5245,7 +5970,9 @@
           {#each checks as c}
             <li class:warn-line={c.level === 'warn'}>
               <!-- (Its tooltip: what a grouped line stands for, in the words viewers may see.) -->
-              <span title={(!wantAudience && c.quietDetails ? c.quietDetails : c.details)?.join('\n')}>{c.level === 'warn' ? '' : 'ℹ '}{!wantAudience && c.quiet ? c.quiet : c.text}</span>
+              <span title={(!wantAudience && c.quietDetails ? c.quietDetails : c.details)?.join('\n')}
+                >{c.level === 'warn' ? '' : 'ℹ '}{!wantAudience && c.quiet ? c.quiet : c.text}</span
+              >
               {#if c.ddRound !== undefined}
                 {@const ri = c.ddRound}
                 <button
@@ -5309,7 +6036,13 @@
   <!-- Single window, mid-game: in the host panel's own box (scrolling there), never over the stage viewers see. Its steps share the
        audience window when it's open, or before Start with 📺 picked (Start opens it); a test round, or a game whose
        audience window was closed, plays in this window. -->
-  <AudioHelp {dual} audienceMode={dual || (app.pregame && wantAudience)} area={panelBox} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
+  <AudioHelp
+    {dual}
+    audienceMode={dual || (app.pregame && wantAudience)}
+    area={panelBox}
+    windowTitle={audienceTitle(game)}
+    onclose={() => (showSound = false)}
+  />
 {/if}
 
 <style>
@@ -5577,7 +6310,9 @@
   }
   /* Start game's key, as the host panel's main buttons show theirs. */
   .start-key {
-    font: 11px/1 ui-monospace, monospace;
+    font:
+      11px/1 ui-monospace,
+      monospace;
     padding: 2px 4px;
     margin-left: 6px;
     border: 1px solid currentColor;

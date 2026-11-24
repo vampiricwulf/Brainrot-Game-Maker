@@ -101,11 +101,20 @@
         <div class="list" role="group" aria-labelledby="open-recent">
           {#each recent as e (e.key)}
             <div class="row" oncontextmenu={(ev) => showMenu(ev, recentMenu(e))} role="presentation">
-              <button class="pick" data-row use:oneShot onclick={() => onreopen(e)} onkeydown={(ev) => rowKey(ev, () => recentMenu(e), () => onforget(e))}>
+              <button
+                class="pick"
+                data-row
+                use:oneShot
+                onclick={() => onreopen(e)}
+                onkeydown={(ev) =>
+                  rowKey(
+                    ev,
+                    () => recentMenu(e),
+                    () => onforget(e),
+                  )}
+              >
                 <b>{e.title}</b>
-                <span class="hint"
-                  >{earlier(e) ? 'earlier version · ' : ''}{e.rounds} round{e.rounds === 1 ? '' : 's'} · kept {when(e.closedAt)}</span
-                >
+                <span class="hint">{earlier(e) ? 'earlier version · ' : ''}{e.rounds} round{e.rounds === 1 ? '' : 's'} · kept {when(e.closedAt)}</span>
               </button>
               <!-- (Apart, at the row's far end: it asks first, then the kept copy and its files go for good.) -->
               <button
@@ -139,7 +148,9 @@
               >
                 <b>{s.name}</b>
                 <span class="hint"
-                  >{exported(s) ? 'Play-only web page · ' : ''}{when(s.modified)} · {formatBytes(s.size)}{s.place === 'documents' ? ' · in Documents' : ''}</span
+                  >{exported(s) ? 'Play-only web page · ' : ''}{when(s.modified)} · {formatBytes(s.size)}{s.place === 'documents'
+                    ? ' · in Documents'
+                    : ''}</span
                 >
               </button>
             {/each}
@@ -157,8 +168,9 @@
         class:primary={nothing}
         bind:this={browseBtn}
         onclick={onbrowse}
-        title="A game you saved or were sent: a .brainrot, a .json or a play-only web page (.html){desktop ? ', or an older version Save kept (Game.brainrot.bak)' : ''}"
-        >Browse for a game file…</button
+        title="A game you saved or were sent: a .brainrot, a .json or a play-only web page (.html){desktop
+          ? ', or an older version Save kept (Game.brainrot.bak)'
+          : ''}">Browse for a game file…</button
       >
     </div>
   </div>

@@ -4,7 +4,23 @@ import { newBoardGameRound } from '../../lib/boardgame';
 import { addLiveSpace, connectSpaces, deleteLiveSpace, disconnectSpaces, keepBoard, linkAt, refuge, reverseLink, toggleBothWays } from '../../lib/boardedit';
 import { goToRound, newSession } from '../../lib/session';
 import { redoAction, stepText, undoAction } from '../../lib/toolset';
-import { boardEdit, editAdd, editAllNames, editConnect, editDelete, editDeleteAll, editDisconnect, editDrag, editFocus, editPicked, editShowName, editSpace, editStart, editToggle, setEditing } from './boardedit.svelte';
+import {
+  boardEdit,
+  editAdd,
+  editAllNames,
+  editConnect,
+  editDelete,
+  editDeleteAll,
+  editDisconnect,
+  editDrag,
+  editFocus,
+  editPicked,
+  editShowName,
+  editSpace,
+  editStart,
+  editToggle,
+  setEditing,
+} from './boardedit.svelte';
 
 /** A game with a 12-space loop (Start, Space 2…Space 12) and two players, playing it. */
 function setup() {
@@ -312,7 +328,13 @@ describe('editing a board during play: one window', () => {
     editDrag(game, session, trap.id)();
     // (Nothing moved: no step.)
     expect(log()[1]).toBe('Made “? (secret)” Start');
-    editSpace(game, session, trap.id, (h) => `Color of “${h ? '? (secret)' : trap.name}”`, (s) => (s.color = '#000000'));
+    editSpace(
+      game,
+      session,
+      trap.id,
+      (h) => `Color of “${h ? '? (secret)' : trap.name}”`,
+      (s) => (s.color = '#000000'),
+    );
     expect(log()).toEqual(['Color of “Trap door”', 'Color of “? (secret)”']);
     // No secret in it: no quiet text, the same words both ways.
     editConnect(game, session, id('Space 2'), id('Space 9'));

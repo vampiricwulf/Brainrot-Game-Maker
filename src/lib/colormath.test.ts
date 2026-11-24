@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { barAt, fromBar, fromSquare, hexSoFar, hexToHsv, hsvToHex, hsvToRgb, nudge, readChannel, readHex, rgbToHex, rgbToHsv, squareAt, type Hsv, type Rgb } from './colormath';
+import {
+  barAt,
+  fromBar,
+  fromSquare,
+  hexSoFar,
+  hexToHsv,
+  hsvToHex,
+  hsvToRgb,
+  nudge,
+  readChannel,
+  readHex,
+  rgbToHex,
+  rgbToHsv,
+  squareAt,
+  type Hsv,
+  type Rgb,
+} from './colormath';
 
 /** Every channel value in steps of `n` (and 255). */
 const levels = (n: number) => [...Array.from({ length: Math.ceil(256 / n) }, (_, i) => i * n).filter((v) => v < 255), 255];

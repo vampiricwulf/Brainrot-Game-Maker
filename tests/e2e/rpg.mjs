@@ -5,7 +5,29 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, answerAsk, dragBy, editorReady, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer, assert, launchChromium, section, hostPanelIn, roundTabsIn, stageBoxIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  addClassicRounds,
+  answerAsk,
+  dragBy,
+  editorReady,
+  exportHtml,
+  flowIs,
+  menuLines,
+  openGameFile,
+  openMenu,
+  playWithPlayers,
+  stepButton,
+  leaveAnswer,
+  assert,
+  launchChromium,
+  section,
+  hostPanelIn,
+  roundTabsIn,
+  stageBoxIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -26,12 +48,58 @@ const toast = () => toastsIn(page).innerText();
 /** A big world (20×20 screens) from a file, with four players and an audience window. */
 async function bigWorld() {
   section('A 20×20 world');
-  const text = (id, t, x, y) => ({ id, kind: 'text', text: t, x, y, w: 520, h: 100, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 48, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
-  const shape = (id, name, x, y, role) => ({ id, name, kind: 'shape', shape: 'rect', x, y, w: 150, h: 150, rotation: 0, opacity: 1, zIndex: 1, fill: '#aa5500', stroke: '#000', strokeWidth: 0, radius: 0, role });
+  const text = (id, t, x, y) => ({
+    id,
+    kind: 'text',
+    text: t,
+    x,
+    y,
+    w: 520,
+    h: 100,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 1,
+    font: 'Arial',
+    size: 48,
+    weight: 700,
+    italic: false,
+    underline: false,
+    uppercase: false,
+    color: '#fff',
+    align: 'center',
+    vAlign: 'middle',
+    lineHeight: 1.2,
+    letterSpacing: 0,
+    autoFit: true,
+  });
+  const shape = (id, name, x, y, role) => ({
+    id,
+    name,
+    kind: 'shape',
+    shape: 'rect',
+    x,
+    y,
+    w: 150,
+    h: 150,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 1,
+    fill: '#aa5500',
+    stroke: '#000',
+    strokeWidth: 0,
+    radius: 0,
+    role,
+  });
   const screens = [];
   for (let r = 0; r < 20; r++)
     for (let c = 0; c < 20; c++)
-      screens.push({ id: `sc_${c}_${r}`, name: `Field ${c},${r}`, col: c, row: r, slide: { background: { color: `hsl(${(c * 17 + r * 7) % 360},40%,30%)` }, elements: [text(`t_${c}_${r}`, `Field ${c},${r}`, 700, 40)] } });
+      screens.push({
+        id: `sc_${c}_${r}`,
+        name: `Field ${c},${r}`,
+        col: c,
+        row: r,
+        slide: { background: { color: `hsl(${(c * 17 + r * 7) % 360},40%,30%)` }, elements: [text(`t_${c}_${r}`, `Field ${c},${r}`, 700, 40)] },
+      });
   screens[0].name = 'Village';
   screens[0].slide.elements.push(
     shape('el_door', 'Dungeon door', 200, 300, { class: 'doorway', to: { map: 'm_dun', screen: 'd_1' } }),
@@ -40,24 +108,70 @@ async function bigWorld() {
     shape('el_heap', 'Coin heap', 200, 650, { class: 'currency', field: 'f_gold', amount: 10 }),
     shape('el_cat', 'Riddle cat', 1550, 650, {
       class: 'npc',
-      actions: [{ id: 'a_ask', do: 'question', value: 100, question: { background: { color: '#123' }, elements: [text('t_q', 'What has keys but no locks?', 700, 400)] }, answer: { background: { color: '#123' }, elements: [text('t_a', 'A piano', 700, 400)] } }],
+      actions: [
+        {
+          id: 'a_ask',
+          do: 'question',
+          value: 100,
+          question: { background: { color: '#123' }, elements: [text('t_q', 'What has keys but no locks?', 700, 400)] },
+          answer: { background: { color: '#123' }, elements: [text('t_a', 'A piano', 700, 400)] },
+        },
+      ],
     }),
   );
   screens[1].exits = { e: { kind: 'blocked', note: 'A wall of fire' } };
-  const map = (id, name, cols, rows, list, visibility) => ({ id, name, cols, rows, screens: list, visibility, showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut' });
+  const map = (id, name, cols, rows, list, visibility) => ({
+    id,
+    name,
+    cols,
+    rows,
+    screens: list,
+    visibility,
+    showExits: true,
+    revealNeighbors: true,
+    diagonals: true,
+    wrap: false,
+    transition: 'cut',
+  });
   const game = {
-    id: 'g_big_world', version: 2, title: 'Big world',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+    id: 'g_big_world',
+    version: 2,
+    title: 'Big world',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: null,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: true,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+      maxPlayers: 8,
+    },
     players: ['Ann', 'Bob', 'Cy', 'Dee'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
     rounds: [{ id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' }],
-    media: [], audio: {}, wheels: [], dice: [], theme: {},
+    media: [],
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
     statFields: [
       { id: 'f_hp', name: 'HP', type: 'number', start: 10, min: 0, max: 10, display: 'hearts', audience: 'hud' },
       { id: 'f_gold', name: 'Gold', type: 'number', start: 5, min: 0, max: 15, currency: true, symbol: '🪙', audience: 'hud', display: 'counter' },
       { id: 'f_gems', name: 'Gems', type: 'number', start: 0, min: 0, currency: true, symbol: '💎', audience: 'hidden', display: 'counter' },
     ],
     items: [{ id: 'i_helmet', name: 'Helmet', stackable: false, wearable: { slot: 'head' } }],
-    worlds: [{ id: 'w1', name: 'World', maps: [map('m_main', 'Overworld', 20, 20, screens, 'discovered'), map('m_dun', 'Dungeon', 1, 1, [{ id: 'd_1', name: 'Dungeon 1', col: 0, row: 0, slide: { background: { color: '#222' }, elements: [] } }], 'hidden')] }],
+    worlds: [
+      {
+        id: 'w1',
+        name: 'World',
+        maps: [
+          map('m_main', 'Overworld', 20, 20, screens, 'discovered'),
+          map('m_dun', 'Dungeon', 1, 1, [{ id: 'd_1', name: 'Dungeon 1', col: 0, row: 0, slide: { background: { color: '#222' }, elements: [] } }], 'hidden'),
+        ],
+      },
+    ],
   };
   mkdirSync(resolve('test-results'), { recursive: true });
   const gameFile = resolve('test-results/rpg-big-world.json');
@@ -88,8 +202,15 @@ async function bigWorld() {
   await filePage.getByRole('button', { name: '▶ Play' }).click({ timeout: 20000 });
   await filePage.getByRole('button', { name: 'Start game ▶' }).click();
   await filePage.getByRole('button', { name: '✎ Edit screen' }).click();
-  const fileEditor = await filePage.getByRole('dialog', { name: / live$/ }).locator('.row').first().innerText();
-  assert(fileEditor.includes('They last for this game only.') && !fileEditor.includes('Keep in game'), `in an exported file, ✎ Edit screen says the changes last for this game only (${fileEditor.replace(/\s+/g, ' ')})`);
+  const fileEditor = await filePage
+    .getByRole('dialog', { name: / live$/ })
+    .locator('.row')
+    .first()
+    .innerText();
+  assert(
+    fileEditor.includes('They last for this game only.') && !fileEditor.includes('Keep in game'),
+    `in an exported file, ✎ Edit screen says the changes last for this game only (${fileEditor.replace(/\s+/g, ' ')})`,
+  );
   await filePage.close();
   await host.getByRole('button', { name: '▶ Play' }).click();
   await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
@@ -102,7 +223,10 @@ async function bigWorld() {
   // The stats strip never covers the screen: the screen is scaled into the room above it.
   const strip = await aud.locator('.rpg > .strip').boundingBox();
   const area = await aud.locator('.rpg .play-area').boundingBox();
-  assert(strip && area && area.y + area.height <= strip.y + 1 && area.height > 500, `the stats strip doesn’t cover the screen (screen ends at ${Math.round(area.y + area.height)}, strip starts at ${Math.round(strip.y)})`);
+  assert(
+    strip && area && area.y + area.height <= strip.y + 1 && area.height > 500,
+    `the stats strip doesn’t cover the screen (screen ends at ${Math.round(area.y + area.height)}, strip starts at ${Math.round(strip.y)})`,
+  );
   const cues = (p) => p.evaluate(() => window.__plays.filter((s) => s.includes('#')).map((s) => s.split('#').pop()));
   const said = () => toastsIn(host).innerText();
   const there = () => host.locator('.rh .where').innerText();
@@ -110,18 +234,27 @@ async function bigWorld() {
   // The minimap: the cells around the party, big enough to read, and one Tab stop (the arrow keys go between screens).
   const mini = host.locator('.rh .mapbox .cell');
   const cell = await mini.first().boundingBox();
-  assert((await mini.count()) === 35 && cell.height >= 12 && cell.width >= 20, `the minimap shows the 7×5 screens around the party (${await mini.count()}, ${Math.round(cell.width)}×${Math.round(cell.height)})`);
+  assert(
+    (await mini.count()) === 35 && cell.height >= 12 && cell.width >= 20,
+    `the minimap shows the 7×5 screens around the party (${await mini.count()}, ${Math.round(cell.width)}×${Math.round(cell.height)})`,
+  );
   const stops = host.locator('.rh .mapbox .cell:not([tabindex="-1"])');
   assert((await stops.count()) === 1, 'the minimap is one Tab stop');
   await stops.focus();
   await host.keyboard.press('ArrowRight');
-  assert((await host.evaluate(() => document.activeElement?.getAttribute('aria-label'))) === 'Overworld · Field 1,0', 'the arrow keys go to the next screen on it');
+  assert(
+    (await host.evaluate(() => document.activeElement?.getAttribute('aria-label'))) === 'Overworld · Field 1,0',
+    'the arrow keys go to the next screen on it',
+  );
   // The full map (J) stays in the window.
   await host.getByRole('button', { name: '⤢ Full map' }).click();
   const jump = host.getByRole('dialog', { name: 'Full map' });
   const jb = await jump.boundingBox();
   const close = await jump.getByRole('button', { name: 'Close' }).boundingBox();
-  assert(jb.x >= 0 && jb.x + jb.width <= 1280 && jb.y + jb.height <= 720 && close.x + close.width <= 1280, `the full map fits the window, ✕ included (${JSON.stringify(jb)})`);
+  assert(
+    jb.x >= 0 && jb.x + jb.width <= 1280 && jb.y + jb.height <= 720 && close.x + close.width <= 1280,
+    `the full map fits the window, ✕ included (${JSON.stringify(jb)})`,
+  );
   assert(await jump.locator('.cell[aria-label="Overworld · Field 19,0"]').isVisible(), 'all 20 columns are in it');
   await host.keyboard.press('Escape');
   await jump.waitFor({ state: 'detached' });
@@ -158,7 +291,10 @@ async function bigWorld() {
   await host.waitForTimeout(800);
   const stripTop = Math.min(...(await host.locator('.rpg .strip .card').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top))));
   const lowest = Math.max(...(await host.locator('.rpg .avatar[data-player-id]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().bottom))));
-  assert((await there()).includes('Village') && lowest <= stripTop, `arriving from the south they stand above the stats strip (${Math.round(lowest)} ≤ ${Math.round(stripTop)})`);
+  assert(
+    (await there()).includes('Village') && lowest <= stripTop,
+    `arriving from the south they stand above the stats strip (${Math.round(lowest)} ≤ ${Math.round(stripTop)})`,
+  );
   assert((await cues(aud)).includes('step'), 'a step plays the Step sound on stream');
   // The plain arrow keys move the party too (no video or sound on screen for them to seek).
   await host.keyboard.press('ArrowDown');
@@ -171,15 +307,32 @@ async function bigWorld() {
   // (open until the host folds it, so its ✎ Edit screen is in sight), then the players.
   const rhParts = await host
     .locator('.rh')
-    .evaluate((r) => [...r.children].flatMap((c) => ('rpgSel' in c.dataset ? ['sel'] : c.classList.contains('main') ? ['pad'] : 'improvise' in c.dataset ? ['improvise'] : c.classList.contains('who') ? ['players'] : [])));
+    .evaluate((r) =>
+      [...r.children].flatMap((c) =>
+        'rpgSel' in c.dataset
+          ? ['sel']
+          : c.classList.contains('main')
+            ? ['pad']
+            : 'improvise' in c.dataset
+              ? ['improvise']
+              : c.classList.contains('who')
+                ? ['players']
+                : [],
+      ),
+    );
   const improv = host.locator('.rh [data-improvise]');
   const improvToggle = improv.getByRole('button', { name: /✎ Improvise/ });
-  assert(rhParts.join() === 'sel,pad,improvise,players' && (await improvToggle.getAttribute('aria-expanded')) === 'true', `the RPG box: the pad first, then ✎ Improvise, open (${rhParts.join()})`);
+  assert(
+    rhParts.join() === 'sel,pad,improvise,players' && (await improvToggle.getAttribute('aria-expanded')) === 'true',
+    `the RPG box: the pad first, then ✎ Improvise, open (${rhParts.join()})`,
+  );
   // Folded, one line (its ✎ Edit screen gone); a click opens it again, in the same place.
   const toggleAt = await improvToggle.boundingBox();
   await improvToggle.click();
   assert(
-    !(await host.getByRole('button', { name: '✎ Edit screen' }).count()) && (await improvToggle.innerText()).startsWith('▸ ✎ Improvise') && (await improvToggle.boundingBox()).x === toggleAt.x,
+    !(await host.getByRole('button', { name: '✎ Edit screen' }).count()) &&
+      (await improvToggle.innerText()).startsWith('▸ ✎ Improvise') &&
+      (await improvToggle.boundingBox()).x === toggleAt.x,
     '▾ ✎ Improvise folds the improvising tools into one line, its button where it was',
   );
   await improvToggle.click();
@@ -191,10 +344,15 @@ async function bigWorld() {
   await liveEd.waitFor({ state: 'detached' });
   const wizard = aud.locator('.rpg .el', { hasText: '🧙' });
   await wizard.waitFor();
-  const onSomeone = await aud.locator('.rpg .avatar[data-player-id]').evaluateAll(
-    (els, w) => els.some((e) => (({ left, right, top, bottom }) => left < w.x + w.width && w.x < right && top < w.y + w.height && w.y < bottom)(e.getBoundingClientRect())),
-    await wizard.boundingBox(),
-  );
+  const onSomeone = await aud
+    .locator('.rpg .avatar[data-player-id]')
+    .evaluateAll(
+      (els, w) =>
+        els.some((e) =>
+          (({ left, right, top, bottom }) => left < w.x + w.width && w.x < right && top < w.y + w.height && w.y < bottom)(e.getBoundingClientRect()),
+        ),
+      await wizard.boundingBox(),
+    );
   assert(!onSomeone, 'a character added in ✎ Edit screen starts clear of the players standing there');
   await host.keyboard.press('Control+z');
   await wizard.waitFor({ state: 'detached' });
@@ -202,9 +360,15 @@ async function bigWorld() {
   await host.keyboard.press('?');
   const keyList = host.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await keyList.waitFor();
-  const rpgKeys = await keyList.locator('section').filter({ has: host.getByRole('heading', { name: 'RPG', exact: true }) }).innerText();
+  const rpgKeys = await keyList
+    .locator('section')
+    .filter({ has: host.getByRole('heading', { name: 'RPG', exact: true }) })
+    .innerText();
   assert(rpgKeys.includes('← ↑ → ↓'), 'the ? list has the arrow keys among the RPG keys');
-  assert(rpgKeys.includes('Drag on an empty spot') && rpgKeys.includes('Alt+drag') && rpgKeys.includes('▭ Select in a box instead'), 'and the box: drag on an empty spot, Alt+drag, and the stage menu’s way for Linux desktops');
+  assert(
+    rpgKeys.includes('Drag on an empty spot') && rpgKeys.includes('Alt+drag') && rpgKeys.includes('▭ Select in a box instead'),
+    'and the box: drag on an empty spot, Alt+drag, and the stage menu’s way for Linux desktops',
+  );
   const firstGroup = await keyList.locator('h3').first().innerText();
   assert(firstGroup === 'RPG', `in an RPG round the ? list starts with the RPG keys (${firstGroup})`);
   await host.keyboard.press('Escape');
@@ -231,26 +395,42 @@ async function bigWorld() {
 
   // Four players with 10 hearts each: a count, so the gold stays on its card.
   const cards = await host.locator('.rpg .strip .card').evaluateAll((els) =>
-    els.map((c) => ({ text: c.innerText, right: c.getBoundingClientRect().right, last: c.querySelector('.stats > :last-child')?.getBoundingClientRect().right ?? 0 })),
+    els.map((c) => ({
+      text: c.innerText,
+      right: c.getBoundingClientRect().right,
+      last: c.querySelector('.stats > :last-child')?.getBoundingClientRect().right ?? 0,
+    })),
   );
-  assert(cards.every((c) => c.text.includes('♥ 10/10') && c.text.includes('🪙5') && c.last <= c.right), 'many hearts show as “♥ 10/10”, and the gold stays on each card');
+  assert(
+    cards.every((c) => c.text.includes('♥ 10/10') && c.text.includes('🪙5') && c.last <= c.right),
+    'many hearts show as “♥ 10/10”, and the gold stays on each card',
+  );
 
   // Picking up with two players picked: the first one picks it up, and the button says so.
   await host.keyboard.press('1');
   await host.keyboard.press('2');
   await host.locator('.rh .objs button', { hasText: 'Gold pile' }).click();
   const pick = host.getByRole('dialog', { name: 'Object: Gold pile' }).getByRole('button', { name: /picks up/ });
-  assert((await pick.innerText()) === '✋ Ann picks up 🪙10 of 🪙12', `the pick-up button names the one who picks it up, and what fits under her max (${await pick.innerText()})`);
+  assert(
+    (await pick.innerText()) === '✋ Ann picks up 🪙10 of 🪙12',
+    `the pick-up button names the one who picks it up, and what fits under her max (${await pick.innerText()})`,
+  );
   await pick.click();
   await host.waitForTimeout(300);
-  assert((await host.locator('.rpg .strip .card').first().innerText()).includes('🪙15') && (await cues(aud)).includes('pickUp'), 'Ann gets it, with the Pick up sound');
+  assert(
+    (await host.locator('.rpg .strip .card').first().innerText()).includes('🪙15') && (await cues(aud)).includes('pickUp'),
+    'Ann gets it, with the Pick up sound',
+  );
   // Ann is at her most (🪙15) now: with nobody picked, the next pile goes to the first one here with room. Picking her
   // anyway says she can't carry more, and the card stays open to pick someone else.
   await host.keyboard.press('Escape');
   await host.locator('.rh .objs button', { hasText: 'Coin heap' }).click();
   const heap = host.getByRole('dialog', { name: 'Object: Coin heap' });
   const heapPick = heap.getByRole('button', { name: /picks up/ });
-  assert((await heapPick.innerText()) === '✋ Bob picks up 🪙10', `with nobody picked, a pile goes to the first one here with room (${await heapPick.innerText()})`);
+  assert(
+    (await heapPick.innerText()) === '✋ Bob picks up 🪙10',
+    `with nobody picked, a pile goes to the first one here with room (${await heapPick.innerText()})`,
+  );
   await heap.locator('.who').getByRole('button', { name: 'Ann' }).click();
   await heapPick.click();
   await toastsIn(host, { hasText: 'Ann can’t carry any more Gold' }).waitFor();
@@ -263,7 +443,11 @@ async function bigWorld() {
   await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click({ button: 'right' });
   const catMenu = await menuLines(host);
   assert(
-    catMenu[0] === '# Riddle cat' && catMenu[1] === 'Ask the question' && catMenu.includes('🗂 Open its card') && catMenu.includes('✎ Edit') && catMenu.at(-1) === '🗑 Remove',
+    catMenu[0] === '# Riddle cat' &&
+      catMenu[1] === 'Ask the question' &&
+      catMenu.includes('🗂 Open its card') &&
+      catMenu.includes('✎ Edit') &&
+      catMenu.at(-1) === '🗑 Remove',
     `an object's menu starts with its card's buttons (${catMenu.join(' | ')})`,
   );
   await host.keyboard.press('Escape');
@@ -281,20 +465,31 @@ async function bigWorld() {
   await aud.waitForFunction(() => document.body.innerText.includes('What has keys but no locks?'));
   const hostInfo = host.locator('.stage-area > .info');
   await hostInfo.locator('.a', { hasText: 'A piano' }).waitFor();
-  assert(/answer \(hidden from viewers\)/i.test(await hostInfo.innerText()) && !(await aud.locator('body').innerText()).includes('A piano'), 'a question pop-up shows the host its answer before it’s revealed, and not viewers');
+  assert(
+    /answer \(hidden from viewers\)/i.test(await hostInfo.innerText()) && !(await aud.locator('body').innerText()).includes('A piano'),
+    'a question pop-up shows the host its answer before it’s revealed, and not viewers',
+  );
   // Its blue button is 👁 Reveal answer (no copy in its box), and its box keeps ✕ Close to put it away unseen. The box is
   // beside the pad, right over the card of the object it came from.
   const popBox = hostPanelIn(host).locator('[data-tool-controls]');
-  assert((await host.locator('.rh .side > [data-tool-controls] + div [role="dialog"][aria-label="Object: Riddle cat"]').count()) === 1, 'the pop-up’s box is beside the pad, over the Riddle cat’s card');
   assert(
-    (await flowIs(host, '👁 Reveal answer')) && (await popBox.getByRole('button', { name: '✕ Close', exact: true }).count()) === 1 && (await popBox.getByRole('button', { name: '👁 Reveal answer' }).count()) === 0,
+    (await host.locator('.rh .side > [data-tool-controls] + div [role="dialog"][aria-label="Object: Riddle cat"]').count()) === 1,
+    'the pop-up’s box is beside the pad, over the Riddle cat’s card',
+  );
+  assert(
+    (await flowIs(host, '👁 Reveal answer')) &&
+      (await popBox.getByRole('button', { name: '✕ Close', exact: true }).count()) === 1 &&
+      (await popBox.getByRole('button', { name: '👁 Reveal answer' }).count()) === 0,
     'a question pop-up: the blue button is 👁 Reveal answer, and its box has ✕ Close but no copy of the reveal',
   );
   await host.keyboard.press('r');
   await aud.waitForFunction(() => document.body.innerText.includes('A piano'));
   assert(/answer \(on screen\)/i.test(await hostInfo.innerText()), 'revealed, the host’s column says the answer is on screen');
   await host.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.trim().startsWith('Next ▶'));
-  assert((await popBox.getByRole('button', { name: '✕ Close', exact: true }).count()) === 0, 'its answer up: the blue button is Next ▶, and the box has no ✕ Close any more');
+  assert(
+    (await popBox.getByRole('button', { name: '✕ Close', exact: true }).count()) === 0,
+    'its answer up: the blue button is Next ▶, and the box has no ✕ Close any more',
+  );
   await host.keyboard.press('Escape');
   await host.keyboard.press('Escape');
   await host.getByRole('dialog', { name: 'Object: Riddle cat' }).waitFor({ state: 'detached' });
@@ -306,14 +501,23 @@ async function bigWorld() {
   const annCard = host.locator('.rh .pc').first();
   // With two currencies, the card's list shows the one its buttons convert (not a blank).
   const convertsTo = await annCard.getByLabel('Currency').evaluate((s) => s.options[s.selectedIndex]?.text ?? '');
-  assert(convertsTo === 'Gold' && (await annCard.getByRole('button', { name: 'Score → Gold' }).count()) === 1, `with two currencies the card's list shows the one its buttons use (${convertsTo})`);
+  assert(
+    convertsTo === 'Gold' && (await annCard.getByRole('button', { name: 'Score → Gold' }).count()) === 1,
+    `with two currencies the card's list shows the one its buttons use (${convertsTo})`,
+  );
   for (let i = 0; i < 2; i++) await annCard.getByLabel('Give Ann an item').selectOption({ label: 'Helmet' });
   for (let i = 1; i <= 2; i++) {
     await annCard.getByRole('button', { name: 'Equip', exact: true }).first().click();
-    await annCard.getByRole('button', { name: 'Unequip', exact: true }).nth(i - 1).waitFor();
+    await annCard
+      .getByRole('button', { name: 'Unequip', exact: true })
+      .nth(i - 1)
+      .waitFor();
   }
   await aud.locator('.avatar[data-player-id="p1"] .gear').first().waitFor();
-  assert((await aud.locator('.avatar[data-player-id="p1"] .gear').count()) === 1 && !errors.length, 'two Helmets worn show one helmet on the avatar, with no page error');
+  assert(
+    (await aud.locator('.avatar[data-player-id="p1"] .gear').count()) === 1 && !errors.length,
+    'two Helmets worn show one helmet on the avatar, with no page error',
+  );
   await cardsToggle.click();
   await annCard.waitFor({ state: 'detached' });
 
@@ -356,7 +560,10 @@ async function bigWorld() {
     for (const k of ['1', '2', '3', '4']) await host.keyboard.press(k);
     const start = await boxes();
     assert(new Set(await av.evaluateAll((els) => els.map((e) => e.closest('.pane')?.dataset.screen))).size === 2, 'split view shows both parties’ screens');
-    await dragBy(host, host.locator('.rpg .avatar[data-player-id="p1"]'), { x: start[0].x + start[0].width / 2 - 50, y: start[0].y + start[0].height / 2 - 30 });
+    await dragBy(host, host.locator('.rpg .avatar[data-player-id="p1"]'), {
+      x: start[0].x + start[0].width / 2 - 50,
+      y: start[0].y + start[0].height / 2 - 30,
+    });
     await host.waitForTimeout(350);
     const end = await boxes();
     const d = start.map((r, i) => [Math.round(end[i].x - r.x), Math.round(end[i].y - r.y)]);
@@ -380,7 +587,10 @@ async function bigWorld() {
   assert(true, 'and screen readers hear where it led');
   await host.getByRole('button', { name: '🗺 Map on stream' }).click();
   await aud.locator('.map-ov').waitFor();
-  assert((await aud.locator('.map-ov').innerText()).includes('This map is hidden from viewers') && !(await aud.locator('.map-ov .cell').count()), 'on a hidden map, the viewers’ map says it’s hidden');
+  assert(
+    (await aud.locator('.map-ov').innerText()).includes('This map is hidden from viewers') && !(await aud.locator('.map-ov .cell').count()),
+    'on a hidden map, the viewers’ map says it’s hidden',
+  );
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/rpg-big-hidden.png` });
   await ctx.close();
 }
@@ -393,10 +603,29 @@ async function bigWorld() {
 async function boxSelect() {
   section('A box on the RPG stage');
   const shape = (id, name, x, y, w, h, role, more = {}) => ({
-    id, name, kind: 'shape', shape: 'rect', x, y, w, h, rotation: 0, opacity: 1, zIndex: 1, fill: '#887755', stroke: '#000', strokeWidth: 0, radius: 0, ...(role ? { role } : {}), ...more,
+    id,
+    name,
+    kind: 'shape',
+    shape: 'rect',
+    x,
+    y,
+    w,
+    h,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 1,
+    fill: '#887755',
+    stroke: '#000',
+    strokeWidth: 0,
+    radius: 0,
+    ...(role ? { role } : {}),
+    ...more,
   });
   const start = {
-    id: 's_start', name: 'Start', col: 0, row: 0,
+    id: 's_start',
+    name: 'Start',
+    col: 0,
+    row: 0,
     slide: {
       background: { color: '#2f6b3a' },
       elements: [
@@ -412,16 +641,59 @@ async function boxSelect() {
       ],
     },
   };
-  const meadow = { id: 's_meadow', name: 'Meadow', col: 1, row: 0, slide: { background: { color: '#3a6b2f' }, elements: [shape('el_bg', 'Meadow picture', 0, 0, 1920, 1080, null)] } };
+  const meadow = {
+    id: 's_meadow',
+    name: 'Meadow',
+    col: 1,
+    row: 0,
+    slide: { background: { color: '#3a6b2f' }, elements: [shape('el_bg', 'Meadow picture', 0, 0, 1920, 1080, null)] },
+  };
   const game = {
-    id: 'g_box_select', version: 2, title: 'Box select',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+    id: 'g_box_select',
+    version: 2,
+    title: 'Box select',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: null,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: true,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+      maxPlayers: 8,
+    },
     players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b'][i] })),
     rounds: [{ id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' }],
-    media: [], audio: {}, wheels: [], dice: [], theme: {},
+    media: [],
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
     statFields: [{ id: 'f_gold', name: 'Gold', type: 'number', start: 0, min: 0, currency: true, symbol: '🪙', audience: 'hud', display: 'counter' }],
     items: [{ id: 'i_sword', name: 'Sword', stackable: false }],
-    worlds: [{ id: 'w1', name: 'World', maps: [{ id: 'm1', name: 'Overworld', cols: 2, rows: 1, screens: [start, meadow], visibility: 'discovered', showExits: true, revealNeighbors: true, diagonals: false, wrap: false, transition: 'cut' }] }],
+    worlds: [
+      {
+        id: 'w1',
+        name: 'World',
+        maps: [
+          {
+            id: 'm1',
+            name: 'Overworld',
+            cols: 2,
+            rows: 1,
+            screens: [start, meadow],
+            visibility: 'discovered',
+            showExits: true,
+            revealNeighbors: true,
+            diagonals: false,
+            wrap: false,
+            transition: 'cut',
+          },
+        ],
+      },
+    ],
   };
   mkdirSync(resolve('test-results'), { recursive: true });
   const gameFile = resolve('test-results/rpg-box-select.json');
@@ -466,16 +738,22 @@ async function boxSelect() {
   const hitBox = (p, id) => stageBoxIn(p).locator(`.rpg .hit[data-object="${id}"]`).boundingBox();
   const undoSays = (p) => hostPanelIn(p).locator('.fixed').getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   /** Ann (p1) and Bob (p2) stand on the rug, side by side, done gliding there. */
-  const RUG = [['p1', 680], ['p2', 840]];
+  const RUG = [
+    ['p1', 680],
+    ['p2', 840],
+  ];
   async function settled(p) {
     for (const [id, x] of RUG) {
       const to = await at(p, x, 720);
       // (There, and done gliding: a position measured mid-glide would differ from the same one a moment later.)
-      await p.waitForFunction(([sel, tx, ty]) => {
-        const el = document.querySelector(sel);
-        const r = el?.getBoundingClientRect();
-        return !!r && Math.abs(r.x + r.width / 2 - tx) < 3 && Math.abs(r.y + r.height / 2 - ty) < 3 && !el.getAnimations().length;
-      }, [`.stage-box .rpg .avatar[data-player-id="${id}"]`, to.x, to.y]);
+      await p.waitForFunction(
+        ([sel, tx, ty]) => {
+          const el = document.querySelector(sel);
+          const r = el?.getBoundingClientRect();
+          return !!r && Math.abs(r.x + r.width / 2 - tx) < 3 && Math.abs(r.y + r.height / 2 - ty) < 3 && !el.getAnimations().length;
+        },
+        [`.stage-box .rpg .avatar[data-player-id="${id}"]`, to.x, to.y],
+      );
     }
   }
   /** Ann and Bob dragged onto the rug (where they arrive depends on the room there), nothing selected after. */
@@ -491,14 +769,23 @@ async function boxSelect() {
     // ---- Two windows ----
     const { p: host, aud } = await playIt(ctx, true);
     await standOnRug(host);
-    assert((await stageBoxIn(host).locator('.rpg .hit[data-object="el_spawn"]').count()) === 1, 'two windows: the host’s copy draws the arrival point (viewers never see it)');
+    assert(
+      (await stageBoxIn(host).locator('.rpg .hit[data-object="el_spawn"]').count()) === 1,
+      'two windows: the host’s copy draws the arrival point (viewers never see it)',
+    );
     await box(host, [560, 280], [1420, 900], { hold: true });
     // Live: the rings light up as it's drawn, on the host's copy only.
     await stageBoxIn(host).locator('.rpg .hit.picked[data-object="el_sword"]').waitFor();
-    const mid = { band: await stageBoxIn(host).locator('.rpg .band.mirror').count(), rings: await stageBoxIn(host).locator('.rpg .avatar.picked').count(), viewers: await aud.locator('.band, .picked, .outlined').count() };
+    const mid = {
+      band: await stageBoxIn(host).locator('.rpg .band.mirror').count(),
+      rings: await stageBoxIn(host).locator('.rpg .avatar.picked').count(),
+      viewers: await aud.locator('.band, .picked, .outlined').count(),
+    };
     await host.mouse.up();
     await says(host, 'Selected: Ann, Bob · Sword —');
-    const ringed = await stageBoxIn(host).locator('.rpg .hit.picked').evaluateAll((l) => l.map((e) => e.dataset.object));
+    const ringed = await stageBoxIn(host)
+      .locator('.rpg .hit.picked')
+      .evaluateAll((l) => l.map((e) => e.dataset.object));
     assert(
       mid.band === 1 && mid.rings === 2 && !mid.viewers && ringed.join() === 'el_sword',
       `two windows: a box picks Ann, Bob and the Sword, not the Lava under them, the door beside them or the arrival point; a yellow box and live rings on the host’s copy, nothing for viewers (${JSON.stringify(mid)}, ${ringed})`,
@@ -521,7 +808,9 @@ async function boxSelect() {
     // Esc while drawing: the box replaced the selection as it went; the selection is as it was.
     await box(host, [1450, 150], [1800, 450], { hold: true });
     // (Only the Gold pile: the line's text starts after the space Svelte leaves before its words.)
-    await line(host).filter({ hasText: /^\s*Selected: Gold pile —/ }).waitFor();
+    await line(host)
+      .filter({ hasText: /^\s*Selected: Gold pile —/ })
+      .waitFor();
     await host.keyboard.press('Escape');
     await host.mouse.up();
     await says(host, 'Selected: Ann, Bob · Sword, Gold pile, Door —');
@@ -534,7 +823,11 @@ async function boxSelect() {
     await again(host).waitFor();
     await box(host, [560, 280], [1420, 900], { hold: true });
     await stageBoxIn(host).locator('.rpg .hit.outlined[data-object="el_sword"]').waitFor();
-    const held = { band: await stageBoxIn(host).locator('.rpg .band:not(.mirror)').count(), outlined: await stageBoxIn(host).locator('.rpg .outlined').count(), rings: await stageBoxIn(host).locator('.rpg .picked').count() };
+    const held = {
+      band: await stageBoxIn(host).locator('.rpg .band:not(.mirror)').count(),
+      outlined: await stageBoxIn(host).locator('.rpg .outlined').count(),
+      rings: await stageBoxIn(host).locator('.rpg .picked').count(),
+    };
     // (From the moment it's let go: how long the outlines stay.)
     await host.evaluate(() => {
       const t0 = performance.now();
@@ -554,26 +847,43 @@ async function boxSelect() {
     const rug = await hitBox(host, 'el_rug');
     await box(host, [570, 800], [900, 640]);
     await says(host, 'Selected: Ann, Bob —');
-    assert(JSON.stringify(await hitBox(host, 'el_rug')) === JSON.stringify(rug) && !(await host.getByRole('dialog', { name: 'Object: Rug' }).count()), 'a press on the 🔒 locked rug under the players draws a box: Ann and Bob, the rug left where it is');
+    assert(
+      JSON.stringify(await hitBox(host, 'el_rug')) === JSON.stringify(rug) && !(await host.getByRole('dialog', { name: 'Object: Rug' }).count()),
+      'a press on the 🔒 locked rug under the players draws a box: Ann and Bob, the rug left where it is',
+    );
     // A box over the secret Chest catches nothing (it isn't on the stage), and Objects here numbers it.
     await box(host, [1550, 650], [1800, 850]);
     await again(host).waitFor();
     const objs = await host.locator('.rh .objs').innerText();
-    assert(!(await line(host).innerText()).includes('Selected:') && !objs.includes('Chest') && objs.includes('🙈 Hidden object 1'), `one window: a box over the secret Chest catches nothing, and Objects here doesn’t name it (${objs.replace(/\s+/g, ' ')})`);
+    assert(
+      !(await line(host).innerText()).includes('Selected:') && !objs.includes('Chest') && objs.includes('🙈 Hidden object 1'),
+      `one window: a box over the secret Chest catches nothing, and Objects here doesn’t name it (${objs.replace(/\s+/g, ' ')})`,
+    );
     // Its menu there offers no ✎ Edit (the live editor would list the Chest by name, on stream), as its card keeps it behind 👁 Show.
     await host.locator('.rh .objs').getByRole('button', { name: '🙈 Hidden object 1', exact: true }).click({ button: 'right' });
     const hiddenMenu = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
     await host.keyboard.press('Escape');
-    assert(hiddenMenu.includes('🗂 Open its card') && !hiddenMenu.includes('✎ Edit'), `one window: the secret object's menu has no ✎ Edit (${hiddenMenu.join(' | ')})`);
+    assert(
+      hiddenMenu.includes('🗂 Open its card') && !hiddenMenu.includes('✎ Edit'),
+      `one window: the secret object's menu has no ✎ Edit (${hiddenMenu.join(' | ')})`,
+    );
     // A visible Lever whose button reveals it: its menu calls it what Objects here does, never the Chest.
-    await host.locator('.rh .objs').getByRole('button', { name: /^Lever/ }).click({ button: 'right' });
+    await host
+      .locator('.rh .objs')
+      .getByRole('button', { name: /^Lever/ })
+      .click({ button: 'right' });
     const leverMenu = await host.getByRole('menu').innerText();
     await host.keyboard.press('Escape');
-    assert(leverMenu.includes('Reveal 🙈 Hidden object 1 (Start)') && !leverMenu.includes('Chest'), `one window: the Lever's Reveal names no secret object (${leverMenu.replace(/\s+/g, ' ')})`);
+    assert(
+      leverMenu.includes('Reveal 🙈 Hidden object 1 (Start)') && !leverMenu.includes('Chest'),
+      `one window: the Lever's Reveal names no secret object (${leverMenu.replace(/\s+/g, ' ')})`,
+    );
     // Pressing one of a selected group outlines it all before it moves; one Ctrl+Z puts the whole move back.
     await again(host).click();
     await says(host, 'Selected: Ann, Bob —');
-    await stageBoxIn(host).locator('.rpg .hit[data-object="el_sword"]').click({ modifiers: ['Shift'] });
+    await stageBoxIn(host)
+      .locator('.rpg .hit[data-object="el_sword"]')
+      .click({ modifiers: ['Shift'] });
     await says(host, 'Selected: Ann, Bob · Sword —');
     const sword = await hitBox(host, 'el_sword');
     const ann = await av(host, 'p1').boundingBox();
@@ -584,12 +894,18 @@ async function boxSelect() {
     await host.mouse.move(ann.x + ann.width / 2 + 60, ann.y + ann.height / 2 - 40, { steps: 6 });
     await host.mouse.up();
     await host.waitForFunction(() => document.querySelector('.panel .fixed button[title^="Undo: Move Ann, Bob & Sword"]'));
-    assert(pressed === 3 && JSON.stringify(await hitBox(host, 'el_sword')) !== JSON.stringify(sword), `one window: pressing Ann outlines the whole group (${pressed}), and they move together`);
+    assert(
+      pressed === 3 && JSON.stringify(await hitBox(host, 'el_sword')) !== JSON.stringify(sword),
+      `one window: pressing Ann outlines the whole group (${pressed}), and they move together`,
+    );
     await host.keyboard.press('Control+z');
-    await host.waitForFunction(([sx, sy]) => {
-      const r = document.querySelector('.stage-box .rpg .hit[data-object="el_sword"]')?.getBoundingClientRect();
-      return !!r && Math.abs(r.x - sx) < 2 && Math.abs(r.y - sy) < 2;
-    }, [sword.x, sword.y]);
+    await host.waitForFunction(
+      ([sx, sy]) => {
+        const r = document.querySelector('.stage-box .rpg .hit[data-object="el_sword"]')?.getBoundingClientRect();
+        return !!r && Math.abs(r.x - sx) < 2 && Math.abs(r.y - sy) < 2;
+      },
+      [sword.x, sword.y],
+    );
     await settled(host);
     assert(true, 'one Ctrl+Z puts the group move back');
     // Alt+drag from a player draws a box (Bob stays put), and Alt's keyup stays in the page (Firefox's menu bar).
@@ -600,18 +916,27 @@ async function boxSelect() {
     await box(host, [875, 680], [600, 780]);
     await host.keyboard.up('Alt');
     await says(host, 'Selected: Ann, Bob —');
-    assert(JSON.stringify(await av(host, 'p2').boundingBox()) === JSON.stringify(bob) && (await host.evaluate(() => window.__altKept)) === true, 'Alt+drag from a player draws a box (Bob isn’t dragged), and Alt’s keyup stays in the page');
+    assert(
+      JSON.stringify(await av(host, 'p2').boundingBox()) === JSON.stringify(bob) && (await host.evaluate(() => window.__altKept)) === true,
+      'Alt+drag from a player draws a box (Bob isn’t dragged), and Alt’s keyup stays in the page',
+    );
     // The stage menu's ▭ Select in a box: the next drag draws one even from a player, with no key held.
     await host.keyboard.press('Escape');
     const menuAt = await at(host, 1750, 120);
     await host.mouse.click(menuAt.x, menuAt.y, { button: 'right' });
     const items = await menuLines(host);
-    assert(items.includes('▭ Select in a box · Alt+drag') && items.includes('Select everything here'), `the stage’s menu has ▭ Select in a box and Select everything here (${items.join(' | ')})`);
+    assert(
+      items.includes('▭ Select in a box · Alt+drag') && items.includes('Select everything here'),
+      `the stage’s menu has ▭ Select in a box and Select everything here (${items.join(' | ')})`,
+    );
     await openMenu(host).getByRole('menuitem', { name: '▭ Select in a box' }).click();
     const annNow = await av(host, 'p1').boundingBox();
     await box(host, [650, 680], [900, 780]);
     await says(host, 'Selected: Ann, Bob —');
-    assert(JSON.stringify(await av(host, 'p1').boundingBox()) === JSON.stringify(annNow), '▭ Select in a box: the next drag from Ann draws a box instead of moving her');
+    assert(
+      JSON.stringify(await av(host, 'p1').boundingBox()) === JSON.stringify(annNow),
+      '▭ Select in a box: the next drag from Ann draws a box instead of moving her',
+    );
     // A big object dragged alone says, once a game, how to lock it or box over it.
     await host.keyboard.press('Escape');
     await box(host, [200, 900], [260, 900]);
@@ -631,7 +956,10 @@ async function boxSelect() {
     const drawn = await stageBoxIn(host).locator('.rpg .band').count();
     await host.mouse.up();
     assert(
-      drawn === 1 && (await undoSays(host)) === step && JSON.stringify(await hitBox(host, 'el_bg')) === JSON.stringify(pic) && !(await host.getByRole('dialog', { name: 'Object: Meadow picture' }).count()),
+      drawn === 1 &&
+        (await undoSays(host)) === step &&
+        JSON.stringify(await hitBox(host, 'el_bg')) === JSON.stringify(pic) &&
+        !(await host.getByRole('dialog', { name: 'Object: Meadow picture' }).count()),
       `a drag on a picture as big as its screen draws a box and records no step (${step})`,
     );
     // Kept to resume: an RPG game's progress is its steps (the party went east; no points, tiles or rolls), and Start
@@ -645,7 +973,10 @@ async function boxSelect() {
     await host.getByRole('button', { name: 'Start game ▶' }).click();
     const keptAsk = host.locator('.actions [data-start-ask]');
     await keptAsk.waitFor();
-    assert((await keptAsk.innerText()).includes('Start a new game? The game in progress (Adventure) is discarded.'), `Start asks before throwing away an RPG game kept with its party moved (${await keptAsk.innerText()})`);
+    assert(
+      (await keptAsk.innerText()).includes('Start a new game? The game in progress (Adventure) is discarded.'),
+      `Start asks before throwing away an RPG game kept with its party moved (${await keptAsk.innerText()})`,
+    );
     await host.close();
   } finally {
     await ctx.close();
@@ -665,7 +996,12 @@ async function boxSelect() {
     await tp.keyboard.press('1');
     await says(tp, 'Selected: Ann —');
     // (From well clear of the Sword: a finger pressed just beside a thing is taken as on it, as the browser adjusts a touch.)
-    await touch([[800, 220], [880, 300], [960, 380], [1060, 460]]);
+    await touch([
+      [800, 220],
+      [880, 300],
+      [960, 380],
+      [1060, 460],
+    ]);
     await says(tp, 'Selected: Ann · Sword —');
     assert(true, 'a touch screen: a box adds to what’s selected (Ann, then the Sword)');
     await touch([[1750, 120]]);
@@ -681,14 +1017,20 @@ try {
   await addClassicRounds(page);
 
   // Stats & items: in the sidebar, muted "(optional)" until there's an RPG (or board game) round to use them.
-  assert((await page.getByRole('button', { name: '📊 Stats & Items' }).innerText()).includes('(optional)'), 'a game of Jeopardy rounds lists 📊 Stats & Items as optional');
+  assert(
+    (await page.getByRole('button', { name: '📊 Stats & Items' }).innerText()).includes('(optional)'),
+    'a game of Jeopardy rounds lists 📊 Stats & Items as optional',
+  );
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /RPG/ }).click();
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
   // Gold starts at 10, enough to try a shop; this game starts everyone broke (the shop below asks when they're short).
-  const goldStart = page.locator('label.field', { hasText: /^Start/ }).locator('input[type="number"]').last();
+  const goldStart = page
+    .locator('label.field', { hasText: /^Start/ })
+    .locator('input[type="number"]')
+    .last();
   assert((await goldStart.inputValue()) === '10', `the Gold preset starts at 10 (${await goldStart.inputValue()})`);
   await goldStart.fill('0');
   await page.getByRole('button', { name: '＋ Add item', exact: true }).click();
@@ -706,7 +1048,12 @@ try {
   await hatPad.getByRole('button', { name: '⬟ Filled shape' }).click();
   await page.mouse.move(hb.x + hb.width * 0.42, hb.y + hb.height * 0.2);
   await page.mouse.down();
-  for (const [fx, fy] of [[0.58, 0.2], [0.55, 0.05], [0.45, 0.05]]) await page.mouse.move(hb.x + hb.width * fx, hb.y + hb.height * fy, { steps: 4 });
+  for (const [fx, fy] of [
+    [0.58, 0.2],
+    [0.55, 0.05],
+    [0.45, 0.05],
+  ])
+    await page.mouse.move(hb.x + hb.width * fx, hb.y + hb.height * fy, { steps: 4 });
   await page.mouse.up();
   await hatPad.getByRole('button', { name: 'Insert drawing' }).click();
   await page.locator('.worn .preview .gear img').waitFor();
@@ -716,7 +1063,10 @@ try {
   await page.getByRole('button', { name: '＋ Add shop' }).click();
   // It lists the items it doesn't sell yet.
   await page.getByRole('button', { name: '＋ Add item to sell ▾' }).click();
-  assert((await page.getByRole('menu').getByRole('menuitem').allTextContents()).map((t) => t.trim()).join('|') === 'Potion|Hat|＋ Add everything', 'Something to sell lists the items and Everything');
+  assert(
+    (await page.getByRole('menu').getByRole('menuitem').allTextContents()).map((t) => t.trim()).join('|') === 'Potion|Hat|＋ Add everything',
+    'Something to sell lists the items and Everything',
+  );
   await page.getByRole('menu').getByRole('menuitem', { name: 'Potion' }).click();
   await page.locator('label', { hasText: 'Buys back at' }).locator('input').fill('50');
   // A second shop, deleted below.
@@ -727,14 +1077,20 @@ try {
   {
     // SLIDES-2: past the right and bottom edges, a ＋ column and row; a click (or the arrows past the edge and Enter)
     // grows the map with a screen there, one step.
-    const size = async () => /\((\d+)×(\d+)\)/.exec(await page.locator('summary', { hasText: 'Map settings' }).innerText())?.slice(1).map(Number);
+    const size = async () =>
+      /\((\d+)×(\d+)\)/
+        .exec(await page.locator('summary', { hasText: 'Map settings' }).innerText())
+        ?.slice(1)
+        .map(Number);
     const [cols, rows] = await size();
     const grow = page.locator('.grid-map [data-grow]');
     assert((await grow.count()) === cols + rows + 1, `a ＋ column and row past the edges (${await grow.count()} for ${cols}×${rows})`);
     const undoTitle = () => page.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
     await page.getByRole('button', { name: `Add a screen at column ${cols + 1}, row 1 (the map grows)` }).click();
     assert(
-      (await size()).join() === `${cols + 1},${rows}` && (await page.locator(`.grid-map [data-cell="${cols},0"]`).getAttribute('aria-label')).startsWith('Screen ') && (await undoTitle()).startsWith(`Undo: Added a screen to map “Overworld” (the map grew to ${cols + 1}×${rows})`),
+      (await size()).join() === `${cols + 1},${rows}` &&
+        (await page.locator(`.grid-map [data-cell="${cols},0"]`).getAttribute('aria-label')).startsWith('Screen ') &&
+        (await undoTitle()).startsWith(`Undo: Added a screen to map “Overworld” (the map grew to ${cols + 1}×${rows})`),
       `a click on the ＋ past the right edge adds a column with a screen in it, one step (${await undoTitle()})`,
     );
     await page.keyboard.press('Control+z');
@@ -743,9 +1099,15 @@ try {
     await page.locator('.grid-map [data-cell="0,0"]').focus();
     for (let i = 0; i < rows; i++) await page.keyboard.press('ArrowDown');
     const focusedLabel = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
-    assert((await focusedLabel()) === `Add a screen at column 1, row ${rows + 1} (the map grows)`, `the arrows go past the bottom edge to the ＋ row (${await focusedLabel()})`);
+    assert(
+      (await focusedLabel()) === `Add a screen at column 1, row ${rows + 1} (the map grows)`,
+      `the arrows go past the bottom edge to the ＋ row (${await focusedLabel()})`,
+    );
     await page.keyboard.press('Enter');
-    assert((await size()).join() === `${cols},${rows + 1}` && (await focusedLabel())?.startsWith('Screen '), `Enter there adds a row with a screen, the keys on it (${await focusedLabel()})`);
+    assert(
+      (await size()).join() === `${cols},${rows + 1}` && (await focusedLabel())?.startsWith('Screen '),
+      `Enter there adds a row with a screen, the keys on it (${await focusedLabel()})`,
+    );
     await page.keyboard.press('Control+z');
     await page.waitForFunction((n) => document.querySelectorAll('.grid-map [data-grow]').length === n, cols + rows + 1);
     assert((await size()).join() === `${cols},${rows}`, 'and Ctrl+Z takes that back');
@@ -766,9 +1128,23 @@ try {
     const items = (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
     const heads = await menu.locator('.heading').allInnerTexts();
     const at = (x) => items.findIndex((t) => t.startsWith(x));
-    const want = ['✎ Edit screen', '✎ Rename', '⧉ Duplicate', '📋 Copy screen', '◀ Move left', '＋ Insert left', '🗑 Delete column B', '＋ Insert above', '🗑 Delete row 1', '🗑 Delete screen'].map(at);
+    const want = [
+      '✎ Edit screen',
+      '✎ Rename',
+      '⧉ Duplicate',
+      '📋 Copy screen',
+      '◀ Move left',
+      '＋ Insert left',
+      '🗑 Delete column B',
+      '＋ Insert above',
+      '🗑 Delete row 1',
+      '🗑 Delete screen',
+    ].map(at);
     assert(
-      want.every((n, i) => n >= 0 && (i === 0 || n > want[i - 1])) && items.at(-1).startsWith('🗑 Delete screen') && heads.includes('Column B') && heads.includes('Row 1'),
+      want.every((n, i) => n >= 0 && (i === 0 || n > want[i - 1])) &&
+        items.at(-1).startsWith('🗑 Delete screen') &&
+        heads.includes('Column B') &&
+        heads.includes('Row 1'),
       `a screen's menu: its column's and row's own groups, its own delete last (${items.join(' | ')})`,
     );
     await page.keyboard.press('Escape');
@@ -792,7 +1168,10 @@ try {
     await page.keyboard.press('Tab');
     tabs++;
   }
-  assert(!(await onCanvas()) && (await page.evaluate(() => document.activeElement !== document.body)), `Tab goes through the screen's items and on to the next control (${tabs} tabs)`);
+  assert(
+    !(await onCanvas()) && (await page.evaluate(() => document.activeElement !== document.body)),
+    `Tab goes through the screen's items and on to the next control (${tabs} tabs)`,
+  );
   // An RPG screen's Shape ▾ has ⬚ Hotspot (a clue's doesn't), in a section of its own.
   await page.getByRole('button', { name: /◼ Shape/ }).click();
   assert((await page.locator('.shape-menu').getByRole('button', { name: '⬚ Hotspot' }).count()) === 1, 'an RPG screen’s Shape ▾ offers ⬚ Hotspot');
@@ -800,10 +1179,18 @@ try {
   // ↺ Reset background: the editor shows the screen's green, as viewers will see it, not the theme's tile color.
   await page.getByRole('button', { name: /Background ▾/ }).click();
   await page.getByRole('button', { name: '↺ Reset background' }).click();
-  const bgs = await page.evaluate(() => [document.querySelector('.canvas .slide'), document.querySelector('.swatch')].map((e) => getComputedStyle(e).backgroundColor));
-  assert(bgs.every((c) => c === 'rgb(47, 107, 58)'), `a screen with its background reset shows green in the editor, as on stage (${bgs.join(', ')})`);
+  const bgs = await page.evaluate(() =>
+    [document.querySelector('.canvas .slide'), document.querySelector('.swatch')].map((e) => getComputedStyle(e).backgroundColor),
+  );
+  assert(
+    bgs.every((c) => c === 'rgb(47, 107, 58)'),
+    `a screen with its background reset shows green in the editor, as on stage (${bgs.join(', ')})`,
+  );
   await page.getByRole('button', { name: /Background ▾/ }).click();
-  assert((await page.getByRole('button', { name: '↺ Reset background' }).getAttribute('title')) === 'Back to the default background', "and its Reset doesn't say it's the theme's");
+  assert(
+    (await page.getByRole('button', { name: '↺ Reset background' }).getAttribute('title')) === 'Back to the default background',
+    "and its Reset doesn't say it's the theme's",
+  );
   await page.getByLabel('Screen background color').press('Escape');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
   // Clearing Columns (to type another number) deletes nothing: the box shows the size again.
@@ -812,7 +1199,10 @@ try {
   const colsWas = await cols.inputValue();
   await cols.fill('');
   await cols.press('Tab');
-  assert((await cols.inputValue()) === colsWas && (await page.getByRole('button', { name: 'Screen Screen B1' }).count()) === 1, `clearing Columns keeps the map as it is (${await cols.inputValue()})`);
+  assert(
+    (await cols.inputValue()) === colsWas && (await page.getByRole('button', { name: 'Screen Screen B1' }).count()) === 1,
+    `clearing Columns keeps the map as it is (${await cols.inputValue()})`,
+  );
   await page.locator('summary', { hasText: 'Map settings' }).click();
   // Alt+drag from a screen (the map full where it starts) draws a box: both screens selected, nothing moved.
   const startBox = await page.getByRole('button', { name: 'Screen Start' }).boundingBox();
@@ -825,8 +1215,11 @@ try {
   await page.keyboard.up('Alt');
   await page.waitForTimeout(150);
   const boxed = await page.locator('.grid-map .cell.screen.sel').count();
-  const startAt = await page.getByRole("button", { name: "Screen Start" }).getAttribute("data-cell");
-  assert(boxed === 2 && startAt === "0,0" && (await page.locator(".side h4").first().innerText()) === '2 screens selected', `Alt+drag from a screen draws a box (${boxed} selected, Start at ${startAt})`);
+  const startAt = await page.getByRole('button', { name: 'Screen Start' }).getAttribute('data-cell');
+  assert(
+    boxed === 2 && startAt === '0,0' && (await page.locator('.side h4').first().innerText()) === '2 screens selected',
+    `Alt+drag from a screen draws a box (${boxed} selected, Start at ${startAt})`,
+  );
   // The several-selected bar: ⧉ Duplicate, then Clear selection and 🗑 Delete 2 screens together at the right end,
   // 🗑 last, red and apart, never alone on a line under ⧉ Duplicate.
   {
@@ -838,7 +1231,10 @@ try {
       b.getBoundingClientRect().left - b.previousElementSibling.getBoundingClientRect().right,
       [...b.closest('.row:not(.end)').querySelectorAll('button')].at(-1) === b,
     ]);
-    assert(color === 'rgb(255, 107, 107)' && gap >= 12 && last && box.x > dup.x + dup.width + 12, `several screens: 🗑 last in red, apart (${gap}px), not under ⧉ Duplicate (🗑 at ${Math.round(box.x)}, ⧉ ends at ${Math.round(dup.x + dup.width)})`);
+    assert(
+      color === 'rgb(255, 107, 107)' && gap >= 12 && last && box.x > dup.x + dup.width + 12,
+      `several screens: 🗑 last in red, apart (${gap}px), not under ⧉ Duplicate (🗑 at ${Math.round(box.x)}, ⧉ ends at ${Math.round(dup.x + dup.width)})`,
+    );
   }
   await page.keyboard.press('Escape');
   // Ctrl+A on the map picks every screen (as in the slide and board editors), not the page's text.
@@ -846,13 +1242,24 @@ try {
   await page.keyboard.press('Control+a');
   const allScreens = await page.locator('.grid-map .cell.screen').count();
   await page.locator('.side h4', { hasText: `${allScreens} screens selected` }).waitFor();
-  assert(allScreens > 1 && (await page.locator('.grid-map .cell.screen.sel').count()) === allScreens && (await page.evaluate(() => String(window.getSelection()))) === '', `Ctrl+A selects all ${allScreens} screens`);
+  assert(
+    allScreens > 1 &&
+      (await page.locator('.grid-map .cell.screen.sel').count()) === allScreens &&
+      (await page.evaluate(() => String(window.getSelection()))) === '',
+    `Ctrl+A selects all ${allScreens} screens`,
+  );
   await page.keyboard.press('Escape');
   // A screen's Ways out is one line, folded (where each side leads); ▸ Change… opens a box for each side.
   await page.getByRole('button', { name: 'Screen Start' }).click();
   const ways = page.locator('.side [data-ways-out]');
   const waysText = (await ways.innerText()).replace(/\s+/g, ' ').trim();
-  assert(waysText.startsWith('Ways out:') && waysText.includes('nothing there') && waysText.endsWith('▸ Change…') && (await page.getByLabel('East exit', { exact: true }).count()) === 0, `a screen's Ways out is one line, folded (${waysText})`);
+  assert(
+    waysText.startsWith('Ways out:') &&
+      waysText.includes('nothing there') &&
+      waysText.endsWith('▸ Change…') &&
+      (await page.getByLabel('East exit', { exact: true }).count()) === 0,
+    `a screen's Ways out is one line, folded (${waysText})`,
+  );
   await ways.getByRole('button', { name: '▸ Change…' }).click();
   assert((await page.getByLabel('East exit', { exact: true }).count()) === 1, '▸ Change… opens a box for each side');
   await ways.getByRole('button', { name: '▾ Done' }).click();
@@ -864,7 +1271,10 @@ try {
   await page.getByRole('button', { name: 'More for this screen' }).click();
   await page.getByRole('menu').getByRole('menuitem', { name: '📋 Copy screen' }).click();
   const slideCopied = (await toastsIn(page, { hasText: 'Screen copied' }).last().innerText()).trim();
-  assert(slideCopied === 'Screen copied: on another one, right-click an empty spot › 📋 Paste over this screen', `on a screen, 📋 Copy screen says where to paste it (${slideCopied})`);
+  assert(
+    slideCopied === 'Screen copied: on another one, right-click an empty spot › 📋 Paste over this screen',
+    `on a screen, 📋 Copy screen says where to paste it (${slideCopied})`,
+  );
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
   assert((await page.getByRole('menu').count()) === 0, '📦 Item ▾ closes on a second click');
@@ -901,13 +1311,19 @@ try {
   // The round's top: where players start, in plain words; the world (for carrying the adventure on) under Advanced.
   assert(await page.getByText('Players start on').isVisible(), 'the round says where players start on');
   assert((await page.getByText('Party starts at').count()) === 0, 'not “Party starts at”');
-  assert(!(await page.getByLabel('World', { exact: true }).isVisible()) && (await page.locator('summary', { hasText: '▸ Advanced: carry this adventure into another round' }).isVisible()), 'the world picker waits under ▸ Advanced');
+  assert(
+    !(await page.getByLabel('World', { exact: true }).isVisible()) &&
+      (await page.locator('summary', { hasText: '▸ Advanced: carry this adventure into another round' }).isVisible()),
+    'the world picker waits under ▸ Advanced',
+  );
   // A second adventure (the Mini quest template) has its own world: one line says so, and ▸ Advanced stays shut.
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Mini quest/ }).click();
   await page.locator('[data-world-own]').waitFor();
   assert(
-    (await page.locator('[data-world-own]').innerText()) === 'Its own world (separate from Adventure).' && !(await page.locator('details.adv').evaluate((d) => d.open)) && !(await page.getByLabel('World', { exact: true }).isVisible()),
+    (await page.locator('[data-world-own]').innerText()) === 'Its own world (separate from Adventure).' &&
+      !(await page.locator('details.adv').evaluate((d) => d.open)) &&
+      !(await page.getByLabel('World', { exact: true }).isVisible()),
     'adding the Mini quest to a game with an adventure keeps ▸ Advanced shut: “Its own world (separate from Adventure)”',
   );
   await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
@@ -920,13 +1336,20 @@ try {
   assert((await page.locator('[data-shop-hint]').innerText()).includes('Stats & Items'), 'the Shop box says shops are set up in 📊 Stats & Items');
   await page.getByLabel('Shop', { exact: true }).selectOption({ label: '＋ New shop…' });
   const madeShop = await page.getByLabel('Shop', { exact: true }).locator('option:checked').innerText();
-  assert(madeShop === 'Old Man’s shop' && (await page.locator('[data-shop-hint]').innerText()).includes('Made “Old Man’s shop”, selling all 2 items'), `＋ New shop… makes one selling the catalog, and picks it (${madeShop})`);
+  assert(
+    madeShop === 'Old Man’s shop' && (await page.locator('[data-shop-hint]').innerText()).includes('Made “Old Man’s shop”, selling all 2 items'),
+    `＋ New shop… makes one selling the catalog, and picks it (${madeShop})`,
+  );
   // The Layers list shows what an object is by its icon.
   const oldManIcon = await page.locator('.layers .row', { hasText: 'Old Man' }).locator('.ic').innerText();
   assert(oldManIcon === '🧙', `Layers shows a character with 🧙, not 🅣 (${oldManIcon})`);
   // 👹 Enemy: a character with HP and Power that viewers see, and buttons for the fight.
   await page.getByRole('button', { name: '👹 Enemy' }).click();
-  assert((await page.getByLabel('Object class').inputValue()) === 'npc' && (await page.getByLabel('Stat name').evaluateAll((els) => els.map((e) => e.value))).join(',') === 'HP,Power', '👹 Enemy places a character with its own HP and Power');
+  assert(
+    (await page.getByLabel('Object class').inputValue()) === 'npc' &&
+      (await page.getByLabel('Stat name').evaluateAll((els) => els.map((e) => e.value))).join(',') === 'HP,Power',
+    '👹 Enemy places a character with its own HP and Power',
+  );
   assert((await page.locator('[data-action]').count()) === 2, 'with a roll and an HP −1 button for the fight');
   // Leaving for 📊 Stats & Items and coming back opens the same screen again.
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
@@ -955,7 +1378,10 @@ try {
   await page.getByRole('button', { name: 'Go East', exact: true }).click();
   await toastsIn(page, { hasText: 'Start the round first' }).waitFor();
   await page.locator('.rh .mapbox .cell[aria-label="Overworld · Screen B1"]').dblclick();
-  assert((await where()).includes('Start') && (await stageBoxIn(page).locator('.title-card').count()) === 1, `under the title card the pad and a double-click on the minimap don’t move the party (${await where()})`);
+  assert(
+    (await where()).includes('Start') && (await stageBoxIn(page).locator('.title-card').count()) === 1,
+    `under the title card the pad and a double-click on the minimap don’t move the party (${await where()})`,
+  );
   await page.getByRole('button', { name: 'Go East', exact: true }).click();
   await toastsIn(page, { hasText: 'Start the round first' }).waitFor();
   // Clicking it goes on (and puts the pad's hint away).
@@ -974,7 +1400,10 @@ try {
   await page.keyboard.press('Escape');
   const stageBox = await page.locator('.rpg').boundingBox();
   await page.mouse.click(stageBox.x + 30, stageBox.y + 30, { button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: /Full map/ }).click();
+  await page
+    .getByRole('menu')
+    .getByRole('menuitem', { name: /Full map/ })
+    .click();
   await page.getByRole('dialog', { name: 'Full map' }).waitFor();
   assert(true, 'right-click the stage: the full map');
   await page.keyboard.press('Escape');
@@ -992,7 +1421,10 @@ try {
   await stageBoxIn(page).locator('.rpg[tabindex="0"]').focus();
   await page.keyboard.press('Shift+F10');
   const rpgMenu = await menuLines(page);
-  assert(rpgMenu.includes('🗺 Full map (jump anywhere) · J') && rpgMenu.includes('🤝 Regroup · G'), `Shift+F10 on the stage: the round’s menu (${rpgMenu.join(' | ')})`);
+  assert(
+    rpgMenu.includes('🗺 Full map (jump anywhere) · J') && rpgMenu.includes('🤝 Regroup · G'),
+    `Shift+F10 on the stage: the round’s menu (${rpgMenu.join(' | ')})`,
+  );
   await page.keyboard.press('Escape');
   await openMenu(page).waitFor({ state: 'detached' });
   await page.keyboard.press('1');
@@ -1005,10 +1437,16 @@ try {
   assert((await page.locator('.rpg .hit').count()) === 0, 'secret objects and arrival points get no click target on the viewers’ stage');
   assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('potion'), 'the secret Potion is not drawn for viewers');
   // The arrival point is never shown to viewers: its card says so, with no Reveal button that would do nothing.
-  await page.locator('.rh .objs').getByRole('button', { name: /^Arrival point/ }).click();
+  await page
+    .locator('.rh .objs')
+    .getByRole('button', { name: /^Arrival point/ })
+    .click();
   const arrival = page.getByRole('dialog', { name: 'Object: Arrival point' });
   await arrival.getByText('Never shown to viewers').waitFor();
-  assert((await arrival.getByRole('button', { name: /Reveal to viewers/ }).count()) === 0, 'an arrival point’s card says it’s never shown to viewers, with no Reveal button');
+  assert(
+    (await arrival.getByRole('button', { name: /Reveal to viewers/ }).count()) === 0,
+    'an arrival point’s card says it’s never shown to viewers, with no Reveal button',
+  );
   await page.keyboard.press('Escape');
   await arrival.waitFor({ state: 'detached' });
 
@@ -1066,9 +1504,15 @@ try {
   await full.waitFor();
   // (One window: over the host panel under the stage, never the stage: the host's map names screens not found yet.)
   const [fb, sb] = [await full.boundingBox(), await stageBoxIn(page).boundingBox()];
-  assert(fb.y >= sb.y + sb.height - 1, `one window: the full map opens over the host panel, not the stage (map at y ${Math.round(fb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`);
+  assert(
+    fb.y >= sb.y + sb.height - 1,
+    `one window: the full map opens over the host panel, not the stage (map at y ${Math.round(fb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`,
+  );
   const [tb, xb] = [await full.locator('.modal-title').boundingBox(), await full.getByRole('button', { name: 'Close' }).boundingBox()];
-  assert(xb.y < tb.y + tb.height && xb.x + xb.width > fb.x + fb.width - 40, `its ✕ stays at the top right, on the title's line (✕ at ${Math.round(xb.x)},${Math.round(xb.y)}; title at y ${Math.round(tb.y)})`);
+  assert(
+    xb.y < tb.y + tb.height && xb.x + xb.width > fb.x + fb.width - 40,
+    `its ✕ stays at the top right, on the title's line (✕ at ${Math.round(xb.x)},${Math.round(xb.y)}; title at y ${Math.round(tb.y)})`,
+  );
   await full.getByRole('button', { name: 'Overworld · Screen B1' }).click();
   await full.getByRole('button', { name: /^▶ Move Party here$/ }).click();
   await page.waitForTimeout(200);
@@ -1102,11 +1546,12 @@ try {
   await page.getByRole('button', { name: '🎯 Pick a player', exact: true }).click();
   await page.getByLabel('Spin another wheel too').selectOption({ label: '🎯 Pick a player' });
   assert((await page.locator('.stage .many .cell').count()) === 2, 'a second wheel appears next to the first');
-  if (process.env.SHOTS) await page.keyboard.press('j').then(async () => {
-    await page.getByRole('dialog', { name: 'Full map' }).getByRole('button', { name: 'Overworld · Screen B1' }).click();
-    await page.screenshot({ path: `${process.env.SHOTS}/rpg-fullmap.png` });
-    await page.keyboard.press('Escape');
-  });
+  if (process.env.SHOTS)
+    await page.keyboard.press('j').then(async () => {
+      await page.getByRole('dialog', { name: 'Full map' }).getByRole('button', { name: 'Overworld · Screen B1' }).click();
+      await page.screenshot({ path: `${process.env.SHOTS}/rpg-fullmap.png` });
+      await page.keyboard.press('Escape');
+    });
   // The added wheel can be edited for this spin too.
   await page.getByRole('button', { name: 'Edit Pick a player for this spin' }).click();
   assert((await page.locator('.tc', { hasText: 'Spin another wheel' }).innerText()).includes('Editing Pick a player'), 'an added wheel has its own edit box');
@@ -1133,10 +1578,21 @@ try {
     await page.mouse.up();
   };
   await pad.getByRole('button', { name: '⬟ Filled shape' }).click();
-  await stroke([[0.3, 0.3], [0.45, 0.3], [0.45, 0.5], [0.3, 0.5]]);
+  await stroke([
+    [0.3, 0.3],
+    [0.45, 0.3],
+    [0.45, 0.5],
+    [0.3, 0.5],
+  ]);
   await pad.getByRole('button', { name: '✏ Pen' }).click();
-  await stroke([[0.32, 0.55], [0.5, 0.6]]);
-  await stroke([[0.1, 0.1], [0.12, 0.12]]);
+  await stroke([
+    [0.32, 0.55],
+    [0.5, 0.6],
+  ]);
+  await stroke([
+    [0.1, 0.1],
+    [0.12, 0.12],
+  ]);
   await pad.getByRole('button', { name: '↶ Undo' }).click();
   // Esc asks right in the pad before throwing the drawing away (a browser dialog would show on stream); Esc again keeps it.
   await page.keyboard.press('Escape');
@@ -1144,7 +1600,10 @@ try {
   await discard.waitFor();
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-drawpad-discard.png` });
   await page.keyboard.press('Escape');
-  assert((await discard.count()) === 0 && (await pad.isVisible()) && !dialogs.length, 'Esc asks in the drawpad (no browser dialog), and Esc again goes back to drawing');
+  assert(
+    (await discard.count()) === 0 && (await pad.isVisible()) && !dialogs.length,
+    'Esc asks in the drawpad (no browser dialog), and Esc again goes back to drawing',
+  );
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-drawpad.png` });
   await pad.getByRole('button', { name: 'Insert drawing' }).click();
   const drawn = page.getByRole('dialog', { name: 'Object: Drawing' });
@@ -1189,8 +1648,14 @@ try {
   await lava.getByRole('button', { name: '✎ Edit' }).click();
   const liveEd = page.getByRole('dialog', { name: /Edit Start.* live/ });
   await liveEd.waitFor();
-  assert((await liveEd.getByRole('button', { name: /Lava/ }).count()) > 0 || (await liveEd.innerText()).includes('Lava'), 'the live editor has the drawn object');
-  assert((await liveEd.innerText()).includes('One window: viewers see this editor, hidden things too.'), 'one window: the live editor says viewers see it (not “viewers see changes as you make them”)');
+  assert(
+    (await liveEd.getByRole('button', { name: /Lava/ }).count()) > 0 || (await liveEd.innerText()).includes('Lava'),
+    'the live editor has the drawn object',
+  );
+  assert(
+    (await liveEd.innerText()).includes('One window: viewers see this editor, hidden things too.'),
+    'one window: the live editor says viewers see it (not “viewers see changes as you make them”)',
+  );
   // Esc is Done, after the editor's own Esc (the object it opened with is selected: that comes off first).
   for (let i = 0; i < 3 && (await liveEd.count()); i++) {
     await page.keyboard.press('Escape');
@@ -1224,7 +1689,10 @@ try {
     await inList.click({ modifiers: ['Shift'] });
     assert((await inList.getAttribute('aria-pressed')) === 'false', 'Shift+click in the list takes it out of the selection');
     await inList.click({ modifiers: ['Shift'] });
-    assert((await inList.getAttribute('aria-pressed')) === 'true' && !(await page.getByRole('dialog', { name: 'Object: Lava' }).count()), '…and back in, without opening its card');
+    assert(
+      (await inList.getAttribute('aria-pressed')) === 'true' && !(await page.getByRole('dialog', { name: 'Object: Lava' }).count()),
+      '…and back in, without opening its card',
+    );
     const start = await boxes();
     await dragBy(page, av.nth(0), { x: start[0].x + start[0].width / 2 - 70, y: start[0].y + start[0].height / 2 - 40 });
     await page.waitForTimeout(350);
@@ -1235,19 +1703,28 @@ try {
     await page.waitForTimeout(350);
     assert((await toast()).includes('Undid Move Player 1, Player 2 & Lava'), `one step moved them all (${await toast()})`);
     const back = moved(start, await boxes());
-    assert(back.every(([x, y]) => Math.abs(x) <= 2 && Math.abs(y) <= 2), `one Ctrl+Z puts them all back (${JSON.stringify(back)})`);
+    assert(
+      back.every(([x, y]) => Math.abs(x) <= 2 && Math.abs(y) <= 2),
+      `one Ctrl+Z puts them all back (${JSON.stringify(back)})`,
+    );
     // One Esc clears the players and the object selected at once (↩ Select them again in the line instead). An avatar
     // that isn't selected drags on its own, even with other things selected.
     await page.keyboard.press('Escape');
     await selLine.getByRole('button', { name: '↩ Select them again' }).waitFor();
-    assert(!(await selLine.innerText()).includes('Selected:') && (await inList.getAttribute('aria-pressed')) === 'false', 'one Esc clears the players and the objects selected');
+    assert(
+      !(await selLine.innerText()).includes('Selected:') && (await inList.getAttribute('aria-pressed')) === 'false',
+      'one Esc clears the players and the objects selected',
+    );
     await av.nth(0).click();
     await hit.click({ modifiers: ['Shift'] });
     const start2 = await boxes();
     await dragBy(page, av.nth(1), { x: start2[1].x + start2[1].width / 2 - 70, y: start2[1].y + start2[1].height / 2 - 40 });
     await page.waitForTimeout(350);
     const d2 = moved(start2, await boxes());
-    assert(Math.abs(d2[1][0]) > 10 && d2[0].every((v) => Math.abs(v) <= 2) && d2[2].every((v) => Math.abs(v) <= 2), `an unselected avatar dragged moves on its own (${JSON.stringify(d2)})`);
+    assert(
+      Math.abs(d2[1][0]) > 10 && d2[0].every((v) => Math.abs(v) <= 2) && d2[2].every((v) => Math.abs(v) <= 2),
+      `an unselected avatar dragged moves on its own (${JSON.stringify(d2)})`,
+    );
     await page.keyboard.press('Control+z');
     // Nothing selected again for what follows.
     await page.keyboard.press('Escape');
@@ -1264,7 +1741,10 @@ try {
   await page.locator('.rh .pc').first().getByLabel('Give Player 1 an item').selectOption({ label: 'Something else…' });
   await page.locator('.rh .pc').first().getByRole('textbox', { name: 'Name of the item' }).fill('Rubber duck');
   await page.keyboard.press('Enter');
-  assert((await page.locator('.rh .pc').first().locator('.it').allInnerTexts()).join().includes('Rubber duck'), 'Something else… asks for a name in the card, then gives it');
+  assert(
+    (await page.locator('.rh .pc').first().locator('.it').allInnerTexts()).join().includes('Rubber duck'),
+    'Something else… asks for a name in the card, then gives it',
+  );
 
   // The secret Potion is in the host's list (numbered, in one window): reveal it, then pick it up.
   await page.locator('.rh .objs').getByRole('button', { name: '🙈 Hidden object 1', exact: true }).click();
@@ -1318,7 +1798,10 @@ try {
   await page.getByRole('dialog', { name: 'Object: Beware of the goose' }).waitFor();
   assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('goose'), 'typed text is added hidden from viewers, and its card opens');
   await page.keyboard.press('Escape');
-  await page.locator('.rh .objs').getByRole('button', { name: /Beware of the goose/ }).waitFor();
+  await page
+    .locator('.rh .objs')
+    .getByRole('button', { name: /Beware of the goose/ })
+    .waitFor();
   await page.getByLabel('Look').selectOption('+');
   assert((await page.getByRole('textbox', { name: 'Look name' }).inputValue()) === 'New look', 'a new look asks for its name (New look to start with)');
   await page.getByRole('textbox', { name: 'Look name' }).press('Enter');
@@ -1355,7 +1838,9 @@ try {
   await page.locator('.shop [data-ware]').first().click({ button: 'right' });
   const wareLines = await menuLines(page);
   assert(
-    wareLines[0].startsWith('# ') && wareLines.filter((l) => l.startsWith('🛒 Buy for ')).length === (await page.locator('.rpg .strip .card').count()) && wareLines.at(-1) === '📦 Change the stock…',
+    wareLines[0].startsWith('# ') &&
+      wareLines.filter((l) => l.startsWith('🛒 Buy for ')).length === (await page.locator('.rpg .strip .card').count()) &&
+      wareLines.at(-1) === '📦 Change the stock…',
     `a ware's menu in the shop on the stage: 🛒 Buy for each player, then 📦 Change the stock… (${wareLines.join(' | ')})`,
   );
   await openMenu(page).getByRole('menuitem', { name: '📦 Change the stock…' }).click();
@@ -1390,7 +1875,10 @@ try {
   await answerAsk(shopTc.getByRole('button', { name: 'Sell anyway' }));
   assert((await potions()) === 2, 'selling anyway adds it to the buyer’s inventory');
   assert((await shopTc.innerText()).includes('Player 1 🪙-2'), `and their gold goes below zero, by the price typed (${await shopTc.innerText()})`);
-  await shopTc.getByRole('button', { name: /^Potion( ×\d+)? →/ }).first().click();
+  await shopTc
+    .getByRole('button', { name: /^Potion( ×\d+)? →/ })
+    .first()
+    .click();
   assert((await potions()) === 1, 'selling back takes one away');
   // Click a ware on the stage to buy it; short of gold, the host picks what happens.
   assert((await page.locator('.stage .shop .who').innerText()).includes('Player 1'), 'the stage shows who is shopping');
@@ -1443,7 +1931,10 @@ try {
   await page.waitForTimeout(450);
   await firstCard.locator('.ia').getByRole('button', { name: 'Use', exact: true }).click();
   await page.waitForTimeout(200);
-  assert((await firstCard.getByLabel(/ HP$/).inputValue()) === String(+hp - 1) && (await potions()) === 0, 'Use asks in the card, then runs what the item does and uses it up');
+  assert(
+    (await firstCard.getByLabel(/ HP$/).inputValue()) === String(+hp - 1) && (await potions()) === 0,
+    'Use asks in the card, then runs what the item does and uses it up',
+  );
 
   // Dragging things where they go. An avatar dropped on another screen of the minimap goes there on its own.
   const avatars = page.locator('.rpg .avatar[data-player-id]');
@@ -1508,7 +1999,10 @@ try {
     const p = await ctx.newPage();
     p.on('pageerror', (e) => errors.push(`[1280 screen] ${e.message}`));
     await p.goto(pathToFileURL(file).href);
-    await p.getByRole('button', { name: /Try a sample game/ }).first().click();
+    await p
+      .getByRole('button', { name: /Try a sample game/ })
+      .first()
+      .click();
     await roundTabsIn(p, { hasText: 'Adventure' }).click();
     // (Map settings unfolded, so the map is further down the page.)
     await p.locator('summary', { hasText: 'Map settings' }).click();
@@ -1531,7 +2025,10 @@ try {
         textY: Math.round(box(btn('Text')).top),
       };
     });
-    assert(at.title >= 0 || (at.toolbar >= 0 && at.toolbar <= 4), `1280×${height}: the round's title is whole, or the toolbar is just under the header (${JSON.stringify(at)})`);
+    assert(
+      at.title >= 0 || (at.toolbar >= 0 && at.toolbar <= 4),
+      `1280×${height}: the round's title is whole, or the toolbar is just under the header (${JSON.stringify(at)})`,
+    );
     assert(at.bgRight && at.bgY === at.previewY && at.bgY === at.textY, `1280×${height}: Background ▾ sits beside ▶ Preview on the toolbar's first line`);
     await ctx.close();
   }

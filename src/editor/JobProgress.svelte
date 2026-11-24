@@ -28,7 +28,9 @@
 </script>
 
 {#if job}
-  <span class="muted" role="status" data-job-progress={job.phase}>{doing(job)}{#if progressText(job)}{' '}<span aria-hidden="true">{progressText(job)}</span>{/if}</span>
+  <span class="muted" role="status" data-job-progress={job.phase}
+    >{doing(job)}{#if progressText(job)}{' '}<span aria-hidden="true">{progressText(job)}</span>{/if}</span
+  >
 {:else if end && 'done' in end}
   <span class="good" role="status" data-job-progress="done">✓ {made ? `${typeWord(made.mime)} · ${formatBytes(made.size)}` : 'Done'}</span>
 {:else if end && 'failed' in end}

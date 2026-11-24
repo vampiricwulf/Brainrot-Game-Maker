@@ -17,7 +17,26 @@
  */
 import { cardLink, filesUrl, isFileId, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
 import { imageFallback } from '../../src/lib/links';
-import { arrivedLine, bigWords, brokenLine, cardBuild, cardHead, cardSame, comingLine, filesIn, isGif, mediaName, missingLine, pctOf, playerSrc, readCardFile, retryAfter, roleLine, shownKind, waitLine } from './cards';
+import {
+  arrivedLine,
+  bigWords,
+  brokenLine,
+  cardBuild,
+  cardHead,
+  cardSame,
+  comingLine,
+  filesIn,
+  isGif,
+  mediaName,
+  missingLine,
+  pctOf,
+  playerSrc,
+  readCardFile,
+  retryAfter,
+  roleLine,
+  shownKind,
+  waitLine,
+} from './cards';
 
 /** What the panel needs from the page. */
 export interface PanelHost {

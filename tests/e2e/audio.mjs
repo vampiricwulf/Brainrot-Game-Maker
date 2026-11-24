@@ -7,7 +7,26 @@
 import { createServer } from 'node:http';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip, failureShots, assert, launchChromium, awardRowIn, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  mainButton,
+  nameGame,
+  openGameFile,
+  playWithPlayers,
+  confirmStrip,
+  failureShots,
+  assert,
+  launchChromium,
+  awardRowIn,
+  boardIn,
+  boardTilesIn,
+  finalControlsIn,
+  hostPanelIn,
+  playerRowsIn,
+  roundTabsIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const fileUrl = pathToFileURL(file).href;
@@ -21,7 +40,7 @@ const server = createServer((req, res) => {
   res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
   res.end(html);
 }).listen(0);
-const httpUrl = `http://127.0.0.1:${(/** @type {import('node:net').AddressInfo} */ (server.address())).port}/index.html`;
+const httpUrl = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}/index.html`;
 
 const browser = await launchChromium({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const errors = [];
@@ -35,9 +54,19 @@ function wav(seconds) {
   const rate = 8000;
   const n = rate * seconds;
   const b = Buffer.alloc(44 + n);
-  b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVE', 8); b.write('fmt ', 12);
-  b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(rate, 24);
-  b.writeUInt32LE(rate, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write('data', 36); b.writeUInt32LE(n, 40);
+  b.write('RIFF', 0);
+  b.writeUInt32LE(36 + n, 4);
+  b.write('WAVE', 8);
+  b.write('fmt ', 12);
+  b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(1, 20);
+  b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(rate, 24);
+  b.writeUInt32LE(rate, 28);
+  b.writeUInt16LE(1, 32);
+  b.writeUInt16LE(8, 34);
+  b.write('data', 36);
+  b.writeUInt32LE(n, 40);
   for (let i = 0; i < n; i++) b[44 + i] = 128 + Math.round(40 * Math.sin((i / rate) * 2 * Math.PI * 440));
   return b;
 }
@@ -48,7 +77,10 @@ async function toPregame(page, url, { introSound = false, introSeconds = 2 } = {
   await addClassicRounds(page);
   if (introSound) {
     await page.getByRole('button', { name: '🔊 Sounds' }).click();
-    await page.getByRole('button', { name: /^Choose file for/ }).first().click();
+    await page
+      .getByRole('button', { name: /^Choose file for/ })
+      .first()
+      .click();
     const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
     await fc.setFiles({ name: 'intro.wav', mimeType: 'audio/wav', buffer: wav(introSeconds) });
     await page.getByText('🔊 intro.wav').waitFor();
@@ -90,8 +122,16 @@ try {
     await dialog(page).waitFor();
     assert(true, 'the sound help opens from the pre-game display settings');
     const sections = await dialog(page).locator('summary').allInnerTexts();
-    assert(['Discord on Windows', 'OBS', 'Mac', 'Linux'].every((s) => sections.includes(s)), 'help has Discord on Windows / OBS / Mac / Linux sections');
-    assert(await dialog(page).locator('details', { hasText: 'Discord on Windows' }).evaluate((d) => d.open), 'the Discord steps start open');
+    assert(
+      ['Discord on Windows', 'OBS', 'Mac', 'Linux'].every((s) => sections.includes(s)),
+      'help has Discord on Windows / OBS / Mac / Linux sections',
+    );
+    assert(
+      await dialog(page)
+        .locator('details', { hasText: 'Discord on Windows' })
+        .evaluate((d) => d.open),
+      'the Discord steps start open',
+    );
     const mac = dialog(page).locator('details', { hasText: 'Mac' });
     assert(!(await mac.evaluate((d) => d.open)), 'the other platforms start collapsed');
     await mac.locator('summary').click();
@@ -99,7 +139,10 @@ try {
     assert((await dialog(page).getByText('Discord audio fix').count()) === 0, 'no desktop-app setting in the browser');
     // Single window: viewers see this window, so the steps share and capture it (there's no audience window to open).
     assert(
-      (await dialog(page).getByText('Click once anywhere in this window').count()) === 1 && (await dialog(page).getByText(/audience (window|view)/).count()) === 0,
+      (await dialog(page).getByText('Click once anywhere in this window').count()) === 1 &&
+        (await dialog(page)
+          .getByText(/audience (window|view)/)
+          .count()) === 0,
       'single window: the Discord, OBS, Mac and Linux steps share this window, never an audience window',
     );
 
@@ -226,7 +269,10 @@ try {
       "dual mode: the host warns that the audience window can't play sound yet, with no slide media, once (the checklist's line)",
     );
     // Pre-game: viewers see a "Starting soon" card, not the board (it would give the categories away).
-    assert((await aud.locator('.soon-text').count()) === 1 && (await boardIn(aud).count()) === 0, 'pre-game: the audience window holds on a "Starting soon" card');
+    assert(
+      (await aud.locator('.soon-text').count()) === 1 && (await boardIn(aud).count()) === 0,
+      'pre-game: the audience window holds on a "Starting soon" card',
+    );
     // The "Click to enable sound" overlay stays until the window is clicked, the mouse still or not.
     await aud.waitForTimeout(1700);
     assert((await aud.locator('.activate').count()) === 1, 'the audience window keeps its "Click to enable sound" overlay while the mouse is still');
@@ -237,7 +283,9 @@ try {
     await aud.keyboard.press('Alt');
     await page.waitForTimeout(300);
     assert(
-      !(await clickLine.getAttribute('class'))?.split(' ').includes('done') && (await clickLine.getByText('click it once').count()) === 1 && (await aud.locator('.activate').count()) === 1,
+      !(await clickLine.getAttribute('class'))?.split(' ').includes('done') &&
+        (await clickLine.getByText('click it once').count()) === 1 &&
+        (await aud.locator('.activate').count()) === 1,
       'a modifier key in the audience window keeps the warning',
     );
 
@@ -280,7 +328,10 @@ try {
     assert(true, 'a missing output device is reported to the host');
     await testSound(page, 'Sound played in the audience window');
     assert((await aud.evaluate(() => window.__sinks)).slice(-1)[0] === '', 'the audience window falls back to the default device');
-    assert((await hostPanelIn(page).getByText('wasn\'t found, so the sound plays on the default device').count()) === 1, 'the host panel warns about the missing device too');
+    assert(
+      (await hostPanelIn(page).getByText("wasn't found, so the sound plays on the default device").count()) === 1,
+      'the host panel warns about the missing device too',
+    );
     await picker.selectOption({ label: 'Default (system)' });
     await dialog(page).getByText("couldn't use").waitFor({ state: 'detached' });
     assert(true, 'choosing the default device clears the warning');
@@ -298,7 +349,10 @@ try {
     await boardTilesIn(boardIn(page)).first().waitFor();
     await hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click();
     await dialog(page).waitFor();
-    assert((await dialog(page).getByText('plays in this window').count()) === 1, 'a test round with the audience window up: it says the sound plays in this window');
+    assert(
+      (await dialog(page).getByText('plays in this window').count()) === 1,
+      'a test round with the audience window up: it says the sound plays in this window',
+    );
     const audPlays = await aud.evaluate(() => window.__plays);
     const loud = await page.evaluate(() => window.__loud);
     await testSound(page, 'Sound played in this window');
@@ -318,7 +372,10 @@ try {
     await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     await dialog(page).waitFor();
     assert(
-      (await dialog(page).getByRole('combobox').count()) === 0 && (await dialog(page).getByRole('button', { name: /speaker/ }).count()) === 0,
+      (await dialog(page).getByRole('combobox').count()) === 0 &&
+        (await dialog(page)
+          .getByRole('button', { name: /speaker/ })
+          .count()) === 0,
       'the output picker is hidden where the browser can’t move sound',
     );
     await testSound(page, 'Sound played in this window');
@@ -338,7 +395,8 @@ try {
     await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     await dialog(page).waitFor();
     assert(
-      (await dialog(page).getByText('plays in this window').count()) === 1 && (await dialog(page).getByText('Open the audience window, click once inside it').count()) === 1,
+      (await dialog(page).getByText('plays in this window').count()) === 1 &&
+        (await dialog(page).getByText('Open the audience window, click once inside it').count()) === 1,
       'pre-game with 📺 picked and no window yet: the sound plays here for now, and the Discord steps share the audience window Start opens',
     );
     await page.keyboard.press('Escape');
@@ -353,7 +411,10 @@ try {
     await hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click();
     await dialog(page).waitFor();
     assert(
-      (await dialog(page).getByText('Click once anywhere in this window').count()) === 1 && (await dialog(page).getByText(/audience (window|view)/).count()) === 0,
+      (await dialog(page).getByText('Click once anywhere in this window').count()) === 1 &&
+        (await dialog(page)
+          .getByText(/audience (window|view)/)
+          .count()) === 0,
       '▶ Test this round with 📺 picked: the Discord, OBS, Mac and Linux steps share this window, never an audience window',
     );
     await context.close();
@@ -367,52 +428,59 @@ try {
    */
   async function desktopContext(opts) {
     const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
-    await context.addInitScript((o) => {
-      window.__calls = [];
-      // Callbacks the page handed over (event listeners among them), by id.
-      window.__callbacks = {};
-      const windows = ['main'];
-      window.__TAURI_INTERNALS__ = {
-        invoke: async (cmd, args, options) => {
-          window.__calls.push([
-            cmd,
-            args instanceof Uint8Array
-              ? { bytes: args.length, name: decodeURIComponent(options?.headers?.['x-name'] ?? ''), mode: options?.headers?.['x-mode'] }
-              : JSON.parse(JSON.stringify(args ?? {})),
-          ]);
-          if (cmd === 'save_file') return { path: `C:\\Games\\BrainrotSaves\\${decodeURIComponent(options.headers['x-name'])}`, fallback: false };
-          if (cmd === 'list_saves') return [];
-          if (cmd === 'plugin:webview|create_webview_window') windows.push(args.options.label);
-          if (cmd === 'plugin:window|get_all_windows') return windows;
-          if (cmd === 'data_folders')
-            return {
-              data: { path: 'C:\\Users\\Host\\AppData\\Local\\com.brainrotgames.maker', exists: true },
-              settings: { path: 'C:\\Users\\Host\\AppData\\Roaming\\com.brainrotgames.maker', exists: false },
-              saves: { path: 'C:\\Games\\BrainrotSaves', exists: false },
-              // After the rename: this start moved the old folders, but the old data folder was left behind.
-              ...(o.moved
-                ? { moved: true, oldData: { path: 'C:\\Users\\Host\\AppData\\Local\\com.jeopardybuilder.brainrot', exists: true }, oldSettings: { path: 'x', exists: false } }
-                : {}),
-            };
-          return null;
-        },
-        transformCallback: (callback) => {
-          const id = Math.floor(Math.random() * 1e9);
-          window.__callbacks[id] = callback;
-          return id;
-        },
-        metadata: { currentWindow: { label: 'main' }, currentWebview: { windowLabel: 'main', label: 'main' } },
-      };
-      if (location.hash === '#audience') return;
-      // What src-tauri/src/main.rs injects into the host window.
-      window.__JB_AUDIO_FIX = o.fix;
-      if (o.active) window.__JB_BROWSER_ARGS = o.args;
-      if (o.failed) window.__JB_AUDIO_FIX_FAILED = true;
-      if (o.crashed) window.__JB_AUDIO_FIX_CRASHED = true;
-      if (o.admin) window.__JB_CAPTURE = { elevated: true, compat: null };
-      // WebView2 without the native new-window handler: the app falls back to creating the window itself.
-      window.open = () => null;
-    }, { ...opts, args: ARGS });
+    await context.addInitScript(
+      (o) => {
+        window.__calls = [];
+        // Callbacks the page handed over (event listeners among them), by id.
+        window.__callbacks = {};
+        const windows = ['main'];
+        window.__TAURI_INTERNALS__ = {
+          invoke: async (cmd, args, options) => {
+            window.__calls.push([
+              cmd,
+              args instanceof Uint8Array
+                ? { bytes: args.length, name: decodeURIComponent(options?.headers?.['x-name'] ?? ''), mode: options?.headers?.['x-mode'] }
+                : JSON.parse(JSON.stringify(args ?? {})),
+            ]);
+            if (cmd === 'save_file') return { path: `C:\\Games\\BrainrotSaves\\${decodeURIComponent(options.headers['x-name'])}`, fallback: false };
+            if (cmd === 'list_saves') return [];
+            if (cmd === 'plugin:webview|create_webview_window') windows.push(args.options.label);
+            if (cmd === 'plugin:window|get_all_windows') return windows;
+            if (cmd === 'data_folders')
+              return {
+                data: { path: 'C:\\Users\\Host\\AppData\\Local\\com.brainrotgames.maker', exists: true },
+                settings: { path: 'C:\\Users\\Host\\AppData\\Roaming\\com.brainrotgames.maker', exists: false },
+                saves: { path: 'C:\\Games\\BrainrotSaves', exists: false },
+                // After the rename: this start moved the old folders, but the old data folder was left behind.
+                ...(o.moved
+                  ? {
+                      moved: true,
+                      oldData: { path: 'C:\\Users\\Host\\AppData\\Local\\com.jeopardybuilder.brainrot', exists: true },
+                      oldSettings: { path: 'x', exists: false },
+                    }
+                  : {}),
+              };
+            return null;
+          },
+          transformCallback: (callback) => {
+            const id = Math.floor(Math.random() * 1e9);
+            window.__callbacks[id] = callback;
+            return id;
+          },
+          metadata: { currentWindow: { label: 'main' }, currentWebview: { windowLabel: 'main', label: 'main' } },
+        };
+        if (location.hash === '#audience') return;
+        // What src-tauri/src/main.rs injects into the host window.
+        window.__JB_AUDIO_FIX = o.fix;
+        if (o.active) window.__JB_BROWSER_ARGS = o.args;
+        if (o.failed) window.__JB_AUDIO_FIX_FAILED = true;
+        if (o.crashed) window.__JB_AUDIO_FIX_CRASHED = true;
+        if (o.admin) window.__JB_CAPTURE = { elevated: true, compat: null };
+        // WebView2 without the native new-window handler: the app falls back to creating the window itself.
+        window.open = () => null;
+      },
+      { ...opts, args: ARGS },
+    );
     return context;
   }
   const calls = (page, cmd) => page.evaluate((c) => window.__calls.filter(([name]) => name === c).map(([, a]) => a), cmd);
@@ -462,7 +530,8 @@ try {
     const context = await desktopContext({ fix: true, active: true, admin: true });
     const page = watch(await context.newPage(), 'desktop');
     await toPregame(page, httpUrl);
-    const banner = 'Brainrot Games Maker is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and start it normally.';
+    const banner =
+      'Brainrot Games Maker is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and start it normally.';
     assert((await page.getByText(banner).count()) === 1, 'running as administrator: the host shows the warning banner');
     assert((await fixWarning(page, 'Discord audio fix').count()) === 0, 'the fix is running: no fix warning');
 
@@ -492,15 +561,23 @@ try {
     assert((await help.getByRole('alert').filter({ hasText: 'running as administrator' }).count()) === 1, 'the help repeats the administrator warning');
     const sections = await help.locator('summary').allInnerTexts();
     assert(sections.includes('Discord on Windows') && !sections.includes('Mac') && !sections.includes('Linux'), 'desktop app: Windows help only');
-    assert((await help.getByText('Share Your Screen › Applications › "Untitled Game · Audience"').count()) === 1, 'the Discord steps name the audience window by its real title');
+    assert(
+      (await help.getByText('Share Your Screen › Applications › "Untitled Game · Audience"').count()) === 1,
+      'the Discord steps name the audience window by its real title',
+    );
     const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
     assert(await fix.isChecked(), 'the Discord audio fix shows as on');
     assert((await help.getByText('(on by default)').count()) === 1, 'it says it is on by default');
     assert(
-      (await help.locator('code', { hasText: '--no-audio-fix' }).count()) === 1 && (await help.locator('code', { hasText: 'discord-audio-fix-off' }).count()) === 1,
+      (await help.locator('code', { hasText: '--no-audio-fix' }).count()) === 1 &&
+        (await help.locator('code', { hasText: 'discord-audio-fix-off' }).count()) === 1,
       'the help says how to switch the fix off from outside the app',
     );
-    assert((await help.getByText(/didn't start this time|crashed/).count()) === 0 && (await help.getByRole('button', { name: /Restart now|Try it again/ }).count()) === 0, 'running as saved: no fix trouble and no restart offered');
+    assert(
+      (await help.getByText(/didn't start this time|crashed/).count()) === 0 &&
+        (await help.getByRole('button', { name: /Restart now|Try it again/ }).count()) === 0,
+      'running as saved: no fix trouble and no restart offered',
+    );
     await fix.uncheck();
     await help.getByText('Restart Brainrot Games Maker to turn it off.').waitFor();
     assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: false }]), 'switching it off saves the setting');
@@ -539,12 +616,18 @@ try {
     assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: true }]), 'switching it on saves the setting');
     await fix.uncheck();
     await help.getByText(/Restart Brainrot Games Maker to turn it/).waitFor({ state: 'detached' });
-    assert(JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: true }, { on: false }]), 'switching it back off is saved and needs no restart');
+    assert(
+      JSON.stringify(await calls(page, 'set_audio_fix')) === JSON.stringify([{ on: true }, { on: false }]),
+      'switching it back off is saved and needs no restart',
+    );
     // A setting that couldn't be saved: the box goes back to what still applies, with no restart offered.
     await failOnce(page, 'set_audio_fix', "Couldn't save the setting: access denied");
     await fix.click();
     await help.getByText("Couldn't save the setting: access denied").waitFor();
-    assert(!(await fix.isChecked()) && (await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0, 'a failed save unticks the box again, with no restart prompt');
+    assert(
+      !(await fix.isChecked()) && (await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0,
+      'a failed save unticks the box again, with no restart prompt',
+    );
     await context.close();
   }
   {
@@ -560,7 +643,8 @@ try {
     const help = dialog(page);
     assert(!(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked()), 'the box shows the saved setting (off)');
     assert(
-      (await help.getByText('Restart Brainrot Games Maker to turn it off.').count()) === 1 && (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1,
+      (await help.getByText('Restart Brainrot Games Maker to turn it off.').count()) === 1 &&
+        (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 1,
       'it offers the restart that turns it off',
     );
     await context.close();
@@ -594,7 +678,8 @@ try {
     await fix.uncheck();
     await help.getByText("The fix didn't start this time").waitFor({ state: 'detached' });
     assert(
-      (await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0 && (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 0,
+      (await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0 &&
+        (await help.getByRole('button', { name: '↻ Restart now' }).count()) === 0,
       'unticking it hides the failed text, with no restart needed (the app already runs without it)',
     );
     assert((await warning.count()) === 0, 'and the host warning goes away');
@@ -623,7 +708,10 @@ try {
     await help.waitFor();
     assert(await help.getByRole('checkbox', { name: /Discord audio fix/ }).isChecked(), 'the fix still shows as switched on');
     assert((await help.getByText(CRASHED_WARNING).count()) === 1, 'the help says so too');
-    assert((await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0, 'it doesn’t offer a plain restart (that would start without it again)');
+    assert(
+      (await help.getByText(/Restart Brainrot Games Maker to turn it/).count()) === 0,
+      'it doesn’t offer a plain restart (that would start without it again)',
+    );
     // A try that fails (the crash note couldn't be removed) says why, and the button works again.
     await failOnce(page, 'retry_audio_fix', "Couldn't save the setting: access denied");
     await restartVia(help, '↻ Try it again');
@@ -684,7 +772,10 @@ try {
     await page.goto(httpUrl);
     const line = page.locator('.first-round p', { hasText: 'saves your autosave and media in a folder on this PC' });
     await line.waitFor();
-    assert((await page.locator('.data-notice').count()) === 0, 'first start: the first screen says the app saves data in a folder on this PC, and no notice does');
+    assert(
+      (await page.locator('.data-notice').count()) === 0,
+      'first start: the first screen says the app saves data in a folder on this PC, and no notice does',
+    );
     await line.getByRole('button', { name: 'ℹ See where' }).click();
     const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
     await about.getByText('C:\\Users\\Host\\AppData\\Local\\com.brainrotgames.maker').waitFor();
@@ -699,7 +790,10 @@ try {
       (await calls(page, 'open_link'))[0].url === 'https://github.com/vampiricwulf/Brainrot-Game-Maker' && context.pages().length === 1,
       "the repo link opens in the default browser (the app's open_link), not in an app window",
     );
-    assert((await about.getByRole('button', { name: /^Open folder:/ }).count()) === 2 && (await about.getByText('Not made yet: it’s only made').count()) === 1, "only folders that exist get Open folder (the settings folder isn't made until needed; the saves folder is made when opened)");
+    assert(
+      (await about.getByRole('button', { name: /^Open folder:/ }).count()) === 2 && (await about.getByText('Not made yet: it’s only made').count()) === 1,
+      "only folders that exist get Open folder (the settings folder isn't made until needed; the saves folder is made when opened)",
+    );
     assert((await about.innerText()).includes('C:\\Games\\BrainrotSaves'), 'About shows where saves go (BrainrotSaves next to the app)');
     await about.getByRole('button', { name: 'Open folder: game data and media' }).click();
     await called(page, 'open_data_folder');
@@ -711,7 +805,10 @@ try {
     await nameGame(page);
     await called(page, 'save_file');
     const saveCall = (await calls(page, 'save_file'))[0];
-    assert(saveCall.name === 'Untitled-Game.brainrot' && saveCall.bytes > 0 && saveCall.mode === 'backup', `Save sends the pack to the app, replacing the game's last save with a backup kept (${JSON.stringify(saveCall)})`);
+    assert(
+      saveCall.name === 'Untitled-Game.brainrot' && saveCall.bytes > 0 && saveCall.mode === 'backup',
+      `Save sends the pack to the app, replacing the game's last save with a backup kept (${JSON.stringify(saveCall)})`,
+    );
     await toastsIn(page, { hasText: 'Saved to C:\\Games\\BrainrotSaves\\Untitled-Game.brainrot' }).waitFor();
     assert(true, 'and says where it went');
     // ⚙ Settings: Save makes a new file each time instead (Game (2).brainrot…).
@@ -772,7 +869,12 @@ try {
     await context.route('https://files.catbox.moe/**', (r) =>
       gone
         ? r.fulfill({ status: 404, contentType: 'text/plain', headers: { 'Cache-Control': 'no-store' }, body: 'Not found' })
-        : r.fulfill({ status: 200, contentType: 'audio/wav', headers: { 'Access-Control-Allow-Origin': 'https://catbox.moe', 'Cache-Control': 'no-store' }, body: wav(2) }),
+        : r.fulfill({
+            status: 200,
+            contentType: 'audio/wav',
+            headers: { 'Access-Control-Allow-Origin': 'https://catbox.moe', 'Cache-Control': 'no-store' },
+            body: wav(2),
+          }),
     );
     const page = watch(await context.newPage(), 'dead link');
     await page.goto(fileUrl);
@@ -790,7 +892,10 @@ try {
     // (For 5b: this game, its links and all.)
     const [exported] = await Promise.all([
       page.waitForEvent('download'),
-      page.getByRole('button', { name: /^More:/ }).click().then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click()),
+      page
+        .getByRole('button', { name: /^More:/ })
+        .click()
+        .then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click()),
     ]);
     const deadLinkGame = JSON.parse(readFileSync(await exported.path(), 'utf8'));
     gone = true;
@@ -812,7 +917,10 @@ try {
     await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#dice')));
     const plays = await page.evaluate(() => window.__plays);
     const tried = plays.indexOf('https://files.catbox.moe/dice.wav');
-    assert(tried !== -1 && tried < plays.findIndex((s) => s.endsWith('#dice')), 'a dice roll tries its sound’s link, and once that fails the built-in dice sound plays');
+    assert(
+      tried !== -1 && tried < plays.findIndex((s) => s.endsWith('#dice')),
+      'a dice roll tries its sound’s link, and once that fails the built-in dice sound plays',
+    );
     await context.close();
 
     // ---------- 5b. A link the site says has expired: its row says so (not "missing"), and 🔗 Find file… stores the file in its place ----------
@@ -873,7 +981,10 @@ try {
     await page.goto(fileUrl);
     await addClassicRounds(page);
     await page.getByRole('button', { name: '🔊 Sounds' }).click();
-    await page.locator('.sound', { hasText: 'Final round think music' }).getByRole('button', { name: /^Choose file for/ }).click();
+    await page
+      .locator('.sound', { hasText: 'Final round think music' })
+      .getByRole('button', { name: /^Choose file for/ })
+      .click();
     const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
     await fc.setFiles({ name: 'think.wav', mimeType: 'audio/wav', buffer: wav(30) });
     await page.getByText('🔊 think.wav').waitFor();
@@ -892,7 +1003,10 @@ try {
     await mainButton(page).click();
     await page.waitForFunction(introPlaying, true);
     const stop = page.getByRole('button', { name: '🔇 Stop sounds' });
-    const shown = await stop.waitFor({ timeout: 5000 }).then(() => true, () => false);
+    const shown = await stop.waitFor({ timeout: 5000 }).then(
+      () => true,
+      () => false,
+    );
     assert(shown, 'the Final’s question: 🔇 Stop sounds is there while its think music plays');
     await stop.click();
     await page.waitForFunction(introPlaying, false);
@@ -911,10 +1025,17 @@ try {
     await page.waitForFunction(introPlaying, true);
     const stop = page.getByRole('button', { name: '🔇 Stop sounds' });
     await stop.waitFor();
-    const widths = await Promise.all([stop, page.getByRole('button', { name: '🤫 Send a card…', exact: true })].map(async (b) => Math.round((await b.boundingBox()).width)));
-    assert(widths[0] < 60 && widths[1] > 100, `1260px wide: 🔇 Stop sounds shows as 🔇 (still named in full), 🤫 Send a card… in full (${widths.join(' / ')}px wide)`);
+    const widths = await Promise.all(
+      [stop, page.getByRole('button', { name: '🤫 Send a card…', exact: true })].map(async (b) => Math.round((await b.boundingBox()).width)),
+    );
+    assert(
+      widths[0] < 60 && widths[1] > 100,
+      `1260px wide: 🔇 Stop sounds shows as 🔇 (still named in full), 🤫 Send a card… in full (${widths.join(' / ')}px wide)`,
+    );
     // (Shown as 🔇 or 🎭 alone, a tools button's tooltip still starts with its name.)
-    const tips = await Promise.all(['🔇 Stop sounds', '🤫 Send a card…', '🎭 Deal…'].map((name) => hostPanelIn(page).getByRole('button', { name, exact: true }).getAttribute('title')));
+    const tips = await Promise.all(
+      ['🔇 Stop sounds', '🤫 Send a card…', '🎭 Deal…'].map((name) => hostPanelIn(page).getByRole('button', { name, exact: true }).getAttribute('title')),
+    );
     assert(
       tips.every((t, i) => t.startsWith(['🔇 Stop sounds (Shift+M): ', '🤫 Send a card…: ', '🎭 Deal…: '][i])),
       `the tools row’s tooltips name each button first (${tips.join(' | ')})`,
@@ -949,14 +1070,57 @@ try {
     const slide = (color) => ({ background: { color }, elements: [] });
     const screen = (id, col) => ({ id, name: `Field ${col}`, col, row: 0, slide: slide(col ? '#234' : '#432') });
     const game = {
-      id: 'g_music', version: 2, title: 'Music',
-      settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8 },
-      players: [{ id: 'p1', name: 'Ann', color: '#e6194b' }, { id: 'p2', name: 'Bob', color: '#3cb44b' }],
+      id: 'g_music',
+      version: 2,
+      title: 'Music',
+      settings: {
+        allowNegativeScores: true,
+        deductOnWrong: true,
+        defaultTimerSeconds: null,
+        finalTimerSeconds: 30,
+        currencySymbol: '$',
+        rollOffDie: 20,
+        pickerFollowsAward: true,
+        timerAutoStart: false,
+        roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+        maxPlayers: 8,
+      },
+      players: [
+        { id: 'p1', name: 'Ann', color: '#e6194b' },
+        { id: 'p2', name: 'Bob', color: '#3cb44b' },
+      ],
       rounds: [{ id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' }],
       // (No round-intro sound: the music is the only sound the window blocks.)
       media: [{ id: 'm_music', name: 'music.wav', mime: 'audio/wav', size: 0, kind: 'audio', url: 'https://files.catbox.moe/music.wav' }],
-      audio: {}, soundsOff: { roundIntro: true }, wheels: [], dice: [], theme: {}, statFields: [], items: [],
-      worlds: [{ id: 'w1', name: 'World', maps: [{ id: 'm_main', name: 'Overworld', cols: 2, rows: 1, screens: [screen('s_0', 0), screen('s_1', 1)], visibility: 'full', showExits: true, revealNeighbors: true, diagonals: false, wrap: false, transition: 'cut', music: 'm_music' }] }],
+      audio: {},
+      soundsOff: { roundIntro: true },
+      wheels: [],
+      dice: [],
+      theme: {},
+      statFields: [],
+      items: [],
+      worlds: [
+        {
+          id: 'w1',
+          name: 'World',
+          maps: [
+            {
+              id: 'm_main',
+              name: 'Overworld',
+              cols: 2,
+              rows: 1,
+              screens: [screen('s_0', 0), screen('s_1', 1)],
+              visibility: 'full',
+              showExits: true,
+              revealNeighbors: true,
+              diagonals: false,
+              wrap: false,
+              transition: 'cut',
+              music: 'm_music',
+            },
+          ],
+        },
+      ],
     };
     const page = watch(await context.newPage(), 'rpg music');
     await page.goto(fileUrl);
@@ -970,7 +1134,10 @@ try {
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     await page.locator('.rh').waitFor();
     await page.getByText('The audience window blocked a sound').waitFor();
-    assert((await aud.evaluate(() => window.__music.length)) === 1 && (await aud.evaluate(() => window.__music[0].paused)), 'RPG music the audience window blocks is reported to the host');
+    assert(
+      (await aud.evaluate(() => window.__music.length)) === 1 && (await aud.evaluate(() => window.__music[0].paused)),
+      'RPG music the audience window blocks is reported to the host',
+    );
     await aud.locator('.aud').click({ position: { x: 40, y: 40 } });
     await page.getByText(/Click the audience window once|blocked a sound/).waitFor({ state: 'detached' });
     await aud.waitForFunction(() => window.__music.length === 1 && !window.__music[0].paused);

@@ -4,7 +4,25 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, editorReady, exportHtml, openGameFile, playWithPlayers, failureShots, assert, launchChromium, boardIn, boardTilesIn, hostPanelIn, playerRowsIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  editorReady,
+  exportHtml,
+  openGameFile,
+  playWithPlayers,
+  failureShots,
+  assert,
+  launchChromium,
+  boardIn,
+  boardTilesIn,
+  hostPanelIn,
+  playerRowsIn,
+  roundTabsIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -41,10 +59,16 @@ try {
 
   // ---------- 🔊 Sounds: the sound list ----------
   await page.getByRole('button', { name: '🔊 Sounds' }).click();
-  assert((await page.getByLabel(/Buzzer mode/).count()) === 0 && (await page.getByLabel(/Buzz-in keys/).count()) === 0, 'the editor has no buzzer options (they are on the pre-game screen)');
+  assert(
+    (await page.getByLabel(/Buzzer mode/).count()) === 0 && (await page.getByLabel(/Buzz-in keys/).count()) === 0,
+    'the editor has no buzzer options (they are on the pre-game screen)',
+  );
   const rows = page.locator('.sound');
   assert((await rows.count()) === 21, '🔊 Sounds lists every sound cue (the RPG’s six and the partner clue’s too)');
-  assert((await rows.filter({ hasText: 'Built-in' }).count()) === 19, 'all but the think music and the partner clue’s play a built-in sound to begin with (a partner clue plays the tile-open sound)');
+  assert(
+    (await rows.filter({ hasText: 'Built-in' }).count()) === 19,
+    'all but the think music and the partner clue’s play a built-in sound to begin with (a partner clue plays the tile-open sound)',
+  );
   const tileRow = rows.filter({ hasText: 'Tile opens' });
   await tileRow.getByRole('checkbox').uncheck();
   assert((await tileRow.innerText()).includes('Off'), 'a cue can be switched off');
@@ -56,7 +80,10 @@ try {
   const previewRight = page.getByRole('button', { name: 'Preview Right' });
   await previewRight.click();
   await page.waitForFunction(() => window.__plays.some((s) => s.endsWith('#right')));
-  assert((await previewRight.getAttribute('aria-pressed')) === 'true' && (await previewRight.innerText()) === '■', '▶ previews the built-in sound, and turns into ■ while it plays');
+  assert(
+    (await previewRight.getAttribute('aria-pressed')) === 'true' && (await previewRight.innerText()) === '■',
+    '▶ previews the built-in sound, and turns into ■ while it plays',
+  );
   await previewRight.click();
   const previewPaused = () => page.evaluate(() => /** @type {HTMLMediaElement} */ (document.querySelector('.sounds').previousElementSibling).paused);
   assert((await previewRight.getAttribute('aria-pressed')) === 'false' && (await previewPaused()), '■ stops the preview');
@@ -64,7 +91,10 @@ try {
   const wrongRow = rows.filter({ has: page.getByRole('button', { name: 'Preview Wrong' }) });
   await page.getByLabel('Wrong volume').fill('0.4');
   assert((await wrongRow.innerText()).includes('40%'), 'a sound’s volume can be turned down (40%)');
-  assert((await page.getByLabel('Wrong volume').getAttribute('aria-valuetext')) === '40%', 'a screen reader hears its volume as the page shows it (40%, not 0.4)');
+  assert(
+    (await page.getByLabel('Wrong volume').getAttribute('aria-valuetext')) === '40%',
+    'a screen reader hears its volume as the page shows it (40%, not 0.4)',
+  );
   await page.getByRole('button', { name: 'Preview Wrong' }).click();
   await page.waitForFunction(() => window.__volumes.some(([s, v]) => s.endsWith('#wrong') && Math.abs(v - 0.4) < 0.01));
   assert(true, 'its preview plays at that volume');
@@ -78,7 +108,9 @@ try {
   const bg = await page.locator('.preview .board-bg').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(bg === 'rgb(0, 255, 0)', `the board's background is chroma green (${bg})`);
   // So the lines around the tiles and the background gradient don't show: both say so, as Used tiles does.
-  const notShown = await page.locator('[data-k="boardGap"], [data-k="bgGradient"]').evaluateAll((els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
+  const notShown = await page
+    .locator('[data-k="boardGap"], [data-k="bgGradient"]')
+    .evaluateAll((els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
   assert(
     notShown.length === 2 && notShown.every((t) => t.includes('(not shown: Stage background is Chroma green)')),
     `Lines around tiles and Background gradient say they don't show on a green key (${notShown.join(' / ')})`,
@@ -88,7 +120,10 @@ try {
   await page.locator('.preset', { hasText: 'Brainrot Neon' }).click();
   await keyNote.waitFor();
   const neonNote = await keyNote.innerText();
-  assert(neonNote.includes(': Values, Category names.') && !neonNote.includes('magenta key'), `Brainrot Neon on a green key: the Theme page names its green values and cyan names, and doesn't offer magenta, where its glow goes (${neonNote})`);
+  assert(
+    neonNote.includes(': Values, Category names.') && !neonNote.includes('magenta key'),
+    `Brainrot Neon on a green key: the Theme page names its green values and cyan names, and doesn't offer magenta, where its glow goes (${neonNote})`,
+  );
   await page.getByRole('button', { name: 'Classic', exact: true }).click();
   await keyNote.waitFor({ state: 'detached' });
   assert(true, 'Classic on a green key: no note');
@@ -117,7 +152,10 @@ try {
   await p1Color.fill('#00c000');
   await playerKeyNote.waitFor();
   const playerNote = await playerKeyNote.innerText();
-  assert(playerNote.includes('OBS would key it out on stream. Pick another color.') && !(await themeKeyNote.innerText()).includes('magenta'), `a green player gets a note, and neither note offers the magenta key the tiles would go on (${playerNote})`);
+  assert(
+    playerNote.includes('OBS would key it out on stream. Pick another color.') && !(await themeKeyNote.innerText()).includes('magenta'),
+    `a green player gets a note, and neither note offers the magenta key the tiles would go on (${playerNote})`,
+  );
   await p1Color.fill(p1Was);
   await playerKeyNote.waitFor({ state: 'detached' });
   // (The bar by Start game keeps one pointer to ✅ Before you start, counting its warnings as the editor's checklist does,
@@ -127,7 +165,10 @@ try {
   await ddPointer.getByText('⚠ 2 to check', { exact: true }).waitFor();
   const ddLine = page.locator('[data-checks] li', { hasText: 'Daily Double not placed yet' });
   assert(
-    (await ddPointer.count()) === 1 && (await ddLine.count()) === 1 && (await ddLine.innerText()).startsWith('ℹ Jeopardy!: 1 Daily Double not placed yet') && (await ddLine.getByRole('button', { name: '🎲 Place now' }).count()) === 1,
+    (await ddPointer.count()) === 1 &&
+      (await ddLine.count()) === 1 &&
+      (await ddLine.innerText()).startsWith('ℹ Jeopardy!: 1 Daily Double not placed yet') &&
+      (await ddLine.getByRole('button', { name: '🎲 Place now' }).count()) === 1,
     'the pre-game screen points, next to Start game, to ✅ Before you start (⚠ 2 to check, one line a round), whose note says a Daily Double isn’t placed yet',
   );
   // (Its random pick is the last tile it could take, so the first tile clicked below is an ordinary clue.)
@@ -146,7 +187,12 @@ try {
   const status = () => statusLineIn(page).innerText();
   // (Where a tile is on the stage, as a part of its width and height: a double-click there later lands on it.)
   const stageBox = () => stageBoxIn(page).locator('.stage').boundingBox();
-  const spot = await (async (s, t) => [(t.x + t.width / 2 - s.x) / s.width, (t.y + t.height / 2 - s.y) / s.height])(await stageBox(), await boardTilesIn(boardIn(stageBoxIn(page))).nth(8).boundingBox());
+  const spot = await (async (s, t) => [(t.x + t.width / 2 - s.x) / s.width, (t.y + t.height / 2 - s.y) / s.height])(
+    await stageBox(),
+    await boardTilesIn(boardIn(stageBoxIn(page)))
+      .nth(8)
+      .boundingBox(),
+  );
   // (One window: the board is on stream, so it marks no tile.)
   assert((await boardIn(stageBoxIn(page)).locator('.tile.host-mark').count()) === 0, 'one window: the board marks no Daily Double');
   // A double-click on a score plate makes that player the picker once (it doesn't take it away again).
@@ -154,7 +200,9 @@ try {
   await plate2.dblclick();
   await page.waitForTimeout(300);
   assert(await plate2.evaluate((e) => e.classList.contains('picker')), 'a double-click on a score plate makes them the picker, once');
-  await boardTilesIn(boardIn(stageBoxIn(page))).first().dblclick();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .first()
+    .dblclick();
   await page.waitForTimeout(300);
   assert((await status()).includes('Answer hidden'), `a double-click on a tile opens it, the answer stays hidden (${await status()})`);
   assert((await played(page, 'tileOpen')) === 0, 'the tile-open sound is off, so nothing plays');
@@ -162,7 +210,11 @@ try {
   // Who's answering: the one player picked during a clue.
   await page.keyboard.press('2');
   await stageBoxIn(page).locator('.plate').waitFor();
-  assert((await stageBoxIn(page).locator('.plate').innerText()).includes('Player 2') && (await stageBoxIn(page).locator('.plate').innerText()).includes('is answering'), 'the stage says who is answering');
+  assert(
+    (await stageBoxIn(page).locator('.plate').innerText()).includes('Player 2') &&
+      (await stageBoxIn(page).locator('.plate').innerText()).includes('is answering'),
+    'the stage says who is answering',
+  );
   const pressed = () => playerRowsIn(page).locator('.sel[aria-pressed="true"]').allInnerTexts();
   assert((await page.getByRole('button', { name: '↺ Reset buzzers' }).count()) === 0, 'no buzzer controls outside buzzer mode');
   await shot('pf-1-answering');
@@ -185,7 +237,10 @@ try {
   assert(audStage === 'rgb(0, 255, 0)', `and on the stage, under what a screen paints (${audStage})`);
   await aud.keyboard.press('3');
   await aud.locator('.plate').waitFor();
-  assert((await aud.locator('.plate').innerText()).includes('Player 3'), 'a number key pressed in the audience window picks that player (viewers see who is answering)');
+  assert(
+    (await aud.locator('.plate').innerText()).includes('Player 3'),
+    'a number key pressed in the audience window picks that player (viewers see who is answering)',
+  );
   await shot('pf-2-audience-answering', aud);
   await page.keyboard.press('Enter');
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#right')));
@@ -227,7 +282,10 @@ try {
   assert((await played(aud, 'wheelLand')) === 0, 'a spinning wheel ticks in the audience window');
   await page.keyboard.press('d');
   await page.getByText('Still spinning: wait for it to land').waitFor({ timeout: 2000 });
-  assert(await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Pick a player')), 'D while the wheel spins waits for it (and says why)');
+  assert(
+    await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Pick a player')),
+    'D while the wheel spins waits for it (and says why)',
+  );
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#wheelLand')), null, { timeout: 10000 });
   assert((await played(page, 'wheelTick')) === 0, '…and lands with a ding (none of it in the host’s window)');
   // S puts the scores up over it; S again, or Esc, brings the wheel back with its result (not lost).
@@ -237,23 +295,35 @@ try {
   await aud.locator('.ov .sb').waitFor();
   await page.keyboard.press('s');
   await aud.locator('.ov .sb').waitFor({ state: 'detached' });
-  assert((await aud.locator('.ov svg.wheel').count()) === 1 && (await tools.locator('.result').innerText()) === landedOn, `S over the wheel shows the scores, and S again brings the wheel back (${landedOn})`);
+  assert(
+    (await aud.locator('.ov svg.wheel').count()) === 1 && (await tools.locator('.result').innerText()) === landedOn,
+    `S over the wheel shows the scores, and S again brings the wheel back (${landedOn})`,
+  );
   await page.keyboard.press('s');
   await aud.locator('.ov .sb').waitFor();
   await page.keyboard.press('Escape');
   await aud.locator('.ov .sb').waitFor({ state: 'detached' });
-  assert((await aud.locator('.ov svg.wheel').count()) === 1 && (await tools.locator('.result').innerText()) === landedOn, 'Esc on those scores goes back to the wheel too');
+  assert(
+    (await aud.locator('.ov svg.wheel').count()) === 1 && (await tools.locator('.result').innerText()) === landedOn,
+    'Esc on those scores goes back to the wheel too',
+  );
   await page.keyboard.press('Escape');
   // A ready-made wheel spins as it is, on the audience's screen.
   await page.getByRole('button', { name: '🎡 Wheel' }).click();
   await page.getByLabel('Spin a ready-made wheel').selectOption({ label: '🪙 Coin flip' });
-  assert(await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Coin flip')), '🎡 Wheel › Spin a ready-made wheel… opens it (🪙 Coin flip)');
+  assert(
+    await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Coin flip')),
+    '🎡 Wheel › Spin a ready-made wheel… opens it (🪙 Coin flip)',
+  );
   await page.keyboard.press('Escape');
   // 🗂 Pick a category: a slice for each category with clues left.
   await page.getByRole('button', { name: '🎡 Wheel' }).click();
   await page.getByRole('button', { name: '🗂 Pick a category', exact: true }).click();
   const catSlices = await page.evaluate(() => document.querySelectorAll('.stage .wheel path[data-slice], .stage svg path[data-slice]').length);
-  assert(await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Pick a category')), `🎡 Wheel › 🗂 Pick a category opens a wheel of the board's categories (${catSlices} slices)`);
+  assert(
+    await page.evaluate(() => !!document.querySelector('[data-tool-controls]')?.textContent?.includes('Pick a category')),
+    `🎡 Wheel › 🗂 Pick a category opens a wheel of the board's categories (${catSlices} slices)`,
+  );
   await page.keyboard.press('Escape');
 
   // ---------- The scores-only window ----------
@@ -269,18 +339,26 @@ try {
   });
   assert(fit.top <= 1 && fit.bottom >= fit.h - 1, `the strip fills the scores window as it opens (${JSON.stringify(fit)})`);
   assert((await scores.locator('.frame').evaluate((e) => getComputedStyle(e).backgroundColor)) === 'rgb(0, 255, 0)', 'it is chroma green around the plates');
-  assert((await scores.locator('.strip .plate').nth(1).innerText()).includes('$200'), `the scores are there (${await scores.locator('.strip .plate').nth(1).innerText()})`);
+  assert(
+    (await scores.locator('.strip .plate').nth(1).innerText()).includes('$200'),
+    `the scores are there (${await scores.locator('.strip .plate').nth(1).innerText()})`,
+  );
   await page.keyboard.press('t');
   await scores.locator('.clock .timer').waitFor();
   assert(true, 'the countdown shows there too');
   // On the key, colors OBS keeps: a wager's ✔ in blue, not the green, and the countdown's box solid black (see-through
   // over the key it would come out dark green, and go too).
-  const [tick, clockBg] = [await scores.locator('.strip').evaluate((e) => getComputedStyle(e).getPropertyValue('--right').trim()), await scores.locator('.clock .timer').evaluate((e) => getComputedStyle(e).backgroundColor)];
+  const [tick, clockBg] = [
+    await scores.locator('.strip').evaluate((e) => getComputedStyle(e).getPropertyValue('--right').trim()),
+    await scores.locator('.clock .timer').evaluate((e) => getComputedStyle(e).backgroundColor),
+  ];
   assert(tick === '#1f6fd1' && clockBg === 'rgb(0, 0, 0)', `on chroma green, the scores window's ✔ is blue and its countdown box solid (${tick}, ${clockBg})`);
   // Paused, only what's in the box dims (the whole clock at 0.6 would be see-through, and go too).
   await page.keyboard.press('t');
   await scores.locator('.clock .timer.paused').waitFor();
-  const dims = await scores.locator('.clock .timer.paused').evaluate((e) => [getComputedStyle(e).opacity, getComputedStyle(e.querySelector('.num')).opacity, getComputedStyle(e).backgroundColor]);
+  const dims = await scores
+    .locator('.clock .timer.paused')
+    .evaluate((e) => [getComputedStyle(e).opacity, getComputedStyle(e.querySelector('.num')).opacity, getComputedStyle(e).backgroundColor]);
   assert(dims.join() === '1,0.6,rgb(0, 0, 0)', `T pauses it: the box stays solid, its digits dim (${dims.join(', ')})`);
   assert(await hostPanelIn(page).locator('button[aria-label="Close the scores window"]').isVisible(), 'the host panel’s ▭ button says it closes it');
   await shot('pf-3-scores', scores);
@@ -307,10 +385,28 @@ try {
   const slidesPage = watch(await slidesContext.newPage(), 'slides game');
   await slidesPage.goto(pathToFileURL(file).href);
   const slidesGame = {
-    id: 'g_slides', version: 2, title: 'Slides only',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8 },
-    players: [], rounds: [{ id: 'r_slides', name: 'Show', mode: 'slides', questionSlide: { background: { color: '#223344' }, elements: [] } }],
-    media: [], audio: {}, wheels: [], dice: [], theme: {},
+    id: 'g_slides',
+    version: 2,
+    title: 'Slides only',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: null,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+    },
+    players: [],
+    rounds: [{ id: 'r_slides', name: 'Show', mode: 'slides', questionSlide: { background: { color: '#223344' }, elements: [] } }],
+    media: [],
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
   };
   await openGameFile(slidesPage, { name: 'Slides only.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(slidesGame)) });
   await slidesPage.getByText(/^Opened “/).waitFor();
@@ -320,12 +416,18 @@ try {
   await slidesPage.locator('.preset', { hasText: 'Brainrot Neon' }).click();
   const slidesKeyNote = slidesPage.getByRole('status').filter({ hasText: 'OBS would make these see-through' });
   await slidesKeyNote.waitFor();
-  assert((await slidesKeyNote.innerText()).includes(': Tiles & slide background, Tile glow.'), 'Brainrot Neon on a magenta key: the Theme page names its tiles and its glow (for every round)');
+  assert(
+    (await slidesKeyNote.innerText()).includes(': Tiles & slide background, Tile glow.'),
+    'Brainrot Neon on a magenta key: the Theme page names its tiles and its glow (for every round)',
+  );
   await slidesPage.getByRole('button', { name: '▶ Play' }).click();
   const slidesPregame = slidesPage.locator('[data-warn="chroma-theme"]');
   await slidesPregame.waitFor();
   const slidesNote = await slidesPregame.innerText();
-  assert(slidesNote.includes('see-through on stream (tiles & slide background).'), `with no Jeopardy board, the pre-game screen leaves out the glow only a board has (${slidesNote})`);
+  assert(
+    slidesNote.includes('see-through on stream (tiles & slide background).'),
+    `with no Jeopardy board, the pre-game screen leaves out the glow only a board has (${slidesNote})`,
+  );
   // Exported, the file has no 🎨 Theme or ⚙ Settings: the note and Reduce motion's tooltip don't send the host there.
   await slidesPage.getByRole('button', { name: '◀ Back to editor' }).click();
   const slidesHtml = await exportHtml(slidesPage);
@@ -338,29 +440,97 @@ try {
   const fileNote = await slidesPlayer.locator('[data-warn="chroma-theme"]').innerText();
   const motionTip = await slidesPlayer.locator('label.check', { hasText: 'Reduce motion on stream' }).getAttribute('title');
   assert(
-    fileNote.includes('chroma key (magenta):') && fileNote.endsWith('Ask whoever made it for a copy with other colors.') && !fileNote.includes('🎨') && motionTip === 'Kept on this computer',
+    fileNote.includes('chroma key (magenta):') &&
+      fileNote.endsWith('Ask whoever made it for a copy with other colors.') &&
+      !fileNote.includes('🎨') &&
+      motionTip === 'Kept on this computer',
     `in the exported file the note asks for other colors instead of 🎨 Theme, and Reduce motion's tooltip names no ⚙ Settings (${fileNote} · ${motionTip})`,
   );
   await slidesContext.close();
 
   // ---------- The Daily Double splash and PARTNER UP! keep clear of the key; a board game's own colors ----------
-  const words = (t) => ({ background: {}, elements: [{ id: `t_${t}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
-  const partner = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
+  const words = (t) => ({
+    background: {},
+    elements: [
+      {
+        id: `t_${t}`,
+        kind: 'text',
+        text: t,
+        x: 120,
+        y: 90,
+        w: 1680,
+        h: 400,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 1,
+        font: 'Arial',
+        size: 90,
+        weight: 700,
+        italic: false,
+        underline: false,
+        uppercase: false,
+        color: '#ffffff',
+        align: 'center',
+        vAlign: 'middle',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        autoFit: true,
+      },
+    ],
+  });
+  const partner = {
+    game: 'describe',
+    giver: 'partner',
+    got: { giver: 100, guesser: 50 },
+    missed: { giver: 0, guesser: -50 },
+    partnerSafe: true,
+    points: 'game',
+  };
   const splashGame = (stageBg) => ({
-    ...slidesGame, id: 'g_splash', title: 'Splashes',
+    ...slidesGame,
+    id: 'g_splash',
+    title: 'Splashes',
     players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#56b4e9', '#d55e00'][i] })),
-    rounds: [{ id: 'r_board', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 1, categories: [{ id: 'cat0', title: 'Movies', clues: [
-      { id: 'q_dd', value: null, type: 'dailyDouble', questionSlide: words('A clue'), answerSlide: words('An answer') },
-      { id: 'q_pt', value: null, type: 'partner', partner, timerSeconds: 45, questionSlide: words('Describe it'), answerSlide: words('Shrek') },
-    ] }] }, {
-      // As ＋ Add round makes it (its backdrop green), with a magenta space.
-      id: 'r_bg', name: 'Board game', mode: 'boardgame', slide: { background: { color: '#1d5e3a' }, elements: [] }, mover: { kind: 'dice', dice: 'd6' }, zones: [],
-      spaces: [['Start', '#ffcc00'], ['Space 2', '#f032e6'], ['Space 3', '#f58231']].map(([name, color], i) => ({ id: `s${i}`, name, x: 400 + i * 550, y: 540, color, next: [`s${(i + 1) % 3}`] })),
-    }],
+    rounds: [
+      {
+        id: 'r_board',
+        name: 'Round 1',
+        mode: 'board',
+        values: [200, 400],
+        dailyDoubleCount: 1,
+        categories: [
+          {
+            id: 'cat0',
+            title: 'Movies',
+            clues: [
+              { id: 'q_dd', value: null, type: 'dailyDouble', questionSlide: words('A clue'), answerSlide: words('An answer') },
+              { id: 'q_pt', value: null, type: 'partner', partner, timerSeconds: 45, questionSlide: words('Describe it'), answerSlide: words('Shrek') },
+            ],
+          },
+        ],
+      },
+      {
+        // As ＋ Add round makes it (its backdrop green), with a magenta space.
+        id: 'r_bg',
+        name: 'Board game',
+        mode: 'boardgame',
+        slide: { background: { color: '#1d5e3a' }, elements: [] },
+        mover: { kind: 'dice', dice: 'd6' },
+        zones: [],
+        spaces: [
+          ['Start', '#ffcc00'],
+          ['Space 2', '#f032e6'],
+          ['Space 3', '#f58231'],
+        ].map(([name, color], i) => ({ id: `s${i}`, name, x: 400 + i * 550, y: 540, color, next: [`s${(i + 1) % 3}`] })),
+      },
+    ],
     theme: { stageBg },
   });
   // (rgb(61, 255, 176): PARTNER UP!'s green; rgb(255, 61, 203): the Daily Double's pink.)
-  for (const [key, want] of [['magenta', 'rgb(61, 255, 176)'], ['green', 'rgb(255, 61, 203)']]) {
+  for (const [key, want] of [
+    ['magenta', 'rgb(61, 255, 176)'],
+    ['green', 'rgb(255, 61, 203)'],
+  ]) {
     const splashContext = await browser.newContext({ viewport: { width: 1400, height: 900 } });
     const sp = watch(await splashContext.newPage(), `${key} splashes`);
     await sp.goto(pathToFileURL(file).href);
@@ -375,14 +545,20 @@ try {
     const notes = await sp.locator('[data-warn^="chroma"]').allInnerTexts();
     const named = key === 'magenta' ? '(board spaces)' : '(the board game’s backdrop)';
     assert(
-      (await roundsNote.innerText()).includes(`OBS would make them see-through on stream ${named}. Pick others in their round’s editor.`) && !notes.some((n) => n.includes(' key.')),
+      (await roundsNote.innerText()).includes(`OBS would make them see-through on stream ${named}. Pick others in their round’s editor.`) &&
+        !notes.some((n) => n.includes(' key.')),
       `on a ${key} key, the pre-game screen names ${named} and no note offers the other key (${notes.join(' | ')})`,
     );
     await sp.getByRole('button', { name: 'Start game ▶' }).click();
-    const look = (sel) => stageBoxIn(sp).locator(sel).evaluate((e) => getComputedStyle(e).backgroundImage);
+    const look = (sel) =>
+      stageBoxIn(sp)
+        .locator(sel)
+        .evaluate((e) => getComputedStyle(e).backgroundImage);
     // One window: the stage under every screen is the key too, so a clue zooming in has no black frame round it.
     const keyRgb = key === 'green' ? 'rgb(0, 255, 0)' : 'rgb(255, 0, 255)';
-    const stageBg = await stageBoxIn(sp).locator('.stage').evaluate((e) => getComputedStyle(e).backgroundColor);
+    const stageBg = await stageBoxIn(sp)
+      .locator('.stage')
+      .evaluate((e) => getComputedStyle(e).backgroundColor);
     assert(stageBg === keyRgb, `on a ${key} key, the one-window stage is the key under its screens (${stageBg})`);
     await stageBoxIn(sp).locator('.tile[data-clue="q_dd"]').click();
     await stageBoxIn(sp).locator('.dd-text').waitFor();
@@ -392,7 +568,10 @@ try {
     await stageBoxIn(sp).locator('.tile[data-clue="q_pt"]').click();
     await stageBoxIn(sp).locator('[data-partner-up]').waitFor();
     const ptLook = await look('[data-partner-up]');
-    assert(ddLook.includes(want) && ptLook.includes(want), `on a ${key} key, the Daily Double splash and PARTNER UP! both take the colors it leaves alone (${ddLook} · ${ptLook})`);
+    assert(
+      ddLook.includes(want) && ptLook.includes(want),
+      `on a ${key} key, the Daily Double splash and PARTNER UP! both take the colors it leaves alone (${ddLook} · ${ptLook})`,
+    );
     await splashContext.close();
   }
 

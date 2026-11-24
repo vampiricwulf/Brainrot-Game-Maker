@@ -140,14 +140,24 @@
       { heading: rowText(row) },
       undone(row)
         ? { label: '↷ Redo to here', onclick: () => jump(row) }
-        : { label: '↶ Back to here', onclick: () => jump(row), disabled: row.steps === 0, hint: row.steps ? `Undo the ${row.steps} step${row.steps === 1 ? '' : 's'} after this` : 'Nothing after it' },
+        : {
+            label: '↶ Back to here',
+            onclick: () => jump(row),
+            disabled: row.steps === 0,
+            hint: row.steps ? `Undo the ${row.steps} step${row.steps === 1 ? '' : 's'} after this` : 'Nothing after it',
+          },
     ];
     if (row.kind === 'score') {
-      if (row.clueId && onreopen) items.push({ label: '↶ Reopen tile', onclick: () => onreopen(row.clueId!), disabled: !reopen, hint: 'Put this tile back on the board' });
+      if (row.clueId && onreopen)
+        items.push({ label: '↶ Reopen tile', onclick: () => onreopen(row.clueId!), disabled: !reopen, hint: 'Put this tile back on the board' });
       items.push(
         row.state === 'done'
           ? { label: '↶ Undo just this score', onclick: () => toggleStep(session, row.id), hint: 'Only this one: the steps after it stay' }
-          : { label: '↷ Restore', onclick: () => toggleStep(session, row.id), hint: held(session.scoreLog.filter((e) => stepOf(e) === row.id)) ?? 'Only this one' },
+          : {
+              label: '↷ Restore',
+              onclick: () => toggleStep(session, row.id),
+              hint: held(session.scoreLog.filter((e) => stepOf(e) === row.id)) ?? 'Only this one',
+            },
       );
     }
     showMenu(e, items);
@@ -185,14 +195,15 @@
   <header class="row">
     <button class="tab" class:on={tab === 'history'} aria-pressed={tab === 'history'} onclick={() => (tab = 'history')}>🕘 History</button>
     <button class="tab" class:on={tab === 'scores'} aria-pressed={tab === 'scores'} onclick={() => (tab = 'scores')}>Scores ({steps.length})</button>
-    <button class="tab" class:on={tab === 'rolls'} aria-pressed={tab === 'rolls'} onclick={() => (tab = 'rolls')}>Rolls ({session.rollLog?.length ?? 0})</button>
+    <button class="tab" class:on={tab === 'rolls'} aria-pressed={tab === 'rolls'} onclick={() => (tab = 'rolls')}>Rolls ({session.rollLog?.length ?? 0})</button
+    >
     <span class="spacer"></span>
     <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>
   </header>
   {#if tab === 'history'}
     <p class="muted small intro">
-      Newest first. <b>↶ Back to here</b> undoes everything after a step, <b>↷ Redo to here</b> brings undone steps back. Ctrl+Z and
-      Ctrl+Y (or Ctrl+Shift+Z) go one at a time.
+      Newest first. <b>↶ Back to here</b> undoes everything after a step, <b>↷ Redo to here</b> brings undone steps back. Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) go one
+      at a time.
     </p>
     <div class="list tl" role="list">
       {#each items as it, i (it.kind === 'row' ? `${it.row.kind}:${it.row.id}` : `${it.kind}:${i}`)}
@@ -219,7 +230,9 @@
             <span class="icon" aria-hidden="true">
               {#if undone(row)}↷
               {:else if row.kind === 'score'}
-                <span class="dots">{#each row.events as e (e.id)}<span class="dot" style:background={byId[e.playerId]?.color ?? '#666'}></span>{/each}</span>
+                <span class="dots"
+                  >{#each row.events as e (e.id)}<span class="dot" style:background={byId[e.playerId]?.color ?? '#666'}></span>{/each}</span
+                >
               {:else if row.kind === 'roll'}{icon[row.source]}
               {:else}•{/if}
             </span>
@@ -230,9 +243,13 @@
                   <button class="small ghost" onclick={() => onreopen?.(reopen)} title="Put this tile back on the board">↶ Reopen tile</button>
                 {/if}
                 {#if undone(row)}
-                  <button class="small" onclick={() => jump(row)} title="Redo {row.steps} step{row.steps === 1 ? '' : 's'}, up to this one">↷ Redo to here</button>
+                  <button class="small" onclick={() => jump(row)} title="Redo {row.steps} step{row.steps === 1 ? '' : 's'}, up to this one"
+                    >↷ Redo to here</button
+                  >
                 {:else if back}
-                  <button class="small" onclick={() => jump(row)} title="Undo the {row.steps} step{row.steps === 1 ? '' : 's'} after this">↶ Back to here</button>
+                  <button class="small" onclick={() => jump(row)} title="Undo the {row.steps} step{row.steps === 1 ? '' : 's'} after this"
+                    >↶ Back to here</button
+                  >
                 {/if}
               </span>
             {/if}
@@ -248,9 +265,7 @@
       {@const row = asking}
       <div class="asking">
         <InlineAsk
-          text={undone(row)
-            ? `Redo ${n} steps, up to ${time(row.ts)}?`
-            : `Undo ${n} steps, back to ${time(row.ts)}? Scores, moves and items go back.`}
+          text={undone(row) ? `Redo ${n} steps, up to ${time(row.ts)}?` : `Undo ${n} steps, back to ${time(row.ts)}? Scores, moves and items go back.`}
           ok={undone(row) ? `Redo ${n} steps` : `Undo ${n} steps`}
           onok={() => go(row)}
           oncancel={() => (asking = null)}
@@ -272,61 +287,69 @@
       {/each}
     </div>
   {:else}
-  <div class="list">
-    {#each steps as step (step.key)}
-      {@const first = step.events[0]}
-      {@const allUndone = step.events.every((e) => e.undone)}
-      {@const clueId = first.clueId}
-      <div class="step">
-        {#if step.events.length === 1}
-          {@const p = byId[first.playerId]}
-          <div class="ev" class:undone={first.undone}>
-            <span class="dot" style:background={p?.color ?? '#666'}></span>
-            <span class="who">{name(first.playerId)}</span>
-            <span class="delta" class:neg={first.delta < 0}>{amount(first.delta)}</span>
-            <span class="why muted" class:selectable={!hide}>{reasonText(first, hide)}{judged(first)} · {time(first.ts)}</span>
-            {#if inStep.has(first.id)}
-              <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
-            {:else}
-              <button class="small ghost" onclick={() => toggleEvent(session, first.id)} title={held([first])}>{first.undone ? '↷ Restore' : '↶ Undo'}</button>
+    <div class="list">
+      {#each steps as step (step.key)}
+        {@const first = step.events[0]}
+        {@const allUndone = step.events.every((e) => e.undone)}
+        {@const clueId = first.clueId}
+        <div class="step">
+          {#if step.events.length === 1}
+            {@const p = byId[first.playerId]}
+            <div class="ev" class:undone={first.undone}>
+              <span class="dot" style:background={p?.color ?? '#666'}></span>
+              <span class="who">{name(first.playerId)}</span>
+              <span class="delta" class:neg={first.delta < 0}>{amount(first.delta)}</span>
+              <span class="why muted" class:selectable={!hide}>{reasonText(first, hide)}{judged(first)} · {time(first.ts)}</span>
+              {#if inStep.has(first.id)}
+                <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
+              {:else}
+                <button class="small ghost" onclick={() => toggleEvent(session, first.id)} title={held([first])}>{first.undone ? '↷ Restore' : '↶ Undo'}</button
+                >
+              {/if}
+            </div>
+          {:else}
+            <div class="ev" class:undone={allUndone}>
+              <span class="dots">
+                {#each step.events as e (e.id)}<span class="dot" style:background={byId[e.playerId]?.color ?? '#666'}></span>{/each}
+              </span>
+              <button class="who link" onclick={() => (expanded[step.key] = !expanded[step.key])} aria-expanded={!!expanded[step.key]}>
+                {expanded[step.key] ? '▾' : '▸'}
+                {step.events.length} players
+              </button>
+              <span class="delta" class:neg={first.delta < 0}>{stepAmount(step.events, sym)}</span>
+              <span class="why muted" class:selectable={!hide}
+                >{nameList(step.events.map((e) => name(e.playerId)))} · {reasonText(first, hide)} · {time(first.ts)}</span
+              >
+              {#if step.events.some((e) => inStep.has(e.id))}
+                <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
+              {:else}
+                <button class="small ghost" onclick={() => toggleStep(session, step.key)} title={allUndone ? held(step.events) : undefined}
+                  >{allUndone ? '↷ Restore all' : '↶ Undo all'}</button
+                >
+              {/if}
+            </div>
+            {#if expanded[step.key]}
+              {#each step.events as e (e.id)}
+                {@const p = byId[e.playerId]}
+                <div class="ev sub" class:undone={e.undone}>
+                  <span class="dot" style:background={p?.color ?? '#666'}></span>
+                  <span class="who">{name(e.playerId)}</span>
+                  <span class="delta" class:neg={e.delta < 0}>{amount(e.delta)}</span>
+                  {#if !inStep.has(e.id)}<button class="small ghost" onclick={() => toggleEvent(session, e.id)} title={held([e])}
+                      >{e.undone ? '↷ Restore' : '↶ Undo'}</button
+                    >{/if}
+                </div>
+              {/each}
             {/if}
-          </div>
-        {:else}
-          <div class="ev" class:undone={allUndone}>
-            <span class="dots">
-              {#each step.events as e (e.id)}<span class="dot" style:background={byId[e.playerId]?.color ?? '#666'}></span>{/each}
-            </span>
-            <button class="who link" onclick={() => (expanded[step.key] = !expanded[step.key])} aria-expanded={!!expanded[step.key]}>
-              {expanded[step.key] ? '▾' : '▸'} {step.events.length} players
-            </button>
-            <span class="delta" class:neg={first.delta < 0}>{stepAmount(step.events, sym)}</span>
-            <span class="why muted" class:selectable={!hide}>{nameList(step.events.map((e) => name(e.playerId)))} · {reasonText(first, hide)} · {time(first.ts)}</span>
-            {#if step.events.some((e) => inStep.has(e.id))}
-              <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
-            {:else}
-              <button class="small ghost" onclick={() => toggleStep(session, step.key)} title={allUndone ? held(step.events) : undefined}>{allUndone ? '↷ Restore all' : '↶ Undo all'}</button>
-            {/if}
-          </div>
-          {#if expanded[step.key]}
-            {#each step.events as e (e.id)}
-              {@const p = byId[e.playerId]}
-              <div class="ev sub" class:undone={e.undone}>
-                <span class="dot" style:background={p?.color ?? '#666'}></span>
-                <span class="who">{name(e.playerId)}</span>
-                <span class="delta" class:neg={e.delta < 0}>{amount(e.delta)}</span>
-                {#if !inStep.has(e.id)}<button class="small ghost" onclick={() => toggleEvent(session, e.id)} title={held([e])}>{e.undone ? '↷ Restore' : '↶ Undo'}</button>{/if}
-              </div>
-            {/each}
           {/if}
-        {/if}
-        {#if clueId && onreopen && session.used[clueId]}
-          <button class="small ghost reopen" onclick={() => onreopen(clueId)} title="Put this tile back on the board">↶ Reopen tile</button>
-        {/if}
-      </div>
-    {:else}
-      <div class="muted">No score changes yet.</div>
-    {/each}
-  </div>
+          {#if clueId && onreopen && session.used[clueId]}
+            <button class="small ghost reopen" onclick={() => onreopen(clueId)} title="Put this tile back on the board">↶ Reopen tile</button>
+          {/if}
+        </div>
+      {:else}
+        <div class="muted">No score changes yet.</div>
+      {/each}
+    </div>
   {/if}
 </aside>
 

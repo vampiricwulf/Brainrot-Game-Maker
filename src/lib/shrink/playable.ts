@@ -116,20 +116,18 @@ function codecsFor(
       // (A picture made again in H.264 goes with AAC or MP3 only, as phones play it; else VP9 or VP8 come first.)
       if (v === 'encode' && vc === 'avc' && ac && !['aac', 'mp3'].includes(ac) && vs.length > 1) continue;
       const box = boxFor(kind, vc, ac);
-      if (box) return { box, ...(v === 'encode' && vc ? { video: vc as 'avc' | 'vp9' | 'vp8' } : {}), ...(a === 'encode' && ac ? { audio: ac as 'aac' | 'opus' } : {}) };
+      if (box)
+        return {
+          box,
+          ...(v === 'encode' && vc ? { video: vc as 'avc' | 'vp9' | 'vp8' } : {}),
+          ...(a === 'encode' && ac ? { audio: ac as 'aac' | 'opus' } : {}),
+        };
     }
   return null;
 }
 
 /** A fix with its codecs worked out (null: none can be made here). */
-function fixOf(
-  kind: 'video' | 'audio',
-  f: MediaFacts,
-  video: 'keep' | 'encode' | undefined,
-  audio: TrackFix | undefined,
-  can: Can,
-  enc: Encoders,
-): Fix | null {
+function fixOf(kind: 'video' | 'audio', f: MediaFacts, video: 'keep' | 'encode' | undefined, audio: TrackFix | undefined, can: Can, enc: Encoders): Fix | null {
   const v = video === undefined ? null : video === 'keep' ? { keep: f.video?.codec ?? '' } : 'encode';
   const a = audio === undefined || audio === 'drop' ? null : audio === 'keep' ? { keep: f.audio?.codec ?? '' } : 'encode';
   if (!v && !a) return null;

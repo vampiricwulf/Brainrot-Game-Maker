@@ -16,7 +16,29 @@
   import { menuItem, menuOf, showMenu, type MenuEntry } from '../../lib/menustate.svelte';
   import RowTools from '../RowTools.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
-  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, closeUpOver, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, moverWheelNoNumbers, nameShown, newSpaceSpot, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, spaceById, spaceToward } from '../../lib/boardgame';
+  import {
+    addFork,
+    allNamesLabel,
+    applySpaceKind,
+    clampToBoard,
+    closeUpOver,
+    spaceKindOf,
+    linkName,
+    SPACE_KINDS,
+    type SpaceKind,
+    moverDiceGone,
+    moverDiceUnknown,
+    moverWheelNoNumbers,
+    nameShown,
+    newSpaceSpot,
+    nameShownLabel,
+    setAllNamesShown,
+    setNameShown,
+    moverPreset,
+    nextSpaceName,
+    spaceById,
+    spaceToward,
+  } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, linkAfter, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
@@ -450,7 +472,12 @@
     const [la, lb] = link ? [spaceById(round, link[0]), spaceById(round, link[1])] : [];
     const at = toBoard(e as PointerEvent);
     const pasteItem = menuItem.paste(() => pasteSpaces(at), {
-      label: clipboard.spaces.length > 1 ? `📋 Paste ${clipboard.spaces.length} spaces here` : clipboard.spaces.length ? `📋 Paste “${clipboard.spaces[0].name}” here` : '📋 Paste here',
+      label:
+        clipboard.spaces.length > 1
+          ? `📋 Paste ${clipboard.spaces.length} spaces here`
+          : clipboard.spaces.length
+            ? `📋 Paste “${clipboard.spaces[0].name}” here`
+            : '📋 Paste here',
       disabled: !clipboard.spaces.length,
       hint: clipboard.spaces.length ? undefined : 'Copy a space first (right-click it, or Ctrl+C)',
     });
@@ -547,7 +574,7 @@
     } else if (v && !mod) {
       e.preventDefault();
       const from = here ?? spaceById(round, rover ?? undefined);
-      const to = here || !from ? (from && spaceToward(round, from, ...v)) : from;
+      const to = here || !from ? from && spaceToward(round, from, ...v) : from;
       if (!to) return;
       if (!linking) selIds = e.shiftKey ? [...selIds.filter((id) => id !== to.id), to.id] : [to.id];
       focusSpace(to.id);
@@ -632,15 +659,19 @@
     const what = list.length === 1 ? list[0].name : `${list.length} spaces`;
     const focused = !!canvas?.contains(document.activeElement);
     // Done at once: the note at the bottom offers Undo.
-    step(list.length === 1 ? `Deleted space “${what}”` : `Deleted ${what}`, () => {
-      for (const s of list) {
-        // Spaces that led here now lead everywhere it led (a deleted fork moves back one space).
-        closeUpOver(round, s);
-        round.spaces = round.spaces.filter((x) => x.id !== s.id);
-        if (round.start === s.id) round.start = undefined;
-        unlinkGotos({ space: s.id });
-      }
-    }, { notify: true });
+    step(
+      list.length === 1 ? `Deleted space “${what}”` : `Deleted ${what}`,
+      () => {
+        for (const s of list) {
+          // Spaces that led here now lead everywhere it led (a deleted fork moves back one space).
+          closeUpOver(round, s);
+          round.spaces = round.spaces.filter((x) => x.id !== s.id);
+          if (round.start === s.id) round.start = undefined;
+          unlinkGotos({ space: s.id });
+        }
+      },
+      { notify: true },
+    );
     selectOnly(null);
     // (The board keeps the focus, for the next key.)
     if (focused) refocus(null, true);
@@ -654,11 +685,15 @@
   function makeKind(s: BoardSpace, kind: SpaceKind): void {
     const k = SPACE_KINDS.find((x) => x.kind === kind);
     if (!k) return;
-    step(`Made “${s.name}” a ${k.label.replace(/^\S+\s/, '')} space`, () => {
-      const shop = kind === 'shop' ? (game.shops?.[0] ?? newShop(game)).id : undefined;
-      applySpaceKind(s, kind, { shop, hp: numberStat(game, 'HP')?.id });
-      // (Its landing buttons were replaced: the note offers Undo.)
-    }, { notify: !!s.onLand?.length });
+    step(
+      `Made “${s.name}” a ${k.label.replace(/^\S+\s/, '')} space`,
+      () => {
+        const shop = kind === 'shop' ? (game.shops?.[0] ?? newShop(game)).id : undefined;
+        applySpaceKind(s, kind, { shop, hp: numberStat(game, 'HP')?.id });
+        // (Its landing buttons were replaced: the note offers Undo.)
+      },
+      { notify: !!s.onLand?.length },
+    );
   }
 
   /** ⑂ A second way on from a space: a new space beside the first way, picked to set up. */
@@ -725,7 +760,10 @@
 
   /** A copy right after it, with its own screen. */
   function duplicateZone(z: BoardZone): void {
-    const copy = copyZone(z, round.zones.map((x) => x.name));
+    const copy = copyZone(
+      z,
+      round.zones.map((x) => x.name),
+    );
     step(`Duplicated zone “${z.name}”`, () => round.zones.splice(round.zones.indexOf(z) + 1, 0, copy));
   }
 
@@ -793,7 +831,9 @@
           title="Standard dice (d6, 2d6…), or the name of dice saved in 🎡 Wheels, Dice & Deals"
         />
       </label>
-      <datalist id="bg-dice">{#each game.dice as d (d.id)}<option value={d.name}></option>{/each}</datalist>
+      <datalist id="bg-dice"
+        >{#each game.dice as d (d.id)}<option value={d.name}></option>{/each}</datalist
+      >
       {#if moverDice}
         <button class="small ghost" onclick={() => (tool = { kind: 'dice', id: moverDice.id })} title="Change these dice">✎ Edit dice</button>
       {:else if moverDiceGone(game, round)}
@@ -811,7 +851,9 @@
     </label>
   </div>
   <div class="row settings">
-    <label class="field grow">How to win<input bind:value={round.winNotes} data-field="win-notes" placeholder="e.g. Own 3 Flamingos and get back to Start" /></label>
+    <label class="field grow"
+      >How to win<input bind:value={round.winNotes} data-field="win-notes" placeholder="e.g. Own 3 Flamingos and get back to Start" /></label
+    >
     <label class="check small"><input type="checkbox" bind:checked={round.winPublic} /> Show it on the board</label>
     <label class="field grow">Host notes (off stream, except in a single window)<input bind:value={round.hostNotes} data-field="round-notes" /></label>
   </div>
@@ -833,14 +875,18 @@
     {/if}
   </div>
 
-
   {#if view === 'spaces'}
     <div class="row tools">
       {#if linking}
-        <span class="warn small" role="status">Click the space {sel?.name} should lead to (again to disconnect), or go to it with the arrow keys and press Enter · Esc stops</span>
+        <span class="warn small" role="status"
+          >Click the space {sel?.name} should lead to (again to disconnect), or go to it with the arrow keys and press Enter · Esc stops</span
+        >
       {:else}
         <!-- One line (the panel beside the board says more), so the board starts higher up on a small screen. -->
-        <span class="hint" title="Ctrl+click or double-click adds a space (after the selected one) · Alt+drag or ⊕ connects · click a link to pick it · Shift+click or a box selects several · right-click for more">
+        <span
+          class="hint"
+          title="Ctrl+click or double-click adds a space (after the selected one) · Alt+drag or ⊕ connects · click a link to pick it · Shift+click or a box selects several · right-click for more"
+        >
           Ctrl+click adds a space · Alt+drag connects · Shift+click selects several · right-click for more
         </span>
       {/if}
@@ -849,12 +895,17 @@
         class="small"
         data-add-space
         onclick={() => addSpaceAfter()}
-        title="A new space after the selected one ({sel ? `“${sel.name}”` : round.spaces.length ? 'none selected: after the last one' : 'the first one'}), selected to set up (Ctrl+click on the board adds one where you click)"
-        >＋ Add space</button
+        title="A new space after the selected one ({sel
+          ? `“${sel.name}”`
+          : round.spaces.length
+            ? 'none selected: after the last one'
+            : 'the first one'}), selected to set up (Ctrl+click on the board adds one where you click)">＋ Add space</button
       >
       <span class="names small" title="Viewers see a space's name only when it's shown (here you always see it, dimmed when they don't)">
         Names on the board:
-        <button class="small" data-names-all="show" disabled={!round.spaces.length || round.spaces.every(nameShown)} onclick={() => allNames(true)}>Show all</button>
+        <button class="small" data-names-all="show" disabled={!round.spaces.length || round.spaces.every(nameShown)} onclick={() => allNames(true)}
+          >Show all</button
+        >
         <button class="small" data-names-all="hide" disabled={!round.spaces.some(nameShown)} onclick={() => allNames(false)}>Hide all</button>
       </span>
     </div>
@@ -934,7 +985,9 @@
               right end, never alone under ⧉ Duplicate.) -->
             <span class="row end">
               <button class="ghost small" onclick={() => (selIds = [])} title="Esc">Clear selection</button>
-              <button class="ghost small danger del" onclick={() => removeSpaces(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} spaces</button>
+              <button class="ghost small danger del" onclick={() => removeSpaces(picked)} title="Delete them (Delete key; Undo brings them back)"
+                >🗑 Delete {picked.length} spaces</button
+              >
             </span>
           </div>
           <p class="muted small">Drag one to move them all, or nudge them with Alt+arrows. Shift+click a space to add or leave it out.</p>
@@ -981,10 +1034,14 @@
           <!-- (Its actions right under its name, in view without scrolling; 🗑 apart at the end.) -->
           <div class="row" data-space-actions>
             <button class="small" onclick={() => makeStart(sel)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it the start</button>
-            <button class="small" onclick={() => addSpaceAfter(sel)} title="A new space after this one on the path, selected to set up">＋ Add a space after it</button>
+            <button class="small" onclick={() => addSpaceAfter(sel)} title="A new space after this one on the path, selected to set up"
+              >＋ Add a space after it</button
+            >
             <button class="small" onclick={() => duplicateSpace(sel)} title="A copy of this space after it on the path (Ctrl+D)">⧉ Duplicate</button>
             <span class="spacer"></span>
-            <button class="ghost small danger" onclick={() => removeSpace(sel)} title="Delete this space (Delete key; Undo brings it back)">🗑 Delete space</button>
+            <button class="ghost small danger" onclick={() => removeSpace(sel)} title="Delete this space (Delete key; Undo brings it back)"
+              >🗑 Delete space</button
+            >
           </div>
           <label class="check small" title="Viewers see its name under it (here you always see it, dimmed when they don't)">
             <input type="checkbox" data-show-name checked={nameShown(sel)} onchange={(e) => showName(sel, e.currentTarget.checked)} />
@@ -1000,10 +1057,16 @@
                 <MediaPicker kind="image" onpick={(id) => ((sel.icon = id), (pickingIcon = false))} onclose={() => (pickingIcon = false)} />
               {/if}
             </div>
-            {#if sel.icon}<button class="ghost small" title="Take the picture icon off this space" onclick={() => (sel.icon = undefined)}>⌫ Take off icon</button>{/if}
+            {#if sel.icon}<button class="ghost small" title="Take the picture icon off this space" onclick={() => (sel.icon = undefined)}
+                >⌫ Take off icon</button
+              >{/if}
             {#if sel.mark && !sel.icon}
               <span class="muted small" title="Drawn in the circle">{sel.mark}</span>
-              <button class="ghost small" onclick={() => step(`Took the emoji off “${sel.name}”`, () => (sel.mark = undefined))} title="Take the emoji off this space">⌫ Take off emoji</button>
+              <button
+                class="ghost small"
+                onclick={() => step(`Took the emoji off “${sel.name}”`, () => (sel.mark = undefined))}
+                title="Take the emoji off this space">⌫ Take off emoji</button
+              >
             {/if}
           </div>
           <label class="field">
@@ -1030,7 +1093,8 @@
               {@const other = spaceById(round, n)}
               {@const both = !!other?.next.includes(sel.id)}
               <span class="chip">
-                {both ? '↔' : '→'} {other?.name ?? '?'}
+                {both ? '↔' : '→'}
+                {other?.name ?? '?'}
                 <button
                   class="ghost tiny"
                   class:on={both}
@@ -1039,7 +1103,9 @@
                   aria-label="Both ways with {other?.name}"
                   title={both ? 'Both ways: click for one way only' : 'Make it both ways (back and forth)'}>⇄</button
                 >
-                <button class="ghost tiny" onclick={() => disconnect(sel.id, n)} aria-label="Disconnect {sel.name} from {other?.name ?? '?'}" title="Disconnect">✂</button>
+                <button class="ghost tiny" onclick={() => disconnect(sel.id, n)} aria-label="Disconnect {sel.name} from {other?.name ?? '?'}" title="Disconnect"
+                  >✂</button
+                >
               </span>
             {:else}
               <span class="muted small">nothing (the path ends)</span>
@@ -1049,13 +1115,21 @@
               {#each into as f (f.id)}
                 <span class="chip">
                   ← {f.name}
-                  <button class="ghost tiny" onclick={() => disconnect(f.id, sel.id)} aria-label="Disconnect {f.name} from {sel.name}" title="Disconnect">✂</button>
+                  <button class="ghost tiny" onclick={() => disconnect(f.id, sel.id)} aria-label="Disconnect {f.name} from {sel.name}" title="Disconnect"
+                    >✂</button
+                  >
                 </span>
               {/each}
             {/if}
           </div>
           <div class="row">
-            <button class="small" class:on={linking} aria-pressed={!!linking} onclick={() => (linking = !linking)} title="Then click the space it leads to; two or more ways make a fork">🔗 Connect to…</button>
+            <button
+              class="small"
+              class:on={linking}
+              aria-pressed={!!linking}
+              onclick={() => (linking = !linking)}
+              title="Then click the space it leads to; two or more ways make a fork">🔗 Connect to…</button
+            >
             <select
               class="small"
               aria-label="Connect {sel.name} to"
@@ -1070,7 +1144,11 @@
             </select>
           </div>
           <div class="row">
-            <button class="small" onclick={() => fork(sel)} title="A new space beside the way on, as a second way: two or more ways make a fork (the host picks the way in play)">⑂ Add a fork here</button>
+            <button
+              class="small"
+              onclick={() => fork(sel)}
+              title="A new space beside the way on, as a second way: two or more ways make a fork (the host picks the way in play)">⑂ Add a fork here</button
+            >
             {#if sel.next.length > 1}<span class="muted small">A fork: the host picks the way in play.</span>{/if}
           </div>
           <h5>When passed <span class="muted small">(landing on it counts too · e.g. Start: +2 gold)</span></h5>
@@ -1078,7 +1156,9 @@
           <h5>When landed on</h5>
           <ActionListEditor bind:actions={sel.onLand} board={round} addLabel="＋ Add button (when landed on)" />
           <label class="check small"><input type="checkbox" bind:checked={sel.secret} /> Secret (viewers see “?” until you reveal it)</label>
-          <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
+          <label class="field"
+            >Host notes (off stream, except in a single window)<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label
+          >
         {:else if link}
           {@const k = link}
           <h4>Link</h4>
@@ -1096,9 +1176,8 @@
               <li>New spaces go after the selected space, so you can draw the path in order.</li>
               <li>Drag spaces (or Alt+arrows) to move them. Drop a picture on a space for its icon, or on the board for its backdrop.</li>
               <li>
-                Keys: Tab to the board, then the arrows go from space to space, Enter opens its settings, Alt+arrows move it, F2 renames,
-                Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste, Delete deletes, Esc deselects. Shift+arrows, Shift+click or a box
-                picks several.
+                Keys: Tab to the board, then the arrows go from space to space, Enter opens its settings, Alt+arrows move it, F2 renames, Ctrl+D duplicates,
+                Ctrl+C / Ctrl+V copy and paste, Delete deletes, Esc deselects. Shift+arrows, Shift+click or a box picks several.
               </li>
             </ul>
           </Tips>
@@ -1117,10 +1196,10 @@
     <div class="zones">
       <div class="row">
         <p class="muted small grow">
-          Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's buttons or the host
-          panel. Drag ⋮⋮ (or Alt+↑/↓) to reorder: the host's Send to list follows. Right-click a zone for more.
+          Places off the board (the Shadow Realm) where players get sent until they escape. Send players there from a space's buttons or the host panel. Drag ⋮⋮
+          (or Alt+↑/↓) to reorder: the host's Send to list follows. Right-click a zone for more.
         </p>
-        </div>
+      </div>
       <div class="zone-list" role="list" aria-label="Zones">
         {#each round.zones as z, i (z.id)}
           {@const line = zoneRows.lineAt(z.id)}
@@ -1133,7 +1212,10 @@
             role="listitem"
             ondragover={(e) => zoneRows.over(e, z.id)}
             ondrop={(e) => {
-              const m = zoneRows.drop(e, round.zones.map((x) => x.id));
+              const m = zoneRows.drop(
+                e,
+                round.zones.map((x) => x.id),
+              );
               if (m) moveZone(m.from, m.to);
             }}
             oncontextmenu={(e) => zoneMenu(e, z, i)}

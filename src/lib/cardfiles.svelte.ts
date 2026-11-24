@@ -241,7 +241,12 @@ async function putFile(
   if (opts.signal?.aborted) return { why: 'failed', error: 'Stopped', retry: true, bytes };
   const r = await uploadCardFile(body, type, opts);
   if ('id' in r) return r;
-  return { why: r.refused === 'big' ? 'big' : r.refused === 'kind' ? 'kind' : r.refused === 'full' ? 'full' : 'failed', error: r.error, retry: r.refused === 'error', bytes };
+  return {
+    why: r.refused === 'big' ? 'big' : r.refused === 'kind' ? 'kind' : r.refused === 'full' ? 'full' : 'failed',
+    error: r.error,
+    retry: r.refused === 'error',
+    bytes,
+  };
 }
 
 /**

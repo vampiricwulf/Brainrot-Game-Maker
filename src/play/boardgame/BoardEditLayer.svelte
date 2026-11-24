@@ -13,7 +13,25 @@
   import { linkAt } from '../../lib/boardedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { SLIDE_H, SLIDE_W, type BoardGameRound, type BoardSpace, type Game, type Session } from '../../lib/model';
-  import { boardEdit, editAdd, editAllNames, editBothWays, editConnect, editDelete, editDeleteAll, editDisconnect, editDrag, editFocus, editIdle, editPick, editPicked, editReverse, editShowName, editStart, editToggle } from './boardedit.svelte';
+  import {
+    boardEdit,
+    editAdd,
+    editAllNames,
+    editBothWays,
+    editConnect,
+    editDelete,
+    editDeleteAll,
+    editDisconnect,
+    editDrag,
+    editFocus,
+    editIdle,
+    editPick,
+    editPicked,
+    editReverse,
+    editShowName,
+    editStart,
+    editToggle,
+  } from './boardedit.svelte';
   import { boardNow } from './bgops';
 
   let { game, session, round, hide = false }: { game: Game; session: Session; round: BoardGameRound; hide?: boolean } = $props();
@@ -75,7 +93,12 @@
       boardEdit.adding = false;
       boardEdit.connecting = false;
       const ids = editPicked();
-      const at = new Map(ids.map((id) => spaceById(round, id)).filter((x) => !!x).map((x) => [x.id, { x: x.x, y: x.y }]));
+      const at = new Map(
+        ids
+          .map((id) => spaceById(round, id))
+          .filter((x) => !!x)
+          .map((x) => [x.id, { x: x.x, y: x.y }]),
+      );
       drag = { id: s.id, sx: p.x, sy: p.y, at, end: null };
       capture(e);
       return;
@@ -165,7 +188,11 @@
       return showMenu(e, [
         { heading: said(s) },
         { label: '✎ Rename', keys: 'F2', onclick: () => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select() },
-        { label: '🔗 Connect to…', hint: touch() ? 'Then tap the space it leads to' : 'Then click the space it leads to (or Alt+drag from it)', onclick: () => (boardEdit.connecting = true) },
+        {
+          label: '🔗 Connect to…',
+          hint: touch() ? 'Then tap the space it leads to' : 'Then click the space it leads to (or Alt+drag from it)',
+          onclick: () => (boardEdit.connecting = true),
+        },
         { label: '🏁 Make it the start', disabled: (round.start ?? round.spaces[0]?.id) === s.id, onclick: () => editStart(game, session, s.id) },
         nameShown(s)
           ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => editShowName(game, session, s.id, false) }
@@ -174,7 +201,9 @@
         { sep: true },
         // (With several selected, the Delete key deletes them all: its entry is the one that says so.)
         { label: '🗑 Delete space', danger: true, keys: all.length > 1 ? undefined : 'Delete', onclick: () => editDelete(game, session, s.id, hide) },
-        ...(all.length > 1 ? [{ label: `🗑 Delete ${all.length} spaces`, danger: true, keys: 'Delete', onclick: () => editDeleteAll(game, session, all, hide) }] : []),
+        ...(all.length > 1
+          ? [{ label: `🗑 Delete ${all.length} spaces`, danger: true, keys: 'Delete', onclick: () => editDeleteAll(game, session, all, hide) }]
+          : []),
       ]);
     }
     if (l) {

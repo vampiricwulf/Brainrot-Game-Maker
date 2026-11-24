@@ -2,10 +2,59 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { cardSlides, describer, dropFromSends, pairOnly, partnerPlayers, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, stealOn, takeBack } from './partner';
+import {
+  cardSlides,
+  describer,
+  dropFromSends,
+  pairOnly,
+  partnerPlayers,
+  partnerReason,
+  partnerRoles,
+  partnerRules,
+  partnerShares,
+  resetRecipients,
+  startPartner,
+  stealOn,
+  takeBack,
+} from './partner';
 import { dropOverCards, repairSentCards } from './sentcards';
 import { dealForViewers, repairDeal } from './deals';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalAnswer, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource, wagerFloor } from './model';
+import {
+  categoryLabel,
+  clueValue,
+  FINAL_V1_ROUND_ID,
+  finalName,
+  formatPoints,
+  getClue,
+  isBoard,
+  isBoardGame,
+  isFinal,
+  isRpg,
+  isSlides,
+  MAX_POINTS,
+  newId,
+  playableClues,
+  questionSlides,
+  type BoardRound,
+  type Clue,
+  type ClueRef,
+  type ExtraSlide,
+  type FinalAnswer,
+  type FinalRound,
+  type FinalState,
+  type Game,
+  type Id,
+  type PartnerState,
+  type Player,
+  type Round,
+  type ScoreEvent,
+  type Session,
+  type Slide,
+  type SlidesRound,
+  type TeamMember,
+  type WagerSource,
+  wagerFloor,
+} from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -121,10 +170,16 @@ function follow(session: Session, events: ScoreEvent[]): void {
       follow(session, [s]);
     }
   }
-  followSwitch(session, events.filter((e) => !e.undone));
+  followSwitch(
+    session,
+    events.filter((e) => !e.undone),
+  );
   followFinals(session, events);
   followPicker(session, events);
-  followSwitch(session, events.filter((e) => e.undone));
+  followSwitch(
+    session,
+    events.filter((e) => e.undone),
+  );
 }
 
 /**
@@ -345,10 +400,7 @@ export function restorePlayer(session: Session, playerId: string): void {
  * What one change in the in-game Players dialog did, for the undo history: "Renamed Player 1 to Alice", "Added Sam",
  * "Swapped Alice and Sam"… `before` and `after` are the players and the removed players around it.
  */
-export function rosterChange(
-  before: { players: Player[]; removed?: Player[] },
-  after: { players: Player[]; removed?: Player[] },
-): string {
+export function rosterChange(before: { players: Player[]; removed?: Player[] }, after: { players: Player[]; removed?: Player[] }): string {
   const was = new Map([...(before.removed ?? []), ...before.players].map((p) => [p.id, p]));
   const inBefore = new Set(before.players.map((p) => p.id));
   const inAfter = new Set(after.players.map((p) => p.id));
@@ -387,12 +439,15 @@ export function openClue(session: Session, ref: ClueRef, game?: Game): void {
  * partner clue's PARTNER UP!). Null for any other clue, off a clue, and on a partner clue whose miss let the others
  * steal it (partnerSteal): it's everyone else's to answer then, as on any clue.
  */
-export function ownPlayers(session: Pick<Session, 'phase' | 'dd' | 'partner'> & Partial<Pick<Session, 'scoreLog'>>): { kind: 'dd' | 'partner'; ids: Id[]; setup: boolean } | null {
+export function ownPlayers(
+  session: Pick<Session, 'phase' | 'dd' | 'partner'> & Partial<Pick<Session, 'scoreLog'>>,
+): { kind: 'dd' | 'partner'; ids: Id[]; setup: boolean } | null {
   if (session.phase !== 'clue') return null;
   const dd = session.dd;
   if (dd) return { kind: 'dd', ids: dd.playerId ? [dd.playerId] : [], setup: dd.stage === 'splash' };
   const p = session.partner;
-  if (p && !partnerSteal(session)) return { kind: 'partner', ids: [...new Set([p.pickerId, p.partnerId].filter((id): id is Id => !!id))], setup: p.stage === 'pick' };
+  if (p && !partnerSteal(session))
+    return { kind: 'partner', ids: [...new Set([p.pickerId, p.partnerId].filter((id): id is Id => !!id))], setup: p.stage === 'pick' };
   return null;
 }
 
@@ -464,7 +519,14 @@ export function slidePosition(session: Session, game: Game): { at: number; of: n
 export function stepSlide(session: Session, game: Game, d: 1 | -1): boolean {
   if (session.phase === 'slides') {
     // (A slides round: no answer, nothing in the way.)
-  } else if (session.phase === 'tiebreaker' ? session.tiebreakerRevealed : session.phase === 'final' ? session.finalStep !== 'question' : session.phase !== 'clue' || session.revealed || ownPlayers(session)?.setup) return false;
+  } else if (
+    session.phase === 'tiebreaker'
+      ? session.tiebreakerRevealed
+      : session.phase === 'final'
+        ? session.finalStep !== 'question'
+        : session.phase !== 'clue' || session.revealed || ownPlayers(session)?.setup
+  )
+    return false;
   const clue = slidesOnShow(session, game);
   if (!clue) return false;
   const to = clueSlideIndex(session, clue) + d;
@@ -567,7 +629,17 @@ export function clueMarks(session: Session, clueId: string, since = 0): Record<s
  * One step (`batchId`): an Undo puts the old mark back. Ann ✘ −$200, then ✔: +$200, not $0. Returns the new verdict's
  * events, or null when it's no switch (not marked on the clue, or marked the same way: ＋ Award gives more).
  */
-export function switchVerdict(session: Session, game: Game, playerId: string, clueId: string, since: number, right: boolean, amount: number, reason: string, batchId = newId()): ScoreEvent[] | null {
+export function switchVerdict(
+  session: Session,
+  game: Game,
+  playerId: string,
+  clueId: string,
+  since: number,
+  right: boolean,
+  amount: number,
+  reason: string,
+  batchId = newId(),
+): ScoreEvent[] | null {
   const mark = clueMarks(session, clueId, since)[playerId];
   if (!mark || mark.right === right) return null;
   const was = session.scoreLog.filter((e) => !e.undone && e.clueId === clueId && e.ts >= since && e.playerId === playerId);
@@ -615,7 +687,14 @@ export function judgePartner(session: Session, game: Game, got: boolean, value: 
     events.push(...(scored.length ? scored : logZero(session, [id], reason, s.clue, got, batchId)));
   }
   const guesser = roles.guesser;
-  if (got && events.length && guesser && game.settings.pickerFollowsAward !== false && session.currentPickerId !== guesser && session.players.some((p) => p.id === guesser)) {
+  if (
+    got &&
+    events.length &&
+    guesser &&
+    game.settings.pickerFollowsAward !== false &&
+    session.currentPickerId !== guesser &&
+    session.players.some((p) => p.id === guesser)
+  ) {
     events[0].picker = { was: session.currentPickerId, now: guesser };
     session.currentPickerId = guesser;
   }
@@ -859,12 +938,7 @@ export function ddShowQuestion(session: Session, playerId: string, wager: number
  * at most one per category. Empty tiles and wheel/dice tiles are never picked. Returns how many were placed.
  * `keepExisting` leaves the Daily Doubles already on the board alone and only adds the missing ones.
  */
-export function randomizeDailyDoubles(
-  round: BoardRound,
-  count: number,
-  rand = Math.random,
-  { keepExisting = false }: { keepExisting?: boolean } = {},
-): number {
+export function randomizeDailyDoubles(round: BoardRound, count: number, rand = Math.random, { keepExisting = false }: { keepExisting?: boolean } = {}): number {
   const usedCats = new Set<number>();
   let have = 0;
   round.categories.forEach((c, ci) =>
@@ -944,9 +1018,7 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
   }
   // Players the host ticked in or sat out stay that way; the others play if their score lets them (newcomers too).
   const chosen = prev?.chosen;
-  const eligible = session.players
-    .filter((p) => chosen?.[p.id] ?? (round.allowNonPositive || score(session, p.id) > 0))
-    .map((p) => p.id);
+  const eligible = session.players.filter((p) => chosen?.[p.id] ?? (round.allowNonPositive || score(session, p.id) > 0)).map((p) => p.id);
   // Reveal in TV order: lowest score first.
   const order = [...eligible].sort((a, b) => score(session, a) - score(session, b));
   const keep = <T>(r: Record<string, T> | undefined) => Object.fromEntries(Object.entries(r ?? {}).filter(([id]) => eligible.includes(id)));
@@ -1078,7 +1150,9 @@ export function forViewers<S extends Pick<Session, 'final' | 'finals' | 'dd' | '
     // count, nor who on a team sent them. An empty list still says the Final's answers are typed.
     const answers =
       typed &&
-      Object.fromEntries(Object.entries(typed).flatMap(([id, a]) => (f.answerShown?.[id] ? [[id, { text: a.text, ...(a.pick ? { pick: a.pick } : {}) } as FinalAnswer]] : [])));
+      Object.fromEntries(
+        Object.entries(typed).flatMap(([id, a]) => (f.answerShown?.[id] ? [[id, { text: a.text, ...(a.pick ? { pick: a.pick } : {}) } as FinalAnswer]] : [])),
+      );
     return { ...rest, wagers, ...(answers ? { answers } : {}) };
   };
   const out = { ...s };
@@ -1320,7 +1394,12 @@ export function finalAdjustWager(session: Session, game: Game, playerId: string,
 export function tiedLeaders(session: Session): Player[] {
   const tied = tiedForFirst(session);
   // Settled by the tiebreaker roll-off or clue (only the tie it was won in).
-  return tiebreakHolds(session, tied.map((p) => p.id)) ? [] : tied;
+  return tiebreakHolds(
+    session,
+    tied.map((p) => p.id),
+  )
+    ? []
+    : tied;
 }
 
 /**
@@ -1468,8 +1547,7 @@ function rebase(session: Session, from: Game, to: Game): void {
   };
   const found = ref?.round ?? roundAt(session.currentRound);
   session.currentRound = found ?? Math.min(session.currentRound, Math.max(0, to.rounds.length - 1));
-  if (session.introducedRounds)
-    session.introducedRounds = session.introducedRounds.map(roundAt).filter((i): i is number => i !== null);
+  if (session.introducedRounds) session.introducedRounds = session.introducedRounds.map(roundAt).filter((i): i is number => i !== null);
   if (session.phase === 'tiebreaker' && !to.tiebreaker) session.phase = 'end';
   session.gameId = to.id;
   refindPositions(session, to);
@@ -1488,7 +1566,16 @@ function rebase(session: Session, from: Game, to: Game): void {
     return;
   }
   const r = to.rounds[session.currentRound];
-  const fits = session.phase === 'final' ? isFinal(r) : session.phase === 'rpg' ? isRpg(r) : session.phase === 'boardgame' ? isBoardGame(r) : session.phase === 'slides' ? isSlides(r) : isBoard(r);
+  const fits =
+    session.phase === 'final'
+      ? isFinal(r)
+      : session.phase === 'rpg'
+        ? isRpg(r)
+        : session.phase === 'boardgame'
+          ? isBoardGame(r)
+          : session.phase === 'slides'
+            ? isSlides(r)
+            : isBoard(r);
   if (found !== null && fits) return;
   const seen = session.introducedRounds ?? [];
   if (!seen.includes(session.currentRound)) session.introducedRounds = [...seen, session.currentRound];
@@ -1547,7 +1634,10 @@ function repairPartnerState(session: Session): void {
   // Sends that aren't well-formed are dropped (never widened): a damaged save sends nothing it didn't send.
   if (p.sent !== undefined) {
     const sent = Array.isArray(p.sent)
-      ? p.sent.filter((x) => typeof x === 'object' && !!x && typeof x.card === 'string' && seats(x.to) && x.to.length > 0 && Number.isFinite(x.at) && typeof x.hash === 'string')
+      ? p.sent.filter(
+          (x) =>
+            typeof x === 'object' && !!x && typeof x.card === 'string' && seats(x.to) && x.to.length > 0 && Number.isFinite(x.at) && typeof x.hash === 'string',
+        )
       : [];
     if (sent.length) p.sent = sent;
     else delete p.sent;
@@ -1592,7 +1682,12 @@ export function standings(session: Session): { player: Player; score: number }[]
 function tieWinner(session: Session, ranked: { player: Player; score: number }[]): string | undefined {
   // (Who is level on top, from these scores: tiedForFirst ranks with this.)
   const top = Math.max(...ranked.map((r) => r.score));
-  return tiebreakHolds(session, ranked.filter((r) => r.score === top).map((r) => r.player.id)) ? session.rollOffWinner : undefined;
+  return tiebreakHolds(
+    session,
+    ranked.filter((r) => r.score === top).map((r) => r.player.id),
+  )
+    ? session.rollOffWinner
+    : undefined;
 }
 
 /** Standings with each player's place, equal scores sharing one ("1, 1, 3"). */

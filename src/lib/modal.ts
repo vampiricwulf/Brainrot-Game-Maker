@@ -61,8 +61,7 @@ const TABBABLE =
  */
 export function tabbables(box: HTMLElement): HTMLElement[] {
   return [...box.querySelectorAll<HTMLElement>(TABBABLE)].filter(
-    (el) =>
-      el.getAttribute('tabindex') !== '-1' && !el.closest('[inert]') && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0),
+    (el) => el.getAttribute('tabindex') !== '-1' && !el.closest('[inert]') && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0),
   );
 }
 
@@ -124,7 +123,7 @@ export function modal(node: HTMLElement, opts: ModalOptions = {}) {
     if (e.key === 'Enter' && options.enter && !e.repeat && !e.isComposing && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const t = e.target instanceof Element ? e.target : null;
       const own = t?.closest(OWN_ENTER);
-      if (t && (t === node || (node.contains(t) && !(own && node.contains(own)))) || t === document.body) {
+      if ((t && (t === node || (node.contains(t) && !(own && node.contains(own))))) || t === document.body) {
         e.preventDefault();
         e.stopImmediatePropagation();
         options.enter();

@@ -8,7 +8,22 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, leaveAnswer, failureShots, assert, launchChromium, section, boardIn, boardTilesIn, confirmStrip, hostPanelIn, roundNavIn, stageBoxIn, statusLineIn } from './helpers.mjs';
+import {
+  appFile,
+  openGameFile,
+  leaveAnswer,
+  failureShots,
+  assert,
+  launchChromium,
+  section,
+  boardIn,
+  boardTilesIn,
+  confirmStrip,
+  hostPanelIn,
+  roundNavIn,
+  stageBoxIn,
+  statusLineIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -17,23 +32,107 @@ const browser = await launchChromium();
 const errors = [];
 
 // A game with a board, an RPG round (the host panel beside the stage on a wide window) and a Final; eight players.
-const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (id, t) => ({
+  id,
+  kind: 'text',
+  text: t,
+  x: 160,
+  y: 340,
+  w: 1600,
+  h: 400,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  font: 'Arial',
+  size: 72,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#fff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t)] });
 let n = 0;
 const clue = (q, a) => ({ id: `c${++n}`, value: null, type: 'standard', questionSlide: slide(`q${n}`, q), answerSlide: slide(`a${n}`, a) });
 const cats = ['Memes', 'Lore', 'Blocks', 'Rizz', 'Speedruns'];
 const screens = [0, 1].map((c) => ({ id: `sc_${c}`, name: `Field ${c}`, col: c, row: 0, slide: { background: { color: '#553322' }, elements: [] } }));
 const game = {
-  id: 'g_popups', version: 2, title: 'Popup Night',
-  settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8, buzzer: true },
-  players: Array.from({ length: 8 }, (_, i) => ({ id: `p${i + 1}`, name: `Player ${i + 1}`, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i % 4], startScore: 0 })),
+  id: 'g_popups',
+  version: 2,
+  title: 'Popup Night',
+  settings: {
+    allowNegativeScores: true,
+    deductOnWrong: true,
+    defaultTimerSeconds: 15,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+    maxPlayers: 8,
+    buzzer: true,
+  },
+  players: Array.from({ length: 8 }, (_, i) => ({
+    id: `p${i + 1}`,
+    name: `Player ${i + 1}`,
+    color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i % 4],
+    startScore: 0,
+  })),
   rounds: [
-    { id: 'r_board', name: 'Jeopardy!', mode: 'board', values: [200, 400, 600, 800, 1000], dailyDoubleCount: 0, categories: cats.map((c, ci) => ({ id: `cat${ci}`, title: c, clues: [0, 1, 2, 3, 4].map((ri) => clue(`${c} ${ri}`, `Answer ${ci}.${ri}`)) })) },
+    {
+      id: 'r_board',
+      name: 'Jeopardy!',
+      mode: 'board',
+      values: [200, 400, 600, 800, 1000],
+      dailyDoubleCount: 0,
+      categories: cats.map((c, ci) => ({ id: `cat${ci}`, title: c, clues: [0, 1, 2, 3, 4].map((ri) => clue(`${c} ${ri}`, `Answer ${ci}.${ri}`)) })),
+    },
     { id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' },
-    { id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'History', questionSlide: slide('fq', 'The first video'), answerSlide: slide('fa', 'Me at the zoo'), timerSeconds: 30, allowNonPositive: true },
+    {
+      id: 'r_final',
+      name: 'Final Jeopardy!',
+      mode: 'final',
+      category: 'History',
+      questionSlide: slide('fq', 'The first video'),
+      answerSlide: slide('fa', 'Me at the zoo'),
+      timerSeconds: 30,
+      allowNonPositive: true,
+    },
   ],
-  media: [], audio: {}, theme: {}, wheels: [], dice: [], statFields: [], items: [],
-  worlds: [{ id: 'w1', name: 'World', maps: [{ id: 'm1', name: 'Overworld', cols: 2, rows: 1, screens, visibility: 'discovered', showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut' }] }],
+  media: [],
+  audio: {},
+  theme: {},
+  wheels: [],
+  dice: [],
+  statFields: [],
+  items: [],
+  worlds: [
+    {
+      id: 'w1',
+      name: 'World',
+      maps: [
+        {
+          id: 'm1',
+          name: 'Overworld',
+          cols: 2,
+          rows: 1,
+          screens,
+          visibility: 'discovered',
+          showExits: true,
+          revealNeighbors: true,
+          diagonals: true,
+          wrap: false,
+          transition: 'cut',
+        },
+      ],
+    },
+  ],
 };
 mkdirSync(resolve('test-results'), { recursive: true });
 const gameFile = resolve('test-results/popups.json');
@@ -83,9 +182,17 @@ const where = (loc) =>
       return h && (el.contains(h) ? true : `${h.tagName.toLowerCase()}.${String(h.className).split(' ')[0]}`);
     };
     return {
-      x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height), right: b.right, bottom: b.bottom,
-      vw: document.documentElement.clientWidth, vh: document.documentElement.clientHeight,
-      middle: top(b.left + b.width / 2, b.top + b.height / 2), first: top(b.left + 6, b.top + 6), last: top(b.right - 6, b.bottom - 6),
+      x: Math.round(b.left),
+      y: Math.round(b.top),
+      w: Math.round(b.width),
+      h: Math.round(b.height),
+      right: b.right,
+      bottom: b.bottom,
+      vw: document.documentElement.clientWidth,
+      vh: document.documentElement.clientHeight,
+      middle: top(b.left + b.width / 2, b.top + b.height / 2),
+      first: top(b.left + 6, b.top + 6),
+      last: top(b.right - 6, b.bottom - 6),
     };
   });
 let shotN = 0;
@@ -95,8 +202,14 @@ async function wholeAndOnTop(page, loc, what) {
   await page.waitForTimeout(120);
   const r = await where(loc);
   if (shots) await page.screenshot({ path: `${shots}/popups-${String(++shotN).padStart(2, '0')}.png` });
-  assert(r.x >= 0 && r.y >= 0 && r.right <= r.vw + 0.5 && r.bottom <= r.vh + 0.5 && r.w > 20 && r.h > 16, `${what}: whole in the ${r.vw}×${r.vh} window (${r.w}×${r.h} at ${r.x},${r.y})`);
-  assert(r.middle === true && r.first === true && r.last === true, `${what}: on top (its middle and corners are it${r.middle === true && r.first === true && r.last === true ? '' : `, not ${[r.middle, r.first, r.last].join(' / ')}`})`);
+  assert(
+    r.x >= 0 && r.y >= 0 && r.right <= r.vw + 0.5 && r.bottom <= r.vh + 0.5 && r.w > 20 && r.h > 16,
+    `${what}: whole in the ${r.vw}×${r.vh} window (${r.w}×${r.h} at ${r.x},${r.y})`,
+  );
+  assert(
+    r.middle === true && r.first === true && r.last === true,
+    `${what}: on top (its middle and corners are it${r.middle === true && r.first === true && r.last === true ? '' : `, not ${[r.middle, r.first, r.last].join(' / ')}`})`,
+  );
   return r;
 }
 
@@ -123,7 +236,14 @@ async function playWithPhones(page, dual) {
   await card.getByLabel('Room code BCDF').waitFor();
   if (dual) await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   await page.evaluate(() =>
-    window.__say({ t: 'phones', phones: [{ conn: 'c1', seatId: 'p1', connected: true }, { conn: 'c2', seatId: 'p2', connected: true }, { conn: 'c9', seatId: null, pendingName: 'Zed', connected: true }] }),
+    window.__say({
+      t: 'phones',
+      phones: [
+        { conn: 'c1', seatId: 'p1', connected: true },
+        { conn: 'c2', seatId: 'p2', connected: true },
+        { conn: 'c9', seatId: null, pendingName: 'Zed', connected: true },
+      ],
+    }),
   );
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await hostPanelIn(page).waitFor();
@@ -155,7 +275,9 @@ const closePhones = async (page) => {
 /** The open 🎲 Dice menu's Roll is as tall as the "e.g. 3d37" box beside it. */
 async function rollAsTall(page, what) {
   const menu = page.getByRole('dialog', { name: 'Dice' });
-  const [field, roll] = await Promise.all([menu.getByPlaceholder('e.g. 3d37'), menu.getByRole('button', { name: 'Roll', exact: true })].map(async (l) => Math.round((await l.boundingBox()).height)));
+  const [field, roll] = await Promise.all(
+    [menu.getByPlaceholder('e.g. 3d37'), menu.getByRole('button', { name: 'Roll', exact: true })].map(async (l) => Math.round((await l.boundingBox()).height)),
+  );
   assert(field === roll, `${what}: the 🎲 Dice menu's Roll button is as tall as the field beside it (${roll} / ${field}px)`);
 }
 
@@ -183,7 +305,9 @@ try {
       await checkPhones(page, `board, ${how}`, dual);
       await closePhones(page);
       // A clue open: the panel's rows change, the list still fits.
-      await boardTilesIn(boardIn(stageBoxIn(page))).first().click();
+      await boardTilesIn(boardIn(stageBoxIn(page)))
+        .first()
+        .click();
       await page.waitForTimeout(300);
       await checkPhones(page, `a clue, ${how}`, dual);
       await closePhones(page);
@@ -258,10 +382,16 @@ try {
     // (A click elsewhere closes it.)
     await page.locator('.se .backdrop').click({ position: { x: 4, y: 4 } });
     await page.getByRole('group', { name: 'Background' }).waitFor({ state: 'detached' });
-    await clueBox.getByRole('button', { name: /◼ Shape/ }).first().click();
+    await clueBox
+      .getByRole('button', { name: /◼ Shape/ })
+      .first()
+      .click();
     await wholeAndOnTop(page, page.locator('.se .menu'), '◼ Shape ▾');
     await page.keyboard.press('Escape');
-    await clueBox.getByRole('button', { name: /🌐 Link/ }).first().click();
+    await clueBox
+      .getByRole('button', { name: /🌐 Link/ })
+      .first()
+      .click();
     await wholeAndOnTop(page, page.getByRole('dialog', { name: 'Add from a link' }), '🌐 Link');
     await page.getByRole('dialog', { name: 'Add from a link' }).getByRole('button', { name: 'Close' }).click();
     await clueBox.getByRole('button', { name: '🖼 Image' }).first().click();

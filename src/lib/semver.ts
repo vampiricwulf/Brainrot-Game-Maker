@@ -138,5 +138,13 @@ export function releaseNotes(entries: readonly ChangeEntry[]): string {
   const order = ['Added', 'Changed', 'Fixed', 'Removed'];
   const rank = (s: string) => (order.includes(s) ? order.indexOf(s) : order.length);
   const sections = [...new Set(entries.map((e) => e.section))].sort((a, b) => rank(a) - rank(b));
-  return sections.map((s) => `### ${s}\n${entries.filter((e) => e.section === s).map((e) => e.text).join('\n')}`).join('\n\n');
+  return sections
+    .map(
+      (s) =>
+        `### ${s}\n${entries
+          .filter((e) => e.section === s)
+          .map((e) => e.text)
+          .join('\n')}`,
+    )
+    .join('\n\n');
 }

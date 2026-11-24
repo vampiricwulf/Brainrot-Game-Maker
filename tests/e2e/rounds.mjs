@@ -3,7 +3,33 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, openGameFile, playWithPlayers, leaveAnswer, confirmStrip, revealAnyway, failureShots, assert, launchChromium, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn, inspectorIn } from './helpers.mjs';
+import {
+  appFile,
+  anyway,
+  checkItem,
+  goOnCheck,
+  macClicks,
+  mainButton,
+  noDailyDoubles,
+  openGameFile,
+  playWithPlayers,
+  leaveAnswer,
+  confirmStrip,
+  revealAnyway,
+  failureShots,
+  assert,
+  launchChromium,
+  boardIn,
+  boardTilesIn,
+  finalControlsIn,
+  hostPanelIn,
+  playerRowsIn,
+  roundTabsIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+  inspectorIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -27,9 +53,13 @@ try {
   // aria-disabled to go, hence force.)
   const playBtn = page.getByRole('button', { name: '▶ Play' });
   const playersBtn = page.locator('nav [data-nav="players"]');
-  const quiet = async (b) => (await b.getAttribute('aria-disabled')) === 'true' && (await b.isEnabled()) === false && (await b.evaluate((e) => +getComputedStyle(e).opacity)) < 1;
+  const quiet = async (b) =>
+    (await b.getAttribute('aria-disabled')) === 'true' && (await b.isEnabled()) === false && (await b.evaluate((e) => +getComputedStyle(e).opacity)) < 1;
   assert((await quiet(playBtn)) && (await quiet(playersBtn)), 'with no rounds ▶ Play and 👥 Players & rules ▶ look quiet (aria-disabled, dimmed)');
-  assert((await playBtn.getAttribute('title')).startsWith('Add a round first') && (await playersBtn.getAttribute('title')).startsWith('Add a round first'), 'their tooltips say to add a round first');
+  assert(
+    (await playBtn.getAttribute('title')).startsWith('Add a round first') && (await playersBtn.getAttribute('title')).startsWith('Add a round first'),
+    'their tooltips say to add a round first',
+  );
   await playBtn.click({ force: true });
   await toastsIn(page, { hasText: 'Add a round first' }).waitFor();
   await page.waitForFunction(() => !!document.activeElement?.matches('.first-round .sample'));
@@ -40,8 +70,14 @@ try {
   await page.waitForFunction(() => !!document.activeElement?.matches('.first-round .sample'));
   assert(true, '👥 Players & rules ▶ (from the keys) says so too, the keys on ✨ Try a sample game');
   assert((await page.locator('.first-round .mode').count()) === 5, 'every mode can be the first round');
-  await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
-  assert((await playBtn.getAttribute('aria-disabled')) === null && (await playersBtn.getAttribute('aria-disabled')) === null, 'with a round they are plain buttons again');
+  await page
+    .locator('.first-round')
+    .getByRole('button', { name: /Jeopardy board/ })
+    .click();
+  assert(
+    (await playBtn.getAttribute('aria-disabled')) === null && (await playersBtn.getAttribute('aria-disabled')) === null,
+    'with a round they are plain buttons again',
+  );
   // (Its first tile is played below as a plain clue: no Daily Double may land on it at random when the game starts.)
   await noDailyDoubles(page);
   await page.getByRole('button', { name: '＋ Add round' }).click();
@@ -64,17 +100,26 @@ try {
   // Answers on paper for this one: a step named so (↶ Undo says it), and Ctrl+Z ticks it again.
   const typed = page.getByLabel('✍ Players type their answers on their phones');
   const finalMust = page.getByLabel('🚫 No Pass (everyone must play)');
-  assert((await finalMust.isChecked()) && (await finalMust.isDisabled()), 'the Final shows 🚫 No Pass (everyone must play) ticked and fixed (everyone in it plays)');
+  assert(
+    (await finalMust.isChecked()) && (await finalMust.isDisabled()),
+    'the Final shows 🚫 No Pass (everyone must play) ticked and fixed (everyone in it plays)',
+  );
   // (BOARD-9: with no choices, nothing of them shows unticked; with some, they stay in sight, dimmed and out of reach.)
   await typed.uncheck();
-  assert((await page.locator('[data-choices-off]').count()) === 0 && (await page.getByRole('button', { name: '＋ Multiple choice' }).count()) === 0, 'unticked with no choices: no ＋ Multiple choice, nothing dimmed');
+  assert(
+    (await page.locator('[data-choices-off]').count()) === 0 && (await page.getByRole('button', { name: '＋ Multiple choice' }).count()) === 0,
+    'unticked with no choices: no ＋ Multiple choice, nothing dimmed',
+  );
   await page.keyboard.press('Control+z');
   await page.waitForFunction(() => document.querySelector('input[data-final-typed]')?.checked === true);
   await page.getByRole('button', { name: '＋ Multiple choice' }).click();
   await page.getByRole('textbox', { name: 'Choice A', exact: true }).fill('Crisps');
   await typed.uncheck();
   const undoTitle = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
-  assert(undoTitle === 'Undo: Midgame Wager: players answer out loud or on paper (Ctrl+Z)', `unticking “✍ Players type their answers on their phones” is a step with its own name (${undoTitle})`);
+  assert(
+    undoTitle === 'Undo: Midgame Wager: players answer out loud or on paper (Ctrl+Z)',
+    `unticking “✍ Players type their answers on their phones” is a step with its own name (${undoTitle})`,
+  );
   const off = page.locator('[data-choices-off]');
   const offState = await off.evaluate((el) => ({
     note: el.querySelector('.hint')?.textContent?.trim(),
@@ -83,19 +128,28 @@ try {
     a: el.querySelector('[data-field="choice-0"]')?.value,
   }));
   assert(
-    offState.note === 'Off while players don’t type their answers: tick ✍ above to use these choices (they’re kept).' && offState.inert && offState.dim < 1 && offState.a === 'Crisps',
+    offState.note === 'Off while players don’t type their answers: tick ✍ above to use these choices (they’re kept).' &&
+      offState.inert &&
+      offState.dim < 1 &&
+      offState.a === 'Crisps',
     `unticked, the choices stay in sight, dimmed and out of reach, with a line that says why (${JSON.stringify(offState)})`,
   );
   await page.keyboard.press('Control+z');
   await page.waitForFunction(() => document.querySelector('input[data-final-typed]')?.checked === true);
-  assert((await off.count()) === 0 && (await page.getByRole('textbox', { name: 'Choice A', exact: true }).inputValue()) === 'Crisps', 'Ctrl+Z: it is ticked again, its choices back in reach');
+  assert(
+    (await off.count()) === 0 && (await page.getByRole('textbox', { name: 'Choice A', exact: true }).inputValue()) === 'Crisps',
+    'Ctrl+Z: it is ticked again, its choices back in reach',
+  );
   await page.getByRole('button', { name: 'Take the choices off' }).click();
   // BOARD-8: with the answer written (one short line), ＋ Multiple choice starts A as the answer, marked ✔ Right, the
   // keys in B, and a note that says so; ↶ Undo takes the choices off again.
   await page.locator('[data-field="a"]').fill('Crisps');
   await page.getByRole('button', { name: '＋ Multiple choice' }).click();
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choice B');
-  await page.locator('.history-notice', { hasText: 'Added multiple choice to Midgame Wager: A is the answer, marked right' }).or(toastsIn(page, { hasText: 'Added multiple choice to Midgame Wager: A is the answer, marked right' })).waitFor();
+  await page
+    .locator('.history-notice', { hasText: 'Added multiple choice to Midgame Wager: A is the answer, marked right' })
+    .or(toastsIn(page, { hasText: 'Added multiple choice to Midgame Wager: A is the answer, marked right' }))
+    .waitFor();
   const firstRow = page.locator('[data-choice-row]').first();
   assert(
     (await page.getByRole('textbox', { name: 'Choice A', exact: true }).inputValue()) === 'Crisps' &&
@@ -110,13 +164,22 @@ try {
   await page.getByLabel('Category').fill('Snacks');
   await page.getByRole('button', { name: '▲ Move round up' }).click();
   await page.getByRole('button', { name: '▲ Move round up' }).click();
-  assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!', 'rounds can be moved (a Final in the middle of the game)');
-  assert((await page.locator('.ra .mode-chip').innerText()).includes('Final Jeopardy') && (await page.locator('.ra').innerText()).includes('Round 2 of 4'), 'the round bar shows the mode and position');
+  assert(
+    (await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!',
+    'rounds can be moved (a Final in the middle of the game)',
+  );
+  assert(
+    (await page.locator('.ra .mode-chip').innerText()).includes('Final Jeopardy') && (await page.locator('.ra').innerText()).includes('Round 2 of 4'),
+    'the round bar shows the mode and position',
+  );
   await page.locator('.se .canvas .hit').first().click();
   await inspectorIn(page.locator('.se')).locator('textarea').fill('Best chip flavor?');
   // Duplicate and delete.
   await page.getByRole('button', { name: '⧉ Duplicate round' }).click();
-  assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Midgame Wager (copy)|Double Jeopardy!|Final Jeopardy!', 'Duplicate puts a copy right after the round');
+  assert(
+    (await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Midgame Wager (copy)|Double Jeopardy!|Final Jeopardy!',
+    'Duplicate puts a copy right after the round',
+  );
   await page.getByRole('button', { name: 'Delete round' }).click();
   assert((await roundNames()).length === 4, 'Delete round removes it (after asking)');
   // Undoing a duplicate shows the original again, and its tab keeps the focus (the copy's tab is gone).
@@ -125,10 +188,16 @@ try {
   const tabFocused = (name) => roundTab(name).evaluate((e) => e === document.activeElement);
   await roundTab('Midgame Wager').click();
   await page.keyboard.press('Control+d');
-  assert((await activeTab()).endsWith('Midgame Wager (copy)') && (await tabFocused('Midgame Wager \\(copy\\)')), 'Ctrl+D on a round’s tab shows the copy, its tab in focus');
+  assert(
+    (await activeTab()).endsWith('Midgame Wager (copy)') && (await tabFocused('Midgame Wager \\(copy\\)')),
+    'Ctrl+D on a round’s tab shows the copy, its tab in focus',
+  );
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(100);
-  assert((await roundNames()).length === 4 && (await activeTab()).endsWith('Midgame Wager') && (await tabFocused('Midgame Wager')), 'undoing it shows the original, its tab in focus');
+  assert(
+    (await roundNames()).length === 4 && (await activeTab()).endsWith('Midgame Wager') && (await tabFocused('Midgame Wager')),
+    'undoing it shows the original, its tab in focus',
+  );
   await page.keyboard.press('Control+y');
   await page.waitForTimeout(100);
   assert((await activeTab()).endsWith('Midgame Wager (copy)'), 'redoing it shows the copy again');
@@ -136,9 +205,15 @@ try {
   // The tabs are a vertical list: their menu moves a round up or down.
   await roundTab('Midgame Wager').click({ button: 'right' });
   const tabMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
-  assert(['▲ Move up', '▼ Move down'].every((x) => tabMenu.some((t) => t.startsWith(x))), `a round tab’s menu says ▲ Move up / ▼ Move down (${tabMenu.join(', ')})`);
+  assert(
+    ['▲ Move up', '▼ Move down'].every((x) => tabMenu.some((t) => t.startsWith(x))),
+    `a round tab’s menu says ▲ Move up / ▼ Move down (${tabMenu.join(', ')})`,
+  );
   const order = ['▶ Test this round', '✎ Rename', '⧉ Duplicate', '📋 Copy round', '📋 Paste round', '▲ Move up', '▼ Move down', '🗑 Delete round'];
-  assert(tabMenu.length === order.length && order.every((x, n) => tabMenu[n].startsWith(x)), `in one order: test, rename, duplicate, copy, paste, move, delete (${tabMenu.join(', ')})`);
+  assert(
+    tabMenu.length === order.length && order.every((x, n) => tabMenu[n].startsWith(x)),
+    `in one order: test, rename, duplicate, copy, paste, move, delete (${tabMenu.join(', ')})`,
+  );
   await page.keyboard.press('Escape');
   // The round's page header has the same menu: its ⋯ at the end, and a right-click on the bar.
   await roundTab('Midgame Wager').click();
@@ -154,8 +229,15 @@ try {
   await page.keyboard.press('Control+c');
   await toastsIn(page, { hasText: 'Copied “Midgame Wager”' }).waitFor();
   await page.keyboard.press('Control+v');
-  await page.waitForFunction(() => document.activeElement?.matches('nav button.round-tab') && /Midgame Wager \(copy/.test(document.activeElement.textContent ?? ''), null, { timeout: 3000 });
-  assert((await roundNames()).length === 5 && (await roundNames())[2].startsWith('Midgame Wager (copy'), `Ctrl+C / Ctrl+V on a round's tab copy it and paste it after it, the keys on its tab (${(await roundNames()).join(', ')})`);
+  await page.waitForFunction(
+    () => document.activeElement?.matches('nav button.round-tab') && /Midgame Wager \(copy/.test(document.activeElement.textContent ?? ''),
+    null,
+    { timeout: 3000 },
+  );
+  assert(
+    (await roundNames()).length === 5 && (await roundNames())[2].startsWith('Midgame Wager (copy'),
+    `Ctrl+C / Ctrl+V on a round's tab copy it and paste it after it, the keys on its tab (${(await roundNames()).join(', ')})`,
+  );
   await page.keyboard.press('Control+z');
   await page.waitForFunction(() => document.querySelectorAll('nav > button.round-tab').length === 4, null, { timeout: 3000 });
   // Renamed on its tab, then its Round name box clicked: Backspace types there, and deletes no round.
@@ -165,18 +247,25 @@ try {
   await page.keyboard.press('End');
   await page.keyboard.press('Backspace');
   await page.waitForFunction(() => document.activeElement?.matches('.grid input[data-round-name]') && document.activeElement.value === 'Midgame Wager');
-  assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!', 'renamed on its tab, then its Round name box clicked: Backspace types there, and deletes no round');
+  assert(
+    (await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!',
+    'renamed on its tab, then its Round name box clicked: Backspace types there, and deletes no round',
+  );
   // Renamed, then a click on nothing: the keys go back to the tab renamed (not the first round's).
   await roundTab('Midgame Wager').dblclick();
   await page.locator('nav .navlabel', { hasText: 'Rounds' }).click();
-  await page.waitForFunction(() => document.activeElement?.matches('nav > button.round-tab') && document.activeElement.textContent.trim().endsWith('Midgame Wager'));
+  await page.waitForFunction(
+    () => document.activeElement?.matches('nav > button.round-tab') && document.activeElement.textContent.trim().endsWith('Midgame Wager'),
+  );
   assert(true, 'renamed, then a click on nothing: its tab has the keys again');
   // Renamed, then another tab clicked where a button clicked doesn't take the focus (Safari, a Mac): that tab has the keys.
   const chromiumClicks = await macClicks(page);
   await roundTab('Midgame Wager').dblclick();
   await page.locator('nav input.tab-name').fill('Midgame Wager');
   await roundTabsIn(page).first().click();
-  await page.waitForFunction(() => document.activeElement === document.querySelector('nav > button.round-tab') && document.activeElement.getAttribute('aria-current') === 'page');
+  await page.waitForFunction(
+    () => document.activeElement === document.querySelector('nav > button.round-tab') && document.activeElement.getAttribute('aria-current') === 'page',
+  );
   assert(true, 'renamed, then another tab clicked, with a Mac’s clicks: that round shows, and its tab has the keys (not the one renamed)');
   await chromiumClicks();
 
@@ -186,7 +275,10 @@ try {
   await page.getByRole('button', { name: 'Skip intro' }).click();
   // The board is up: the keys go on from its first open tile (arrows + Enter), and the status line says so.
   await page.waitForFunction(() => document.activeElement?.matches('.stage-box .board .tile:not(.used)'));
-  assert((await statusLineIn(page).innerText()).includes('Pick a tile on the board. (arrows + Enter)'), 'the board comes up with its first open tile in focus: “Pick a tile on the board. (arrows + Enter)”');
+  assert(
+    (await statusLineIn(page).innerText()).includes('Pick a tile on the board. (arrows + Enter)'),
+    'the board comes up with its first open tile in focus: “Pick a tile on the board. (arrows + Enter)”',
+  );
   // N on a clue does what the main button shows: 👁 Reveal answer, then ▦ Done ▶ board.
   // (The board takes its keys once it has settled.)
   await page.waitForTimeout(200);
@@ -194,7 +286,10 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('👁 Reveal answer'));
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));
-  assert((await hostPanelIn(page).locator('[data-next]').innerText()).startsWith('▦ Done ▶ board'), 'N on a clue reveals the answer (the main button), then the main button is ▦ Done ▶ board');
+  assert(
+    (await hostPanelIn(page).locator('[data-next]').innerText()).startsWith('▦ Done ▶ board'),
+    'N on a clue reveals the answer (the main button), then the main button is ▦ Done ▶ board',
+  );
   await page.keyboard.press('n');
   await boardIn(stageBoxIn(page)).waitFor();
   assert(true, 'and N again goes back to the board');
@@ -211,7 +306,10 @@ try {
   await page.getByRole('button', { name: 'Start the round ▶' }).click();
   await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
   await finalControlsIn(page).waitFor();
-  assert((await stageBoxIn(page).locator('.full').innerText()).toUpperCase().includes('MIDGAME WAGER'), 'the next round is the Final in the middle of the game');
+  assert(
+    (await stageBoxIn(page).locator('.full').innerText()).toUpperCase().includes('MIDGAME WAGER'),
+    'the next round is the Final in the middle of the game',
+  );
   await page.getByRole('button', { name: /◀ Previous round \(Jeopardy!\)/ }).waitFor();
   assert(true, 'its Back button goes to the round before it');
   // Through the Final: wagers, question, answer, then judge the one player who can play.
@@ -235,7 +333,10 @@ try {
   await boardIn(page).or(page.locator('.round-name')).first().waitFor({ timeout: 10000 });
   assert(true, 'after the mid-game Final, play continues with the next board round');
   // The round picker jumps anywhere (rounds can be played out of order).
-  await page.getByRole('button', { name: 'Skip intro' }).click().catch(() => {});
+  await page
+    .getByRole('button', { name: 'Skip intro' })
+    .click()
+    .catch(() => {});
   const picker = page.getByRole('combobox', { name: 'Go to round' });
   // With clues left on this board it asks first, like Next round; Keep playing puts the list back on this round.
   await picker.selectOption({ label: 'Final Jeopardy! 🏆' });
@@ -266,7 +367,10 @@ try {
   assert((await stageBoxIn(page).locator('.full').innerText()).toUpperCase().includes('FINAL JEOPARDY!'), 'the round picker jumps straight to any round');
   // No "Lock category, take wagers" step: the category is up and the wager screen with it, who plays on the same screen.
   assert((await page.getByRole('button', { name: /Lock category|take wagers/ }).count()) === 0, 'the Final opens straight on its wager screen (no lock step)');
-  assert((await statusLineIn(page).innerText()).includes('Category on screen · taking wagers'), 'the status line says the category is up and wagers are being taken');
+  assert(
+    (await statusLineIn(page).innerText()).includes('Category on screen · taking wagers'),
+    'the status line says the category is up and wagers are being taken',
+  );
   // This Final lets players with $0 play: they can wager up to $2,000 (their score, or $2,000 if they have less), so
   // nothing is filled in for them and Show question waits on them too.
   const wagerBoxes = finalControlsIn(page).locator('.wagers input[data-wager]');
@@ -282,15 +386,20 @@ try {
   );
   const tips = await Promise.all([0, 1].map((i) => wagerBoxes.nth(i).getAttribute('title')));
   assert(
-    tips.every((t) => t === 'Max $2,000 (their score, or $2,000 if they have less)') && (await finalControlsIn(page).locator('[data-wager-rule]').innerText()) === '(max: their score, or $2,000)',
+    tips.every((t) => t === 'Max $2,000 (their score, or $2,000 if they have less)') &&
+      (await finalControlsIn(page).locator('[data-wager-rule]').innerText()) === '(max: their score, or $2,000)',
     `both can wager up to $2,000 (one has less, one is at $0): their boxes say so, and the line by Ignore the limits says the rule (${tips.join(' | ')})`,
   );
   // Show question ▶ is never greyed: pressed with a wager missing, the keys go to its box and the status line says whose.
   assert((await showQuestion.isEnabled()) && (await waiting.count()) === 1, 'Show question waits for the wagers, never greyed');
   await showQuestion.click();
-  await statusLineIn(page).locator('[data-click-note]', { hasText: /Waiting on .+: type their wagers, or untick them to sit out/ }).waitFor();
+  await statusLineIn(page)
+    .locator('[data-click-note]', { hasText: /Waiting on .+: type their wagers, or untick them to sit out/ })
+    .waitFor();
   assert(
-    (await wagerBoxes.first().evaluate((b) => b === document.activeElement)) && (await statusLineIn(page).innerText()).includes('taking wagers') && (await goOnCheck(page).count()) === 0,
+    (await wagerBoxes.first().evaluate((b) => b === document.activeElement)) &&
+      (await statusLineIn(page).innerText()).includes('taking wagers') &&
+      (await goOnCheck(page).count()) === 0,
     'pressed with a wager missing: the keys go to its box, no check, the question not up',
   );
   await wagerBoxes.first().fill('100');
@@ -300,13 +409,19 @@ try {
   await wagerBoxes.nth(1).fill('2001');
   assert((await waiting.count()) === 1 && (await waiting.innerText()).startsWith('Over the max'), 'over $2,000 is over their max with the limits on');
   await limits.check();
-  assert((await waiting.count()) === 0 && (await finalControlsIn(page).locator('[data-wager-rule]').innerText()) === '(any wager goes)', 'ticking Ignore the limits lets it go (“any wager goes”)');
+  assert(
+    (await waiting.count()) === 0 && (await finalControlsIn(page).locator('[data-wager-rule]').innerText()) === '(any wager goes)',
+    'ticking Ignore the limits lets it go (“any wager goes”)',
+  );
   await limits.uncheck();
   await wagerBoxes.nth(1).fill('50');
   assert((await waiting.count()) === 0, 'and back within the max, it goes with the limits on');
   // Ticking a player out on the wager screen drops their box (they sit out); ticked back in, their wager is still there.
   await plays.nth(1).uncheck();
-  assert((await wagerBoxes.count()) === 1 && (await finalControlsIn(page).locator('.wagers .wrow.out').innerText()).includes('sits out'), 'a player ticked out sits out: no wager box');
+  assert(
+    (await wagerBoxes.count()) === 1 && (await finalControlsIn(page).locator('.wagers .wrow.out').innerText()).includes('sits out'),
+    'a player ticked out sits out: no wager box',
+  );
   assert((await waiting.count()) === 0, 'and Show question doesn’t wait on them');
   await plays.nth(1).check();
   assert((await wagerBoxes.nth(1).inputValue()) === '50', 'ticked back in, their wager is kept');
@@ -334,12 +449,19 @@ try {
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player'));
   assert(
-    !/[✔✘]/.test(await revealMain()) && (await finalControlsIn(page).locator('.pl.cur').getByRole('button', { name: `✔ Right: ${first}` }).isEnabled()),
+    !/[✔✘]/.test(await revealMain()) &&
+      (await finalControlsIn(page)
+        .locator('.pl.cur')
+        .getByRole('button', { name: `✔ Right: ${first}` })
+        .isEnabled()),
     `after Show wager the blue button is Next player ▶, the verdict ✔ Right (C) / ✘ Wrong (X) in ${first}'s row (${await revealMain()})`,
   );
   await page.keyboard.press('n');
   await checkItem(page, 'verdict').waitFor();
-  assert((await spot()) === first && (await anyway(page).count()) === 0, 'N doesn’t go on past a player whose wager is up until they’re judged: it asks for the verdict (no “anyway”)');
+  assert(
+    (await spot()) === first && (await anyway(page).count()) === 0,
+    'N doesn’t go on past a player whose wager is up until they’re judged: it asks for the verdict (no “anyway”)',
+  );
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('c');
   await goOnCheck(page).waitFor({ state: 'detached' });
@@ -355,23 +477,42 @@ try {
   await row.getByRole('button', { name: `Nullify wager: ${first}` }).click();
   const [w2, s2] = [await wagerOf(), await pts()];
   assert(
-    w1 === Math.floor(w0 / 2) && s1 === s0 - (w0 - w1) && w2 === 0 && s2 === s0 - w0 && (await row.getByRole('button', { name: `Halve wager: ${first}` }).count()) === 0,
+    w1 === Math.floor(w0 / 2) &&
+      s1 === s0 - (w0 - w1) &&
+      w2 === 0 &&
+      s2 === s0 - w0 &&
+      (await row.getByRole('button', { name: `Halve wager: ${first}` }).count()) === 0,
     `½ Halve and 0 Nullify change a judged player's wager and points (${w0}/${s0} → ${w1}/${s1} → ${w2}/${s2})`,
   );
   // Two Ctrl+Z put back their wager and their points.
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
-  await page.waitForFunction(([p, n]) => [...document.querySelectorAll('.stage-box .plate')].find((x) => x.textContent.includes(p))?.querySelector('.score')?.textContent.replace(/[^\d-]/g, '') === String(n), [first, s0]);
+  await page.waitForFunction(
+    ([p, n]) =>
+      [...document.querySelectorAll('.stage-box .plate')]
+        .find((x) => x.textContent.includes(p))
+        ?.querySelector('.score')
+        ?.textContent.replace(/[^\d-]/g, '') === String(n),
+    [first, s0],
+  );
   await page.keyboard.press('n');
   await page.waitForFunction((f) => document.querySelector('.fj .pl.cur .name')?.textContent !== f, first);
-  assert((await finalControlsIn(page).locator('[data-finish-early]').count()) === 1, 'the next one’s wager not up yet: the quiet Finish now… for finishing early is there');
+  assert(
+    (await finalControlsIn(page).locator('[data-finish-early]').count()) === 1,
+    'the next one’s wager not up yet: the quiet Finish now… for finishing early is there',
+  );
   await page.keyboard.press('n');
   // (The last verdict due: the blue button is Finish game ▶ itself, so the quiet one for finishing early is gone.)
-  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game') && !document.querySelector('.fj [data-finish-early]'));
+  await page.waitForFunction(
+    () => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game') && !document.querySelector('.fj [data-finish-early]'),
+  );
   assert(true, 'the last verdict due: the blue button is Finish game ▶, and the quiet Finish now… is gone (one way to finish)');
   await page.keyboard.press('x');
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game'));
-  assert((await finalControlsIn(page).innerText()).includes('still to judge') === false, 'with both judged, nobody is left to judge and the main button is Finish game');
+  assert(
+    (await finalControlsIn(page).innerText()).includes('still to judge') === false,
+    'with both judged, nobody is left to judge and the main button is Finish game',
+  );
   await page.keyboard.press('n');
   await page.keyboard.press('n');
   await statusLineIn(page, { hasText: 'Game over' }).waitFor();
@@ -384,31 +525,82 @@ try {
   p2.on('pageerror', (e) => errors.push(e.message));
   const alerts = [];
   p2.on('dialog', (d) => (alerts.push(d.message()), d.accept()));
-  const text = (t) => ({ background: {}, elements: [{ id: 't' + t.length, kind: 'text', x: 0, y: 0, w: 100, h: 100, rotation: 0, opacity: 1, zIndex: 0, text: t, font: 'Anton', size: 80, weight: 400, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.1, letterSpacing: 0, autoFit: true }] });
+  const text = (t) => ({
+    background: {},
+    elements: [
+      {
+        id: 't' + t.length,
+        kind: 'text',
+        x: 0,
+        y: 0,
+        w: 100,
+        h: 100,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 0,
+        text: t,
+        font: 'Anton',
+        size: 80,
+        weight: 400,
+        italic: false,
+        underline: false,
+        uppercase: false,
+        color: '#fff',
+        align: 'center',
+        vAlign: 'middle',
+        lineHeight: 1.1,
+        letterSpacing: 0,
+        autoFit: true,
+      },
+    ],
+  });
   const v1 = {
-    id: 'old', version: 1, title: 'Old Game', settings: {}, players: [], media: [], audio: {}, wheels: [], dice: [], theme: {},
-    rounds: [{ id: 'r1', name: 'Classic', values: [100], categories: [{ id: 'c1', title: 'Cats', clues: [{ id: 'k1', value: null, type: 'standard', questionSlide: text('Q'), answerSlide: text('A') }] }] }],
+    id: 'old',
+    version: 1,
+    title: 'Old Game',
+    settings: {},
+    players: [],
+    media: [],
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
+    rounds: [
+      {
+        id: 'r1',
+        name: 'Classic',
+        values: [100],
+        categories: [{ id: 'c1', title: 'Cats', clues: [{ id: 'k1', value: null, type: 'standard', questionSlide: text('Q'), answerSlide: text('A') }] }],
+      },
+    ],
     final: { enabled: true, name: 'Old Final', category: 'History', questionSlide: text('FQ'), answerSlide: text('FA'), timerSeconds: 40 },
   };
   mkdirSync('test-results', { recursive: true });
   writeFileSync('test-results/v1-game.json', JSON.stringify(v1));
   await p2.goto(pathToFileURL(file).href);
   await openGameFile(p2, resolve('test-results/v1-game.json'));
-  await p2.waitForFunction(() => document.querySelector('input.title')?.value === 'Old Game', null, { timeout: 5000 }).catch(() => {
-    throw new Error('the old game did not open: ' + alerts.join(' | '));
-  });
+  await p2
+    .waitForFunction(() => document.querySelector('input.title')?.value === 'Old Game', null, { timeout: 5000 })
+    .catch(() => {
+      throw new Error('the old game did not open: ' + alerts.join(' | '));
+    });
   const oldRounds = (await roundTabsIn(p2).allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
   assert(oldRounds.join('|') === 'Classic|Old Final', `an old game's Final becomes its last round (${oldRounds.join(', ')})`);
   assert((await p2.title()) === 'Old Game · Brainrot Games Maker', `a named game's tab says its name first (${await p2.title()})`);
   await p2.getByRole('button', { name: 'Old Final' }).click();
-  assert((await p2.getByLabel('Category').inputValue()) === 'History' && (await p2.getByLabel('Think time (seconds)').inputValue()) === '40', 'with its category and think time');
+  assert(
+    (await p2.getByLabel('Category').inputValue()) === 'History' && (await p2.getByLabel('Think time (seconds)').inputValue()) === '40',
+    'with its category and think time',
+  );
   // Its board played out (its one tile marked played): N says how to go on, and doesn't jump to the Final on stream.
   await playWithPlayers(p2, 2);
   await p2.getByRole('button', { name: 'Start game ▶' }).click();
   await p2.getByRole('button', { name: 'Skip intro' }).click();
   // The host's tab stands apart from the audience window's (“Old Game · Audience”).
   assert((await p2.title()) === '▶ Playing · Old Game', `during the game the host's tab says “▶ Playing · Old Game” (${await p2.title()})`);
-  await boardTilesIn(boardIn(stageBoxIn(p2))).first().click({ button: 'right' });
+  await boardTilesIn(boardIn(stageBoxIn(p2)))
+    .first()
+    .click({ button: 'right' });
   await p2.getByRole('menuitem', { name: /Mark as played/ }).click();
   await hostPanelIn(p2, { hasText: 'Round complete!' }).waitFor();
   await p2.keyboard.press('n');

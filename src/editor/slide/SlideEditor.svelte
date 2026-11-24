@@ -34,7 +34,18 @@
   import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
-  import { adoptMedia, adoptUsedBy, clipboard, copyElements, copyFromMenu, copySlide as copyWholeSlide, elementMediaIds, pastingGone, pastingOurs, takeCopiedSlide } from '../../lib/clipboard.svelte';
+  import {
+    adoptMedia,
+    adoptUsedBy,
+    clipboard,
+    copyElements,
+    copyFromMenu,
+    copySlide as copyWholeSlide,
+    elementMediaIds,
+    pastingGone,
+    pastingOurs,
+    takeCopiedSlide,
+  } from '../../lib/clipboard.svelte';
   import { announce } from '../../lib/announce';
   import { copyIsTheBrowsers } from '../../lib/undokeys';
   import { dropdown } from '../../lib/menustate.svelte';
@@ -49,8 +60,23 @@
   import { clone, restyle } from '../../lib/ops';
   import { align as alignTo, centreOn, clampOnto, elementsAt, keepOnStage, restack, type Pt, type Restack } from '../../lib/layers';
   import {
-    newAudioEl, newEmbedEl, newId, newImageEl, newShapeEl, newTextEl, newVideoEl, SLIDE_H, SLIDE_W,
-    type EmbedKind, type ImageEl, type MediaKind, type MediaRef, type ShapeType, type Slide, type SlideElement, type TextEl,
+    newAudioEl,
+    newEmbedEl,
+    newId,
+    newImageEl,
+    newShapeEl,
+    newTextEl,
+    newVideoEl,
+    SLIDE_H,
+    SLIDE_W,
+    type EmbedKind,
+    type ImageEl,
+    type MediaKind,
+    type MediaRef,
+    type ShapeType,
+    type Slide,
+    type SlideElement,
+    type TextEl,
   } from '../../lib/model';
   import Stage from '../../lib/Stage.svelte';
   import StageRibbon from './StageRibbon.svelte';
@@ -390,7 +416,8 @@
   function openEditor(el: SlideElement): void {
     if (el.kind === 'text') return focusText(false);
     if (el.kind === 'image') return void (editingImage = el.id);
-    if ((el.kind === 'video' || el.kind === 'audio') && editOffer(game.media.find((m) => m.id === el.media)) === 'on') return openMediaDialog({ mode: 'edit', id: el.media, item: el });
+    if ((el.kind === 'video' || el.kind === 'audio') && editOffer(game.media.find((m) => m.id === el.media)) === 'on')
+      return openMediaDialog({ mode: 'edit', id: el.media, item: el });
     selected = [el.id];
     void tick().then(() => root?.querySelector<HTMLElement>('.insp [data-opens]')?.focus());
   }
@@ -425,13 +452,11 @@
       if (gif) Object.assign(v, { loop: true, muted: true });
       // Clear of the text, as a picture is.
       add(v, at, at ? undefined : () => placeNewPicture(slide.elements, v), true);
-    }
-    else if (kind === 'audio') {
+    } else if (kind === 'audio') {
       const a = newAudioEl(id);
       // Beside the speakers already there, clear of the text where there's room (never on top of the last one).
       add(a, at, at ? undefined : () => placeSpeaker(slide.elements, a), true);
-    }
-    else if (kind === 'font') {
+    } else if (kind === 'font') {
       await registerGameFonts(game);
       if (single?.kind === 'text') single.font = `'${uploadedFamily(id)}', sans-serif`;
       toast(single?.kind === 'text' ? 'Font added and used for this text box' : 'Font added: pick it from the Font list');
@@ -447,7 +472,10 @@
       const el = slide.elements.find((e) => e.id === replacing);
       replacing = null;
       if (el && (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio') && kind !== el.kind)
-        return void toast(`That file is ${KIND_WORD[kind] ?? 'another kind of file'}: this ${nouns.thing} takes ${KIND_WORD[el.kind]} (add it as its own ${nouns.thing} instead)`, 4000);
+        return void toast(
+          `That file is ${KIND_WORD[kind] ?? 'another kind of file'}: this ${nouns.thing} takes ${KIND_WORD[el.kind]} (add it as its own ${nouns.thing} instead)`,
+          4000,
+        );
       if (el && (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio'))
         edit(() => {
           el.media = id;
@@ -554,7 +582,10 @@
     const at = { x: ((e.clientX - r.left) / r.width) * SLIDE_W, y: ((e.clientY - r.top) / r.height) * SLIDE_H };
     if (dt.files.length) return void dropFiles(dt.files, at);
     // A link or an image dragged from another browser tab, or some selected text.
-    const uri = dt.getData('text/uri-list').split(/\r?\n/).find((l) => l.trim() && !l.startsWith('#'));
+    const uri = dt
+      .getData('text/uri-list')
+      .split(/\r?\n/)
+      .find((l) => l.trim() && !l.startsWith('#'));
     const text = (uri ?? dt.getData('text/plain')).trim();
     if (text) addTextContent(text, at);
   }
@@ -602,7 +633,12 @@
   }
 
   /** Restack the selection (Inspector, right-click menu, Ctrl+] / Ctrl+[) as one undo step. */
-  const RESTACKED: Record<Restack, [string, string]> = { front: ['Brought', 'to the front'], forward: ['Brought', 'forward'], backward: ['Sent', 'backward'], back: ['Sent', 'to the back'] };
+  const RESTACKED: Record<Restack, [string, string]> = {
+    front: ['Brought', 'to the front'],
+    forward: ['Brought', 'forward'],
+    backward: ['Sent', 'backward'],
+    back: ['Sent', 'to the back'],
+  };
   function restackSelected(dir: Restack): void {
     const els = slide.elements.filter((e) => selected.includes(e.id));
     if (!els.length) return;
@@ -634,11 +670,13 @@
     else if (a === 'lock' || a === 'unlock') {
       const els = slide.elements.filter((e) => selected.includes(e.id) && !e.locked === (a === 'lock'));
       if (els.length)
-        edit(() => {
-          for (const e of els) e.locked = a === 'lock' || undefined;
-        }, `${a === 'lock' ? 'Locked' : 'Unlocked'} ${named(els)}`);
-    }
-    else if (a === 'hide') {
+        edit(
+          () => {
+            for (const e of els) e.locked = a === 'lock' || undefined;
+          },
+          `${a === 'lock' ? 'Locked' : 'Unlocked'} ${named(els)}`,
+        );
+    } else if (a === 'hide') {
       // Editor-only (not part of the slide), so it's never an undo step.
       hidden = [...hidden, ...selected];
       selected = [];
@@ -698,7 +736,12 @@
     const r = stageEl.getBoundingClientRect();
     const last = slide.elements.find((e) => e.id === selected[selected.length - 1]);
     const at = last ? { x: last.x + last.w / 2, y: last.y + last.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
-    const stack = last ? elementsAt(slide.elements.filter((e) => !hidden.includes(e.id)), at) : [];
+    const stack = last
+      ? elementsAt(
+          slide.elements.filter((e) => !hidden.includes(e.id)),
+          at,
+        )
+      : [];
     menu = { x: r.left + (at.x / SLIDE_W) * r.width, y: r.top + (at.y / SLIDE_H) * r.height, at, stack };
   }
 
@@ -726,7 +769,8 @@
     const spacing = how === 'hdistribute' || how === 'vdistribute';
     // Locked items don't move, but the others line up with them (spacing evenly is only for the ones that move).
     const fixed = spacing ? [] : held;
-    if (free.length) undoApi.step(ALIGNED[how][free.length + fixed.length > 1 ? 0 : 1].replace('#', named(free)), () => alignTo(free, how, SLIDE_W, SLIDE_H, fixed));
+    if (free.length)
+      undoApi.step(ALIGNED[how][free.length + fixed.length > 1 ? 0 : 1].replace('#', named(free)), () => alignTo(free, how, SLIDE_W, SLIDE_H, fixed));
     // Said when locked items were left out of spacing, or when nothing could move at all (as a nudge says it).
     if (held.length && (spacing || !free.length)) tell(lockedNote(held.length, nouns.thing));
   }
@@ -734,7 +778,8 @@
   // Restyling many slides is one step, so it's done at once and offers Undo (the words stay the same).
   function applyStyle(el: TextEl, scope: string): void {
     const targets = styletargets?.(el, scope) ?? [];
-    if (!targets.length) return void tell(styleslides && scope === 'round-q' ? 'This round has no other slides yet.' : 'There are no other slides in that group yet.');
+    if (!targets.length)
+      return void tell(styleslides && scope === 'round-q' ? 'This round has no other slides yet.' : 'There are no other slides in that group yet.');
     const slides = `${targets.length} slide${targets.length === 1 ? '' : 's'}`;
     const top = undoApi.top;
     // It shows on this slide (the ones it changed may be anywhere).
@@ -848,7 +893,16 @@
     // Bold / italic / underline in the text box's own Text field too (where typing on the slide puts the cursor): a
     // textarea has none of its own.
     const bk = e.key.toLowerCase();
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (bk === 'b' || bk === 'i' || bk === 'u') && !picker && textArea && e.target === textArea && single?.kind === 'text') {
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      !e.shiftKey &&
+      !e.altKey &&
+      (bk === 'b' || bk === 'i' || bk === 'u') &&
+      !picker &&
+      textArea &&
+      e.target === textArea &&
+      single?.kind === 'text'
+    ) {
       e.preventDefault();
       const t = single;
       edit(() => {
@@ -1131,81 +1185,105 @@
 {/if}
 
 {#snippet bgBox()}
-      <div class="pop">
-        <!-- (Its swatch shows the background as it is: the picture's thumbnail when it has one.) -->
-        <button onclick={() => ((bgAt = null), (bgMenu = !bgMenu))} aria-expanded={bgMenu} disabled={previewing} title="The {nouns.page}'s background: a color or a picture">
-          <span
-            class="swatch"
-            aria-hidden="true"
-            style:background-color={slide.background.color ?? plainBg}
-            style:background-image={slide.background.image && mediaUrls[slide.background.image] ? `url("${mediaUrls[slide.background.image]}")` : undefined}
-          ></span> Background ▾
-        </button>
-        {#if bgMenu}
-          <div class="backdrop" onclick={() => (bgMenu = false)} role="presentation"></div>
-          <!-- (Not a menu that takes Tab: the color box in it is a field.) -->
-          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <div
-            class="menu bg-menu"
-            use:anchored={{ anchor: bgAt ? bgAnchor : undefined }}
-            role="group"
-            aria-label="Background"
-            onkeydown={(e) => {
-              if (e.key !== 'Escape') return;
-              e.stopPropagation();
-              bgMenu = false;
-            }}
-          >
-            <!-- (Every button is always there, greyed when there's nothing to do, so the box keeps its size while the
+  <div class="pop">
+    <!-- (Its swatch shows the background as it is: the picture's thumbnail when it has one.) -->
+    <button
+      onclick={() => ((bgAt = null), (bgMenu = !bgMenu))}
+      aria-expanded={bgMenu}
+      disabled={previewing}
+      title="The {nouns.page}'s background: a color or a picture"
+    >
+      <span
+        class="swatch"
+        aria-hidden="true"
+        style:background-color={slide.background.color ?? plainBg}
+        style:background-image={slide.background.image && mediaUrls[slide.background.image] ? `url("${mediaUrls[slide.background.image]}")` : undefined}
+      ></span> Background ▾
+    </button>
+    {#if bgMenu}
+      <div class="backdrop" onclick={() => (bgMenu = false)} role="presentation"></div>
+      <!-- (Not a menu that takes Tab: the color box in it is a field.) -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div
+        class="menu bg-menu"
+        use:anchored={{ anchor: bgAt ? bgAnchor : undefined }}
+        role="group"
+        aria-label="Background"
+        onkeydown={(e) => {
+          if (e.key !== 'Escape') return;
+          e.stopPropagation();
+          bgMenu = false;
+        }}
+      >
+        <!-- (Every button is always there, greyed when there's nothing to do, so the box keeps its size while the
                  color changes: a button coming in closed the color picker mid-typing.) -->
-            <div class="bg-row">
-              <label class="check">
-                <ColorBox
-                  aria-label="{Page(nouns)} background color"
-                  value={slide.background.color ?? plainBg}
-                  oninput={(e) => (slide.background.color = e.currentTarget.value)}
-                />
-                Color
-              </label>
-              <button
-                class="small"
-                onclick={() => edit(() => delete slide.background.color)}
-                disabled={!slide.background.color}
-                title={themedBg ? "Back to the theme's color (it follows the theme when that changes)" : 'Back to the default color'}>↺ {themedBg ? 'Theme color' : 'Default color'}</button
-              >
-            </div>
-            <div class="bg-row">
-              {#if slide.background.image}
-                <img class="bg-thumb" src={mediaUrls[slide.background.image]} alt="The {nouns.page}’s background" draggable="false" />
-                <button class="small" onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="Another picture behind everything on the {nouns.page}">Change…</button>
-                <button class="small" onclick={() => edit(() => delete slide.background.image)} title="Take the picture off (the color stays; the file stays in 🖼 Media)">⌫ Clear picture</button>
-              {:else}
-                <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the {nouns.page}">🖼 Add a picture…</button>
-              {/if}
-            </div>
-            <hr />
+        <div class="bg-row">
+          <label class="check">
+            <ColorBox
+              aria-label="{Page(nouns)} background color"
+              value={slide.background.color ?? plainBg}
+              oninput={(e) => (slide.background.color = e.currentTarget.value)}
+            />
+            Color
+          </label>
+          <button
+            class="small"
+            onclick={() => edit(() => delete slide.background.color)}
+            disabled={!slide.background.color}
+            title={themedBg ? "Back to the theme's color (it follows the theme when that changes)" : 'Back to the default color'}
+            >↺ {themedBg ? 'Theme color' : 'Default color'}</button
+          >
+        </div>
+        <div class="bg-row">
+          {#if slide.background.image}
+            <img class="bg-thumb" src={mediaUrls[slide.background.image]} alt="The {nouns.page}’s background" draggable="false" />
             <button
-              onclick={() => ((bgMenu = false), edit(() => (slide.background = {}), `Reset the ${nouns.page} background`))}
-              disabled={!slide.background.image && !slide.background.color}
-              title={themedBg ? "Back to the theme's background" : 'Back to the default background'}>↺ Reset background</button
+              class="small"
+              onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))}
+              title="Another picture behind everything on the {nouns.page}">Change…</button
             >
-          </div>
-        {/if}
-        {#if picker === 'image' && replacing === 'bg'}
-          <MediaPicker
-            kind="image"
-            onpick={(id) => {
-              edit(() => (slide.background.image = id));
-              picker = null;
-              replacing = null;
-            }}
-            onclose={() => ((picker = null), (replacing = null))}
-          />
-        {/if}
+            <button
+              class="small"
+              onclick={() => edit(() => delete slide.background.image)}
+              title="Take the picture off (the color stays; the file stays in 🖼 Media)">⌫ Clear picture</button
+            >
+          {:else}
+            <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the {nouns.page}"
+              >🖼 Add a picture…</button
+            >
+          {/if}
+        </div>
+        <hr />
+        <button
+          onclick={() => ((bgMenu = false), edit(() => (slide.background = {}), `Reset the ${nouns.page} background`))}
+          disabled={!slide.background.image && !slide.background.color}
+          title={themedBg ? "Back to the theme's background" : 'Back to the default background'}>↺ Reset background</button
+        >
       </div>
+    {/if}
+    {#if picker === 'image' && replacing === 'bg'}
+      <MediaPicker
+        kind="image"
+        onpick={(id) => {
+          edit(() => (slide.background.image = id));
+          picker = null;
+          replacing = null;
+        }}
+        onclose={() => ((picker = null), (replacing = null))}
+      />
+    {/if}
+  </div>
 {/snippet}
 
-<div class="se" class:fill class:fit={fitW !== null} style:--fit-w={fitW === null ? undefined : `${fitW}px`} bind:this={root} onpointerdowncapture={activate} onfocusin={activate}>
+<div
+  class="se"
+  class:fill
+  class:fit={fitW !== null}
+  style:--fit-w={fitW === null ? undefined : `${fitW}px`}
+  bind:this={root}
+  onpointerdowncapture={activate}
+  onfocusin={activate}
+>
   <div class="toolbar">
     <!-- Preview is look-only: everything that edits the slide is off until it stops. -->
     <fieldset class="tools" class:wraps={!!tools} disabled={previewing}>
@@ -1245,18 +1323,30 @@
             <button onclick={() => addShape('line')}>― Line</button>
             <button onclick={() => addShape('arrow')}>➝ Arrow</button>
             <div class="head">Draw</div>
-            <button onclick={() => ((shapeMenu = false), (drawing = true))} title="Drag on the {nouns.page} to draw one line; hold Shift when letting go to close the shape">✏ Freehand line…</button>
+            <button
+              onclick={() => ((shapeMenu = false), (drawing = true))}
+              title="Drag on the {nouns.page} to draw one line; hold Shift when letting go to close the shape">✏ Freehand line…</button
+            >
             <!-- Nothing stays selected behind the drawpad. -->
-            <button onclick={() => ((shapeMenu = false), (selected = []), (drawpad = true))} title="Draw a whole picture (as many strokes as it takes) over the {nouns.page}, then insert it">🖌 Drawpad…</button>
+            <button
+              onclick={() => ((shapeMenu = false), (selected = []), (drawpad = true))}
+              title="Draw a whole picture (as many strokes as it takes) over the {nouns.page}, then insert it">🖌 Drawpad…</button
+            >
             {#if hotspots}
               <div class="head">On this screen</div>
-              <button onclick={addHotspot} title="An invisible area (viewers never see it): give it a class to make part of a picture a doorway, shop…">⬚ Hotspot</button>
+              <button onclick={addHotspot} title="An invisible area (viewers never see it): give it a class to make part of a picture a doorway, shop…"
+                >⬚ Hotspot</button
+              >
             {/if}
           </div>
         {/if}
       </div>
       <div class="pop">
-        <button onclick={() => (linkBox ? (linkBox = null) : openLink())} aria-expanded={!!linkBox} title="YouTube, Google Drive, or a link to a picture, video or sound online">
+        <button
+          onclick={() => (linkBox ? (linkBox = null) : openLink())}
+          aria-expanded={!!linkBox}
+          title="YouTube, Google Drive, or a link to a picture, video or sound online"
+        >
           🌐 Link
         </button>
         {#if linkBox}
@@ -1308,7 +1398,12 @@
       <!-- (On an RPG screen, whose own objects fill the row, Background ▾ leads this group: the add buttons wrap instead.) -->
       {#if tools}{@render bgBox()}{/if}
       <button class="ghost small" class:hide={!previewing} onclick={() => previewKey++} title="Play the animations again">↻ Replay</button>
-      <button class="small swap" class:primary={previewing} onclick={togglePreview} title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}>
+      <button
+        class="small swap"
+        class:primary={previewing}
+        onclick={togglePreview}
+        title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}
+      >
         <span class:hide={previewing}>▶ Preview</span>
         <span class:hide={!previewing}>■ Stop preview</span>
       </button>
@@ -1317,11 +1412,15 @@
         onclick={() => ((previewMuted = !previewMuted), previewing && previewKey++)}
         aria-pressed={previewMuted}
         aria-label={previewMuted ? 'Preview sound is off' : 'Preview sound is on'}
-        title={previewMuted ? 'Preview plays muted (click for sound)' : 'Preview plays sound (click to mute)'}
-      >{previewMuted ? '🔇' : '🔈'}</button>
+        title={previewMuted ? 'Preview plays muted (click for sound)' : 'Preview plays sound (click to mute)'}>{previewMuted ? '🔇' : '🔈'}</button
+      >
       {#if ownUndo}
-        <button class="ghost small" onclick={undoApi.undo} disabled={previewing || !undoApi.canUndo} aria-label="Undo (Ctrl+Z)" title={undoApi.undoTitle}>↶</button>
-        <button class="ghost small" onclick={undoApi.redo} disabled={previewing || !undoApi.canRedo} aria-label="Redo (Ctrl+Y)" title={undoApi.redoTitle}>↷</button>
+        <button class="ghost small" onclick={undoApi.undo} disabled={previewing || !undoApi.canUndo} aria-label="Undo (Ctrl+Z)" title={undoApi.undoTitle}
+          >↶</button
+        >
+        <button class="ghost small" onclick={undoApi.redo} disabled={previewing || !undoApi.canRedo} aria-label="Redo (Ctrl+Y)" title={undoApi.redoTitle}
+          >↷</button
+        >
       {/if}
     </div>
   </div>
@@ -1345,7 +1444,9 @@
         oncontextmenu={(e) => e.target === canvasEl && e.preventDefault()}
         onclick={() => previewing && togglePreview()}
         role="region"
-        aria-label="{Page(nouns)} canvas. Tab and Shift+Tab pick the {nouns.things} on it, Shift+F10 opens the menu for the selection. Drop files or links here."
+        aria-label="{Page(
+          nouns,
+        )} canvas. Tab and Shift+Tab pick the {nouns.things} on it, Shift+F10 opens the menu for the selection. Drop files or links here."
       >
         <Stage>
           {#if previewing}
@@ -1396,7 +1497,8 @@
                   const fn = notice?.undo;
                   notice = null;
                   fn?.();
-                }}>↶ Undo</button>
+                }}>↶ Undo</button
+              >
             {/if}
           </div>
         {/if}
@@ -1415,104 +1517,106 @@
 </div>
 
 {#snippet inspector()}
-<aside class="side">
-  <!-- The selected item's buttons, pinned at the top whatever's below (there, greyed, with nothing selected). -->
-  {#if !previewing}
-    <ItemBar
-      items={slide.elements.filter((e) => selected.includes(e.id))}
-      all={slide.elements}
-      {game}
-      card={onCard}
-      onedit={openEditor}
-      onduplicate={duplicate}
-      onlock={(on) => menuAction(on ? 'lock' : 'unlock')}
-      ondelete={() => remove()}
-      onmenu={menuFrom}
-    />
-  {/if}
-  <!-- Whenever the slide has anything: the keyboard way to every item (and a lone locked one, which clicks go through). -->
-  {#if !previewing && slide.elements.length}
-    <details class="layers-box" open>
-      <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
-      <LayersPanel
-        elements={slide.elements}
+  <aside class="side">
+    <!-- The selected item's buttons, pinned at the top whatever's below (there, greyed, with nothing selected). -->
+    {#if !previewing}
+      <ItemBar
+        items={slide.elements.filter((e) => selected.includes(e.id))}
+        all={slide.elements}
         {game}
         card={onCard}
-        bind:selected
-        bind:hidden
-        bind:hovered
-        bind:renaming
-        onedit={edit}
-        onmenu={(m) => {
-          const el = slide.elements.find((e) => e.id === selected[selected.length - 1]);
-          menu = { x: m.x, y: m.y, at: el ? { x: el.x + el.w / 2, y: el.y + el.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 }, stack: [], from: m.from };
-        }}
+        onedit={openEditor}
+        onduplicate={duplicate}
+        onlock={(on) => menuAction(on ? 'lock' : 'unlock')}
+        ondelete={() => remove()}
+        onmenu={menuFrom}
       />
-    </details>
-  {/if}
-  {#if previewing}
-    <p class="muted">Previewing the {nouns.page} as players will see it. Press <b>Esc</b>, click the {nouns.page} or <b>■ Stop preview</b> to edit again.</p>
-  {:else if single}
-    <Inspector
-      el={single}
-      {game}
-      card={onCard}
-      onTile={themedBg && !slide.background.color && !slide.background.gradient && !slide.background.image}
-      fit={fits[single.id]}
-      bind:textArea
-      onorder={order}
-      onreplace={(from) => {
-        if (single && (single.kind === 'image' || single.kind === 'video' || single.kind === 'audio')) {
-          replacing = single.id;
-          picker = single.kind;
-          pickerFrom = from;
-        }
-      }}
-      onapplystyle={styletargets ? applyStyle : undefined}
-      {stylecategory}
-      {styleslides}
-      {stylescope}
-      onuploadfont={(from) => {
-        replacing = null;
-        picker = 'font';
-        pickerFrom = from;
-      }}
-      {objectsection}
-      aligns={lineUp}
-    />
-    {#if picker && replacing === single.id}
-      <MediaPicker kind={picker} anchor={pickerFrom} onpick={picked} onclose={() => ((picker = null), (replacing = null))} />
     {/if}
-  {:else if selected.length > 1}
-    <!-- The same controls, in the same places, as the Inspector's Position for one item (⧉, 🔒 and 🗑 are in the bar
+    <!-- Whenever the slide has anything: the keyboard way to every item (and a lone locked one, which clicks go through). -->
+    {#if !previewing && slide.elements.length}
+      <details class="layers-box" open>
+        <summary>Layers <span class="muted">({slide.elements.length}, top first)</span></summary>
+        <LayersPanel
+          elements={slide.elements}
+          {game}
+          card={onCard}
+          bind:selected
+          bind:hidden
+          bind:hovered
+          bind:renaming
+          onedit={edit}
+          onmenu={(m) => {
+            const el = slide.elements.find((e) => e.id === selected[selected.length - 1]);
+            menu = { x: m.x, y: m.y, at: el ? { x: el.x + el.w / 2, y: el.y + el.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 }, stack: [], from: m.from };
+          }}
+        />
+      </details>
+    {/if}
+    {#if previewing}
+      <p class="muted">Previewing the {nouns.page} as players will see it. Press <b>Esc</b>, click the {nouns.page} or <b>■ Stop preview</b> to edit again.</p>
+    {:else if single}
+      <Inspector
+        el={single}
+        {game}
+        card={onCard}
+        onTile={themedBg && !slide.background.color && !slide.background.gradient && !slide.background.image}
+        fit={fits[single.id]}
+        bind:textArea
+        onorder={order}
+        onreplace={(from) => {
+          if (single && (single.kind === 'image' || single.kind === 'video' || single.kind === 'audio')) {
+            replacing = single.id;
+            picker = single.kind;
+            pickerFrom = from;
+          }
+        }}
+        onapplystyle={styletargets ? applyStyle : undefined}
+        {stylecategory}
+        {styleslides}
+        {stylescope}
+        onuploadfont={(from) => {
+          replacing = null;
+          picker = 'font';
+          pickerFrom = from;
+        }}
+        {objectsection}
+        aligns={lineUp}
+      />
+      {#if picker && replacing === single.id}
+        <MediaPicker kind={picker} anchor={pickerFrom} onpick={picked} onclose={() => ((picker = null), (replacing = null))} />
+      {/if}
+    {:else if selected.length > 1}
+      <!-- The same controls, in the same places, as the Inspector's Position for one item (⧉, 🔒 and 🗑 are in the bar
          at the top). -->
-    <section class="multi">
-      {@render lineUp()}
-      <div class="row">
-        <button class="small" onclick={() => order('front')} aria-label="Bring to front" title="Bring them to the front (Ctrl+Shift+])">⤒ To front</button>
-        <button class="small" onclick={() => order('up')} aria-label="Bring forward" title="Bring forward (Ctrl+])">↑</button>
-        <button class="small" onclick={() => order('down')} aria-label="Send backward" title="Send backward (Ctrl+[)">↓</button>
-        <button class="small" onclick={() => order('back')} aria-label="Send to back" title="Send them to the back (Ctrl+Shift+[)">⤓ To back</button>
-      </div>
-    </section>
-  {:else}
-    <Tips id="slide" hint="Click {aThing(nouns)} to edit it, or double-click it (text goes straight to its text field).">
-      <ul>
-        <li>Drag to move (press Shift while dragging to keep to one axis), pull the handles to resize (or Ctrl+arrows; arrows alone nudge), and use the round handle to rotate.</li>
-        <li>Drop or paste pictures, videos, sounds and links. Ctrl+C / Ctrl+X / Ctrl+V copy {nouns.things} between {nouns.page}s.</li>
-        <li>Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws one) to select several.</li>
-        <li>
-          Something hidden under a bigger {nouns.thing}? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> again
-          and again to walk down the stack, <b>Tab</b> to step through {nouns.things}, or use the <b>Layers</b> list. Lock a background so
-          clicks go through it.
-        </li>
-      </ul>
-    </Tips>
-  {/if}
-  {#if picker === 'font'}
-    <MediaPicker kind="font" anchor={pickerFrom} onpick={(id) => ((picker = null), addMedia('font', id))} onclose={() => (picker = null)} />
-  {/if}
-</aside>
+      <section class="multi">
+        {@render lineUp()}
+        <div class="row">
+          <button class="small" onclick={() => order('front')} aria-label="Bring to front" title="Bring them to the front (Ctrl+Shift+])">⤒ To front</button>
+          <button class="small" onclick={() => order('up')} aria-label="Bring forward" title="Bring forward (Ctrl+])">↑</button>
+          <button class="small" onclick={() => order('down')} aria-label="Send backward" title="Send backward (Ctrl+[)">↓</button>
+          <button class="small" onclick={() => order('back')} aria-label="Send to back" title="Send them to the back (Ctrl+Shift+[)">⤓ To back</button>
+        </div>
+      </section>
+    {:else}
+      <Tips id="slide" hint="Click {aThing(nouns)} to edit it, or double-click it (text goes straight to its text field).">
+        <ul>
+          <li
+            >Drag to move (press Shift while dragging to keep to one axis), pull the handles to resize (or Ctrl+arrows; arrows alone nudge), and use the round
+            handle to rotate.</li
+          >
+          <li>Drop or paste pictures, videos, sounds and links. Ctrl+C / Ctrl+X / Ctrl+V copy {nouns.things} between {nouns.page}s.</li>
+          <li>Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws one) to select several.</li>
+          <li>
+            Something hidden under a bigger {nouns.thing}? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> again and again to
+            walk down the stack, <b>Tab</b> to step through {nouns.things}, or use the <b>Layers</b> list. Lock a background so clicks go through it.
+          </li>
+        </ul>
+      </Tips>
+    {/if}
+    {#if picker === 'font'}
+      <MediaPicker kind="font" anchor={pickerFrom} onpick={(id) => ((picker = null), addMedia('font', id))} onclose={() => (picker = null)} />
+    {/if}
+  </aside>
 {/snippet}
 
 <!-- One item goes to the slide's edges (in the Inspector's Position, under X and Y); several line up with each other
@@ -1531,8 +1635,12 @@
       </div>
       {#if selected.filter((id) => !slide.elements.find((e) => e.id === id)?.locked).length > 2}
         <div class="agrid two">
-          <button class="small" onclick={() => align('hdistribute')} title="The outermost two stay; the gaps between them all become equal">↔ Space evenly</button>
-          <button class="small" onclick={() => align('vdistribute')} title="The outermost two stay; the gaps between them all become equal">↕ Space evenly</button>
+          <button class="small" onclick={() => align('hdistribute')} title="The outermost two stay; the gaps between them all become equal"
+            >↔ Space evenly</button
+          >
+          <button class="small" onclick={() => align('vdistribute')} title="The outermost two stay; the gaps between them all become equal"
+            >↕ Space evenly</button
+          >
         </div>
       {/if}
     {:else}

@@ -10,9 +10,7 @@
 import { AUDIO_OUT_KEY, DEFAULT_OUTPUT, chimeWav, outputList, parseSavedOutput, playFailure, type AudioOutput } from './audio';
 
 /** What the window that plays the sound tells the host (the audience window forwards these). */
-export type SoundReport =
-  | { kind: 'sound'; ok: boolean; reason?: 'blocked' | 'error'; test?: string }
-  | { kind: 'audio-out'; missing: boolean; label: string };
+export type SoundReport = { kind: 'sound'; ok: boolean; reason?: 'blocked' | 'error'; test?: string } | { kind: 'audio-out'; missing: boolean; label: string };
 
 type Listener = (r: SoundReport) => void;
 const listeners = new Set<Listener>();

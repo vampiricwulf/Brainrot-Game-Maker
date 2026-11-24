@@ -35,8 +35,7 @@ function setup(): { game: Game; world: World; over: WorldMap; cave: WorldMap; ro
 }
 const named = (m: WorldMap, name: string) => m.screens.find((s) => s.name === name)!;
 /** The map as rows of names ('·' for an empty cell). */
-const layout = (m: WorldMap) =>
-  Array.from({ length: m.rows }, (_, r) => Array.from({ length: m.cols }, (_, c) => screenAt(m, c, r)?.name ?? '·').join(' '));
+const layout = (m: WorldMap) => Array.from({ length: m.rows }, (_, r) => Array.from({ length: m.cols }, (_, c) => screenAt(m, c, r)?.name ?? '·').join(' '));
 
 describe('world editor: moving screens on the grid', () => {
   it('moves a screen to an empty cell, and swaps it with a screen in the way', () => {
@@ -77,7 +76,10 @@ describe('world editor: moving screens on the grid', () => {
   it('finds free cells in reading order, growing a full map', () => {
     const { over } = setup();
     expect(freeCells(over, 1)).toEqual([[2, 1]]);
-    expect(freeCells(over, 2, 2, 1)).toEqual([[2, 1], [0, 2]]);
+    expect(freeCells(over, 2, 2, 1)).toEqual([
+      [2, 1],
+      [0, 2],
+    ]);
     expect(over.rows).toBe(3);
   });
 

@@ -114,7 +114,8 @@ export function phoneUses(game: Game): { partner: number; cards: boolean; deals:
   const clues = boardRounds(game).flatMap((r) => playableClues(r));
   return {
     partner: clues.filter((c) => c.type === 'partner' && cardSlides(c).length).length,
-    cards: clues.some((c) => c.type !== 'partner' && cardSlides(c).length) || game.rounds.some((r) => isFinal(r) && cardSlides(r).length) || !!game.cards?.length,
+    cards:
+      clues.some((c) => c.type !== 'partner' && cardSlides(c).length) || game.rounds.some((r) => isFinal(r) && cardSlides(r).length) || !!game.cards?.length,
     deals: !!game.deals?.length,
     choices:
       clues.some((c) => c.type === 'standard' && c.everyone && usableChoices(c.choices).length) ||
@@ -222,7 +223,13 @@ export function dailyDoublesLine(round: BoardRound): string {
   const short = dailyDoublesShort(round);
   const most = dailyDoublesMost(round);
   const asked = round.dailyDoubleCount ?? 1;
-  return placedLine(dailyDoublesPlaced(round), short ? short.want - short.placed : 0, asked, [asked > most ? `one a category, ${most} at most` : ''], `one a category, ${most} at most`);
+  return placedLine(
+    dailyDoublesPlaced(round),
+    short ? short.want - short.placed : 0,
+    asked,
+    [asked > most ? `one a category, ${most} at most` : ''],
+    `one a category, ${most} at most`,
+  );
 }
 
 /** 🤝 Partner clues' line, as ⭐ Daily Doubles' (the ones Start places get a copy of their answer as their card). */
@@ -234,7 +241,10 @@ export function partnersLine(round: BoardRound): string {
     partnerTilesPlaced(round),
     left,
     asked,
-    [short && asked > short.most ? `on written tiles, ${short.most} at most` : '', left && round.partnerCardFrom === 'empty' ? 'each with a copy of its answer as its card' : ''],
+    [
+      short && asked > short.most ? `on written tiles, ${short.most} at most` : '',
+      left && round.partnerCardFrom === 'empty' ? 'each with a copy of its answer as its card' : '',
+    ],
     'write a question and answer on more tiles first',
   );
 }
@@ -271,7 +281,13 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   const out: Problem[] = [];
   // Its title shows on stream (the title card, the audience window): a game never named says "Untitled Game" there.
   if (!game.title.trim() || game.title.trim() === 'Untitled Game')
-    out.push({ text: 'The game is still called “Untitled Game”: name it (the title shows on stream)', tab: 'play', level: 'info', place: { tab: 'title' }, starter: true });
+    out.push({
+      text: 'The game is still called “Untitled Game”: name it (the title shows on stream)',
+      tab: 'play',
+      level: 'info',
+      place: { tab: 'title' },
+      starter: true,
+    });
   // (Phone buzzer teams: each one is a team.)
   const who = game.settings.buzzer && game.settings.buzzTeams ? 'teams' : 'players';
   if (!game.players.length) out.push({ text: `No ${who} yet: add them when you press Play`, tab: 'play', level: 'info', starter: true });
@@ -470,7 +486,10 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
     });
   }
   // (A 🗜 copy for phones whose bytes are missing isn't: phones get its file.)
-  const missing = new Set([...[...usage.keys()].filter((id) => !known.has(id) && !deleted.includes(id)), ...game.media.filter((m) => !m.phoneCopy && !mediaUrls[m.id]).map((m) => m.id)]);
+  const missing = new Set([
+    ...[...usage.keys()].filter((id) => !known.has(id) && !deleted.includes(id)),
+    ...game.media.filter((m) => !m.phoneCopy && !mediaUrls[m.id]).map((m) => m.id),
+  ]);
   // A sound's missing (or deleted) file is said on its own, pointing to 🔊 Sounds (the built-in sound plays meanwhile).
   const cues = new Set(Object.values(game.audio ?? {}).filter((id): id is string => !!id && (missing.has(id) || deleted.includes(id))));
   if (cues.size)
@@ -510,10 +529,24 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   }
   const them = (n: number) => (n === 1 ? 'it' : 'them');
   if (convert.length)
-    out.push({ text: `${plural(convert.length, 'video/audio file')} won’t play in this browser: 🔄 Convert ${them(convert.length)} in 🖼 Media`, tab: 'media', level: 'warn', convert });
-  if (fails) out.push({ text: `${plural(fails, 'video/audio file')} won’t play in this browser, and it can’t convert ${them(fails)}: 🖼 Media says why`, tab: 'media', level: 'warn' });
+    out.push({
+      text: `${plural(convert.length, 'video/audio file')} won’t play in this browser: 🔄 Convert ${them(convert.length)} in 🖼 Media`,
+      tab: 'media',
+      level: 'warn',
+      convert,
+    });
+  if (fails)
+    out.push({
+      text: `${plural(fails, 'video/audio file')} won’t play in this browser, and it can’t convert ${them(fails)}: 🖼 Media says why`,
+      tab: 'media',
+      level: 'warn',
+    });
   if (silent)
-    out.push({ text: `${plural(silent, 'video')} play${silent === 1 ? 's' : ''} without ${silent === 1 ? 'its' : 'their'} sound in this browser (🖼 Media says why)`, tab: 'media', level: 'warn' });
+    out.push({
+      text: `${plural(silent, 'video')} play${silent === 1 ? 's' : ''} without ${silent === 1 ? 'its' : 'their'} sound in this browser (🖼 Media says why)`,
+      tab: 'media',
+      level: 'warn',
+    });
   if (unsure)
     out.push({
       text: `${plural(unsure, 'video/audio file')} this browser may not play: 🖼 Media says what to do`,
@@ -523,7 +556,8 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
 
   const links = game.media.filter((m) => m.url);
   const online = onlineCount(game);
-  if (online) out.push({ text: `${online} item${online === 1 ? ' plays' : 's play'} from the internet: need internet during the game`, tab: 'media', level: 'info' });
+  if (online)
+    out.push({ text: `${online} item${online === 1 ? ' plays' : 's play'} from the internet: need internet during the game`, tab: 'media', level: 'info' });
   const life = links.map((m) => linkLifetime(m));
   const expired = life.filter((l) => l === 'expired').length;
   const temporary = life.filter((l) => l === 'temporary').length;
@@ -566,7 +600,8 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, room
         part: { kind: 'clue', category: c.id, clue: cl.id, ...(card ? { side: 'card' as const, slide: card.id } : {}) },
       });
       const mine: Problem[] = [];
-      const warn = (text: string, card?: ClueCard, same = false) => mine.push({ text, tab, level: 'warn', place: at(card), ...(same ? { sameAsAnswer: true } : {}) });
+      const warn = (text: string, card?: ClueCard, same = false) =>
+        mine.push({ text, tab, level: 'warn', place: at(card), ...(same ? { sameAsAnswer: true } : {}) });
       const rules = partnerRules(cl);
       const cards = cardSlides(cl);
       // (A Custom game's cards are up to the host.)
@@ -590,7 +625,12 @@ export function choiceFaults(list: readonly Choice[]): { empty: boolean; one: bo
   const words = list.map((c) => cleanName(c.text, CHOICE_MAX).toLowerCase());
   const said = words.filter(Boolean);
   const usable = usableChoices(list);
-  return { empty: said.length < words.length, one: list.length === 1, same: new Set(said).size < said.length, noRight: usable.length >= 2 && !rightChoice(usable) };
+  return {
+    empty: said.length < words.length,
+    one: list.length === 1,
+    same: new Set(said).size < said.length,
+    noRight: usable.length >= 2 && !rightChoice(usable),
+  };
 }
 
 /**
@@ -664,11 +704,21 @@ function cardNameProblems(game: Game, cards: ClueCard[], secret: Slide[], where:
   const told = new Set<string>();
   cards.forEach((c, i) => {
     if (nameGivesAway(game, c, secret))
-      out.push({ text: `${where}: the name of ${clueCardWords(c, i)} repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel`, tab, level: 'info', place: at(c) });
+      out.push({
+        text: `${where}: the name of ${clueCardWords(c, i)} repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel`,
+        tab,
+        level: 'info',
+        place: at(c),
+      });
     const key = clueCardName(c, i).toLowerCase();
     if (seen.has(key) && !told.has(key)) {
       told.add(key);
-      out.push({ text: `${where} has two cards called “${clueCardName(c, i)}”: in the host panel you can’t tell them apart`, tab, level: 'info', place: at(c) });
+      out.push({
+        text: `${where} has two cards called “${clueCardName(c, i)}”: in the host panel you can’t tell them apart`,
+        tab,
+        level: 'info',
+        place: at(c),
+      });
     }
     seen.add(key);
   });
@@ -724,11 +774,24 @@ function cardFileProblems(game: Game, card: Slide, room: CardRoom): CardFileProb
       // (The same video and sound in a type phones open, nothing lost: one file, so no copy is needed.)
       const v = ref ? room.plays?.(ref) : undefined;
       const repack = v?.is === 'plays' && room.repack !== false ? v.repack : null;
-      if (ref && repack) out.push({ text: `a ${KIND[it.kind]} phones can't open: repackage it as ${aOrAn(fixBoxName(repack.box))} (↻, nothing lost), or ${types}`, level: 'warn', convert: [ref.id] });
-      else out.push({ text: `a ${KIND[it.kind]} phones can't play: ${shrink.shrink ? `make a copy they can play (🗜), or ${types}` : types}`, level: 'warn', ...shrink });
-    }
-    else if (it.why === 'nofiles') warn(`a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`);
-    else if (it.slow) out.push({ text: `a ${KIND[it.kind]} of ${size}: phones on mobile data may wait a while for it (WiFi is fine)`, level: 'info', ...shrink });
+      if (ref && repack)
+        out.push({
+          text: `a ${KIND[it.kind]} phones can't open: repackage it as ${aOrAn(fixBoxName(repack.box))} (↻, nothing lost), or ${types}`,
+          level: 'warn',
+          convert: [ref.id],
+        });
+      else
+        out.push({
+          text: `a ${KIND[it.kind]} phones can't play: ${shrink.shrink ? `make a copy they can play (🗜), or ${types}` : types}`,
+          level: 'warn',
+          ...shrink,
+        });
+    } else if (it.why === 'nofiles')
+      warn(
+        `a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`,
+      );
+    else if (it.slow)
+      out.push({ text: `a ${KIND[it.kind]} of ${size}: phones on mobile data may wait a while for it (WiFi is fine)`, level: 'info', ...shrink });
   }
   if ([...cardWords(card)].length > CARD_TEXT_MAX) warn(`more than ${CARD_TEXT_MAX} characters of words: phones get the first ${CARD_TEXT_MAX}`);
   return out;
@@ -798,7 +861,11 @@ export function toolButtonProblems(game: Game, room: CardRoom = {}): Problem[] {
 }
 
 /** Words to compare, as a name says them: lower case, anything but letters and digits a single space. */
-const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const norm = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
 
 /**
  * A 🤫 card's name repeats what's on it (its words, its phone title, or a file's name, at least 3 letters) or what's in
@@ -832,7 +899,12 @@ export function savedCardProblems(game: Game, room: CardRoom = {}): Problem[] {
     if (!slideHasContent(c)) out.push({ text: `${says} is empty: there's nothing on it to send`, tab: 'cards', level: 'warn', place });
     out.push(...cardLines(game, [c], says, 'cards', place, room));
     if (nameGivesAway(game, c))
-      out.push({ text: `${says}: its name repeats what’s on it, and in one window viewers read a card’s name in 🤫 Send a card…`, tab: 'cards', level: 'info', place });
+      out.push({
+        text: `${says}: its name repeats what’s on it, and in one window viewers read a card’s name in 🤫 Send a card…`,
+        tab: 'cards',
+        level: 'info',
+        place,
+      });
     // (Said once for each name, going to the second card with it.)
     const key = name.toLowerCase();
     if (seen.has(key) && !told.has(key)) {

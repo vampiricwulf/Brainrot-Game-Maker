@@ -115,7 +115,15 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
     { id: 'brief', name: 'tmp.png', mime: 'image/png', size: 5000, kind: 'image', source: 'https://litter.catbox.moe/zz9.png' },
     { id: 'huge', name: 'clip.mp4', mime: 'video/mp4', size: 40 * 1024 * 1024, kind: 'video' },
     { id: 'mov', name: 'clip.mov', mime: 'video/quicktime', size: 1000, kind: 'video' },
-    { id: 'old', name: 'old.png', mime: 'image/png', size: 0, kind: 'image', url: 'https://cdn.discordapp.com/attachments/1/2/old.png?ex=1&is=1&hm=1', expiresAt: 1000 },
+    {
+      id: 'old',
+      name: 'old.png',
+      mime: 'image/png',
+      size: 0,
+      kind: 'image',
+      url: 'https://cdn.discordapp.com/attachments/1/2/old.png?ex=1&is=1&hm=1',
+      expiresAt: 1000,
+    },
   ];
   const g = { media: more };
 
@@ -188,7 +196,10 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
     expect(filesToSend(pc)).toEqual([]);
     // A buzzer server that takes no files: the files from this computer won't come; links still do.
     const none = phoneCard(g, card(at(newImageEl('pic'), 0, 1), at(newImageEl('linked'), 0, 2)), { fileBytes: FILE_BYTES, files: null });
-    expect(none.media).toEqual([{ kind: 'image', missing: true }, { kind: 'image', url: 'https://files.example/poster.jpg' }]);
+    expect(none.media).toEqual([
+      { kind: 'image', missing: true },
+      { kind: 'image', url: 'https://files.example/poster.jpg' },
+    ]);
     expect(none.left).toEqual([{ item: 'shrek.png', kind: 'picture', why: 'nofiles' }]);
   });
 
@@ -198,7 +209,10 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
       { id: 'g', name: 'huge.gif', mime: 'image/gif', size: 30 * 1024 * 1024, kind: 'image' },
     ];
     const pc = phoneCard({ media: big }, card(at(newImageEl('p'), 0, 1), at(newImageEl('g'), 0, 2)), { fileBytes: FILE_BYTES, files: {} });
-    expect(pc.media).toEqual([{ kind: 'image', pending: true }, { kind: 'image', missing: true }]);
+    expect(pc.media).toEqual([
+      { kind: 'image', pending: true },
+      { kind: 'image', missing: true },
+    ]);
     expect(pc.left).toEqual([{ item: 'huge.gif', kind: 'gif', why: 'big' }]);
   });
 
@@ -255,7 +269,10 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
   });
 
   it('an item’s own name goes with it (for the phone’s text alternative), never its file’s', () => {
-    const pc = phoneCard(g, card(at(newImageEl('linked'), 0, 1, { name: 'The ogre' }), at(newImageEl('pic'), 0, 2)), { fileBytes: FILE_BYTES, files: { pic: HASH } });
+    const pc = phoneCard(g, card(at(newImageEl('linked'), 0, 1, { name: 'The ogre' }), at(newImageEl('pic'), 0, 2)), {
+      fileBytes: FILE_BYTES,
+      files: { pic: HASH },
+    });
     expect(pc.media).toEqual([
       { kind: 'image', url: 'https://files.example/poster.jpg', name: 'The ogre' },
       { kind: 'image', file: HASH, mime: 'image/png' },
@@ -378,6 +395,8 @@ describe('the 📱 preview’s words on a 🗜 copy', () => {
     expect(sizeWords('🎞 clip.mov', { media: 'mov', sends: 'copy' }, '20 MB', true)).toBe('🎞 clip.mov’s copy phones can play is 20 MB');
   });
   it('a GIF’s with an older room open: an ordinary video, said so', () => {
-    expect(copyNote('gif', { ...o, gifs: false })).toBe('📱 Phones get its smaller video instead (1.2 MB, 854×480 WebM): this buzzer server is older, so it plays as a video, not like the GIF.');
+    expect(copyNote('gif', { ...o, gifs: false })).toBe(
+      '📱 Phones get its smaller video instead (1.2 MB, 854×480 WebM): this buzzer server is older, so it plays as a video, not like the GIF.',
+    );
   });
 });

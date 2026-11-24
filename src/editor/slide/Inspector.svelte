@@ -153,7 +153,11 @@
 
   const ALIGN = { left: ['⇤', 'Align text left'], center: ['↔', 'Center the text'], right: ['⇥', 'Align text right'] } as const;
   // (Bars where the text sits: ⤒ ⤓ are the layer order's signs, and ↕ is Space evenly's.)
-  const VALIGN = { top: ['▔', 'Text at the top of the box'], middle: ['▬', 'Text in the middle of the box'], bottom: ['▁', 'Text at the bottom of the box'] } as const;
+  const VALIGN = {
+    top: ['▔', 'Text at the top of the box'],
+    middle: ['▬', 'Text in the middle of the box'],
+    bottom: ['▁', 'Text at the bottom of the box'],
+  } as const;
 
   const fonts = $derived(fontChoices(game));
   const ENTRANCES: [EntranceType | '', string][] = $derived([
@@ -203,7 +207,8 @@
           class="small"
           onclick={() => convertNow(game, id)}
           disabled={!!jobFor(id)}
-          title="Put a copy that plays here in its place, everywhere it's used (Ctrl+Z puts the old one back)">{jobFor(id) ? '🔄 Converting…' : '🔄 Convert…'}</button
+          title="Put a copy that plays here in its place, everywhere it's used (Ctrl+Z puts the old one back)"
+          >{jobFor(id) ? '🔄 Converting…' : '🔄 Convert…'}</button
         >
       {/if}
     </p>
@@ -233,38 +238,72 @@
       </label>
       <div class="grid2">
         <label class="field">
-          <span>{el.autoFit ? 'Max size' : 'Size'}{#if el.autoFit && fit && fit.size < el.size}<span class="fitted">{' '}· showing {fit.size}</span>{/if}</span>
+          <span
+            >{el.autoFit ? 'Max size' : 'Size'}{#if el.autoFit && fit && fit.size < el.size}<span class="fitted">{' '}· showing {fit.size}</span>{/if}</span
+          >
           <NumField min={8} max={600} bind:value={el.size} fallback={110} />
         </label>
         <!-- (↺ outside the label: a click on it, gone as it's done, would open the colour picker.) -->
         <div class="color">
-          <label class="field">Color<ColorBox value={themedText ? themeText : el.color} oninput={(e) => setTextColor(el as TextEl, e.currentTarget.value)} aria-label="Text color" /></label>
+          <label class="field"
+            >Color<ColorBox
+              value={themedText ? themeText : el.color}
+              oninput={(e) => setTextColor(el as TextEl, e.currentTarget.value)}
+              aria-label="Text color"
+            /></label
+          >
           {#if ownOnTile}
-            <button class="small" onclick={() => ((el as TextEl).color = '#ffffff')} title="Back to the theme's text color (it follows the theme when that changes)">↺ Theme color</button>
+            <button
+              class="small"
+              onclick={() => ((el as TextEl).color = '#ffffff')}
+              title="Back to the theme's text color (it follows the theme when that changes)">↺ Theme color</button
+            >
           {/if}
         </div>
       </div>
       {#if fit?.overflow && el.text}
         <p class="warn">
-          ⚠ The text doesn't fit{el.autoFit ? ', even at the smallest size' : ''}. Make the box bigger or the text shorter{el.autoFit ? '' : ', or tick Shrink to fit'}.
+          ⚠ The text doesn't fit{el.autoFit ? ', even at the smallest size' : ''}. Make the box bigger or the text shorter{el.autoFit
+            ? ''
+            : ', or tick Shrink to fit'}.
         </p>
       {/if}
       <!-- Three groups (style, alignment, height in the box): one that doesn't fit goes to the next line whole. -->
       <div class="row toggles">
         <span class="grp">
-          <button class:on={el.weight >= 700} aria-pressed={el.weight >= 700} onclick={() => (el.weight = el.weight >= 700 ? 400 : 700)} aria-label="Bold" title="Bold (Ctrl+B)"><b>B</b></button>
-          <button class:on={el.italic} aria-pressed={el.italic} onclick={() => (el.italic = !el.italic)} aria-label="Italic" title="Italic (Ctrl+I)"><i>I</i></button>
-          <button class:on={el.underline} aria-pressed={el.underline} onclick={() => (el.underline = !el.underline)} aria-label="Underline" title="Underline (Ctrl+U)"><u>U</u></button>
-          <button class:on={el.uppercase} aria-pressed={el.uppercase} onclick={() => (el.uppercase = !el.uppercase)} aria-label="All caps" title="ALL CAPS">AA</button>
+          <button
+            class:on={el.weight >= 700}
+            aria-pressed={el.weight >= 700}
+            onclick={() => (el.weight = el.weight >= 700 ? 400 : 700)}
+            aria-label="Bold"
+            title="Bold (Ctrl+B)"><b>B</b></button
+          >
+          <button class:on={el.italic} aria-pressed={el.italic} onclick={() => (el.italic = !el.italic)} aria-label="Italic" title="Italic (Ctrl+I)"
+            ><i>I</i></button
+          >
+          <button
+            class:on={el.underline}
+            aria-pressed={el.underline}
+            onclick={() => (el.underline = !el.underline)}
+            aria-label="Underline"
+            title="Underline (Ctrl+U)"><u>U</u></button
+          >
+          <button class:on={el.uppercase} aria-pressed={el.uppercase} onclick={() => (el.uppercase = !el.uppercase)} aria-label="All caps" title="ALL CAPS"
+            >AA</button
+          >
         </span>
         <span class="grp">
           {#each ['left', 'center', 'right'] as const as a}
-            <button class:on={el.align === a} aria-pressed={el.align === a} onclick={() => (el.align = a)} aria-label={ALIGN[a][1]} title={ALIGN[a][1]}>{ALIGN[a][0]}</button>
+            <button class:on={el.align === a} aria-pressed={el.align === a} onclick={() => (el.align = a)} aria-label={ALIGN[a][1]} title={ALIGN[a][1]}
+              >{ALIGN[a][0]}</button
+            >
           {/each}
         </span>
         <span class="grp">
           {#each ['top', 'middle', 'bottom'] as const as v}
-            <button class:on={el.vAlign === v} aria-pressed={el.vAlign === v} onclick={() => (el.vAlign = v)} aria-label={VALIGN[v][1]} title={VALIGN[v][1]}>{VALIGN[v][0]}</button>
+            <button class:on={el.vAlign === v} aria-pressed={el.vAlign === v} onclick={() => (el.vAlign = v)} aria-label={VALIGN[v][1]} title={VALIGN[v][1]}
+              >{VALIGN[v][0]}</button
+            >
           {/each}
         </span>
       </div>
@@ -287,7 +326,11 @@
         </div>
       {/if}
       <label class="check">
-        <input type="checkbox" checked={!!el.shadow} onchange={(e) => (el.shadow = e.currentTarget.checked ? { color: '#000000', x: 6, y: 6, blur: 0 } : undefined)} /> Drop shadow
+        <input
+          type="checkbox"
+          checked={!!el.shadow}
+          onchange={(e) => (el.shadow = e.currentTarget.checked ? { color: '#000000', x: 6, y: 6, blur: 0 } : undefined)}
+        /> Drop shadow
       </label>
       {#if el.shadow}
         <div class="grid4 sub">
@@ -362,7 +405,9 @@
       <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
       <!-- (✎ Edit image… is the bar's at the top of the panel.) -->
       <div class="row">
-        <button onclick={(e) => onreplace(e.currentTarget)} data-replace title="Only this {say.thing}: the same file elsewhere stays as it is">🔁 Use another picture…</button>
+        <button onclick={(e) => onreplace(e.currentTarget)} data-replace title="Only this {say.thing}: the same file elsewhere stays as it is"
+          >🔁 Use another picture…</button
+        >
       </div>
       {@render liveNote()}
     </section>
@@ -390,8 +435,19 @@
             Fill
             <div class="row">
               <!-- (data-opens: where a double-click or Enter on the item puts the keys.) -->
-              <ColorBox value={el.fill === 'transparent' ? '#000000' : el.fill} oninput={(e) => (el.fill = e.currentTarget.value)} aria-label="Fill color" data-opens />
-              <label class="check small"><input type="checkbox" checked={el.fill === 'transparent'} onchange={(e) => (el.fill = e.currentTarget.checked ? 'transparent' : '#ffcc00')} />none</label>
+              <ColorBox
+                value={el.fill === 'transparent' ? '#000000' : el.fill}
+                oninput={(e) => (el.fill = e.currentTarget.value)}
+                aria-label="Fill color"
+                data-opens
+              />
+              <label class="check small"
+                ><input
+                  type="checkbox"
+                  checked={el.fill === 'transparent'}
+                  onchange={(e) => (el.fill = e.currentTarget.checked ? 'transparent' : '#ffcc00')}
+                />none</label
+              >
             </div>
           </label>
           {#if el.shape === 'rect'}<label class="field">Corners<NumField min={0} bind:value={el.radius} /></label>{/if}
@@ -400,7 +456,13 @@
       {#if !el.hotspot}
         {@const line = el.shape === 'line' || el.shape === 'arrow' || el.shape === 'path'}
         <div class="grid2">
-          <label class="field">{line ? 'Color' : 'Border'}<ColorBox bind:value={el.stroke} aria-label={line ? 'Line color' : 'Border color'} data-opens={line || undefined} /></label>
+          <label class="field"
+            >{line ? 'Color' : 'Border'}<ColorBox
+              bind:value={el.stroke}
+              aria-label={line ? 'Line color' : 'Border color'}
+              data-opens={line || undefined}
+            /></label
+          >
           <label class="field">Thickness<NumField min={0} max={100} bind:value={el.strokeWidth} /></label>
         </div>
       {/if}
@@ -408,14 +470,20 @@
   {:else if el.kind === 'video' || el.kind === 'audio' || el.kind === 'embed'}
     <section>
       <h4>
-        {el.kind === 'video' ? 'Video' : el.kind === 'audio' ? 'Sound' : el.embedKind === 'remoteImage' || el.embedKind === 'remoteVideo' || el.embedKind === 'remoteAudio' ? 'Online media' : embedName(el.embedKind, el.url)}
+        {el.kind === 'video'
+          ? 'Video'
+          : el.kind === 'audio'
+            ? 'Sound'
+            : el.embedKind === 'remoteImage' || el.embedKind === 'remoteVideo' || el.embedKind === 'remoteAudio'
+              ? 'Online media'
+              : embedName(el.embedKind, el.url)}
       </h4>
       {#if el.kind === 'embed'}
         <label class="field">Link<input bind:value={el.url} data-opens /></label>
         {#if sitePlayer}
           <p class="hint">
-            🌐 Needs internet during the game. It plays in the audience window (or on the stage in single-window mode): click ▶
-            inside it there. The host can restart or stop it and open it in its own window, but can't pause, seek or mute it.
+            🌐 Needs internet during the game. It plays in the audience window (or on the stage in single-window mode): click ▶ inside it there. The host can
+            restart or stop it and open it in its own window, but can't pause, seek or mute it.
           </p>
           {#if el.embedKind === 'drive'}<p class="hint">{DRIVE_SHARE_HINT}</p>{/if}
           <p class="hint">Try it here with ▶ Preview (sound on).</p>
@@ -437,8 +505,8 @@
               </select>
             </label>
             <p class="hint">
-              Players hear it but never see the video. You still play, pause and turn it up or down from your media controls (or by
-              clicking its speaker or time bar on your stage, when players see one).
+              Players hear it but never see the video. You still play, pause and turn it up or down from your media controls (or by clicking its speaker or time
+              bar on your stage, when players see one).
             </p>
           {/if}
         {/if}
@@ -502,8 +570,12 @@
             title="Seconds (83) or minutes and seconds (1:23, 1:23.5); empty: to the end. ↑ ↓ 0.1 s, Shift: 1 s"
           />
           {#if tryUrl}
-            <button class="small" class:on={trying === el.id} aria-pressed={trying === el.id} onclick={() => (trying === el.id ? stopTry() : (trying = el.id))} title="Play that part here (pressed again, it stops)"
-              >{trying === el.id ? '■ Stop' : '▶ Try it'}</button
+            <button
+              class="small"
+              class:on={trying === el.id}
+              aria-pressed={trying === el.id}
+              onclick={() => (trying === el.id ? stopTry() : (trying = el.id))}
+              title="Play that part here (pressed again, it stops)">{trying === el.id ? '■ Stop' : '▶ Try it'}</button
             >
           {/if}
         </div>

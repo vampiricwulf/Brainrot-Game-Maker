@@ -2,7 +2,17 @@
 // where a clue's media was, when its slide comes back: not for the editor's preview, nor one that hadn't started yet.
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  applyLocal, handover, keyTarget, localMedia, mediaScope, previewMediaScope, registerMedia, setMediaRole, unregisterMedia, updateMedia, type MediaHandle,
+  applyLocal,
+  handover,
+  keyTarget,
+  localMedia,
+  mediaScope,
+  previewMediaScope,
+  registerMedia,
+  setMediaRole,
+  unregisterMedia,
+  updateMedia,
+  type MediaHandle,
   type MediaState,
 } from './mediactl.svelte';
 

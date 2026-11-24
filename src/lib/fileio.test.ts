@@ -77,7 +77,8 @@ describe('opening game files', () => {
   it('explains a damaged .json instead of showing the parser’s error', () => {
     expect(() => parseGame('{"version": 2, "title": "Cut o')).toThrow("This file isn't a readable game (.json)");
     expect(() => parseGame('PK not json at all')).toThrow("This file isn't a readable game (.json)");
-    const words = ' isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json).';
+    const words =
+      ' isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json).';
     // (In plain words, naming the file when known; the reason goes to the console.)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(() => parseGame('{"hello": 1}', 'notes.json')).toThrow(`“notes.json”${words}`);
@@ -207,6 +208,8 @@ describe('saving in a browser', () => {
   it('says a download started, not that it is done', () => {
     expect(savedWhere(null, 'Quiz.brainrot')).toBe('Download started: Quiz.brainrot');
     expect(savedWhere({ path: 'Quiz.brainrot', fallback: false, picked: true }, 'Quiz.brainrot')).toBe('Saved Quiz.brainrot');
-    expect(savedWhere({ path: 'C:\\Games\\BrainrotSaves\\Quiz.brainrot', fallback: false }, 'Quiz.brainrot')).toBe('Saved to C:\\Games\\BrainrotSaves\\Quiz.brainrot');
+    expect(savedWhere({ path: 'C:\\Games\\BrainrotSaves\\Quiz.brainrot', fallback: false }, 'Quiz.brainrot')).toBe(
+      'Saved to C:\\Games\\BrainrotSaves\\Quiz.brainrot',
+    );
   });
 });

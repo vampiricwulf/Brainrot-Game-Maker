@@ -45,7 +45,12 @@ function png(r, g, b, w = 40, h = 24) {
   ihdr[9] = 2;
   const raw = Buffer.alloc((w * 3 + 1) * h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) raw.set([r, g, b], y * (w * 3 + 1) + 1 + x * 3);
-  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]).toString('base64');
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]).toString('base64');
 }
 
 /** Drop image files (name → base64 PNG) onto an element, the way a file dragged from the desktop arrives. */
@@ -187,7 +192,11 @@ try {
   assert((await modal.getByRole('button', { name: /Copy selected to other rounds/ }).count()) === 1, 'and selects it again');
   // The preview is a Tab stop: Tab goes through the images from there (top-most first) and on out past the last one.
   const canvas = modal.locator('.canvas');
-  const picked = () => modal.locator('.layers .row.sel .txt').allInnerTexts().then((t) => t.join(','));
+  const picked = () =>
+    modal
+      .locator('.layers .row.sel .txt')
+      .allInnerTexts()
+      .then((t) => t.join(','));
   const onCanvas = () => canvas.evaluate((c) => c === document.activeElement);
   await canvas.focus();
   await page.keyboard.press('Escape');
@@ -197,7 +206,10 @@ try {
   await page.keyboard.press('Tab');
   assert((await picked()) === 'blocker.png' && (await onCanvas()), 'and Tab again the ones under it');
   await page.keyboard.press('Tab');
-  assert(!(await onCanvas()) && (await modal.evaluate((m) => m.contains(document.activeElement))) && (await picked()) === 'blocker.png', 'past the last one, Tab moves on in the window');
+  assert(
+    !(await onCanvas()) && (await modal.evaluate((m) => m.contains(document.activeElement))) && (await picked()) === 'blocker.png',
+    'past the last one, Tab moves on in the window',
+  );
   await canvas.focus();
   await page.keyboard.press('Shift+F10');
   const itemMenu = page.getByRole('menu', { name: 'Slide item menu' });
@@ -205,7 +217,23 @@ try {
   assert(true, 'Shift+F10 on the preview opens the selected image’s menu');
   {
     const got = (await itemMenu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0].trim());
-    const want = ['✎ Edit image…', '🔁 Use another picture…', '✎ Rename', '⧉ Duplicate', '✂ Cut', '📋 Copy', '📋 Paste', '⤒ Bring to front', '↑ Bring forward', '↓ Send backward', '⤓ Send to back', 'Align', '🔒 Lock', '👁 Hide while editing', '🗑 Delete'];
+    const want = [
+      '✎ Edit image…',
+      '🔁 Use another picture…',
+      '✎ Rename',
+      '⧉ Duplicate',
+      '✂ Cut',
+      '📋 Copy',
+      '📋 Paste',
+      '⤒ Bring to front',
+      '↑ Bring forward',
+      '↓ Send backward',
+      '⤓ Send to back',
+      'Align',
+      '🔒 Lock',
+      '👁 Hide while editing',
+      '🗑 Delete',
+    ];
     assert(JSON.stringify(got) === JSON.stringify(want), `its items in the slide editor's one order (${got.join(' | ')})`);
   }
   // A choice made with the keys (arrows, Enter) leaves them on the preview, as on a slide (they went to ＋ Add image).
@@ -232,7 +260,10 @@ try {
 
   // The preview has as many players as the game can have (📋 Most players, 8), and says when an image covers a score.
   const playersSel = modal.getByLabel('Players in the preview');
-  assert((await playersSel.inputValue()) === '8' && (await modal.locator('.canvas .bar > *').count()) === 8, 'the preview shows the score bar with the game’s Most players (8)');
+  assert(
+    (await playersSel.inputValue()) === '8' && (await modal.locator('.canvas .bar > *').count()) === 8,
+    'the preview shows the score bar with the game’s Most players (8)',
+  );
   await modal.locator('p.warn', { hasText: 'blocker.png' }).waitFor();
   assert(true, 'a warning says the full-height blocker.png covers a player’s score');
   await playersSel.selectOption('3');
@@ -246,7 +277,10 @@ try {
   });
   await modal.locator('.canvas').dispatchEvent('drop', { dataTransfer: sound });
   await toastsIn(page, { hasText: '“boing.wav” isn’t a picture file. Board images can be pictures or GIFs.' }).waitFor();
-  assert((await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).innerText()) === mediaBefore, 'a sound dropped on the board images is refused and not added to 🖼 Media');
+  assert(
+    (await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).innerText()) === mediaBefore,
+    'a sound dropped on the board images is refused and not added to 🖼 Media',
+  );
 
   await modal.getByRole('button', { name: /Copy all to other rounds/ }).click();
   await modal.getByRole('button', { name: 'Done' }).click();
@@ -267,7 +301,10 @@ try {
   // Nothing new is "unused".
   await page.getByRole('button', { name: '🖼️ Media' }).click();
   await page.locator('[data-place^="media:"]').first().waitFor();
-  assert((await page.getByRole('button', { name: /Delete unused/ }).count()) === 0, 'category, tile, board and banner images all count as used (no 🗑 Delete unused)');
+  assert(
+    (await page.getByRole('button', { name: /Delete unused/ }).count()) === 0,
+    'category, tile, board and banner images all count as used (no 🗑 Delete unused)',
+  );
 
   // Two different files with the same name (like pasted screenshots, all "image.png") get distinct names.
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
@@ -286,8 +323,13 @@ try {
   await boardTilesIn(boardIn(page)).first().waitFor();
   assert((await boardIn(page).locator('.header .title.has-image img').count()) === 2, 'category headers show their images');
   assert((await boardIn(page).locator('.header .caption').innerText()).trim().toLowerCase() === 'memes', 'the name shows over the image');
-  const captionShadow = await boardIn(page).locator('.header .caption').evaluate((e) => getComputedStyle(e).textShadow);
-  assert(captionShadow.includes('rgba(255, 255, 255, 0.75)') && !captionShadow.includes('rgb(0, 0, 0)'), `on Pastel its dark letters have a light outline, not a black one, to read on a dark picture (${captionShadow})`);
+  const captionShadow = await boardIn(page)
+    .locator('.header .caption')
+    .evaluate((e) => getComputedStyle(e).textShadow);
+  assert(
+    captionShadow.includes('rgba(255, 255, 255, 0.75)') && !captionShadow.includes('rgb(0, 0, 0)'),
+    `on Pastel its dark letters have a light outline, not a black one, to read on a dark picture (${captionShadow})`,
+  );
   assert((await boardTilesIn(boardIn(page)).locator('img').count()) === 3, 'tiles show their images');
   assert((await page.locator('.board-screen .banner img').count()) === 1, 'the banner shows above the board');
   const op = await page.locator('.layer.above .el').evaluateAll((els) => els.map((e) => e.style.opacity));
@@ -298,7 +340,7 @@ try {
     tiles.nth(i).evaluate((t) => {
       const r = t.getBoundingClientRect();
       const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-      return hit?.closest('.tile') === t ? 'tile' : hit?.className ?? 'nothing';
+      return hit?.closest('.tile') === t ? 'tile' : (hit?.className ?? 'nothing');
     });
   assert((await topAt(0)).includes('block'), 'a solid board image covers the tile under it');
   await tiles.nth(0).click({ force: true });

@@ -66,17 +66,32 @@
         <input type="checkbox" bind:checked={s.deductOnWrong} /> Show quick ✔/✘ buttons (one click for right or wrong)
       </label>
       <label class="check">
-        <input type="checkbox" bind:checked={s.pickerFollowsAward} /> {teams ? 'Team' : 'Player'} who gets points picks next
+        <input type="checkbox" bind:checked={s.pickerFollowsAward} />
+        {teams ? 'Team' : 'Player'} who gets points picks next
       </label>
       <!-- (Left out until ticked: a game saved without it has no steals. Each partner clue can say otherwise.) -->
-      <label class="check" title="After ✘ Missed on a 🤝 partner clue, everyone else can answer it for the tile's value (the buzzers open for them, or you pick who).{app.playerOnly ? '' : ' Each partner clue can say otherwise in the editor.'}">
-        <input type="checkbox" checked={!!s.partnerSteal} onchange={(e) => (e.currentTarget.checked ? (s.partnerSteal = true) : delete s.partnerSteal)} /> A miss on a partner clue lets the others steal it
+      <label
+        class="check"
+        title="After ✘ Missed on a 🤝 partner clue, everyone else can answer it for the tile's value (the buzzers open for them, or you pick who).{app.playerOnly
+          ? ''
+          : ' Each partner clue can say otherwise in the editor.'}"
+      >
+        <input type="checkbox" checked={!!s.partnerSteal} onchange={(e) => (e.currentTarget.checked ? (s.partnerSteal = true) : delete s.partnerSteal)} /> A miss
+        on a partner clue lets the others steal it
       </label>
       <label class="field">
         Points symbol
-        <input bind:value={s.currencySymbol} placeholder="$, pts, 🧠, or blank" maxlength="6" title="A word (pts, coins) goes after the number: 200 pts. $, € or 🧠 goes in front: $200" />
+        <input
+          bind:value={s.currencySymbol}
+          placeholder="$, pts, 🧠, or blank"
+          maxlength="6"
+          title="A word (pts, coins) goes after the number: 200 pts. $, € or 🧠 goes in front: $200"
+        />
       </label>
-      <label class="field" title="Daily Doubles and the Final: {nouns} can wager up to their score, or up to this much when they have less (0 or negative too). Blank: {WAGER_FLOOR}. While hosting, Ignore the limits lets you take any wager.">
+      <label
+        class="field"
+        title="Daily Doubles and the Final: {nouns} can wager up to their score, or up to this much when they have less (0 or negative too). Blank: {WAGER_FLOOR}. While hosting, Ignore the limits lets you take any wager."
+      >
         Wagers go up to their score, or at least
         <input
           type="number"

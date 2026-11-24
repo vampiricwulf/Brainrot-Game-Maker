@@ -23,13 +23,63 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openBuzzerOptions, openGameFile, quick, quickInSight, startBuzzer, startRoomOn, stepButton, failureShots, assert, launchChromium, section, boardIn, finalControlsIn, hostPanelIn, playerRowsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  anyway,
+  checkItem,
+  editorReady,
+  flowIs,
+  goOnCheck,
+  mainButton,
+  notYet,
+  openBuzzerOptions,
+  openGameFile,
+  quick,
+  quickInSight,
+  startBuzzer,
+  startRoomOn,
+  stepButton,
+  failureShots,
+  assert,
+  launchChromium,
+  section,
+  boardIn,
+  finalControlsIn,
+  hostPanelIn,
+  playerRowsIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 
 // Ann and Bob on $0, a board of four categories (each flow plays its own column's first tile, $200), no Daily Doubles;
 // Lore's first tile is a 🤝 partner clue with a card for its describer.
-const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (id, t) => ({
+  id,
+  kind: 'text',
+  text: t,
+  x: 160,
+  y: 340,
+  w: 1600,
+  h: 400,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  font: 'Arial',
+  size: 72,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#fff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t)] });
 const cats = ['Memes', 'Rizz', 'Ohio', 'Lore'];
 /** Only on the partner clue's card: never on the host page in one window. */
@@ -41,27 +91,69 @@ const partnerClue = {
   cards: [{ id: 'k1', to: 'giver', ...slide('k1t', CARD_WORDS) }],
 };
 const game = {
-  id: 'g_goon', version: 2, title: 'Go On Night',
-  settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8, stream: { clueCaption: true } },
+  id: 'g_goon',
+  version: 2,
+  title: 'Go On Night',
+  settings: {
+    allowNegativeScores: true,
+    deductOnWrong: true,
+    defaultTimerSeconds: 15,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+    maxPlayers: 8,
+    stream: { clueCaption: true },
+  },
   players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b'][i], startScore: 0 })),
   rounds: [
     {
-      id: 'r_board', name: 'Jeopardy!', mode: 'board', values: [200, 400], dailyDoubleCount: 0,
+      id: 'r_board',
+      name: 'Jeopardy!',
+      mode: 'board',
+      values: [200, 400],
+      dailyDoubleCount: 0,
       categories: cats.map((c, ci) => ({
         id: `cat${ci}`,
         title: c,
-        clues: [0, 1].map((ri) => ({ id: `c${ci}_${ri}`, value: null, type: 'standard', questionSlide: slide(`q${ci}_${ri}`, `${c} ${ri}`), answerSlide: slide(`a${ci}_${ri}`, `Answer ${ci}.${ri}`), ...(ci === 3 && !ri ? partnerClue : {}) })),
+        clues: [0, 1].map((ri) => ({
+          id: `c${ci}_${ri}`,
+          value: null,
+          type: 'standard',
+          questionSlide: slide(`q${ci}_${ri}`, `${c} ${ri}`),
+          answerSlide: slide(`a${ci}_${ri}`, `Answer ${ci}.${ri}`),
+          ...(ci === 3 && !ri ? partnerClue : {}),
+        })),
       })),
     },
   ],
-  media: [], audio: {}, theme: {}, wheels: [], dice: [], statFields: [], items: [],
+  media: [],
+  audio: {},
+  theme: {},
+  wheels: [],
+  dice: [],
+  statFields: [],
+  items: [],
 };
 /** The same players, a Final only (both on $0 play it, their $0 wagers filled in): flow 3. */
 const finalGame = {
   ...game,
   id: 'g_goon_final',
   title: 'Go On Final',
-  rounds: [{ id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Lore', questionSlide: slide('fq', 'The final question'), answerSlide: slide('fa', 'The final answer'), timerSeconds: 30, allowNonPositive: true }],
+  rounds: [
+    {
+      id: 'r_final',
+      name: 'Final Jeopardy!',
+      mode: 'final',
+      category: 'Lore',
+      questionSlide: slide('fq', 'The final question'),
+      answerSlide: slide('fa', 'The final answer'),
+      timerSeconds: 30,
+      allowNonPositive: true,
+    },
+  ],
 };
 mkdirSync(resolve('test-results'), { recursive: true });
 const gameFile = resolve('test-results/goon.json');
@@ -130,10 +222,12 @@ async function atDone(page, cat) {
 }
 
 const stageSize = (page) =>
-  stageBoxIn(page).locator('.stage').evaluate((s) => {
-    const r = s.getBoundingClientRect();
-    return `${Math.round(r.width)}x${Math.round(r.height)}`;
-  });
+  stageBoxIn(page)
+    .locator('.stage')
+    .evaluate((s) => {
+      const r = s.getBoundingClientRect();
+      return `${Math.round(r.width)}x${Math.round(r.height)}`;
+    });
 // The stage's size once it has stopped changing (it grows to the window a frame or two after the panel goes).
 async function settledStageSize(page) {
   let was = '';
@@ -165,7 +259,14 @@ try {
       return [...document.querySelectorAll('.panel > .toolsrow :is(button, select)')]
         .filter((b) => {
           const r = b.getBoundingClientRect();
-          return r.width > 0 && r.left < card.right && card.left < r.right && r.top < card.bottom && card.top < r.bottom && (r.left < card.left - 0.5 || r.right > card.right + 0.5);
+          return (
+            r.width > 0 &&
+            r.left < card.right &&
+            card.left < r.right &&
+            r.top < card.bottom &&
+            card.top < r.bottom &&
+            (r.left < card.left - 0.5 || r.right > card.right + 0.5)
+          );
         })
         .map((b) => b.textContent.trim());
     });
@@ -200,7 +301,9 @@ try {
         inside: card.left >= panel.left - 1 && card.right <= panel.right + 1 && card.top >= panel.top - 1 && card.bottom <= panel.bottom + 1,
         offStage: !meets(card, rect(document.querySelector('.stage-box'))),
         offBar: !meets(card, rect(document.querySelector('.panel .fixed'))),
-        onMain: [...document.querySelectorAll('.panel [data-goon] :is(button, input, label)')].filter((b) => meets(rect(b), m)).map((b) => b.textContent.trim()),
+        onMain: [...document.querySelectorAll('.panel [data-goon] :is(button, input, label)')]
+          .filter((b) => meets(rect(b), m))
+          .map((b) => b.textContent.trim()),
       };
     }, mainWas);
     assert(
@@ -230,7 +333,10 @@ try {
     await page.keyboard.press('Escape');
     await goOnCheck(page).waitFor({ state: 'detached' });
     await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
-    assert((await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 1, 'Not yet closes it, the keys back on the blue button, and an Esc right after it does nothing: the clue stays open');
+    assert(
+      (await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 1,
+      'Not yet closes it, the keys back on the blue button, and an Esc right after it does nothing: the clue stays open',
+    );
 
     // By a click on the stage.
     await stageBoxIn(page).locator('.stage').click();
@@ -243,7 +349,10 @@ try {
     const seen = await page.evaluate(() => window.__goonSeen);
     await mainButton(page).click({ modifiers: ['Shift'] });
     await boardIn(stageBoxIn(page)).waitFor();
-    assert((await boardUp(page)) && (await page.evaluate(() => window.__goonSeen)) === seen && (await annScore()) === '$0', 'Shift+click on the blue button goes on at once, the check never opening');
+    assert(
+      (await boardUp(page)) && (await page.evaluate(() => window.__goonSeen)) === seen && (await annScore()) === '$0',
+      'Shift+click on the blue button goes on at once, the check never opening',
+    );
 
     // ＋ Award Ann $200 ▶ board, then Ctrl+Z: the points go, the board stays.
     await atDone(page, 2);
@@ -292,7 +401,10 @@ try {
     await goOnCheck(page).waitFor({ state: 'detached' });
     await boardIn(stageBoxIn(page)).waitFor();
     assert(
-      (await bobScore()) === '$400' && (await annScore()) === '$400' && (await page.evaluate(() => window.__restClicks)) === 0 && (await hostPanelIn(page).locator('.score-edit').count()) === 0,
+      (await bobScore()) === '$400' &&
+        (await annScore()) === '$400' &&
+        (await page.evaluate(() => window.__restClicks)) === 0 &&
+        (await hostPanelIn(page).locator('.score-edit').count()) === 0,
       'a double-click on ＋ Award Bob $400 ▶ board gives him $400 and goes back to the board; its second click reaches nothing where the check was',
     );
     await ctx.close();
@@ -317,7 +429,14 @@ try {
     await start(page);
     /** The host page holds no word of the card: its text, its labels and its tooltips. */
     const noCard = async () =>
-      !(await page.evaluate(() => [document.body.innerText, ...[...document.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? ''])].join('\n'))).includes(CARD_WORDS);
+      !(
+        await page.evaluate(() =>
+          [
+            document.body.innerText,
+            ...[...document.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? '']),
+          ].join('\n'),
+        )
+      ).includes(CARD_WORDS);
     const answer = () => stageBoxIn(page).locator('[data-slide="answer"]').count();
     // Ann picks it; Bob, the only other player, is her partner at once. Enter on PARTNER UP! is Show question ▶.
     await page.keyboard.press('p');
@@ -336,7 +455,9 @@ try {
     await page.keyboard.press('n');
     await checkItem(page, 'handout').waitFor();
     assert(
-      (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await quick(page, '📤 Send and start').count()) === 1 && (await anyway(page).innerText()).includes('👁 Reveal anyway: they haven’t played'),
+      (await goOnCheck(page).getAttribute('data-goon')) === 'first' &&
+        (await quick(page, '📤 Send and start').count()) === 1 &&
+        (await anyway(page).innerText()).includes('👁 Reveal anyway: they haven’t played'),
       'N opens “First:” Card 1 hasn’t gone to Bob’s phone, with 📤 Send and start and a quiet 👁 Reveal anyway',
     );
     assert(await noCard(), 'the page holds no word of the card with the check open (its name and who it’s for only)');
@@ -415,7 +536,10 @@ try {
     // (Its seconds follow the clock while it's open.)
     const secs = () => page.evaluate(() => Number(/\((\d+) s left\)/.exec(document.querySelector('[data-goon-item="clock"] .text')?.textContent ?? '')?.[1]));
     const was = await secs();
-    await page.waitForFunction((w) => Number(/\((\d+) s left\)/.exec(document.querySelector('[data-goon-item="clock"] .text')?.textContent ?? '')?.[1]) < w, was);
+    await page.waitForFunction(
+      (w) => Number(/\((\d+) s left\)/.exec(document.querySelector('[data-goon-item="clock"] .text')?.textContent ?? '')?.[1]) < w,
+      was,
+    );
     assert((await answerUp()) === 0, `a click on the stage asks too, its seconds counting down (${was} s, then ${await secs()} s)`);
     // (The check, the status line and the stage show the same seconds left at any moment: its words invite comparing.)
     const seen = new Set();
@@ -437,7 +561,10 @@ try {
     await page.keyboard.press('Escape');
     await goOnCheck(page).waitFor({ state: 'detached' });
     await stageBoxIn(page).locator('.stage').click({ button: 'right' });
-    await page.locator('.cm[role="menu"]').getByRole('menuitem', { name: /👁 Reveal answer/ }).click();
+    await page
+      .locator('.cm[role="menu"]')
+      .getByRole('menuitem', { name: /👁 Reveal answer/ })
+      .click();
     await clockLine.waitFor();
     assert((await answerUp()) === 0 && (await clockRuns()) === 1, 'so does the stage’s menu; Esc (Not yet) leaves the clock running');
     await goOnCheck(page, { ready: true }).waitFor();
@@ -488,12 +615,19 @@ try {
     const who = await spot();
     await page.keyboard.press('n');
     await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player ▶'));
-    assert((await stageBoxIn(page).locator('.spot-wager').innerText()).includes('$0'), `N shows ${who}’s wager; the blue button is Next player ▶ (their verdict due, in their row)`);
+    assert(
+      (await stageBoxIn(page).locator('.spot-wager').innerText()).includes('$0'),
+      `N shows ${who}’s wager; the blue button is Next player ▶ (their verdict due, in their row)`,
+    );
     // N with them not judged yet: the check (“First:”, a must: no anyway), the spotlight staying on them.
     await page.keyboard.press('n');
     await checkItem(page, 'verdict').waitFor();
     assert(
-      (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await anyway(page).count()) === 0 && (await quick(page, '✔ Right').count()) === 1 && (await quick(page, '✘ Wrong').count()) === 1 && (await spot()) === who,
+      (await goOnCheck(page).getAttribute('data-goon')) === 'first' &&
+        (await anyway(page).count()) === 0 &&
+        (await quick(page, '✔ Right').count()) === 1 &&
+        (await quick(page, '✘ Wrong').count()) === 1 &&
+        (await spot()) === who,
       `N with ${who} not judged yet opens the check: ✔ Right / ✘ Wrong, no “anyway”, the spotlight still on them`,
     );
     // C in it: judged, the check closed, the spotlight still on them with their verdict on stage.
@@ -501,7 +635,10 @@ try {
     await page.keyboard.press('c');
     await goOnCheck(page).waitFor({ state: 'detached' });
     await stageBoxIn(page).locator('.spot-result', { hasText: 'CORRECT' }).waitFor();
-    assert((await spot()) === who && (await stageBoxIn(page).locator('.spot-name').textContent()) === who, `C judges ${who} and closes it: their verdict on stage, the spotlight still on them`);
+    assert(
+      (await spot()) === who && (await stageBoxIn(page).locator('.spot-name').textContent()) === who,
+      `C judges ${who} and closes it: their verdict on stage, the spotlight still on them`,
+    );
     // N then goes on, to the next player.
     await page.keyboard.press('n');
     await page.waitForFunction((w) => document.querySelector('.fj .pl.cur .name')?.textContent !== w, who);
@@ -530,7 +667,10 @@ try {
       await page.keyboard.press('n');
       await checkItem(page, 'clock').waitFor();
       await hostPanelIn(page).locator('[data-goon="nothing"] [data-goon-item="clock"]', { hasText: '✓ Time’s up' }).waitFor();
-      assert((await stageBoxIn(page).locator('.stage', { hasText: 'The final answer' }).count()) === 0, 'the clock runs out with the check open: “✓ Time’s up”, the answer still hidden');
+      assert(
+        (await stageBoxIn(page).locator('.stage', { hasText: 'The final answer' }).count()) === 0,
+        'the clock runs out with the check open: “✓ Time’s up”, the answer still hidden',
+      );
       await goOnCheck(page, { ready: true }).waitFor();
       await page.keyboard.press('n');
       await statusLineIn(page, { hasText: 'Answer on screen' }).waitFor();
@@ -542,11 +682,18 @@ try {
       await hostPanelIn(page).locator('.tc button[aria-label="Pause timer"]').waitFor();
       await page.keyboard.press('t');
       await hostPanelIn(page).locator('.tc button[aria-label="Start timer"]').waitFor();
-    } else await hostPanelIn(page).locator('.tc .left', { hasText: 'Time’s up' }).or(hostPanelIn(page).locator('.tc .left', { hasText: "Time's up" })).waitFor();
+    } else
+      await hostPanelIn(page)
+        .locator('.tc .left', { hasText: 'Time’s up' })
+        .or(hostPanelIn(page).locator('.tc .left', { hasText: "Time's up" }))
+        .waitFor();
     const seen = await page.evaluate(() => window.__goonSeen);
     await page.keyboard.press('n');
     await statusLineIn(page, { hasText: 'Answer on screen' }).waitFor();
-    assert((await page.evaluate(() => window.__goonSeen)) === seen && (await stageBoxIn(page).locator('.stage', { hasText: 'The final answer' }).count()) === 1, `the clock ${how}: N shows the answer at once, no check`);
+    assert(
+      (await page.evaluate(() => window.__goonSeen)) === seen && (await stageBoxIn(page).locator('.stage', { hasText: 'The final answer' }).count()) === 1,
+      `the clock ${how}: N shows the answer at once, no check`,
+    );
     await ctx.close();
   }
 
@@ -573,12 +720,17 @@ try {
     const teach = goOnCheck(page).locator('.teach');
     const shown = (await teach.count()) === 1 && (await teach.isVisible());
     // (A finger can't press R or Shift+click: "Next time: …" is only for a keyboard and a mouse.)
-    assert(what === 'a computer' ? shown : !shown, `${what}: the check ${what === 'a computer' ? 'says' : 'doesn’t say'} “Next time: R reveals at once · Shift+click …”`);
+    assert(
+      what === 'a computer' ? shown : !shown,
+      `${what}: the check ${what === 'a computer' ? 'says' : 'doesn’t say'} “Next time: R reveals at once · Shift+click …”`,
+    );
     if (what === 'a phone') {
       // A phone: the check's lines get the card's whole width (no room kept beside them for the blue button's spot, which
       // squeezed them to half of it); the reveal rows get the panel's whole width, ½ Halve and 0 Nullify in sight, the
       // blue button on its own row under them.
-      const pad = await goOnCheck(page).locator('.scroll').evaluate((e) => getComputedStyle(e).paddingRight);
+      const pad = await goOnCheck(page)
+        .locator('.scroll')
+        .evaluate((e) => getComputedStyle(e).paddingRight);
       assert(pad === '0px', `a phone: the check's lines take its whole width (padding ${pad})`);
       await goOnCheck(page, { ready: true }).waitFor();
       // (No spot drawn, but where the blue button was the check has no button: a nervous second tap there presses nothing.)
@@ -597,7 +749,9 @@ try {
           .filter(([, r]) => r.left < box.left - 1 || r.right > box.right + 1)
           .map(([t, r]) => `${t} ${Math.round(r.left)}..${Math.round(r.right)} outside ${Math.round(box.left)}..${Math.round(box.right)}`);
       });
-      const halves = await finalControlsIn(page).locator('.pl.cur button', { hasText: /Halve|Nullify/ }).count();
+      const halves = await finalControlsIn(page)
+        .locator('.pl.cur button', { hasText: /Halve|Nullify/ })
+        .count();
       assert(halves === 2 && !cut.length, `a phone: the spotlit reveal row's ½ Halve and 0 Nullify are in sight (${cut.join(', ') || 'both'})`);
     }
     if (what === 'a touch tablet') {
@@ -610,14 +764,19 @@ try {
       await statusLineIn(page, { hasText: 'Player reveals' }).waitFor();
       await page.keyboard.press('n');
       await finalControlsIn(page).locator('.pl.cur', { hasText: 'wager $0' }).waitFor();
-      const at = await finalControlsIn(page).locator('.pl').evaluateAll((rows) =>
-        rows.map((r) => ['button.good', 'button.bad'].map((sel) => Math.round(r.querySelector(sel).getBoundingClientRect().left)).join('/')),
-      );
+      const at = await finalControlsIn(page)
+        .locator('.pl')
+        .evaluateAll((rows) =>
+          rows.map((r) => ['button.good', 'button.bad'].map((sel) => Math.round(r.querySelector(sel).getBoundingClientRect().left)).join('/')),
+        );
       assert(new Set(at).size === 1, `a touch tablet: ✔ Right / ✘ Wrong at one place in every reveal row, the spotlit one's too (${at.join(', ')})`);
       const how = finalControlsIn(page).locator('details.how');
       if (!(await how.evaluate((d) => d.open))) await how.locator('summary').click();
       const words = await how.innerText();
-      assert(words.includes('spotlight') && !/Keys:|Alt\+|\(N, C, X\)/.test(words), `a touch tablet: the reveals' how-to names no keys (“${words.replace(/\s+/g, ' ')}”)`);
+      assert(
+        words.includes('spotlight') && !/Keys:|Alt\+|\(N, C, X\)/.test(words),
+        `a touch tablet: the reveals' how-to names no keys (“${words.replace(/\s+/g, ' ')}”)`,
+      );
     }
     await ctx.close();
   }
@@ -637,7 +796,10 @@ try {
     await start(page);
     await openTile(page, 0);
     await hostPanelIn(page).locator('button[data-box="buzzers"].ring').waitFor();
-    assert(await flowIs(page, '👁 Reveal answer'), 'the buzzers never opened: the blue button is still 👁 Reveal answer, 🔔 Open the buzzers in the buzzers’ row has the ring');
+    assert(
+      await flowIs(page, '👁 Reveal answer'),
+      'the buzzers never opened: the blue button is still 👁 Reveal answer, 🔔 Open the buzzers in the buzzers’ row has the ring',
+    );
     await page.keyboard.press('h');
     await page.locator('.play > .panel').waitFor({ state: 'detached' });
     const hiddenSize = await settledStageSize(page);
@@ -645,7 +807,9 @@ try {
     await page.locator('.show-controls.pulse').waitFor();
     await page.locator('[data-goon-held]').waitFor();
     assert(
-      (await page.locator('.play > .panel').count()) === 0 && (await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 0 && (await stageSize(page)) === hiddenSize,
+      (await page.locator('.play > .panel').count()) === 0 &&
+        (await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 0 &&
+        (await stageSize(page)) === hiddenSize,
       'one window, the controls hidden: N with something left shows nothing new on stream (no answer, no panel, the stage its size) and the pill pulses',
     );
     await page.keyboard.press('h');
@@ -655,12 +819,18 @@ try {
     {
       const hid = await quickInSight(page, '🔔 Open the buzzers');
       const tick = await goOnCheck(page).locator('label:has(input[type="checkbox"])').allInnerTexts();
-      assert(!hid && tick.length === 1 && tick[0].includes('Don’t ask about opening the buzzers'), `its 🔔 Open the buzzers is in sight, nothing scrolled, its “Don’t ask” tick there too, under it (${hid}; ${JSON.stringify(tick)})`);
+      assert(
+        !hid && tick.length === 1 && tick[0].includes('Don’t ask about opening the buzzers'),
+        `its 🔔 Open the buzzers is in sight, nothing scrolled, its “Don’t ask” tick there too, under it (${hid}; ${JSON.stringify(tick)})`,
+      );
     }
     await goOnCheck(page, { ready: true }).waitFor();
     await quick(page, '🔔 Open the buzzers').click();
     await goOnCheck(page).waitFor({ state: 'detached' });
-    assert((await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 0, 'its 🔔 Open the buzzers opens them and closes it, the answer still hidden');
+    assert(
+      (await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 0,
+      'its 🔔 Open the buzzers opens them and closes it, the answer still hidden',
+    );
     // The expert's "2, Enter" in it (Bob shouted it out, the buzzers never opened on this clue): Bob gets the points, as
     // outside, never 👁 Reveal answer (2 picks him and leaves nothing to do; Enter then awards, the check closing).
     await page.keyboard.press('Escape');
@@ -694,11 +864,17 @@ try {
     await page.keyboard.press('n');
     await page.locator('.play > .panel').waitFor();
     await checkItem(page, 'picked').waitFor();
-    assert((await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 1, 'two windows, the controls hidden: N with Ann’s points not given brings the controls back with the check open');
+    assert(
+      (await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 1,
+      'two windows, the controls hidden: N with Ann’s points not given brings the controls back with the check open',
+    );
     await page.keyboard.press('Escape');
     await goOnCheck(page).waitFor({ state: 'detached' });
     await page.locator('.play > .panel').waitFor({ state: 'detached' });
-    assert((await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 1, 'Not yet (Esc) closes it, and the controls hide again, the clue still open');
+    assert(
+      (await stageBoxIn(page).locator('[data-slide="answer"]').count()) === 1,
+      'Not yet (Esc) closes it, and the controls hide again, the clue still open',
+    );
     await ctx.close();
   }
 

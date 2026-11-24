@@ -24,7 +24,15 @@ function slideWords(s: Slide | undefined): string[] {
 
 /** What buttons say: a slide shown, a 🤫 card, a question asked, a host note. */
 function buttonWords(acts: Action[] | undefined): string[] {
-  return (acts ?? []).flatMap((a) => (a.do === 'popup' || a.do === 'card' ? slideWords(a.slide) : a.do === 'question' ? [...slideWords(a.question), ...slideWords(a.answer)] : a.do === 'note' ? [a.text] : []));
+  return (acts ?? []).flatMap((a) =>
+    a.do === 'popup' || a.do === 'card'
+      ? slideWords(a.slide)
+      : a.do === 'question'
+        ? [...slideWords(a.question), ...slideWords(a.answer)]
+        : a.do === 'note'
+          ? [a.text]
+          : [],
+  );
 }
 
 /** The text around the first match, at most `max` characters. */
@@ -54,34 +62,88 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
   game.rounds.forEach((r, i) => {
     const rn = roundName(r, i);
     const notes = r.mode === 'rpg' || r.mode === 'boardgame' || r.mode === 'final' || r.mode === 'slides' ? r.hostNotes : undefined;
-    look('🏷', [r.name, notes], rn, { tab: 'round', round: r.id }, field([[r.name, 'main [data-round-name]'], [notes, 'main [data-field="round-notes"]']]));
+    look(
+      '🏷',
+      [r.name, notes],
+      rn,
+      { tab: 'round', round: r.id },
+      field([
+        [r.name, 'main [data-round-name]'],
+        [notes, 'main [data-field="round-notes"]'],
+      ]),
+    );
     if (r.mode === 'board') {
       for (const cat of r.categories) {
         const cn = categoryLabel(cat);
-        look('🟦', [cat.title], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'category', category: cat.id } }, `[data-place="category:${cat.id}"] textarea`);
+        look(
+          '🟦',
+          [cat.title],
+          `${rn} › Category`,
+          { tab: 'round', round: r.id, part: { kind: 'category', category: cat.id } },
+          `[data-place="category:${cat.id}"] textarea`,
+        );
         cat.clues.forEach((clue, row) => {
           // An empty tile has nothing to show (its editor has no text boxes).
           if (clue.empty) return;
           const where = `${rn} › ${cn} › ${formatPoints(clue.value ?? r.values[row] ?? 0, sym)}`;
-          const at = (side?: ClueSide, slide?: string): Place => ({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, ...(slide ? { slide } : {}) } });
+          const at = (side?: ClueSide, slide?: string): Place => ({
+            tab: 'round',
+            round: r.id,
+            part: { kind: 'clue', category: cat.id, clue: clue.id, side, ...(slide ? { slide } : {}) },
+          });
           look('❓', slideWords(clue.questionSlide), `${where} › Question${clue.extraSlides?.length ? ' 1' : ''}`, at('q'), '[data-field="q"]');
           clue.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `${where} › Question ${j + 2}`, at('q', sl.id), '[data-field="q"]'));
           // The tile's 🤫 cards (in the order the clue editor's tabs have them, before the answer), by their words or
           // names.
           clue.cards?.forEach((card, j) =>
-            look('🤫', [card.name, ...slideWords(card)], `${where} › ${clueCardName(card, j)}`, at('card', card.id), field([[card.name, '[data-field="card-name"]']]) ?? '[data-field="card"]'),
+            look(
+              '🤫',
+              [card.name, ...slideWords(card)],
+              `${where} › ${clueCardName(card, j)}`,
+              at('card', card.id),
+              field([[card.name, '[data-field="card-name"]']]) ?? '[data-field="card"]',
+            ),
           );
           look('💬', slideWords(clue.answerSlide), `${where} › Answer`, at('a'), '[data-field="a"]');
           // Its multiple choices, the box of the one that matches (while ✍ is on: they're kept, unused, without it).
           const choices = clue.everyone && clue.type === 'standard' ? (clue.choices ?? []) : [];
-          look('✍', choices.map((c) => c.text), `${where} › Choices`, at(), field(choices.map((c, j) => [c.text, `[data-field="choice-${j}"]`])));
-          look('📝', [clue.hostNotes, clue.tileFace?.text], `${where} › Notes / tile`, at(), field([[clue.hostNotes, '[data-field="notes"]'], [clue.tileFace?.text, '[data-field="tile-face"]']]));
+          look(
+            '✍',
+            choices.map((c) => c.text),
+            `${where} › Choices`,
+            at(),
+            field(choices.map((c, j) => [c.text, `[data-field="choice-${j}"]`])),
+          );
+          look(
+            '📝',
+            [clue.hostNotes, clue.tileFace?.text],
+            `${where} › Notes / tile`,
+            at(),
+            field([
+              [clue.hostNotes, '[data-field="notes"]'],
+              [clue.tileFace?.text, '[data-field="tile-face"]'],
+            ]),
+          );
         });
       }
     } else if (r.mode === 'final') {
       look('🏆', [r.category], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="final-category"]');
-      look('❓', slideWords(r.questionSlide), `${rn} › Question${r.extraSlides?.length ? ' 1' : ''}`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="q"]');
-      r.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `${rn} › Question ${j + 2}`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q', slide: sl.id } }, 'main [data-field="q"]'));
+      look(
+        '❓',
+        slideWords(r.questionSlide),
+        `${rn} › Question${r.extraSlides?.length ? ' 1' : ''}`,
+        { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } },
+        'main [data-field="q"]',
+      );
+      r.extraSlides?.forEach((sl, j) =>
+        look(
+          '❓',
+          slideWords(sl),
+          `${rn} › Question ${j + 2}`,
+          { tab: 'round', round: r.id, part: { kind: 'final', side: 'q', slide: sl.id } },
+          'main [data-field="q"]',
+        ),
+      );
       // Its 🤫 cards (after the question slides, as its editor's tabs have them), by their words or names.
       r.cards?.forEach((card, j) =>
         look(
@@ -95,23 +157,48 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       look('💬', slideWords(r.answerSlide), `${rn} › Answer`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'a' } }, 'main [data-field="a"]');
       // Its multiple choices (while players type their answers on their phones: kept, unused, without it).
       const choices = r.phoneAnswersOff ? [] : (r.choices ?? []);
-      look('✍', choices.map((c) => c.text), `${rn} › Choices`, { tab: 'round', round: r.id }, field(choices.map((c, j) => [c.text, `main [data-field="choice-${j}"]`])));
+      look(
+        '✍',
+        choices.map((c) => c.text),
+        `${rn} › Choices`,
+        { tab: 'round', round: r.id },
+        field(choices.map((c, j) => [c.text, `main [data-field="choice-${j}"]`])),
+      );
     } else if (r.mode === 'slides') {
       const n = questionSlides(r).length;
       questionSlides(r).forEach((sl, j) =>
-        look('🖼', slideWords(sl), `${rn} › Slide${n > 1 ? ` ${j + 1}` : ''}`, { tab: 'round', round: r.id, part: { kind: 'slides', ...(j ? { slide: r.extraSlides![j - 1].id } : {}) } }, 'main [data-field="q"]'),
+        look(
+          '🖼',
+          slideWords(sl),
+          `${rn} › Slide${n > 1 ? ` ${j + 1}` : ''}`,
+          { tab: 'round', round: r.id, part: { kind: 'slides', ...(j ? { slide: r.extraSlides![j - 1].id } : {}) } },
+          'main [data-field="q"]',
+        ),
       );
     } else if (r.mode === 'boardgame') {
       for (const s of r.spaces) {
         const place: Place = { tab: 'round', round: r.id, part: { kind: 'space', space: s.id } };
         // (Found by something else than its name: where says which space it is.)
         const where = match(s.name) ? `${rn} › Space` : `${rn} › Space “${s.name}”`;
-        look('⬤', [s.name, s.hostNotes], where, place, field([[s.name, 'main input[aria-label="Space name"]'], [s.hostNotes, 'main [data-field="space-notes"]']]));
+        look(
+          '⬤',
+          [s.name, s.hostNotes],
+          where,
+          place,
+          field([
+            [s.name, 'main input[aria-label="Space name"]'],
+            [s.hostNotes, 'main [data-field="space-notes"]'],
+          ]),
+        );
         // What its buttons say.
         for (const a of [...(s.onPass ?? []), ...(s.onLand ?? [])]) look('🔘', buttonWords([a]), `${rn} › Space “${s.name}” › Buttons`, place);
       }
       for (const z of r.zones)
-        look('🌀', [z.name, z.hostNotes, ...slideWords(z.slide)], match(z.name) ? `${rn} › Zone` : `${rn} › Zone “${z.name}”`, { tab: 'round', round: r.id, part: { kind: 'zone', zone: z.id } });
+        look('🌀', [z.name, z.hostNotes, ...slideWords(z.slide)], match(z.name) ? `${rn} › Zone` : `${rn} › Zone “${z.name}”`, {
+          tab: 'round',
+          round: r.id,
+          part: { kind: 'zone', zone: z.id },
+        });
       look('🏆', [r.winNotes], `${rn} › How to win`, { tab: 'round', round: r.id }, 'main [data-field="win-notes"]');
     }
   });
@@ -142,14 +229,23 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         }
       }
 
-  for (const it of game.items ?? []) look('🎒', [it.name, it.description, it.hostNotes, ...buttonWords(it.onUse)], 'Stats & Items › Item', { tab: 'stats', item: it.id });
+  for (const it of game.items ?? [])
+    look('🎒', [it.name, it.description, it.hostNotes, ...buttonWords(it.onUse)], 'Stats & Items › Item', { tab: 'stats', item: it.id });
   for (const f of game.statFields ?? []) look('📊', [f.name], 'Stats & Items › Stat', { tab: 'stats', stat: f.id });
   for (const sh of game.shops ?? []) look('🛒', [sh.name], 'Stats & Items › Shop', { tab: 'stats', shop: sh.id });
-  for (const w of game.wheels) look('🎡', [w.name, ...w.segments.flatMap((s) => [s.label, s.details, ...buttonWords(s.actions)])], 'Wheels, Dice & Deals › Wheel', { tab: 'tools', wheel: w.id });
+  for (const w of game.wheels)
+    look('🎡', [w.name, ...w.segments.flatMap((s) => [s.label, s.details, ...buttonWords(s.actions)])], 'Wheels, Dice & Deals › Wheel', {
+      tab: 'tools',
+      wheel: w.id,
+    });
   for (const d of game.dice)
     look(
       '🎲',
-      [d.name, ...d.dice.flatMap((x) => (x.customFaces ?? []).flatMap((f) => [f.label, f.details, ...buttonWords(f.actions)])), ...(d.totalOutcomes ?? []).flatMap((t) => [t.outcome.label, ...buttonWords(t.outcome.actions)])],
+      [
+        d.name,
+        ...d.dice.flatMap((x) => (x.customFaces ?? []).flatMap((f) => [f.label, f.details, ...buttonWords(f.actions)])),
+        ...(d.totalOutcomes ?? []).flatMap((t) => [t.outcome.label, ...buttonWords(t.outcome.actions)]),
+      ],
       'Wheels, Dice & Deals › Dice',
       { tab: 'tools', dice: d.id },
     );
@@ -157,13 +253,27 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
     look('🎭', [d.name, ...d.parts.flatMap((p) => [p.name, ...slideWords(p.card)])], 'Wheels, Dice & Deals › Deal', { tab: 'tools', deal: d.id });
   // 🤫 Cards: found by its name, the name box gets the focus; else its words box.
   (game.cards ?? []).forEach((c, i) =>
-    look('🤫', [c.name, ...slideWords(c)], `Cards › ${savedCardName(c, i)}`, { tab: 'cards', card: c.id }, field([[c.name, 'main [data-field="card-name"]']]) ?? 'main [data-field="card"]'),
+    look(
+      '🤫',
+      [c.name, ...slideWords(c)],
+      `Cards › ${savedCardName(c, i)}`,
+      { tab: 'cards', card: c.id },
+      field([[c.name, 'main [data-field="card-name"]']]) ?? 'main [data-field="card"]',
+    ),
   );
   for (const m of libraryMedia(game)) look('🖼', [m.name], 'Media', { tab: 'media', media: m.id });
   const tb = game.tiebreaker;
   if (tb) {
-    look('❓', slideWords(tb.questionSlide), `Tiebreaker › Question${tb.extraSlides?.length ? ' 1' : ''}`, { tab: 'tiebreaker', side: 'q' }, 'main [data-field="q"]');
-    tb.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `Tiebreaker › Question ${j + 2}`, { tab: 'tiebreaker', side: 'q', slide: sl.id }, 'main [data-field="q"]'));
+    look(
+      '❓',
+      slideWords(tb.questionSlide),
+      `Tiebreaker › Question${tb.extraSlides?.length ? ' 1' : ''}`,
+      { tab: 'tiebreaker', side: 'q' },
+      'main [data-field="q"]',
+    );
+    tb.extraSlides?.forEach((sl, j) =>
+      look('❓', slideWords(sl), `Tiebreaker › Question ${j + 2}`, { tab: 'tiebreaker', side: 'q', slide: sl.id }, 'main [data-field="q"]'),
+    );
     look('💬', slideWords(tb.answerSlide), 'Tiebreaker › Answer', { tab: 'tiebreaker', side: 'a' }, 'main [data-field="a"]');
     look('📝', [tb.hostNotes], 'Tiebreaker › Notes', { tab: 'tiebreaker' }, 'main [data-field="notes"]');
   }

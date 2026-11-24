@@ -9,7 +9,20 @@
 // buttons all one size, and the board's two count lines level. And a reload mid-edit coming back on the page, round and
 // clue it left.
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, answerReplace, clickExportHtml, editorReady, lineOf, openRules, assert, launchChromium, inspectorIn, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  answerReplace,
+  clickExportHtml,
+  editorReady,
+  lineOf,
+  openRules,
+  assert,
+  launchChromium,
+  inspectorIn,
+  roundTabsIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -46,32 +59,56 @@ try {
 
   // ---------- First screen ----------
   const cards = await page.locator('.first-round .mode').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-  assert(cards.length === 5 && cards[0] === cards[1] && cards[1] === cards[2] && cards[3] === cards[4] && cards[2] < cards[3], `the five mode cards sit three, then two (${cards})`);
+  assert(
+    cards.length === 5 && cards[0] === cards[1] && cards[1] === cards[2] && cards[3] === cards[4] && cards[2] < cards[3],
+    `the five mode cards sit three, then two (${cards})`,
+  );
   assert((await page.locator('main').count()) === 1, 'one main landmark');
   // No checklist yet (the page says what to do), and the first screen fits a laptop: a line saying what the app is,
   // one short line over the cards, and 📂 Open a game… in the window.
   assert((await page.locator('nav .problems').count()) === 0, 'with no rounds the sidebar has no checklist');
   const openBottom = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
-  assert(openBottom <= 720 && (await page.locator('.first-round > p').count()) === 3, `the first screen has three lines of words and 📂 Open a game… in the window (${openBottom})`);
+  assert(
+    openBottom <= 720 && (await page.locator('.first-round > p').count()) === 3,
+    `the first screen has three lines of words and 📂 Open a game… in the window (${openBottom})`,
+  );
   const what = page.locator('.first-round > p.what');
   // (At 1280 it shows whole; narrower, it stays one line, cut short, the full words in its tooltip.)
   const whatBox = { ...(await what.evaluate(lineOf)), above: await what.evaluate((e) => !!e.nextElementSibling?.matches('h2')) };
   assert(
-    (await what.innerText()).startsWith('🎮 Brainrot Games Maker: build a game show') && (await what.innerText()).includes('Nothing to install.') && whatBox.above && whatBox.lines === 1 && !whatBox.cut && (await what.locator('a').count()) === 0,
+    (await what.innerText()).startsWith('🎮 Brainrot Games Maker: build a game show') &&
+      (await what.innerText()).includes('Nothing to install.') &&
+      whatBox.above &&
+      whatBox.lines === 1 &&
+      !whatBox.cut &&
+      (await what.locator('a').count()) === 0,
     `over “Add your first round”, one line says what the app is, whole (no download link in the file: it's the file) (${JSON.stringify(whatBox)})`,
   );
   await page.setViewportSize({ width: 900, height: 720 });
   const narrowWhat = await what.evaluate(lineOf);
-  assert(narrowWhat.lines === 1 && narrowWhat.title.includes('Nothing to install.'), `in a 900 px window it's still one line, its words in full in its tooltip (${JSON.stringify(narrowWhat)})`);
+  assert(
+    narrowWhat.lines === 1 && narrowWhat.title.includes('Nothing to install.'),
+    `in a 900 px window it's still one line, its words in full in its tooltip (${JSON.stringify(narrowWhat)})`,
+  );
   await page.setViewportSize({ width: 1280, height: 720 });
   // A card a mode, each with at most two templates in it to start from (＋ Add round has them all).
-  const starts = await page.locator('.first-round .card').evaluateAll((cs) => cs.map((c) => [...c.querySelectorAll('.from button')].map((b) => b.textContent.trim())));
+  const starts = await page
+    .locator('.first-round .card')
+    .evaluateAll((cs) => cs.map((c) => [...c.querySelectorAll('.from button')].map((b) => b.textContent.trim())));
   assert(
-    JSON.stringify(starts) === JSON.stringify([['Quick board, 4 × 3'], [], ['Mini quest', '3 × 3 dungeon'], ['20-space loop', 'Race to the finish'], ['Welcome and rules']]),
+    JSON.stringify(starts) ===
+      JSON.stringify([['Quick board, 4 × 3'], [], ['Mini quest', '3 × 3 dungeon'], ['20-space loop', 'Race to the finish'], ['Welcome and rules']]),
     `each mode's card has at most two templates in it (${JSON.stringify(starts)})`,
   );
   // The arrow keys go from card to card: ← / → the one before or after, ↑ / ↓ the row above or below.
-  const onCard = () => page.evaluate(() => (document.activeElement?.matches('.first-round .sample') ? '✨' : document.activeElement?.matches('.first-round .mode') ? document.activeElement.querySelector('b')?.textContent : '?'));
+  const onCard = () =>
+    page.evaluate(() =>
+      document.activeElement?.matches('.first-round .sample')
+        ? '✨'
+        : document.activeElement?.matches('.first-round .mode')
+          ? document.activeElement.querySelector('b')?.textContent
+          : '?',
+    );
   await page.locator('.first-round .sample').focus();
   const went = [];
   for (const key of ['ArrowDown', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'ArrowUp']) {
@@ -82,7 +119,10 @@ try {
   // A template there adds its round, as ＋ Add round's does.
   await page.locator('.first-round .card', { hasText: 'RPG' }).getByRole('button', { name: '3 × 3 dungeon' }).click();
   await roundTabsIn(page).first().waitFor();
-  assert((await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')).startsWith('Undo: Added round'), 'a card’s template adds its round, one step');
+  assert(
+    (await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')).startsWith('Undo: Added round'),
+    'a card’s template adds its round, one step',
+  );
   await page.keyboard.press('Control+z');
   await page.locator('.first-round').waitFor();
   // A game with no rounds isn't exported: the file couldn't be played (and has no ＋ Add round).
@@ -91,25 +131,49 @@ try {
   assert((await page.getByRole('dialog', { name: 'Name your game' }).count()) === 0, 'Export HTML with no rounds says to add one, and exports nothing');
 
   // ---------- Board values and focus ----------
-  assert((await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).innerText()).includes('📥 Import clues'), 'the Jeopardy board card mentions 📥 Import clues…');
+  assert(
+    (await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).innerText()).includes('📥 Import clues'),
+    'the Jeopardy board card mentions 📥 Import clues…',
+  );
   // A double-click on a card adds its round, and its second click does nothing on the new page (it added a 🤫 card to a
   // Final, a space to a board game).
   const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   await page.locator('.first-round .mode', { hasText: 'Final Jeopardy' }).dblclick();
   await page.waitForTimeout(300);
-  assert((await tabs.count()) === 1 && (await undoTitle()).startsWith('Undo: Added round'), `a double-click on a first-screen card adds that round, and nothing else (${await undoTitle()})`);
+  assert(
+    (await tabs.count()) === 1 && (await undoTitle()).startsWith('Undo: Added round'),
+    `a double-click on a first-screen card adds that round, and nothing else (${await undoTitle()})`,
+  );
   await page.keyboard.press('Control+z');
   await page.locator('.first-round').waitFor();
   await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).click();
   // The board's 💡 Tips are open the first time it's seen (and closed after that).
-  assert(await page.locator('details.tips').first().evaluate((d) => d.open), "the board's 💡 Tips open the first time");
-  assert((await page.locator('.cat textarea').first().getAttribute('placeholder')) === 'Type a name, or paste a column of clues', 'an empty category name says a column of clues can be pasted');
+  assert(
+    await page
+      .locator('details.tips')
+      .first()
+      .evaluate((d) => d.open),
+    "the board's 💡 Tips open the first time",
+  );
+  assert(
+    (await page.locator('.cat textarea').first().getAttribute('placeholder')) === 'Type a name, or paste a column of clues',
+    'an empty category name says a column of clues can be pasted',
+  );
   await addRound(/Jeopardy board/);
   assert(
-    await page.evaluate(() => { const a = document.activeElement; return a?.hasAttribute('data-round-name') && a.value === 'Double Jeopardy!' && a.selectionEnd - a.selectionStart === a.value.length; }),
+    await page.evaluate(() => {
+      const a = document.activeElement;
+      return a?.hasAttribute('data-round-name') && a.value === 'Double Jeopardy!' && a.selectionEnd - a.selectionStart === a.value.length;
+    }),
     "＋ Add round puts the focus in the new round's name, selected",
   );
-  assert(!(await page.locator('details.tips').first().evaluate((d) => d.open)), "…and the board's 💡 Tips are closed from then on (on the next board)");
+  assert(
+    !(await page
+      .locator('details.tips')
+      .first()
+      .evaluate((d) => d.open)),
+    "…and the board's 💡 Tips are closed from then on (on the next board)",
+  );
   await addRound(/Jeopardy board/);
   const vals = () => values(page.locator('.values input[aria-label^="Row"]'));
   assert((await vals()).join() === '400,800,1200,1600,2000', `a third board keeps the second's values (${await vals()})`);
@@ -121,7 +185,10 @@ try {
   const order = await page.locator('nav > button, nav > .navlabel').allInnerTexts();
   const at = (re) => order.findIndex((t) => re.test(t));
   // (Off, it reads ＋ Add tiebreaker (optional).)
-  assert(at(/tiebreaker/i) === at(/Jeopardy! 3/) + 1 && at(/Add round/) === at(/tiebreaker/i) + 1, `the Tiebreaker comes right after the rounds (${order.join(' | ')})`);
+  assert(
+    at(/tiebreaker/i) === at(/Jeopardy! 3/) + 1 && at(/Add round/) === at(/tiebreaker/i) + 1,
+    `the Tiebreaker comes right after the rounds (${order.join(' | ')})`,
+  );
   assert(at(/^Game$/i) > at(/Add round/) && at(/Sounds/) > at(/^Game$/i) && at(/Theme/) > at(/^Game$/i), 'the game-wide tabs have a Game group of their own');
   // At 720 px high the checklist starts folded to its heading, still counting what's left: the sidebar's own tabs stay
   // clear of it, down to 🕘 History.
@@ -133,7 +200,10 @@ try {
     return { top: Math.round(p.top), height: Math.round(p.height), history: Math.round(h.bottom), lines: document.querySelectorAll('nav .problem').length };
   });
   assert(
-    (await fold.getAttribute('aria-expanded')) === 'false' && /^Checklist · ⚠ \d+( · ℹ \d+)? ▸$/i.test((await fold.innerText()).replace(/\s+/g, ' ').trim()) && shut.height < 40 && shut.history <= shut.top,
+    (await fold.getAttribute('aria-expanded')) === 'false' &&
+      /^Checklist · ⚠ \d+( · ℹ \d+)? ▸$/i.test((await fold.innerText()).replace(/\s+/g, ' ').trim()) &&
+      shut.height < 40 &&
+      shut.history <= shut.top,
     `on a 720-high window the checklist starts folded to its heading (“${await fold.innerText()}”), below 🕘 History (${JSON.stringify(shut)})`,
   );
   await fold.click();
@@ -142,12 +212,18 @@ try {
   // (A third board is “Jeopardy! 3”, a name that can't be read as its place, unlike “Round 3”.)
   await page.locator('nav .problem', { hasText: 'Jeopardy! 3:' }).waitFor();
   const lines = await page.locator('nav .problem').allInnerTexts();
-  assert(lines.filter((l) => /^⚠ Jeopardy!:/.test(l)).length === 1 && lines.some((l) => /^⚠ Jeopardy!: 30 clues to finish/.test(l)), `the checklist has one line a round (${lines.join(' | ')})`);
+  assert(
+    lines.filter((l) => /^⚠ Jeopardy!:/.test(l)).length === 1 && lines.some((l) => /^⚠ Jeopardy!: 30 clues to finish/.test(l)),
+    `the checklist has one line a round (${lines.join(' | ')})`,
+  );
   // (👥 Players & rules ▶ and 📊 Stats & Items (optional) are always listed now: the list may scroll in its own box, by
   // about those two rows at most. The third board's checklist line, “⚠ Jeopardy! 3: 30 clues to finish”, takes two
   // lines as “⚠ Double Jeopardy!: …” does: 72px became 86px when the third board stopped being called “Round 3”.)
   const navOver = await page.locator('nav').evaluate((n) => n.scrollHeight - n.clientHeight);
-  assert(navOver <= 88 && (await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)), `with three boards the sidebar fits at 720p, or scrolls in its box by two rows at most (${navOver}px)`);
+  assert(
+    navOver <= 88 && (await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)),
+    `with three boards the sidebar fits at 720p, or scrolls in its box by two rows at most (${navOver}px)`,
+  );
   // No sidebar label is cut to "…": "(optional)" sits on a small line of its own.
   const cut = await page.locator('nav > button').evaluateAll((bs) => bs.filter((b) => b.scrollWidth > b.clientWidth).map((b) => b.textContent.trim()));
   assert(cut.length === 0, `no sidebar label is cut short (${cut.join(' | ')})`);
@@ -164,7 +240,10 @@ try {
   for (const to of [0, 9999]) {
     await page.locator('nav').evaluate((n, to) => (n.scrollTop = to), to);
     const at = await pinned();
-    assert(at.bottom <= 720 && at.first <= 720 && /^Checklist · ⚠ \d+/.test(at.head), `the checklist's heading and first line stay in view (nav scrolled to ${to}: ${JSON.stringify(at)})`);
+    assert(
+      at.bottom <= 720 && at.first <= 720 && /^Checklist · ⚠ \d+/.test(at.head),
+      `the checklist's heading and first line stay in view (nav scrolled to ${to}: ${JSON.stringify(at)})`,
+    );
   }
   // More of the sidebar under the open checklist: a fade over its foot says so, gone once scrolled to the end.
   const fades = () => page.locator('nav .problems').evaluate((p) => p.classList.contains('below') && getComputedStyle(p, '::before').content !== 'none');
@@ -177,8 +256,18 @@ try {
   await page.locator('nav').evaluate((n) => (n.scrollTop = 0));
   await page.locator('nav > button', { hasText: '🖼️ Media' }).focus();
   await page.keyboard.press('Tab');
-  const hist = await page.evaluate(() => { const a = document.activeElement; return { text: a?.textContent.trim(), bottom: Math.round(a.getBoundingClientRect().bottom), check: Math.round(document.querySelector('nav .problems').getBoundingClientRect().top) }; });
-  assert(hist.text.startsWith('🕘 History') && hist.bottom <= hist.check, `Tab to 🕘 History scrolls it into view above the pinned checklist (${JSON.stringify(hist)})`);
+  const hist = await page.evaluate(() => {
+    const a = document.activeElement;
+    return {
+      text: a?.textContent.trim(),
+      bottom: Math.round(a.getBoundingClientRect().bottom),
+      check: Math.round(document.querySelector('nav .problems').getBoundingClientRect().top),
+    };
+  });
+  assert(
+    hist.text.startsWith('🕘 History') && hist.bottom <= hist.check,
+    `Tab to 🕘 History scrolls it into view above the pinned checklist (${JSON.stringify(hist)})`,
+  );
 
   // Write the first clue, then the checklist goes to the second one (the first unfinished tile).
   await page.locator('.tile').first().click();
@@ -192,12 +281,21 @@ try {
   await clueWin.waitFor();
   await page.waitForTimeout(200);
   await page.keyboard.press('Escape');
-  assert(await clueWin.waitFor({ state: 'detached', timeout: 3000 }).then(() => true, () => false), 'a double-click on a tile opens its clue, and one Esc closes it (the second click picked nothing in it)');
+  assert(
+    await clueWin.waitFor({ state: 'detached', timeout: 3000 }).then(
+      () => true,
+      () => false,
+    ),
+    'a double-click on a tile opens its clue, and one Esc closes it (the second click picked nothing in it)',
+  );
   await tabs.nth(2).click();
   await page.locator('nav .problem', { hasText: /^⚠\s+Jeopardy!:/ }).click();
   await page.waitForTimeout(300);
   const tile = await page.evaluate(() => document.activeElement?.getAttribute('data-tile'));
-  assert((await tabs.nth(0).getAttribute('class')).includes('active') && tile === '0,1', `a checklist line opens its round at the first unfinished tile (${tile})`);
+  assert(
+    (await tabs.nth(0).getAttribute('class')).includes('active') && tile === '0,1',
+    `a checklist line opens its round at the first unfinished tile (${tile})`,
+  );
 
   // ---------- Categories ----------
   const name = page.locator('.cat textarea').first();
@@ -205,12 +303,21 @@ try {
   const hidden = await name.evaluate((t) => t.scrollHeight - t.clientHeight);
   assert(hidden <= 1, `a long category name grows its box instead of hiding lines (${hidden}px hidden)`);
   // Every header in the row fills it, as tall as the long one, as on stream (no short blue strip over a dark gap).
-  const nameBoxes = () => page.locator('.cat > textarea:not(.sub)').evaluateAll((ts) => ts.map((t) => { const r = t.getBoundingClientRect(); return `${Math.round(r.top)}+${Math.round(r.height)}`; }));
+  const nameBoxes = () =>
+    page.locator('.cat > textarea:not(.sub)').evaluateAll((ts) =>
+      ts.map((t) => {
+        const r = t.getBoundingClientRect();
+        return `${Math.round(r.top)}+${Math.round(r.height)}`;
+      }),
+    );
   const even = await nameBoxes();
   assert(new Set(even).size === 1, `the category name boxes are one height when one name is long (${even.join(' ')})`);
   await name.fill('Memes');
   const back = await nameBoxes();
-  assert(new Set(back).size === 1 && Number(back[0].split('+')[1]) < Number(even[0].split('+')[1]), `and all shrink back when it is short again (${back.join(' ')} after ${even.join(' ')})`);
+  assert(
+    new Set(back).size === 1 && Number(back[0].split('+')[1]) < Number(even[0].split('+')[1]),
+    `and all shrink back when it is short again (${back.join(' ')} after ${even.join(' ')})`,
+  );
   await name.fill('Famous Memes Of The Early Twenty Tens Internet Era');
   const fits = await page.locator('.cat').evaluateAll((cats) => cats.every((c) => c.querySelector('.cat-tools').scrollWidth <= c.clientWidth));
   assert(fits, "each category's tools fit its column at 1280");
@@ -231,11 +338,16 @@ try {
   assert(fewer.startsWith('Changed round “Jeopardy!” to 5 categories (removed “Topic F”)'), `fewer categories names the one removed (${fewer.split('\n')[0]})`);
   await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
-  assert((await page.locator('.cat').count()) === 6 && (await page.locator('[data-cat-name="5"]').inputValue()) === 'Category 6', 'Ctrl+Z brings it back, then its old name');
+  assert(
+    (await page.locator('.cat').count()) === 6 && (await page.locator('[data-cat-name="5"]').inputValue()) === 'Category 6',
+    'Ctrl+Z brings it back, then its old name',
+  );
   // A narrower window (a 1024 laptop, half a 1920 screen): the six columns narrow to fit, none runs past the edge.
   for (const w of [1024, 960]) {
     await page.setViewportSize({ width: w, height: 720 });
-    await page.waitForFunction(() => document.querySelector('.grid-wrap').scrollWidth - document.querySelector('.grid-wrap').clientWidth <= 1, null, { timeout: 3000 }).catch(() => {});
+    await page
+      .waitForFunction(() => document.querySelector('.grid-wrap').scrollWidth - document.querySelector('.grid-wrap').clientWidth <= 1, null, { timeout: 3000 })
+      .catch(() => {});
     const over = await page.locator('.grid-wrap').evaluate((g) => g.scrollWidth - g.clientWidth);
     assert(over <= 1, `six categories fit across a ${w}px window (${over}px over)`);
   }
@@ -245,7 +357,10 @@ try {
   const cat3 = page.locator('[data-cat-name="2"]');
   await cat3.fill('Memes');
   await cat3.press('Enter');
-  assert((await page.evaluate(() => document.activeElement?.getAttribute('data-tile'))) === '2,0' && (await cat3.inputValue()) === 'Memes', 'Enter in a category name goes to its top tile, adding no new line');
+  assert(
+    (await page.evaluate(() => document.activeElement?.getAttribute('data-tile'))) === '2,0' && (await cat3.inputValue()) === 'Memes',
+    'Enter in a category name goes to its top tile, adding no new line',
+  );
   await cat3.fill('Memes\n');
   await page.locator('[data-tile="2,1"]').focus();
   assert((await cat3.inputValue()) === 'Memes', 'a new line left at the end of a name goes when the box is left');
@@ -259,7 +374,8 @@ try {
   await page.keyboard.press('Control+Enter');
   assert((await toastText()).includes('last clue'), `Ctrl+Enter on the last clue says it's the last (${await toastText()})`);
   assert(
-    (await page.getByRole('button', { name: 'Next ▶' }).count()) === 0 && (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Done' }).innerText()).includes('✓'),
+    (await page.getByRole('button', { name: 'Next ▶' }).count()) === 0 &&
+      (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Done' }).innerText()).includes('✓'),
     'on the last clue, Next ▶ becomes Done ✓ (one Done, which closes it)',
   );
   await page.getByRole('button', { name: 'Done' }).click();
@@ -280,7 +396,10 @@ try {
   await imp.getByRole('button', { name: /^Import \d+ clue/ }).click();
   await note.waitFor();
   const imported = await note.innerText();
-  assert(/Imported \d+ clues? into round “Jeopardy!”/.test(imported) && !imported.includes('Row values') && !(await toastText()).includes('Imported'), `importing says so once, at the board (${imported.replace(/\n/g, ' ')})`);
+  assert(
+    /Imported \d+ clues? into round “Jeopardy!”/.test(imported) && !imported.includes('Row values') && !(await toastText()).includes('Imported'),
+    `importing says so once, at the board (${imported.replace(/\n/g, ' ')})`,
+  );
   await page.keyboard.press('Control+z');
   await page.getByRole('button', { name: '📥 Import clues…' }).click();
   assert((await imp.getByLabel('Clues to import').inputValue()) === '', 'once imported, the box starts empty');
@@ -290,7 +409,10 @@ try {
   const row1 = page.getByLabel('Row 1 value');
   await row1.fill('');
   await row1.press('Tab');
-  assert((await row1.inputValue()) === '200' && (await page.locator('.tile .val').first().innerText()).startsWith('$200'), 'a row value left blank keeps its value');
+  assert(
+    (await row1.inputValue()) === '200' && (await page.locator('.tile .val').first().innerText()).startsWith('$200'),
+    'a row value left blank keeps its value',
+  );
   // Whole points, 0 or more (like a clue's own value).
   await row1.fill('-100');
   await row1.press('Tab');
@@ -327,7 +449,10 @@ try {
   assert(ddHint === '0 on the board · Start places 6 at random (one a category, 6 at most)', `the hint says what Start places, one a category (${ddHint})`);
   await ddGroup.getByRole('button', { name: '🔀 Randomize' }).click();
   const placed = await page.locator('.tile .dd', { hasText: 'DD' }).count();
-  assert(placed === 6 && (await dd.inputValue()) === '6', `Daily Doubles are clamped and the box says how many were placed (${placed}, ${await dd.inputValue()})`);
+  assert(
+    placed === 6 && (await dd.inputValue()) === '6',
+    `Daily Doubles are clamped and the box says how many were placed (${placed}, ${await dd.inputValue()})`,
+  );
   await toastsIn(page, { hasText: 'Daily Doubles' }).waitFor();
   assert((await toastText()) === 'Placed 6 of 10 Daily Doubles: one a category', `and the note says why there are fewer (${await toastText()})`);
   await dd.fill('0');
@@ -358,7 +483,14 @@ try {
   // ＋ Add dice… undone, and redone, stays on the clue it was made from (not the Wheels, Dice & Deals tab).
   const clueBox = page.getByRole('dialog', { name: 'Edit clue' });
   const whichDice = page.getByLabel('Which dice');
-  const diceShows = (t) => whichDice.locator('option:checked', { hasText: t }).waitFor({ state: 'attached', timeout: 3000 }).then(() => true, () => false);
+  const diceShows = (t) =>
+    whichDice
+      .locator('option:checked', { hasText: t })
+      .waitFor({ state: 'attached', timeout: 3000 })
+      .then(
+        () => true,
+        () => false,
+      );
   const diceWas = await whichDice.evaluate((s) => s.selectedOptions[0].text);
   await whichDice.selectOption({ label: '＋ Add dice…' });
   const newDice = page.getByRole('dialog', { name: 'Dice' });
@@ -382,14 +514,18 @@ try {
   // question is optional), a wheel tile with no wheel says so, and a tile's name says its type and what its badges show.
   const diceTile = page.locator('.tile').nth(2);
   const tileLabel = (t) => t.getAttribute('aria-label');
-  assert((await diceTile.locator('.missing').count()) === 0 && /, dice tile: no question$/.test(await tileLabel(diceTile)), `a dice tile with its dice warns of nothing (${await tileLabel(diceTile)})`);
+  assert(
+    (await diceTile.locator('.missing').count()) === 0 && /, dice tile: no question$/.test(await tileLabel(diceTile)),
+    `a dice tile with its dice warns of nothing (${await tileLabel(diceTile)})`,
+  );
   const wheelTile = page.locator('.tile').nth(3);
   await wheelTile.click();
   await page.getByLabel('Type').selectOption('wheel');
   await page.getByPlaceholder('Type the question…').fill('Spin it');
   await page.getByRole('button', { name: 'Done' }).click();
   assert(
-    (await wheelTile.locator('.missing').allInnerTexts()).join() === 'No wheel chosen' && /, wheel tile: Spin it, no wheel chosen$/.test(await tileLabel(wheelTile)),
+    (await wheelTile.locator('.missing').allInnerTexts()).join() === 'No wheel chosen' &&
+      /, wheel tile: Spin it, no wheel chosen$/.test(await tileLabel(wheelTile)),
     `a wheel tile with no wheel says so (${await tileLabel(wheelTile)})`,
   );
   const everyoneTile = page.locator('.tile').nth(4);
@@ -399,7 +535,9 @@ try {
   await page.getByLabel('Tile shows').fill('MYSTERY');
   await page.getByRole('button', { name: 'Done' }).click();
   assert(
-    (await everyoneTile.locator('.dd', { hasText: '✍' }).count()) === 1 && (await everyoneTile.innerText()).includes('“MYSTERY”') && (await tileLabel(everyoneTile)).includes(', everyone answers, tile shows “MYSTERY”: '),
+    (await everyoneTile.locator('.dd', { hasText: '✍' }).count()) === 1 &&
+      (await everyoneTile.innerText()).includes('“MYSTERY”') &&
+      (await tileLabel(everyoneTile)).includes(', everyone answers, tile shows “MYSTERY”: '),
     `a ✍ Everyone answers tile shows ✍ and what the tile shows (${await tileLabel(everyoneTile)})`,
   );
   const ddTile = page.locator('.tile', { has: page.locator('.dd', { hasText: 'DD' }) }).first();
@@ -428,7 +566,10 @@ try {
   await dpop.getByRole('button', { name: 'Done' }).click();
   assert((await page.getByLabel('Dice', { exact: true }).inputValue()) === 'Dice 1', 'Move by ＋ Add dice… makes dice and moves by them');
   await page.getByRole('button', { name: /Board backdrop/ }).click();
-  assert((await page.locator('.se').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()) === 0, "the board game's backdrop editor has no ↶ of its own (the header has it)");
+  assert(
+    (await page.locator('.se').getByRole('button', { name: 'Undo (Ctrl+Z)' }).count()) === 0,
+    "the board game's backdrop editor has no ↶ of its own (the header has it)",
+  );
 
   // ---------- Stat presets ----------
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
@@ -442,7 +583,7 @@ try {
   // (The world's settings wait under ▸ Advanced.)
   await page.locator('summary', { hasText: 'Advanced: carry this adventure into another round' }).click();
   await page.getByRole('button', { name: 'More for this world' }).click();
-  assert(await page.getByRole('menuitem', { name: /Delete world/ }).isVisible(), 'Delete world is in the world\'s ⋯ menu');
+  assert(await page.getByRole('menuitem', { name: /Delete world/ }).isVisible(), "Delete world is in the world's ⋯ menu");
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).click();
   await page.getByRole('button', { name: 'Screen Start' }).click();
@@ -454,10 +595,17 @@ try {
   // 📦 Item ▾ with no items yet: make one here, or go to 📊 Stats & Items.
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
   const itemMenu = await page.getByRole('menu').getByRole('menuitem').allInnerTexts();
-  assert(itemMenu.some((t) => t.includes('Add new item here')) && itemMenu.some((t) => t.includes('Stats & Items')), `📦 Item ▾ with no items offers to make one (${itemMenu.join(', ')})`);
-  await page.getByRole('menu').getByRole('menuitem', { name: /Add new item here/ }).click();
   assert(
-    (await page.getByLabel('Object class').inputValue()) === 'item' && (await page.getByLabel('Item', { exact: true }).evaluate((s) => s.selectedOptions[0].text)) === 'Item 1',
+    itemMenu.some((t) => t.includes('Add new item here')) && itemMenu.some((t) => t.includes('Stats & Items')),
+    `📦 Item ▾ with no items offers to make one (${itemMenu.join(', ')})`,
+  );
+  await page
+    .getByRole('menu')
+    .getByRole('menuitem', { name: /Add new item here/ })
+    .click();
+  assert(
+    (await page.getByLabel('Object class').inputValue()) === 'item' &&
+      (await page.getByLabel('Item', { exact: true }).evaluate((s) => s.selectedOptions[0].text)) === 'Item 1',
     'which puts a new catalog item on the screen',
   );
   await page.getByRole('button', { name: '🧙 Character' }).click();
@@ -470,7 +618,10 @@ try {
   await page.getByRole('button', { name: 'Delete stat', exact: true }).click();
   assert((await note.innerText()).includes('Deleted stat “Power” of “Character”'), 'deleting its stat says so, with Undo');
   await page.getByRole('button', { name: '＋ Add dialogue slide' }).click();
-  await page.getByRole('dialog', { name: /Dialogue slide/ }).getByRole('button', { name: 'Done' }).click();
+  await page
+    .getByRole('dialog', { name: /Dialogue slide/ })
+    .getByRole('button', { name: 'Done' })
+    .click();
   await page.getByRole('button', { name: 'Delete dialogue' }).click();
   assert((await note.innerText()).includes('Deleted the dialogue slide of “Character”'), 'and so does deleting its dialogue slide');
   await note.getByRole('button', { name: '↶ Undo' }).click();
@@ -493,7 +644,10 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('main [data-round-name]') && document.activeElement.value.endsWith('!'));
   await page.keyboard.press('Backspace');
   await page.waitForFunction(() => !document.querySelector('main [data-round-name]')?.value.endsWith('!'));
-  assert((await mapTab.first().innerText()).includes('Overland'), 'a map renamed on its tab, then the round’s name box clicked: the typing and Backspace go there');
+  assert(
+    (await mapTab.first().innerText()).includes('Overland'),
+    'a map renamed on its tab, then the round’s name box clicked: the typing and Backspace go there',
+  );
 
   // ---------- ＋ Add item and ＋ Add shop put the typing in the new one's name ----------
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
@@ -512,7 +666,11 @@ try {
     return toastText();
   };
   const itemNames = () => page.getByLabel('Item name').evaluateAll((els) => els.map((e) => e.value));
-  const semi = await importItems('items.csv', 'name;price;stackable;wearable;description\r\nSword;10;no;hand;A sharp blade\r\nPotion;5;yes;;Heals 3 HP\r\n', 'Imported');
+  const semi = await importItems(
+    'items.csv',
+    'name;price;stackable;wearable;description\r\nSword;10;no;hand;A sharp blade\r\nPotion;5;yes;;Heals 3 HP\r\n',
+    'Imported',
+  );
   const afterSemi = await itemNames();
   assert(
     semi.includes('Imported 2 items: 2 new') && afterSemi.includes('Sword') && afterSemi.includes('Potion') && !afterSemi.some((n) => n.includes(';')),
@@ -523,12 +681,16 @@ try {
   {
     // ＋ Add item, 📥 Import CSV… and ⬇ Export CSV line up top and bottom; an item's ⋯ 🗑 end its row, as a stat's and a
     // shop's do (not straight after ▸ More).
-    const edges = await Promise.all(['＋ Add item', '📥 Import CSV…', '⬇ Export CSV'].map(async (name) => {
-      const b = await page.getByRole('button', { name, exact: true }).boundingBox();
-      return `${Math.round(b.y)}-${Math.round(b.y + b.height)}`;
-    }));
+    const edges = await Promise.all(
+      ['＋ Add item', '📥 Import CSV…', '⬇ Export CSV'].map(async (name) => {
+        const b = await page.getByRole('button', { name, exact: true }).boundingBox();
+        return `${Math.round(b.y)}-${Math.round(b.y + b.height)}`;
+      }),
+    );
     assert(new Set(edges).size === 1, `the Items buttons line up (${edges.join(', ')})`);
-    const gaps = await page.locator('.item-row').evaluateAll((rows) => rows.map((r) => Math.round(r.getBoundingClientRect().right - r.querySelector('.row-tools').getBoundingClientRect().right)));
+    const gaps = await page
+      .locator('.item-row')
+      .evaluateAll((rows) => rows.map((r) => Math.round(r.getBoundingClientRect().right - r.querySelector('.row-tools').getBoundingClientRect().right)));
     assert(gaps.length > 1 && gaps.every((g) => g <= 1), `each item’s ⋯ 🗑 are at its row’s right end (${gaps.join(', ')} px short)`);
   }
 
@@ -548,7 +710,9 @@ try {
   await page.getByLabel('Clue text font').selectOption({ label: 'Bangers (comic)' });
   await roundTabsIn(page).first().click();
   await page.locator('.tile').first().click();
-  const editorFont = await page.locator('.modal .se .canvas').evaluate((c) => [...c.querySelectorAll('*')].map((e) => getComputedStyle(e).fontFamily).find((f) => f.includes('Bangers')) ?? '');
+  const editorFont = await page
+    .locator('.modal .se .canvas')
+    .evaluate((c) => [...c.querySelectorAll('*')].map((e) => getComputedStyle(e).fontFamily).find((f) => f.includes('Bangers')) ?? '');
   assert(editorFont.includes('Bangers'), `the clue text font changes the clues' text (${editorFont})`);
   // Its text box deleted, then the question typed again in the Question box: the new text box is on top of the rest (it
   // went under them), in the clue text font (it came back in a new text box's).
@@ -559,11 +723,18 @@ try {
   await page.keyboard.press('Delete');
   await page.locator('.modal [data-field="q"]').fill('Back on top');
   const items = await se.locator('.canvas .slide .el').evaluateAll((els) =>
-    els.map((e) => ({ text: !!e.querySelector('.text'), z: Number(e.style.zIndex), font: e.querySelector('.text') ? getComputedStyle(e.querySelector('.text')).fontFamily : '' })),
+    els.map((e) => ({
+      text: !!e.querySelector('.text'),
+      z: Number(e.style.zIndex),
+      font: e.querySelector('.text') ? getComputedStyle(e.querySelector('.text')).fontFamily : '',
+    })),
   );
   const retyped = items.find((e) => e.text);
   const shape = items.find((e) => !e.text);
-  assert(items.length === 2 && retyped.z > shape.z && retyped.font.includes('Bangers'), `the question typed again goes on top, in the clue text font (${JSON.stringify(items)})`);
+  assert(
+    items.length === 2 && retyped.z > shape.z && retyped.font.includes('Bangers'),
+    `the question typed again goes on top, in the clue text font (${JSON.stringify(items)})`,
+  );
   await page.getByRole('button', { name: 'Done' }).click();
 
   // ---------- A copy of a copy is "(copy 2)", not "(copy) (copy)" ----------
@@ -572,7 +743,10 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('nav > button.round-tab') && document.activeElement.textContent.includes('(copy)'));
   await page.keyboard.press('Control+d');
   const roundNames = (await tabs.allInnerTexts()).map((t) => t.replace(/^\S+\s/, '').trim());
-  assert(roundNames.some((n) => n.endsWith('(copy 2)')) && !roundNames.some((n) => n.includes('(copy) (copy)')), `duplicating a copy numbers it on (${roundNames.join(', ')})`);
+  assert(
+    roundNames.some((n) => n.endsWith('(copy 2)')) && !roundNames.some((n) => n.includes('(copy) (copy)')),
+    `duplicating a copy numbers it on (${roundNames.join(', ')})`,
+  );
 
   // ---------- A game with only a title and a theme counts: New asks, and keeps it in Recent games ----------
   await page.getByRole('button', { name: 'New', exact: true }).click();
@@ -582,11 +756,14 @@ try {
   await title.fill('Only a title and a theme');
   await title.press('Enter');
   await page.getByRole('button', { name: '🎨 Theme' }).click();
-  await page.locator('input[type=color]').first().evaluate((el) => {
-    el.value = '#123456';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  await page
+    .locator('input[type=color]')
+    .first()
+    .evaluate((el) => {
+      el.value = '#123456';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
   await page.waitForTimeout(900);
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await answerReplace(page, 'Discard');
@@ -628,9 +805,18 @@ try {
   const picks = [];
   for (const name of ['Potion', 'Gold coins']) {
     await page.locator('.layers-box .row').filter({ hasText: name }).locator('.name').click();
-    picks.push((await inspectorIn(page).locator('select').evaluateAll((els) => els.map((e) => e.selectedOptions[0]?.textContent?.trim()))).join(', '));
+    picks.push(
+      (
+        await inspectorIn(page)
+          .locator('select')
+          .evaluateAll((els) => els.map((e) => e.selectedOptions[0]?.textContent?.trim()))
+      ).join(', '),
+    );
   }
-  assert(picks[0].includes('Potion') && picks[1].includes('Gold') && !picks.join().includes('Deleted'), `a screen pasted into another game keeps its Potion and Gold (${picks.join(' | ')})`);
+  assert(
+    picks[0].includes('Potion') && picks[1].includes('Gold') && !picks.join().includes('Deleted'),
+    `a screen pasted into another game keeps its Potion and Gold (${picks.join(' | ')})`,
+  );
 
   // ---------- The sample game: its sidebar, scrolling and a round's name on a tablet ----------
   // (On a page of its own: no notice over the editor.) With the sample's five rounds the sidebar fits at 1280×720,
@@ -642,11 +828,14 @@ try {
     await sp.getByRole('button', { name: /Try a sample game/ }).click();
     // (Once the checklist has caught up with the sample's rounds.)
     await sp.locator('nav .problem', { hasText: 'No rounds yet' }).waitFor({ state: 'detached' });
-    const side = await sp.locator('nav').first().evaluate((n) => ({
-      over: n.scrollHeight - n.clientHeight,
-      history: [...n.querySelectorAll(':scope > button')].at(-1).getBoundingClientRect().bottom,
-      check: n.querySelector('.problems').getBoundingClientRect().top,
-    }));
+    const side = await sp
+      .locator('nav')
+      .first()
+      .evaluate((n) => ({
+        over: n.scrollHeight - n.clientHeight,
+        history: [...n.querySelectorAll(':scope > button')].at(-1).getBoundingClientRect().bottom,
+        check: n.querySelector('.problems').getBoundingClientRect().top,
+      }));
     assert(side.over <= 0 && side.history <= side.check, `the sample game's sidebar fits at 1280×720, History above the checklist (${JSON.stringify(side)})`);
     // A page picked in the sidebar opens at its top, not as far down as the last one was scrolled.
     const mainEl = sp.locator('main');
@@ -654,7 +843,10 @@ try {
     {
       // A slider has no text box's padding or border round it, so at 100% its thumb is at the end of its track.
       const boxed = await sp.locator('main input[type="range"]').evaluateAll((rs) =>
-        rs.map((r) => getComputedStyle(r)).filter((c) => c.paddingLeft !== '0px' || c.paddingRight !== '0px' || c.borderLeftWidth !== '0px' || c.borderRightWidth !== '0px').map((c) => `${c.padding} / ${c.borderLeftWidth}`),
+        rs
+          .map((r) => getComputedStyle(r))
+          .filter((c) => c.paddingLeft !== '0px' || c.paddingRight !== '0px' || c.borderLeftWidth !== '0px' || c.borderRightWidth !== '0px')
+          .map((c) => `${c.padding} / ${c.borderLeftWidth}`),
       );
       assert(boxed.length === 0, `🔊 Sounds’ volume sliders have no padding or border in their track’s way (${boxed.slice(0, 2).join(', ')})`);
     }
@@ -663,9 +855,14 @@ try {
     await sp.getByRole('button', { name: '🎨 Theme' }).click();
     const onTheme = await mainEl.evaluate((m) => m.scrollTop);
     await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
-    await roundTabsIn(sp).filter({ hasText: /^\W*Jeopardy!$/ }).click();
+    await roundTabsIn(sp)
+      .filter({ hasText: /^\W*Jeopardy!$/ })
+      .click();
     const onRound = await mainEl.evaluate((m) => m.scrollTop);
-    assert(scrolled > 100 && onTheme === 0 && onRound === 0, `🎨 Theme and a round's tab open at the top after a page scrolled down (${scrolled} → ${onTheme}, ${onRound})`);
+    assert(
+      scrolled > 100 && onTheme === 0 && onRound === 0,
+      `🎨 Theme and a round's tab open at the top after a page scrolled down (${scrolled} → ${onTheme}, ${onRound})`,
+    );
     // So does a round just added.
     await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
     await sp.getByRole('button', { name: '＋ Add round' }).click();
@@ -675,7 +872,9 @@ try {
     assert(onAdded === 0, `a round just added opens at the top too (${onAdded})`);
     await sp.keyboard.press('Control+z');
     await roundTabsIn(sp, { hasText: 'Double Jeopardy!' }).waitFor({ state: 'detached' });
-    await roundTabsIn(sp).filter({ hasText: /^\W*Jeopardy!$/ }).click();
+    await roundTabsIn(sp)
+      .filter({ hasText: /^\W*Jeopardy!$/ })
+      .click();
     // And a round pasted with Ctrl+V on its tab, as the menu's 📋 Paste round does.
     const tabs = roundTabsIn(sp);
     const before = await tabs.count();
@@ -692,14 +891,26 @@ try {
     // A round's name keeps its width on a tablet (the sidebar beside it): its buttons go under it where both don't fit.
     for (const width of [720, 760, 820, 900, 1280]) {
       await sp.setViewportSize({ width, height: 720 });
-      const h = await sp.locator('main .page-header').first().evaluate((el) => {
-        const h2 = el.querySelector('h2');
-        const t = el.querySelector('.titles').getBoundingClientRect();
-        const a = el.querySelector('.actions').getBoundingClientRect();
-        const main = el.closest('main');
-        return { cut: h2.scrollWidth - h2.clientWidth, width: Math.round(t.width), under: a.top >= t.bottom, beside: Math.round(a.top) === Math.round(t.top), wide: main.scrollWidth - main.clientWidth };
-      });
-      assert(h.cut <= 0 && h.width >= 200 && h.wide <= 0 && (width === 1280 ? h.beside : h.under), `at ${width} px wide the round's name shows whole, its buttons ${width === 1280 ? 'beside' : 'under'} it (${JSON.stringify(h)})`);
+      const h = await sp
+        .locator('main .page-header')
+        .first()
+        .evaluate((el) => {
+          const h2 = el.querySelector('h2');
+          const t = el.querySelector('.titles').getBoundingClientRect();
+          const a = el.querySelector('.actions').getBoundingClientRect();
+          const main = el.closest('main');
+          return {
+            cut: h2.scrollWidth - h2.clientWidth,
+            width: Math.round(t.width),
+            under: a.top >= t.bottom,
+            beside: Math.round(a.top) === Math.round(t.top),
+            wide: main.scrollWidth - main.clientWidth,
+          };
+        });
+      assert(
+        h.cut <= 0 && h.width >= 200 && h.wide <= 0 && (width === 1280 ? h.beside : h.under),
+        `at ${width} px wide the round's name shows whole, its buttons ${width === 1280 ? 'beside' : 'under'} it (${JSON.stringify(h)})`,
+      );
     }
     await sp.context().close();
   }
@@ -737,7 +948,11 @@ try {
       `at 1920 a slides round's slide editor reaches the header's right edge, its fields stay at the readable width, and the whole slide shows (${JSON.stringify(slides)})`,
     );
     // Lines typed above the slide shrink it to fit (still all in sight), and it grows back when they go.
-    const fit = () => wp.evaluate(() => ({ canvas: Math.round(document.querySelector('main .se .canvas').getBoundingClientRect().width), scroll: document.querySelector('main').scrollHeight - document.querySelector('main').clientHeight }));
+    const fit = () =>
+      wp.evaluate(() => ({
+        canvas: Math.round(document.querySelector('main .se .canvas').getBoundingClientRect().width),
+        scroll: document.querySelector('main').scrollHeight - document.querySelector('main').clientHeight,
+      }));
     await wp.locator('[data-field="round-notes"]').fill('one\ntwo\nthree\nfour');
     await wp.locator('main [data-field="q"]').fill('Welcome to the sample game!\n2\n3\n4\n5\n6');
     await wp.waitForTimeout(200);
@@ -746,7 +961,10 @@ try {
     await wp.locator('main [data-field="q"]').fill('Welcome to the sample game!');
     await wp.waitForTimeout(200);
     const cleared = await fit();
-    assert(typed.scroll <= 0 && typed.canvas < slides.canvas - 50 && cleared.canvas === slides.canvas && cleared.scroll <= 0, `lines typed above a slides round's slide shrink it to stay in sight, and it grows back (${slides.canvas} → ${typed.canvas} → ${cleared.canvas})`);
+    assert(
+      typed.scroll <= 0 && typed.canvas < slides.canvas - 50 && cleared.canvas === slides.canvas && cleared.scroll <= 0,
+      `lines typed above a slides round's slide shrink it to stay in sight, and it grows back (${slides.canvas} → ${typed.canvas} → ${cleared.canvas})`,
+    );
     // The Final's slide fills the width as a slides round's does, all in sight; its form stays at the readable width.
     await roundTab(/Final Jeopardy!/).click();
     const page = (fieldsSel = '.grid, .quick') =>
@@ -757,7 +975,9 @@ try {
           head: Math.round(r(main.querySelector('.page-header')).right),
           editor: Math.round(r(main.querySelector('.se')).right),
           canvas: Math.round(r(main.querySelector('.se .canvas')).width),
-          fields: Math.round(Math.max(...[...main.querySelectorAll(fieldsSel)].filter((el) => !el.closest('.se')).map((el) => r(el).right)) - r(main.querySelector('.se')).left),
+          fields: Math.round(
+            Math.max(...[...main.querySelectorAll(fieldsSel)].filter((el) => !el.closest('.se')).map((el) => r(el).right)) - r(main.querySelector('.se')).left,
+          ),
           scroll: main.scrollHeight - main.clientHeight,
         };
       }, fieldsSel);
@@ -769,7 +989,10 @@ try {
     await wp.locator('main [data-field="round-notes"]').fill('one\ntwo\nthree\nfour');
     await wp.waitForTimeout(200);
     const finalTyped = await page();
-    assert(finalTyped.canvas < final.canvas - 20 && finalTyped.scroll <= 0, `lines typed in its Host notes shrink it to stay in sight (${final.canvas} → ${finalTyped.canvas})`);
+    assert(
+      finalTyped.canvas < final.canvas - 20 && finalTyped.scroll <= 0,
+      `lines typed in its Host notes shrink it to stay in sight (${final.canvas} → ${finalTyped.canvas})`,
+    );
     await wp.locator('main [data-field="round-notes"]').fill('');
     // The tiebreaker's too, under its fields at the readable width.
     await wp.locator('nav button', { hasText: 'Add tiebreaker' }).click();
@@ -795,7 +1018,10 @@ try {
         },
         [look.toString(), where],
       );
-    const oneLook = (group) => group.some((l) => l.startsWith('＋ 🤫 Card')) && group.some((l) => l.startsWith('＋ Add slide')) && new Set(group.map((l) => l.split(': ')[1])).size === 1;
+    const oneLook = (group) =>
+      group.some((l) => l.startsWith('＋ 🤫 Card')) &&
+      group.some((l) => l.startsWith('＋ Add slide')) &&
+      new Set(group.map((l) => l.split(': ')[1])).size === 1;
     const group = await slideButtons('main');
     assert(oneLook(group), `the Final's slide buttons are one small button, ＋ Add slide and ＋ 🤫 Card too (${group.join(' | ')})`);
     // The same in the clue editor.
@@ -812,14 +1038,26 @@ try {
     await clueDlg.waitFor({ state: 'detached' });
     // At laptop widths Partner clues' selects take a second line: the two blocks' "… on the board" lines stay level.
     await roundTab(/^\W*Jeopardy!$/).click();
-    for (const [w, h] of [[1280, 720], [1366, 768]]) {
+    for (const [w, h] of [
+      [1280, 720],
+      [1366, 768],
+    ]) {
       await wp.setViewportSize({ width: w, height: h });
       const hints = await wp.evaluate(() => {
         const [dd, pt] = [...document.querySelectorAll('main .values .extras .group')];
         const r = (el) => Math.round(el.getBoundingClientRect().top);
-        return { dd: r(dd.querySelector('.hint')), pt: r(pt.querySelector('.hint')), wrapped: r(pt.querySelector('select:last-of-type')) > r(pt.querySelector('input')) + 10, ddText: dd.querySelector('.hint').textContent, ptText: pt.querySelector('.hint').textContent };
+        return {
+          dd: r(dd.querySelector('.hint')),
+          pt: r(pt.querySelector('.hint')),
+          wrapped: r(pt.querySelector('select:last-of-type')) > r(pt.querySelector('input')) + 10,
+          ddText: dd.querySelector('.hint').textContent,
+          ptText: pt.querySelector('.hint').textContent,
+        };
       });
-      assert(hints.dd === hints.pt && hints.wrapped && /on the board/.test(hints.ddText) && /on the board/.test(hints.ptText), `at ${w}×${h} the ⭐ Daily Doubles and 🤝 Partner clues lines are level, with Partner clues' 🤫 Card on a second line (${JSON.stringify(hints)})`);
+      assert(
+        hints.dd === hints.pt && hints.wrapped && /on the board/.test(hints.ddText) && /on the board/.test(hints.ptText),
+        `at ${w}×${h} the ⭐ Daily Doubles and 🤝 Partner clues lines are level, with Partner clues' 🤫 Card on a second line (${JSON.stringify(hints)})`,
+      );
     }
     // On a laptop the Final's settings leave its slide little room in sight: it keeps its size at the readable width
     // (the page scrolls to it), never shrunk to fit.

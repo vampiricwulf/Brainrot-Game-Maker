@@ -48,7 +48,11 @@ export function addressKey(ip: string): string {
   const b = tail ? tail.split(':') : [];
   // "::" stands for as many groups of zeros as are missing.
   const groups = tail === undefined ? a : [...a, ...Array<string>(Math.max(0, 8 - a.length - b.length)).fill('0'), ...b];
-  return `${groups.slice(0, 4).map((g) => g.padStart(4, '0')).join('').slice(0, 14)}/56`;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => g.padStart(4, '0'))
+    .join('')
+    .slice(0, 14)}/56`;
 }
 
 /** The wider network an address key is counted in too: an IPv6 /56's /48 (its first 12 hex digits). None for IPv4. */
@@ -213,13 +217,7 @@ function over(hours: HourBytes[], who: string, n: number, cap: number): 'busy' |
  * save (n added to this hour's), or 'off' (the budget is 0), 'busy' (the last 24 hours' uploads would go over it) or
  * 'address' (over this address's share, or its network's).
  */
-export function countBytes(
-  saved: SavedBytes | null | undefined,
-  now: number,
-  who: string,
-  n: number,
-  cap: number,
-): WindowBytes | 'off' | 'busy' | 'address' {
+export function countBytes(saved: SavedBytes | null | undefined, now: number, who: string, n: number, cap: number): WindowBytes | 'off' | 'busy' | 'address' {
   if (cap <= 0) return 'off';
   const hours = windowAt(saved, now);
   const no = over(hours, who, n, cap);
@@ -258,7 +256,15 @@ export function freesIn(saved: SavedBytes | null | undefined, now: number, who: 
   const hours = windowAt(saved, now);
   for (let k = 1; k < WINDOW_HOURS; k++) {
     const h = hourOf(now + k * HOUR_MS);
-    if (!over(hours.filter((b) => b.h > h - WINDOW_HOURS), who, n, cap)) return k;
+    if (
+      !over(
+        hours.filter((b) => b.h > h - WINDOW_HOURS),
+        who,
+        n,
+        cap,
+      )
+    )
+      return k;
   }
   return WINDOW_HOURS;
 }

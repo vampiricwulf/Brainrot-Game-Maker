@@ -59,7 +59,12 @@
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
     // (For the players picked: nobody picked, it does nothing, and a landing isn't run.)
     if ('who' in a && a.who === 'selected' && !selected.length) return void toast('Pick who it’s for first (1–9)');
-    const go = () => runAction({ game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session, `space:${space.id}`) }, a, ...spaceActText(game, bs, space, a, on, teams));
+    const go = () =>
+      runAction(
+        { game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session, `space:${space.id}`) },
+        a,
+        ...spaceActText(game, bs, space, a, on, teams),
+      );
     // (Where the turn's move landed: its landing counts as run.)
     toast(on === 'land' ? runLanding(game, session, space, go) : go(), 3000);
   }
@@ -92,7 +97,10 @@
       <span class="muted small">Landing on it{who.length ? ` (${whoNames})` : ''}:</span>
       {#each land as a (a.id)}<button class="small" onclick={() => run(a, 'land')}>{actText(a, 'land')}</button>{/each}
       {#if land.length > 1}
-        <button class="small" onclick={() => toast(runSpace(game, session, app.live, space, who, 'onLand', !dual), 3000)} title={land.some(decidingAction) ? 'Its roll (or spin, or question) first: then press the outcome it comes to' : 'Every landing action, in order'}
+        <button
+          class="small"
+          onclick={() => toast(runSpace(game, session, app.live, space, who, 'onLand', !dual), 3000)}
+          title={land.some(decidingAction) ? 'Its roll (or spin, or question) first: then press the outcome it comes to' : 'Every landing action, in order'}
           >▶ {land.some(decidingAction) ? 'Start' : 'Run all'}</button
         >
       {/if}
@@ -106,7 +114,11 @@
   {/if}
   {#if !space.onLand?.length && !space.onPass?.length}<span class="muted small">No buttons on this space.</span>{/if}
   <div class="row">
-    <button class="small" disabled={!who.length || who.every((id) => bs.positions[id]?.space === space.id)} onclick={() => sendNow(game, session, who, { space: space.id }, !dual)}>
+    <button
+      class="small"
+      disabled={!who.length || who.every((id) => bs.positions[id]?.space === space.id)}
+      onclick={() => sendNow(game, session, who, { space: space.id }, !dual)}
+    >
       📍 Put {selected.length ? `the selected (${selected.length})` : playerName(session, turnId)} here
     </button>
     <span class="muted small">or drag a token onto it</span>

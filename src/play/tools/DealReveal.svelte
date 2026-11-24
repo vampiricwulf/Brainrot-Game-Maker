@@ -29,8 +29,12 @@
   <div class="grid" style:--cols={cols}>
     {#each lines as l, i (i)}
       <div class="line" style:--c={l.color} in:fly={{ y: 40, delay: 200 + i * 120, duration: 400 }}>
-        <span class="nm" style:background={l.color} style:color={textOn(l.color)} dir="auto">{l.name}{#if l.team}{' '}<small>· {l.team}</small>{/if}</span>
-        <span class="part" dir="auto">{l.part}{#if l.slice}{' '}<span class="slice">· {l.slice}</span>{/if}</span>
+        <span class="nm" style:background={l.color} style:color={textOn(l.color)} dir="auto"
+          >{l.name}{#if l.team}{' '}<small>· {l.team}</small>{/if}</span
+        >
+        <span class="part" dir="auto"
+          >{l.part}{#if l.slice}{' '}<span class="slice">· {l.slice}</span>{/if}</span
+        >
       </div>
     {/each}
   </div>

@@ -1,5 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { clearPlay, debounce, loadPlay, playUnsure, rescuePlay, retryWrites, roomTeams, savePlay, unstored, watchWrites, write, type SavedRoom } from './persist';
+import {
+  clearPlay,
+  debounce,
+  loadPlay,
+  playUnsure,
+  rescuePlay,
+  retryWrites,
+  roomTeams,
+  savePlay,
+  unstored,
+  watchWrites,
+  write,
+  type SavedRoom,
+} from './persist';
 import type { Overlay } from './live';
 import { newGame, type Session } from './model';
 
@@ -153,7 +166,10 @@ describe('a buzzer room kept for the next game', () => {
   const room = (teams: boolean, players = 2): SavedRoom => ({
     gameId: 'last',
     remote: { code: 'BCDF', base: 'https://buzz.example' } as SavedRoom['remote'],
-    players: [{ id: 'a', name: 'Sharks', color: '#e6194b', startScore: 0 }, { id: 'b', name: 'Jets', color: '#56b4e9', startScore: 0 }].slice(0, players),
+    players: [
+      { id: 'a', name: 'Sharks', color: '#e6194b', startScore: 0 },
+      { id: 'b', name: 'Jets', color: '#56b4e9', startScore: 0 },
+    ].slice(0, players),
     screen: 'editor',
     savedAt: 1,
     settings: { ...newGame().settings, buzzer: true, ...(teams ? { buzzTeams: true } : {}) },
@@ -259,7 +275,16 @@ describe('the game in progress as the page goes away', () => {
     };
     const game = newGame();
     const session = { gameId: game.id, scoreLog: [] } as unknown as Session;
-    const dice: Overlay = { kind: 'dice', nonce: 'n1', name: 'd6', preset: { id: 'd6', name: 'd6', dice: [], showTotal: true }, roll: null, startedAt: 500, duration: 1000, mover: true };
+    const dice: Overlay = {
+      kind: 'dice',
+      nonce: 'n1',
+      name: 'd6',
+      preset: { id: 'd6', name: 'd6', dice: [], showTotal: true },
+      roll: null,
+      startedAt: 500,
+      duration: 1000,
+      mover: true,
+    };
     vi.setSystemTime(1000);
     await savePlay(game, session, false, dice);
     expect((await loadPlay())?.overlay).toEqual(dice);

@@ -38,18 +38,31 @@ try {
   await page.goto(url);
   const notice = page.locator('.data-notice', { hasText: 'is out' });
   await notice.waitFor();
-  assert((await notice.innerText()).includes('Brainrot Games Maker 99.0.0 is out'), `the editor says a newer version is out (${(await notice.innerText()).split('\n')[0]})`);
+  assert(
+    (await notice.innerText()).includes('Brainrot Games Maker 99.0.0 is out'),
+    `the editor says a newer version is out (${(await notice.innerText()).split('\n')[0]})`,
+  );
   // On a laptop's screen (1280×720, 1366×768 and a little shorter, a 1024×768 one) the first screen's 📂 Open a game…
   // stays in view under it, with room to spare. Measured with CI's fonts (tests/e2e/fonts.conf, which helpers.mjs sets);
   // at 1280×720 there's room for a taller UI font: with Inter, as some Linux desktops have, it comes out 22px lower.
-  for (const [w, h] of [[1280, 720], [1366, 768], [1366, 764], [1024, 768], [1280, 800], [1366, 801], [1280, 840]]) {
+  for (const [w, h] of [
+    [1280, 720],
+    [1366, 768],
+    [1366, 764],
+    [1024, 768],
+    [1280, 800],
+    [1366, 801],
+    [1280, 840],
+  ]) {
     await page.setViewportSize({ width: w, height: h });
     const openLine = await page.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
     const room = h <= 720 ? 22 : 12;
     assert(openLine <= h - room, `with the notice up, 📂 Open a game… is in a ${w}×${h} window, ${room}px to spare (${openLine})`);
   }
   // (A notice that appears with its words isn't always read: screen readers hear it from the page's live region.)
-  await page.waitForFunction(() => document.getElementById('live-region')?.dataset.said?.includes('Brainrot Games Maker 99.0.0 is out.'), null, { timeout: 3000 });
+  await page.waitForFunction(() => document.getElementById('live-region')?.dataset.said?.includes('Brainrot Games Maker 99.0.0 is out.'), null, {
+    timeout: 3000,
+  });
   assert(true, 'screen readers are told a newer version is out');
   // (The link it opens is noted rather than opened, so the test doesn't go to GitHub.)
   await page.evaluate(() => (window.open = (u) => ((window.__opened = String(u)), null)));
@@ -79,7 +92,10 @@ try {
     const word = n.querySelector('.steps');
     return { arrow: r.getBoundingClientRect().top, words: word && word.getClientRects()[0].top, h: n.getBoundingClientRect().height };
   });
-  assert(arrow.words !== null && Math.abs(arrow.arrow - arrow.words) < 4 && arrow.h < 80, `at 820 wide the ⬆ starts the steps' first line (${JSON.stringify(arrow)})`);
+  assert(
+    arrow.words !== null && Math.abs(arrow.arrow - arrow.words) < 4 && arrow.h < 80,
+    `at 820 wide the ⬆ starts the steps' first line (${JSON.stringify(arrow)})`,
+  );
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.getByRole('button', { name: /^More:/ }).click();
   await page.getByRole('menuitem', { name: /About/ }).click();
@@ -101,7 +117,10 @@ try {
   assert(
     (await notNow.innerText()) === '✕' &&
       (await notNow.getAttribute('title')) === 'Hide until a newer version is out' &&
-      (await notice.getByRole('button').last().evaluate((b) => b.getAttribute('aria-label'))) === 'Not now',
+      (await notice
+        .getByRole('button')
+        .last()
+        .evaluate((b) => b.getAttribute('aria-label'))) === 'Not now',
     'Not now is the notice’s ✕ at its far right, its tooltip saying what it does',
   );
   await notNow.click();
@@ -123,7 +142,9 @@ try {
 
   // A start asks even when it heard from GitHub a little while ago (releases come often: what it heard then would hide a
   // newer one), and an offline start goes by what it heard last.
-  await page.evaluate(() => localStorage.setItem('jb.update', JSON.stringify({ at: Date.now() - 60_000, release: { version: '0.0.1', page: 'p', notes: '', files: {} } })));
+  await page.evaluate(() =>
+    localStorage.setItem('jb.update', JSON.stringify({ at: Date.now() - 60_000, release: { version: '0.0.1', page: 'p', notes: '', files: {} } })),
+  );
   answer = release('99.2.0');
   await page.waitForTimeout(1000);
   await page.evaluate(() => localStorage.setItem('test.marker', '3'));
@@ -255,7 +276,10 @@ try {
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
     await hp.clock.fastForward('00:05');
-    assert(calls === 3 && (await hn.count()) === 1 && (await hn.innerText()).includes('99.2.0 is out'), 'an hour later, a check that fails leaves the notice as it was');
+    assert(
+      calls === 3 && (await hn.count()) === 1 && (await hn.innerText()).includes('99.2.0 is out'),
+      'an hour later, a check that fails leaves the notice as it was',
+    );
     hourly = release('99.1.0');
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(500);
@@ -299,7 +323,10 @@ try {
     await hp.clock.fastForward('01:01:00');
     await hp.waitForTimeout(300);
     await hp.keyboard.press('Shift');
-    assert(calls === 7 && (await hn.innerText()).includes('99.2.2 is out'), 'a newer version (99.2.3) found while they work leaves the notice at 99.2.2 for now');
+    assert(
+      calls === 7 && (await hn.innerText()).includes('99.2.2 is out'),
+      'a newer version (99.2.3) found while they work leaves the notice at 99.2.2 for now',
+    );
     await roundTabsIn(hp).nth(1).click();
     await hp.locator('.data-notice', { hasText: '99.2.3 is out' }).waitFor({ timeout: 2000 });
     assert(true, 'and going to another round shows it at once');
@@ -308,7 +335,11 @@ try {
     // button down. (The press is made up here, with no release after it.)
     const press = () => hp.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 2, buttons: 2 })));
     for (const [v, how, lost] of [
-      ['99.2.4', 'the right-click’s menu', () => hp.evaluate(() => document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, buttons: 2 })))],
+      [
+        '99.2.4',
+        'the right-click’s menu',
+        () => hp.evaluate(() => document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, buttons: 2 }))),
+      ],
       ['99.2.5', 'the window losing focus', () => hp.evaluate(() => window.dispatchEvent(new Event('blur')))],
       ['99.2.6', 'a move with no button down', () => hp.mouse.move(600, 400)],
     ]) {
@@ -318,7 +349,10 @@ try {
       await hp.waitForTimeout(300);
       await hp.clock.fastForward('00:05');
       await hp.waitForTimeout(300);
-      assert((await hn.innerText()).includes('is out') && !(await hn.innerText()).includes(`${v} is out`), `a version (${v}) found while a button is held waits`);
+      assert(
+        (await hn.innerText()).includes('is out') && !(await hn.innerText()).includes(`${v} is out`),
+        `a version (${v}) found while a button is held waits`,
+      );
       await lost();
       await hp.clock.fastForward('00:05');
       await hp.locator('.data-notice', { hasText: `${v} is out` }).waitFor({ timeout: 2000 });
@@ -371,13 +405,22 @@ try {
     // the full words in its tooltip) and 📂 Open a game… still fits a laptop's screen.
     const what = wp.locator('.first-round > p.what');
     const get = what.getByRole('link', { name: 'Get the app ↗' });
-    for (const [w, h] of [[1280, 720], [1366, 768], [1366, 764], [1024, 768]]) {
+    for (const [w, h] of [
+      [1280, 720],
+      [1366, 768],
+      [1366, 764],
+      [1024, 768],
+    ]) {
       await wp.setViewportSize({ width: w, height: h });
       const line = await what.evaluate(lineOf);
       const wOpen = await wp.locator('.first-round .open-line').evaluate((e) => e.getBoundingClientRect().bottom);
       assert(
-        (await get.getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases' && (await get.getAttribute('target')) === '_blank' &&
-          line.lines === 1 && line.linkIn && line.title.includes('players buzz in from their phones') && wOpen <= h - 12,
+        (await get.getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases' &&
+          (await get.getAttribute('target')) === '_blank' &&
+          line.lines === 1 &&
+          line.linkIn &&
+          line.title.includes('players buzz in from their phones') &&
+          wOpen <= h - 12,
         `online at ${w}×${h}, the first screen's one line about the app ends with “Get the app ↗” (the Releases page), and 📂 Open a game… fits under the notice (${JSON.stringify(line)}, ${wOpen})`,
       );
     }
@@ -396,7 +439,8 @@ try {
     assert(
       /Version\s+\d+\.\d+\.\d+ \(online\)/.test(about) &&
         about.includes("This site keeps its own games: the downloaded file and the desktop app don't see them") &&
-        !about.includes('single HTML file') && !about.includes('opened from a file'),
+        !about.includes('single HTML file') &&
+        !about.includes('opened from a file'),
       'online, ℹ About says “(online)” and that this site keeps its own games, not the file’s words',
     );
     await wp.keyboard.press('Escape');

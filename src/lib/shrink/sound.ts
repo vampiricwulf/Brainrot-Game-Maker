@@ -43,7 +43,7 @@ export async function soundHere(
   output.addAudioTrack(source);
   try {
     await output.start();
-    for (let at = start; at < end; ) {
+    for (let at = start; at < end;) {
       if (ctl.signal.aborted) throw stopped();
       const n = Math.min(PIECE_SECONDS * sr, end - at);
       const piece = new AudioBuffer({ length: n, numberOfChannels: channels, sampleRate: sr });

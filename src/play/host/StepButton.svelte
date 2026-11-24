@@ -28,12 +28,15 @@
 </script>
 
 <button data-step class:ring disabled={step.disabled} title={step.title ?? step.key} use:oneShot onclick={click}>
-  {step.label}{#if step.key} <kbd aria-hidden="true">{step.key}</kbd>{/if}
+  {step.label}{#if step.key}
+    <kbd aria-hidden="true">{step.key}</kbd>{/if}
 </button>
 
 <style>
   kbd {
-    font: 11px/1 ui-monospace, monospace;
+    font:
+      11px/1 ui-monospace,
+      monospace;
     padding: 1px 4px;
     margin-left: 4px;
     border: 1px solid currentColor;

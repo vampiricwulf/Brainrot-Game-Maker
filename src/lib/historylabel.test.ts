@@ -2,8 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { diff } from './historyops';
 import { describe as describeStep, filePlaces, itemPlace, placeAt, placeWhere, short } from './historylabel';
 import {
-  gameRules, newAudioEl, newEmbedEl, newImageEl, newSavedCard, newShapeEl, newTextEl, newVideoEl,
-  type AudioEl, type BoardGameRound, type BoardRound, type EmbedEl, type FinalRound, type Game, type ImageEl, type ShapeEl, type SlideElement, type TextEl, type VideoEl,
+  gameRules,
+  newAudioEl,
+  newEmbedEl,
+  newImageEl,
+  newSavedCard,
+  newShapeEl,
+  newTextEl,
+  newVideoEl,
+  type AudioEl,
+  type BoardGameRound,
+  type BoardRound,
+  type EmbedEl,
+  type FinalRound,
+  type Game,
+  type ImageEl,
+  type ShapeEl,
+  type SlideElement,
+  type TextEl,
+  type VideoEl,
 } from './model';
 import { jeopardyGame } from './testgame';
 import { addSampleGame } from './samples';
@@ -44,7 +61,11 @@ const screens = (g: Game) => g.worlds![0].maps[0].screens;
 
 describe('step labels', () => {
   it('names renames, with where they happened', () => {
-    expect(step((g) => (g.title = 'Brainrot Night 2'))).toMatchObject({ label: 'Renamed the game “Brainrot Night 2”', where: 'Game title', place: { tab: 'title' } });
+    expect(step((g) => (g.title = 'Brainrot Night 2'))).toMatchObject({
+      label: 'Renamed the game “Brainrot Night 2”',
+      where: 'Game title',
+      place: { tab: 'title' },
+    });
     const r = step((g) => (g.rounds[0].name = 'Round of memes'));
     expect(r).toMatchObject({ label: 'Renamed round “Round of memes”', icon: '🟦', where: '' });
     expect(r.place).toEqual({ tab: 'round', round: r.after.rounds[0].id });
@@ -131,7 +152,11 @@ describe('step labels', () => {
     const fnext = structuredClone(typed);
     final(fnext).choices![1].text = 'Bern';
     const fedit = describeStep(diff(typed, fnext), typed, fnext);
-    expect(fedit).toMatchObject({ label: 'Edited choice B of Final Jeopardy!', where: 'Final Jeopardy! › Choices', place: { tab: 'round', round: final(fnext).id } });
+    expect(fedit).toMatchObject({
+      label: 'Edited choice B of Final Jeopardy!',
+      where: 'Final Jeopardy! › Choices',
+      place: { tab: 'round', round: final(fnext).id },
+    });
     // A value changed: the tile as it was, and what it is now.
     const valued = step((g) => (board(g).categories[0].clues[1].value = 750));
     expect(valued.label).toBe(`Changed ${cat} $400 to $750`);
@@ -204,8 +229,17 @@ describe('step labels', () => {
   it("names slide items' settings as the Inspector does", () => {
     const q = (g: Game) => board(g).categories[0].clues[1].questionSlide;
     const base = sample();
-    q(base).elements.push(newShapeEl('line'), newShapeEl('rect'), newVideoEl('v1'), newAudioEl('a1'), { ...newShapeEl('path'), points: [[0, 0], [1, 1]] });
-    base.media.push({ id: 'v1', name: 'clip.webm', mime: 'video/webm', size: 10, kind: 'video' }, { id: 'a1', name: 'beep.wav', mime: 'audio/wav', size: 10, kind: 'audio' });
+    q(base).elements.push(newShapeEl('line'), newShapeEl('rect'), newVideoEl('v1'), newAudioEl('a1'), {
+      ...newShapeEl('path'),
+      points: [
+        [0, 0],
+        [1, 1],
+      ],
+    });
+    base.media.push(
+      { id: 'v1', name: 'clip.webm', mime: 'video/webm', size: 10, kind: 'video' },
+      { id: 'a1', name: 'beep.wav', mime: 'audio/wav', size: 10, kind: 'audio' },
+    );
     const label = (edit: (els: SlideElement[]) => void) => {
       const after = structuredClone(base);
       edit(q(after).elements);
@@ -240,14 +274,16 @@ describe('step labels', () => {
     // backdrop, items on a slide.
     expect(step((g) => ((el(g)[0].x += 10), (el(g)[1].x += 10))).label).toBe('Moved 2 objects');
     expect(step((g) => ((el(g)[0].zIndex = 2), (el(g)[1].zIndex = 1))).label).toBe('Restacked objects');
-    expect(step((g) => ((el(g)[0].rotation = 15))).label).toBe('Rotated text box “Welcome”');
+    expect(step((g) => (el(g)[0].rotation = 15)).label).toBe('Rotated text box “Welcome”');
     expect(step((g) => (screens(g)[1].slide.background.color = '#123456')).label).toBe('Screen background color #123456');
     const look = sample();
     screens(look)[1].variants = [newVariant(undefined, screens(look)[1], 'Night')];
     const night = (g: Game) => screens(g)[1].variants![0].slide;
     night(look).elements.push(newTextEl('A'), newTextEl('B'));
     const lookMoved = structuredClone(look);
-    night(lookMoved).elements.slice(-2).forEach((e) => (e.w += 20));
+    night(lookMoved)
+      .elements.slice(-2)
+      .forEach((e) => (e.w += 20));
     expect(describeStep(diff(look, lookMoved), look, lookMoved).label).toBe('Resized 2 objects');
     const q = (g: Game) => board(g).categories[0].clues[1].questionSlide;
     const two = sample();
@@ -276,7 +312,11 @@ describe('step labels', () => {
     });
     // The ▶ Play screen's other parts: Go there opens it there.
     expect(step((g) => (g.settings.buzzArm = 'host'))).toMatchObject({ where: 'Play › Phone buzzers', icon: '📱', place: { tab: 'play', part: 'buzzers' } });
-    expect(step((g) => (g.settings.stream = { soonText: 'Soon!' }))).toMatchObject({ where: 'Play › On stream', icon: '📺', place: { tab: 'play', part: 'stream' } });
+    expect(step((g) => (g.settings.stream = { soonText: 'Soon!' }))).toMatchObject({
+      where: 'Play › On stream',
+      icon: '📺',
+      place: { tab: 'play', part: 'stream' },
+    });
     expect(step((g) => (g.settings.currencySymbol = 'pts')).label).toBe('Rule: Points symbol = pts');
     expect(step((g) => (g.settings.roundIntro.titleCard = false)).label).toBe('Rule: Round title card off');
     // The wager floor: left out (back at the default), it reads as the default amount, not off.
@@ -333,12 +373,19 @@ describe('step labels', () => {
     dealt.deals = [dealFromTemplate(DEAL_TEMPLATES[0], 'Secret roles')];
     const renamed = structuredClone(dealt);
     renamed.deals![0].parts[0].name = 'Doctor';
-    expect(describeStep(diff(dealt, renamed), dealt, renamed)).toMatchObject({ label: 'Renamed part “Doctor”', place: { tab: 'tools', deal: dealt.deals[0].id } });
+    expect(describeStep(diff(dealt, renamed), dealt, renamed)).toMatchObject({
+      label: 'Renamed part “Doctor”',
+      place: { tab: 'tools', deal: dealt.deals[0].id },
+    });
     // What's done in a part's Edit card… is its card's (a picture added or deleted is not the part added or deleted).
     const pictured = structuredClone(dealt);
     pictured.deals![0].parts[0].card.elements.push(newImageEl('m1'));
     const where = `Wheels, Dice & Deals › Secret roles › ${dealt.deals[0].parts[0].name}’s card`;
-    expect(describeStep(diff(dealt, pictured), dealt, pictured)).toMatchObject({ label: 'Added image “a.png”', where, place: { tab: 'tools', deal: dealt.deals[0].id } });
+    expect(describeStep(diff(dealt, pictured), dealt, pictured)).toMatchObject({
+      label: 'Added image “a.png”',
+      where,
+      place: { tab: 'tools', deal: dealt.deals[0].id },
+    });
     expect(describeStep(diff(pictured, dealt), pictured, dealt)).toMatchObject({ label: 'Deleted image “a.png”', where });
     const colored = structuredClone(dealt);
     colored.deals![0].parts[0].card.background.color = '#ff0000';
@@ -347,7 +394,11 @@ describe('step labels', () => {
     expect(step((g) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }])).label).toBe('Added button “📝 Hi”');
     // (Named as the editor shows it.)
     expect(step((g) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'steps', steps: -3 }])).label).toBe('Added button “Back 3 spaces”');
-    const two = (g: Game) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }, { id: 'b2', do: 'score', amount: 5 }]);
+    const two = (g: Game) =>
+      (g.wheels[0].segments[0].actions = [
+        { id: 'b1', do: 'note', text: 'Hi' },
+        { id: 'b2', do: 'score', amount: 5 },
+      ]);
     expect(step((g) => two(g)).label).toBe('Added 2 buttons');
     const tb = { questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } };
     expect(step((g) => (g.tiebreaker = tb))).toMatchObject({ label: 'Tiebreaker on', icon: '❓', place: { tab: 'tiebreaker' } });
@@ -358,13 +409,19 @@ describe('step labels', () => {
     expect(step((g) => (final(g).category = 'Memes')).label).toBe('Edited category “Memes”');
     expect(step((g) => (final(g).hostNotes = '')).label).toBe('Cleared the host notes');
     // A clue's countdown and tile face name the tile, as other clue steps do, and where it is keeps its value.
-    expect(step((g) => (board(g).categories[0].clues[0].timerSeconds = 20))).toMatchObject({ label: 'Changed the countdown of Category 1 $200 to 20 s', where: 'Jeopardy! › Category 1 › $200' });
+    expect(step((g) => (board(g).categories[0].clues[0].timerSeconds = 20))).toMatchObject({
+      label: 'Changed the countdown of Category 1 $200 to 20 s',
+      where: 'Jeopardy! › Category 1 › $200',
+    });
     const timed = sample();
     board(timed).categories[0].clues[0].timerSeconds = 20;
     const untimed = structuredClone(timed);
     delete board(untimed).categories[0].clues[0].timerSeconds;
     expect(describeStep(diff(timed, untimed), timed, untimed).label).toBe('Took the countdown off Category 1 $200');
-    expect(step((g) => (board(g).categories[0].clues[0].tileFace = { text: '???' }))).toMatchObject({ label: 'Changed the tile face of Category 1 $200', where: 'Jeopardy! › Category 1 › $200' });
+    expect(step((g) => (board(g).categories[0].clues[0].tileFace = { text: '???' }))).toMatchObject({
+      label: 'Changed the tile face of Category 1 $200',
+      where: 'Jeopardy! › Category 1 › $200',
+    });
     board(timed).categories[0].clues[0].tileFace = { text: '???' };
     const retyped = structuredClone(timed);
     board(retyped).categories[0].clues[0].tileFace!.text = '!!!';
@@ -461,7 +518,13 @@ describe('step labels', () => {
     screens(after).push(forest);
     expect(describeStep(diff(before, after), before, after, 'Pasted screen “Forest”')).toMatchObject({ place: { tab: 'world', screen: forest.id } });
     // On its own, a stat added still shows on Stats & Items; so does an item deleted with the buttons that gave it.
-    expect(describeStep(diff(before, after).filter((o) => o.p[0] === 'statFields'), before, after).place).toMatchObject({ tab: 'stats' });
+    expect(
+      describeStep(
+        diff(before, after).filter((o) => o.p[0] === 'statFields'),
+        before,
+        after,
+      ).place,
+    ).toMatchObject({ tab: 'stats' });
     const giving = structuredClone(before);
     giving.wheels[0].segments[0].actions = [{ id: 'b1', do: 'item', item: 'potion', qty: 1, op: 'give' }];
     const gone = structuredClone(giving);
@@ -478,7 +541,10 @@ describe('step labels', () => {
     const slice = structuredClone(before);
     slice.items!.push({ id: 'potion', name: 'Potion', stackable: true });
     slice.wheels[slice.wheels.length - 1].segments[0].actions = [{ ...give }];
-    expect(describeStep(diff(before, slice), before, slice, 'Pasted 1 button')).toMatchObject({ place: { tab: 'tools', wheel: wheel.id }, undoPlace: { tab: 'tools', wheel: wheel.id } });
+    expect(describeStep(diff(before, slice), before, slice, 'Pasted 1 button')).toMatchObject({
+      place: { tab: 'tools', wheel: wheel.id },
+      undoPlace: { tab: 'tools', wheel: wheel.id },
+    });
     const onItem = structuredClone(before);
     onItem.items!.push({ id: 'potion', name: 'Potion', stackable: true });
     onItem.items![0].onUse = [{ ...give }];
@@ -563,7 +629,18 @@ describe('placeAt', () => {
 
   it('names a tab an editor shows its step on as placeAt does (none for a round)', () => {
     const g = sample();
-    for (const path of [['title'], ['audio'], ['theme'], ['wheels'], ['cards'], ['statFields'], ['media'], ['tiebreaker'], ['players'], ['settings', 'stream']]) {
+    for (const path of [
+      ['title'],
+      ['audio'],
+      ['theme'],
+      ['wheels'],
+      ['cards'],
+      ['statFields'],
+      ['media'],
+      ['tiebreaker'],
+      ['players'],
+      ['settings', 'stream'],
+    ]) {
       const at = placeAt(g, path);
       expect(placeWhere(at.place!)).toBe(at.crumbs.join(' › '));
     }
@@ -607,7 +684,11 @@ describe('🖼 Media’s “used 3× ▾”', () => {
     expect(where.filter((w) => w === `${tile} › Question`)).toHaveLength(1);
     expect(where.some((w) => w.endsWith('› tile picture'))).toBe(true);
     // Each goes to its place: the item on its slide, the sound's row, the theme's picture.
-    expect(list.find((u) => u.where === `${tile} › Question`)?.place).toEqual({ tab: 'round', round: b.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'q', element: pic.id } });
+    expect(list.find((u) => u.where === `${tile} › Question`)?.place).toEqual({
+      tab: 'round',
+      round: b.id,
+      part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'q', element: pic.id },
+    });
     expect(list.find((u) => u.where === 'Sounds › Round intro')?.place).toEqual({ tab: 'sounds', cue: 'roundIntro' });
     expect(list.find((u) => u.where === 'Theme › background picture')?.place).toEqual({ tab: 'theme', field: 'boardImage' });
     // (Not the library's own entry.)
@@ -671,7 +752,10 @@ describe('🤝 partner clues in the history', () => {
     const named = renamed.after;
     const typed = structuredClone(named);
     (cardOf(typed, 1).elements[0] as TextEl).text = 'Shrek';
-    expect(describeStep(diff(named, typed), named, typed)).toMatchObject({ label: 'Edited card 2 “Shrek”', where: `Jeopardy! › ${cat.title} › $200 › Clue tip` });
+    expect(describeStep(diff(named, typed), named, typed)).toMatchObject({
+      label: 'Edited card 2 “Shrek”',
+      where: `Jeopardy! › ${cat.title} › $200 › Clue tip`,
+    });
     // Its name cleared: "Card 2" again.
     const unnamed = structuredClone(typed);
     delete cardOf(unnamed, 1).name;
@@ -709,7 +793,11 @@ describe('a Final’s 🤫 cards in the history', () => {
   it('calls a card’s words its card’s (by its place), where they are by its name, and its tab to go to', () => {
     const r = withFinalCards((g) => ((cardOf(g, 0).elements[0] as TextEl).text = 'Hi'));
     expect(r).toMatchObject({ label: 'Edited card 1 “Hi”', where: 'Final Jeopardy! › Leader hint' });
-    expect(r.place).toEqual({ tab: 'round', round: final(r.after).id, part: { kind: 'final', side: 'card', slide: 'fc-1', element: cardOf(r.after, 0).elements[0].id } });
+    expect(r.place).toEqual({
+      tab: 'round',
+      round: final(r.after).id,
+      part: { kind: 'final', side: 'card', slide: 'fc-1', element: cardOf(r.after, 0).elements[0].id },
+    });
     expect(withFinalCards((g) => ((cardOf(g, 1).elements[0] as TextEl).text = 'Psst')).where).toBe('Final Jeopardy! › Card 2');
     // A card's background is a slide's.
     expect(withFinalCards((g) => (cardOf(g, 1).background.color = '#ff0000')).label).toBe('Slide background color #ff0000');
@@ -723,7 +811,11 @@ describe('a Final’s 🤫 cards in the history', () => {
 
   it('finds where a card’s item is (a restyle starts there)', () => {
     const { after } = withFinalCards((g) => (cardOf(g, 1).name = 'Side bet'));
-    expect(itemPlace(after, cardOf(after, 1).elements[0].id)).toEqual({ tab: 'round', round: final(after).id, part: { kind: 'final', side: 'card', slide: 'fc-2', element: cardOf(after, 1).elements[0].id } });
+    expect(itemPlace(after, cardOf(after, 1).elements[0].id)).toEqual({
+      tab: 'round',
+      round: final(after).id,
+      part: { kind: 'final', side: 'card', slide: 'fc-2', element: cardOf(after, 1).elements[0].id },
+    });
   });
 });
 

@@ -15,7 +15,34 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, anyway, checkItem, confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots, assert, sleep, launchChromium, section, until, awardRowIn, finalControlsIn, hostPanelIn, playerRowsIn, roundNavIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  anyway,
+  checkItem,
+  confirmStrip,
+  goOnCheck,
+  mainButton,
+  mainLabel,
+  openGameFile,
+  startBuzzer,
+  startRoomOn,
+  stepButton,
+  leaveAnswer,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  section,
+  until,
+  awardRowIn,
+  finalControlsIn,
+  hostPanelIn,
+  playerRowsIn,
+  roundNavIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -73,7 +100,30 @@ const CLICK_AGAIN = 700;
 
 // ---------- The game ----------
 let n = 0;
-const text = (t) => ({ id: `t${n++}`, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 80, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t) => ({
+  id: `t${n++}`,
+  kind: 'text',
+  text: t,
+  x: 160,
+  y: 340,
+  w: 1600,
+  h: 400,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  font: 'Arial',
+  size: 80,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (t) => ({ background: { color: '#0a1a6b' }, elements: [text(t)] });
 const clue = (id, more = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(`Question ${id}`), answerSlide: slide(`Answer ${id}`), ...more });
 // The partner describes (all the tile's value when they get it), the picker guesses (half): nobody loses on a miss.
@@ -81,19 +131,36 @@ const rules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 
 const sp = (id, name, x, next) => ({ id, name, x, y: 500, color: '#4363d8', next });
 const NAMES = ['Ann', 'Bob', 'Cat'];
 const game = {
-  id: 'g_fullshow', version: 2, title: 'Full show',
+  id: 'g_fullshow',
+  version: 2,
+  title: 'Full show',
   settings: {
-    allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true,
-    roundIntro: { titleCard: true, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+    allowNegativeScores: true,
+    deductOnWrong: true,
+    defaultTimerSeconds: null,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: true,
+    roundIntro: { titleCard: true, tileFill: false, categoryReveal: 'click' },
+    maxPlayers: 8,
+    stream: { clueCaption: true },
+    buzzer: true,
   },
   players: NAMES.map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: 0 })),
   rounds: [
     {
-      id: 'r1', name: 'Jeopardy!', mode: 'board', values: [200, 400, 600], dailyDoubleCount: 1,
+      id: 'r1',
+      name: 'Jeopardy!',
+      mode: 'board',
+      values: [200, 400, 600],
+      dailyDoubleCount: 1,
       categories: [
         { id: 'cat0', title: 'Memes', clues: [clue('q_std'), clue('q_dd', { type: 'dailyDouble' }), clue('q_wheel', { type: 'wheel', wheelId: 'w1' })] },
         {
-          id: 'cat1', title: 'Movies',
+          id: 'cat1',
+          title: 'Movies',
           clues: [
             clue('q_pc', { type: 'partner', partner: { ...rules }, timerSeconds: 45, cards: [{ id: 'card1', to: 'giver', ...slide('Shrek') }] }),
             clue('q_pn', { type: 'partner', partner: { ...rules }, timerSeconds: 45 }),
@@ -102,16 +169,52 @@ const game = {
         },
       ],
     },
-    { id: 'r2', name: 'Intermission', mode: 'slides', questionSlide: slide('Slide one'), extraSlides: [{ id: 'sx2', ...slide('Slide two') }, { id: 'sx3', ...slide('Slide three') }] },
     {
-      id: 'r3', name: 'Board game', mode: 'boardgame', slide: { background: { color: '#1d5e3a' }, elements: [] },
-      spaces: ['Start', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Finish'].map((name, i, all) => sp(`b${i}`, name, 150 + i * 200, i < all.length - 1 ? [`b${i + 1}`] : [])),
-      mover: { kind: 'dice', dice: 'd6' }, zones: [],
+      id: 'r2',
+      name: 'Intermission',
+      mode: 'slides',
+      questionSlide: slide('Slide one'),
+      extraSlides: [
+        { id: 'sx2', ...slide('Slide two') },
+        { id: 'sx3', ...slide('Slide three') },
+      ],
     },
-    { id: 'r4', name: 'Final Jeopardy!', mode: 'final', category: 'Movies', questionSlide: slide('The final question'), answerSlide: slide('The final answer'), timerSeconds: 30, allowNonPositive: true, phoneAnswersOff: true },
+    {
+      id: 'r3',
+      name: 'Board game',
+      mode: 'boardgame',
+      slide: { background: { color: '#1d5e3a' }, elements: [] },
+      spaces: ['Start', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Finish'].map((name, i, all) =>
+        sp(`b${i}`, name, 150 + i * 200, i < all.length - 1 ? [`b${i + 1}`] : []),
+      ),
+      mover: { kind: 'dice', dice: 'd6' },
+      zones: [],
+    },
+    {
+      id: 'r4',
+      name: 'Final Jeopardy!',
+      mode: 'final',
+      category: 'Movies',
+      questionSlide: slide('The final question'),
+      answerSlide: slide('The final answer'),
+      timerSeconds: 30,
+      allowNonPositive: true,
+      phoneAnswersOff: true,
+    },
   ],
-  media: [], audio: {}, theme: {}, dice: [],
-  wheels: [{ id: 'w1', name: 'Bonus wheel', spinDurationMs: 1000, removeAfterLanding: false, segments: ['Red', 'Blue', 'Gold'].map((label, i) => ({ id: `s${i}`, label, color: ['#cc0000', '#0000cc', '#cccc00'][i], weight: 1 })) }],
+  media: [],
+  audio: {},
+  theme: {},
+  dice: [],
+  wheels: [
+    {
+      id: 'w1',
+      name: 'Bonus wheel',
+      spinDurationMs: 1000,
+      removeAfterLanding: false,
+      segments: ['Red', 'Blue', 'Gold'].map((label, i) => ({ id: `s${i}`, label, color: ['#cc0000', '#0000cc', '#cccc00'][i], weight: 1 })),
+    },
+  ],
   tiebreaker: { questionSlide: slide('The tiebreaker question'), answerSlide: slide('The tiebreaker answer') },
 };
 const gameFile = resolve('test-results/fullshow.json');
@@ -173,9 +276,17 @@ async function show(how) {
   };
   /** Where it got to (when a wait runs out). */
   const where = async () => {
-    const status = (await statusLineIn(host).innerText().catch(() => '?')).replace(/\s+/g, ' ');
+    const status = (
+      await statusLineIn(host)
+        .innerText()
+        .catch(() => '?')
+    ).replace(/\s+/g, ' ');
     const main = (await mainButton(host).count()) ? await mainLabel(host) : '(none)';
-    const toast = (await toastsIn(host).allInnerTexts().catch(() => [])).join(' / ');
+    const toast = (
+      await toastsIn(host)
+        .allInnerTexts()
+        .catch(() => [])
+    ).join(' / ');
     return `main button “${main}”, status “${status}”${toast ? `, toast “${toast}”` : ''}`;
   };
   /** Waits for the state `what` describes (`check` holds), or fails saying which step didn't bring it. */
@@ -196,7 +307,8 @@ async function show(how) {
   /** A wheel spinning (its slot greyed), or landed already (↻ Spin again in its place). */
   const spun = async () => (await slot().count()) === 1 && ((await slot().isDisabled()) || (await slotSays('↻ Spin again')));
   /** A wheel tile's wheel landed: ↻ Spin again in its slot, and the blue Show question ▶ awake. */
-  const toolLanded = async () => (await slotSays('↻ Spin again')) && !(await slot().isDisabled()) && (await mainIs('Show question ▶')()) && !(await mainButton(host).isDisabled());
+  const toolLanded = async () =>
+    (await slotSays('↻ Spin again')) && !(await slot().isDisabled()) && (await mainIs('Show question ▶')()) && !(await mainButton(host).isDisabled());
   /** A key, then the state it brings. */
   const key = async (k, what, check) => {
     took[part].keys++;
@@ -238,7 +350,9 @@ async function show(how) {
     await reach(`${name} answering`, async () => (await playerRowsIn(host).locator('.sel[aria-pressed="true"]').allInnerTexts()).some((t) => t.includes(name)));
   };
   const award = awardRowIn(host).locator('button.good');
-  const gotIt = hostPanelIn(host).locator('[data-partner-judge]').getByRole('button', { name: /^✔ Got it/ });
+  const gotIt = hostPanelIn(host)
+    .locator('[data-partner-judge]')
+    .getByRole('button', { name: /^✔ Got it/ });
   /** A score: on the stage's plates, or (at the end) on the panel's chips. */
   const scoreOf = async (name) => {
     const plate = stageBoxIn(host).locator('.plate', { hasText: name });
@@ -368,11 +482,15 @@ async function show(how) {
   }
   await answerThenBoard();
   const partner = (await scoreOf('Ann')) === 700 ? 'Ann' : 'Cat';
-  assert((await scoreOf('Bob')) === 700 && (await scoreOf(partner)) === (partner === 'Ann' ? 700 : 200), `Bob and his partner (${partner}, the wheel’s pick, the card on their phone) got it`);
+  assert(
+    (await scoreOf('Bob')) === 700 && (await scoreOf(partner)) === (partner === 'Ann' ? 700 : 200),
+    `Bob and his partner (${partner}, the wheel’s pick, the card on their phone) got it`,
+  );
 
   // ---------- A partner clue with no cards: Bob picked it, Cat is his partner (picked by hand) ----------
   await begin('A partner clue with no cards, the partner picked by hand');
-  const catPaired = async () => (await pbox.locator('button[aria-label="Cat is the partner"][aria-pressed="true"]').count()) === 1 && (await mainIs('Show question ▶')());
+  const catPaired = async () =>
+    (await pbox.locator('button[aria-label="Cat is the partner"][aria-pressed="true"]').count()) === 1 && (await mainIs('Show question ▶')());
   if (byKeys) {
     await key('ArrowDown', 'the keys on the partner clue', keysOn('Movies for $400'));
     await key('Enter', 'PARTNER UP!', partnerUp);
@@ -397,7 +515,11 @@ async function show(how) {
 
   // ---------- A slides round: three slides, then on ----------
   await begin('A slides round');
-  const pips = (t) => async () => (await stageBoxIn(host).locator('[data-slide-pips]').getAttribute('aria-label').catch(() => '')) === t;
+  const pips = (t) => async () =>
+    (await stageBoxIn(host)
+      .locator('[data-slide-pips]')
+      .getAttribute('aria-label')
+      .catch(() => '')) === t;
   const titleCard = stageHas('.title-card');
   // (A host looks at the first slide: the round's ▶ takes no press within a moment of it.)
   await sleep(NEW_ROW);
@@ -409,7 +531,10 @@ async function show(how) {
     await stageClick('its second slide', pips('Slide 2 of 3'));
     await stageClick('its last slide', pips('Slide 3 of 3'));
     // (On the last slide a click says so first, in the status line; the next one goes on.)
-    await stageClick('“Last slide: click again”', async () => (await statusLineIn(host).locator('[data-click-note]', { hasText: 'Last slide: click again' }).count()) === 1);
+    await stageClick(
+      '“Last slide: click again”',
+      async () => (await statusLineIn(host).locator('[data-click-note]', { hasText: 'Last slide: click again' }).count()) === 1,
+    );
     await sleep(CLICK_AGAIN);
     await stageClick('the board game’s title card', titleCard);
   }
@@ -449,7 +574,10 @@ async function show(how) {
     await key('n', 'the wagers', wagerScreen);
     await key('n', 'the keys in the first wager box', () => host.evaluate(() => !!document.activeElement?.matches('input[data-wager]')));
     for (const [i, p] of NAMES.entries()) {
-      await reach(`the keys in ${p}’s wager box`, async () => (await host.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '')) === `${p}’s wager`);
+      await reach(
+        `the keys in ${p}’s wager box`,
+        async () => (await host.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '')) === `${p}’s wager`,
+      );
       await type(wagers[p]);
       // (Enter goes on to the next box; the last one's shows the question.)
       await key('Enter', i < NAMES.length - 1 ? 'the next wager box' : 'the question', i < NAMES.length - 1 ? null : mainIs('👁 Reveal answer'));
@@ -467,7 +595,13 @@ async function show(how) {
       await ph.locator('#wager-send.sent', { hasText: '✔ Sent' }).waitFor();
     }
     // (The host has them all: the blue button is never greyed, so its wager screen's own line says so.)
-    await reach('every wager in on the host', async () => (await finalControlsIn(host).locator('.row .muted', { hasText: /^Waiting on/ }).count()) === 0);
+    await reach(
+      'every wager in on the host',
+      async () =>
+        (await finalControlsIn(host)
+          .locator('.row .muted', { hasText: /^Waiting on/ })
+          .count()) === 0,
+    );
     await main('Show question ▶', 'the question', mainIs('👁 Reveal answer'));
     // (The think clock still running: the click asks first, and 👁 Reveal anyway shows it. The one check of the run:
     // nothing else opens it, before or after.)
@@ -480,7 +614,9 @@ async function show(how) {
   }
   // (Their wager up: their verdict due, ✔ Right / ✘ Wrong in their row only; the blue button is what follows it.)
   const spotRow = finalControlsIn(host).locator('.pl.cur');
-  const due = async () => (await spotRow.locator('button.good:not(:disabled):not([aria-pressed="true"])').count()) === 1 && (await spotRow.locator('[aria-pressed="true"]').count()) === 0;
+  const due = async () =>
+    (await spotRow.locator('button.good:not(:disabled):not([aria-pressed="true"])').count()) === 1 &&
+    (await spotRow.locator('[aria-pressed="true"]').count()) === 0;
   for (let i = 0; i < NAMES.length; i++) {
     const last = i === NAMES.length - 1;
     const judging = async () => (await due()) && (await mainIs(last ? 'Finish game ▶' : 'Next player ▶')());
@@ -519,11 +655,20 @@ async function show(how) {
     await key('n', 'the results', over);
   } else {
     await stageClick('its answer', mainIs('🏁 Back to results'));
-    await click(hostPanelIn(host).locator('[data-tb-who]').getByRole('button', { name: `🏆 ${winner}` }), `${winner} the winner`, settled);
+    await click(
+      hostPanelIn(host)
+        .locator('[data-tb-who]')
+        .getByRole('button', { name: `🏆 ${winner}` }),
+      `${winner} the winner`,
+      settled,
+    );
     await main('🏁 Back to results', 'the results', over);
   }
   assert(true, `${winner} won the tiebreaker, and the show is over`);
-  assert((await host.evaluate(() => window.__goonSeen)) === 0, `by ${how}, the check before going on never opened (but for the Final's clock, by clicks): nothing an expert does is left behind`);
+  assert(
+    (await host.evaluate(() => window.__goonSeen)) === 0,
+    `by ${how}, the check before going on never opened (but for the Final's clock, by clicks): nothing an expert does is left behind`,
+  );
   await ctx.close();
   return took;
 }
@@ -536,14 +681,19 @@ try {
     for (const [name, now] of Object.entries(runs[how])) {
       const was = TODAY[how][name];
       const same = was && was.keys === now.keys && was.clicks === now.clicks && was.typed === now.typed;
-      console.log(`  ${name.padEnd(58)} ${now.keys} · ${now.clicks} · ${now.typed}${same ? '' : `  [${was ? `${was.keys} · ${was.clicks} · ${was.typed}` : 'none'}]`}`);
+      console.log(
+        `  ${name.padEnd(58)} ${now.keys} · ${now.clicks} · ${now.typed}${same ? '' : `  [${was ? `${was.keys} · ${was.clicks} · ${was.typed}` : 'none'}]`}`,
+      );
     }
   }
   console.log('');
   for (const how of ['keys', 'clicks'])
     for (const [name, now] of Object.entries(runs[how])) {
       const was = TODAY[how][name];
-      assert(!!was && was.keys === now.keys && was.clicks === now.clicks && was.typed === now.typed, `by ${how}, ${name}: ${now.keys} keys, ${now.clicks} clicks and ${now.typed} typed, as today`);
+      assert(
+        !!was && was.keys === now.keys && was.clicks === now.clicks && was.typed === now.typed,
+        `by ${how}, ${name}: ${now.keys} keys, ${now.clicks} clicks and ${now.typed} typed, as today`,
+      );
     }
   assert(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
   console.log('\nfullshow: all checks passed');

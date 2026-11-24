@@ -61,7 +61,12 @@
   <div class="row">
     <input class="label" bind:value={outcome.label} {placeholder} aria-label={placeholder} onkeydown={labelkey} />
     {#if respin?.on}
-      <button class="ghost tiny again" aria-pressed="true" onclick={respin.toggle} title="Landing here spins the wheel again{respin.note ?? ''}: a click stops that">↻ again</button>
+      <button
+        class="ghost tiny again"
+        aria-pressed="true"
+        onclick={respin.toggle}
+        title="Landing here spins the wheel again{respin.note ?? ''}: a click stops that">↻ again</button
+      >
     {/if}
     <button class="ghost small" class:has={extras} onclick={() => (open = !open)} title="Details, media, timer, score effect">
       {open ? '▾' : '▸'} More{extras ? ' •' : ''}
@@ -70,11 +75,16 @@
   {#if open}
     <div class="more">
       {#if respin}
-        <label class="check small" title={respin.note ? `It never gets used up${respin.note}` : undefined}><input type="checkbox" checked={respin.on} onchange={respin.toggle} /> Spin again when it lands here</label>
+        <label class="check small" title={respin.note ? `It never gets used up${respin.note}` : undefined}
+          ><input type="checkbox" checked={respin.on} onchange={respin.toggle} /> Spin again when it lands here</label
+        >
       {/if}
       <label class="field">
         Details shown on reveal
-        <textarea rows="2" value={outcome.details ?? ''} oninput={(e) => (outcome.details = e.currentTarget.value || undefined)}
+        <textarea
+          rows="2"
+          value={outcome.details ?? ''}
+          oninput={(e) => (outcome.details = e.currentTarget.value || undefined)}
           placeholder="e.g. Talk in an accent until your next correct answer"></textarea>
       </label>
       <div class="row">
@@ -82,7 +92,9 @@
         {#if media}
           {#if media.kind === 'image' && mediaUrls[media.id]}<img src={mediaUrls[media.id]} alt="" onerror={imgFallback} draggable="false" />{/if}
           <span class="small">{media.name}</span>
-          <button class="ghost small" onclick={() => (outcome.media = undefined)} aria-label="⌫ Clear {media.name}" title="Clear it (it stays in 🖼 Media)">⌫ Clear</button>
+          <button class="ghost small" onclick={() => (outcome.media = undefined)} aria-label="⌫ Clear {media.name}" title="Clear it (it stays in 🖼 Media)"
+            >⌫ Clear</button
+          >
         {/if}
         {#each ['image', 'video', 'audio'] as const as k}
           {@const what = k === 'image' ? 'a picture' : k === 'video' ? 'a video' : 'a sound'}
@@ -92,8 +104,8 @@
               onclick={() => (picking = k)}
               use:mediaDrop={{ kind: ['image', 'video', 'audio'], onpick: (id) => (outcome.media = id) }}
               title="Add {what} (or drop one here)"
-              aria-label="Add {what}"
-            >{k === 'image' ? '🖼' : k === 'video' ? '🎬' : '🔊'}</button>
+              aria-label="Add {what}">{k === 'image' ? '🖼' : k === 'video' ? '🎬' : '🔊'}</button
+            >
             {#if picking === k}
               <MediaPicker kind={k} onpick={(id) => ((outcome.media = id), (picking = null))} onclose={() => (picking = null)} />
             {/if}
@@ -115,7 +127,11 @@
         </label>
       </div>
       <label class="check small">
-        <input type="checkbox" checked={!!outcome.scoreAction} onchange={(e) => (e.currentTarget.checked ? setAction('addPoints') : (outcome.scoreAction = undefined))} />
+        <input
+          type="checkbox"
+          checked={!!outcome.scoreAction}
+          onchange={(e) => (e.currentTarget.checked ? setAction('addPoints') : (outcome.scoreAction = undefined))}
+        />
         Affects score (the host confirms before it applies)
       </label>
       {#if outcome.scoreAction}
@@ -125,12 +141,31 @@
             {#each actions as [k, l]}<option value={k}>{l}</option>{/each}
           </select>
           {#if a.kind === 'addPoints' || a.kind === 'setScore'}
-            <input type="number" class="n2" aria-label="Points" bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))} onchange={(e) => shown(e, a.amount)} />
+            <input
+              type="number"
+              class="n2"
+              aria-label="Points"
+              bind:value={() => a.amount, (v) => keepNum(v, (n) => (a.amount = n))}
+              onchange={(e) => shown(e, a.amount)}
+            />
           {:else if a.kind === 'addRollTimes'}
-            × <input type="number" class="n2" aria-label="Times the roll" bind:value={() => a.multiplier, (v) => keepNum(v, (n) => (a.multiplier = n))} onchange={(e) => shown(e, a.multiplier)} />
+            × <input
+              type="number"
+              class="n2"
+              aria-label="Times the roll"
+              bind:value={() => a.multiplier, (v) => keepNum(v, (n) => (a.multiplier = n))}
+              onchange={(e) => shown(e, a.multiplier)}
+            />
             {#if !dice}<span class="warn small" role="status">A wheel has no dice roll: this never gives points. Pick another effect.</span>{/if}
           {:else if a.kind === 'multiplyScore'}
-            × <input type="number" step="0.5" class="n2" aria-label="Times the score" bind:value={() => a.factor, (v) => keepNum(v, (n) => (a.factor = n))} onchange={(e) => shown(e, a.factor)} />
+            × <input
+              type="number"
+              step="0.5"
+              class="n2"
+              aria-label="Times the score"
+              bind:value={() => a.factor, (v) => keepNum(v, (n) => (a.factor = n))}
+              onchange={(e) => shown(e, a.factor)}
+            />
           {:else if a.kind === 'steal'}
             <input
               type="number"
@@ -142,7 +177,9 @@
               oninput={(e) => keepNum(e.currentTarget.valueAsNumber, (n) => (a.amount = Math.abs(n)))}
               onchange={(e) => a.amount !== 'all' && shown(e, a.amount)}
             />
-            <label class="check small"><input type="checkbox" checked={a.amount === 'all'} onchange={(e) => (a.amount = e.currentTarget.checked ? 'all' : 300)} /> all</label>
+            <label class="check small"
+              ><input type="checkbox" checked={a.amount === 'all'} onchange={(e) => (a.amount = e.currentTarget.checked ? 'all' : 300)} /> all</label
+            >
           {/if}
         </div>
       {/if}

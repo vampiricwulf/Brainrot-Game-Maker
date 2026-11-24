@@ -15,14 +15,7 @@
   <SlideView {slide} fallbackBg="transparent" />
   {#each items as d (d.id)}
     {#if !d.clickThrough}
-      <div
-        class="block"
-        style:left="{d.x}px"
-        style:top="{d.y}px"
-        style:width="{d.w}px"
-        style:height="{d.h}px"
-        style:transform="rotate({d.rotation}deg)"
-      ></div>
+      <div class="block" style:left="{d.x}px" style:top="{d.y}px" style:width="{d.w}px" style:height="{d.h}px" style:transform="rotate({d.rotation}deg)"></div>
     {/if}
   {/each}
 </div>

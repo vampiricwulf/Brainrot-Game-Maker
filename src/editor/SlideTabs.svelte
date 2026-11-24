@@ -197,7 +197,12 @@
         plain,
         copied: !!clipboard.slide,
         newest: clipboard.slideNewest,
-        card: c && { empty: !slideHasContent(c), answer: !!holder.answerSlide && slideHasContent(holder.answerSlide), phone: !!cards?.phone, full: list.length >= MAX_CARDS },
+        card: c && {
+          empty: !slideHasContent(c),
+          answer: !!holder.answerSlide && slideHasContent(holder.answerSlide),
+          phone: !!cards?.phone,
+          full: list.length >= MAX_CARDS,
+        },
       },
       {
         duplicate: duplicateOpen,
@@ -221,8 +226,7 @@
   /** Many question slides: short tab names (Q1, Q2…), so the tabs stay on one line. */
   const SHORT_TABS = 4;
   /** Question slide `i`'s tab name, as its menu heads it. */
-  const tabName = (i: number) =>
-    plain ? (qslides.length > 1 ? `Slide ${i + 1}` : 'Slide') : qslides.length > 1 ? `Question ${i + 1}` : 'Question slide';
+  const tabName = (i: number) => (plain ? (qslides.length > 1 ? `Slide ${i + 1}` : 'Slide') : qslides.length > 1 ? `Question ${i + 1}` : 'Question slide');
   /** As its tab shows it (S3, Q3 with many). */
   const tabLabel = (i: number) => (qslides.length > SHORT_TABS ? `${plain ? 'S' : 'Q'}${i + 1}` : tabName(i));
   let tablist = $state<HTMLElement>();
@@ -310,8 +314,7 @@
           qslides.length > 1
             ? `${plain ? 'Slide' : 'Question slide'} ${i + 1} of ${qslides.length}: viewers see them in this order${plain ? '' : ', then the answer'}. On the tab: Alt+←/→ move it, Ctrl+D duplicates it, Delete deletes it; right-click: its menu`
             : 'Right-click: its menu',
-        )}
-        >{tabLabel(i)}</button
+        )}>{tabLabel(i)}</button
       >
     {/each}
     {#if cards}
@@ -354,7 +357,11 @@
     {plain}
     copied={!!clipboard.slide}
     full={list.length >= MAX_CARDS}
-    addTitle={plain ? 'Add a slide after this one' : tab !== 'q' ? 'Add a question slide before the answer' : 'Add a question slide after this one: lead in, then show more before the answer'}
+    addTitle={plain
+      ? 'Add a slide after this one'
+      : tab !== 'q'
+        ? 'Add a question slide before the answer'
+        : 'Add a question slide after this one: lead in, then show more before the answer'}
     onadd={() => (addSlide(), onadded?.())}
     onduplicate={() => (duplicateOpen(), !cardOpen && onadded?.())}
     oncopy={copyOpen}
@@ -370,7 +377,8 @@
           disabled={list.length >= MAX_CARDS}
           title={list.length >= MAX_CARDS
             ? `A ${what} holds ${MAX_CARDS} cards`
-            : `Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel during this ${what}, from the wagers to the last reveal (a hint for the leader, a side bet for those sitting out…)`}>＋ 🤫 Card</button
+            : `Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel during this ${what}, from the wagers to the last reveal (a hint for the leader, a side bet for those sitting out…)`}
+          >＋ 🤫 Card</button
         >
       {/if}
     {/snippet}

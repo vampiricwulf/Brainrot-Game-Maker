@@ -20,7 +20,11 @@ const MAX = 10;
  */
 export function tableSeparator(text: string): ',' | ';' | '\t' {
   if (text.includes('\t')) return '\t';
-  const first = text.replace(/^﻿/, '').split(/\r?\n/).find((l) => l.trim()) ?? '';
+  const first =
+    text
+      .replace(/^﻿/, '')
+      .split(/\r?\n/)
+      .find((l) => l.trim()) ?? '';
   // (Outside quoted cells.)
   const bare = first.replace(/"(?:[^"]|"")*"/g, '');
   const count = (ch: string) => bare.split(ch).length - 1;
@@ -56,11 +60,11 @@ export function parseTable(text: string, sep?: ',' | ';' | '\t'): string[][] {
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') (cell += '"'), i++;
+      if (ch === '"' && text[i + 1] === '"') ((cell += '"'), i++);
       else if (ch === '"') quoted = false;
       else cell += ch;
     } else if (ch === '"' && !cell.trim() && closes(i)) quoted = true;
-    else if (ch === sep) row.push(cell), (cell = '');
+    else if (ch === sep) (row.push(cell), (cell = ''));
     else if (ch === '\n' || ch === '\r') {
       if (ch === '\r' && text[i + 1] === '\n') i++;
       row.push(cell);
@@ -117,7 +121,12 @@ function headerOf(row: string[]): Partial<Record<Col, number>> | null {
 function guessColumns(cells: string[]): Partial<Record<Col, number>> {
   const n = cells.length;
   if (n >= 4) return { category: 0, value: 1, question: 2, answer: 3 };
-  if (n === 3) return parseValue(cells[0]) !== null ? { value: 0, question: 1, answer: 2 } : parseValue(cells[1]) !== null ? { category: 0, value: 1, question: 2 } : { category: 0, question: 1, answer: 2 };
+  if (n === 3)
+    return parseValue(cells[0]) !== null
+      ? { value: 0, question: 1, answer: 2 }
+      : parseValue(cells[1]) !== null
+        ? { category: 0, value: 1, question: 2 }
+        : { category: 0, question: 1, answer: 2 };
   if (n === 2) return parseValue(cells[0]) !== null ? { value: 0, question: 1 } : { question: 0, answer: 1 };
   return { question: 0 };
 }
@@ -290,7 +299,9 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
       const name = g.name.trim();
       let cat = name ? round.categories.find((c) => !used.has(c.id) && c.title.trim().toLowerCase() === name.toLowerCase()) : undefined;
       // An unused category (no clues, its starting name or none) takes the name.
-      cat ??= round.categories.find((c) => !used.has(c.id) && !c.image && !c.clues.some(clueHasContent) && (!c.title.trim() || /^Category \d+$/.test(c.title.trim()) || !name));
+      cat ??= round.categories.find(
+        (c) => !used.has(c.id) && !c.image && !c.clues.some(clueHasContent) && (!c.title.trim() || /^Category \d+$/.test(c.title.trim()) || !name),
+      );
       if (!cat && round.categories.length < MAX) {
         cat = newCategory(round.values.length);
         round.categories.push(cat);
@@ -302,7 +313,12 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
       used.add(cat.id);
       if (name) cat.title = name;
       const c = cat;
-      for (const [row, ic] of rowsFor(g.clues, round.values, (r) => !c.clues[r].empty && !clueHasContent(c.clues[r]) && c.clues[r].type !== 'wheel' && c.clues[r].type !== 'dice')) put(row, c.clues[row], ic);
+      for (const [row, ic] of rowsFor(
+        g.clues,
+        round.values,
+        (r) => !c.clues[r].empty && !clueHasContent(c.clues[r]) && c.clues[r].type !== 'wheel' && c.clues[r].type !== 'dice',
+      ))
+        put(row, c.clues[row], ic);
     }
   }
   return { round, placed, left: clues.length - placed, filled, leftOut };

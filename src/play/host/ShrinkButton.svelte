@@ -31,7 +31,11 @@
       items,
       which,
       (id) => shrinkHere(game, id),
-      (id) => smallerLeft(game, game.media.find((m) => m.id === id)),
+      (id) =>
+        smallerLeft(
+          game,
+          game.media.find((m) => m.id === id),
+        ),
     ),
   );
   /** One of them being made (or waiting its turn). */

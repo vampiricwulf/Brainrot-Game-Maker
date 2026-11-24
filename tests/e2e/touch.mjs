@@ -46,7 +46,9 @@ async function toastOverWindow(page, what) {
     };
   });
   const box = await dlg.boundingBox();
-  const hit = await dlg.locator('button:visible').evaluateAll((bs, b) => bs.filter((x) => x.getBoundingClientRect().top < b).map((x) => x.textContent.trim() || x.getAttribute('aria-label')), t.bottom);
+  const hit = await dlg
+    .locator('button:visible')
+    .evaluateAll((bs, b) => bs.filter((x) => x.getBoundingClientRect().top < b).map((x) => x.textContent.trim() || x.getAttribute('aria-label')), t.bottom);
   assert(
     !t.cut && t.wide && t.lines >= 2 && t.lines <= 3 && t.roomy && t.top >= 0 && t.bottom <= box.y && hit.length === 0,
     `${what}: a toast over a window wraps to ${t.lines} lines the screen's width, not cut, above the window (with room for three) and clear of its buttons (${t.text})`,
@@ -60,14 +62,24 @@ try {
   {
     const { ctx, page } = await open({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
     await note(page).waitFor();
-    assert((await note(page).innerText()).includes("Players join from their phones with the host's code."), 'a phone says the editor is made for a computer, and that players join from their phones');
+    assert(
+      (await note(page).innerText()).includes("Players join from their phones with the host's code."),
+      'a phone says the editor is made for a computer, and that players join from their phones',
+    );
     // (One note, its ✕ beside its words.)
     const [words, x] = await Promise.all([note(page).locator('span').first().boundingBox(), note(page).getByRole('button', { name: 'Got it' }).boundingBox()]);
     assert(x.y < words.y + words.height && x.x > words.x + words.width - 1, 'its ✕ sits beside its words');
     // Nothing to drop with a finger, nor keys to press.
-    assert(!(await shows(page.locator('.first-round .open-line .not-touch'))) && (await page.locator('.first-round .open-line').innerText()).includes('Have a game file?'), '“or drop it here” isn’t shown on a touch screen');
+    assert(
+      !(await shows(page.locator('.first-round .open-line .not-touch'))) &&
+        (await page.locator('.first-round .open-line').innerText()).includes('Have a game file?'),
+      '“or drop it here” isn’t shown on a touch screen',
+    );
     // (Nor in 📂 Open a game's foot.)
-    await page.locator('.first-round .open-line').getByRole('button', { name: /Open a game/ }).click();
+    await page
+      .locator('.first-round .open-line')
+      .getByRole('button', { name: /Open a game/ })
+      .click();
     await page.locator('.hint.drop').waitFor({ state: 'attached' });
     assert(!(await shows(page.locator('.hint.drop'))), '📂 Open a game doesn’t say “or drop a game file” on a touch screen');
     await page.keyboard.press('Escape');
@@ -98,7 +110,10 @@ try {
     await clueDlg.waitFor();
     await clueDlg.getByRole('button', { name: /Copy slide/ }).click();
     const [tb, cb] = [await toastsIn(page).boundingBox(), await clueDlg.boundingBox()];
-    assert(tb.y + tb.height <= cb.y && cb.y + cb.height >= 844 - 17, `a toast over the clue editor, as tall as the phone's screen, stays above its top (${Math.round(tb.y + tb.height)} ≤ ${Math.round(cb.y)})`);
+    assert(
+      tb.y + tb.height <= cb.y && cb.y + cb.height >= 844 - 17,
+      `a toast over the clue editor, as tall as the phone's screen, stays above its top (${Math.round(tb.y + tb.height)} ≤ ${Math.round(cb.y)})`,
+    );
     await page.keyboard.press('Escape');
     await clueDlg.waitFor({ state: 'detached' });
     await roundTabsIn(page).first().waitFor();
@@ -109,7 +124,10 @@ try {
       return n && n.scrollHeight > n.clientHeight + 1;
     });
     await page.waitForTimeout(100);
-    assert((await nav.evaluate((n) => getComputedStyle(n).maskImage)).includes('gradient'), 'the sidebar’s list scrolls on a phone, and its foot fades to say so');
+    assert(
+      (await nav.evaluate((n) => getComputedStyle(n).maskImage)).includes('gradient'),
+      'the sidebar’s list scrolls on a phone, and its foot fades to say so',
+    );
     await nav.evaluate((n) => n.scrollTo(0, n.scrollHeight));
     await page.waitForFunction(() => getComputedStyle(document.querySelector('nav[aria-label="Editor"]')).maskImage === 'none');
     assert(true, 'scrolled to its end, it doesn’t fade');
@@ -154,9 +172,17 @@ try {
     await page.waitForFunction(() => document.querySelectorAll('ul.phones button.kick').length === 2);
     const fit = await page.evaluate(() => {
       // (A phone widens the page to fit what sticks out, so innerWidth would grow with it: the screen's 390 it is.)
-      const wide = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > 390.5).map((e) => e.getAttribute('aria-label') || e.textContent.trim().slice(0, 30));
+      const wide = [...document.querySelectorAll('body *')]
+        .filter((e) => e.getBoundingClientRect().right > 390.5)
+        .map((e) => e.getAttribute('aria-label') || e.textContent.trim().slice(0, 30));
       const rows = [...document.querySelectorAll('ul.phones > li')].map((li) => Math.round(li.getBoundingClientRect().height));
-      return { sw: document.documentElement.scrollWidth, iw: innerWidth, wide, rows, list: Math.round(document.querySelector('ul.phones').getBoundingClientRect().width) };
+      return {
+        sw: document.documentElement.scrollWidth,
+        iw: innerWidth,
+        wide,
+        rows,
+        list: Math.round(document.querySelector('ul.phones').getBoundingClientRect().width),
+      };
     });
     assert(
       fit.sw === 390 && fit.iw === 390 && fit.wide.length === 0 && fit.rows.every((h) => h < 40),
@@ -165,7 +191,10 @@ try {
     const kick = card.getByRole('button', { name: /^Kick .*: take their seat back from their phone$/ }).first();
     const free = card.getByRole('button', { name: /^Free seat: .*’s \(moved phone\)$/ }).first();
     assert(
-      (await kick.innerText()).trim() === '⛔' && (await free.innerText()).trim() === '📱' && (await kick.getAttribute('title')).startsWith('Kick') && (await free.getAttribute('title')).includes('free the seat'),
+      (await kick.innerText()).trim() === '⛔' &&
+        (await free.innerText()).trim() === '📱' &&
+        (await kick.getAttribute('title')).startsWith('Kick') &&
+        (await free.getAttribute('title')).includes('free the seat'),
       `there, ⛔ Kick and 📱 Free seat show only their icons, their words in their names and tooltips (“${(await kick.innerText()).trim()}”, “${(await free.innerText()).trim()}”)`,
     );
     // (A wider phone, 412: room for their words, still one line each, without the “(new phone)”.)
@@ -175,7 +204,10 @@ try {
       rows: [...document.querySelectorAll('ul.phones > li')].map((li) => Math.round(li.getBoundingClientRect().height)),
     }));
     assert(
-      fit412.sw === 412 && fit412.rows.every((h) => h < 40) && (await kick.innerText()).trim() === '⛔ Kick' && (await free.innerText()).trim() === '📱 Free seat',
+      fit412.sw === 412 &&
+        fit412.rows.every((h) => h < 40) &&
+        (await kick.innerText()).trim() === '⛔ Kick' &&
+        (await free.innerText()).trim() === '📱 Free seat',
       `a 412-wide phone: ⛔ Kick and 📱 Free seat with their words, rows still one line, nothing sideways (${JSON.stringify(fit412)})`,
     );
     await page.setViewportSize({ width: 390, height: 844 });
@@ -213,7 +245,10 @@ try {
     assert(await shows(page.locator('.first-round .open-line .not-touch')), 'with a mouse, the first screen says “or drop it here”');
     const what = await page.locator('.first-round .what').boundingBox();
     assert(what.height < 30, 'and its line saying what the app is stays on one line');
-    await page.locator('.first-round .open-line').getByRole('button', { name: /Open a game/ }).click();
+    await page
+      .locator('.first-round .open-line')
+      .getByRole('button', { name: /Open a game/ })
+      .click();
     await page.locator('.hint.drop').waitFor();
     assert(await shows(page.locator('.hint.drop')), 'and 📂 Open a game says “or drop a game file on the editor”');
     await page.keyboard.press('Escape');

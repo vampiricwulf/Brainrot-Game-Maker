@@ -14,7 +14,16 @@
   import { mediaCommand } from '../sync.svelte';
   import { isSoundOnly, rangeProgress, soundShows, timeText } from '../soundonly';
   import {
-    localMedia, openMediaPopup, registerMedia, setMediaRole, unregisterMedia, updateMedia, youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl,
+    localMedia,
+    openMediaPopup,
+    registerMedia,
+    setMediaRole,
+    unregisterMedia,
+    updateMedia,
+    youtubeId,
+    youtubeStart,
+    youtubeThumb,
+    youtubeWatchUrl,
     type MediaRole,
   } from '../mediactl.svelte';
 
@@ -232,7 +241,14 @@
   {#if hostView}<div class="card"><span>Not a valid YouTube link</span></div>{/if}
 {:else if mode === 'edit'}
   <!-- Sound only: its picture dimmed under what viewers will see, and a badge saying so. -->
-  <button class="card" class:dim={soundOnly} style:background-image="url({youtubeThumb(vid)})" onclick={(e) => e.stopPropagation()} title={el.url} tabindex="-1">
+  <button
+    class="card"
+    class:dim={soundOnly}
+    style:background-image="url({youtubeThumb(vid)})"
+    onclick={(e) => e.stopPropagation()}
+    title={el.url}
+    tabindex="-1"
+  >
     {#if soundOnly}
       <span class="badge">🔊 Sound only</span>
       <span class="so">{@render face(true)}</span>

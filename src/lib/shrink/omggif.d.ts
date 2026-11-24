@@ -30,7 +30,14 @@ declare module 'omggif' {
   }
   export class GifWriter {
     constructor(buf: Uint8Array, width: number, height: number, opts?: { loop?: number; palette?: number[]; background?: number });
-    addFrame(x: number, y: number, w: number, h: number, indexed: ArrayLike<number>, opts?: { palette?: number[]; delay?: number; disposal?: number; transparent?: number | null }): number;
+    addFrame(
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      indexed: ArrayLike<number>,
+      opts?: { palette?: number[]; delay?: number; disposal?: number; transparent?: number | null },
+    ): number;
     end(): number;
     /** Where the next byte goes in the buffer (set back to 0 once what's written is taken out). */
     getOutputBufferPosition(): number;

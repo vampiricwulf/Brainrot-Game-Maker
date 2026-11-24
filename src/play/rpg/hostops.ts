@@ -1,11 +1,47 @@
 // The RPG host's moves, shared by the host panel and the keyboard shortcuts. Every change is one undoable step.
 import {
-  isRpg, newId, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Action, type Dir8, type Game, type InventoryEntry, type Position, type Screen, type ScreenRef, type Session,
-  type SlideElement, type World, type WorldState,
+  isRpg,
+  newId,
+  newImageEl,
+  newTextEl,
+  SLIDE_H,
+  SLIDE_W,
+  type Action,
+  type Dir8,
+  type Game,
+  type InventoryEntry,
+  type Position,
+  type Screen,
+  type ScreenRef,
+  type Session,
+  type SlideElement,
+  type World,
+  type WorldState,
 } from '../../lib/model';
 import {
-  activeParty, allElements, audienceSees, avatarBoxes, classLabel, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, neverShown, overlaps, override, partyOn, partyScreen, regroup,
-  screenElements, splitParty, step, worldById,
+  activeParty,
+  allElements,
+  audienceSees,
+  avatarBoxes,
+  classLabel,
+  DIR_NAME,
+  DIR_VEC,
+  DIRS,
+  exitOf,
+  findIn,
+  focusRef,
+  joinParty,
+  moveTo,
+  neverShown,
+  overlaps,
+  override,
+  partyOn,
+  partyScreen,
+  regroup,
+  screenElements,
+  splitParty,
+  step,
+  worldById,
 } from '../../lib/rpg';
 import { bounds, catchable, type Box } from '../../lib/layers';
 import { nameList } from '../../lib/session';
@@ -69,7 +105,12 @@ export function regroupAll(game: Game, session: Session, partyId?: string): void
   const with_ = st.parties.find((p) => p.id === partyId) ?? activeParty(st);
   logged(session, with_ ? `Regroup with ${with_.name}` : 'Regroup', () => {
     if (with_) st.active = with_.id;
-    regroup(game, st, world, session.players.map((p) => p.id));
+    regroup(
+      game,
+      st,
+      world,
+      session.players.map((p) => p.id),
+    );
   });
   // Where everyone is now, for screen readers (as after a step).
   const at = focusRef(st);
@@ -82,7 +123,8 @@ export function splitOff(game: Game, session: Session, ids: string[]): string | 
   if (!st) return 'No world';
   if (!ids.length) return 'Select the players who split off first (1–9)';
   // Everyone, or players standing in different places, would make one party in two places.
-  if (ids.length === session.players.length) return st.parties.length === 1 ? 'That’s everyone: select only the ones who split off' : 'That’s everyone: 🤝 Regroup (G) brings everyone together';
+  if (ids.length === session.players.length)
+    return st.parties.length === 1 ? 'That’s everyone: select only the ones who split off' : 'That’s everyone: 🤝 Regroup (G) brings everyone together';
   const screens = new Set(ids.map((id) => st.positions[id]?.screen));
   if (screens.size > 1) return 'They aren’t all in one place: split off players standing together (or move them together first)';
   logged(session, `Split off ${names(session, ids)}`, () => splitParty(st, ids));
@@ -133,7 +175,13 @@ export function sendPartiesOn(game: Game, session: Session, from: ScreenRef, to:
   if (!st) return null;
   const dot = (m: string) => st.positions[m]?.screen === from.screen && !st.positions[m].hidden;
   const parties = st.parties.filter((p) => partyScreen(st, p)?.screen === from.screen && p.members.some(dot));
-  return sendPlayers(game, session, parties.flatMap((p) => p.members), to, { label: parties.length === 1 ? parties[0].name : undefined });
+  return sendPlayers(
+    game,
+    session,
+    parties.flatMap((p) => p.members),
+    to,
+    { label: parties.length === 1 ? parties[0].name : undefined },
+  );
 }
 
 /** Players join a party (dropped on its chip, or from their menu): they go to where it is. Returns what to tell the host. */
@@ -157,7 +205,18 @@ export function moveChoices(session: Session, st: WorldState, selected: string[]
     { label: `▶ Move ${party?.name ?? 'the party'} here`, onclick: () => go() },
     { label: `Only the selected (${selected.length})`, disabled: !selected.length, onclick: () => go(selected, `${selected.length} selected`) },
     ...st.parties.filter((pt) => pt.id !== party?.id).map((pt) => ({ label: `Move ${pt.name} here`, onclick: () => go(pt.members, pt.name) })),
-    ...(st.parties.length > 1 ? [{ label: 'Everyone here', onclick: () => go(session.players.map((p) => p.id), 'Everyone') }] : []),
+    ...(st.parties.length > 1
+      ? [
+          {
+            label: 'Everyone here',
+            onclick: () =>
+              go(
+                session.players.map((p) => p.id),
+                'Everyone',
+              ),
+          },
+        ]
+      : []),
   ];
 }
 
@@ -203,7 +262,12 @@ export type GroupItem = { x: number; y: number; minX: number; maxX: number; minY
 
 /** The range an avatar standing on a screen may go in: all of it on the screen, between `top` and `bottom`. */
 export const avatarRange = (x: number, y: number, top = 0, bottom = SLIDE_H): GroupItem => ({
-  x, y, minX: HALF, maxX: SLIDE_W - HALF, minY: top + HALF, maxY: Math.max(top + HALF, bottom - HALF),
+  x,
+  y,
+  minX: HALF,
+  maxX: SLIDE_W - HALF,
+  minY: top + HALF,
+  maxY: Math.max(top + HALF, bottom - HALF),
 });
 
 /** The range an object (its box, `w`×`h` at x, y) may go in: all of it on the screen. */
@@ -223,7 +287,20 @@ export function groupDelta(items: GroupItem[], dx: number, dy: number): { dx: nu
     }
     return Math.round(Math.max(min, Math.min(max, d)));
   };
-  return { dx: axis(dx, (i) => i.x, (i) => i.minX, (i) => i.maxX), dy: axis(dy, (i) => i.y, (i) => i.minY, (i) => i.maxY) };
+  return {
+    dx: axis(
+      dx,
+      (i) => i.x,
+      (i) => i.minX,
+      (i) => i.maxX,
+    ),
+    dy: axis(
+      dy,
+      (i) => i.y,
+      (i) => i.minY,
+      (i) => i.maxY,
+    ),
+  };
 }
 
 /** Names in a step's label, kept short: "Ann, Bob & Cy", or past four "Ann, Bob, Cy & 5 more". */
@@ -239,7 +316,12 @@ const hiddenCount = (n: number) => (n === 1 ? 'a hidden object' : `${n} hidden o
  * Bob & Chest"; past four, "Move Ann, Bob, Cy & 5 more"). An object viewers don't see is "a hidden object" in the step's
  * words for one window. Nothing that moves (a group held at an edge): no step. Returns its name.
  */
-export function moveGroup(game: Game, session: Session, players: Record<string, { x: number; y: number }>, objects: Record<string, { x: number; y: number }>): string | null {
+export function moveGroup(
+  game: Game,
+  session: Session,
+  players: Record<string, { x: number; y: number }>,
+  objects: Record<string, { x: number; y: number }>,
+): string | null {
   const { st } = rpgNow(game, session);
   if (!st) return null;
   const who = Object.keys(players).filter((id) => {
@@ -278,7 +360,13 @@ export function moveObject(game: Game, session: Session, elId: string, at: { x: 
   const found = objectAt(game, session, elId);
   const o = found?.st.objects[elId];
   if (!found || ((o?.x ?? found.el.x) === at.x && (o?.y ?? found.el.y) === at.y)) return false;
-  logged(session, `Move ${objectName(found.el)}`, () => Object.assign(override(found.st, elId), at), undefined, audienceSees(found.el, o) ? undefined : `Move ${hiddenCount(1)}`);
+  logged(
+    session,
+    `Move ${objectName(found.el)}`,
+    () => Object.assign(override(found.st, elId), at),
+    undefined,
+    audienceSees(found.el, o) ? undefined : `Move ${hiddenCount(1)}`,
+  );
   return true;
 }
 
@@ -304,7 +392,9 @@ export function everythingOn(game: Game, session: Session, ref: ScreenRef, oneWi
   if (!st || !found) return { players: [], objects: [] };
   return {
     players: session.players.filter((p) => st.positions[p.id]?.screen === ref.screen && !st.positions[p.id].hidden).map((p) => p.id),
-    objects: screenElements(st, found.screen, oneWindow).filter(boxCatches).map((el) => el.id),
+    objects: screenElements(st, found.screen, oneWindow)
+      .filter(boxCatches)
+      .map((el) => el.id),
   };
 }
 
@@ -316,7 +406,8 @@ export function everythingOn(game: Game, session: Session, ref: ScreenRef, oneWi
 export function hiddenNames(st: WorldState | undefined, screen: Screen): Map<string, string> {
   const out = new Map<string, string>();
   const added = new Set((st?.added[screen.id] ?? []).map((e) => e.id));
-  for (const el of screenElements(st, screen, false)) if (el.secret && !neverShown(el) && !added.has(el.id) && (el.role || el.name)) out.set(el.id, `🙈 Hidden object ${out.size + 1}`);
+  for (const el of screenElements(st, screen, false))
+    if (el.secret && !neverShown(el) && !added.has(el.id) && (el.role || el.name)) out.set(el.id, `🙈 Hidden object ${out.size + 1}`);
   return out;
 }
 
@@ -446,7 +537,19 @@ export function objectActs(game: Game, session: Session, elId: string, run: Obje
   const who = picked ?? here;
   const whoNames = names(session, who) || 'nobody';
   const teams = !!run.teams;
-  const ctx: RunContext = { game, session, live: run.live, world, st, selected: run.selected, teams, chosen: who, at: screen.id, offerCard: offerIn(session, `object:${el.id}`), hide: oneWindow };
+  const ctx: RunContext = {
+    game,
+    session,
+    live: run.live,
+    world,
+    st,
+    selected: run.selected,
+    teams,
+    chosen: who,
+    at: screen.id,
+    offerCard: offerIn(session, `object:${el.id}`),
+    hide: oneWindow,
+  };
   /**
    * An action's words: one window's (`quiet`) never name a secret object it reveals or hides, saying "a hidden object"
    * (a button: what the host panel calls it, `alias`, so two of them can be told apart).
@@ -488,7 +591,13 @@ export function objectActs(game: Game, session: Session, elId: string, run: Obje
     // (Only what fits under their max, "🪙15 of 🪙30"; the rest stays on the screen.)
     const fits = f && picker ? Math.min(left, statRoom(game, session, picker, f)) : left;
     const what =
-      role.class === 'item' ? count(role.qty ?? 1, itemDef(game, role.item)?.name ?? title) : f ? (fits > 0 && fits < left ? `${formatStat(f, fits)} of ${formatStat(f, left)}` : formatStat(f, left)) : String(left);
+      role.class === 'item'
+        ? count(role.qty ?? 1, itemDef(game, role.item)?.name ?? title)
+        : f
+          ? fits > 0 && fits < left
+            ? `${formatStat(f, fits)} of ${formatStat(f, left)}`
+            : formatStat(f, left)
+          : String(left);
     acts.push({
       id: 'pick',
       label: `✋ ${pickerName} picks up ${what}`,
@@ -504,7 +613,11 @@ export function objectActs(game: Game, session: Session, elId: string, run: Obje
   }
   if (role?.dialogue) {
     const dialogue = role.dialogue;
-    acts.push({ id: 'talk', label: '💬 Talk', run: () => ((run.live.overlay = { kind: 'popup', nonce: newId(), slide: JSON.parse(JSON.stringify(dialogue)), title }), {}) });
+    acts.push({
+      id: 'talk',
+      label: '💬 Talk',
+      run: () => ((run.live.overlay = { kind: 'popup', nonce: newId(), slide: JSON.parse(JSON.stringify(dialogue)), title }), {}),
+    });
   }
   if (role?.shop) {
     const id = role.shop;
@@ -513,7 +626,10 @@ export function objectActs(game: Game, session: Session, elId: string, run: Obje
       id: 'shop',
       label: '🛒 Shop',
       ...(exists ? {} : { disabled: true, title: 'That shop no longer exists: pick another with ✎ Edit' }),
-      run: () => (exists ? ((run.live.overlay = { kind: 'shop', nonce: newId(), shopId: id, buyer: who[0] }), {}) : { text: 'That shop no longer exists: pick another with ✎ Edit' }),
+      run: () =>
+        exists
+          ? ((run.live.overlay = { kind: 'shop', nonce: newId(), shopId: id, buyer: who[0] }), {})
+          : { text: 'That shop no longer exists: pick another with ✎ Edit' },
     });
   }
   const list = role?.actions ?? [];
@@ -587,7 +703,16 @@ export function objectMenu(
     oneWindow = false,
     alias,
     cardOpen = false,
-  }: { open: () => void; removed: (text: string) => void; closed?: () => void; edit?: () => void; run?: ObjectRun; oneWindow?: boolean; alias?: string; cardOpen?: boolean },
+  }: {
+    open: () => void;
+    removed: (text: string) => void;
+    closed?: () => void;
+    edit?: () => void;
+    run?: ObjectRun;
+    oneWindow?: boolean;
+    alias?: string;
+    cardOpen?: boolean;
+  },
 ): MenuEntry[] {
   const found = objectAt(game, session, elId);
   if (!found) return [];
@@ -604,14 +729,23 @@ export function objectMenu(
   };
   return menuOf({
     heading: masked ? alias : name,
-    now: acts.map((a) => ({ label: a.label, disabled: a.disabled, hint: a.asks === 'who' ? 'Pick who it’s for on its card' : a.asks === 'locked' ? 'It’s locked: its card asks first' : a.title, onclick: press(a) })),
+    now: acts.map((a) => ({
+      label: a.label,
+      disabled: a.disabled,
+      hint: a.asks === 'who' ? 'Pick who it’s for on its card' : a.asks === 'locked' ? 'It’s locked: its card asks first' : a.title,
+      onclick: press(a),
+    })),
     open: [
       { label: '🗂 Open its card', onclick: open },
       // (Not while it's masked: the live editor lists it by name, on stream. Its card's ✎ Edit waits behind 👁 Show too.)
-      ...(edit && !masked ? [{ label: '✎ Edit', hint: 'Its screen in the live editor: move, resize, restyle, or give it actions and dialogue', onclick: edit }] : []),
+      ...(edit && !masked
+        ? [{ label: '✎ Edit', hint: 'Its screen in the live editor: move, resize, restyle, or give it actions and dialogue', onclick: edit }]
+        : []),
     ],
     // (Not for hotspots, arrival points and no-go areas: viewers never see them, so a Reveal would do nothing.)
-    verbs: neverShown(el) ? [] : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => setObjectShown(game, session, elId, !shown) }],
+    verbs: neverShown(el)
+      ? []
+      : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => setObjectShown(game, session, elId, !shown) }],
     // (Off its screen, for this game: the editor's object stays. The Delete key takes off the object whose card is open.)
     delete: { label: '🗑 Remove', ...(cardOpen ? { keys: 'Delete' } : {}), onclick: () => removed(removeObject(game, session, elId, oneWindow) ?? '') },
   });
@@ -635,7 +769,8 @@ export function pickUp(game: Game, session: Session, st: WorldState, el: SlideEl
   const got = f ? formatStat(f, amount) : role?.class === 'item' ? count(role.qty ?? 1, itemDef(game, role.item)?.name ?? objectName(el)) : objectName(el);
   let text = `${names(session, [playerId])} picks up ${got}${got === objectName(el) ? '' : ` (${objectName(el)})`}`;
   if (f && amount > 0 && fits <= 0) return `${names(session, [playerId])} can’t carry any more ${f.name} (at most ${formatStat(f, f.max ?? 0)})`;
-  if (f && fits < amount) text = `${names(session, [playerId])} picks up ${formatStat(f, fits)} of ${objectName(el)} (the most they can carry): ${formatStat(f, amount - fits)} left`;
+  if (f && fits < amount)
+    text = `${names(session, [playerId])} picks up ${formatStat(f, fits)} of ${objectName(el)} (the most they can carry): ${formatStat(f, amount - fits)} left`;
   logged(session, text, () => {
     if (role?.class === 'item') giveItem(game, session, playerId, role.item ?? null, role.qty ?? 1, role.item ? undefined : objectName(el));
     else if (f) addStat(game, session, playerId, f, fits);

@@ -95,7 +95,14 @@ function plateForm(n: number, sym: string, count: number, reserve: number, width
   // symbol goes before any digits do; "$" only at the very end.
   const word = wordSymbol(sym);
   const bare = word ? '' : sym;
-  const forms = [formatPoints(n, sym), formatPoints(n, bare), compactPoints(n, sym, 1000), compactPoints(n, bare, 1000), compactPoints(n, bare, 1000, 0), compactPoints(n, '', 1000, 0)];
+  const forms = [
+    formatPoints(n, sym),
+    formatPoints(n, bare),
+    compactPoints(n, sym, 1000),
+    compactPoints(n, bare, 1000),
+    compactPoints(n, bare, 1000, 0),
+    compactPoints(n, '', 1000, 0),
+  ];
   let k = forms.findIndex((s) => scoreWidth(s) <= room);
   if (k < 0) k = forms.length - 1;
   // (Forms 0 and 2 have a word symbol; forms 0-4 a front one: "$", "R$", "🧠".)

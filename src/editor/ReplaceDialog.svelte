@@ -34,8 +34,7 @@
     <p>“{title}” has changes that aren't saved to a file yet.</p>
     {#if full}
       <p class="warn small">
-        {inTauri() ? 'Storage on this PC' : "This browser's storage"} is full, so “{title}” can't be kept here: {go} anyway loses it. Save first to keep
-        it.
+        {inTauri() ? 'Storage on this PC' : "This browser's storage"} is full, so “{title}” can't be kept here: {go} anyway loses it. Save first to keep it.
       </p>
     {:else}
       <p class="hint">Either way “{title}” isn't lost: {go} anyway keeps it {keptHere()}, and Open… → Recent games brings it back.</p>
@@ -43,7 +42,8 @@
     <div class="modal-foot">
       <button
         onclick={() => onchoice('discard')}
-        title={full ? `${go} without saving “${title}” (it's lost)` : `${go} without saving “${title}” to a file (it stays in Recent games)`}>{go} anyway</button
+        title={full ? `${go} without saving “${title}” (it's lost)` : `${go} without saving “${title}” to a file (it stays in Recent games)`}
+        >{go} anyway</button
       >
       <span class="spacer"></span>
       <button class="ghost" onclick={() => onchoice('cancel')}>Cancel</button>

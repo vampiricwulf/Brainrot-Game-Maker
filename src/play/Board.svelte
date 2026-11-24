@@ -27,7 +27,13 @@
   } = $props();
   /** A tile's badge and the words for it (hostMarks). */
   const markOf = (clue: Clue): [string, string] | null =>
-    clue.type === 'dailyDouble' ? ['⭐', 'Daily Double'] : clue.type === 'partner' ? ['🤝', 'partner clue'] : clue.everyone && clue.type === 'standard' ? ['✍', 'everyone answers'] : null;
+    clue.type === 'dailyDouble'
+      ? ['⭐', 'Daily Double']
+      : clue.type === 'partner'
+        ? ['🤝', 'partner clue']
+        : clue.everyone && clue.type === 'standard'
+          ? ['✍', 'everyone answers']
+          : null;
   const round = $derived.by(() => {
     const r = game.rounds[session.currentRound];
     return isBoard(r) ? r : undefined;
@@ -95,15 +101,28 @@
         {#if catShown(ci)}
           {#if cat.image && mediaUrls[cat.image]}
             <div class="title has-image" class:revealing={!!intro}>
-              <img class="cat-img" src={mediaUrls[cat.image]} alt={cat.title} draggable="false" style:object-fit={cat.imageFit ?? 'contain'} onerror={imgFallback} />
+              <img
+                class="cat-img"
+                src={mediaUrls[cat.image]}
+                alt={cat.title}
+                draggable="false"
+                style:object-fit={cat.imageFit ?? 'contain'}
+                onerror={imgFallback}
+              />
               {#if cat.showTitleOverImage && cat.title}
-                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}><div dir="auto">{softHyphens(cat.title)}</div></div>
+                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}
+                  ><div dir="auto">{softHyphens(cat.title)}</div></div
+                >
               {/if}
             </div>
           {:else}
             <!-- Readable on a scaled-down stream: down to CAT_MIN, then (words still whole) to CAT_FLOOR; only a word too
                  long even then is hyphenated, at a syllable (softHyphens). -->
-            <div class="title" class:revealing={!!intro} use:autofit={{ size: 54, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}>
+            <div
+              class="title"
+              class:revealing={!!intro}
+              use:autofit={{ size: 54, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}
+            >
               <div dir="auto">{softHyphens(cat.title)}</div>
             </div>
           {/if}
@@ -147,7 +166,9 @@
             {#if clue.tileFace?.text}
               <span class="face" use:autofit={{ size: 84, enabled: true, cache: true, text: clue.tileFace.text }}><span>{clue.tileFace.text}</span></span>
             {:else if !clue.tileFace?.image}
-              <span class="face" use:autofit={{ size: 84, min: 24, noBreak: true, enabled: true, cache: true, group: valueGroup, text: value }}><span class="v">{value}</span></span>
+              <span class="face" use:autofit={{ size: 84, min: 24, noBreak: true, enabled: true, cache: true, group: valueGroup, text: value }}
+                ><span class="v">{value}</span></span
+              >
             {/if}
           {/if}
         </button>

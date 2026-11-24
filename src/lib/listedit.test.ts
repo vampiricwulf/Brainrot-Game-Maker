@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { clearOffset, copyActions, copyDealPart, copyDie, copyItem, copyName, copySavedCard, copySegment, copyShop, copySpaces, copyStat, copyTotal, copyZone, faceLines, moveTo } from './listedit';
+import {
+  clearOffset,
+  copyActions,
+  copyDealPart,
+  copyDie,
+  copyItem,
+  copyName,
+  copySavedCard,
+  copySegment,
+  copyShop,
+  copySpaces,
+  copyStat,
+  copyTotal,
+  copyZone,
+  faceLines,
+  moveTo,
+} from './listedit';
 import { newBoardGameRound } from './boardgame';
 import { CARD_NAME_MAX, newImageEl, slideText, textSlide, type Action, type ItemDef, type SavedCard, type WheelSegment } from './model';
 
@@ -77,7 +93,13 @@ describe('list editing', () => {
   });
 
   it('copies a 🤫 card made ahead: its own id and items’ ids, the same words, named “… (copy)”', () => {
-    const c: SavedCard = { id: 'sc1', name: 'Tip A', until: 'host', background: { color: '#112233' }, elements: [...textSlide('Bring a spoon').elements, newImageEl('pic')] };
+    const c: SavedCard = {
+      id: 'sc1',
+      name: 'Tip A',
+      until: 'host',
+      background: { color: '#112233' },
+      elements: [...textSlide('Bring a spoon').elements, newImageEl('pic')],
+    };
     const copy = copySavedCard(c, ['Tip A']);
     expect(copy).toMatchObject({ name: 'Tip A (copy)', until: 'host', background: { color: '#112233' } });
     expect(copy.id).not.toBe('sc1');
@@ -123,7 +145,10 @@ describe('copying board spaces', () => {
     ];
     const copies = copySpaces(round, [a, b], 40, 40);
     expect(copies.map((x) => x.name)).toEqual(['Space 13', 'Space 14']);
-    expect(copies.map((x) => [x.x - [a, b][copies.indexOf(x)].x, x.y - [a, b][copies.indexOf(x)].y])).toEqual([[40, 40], [40, 40]]);
+    expect(copies.map((x) => [x.x - [a, b][copies.indexOf(x)].x, x.y - [a, b][copies.indexOf(x)].y])).toEqual([
+      [40, 40],
+      [40, 40],
+    ]);
     // a → b is kept (between the copies); b → c (left behind) isn't.
     expect(copies[0].next).toEqual([copies[1].id]);
     expect(copies[1].next).toEqual([]);

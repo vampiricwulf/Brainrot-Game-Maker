@@ -1,11 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { align, bounds, caughtBy, centreOn, clampOnto, contains, elementsAt, keepOnStage, nearestSnap, nextBelow, offStage, restack, touchedBy } from './layers';
+import {
+  align,
+  bounds,
+  caughtBy,
+  centreOn,
+  clampOnto,
+  contains,
+  elementsAt,
+  keepOnStage,
+  nearestSnap,
+  nextBelow,
+  offStage,
+  restack,
+  touchedBy,
+} from './layers';
 
 const box = (id: string, x: number, y: number, w: number, h: number, zIndex: number, rotation = 0) => ({ id, x, y, w, h, zIndex, rotation });
 
 describe('restack', () => {
   const stack = () => ['a', 'b', 'c', 'd'].map((id, i) => ({ id, zIndex: i * 10 }));
-  const order = (els: { id: string; zIndex: number }[]) => [...els].sort((x, y) => x.zIndex - y.zIndex).map((e) => e.id).join('');
+  const order = (els: { id: string; zIndex: number }[]) =>
+    [...els]
+      .sort((x, y) => x.zIndex - y.zIndex)
+      .map((e) => e.id)
+      .join('');
   it('moves items to the front or back, keeping their own order', () => {
     const s = stack();
     restack(s, ['a', 'c'], 'front');
@@ -211,7 +229,11 @@ describe('drag-to-select and items off the slide', () => {
 
 describe('a box on an RPG stage', () => {
   const at = (x: number, y: number, w = 100, h = 100) => ({ x, y, w, h });
-  const t = (id: string, rect: ReturnType<typeof at>, more: { avatar?: boolean; class?: string; locked?: boolean; neverShown?: boolean } = {}) => ({ id, rect, ...more });
+  const t = (id: string, rect: ReturnType<typeof at>, more: { avatar?: boolean; class?: string; locked?: boolean; neverShown?: boolean } = {}) => ({
+    id,
+    rect,
+    ...more,
+  });
   const ids = (l: { id: string }[]) => l.map((x) => x.id);
   const from = { x: 0, y: 0 };
   const to = { x: 1000, y: 600 };
@@ -219,20 +241,30 @@ describe('a box on an RPG stage', () => {
   it('catches players and the things that move in play, never doors, shops, zones, hazards or scenery', () => {
     const all = [
       t('ann', at(100, 100), { avatar: true }),
-      ...['item', 'currency', 'npc', 'interactable', 'doorway', 'shop', 'zone', 'hazard', 'spawn', 'blocker', ''].map((c, i) => t(c || 'scenery', at(120 + i * 60, 300), { class: c })),
+      ...['item', 'currency', 'npc', 'interactable', 'doorway', 'shop', 'zone', 'hazard', 'spawn', 'blocker', ''].map((c, i) =>
+        t(c || 'scenery', at(120 + i * 60, 300), { class: c }),
+      ),
       t('nameless', at(200, 200)),
     ];
     expect(ids(caughtBy(all, from, to))).toEqual(['ann', 'item', 'currency', 'npc', 'interactable']);
   });
 
   it('leaves out anything 🔒 locked, and what viewers never see (a hotspot), whatever its class', () => {
-    const all = [t('rug', at(100, 100), { class: 'item', locked: true }), t('hot', at(300, 100), { class: 'interactable', neverShown: true }), t('sword', at(500, 100), { class: 'item' })];
+    const all = [
+      t('rug', at(100, 100), { class: 'item', locked: true }),
+      t('hot', at(300, 100), { class: 'interactable', neverShown: true }),
+      t('sword', at(500, 100), { class: 'item' }),
+    ];
     expect(ids(caughtBy(all, from, to))).toEqual(['sword']);
   });
 
   it('takes what has its middle inside the box, from any two corners', () => {
     // The Sword's middle (150, 150) is in; the Gold's (950, 650) is past the box's foot, though it overlaps it.
-    const all = [t('sword', at(100, 100), { class: 'item' }), t('gold', at(900, 600), { class: 'currency' }), t('bob', at(980, 550, 120, 150), { avatar: true })];
+    const all = [
+      t('sword', at(100, 100), { class: 'item' }),
+      t('gold', at(900, 600), { class: 'currency' }),
+      t('bob', at(980, 550, 120, 150), { avatar: true }),
+    ];
     expect(ids(caughtBy(all, to, from))).toEqual(['sword']);
     expect(ids(caughtBy(all, { x: 1100, y: 700 }, { x: 140, y: 140 }))).toEqual(['sword', 'gold', 'bob']);
   });

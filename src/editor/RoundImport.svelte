@@ -91,7 +91,8 @@
       <p class="muted">That game has no rounds or deals.</p>
     {:else}
       <p class="hint" data-import-hint>
-        Tick the {deals.length ? (source.rounds.length ? 'rounds and 🎭 deals' : '🎭 deals') : 'rounds'} to bring in. What they use comes along: {source.rounds.length
+        Tick the {deals.length ? (source.rounds.length ? 'rounds and 🎭 deals' : '🎭 deals') : 'rounds'} to bring in. What they use comes along: {source.rounds
+          .length
           ? 'RPG worlds, wheels, dice, stats, items, shops and files'
           : 'the wheel each deal draws from, and files'}. That game’s 🤫 Cards tab, sounds and theme stay in it.
       </p>
@@ -130,7 +131,9 @@
       {/if}
       <span class="spacer"></span>
       <button class="ghost" onclick={onclose}>Cancel</button>
-      <button class="primary" onclick={bring} disabled={!ticked}>{ticked ? `Import ${count(picked.length, pickedDeals.length)}` : source.rounds.length ? 'Import rounds' : 'Import'}</button>
+      <button class="primary" onclick={bring} disabled={!ticked}
+        >{ticked ? `Import ${count(picked.length, pickedDeals.length)}` : source.rounds.length ? 'Import rounds' : 'Import'}</button
+      >
     </div>
   </div>
 </div>

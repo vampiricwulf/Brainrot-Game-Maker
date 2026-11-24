@@ -68,7 +68,24 @@
   import { validate } from '../lib/validate';
   import { answerCardAt, boardPlace, type ChecklistLine } from '../lib/checklist';
   import { followClueText } from '../lib/cluetext';
-  import { arriving, commit, heldMedia, history, historyStarted, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, stepAsync, undo, wholeHistory, type Origin } from '../lib/history.svelte';
+  import {
+    arriving,
+    commit,
+    heldMedia,
+    history,
+    historyStarted,
+    mark,
+    onApplied,
+    onApplying,
+    redo,
+    savedSinceChange,
+    savePoint,
+    step,
+    stepAsync,
+    undo,
+    wholeHistory,
+    type Origin,
+  } from '../lib/history.svelte';
   import { whileWriting } from '../lib/desktop.svelte';
   import { isCancel } from '../lib/fileio';
   import { goTo, take, type Place } from '../lib/nav.svelte';
@@ -136,7 +153,16 @@
   const NAMED_TABS: readonly unknown[] = ['sounds', 'tiebreaker', 'media', 'tools', 'cards', 'theme', 'stats', 'history'];
   /** A reload mid-edit opens on the page this tab had open (editorplace.ts), unless the app asks for another. */
   const startPage = untrack(() => startRound ?? (startFix ? null : (takeEditorAt(app.game.id)?.page ?? null)));
-  let tab = $state<Tab>(untrack(() => (NAMED_TABS.includes(startPage) ? (startPage as Tab) : Math.max(0, app.game.rounds.findIndex((r) => r.id === startPage)))));
+  let tab = $state<Tab>(
+    untrack(() =>
+      NAMED_TABS.includes(startPage)
+        ? (startPage as Tab)
+        : Math.max(
+            0,
+            app.game.rounds.findIndex((r) => r.id === startPage),
+          ),
+    ),
+  );
   let mainEl = $state<HTMLElement>();
   /** A page picked in the sidebar (or a round just added: `added`) opens at its top, not as far down as the last page
    *  was scrolled. (Find, Go there and the checklist set `tab` themselves, then scroll to what they show.) */
@@ -291,7 +317,8 @@
     let round: Round;
     if (mode === 'slides') round = newSlidesRound(intro ? 'Introduction' : `Slides ${game.rounds.filter(isSlides).length + 1}`);
     else if (mode === 'rpg') round = newRpgRound(game, game.rounds.some(isRpg) ? `Adventure ${game.rounds.filter(isRpg).length + 1}` : 'Adventure');
-    else if (mode === 'boardgame') round = newBoardGameRound(game.rounds.some(isBoardGame) ? `Board game ${game.rounds.filter(isBoardGame).length + 1}` : 'Board game');
+    else if (mode === 'boardgame')
+      round = newBoardGameRound(game.rounds.some(isBoardGame) ? `Board game ${game.rounds.filter(isBoardGame).length + 1}` : 'Board game');
     else if (mode === 'final') round = newFinalRound(game.rounds.some(isFinal) ? `Final round ${game.rounds.filter(isFinal).length + 1}` : 'Final Jeopardy!');
     else {
       const boards = game.rounds.slice(0, at).filter(isBoard);
@@ -301,7 +328,11 @@
       round = newRound(name, prev?.categories.length ?? 6, prev ? prev.values.map((v) => (boards.length === 1 ? v * 2 : v)) : undefined);
     }
     // Its clues take the theme's clue text.
-    if (isBoard(round)) followClueText(game, round.categories.flatMap((c) => c.clues.flatMap(slidesOfClue)));
+    if (isBoard(round))
+      followClueText(
+        game,
+        round.categories.flatMap((c) => c.clues.flatMap(slidesOfClue)),
+      );
     else if (isFinal(round)) followClueText(game, [round.questionSlide, round.answerSlide]);
     else if (isSlides(round)) followClueText(game, [round.questionSlide]);
     return round;
@@ -332,7 +363,11 @@
   function cardKey(e: KeyboardEvent): void {
     if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !isArrow(e.key)) return;
     const cards = [...document.querySelectorAll<HTMLElement>('.first-round .sample, .first-round .mode')];
-    const to = cardToward(cards.map((c) => c.getBoundingClientRect()), cards.indexOf(e.currentTarget as HTMLElement), e.key);
+    const to = cardToward(
+      cards.map((c) => c.getBoundingClientRect()),
+      cards.indexOf(e.currentTarget as HTMLElement),
+      e.key,
+    );
     if (to < 0) return;
     e.preventDefault();
     cards[to].focus();
@@ -384,7 +419,8 @@
       if (field) field.select();
       else focusRoundTab(id);
     });
-  const focusRoundTab = (id: string | undefined) => void tick().then(() => id && document.querySelector<HTMLElement>(`nav [data-place="round:${id}"]`)?.focus());
+  const focusRoundTab = (id: string | undefined) =>
+    void tick().then(() => id && document.querySelector<HTMLElement>(`nav [data-place="round:${id}"]`)?.focus());
 
   /** A right-click on ↶ Undo or ↷ Redo opens 🕘 History (every step, to go back to any of them), as on the game screen. */
   function historyMenu(e: MouseEvent): void {
@@ -411,7 +447,10 @@
         },
         { label: clipboard.round ? `📋 Paste round “${bundleName(clipboard.round)}” after it` : '📋 Paste round after it', disabled: !clipboard.round },
       ),
-      move: [menuItem.up(() => moveRound(i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveRound(i, i + 1), { disabled: i === game.rounds.length - 1 })],
+      move: [
+        menuItem.up(() => moveRound(i, i - 1), { disabled: i === 0 }),
+        menuItem.down(() => moveRound(i, i + 1), { disabled: i === game.rounds.length - 1 }),
+      ],
       delete: menuItem.delete('round', () => removeRound(i)),
     });
   }
@@ -438,7 +477,11 @@
       heading: 'Tiebreaker clue',
       open: [on ? { label: '❓ Open it', onclick: () => openTab('tiebreaker') } : { label: '＋ Add tiebreaker', onclick: addTiebreaker }],
       delete: on
-        ? { label: '🗑 Turn it off', onclick: () => setTiebreaker(false), hint: 'Takes the tiebreaker clue out of the game, its question, answer and notes too (Undo brings it back)' }
+        ? {
+            label: '🗑 Turn it off',
+            onclick: () => setTiebreaker(false),
+            hint: 'Takes the tiebreaker clue out of the game, its question, answer and notes too (Undo brings it back)',
+          }
         : undefined,
     });
   }
@@ -453,7 +496,14 @@
       verbs: [
         ...(same ? [{ label: '⧉ Same as the answer', hint: `A copy of the answer on ${same.name}`, onclick: () => sameAsAnswer(line) }] : []),
         ...(line.shrink?.length ? [{ label: '🗜 Make a smaller copy for phones…', onclick: () => openShrinkDialog(line.shrink![0]) }] : []),
-        ...(line.convert?.length ? [{ label: repack ? '↻ Repackage it so phones can open it…' : '🔄 Convert them so they play here…', onclick: () => openMediaDialog({ mode: 'convert', ids: line.convert! }) }] : []),
+        ...(line.convert?.length
+          ? [
+              {
+                label: repack ? '↻ Repackage it so phones can open it…' : '🔄 Convert them so they play here…',
+                onclick: () => openMediaDialog({ mode: 'convert', ids: line.convert! }),
+              },
+            ]
+          : []),
       ],
     });
   }
@@ -638,7 +688,15 @@
     const exact = typeof fix === 'object' ? fix : undefined;
     const line =
       untrack(() => checklist).find((l) => (typeof tab === 'number' ? l.round === id : !l.round && l.tab === tab)) ??
-      (exact && id ? { text: '', level: 'warn', tab: typeof tab === 'number' ? tab : (tab as ChecklistLine['tab']), details: [], round: typeof tab === 'number' ? id : undefined } : undefined);
+      (exact && id
+        ? {
+            text: '',
+            level: 'warn',
+            tab: typeof tab === 'number' ? tab : (tab as ChecklistLine['tab']),
+            details: [],
+            round: typeof tab === 'number' ? id : undefined,
+          }
+        : undefined);
     if (line) goFix(line, exact);
   });
 
@@ -680,7 +738,11 @@
     // (A game New made has nothing in it: anything in it now is a change, even one made before its history started
     // a moment after it arrived.)
     // (Nor the sample just as it came: it's kept in Recent games, and ↶ Reopen previous game brings it back.)
-    if (!hasWork(game) || untouchedSample(history) || (savedSinceChange() && !(history.origin.kind === 'new' && !history.entries.length && !history.marks.length)))
+    if (
+      !hasWork(game) ||
+      untouchedSample(history) ||
+      (savedSinceChange() && !(history.origin.kind === 'new' && !history.entries.length && !history.marks.length))
+    )
       return true;
     // A question already up (a file the desktop app was given arrived meanwhile) is answered Cancel: this one replaces it.
     asking?.answer('cancel');
@@ -715,7 +777,9 @@
       // goes to the game's first round, or the screen that adds one.
       void tick().then(() => {
         if (!document.activeElement || document.activeElement === document.body)
-          (document.querySelector<HTMLElement>('nav [data-place^="round:"]') ?? document.querySelector<HTMLElement>('.first-round .sample, .first-round .mode'))?.focus();
+          (
+            document.querySelector<HTMLElement>('nav [data-place^="round:"]') ?? document.querySelector<HTMLElement>('.first-round .sample, .first-round .mode')
+          )?.focus();
       });
     }
   }
@@ -729,10 +793,13 @@
       if (
         !kept &&
         !lossAccepted &&
-        !(await ask(`“${title}” couldn't be kept in Recent games (${inTauri() ? 'storage on this PC' : "this browser's storage"} is full or blocked), so it would be lost. Replace it anyway?`, {
-          ok: 'Replace it',
-          danger: true,
-        }))
+        !(await ask(
+          `“${title}” couldn't be kept in Recent games (${inTauri() ? 'storage on this PC' : "this browser's storage"} is full or blocked), so it would be lost. Replace it anyway?`,
+          {
+            ok: 'Replace it',
+            danger: true,
+          },
+        ))
       )
         return false;
     }
@@ -832,7 +899,9 @@
     openList = null;
     // (Read into memory in one piece, like any game file: one too big for that fails, after a long wait.)
     if (s.size >= MAX_PACK_READ)
-      return void tell(`“${s.name}” is ${(s.size / 1e9).toFixed(1)} GB: a pack over about 2 GB can't be opened (the file itself is likely fine). Open an older save or autosave of it instead.`);
+      return void tell(
+        `“${s.name}” is ${(s.size / 1e9).toFixed(1)} GB: a pack over about 2 GB can't be opened (the file itself is likely fine). Open an older save or autosave of it instead.`,
+      );
     if (opening) return void toast(`Still opening “${opening}”…`);
     try {
       // A big one takes a while to read: the header says so meanwhile, as for any game file.
@@ -869,7 +938,10 @@
     if (isThemeFile(file.name)) return openThemeFile(file);
     // A theme file whose name ends in .json (renamed, or saved so by a browser): its "format" comes first in it.
     if (/\.json$/i.test(file.name)) {
-      const head = await file.slice(0, 400).text().catch(() => '');
+      const head = await file
+        .slice(0, 400)
+        .text()
+        .catch(() => '');
       if (/"format"\s*:\s*"brainrot-theme"/.test(head)) return openThemeFile(file);
     }
     if (opening) return void toast(`Still opening “${opening}”…`);
@@ -1067,7 +1139,8 @@
         bytes >= MAX_PACK_READ
           ? `\n\nBut this pack is ${(bytes / 1e9).toFixed(1)} GB: a pack over about 2 GB can't be opened again. Move big videos to 🌐 links (or trim them) and Save again.`
           : '';
-      if (missing.length || big) void tell(`${where}${big}${missing.length ? `\n\nThese media files were missing and weren't included:\n${missing.join('\n')}` : ''}`);
+      if (missing.length || big)
+        void tell(`${where}${big}${missing.length ? `\n\nThese media files were missing and weren't included:\n${missing.join('\n')}` : ''}`);
       else toast(where);
       return true;
     } catch (e) {
@@ -1093,7 +1166,8 @@
         mark('exported', 'Exported a play-only web page', point);
         const line = exportedLine(r.size, r.where, r.online);
         // (One message, as Save gives: a toast under the missing files' window was cut to one line.)
-        if (r.missing.length) void tell(`${line}\n\nThese media files were missing and weren't included, so the game plays without them:\n${r.missing.join('\n')}`);
+        if (r.missing.length)
+          void tell(`${line}\n\nThese media files were missing and weren't included, so the game plays without them:\n${r.missing.join('\n')}`);
         else toast(line);
       }
     } catch (e) {
@@ -1130,8 +1204,17 @@
         hint: `${inTauri() ? 'Autosaves, how Save names files, how much undo to remember' : 'How much undo to remember'}, motion on stream, update checks, the phone buzzer server`,
         onclick: () => (settings = true),
       },
-      { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves, and the host's during the game", keys: '?', onclick: () => (shortcuts = 'editor') },
-      { label: '📖 How to host (guide) ↗', hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams', onclick: () => openSite(HOSTING_GUIDE) },
+      {
+        label: '⌨ Keyboard shortcuts',
+        hint: "The editor's keys and mouse moves, and the host's during the game",
+        keys: '?',
+        onclick: () => (shortcuts = 'editor'),
+      },
+      {
+        label: '📖 How to host (guide) ↗',
+        hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams',
+        onclick: () => openSite(HOSTING_GUIDE),
+      },
       { label: 'ℹ About', hint: 'Version, updates, links, and where your data is saved', onclick: () => (about = true) },
     ]);
   }
@@ -1149,7 +1232,11 @@
       },
       { label: '🎮 Keys during the game', hint: "The host's keys while a game is played, round by round", onclick: () => (shortcuts = 'game') },
       { label: '💡 Show all tips again', hint: 'The 💡 Tips folds open again, and the first-time notes show again', onclick: tipsAgain },
-      { label: '📖 How to host (guide) ↗', hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams', onclick: () => openSite(HOSTING_GUIDE) },
+      {
+        label: '📖 How to host (guide) ↗',
+        hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams',
+        onclick: () => openSite(HOSTING_GUIDE),
+      },
       { label: 'ℹ About', hint: 'Version, updates, links, and where your data is saved', onclick: () => (about = true) },
     ]);
   }
@@ -1223,13 +1310,31 @@
 
 <div class="editor" aria-busy={replacing || !!opening}>
   <header use:inertWhile={replacing}>
-    <input class="title" bind:value={game.title} aria-label="Game title" placeholder="Untitled Game" title="Game title: shows on stream and names the saved file" data-place="title" />
+    <input
+      class="title"
+      bind:value={game.title}
+      aria-label="Game title"
+      placeholder="Untitled Game"
+      title="Game title: shows on stream and names the saved file"
+      data-place="title"
+    />
     <!-- (Three groups, apart: the title, undo and redo, the game's file.) -->
     <!-- Right-click either one for 🕘 History, as on the game screen. -->
-    <button class="ghost group" onclick={() => undo()} oncontextmenu={historyMenu} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
-    <button class="ghost" onclick={() => redo()} oncontextmenu={historyMenu} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
+    <button
+      class="ghost group"
+      onclick={() => undo()}
+      oncontextmenu={historyMenu}
+      disabled={!history.canUndo}
+      title={history.undoTitle}
+      aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button
+    >
+    <button class="ghost" onclick={() => redo()} oncontextmenu={historyMenu} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"
+      ><span aria-hidden="true">↷</span><span class="word">Redo</span></button
+    >
     <button class="group" onclick={newFile} disabled={!!opening}><span aria-hidden="true">📄</span> New</button>
-    <button onclick={open} disabled={!!opening} bind:this={openBtn} title="Recent games{inTauri() ? ', your saves' : ''} or a game file · Ctrl+O"><span aria-hidden="true">📂</span> Open…</button>
+    <button onclick={open} disabled={!!opening} bind:this={openBtn} title="Recent games{inTauri() ? ', your saves' : ''} or a game file · Ctrl+O"
+      ><span aria-hidden="true">📂</span> Open…</button
+    >
     <!-- (Its name stays Save; the dot and its words say how the file stands, as its tooltip does.) -->
     <button
       class="save-file"
@@ -1239,13 +1344,16 @@
       title={`${fileState.said ? `${fileState.said} · Ctrl+S\n` : ''}${inTauri() ? 'Save a .brainrot game pack (the game and all its media) into BrainrotSaves' : 'Download a .brainrot game pack (the game and all its media)'}${fileState.said ? '' : ' · Ctrl+S'}`}
     >
       <!-- (The dot's room is kept when there's no dot, so the buttons before it don't move as it comes and goes.) -->
-      <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}{' '}<span class="dot" aria-hidden="true"
+      <span aria-hidden="true">💾</span>
+      {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}{' '}<span class="dot" aria-hidden="true"
         >{#if fileState.changed && !saving}•<span class="unsaved">{' '}not saved as a file</span>{/if}</span
       >
     </button>
     <span class="spacer"></span>
     {#if exporting}
-      <span class="muted autosave" role="status" title="Exporting the play-only web page">⬇ Exporting the play-only web page…{packPct !== null ? ` ${packPct}%` : ''}</span>
+      <span class="muted autosave" role="status" title="Exporting the play-only web page"
+        >⬇ Exporting the play-only web page…{packPct !== null ? ` ${packPct}%` : ''}</span
+      >
     {/if}
     {#if !app.storageOk}<JobPill />{/if}
     {#if opening}
@@ -1257,9 +1365,15 @@
       <span
         class="muted autosave saved"
         class:busy={!!jobs.current}
-        title={jobs.current ? undefined : `Every change is autosaved ${keptHere()}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : inTauri() ? '' : ' 💾 Save makes a file of it, to keep, move or share.'}`}
+        title={jobs.current
+          ? undefined
+          : `Every change is autosaved ${keptHere()}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : inTauri() ? '' : ' 💾 Save makes a file of it, to keep, move or share.'}`}
       >
-        <span class="says">{#if inTauri()}✓ Autosaved{app.fileAutosave ? ` · file ${clock(app.fileAutosave.at)}` : ''}{:else}✓ Kept in this browser<span class="wide">{' '}(💾 Save makes a file)</span>{/if}</span>
+        <span class="says"
+          >{#if inTauri()}✓ Autosaved{app.fileAutosave ? ` · file ${clock(app.fileAutosave.at)}` : ''}{:else}✓ Kept in this browser<span class="wide"
+              >{' '}(💾 Save makes a file)</span
+            >{/if}</span
+        >
         <JobPill over />
       </span>
     {:else}
@@ -1269,16 +1383,25 @@
     {/if}
     <!-- (One group that wraps as one, at the right end of whichever line it's on: ▶ Play stays where it always is.) -->
     <div class="end">
-      <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
+      <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"
+        ><span aria-hidden="true">🔍</span><span class="word">Find</span></button
+      >
       <button
         class="ghost help"
         onclick={helpMenu}
         aria-haspopup="menu"
         aria-label="Help: Keyboard shortcuts, Keys during the game, Show all tips again, How to host (guide), About"
         title="⌨ Keyboard shortcuts (?), 🎮 Keys during the game, 💡 Show all tips again, 📖 How to host (guide), ℹ About"
-        ><span aria-hidden="true">❔</span><span class="word">Help</span>{#if movedNew('editor')}<span class="newdot" data-moved-dot aria-hidden="true"></span>{/if}</button
+        ><span aria-hidden="true">❔</span><span class="word">Help</span>{#if movedNew('editor')}<span class="newdot" data-moved-dot aria-hidden="true"
+          ></span>{/if}</button
       >
-      <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
+      <button
+        class="ghost more"
+        onclick={moreMenu}
+        aria-haspopup="menu"
+        aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About"
+        title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button
+      >
       <button
         class="primary play"
         use:oneShot
@@ -1321,7 +1444,9 @@
       {@const prev = previous}
       <div class="data-notice" role="status">
         <span
-          >📂 “{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}{' '}{prev.dropped.length === 1 ? 'Removed the oldest kept game' : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
+          >📂 “{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}{' '}{prev.dropped.length === 1
+              ? 'Removed the oldest kept game'
+              : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
         >
         <button class="small" onclick={() => reopen(prev)}>↶ Reopen previous game</button>
         <button
@@ -1366,316 +1491,364 @@
   {#if naming}<NameDialog onname={naming.answer} exporting={naming.exporting} />{/if}
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
-  <div class="body" use:inertWhile={replacing || !!opening} use:focusRescue>
-    <nav aria-label="Editor" class:more={navMore} style:scroll-padding-bottom="{checkH}px" bind:this={navEl} onscroll={measureNav}>
-      <div class="navlabel muted">Rounds</div>
-      {#each game.rounds as round, i (round.id)}
-        {#if renamingRound === round.id}
-          <input
-            class="tab-name"
-            value={roundName(round, i)}
-            aria-label="Round name"
-            use:focusAll
-            onkeydown={(e) => {
-              if (e.key === 'Enter') renameRound(round, e.currentTarget.value);
-              else if (e.key === 'Escape') renameRound(round, round.name);
-            }}
-            onblur={(e) => renamingRound === round.id && renameRound(round, e.currentTarget.value, !e.relatedTarget)}
-          />
-        {:else}
+    <div class="body" use:inertWhile={replacing || !!opening} use:focusRescue>
+      <nav aria-label="Editor" class:more={navMore} style:scroll-padding-bottom="{checkH}px" bind:this={navEl} onscroll={measureNav}>
+        <div class="navlabel muted">Rounds</div>
+        {#each game.rounds as round, i (round.id)}
+          {#if renamingRound === round.id}
+            <input
+              class="tab-name"
+              value={roundName(round, i)}
+              aria-label="Round name"
+              use:focusAll
+              onkeydown={(e) => {
+                if (e.key === 'Enter') renameRound(round, e.currentTarget.value);
+                else if (e.key === 'Escape') renameRound(round, round.name);
+              }}
+              onblur={(e) => renamingRound === round.id && renameRound(round, e.currentTarget.value, !e.relatedTarget)}
+            />
+          {:else}
+            <button
+              class="round-tab"
+              data-round-tab
+              class:active={tab === i}
+              aria-current={tab === i ? 'page' : undefined}
+              class:drop-before={roundDrop?.id === round.id && !roundDrop.after}
+              class:drop-after={roundDrop?.id === round.id && roundDrop.after}
+              class:lifted={roundDrag === round.id}
+              data-place="round:{round.id}"
+              draggable="true"
+              onclick={(e) => {
+                openTab(i);
+                // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a tab renamed.)
+                e.currentTarget.focus();
+              }}
+              ondblclick={() => (renamingRound = round.id)}
+              onkeydown={(e) => roundTabKey(e, i)}
+              oncontextmenu={(e) => showMenu(e, roundMenu(i))}
+              ondragstart={(e) => {
+                roundDrag = round.id;
+                e.dataTransfer?.setData('text/x-round', round.id);
+                if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+              }}
+              ondragover={(e) => roundOver(e, round)}
+              ondrop={roundDropped}
+              ondragend={() => ((roundDrag = null), (roundDrop = null))}
+              title="{ROUND_MODES[round.mode].label} · drag to reorder, double-click to rename, right-click for more"
+            >
+              <span aria-hidden="true">{ROUND_MODES[round.mode].icon}</span>
+              {roundName(round, i)}
+            </button>
+          {/if}
+        {/each}
+        <!-- Played after the rounds, when the game ends in a tie (once there's a round for it to follow). Until it's
+           turned on it's an optional extra, not a round: muted, ＋ Add tiebreaker, which turns it on in one click. -->
+        {#if game.rounds.length || game.tiebreaker}
           <button
-            class="round-tab"
-            data-round-tab
-            class:active={tab === i}
-            aria-current={tab === i ? 'page' : undefined}
-            class:drop-before={roundDrop?.id === round.id && !roundDrop.after}
-            class:drop-after={roundDrop?.id === round.id && roundDrop.after}
-            class:lifted={roundDrag === round.id}
-            data-place="round:{round.id}"
-            draggable="true"
-            onclick={(e) => {
-              openTab(i);
-              // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a tab renamed.)
-              e.currentTarget.focus();
-            }}
-            ondblclick={() => (renamingRound = round.id)}
-            onkeydown={(e) => roundTabKey(e, i)}
-            oncontextmenu={(e) => showMenu(e, roundMenu(i))}
-            ondragstart={(e) => {
-              roundDrag = round.id;
-              e.dataTransfer?.setData('text/x-round', round.id);
-              if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-            }}
-            ondragover={(e) => roundOver(e, round)}
-            ondrop={roundDropped}
-            ondragend={() => ((roundDrag = null), (roundDrop = null))}
-            title="{ROUND_MODES[round.mode].label} · drag to reorder, double-click to rename, right-click for more"
+            class:active={tab === 'tiebreaker'}
+            class:optional={!game.tiebreaker}
+            aria-current={tab === 'tiebreaker' ? 'page' : undefined}
+            onclick={() => (game.tiebreaker ? openTab('tiebreaker') : addTiebreaker())}
+            oncontextmenu={(e) => showMenu(e, tiebreakerMenu())}
+            title={game.tiebreaker
+              ? 'Played after the last round when players tie for the win'
+              : 'Optional: adds a clue played after the last round when players tie for the win (☑ Include a tiebreaker clue on its page turns it off; Ctrl+Z takes it back)'}
           >
-            <span aria-hidden="true">{ROUND_MODES[round.mode].icon}</span> {roundName(round, i)}
+            {#if game.tiebreaker}<span aria-hidden="true">❓</span> Tiebreaker{:else}<span aria-hidden="true">＋</span> Add tiebreaker
+              <span class="opt">(optional)</span>{/if}
           </button>
         {/if}
-      {/each}
-      <!-- Played after the rounds, when the game ends in a tie (once there's a round for it to follow). Until it's
-           turned on it's an optional extra, not a round: muted, ＋ Add tiebreaker, which turns it on in one click. -->
-      {#if game.rounds.length || game.tiebreaker}
-        <button
-          class:active={tab === 'tiebreaker'}
-          class:optional={!game.tiebreaker}
-          aria-current={tab === 'tiebreaker' ? 'page' : undefined}
-          onclick={() => (game.tiebreaker ? openTab('tiebreaker') : addTiebreaker())}
-          oncontextmenu={(e) => showMenu(e, tiebreakerMenu())}
-          title={game.tiebreaker
-            ? 'Played after the last round when players tie for the win'
-            : 'Optional: adds a clue played after the last round when players tie for the win (☑ Include a tiebreaker clue on its page turns it off; Ctrl+Z takes it back)'}
-        >
-          {#if game.tiebreaker}<span aria-hidden="true">❓</span> Tiebreaker{:else}<span aria-hidden="true">＋</span> Add tiebreaker <span class="opt">(optional)</span>{/if}
-        </button>
-      {/if}
-      <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
-      <div class="navlabel muted">Game</div>
-      <!-- The players, ⚖ Game rules and phone buzzers are set on the ▶ Play screen, before the game: this opens it at 👥
+        <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
+        <div class="navlabel muted">Game</div>
+        <!-- The players, ⚖ Game rules and phone buzzers are set on the ▶ Play screen, before the game: this opens it at 👥
            Players (nothing starts until Start game ▶). With no rounds yet it's quiet, and says to add one first. -->
-      <button
-        class="wrap"
-        data-nav="players"
-        aria-disabled={game.rounds.length ? undefined : 'true'}
-        onclick={() =>
-          game.rounds.length ? show({ tab: 'play', part: 'players' }) : addRoundFirst('That’s on the ▶ Play screen: add a round first (✨ Try a sample game, or pick a kind of round)')}
-        title={game.rounds.length
-          ? 'Set before the show, on the ▶ Play screen. The game doesn’t start until you press Start game ▶.'
-          : 'Add a round first: the players and rules are set on the ▶ Play screen, before the game'}
-        >👥 Players & rules ▶{game.players.length ? ` (${game.players.length})` : ''}</button
-      >
-      <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => openTab('sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
-      <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => openTab('theme')}>🎨 Theme</button>
-      <button
-        class="wrap"
-        class:active={tab === 'tools'}
-        aria-current={tab === 'tools' ? 'page' : undefined}
-        onclick={() => openTab('tools')}
-        title="Wheels, custom dice and 🎭 deals (a secret part for each player)"
-      >
-        🎡 Wheels, Dice & Deals
-      </button>
-      <button
-        class:active={tab === 'cards'}
-        aria-current={tab === 'cards' ? 'page' : undefined}
-        onclick={() => openTab('cards')}
-        title="Private cards made before the show: during play, 🤫 Send a card… sends one to the players you choose, on their phones only, never on stream"
-        >🤫 Cards{game.cards?.length ? ` (${game.cards.length})` : ''}</button
-      >
-      <!-- (Only RPG and board game rounds use stats and items: muted, "(optional)", until one does or it has anything.) -->
-      <button
-        class:active={tab === 'stats'}
-        class:optional={!statsUsed}
-        aria-current={tab === 'stats' ? 'page' : undefined}
-        onclick={() => openTab('stats')}
-        title={statsUsed ? 'Player stats, items and shops (RPG and board game rounds)' : 'Optional: player stats, items and shops, for RPG and board game rounds'}
-        >📊 Stats & Items{#if !statsUsed}{' '}<span class="opt">(optional)</span>{/if}</button
-      >
-      <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => openTab('media')}>🖼️ Media ({libraryMedia(game).length})</button>
-      <button class:active={tab === 'history'} aria-current={tab === 'history' ? 'page' : undefined} onclick={() => openTab('history')} title="Every change to this game: go back to any point">
-        🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
-      </button>
+        <button
+          class="wrap"
+          data-nav="players"
+          aria-disabled={game.rounds.length ? undefined : 'true'}
+          onclick={() =>
+            game.rounds.length
+              ? show({ tab: 'play', part: 'players' })
+              : addRoundFirst('That’s on the ▶ Play screen: add a round first (✨ Try a sample game, or pick a kind of round)')}
+          title={game.rounds.length
+            ? 'Set before the show, on the ▶ Play screen. The game doesn’t start until you press Start game ▶.'
+            : 'Add a round first: the players and rules are set on the ▶ Play screen, before the game'}
+          >👥 Players & rules ▶{game.players.length ? ` (${game.players.length})` : ''}</button
+        >
+        <button
+          class:active={tab === 'sounds'}
+          aria-current={tab === 'sounds' ? 'page' : undefined}
+          onclick={() => openTab('sounds')}
+          title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button
+        >
+        <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => openTab('theme')}>🎨 Theme</button>
+        <button
+          class="wrap"
+          class:active={tab === 'tools'}
+          aria-current={tab === 'tools' ? 'page' : undefined}
+          onclick={() => openTab('tools')}
+          title="Wheels, custom dice and 🎭 deals (a secret part for each player)"
+        >
+          🎡 Wheels, Dice & Deals
+        </button>
+        <button
+          class:active={tab === 'cards'}
+          aria-current={tab === 'cards' ? 'page' : undefined}
+          onclick={() => openTab('cards')}
+          title="Private cards made before the show: during play, 🤫 Send a card… sends one to the players you choose, on their phones only, never on stream"
+          >🤫 Cards{game.cards?.length ? ` (${game.cards.length})` : ''}</button
+        >
+        <!-- (Only RPG and board game rounds use stats and items: muted, "(optional)", until one does or it has anything.) -->
+        <button
+          class:active={tab === 'stats'}
+          class:optional={!statsUsed}
+          aria-current={tab === 'stats' ? 'page' : undefined}
+          onclick={() => openTab('stats')}
+          title={statsUsed
+            ? 'Player stats, items and shops (RPG and board game rounds)'
+            : 'Optional: player stats, items and shops, for RPG and board game rounds'}
+          >📊 Stats & Items{#if !statsUsed}{' '}<span class="opt">(optional)</span>{/if}</button
+        >
+        <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => openTab('media')}
+          >🖼️ Media ({libraryMedia(game).length})</button
+        >
+        <button
+          class:active={tab === 'history'}
+          aria-current={tab === 'history' ? 'page' : undefined}
+          onclick={() => openTab('history')}
+          title="Every change to this game: go back to any point"
+        >
+          🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
+        </button>
 
-      <!-- Pinned to the bottom of the sidebar, its heading always in view however many rounds there are (a long list
+        <!-- Pinned to the bottom of the sidebar, its heading always in view however many rounds there are (a long list
            scrolls in its own box). None for a new game with no rounds: the page itself says what to do. Orange only when
            something needs fixing (notes alone are grey). -->
-      {#if game.rounds.length || lines.length}
-        <div class="problems" class:warn={warns > 0} class:ok={!lines.length} class:below={navMore} bind:offsetHeight={checkH}>
-          {#if lines.length}
-            <!-- Its heading folds it (folded to start with on a short window, where its lines would cover the tabs above),
+        {#if game.rounds.length || lines.length}
+          <div class="problems" class:warn={warns > 0} class:ok={!lines.length} class:below={navMore} bind:offsetHeight={checkH}>
+            {#if lines.length}
+              <!-- Its heading folds it (folded to start with on a short window, where its lines would cover the tabs above),
                  still counting what's left. -->
-            <button class="navlabel fold" aria-expanded={!folded} aria-controls="checklist-lines" onclick={foldChecklist} title={folded ? 'Show the checklist' : 'Fold the checklist'}
-              >Checklist{#if warns}{' · '}⚠ {warns}{/if}{#if notes}{' · '}ℹ {notes}{/if} <span aria-hidden="true">{folded ? '▸' : '▾'}</span></button
-            >
-            <div class="problem-list" id="checklist-lines" hidden={folded}>
-              {#each lines as line}
-                <!-- (The fix it offers beside it: ⧉ for an empty card, 🔄 or ↻ to convert, 🗜 a smaller copy; never naming a
+              <button
+                class="navlabel fold"
+                aria-expanded={!folded}
+                aria-controls="checklist-lines"
+                onclick={foldChecklist}
+                title={folded ? 'Show the checklist' : 'Fold the checklist'}
+                >Checklist{#if warns}{' · '}⚠ {warns}{/if}{#if notes}{' · '}ℹ {notes}{/if} <span aria-hidden="true">{folded ? '▸' : '▾'}</span></button
+              >
+              <div class="problem-list" id="checklist-lines" hidden={folded}>
+                {#each lines as line}
+                  <!-- (The fix it offers beside it: ⧉ for an empty card, 🔄 or ↻ to convert, 🗜 a smaller copy; never naming a
                      file, as the line doesn't.) -->
-                {@const repack = !!line.convert?.length && line.convert.every((id) => (v => typeof v === 'object' && v.is === 'plays')(verdictOf(id)))}
-                {@const same = line.answerCard && answerCardAt(game, line.answerCard)}
-                <div class="problem-row">
-                  <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
-                    {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
-                  </button>
-                  {#if same}
+                  {@const repack = !!line.convert?.length && line.convert.every((id) => ((v) => typeof v === 'object' && v.is === 'plays')(verdictOf(id)))}
+                  {@const same = line.answerCard && answerCardAt(game, line.answerCard)}
+                  <div class="problem-row">
                     <button
-                      class="small ghost"
-                      data-checklist-same
-                      onclick={() => sameAsAnswer(line)}
-                      title="⧉ Same as the answer: a copy of the answer on {same.name}"
-                      aria-label="Same as the answer: a copy of the answer on {same.name}">⧉</button
+                      class="problem {line.level}"
+                      onclick={() => goFix(line)}
+                      oncontextmenu={(e) => showMenu(e, checkMenu(line))}
+                      title={line.details.length > 1 ? line.details.join('\n') : undefined}
                     >
-                  {/if}
-                  {#if line.convert?.length}
-                    <button
-                      class="small ghost"
-                      data-checklist-convert
-                      onclick={() => openMediaDialog({ mode: 'convert', ids: line.convert! })}
-                      title={repack ? 'Repackage it so phones can open it (nothing lost)' : 'Convert them so they play in this browser'}
-                      aria-label={repack ? 'Repackage it so phones can open it' : 'Convert them so they play in this browser'}>{repack ? '↻' : '🔄'}</button
-                    >
-                  {:else if line.shrink?.length}
-                    <button class="small ghost" data-checklist-shrink onclick={() => openShrinkDialog(line.shrink![0])} title="Make a smaller copy for phones" aria-label="Make a smaller copy for phones">🗜</button>
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          {:else}
-            ✓ Ready to play
-          {/if}
-        </div>
-      {/if}
-    </nav>
-
-    <main bind:this={mainEl}>
-      <h1 class="sr-only">{game.title || 'Untitled Game'}</h1>
-      <!-- A game that's opened or new starts every editor afresh: no undo history carries over from the last one
-           (another save of the same game has the same round ids). -->
-      {#key game}
-        {#if tab === 'sounds'}
-          <SoundsPanel />
-        {:else if tab === 'stats'}
-          <StatsItemsEditor />
-        {:else if tab === 'tiebreaker'}
-          <TiebreakerEditor />
-        {:else if tab === 'media'}
-          <MediaLibrary />
-        {:else if tab === 'tools'}
-          <ToolsEditor />
-        {:else if tab === 'cards'}
-          <CardsEditor />
-        {:else if tab === 'theme'}
-          <ThemeEditor round={lastRound} bind:incoming={incomingTheme} />
-        {:else if tab === 'history'}
-          <HistoryPanel />
-        {:else if game.rounds[tab]}
-          {@const i = tab}
-          {@const round = game.rounds[i]}
-          {#key round.id}
-            <!-- The header is the same width on every round's page, so its buttons stay put from tab to tab. Under it a
-                 Final's fields read best at the pages' width (FinalEditor keeps them there); boards, maps and the
-                 slide of a slides round or a Final fill the screen. -->
-            <RoundActions
-              {round}
-              index={i}
-              count={game.rounds.length}
-              onmove={(d) => moveRound(i, i + d)}
-              onduplicate={() => duplicateRound(i)}
-              ondelete={() => removeRound(i)}
-              ontest={ontest && (() => ontest(i))}
-              menu={() => roundMenu(i)}
-            />
-            {#if isBoard(round)}
-              <RoundEditor {round} />
-            {:else if isFinal(round)}
-              <FinalEditor {round} />
-            {:else if isRpg(round)}
-              <RpgRoundEditor {round} />
-            {:else if isBoardGame(round)}
-              <BoardGameEditor {round} />
-            {:else if isSlides(round)}
-              <SlidesEditor {round} />
-            {/if}
-          {/key}
-        {:else if !game.rounds.length}
-          <div class="first-round">
-            <!-- What this is, for someone who came by a link with nothing else to go on (one line, so the cards and 📂 Open a
-                 game… still fit a laptop's screen: in a narrower window its words are cut short, all of them in its
-                 tooltip). Online, where the desktop app and the file to keep are from (always whole). -->
-            <p class="muted small what" title={`Brainrot Games Maker: build a game show, host it on stream, players buzz in from their phones.${inTauri() ? '' : ' Nothing to install.'}`}>
-              <span class="words">🎮 <b>Brainrot Games Maker</b>: build a game show, host it on stream, players buzz in from their phones.{#if !inTauri()}{' '}Nothing to install.{/if}</span>
-              {#if onlineCopy()}<a href={RELEASES} target="_blank" rel="noreferrer" title="The desktop app, or the game maker as one file to keep and use offline (GitHub)">Get the app ↗</a>{/if}
-            </p>
-            <h2>Add your first round</h2>
-            <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
-            <!-- (One short line, so the cards and 📂 Open a game… fit a laptop's screen.) The one thing a first-time browser
-                 user can lose: the game lives in this browser until it's saved as a file. -->
-            {#if !inTauri() && app.storageOk}
-              <p class="muted small">New here? <b>✨ Try the sample</b>, then <b>▶ Play</b> it. Your work is kept in this browser; <b>💾 Save</b> makes a file.</p>
-            {:else}
-              <p class="muted small">New here? <b>✨ Try the sample</b>, then <b>▶ Play</b> it.</p>
-            {/if}
-            {#if !inTauri()}
-              {#if !app.storageOk}
-                <p class="small warn">⚠ This browser isn't keeping your game (its storage is blocked or full): <b>💾 Save</b> it to a file before you close the tab.</p>
-              {/if}
-            {:else}
-              <!-- (Where the desktop app keeps things: ℹ About shows the folders, with a button to open each.) -->
-              <p class="muted small data-line">
-                Brainrot Games Maker saves your autosave and media in a folder on this PC as you work.
-                <button class="small" onclick={() => (about = true)}>ℹ See where</button>
-                <b>💾 Save</b> makes a game file to move or share.
-              </p>
-            {/if}
-            <button class="sample" use:oneShot onclick={showSample} onkeydown={cardKey}>
-              <span class="icon" aria-hidden="true">✨</span>
-              <b>Try a sample game</b>
-              <span class="muted small">An introduction, a small board, an adventure, a board game and a Final, all filled in and ready to play</span>
-            </button>
-            <!-- A card a mode: a blank round, and at most two templates to start from (＋ Add round has them all). -->
-            <div class="modes" role="group" aria-label="Kinds of round (the arrow keys move between them)">
-              {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
-                {@const starts = firstTemplates(mode as RoundMode)}
-                <div class="card">
-                  <button class="mode" use:oneShot onclick={() => addRound(mode as RoundMode)} onkeydown={cardKey}>
-                    <span class="icon" aria-hidden="true">{m.icon}</span>
-                    <b>{m.label}</b>
-                    <span class="muted small">{m.hint}</span>
-                    {#if mode === 'board'}<span class="muted small">Clues in a spreadsheet already? <b>📥 Import clues…</b> on the board brings them in.</span>{/if}
-                  </button>
-                  {#if starts.length}
-                    <div class="from muted small">
-                      Start from:
-                      {#each starts as t (t.label)}
-                        <button class="small" use:oneShot title={t.hint} onclick={() => showNew(addTemplate(game, t))}>{t.label}</button>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              {/each}
-            </div>
-            <!-- Someone sent a game file, or back for one played here before. -->
-            <div class="open-line muted small">
-              <span>Have a game file?</span>
-              <button class="small" onclick={open} disabled={!!opening}><span aria-hidden="true">📂</span> Open a game…</button>
-              <span class="not-touch">or drop it here.</span>
-              {#if recentFirst.length}
-                <span class="recent-head">Recent:</span>
-                {#each recentFirst as r (r.key)}
-                  <button
-                    class="small ghost"
-                    use:oneShot
-                    onclick={() => reopen(r)}
-                    title="Reopen it, with its undo history (kept {keptHere()})">{r.title} · {r.rounds} round{r.rounds === 1 ? '' : 's'} · {keptWhen(r.closedAt)}</button
-                  >
+                      {line.level === 'warn' ? '⚠' : 'ℹ'}
+                      {line.text}
+                    </button>
+                    {#if same}
+                      <button
+                        class="small ghost"
+                        data-checklist-same
+                        onclick={() => sameAsAnswer(line)}
+                        title="⧉ Same as the answer: a copy of the answer on {same.name}"
+                        aria-label="Same as the answer: a copy of the answer on {same.name}">⧉</button
+                      >
+                    {/if}
+                    {#if line.convert?.length}
+                      <button
+                        class="small ghost"
+                        data-checklist-convert
+                        onclick={() => openMediaDialog({ mode: 'convert', ids: line.convert! })}
+                        title={repack ? 'Repackage it so phones can open it (nothing lost)' : 'Convert them so they play in this browser'}
+                        aria-label={repack ? 'Repackage it so phones can open it' : 'Convert them so they play in this browser'}>{repack ? '↻' : '🔄'}</button
+                      >
+                    {:else if line.shrink?.length}
+                      <button
+                        class="small ghost"
+                        data-checklist-shrink
+                        onclick={() => openShrinkDialog(line.shrink![0])}
+                        title="Make a smaller copy for phones"
+                        aria-label="Make a smaller copy for phones">🗜</button
+                      >
+                    {/if}
+                  </div>
                 {/each}
-              {/if}
-            </div>
+              </div>
+            {:else}
+              ✓ Ready to play
+            {/if}
           </div>
         {/if}
-      {/key}
-    </main>
-  </div>
-  {#snippet failed(error: unknown, reset: () => void)}
-    <!-- A game the editor can't show (a file damaged in a way nothing caught): say so, with the way back, instead of a
-         half-drawn screen. -->
-    <div class="body broken" role="alert">
-      <h2>This game can't be shown</h2>
-      <p class="muted selectable">{error instanceof Error ? error.message : String(error)}</p>
-      <div class="row">
-        {#if previous}
-          {@const prev = previous}
-          <button class="primary" onclick={async () => (await reopen(prev), reset())}>↶ Back to “{prev.title}”</button>
-        {/if}
-        <button onclick={async () => (await newFile(), reset())}>Start a new game</button>
-        <!-- (On the first round's tab, or 🔊 Sounds if that's the one that failed: one tab it can't show leaves the
-             others in reach.) -->
-        <button class="ghost" onclick={() => ((tab = tab === 0 ? 'sounds' : 0), reset())}>Try again</button>
-      </div>
+      </nav>
+
+      <main bind:this={mainEl}>
+        <h1 class="sr-only">{game.title || 'Untitled Game'}</h1>
+        <!-- A game that's opened or new starts every editor afresh: no undo history carries over from the last one
+           (another save of the same game has the same round ids). -->
+        {#key game}
+          {#if tab === 'sounds'}
+            <SoundsPanel />
+          {:else if tab === 'stats'}
+            <StatsItemsEditor />
+          {:else if tab === 'tiebreaker'}
+            <TiebreakerEditor />
+          {:else if tab === 'media'}
+            <MediaLibrary />
+          {:else if tab === 'tools'}
+            <ToolsEditor />
+          {:else if tab === 'cards'}
+            <CardsEditor />
+          {:else if tab === 'theme'}
+            <ThemeEditor round={lastRound} bind:incoming={incomingTheme} />
+          {:else if tab === 'history'}
+            <HistoryPanel />
+          {:else if game.rounds[tab]}
+            {@const i = tab}
+            {@const round = game.rounds[i]}
+            {#key round.id}
+              <!-- The header is the same width on every round's page, so its buttons stay put from tab to tab. Under it a
+                 Final's fields read best at the pages' width (FinalEditor keeps them there); boards, maps and the
+                 slide of a slides round or a Final fill the screen. -->
+              <RoundActions
+                {round}
+                index={i}
+                count={game.rounds.length}
+                onmove={(d) => moveRound(i, i + d)}
+                onduplicate={() => duplicateRound(i)}
+                ondelete={() => removeRound(i)}
+                ontest={ontest && (() => ontest(i))}
+                menu={() => roundMenu(i)}
+              />
+              {#if isBoard(round)}
+                <RoundEditor {round} />
+              {:else if isFinal(round)}
+                <FinalEditor {round} />
+              {:else if isRpg(round)}
+                <RpgRoundEditor {round} />
+              {:else if isBoardGame(round)}
+                <BoardGameEditor {round} />
+              {:else if isSlides(round)}
+                <SlidesEditor {round} />
+              {/if}
+            {/key}
+          {:else if !game.rounds.length}
+            <div class="first-round">
+              <!-- What this is, for someone who came by a link with nothing else to go on (one line, so the cards and 📂 Open a
+                 game… still fit a laptop's screen: in a narrower window its words are cut short, all of them in its
+                 tooltip). Online, where the desktop app and the file to keep are from (always whole). -->
+              <p
+                class="muted small what"
+                title={`Brainrot Games Maker: build a game show, host it on stream, players buzz in from their phones.${inTauri() ? '' : ' Nothing to install.'}`}
+              >
+                <span class="words"
+                  >🎮 <b>Brainrot Games Maker</b>: build a game show, host it on stream, players buzz in from their phones.{#if !inTauri()}{' '}Nothing to
+                    install.{/if}</span
+                >
+                {#if onlineCopy()}<a
+                    href={RELEASES}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="The desktop app, or the game maker as one file to keep and use offline (GitHub)">Get the app ↗</a
+                  >{/if}
+              </p>
+              <h2>Add your first round</h2>
+              <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
+              <!-- (One short line, so the cards and 📂 Open a game… fit a laptop's screen.) The one thing a first-time browser
+                 user can lose: the game lives in this browser until it's saved as a file. -->
+              {#if !inTauri() && app.storageOk}
+                <p class="muted small"
+                  >New here? <b>✨ Try the sample</b>, then <b>▶ Play</b> it. Your work is kept in this browser; <b>💾 Save</b> makes a file.</p
+                >
+              {:else}
+                <p class="muted small">New here? <b>✨ Try the sample</b>, then <b>▶ Play</b> it.</p>
+              {/if}
+              {#if !inTauri()}
+                {#if !app.storageOk}
+                  <p class="small warn"
+                    >⚠ This browser isn't keeping your game (its storage is blocked or full): <b>💾 Save</b> it to a file before you close the tab.</p
+                  >
+                {/if}
+              {:else}
+                <!-- (Where the desktop app keeps things: ℹ About shows the folders, with a button to open each.) -->
+                <p class="muted small data-line">
+                  Brainrot Games Maker saves your autosave and media in a folder on this PC as you work.
+                  <button class="small" onclick={() => (about = true)}>ℹ See where</button>
+                  <b>💾 Save</b> makes a game file to move or share.
+                </p>
+              {/if}
+              <button class="sample" use:oneShot onclick={showSample} onkeydown={cardKey}>
+                <span class="icon" aria-hidden="true">✨</span>
+                <b>Try a sample game</b>
+                <span class="muted small">An introduction, a small board, an adventure, a board game and a Final, all filled in and ready to play</span>
+              </button>
+              <!-- A card a mode: a blank round, and at most two templates to start from (＋ Add round has them all). -->
+              <div class="modes" role="group" aria-label="Kinds of round (the arrow keys move between them)">
+                {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
+                  {@const starts = firstTemplates(mode as RoundMode)}
+                  <div class="card">
+                    <button class="mode" use:oneShot onclick={() => addRound(mode as RoundMode)} onkeydown={cardKey}>
+                      <span class="icon" aria-hidden="true">{m.icon}</span>
+                      <b>{m.label}</b>
+                      <span class="muted small">{m.hint}</span>
+                      {#if mode === 'board'}<span class="muted small">Clues in a spreadsheet already? <b>📥 Import clues…</b> on the board brings them in.</span
+                        >{/if}
+                    </button>
+                    {#if starts.length}
+                      <div class="from muted small">
+                        Start from:
+                        {#each starts as t (t.label)}
+                          <button class="small" use:oneShot title={t.hint} onclick={() => showNew(addTemplate(game, t))}>{t.label}</button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+              <!-- Someone sent a game file, or back for one played here before. -->
+              <div class="open-line muted small">
+                <span>Have a game file?</span>
+                <button class="small" onclick={open} disabled={!!opening}><span aria-hidden="true">📂</span> Open a game…</button>
+                <span class="not-touch">or drop it here.</span>
+                {#if recentFirst.length}
+                  <span class="recent-head">Recent:</span>
+                  {#each recentFirst as r (r.key)}
+                    <button class="small ghost" use:oneShot onclick={() => reopen(r)} title="Reopen it, with its undo history (kept {keptHere()})"
+                      >{r.title} · {r.rounds} round{r.rounds === 1 ? '' : 's'} · {keptWhen(r.closedAt)}</button
+                    >
+                  {/each}
+                {/if}
+              </div>
+            </div>
+          {/if}
+        {/key}
+      </main>
     </div>
-  {/snippet}
+    {#snippet failed(error: unknown, reset: () => void)}
+      <!-- A game the editor can't show (a file damaged in a way nothing caught): say so, with the way back, instead of a
+         half-drawn screen. -->
+      <div class="body broken" role="alert">
+        <h2>This game can't be shown</h2>
+        <p class="muted selectable">{error instanceof Error ? error.message : String(error)}</p>
+        <div class="row">
+          {#if previous}
+            {@const prev = previous}
+            <button class="primary" onclick={async () => (await reopen(prev), reset())}>↶ Back to “{prev.title}”</button>
+          {/if}
+          <button onclick={async () => (await newFile(), reset())}>Start a new game</button>
+          <!-- (On the first round's tab, or 🔊 Sounds if that's the one that failed: one tab it can't show leaves the
+             others in reach.) -->
+          <button class="ghost" onclick={() => ((tab = tab === 0 ? 'sounds' : 0), reset())}>Try again</button>
+        </div>
+      </div>
+    {/snippet}
   </svelte:boundary>
   <HistoryNotice quiet={tab === 'history'} />
 </div>

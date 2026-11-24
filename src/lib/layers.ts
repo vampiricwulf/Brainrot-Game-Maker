@@ -120,11 +120,9 @@ export function restack<T extends { id: string; zIndex: number }>(els: T[], ids:
   else {
     out = [...list];
     if (dir === 'forward') {
-      for (let i = out.length - 2; i >= 0; i--)
-        if (pick.has(out[i].id) && !pick.has(out[i + 1].id)) [out[i], out[i + 1]] = [out[i + 1], out[i]];
+      for (let i = out.length - 2; i >= 0; i--) if (pick.has(out[i].id) && !pick.has(out[i + 1].id)) [out[i], out[i + 1]] = [out[i + 1], out[i]];
     } else {
-      for (let i = 1; i < out.length; i++)
-        if (pick.has(out[i].id) && !pick.has(out[i - 1].id)) [out[i], out[i - 1]] = [out[i - 1], out[i]];
+      for (let i = 1; i < out.length; i++) if (pick.has(out[i].id) && !pick.has(out[i - 1].id)) [out[i], out[i - 1]] = [out[i - 1], out[i]];
     }
   }
   out.forEach((e, i) => (e.zIndex = i));

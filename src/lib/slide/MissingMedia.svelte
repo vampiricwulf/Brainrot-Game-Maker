@@ -13,7 +13,18 @@
       id,
       untrack(() => role),
       { play: none, pause: none, seek: none, setVolume: none, setMuted: none, setLoop: none },
-      { label: untrack(() => label), kind: untrack(() => kind), paused: true, time: 0, duration: 0, volume: 1, muted: false, loop: false, failed: true, missing: true },
+      {
+        label: untrack(() => label),
+        kind: untrack(() => kind),
+        paused: true,
+        time: 0,
+        duration: 0,
+        volume: 1,
+        muted: false,
+        loop: false,
+        failed: true,
+        missing: true,
+      },
     );
     return () => unregisterMedia(id);
   });

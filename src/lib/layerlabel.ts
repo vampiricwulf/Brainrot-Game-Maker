@@ -12,9 +12,29 @@ export type Align = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom' 
  * all, and in the slide editor a text box there, the whole slide copied or pasted over, and the background).
  */
 export type LayerAction =
-  | 'front' | 'forward' | 'backward' | 'back' | 'duplicate' | 'lock' | 'unlock' | 'hide' | 'delete'
-  | 'cut' | 'copy' | 'paste' | 'edit' | 'edit-image' | 'edit-media' | 'rename' | 'replace' | `align-${Align}`
-  | 'select-all' | 'copy-slide' | 'paste-over' | 'add-text' | 'background';
+  | 'front'
+  | 'forward'
+  | 'backward'
+  | 'back'
+  | 'duplicate'
+  | 'lock'
+  | 'unlock'
+  | 'hide'
+  | 'delete'
+  | 'cut'
+  | 'copy'
+  | 'paste'
+  | 'edit'
+  | 'edit-image'
+  | 'edit-media'
+  | 'rename'
+  | 'replace'
+  | `align-${Align}`
+  | 'select-all'
+  | 'copy-slide'
+  | 'paste-over'
+  | 'add-text'
+  | 'background';
 
 /** The one notice for an action that left locked items alone (delete, cut, align, nudge). */
 export function lockedNote(n: number, noun = 'item'): string {

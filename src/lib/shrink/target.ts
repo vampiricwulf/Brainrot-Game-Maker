@@ -56,7 +56,8 @@ export class BlobParts {
       next.push({ at: patch.at, end, src: patch.data, off: 0 });
       pieces = next.sort((a, b) => a.at - b.at);
     }
-    const cut = (x: Piece) => (x.src instanceof Blob ? x.src.slice(x.off, x.off + x.end - x.at) : (x.src.subarray(x.off, x.off + x.end - x.at) as Uint8Array<ArrayBuffer>));
+    const cut = (x: Piece) =>
+      x.src instanceof Blob ? x.src.slice(x.off, x.off + x.end - x.at) : (x.src.subarray(x.off, x.off + x.end - x.at) as Uint8Array<ArrayBuffer>);
     return new Blob(pieces.map(cut), { type });
   }
 }
@@ -65,7 +66,10 @@ export class BlobParts {
  * A StreamTarget that writes into Blob parts of `chunkSize` (mediabunny's own `mb.StreamTarget`, passed in so this file
  * never loads it): `blob(type)` is the file once the output is finalized.
  */
-export function blobTarget(mb: { StreamTarget: typeof StreamTarget }, chunkSize = 16 * MiB): { target: StreamTarget; blob(type: string): Blob; bytes(): number } {
+export function blobTarget(
+  mb: { StreamTarget: typeof StreamTarget },
+  chunkSize = 16 * MiB,
+): { target: StreamTarget; blob(type: string): Blob; bytes(): number } {
   const parts = new BlobParts();
   const writable = new WritableStream<StreamTargetChunk>({ write: (c) => parts.write(c.data, c.position) });
   return { target: new mb.StreamTarget(writable, { chunked: true, chunkSize }), blob: (type) => parts.blob(type), bytes: () => parts.bytes() };

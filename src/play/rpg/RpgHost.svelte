@@ -17,7 +17,25 @@
   import { offerIn } from '../host/offered.svelte';
   import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session } from '../../lib/model';
   import {
-    activeParty, addScreenBeside, classLabel, DIAGONALS_OFF, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, carryObjects, copyLook, screenElements, screenAt,
+    activeParty,
+    addScreenBeside,
+    classLabel,
+    DIAGONALS_OFF,
+    occupiedScreens,
+    DIR_ARROW,
+    DIR_NAME,
+    DIR_VEC,
+    DIRS,
+    exitOf,
+    findIn,
+    focusRef,
+    keepScreen,
+    moveTo,
+    nameParty,
+    carryObjects,
+    copyLook,
+    screenElements,
+    screenAt,
     screenSlide,
   } from '../../lib/rpg';
   import LiveScreenEditor from './LiveScreenEditor.svelte';
@@ -36,8 +54,26 @@
   import InlineAsk from '../host/InlineAsk.svelte';
   import CardOffers from '../host/CardOffers.svelte';
   import {
-    addLive, centredOn, focusParty, hiddenNames, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, regroupAll, rpgNow, selectionWords, sendPartiesOn, splitOff, START_FIRST,
-    staysWords, stepParty, toggleMap, type RpgAsk, type StagePoint,
+    addLive,
+    centredOn,
+    focusParty,
+    hiddenNames,
+    joinPartyNow,
+    liveText,
+    moveChoices,
+    objectAt,
+    objectMenu,
+    regroupAll,
+    rpgNow,
+    selectionWords,
+    sendPartiesOn,
+    splitOff,
+    START_FIRST,
+    staysWords,
+    stepParty,
+    toggleMap,
+    type RpgAsk,
+    type StagePoint,
   } from './hostops';
   import { dropHover } from '../dragdrop.svelte';
   import { editScreen, screenEdit } from './screenedit.svelte';
@@ -105,7 +141,16 @@
   const st = $derived(now.st);
   const here = $derived(st && world ? findIn(world, focusRef(st) ?? { map: '', screen: '' }) : null);
   const party = $derived(st ? activeParty(st) : undefined);
-  const ctx = $derived<RunContext>({ game, session, live: app.live, world, st, selected, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session) });
+  const ctx = $derived<RunContext>({
+    game,
+    session,
+    live: app.live,
+    world,
+    st,
+    selected,
+    teams: buzzerOn(game.settings) && teamsOn(game.settings),
+    offerCard: offerIn(session),
+  });
   const obj = $derived(object ? objectAt(game, session, object) : null);
   const objects = $derived(here && st ? screenElements(st, here.screen, false).filter((e) => e.role || e.name) : []);
   /** One window (viewers see this panel): what it calls the secret objects here, never their names ("🙈 Hidden object 1"). */
@@ -135,7 +180,6 @@
   /** A screen picked on the host map, waiting for "Move here". */
   let picked = $state<ScreenRef | null>(null);
   const pickedFound = $derived(picked && world ? findIn(world, picked) : null);
-
 
   const variantId = $derived(here && st?.variant?.[here.screen.id]);
   /** The look on now when it isn't the screen's own (✎ Improvise's folded line says it). */
@@ -287,7 +331,10 @@
     const w = world;
     const name = w.maps.find((m) => m.id === ref.map)?.screens.find((s) => s.id === ref.screen)?.name ?? 'the screen';
     // (With the items, shops and files it uses that the editor's game hasn't got: made during the show.)
-    toast(step(`Kept “${name}” from the show`, () => keepScreen(game, app.game, w.id, ref, st, (kept) => bringAlong(game, app.game, kept)), { during: 'play' }), 4000);
+    toast(
+      step(`Kept “${name}” from the show`, () => keepScreen(game, app.game, w.id, ref, st, (kept) => bringAlong(game, app.game, kept)), { during: 'play' }),
+      4000,
+    );
   }
 
   const PAD: (Dir8 | null)[] = ['nw', 'n', 'ne', 'w', null, 'e', 'sw', 's', 'se'];
@@ -311,14 +358,25 @@
     selected = [];
     // The new party is the one followed now: the pad (and the keys) move it.
     const pt = st && activeParty(st);
-    if (pt) toast(`${nameList(pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'))} ${pt.members.length > 1 ? 'are' : 'is'} ${pt.name} now: the pad moves them`, 3000);
+    if (pt)
+      toast(
+        `${nameList(pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'))} ${pt.members.length > 1 ? 'are' : 'is'} ${pt.name} now: the pad moves them`,
+        3000,
+      );
   }
 
   /** Right-click a screen on the minimap: move the party (or some players, or another party) there. */
   function mapMenu(e: MouseEvent, ref: ScreenRef, screen: Screen): void {
     if (!st) return;
     picked = ref;
-    showMenu(e, menuOf({ heading: screen.name, verbs: moveChoices(session, st, selected, moveHere), extras: [{ label: '⤢ Full map…', onclick: () => ((picked = null), (mapOpen = true)) }] }));
+    showMenu(
+      e,
+      menuOf({
+        heading: screen.name,
+        verbs: moveChoices(session, st, selected, moveHere),
+        extras: [{ label: '⤢ Full map…', onclick: () => ((picked = null), (mapOpen = true)) }],
+      }),
+    );
   }
 
   /** Move the party (or these players) to the screen picked on the minimap. */
@@ -365,7 +423,12 @@
       menuOf({
         heading: `${pt.name} (${nameList(pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'))})`,
         verbs: [
-          { label: '🎥 Follow', disabled: pt.id === party?.id, onclick: () => focusParty(game, session, pt.id), hint: 'Viewers see its screen; the pad moves it' },
+          {
+            label: '🎥 Follow',
+            disabled: pt.id === party?.id,
+            onclick: () => focusParty(game, session, pt.id),
+            hint: 'Viewers see its screen; the pad moves it',
+          },
           { label: '▦ Show in split view', disabled: s.parties.length < 2 || !!s.split, onclick: () => (s.split = true) },
           { label: '🤝 Regroup everyone with this party', disabled: s.parties.length < 2, onclick: () => regroupAll(game, session, pt.id) },
           { label: '🗺 Move this party…', onclick: () => ((mapSend = { players: [...pt.members], label: pt.name }), (mapOpen = true)) },
@@ -433,7 +496,9 @@
           }}
           ondragleave={() => dropHover.at === `party:${pt.id}` && (dropHover.at = null)}
           ondrop={(e) => dropOnParty(e, pt)}
-          title="Follow this party (the pad moves it): {nameList(pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'))}. Right-click for more; drop a player here to add them"
+          title="Follow this party (the pad moves it): {nameList(
+            pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'),
+          )}. Right-click for more; drop a player here to add them"
         >
           {pt.name} ({pt.members.length})
         </button>
@@ -441,7 +506,8 @@
       <button class="small" onclick={split} title="The selected players become their own party">✂ Split off selected</button>
       {#if st.parties.length > 1}
         <button class="small" onclick={() => regroupAll(game, session)} title="G: everyone back together, here">🤝 Regroup</button>
-        <button class="small" class:on={st.split} aria-pressed={!!st.split} onclick={toggleSplit} title="Show every party's screen at once">▦ Split view</button>
+        <button class="small" class:on={st.split} aria-pressed={!!st.split} onclick={toggleSplit} title="Show every party's screen at once">▦ Split view</button
+        >
       {/if}
       {#if game.shops?.length}
         <select
@@ -458,7 +524,13 @@
           {#each game.shops as sh (sh.id)}<option value={sh.id}>{sh.name}</option>{/each}
         </select>
       {/if}
-      <button class="small" class:on={st.mapShown} aria-pressed={!!st.mapShown} onclick={() => toggleMap(game, session)} title="V: show the map to viewers (on the audience's screen), or hide it">🗺 Map on stream</button>
+      <button
+        class="small"
+        class:on={st.mapShown}
+        aria-pressed={!!st.mapShown}
+        onclick={() => toggleMap(game, session)}
+        title="V: show the map to viewers (on the audience's screen), or hide it">🗺 Map on stream</button
+      >
     </div>
 
     <!-- What's selected, players and objects, with one Clear selection for both: one line (the stage keeps its size as it
@@ -495,43 +567,77 @@
     <div class="main" bind:this={mainEl}>
       <!-- With a card open, the pad and the map stay in sight (pinned at the top) while the panel scrolls to the card's foot. -->
       <div class="nav" class:pinned={!!obj}>
-      <div class="pad" role="group" aria-label="Move the party">
-        {#each PAD as d, i (i)}
-          {#if d && here}
-            {@const e = exitOf(here.map, here.screen, d)}
-            {@const dest = e.kind === 'open' || e.kind === 'warp' ? findIn(world, e.to) : null}
-            <button
-              class="dir"
-              class:blocked={e.kind === 'blocked'}
-              disabled={e.kind === 'none'}
-              onclick={() => go(d)}
-              title="{DIR_NAME[d]}: {dest ? dest.screen.name : e.kind === 'blocked' ? `blocked${e.note ? ` (${e.note})` : ''}` : d.length === 2 && !here.map.diagonals ? DIAGONALS_OFF : 'nothing there'}"
-              aria-label="Go {DIR_NAME[d]}">{e.kind === 'blocked' ? '🚫' : DIR_ARROW[d]}</button
-            >
-          {:else if d}
-            <button class="dir" disabled aria-label="Go {DIR_NAME[d]}">{DIR_ARROW[d]}</button>
-          {:else}
-            <button class="dir mid" onclick={() => regroupAll(game, session)} disabled={st.parties.length < 2} title="Regroup (G)" aria-label="Regroup">⊙</button>
-          {/if}
-        {/each}
-      </div>
-
-      <!-- No taller than the map needs (a small world left an empty band under it), at most its usual height. -->
-      <div class="mapbox" bind:clientWidth={mapW} style:height={mapRatio && mapW ? `min(clamp(110px, 20vh, 200px), ${Math.round(mapW / mapRatio) + MAP_HEAD}px)` : undefined}>
-        <!-- A picked screen's buttons go up here, beside ⤢ Full map: the map keeps its size, so both clicks of a double-click land on the same screen. -->
-        <div class="row mini-head" class:pick={!!(picked && pickedFound)}>
-          {#if picked && pickedFound}
-            <span class="shrink name" title={pickedFound.screen.name}>→ <b>{pickedFound.screen.name}</b></span>
-            <button class="small shrink" onclick={() => moveHere()} title="Move {party?.name ?? 'the party'} to {pickedFound.screen.name}">Move {party?.name ?? 'party'} here</button>
-            {#if selected.length}<button class="small shrink" onclick={() => moveHere(selected, `${selected.length} selected`)} title="Move only the {selected.length} selected to {pickedFound.screen.name}">Only selected ({selected.length})</button>{/if}
-            <button class="small ghost" onclick={() => (picked = null)} title="Pick no screen">Cancel</button>
-          {/if}
-          <span class="spacer"></span>
-          <!-- With a screen picked, just ⤢: its buttons need the room. -->
-          <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere" aria-label="⤢ Full map">⤢{picked && pickedFound ? '' : ' Full map'}</button>
+        <div class="pad" role="group" aria-label="Move the party">
+          {#each PAD as d, i (i)}
+            {#if d && here}
+              {@const e = exitOf(here.map, here.screen, d)}
+              {@const dest = e.kind === 'open' || e.kind === 'warp' ? findIn(world, e.to) : null}
+              <button
+                class="dir"
+                class:blocked={e.kind === 'blocked'}
+                disabled={e.kind === 'none'}
+                onclick={() => go(d)}
+                title="{DIR_NAME[d]}: {dest
+                  ? dest.screen.name
+                  : e.kind === 'blocked'
+                    ? `blocked${e.note ? ` (${e.note})` : ''}`
+                    : d.length === 2 && !here.map.diagonals
+                      ? DIAGONALS_OFF
+                      : 'nothing there'}"
+                aria-label="Go {DIR_NAME[d]}">{e.kind === 'blocked' ? '🚫' : DIR_ARROW[d]}</button
+              >
+            {:else if d}
+              <button class="dir" disabled aria-label="Go {DIR_NAME[d]}">{DIR_ARROW[d]}</button>
+            {:else}
+              <button class="dir mid" onclick={() => regroupAll(game, session)} disabled={st.parties.length < 2} title="Regroup (G)" aria-label="Regroup"
+                >⊙</button
+              >
+            {/if}
+          {/each}
         </div>
-        <MapView {world} {st} players={session.players} audience={false} focus={focusRef(st)} only={here?.map.id} fit near={{ cols: 7, rows: 5 }} {picked} onpick={pickMini} onmenu={mapMenu} onmove={moveDots} bind:ratio={mapRatio} />
-      </div>
+
+        <!-- No taller than the map needs (a small world left an empty band under it), at most its usual height. -->
+        <div
+          class="mapbox"
+          bind:clientWidth={mapW}
+          style:height={mapRatio && mapW ? `min(clamp(110px, 20vh, 200px), ${Math.round(mapW / mapRatio) + MAP_HEAD}px)` : undefined}
+        >
+          <!-- A picked screen's buttons go up here, beside ⤢ Full map: the map keeps its size, so both clicks of a double-click land on the same screen. -->
+          <div class="row mini-head" class:pick={!!(picked && pickedFound)}>
+            {#if picked && pickedFound}
+              <span class="shrink name" title={pickedFound.screen.name}>→ <b>{pickedFound.screen.name}</b></span>
+              <button class="small shrink" onclick={() => moveHere()} title="Move {party?.name ?? 'the party'} to {pickedFound.screen.name}"
+                >Move {party?.name ?? 'party'} here</button
+              >
+              {#if selected.length}<button
+                  class="small shrink"
+                  onclick={() => moveHere(selected, `${selected.length} selected`)}
+                  title="Move only the {selected.length} selected to {pickedFound.screen.name}">Only selected ({selected.length})</button
+                >{/if}
+              <button class="small ghost" onclick={() => (picked = null)} title="Pick no screen">Cancel</button>
+            {/if}
+            <span class="spacer"></span>
+            <!-- With a screen picked, just ⤢: its buttons need the room. -->
+            <button class="small" onclick={() => (mapOpen = true)} title="J: every map, big, to jump anywhere" aria-label="⤢ Full map"
+              >⤢{picked && pickedFound ? '' : ' Full map'}</button
+            >
+          </div>
+          <MapView
+            {world}
+            {st}
+            players={session.players}
+            audience={false}
+            focus={focusRef(st)}
+            only={here?.map.id}
+            fit
+            near={{ cols: 7, rows: 5 }}
+            {picked}
+            onpick={pickMini}
+            onmenu={mapMenu}
+            onmove={moveDots}
+            bind:ratio={mapRatio}
+          />
+        </div>
       </div>
 
       <div class="side">
@@ -566,7 +672,9 @@
                 class:secret={el.secret}
                 class:picked={on}
                 aria-pressed={on}
-                title="{el.secret ? 'Hidden from viewers. ' : ''}Click for its card, Shift+click to select it (selected players and objects drag together on the stage)"
+                title="{el.secret
+                  ? 'Hidden from viewers. '
+                  : ''}Click for its card, Shift+click to select it (selected players and objects drag together on the stage)"
                 onclick={(e) => (e.shiftKey || e.ctrlKey || e.metaKey ? toggleObject(el.id) : (object = el.id))}
                 oncontextmenu={(e) =>
                   showMenu(
@@ -588,7 +696,9 @@
               >
                 <!-- (Its kind after its name, unless the name says it already: "Arrival point", not "Arrival point · Arrival point".
                      One window: a secret one is numbered, never named.) -->
-                {#if aliases.has(el.id)}{aliases.get(el.id)}{:else}{el.name || classLabel(el.role?.class)}{el.role && el.name && el.name.trim().toLowerCase() !== classLabel(el.role.class).toLowerCase()
+                {#if aliases.has(el.id)}{aliases.get(el.id)}{:else}{el.name || classLabel(el.role?.class)}{el.role &&
+                  el.name &&
+                  el.name.trim().toLowerCase() !== classLabel(el.role.class).toLowerCase()
                     ? ` · ${classLabel(el.role.class)}`
                     : ''}{/if}
               </button>
@@ -596,99 +706,119 @@
               <span class="muted small">None on this screen.</span>
             {/each}
           </div>
-          {#if last}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {stepText(last, !dual)}</button>{/if}
+          {#if last}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history"
+              >Last: {stepText(last, !dual)}</button
+            >{/if}
         {/if}
       </div>
     </div>
 
     <!-- ✎ Improvise, after the pad and the map (they're what moves the party): one line folded, its toggle in one place. -->
     <div class="improv-box" data-improvise>
-    <div class="row improv">
-      <button class="ghost small fold" aria-expanded={improvise.open} onclick={() => improvise.set(!improvise.open)} title={improvise.open ? 'Fold the improvising tools away (this computer remembers)' : 'Change this screen while the game runs: edit it, add a screen or a look, text, a drawing'}
-        >{improvise.open ? '▾' : '▸'} ✎ Improvise{#if !improvise.open && variantName}<span class="muted">{' '}· 🎭 {variantName}</span>{/if}</button
-      >
-      {#if improvise.open}
-      <button class="small" onclick={editLive} title="Change this screen while the game runs">✎ Edit screen</button>
-      <select
-        class="small"
-        aria-label="Add a screen"
-        disabled={!freeDirs.length}
-        title={freeDirs.length ? 'An empty screen next to this one' : 'No open side here without a screen'}
-        onchange={(e) => {
-          const d = e.currentTarget.value as Dir8;
-          e.currentTarget.value = '';
-          e.currentTarget.blur();
-          if (d) ask = { what: 'screen', dir: d };
-        }}
-      >
-        <option value="">＋ Screen…</option>
-        {#each freeDirs as d (d)}<option value={d}>{DIR_ARROW[d]} {DIR_NAME[d]}</option>{/each}
-      </select>
-      <select
-        class="small"
-        aria-label="Look"
-        value={variantId ?? ''}
-        onchange={(e) => {
-          const v = e.currentTarget.value;
-          e.currentTarget.value = variantId ?? '';
-          e.currentTarget.blur();
-          setLook(v);
-        }}
-        title="Other looks for this screen (the village, on fire): a new one starts as a copy of this one"
-      >
-        <option value="">🎭 Original look</option>
-        {#each here?.screen.variants ?? [] as v (v.id)}<option value={v.id}>🎭 {v.name}</option>{/each}
-        <option value="+">＋ New look…</option>
-      </select>
-      <button class="small" onclick={() => (ask = { what: 'text' })} title="Type text onto the screen">＋ Text</button>
-      <button
-        class="small"
-        onclick={() => (drawpad = true)}
-        title="Draw an object over this screen (as many strokes as it takes), then insert it: make it an item, a zone, a hazard… (or drop a picture on the stage)"
-      >
-        ✏ Draw
-      </button>
-      <span class="muted small drop-hint">or drop a picture on the stage</span>
-      <span class="spacer"></span>
-      <!-- (An exported player-only file has no editor to keep it in.) -->
-      {#if !app.playerOnly}
-        <button class="small" onclick={() => keep()} title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time">
-          💾 Keep in game
-        </button>
-      {/if}
-      {/if}
-    </div>
-    {#if ask && here && ask.what !== 'party'}
-      {@const a = ask}
-      <!-- Fresh for every question, so a new one starts with its own text. -->
-      {#key a}
-        {#if a.what === 'screen'}
-          <InlineAsk
-            text="Name of the new screen {DIR_ARROW[a.dir]} (viewers see it on the map once visited):"
-            field="Screen name"
-            value="New {DIR_NAME[a.dir].toLowerCase()} of {here.screen.name}"
-            ok="＋ Add screen"
-            onok={(name) => addScreen(a.dir, name)}
-            oncancel={() => (ask = null)}
-          />
-        {:else if a.what === 'look'}
-          <InlineAsk text="Name of the new look (a copy of this one to change, e.g. On fire):" field="Look name" value="New look" ok="＋ Add look" onok={newLook} oncancel={() => (ask = null)} />
-        {:else}
-          <InlineAsk
-            text="Text to put {a.at ? 'here' : 'on the screen'} (hidden until you reveal it):"
-            field="Text"
-            ok="＋ Add text"
-            onok={(text) => addText(text, a.at)}
-            oncancel={() => (ask = null)}
-          />
+      <div class="row improv">
+        <button
+          class="ghost small fold"
+          aria-expanded={improvise.open}
+          onclick={() => improvise.set(!improvise.open)}
+          title={improvise.open
+            ? 'Fold the improvising tools away (this computer remembers)'
+            : 'Change this screen while the game runs: edit it, add a screen or a look, text, a drawing'}
+          >{improvise.open ? '▾' : '▸'} ✎ Improvise{#if !improvise.open && variantName}<span class="muted">{' '}· 🎭 {variantName}</span>{/if}</button
+        >
+        {#if improvise.open}
+          <button class="small" onclick={editLive} title="Change this screen while the game runs">✎ Edit screen</button>
+          <select
+            class="small"
+            aria-label="Add a screen"
+            disabled={!freeDirs.length}
+            title={freeDirs.length ? 'An empty screen next to this one' : 'No open side here without a screen'}
+            onchange={(e) => {
+              const d = e.currentTarget.value as Dir8;
+              e.currentTarget.value = '';
+              e.currentTarget.blur();
+              if (d) ask = { what: 'screen', dir: d };
+            }}
+          >
+            <option value="">＋ Screen…</option>
+            {#each freeDirs as d (d)}<option value={d}>{DIR_ARROW[d]} {DIR_NAME[d]}</option>{/each}
+          </select>
+          <select
+            class="small"
+            aria-label="Look"
+            value={variantId ?? ''}
+            onchange={(e) => {
+              const v = e.currentTarget.value;
+              e.currentTarget.value = variantId ?? '';
+              e.currentTarget.blur();
+              setLook(v);
+            }}
+            title="Other looks for this screen (the village, on fire): a new one starts as a copy of this one"
+          >
+            <option value="">🎭 Original look</option>
+            {#each here?.screen.variants ?? [] as v (v.id)}<option value={v.id}>🎭 {v.name}</option>{/each}
+            <option value="+">＋ New look…</option>
+          </select>
+          <button class="small" onclick={() => (ask = { what: 'text' })} title="Type text onto the screen">＋ Text</button>
+          <button
+            class="small"
+            onclick={() => (drawpad = true)}
+            title="Draw an object over this screen (as many strokes as it takes), then insert it: make it an item, a zone, a hazard… (or drop a picture on the stage)"
+          >
+            ✏ Draw
+          </button>
+          <span class="muted small drop-hint">or drop a picture on the stage</span>
+          <span class="spacer"></span>
+          <!-- (An exported player-only file has no editor to keep it in.) -->
+          {#if !app.playerOnly}
+            <button
+              class="small"
+              onclick={() => keep()}
+              title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time"
+            >
+              💾 Keep in game
+            </button>
+          {/if}
         {/if}
-      {/key}
-    {/if}
+      </div>
+      {#if ask && here && ask.what !== 'party'}
+        {@const a = ask}
+        <!-- Fresh for every question, so a new one starts with its own text. -->
+        {#key a}
+          {#if a.what === 'screen'}
+            <InlineAsk
+              text="Name of the new screen {DIR_ARROW[a.dir]} (viewers see it on the map once visited):"
+              field="Screen name"
+              value="New {DIR_NAME[a.dir].toLowerCase()} of {here.screen.name}"
+              ok="＋ Add screen"
+              onok={(name) => addScreen(a.dir, name)}
+              oncancel={() => (ask = null)}
+            />
+          {:else if a.what === 'look'}
+            <InlineAsk
+              text="Name of the new look (a copy of this one to change, e.g. On fire):"
+              field="Look name"
+              value="New look"
+              ok="＋ Add look"
+              onok={newLook}
+              oncancel={() => (ask = null)}
+            />
+          {:else}
+            <InlineAsk
+              text="Text to put {a.at ? 'here' : 'on the screen'} (hidden until you reveal it):"
+              field="Text"
+              ok="＋ Add text"
+              onok={(text) => addText(text, a.at)}
+              oncancel={() => (ask = null)}
+            />
+          {/if}
+        {/key}
+      {/if}
     </div>
 
     <div class="row who" bind:this={whoRow}>
       <button class="ghost small" onclick={() => (showPlayers ? (playerCards.open = false) : void openCards())} aria-expanded={showPlayers}>
-        {showPlayers ? '▾' : '▸'} {ctx.teams ? 'Teams' : 'Players'}: stats & inventory
+        {showPlayers ? '▾' : '▸'}
+        {ctx.teams ? 'Teams' : 'Players'}: stats & inventory
       </button>
       {#each session.players as pl, i (pl.id)}
         {@const on = selected.includes(pl.id)}
@@ -742,7 +872,16 @@
     </DrawPad>
   {/if}
   {#if mapOpen}
-    <MapJump {game} {session} {world} {st} {selected} send={mapSend} stays={staysWords(game, session, selectedObjects, !dual)} onclose={() => ((mapOpen = false), (mapSend = null))} />
+    <MapJump
+      {game}
+      {session}
+      {world}
+      {st}
+      {selected}
+      send={mapSend}
+      stays={staysWords(game, session, selectedObjects, !dual)}
+      onclose={() => ((mapOpen = false), (mapSend = null))}
+    />
   {/if}
   {#if screenEdit.open}
     {@const live = screenEdit.open}

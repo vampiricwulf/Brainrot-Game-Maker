@@ -254,12 +254,33 @@ describe('hand-edited games', () => {
   it('gives a repeated item on a slide, player, file, wheel or deal part its own id (a file: the first is kept)', () => {
     const g = plain(jeopardyGame());
     const slide = g.rounds[0].categories[0].clues[0].questionSlide;
-    slide.elements = [{ ...slide.elements[0], id: 'e' }, { ...slide.elements[0], id: 'e', text: 'Two' }];
+    slide.elements = [
+      { ...slide.elements[0], id: 'e' },
+      { ...slide.elements[0], id: 'e', text: 'Two' },
+    ];
     g.rounds[0].categories[0].clues[0].answerSlide.elements[0].id = 'e';
-    g.players = [{ id: 'p', name: 'Ann', color: '#e6194b' }, { id: 'p', name: 'Bo', color: '#3cb44b' }];
-    g.media = [{ id: 'm', name: 'a.png', mime: 'image/png', size: 1, kind: 'image' }, { id: 'm', name: 'b.png', mime: 'image/png', size: 1, kind: 'image' }];
-    g.wheels = [{ id: 'w', name: 'One', segments: [] }, { id: 'w', name: 'Two', segments: [] }];
-    g.deals = [{ id: 'd', name: 'Deal', parts: [{ id: 'x', name: 'A', count: 1, card: textSlide('A') }, { id: 'x', name: 'B', count: 1, card: textSlide('B') }] }];
+    g.players = [
+      { id: 'p', name: 'Ann', color: '#e6194b' },
+      { id: 'p', name: 'Bo', color: '#3cb44b' },
+    ];
+    g.media = [
+      { id: 'm', name: 'a.png', mime: 'image/png', size: 1, kind: 'image' },
+      { id: 'm', name: 'b.png', mime: 'image/png', size: 1, kind: 'image' },
+    ];
+    g.wheels = [
+      { id: 'w', name: 'One', segments: [] },
+      { id: 'w', name: 'Two', segments: [] },
+    ];
+    g.deals = [
+      {
+        id: 'd',
+        name: 'Deal',
+        parts: [
+          { id: 'x', name: 'A', count: 1, card: textSlide('A') },
+          { id: 'x', name: 'B', count: 1, card: textSlide('B') },
+        ],
+      },
+    ];
     const m = migrateGame(g);
     const cl = (m.rounds[0] as BoardRound).categories[0].clues[0];
     expect(cl.questionSlide.elements[0].id).toBe('e');
@@ -287,7 +308,13 @@ describe('hand-edited games', () => {
     [clues[3].value, clues[4].value] = [' 500', 'lots'];
     g.rounds[0].values = ['100', '200', '300', 'x', 500];
     const b = migrateGame(g).rounds[0] as BoardRound;
-    expect(b.categories[0].clues.map((cl) => [cl.type, cl.value])).toEqual([['dailyDouble', null], ['dailyDouble', null], ['standard', null], ['standard', 500], ['standard', null]]);
+    expect(b.categories[0].clues.map((cl) => [cl.type, cl.value])).toEqual([
+      ['dailyDouble', null],
+      ['dailyDouble', null],
+      ['standard', null],
+      ['standard', 500],
+      ['standard', null],
+    ]);
     expect(b.values).toEqual([100, 200, 300, 800, 500]);
   });
 
@@ -315,7 +342,10 @@ describe('hand-edited games', () => {
     map.screens.push({ ...plain(map.screens[0]), name: 'Copy' });
     const els = map.screens[0].slide.elements;
     const obj = els.find((e: { role?: unknown }) => e.role);
-    obj.role.actions = [{ id: 'a', do: 'note', text: 'Hi' }, { id: 'a', do: 'note', text: 'Bye' }];
+    obj.role.actions = [
+      { id: 'a', do: 'note', text: 'Hi' },
+      { id: 'a', do: 'note', text: 'Bye' },
+    ];
     els.push({ ...plain(obj), name: 'Copy' });
     g.statFields.push({ ...g.statFields[0], name: 'Copy' });
     g.items.push({ ...plain(g.items[0]), name: 'Copy' });
@@ -324,9 +354,22 @@ describe('hand-edited games', () => {
     const unique = (list: { id: string }[]) => new Set(ids(list)).size === list.length;
     const [r, w] = [m.rounds[1] as unknown as typeof bg, m.worlds![0]];
     const [mapM, elsM] = [w.maps[0], w.maps[0].screens[0].slide.elements];
-    expect([r.spaces, mapM.screens, elsM, elsM.find((e) => e.role)!.role!.actions!, m.statFields!, m.items!].map(unique)).toEqual([true, true, true, true, true, true]);
+    expect([r.spaces, mapM.screens, elsM, elsM.find((e) => e.role)!.role!.actions!, m.statFields!, m.items!].map(unique)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
     // The first of each keeps its id (a way to it, a doorway, a shop's stock still find it); the copy is the one changed.
-    expect([r.spaces[at].id, mapM.screens[0].id, elsM.find((e) => e.role)!.id, m.statFields![0].id, m.items![0].id]).toEqual([linked, map.screens[0].id, obj.id, g.statFields[0].id, g.items[0].id]);
+    expect([r.spaces[at].id, mapM.screens[0].id, elsM.find((e) => e.role)!.id, m.statFields![0].id, m.items![0].id]).toEqual([
+      linked,
+      map.screens[0].id,
+      obj.id,
+      g.statFields[0].id,
+      g.items[0].id,
+    ]);
     expect(r.spaces[0].next[0]).toBe(linked);
     expect(() => newSession(m)).not.toThrow();
   });
@@ -334,11 +377,35 @@ describe('hand-edited games', () => {
   it('gives a text item without its looks a new text box’s (and an item without a place, one)', () => {
     const g = plain(jeopardyGame());
     const slide = g.rounds[0].categories[0].clues[0].questionSlide;
-    slide.elements = [{ kind: 'text', text: 'Who painted the Mona Lisa?' }, { ...slide.elements[0], color: 5, x: undefined }, { id: 'sh', kind: 'shape', shape: 'rect', fill: '#fff' }];
+    slide.elements = [
+      { kind: 'text', text: 'Who painted the Mona Lisa?' },
+      { ...slide.elements[0], color: 5, x: undefined },
+      { id: 'sh', kind: 'shape', shape: 'rect', fill: '#fff' },
+    ];
     const els = (migrateGame(g).rounds[0] as BoardRound).categories[0].clues[0].questionSlide.elements;
     const box = newTextEl();
     const [t, t2, sh] = els as unknown as Record<string, unknown>[];
-    for (const k of ['font', 'size', 'weight', 'italic', 'underline', 'uppercase', 'color', 'align', 'vAlign', 'lineHeight', 'letterSpacing', 'autoFit', 'x', 'y', 'w', 'h', 'rotation', 'opacity', 'zIndex'] as const)
+    for (const k of [
+      'font',
+      'size',
+      'weight',
+      'italic',
+      'underline',
+      'uppercase',
+      'color',
+      'align',
+      'vAlign',
+      'lineHeight',
+      'letterSpacing',
+      'autoFit',
+      'x',
+      'y',
+      'w',
+      'h',
+      'rotation',
+      'opacity',
+      'zIndex',
+    ] as const)
       expect(t[k]).toEqual(box[k]);
     expect(t.id).toBeTruthy();
     expect(t.text).toBe('Who painted the Mona Lisa?');
@@ -351,7 +418,17 @@ describe('hand-edited games', () => {
 
   it('a theme color or font that isn’t one is the preset’s (an optional one goes), CSS text included', () => {
     const g = plain(jeopardyGame());
-    g.theme = { ...g.theme, tile: 123, boardFont: null, value: { a: 1 }, scoreBarBg: '#123456; background-image: url(https://example.com/t.png)', tileGradient: 'red;x:url(a)', clueFont: 5, glow: 'url(x)', headerLine: '1px solid url(y)' };
+    g.theme = {
+      ...g.theme,
+      tile: 123,
+      boardFont: null,
+      value: { a: 1 },
+      scoreBarBg: '#123456; background-image: url(https://example.com/t.png)',
+      tileGradient: 'red;x:url(a)',
+      clueFont: 5,
+      glow: 'url(x)',
+      headerLine: '1px solid url(y)',
+    };
     const t = migrateGame(plain(g)).theme;
     const classic = presetTheme('classic');
     expect([t.tile, t.boardFont, t.value, t.scoreBarBg, t.glow]).toEqual([classic.tile, classic.boardFont, classic.value, classic.scoreBarBg, classic.glow]);
@@ -385,7 +462,6 @@ describe('hand-edited games', () => {
     expect(() => newSession(m)).not.toThrow();
   });
 });
-
 
 describe('buzzer settings', () => {
   it('buzzing from keys is gone: buzzKeys and buzzFrom are dropped, Buzzer mode stays on (phones)', () => {
@@ -531,7 +607,11 @@ describe('🤝 partner clues in saved games', () => {
   it('leaves a whole partner clue exactly as it is (older games have none, and get none)', () => {
     const g = jeopardyGame();
     const clue = firstClue(g);
-    Object.assign(clue, { type: 'partner', partner: { ...gameRules('help'), includePicker: true, words: { giver: 'Spy' } }, cards: [{ id: 'c1', ...textSlide('Shrek'), to: 'others' }] });
+    Object.assign(clue, {
+      type: 'partner',
+      partner: { ...gameRules('help'), includePicker: true, words: { giver: 'Spy' } },
+      cards: [{ id: 'c1', ...textSlide('Shrek'), to: 'others' }],
+    });
     const once = migrateGame(plain(g));
     expect(JSON.stringify(migrateGame(plain(once)))).toBe(JSON.stringify(once));
     expect(firstClue(once).partner).toEqual(clue.partner);
@@ -554,7 +634,15 @@ describe('🤝 partner clues in saved games', () => {
     g.rounds[0].categories[0].clues[0] = {
       ...g.rounds[0].categories[0].clues[0],
       type: 'partner',
-      partner: { game: 'charades', giver: 'nobody', got: { giver: 5000, guesser: 'lots' }, missed: null, partnerSafe: 'yes', points: 'some', words: { giver: '', guesser: 'x'.repeat(40) } },
+      partner: {
+        game: 'charades',
+        giver: 'nobody',
+        got: { giver: 5000, guesser: 'lots' },
+        missed: null,
+        partnerSafe: 'yes',
+        points: 'some',
+        words: { giver: '', guesser: 'x'.repeat(40) },
+      },
     };
     const p = firstClue(migrateGame(g)).partner!;
     expect(p.game).toBe('custom');
@@ -689,7 +777,10 @@ describe('a Final’s 🤫 cards in saved games', () => {
 
   it('leaves a whole list exactly as it is', () => {
     const g = plain(jeopardyGame());
-    const whole = [{ id: 'f1', name: 'Leader hint', to: 'playing', ...textSlide('Hint') }, { id: 'f2', to: 'nobody', ...textSlide('Side') }];
+    const whole = [
+      { id: 'f1', name: 'Leader hint', to: 'playing', ...textSlide('Hint') },
+      { id: 'f2', to: 'nobody', ...textSlide('Side') },
+    ];
     const before = plain(whole);
     g.rounds[1].cards = whole;
     const m = migrateGame(g);
@@ -734,7 +825,10 @@ describe('a ✍ clue’s multiple choices in saved games', () => {
     expect(choicesOf(Array.from({ length: 9 }, (_, i) => ({ id: `c${i}`, text: `${i}` })))).toHaveLength(6);
     for (const v of ['Paris', [], [{ id: 'a' }], null]) expect(choicesOf(v)).toBeUndefined();
     // A good list is kept as it is.
-    const good = [{ id: 'a', text: 'Paris' }, { id: 'b', text: '', right: true }];
+    const good = [
+      { id: 'a', text: 'Paris' },
+      { id: 'b', text: '', right: true },
+    ];
     expect(choicesOf(good)).toEqual(good);
   });
 
@@ -820,7 +914,11 @@ describe('🤫 Cards in saved games', () => {
     const ids = m.cards!.map((c) => c.id);
     expect(ids[0]).toBe('sc_wild');
     expect(new Set(ids).size).toBe(3);
-    expect(m.cards!.map((c) => [c.name, slideText(c)])).toEqual([['Wild card', 'Wild'], ['Tip A', 'Tip'], ['Tip B', 'Tip B']]);
+    expect(m.cards!.map((c) => [c.name, slideText(c)])).toEqual([
+      ['Wild card', 'Wild'],
+      ['Tip A', 'Tip'],
+      ['Tip B', 'Tip B'],
+    ]);
     expect(JSON.stringify(migrateGame(plain(m)))).toBe(JSON.stringify(m));
   });
 });
@@ -832,7 +930,16 @@ describe('🗜 copies for phones in saved games', () => {
   const copy = (id: string, of: unknown, more = {}) => ({ id, name: `${id}.webm`, mime: 'video/webm', size: 1, kind: 'video', phoneCopy: { of }, ...more });
 
   it('keeps one copy a file, of a file in the game that isn’t a copy itself; any other goes', () => {
-    const m = withMedia([gif, copy('c1', 'g'), copy('c2', 'g'), copy('c3', 'gone'), copy('c4', 'c1'), copy('c5', 42), copy('c6', 'g', { phoneCopy: 'x' }), copy('c7', 'c7')]);
+    const m = withMedia([
+      gif,
+      copy('c1', 'g'),
+      copy('c2', 'g'),
+      copy('c3', 'gone'),
+      copy('c4', 'c1'),
+      copy('c5', 42),
+      copy('c6', 'g', { phoneCopy: 'x' }),
+      copy('c7', 'c7'),
+    ]);
     expect(m.media.map((x) => x.id)).toEqual(['g', 'c1']);
     expect(gameProblem(m)).toBeNull();
     // (One with the link of a file isn't a stored copy.)

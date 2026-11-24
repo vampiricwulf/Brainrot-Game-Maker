@@ -202,7 +202,12 @@ export function placePicture(items: PlacedItem[], w: number, h: number, W = SLID
     for (const o of media) {
       if (!across(o.x, o.w, s.x, s.w) || !across(o.y, o.h, s.y, s.h)) continue;
       const [a, b] = wide ? [o.x - GAP, o.x + o.w + GAP] : [o.y - GAP, o.y + o.h + GAP];
-      free = free.flatMap(([c, d]): [number, number][] => [[c, Math.min(d, a)], [Math.max(c, b), d]]).filter(([c, d]) => d > c);
+      free = free
+        .flatMap(([c, d]): [number, number][] => [
+          [c, Math.min(d, a)],
+          [Math.max(c, b), d],
+        ])
+        .filter(([c, d]) => d > c);
     }
     return free.map(([c, d]) => (wide ? { x: c, y: s.y, w: d - c, h: s.h } : { x: s.x, y: c, w: s.w, h: d - c }));
   };
@@ -227,7 +232,11 @@ export function placePicture(items: PlacedItem[], w: number, h: number, W = SLID
  * the picture goes beside them, and they stay where they are.
  */
 export function placeNewPicture(elements: SlideElement[], pic: Box): void {
-  const { box, text } = placePicture(elements.map((e) => (e.role ? { ...e, fixed: true } : e)), pic.w, pic.h);
+  const { box, text } = placePicture(
+    elements.map((e) => (e.role ? { ...e, fixed: true } : e)),
+    pic.w,
+    pic.h,
+  );
   Object.assign(pic, box);
   const t = text && elements.find((e) => e.id === text.id);
   if (t?.kind !== 'text') return;

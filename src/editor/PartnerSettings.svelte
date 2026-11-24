@@ -12,7 +12,17 @@
   import { step as record } from '../lib/history.svelte';
   import { RememberedFold } from '../lib/fold.svelte';
   import { article } from '../lib/links';
-  import { cardSlides, formatPoints, MAX_SHARE, PART_WORD_MAX, PARTNER_GAMES, type Clue, type PartnerGame, type PartnerPoints, type PartnerRole } from '../lib/model';
+  import {
+    cardSlides,
+    formatPoints,
+    MAX_SHARE,
+    PART_WORD_MAX,
+    PARTNER_GAMES,
+    type Clue,
+    type PartnerGame,
+    type PartnerPoints,
+    type PartnerRole,
+  } from '../lib/model';
   import {
     lowerWord,
     partnerPart,
@@ -78,7 +88,9 @@
       rules.includePicker ? 'the picker can be on the wheel' : '',
       rules.typeGuess ? 'typed guess' : '',
       rules.steal === undefined ? '' : rules.steal ? 'a steal' : 'no steal',
-      choice !== (rules.game === 'custom' ? 'custom' : 'game') ? `points: ${pointsChoices(rules.game, words.guesser).find((x) => x.value === choice)?.label ?? choice}` : '',
+      choice !== (rules.game === 'custom' ? 'custom' : 'game')
+        ? `points: ${pointsChoices(rules.game, words.guesser).find((x) => x.value === choice)?.label ?? choice}`
+        : '',
       safe ? '' : 'the partner can lose points',
       rules.words?.giver || rules.words?.guesser ? 'own part words' : '',
     ]
@@ -111,7 +123,8 @@
   /** After a miss: as ⚖ Game rules say (left out), the others can steal it, or no steal. */
   const gameSteal = $derived(!!app.game.settings.partnerSteal);
   function setSteal(to: string): void {
-    const label = to === 'on' ? 'the others can steal it after a miss' : to === 'off' ? 'no steal after a miss' : 'a miss lets the others steal it as ⚖ Game rules say';
+    const label =
+      to === 'on' ? 'the others can steal it after a miss' : to === 'off' ? 'no steal after a miss' : 'a miss lets the others steal it as ⚖ Game rules say';
     record(`${tile()}: ${label}`, () => {
       if (to === 'game') delete own().steal;
       else own().steal = to === 'on';
@@ -145,7 +158,11 @@
     <span class="icon" aria-hidden="true">🤝</span>
     <label class="inline">
       Game
-      <select value={rules.game} onchange={(e) => chooseGame(e.currentTarget.value as PartnerGame)} title="A ready-made game sets the part words, the points and the cards the clue starts with">
+      <select
+        value={rules.game}
+        onchange={(e) => chooseGame(e.currentTarget.value as PartnerGame)}
+        title="A ready-made game sets the part words, the points and the cards the clue starts with"
+      >
         {#each GAMES as g (g)}<option value={g}>{PARTNER_GAMES[g].icon} {PARTNER_GAMES[g].label}</option>{/each}
       </select>
     </label>
@@ -163,9 +180,8 @@
       aria-expanded={more.open}
       data-more-rules
       onclick={() => more.set(!more.open)}
-      title="The picker on the wheel, a typed guess, a steal after a miss, the points and the part words">{more.open ? '▾' : '▸'} More rules{#if moreSet && !more.open}<span
-          class="muted">{' '}· {moreSet}</span
-        >{/if}</button
+      title="The picker on the wheel, a typed guess, a steal after a miss, the points and the part words"
+      >{more.open ? '▾' : '▸'} More rules{#if moreSet && !more.open}<span class="muted">{' '}· {moreSet}</span>{/if}</button
     >
   </div>
   {#if more.open}
@@ -174,10 +190,19 @@
         <label class="check" title="When it's on, the partner wheel can land on the player who picked the tile: then they play it alone">
           <input type="checkbox" checked={!!rules.includePicker} onchange={(e) => setIncludePicker(e.currentTarget.checked)} /> The picker can be on the wheel
         </label>
-        <label class="check" title="With phone buzzers, the {lowerWord(words.guesser)} types their guess in a ✍ box on their phone once the question shows (only you see it). Off: they say it out loud.">
-          <input type="checkbox" checked={!!rules.typeGuess} onchange={(e) => setTypeGuess(e.currentTarget.checked)} /> The {lowerWord(words.guesser)} types their guess on their phone
+        <label
+          class="check"
+          title="With phone buzzers, the {lowerWord(
+            words.guesser,
+          )} types their guess in a ✍ box on their phone once the question shows (only you see it). Off: they say it out loud."
+        >
+          <input type="checkbox" checked={!!rules.typeGuess} onchange={(e) => setTypeGuess(e.currentTarget.checked)} /> The {lowerWord(words.guesser)} types their
+          guess on their phone
         </label>
-        <label class="field" title="After ✘ Missed, everyone else can answer it for the tile's value, as on any clue: the buzzers open for them (the two who missed it locked out), or you pick who steals. A wrong steal costs the tile's value, as any wrong answer.">
+        <label
+          class="field"
+          title="After ✘ Missed, everyone else can answer it for the tile's value, as on any clue: the buzzers open for them (the two who missed it locked out), or you pick who steals. A wrong steal costs the tile's value, as any wrong answer."
+        >
           After a miss
           <select value={rules.steal === undefined ? 'game' : rules.steal ? 'on' : 'off'} onchange={(e) => setSteal(e.currentTarget.value)}>
             <option value="game">As ⚖ Game rules say ({gameSteal ? 'the others can steal it' : 'no steal'})</option>

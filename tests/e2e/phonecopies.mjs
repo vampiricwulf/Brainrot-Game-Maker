@@ -14,7 +14,25 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, untilWith, section, stageBoxIn, toastsIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  editorReady,
+  forgetSeen,
+  openGameFile,
+  packGame,
+  recordSeen,
+  startBuzzer,
+  startRoomOn,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  untilWith,
+  section,
+  stageBoxIn,
+  toastsIn,
+  toolsRowIn,
+} from './helpers.mjs';
 import { clip, fixturePage, flac, gif, noise, wav } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -25,9 +43,17 @@ const until = untilWith({ timeout: 20_000 });
 // ---------- Two GIFs, made here: noise, so they're big for what they show (about 2.5 MB each) ----------
 
 // 2.4 s of it, on a 🤫 card.
-const dance = gif(320, 240, Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })));
+const dance = gif(
+  320,
+  240,
+  Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })),
+);
 // The same kind of GIF on no 🤫 card: phones never get it, so its card offers no 🗜.
-const spare = gif(320, 240, Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })));
+const spare = gif(
+  320,
+  240,
+  Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })),
+);
 // 2,000 frames (as many as 🗜 takes) of small changes over a big picture: long enough to stop partway, or to wait
 // behind, while the page's work is slowed down too (below).
 const long = gif(1024, 720, [
@@ -42,7 +68,23 @@ const tone = flac(4);
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
-const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  ...box(y),
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
 const plays = { autoplay: false, loop: false, muted: false, volume: 1 };
 const videoEl = (media, y, more = {}) => ({ ...box(y), kind: 'video', media, fit: 'contain', ...plays, ...more });
@@ -53,14 +95,42 @@ const gameWith = (movie, mov) => ({
   version: 2,
   title: 'Phone copies',
   settings: {
-    allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+    allowNegativeScores: true,
+    deductOnWrong: false,
+    defaultTimerSeconds: 30,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+    maxPlayers: 8,
+    stream: { clueCaption: true },
+    buzzer: true,
   },
   players: ['Ann', 'Bob', 'Cy'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i] })),
   rounds: [
     {
-      id: 'r1', name: 'Round 1', mode: 'board', values: [200], dailyDoubleCount: 0,
-      categories: [{ id: 'cat0', title: 'Memes', clues: [{ id: 'q1', value: null, type: 'standard', questionSlide: { background: {}, elements: [text('Q')] }, answerSlide: { background: {}, elements: [text('A')] } }] }],
+      id: 'r1',
+      name: 'Round 1',
+      mode: 'board',
+      values: [200],
+      dailyDoubleCount: 0,
+      categories: [
+        {
+          id: 'cat0',
+          title: 'Memes',
+          clues: [
+            {
+              id: 'q1',
+              value: null,
+              type: 'standard',
+              questionSlide: { background: {}, elements: [text('Q')] },
+              answerSlide: { background: {}, elements: [text('A')] },
+            },
+          ],
+        },
+      ],
     },
   ],
   media: [
@@ -73,7 +143,10 @@ const gameWith = (movie, mov) => ({
     { id: 'tone', name: 'tone-zfnqj.flac', mime: 'audio/flac', size: tone.length, kind: 'audio' },
     { id: 'spare', name: 'spare-zfnqj.gif', mime: 'image/gif', size: spare.length, kind: 'image' },
   ],
-  audio: {}, wheels: [], dice: [], theme: {},
+  audio: {},
+  wheels: [],
+  dice: [],
+  theme: {},
   cards: [
     { id: 'sc_tip', name: 'Tip', background: {}, elements: [text('Do this'), image('dance', 300)] },
     { id: 'sc_long', name: 'Long', background: {}, elements: [text('Stare'), image('long', 300)] },
@@ -179,14 +252,21 @@ try {
   // ---------- 🗜 on 🖼 Media ----------
   section('🗜 Make smaller… on a GIF in 🖼 Media');
   await media();
-  assert((await card('dance').getByRole('button', { name: '🗜 Make smaller…' }).count()) === 1, `a GIF over 2 MB on a 🤫 card gets 🗜 Make smaller… (${MB(dance.length)})`);
+  assert(
+    (await card('dance').getByRole('button', { name: '🗜 Make smaller…' }).count()) === 1,
+    `a GIF over 2 MB on a 🤫 card gets 🗜 Make smaller… (${MB(dance.length)})`,
+  );
   assert(
     (await card('spare').getByRole('button', { name: /🗜/ }).count()) === 0 && (await card('spare').innerText()).includes('unused'),
     `one on no 🤫 card gets no 🗜: phones never get it (${MB(spare.length)})`,
   );
   // Selected with one on a card, the selection's menu offers a copy only of that one.
-  await card('spare').locator('.thumb').click({ modifiers: ['Control'] });
-  await card('dance').locator('.thumb').click({ modifiers: ['Control'] });
+  await card('spare')
+    .locator('.thumb')
+    .click({ modifiers: ['Control'] });
+  await card('dance')
+    .locator('.thumb')
+    .click({ modifiers: ['Control'] });
   await card('dance').locator('.thumb').click({ button: 'right' });
   const many = page.getByRole('menu');
   await many.waitFor();
@@ -197,7 +277,10 @@ try {
   await page.keyboard.press('Escape');
   await openShrink('dance');
   const says = (await dialog.innerText()).replace(/\s+/g, ' ');
-  assert(says.includes('dance-zfnqj.gif') && says.includes('2.4 s') && says.includes('320×240'), `its dialog names the file, its length and size (the editor isn't on stream): ${says.slice(0, 160)}`);
+  assert(
+    says.includes('dance-zfnqj.gif') && says.includes('2.4 s') && says.includes('320×240'),
+    `its dialog names the file, its length and size (the editor isn't on stream): ${says.slice(0, 160)}`,
+  );
   assert(says.includes('Phones get the copy; the show keeps this file as it is.'), 'and says the show keeps the file');
   // What this browser makes, as the dialog says (from what it can encode): an MP4 (H.264) where it can (CI's Chromium),
   // else a WebM (the test Chromium here). What follows goes by it, so each is checked somewhere.
@@ -217,7 +300,9 @@ try {
   const told = () => page.evaluate(() => window.__said.join(' | '));
   await page.waitForFunction(() => window.__said.some((t) => t.includes('🗜 Phones get the smaller copy now:')), null, { timeout: 10_000 }).catch(() => {});
   assert(
-    (await told()).includes('🗜 Making a smaller copy for phones…') && (await told()).includes('🗜 Phones get the smaller copy now:') && !(await toastsIn(page, { hasText: 'Phones get' }).count()),
+    (await told()).includes('🗜 Making a smaller copy for phones…') &&
+      (await told()).includes('🗜 Phones get the smaller copy now:') &&
+      !(await toastsIn(page, { hasText: 'Phones get' }).count()),
     `a screen reader is told it started and how it ended, though the window shows it (no toast): ${await told()}`,
   );
   await dialog.getByRole('button', { name: '▶ Watch it' }).click();
@@ -227,7 +312,10 @@ try {
   // (A WebM of it comes out under a fifth. CI's H.264 encoder (OpenH264, in software) goes far over its bitrate on this
   // noise: there, under half, the app's own bar for keeping a copy.)
   const share = avc ? 'half' : 'fifth';
-  assert(first.type === gifBox.mime && first.size < dance.length / (avc ? 2 : 5), `the copy is an ${gifBox.word} under a ${share} of the GIF (${first.size} bytes of ${dance.length})`);
+  assert(
+    first.type === gifBox.mime && first.size < dance.length / (avc ? 2 : 5),
+    `the copy is an ${gifBox.word} under a ${share} of the GIF (${first.size} bytes of ${dance.length})`,
+  );
   assert(first.meta?.w === 320 && first.meta.h === 240 && Math.abs(first.meta.seconds - 2.4) < 0.3, `and it plays: ${JSON.stringify(first.meta)}`);
   const line = (await copyLine('dance').innerText()).replace(/\s+/g, ' ');
   assert(line.startsWith('📱 Phone copy · ') && line.includes(` KB · 320×240 ${gifBox.word}`), `the GIF's card says phones get a copy (${line})`);
@@ -241,7 +329,10 @@ try {
   const notice = page.locator('.history-notice');
   await page.keyboard.press('Control+z');
   await copyLine('dance').waitFor({ state: 'detached' });
-  assert((await notice.innerText()).replace(/\s+/g, ' ').includes('↶ Undid Made a smaller copy of a GIF for phones'), `Ctrl+Z takes it out, saying so (${(await notice.innerText()).replace(/\s+/g, ' ')})`);
+  assert(
+    (await notice.innerText()).replace(/\s+/g, ' ').includes('↶ Undid Made a smaller copy of a GIF for phones'),
+    `Ctrl+Z takes it out, saying so (${(await notice.innerText()).replace(/\s+/g, ' ')})`,
+  );
   assert(!(await notice.innerText()).includes('zfnqj'), 'naming no file');
   await page.keyboard.press('Control+y');
   await copyLine('dance').waitFor();
@@ -284,7 +375,10 @@ try {
   const toast = toastsIn(page, { hasText: '🗜 Phones get the smaller copy now' });
   await toast.waitFor({ timeout: 60_000 });
   const said = await toast.innerText();
-  assert(/^🗜 Phones get the smaller copy now: \d+ KB instead of 2\.\d MB \(Ctrl\+Z takes it back\)$/.test(said), `the pill’s Stop stops the first; the second is made, and says so in a toast (${said})`);
+  assert(
+    /^🗜 Phones get the smaller copy now: \d+ KB instead of 2\.\d MB \(Ctrl\+Z takes it back\)$/.test(said),
+    `the pill’s Stop stops the first; the second is made, and says so in a toast (${said})`,
+  );
   const toasts = await page.evaluate(() => (window.__seen ?? []).filter((t) => /^(🗜|Stopped)/.test(t)));
   const named = toasts.filter((t) => t.includes('zfnqj'));
   assert(toasts.length >= 2 && !named.length, `no toast or pill names a file (${toasts.length} said${named.length ? `: ${named.join(' | ')}` : ''})`);
@@ -361,16 +455,25 @@ try {
   });
   const bigButton = page.locator('[data-shrink-big]');
   await bigButton.waitFor();
-  assert((await bigButton.innerText()) === '🗜 2 files are big for phones: make smaller copies…', `🖼 Media says 2 of the cards’ files are big for phones (${await bigButton.innerText()})`);
+  assert(
+    (await bigButton.innerText()) === '🗜 2 files are big for phones: make smaller copies…',
+    `🖼 Media says 2 of the cards’ files are big for phones (${await bigButton.innerText()})`,
+  );
   const at6 = await historyCount();
   await bigButton.click();
   const several = page.getByRole('dialog', { name: '🗜 Make smaller copies for phones' });
   const row = (id) => several.locator(`[data-shrink-row="${id}"]`);
-  await row('movie').getByText(/^→ about /).waitFor({ timeout: 60_000 });
-  await row('song').getByText(/^→ about /).waitFor({ timeout: 60_000 });
+  await row('movie')
+    .getByText(/^→ about /)
+    .waitFor({ timeout: 60_000 });
+  await row('song')
+    .getByText(/^→ about /)
+    .waitFor({ timeout: 60_000 });
   const listed = (await several.locator('[data-shrink-row]').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
   assert(
-    listed.length === 2 && /^🎬 movie-zfnqj\.webm · 4\.0 MB → about [\d.]+ (KB|MB) \(1280×720, 0:01–0:03 only\)$/.test(listed[0]) && /^🔊 song-zfnqj\.wav · 3\.4 MB → about \d+ KB \((OGG|M4A)\)$/.test(listed[1]),
+    listed.length === 2 &&
+      /^🎬 movie-zfnqj\.webm · 4\.0 MB → about [\d.]+ (KB|MB) \(1280×720, 0:01–0:03 only\)$/.test(listed[0]) &&
+      /^🔊 song-zfnqj\.wav · 3\.4 MB → about \d+ KB \((OGG|M4A)\)$/.test(listed[1]),
     `a row each, with the copy it gets: the video only the part its card plays (${listed.join(' | ')})`,
   );
   // (A browser that makes AAC sound makes an M4A of the sound, and an MP4 of the video, its Opus sound made AAC.)
@@ -384,7 +487,10 @@ try {
   await page.keyboard.press('Control+z');
   await several.waitFor({ state: 'detached' });
   await copyLine('song').waitFor({ state: 'detached' });
-  assert((await copyLine('movie').innerText()).replace(/\s+/g, ' ').includes(`· 1280×720 ${movieBox.word} · 0:01–0:03`), `the video’s card says its copy holds 0:01–0:03 (${(await copyLine('movie').innerText()).replace(/\s+/g, ' ')})`);
+  assert(
+    (await copyLine('movie').innerText()).replace(/\s+/g, ' ').includes(`· 1280×720 ${movieBox.word} · 0:01–0:03`),
+    `the video’s card says its copy holds 0:01–0:03 (${(await copyLine('movie').innerText()).replace(/\s+/g, ' ')})`,
+  );
   await page.keyboard.press('Control+z');
   await copyLine('movie').waitFor({ state: 'detached' });
   await bigButton.waitFor();
@@ -397,12 +503,21 @@ try {
   await dialog.getByRole('radio').first().waitFor({ timeout: 60_000 });
   const plan = (await dialog.innerText()).replace(/\s+/g, ' ');
   assert(plan.includes('movie-zfnqj.webm · 4.0 MB · 4 s · 1280×720'), `its dialog names the video, its length and size (${plan.slice(0, 120)})`);
-  const radios = (await dialog.getByRole('radio').evaluateAll((rs) => rs.map((r) => `${r.checked ? '◉' : '○'} ${r.parentElement.textContent.trim()}`))).join(' | ');
-  assert(/^◉ Phones · 1280×720 · about [\d.]+ (KB|MB) \| ○ Small · 854×480 · about [\d.]+ (KB|MB) \| ○ Tiny · 640×360 · about [\d.]+ (KB|MB)$/.test(radios), `720p, 480p and 360p, with their sizes; 720p picked (${radios})`);
+  const radios = (await dialog.getByRole('radio').evaluateAll((rs) => rs.map((r) => `${r.checked ? '◉' : '○'} ${r.parentElement.textContent.trim()}`))).join(
+    ' | ',
+  );
+  assert(
+    /^◉ Phones · 1280×720 · about [\d.]+ (KB|MB) \| ○ Small · 854×480 · about [\d.]+ (KB|MB) \| ○ Tiny · 640×360 · about [\d.]+ (KB|MB)$/.test(radios),
+    `720p, 480p and 360p, with their sizes; 720p picked (${radios})`,
+  );
   const trim = dialog.getByRole('checkbox', { name: /^Only the part the cards play: 0:01 → 0:03 \(2 s\)/ });
   assert(await trim.isChecked(), 'only the part its card plays (1 to 3 s of 4) is ticked');
   assert(
-    plan.includes(avc && aac ? 'Made as an MP4 (H.264, AAC), which every phone plays.' : 'Made as a WebM (VP9, Opus). This browser makes WebM videos: some iPhones may not play them.'),
+    plan.includes(
+      avc && aac
+        ? 'Made as an MP4 (H.264, AAC), which every phone plays.'
+        : 'Made as a WebM (VP9, Opus). This browser makes WebM videos: some iPhones may not play them.',
+    ),
     `this browser makes ${movieBox.word}, with its ${aac ? 'AAC' : 'Opus'} sound, and it says so`,
   );
   await trim.uncheck();
@@ -410,8 +525,14 @@ try {
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
   await dialog.locator('[data-shrink-done]').waitFor({ timeout: 120_000 });
   const said6 = await page.evaluate(() => window.__progress);
-  assert(said6.some((t) => /^Making it… \d+%/.test(t)), `it says how far it got (${said6.join(' | ')})`);
-  assert(!said6.some((t) => /^(Checking|Storing)/.test(t) && /%/.test(t)) && !said6.some((t) => /100% \(about/.test(t)), 'with no percent or time left once it’s made, nor while it’s checked and stored');
+  assert(
+    said6.some((t) => /^Making it… \d+%/.test(t)),
+    `it says how far it got (${said6.join(' | ')})`,
+  );
+  assert(
+    !said6.some((t) => /^(Checking|Storing)/.test(t) && /%/.test(t)) && !said6.some((t) => /100% \(about/.test(t)),
+    'with no percent or time left once it’s made, nor while it’s checked and stored',
+  );
   const done6 = await dialog.locator('[data-shrink-done]').innerText();
   assert(/^[\d.]+ (KB|MB) \(was 4\.0 MB\)\. Phones get this copy \(Ctrl\+Z takes it back\)\.$/.test(done6), `and how big it came out (${done6})`);
   await close();
@@ -432,7 +553,9 @@ try {
   const phone = await cardPreview('sc_movie');
   const note = (await phone.locator('[data-copy-note]').innerText()).replace(/\s+/g, ' ');
   assert(
-    new RegExp(`^📱 Phones get its smaller copy instead \\([\\d.]+ (KB|MB), 1280×720 ${movieBox.word}\\)\\. ▶ Watch it 🗜 Make it again 🗑 Remove it$`).test(note),
+    new RegExp(`^📱 Phones get its smaller copy instead \\([\\d.]+ (KB|MB), 1280×720 ${movieBox.word}\\)\\. ▶ Watch it 🗜 Make it again 🗑 Remove it$`).test(
+      note,
+    ),
     `the card’s 📱 preview says its phones get the copy (${note})`,
   );
   await phone.getByRole('button', { name: '▶ Watch it' }).click();
@@ -445,12 +568,16 @@ try {
   await dialog.getByText(/^A sound for phones: about \d+ KB\.$/).waitFor({ timeout: 60_000 });
   const ogg = (await dialog.innerText()).replace(/\s+/g, ' ');
   assert(
-    ogg.includes('song-zfnqj.wav · 3.4 MB · 20 s') && ogg.includes(aac ? 'Made as an M4A (AAC), which every phone plays.' : 'Made as an OGG (Opus). Its sound is Opus: some iPhones may not play it.'),
+    ogg.includes('song-zfnqj.wav · 3.4 MB · 20 s') &&
+      ogg.includes(aac ? 'Made as an M4A (AAC), which every phone plays.' : 'Made as an OGG (Opus). Its sound is Opus: some iPhones may not play it.'),
     `a sound: it says what it makes (${ogg.slice(0, 260)})`,
   );
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
   await dialog.locator('[data-shrink-done]').waitFor({ timeout: 120_000 });
-  assert((await dialog.getByRole('button', { name: '▶ Listen' }).count()) === 1 && !(await dialog.getByRole('button', { name: '▶ Watch it' }).count()), 'a sound’s copy is ▶ Listen, not ▶ Watch it');
+  assert(
+    (await dialog.getByRole('button', { name: '▶ Listen' }).count()) === 1 && !(await dialog.getByRole('button', { name: '▶ Watch it' }).count()),
+    'a sound’s copy is ▶ Listen, not ▶ Watch it',
+  );
   // Ctrl+Z with the window still open does what its line says: it closes, and the copy goes (Ctrl+Y: back).
   await page.keyboard.press('Control+z');
   await dialog.waitFor({ state: 'detached' });
@@ -466,21 +593,24 @@ try {
 
   // A .mov phones can't play: a WebM inside, so ↻ puts the same video in a WebM, for everyone, in its place (one file,
   // no copy).
-  const movLine = page.locator('nav .problem', { hasText: '🤫 Card “Mov” has a video phones can\'t open: repackage it as a WebM (↻, nothing lost)' });
+  const movLine = page.locator('nav .problem', { hasText: "🤫 Card “Mov” has a video phones can't open: repackage it as a WebM (↻, nothing lost)" });
   await movLine.waitFor({ timeout: 60_000 });
   const movPhone = await cardPreview('sc_mov');
   const kindNote = movPhone.locator('.notes li.warn', { hasText: 'phones can’t play this kind of video' });
   await kindNote.getByRole('button', { name: '↻ Repackage as WebM (for everyone, nothing lost)' }).click();
   await kindNote.waitFor({ state: 'detached' });
   await movLine.waitFor({ state: 'detached' });
-  assert(!(await movPhone.locator('[data-copy-note]').count()), '↻ Repackage as WebM: the 📱 preview’s note and the checklist’s line are gone, and no copy is made');
+  assert(
+    !(await movPhone.locator('[data-copy-note]').count()),
+    '↻ Repackage as WebM: the 📱 preview’s note and the checklist’s line are gone, and no copy is made',
+  );
   await media();
   const movRef = page.locator('.card', { has: page.locator('button.nm', { hasText: 'clip-zfnqj.webm' }) });
   await movRef.waitFor();
   assert(!(await movRef.locator('[data-phone-copy]').count()), 'the file itself is clip-zfnqj.webm now');
 
   // A FLAC phones can't play, which nothing repackages: 🗜 makes a copy they can, from the 📱 preview.
-  const toneLine = page.locator('nav .problem', { hasText: '🤫 Card “Tone” has a sound phones can\'t play: make a copy they can play (🗜)' });
+  const toneLine = page.locator('nav .problem', { hasText: "🤫 Card “Tone” has a sound phones can't play: make a copy they can play (🗜)" });
   await toneLine.waitFor({ timeout: 60_000 });
   const tonePhone = await cardPreview('sc_tone');
   const toneNote = tonePhone.locator('.notes li.warn', { hasText: 'phones can’t play this kind of sound' });
@@ -494,14 +624,20 @@ try {
   await toneNote.waitFor({ state: 'detached' });
   await toneLine.waitFor({ state: 'detached' });
   const toneCopy = (await tonePhone.locator('[data-copy-note]').innerText()).replace(/\s+/g, ' ');
-  assert(toneCopy.startsWith('📱 Phones get a copy they can play instead (') && toneCopy.includes(aac ? 'M4A' : 'OGG'), `🗜 Make a copy phones can play: the 📱 preview’s note and the checklist’s line are gone, a copy goes instead (${toneCopy})`);
+  assert(
+    toneCopy.startsWith('📱 Phones get a copy they can play instead (') && toneCopy.includes(aac ? 'M4A' : 'OGG'),
+    `🗜 Make a copy phones can play: the 📱 preview’s note and the checklist’s line are gone, a copy goes instead (${toneCopy})`,
+  );
   await media();
   const toasts6 = await page.evaluate(() => (window.__seen ?? []).filter((t) => /^(🗜|↻|Stopped)/.test(t)));
   assert(toasts6.length >= 4 && !toasts6.some((t) => t.includes('zfnqj')), `no toast names a file (${toasts6.join(' | ')})`);
   await page.locator('nav > button', { hasText: '🕘 History' }).click();
   const rows6 = (await page.locator('main').innerText()).split('\n').filter((t) => /copy of a (video|sound)|^Repackaged/.test(t));
   assert(
-    rows6.length >= 5 && !rows6.some((t) => t.includes('zfnqj')) && rows6.some((t) => t.includes('Repackaged a video as WebM (nothing lost)')) && rows6.some((t) => t.includes('Made a copy of a sound that phones can play')),
+    rows6.length >= 5 &&
+      !rows6.some((t) => t.includes('zfnqj')) &&
+      rows6.some((t) => t.includes('Repackaged a video as WebM (nothing lost)')) &&
+      rows6.some((t) => t.includes('Made a copy of a sound that phones can play')),
     `nor does History (${rows6.join(' | ')})`,
   );
   await media();
@@ -519,7 +655,8 @@ try {
   // (Its question is the window's title.)
   const q = (await ask.innerText()).replace(/\s+/g, ' ');
   assert(
-    q.startsWith('Stop it and start the game? ') && /🗜 A smaller copy for phones is still being made \(\d+%\)\. Nothing is changed by stopping, and it can be done again afterwards\./.test(q),
+    q.startsWith('Stop it and start the game? ') &&
+      /🗜 A smaller copy for phones is still being made \(\d+%\)\. Nothing is changed by stopping, and it can be done again afterwards\./.test(q),
     `▶ Play asks first (${q.slice(0, 170)})`,
   );
   await ask.getByRole('button', { name: 'Keep working' }).click();
@@ -597,8 +734,14 @@ try {
         setTimeout(tell, 10_000);
       }),
   );
-  assert(shown.loop && !shown.controls && shown.muted && shown.playing && shown.w === 320, `Bob’s phone shows it like a GIF: looping, silent, playing, no controls (${JSON.stringify(shown)})`);
-  assert((await bob.getByRole('button', { name: '🔊 Tap for sound' }).count()) === 0 && shown.label === 'Picture', `with no 🔊 button, and named a picture (“${shown.label}”)`);
+  assert(
+    shown.loop && !shown.controls && shown.muted && shown.playing && shown.w === 320,
+    `Bob’s phone shows it like a GIF: looping, silent, playing, no controls (${JSON.stringify(shown)})`,
+  );
+  assert(
+    (await bob.getByRole('button', { name: '🔊 Tap for sound' }).count()) === 0 && shown.label === 'Picture',
+    `with no 🔊 button, and named a picture (“${shown.label}”)`,
+  );
   /** Whether the card's video on phone `p` is paused. */
   const paused = (p) => p.locator('.card .card-item video').evaluate((v) => v.paused);
   await ann.p.getByRole('button', { name: 'Tap to see' }).tap();
@@ -614,7 +757,10 @@ try {
   await ann.c.close();
   await cy.c.close();
   const audGames = await aud.evaluate(() => window.__games);
-  assert(audGames.length > 0 && audGames.every((names) => names.length === 7 && !names.some((n) => n.includes('(phones)'))), `the audience window’s copy of the game never lists the copies (${audGames.at(-1)?.join(', ')})`);
+  assert(
+    audGames.length > 0 && audGames.every((names) => names.length === 7 && !names.some((n) => n.includes('(phones)'))),
+    `the audience window’s copy of the game never lists the copies (${audGames.at(-1)?.join(', ')})`,
+  );
   await phoneCtx.close();
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);

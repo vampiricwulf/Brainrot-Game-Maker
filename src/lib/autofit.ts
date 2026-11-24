@@ -172,7 +172,19 @@ const MAX_FITS = 3000;
 function fitKey(node: HTMLElement, o: AutofitOptions): string {
   const css = (el: Element) => {
     const cs = getComputedStyle(el);
-    return [cs.fontFamily, cs.fontWeight, cs.fontStyle, cs.fontStretch, cs.letterSpacing, cs.wordSpacing, cs.textTransform, cs.lineHeight, cs.whiteSpace, cs.padding, cs.boxSizing].join('/');
+    return [
+      cs.fontFamily,
+      cs.fontWeight,
+      cs.fontStyle,
+      cs.fontStretch,
+      cs.letterSpacing,
+      cs.wordSpacing,
+      cs.textTransform,
+      cs.lineHeight,
+      cs.whiteSpace,
+      cs.padding,
+      cs.boxSizing,
+    ].join('/');
   };
   const inner = node.firstElementChild;
   return [
@@ -257,7 +269,8 @@ let resized: ResizeObserver | null = null;
 /** One watcher for all boxes: a box re-fits when its size changes, and all of them when a font finishes loading. */
 function watch(box: Box): void {
   if (!boxes.size) {
-    resized = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver((all) => all.forEach((e) => boxes.get(e.target) && request(boxes.get(e.target)!)));
+    resized =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver((all) => all.forEach((e) => boxes.get(e.target) && request(boxes.get(e.target)!)));
     document.fonts?.addEventListener?.('loadingdone', fitEverything);
   }
   boxes.set(box.node, box);

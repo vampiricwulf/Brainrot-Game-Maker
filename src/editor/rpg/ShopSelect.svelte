@@ -53,8 +53,9 @@
     else value = v || undefined;
   }}
 >
-  {#if none !== undefined}<option value="">{none}</option>{:else if !value}<option value="">{game.shops?.length ? '— choose —' : '— no shops yet —'}</option>{/if}
-  {#if gone}<option value={value}>⚠ Deleted shop — pick another</option>{/if}
+  {#if none !== undefined}<option value="">{none}</option>{:else if !value}<option value="">{game.shops?.length ? '— choose —' : '— no shops yet —'}</option
+    >{/if}
+  {#if gone}<option {value}>⚠ Deleted shop — pick another</option>{/if}
   {#each game.shops ?? [] as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
   <option value="+">＋ New shop…</option>
 </select>
@@ -65,7 +66,9 @@
     Shops (what they sell, and the prices) are set up in 📊 Stats & Items.
   {/if}
   {#if !app.editGame}
-    <button class="link" onclick={() => void goTo(shop ? { tab: 'stats', shop: shop.id } : { tab: 'stats' })}>{shop ? `Set up “${shop.name}” →` : 'Go there →'}</button>
+    <button class="link" onclick={() => void goTo(shop ? { tab: 'stats', shop: shop.id } : { tab: 'stats' })}
+      >{shop ? `Set up “${shop.name}” →` : 'Go there →'}</button
+    >
   {/if}
 </span>
 

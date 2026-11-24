@@ -176,7 +176,11 @@ export async function failureShots(name, pages) {
   try {
     let list = [];
     const given = /** @type {any} */ (pages);
-    if (given && typeof given.contexts === 'function') list = given.contexts().flatMap((c) => c.pages()).map((p, i) => [String(i + 1), p]);
+    if (given && typeof given.contexts === 'function')
+      list = given
+        .contexts()
+        .flatMap((c) => c.pages())
+        .map((p, i) => [String(i + 1), p]);
     else if (given && typeof given.screenshot === 'function') list = [['', given]];
     else if (Array.isArray(given)) list = given.map((p, i) => (Array.isArray(p) ? p : [String(i + 1), p]));
     list = list.filter(([, p]) => p && !p.isClosed());
@@ -254,13 +258,24 @@ export async function exportHtml(page, name = '') {
   // Nothing may be open over the editor: a window or question still up leaves the header inert, so the click would wait
   // in vain and the test fail on the download instead (CI run 117). Say which one it is.
   const over = page.locator('[role="alertdialog"], [role="dialog"][aria-modal="true"]').first();
-  if (await over.waitFor({ state: 'detached', timeout: 5000 }).then(() => false, () => true))
+  if (
+    await over.waitFor({ state: 'detached', timeout: 5000 }).then(
+      () => false,
+      () => true,
+    )
+  )
     throw new Error(`Export HTML: a window is still open over the editor: “${(await over.innerText()).replace(/\s+/g, ' ').slice(0, 200)}”`);
   const download = page.waitForEvent('download');
   // (A click that can't land fails here, saying why, well before the download's wait runs out.)
   await clickExportHtml(page, { timeout: 10000 });
   const naming = page.getByRole('dialog', { name: 'Name your game' });
-  const first = await Promise.race([download.then(() => 'download'), naming.waitFor().then(() => 'name', () => 'none')]);
+  const first = await Promise.race([
+    download.then(() => 'download'),
+    naming.waitFor().then(
+      () => 'name',
+      () => 'none',
+    ),
+  ]);
   if (first === 'name') await nameGame(page, name);
   return download;
 }
@@ -394,7 +409,9 @@ export async function playWithPlayers(page, n) {
  */
 export async function startNewGame(page) {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
-  const which = await (await page.waitForFunction(() => (document.querySelector('.actions [data-start-ask]') ? 'ask' : document.querySelector('main.play') ? 'play' : null))).jsonValue();
+  const which = await (
+    await page.waitForFunction(() => (document.querySelector('.actions [data-start-ask]') ? 'ask' : document.querySelector('main.play') ? 'play' : null))
+  ).jsonValue();
   if (which === 'ask') {
     await page.waitForTimeout(450);
     await page.locator('.actions [data-start-ask]').getByRole('button', { name: 'Start new game' }).click();
@@ -411,7 +428,9 @@ export async function openBuzzerOptions(where) {
   const fold = where.locator('[data-buzzer-options]');
   await fold.waitFor();
   if (!(await fold.evaluate((d) => /** @type {HTMLDetailsElement} */ (d).open))) await fold.locator('summary').click();
-  await fold.evaluate((d) => new Promise((ok) => (/** @type {HTMLDetailsElement} */ (d).open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
+  await fold.evaluate(
+    (d) => new Promise((ok) => (/** @type {HTMLDetailsElement} */ (d).open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))),
+  );
   return fold;
 }
 
@@ -423,7 +442,9 @@ export async function openOnStream(page) {
   const fold = page.locator('[data-stream-fold]');
   await fold.waitFor();
   if (!(await fold.evaluate((d) => /** @type {HTMLDetailsElement} */ (d).open))) await fold.locator('summary').click();
-  await fold.evaluate((d) => new Promise((ok) => (/** @type {HTMLDetailsElement} */ (d).open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
+  await fold.evaluate(
+    (d) => new Promise((ok) => (/** @type {HTMLDetailsElement} */ (d).open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))),
+  );
   return fold;
 }
 
@@ -445,7 +466,9 @@ export async function openRules(page) {
   const rules = page.locator('details.rules');
   await rules.waitFor();
   if (!(await rules.evaluate((d) => /** @type {HTMLDetailsElement} */ (d).open))) await rules.locator('summary').click();
-  await rules.evaluate((d) => new Promise((ok) => (/** @type {HTMLDetailsElement} */ (d).open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
+  await rules.evaluate(
+    (d) => new Promise((ok) => (/** @type {HTMLDetailsElement} */ (d).open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))),
+  );
   return rules;
 }
 
@@ -494,7 +517,13 @@ export const stepButton = (box, name) => {
  * @returns {Promise<string>}
  */
 export const mainLabel = (page) =>
-  mainButton(page).evaluate((b) => [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim());
+  mainButton(page).evaluate((b) =>
+    [...b.childNodes]
+      .filter((n) => n.nodeName !== 'KBD')
+      .map((n) => n.textContent)
+      .join('')
+      .trim(),
+  );
 
 /**
  * The moment's box holds this action (🎡 Spin for a partner, 📤 Send and start, ✔ Got it…): one button in the whole
@@ -643,7 +672,9 @@ export async function quickInSight(page, words) {
     const fade = parseFloat(getComputedStyle(scroll, '::after').height) || 0;
     const at = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
     const inside = r.top >= s.top - 0.5 && r.bottom <= s.bottom - fade + 0.5;
-    return inside && b.contains(at) ? '' : `“${/** @type {HTMLElement} */ (b).innerText.replace(/\s+/g, ' ').trim()}” at ${Math.round(r.top)}–${Math.round(r.bottom)}, the scrolling part ${Math.round(s.top)}–${Math.round(s.bottom)} (its last ${fade}px faded), the middle on ${at?.tagName}.${at?.className}`;
+    return inside && b.contains(at)
+      ? ''
+      : `“${/** @type {HTMLElement} */ (b).innerText.replace(/\s+/g, ' ').trim()}” at ${Math.round(r.top)}–${Math.round(r.bottom)}, the scrolling part ${Math.round(s.top)}–${Math.round(s.bottom)} (its last ${fade}px faded), the middle on ${at?.tagName}.${at?.className}`;
   });
 }
 
@@ -679,7 +710,16 @@ export async function menuLines(page) {
 export async function longPress(target, ms = 800) {
   await target.evaluate(async (el, wait) => {
     const r = el.getBoundingClientRect();
-    const at = { bubbles: true, cancelable: true, composed: true, pointerType: 'touch', pointerId: 7, isPrimary: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 };
+    const at = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      pointerType: 'touch',
+      pointerId: 7,
+      isPrimary: true,
+      clientX: r.x + r.width / 2,
+      clientY: r.y + r.height / 2,
+    };
     el.dispatchEvent(new PointerEvent('pointerdown', at));
     await new Promise((ok) => setTimeout(ok, wait));
     el.dispatchEvent(new PointerEvent('pointerup', at));
@@ -895,7 +935,20 @@ export async function startBuzzer(prefix, { vars = {} } = {}) {
     log = '';
     wrangler = spawn(
       join(dir, 'node_modules/.bin/wrangler'),
-      ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn', ...buzzerVars(vars)],
+      [
+        'dev',
+        '--ip',
+        '127.0.0.1',
+        '--port',
+        String(port),
+        '--inspector-port',
+        String(inspector),
+        '--persist-to',
+        persist,
+        '--log-level',
+        'warn',
+        ...buzzerVars(vars),
+      ],
       { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
     );
     wrangler.stdout.on('data', (d) => (log += d));
@@ -1029,7 +1082,13 @@ export async function roomKeys(persist) {
         const db = new DatabaseSync(join(copy, f), { readOnly: true });
         try {
           // (A room that ended has no table left.)
-          if (db.prepare("SELECT 1 FROM sqlite_master WHERE name = '_cf_KV'").get()) keys.push(...db.prepare('SELECT key FROM _cf_KV').all().map((r) => /** @type {string} */ (r.key)));
+          if (db.prepare("SELECT 1 FROM sqlite_master WHERE name = '_cf_KV'").get())
+            keys.push(
+              ...db
+                .prepare('SELECT key FROM _cf_KV')
+                .all()
+                .map((r) => /** @type {string} */ (r.key)),
+            );
         } finally {
           db.close();
         }
@@ -1139,7 +1198,16 @@ export function recordSeen() {
  */
 export function seenWhere(page, words) {
   return page.evaluate((words) => {
-    const at = (s) => Math.min(...words.map((w) => String(s ?? '').toLowerCase().indexOf(w.toLowerCase())).filter((i) => i >= 0));
+    const at = (s) =>
+      Math.min(
+        ...words
+          .map((w) =>
+            String(s ?? '')
+              .toLowerCase()
+              .indexOf(w.toLowerCase()),
+          )
+          .filter((i) => i >= 0),
+      );
     const has = (s) => at(s) !== Infinity;
     /** Its words on one line, around the first match when they're long. */
     const near = (s) => {
@@ -1166,7 +1234,8 @@ export function seenWhere(page, words) {
         out.push(`on the page now in <${t.parentElement?.localName}${cls(t.parentElement)}>: ${near(/** @type {Text} */ (t).data)}`);
       }
     for (const el of document.body.querySelectorAll('*'))
-      for (const a of ATTRS) if (el.hasAttribute(a) && has(el.getAttribute(a))) out.push(`on the page now in <${el.localName}${cls(el)}> ${a}: ${near(el.getAttribute(a))}`);
+      for (const a of ATTRS)
+        if (el.hasAttribute(a) && has(el.getAttribute(a))) out.push(`on the page now in <${el.localName}${cls(el)}> ${a}: ${near(el.getAttribute(a))}`);
     // (The page's words read together run across elements: "Leader" in one, " hint" in the next.)
     if (!inNode && has(document.body.innerText)) out.push(`on the page now, across elements: ${near(document.body.innerText)}`);
     out.push(`(now ${Math.round(performance.now())}ms)`);
@@ -1279,7 +1348,10 @@ export async function showChecklist(page) {
 export const lineOf = (e) => {
   const range = document.createRange();
   range.selectNodeContents(e);
-  const tops = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0).map((r) => r.top).sort((a, b) => a - b);
+  const tops = [...range.getClientRects()]
+    .filter((r) => r.width > 0 && r.height > 0)
+    .map((r) => r.top)
+    .sort((a, b) => a - b);
   // (Words in another font, or bold, sit a few pixels off the line's own top: a new line is more than half a line down.)
   const half = (parseFloat(getComputedStyle(e).fontSize) || 12) * 0.6;
   const lines = tops.reduce((n, t, i) => (i && t - tops[i - 1] > half ? n + 1 : n), tops.length ? 1 : 0);

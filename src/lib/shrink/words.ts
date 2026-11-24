@@ -32,9 +32,21 @@ export const CODEC_NAME: Record<string, string> = {
 /** "HEVC (H.265)"; null: one the app doesn't know. */
 export const codecName = (c: string | null | undefined): string | null => (!c ? null : (CODEC_NAME[c] ?? (isPcm(c) ? 'PCM (uncompressed)' : c.toUpperCase())));
 
-const BOX_NAME: Record<Box, string> = { mp4: 'MP4', mov: 'MOV', mkv: 'MKV', webm: 'WebM', ts: 'MPEG-TS', ogg: 'OGG', mp3: 'MP3', wav: 'WAV', flac: 'FLAC', adts: 'AAC' };
+const BOX_NAME: Record<Box, string> = {
+  mp4: 'MP4',
+  mov: 'MOV',
+  mkv: 'MKV',
+  webm: 'WebM',
+  ts: 'MPEG-TS',
+  ogg: 'OGG',
+  mp3: 'MP3',
+  wav: 'WAV',
+  flac: 'FLAC',
+  adts: 'AAC',
+};
 /** A file type by what's in it: "MKV" ("MKA" for a sound; an MP4 sound is an "M4A"). */
-export const boxName = (box: Box, kind: 'video' | 'audio' = 'video'): string => (kind === 'audio' && box === 'mkv' ? 'MKA' : kind === 'audio' && box === 'mp4' ? 'M4A' : BOX_NAME[box]);
+export const boxName = (box: Box, kind: 'video' | 'audio' = 'video'): string =>
+  kind === 'audio' && box === 'mkv' ? 'MKA' : kind === 'audio' && box === 'mp4' ? 'M4A' : BOX_NAME[box];
 /** The file type a fix makes: "MP4", "M4A", "WebM". */
 export const fixBoxName = (box: FixBox): string => ({ mp4: 'MP4', webm: 'WebM', m4a: 'M4A', ogg: 'OGG', mp3: 'MP3', flac: 'FLAC', wav: 'WAV' })[box];
 
@@ -71,7 +83,8 @@ export function whyText(v: Verdict): string {
     }
   }
   if (why.video !== undefined) parts.push(cantPlay('its video is', why.video, fix ? '' : ' or convert'));
-  if (why.sound !== undefined) parts.push(cantPlay(why.kind === 'audio' ? 'it’s' : 'its sound is', why.sound, !fix || fix.audio === 'drop' ? ' or convert' : ''));
+  if (why.sound !== undefined)
+    parts.push(cantPlay(why.kind === 'audio' ? 'it’s' : 'its sound is', why.sound, !fix || fix.audio === 'drop' ? ' or convert' : ''));
   return parts.join(', and ');
 }
 
@@ -113,7 +126,9 @@ const sentence = (s: string): string => (s ? `${s[0].toUpperCase()}${s.slice(1)}
  */
 export function rowText(v: Verdict, own = ''): string {
   if (v.is === 'plays')
-    return v.repack ? `It plays in this browser, but the phones’ 🤫 cards can’t open ${own || 'these'} files: it can be repackaged as ${aOrAn(fixBoxName(v.repack.box))} in seconds, with nothing lost.` : '';
+    return v.repack
+      ? `It plays in this browser, but the phones’ 🤫 cards can’t open ${own || 'these'} files: it can be repackaged as ${aOrAn(fixBoxName(v.repack.box))} in seconds, with nothing lost.`
+      : '';
   if (v.is !== 'silent' && v.is !== 'fails') return '';
   const { fix, why } = v;
   if (!fix) return whyLine(v);
@@ -124,11 +139,20 @@ export function rowText(v: Verdict, own = ''): string {
     return `${w}${v.is === 'silent' ? ', so it plays without sound' : ''}. It can be repackaged as ${box} without its sound in seconds: the picture loses nothing.${advice(v)}`;
   }
   if (fix.video === 'encode') {
-    const sound = fix.audio === 'keep' ? ' Its sound is kept as it is.' : fix.audio === 'encode' ? ` Its sound becomes ${codecName(fix.to?.audio) ?? 'one it plays'}.` : fix.audio === 'drop' ? ` It loses its sound.${advice(v)}` : '';
+    const sound =
+      fix.audio === 'keep'
+        ? ' Its sound is kept as it is.'
+        : fix.audio === 'encode'
+          ? ` Its sound becomes ${codecName(fix.to?.audio) ?? 'one it plays'}.`
+          : fix.audio === 'drop'
+            ? ` It loses its sound.${advice(v)}`
+            : '';
     return `${w}. It can be converted to ${box} (${codecName(fix.to?.video) ?? 'a video it plays'}): that takes a while, at a little less quality.${sound}`;
   }
   const to = codecName(fix.to?.audio) ?? 'a sound it plays';
-  return why.kind === 'audio' || fix.video === undefined ? `${w}: it can be converted to ${box} (${to}).` : `${w}: it can be converted to ${to}, keeping the picture as it is.`;
+  return why.kind === 'audio' || fix.video === undefined
+    ? `${w}: it can be converted to ${box} (${to}).`
+    : `${w}: it can be converted to ${to}, keeping the picture as it is.`;
 }
 
 /**

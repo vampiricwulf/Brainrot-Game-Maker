@@ -6,8 +6,7 @@ import { migrateGame, newAudioEl, newEmbedEl, newImageEl, type BoardRound, type 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { onlineCount } from './usage';
 
-const bytes = (...parts: (string | number[])[]) =>
-  new Uint8Array(parts.flatMap((p) => (typeof p === 'string' ? [...p].map((c) => c.charCodeAt(0)) : p)));
+const bytes = (...parts: (string | number[])[]) => new Uint8Array(parts.flatMap((p) => (typeof p === 'string' ? [...p].map((c) => c.charCodeAt(0)) : p)));
 const pad = (b: Uint8Array, n = 64) => {
   const out = new Uint8Array(Math.max(n, b.length));
   out.set(b);
@@ -46,7 +45,7 @@ describe('sniffMime', () => {
   it.each(cases)('%s', (_name, b, mime) => expect(sniffMime(b)).toBe(mime));
 });
 
-describe('fileMime (a downloaded file\'s type)', () => {
+describe("fileMime (a downloaded file's type)", () => {
   const isom = bytes([0, 0, 0, 0x20], 'ftypisom');
   const dash = bytes([0, 0, 0, 0x20], 'ftypdash');
   const webm = bytes([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 1, 0x42, 0x82, 0x84], 'webm');
@@ -103,7 +102,7 @@ describe('looksLikeHtml', () => {
 describe('file names', () => {
   it('reads Content-Disposition (the UTF-8 form wins)', () => {
     expect(filenameFromDisposition('attachment; filename="frog clip.mp4"')).toBe('frog clip.mp4');
-    expect(filenameFromDisposition("attachment; filename=\"x.mp4\"; filename*=UTF-8''Gr%C3%BC%C3%9Fe%20%F0%9F%90%B8.mp4")).toBe('Grüße 🐸.mp4');
+    expect(filenameFromDisposition('attachment; filename="x.mp4"; filename*=UTF-8\'\'Gr%C3%BC%C3%9Fe%20%F0%9F%90%B8.mp4')).toBe('Grüße 🐸.mp4');
     expect(filenameFromDisposition('inline; filename=plain.png')).toBe('plain.png');
     expect(filenameFromDisposition('attachment; filename="../../evil.mp3"')).toBe('evil.mp3');
     expect(filenameFromDisposition('attachment')).toBeNull();
@@ -124,12 +123,9 @@ describe('file names', () => {
     expect(mimeFromName('a.jpeg')).toBe('image/jpeg');
     expect(mimeFromName('noext')).toBeNull();
     // A camcorder's MPEG-TS.
-    expect([mimeFromName('Party.mts'), mimeFromName('Party.M2TS'), withExtension('Party.m2ts', 'video/mp2t'), withExtension('Party.mts', 'video/mp4')]).toEqual([
-      'video/mp2t',
-      'video/mp2t',
-      'Party.m2ts',
-      'Party.mp4',
-    ]);
+    expect([mimeFromName('Party.mts'), mimeFromName('Party.M2TS'), withExtension('Party.m2ts', 'video/mp2t'), withExtension('Party.mts', 'video/mp4')]).toEqual(
+      ['video/mp2t', 'video/mp2t', 'Party.m2ts', 'Party.mp4'],
+    );
   });
 
   it('a converted file’s name: its media extension follows its new type; any other name is kept', () => {
@@ -173,9 +169,11 @@ describe('readDrivePage (what Google Drive sent instead of the file)', () => {
   it('explains quota, disabled downloads and private files', () => {
     const problem = (html: string, status = 200, url = '') => (readDrivePage(html, status, url) as { problem: string }).problem;
     expect(problem('<html><p class="uc-error-subcaption">Too many users have viewed or downloaded this file recently.</p></html>')).toBe('drive-quota');
-    expect(problem('<html>Sorry, you can\'t view or download this file at this time. Download quota exceeded</html>')).toBe('drive-quota');
+    expect(problem("<html>Sorry, you can't view or download this file at this time. Download quota exceeded</html>")).toBe('drive-quota');
     expect(problem('<html>This file cannot be downloaded by the user.</html>', 403)).toBe('drive-no-download');
-    expect(problem('<html><title>Sign in - Google Accounts</title></html>', 200, 'https://accounts.google.com/v3/signin/identifier?continue=x')).toBe('drive-private');
+    expect(problem('<html><title>Sign in - Google Accounts</title></html>', 200, 'https://accounts.google.com/v3/signin/identifier?continue=x')).toBe(
+      'drive-private',
+    );
     expect(problem('<html>You need access</html>', 200)).toBe('drive-private');
     expect(problem('<html>Not found</html>', 404)).toBe('drive-private');
     expect(problem('<html>Something new from Google</html>', 200)).toBe('drive-page');
@@ -186,7 +184,16 @@ describe('migrateGame and online links', () => {
   it('keeps link fields and drops anything that is not a web link', () => {
     const g = jeopardyGame();
     g.media = [
-      { id: 'a', name: 'a.mp4', mime: 'video/mp4', size: 0, kind: 'video', url: 'https://files.catbox.moe/a.mp4', source: 'https://files.catbox.moe/a.mp4', expiresAt: 123 },
+      {
+        id: 'a',
+        name: 'a.mp4',
+        mime: 'video/mp4',
+        size: 0,
+        kind: 'video',
+        url: 'https://files.catbox.moe/a.mp4',
+        source: 'https://files.catbox.moe/a.mp4',
+        expiresAt: 123,
+      },
       { id: 'b', name: 'b.png', mime: 'image/png', size: 5, kind: 'image', source: 'https://litter.catbox.moe/b.png' },
       { id: 'c', name: 'c.png', mime: 'image/png', size: 0, kind: 'image', url: 'javascript:alert(1)', source: 'file:///c.png' },
     ];

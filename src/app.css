@@ -58,33 +58,63 @@
   color-scheme: dark;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 /* Nothing turns blue from a click, a double-click or a drag (in one window it would show on stream): text selects only
    where people type or copy it. Fields and links, and .selectable: the room code (.whole: one click takes all of it),
    error lines, ℹ About's version and folders, and in two windows the host's own column, typed answers and the 📜 Log. */
-:root { -webkit-user-select: none; user-select: none; }
+:root {
+  -webkit-user-select: none;
+  user-select: none;
+}
 input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']),
 textarea,
 [contenteditable]:not([contenteditable='false']),
 a[href],
-.selectable { -webkit-user-select: text; user-select: text; }
-.selectable.whole { -webkit-user-select: all; user-select: all; }
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+.selectable.whole {
+  -webkit-user-select: all;
+  user-select: all;
+}
 /* (A button's words never select, in copyable text too.) */
-.selectable :is(button, summary) { -webkit-user-select: none; user-select: none; }
+.selectable :is(button, summary) {
+  -webkit-user-select: none;
+  user-select: none;
+}
 /* Pictures and videos don't drag off as files (a drag on one moves what it's in: a board-game space, a tile). */
-img:not([draggable='true']), video:not([draggable='true']) { -webkit-user-drag: none; }
+img:not([draggable='true']),
+video:not([draggable='true']) {
+  -webkit-user-drag: none;
+}
 
-html, body, #app {
+html,
+body,
+#app {
   margin: 0;
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   font-size: 14px;
 }
 
-button, input, select, textarea { font: inherit; color: inherit; }
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
 
 button {
   background: var(--panel-2);
@@ -95,30 +125,68 @@ button {
   white-space: nowrap;
 }
 /* Under the mouse the background changes (selected things show the accent instead, so the two never look alike). */
-button:hover:not(:disabled):where(:not([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false'])))
-  { background: var(--hover); }
-button:disabled { opacity: 0.45; cursor: default; }
+button:hover:not(:disabled):where(:not([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false']))) {
+  background: var(--hover);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 /* One per view: the main thing to do there. */
-button.primary { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
-button.primary:hover:not(:disabled) { background: var(--accent-fill-hover); border-color: var(--accent-fill-hover); }
-button.good { background: var(--good-fill); border-color: var(--good-fill); color: var(--good-ink); }
-button.good:hover:not(:disabled) { background: var(--good-fill-hover); border-color: var(--good-fill-hover); }
+button.primary {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: #fff;
+}
+button.primary:hover:not(:disabled) {
+  background: var(--accent-fill-hover);
+  border-color: var(--accent-fill-hover);
+}
+button.good {
+  background: var(--good-fill);
+  border-color: var(--good-fill);
+  color: var(--good-ink);
+}
+button.good:hover:not(:disabled) {
+  background: var(--good-fill-hover);
+  border-color: var(--good-fill-hover);
+}
 /* Only the answer that confirms a delete (never the first button). */
-button.bad { background: var(--bad-fill); border-color: var(--bad-fill); color: #fff; }
-button.bad:hover:not(:disabled) { background: var(--bad-fill-hover); border-color: var(--bad-fill-hover); }
+button.bad {
+  background: var(--bad-fill);
+  border-color: var(--bad-fill);
+  color: #fff;
+}
+button.bad:hover:not(:disabled) {
+  background: var(--bad-fill-hover);
+  border-color: var(--bad-fill-hover);
+}
 /* The likely one of a ✔ / ✘ pair (the verdict a multiple-choice pick points to): ringed, never moved. */
-button.good.ring { outline: 2px solid var(--good); outline-offset: 2px; }
-button.bad.ring { outline: 2px solid var(--bad); outline-offset: 2px; }
+button.good.ring {
+  outline: 2px solid var(--good);
+  outline-offset: 2px;
+}
+button.bad.ring {
+  outline: 2px solid var(--bad);
+  outline-offset: 2px;
+}
 /* A box's next action while it's due (🔔 Open the buzzers, 📤 Send), and the check's strongest fix: ringed, never moved,
    a still outline (it never pulses). One at a time on the game screen. */
-button.ring:not(.good, .bad) { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.ring:not(.good, .bad) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 /* Low emphasis: icons, Cancel, the ✕ (pressed, it shows it as any button does). */
-button.ghost:where(:not([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false'])))
-  { background: transparent; }
-button.ghost:hover:not(:disabled):where(:not([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false'])))
-  { background: var(--hover); }
+button.ghost:where(:not([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false']))) {
+  background: transparent;
+}
+button.ghost:hover:not(:disabled):where(:not([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false']))) {
+  background: var(--hover);
+}
 /* What deletes something (🗑 Delete round): red words, asked or undoable. */
-button.danger { color: var(--bad); }
+button.danger {
+  color: var(--bad);
+}
 /* Selected or pressed, one look everywhere: the round or slide on screen, a tab, a tool or a toggle that's on
    (aria-pressed, aria-selected or aria-current). An accent tint with an accent edge and the usual text, so it never
    looks like the blue button: that's only ever the one thing to press. Low priority (a class's weight): what has its
@@ -136,48 +204,127 @@ button.danger { color: var(--bad); }
   color: var(--sel-muted);
 }
 /* Sizes: normal for a page's or window's actions, .small in dense rows, .tiny for the icons in a row. */
-button.small { padding: 2px 8px; font-size: 12px; }
-button.tiny { padding: 1px 5px; font-size: 12px; line-height: 1.25; min-width: 22px; }
+button.small {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+button.tiny {
+  padding: 1px 5px;
+  font-size: 12px;
+  line-height: 1.25;
+  min-width: 22px;
+}
 
-input, select, textarea {
+input,
+select,
+textarea {
   background: var(--bg);
   border: 1px solid var(--control-border);
   border-radius: 6px;
   padding: 6px 8px;
 }
-input[type='color'] { padding: 0; width: 36px; height: 30px; cursor: pointer; }
+input[type='color'] {
+  padding: 0;
+  width: 36px;
+  height: 30px;
+  cursor: pointer;
+}
 /* (A slider isn't a text box: padding at its sides or a border would end its track short of the thumb at its maximum.
    Above and below, it keeps a text box's height, so a row of them still lines up.) */
-input[type='range'] { padding: 7px 0; border: 0; background: none; }
-input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--accent); }
-input[type='radio'] { accent-color: var(--accent); }
+input[type='range'] {
+  padding: 7px 0;
+  border: 0;
+  background: none;
+}
+input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+input[type='radio'] {
+  accent-color: var(--accent);
+}
 
 /* One focus ring, for the keyboard (a click on a button shows none; a text field shows it, as browsers do). */
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: -1px; }
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-offset: -1px;
+}
 /* A window or a region the app moves the focus to (not something to press: a button that has the focus shows it). */
-[role='dialog']:focus-visible, [role='alertdialog']:focus-visible, [tabindex='-1']:not(button):focus-visible { outline: none; }
+[role='dialog']:focus-visible,
+[role='alertdialog']:focus-visible,
+[tabindex='-1']:not(button):focus-visible {
+  outline: none;
+}
 
-a { color: #8fb0ff; }
-a:hover { color: #b5cbff; }
+a {
+  color: #8fb0ff;
+}
+a:hover {
+  color: #b5cbff;
+}
 
-label.field { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
-label.field > input, label.field > textarea, label.field > select { color: var(--text); font-size: 14px; }
-label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+label.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+label.field > input,
+label.field > textarea,
+label.field > select {
+  color: var(--text);
+  font-size: 14px;
+}
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
 /* A box that can’t be ticked now looks it, as a disabled button does (its own box, not one further in). */
-label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
+label.check:has(> input:disabled) {
+  opacity: 0.55;
+  cursor: default;
+}
 
-.muted { color: var(--muted); }
+.muted {
+  color: var(--muted);
+}
 /* Help and status lines: 12px, muted for a hint, orange for a warning. */
-.small { font-size: 12px; }
-.hint { font-size: 12px; color: var(--muted); }
-.warn { color: var(--warn); }
-.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.spacer { flex: 1; }
+.small {
+  font-size: 12px;
+}
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+.warn {
+  color: var(--warn);
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.spacer {
+  flex: 1;
+}
 
 /* Rows that drag to reorder by their ⋮⋮ grip (dragorder.svelte.ts): a line shows where the dragged one goes. */
-.drag-row { position: relative; }
-.drag-row.dragging { opacity: 0.5; }
+.drag-row {
+  position: relative;
+}
+.drag-row.dragging {
+  opacity: 0.5;
+}
 .drag-row.drop-before::before,
 .drag-row.drop-after::after {
   content: '';
@@ -188,9 +335,18 @@ label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
   background: var(--accent);
   pointer-events: none;
 }
-.drag-row.drop-before::before { top: -3px; }
-.drag-row.drop-after::after { bottom: -3px; }
-.drag-grip { cursor: grab; color: var(--muted); font-size: 12px; letter-spacing: -2px; }
+.drag-row.drop-before::before {
+  top: -3px;
+}
+.drag-row.drop-after::after {
+  bottom: -3px;
+}
+.drag-grip {
+  cursor: grab;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: -2px;
+}
 
 /* A notice under the editor's header (a new version, a file that won't play, a game just replaced): an icon and its
    words, its actions (the main one first), then a ✕ at the far right whose tooltip says what it does. */
@@ -204,18 +360,24 @@ label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
   background: rgba(79, 124, 255, 0.12);
   border-bottom: 1px solid var(--accent);
 }
-.data-notice > .notice-x { margin-left: auto; }
+.data-notice > .notice-x {
+  margin-left: auto;
+}
 
 /* A touch screen with no mouse (a phone, a tablet): there are no keys to press and no files to drop, so the keys on
    buttons and in menus, and "or drop it here", aren't shown. (The keys window still lists the keys, in its table, for
    a keyboard plugged in.) */
 @media (hover: none) {
   kbd:not(td > kbd),
-  .not-touch { display: none !important; }
+  .not-touch {
+    display: none !important;
+  }
 }
 /* Its other half: words only for a touch screen (tap, long-press) and its own buttons (✎ Edit board's ☐ Select several). */
 @media (hover: hover) {
-  .touch-only { display: none !important; }
+  .touch-only {
+    display: none !important;
+  }
 }
 
 /* A short message (toast) and the editor's "Deleted … · Undo" note (HistoryNotice): one pill at the bottom middle. */
@@ -241,7 +403,9 @@ label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
   pointer-events: none;
 }
 /* Above the editor's "Deleted … · Undo" note (HistoryNotice), not over it. */
-body:has(.history-notice) .toast { bottom: 72px; }
+body:has(.history-notice) .toast {
+  bottom: 72px;
+}
 /* A window is open: one line at the top, in the room every window leaves there (.modal-backdrop, --toast-room), clear
    of its buttons. */
 body:has([aria-modal='true']) .toast {
@@ -256,7 +420,9 @@ body:has([aria-modal='true']) .toast {
    up to three lines, and every window leaves room for three. (Always, not only while a toast shows: the window would
    jump down and back under a finger.) */
 @media (max-width: 600px) {
-  :root { --toast-room: 88px; }
+  :root {
+    --toast-room: 88px;
+  }
   body:has([aria-modal='true']) .toast {
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -270,7 +436,9 @@ body:has([aria-modal='true']) .toast {
 }
 /* The dropped steps' note is over the window's top (HistoryNotice), its ↶ Undo the only way back: a toast goes under it,
    not over it. (Clicks go through a toast to the window under it.) */
-body:has([aria-modal='true']):has(.history-notice.over) .toast { top: 52px; }
+body:has([aria-modal='true']):has(.history-notice.over) .toast {
+  top: 52px;
+}
 /* Single window: a window inside the host panel (.in-panel) keeps the stage viewers see clear, and so does its toast,
    at the panel's foot. */
 body:has(.in-panel [aria-modal='true']) .toast {
@@ -306,15 +474,24 @@ body:has(.in-panel [aria-modal='true']) .toast {
   border: 1px solid var(--border);
   border-radius: 10px;
 }
-:where(.modal-backdrop) > :where(.modal.sm) { width: min(440px, 100%); }
-:where(.modal-backdrop) > :where(.modal.lg) { width: min(1100px, 100%); }
-:where(.modal) p { margin: 0; }
+:where(.modal-backdrop) > :where(.modal.sm) {
+  width: min(440px, 100%);
+}
+:where(.modal-backdrop) > :where(.modal.lg) {
+  width: min(1100px, 100%);
+}
+:where(.modal) p {
+  margin: 0;
+}
 .modal-head {
   display: flex;
   gap: 8px;
   align-items: center;
 }
-.modal-head > .modal-title { flex: 1; min-width: 0; }
+.modal-head > .modal-title {
+  flex: 1;
+  min-width: 0;
+}
 [role='dialog'] .modal-title,
 [role='alertdialog'] .modal-title {
   margin: 0;
@@ -412,14 +589,22 @@ body:has(.in-panel [aria-modal='true']) .toast {
 /* A page in the editor: its title (20px) and one muted line, its actions on the right (PageHeader). Forms stay
    readable on a wide screen; boards, maps and a slides round's slide fill it, and so does a round's header (its
    buttons stay put from one round's tab to the next). */
-.page { max-width: var(--page-width); }
+.page {
+  max-width: var(--page-width);
+}
 .page-header {
   display: flex;
   gap: 12px;
   align-items: flex-start;
   margin-bottom: 16px;
 }
-.page-header .titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.page-header .titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .page-header h2 {
   margin: 0;
   font-size: 20px;
@@ -428,8 +613,18 @@ body:has(.in-panel [aria-modal='true']) .toast {
   align-items: center;
   flex-wrap: wrap;
 }
-.page-header .sub { margin: 0; font-size: 13px; color: var(--muted); }
-.page-header .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.page-header .sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.page-header .actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 /* The round's mode beside its name. */
 .mode-chip {
   display: inline-flex;
@@ -445,28 +640,61 @@ body:has(.in-panel [aria-modal='true']) .toast {
 }
 
 /* Long help, folded away (Tips): the summary is one line; open or closed is remembered (tips.ts). */
-details.tips { font-size: 13px; color: var(--muted); }
-details.tips > summary { cursor: pointer; width: fit-content; }
-details.tips > :not(summary) { margin: 8px 0 0; }
-details.tips ul { padding-left: 20px; }
-details.tips li + li { margin-top: 4px; }
+details.tips {
+  font-size: 13px;
+  color: var(--muted);
+}
+details.tips > summary {
+  cursor: pointer;
+  width: fit-content;
+}
+details.tips > :not(summary) {
+  margin: 8px 0 0;
+}
+details.tips ul {
+  padding-left: 20px;
+}
+details.tips li + li {
+  margin-top: 4px;
+}
 
 /* Where an undo or redo changed something, for a moment (nav.svelte.ts). */
 /* The check before going on, or what it points to (an answer to judge), flashed once: none with Reduce motion (the
    status line says it). */
-.goon-flash { animation: goon-flash 0.9s ease-out; }
-@keyframes goon-flash {
-  0%, 40% { outline: 3px solid var(--accent); outline-offset: 2px; }
-  100% { outline: 3px solid transparent; outline-offset: 2px; }
+.goon-flash {
+  animation: goon-flash 0.9s ease-out;
 }
-.flash { animation: flash 1.2s ease-out; }
+@keyframes goon-flash {
+  0%,
+  40% {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
+  100% {
+    outline: 3px solid transparent;
+    outline-offset: 2px;
+  }
+}
+.flash {
+  animation: flash 1.2s ease-out;
+}
 @keyframes flash {
-  0%, 35% { outline: 3px solid var(--accent); outline-offset: 2px; }
-  100% { outline: 3px solid transparent; outline-offset: 2px; }
+  0%,
+  35% {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
+  100% {
+    outline: 3px solid transparent;
+    outline-offset: 2px;
+  }
 }
 
 /* A slot a file is being dragged over (mediadrop.ts). */
-.media-drop { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.media-drop {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
 
 /* Reduced motion. The host's controls and the editor follow the computer's setting; what viewers see on the stage
    ([data-stage]) follows ⚙ Settings › "Reduce motion on stream" (html.reduce-stream, motion.svelte.ts). Animations end
@@ -483,7 +711,9 @@ details.tips li + li { margin-top: 4px; }
     scroll-behavior: auto !important;
   }
   /* A color fading, not a movement: the undo flash stays. */
-  .flash { animation-duration: 1.2s !important; }
+  .flash {
+    animation-duration: 1.2s !important;
+  }
 }
 html.reduce-stream [data-stage] *,
 html.reduce-stream [data-stage] *::before,
@@ -502,8 +732,12 @@ html.reduce-stream [data-stage] .timesup {
   animation-duration: 1ms !important;
   animation-fill-mode: forwards !important;
 }
-html.reduce-stream [data-stage] .bn-pill { animation-delay: 2s !important; }
-html.reduce-stream [data-stage] .timesup { animation-delay: calc(3s - var(--age, 0s)) !important; }
+html.reduce-stream [data-stage] .bn-pill {
+  animation-delay: 2s !important;
+}
+html.reduce-stream [data-stage] .timesup {
+  animation-delay: calc(3s - var(--age, 0s)) !important;
+}
 @keyframes shown-then-gone {
   to {
     opacity: 0;

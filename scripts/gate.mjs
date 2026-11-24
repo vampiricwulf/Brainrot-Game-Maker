@@ -56,5 +56,9 @@ console.log('\nGate:');
 for (const d of done) console.log(`  ${d.ok ? 'ok  ' : 'FAIL'} ${time(d.s).padStart(6)}  ${d.name}`);
 for (const [name] of steps.slice(done.length)) console.log(`  --   ${''.padStart(6)}  ${name} (not run)`);
 const failed = done.find((d) => !d.ok);
-console.log(failed ? `\nFailed at: ${failed.name} (${time(Math.round((Date.now() - t00) / 1000))} in all)` : `\nAll ${done.length} steps passed in ${time(Math.round((Date.now() - t00) / 1000))}`);
+console.log(
+  failed
+    ? `\nFailed at: ${failed.name} (${time(Math.round((Date.now() - t00) / 1000))} in all)`
+    : `\nAll ${done.length} steps passed in ${time(Math.round((Date.now() - t00) / 1000))}`,
+);
 process.exit(failed ? 1 : 0);

@@ -17,7 +17,21 @@
   import { adoptMedia, clipboard, copyElements, copyFromMenu, elementMediaIds, pastingOurs } from '../lib/clipboard.svelte';
   import { freeOffset } from '../lib/editing';
   import { copyIsTheBrowsers } from '../lib/undokeys';
-  import { boardRounds, MAX_PLAYERS, mostPlayers, newId, newImageEl, roundName, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type BoardRound, type Slide, type SlideElement } from '../lib/model';
+  import {
+    boardRounds,
+    MAX_PLAYERS,
+    mostPlayers,
+    newId,
+    newImageEl,
+    roundName,
+    SLIDE_H,
+    SLIDE_W,
+    type BoardDecor,
+    type ImageEl,
+    type BoardRound,
+    type Slide,
+    type SlideElement,
+  } from '../lib/model';
   import { newSession } from '../lib/session';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
@@ -81,7 +95,10 @@
   const DEMO = ['Alex', 'Sam', 'Jordan', 'Riley', 'Casey', 'Morgan', 'Jamie', 'Taylor', 'Quinn', 'Avery'];
   const session = $derived.by(() => {
     const s = newSession(game);
-    s.currentRound = Math.max(0, game.rounds.findIndex((r) => r.id === round.id));
+    s.currentRound = Math.max(
+      0,
+      game.rounds.findIndex((r) => r.id === round.id),
+    );
     s.players = s.players.slice(0, previewPlayers);
     for (let i = s.players.length; i < previewPlayers; i++) {
       const color = nextFreeColor(s.players.map((p) => p.color));
@@ -113,9 +130,7 @@
     });
   });
   const preview = $derived(
-    hidden.length
-      ? { ...game, rounds: game.rounds.map((r) => (r.id === round.id ? { ...r, decor: decor.filter((d) => !hidden.includes(d.id)) } : r)) }
-      : game,
+    hidden.length ? { ...game, rounds: game.rounds.map((r) => (r.id === round.id ? { ...r, decor: decor.filter((d) => !hidden.includes(d.id)) } : r)) } : game,
   );
   const live = newLive();
 
@@ -274,7 +289,11 @@
   // ---------- Clipboard: the slide editor's (clipboard.svelte.ts), so pictures go between boards and slides ----------
   /** Copy the selected images (or `from`): "2 images". Board-only settings stay behind (a slide has no tiles). */
   function copied(data: DataTransfer | null, from = decor.filter((d) => selected.includes(d.id))): string {
-    const n = copyElements(game, from.map(({ behind: _b, clickThrough: _c, ...el }) => el), data);
+    const n = copyElements(
+      game,
+      from.map(({ behind: _b, clickThrough: _c, ...el }) => el),
+      data,
+    );
     return n === 1 ? 'image' : `${n} images`;
   }
 
@@ -371,7 +390,12 @@
     const r = stageEl.getBoundingClientRect();
     const last = decor.find((d) => d.id === selected[selected.length - 1]);
     const at = last ? { x: last.x + last.w / 2, y: last.y + last.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
-    const stack = last ? elementsAt(decor.filter((d) => !hidden.includes(d.id)), at) : [];
+    const stack = last
+      ? elementsAt(
+          decor.filter((d) => !hidden.includes(d.id)),
+          at,
+        )
+      : [];
     menu = { x: r.left + (at.x / SLIDE_W) * r.width, y: r.top + (at.y / SLIDE_H) * r.height, at, stack };
   }
 
@@ -395,7 +419,15 @@
     } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
       const up = e.code === 'BracketRight';
       edit(() => restack(decor, selected, e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward'));
-    } else if (k === 'enter' && onCanvas && !mod && !e.altKey && !e.shiftKey && selected.length === 1 && decor.find((d) => d.id === selected[0])?.kind === 'image') {
+    } else if (
+      k === 'enter' &&
+      onCanvas &&
+      !mod &&
+      !e.altKey &&
+      !e.shiftKey &&
+      selected.length === 1 &&
+      decor.find((d) => d.id === selected[0])?.kind === 'image'
+    ) {
       // Enter on a picture: ✎ Edit image, as a double-click.
       editingImage = selected[0];
     } else if (k === 'f2' && onCanvas && !mod && !e.altKey && !e.shiftKey && selected.length === 1) {
@@ -479,7 +511,11 @@
         <button onclick={() => (picking = 'add')}>＋ Add image</button>
         {#if picking === 'add'}<MediaPicker kind="image" onpick={picked} onclose={() => (picking = null)} />{/if}
       </div>
-      <button onclick={copyToRounds} disabled={!decor.length || !others.length} title="Put a copy of the selected images (or all of them) on every other round's board">
+      <button
+        onclick={copyToRounds}
+        disabled={!decor.length || !others.length}
+        title="Put a copy of the selected images (or all of them) on every other round's board"
+      >
         Copy {selected.length ? 'selected' : 'all'} to other rounds
       </button>
       <span class="spacer"></span>
@@ -532,7 +568,8 @@
                   const fn = notice?.undo;
                   notice = null;
                   fn?.();
-                }}>↶ Undo</button>
+                }}>↶ Undo</button
+              >
             {/if}
           </div>
         {/if}
@@ -561,8 +598,15 @@
           </label>
           {#if overPlates.length && game.theme.scoreBar !== 'hidden'}
             <p class="warn small" role="status">
-              ⚠ {overPlates.length === 1 ? `“${overPlates[0]}” covers` : `${overPlates.slice(0, 3).map((n) => `“${n}”`).join(', ')}${overPlates.length > 3 ? ` and ${overPlates.length - 3} more` : ''} cover`} a player's score with {previewPlayers}
-              player{previewPlayers === 1 ? '' : 's'}. Move {overPlates.length === 1 ? 'it' : 'them'} off the score bar, or put {overPlates.length === 1 ? 'it' : 'them'} behind the tiles.
+              ⚠ {overPlates.length === 1
+                ? `“${overPlates[0]}” covers`
+                : `${overPlates
+                    .slice(0, 3)
+                    .map((n) => `“${n}”`)
+                    .join(', ')}${overPlates.length > 3 ? ` and ${overPlates.length - 3} more` : ''} cover`} a player's score with {previewPlayers}
+              player{previewPlayers === 1 ? '' : 's'}. Move {overPlates.length === 1 ? 'it' : 'them'} off the score bar, or put {overPlates.length === 1
+                ? 'it'
+                : 'them'} behind the tiles.
             </p>
           {/if}
         </section>

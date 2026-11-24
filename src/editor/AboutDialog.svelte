@@ -26,7 +26,14 @@
   );
   let folders = $state<DataFolders | null>(null);
   const leftovers = $derived(
-    folders ? ([['old-data', folders.oldData], ['old-settings', folders.oldSettings]] as const).filter(([, f]) => f?.exists && f.path) : [],
+    folders
+      ? (
+          [
+            ['old-data', folders.oldData],
+            ['old-settings', folders.oldSettings],
+          ] as const
+        ).filter(([, f]) => f?.exists && f.path)
+      : [],
   );
 
   /** Browser: whether it keeps this file's storage for good (null: it can't say). */
@@ -74,47 +81,58 @@
       <dt>Build</dt>
       <dd class="selectable">{__BUILD_COMMIT__ ? `${__BUILD_COMMIT__}, ` : ''}{__BUILD_DATE__}</dd>
       <dt>Guide</dt>
-      <dd><a href={HOSTING_GUIDE} target="_blank" rel="noreferrer" onclick={link} title="The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams">📖 How to host (the guide) ↗</a></dd>
+      <dd
+        ><a href={HOSTING_GUIDE} target="_blank" rel="noreferrer" onclick={link} title="The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams"
+          >📖 How to host (the guide) ↗</a
+        ></dd
+      >
       <dt>Source</dt>
       <dd><a href={REPO} target="_blank" rel="noreferrer" onclick={link}>GitHub: vampiricwulf/Brainrot-Game-Maker ↗</a></dd>
       <dt>Updates</dt>
       <dd class="updates">
         <!-- (No whitespace in it between its parts: with nothing to say it is empty, and the line starts where the others do.) -->
         <span role="status" class:selectable={!!update.error}
-          >{#if update.status === 'checking'}Checking…{:else if newest && update.status !== 'installing'}Version {newest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{:else if update.status === 'idle' && !prefs.checkUpdates}Not checked on its own (⚙ Settings).{/if}<!--
-          -->{#if update.error && (update.status === 'available' || update.status === 'current')}{' '}<span class="muted">{update.error}.</span>{/if}<!--
-          -->{#if update.checkedAt && update.status !== 'checking'}{' '}<span class="muted checked">(checked {checkedWhen(update.checkedAt)})</span>{/if}</span
+          >{#if update.status === 'checking'}Checking…{:else if newest && update.status !== 'installing'}Version {newest.version} is out.{:else if update.status === 'current'}✓
+            This is the newest version.{:else if update.status === 'failed'}{update.error}.{:else if update.status === 'idle' && !prefs.checkUpdates}Not checked
+            on its own (⚙ Settings).{/if}<!--
+          -->{#if update.error && (update.status === 'available' || update.status === 'current')}{' '}<span
+              class="muted">{update.error}.</span
+            >{/if}<!--
+          -->{#if update.checkedAt && update.status !== 'checking'}{' '}<span class="muted checked"
+              >(checked {checkedWhen(update.checkedAt)})</span
+            >{/if}</span
         >
         {#if newest}
           <UpdateControls release={newest} />
         {:else}
           <a href={`${RELEASES}/latest`} target="_blank" rel="noreferrer" onclick={link}>Latest release ↗</a>
         {/if}
-        <button class="small" onclick={() => checkForUpdate(true)} disabled={update.status === 'checking' || update.status === 'installing'}>Check for updates</button>
+        <button class="small" onclick={() => checkForUpdate(true)} disabled={update.status === 'checking' || update.status === 'installing'}
+          >Check for updates</button
+        >
       </dd>
       <dt>Problems</dt>
       <dd><a href={`${REPO}/issues`} target="_blank" rel="noreferrer" onclick={link}>Report an issue ↗</a></dd>
       <dt>License</dt>
       <dd>
-        MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones), 🔄 Convert, ✎ Edit and the check whether a video or sound plays
-        here: mediabunny © 2026-present Vanilagy and contributors (MPL-2.0, source at
+        MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones), 🔄 Convert, ✎ Edit and the check whether a video or sound plays here:
+        mediabunny © 2026-present Vanilagy and contributors (MPL-2.0, source at
         <a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noreferrer" onclick={link}>github.com/Vanilagy/mediabunny ↗</a>). 🗜 for a GIF's
         frames: omggif © 2013 Dean McNamee (MIT,
         <a href="https://github.com/deanm/omggif" target="_blank" rel="noreferrer" onclick={link}>github.com/deanm/omggif ↗</a>).
         <details class="license">
           <summary>omggif’s license</summary>
           <p>
-            Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the
-            "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish,
-            distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-            following conditions:
+            Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
+            to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+            and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
           </p>
           <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
           <p>
-            THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-            MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-            CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-            SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+            THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+            FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+            LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+            IN THE SOFTWARE.
           </p>
         </details>
       </dd>
@@ -123,9 +141,8 @@
     <h3>Where your data is saved</h3>
     {#if desktopApp}
       <p class="muted">
-        The desktop app keeps the game you’re editing, Recent games, the media you add and its settings in these folders on
-        this PC. Nothing else is written anywhere, except the files you save or export and the timed autosaves (⚙ Settings):
-        those go in a <b>BrainrotSaves</b> folder next to the app.
+        The desktop app keeps the game you’re editing, Recent games, the media you add and its settings in these folders on this PC. Nothing else is written
+        anywhere, except the files you save or export and the timed autosaves (⚙ Settings): those go in a <b>BrainrotSaves</b> folder next to the app.
       </p>
       {#if folders}
         <div class="folder">
@@ -148,7 +165,9 @@
             <div class="what">The game you’re editing, Recent games, a game in progress and media</div>
             <code class="selectable">{folders.data.path ?? 'unknown'}</code>
           </div>
-          <button class="small" disabled={!folders.data.exists} onclick={() => show('data')} aria-label="Open folder: game data and media">📂 Open folder</button>
+          <button class="small" disabled={!folders.data.exists} onclick={() => show('data')} aria-label="Open folder: game data and media"
+            >📂 Open folder</button
+          >
         </div>
         <div class="folder">
           <div>
@@ -162,22 +181,23 @@
           <div class="leftover" role="note">
             <div class="what">Left over from Jeopardy Builder (the old name)</div>
             <p class="hint">
-              This app couldn't move {leftovers.length === 1 ? 'this folder' : 'these folders'} (the old app may have been
-              open, or this app already had data of its own). Look inside, then delete {leftovers.length === 1 ? 'it' : 'them'}
+              This app couldn't move {leftovers.length === 1 ? 'this folder' : 'these folders'} (the old app may have been open, or this app already had data of its
+              own). Look inside, then delete {leftovers.length === 1 ? 'it' : 'them'}
               when you no longer need {leftovers.length === 1 ? 'it' : 'them'}.
             </p>
             {#each leftovers as [which, f] (which)}
               <div class="folder">
                 <code class="selectable">{f!.path}</code>
-                <button class="small" onclick={() => show(which)} aria-label="Open folder: old {which === 'old-data' ? 'game data' : 'settings'}">📂 Open folder</button>
+                <button class="small" onclick={() => show(which)} aria-label="Open folder: old {which === 'old-data' ? 'game data' : 'settings'}"
+                  >📂 Open folder</button
+                >
               </div>
             {/each}
           </div>
         {/if}
         <p class="hint">
-          Removing Brainrot Games Maker? Delete the .exe and the last two folders. Keep BrainrotSaves (or copy it somewhere
-          else) if you want your saved games. Deleting the last two while the app is closed starts it fresh: anything not
-          saved as a .brainrot (or exported) is lost.
+          Removing Brainrot Games Maker? Delete the .exe and the last two folders. Keep BrainrotSaves (or copy it somewhere else) if you want your saved games.
+          Deleting the last two while the app is closed starts it fresh: anything not saved as a .brainrot (or exported) is lost.
         </p>
       {:else}
         <p class="hint">Looking up the folders…</p>
@@ -188,9 +208,8 @@
         {online
           ? "This site keeps its own games: the downloaded file and the desktop app don't see them (move a game across with 💾 Save and 📂 Open…)."
           : 'In Chrome and Edge every copy of this app opened from a file shares it; another browser starts empty.'}
-        Nothing is uploaded, except to the buzzer server while
-        phones play: what the phones show and send (the clue, names, answers), and 🤫 cards' files. Clearing this
-        browser's site data deletes them, so use <b>Save</b> (.brainrot) to keep a copy.
+        Nothing is uploaded, except to the buzzer server while phones play: what the phones show and send (the clue, names, answers), and 🤫 cards' files. Clearing
+        this browser's site data deletes them, so use <b>Save</b> (.brainrot) to keep a copy.
       </p>
       {#if kept !== null}
         <p class="hint">

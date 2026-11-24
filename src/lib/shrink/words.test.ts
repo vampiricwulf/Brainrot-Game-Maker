@@ -2,37 +2,61 @@ import { describe, expect, it } from 'vitest';
 import type { Verdict, Why } from './playable';
 import { advice, aOrAn, boxName, codecName, fixBoxName, rowText, severalText, shortWhy, tracksOf, whyLine, whyText } from './words';
 
-const fails = (why: Omit<Why, 'kind'> & { kind?: Why['kind'] }, fix: Extract<Verdict, { is: 'fails' }>['fix'] = null): Verdict => ({ is: 'fails', fix, why: { kind: 'video', ...why } });
-const silent = (why: Omit<Why, 'kind'>, fix: Extract<Verdict, { is: 'silent' }>['fix'] = null): Verdict => ({ is: 'silent', fix, why: { kind: 'video', ...why } });
+const fails = (why: Omit<Why, 'kind'> & { kind?: Why['kind'] }, fix: Extract<Verdict, { is: 'fails' }>['fix'] = null): Verdict => ({
+  is: 'fails',
+  fix,
+  why: { kind: 'video', ...why },
+});
+const silent = (why: Omit<Why, 'kind'>, fix: Extract<Verdict, { is: 'silent' }>['fix'] = null): Verdict => ({
+  is: 'silent',
+  fix,
+  why: { kind: 'video', ...why },
+});
 
 describe('why a file doesn’t play here, in words', () => {
   it('its file type, when every track is fine', () => {
-    expect(whyText(fails({ box: 'ts', fine: { sound: 'mp3' } }, { audio: 'keep', box: 'mp4' }))).toBe('this browser can’t open MPEG-TS files, but its sound (MP3) is fine');
+    expect(whyText(fails({ box: 'ts', fine: { sound: 'mp3' } }, { audio: 'keep', box: 'mp4' }))).toBe(
+      'this browser can’t open MPEG-TS files, but its sound (MP3) is fine',
+    );
     expect(whyText(fails({ box: 'ts', fine: { video: 'avc', sound: 'aac' } }, { video: 'keep', audio: 'keep', box: 'mp4' }))).toBe(
       'this browser can’t open MPEG-TS files, but its video (H.264) and sound (AAC) are fine',
     );
-    expect(whyText(fails({ box: 'mkv', kind: 'audio', fine: { sound: 'opus' } }, { audio: 'keep', box: 'ogg' }))).toBe('this browser can’t open MKA files, but its sound (Opus) is fine');
+    expect(whyText(fails({ box: 'mkv', kind: 'audio', fine: { sound: 'opus' } }, { audio: 'keep', box: 'ogg' }))).toBe(
+      'this browser can’t open MKA files, but its sound (Opus) is fine',
+    );
   });
 
   it('its picture, saying “or convert” when the app can’t fix it either', () => {
-    expect(whyText(fails({ video: 'hevc', fine: { sound: 'aac' } }, { video: 'encode', audio: 'keep', box: 'mp4', to: { video: 'avc' } }))).toBe('its video is HEVC (H.265), which this browser can’t play');
+    expect(whyText(fails({ video: 'hevc', fine: { sound: 'aac' } }, { video: 'encode', audio: 'keep', box: 'mp4', to: { video: 'avc' } }))).toBe(
+      'its video is HEVC (H.265), which this browser can’t play',
+    );
     expect(whyText(fails({ video: 'hevc', cant: 'undecodable' }))).toBe('its video is HEVC (H.265), which this browser can’t play or convert');
     expect(whyText(fails({ video: null, cant: 'undecodable' }))).toBe('its video is in a format this browser can’t play or convert');
   });
 
   it('its sound, saying “or convert” when it’s left out or nothing fixes it; a sound file’s is “it’s”', () => {
-    expect(whyText(silent({ sound: 'ac3', fine: { video: 'vp9' } }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe('its sound is AC-3 (Dolby Digital), which this browser can’t play or convert');
-    expect(whyText(silent({ sound: 'pcm-s16' }, { video: 'keep', audio: 'encode', box: 'webm', to: { audio: 'opus' } }))).toBe('its sound is PCM (uncompressed), which this browser can’t play');
+    expect(whyText(silent({ sound: 'ac3', fine: { video: 'vp9' } }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe(
+      'its sound is AC-3 (Dolby Digital), which this browser can’t play or convert',
+    );
+    expect(whyText(silent({ sound: 'pcm-s16' }, { video: 'keep', audio: 'encode', box: 'webm', to: { audio: 'opus' } }))).toBe(
+      'its sound is PCM (uncompressed), which this browser can’t play',
+    );
     expect(whyText(fails({ kind: 'audio', sound: 'ac3', cant: 'undecodable' }))).toBe('it’s AC-3 (Dolby Digital), which this browser can’t play or convert');
-    expect(whyText(fails({ kind: 'audio', sound: 'eac3', cant: 'undecodable' }))).toBe('it’s E-AC-3 (Dolby Digital Plus), which this browser can’t play or convert');
-    expect(whyText(fails({ kind: 'audio', sound: 'pcm-s16' }, { audio: 'encode', box: 'ogg', to: { audio: 'opus' } }))).toBe('it’s PCM (uncompressed), which this browser can’t play');
+    expect(whyText(fails({ kind: 'audio', sound: 'eac3', cant: 'undecodable' }))).toBe(
+      'it’s E-AC-3 (Dolby Digital Plus), which this browser can’t play or convert',
+    );
+    expect(whyText(fails({ kind: 'audio', sound: 'pcm-s16' }, { audio: 'encode', box: 'ogg', to: { audio: 'opus' } }))).toBe(
+      'it’s PCM (uncompressed), which this browser can’t play',
+    );
   });
 
   it('several, joined with “, and ”', () => {
     expect(whyText(fails({ box: 'ts', sound: 'ac3', fine: { video: 'avc' } }, { video: 'keep', audio: 'drop', box: 'mp4' }))).toBe(
       'this browser can’t open MPEG-TS files, and its sound is AC-3 (Dolby Digital), which this browser can’t play or convert',
     );
-    expect(whyText(fails({ video: 'avc', sound: 'aac', cant: 'undecodable' }))).toBe('its video is H.264, which this browser can’t play or convert, and its sound is AAC, which this browser can’t play or convert');
+    expect(whyText(fails({ video: 'avc', sound: 'aac', cant: 'undecodable' }))).toBe(
+      'its video is H.264, which this browser can’t play or convert, and its sound is AAC, which this browser can’t play or convert',
+    );
   });
 
   it('nothing for a file that plays, or one the app can’t read', () => {
@@ -61,23 +85,35 @@ describe('what the host can do about it', () => {
     expect(advice(fails({ kind: 'audio', sound: 'ac3', cant: 'undecodable' }))).toBe(' Convert it to MP3 or M4A with an audio or video app first.');
     // (A video file with no picture in it is a sound alone too.)
     expect(advice(fails({ sound: 'dts', cant: 'undecodable' }))).toBe(' Convert it to MP3 or M4A with an audio or video app first.');
-    expect(advice(silent({ sound: 'ac3', fine: { video: 'vp9' } }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe(' To keep its sound, convert it with a video app first (HandBrake is free).');
-    expect(advice(silent({ sound: 'ac3', fine: { video: 'vp9' }, cant: 'undecodable' }))).toBe(' To hear its sound, convert it with a video app first (HandBrake is free).');
-    expect(advice(fails({ video: 'hevc', cant: 'no-webcodecs' }))).toBe(' Converting it needs Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address.');
-    expect(advice(silent({ sound: 'pcm-s16', cant: 'no-webcodecs' }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe(' Converting it needs Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address.');
+    expect(advice(silent({ sound: 'ac3', fine: { video: 'vp9' } }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe(
+      ' To keep its sound, convert it with a video app first (HandBrake is free).',
+    );
+    expect(advice(silent({ sound: 'ac3', fine: { video: 'vp9' }, cant: 'undecodable' }))).toBe(
+      ' To hear its sound, convert it with a video app first (HandBrake is free).',
+    );
+    expect(advice(fails({ video: 'hevc', cant: 'no-webcodecs' }))).toBe(
+      ' Converting it needs Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address.',
+    );
+    expect(advice(silent({ sound: 'pcm-s16', cant: 'no-webcodecs' }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe(
+      ' Converting it needs Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address.',
+    );
   });
 
   it('as sentences, for a title', () => {
     expect(whyLine(silent({ sound: 'ac3', fine: { video: 'vp9' } }, { video: 'keep', audio: 'drop', box: 'webm' }))).toBe(
       'Its sound is AC-3 (Dolby Digital), which this browser can’t play or convert. To keep its sound, convert it with a video app first (HandBrake is free).',
     );
-    expect(whyLine(fails({ box: 'ts', fine: { sound: 'mp3' } }, { audio: 'keep', box: 'mp4' }))).toBe('This browser can’t open MPEG-TS files, but its sound (MP3) is fine.');
+    expect(whyLine(fails({ box: 'ts', fine: { sound: 'mp3' } }, { audio: 'keep', box: 'mp4' }))).toBe(
+      'This browser can’t open MPEG-TS files, but its sound (MP3) is fine.',
+    );
   });
 });
 
 describe('names', () => {
   it('codecs, file types and their articles', () => {
-    expect(['avc', 'hevc', 'vp8', 'vp9', 'av1', 'prores', 'aac', 'mp3', 'opus', 'vorbis', 'flac', 'ac3', 'eac3', 'dts', 'pcm-f32', 'ulaw'].map(codecName)).toEqual([
+    expect(
+      ['avc', 'hevc', 'vp8', 'vp9', 'av1', 'prores', 'aac', 'mp3', 'opus', 'vorbis', 'flac', 'ac3', 'eac3', 'dts', 'pcm-f32', 'ulaw'].map(codecName),
+    ).toEqual([
       'H.264',
       'HEVC (H.265)',
       'VP8',
@@ -96,8 +132,23 @@ describe('names', () => {
       'PCM (uncompressed)',
     ]);
     expect(codecName(null)).toBeNull();
-    expect([boxName('mkv'), boxName('mkv', 'audio'), boxName('mp4', 'audio'), boxName('mov'), boxName('ts'), boxName('adts'), boxName('webm')]).toEqual(['MKV', 'MKA', 'M4A', 'MOV', 'MPEG-TS', 'AAC', 'WebM']);
-    expect(['mp4', 'webm', 'm4a', 'ogg', 'mp3', 'wav'].map((b) => aOrAn(fixBoxName(b as Parameters<typeof fixBoxName>[0])))).toEqual(['an MP4', 'a WebM', 'an M4A', 'an OGG', 'an MP3', 'a WAV']);
+    expect([boxName('mkv'), boxName('mkv', 'audio'), boxName('mp4', 'audio'), boxName('mov'), boxName('ts'), boxName('adts'), boxName('webm')]).toEqual([
+      'MKV',
+      'MKA',
+      'M4A',
+      'MOV',
+      'MPEG-TS',
+      'AAC',
+      'WebM',
+    ]);
+    expect(['mp4', 'webm', 'm4a', 'ogg', 'mp3', 'wav'].map((b) => aOrAn(fixBoxName(b as Parameters<typeof fixBoxName>[0])))).toEqual([
+      'an MP4',
+      'a WebM',
+      'an M4A',
+      'an OGG',
+      'an MP3',
+      'a WAV',
+    ]);
     expect([aOrAn('MKV'), aOrAn('MOV'), aOrAn('MPEG-TS'), aOrAn('FLAC')]).toEqual(['an MKV', 'a MOV', 'an MPEG-TS', 'a FLAC']);
   });
 });
@@ -125,7 +176,9 @@ describe('🔄 Convert’s rows, and a slide item’s note', () => {
     expect(rowText(fails({ video: 'hevc', fine: { sound: 'aac' } }, { video: 'encode', audio: 'keep', box: 'mp4', to: { video: 'avc' } }))).toBe(
       'Its video is HEVC (H.265), which this browser can’t play. It can be converted to an MP4 (H.264): that takes a while, at a little less quality. Its sound is kept as it is.',
     );
-    expect(rowText(fails({ video: 'hevc', sound: 'pcm-s16' }, { video: 'encode', audio: 'encode', box: 'mp4', to: { video: 'avc', audio: 'aac' } }))).toMatch(/Its sound becomes AAC\.$/);
+    expect(rowText(fails({ video: 'hevc', sound: 'pcm-s16' }, { video: 'encode', audio: 'encode', box: 'mp4', to: { video: 'avc', audio: 'aac' } }))).toMatch(
+      /Its sound becomes AAC\.$/,
+    );
     expect(rowText(silent({ sound: 'pcm-s16', fine: { video: 'vp9' } }, { video: 'keep', audio: 'encode', box: 'webm', to: { audio: 'opus' } }))).toBe(
       'Its sound is PCM (uncompressed), which this browser can’t play: it can be converted to Opus, keeping the picture as it is.',
     );
@@ -135,7 +188,9 @@ describe('🔄 Convert’s rows, and a slide item’s note', () => {
   });
 
   it('nothing to do: why, and what to do', () => {
-    expect(rowText(fails({ kind: 'audio', sound: 'ac3', cant: 'undecodable' }))).toBe('It’s AC-3 (Dolby Digital), which this browser can’t play or convert. Convert it to MP3 or M4A with an audio or video app first.');
+    expect(rowText(fails({ kind: 'audio', sound: 'ac3', cant: 'undecodable' }))).toBe(
+      'It’s AC-3 (Dolby Digital), which this browser can’t play or convert. Convert it to MP3 or M4A with an audio or video app first.',
+    );
     expect(rowText({ is: 'plays', repack: null })).toBe('');
   });
 
@@ -147,12 +202,12 @@ describe('🔄 Convert’s rows, and a slide item’s note', () => {
   });
 
   it('what a fix keeps', () => {
-    expect([tracksOf({ video: 'keep', audio: 'keep', box: 'mp4' }), tracksOf({ video: 'keep', audio: 'drop', box: 'webm' }), tracksOf({ video: 'keep', box: 'webm' }), tracksOf({ audio: 'keep', box: 'mp3' })]).toEqual([
-      'video and sound',
-      'video',
-      'video',
-      'sound',
-    ]);
+    expect([
+      tracksOf({ video: 'keep', audio: 'keep', box: 'mp4' }),
+      tracksOf({ video: 'keep', audio: 'drop', box: 'webm' }),
+      tracksOf({ video: 'keep', box: 'webm' }),
+      tracksOf({ audio: 'keep', box: 'mp3' }),
+    ]).toEqual(['video and sound', 'video', 'video', 'sound']);
   });
 });
 

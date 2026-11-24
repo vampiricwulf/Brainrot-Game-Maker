@@ -6,7 +6,18 @@ import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
 import { prefs, serverAddress } from './prefs.svelte';
 import { app } from './app.svelte';
-import { PING_MS, RoomLink, type LinkDeps, type RoomBuzz, type RoomCardSeen, type RoomPasses, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
+import {
+  PING_MS,
+  RoomLink,
+  type LinkDeps,
+  type RoomBuzz,
+  type RoomCardSeen,
+  type RoomPasses,
+  type RoomQueue,
+  type RoomStatus,
+  type RoomWager,
+  type RoomAnswer,
+} from './roomlink';
 import { healthFiles, noteServerFiles } from './serverlimits.svelte';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
@@ -58,7 +69,24 @@ export const remote = $state<{
   fullAt: number;
   /** Seats kicked from here (seat id → when): for the 2 minutes their phone is kept off, the host can ↩ Let it back. */
   kicked: Record<string, number>;
-}>({ status: 'off', code: null, base: '', phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0, kicked: {} });
+}>({
+  status: 'off',
+  code: null,
+  base: '',
+  phones: [],
+  listed: false,
+  features: [],
+  welcomed: false,
+  files: null,
+  limits: null,
+  cardsLate: [],
+  error: '',
+  closedCode: 0,
+  attempts: 0,
+  answered: [],
+  fullAt: 0,
+  kicked: {},
+});
 
 /** How long "Room full" shows after the room last turned a phone away. */
 export const FULL_SHOWN_MS = 2 * 60_000;
@@ -88,7 +116,8 @@ function sync(): void {
   remote.status = link.status;
   remote.code = link.code;
   // (Answered until the room's list no longer has it asking: a phone turned away that asks again shows again.)
-  if (remote.phones !== link.phones) remote.answered = remote.answered.filter((c) => link!.phones.some((p) => p.conn === c && !p.seatId && p.pendingName !== undefined));
+  if (remote.phones !== link.phones)
+    remote.answered = remote.answered.filter((c) => link!.phones.some((p) => p.conn === c && !p.seatId && p.pendingName !== undefined));
   remote.phones = link.phones;
   remote.listed = link.listed;
   if (remote.features.join() !== link.features.join()) remote.features = link.features;
@@ -248,7 +277,8 @@ export const roomHasChoices = (): boolean => remote.features.includes('choices')
 /** Teams: the people on team `seatId` with a phone in the room now (each once), for the member wheel. */
 export function roomMembers(seatId: string): TeamMember[] {
   const out: TeamMember[] = [];
-  for (const p of remote.phones) if (p.seatId === seatId && p.connected && p.member && !out.some((m) => m.id === p.member)) out.push({ id: p.member, name: p.name?.trim() || 'Someone' });
+  for (const p of remote.phones)
+    if (p.seatId === seatId && p.connected && p.member && !out.some((m) => m.id === p.member)) out.push({ id: p.member, name: p.name?.trim() || 'Someone' });
   return out;
 }
 
@@ -292,7 +322,10 @@ export function uploadCardFile(
     let over = false;
     const unreached = () => ({
       refused: 'error' as const,
-      error: blob.size > CLOUDFLARE_BODY_MAX ? 'Couldn’t reach the buzzer server (Cloudflare may turn files this big away before they reach it)' : 'Couldn’t reach the buzzer server',
+      error:
+        blob.size > CLOUDFLARE_BODY_MAX
+          ? 'Couldn’t reach the buzzer server (Cloudflare may turn files this big away before they reach it)'
+          : 'Couldn’t reach the buzzer server',
     });
     const end = (r: UploadAnswer) => {
       if (over) return;
@@ -337,7 +370,8 @@ export function uploadCardFile(
       const s = x.status;
       // (The room taking 2 already is over in a moment: tried again, as a blip. The budget's 429s aren't.)
       const busy = s === 429 && said !== UPLOADS_BUSY;
-      const refused: UploadRefusal = s === 409 ? 'full' : s === 413 ? 'big' : s === 415 ? 'kind' : busy ? 'busy' : s === 503 ? 'off' : s === 401 ? 'room' : 'error';
+      const refused: UploadRefusal =
+        s === 409 ? 'full' : s === 413 ? 'big' : s === 415 ? 'kind' : busy ? 'busy' : s === 503 ? 'off' : s === 401 ? 'room' : 'error';
       end({ refused, error: said || `The buzzer server said no (${s})` });
     };
     signal?.addEventListener('abort', stop);
@@ -373,7 +407,23 @@ export function closeRoom(): boolean {
   l?.stop();
   // (8 tries: 0.5 s, 1 s, 2 s… 15 s, about a minute in all; see retryDelay.)
   if (l && room) new RoomLink(l.base, {}, deps).end(room, 8);
-  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0, kicked: {} });
+  Object.assign(remote, {
+    status: 'off',
+    code: null,
+    phones: [],
+    listed: false,
+    features: [],
+    welcomed: false,
+    files: null,
+    limits: null,
+    cardsLate: [],
+    error: '',
+    closedCode: 0,
+    attempts: 0,
+    answered: [],
+    fullAt: 0,
+    kicked: {},
+  });
   return told || !room;
 }
 
@@ -384,7 +434,23 @@ export function closeRoom(): boolean {
 export function leaveRoom(): void {
   link?.stop();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0, kicked: {} });
+  Object.assign(remote, {
+    status: 'off',
+    code: null,
+    phones: [],
+    listed: false,
+    features: [],
+    welcomed: false,
+    files: null,
+    limits: null,
+    cardsLate: [],
+    error: '',
+    closedCode: 0,
+    attempts: 0,
+    answered: [],
+    fullAt: 0,
+    kicked: {},
+  });
 }
 
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */
@@ -420,7 +486,7 @@ export async function roomStillOpen(room: { code: string; base: string }): Promi
 }
 
 /** The room this window is in, if it's that one and still there. */
-export const inRoom =(code: string): boolean => link?.room?.code === code && link.status !== 'off' && link.status !== 'error';
+export const inRoom = (code: string): boolean => link?.room?.code === code && link.status !== 'off' && link.status !== 'error';
 
 /** The link players open on their phone. */
 export function roomLink(code = remote.code): string {

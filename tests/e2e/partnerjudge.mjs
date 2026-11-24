@@ -9,7 +9,26 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, boxHasAction, checkItem, flowButton, flowIs, goOnCheck, mainLabel, openGameFile, assert, launchChromium, section, awardRowIn, boardIn, hostPanelIn, statusLineIn, toastsIn, stageBoxIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  boxHasAction,
+  checkItem,
+  flowButton,
+  flowIs,
+  goOnCheck,
+  mainLabel,
+  openGameFile,
+  assert,
+  launchChromium,
+  section,
+  awardRowIn,
+  boardIn,
+  hostPanelIn,
+  statusLineIn,
+  toastsIn,
+  stageBoxIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -18,7 +37,30 @@ mkdirSync(resolve('test-results'), { recursive: true });
 
 // ---------- The game: Movies, Songs and Games, every tile but $200 a Describe it partner clue ----------
 let n = 0;
-const text = (t, y = 90) => ({ id: `t${n++}`, kind: 'text', text: t, x: 120, y, w: 1680, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 90) => ({
+  id: `t${n++}`,
+  kind: 'text',
+  text: t,
+  x: 120,
+  y,
+  w: 1680,
+  h: 400,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (...els) => ({ background: {}, elements: els });
 const rules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
 const values = [200, 400, 600, 800];
@@ -37,11 +79,38 @@ const clue = (c, r) => {
   };
 };
 const game = {
-  id: 'g_partner_judge', version: 2, title: 'Partner judging',
-  settings: { allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true } },
+  id: 'g_partner_judge',
+  version: 2,
+  title: 'Partner judging',
+  settings: {
+    allowNegativeScores: true,
+    deductOnWrong: false,
+    defaultTimerSeconds: 30,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+    maxPlayers: 8,
+    stream: { clueCaption: true },
+  },
   players: ['Ann', 'Bob', 'Cat', 'Dan'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
-  rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values, dailyDoubleCount: 0, categories: ['Movies', 'Songs', 'Games'].map((title, c) => ({ id: `cat${c}`, title, clues: values.map((_, r) => clue(c, r)) })) }],
-  media: [], audio: {}, wheels: [], dice: [], theme: {},
+  rounds: [
+    {
+      id: 'r1',
+      name: 'Round 1',
+      mode: 'board',
+      values,
+      dailyDoubleCount: 0,
+      categories: ['Movies', 'Songs', 'Games'].map((title, c) => ({ id: `cat${c}`, title, clues: values.map((_, r) => clue(c, r)) })),
+    },
+  ],
+  media: [],
+  audio: {},
+  wheels: [],
+  dice: [],
+  theme: {},
 };
 const gameFile = resolve('test-results/partner-judge.json');
 writeFileSync(gameFile, JSON.stringify(game));
@@ -57,12 +126,22 @@ const panel = hostPanelIn(page).locator('[data-partner-panel]');
 const judgeRow = panel.locator('[data-partner-judge]');
 const gotBtn = judgeRow.getByRole('button', { name: /✔ Got it/ });
 const missBtn = judgeRow.getByRole('button', { name: /✘ Missed/ });
-const toast = (t) => toastsIn(page, { hasText: t }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+const toast = (t) =>
+  toastsIn(page, { hasText: t })
+    .waitFor({ timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
 const chip = (name) => panel.getByRole('button', { name, exact: true });
 const IDS = { Ann: 'p1', Bob: 'p2', Cat: 'p3', Dan: 'p4' };
 const scoreOf = async (name) => (await hostPanelIn(page).locator(`.players [data-player-id="${IDS[name]}"] .score`).innerText()).trim();
 const scores = async () => Object.fromEntries(await Promise.all(Object.keys(IDS).map(async (k) => [k, await scoreOf(k)])));
-const picker = async () => hostPanelIn(page).locator('.players .p.picker').getAttribute('aria-label').catch(() => null);
+const picker = async () =>
+  hostPanelIn(page)
+    .locator('.players .p.picker')
+    .getAttribute('aria-label')
+    .catch(() => null);
 const flat = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
 const wait = (ms) => page.waitForTimeout(ms);
 /** P, then their number: who picks next. */
@@ -110,14 +189,23 @@ try {
   section('Judging');
   await picks(1);
   await play(0, 1, 2);
-  assert((await flat(judgeRow.locator('[data-judge-got]'))) === 'Bob +$400 · Ann +$200' && (await flat(judgeRow.locator('[data-judge-missed]'))) === 'Ann −$200', 'the judge row says what each gives: got → Bob +$400 · Ann +$200, missed → Ann −$200');
-  assert((await gotBtn.innerText()).includes('⏎') && (await missBtn.innerText()).includes('⇧⏎'), 'once the clock runs, ✔ Got it is Enter and ✘ Missed is Shift+Enter');
+  assert(
+    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Bob +$400 · Ann +$200' && (await flat(judgeRow.locator('[data-judge-missed]'))) === 'Ann −$200',
+    'the judge row says what each gives: got → Bob +$400 · Ann +$200, missed → Ann −$200',
+  );
+  assert(
+    (await gotBtn.innerText()).includes('⏎') && (await missBtn.innerText()).includes('⇧⏎'),
+    'once the clock runs, ✔ Got it is Enter and ✘ Missed is Shift+Enter',
+  );
   await page.keyboard.press('Enter');
   assert(await toast('The clock just started: press Enter again to give ✔ Got it'), 'a second Enter right after the clock starts gives nothing, and says why');
   assert(Object.values(await scores()).every((s) => s === '$0') && (await stage('.timer').count()) === 1, 'no score, and the countdown runs on');
   await page.screenshot({ path: 'test-results/partner-judge-live.png' });
   await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
-  assert((await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$400 · Bob +$200' && (await flat(judgeRow.locator('[data-judge-missed]'))) === 'no points', '⇄ Swap: Ann describes, so got → Ann +$400 · Bob +$200, and a miss costs nobody (Bob is the partner)');
+  assert(
+    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$400 · Bob +$200' && (await flat(judgeRow.locator('[data-judge-missed]'))) === 'no points',
+    '⇄ Swap: Ann describes, so got → Ann +$400 · Bob +$200, and a miss costs nobody (Bob is the partner)',
+  );
   await wait(1100);
   await page.keyboard.press('Enter');
   await panel.locator('[data-judged]').waitFor();
@@ -126,15 +214,24 @@ try {
   assert((await stage('.pops .pop').count()) === 2, 'two pops on stream');
   assert((await picker()) === 'Bob', 'the guesser, Bob, picks next');
   assert((await stage('.timer').count()) === 0, 'the countdown stops');
-  assert((await flat(panel.locator('[data-judged]'))) === 'Judged: Ann ✔ +$400 · Bob ✔ +$200' && (await gotBtn.isDisabled()) && (await missBtn.isDisabled()), 'the buttons are off and their line reads the marks');
-  assert((await flat(panel.locator('[data-card="1"]'))) === 'Card 1 → Ann (describer)' && (await chip('Card 1 to Bob').count()) === 0, 'the 📤 list closes to one line a card');
+  assert(
+    (await flat(panel.locator('[data-judged]'))) === 'Judged: Ann ✔ +$400 · Bob ✔ +$200' && (await gotBtn.isDisabled()) && (await missBtn.isDisabled()),
+    'the buttons are off and their line reads the marks',
+  );
+  assert(
+    (await flat(panel.locator('[data-card="1"]'))) === 'Card 1 → Ann (describer)' && (await chip('Card 1 to Bob').count()) === 0,
+    'the 📤 list closes to one line a card',
+  );
   assert((await mainLabel(page)) === '👁 Reveal answer', 'the answer is next');
   await page.screenshot({ path: 'test-results/partner-judge-judged.png' });
   await page.keyboard.press('Enter');
   assert(await toast('Judged: Ann ✔ +$400 · Bob ✔ +$200 (Ctrl+Z takes it back)'), 'Enter again says it’s judged');
   await page.keyboard.press('l');
   const log = await page.locator('aside').innerText();
-  assert((log.match(/partner clue: Ann described, Bob guessed/g) ?? []).length >= 1 && log.includes('score changes'), `📜 Log: one step, “score changes”, for the partner clue (${log.slice(0, 300).replace(/\n/g, ' | ')})`);
+  assert(
+    (log.match(/partner clue: Ann described, Bob guessed/g) ?? []).length >= 1 && log.includes('score changes'),
+    `📜 Log: one step, “score changes”, for the partner clue (${log.slice(0, 300).replace(/\n/g, ' | ')})`,
+  );
   await page.keyboard.press('Escape');
 
   // ---------- Ctrl+Z / Ctrl+Y ----------
@@ -148,13 +245,19 @@ try {
   await page.keyboard.press('Control+y');
   await panel.locator('[data-judged]').waitFor();
   sc = await scores();
-  assert(sc.Ann === '$400' && sc.Bob === '$200' && (await picker()) === 'Bob' && (await stage('.timer').count()) === 0, 'Ctrl+Y: both scores, the board and the stopped countdown come back');
+  assert(
+    sc.Ann === '$400' && sc.Bob === '$200' && (await picker()) === 'Bob' && (await stage('.timer').count()) === 0,
+    'Ctrl+Y: both scores, the board and the stopped countdown come back',
+  );
   await page.keyboard.press('Control+z');
   await gotBtn.and(page.locator(':enabled')).waitFor();
   await page.keyboard.press('Shift+Enter');
   await panel.locator('[data-judged]').waitFor();
   sc = await scores();
-  assert(sc.Ann === '$0' && sc.Bob === '$0' && (await flat(panel.locator('[data-judged]'))) === 'Judged: Ann ✘ 0 · Bob ✘ 0', 'Shift+Enter after ⇄ Swap: ✘ Missed costs nobody, and marks both');
+  assert(
+    sc.Ann === '$0' && sc.Bob === '$0' && (await flat(panel.locator('[data-judged]'))) === 'Judged: Ann ✘ 0 · Bob ✘ 0',
+    'Shift+Enter after ⇄ Swap: ✘ Missed costs nobody, and marks both',
+  );
   assert((await picker()) === 'Ann', 'a miss leaves the board where it was');
   await page.keyboard.press('Escape');
   await tile(0, 2).waitFor();
@@ -167,14 +270,20 @@ try {
   await page.keyboard.press('Shift+Enter');
   await panel.locator('[data-judged]').waitFor();
   sc = await scores();
-  assert(sc.Ann === '−$400' && sc.Bob === '$0' && (await flat(panel.locator('[data-judged]'))) === 'Judged: Bob ✘ 0 · Ann ✘ −$400', `✘ Missed: Ann −$400, Bob ✘ 0 (${JSON.stringify(sc)})`);
+  assert(
+    sc.Ann === '−$400' && sc.Bob === '$0' && (await flat(panel.locator('[data-judged]'))) === 'Judged: Bob ✘ 0 · Ann ✘ −$400',
+    `✘ Missed: Ann −$400, Bob ✘ 0 (${JSON.stringify(sc)})`,
+  );
   await page.keyboard.press('Escape');
 
   // ---------- A clue with no cards: Show question starts it, and a second Enter gives nothing ----------
   await picks(1);
   await play(0, 2, 3, { clock: false });
   await page.keyboard.press('Enter');
-  assert(await toast('The question just went up: press Enter again to give ✔ Got it'), 'no cards: Enter right after Show question gives nothing (no countdown started by itself: it says the question went up)');
+  assert(
+    await toast('The question just went up: press Enter again to give ✔ Got it'),
+    'no cards: Enter right after Show question gives nothing (no countdown started by itself: it says the question went up)',
+  );
   await page.keyboard.press('Shift+Enter');
   sc = await scores();
   assert(sc.Cat === '$0' && sc.Ann === '−$400', 'nor does Shift+Enter');
@@ -183,7 +292,8 @@ try {
   await page.keyboard.press('n');
   await checkItem(page, 'handout').waitFor();
   assert(
-    (await checkItem(page, 'handout').innerText()).includes('The clock hasn’t started: they haven’t played yet.') && (await stage('[data-slide="answer"]').count()) === 0,
+    (await checkItem(page, 'handout').innerText()).includes('The clock hasn’t started: they haven’t played yet.') &&
+      (await stage('[data-slide="answer"]').count()) === 0,
     'no clock: N asks first (the clock hasn’t started), and leaves the answer hidden',
   );
   await page.keyboard.press('Escape');
@@ -192,12 +302,18 @@ try {
   await stage('[data-slide="1"]').click();
   await stage('.timer').waitFor();
   await statusLineIn(page).locator('[data-click-note]', { hasText: 'Clock started' }).waitFor();
-  assert((await stage('[data-slide="answer"]').count()) === 0 && (await panel.locator('[data-judged]').count()) === 0, 'no clock: a click on the stage starts it (“Clock started” in the status line), and leaves the answer hidden');
+  assert(
+    (await stage('[data-slide="answer"]').count()) === 0 && (await panel.locator('[data-judged]').count()) === 0,
+    'no clock: a click on the stage starts it (“Clock started” in the status line), and leaves the answer hidden',
+  );
   await wait(1100);
   await page.keyboard.press('Enter');
   await panel.locator('[data-judged]').waitFor();
   sc = await scores();
-  assert(sc.Cat === '$600' && sc.Ann === '−$100' && (await picker()) === 'Ann', `a moment later Enter gives ✔ Got it: Cat +$600, Ann +$300, and Ann keeps the board (${JSON.stringify(sc)})`);
+  assert(
+    sc.Cat === '$600' && sc.Ann === '−$100' && (await picker()) === 'Ann',
+    `a moment later Enter gives ✔ Got it: Cat +$600, Ann +$300, and Ann keeps the board (${JSON.stringify(sc)})`,
+  );
   await page.keyboard.press('Escape');
 
   // ---------- Scored by hand first ----------
@@ -208,23 +324,37 @@ try {
   assert(await toast('Start the clock first (Enter), or click ✘ Missed'), 'Shift+Enter while handing out the cards judges nothing');
   assert((await scoreOf('Bob')) === '$0', 'and gives nothing');
   const amountRow = awardRowIn(page);
-  assert((await amountRow.count()) === 0 && (await page.getByRole('button', { name: '± Other points…' }).count()) === 1, 'the Amount row is folded behind ± Other points…');
+  assert(
+    (await amountRow.count()) === 0 && (await page.getByRole('button', { name: '± Other points…' }).count()) === 1,
+    'the Amount row is folded behind ± Other points…',
+  );
   await page.keyboard.press('2');
   await amountRow.waitFor();
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('.panel .players [data-player-id="p2"] .score')?.textContent.trim() === '$400');
-  assert((await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored', '2, then Enter awards Bob by hand; ✔ Got it would give only Ann her share');
+  assert(
+    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored',
+    '2, then Enter awards Bob by hand; ✔ Got it would give only Ann her share',
+  );
   assert((await amountRow.count()) === 1, 'picking him opened the Amount row, and it stays open once points were given by hand');
   await gotBtn.click();
   await panel.locator('[data-judged]').waitFor();
   sc = await scores();
   assert(sc.Ann === '$100' && sc.Bob === '$400', `a click on ✔ Got it while handing out the cards: Ann +$200, Bob left as he was (${JSON.stringify(sc)})`);
-  assert((await flat(panel.locator('[data-judged]'))) === 'Judged: Bob ✔ +$400 · Ann ✔ +$200' && (await gotBtn.isDisabled()), 'both marked: the buttons are off, the line reads the marks');
-  assert((await mainLabel(page)) === '👁 Reveal answer' && (await page.evaluate(() => document.activeElement?.matches('[data-next]'))), 'judged by a click: the answer is next, and the keys are on it');
+  assert(
+    (await flat(panel.locator('[data-judged]'))) === 'Judged: Bob ✔ +$400 · Ann ✔ +$200' && (await gotBtn.isDisabled()),
+    'both marked: the buttons are off, the line reads the marks',
+  );
+  assert(
+    (await mainLabel(page)) === '👁 Reveal answer' && (await page.evaluate(() => document.activeElement?.matches('[data-next]'))),
+    'judged by a click: the answer is next, and the keys are on it',
+  );
   await page.keyboard.press('Control+z');
   await gotBtn.and(page.locator(':enabled')).waitFor();
   assert(
-    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' && (await flowIs(page, '👁 Reveal answer')) && (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '',
+    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' &&
+      (await flowIs(page, '👁 Reveal answer')) &&
+      (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '',
     'Ctrl+Z brings the buttons back (Bob still scored), and the clock to start (in the box’s foot too)',
   );
   await page.keyboard.press('Control+z');
@@ -239,7 +369,10 @@ try {
   await wait(1100);
   await page.keyboard.press('Shift+Enter');
   await panel.locator('[data-judged]').waitFor();
-  assert((await flat(panel.locator('[data-judged]'))) === 'Judged: Bob ✘ 0 · Dan ✘ 0' && (await missBtn.isDisabled()), 'negative scores off, Dan on $0: ✘ Missed marks both all the same, and the buttons go off');
+  assert(
+    (await flat(panel.locator('[data-judged]'))) === 'Judged: Bob ✘ 0 · Dan ✘ 0' && (await missBtn.isDisabled()),
+    'negative scores off, Dan on $0: ✘ Missed marks both all the same, and the buttons go off',
+  );
   await page.keyboard.press('Escape');
   await rule('Allow negative scores', true);
 
@@ -250,7 +383,10 @@ try {
   const quick = (who, k) => hostPanelIn(page).locator(`.players [data-player-id="${IDS[who]}"] button.quick.${k}`);
   assert((await quick('Cat', 'right').count()) === 0 && (await quick('Dan', 'right').count()) === 0, 'the quick ✔/✘ are only on the two players’ chips');
   assert(
-    (await quick('Ann', 'right').getAttribute('aria-label')) === 'Right: Ann +$400' && (await quick('Bob', 'right').getAttribute('aria-label')) === 'Right: Bob +$800' && (await quick('Bob', 'wrong').getAttribute('aria-label')) === 'Wrong: Bob $0' && (await quick('Ann', 'wrong').getAttribute('aria-label')) === 'Wrong: Ann −$400',
+    (await quick('Ann', 'right').getAttribute('aria-label')) === 'Right: Ann +$400' &&
+      (await quick('Bob', 'right').getAttribute('aria-label')) === 'Right: Bob +$800' &&
+      (await quick('Bob', 'wrong').getAttribute('aria-label')) === 'Wrong: Bob $0' &&
+      (await quick('Ann', 'wrong').getAttribute('aria-label')) === 'Wrong: Ann −$400',
     'each is worth that player’s share',
   );
   await quick('Bob', 'wrong').click();
@@ -259,7 +395,10 @@ try {
   await wait(1100);
   await page.keyboard.press('Enter');
   await panel.locator('[data-judged]').waitFor();
-  assert((await flat(panel.locator('[data-judged]'))) === 'Judged: Bob ✘ 0 · Ann ✔ +$400' && (await scoreOf('Ann')) === '$300', 'then Enter gives Ann her share only');
+  assert(
+    (await flat(panel.locator('[data-judged]'))) === 'Judged: Bob ✘ 0 · Ann ✔ +$400' && (await scoreOf('Ann')) === '$300',
+    'then Enter gives Ann her share only',
+  );
   await page.keyboard.press('Escape');
   await rule('Show quick ✔/✘ buttons (one click for right or wrong)', false);
 
@@ -271,8 +410,16 @@ try {
   await stage('.wheel').waitFor();
   await flowButton(page, 'putback').click();
   await tile(2, 3).waitFor();
-  const gone = await stage('.wheel').waitFor({ state: 'detached', timeout: 3000 }).then(() => true, () => false);
-  assert(gone && !(await tile(2, 3).getAttribute('class')).includes('used'), '↩ Cancel with the partner wheel up: back to the board, the wheel gone, the tile kept');
+  const gone = await stage('.wheel')
+    .waitFor({ state: 'detached', timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  assert(
+    gone && !(await tile(2, 3).getAttribute('class')).includes('used'),
+    '↩ Cancel with the partner wheel up: back to the board, the wheel gone, the tile kept',
+  );
 
   // ---------- Reloads ----------
   section('Reloads');
@@ -289,7 +436,10 @@ try {
   await page.keyboard.press('Escape');
   await panel.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 8000 });
   const landed = (await panel.locator('button.chip[aria-pressed="true"]').getAttribute('aria-label')).replace(' is the partner', '');
-  assert(rollNow.includes('… spinning') && ['Bob', 'Cat', 'Dan'].includes(landed), `a reload mid-spin: the wheel comes back still spinning (the log keeps it hidden), and its landing is the partner (${landed})`);
+  assert(
+    rollNow.includes('… spinning') && ['Bob', 'Cat', 'Dan'].includes(landed),
+    `a reload mid-spin: the wheel comes back still spinning (the log keeps it hidden), and its landing is the partner (${landed})`,
+  );
   await page.keyboard.press('Escape');
   await stage('.wheel').waitFor({ state: 'detached' });
   await page.keyboard.press('2');
@@ -299,7 +449,10 @@ try {
   await resume();
   await panel.waitFor();
   assert(
-    (await flowIs(page, '👁 Reveal answer')) && (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '' && (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
+    (await flowIs(page, '👁 Reveal answer')) &&
+      (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '' &&
+      (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' &&
+      (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
     'a reload while handing out the cards: the list as it was, the change kept, the box’s ⏱ Start the clock next',
   );
   await page.keyboard.press('Enter');
@@ -307,7 +460,10 @@ try {
   assert((await mainLabel(page)) === '👁 Reveal answer', 'and Enter starts the clock at once (the guard’s times aren’t kept)');
   await resume();
   await panel.waitFor();
-  assert((await gotBtn.isEnabled()) && (await gotBtn.innerText()).includes('⏎') && (await stage('.timer').count()) === 0, 'a reload while playing: the judge buttons, the countdown lost (as on any clue)');
+  assert(
+    (await gotBtn.isEnabled()) && (await gotBtn.innerText()).includes('⏎') && (await stage('.timer').count()) === 0,
+    'a reload while playing: the judge buttons, the countdown lost (as on any clue)',
+  );
   const before = await scores();
   await page.keyboard.press('Enter');
   await panel.locator('[data-judged]').waitFor();
@@ -315,7 +471,10 @@ try {
   assert(sc.Bob === `$${parseInt(before.Bob.replace(/\D/g, '')) + 400}`, `Enter at once gives ✔ Got it (${JSON.stringify(before)} → ${JSON.stringify(sc)})`);
   await resume();
   await panel.locator('[data-judged]').waitFor();
-  assert((await gotBtn.isDisabled()) && (await panel.locator('[data-card="1"]').innerText()).startsWith('Card 1 → '), 'a reload once judged: still judged, the list closed');
+  assert(
+    (await gotBtn.isDisabled()) && (await panel.locator('[data-card="1"]').innerText()).startsWith('Card 1 → '),
+    'a reload once judged: still judged, the list closed',
+  );
   await page.keyboard.press('Control+z');
   await gotBtn.and(page.locator(':enabled')).waitFor();
   assert((await scores()).Bob === before.Bob, 'and Ctrl+Z still takes it back');
@@ -338,7 +497,10 @@ try {
   await wait(1100);
   await page.keyboard.press('Enter');
   await aud.locator('.pops .pop').first().waitFor();
-  assert((await aud.locator('.pops .pop').count()) === 2 && (await aud.locator('.timer').count()) === 0, 'the audience window gets both pops, and the countdown stops');
+  assert(
+    (await aud.locator('.pops .pop').count()) === 2 && (await aud.locator('.timer').count()) === 0,
+    'the audience window gets both pops, and the countdown stops',
+  );
   assert(!(await aud.locator('body').innerText()).includes('Judged'), 'the panel’s judge row stays in the host window');
   await page.keyboard.press('Escape');
   await boardIn(aud).waitFor();
@@ -360,7 +522,11 @@ try {
   await aud.keyboard.up('Enter');
   await wait(300);
   assert(
-    (await flowIs(page, '👁 Reveal answer')) && (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '' && (await aud.locator('.timer').count()) === 0 && JSON.stringify(await scores()) === held && (await panel.locator('[data-judged]').count()) === 0,
+    (await flowIs(page, '👁 Reveal answer')) &&
+      (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '' &&
+      (await aud.locator('.timer').count()) === 0 &&
+      JSON.stringify(await scores()) === held &&
+      (await panel.locator('[data-judged]').count()) === 0,
     'Enter held down in the audience window shows the question once: its repeats don’t start the clock or score',
   );
   await page.keyboard.press('Escape');

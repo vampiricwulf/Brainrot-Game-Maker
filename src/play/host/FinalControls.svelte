@@ -15,8 +15,24 @@
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { cardSlides, finalName, formatPoints, MAX_POINTS, roundName, wagerFloor, type Game, type Id, type Session, type WagerSource } from '../../lib/model';
   import {
-    currentFinal, finalAdjustWager, finalChoose, finalRevealNow, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused,
-    finalWagersOk, hasWager, score, slidePosition, typedAnswer, wagerFromPhone, wagerSentBy,
+    currentFinal,
+    finalAdjustWager,
+    finalChoose,
+    finalRevealNow,
+    finalSetWager,
+    finalShow,
+    finalUnjudged,
+    finalWagerCap,
+    finalWagerEditable,
+    finalWagerProblems,
+    finalWagerRefused,
+    finalWagersOk,
+    hasWager,
+    score,
+    slidePosition,
+    typedAnswer,
+    wagerFromPhone,
+    wagerSentBy,
   } from '../../lib/session';
   import { finalNextStep, logged } from '../../lib/toolset';
   import { letter, pickLabel, pickOf, rightChoice, usableChoices } from '../../lib/choices';
@@ -123,7 +139,9 @@
   // One window: viewers see the wager boxes as they're typed (the status line's ⚠ chip says so, the box's first line
   // says what it waits on).
   offerExposed(() =>
-    session.finalStep === 'wagers' ? '⚠ Viewers can see this: they see this window, the wagers as you type them too. Open the 📺 audience window to keep them secret.' : null,
+    session.finalStep === 'wagers'
+      ? '⚠ Viewers can see this: they see this window, the wagers as you type them too. Open the 📺 audience window to keep them secret.'
+      : null,
   );
 
   /** Who plays, in the rows' order (the players' order: the reveal order, lowest score first, isn't the screen's). */
@@ -452,7 +470,8 @@
   offerMenu('final', () => {
     if (!f) return [];
     const out: StageItem[] = [];
-    if (session.finalStep === 'wagers' && lastRound) out.push({ label: `◀ Previous round (${roundName(lastRound, session.currentRound - 1)})`, onclick: onback });
+    if (session.finalStep === 'wagers' && lastRound)
+      out.push({ label: `◀ Previous round (${roundName(lastRound, session.currentRound - 1)})`, onclick: onback });
     if (session.finalStep === 'answer') out.push({ id: 'reveal', label: '🙈 Hide answer', keys: 'R', onclick: onreveal });
     if (finishEarly) out.push({ label: FINISH_NOW, hint: `Asks first: ${unjudged} not judged yet, then ${goOn}`, onclick: finishNow });
     return out;
@@ -498,7 +517,11 @@
                 value={hide ? '' : (w ?? '')}
                 placeholder={hide ? 'hidden' : 'wager'}
                 aria-label="{p.name}’s wager"
-                title={override ? `No max now (their score: ${formatPoints(score(session, p.id), sym)})` : cap ? `Max ${formatPoints(cap, sym)} (${rule})` : `Can only wager ${formatPoints(0, sym)}`}
+                title={override
+                  ? `No max now (their score: ${formatPoints(score(session, p.id), sym)})`
+                  : cap
+                    ? `Max ${formatPoints(cap, sym)} (${rule})`
+                    : `Can only wager ${formatPoints(0, sym)}`}
                 class:bad={typeof w === 'number' && ((!override && w > cap) || !Number.isInteger(w))}
                 oninput={(e) => {
                   const box = e.currentTarget;
@@ -556,7 +579,11 @@
               {/if}
             {:else}
               <!-- (Left out for their score, not by the host: say so, they can still be ticked in.) -->
-              <span class="muted small">{f.chosen?.[p.id] === false || score(session, p.id) > 0 ? 'sits out' : `sits out: no points (tick to let them play${cap ? `, up to ${formatPoints(cap, sym)}` : ''})`}</span>
+              <span class="muted small"
+                >{f.chosen?.[p.id] === false || score(session, p.id) > 0
+                  ? 'sits out'
+                  : `sits out: no points (tick to let them play${cap ? `, up to ${formatPoints(cap, sym)}` : ''})`}</span
+              >
             {/if}
           </div>
         {/each}
@@ -564,7 +591,9 @@
       {#if f.phonesLocked && phones.some((id) => f.players.includes(id))}
         <span class="muted small">📱 The question was on screen: phones can’t send wagers any more (type any change here).</span>
       {:else if phones.some((id) => f.players.includes(id))}
-        <span class="muted small">📱 {noun === 'team' ? 'Teams' : 'Players'} with a phone can send their wager from it, and change it until you show the question.</span>
+        <span class="muted small"
+          >📱 {noun === 'team' ? 'Teams' : 'Players'} with a phone can send their wager from it, and change it until you show the question.</span
+        >
       {:else if phoneNote}
         <span class="muted small">{phoneNote}</span>
       {/if}
@@ -580,16 +609,18 @@
           <span class="muted small">
             Click a name here{onStage} to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼<span class="not-touch">, Alt+↑/↓</span>).
             <!-- (No keys on a touch screen.) -->
-            <span class="not-touch">Keys: N shows their typed answer (or their wager, for a {noun} who answered out loud), C / X judge
-            them (their answer and wager go up with it), then N goes to the next {noun} · Shift+N back · 1–9 spotlight (the number
-            on each row) · C right · X wrong.</span>
+            <span class="not-touch"
+              >Keys: N shows their typed answer (or their wager, for a {noun} who answered out loud), C / X judge them (their answer and wager go up with it), then
+              N goes to the next {noun} · Shift+N back · 1–9 spotlight (the number on each row) · C right · X wrong.</span
+            >
           </span>
         {:else}
           <summary class="muted">One by one: spotlight → show wager → right or wrong<span class="not-touch">{' '}(N, C, X)</span></summary>
           <span class="muted small">
             Click a name here{onStage} to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼<span class="not-touch">, Alt+↑/↓</span>).
-            <span class="not-touch">Keys: N shows the wager, C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9
-            spotlight (the number on each row) · C right · X wrong.</span>
+            <span class="not-touch"
+              >Keys: N shows the wager, C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9 spotlight (the number on each row) · C right · X wrong.</span
+            >
           </span>
         {/if}
       </details>
@@ -623,60 +654,70 @@
             }}
           >
             <span class="cell who">
-            <!-- Only the grip drags: a press on Right or Wrong that moves a little is still a press. -->
-            <span
-              class="grip"
-              draggable="true"
-              ondragstart={(e) => rows.start(e, id, (e.currentTarget as HTMLElement).closest<HTMLElement>('.pl'))}
-              ondragend={() => rows.end()}
-              aria-hidden="true"
-              title="Drag to change the order">⋮⋮</span
-            >
-            <button class="ghost small up" onclick={() => nudge(id, -1, '.up')} disabled={i === 0} aria-label="Earlier: {p?.name ?? '?'}">▲</button>
-            <button class="ghost small down" onclick={() => nudge(id, 1, '.down')} disabled={i === f.order.length - 1} aria-label="Later: {p?.name ?? '?'}">▼</button>
-            <!-- The key that spotlights them (1–9: their place in the players, as on the chips and plates). -->
-            {#if k}<span class="key" aria-hidden="true">{k}</span>{/if}
-            <button
-              class="name"
-              style:background={p?.color}
-              style:color={p ? textOn(p.color) : undefined}
-              onclick={() => {
-                f.current = id;
-                // (Screen readers hear it: the spotlight is on the stage, not the status line.)
-                announce(`Spotlight: ${p?.name ?? '?'}`);
-              }}
-              onkeydown={(e) => {
-                // Alt+↑/↓ moves them in the order.
-                if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
-                e.preventDefault();
-                e.stopPropagation();
-                nudge(id, e.key === 'ArrowUp' ? -1 : 1);
-              }}
-              title="{p?.name ?? '?'}: spotlight on screen{k ? ` (key ${k})` : ''} · drag the row (or Alt+↑/↓) to change the order"
-            >{p?.name}</button>
+              <!-- Only the grip drags: a press on Right or Wrong that moves a little is still a press. -->
+              <span
+                class="grip"
+                draggable="true"
+                ondragstart={(e) => rows.start(e, id, (e.currentTarget as HTMLElement).closest<HTMLElement>('.pl'))}
+                ondragend={() => rows.end()}
+                aria-hidden="true"
+                title="Drag to change the order">⋮⋮</span
+              >
+              <button class="ghost small up" onclick={() => nudge(id, -1, '.up')} disabled={i === 0} aria-label="Earlier: {p?.name ?? '?'}">▲</button>
+              <button class="ghost small down" onclick={() => nudge(id, 1, '.down')} disabled={i === f.order.length - 1} aria-label="Later: {p?.name ?? '?'}"
+                >▼</button
+              >
+              <!-- The key that spotlights them (1–9: their place in the players, as on the chips and plates). -->
+              {#if k}<span class="key" aria-hidden="true">{k}</span>{/if}
+              <button
+                class="name"
+                style:background={p?.color}
+                style:color={p ? textOn(p.color) : undefined}
+                onclick={() => {
+                  f.current = id;
+                  // (Screen readers hear it: the spotlight is on the stage, not the status line.)
+                  announce(`Spotlight: ${p?.name ?? '?'}`);
+                }}
+                onkeydown={(e) => {
+                  // Alt+↑/↓ moves them in the order.
+                  if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  nudge(id, e.key === 'ArrowUp' ? -1 : 1);
+                }}
+                title="{p?.name ?? '?'}: spotlight on screen{k ? ` (key ${k})` : ''} · drag the row (or Alt+↑/↓) to change the order">{p?.name}</button
+              >
             </span>
             {#if f.answers}
               <!-- What they typed on their phone: in one window (viewers see this panel) only once it's on screen. -->
               {@const a = typedAnswer(f, id)}
               {@const shownA = !!f.answerShown?.[id]}
               <span class="cell ans">
-              {#if !a}
-                <span class="muted small typed">no typed answer</span>
-              {:else if dual || shownA}
-                <!-- Multiple choice: the pick by its letter ("B · Stockholm"), or typed words with the choice they name ("= B");
+                {#if !a}
+                  <span class="muted small typed">no typed answer</span>
+                {:else if dual || shownA}
+                  <!-- Multiple choice: the pick by its letter ("B · Stockholm"), or typed words with the choice they name ("= B");
                      with one marked ✔ Right, whether it's that one. Typed lines on one (" / "), all of them in its title. -->
-                {@const picked = choices.length ? pickLabel(choices, a.pick) : undefined}
-                {@const named = choices.length ? pickOf(a, choices) : null}
-                <span class="typed" class:muted={!!a.pick && !picked} class:selectable={dual} dir="auto" title="{picked ?? a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}" data-typed={id}
-                  >{#if picked}<b>{picked}</b>{:else}“{foldLines(a.text)}”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}</span
-                >
-                {#if rightOne && named}
-                  {#if named === rightOne.id}<span class="small pick-right" data-pick-hint={id}>✔ right choice</span>
-                  {:else}<span class="muted small pick-wrong" data-pick-hint={id}>✘ not {letter(choices.indexOf(rightOne))}</span>{/if}
+                  {@const picked = choices.length ? pickLabel(choices, a.pick) : undefined}
+                  {@const named = choices.length ? pickOf(a, choices) : null}
+                  <span
+                    class="typed"
+                    class:muted={!!a.pick && !picked}
+                    class:selectable={dual}
+                    dir="auto"
+                    title="{picked ?? a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}"
+                    data-typed={id}
+                    >{#if picked}<b>{picked}</b>{:else}“{foldLines(a.text)}”{#if named}{' '}<span class="muted"
+                          >= {letter(choices.findIndex((c) => c.id === named))}</span
+                        >{/if}{/if}</span
+                  >
+                  {#if rightOne && named}
+                    {#if named === rightOne.id}<span class="small pick-right" data-pick-hint={id}>✔ right choice</span>
+                    {:else}<span class="muted small pick-wrong" data-pick-hint={id}>✘ not {letter(choices.indexOf(rightOne))}</span>{/if}
+                  {/if}
+                {:else}
+                  <span class="muted small typed" title="Shown here once you put it on screen" data-typed={id}>✍ hidden</span>
                 {/if}
-              {:else}
-                <span class="muted small typed" title="Shown here once you put it on screen" data-typed={id}>✍ hidden</span>
-              {/if}
               </span>
               <span class="cell">
                 {#if a}
@@ -699,49 +740,96 @@
                    typed it, as a phone's does on the wager screen. Typing one replaces it.) -->
               {@const hideW = !dual && hasWager(f, id)}
               <span class="cell sw">
-              <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
-              <label class="check small" class:no-wager={!hasWager(f, id)}>
-                {hasWager(f, id) ? 'wager' : 'no wager:'}
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  max={override ? undefined : cap}
-                  value={hideW ? '' : (f.wagers[id] ?? '')}
-                  placeholder={hideW ? 'hidden' : 'wager'}
-                  aria-label="{p?.name}’s wager"
-                  data-reveal-wager={id}
-                  onkeydown={(e) => e.key === 'Enter' && setWager(id, e.currentTarget)}
-                  onchange={(e) => setWager(id, e.currentTarget)}
-                />
-                {#if wagerFromPhone(f, id)}<span class="phone" title="Sent from their phone. You can still change it until it's shown.">📱</span>{/if}
-                {#if !override}<span class="muted">max {formatPoints(cap, sym)}</span>{/if}
-              </label>
-              {#if session.finalStep === 'reveal' && hasWager(f, id) && (f.wagers[id] ?? 0) > 0}
-                <button class="small" onclick={() => adjustWager(id, 'half')} aria-label="Halve wager: {p?.name ?? '?'}" title="Halve their wager, rounded down. If they're already judged, their points change with it.">½ Halve</button>
-                <button class="small" onclick={() => adjustWager(id, 'zero')} aria-label="Nullify wager: {p?.name ?? '?'}" title="Make their wager 0. If they're already judged, their points change with it.">0 Nullify</button>
-              {/if}
+                <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
+                <label class="check small" class:no-wager={!hasWager(f, id)}>
+                  {hasWager(f, id) ? 'wager' : 'no wager:'}
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    max={override ? undefined : cap}
+                    value={hideW ? '' : (f.wagers[id] ?? '')}
+                    placeholder={hideW ? 'hidden' : 'wager'}
+                    aria-label="{p?.name}’s wager"
+                    data-reveal-wager={id}
+                    onkeydown={(e) => e.key === 'Enter' && setWager(id, e.currentTarget)}
+                    onchange={(e) => setWager(id, e.currentTarget)}
+                  />
+                  {#if wagerFromPhone(f, id)}<span class="phone" title="Sent from their phone. You can still change it until it's shown.">📱</span>{/if}
+                  {#if !override}<span class="muted">max {formatPoints(cap, sym)}</span>{/if}
+                </label>
+                {#if session.finalStep === 'reveal' && hasWager(f, id) && (f.wagers[id] ?? 0) > 0}
+                  <button
+                    class="small"
+                    onclick={() => adjustWager(id, 'half')}
+                    aria-label="Halve wager: {p?.name ?? '?'}"
+                    title="Halve their wager, rounded down. If they're already judged, their points change with it.">½ Halve</button
+                  >
+                  <button
+                    class="small"
+                    onclick={() => adjustWager(id, 'zero')}
+                    aria-label="Nullify wager: {p?.name ?? '?'}"
+                    title="Make their wager 0. If they're already judged, their points change with it.">0 Nullify</button
+                  >
+                {/if}
               </span>
               <span class="cell">
-                {#if hasWager(f, id)}<button class="small" class:slot={wagerSlot(id)} onclick={() => finalShow(session, id)} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>{/if}
+                {#if hasWager(f, id)}<button
+                    class="small"
+                    class:slot={wagerSlot(id)}
+                    onclick={() => finalShow(session, id)}
+                    aria-label="Show wager: {p?.name ?? '?'}">Show wager</button
+                  >{/if}
               </span>
             {:else}
               <span class="cell sw">
                 <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
                 <span class="muted small">wager {formatPoints(f.wagers[id], sym)}</span>
-              {#if session.finalStep === 'reveal' && hasWager(f, id) && (f.wagers[id] ?? 0) > 0}
-                <button class="small" onclick={() => adjustWager(id, 'half')} aria-label="Halve wager: {p?.name ?? '?'}" title="Halve their wager, rounded down. If they're already judged, their points change with it.">½ Halve</button>
-                <button class="small" onclick={() => adjustWager(id, 'zero')} aria-label="Nullify wager: {p?.name ?? '?'}" title="Make their wager 0. If they're already judged, their points change with it.">0 Nullify</button>
-              {/if}
+                {#if session.finalStep === 'reveal' && hasWager(f, id) && (f.wagers[id] ?? 0) > 0}
+                  <button
+                    class="small"
+                    onclick={() => adjustWager(id, 'half')}
+                    aria-label="Halve wager: {p?.name ?? '?'}"
+                    title="Halve their wager, rounded down. If they're already judged, their points change with it.">½ Halve</button
+                  >
+                  <button
+                    class="small"
+                    onclick={() => adjustWager(id, 'zero')}
+                    aria-label="Nullify wager: {p?.name ?? '?'}"
+                    title="Make their wager 0. If they're already judged, their points change with it.">0 Nullify</button
+                  >
+                {/if}
               </span>
               <span class="cell">
-                <button class="small" class:slot={wagerSlot(id)} onclick={() => finalShow(session, id)} disabled={f.shown[id]} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>
+                <button
+                  class="small"
+                  class:slot={wagerSlot(id)}
+                  onclick={() => finalShow(session, id)}
+                  disabled={f.shown[id]}
+                  aria-label="Show wager: {p?.name ?? '?'}">Show wager</button
+                >
               </span>
             {/if}
             <!-- (One pair: on a narrow window they wrap together, to the row's right end, at one place in every row.) -->
             <span class="cell verdicts">
-            <button class="small good" class:on={res === 'right'} class:ring={lit === 'verdict:right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)} aria-label="✔ Right: {p?.name ?? '?'}">✔ Right</button>
-            <button class="small bad" class:on={res === 'wrong'} class:ring={lit === 'verdict:wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)} aria-label="✘ Wrong: {p?.name ?? '?'}">✘ Wrong</button>
+              <button
+                class="small good"
+                class:on={res === 'right'}
+                class:ring={lit === 'verdict:right'}
+                aria-pressed={res === 'right'}
+                disabled={!hasWager(f, id)}
+                onclick={() => onjudge(id, true)}
+                aria-label="✔ Right: {p?.name ?? '?'}">✔ Right</button
+              >
+              <button
+                class="small bad"
+                class:on={res === 'wrong'}
+                class:ring={lit === 'verdict:wrong'}
+                aria-pressed={res === 'wrong'}
+                disabled={!hasWager(f, id)}
+                onclick={() => onjudge(id, false)}
+                aria-label="✘ Wrong: {p?.name ?? '?'}">✘ Wrong</button
+              >
             </span>
           </div>
         {/each}
@@ -774,7 +862,9 @@
     {/if}
     <div class="row">
       {#if session.finalStep === 'wagers'}
-        {#if lastRound}<button class="ghost" onclick={onback} title="Who plays and the wagers entered so far are kept">◀ Previous round ({roundName(lastRound, session.currentRound - 1)})</button>{/if}
+        {#if lastRound}<button class="ghost" onclick={onback} title="Who plays and the wagers entered so far are kept"
+            >◀ Previous round ({roundName(lastRound, session.currentRound - 1)})</button
+          >{/if}
       {/if}
       {#if session.finalStep === 'answer'}
         <button data-flow="reveal" onclick={onreveal} title="R">🙈 Hide answer</button>
@@ -792,7 +882,9 @@
           {#if finishEarly}
             <!-- Finishing early, at the left away from the verdicts, asks first (not while the blue button is Finish game ▶
                  itself: one way to finish). -->
-            <button class="ghost" data-finish-early onclick={finishNow} title="Ends the Final with {unjudged} still to judge: it asks first, then {goOn}">{FINISH_NOW}</button>
+            <button class="ghost" data-finish-early onclick={finishNow} title="Ends the Final with {unjudged} still to judge: it asks first, then {goOn}"
+              >{FINISH_NOW}</button
+            >
           {/if}
           <span class="muted small">{unjudged} still to judge</span>
         {/if}

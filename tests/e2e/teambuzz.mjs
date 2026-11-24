@@ -8,7 +8,30 @@
 // the game and Resume with my edits (an editor Ctrl+Z of ▶ Play's step for it too, but not of the host's own Buzzer mode
 // step); with 24 phones on teams, the next one is told the game is full. Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, addPlayers, answerReplace, openBuzzerOptions, openRules, startRoomOn, stored, tap, tieThem, failureShots, assert, launchChromium, untilWith, startBuzzer, boardIn, boardTilesIn, hostPanelIn, stageBoxIn, statusBarIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  addPlayers,
+  answerReplace,
+  openBuzzerOptions,
+  openRules,
+  startRoomOn,
+  stored,
+  tap,
+  tieThem,
+  failureShots,
+  assert,
+  launchChromium,
+  untilWith,
+  startBuzzer,
+  boardIn,
+  boardTilesIn,
+  hostPanelIn,
+  stageBoxIn,
+  statusBarIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 
@@ -49,7 +72,10 @@ try {
   await card.getByLabel(/Buzzer mode/).check();
   await card.getByLabel(/Teams: people join a team/).check();
   const emptyRoster = host.locator('[data-place="play:players"]');
-  assert((await emptyRoster.locator('.warn').innerText()).startsWith('Add teams above to start, or'), 'with Teams on and nobody yet, the list says to add teams');
+  assert(
+    (await emptyRoster.locator('.warn').innerText()).startsWith('Add teams above to start, or'),
+    'with Teams on and nobody yet, the list says to add teams',
+  );
   const startButton = host.getByRole('button', { name: 'Start game ▶' });
   assert(
     (await host.getByText('Add teams to start', { exact: true }).isVisible()) && (await startButton.getAttribute('title')) === 'Add teams to start',
@@ -58,7 +84,8 @@ try {
   const rules = await openRules(host);
   const rulesText = (await rules.innerText()).replace(/\s+/g, ' ');
   assert(
-    ['8 teams at most', 'Scoring and teams', 'Team who gets points picks next', 'the number keys 1–8 pick teams'].every((t) => rulesText.includes(t)) && (await rules.getByLabel('Most teams').isVisible()),
+    ['8 teams at most', 'Scoring and teams', 'Team who gets points picks next', 'the number keys 1–8 pick teams'].every((t) => rulesText.includes(t)) &&
+      (await rules.getByLabel('Most teams').isVisible()),
     `⚖ Game rules speak of teams too (${rulesText.slice(0, 160)}…)`,
   );
   await rules.locator('summary').click();
@@ -74,9 +101,18 @@ try {
   await card.getByLabel('Open the buzzers').selectOption('host');
   const teamsBox = card.getByLabel(/Teams: people join a team/);
   await teamsBox.check();
-  assert(await card.getByLabel(/Let new players join from their phone/).isDisabled(), 'Teams is a checkbox on the 📱 card (new players from phones are off with it: people join a team)');
+  assert(
+    await card.getByLabel(/Let new players join from their phone/).isDisabled(),
+    'Teams is a checkbox on the 📱 card (new players from phones are off with it: people join a team)',
+  );
   const dimmed = await card.locator('label.check').evaluateAll((els) => els.map((e) => [e.textContent.trim().slice(0, 12), getComputedStyle(e).opacity]));
-  assert(dimmed.filter(([, o]) => o !== '1').map(([t]) => t).join() === 'Let new play,Players can ', `and it and the color choice look greyed, as disabled buttons do (${JSON.stringify(dimmed)})`);
+  assert(
+    dimmed
+      .filter(([, o]) => o !== '1')
+      .map(([t]) => t)
+      .join() === 'Let new play,Players can ',
+    `and it and the color choice look greyed, as disabled buttons do (${JSON.stringify(dimmed)})`,
+  );
   // (A regex is tried on the text as written, line breaks and all: any space between the words.)
   await card.getByText(/up\s+to\s+24\s+phones\s+can\s+be\s+in\s+the\s+room\s+at\s+once\./).waitFor();
   assert(true, 'with Teams ticked, the card says a room holds 24 phones at most');
@@ -84,7 +120,10 @@ try {
   const code = await startRoomOn(card);
   await card.getByText('0 people on 0 of 2 teams').waitFor();
   assert(true, `a real room (${code}); the card counts people on teams`);
-  assert(await card.getByText('🔒 Lock seats: no new phones (people already on a team can come back)', { exact: true }).isVisible(), 'its 🔒 Lock seats says people already on a team can come back');
+  assert(
+    await card.getByText('🔒 Lock seats: no new phones (people already on a team can come back)', { exact: true }).isVisible(),
+    'its 🔒 Lock seats says people already on a team can come back',
+  );
 
   // ---------- People join teams from their phones ----------
   /** Each phone's buzzes, to hold two for a tie (tieThem). */
@@ -98,7 +137,8 @@ try {
     await p.getByRole('button', { name: team }).click();
     await p.getByRole('heading', { name: `Join ${team}` }).waitFor();
     // (Your own name, not the team's: the box says so, and gives an example.)
-    if ((await p.getByRole('textbox', { name: 'Your name (everyone sees it)' }).getAttribute('placeholder')) !== 'e.g. Zoe') throw new Error('the team name box has no example');
+    if ((await p.getByRole('textbox', { name: 'Your name (everyone sees it)' }).getAttribute('placeholder')) !== 'e.g. Zoe')
+      throw new Error('the team name box has no example');
     await p.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill(name);
     await p.getByRole('button', { name: 'Join the team' }).click();
     await p.locator('#me').getByText(`${name} · ${team}`).waitFor();
@@ -112,11 +152,20 @@ try {
   assert(bar.includes(`Room ${code} · 3 people on 2 of 2 teams`), `the bar by Start game counts them as the card does (${bar})`);
   const list = card.locator('ul.phones');
   const listed = (await list.innerText()).replace(/\s+/g, ' ');
-  assert(/Player 1 2 on it.*Ann 📱 in.*Al 📱 in.*Player 2 1 on it.*Bea 📱 in/.test(listed), `two phones on one team, one on the other: the host sees who is on which team (${listed})`);
+  assert(
+    /Player 1 2 on it.*Ann 📱 in.*Al 📱 in.*Player 2 1 on it.*Bea 📱 in/.test(listed),
+    `two phones on one team, one on the other: the host sees who is on which team (${listed})`,
+  );
   // The pre-game list is of teams now: its words say so, and who joined shows under each team.
   const roster = host.locator('[data-place="play:players"]');
-  assert((await roster.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams' && (await roster.getByRole('button', { name: '＋ Add team' }).isVisible()), 'with Teams on, the pre-game card is 👥 Teams, with ＋ Add team');
-  assert((await roster.locator('.hint').innerText()).startsWith('Each row is a team; people join it from their phone'), 'and says each row is a team that people join from their phone');
+  assert(
+    (await roster.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams' && (await roster.getByRole('button', { name: '＋ Add team' }).isVisible()),
+    'with Teams on, the pre-game card is 👥 Teams, with ＋ Add team',
+  );
+  assert(
+    (await roster.locator('.hint').innerText()).startsWith('Each row is a team; people join it from their phone'),
+    'and says each row is a team that people join from their phone',
+  );
   const onTeams = await roster.locator('.on-team').allInnerTexts();
   assert(onTeams.join('|') === 'On it: Ann, Al|On it: Bea', `who is on each team shows under its row (${onTeams.join(' | ')})`);
 
@@ -142,9 +191,20 @@ try {
   assert((await zed.locator('#team-err').getAttribute('class')) === 'err', 'the team list shows who is on each team, and a name someone has is taken (in red)');
   assert(
     await zed.evaluate(() => {
-      const [box, err, go] = [/** @type {HTMLInputElement} */ (document.getElementById('team-in')), document.getElementById('team-err'), document.querySelector('#team-form [type=submit]')];
+      const [box, err, go] = [
+        /** @type {HTMLInputElement} */ (document.getElementById('team-in')),
+        document.getElementById('team-err'),
+        document.querySelector('#team-form [type=submit]'),
+      ];
       const [b, e, g] = [box, err, go].map((x) => x.getBoundingClientRect());
-      return box.getAttribute('aria-describedby') === 'team-err' && e.top >= b.bottom && e.bottom <= g.top && document.activeElement === box && box.selectionStart === 0 && box.selectionEnd === 3;
+      return (
+        box.getAttribute('aria-describedby') === 'team-err' &&
+        e.top >= b.bottom &&
+        e.bottom <= g.top &&
+        document.activeElement === box &&
+        box.selectionStart === 0 &&
+        box.selectionEnd === 3
+      );
     }),
     'the reason is right under the name box (above Join the team), which is described by it, and has the keys, the name selected to change',
   );
@@ -160,7 +220,8 @@ try {
 
   // The ⛔ that takes a whole team off reads differently from each person's ⛔ under it.
   assert(
-    (await card.getByRole('button', { name: 'Take everyone off Player 2' }).innerText()).trim() === '⛔ Kick all' && (await card.getByRole('button', { name: 'Take Zed off Player 2' }).innerText()).trim() === '⛔',
+    (await card.getByRole('button', { name: 'Take everyone off Player 2' }).innerText()).trim() === '⛔ Kick all' &&
+      (await card.getByRole('button', { name: 'Take Zed off Player 2' }).innerText()).trim() === '⛔',
     'a team’s row: “⛔ Kick all” takes everyone off; each person’s ⛔ under it, only them',
   );
   // The host moves Al to Player 2 and back, and takes Zed off.
@@ -182,7 +243,8 @@ try {
   await al.getByRole('button', { name: 'Change team or name' }).click();
   const leaveAsk = await al.locator('#leave-q').innerText();
   assert(
-    leaveAsk === 'Leave Player 1 to pick a team and your name again? Your team plays on.' && (await al.getByRole('button', { name: 'Leave Player 1', exact: true }).isVisible()),
+    leaveAsk === 'Leave Player 1 to pick a team and your name again? Your team plays on.' &&
+      (await al.getByRole('button', { name: 'Leave Player 1', exact: true }).isVisible()),
     `Change team or name asks, on the page, to leave the team, which plays on (${leaveAsk})`,
   );
   await al.getByRole('button', { name: 'Keep playing', exact: true }).click();
@@ -193,7 +255,10 @@ try {
   await roster.getByRole('button', { name: '＋ Add team' }).click();
   await roster.locator('input.name').nth(2).fill('player 1');
   const same = (await roster.locator('.same').innerText()).replace(/\s+/g, ' ');
-  assert(same === '⚠ Teams share a name (“Player 1”): viewers can\'t tell them apart on the scores.', `two teams of one name: “Teams share a name”, no initial to add (${same})`);
+  assert(
+    same === "⚠ Teams share a name (“Player 1”): viewers can't tell them apart on the scores.",
+    `two teams of one name: “Teams share a name”, no initial to add (${same})`,
+  );
   await roster.locator('button.del').nth(2).click();
   // A team with people on it deleted: the note says they pick a team again (its Undo brings back the team, not them).
   await roster.getByRole('button', { name: 'Delete Player 2' }).click();
@@ -214,13 +279,19 @@ try {
   const ask = card.getByRole('alertdialog', { name: 'Turn teams off?' });
   await ask.waitFor();
   const asked = (await ask.innerText()).replace(/\s+/g, ' ');
-  assert(asked.startsWith('3 phones are in the room: turning teams off sends them all back to tap their name.') && (await teamsBox.isChecked()), `Teams off with people on teams asks first, and the box stays ticked meanwhile (${asked})`);
+  assert(
+    asked.startsWith('3 phones are in the room: turning teams off sends them all back to tap their name.') && (await teamsBox.isChecked()),
+    `Teams off with people on teams asks first, and the box stays ticked meanwhile (${asked})`,
+  );
   // ⏹ Close the room… meanwhile: that's the question now (one at a time), and the Teams one is gone for good.
   await card.getByRole('button', { name: '⏹ Close the room…' }).click();
   const closeAsk = card.getByRole('alertdialog', { name: 'Close the room?' });
   await closeAsk.waitFor();
   const closeButtons = await closeAsk.getByRole('button').allInnerTexts();
-  assert((await card.getByRole('alertdialog').count()) === 1 && closeButtons.join(' | ') === 'Keep it open | Close the room', `closing the room while it asks about Teams: only the room’s question shows, Keep it open first (${closeButtons.join(' | ')})`);
+  assert(
+    (await card.getByRole('alertdialog').count()) === 1 && closeButtons.join(' | ') === 'Keep it open | Close the room',
+    `closing the room while it asks about Teams: only the room’s question shows, Keep it open first (${closeButtons.join(' | ')})`,
+  );
   await closeAsk.getByRole('button', { name: 'Keep it open' }).click();
   await closeAsk.waitFor({ state: 'detached' });
   assert((await card.getByRole('alertdialog').count()) === 0, 'kept open: the Teams question doesn’t come back on its own');
@@ -234,7 +305,10 @@ try {
   await teamsBox.click();
   await ask.getByRole('button', { name: 'Turn teams off' }).click();
   await ann.getByRole('heading', { name: 'Tap your name' }).waitFor();
-  assert((await ann.locator('#seats-note').innerText()) === 'The host turned teams off. Tap your name.', 'turned off: the phones say so ("The host turned teams off. Tap your name.")');
+  assert(
+    (await ann.locator('#seats-note').innerText()) === 'The host turned teams off. Tap your name.',
+    'turned off: the phones say so ("The host turned teams off. Tap your name.")',
+  );
   await card.getByText('0 of 2 players joined').waitFor();
   // Ann taps a player's name: Teams on again asks first too, and her phone says why it's back at "Pick your team".
   await ann.getByRole('button', { name: 'Player 1' }).click();
@@ -243,11 +317,21 @@ try {
   const askOn = card.getByRole('alertdialog', { name: 'Turn teams on?' });
   await askOn.waitFor();
   const askedOn = (await askOn.innerText()).replace(/\s+/g, ' ');
-  assert(askedOn.startsWith('1 phone is in the room: turning teams on sends it back to pick a team.') && !(await teamsBox.isChecked()), `Teams on with a phone on a player asks first, and the box stays unticked meanwhile (${askedOn})`);
+  assert(
+    askedOn.startsWith('1 phone is in the room: turning teams on sends it back to pick a team.') && !(await teamsBox.isChecked()),
+    `Teams on with a phone on a player asks first, and the box stays unticked meanwhile (${askedOn})`,
+  );
   await askOn.getByRole('button', { name: 'Turn teams on' }).click();
   await ann.getByRole('heading', { name: 'Pick your team' }).waitFor();
-  assert((await ann.locator('#seats-note').innerText()) === 'The host switched to teams. Pick your team.', 'turned on: the phone says so ("The host switched to teams. Pick your team.")');
-  for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [al, 'Al', 'Player 1'], [bea, 'Bea', 'Player 2']]) {
+  assert(
+    (await ann.locator('#seats-note').innerText()) === 'The host switched to teams. Pick your team.',
+    'turned on: the phone says so ("The host switched to teams. Pick your team.")',
+  );
+  for (const [p, name, team] of [
+    [ann, 'Ann', 'Player 1'],
+    [al, 'Al', 'Player 1'],
+    [bea, 'Bea', 'Player 2'],
+  ]) {
     await p.getByRole('heading', { name: 'Pick your team' }).waitFor();
     await p.getByRole('button', { name: team }).click();
     await p.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill(name);
@@ -263,7 +347,9 @@ try {
   const press = (p) => p.locator('#buzz').dispatchEvent('pointerdown');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
-  await boardTilesIn(boardIn(stageBoxIn(host))).first().click();
+  await boardTilesIn(boardIn(stageBoxIn(host)))
+    .first()
+    .click();
   await big(ann).getByText('Get ready…').waitFor();
   await host.keyboard.press('u');
   for (const p of [ann, al, bea]) await big(p).getByText('BUZZ!').waitFor();
@@ -281,7 +367,10 @@ try {
   await host.getByText('🔔 Al (Player 1) buzzed').waitFor();
   const plate = stageBoxIn(host).locator('.plate');
   await plate.waitFor();
-  assert((await plate.innerText()).replace(/\s+/g, ' ').includes('Player 1 is answering · Al'), 'the team is picked in the host panel ("🔔 Al (Player 1) buzzed"), and viewers see "Player 1 is answering · Al"');
+  assert(
+    (await plate.innerText()).replace(/\s+/g, ' ').includes('Player 1 is answering · Al'),
+    'the team is picked in the host panel ("🔔 Al (Player 1) buzzed"), and viewers see "Player 1 is answering · Al"',
+  );
 
   // Ann buzzes too (later): no second place for Player 1. Bea's buzz is 2nd.
   await press(ann);
@@ -336,11 +425,21 @@ try {
   }
   // (🎲 Roll for it is in the buzzers' row, beside the tie: O does it too.)
   await hostPanelIn(host).locator('[data-buzzrow] button[data-box="rolltie"]').click();
-  const won = await Promise.race([al, bea].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
+  const won = await Promise.race(
+    [al, bea].map((p, i) =>
+      big(p)
+        .getByText("You're answering!")
+        .waitFor({ timeout: 30_000 })
+        .then(() => i),
+    ),
+  );
   const rolledSecond = won === 0 ? bea : al;
   await small(rolledSecond).getByText('Tie — your team rolled 2nd').waitFor();
   if (won === 1) await small(ann).getByText('Al buzzed for your team · Tie — your team rolled 2nd').waitFor();
-  assert((await big(rolledSecond).innerText()) === 'Your team is 2nd', `a tie rolled: the team that rolled 2nd reads “Your team is 2nd · Tie — your team rolled 2nd”${won === 1 ? ' (Ann too, after “Al buzzed for your team”)' : ''}`);
+  assert(
+    (await big(rolledSecond).innerText()) === 'Your team is 2nd',
+    `a tie rolled: the team that rolled 2nd reads “Your team is 2nd · Tie — your team rolled 2nd”${won === 1 ? ' (Ann too, after “Al buzzed for your team”)' : ''}`,
+  );
   await host.keyboard.press('Escape');
   await stageBoxIn(host).getByText('Tie! Roll for it').waitFor({ state: 'detached' });
 
@@ -352,18 +451,26 @@ try {
   await big(al).getByText('Ann is answering').waitFor();
   const before = await al.locator('#me').innerText();
   await host.keyboard.press('Enter');
-  await big(al).getByText(/^✔ Right! \+/).waitFor();
+  await big(al)
+    .getByText(/^✔ Right! \+/)
+    .waitFor();
   await al.waitForFunction((b) => document.getElementById('me').textContent !== b, before);
   assert(
-    (await ann.locator('#me').innerText()) === (await al.locator('#me').innerText()).replace(/^Al/, 'Ann') && (await big(ann).innerText()) === (await big(al).innerText()),
+    (await ann.locator('#me').innerText()) === (await al.locator('#me').innerText()).replace(/^Al/, 'Ann') &&
+      (await big(ann).innerText()) === (await big(al).innerText()),
     `right: the team scores, and both teammates see it ("${await big(al).innerText()}")`,
   );
   await host.keyboard.press('Escape');
 
   // ---------- A ✍ clue: one answer per team; a teammate's fills the others' boxes ----------
-  await boardTilesIn(boardIn(stageBoxIn(host))).nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(host)))
+    .nth(1)
+    .click();
   for (const p of [ann, al, bea]) await p.locator('#answer-in').waitFor();
-  assert((await ann.locator('#answer-label').innerText()) === 'Your team’s answer (only the host and your team see it until the answer is up)', 'a ✍ clue: every member gets the team’s answer box, which says the team sees it too (until the answer is up)');
+  assert(
+    (await ann.locator('#answer-label').innerText()) === 'Your team’s answer (only the host and your team see it until the answer is up)',
+    'a ✍ clue: every member gets the team’s answer box, which says the team sees it too (until the answer is up)',
+  );
   // Ann's box has the focus (it takes it as it opens) and she typed nothing: Al's answer for the team fills it.
   await ann.locator('#answer-in').focus();
   await al.locator('#answer-in').fill('Poodle');
@@ -376,13 +483,22 @@ try {
   assert(!(await bea.content()).includes('Poodle'), 'the other team doesn’t see it');
   // Someone joining the team now (from the other team, under another name, to read it) is told one is in, not what.
   const mal = await phone('Mal', 'Player 1');
-  await mal.locator('#answer-state').getByText('Your team’s answer is in with the host (not shown on a phone that joined after the answers began). Sending one replaces it.').waitFor();
-  assert(!(await mal.content()).includes('Poodle') && (await mal.locator('#answer-in').inputValue()) === '', 'someone who joins the team after its answer was sent is told one is in, never what it says');
+  await mal
+    .locator('#answer-state')
+    .getByText('Your team’s answer is in with the host (not shown on a phone that joined after the answers began). Sending one replaces it.')
+    .waitFor();
+  assert(
+    !(await mal.content()).includes('Poodle') && (await mal.locator('#answer-in').inputValue()) === '',
+    'someone who joins the team after its answer was sent is told one is in, never what it says',
+  );
   // Showing the answer locks them: still "in", not "None sent".
   await host.keyboard.press('r');
   await big(mal).getByText('Answers locked').waitFor();
   await small(mal).getByText('The host has it (not shown on this phone)').waitFor();
-  assert(!(await mal.content()).includes('Poodle'), 'once the answers lock, that phone says the host has the team’s answer (not “None sent”), still without what it says');
+  assert(
+    !(await mal.content()).includes('Poodle'),
+    'once the answers lock, that phone says the host has the team’s answer (not “None sent”), still without what it says',
+  );
   // (One window: the answers box shows the words once the answer is up.)
   const sentBy = host.locator('[data-answer-row] .text', { hasText: 'Poodle' });
   await sentBy.waitFor();
@@ -411,12 +527,18 @@ try {
   await host.getByRole('button', { name: '👥 Teams' }).click();
   const teamsDialog = host.getByRole('dialog', { name: 'Teams' });
   await teamsDialog.waitFor();
-  assert((await teamsDialog.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams', 'mid-game with Teams on, the host panel’s 👥 Teams opens the list of teams');
+  assert(
+    (await teamsDialog.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams',
+    'mid-game with Teams on, the host panel’s 👥 Teams opens the list of teams',
+  );
   await teamsDialog.getByRole('button', { name: '＋ Add team' }).click();
   assert((await teamsDialog.getByRole('textbox', { name: 'Team 3 name' }).inputValue()) === 'Team 3', 'its ＋ Add team adds "Team 3" (not "Player 3")');
   await teamsDialog.getByRole('button', { name: 'Remove Player 2' }).click();
   const removeAsk = (await teamsDialog.locator('.ask').innerText()).replace(/\s+/g, ' ');
-  assert(removeAsk.includes('Its points leave the scoreboard') && removeAsk.includes('The 1 person on it goes back to picking a team on their phone.'), `removing a team says its phones go back to picking a team (${removeAsk})`);
+  assert(
+    removeAsk.includes('Its points leave the scoreboard') && removeAsk.includes('The 1 person on it goes back to picking a team on their phone.'),
+    `removing a team says its phones go back to picking a team (${removeAsk})`,
+  );
   // Removed, then ↩ Restore (a mistake): its phone says it left, then that it's back, and its person rejoins it.
   await teamsDialog.locator('.ask').getByRole('button', { name: 'Remove', exact: true }).click();
   await bea.locator('#seats-note').getByText('Your team left the game. Pick another one.').waitFor();
@@ -439,7 +561,10 @@ try {
   // ---------- 🎡 Wheel › 🎯 Pick a team: viewers see "Pick a team" over the teams ----------
   await host.getByRole('button', { name: '🎡 Wheel' }).click();
   const pickTeam = host.getByRole('button', { name: '🎯 Pick a team', exact: true });
-  assert((await pickTeam.getAttribute('title')) === 'A wheel of the teams, in their colors', 'with Teams on, 🎡 Wheel offers 🎯 Pick a team (“A wheel of the teams”)');
+  assert(
+    (await pickTeam.getAttribute('title')) === 'A wheel of the teams, in their colors',
+    'with Teams on, 🎡 Wheel offers 🎯 Pick a team (“A wheel of the teams”)',
+  );
   await pickTeam.click();
   const wheelTitle = stageBoxIn(host).locator('.wrap:has(> .disc.single) > .title');
   await wheelTitle.getByText('Pick a team', { exact: true }).waitFor();
@@ -468,16 +593,30 @@ try {
   await roomBar.getByText('▶ Play asks to keep it for this game').waitFor();
   // (Its setting-up state starts the scores at 0: Bea's team had −$200.)
   await bea.locator('#me').getByText('Bea · Player 2 · $0', { exact: true }).waitFor();
-  assert(!(await ann.getByRole('heading', { name: 'Tap your name' }).isVisible()), 'a reload with another game in the editor: the phones stay on their teams (not sent back to "Tap your name")');
+  assert(
+    !(await ann.getByRole('heading', { name: 'Tap your name' }).isVisible()),
+    'a reload with another game in the editor: the phones stay on their teams (not sent back to "Tap your name")',
+  );
   await addClassicRounds(host);
   await host.getByRole('button', { name: '▶ Play' }).click();
   const keepAsk = host.getByRole('alertdialog', { name: `Keep buzzer room ${code} and its 2 teams?` });
   await keepAsk.waitFor();
-  assert((await host.evaluate(() => document.activeElement?.textContent.trim())) === 'Keep room & teams', `▶ Play asks: keep buzzer room ${code} and its 2 teams? (Keep room & teams focused)`);
+  assert(
+    (await host.evaluate(() => document.activeElement?.textContent.trim())) === 'Keep room & teams',
+    `▶ Play asks: keep buzzer room ${code} and its 2 teams? (Keep room & teams focused)`,
+  );
   await host.keyboard.press('Enter');
   await card.getByText('4 people on 2 of 2 teams').waitFor();
-  assert((await teamsBox.isChecked()) && (await roster.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams', 'kept for a game without Teams ticked: Teams stays on, with the same teams');
-  for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [bea, 'Bea', 'Player 2'], [mal, 'Mal', 'Player 1']]) await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
+  assert(
+    (await teamsBox.isChecked()) && (await roster.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams',
+    'kept for a game without Teams ticked: Teams stays on, with the same teams',
+  );
+  for (const [p, name, team] of [
+    [ann, 'Ann', 'Player 1'],
+    [bea, 'Bea', 'Player 2'],
+    [mal, 'Mal', 'Player 1'],
+  ])
+    await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
   assert(!(await ann.locator('#seats-note').isVisible()), 'and nobody’s phone is sent back to pick again');
   // Ctrl+Z before the game takes back only what it undoes: Teams and the kept teams stay.
   const keptRules = await openRules(host);
@@ -497,7 +636,10 @@ try {
   await ann.locator('#me').getByText('Ann · Player 1 · $0', { exact: true }).waitFor();
   const keptNames = await roster.locator('input.name').evaluateAll((els) => els.map((e) => e.value));
   assert(
-    (await teamsBox.isChecked()) && keptNames.join() === 'Player 1,Player 2' && (await card.getByText('4 people on 2 of 2 teams').isVisible()) && !(await ann.locator('#seats-note').isVisible()),
+    (await teamsBox.isChecked()) &&
+      keptNames.join() === 'Player 1,Player 2' &&
+      (await card.getByText('4 people on 2 of 2 teams').isVisible()) &&
+      !(await ann.locator('#seats-note').isVisible()),
     `Ctrl+Z of a rule, then of a team’s new name: Teams stays on, the same 2 teams are listed, and the phones stay on them (${keptNames.join(', ')})`,
   );
   // ◀ Back to editor, then Ctrl+Z there: it takes back the step ▶ Play made for the room (Buzzer mode and Teams on, its
@@ -513,7 +655,12 @@ try {
   await editorSaid(`Redid Kept buzzer room ${code}`);
   await host.getByRole('button', { name: '▶ Play' }).click();
   await card.getByText('4 people on 2 of 2 teams').waitFor();
-  for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [bea, 'Bea', 'Player 2'], [mal, 'Mal', 'Player 1']]) await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
+  for (const [p, name, team] of [
+    [ann, 'Ann', 'Player 1'],
+    [bea, 'Bea', 'Player 2'],
+    [mal, 'Mal', 'Player 1'],
+  ])
+    await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
   assert(
     (await teamsBox.isChecked()) && !(await ann.locator('main').getByText('The game is over').isVisible()),
     'Ctrl+Z in the editor of the step ▶ Play made for the room leaves it open (Ctrl+Y puts the step back): ▶ Play goes back into it with Teams on, every phone still on its team',
@@ -544,12 +691,16 @@ try {
   await zoe.locator('main').getByText('This game is full').waitFor();
   await zoe.locator('#team-err').getByText('The game is full (24 phones at most): try again when someone leaves.', { exact: true }).waitFor();
   assert(
-    (await zoe.getByRole('heading', { name: 'Join Player 1' }).isVisible()) && (await zoe.getByRole('textbox', { name: 'Your name (everyone sees it)' }).inputValue()) === 'Zoe',
+    (await zoe.getByRole('heading', { name: 'Join Player 1' }).isVisible()) &&
+      (await zoe.getByRole('textbox', { name: 'Your name (everyone sees it)' }).inputValue()) === 'Zoe',
     'the 25th phone, turned away as full, is back on the team’s name form, which says the game is full until someone leaves',
   );
   const fullNote = card.getByText(/^⚠ Room full: a buzzer room takes 24 phones at once\./);
   await fullNote.waitFor();
-  assert((await fullNote.innerText()).includes('once 24 people are on teams nobody else can join until someone leaves'), 'the host is told 24 phones is the most, and that on teams nobody makes way by themselves');
+  assert(
+    (await fullNote.innerText()).includes('once 24 people are on teams nobody else can join until someone leaves'),
+    'the host is told 24 phones is the most, and that on teams nobody makes way by themselves',
+  );
   fans[0].w.close();
   await card.getByText('23 people on 2 of 2 teams').waitFor();
   await zoe.getByRole('button', { name: 'Join the team' }).click();
@@ -561,7 +712,10 @@ try {
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   const replaceAsk = host.locator('.actions [data-start-ask]');
   await replaceAsk.waitFor();
-  assert((await replaceAsk.innerText()).includes('The game in progress (Jeopardy!, round 1 of 2) is discarded'), 'Start with the game kept by Keep & leave asks first: the game in progress is discarded');
+  assert(
+    (await replaceAsk.innerText()).includes('The game in progress (Jeopardy!, round 1 of 2) is discarded'),
+    'Start with the game kept by Keep & leave asks first: the game in progress is discarded',
+  );
   await host.waitForTimeout(450);
   await replaceAsk.getByRole('button', { name: 'Start new game' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
@@ -585,8 +739,15 @@ try {
   await withEdits.click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await settingUp.waitFor({ state: 'detached' });
-  for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [bea, 'Bea', 'Player 2']]) await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
-  assert(!(await ann.locator('#seats-note').isVisible()) && (await hostPanelIn(host).isVisible()), 'Resume with my edits: the game goes on with Teams, every phone still on its team');
+  for (const [p, name, team] of [
+    [ann, 'Ann', 'Player 1'],
+    [bea, 'Bea', 'Player 2'],
+  ])
+    await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
+  assert(
+    !(await ann.locator('#seats-note').isVisible()) && (await hostPanelIn(host).isVisible()),
+    'Resume with my edits: the game goes on with Teams, every phone still on its team',
+  );
 
   // ---------- Exit › Discard & leave ends the room (Keep & leave would keep it for Resume) ----------
   await host.getByRole('button', { name: 'Exit' }).click();

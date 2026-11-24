@@ -89,7 +89,10 @@ try {
   await page.getByLabel('Round name').fill('Round of memes');
   await page.getByRole('button', { name: '🔊 Sounds' }).click();
   await page.waitForTimeout(300);
-  assert((await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) === 'Undo: Renamed round “Round of memes” (Ctrl+Z)', '↶ names the step it undoes');
+  assert(
+    (await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) === 'Undo: Renamed round “Round of memes” (Ctrl+Z)',
+    '↶ names the step it undoes',
+  );
 
   await key('Control+z');
   assert((await page.locator('nav button.round-tab.active').innerText()).includes('Jeopardy!'), 'undoing the round name goes back to the round');
@@ -115,7 +118,10 @@ try {
     'Ctrl+Y four times redoes it all',
   );
   await memes400.click();
-  assert((await clue.locator('.layers-box .row').count()) === 2 && (await page.getByPlaceholder('Type the question…').inputValue()) === 'Who is Pepe?', 'question and text box are back');
+  assert(
+    (await clue.locator('.layers-box .row').count()) === 2 && (await page.getByPlaceholder('Type the question…').inputValue()) === 'Who is Pepe?',
+    'question and text box are back',
+  );
   await clue.getByRole('button', { name: 'Done' }).click();
 
   // ---------- A text box's own undo first, then the history ----------
@@ -135,10 +141,16 @@ try {
   await page.locator('.cat').nth(3).getByRole('button', { name: 'More for category 4' }).click();
   await page.getByRole('menuitem', { name: '🗑 Delete category' }).click();
   await page.waitForTimeout(200);
-  assert((await page.locator('.cat').count()) === 5 && (await notice.innerText()).startsWith('Deleted category “Category 4”'), 'deleting a category is done at once, with a note');
+  assert(
+    (await page.locator('.cat').count()) === 5 && (await notice.innerText()).startsWith('Deleted category “Category 4”'),
+    'deleting a category is done at once, with a note',
+  );
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.waitForTimeout(250);
-  assert((await page.locator('.cat').count()) === 6 && (await page.locator('.cat textarea').nth(3).inputValue()) === 'Category 4', 'and its ↶ Undo puts it back in place');
+  assert(
+    (await page.locator('.cat').count()) === 6 && (await page.locator('.cat textarea').nth(3).inputValue()) === 'Category 4',
+    'and its ↶ Undo puts it back in place',
+  );
 
   // ---------- The History tab ----------
   // A right-click on the header's ↶ Undo opens it, as on the game screen.
@@ -175,12 +187,18 @@ try {
   // A step's right-click menu: what a click on it and its Go there › do, and copying its name.
   await rows.nth(0).click({ button: 'right' });
   const stepItems = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
-  assert(['↷ Redo up to here', 'Go there ›', '📋 Copy step name'].every((x) => stepItems.includes(x)), `an undone step's menu redoes up to it, goes there and copies its name (${stepItems.join(' | ')})`);
+  assert(
+    ['↷ Redo up to here', 'Go there ›', '📋 Copy step name'].every((x) => stepItems.includes(x)),
+    `an undone step's menu redoes up to it, goes there and copies its name (${stepItems.join(' | ')})`,
+  );
   await page.getByRole('menuitem', { name: '📋 Copy step name' }).click();
   await toastsIn(page, { hasText: 'Copied the step’s name' }).waitFor();
   assert((await page.evaluate(() => navigator.clipboard.readText())) === 'Deleted category “Category 4”', '📋 Copy step name copies its name');
   await rows.nth(1).click({ button: 'right' });
-  assert(await page.getByRole('menuitem', { name: '↶ Go back to just after this' }).isDisabled(), 'the step the game is at: Go back to just after this is greyed');
+  assert(
+    await page.getByRole('menuitem', { name: '↶ Go back to just after this' }).isDisabled(),
+    'the step the game is at: Go back to just after this is greyed',
+  );
   await page.keyboard.press('Escape');
   await rows.nth(2).click({ button: 'right' });
   await page.getByRole('menuitem', { name: '↶ Go back to just after this' }).click();
@@ -199,7 +217,13 @@ try {
   );
   assert((await page.locator('.hist .filter [role="status"]').innerText()) === `${shownSteps.length} of ${allSteps} steps`, 'and says how many');
   await filter.press('ArrowDown');
-  assert(await page.locator('.hist .hr:not(.origin) .pick').first().evaluate((el) => el === document.activeElement), '↓ from the filter goes to the first step shown');
+  assert(
+    await page
+      .locator('.hist .hr:not(.origin) .pick')
+      .first()
+      .evaluate((el) => el === document.activeElement),
+    '↓ from the filter goes to the first step shown',
+  );
   await filter.fill('no such step anywhere');
   assert((await page.locator('.hist .filter [role="status"]').innerText()) === 'No steps match', 'a filter that matches nothing says so');
   await filter.press('Escape');
@@ -212,9 +236,18 @@ try {
   await rows.nth(1).locator('.pick').focus();
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowDown');
-  assert(await rows.nth(1).locator('.pick').evaluate((el) => el === document.activeElement), '↑/↓ move between the steps');
+  assert(
+    await rows
+      .nth(1)
+      .locator('.pick')
+      .evaluate((el) => el === document.activeElement),
+    '↑/↓ move between the steps',
+  );
   await page.keyboard.press('ArrowUp');
-  const ring = await rows.nth(0).locator('.pick').evaluate((el) => el === document.activeElement && getComputedStyle(el).outlineStyle);
+  const ring = await rows
+    .nth(0)
+    .locator('.pick')
+    .evaluate((el) => el === document.activeElement && getComputedStyle(el).outlineStyle);
   assert(ring === 'solid', `a step ↑/↓ moves to shows the focus ring (${ring})`);
   await page.keyboard.press('ArrowDown');
   // G (Go there) shows the place, and the focus goes there too, not to the page.
@@ -222,9 +255,14 @@ try {
   await page.waitForTimeout(400);
   assert(!(await page.locator('.hist').count()) && (await page.locator('nav button.round-tab.active').count()) === 1, 'Go there shows the round it changed');
   await page
-    .waitForFunction(() => !!document.activeElement && document.activeElement !== document.body && !!document.activeElement.closest('main, nav'), null, { timeout: 3000 })
+    .waitForFunction(() => !!document.activeElement && document.activeElement !== document.body && !!document.activeElement.closest('main, nav'), null, {
+      timeout: 3000,
+    })
     .catch(() => {});
-  assert(await page.evaluate(() => !!document.activeElement && document.activeElement !== document.body && !!document.activeElement.closest('main, nav')), 'and the focus is there, not on the page');
+  assert(
+    await page.evaluate(() => !!document.activeElement && document.activeElement !== document.body && !!document.activeElement.closest('main, nav')),
+    'and the focus is there, not on the page',
+  );
 
   // ＋ Add round is a step of its own: a name and a field typed right after it are steps too, so one Ctrl+Z never
   // takes the whole new round.
@@ -238,7 +276,9 @@ try {
   await clickAway();
   await key('Control+z');
   assert(
-    (await roundTabsIn(page).count()) === roundCount + 1 && (await page.getByLabel('Round name').inputValue()) === 'The Big Finish' && !(await page.locator('[data-field="final-category"]').inputValue()),
+    (await roundTabsIn(page).count()) === roundCount + 1 &&
+      (await page.getByLabel('Round name').inputValue()) === 'The Big Finish' &&
+      !(await page.locator('[data-field="final-category"]').inputValue()),
     `one Ctrl+Z right after adding a Final and typing its name and category takes back only the category (${await notice.innerText()})`,
   );
 
@@ -254,7 +294,10 @@ try {
   assert(moved.startsWith('Undo: Moved screen “Screen C1” to C2'), `moving a screen names where it went (${moved})`);
   await page.getByRole('button', { name: '🗑 Delete screen', exact: true }).click();
   await page.waitForTimeout(200);
-  assert((await notice.innerText()).startsWith('Deleted screen “Screen C1”') && !(await page.locator('.cell.screen.sel').count()), 'deleting a screen is done at once, with a note');
+  assert(
+    (await notice.innerText()).startsWith('Deleted screen “Screen C1”') && !(await page.locator('.cell.screen.sel').count()),
+    'deleting a screen is done at once, with a note',
+  );
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.waitForTimeout(250);
   assert((await page.locator('.cell.screen.sel').getAttribute('aria-label')) === 'Screen Screen C1', 'its ↶ Undo brings it back, selected');
@@ -262,7 +305,10 @@ try {
   const screenAt = (c, r) => page.locator(`.grid-map [data-cell="${c},${r}"]`).getAttribute('aria-label');
   const undoTitle = () => header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   await dragBy(page, page.getByRole('button', { name: 'Screen Screen C1' }), page.getByRole('button', { name: 'Add a screen at column 4, row 1' }));
-  assert((await screenAt(3, 0)) === 'Screen Screen C1' && (await undoTitle()).startsWith('Undo: Moved screen “Screen C1” to D1'), 'a screen dragged to an empty cell moves there, one step');
+  assert(
+    (await screenAt(3, 0)) === 'Screen Screen C1' && (await undoTitle()).startsWith('Undo: Moved screen “Screen C1” to D1'),
+    'a screen dragged to an empty cell moves there, one step',
+  );
   await dragBy(page, page.getByRole('button', { name: 'Screen Start' }), page.getByRole('button', { name: 'Screen Screen B1' }));
   const swapped = (await screenAt(1, 0)) === 'Screen Start' && (await screenAt(0, 0)) === 'Screen Screen B1';
   assert(swapped && (await page.locator('[data-cell="1,0"] .start').count()) === 1, 'a screen dropped on another swaps them, and the start goes with it');
@@ -275,7 +321,9 @@ try {
   await page.keyboard.press('Delete');
   await page.waitForTimeout(200);
   assert(
-    !(await page.getByRole('button', { name: 'Screen Screen C1' }).count()) && (await notice.innerText()).startsWith('Deleted screen “Screen C1”') && !dialogs.length,
+    !(await page.getByRole('button', { name: 'Screen Screen C1' }).count()) &&
+      (await notice.innerText()).startsWith('Deleted screen “Screen C1”') &&
+      !dialogs.length,
     'the Delete key deletes the selected screen, with a note',
   );
   await page.keyboard.press('Control+z');
@@ -294,10 +342,13 @@ try {
   assert((await mapNames()) === 'Overworld|Overworld (copy)|Area 1', `Ctrl+D on a map's tab duplicates the map (${await mapNames()})`);
   await mapTabs.nth(1).focus();
   await key('Alt+ArrowRight');
-  assert((await mapNames()) === 'Overworld|Area 1|Overworld (copy)', "Alt+→ moves it later");
+  assert((await mapNames()) === 'Overworld|Area 1|Overworld (copy)', 'Alt+→ moves it later');
   await mapTabs.nth(2).focus();
   await key('Delete');
-  assert((await mapNames()) === 'Overworld|Area 1' && (await notice.innerText()).startsWith('Deleted map “Overworld (copy)”'), 'Delete deletes the map, with a note');
+  assert(
+    (await mapNames()) === 'Overworld|Area 1' && (await notice.innerText()).startsWith('Deleted map “Overworld (copy)”'),
+    'Delete deletes the map, with a note',
+  );
   await mapTabs.first().click();
   assert((await page.locator('.cell.screen').count()) === screens, 'and none of those keys touched the screens');
 
@@ -307,12 +358,25 @@ try {
   await chooser.setFiles([{ name: 'tiny.png', mimeType: 'image/png', buffer: png(255, 0, 0) }]);
   await page.locator('.card img').waitFor();
   await roundTabsIn(page).first().click();
-  await page.locator('.cat').first().getByTitle(/Use an image/).click();
-  await page.getByRole('button', { name: /tiny\.png/ }).first().click();
+  await page
+    .locator('.cat')
+    .first()
+    .getByTitle(/Use an image/)
+    .click();
+  await page
+    .getByRole('button', { name: /tiny\.png/ })
+    .first()
+    .click();
   await page.getByRole('button', { name: /🖼️ Media/ }).click();
-  await page.locator('.card').getByRole('button', { name: /^Delete / }).click();
+  await page
+    .locator('.card')
+    .getByRole('button', { name: /^Delete / })
+    .click();
   await page.waitForTimeout(200);
-  assert((await page.locator('.card').count()) === 0 && (await notice.innerText()).startsWith('Deleted file “tiny.png” (used 1×)'), 'removing a used file is done at once, with a note');
+  assert(
+    (await page.locator('.card').count()) === 0 && (await notice.innerText()).startsWith('Deleted file “tiny.png” (used 1×)'),
+    'removing a used file is done at once, with a note',
+  );
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.waitForTimeout(300);
   assert((await imageWidth()) === 40, 'its ↶ Undo brings the file back, showing');
@@ -333,7 +397,10 @@ try {
   await page.locator('.preset', { hasText: 'Dark' }).click();
   await page.locator('.preset.on', { hasText: 'Dark' }).waitFor();
   await page.getByRole('button', { name: /🖼️ Media/ }).click();
-  await page.locator('.card').getByRole('button', { name: /^Delete / }).click();
+  await page
+    .locator('.card')
+    .getByRole('button', { name: /^Delete / })
+    .click();
   const steps = await historyTab.innerText();
   await reload();
   assert((await historyTab.innerText()) === steps, `the steps are still there after a reload (${steps})`);
@@ -365,21 +432,33 @@ try {
   await page.getByRole('button', { name: '◀ Back to editor' }).click();
   await historyTab.click();
   const played = rows.first();
-  assert((await played.innerText()).includes('Placed 1 Daily Double in Round of memes') && (await played.locator('.play').count()) === 1, 'Daily Doubles placed before a game are a step, with a ▶');
+  assert(
+    (await played.innerText()).includes('Placed 1 Daily Double in Round of memes') && (await played.locator('.play').count()) === 1,
+    'Daily Doubles placed before a game are a step, with a ▶',
+  );
   assert((await page.locator('.hist .mark').first().innerText()).includes('Played'), 'and pressing ▶ Play is marked');
   await key('Control+z');
   await roundTabsIn(page).first().click();
   assert(!(await page.locator('.tile .dd').count()), 'Ctrl+Z takes the Daily Double back off the board');
 
   // ---------- A game opened starts afresh ----------
-  const [json] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /^More:/ }).click().then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click())]);
+  const [json] = await Promise.all([
+    page.waitForEvent('download'),
+    page
+      .getByRole('button', { name: /^More:/ })
+      .click()
+      .then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click()),
+  ]);
   const saved = resolve('test-results/history-save.json');
   await json.saveAs(saved);
   await openGameFile(page, saved);
   await answerReplace(page, 'Discard');
   await page.getByText(/^Opened “/).waitFor();
   await historyTab.click();
-  assert((await rows.count()) === 1 && (await rows.first().innerText()).includes('📂 Opened “Untitled Game”'), 'a game opened has only where it was opened in its history');
+  assert(
+    (await rows.count()) === 1 && (await rows.first().innerText()).includes('📂 Opened “Untitled Game”'),
+    'a game opened has only where it was opened in its history',
+  );
   await key('Control+z');
   assert((await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).isDisabled()) && (await rows.count()) === 1, 'and nothing to undo');
 
@@ -400,11 +479,17 @@ try {
 
   // ---------- Files dropped and where they go: one step ----------
   await roundTabsIn(page).first().click();
-  const dt = await page.evaluateHandle((files) => {
-    const d = new DataTransfer();
-    for (const [name, bytes] of files) d.items.add(new File([new Uint8Array(bytes)], name, { type: 'image/png' }));
-    return d;
-  }, [['red.png', [...png(255, 0, 0)]], ['blue.png', [...png(0, 0, 255)]]]);
+  const dt = await page.evaluateHandle(
+    (files) => {
+      const d = new DataTransfer();
+      for (const [name, bytes] of files) d.items.add(new File([new Uint8Array(bytes)], name, { type: 'image/png' }));
+      return d;
+    },
+    [
+      ['red.png', [...png(255, 0, 0)]],
+      ['blue.png', [...png(0, 0, 255)]],
+    ],
+  );
   await page.locator('.cat').first().dispatchEvent('dragover', { dataTransfer: dt });
   await page.locator('.cat').first().dispatchEvent('drop', { dataTransfer: dt });
   await page.locator('.cat .cat-img img').nth(1).waitFor();
@@ -502,7 +587,10 @@ try {
   await page.locator('.cat').nth(3).getByRole('button', { name: 'More for category 4' }).click();
   await page.getByRole('menuitem', { name: '🗑 Delete category' }).click();
   await notice.filter({ hasText: 'dropped 1 undone step' }).waitFor({ timeout: 3000 });
-  assert(/^Deleted category “.+” · dropped 1 undone step/.test(await notice.innerText()), `a deletion that drops an undone step says both in its note (${await notice.innerText()})`);
+  assert(
+    /^Deleted category “.+” · dropped 1 undone step/.test(await notice.innerText()),
+    `a deletion that drops an undone step says both in its note (${await notice.innerText()})`,
+  );
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await toastsIn(page, { hasText: /^↶ Undid Deleted category “.+”, and brought back 1 undone step/ }).waitFor();
   assert(

@@ -26,7 +26,8 @@ describe('cueMedia', () => {
   });
 
   it('plays the built-in sound in place of an online link that has expired', () => {
-    const link = (expiresAt: number, url?: string) => [{ id: 'm1', name: 'intro.mp3', kind: 'audio', url, source: 'https://x.test/intro.mp3', expiresAt }] as never;
+    const link = (expiresAt: number, url?: string) =>
+      [{ id: 'm1', name: 'intro.mp3', kind: 'audio', url, source: 'https://x.test/intro.mp3', expiresAt }] as never;
     const past = Date.now() - 60_000;
     const later = Date.now() + 3_600_000;
     expect(cueMedia({ audio: { roundIntro: 'm1' }, media: link(past, 'https://x.test/intro.mp3') }, 'roundIntro', () => true)).toBe(BUILTIN + 'roundIntro');

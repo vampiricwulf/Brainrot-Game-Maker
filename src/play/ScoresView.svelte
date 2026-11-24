@@ -31,7 +31,15 @@
        it would give the judging away). -->
   {#if session && !live.pregame && !live.cover && session.players.length}
     <!-- (A wager's ✔ in the blue OBS keeps on a green key, as on the stage.) -->
-    <div class="strip" class:keyed={!!keyColor} style={themeStyle(game.theme)} style:--right={rightFill(game.theme?.stageBg)} style:width="{W}px" style:height="{H}px" style:transform="translateX(-50%) scale({scale})">
+    <div
+      class="strip"
+      class:keyed={!!keyColor}
+      style={themeStyle(game.theme)}
+      style:--right={rightFill(game.theme?.stageBg)}
+      style:width="{W}px"
+      style:height="{H}px"
+      style:transform="translateX(-50%) scale({scale})"
+    >
       <!-- In a Final nobody picks: the spotlit player in its reveals is lit, else nobody (as on the stage); nor on the
            results or the tiebreaker. Plates too many to fit clear of the countdown make room for it while it's up (their
            scores shortened to fit). The ✔ of a Final wager that's in, as on the stage. -->

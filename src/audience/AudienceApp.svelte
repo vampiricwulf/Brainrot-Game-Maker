@@ -142,8 +142,7 @@
           send({ type: 'audience-event', event: { kind: 'activation', active: activated && !blockedSince } });
           // And the media showing here (hello clears the host's list; a paused video or a site's player doesn't report
           // itself again on its own).
-          for (const [id, state] of Object.entries(localMedia))
-            send({ type: 'audience-event', event: { kind: 'media', id, state: $state.snapshot(state) } });
+          for (const [id, state] of Object.entries(localMedia)) send({ type: 'audience-event', event: { kind: 'media', id, state: $state.snapshot(state) } });
           break;
         case 'close':
           // (A window the page didn't open can't close itself: it says the host left instead.)
@@ -311,7 +310,11 @@
   {/if}
   <!-- The same: viewers keep the last picture, not a red bar (nothing's on stream before the game came, though). -->
   {#if status === 'host-left' && (!idle || !game)}
-    <div class="banner">{scores ? 'Host window closed. This window reconnects when the host page is open again.' : 'Host window closed. Reopen the audience window from the host to reconnect.'}</div>
+    <div class="banner"
+      >{scores
+        ? 'Host window closed. This window reconnects when the host page is open again.'
+        : 'Host window closed. Reopen the audience window from the host to reconnect.'}</div
+    >
   {/if}
 </div>
 

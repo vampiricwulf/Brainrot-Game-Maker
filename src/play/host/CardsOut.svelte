@@ -37,7 +37,8 @@
   const leftOff = $derived(new Set(cardsOn ? cardsLeftOff(game, session) : []));
   const LASTS: Record<SentCard['until'], string> = { round: 'until the round ends', tile: 'until the tile closes', host: 'until you take it back' };
   /** How long a card lasts, in words: one that lasts a Final's round lasts "until the Final ends" (it names no card). */
-  const lastsOf = (c: SentCard): string => (c.until === 'round' && isFinal(game.rounds.find((r) => r.id === c.round)) ? 'until the Final ends' : LASTS[c.until]);
+  const lastsOf = (c: SentCard): string =>
+    c.until === 'round' && isFinal(game.rounds.find((r) => r.id === c.round)) ? 'until the Final ends' : LASTS[c.until];
   /** Where a tile's or a Final's card is: its tile as the board says it ("Movies $200"), or the Final's name. */
   const holderWhere = (h: CardHolder): string => {
     if ('mode' in h) return finalName(h);
@@ -98,14 +99,28 @@
     {#if slow}<div class="small muted"><span data-card-slow={c.label}>{slow}</span><ShrinkButton {game} {items} which="slow" /></div>{/if}
     <div class="row btns">
       {#if cardsOn && !off}
-        <button class="small" onclick={() => again(c)} aria-label="Send {c.label} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too">↻ Send again</button>
+        <button
+          class="small"
+          onclick={() => again(c)}
+          aria-label="Send {c.label} again"
+          title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too">↻ Send again</button
+        >
       {/if}
-      <button class="ghost small" onclick={() => ontakeback(c.id)} aria-label="Take {c.label} back" title="Takes it off every phone it went to">↩ Take back</button>
+      <button class="ghost small" onclick={() => ontakeback(c.id)} aria-label="Take {c.label} back" title="Takes it off every phone it went to"
+        >↩ Take back</button
+      >
       {#if slide && (cardWords(slide) || cardLinks(game, slide).length)}
-        <button class="small" onclick={() => copyWords(c)} aria-label="Copy {c.label}’s words" title="Copies “For … only” with the card’s words and links, to paste in a DM (nothing of it shows here)">📋 Copy words</button>
+        <button
+          class="small"
+          onclick={() => copyWords(c)}
+          aria-label="Copy {c.label}’s words"
+          title="Copies “For … only” with the card’s words and links, to paste in a DM (nothing of it shows here)">📋 Copy words</button
+        >
       {/if}
       {#if slide && hasPicture(game, slide) && canCopyPicture}
-        <button class="small" onclick={() => copyCardPicture(game, slide, c.label, sentToText(session, c.to, teams))} aria-label="Copy {c.label}’s picture">📋 Copy picture</button>
+        <button class="small" onclick={() => copyCardPicture(game, slide, c.label, sentToText(session, c.to, teams))} aria-label="Copy {c.label}’s picture"
+          >📋 Copy picture</button
+        >
       {/if}
     </div>
   {:else}

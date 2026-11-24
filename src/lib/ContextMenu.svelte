@@ -99,8 +99,18 @@
 />
 
 {#if contextMenu.open}
-  <div class="cm" role="menu" data-over-modal tabindex="-1" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" style:max-height={pos.maxHeight === undefined ? undefined : `${pos.maxHeight}px`} oncontextmenu={(e) => e.preventDefault()}
-    onfocusout={(e) => e.relatedTarget instanceof Node && !box?.contains(e.relatedTarget) && !contextMenu.open?.from?.contains(e.relatedTarget) && closeMenu()}>
+  <div
+    class="cm"
+    role="menu"
+    data-over-modal
+    tabindex="-1"
+    bind:this={box}
+    style:left="{pos.x}px"
+    style:top="{pos.y}px"
+    style:max-height={pos.maxHeight === undefined ? undefined : `${pos.maxHeight}px`}
+    oncontextmenu={(e) => e.preventDefault()}
+    onfocusout={(e) => e.relatedTarget instanceof Node && !box?.contains(e.relatedTarget) && !contextMenu.open?.from?.contains(e.relatedTarget) && closeMenu()}
+  >
     {#each contextMenu.open.items as item, i (i)}
       {#if 'sep' in item}
         <div class="sep" role="separator"></div>
@@ -119,7 +129,9 @@
           onclick={() => run(item.onclick)}
         >
           {#if item.detail}
-            <span class="line"><span class="label">{item.label}</span>{#if item.keys}<kbd aria-hidden="true">{keysText(item.keys)}</kbd>{/if}</span>
+            <span class="line"
+              ><span class="label">{item.label}</span>{#if item.keys}<kbd aria-hidden="true">{keysText(item.keys)}</kbd>{/if}</span
+            >
             <span class="detail" id="cm-detail-{i}">{item.detail}</span>
           {:else}
             <span class="label">{item.label}</span>{#if item.keys}<kbd aria-hidden="true">{keysText(item.keys)}</kbd>{/if}

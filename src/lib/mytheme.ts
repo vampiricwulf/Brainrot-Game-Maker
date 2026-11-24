@@ -105,7 +105,10 @@ export function freshThemeName(list: readonly MyTheme[], base: string): string {
   const taken = new Set(list.map((m) => m.name.toLowerCase()));
   if (!taken.has(name.toLowerCase())) return name;
   for (let n = 2; ; n++) {
-    const next = `${Array.from(name).slice(0, 60 - ` ${n}`.length).join('').trimEnd()} ${n}`;
+    const next = `${Array.from(name)
+      .slice(0, 60 - ` ${n}`.length)
+      .join('')
+      .trimEnd()} ${n}`;
     if (!taken.has(next.toLowerCase())) return next;
   }
 }

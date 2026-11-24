@@ -16,7 +16,26 @@ import { createServer } from 'node:http';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, forgetSeen, openGameFile, packGame, recordSeen, roomKeys, shownOf, startBuzzer, startRoomOn, failureShots, assert, sleep, launchChromium, untilWith, section, stageBoxIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  editorReady,
+  forgetSeen,
+  openGameFile,
+  packGame,
+  recordSeen,
+  roomKeys,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  untilWith,
+  section,
+  stageBoxIn,
+  toolsRowIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -29,7 +48,23 @@ const until = untilWith({ timeout: 20_000 });
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
-const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  ...box(y),
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const video = (media, y) => ({ ...box(y), kind: 'video', media, fit: 'contain', autoplay: false, loop: false, muted: false, volume: 1 });
 const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
 const files = { big: Buffer.alloc(25 * MB), mid: Buffer.alloc(20 * MB, 1), slow: Buffer.alloc(17 * MB, 2) };
@@ -46,14 +81,42 @@ const game = {
   version: 2,
   title: 'Card limits',
   settings: {
-    allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+    allowNegativeScores: true,
+    deductOnWrong: false,
+    defaultTimerSeconds: 30,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+    maxPlayers: 8,
+    stream: { clueCaption: true },
+    buzzer: true,
   },
   players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b'][i] })),
   rounds: [
     {
-      id: 'r1', name: 'Round 1', mode: 'board', values: [200], dailyDoubleCount: 0,
-      categories: [{ id: 'cat0', title: 'Movies', clues: [{ id: 'q1', value: null, type: 'standard', questionSlide: { background: {}, elements: [text('Q')] }, answerSlide: { background: {}, elements: [text('A')] } }] }],
+      id: 'r1',
+      name: 'Round 1',
+      mode: 'board',
+      values: [200],
+      dailyDoubleCount: 0,
+      categories: [
+        {
+          id: 'cat0',
+          title: 'Movies',
+          clues: [
+            {
+              id: 'q1',
+              value: null,
+              type: 'standard',
+              questionSlide: { background: {}, elements: [text('Q')] },
+              answerSlide: { background: {}, elements: [text('A')] },
+            },
+          ],
+        },
+      ],
     },
   ],
   media: [
@@ -62,9 +125,19 @@ const game = {
     { id: 'slow', name: 'slow-zfnqj.mp4', mime: 'video/mp4', size: files.slow.length, kind: 'video' },
     { id: 'twin', name: 'twin-zfnqj.mp4', mime: 'video/mp4', size: files.twin.length, kind: 'video' },
     { id: 'pic', name: 'pic-zfnqj.gif', mime: 'image/gif', size: files.pic.length, kind: 'image' },
-    { id: 'piccopy', name: 'pic-zfnqj (phones).webm', mime: 'video/webm', size: files.piccopy.length, kind: 'video', phoneCopy: { of: 'pic', width: 320, height: 240 } },
+    {
+      id: 'piccopy',
+      name: 'pic-zfnqj (phones).webm',
+      mime: 'video/webm',
+      size: files.piccopy.length,
+      kind: 'video',
+      phoneCopy: { of: 'pic', width: 320, height: 240 },
+    },
   ],
-  audio: {}, wheels: [], dice: [], theme: {},
+  audio: {},
+  wheels: [],
+  dice: [],
+  theme: {},
   cards: [
     { id: 'sc_tip', name: 'Tip', background: {}, elements: [text('Look'), video('big', 300), video('mid', 500)] },
     { id: 'sc_slow', name: 'Slow', background: {}, elements: [text('Watch'), video('slow', 300)] },
@@ -83,7 +156,7 @@ const older = createServer((req, res) => {
   res.end(req.url === '/api/health' ? JSON.stringify({ ok: true, protocol: 1 }) : '{}');
 });
 await new Promise((ok) => older.listen(0, '127.0.0.1', () => ok(undefined)));
-const olderBase = `http://127.0.0.1:${(/** @type {import('node:net').AddressInfo} */ (older.address())).port}`;
+const olderBase = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (older.address()).port}`;
 let browser;
 const errors = [];
 
@@ -127,11 +200,13 @@ const bigNote = (name, size, max, older = false) =>
   `🎞 ${name} is ${size}: this buzzer server${older ? ' (an older one)' : ''} takes files up to ${max}. 🗜 Make a smaller copy for phones, or add it from a link (YouTube, Drive…) instead. 🗜 Make a smaller copy for phones`;
 /** Waits until the preview's warnings are just these. */
 async function notesAre(page, notes, want, what) {
-  await page.waitForFunction(
-    ({ want }) => JSON.stringify([...document.querySelectorAll('.phone-preview .notes li.warn')].map((li) => li.textContent.trim())) === JSON.stringify(want),
-    { want },
-    { timeout: 20_000 },
-  ).catch(() => {});
+  await page
+    .waitForFunction(
+      ({ want }) => JSON.stringify([...document.querySelectorAll('.phone-preview .notes li.warn')].map((li) => li.textContent.trim())) === JSON.stringify(want),
+      { want },
+      { timeout: 20_000 },
+    )
+    .catch(() => {});
   const got = (await notes.allInnerTexts()).map((t) => t.trim());
   assert(JSON.stringify(got) === JSON.stringify(want), `${what} (${JSON.stringify(got)})`);
 }
@@ -144,10 +219,20 @@ try {
   {
     const { ctx, page, asked } = await open(base);
     const notes = await preview(page);
-    await notesAre(page, notes, [bigNote('big-zfnqj.mp4', '25.0 MB', '24.0 MB')], 'the 📱 preview goes by the server’s 24 MB: the 25 MB video is too big, the 20 MB one goes');
+    await notesAre(
+      page,
+      notes,
+      [bigNote('big-zfnqj.mp4', '25.0 MB', '24.0 MB')],
+      'the 📱 preview goes by the server’s 24 MB: the 25 MB video is too big, the 20 MB one goes',
+    );
     assert(asked.length === 1, `asked once, before any room was open (${asked.length})`);
     // (The checklist is worked out a moment after a change: it says so once it has.)
-    await page.locator('nav .problem', { hasText: '🤫 Card “Tip” has a video too big to send to phones (25.0 MB; this buzzer server takes files up to 24.0 MB): make a smaller copy for phones (🗜) or add it from a link' }).waitFor();
+    await page
+      .locator('nav .problem', {
+        hasText:
+          '🤫 Card “Tip” has a video too big to send to phones (25.0 MB; this buzzer server takes files up to 24.0 MB): make a smaller copy for phones (🗜) or add it from a link',
+      })
+      .waitFor();
     const lines = await page.locator('nav .problem', { hasText: 'too big to send to phones' }).allInnerTexts();
     assert(lines.length === 1, `and so does the checklist, for the 25 MB one only (${lines.join(' | ')})`);
     // A GIF with a copy: phones get it as a small looping video, which they show like the GIF.
@@ -165,8 +250,13 @@ try {
     // Nothing heard from the server: the defaults, 90 MB a file. Both go, each with the note for a big file (once those
     // show, so would a warning).
     const slow = page.locator('.phone-preview .notes li.slow');
-    for (const [name, size] of [['big-zfnqj.mp4', '25.0 MB'], ['mid-zfnqj.mp4', '20.0 MB']])
-      await slow.filter({ hasText: `🎞 ${name} is ${size}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it` }).waitFor();
+    for (const [name, size] of [
+      ['big-zfnqj.mp4', '25.0 MB'],
+      ['mid-zfnqj.mp4', '20.0 MB'],
+    ])
+      await slow
+        .filter({ hasText: `🎞 ${name} is ${size}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it` })
+        .waitFor();
     await notesAre(page, notes, [], 'nothing heard from the server: the 📱 preview goes by the defaults (90 MB), so both videos go, each with its note');
     await page.getByRole('button', { name: '▶ Play' }).click();
     const roomCard = page.getByRole('region', { name: 'Phone buzzers' });
@@ -185,7 +275,12 @@ try {
     const { ctx, page, asked, answered } = await open(olderBase);
     const notes = await preview(page);
     assert(await until(() => answered.length === 1), `the editor asks it too, and it answers (${asked.length})`);
-    await notesAre(page, notes, [bigNote('big-zfnqj.mp4', '25.0 MB', '16.0 MB', true), bigNote('mid-zfnqj.mp4', '20.0 MB', '16.0 MB', true)], 'one that says nothing is an older server: 16 MB a file, said so');
+    await notesAre(
+      page,
+      notes,
+      [bigNote('big-zfnqj.mp4', '25.0 MB', '16.0 MB', true), bigNote('mid-zfnqj.mp4', '20.0 MB', '16.0 MB', true)],
+      'one that says nothing is an older server: 16 MB a file, said so',
+    );
     // (Its rooms show a GIF's video copy as a plain video: phones get a GIF this small as itself.)
     await preview(page, 'sc_gif');
     await page.locator('.phone-preview .notes li', { hasText: '📱 This buzzer server is older: phones get the GIF itself, not its smaller video.' }).waitFor();
@@ -196,10 +291,16 @@ try {
     await settings.getByRole('button', { name: 'Test' }).click();
     const said = settings.getByRole('status');
     await said.waitFor();
-    assert((await said.innerText()).trim() === '✔ The buzzer server is answering (an older one: card files up to 16 MB)', `⚙ Settings › Test says so (${await said.innerText()})`);
+    assert(
+      (await said.innerText()).trim() === '✔ The buzzer server is answering (an older one: card files up to 16 MB)',
+      `⚙ Settings › Test says so (${await said.innerText()})`,
+    );
     // Our own server's address typed a key at a time: only the whole address is asked, once it's done (Tab), never
     // each half-typed one (https://h, https://ht…). (Any other address isn't let out.)
-    await page.route((u) => u.pathname === '/api/health' && u.origin !== base && u.origin !== olderBase, (r) => r.abort());
+    await page.route(
+      (u) => u.pathname === '/api/health' && u.origin !== base && u.origin !== olderBase,
+      (r) => r.abort(),
+    );
     await settings.getByLabel('Buzzer server').fill('');
     await settings.getByLabel('Buzzer server').pressSequentially(base);
     await settings.getByLabel('Buzzer server').press('Tab');
@@ -216,7 +317,8 @@ try {
   section('A 17 MB video, which the server takes');
   {
     const { ctx, page } = await open(base);
-    const slowNote = '🎞 slow-zfnqj.mp4 is 17.0 MB: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).';
+    const slowNote =
+      '🎞 slow-zfnqj.mp4 is 17.0 MB: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).';
     const notes = await preview(page, 'sc_slow');
     await page.locator('.phone-preview .notes li.slow', { hasText: slowNote }).waitFor();
     await notesAre(page, notes, [], 'the 📱 preview: a note that phones on mobile data may wait for it, and no warning');
@@ -256,7 +358,10 @@ try {
     const checks = page.locator('[data-checks]');
     await checks.locator('li', { hasText: '🤫 Card “Tip” has a video too big to send to phones' }).waitFor({ state: 'attached' });
     const pregame = (await checks.locator('li').allTextContents()).filter((t) => t.includes('🤫 Card “'));
-    assert(pregame.length === 1 && pregame[0].includes('“Tip”') && !pregame.some((t) => t.includes('may wait')), `the pre-game list: the one too big, not the note (${pregame.join(' | ')})`);
+    assert(
+      pregame.length === 1 && pregame[0].includes('“Tip”') && !pregame.some((t) => t.includes('may wait')),
+      `the pre-game list: the one too big, not the note (${pregame.join(' | ')})`,
+    );
 
     // Bob's phone, its downloads slowed down (2 MB/s), so a big file says how much has come.
     const phoneCtx = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true });
@@ -266,13 +371,17 @@ try {
     await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
     await bob.getByRole('button', { name: 'Bob', exact: true }).click();
     await bob.locator('#me').getByText('Bob').waitFor();
-    await (await phoneCtx.newCDPSession(bob)).send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: 2 * MB, uploadThroughput: -1 });
+    await (
+      await phoneCtx.newCDPSession(bob)
+    ).send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: 2 * MB, uploadThroughput: -1 });
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     await stageBoxIn(page).locator('.tile').first().waitFor();
     // (The editor named the files: from here on, in play, nothing may.)
     await forgetSeen(page);
     // The host's uploads slowed down too (3 MB/s): 17 MB takes a few seconds.
-    await (await ctx.newCDPSession(page)).send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: 3 * MB });
+    await (
+      await ctx.newCDPSession(page)
+    ).send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: 3 * MB });
 
     const tools = toolsRowIn(page);
     /** 🤫 Send a card… with the editor's 🤫 Card `id` to Bob: the dialog's line about its big file, then 📤 Send. */
@@ -304,20 +413,37 @@ try {
     // read it, so it says so, and offers nothing to make.)
     await list.locator('[data-card-slow="Card 1"]').locator('..').getByRole('button', { name: '🗜 Make smaller' }).click();
     const shrink = page.getByRole('dialog', { name: '🗜 Make a smaller copy for phones' });
-    await shrink.locator('[data-shrink-row="slow"]').getByText(/can’t read/).waitFor();
+    await shrink
+      .locator('[data-shrink-row="slow"]')
+      .getByText(/can’t read/)
+      .waitFor();
     const shrinkRow = (await shrink.locator('[data-shrink-row="slow"]').innerText()).replace(/\s+/g, ' ');
-    assert(shrinkRow === '🎬 a video · 17.0 MB The app can’t read this file, so it can’t make a copy of it.', `its 🗜 Make smaller opens a window naming no file (${shrinkRow})`);
+    assert(
+      shrinkRow === '🎬 a video · 17.0 MB The app can’t read this file, so it can’t make a copy of it.',
+      `its 🗜 Make smaller opens a window naming no file (${shrinkRow})`,
+    );
     assert(!(await shownOf(page, NAMES)).length, 'nothing on the page names it');
     await page.keyboard.press('Escape');
     await shrink.waitFor({ state: 'detached' });
     // (Its row's words as they went by, since `from`: the percent changes faster than a look at it.)
-    const sawUpload = (from = 0) => page.evaluate((from) => new Set((window.__seen ?? []).slice(from).flatMap((t) => t.match(/uploading 1 of 1 \((\d+)%\)…/)?.[1] ?? [])).size, from);
-    assert(await until(async () => (await sawUpload()) >= 3, 30_000), `its upload says how far it got (“uploading 1 of 1 (…%)…”, ${await sawUpload()} percents)`);
+    const sawUpload = (from = 0) =>
+      page.evaluate((from) => new Set((window.__seen ?? []).slice(from).flatMap((t) => t.match(/uploading 1 of 1 \((\d+)%\)…/)?.[1] ?? [])).size, from);
+    assert(
+      await until(async () => (await sawUpload()) >= 3, 30_000),
+      `its upload says how far it got (“uploading 1 of 1 (…%)…”, ${await sawUpload()} percents)`,
+    );
     // Bob opens it while it comes: "🎞 Video coming…", then how much has come.
     await bob.getByRole('button', { name: 'Tap to see' }).tap();
     assert(await until(() => cards()[0]?.media?.[0]?.file === fileId(files.slow), 60_000), 'it goes up, and the card names the room’s file');
-    const coming = () => bob.locator('.card .card-wait').textContent({ timeout: 1000 }).catch(() => '');
-    assert(await until(async () => /^🎞 Video coming… [1-9]\d*%$/.test((await coming()) ?? ''), 30_000), `Bob’s phone says how much of it has come (“${await coming()}”)`);
+    const coming = () =>
+      bob
+        .locator('.card .card-wait')
+        .textContent({ timeout: 1000 })
+        .catch(() => '');
+    assert(
+      await until(async () => /^🎞 Video coming… [1-9]\d*%$/.test((await coming()) ?? ''), 30_000),
+      `Bob’s phone says how much of it has come (“${await coming()}”)`,
+    );
     const upAfterOne = posts.length;
     assert(upAfterOne === 1, `one upload (${upAfterOne})`);
 
@@ -337,7 +463,10 @@ try {
     assert(await until(async () => (await keys()) === 17), `the room keeps only the 17 MB file’s pieces (${await keys()} pieces)`);
     // (Past the 5 s a stopped upload would wait before it went again: there's no state to wait for, as nothing should go.)
     await sleep(6000);
-    assert(posts.length === upAfterOne + 1 && !listed.flat().includes(fileId(files.mid)), `it doesn’t go again, and the room never listed it (${posts.length - upAfterOne} uploads)`);
+    assert(
+      posts.length === upAfterOne + 1 && !listed.flat().includes(fileId(files.mid)),
+      `it doesn’t go again, and the room never listed it (${posts.length - upAfterOne} uploads)`,
+    );
     const found = await shownOf(page, NAMES);
     assert(!found.length, `one window: the host page never showed a file’s name (${found.join(', ')})`);
     await phoneCtx.close();

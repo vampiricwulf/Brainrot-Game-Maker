@@ -117,8 +117,7 @@
 {#snippet teamsNote()}
   {#if settings.buzzTeams}
     <p class="muted small">
-      Teams: each player is a team. People pick theirs on their phone and type their own name; up to {MAX_PHONES} phones can
-      be in the room at once.
+      Teams: each player is a team. People pick theirs on their phone and type their own name; up to {MAX_PHONES} phones can be in the room at once.
     </p>
   {/if}
 {/snippet}
@@ -200,8 +199,8 @@
     </div>
     {#if offline}<p class="warn small" role="status">📵 This computer seems to be offline: connect to the internet to start the room.</p>{/if}
     <p class="muted small">
-      Then share the link or the code on stream. The room runs online: this computer and the players’ phones need the
-      internet (any network: they don’t have to be on yours).
+      Then share the link or the code on stream. The room runs online: this computer and the players’ phones need the internet (any network: they don’t have to
+      be on yours).
     </p>
     {@render teamsNote()}
     <BuzzerOptions {settings} onset={setOption} problem={optionsProblem} />
@@ -246,7 +245,8 @@
       <button
         class="small ghost close"
         onclick={() => (inRoom ? (closing = 'close') : onclose())}
-        title="Sends the phones out of the room (asks first while any phone is in). ({app.playerOnly ? '◀ Back' : '◀ Back to editor'} keeps the room open.)">⏹ Close the room…</button
+        title="Sends the phones out of the room (asks first while any phone is in). ({app.playerOnly ? '◀ Back' : '◀ Back to editor'} keeps the room open.)"
+        >⏹ Close the room…</button
       >
     </div>
   {/if}
@@ -254,8 +254,9 @@
     <div class="ask" role="alertdialog" aria-label="Close the room?">
       <span>
         {inRoom}
-        {inRoom === 1 ? 'phone is' : 'phones are'} in the room: {closing === 'off' ? 'turning phone buzzers off closes it, which sends them out' : 'closing it sends them out'},
-        and they’d join again with a new code.
+        {inRoom === 1 ? 'phone is' : 'phones are'} in the room: {closing === 'off'
+          ? 'turning phone buzzers off closes it, which sends them out'
+          : 'closing it sends them out'}, and they’d join again with a new code.
       </span>
       <div class="row">
         <!-- svelte-ignore a11y_autofocus -->

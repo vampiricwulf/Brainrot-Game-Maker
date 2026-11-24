@@ -49,15 +49,21 @@
         disabled={source === p.id}
         title={source === p.id ? `${action.kind === 'steal' ? 'Stolen from' : 'Swapped with'}: pick someone else` : undefined}
         data-player-id={p.id}
-        onclick={() => draftPick(app.live, session, card, p.id)}>{p.name}</button>
+        onclick={() => draftPick(app.live, session, card, p.id)}>{p.name}</button
+      >
     {/each}
   </div>
   {#if needsSource(action)}
     <div class="row">
       <span class="muted small">{action.kind === 'steal' ? 'Steal from:' : 'Swap with:'}</span>
       {#each session.players as p (p.id)}
-        <button class="chip" class:src={source === p.id} style:border-color={p.color} aria-pressed={source === p.id} data-player-id={p.id} onclick={() => draftPick(app.live, session, card, p.id, true)}
-          >{p.name}</button
+        <button
+          class="chip"
+          class:src={source === p.id}
+          style:border-color={p.color}
+          aria-pressed={source === p.id}
+          data-player-id={p.id}
+          onclick={() => draftPick(app.live, session, card, p.id, true)}>{p.name}</button
         >
       {/each}
     </div>

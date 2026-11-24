@@ -23,7 +23,7 @@ export const TOO_BIG = 'Too big for one HTML file — Save a .brainrot instead (
 
 /** Said to someone opening an exported game this browser can't read (it's whole, but too big for it). */
 export const TOO_BIG_TO_OPEN =
-  "This game is too big for this browser to open. Try it in Chrome or Edge on a computer, or ask whoever sent it for the .brainrot file instead (it opens in the Brainrot Games Maker builder or desktop app).";
+  'This game is too big for this browser to open. Try it in Chrome or Edge on a computer, or ask whoever sent it for the .brainrot file instead (it opens in the Brainrot Games Maker builder or desktop app).';
 
 /** How long a pack of `bytes` is in base64. */
 export const base64Length = (bytes: number): number => Math.ceil(bytes / 3) * 4;
@@ -199,8 +199,19 @@ export async function exportStandaloneHtml(
   const anyway = { ok: 'Export anyway', cancel: 'Cancel' };
   // Nothing is written while it asks (closing the app meanwhile doesn't wait for an answer).
   const sure = (q: string) => notWritingWhile(() => ask(q, anyway));
-  if (estimate > STRONG && !(await sure(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.${unused}\n\nFor big games, sharing the .brainrot pack is better. Export anyway?`))) return null;
-  if (estimate > WARN && estimate <= STRONG && !(await sure(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open.${unused} Export anyway?`))) return null;
+  if (
+    estimate > STRONG &&
+    !(await sure(
+      `This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.${unused}\n\nFor big games, sharing the .brainrot pack is better. Export anyway?`,
+    ))
+  )
+    return null;
+  if (
+    estimate > WARN &&
+    estimate <= STRONG &&
+    !(await sure(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open.${unused} Export anyway?`))
+  )
+    return null;
   const html = selfHtml();
   const cut = html.lastIndexOf('</body>');
   const [head, tail] = cut < 0 ? [html, ''] : [html.slice(0, cut), html.slice(cut)];

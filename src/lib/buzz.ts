@@ -1,16 +1,80 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, SETTING_UP, STARTS_SOON, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk, type AnswerVerdict, type PassAsk, type PhoneTimer } from './buzzproto';
-import { categoryLabel, finalName, formatPoints, isBoard, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type SlideElement, type TextEl } from './model';
 import {
-  cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
+  CARD_HINT_MAX,
+  CARD_ROLE_MAX,
+  CARD_TEXT_MAX,
+  CARDS_BYTES,
+  CARDS_MAX,
+  clip,
+  clipUnits,
+  CLUE_TEXT_MAX,
+  SETTING_UP,
+  STARTS_SOON,
+  WAGER_MAX,
+  type BuzzPhase,
+  type HostCard,
+  type HostState,
+  type WagerAsk,
+  type AnswerAsk,
+  type AnswerVerdict,
+  type PassAsk,
+  type PhoneTimer,
+} from './buzzproto';
+import {
+  categoryLabel,
+  finalName,
+  formatPoints,
+  isBoard,
+  PARTNER_GAMES,
+  roundName,
+  type CardSend,
+  type CardTo,
+  type Game,
+  type Id,
+  type PartnerState,
+  type Session,
+  type Slide,
+  type SlideElement,
+  type TextEl,
+} from './model';
+import {
+  cardHash,
+  cardId,
+  cardLines,
+  cardSlides,
+  describer,
+  giverLine,
+  partnerRoles,
+  partnerRules,
+  partnerVerdict,
+  partOfTo,
+  partsLine,
+  partWords,
+  resultLine,
+  type CardPart,
 } from './partner';
 import { ANY_SERVER, cardWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
 import { usableChoices } from './choices';
 import type { TimerState } from './live';
-import { clueMarks, currentClueInfo, currentFinal, ddCap, finalTag, finalWagerCap, nameList, partnerSteal, roundComplete, score, shownQuestionSlide, tiebreakHolds, tiedForFirst, wagerFromPhone } from './session';
+import {
+  clueMarks,
+  currentClueInfo,
+  currentFinal,
+  ddCap,
+  finalTag,
+  finalWagerCap,
+  nameList,
+  partnerSteal,
+  roundComplete,
+  score,
+  shownQuestionSlide,
+  tiebreakHolds,
+  tiedForFirst,
+  wagerFromPhone,
+} from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -93,7 +157,8 @@ export function buzzClueOpened(b: BuzzState, armNow: boolean, now = Date.now()):
  * The host opens the buzzers (U) and hasn't on this clue: closed since it opened, never armed, nobody answered (a pick by
  * hand, a right answer or a miss changes it). Not once they were opened and closed again, after a reload too.
  */
-export const buzzNeverOpened = (b: BuzzState | null | undefined): boolean => !!b && b.phase === 'closed' && b.armAt === b.armId && !b.done && !b.lockedOut.length;
+export const buzzNeverOpened = (b: BuzzState | null | undefined): boolean =>
+  !!b && b.phase === 'closed' && b.armAt === b.armId && !b.done && !b.lockedOut.length;
 
 /** Open the buzzers (for everyone not locked out). With everyone locked out they stay closed. */
 export function buzzArm(b: BuzzState, players: Id[]): BuzzState {
@@ -168,7 +233,12 @@ export { SETTING_UP };
  * show a small line under the big one (status.off, sub, seatsSub) on a partner clue. `room.partnerWheel`: the partner
  * wheel is up on stage (the picker's phone says it's spinning for their partner only then).
  */
-export function phoneStatus(game: Game, session: Session, pregame = false, room: { cards: boolean; partnerWheel?: boolean } = { cards: false }): HostState['status'] {
+export function phoneStatus(
+  game: Game,
+  session: Session,
+  pregame = false,
+  room: { cards: boolean; partnerWheel?: boolean } = { cards: false },
+): HostState['status'] {
   if (pregame) return { text: STARTS_SOON };
   const nameOf = (id?: Id | null) => (id ? session.players.find((p) => p.id === id)?.name : undefined);
   const round = game.rounds[session.currentRound];
@@ -179,14 +249,20 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
     // Judged: how it went, as an ordinary clue's phones say who got it.
     const right = ddMark(game, session);
     if (right !== undefined)
-      return { text: `${who} ${right ? 'got' : 'missed'} the Daily Double`, seats: [id], seatsText: right ? (teamsOn(game.settings) ? 'Your team got it!' : 'You got it!') : 'Not this time' };
+      return {
+        text: `${who} ${right ? 'got' : 'missed'} the Daily Double`,
+        seats: [id],
+        seatsText: right ? (teamsOn(game.settings) ? 'Your team got it!' : 'You got it!') : 'Not this time',
+      };
     return { text: `Daily Double: ${who}`, seats: [id], seatsText: teamsOn(game.settings) ? 'Daily Double — your team’s up!' : 'Daily Double — you’re up!' };
   }
   // A partner clue's miss let the others steal it: they buzz in as on any clue (nothing greyed), the two locked out.
   const steal = session.phase === 'clue' && session.partner && !session.revealed ? partnerSteal(session) : null;
   if (steal && !steal.by) return { text: clip(`🔔 Steal! ${nameList(steal.out.flatMap((id) => nameOf(id) ?? []))} missed it`, 120) };
   if (session.phase === 'clue' && session.partner)
-    return room.cards ? partnerStatusOff(game, session, session.partner, !!room.partnerWheel) : partnerStatus(game, session, session.partner, !!room.partnerWheel);
+    return room.cards
+      ? partnerStatusOff(game, session, session.partner, !!room.partnerWheel)
+      : partnerStatus(game, session, session.partner, !!room.partnerWheel);
   if (session.intro?.stage === 'title' && round) return { text: `${roundName(round, session.currentRound)} is starting` };
   switch (session.phase) {
     case 'board': {
@@ -244,15 +320,30 @@ function partnerStatus(game: Game, session: Session, s: PartnerState, wheel = fa
   const { giver, guesser, solo } = partnerRoles(s);
   const paired = here(s.partnerId);
   if (s.stage === 'pick') {
-    if (!paired) return { text: line(`🤝 Partner clue: ${nameOf(picker)} needs a partner…`), seats: [picker], seatsText: line(`🤝 ${team ? 'Your team’s' : 'Your'} partner clue! ${choosing(wheel)}`) };
-    if (solo) return { text: line(`🤝 Partner clue: ${nameOf(picker)} plays it alone`), seats: [picker], seatsText: line(`🤝 ${team ? 'Your team plays' : 'You play'} this one alone!`) };
-    return { text: line(`🤝 Partner clue: ${nameOf(picker)} + ${nameOf(s.partnerId)}`), seats: [picker, s.partnerId!], seatsText: line(`🤝 ${team ? 'Your team plays' : 'You two play'} this one!`) };
+    if (!paired)
+      return {
+        text: line(`🤝 Partner clue: ${nameOf(picker)} needs a partner…`),
+        seats: [picker],
+        seatsText: line(`🤝 ${team ? 'Your team’s' : 'Your'} partner clue! ${choosing(wheel)}`),
+      };
+    if (solo)
+      return {
+        text: line(`🤝 Partner clue: ${nameOf(picker)} plays it alone`),
+        seats: [picker],
+        seatsText: line(`🤝 ${team ? 'Your team plays' : 'You play'} this one alone!`),
+      };
+    return {
+      text: line(`🤝 Partner clue: ${nameOf(picker)} + ${nameOf(s.partnerId)}`),
+      seats: [picker, s.partnerId!],
+      seatsText: line(`🤝 ${team ? 'Your team plays' : 'You two play'} this one!`),
+    };
   }
   if (!paired) return { text: line(`🤝 Partner clue: ${nameOf(picker)}`) };
   const names = { giver: nameOf(giver), guesser: nameOf(guesser), solo };
   // Judged (both marked since the tile opened), until the answer shows: how it went, for everyone.
   const marks = clueMarks(session, s.clue, s.at ?? 0);
-  if (!session.revealed && partnerVerdict(s, marks).judged) return { text: line(resultLine(s, marks, (id) => nameOf(id) ?? '?', game.settings.currencySymbol)) };
+  if (!session.revealed && partnerVerdict(s, marks).judged)
+    return { text: line(resultLine(s, marks, (id) => nameOf(id) ?? '?', game.settings.currencySymbol)) };
   const text = line(`🤝 ${partsLine(rules, names, { past: session.revealed })}`);
   if (session.revealed || solo || !here(giver)) return { text };
   return { text, seats: [giver], seatsText: line(giverLine(rules, team)) };
@@ -303,18 +394,30 @@ function partnerStatusOff(game: Game, session: Session, s: PartnerState, wheel =
   if (m) {
     const names = { giver: m.name, guesser: nameOf(picker) };
     const marks = clueMarks(session, s.clue, s.at ?? 0);
-    if (s.stage !== 'pick' && !session.revealed && partnerVerdict(s, marks).judged) return off(resultLine(s, marks, (id) => nameOf(id) ?? '?', game.settings.currencySymbol));
+    if (s.stage !== 'pick' && !session.revealed && partnerVerdict(s, marks).judged)
+      return off(resultLine(s, marks, (id) => nameOf(id) ?? '?', game.settings.currencySymbol));
     const text = `🤝 ${partsLine(rules, names, { past: session.revealed })}`;
     if (session.revealed) return off(text);
     const then = s.stage === 'pick' ? 'wait for the question' : rules.typeGuess ? 'type your guess' : 'say it out loud';
     return off(text, 'Nobody buzzes on this one', { ids: [picker], text: '🤝 Your team plays this one!', sub: `${m.name} ${DOING_NOW[rules.game]}: ${then}` });
   }
   if (s.stage === 'pick') {
-    if (!paired) return off('🤝 Partner clue', `${nameOf(picker)} needs a partner…`, { ids: [picker], text: `🤝 ${team ? 'Your team’s' : 'Your'} partner clue!`, sub: choosing(wheel) });
+    if (!paired)
+      return off('🤝 Partner clue', `${nameOf(picker)} needs a partner…`, {
+        ids: [picker],
+        text: `🤝 ${team ? 'Your team’s' : 'Your'} partner clue!`,
+        sub: choosing(wheel),
+      });
     // (Teams: the picker's own team plays it, one of them describing once the host has chosen who: §10.2.)
-    if (solo && team) return off('🤝 Partner clue', `${nameOf(picker)} plays it`, { ids: [picker], text: '🤝 Your team plays this one!', sub: 'Wait for the question' });
-    if (solo) return off('🤝 Partner clue', `${nameOf(picker)} plays it alone`, { ids: [picker], text: '🤝 You play this one alone!', sub: 'Wait for the question' });
-    return off(`🤝 ${nameOf(picker)} + ${nameOf(s.partnerId)}`, 'Partner clue: nobody buzzes', { ids: [picker, s.partnerId!], text: `🤝 ${team ? 'Your team plays' : 'You two play'} this one!`, sub: 'Wait for the question' });
+    if (solo && team)
+      return off('🤝 Partner clue', `${nameOf(picker)} plays it`, { ids: [picker], text: '🤝 Your team plays this one!', sub: 'Wait for the question' });
+    if (solo)
+      return off('🤝 Partner clue', `${nameOf(picker)} plays it alone`, { ids: [picker], text: '🤝 You play this one alone!', sub: 'Wait for the question' });
+    return off(`🤝 ${nameOf(picker)} + ${nameOf(s.partnerId)}`, 'Partner clue: nobody buzzes', {
+      ids: [picker, s.partnerId!],
+      text: `🤝 ${team ? 'Your team plays' : 'You two play'} this one!`,
+      sub: 'Wait for the question',
+    });
   }
   if (!paired) return off(`🤝 Partner clue: ${nameOf(picker)}`, 'Nobody buzzes on this one');
   const names = { giver: nameOf(giver), guesser: nameOf(guesser), solo };
@@ -347,7 +450,10 @@ export function partnerCards(game: Game, session: Session, room: PhoneCan): Host
   if (!s?.sent?.length || !clue || clue.id !== s.clue) return null;
   const rules = partnerRules(clue);
   const nameOf = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
-  const wire = (t: CardTo): HostCard['to'][number] => ({ seat: t.seat, ...(t.member ? { member: t.member.id } : t.except?.length ? { except: [...t.except] } : {}) });
+  const wire = (t: CardTo): HostCard['to'][number] => ({
+    seat: t.seat,
+    ...(t.member ? { member: t.member.id } : t.except?.length ? { except: [...t.except] } : {}),
+  });
   const out: HostCard[] = [];
   /** The describer's card went out, and the rest of their team has had no card of this clue: their line goes with it. */
   let roleFor: { send: CardSend; to: CardTo } | null = null;
@@ -469,13 +575,19 @@ export function cardsLeftOff(game: Game, session: Session): string[] {
  * the room must have room for it then.
  */
 export function roomCardCount(game: Game, session: Session): number {
-  const edited = cardsOut(game, session).filter((c) => sentState(game, c) === 'edited' && c.to.some((t) => session.players.some((p) => p.id === t.seat))).length;
+  const edited = cardsOut(game, session).filter(
+    (c) => sentState(game, c) === 'edited' && c.to.some((t) => session.players.some((p) => p.id === t.seat)),
+  ).length;
   return (partnerCards(game, session, ANY_SERVER)?.length ?? 0) + (sessionCards(game, session, ANY_SERVER)?.length ?? 0) + edited;
 }
 
 /** How many cards the room would be told after `go`, made on a copy of the session. */
 export function roomCardsAfter(game: Game, session: Session, go: (trial: Session) => void): number {
-  const trial: Session = { ...session, partner: session.partner ? JSON.parse(JSON.stringify(session.partner)) : session.partner, cards: session.cards ? [...session.cards] : session.cards };
+  const trial: Session = {
+    ...session,
+    partner: session.partner ? JSON.parse(JSON.stringify(session.partner)) : session.partner,
+    cards: session.cards ? [...session.cards] : session.cards,
+  };
   go(trial);
   return roomCardCount(game, trial);
 }
@@ -562,7 +674,8 @@ export function fitCards(cards: HostCard[]): HostCard[] {
   const out = cards.map((c) => ({ ...c, ...(c.media ? { media: [...c.media] } : {}) }));
   for (let i = out.length - 1; i >= 0 && jsonBytes(out) > CARDS_BYTES; i--) {
     const media = out[i].media ?? [];
-    for (let j = media.length - 1; j >= 0 && jsonBytes(out) > CARDS_BYTES; j--) media[j] = { kind: media[j].kind === 'embed' ? 'video' : (media[j].kind as 'image' | 'video' | 'audio'), missing: true };
+    for (let j = media.length - 1; j >= 0 && jsonBytes(out) > CARDS_BYTES; j--)
+      media[j] = { kind: media[j].kind === 'embed' ? 'video' : (media[j].kind as 'image' | 'video' | 'audio'), missing: true };
   }
   for (let i = out.length - 1; i >= 0 && jsonBytes(out) > CARDS_BYTES; i--) if (out[i].text) out[i].text = clip(out[i].text!, 200);
   while (out.length && jsonBytes(out) > CARDS_BYTES) out.pop();
@@ -599,7 +712,11 @@ export function everyoneAnswerAsk(game: Game, session: Session, opts: { choices?
   return {
     id,
     open: !session.revealed && !mine?.locked,
-    seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}), ...(marks[p.id] ? { closed: true as const, verdict: marks[p.id] } : {}) })),
+    seats: session.players.map((p) => ({
+      id: p.id,
+      ...(got[p.id] ? { got: got[p.id].n } : {}),
+      ...(marks[p.id] ? { closed: true as const, verdict: marks[p.id] } : {}),
+    })),
     ...(choices.length ? { choices } : {}),
   };
 }
@@ -678,19 +795,15 @@ function ddMark(game: Game, session: Session): boolean | undefined {
  * `limitsOff`), the wager the host has for them, and
  * `got`: the last phone wager the host took for each (Session.remote.wagerGot), `gotAmounts` how much it was.
  */
-export function wagerAsk(
-  game: Game,
-  session: Session,
-  limitsOff: boolean,
-  got: Record<Id, number> = {},
-  gotAmounts: Record<Id, number> = {},
-): WagerAsk | null {
+export function wagerAsk(game: Game, session: Session, limitsOff: boolean, got: Record<Id, number> = {}, gotAmounts: Record<Id, number> = {}): WagerAsk | null {
   const here = (id: Id | undefined): id is Id => !!id && session.players.some((p) => p.id === id);
   const cap = (n: number) => Math.max(0, Math.min(WAGER_MAX, Math.floor(n)));
   const seat = (id: Id, max: number, amount: number | undefined, fromHost: boolean) => ({
     id,
     max: cap(max),
-    ...(typeof amount === 'number' && Number.isSafeInteger(amount) && amount >= 0 && amount <= WAGER_MAX ? { amount, ...(fromHost ? { fromHost: true } : {}) } : {}),
+    ...(typeof amount === 'number' && Number.isSafeInteger(amount) && amount >= 0 && amount <= WAGER_MAX
+      ? { amount, ...(fromHost ? { fromHost: true } : {}) }
+      : {}),
     ...(got[id] ? { got: got[id] } : {}),
   });
   const limit = limitsOff ? {} : { limit: true };
@@ -701,7 +814,13 @@ export function wagerAsk(
     if (!clue || !here(dd.playerId) || ddMark(game, session) !== undefined) return null;
     const open = dd.stage === 'splash';
     const amount = open ? dd.draft : dd.wager;
-    return { id: `dd:${clue}:${dd.playerId}`, kind: 'dd', open, ...limit, seats: [seat(dd.playerId, ddCap(session, game, dd.playerId), amount, dd.draftFrom !== 'phone')] };
+    return {
+      id: `dd:${clue}:${dd.playerId}`,
+      kind: 'dd',
+      open,
+      ...limit,
+      seats: [seat(dd.playerId, ddCap(session, game, dd.playerId), amount, dd.draftFrom !== 'phone')],
+    };
   }
   const f = session.final;
   const r = currentFinal(session, game);
@@ -710,7 +829,13 @@ export function wagerAsk(
     const ids = f.players.filter(here);
     // A phone's wager put back by an Undo (not the last one it sent): the host's, as the phone should say.
     const host = (id: Id) => !wagerFromPhone(f, id) || (gotAmounts[id] !== undefined && f.wagers[id] !== gotAmounts[id]);
-    return { id: `final:${r.id}`, kind: 'final', open: step === 'wagers' && !f.phonesLocked, ...limit, seats: ids.map((id) => seat(id, finalWagerCap(session, game, id), f.wagers[id], host(id))) };
+    return {
+      id: `final:${r.id}`,
+      kind: 'final',
+      open: step === 'wagers' && !f.phonesLocked,
+      ...limit,
+      seats: ids.map((id) => seat(id, finalWagerCap(session, game, id), f.wagers[id], host(id))),
+    };
   }
   return null;
 }
@@ -807,7 +932,10 @@ export function hostState(
     phase: b.phase,
     armId: b.armId,
     clue: info
-      ? { text: questionText(shownQuestionSlide(session, info.clue)), caption: `${categoryLabel(info.category)} · ${formatPoints(info.value, game.settings.currencySymbol)}` }
+      ? {
+          text: questionText(shownQuestionSlide(session, info.clue)),
+          caption: `${categoryLabel(info.category)} · ${formatPoints(info.value, game.settings.currencySymbol)}`,
+        }
       : fin
         ? { text: questionText(shownQuestionSlide(session, fin)), caption: [finalName(fin), fin.category.trim()].filter(Boolean).join(' · ') }
         : null,
@@ -826,7 +954,18 @@ export function hostState(
     ...(extra.answers ? { answers: extra.answers } : {}),
     ...(extra.cards?.length ? { cards: extra.cards } : {}),
     // (With a tie for first the tiebreaker settled, its winner: the phones rank the players as the end screen does.)
-    ...(session.phase === 'end' ? { over: true, ...(session.rollOffWinner && tiebreakHolds(session, tiedForFirst(session).map((p) => p.id)) ? { winner: session.rollOffWinner } : {}) } : {}),
+    ...(session.phase === 'end'
+      ? {
+          over: true,
+          ...(session.rollOffWinner &&
+          tiebreakHolds(
+            session,
+            tiedForFirst(session).map((p) => p.id),
+          )
+            ? { winner: session.rollOffWinner }
+            : {}),
+        }
+      : {}),
     ...(!game.settings.phoneColorsOff && !teamsOn(game.settings) ? { colorPick: true } : {}),
     ...(info && session.revealed ? { answerShown: true } : {}),
     // (Players may pass on it: only while its buzzers are out.)

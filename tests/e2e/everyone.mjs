@@ -10,7 +10,28 @@
 // first: a ✍ tile with an empty choice says so on the board, and Take the choices off leaves the keys on ＋ Multiple choice.)
 // Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, goOnCheck, playWithPlayers, quick, startRoomOn, leaveAnswer, failureShots, assert, launchChromium, startBuzzer, until, awardRowIn, boardIn, boardTilesIn, hostPanelIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  checkItem,
+  goOnCheck,
+  playWithPlayers,
+  quick,
+  startRoomOn,
+  leaveAnswer,
+  failureShots,
+  assert,
+  launchChromium,
+  startBuzzer,
+  until,
+  awardRowIn,
+  boardIn,
+  boardTilesIn,
+  hostPanelIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const buzzer = await startBuzzer('buzzer-answers-');
@@ -62,7 +83,13 @@ try {
   );
   // (A choice's words box, not its row: the row is a group of the same name, for its keys and menu.)
   const choiceBox = (l) => editor.getByRole('textbox', { name: `Choice ${l}`, exact: true });
-  for (const [l, words] of [['A', 'Paris'], ['B', 'Stockholm'], ['C', 'Oslo'], ['D', 'Bern']]) await choiceBox(l).fill(words);
+  for (const [l, words] of [
+    ['A', 'Paris'],
+    ['B', 'Stockholm'],
+    ['C', 'Oslo'],
+    ['D', 'Bern'],
+  ])
+    await choiceBox(l).fill(words);
   await tile3.getByText('Empty choice').waitFor({ state: 'detached' });
   // Take the choices off by keyboard: the keys go to ＋ Multiple choice (not the header's Next ▶), with words gone a
   // note says so (as deleting a card does), and Ctrl+Z puts them back.
@@ -72,11 +99,17 @@ try {
   await toastsIn(host, { hasText: /^Took the choices off .+ \$200/ }).waitFor();
   await host.keyboard.press('Control+z');
   await choiceBox('D').waitFor();
-  assert((await choiceBox('D').inputValue()) === 'Bern', 'Take the choices off: the keys land on ＋ Multiple choice, a note says so, and Ctrl+Z puts them back');
+  assert(
+    (await choiceBox('D').inputValue()) === 'Bern',
+    'Take the choices off: the keys land on ＋ Multiple choice, a note says so, and Ctrl+Z puts them back',
+  );
   await editor.locator('[data-choice-row]').nth(1).getByRole('button', { name: 'Mark right' }).click();
   await editor.locator('[data-choice-row]').nth(1).locator('button[aria-pressed="true"]').waitFor();
   const choiceUndo = await host.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
-  assert(/^Undo: Marked B right on .+ \$200 \(Ctrl\+Z\)$/.test(choiceUndo), `＋ Multiple choice gives a ✍ clue A to D, and ✔ Right on B is a step of its own (${choiceUndo})`);
+  assert(
+    /^Undo: Marked B right on .+ \$200 \(Ctrl\+Z\)$/.test(choiceUndo),
+    `＋ Multiple choice gives a ✍ clue A to D, and ✔ Right on B is a step of its own (${choiceUndo})`,
+  );
   await editor.getByRole('button', { name: /Done/ }).click();
 
   await playWithPlayers(host, 2);
@@ -98,9 +131,14 @@ try {
   // ---------- Playing the ✍ clue ----------
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
-  await boardTilesIn(boardIn(stageBoxIn(host))).first().click();
+  await boardTilesIn(boardIn(stageBoxIn(host)))
+    .first()
+    .click();
   for (const p of [p1, p2]) await p.getByLabel(/Your answer/).waitFor();
-  assert((await p1.locator('#clue').innerText()).includes('Name a dog breed') && (await p1.locator('#buzz').isHidden()), 'the phones show the clue and an answer box instead of the buzzer');
+  assert(
+    (await p1.locator('#clue').innerText()).includes('Name a dog breed') && (await p1.locator('#buzz').isHidden()),
+    'the phones show the clue and an answer box instead of the buzzer',
+  );
   const pill = stageBoxIn(host).locator('[data-everyone]');
   await pill.waitFor();
   assert((await pill.getByRole('img').getAttribute('aria-label')) === '0 of 2 answers in', 'the stream says everyone answers (0 of 2 in)');
@@ -142,21 +180,29 @@ try {
   // The phone reloads before it's sent (a pull down, the tab reloaded in the background): the words come back, not sent.
   await p1.reload();
   await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
-  assert((await p1.getByLabel(/Your answer/).inputValue()) === 'Shiba Inu dog', 'a phone that reloads keeps the words typed and not sent, and says “Not sent yet”');
+  assert(
+    (await p1.getByLabel(/Your answer/).inputValue()) === 'Shiba Inu dog',
+    'a phone that reloads keeps the words typed and not sent, and says “Not sent yet”',
+  );
   assert(
     /^Not sent yet: (tap|click) Change answer to send it\. What the host has: “Shiba Inu”$/.test(await p1.locator('#answer-state').innerText()),
     `the line says what the host has, on one line (${await p1.locator('#answer-state').innerText()})`,
   );
   await p1.getByLabel(/Your answer/).fill('Shiba Inu');
   await p1.locator('#answer-state').getByText(sentLine, { exact: true }).waitFor();
-  assert((await sendLook(p1)) === '✔ Sent | sent', 'an answer edited on the phone and not sent says “Not sent yet”; back as sent, “✔ Sent.” and the quiet button');
+  assert(
+    (await sendLook(p1)) === '✔ Sent | sent',
+    'an answer edited on the phone and not sent says “Not sent yet”; back as sent, “✔ Sent.” and the quiet button',
+  );
   // A single window (the default) is on stream, host panel and all: there it says who has answered, never the words.
   const answersBox = host.locator('[aria-label="Answers from phones"]');
   await answersBox.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
   await answersBox.locator('[data-answer-in]', { hasText: 'Player 2 ✔' }).waitFor();
   const panelText = await hostPanelIn(host).innerText();
   assert(
-    !panelText.includes('Shiba') && !panelText.includes('Corgi') && (await statusLineIn(host).locator('[data-viewers]').textContent()).includes('Viewers can see this window: it says who has answered'),
+    !panelText.includes('Shiba') &&
+      !panelText.includes('Corgi') &&
+      (await statusLineIn(host).locator('[data-viewers]').textContent()).includes('Viewers can see this window: it says who has answered'),
     'in a single window the host panel shows who has answered (✔), not the words, and its ⚠ Viewers see this chip says viewers see it',
   );
   if (process.env.SCREENSHOTS) {
@@ -176,7 +222,9 @@ try {
   const row = (id) => answersBox.locator('li', { hasText: id });
   await row('Player 1').getByText('“Shiba Inu”').waitFor();
   await row('Player 2').getByText('Corgi, the short-legged').waitFor();
-  const rows = await answersBox.locator('ul').evaluate((e, long) => ({ scrolls: e.scrollHeight > e.clientHeight + 1, all: e.textContent.includes(long) }), long);
+  const rows = await answersBox
+    .locator('ul')
+    .evaluate((e, long) => ({ scrolls: e.scrollHeight > e.clientHeight + 1, all: e.textContent.includes(long) }), long);
   const typedShownH = await stageH();
   if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-host-shown.png` });
   assert(
@@ -195,26 +243,49 @@ try {
       const r = b.getBoundingClientRect();
       return r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
     });
-  const sightLines = [row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }), row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }), awardRowIn(host).locator('button', { hasText: 'Award' })];
+  const sightLines = [
+    row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }),
+    row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }),
+    awardRowIn(host).locator('button', { hasText: 'Award' }),
+  ];
   let seen = [];
   await until(async () => !(seen = await Promise.all(sightLines.map(inSight))).includes(false), { timeout: 2_000, every: 100 });
   assert(!seen.includes(false), `at 911×438 both answers' ✔ and ＋ Award are in sight (${seen})`);
   await host.setViewportSize({ width: 1400, height: 900 });
 
-  await row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }).click();
+  await row('Player 1')
+    .getByRole('button', { name: /^Right: Player 1( |$)/ })
+    .click();
   await row('Player 1').getByText('✔ Right').waitFor();
-  await row('Player 2').getByRole('button', { name: /^Wrong: Player 2( |$)/ }).click();
+  await row('Player 2')
+    .getByRole('button', { name: /^Wrong: Player 2( |$)/ })
+    .click();
   await row('Player 2').getByText('✘ Wrong').waitFor();
-  await p1.locator('#me').getByText(/\$[1-9]/).waitFor();
+  await p1
+    .locator('#me')
+    .getByText(/\$[1-9]/)
+    .waitFor();
   assert(true, '✔ / ✘ on each: Player 1 gets the clue’s points');
   // Each phone says how it went, in green or red, over the answer it sent.
-  await p1.locator('#buzz.right #buzz-big').getByText(/^✔ Right! \+/).waitFor();
-  await p2.locator('#buzz.wrong #buzz-big').getByText(/^✘ Wrong/).waitFor();
-  assert((await p1.locator('#buzz-small').innerText()) === 'Yours: “Shiba Inu”', 'judged: Player 1’s phone says ✔ Right! (green), Player 2’s ✘ Wrong (red), each over its own answer');
+  await p1
+    .locator('#buzz.right #buzz-big')
+    .getByText(/^✔ Right! \+/)
+    .waitFor();
+  await p2
+    .locator('#buzz.wrong #buzz-big')
+    .getByText(/^✘ Wrong/)
+    .waitFor();
+  assert(
+    (await p1.locator('#buzz-small').innerText()) === 'Yours: “Shiba Inu”',
+    'judged: Player 1’s phone says ✔ Right! (green), Player 2’s ✘ Wrong (red), each over its own answer',
+  );
 
   await host.keyboard.press('r');
   await host.waitForTimeout(800);
-  assert((await p1.locator('#buzz-big').innerText()).startsWith('✔ Right!') && (await p1.locator('#answer-form').isHidden()), 'hiding the answer again doesn’t open them: nobody changes theirs after seeing it');
+  assert(
+    (await p1.locator('#buzz-big').innerText()).startsWith('✔ Right!') && (await p1.locator('#answer-form').isHidden()),
+    'hiding the answer again doesn’t open them: nobody changes theirs after seeing it',
+  );
   // Still locked: the stream's ✍ pill doesn't come back (nobody is answering), and the box says the answer was up.
   await answersBox.getByRole('status').getByText('locked (the answer was on screen)').waitFor();
   assert((await pill.count()) === 0, 'hidden again: no ✍ pill on stream, and the box says “locked (the answer was on screen)”');
@@ -232,19 +303,25 @@ try {
   await aud.locator('.timer').waitFor();
   // The phones show it too, over the answer box (a player looking down needn't look up at a stream behind them).
   const clock = (p) => p.locator('#answer-clock');
-  await clock(p1).getByText(/^⏱ \d+ s left$/).waitFor();
+  await clock(p1)
+    .getByText(/^⏱ \d+ s left$/)
+    .waitFor();
   const secs = async (p) => Number((await clock(p).innerText()).match(/\d+/)?.[0]);
   const first = await secs(p1);
   await p1.waitForFunction((n) => Number(document.getElementById('answer-clock').textContent.match(/\d+/)?.[0]) < n, first);
   assert(first > 0 && first <= 30 && (await clock(p2).isVisible()), `the phones count it down over the answer box (⏱ ${first} s left, then less)`);
   // T pauses it, Shift+T gives it 10 more seconds, T lets it go on: the phones follow.
   await host.keyboard.press('t');
-  await clock(p1).getByText(/· paused$/).waitFor();
+  await clock(p1)
+    .getByText(/· paused$/)
+    .waitFor();
   const paused = await secs(p1);
   await host.keyboard.press('Shift+t');
   await p1.waitForFunction((n) => Number(document.getElementById('answer-clock').textContent.match(/\d+/)?.[0]) === n + 10, paused);
   await host.keyboard.press('t');
-  await clock(p1).getByText(/^⏱ \d+ s left$/).waitFor();
+  await clock(p1)
+    .getByText(/^⏱ \d+ s left$/)
+    .waitFor();
   assert(true, `paused (⏱ ${paused} s left · paused), 10 more seconds (${paused + 10}), and going again: the phones follow`);
   await p1.getByLabel(/Your answer/).fill('Siamese');
   await p1.getByRole('button', { name: 'Send answer' }).click();
@@ -254,19 +331,28 @@ try {
   await row('Player 2').getByText('“Bulldog”').waitFor();
   assert(
     (await answersBox.getByRole('status').innerText()).includes('only you see them') &&
-      (await row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }).count()) === 1 &&
-      (await row('Player 2').getByRole('button', { name: /^Wrong: Player 2( |$)/ }).count()) === 1,
+      (await row('Player 1')
+        .getByRole('button', { name: /^Right: Player 1( |$)/ })
+        .count()) === 1 &&
+      (await row('Player 2')
+        .getByRole('button', { name: /^Wrong: Player 2( |$)/ })
+        .count()) === 1,
     'with an audience window, the host sees the words with ✔ / ✘ while answers are still open',
   );
   // By keyboard: ✔ reached with Tab, pressed with Enter (the keys then go to the next answer's ✔).
-  await row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }).focus();
+  await row('Player 1')
+    .getByRole('button', { name: /^Right: Player 1( |$)/ })
+    .focus();
   await host.keyboard.press('Tab');
   await host.keyboard.press('Shift+Tab');
   await host.keyboard.press('Enter');
   await row('Player 1').getByText('✔ Right').waitFor();
   await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label')?.startsWith('Right: Player 2 '));
   // Judged, Player 1's answer is final: the phone says how it went at once, while Player 2 can still change theirs.
-  await p1.locator('#buzz.right #buzz-big').getByText(/^✔ Right! \+/).waitFor();
+  await p1
+    .locator('#buzz.right #buzz-big')
+    .getByText(/^✔ Right! \+/)
+    .waitFor();
   assert(
     (await p1.locator('#buzz-small').innerText()) === 'Yours: “Siamese”' && (await p2.locator('#answer-form').isVisible()),
     'an answer judged while answers are open is locked on its phone, which says ✔ Right! over “Yours: “Siamese””; the others stay open',
@@ -289,7 +375,9 @@ try {
     'an answer changed after Ctrl+Z took its ✔ back: ↷ Redo doesn’t put that ✔ beside the new words, and the answer stays open',
   );
   // (Judged again, by keyboard as before: the keys go on to Player 2's ✔.)
-  await row('Player 1').getByRole('button', { name: /^Right: Player 1( |$)/ }).focus();
+  await row('Player 1')
+    .getByRole('button', { name: /^Right: Player 1( |$)/ })
+    .focus();
   await host.keyboard.press('Tab');
   await host.keyboard.press('Shift+Tab');
   await host.keyboard.press('Enter');
@@ -327,12 +415,18 @@ try {
   await p1.locator('#answer-state').getByText('✔ Sent: C').waitFor();
   await choice(p1, 'Paris').click();
   await p1.locator('#answer-state').getByText('✔ Sent: A').waitFor();
-  assert((await choice(p1, 'Paris').getAttribute('aria-pressed')) === 'true' && (await choice(p1, 'Oslo').getAttribute('aria-pressed')) === 'false', 'a tap sends a choice at once, and another tap changes it');
+  assert(
+    (await choice(p1, 'Paris').getAttribute('aria-pressed')) === 'true' && (await choice(p1, 'Oslo').getAttribute('aria-pressed')) === 'false',
+    'a tap sends a choice at once, and another tap changes it',
+  );
   await row('Player 1').getByText('A · Paris').waitFor();
   await row('Player 2').getByText('B · Stockholm').waitFor();
   const counts = answersBox.locator('[data-choice-counts]');
   await counts.getByText('A 1 · B 1 · C 0 · D 0').waitFor();
-  assert(!(await answersBox.getByRole('status').innerText()).includes('A 1'), 'with an audience window the host sees each pick by its letter, and how many picked each (not in the head’s status line)');
+  assert(
+    !(await answersBox.getByRole('status').innerText()).includes('A 1'),
+    'with an audience window the host sees each pick by its letter, and how many picked each (not in the head’s status line)',
+  );
   assert((await answersBox.getByRole('button', { name: /Judge all/ }).count()) === 0, 'no ✔ Judge all while the picks can still change');
   if (process.env.SCREENSHOTS) {
     await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-host.png` });
@@ -348,7 +442,10 @@ try {
     'the audience window shows the 4 choices under the question, A to D, none lit before the answer',
   );
   const audText = await aud.locator('body').innerText();
-  assert(!audText.includes('B · Stockholm') && !audText.includes('A · Paris') && !audText.includes('A 1 ·'), 'the audience window shows none of the picks or the counts');
+  assert(
+    !audText.includes('B · Stockholm') && !audText.includes('A · Paris') && !audText.includes('A 1 ·'),
+    'the audience window shows none of the picks or the counts',
+  );
   assert(!(await p2.content()).includes('A · Paris') && !(await p1.content()).includes('B · Stockholm'), 'no phone sees another’s pick');
   // A single window: the host panel is on stream again, and shows only who has answered.
   await aud.close();
@@ -356,7 +453,12 @@ try {
   const oneWindow = await hostPanelIn(host).innerText();
   const chips = (await answersBox.locator('[data-answer-in]').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
   assert(
-    !oneWindow.includes('Stockholm') && !oneWindow.includes('Paris') && !oneWindow.includes('A 1 ·') && !oneWindow.includes('Judge all') && (await counts.count()) === 0 && JSON.stringify(chips) === JSON.stringify(['Player 1 ✔', 'Player 2 ✔']),
+    !oneWindow.includes('Stockholm') &&
+      !oneWindow.includes('Paris') &&
+      !oneWindow.includes('A 1 ·') &&
+      !oneWindow.includes('Judge all') &&
+      (await counts.count()) === 0 &&
+      JSON.stringify(chips) === JSON.stringify(['Player 1 ✔', 'Player 2 ✔']),
     `in a single window, before the answer is up: names ✔ only, no picks, no letters, no counts, no ✔ Judge all (${JSON.stringify(chips)})`,
   );
   // (The stage on stream keeps its size as the answer goes up: the answers box keeps the words' room till then.)
@@ -367,7 +469,10 @@ try {
   await host.keyboard.press('r');
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
   await p2.locator('#buzz-big').getByText('Answers locked').waitFor();
-  assert((await p1.locator('#buzz-small').innerText()) === 'Yours: A · Paris' && (await p2.locator('#buzz-small').innerText()) === 'Yours: B · Stockholm', 'showing the answer locks the picks: each phone keeps its own in sight');
+  assert(
+    (await p1.locator('#buzz-small').innerText()) === 'Yours: A · Paris' && (await p2.locator('#buzz-small').innerText()) === 'Yours: B · Stockholm',
+    'showing the answer locks the picks: each phone keeps its own in sight',
+  );
   await row('Player 2').getByText('B · Stockholm').waitFor();
   await counts.getByText('A 1 · B 1 · C 0 · D 0').waitFor();
   await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).waitFor();
@@ -386,7 +491,10 @@ try {
   await checkItem(host, 'judge').waitFor();
   const asked = await goOnCheck(host).innerText();
   assert(
-    (await goOnCheck(host).getAttribute('data-goon')) === 'loss' && asked.includes('Nobody’s answer is judged yet (2 are in)') && (await quick(host, '✔ Judge all ▶ board').isVisible()) && !/Paris|Stockholm/.test(asked),
+    (await goOnCheck(host).getAttribute('data-goon')) === 'loss' &&
+      asked.includes('Nobody’s answer is judged yet (2 are in)') &&
+      (await quick(host, '✔ Judge all ▶ board').isVisible()) &&
+      !/Paris|Stockholm/.test(asked),
     `N with the answers in and none judged asks first, with ✔ Judge all ▶ board (names and counts only: ${asked.replace(/\s+/g, ' ')})`,
   );
   await host.keyboard.press('Escape');
@@ -408,16 +516,26 @@ try {
   await row('Player 2').getByText('✔ Right').waitFor();
   await picker('Player 2').waitFor();
   await host.keyboard.press('Control+z');
-  await row('Player 1').getByRole('button', { name: /^Wrong: Player 1( |$)/ }).waitFor();
-  await row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }).waitFor();
+  await row('Player 1')
+    .getByRole('button', { name: /^Wrong: Player 1( |$)/ })
+    .waitFor();
+  await row('Player 2')
+    .getByRole('button', { name: /^Right: Player 2( |$)/ })
+    .waitFor();
   await picker('Player 1').waitFor();
   assert(true, 'Enter with nobody picked does ✔ Judge all (Player 2 right, Player 1 wrong), and one Ctrl+Z un-judges both');
   await judgeAll.click();
   await row('Player 1').getByText('✘ Wrong').waitFor();
   await row('Player 2').getByText('✔ Right').waitFor();
   await picker('Player 2').waitFor();
-  await p1.locator('#buzz.wrong #buzz-big').getByText(/^✘ Wrong/).waitFor();
-  await p2.locator('#buzz.right #buzz-big').getByText(/^✔ Right!/).waitFor();
+  await p1
+    .locator('#buzz.wrong #buzz-big')
+    .getByText(/^✘ Wrong/)
+    .waitFor();
+  await p2
+    .locator('#buzz.right #buzz-big')
+    .getByText(/^✔ Right!/)
+    .waitFor();
   assert(true, '✔ Judge all: each phone says how it went (✘ Wrong in red, ✔ Right! in green)');
   // Everyone judged: the keys go on to the main button (not 🙈 Hide answer), where Enter says so.
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
@@ -430,7 +548,10 @@ try {
   const [popsFoot, stripTop] = await host.evaluate(() =>
     ['.stage-box .pops', '.stage-box [data-choices]'].map((q, i) => document.querySelector(q)?.getBoundingClientRect()[i ? 'top' : 'bottom'] ?? NaN),
   );
-  assert(popsFoot <= stripTop, `✔ Judge all’s score pops sit above the stage’s choices (their foot at ${Math.round(popsFoot)}px, the choices’ top at ${Math.round(stripTop)}px)`);
+  assert(
+    popsFoot <= stripTop,
+    `✔ Judge all’s score pops sit above the stage’s choices (their foot at ${Math.round(popsFoot)}px, the choices’ top at ${Math.round(stripTop)}px)`,
+  );
   await p2.waitForFunction((was) => document.querySelector('#me')?.textContent !== was, before);
   const judgedUndo = await host.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   assert(
@@ -438,8 +559,12 @@ try {
     `✔ Judge all marks Player 2 right and Player 1 wrong, as one step that names no pick, and Player 2 (the first right) picks next (${judgedUndo})`,
   );
   await host.getByRole('button', { name: '↶ Undo' }).click();
-  await row('Player 1').getByRole('button', { name: /^Wrong: Player 1( |$)/ }).waitFor();
-  await row('Player 2').getByRole('button', { name: /^Right: Player 2( |$)/ }).waitFor();
+  await row('Player 1')
+    .getByRole('button', { name: /^Wrong: Player 1( |$)/ })
+    .waitFor();
+  await row('Player 2')
+    .getByRole('button', { name: /^Right: Player 2( |$)/ })
+    .waitFor();
   await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).waitFor();
   await p2.locator('#me').getByText(before).waitFor();
   await picker('Player 1').waitFor();

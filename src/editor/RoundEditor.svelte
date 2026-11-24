@@ -143,8 +143,8 @@
       !n && want
         ? PT_NONE
         : n < want
-        ? `Placed ${n} of ${want} partner clue${want === 1 ? '' : 's'}: only ${n} tile${n === 1 ? ' has' : 's have'} a written question and answer`
-        : `Placed ${n} partner clue${n === 1 ? '' : 's'} at random`,
+          ? `Placed ${n} of ${want} partner clue${want === 1 ? '' : 's'}: only ${n} tile${n === 1 ? ' has' : 's have'} a written question and answer`
+          : `Placed ${n} partner clue${n === 1 ? '' : 's'} at random`,
     );
   }
   function setPartnerGame(g: PartnerGame): void {
@@ -154,10 +154,15 @@
     });
   }
   function setPartnerCardFrom(v: 'answer' | 'empty'): void {
-    step(v === 'answer' ? `Partner clues placed at random in round “${name}” get the tile’s answer on their card` : `Partner clues placed at random in round “${name}” get an empty card`, () => {
-      if (v === 'answer') delete round.partnerCardFrom;
-      else round.partnerCardFrom = v;
-    });
+    step(
+      v === 'answer'
+        ? `Partner clues placed at random in round “${name}” get the tile’s answer on their card`
+        : `Partner clues placed at random in round “${name}” get an empty card`,
+      () => {
+        if (v === 'answer') delete round.partnerCardFrom;
+        else round.partnerCardFrom = v;
+      },
+    );
   }
 
   const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
@@ -295,7 +300,13 @@
   // ---------- Tiles ----------
 
   /** A tile's type, as its name says it to a screen reader (its badge on the board). */
-  const TILE_KIND: Record<ClueType, string> = { standard: '', dailyDouble: ', Daily Double', wheel: ', wheel tile', dice: ', dice tile', partner: ', partner clue' };
+  const TILE_KIND: Record<ClueType, string> = {
+    standard: '',
+    dailyDouble: ', Daily Double',
+    wheel: ', wheel tile',
+    dice: ', dice tile',
+    partner: ', partner clue',
+  };
 
   /** "Memes $400" */
   function tileName(p: TilePos): string {
@@ -304,7 +315,11 @@
   }
 
   /** The tile with this clue, on the board (an undo flashes it there without opening it). */
-  const tilePlace = (cat: number, clue: string): Place => ({ tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[cat].id, clue, onBoard: true } });
+  const tilePlace = (cat: number, clue: string): Place => ({
+    tab: 'round',
+    round: round.id,
+    part: { kind: 'clue', category: round.categories[cat].id, clue, onBoard: true },
+  });
   const rowsPlace = (): Place => ({ tab: 'round', round: round.id, part: { kind: 'values' } });
 
   /** The tile with the keyboard focus: the board is one tab stop, and the arrows move it. */
@@ -443,7 +458,10 @@
     const text = e.clipboardData?.getData('text/plain') ?? '';
     if (!/\n./.test(text.trim())) return;
     // A two-line name (Shift+Enter makes one), copied from another category: just pasted as the name, not two clues.
-    const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
+    const lines = text
+      .trim()
+      .split(/\r?\n/)
+      .filter((l) => l.trim());
     if (lines.length <= 2 && !/[\t]/.test(text)) return;
     // A sheet of several categories: 📥 Import clues fills a column for each, instead of all of them in this one.
     if (isWholeSheet(text)) {
@@ -458,7 +476,10 @@
       () => {
         const r = pasteColumn(round, ci, text);
         // (Named for what it did, not "Renamed category …" or "6 changes": the note at the bottom says it.)
-        if (r) nameStep(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`);
+        if (r)
+          nameStep(
+            `Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`,
+          );
         return r;
       },
       { notify: true, place },
@@ -564,9 +585,13 @@
     // answer gets a copy of it on Card 1, as 🔀 Randomize gives one.)
     const card = type === 'partner' && clue.type !== 'partner' && answerCardDue(round, clue);
     if (clue.type !== type)
-      step(`Made ${tileName(p)} ${words}${card ? ' (card: a copy of the answer)' : ''}`, () => (setClueType(round, clue, type), type === 'partner' && followTheme()), {
-        place: tilePlace(p.cat, clue.id),
-      });
+      step(
+        `Made ${tileName(p)} ${words}${card ? ' (card: a copy of the answer)' : ''}`,
+        () => (setClueType(round, clue, type), type === 'partner' && followTheme()),
+        {
+          place: tilePlace(p.cat, clue.id),
+        },
+      );
     if (card) toast(CARD_COPIED);
     if (type === 'wheel' || type === 'dice') openAt(p.cat, p.row, true);
   }
@@ -601,11 +626,9 @@
               disabled: clue.empty || !!noPassFixed(clue),
               hint: noPassFixed(clue) ? `Always on: ${noPassFixed(clue)}` : "Everyone must play: players' phones offer no Pass on this clue",
               onclick: () =>
-                step(
-                  clue.mustPlay ? `Took 🚫 No Pass off ${tileName(p)}` : `Set 🚫 No Pass on ${tileName(p)}`,
-                  () => setNoPass(clue, !clue.mustPlay),
-                  { place: tilePlace(p.cat, clue.id) },
-                ),
+                step(clue.mustPlay ? `Took 🚫 No Pass off ${tileName(p)}` : `Set 🚫 No Pass on ${tileName(p)}`, () => setNoPass(clue, !clue.mustPlay), {
+                  place: tilePlace(p.cat, clue.id),
+                }),
             },
             {
               label: on(!!clue.empty, '⬚ Empty tile'),
@@ -766,7 +789,10 @@
     return menuOf({
       heading: categoryLabel(cat),
       verbs: [{ label: '🖼 Image…', onclick: () => (catPicker = ci) }],
-      duplicate: menuItem.duplicate(() => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))), { disabled: n >= 10, keys: false }),
+      duplicate: menuItem.duplicate(
+        () => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))),
+        { disabled: n >= 10, keys: false },
+      ),
       copy: menuItem.copy(() => copyCat(ci), { label: '📋 Copy category', ...noKeys }),
       paste: [
         menuItem.paste(() => pasteCat(ci), { label: '📋 Paste category here', disabled: !clipboard.category, ...noKeys }),
@@ -832,7 +858,11 @@
   // ---------- Rows ----------
 
   /** New clues (a category, a row) take the theme's clue text. */
-  const followTheme = () => followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap(textSlidesOf)));
+  const followTheme = () =>
+    followClueText(
+      app.game,
+      round.categories.flatMap((c) => c.clues.flatMap(textSlidesOf)),
+    );
 
   // Rows of clues go in, out and around anywhere; the row values stay by position (the top row is still the cheapest).
   function addRow(at: number): void {
@@ -851,7 +881,10 @@
   // (From a tile's menu, the focus goes with the tile.)
   function shiftRow(from: number, to: number): void {
     const onBoard = !!gridEl?.contains(document.activeElement);
-    if (step(`Moved row ${from + 1} ${to < from ? 'up' : 'down'} in round “${name}”`, () => moveRow(round, from, to), { place: rowsPlace() }) && cursor.row === from) {
+    if (
+      step(`Moved row ${from + 1} ${to < from ? 'up' : 'down'} in round “${name}”`, () => moveRow(round, from, to), { place: rowsPlace() }) &&
+      cursor.row === from
+    ) {
       cursor = { cat: cursor.cat, row: to };
       if (onBoard) void tick().then(() => focusTile(cursor.cat, to, true));
     }
@@ -863,7 +896,10 @@
     const k = keys ? {} : { keys: false as const };
     return {
       heading: `Row ${row + 1} · ${formatPoints(round.values[row], sym)}`,
-      move: [menuItem.up(() => shiftRow(row, row - 1), { disabled: row === 0, ...k }), menuItem.down(() => shiftRow(row, row + 1), { disabled: row === n - 1, ...k })],
+      move: [
+        menuItem.up(() => shiftRow(row, row - 1), { disabled: row === 0, ...k }),
+        menuItem.down(() => shiftRow(row, row + 1), { disabled: row === n - 1, ...k }),
+      ],
       insert: [
         { label: '＋ Insert above', onclick: () => addRow(row), disabled: n >= 10 },
         { label: '＋ Insert below', onclick: () => addRow(row + 1), disabled: n >= 10 },
@@ -942,118 +978,128 @@
   <div class="group" role="group" aria-labelledby="row-values-{round.id}">
     <span class="lbl" id="row-values-{round.id}">Row values</span>
     <div class="inputs">
-  {#each round.values as _, i}
-    <!-- Left blank, a row keeps its value (a blank isn't $0). -->
-    <input
-      type="number"
-      value={round.values[i]}
-      oninput={(e) => {
-        // Whole points, 0 or more (like a clue's own value).
-        const v = clueValueTyped(e.currentTarget.value);
-        if (v !== null) round.values[i] = v;
-      }}
-      onchange={(e) => (e.currentTarget.value = String(round.values[i]))}
-      aria-label="Row {i + 1} value"
-      oncontextmenu={(e) => rowMenu(e, i)}
-      onkeydown={(e) => isMenuKey(e) && keyMenu(e, rowItems(i))}
-      title="Right-click (or Shift+F10) to insert, move or delete this row"
-    />
-  {/each}
-  <!-- (×2 and ÷2 wrap to the next line together.) -->
-  <span class="scale">
-    <button onclick={() => step('Doubled the row values', () => scaleValues(round, 2))} title="Double every row value">×2</button>
-    <button onclick={() => step('Halved the row values', () => scaleValues(round, 0.5))} title="Halve every row value">÷2</button>
-  </span>
+      {#each round.values as _, i}
+        <!-- Left blank, a row keeps its value (a blank isn't $0). -->
+        <input
+          type="number"
+          value={round.values[i]}
+          oninput={(e) => {
+            // Whole points, 0 or more (like a clue's own value).
+            const v = clueValueTyped(e.currentTarget.value);
+            if (v !== null) round.values[i] = v;
+          }}
+          onchange={(e) => (e.currentTarget.value = String(round.values[i]))}
+          aria-label="Row {i + 1} value"
+          oncontextmenu={(e) => rowMenu(e, i)}
+          onkeydown={(e) => isMenuKey(e) && keyMenu(e, rowItems(i))}
+          title="Right-click (or Shift+F10) to insert, move or delete this row"
+        />
+      {/each}
+      <!-- (×2 and ÷2 wrap to the next line together.) -->
+      <span class="scale">
+        <button onclick={() => step('Doubled the row values', () => scaleValues(round, 2))} title="Double every row value">×2</button>
+        <button onclick={() => step('Halved the row values', () => scaleValues(round, 0.5))} title="Halve every row value">÷2</button>
+      </span>
     </div>
   </div>
   <!-- Two fixed columns under the row values: a box never moves while its hint grows (it grows downward). -->
   <div class="extras">
-  <div class="group" role="group" aria-labelledby="dd-{round.id}">
-    <span class="lbl" id="dd-{round.id}">⭐ Daily Doubles</span>
-    <div class="inputs">
-  <input
-    type="number"
-    min="0"
-    max={ddMax}
-    value={round.dailyDoubleCount ?? 1}
-    oninput={(e) => {
-      // Emptied to type a new number: it keeps the one it had until there is one.
-      if (e.currentTarget.value.trim() === '') return;
-      round.dailyDoubleCount = Math.max(0, Math.min(ddMax, Math.floor(+e.currentTarget.value) || 0));
-    }}
-    onchange={(e) => (e.currentTarget.value = String(round.dailyDoubleCount ?? 1))}
-    aria-label="How many Daily Doubles"
-    class="ddn"
-  />
-  <button
-    onclick={() => {
-      const want = Math.min(ddMax, round.dailyDoubleCount ?? 1);
-      const n = step('Placed Daily Doubles at random', () => {
-        const placed = randomizeDailyDoubles(round, want);
-        // The box says how many there are now.
-        round.dailyDoubleCount = placed;
-        return placed;
-      });
-      toast(n < want ? `Placed ${n} of ${want} Daily Doubles: one a category` : `Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
-    }}
-    disabled={(round.dailyDoubleCount ?? 1) === 0}
-    title={(round.dailyDoubleCount ?? 1) === 0
-      ? 'Say how many first'
-      : 'Scatter Daily Doubles at random, one a category (more often in the bottom rows). The ones on the board move. To make one by hand, right-click a tile → Make it a… ⭐ Daily Double (or pick it as the clue’s Type).'}>🔀 Randomize</button
-  >
+    <div class="group" role="group" aria-labelledby="dd-{round.id}">
+      <span class="lbl" id="dd-{round.id}">⭐ Daily Doubles</span>
+      <div class="inputs">
+        <input
+          type="number"
+          min="0"
+          max={ddMax}
+          value={round.dailyDoubleCount ?? 1}
+          oninput={(e) => {
+            // Emptied to type a new number: it keeps the one it had until there is one.
+            if (e.currentTarget.value.trim() === '') return;
+            round.dailyDoubleCount = Math.max(0, Math.min(ddMax, Math.floor(+e.currentTarget.value) || 0));
+          }}
+          onchange={(e) => (e.currentTarget.value = String(round.dailyDoubleCount ?? 1))}
+          aria-label="How many Daily Doubles"
+          class="ddn"
+        />
+        <button
+          onclick={() => {
+            const want = Math.min(ddMax, round.dailyDoubleCount ?? 1);
+            const n = step('Placed Daily Doubles at random', () => {
+              const placed = randomizeDailyDoubles(round, want);
+              // The box says how many there are now.
+              round.dailyDoubleCount = placed;
+              return placed;
+            });
+            toast(
+              n < want
+                ? `Placed ${n} of ${want} Daily Doubles: one a category`
+                : `Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`,
+            );
+          }}
+          disabled={(round.dailyDoubleCount ?? 1) === 0}
+          title={(round.dailyDoubleCount ?? 1) === 0
+            ? 'Say how many first'
+            : 'Scatter Daily Doubles at random, one a category (more often in the bottom rows). The ones on the board move. To make one by hand, right-click a tile → Make it a… ⭐ Daily Double (or pick it as the clue’s Type).'}
+          >🔀 Randomize</button
+        >
+      </div>
+      <span class="hint">{ddHint}</span>
     </div>
-    <span class="hint">{ddHint}</span>
-  </div>
-  <div class="group" role="group" aria-labelledby="pt-{round.id}" data-partner-count>
-    <span class="lbl" id="pt-{round.id}">🤝 Partner clues</span>
-    <div class="inputs">
-  <!-- 0 (left out): none placed at random. One made by hand raises it (followPartners). -->
-  <input
-    type="number"
-    min="0"
-    max={ptMax}
-    value={round.partnerCount ?? 0}
-    oninput={(e) => {
-      // Emptied to type a new number: it keeps the one it had until there is one.
-      if (e.currentTarget.value.trim() === '') return;
-      const n = Math.max(0, Math.min(ptMax, Math.floor(+e.currentTarget.value) || 0));
-      if (n) round.partnerCount = n;
-      else delete round.partnerCount;
-    }}
-    onchange={(e) => (e.currentTarget.value = String(round.partnerCount ?? 0))}
-    aria-label="How many partner clues"
-    title="How many 🤝 partner clues: Start places the ones not on the board yet at random (one you make by hand counts, and the box goes up with it)"
-    class="ddn"
-  />
-  <!-- (Named apart from the Daily Doubles' 🔀 Randomize beside it.) -->
-  <button
-    onclick={randomizePartners}
-    disabled={!round.partnerCount || ptNone}
-    aria-label="Randomize partner clues"
-    title={round.partnerCount && ptNone
-      ? PT_NONE
-      : round.partnerCount
-      ? 'Scatter partner clues at random, on tiles with a written question and answer (never a Daily Double). The ones on the board move. To make one by hand, right-click a tile → Make it a… 🤝 Partner clue (or pick it as the clue’s Type).'
-      : 'Say how many first'}>🔀 Randomize</button
-  >
-  <!-- (Once any partner clue is on the board: made by hand, the box follows it.) -->
-  {#if round.partnerCount || ptPlaced}
-    <select value={round.partnerGame ?? 'describe'} onchange={(e) => setPartnerGame(e.currentTarget.value as PartnerGame)} aria-label="The game partner clues placed at random play" title="The game a partner clue placed at random plays (a tile that was a partner clue before keeps its own)">
-      {#each PT_GAMES as g (g)}<option value={g}>Plays: {PARTNER_GAMES[g].icon} {PARTNER_GAMES[g].label}</option>{/each}
-    </select>
-    <select
-      value={round.partnerCardFrom ?? 'answer'}
-      onchange={(e) => setPartnerCardFrom(e.currentTarget.value as 'answer' | 'empty')}
-      aria-label="The card a new partner clue gets"
-      title="The 🤫 card a new partner clue starts with, placed by 🔀 Randomize or made by hand (a tile with a card of its own keeps it): a copy of the tile's answer, for the describer, or an empty card to fill in. The ones Start game places get a copy of the answer."
-    >
-      <option value="answer">🤫 Card: ⧉ the tile’s answer</option>
-      <option value="empty">🤫 Card: empty, to fill in</option>
-    </select>
-  {/if}
+    <div class="group" role="group" aria-labelledby="pt-{round.id}" data-partner-count>
+      <span class="lbl" id="pt-{round.id}">🤝 Partner clues</span>
+      <div class="inputs">
+        <!-- 0 (left out): none placed at random. One made by hand raises it (followPartners). -->
+        <input
+          type="number"
+          min="0"
+          max={ptMax}
+          value={round.partnerCount ?? 0}
+          oninput={(e) => {
+            // Emptied to type a new number: it keeps the one it had until there is one.
+            if (e.currentTarget.value.trim() === '') return;
+            const n = Math.max(0, Math.min(ptMax, Math.floor(+e.currentTarget.value) || 0));
+            if (n) round.partnerCount = n;
+            else delete round.partnerCount;
+          }}
+          onchange={(e) => (e.currentTarget.value = String(round.partnerCount ?? 0))}
+          aria-label="How many partner clues"
+          title="How many 🤝 partner clues: Start places the ones not on the board yet at random (one you make by hand counts, and the box goes up with it)"
+          class="ddn"
+        />
+        <!-- (Named apart from the Daily Doubles' 🔀 Randomize beside it.) -->
+        <button
+          onclick={randomizePartners}
+          disabled={!round.partnerCount || ptNone}
+          aria-label="Randomize partner clues"
+          title={round.partnerCount && ptNone
+            ? PT_NONE
+            : round.partnerCount
+              ? 'Scatter partner clues at random, on tiles with a written question and answer (never a Daily Double). The ones on the board move. To make one by hand, right-click a tile → Make it a… 🤝 Partner clue (or pick it as the clue’s Type).'
+              : 'Say how many first'}>🔀 Randomize</button
+        >
+        <!-- (Once any partner clue is on the board: made by hand, the box follows it.) -->
+        {#if round.partnerCount || ptPlaced}
+          <select
+            value={round.partnerGame ?? 'describe'}
+            onchange={(e) => setPartnerGame(e.currentTarget.value as PartnerGame)}
+            aria-label="The game partner clues placed at random play"
+            title="The game a partner clue placed at random plays (a tile that was a partner clue before keeps its own)"
+          >
+            {#each PT_GAMES as g (g)}<option value={g}>Plays: {PARTNER_GAMES[g].icon} {PARTNER_GAMES[g].label}</option>{/each}
+          </select>
+          <select
+            value={round.partnerCardFrom ?? 'answer'}
+            onchange={(e) => setPartnerCardFrom(e.currentTarget.value as 'answer' | 'empty')}
+            aria-label="The card a new partner clue gets"
+            title="The 🤫 card a new partner clue starts with, placed by 🔀 Randomize or made by hand (a tile with a card of its own keeps it): a copy of the tile's answer, for the describer, or an empty card to fill in. The ones Start game places get a copy of the answer."
+          >
+            <option value="answer">🤫 Card: ⧉ the tile’s answer</option>
+            <option value="empty">🤫 Card: empty, to fill in</option>
+          </select>
+        {/if}
+      </div>
+      <span class="hint">{round.partnerCount || ptPlaced ? partnersLine(round) : ''}</span>
     </div>
-    <span class="hint">{round.partnerCount || ptPlaced ? partnersLine(round) : ''}</span>
-  </div>
   </div>
 </div>
 
@@ -1061,13 +1107,7 @@
   {@const n = tileDrop.files.length}
   <!-- Where a picture dropped on a tile goes. The focus starts on the question (Enter); Esc cancels. -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div
-    class="drop-ask row"
-    role="group"
-    aria-label="Where the dropped picture goes"
-    bind:this={dropAskEl}
-    onkeydown={(e) => e.key === 'Escape' && closeDrop()}
-  >
+  <div class="drop-ask row" role="group" aria-label="Where the dropped picture goes" bind:this={dropAskEl} onkeydown={(e) => e.key === 'Escape' && closeDrop()}>
     <span>🖼 {n === 1 ? 'A picture' : `${n} pictures`} on {tileName(dropAt)}{n > 1 ? ' (and the tiles after it)' : ''}:</span>
     <button class="ghost small" onclick={closeDrop}>Cancel</button>
     <button class="small" onclick={() => dropChosen('face')}>Use as the tile's face (on the board before it's picked)</button>
@@ -1147,15 +1187,32 @@
             <label class="check" title="Show the category name on top of the image">
               <input type="checkbox" bind:checked={cat.showTitleOverImage} /> Name
             </label>
-            <button class="ghost small" onclick={() => (cat.image = undefined)} title="Clear the picture: the name shows instead (the picture stays in 🖼 Media)" aria-label="⌫ Clear {categoryLabel(cat)}'s picture">⌫ Clear</button>
+            <button
+              class="ghost small"
+              onclick={() => (cat.image = undefined)}
+              title="Clear the picture: the name shows instead (the picture stays in 🖼 Media)"
+              aria-label="⌫ Clear {categoryLabel(cat)}'s picture">⌫ Clear</button
+            >
           </div>
         {/if}
         <!-- Moving, duplicating and deleting are in its menu (⋯, or a right-click), so the row fits a narrow column. -->
         <div class="cat-tools">
           <span class="grip" aria-hidden="true" title="Drag to move the category · right-click it for more">⋮⋮</span>
-          <button class="ghost small" aria-haspopup="menu" onclick={(e) => catMenu(e, ci, true)} onkeydown={(e) => catToolKey(e, ci)} title="Move, duplicate, copy, delete… (Ctrl+C / Ctrl+V copy and paste the category)" aria-label="More for category {ci + 1}{cat.title.trim() ? `: ${cat.title.trim()}` : ''}">⋯</button>
+          <button
+            class="ghost small"
+            aria-haspopup="menu"
+            onclick={(e) => catMenu(e, ci, true)}
+            onkeydown={(e) => catToolKey(e, ci)}
+            title="Move, duplicate, copy, delete… (Ctrl+C / Ctrl+V copy and paste the category)"
+            aria-label="More for category {ci + 1}{cat.title.trim() ? `: ${cat.title.trim()}` : ''}">⋯</button
+          >
           <span class="pop">
-            <button class="ghost small" onclick={() => (catPicker = ci)} title="Use an image for this category (or drop one here)" aria-label="Image for {categoryLabel(cat)}">🖼</button>
+            <button
+              class="ghost small"
+              onclick={() => (catPicker = ci)}
+              title="Use an image for this category (or drop one here)"
+              aria-label="Image for {categoryLabel(cat)}">🖼</button
+            >
             {#if catPicker === ci}
               <MediaPicker kind="image" onpick={(id) => ((cat.image = id), (catPicker = null))} onclose={() => (catPicker = null)} />
             {/if}
@@ -1264,7 +1321,10 @@
 <div class="tip">
   <Tips id="board" hint="Click a tile (or press Enter) to write its clue. Right-click (or Shift+F10) a tile, a category or a row value for more.">
     <ul>
-      <li>Keys: arrows move between tiles (↑ from the top row: the category name), Enter or F2 edits, Delete clears, Ctrl+C / Ctrl+V copy and paste a clue, Shift+F10 opens a tile's menu. Alt+←/→ moves a category (on its name or a tile), Alt+↑/↓ a tile's row.</li>
+      <li
+        >Keys: arrows move between tiles (↑ from the top row: the category name), Enter or F2 edits, Delete clears, Ctrl+C / Ctrl+V copy and paste a clue,
+        Shift+F10 opens a tile's menu. Alt+←/→ moves a category (on its name or a tile), Alt+↑/↓ a tile's row.</li
+      >
       <li>Drag a tile onto another to swap them (hold Ctrl to copy), and a category to move it.</li>
       <li>Drop image files onto a category for its picture, or onto a tile to put them in its question (or on its face).</li>
       <li>Paste a column of clues from a spreadsheet on a category's name to fill it (a whole sheet opens 📥 Import clues).</li>
@@ -1463,7 +1523,9 @@
     font-weight: 800;
     text-transform: uppercase;
     color: #fff;
-    text-shadow: 1px 1px 0 #000, -1px -1px 0 #000;
+    text-shadow:
+      1px 1px 0 #000,
+      -1px -1px 0 #000;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;

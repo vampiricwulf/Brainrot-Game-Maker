@@ -16,7 +16,8 @@ export function strayDropLine(added: readonly string[], refused: readonly string
   const sheet = refused.find(isClueSheet);
   const other = refused.filter((n) => !isClueSheet(n));
   if (sheet) parts.push(`${q(sheet)} is a sheet of clues: drop it on a board’s 📥 Import clues…`);
-  if (other.length) parts.push(`${other.length === 1 ? `${q(other[0])} isn’t` : `${other.length} files aren’t`} a picture, video, sound, clue sheet or game file`);
+  if (other.length)
+    parts.push(`${other.length === 1 ? `${q(other[0])} isn’t` : `${other.length} files aren’t`} a picture, video, sound, clue sheet or game file`);
   return parts.join('. ');
 }
 

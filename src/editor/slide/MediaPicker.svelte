@@ -74,10 +74,7 @@
   }
 </script>
 
-<svelte:window
-  onkeydown={(e) => e.key === 'Escape' && onclose()}
-  onpastecapture={(e) => take(Array.from(e.clipboardData?.files ?? []), e)}
-/>
+<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} onpastecapture={(e) => take(Array.from(e.clipboardData?.files ?? []), e)} />
 
 <div class="backdrop" data-over-modal onclick={onclose} ondragover={over} ondragleave={() => (dropping = false)} {ondrop} role="presentation"></div>
 <div

@@ -23,7 +23,20 @@
  * in or another button Tab took the keys to, the number keys pick a seat, Esc goes back, and the page shows those keys
  * (and says when another window has them). A phone works as it always has.
  */
-import { ANSWER_LINES, cleanAnswer, foldLines, isRoomCode, MAX_PHONES, ROOM_ALPHABET, SETTING_UP, STARTS_SOON, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
+import {
+  ANSWER_LINES,
+  cleanAnswer,
+  foldLines,
+  isRoomCode,
+  MAX_PHONES,
+  ROOM_ALPHABET,
+  SETTING_UP,
+  STARTS_SOON,
+  type DenyReason,
+  type PhoneView,
+  type PhoneWager,
+  type RoomToPhone,
+} from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
 import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type Hsv } from '../../src/lib/colormath';
 import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
@@ -475,8 +488,8 @@ function onMessage(m: RoomToPhone): void {
                 ? 'The host switched to teams. Pick your team.'
                 : 'The host turned teams off. Tap your name.'
               : m.teams
-              ? 'Your place on the team moved to another tab or phone. Tap your team to take it back here.'
-              : 'Your seat moved to another tab or phone. Tap your name to take it back here.',
+                ? 'Your place on the team moved to another tab or phone. Tap your team to take it back here.'
+                : 'Your seat moved to another tab or phone. Tap your name to take it back here.',
         );
         const kept = m.seats.some((x) => x.id === seatId) && !!m.teams === wasTeams;
         if (!kept) saveSeat(null);
@@ -568,8 +581,11 @@ function onMessage(m: RoomToPhone): void {
       else answerTap = '';
       answerErr = m.ok
         ? ''
-        : ({ closed: 'Answers are closed now.', bad: picked ? "That answer wasn't taken. Try again." : 'Type an answer first.', slow: 'Too many tries: wait a few seconds.' }[m.reason ?? 'bad'] ??
-          "That didn't work. Try again.");
+        : ({
+            closed: 'Answers are closed now.',
+            bad: picked ? "That answer wasn't taken. Try again." : 'Type an answer first.',
+            slow: 'Too many tries: wait a few seconds.',
+          }[m.reason ?? 'bad'] ?? "That didn't work. Try again.");
       if (m.ok) {
         vibrate(40);
         if (!picked) saveDraft('answer');
@@ -584,7 +600,12 @@ function onMessage(m: RoomToPhone): void {
       saveSeat(null);
       // Freed: the host gave the seat to the player's other phone (no block: this one can still take it back).
       const [title, text] = m.freed
-        ? ['The host freed your seat', team ? 'So you can join from another phone. If that’s this one, pick your team again.' : tap('So you can take it on another phone. If that’s this one, tap your name again.')]
+        ? [
+            'The host freed your seat',
+            team
+              ? 'So you can join from another phone. If that’s this one, pick your team again.'
+              : tap('So you can take it on another phone. If that’s this one, tap your name again.'),
+          ]
         : [team ? 'The host took you off the team' : 'The host took your seat back', team ? 'You can pick a team again.' : 'You can pick a seat again.'];
       notice = { title, text, button: { label: team ? 'Pick a team' : 'Pick a seat', run: () => ((notice = null), render()) } };
       break;
@@ -648,24 +669,31 @@ function denied(reason: DenyReason): void {
   if (keepNew) {
     // (If the name is theirs, their seat is on the list Back goes to.)
     $('new-err').textContent =
-      reason === 'name-taken' ? tap('A player already has that name: add a letter, or pick another. If it’s you, go Back and tap your name.') : 'Type a name with letters in it.';
+      reason === 'name-taken'
+        ? tap('A player already has that name: add a letter, or pick another. If it’s you, go Back and tap your name.')
+        : 'Type a name with letters in it.';
     retype = 'new-in';
     return;
   }
   if (keepForm) {
-    $('team-err').textContent = reason === 'name-taken' ? 'A team or someone in the game already has that name: add a letter, or pick another.' : 'Type your name first.';
+    $('team-err').textContent =
+      reason === 'name-taken' ? 'A team or someone in the game already has that name: add a letter, or pick another.' : 'Type your name first.';
     retype = 'team-in';
     return;
   }
   seatsNote = tap(
     {
-      taken: wasRejoin ? 'Your seat was given to someone else. Tap your name again.' : 'Someone already has that seat. If it’s you on a new phone, ask the host to free it.',
+      taken: wasRejoin
+        ? 'Your seat was given to someone else. Tap your name again.'
+        : 'Someone already has that seat. If it’s you on a new phone, ask the host to free it.',
       'unknown-seat': "That player isn't in the game any more.",
       rejected: "The host didn't let you in.",
       'no-new': "The host isn't taking new players.",
       'bad-token': seats?.teams ? 'You’re not on a team any more. Pick your team again.' : 'Your seat was given back. Tap your name again.',
       locked: 'The host has locked the seats.',
-      blocked: seats?.teams ? 'The host took you off that team. Pick another one, or ask the host.' : 'The host took you off that seat. Pick another one, or ask the host.',
+      blocked: seats?.teams
+        ? 'The host took you off that team. Pick another one, or ask the host.'
+        : 'The host took you off that seat. Pick another one, or ask the host.',
       'name-taken': 'A player already has that name. If it’s you, tap it; if not, pick another name.',
       'need-name': seats?.teams ? 'Pick your team, then type your name.' : 'Type a name with letters in it.',
     }[reason] ?? "That didn't work. Try again.",
@@ -995,7 +1023,8 @@ function clueRoom(sec: HTMLElement, kbd: boolean): number {
     const foot = document.querySelector('.side.foot')!.getBoundingClientRect().height;
     // (A card under the question keeps room for its Tap to see, as the CSS does; the note about missed cards, its own.)
     const cards = $('cards');
-    const under = sec.classList.contains('cards-aside') && rectOf(cards) ? gap + (cards.querySelector('.card') ? Math.min(150, 0.4 * innerHeight) : cards.scrollHeight) : 0;
+    const under =
+      sec.classList.contains('cards-aside') && rectOf(cards) ? gap + (cards.querySelector('.card') ? Math.min(150, 0.4 * innerHeight) : cards.scrollHeight) : 0;
     // (Pass has a row of its own over the name, and its gap, whether it's up or not.)
     const pass = gap + (rectOf($('pass'))?.height ?? 0);
     return free - (side.height - c.height) - gap - foot - under - pass;
@@ -1015,7 +1044,9 @@ function clueRoom(sec: HTMLElement, kbd: boolean): number {
   // kept for them (their min-height) whatever they say now, so a tap or a keystroke never fits the question again and
   // moves the box.)
   const notes = !$('answer-form').hidden ? ['answer-state', 'answer-err'] : !$('wager-form').hidden ? ['wager-state', 'wager-err'] : [];
-  const extra = keep.includes($('me')) ? notes.reduce((n, id) => n + Math.max(0, $(id).getBoundingClientRect().height - parseFloat(getComputedStyle($(id)).minHeight)), 0) : 0;
+  const extra = keep.includes($('me'))
+    ? notes.reduce((n, id) => n + Math.max(0, $(id).getBoundingClientRect().height - parseFloat(getComputedStyle($(id)).minHeight)), 0)
+    : 0;
   const below = Math.max(c.bottom, ...keep.map((el) => rectOf(el)?.bottom ?? c.bottom)) - c.bottom - extra;
   return free - (c.top - side.top) - below;
 }
@@ -1158,7 +1189,7 @@ function noMore(): void {
   const pill = $('clue-more');
   const at = document.activeElement;
   if (at === pill || at === clue) {
-    const box = !$('answer-form').hidden ? choiceFocus() ?? $('answer-in') : !$('wager-form').hidden ? $('wager-in') : null;
+    const box = !$('answer-form').hidden ? (choiceFocus() ?? $('answer-in')) : !$('wager-form').hidden ? $('wager-in') : null;
     // (On a touch screen, not into a box: that would open the keyboard.)
     const to = !$('buzz').hidden ? $('buzz') : fine.matches ? box : null;
     if (to) to.focus({ preventScroll: true });
@@ -1212,7 +1243,8 @@ function render(): void {
     if (back)
       queueMicrotask(() => {
         const now = document.activeElement;
-        if (back.isConnected && back.getClientRects().length && (!now || now === document.body || $('overlay').contains(now))) back.focus({ preventScroll: true });
+        if (back.isConnected && back.getClientRects().length && (!now || now === document.body || $('overlay').contains(now)))
+          back.focus({ preventScroll: true });
       });
   }
   $('sound').hidden = !(seatId && view?.you);
@@ -1418,7 +1450,17 @@ function renderSeatsRest(s: SeatsMsg): void {
   $('seats-note').textContent = seatsNote;
   // (Locked with nothing to tap: the line under the heading says it, said once.)
   const head = lockedOut(s) ? '' : teams ? 'Pick your team.' : allTaken ? 'Every seat is taken.' : tap('Tap your name.');
-  say([head, seatsNote, s.locked ? 'The host has locked the seats.' : free, s.locked ? '' : sentences([s.note ?? '']), s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
+  say(
+    [
+      head,
+      seatsNote,
+      s.locked ? 'The host has locked the seats.' : free,
+      s.locked ? '' : sentences([s.note ?? '']),
+      s.hostHere ? '' : "The host isn't connected right now.",
+    ]
+      .filter(Boolean)
+      .join(' '),
+  );
   show('s-seats');
 }
 
@@ -1571,14 +1613,20 @@ function renderBuzz(v: PhoneView): void {
     // A ✍ clue whose answer is on screen: what this seat sent stays in sight (or that one is in, as for wagers). In the
     // Final, the wager locked in first: the line shows 3 lines at most, so a long answer is what gets cut (its own
     // lines on one, " / " between them).
-    const staked = wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
+    const staked =
+      wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
     const picked = pickLine(ans);
     // Judged (a ✍ clue once the host judges it, the Final in its reveals): how it went over it ("✔ Right! +$1,200"),
     // green or red.
     [cls, big, small] = [
       ans.verdict ? (ans.verdict.right ? 'right' : 'wrong') : 'off',
       ans.verdict ? verdictLine(ans.verdict, sym) : 'Answers locked',
-      staked + (ans.text ? `${team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${foldLines(ans.text)}”`}` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent'),
+      staked +
+        (ans.text
+          ? `${team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${foldLines(ans.text)}”`}`
+          : ans.hidden
+            ? 'The host has it (not shown on this phone)'
+            : 'None sent'),
     ];
   } else if (wager?.kind === 'dd' && wager.mine && !wager.open) {
     // This seat's Daily Double, the question up: they're on the spot, as on any clue they buzzed in on.
@@ -1594,7 +1642,11 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = [
       'off',
       'Wager locked',
-      wager.amount !== undefined ? `${yours}: ${money(wager.amount, sym)}` : wager.hidden ? 'The host has it (not shown on this phone)' : 'None sent: the host decides',
+      wager.amount !== undefined
+        ? `${yours}: ${money(wager.amount, sym)}`
+        : wager.hidden
+          ? 'The host has it (not shown on this phone)'
+          : 'None sent: the host decides',
     ];
   } else if (wager?.kind === 'dd') {
     // Locked: the question is up, and they're answering it.
@@ -1627,7 +1679,12 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = ['first', "You're answering!", how];
   } else if (pass?.passed && !(v.phase === 'closed' && v.done)) {
     // Passed: no buzzing on this one (Pass beside it takes it back), and who's answering if anyone is.
-    const who = v.phase === 'answering' ? (v.answering ? `${v.answering.name} is answering${v.answering.by ? ` (${v.answering.by})` : ''}` : 'Tie! The host decides') : null;
+    const who =
+      v.phase === 'answering'
+        ? v.answering
+          ? `${v.answering.name} is answering${v.answering.by ? ` (${v.answering.by})` : ''}`
+          : 'Tie! The host decides'
+        : null;
     ({ big, small } = passedLines(pass, team, who));
     cls = 'off';
     greyed = true;
@@ -1645,14 +1702,19 @@ function renderBuzz(v: PhoneView): void {
           : mine.afterMs !== undefined && mine.behind
             ? `${secs(mine.afterMs)} behind ${mine.behind}`
             : who;
-      [cls, big, small] = ['off', team ? `Your team is ${ordinal(mine.rank)}` : `You're ${ordinal(mine.rank)}`, mate ? `${mate} buzzed for your team · ${how}` : how];
+      [cls, big, small] = [
+        'off',
+        team ? `Your team is ${ordinal(mine.rank)}` : `You're ${ordinal(mine.rank)}`,
+        mate ? `${mate} buzzed for your team · ${how}` : how,
+      ];
     } else if (v.canQueue && !mine) [cls, big, small] = ['queue', 'You can still buzz', `${who}. Buzz to be next in line if they miss`];
     else [cls, big, small] = ['off', mine?.outcome === 'late' ? 'Too late' : 'Wait', who];
   } else if (v.phase === 'closed' && v.done) {
     const by = v.done.by;
     // (Got it: how it went, "✔ Right! +$400", in green.)
     if (by?.you && judged) [cls, big, small] = [...judged, 'Wait for the next clue'];
-    else [cls, big, small] = ['off', by ? (by.you ? (team ? 'Your team got it!' : 'You got it!') : `${by.name} got it`) : 'Clue over', 'Wait for the next clue'];
+    else
+      [cls, big, small] = ['off', by ? (by.you ? (team ? 'Your team got it!' : 'You got it!') : `${by.name} got it`) : 'Clue over', 'Wait for the next clue'];
   } else if (mine?.outcome === 'pending' && v.phase === 'armed') {
     [cls, big, small] = ['off', '…', 'Buzzed! Checking who was first'];
   } else if (you.lockedOut) {
@@ -1704,9 +1766,15 @@ function renderBuzz(v: PhoneView): void {
   b.className = cls;
   // A name may be one long word: it breaks anywhere rather than push the page sideways (status words stay whole).
   const names = [you.name, you.member, v.answering?.name, v.answering?.by, v.done?.by?.name, mine?.behind, mate, wager?.who].filter((x): x is string => !!x);
-  for (const [id, text] of [['buzz-big', big], ['buzz-small', small]] as const) {
+  for (const [id, text] of [
+    ['buzz-big', big],
+    ['buzz-small', small],
+  ] as const) {
     $(id).textContent = text;
-    $(id).classList.toggle('name', names.some((n) => text.includes(n)));
+    $(id).classList.toggle(
+      'name',
+      names.some((n) => text.includes(n)),
+    );
   }
   const heard = whole ? [`${big} ${small}`] : [big, spoken ?? small];
   b.setAttribute('aria-label', sentences(heard));
@@ -2084,7 +2152,17 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   drawWagerSend(w);
   const hostGone = renderFoot(v, sym);
   // (What it's for first: "Final Jeopardy! · US Presidents". The error has its own alert, so it isn't said twice.)
-  say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', $('wager-label').textContent ?? '', $('wager-info').textContent ?? '', state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
+  say(
+    sentences([
+      connected ? '' : awayText(),
+      $('clue').textContent ?? '',
+      $('wager-label').textContent ?? '',
+      $('wager-info').textContent ?? '',
+      state,
+      cardsSaid,
+      hostGone ? ($('host-note').textContent ?? '') : '',
+    ]),
+  );
   show('s-buzz');
 }
 
@@ -2100,22 +2178,36 @@ function drawWagerState(w: PhoneWager, team: boolean, sym: string): string {
 function wagerState(w: PhoneWager, team: boolean, sym: string): string {
   const typed = $<HTMLInputElement>('wager-in').value.trim();
   // Over the max: what to type instead (as it's typed; tapping Send wager wouldn't take it).
-  const over = typed !== '' && overMax(w, Number(typed)) ? tap(`Type ${money(w.max!, sym)} or less, then tap ${w.amount !== undefined && !w.host ? 'Change' : 'Send'} wager.`) : '';
+  const over =
+    typed !== '' && overMax(w, Number(typed))
+      ? tap(`Type ${money(w.max!, sym)} or less, then tap ${w.amount !== undefined && !w.host ? 'Change' : 'Send'} wager.`)
+      : '';
   if (w.amount === undefined) {
     // Typed, none sent yet (typing alone sends nothing). Seated after the wagers began: one is in, but this phone isn't
     // shown it.
     // (Not while the line above says what's wrong with it: "tap Send wager" would read as if the tap wasn't seen.)
     const unsent = over || (typed && !typedErr(wagerErr) ? tap('Not sent yet: tap Send wager to send it.') : '');
-    const hidden = w.hidden ? `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.` : '';
+    const hidden = w.hidden
+      ? `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.`
+      : '';
     return [unsent, hidden].filter(Boolean).join(' ');
   }
   const amt = money(w.amount, sym);
   // (As numbers: "00" typed after the 0 the host put in for a player with nothing to wager is the same wager.)
   if (over) return `${over} What the host has: ${amt}`;
-  if (typed && Number(typed) !== w.amount) return typedErr(wagerErr) ? `What the host has: ${amt}` : `${tap(`Not sent yet: tap ${w.host ? 'Send' : 'Change'} wager to send it.`)} What the host has: ${amt}`;
+  if (typed && Number(typed) !== w.amount)
+    return typedErr(wagerErr)
+      ? `What the host has: ${amt}`
+      : `${tap(`Not sent yet: tap ${w.host ? 'Send' : 'Change'} wager to send it.`)} What the host has: ${amt}`;
   // The box holds what this phone sent: its quiet "✔ Sent" button says so, and the box shows the amount.
   if (quietSent(w, team)) return 'You can change it until the question shows.';
-  const what = w.host ? `The host has ${team ? 'your team’s' : 'your'} wager as ${amt}` : team && w.by ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team` : w.sent ? `✔ Sent: ${amt}` : '';
+  const what = w.host
+    ? `The host has ${team ? 'your team’s' : 'your'} wager as ${amt}`
+    : team && w.by
+      ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team`
+      : w.sent
+        ? `✔ Sent: ${amt}`
+        : '';
   return `${what}. You can change it until the question shows.`;
 }
 
@@ -2167,7 +2259,12 @@ const flat = (s: string): string => s.replace(/\s+/g, ' ').trim();
  * (one from before), the same words.
  */
 function sameAnswer(typed: string, sent: string): boolean {
-  const lines = (x: string) => x.split(/\r\n?|\n/).map(flat).filter(Boolean).join('\n');
+  const lines = (x: string) =>
+    x
+      .split(/\r\n?|\n/)
+      .map(flat)
+      .filter(Boolean)
+      .join('\n');
   const kept = cleanAnswer(typed);
   return lines(kept) === lines(sent) || (!sent.includes('\n') && flat(kept) === flat(sent));
 }
@@ -2194,7 +2291,9 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
     return [unsent, hidden].filter(Boolean).join(' ');
   }
   if (!choices && typed && !sameAnswer(box, a.text))
-    return typedErr(answerErr) ? `What the host has: ${quoted(a.text)}` : `${tap('Not sent yet: tap Change answer to send it.')} What the host has: ${quoted(a.text)}`;
+    return typedErr(answerErr)
+      ? `What the host has: ${quoted(a.text)}`
+      : `${tap('Not sent yet: tap Change answer to send it.')} What the host has: ${quoted(a.text)}`;
   // (A partner clue's guess, nobody buzzing, is locked once the host judges it too.)
   const until = view?.statusOff ? 'judges it or shows the answer' : 'shows the answer';
   // Multiple choice: by its letter alone ("✔ Sent: B", "✔ Ann picked B for your team"): the lit button has its words,
@@ -2259,7 +2358,8 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   const guess = !!v.statusOff;
   // The Final: the wager locked in, over the box (as it showed over the question before).
   const w = v.wager;
-  const staked = !guess && w?.kind === 'final' && w.mine && w.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(w.amount, sym)} (locked)` : '';
+  const staked =
+    !guess && w?.kind === 'final' && w.mine && w.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(w.amount, sym)} (locked)` : '';
   const sub = guess ? (v.statusSub ?? '') : staked;
   $('answer-head').hidden = !guess || !v.status;
   $('answer-head').textContent = guess ? (v.status ?? '') : '';
@@ -2281,7 +2381,8 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   // (Five or six choices: a shorter label, a line more for the last of them on a small phone.)
   // Who sees it, and from when: the Final's reveals put each answer on stream; one window shows a ✍ clue's answers in
   // the host panel (on stream) once the answer is up.
-  const seen = !guess && w?.kind === 'final' ? 'shown on stream at the reveals' : `only the host${team ? ' and your team see it' : ' sees it'} until the answer is up`;
+  const seen =
+    !guess && w?.kind === 'final' ? 'shown on stream at the reveals' : `only the host${team ? ' and your team see it' : ' sees it'} until the answer is up`;
   $('answer-label').textContent = choices
     ? a.choices!.length >= 5
       ? `Pick one (${seen})`
@@ -2507,7 +2608,8 @@ document.addEventListener('keydown', (e) => {
       if (!seat || seat.disabled) return;
       e.preventDefault();
       if (!e.repeat) seat.click();
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') stepFocus(e, $('s-seats').querySelectorAll<HTMLButtonElement>('button.seat'), e.key === 'ArrowDown' ? 1 : -1);
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp')
+      stepFocus(e, $('s-seats').querySelectorAll<HTMLButtonElement>('button.seat'), e.key === 'ArrowDown' ? 1 : -1);
     return;
   }
   // A ✍ clue's choices: A–F pick one, as a click would; ↑ and ↓ move the keys along them (from one of them, or from
@@ -2898,7 +3000,10 @@ $('team-back').addEventListener('click', (e) => {
   retype = null;
   render();
   // (Back with the keys, or Esc: they go back onto that team.)
-  if (e.detail === 0 && was) $('seat-list').querySelector<HTMLElement>(`[data-seat="${CSS.escape(was)}"]`)?.focus();
+  if (e.detail === 0 && was)
+    $('seat-list')
+      .querySelector<HTMLElement>(`[data-seat="${CSS.escape(was)}"]`)
+      ?.focus();
 });
 $('msg-btn').addEventListener('click', () => notice?.button?.run());
 

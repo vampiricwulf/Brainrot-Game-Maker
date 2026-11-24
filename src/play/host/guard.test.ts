@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { CHECK_GUARD_MS, checkHeld, checkPressHeld, clickGuard, DOUBLE_CLICK_MS, judgeClick, justShown, KEY_GUARD_MS, NEW_CONTROLS_MS, SAME_SPOT_MS } from './guard';
+import {
+  CHECK_GUARD_MS,
+  checkHeld,
+  checkPressHeld,
+  clickGuard,
+  DOUBLE_CLICK_MS,
+  judgeClick,
+  justShown,
+  KEY_GUARD_MS,
+  NEW_CONTROLS_MS,
+  SAME_SPOT_MS,
+} from './guard';
 
 /** A guard on a clock the test moves (`at.t`). */
 function guarded() {

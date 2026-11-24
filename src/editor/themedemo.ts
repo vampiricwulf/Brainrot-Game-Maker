@@ -10,7 +10,12 @@ import { goToRound, newSession, openClue } from '../lib/session';
 export function themeDemo(game: Game, at: number, clue = false): Session {
   const s = newSession(game);
   if (!s.players.length)
-    s.players = ['Alex', 'Sam', 'Jordan'].map((name, i) => ({ id: newId(), name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: [1200, 400, -200][i] }));
+    s.players = ['Alex', 'Sam', 'Jordan'].map((name, i) => ({
+      id: newId(),
+      name,
+      color: ['#e6194b', '#3cb44b', '#4363d8'][i],
+      startScore: [1200, 400, -200][i],
+    }));
   s.currentPickerId = s.players[0]?.id;
   goToRound(s, game, at);
   s.intro = null;
@@ -57,6 +62,8 @@ export function withSampleClue(game: Game, at: number, clue = false): Game {
   if (slideHasContent(open.questionSlide)) return game;
   return withRound({
     ...r,
-    categories: r.categories.map((c, ci) => (ci === cat ? { ...c, clues: c.clues.map((cl, k) => (k === row ? { ...cl, questionSlide: filled(cl.questionSlide) } : cl)) } : c)),
+    categories: r.categories.map((c, ci) =>
+      ci === cat ? { ...c, clues: c.clues.map((cl, k) => (k === row ? { ...cl, questionSlide: filled(cl.questionSlide) } : cl)) } : c,
+    ),
   });
 }

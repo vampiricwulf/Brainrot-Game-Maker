@@ -11,19 +11,19 @@
     "binding": "ASSETS",
     // /ABCD (a room code) serves the phone page.
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/ws/*"]
+    "run_worker_first": ["/api/*", "/ws/*"],
   },
   "durable_objects": {
     "bindings": [
       { "name": "BUZZ_ROOM", "class_name": "BuzzRoom" },
       // One instance: counts the rooms made today (src/limits.ts).
-      { "name": "ROOM_COUNTER", "class_name": "RoomCounter" }
-    ]
+      { "name": "ROOM_COUNTER", "class_name": "RoomCounter" },
+    ],
   },
   // SQLite-backed Durable Objects work on the Workers Free plan.
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["BuzzRoom"] },
-    { "tag": "v2", "new_sqlite_classes": ["RoomCounter"] }
+    { "tag": "v2", "new_sqlite_classes": ["RoomCounter"] },
   ],
   // New rooms per address: 6 a minute (Workers Rate Limiting; no extra cost, works on Free and in wrangler dev).
   // namespace_id is any number of our own, unique within the account.
@@ -34,7 +34,7 @@
     { "name": "NEW_ROOM_LIMIT", "namespace_id": "1001", "simple": { "limit": 6, "period": 60 } },
     { "name": "LOOKUP_LIMIT", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
     { "name": "SOCKET_LIMIT", "namespace_id": "1003", "simple": { "limit": 120, "period": 60 } },
-    { "name": "FILE_LIMIT", "namespace_id": "1004", "simple": { "limit": 120, "period": 60 } }
+    { "name": "FILE_LIMIT", "namespace_id": "1004", "simple": { "limit": 120, "period": 60 } },
   ],
   // Workers Logs: each request's CPU and wall time, the room's (Durable Object) calls included, in the dashboard
   // (Workers & Pages › brainrot-buzzer › Observability), for measuring what card files cost (README.md, "Card files").
@@ -57,6 +57,6 @@
     // frees, and the host copies the card instead. 0 turns card files off. No file is kept more than 20 hours, so the
     // files kept are never more than this: keep it under the plan's storage in all (on Free, 5 GB, which every room's
     // own state needs some of too: 4,000 MiB is 4,194,304,000 bytes, which leaves about 0.8 GB).
-    "FILES_MB_PER_DAY": "4000"
-  }
+    "FILES_MB_PER_DAY": "4000",
+  },
 }

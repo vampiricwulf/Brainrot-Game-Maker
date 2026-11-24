@@ -56,8 +56,18 @@ describe('a player’s right-click menu', () => {
     const st = Object.values(session.worlds!)[0];
     splitParty(st, ['c']);
     expect(labels(playerMenu(host, 'c'))).toEqual([
-      'Cat', 'Select', '✎ Set the score…', '—', '📺 Show their sheet', '💫 Knocked out', '🫥 Hide their avatar', '—', '✂ Split off (own party)', '🗺 Send to…',
-      '👥 Join Party 1', '🗂 Open their card',
+      'Cat',
+      'Select',
+      '✎ Set the score…',
+      '—',
+      '📺 Show their sheet',
+      '💫 Knocked out',
+      '🫥 Hide their avatar',
+      '—',
+      '✂ Split off (own party)',
+      '🗺 Send to…',
+      '👥 Join Party 1',
+      '🗂 Open their card',
     ]);
     // Cat's party is just her: splitting off does nothing more.
     expect(playerMenu(host, 'c').find((i) => 'label' in i && i.label.startsWith('✂'))).toMatchObject({ disabled: true });
@@ -79,7 +89,15 @@ describe('a player’s right-click menu', () => {
     const { host, session } = playing(() => round);
     const items = playerMenu(host, 'c');
     expect(labels(items)).toEqual([
-      'Cat', 'Select', '✎ Set the score…', '—', '📺 Show their sheet', '🎲 Make it their turn', '🌀 Send to Shadow Realm', '🏁 Send to Start', '🗂 Open their card',
+      'Cat',
+      'Select',
+      '✎ Set the score…',
+      '—',
+      '📺 Show their sheet',
+      '🎲 Make it their turn',
+      '🌀 Send to Shadow Realm',
+      '🏁 Send to Start',
+      '🗂 Open their card',
     ]);
     click(items, '🎲 Make it their turn');
     click(items, '🌀 Send to Shadow Realm');
@@ -108,7 +126,11 @@ describe('a player’s menu starts with this moment’s verbs', () => {
     const h = { ...host, verbs: verdicts(asked) };
     expect(labels(playerMenu(h, 'a'))).toEqual(['Ann', '✔ Right +$400', '✘ Wrong −$400', '—', 'Select', '★ Make the picker', '✎ Set the score…']);
     // (The keys: Enter and Shift+Enter for the one selected; their number to select them.)
-    expect(playerMenu(h, 'a').slice(1, 3).map((i) => ('keys' in i ? i.keys : ''))).toEqual(['⏎', '⇧⏎']);
+    expect(
+      playerMenu(h, 'a')
+        .slice(1, 3)
+        .map((i) => ('keys' in i ? i.keys : '')),
+    ).toEqual(['⏎', '⇧⏎']);
     // Bob's ✔ is greyed (he has it); Cat's pair is greyed, without points, saying why.
     const bob = playerMenu(h, 'b');
     expect([bob[1], bob[2]].map((i) => ('disabled' in i ? !!i.disabled : null))).toEqual([true, false]);
@@ -140,13 +162,29 @@ describe('a player’s menu starts with this moment’s verbs', () => {
     const h = { ...host, verbs: verdicts(asked), phone: (id: string) => seat(id === 'a', id === 'b'), remove: (id: string) => asked.push(`delete ${id}`) };
     const ann = playerMenu(h, 'a');
     expect(labels(ann)).toEqual([
-      'Ann', '✔ Right +$400', '✘ Wrong −$400', '—', 'Select', '★ Make the picker', '✎ Set the score…', '—', '📱 Free seat (new phone)', '↩ Let back', '—', '⛔ Kick from phone (2 min)…', '🗑 Remove player…',
+      'Ann',
+      '✔ Right +$400',
+      '✘ Wrong −$400',
+      '—',
+      'Select',
+      '★ Make the picker',
+      '✎ Set the score…',
+      '—',
+      '📱 Free seat (new phone)',
+      '↩ Let back',
+      '—',
+      '⛔ Kick from phone (2 min)…',
+      '🗑 Remove player…',
     ]);
     expect(ann.slice(-2)).toMatchObject([{ danger: true }, { danger: true }]);
     // No phone on Bob's seat (kicked a moment ago): Free seat and Kick greyed, ↩ Let back offered. Same places.
     const bob = playerMenu(h, 'b');
     expect(labels(bob)).toEqual(labels(ann).map((l, i) => (i === 0 ? 'Bob' : l)));
-    expect(bob.filter((i) => 'disabled' in i && i.disabled).map((i) => ('label' in i ? i.label : ''))).toEqual(['✔ Right +$400', '📱 Free seat (new phone)', '⛔ Kick from phone (2 min)…']);
+    expect(bob.filter((i) => 'disabled' in i && i.disabled).map((i) => ('label' in i ? i.label : ''))).toEqual([
+      '✔ Right +$400',
+      '📱 Free seat (new phone)',
+      '⛔ Kick from phone (2 min)…',
+    ]);
     for (const l of ['📱 Free seat (new phone)', '⛔ Kick from phone (2 min)…', '🗑 Remove player…']) click(ann, l);
     click(bob, '↩ Let back');
     expect(asked).toEqual(['free', 'kick', 'delete a', 'let back']);
@@ -161,7 +199,11 @@ describe('a player’s menu starts with this moment’s verbs', () => {
     const { game, session, host, asked } = playing(() => newRound('Jeopardy!'));
     const h = { ...host, remove: (id: string) => asked.push(`remove ${id}`) };
     const item = () => playerMenu(h, 'a').at(-1)!;
-    expect(item()).toMatchObject({ label: '🗑 Remove player…', disabled: false, hint: 'Their points leave the scoreboard (it asks first; 👥 Players can restore them)' });
+    expect(item()).toMatchObject({
+      label: '🗑 Remove player…',
+      disabled: false,
+      hint: 'Their points leave the scoreboard (it asks first; 👥 Players can restore them)',
+    });
     game.settings.buzzer = true;
     game.settings.buzzTeams = true;
     const was = prefs.buzzerServer;
@@ -227,7 +269,19 @@ describe('a ▶ Play row’s menu (before the game)', () => {
 
   it('colors, picture, start score, renames (F2), moves (Alt+↑/↓), then deletes, last and red: the editors’ one order', () => {
     const items = rosterMenu('Bob', 1, 3, 'player', acts);
-    expect(labels(items)).toEqual(['Bob', '🎨 Color…', '🖼 Picture…', '± Start score…', '—', '✎ Rename', '—', '▲ Move up', '▼ Move down', '—', '🗑 Delete player']);
+    expect(labels(items)).toEqual([
+      'Bob',
+      '🎨 Color…',
+      '🖼 Picture…',
+      '± Start score…',
+      '—',
+      '✎ Rename',
+      '—',
+      '▲ Move up',
+      '▼ Move down',
+      '—',
+      '🗑 Delete player',
+    ]);
     expect(keys(items)).toEqual(['', '', '', '', '', 'F2', '', 'Alt+↑', 'Alt+↓', '', '']);
     expect(items.at(-1)).toMatchObject({ danger: true });
     for (const l of ['🎨 Color…', '🖼 Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player']) click(items, l);

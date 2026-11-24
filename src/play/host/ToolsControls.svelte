@@ -11,7 +11,20 @@
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, startTimer, tileToolUp } from '../../lib/live';
   import type { Game, Outcome, ScoreEvent, Session } from '../../lib/model';
-  import { addWheel, cardDone as isCardDone, cardsKey, removeWheel, rollDice, scoreCards, scoreCardsLeft, spinFor, spinSegments, spinWheel, wheelEdited, wheelSpentUp } from '../../lib/overlay';
+  import {
+    addWheel,
+    cardDone as isCardDone,
+    cardsKey,
+    removeWheel,
+    rollDice,
+    scoreCards,
+    scoreCardsLeft,
+    spinFor,
+    spinSegments,
+    spinWheel,
+    wheelEdited,
+    wheelSpentUp,
+  } from '../../lib/overlay';
   import { rescued } from '../../lib/focusrescue';
   import { faceText, isRespin, outcomeText, rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
@@ -91,7 +104,10 @@
   );
   const resultText = $derived.by(() => {
     if (o?.kind === 'wheel' && o.spin && (o.result !== null || o.extra?.length))
-      return [o.result !== null ? sliceLabel(o.segments[o.result], o.result) : '', ...(o.extra ?? []).map((w) => (w.result !== null ? sliceLabel(w.segments[w.result], w.result) : ''))]
+      return [
+        o.result !== null ? sliceLabel(o.segments[o.result], o.result) : '',
+        ...(o.extra ?? []).map((w) => (w.result !== null ? sliceLabel(w.segments[w.result], w.result) : '')),
+      ]
         .filter(Boolean)
         .join(' · ');
     if (o?.kind === 'dice' && o.roll) return rollResult(o.roll);
@@ -140,7 +156,14 @@
     const tile = ownTile;
     const before = new Set(session.scoreLog.map((e) => e.id));
     // (A 🤫 card it offers shows in this box, under what it came to.)
-    toast(runAction({ game, session, live: app.live, world, st, selected, chosen, teams, offerCard: offerIn(session, 'tool') }, a, `${from}: ${describeAction(game, a, undefined, teams)}`), 3000);
+    toast(
+      runAction(
+        { game, session, live: app.live, world, st, selected, chosen, teams, offerCard: offerIn(session, 'tool') },
+        a,
+        `${from}: ${describeAction(game, a, undefined, teams)}`,
+      ),
+      3000,
+    );
     tileGave(tile, (e) => !before.has(e.id));
     // The button can go with what it did (a question pop-up replaces the wheel): the keys go to the main button, not to
     // the Amount box, where R, Esc and N mean nothing.
@@ -256,9 +279,15 @@
     if (!o) return [];
     const out: StageItem[] = [];
     if (spinPlace) out.push(stepItem(spinPlace, o.kind === 'dice' ? 'roll' : 'spin'));
-    if (o.kind === 'popup' && o.answer) out.push({ id: 'reveal', label: o.revealed ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: () => (o.revealed = !o.revealed) });
+    if (o.kind === 'popup' && o.answer)
+      out.push({ id: 'reveal', label: o.revealed ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: () => (o.revealed = !o.revealed) });
     if (o.kind === 'wheel') {
-      out.push({ label: '✎ Edit wheel', disabled: !!o.editing, hint: 'Turn slices off or change their chances for this spin', onclick: () => ((o.editing = true), (editExtra = null)) });
+      out.push({
+        label: '✎ Edit wheel',
+        disabled: !!o.editing,
+        hint: 'Turn slices off or change their chances for this spin',
+        onclick: () => ((o.editing = true), (editExtra = null)),
+      });
       out.push({ label: '＋ Spin another wheel too…', disabled: busy, onclick: pickAnother });
       if (removed && o.wheelId) {
         const id = o.wheelId;
@@ -276,10 +305,12 @@
       const who = picked;
       out.push({ label: `★ Make ${who.name} the picker`, onclick: () => setPicker(session, who.id) });
     }
-    if (o.kind === 'scoreboard') out.push({ label: '📋 Copy standings', onclick: () => copyText(standingsText(game, session), 'Standings copied: paste them in chat') });
+    if (o.kind === 'scoreboard')
+      out.push({ label: '📋 Copy standings', onclick: () => copyText(standingsText(game, session), 'Standings copied: paste them in chat') });
     if (o.kind === 'shop') out.push({ id: 'close', label: '🚪 Leave shop', keys: 'Esc', onclick: () => (app.live.overlay = null) });
     // (Putting it away is the blue button's, first in the menu: only a question pop-up before its answer has its own ✕ Close.)
-    else if (o.kind === 'popup' && o.answer && !o.revealed) out.push({ id: 'close', label: VERBS.closeToolBox.label, keys: 'Esc', hint: closeTitle, onclick: () => onclose() });
+    else if (o.kind === 'popup' && o.answer && !o.revealed)
+      out.push({ id: 'close', label: VERBS.closeToolBox.label, keys: 'Esc', hint: closeTitle, onclick: () => onclose() });
     return out;
   });
 
@@ -299,7 +330,13 @@
       {#if o.kind === 'wheel'}
         <b>🎡 {o.name}</b>
         {#if spinPlace}<StepButton step={spinPlace} {ring} />{/if}
-        <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => ((o.editing = !o.editing), o.editing && (editExtra = null))} title="Turn slices off or change their chances for this spin">
+        <button
+          class="small"
+          class:on={o.editing}
+          aria-pressed={!!o.editing}
+          onclick={() => ((o.editing = !o.editing), o.editing && (editExtra = null))}
+          title="Turn slices off or change their chances for this spin"
+        >
           ✎ Edit wheel{wheelEdited(o, session) ? ' (edited)' : ''}
         </button>
         {#each o.extra ?? [] as w (w.key)}
@@ -312,7 +349,13 @@
               aria-label="Edit {w.name} for this spin"
               title="Turn slices off or change their chances for this spin">✎</button
             >
-            <button class="ghost tiny danger" disabled={busy} onclick={() => removeWheel(app.live, w.key)} aria-label="Stop spinning {w.name}" title="Take {w.name} off this spin">🗑</button>
+            <button
+              class="ghost tiny danger"
+              disabled={busy}
+              onclick={() => removeWheel(app.live, w.key)}
+              aria-label="Stop spinning {w.name}"
+              title="Take {w.name} off this spin">🗑</button
+            >
           </span>
         {/each}
         <select
@@ -356,7 +399,10 @@
           <span>Answering order: {o.ranking.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(' → ')}</span>
         {:else if !busy}
           <!-- (What it did: the board's picker, else, as viewers are told, who goes first; a board game's turn.) -->
-          <span>{session.players.find((p) => p.id === o.winner)?.name} {o.purpose === 'tiebreak' ? 'wins the game.' : session.phase === 'board' || session.phase === 'clue' ? 'picks first.' : 'goes first.'}</span>
+          <span
+            >{session.players.find((p) => p.id === o.winner)?.name}
+            {o.purpose === 'tiebreak' ? 'wins the game.' : session.phase === 'board' || session.phase === 'clue' ? 'picks first.' : 'goes first.'}</span
+          >
         {:else}<span class="muted">Rolling…</span>{/if}
       {:else if o.kind === 'popup'}
         <b>🖼 {o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}</b>
@@ -366,16 +412,32 @@
       {:else if o.kind === 'sheet'}
         {@const i = session.players.findIndex((p) => p.id === o.playerId)}
         <b>📺 {session.players[i]?.name ?? 'Player'}'s sheet</b>
-        <button class="small" disabled={i <= 0} onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i - 1].id })} aria-label="Previous player's sheet">◀</button>
-        <button class="small" disabled={i >= session.players.length - 1} onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i + 1].id })} aria-label="Next player's sheet">▶</button>
+        <button
+          class="small"
+          disabled={i <= 0}
+          onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i - 1].id })}
+          aria-label="Previous player's sheet">◀</button
+        >
+        <button
+          class="small"
+          disabled={i >= session.players.length - 1}
+          onclick={() => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: session.players[i + 1].id })}
+          aria-label="Next player's sheet">▶</button
+        >
       {:else if o.kind === 'shop'}
         <b>🛒 {game.shops?.find((s) => s.id === o.shopId)?.name ?? 'Shop'}</b>
       {:else}
         <b>📊 Scoreboard on screen</b>
         {#if o.kind === 'scoreboard' && o.under}
-          <span class="muted small">{FLOW.next.label} (or S) puts the {o.under.kind === 'rolloff' ? 'roll-off' : o.under.kind === 'popup' ? 'pop-up' : o.under.kind} back</span>
+          <span class="muted small"
+            >{FLOW.next.label} (or S) puts the {o.under.kind === 'rolloff' ? 'roll-off' : o.under.kind === 'popup' ? 'pop-up' : o.under.kind} back</span
+          >
         {/if}
-        <button class="small" onclick={() => copyText(standingsText(game, session), 'Standings copied: paste them in chat')} title="The standings as one line of text, for chat">
+        <button
+          class="small"
+          onclick={() => copyText(standingsText(game, session), 'Standings copied: paste them in chat')}
+          title="The standings as one line of text, for chat"
+        >
           📋 Copy standings
         </button>
       {/if}
@@ -384,13 +446,17 @@
       <!-- No Close here: putting it away is the blue button's (Show question ▶, ▦ Done ▶ board, Next ▶), or Esc. A question
            pop-up before its answer keeps ✕ Close, last: it puts the question away unseen (the blue button reveals it). -->
       {#if o.kind === 'popup' && o.answer && !o.revealed}
-        <button use:oneShot onclick={() => onclose()} title={closeTitle}>{VERBS.closeToolBox.label} <kbd aria-hidden="true">{VERBS.closeToolBox.key}</kbd></button>
+        <button use:oneShot onclick={() => onclose()} title={closeTitle}
+          >{VERBS.closeToolBox.label} <kbd aria-hidden="true">{VERBS.closeToolBox.key}</kbd></button
+        >
       {/if}
     </div>
     {#if outcomeActions(outcome?.actions).length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
       <div class="row">
         <span class="muted small">{outcomeName}:</span>
-        {#each outcomeActions(outcome?.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${o.name} → ${outcomeName}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
+        {#each outcomeActions(outcome?.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${o.name} → ${outcomeName}`)}
+            >{describeAction(game, a, undefined, teams)}</button
+          >{/each}
       </div>
     {/if}
     {#if !busy}
@@ -399,7 +465,9 @@
         {@const diceName = o.kind === 'dice' ? o.name : ''}
         <div class="row">
           <span class="muted small">Die {f.i + 1} → {label}:</span>
-          {#each outcomeActions(f.face.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
+          {#each outcomeActions(f.face.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}
+              >{describeAction(game, a, undefined, teams)}</button
+            >{/each}
           {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱ Start {f.face.timerSeconds}s</button>{/if}
         </div>
         {@const card = cards.get(`${actionKey}-die${f.i}`)}
@@ -412,7 +480,9 @@
         {#if outcomeActions(r.seg.actions).length || r.seg.scoreAction || r.seg.timerSeconds}
           <div class="row">
             <span class="muted small">{r.w.name} → {label}:</span>
-            {#each outcomeActions(r.seg.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
+            {#each outcomeActions(r.seg.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}
+                >{describeAction(game, a, undefined, teams)}</button
+              >{/each}
             {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
           </div>
           {@const card = cards.get(`${actionKey}-${r.w.key}`)}
@@ -440,7 +510,12 @@
         {#if session.currentPickerId === picked.id}
           <span class="muted small">★ {picked.name} picks the next clue.</span>
         {:else}
-          <button class="small" onclick={() => setPicker(session, picked.id)} title="Mark them as the player who picks the next clue" data-player-id={picked.id}>
+          <button
+            class="small"
+            onclick={() => setPicker(session, picked.id)}
+            title="Mark them as the player who picks the next clue"
+            data-player-id={picked.id}
+          >
             ★ Make {picked.name} the picker
           </button>
         {/if}
@@ -460,7 +535,8 @@
                 style:color={on ? textOn(p.color) : undefined}
                 aria-pressed={!!on}
                 data-player-id={p.id}
-                onclick={() => tag(p.id)}>{p.name}</button>
+                onclick={() => tag(p.id)}>{p.name}</button
+              >
             {/each}
           {/if}
           {#if outcome?.timerSeconds}
@@ -517,7 +593,9 @@
     padding: 2px 6px;
   }
   kbd {
-    font: 11px/1 ui-monospace, monospace;
+    font:
+      11px/1 ui-monospace,
+      monospace;
     padding: 1px 4px;
     margin-left: 4px;
     border: 1px solid currentColor;

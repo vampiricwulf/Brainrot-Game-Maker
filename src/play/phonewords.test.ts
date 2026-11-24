@@ -17,7 +17,12 @@ describe('the ▶ Play bar’s room line', () => {
     ];
     expect(whoJoined(players, phones)).toEqual({ joined: '1 of 3 joined', waiting: ['Bob', 'Player 3'] });
     expect(whoJoined(players, [])).toEqual({ joined: '0 of 3 joined', waiting: ['Ann', 'Bob', 'Player 3'] });
-    expect(whoJoined(players, ['a', 'b', 'c'].map((seatId) => ({ seatId, connected: true })))).toEqual({ joined: '3 of 3 joined', waiting: [] });
+    expect(
+      whoJoined(
+        players,
+        ['a', 'b', 'c'].map((seatId) => ({ seatId, connected: true })),
+      ),
+    ).toEqual({ joined: '3 of 3 joined', waiting: [] });
   });
 
   it('with Teams on: the people on teams, and the teams nobody is on yet', () => {
@@ -70,7 +75,9 @@ describe('a 👥 row’s phone, in words', () => {
 describe('the 📱 card’s folded buzzer options', () => {
   it('says each option as it’s set', () => {
     expect(buzzerGist({})).toBe('Buzzers open with the clue · new players: no · colors on phones · 1 s early wait');
-    expect(buzzerGist({ buzzArm: 'host', phoneJoin: true, phoneColorsOff: true, earlyBuzzLock: 0 })).toBe('Buzzers open on U · new players: yes · no colors on phones · no early wait');
+    expect(buzzerGist({ buzzArm: 'host', phoneJoin: true, phoneColorsOff: true, earlyBuzzLock: 0 })).toBe(
+      'Buzzers open on U · new players: yes · no colors on phones · no early wait',
+    );
     expect(buzzerGist({ earlyBuzzLock: 0.5 })).toContain('0.5 s early wait');
   });
   it('with Teams on, leaves out the two options teams don’t use', () => {

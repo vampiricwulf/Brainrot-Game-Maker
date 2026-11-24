@@ -2,8 +2,22 @@
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
 import { answerShowing, applyScore, finalNext, score, stepOf, toggleReveal } from './session';
 import {
-  formatPoints, newId, type ActionEvent, type BoardSpace, type FinalState, type Game, type InventoryEntry, type ItemDef, type PartnerState, type Screen, type Session, type Shop,
-  type StatField, type StatValue, type Wearable, type WorldMap,
+  formatPoints,
+  newId,
+  type ActionEvent,
+  type BoardSpace,
+  type FinalState,
+  type Game,
+  type InventoryEntry,
+  type ItemDef,
+  type PartnerState,
+  type Screen,
+  type Session,
+  type Shop,
+  type StatField,
+  type StatValue,
+  type Wearable,
+  type WorldMap,
 } from './model';
 import type { Problem } from './validate';
 
@@ -14,7 +28,14 @@ export function statFields(game: Game): StatField[] {
 }
 
 export function newStatField(name: string, type: StatField['type'] = 'number'): StatField {
-  return { id: newId(), name, type, start: type === 'number' ? 0 : type === 'checkbox' ? false : type === 'tags' ? [] : '', audience: 'hud', display: 'counter' };
+  return {
+    id: newId(),
+    name,
+    type,
+    start: type === 'number' ? 0 : type === 'checkbox' ? false : type === 'tags' ? [] : '',
+    audience: 'hud',
+    display: 'counter',
+  };
 }
 
 /** Ready-made fields offered when a game has none yet. */
@@ -101,7 +122,8 @@ export function statColor(f: StatField): string {
 export function formatStat(field: StatField, v: StatValue): string {
   if (Array.isArray(v)) return v.join(', ');
   if (typeof v === 'boolean') return v ? '✔' : '✘';
-  if (field.type === 'number') return `${field.symbol ?? ''}${Number(v).toLocaleString()}${field.max !== undefined && field.display === 'bar' ? ` / ${field.max}` : ''}`;
+  if (field.type === 'number')
+    return `${field.symbol ?? ''}${Number(v).toLocaleString()}${field.max !== undefined && field.display === 'bar' ? ` / ${field.max}` : ''}`;
   return String(v);
 }
 
@@ -277,7 +299,12 @@ export function statsProblems(game: Game): Problem[] {
       const now = cur === 'score' ? 'points' : cur.name;
       const was = statFields(game).find((f) => f.id === s.currency);
       const what = was ? `“${was.name}”, which isn't a number now` : 'a deleted stat';
-      out.push({ text: `Shop “${s.name}” charged ${what} (it charges ${now} now): pick what it charges`, tab: 'stats', level: 'warn', place: { tab: 'stats', shop: s.id } });
+      out.push({
+        text: `Shop “${s.name}” charged ${what} (it charges ${now} now): pick what it charges`,
+        tab: 'stats',
+        level: 'warn',
+        place: { tab: 'stats', shop: s.id },
+      });
     }
   return out;
 }
@@ -413,7 +440,14 @@ function capture(session: Session, game?: Game): Record<string, string> {
   for (const k of HOST) out[k] = JSON.stringify(session[k] ?? null);
   for (const id in session.used) out[`used:${id}`] = 'true';
   for (const f of finalStates(session))
-    out[`final:${f.roundId}`] = JSON.stringify({ players: f.players, order: f.order, wagers: f.wagers, chosen: f.chosen ?? {}, wagerFrom: f.wagerFrom ?? {}, wagerBy: f.wagerBy ?? {} });
+    out[`final:${f.roundId}`] = JSON.stringify({
+      players: f.players,
+      order: f.order,
+      wagers: f.wagers,
+      chosen: f.chosen ?? {},
+      wagerFrom: f.wagerFrom ?? {},
+      wagerBy: f.wagerBy ?? {},
+    });
   // The Final being played: its step (each step on from the wagers is an undoable step, so Undo goes back one).
   if (session.phase === 'final' && session.final?.roundId) out[`step:${session.final.roundId}`] = JSON.stringify(session.finalStep ?? null);
   // 🎭 The deal on the table: whether Who was who is on stream (only that: dealing and sending aren't steps).
@@ -427,7 +461,14 @@ function capture(session: Session, game?: Game): Record<string, string> {
   const rb = c ? session.remote?.buzz : null;
   if (c && rb && rb.clue === `${c.round}.${c.cat}.${c.row}`) out[`pass:${rb.clue}`] = JSON.stringify(rb.passAt ?? null);
   const pt = session.phase === 'clue' ? session.partner : null;
-  if (pt) out[`pair:${pt.clue}`] = JSON.stringify({ pickerId: pt.pickerId ?? null, partnerId: pt.partnerId ?? null, how: pt.how ?? null, member: pt.member ?? null, stage: pt.stage });
+  if (pt)
+    out[`pair:${pt.clue}`] = JSON.stringify({
+      pickerId: pt.pickerId ?? null,
+      partnerId: pt.partnerId ?? null,
+      how: pt.how ?? null,
+      member: pt.member ?? null,
+      stage: pt.stage,
+    });
   for (const w of game?.worlds ?? [])
     for (const m of w.maps) {
       out[`map:${w.id}/${m.id}`] = JSON.stringify({ cols: m.cols, rows: m.rows });
@@ -454,7 +495,8 @@ function restore(session: Session, json: string, game?: Game): void {
       const now = session[k as (typeof PARTS)[number]] as Record<string, Record<string, unknown>> | undefined;
       // (A step only turns split view off by leaving one party: with one party now, the snapshot's split stands, so
       // undoing a Regroup puts split view back.)
-      for (const f of SHOWN[k] ?? []) for (const id in part) if (now?.[id] && !(f === 'split' && ((now[id].parties as unknown[] | undefined)?.length ?? 0) < 2)) part[id][f] = now[id][f];
+      for (const f of SHOWN[k] ?? [])
+        for (const id in part) if (now?.[id] && !(f === 'split' && ((now[id].parties as unknown[] | undefined)?.length ?? 0) < 2)) part[id][f] = now[id][f];
       Object.assign(session, { [k]: part });
     } else if ((HOST as readonly string[]).includes(k)) Object.assign(session, { [k]: v ?? undefined });
     else if (k.startsWith('used:')) putTile(session, k.slice(5), !!v);
@@ -532,7 +574,13 @@ function putPass(session: Session, clue: string, passAt: number | null): void {
   else b.passAt = passAt;
 }
 
-type Pair = { pickerId: string | null; partnerId: string | null; how: PartnerState['how'] | null; member: PartnerState['member'] | null; stage: PartnerState['stage'] };
+type Pair = {
+  pickerId: string | null;
+  partnerId: string | null;
+  how: PartnerState['how'] | null;
+  member: PartnerState['member'] | null;
+  stage: PartnerState['stage'];
+};
 /** A partner clue's picker, partner and stage again: only while that clue is still the one open. */
 function putPair(session: Session, clue: string, v: Pair | null): void {
   const pt = session.phase === 'clue' ? session.partner : null;
@@ -766,12 +814,13 @@ export function wornPlace(w: Wearable): { x: number; y: number; w: number; rotat
 
 /** The worn items a player has equipped (their catalog entries). */
 export function wornItems(game: Game, session: Session, playerId: string): ItemDef[] {
-  return inventory(session, playerId)
-    .filter((e) => e.equipped)
-    .map((e) => itemDef(game, e.item))
-    // (Not a secret one: it would show on stream on the avatar, though the sheet keeps it out of the list.)
-    .filter((d): d is ItemDef => !!d?.wearable && !d.secret)
-    // Two copies of one item worn show once: AvatarToken keys its gear by item id, and a repeated key would throw and stop every update.
-    .filter((d, i, all) => all.findIndex((x) => x.id === d.id) === i);
+  return (
+    inventory(session, playerId)
+      .filter((e) => e.equipped)
+      .map((e) => itemDef(game, e.item))
+      // (Not a secret one: it would show on stream on the avatar, though the sheet keeps it out of the list.)
+      .filter((d): d is ItemDef => !!d?.wearable && !d.secret)
+      // Two copies of one item worn show once: AvatarToken keys its gear by item id, and a repeated key would throw and stop every update.
+      .filter((d, i, all) => all.findIndex((x) => x.id === d.id) === i)
+  );
 }
-

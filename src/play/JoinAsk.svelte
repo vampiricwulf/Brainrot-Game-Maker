@@ -43,8 +43,13 @@
     title={down ? downTitle : full ? 'The game is full (⚖ Game rules › Most players)' : 'Add them as a new player'}
     onclick={() => onadd(phone.conn, phone.pendingName ?? '')}>✔ Add</button
   >
-  <button class="small" use:oneShot onclick={() => onreject(phone.conn)} disabled={down} aria-label="Turn {phone.pendingName} away" title={down ? downTitle : 'Turn them away'}
-    >✕ No</button
+  <button
+    class="small"
+    use:oneShot
+    onclick={() => onreject(phone.conn)}
+    disabled={down}
+    aria-label="Turn {phone.pendingName} away"
+    title={down ? downTitle : 'Turn them away'}>✕ No</button
   >
 </span>
 

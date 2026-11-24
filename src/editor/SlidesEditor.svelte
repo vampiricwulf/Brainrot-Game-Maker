@@ -33,35 +33,41 @@
 
 <!-- (One box for the page under the header: the slide refits as the fields above it grow or shrink, see fitheight.) -->
 <div>
-<div class="grid">
-  <label class="field">
-    Round name
-    <!-- (Left empty, it plays under the name its tab shows.) -->
-    <input bind:value={round.name} placeholder={roundName(round, app.game.rounds.indexOf(round))} maxlength="40" data-round-name />
-  </label>
-  <label class="field grow">
-    Host notes (off stream, except in a single window)
-    <textarea rows="1" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
-  </label>
-</div>
-<SlideTabs
-  holder={round}
-  bind:side
-  bind:qi
-  what={`round “${roundName(round, app.game.rounds.indexOf(round))}”`}
-  plain
-  place={(_, slide) => ({ tab: 'round', round: round.id, part: { kind: 'slides', slide } })}
-  onadded={() => void tick().then(() => qField?.focus())}
-/>
-<!-- Quick text: the slide's main text, so a plain slide never needs the canvas. Under the slide tabs, with the slide it
+  <div class="grid">
+    <label class="field">
+      Round name
+      <!-- (Left empty, it plays under the name its tab shows.) -->
+      <input bind:value={round.name} placeholder={roundName(round, app.game.rounds.indexOf(round))} maxlength="40" data-round-name />
+    </label>
+    <label class="field grow">
+      Host notes (off stream, except in a single window)
+      <textarea rows="1" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
+    </label>
+  </div>
+  <SlideTabs
+    holder={round}
+    bind:side
+    bind:qi
+    what={`round “${roundName(round, app.game.rounds.indexOf(round))}”`}
+    plain
+    place={(_, slide) => ({ tab: 'round', round: round.id, part: { kind: 'slides', slide } })}
+    onadded={() => void tick().then(() => qField?.focus())}
+  />
+  <!-- Quick text: the slide's main text, so a plain slide never needs the canvas. Under the slide tabs, with the slide it
      edits. -->
-<label class="field quick">
-  {slides.length > 1 ? `Text (slide ${at + 1} of ${slides.length})` : 'Text'}
-  <textarea bind:this={qField} rows="2" data-field="q" placeholder="Type what the slide says…" value={slideText(slide)} oninput={(e) => setSlideText(slide, e.currentTarget.value) && followClueText(app.game, [slide])}></textarea>
-</label>
-{#key `${round.id}-${slideKeyOf(slide)}`}
-  <SlideEditor {slide} styletargets={styleTargets} styleslides quickfield="q" placeholder="Click to type on the slide" tabbed fitheight />
-{/key}
+  <label class="field quick">
+    {slides.length > 1 ? `Text (slide ${at + 1} of ${slides.length})` : 'Text'}
+    <textarea
+      bind:this={qField}
+      rows="2"
+      data-field="q"
+      placeholder="Type what the slide says…"
+      value={slideText(slide)}
+      oninput={(e) => setSlideText(slide, e.currentTarget.value) && followClueText(app.game, [slide])}></textarea>
+  </label>
+  {#key `${round.id}-${slideKeyOf(slide)}`}
+    <SlideEditor {slide} styletargets={styleTargets} styleslides quickfield="q" placeholder="Click to type on the slide" tabbed fitheight />
+  {/key}
 </div>
 
 <style>

@@ -42,7 +42,12 @@ describe('Find', () => {
     clue.everyone = true;
     clue.type = 'standard';
     const [hit] = findAll(g, 'stockholmsyndrome');
-    expect(hit).toMatchObject({ icon: '✍', text: 'Stockholmsyndrome', focus: '[data-field="choice-1"]', place: { part: { kind: 'clue', clue: r.categories[0].clues[0].id } } });
+    expect(hit).toMatchObject({
+      icon: '✍',
+      text: 'Stockholmsyndrome',
+      focus: '[data-field="choice-1"]',
+      place: { part: { kind: 'clue', clue: r.categories[0].clues[0].id } },
+    });
     expect(hit.where).toMatch(/ › Choices$/);
     // A Final's, while its players type their answers on their phones.
     const fin = g.rounds.find((x) => x.mode === 'final')!;
@@ -96,7 +101,11 @@ describe('Find', () => {
     expect(findAll(g, 'riddle').find((h) => h.icon === '🧩')?.place).toEqual({ ...screen, element: cat.id });
     expect(findAll(g, 'cave is yours').find((h) => h.icon === '🧩')?.place).toEqual({ ...screen, element: cat.id });
     cave.variants = [{ id: 'fire', name: 'On fire', slide: JSON.parse(JSON.stringify(cave.slide)) }];
-    expect(findAll(g, 'riddle').filter((h) => h.icon === '🧩').map((h) => h.place)).toEqual([
+    expect(
+      findAll(g, 'riddle')
+        .filter((h) => h.icon === '🧩')
+        .map((h) => h.place),
+    ).toEqual([
       { ...screen, element: cat.id },
       { ...screen, look: 'fire', element: cat.id },
     ]);
@@ -115,7 +124,12 @@ describe('Find', () => {
     g.items![0].onUse = [card('b2', 'Mangoword')];
     g.wheels.push({ ...newWheel('Prizes'), id: 'w9' });
     g.wheels.at(-1)!.segments[0].actions = [{ id: 'b3', do: 'note', text: 'Kiwiword' }];
-    g.dice.push({ id: 'd9', name: 'Fate', showTotal: true, dice: [{ id: 'x', sides: 2, count: 1, customFaces: [{ label: 'Heads', actions: [card('b4', 'Limeword')] }, { label: 'Tails' }] }] });
+    g.dice.push({
+      id: 'd9',
+      name: 'Fate',
+      showTotal: true,
+      dice: [{ id: 'x', sides: 2, count: 1, customFaces: [{ label: 'Heads', actions: [card('b4', 'Limeword')] }, { label: 'Tails' }] }],
+    });
     expect(findAll(g, 'bananaword').find((h) => h.icon === '🧩')?.place).toMatchObject({ tab: 'world', element: cat.id });
     expect(findAll(g, 'mangoword')[0].place).toEqual({ tab: 'stats', item: g.items![0].id });
     expect(findAll(g, 'kiwiword')[0].place).toEqual({ tab: 'tools', wheel: 'w9' });
@@ -198,14 +212,25 @@ describe('Find: 🤫 cards', () => {
       { icon: '🤫', text: 'Quuxly big', where: `${name} › Leader hint`, place: place('f1'), focus: 'main [data-field="card"]' },
       { icon: '🤫', text: 'Quuxly small', where: `${name} › Card 2`, place: place('f2'), focus: 'main [data-field="card"]' },
     ]);
-    expect(findAll(game, 'leader')).toEqual([{ icon: '🤫', text: 'Leader hint', where: `${name} › Leader hint`, place: place('f1'), focus: 'main [data-field="card-name"]' }]);
+    expect(findAll(game, 'leader')).toEqual([
+      { icon: '🤫', text: 'Leader hint', where: `${name} › Leader hint`, place: place('f1'), focus: 'main [data-field="card-name"]' },
+    ]);
   });
 });
 
 describe('Find: 🎭 deals', () => {
   it('finds a deal by its name, a part’s name or its card’s words, and goes to it in 🎡 Wheels, Dice & Deals', () => {
     const game = newGame();
-    game.deals = [{ id: 'd1', name: 'Mystery night', parts: [{ id: 'p1', name: 'Spy', count: 1, card: textSlide('Blend in, quietly') }, { id: 'p2', name: 'Guest', count: 'rest', card: textSlide('') }] }];
+    game.deals = [
+      {
+        id: 'd1',
+        name: 'Mystery night',
+        parts: [
+          { id: 'p1', name: 'Spy', count: 1, card: textSlide('Blend in, quietly') },
+          { id: 'p2', name: 'Guest', count: 'rest', card: textSlide('') },
+        ],
+      },
+    ];
     for (const q of ['mystery', 'spy', 'quietly']) {
       const hits = findAll(game, q);
       expect(hits).toHaveLength(1);
@@ -227,6 +252,10 @@ describe('Find: the editor’s 🤫 Cards', () => {
     const byWords = findAll(game, 'spoon');
     expect(byWords[0]).toMatchObject({ where: 'Cards › Tip A', place: { tab: 'cards', card: 'sc1' }, focus: 'main [data-field="card"]' });
     // One left blank is named by its place in the list, as the list names it.
-    expect(findAll(game, 'zorblax')[0]).toMatchObject({ where: 'Cards › Untitled card 2', place: { tab: 'cards', card: 'sc2' }, focus: 'main [data-field="card"]' });
+    expect(findAll(game, 'zorblax')[0]).toMatchObject({
+      where: 'Cards › Untitled card 2',
+      place: { tab: 'cards', card: 'sc2' },
+      focus: 'main [data-field="card"]',
+    });
   });
 });

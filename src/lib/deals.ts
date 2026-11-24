@@ -105,7 +105,14 @@ export function newDealPart(n: number): DealPart {
 /** A new deal: two parts, one of each and the rest. */
 export function newDeal(name = 'New deal'): DealPreset {
   // (Names that read after "You're the": the phone's title.)
-  return { id: newId(), name, parts: [{ ...newDealPart(1), name: 'Outsider' }, { ...newDealPart(2), name: 'Insider', count: 'rest' }] };
+  return {
+    id: newId(),
+    name,
+    parts: [
+      { ...newDealPart(1), name: 'Outsider' },
+      { ...newDealPart(2), name: 'Insider', count: 'rest' },
+    ],
+  };
 }
 
 /** A part's name as the phone and the reveal say it ("Part 2" for one left blank). */
@@ -177,7 +184,12 @@ export interface DealOptions {
  * the players dealt in (on each team, dealt per team), only one part goes to "the rest", and a part that draws needs a
  * wheel with slices.
  */
-export function dealProblem(game: Pick<Game, 'wheels'>, deal: Pick<DealPreset, 'parts' | 'wheel'>, pool: CardTo[], opts: Omit<DealOptions, 'rand'> = {}): string {
+export function dealProblem(
+  game: Pick<Game, 'wheels'>,
+  deal: Pick<DealPreset, 'parts' | 'wheel'>,
+  pool: CardTo[],
+  opts: Omit<DealOptions, 'rand'> = {},
+): string {
   if (!deal.parts.length) return 'Add a part first';
   if (deal.parts.length > DEAL_PARTS_MAX) return `A deal has ${DEAL_PARTS_MAX} parts at most`;
   if (deal.parts.filter((p) => p.count === 'rest').length > 1) return 'Only one part can go to “the rest”';
@@ -192,12 +204,15 @@ export function dealProblem(game: Pick<Game, 'wheels'>, deal: Pick<DealPreset, '
       // (Those picked for "the rest" take a place too.)
       need += part.count === 'rest' || mine.length ? mine.length : part.count;
     }
-    if (need > group.length) return `The parts need ${need} player${need === 1 ? '' : 's'}${opts.perTeam ? ' on each team' : ''}: ${group.length} ${group.length === 1 ? 'is' : 'are'} dealt in`;
+    if (need > group.length)
+      return `The parts need ${need} player${need === 1 ? '' : 's'}${opts.perTeam ? ' on each team' : ''}: ${group.length} ${group.length === 1 ? 'is' : 'are'} dealt in`;
   }
   const draws = deal.parts.find((p) => p.draw);
   if (draws && !drawable(game, deal).length) {
     const i = deal.parts.indexOf(draws);
-    return deal.wheel && game.wheels.some((w) => w.id === deal.wheel) ? 'Its wheel has no slices to draw' : `Choose a wheel for ${partName(draws, i)}’s cards to draw from`;
+    return deal.wheel && game.wheels.some((w) => w.id === deal.wheel)
+      ? 'Its wheel has no slices to draw'
+      : `Choose a wheel for ${partName(draws, i)}’s cards to draw from`;
   }
   return '';
 }
@@ -231,7 +246,11 @@ export function handSlide(game: Pick<Game, 'media'>, card: Slide, slice?: Pick<W
  * its first slice as a sample, as handSlide adds it (`sample`: "+ a slice of Locations: Beach"; each deal draws its
  * own). The card alone, and no sample, when it draws none or the wheel has no slices.
  */
-export function partOnPhone(game: Pick<Game, 'wheels' | 'media'>, deal: Pick<DealPreset, 'wheel'>, part: Pick<DealPart, 'card' | 'draw'>): { slide: Slide; sample?: string } {
+export function partOnPhone(
+  game: Pick<Game, 'wheels' | 'media'>,
+  deal: Pick<DealPreset, 'wheel'>,
+  part: Pick<DealPart, 'card' | 'draw'>,
+): { slide: Slide; sample?: string } {
   const wheel = part.draw && deal.wheel ? game.wheels.find((w) => w.id === deal.wheel) : undefined;
   const first = wheel ? drawable(game, deal)[0] : undefined;
   if (!wheel || !first) return { slide: part.card };
@@ -286,7 +305,13 @@ export function dealHands(
   const dealt = all.filter((t) => partOf.has(toKey(t)));
   // The wheel: one slice for every part that shares it, and one each for the parts that draw their own.
   const slices = drawable(game, deal);
-  const pick = (from: WheelSegment[]) => from[weightedIndex(from.map((s) => s.weight), rand)];
+  const pick = (from: WheelSegment[]) =>
+    from[
+      weightedIndex(
+        from.map((s) => s.weight),
+        rand,
+      )
+    ];
   const shared = dealt.some((t) => partOf.get(toKey(t))!.draw === 'shared') ? pick(slices) : undefined;
   const fresh = () => (slices.length > 1 && shared ? slices.filter((s) => s !== shared) : [...slices]);
   let bag = fresh();
@@ -303,7 +328,13 @@ export function dealHands(
       bag = bag.filter((s) => s !== slice);
     }
     const name = partName(part, deal.parts.indexOf(part));
-    return { to: plainTo(t), part: name, ...(slice ? { slice: label(slice) } : {}), slide: handSlide(game, part.card, slice ? { ...slice, label: label(slice) } : undefined), ...(role ? { role: true } : {}) };
+    return {
+      to: plainTo(t),
+      part: name,
+      ...(slice ? { slice: label(slice) } : {}),
+      slide: handSlide(game, part.card, slice ? { ...slice, label: label(slice) } : undefined),
+      ...(role ? { role: true } : {}),
+    };
   });
   return { hands, dealtIn: all.map(plainTo) };
 }
@@ -313,7 +344,15 @@ export function dealHands(
  * whose cards are out is replaced: its cards are taken back with it (one deal at a time).
  */
 export function startDeal(session: Session, deal: Pick<DealPreset, 'name' | 'parts'>, hands: DealHand[], dealtIn: CardTo[], now = Date.now()): DealState {
-  const d: DealState = { id: newId(), name: deal.name.trim() || 'Deal', at: now, parts: deal.parts.map(partName), hands, in: dealtIn.map(plainTo), stage: 'dealt' };
+  const d: DealState = {
+    id: newId(),
+    name: deal.name.trim() || 'Deal',
+    at: now,
+    parts: deal.parts.map(partName),
+    hands,
+    in: dealtIn.map(plainTo),
+    stage: 'dealt',
+  };
   takeBackDealCards(session);
   session.deal = d;
   return d;
@@ -526,7 +565,9 @@ export function takeBackDeal(game: CardGame, session: Session): SentCard[] {
 export function dealCopyText(game: Pick<Game, 'media'>, session: Pick<Session, 'players'>, d: Pick<DealState, 'name' | 'hands'>, to: CardTo): string {
   const who = to.member?.name ?? session.players.find((p) => p.id === to.seat)?.name ?? 'you';
   const h = d.hands.find((x) => toKey(x.to) === toKey(to));
-  const body = h ? [h.role ? `You’re the ${h.part}` : '', cardWords(h.slide), ...cardLinks(game, h.slide)].filter(Boolean).join('\n') : 'no part for you this time';
+  const body = h
+    ? [h.role ? `You’re the ${h.part}` : '', cardWords(h.slide), ...cardLinks(game, h.slide)].filter(Boolean).join('\n')
+    : 'no part for you this time';
   return `🤫 For ${who} only (${dealLabel(d)}): ${body}`;
 }
 
@@ -555,7 +596,15 @@ export function dealReveal(session: Pick<Session, 'deal' | 'players'>): { name: 
   const lines = d.hands.flatMap((h): RevealLine[] => {
     const p = session.players.find((x) => x.id === h.to.seat);
     if (!p) return [];
-    return [{ name: h.to.member?.name ?? p.name, ...(h.to.member ? { team: p.name } : {}), color: p.color, part: same ? h.slice! : h.part, ...(h.slice && !same ? { slice: h.slice } : {}) }];
+    return [
+      {
+        name: h.to.member?.name ?? p.name,
+        ...(h.to.member ? { team: p.name } : {}),
+        color: p.color,
+        part: same ? h.slice! : h.part,
+        ...(h.slice && !same ? { slice: h.slice } : {}),
+      },
+    ];
   });
   return { name: d.name, lines };
 }
@@ -591,7 +640,9 @@ export function repairDeal(session: Session): void {
   if (d !== undefined && d !== null) {
     const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
     const okTo = (t: unknown) =>
-      isObj(t) && typeof t.seat === 'string' && (t.member === undefined || (isObj(t.member) && typeof t.member.id === 'string' && typeof t.member.name === 'string'));
+      isObj(t) &&
+      typeof t.seat === 'string' &&
+      (t.member === undefined || (isObj(t.member) && typeof t.member.id === 'string' && typeof t.member.name === 'string'));
     const okHand = (h: unknown): h is DealHand =>
       isObj(h) &&
       okTo(h.to) &&

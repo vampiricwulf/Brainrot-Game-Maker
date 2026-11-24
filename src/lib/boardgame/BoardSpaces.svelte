@@ -145,7 +145,13 @@
     <!-- (No numbers in the circles: a board's spaces aren't counted out loud; their names show when ticked.) -->
     {#if labelled(s)}
       <!-- (Absolutely placed under the circle: a hidden name leaves the board as it is. Near a side it moves in.) -->
-      <span class="label" class:off={!nameShown(s)} style:translate={nameShift(s) ? `${nameShift(s)}px 0` : undefined} data-name-hidden={nameShown(s) ? undefined : ''}>{#if !nameShown(s)}<span class="eye" aria-hidden="true">⊘</span>{/if}{s.name}</span>
+      <span
+        class="label"
+        class:off={!nameShown(s)}
+        style:translate={nameShift(s) ? `${nameShift(s)}px 0` : undefined}
+        data-name-hidden={nameShown(s) ? undefined : ''}
+        >{#if !nameShown(s)}<span class="eye" aria-hidden="true">⊘</span>{/if}{s.name}</span
+      >
     {/if}
   </div>
 {/each}
@@ -194,14 +200,19 @@
   }
   .space.grab:focus-visible,
   .space.keys:focus-visible {
-    box-shadow: 0 0 0 10px #fff, 0 0 0 18px #000, 0 6px 12px rgba(0, 0, 0, 0.5);
+    box-shadow:
+      0 0 0 10px #fff,
+      0 0 0 18px #000,
+      0 6px 12px rgba(0, 0, 0, 0.5);
   }
   .space.keys:focus {
     outline: none;
   }
   .space.start {
     border-color: #fff;
-    box-shadow: 0 0 0 6px #000, 0 6px 12px rgba(0, 0, 0, 0.5);
+    box-shadow:
+      0 0 0 6px #000,
+      0 6px 12px rgba(0, 0, 0, 0.5);
   }
   .space.sel {
     outline: 6px dashed #ffcc00;

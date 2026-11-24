@@ -14,7 +14,10 @@ const KEEPS = new Set(['pre', 'textarea']);
 
 /** The markup only: script and style bodies blanked (lines kept, so the line numbers stay), for a quick parse. */
 const markupOf = (src: string) =>
-  src.replace(/(<(script|style)\b[^>]*>)([\s\S]*?)(<\/\2>)/g, (_, open: string, _tag, body: string, close: string) => open + body.replace(/[^\n]/g, ' ') + close);
+  src.replace(
+    /(<(script|style)\b[^>]*>)([\s\S]*?)(<\/\2>)/g,
+    (_, open: string, _tag, body: string, close: string) => open + body.replace(/[^\n]/g, ' ') + close,
+  );
 
 /** Each place in a component where a space on the line would be dropped: "path:line". */
 function droppedSpaces(path: string, src: string): string[] {
@@ -48,7 +51,7 @@ function droppedSpaces(path: string, src: string): string[] {
 
 describe('spaces in what the app shows', () => {
   // (Every component parsed: a while on a busy machine.)
-  it('none is written where Svelte drops it (use {\' \'})', { timeout: 30_000 }, () => {
+  it("none is written where Svelte drops it (use {' '})", { timeout: 30_000 }, () => {
     expect(Object.keys(sources).length).toBeGreaterThan(100);
     const bad = Object.entries(sources).flatMap(([f, src]) => droppedSpaces(f, src));
     expect(bad).toEqual([]);

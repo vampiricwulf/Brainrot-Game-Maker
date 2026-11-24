@@ -18,8 +18,22 @@ import { formatPoints, isBoard, isBoardGame, isFinal, roundName, type Action, ty
 import { cardDone, draftDeltas, scoreCards, scoreDraft, wheelSpentUp, type ScoreCard } from '../../lib/overlay';
 import { partnerCandidates, partnerPickStep } from '../../lib/partner';
 import {
-  answerShowing, coWinnersHold, currentClueInfo, currentFinal, ddCap, finalRevealNow, finalWagerCap, finalWagerProblems, nameList, playerName, roundComplete, slidePosition,
-  tiebreakHolds, tiedForFirst, toolOnlyClue, typedAnswer,
+  answerShowing,
+  coWinnersHold,
+  currentClueInfo,
+  currentFinal,
+  ddCap,
+  finalRevealNow,
+  finalWagerCap,
+  finalWagerProblems,
+  nameList,
+  playerName,
+  roundComplete,
+  slidePosition,
+  tiebreakHolds,
+  tiedForFirst,
+  toolOnlyClue,
+  typedAnswer,
 } from '../../lib/session';
 import { describeAction, isRespin, needsSource, sliceLabel } from '../../lib/tools';
 import { boardNow, decidingAction, isMover, landingRan, moverDiceName, moverResult } from '../boardgame/bgops';
@@ -371,7 +385,11 @@ export function toolOf(c: GoCtx): { o: Overlay; own: boolean; question: boolean;
   if (!o || o.kind === 'shop') return null;
   if (o.kind === 'wheel' && o.partnerFor && s.partner?.clue === o.partnerFor) return null;
   const round = c.game.rounds[s.currentRound];
-  if ((o.kind === 'dice' && o.mover) || (o.kind === 'wheel' && s.phase === 'boardgame' && isBoardGame(round) && round.mover.kind === 'wheel' && o.wheelId === round.mover.wheel)) return null;
+  if (
+    (o.kind === 'dice' && o.mover) ||
+    (o.kind === 'wheel' && s.phase === 'boardgame' && isBoardGame(round) && round.mover.kind === 'wheel' && o.wheelId === round.mover.wheel)
+  )
+    return null;
   const info = s.phase === 'clue' ? currentClueInfo(s, c.game) : undefined;
   const own = o.kind !== 'scoreboard' && !!info && tileToolUp(c.live, info.clue);
   const turns = o.kind === 'wheel' || o.kind === 'dice' || o.kind === 'rolloff';
@@ -379,7 +397,15 @@ export function toolOf(c: GoCtx): { o: Overlay; own: boolean; question: boolean;
 }
 
 /** What's over the stage, in the teach line's words ("Esc on the question goes on without asking"). */
-const TOOL_WORD: Record<Overlay['kind'], string> = { wheel: 'wheel', dice: 'dice', rolloff: 'roll-off', scoreboard: 'scores', popup: 'question', sheet: 'sheet', shop: 'shop' };
+const TOOL_WORD: Record<Overlay['kind'], string> = {
+  wheel: 'wheel',
+  dice: 'dice',
+  rolloff: 'roll-off',
+  scoreboard: 'scores',
+  popup: 'question',
+  sheet: 'sheet',
+  shop: 'shop',
+};
 
 /**
  * The blue button over what's over the stage: a tile's own wheel or dice, Show question ▶ (a tile with no question:
@@ -388,19 +414,30 @@ const TOOL_WORD: Record<Overlay['kind'], string> = { wheel: 'wheel', dice: 'dice
  */
 function toolStep(c: GoCtx, t: NonNullable<ReturnType<typeof toolOf>>): Step {
   const { o } = t;
-  if (o.kind === 'popup' && o.answer && !o.revealed) return n({ ...FLOW.reveal, title: 'Its answer goes on screen (R shows or hides it at once) · or click it' }, 'popreveal', c.act.revealPopup, { reveals: true });
+  if (o.kind === 'popup' && o.answer && !o.revealed)
+    return n({ ...FLOW.reveal, title: 'Its answer goes on screen (R shows or hides it at once) · or click it' }, 'popreveal', c.act.revealPopup, {
+      reveals: true,
+    });
   const dice = o.kind === 'dice';
   const busy = t.busy ? { busy: `Still ${dice || o.kind === 'rolloff' ? 'rolling' : 'spinning'}: wait for it to land` } : {};
   const what = { what: TOOL_WORD[o.kind] };
   if (!t.own) return n(FLOW.next, 'tool', c.act.closeTool, { ...busy, ...what });
   const fresh = (o.kind === 'wheel' && !o.spin && !wheelSpentUp(o, c.session, c.game)) || (o.kind === 'dice' && !o.roll);
   const word = dice ? 'dice go' : 'wheel goes';
-  const verb = t.question ? { ...FLOW.showQuestion, title: `The ${word}, and the question goes on screen` } : { ...FLOW.done, title: `The ${word}: back to the board, the tile used` };
-  return n(verb, 'tool', c.act.closeTool, { ...busy, ...what, ...(t.question ? {} : { flow: 'done' as const }), ...(fresh && !t.busy ? { tool: dice ? ('roll' as const) : ('spin' as const) } : {}) });
+  const verb = t.question
+    ? { ...FLOW.showQuestion, title: `The ${word}, and the question goes on screen` }
+    : { ...FLOW.done, title: `The ${word}: back to the board, the tile used` };
+  return n(verb, 'tool', c.act.closeTool, {
+    ...busy,
+    ...what,
+    ...(t.question ? {} : { flow: 'done' as const }),
+    ...(fresh && !t.busy ? { tool: dice ? ('roll' as const) : ('spin' as const) } : {}),
+  });
 }
 
 /** A Daily Double's splash: Show question ▶, never greyed (who found it and the wager are typed: see ddWaits). */
-const ddStep = (c: GoCtx): Step => n({ ...FLOW.showQuestion, title: 'The question goes on screen, for their wager' }, 'ddshow', c.act.ddShow, { enterIsNext: true });
+const ddStep = (c: GoCtx): Step =>
+  n({ ...FLOW.showQuestion, title: 'The question goes on screen, for their wager' }, 'ddshow', c.act.ddShow, { enterIsNext: true });
 
 /** The blue button's step now (null: no blue button: a board with tiles left, the end screen, an RPG round, ✎ Edit board). */
 export function mainStep(c: GoCtx): Step | null {
@@ -427,7 +464,8 @@ export function mainStep(c: GoCtx): Step | null {
   }
   if (s.phase === 'boardgame') return turnStep(c);
   // A board played out goes on only from a click (N mashed after the last clue mustn't jump on stream).
-  if (s.phase === 'board') return roundComplete(s, c.game) ? { id: 'nextround', verb: nextRoundVerb(c.game, s.currentRound), run: c.act.nextRound, clickOnly: true } : null;
+  if (s.phase === 'board')
+    return roundComplete(s, c.game) ? { id: 'nextround', verb: nextRoundVerb(c.game, s.currentRound), run: c.act.nextRound, clickOnly: true } : null;
   if (s.phase === 'clue') return clueStep(c);
   if (s.phase === 'final') return finalStepOf(c);
   if (s.phase === 'tiebreaker') return tiebreakerStep(c);
@@ -461,7 +499,10 @@ function finalStepOf(c: GoCtx): Step | null {
   if (step === 'question') {
     const pos = slidePosition(s, c.game);
     if (pos && pos.at < pos.of) return n(FLOW.nextSlide(pos.at, pos.of), 'slide', c.act.slide, { flow: 'pager' });
-    return n({ ...FLOW.reveal, title: 'The answer goes on screen (R shows or hides it at once) · or click the question' }, 'finalreveal', c.act.reveal, { reveals: true, flow: 'reveal' });
+    return n({ ...FLOW.reveal, title: 'The answer goes on screen (R shows or hides it at once) · or click the question' }, 'finalreveal', c.act.reveal, {
+      reveals: true,
+      flow: 'reveal',
+    });
   }
   if (step === 'answer') return n(FLOW.startReveals(noun), 'reveals', c.act.finalOn);
   const r = finalRevealNow(s);
@@ -508,7 +549,11 @@ function clueStep(c: GoCtx, done = false): Step | null {
   if (pt?.stage === 'pick') {
     if (done) return null;
     const w = c.partner?.wheel;
-    if (w) return n({ ...FLOW.next, title: 'The wheel goes, and the pair shows on PARTNER UP!' }, 'close', c.act.closeWheel, { enterIsNext: true, ...(w === 'turning' ? { busy: 'Still spinning: wait for it to land' } : {}) });
+    if (w)
+      return n({ ...FLOW.next, title: 'The wheel goes, and the pair shows on PARTNER UP!' }, 'close', c.act.closeWheel, {
+        enterIsNext: true,
+        ...(w === 'turning' ? { busy: 'Still spinning: wait for it to land' } : {}),
+      });
     return n({ ...FLOW.showQuestion, title: 'The question goes on screen (nothing is sent to anyone)' }, 'question', c.act.partnerShow, { enterIsNext: true });
   }
   const doneStep = n(FLOW.done, 'done', c.act.back, { flow: 'done' });
@@ -579,8 +624,22 @@ function scoreItems(c: GoCtx): LeftItem[] {
       text: `${who} hasn’t been judged on this Daily Double.`,
       lost: 'no points',
       quick: [
-        { label: `＋ Award ${who} ${pts} ▶ board`, enter: true, then: 'go', tone: 'good', run: () => c.act.award(1, [ddId], w), aria: `Award ${who} ${said}, then back to the board` },
-        { label: `− Deduct ${who} ${pts} ▶ board`, key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.award(-1, [ddId], w), aria: `Deduct ${said} from ${who}, then back to the board` },
+        {
+          label: `＋ Award ${who} ${pts} ▶ board`,
+          enter: true,
+          then: 'go',
+          tone: 'good',
+          run: () => c.act.award(1, [ddId], w),
+          aria: `Award ${who} ${said}, then back to the board`,
+        },
+        {
+          label: `− Deduct ${who} ${pts} ▶ board`,
+          key: '⇧⏎',
+          then: 'go',
+          tone: 'bad',
+          run: () => c.act.award(-1, [ddId], w),
+          aria: `Deduct ${said} from ${who}, then back to the board`,
+        },
       ],
     });
   }
@@ -597,8 +656,22 @@ function scoreItems(c: GoCtx): LeftItem[] {
       text: `${who} is answering and has no points for this clue yet.`,
       lost: 'no points',
       quick: [
-        { label: `＋ Award ${who} ${pts} ▶ board`, enter: true, then: 'go', tone: 'good', run: () => c.act.award(1, [id], a), aria: `Award ${who} ${pts}, then back to the board` },
-        { label: `− Deduct ${who} ${pts} ▶ board`, key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.award(-1, [id], a), aria: `Deduct ${pts} from ${who}, then back to the board` },
+        {
+          label: `＋ Award ${who} ${pts} ▶ board`,
+          enter: true,
+          then: 'go',
+          tone: 'good',
+          run: () => c.act.award(1, [id], a),
+          aria: `Award ${who} ${pts}, then back to the board`,
+        },
+        {
+          label: `− Deduct ${who} ${pts} ▶ board`,
+          key: '⇧⏎',
+          then: 'go',
+          tone: 'bad',
+          run: () => c.act.award(-1, [id], a),
+          aria: `Deduct ${pts} from ${who}, then back to the board`,
+        },
       ],
     });
   } else
@@ -642,9 +715,23 @@ function judgeItems(c: GoCtx): LeftItem[] {
       run: c.act.judgeAll,
       aria: covers ? 'Judge all by the right choice, then back to the board' : 'Judge all by the right choice',
     });
-  if (!covers) quick.push({ label: '✍ Judge them', enter: !all, then: 'close', run: () => c.act.toRow(left[0]), aria: 'Judge them: the keys go to the first answer to judge' });
+  if (!covers)
+    quick.push({
+      label: '✍ Judge them',
+      enter: !all,
+      then: 'close',
+      run: () => c.act.toRow(left[0]),
+      aria: 'Judge them: the keys go to the first answer to judge',
+    });
   // (Only once one is judged: it marks answers the host may not have read, so no key.)
-  if (!all && some) quick.push({ label: `✘ The rest are wrong (${who}) ▶ board`, then: 'go', tone: 'bad', run: () => c.act.wrongRest(left), aria: `Mark ${who} wrong, then back to the board` });
+  if (!all && some)
+    quick.push({
+      label: `✘ The rest are wrong (${who}) ▶ board`,
+      then: 'go',
+      tone: 'bad',
+      run: () => c.act.wrongRest(left),
+      aria: `Mark ${who} wrong, then back to the board`,
+    });
   return [
     {
       id: 'judge',
@@ -662,7 +749,12 @@ function judgeItems(c: GoCtx): LeftItem[] {
 function answersItems(c: GoCtx): LeftItem[] {
   const ans = c.answers;
   if (!c.everyone || !ans || ans.locked || c.session.revealed) return [];
-  return comingItems(c, (id) => !!ans.seats[id], c.session.players.map((p) => p.id), FLOW.reveal.label);
+  return comingItems(
+    c,
+    (id) => !!ans.seats[id],
+    c.session.players.map((p) => p.id),
+    FLOW.reveal.label,
+  );
 }
 
 /**
@@ -683,7 +775,13 @@ function finalAnswersItems(c: GoCtx): LeftItem[] {
 }
 
 /** ⏸ Pause the clock (T) in the Final's checks at 👁 Reveal answer: paused, the next 👁 Reveal answer goes on at once. */
-const pauseQuick = (c: GoCtx): Quick => ({ label: '⏸ Pause the clock', key: 'T', then: 'close', run: () => c.act.clock(false), after: `Clock paused: ${FLOW.reveal.label} (N) shows it now` });
+const pauseQuick = (c: GoCtx): Quick => ({
+  label: '⏸ Pause the clock',
+  key: 'T',
+  then: 'close',
+  run: () => c.act.clock(false),
+  after: `Clock paused: ${FLOW.reveal.label} (N) shows it now`,
+});
 
 /**
  * The Final's think clock still running, at 👁 Reveal answer: the answer would cut it short. ⏱ Let it run (⏎) closes the
@@ -699,10 +797,7 @@ function finalClockItems(c: GoCtx): LeftItem[] {
       kind: 'first',
       text: `The clock is still running (${t.left} s left).`,
       anyway: FLOW.reveal.anyway,
-      quick: [
-        { label: '⏱ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label} (N)` },
-        pauseQuick(c),
-      ],
+      quick: [{ label: '⏱ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label} (N)` }, pauseQuick(c)],
     },
   ];
 }
@@ -788,7 +883,15 @@ function buzzItems(c: GoCtx): LeftItem[] {
         box: 'rolltie',
         text: `${named(c, c.tie)} buzzed at the same moment.`,
         quick: [
-          { label: '🎲 Roll for it', key: 'O', enter: true, then: 'close', run: c.act.rollTie, after: `Rolling for it… ${then}`, aria: 'Roll for it: the tied players roll for who answers' },
+          {
+            label: '🎲 Roll for it',
+            key: 'O',
+            enter: true,
+            then: 'close',
+            run: c.act.rollTie,
+            after: `Rolling for it… ${then}`,
+            aria: 'Roll for it: the tied players roll for who answers',
+          },
           ...c.tie.map((id): Quick => {
             const at = c.session.players.findIndex((p) => p.id === id) + 1;
             return { label: `${name(c, id)} answers`, ...(at && at <= 9 ? { key: String(at) } : {}), then: 'close', run: () => c.act.pick(id) };
@@ -822,7 +925,17 @@ function cardItems(c: GoCtx, final = false): LeftItem[] {
     kind: 'first',
     box: `card:${k.id}`,
     text: `${final ? `The Final’s ${k.name.charAt(0).toLowerCase()}${k.name.slice(1)}` : k.name} hasn’t gone to ${named(c, k.to)} yet.`,
-    quick: [{ label: '📤 Send it', enter: true, then: 'close', run: () => c.act.sendCard(k.id), after: `Sent… then ${then} (N)`, ...(k.full ? { why: k.full } : {}), aria: `Send ${k.name} to ${named(c, k.to)}` }],
+    quick: [
+      {
+        label: '📤 Send it',
+        enter: true,
+        then: 'close',
+        run: () => c.act.sendCard(k.id),
+        after: `Sent… then ${then} (N)`,
+        ...(k.full ? { why: k.full } : {}),
+        aria: `Send ${k.name} to ${named(c, k.to)}`,
+      },
+    ],
   }));
 }
 
@@ -863,7 +976,13 @@ function pickItems(c: GoCtx): LeftItem[] {
         must: true,
         text: `${who} picked it?`,
         enterSay: `${who} picked it? Press their number, or click their name`,
-        quick: c.session.players.map((pl): Quick => ({ label: pl.name, ...numKey(c, pl.id), then: 'keep', run: () => c.act.partnerPicker(pl.id), aria: `${pl.name} picked it` })),
+        quick: c.session.players.map((pl): Quick => ({
+          label: pl.name,
+          ...numKey(c, pl.id),
+          then: 'keep',
+          run: () => c.act.partnerPicker(pl.id),
+          aria: `${pl.name} picked it`,
+        })),
       },
     ];
   }
@@ -878,7 +997,15 @@ function pickItems(c: GoCtx): LeftItem[] {
         box: 'partnerspin',
         text: `${picker} needs a partner.`,
         quick: [
-          { label: VERBS.partnerSpin.label, key: 'W', enter: true, then: 'close', run: c.act.partnerSpin, after: `Spinning… then ${FLOW.next.label} shows the pair`, aria: 'Spin for a partner: the wheel spins over the other players' },
+          {
+            label: VERBS.partnerSpin.label,
+            key: 'W',
+            enter: true,
+            then: 'close',
+            run: c.act.partnerSpin,
+            after: `Spinning… then ${FLOW.next.label} shows the pair`,
+            aria: 'Spin for a partner: the wheel spins over the other players',
+          },
           ...partnerCandidates(c.session, s).map((pl): Quick => {
             const solo = pl.id === s.pickerId;
             return {
@@ -902,8 +1029,22 @@ function pickItems(c: GoCtx): LeftItem[] {
         box: 'describerspin',
         text: `Who ${p.giverVerb} for ${picker}?`,
         quick: [
-          { label: VERBS.describerSpin.label, key: 'W', enter: true, then: 'close', run: c.act.memberSpin, after: `Spinning… then ${FLOW.next.label} shows who ${p.giverVerb}`, aria: `Spin for who ${p.giverVerb}: the wheel spins over the people on ${picker}` },
-          ...p.people.map((m): Quick => ({ label: m.name, then: 'close', run: () => c.act.describer(m.id), after: `${m.name} ${p.giverVerb} for ${picker} · ${next}`, aria: `${m.name} ${p.giverVerb} for ${picker}` })),
+          {
+            label: VERBS.describerSpin.label,
+            key: 'W',
+            enter: true,
+            then: 'close',
+            run: c.act.memberSpin,
+            after: `Spinning… then ${FLOW.next.label} shows who ${p.giverVerb}`,
+            aria: `Spin for who ${p.giverVerb}: the wheel spins over the people on ${picker}`,
+          },
+          ...p.people.map((m): Quick => ({
+            label: m.name,
+            then: 'close',
+            run: () => c.act.describer(m.id),
+            after: `${m.name} ${p.giverVerb} for ${picker} · ${next}`,
+            aria: `${m.name} ${p.giverVerb} for ${picker}`,
+          })),
         ],
       },
     ];
@@ -949,7 +1090,14 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
           text: `${who} is stealing it: right or wrong?`,
           lost: 'nobody steals it',
           quick: [
-            { label: `＋ Award ${who} ${pts} ▶ reveal`, enter: true, then: 'go', tone: 'good', run: () => c.act.award(1, [on], a), aria: `Award ${who} ${pts}, then the answer` },
+            {
+              label: `＋ Award ${who} ${pts} ▶ reveal`,
+              enter: true,
+              then: 'go',
+              tone: 'good',
+              run: () => c.act.award(1, [on], a),
+              aria: `Award ${who} ${pts}, then the answer`,
+            },
             { label: `− Deduct ${who} ${pts}`, key: '⇧⏎', then: 'keep', tone: 'bad', run: () => c.act.award(-1, [on], a), aria: `Deduct ${pts} from ${who}` },
           ],
         },
@@ -961,15 +1109,37 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
         kind: 'first',
         text: `A steal is open: ${named(c, p.stealers)} can still steal it.`,
         lost: 'nobody steals it',
-        quick: p.stealers.map((id): Quick => ({ label: `${name(c, id)} steals it`, ...numKey(c, id), then: 'close', run: () => c.act.pick(id), after: `${name(c, id)} steals it: Enter if right, Shift+Enter if wrong` })),
+        quick: p.stealers.map((id): Quick => ({
+          label: `${name(c, id)} steals it`,
+          ...numKey(c, id),
+          then: 'close',
+          run: () => c.act.pick(id),
+          after: `${name(c, id)} steals it: Enter if right, Shift+Enter if wrong`,
+        })),
       },
     ];
   }
   // (T too, as outside: it starts the clock and makes the clue live. Never on 📤 Send and start: T there isn't a send.)
-  const clockQ = (): Quick => ({ label: VERBS.startClock(p.secs).label, key: 'T', enter: true, then: 'close', run: c.act.partnerClock, after: `Clock running: ${PLAYING}` });
+  const clockQ = (): Quick => ({
+    label: VERBS.startClock(p.secs).label,
+    key: 'T',
+    enter: true,
+    then: 'close',
+    run: c.act.partnerClock,
+    after: `Clock running: ${PLAYING}`,
+  });
   // (A ✓ once it was copied, for who gets it now.)
   const copyQ = p.copy.flatMap((k): Quick[] =>
-    k.what ? [{ label: `📋 Copy ${k.name}’s ${k.what}${k.copied ? ' ✓' : ''}`, then: 'keep', run: () => c.act.copyCard(k.id), aria: `Copy ${k.name}’s ${k.what}, to paste to ${named(c, k.to)}${k.copied ? ' (copied)' : ''}` }] : [],
+    k.what
+      ? [
+          {
+            label: `📋 Copy ${k.name}’s ${k.what}${k.copied ? ' ✓' : ''}`,
+            then: 'keep',
+            run: () => c.act.copyCard(k.id),
+            aria: `Copy ${k.name}’s ${k.what}, to paste to ${named(c, k.to)}${k.copied ? ' (copied)' : ''}`,
+          },
+        ]
+      : [],
   );
   const hand = { id: 'handout', kind: 'first', box: 'handout', lost: 'they haven’t played' } as const;
   if (s.stage === 'distribute') {
@@ -978,7 +1148,9 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
       const to = [...new Set(p.send.flatMap((k) => k.to))];
       const many = p.send.length > 1;
       const cards = nameList(p.send.map((k) => k.name));
-      const copied = p.copy.length ? ` ${nameList(p.copy.map((k) => k.name))} ${p.copy.length > 1 ? 'are' : 'is'} to copy by hand for ${named(c, [...new Set(p.copy.flatMap((k) => k.to))])} (no phone here).` : '';
+      const copied = p.copy.length
+        ? ` ${nameList(p.copy.map((k) => k.name))} ${p.copy.length > 1 ? 'are' : 'is'} to copy by hand for ${named(c, [...new Set(p.copy.flatMap((k) => k.to))])} (no phone here).`
+        : '';
       const verb = running ? VERBS.sendCards : VERBS.sendAndStart;
       return [
         {
@@ -1005,7 +1177,13 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
       const many = p.copy.length > 1;
       const to = [...new Set(p.copy.flatMap((k) => k.to))];
       const none = p.copy.some((k) => k.phoneless) ? ' (no phone here)' : '';
-      return [{ ...hand, text: `${nameList(p.copy.map((k) => k.name))} ${many ? 'are' : 'is'} for ${named(c, to)}${none}: copy ${many ? 'each to its player' : 'it to them'}, then start the clock.`, quick: [clockQ(), ...copyQ] }];
+      return [
+        {
+          ...hand,
+          text: `${nameList(p.copy.map((k) => k.name))} ${many ? 'are' : 'is'} for ${named(c, to)}${none}: copy ${many ? 'each to its player' : 'it to them'}, then start the clock.`,
+          quick: [clockQ(), ...copyQ],
+        },
+      ];
     }
     return [{ ...hand, text: 'The clock hasn’t started: they haven’t played yet.', quick: [clockQ()] }];
   }
@@ -1019,10 +1197,32 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
       kind: 'first',
       text: p.clock ? `${pair} ${one ? 'is' : 'are'} still playing (${p.clock.left} s left).` : `Not judged yet: did ${pair} get it?`,
       quick: [
-        { label: `✔ Got it (${p.got}) ▶ reveal`, enter: true, then: 'go', tone: 'good', run: () => c.act.partnerJudge(true), aria: `Got it: ${p.got}, then the answer` },
+        {
+          label: `✔ Got it (${p.got}) ▶ reveal`,
+          enter: true,
+          then: 'go',
+          tone: 'good',
+          run: () => c.act.partnerJudge(true),
+          aria: `Got it: ${p.got}, then the answer`,
+        },
         p.stealOn
-          ? { label: '✘ Missed: a steal opens', key: '⇧⏎', then: 'close', tone: 'bad', run: () => c.act.partnerJudge(false), after: 'A steal: the others can answer it', aria: `Missed: ${p.missed}, and the others can steal it` }
-          : { label: `✘ Missed (${p.missed}) ▶ reveal`, key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.partnerJudge(false), aria: `Missed: ${p.missed}, then the answer` },
+          ? {
+              label: '✘ Missed: a steal opens',
+              key: '⇧⏎',
+              then: 'close',
+              tone: 'bad',
+              run: () => c.act.partnerJudge(false),
+              after: 'A steal: the others can answer it',
+              aria: `Missed: ${p.missed}, and the others can steal it`,
+            }
+          : {
+              label: `✘ Missed (${p.missed}) ▶ reveal`,
+              key: '⇧⏎',
+              then: 'go',
+              tone: 'bad',
+              run: () => c.act.partnerJudge(false),
+              aria: `Missed: ${p.missed}, then the answer`,
+            },
       ],
     },
   ];
@@ -1040,8 +1240,22 @@ function partnerJudgeItems(c: GoCtx): LeftItem[] {
       text: `Not judged yet: did ${named(c, p.pair)} get it?`,
       lost: 'no points',
       quick: [
-        { label: '✔ Got it ▶ board', enter: true, then: 'go', tone: 'good', run: () => c.act.partnerJudge(true), aria: `Got it: ${p.got}, then back to the board` },
-        { label: '✘ Missed ▶ board', key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.partnerJudge(false), aria: `Missed: ${p.missed}, then back to the board` },
+        {
+          label: '✔ Got it ▶ board',
+          enter: true,
+          then: 'go',
+          tone: 'good',
+          run: () => c.act.partnerJudge(true),
+          aria: `Got it: ${p.got}, then back to the board`,
+        },
+        {
+          label: '✘ Missed ▶ board',
+          key: '⇧⏎',
+          then: 'go',
+          tone: 'bad',
+          run: () => c.act.partnerJudge(false),
+          aria: `Missed: ${p.missed}, then back to the board`,
+        },
       ],
     },
   ];
@@ -1072,7 +1286,13 @@ function toolItems(c: GoCtx): LeftItem[] {
         quick: [spin(VERBS.spin.label)],
       });
     else if (o.result !== null && isRespin(o.segments[o.result]))
-      out.push({ id: 'again', kind: 'first', box: 'toolslot', text: `It landed on “${sliceLabel(o.segments[o.result], o.result)}”.`, quick: [spin(VERBS.spinAgain.label)] });
+      out.push({
+        id: 'again',
+        kind: 'first',
+        box: 'toolslot',
+        text: `It landed on “${sliceLabel(o.segments[o.result], o.result)}”.`,
+        quick: [spin(VERBS.spinAgain.label)],
+      });
   }
   if (t.own && o.kind === 'dice' && !o.roll)
     out.push({
@@ -1086,7 +1306,11 @@ function toolItems(c: GoCtx): LeftItem[] {
     });
   // A score effect that landed, neither given nor skipped (its box's Confirm and Skip): lost once it goes.
   const to = t.own ? (t.question ? '▶ question' : '▶ board') : 'and put it away';
-  const without = t.own ? (t.question ? `${FLOW.showQuestion.label.replace(/ ▶$/, '')} without it` : `${FLOW.done.label.replace(/ ▶ board$/, '')} without it`) : `${FLOW.next.label} without it`;
+  const without = t.own
+    ? t.question
+      ? `${FLOW.showQuestion.label.replace(/ ▶$/, '')} without it`
+      : `${FLOW.done.label.replace(/ ▶ board$/, '')} without it`
+    : `${FLOW.next.label} without it`;
   for (const card of scoreCards(o, c.now)) if (!cardDone(o, c.session, card.key)) out.push(scoreItem(c, card, to, without));
   return out;
 }
@@ -1103,8 +1327,18 @@ function scoreItem(c: GoCtx, card: ScoreCard, to: string, without: string): Left
   if (needsSource(card.action) || !ready)
     return {
       ...base,
-      text: d.targets.length ? `The ${noun}’s ${what} for ${named(c, d.targets)} isn’t given yet: choose who in ${box}.` : `The ${noun}’s ${what} isn’t given yet: choose who in ${box}.`,
-      quick: [{ label: 'Choose in the box', enter: true, then: 'close', run: () => c.act.focusOn(sel), aria: `Choose who in ${box}: the keys go to its score effect` }],
+      text: d.targets.length
+        ? `The ${noun}’s ${what} for ${named(c, d.targets)} isn’t given yet: choose who in ${box}.`
+        : `The ${noun}’s ${what} isn’t given yet: choose who in ${box}.`,
+      quick: [
+        {
+          label: 'Choose in the box',
+          enter: true,
+          then: 'close',
+          run: () => c.act.focusOn(sel),
+          aria: `Choose who in ${box}: the keys go to its score effect`,
+        },
+      ],
     };
   const gives = Object.entries(deltas)
     .map(([id, v]) => `${name(c, id)} ${v > 0 ? '+' : '−'}${formatPoints(Math.abs(v), sym(c))}`)
@@ -1112,7 +1346,9 @@ function scoreItem(c: GoCtx, card: ScoreCard, to: string, without: string): Left
   return {
     ...base,
     text: `The ${noun}’s ${what} for ${named(c, d.targets)} isn’t given yet.`,
-    quick: [{ label: `✔ Give ${gives} ${to}`, enter: true, then: 'go', tone: 'good', run: () => c.act.scoreCard(card.key), aria: `Give ${gives}, then ${t2(to)}` }],
+    quick: [
+      { label: `✔ Give ${gives} ${to}`, enter: true, then: 'go', tone: 'good', run: () => c.act.scoreCard(card.key), aria: `Give ${gives}, then ${t2(to)}` },
+    ],
   };
 }
 /** "▶ question" → "the question", for screen readers. */
@@ -1137,8 +1373,22 @@ function popupItems(c: GoCtx, o: Extract<Overlay, { kind: 'popup' }>): LeftItem[
         text: `${who} is picked and has no points for this question.`,
         lost: 'no points',
         quick: [
-          { label: `＋ Award ${who} ${pts} and close it`, enter: true, then: 'go', tone: 'good', run: () => c.act.award(1, [id], a), aria: `Award ${who} ${pts}, then the question goes` },
-          { label: `− Deduct ${who} ${pts} and close it`, key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.award(-1, [id], a), aria: `Deduct ${pts} from ${who}, then the question goes` },
+          {
+            label: `＋ Award ${who} ${pts} and close it`,
+            enter: true,
+            then: 'go',
+            tone: 'good',
+            run: () => c.act.award(1, [id], a),
+            aria: `Award ${who} ${pts}, then the question goes`,
+          },
+          {
+            label: `− Deduct ${who} ${pts} and close it`,
+            key: '⇧⏎',
+            then: 'go',
+            tone: 'bad',
+            run: () => c.act.award(-1, [id], a),
+            aria: `Deduct ${pts} from ${who}, then the question goes`,
+          },
         ],
       },
     ];
@@ -1174,7 +1424,13 @@ export function ddWaits(c: GoCtx): { say: string; at: 'names' | 'wager' } | null
   const who = name(c, id);
   const cap = formatPoints(ddCap(c.session, c.game, id), sym(c));
   const w = dd.draft;
-  if (typeof w !== 'number') return { say: c.ddPhone ? `Waiting on ${who}’s phone: type their wager here if it doesn’t come` : `Type a wager (${who} can wager up to ${cap}), or True Daily Double`, at: 'wager' };
+  if (typeof w !== 'number')
+    return {
+      say: c.ddPhone
+        ? `Waiting on ${who}’s phone: type their wager here if it doesn’t come`
+        : `Type a wager (${who} can wager up to ${cap}), or True Daily Double`,
+      at: 'wager',
+    };
   if (w < 0) return { say: 'A wager can’t be below 0: type 0 or more', at: 'wager' };
   if (!c.wagerLimitsOff && w > ddCap(c.session, c.game, id)) return { say: `Over ${who}’s max (${cap}): type less, or tick Ignore the limit`, at: 'wager' };
   return null;
@@ -1195,14 +1451,26 @@ export function finalWaits(c: GoCtx): { say: string; at: string; row: string } |
     const rows = s.players.map((p) => p.id).filter((id) => f.players.includes(id));
     const first = rows.find((id) => missing.includes(id) || whole.includes(id) || over.includes(id));
     if (!first) return null;
-    if (missing.length) return { say: `Waiting on ${waitingOn(s, missing, c.final.wagerPhones)}: type ${missing.length === 1 ? 'their wager' : 'their wagers'}, or untick them to sit out`, ...box(first) };
+    if (missing.length)
+      return {
+        say: `Waiting on ${waitingOn(s, missing, c.final.wagerPhones)}: type ${missing.length === 1 ? 'their wager' : 'their wagers'}, or untick them to sit out`,
+        ...box(first),
+      };
     if (whole.length) return { say: `Not a whole number: ${named(c, whole)} (type a whole number, 0 or more)`, ...box(first) };
-    if (over.length === 1) return { say: `Over ${name(c, over[0])}’s max (${formatPoints(finalWagerCap(s, c.game, over[0]), sym(c))}): type less, or tick Ignore the limits`, ...box(first) };
+    if (over.length === 1)
+      return {
+        say: `Over ${name(c, over[0])}’s max (${formatPoints(finalWagerCap(s, c.game, over[0]), sym(c))}): type less, or tick Ignore the limits`,
+        ...box(first),
+      };
     return { say: `Over the max: ${named(c, over)} (type less, or tick Ignore the limits)`, ...box(first) };
   }
   const r = s.finalStep === 'reveal' ? finalRevealNow(s) : null;
   if (r?.at !== 'wager' || !r.id || typeof f.wagers[r.id] === 'number') return null;
-  return { say: `${name(c, r.id)} has no wager yet: type it in their row (it’s never taken as 0)`, at: `.play .panel input[data-reveal-wager="${r.id}"]`, row: `.play .panel .pl[data-row="${r.id}"]` };
+  return {
+    say: `${name(c, r.id)} has no wager yet: type it in their row (it’s never taken as 0)`,
+    at: `.play .panel input[data-reveal-wager="${r.id}"]`,
+    row: `.play .panel .pl[data-row="${r.id}"]`,
+  };
 }
 
 /**
@@ -1252,8 +1520,26 @@ function verdictItems(c: GoCtx, step: Step): LeftItem[] {
       enterSay: 'C: right · X: wrong',
       ...(likely ? { box: `verdict:${likely}` } : {}),
       quick: [
-        { label: VERBS.right(who).label, key: 'C', then: 'close', tone: 'good', run: () => c.act.judge(id, true), after: `${who} judged · ${next}`, aria: `${who} is right`, ...(likely === 'right' ? { ring: true } : {}) },
-        { label: VERBS.wrong(who).label, key: 'X', then: 'close', tone: 'bad', run: () => c.act.judge(id, false), after: `${who} judged · ${next}`, aria: `${who} is wrong`, ...(likely === 'wrong' ? { ring: true } : {}) },
+        {
+          label: VERBS.right(who).label,
+          key: 'C',
+          then: 'close',
+          tone: 'good',
+          run: () => c.act.judge(id, true),
+          after: `${who} judged · ${next}`,
+          aria: `${who} is right`,
+          ...(likely === 'right' ? { ring: true } : {}),
+        },
+        {
+          label: VERBS.wrong(who).label,
+          key: 'X',
+          then: 'close',
+          tone: 'bad',
+          run: () => c.act.judge(id, false),
+          after: `${who} judged · ${next}`,
+          aria: `${who} is wrong`,
+          ...(likely === 'wrong' ? { ring: true } : {}),
+        },
       ],
     },
   ];
@@ -1280,7 +1566,16 @@ export function likelyVerdict(c: Pick<GoCtx, 'session' | 'game' | 'dual'>, id: I
 function tieItems(c: GoCtx): LeftItem[] {
   const s = c.session;
   const tied = tiedForFirst(s);
-  if (s.phase !== 'tiebreaker' || tied.length < 2 || tiebreakHolds(s, tied.map((p) => p.id)) || coWinnersHold(s)) return [];
+  if (
+    s.phase !== 'tiebreaker' ||
+    tied.length < 2 ||
+    tiebreakHolds(
+      s,
+      tied.map((p) => p.id),
+    ) ||
+    coWinnersHold(s)
+  )
+    return [];
   const one = c.selected.length === 1 ? c.selected[0] : null;
   return [
     {
@@ -1379,7 +1674,12 @@ function turnItems(c: GoCtx): LeftItem[] {
         text: `${at} has ${left} step${left === 1 ? '' : 's'} left: which way?`,
         lost: `${at} stops here`,
         enterSay: 'Which way? Click it (or Tab to it): the numbers still pick players',
-        quick: ways.map((w): Quick => ({ label: `→ ${spaceSay(c, t, w)}`, then: 'keep', run: () => c.act.boardMove(fork.stepsLeft, w), aria: `${at} goes on toward ${spaceSay(c, t, w)}` })),
+        quick: ways.map((w): Quick => ({
+          label: `→ ${spaceSay(c, t, w)}`,
+          then: 'keep',
+          run: () => c.act.boardMove(fork.stepsLeft, w),
+          aria: `${at} goes on toward ${spaceSay(c, t, w)}`,
+        })),
       },
     ];
   }
@@ -1397,7 +1697,13 @@ function turnItems(c: GoCtx): LeftItem[] {
           text: one ? `${who} hasn’t moved: → ${spaceSay(c, t, ways[0])}.` : `${who} hasn’t moved: which way?`,
           lost: stops,
           ...(one ? {} : { enterSay: 'Which way? Click it (or Tab to it): the numbers still pick players' }),
-          quick: ways.map((w): Quick => ({ label: `→ ${spaceSay(c, t, w)}`, ...(one ? { enter: true } : {}), then: 'keep', run: () => c.act.boardMove(1, w), aria: `${who} moves to ${spaceSay(c, t, w)}` })),
+          quick: ways.map((w): Quick => ({
+            label: `→ ${spaceSay(c, t, w)}`,
+            ...(one ? { enter: true } : {}),
+            then: 'keep',
+            run: () => c.act.boardMove(1, w),
+            aria: `${who} moves to ${spaceSay(c, t, w)}`,
+          })),
         },
       ];
     }
@@ -1412,12 +1718,27 @@ function turnItems(c: GoCtx): LeftItem[] {
     });
     if (t.rolling) {
       const still = `Still ${t.wheel ? 'spinning' : 'rolling'}`;
-      return [{ id: 'roll', kind: 'first', quiet: 'roll', box: 'turnslot', text: t.wheel ? 'Spinning…' : 'Rolling…', lost: stops, enterSay: `${still}: Enter moves them once ${t.wheel ? 'it lands' : 'they land'}`, quick: [rollQ(still)] }];
+      return [
+        {
+          id: 'roll',
+          kind: 'first',
+          quiet: 'roll',
+          box: 'turnslot',
+          text: t.wheel ? 'Spinning…' : 'Rolling…',
+          lost: stops,
+          enterSay: `${still}: Enter moves them once ${t.wheel ? 'it lands' : 'they land'}`,
+          quick: [rollQ(still)],
+        },
+      ];
     }
     const n = t.count;
     if (n) {
       const back = n < 0;
-      const text = back ? `${who} goes back ${-n}: ◀ move them back.` : t.rolled ? `${who} ${t.wheel ? 'spun' : 'rolled'} ${n}: ▶ move them.` : `${who} has ${n} to go: ▶ move them.`;
+      const text = back
+        ? `${who} goes back ${-n}: ◀ move them back.`
+        : t.rolled
+          ? `${who} ${t.wheel ? 'spun' : 'rolled'} ${n}: ▶ move them.`
+          : `${who} has ${n} to go: ▶ move them.`;
       return [
         {
           id: 'move',
@@ -1425,13 +1746,31 @@ function turnItems(c: GoCtx): LeftItem[] {
           box: 'turnslot',
           text,
           lost: stops,
-          quick: [{ label: `${back ? '◀ Back' : '▶ Move'} ${who}: ${Math.abs(n)}`, enter: true, then: 'keep', run: () => c.act.boardMove(n), aria: `Move ${who} ${back ? 'back ' : ''}${Math.abs(n)} space${Math.abs(n) === 1 ? '' : 's'}` }],
+          quick: [
+            {
+              label: `${back ? '◀ Back' : '▶ Move'} ${who}: ${Math.abs(n)}`,
+              enter: true,
+              then: 'keep',
+              run: () => c.act.boardMove(n),
+              aria: `Move ${who} ${back ? 'back ' : ''}${Math.abs(n)} space${Math.abs(n) === 1 ? '' : 's'}`,
+            },
+          ],
         },
       ];
     }
     // (The wheel landed on a slice that names no number: that's their turn.)
     if (c.board?.noNumber !== null && c.board?.noNumber !== undefined) return [];
-    return [{ id: 'roll', kind: 'first', quiet: 'roll', box: 'turnslot', text: `${who}’s turn: ${t.wheel ? '🎡 spin' : '🎲 roll'}, then ▶ move.`, lost: stops, quick: [rollQ()] }];
+    return [
+      {
+        id: 'roll',
+        kind: 'first',
+        quiet: 'roll',
+        box: 'turnslot',
+        text: `${who}’s turn: ${t.wheel ? '🎡 spin' : '🎲 roll'}, then ▶ move.`,
+        lost: stops,
+        quick: [rollQ()],
+      },
+    ];
   }
   return [...landingItems(c, t), ...questionItems(c, t)];
 }
@@ -1465,10 +1804,26 @@ function landingItems(c: GoCtx, t: Turn): LeftItem[] {
   const label = decides ? `▶ Start ${secret ? 'the space' : shown}` : all ? `▶ Run ${whose} actions ▶ next turn` : `▶ Run ${whose} actions`;
   const quick = (why = pick): Quick =>
     decides
-      ? { label, enter: true, then: 'close', run: c.act.boardLanding, after: `${Whose} ${decideWord(decides)}… press the outcome, then ${FLOW.nextTurn.label} (N)`, ...(why ? { why } : {}), aria: `Start ${secret ? 'the space' : shown}: its ${decideWord(decides)}` }
+      ? {
+          label,
+          enter: true,
+          then: 'close',
+          run: c.act.boardLanding,
+          after: `${Whose} ${decideWord(decides)}… press the outcome, then ${FLOW.nextTurn.label} (N)`,
+          ...(why ? { why } : {}),
+          aria: `Start ${secret ? 'the space' : shown}: its ${decideWord(decides)}`,
+        }
       : all
         ? { label, enter: true, then: 'go', run: c.act.boardLanding, ...(why ? { why } : {}), aria: `Run ${whose} actions, then the next turn` }
-        : { label, enter: true, then: 'close', run: c.act.boardLanding, after: `${Whose} actions are on… then ${FLOW.nextTurn.label} (N) when it’s played out`, ...(why ? { why } : {}), aria: `Run ${whose} actions` };
+        : {
+            label,
+            enter: true,
+            then: 'close',
+            run: c.act.boardLanding,
+            after: `${Whose} actions are on… then ${FLOW.nextTurn.label} (N) when it’s played out`,
+            ...(why ? { why } : {}),
+            aria: `Run ${whose} actions`,
+          };
   if (t.moving) return [{ ...base, text: 'Moving…', enterSay: 'Still moving: Enter once the token is there', quick: [quick('Still moving')] }];
   const gives = all ? list.filter((a) => a.do !== 'note').map((a) => actSay(c, t, a, who)) : [];
   const text = decides
@@ -1497,8 +1852,22 @@ function questionItems(c: GoCtx, t: Turn): LeftItem[] {
       {
         ...base,
         quick: [
-          { label: `＋ Award ${who} ${pts} ▶ next turn`, enter: true, then: 'go', tone: 'good', run: () => c.act.award(1, [id], a), aria: `Award ${who} ${pts}, then the next turn` },
-          { label: `− Deduct ${who} ${pts} ▶ next turn`, key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.award(-1, [id], a), aria: `Deduct ${pts} from ${who}, then the next turn` },
+          {
+            label: `＋ Award ${who} ${pts} ▶ next turn`,
+            enter: true,
+            then: 'go',
+            tone: 'good',
+            run: () => c.act.award(1, [id], a),
+            aria: `Award ${who} ${pts}, then the next turn`,
+          },
+          {
+            label: `− Deduct ${who} ${pts} ▶ next turn`,
+            key: '⇧⏎',
+            then: 'go',
+            tone: 'bad',
+            run: () => c.act.award(-1, [id], a),
+            aria: `Deduct ${pts} from ${who}, then the next turn`,
+          },
         ],
       },
     ];
@@ -1538,7 +1907,16 @@ export function doneSay(c: GoCtx, id: string): string | undefined {
     if (t && !t.running) return 'The clock is paused';
   }
   // (A ✍ clue's answers: the last one came in while the check was open.)
-  if (id === 'answers' && c.session.phase !== 'final' && c.answers && allIn(c, (p) => !!c.answers!.seats[p], c.session.players.map((p) => p.id)))
+  if (
+    id === 'answers' &&
+    c.session.phase !== 'final' &&
+    c.answers &&
+    allIn(
+      c,
+      (p) => !!c.answers!.seats[p],
+      c.session.players.map((p) => p.id),
+    )
+  )
     return allAnswered(c);
   const t = turnOf(c);
   if (!t?.id) return undefined;
@@ -1608,7 +1986,8 @@ export const ringOf = (items: LeftItem[]): string | null => items.find((i) => !i
 export function everyonePassed(c: Pick<GoCtx, 'session' | 'buzzing' | 'buzz' | 'selected' | 'passed'>): boolean {
   const b = c.buzz;
   const passed = c.passed ?? [];
-  if (!c.buzzing || !b || b.phase === 'lobby' || b.phase === 'answering' || b.done || c.selected.length || c.session.revealed || c.session.phase !== 'clue') return false;
+  if (!c.buzzing || !b || b.phase === 'lobby' || b.phase === 'answering' || b.done || c.selected.length || c.session.revealed || c.session.phase !== 'clue')
+    return false;
   const ids = c.session.players.map((p) => p.id);
   return ids.some((id) => passed.includes(id) && !b.lockedOut.includes(id)) && ids.every((id) => passed.includes(id) || b.lockedOut.includes(id));
 }
@@ -1693,8 +2072,7 @@ export function teachLine(check: Pick<Check, 'step' | 'items'>): string {
   // (Not with a score effect left: Esc asks once about it too.)
   // (Esc on the clue or on what's over the stage, with no card open: on this card Esc is Not yet.)
   if (check.step.id === 'done') parts.push('Esc on the clue closes it without asking');
-  else if (check.step.id === 'tool' && !todo(check.items).some((i) => i.hold))
-    parts.push(`Esc on the ${check.step.what ?? 'stage'} goes on without asking`);
+  else if (check.step.id === 'tool' && !todo(check.items).some((i) => i.hold)) parts.push(`Esc on the ${check.step.what ?? 'stage'} goes on without asking`);
   // (Only with a roll or a move left: neither key runs a landing.)
   if (check.step.id === 'turn' && todo(check.items).some((i) => i.id === 'roll' || i.id === 'move')) parts.push('D rolls and Enter moves at once');
   if (!todo(check.items).every((i) => i.must)) parts.push('Shift+click on the blue button skips this');
@@ -1726,7 +2104,10 @@ export type Inside =
   | { do: 'ignore' };
 
 /** The fix showing `cap` among what's still to do. */
-const byKey = (items: LeftItem[], cap: string): Quick | null => todo(items).flatMap((i) => i.quick).find((q) => q.key === cap && !q.why) ?? null;
+const byKey = (items: LeftItem[], cap: string): Quick | null =>
+  todo(items)
+    .flatMap((i) => i.quick)
+    .find((q) => q.key === cap && !q.why) ?? null;
 
 /** What `k` does in `check` at `now`. */
 export function inside(k: KeyIn, check: Pick<Check, 'step' | 'items' | 'at'>, now: number): Inside {

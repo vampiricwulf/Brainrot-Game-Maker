@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { gameRules, MAX_CARDS, newClue, newFinalRound, newImageEl, PARTNER_GAMES, setSlideText, textSlide, type Clue, type PartnerGame, type PartnerRules } from './model';
+import {
+  gameRules,
+  MAX_CARDS,
+  newClue,
+  newFinalRound,
+  newImageEl,
+  PARTNER_GAMES,
+  setSlideText,
+  textSlide,
+  type Clue,
+  type PartnerGame,
+  type PartnerRules,
+} from './model';
 import {
   addCard,
   cardCopyText,
@@ -41,7 +53,14 @@ function partnerClue(game: PartnerGame = 'describe'): Clue {
 describe('partner clue rules', () => {
   it('has the ready-made games of the spec: the partner gives, and a miss costs the guesser half', () => {
     const d = gameRules('describe');
-    expect(d).toEqual({ game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' });
+    expect(d).toEqual({
+      game: 'describe',
+      giver: 'partner',
+      got: { giver: 100, guesser: 50 },
+      missed: { giver: 0, guesser: -50 },
+      partnerSafe: true,
+      points: 'game',
+    });
     expect(gameRules('help')).toMatchObject({ got: { giver: 50, guesser: 100 }, missed: { giver: 0, guesser: -50 } });
     expect(gameRules('split')).toMatchObject({ got: { giver: 100, guesser: 100 }, missed: { giver: 0, guesser: -50 } });
     expect(partWords(gameRules('help'))).toEqual({ giver: 'Helper', guesser: 'Answerer' });
@@ -209,7 +228,14 @@ describe('changing a partner clue’s rules', () => {
   });
 
   it('reads a typed share within ±1000%', () => {
-    expect([typedShare('50'), typedShare('−50'), typedShare('12.6'), typedShare('99999'), typedShare(''), typedShare('x')]).toEqual([50, -50, 13, 1000, null, null]);
+    expect([typedShare('50'), typedShare('−50'), typedShare('12.6'), typedShare('99999'), typedShare(''), typedShare('x')]).toEqual([
+      50,
+      -50,
+      13,
+      1000,
+      null,
+      null,
+    ]);
   });
 
   it('keeps typed part words (blank: the game’s again), at most 24 characters', () => {

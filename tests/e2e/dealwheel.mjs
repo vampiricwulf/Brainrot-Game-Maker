@@ -13,7 +13,26 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section, boardIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  openGameFile,
+  packGame,
+  png,
+  recordSeen,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  stored,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  untilWith,
+  section,
+  boardIn,
+  stageBoxIn,
+  toolsRowIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -36,7 +55,30 @@ const CARD_WORDS = 'Your secret prompt:';
 const THIS_DEAL = 'Psst, your prompt:';
 
 let ids = 0;
-const text = (t, y = 40) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1, kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  id: `e${ids++}`,
+  x: 100,
+  y,
+  w: 800,
+  h: 160,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (...elements) => ({ background: {}, elements });
 
 const buzzer = await startBuzzer('buzzer-dealwheel-');
@@ -60,14 +102,46 @@ try {
     version: 2,
     title: 'Party prompts',
     settings: {
-      allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      stream: { clueCaption: true },
+      buzzer: true,
     },
     players: ['Ann', 'Bob', 'Cat', 'Dan'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
-    rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: [{ id: 'cat0', title: 'Movies', clues: [plain('q1'), plain('q2')] }] }],
-    media, audio: {}, dice: [], theme: {},
-    wheels: [{ id: 'w_p', name: 'Party prompts', segments: SLICES.map((s, i) => ({ weight: 1, color: ['#e6194b', '#3cb44b', '#888888', '#4363d8', '#f58231'][i], ...s })), spinDurationMs: 3000, removeAfterLanding: false }],
-    deals: [{ id: 'deal_p', name: 'Own prompts', wheel: 'w_p', parts: [{ id: 'pl', name: 'Player', count: 'rest', draw: 'own', card: slide(text(CARD_WORDS)) }] }],
+    rounds: [
+      {
+        id: 'r1',
+        name: 'Round 1',
+        mode: 'board',
+        values: [200, 400],
+        dailyDoubleCount: 0,
+        categories: [{ id: 'cat0', title: 'Movies', clues: [plain('q1'), plain('q2')] }],
+      },
+    ],
+    media,
+    audio: {},
+    dice: [],
+    theme: {},
+    wheels: [
+      {
+        id: 'w_p',
+        name: 'Party prompts',
+        segments: SLICES.map((s, i) => ({ weight: 1, color: ['#e6194b', '#3cb44b', '#888888', '#4363d8', '#f58231'][i], ...s })),
+        spinDurationMs: 3000,
+        removeAfterLanding: false,
+      },
+    ],
+    deals: [
+      { id: 'deal_p', name: 'Own prompts', wheel: 'w_p', parts: [{ id: 'pl', name: 'Player', count: 'rest', draw: 'own', card: slide(text(CARD_WORDS)) }] },
+    ],
   };
   const packPath = resolve('test-results/deal-wheel.brainrot');
   writeFileSync(packPath, await packGame(game, files));
@@ -129,7 +203,10 @@ try {
   /** A card file, fetched from the room as this phone would: the HTTP status. */
   const fetchAs = async (p, id) => {
     const t = await tokenOf(p);
-    return p.evaluate(async ([u, t]) => (await fetch(u, { headers: { Authorization: `Bearer ${t}` }, cache: 'no-store' })).status, [`${base}/api/rooms/${code}/files/${id}`, t]);
+    return p.evaluate(
+      async ([u, t]) => (await fetch(u, { headers: { Authorization: `Bearer ${t}` }, cache: 'no-store' })).status,
+      [`${base}/api/rooms/${code}/files/${id}`, t],
+    );
   };
 
   // ---------- The audience window, watched until Who was who ----------
@@ -153,7 +230,11 @@ try {
   await tools.getByRole('button', { name: '🎭 Deal…' }).click();
   await dialog.waitFor();
   assert((await dialog.getByRole('combobox', { name: 'The deal' }).inputValue()) === 'saved:deal_p', 'it starts with the game’s saved deal, Own prompts');
-  assert((await dialog.getByLabel('Player’s card draws from the wheel').inputValue()) === 'own' && (await dialog.getByRole('combobox', { name: 'The wheel its cards draw from' }).inputValue()) === 'w_p', 'a slice each, from Party prompts');
+  assert(
+    (await dialog.getByLabel('Player’s card draws from the wheel').inputValue()) === 'own' &&
+      (await dialog.getByRole('combobox', { name: 'The wheel its cards draw from' }).inputValue()) === 'w_p',
+    'a slice each, from Party prompts',
+  );
   const words = dialog.getByLabel('Player’s card words');
   assert((await words.inputValue()) === CARD_WORDS, 'two windows: its card’s words show');
   await words.fill(THIS_DEAL);
@@ -164,7 +245,9 @@ try {
   /** Who drew which, as the host's column says it. */
   const column = async () => {
     const t = await flat(info);
-    return Object.fromEntries([...t.matchAll(/(Ann|Bob|Cat|Dan) → Player · (.+?)(?= (?:Ann|Bob|Cat|Dan) →|$)/g)].map((m) => [m[1], m[2].replace(/ · ✓ seen$/, '')]));
+    return Object.fromEntries(
+      [...t.matchAll(/(Ann|Bob|Cat|Dan) → Player · (.+?)(?= (?:Ann|Bob|Cat|Dan) →|$)/g)].map((m) => [m[1], m[2].replace(/ · ✓ seen$/, '')]),
+    );
   };
   const labels = PROMPTS.map((s) => s.label).sort();
   /** @type {any} */
@@ -176,11 +259,17 @@ try {
       await dialog.getByRole('button', { name: '↻ Deal again' }).click();
       assert(await until(async () => (d = await savedDeal())?.id !== before, 10000), `↻ Deal again (${i})`);
     } else assert(await until(async () => (d = await savedDeal())?.stage === 'dealt'), 'kept with the game in progress');
-    assert(await until(async () => JSON.stringify(await column()) === JSON.stringify(Object.fromEntries(d.hands.map((h) => [nameOf[h.to.seat], h.slice])))), 'the column beside the stage says who drew which');
+    assert(
+      await until(async () => JSON.stringify(await column()) === JSON.stringify(Object.fromEntries(d.hands.map((h) => [nameOf[h.to.seat], h.slice])))),
+      'the column beside the stage says who drew which',
+    );
     drew = await column();
     assert(JSON.stringify(Object.values(drew).sort()) === JSON.stringify(labels), `the four slices, one each, never Spin again (${JSON.stringify(drew)})`);
   }
-  assert(d.hands.every((h) => !h.role), 'everyone has the same part: no “You’re the Player” to send');
+  assert(
+    d.hands.every((h) => !h.role),
+    'everyone has the same part: no “You’re the Player” to send',
+  );
   await sleep(500);
   assert(!states.some((s) => s.cards?.length) && uploads === 0, 'dealt, not sent: no card reaches the room, and no picture goes up');
   await offStream(SECRETS, 'dealt');
@@ -191,26 +280,48 @@ try {
   assert(await until(() => cards().length === 4), 'sent: four cards, one per player');
   const slice = (name) => PROMPTS.find((s) => s.label === drew[name]);
   const pics = () => cards().filter((c) => c.media?.[0]?.file);
-  assert(await until(() => pics().length === 2) && /** @type {number} */ (uploads) === 2, 'the two pictures go up once each, and the cards then name the room’s files');
+  assert(
+    (await until(() => pics().length === 2)) && /** @type {number} */ (uploads) === 2,
+    'the two pictures go up once each, and the cards then name the room’s files',
+  );
   const sent = cards();
   for (const c of sent) {
     const who = nameOf[c.to[0].seat];
     const s = slice(who);
     assert(
-      c.to.length === 1 && !c.role && !c.shared && c.title === s.label && c.text === [THIS_DEAL, s.details].filter(Boolean).join('\n') && !!c.media === !!s.media,
+      c.to.length === 1 &&
+        !c.role &&
+        !c.shared &&
+        c.title === s.label &&
+        c.text === [THIS_DEAL, s.details].filter(Boolean).join('\n') &&
+        !!c.media === !!s.media,
       `${who}’s card: ${s.label} as its big line, then “${THIS_DEAL}”${s.details ? ' and its longer words' : ''}${s.media ? ' and its picture' : ''}`,
     );
   }
-  assert(!JSON.stringify(states).includes('zfnqj') && !JSON.stringify(states).includes(CARD_WORDS), 'no file name goes to the room, nor the saved deal’s words (this deal’s were changed)');
+  assert(
+    !JSON.stringify(states).includes('zfnqj') && !JSON.stringify(states).includes(CARD_WORDS),
+    'no file name goes to the room, nor the saved deal’s words (this deal’s were changed)',
+  );
   const fileOf = {};
   for (const name of ['Ann', 'Bob', 'Cat', 'Dan']) {
     const p = phones[name];
     const s = slice(name);
     await p.getByRole('button', { name: 'Tap to see' }).tap();
     await p.locator('.card-title', { hasText: s.label }).waitFor();
-    assert(!(await p.locator('.card-role').count()) && !(await p.locator('.card').innerText()).includes('You’re the'), `${name}’s phone: ${s.label} as the card’s big line, with no part line`);
+    assert(
+      !(await p.locator('.card-role').count()) && !(await p.locator('.card').innerText()).includes('You’re the'),
+      `${name}’s phone: ${s.label} as the card’s big line, with no part line`,
+    );
     if (s.media) {
-      assert(await until(() => p.locator('.card img').evaluate((img) => img.src.startsWith('blob:') && img.complete && img.naturalWidth > 0).catch(() => false)), `${name}’s phone: the picture arrives`);
+      assert(
+        await until(() =>
+          p
+            .locator('.card img')
+            .evaluate((img) => img.src.startsWith('blob:') && img.complete && img.naturalWidth > 0)
+            .catch(() => false),
+        ),
+        `${name}’s phone: the picture arrives`,
+      );
       fileOf[name] = sent.find((c) => c.to[0].seat === seat[name]).media[0].file;
     }
     const others = PROMPTS.filter((x) => x !== s).flatMap((x) => [x.label, ...(x.details ? [x.details] : [])]);
@@ -218,8 +329,14 @@ try {
   }
   const withPic = Object.keys(fileOf);
   const without = ['Ann', 'Bob', 'Cat', 'Dan'].filter((n) => !fileOf[n]);
-  assert((await fetchAs(phones[withPic[0]], fileOf[withPic[0]])) === 200 && (await fetchAs(phones[withPic[0]], fileOf[withPic[1]])) === 404, `${withPic[0]} can fetch their picture, not ${withPic[1]}’s`);
-  assert((await fetchAs(phones[without[0]], fileOf[withPic[0]])) === 404 && (await fetchAs(phones[without[1]], fileOf[withPic[1]])) === 404, `${without.join(' and ')} (no picture) can fetch neither`);
+  assert(
+    (await fetchAs(phones[withPic[0]], fileOf[withPic[0]])) === 200 && (await fetchAs(phones[withPic[0]], fileOf[withPic[1]])) === 404,
+    `${withPic[0]} can fetch their picture, not ${withPic[1]}’s`,
+  );
+  assert(
+    (await fetchAs(phones[without[0]], fileOf[withPic[0]])) === 404 && (await fetchAs(phones[without[1]], fileOf[withPic[1]])) === 404,
+    `${without.join(' and ')} (no picture) can fetch neither`,
+  );
   assert(await until(async () => /✓ seen by 4 of 4/.test(await flat(dialog.locator('[data-deal-status]')))), 'the panel: ✓ seen by 4 of 4');
   await offStream(SECRETS, 'sent');
 
@@ -231,7 +348,10 @@ try {
   await reveal.waitFor();
   const shown = await flat(reveal);
   // (Everyone the same part: the slice takes its place, never "Player" on every line.)
-  assert(['Ann', 'Bob', 'Cat', 'Dan'].every((n) => shown.includes(`${n} ${drew[n]}`)) && !/\bPlayer\b/.test(shown), `on stream: each name with the slice they drew, not the part they all had (${shown})`);
+  assert(
+    ['Ann', 'Bob', 'Cat', 'Dan'].every((n) => shown.includes(`${n} ${drew[n]}`)) && !/\bPlayer\b/.test(shown),
+    `on stream: each name with the slice they drew, not the part they all had (${shown})`,
+  );
   await offStream(['dtl1', 'dtl2', 'zfnqj', CARD_WORDS, THIS_DEAL], 'Who was who');
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
@@ -250,13 +370,27 @@ try {
   assert(await until(() => !cards().length), '↩ Take the cards back: the room holds none of them');
   assert(await until(async () => !(await phones.Ann.locator('.card').count()) && !(await phones[withPic[0]].locator('.card').count())), 'the phones drop them');
   assert(await until(async () => (await fetchAs(phones[withPic[0]], fileOf[withPic[0]])) === 404), 'and the room lets go of the pictures');
-  assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards are taken back: 📤 Send puts them out again'), 'the panel says its cards are taken back');
+  assert(
+    (await flat(dialog.locator('[data-deal-status]'))).includes('Its cards are taken back: 📤 Send puts them out again'),
+    'the panel says its cards are taken back',
+  );
   await dialog.locator('[data-deal-resend]').click();
   assert(await until(() => cards().length === 4 && cards().every((c) => !sent.some((x) => x.id === c.id))), '📤 Send again: four cards under new ids');
-  assert(await until(() => pics().length === 2) && uploads === 4, 'the pictures go up again');
-  assert(cards().every((c) => c.text === sent.find((x) => x.to[0].seat === c.to[0].seat).text), 'each player gets the same prompt as before');
+  assert((await until(() => pics().length === 2)) && uploads === 4, 'the pictures go up again');
+  assert(
+    cards().every((c) => c.text === sent.find((x) => x.to[0].seat === c.to[0].seat).text),
+    'each player gets the same prompt as before',
+  );
   await phones[withPic[1]].getByRole('button', { name: 'Tap to see' }).tap();
-  assert(await until(() => phones[withPic[1]].locator('.card img').evaluate((img) => img.src.startsWith('blob:') && img.complete && img.naturalWidth > 0).catch(() => false)), `${withPic[1]}’s picture is back`);
+  assert(
+    await until(() =>
+      phones[withPic[1]]
+        .locator('.card img')
+        .evaluate((img) => img.src.startsWith('blob:') && img.complete && img.naturalWidth > 0)
+        .catch(() => false),
+    ),
+    `${withPic[1]}’s picture is back`,
+  );
   await offStream(SECRETS, 'sent again');
 
   // ---------- A deal drawn from the ready-made 🗺 Locations wheel replaces it ----------
@@ -286,8 +420,14 @@ try {
   // ---------- The game is as saved: the deal's words and wheels unchanged ----------
   const play = await stored(host);
   const draft = await stored(host, 'editorDraft');
-  for (const [g, where] of [[play?.game, 'the game in play'], [draft, 'the editor’s copy']]) {
-    assert(!!g && g.deals?.length === 1 && g.deals[0].wheel === 'w_p' && JSON.stringify(g.deals[0].parts[0].card).includes(CARD_WORDS), `${where}: its deal is as saved (its words, its wheel)`);
+  for (const [g, where] of [
+    [play?.game, 'the game in play'],
+    [draft, 'the editor’s copy'],
+  ]) {
+    assert(
+      !!g && g.deals?.length === 1 && g.deals[0].wheel === 'w_p' && JSON.stringify(g.deals[0].parts[0].card).includes(CARD_WORDS),
+      `${where}: its deal is as saved (its words, its wheel)`,
+    );
     assert(g.wheels.length === 1 && g.wheels[0].id === 'w_p', `${where}: no Locations wheel added`);
   }
 

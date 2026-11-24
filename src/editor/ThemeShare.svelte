@@ -27,7 +27,17 @@
   } from '../lib/mytheme';
   import { storeThemeFiles, renameThemeFiles, withShared } from '../lib/themeapply';
   import { setTheme } from '../lib/cluetext';
-  import { leftOutLine, readThemeFile, THEME_EXT, THEME_FILES, themeCode, themeFileText, ThemeError, type SharedTheme, type ThemeMediaFile } from '../lib/themefile';
+  import {
+    leftOutLine,
+    readThemeFile,
+    THEME_EXT,
+    THEME_FILES,
+    themeCode,
+    themeFileText,
+    ThemeError,
+    type SharedTheme,
+    type ThemeMediaFile,
+  } from '../lib/themefile';
   import { clone } from '../lib/ops';
   import { addMedia, sameContent } from '../lib/roundcopy';
   import { copyText } from '../play/standings';
@@ -86,7 +96,9 @@
     const cur = now();
     const next: Theme = { ...withMyTheme(cur, clone(m.theme), game.media), source: { kind: 'mine', id: m.id } };
     const missing = missingFonts(m.theme, game.media).length;
-    const note = missing ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in this game: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)` : '';
+    const note = missing
+      ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in this game: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)`
+      : '';
     if (sameContent(next, cur)) return void toast(`This game already looks like “${m.name}”${note}`);
     // (Its clue text restyles clues all over the game: Undo and Redo show it here, on the Theme page, not at the first
     // clue. So do the other whole themes below.)
@@ -198,7 +210,9 @@
       }
       // (A font it names that this game hasn't got, a saved theme's uploaded to another game, isn't here to go in the file.)
       for (const k of missingFonts(theme, game.media))
-        notHere.push(`${k === 'boardFont' ? 'category' : k === 'valueFont' ? 'value' : 'clue'} font (${mine ? 'uploaded to another game' : 'not in this game'})`);
+        notHere.push(
+          `${k === 'boardFont' ? 'category' : k === 'valueFont' ? 'value' : 'clue'} font (${mine ? 'uploaded to another game' : 'not in this game'})`,
+        );
       const { text, leftOut } = await themeFileText(name, theme, media);
       const filename = `${safeFilename(name)}${THEME_EXT}`;
       const saved = await saveFile(filename, new Blob([text], { type: 'application/json' }));
@@ -211,7 +225,10 @@
 
   async function copyCode(name: string, theme: Theme): Promise<void> {
     const pics = !!(theme.boardImage || theme.banner) || usesUploadedFonts(theme);
-    await copyText(await themeCode(name, theme), `Theme code copied: paste it anywhere${pics ? ' (pictures and uploaded fonts don’t go in a code: export a theme file for those)' : ''}`);
+    await copyText(
+      await themeCode(name, theme),
+      `Theme code copied: paste it anywhere${pics ? ' (pictures and uploaded fonts don’t go in a code: export a theme file for those)' : ''}`,
+    );
   }
 
   // ---------- The cards' menus ----------
@@ -287,7 +304,9 @@
     delete next.source;
     // (A font it names that the file didn't bring: that text keeps this game's font, as with use() above.)
     const missing = missingFonts(theme, [...g.media, ...add]).length;
-    const note = missing ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in the file: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)` : '';
+    const note = missing
+      ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in the file: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)`
+      : '';
     if (sameContent(next, cur) && add.every((r) => g.media.some((m) => m.id === r.id))) return void toast(`This game already looks like “${s.name}”${note}`);
     step(
       `Theme: “${s.name}”`,
@@ -305,17 +324,23 @@
     const next = addMyTheme(list, freshThemeName(list, s.name), s.theme);
     if (!next) return void toast(NOT_STORED);
     list = next;
-    toast(`Saved “${next[next.length - 1].name}” to My themes${s.media.length ? ' (without its pictures and fonts: to bring those in, 📥 Import the file again and 🎨 Use in this game)' : ''}`);
+    toast(
+      `Saved “${next[next.length - 1].name}” to My themes${s.media.length ? ' (without its pictures and fonts: to bring those in, 📥 Import the file again and 🎨 Use in this game)' : ''}`,
+    );
   }
 
   async function fromGame(): Promise<void> {
     const other = await pickOtherGame();
     if (!other) return;
     const g = game;
-    step(`Theme from “${other.title}”`, () => {
-      addMedia(g, themeMedia(other));
-      setTheme(g, clone(other.theme));
-    }, { notify: true, place: { tab: 'theme' } });
+    step(
+      `Theme from “${other.title}”`,
+      () => {
+        addMedia(g, themeMedia(other));
+        setTheme(g, clone(other.theme));
+      },
+      { notify: true, place: { tab: 'theme' } },
+    );
   }
 </script>
 
@@ -366,12 +391,21 @@
           onclick={() => applyPreset(key)}
           oncontextmenu={(e) => showMenu(e, presetItems(key))}
           onkeydown={(e) => keyMenu(e, presetItems(key))}
-          title={edited ? `This game’s theme started from ${PRESETS[key].label} and was changed: a click puts ${PRESETS[key].label} back` : `Use ${PRESETS[key].label} in this game`}
+          title={edited
+            ? `This game’s theme started from ${PRESETS[key].label} and was changed: a click puts ${PRESETS[key].label} back`
+            : `Use ${PRESETS[key].label} in this game`}
         >
           <ThemeSwatch theme={presetTheme(key)} />
-          <span class="nm">{PRESETS[key].label}{#if edited}&nbsp;<span class="edited">· edited</span>{/if}</span>
+          <span class="nm"
+            >{PRESETS[key].label}{#if edited}&nbsp;<span class="edited">· edited</span>{/if}</span
+          >
         </button>
-        <button class="ghost tiny more" aria-label="More for {PRESETS[key].label}" title="Save a copy, export or copy its code" onclick={(e) => dropMenu(e, presetItems(key))}>⋯</button>
+        <button
+          class="ghost tiny more"
+          aria-label="More for {PRESETS[key].label}"
+          title="Save a copy, export or copy its code"
+          onclick={(e) => dropMenu(e, presetItems(key))}>⋯</button
+        >
       </div>
     {/each}
   </div>
@@ -394,9 +428,17 @@
             title="Use “{m.name}” in this game"
           >
             <ThemeSwatch theme={m.theme} />
-            <span class="nm"><span class="tag" title="Saved by you">★</span> {m.name}{#if on && origin?.edited}&nbsp;<span class="edited">· edited</span>{/if}</span>
+            <span class="nm"
+              ><span class="tag" title="Saved by you">★</span>
+              {m.name}{#if on && origin?.edited}&nbsp;<span class="edited">· edited</span>{/if}</span
+            >
           </button>
-          <button class="ghost tiny more" aria-label="More for “{m.name}”" title="Save changes, rename, share or delete" onclick={(e) => dropMenu(e, mineItems(m))}>⋯</button>
+          <button
+            class="ghost tiny more"
+            aria-label="More for “{m.name}”"
+            title="Save changes, rename, share or delete"
+            onclick={(e) => dropMenu(e, mineItems(m))}>⋯</button
+          >
         </div>
       {/each}
     </div>
@@ -417,25 +459,38 @@
     >{share.open ? '▾' : '▸'} Share or bring in a theme <span class="muted">· file, code, another game</span></button
   >
   {#if share.open}
-  <div id="theme-share">
-  <!-- (Buttons that wrap go on under the first one, not under the label.) -->
-  <div class="row">
-    <span class="lbl">This theme</span>
-    <span class="btns">
-      <button class="small" onclick={() => exportTheme(shareName, now(), true)} title="A .brainrot-theme file to send: with this theme’s pictures and uploaded fonts">⬇ Export theme</button>
-      <button class="small" onclick={() => copyCode(shareName, now())} title="A short code to paste in a chat: colors, fonts and layout (no pictures or uploaded fonts)">📋 Copy theme code</button>
-    </span>
-  </div>
-  <div class="row">
-    <span class="lbl">Bring one in</span>
-    <span class="btns">
-      <button class="small" onclick={importFile} title="Open a .brainrot-theme file">📥 Import theme…</button>
-      <button class="small" onclick={() => (importing = 'code')} title="Paste a theme code someone sent you">⌨ Paste theme code…</button>
-      <button class="small" onclick={fromGame} title="Open a .brainrot game (or its play-only web page) and use its theme (with its pictures and uploaded fonts)">📂 Use a theme from another game…</button>
-    </span>
-  </div>
-  <p class="hint">A theme file carries its pictures and uploaded fonts; a code and My themes keep the colors, fonts and layout.</p>
-  </div>
+    <div id="theme-share">
+      <!-- (Buttons that wrap go on under the first one, not under the label.) -->
+      <div class="row">
+        <span class="lbl">This theme</span>
+        <span class="btns">
+          <button
+            class="small"
+            onclick={() => exportTheme(shareName, now(), true)}
+            title="A .brainrot-theme file to send: with this theme’s pictures and uploaded fonts">⬇ Export theme</button
+          >
+          <button
+            class="small"
+            onclick={() => copyCode(shareName, now())}
+            title="A short code to paste in a chat: colors, fonts and layout (no pictures or uploaded fonts)">📋 Copy theme code</button
+          >
+        </span>
+      </div>
+      <div class="row">
+        <span class="lbl">Bring one in</span>
+        <span class="btns">
+          <button class="small" onclick={importFile} title="Open a .brainrot-theme file">📥 Import theme…</button>
+          <button class="small" onclick={() => (importing = 'code')} title="Paste a theme code someone sent you">⌨ Paste theme code…</button>
+          <button
+            class="small"
+            onclick={fromGame}
+            title="Open a .brainrot game (or its play-only web page) and use its theme (with its pictures and uploaded fonts)"
+            >📂 Use a theme from another game…</button
+          >
+        </span>
+      </div>
+      <p class="hint">A theme file carries its pictures and uploaded fonts; a code and My themes keep the colors, fonts and layout.</p>
+    </div>
   {/if}
 </section>
 

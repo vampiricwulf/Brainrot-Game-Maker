@@ -41,7 +41,10 @@ describe('settings', () => {
       });
       savePrefs();
       expect(prefsUnkept.on).toBe(true);
-      Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: (k: string) => kept.get(k) ?? null, setItem: (k: string, v: string) => void kept.set(k, v) } });
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: { getItem: (k: string) => kept.get(k) ?? null, setItem: (k: string, v: string) => void kept.set(k, v) },
+      });
       savePrefs();
       expect(prefsUnkept.on).toBe(false);
     } finally {

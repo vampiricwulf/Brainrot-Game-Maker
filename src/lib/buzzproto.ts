@@ -133,14 +133,33 @@ export function mbText(bytes: number): string {
 }
 
 /** The types a card file may have. No SVG, no HTML. */
-export const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/mp4'] as const;
+export const FILE_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'video/mp4',
+  'video/webm',
+  'audio/mpeg',
+  'audio/ogg',
+  'audio/wav',
+  'audio/mp4',
+] as const;
 /** A card file's id: the SHA-256 of its bytes, as 64 lowercase hex digits. */
 export const isFileId = (s: unknown): s is string => typeof s === 'string' && /^[0-9a-f]{64}$/.test(s);
 
 /** A file's type as the room takes it (other names browsers use for the same types too), or null when it isn't taken. */
 export function fileType(raw: string | null | undefined): (typeof FILE_TYPES)[number] | null {
   const t = (raw ?? '').split(';')[0].trim().toLowerCase();
-  const alias: Record<string, (typeof FILE_TYPES)[number]> = { 'image/jpg': 'image/jpeg', 'audio/mp3': 'audio/mpeg', 'audio/x-wav': 'audio/wav', 'audio/wave': 'audio/wav', 'audio/vnd.wave': 'audio/wav', 'audio/x-m4a': 'audio/mp4', 'audio/m4a': 'audio/mp4' };
+  const alias: Record<string, (typeof FILE_TYPES)[number]> = {
+    'image/jpg': 'image/jpeg',
+    'audio/mp3': 'audio/mpeg',
+    'audio/x-wav': 'audio/wav',
+    'audio/wave': 'audio/wav',
+    'audio/vnd.wave': 'audio/wav',
+    'audio/x-m4a': 'audio/mp4',
+    'audio/m4a': 'audio/mp4',
+  };
   if (alias[t]) return alias[t];
   return (FILE_TYPES as readonly string[]).includes(t) ? (t as (typeof FILE_TYPES)[number]) : null;
 }
@@ -600,7 +619,14 @@ export function phoneView(
     clue: s.phase === 'lobby' && !s.answers ? null : s.clue ? { text: s.clue.text, ...(s.clue.caption ? { caption: s.clue.caption } : {}) } : null,
     answering: a ? { name: a.name, color: a.color, you: a.id === seatId, ...(s.teams && by ? { by: by.name, byYou: !!me && me.id === by.id } : {}) } : null,
     you: seat
-      ? { id: seat.id, name: seat.name, color: seat.color, score: s.scores[seat.id] ?? 0, lockedOut: s.lockedOut.includes(seat.id), ...(s.teams && me ? { member: me.name } : {}) }
+      ? {
+          id: seat.id,
+          name: seat.name,
+          color: seat.color,
+          score: s.scores[seat.id] ?? 0,
+          lockedOut: s.lockedOut.includes(seat.id),
+          ...(s.teams && me ? { member: me.name } : {}),
+        }
       : null,
     ...doneView(s, seatId),
     ...(s.status?.text ? { status: own ? s.status.seatsText! : s.status.text } : {}),
@@ -631,7 +657,9 @@ function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | n
       // (A seat already judged is locked, the others still open.)
       open: a.open && !seat?.closed,
       mine,
-      ...(mine && sent ? { text: sent.text, ...(sent.pick ? { pick: sent.pick } : {}), ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}) } : {}),
+      ...(mine && sent
+        ? { text: sent.text, ...(sent.pick ? { pick: sent.pick } : {}), ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}) }
+        : {}),
       ...(mine && !sent && hidden ? { hidden: true } : {}),
       ...(mine && a.choices?.length ? { choices: a.choices } : {}),
       ...(seat?.verdict ? { verdict: seat.verdict } : {}),
@@ -668,7 +696,13 @@ function wagerView(s: HostState, seatId: string | null, me?: MemberRef | null, s
   if (!w || !seatId || !s.seats.some((x) => x.id === seatId)) return {};
   const own = w.seats.find((x) => x.id === seatId);
   if (!own) {
-    const who = w.kind === 'dd' ? w.seats.map((x) => s.seats.find((y) => y.id === x.id)?.name).filter(Boolean).join(' & ') : '';
+    const who =
+      w.kind === 'dd'
+        ? w.seats
+            .map((x) => s.seats.find((y) => y.id === x.id)?.name)
+            .filter(Boolean)
+            .join(' & ')
+        : '';
     return { wager: { id: w.id, kind: w.kind, open: w.open, mine: false, ...(who ? { who } : {}) } };
   }
   // A phone's wager the host took, then cleared (an emptied box, an undo): gone, not still "sent".
@@ -737,7 +771,16 @@ export function cleanAnswer(raw: string, max: number = ANSWER_MAX): string {
     if (words || lines.at(-1)) lines.push(words);
   }
   while (lines.length && !lines.at(-1)) lines.pop();
-  const kept = lines.length > ANSWER_LINES ? [...lines.slice(0, ANSWER_LINES - 1), lines.slice(ANSWER_LINES - 1).filter(Boolean).join(' ')] : lines;
+  const kept =
+    lines.length > ANSWER_LINES
+      ? [
+          ...lines.slice(0, ANSWER_LINES - 1),
+          lines
+            .slice(ANSWER_LINES - 1)
+            .filter(Boolean)
+            .join(' '),
+        ]
+      : lines;
   return clip(kept.join('\n'), max);
 }
 
@@ -934,7 +977,8 @@ export type WagerRefusal = 'closed' | 'over' | 'bad' | 'slow';
  * 'need-name' (joining a team takes your name; so does asking to join, a name of only invisible characters isn't one),
  * 'slow-down' (too many tries to join in a minute).
  */
-export type DenyReason = 'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' | 'locked' | 'blocked' | 'name-taken' | 'need-name' | 'slow-down';
+export type DenyReason =
+  'taken' | 'unknown-seat' | 'rejected' | 'full' | 'no-new' | 'bad-token' | 'locked' | 'blocked' | 'name-taken' | 'need-name' | 'slow-down';
 
 /** The room → a phone. */
 export type RoomToPhone =

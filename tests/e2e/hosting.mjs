@@ -4,7 +4,31 @@
 // finding the audience window again.
 import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, confirmStrip, flowButton, goOnCheck, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer, failureShots, assert, launchChromium, awardRowIn, finalControlsIn, hostPanelIn, playerRowsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  checkItem,
+  confirmStrip,
+  flowButton,
+  goOnCheck,
+  longPress,
+  mainButton,
+  mainLabel,
+  menuLines,
+  openMenu,
+  playWithPlayers,
+  leaveAnswer,
+  failureShots,
+  assert,
+  launchChromium,
+  awardRowIn,
+  finalControlsIn,
+  hostPanelIn,
+  playerRowsIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const shots = process.env.SCREENSHOTS;
@@ -48,7 +72,10 @@ const stage = (sel, opts) => stageBoxIn(page).locator(sel, opts);
 const tile = (i) => stage('.board .tile').nth(i);
 const status = () => statusLineIn(page).innerText();
 const focused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName);
-const video = () => stage('.full video').first().evaluate((m) => ({ paused: m.paused, t: m.currentTime, muted: m.muted }));
+const video = () =>
+  stage('.full video')
+    .first()
+    .evaluate((m) => ({ paused: m.paused, t: m.currentTime, muted: m.muted }));
 const timerNum = () => stage('.timer .num').innerText();
 const saidHas = (re) => page.waitForFunction((src) => new RegExp(src).test(document.getElementById('live-region')?.dataset.said ?? ''), re.source);
 
@@ -120,7 +147,18 @@ try {
   const clueMenu = await stageMenu({ close: false });
   assert(
     JSON.stringify(clueMenu) ===
-      JSON.stringify(['# Category 2 $200', '👁 Reveal answer · N', '—', '⏱ Start the countdown · T', '—', '▦ Done ▶ board · Esc', '↩ Put back (keep tile) · Shift+Esc', '—', '↶ Undo · Ctrl+Z (off)', '⏸ Cover the screen · K']),
+      JSON.stringify([
+        '# Category 2 $200',
+        '👁 Reveal answer · N',
+        '—',
+        '⏱ Start the countdown · T',
+        '—',
+        '▦ Done ▶ board · Esc',
+        '↩ Put back (keep tile) · Shift+Esc',
+        '—',
+        '↶ Undo · Ctrl+Z (off)',
+        '⏸ Cover the screen · K',
+      ]),
     `a right-click on a clue’s stage gives its menu, the blue button’s step first (${clueMenu.join(' | ')})`,
   );
   await openMenu(page).getByRole('menuitem', { name: '⏱ Start the countdown' }).click();
@@ -181,7 +219,10 @@ try {
   await page.getByRole('button', { name: '± Adjust score' }).click();
   await page.waitForFunction(() => document.activeElement?.matches('.panel .award input'));
   await page.keyboard.press('Escape');
-  assert(await page.evaluate(() => !!document.activeElement?.matches('.stage-box .board .tile[tabindex="0"]')), `Esc in the Amount box opened with ± Adjust score: the keys go to the board's tile (${await focused()})`);
+  assert(
+    await page.evaluate(() => !!document.activeElement?.matches('.stage-box .board .tile[tabindex="0"]')),
+    `Esc in the Amount box opened with ± Adjust score: the keys go to the board's tile (${await focused()})`,
+  );
   await awardRowIn(page).getByRole('button', { name: '✕ Close' }).click();
   // The Amount box takes no sign: ↓ in the empty box doesn't go below 0, and a typed −100 is 100 (Award or Deduct gives
   // the sign).
@@ -191,9 +232,13 @@ try {
   const down = await awardRowIn(page).locator('input').inputValue();
   assert(!down.startsWith('-'), `↓ in the empty Amount box doesn't make it negative (${down})`);
   await awardRowIn(page).locator('input').fill('-100');
-  await awardRowIn(page).locator('input').evaluate((e) => e.blur());
+  await awardRowIn(page)
+    .locator('input')
+    .evaluate((e) => e.blur());
   await page.keyboard.press('1');
-  await awardRowIn(page).getByRole('button', { name: /Deduct .*−\$100/ }).waitFor();
+  await awardRowIn(page)
+    .getByRole('button', { name: /Deduct .*−\$100/ })
+    .waitFor();
   assert((await awardRowIn(page).locator('input').inputValue()) === '100', 'a typed −100 in the Amount box reads 100, and Deduct takes $100');
   await awardRowIn(page).locator('input').fill('');
   await awardRowIn(page).getByRole('button', { name: 'Clear selection' }).click();
@@ -204,13 +249,18 @@ try {
   await page.keyboard.type('100');
   assert((await awardRowIn(page).locator('input').inputValue()) === '100', '± Adjust score puts the keys in the Amount box (typed 100)');
   assert(
-    await playerRowsIn(page).locator('.key').evaluateAll((ks) => ks.length === 3 && ks.every((k) => getComputedStyle(k).visibility === 'hidden')),
+    await playerRowsIn(page)
+      .locator('.key')
+      .evaluateAll((ks) => ks.length === 3 && ks.every((k) => getComputedStyle(k).visibility === 'hidden')),
     'while the keys are in the Amount box, the chips show no number keys (those type points there)',
   );
   // Enter with nobody picked yet: who gets them next (not "Select a player first").
   await page.keyboard.press('Enter');
   await toastsIn(page, { hasText: 'Now pick who gets +$100 (1–3), then Enter' }).waitFor();
-  assert(await page.evaluate(() => !document.activeElement?.closest('input')), 'Enter in the Amount box with nobody picked says to pick who gets the points, and gives the keys back');
+  assert(
+    await page.evaluate(() => !document.activeElement?.closest('input')),
+    'Enter in the Amount box with nobody picked says to pick who gets the points, and gives the keys back',
+  );
   await page.keyboard.press('2');
   await awardRowIn(page).getByRole('button', { name: /Award/ }).click();
   const pop = stage('.pop.anchored');
@@ -274,12 +324,24 @@ try {
   // Every player button in a box opens the player's menu, as their score chip does: a right-click, Shift+F10 (the focus
   // back on it after), a long press on a touch screen (its tap doesn't pick them). Headed by the name only.
   const ddChip = hostPanelIn(page).locator('.dd .chip[data-player-id]').nth(1);
-  const ddName = await ddChip.evaluate((el) => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim());
+  const ddName = await ddChip.evaluate((el) =>
+    [...el.childNodes]
+      .filter((n) => n.nodeType === 3)
+      .map((n) => n.textContent)
+      .join('')
+      .trim(),
+  );
   await ddChip.click({ button: 'right' });
   const chipMenu = await menuLines(page);
-  assert(chipMenu[0] === `# ${ddName}` && chipMenu.includes('✎ Set the score…') && chipMenu.some((l) => /^(Select|Deselect) · 2/.test(l)), `a right-click on a Daily Double chip opens ${ddName}’s menu, keys shown (${chipMenu.join(' | ')})`);
+  assert(
+    chipMenu[0] === `# ${ddName}` && chipMenu.includes('✎ Set the score…') && chipMenu.some((l) => /^(Select|Deselect) · 2/.test(l)),
+    `a right-click on a Daily Double chip opens ${ddName}’s menu, keys shown (${chipMenu.join(' | ')})`,
+  );
   // It starts with the moment's verb (who found it: greyed for the one picked), then a line, then Select.
-  assert(chipMenu[1].startsWith(`⭐ ${ddName} found it`) && chipMenu[2] === '—' && /^(Select|Deselect)/.test(chipMenu[3]), `the Daily Double's ⭐ ${ddName} found it comes first, then a line (${chipMenu.join(' | ')})`);
+  assert(
+    chipMenu[1].startsWith(`⭐ ${ddName} found it`) && chipMenu[2] === '—' && /^(Select|Deselect)/.test(chipMenu[3]),
+    `the Daily Double's ⭐ ${ddName} found it comes first, then a line (${chipMenu.join(' | ')})`,
+  );
   // (Last, in red: 🗑 Remove player…, the 👥 Players window's word in a running game, where they can be restored.)
   assert(chipMenu.at(-1) === '🗑 Remove player…', `and it ends with 🗑 Remove player… (${chipMenu.at(-1)})`);
   await page.keyboard.press('Escape');
@@ -288,7 +350,10 @@ try {
   assert((await menuLines(page))[0] === `# ${ddName}`, 'Shift+F10 on it opens the same menu');
   await page.keyboard.press('Escape');
   await openMenu(page).waitFor({ state: 'detached' });
-  assert((await page.evaluate(() => document.activeElement?.dataset.playerId)) === (await ddChip.getAttribute('data-player-id')), 'Esc gives the chip the keys back');
+  assert(
+    (await page.evaluate(() => document.activeElement?.dataset.playerId)) === (await ddChip.getAttribute('data-player-id')),
+    'Esc gives the chip the keys back',
+  );
   const pickedBefore = await hostPanelIn(page).locator('.dd .chip[aria-pressed="true"]').innerText();
   await longPress(ddChip);
   assert((await menuLines(page))[0] === `# ${ddName}`, 'a long press on it opens it too');
@@ -298,8 +363,12 @@ try {
   // the keys in the Wager box), once only, then who found it (the one picked greyed), the way out.
   const ddMenu = await stageMenu();
   assert(
-    ddMenu[0] === '# ⭐ Daily Double · Category 4 $200' && ddMenu[1] === 'Show question ▶ · N' && ddMenu.filter((l) => l.startsWith('Show question ▶')).length === 1 &&
-      ddMenu.filter((l) => / found it/.test(l)).length === 3 && ddMenu.filter((l) => l.endsWith('found it (off)')).length === 1 && ddMenu.includes('↩ Put back (keep tile) · Esc'),
+    ddMenu[0] === '# ⭐ Daily Double · Category 4 $200' &&
+      ddMenu[1] === 'Show question ▶ · N' &&
+      ddMenu.filter((l) => l.startsWith('Show question ▶')).length === 1 &&
+      ddMenu.filter((l) => / found it/.test(l)).length === 3 &&
+      ddMenu.filter((l) => l.endsWith('found it (off)')).length === 1 &&
+      ddMenu.includes('↩ Put back (keep tile) · Esc'),
     `the stage’s menu on a Daily Double: Show question ▶ first, then who found it (${ddMenu.join(' | ')})`,
   );
   // A click on the splash is its Show question ▶: with no wager typed it says so in the status line, and the keys stay in
@@ -308,7 +377,9 @@ try {
   await stage('.dd-text').click();
   await statusLineIn(page).locator('[data-click-note]', { hasText: 'Type a wager' }).waitFor();
   assert(
-    (await page.evaluate(() => document.activeElement?.matches('.dd input[type=number]'))) && (await stage('.dd-text').count()) === 1 && !(await toastsIn(page, { hasText: 'Type a wager' }).count()),
+    (await page.evaluate(() => document.activeElement?.matches('.dd input[type=number]'))) &&
+      (await stage('.dd-text').count()) === 1 &&
+      !(await toastsIn(page, { hasText: 'Type a wager' }).count()),
     'a click on the Daily Double’s splash with no wager says so in the status line (not a message at the foot), the splash stays, and the keys stay in the Wager box',
   );
   // A wager below 0 (the box's min doesn't stop a typed minus) says so, not "over the max" with the limit ignored.
@@ -325,13 +396,21 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
   await toastsIn(page, { hasText: 'The question just went up: press Enter again to judge' }).waitFor();
-  assert((await playerRowsIn(page).locator('.mark:not(.empty)').count()) === 0, 'a second Enter right after it doesn’t judge the Daily Double’s player (it says to press it again)');
+  assert(
+    (await playerRowsIn(page).locator('.mark:not(.empty)').count()) === 0,
+    'a second Enter right after it doesn’t judge the Daily Double’s player (it says to press it again)',
+  );
   await page.waitForTimeout(400);
-  assert((await status()).includes('Answer hidden') && (await flowButton(page, 'reveal', '👁 Reveal answer').count()) === 1, 'Enter in the Daily Double wager box shows the question, the answer stays hidden');
+  assert(
+    (await status()).includes('Answer hidden') && (await flowButton(page, 'reveal', '👁 Reveal answer').count()) === 1,
+    'Enter in the Daily Double wager box shows the question, the answer stays hidden',
+  );
   // ✘ on its player (nobody else answers a Daily Double): its countdown stops, with no TIME'S UP after; Ctrl+Z brings it back.
   await page.keyboard.press('t');
   await stage('.timer').waitFor();
-  await playerRowsIn(page).getByRole('button', { name: /^Wrong:/ }).click();
+  await playerRowsIn(page)
+    .getByRole('button', { name: /^Wrong:/ })
+    .click();
   await stage('.timer').waitFor({ state: 'detached' });
   await page.keyboard.press('Control+z');
   await stage('.timer').waitFor();
@@ -349,7 +428,10 @@ try {
   await hostPanelIn(page).locator('.p.on').waitFor({ state: 'detached' });
   await page.keyboard.press('Enter');
   await hostPanelIn(page).locator(`.p[aria-label="${ddWho}"] .mark.right`).waitFor();
-  assert((await toastsIn(page, { hasText: 'Select a player first' }).count()) === 0, `a Daily Double: ${ddKey} (letting ${ddWho} go), then Enter, still judges ${ddWho} right`);
+  assert(
+    (await toastsIn(page, { hasText: 'Select a player first' }).count()) === 0,
+    `a Daily Double: ${ddKey} (letting ${ddWho} go), then Enter, still judges ${ddWho} right`,
+  );
   await page.keyboard.press('Escape');
 
   // ---------- ✔ / ✘ on a player's chip: shown there, and the same one isn't taken twice; the nav buttons stay put ----------
@@ -358,7 +440,10 @@ try {
   await tile(7).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
   const inClue = await exitAt();
-  assert(Math.abs(onBoard.x - inClue.x) < 1 && Math.abs(onBoard.y - inClue.y) < 1, `🚪 Exit stays in the same place on the board and in a clue (${onBoard.x},${onBoard.y} → ${inClue.x},${inClue.y})`);
+  assert(
+    Math.abs(onBoard.x - inClue.x) < 1 && Math.abs(onBoard.y - inClue.y) < 1,
+    `🚪 Exit stays in the same place on the board and in a clue (${onBoard.x},${onBoard.y} → ${inClue.x},${inClue.y})`,
+  );
   // A player picked, the answer shown, nothing given: ▦ Done ▶ board (the stage menu's first item, as N) asks first (the
   // check), rather than losing their points; the clue stays open. A number keeps its meaning there (who's picked):
   // letting Player 2 go ticks the item off in its place, "✓ Nothing left", and the check waits (it never goes on by
@@ -366,17 +451,24 @@ try {
   await page.keyboard.press('2');
   await page.keyboard.press('r');
   const doneMenu = await stageMenu({ close: false });
-  assert(doneMenu[1] === '▦ Done ▶ board · N' && doneMenu.filter((l) => l.startsWith('▦ Done ▶ board')).length === 1, `the answer up: the menu's first item is ▦ Done ▶ board, once (${doneMenu.join(' | ')})`);
+  assert(
+    doneMenu[1] === '▦ Done ▶ board · N' && doneMenu.filter((l) => l.startsWith('▦ Done ▶ board')).length === 1,
+    `the answer up: the menu's first item is ▦ Done ▶ board, once (${doneMenu.join(' | ')})`,
+  );
   await openMenu(page).getByRole('menuitem', { name: '▦ Done ▶ board' }).click();
   await checkItem(page, 'picked').waitFor();
   assert(
-    (await checkItem(page, 'picked').innerText()).includes('Player 2 is answering and has no points for this clue yet') && (await status()).includes('Answer is showing'),
+    (await checkItem(page, 'picked').innerText()).includes('Player 2 is answering and has no points for this clue yet') &&
+      (await status()).includes('Answer is showing'),
     'it, with a player picked and no points given, asks first, as N does; the clue stays open',
   );
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('2');
   await hostPanelIn(page).locator('[data-goon="nothing"]').waitFor();
-  assert((await checkItem(page, 'picked').innerText()).startsWith('✓') && (await status()).includes('Answer is showing'), 'in the check 2 still picks (lets Player 2 go): the item ticks off in its place, ✓ Nothing left, and it waits');
+  assert(
+    (await checkItem(page, 'picked').innerText()).startsWith('✓') && (await status()).includes('Answer is showing'),
+    'in the check 2 still picks (lets Player 2 go): the item ticks off in its place, ✓ Nothing left, and it waits',
+  );
   await page.keyboard.press('Escape');
   await goOnCheck(page).waitFor({ state: 'detached' });
   const chip = playerRowsIn(page).first();
@@ -406,14 +498,20 @@ try {
       (await chip.getByRole('button', { name: /^Wrong:/ }).isEnabled()),
     '✔ after ✘ switches the verdict: the ✘ taken back and +$400 given, the chip reads ✔ +$400, one pop “Player 1 +$800”',
   );
-  assert((await scoreOf(chip2)) === wrong2 && (await chip2.locator('.mark').innerText()).trim() === '✘ −$400', 'another player’s ✘ on the clue stays as it was');
+  assert(
+    (await scoreOf(chip2)) === wrong2 && (await chip2.locator('.mark').innerText()).trim() === '✘ −$400',
+    'another player’s ✘ on the clue stays as it was',
+  );
   await page.keyboard.press('Control+z');
   await chip.locator('.mark.wrong').waitFor();
   assert(
     (await scoreOf(chip)) === wrong1 && (await chip.locator('.mark').innerText()).trim() === '✘ −$400' && (await scoreOf(chip2)) === wrong2,
     'one Ctrl+Z takes the switch back to the ✘ (the other player’s ✘ untouched)',
   );
-  assert((await toastsIn(page).innerText()).includes('Undid +$800 (Player 1, ✘ → ✔)'), `the undo says it was a change of verdict (${await toastsIn(page).innerText()})`);
+  assert(
+    (await toastsIn(page).innerText()).includes('Undid +$800 (Player 1, ✘ → ✔)'),
+    `the undo says it was a change of verdict (${await toastsIn(page).innerText()})`,
+  );
   await page.keyboard.press('Control+Shift+z');
   await chip.locator('.mark.right').waitFor();
   // ✘ after ✔: back the other way, −$800 from the ✔.
@@ -485,7 +583,10 @@ try {
   await stage('.full video').waitFor();
   await page.waitForFunction(() => (document.querySelector('.stage-box .full video')?.currentTime ?? 0) > 0.3);
   const after = await video();
-  assert(after.muted && after.t >= before.t - 0.6, `hiding the answer again keeps the video’s place and mute (${before.t.toFixed(1)} → ${after.t.toFixed(1)}, muted ${before.muted} → ${after.muted})`);
+  assert(
+    after.muted && after.t >= before.t - 0.6,
+    `hiding the answer again keeps the video’s place and mute (${before.t.toFixed(1)} → ${after.t.toFixed(1)}, muted ${before.muted} → ${after.muted})`,
+  );
   await page.keyboard.press('Escape');
 
   // ---------- One window, controls shown: no focus ring on a tile until the host moves the keys ----------
@@ -556,7 +657,10 @@ try {
   await tile(3).click();
   await page.locator('.dd input[type=number]').waitFor();
   await page.waitForTimeout(100);
-  assert(await page.locator('.dd input[type=number]').evaluate((e) => e === document.activeElement), 'controls hidden: a Daily Double brings them back, the wager box focused');
+  assert(
+    await page.locator('.dd input[type=number]').evaluate((e) => e === document.activeElement),
+    'controls hidden: a Daily Double brings them back, the wager box focused',
+  );
   await page.keyboard.type('100');
   await page.keyboard.press('Enter');
   await hostPanelIn(page).waitFor({ state: 'detached' });
@@ -564,7 +668,10 @@ try {
   // (The wager box gone, the keys don't land on the hidden “Show controls”: with them it shows, on stream. After the
   // focus rescue's turn, a moment after the panel goes.)
   await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => setTimeout(r)))));
-  assert(!(await page.locator('.show-controls').evaluate((b) => b === document.activeElement)), 'controls hidden: the keys never land on the hidden “Show controls” (it would show on stream)');
+  assert(
+    !(await page.locator('.show-controls').evaluate((b) => b === document.activeElement)),
+    'controls hidden: the keys never land on the hidden “Show controls” (it would show on stream)',
+  );
   await page.keyboard.press('Escape');
   await page.keyboard.press('h');
 
@@ -581,7 +688,8 @@ try {
   await goOn.waitFor();
   const asked = (await goOn.innerText()).replace(/\s+/g, ' ');
   assert(
-    /\d+ clues are left in Jeopardy! Go to Final Jeopardy!\? Keep playing Go to Final Jeopardy! ▶/.test(asked) && (await page.evaluate(() => document.activeElement?.textContent)) === 'Keep playing',
+    /\d+ clues are left in Jeopardy! Go to Final Jeopardy!\? Keep playing Go to Final Jeopardy! ▶/.test(asked) &&
+      (await page.evaluate(() => document.activeElement?.textContent)) === 'Keep playing',
     `Next round with clues left asks in the confirmation strip, naming its answers (${asked})`,
   );
   await page.waitForTimeout(4400);
@@ -641,7 +749,9 @@ try {
   );
   await statusLineIn(page).click();
   await page.keyboard.press('n');
-  await statusLineIn(page).locator('[data-click-note]', { hasText: /Waiting on .+: type their wagers?, or untick them to sit out/ }).waitFor();
+  await statusLineIn(page)
+    .locator('[data-click-note]', { hasText: /Waiting on .+: type their wagers?, or untick them to sit out/ })
+    .waitFor();
   assert(
     (await page.evaluate(() => document.activeElement?.matches('.fj .wagers input[data-wager]') && document.activeElement.value === '')) &&
       !(await toastsIn(page, { hasText: 'Waiting on' }).count()),
@@ -655,7 +765,10 @@ try {
   await page.keyboard.press('Control+z');
   await boxes.first().waitFor();
   const kept = await boxes.evaluateAll((els) => els.map((e) => e.value));
-  assert(kept.every((v, i) => v === String(100 + i)), `Ctrl+Z after the question goes back to the wagers, all kept (${kept.join(', ')})`);
+  assert(
+    kept.every((v, i) => v === String(100 + i)),
+    `Ctrl+Z after the question goes back to the wagers, all kept (${kept.join(', ')})`,
+  );
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Question on screen'));
   await page.keyboard.press('r');
@@ -676,23 +789,45 @@ try {
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
   const revealScores = (await finalControlsIn(page).locator('.pl .pscore').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
-  assert(revealScores.every((v, i) => !i || v >= revealScores[i - 1]), `players ticked back in keep the reveal order lowest score first (${revealScores.join(', ')})`);
+  assert(
+    revealScores.every((v, i) => !i || v >= revealScores[i - 1]),
+    `players ticked back in keep the reveal order lowest score first (${revealScores.join(', ')})`,
+  );
   // The main button is N's next step until everyone is judged (finishing early is the quiet Finish now…, at the left of
   // the box's foot beside "3 still to judge", away from the verdicts), and the how-to is open the first time.
   const revealMain = () => mainLabel(page);
-  const early = page.locator('.fj > .row:last-child > *').evaluateAll((els) => els.map((e) => e.textContent.trim()).filter(Boolean).slice(0, 2));
+  const early = page.locator('.fj > .row:last-child > *').evaluateAll((els) =>
+    els
+      .map((e) => e.textContent.trim())
+      .filter(Boolean)
+      .slice(0, 2),
+  );
   assert(
-    /^(Show wager|Next player) ▶$/.test(await revealMain()) && (await finalControlsIn(page).locator('button.ghost', { hasText: 'Finish now…' }).count()) === 1 && /^Finish now…,\d+ still to judge$/.test((await early).join()),
+    /^(Show wager|Next player) ▶$/.test(await revealMain()) &&
+      (await finalControlsIn(page).locator('button.ghost', { hasText: 'Finish now…' }).count()) === 1 &&
+      /^Finish now…,\d+ still to judge$/.test((await early).join()),
     `in the reveals the main button is the next step (${await revealMain()}); Finish now… a quiet one at the left of the box's foot, beside how many are still to judge (${(await early).join(' | ')})`,
   );
-  assert(await finalControlsIn(page).locator('details.how').evaluate((d) => d.open), 'the reveals’ how-to is open the first time');
+  assert(
+    await finalControlsIn(page)
+      .locator('details.how')
+      .evaluate((d) => d.open),
+    'the reveals’ how-to is open the first time',
+  );
   const revealsMenu = await stageMenu();
   assert(
-    /^(Show wager|Next player) ▶ · N$/.test(revealsMenu[1]) && revealsMenu.some((l) => l.startsWith('✔ Right · C')) && revealsMenu.some((l) => l.startsWith('✘ Wrong · X')) && revealsMenu.includes('Finish now…'),
+    /^(Show wager|Next player) ▶ · N$/.test(revealsMenu[1]) &&
+      revealsMenu.some((l) => l.startsWith('✔ Right · C')) &&
+      revealsMenu.some((l) => l.startsWith('✘ Wrong · X')) &&
+      revealsMenu.includes('Finish now…'),
     `the reveals: its menu’s first item is N’s step, then ✔ Right C and ✘ Wrong X, and finishing early (${revealsMenu.join(' | ')})`,
   );
   // Not chosen yet: outlined at full strength (dimmed, they read too faintly).
-  const unchosen = await finalControlsIn(page).locator('.pl').first().getByRole('button', { name: '✘ Wrong' }).evaluate((b) => [getComputedStyle(b).opacity, getComputedStyle(b).backgroundColor]);
+  const unchosen = await finalControlsIn(page)
+    .locator('.pl')
+    .first()
+    .getByRole('button', { name: '✘ Wrong' })
+    .evaluate((b) => [getComputedStyle(b).opacity, getComputedStyle(b).backgroundColor]);
   assert(unchosen[0] === '1' && unchosen[1] === 'rgba(0, 0, 0, 0)', `an unchosen ✘ Wrong is outlined, not dimmed (${unchosen.join(', ')})`);
   const right = await cues(page, 'right');
   const wrong = await cues(page, 'wrong');
@@ -708,7 +843,12 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Game over'));
   // No tie: the keys rest on the end box, with no ring, not on its first button (◀ Back to final reveals).
   await page.waitForFunction(() => document.activeElement?.matches('.panel .end'));
-  assert((await hostPanelIn(page).locator('.end').evaluate((e) => getComputedStyle(e).outlineStyle)) === 'none', 'the end screen with no tie: the keys rest on the end box, no ring on ◀ Back to final reveals');
+  assert(
+    (await hostPanelIn(page)
+      .locator('.end')
+      .evaluate((e) => getComputedStyle(e).outlineStyle)) === 'none',
+    'the end screen with no tie: the keys rest on the end box, no ring on ◀ Back to final reveals',
+  );
   // (Typed with a symbol, a comma or a word too: the score box reads them all as 500.)
   const typed = ['$500', '500', '500 pts'];
   for (let i = 0; i < 3; i++) {
@@ -720,36 +860,72 @@ try {
   assert(true, 'a score typed in the host panel as "$500" or "500 pts" reads as 500 (a three-way tie)');
   const tieMenu = await stageMenu();
   assert(
-    JSON.stringify(tieMenu.slice(0, 4)) === JSON.stringify(['# Game over · tie for first', '❓ Tiebreaker clue (off)', '🎲 Tiebreaker roll-off · O', '🤝 Declare co-winners']) && tieMenu.includes('🔁 Rematch'),
+    JSON.stringify(tieMenu.slice(0, 4)) ===
+      JSON.stringify(['# Game over · tie for first', '❓ Tiebreaker clue (off)', '🎲 Tiebreaker roll-off · O', '🤝 Declare co-winners']) &&
+      tieMenu.includes('🔁 Rematch'),
     `a tie at the end: its menu has every way to settle it, then the end screen’s buttons (${tieMenu.join(' | ')})`,
   );
   // The tie box has every way too, in the menu's order (❓ greyed: this game has no tiebreaker clue); no blue button.
-  const tieBox = await hostPanelIn(page).locator('[data-tie] button').evaluateAll((bs) =>
-    bs.map((b) => `${[...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim()}${b.disabled ? ' (off)' : ''}`),
-  );
+  const tieBox = await hostPanelIn(page)
+    .locator('[data-tie] button')
+    .evaluateAll((bs) =>
+      bs.map(
+        (b) =>
+          `${[...b.childNodes]
+            .filter((n) => n.nodeName !== 'KBD')
+            .map((n) => n.textContent)
+            .join('')
+            .trim()}${b.disabled ? ' (off)' : ''}`,
+      ),
+    );
   assert(
-    JSON.stringify(tieBox) === JSON.stringify(['❓ Tiebreaker clue (off)', '🎲 Tiebreaker roll-off', '🤝 Declare co-winners']) && (await mainButton(page).count()) === 0,
+    JSON.stringify(tieBox) === JSON.stringify(['❓ Tiebreaker clue (off)', '🎲 Tiebreaker roll-off', '🤝 Declare co-winners']) &&
+      (await mainButton(page).count()) === 0,
     `the tie box holds every way to settle it, and the end screen has no blue button (${tieBox.join(' | ')})`,
   );
   // Its heading is one line, and the roll-off's O is a boxed keycap (it read like a zero).
-  const tieHead = await hostPanelIn(page).locator('[data-tie] > div').first().evaluate((d) => ({ text: d.textContent.trim(), h: d.getBoundingClientRect().height }));
-  const capO = await hostPanelIn(page).locator('[data-tie] kbd').evaluate((k) => getComputedStyle(k).borderTopStyle);
-  assert(/^Tie for first: Player 1, Player 2 & Player 3$/.test(tieHead.text) && tieHead.h < 30 && capO === 'solid', `the tie box's heading is one line, its O a keycap (${JSON.stringify(tieHead)}, ${capO})`);
+  const tieHead = await hostPanelIn(page)
+    .locator('[data-tie] > div')
+    .first()
+    .evaluate((d) => ({ text: d.textContent.trim(), h: d.getBoundingClientRect().height }));
+  const capO = await hostPanelIn(page)
+    .locator('[data-tie] kbd')
+    .evaluate((k) => getComputedStyle(k).borderTopStyle);
+  assert(
+    /^Tie for first: Player 1, Player 2 & Player 3$/.test(tieHead.text) && tieHead.h < 30 && capO === 'solid',
+    `the tie box's heading is one line, its O a keycap (${JSON.stringify(tieHead)}, ${capO})`,
+  );
   // After the show, all on the left, in one place tie or not: the way back, 📋 Copy standings, ▶ Next game…, then
   // 🔁 Rematch last and set apart; nothing takes the empty main cell's place. The status line says to settle the tie.
-  const endRow = await hostPanelIn(page).locator('.end > .row').last().evaluate((row) => {
-    const bs = [...row.querySelectorAll('button')];
-    const r = bs.map((b) => b.getBoundingClientRect());
-    return { words: bs.map((b) => b.textContent.trim()), gap: Math.round(r.at(-1).left - r.at(-2).right), right: Math.round(r.at(-1).right), panel: Math.round(row.closest('.panel').getBoundingClientRect().right) };
-  });
+  const endRow = await hostPanelIn(page)
+    .locator('.end > .row')
+    .last()
+    .evaluate((row) => {
+      const bs = [...row.querySelectorAll('button')];
+      const r = bs.map((b) => b.getBoundingClientRect());
+      return {
+        words: bs.map((b) => b.textContent.trim()),
+        gap: Math.round(r.at(-1).left - r.at(-2).right),
+        right: Math.round(r.at(-1).right),
+        panel: Math.round(row.closest('.panel').getBoundingClientRect().right),
+      };
+    });
   assert(
-    endRow.words.join(' | ') === '◀ Back to final reveals | 📋 Copy standings | ▶ Next game… | 🔁 Rematch' && endRow.gap >= 16 && endRow.right < endRow.panel - 200 && (await status()).includes('Tie for first: settle it in the tie box below'),
+    endRow.words.join(' | ') === '◀ Back to final reveals | 📋 Copy standings | ▶ Next game… | 🔁 Rematch' &&
+      endRow.gap >= 16 &&
+      endRow.right < endRow.panel - 200 &&
+      (await status()).includes('Tie for first: settle it in the tie box below'),
     `the end screen: ◀ Back, 📋 Copy standings, ▶ Next game…, then 🔁 Rematch set apart, all on the left; the status line says to settle the tie (${JSON.stringify(endRow)})`,
   );
   const winner = await cues(page, 'winner');
   // Back to the reveals and finish again, tied this time: "Tie for first" gets no fanfare.
   await page.getByRole('button', { name: '◀ Back to final reveals' }).click();
-  assert(!(await finalControlsIn(page).locator('details.how').evaluate((d) => d.open)), 'the how-to is folded after the first time');
+  assert(
+    !(await finalControlsIn(page)
+      .locator('details.how')
+      .evaluate((d) => d.open)),
+    'the how-to is folded after the first time',
+  );
   // (Everything the screen reader is told from here on.)
   await page.evaluate(() => {
     window.__said = [];
@@ -777,13 +953,19 @@ try {
   await page.keyboard.press('Enter');
   await page.keyboard.press('n');
   await toastsIn(page, { hasText: 'Tie for first: settle it in the tie box (O: a roll-off)' }).waitFor();
-  assert((await status()).includes('Game over') && !(await stage('.wrap .title').count()), 'a tie at the end: Enter starts nothing, N says to settle it in the tie box (O: a roll-off), nothing starts');
+  assert(
+    (await status()).includes('Game over') && !(await stage('.wrap .title').count()),
+    'a tie at the end: Enter starts nothing, N says to settle it in the tie box (O: a roll-off), nothing starts',
+  );
   await statusLineIn(page).click();
   await page.keyboard.press('o');
   await stage('.wrap .title').waitFor();
   assert((await stage('.wrap .title').innerText()).includes('Tiebreaker roll-off'), 'O on a tie for first rolls off the tied leaders (not "Who goes first?")');
   await hostPanelIn(page).locator('.muted', { hasText: 'won the tiebreaker roll-off' }).waitFor({ timeout: 15000 });
-  assert(/🏆 Player \d wins · the show is over: 📋 Copy standings for chat, or 🚪 Exit/.test(await status()), `settled, the status line says who won and that the show is over (${await status()})`);
+  assert(
+    /🏆 Player \d wins · the show is over: 📋 Copy standings for chat, or 🚪 Exit/.test(await status()),
+    `settled, the status line says who won and that the show is over (${await status()})`,
+  );
   endSizes.push(await stageH());
   await page.waitForTimeout(300);
   assert((await cues(page, 'winner')) === winner + 1, 'the winner fanfare plays once the roll-off settles the tie');
@@ -793,7 +975,10 @@ try {
   await page.keyboard.press('Escape');
   await stage('.wrap .title').waitFor({ state: 'detached' });
   endSizes.push(await stageH());
-  assert(endSizes.every((x) => x === endSizes[0]), `one window: the stage keeps one size from the Final's reveals to the results, the roll-off landed and closed (${endSizes.join(' / ')})`);
+  assert(
+    endSizes.every((x) => x === endSizes[0]),
+    `one window: the stage keeps one size from the Final's reveals to the results, the roll-off landed and closed (${endSizes.join(' / ')})`,
+  );
   const wonGap = await gapUnder('.panel .end > .muted');
   assert(wonGap >= 5, `“… won the tiebreaker roll-off.” doesn't sit on the buttons under it (${wonGap}px apart)`);
 
@@ -825,7 +1010,10 @@ try {
   const [scoresWin] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);
   watch(scoresWin, 'scores');
   await scoresWin.locator('.strip .plate').first().waitFor();
-  assert((await scoresWin.locator('.strip .plate.picker').count()) === 0, `the scores window lights nobody on the results (the host panel has ${pickerChips} picker)`);
+  assert(
+    (await scoresWin.locator('.strip .plate.picker').count()) === 0,
+    `the scores window lights nobody on the results (the host panel has ${pickerChips} picker)`,
+  );
   await Promise.all([scoresWin.waitForEvent('close'), hostPanelIn(page).locator('button[aria-label="Close the scores window"]').click()]);
 
   // ---------- Ctrl+Z on the results: what was done there undoes there; a Final judgment goes back to its reveals ----------
@@ -864,7 +1052,10 @@ try {
   await page.getByRole('button', { name: 'Resume game' }).click();
   const ask = page.locator('.mode-ask');
   await ask.waitFor();
-  assert((await ask.locator('.mode').count()) === 2 && (await ask.innerText()).includes('screen covered'), 'Resume asks: single window or the audience window (and says it comes back covered)');
+  assert(
+    (await ask.locator('.mode').count()) === 2 && (await ask.innerText()).includes('screen covered'),
+    'Resume asks: single window or the audience window (and says it comes back covered)',
+  );
   const [aud] = await Promise.all([page.waitForEvent('popup'), ask.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   watch(aud, 'audience');
   await aud.locator('.cover').waitFor();

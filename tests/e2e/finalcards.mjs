@@ -19,8 +19,26 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, 
-  checkItem, confirmStrip, editorReady, flowIs, forgetSeen, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored,
+import {
+  appFile,
+  checkItem,
+  confirmStrip,
+  editorReady,
+  flowIs,
+  forgetSeen,
+  goOnCheck,
+  mainButton,
+  mainLabel,
+  openGameFile,
+  packGame,
+  png,
+  recordSeen,
+  roomStored,
+  seenWhere,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  stored,
   leaveAnswer,
   failureShots,
   assert,
@@ -51,7 +69,23 @@ const SECRETS = ['qkzvx', 'zfnqj'];
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
-const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  ...box(y),
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
 const slide = (...elements) => ({ background: {}, elements });
 
@@ -81,16 +115,31 @@ try {
     version: 2,
     title: 'Final cards',
     settings: {
-      allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: true, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: true, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      stream: { clueCaption: true },
+      buzzer: true,
     },
     players: ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i] })),
     rounds: [
       {
-        id: 'r1', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 0,
+        id: 'r1',
+        name: 'Round 1',
+        mode: 'board',
+        values: [200, 400],
+        dailyDoubleCount: 0,
         categories: [
           {
-            id: 'cat0', title: 'Movies',
+            id: 'cat0',
+            title: 'Movies',
             clues: [
               plain('q_tip', 'A movie question', 'Shrek', {
                 cards: [
@@ -104,15 +153,25 @@ try {
         ],
       },
       {
-        id: 'f1', name: 'Final Jeopardy!', mode: 'final', category: 'Movies', timerSeconds: 30, allowNonPositive: true,
-        questionSlide: slide(text('The final question')), answerSlide: slide(text('The final answer')),
+        id: 'f1',
+        name: 'Final Jeopardy!',
+        mode: 'final',
+        category: 'Movies',
+        timerSeconds: 30,
+        allowNonPositive: true,
+        questionSlide: slide(text('The final question')),
+        answerSlide: slide(text('The final answer')),
         cards: [
           { id: 'fc1', name: 'Leader hint', to: 'playing', ...slide(text(HINT), image('hint', 400)) },
           { id: 'fc2', to: 'nobody', ...slide(text(SIDE)) },
         ],
       },
     ],
-    media, audio: {}, wheels: [], dice: [], theme: {},
+    media,
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
   };
   const packPath = resolve('test-results/final-cards.brainrot');
   writeFileSync(packPath, await packGame(game, files));
@@ -164,7 +223,12 @@ try {
   await host.locator('[data-tile="0,0"]').click();
   const dialog = host.getByRole('dialog', { name: 'Edit clue' });
   await dialog.waitFor();
-  const tabsOf = (where) => where.getByRole('tablist', { name: 'Slides' }).getByRole('tab').allInnerTexts().then((t) => t.map((s) => s.trim()));
+  const tabsOf = (where) =>
+    where
+      .getByRole('tablist', { name: 'Slides' })
+      .getByRole('tab')
+      .allInnerTexts()
+      .then((t) => t.map((s) => s.trim()));
   const tabsAre = async (where, want, what) => {
     const ok = await until(async () => JSON.stringify(await tabsOf(where)) === JSON.stringify(want));
     assert(ok, `${what} (${(await tabsOf(where)).join(' | ')})`);
@@ -186,7 +250,10 @@ try {
   // A name that gives the answer away ("Shrek").
   await nameBox.fill('Shrek tip');
   await dialog.locator('[data-name-repeats]').waitFor();
-  assert(await until(async () => (await checklist()).includes('the name of card “Shrek tip” repeats')), 'a name that repeats the answer says so, and the checklist notes it');
+  assert(
+    await until(async () => (await checklist()).includes('the name of card “Shrek tip” repeats')),
+    'a name that repeats the answer says so, and the checklist notes it',
+  );
   await undoSays('Undo: Renamed card “Shrek tip”');
   await dialog.locator('header .value').click();
   await host.keyboard.press('Control+z');
@@ -265,7 +332,10 @@ try {
   await tabsAre(main, ['Question slide', '🤫 Leader hint', 'Answer'], 'Card 2 deleted: Leader hint, beside it, opens');
   await main.getByRole('button', { name: '🗑 Delete card' }).click();
   await tabsAre(main, ['Question slide', 'Answer slide (hidden until revealed)'], 'and then the last one');
-  assert((await main.getByRole('tab', { name: 'Question slide' }).getAttribute('aria-selected')) === 'true', 'the question opens, not the Answer open before the card');
+  assert(
+    (await main.getByRole('tab', { name: 'Question slide' }).getAttribute('aria-selected')) === 'true',
+    'the question opens, not the Answer open before the card',
+  );
   await focused('main [role="tab"][aria-selected="true"][data-qslide="1"]');
   assert(true, 'with the keys on its tab');
   await host.keyboard.press('Control+z');
@@ -317,7 +387,10 @@ try {
   assert((await main.getByRole('button', { name: /^🗑 Delete unused/ }).count()) === 0, '🖼 Media: no 🗑 Delete unused, as nothing is unused');
   await usedBtn.click();
   const usedAt = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
-  assert((await usedBtn.innerText()).trim() === 'used 1× ▾' && usedAt.some((t) => t.startsWith('Final Jeopardy! › Leader hint')), `zfnqj-hint.png is used 1×, on the Final’s card (${usedAt.join(' | ')})`);
+  assert(
+    (await usedBtn.innerText()).trim() === 'used 1× ▾' && usedAt.some((t) => t.startsWith('Final Jeopardy! › Leader hint')),
+    `zfnqj-hint.png is used 1×, on the Final’s card (${usedAt.join(' | ')})`,
+  );
   await host.keyboard.press('Escape');
 
   // =====================================================================================================================
@@ -361,7 +434,10 @@ try {
   const whereFound = async (p, found) => (found.length ? `:\n    ${(await seenWhere(p, found)).join('\n    ')}` : '');
   const offStream = async (p, name, when, more = []) => {
     const found = await shownOf(p, [...SECRETS, ...more]);
-    assert(!found.length, `${when}: ${name} holds no card’s words or file name${more.length ? ', nor its name' : ''}${found.length ? ` (found ${found.join(', ')})` : ''}${await whereFound(p, found)}`);
+    assert(
+      !found.length,
+      `${when}: ${name} holds no card’s words or file name${more.length ? ', nor its name' : ''}${found.length ? ` (found ${found.join(', ')})` : ''}${await whereFound(p, found)}`,
+    );
   };
 
   // ---------- A named tile card, offered by its name ----------
@@ -414,14 +490,31 @@ try {
   await panel.waitFor();
   const row1 = panel.locator('[data-tile-card="1"]');
   const row2 = panel.locator('[data-tile-card="2"]');
-  assert((await words(row1)).includes('Leader hint · 1 line of words, 1 picture'), `the Final’s panel: Leader hint, counted, never said (${await words(row1)})`);
-  const chipOn = (row, name, who) => row.getByRole('button', { name: `${name} to ${who}`, exact: true }).getAttribute('aria-pressed').then((a) => a === 'true');
-  const allOn = async () => (await chipOn(row1, 'Card “Leader hint”', 'Ann')) && (await chipOn(row1, 'Card “Leader hint”', 'Bob')) && (await chipOn(row1, 'Card “Leader hint”', 'Cat'));
+  assert(
+    (await words(row1)).includes('Leader hint · 1 line of words, 1 picture'),
+    `the Final’s panel: Leader hint, counted, never said (${await words(row1)})`,
+  );
+  const chipOn = (row, name, who) =>
+    row
+      .getByRole('button', { name: `${name} to ${who}`, exact: true })
+      .getAttribute('aria-pressed')
+      .then((a) => a === 'true');
+  const allOn = async () =>
+    (await chipOn(row1, 'Card “Leader hint”', 'Ann')) && (await chipOn(row1, 'Card “Leader hint”', 'Bob')) && (await chipOn(row1, 'Card “Leader hint”', 'Cat'));
   assert(await until(allOn), 'it starts with everyone playing: Ann, Bob and Cat');
-  assert((await words(row2)).startsWith('Card 2 ·') && (await words(row2)).includes('nobody yet'), `an unnamed card set to nobody: Card 2, nobody yet (${await words(row2)})`);
+  assert(
+    (await words(row2)).startsWith('Card 2 ·') && (await words(row2)).includes('nobody yet'),
+    `an unnamed card set to nobody: Card 2, nobody yet (${await words(row2)})`,
+  );
   const order = await host.evaluate(() => {
     const [w, c, s] = [document.querySelector('.fj .wagers'), document.querySelector('[data-final-cards]'), document.querySelector('.fj > .row:last-child')];
-    return !!(w && c && s && w.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING && c.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return !!(
+      w &&
+      c &&
+      s &&
+      w.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING &&
+      c.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING
+    );
   });
   assert(order, 'the panel comes after the wager rows, before the step’s buttons');
 
@@ -432,7 +525,10 @@ try {
   await host.keyboard.press('Control+z');
   assert(await until(async () => (await host.locator('[data-plays="p3"]').isChecked()) && (await allOn())), 'Ctrl+Z: Cat plays again, and she’s back on it');
   await offStream(host, 'the host page in one window', 'the Final’s cards listed');
-  assert((await statusLineIn(host).locator('[data-viewers]').textContent()).includes('never what’s on it'), 'the status line’s ⚠ Viewers see this chip says viewers can read a card’s name here, never what’s on it');
+  assert(
+    (await statusLineIn(host).locator('[data-viewers]').textContent()).includes('never what’s on it'),
+    'the status line’s ⚠ Viewers see this chip says viewers can read a card’s name here, never what’s on it',
+  );
 
   // ---------- 📤 Send: to everyone playing, beside the wager box ----------
   assert(!cards().length, 'nothing went by itself');
@@ -441,7 +537,10 @@ try {
   assert(true, 'a screen reader hears Card “Leader hint” sent to Ann, Bob, Cat');
   assert(await until(() => cards().length === 1), 'sent: the room’s state holds one card');
   const c1 = cards()[0];
-  assert(/^sc:/.test(c1.id) && JSON.stringify(c1.to) === JSON.stringify([{ seat: seat.Ann }, { seat: seat.Bob }, { seat: seat.Cat }]) && c1.text === HINT, 'to Ann’s, Bob’s and Cat’s seats, with its words');
+  assert(
+    /^sc:/.test(c1.id) && JSON.stringify(c1.to) === JSON.stringify([{ seat: seat.Ann }, { seat: seat.Bob }, { seat: seat.Cat }]) && c1.text === HINT,
+    'to Ann’s, Bob’s and Cat’s seats, with its words',
+  );
   assert(!['Leader hint', 'Clue tip', 'zfnqj'].some((w) => JSON.stringify(states).includes(w)), 'neither a card’s name nor a file name ever goes to the room');
   assert(await until(async () => /listed as Card 1/.test(await words(row1))), `its row says it went, listed as Card 1 (${await words(row1)})`);
   assert(!(await roomStored(persist, 'Leader hint')), 'nor does the room ever store its name');
@@ -466,7 +565,10 @@ try {
   await stageBoxIn(host).click();
   const clickedAt = Date.now();
   await note.filter({ hasText: /^Waiting on Bob.*Cat/ }).waitFor();
-  assert(!(await note.innerText()).includes('300') && (await statusLineIn(host, { hasText: 'Question on screen' }).count()) === 0, `a click on the wagers says who they wait on, never Ann’s amount, and the question stays off (${await note.innerText()})`);
+  assert(
+    !(await note.innerText()).includes('300') && (await statusLineIn(host, { hasText: 'Question on screen' }).count()) === 0,
+    `a click on the wagers says who they wait on, never Ann’s amount, and the question stays off (${await note.innerText()})`,
+  );
   await finalControlsIn(host).locator('input[data-wager="p2"]').fill('200');
   await finalControlsIn(host).locator('input[data-wager="p3"]').fill('100');
   assert(true, 'Ann wagers from her phone, the host types Bob’s and Cat’s');
@@ -477,7 +579,8 @@ try {
   await stageBoxIn(host).click();
   await note.filter({ hasText: 'All wagers in: Show question ▶ (N)' }).waitFor();
   assert(
-    (await host.evaluate(() => document.activeElement?.matches('.fj input[data-wager="p3"]'))) && (await statusLineIn(host, { hasText: 'Question on screen' }).count()) === 0,
+    (await host.evaluate(() => document.activeElement?.matches('.fj input[data-wager="p3"]'))) &&
+      (await statusLineIn(host, { hasText: 'Question on screen' }).count()) === 0,
     'all in: the wagers box says “✓ All 3 wagers in”, a click on the stage “All wagers in: Show question ▶ (N)”, the question still off and the keys still in Cat’s box',
   );
 
@@ -486,7 +589,10 @@ try {
   await row2.getByRole('button', { name: 'Send card 2', exact: true }).click();
   assert(await until(() => cards().length === 2), 'Card 2 to Bob: the room holds two cards');
   const c2 = cards()[1];
-  assert(JSON.stringify(c2.to) === JSON.stringify([{ seat: seat.Bob }]) && c2.text === SIDE && cards()[0].id === c1.id, 'Card 2 goes to Bob’s seat only, Card 1 keeps its id');
+  assert(
+    JSON.stringify(c2.to) === JSON.stringify([{ seat: seat.Bob }]) && c2.text === SIDE && cards()[0].id === c1.id,
+    'Card 2 goes to Bob’s seat only, Card 1 keeps its id',
+  );
   assert(await until(async () => (await cardsOn(bob)) === 2), 'Bob’s phone has both');
   assert(!heard.ann.join('').includes('Side-qkzvx') && !heard.cat.join('').includes('Side-qkzvx'), 'Ann’s and Cat’s phones never get anything of it');
 
@@ -517,9 +623,15 @@ try {
   await host.getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await hostPanelIn(host).waitFor();
-  assert(await until(() => states.length > n && JSON.stringify(cards().map((c) => c.id)) === JSON.stringify([c1.id, c2.id])), 'reloaded: both cards are out under the same ids');
+  assert(
+    await until(() => states.length > n && JSON.stringify(cards().map((c) => c.id)) === JSON.stringify([c1.id, c2.id])),
+    'reloaded: both cards are out under the same ids',
+  );
   await panel.waitFor();
-  assert(await until(async () => /listed as Card 1/.test(await words(row1)) && /listed as Card 2/.test(await words(row2))), 'and the Final’s panel says both went');
+  assert(
+    await until(async () => /listed as Card 1/.test(await words(row1)) && /listed as Card 2/.test(await words(row2))),
+    'and the Final’s panel says both went',
+  );
 
   // =====================================================================================================================
   // C. Two windows
@@ -534,13 +646,19 @@ try {
   const info = host.locator('[data-final-cards-info]');
   await info.waitFor();
   const infoText = await words(info);
-  assert(['Leader hint', HINT, 'zfnqj-hint.png'].every((w) => infoText.includes(w)), `the column beside the stage shows what’s on the Final’s cards (${infoText})`);
+  assert(
+    ['Leader hint', HINT, 'zfnqj-hint.png'].every((w) => infoText.includes(w)),
+    `the column beside the stage shows what’s on the Final’s cards (${infoText})`,
+  );
   const outButton = tools.locator('[data-cards-out-count]');
   await outButton.click();
   const outList = host.getByRole('dialog', { name: 'Cards out' });
   await outList.waitFor();
   const outRow = outList.locator('[data-card-out="Card 1"]');
-  assert((await outRow.locator('[data-card-from]').innerText()).trim() === '· Final Jeopardy! · Leader hint', `the cards out: Card 1 is the Final’s Leader hint (${await words(outRow)})`);
+  assert(
+    (await outRow.locator('[data-card-from]').innerText()).trim() === '· Final Jeopardy! · Leader hint',
+    `the cards out: Card 1 is the Final’s Leader hint (${await words(outRow)})`,
+  );
   assert((await words(outRow)).includes('until the Final ends'), 'and it lasts until the Final ends');
   await host.keyboard.press('Escape');
   await outList.waitFor({ state: 'detached' });
@@ -560,7 +678,12 @@ try {
   // =====================================================================================================================
   section('Through the Final');
   const next = async (label) => {
-    await host.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !(/** @type {HTMLButtonElement | null} */ (document.querySelector('.panel [data-next]'))?.disabled), label);
+    await host.waitForFunction(
+      (l) =>
+        document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) &&
+        !(/** @type {HTMLButtonElement | null} */ (document.querySelector('.panel [data-next]'))?.disabled),
+      label,
+    );
     await mainButton(host).click();
   };
   await next('Show question ▶');
@@ -571,15 +694,26 @@ try {
   // Players type their answers (on by default): Bob's answer box comes under his two cards, and he sends from it.
   await bob.locator('#answer-form').waitFor();
   const [cardsBox, answerBox] = [await bob.locator('#cards').boundingBox(), await bob.locator('#answer-form').boundingBox()];
-  assert(cardsBox.y + cardsBox.height <= answerBox.y + 1, `Bob’s answer box is under both cards (cards end at ${Math.round(cardsBox.y + cardsBox.height)}px, the box starts at ${Math.round(answerBox.y)}px)`);
-  assert((await bob.locator('#clue').innerText()) === 'The final question' && (await bob.locator('#clue-cap').innerText()) === 'Final Jeopardy! · Movies', 'over them, the question and what’s on (“Final Jeopardy! · Movies”)');
+  assert(
+    cardsBox.y + cardsBox.height <= answerBox.y + 1,
+    `Bob’s answer box is under both cards (cards end at ${Math.round(cardsBox.y + cardsBox.height)}px, the box starts at ${Math.round(answerBox.y)}px)`,
+  );
+  assert(
+    (await bob.locator('#clue').innerText()) === 'The final question' && (await bob.locator('#clue-cap').innerText()) === 'Final Jeopardy! · Movies',
+    'over them, the question and what’s on (“Final Jeopardy! · Movies”)',
+  );
   // (Short lines over a long one, 197 characters in all, near the 200 a phone takes.)
-  const BOB_LONG = 'Bob-answer it was the one with the dog that drove the bus across the bridge in the rain and then the whole town came out to watch it go by that grey afternoon, and nobody ever forgot that day';
+  const BOB_LONG =
+    'Bob-answer it was the one with the dog that drove the bus across the bridge in the rain and then the whole town came out to watch it go by that grey afternoon, and nobody ever forgot that day';
   const BOB_ANSWER = `Yes\nNo\n${BOB_LONG}`;
-  if (!(BOB_ANSWER.length > 190 && BOB_ANSWER.length <= 200)) throw new Error(`Bob's answer is ${BOB_ANSWER.length} characters: it should be just under the 200 a phone takes`);
+  if (!(BOB_ANSWER.length > 190 && BOB_ANSWER.length <= 200))
+    throw new Error(`Bob's answer is ${BOB_ANSWER.length} characters: it should be just under the 200 a phone takes`);
   await bob.locator('#answer-in').fill(BOB_ANSWER);
   await bob.locator('#answer-send').click();
-  assert(await until(() => last()?.answers?.seats?.find((x) => x.id === seat.Bob)?.got === 1), 'Bob sends his answer: the host took it (the room is told it has it)');
+  assert(
+    await until(() => last()?.answers?.seats?.find((x) => x.id === seat.Bob)?.got === 1),
+    'Bob sends his answer: the host took it (the room is told it has it)',
+  );
   // Ann's and Cat's answers aren't in: 👁 Reveal answer asks first (⏱ 10 more seconds). (On a phone's width, 390×844:
   // its lines and its “Don't ask” tick get the card's whole width, and a tap where the blue button was presses nothing.)
   await host.setViewportSize({ width: 390, height: 844 });
@@ -590,7 +724,10 @@ try {
   await next('👁 Reveal answer');
   await checkItem(host, 'answers').waitFor();
   const coming = await checkItem(host, 'answers').innerText();
-  assert(coming.includes('1 of 3 phones answered') && !coming.includes('Bob-answer'), `👁 Reveal answer with answers still coming asks first, names and counts only (${coming})`);
+  assert(
+    coming.includes('1 of 3 phones answered') && !coming.includes('Bob-answer'),
+    `👁 Reveal answer with answers still coming asks first, names and counts only (${coming})`,
+  );
   await goOnCheck(host, { ready: true }).waitFor();
   const narrow = await goOnCheck(host).evaluate((card, r) => {
     const t = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('button, label, input');
@@ -614,12 +751,18 @@ try {
     `a phone's width: a tap where the blue button was ticks nothing, the check still asks (under it: ${narrow.under || 'nothing'})`,
   );
   // Ann's and Cat's come in with the check open: its line says they're all in (not the count from before).
-  for (const [p, a] of [[ann, 'Ann-answer'], [cat, 'Cat-answer']]) {
+  for (const [p, a] of [
+    [ann, 'Ann-answer'],
+    [cat, 'Cat-answer'],
+  ]) {
     await p.locator('#answer-in').fill(a);
     await p.locator('#answer-send').click();
   }
   await checkItem(host, 'answers').filter({ hasText: 'All phones answered' }).waitFor({ timeout: 10000 });
-  assert(!(await checkItem(host, 'answers').innerText()).includes('1 of 3'), `the last answer in with the check open: “All phones answered” (${(await checkItem(host, 'answers').innerText()).replace(/\s+/g, ' ')})`);
+  assert(
+    !(await checkItem(host, 'answers').innerText()).includes('1 of 3'),
+    `the last answer in with the check open: “All phones answered” (${(await checkItem(host, 'answers').innerText()).replace(/\s+/g, ' ')})`,
+  );
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('r');
   await statusLineIn(host, { hasText: 'Answer on screen' }).waitFor();
@@ -628,17 +771,30 @@ try {
   await next('Start player reveals ▶');
   await finalControlsIn(host).locator('.pl').first().waitFor();
   // (The reveals keep the wagers locked on the phones: the room is told, the cards with it.)
-  assert(await until(() => last()?.wager?.open === false && cards().length === 2 && last()?.answers?.open === false), 'the answer, then the reveals: both cards stay out (and the answers and wagers are locked)');
+  assert(
+    await until(() => last()?.wager?.open === false && cards().length === 2 && last()?.answers?.open === false),
+    'the answer, then the reveals: both cards stay out (and the answers and wagers are locked)',
+  );
   const marked = states.flatMap((s) => (s.cards ?? []).filter((c) => !c.open));
-  assert(!marked.length && !(await bob.locator('body').innerText()).includes('answer’s on screen'), 'never marked “the answer’s on screen”: not to the room, not on Bob’s phone');
+  assert(
+    !marked.length && !(await bob.locator('body').innerText()).includes('answer’s on screen'),
+    'never marked “the answer’s on screen”: not to the room, not on Bob’s phone',
+  );
   await panel.waitFor();
   assert(/listed as Card 1/.test(await words(row1)), 'the reveals: the Final’s panel is still there, under the rows');
   // The first one's answer or wager up (a click on the spotlit card, as N): their verdict is due, in their row only
   // (✔ Right then ✘ Wrong, neither blue); the blue button is Next player ▶, and nothing in the main cell is ✔ or ✘.
   await stageBoxIn(host).locator('.spot').click();
   const spot = finalControlsIn(host).locator('.pl.cur');
-  await host.waitForFunction(() => document.querySelector('.fj .pl.cur [aria-label^="✔ Right"]') && !document.querySelector('.fj .pl.cur [aria-pressed="true"]') && document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player ▶'));
-  const verdicts = await spot.locator('button.good, button.bad').evaluateAll((bs) => bs.map((b) => `${b.textContent.trim()}${b.classList.contains('primary') ? ' (blue)' : ''}`));
+  await host.waitForFunction(
+    () =>
+      document.querySelector('.fj .pl.cur [aria-label^="✔ Right"]') &&
+      !document.querySelector('.fj .pl.cur [aria-pressed="true"]') &&
+      document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player ▶'),
+  );
+  const verdicts = await spot
+    .locator('button.good, button.bad')
+    .evaluateAll((bs) => bs.map((b) => `${b.textContent.trim()}${b.classList.contains('primary') ? ' (blue)' : ''}`));
   assert(
     (await flowIs(host, 'Next player ▶')) && verdicts.join(' | ') === '✔ Right | ✘ Wrong' && !/[✔✘]/.test(await mainLabel(host)),
     `the reveals, a verdict due: ✔ Right and ✘ Wrong in the spotlit row, in that order, neither blue, and the blue button Next player ▶ (${verdicts.join(' | ')}; ${await mainLabel(host)})`,
@@ -647,16 +803,25 @@ try {
   await host.waitForTimeout(500);
   await stageBoxIn(host).locator('.spot').click();
   await checkItem(host, 'verdict').waitFor();
-  assert((await finalControlsIn(host).locator('.pl button[aria-pressed="true"]').count()) === 0, 'a click on the spotlit card with their verdict due asks for it, and judges nobody');
+  assert(
+    (await finalControlsIn(host).locator('.pl button[aria-pressed="true"]').count()) === 0,
+    'a click on the spotlit card with their verdict due asks for it, and judges nobody',
+  );
   await host.keyboard.press('Escape');
   await goOnCheck(host).waitFor({ state: 'detached' });
   await spot.locator('button.good').click();
   await finalControlsIn(host).locator('.pl button[aria-pressed="true"]').first().waitFor();
   const judgedNow = await finalControlsIn(host).locator('.pl button[aria-pressed="true"]').count();
-  assert(judgedNow === 1 && (await mainLabel(host)) === 'Next player ▶', `the row's ✔ Right judges one player (${judgedNow} judged; the main button: ${await mainLabel(host)})`);
+  assert(
+    judgedNow === 1 && (await mainLabel(host)) === 'Next player ▶',
+    `the row's ✔ Right judges one player (${judgedNow} judged; the main button: ${await mainLabel(host)})`,
+  );
   // Bob's typed answer on the stage: two short lines over a long one, near the most a phone takes, fit the answer's room
   // on their own lines (every word in sight, never cut off at the top and bottom); the card keeps its size.
-  const spotBox = () => stageBoxIn(host).locator('.spot').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const spotBox = () =>
+    stageBoxIn(host)
+      .locator('.spot')
+      .evaluate((e) => Math.round(e.getBoundingClientRect().height));
   await finalControlsIn(host).locator('.pl', { hasText: 'Bob' }).locator('button.name').click();
   await stageBoxIn(host).locator('.spot-name', { hasText: 'Bob' }).waitFor();
   await host.waitForTimeout(450);
@@ -664,11 +829,13 @@ try {
   await host.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Show answer ▶'));
   await mainButton(host).click();
   await stageBoxIn(host).locator('.spot-answer', { hasText: 'nobody ever forgot' }).waitFor();
-  const bobSpot = await stageBoxIn(host).locator('[data-spot-answer]').evaluate((/** @type {HTMLElement} */ e) => ({
-    text: e.innerText,
-    fits: e.scrollHeight <= e.clientHeight && e.querySelector('.lines').getBoundingClientRect().height <= e.getBoundingClientRect().height + 1,
-    size: e.style.fontSize,
-  }));
+  const bobSpot = await stageBoxIn(host)
+    .locator('[data-spot-answer]')
+    .evaluate((/** @type {HTMLElement} */ e) => ({
+      text: e.innerText,
+      fits: e.scrollHeight <= e.clientHeight && e.querySelector('.lines').getBoundingClientRect().height <= e.getBoundingClientRect().height + 1,
+      size: e.style.fontSize,
+    }));
   assert(
     bobSpot.fits && bobSpot.text === `“Yes\nNo\n${BOB_LONG}”` && parseFloat(bobSpot.size) > 28 && (await spotBox()) === cardH,
     `Bob's answer (two short lines over a long one, near the most a phone takes) goes up on its own lines, every word in sight above the smallest size, the card keeping its size (${JSON.stringify(bobSpot)}, card ${cardH}px)`,
@@ -689,7 +856,10 @@ try {
   await host.keyboard.press('Control+z');
   await finalControlsIn(host).locator('.pl').first().waitFor();
   await panel.waitFor();
-  assert(await until(async () => (await row1.getByRole('button', { name: 'Send card “Leader hint”', exact: true }).count()) === 1), 'Ctrl+Z back into its reveals: its cards don’t come back, 📤 Send is offered again');
+  assert(
+    await until(async () => (await row1.getByRole('button', { name: 'Send card “Leader hint”', exact: true }).count()) === 1),
+    'Ctrl+Z back into its reveals: its cards don’t come back, 📤 Send is offered again',
+  );
   assert(!cards().length, 'and the room holds none');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);

@@ -7,9 +7,7 @@
   let { dual }: { dual: boolean } = $props();
 
   // In dual mode the audience window's copies are the real (audible) ones.
-  const items = $derived<[string, MediaState][]>(
-    dual ? Object.entries(remoteMedia) : Object.entries(localMedia).filter(([, s]) => s.role !== 'mirror'),
-  );
+  const items = $derived<[string, MediaState][]>(dual ? Object.entries(remoteMedia) : Object.entries(localMedia).filter(([, s]) => s.role !== 'mirror'));
 
   const icon = { video: '🎬', audio: '🔊', youtube: '▶️', remote: '🌐', external: '🎞' } as const;
   /** The row the keys reach (Space, ← →, M, Y): only its tooltips name them. */
@@ -48,7 +46,9 @@
         {:else if m.failed}
           <span class="msg">{m.kind === 'youtube' ? "YouTube won't play embedded here." : "Couldn't load this media."}</span>
           <!-- (Plain: the panel's one blue is its blue button.) -->
-          <button class="small" onclick={() => open(m.openUrl)} title={id === keyed ? 'Y' : undefined}>▶ Open {m.kind === 'youtube' ? 'on YouTube' : 'link'} ↗</button>
+          <button class="small" onclick={() => open(m.openUrl)} title={id === keyed ? 'Y' : undefined}
+            >▶ Open {m.kind === 'youtube' ? 'on YouTube' : 'link'} ↗</button
+          >
         {:else if m.kind === 'external'}
           <!-- A site's own player (Google Drive, Streamable): only showing, restarting and stopping it work from here. -->
           <span class="msg">
@@ -63,9 +63,19 @@
           {/if}
           <button class="small ghost" onclick={() => open(m.openUrl)} title="Open the player in its own window{key(id, 'Y')}">Open player window ↗</button>
         {:else}
-          <button class="small" onclick={() => mediaCommand({ el: id, op: 'toggle' })} title={id === keyed ? 'Space' : m.paused ? 'Play' : 'Pause'} aria-label={m.paused ? 'Play' : 'Pause'}>{m.paused ? '▶' : '⏸'}</button>
+          <button
+            class="small"
+            onclick={() => mediaCommand({ el: id, op: 'toggle' })}
+            title={id === keyed ? 'Space' : m.paused ? 'Play' : 'Pause'}
+            aria-label={m.paused ? 'Play' : 'Pause'}>{m.paused ? '▶' : '⏸'}</button
+          >
           <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'restart' })} title="Restart" aria-label="Restart">⏮</button>
-          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'seekBy', value: -5 })} title="Back 5s{key(id, '←')}" aria-label="Back 5 seconds">−5</button>
+          <button
+            class="small ghost"
+            onclick={() => mediaCommand({ el: id, op: 'seekBy', value: -5 })}
+            title="Back 5s{key(id, '←')}"
+            aria-label="Back 5 seconds">−5</button
+          >
           <input
             class="seek"
             type="range"
@@ -78,9 +88,20 @@
             aria-label="Seek"
             aria-valuetext="{fmtTime(m.time)} of {fmtTime(m.duration)}"
           />
-          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'seekBy', value: 5 })} title="Forward 5s{key(id, '→')}" aria-label="Forward 5 seconds">+5</button>
+          <button
+            class="small ghost"
+            onclick={() => mediaCommand({ el: id, op: 'seekBy', value: 5 })}
+            title="Forward 5s{key(id, '→')}"
+            aria-label="Forward 5 seconds">+5</button
+          >
           <span class="time">{fmtTime(m.time)} / {fmtTime(m.duration)}</span>
-          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'muted', value: !m.muted })} title="Mute{key(id, 'M')}" aria-label="Mute" aria-pressed={m.muted}>
+          <button
+            class="small ghost"
+            onclick={() => mediaCommand({ el: id, op: 'muted', value: !m.muted })}
+            title="Mute{key(id, 'M')}"
+            aria-label="Mute"
+            aria-pressed={m.muted}
+          >
             {m.muted ? '🔇' : '🔈'}
           </button>
           <input
@@ -94,11 +115,17 @@
             aria-label="Volume"
             aria-valuetext="{Math.round(m.volume * 100)}%"
           />
-          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'loop', value: !m.loop })} title="Loop" aria-label="Loop" aria-pressed={m.loop}>🔁</button>
+          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'loop', value: !m.loop })} title="Loop" aria-label="Loop" aria-pressed={m.loop}
+            >🔁</button
+          >
           {#if m.openUrl}
-            <button class="small ghost" onclick={() => open(m.openUrl)} title="Open in its own window{key(id, 'Y')}" aria-label="Open in its own window">↗</button>
+            <button class="small ghost" onclick={() => open(m.openUrl)} title="Open in its own window{key(id, 'Y')}" aria-label="Open in its own window"
+              >↗</button
+            >
           {/if}
-          {#if m.blocked}<span class="blocked" title="The browser blocked autoplay with sound, so it's playing muted. Click the unmute button.">autoplay muted</span>{/if}
+          {#if m.blocked}<span class="blocked" title="The browser blocked autoplay with sound, so it's playing muted. Click the unmute button."
+              >autoplay muted</span
+            >{/if}
         {/if}
       </div>
     {/each}

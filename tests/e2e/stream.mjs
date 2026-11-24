@@ -16,7 +16,38 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, showChecklist, stored, leaveAnswer, revealAnyway, assert, launchChromium, section, until, boardIn, boardTilesIn, finalControlsIn, hostPanelIn, playerRowsIn, roundNavIn, stageBoxIn, statusBarIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  addClassicRounds,
+  flowButton,
+  flowIs,
+  mainButton,
+  mainLabel,
+  noSelection,
+  openGameFile,
+  openOnStream,
+  playWithPlayers,
+  selectedWords,
+  showChecklist,
+  stored,
+  leaveAnswer,
+  revealAnyway,
+  assert,
+  launchChromium,
+  section,
+  until,
+  boardIn,
+  boardTilesIn,
+  finalControlsIn,
+  hostPanelIn,
+  playerRowsIn,
+  roundNavIn,
+  stageBoxIn,
+  statusBarIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -47,19 +78,91 @@ const nextRound = async () => {
  */
 async function pastelStage() {
   section('Pastel in one window at 1280×720');
-  const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#4a3b5c', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
+  const slide = (t) => ({
+    background: {},
+    elements: [
+      {
+        id: `t${Math.random().toString(36).slice(2)}`,
+        kind: 'text',
+        text: t,
+        x: 120,
+        y: 90,
+        w: 1680,
+        h: 900,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 1,
+        font: 'Arial',
+        size: 110,
+        weight: 700,
+        italic: false,
+        underline: false,
+        uppercase: false,
+        color: '#4a3b5c',
+        align: 'center',
+        vAlign: 'middle',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        autoFit: true,
+      },
+    ],
+  });
   const values = [200, 400];
   const game = {
-    id: 'g_pastel', version: 2, title: 'Pastel',
+    id: 'g_pastel',
+    version: 2,
+    title: 'Pastel',
     settings: {
-      allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
       roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
       stream: { coverText: 'Technical difficulties — the host is fighting the cat for the keyboard, back in a few minutes!' },
     },
     players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#56b4e9', '#d55e00'][i] })),
-    rounds: [{ id: 'r_b', name: 'Board', mode: 'board', values, dailyDoubleCount: 0, categories: ['One', 'Two'].map((title, c) => ({ id: `c${c}`, title, clues: values.map((v, r) => ({ id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: slide(`Clue ${c}-${r}`), answerSlide: slide(`Answer ${c}-${r}`) })) })) }],
-    media: [], audio: {}, wheels: [], dice: [],
-    theme: { preset: 'pastel', tile: '#ffd6e7', tileUsed: '#f5ecf1', boardGap: '#fff7fb', value: '#7a4cff', boardText: '#4a3b5c', stageText: '#4a3b5c', boardFont: "'Comic Neue', 'Comic Sans MS', cursive", valueFont: "'Comic Neue', 'Comic Sans MS', cursive", glow: 'none', scoreBar: 'bottom', scoreBarBg: '#fce4ef' },
+    rounds: [
+      {
+        id: 'r_b',
+        name: 'Board',
+        mode: 'board',
+        values,
+        dailyDoubleCount: 0,
+        categories: ['One', 'Two'].map((title, c) => ({
+          id: `c${c}`,
+          title,
+          clues: values.map((v, r) => ({
+            id: `q${c}_${r}`,
+            value: null,
+            type: 'standard',
+            questionSlide: slide(`Clue ${c}-${r}`),
+            answerSlide: slide(`Answer ${c}-${r}`),
+          })),
+        })),
+      },
+    ],
+    media: [],
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {
+      preset: 'pastel',
+      tile: '#ffd6e7',
+      tileUsed: '#f5ecf1',
+      boardGap: '#fff7fb',
+      value: '#7a4cff',
+      boardText: '#4a3b5c',
+      stageText: '#4a3b5c',
+      boardFont: "'Comic Neue', 'Comic Sans MS', cursive",
+      valueFont: "'Comic Neue', 'Comic Sans MS', cursive",
+      glow: 'none',
+      scoreBar: 'bottom',
+      scoreBarBg: '#fce4ef',
+    },
   };
   mkdirSync(resolve('test-results'), { recursive: true });
   const gameFile = resolve('test-results/stream-pastel.json');
@@ -111,7 +214,10 @@ async function pastelStage() {
     return { fading, under: at === stage ? `the stage, ${getComputedStyle(stage).backgroundColor}` : getComputedStyle(at).backgroundColor };
   });
   await host.evaluate(() => document.getAnimations().forEach((a) => a.play()));
-  assert(back.fading < 1 && back.under === boardBg, `back on the board, it fades in over its own background (${back.under}, at opacity ${back.fading}), not black`);
+  assert(
+    back.fading < 1 && back.under === boardBg,
+    `back on the board, it fades in over its own background (${back.under}, at opacity ${back.fading}), not black`,
+  );
   await st('.board .tile').first().waitFor();
   await host.waitForTimeout(400);
 
@@ -130,7 +236,10 @@ async function pastelStage() {
   await host.waitForTimeout(800);
   const wheelTitle = await pill();
   assert(wheelTitle.color === 'rgb(255, 255, 255)', `the wheel's title is white on its pill (${wheelTitle.color})`);
-  assert(wheelTitle.lines === 1 && wheelTitle.right <= 700, `“Pick a category” fits on one line, clear of the wheel (${wheelTitle.lines} lines, to x=${wheelTitle.right})`);
+  assert(
+    wheelTitle.lines === 1 && wheelTitle.right <= 700,
+    `“Pick a category” fits on one line, clear of the wheel (${wheelTitle.lines} lines, to x=${wheelTitle.right})`,
+  );
   await host.keyboard.press('Escape');
   await st('.ov').waitFor({ state: 'detached' });
   await host.getByRole('button', { name: '🎲 Dice' }).click();
@@ -185,12 +294,19 @@ async function pastelStage() {
     const stage = document.querySelector('.stage-box .stage').getBoundingClientRect();
     const k = stage.width / 1920;
     const r = e.getBoundingClientRect();
-    const said = { top: Math.round((r.top - stage.top) / k), bottom: Math.round((r.bottom - stage.top) / k), joinH: Math.round(join.getBoundingClientRect().height / k) };
+    const said = {
+      top: Math.round((r.top - stage.top) / k),
+      bottom: Math.round((r.bottom - stage.top) / k),
+      joinH: Math.round(join.getBoundingClientRect().height / k),
+    };
     img.remove();
     join.remove();
     return said;
   });
-  assert(column.top >= 0 && column.bottom <= 1080 && column.joinH > 20, `and with a 300px banner and the join line it fits the stage (y=${column.top} to ${column.bottom} of 1080)`);
+  assert(
+    column.top >= 0 && column.bottom <= 1080 && column.joinH > 20,
+    `and with a 300px banner and the join line it fits the stage (y=${column.top} to ${column.bottom} of 1080)`,
+  );
   await host.keyboard.press('k');
   await st('.cover').waitFor({ state: 'detached' });
 
@@ -207,7 +323,10 @@ async function pastelStage() {
   await host.locator('.play.still').waitFor();
   await host.waitForTimeout(300);
   const still = await lit();
-  assert(moving === 'brightness(1.25)' && still === 'none', `a tile under the mouse lights up while it moves (${moving}), not once it's still with the controls hidden (${still})`);
+  assert(
+    moving === 'brightness(1.25)' && still === 'none',
+    `a tile under the mouse lights up while it moves (${moving}), not once it's still with the controls hidden (${still})`,
+  );
   await host.keyboard.press('h');
   await ctx.close();
 }
@@ -218,22 +337,106 @@ async function pastelStage() {
  */
 async function crowd() {
   section('A crowded game at 1280×720');
-  const NAMES = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
+  const NAMES = [
+    'xXx_DarkLord_Skibidi_420_xXx',
+    'TheRealMcCoy Bartholomew',
+    'Cat',
+    'Mrs. Featherstonehaugh',
+    'EveEveEveEveEveEve',
+    'Fay',
+    'Gustavo Fring Fan Club',
+    'Hal',
+    'Ivy-Rose Montgomery',
+    'JJ',
+    'Kimberly Kardashian',
+    'Louis the Fourteenth',
+  ];
   const SCORES = [12400, -3200, 800, 0, 25600, 1000000, -400, 600, 200, 1600, 3000, 99999];
   const COLORS = ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'];
-  const CATS = ['Famous Internet Personalities of the 2010s', 'Skibidi Lore', 'Minecraft Speedrunning Strategies', 'Rizz', 'Things That Happened Only in Ohio', 'Anime Openings', 'Supercalifragilisticexpialidocious Words', 'Gen Alpha Slang Dictionary', 'Twitch Streamers', 'Memes'];
-  const LONG = 'This streamer once spent forty-eight consecutive hours playing the same level of a notoriously difficult platformer while chat voted on every single jump he made';
-  const text = (t) => ({ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: true, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, shadow: { color: '#000000', x: 6, y: 6, blur: 0 }, autoFit: true });
+  const CATS = [
+    'Famous Internet Personalities of the 2010s',
+    'Skibidi Lore',
+    'Minecraft Speedrunning Strategies',
+    'Rizz',
+    'Things That Happened Only in Ohio',
+    'Anime Openings',
+    'Supercalifragilisticexpialidocious Words',
+    'Gen Alpha Slang Dictionary',
+    'Twitch Streamers',
+    'Memes',
+  ];
+  const LONG =
+    'This streamer once spent forty-eight consecutive hours playing the same level of a notoriously difficult platformer while chat voted on every single jump he made';
+  const text = (t) => ({
+    id: `t${Math.random().toString(36).slice(2)}`,
+    kind: 'text',
+    text: t,
+    x: 120,
+    y: 90,
+    w: 1680,
+    h: 900,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 1,
+    font: 'Arial',
+    size: 110,
+    weight: 700,
+    italic: false,
+    underline: false,
+    uppercase: true,
+    color: '#ffffff',
+    align: 'center',
+    vAlign: 'middle',
+    lineHeight: 1.2,
+    letterSpacing: 0,
+    shadow: { color: '#000000', x: 6, y: 6, blur: 0 },
+    autoFit: true,
+  });
   const values = [200, 400, 600, 800, 1000];
   const game = {
-    id: 'g_crowd', version: 2, title: 'Crowded',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 12, stream: { clueCaption: true } },
+    id: 'g_crowd',
+    version: 2,
+    title: 'Crowded',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+      maxPlayers: 12,
+      stream: { clueCaption: true },
+    },
     players: NAMES.map((name, i) => ({ id: `p${i + 1}`, name, color: COLORS[i], startScore: SCORES[i] })),
-    rounds: [{
-      id: 'r_big', name: 'Big board', mode: 'board', values, dailyDoubleCount: 0,
-      categories: CATS.map((title, c) => ({ id: `c${c}`, title, clues: values.map((v, r) => ({ id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: { background: {}, elements: [text(c + r ? `Clue ${c}-${r}` : LONG)] }, answerSlide: { background: {}, elements: [text(`Answer ${c}-${r}`)] }, ...(c === 1 && r === 0 ? { timerSeconds: 45 } : {}) })) })),
-    }],
-    media: [], audio: {}, wheels: [], dice: [], theme: {},
+    rounds: [
+      {
+        id: 'r_big',
+        name: 'Big board',
+        mode: 'board',
+        values,
+        dailyDoubleCount: 0,
+        categories: CATS.map((title, c) => ({
+          id: `c${c}`,
+          title,
+          clues: values.map((v, r) => ({
+            id: `q${c}_${r}`,
+            value: null,
+            type: 'standard',
+            questionSlide: { background: {}, elements: [text(c + r ? `Clue ${c}-${r}` : LONG)] },
+            answerSlide: { background: {}, elements: [text(`Answer ${c}-${r}`)] },
+            ...(c === 1 && r === 0 ? { timerSeconds: 45 } : {}),
+          })),
+        })),
+      },
+    ],
+    media: [],
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
   };
   mkdirSync(resolve('test-results'), { recursive: true });
   const gameFile = resolve('test-results/stream-crowd.json');
@@ -261,12 +464,13 @@ async function crowd() {
 
   // Every score whole on its plate (none cut to "$1,60"), and every name on one line ("…" if it must).
   const clipped = (loc) =>
-    loc.evaluateAll((els) =>
-      els.filter((e) => {
-        const box = e.closest('.plate').getBoundingClientRect();
-        const r = e.getBoundingClientRect();
-        return e.scrollWidth > e.clientWidth + 1 || r.left < box.left - 1 || r.right > box.right + 1;
-      }).length,
+    loc.evaluateAll(
+      (els) =>
+        els.filter((e) => {
+          const box = e.closest('.plate').getBoundingClientRect();
+          const r = e.getBoundingClientRect();
+          return e.scrollWidth > e.clientWidth + 1 || r.left < box.left - 1 || r.right > box.right + 1;
+        }).length,
     );
   assert((await aud.locator('.plate').count()) === 12 && (await clipped(aud.locator('.plate .score .nm'))) === 0, '12 players at 1280: no score is cut off');
   const nameRows = await aud.locator('.plate .name').evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().height)))]);
@@ -275,12 +479,14 @@ async function crowd() {
   assert(Math.min(...nameSizes) >= 28, `names stay readable (${Math.min(...nameSizes)}px at the smallest, in stage pixels)`);
 
   // Ten columns of values: all whole, one size for the board, not shrunk to nothing.
-  const vals = await boardTilesIn(boardIn(aud)).locator('.face').evaluateAll((els) =>
-    els.map((e) => ({ size: parseFloat(getComputedStyle(e).fontSize), over: e.firstElementChild.scrollWidth > e.clientWidth + 1 })),
-  );
+  const vals = await boardTilesIn(boardIn(aud))
+    .locator('.face')
+    .evaluateAll((els) => els.map((e) => ({ size: parseFloat(getComputedStyle(e).fontSize), over: e.firstElementChild.scrollWidth > e.clientWidth + 1 })));
   assert(vals.length === 50 && !vals.some((v) => v.over), '10 categories: every value fits its tile');
   assert(new Set(vals.map((v) => v.size)).size === 1 && vals[0].size >= 40, `one size for every value on the board (${vals[0].size}px)`);
-  const cats = await boardIn(aud).locator('.header .title').evaluateAll((els) => els.map((e) => ({ name: e.textContent.replace(/\u00ad/g, ''), px: parseFloat(getComputedStyle(e).fontSize) })));
+  const cats = await boardIn(aud)
+    .locator('.header .title')
+    .evaluateAll((els) => els.map((e) => ({ name: e.textContent.replace(/\u00ad/g, ''), px: parseFloat(getComputedStyle(e).fontSize) })));
   // (No more than the editor's checklist called too long for a 10-column board go smaller, and never below 20.)
   const flagged = Number(tooLong.match(/(\d+) category names are too long/)?.[1] ?? 1);
   const small = cats.filter((c) => c.px < 30);
@@ -290,48 +496,54 @@ async function crowd() {
   );
   // A word is broken only when it can't be whole even at 20 px, and never leaves fewer than 4 letters on a line
   // ("SUPERCALI-FRAGI-…", never "UNIVE-RSE").
-  const broken = await boardIn(aud).locator('.header .title > div').evaluateAll((els) =>
-    els.flatMap((inner) => {
-      const node = inner.firstChild;
-      const text = node?.textContent ?? '';
-      const tops = [...text].map((_, i) => {
-        const r = document.createRange();
-        r.setStart(node, i);
-        r.setEnd(node, i + 1);
-        // (Its last box: a letter just after a break also has an empty one at the end of the line before.)
-        const boxes = r.getClientRects();
-        return Math.round(boxes[boxes.length - 1]?.top ?? 0);
-      });
-      const out = [];
-      let at = 0;
-      for (const word of text.split(' ')) {
-        const lines = [];
-        [...word].forEach((c, i) => {
-          if (c === '\u00ad') return;
-          const t = tops[at + i];
-          if (!lines.length || lines[lines.length - 1].t !== t) lines.push({ t, s: '' });
-          lines[lines.length - 1].s += c;
+  const broken = await boardIn(aud)
+    .locator('.header .title > div')
+    .evaluateAll((els) =>
+      els.flatMap((inner) => {
+        const node = inner.firstChild;
+        const text = node?.textContent ?? '';
+        const tops = [...text].map((_, i) => {
+          const r = document.createRange();
+          r.setStart(node, i);
+          r.setEnd(node, i + 1);
+          // (Its last box: a letter just after a break also has an empty one at the end of the line before.)
+          const boxes = r.getClientRects();
+          return Math.round(boxes[boxes.length - 1]?.top ?? 0);
         });
-        at += word.length + 1;
-        if (lines.length < 2) continue;
-        const probe = document.createElement('span');
-        probe.textContent = word.replace(/\u00ad/g, '');
-        probe.style.cssText = 'position:absolute;white-space:nowrap;font-size:20px';
-        inner.append(probe);
-        const whole = probe.offsetWidth <= inner.parentElement.clientWidth;
-        probe.remove();
-        out.push({ pieces: lines.map((l) => l.s), whole });
-      }
-      return out;
-    }),
-  );
+        const out = [];
+        let at = 0;
+        for (const word of text.split(' ')) {
+          const lines = [];
+          [...word].forEach((c, i) => {
+            if (c === '\u00ad') return;
+            const t = tops[at + i];
+            if (!lines.length || lines[lines.length - 1].t !== t) lines.push({ t, s: '' });
+            lines[lines.length - 1].s += c;
+          });
+          at += word.length + 1;
+          if (lines.length < 2) continue;
+          const probe = document.createElement('span');
+          probe.textContent = word.replace(/\u00ad/g, '');
+          probe.style.cssText = 'position:absolute;white-space:nowrap;font-size:20px';
+          inner.append(probe);
+          const whole = probe.offsetWidth <= inner.parentElement.clientWidth;
+          probe.remove();
+          out.push({ pieces: lines.map((l) => l.s), whole });
+        }
+        return out;
+      }),
+    );
   assert(
     broken.length > 0 && broken.every((b) => !b.whole && b.pieces.every((p) => p.length >= 4)),
     `long words on the board break only when they must, at 4 letters or more a piece (${broken.map((b) => b.pieces.join('-')).join(', ')})`,
   );
-  const catsOver = await boardIn(aud).locator('.header .title').evaluateAll((els) =>
-    els.filter((e) => e.firstElementChild.scrollHeight > e.clientHeight + 1).map((e) => `${e.textContent} ${e.firstElementChild.scrollHeight}/${e.clientHeight} ${e.style.fontSize} ${e.style.hyphens}`),
-  );
+  const catsOver = await boardIn(aud)
+    .locator('.header .title')
+    .evaluateAll((els) =>
+      els
+        .filter((e) => e.firstElementChild.scrollHeight > e.clientHeight + 1)
+        .map((e) => `${e.textContent} ${e.firstElementChild.scrollHeight}/${e.clientHeight} ${e.style.fontSize} ${e.style.hyphens}`),
+    );
   assert(catsOver.length === 0, `and they all fit their cells ${catsOver.join(' | ')}`);
 
   // The mouse left still over the board (after the click that allows sound): the cursor goes, over a tile too.
@@ -360,19 +572,26 @@ async function crowd() {
   const covered = await aud.evaluate(() => {
     const t = document.querySelector('.timer').getBoundingClientRect();
     const over = (b) => b.right > t.left && b.left < t.right && b.bottom > t.top && b.top < t.bottom;
-    return [...document.querySelectorAll('.board .header, .board .tile, .plate')].filter((e) => over(e.getBoundingClientRect())).map((e) => e.textContent.trim().slice(0, 30));
+    return [...document.querySelectorAll('.board .header, .board .tile, .plate')]
+      .filter((e) => over(e.getBoundingClientRect()))
+      .map((e) => e.textContent.trim().slice(0, 30));
   });
   assert(!covered.length, `a countdown on the board covers no category, tile or plate (${covered.join(' | ')})`);
 
   // A long clue with the countdown up: the slide moves down under it, so the countdown never covers its first line.
-  await boardTilesIn(boardIn(stageBoxIn(host))).first().click();
+  await boardTilesIn(boardIn(stageBoxIn(host)))
+    .first()
+    .click();
   await aud.locator('.slide-area').waitFor();
   await host.keyboard.press('t');
   await aud.locator('.timer').waitFor();
   await aud.waitForTimeout(600);
   const timer = await aud.locator('.timer').boundingBox();
   const words = await aud.locator('.slide-area .inner').boundingBox();
-  assert(words.y >= timer.y + timer.height, `the countdown doesn’t cover the clue’s first line (timer ends at ${Math.round(timer.y + timer.height)}, the words start at ${Math.round(words.y)})`);
+  assert(
+    words.y >= timer.y + timer.height,
+    `the countdown doesn’t cover the clue’s first line (timer ends at ${Math.round(timer.y + timer.height)}, the words start at ${Math.round(words.y)})`,
+  );
   assert((await sc.locator('.clock .timer').count()) === 1, 'the scores window shows the countdown too');
   const caption = await aud.locator('.caption').evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
   assert(caption >= 44, `the clue caption is big enough to read on a scaled-down stream (${caption}px)`);
@@ -381,7 +600,10 @@ async function crowd() {
   // double-click on the audience window (full screen) turns nothing blue there.
   await host.locator('.info .a').dblclick({ position: { x: 4, y: 8 } });
   await host.keyboard.press('Control+a');
-  assert((await selectedWords(host)) === 'Answer', `two windows: a word of the answer in the host's column selects, and Ctrl+A selects nothing more (${await selectedWords(host)})`);
+  assert(
+    (await selectedWords(host)) === 'Answer',
+    `two windows: a word of the answer in the host's column selects, and Ctrl+A selects nothing more (${await selectedWords(host)})`,
+  );
   await aud.locator('.slide-area .inner').dblclick();
   assert(await noSelection(aud), `a double-click on the audience window selects nothing (${await selectedWords(aud)})`);
   await aud.locator('.slide-area .inner').dblclick();
@@ -394,7 +616,10 @@ async function crowd() {
   await aud.waitForTimeout(400);
   const pop = await aud.locator('.pop').boundingBox();
   const cap = await aud.locator('.caption').boundingBox();
-  assert(pop.x >= 0 && pop.x + pop.width <= 1280 && pop.y + pop.height <= cap.y, `the score pop stays on the stage, above the caption (${JSON.stringify(pop)})`);
+  assert(
+    pop.x >= 0 && pop.x + pop.width <= 1280 && pop.y + pop.height <= cap.y,
+    `the score pop stays on the stage, above the caption (${JSON.stringify(pop)})`,
+  );
   assert((await aud.locator('.pop .amt').innerText()).includes('$200'), 'with its points shown in full');
   await host.keyboard.press('Escape');
   await boardTilesIn(boardIn(aud)).first().waitFor();
@@ -422,7 +647,10 @@ async function crowd() {
     const e = document.querySelector('.timesup');
     return e ? getComputedStyle(e).animationDelay : 'gone';
   });
-  assert(joined === 'gone' || joined.startsWith('-'), `an audience window reloaded during TIME'S UP joins it partway, rather than slamming it in again (${joined})`);
+  assert(
+    joined === 'gone' || joined.startsWith('-'),
+    `an audience window reloaded during TIME'S UP joins it partway, rather than slamming it in again (${joined})`,
+  );
   // Its moment is counted from the host's 0, the same in every window: once it's over here, a reload doesn't bring it back.
   await aud.locator('.timesup').waitFor({ state: 'detached' });
   await aud.reload();
@@ -430,7 +658,7 @@ async function crowd() {
   assert((await aud.locator('.timesup').count()) === 0, "a reloaded audience window shows the countdown at 0, without TIME'S UP again");
   await sc.reload();
   await sc.locator('.clock .timer.done').waitFor();
-  assert((await sc.locator('.timesup').count()) === 0, "so does a reloaded scores window");
+  assert((await sc.locator('.timesup').count()) === 0, 'so does a reloaded scores window');
 
   // Seconds typed in the ⏱ box are for that moment only: 60 typed on one clue, the next clue's ⏱ Start (and T) is that
   // clue's own countdown again, not 60.
@@ -441,7 +669,10 @@ async function crowd() {
   // (The new countdown's number, not the last one's 0 still going away: waited for, a 30 or a 0 never reads as 60.)
   const started = await aud
     .waitForFunction(() => +(document.querySelector('.timer:not(.done) .num')?.textContent ?? 0) > 55, null, { timeout: 3000 })
-    .then(() => true, () => false);
+    .then(
+      () => true,
+      () => false,
+    );
   assert(started, 'a countdown of 60 seconds typed on one clue starts at 60');
   await playerRowsIn(host).nth(2).locator('.sel').click();
   await host.keyboard.press('Enter');
@@ -490,23 +721,105 @@ async function crowd() {
  */
 async function viewers() {
   section('What viewers see, 12 players with phone buzzers');
-  const NAMES = ['xXx_DarkLord_Skibidi_420_xXx', 'TheRealMcCoy Bartholomew', 'Cat', 'Mrs. Featherstonehaugh', 'EveEveEveEveEveEve', 'Fay', 'Gustavo Fring Fan Club', 'Hal', 'Ivy-Rose Montgomery', 'JJ', 'Kimberly Kardashian', 'Louis the Fourteenth'];
+  const NAMES = [
+    'xXx_DarkLord_Skibidi_420_xXx',
+    'TheRealMcCoy Bartholomew',
+    'Cat',
+    'Mrs. Featherstonehaugh',
+    'EveEveEveEveEveEve',
+    'Fay',
+    'Gustavo Fring Fan Club',
+    'Hal',
+    'Ivy-Rose Montgomery',
+    'JJ',
+    'Kimberly Kardashian',
+    'Louis the Fourteenth',
+  ];
   const SCORES = [5000, 5000, 0, 800, 2600, 100, -400, 600, 200, 1600, 3000, 4000];
   const COLORS = ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#f2f2f2', '#009e73', '#cc79a7', '#911eb4', '#9a6324', '#bfef45', '#f032e6'];
-  const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: "'Libre Baskerville', Georgia, serif", size: 110, weight: 700, italic: false, underline: false, uppercase: true, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, shadow: { color: '#000000', x: 6, y: 6, blur: 0 }, autoFit: true }] });
+  const slide = (t) => ({
+    background: {},
+    elements: [
+      {
+        id: `t${Math.random().toString(36).slice(2)}`,
+        kind: 'text',
+        text: t,
+        x: 120,
+        y: 90,
+        w: 1680,
+        h: 900,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 1,
+        font: "'Libre Baskerville', Georgia, serif",
+        size: 110,
+        weight: 700,
+        italic: false,
+        underline: false,
+        uppercase: true,
+        color: '#ffffff',
+        align: 'center',
+        vAlign: 'middle',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        shadow: { color: '#000000', x: 6, y: 6, blur: 0 },
+        autoFit: true,
+      },
+    ],
+  });
   const values = [200, 400, 600, 800, 1000];
   const game = {
-    id: 'g_viewers', version: 2, title: 'Viewers',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 12, stream: {} },
+    id: 'g_viewers',
+    version: 2,
+    title: 'Viewers',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 12,
+      stream: {},
+    },
     players: NAMES.map((name, i) => ({ id: `p${i + 1}`, name, color: COLORS[i] })),
     rounds: [
       {
-        id: 'r_b', name: 'Board', mode: 'board', values, dailyDoubleCount: 1,
-        categories: ['One', 'Two', 'Three'].map((title, c) => ({ id: `c${c}`, title, clues: values.map((v, r) => ({ id: `q${c}_${r}`, value: null, type: c + r ? 'standard' : 'dailyDouble', questionSlide: slide(`Clue ${c}-${r}`), answerSlide: slide(`Answer ${c}-${r}`) })) })),
+        id: 'r_b',
+        name: 'Board',
+        mode: 'board',
+        values,
+        dailyDoubleCount: 1,
+        categories: ['One', 'Two', 'Three'].map((title, c) => ({
+          id: `c${c}`,
+          title,
+          clues: values.map((v, r) => ({
+            id: `q${c}_${r}`,
+            value: null,
+            type: c + r ? 'standard' : 'dailyDouble',
+            questionSlide: slide(`Clue ${c}-${r}`),
+            answerSlide: slide(`Answer ${c}-${r}`),
+          })),
+        })),
       },
-      { id: 'r_f', name: 'Final Round', mode: 'final', category: 'Famous Brainrot', questionSlide: slide('The final clue'), answerSlide: slide('The final answer'), timerSeconds: 30, allowNonPositive: true },
+      {
+        id: 'r_f',
+        name: 'Final Round',
+        mode: 'final',
+        category: 'Famous Brainrot',
+        questionSlide: slide('The final clue'),
+        answerSlide: slide('The final answer'),
+        timerSeconds: 30,
+        allowNonPositive: true,
+      },
     ],
-    media: [], audio: {}, wheels: [], dice: [],
+    media: [],
+    audio: {},
+    wheels: [],
+    dice: [],
     // (🎨 Theme → Clue text: Anton.)
     theme: { clueFont: "'Anton', Impact, sans-serif" },
   };
@@ -521,7 +834,9 @@ async function viewers() {
     Element.prototype.animate = function (frames, options) {
       if (!started.has(this) && Array.isArray(frames) && frames.length) {
         started.add(this);
-        const from = String(frames[0].transform ?? `opacity ${frames[0].opacity}`).trim().replace(/\d*\.\d+/g, (n) => String(+(+n).toFixed(3)));
+        const from = String(frames[0].transform ?? `opacity ${frames[0].opacity}`)
+          .trim()
+          .replace(/\d*\.\d+/g, (n) => String(+(+n).toFixed(3)));
         window.__entrances.push({ el: `${this.localName}.${String(this.className).trim().split(/\s+/).join('.')}`, from });
       }
       return animate.call(this, frames, options);
@@ -568,11 +883,12 @@ async function viewers() {
   aud.on('pageerror', (e) => errors.push(`[viewers audience] ${e.message}`));
   await aud.setViewportSize({ width: 1280, height: 720 });
   /** How the elements matching `cls` came in since the last call (the first frame of each), then forgets them. */
-  const cameIn = (cls) => aud.evaluate((cls) => {
-    const out = window.__entrances.filter((e) => e.el.split('.').includes(cls)).map((e) => e.from);
-    window.__entrances = [];
-    return out;
-  }, cls);
+  const cameIn = (cls) =>
+    aud.evaluate((cls) => {
+      const out = window.__entrances.filter((e) => e.el.split('.').includes(cls)).map((e) => e.from);
+      window.__entrances = [];
+      return out;
+    }, cls);
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   const skip = host.getByRole('button', { name: 'Skip intro' });
   if (await skip.isVisible().catch(() => false)) await skip.click();
@@ -604,15 +920,19 @@ async function viewers() {
   const footAt = await aud.locator('.ov .foot').boundingBox();
   await aud.locator('.ov .win').waitFor({ timeout: 15000 });
   await aud.waitForTimeout(500);
-  const outside = await aud.evaluate(() =>
-    [...document.querySelectorAll('.ov .title, .ov .pl, .ov .win')].filter((e) => {
-      const r = e.getBoundingClientRect();
-      return r.top < 0 || r.left < 0 || r.bottom > innerHeight || r.right > innerWidth;
-    }).length,
+  const outside = await aud.evaluate(
+    () =>
+      [...document.querySelectorAll('.ov .title, .ov .pl, .ov .win')].filter((e) => {
+        const r = e.getBoundingClientRect();
+        return r.top < 0 || r.left < 0 || r.bottom > innerHeight || r.right > innerWidth;
+      }).length,
   );
   assert(outside === 0, 'a roll-off for 12 players stays on the stage: the title, every die and name, the result');
   const footAfter = await aud.locator('.ov .foot').boundingBox();
-  assert(Math.abs(footAfter.height - footAt.height) < 2, `the result line's room is there from the start: the dice don't jump up when it comes (${Math.round(footAt.height)}, then ${Math.round(footAfter.height)} px)`);
+  assert(
+    Math.abs(footAfter.height - footAt.height) < 2,
+    `the result line's room is there from the start: the dice don't jump up when it comes (${Math.round(footAt.height)}, then ${Math.round(footAfter.height)} px)`,
+  );
   await host.keyboard.press('Escape');
   await aud.locator('.ov').waitFor({ state: 'detached' });
   await badge.waitFor();
@@ -630,7 +950,9 @@ async function viewers() {
   await stageBoxIn(host).locator('.dd-text').click();
   await statusLineIn(host).locator('[data-click-note]').waitFor();
   assert(
-    (await host.evaluate(() => !!document.activeElement?.matches('.dd input[type=number]'))) && (await aud.locator('.dd-text').count()) === 1 && (await aud.locator('.dd-badge').count()) === 0,
+    (await host.evaluate(() => !!document.activeElement?.matches('.dd input[type=number]'))) &&
+      (await aud.locator('.dd-text').count()) === 1 &&
+      (await aud.locator('.dd-badge').count()) === 0,
     `two windows: a click on the host’s copy of the Daily Double splash says what’s missing (${await statusLineIn(host).locator('[data-click-note]').innerText()}), the keys stay in the Wager box, the splash stays on stream`,
   );
   await host.locator('.dd .chip').nth(2).click();
@@ -638,9 +960,19 @@ async function viewers() {
   await host.locator('.dd input[type=number]').press('Enter');
   await aud.locator('.dd-badge').waitFor();
   assert((await badge.count()) === 0, 'no join code over a Daily Double’s question (nobody buzzes)');
-  const ddIn = await aud.evaluate(() => window.__entrances.filter((e) => /\.(dd-in|full)\b/.test(e.el)).map((e) => `${e.el.split('.')[1]} ${e.from}`).join(', '));
+  const ddIn = await aud.evaluate(() =>
+    window.__entrances
+      .filter((e) => /\.(dd-in|full)\b/.test(e.el))
+      .map((e) => `${e.el.split('.')[1]} ${e.from}`)
+      .join(', '),
+  );
   assert(/dd-in scale\(0\.05\).*full scale\(0\.15\)/.test(ddIn), `the Daily Double splash zooms in, then its question does (${ddIn})`);
-  const hostIn = await host.evaluate(() => window.__entrances.filter((e) => /\.(dd-in|full)\b/.test(e.el)).map((e) => `${e.el.split('.')[1]} ${e.from}`).join(', '));
+  const hostIn = await host.evaluate(() =>
+    window.__entrances
+      .filter((e) => /\.(dd-in|full)\b/.test(e.el))
+      .map((e) => `${e.el.split('.')[1]} ${e.from}`)
+      .join(', '),
+  );
   assert(hostIn === '', `with the computer set to reduce motion, the host's own copy of the stage doesn't zoom (${hostIn || 'still'})`);
   await host.emulateMedia({ reducedMotion: null });
   await host.keyboard.press('r');
@@ -655,7 +987,10 @@ async function viewers() {
   await aud.locator('.slide-area').waitFor();
   await badge.waitFor();
   const clueCorner = await badge.getAttribute('data-corner');
-  assert(clueCorner === 'br' && (await badge.locator('.jb-link').count()) === 1, `on a clue the whole join badge goes in the corner its words leave free (${clueCorner})`);
+  assert(
+    clueCorner === 'br' && (await badge.locator('.jb-link').count()) === 1,
+    `on a clue the whole join badge goes in the corner its words leave free (${clueCorner})`,
+  );
   const opened = await cameIn('full');
   // Its answer, then its question again (R, R): both quietly, the question not zooming in from nothing again.
   await host.keyboard.press('r');
@@ -663,7 +998,10 @@ async function viewers() {
   await host.keyboard.press('r');
   await aud.locator('[data-slide="1"]').waitFor();
   const again = await cameIn('full');
-  assert(opened.join() === 'scale(0.15)' && again.join() === 'scale(0.98),scale(0.98)', `a clue opened from the board zooms in; its answer and its question again (R, R) come in quietly (${opened} | ${again})`);
+  assert(
+    opened.join() === 'scale(0.15)' && again.join() === 'scale(0.98),scale(0.98)',
+    `a clue opened from the board zooms in; its answer and its question again (R, R) come in quietly (${opened} | ${again})`,
+  );
   await host.keyboard.press('Escape');
   await boardTilesIn(boardIn(aud)).first().waitFor();
   await badge.waitFor();
@@ -674,26 +1012,31 @@ async function viewers() {
   const start = host.getByRole('button', { name: 'Start the round ▶' });
   if (await start.isVisible().catch(() => false)) await start.click();
   await aud.locator('.final-sub').waitFor();
-  const catFont = await aud.locator('.slide [style*="font-family"]', { hasText: 'Famous Brainrot' }).first().evaluate((e) => e.style.fontFamily);
+  const catFont = await aud
+    .locator('.slide [style*="font-family"]', { hasText: 'Famous Brainrot' })
+    .first()
+    .evaluate((e) => e.style.fontFamily);
   assert(/Anton/.test(catFont), `the Final's category is in the theme's clue font (${catFont})`);
   const boxes = finalControlsIn(host).locator('.wagers input[data-wager]');
   for (let i = 0; i < (await boxes.count()); i++) await boxes.nth(i).fill('0');
   await finalControlsIn(host).click({ position: { x: 2, y: 2 } });
   await aud.locator('.tick').nth(11).waitFor();
-  const overScore = await aud.locator('.plate').evaluateAll((els) =>
-    els.filter((p) => {
-      const t = p.querySelector('.tick')?.getBoundingClientRect();
-      const s = p.querySelector('.score .nm')?.getBoundingClientRect();
-      return !t || !s || (t.bottom > s.top && t.top < s.bottom && t.right > s.left && t.left < s.right);
-    }).length,
+  const overScore = await aud.locator('.plate').evaluateAll(
+    (els) =>
+      els.filter((p) => {
+        const t = p.querySelector('.tick')?.getBoundingClientRect();
+        const s = p.querySelector('.score .nm')?.getBoundingClientRect();
+        return !t || !s || (t.bottom > s.top && t.top < s.bottom && t.right > s.left && t.left < s.right);
+      }).length,
   );
   assert(overScore === 0, 'with 12 players, every ✔ (wager in) is clear of its plate’s score');
-  const overName = await aud.locator('.plate').evaluateAll((els) =>
-    els.filter((p) => {
-      const t = p.querySelector('.tick')?.getBoundingClientRect();
-      const n = p.querySelector('.name')?.getBoundingClientRect();
-      return !t || !n || t.bottom > n.top + 0.5;
-    }).length,
+  const overName = await aud.locator('.plate').evaluateAll(
+    (els) =>
+      els.filter((p) => {
+        const t = p.querySelector('.tick')?.getBoundingClientRect();
+        const n = p.querySelector('.name')?.getBoundingClientRect();
+        return !t || !n || t.bottom > n.top + 0.5;
+      }).length,
   );
   assert(overName === 0, 'and of its name: each ✔ sits wholly above the plate');
   // The question with its countdown, and the answer that stops it, each come as one picture: the slide is drawn at its
@@ -704,7 +1047,8 @@ async function viewers() {
     new MutationObserver((list) => {
       for (const m of list) {
         if (m.type === 'attributes' && m.target.classList.contains('slide-area')) note(m.target);
-        for (const n of m.addedNodes) if (n.nodeType === 1) [n, ...n.querySelectorAll('.slide-area')].filter((e) => e.classList.contains('slide-area')).forEach(note);
+        for (const n of m.addedNodes)
+          if (n.nodeType === 1) [n, ...n.querySelectorAll('.slide-area')].filter((e) => e.classList.contains('slide-area')).forEach(note);
       }
     }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['style'] });
   });
@@ -718,7 +1062,10 @@ async function viewers() {
   await revealAnyway(host);
   await aud.locator('.timer').waitFor({ state: 'detached' });
   const answered = await sizes();
-  assert(!asked.includes('→') && asked !== '1' && answered === '1', `the Final's question comes in at its size beside the countdown, its answer at full size (${asked} | ${answered})`);
+  assert(
+    !asked.includes('→') && asked !== '1' && answered === '1',
+    `the Final's question comes in at its size beside the countdown, its answer at full size (${asked} | ${answered})`,
+  );
   await mainButton(host, 'Start player reveals ▶').click();
   const wrongs = await host.getByRole('button', { name: '✘ Wrong' }).count();
   for (let k = 0; k < wrongs; k++) {
@@ -727,7 +1074,10 @@ async function viewers() {
     await host.getByRole('button', { name: '✘ Wrong' }).nth(k).click();
     if (/Next player/.test(await main.innerText())) await main.click();
   }
-  await host.getByRole('button', { name: /Finish game/ }).first().click();
+  await host
+    .getByRole('button', { name: /Finish game/ })
+    .first()
+    .click();
   const yes = host.getByRole('button', { name: 'Yes', exact: true });
   if (await yes.isVisible().catch(() => false)) await yes.click();
 
@@ -740,8 +1090,13 @@ async function viewers() {
   const head = await aud.locator('.end h1').innerText();
   assert(head.startsWith('Tie for first: xXx_DarkLord'), `the end screen says who tied (${head.replace(/\s+/g, ' ')})`);
   const last = await aud.locator('.end li').last().boundingBox();
-  assert(last.y + last.height <= 720, `with a long tie heading and 12 players the last place is on screen (it ends at ${Math.round(last.y + last.height)} of 720)`);
-  const h1 = await aud.locator('.end h1 span').evaluate((e) => ({ over: e.scrollHeight > e.parentElement.clientHeight + 1, size: parseFloat(getComputedStyle(e.parentElement).fontSize) }));
+  assert(
+    last.y + last.height <= 720,
+    `with a long tie heading and 12 players the last place is on screen (it ends at ${Math.round(last.y + last.height)} of 720)`,
+  );
+  const h1 = await aud
+    .locator('.end h1 span')
+    .evaluate((e) => ({ over: e.scrollHeight > e.parentElement.clientHeight + 1, size: parseFloat(getComputedStyle(e.parentElement).fontSize) }));
   assert(!h1.over && h1.size >= 28, `and the heading fits its room (${h1.size} stage px)`);
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/stream-viewers-end.png` });
   await ctx.close();
@@ -768,14 +1123,71 @@ async function viewers() {
  */
 async function reloadMidGame() {
   section('A reload mid-game in one window');
-  const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
+  const slide = (t) => ({
+    background: {},
+    elements: [
+      {
+        id: `t${Math.random().toString(36).slice(2)}`,
+        kind: 'text',
+        text: t,
+        x: 120,
+        y: 90,
+        w: 1680,
+        h: 900,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 1,
+        font: 'Arial',
+        size: 110,
+        weight: 700,
+        italic: false,
+        underline: false,
+        uppercase: false,
+        color: '#ffffff',
+        align: 'center',
+        vAlign: 'middle',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        autoFit: true,
+      },
+    ],
+  });
   const clue = (id, q) => ({ id, value: null, type: 'standard', questionSlide: slide(q), answerSlide: slide(`${q}: the answer`) });
   const game = {
-    id: 'g_reload', version: 2, title: 'Reload show',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 20, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, stream: { coverText: 'Back in a sec' } },
-    players: [['Ann', '#e6194b'], ['Bob', '#3cb44b']].map(([name, color], i) => ({ id: `p${i + 1}`, name, color })),
-    rounds: [{ id: 'r_b', name: 'Board', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: [{ id: 'c0', title: 'Facts', clues: [clue('qa', 'Secret question one'), clue('qb', 'Secret question two')] }] }],
-    media: [], audio: {}, dice: [], theme: {}, wheels: [],
+    id: 'g_reload',
+    version: 2,
+    title: 'Reload show',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: 20,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      stream: { coverText: 'Back in a sec' },
+    },
+    players: [
+      ['Ann', '#e6194b'],
+      ['Bob', '#3cb44b'],
+    ].map(([name, color], i) => ({ id: `p${i + 1}`, name, color })),
+    rounds: [
+      {
+        id: 'r_b',
+        name: 'Board',
+        mode: 'board',
+        values: [200, 400],
+        dailyDoubleCount: 0,
+        categories: [{ id: 'c0', title: 'Facts', clues: [clue('qa', 'Secret question one'), clue('qb', 'Secret question two')] }],
+      },
+    ],
+    media: [],
+    audio: {},
+    dice: [],
+    theme: {},
+    wheels: [],
   };
   const gameFile = resolve('test-results/stream-reload.json');
   writeFileSync(gameFile, JSON.stringify(game));
@@ -808,7 +1220,11 @@ async function reloadMidGame() {
   const said = await cover.innerText();
   const focused = await page.evaluate(() => document.activeElement?.textContent?.trim());
   assert(
-    (await editorSeen()) === 0 && said.includes('Back in a sec') && !said.includes('Secret question') && focused === 'Resume game' && (await cover.getByRole('button', { name: 'Go to the editor' }).count()) === 1,
+    (await editorSeen()) === 0 &&
+      said.includes('Back in a sec') &&
+      !said.includes('Secret question') &&
+      focused === 'Resume game' &&
+      (await cover.getByRole('button', { name: 'Go to the editor' }).count()) === 1,
     `reloaded mid-game in one window, it opens on the game's cover card (“Back in a sec”), never the editor; Resume game has the keys (${focused})`,
   );
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/stream-reload-cover.png` });
@@ -829,7 +1245,10 @@ async function reloadMidGame() {
   await page.waitForFunction(() => !!document.activeElement?.matches('.mode-ask .mode.on'));
   await page.keyboard.press('Enter');
   await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
-  assert((await stageBoxIn(page).locator('.cover').count()) === 1 && (await editorSeen()) === 0, 'with ⏸ Cover on, a reload and Resume game come back covered, the editor never shown');
+  assert(
+    (await stageBoxIn(page).locator('.cover').count()) === 1 && (await editorSeen()) === 0,
+    'with ⏸ Cover on, a reload and Resume game come back covered, the editor never shown',
+  );
   // Go to the editor: the editor, the game kept to resume.
   await reloadToCover();
   await cover.getByRole('button', { name: 'Go to the editor' }).click();
@@ -861,29 +1280,140 @@ async function reloadMidGame() {
 
 async function tileTools() {
   section('Wheel and dice tiles, the countdown and the buzzers (single window, buzzer mode)');
-  const slide = (t) => ({ background: {}, elements: [{ id: `t${Math.random().toString(36).slice(2)}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
-  const NOTE = 'Accept Shiba or Shiba Inu. If they say Akita, ask them to be more specific; if they say Corgi, it is wrong. The picture on the next slide is of the same dog, taken in 2010 by its owner in Japan.';
+  const slide = (t) => ({
+    background: {},
+    elements: [
+      {
+        id: `t${Math.random().toString(36).slice(2)}`,
+        kind: 'text',
+        text: t,
+        x: 120,
+        y: 90,
+        w: 1680,
+        h: 900,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 1,
+        font: 'Arial',
+        size: 110,
+        weight: 700,
+        italic: false,
+        underline: false,
+        uppercase: false,
+        color: '#ffffff',
+        align: 'center',
+        vAlign: 'middle',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        autoFit: true,
+      },
+    ],
+  });
+  const NOTE =
+    'Accept Shiba or Shiba Inu. If they say Akita, ask them to be more specific; if they say Corgi, it is wrong. The picture on the next slide is of the same dog, taken in 2010 by its owner in Japan.';
   const clue = (id, type, q, extra = {}) => ({ id, value: null, type, questionSlide: slide(q), answerSlide: slide(`${q}: the answer`), ...extra });
   const game = {
-    id: 'g_tools', version: 2, title: 'Tile tools',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 20, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 12, stream: {} },
-    players: [['Ann', '#e6194b'], ['Bob', '#3cb44b'], ['Cy', '#4363d8']].map(([name, color], i) => ({ id: `p${i + 1}`, name, color })),
+    id: 'g_tools',
+    version: 2,
+    title: 'Tile tools',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: 20,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: true,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 12,
+      stream: {},
+    },
+    players: [
+      ['Ann', '#e6194b'],
+      ['Bob', '#3cb44b'],
+      ['Cy', '#4363d8'],
+    ].map(([name, color], i) => ({ id: `p${i + 1}`, name, color })),
     rounds: [
       {
-        id: 'r_t', name: 'Tools', mode: 'board', values: [200, 400, 600], dailyDoubleCount: 1,
+        id: 'r_t',
+        name: 'Tools',
+        mode: 'board',
+        values: [200, 400, 600],
+        dailyDoubleCount: 1,
         categories: [
-          { id: 'c0', title: 'Spin', clues: [clue('qw', 'wheel', 'Wheel question', { wheelId: 'w1' }), clue('qd', 'dice', 'Dice question', { diceId: 'std:d6' }), clue('qc', 'standard', 'Covered question')] },
-          { id: 'c1', title: 'Plain', clues: [clue('qn', 'standard', 'Noted question', { hostNotes: NOTE }), clue('qp', 'standard', 'Plain question'), clue('qe', 'standard', 'Spare question')] },
-          { id: 'c2', title: 'More', clues: [clue('qx', 'wheel', 'Second wheel question', { wheelId: 'w1' }), clue('qdd', 'dailyDouble', 'Double question'), { ...clue('qo', 'wheel', '', { wheelId: 'w1' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }] },
-          { id: 'c3', title: 'Extra', clues: [clue('qy', 'wheel', 'Third wheel question', { wheelId: 'w2' }), { ...clue('qs', 'wheel', '', { wheelId: 'w2' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }, { ...clue('qz', 'dice', '', { diceId: 'std:d6' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }] },
+          {
+            id: 'c0',
+            title: 'Spin',
+            clues: [
+              clue('qw', 'wheel', 'Wheel question', { wheelId: 'w1' }),
+              clue('qd', 'dice', 'Dice question', { diceId: 'std:d6' }),
+              clue('qc', 'standard', 'Covered question'),
+            ],
+          },
+          {
+            id: 'c1',
+            title: 'Plain',
+            clues: [
+              clue('qn', 'standard', 'Noted question', { hostNotes: NOTE }),
+              clue('qp', 'standard', 'Plain question'),
+              clue('qe', 'standard', 'Spare question'),
+            ],
+          },
+          {
+            id: 'c2',
+            title: 'More',
+            clues: [
+              clue('qx', 'wheel', 'Second wheel question', { wheelId: 'w1' }),
+              clue('qdd', 'dailyDouble', 'Double question'),
+              { ...clue('qo', 'wheel', '', { wheelId: 'w1' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } },
+            ],
+          },
+          {
+            id: 'c3',
+            title: 'Extra',
+            clues: [
+              clue('qy', 'wheel', 'Third wheel question', { wheelId: 'w2' }),
+              { ...clue('qs', 'wheel', '', { wheelId: 'w2' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } },
+              {
+                ...clue('qz', 'dice', '', { diceId: 'std:d6' }),
+                questionSlide: { background: {}, elements: [] },
+                answerSlide: { background: {}, elements: [] },
+              },
+            ],
+          },
         ],
       },
     ],
-    media: [], audio: {}, dice: [], theme: {},
+    media: [],
+    audio: {},
+    dice: [],
+    theme: {},
     wheels: [
-      { id: 'w1', name: 'Spinner', spinDurationMs: 500, removeAfterLanding: false, segments: [{ id: 's1', label: 'Go', color: '#e6194b', weight: 1 }, { id: 's2', label: 'Stop', color: '#3cb44b', weight: 1 }] },
+      {
+        id: 'w1',
+        name: 'Spinner',
+        spinDurationMs: 500,
+        removeAfterLanding: false,
+        segments: [
+          { id: 's1', label: 'Go', color: '#e6194b', weight: 1 },
+          { id: 's2', label: 'Stop', color: '#3cb44b', weight: 1 },
+        ],
+      },
       // (Slow enough to press Esc while it spins.)
-      { id: 'w2', name: 'Points', spinDurationMs: 3000, removeAfterLanding: false, segments: ['Plus', 'Bonus'].map((label, i) => ({ id: `ps${i}`, label, color: i ? '#3cb44b' : '#e6194b', weight: 1, scoreAction: { kind: 'addPoints', amount: 100 } })) },
+      {
+        id: 'w2',
+        name: 'Points',
+        spinDurationMs: 3000,
+        removeAfterLanding: false,
+        segments: ['Plus', 'Bonus'].map((label, i) => ({
+          id: `ps${i}`,
+          label,
+          color: i ? '#3cb44b' : '#e6194b',
+          weight: 1,
+          scoreAction: { kind: 'addPoints', amount: 100 },
+        })),
+      },
     ],
   };
   const gameFile = resolve('test-results/stream-tools.json');
@@ -970,10 +1500,16 @@ async function tileTools() {
   // Everyone misses: the answer is next (not a 🔔 Open the buzzers that does nothing).
   await tileOf('qp').click();
   await clueOpen();
-  for (const [key, missed] of [['1', 'Ann'], ['2', 'Ann, Bob'], ['3', 'Ann, Bob, Cy']]) {
+  for (const [key, missed] of [
+    ['1', 'Ann'],
+    ['2', 'Ann, Bob'],
+    ['3', 'Ann, Bob, Cy'],
+  ]) {
     await host.keyboard.press(key);
     await host.keyboard.press('Shift+Enter');
-    await hostPanelIn(host).locator('[data-buzzrow]', { hasText: `Missed: ${missed}` }).waitFor();
+    await hostPanelIn(host)
+      .locator('[data-buzzrow]', { hasText: `Missed: ${missed}` })
+      .waitFor();
   }
   assert(
     (await mainLabel(host)) === '👁 Reveal answer' && (await hostPanelIn(host).locator('button', { hasText: '🔔 Open the buzzers' }).count()) === 0,
@@ -1020,7 +1556,8 @@ async function tileTools() {
   );
   toolSizes.push(await stageH());
   assert(
-    (await stage('.slide-area').count()) === 0 && (await host.evaluate((n) => window.__states.slice(n).filter((s) => s.clue || s.phase !== 'lobby').length, sentBefore)) === 0,
+    (await stage('.slide-area').count()) === 0 &&
+      (await host.evaluate((n) => window.__states.slice(n).filter((s) => s.clue || s.phase !== 'lobby').length, sentBefore)) === 0,
     'a wheel tile: while its wheel is up nobody can buzz and the phones get no question (the host panel says they wait for it)',
   );
   await host.keyboard.press('Escape');
@@ -1028,7 +1565,10 @@ async function tileTools() {
   await revealBtn.waitFor();
   assert(true, 'closed, its question is up and 👁 Reveal answer with it');
   toolSizes.push(await stageH());
-  assert(toolSizes.every((x) => x === toolSizes[0]), `a wheel tile keeps one stage size from its wheel to its landing to its question (${toolSizes.join(' / ')})`);
+  assert(
+    toolSizes.every((x) => x === toolSizes[0]),
+    `a wheel tile keeps one stage size from its wheel to its landing to its question (${toolSizes.join(' / ')})`,
+  );
   await host.waitForFunction(() => {
     const s = window.__states.at(-1);
     return s?.phase === 'armed' && s.clue?.text === 'Wheel question';
@@ -1041,7 +1581,8 @@ async function tileTools() {
   // Nobody buzzed: the answer closed the buzzers, and their row says so (not "✔ Answered: reveal the answer").
   await hostPanelIn(host).locator('[data-buzzrow]', { hasText: 'Answer on screen: the buzzers stay closed' }).waitFor();
   assert(
-    (await hostPanelIn(host).locator('button', { hasText: '🔔 Open the buzzers' }).count()) === 0 && (await hostPanelIn(host).locator('button', { hasText: '↺ Reset buzzers' }).count()) === 0,
+    (await hostPanelIn(host).locator('button', { hasText: '🔔 Open the buzzers' }).count()) === 0 &&
+      (await hostPanelIn(host).locator('button', { hasText: '↺ Reset buzzers' }).count()) === 0,
     'the answer shown with the buzzers open: the buzzers’ row says they stay closed, with no 🔔 Open the buzzers or ↺ Reset buzzers (both would refuse)',
   );
   // The saved wheel (W), over the answer: closing it starts no countdown over the answer.
@@ -1049,13 +1590,19 @@ async function tileTools() {
   await stage('.ov .wheel').waitFor();
   await host.keyboard.press('Escape');
   await stage('.ov').waitFor({ state: 'detached' });
-  assert((await stage('.timer').count()) === 0 && (await stage('[data-slide="answer"]').count()) === 1, 'a wheel opened over the answer and closed starts no countdown over it');
+  assert(
+    (await stage('.timer').count()) === 0 && (await stage('[data-slide="answer"]').count()) === 1,
+    'a wheel opened over the answer and closed starts no countdown over it',
+  );
   // 🙈 Hide answer (R): the buzzers are just closed again, not "answered" (🔔 Open the buzzers is back in their row; phones:
   // not Clue over).
   await host.keyboard.press('r');
   await stage('[data-slide="answer"]').waitFor({ state: 'detached' });
   await hostPanelIn(host).locator('[data-buzzrow] button[data-box="buzzers"]', { hasText: '🔔 Open the buzzers' }).waitFor();
-  await host.waitForFunction(() => { const s = window.__states.at(-1); return s && !s.answerShown && !s.done; });
+  await host.waitForFunction(() => {
+    const s = window.__states.at(-1);
+    return s && !s.answerShown && !s.done;
+  });
   assert(
     !(await hostPanelIn(host).locator('[data-buzzrow]').innerText()).includes('Answered') && (await flowIs(host, '👁 Reveal answer')),
     'the answer hidden again: 🔔 Open the buzzers is back in the buzzers’ row (the blue button 👁 Reveal answer), and the phones aren’t told the clue is over',
@@ -1125,7 +1672,10 @@ async function tileTools() {
   await tileOf('qo').click();
   await stage('.ov .wheel').waitFor();
   await hostPanelIn(host).locator('[data-buzzrow]', { hasText: 'Nothing to buzz on: this tile is just its wheel' }).waitFor();
-  assert((await hostPanelIn(host).locator('button', { hasText: '↺ Reset buzzers' }).count()) === 0, 'a wheel tile with nothing to ask: the buzzers’ row says there’s nothing to buzz on, with no ↺ Reset buzzers');
+  assert(
+    (await hostPanelIn(host).locator('button', { hasText: '↺ Reset buzzers' }).count()) === 0,
+    'a wheel tile with nothing to ask: the buzzers’ row says there’s nothing to buzz on, with no ↺ Reset buzzers',
+  );
   // R and U there: nothing to reveal and nothing to buzz on (no "Answer is showing", no "Clue over" on the phones).
   await host.keyboard.press('r');
   await toastsIn(host, { hasText: 'Nothing to reveal: this tile is just its wheel' }).waitFor();
@@ -1196,7 +1746,10 @@ async function tileTools() {
   await tileOf('qy').waitFor();
   await stage('.ov').waitFor({ state: 'detached' });
   const question = stageBoxIn(host).getByText('Third wheel question').first();
-  assert((await used('qy')) === false && (await question.count()) === 0, 'Shift+Esc with a wheel tile’s wheel up puts the tile back and takes the wheel down, without its question');
+  assert(
+    (await used('qy')) === false && (await question.count()) === 0,
+    'Shift+Esc with a wheel tile’s wheel up puts the tile back and takes the wheel down, without its question',
+  );
   // Its score effect given and the wheel closed (the question up): ↩ Put back waits for an Undo all the same.
   await tileOf('qy').click();
   await stage('.ov .wheel').waitFor();
@@ -1238,13 +1791,19 @@ async function tileTools() {
   await tileOf('qs').click();
   await stage('.ov .wheel').waitFor();
   const wheelSaid = () => statusLineIn(host).locator('.say').innerText();
-  assert((await wheelSaid()) === '🎡 Wheel tile · spin it (W)', `a wheel tile with nothing to ask: the status line says “${await wheelSaid()}”, not “No question on this tile”`);
+  assert(
+    (await wheelSaid()) === '🎡 Wheel tile · spin it (W)',
+    `a wheel tile with nothing to ask: the status line says “${await wheelSaid()}”, not “No question on this tile”`,
+  );
   await host.keyboard.press('w');
   await hostPanelIn(host).locator('[data-next]:disabled').waitFor();
   assert((await wheelSaid()) === '🎡 Wheel tile · spun', `spinning, it says “${await wheelSaid()}”`);
   await host.keyboard.press('Escape');
   await toastsIn(host, { hasText: 'Still spinning: wait for it to land' }).waitFor();
-  assert((await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0, 'Esc while a wheel tile’s wheel spins says to wait for it to land, and the wheel stays');
+  assert(
+    (await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0,
+    'Esc while a wheel tile’s wheel spins says to wait for it to land, and the wheel stays',
+  );
   await host.locator('.ac').waitFor({ timeout: 8000 });
   // Landed: the keys go back to its blue button (not to the side button they fell to while Spin! was off).
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
@@ -1294,7 +1853,10 @@ async function tileTools() {
   assert((await mainLabel(host)) === '▦ Done ▶ board', 'after a reload the rolled dice are back, with ▦ Done ▶ board');
   await host.keyboard.press('Escape');
   await tileOf('qz').waitFor();
-  assert((await used('qz')) && (await statusLineIn(host, { hasText: '🎲 Dice tile' }).count()) === 0, 'and closing them finishes the tile, as before the reload');
+  assert(
+    (await used('qz')) && (await statusLineIn(host, { hasText: '🎲 Dice tile' }).count()) === 0,
+    'and closing them finishes the tile, as before the reload',
+  );
   await ctx.close();
 }
 
@@ -1327,7 +1889,10 @@ async function soonOver() {
   );
   await ctx.clock.runFor(31_000);
   await aud.locator('.soon-count').waitFor({ state: 'detached' });
-  assert((await aud.locator('.soon-text').innerText()) === 'Starting soon…', 'about 30 s later the card goes back to its own words (no “Starting now!” for as long as the host takes)');
+  assert(
+    (await aud.locator('.soon-text').innerText()) === 'Starting soon…',
+    'about 30 s later the card goes back to its own words (no “Starting now!” for as long as the host takes)',
+  );
   assert(
     (await host.getByRole('button', { name: '▶ Start countdown' }).count()) === 1 && (await host.getByRole('timer').count()) === 0,
     'and the host’s line is ▶ Start countdown again',
@@ -1341,18 +1906,94 @@ async function soonOver() {
  * none at all); and the reveal card keeps one width from a short name to a long one and back.
  */
 async function finalBar() {
-  const slide = (id, t) => ({ background: {}, elements: [{ id, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 900, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 110, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
+  const slide = (id, t) => ({
+    background: {},
+    elements: [
+      {
+        id,
+        kind: 'text',
+        text: t,
+        x: 120,
+        y: 90,
+        w: 1680,
+        h: 900,
+        rotation: 0,
+        opacity: 1,
+        zIndex: 1,
+        font: 'Arial',
+        size: 110,
+        weight: 700,
+        italic: false,
+        underline: false,
+        uppercase: false,
+        color: '#fff',
+        align: 'center',
+        vAlign: 'middle',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        autoFit: true,
+      },
+    ],
+  });
   for (const scoreBar of ['top', 'hidden']) {
     section(`Score bar ${scoreBar}, from the board to the Final's reveals`);
     const game = {
-      id: `g_bar_${scoreBar}`, version: 2, title: 'Bar',
-      settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' } },
-      players: ['Ann', 'Bartholomew Montgomery', 'Cy'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#56b4e9', '#d55e00', '#009e73'][i], startScore: 0 })),
+      id: `g_bar_${scoreBar}`,
+      version: 2,
+      title: 'Bar',
+      settings: {
+        allowNegativeScores: true,
+        deductOnWrong: true,
+        defaultTimerSeconds: 30,
+        finalTimerSeconds: 30,
+        currencySymbol: '$',
+        rollOffDie: 20,
+        pickerFollowsAward: true,
+        timerAutoStart: false,
+        roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      },
+      players: ['Ann', 'Bartholomew Montgomery', 'Cy'].map((name, i) => ({
+        id: `p${i + 1}`,
+        name,
+        color: ['#56b4e9', '#d55e00', '#009e73'][i],
+        startScore: 0,
+      })),
       rounds: [
-        { id: 'r_b', name: 'Board', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: ['One', 'Two'].map((title, c) => ({ id: `c${c}`, title, clues: [0, 1].map((r) => ({ id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: slide(`qs${c}${r}`, `Clue ${c}-${r}`), answerSlide: slide(`as${c}${r}`, 'Answer') })) })) },
-        { id: 'r_f', name: 'Final Jeopardy!', mode: 'final', category: 'Movies', questionSlide: slide('fq', 'The question'), answerSlide: slide('fa', 'The answer'), timerSeconds: 30, allowNonPositive: true, phoneAnswersOff: true },
+        {
+          id: 'r_b',
+          name: 'Board',
+          mode: 'board',
+          values: [200, 400],
+          dailyDoubleCount: 0,
+          categories: ['One', 'Two'].map((title, c) => ({
+            id: `c${c}`,
+            title,
+            clues: [0, 1].map((r) => ({
+              id: `q${c}_${r}`,
+              value: null,
+              type: 'standard',
+              questionSlide: slide(`qs${c}${r}`, `Clue ${c}-${r}`),
+              answerSlide: slide(`as${c}${r}`, 'Answer'),
+            })),
+          })),
+        },
+        {
+          id: 'r_f',
+          name: 'Final Jeopardy!',
+          mode: 'final',
+          category: 'Movies',
+          questionSlide: slide('fq', 'The question'),
+          answerSlide: slide('fa', 'The answer'),
+          timerSeconds: 30,
+          allowNonPositive: true,
+          phoneAnswersOff: true,
+        },
       ],
-      media: [], audio: {}, wheels: [], dice: [], theme: { scoreBar },
+      media: [],
+      audio: {},
+      wheels: [],
+      dice: [],
+      theme: { scoreBar },
     };
     mkdirSync(resolve('test-results'), { recursive: true });
     const gameFile = resolve(`test-results/stream-bar-${scoreBar}.json`);
@@ -1368,12 +2009,15 @@ async function finalBar() {
     const st = (sel) => stageBoxIn(host).locator(sel);
     /** An element's box in stage pixels (1920×1080), or null. */
     const box = (sel, i = 0) =>
-      host.evaluate(([sel, i]) => {
-        const s = document.querySelector('.stage-box .stage').getBoundingClientRect();
-        const k = s.width / 1920;
-        const b = document.querySelectorAll(`.stage-box ${sel}`)[i]?.getBoundingClientRect();
-        return b ? { top: (b.top - s.top) / k, bottom: (b.bottom - s.top) / k, width: b.width / k } : null;
-      }, [sel, i]);
+      host.evaluate(
+        ([sel, i]) => {
+          const s = document.querySelector('.stage-box .stage').getBoundingClientRect();
+          const k = s.width / 1920;
+          const b = document.querySelectorAll(`.stage-box ${sel}`)[i]?.getBoundingClientRect();
+          return b ? { top: (b.top - s.top) / k, bottom: (b.bottom - s.top) / k, width: b.width / k } : null;
+        },
+        [sel, i],
+      );
     await st('.board .tile').first().waitFor();
     await host.waitForTimeout(400);
 
@@ -1386,7 +2030,10 @@ async function finalBar() {
       await st('.pop').waitFor();
       await host.waitForTimeout(400);
       const [pop, bar, row] = [await box('.pop'), await box('.board-screen .score-area'), await box('.board .tile')];
-      assert(bar.top < 1 && pop.top >= bar.top && pop.bottom <= bar.bottom + 0.5 && pop.bottom <= row.top, `the pop stays in the top bar's band, off the tiles (pop ${Math.round(pop.top)}–${Math.round(pop.bottom)}, bar to ${Math.round(bar.bottom)}, tiles from ${Math.round(row.top)})`);
+      assert(
+        bar.top < 1 && pop.top >= bar.top && pop.bottom <= bar.bottom + 0.5 && pop.bottom <= row.top,
+        `the pop stays in the top bar's band, off the tiles (pop ${Math.round(pop.top)}–${Math.round(pop.bottom)}, bar to ${Math.round(bar.bottom)}, tiles from ${Math.round(row.top)})`,
+      );
     } else assert(!(await st('.board-screen .score-area').count()), 'no score bar on the board');
 
     await nextRoundOf(host);
@@ -1394,7 +2041,10 @@ async function finalBar() {
     await host.waitForTimeout(400);
     if (scoreBar === 'top') {
       const [bar, label, sub] = [await box('.score-area'), await box('.final-label'), await box('.final-sub')];
-      assert(bar.top < 1 && label.top >= bar.bottom && sub.bottom <= 1080, `the wagers: plates at the top, the Final's name under them and “Make your wagers…” on the stage (bar to ${Math.round(bar.bottom)}, name from ${Math.round(label.top)}, words to ${Math.round(sub.bottom)})`);
+      assert(
+        bar.top < 1 && label.top >= bar.bottom && sub.bottom <= 1080,
+        `the wagers: plates at the top, the Final's name under them and “Make your wagers…” on the stage (bar to ${Math.round(bar.bottom)}, name from ${Math.round(label.top)}, words to ${Math.round(sub.bottom)})`,
+      );
     } else assert(!(await st('.score-area').count()), 'the wagers: no plates');
     const wagers = finalControlsIn(host).locator('.wagers input[data-wager]');
     for (let i = 0; i < 3; i++) await wagers.nth(i).fill('0');
@@ -1404,7 +2054,10 @@ async function finalBar() {
       await st('.score-area .tick').nth(2).waitFor();
       const ticks = await Promise.all([0, 1, 2].map((i) => box('.score-area .tick', i)));
       const score = await box('.score-area .plate .score');
-      assert(ticks.every((t) => t.top >= score.bottom - 0.5 && t.bottom <= 1080), `the wagers in: each ✔ whole on the stage, under its plate's score (from ${ticks.map((t) => Math.round(t.top)).join(', ')}; the score to ${Math.round(score.bottom)})`);
+      assert(
+        ticks.every((t) => t.top >= score.bottom - 0.5 && t.bottom <= 1080),
+        `the wagers in: each ✔ whole on the stage, under its plate's score (from ${ticks.map((t) => Math.round(t.top)).join(', ')}; the score to ${Math.round(score.bottom)})`,
+      );
     }
     await mainButton(host, 'Show question ▶').click();
     await mainButton(host, '👁 Reveal answer').click();
@@ -1418,12 +2071,18 @@ async function finalBar() {
       widths.push(Math.round(card.width));
       if (scoreBar === 'top') {
         const bar = await box('.score-area');
-        assert(bar.top < 1 && card.top >= bar.bottom && card.bottom <= 1080, `reveal ${n}: the card under the top plates, on the stage (${Math.round(card.top)}–${Math.round(card.bottom)})`);
+        assert(
+          bar.top < 1 && card.top >= bar.bottom && card.bottom <= 1080,
+          `reveal ${n}: the card under the top plates, on the stage (${Math.round(card.top)}–${Math.round(card.bottom)})`,
+        );
       } else assert(!(await st('.score-area').count()) && card.bottom <= 1080, `reveal ${n}: no plates, the card on the stage`);
     }
     assert(new Set(widths).size === 1 && widths[0] <= 1920, `the reveal card keeps one width for Ann, Bartholomew Montgomery and Cy (${widths.join(', ')})`);
     const hint = await hostPanelIn(host).locator('details.how').textContent();
-    assert(hint.includes('or on the stage') === (scoreBar !== 'hidden'), `the panel's how-to says the stage's plates spotlight only when they're there (${scoreBar})`);
+    assert(
+      hint.includes('or on the stage') === (scoreBar !== 'hidden'),
+      `the panel's how-to says the stage's plates spotlight only when they're there (${scoreBar})`,
+    );
     await ctx.close();
   }
 }
@@ -1463,7 +2122,10 @@ try {
   assert(/^Starting in [12]:\d\d$/.test(await page.getByRole('timer').innerText()), 'the host sees the countdown’s time left');
   assert((await page.getByRole('button', { name: 'Stop countdown' }).count()) === 1, 'next to ■ Stop');
   const streamLine = await streamFold.locator('summary').innerText();
-  assert(/“Back in a sec, chat” · countdown [12]:\d\d · cover “Snack break” · captions on/.test(streamLine), `📺 On stream’s line says what’s set (${streamLine})`);
+  assert(
+    /“Back in a sec, chat” · countdown [12]:\d\d · cover “Snack break” · captions on/.test(streamLine),
+    `📺 On stream’s line says what’s set (${streamLine})`,
+  );
   // Reduce motion on stream is here too (the same setting as ⚙ Settings).
   await page.getByLabel(/Reduce motion on stream/).check();
   assert(await page.evaluate(() => document.documentElement.classList.contains('reduce-stream')), 'the pre-game screen has Reduce motion on stream');
@@ -1478,7 +2140,10 @@ try {
   // 🖥 Display's line for the audience window: open, with Bring it forward, and Close it apart, asking first.
   const audLine = page.locator('[data-audience-line]');
   await audLine.getByText('📺 Audience window open ✓').waitFor();
-  assert((await audLine.getByRole('button', { name: 'Bring it forward' }).count()) === 1, 'with the audience window open, 🖥 Display says so, with Bring it forward');
+  assert(
+    (await audLine.getByRole('button', { name: 'Bring it forward' }).count()) === 1,
+    'with the audience window open, 🖥 Display says so, with Bring it forward',
+  );
   await audLine.getByRole('button', { name: 'Close it' }).click();
   await audLine.getByText('Close the audience window? Your stream capture goes black.').waitFor();
   // (A question's buttons ignore a click right after it shows.)
@@ -1508,10 +2173,13 @@ try {
   // brighter), the plate its own, not the buttons' grey under the mouse.
   const hovered = async (loc) => {
     await loc.hover();
-    return loc.evaluate((e) => new Promise((done) => {
-      const look = () => (e.matches(':hover') ? done(getComputedStyle(e).backgroundColor) : requestAnimationFrame(look));
-      look();
-    }));
+    return loc.evaluate(
+      (e) =>
+        new Promise((done) => {
+          const look = () => (e.matches(':hover') ? done(getComputedStyle(e).backgroundColor) : requestAnimationFrame(look));
+          look();
+        }),
+    );
   };
   const hoverTile = boardTilesIn(boardIn(stageBoxIn(page))).nth(4);
   const tileBg = await hoverTile.evaluate((e) => getComputedStyle(e).backgroundColor);
@@ -1519,11 +2187,16 @@ try {
   const plateBg = await hoverPlate.evaluate((e) => getComputedStyle(e).backgroundColor);
   const onTile = await hovered(hoverTile);
   const onPlate = await hovered(hoverPlate);
-  assert(onTile === tileBg && onPlate === plateBg, `one window: a tile or plate under the mouse keeps its color on stream (${tileBg} → ${onTile}, ${plateBg} → ${onPlate})`);
+  assert(
+    onTile === tileBg && onPlate === plateBg,
+    `one window: a tile or plate under the mouse keeps its color on stream (${tileBg} → ${onTile}, ${plateBg} → ${onPlate})`,
+  );
 
   // A clue opening keeps the stage's size (the ✔ / ✘ buttons don't wrap the player row).
   const board = await stageSize();
-  await boardTilesIn(boardIn(stageBoxIn(page))).nth(0).click();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .nth(0)
+    .click();
   assert((await stageSize()) === board, `opening a clue keeps the stage at ${board}`);
   assert((await page.locator('.stage .caption').innerText()).includes('$200'), 'the clue screen has its category and value caption');
   await page.keyboard.press('1');
@@ -1542,7 +2215,9 @@ try {
     pop && pop.x + pop.width / 2 > plate.x && pop.x + pop.width / 2 < plate.x + plate.width && pop.y >= bar.y && pop.y + pop.height <= num.y + 1,
     `back on the board, the score pop sits on its player’s plate, above the score, inside the score bar (off the tiles) (${JSON.stringify({ pop, bar: bar.y, num: num.y })})`,
   );
-  await boardTilesIn(boardIn(stageBoxIn(page))).nth(1).click();
+  await boardTilesIn(boardIn(stageBoxIn(page)))
+    .nth(1)
+    .click();
   // (Well before the pop's own 2.2 s, after its fade-out.)
   await page.waitForTimeout(700);
   assert(!(await page.locator('.stage .pop').count()), 'a new clue clears the score pops');
@@ -1560,15 +2235,28 @@ try {
   await page.keyboard.press('h');
   await page.locator('.play > .panel').waitFor({ state: 'detached' });
   // (No cursor over the stage while the mouse is still; it's back once it moves.)
-  const stillCursor = await boardIn(stageBoxIn(page)).locator('.tile:not(.used)').first().evaluate((e) => getComputedStyle(e).cursor);
+  const stillCursor = await boardIn(stageBoxIn(page))
+    .locator('.tile:not(.used)')
+    .first()
+    .evaluate((e) => getComputedStyle(e).cursor);
   await page.mouse.move(300, 200);
   await page.mouse.move(310, 210);
   // (Read while "Show controls" shows: the mouse counts as moving for a moment only.)
-  const movedCursor = await (await page.waitForFunction(() => document.querySelector('.show-controls.shown') && getComputedStyle(document.querySelector('.stage-box .board .tile:not(.used)')).cursor)).jsonValue();
-  assert(stillCursor === 'none' && movedCursor === 'pointer', `one window with the controls hidden: no cursor over the stage while the mouse is still (${stillCursor}), until it moves (${movedCursor})`);
+  const movedCursor = await (
+    await page.waitForFunction(
+      () => document.querySelector('.show-controls.shown') && getComputedStyle(document.querySelector('.stage-box .board .tile:not(.used)')).cursor,
+    )
+  ).jsonValue();
+  assert(
+    stillCursor === 'none' && movedCursor === 'pointer',
+    `one window with the controls hidden: no cursor over the stage while the mouse is still (${stillCursor}), until it moves (${movedCursor})`,
+  );
   await page.keyboard.press('?');
   // (It moves there once the host panel's box is measured, a frame after it opens.)
-  await page.locator('.in-panel [role="dialog"]').waitFor({ timeout: 3000 }).catch(() => {});
+  await page
+    .locator('.in-panel [role="dialog"]')
+    .waitFor({ timeout: 3000 })
+    .catch(() => {});
   const keys = await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).boundingBox();
   const stage = await stageBoxIn(page).boundingBox();
   assert(keys.y >= stage.y + stage.height - 1, 'the keyboard shortcuts show under the stage, not over it');
@@ -1590,7 +2278,10 @@ try {
   await touch.send('Emulation.setTouchEmulationEnabled', { enabled: false });
   await touch.detach();
   await page.keyboard.press('h');
-  assert((await statusLineIn(page).innerText()).includes('Pick a tile'), 'controls hidden, a tap on the touch screen shows Show controls, and the tile it landed on stays shut');
+  assert(
+    (await statusLineIn(page).innerText()).includes('Pick a tile'),
+    'controls hidden, a tap on the touch screen shows Show controls, and the tile it landed on stays shut',
+  );
 
   // 📊 Scoreboard: copy the standings.
   await page.getByRole('button', { name: '📊 Scoreboard' }).click();
@@ -1613,7 +2304,10 @@ try {
   assert((await statusLineIn(page).innerText()).includes('Category on screen'), 'then the category is on screen');
   assert(!(await page.locator('.stage .final-label').count()), 'a Final without a category shows its name once');
   assert((await stageSize()) === finalSize, `taking wagers keeps the stage at ${finalSize}`);
-  assert((await hostPanelIn(page).locator('[data-viewers]').getAttribute('title')).includes('the wagers as you type them'), 'the status line’s ⚠ Viewers see this chip says viewers see the wager boxes');
+  assert(
+    (await hostPanelIn(page).locator('[data-viewers]').getAttribute('title')).includes('the wagers as you type them'),
+    'the status line’s ⚠ Viewers see this chip says viewers see the wager boxes',
+  );
   assert((await statusLineIn(page).innerText()).includes('viewers can see them'), 'so does the status line');
   assert((await page.locator('.stage .score-area .plate').count()) === 3, 'the scores stay on screen while wagers are taken');
   const ticks = await page.locator('.stage .score-area .tick').count();

@@ -45,7 +45,10 @@ try {
   // on the first color change shifted things, and that closed the browser's color picker mid-typing.
   await page.getByRole('button', { name: /Background ▾/ }).click();
   const resetBg = page.getByRole('button', { name: '↺ Reset background' });
-  assert((await resetBg.count()) === 1 && (await resetBg.isDisabled()), 'the ↺ Reset background button is already there (disabled) before any background is set');
+  assert(
+    (await resetBg.count()) === 1 && (await resetBg.isDisabled()),
+    'the ↺ Reset background button is already there (disabled) before any background is set',
+  );
   await page.getByLabel('Slide background color').press('Escape');
   assert((await resetBg.count()) === 0 && (await page.getByRole('dialog', { name: 'Edit clue' }).count()) === 1, 'Esc closes just the Background box');
 
@@ -60,9 +63,19 @@ try {
   await canvas.dispatchEvent('drop', { dataTransfer: dt });
   await inspectorIn(page).locator('h4', { hasText: 'Image' }).waitFor();
   const pos = inspectorIn(page).locator('section:has(h4:text("Position"))');
-  for (const [k, v] of /** @type {[string, number][]} */ ([['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
+  for (const [k, v] of /** @type {[string, number][]} */ ([
+    ['X', 0],
+    ['Y', 0],
+    ['W', 1920],
+    ['H', 1080],
+  ]))
+    await pos.getByLabel(k, { exact: true }).fill(String(v));
   await page.keyboard.press('Escape');
-  await page.locator('.canvas img').first().click({ trial: true }).catch(() => {});
+  await page
+    .locator('.canvas img')
+    .first()
+    .click({ trial: true })
+    .catch(() => {});
 
   const layers = page.locator('.layers-box .row');
   assert((await layers.count()) === 2, 'the Layers list shows both items');
@@ -146,7 +159,10 @@ try {
   assert((await layers.count()) === 2, 'Ctrl+X keeps a locked item');
   await page.keyboard.press('Control+v');
   assert((await layers.count()) === 2, 'and Ctrl+V after it pastes nothing');
-  await layers.filter({ hasText: 'Under the picture' }).locator('.name').click({ modifiers: ['Shift'] });
+  await layers
+    .filter({ hasText: 'Under the picture' })
+    .locator('.name')
+    .click({ modifiers: ['Shift'] });
   await page.keyboard.press('Control+x');
   const cutNote = await page.locator('.notice').innerText();
   assert(
@@ -177,11 +193,23 @@ try {
 
   // Drag-to-select: two shapes in the top-left corner (over the locked picture), clear of the text.
   await layers.filter({ hasText: 'Under the picture' }).locator('.name').click();
-  for (const [k, v] of /** @type {[string, number][]} */ ([['X', 400], ['Y', 500], ['W', 1100], ['H', 300]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
+  for (const [k, v] of /** @type {[string, number][]} */ ([
+    ['X', 400],
+    ['Y', 500],
+    ['W', 1100],
+    ['H', 300],
+  ]))
+    await pos.getByLabel(k, { exact: true }).fill(String(v));
   for (let i = 0; i < 2; i++) {
     await page.getByRole('button', { name: '◼ Shape ▾' }).click();
     await page.getByRole('button', { name: '▭ Rectangle' }).click();
-    for (const [k, v] of /** @type {[string, number][]} */ ([['X', 40 + i * 260], ['Y', 40], ['W', 200], ['H', 150]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
+    for (const [k, v] of /** @type {[string, number][]} */ ([
+      ['X', 40 + i * 260],
+      ['Y', 40],
+      ['W', 200],
+      ['H', 150],
+    ]))
+      await pos.getByLabel(k, { exact: true }).fill(String(v));
   }
   const a = await at(10, 10);
   const b = await at(560, 260);
@@ -221,7 +249,10 @@ try {
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   const thirdId = await layers.nth(2).getAttribute('data-layer');
-  assert((await focusedRow()) === thirdId && (await layers.nth(2).evaluate((r) => r.classList.contains('sel'))), '↓ twice in the Layers list moves the focus and the selection two rows down');
+  assert(
+    (await focusedRow()) === thirdId && (await layers.nth(2).evaluate((r) => r.classList.contains('sel'))),
+    '↓ twice in the Layers list moves the focus and the selection two rows down',
+  );
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   assert((await focusedRow()) === topId, 'and ↑ twice back to the top row');
@@ -259,10 +290,18 @@ try {
       await tops(['Align text left', 'Center the text', 'Align text right']),
       await tops(['Text at the top of the box', 'Text in the middle of the box', 'Text at the bottom of the box']),
     ];
-    assert(rows.every((r) => r < 8), `the text style buttons wrap by whole groups (each group's spread up and down: ${rows.join(', ')} px)`);
+    assert(
+      rows.every((r) => r < 8),
+      `the text style buttons wrap by whole groups (each group's spread up and down: ${rows.join(', ')} px)`,
+    );
     // One meaning per sign in the panel: ⤒ ⤓ are only the layer order's (named as the item's menu names them).
-    const signs = await inspectorIn(page).locator('button').evaluateAll((bs) => bs.filter((b) => /[⤒⤓↕]/.test(b.textContent)).map((b) => `${b.textContent.trim()}=${b.getAttribute('aria-label')}`));
-    assert(signs.join('|') === '⤒ To front=Bring to front|⤓ To back=Send to back', `⤒ and ⤓ mean only Bring to front and Send to back in the panel (${signs.join(', ')})`);
+    const signs = await inspectorIn(page)
+      .locator('button')
+      .evaluateAll((bs) => bs.filter((b) => /[⤒⤓↕]/.test(b.textContent)).map((b) => `${b.textContent.trim()}=${b.getAttribute('aria-label')}`));
+    assert(
+      signs.join('|') === '⤒ To front=Bring to front|⤓ To back=Send to back',
+      `⤒ and ⤓ mean only Bring to front and Send to back in the panel (${signs.join(', ')})`,
+    );
   }
 
   // Resize a picture, then drag it straight away. The resize used to leave a text selection on the page,
@@ -275,7 +314,13 @@ try {
     }, PNG);
     await canvas.dispatchEvent('drop', { dataTransfer: dt2 });
     await inspectorIn(page).locator('h4', { hasText: 'Image' }).waitFor();
-    for (const [k, v] of /** @type {[string, number][]} */ ([['X', 300], ['Y', 200], ['W', 600], ['H', 400]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
+    for (const [k, v] of /** @type {[string, number][]} */ ([
+      ['X', 300],
+      ['Y', 200],
+      ['W', 600],
+      ['H', 400],
+    ]))
+      await pos.getByLabel(k, { exact: true }).fill(String(v));
     await page.evaluate(() => {
       window.__nativeDrag = [];
       for (const t of ['dragstart', 'pointercancel']) document.addEventListener(t, () => window.__nativeDrag.push(t), true);
@@ -295,8 +340,11 @@ try {
     await page.mouse.move(mid.x + 150, mid.y + 10, { steps: 12 });
     await page.mouse.up();
     const x1 = Number(await pos.getByLabel('X', { exact: true }).inputValue());
-    const moved = await at(0, 0).then(async (o) => ((mid.x + 150 - o.x) - (mid.x - o.x)) / ((await at(1920, 0)).x - o.x) * 1920);
-    assert(Math.abs(x1 - x0 - moved) < 20, `right after resizing, dragging moves the picture the whole way (${x0} → ${x1}, expected about +${Math.round(moved)})`);
+    const moved = await at(0, 0).then(async (o) => ((mid.x + 150 - o.x - (mid.x - o.x)) / ((await at(1920, 0)).x - o.x)) * 1920);
+    assert(
+      Math.abs(x1 - x0 - moved) < 20,
+      `right after resizing, dragging moves the picture the whole way (${x0} → ${x1}, expected about +${Math.round(moved)})`,
+    );
     assert((await page.evaluate(() => window.__nativeDrag)).length === 0, "no browser drag-and-drop takes over (no 'no' cursor)");
     await page.keyboard.press('Delete'); // leave the slide as the next checks expect: just its text, selected
     await page.locator('.canvas .hit').first().click();
@@ -314,13 +362,19 @@ try {
   );
   await page.locator('.itembar').getByRole('button', { name: '🔒 Lock' }).click();
   assert((await layers.count()) === 1, 'it stays listed once that item is locked');
-  await layers.first().getByRole('button', { name: /^Unlock: / }).click();
+  await layers
+    .first()
+    .getByRole('button', { name: /^Unlock: / })
+    .click();
   assert((await page.locator('.itembar').getByRole('button', { name: '🔒 Lock' }).getAttribute('aria-pressed')) === 'false', 'and unlocks it from there');
 
   // A Layers row has the item's menu too: a right-click on it, or Shift+F10 with the keys on it (Esc gives them back).
   await layers.first().locator('.name').click({ button: 'right' });
   await menu.waitFor();
-  assert((await menu.locator('.head').innerText()).trim() === label && (await menu.getByRole('menuitem', { name: '✎ Rename' }).count()) === 1, `a right-click on a Layers row opens its item's menu, headed by its name (${label})`);
+  assert(
+    (await menu.locator('.head').innerText()).trim() === label && (await menu.getByRole('menuitem', { name: '✎ Rename' }).count()) === 1,
+    `a right-click on a Layers row opens its item's menu, headed by its name (${label})`,
+  );
   await page.keyboard.press('Escape');
   await menu.waitFor({ state: 'detached' });
   await layers.first().locator('.name').focus();
@@ -328,7 +382,13 @@ try {
   await menu.waitFor();
   await page.keyboard.press('Escape');
   await menu.waitFor({ state: 'detached' });
-  assert(await layers.first().locator('.name').evaluate((b) => b === document.activeElement), 'Shift+F10 on the row opens it as well, and Esc gives the row the keys back');
+  assert(
+    await layers
+      .first()
+      .locator('.name')
+      .evaluate((b) => b === document.activeElement),
+    'Shift+F10 on the row opens it as well, and Esc gives the row the keys back',
+  );
 
   // A choice in the keyboard's menu (Shift+F10, arrows, Enter) leaves the keys on the slide. In the clue editor they
   // went to 🅣 Text: Delete then did nothing, and Enter added a text box.
@@ -359,7 +419,13 @@ try {
   // A small item is moved by any part of it: on a short side the handles sit outside it (they covered it, so a drag
   // near its top edge, or on a laptop by its middle, resized it).
   await layers.first().locator('.name').click();
-  for (const [k, v] of /** @type {[string, number][]} */ ([['W', 40], ['H', 40], ['X', 800], ['Y', 300]])) await pos.getByLabel(k, { exact: true }).fill(String(v));
+  for (const [k, v] of /** @type {[string, number][]} */ ([
+    ['W', 40],
+    ['H', 40],
+    ['X', 800],
+    ['Y', 300],
+  ]))
+    await pos.getByLabel(k, { exact: true }).fill(String(v));
   {
     const from = await at(820, 306);
     await page.mouse.move(from.x, from.y);
@@ -378,7 +444,10 @@ try {
   const shown = await page.evaluate(() => {
     const list = document.querySelector('.layers-box .layers').getBoundingClientRect();
     const row = document.querySelector('.layers-box .row.sel').getBoundingClientRect();
-    return { scrolls: document.querySelector('.layers-box .layers').scrollHeight > list.height + 1, inside: row.top >= list.top - 1 && row.bottom <= list.bottom + 1 };
+    return {
+      scrolls: document.querySelector('.layers-box .layers').scrollHeight > list.height + 1,
+      inside: row.top >= list.top - 1 && row.bottom <= list.bottom + 1,
+    };
   });
   assert(shown.scrolls && shown.inside, `the Layers list scrolls to the bottom item picked with Tab (${JSON.stringify(shown)})`);
 

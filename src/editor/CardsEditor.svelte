@@ -64,7 +64,10 @@
   function dup(c: SavedCard, fromList = false): void {
     const cards = game.cards;
     if (!cards) return;
-    const copy = copySavedCard(c, cards.map((x) => x.name));
+    const copy = copySavedCard(
+      c,
+      cards.map((x) => x.name),
+    );
     step(`Duplicated card “${named(c)}”`, () => cards.splice(cards.indexOf(c) + 1, 0, copy), { undoPlace: { tab: 'cards', card: c.id } });
     sel = copy.id;
     if (fromList) focusItem(copy.id);
@@ -160,103 +163,106 @@
 <!-- (Wider than other pages, on or off: 📱 On their phone takes a column of its own beside the slide editor when there's
      room, and turning it on never moves what's on the page.) -->
 <div class="page wide">
-<PageHeader
-  title="Cards"
-  sub="Private cards made before the show, in the order 🤫 Send a card… lists them during play. Only the players you send one to see it, on their phones (or 📋 copied, or in the 🪟 card window), never the stream. A tile can have cards of its own too (＋ 🤫 Card in its clue editor), offered when the tile is played."
-/>
+  <PageHeader
+    title="Cards"
+    sub="Private cards made before the show, in the order 🤫 Send a card… lists them during play. Only the players you send one to see it, on their phones (or 📋 copied, or in the 🪟 card window), never the stream. A tile can have cards of its own too (＋ 🤫 Card in its clue editor), offered when the tile is played."
+  />
 
-<div class="layout">
-  <!-- Not a second nav and main: the editor's own are around it. -->
-  <section class="list" aria-label="Your cards">
-    <!-- (A list only once it has cards in it.) -->
-    {#if list.length}
-      <div class="group" role="list" aria-label="Cards">
-        {#each list as c, i (c.id)}
-          {@const line = rows.lineAt(c.id)}
-          <div
-            class="drag-row"
-            class:drop-before={line === 'before'}
-            class:drop-after={line === 'after'}
-            class:dragging={rows.dragging === c.id}
-            role="listitem"
-            ondragover={(e) => rows.over(e, c.id)}
-            ondrop={(e) => {
-              const m = rows.drop(e, list.map((x) => x.id));
-              if (m) move(m.from, m.to);
-            }}
-          >
-            {#if renaming === c.id}
-              <input
-                class="rename"
-                value={c.name}
-                aria-label="Card name"
-                maxlength={CARD_NAME_MAX}
-                use:focusAll
-                onkeydown={(e) => {
-                  if (e.key === 'Enter') rename(c, e.currentTarget.value);
-                  else if (e.key === 'Escape') {
-                    e.stopPropagation();
-                    rename(c, c.name);
-                  }
-                }}
-                onblur={(e) => renaming === c.id && rename(c, e.currentTarget.value, !e.relatedTarget)}
-              />
-            {:else}
-              <button
-                class:active={c.id === card?.id}
-                aria-current={c.id === card?.id ? 'true' : undefined}
-                data-place="card:{c.id}"
-                data-saved-card={c.id}
-                draggable="true"
-                title="Enter to open · drag to reorder · double-click or F2 to rename · right-click for more"
-                onclick={(e) => {
-                  sel = c.id;
-                  // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a card renamed.)
-                  e.currentTarget.focus();
-                }}
-                ondblclick={() => (renaming = c.id)}
-                oncontextmenu={(e) => menu(e, c, i)}
-                onkeydown={(e) => itemKey(e, c, i)}
-                ondragstart={(e) => {
-                  // (In a narrow window the names are a row: the drop line stands beside one, not under it.)
-                  const group = e.currentTarget.closest('.group');
-                  rows.across = !!group && getComputedStyle(group).flexDirection === 'row';
-                  rows.start(e, c.id);
-                }}
-                ondragend={() => rows.end()}
-              >
-                {savedCardName(c, i)}
-              </button>
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {/if}
-    <button class="ghost" onclick={add} title="A new card, its words box ready to type in">＋ Add card</button>
-  </section>
+  <div class="layout">
+    <!-- Not a second nav and main: the editor's own are around it. -->
+    <section class="list" aria-label="Your cards">
+      <!-- (A list only once it has cards in it.) -->
+      {#if list.length}
+        <div class="group" role="list" aria-label="Cards">
+          {#each list as c, i (c.id)}
+            {@const line = rows.lineAt(c.id)}
+            <div
+              class="drag-row"
+              class:drop-before={line === 'before'}
+              class:drop-after={line === 'after'}
+              class:dragging={rows.dragging === c.id}
+              role="listitem"
+              ondragover={(e) => rows.over(e, c.id)}
+              ondrop={(e) => {
+                const m = rows.drop(
+                  e,
+                  list.map((x) => x.id),
+                );
+                if (m) move(m.from, m.to);
+              }}
+            >
+              {#if renaming === c.id}
+                <input
+                  class="rename"
+                  value={c.name}
+                  aria-label="Card name"
+                  maxlength={CARD_NAME_MAX}
+                  use:focusAll
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter') rename(c, e.currentTarget.value);
+                    else if (e.key === 'Escape') {
+                      e.stopPropagation();
+                      rename(c, c.name);
+                    }
+                  }}
+                  onblur={(e) => renaming === c.id && rename(c, e.currentTarget.value, !e.relatedTarget)}
+                />
+              {:else}
+                <button
+                  class:active={c.id === card?.id}
+                  aria-current={c.id === card?.id ? 'true' : undefined}
+                  data-place="card:{c.id}"
+                  data-saved-card={c.id}
+                  draggable="true"
+                  title="Enter to open · drag to reorder · double-click or F2 to rename · right-click for more"
+                  onclick={(e) => {
+                    sel = c.id;
+                    // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a card renamed.)
+                    e.currentTarget.focus();
+                  }}
+                  ondblclick={() => (renaming = c.id)}
+                  oncontextmenu={(e) => menu(e, c, i)}
+                  onkeydown={(e) => itemKey(e, c, i)}
+                  ondragstart={(e) => {
+                    // (In a narrow window the names are a row: the drop line stands beside one, not under it.)
+                    const group = e.currentTarget.closest('.group');
+                    rows.across = !!group && getComputedStyle(group).flexDirection === 'row';
+                    rows.start(e, c.id);
+                  }}
+                  ondragend={() => rows.end()}
+                >
+                  {savedCardName(c, i)}
+                </button>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+      <button class="ghost" onclick={add} title="A new card, its words box ready to type in">＋ Add card</button>
+    </section>
 
-  <section class="pane" aria-label="Card">
-    {#if card}
-      <div class="row top">
-        <span class="spacer"></span>
-        <button class="ghost" onclick={() => dup(card)} title="A copy of this card, right after it (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost danger del" onclick={() => remove(card)} title="Delete this card (Undo brings it back)">🗑 Delete card</button>
-      </div>
-      {#key card.id}<SavedCardEditor {card} index={list.indexOf(card)} bind:phoneView />{/key}
-    {:else}
-      <!-- (No second ＋ Add card here: the one on the left is the only one.) -->
-      <div class="empty">
-        <span class="ic" aria-hidden="true">🤫</span>
-        <p><b>No cards yet.</b></p>
-        <p>
-          Make private cards before the show: words, pictures, GIFs, videos, sounds or a YouTube link on each. During play,
-          <b>🤫 Send a card…</b> in the host panel’s tools row sends one to the players you choose, and only they see it. Add
-          one with <b>＋ Add card</b> on the left.
-        </p>
-      </div>
-    {/if}
-  </section>
-</div>
+    <section class="pane" aria-label="Card">
+      {#if card}
+        <div class="row top">
+          <span class="spacer"></span>
+          <button class="ghost" onclick={() => dup(card)} title="A copy of this card, right after it (Ctrl+D)">⧉ Duplicate</button>
+          <button class="ghost danger del" onclick={() => remove(card)} title="Delete this card (Undo brings it back)">🗑 Delete card</button>
+        </div>
+        {#key card.id}<SavedCardEditor {card} index={list.indexOf(card)} bind:phoneView />{/key}
+      {:else}
+        <!-- (No second ＋ Add card here: the one on the left is the only one.) -->
+        <div class="empty">
+          <span class="ic" aria-hidden="true">🤫</span>
+          <p><b>No cards yet.</b></p>
+          <p>
+            Make private cards before the show: words, pictures, GIFs, videos, sounds or a YouTube link on each. During play,
+            <b>🤫 Send a card…</b> in the host panel’s tools row sends one to the players you choose, and only they see it. Add one with <b>＋ Add card</b> on the
+            left.
+          </p>
+        </div>
+      {/if}
+    </section>
+  </div>
 </div>
 
 <style>

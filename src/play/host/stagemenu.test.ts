@@ -12,7 +12,12 @@ const lines = (m: MenuEntry[]) =>
 describe('the stage’s menu', () => {
   it('says a key cap in a menu’s words', () => {
     expect(['⏎', '⇧⏎', '⇧N', 'Esc', '⇧Esc', 'W', undefined].map(menuKeys)).toEqual(['Enter', 'Shift+Enter', 'Shift+N', 'Esc', 'Shift+Esc', 'W', undefined]);
-    expect(stepItem(step(VERBS.reveal, () => {}), 'reveal')).toMatchObject({ id: 'reveal', label: '👁 Reveal answer', keys: 'R', hint: VERBS.reveal.title });
+    expect(
+      stepItem(
+        step(VERBS.reveal, () => {}),
+        'reveal',
+      ),
+    ).toMatchObject({ id: 'reveal', label: '👁 Reveal answer', keys: 'R', hint: VERBS.reveal.title });
   });
 
   it('a clue: the blue button’s step first (N, on its own), the clue’s own actions, the ways out, then Undo and Cover', () => {
@@ -20,7 +25,11 @@ describe('the stage’s menu', () => {
       {
         heading: 'Movies · $400',
         main: item('Next slide ▶', { id: 'main', keys: 'N' }),
-        steps: [item('◀ Slide', { id: 'slide-', keys: 'Shift+N', disabled: true }), item('👁 Reveal answer', { id: 'reveal', keys: 'R' }), item('⏱ Start the countdown', { id: 'clock', keys: 'T' })],
+        steps: [
+          item('◀ Slide', { id: 'slide-', keys: 'Shift+N', disabled: true }),
+          item('👁 Reveal answer', { id: 'reveal', keys: 'R' }),
+          item('⏱ Start the countdown', { id: 'clock', keys: 'T' }),
+        ],
         exits: [item('▦ Done ▶ board', { id: 'done', keys: 'Esc' }), item('↩ Put back (keep tile)', { id: 'putback', keys: 'Shift+Esc', disabled: true })],
       },
       [],
@@ -60,13 +69,26 @@ describe('the stage’s menu', () => {
     if (first && 'onclick' in first) first.onclick();
     expect(ran).toBe('main');
     // At ▦ Done ▶ board, the way out with its words goes too.
-    const done = stageMenuOf({ main: item('▦ Done ▶ board', { keys: 'N' }), steps: [], exits: [item('▦ Done ▶ board', { id: 'done', keys: 'Esc' }), item('↩ Put back (keep tile)', { id: 'putback' })] }, [], []);
+    const done = stageMenuOf(
+      {
+        main: item('▦ Done ▶ board', { keys: 'N' }),
+        steps: [],
+        exits: [item('▦ Done ▶ board', { id: 'done', keys: 'Esc' }), item('↩ Put back (keep tile)', { id: 'putback' })],
+      },
+      [],
+      [],
+    );
     expect(lines(done)).toEqual(['▦ Done ▶ board · N', '—', '↩ Put back (keep tile)']);
   });
 
   it('a Daily Double: Show question ▶ first, then who found it (the box’s leading items), its other items, the way out', () => {
     const m = stageMenuOf(
-      { heading: '⭐ Daily Double', main: item('Show question ▶', { id: 'main', keys: 'N' }), steps: [], exits: [item('↩ Put back (keep tile)', { id: 'putback', keys: 'Esc' })] },
+      {
+        heading: '⭐ Daily Double',
+        main: item('Show question ▶', { id: 'main', keys: 'N' }),
+        steps: [],
+        exits: [item('↩ Put back (keep tile)', { id: 'putback', keys: 'Esc' })],
+      },
       [item('⭐ Ann found it', { lead: true, disabled: true }), item('⭐ Bob found it', { lead: true }), item('True Daily Double')],
       [item('⏸ Cover the screen', { keys: 'K' })],
     );
@@ -114,20 +136,40 @@ describe('the stage’s menu', () => {
 
   it('an RPG stage: ▭ Select in a box and Select everything here, first among the round’s own items', () => {
     let ran = '';
-    const sel = selectItems({ players: 2, objects: 1 }, () => (ran = 'box'), () => (ran = 'all'));
+    const sel = selectItems(
+      { players: 2, objects: 1 },
+      () => (ran = 'box'),
+      () => (ran = 'all'),
+    );
     const m = stageMenuOf(
       { heading: 'Adventure', steps: [...sel, item('＋ Text here…'), item('🗺 Full map (jump anywhere)', { keys: 'J' }), item('🤝 Regroup', { keys: 'G' })] },
       [],
       [item('↶ Undo', { keys: 'Ctrl+Z' })],
     );
-    expect(lines(m)).toEqual(['# Adventure', '▭ Select in a box · Alt+drag', 'Select everything here', '＋ Text here…', '🗺 Full map (jump anywhere) · J', '🤝 Regroup · G', '—', '↶ Undo · Ctrl+Z']);
+    expect(lines(m)).toEqual([
+      '# Adventure',
+      '▭ Select in a box · Alt+drag',
+      'Select everything here',
+      '＋ Text here…',
+      '🗺 Full map (jump anywhere) · J',
+      '🤝 Regroup · G',
+      '—',
+      '↶ Undo · Ctrl+Z',
+    ]);
     expect(sel[1].hint).toBe('2 players and 1 thing on this screen (with Shift held, added to what’s selected)');
     sel[0].onclick();
     expect(ran).toBe('box');
     sel[1].onclick();
     expect(ran).toBe('all');
     // Nobody and nothing here: greyed, in its place.
-    const none = selectItems({ players: 0, objects: 0 }, () => {}, () => {});
-    expect(none.map((i) => [i.label, !!i.disabled])).toEqual([['▭ Select in a box', false], ['Select everything here', true]]);
+    const none = selectItems(
+      { players: 0, objects: 0 },
+      () => {},
+      () => {},
+    );
+    expect(none.map((i) => [i.label, !!i.disabled])).toEqual([
+      ['▭ Select in a box', false],
+      ['Select everything here', true],
+    ]);
   });
 });

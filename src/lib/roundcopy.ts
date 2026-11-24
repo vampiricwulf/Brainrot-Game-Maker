@@ -30,7 +30,10 @@ function usedBy(game: Game, what: unknown) {
   const things = clone(found);
   const shown = mediaShownBy([what, ...Object.values(things)], game.media);
   // (With their 🗜 copies for phones.)
-  const ids = withCopies(game, shown.map((m) => m.id));
+  const ids = withCopies(
+    game,
+    shown.map((m) => m.id),
+  );
   return { ...things, media: clone([...shown, ...game.media.filter((m) => m.phoneCopy && ids.includes(m.id))]) };
 }
 
@@ -93,7 +96,16 @@ type Things = Pick<RoundBundle, Kind | 'media'>;
 /** The same content? (Key order aside: an edit can add a field after the others.) */
 export function sameContent(a: unknown, b: unknown): boolean {
   const norm = (v: unknown): unknown =>
-    Array.isArray(v) ? v.map(norm) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined).sort(([x], [y]) => (x < y ? -1 : 1)).map(([k, x]) => [k, norm(x)])) : v;
+    Array.isArray(v)
+      ? v.map(norm)
+      : v && typeof v === 'object'
+        ? Object.fromEntries(
+            Object.entries(v)
+              .filter(([, x]) => x !== undefined)
+              .sort(([x], [y]) => (x < y ? -1 : 1))
+              .map(([k, x]) => [k, norm(x)]),
+          )
+        : v;
   return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
 }
 
@@ -119,7 +131,7 @@ const pasted = new Map<string, CopyIds>();
 function settleIds<T extends Things>(game: Game, b: T, ids: CopyIds): { b: T; changed: Set<string> } {
   let json = JSON.stringify(b);
   const changed = new Set<string>();
-  for (let again = true; again; ) {
+  for (let again = true; again;) {
     again = false;
     const cur = JSON.parse(json) as T;
     for (const [kind] of KINDS)
@@ -141,7 +153,15 @@ function settleIds<T extends Things>(game: Game, b: T, ids: CopyIds): { b: T; ch
 
 /** Without its ids (an item's buttons each have one), to tell whether two things are the same otherwise. */
 const noIds = (v: unknown): unknown =>
-  Array.isArray(v) ? v.map(noIds) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'id').map(([k, x]) => [k, noIds(x)])) : v;
+  Array.isArray(v)
+    ? v.map(noIds)
+    : v && typeof v === 'object'
+      ? Object.fromEntries(
+          Object.entries(v)
+            .filter(([k]) => k !== 'id')
+            .map(([k, x]) => [k, noIds(x)]),
+        )
+      : v;
 
 /** The kinds settleNames matches by name: a round's stats, items and shops; a deal's wheel too. */
 type NameKind = 'statFields' | 'items' | 'shops' | 'wheels';
@@ -154,7 +174,12 @@ const ROUND_NAMES: readonly NameKind[] = ['statFields', 'items', 'shops'];
  * for an earlier round from the same place is used again. Runs before settleIds, so what's this game's own reads as the
  * same there. Returns the bundle so changed, the names of this game's ones it now uses, and the copies' ids.
  */
-function settleNames<T extends Things>(game: Game, bundle: T, ids: CopyIds, kinds: readonly NameKind[] = ROUND_NAMES): { b: T; merged: string[]; copies: Set<string> } {
+function settleNames<T extends Things>(
+  game: Game,
+  bundle: T,
+  ids: CopyIds,
+  kinds: readonly NameKind[] = ROUND_NAMES,
+): { b: T; merged: string[]; copies: Set<string> } {
   type Thing = Named & { type?: string; currency?: boolean };
   let json = JSON.stringify(bundle);
   const swap = (from: string, to: string) => (json = json.split(JSON.stringify(from)).join(JSON.stringify(to)));
@@ -177,7 +202,9 @@ function settleNames<T extends Things>(game: Game, bundle: T, ids: CopyIds, kind
       }
       const same = mine.find((y) => key(y.name) === key(x.name));
       if (!same) continue;
-      if (kind === 'statFields' ? same.type === x.type && !!same.currency === !!x.currency : sameContent(noIds({ ...same, name: '' }), noIds({ ...x, name: '' }))) {
+      if (
+        kind === 'statFields' ? same.type === x.type && !!same.currency === !!x.currency : sameContent(noIds({ ...same, name: '' }), noIds({ ...x, name: '' }))
+      ) {
         swap(x.id, same.id);
         ours.add(same.id);
         if (!merged.includes(same.name)) merged.push(same.name);
@@ -214,7 +241,10 @@ function addThings<T extends Things>(game: Game, bundle: T, ids: CopyIds, copied
       if (changed.has(x.id)) {
         copied?.push(`“${x.name}” ${word}`);
         // Two of one name (this game's and the copy) would be hard to tell apart in their list.
-        x.name = uniqueName(list.map((y) => y.name), x.name);
+        x.name = uniqueName(
+          list.map((y) => y.name),
+          x.name,
+        );
       }
     (game as Record<Kind, Named[]>)[kind] = [...list, ...extra];
   }
@@ -236,7 +266,10 @@ export function addBundledRound(game: Game, bundle: RoundBundle, at = game.round
   const b = addThings(game, bundle, ids, copied, merged);
   const round = reidRound(clone(b.round));
   // A round of the same name (pasted twice, or into its own game) is told apart.
-  const name = uniqueName(game.rounds.map((r, i) => roundName(r, i)), roundName(round));
+  const name = uniqueName(
+    game.rounds.map((r, i) => roundName(r, i)),
+    roundName(round),
+  );
   if (name !== roundName(round)) round.name = name;
   game.rounds.splice(at, 0, round);
   // (As the game holds it: a live game wraps what goes into it.)
@@ -246,7 +279,8 @@ export function addBundledRound(game: Game, bundle: RoundBundle, at = game.round
 /**
  * The wheel a 🎭 deal of `source` draws from, for Import rounds…: its name, or '' (none, or one the game hasn't got).
  */
-export const dealWheelName = (source: Pick<Game, 'wheels'>, deal: Pick<DealPreset, 'wheel'>): string => (deal.wheel ? (source.wheels.find((w) => w.id === deal.wheel)?.name ?? '') : '');
+export const dealWheelName = (source: Pick<Game, 'wheels'>, deal: Pick<DealPreset, 'wheel'>): string =>
+  deal.wheel ? (source.wheels.find((w) => w.id === deal.wheel)?.name ?? '') : '';
 
 /**
  * Import rounds…: a copy of `source`'s 🎭 deal into `game` (fresh ids, a name of its own), with the wheel it draws from,
@@ -259,7 +293,13 @@ export function addDealFrom(game: Game, source: Game, deal: DealPreset, copied?:
   const d = clone(deal);
   const { wheels, dice, shops, items, statFields, media } = usedBy(source, d);
   // (As it was, to put back when the deal is one this game has: then nothing comes in, and nothing is said.)
-  const was = { lists: KINDS.map(([kind]) => [kind, game[kind]] as const), media: game.media.length, ids: [...ids], copied: copied?.length, merged: merged?.length };
+  const was = {
+    lists: KINDS.map(([kind]) => [kind, game[kind]] as const),
+    media: game.media.length,
+    ids: [...ids],
+    copied: copied?.length,
+    merged: merged?.length,
+  };
   const b = addThings(game, { deal: d, worlds: [], wheels, dice, shops, items, statFields, media }, ids, copied, merged, [...ROUND_NAMES, 'wheels']);
   const key = (name: string) => name.trim().toLowerCase();
   const plain = (x: DealPreset) => noIds({ ...x, name: '' });
@@ -278,7 +318,10 @@ export function addDealFrom(game: Game, source: Game, deal: DealPreset, copied?:
     p.id = newId();
     for (const e of p.card.elements) e.id = newId();
   }
-  out.name = uniqueName((game.deals ?? []).map((x) => x.name), out.name);
+  out.name = uniqueName(
+    (game.deals ?? []).map((x) => x.name),
+    out.name,
+  );
   game.deals = [...(game.deals ?? []), out];
   // (As the game holds it: a live game wraps what goes into it.)
   return game.deals[game.deals.length - 1];
@@ -344,7 +387,14 @@ export async function settleFiles(
 /** Add files of another game that this one hasn't got (a name already taken here gets another). */
 export function addMedia(game: Game, refs: readonly MediaRef[]): void {
   for (const m of refs)
-    if (!game.media.some((x) => x.id === m.id)) game.media.push({ ...clone(m), name: uniqueMediaName(game.media.map((x) => x.name), m.name) });
+    if (!game.media.some((x) => x.id === m.id))
+      game.media.push({
+        ...clone(m),
+        name: uniqueMediaName(
+          game.media.map((x) => x.name),
+          m.name,
+        ),
+      });
 }
 
 /** Where a new round goes: at the end, before any Final rounds there (so the Final stays last), unless it's a Final. */

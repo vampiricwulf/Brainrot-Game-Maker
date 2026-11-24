@@ -1,5 +1,32 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, cardSlides, dailyDoublesPlaced, gameRules, partnerTilesPlaced, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ClueCard, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type SlidesRound, type TextEl } from './model';
+import {
+  boardRounds,
+  cardSlides,
+  dailyDoublesPlaced,
+  gameRules,
+  partnerTilesPlaced,
+  isBoard,
+  isBoardGame,
+  isFinal,
+  isSlides,
+  newCategory,
+  newClue,
+  newId,
+  newTextEl,
+  questionSlides,
+  textSlide,
+  type Category,
+  type Clue,
+  type ClueCard,
+  type ExtraSlide,
+  type Game,
+  type BoardRound,
+  type ClueType,
+  type Round,
+  type Slide,
+  type SlidesRound,
+  type TextEl,
+} from './model';
 import { cardKept, newCard, partnerRules, partnerSpot, sameAsAnswer, startingCards } from './partner';
 import { slideHasContent } from './usage';
 
@@ -479,7 +506,8 @@ export function addCategory(round: BoardRound, at = round.categories.length): vo
     while (taken.has(name(n))) n++;
     return name(n);
   };
-  const title = at >= round.categories.length ? free((n) => `Category ${n}`, round.categories.length + 1) : free((n) => (n > 1 ? `New category ${n}` : 'New category'), 1);
+  const title =
+    at >= round.categories.length ? free((n) => `Category ${n}`, round.categories.length + 1) : free((n) => (n > 1 ? `New category ${n}` : 'New category'), 1);
   round.categories.splice(at, 0, newCategory(round.values.length, title));
 }
 
@@ -538,8 +566,22 @@ export function clone<T>(v: T): T {
 // ---------- Slide text styles ----------
 
 const STYLE_KEYS = [
-  'font', 'size', 'weight', 'italic', 'underline', 'uppercase', 'color', 'align', 'vAlign', 'lineHeight',
-  'letterSpacing', 'stroke', 'shadow', 'glow', 'background', 'autoFit',
+  'font',
+  'size',
+  'weight',
+  'italic',
+  'underline',
+  'uppercase',
+  'color',
+  'align',
+  'vAlign',
+  'lineHeight',
+  'letterSpacing',
+  'stroke',
+  'shadow',
+  'glow',
+  'background',
+  'autoFit',
 ] as const;
 
 export function copyTextStyle(from: TextEl, to: TextEl): void {

@@ -43,9 +43,7 @@ describe('diff and applyOps', () => {
 
   it('inserts, deletes and moves elements of id-arrays by id', () => {
     const before = { els: [el('a'), el('b'), el('c'), el('d')] };
-    expect(roundTrip(before, { els: [el('a'), el('x'), el('b'), el('c'), el('d')] })).toEqual([
-      { t: 'ins', p: ['els'], i: 1, id: 'x', v: el('x') },
-    ]);
+    expect(roundTrip(before, { els: [el('a'), el('x'), el('b'), el('c'), el('d')] })).toEqual([{ t: 'ins', p: ['els'], i: 1, id: 'x', v: el('x') }]);
     expect(roundTrip(before, { els: [el('a'), el('c'), el('d')] })).toEqual([{ t: 'del', p: ['els'], i: 1, id: 'b', v: el('b') }]);
     expect(roundTrip(before, { els: [el('b'), el('c'), el('a'), el('d')] })).toEqual([
       { t: 'ord', p: ['els'], b: ['a', 'b', 'c', 'd'], a: ['b', 'c', 'a', 'd'] },
@@ -92,13 +90,42 @@ describe('diff and applyOps', () => {
   });
 
   it('replaces arrays of arrays (a drawing) whole, and only when they changed', () => {
-    const before = { points: [[0, 0], [1, 1]] };
-    expect(roundTrip(before, { points: [[0, 0], [1, 2]] })).toEqual([{ t: 'set', p: [], k: 'points', b: before.points, a: [[0, 0], [1, 2]] }]);
+    const before = {
+      points: [
+        [0, 0],
+        [1, 1],
+      ],
+    };
+    expect(
+      roundTrip(before, {
+        points: [
+          [0, 0],
+          [1, 2],
+        ],
+      }),
+    ).toEqual([
+      {
+        t: 'set',
+        p: [],
+        k: 'points',
+        b: before.points,
+        a: [
+          [0, 0],
+          [1, 2],
+        ],
+      },
+    ]);
     expect(diff(before, clone(before))).toEqual([]);
   });
 
   it('keeps the objects a change did not touch, and moves the existing ones', () => {
-    const before = { rounds: [{ id: 'r1', cats: [el('c1')] }, { id: 'r2', cats: [el('c2')] }, { id: 'r3', cats: [] }] };
+    const before = {
+      rounds: [
+        { id: 'r1', cats: [el('c1')] },
+        { id: 'r2', cats: [el('c2')] },
+        { id: 'r3', cats: [] },
+      ],
+    };
     const after = clone(before);
     after.rounds.reverse();
     after.rounds[0].cats.push(el('c3'));
@@ -168,7 +195,19 @@ function generator(r: () => number) {
       values: [200, 400, 600],
       categories: times(1 + int(3), () => ({ id: id(), title: word(), clues: times(3, clue) })),
     })),
-    worlds: [{ id: id(), name: word(), maps: times(1 + int(2), () => ({ id: id(), name: word(), cols: 3, rows: 3, screens: times(int(4), () => ({ id: id(), name: word(), col: int(3), row: int(3), slide: slide() })) })) }],
+    worlds: [
+      {
+        id: id(),
+        name: word(),
+        maps: times(1 + int(2), () => ({
+          id: id(),
+          name: word(),
+          cols: 3,
+          rows: 3,
+          screens: times(int(4), () => ({ id: id(), name: word(), col: int(3), row: int(3), slide: slide() })),
+        })),
+      },
+    ],
     media: times(int(4), () => ({ id: id(), name: `${word()}.png`, kind: 'image', size: int(1000) })),
     theme: { preset: 'classic', colors: { board: '#060ce9', text: '#fff' } },
   });
@@ -253,7 +292,10 @@ describe('random edits (seeded)', () => {
       expect(live, `seed ${seed}: redo`).toStrictEqual(after);
       // Nothing in the game is shared with the ops.
       const held = new Set(ops.flatMap((o) => containers(o as unknown as Json)));
-      expect(containers(live).some((c) => held.has(c)), `seed ${seed}: shared`).toBe(false);
+      expect(
+        containers(live).some((c) => held.has(c)),
+        `seed ${seed}: shared`,
+      ).toBe(false);
     }
   });
 });
@@ -325,6 +367,8 @@ describe('op helpers', () => {
     expect(itemIdsIn(diff(before, after)).sort()).toEqual(['a', 'b', 'c', 'd1', 'e']);
     // Ids of other things (the round) aren't items, and restacking renumbers items around the one moved.
     expect(itemIdsIn(diff({ rounds: [{ id: 'r', name: 'A' }] }, { rounds: [{ id: 'r', name: 'B' }] }))).toEqual([]);
-    expect(itemIdsIn(diff(slide({ ...el('a'), zIndex: 1 }, { ...el('b'), zIndex: 2 }), slide({ ...el('a'), zIndex: 2 }, { ...el('b'), zIndex: 1 })))).toEqual([]);
+    expect(itemIdsIn(diff(slide({ ...el('a'), zIndex: 1 }, { ...el('b'), zIndex: 2 }), slide({ ...el('a'), zIndex: 2 }, { ...el('b'), zIndex: 1 })))).toEqual(
+      [],
+    );
   });
 });

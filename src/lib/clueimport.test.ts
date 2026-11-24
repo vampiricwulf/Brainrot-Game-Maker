@@ -51,7 +51,9 @@ describe('clue import: reading tables', () => {
     // A dot before three digits is a thousands mark (where a comma is the decimal mark); a currency sign can come after.
     expect([parseValue('1.000'), parseValue('12.500'), parseValue('2.5'), parseValue('200 €'), parseValue('1.000 €')]).toEqual([1000, 12500, 2.5, 200, 1000]);
     // A comma as the decimal mark (a sheet's currency format there), spaces (a no-break one too) as thousands marks.
-    expect(['200,00 €', '1.000,00 €', '1 000,00 €', '1\u00a0000,00 €', '1\u202f000,00 €', '200,00', '-200,5', '$1,000.00', '1,000'].map(parseValue)).toEqual([200, 1000, 1000, 1000, 1000, 200, -200.5, 1000, 1000]);
+    expect(['200,00 €', '1.000,00 €', '1 000,00 €', '1\u00a0000,00 €', '1\u202f000,00 €', '200,00', '-200,5', '$1,000.00', '1,000'].map(parseValue)).toEqual([
+      200, 1000, 1000, 1000, 1000, 200, -200.5, 1000, 1000,
+    ]);
   });
 });
 
@@ -81,7 +83,13 @@ describe('clue import: onto a board', () => {
     const plan = planImport(round, cluesFromTable(parseTable(table)), 'fill');
     const geo = plan.round.categories[0].clues;
     // (Its $200 row isn't free: G2 keeps its own row, and G1 goes on the next free one.)
-    expect([geo[0].type, slideText(geo[0].questionSlide), slideText(geo[1].questionSlide), slideText(geo[2].questionSlide), plan.placed]).toEqual(['wheel', '', 'G2', 'G1', 3]);
+    expect([geo[0].type, slideText(geo[0].questionSlide), slideText(geo[1].questionSlide), slideText(geo[2].questionSlide), plan.placed]).toEqual([
+      'wheel',
+      '',
+      'G2',
+      'G1',
+      3,
+    ]);
     const replaced = planImport(round, cluesFromTable(parseTable(table)), 'replace').round.categories[0].clues[0];
     expect([replaced.type, replaced.wheelId, slideText(replaced.questionSlide)]).toEqual(['standard', undefined, 'G1']);
   });
@@ -180,7 +188,16 @@ describe('clue import: review fixes', () => {
   it('replacing the board: a category renamed loses the old one’s picture, and tiles are plain clues again', () => {
     const r = newRound('R', 2, [200]);
     r.categories[0].image = 'img';
-    Object.assign(r.categories[0].clues[0], { type: 'wheel', wheelId: 'w', everyone: true, timerSeconds: 9, choices: [{ id: 'a', text: 'Adams' }, { id: 'b', text: 'Bush' }] });
+    Object.assign(r.categories[0].clues[0], {
+      type: 'wheel',
+      wheelId: 'w',
+      everyone: true,
+      timerSeconds: 9,
+      choices: [
+        { id: 'a', text: 'Adams' },
+        { id: 'b', text: 'Bush' },
+      ],
+    });
     const plan = planImport(r, cluesFromTable(parseTable('History\t200\tFirst president\tWashington')), 'replace');
     applyPlan(r, plan);
     expect(r.categories[0].image).toBeUndefined();
@@ -198,7 +215,9 @@ describe('clue import: review fixes', () => {
 
 describe('clue import: sheets as they copy', () => {
   it('a cell that starts with a quoted title keeps its quotes; a quote never closed is just text', () => {
-    expect(parseTable('Movies\t200\t"I’ll be back" was said in this film\tThe Terminator')).toEqual([['Movies', '200', '"I’ll be back" was said in this film', 'The Terminator']]);
+    expect(parseTable('Movies\t200\t"I’ll be back" was said in this film\tThe Terminator')).toEqual([
+      ['Movies', '200', '"I’ll be back" was said in this film', 'The Terminator'],
+    ]);
     expect(parseTable('"A" b\t"A" or "B"')).toEqual([['"A" b', '"A" or "B"']]);
     expect(parseTable('"A\tB\nC\tD')).toEqual([
       ['"A', 'B'],

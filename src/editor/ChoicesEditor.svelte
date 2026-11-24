@@ -35,7 +35,9 @@
     final?: boolean;
   } = $props();
   const rightTitle = $derived(
-    final ? 'The right answer: it lights up on stream with the answer, and the reveals say whether each pick is it' : 'The right answer: it lights up on stream with the answer, and ✔ Judge all marks everyone by it',
+    final
+      ? 'The right answer: it lights up on stream with the answer, and the reveals say whether each pick is it'
+      : 'The right answer: it lights up on stream with the answer, and ✔ Judge all marks everyone by it',
   );
 
   const list = $derived(owner.choices ?? []);
@@ -95,7 +97,11 @@
     });
   }
   function takeOff(): void {
-    change(`Took the choices off ${where()}`, () => delete owner.choices, list.some((c) => c.text.trim()));
+    change(
+      `Took the choices off ${where()}`,
+      () => delete owner.choices,
+      list.some((c) => c.text.trim()),
+    );
   }
   /** Enter: the next choice's box. */
   function key(e: KeyboardEvent, i: number): void {
@@ -125,7 +131,10 @@
           aria-label="Choice {letter(i)}"
           ondragover={(e) => rows.over(e, c.id)}
           ondrop={(e) => {
-            const m = rows.drop(e, list.map((x) => x.id));
+            const m = rows.drop(
+              e,
+              list.map((x) => x.id),
+            );
             if (m) move(m.from, m.to);
           }}
           oncontextmenu={(e) => !isTextField(e.target) && showMenu(e, items(i))}
@@ -164,11 +173,16 @@
       {/each}
     </div>
     <div class="foot">
-      <button class="ghost small" onclick={add} disabled={list.length >= CHOICES_MAX} title={list.length >= CHOICES_MAX ? `${CHOICES_MAX} choices at most` : undefined}>＋ Choice</button>
+      <button
+        class="ghost small"
+        onclick={add}
+        disabled={list.length >= CHOICES_MAX}
+        title={list.length >= CHOICES_MAX ? `${CHOICES_MAX} choices at most` : undefined}>＋ Choice</button
+      >
       <button class="ghost small danger" onclick={takeOff} title="No more choices for this clue (Undo brings them back)">Take the choices off</button>
       <span class="hint"
-        >Players tap one on their phone (no typing) until you show the answer. On stream they show under the question (the slide is drawn a
-        little smaller to make room), and the one marked ✔ Right lights up with the answer. Without phone buzzers, players say the letter.</span
+        >Players tap one on their phone (no typing) until you show the answer. On stream they show under the question (the slide is drawn a little smaller to
+        make room), and the one marked ✔ Right lights up with the answer. Without phone buzzers, players say the letter.</span
       >
     </div>
   </fieldset>

@@ -40,7 +40,14 @@
     {#each round.players as pid, i (pid)}
       {@const p = byId[pid]}
       <div class="pl" class:lead={!rolling && round.rolls[pid] === top} class:out={!rolling && round.rolls[pid] !== top}>
-        <Die value={shown(pid, i)} sides={o.sides} color={p?.color ?? '#fff'} {rolling} size={round.players.length > 8 ? 120 : round.players.length > 5 ? 160 : 200} label={false} />
+        <Die
+          value={shown(pid, i)}
+          sides={o.sides}
+          color={p?.color ?? '#fff'}
+          {rolling}
+          size={round.players.length > 8 ? 120 : round.players.length > 5 ? 160 : 200}
+          label={false}
+        />
         <div class="nm" dir="auto" title={p?.name} style:background={p?.color} style:color={p ? textOn(p.color) : undefined}>{p?.name ?? '?'}</div>
       </div>
     {/each}
@@ -50,7 +57,8 @@
     {#if tied}<div class="msg">Tie! Re-rolling…</div>{/if}
     {#if done && winner}
       <div class="win" in:fly={{ y: 60, duration: 400 }}>
-        <span dir="auto" style:background={winner.color} style:color={textOn(winner.color)}>{winner.name}</span> {o.purpose === 'tiebreak' ? 'wins the game!' : o.purpose === 'buzz' ? 'answers first!' : 'goes first!'}
+        <span dir="auto" style:background={winner.color} style:color={textOn(winner.color)}>{winner.name}</span>
+        {o.purpose === 'tiebreak' ? 'wins the game!' : o.purpose === 'buzz' ? 'answers first!' : 'goes first!'}
       </div>
     {/if}
   </div>
@@ -96,7 +104,9 @@
     flex-direction: column;
     align-items: center;
     gap: 18px;
-    transition: opacity 0.3s, scale 0.3s;
+    transition:
+      opacity 0.3s,
+      scale 0.3s;
   }
   .pl.lead {
     scale: 1.12;

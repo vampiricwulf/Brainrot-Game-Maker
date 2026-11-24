@@ -104,7 +104,10 @@
     text-shadow: 0 0 60px #ff0000;
     z-index: 50;
     /* Then it gets out of the way, so viewers can read the question again (the red clock at 0 stays). */
-    animation: slam 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both, shake 0.4s 0.5s linear 2, fade-out 0.5s 2.5s forwards;
+    animation:
+      slam 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both,
+      shake 0.4s 0.5s linear 2,
+      fade-out 0.5s 2.5s forwards;
     animation-delay: calc(0s - var(--age, 0s)), calc(0.5s - var(--age, 0s)), calc(2.5s - var(--age, 0s));
     pointer-events: none;
   }

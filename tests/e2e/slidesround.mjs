@@ -11,7 +11,31 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, revealAnyway, failureShots, assert, launchChromium, section, awardRowIn, confirmStrip, finalControlsIn, hostPanelIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn, boardIn } from './helpers.mjs';
+import {
+  appFile,
+  addClassicRounds,
+  checkItem,
+  flowButton,
+  goOnCheck,
+  mainButton,
+  mainLabel,
+  openGameFile,
+  playWithPlayers,
+  revealAnyway,
+  failureShots,
+  assert,
+  launchChromium,
+  section,
+  awardRowIn,
+  confirmStrip,
+  finalControlsIn,
+  hostPanelIn,
+  roundTabsIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+  boardIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -33,7 +57,10 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('nav > button.round-tab').length === 2);
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Slides/ }).click();
-  assert((await roundNames()).join('|') === 'Introduction|Jeopardy!|Final Jeopardy!', `the first slides round is the introduction: it goes first (${(await roundNames()).join(', ')})`);
+  assert(
+    (await roundNames()).join('|') === 'Introduction|Jeopardy!|Final Jeopardy!',
+    `the first slides round is the introduction: it goes first (${(await roundNames()).join(', ')})`,
+  );
   const text = page.locator('main [data-field="q"]');
   await text.fill('Welcome to the show');
   // With nothing selected, a double-click on its Layers row renames it: the item bar keeps its height as the first click
@@ -45,7 +72,10 @@ try {
     const h0 = (await itemBar.boundingBox()).height;
     await row.locator('.name').dblclick();
     const h1 = (await itemBar.boundingBox()).height;
-    assert(Math.abs(h1 - h0) < 1 && (await itemBar.innerText()).includes('Welcome to the show'), `the item bar keeps its height as a Layers row selects its item (${h0} → ${h1} px)`);
+    assert(
+      Math.abs(h1 - h0) < 1 && (await itemBar.innerText()).includes('Welcome to the show'),
+      `the item bar keeps its height as a Layers row selects its item (${h0} → ${h1} px)`,
+    );
     assert((await row.getByLabel('Layer name').count()) === 1, 'so a double-click on the Layers row renames it');
     await page.keyboard.press('Escape');
     await row.getByLabel('Layer name').waitFor({ state: 'detached' });
@@ -82,7 +112,10 @@ try {
   // A round name left empty: the box and the clue editor show the name it plays under, as its tab does.
   const nameBox = page.locator('main [data-round-name]');
   await nameBox.fill('');
-  assert((await nameBox.getAttribute('placeholder')) === 'Round 1' && (await roundNames())[0] === 'Round 1', `an empty name's box suggests “Round 1”, its tab's name (${await nameBox.getAttribute('placeholder')})`);
+  assert(
+    (await nameBox.getAttribute('placeholder')) === 'Round 1' && (await roundNames())[0] === 'Round 1',
+    `an empty name's box suggests “Round 1”, its tab's name (${await nameBox.getAttribute('placeholder')})`,
+  );
   await nameBox.fill('Introduction');
   await roundTabsIn(page).nth(1).click();
   await nameBox.fill('');
@@ -94,7 +127,12 @@ try {
   await roundTabsIn(page, { hasText: 'Introduction' }).click();
   // 🎨 Theme opened from here previews the board (its looks are most of the page), not this round's slide.
   await page.getByRole('button', { name: '🎨 Theme' }).click();
-  const boardShown = await boardIn(page.locator('.preview')).waitFor({ timeout: 5000 }).then(() => true, () => false);
+  const boardShown = await boardIn(page.locator('.preview'))
+    .waitFor({ timeout: 5000 })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(boardShown, '🎨 Theme opened from a Slides round previews the first board');
   // A Final's line goes to the side with nothing on it (here its answer), from another round.
   await roundTabsIn(page, { hasText: 'Final' }).click();
@@ -109,7 +147,10 @@ try {
   await page.getByRole('button', { name: 'Add tiebreaker (optional)' }).click();
   await page.getByLabel('Include a tiebreaker clue').check();
   await page.locator('nav .problem', { hasText: 'Tiebreaker: no question, no answer' }).waitFor();
-  assert((await page.locator('nav .problem', { hasText: /tiebreaker/i }).count()) === 1, 'an empty tiebreaker is one checklist line, “Tiebreaker: no question, no answer”');
+  assert(
+    (await page.locator('nav .problem', { hasText: /tiebreaker/i }).count()) === 1,
+    'an empty tiebreaker is one checklist line, “Tiebreaker: no question, no answer”',
+  );
   await page.locator('main [data-field="q"]').fill('How many toilets?');
   await roundTabsIn(page, { hasText: 'Introduction' }).click();
   await page.locator('nav .problem', { hasText: 'The tiebreaker has no answer' }).click();
@@ -129,7 +170,10 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   await page.keyboard.press('Enter');
   await stage.locator('[data-slide="2"]').getByText('Rules: be nice').waitFor();
-  assert((await page.locator('[data-slide-pips]').getAttribute('aria-label')) === 'Slide 2 of 2', 'Enter on Next slide ▶ (the keys on it) shows the next slide (the dots say where it is)');
+  assert(
+    (await page.locator('[data-slide-pips]').getAttribute('aria-label')) === 'Slide 2 of 2',
+    'Enter on Next slide ▶ (the keys on it) shows the next slide (the dots say where it is)',
+  );
   await page.keyboard.press('Shift+N');
   await stage.locator('[data-slide="1"]').waitFor();
   // H, H: the keys come back to a button the app picked (the main button: a slides round's status line has no ⏱ Start).
@@ -174,13 +218,25 @@ try {
     `↓ on Go to round only moves the list (“${await onRound()}”): nothing asked, the keys still there, the round where it was; the status line says Enter goes there`,
   );
   await page.keyboard.press('ArrowDown');
-  await page.waitForFunction(() => /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith('Final Jeopardy!'));
+  await page.waitForFunction(() =>
+    /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith(
+      'Final Jeopardy!',
+    ),
+  );
   assert((await strip.count()) === 0 && (await keysOnList()), '↓ again reaches the round after it (Final Jeopardy!), still asking nothing');
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith('Introduction'));
+  await page.waitForFunction(() =>
+    /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith(
+      'Introduction',
+    ),
+  );
   assert((await strip.count()) === 0 && (await keysOnList()), 'Esc puts the list back on this round');
   await page.keyboard.press('j');
-  await page.waitForFunction(() => /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith('Jeopardy!'));
+  await page.waitForFunction(() =>
+    /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith(
+      'Jeopardy!',
+    ),
+  );
   assert((await strip.count()) === 0, `typing J goes to Jeopardy! in the list (its options: ${(await goTo.locator('option').allInnerTexts()).join(' | ')})`);
   await page.keyboard.press('Enter');
   await strip.getByText('Leave Introduction for Jeopardy!?').waitFor();
@@ -194,8 +250,15 @@ try {
   // (Leaving the list with a round only moved to: nothing happens, it shows this round again.)
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Tab');
-  await page.waitForFunction(() => /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith('Introduction'));
-  assert((await strip.count()) === 0 && (await stage.locator('[data-slide="2"]').count()) === 1, 'Tab away from a round only moved to in the list: nothing asked, the list back on this round');
+  await page.waitForFunction(() =>
+    /** @type {HTMLSelectElement | null} */ (document.querySelector('select[aria-label="Go to round"]'))?.selectedOptions[0]?.textContent.startsWith(
+      'Introduction',
+    ),
+  );
+  assert(
+    (await strip.count()) === 0 && (await stage.locator('[data-slide="2"]').count()) === 1,
+    'Tab away from a round only moved to in the list: nothing asked, the list back on this round',
+  );
   // (Not in the first moments of a round: a double-click's second half doesn't jump ahead.)
   await page.waitForTimeout(500);
   // A click on the stage on the last slide says so first (leaving the round is on stream), in the status line; the next
@@ -203,7 +266,10 @@ try {
   await stage.locator('[data-slide="2"]').click();
   const note = statusLineIn(page).locator('[data-click-note]');
   await note.filter({ hasText: 'Last slide: click again (or Next round ▶) to go on' }).waitFor();
-  assert((await stage.locator('[data-slide="2"]').count()) === 1, 'on the last slide a click on the stage says “Last slide: click again (or Next round ▶) to go on”, and the slide stays');
+  assert(
+    (await stage.locator('[data-slide="2"]').count()) === 1,
+    'on the last slide a click on the stage says “Last slide: click again (or Next round ▶) to go on”, and the slide stays',
+  );
   // (A double-click is one click: the second click counts a moment after the first.)
   await page.waitForTimeout(700);
   await stage.locator('[data-slide="2"]').click();
@@ -212,18 +278,77 @@ try {
 
   // ---------- A Final, then a slides outro, then the tiebreaker ----------
   section('A Final with a slides outro after it, and the tiebreaker');
-  const textEl = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+  const textEl = (id, t) => ({
+    id,
+    kind: 'text',
+    text: t,
+    x: 160,
+    y: 340,
+    w: 1600,
+    h: 400,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 1,
+    font: 'Arial',
+    size: 72,
+    weight: 700,
+    italic: false,
+    underline: false,
+    uppercase: false,
+    color: '#fff',
+    align: 'center',
+    vAlign: 'middle',
+    lineHeight: 1.2,
+    letterSpacing: 0,
+    autoFit: true,
+  });
   const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [textEl(id, t)] });
   const outro = Array.from({ length: 22 }, (_, i) => slide(`o${i}`, `Thanks ${i + 1}`));
   const game = {
-    id: 'g_outro', version: 2, title: 'Outro Night',
-    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
+    id: 'g_outro',
+    version: 2,
+    title: 'Outro Night',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: 15,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+      maxPlayers: 8,
+    },
     players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b'][i], startScore: 500 })),
     rounds: [
-      { id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Memes', questionSlide: slide('fq', 'The final question'), answerSlide: slide('fa', 'The final answer'), timerSeconds: 30, allowNonPositive: true, hostNotes: 'Accept Abe Lincoln too' },
-      { id: 'r_outro', name: 'Outro', mode: 'slides', questionSlide: outro[0], extraSlides: outro.slice(1).map((sl, i) => ({ id: `ox${i}`, ...sl })), hostNotes: 'Thank the sponsors\nPlug the next stream' },
+      {
+        id: 'r_final',
+        name: 'Final Jeopardy!',
+        mode: 'final',
+        category: 'Memes',
+        questionSlide: slide('fq', 'The final question'),
+        answerSlide: slide('fa', 'The final answer'),
+        timerSeconds: 30,
+        allowNonPositive: true,
+        hostNotes: 'Accept Abe Lincoln too',
+      },
+      {
+        id: 'r_outro',
+        name: 'Outro',
+        mode: 'slides',
+        questionSlide: outro[0],
+        extraSlides: outro.slice(1).map((sl, i) => ({ id: `ox${i}`, ...sl })),
+        hostNotes: 'Thank the sponsors\nPlug the next stream',
+      },
     ],
-    media: [], audio: {}, theme: {}, wheels: [], dice: [], statFields: [], items: [],
+    media: [],
+    audio: {},
+    theme: {},
+    wheels: [],
+    dice: [],
+    statFields: [],
+    items: [],
     tiebreaker: { questionSlide: slide('tq', 'How many toilets?'), answerSlide: slide('ta', 'Forty-two'), hostNotes: 'Closest without going over wins' },
   };
   mkdirSync(resolve('test-results'), { recursive: true });
@@ -241,7 +366,12 @@ try {
   const wagers = finalControlsIn(p2).locator('.wagers input[data-wager]');
   for (let i = 0; i < 2; i++) await wagers.nth(i).fill('100');
   const press = async (label) => {
-    await p2.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !(/** @type {HTMLButtonElement | null} */ (document.querySelector('.panel [data-next]'))?.disabled), label);
+    await p2.waitForFunction(
+      (l) =>
+        document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) &&
+        !(/** @type {HTMLButtonElement | null} */ (document.querySelector('.panel [data-next]'))?.disabled),
+      label,
+    );
     await mainButton(p2).click();
   };
   // One window: the Final's notes (they may give its answer away) stay off the panel on stream while the players write.
@@ -268,10 +398,16 @@ try {
   await pips.waitFor();
   const [pipBox, audWidth] = [await pips.boundingBox(), await aud.evaluate(() => window.innerWidth)];
   assert(
-    (await pips.innerText()).trim() === '1 / 22' && (await pips.getAttribute('aria-label')) === 'Slide 1 of 22' && pipBox.x >= 0 && pipBox.x + pipBox.width <= audWidth,
+    (await pips.innerText()).trim() === '1 / 22' &&
+      (await pips.getAttribute('aria-label')) === 'Slide 1 of 22' &&
+      pipBox.x >= 0 &&
+      pipBox.x + pipBox.width <= audWidth,
     `a 22-slide outro: its dots say “1 / 22” and stay on the stage (${Math.round(pipBox.x)}–${Math.round(pipBox.x + pipBox.width)} of ${audWidth}px)`,
   );
-  assert((await p2.locator('.info .notes').innerText()) === 'Thank the sponsors\nPlug the next stream', 'its host notes keep their lines in the host’s info column');
+  assert(
+    (await p2.locator('.info .notes').innerText()) === 'Thank the sponsors\nPlug the next stream',
+    'its host notes keep their lines in the host’s info column',
+  );
   // A held N is one press: down, a repeat, up, then N once more is slide 3 (not 4 or further).
   await p2.keyboard.down('n');
   await p2.keyboard.down('n');
@@ -312,7 +448,10 @@ try {
   await p2.waitForTimeout(500);
   await s2.locator('[data-slide="answer"]').click();
   await checkItem(p2, 'tie').waitFor();
-  assert((await goOnCheck(p2).locator('[data-quick]').count()) === 2 && (await statusLineIn(p2).locator('b').innerText()) === 'Tiebreaker', 'a click on the tiebreaker’s answer asks first, as 🏁 Back to results does: 🏆 each tied player');
+  assert(
+    (await goOnCheck(p2).locator('[data-quick]').count()) === 2 && (await statusLineIn(p2).locator('b').innerText()) === 'Tiebreaker',
+    'a click on the tiebreaker’s answer asks first, as 🏁 Back to results does: 🏆 each tied player',
+  );
   await goOnCheck(p2, { ready: true }).waitFor();
   await p2.keyboard.press('Escape');
   await goOnCheck(p2).waitFor({ state: 'detached' });
@@ -322,9 +461,12 @@ try {
   await hostPanelIn(p2).locator('.p.on[data-player-id="p1"]').waitFor();
   await p2.keyboard.press('n');
   await checkItem(p2, 'tie').waitFor();
-  const tieQuick = await goOnCheck(p2).locator('[data-quick]').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()));
+  const tieQuick = await goOnCheck(p2)
+    .locator('[data-quick]')
+    .evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()));
   assert(
-    JSON.stringify(tieQuick) === JSON.stringify(['🏆 Ann won ▶ results⏎', '🏆 Bob won ▶ results']) &&(await statusLineIn(p2).locator('b').innerText()) === 'Tiebreaker',
+    JSON.stringify(tieQuick) === JSON.stringify(['🏆 Ann won ▶ results⏎', '🏆 Bob won ▶ results']) &&
+      (await statusLineIn(p2).locator('b').innerText()) === 'Tiebreaker',
     `N with nobody its winner asks first: 🏆 each tied player, Ann's (picked) taking Enter; the tiebreaker stays up (${tieQuick.join(' | ')})`,
   );
   await goOnCheck(p2, { ready: true }).waitFor();
@@ -346,7 +488,10 @@ try {
   await statusLineIn(p2).click();
   await p2.keyboard.press('Control+z');
   await statusLineIn(p2, { hasText: 'Who won the tiebreaker?' }).waitFor();
-  assert((await aud.locator('[data-slide="1"]').innerText()).includes('How many toilets?'), 'Ctrl+Z takes back the tiebreaker’s points there (it stays on stream)');
+  assert(
+    (await aud.locator('[data-slide="1"]').innerText()).includes('How many toilets?'),
+    'Ctrl+Z takes back the tiebreaker’s points there (it stays on stream)',
+  );
   await p2.keyboard.press('Control+z');
   await statusLineIn(p2, { hasText: 'Player reveals' }).waitFor();
   // (The audience window follows a moment later.)
@@ -366,7 +511,10 @@ try {
   await p2.keyboard.press('Control+z');
   await statusLineIn(p2, { hasText: 'Player reveals' }).waitFor();
   await aud.locator('[data-slide="1"]', { hasText: 'Thanks 1' }).waitFor({ state: 'detached' });
-  assert((await right(0)) === 'true' && (await right(1)) === 'false', 'Ctrl+Z on the outro goes back to the Final’s reveals, its last judgment taken back there');
+  assert(
+    (await right(0)) === 'true' && (await right(1)) === 'false',
+    'Ctrl+Z on the outro goes back to the Final’s reveals, its last judgment taken back there',
+  );
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Slides round E2E passed.');

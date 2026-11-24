@@ -154,8 +154,7 @@ export const WHEEL_TEMPLATES: WheelTemplate[] = [
     name: 'A to Z',
     hint: 'A letter to name things by',
     // (The hard letters come up less.)
-    slices: () =>
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => ({ label: l, weight: 'QXZJ'.includes(l) ? 0.3 : 1 })),
+    slices: () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => ({ label: l, weight: 'QXZJ'.includes(l) ? 0.3 : 1 })),
   },
   {
     key: 'time',
@@ -170,8 +169,24 @@ export const WHEEL_TEMPLATES: WheelTemplate[] = [
     name: 'Locations',
     hint: 'Places, for 🕵️ Odd one out',
     slices: () =>
-      ['Beach', 'Airplane', 'Hospital', 'School', 'Casino', 'Movie theater', 'Space station', 'Submarine', 'Restaurant', 'Pirate ship', 'Zoo', 'Bank', 'Circus', 'Supermarket', 'Hotel', 'Train']
-        .map((label) => ({ label })),
+      [
+        'Beach',
+        'Airplane',
+        'Hospital',
+        'School',
+        'Casino',
+        'Movie theater',
+        'Space station',
+        'Submarine',
+        'Restaurant',
+        'Pirate ship',
+        'Zoo',
+        'Bank',
+        'Circus',
+        'Supermarket',
+        'Hotel',
+        'Train',
+      ].map((label) => ({ label })),
   },
   {
     key: 'prompts',

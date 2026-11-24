@@ -137,7 +137,8 @@
         {#if fromCode}
           From a theme code: colors, fonts and layout. This game keeps its own pictures.
         {:else if carries}
-          It brings {carries} file{carries === 1 ? '' : 's'} (pictures and uploaded fonts) into this game when you use it. Saved to my themes, it keeps its look without them.
+          It brings {carries} file{carries === 1 ? '' : 's'} (pictures and uploaded fonts) into this game when you use it. Saved to my themes, it keeps its look without
+          them.
         {:else}
           Colors, fonts and layout. This game keeps its own pictures.
         {/if}

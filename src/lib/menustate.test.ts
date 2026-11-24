@@ -108,19 +108,37 @@ describe('a thing’s menu (menuOf)', () => {
   });
 
   it('puts what play asks first, before opening it', () => {
-    const m = menuOf({ heading: 'Potion', delete: { label: '🗑 Remove', onclick: go }, open: [{ label: '🗂 Open its card', onclick: go }], now: [{ label: '✋ Ann picks up Potion', onclick: go }] });
+    const m = menuOf({
+      heading: 'Potion',
+      delete: { label: '🗑 Remove', onclick: go },
+      open: [{ label: '🗂 Open its card', onclick: go }],
+      now: [{ label: '✋ Ann picks up Potion', onclick: go }],
+    });
     expect(names(m)).toEqual(['[Potion]', '✋ Ann picks up Potion', '—', '🗂 Open its card', '—', '🗑 Remove']);
   });
 
   it('makes the deletes red, the line’s and the thing’s, and leaves other items as they are', () => {
-    const m = menuOf({ rename: menuItem.rename(go), lines: [{ heading: 'Column B', delete: menuItem.delete('column B', go) }], delete: menuItem.delete('screen', go), clear: menuItem.clear(go) });
+    const m = menuOf({
+      rename: menuItem.rename(go),
+      lines: [{ heading: 'Column B', delete: menuItem.delete('column B', go) }],
+      delete: menuItem.delete('screen', go),
+      clear: menuItem.clear(go),
+    });
     const red = m.filter((i) => 'label' in i && i.danger).map((i) => ('label' in i ? i.label : ''));
     expect(red).toEqual(['🗑 Delete column B', '⌫ Clear', '🗑 Delete screen']);
     expect(m.find((i) => 'label' in i && i.label === '✎ Rename')).not.toHaveProperty('danger');
   });
 
   it('leaves out a part with nothing in it, and keeps a greyed item in its place', () => {
-    const m = menuOf({ heading: 'Wheel', open: [], verbs: [], kinds: { heading: 'Make it a…', items: [] }, lines: [], rename: menuItem.rename(go), move: [menuItem.up(go, { disabled: true }), menuItem.down(go)] });
+    const m = menuOf({
+      heading: 'Wheel',
+      open: [],
+      verbs: [],
+      kinds: { heading: 'Make it a…', items: [] },
+      lines: [],
+      rename: menuItem.rename(go),
+      move: [menuItem.up(go, { disabled: true }), menuItem.down(go)],
+    });
     expect(names(m)).toEqual(['[Wheel]', '✎ Rename', '—', '▲ Move up', '▼ Move down']);
     expect(m[3]).toMatchObject({ disabled: true });
     // (No heading: no line before the first part either.)

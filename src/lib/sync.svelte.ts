@@ -56,10 +56,7 @@ export type AudienceKey = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctr
  * `key`, the host page's key from its address (SCORES_PARAM): only a window that has it is taken back.
  */
 export type AudienceMsg =
-  | { type: 'hello'; scores?: boolean; key?: string }
-  | { type: 'audience-event'; event: AudienceEvent }
-  | { type: 'key'; key: AudienceKey }
-  | { type: 'bye' };
+  { type: 'hello'; scores?: boolean; key?: string } | { type: 'audience-event'; event: AudienceEvent } | { type: 'key'; key: AudienceKey } | { type: 'bye' };
 
 /**
  * Envelope on the BroadcastChannel (it also reaches other same-origin tabs, so say who's talking). `page`: the host

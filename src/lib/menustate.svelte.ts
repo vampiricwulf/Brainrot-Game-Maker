@@ -167,7 +167,9 @@ export function typingIn(e: MouseEvent, picked = false, before: Element | null =
  * `from`: the button a dropped menu came from (see dropMenu). `back`: where the focus goes when it closes (what had it,
  * or the tile, card… right-clicked), so the keys go on working there. `at`: what was right-clicked (where it opens).
  */
-export const contextMenu = $state<{ open: { x: number; y: number; items: MenuEntry[]; from?: HTMLElement; back?: HTMLElement; at?: Element } | null }>({ open: null });
+export const contextMenu = $state<{ open: { x: number; y: number; items: MenuEntry[]; from?: HTMLElement; back?: HTMLElement; at?: Element } | null }>({
+  open: null,
+});
 
 const FOCUSABLE = 'button, [tabindex]:not([tabindex="-1"]), a[href], input, textarea, select';
 
@@ -200,8 +202,7 @@ export function dropMenu(e: MouseEvent, items: MenuEntry[]): void {
 }
 
 /** Is this the keyboard's way to open a right-click menu (Shift+F10, or the menu key)? */
-export const isMenuKey = (e: KeyboardEvent): boolean =>
-  e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey);
+export const isMenuKey = (e: KeyboardEvent): boolean => e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey);
 
 /**
  * Shift+F10 or the menu key on a focused item (a theme card…): its right-click menu, under it, and Esc gives it the

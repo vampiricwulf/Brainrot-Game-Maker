@@ -302,105 +302,111 @@
     </div>
   {/if}
   <div class="rows" role="list" aria-label="{noun}s">
-  {#each players as p, i (p.id)}
-    {@const line = rows.lineAt(p.id)}
-    <!-- (Its keys come from the boxes and buttons in it: F2, Shift+F10, Alt+↑/↓.) -->
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div
-      class="player"
-      data-place="player:{p.id}"
-      class:drop-before={line === 'before'}
-      class:drop-after={line === 'after'}
-      class:dragging={rows.dragging === p.id}
-      role="listitem"
-      ondragover={(e) => rows.over(e, p.id)}
-      ondrop={(e) => {
-        const m = rows.drop(e, players.map((x) => x.id));
-        if (m) move(m.from, m.to - m.from);
-      }}
-      oncontextmenu={(e) => menu(e, p, i)}
-      onkeydown={(e) => rowKey(e, p, i)}
-      use:rowKeys={{ move: (d) => move(i, d) }}
-    >
-      <!-- Only the grip drags (dragging over a name box selects its text). -->
-      <span
-        class="grip"
-        draggable="true"
-        ondragstart={(e) => rows.start(e, p.id, (e.currentTarget as HTMLElement).parentElement)}
-        ondragend={() => rows.end()}
-        aria-hidden="true"
-        title="Drag to reorder (or Alt+↑/↓){inGame ? ' (the number keys follow the order)' : ''}">⋮⋮</span
+    {#each players as p, i (p.id)}
+      {@const line = rows.lineAt(p.id)}
+      <!-- (Its keys come from the boxes and buttons in it: F2, Shift+F10, Alt+↑/↓.) -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div
+        class="player"
+        data-place="player:{p.id}"
+        class:drop-before={line === 'before'}
+        class:drop-after={line === 'after'}
+        class:dragging={rows.dragging === p.id}
+        role="listitem"
+        ondragover={(e) => rows.over(e, p.id)}
+        ondrop={(e) => {
+          const m = rows.drop(
+            e,
+            players.map((x) => x.id),
+          );
+          if (m) move(m.from, m.to - m.from);
+        }}
+        oncontextmenu={(e) => menu(e, p, i)}
+        onkeydown={(e) => rowKey(e, p, i)}
+        use:rowKeys={{ move: (d) => move(i, d) }}
       >
-      <span class="num muted">{i + 1}</span>
-      <ColorBox
-        value={p.color}
-        onchange={(e) => setColor(p, e.currentTarget.value, e.currentTarget)}
-        aria-label="Color for {p.name}"
-      />
-      {#if avatars}
-        <div class="pop">
-          <button
-            class="ghost av-btn"
-            onclick={() => (picking = p.id)}
-            use:mediaDrop={{ kind: 'image', onpick: (id) => (p.avatar = id) }}
-            aria-label="Picture for {p.name}"
-            title="Avatar picture (RPG rounds, player sheets): click, or drop a picture here"
-          >
-            <Avatar player={p} size={30} />
-          </button>
-          <!-- (On the picture's corner: the row keeps its shape with or without one.) -->
-          {#if p.avatar}<button class="tiny unpic" onclick={() => (p.avatar = undefined)} aria-label="Clear {p.name}'s picture" title="Clear the picture: the colored token shows instead (it stays in 🖼 Media)">⌫</button>{/if}
-          {#if picking === p.id}
-            <MediaPicker kind="image" onpick={(id) => ((p.avatar = id), (picking = null))} onclose={() => (picking = null)} />
-          {/if}
-        </div>
-      {/if}
-      <!-- (A name left blank plays as "Player N": the placeholder says so.) -->
-      <input
-        class="name"
-        dir="auto"
-        bind:value={p.name}
-        placeholder="{noun} {i + 1}"
-        aria-label="{noun} {i + 1} name"
-        style:border-color={p.color}
-        onkeydown={nameKey}
-      />
-      {#if phone}
-        <!-- (In the chip's place, at its width: the row keeps its one line.) -->
-        {@const w = phone(p.id)}
-        <span class="chip phone {w.tone}" title={w.title} data-phone-word={p.id}>{w.text}</span>
-      {:else}
-        <span class="chip" dir="auto" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
-      {/if}
-      {#if scoresShown}
-        <!-- (Whole points, within what reads on screen: made so once it's typed, not while the box is cleared to retype.) -->
+        <!-- Only the grip drags (dragging over a name box selects its text). -->
+        <span
+          class="grip"
+          draggable="true"
+          ondragstart={(e) => rows.start(e, p.id, (e.currentTarget as HTMLElement).parentElement)}
+          ondragend={() => rows.end()}
+          aria-hidden="true"
+          title="Drag to reorder (or Alt+↑/↓){inGame ? ' (the number keys follow the order)' : ''}">⋮⋮</span
+        >
+        <span class="num muted">{i + 1}</span>
+        <ColorBox value={p.color} onchange={(e) => setColor(p, e.currentTarget.value, e.currentTarget)} aria-label="Color for {p.name}" />
+        {#if avatars}
+          <div class="pop">
+            <button
+              class="ghost av-btn"
+              onclick={() => (picking = p.id)}
+              use:mediaDrop={{ kind: 'image', onpick: (id) => (p.avatar = id) }}
+              aria-label="Picture for {p.name}"
+              title="Avatar picture (RPG rounds, player sheets): click, or drop a picture here"
+            >
+              <Avatar player={p} size={30} />
+            </button>
+            <!-- (On the picture's corner: the row keeps its shape with or without one.) -->
+            {#if p.avatar}<button
+                class="tiny unpic"
+                onclick={() => (p.avatar = undefined)}
+                aria-label="Clear {p.name}'s picture"
+                title="Clear the picture: the colored token shows instead (it stays in 🖼 Media)">⌫</button
+              >{/if}
+            {#if picking === p.id}
+              <MediaPicker kind="image" onpick={(id) => ((p.avatar = id), (picking = null))} onclose={() => (picking = null)} />
+            {/if}
+          </div>
+        {/if}
+        <!-- (A name left blank plays as "Player N": the placeholder says so.) -->
         <input
-          class="score"
-          type="number"
-          step="1"
-          bind:value={p.startScore}
-          onchange={() => (p.startScore = wholePoints(p.startScore) ?? 0)}
-          aria-label="{p.name || `${noun} ${i + 1}`}'s start score"
+          class="name"
+          dir="auto"
+          bind:value={p.name}
+          placeholder="{noun} {i + 1}"
+          aria-label="{noun} {i + 1} name"
+          style:border-color={p.color}
+          onkeydown={nameKey}
         />
-      {/if}
-      <!-- ▲ ▼ 🗑 together: a narrow row wraps them as one, never splits them. -->
-      <span class="moves">
-        <button class="ghost tiny up" onclick={() => nudge(i, -1)} disabled={i === 0} aria-label="Move {p.name || `${lower} ${i + 1}`} up">▲</button>
-        <button class="ghost tiny down" onclick={() => nudge(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `${lower} ${i + 1}`} down">▼</button>
-        <button
-          class="ghost tiny del danger"
-          onclick={() => remove(p)}
-          disabled={lastOne}
-          aria-label="{removeWord} {p.name}"
-          title={lastOne ? `The game needs at least one ${lower}: add another first` : `${removeWord} ${p.name} (Undo brings it back)`}
-        >🗑</button>
-      </span>
-      {#if members}
-        {@const on = members(p.id)}
-        <span class="on-team muted small" dir="auto">{on.length ? `On it: ${on.join(', ')}` : 'Nobody on it yet'}</span>
-      {/if}
-    </div>
-  {/each}
+        {#if phone}
+          <!-- (In the chip's place, at its width: the row keeps its one line.) -->
+          {@const w = phone(p.id)}
+          <span class="chip phone {w.tone}" title={w.title} data-phone-word={p.id}>{w.text}</span>
+        {:else}
+          <span class="chip" dir="auto" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
+        {/if}
+        {#if scoresShown}
+          <!-- (Whole points, within what reads on screen: made so once it's typed, not while the box is cleared to retype.) -->
+          <input
+            class="score"
+            type="number"
+            step="1"
+            bind:value={p.startScore}
+            onchange={() => (p.startScore = wholePoints(p.startScore) ?? 0)}
+            aria-label="{p.name || `${noun} ${i + 1}`}'s start score"
+          />
+        {/if}
+        <!-- ▲ ▼ 🗑 together: a narrow row wraps them as one, never splits them. -->
+        <span class="moves">
+          <button class="ghost tiny up" onclick={() => nudge(i, -1)} disabled={i === 0} aria-label="Move {p.name || `${lower} ${i + 1}`} up">▲</button>
+          <button class="ghost tiny down" onclick={() => nudge(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `${lower} ${i + 1}`} down"
+            >▼</button
+          >
+          <button
+            class="ghost tiny del danger"
+            onclick={() => remove(p)}
+            disabled={lastOne}
+            aria-label="{removeWord} {p.name}"
+            title={lastOne ? `The game needs at least one ${lower}: add another first` : `${removeWord} ${p.name} (Undo brings it back)`}>🗑</button
+          >
+        </span>
+        {#if members}
+          {@const on = members(p.id)}
+          <span class="on-team muted small" dir="auto">{on.length ? `On it: ${on.join(', ')}` : 'Nobody on it yet'}</span>
+        {/if}
+      </div>
+    {/each}
   </div>
   <div class="row">
     <button class="add" onclick={addAndName} disabled={players.length >= max}>＋ Add {lower}</button>
@@ -416,7 +422,8 @@
       >
     {/if}
     <span class="muted">
-      {players.length}/{max} {lower}s · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
+      {players.length}/{max}
+      {lower}s · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
     </span>
     {#if players.length >= max && onraise}
       <button class="small" onclick={onraise} title="⚖ Game rules › Most {lower}s">Raise Most {lower}s to {max + 1}</button>
@@ -425,16 +432,12 @@
   {#if sameNames.length}
     <!-- Allowed (it's their name), but the scoreboard and the log can't tell them apart. -->
     <p class="warn small same" role="status">
-      ⚠ {noun}s share a name ({sameNames.map((n) => `“${n}”`).join(', ')}): viewers can't tell them apart on the scores.{teams
-        ? ''
-        : ' Add an initial?'}
+      ⚠ {noun}s share a name ({sameNames.map((n) => `“${n}”`).join(', ')}): viewers can't tell them apart on the scores.{teams ? '' : ' Add an initial?'}
     </p>
   {/if}
   {#if undone}
     <div class="undo-note" role="status">
-      <span
-        >Deleted <b>{undone.p.name}</b>{undone.n ? `: its ${undone.n === 1 ? '1 person picks' : `${undone.n} people pick`} a team again` : ''}</span
-      >
+      <span>Deleted <b>{undone.p.name}</b>{undone.n ? `: its ${undone.n === 1 ? '1 person picks' : `${undone.n} people pick`} a team again` : ''}</span>
       <button class="small" onclick={undoRemove} disabled={players.length >= max}>↶ Undo</button>
       <button class="small ghost" onclick={dismissUndo} aria-label="Dismiss">✕</button>
     </div>

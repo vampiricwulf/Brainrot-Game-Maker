@@ -17,7 +17,12 @@ function shopName(game: Game, base?: string): string {
  * and what it sells are changed in 📊 Stats & Items.
  */
 export function newShop(game: Game, name?: string): Shop {
-  const s: Shop = { id: newId(), name: shopName(game, name), currency: currencyFields(game)[0]?.id, stock: (game.items ?? []).map((it) => ({ item: it.id, qty: null })) };
+  const s: Shop = {
+    id: newId(),
+    name: shopName(game, name),
+    currency: currencyFields(game)[0]?.id,
+    stock: (game.items ?? []).map((it) => ({ item: it.id, qty: null })),
+  };
   game.shops = [...(game.shops ?? []), s];
   return s;
 }

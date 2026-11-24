@@ -98,7 +98,10 @@ describe('🗜 Make smaller on a card’s line', () => {
       { id: 'over', name: 'over.mp4', mime: 'video/mp4', size: 60 * MB, kind: 'video' },
       { id: 'overcopy', name: 'over (phones).webm', mime: 'video/webm', size: 35 * MB, kind: 'video', phoneCopy: { of: 'over', width: 854, height: 480 } },
     );
-    const card: Slide = { background: {}, elements: [newImageEl('huge'), newVideoEl('slow'), newVideoEl('small'), newVideoEl('slow'), newVideoEl('had'), newVideoEl('other')] };
+    const card: Slide = {
+      background: {},
+      elements: [newImageEl('huge'), newVideoEl('slow'), newVideoEl('small'), newVideoEl('slow'), newVideoEl('had'), newVideoEl('other')],
+    };
     const { items } = phoneCard(g, card, { files: {}, fileBytes: 30 * MB });
     const here = (id: string) => id !== 'other';
     const yes = () => true;

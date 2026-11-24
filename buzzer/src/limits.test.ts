@@ -289,7 +289,14 @@ describe('card files in any 24 hours', () => {
     expect(freesIn(full, Date.UTC(2026, 9, 2, 11, 30), 'e', MB, cap)).toBe(1);
     // Spread over hours: as soon as enough has gone.
     let w: SavedBytes | null = null;
-    for (const [who, mb, at] of [['a', 10, 0], ['b', 15, 2], ['c', 25, 4], ['d', 25, 6], ['e', 25, 6]] as const) w = countBytes(w, t0 + at * H, who, mb * MB, cap) as WindowBytes;
+    for (const [who, mb, at] of [
+      ['a', 10, 0],
+      ['b', 15, 2],
+      ['c', 25, 4],
+      ['d', 25, 6],
+      ['e', 25, 6],
+    ] as const)
+      w = countBytes(w, t0 + at * H, who, mb * MB, cap) as WindowBytes;
     // From 19:30: a's 10 MB go at 12:00, b's 15 at 14:00.
     expect(freesIn(w, t0 + 7 * H, 'f', 10 * MB, cap)).toBe(17);
     expect(freesIn(w, t0 + 7 * H, 'f', 20 * MB, cap)).toBe(19);
@@ -328,7 +335,7 @@ describe('card files in any 24 hours', () => {
       saved = r;
       n++;
     }
-    expect(n).toBe(cap * ADDRESS_FILE_SHARE / MB);
+    expect(n).toBe((cap * ADDRESS_FILE_SHARE) / MB);
     expect(countBytes(saved, day1, 'x', MB, cap)).toBe('address');
     // Someone else still can.
     expect(countBytes(saved, day1, 'y', MB, cap)).toMatchObject({ hours: [{ by: { y: MB } }] });

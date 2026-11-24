@@ -18,7 +18,33 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, addClassicRounds, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, png, stepButton, assert, launchChromium, section, awardRowIn, boardIn, confirmStrip, hostPanelIn, playerRowsIn, roundTabsIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  addClassicRounds,
+  boxHasAction,
+  checkItem,
+  flowIs,
+  goOnCheck,
+  mainButton,
+  mainLabel,
+  openGameFile,
+  playWithPlayers,
+  png,
+  stepButton,
+  assert,
+  launchChromium,
+  section,
+  awardRowIn,
+  boardIn,
+  confirmStrip,
+  hostPanelIn,
+  playerRowsIn,
+  roundTabsIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -65,7 +91,9 @@ async function never(pages, words, when) {
     const text = await p.evaluate(() =>
       [
         document.body.innerText,
-        ...[...document.querySelectorAll('[aria-label], [title], [alt], [data-said]')].flatMap((e) => ['aria-label', 'title', 'alt', 'data-said'].map((a) => e.getAttribute(a) ?? '')),
+        ...[...document.querySelectorAll('[aria-label], [title], [alt], [data-said]')].flatMap((e) =>
+          ['aria-label', 'title', 'alt', 'data-said'].map((a) => e.getAttribute(a) ?? ''),
+        ),
         ...window.__seen,
       ]
         .join('\n')
@@ -94,7 +122,8 @@ function fakeRoom() {
   const realFetch = window.fetch.bind(window);
   window.fetch = async (url, init) => {
     const u = String(url);
-    if (u === 'https://buzz.test/api/rooms' && init?.method === 'POST') return new Response(JSON.stringify({ code: 'BCDF', hostToken: 'secret-token' }), { status: 200, headers: { 'content-type': 'application/json' } });
+    if (u === 'https://buzz.test/api/rooms' && init?.method === 'POST')
+      return new Response(JSON.stringify({ code: 'BCDF', hostToken: 'secret-token' }), { status: 200, headers: { 'content-type': 'application/json' } });
     if (u === 'https://buzz.test/api/health') return new Response('{"ok":true}', { status: 200 });
     return realFetch(url, init);
   };
@@ -125,7 +154,30 @@ function fakeRoom() {
 }
 
 let textIds = 0;
-const textEl = (t) => ({ id: `t${textIds++}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const textEl = (t) => ({
+  id: `t${textIds++}`,
+  kind: 'text',
+  text: t,
+  x: 120,
+  y: 90,
+  w: 1680,
+  h: 400,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slideOf = (t) => ({ background: {}, elements: [textEl(t)] });
 
 /**
@@ -138,19 +190,51 @@ async function roomGame(names, teams) {
   const clue = (c, r) => {
     const base = { id: `q${c}_${r}`, value: null, type: 'standard', questionSlide: slideOf('A plain clue'), answerSlide: slideOf('Plain') };
     if (r === 0) return base;
-    return { ...base, type: 'partner', partner: { ...rules }, timerSeconds: 45, questionSlide: slideOf('Describe this movie quietly'), answerSlide: slideOf('Shrek'), cards: [{ id: `c${c}`, to: 'giver', ...slideOf('Card-only-zz words') }] };
+    return {
+      ...base,
+      type: 'partner',
+      partner: { ...rules },
+      timerSeconds: 45,
+      questionSlide: slideOf('Describe this movie quietly'),
+      answerSlide: slideOf('Shrek'),
+      cards: [{ id: `c${c}`, to: 'giver', ...slideOf('Card-only-zz words') }],
+    };
   };
   const g = {
     id: `g_partner_room_${teams ? 'teams' : 'players'}`,
     version: 2,
     title: teams ? 'Partner teams' : 'Partner buzzers',
     settings: {
-      allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true, ...(teams ? { buzzTeams: true } : {}),
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      stream: { clueCaption: true },
+      buzzer: true,
+      ...(teams ? { buzzTeams: true } : {}),
     },
     players: names.map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i] })),
-    rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values, dailyDoubleCount: 0, categories: ['Movies', 'Songs'].map((title, c) => ({ id: `cat${c}`, title, clues: values.map((_, r) => clue(c, r)) })) }],
-    media: [], audio: {}, wheels: [], dice: [], theme: {},
+    rounds: [
+      {
+        id: 'r1',
+        name: 'Round 1',
+        mode: 'board',
+        values,
+        dailyDoubleCount: 0,
+        categories: ['Movies', 'Songs'].map((title, c) => ({ id: `cat${c}`, title, clues: values.map((_, r) => clue(c, r)) })),
+      },
+    ],
+    media: [],
+    audio: {},
+    wheels: [],
+    dice: [],
+    theme: {},
   };
   const gameFile = resolve(`test-results/partner-room-${teams ? 'teams' : 'players'}.json`);
   writeFileSync(gameFile, JSON.stringify(g));
@@ -178,7 +262,13 @@ async function roomGame(names, teams) {
     say: (m) => p.evaluate((m) => window.__say(m), m),
     /** Wait until the last state sent to the room matches. */
     stateIs: (fn) => p.waitForFunction((src) => !!window.__state() && new Function('s', `return (${src})(s)`)(window.__state()), fn.toString()),
-    toast: (t) => toastsIn(p, { hasText: t }).waitFor({ timeout: 5000 }).then(() => true, () => false),
+    toast: (t) =>
+      toastsIn(p, { hasText: t })
+        .waitFor({ timeout: 5000 })
+        .then(
+          () => true,
+          () => false,
+        ),
   };
 }
 
@@ -197,7 +287,9 @@ try {
     const randomize = ptGroup.getByRole('button', { name: 'Randomize partner clues' });
     const line = await ptGroup.locator('.hint').innerText();
     assert(
-      line === '0 on the board · 3 can’t go yet: write a question and answer on more tiles first' && (await randomize.isDisabled()) && (await randomize.getAttribute('title')).startsWith('No tile has a written question and answer yet'),
+      line === '0 on the board · 3 can’t go yet: write a question and answer on more tiles first' &&
+        (await randomize.isDisabled()) &&
+        (await randomize.getAttribute('title')).startsWith('No tile has a written question and answer yet'),
       `nothing written yet: the 🤝 line says why none can go, and 🔀 Randomize is greyed (${line})`,
     );
     await ptCount.fill('0');
@@ -210,7 +302,14 @@ try {
   await dialog.waitFor();
   const tabs = dialog.getByRole('tablist', { name: 'Slides' });
   const tabNames = () => tabs.getByRole('tab').allInnerTexts();
-  const opens = (name) => tabs.locator('[role="tab"][aria-selected="true"]', { hasText: name }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+  const opens = (name) =>
+    tabs
+      .locator('[role="tab"][aria-selected="true"]', { hasText: name })
+      .waitFor({ timeout: 3000 })
+      .then(
+        () => true,
+        () => false,
+      );
   const away = () => dialog.locator('header .value').click();
   const undo = () => page.keyboard.press('Control+z');
   const redo = () => page.keyboard.press('Control+y');
@@ -228,13 +327,18 @@ try {
   assert((await dialog.getByRole('option', { name: '🤝 Partner clue' }).count()) === 1, 'the Type box offers 🤝 Partner clue');
   await dialog.locator('select').first().selectOption('partner');
   await settings.waitFor();
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', 'Answer']), `a partner clue's tabs: Question · 🤫 Card 1 · Answer (${await tabNames()})`);
+  assert(
+    JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', 'Answer']),
+    `a partner clue's tabs: Question · 🤫 Card 1 · Answer (${await tabNames()})`,
+  );
   assert((await settings.locator('select').first().inputValue()) === 'describe', 'it starts as 🗣 Describe it');
   assert((await dialog.getByLabel('⏱ Countdown (s)').inputValue()) === '45', 'with a 45 s countdown');
   assert((await summary()) === 'got → describer +$400, guesser +$200 · missed → guesser −$200', `the points in money on this tile (${await summary()})`);
   // The game and who describes are in view on that line; the rest is under ▸ More rules, folded at first.
   assert(
-    (await settings.getByRole('radio', { name: 'the partner' }).isChecked()) && (await moreRules.getAttribute('aria-expanded')) === 'false' && (await settings.getByRole('combobox', { name: /^Points/ }).count()) === 0,
+    (await settings.getByRole('radio', { name: 'the partner' }).isChecked()) &&
+      (await moreRules.getAttribute('aria-expanded')) === 'false' &&
+      (await settings.getByRole('combobox', { name: /^Points/ }).count()) === 0,
     'Who describes is in view, the rest folded under ▸ More rules',
   );
   await dialog.locator('[data-field="q"]').fill('Describe this movie without saying its name!');
@@ -273,15 +377,24 @@ try {
   // ---------- ＋ 🤫 Card, the tabs' keys, 🗑 Delete card ----------
   await away();
   await dialog.getByRole('button', { name: '＋ 🤫 Card' }).click();
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']), '＋ 🤫 Card adds Card 2 before the answer');
+  assert(
+    JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']),
+    '＋ 🤫 Card adds Card 2 before the answer',
+  );
   assert(await opens('Card 2'), 'and opens it');
   assert(await card.evaluate((e) => e === document.activeElement), 'its words box has the focus, ready to type');
   await page.keyboard.type('Ogres are like onions');
-  assert((await dialog.locator('label.field', { has: page.locator('[data-field="card"]') }).innerText()).includes('Card 2 words'), 'the quick box is the open card’s');
+  assert(
+    (await dialog.locator('label.field', { has: page.locator('[data-field="card"]') }).innerText()).includes('Card 2 words'),
+    'the quick box is the open card’s',
+  );
   await tabs.getByRole('tab', { name: 'Question slide' }).click();
   await tabs.getByRole('tab', { name: 'Question slide' }).focus();
   const keyTo = async (key, name) => (await page.keyboard.press(key), opens(name));
-  assert((await keyTo('ArrowRight', 'Card 1')) && (await keyTo('ArrowRight', 'Card 2')) && (await keyTo('ArrowRight', 'Answer')), '→ goes Question · Card 1 · Card 2 · Answer');
+  assert(
+    (await keyTo('ArrowRight', 'Card 1')) && (await keyTo('ArrowRight', 'Card 2')) && (await keyTo('ArrowRight', 'Answer')),
+    '→ goes Question · Card 1 · Card 2 · Answer',
+  );
   assert((await keyTo('Home', 'Question slide')) && (await keyTo('End', 'Answer')) && (await keyTo('ArrowLeft', 'Card 2')), 'Home, End and ← too');
   // Delete on a card's tab does nothing (as on the Answer's): 🗑 Delete card does it.
   await page.keyboard.press('Delete');
@@ -289,7 +402,16 @@ try {
   // A card's tab has its menu too: its own verbs, then ✎ Rename, ⧉ Duplicate card, the moves and 🗑 Delete card last.
   await tabs.getByRole('tab', { name: '🤫 Card 2' }).click({ button: 'right' });
   const cardMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0].trim());
-  const cardWant = ['⧉ Same as the answer', '📱 On their phone', '✎ Rename', '⧉ Duplicate card', '📋 Copy slide', '◀ Move earlier', '▶ Move later', '🗑 Delete card'];
+  const cardWant = [
+    '⧉ Same as the answer',
+    '📱 On their phone',
+    '✎ Rename',
+    '⧉ Duplicate card',
+    '📋 Copy slide',
+    '◀ Move earlier',
+    '▶ Move later',
+    '🗑 Delete card',
+  ];
   assert(JSON.stringify(cardMenu) === JSON.stringify(cardWant), `a right-click on a card’s tab gives its menu (${cardMenu.join(' | ')})`);
   await page.keyboard.press('Escape');
   await page.getByRole('menu').waitFor({ state: 'detached' });
@@ -323,14 +445,23 @@ try {
   assert((await summary()).endsWith('missed → guesser −$300'), `and the money follows (${await summary()})`);
   await points.selectOption('game');
   await settings.getByRole('radio', { name: 'the picker' }).check();
-  assert((await summary()) === 'got → describer +$400, guesser +$200 · missed → nobody loses points', `the picker describing: the partner guesses, and never loses points (${await summary()})`);
+  assert(
+    (await summary()) === 'got → describer +$400, guesser +$200 · missed → nobody loses points',
+    `the picker describing: the partner guesses, and never loses points (${await summary()})`,
+  );
   const guesserMissed = settings.getByLabel(/^Guesser’s share if it’s missed/);
   await settings.locator('.shares input:disabled[aria-label^="Guesser’s share if it’s missed"]').waitFor();
-  assert(await heldIs('Guesser', '0', SOLO_TIP), 'and the table says so: the partner’s (now the guesser’s) −50% box shows 0, greyed, its tooltip saying Solo still costs 50%');
+  assert(
+    await heldIs('Guesser', '0', SOLO_TIP),
+    'and the table says so: the partner’s (now the guesser’s) −50% box shows 0, greyed, its tooltip saying Solo still costs 50%',
+  );
   await safe.uncheck();
   await held.waitFor({ state: 'detached' });
   assert((await summary()).endsWith('missed → guesser −$200'), 'unticked, a miss costs the partner too');
-  assert((await guesserMissed.isEnabled()) && (await guesserMissed.inputValue()) === '-50', `and their box shows its −50% again, to type in (${await guesserMissed.inputValue()})`);
+  assert(
+    (await guesserMissed.isEnabled()) && (await guesserMissed.inputValue()) === '-50',
+    `and their box shows its −50% again, to type in (${await guesserMissed.inputValue()})`,
+  );
   await away();
   await undo();
   await settings.locator('.shares input:disabled[aria-label^="Guesser’s share if it’s missed"]').waitFor();
@@ -346,8 +477,14 @@ try {
   await points.selectOption('game');
   await settings.getByRole('radio', { name: 'the partner' }).check();
   await settings.getByRole('combobox', { name: /^Game/ }).selectOption('help');
-  assert((await summary()) === 'got → helper +$200, answerer +$400 · missed → answerer −$200', `🙋 Help a friend: its own words and points (${await summary()})`);
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']), 'a game chosen keeps the cards the clue has');
+  assert(
+    (await summary()) === 'got → helper +$200, answerer +$400 · missed → answerer −$200',
+    `🙋 Help a friend: its own words and points (${await summary()})`,
+  );
+  assert(
+    JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']),
+    'a game chosen keeps the cards the clue has',
+  );
   await settings.getByRole('combobox', { name: /^Game/ }).selectOption('describe');
   await page.screenshot({ path: 'test-results/partner-editor.png' });
   // ▸ More rules folded: the one line keeps the game, who describes and the points in money, and the fold says what it
@@ -408,7 +545,13 @@ try {
   await dialog.waitFor({ state: 'detached' });
   await page.locator('nav button', { hasText: 'History' }).first().click();
   const history = await page.locator('main').innerText();
-  for (const label of ['Made Movies $400 a partner clue', 'Copied the answer onto card 1 of Movies $400', 'Edited card 2 “Ogres are like onions”', 'Card 1 of Movies $400 goes to both of them', 'Made Movies $400 a Help a friend partner clue'])
+  for (const label of [
+    'Made Movies $400 a partner clue',
+    'Copied the answer onto card 1 of Movies $400',
+    'Edited card 2 “Ogres are like onions”',
+    'Card 1 of Movies $400 goes to both of them',
+    'Made Movies $400 a Help a friend partner clue',
+  ])
     assert(history.includes(label), `the history says “${label}”`);
   await roundTabsIn(page).first().click();
 
@@ -425,14 +568,19 @@ try {
   // Made by hand, it counts: the 🤝 box went up to 1, with its Plays and Card choices, and Start has none to place.
   const ptGroup = page.locator('[data-partner-count]');
   assert(
-    (await page.getByLabel('How many partner clues').inputValue()) === '1' && (await ptGroup.locator('.hint').innerText()) === '1 on the board · all placed' && (await ptGroup.getByRole('combobox').count()) === 2,
+    (await page.getByLabel('How many partner clues').inputValue()) === '1' &&
+      (await ptGroup.locator('.hint').innerText()) === '1 on the board · all placed' &&
+      (await ptGroup.getByRole('combobox').count()) === 2,
     `a partner clue made by hand raises the 🤝 box (${await ptGroup.innerText()})`,
   );
   await page.reload();
   await page.getByRole('button', { name: 'Open…' }).waitFor();
   await tile.click();
   await dialog.waitFor();
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']), 'made one again, and after a reload, it has its cards back');
+  assert(
+    JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']),
+    'made one again, and after a reload, it has its cards back',
+  );
   await tabs.getByRole('tab', { name: '🤫 Card 1' }).click();
   assert((await card.inputValue()) === 'Shrek' && (await dialog.getByLabel('Goes to').inputValue()) === 'both', 'with their words and who they go to');
 
@@ -441,7 +589,10 @@ try {
   async function addPicture(name, r, g, b) {
     const before = await dialog.locator('.slide .el img').count();
     await dialog.getByRole('button', { name: '🖼 Image' }).click();
-    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('dialog', { name: 'Choose image' }).getByRole('button', { name: '⬆ Upload image file…' }).click()]);
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByRole('dialog', { name: 'Choose image' }).getByRole('button', { name: '⬆ Upload image file…' }).click(),
+    ]);
     await chooser.setFiles({ name, mimeType: 'image/png', buffer: png(r, g, b, 160, 120) });
     await dialog.locator('.slide .el img').nth(before).waitFor();
   }
@@ -460,7 +611,9 @@ try {
   await toastsIn(page, { hasText: 'Card 1 is a copy of the answer' }).waitFor();
   const madeUndo = await page.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
   assert(
-    (await card.inputValue()) === 'Leopard' && (await dialog.getByRole('button', { name: '⧉ Same as the answer' }).count()) === 0 && /^Undo: Made Movies \$\d+ a partner clue \(card: a copy of the answer\)/.test(madeUndo),
+    (await card.inputValue()) === 'Leopard' &&
+      (await dialog.getByRole('button', { name: '⧉ Same as the answer' }).count()) === 0 &&
+      /^Undo: Made Movies \$\d+ a partner clue \(card: a copy of the answer\)/.test(madeUndo),
     `a written tile made a partner clue by hand starts with Card 1 a copy of its answer, one step named for it (${madeUndo})`,
   );
   await tabs.getByRole('tab', { name: '🤫 Card 1' }).click();
@@ -482,12 +635,26 @@ try {
   const panel = hostPanelIn(page).locator('[data-partner-panel]');
   const chip = (name) => panel.getByRole('button', { name, exact: true });
   const pressed = (name) => chip(name).getAttribute('aria-pressed');
-  const toast = (t) => toastsIn(page, { hasText: t }).waitFor({ timeout: 5000 }).then(() => true, () => false);
+  const toast = (t) =>
+    toastsIn(page, { hasText: t })
+      .waitFor({ timeout: 5000 })
+      .then(
+        () => true,
+        () => false,
+      );
   const judged = panel.locator('[data-judged]');
   const gotBtn = panel.locator('[data-partner-judge]').getByRole('button', { name: /✔ Got it/ });
-  const scoreOf = (name) => hostPanelIn(page).locator(`.players .p[aria-label="${name}"] .score`).innerText().then((t) => t.trim());
+  const scoreOf = (name) =>
+    hostPanelIn(page)
+      .locator(`.players .p[aria-label="${name}"] .score`)
+      .innerText()
+      .then((t) => t.trim());
   const scores = async () => Object.fromEntries(await Promise.all(['Ann', 'Bob', 'Cat', 'Dan'].map(async (n) => [n, await scoreOf(n)])));
-  const picker = () => hostPanelIn(page).locator('.players .p.picker').getAttribute('aria-label', { timeout: 1000 }).catch(() => null);
+  const picker = () =>
+    hostPanelIn(page)
+      .locator('.players .p.picker')
+      .getAttribute('aria-label', { timeout: 1000 })
+      .catch(() => null);
   const flat = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
 
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
@@ -505,7 +672,12 @@ try {
   const platesSay = (want) =>
     sc
       .waitForFunction(
-        (want) => Object.entries(want).every(([name, score]) => [...document.querySelectorAll('.plate')].some((p) => p.querySelector('.name .nm')?.textContent.trim() === name && p.querySelector('.score .nm')?.getAttribute('title') === score)),
+        (want) =>
+          Object.entries(want).every(([name, score]) =>
+            [...document.querySelectorAll('.plate')].some(
+              (p) => p.querySelector('.name .nm')?.textContent.trim() === name && p.querySelector('.score .nm')?.getAttribute('title') === score,
+            ),
+          ),
         want,
       )
       .then(() => true);
@@ -521,14 +693,18 @@ try {
   const info = page.locator('.info [data-partner-cards-info]');
   const infoText = await flat(info);
   assert(
-    infoText.includes('Card 1 → both of them') && infoText.includes('This card shows the answer') && infoText.includes('Card 2 → the describer') && infoText.includes(ONIONS) && infoText.includes(`🖼 ${PIC2} · picture`),
+    infoText.includes('Card 1 → both of them') &&
+      infoText.includes('This card shows the answer') &&
+      infoText.includes('Card 2 → the describer') &&
+      infoText.includes(ONIONS) &&
+      infoText.includes(`🖼 ${PIC2} · picture`),
     `the host column (not on stream) lists the cards as text, with who they go to and their pictures’ names (${infoText})`,
   );
   await page.keyboard.press('w');
   // Every look at both stages, from the moment the wheel is up to its landing: Ann's slice is never drawn.
   const drawn = new Set();
   let looks = 0;
-  for (const deadline = Date.now() + 15000; ; ) {
+  for (const deadline = Date.now() + 15000; ;) {
     for (const p of [page, aud]) {
       const slices = await p.locator(`${p === page ? '.stage-box ' : ''}.wheel text`).allTextContents();
       if (slices.length) looks++;
@@ -538,7 +714,10 @@ try {
     if (Date.now() > deadline) throw new Error('the partner wheel never landed');
     await page.waitForTimeout(100);
   }
-  assert(looks >= 4 && !drawn.has('Ann') && ['Bob', 'Cat', 'Dan'].every((n) => drawn.has(n)), `W spins a wheel of the others: Ann is never on it, on either stage, before or during the spin (${looks} looks: ${[...drawn].join(', ')})`);
+  assert(
+    looks >= 4 && !drawn.has('Ann') && ['Bob', 'Cat', 'Dan'].every((n) => drawn.has(n)),
+    `W spins a wheel of the others: Ann is never on it, on either stage, before or during the spin (${looks} looks: ${[...drawn].join(', ')})`,
+  );
   await page.keyboard.press('Escape');
   await aud.locator('.wheel').waitFor({ state: 'detached' });
   await page.keyboard.press('2');
@@ -554,21 +733,34 @@ try {
   await page.keyboard.down('Enter');
   await page.keyboard.up('Enter');
   assert(
-    (await flowIs(page, '👁 Reveal answer')) && (await stepButton(panel, '⏱ Start the clock (45 s)').count()) === 1 && (await aud.locator('.timer').count()) === 0,
+    (await flowIs(page, '👁 Reveal answer')) &&
+      (await stepButton(panel, '⏱ Start the clock (45 s)').count()) === 1 &&
+      (await aud.locator('.timer').count()) === 0,
     'Enter held down shows the question once, and its repeats (even a second later) don’t start the clock (the box’s ⏱ Start the clock next)',
   );
   assert((await flat(aud.locator('[data-partner-badge]'))) === '🗣️ Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
   await never(viewers, hidden, 'the question');
 
   // ---------- Handing out the cards: one given to someone else, and copied for them ----------
-  assert((await pressed('Card 1 to Ann')) === 'true' && (await pressed('Card 1 to Bob')) === 'true' && (await pressed('Card 2 to Bob')) === 'true', 'Card 1 starts with both of them, Card 2 with the describer (as the editor set them)');
+  assert(
+    (await pressed('Card 1 to Ann')) === 'true' && (await pressed('Card 1 to Bob')) === 'true' && (await pressed('Card 2 to Bob')) === 'true',
+    'Card 1 starts with both of them, Card 2 with the describer (as the editor set them)',
+  );
   assert((await flat(panel.locator('[data-card="2"]'))).startsWith('Card 2 · 1 line of words, 1 picture'), 'the list counts what’s on a card');
   await chip('Card 2 to Cat').click();
   await chip('Card 2 to Bob').click();
-  assert((await pressed('Card 2 to Cat')) === 'true' && (await pressed('Card 2 to Bob')) === 'false' && (await panel.locator('[data-card="2"]').innerText()).includes('(changed)'), 'Card 2 given to Cat instead: the row says it changed');
+  assert(
+    (await pressed('Card 2 to Cat')) === 'true' &&
+      (await pressed('Card 2 to Bob')) === 'false' &&
+      (await panel.locator('[data-card="2"]').innerText()).includes('(changed)'),
+    'Card 2 given to Cat instead: the row says it changed',
+  );
   assert((await flat(info)).includes('Card 2 → Cat'), 'and the host column says who gets it');
   // (Its 📋 is at the box's foot while the cards are handed out, its row leaving it out.)
-  assert(!(await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy words' }).count()), 'Card 2’s row leaves 📋 Copy words to the box’s foot');
+  assert(
+    !(await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy words' }).count()),
+    'Card 2’s row leaves 📋 Copy words to the box’s foot',
+  );
   await panel.locator('[data-partner-foot]').getByRole('button', { name: 'Copy Card 2’s words' }).click();
   assert(await toast('Card 2’s words copied: paste them to Cat'), '📋 Copy words says who to paste it to');
   assert((await page.evaluate(() => navigator.clipboard.readText())) === `🤫 For Cat only (Movies $400, card 2): ${ONIONS}`, 'and copies the card for Cat');
@@ -585,14 +777,20 @@ try {
   await aud.locator('.timer').waitFor();
   await sc.locator('.clock').waitFor();
   assert((await mainLabel(page)) === '👁 Reveal answer', 'Enter starts the clock, on stream and in the scores window');
-  assert(Object.values(await scores()).every((s) => s === '$0') && (await judged.count()) === 0, 'nor does Enter held down, even once its repeats come a second later');
+  assert(
+    Object.values(await scores()).every((s) => s === '$0') && (await judged.count()) === 0,
+    'nor does Enter held down, even once its repeats come a second later',
+  );
 
   // ---------- ✔ Got it: the default shares, and the guesser picks next ----------
   assert((await picker()) === null, 'nobody is marked to pick on the board (Ann only picked this clue)');
   await page.keyboard.press('Enter');
   await judged.waitFor();
   let sc1 = await scores();
-  assert(sc1.Bob === '$400' && sc1.Ann === '$200' && sc1.Cat === '$0', `Enter: ✔ Got it gives the describer the tile’s value and the guesser half (${JSON.stringify(sc1)})`);
+  assert(
+    sc1.Bob === '$400' && sc1.Ann === '$200' && sc1.Cat === '$0',
+    `Enter: ✔ Got it gives the describer the tile’s value and the guesser half (${JSON.stringify(sc1)})`,
+  );
   assert((await picker()) === 'Ann', 'Ann, the guesser, picks next');
   await aud.locator('.pops .pop').nth(1).waitFor();
   await aud.locator('.timer').waitFor({ state: 'detached' });
@@ -640,7 +838,10 @@ try {
   await stage('[data-partner-up]').waitFor();
   await page.keyboard.press('1');
   await panel.getByText('Ann picked it.').waitFor();
-  assert((await statusLineIn(page).locator('[data-viewers]').getAttribute('title')).includes('⚠ Viewers can see this window'), 'the status line’s ⚠ Viewers see this chip says viewers can see this window');
+  assert(
+    (await statusLineIn(page).locator('[data-viewers]').getAttribute('title')).includes('⚠ Viewers can see this window'),
+    'the status line’s ⚠ Viewers see this chip says viewers can see this window',
+  );
   await never(host, CARD_ONLY, 'PARTNER UP!');
   /** Reload the page and resume the game in one window (the game's cover card shows first, with Resume game). */
   const resume = async () => {
@@ -667,7 +868,10 @@ try {
 
   await resume();
   assert(
-    (await pressed('Bob is the partner')) === 'true' && (await flowIs(page, 'Show question ▶')) && (await stage('[data-partner-up]').count()) === 1 && (await panel.getByRole('button', { name: /Show question/ }).count()) === 0,
+    (await pressed('Bob is the partner')) === 'true' &&
+      (await flowIs(page, 'Show question ▶')) &&
+      (await stage('[data-partner-up]').count()) === 1 &&
+      (await panel.getByRole('button', { name: /Show question/ }).count()) === 0,
     'a reload once paired: PARTNER UP!, Ann and Bob, Show question ▶ next (the blue button only)',
   );
   await never(host, CARD_ONLY, 'reloaded, paired');
@@ -677,7 +881,10 @@ try {
   await page.keyboard.press('Enter');
   await stage('[data-partner-badge]').waitFor();
   const shownAt = Date.now();
-  assert(await toast('The question just went up: press Enter again to start the clock'), 'Enter shows the question; Enter again at once doesn’t start the clock');
+  assert(
+    await toast('The question just went up: press Enter again to start the clock'),
+    'Enter shows the question; Enter again at once doesn’t start the clock',
+  );
   const row = panel.locator('[data-card="1"]');
   assert((await flat(row)).includes('Card 1 · 1 line of words, 1 picture'), `the list counts what’s on the card, and never says it (${await flat(row)})`);
   assert((await pressed('Card 1 to Bob')) === 'true', 'Card 1 goes to the describer, Bob');
@@ -721,7 +928,10 @@ try {
   await never(host, CARD_ONLY, '▦ Done ▶ board (all of it, from the tile opening)');
   // (The check sees what comes and goes: the toasts, and what screen readers were told, long after they went.)
   const heard = await page.evaluate(() => window.__seen.join('\n'));
-  assert(heard.includes('Card 1’s words copied: paste them to Bob.') && (await toastsIn(page, { hasText: 'words copied' }).count()) === 0, 'the check above heard every toast and announcement, gone since');
+  assert(
+    heard.includes('Card 1’s words copied: paste them to Bob.') && (await toastsIn(page, { hasText: 'words copied' }).count()) === 0,
+    'the check above heard every toast and announcement, gone since',
+  );
   await page.screenshot({ path: 'test-results/partner-one-window.png' });
 
   // ---------- Phone buzzers, against a fake room: nobody buzzes, and the room never gets a card ----------
@@ -742,7 +952,10 @@ try {
     await rs('.tile[aria-label^="Movies for $400"]').click();
     await stateIs((st) => st.status?.text === '🤝 Partner clue: Ann needs a partner…');
     let st = await state();
-    assert(st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p1' && st.status.seatsText === '🤝 Your partner clue! Your partner is being picked…', 'a partner clue opens with the buzzers off: the phones hear who needs a partner (Ann’s: it’s hers, being picked: no wheel turns yet)');
+    assert(
+      st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p1' && st.status.seatsText === '🤝 Your partner clue! Your partner is being picked…',
+      'a partner clue opens with the buzzers off: the phones hear who needs a partner (Ann’s: it’s hers, being picked: no wheel turns yet)',
+    );
     await p.keyboard.press('w');
     await stateIs((st) => st.status?.seatsText === '🤝 Your partner clue! Spinning for your partner…');
     assert(true, 'W: the partner wheel up, Ann’s phone says it’s spinning for her partner');
@@ -757,11 +970,16 @@ try {
     const shown = Date.now();
     await stateIs((st) => st.status?.text === '🤝 Bob describes → Ann guesses');
     st = await state();
-    assert(st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p2' && st.status.seatsText === '🗣️ You’re describing!', 'the question up: still no buzzers and no question words; the describer’s phone says so');
+    assert(
+      st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p2' && st.status.seatsText === '🗣️ You’re describing!',
+      'the question up: still no buzzers and no question words; the describer’s phone says so',
+    );
     // (The partner clue's panel keeps one height: the buzzers' row isn't kept for the stage's size, and the Amount row
     // is folded behind ± Other points….)
     assert(
-      (await hostPanelIn(p).locator('[data-buzzrow]').count()) === 0 && (await awardRowIn(p).count()) === 0 && (await p.getByRole('button', { name: '± Other points…' }).count()) === 1,
+      (await hostPanelIn(p).locator('[data-buzzrow]').count()) === 0 &&
+        (await awardRowIn(p).count()) === 0 &&
+        (await p.getByRole('button', { name: '± Other points…' }).count()) === 1,
       'no buzzers’ row, nothing to open: the Amount row folded behind ± Other points…',
     );
     await p.keyboard.press('u');
@@ -772,7 +990,10 @@ try {
     await hostPanelIn(p).locator('.players').waitFor();
     await p.waitForTimeout(300);
     // (div.plate: the answering player's plate, not a score plate.)
-    assert((await playerRowsIn(p).locator('.sel[aria-pressed="true"]').count()) === 0 && (await rs('div.plate').count()) === 0 && (await state()).phase === 'lobby', 'a buzz from a phone picks nobody');
+    assert(
+      (await playerRowsIn(p).locator('.sel[aria-pressed="true"]').count()) === 0 && (await rs('div.plate').count()) === 0 && (await state()).phase === 'lobby',
+      'a buzz from a phone picks nobody',
+    );
     await p.waitForTimeout(Math.max(0, shown + 1100 - Date.now()));
     await p.keyboard.press('Enter');
     await rs('.timer').waitFor();
@@ -789,7 +1010,10 @@ try {
     await stateIs((st) => st.status?.text === 'Ann picks the next clue');
     const during = (await sent()).slice(from);
     const states = during.filter((m) => m.t === 'state').map((m) => m.state);
-    assert(states.length > 3 && states.every((x) => x.phase === 'lobby' && !x.clue), `from tile open to the board, every state the room got had the buzzers off and no clue (${states.length} states)`);
+    assert(
+      states.length > 3 && states.every((x) => x.phase === 'lobby' && !x.clue),
+      `from tile open to the board, every state the room got had the buzzers off and no clue (${states.length} states)`,
+    );
     assert(!/Card-only-zz|quietly|"cards"/.test(JSON.stringify(during)), 'and nothing the room got held a card, or the question’s words');
     await p.context().close();
   }
@@ -800,7 +1024,10 @@ try {
     const { p, stage: rs, panel: rp, state, stateIs } = await roomGame(['Red Team', 'Green Team', 'Blue Team'], true);
     await rs('.tile[aria-label^="Movies for $400"]').click();
     await rs('[data-partner-up]').waitFor();
-    assert((await rp.innerText()).includes('Which team picked it?') && (await flowIs(p, 'Show question ▶')), 'nobody marked to pick: “Which team picked it?”, the blue button Show question ▶');
+    assert(
+      (await rp.innerText()).includes('Which team picked it?') && (await flowIs(p, 'Show question ▶')),
+      'nobody marked to pick: “Which team picked it?”, the blue button Show question ▶',
+    );
     await p.keyboard.press('n');
     await checkItem(p, 'picker').waitFor();
     assert((await checkItem(p, 'picker').innerText()).includes('Which team picked it?'), 'N asks first: “Which team picked it?”');
@@ -815,7 +1042,13 @@ try {
     const slices = await rs('.wheel text').allTextContents();
     await rp.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 15000 });
     const landed = (await rp.locator('button.chip[aria-pressed="true"]').getAttribute('aria-label')).replace(' is the partner', '');
-    assert(slices.map((t) => t.trim()).sort().join() === 'Blue Team,Green Team' && landed !== 'Red Team', `the wheel spins over the other teams (${slices.join(', ')}), and lands on one (${landed})`);
+    assert(
+      slices
+        .map((t) => t.trim())
+        .sort()
+        .join() === 'Blue Team,Green Team' && landed !== 'Red Team',
+      `the wheel spins over the other teams (${slices.join(', ')}), and lands on one (${landed})`,
+    );
     await p.keyboard.press('Escape');
     await rs('.wheel').waitFor({ state: 'detached' });
     await p.keyboard.press('2');
@@ -825,7 +1058,10 @@ try {
     const shown = Date.now();
     await stateIs((st) => st.status?.text === '🤝 Green Team describes → Red Team guesses');
     assert((await state()).status.seatsText === '🗣️ Your team is describing!', 'the question up: Green Team’s phones say the team is describing');
-    assert((await rp.getByText('📤 Hand out the cards', { exact: true }).getAttribute('title')).includes('Copy each card to its teams'), 'the panel copies the cards to teams (its 📤 Hand out the cards heading says so)');
+    assert(
+      (await rp.getByText('📤 Hand out the cards', { exact: true }).getAttribute('title')).includes('Copy each card to its teams'),
+      'the panel copies the cards to teams (its 📤 Hand out the cards heading says so)',
+    );
     await p.waitForTimeout(Math.max(0, shown + 1100 - Date.now()));
     await p.keyboard.press('Enter');
     await rs('.timer').waitFor();

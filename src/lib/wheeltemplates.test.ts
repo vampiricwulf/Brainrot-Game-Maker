@@ -24,7 +24,10 @@ describe('ready-made wheels', () => {
   });
 
   it('a time limit slice starts its countdown', () => {
-    const segs = templateSegments(WHEEL_TEMPLATES.find((x) => x.key === 'time')!, '$');
+    const segs = templateSegments(
+      WHEEL_TEMPLATES.find((x) => x.key === 'time')!,
+      '$',
+    );
     expect(segs.every((s) => s.timerSeconds && s.label === `${s.timerSeconds} seconds`)).toBe(true);
   });
 

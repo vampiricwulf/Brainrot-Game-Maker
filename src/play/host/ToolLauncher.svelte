@@ -10,7 +10,17 @@
   import { app, toast } from '../../lib/app.svelte';
   import { popupBlocked } from '../../lib/platform';
   import type { Game, SentCard, Session } from '../../lib/model';
-  import { openCategories, openCategoryWheel, openPlayerWheel, openQuickWheel, openTemplateWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
+  import {
+    openCategories,
+    openCategoryWheel,
+    openPlayerWheel,
+    openQuickWheel,
+    openTemplateWheel,
+    openWheel,
+    quickDice,
+    rollDice,
+    toggleScoreboard,
+  } from '../../lib/overlay';
   import { WHEEL_TEMPLATES } from '../../lib/wheeltemplates';
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
   import { audience } from '../../lib/sync.svelte';
@@ -187,11 +197,14 @@
 <!-- 🪟 The card window: open it for a player (or switch it to another), or close it. -->
 {#snippet winPick()}
   <div class="muted small">
-    <b>🪟 Card window</b>: a window with only one {teams ? 'team’s' : 'player’s'} 🤫 cards (pictures and videos too), for a {teams ? 'team' : 'player'} with no phone. Share just it with them (a Discord DM call), turn the laptop round, or put it on a second screen. Never share it with viewers.
+    <b>🪟 Card window</b>: a window with only one {teams ? 'team’s' : 'player’s'} 🤫 cards (pictures and videos too), for a {teams ? 'team' : 'player'} with no phone.
+    Share just it with them (a Discord DM call), turn the laptop round, or put it on a second screen. Never share it with viewers.
   </div>
   <div class="row wins">
     {#each session.players as p (p.id)}
-      <button class="small" aria-pressed={cardWindow.seat === p.id} aria-label="Card window for {p.name}" onclick={() => cardWindowFor(p.id)}>🪟 <span style:color={p.color}>●</span> {p.name}{cardWindow.seat === p.id ? ' ✓' : ''}</button>
+      <button class="small" aria-pressed={cardWindow.seat === p.id} aria-label="Card window for {p.name}" onclick={() => cardWindowFor(p.id)}
+        >🪟 <span style:color={p.color}>●</span> {p.name}{cardWindow.seat === p.id ? ' ✓' : ''}</button
+      >
     {/each}
     {#if cardWindow.open}
       <button class="small ghost" onclick={() => (closeCardWindow(), done())}>✕ Close the card window</button>
@@ -201,7 +214,12 @@
 
 <div class="tl" class:open={!!menu}>
   <div class="pop">
-    <button onclick={(e) => toggle('dice', e)} title={session.phase === 'boardgame' ? 'D rolls the round’s own dice (or spins its wheel)' : 'D rolls the last dice again'} aria-haspopup="dialog" aria-expanded={menu === 'dice'}>🎲 Dice</button>
+    <button
+      onclick={(e) => toggle('dice', e)}
+      title={session.phase === 'boardgame' ? 'D rolls the round’s own dice (or spins its wheel)' : 'D rolls the last dice again'}
+      aria-haspopup="dialog"
+      aria-expanded={menu === 'dice'}>🎲 Dice</button
+    >
     {#if menu === 'dice'}
       <div class="menu" role="dialog" aria-label="Dice" use:anchored={at}>
         <div class="grid">
@@ -228,14 +246,18 @@
           <button
             class="small item"
             disabled={session.players.length < 2}
-            title={session.players.length < 2 ? `Needs at least two ${teams ? 'teams' : 'players'}` : `A wheel of the ${teams ? 'teams' : 'players'}, in their colors`}
-            onclick={() => wheel(() => openPlayerWheel(app.live, session, teams))}>🎯 Pick a {teams ? 'team' : 'player'}</button>
+            title={session.players.length < 2
+              ? `Needs at least two ${teams ? 'teams' : 'players'}`
+              : `A wheel of the ${teams ? 'teams' : 'players'}, in their colors`}
+            onclick={() => wheel(() => openPlayerWheel(app.live, session, teams))}>🎯 Pick a {teams ? 'team' : 'player'}</button
+          >
           <button
             class="small ghost"
             disabled={session.players.length < 2}
             aria-label="Edit Pick a {teams ? 'team' : 'player'}, then spin"
             title="Leave {teams ? 'teams' : 'players'} out or change their chances for this spin"
-            onclick={() => wheel(() => openPlayerWheel(app.live, session, teams), true)}>✎</button>
+            onclick={() => wheel(() => openPlayerWheel(app.live, session, teams), true)}>✎</button
+          >
         </div>
         {#if cats !== null}
           <div class="wl">
@@ -243,13 +265,15 @@
               class="small item"
               disabled={cats < 2}
               title={cats < 2 ? 'Needs at least two categories with clues left' : 'A wheel of the categories with clues left'}
-              onclick={() => wheel(() => openCategoryWheel(app.live, game, session))}>🗂 Pick a category</button>
+              onclick={() => wheel(() => openCategoryWheel(app.live, game, session))}>🗂 Pick a category</button
+            >
             <button
               class="small ghost"
               disabled={cats < 2}
               aria-label="Edit Pick a category, then spin"
               title="Leave categories out or change their chances for this spin"
-              onclick={() => wheel(() => openCategoryWheel(app.live, game, session), true)}>✎</button>
+              onclick={() => wheel(() => openCategoryWheel(app.live, game, session), true)}>✎</button
+            >
           </div>
         {/if}
         {#each game.wheels as w (w.id)}
@@ -259,12 +283,15 @@
               class="small ghost"
               aria-label={`Edit ${w.name}, then spin`}
               title="Change slices or chances for this spin (the saved wheel stays as it is)"
-              onclick={() => wheel(() => openWheel(app.live, session, w), true)}>✎</button>
+              onclick={() => wheel(() => openWheel(app.live, session, w), true)}>✎</button
+            >
           </div>
         {:else}
           <!-- (A play-only page has no editor to make them in.) -->
           <div class="muted small">
-            {app.playerOnly ? 'No saved wheels in this game: use a ready-made or quick one.' : "No saved wheels yet: make them in the editor's 🎡 tab, or use a ready-made or quick one."}
+            {app.playerOnly
+              ? 'No saved wheels in this game: use a ready-made or quick one.'
+              : "No saved wheels yet: make them in the editor's 🎡 tab, or use a ready-made or quick one."}
           </div>
         {/each}
         <!-- Ready-made ones, spun as they are (✎ Edit wheel's Save as keeps one in the game). -->
@@ -292,7 +319,9 @@
     {/if}
   </div>
   <div class="pop">
-    <button onclick={(e) => toggle('rolloff', e)} title="O rolls for everyone" aria-haspopup="dialog" aria-expanded={menu === 'rolloff'}>🏁 Who goes first</button>
+    <button onclick={(e) => toggle('rolloff', e)} title="O rolls for everyone" aria-haspopup="dialog" aria-expanded={menu === 'rolloff'}
+      >🏁 Who goes first</button
+    >
     {#if menu === 'rolloff'}
       <div class="menu" role="dialog" aria-label="Who goes first" use:anchored={at}>
         <div class="muted small">Everyone included rolls; tied leaders re-roll.</div>
@@ -303,7 +332,8 @@
               checked={who.includes(p.id)}
               onchange={(e) => (skipped = e.currentTarget.checked ? skipped.filter((x) => x !== p.id) : [...skipped, p.id])}
             />
-            <span style:color={p.color}>●</span> {p.name}
+            <span style:color={p.color}>●</span>
+            {p.name}
           </label>
         {/each}
         <label class="check small">Die: d<input type="number" min="2" max="1000" bind:value={sides} class="n" /></label>
@@ -314,12 +344,19 @@
           onclick={() => {
             onrolloff(who, Math.round(sides!));
             done();
-          }}>Roll for {who.length}</button>
+          }}>Roll for {who.length}</button
+        >
       </div>
     {/if}
   </div>
   <div class="pop">
-    <button onclick={(e) => toggle('card', e)} aria-haspopup="dialog" aria-expanded={menu === 'card'} title="🤫 Send a card…: a private card on some players’ phones, any time (one of your 🤫 Cards, a tile’s or a Final’s, or a quick one), or a 🪟 card window for one with no phone: only they see it, never on stream">🤫 <span class="word">Send a card…</span></button>
+    <button
+      onclick={(e) => toggle('card', e)}
+      aria-haspopup="dialog"
+      aria-expanded={menu === 'card'}
+      title="🤫 Send a card…: a private card on some players’ phones, any time (one of your 🤫 Cards, a tile’s or a Final’s, or a quick one), or a 🪟 card window for one with no phone: only they see it, never on stream"
+      >🤫 <span class="word">Send a card…</span></button
+    >
     {#if menu === 'card'}
       <div class="menu wide" role="dialog" aria-label="Send a card" use:anchored={at}>
         <CardSend {game} {session} {dual} />
@@ -360,7 +397,8 @@
         aria-haspopup="dialog"
         aria-expanded={menu === 'out'}
         data-cards-out-count={out}
-        title={`🤫 ${out} card${out === 1 ? '' : 's'} out: ${outWarn ? '⚠ one isn’t all on the phones: open the list to see which, and what to do' : 'send one again, take it back'}`}>🤫 {out} <span class="word">card{out === 1 ? '' : 's'} out</span></button
+        title={`🤫 ${out} card${out === 1 ? '' : 's'} out: ${outWarn ? '⚠ one isn’t all on the phones: open the list to see which, and what to do' : 'send one again, take it back'}`}
+        >🤫 {out} <span class="word">card{out === 1 ? '' : 's'} out</span></button
       >
       {#if menu === 'out'}
         <div class="menu wide" role="dialog" aria-label="Cards out" use:anchored={at}>
@@ -372,7 +410,13 @@
   <!-- (Its own button only while it's open, saying whose cards it shows: it's opened from 🤫 Send a card….) -->
   {#if winName || menu === 'win'}
     <div class="pop">
-      <button onclick={(e) => toggle('win', e)} aria-haspopup="dialog" aria-expanded={menu === 'win'} class="on" title="The card window: show another player’s cards, or close it">🪟 {winName ? `Cards: ${winName}` : 'Card window'}</button>
+      <button
+        onclick={(e) => toggle('win', e)}
+        aria-haspopup="dialog"
+        aria-expanded={menu === 'win'}
+        class="on"
+        title="The card window: show another player’s cards, or close it">🪟 {winName ? `Cards: ${winName}` : 'Card window'}</button
+      >
       {#if menu === 'win'}
         <div class="menu" role="dialog" aria-label="Card window" use:anchored={at}>
           {@render winPick()}
@@ -384,13 +428,21 @@
   <button
     onclick={() => ((menu = null), toggleScoreboard(app.live))}
     aria-pressed={scoreboardUp}
-    title={scoreboardUp ? 'The scoreboard is on screen: click to put it away (S)' : 'The scoreboard on screen, everyone’s scores (S)'}>📊 <span class="name">Scoreboard</span></button
+    title={scoreboardUp ? 'The scoreboard is on screen: click to put it away (S)' : 'The scoreboard on screen, everyone’s scores (S)'}
+    >📊 <span class="name">Scoreboard</span></button
   >
   {#if onstopsounds}
-    <button class="stop" onclick={() => ((menu = null), onstopsounds())} title="🔇 Stop sounds (Shift+M): the game's sounds on stream, like the round intro's music or the Final's think music">🔇 <span class="word">Stop sounds</span></button>
+    <button
+      class="stop"
+      onclick={() => ((menu = null), onstopsounds())}
+      title="🔇 Stop sounds (Shift+M): the game's sounds on stream, like the round intro's music or the Final's think music"
+      >🔇 <span class="word">Stop sounds</span></button
+    >
   {/if}
   {#if winName}
-    <span class="warn small winwarn" role="status" data-card-window-warn>⚠ The 🪟 card window shows {winName}’s cards: share only the game window with viewers.</span>
+    <span class="warn small winwarn" role="status" data-card-window-warn
+      >⚠ The 🪟 card window shows {winName}’s cards: share only the game window with viewers.</span
+    >
   {/if}
 </div>
 

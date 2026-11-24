@@ -6,7 +6,20 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newImageEl, newRound, setSlideText, type BoardRound, type FinalRound, type Game, type SavedCard, type SentCard, type Session } from './model';
-import { backToBoard, backToLastRound, finalChoose, finalNext, forViewers, goToRound, migrateSession, newSession, openClue, rebaseSession, removePlayer, restorePlayer } from './session';
+import {
+  backToBoard,
+  backToLastRound,
+  finalChoose,
+  finalNext,
+  forViewers,
+  goToRound,
+  migrateSession,
+  newSession,
+  openClue,
+  rebaseSession,
+  removePlayer,
+  restorePlayer,
+} from './session';
 import { addCard, cardHash, sendCards, setCardName, setPartner, setPartnerGame } from './partner';
 import { hostCards, hostState, buzzIdle, newBuzz, phoneStatus, roomCardCount, roomCardsFull, sessionCards } from './buzz';
 import {
@@ -62,7 +75,12 @@ function saved(id: string, name: string, words: string): SavedCard {
 const REF = { round: 0, cat: 0, row: 1 };
 /** Everything the room is told now. */
 const told = (g: Game, session: Session) =>
-  JSON.stringify(hostState(g, session, buzzIdle(newBuzz(2)), 0, { status: phoneStatus(g, session, false, { cards: true }), cards: hostCards(g, session, { fileBytes: FILE_BYTES, files: {} }) }));
+  JSON.stringify(
+    hostState(g, session, buzzIdle(newBuzz(2)), 0, {
+      status: phoneStatus(g, session, false, { cards: true }),
+      cards: hostCards(g, session, { fileBytes: FILE_BYTES, files: {} }),
+    }),
+  );
 
 describe('🤫 Send a card…: only the host’s press sends, exactly to who it went to', () => {
   it('nothing out, nothing told; a quick card goes to its players, labelled in the order sent', () => {
@@ -74,7 +92,9 @@ describe('🤫 Send a card…: only the host’s press sends, exactly to who it 
     expect(one).toMatchObject({ label: 'Card 1', to: [{ seat: 'b' }], at: 1000, until: 'round', round: g.rounds[0].id });
     // (A copy went: the dialog's card changing afterwards doesn't change it.)
     setSlideText(slide, 'changed');
-    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([{ id: `sc:${one.id}:1000`, to: [{ seat: 'b' }], open: true, text: 'SPY-plugh' }]);
+    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([
+      { id: `sc:${one.id}:1000`, to: [{ seat: 'b' }], open: true, text: 'SPY-plugh' },
+    ]);
     const two = sendCard(g, session, { to: [{ seat: 'c' }, { seat: 'a' }], content: { slide: quickSlide('Location-qwop') }, until: 'host' }, 2000)!;
     expect(two.label).toBe('Card 2');
     expect(two.to).toEqual([{ seat: 'a' }, { seat: 'c' }]);
@@ -100,7 +120,12 @@ describe('🤫 Send a card…: only the host’s press sends, exactly to who it 
     const { session } = setup();
     const mia = { id: 'm-1', name: 'Mia' };
     expect(cleanTo(session, [{ seat: 'c' }, { seat: 'a' }, { seat: 'a' }, { seat: 'zz' }])).toEqual([{ seat: 'a' }, { seat: 'c' }]);
-    expect(cleanTo(session, [{ seat: 'b', member: mia }, { seat: 'b', member: mia }])).toEqual([{ seat: 'b', member: mia }]);
+    expect(
+      cleanTo(session, [
+        { seat: 'b', member: mia },
+        { seat: 'b', member: mia },
+      ]),
+    ).toEqual([{ seat: 'b', member: mia }]);
     expect(cleanTo(session, [{ seat: 'b', member: mia }, { seat: 'b' }])).toEqual([{ seat: 'b' }]);
     expect(sentToText(session, [{ seat: 'b', member: mia }, { seat: 'a' }], true)).toBe('Mia (Bob), Ann');
   });
@@ -135,7 +160,9 @@ describe('🤫 Send a card…: only the host’s press sends, exactly to who it 
     openClue(session, REF, g);
     sendCard(g, session, { to: [{ seat: 'a' }], content: { clue: clue.id, card: card.id }, until: 'tile' });
     expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })![0].media).toEqual([{ kind: 'image', pending: true }]);
-    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: { m1: 'f'.repeat(64) } })![0].media).toEqual([{ kind: 'image', file: 'f'.repeat(64), mime: 'image/png' }]);
+    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: { m1: 'f'.repeat(64) } })![0].media).toEqual([
+      { kind: 'image', file: 'f'.repeat(64), mime: 'image/png' },
+    ]);
     expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: null })![0].media).toEqual([{ kind: 'image', missing: true }]);
     expect(told(g, session)).not.toMatch(/secret-pic/);
   });
@@ -477,7 +504,9 @@ describe('a Final’s own cards', () => {
     expect(sendCard(g, session, { to: [{ seat: 'a' }], content: { clue: final.id, card: hint.id }, until: 'tile' })).toBeNull();
     const c = sendCard(g, session, { to: finalRecipients(session, hint), content: { clue: final.id, card: hint.id }, until: 'round' }, 1000)!;
     expect(c).toMatchObject({ label: 'Card 1', until: 'round', round: final.id, hash: cardHash(hint), content: { clue: final.id, card: hint.id } });
-    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([{ id: sentCardId(c), to: [{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }], open: true, text: 'HINT-zork' }]);
+    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([
+      { id: sentCardId(c), to: [{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }], open: true, text: 'HINT-zork' },
+    ]);
     // A card to three players is one card for the room.
     expect(roomCardCount(g, session)).toBe(1);
     for (const step of ['question', 'answer', 'reveal'] as const) {

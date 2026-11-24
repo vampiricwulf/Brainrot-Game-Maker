@@ -343,7 +343,14 @@ export function blip(live: Live, key: CueKey): void {
 
 export function playSound(live: Live, media: string | undefined, cut = false, volume = 1, fallback?: string): void {
   live.sound = media
-    ? { media, nonce: newId(), at: Date.now(), ...(cut ? { cut } : {}), ...(volume < 1 ? { volume } : {}), ...(fallback && fallback !== media ? { fallback } : {}) }
+    ? {
+        media,
+        nonce: newId(),
+        at: Date.now(),
+        ...(cut ? { cut } : {}),
+        ...(volume < 1 ? { volume } : {}),
+        ...(fallback && fallback !== media ? { fallback } : {}),
+      }
     : null;
 }
 

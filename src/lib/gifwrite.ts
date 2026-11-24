@@ -37,8 +37,7 @@ export function quantize(rgba: ArrayLike<number>): Indexed {
   }
   if (exact.size <= MAX_COLORS) {
     const t = clear ? exact.size : null;
-    for (let i = 0; i < n; i++)
-      indexed[i] = rgba[i * 4 + 3] < OPAQUE ? t! : exact.get((rgba[i * 4] << 16) | (rgba[i * 4 + 1] << 8) | rgba[i * 4 + 2])!;
+    for (let i = 0; i < n; i++) indexed[i] = rgba[i * 4 + 3] < OPAQUE ? t! : exact.get((rgba[i * 4] << 16) | (rgba[i * 4 + 1] << 8) | rgba[i * 4 + 2])!;
     const palette = [...exact.keys(), ...(clear ? [0] : [])];
     return { palette: pad(palette), indexed, transparent: t };
   }
@@ -91,7 +90,8 @@ function medianCut(rgba: ArrayLike<number>, n: number, indexed: Uint8Array): Ind
   while (boxes.length < MAX_COLORS) {
     // The group worth cutting most: many pixels over a wide spread.
     let at = -1;
-    for (let i = 0; i < boxes.length; i++) if (boxes[i].to - boxes[i].from > 1 && (at < 0 || boxes[i].pixels * boxes[i].spread > boxes[at].pixels * boxes[at].spread)) at = i;
+    for (let i = 0; i < boxes.length; i++)
+      if (boxes[i].to - boxes[i].from > 1 && (at < 0 || boxes[i].pixels * boxes[i].spread > boxes[at].pixels * boxes[at].spread)) at = i;
     if (at < 0) break;
     const box = boxes[at];
     const part = bins.slice(box.from, box.to).sort((a, b) => channel(a, box.c) - channel(b, box.c));

@@ -17,7 +17,13 @@ describe('itemsNamed', () => {
 describe('a freehand line', () => {
   const game = newGame();
   it('is “Freehand line” (closed, “Freehand shape”), never “Drawing”, which a Drawpad picture is', () => {
-    const line: ShapeEl = { ...newShapeEl('path'), points: [[0, 0], [1, 1]] };
+    const line: ShapeEl = {
+      ...newShapeEl('path'),
+      points: [
+        [0, 0],
+        [1, 1],
+      ],
+    };
     expect(layerLabel(line, game)).toBe('Freehand line');
     expect(layerLabel({ ...line, closed: true }, game)).toBe('Freehand shape');
     expect(itemsNamed([line], game)).toBe('shape “Freehand line”');

@@ -57,7 +57,10 @@
     const list = listOf(kind);
     const copy = JSON.parse(JSON.stringify(item)) as Tool;
     copy.id = newId();
-    copy.name = copyName(item.name, list.map((x) => x.name));
+    copy.name = copyName(
+      item.name,
+      list.map((x) => x.name),
+    );
     if ('segments' in copy) copy.segments = copy.segments.map(copySegment);
     else if ('parts' in copy)
       for (const p of copy.parts) {
@@ -184,8 +187,27 @@
   function addDealTemplate(t: DealTemplate): void {
     const wt = WHEEL_TEMPLATES.find((x) => x.key === t.wheel);
     const have = wt ? game.wheels.find((w) => w.name.trim().toLowerCase() === wt.name.toLowerCase()) : undefined;
-    const wheelNew = wt && !have ? wheelFromTemplate(wt, game.settings.currencySymbol, uniqueName(game.wheels.map((x) => x.name), wt.name, false)) : undefined;
-    const d = dealFromTemplate(t, uniqueName((game.deals ?? []).map((x) => x.name), t.name, false), have?.id ?? wheelNew?.id);
+    const wheelNew =
+      wt && !have
+        ? wheelFromTemplate(
+            wt,
+            game.settings.currencySymbol,
+            uniqueName(
+              game.wheels.map((x) => x.name),
+              wt.name,
+              false,
+            ),
+          )
+        : undefined;
+    const d = dealFromTemplate(
+      t,
+      uniqueName(
+        (game.deals ?? []).map((x) => x.name),
+        t.name,
+        false,
+      ),
+      have?.id ?? wheelNew?.id,
+    );
     step(`Added deal “${d.name}”${wheelNew ? ` and wheel “${wheelNew.name}”` : ''}`, () => {
       if (wheelNew) game.wheels.push(wheelNew);
       pushDeal(d);
@@ -194,7 +216,10 @@
     focusName();
   }
   function dealTemplateMenu(e: MouseEvent): void {
-    dropMenu(e, [{ heading: 'Ready-made deals (change anything after)' }, ...DEAL_TEMPLATES.map((t) => ({ label: `${t.icon} ${t.name}`, hint: t.hint, onclick: () => addDealTemplate(t) }))]);
+    dropMenu(e, [
+      { heading: 'Ready-made deals (change anything after)' },
+      ...DEAL_TEMPLATES.map((t) => ({ label: `${t.icon} ${t.name}`, hint: t.hint, onclick: () => addDealTemplate(t) })),
+    ]);
   }
 
   /** A built-in wheel picked in the list (shown so they're found; nothing to set up). */
@@ -205,7 +230,15 @@
 
   /** A ready-made wheel, added to the game (named after it, numbered when the game has one by that name). */
   function addTemplate(t: WheelTemplate): void {
-    const w = wheelFromTemplate(t, game.settings.currencySymbol, uniqueName(game.wheels.map((x) => x.name), t.name, false));
+    const w = wheelFromTemplate(
+      t,
+      game.settings.currencySymbol,
+      uniqueName(
+        game.wheels.map((x) => x.name),
+        t.name,
+        false,
+      ),
+    );
     step(`Added wheel “${w.name}”`, () => game.wheels.push(w));
     sel = w.id;
     focusName();
@@ -231,7 +264,10 @@
         role="listitem"
         ondragover={(e) => rows.over(e, item.id)}
         ondrop={(e) => {
-          const m = rows.drop(e, list.map((x) => x.id));
+          const m = rows.drop(
+            e,
+            list.map((x) => x.id),
+          );
           if (m) move(kind, m.from, m.to);
         }}
       >
@@ -278,83 +314,90 @@
 {/snippet}
 
 <div class="page">
-<PageHeader title="Wheels, Dice & Deals" sub="Saved with the game: the host spins or rolls any of them during play, and a tile can be a wheel or dice tile. 🎭 Deals hand everyone a secret part." />
+  <PageHeader
+    title="Wheels, Dice & Deals"
+    sub="Saved with the game: the host spins or rolls any of them during play, and a tile can be a wheel or dice tile. 🎭 Deals hand everyone a secret part."
+  />
 
-<div class="layout">
-  <!-- Not a second nav and main: the editor's own are around it. -->
-  <section class="list" aria-label="Wheels, dice and deals">
-    <div class="head muted">🎡 Wheels</div>
-    <!-- Always there in play: listed so it's found. -->
-    <button
-      class="builtin"
-      class:active={builtin === 'players'}
-      aria-current={builtin === 'players' ? 'true' : undefined}
-      onclick={() => ((sel = null), (builtin = 'players'))}
-      title="Built in: a slice for each player, in their colors (nothing to set up)">🎯 Pick a player <span class="muted small">built in</span></button
-    >
-    <button
-      class="builtin"
-      class:active={builtin === 'categories'}
-      aria-current={builtin === 'categories' ? 'true' : undefined}
-      onclick={() => ((sel = null), (builtin = 'categories'))}
-      title="Built in: a slice for each category on the board with clues left (nothing to set up)">🗂 Pick a category <span class="muted small">built in</span></button
-    >
-    {@render group('wheel', game.wheels)}
-    <button class="ghost" onclick={() => add('wheel')}>＋ Add wheel</button>
-    <button class="ghost" onclick={templateMenu} aria-haspopup="menu" title="Coin flip, Yes or no, a point wheel, punishments…">📋 Ready-made wheel…</button>
-    <div class="head muted">🎲 Dice</div>
-    {@render group('dice', game.dice)}
-    <button class="ghost" onclick={() => add('dice')}>＋ Add dice</button>
-    <div class="head muted">🎭 Deals</div>
-    {@render group('deal', game.deals ?? [])}
-    <button class="ghost" onclick={() => add('deal')}>＋ Add deal</button>
-    <button class="ghost" onclick={dealTemplateMenu} aria-haspopup="menu" title="Odd one out, Secret roles, Team captain, Everyone’s own prompt">📋 Ready-made deal…</button>
-  </section>
+  <div class="layout">
+    <!-- Not a second nav and main: the editor's own are around it. -->
+    <section class="list" aria-label="Wheels, dice and deals">
+      <div class="head muted">🎡 Wheels</div>
+      <!-- Always there in play: listed so it's found. -->
+      <button
+        class="builtin"
+        class:active={builtin === 'players'}
+        aria-current={builtin === 'players' ? 'true' : undefined}
+        onclick={() => ((sel = null), (builtin = 'players'))}
+        title="Built in: a slice for each player, in their colors (nothing to set up)">🎯 Pick a player <span class="muted small">built in</span></button
+      >
+      <button
+        class="builtin"
+        class:active={builtin === 'categories'}
+        aria-current={builtin === 'categories' ? 'true' : undefined}
+        onclick={() => ((sel = null), (builtin = 'categories'))}
+        title="Built in: a slice for each category on the board with clues left (nothing to set up)"
+        >🗂 Pick a category <span class="muted small">built in</span></button
+      >
+      {@render group('wheel', game.wheels)}
+      <button class="ghost" onclick={() => add('wheel')}>＋ Add wheel</button>
+      <button class="ghost" onclick={templateMenu} aria-haspopup="menu" title="Coin flip, Yes or no, a point wheel, punishments…">📋 Ready-made wheel…</button>
+      <div class="head muted">🎲 Dice</div>
+      {@render group('dice', game.dice)}
+      <button class="ghost" onclick={() => add('dice')}>＋ Add dice</button>
+      <div class="head muted">🎭 Deals</div>
+      {@render group('deal', game.deals ?? [])}
+      <button class="ghost" onclick={() => add('deal')}>＋ Add deal</button>
+      <button class="ghost" onclick={dealTemplateMenu} aria-haspopup="menu" title="Odd one out, Secret roles, Team captain, Everyone’s own prompt"
+        >📋 Ready-made deal…</button
+      >
+    </section>
 
-  <section aria-label="Wheel, dice or deal" data-tool-editor>
-    {#if wheel}
-      <div class="row top">
-        <span class="spacer"></span>
-        <button class="ghost" onclick={() => dup('wheel', wheel)} title="A copy of this wheel, right after it (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost danger del" onclick={() => remove('wheel', wheel)} title="Delete this wheel (Undo brings it back)">🗑 Delete wheel</button>
-      </div>
-      {#key wheel.id}<WheelEditor {wheel} />{/key}
-    {:else if dice}
-      <div class="row top">
-        <span class="spacer"></span>
-        <button class="ghost" onclick={() => dup('dice', dice)} title="A copy of these dice, right after them (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost danger del" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
-      </div>
-      {#key dice.id}<DiceEditor preset={dice} />{/key}
-    {:else if deal}
-      <div class="row top">
-        <span class="spacer"></span>
-        <button class="ghost" onclick={() => dup('deal', deal)} title="A copy of this deal, right after it (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost danger del" onclick={() => remove('deal', deal)} title="Delete this deal (Undo brings it back)">🗑 Delete deal</button>
-      </div>
-      {#key deal.id}<DealEditor {deal} />{/key}
-    {:else if builtin === 'categories'}
-      <h3>🗂 Pick a category</h3>
-      <p>
-        Built into every game: on a Jeopardy board, a slice for each category that still has clues to play, so it shrinks
-        as the board empties. Spin it from <b>🎡 Wheel</b> during play to pick the next category (its ✎ leaves categories
-        out or changes their chances for a spin).
-      </p>
-    {:else if builtin === 'players'}
-      <h3>🎯 Pick a player</h3>
-      <p>
-        Built into every game: a slice for each player, in their colors, so the players who join or leave are always on
-        it. Spin it from <b>🎡 Wheel</b> during play (its ✎ leaves players out or changes their chances for a spin), make a
-        tile a wheel tile with it, or spin it from a board game space or an RPG object's buttons.
-      </p>
-    {:else}
-      <p class="muted">
-        Pick a wheel, dice or deal on the left, add one, or start from a <b>📋 Ready-made wheel…</b> or <b>📋 Ready-made deal…</b> Standard dice (d4–d100, 2d6, any "NdS") and the built-in
-        <b>🎯 Pick a player</b> and <b>🗂 Pick a category</b> wheels are always there during play, without setting anything up.
-      </p>
-    {/if}
-  </section>
-</div>
+    <section aria-label="Wheel, dice or deal" data-tool-editor>
+      {#if wheel}
+        <div class="row top">
+          <span class="spacer"></span>
+          <button class="ghost" onclick={() => dup('wheel', wheel)} title="A copy of this wheel, right after it (Ctrl+D)">⧉ Duplicate</button>
+          <button class="ghost danger del" onclick={() => remove('wheel', wheel)} title="Delete this wheel (Undo brings it back)">🗑 Delete wheel</button>
+        </div>
+        {#key wheel.id}<WheelEditor {wheel} />{/key}
+      {:else if dice}
+        <div class="row top">
+          <span class="spacer"></span>
+          <button class="ghost" onclick={() => dup('dice', dice)} title="A copy of these dice, right after them (Ctrl+D)">⧉ Duplicate</button>
+          <button class="ghost danger del" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
+        </div>
+        {#key dice.id}<DiceEditor preset={dice} />{/key}
+      {:else if deal}
+        <div class="row top">
+          <span class="spacer"></span>
+          <button class="ghost" onclick={() => dup('deal', deal)} title="A copy of this deal, right after it (Ctrl+D)">⧉ Duplicate</button>
+          <button class="ghost danger del" onclick={() => remove('deal', deal)} title="Delete this deal (Undo brings it back)">🗑 Delete deal</button>
+        </div>
+        {#key deal.id}<DealEditor {deal} />{/key}
+      {:else if builtin === 'categories'}
+        <h3>🗂 Pick a category</h3>
+        <p>
+          Built into every game: on a Jeopardy board, a slice for each category that still has clues to play, so it shrinks as the board empties. Spin it from <b
+            >🎡 Wheel</b
+          > during play to pick the next category (its ✎ leaves categories out or changes their chances for a spin).
+        </p>
+      {:else if builtin === 'players'}
+        <h3>🎯 Pick a player</h3>
+        <p>
+          Built into every game: a slice for each player, in their colors, so the players who join or leave are always on it. Spin it from <b>🎡 Wheel</b> during
+          play (its ✎ leaves players out or changes their chances for a spin), make a tile a wheel tile with it, or spin it from a board game space or an RPG object's
+          buttons.
+        </p>
+      {:else}
+        <p class="muted">
+          Pick a wheel, dice or deal on the left, add one, or start from a <b>📋 Ready-made wheel…</b> or <b>📋 Ready-made deal…</b> Standard dice (d4–d100,
+          2d6, any "NdS") and the built-in
+          <b>🎯 Pick a player</b> and <b>🗂 Pick a category</b> wheels are always there during play, without setting anything up.
+        </p>
+      {/if}
+    </section>
+  </div>
 </div>
 
 <style>

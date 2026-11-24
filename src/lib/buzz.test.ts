@@ -1,11 +1,65 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newTextEl, playableClues, setSlideText, textSlide, PARTNER_GAMES, type BoardRound, type FinalRound, type PartnerGame, type SavedCard } from './model';
-import { applyScore, ddShowQuestion, finalChoose, finalJudge, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, setScore, undo } from './session';
+import {
+  newImageEl,
+  newTextEl,
+  playableClues,
+  setSlideText,
+  textSlide,
+  PARTNER_GAMES,
+  type BoardRound,
+  type FinalRound,
+  type PartnerGame,
+  type SavedCard,
+} from './model';
+import {
+  applyScore,
+  ddShowQuestion,
+  finalChoose,
+  finalJudge,
+  finalNext,
+  finalSetWager,
+  goToRound,
+  judgePartner,
+  newSession,
+  openClue,
+  places,
+  rebaseSession,
+  removePlayer,
+  setScore,
+  undo,
+} from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
-  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, buzzVerdicts, cardsLeftOff, phoneTimer, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, passAsk, phoneStatus, questionText, roomCardCount,
-  roomCardsFull, seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
+  answerRoundId,
+  buzzArm,
+  buzzClueOpened,
+  buzzDone,
+  buzzIdle,
+  buzzMissed,
+  buzzNeverOpened,
+  buzzOrder,
+  buzzReset,
+  buzzTake,
+  buzzVerdicts,
+  cardsLeftOff,
+  phoneTimer,
+  everyoneAnswerAsk,
+  finalAnswerAsk,
+  hostCards,
+  hostState,
+  newBuzz,
+  passAsk,
+  phoneStatus,
+  questionText,
+  roomCardCount,
+  roomCardsFull,
+  seenAtOnce,
+  sessionCards,
+  setupState,
+  teamsOn,
+  wagerAsk,
+  whoBuzzed,
 } from './buzz';
 import { CARDS_MAX, phoneView, OLD_FILE_LIMITS } from './buzzproto';
 import { phoneCard } from './phonecard';
@@ -106,7 +160,11 @@ describe('team buzzers', () => {
 
   it('a wrong answer locks out the whole team; the next team in the order answers, with who buzzed for it', () => {
     const a = buzzTake(buzzClueOpened(newBuzz(), true, 5), 'a', false, 'Ann')!;
-    const r = buzzMissed(a, 'a', P, [{ id: 'a', by: 'Ann' }, { id: 'a', by: 'Al' }, { id: 'b', by: 'Bea' }]);
+    const r = buzzMissed(a, 'a', P, [
+      { id: 'a', by: 'Ann' },
+      { id: 'a', by: 'Al' },
+      { id: 'b', by: 'Bea' },
+    ]);
     expect(r).toEqual({ phase: 'answering', armId: 1, answering: 'b', lockedOut: ['a'], by: 'Bea', passAt: 5 });
     // Team b misses too: c (no phone buzz: picked by number key earlier) is next, then a rebound for nobody left.
     const s = buzzMissed(r, 'b', P, [{ id: 'a', by: 'Ann' }, { id: 'b', by: 'Bea' }, 'c']);
@@ -221,7 +279,21 @@ describe('hostState (what the buzzer room is told)', () => {
     expect(s).toMatchObject({ phase: 'armed', lockedOut: ['a'], scores: { a: 0, b: 200 } });
     const json = JSON.stringify(s);
     for (const leak of ['Shiba', 'HOST NOTE', 'LAYER NOTE', 'SECRET', 'img1', 'answerSlide', 'What is', 'hostNotes', 'media']) expect(json).not.toContain(leak);
-    expect(Object.keys(s).sort()).toEqual(['allowNew', 'answerShown', 'answering', 'armId', 'clue', 'colorPick', 'currency', 'earlyLockMs', 'lockedOut', 'phase', 'scores', 'seats', 'title']);
+    expect(Object.keys(s).sort()).toEqual([
+      'allowNew',
+      'answerShown',
+      'answering',
+      'armId',
+      'clue',
+      'colorPick',
+      'currency',
+      'earlyLockMs',
+      'lockedOut',
+      'phase',
+      'scores',
+      'seats',
+      'title',
+    ]);
   });
 
   it('Pass: an ordinary buzz-in clue takes passes, in a round named by the clue and when its passes began', () => {
@@ -585,14 +657,31 @@ describe('wagerAsk (the wagers phones may send)', () => {
     });
     // The limits on (the default): held to them. Cy, ticked in at $0, can wager up to $2,000 too.
     finalChoose(session, game, 'c', true);
-    expect(wagerAsk(game, session, false)).toMatchObject({ limit: true, seats: [{ id: 'a', max: 3500 }, { id: 'b', max: 2000 }, { id: 'c', max: 2000 }] });
+    expect(wagerAsk(game, session, false)).toMatchObject({
+      limit: true,
+      seats: [
+        { id: 'a', max: 3500 },
+        { id: 'b', max: 2000 },
+        { id: 'c', max: 2000 },
+      ],
+    });
     finalChoose(session, game, 'c', false);
     finalNext(session, game);
     expect(wagerAsk(game, session, true)).toMatchObject({ id, open: false });
     finalNext(session, game);
     expect(wagerAsk(game, session, true)).toMatchObject({ open: false });
     finalNext(session, game);
-    expect([session.finalStep, wagerAsk(game, session, true)]).toMatchObject(['reveal', { id, open: false, seats: [{ id: 'a', amount: 100 }, { id: 'b', amount: 50 }] }]);
+    expect([session.finalStep, wagerAsk(game, session, true)]).toMatchObject([
+      'reveal',
+      {
+        id,
+        open: false,
+        seats: [
+          { id: 'a', amount: 100 },
+          { id: 'b', amount: 50 },
+        ],
+      },
+    ]);
     session.phase = 'end';
     expect(wagerAsk(game, session, true)).toBeNull();
   });
@@ -789,7 +878,10 @@ describe('a ✍ clue’s multiple choices (everyoneAnswerAsk, phoneView)', () =>
     ]);
     expect(JSON.stringify(ask)).not.toContain('right');
     // Fewer than two with words: the phones type.
-    clue.choices = [{ id: 'c1', text: 'Paris', right: true }, { id: 'c2', text: ' ' }];
+    clue.choices = [
+      { id: 'c1', text: 'Paris', right: true },
+      { id: 'c2', text: ' ' },
+    ];
     expect(everyoneAnswerAsk(game, session, { choices: true })?.choices).toBeUndefined();
     // Kept on a clue without ✍: not asked at all.
     delete clue.everyone;
@@ -1093,10 +1185,17 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
     const c = sendCard(g, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' }, 1000)!;
     const pc = phoneCard(g, wild, { fileBytes: FILE_BYTES, files: {} });
     expect(pc.title).toBe('WILD-title');
-    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([{ id: sentCardId(c), to: [{ seat: 'b' }], open: true, title: pc.title, text: pc.text, media: pc.media }]);
+    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([
+      { id: sentCardId(c), to: [{ seat: 'b' }], open: true, title: pc.title, text: pc.text, media: pc.media },
+    ]);
     // (No name at all on a card: not the card's, nor a file's.)
     expect(JSON.stringify(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} }))).not.toMatch(/"name"|NAME-|secret-pic/);
-    const told = JSON.stringify(hostState(g, session, buzzIdle(newBuzz(3)), 0, { status: phoneStatus(g, session, false, { cards: true }), cards: hostCards(g, session, { fileBytes: FILE_BYTES, files: {} }) }));
+    const told = JSON.stringify(
+      hostState(g, session, buzzIdle(newBuzz(3)), 0, {
+        status: phoneStatus(g, session, false, { cards: true }),
+        cards: hostCards(g, session, { fileBytes: FILE_BYTES, files: {} }),
+      }),
+    );
     expect(told).toContain('WILD-plugh words');
     expect(told).not.toMatch(/NAME-|secret-pic|TIP-qwop/);
   });
@@ -1116,7 +1215,9 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
     const { g, session } = setup();
     for (let i = 0; i < CARDS_MAX; i++) {
       expect(roomCardsFull(g, session)).toBe(false);
-      expect(sendCard(g, session, { to: [{ seat: P[i % 3] }], content: { saved: i % 2 ? 'sc2' : 'sc1' }, until: 'host' }, 1000 + i, roomCardsFull(g, session))).not.toBeNull();
+      expect(
+        sendCard(g, session, { to: [{ seat: P[i % 3] }], content: { saved: i % 2 ? 'sc2' : 'sc1' }, until: 'host' }, 1000 + i, roomCardsFull(g, session)),
+      ).not.toBeNull();
     }
     expect(roomCardCount(g, session)).toBe(CARDS_MAX);
     expect(roomCardsFull(g, session)).toBe(true);
@@ -1127,7 +1228,8 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
   /** Bob has the room's CARDS_MAX: Wild over and over, then the Tip; then ▶ Resume with my edits changes the Tip. */
   function fullThenEdited() {
     const { g, session } = setup();
-    const toBob = (saved: string, at: number) => sendCard(g, session, { to: [{ seat: 'b' }], content: { saved }, until: 'host' }, at, roomCardsFull(g, session));
+    const toBob = (saved: string, at: number) =>
+      sendCard(g, session, { to: [{ seat: 'b' }], content: { saved }, until: 'host' }, at, roomCardsFull(g, session));
     for (let i = 0; i < CARDS_MAX - 1; i++) expect(toBob('sc1', 1000 + i)).not.toBeNull();
     const tip = toBob('sc2', 2000)!;
     const first = session.cards![0];

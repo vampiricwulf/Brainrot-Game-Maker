@@ -16,7 +16,17 @@ function setup(): { game: Game; session: Session } {
     { id: 'potion', name: 'Potion', stackable: true, price: 4 },
     { id: 'sword', name: 'Sword', stackable: false, price: 12 },
   ];
-  game.shops = [{ id: 'village', name: 'Village', currency: 'gold', stock: [{ item: 'sword', qty: 1 }, { item: 'potion', price: 3, qty: null }] }];
+  game.shops = [
+    {
+      id: 'village',
+      name: 'Village',
+      currency: 'gold',
+      stock: [
+        { item: 'sword', qty: 1 },
+        { item: 'potion', price: 3, qty: null },
+      ],
+    },
+  ];
   return { game, session: newSession(game) };
 }
 

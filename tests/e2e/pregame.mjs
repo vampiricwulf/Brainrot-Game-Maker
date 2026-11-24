@@ -4,7 +4,32 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, answerAsk, exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer, showChecklist, assert, launchChromium, boardIn, boardTilesIn, confirmStrip, hostPanelIn, playerRowsIn, roundNavIn, roundTabsIn, stageBoxIn, statusBarIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  answerAsk,
+  exportHtml,
+  noDailyDoubles,
+  noSelection,
+  openOnStream,
+  openRules,
+  openStartScores,
+  selectedWords,
+  leaveAnswer,
+  showChecklist,
+  assert,
+  launchChromium,
+  boardIn,
+  boardTilesIn,
+  confirmStrip,
+  hostPanelIn,
+  playerRowsIn,
+  roundNavIn,
+  roundTabsIn,
+  stageBoxIn,
+  statusBarIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -43,7 +68,8 @@ try {
   await page.getByRole('button', { name: '🔊 Sounds' }).click();
   const playersNav = page.locator('nav [data-nav="players"]');
   assert(
-    (await playersNav.evaluate((b) => b.previousElementSibling?.textContent?.trim())) === 'Game' && (await playersNav.innerText()).startsWith('👥 Players & rules ▶'),
+    (await playersNav.evaluate((b) => b.previousElementSibling?.textContent?.trim())) === 'Game' &&
+      (await playersNav.innerText()).startsWith('👥 Players & rules ▶'),
     '👥 Players & rules ▶ comes first in the editor’s Game list',
   );
   assert((await playersNav.getAttribute('title')).includes('doesn’t start until you press Start game ▶'), 'its tooltip says nothing starts until Start game ▶');
@@ -59,7 +85,10 @@ try {
   await elsewhere.waitFor();
   const note = await elsewhere.innerText();
   assert(
-    note.includes('⚖ Game rules') && note.includes('👥 Players & rules ▶') && (await elsewhere.getByRole('button').count()) === 0 && (await elsewhere.boundingBox()).height < 40,
+    note.includes('⚖ Game rules') &&
+      note.includes('👥 Players & rules ▶') &&
+      (await elsewhere.getByRole('button').count()) === 0 &&
+      (await elsewhere.boundingBox()).height < 40,
     `🔊 Sounds says in one line where the players and rules are (${note})`,
   );
   assert((await page.getByRole('button', { name: /^Back to the built-in .* sound$/ }).count()) === 0, '(no ↺ until a sound has a file of its own)');
@@ -75,7 +104,10 @@ try {
   await page.keyboard.type('Cy');
   await page.waitForTimeout(900);
   assert((await names()).join() === 'Bo,Cy', 'Enter in a name adds the next player, typing in their name');
-  assert((await page.getByRole('button', { name: 'Move Bo down' }).count()) === 1 && (await page.getByRole('button', { name: 'Move Cy up' }).count()) === 1, '▲/▼ say whose they are');
+  assert(
+    (await page.getByRole('button', { name: 'Move Bo down' }).count()) === 1 && (await page.getByRole('button', { name: 'Move Cy up' }).count()) === 1,
+    '▲/▼ say whose they are',
+  );
   // ▲▼ with the keyboard: the keys stay on the moved row's arrow (the other one at an end), so Enter moves it again.
   await page.getByRole('button', { name: 'Move Bo down' }).focus();
   await page.keyboard.press('Enter');
@@ -92,7 +124,12 @@ try {
   });
   assert(true, 'F2 in a player’s row (on its ▼) renames them: the keys go to their name, ready to type over');
   // Wide windows put the rules beside the players: a player's row still fits on one line there.
-  for (const [width, height] of [[1280, 720], [1366, 768], [1400, 900], [1920, 1080]]) {
+  for (const [width, height] of [
+    [1280, 720],
+    [1366, 768],
+    [1400, 900],
+    [1920, 1080],
+  ]) {
     await page.setViewportSize({ width, height });
     const nameBox = await page.getByLabel('Player 1 name').boundingBox();
     const del = await page.getByRole('button', { name: 'Delete Bo' }).boundingBox();
@@ -109,7 +146,10 @@ try {
     return Math.round(b.y + b.height / 2);
   };
   const moves = [await mid('Move Bo up'), await mid('Move Bo down'), await mid('Delete Bo')];
-  assert(moves.every((y) => y === moves[0]), `at 600px a player's ▲ ▼ 🗑 stay together on one line (${moves.join(' / ')})`);
+  assert(
+    moves.every((y) => y === moves[0]),
+    `at 600px a player's ▲ ▼ 🗑 stay together on one line (${moves.join(' / ')})`,
+  );
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // ---------- The sticky Start bar, with ⚖ Game rules open, at 1280×720 ----------
@@ -124,19 +164,30 @@ try {
   assert(startBox.y + startBox.height <= 720 && onTop, 'Start game ▶ is in view at the foot of the window with the rules open');
   // The notes beside it (the checks' ℹ pointer, a room's line) wrap in their own room: Start stays at the right, on Back's line.
   const backBox = await back.boundingBox();
-  assert(Math.abs(backBox.y + backBox.height / 2 - (startBox.y + startBox.height / 2)) < 4 && startBox.x + startBox.width > 1280 - 40, 'Start game ▶ stays at the right end of the bar, level with ◀ Back');
+  assert(
+    Math.abs(backBox.y + backBox.height / 2 - (startBox.y + startBox.height / 2)) < 4 && startBox.x + startBox.width > 1280 - 40,
+    'Start game ▶ stays at the right end of the bar, level with ◀ Back',
+  );
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways scrolling');
   // 📺 On stream folds (rare setup), its line saying what's set; open, its options read at the size of the rules'
   // beside them, not as fine print.
   const streamFold = page.locator('[data-stream-fold]');
   assert(
-    (await streamFold.evaluate((d) => !d.open)) && (await streamFold.locator('summary').innerText()).includes('📺 On stream · “Starting soon” card · cover card'),
+    (await streamFold.evaluate((d) => !d.open)) &&
+      (await streamFold.locator('summary').innerText()).includes('📺 On stream · “Starting soon” card · cover card'),
     `📺 On stream starts folded, saying what's set (${await streamFold.locator('summary').innerText()})`,
   );
   await openOnStream(page);
   const textSize = (box) => box.evaluate((el) => getComputedStyle(el.closest('label')).fontSize);
-  const sizes = await Promise.all([rules.getByLabel('Allow negative scores'), page.getByLabel(/Show the category and value on clue screens/), page.getByLabel(/Reduce motion on stream/)].map(textSize));
-  assert(sizes.every((x) => x === sizes[0]), `📺 On stream's options are the size of the rules' (${sizes.join(' / ')})`);
+  const sizes = await Promise.all(
+    [rules.getByLabel('Allow negative scores'), page.getByLabel(/Show the category and value on clue screens/), page.getByLabel(/Reduce motion on stream/)].map(
+      textSize,
+    ),
+  );
+  assert(
+    sizes.every((x) => x === sizes[0]),
+    `📺 On stream's options are the size of the rules' (${sizes.join(' / ')})`,
+  );
 
   // ---------- Rules: whole-second countdown ----------
   const countdown = rules.getByLabel(/Default clue countdown/);
@@ -175,7 +226,10 @@ try {
   await back.click();
   await page.getByRole('button', { name: /🕘 History/ }).click();
   const labels = await historyLabels();
-  assert(labels.some((l) => l.startsWith('Added player “Bo”')) && labels.some((l) => l.startsWith('Added player “Cy”')), `each player added and named is one step, by their name (${labels.join(' | ')})`);
+  assert(
+    labels.some((l) => l.startsWith('Added player “Bo”')) && labels.some((l) => l.startsWith('Added player “Cy”')),
+    `each player added and named is one step, by their name (${labels.join(' | ')})`,
+  );
   assert(!labels.some((l) => l.includes('“Player 2”')), 'no step is called by a default name typed over');
   const cyRow = page.locator('.hist .hr').filter({ hasText: 'Added player “Cy”' }).first();
   await cyRow.hover();
@@ -200,11 +254,11 @@ try {
   // (Folded away behind ± Start scores while every one is 0: a new host takes the column for the live score.)
   assert((await page.locator('.pregame .player input.score').count()) === 0, 'start scores at 0 are folded away behind ± Start scores');
   await openStartScores(page);
-  const boStart = page.getByLabel('Bo\'s start score');
+  const boStart = page.getByLabel("Bo's start score");
   await boStart.fill('250.5');
   await boStart.press('Tab');
   assert((await boStart.inputValue()) === '251', 'a start score with a fraction becomes whole points once typed (250.5 → 251)');
-  const cyStart = page.getByLabel('Cy\'s start score');
+  const cyStart = page.getByLabel("Cy's start score");
   await cyStart.fill('99999999999999999999');
   await cyStart.press('Tab');
   assert((await cyStart.inputValue()) === '1000000000000', 'and one past the most points reads as the most (1,000,000,000,000)');
@@ -213,7 +267,10 @@ try {
   // ---------- ? lists the keys, this screen's first (typed in a name, it's a question mark) ----------
   await cy.press('End');
   await cy.press('?');
-  assert((await cy.inputValue()) === 'Cy?' && (await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).count()) === 0, "'?' typed in a name is just a question mark");
+  assert(
+    (await cy.inputValue()) === 'Cy?' && (await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).count()) === 0,
+    "'?' typed in a name is just a question mark",
+  );
   await cy.press('Backspace');
   // (From a box just ticked, and ticked back: it keeps no text, so ? lists the keys there too, as in the game.)
   const caption = page.getByLabel(/Show the category and value on clue screens/);
@@ -223,7 +280,10 @@ try {
   const keyList = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await keyList.waitFor();
   const firstKeys = await keyList.locator('section').first().textContent();
-  assert(firstKeys.startsWith('Before the game') && firstKeys.includes('Ctrl+Enter'), `? on the pre-game screen (the focus on a box just ticked) lists the keys, its own first (${firstKeys.slice(0, 40)})`);
+  assert(
+    firstKeys.startsWith('Before the game') && firstKeys.includes('Ctrl+Enter'),
+    `? on the pre-game screen (the focus on a box just ticked) lists the keys, its own first (${firstKeys.slice(0, 40)})`,
+  );
   await page.keyboard.press('?');
   await keyList.waitFor({ state: 'detached' });
   // ---------- Ctrl+Enter starts the game, from a name being typed in (which keeps the typing) ----------
@@ -231,7 +291,7 @@ try {
   await page.keyboard.type('z');
   await page.keyboard.press('Control+Enter');
   await page.getByRole('button', { name: 'Skip intro' }).waitFor();
-  assert(await page.locator('.pregame').count() === 0, 'Ctrl+Enter starts the game');
+  assert((await page.locator('.pregame').count()) === 0, 'Ctrl+Enter starts the game');
   await page.getByRole('button', { name: 'Skip intro' }).click();
   assert((await page.locator('main.play').innerText()).includes('Cyz'), 'with the name just typed in (Cyz)');
   assert((await stageBoxIn(page).locator('.plate', { hasText: 'Bo' }).locator('.score').innerText()) === '$251', 'Bo starts on the whole start score ($251)');
@@ -297,17 +357,23 @@ try {
   await page.waitForTimeout(900);
   await back.click();
   await page.getByRole('button', { name: /🕘 History/ }).click();
-  assert((await historyLabels()).some((l) => l.startsWith('Rule: Most players')), 'a rule changed mid-game is kept with the game in the editor (a step in 🕘 History)');
+  assert(
+    (await historyLabels()).some((l) => l.startsWith('Rule: Most players')),
+    'a rule changed mid-game is kept with the game in the editor (a step in 🕘 History)',
+  );
   await play.click();
   await start.waitFor();
-  assert((await names()).join() === 'Bo,Cyd' && (await page.getByRole('button', { name: 'Picture for Bo' }).locator('img').count()) === 1, 'and the game keeps Bo’s picture after the rematch’s roster changes');
+  assert(
+    (await names()).join() === 'Bo,Cyd' && (await page.getByRole('button', { name: 'Picture for Bo' }).locator('img').count()) === 1,
+    'and the game keeps Bo’s picture after the rematch’s roster changes',
+  );
   await back.click();
 
   // ---------- The game's name: a note in the editor's checklist, renamed right on the pre-game screen ----------
   const untitledLine = page.locator('nav .problem', { hasText: 'still called “Untitled Game”' });
   await showChecklist(page);
   await untitledLine.waitFor();
-  assert(true, 'the editor\'s checklist notes a game still called “Untitled Game”');
+  assert(true, "the editor's checklist notes a game still called “Untitled Game”");
   await untitledLine.click();
   assert(await page.locator('input[data-place="title"]').evaluate((e) => e === document.activeElement), 'its line goes to the title box');
   await play.click();
@@ -316,7 +382,10 @@ try {
   await page.getByRole('button', { name: '✎ Rename' }).click();
   await page.getByLabel('Game title').fill('Meme Night');
   await page.keyboard.press('Enter');
-  assert((await page.locator('.pregame h1').innerText()) === 'Meme Night' && (await page.locator('[data-warn="untitled"]').count()) === 0, '✎ Rename names the game right there');
+  assert(
+    (await page.locator('.pregame h1').innerText()) === 'Meme Night' && (await page.locator('[data-warn="untitled"]').count()) === 0,
+    '✎ Rename names the game right there',
+  );
   // Renamed, then a player's name box clicked: the typing goes there (the title doesn't take the keys back).
   await page.getByRole('button', { name: '✎ Rename' }).click();
   await page.getByLabel('Game title').fill('Meme Night 2');
@@ -325,7 +394,10 @@ try {
   await page.keyboard.type('b');
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Player 1 name' && document.activeElement.value === 'Bob');
   await page.keyboard.press('Backspace');
-  assert((await page.locator('.pregame h1').innerText()) === 'Meme Night 2' && (await bo.inputValue()) === 'Bo', 'renamed, then a player’s name box clicked: the typing goes there');
+  assert(
+    (await page.locator('.pregame h1').innerText()) === 'Meme Night 2' && (await bo.inputValue()) === 'Bo',
+    'renamed, then a player’s name box clicked: the typing goes there',
+  );
   // A double-click on the title renames it too, and so does F2 with the keys on it (where ▶ Play puts them).
   const titleBox = page.getByLabel('Game title');
   await page.locator('.pregame h1').dblclick();
@@ -333,7 +405,13 @@ try {
   await titleBox.press('Escape');
   await page.locator('.pregame h1').focus();
   await page.keyboard.press('F2');
-  assert(await titleBox.waitFor({ timeout: 3000 }).then(() => true, () => false), 'a double-click on the game’s title, or F2 with the keys on it, renames it');
+  assert(
+    await titleBox.waitFor({ timeout: 3000 }).then(
+      () => true,
+      () => false,
+    ),
+    'a double-click on the game’s title, or F2 with the keys on it, renames it',
+  );
   await titleBox.press('Escape');
   await page.screenshot({ path: 'test-results/pregame-golive.png' });
 
@@ -341,7 +419,8 @@ try {
   const beforeCard = page.locator('section.before-start');
   const live = beforeCard.locator('.live-check');
   assert(
-    (await live.locator('li').first().innerText()).startsWith('🖥 Viewers see this page now') && (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1,
+    (await live.locator('li').first().innerText()).startsWith('🖥 Viewers see this page now') &&
+      (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1,
     'in one window, ✅ Before you start leads with “Viewers see this page now”, and has the one 🔊 Test the sound… on the screen',
   );
   const playersBox = await page.locator('[data-place="play:players"]').boundingBox();
@@ -372,22 +451,39 @@ try {
   // A tall window: the Start bar rests at its foot, not under the last card.
   await page.setViewportSize({ width: 1920, height: 1080 });
   const tallBar = await page.locator('.pregame .actions').boundingBox();
-  assert(Math.abs(tallBar.y + tallBar.height - 1080) <= 1, `1920×1080: the Start bar rests at the window’s foot (its bottom at ${Math.round(tallBar.y + tallBar.height)}px)`);
+  assert(
+    Math.abs(tallBar.y + tallBar.height - 1080) <= 1,
+    `1920×1080: the Start bar rests at the window’s foot (its bottom at ${Math.round(tallBar.y + tallBar.height)}px)`,
+  );
   await page.setViewportSize({ width: 1280, height: 720 });
   await live.getByRole('button', { name: 'Hide the On stream tips' }).click();
-  assert((await live.count()) === 0 && (await beforeCard.locator('[data-checks]').count()) === 1 && (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1, '✕ folds the On stream tips only (the game’s checks and 🔊 Test the sound… stay)');
+  assert(
+    (await live.count()) === 0 &&
+      (await beforeCard.locator('[data-checks]').count()) === 1 &&
+      (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1,
+    '✕ folds the On stream tips only (the game’s checks and 🔊 Test the sound… stay)',
+  );
   await beforeCard.getByRole('button', { name: 'Show them' }).click();
   assert((await live.count()) === 1, 'and Show them brings them back');
 
   // ---------- The display picked is remembered: the audience window opens with Start ----------
   const [aud1] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
-  assert((await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).display)) === 'audience', 'picking the audience window is remembered on this computer');
+  assert(
+    (await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).display)) === 'audience',
+    'picking the audience window is remembered on this computer',
+  );
   // (Its page loaded first: a look into it before its app starts counts as a click there, as audio.mjs explains.)
   await aud1.waitForLoadState('domcontentloaded');
   await aud1.getByText('🔊 Click to enable sound').waitFor();
   const lineup = await aud1.locator('.lineup .lineup-name').allInnerTexts();
-  assert(lineup.length > 0 && JSON.stringify(lineup) === JSON.stringify(await names()), `the Starting soon card on stream lists who's playing (${lineup.join(', ')})`);
-  assert((await page.locator('.live-check li[data-check="sound-click"]').getAttribute('class')).split(' ').every((c) => c !== 'done'), 'the checklist asks for a click in the audience window');
+  assert(
+    lineup.length > 0 && JSON.stringify(lineup) === JSON.stringify(await names()),
+    `the Starting soon card on stream lists who's playing (${lineup.join(', ')})`,
+  );
+  assert(
+    (await page.locator('.live-check li[data-check="sound-click"]').getAttribute('class')).split(' ').every((c) => c !== 'done'),
+    'the checklist asks for a click in the audience window',
+  );
   await aud1.mouse.click(300, 300);
   await page.locator('.live-check li.done[data-check="sound-click"]').waitFor();
   assert((await aud1.locator('.activate').count()) === 0, 'a click there takes its “Click to enable sound” away, and the host gets a ✓');
@@ -426,7 +522,10 @@ try {
   await play.click();
   const resumeCard = page.locator('.resume-card');
   await resumeCard.waitFor();
-  assert((await page.getByRole('alertdialog').count()) === 0 && (await resumeCard.innerText()).includes('Meme Night'), '▶ Play asks nothing: the pre-game screen offers the kept game');
+  assert(
+    (await page.getByRole('alertdialog').count()) === 0 && (await resumeCard.innerText()).includes('Meme Night'),
+    '▶ Play asks nothing: the pre-game screen offers the kept game',
+  );
   // "Resume with my edits" follows the editor's game, a moment after a change (App works it out, not each key here): a
   // player renamed here changes it, and named back, doesn't.
   const withEdits = resumeCard.getByRole('button', { name: 'Resume with my edits' });
@@ -448,8 +547,14 @@ try {
   await page.getByRole('button', { name: /Exit/ }).first().click();
   // Exit asks Stay · Discard & leave · Keep & leave: the one that throws the game away in red, set apart from Keep.
   const discardLeave = page.getByRole('button', { name: 'Discard & leave', exact: true });
-  const [discardColor, discardGap] = await discardLeave.evaluate((b) => [getComputedStyle(b).color, b.nextElementSibling.getBoundingClientRect().left - b.getBoundingClientRect().right]);
-  assert(discardColor === 'rgb(255, 107, 107)' && discardGap >= 14, `Exit's Discard & leave is red and set apart from Keep & leave (${discardColor}, ${discardGap}px)`);
+  const [discardColor, discardGap] = await discardLeave.evaluate((b) => [
+    getComputedStyle(b).color,
+    b.nextElementSibling.getBoundingClientRect().left - b.getBoundingClientRect().right,
+  ]);
+  assert(
+    discardColor === 'rgb(255, 107, 107)' && discardGap >= 14,
+    `Exit's Discard & leave is red and set apart from Keep & leave (${discardColor}, ${discardGap}px)`,
+  );
   await answerAsk(discardLeave);
   await page.getByRole('button', { name: /▶ Test this round/ }).waitFor();
   assert((await kept.count()) === 0, 'Discard & leave keeps nothing to resume');
@@ -471,14 +576,14 @@ try {
   await noDailyDoubles(page);
   const second = roundTabsIn(page).nth(1);
   await second.click({ button: 'right' });
-  assert((await page.getByRole('menuitem', { name: '▶ Test this round' }).count()) === 1, 'a round tab\'s right-click menu has ▶ Test this round');
+  assert((await page.getByRole('menuitem', { name: '▶ Test this round' }).count()) === 1, "a round tab's right-click menu has ▶ Test this round");
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '▶ Test this round' }).click();
   await roundNavIn(page).locator('.test').waitFor();
   assert((await roundNavIn(page).locator('.test').innerText()).includes('Testing this round'), 'the round plays at once, marked 🧪 Testing this round');
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await boardIn(page).waitFor();
-  assert((await playerRowsIn(page).count()) === 2, 'with the game\'s players');
+  assert((await playerRowsIn(page).count()) === 2, "with the game's players");
   // Its end screen has no ▶ Next game… (that would keep the throwaway test as the game to resume).
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'End game ▶' }).click();
@@ -518,7 +623,9 @@ try {
   await start.click();
   const noRoom = page.locator('.actions .ia');
   await noRoom.getByText("Phone buzzers are on, but the buzzer room isn't started").waitFor();
-  const noRoomButtons = await noRoom.getByRole('button').evaluateAll((bs) => bs.map((b) => `${b.textContent.trim()}${b.classList.contains('primary') ? ' (filled)' : ''}`));
+  const noRoomButtons = await noRoom
+    .getByRole('button')
+    .evaluateAll((bs) => bs.map((b) => `${b.textContent.trim()}${b.classList.contains('primary') ? ' (filled)' : ''}`));
   assert(
     noRoomButtons.join(' | ') === 'Not yet | 📱 Start the room (filled) | Start without phones',
     `Start with phone buzzers on and no room asks: Not yet, 📱 Start the room (the one to press), or Start without phones, plain (${noRoomButtons.join(' | ')})`,
@@ -531,7 +638,10 @@ try {
   await page.getByRole('button', { name: 'Skip intro' }).click();
   const phonesChip = hostPanelIn(page).locator('.chip', { hasText: '📱 Phones off' });
   await phonesChip.waitFor();
-  assert((await phonesChip.getAttribute('title')) === 'No buzzer room: click to start one', 'Start without phones plays on; the 📱 Phones off chip says “No buzzer room: click to start one”');
+  assert(
+    (await phonesChip.getAttribute('title')) === 'No buzzer room: click to start one',
+    'Start without phones plays on; the 📱 Phones off chip says “No buzzer room: click to start one”',
+  );
   await page.getByRole('button', { name: /Exit/ }).first().click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Discard & leave', exact: true }).click();
@@ -542,28 +652,46 @@ try {
   await page.reload();
   await play.click();
   const phoneCard = page.locator('section[aria-label="Phone buzzers"]');
-  assert((await phoneCard.innerText()).includes('once phone buzzers are set up. Until then you pick who answers'), 'the 📱 card says, in plain words, phones need setting up (you pick who answers)');
+  assert(
+    (await phoneCard.innerText()).includes('once phone buzzers are set up. Until then you pick who answers'),
+    'the 📱 card says, in plain words, phones need setting up (you pick who answers)',
+  );
   // ⚙ Set up phone buzzers… opens ⚙ Settings right here, at its phone buzzers.
   await phoneCard.getByRole('button', { name: '⚙ Set up phone buzzers…' }).click();
   const settingsDlg = page.getByRole('dialog', { name: 'Settings' });
   await settingsDlg.waitFor();
-  assert(await settingsDlg.getByLabel('Buzzer server').evaluate((e) => e === document.activeElement), '⚙ Set up phone buzzers… opens Settings with the buzzer server box ready');
+  assert(
+    await settingsDlg.getByLabel('Buzzer server').evaluate((e) => e === document.activeElement),
+    '⚙ Set up phone buzzers… opens Settings with the buzzer server box ready',
+  );
   // Scrolled only as far as its phone buzzers need: the box in sight, and the window's title and ✕ not cut off at its top.
   const inSight = await settingsDlg.evaluate((d) => {
     const box = d.getBoundingClientRect();
     const r = (sel) => d.querySelector(sel).getBoundingClientRect();
-    return { x: r('.modal-x').top - box.top, field: r('input[aria-label="Buzzer server"]').bottom <= box.bottom, top: d.scrollTop, room: d.scrollHeight - d.clientHeight };
+    return {
+      x: r('.modal-x').top - box.top,
+      field: r('input[aria-label="Buzzer server"]').bottom <= box.bottom,
+      top: d.scrollTop,
+      room: d.scrollHeight - d.clientHeight,
+    };
   });
   assert(inSight.field && inSight.x >= 0, `Settings at its phone buzzers: the box in sight, scrolled no further than it needs (${JSON.stringify(inSight)})`);
   const guide = settingsDlg.getByRole('link', { name: /How to set up your own/ });
-  assert((await guide.getAttribute('href')).endsWith('Brainrot-Game-Maker/blob/main/docs/buzzer-server.md'), 'and links to the guide to setting up your own buzzer server');
+  assert(
+    (await guide.getAttribute('href')).endsWith('Brainrot-Game-Maker/blob/main/docs/buzzer-server.md'),
+    'and links to the guide to setting up your own buzzer server',
+  );
   await settingsDlg.getByRole('button', { name: 'Done' }).click();
   await start.click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await boardTilesIn(boardIn(page)).first().click();
-  await page.getByRole('button', { name: /Reveal|Show answer/ }).first().waitFor();
+  await page
+    .getByRole('button', { name: /Reveal|Show answer/ })
+    .first()
+    .waitFor();
   assert(
-    (await page.getByRole('button', { name: '↺ Reset buzzers' }).count()) === 0 && (await page.getByRole('button', { name: '🔔 Open the buzzers' }).count()) === 0,
+    (await page.getByRole('button', { name: '↺ Reset buzzers' }).count()) === 0 &&
+      (await page.getByRole('button', { name: '🔔 Open the buzzers' }).count()) === 0,
     'and the clue has no buzzer buttons: the host picks who answers',
   );
   await page.getByRole('button', { name: /Exit/ }).first().click();
@@ -585,7 +713,10 @@ try {
   assert((await player.getByRole('main').locator('h1').count()) === 1, 'its start screen is the page’s main part, for a screen reader to jump to');
   await player.getByRole('button', { name: '▶ Play' }).click();
   const card = await player.locator('section[aria-label="Phone buzzers"]').innerText();
-  assert(card.includes('This file has no phone buzzers') && !card.includes('⚙') && !card.includes('Settings') && !card.includes('editor'), `the player-only file says it has no phone buzzers, and doesn't send anyone to the editor (${card.replace(/\s+/g, ' ')})`);
+  assert(
+    card.includes('This file has no phone buzzers') && !card.includes('⚙') && !card.includes('Settings') && !card.includes('editor'),
+    `the player-only file says it has no phone buzzers, and doesn't send anyone to the editor (${card.replace(/\s+/g, ' ')})`,
+  );
   // Players and rules set up there stay through ◀ Back and ▶ Play again (the file's own copy of the game keeps them).
   const playerNames = () => player.locator('.pregame .player input.name').evaluateAll((els) => els.map((e) => e.value));
   const mostBox = (await openRules(player)).getByLabel('Most players');
@@ -604,7 +735,10 @@ try {
   await player.evaluate(() => document.activeElement?.blur());
   await player.keyboard.press('?');
   const fileKeys = player.getByRole('dialog', { name: 'Keyboard shortcuts' });
-  const before = await fileKeys.locator('section').filter({ has: player.getByRole('heading', { name: 'Before the game', exact: true }) }).innerText();
+  const before = await fileKeys
+    .locator('section')
+    .filter({ has: player.getByRole('heading', { name: 'Before the game', exact: true }) })
+    .innerText();
   assert(before.includes('Ctrl+Enter') && !before.includes('Ctrl+Z'), `its ? list leaves out Ctrl+Z / Ctrl+Y before the game (${before.replace(/\s+/g, ' ')})`);
   await player.keyboard.press('Escape');
   await fileKeys.waitFor({ state: 'detached' });
@@ -615,7 +749,10 @@ try {
   assert((await player.locator('.home h1').innerText()) === 'Friday Quiz', 'its start screen has the name given on the pre-game screen');
   await player.getByRole('button', { name: '▶ Play' }).click();
   await player.getByRole('button', { name: 'Start game ▶' }).waitFor();
-  assert(setUp.at(-1) === 'Zed' && (await playerNames()).join() === setUp.join(), `a player-only file keeps the players set up through ◀ Back and ▶ Play (${setUp.join(', ')})`);
+  assert(
+    setUp.at(-1) === 'Zed' && (await playerNames()).join() === setUp.join(),
+    `a player-only file keeps the players set up through ◀ Back and ▶ Play (${setUp.join(', ')})`,
+  );
   assert((await (await openRules(player)).getByLabel('Most players').inputValue()) === mostSet, `…and the rules (Most players ${mostSet})`);
   assert((await player.locator('.pregame h1').innerText()) === 'Friday Quiz', '…and the name');
   await player.close();
@@ -641,8 +778,14 @@ try {
   await p2.getByRole('button', { name: '▶ Play', exact: true }).click();
   const pointer = p2.locator('.actions [data-checks-pointer]');
   await pointer.getByText('ℹ 1 note').waitFor();
-  assert((await p2.getByRole('button', { name: /to check/ }).count()) === 0, 'a Daily Double Start places is a note (the bar’s pointer: ℹ 1 note), not “⚠ 1 to check”');
-  assert((await p2.locator('[data-checks] li').first().innerText()).startsWith('ℹ Jeopardy!: 1 Daily Double not placed yet'), 'its line in ✅ Before you start says ℹ, as the editor does');
+  assert(
+    (await p2.getByRole('button', { name: /to check/ }).count()) === 0,
+    'a Daily Double Start places is a note (the bar’s pointer: ℹ 1 note), not “⚠ 1 to check”',
+  );
+  assert(
+    (await p2.locator('[data-checks] li').first().innerText()).startsWith('ℹ Jeopardy!: 1 Daily Double not placed yet'),
+    'its line in ✅ Before you start says ℹ, as the editor does',
+  );
   await p2.getByRole('button', { name: '◀ Back to editor' }).click();
   await p2.getByRole('button', { name: '▶ Play', exact: true }).waitFor();
   assert((await tabShown()).includes('Theme'), '◀ Back to editor opens the tab ▶ Play was pressed on (🎨 Theme)');
@@ -656,7 +799,11 @@ try {
   await p2.waitForFunction(() => document.activeElement?.matches('[data-checks]'));
   // Each line has its own Fix › (not the 🎲 Place now notes), and ◀ Fix in editor stays.
   const finalLine = p2.locator('[data-checks] li', { hasText: 'Final Jeopardy!' });
-  assert((await finalLine.getByRole('button', { name: 'Fix ›' }).count()) === 1 && (await p2.locator('[data-checks] li', { hasText: 'Daily Double not placed yet' }).getByRole('button', { name: 'Fix ›' }).count()) === 0, 'a warning’s line has its own Fix ›; a note Start takes care of has 🎲 Place now instead');
+  assert(
+    (await finalLine.getByRole('button', { name: 'Fix ›' }).count()) === 1 &&
+      (await p2.locator('[data-checks] li', { hasText: 'Daily Double not placed yet' }).getByRole('button', { name: 'Fix ›' }).count()) === 0,
+    'a warning’s line has its own Fix ›; a note Start takes care of has 🎲 Place now instead',
+  );
   await p2.getByRole('button', { name: '◀ Fix in editor' }).click();
   await p2.waitForFunction(() => document.activeElement?.matches('main [data-field="a"]'), null, { timeout: 3000 }).catch(() => {});
   assert(
@@ -676,13 +823,18 @@ try {
   const editorWarns = (await p2.locator('nav .problems > .fold').innerText()).match(/⚠ (\d+)/)?.[1];
   await p2.getByRole('button', { name: '▶ Play', exact: true }).click();
   await pointer.getByText(/to check/).waitFor();
-  assert((await pointer.innerText()) === `⚠ ${editorWarns} to check`, `the bar by Start game counts what the editor's checklist does (⚠ ${editorWarns}: ${await pointer.innerText()})`);
+  assert(
+    (await pointer.innerText()) === `⚠ ${editorWarns} to check`,
+    `the bar by Start game counts what the editor's checklist does (⚠ ${editorWarns}: ${await pointer.innerText()})`,
+  );
   const tileLine = p2.locator('[data-checks] li', { hasText: 'Jeopardy!: 1 clue to finish' });
   await tileLine.waitFor();
   const said = await tileLine.innerText();
   const tip = (await tileLine.locator('span').first().getAttribute('title')) ?? '';
   assert(
-    said.startsWith('Jeopardy!: 1 clue to finish') && !/\$\d/.test(said + tip) && tip.includes("A tile in Jeopardy!: card 1 is empty: there's nothing on it to send"),
+    said.startsWith('Jeopardy!: 1 clue to finish') &&
+      !/\$\d/.test(said + tip) &&
+      tip.includes("A tile in Jeopardy!: card 1 is empty: there's nothing on it to send"),
     `the partner clue's empty card is the board's one line, as in the editor; in one window neither it nor its tooltip names the tile (${said} / ${tip})`,
   );
   // (Its Fix › goes where the editor's line goes: the board's first tile to finish, the partner clue.)

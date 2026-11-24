@@ -74,7 +74,8 @@ export function createMidgame(host: MidgameHost) {
     popupNonce = o.nonce;
     popupTurn = untrack(() => bgAmountKey);
     if (typeof o.value === 'number') untrack(() => (host.amount = o.value!));
-    if (session.phase === 'boardgame' && typeof o.value === 'number' && o.value > 0 && o.answer) bgQuestion = { value: o.value, at: o.at ?? Date.now(), turn: popupTurn };
+    if (session.phase === 'boardgame' && typeof o.value === 'number' && o.value > 0 && o.answer)
+      bgQuestion = { value: o.value, at: o.at ?? Date.now(), turn: popupTurn };
   });
 
   /** G / Numpad 5: everyone back together (with one party there's nothing to do: it says so). */
@@ -95,7 +96,10 @@ export function createMidgame(host: MidgameHost) {
     if (o?.kind === 'sheet' && o.playerId === id) app.live.overlay = null;
     else if (o?.kind === 'scoreboard' && o.under?.kind === 'sheet' && o.under.playerId === id) o.under = undefined;
     // The partner clue's picker or partner: it goes back to choosing (PARTNER UP! on stream again, its countdown gone).
-    const pt = partner && (partner.pickerId === id || partner.partnerId === id) ? { picker: partner.pickerId === id, name: playerName(session, id), stage: partner.stage } : null;
+    const pt =
+      partner && (partner.pickerId === id || partner.partnerId === id)
+        ? { picker: partner.pickerId === id, name: playerName(session, id), stage: partner.stage }
+        : null;
     if (pt) dropPartnerWheel();
     removePlayer(session, id);
     host.selected = selected.filter((x) => x !== id);
@@ -226,7 +230,13 @@ export function createMidgame(host: MidgameHost) {
       if (ways.length !== 1) {
         // (A player picked: Enter is their award.)
         if (selected.length) return false;
-        hint(ways.length ? stepWaysHint(round, bs, ways, dual) : at ? 'No way on from here: N for the next turn' : `${playerName(session, id ?? '')} isn’t on the board: N for the next turn`);
+        hint(
+          ways.length
+            ? stepWaysHint(round, bs, ways, dual)
+            : at
+              ? 'No way on from here: N for the next turn'
+              : `${playerName(session, id ?? '')} isn’t on the board: N for the next turn`,
+        );
         return true;
       }
       [steps, way] = [1, ways[0]];
@@ -277,7 +287,8 @@ export function createMidgame(host: MidgameHost) {
     if (!round || !bs) return;
     // (As Enter: the dice still going on screen, and a player in a zone, wait.)
     const o = toolOverlay(app.live);
-    if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return hint(`Still ${o.kind === 'dice' ? 'rolling' : 'spinning'}: wait for it to land`);
+    if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o))
+      return hint(`Still ${o.kind === 'dice' ? 'rolling' : 'spinning'}: wait for it to land`);
     const who = bs.fork?.playerId ?? currentPlayer(bs);
     const off = who ? offBoard(session, round, bs, who) : null;
     if (off) return hint(off);
@@ -327,13 +338,36 @@ export function createMidgame(host: MidgameHost) {
   }
 
   return {
-    get removing() { return removing; },
-    set removing(id: string | null) { removing = id; },
-    get removingPlayer() { return removingPlayer; },
-    get playersBox() { return playersBox; },
-    set playersBox(el: HTMLElement | undefined) { playersBox = el; },
-    get bgQuestion() { return bgQuestion; },
-    regroupKey, removeFromGame, keepPlayer, commitRoster, openPlayers, closePlayers, playersEsc,
-    boardEnter, boardMover, boardTurn, boardMoveBy, boardLanding, boardEditKey,
+    get removing() {
+      return removing;
+    },
+    set removing(id: string | null) {
+      removing = id;
+    },
+    get removingPlayer() {
+      return removingPlayer;
+    },
+    get playersBox() {
+      return playersBox;
+    },
+    set playersBox(el: HTMLElement | undefined) {
+      playersBox = el;
+    },
+    get bgQuestion() {
+      return bgQuestion;
+    },
+    regroupKey,
+    removeFromGame,
+    keepPlayer,
+    commitRoster,
+    openPlayers,
+    closePlayers,
+    playersEsc,
+    boardEnter,
+    boardMover,
+    boardTurn,
+    boardMoveBy,
+    boardLanding,
+    boardEditKey,
   };
 }

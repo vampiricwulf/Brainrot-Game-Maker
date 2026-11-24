@@ -69,7 +69,11 @@ export function phoneWord(s: SeatSeen, now: number): PhoneWord {
   if (s.phone === 'in') return { text: '📱 in', tone: 'good', title: 'Their phone is in the room' };
   if (s.phone === 'away') {
     const t = s.awaySince != null ? clock(now - s.awaySince) : '';
-    return { text: `📵 lost${t ? ` ${t}` : ''}`, tone: 'warn', title: `Their phone dropped out${t ? ` ${t} ago` : ''}: it comes back by itself (on a new phone: Free seat in 📱 Phone buzzers)` };
+    return {
+      text: `📵 lost${t ? ` ${t}` : ''}`,
+      tone: 'warn',
+      title: `Their phone dropped out${t ? ` ${t} ago` : ''}: it comes back by itself (on a new phone: Free seat in 📱 Phone buzzers)`,
+    };
   }
   if (s.kickedAt !== undefined && now - s.kickedAt < KICK_BLOCK_MS) {
     return {

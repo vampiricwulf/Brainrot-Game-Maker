@@ -365,8 +365,14 @@ export function createPregame(host: PregameHost) {
     // The warnings as the editor's checklist puts them, one line a round (and one for the tiebreaker), so the bar's
     // ⚠ 2 to check is the editor's ⚠ 2. Also in the words for one window, where this page is on stream: a line about a
     // tile, a secret space or object doesn't say which (the same lines, as they're grouped by where they are).
-    const lines = checklistLines(g, problems.map((p) => ({ ...p, text: said(p) })));
-    const hushed = checklistLines(g, problems.map((p) => ({ ...p, text: p.quiet ? said({ text: p.quiet.text, player: p.quiet.player ?? p.player }) : said(p) })));
+    const lines = checklistLines(
+      g,
+      problems.map((p) => ({ ...p, text: said(p) })),
+    );
+    const hushed = checklistLines(
+      g,
+      problems.map((p) => ({ ...p, text: p.quiet ? said({ text: p.quiet.text, player: p.quiet.player ?? p.player }) : said(p) })),
+    );
     // Daily Doubles and partner clues not placed yet: notes of their own, with 🎲 Place now (Start places them too).
     const unplaced = (p: Problem) => {
       const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;
@@ -401,7 +407,20 @@ export function createPregame(host: PregameHost) {
             const u = p.tab === line.tab ? unplaced(p) : null;
             if (!u) return [];
             const ri = p.tab as number;
-            return [{ text: said(p), quiet: undefined, details: undefined, quietDetails: undefined, level: p.level, fix: line.round, ddRound: u.dd ? ri : undefined, ptRound: u.pt ? ri : undefined, shrink: undefined, place: p.place }];
+            return [
+              {
+                text: said(p),
+                quiet: undefined,
+                details: undefined,
+                quietDetails: undefined,
+                level: p.level,
+                fix: line.round,
+                ddRound: u.dd ? ri : undefined,
+                ptRound: u.pt ? ri : undefined,
+                shrink: undefined,
+                place: p.place,
+              },
+            ];
           })
         : [];
       return [...warn, ...notes];
@@ -523,8 +542,16 @@ export function createPregame(host: PregameHost) {
 
   /** The settings ⚖ Game rules sets. */
   const RULES = [
-    'allowNegativeScores', 'deductOnWrong', 'pickerFollowsAward', 'currencySymbol', 'maxPlayers', 'defaultTimerSeconds', 'timerAutoStart',
-    'roundIntro', 'partnerSteal', 'wagerFloor',
+    'allowNegativeScores',
+    'deductOnWrong',
+    'pickerFollowsAward',
+    'currencySymbol',
+    'maxPlayers',
+    'defaultTimerSeconds',
+    'timerAutoStart',
+    'roundIntro',
+    'partnerSteal',
+    'wagerFloor',
   ] as const satisfies readonly (keyof GameSettings)[];
   // ⚖ Game rules changes the game being played (before it, or mid-game from the host panel); the editor's copy of
   // the game keeps each change (undoable there).
@@ -639,7 +666,13 @@ export function createPregame(host: PregameHost) {
     // A ticked box keeps no text: ? there lists them too, as in the game.
     if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.defaultPrevented) {
       const t = e.target instanceof Element ? e.target : null;
-      if (showSound || showSettings || shrinkDialog.open || t?.closest('input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable], [role="dialog"], [role="menu"]')) return;
+      if (
+        showSound ||
+        showSettings ||
+        shrinkDialog.open ||
+        t?.closest('input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable], [role="dialog"], [role="menu"]')
+      )
+        return;
       e.preventDefault();
       host.showKeys = true;
       return;
@@ -647,7 +680,13 @@ export function createPregame(host: PregameHost) {
     // A and Shift+A, as in the game: the audience window (opened, or brought forward; never closed) and the scores window.
     if (e.key.toLowerCase() === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && !e.defaultPrevented) {
       const t = e.target instanceof Element ? e.target : null;
-      if (showSound || showSettings || shrinkDialog.open || t?.closest('input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable], [role="dialog"], [role="menu"]')) return;
+      if (
+        showSound ||
+        showSettings ||
+        shrinkDialog.open ||
+        t?.closest('input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable], [role="dialog"], [role="menu"]')
+      )
+        return;
       e.preventDefault();
       if (e.shiftKey) openScores();
       else void openAudience();
@@ -802,43 +841,137 @@ export function createPregame(host: PregameHost) {
   });
 
   return {
-    get allIn() { return allIn; },
-    get asksNow() { return asksNow; },
-    get checks() { return checks; },
-    get checksReady() { return checksReady; },
-    get fixAt() { return fixAt; },
-    get joined() { return joined; },
-    get joinedText() { return joinedText; },
-    get keptGame() { return keptGame; },
-    get keptLoses() { return keptLoses; },
-    get keptRoom() { return keptRoom; },
-    get keptWhere() { return keptWhere; },
-    get phoneUsesNow() { return phoneUsesNow; },
-    get phonesIn() { return phonesIn; },
-    get pregameTeams() { return pregameTeams; },
-    get roomUp() { return roomUp; },
-    get rowPhone() { return rowPhone; },
-    get soonLeft() { return soonLeft; },
-    get stream() { return stream; },
-    get streamGistNow() { return streamGistNow; },
-    get untitled() { return untitled; },
-    get wantAudience() { return wantAudience; },
-    get warnings() { return warnings; },
-    get askCloseAud() { return askCloseAud; },
-    set askCloseAud(v: boolean) { askCloseAud = v; },
-    get renaming() { return renaming; },
-    set renaming(v: boolean) { renaming = v; },
-    get showSettings() { return showSettings; },
-    set showSettings(v: boolean) { showSettings = v; },
-    get startAsk() { return startAsk; },
-    set startAsk(v: typeof startAsk) { startAsk = v; },
-    get soonMinutes() { return soonMinutes; },
-    set soonMinutes(v: number) { soonMinutes = v; },
-    get roomLine() { return roomLine; },
-    set roomLine(v: HTMLElement | undefined) { roomLine = v; },
-    get roster() { return roster; },
-    set roster(v: typeof roster) { roster = v; },
-    addSamplePlayers, cardLabel, editorHasIt, fields, lineAnswer, partnerShort, pickDisplay, placeDailyDoubles, placePartnerTiles, pregameKey, raiseMost, recheckNow,
-    rename, resumeKept, showAsks, setStream, startAnyway, startClicked, startRoomHere, streamFold, teamMembers, tipsShown, titleFocus, toChecks,
+    get allIn() {
+      return allIn;
+    },
+    get asksNow() {
+      return asksNow;
+    },
+    get checks() {
+      return checks;
+    },
+    get checksReady() {
+      return checksReady;
+    },
+    get fixAt() {
+      return fixAt;
+    },
+    get joined() {
+      return joined;
+    },
+    get joinedText() {
+      return joinedText;
+    },
+    get keptGame() {
+      return keptGame;
+    },
+    get keptLoses() {
+      return keptLoses;
+    },
+    get keptRoom() {
+      return keptRoom;
+    },
+    get keptWhere() {
+      return keptWhere;
+    },
+    get phoneUsesNow() {
+      return phoneUsesNow;
+    },
+    get phonesIn() {
+      return phonesIn;
+    },
+    get pregameTeams() {
+      return pregameTeams;
+    },
+    get roomUp() {
+      return roomUp;
+    },
+    get rowPhone() {
+      return rowPhone;
+    },
+    get soonLeft() {
+      return soonLeft;
+    },
+    get stream() {
+      return stream;
+    },
+    get streamGistNow() {
+      return streamGistNow;
+    },
+    get untitled() {
+      return untitled;
+    },
+    get wantAudience() {
+      return wantAudience;
+    },
+    get warnings() {
+      return warnings;
+    },
+    get askCloseAud() {
+      return askCloseAud;
+    },
+    set askCloseAud(v: boolean) {
+      askCloseAud = v;
+    },
+    get renaming() {
+      return renaming;
+    },
+    set renaming(v: boolean) {
+      renaming = v;
+    },
+    get showSettings() {
+      return showSettings;
+    },
+    set showSettings(v: boolean) {
+      showSettings = v;
+    },
+    get startAsk() {
+      return startAsk;
+    },
+    set startAsk(v: typeof startAsk) {
+      startAsk = v;
+    },
+    get soonMinutes() {
+      return soonMinutes;
+    },
+    set soonMinutes(v: number) {
+      soonMinutes = v;
+    },
+    get roomLine() {
+      return roomLine;
+    },
+    set roomLine(v: HTMLElement | undefined) {
+      roomLine = v;
+    },
+    get roster() {
+      return roster;
+    },
+    set roster(v: typeof roster) {
+      roster = v;
+    },
+    addSamplePlayers,
+    cardLabel,
+    editorHasIt,
+    fields,
+    lineAnswer,
+    partnerShort,
+    pickDisplay,
+    placeDailyDoubles,
+    placePartnerTiles,
+    pregameKey,
+    raiseMost,
+    recheckNow,
+    rename,
+    resumeKept,
+    showAsks,
+    setStream,
+    startAnyway,
+    startClicked,
+    startRoomHere,
+    streamFold,
+    teamMembers,
+    tipsShown,
+    titleFocus,
+    toChecks,
   };
 }

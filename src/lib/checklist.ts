@@ -1,6 +1,20 @@
 // The editor's checklist in the sidebar (and ▶ Play's ✅ Before you start): the problems validate() finds, one line a
 // round, and where a click on it goes.
-import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isFinal, roundName, type BoardRound, type ClueCard, type Game, type Id, type Slide } from './model';
+import {
+  categoryLabel,
+  clueCardWords,
+  clueValue,
+  finalName,
+  formatPoints,
+  isBoard,
+  isFinal,
+  roundName,
+  type BoardRound,
+  type ClueCard,
+  type Game,
+  type Id,
+  type Slide,
+} from './model';
 import type { Place } from './historylabel';
 import { toolChosen } from './tools';
 import { cardSlides, cardsToFinish } from './partner';
@@ -95,7 +109,8 @@ function inline(name: string, details: string[]): string | null {
   const lower = name.toLowerCase();
   const rest = details.map((d) => {
     // ("Jeopardy!: 2 clues with no answer", "Final Jeopardy! has no answer", "The tiebreaker has no answer".)
-    const head = d.slice(0, name.length).toLowerCase() === lower ? name.length : d.slice(0, name.length + 4).toLowerCase() === `the ${lower}` ? name.length + 4 : -1;
+    const head =
+      d.slice(0, name.length).toLowerCase() === lower ? name.length : d.slice(0, name.length + 4).toLowerCase() === `the ${lower}` ? name.length + 4 : -1;
     if (head < 0) return null;
     const after = d.slice(head);
     return after.startsWith(': ') ? after.slice(2) : after.startsWith(' has ') ? after.slice(5) : null;
@@ -144,7 +159,15 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
       if (p.level === 'warn') line.level = 'warn';
     } else {
       // An RPG's or a board game's problem says where it is (the screen, the space): the line goes there.
-      const fresh: ChecklistLine = { text: p.text, level: p.level, tab: p.tab, details: [p.text], round: round.id, place: p.place ?? { tab: 'round', round: round.id }, ...shrink };
+      const fresh: ChecklistLine = {
+        text: p.text,
+        level: p.level,
+        tab: p.tab,
+        details: [p.text],
+        round: round.id,
+        place: p.place ?? { tab: 'round', round: round.id },
+        ...shrink,
+      };
       byRound.set(p.tab as number, fresh);
       lines.push(fresh);
     }
@@ -160,7 +183,9 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
         const others =
           line.details.length -
           line.details.filter((d) =>
-            /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet|partner clues? not placed yet|a written question and answer for one|: card (\d+|“.*”) is empty:|partner clue with no card:|still (?:a made-up category name|have made-up names)/.test(d),
+            /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet|partner clues? not placed yet|a written question and answer for one|: card (\d+|“.*”) is empty:|partner clue with no card:|still (?:a made-up category name|have made-up names)/.test(
+              d,
+            ),
           ).length;
         // (What Start game places: said as it is, not "0 things to fix", with a count of the notes besides, e.g. 🤝 Partner
         // clues asking for more than fits.)
@@ -170,13 +195,14 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
         line.text = todo.length
           ? `${name}: ${plural(todo.length, 'clue')} to finish${others ? `, ${others} more to fix` : ''}`
           : others
-            ? ((others === line.details.length && inline(name, line.details)) || `${name}: ${plural(others, 'thing')} to fix`)
+            ? (others === line.details.length && inline(name, line.details)) || `${name}: ${plural(others, 'thing')} to fix`
             : unplaced.length
               ? `${name}: ${unplaced.join(' and ')} not placed yet (Start game places ${n === 1 ? 'it' : 'them'})${besides ? ` · ${plural(besides, 'more note')}` : ''}`
               : `${name}: ${plural(line.details.length, 'note')}`;
       }
     } else if (line.details.length > 1) line.text = inline(name, line.details) ?? `${name}: ${plural(line.details.length, 'thing')} to fix`;
   }
-  if (tiebreaker && tiebreaker.details.length > 1) tiebreaker.text = inline('Tiebreaker', tiebreaker.details) ?? `Tiebreaker: ${plural(tiebreaker.details.length, 'thing')} to fix`;
+  if (tiebreaker && tiebreaker.details.length > 1)
+    tiebreaker.text = inline('Tiebreaker', tiebreaker.details) ?? `Tiebreaker: ${plural(tiebreaker.details.length, 'thing')} to fix`;
   return lines;
 }

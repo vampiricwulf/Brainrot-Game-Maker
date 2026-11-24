@@ -258,9 +258,7 @@ export function onOpenedFile(open: (file: File) => void): () => void {
   openWaiting();
   if (!listeningForFiles) {
     listeningForFiles = true;
-    import('@tauri-apps/api/event')
-      .then(({ listen }) => listen('open-file', openWaiting))
-      .catch((err) => console.warn('Not listening for files to open', err));
+    import('@tauri-apps/api/event').then(({ listen }) => listen('open-file', openWaiting)).catch((err) => console.warn('Not listening for files to open', err));
   }
   return () => {
     if (opener === open) opener = null;
@@ -400,7 +398,12 @@ export function flushOnClose(flush: () => void, busy?: () => string | null, lost
             waiting = true;
             await invoke('hold_close');
             const done = idle(busy!);
-            const anyway = await ask(`${job} Closing now stops it (nothing is changed).\n\nThe app closes by itself once it’s done.`, { ok: 'Close anyway', cancel: 'Wait', danger: true, until: done });
+            const anyway = await ask(`${job} Closing now stops it (nothing is changed).\n\nThe app closes by itself once it’s done.`, {
+              ok: 'Close anyway',
+              cancel: 'Wait',
+              danger: true,
+              until: done,
+            });
             if (!anyway) {
               await done;
               // What it made is a step now: written too, before the app closes.
@@ -428,7 +431,11 @@ export function flushOnClose(flush: () => void, busy?: () => string | null, lost
           } else if (held?.()) {
             waiting = true;
             await invoke('hold_close');
-            stay = !(await ask('Closing now throws away a drawing or an edit that isn’t in the game yet.', { ok: 'Close anyway', cancel: 'Stay', danger: true }));
+            stay = !(await ask('Closing now throws away a drawing or an edit that isn’t in the game yet.', {
+              ok: 'Close anyway',
+              cancel: 'Stay',
+              danger: true,
+            }));
           }
         } finally {
           waiting = false;

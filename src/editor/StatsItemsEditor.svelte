@@ -33,7 +33,14 @@
   let openItem = $state<string | null>(null);
   /** What an item's ▸ More holds, for its folded button ("description, 2 on use"). */
   const inMore = (it: ItemDef): string =>
-    [it.description?.trim() ? 'description' : '', it.hostNotes?.trim() ? 'notes' : '', it.onUse?.length ? `${it.onUse.length} on use` : '', it.wearable ? 'worn look' : ''].filter(Boolean).join(', ');
+    [
+      it.description?.trim() ? 'description' : '',
+      it.hostNotes?.trim() ? 'notes' : '',
+      it.onUse?.length ? `${it.onUse.length} on use` : '',
+      it.wearable ? 'worn look' : '',
+    ]
+      .filter(Boolean)
+      .join(', ');
   // An undo or redo of an item's settings opens them.
   const handled = { seq: 0 };
   $effect(() => {
@@ -59,7 +66,9 @@
   function removeField(f: StatField): void {
     // Shops that charged it say so (and charge the first other currency, or points, until one is picked).
     const shops = (game.shops ?? []).filter((s) => s.currency === f.id).map((s) => `“${s.name}”`);
-    const also = shops.length ? ` · shop${shops.length === 1 ? '' : 's'} ${shops.join(', ')} charged it: pick what ${shops.length === 1 ? 'it charges' : 'they charge'}` : '';
+    const also = shops.length
+      ? ` · shop${shops.length === 1 ? '' : 's'} ${shops.join(', ')} charged it: pick what ${shops.length === 1 ? 'it charges' : 'they charge'}`
+      : '';
     step(`Deleted stat “${f.name}”${also}`, () => (game.statFields = (game.statFields ?? []).filter((x) => x.id !== f.id)), { notify: true });
   }
 
@@ -88,7 +97,14 @@
   }
 
   /** Tags are typed as a list, "poisoned, cursed" (read when the field is left, so a comma being typed stays put). */
-  const tagList = (v: string) => [...new Set(v.split(',').map((t) => t.trim()).filter(Boolean))];
+  const tagList = (v: string) => [
+    ...new Set(
+      v
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+    ),
+  ];
 
   /** Whether a shop has items left to sell (each item once, with its own price and stock). */
   function unstocked(s: Shop): boolean {
@@ -205,7 +221,10 @@
   function wareItems(s: Shop, i: number): MenuEntry[] {
     return menuOf({
       heading: wareName(s, i),
-      move: [menuItem.up(() => moveWare(s, i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveWare(s, i, i + 1), { disabled: i === s.stock.length - 1 })],
+      move: [
+        menuItem.up(() => moveWare(s, i, i - 1), { disabled: i === 0 }),
+        menuItem.down(() => moveWare(s, i, i + 1), { disabled: i === s.stock.length - 1 }),
+      ],
       // (Off this shop: the item stays in the game.)
       delete: { label: '🗑 Remove from shop', onclick: () => unstock(s, i) },
     });
@@ -222,7 +241,10 @@
 
   /** Saved like the game's own files (BrainrotSaves in the desktop app, a download in a browser). */
   async function exportCsv(): Promise<void> {
-    const rows = [['name', 'price', 'stackable', 'wearable', 'description'], ...(game.items ?? []).map((i) => [i.name, i.price ?? '', i.stackable ? 'yes' : 'no', i.wearable?.slot ?? '', i.description ?? ''])];
+    const rows = [
+      ['name', 'price', 'stackable', 'wearable', 'description'],
+      ...(game.items ?? []).map((i) => [i.name, i.price ?? '', i.stackable ? 'yes' : 'no', i.wearable?.slot ?? '', i.description ?? '']),
+    ];
     const name = `${safeFilename(game.title)}-items.csv`;
     try {
       toast(savedWhere(await saveFile(name, new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n')], { type: 'text/csv' })), name));
@@ -253,9 +275,17 @@
     });
     const read = items.length;
     // (A price that isn't a number, "8 gold", is left out: said here, so it isn't missed.)
-    const shown = badPrices.slice(0, 3).map((p) => `“${p}”`).join(', ') + (badPrices.length > 3 ? '…' : '');
+    const shown =
+      badPrices
+        .slice(0, 3)
+        .map((p) => `“${p}”`)
+        .join(', ') + (badPrices.length > 3 ? '…' : '');
     const bad = badPrices.length ? ` · ${badPrices.length} price${badPrices.length === 1 ? '' : 's'} couldn’t be read (${shown}): a number, like 12` : '';
-    toast(read ? `Imported ${read} item${read === 1 ? '' : 's'}: ${added} new, ${read - added} updated${bad}` : `No items in “${file.name}” (a column of names, with price, stackable, wearable and description if you like)`);
+    toast(
+      read
+        ? `Imported ${read} item${read === 1 ? '' : 's'}: ${added} new, ${read - added} updated${bad}`
+        : `No items in “${file.name}” (a column of names, with price, stackable, wearable and description if you like)`,
+    );
   }
 
   /**
@@ -295,7 +325,9 @@
     {#each STAT_PRESETS as p (p.label)}
       {@const name = p.make().name}
       {@const added = game.statFields?.some((f) => f.name.trim().toLowerCase() === name.toLowerCase())}
-      <button class="small" onclick={() => addField(p.make())} disabled={added} title={added ? `This game has a stat called ${name}` : undefined}>＋ {p.label}</button>
+      <button class="small" onclick={() => addField(p.make())} disabled={added} title={added ? `This game has a stat called ${name}` : undefined}
+        >＋ {p.label}</button
+      >
     {/each}
     <button class="small" onclick={() => addField(newStatField(`Stat ${(game.statFields?.length ?? 0) + 1}`))}>＋ Add custom stat</button>
   </div>
@@ -312,7 +344,10 @@
         role="listitem"
         ondragover={(e) => drags.stat.over(e, f.id)}
         ondrop={(e) => {
-          const m = drags.stat.drop(e, listOf('stat').map((x) => x.id));
+          const m = drags.stat.drop(
+            e,
+            listOf('stat').map((x) => x.id),
+          );
           if (m) move('stat', m.from, m.to);
         }}
         oncontextmenu={(e) => rowMenu(e, 'stat', f, i)}
@@ -369,16 +404,28 @@
               </select></label
             >
             <label class="check small"><input type="checkbox" bind:checked={f.currency} /> Currency</label>
-            <input class="sym" bind:value={f.symbol} placeholder={f.currency ? '🪙' : 'Symbol'} aria-label="{f.name} symbol" title="Shown before the number, e.g. 🪙 or $" />
+            <input
+              class="sym"
+              bind:value={f.symbol}
+              placeholder={f.currency ? '🪙' : 'Symbol'}
+              aria-label="{f.name} symbol"
+              title="Shown before the number, e.g. 🪙 or $"
+            />
             {#if statRangeProblem(f)}<span class="warn small" data-warn="range">⚠ {statRangeProblem(f)}</span>{/if}
           {:else if f.type === 'text'}
             <label class="field">Start<input value={String(f.start ?? '')} oninput={(e) => (f.start = e.currentTarget.value)} /></label>
           {:else if f.type === 'checkbox'}
-            <label class="check small"><input type="checkbox" checked={f.start === true} onchange={(e) => (f.start = e.currentTarget.checked)} /> Starts as yes</label>
+            <label class="check small"
+              ><input type="checkbox" checked={f.start === true} onchange={(e) => (f.start = e.currentTarget.checked)} /> Starts as yes</label
+            >
           {:else}
             <label class="field">
               Start
-              <input value={Array.isArray(f.start) ? f.start.join(', ') : ''} onchange={(e) => (f.start = tagList(e.currentTarget.value))} placeholder="e.g. poisoned, cursed" />
+              <input
+                value={Array.isArray(f.start) ? f.start.join(', ') : ''}
+                onchange={(e) => (f.start = tagList(e.currentTarget.value))}
+                placeholder="e.g. poisoned, cursed"
+              />
             </label>
           {/if}
         </div>
@@ -398,7 +445,11 @@
     <details class="starts">
       <summary>Per-player starting values ("all mammals start with 4 gold")</summary>
       <table>
-        <thead><tr><th></th>{#each game.statFields as f (f.id)}<th>{f.name}</th>{/each}</tr></thead>
+        <thead
+          ><tr
+            ><th></th>{#each game.statFields as f (f.id)}<th>{f.name}</th>{/each}</tr
+          ></thead
+        >
         <tbody>
           {#each game.players as p (p.id)}
             <tr>
@@ -493,7 +544,10 @@
         role="listitem"
         ondragover={(e) => drags.item.over(e, it.id)}
         ondrop={(e) => {
-          const m = drags.item.drop(e, listOf('item').map((x) => x.id));
+          const m = drags.item.drop(
+            e,
+            listOf('item').map((x) => x.id),
+          );
           if (m) move('item', m.from, m.to);
         }}
         oncontextmenu={(e) => rowMenu(e, 'item', it, i)}
@@ -521,7 +575,15 @@
             {#if iconFor === it.id}<MediaPicker kind="image" onpick={(id) => ((it.icon = id), (iconFor = null))} onclose={() => (iconFor = null)} />{/if}
           </div>
           <input class="name" bind:value={it.name} aria-label="Item name" />
-          <label class="field">Price<input type="number" class="n" min="0" value={it.price ?? ''} oninput={(e) => (it.price = e.currentTarget.value === '' ? undefined : Math.max(0, +e.currentTarget.value || 0))} /></label>
+          <label class="field"
+            >Price<input
+              type="number"
+              class="n"
+              min="0"
+              value={it.price ?? ''}
+              oninput={(e) => (it.price = e.currentTarget.value === '' ? undefined : Math.max(0, +e.currentTarget.value || 0))}
+            /></label
+          >
           <label class="check small"><input type="checkbox" bind:checked={it.stackable} /> Stacks</label>
           <select
             value={it.wearable?.slot ?? ''}
@@ -596,7 +658,10 @@
             if (it) stock(s, [it]);
             return;
           }
-          const m = drags.shop.drop(e, listOf('shop').map((x) => x.id));
+          const m = drags.shop.drop(
+            e,
+            listOf('shop').map((x) => x.id),
+          );
           if (m) move('shop', m.from, m.to);
         }}
         oncontextmenu={(e) => rowMenu(e, 'shop', s, si)}
@@ -620,7 +685,11 @@
               {#each currencyFields(game) as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
             </select>
           </label>
-          <label class="field" title="Shops with the same pool name share their stock: it starts from the In stock number any of them has (unlimited only if none has one)">Shared stock pool<input bind:value={s.pool} placeholder="(none)" class="pool" /></label>
+          <label
+            class="field"
+            title="Shops with the same pool name share their stock: it starts from the In stock number any of them has (unlimited only if none has one)"
+            >Shared stock pool<input bind:value={s.pool} placeholder="(none)" class="pool" /></label
+          >
           <label class="field" title="Players can sell items here for this share of the price (blank: it doesn't buy things back)">
             Buys back at (%)
             <input
@@ -638,7 +707,13 @@
             />
           </label>
           <span class="spacer"></span>
-          <RowTools menu={() => rowItems('shop', s, si)} name={s.name} remove={() => removeShop(s)} deleteLabel="Delete shop {s.name}" deleteWords="Delete shop" />
+          <RowTools
+            menu={() => rowItems('shop', s, si)}
+            name={s.name}
+            remove={() => removeShop(s)}
+            deleteLabel="Delete shop {s.name}"
+            deleteWords="Delete shop"
+          />
         </div>
         <table>
           {#if s.stock.length}
@@ -680,12 +755,33 @@
                   <!-- Another item: the old one's price on this row goes with it (the new item's own price shows). -->
                   <select value={st.item} onchange={(e) => ((st.item = e.currentTarget.value), (st.price = undefined))} aria-label="Item for sale">
                     <!-- Each item once per shop: the ones other rows sell are greyed out. -->
-                    {#each game.items ?? [] as it (it.id)}<option value={it.id} disabled={it.id !== st.item && s.stock.some((x) => x.item === it.id)}>{it.name}</option>{/each}
+                    {#each game.items ?? [] as it (it.id)}<option value={it.id} disabled={it.id !== st.item && s.stock.some((x) => x.item === it.id)}
+                        >{it.name}</option
+                      >{/each}
                   </select>
                 </td>
-                <td><input type="number" class="n" value={st.price ?? ''} placeholder={String(game.items?.find((x) => x.id === st.item)?.price ?? 0)} min="0" oninput={(e) => (st.price = e.currentTarget.value === '' ? undefined : Math.max(0, +e.currentTarget.value || 0))} aria-label="Price" /></td>
+                <td
+                  ><input
+                    type="number"
+                    class="n"
+                    value={st.price ?? ''}
+                    placeholder={String(game.items?.find((x) => x.id === st.item)?.price ?? 0)}
+                    min="0"
+                    oninput={(e) => (st.price = e.currentTarget.value === '' ? undefined : Math.max(0, +e.currentTarget.value || 0))}
+                    aria-label="Price"
+                  /></td
+                >
                 <td>
-                  <input type="number" class="n" min="0" value={st.qty ?? ''} placeholder="∞" step="1" oninput={(e) => (st.qty = e.currentTarget.value === '' ? null : Math.max(0, Math.floor(+e.currentTarget.value || 0)))} aria-label="In stock" />
+                  <input
+                    type="number"
+                    class="n"
+                    min="0"
+                    value={st.qty ?? ''}
+                    placeholder="∞"
+                    step="1"
+                    oninput={(e) => (st.qty = e.currentTarget.value === '' ? null : Math.max(0, Math.floor(+e.currentTarget.value || 0)))}
+                    aria-label="In stock"
+                  />
                 </td>
                 <td>
                   <RowTools menu={() => wareItems(s, i)} name={wname} remove={() => unstock(s, i)} deleteLabel="Remove {wname} from shop" size="tiny" />
@@ -700,7 +796,11 @@
             disabled={!unstocked(s)}
             onclick={(e) => stockMenu(e, s)}
             aria-haspopup="menu"
-            title={unstocked(s) ? 'Pick an item to sell here (or drag an item’s 📦 icon onto the shop)' : game.items?.length ? 'It sells every item already' : 'Add items first'}>＋ Add item to sell ▾</button
+            title={unstocked(s)
+              ? 'Pick an item to sell here (or drag an item’s 📦 icon onto the shop)'
+              : game.items?.length
+                ? 'It sells every item already'
+                : 'Add items first'}>＋ Add item to sell ▾</button
           >
         </div>
       </div>

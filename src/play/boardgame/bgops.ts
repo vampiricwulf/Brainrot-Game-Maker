@@ -1,7 +1,21 @@
 // The board-game host's moves, shared by the host panel, the stage and the keyboard shortcuts. Every change is one
 // undoable step.
 import { describeAction, runAction } from '../../lib/actions';
-import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, moverWheelNoNumbers, nextTurn, sendTo, spaceById, spaceSaid, spaceShown, stepsIn, unrevealed } from '../../lib/boardgame';
+import {
+  clampSteps,
+  currentPlayer,
+  moveInOrder,
+  movePlayer,
+  moverPreset,
+  moverWheelNoNumbers,
+  nextTurn,
+  sendTo,
+  spaceById,
+  spaceSaid,
+  spaceShown,
+  stepsIn,
+  unrevealed,
+} from '../../lib/boardgame';
 import { isBoardGame, type Action, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList, stepOf } from '../../lib/session';
 import { logged } from '../../lib/toolset';
@@ -46,7 +60,11 @@ export function moveNow(game: Game, session: Session, steps: number, choose?: st
   const leg = bs.fork?.playerId === who;
   const top = session.actionLog?.at(-1)?.id;
   let msg = '';
-  logged(session, `${playerName(session, who)} ${steps < 0 ? 'goes back' : 'moves'} ${Math.abs(steps)}`, () => (msg = movePlayer(round, bs, who, steps, choose, hide)));
+  logged(
+    session,
+    `${playerName(session, who)} ${steps < 0 ? 'goes back' : 'moves'} ${Math.abs(steps)}`,
+    () => (msg = movePlayer(round, bs, who, steps, choose, hide)),
+  );
   const step = session.actionLog?.at(-1)?.id;
   if (step && step !== top && !leg) moveCounts.set(step, steps);
   return `${playerName(session, who)}: ${msg}`;
@@ -147,7 +165,16 @@ export function reorderTurns(game: Game, session: Session, from: number, to: num
  * the players the host picked, when they aren't `who` (the check runs the turn's landing for whoever landed, and an
  * action “for the players picked” goes to those picked, as the landing box's own button does).
  */
-export function runSpace(game: Game, session: Session, live: Live, space: BoardSpace, who: string[], which: 'onLand' | 'onPass' = 'onLand', hide = false, picked?: string[]): string {
+export function runSpace(
+  game: Game,
+  session: Session,
+  live: Live,
+  space: BoardSpace,
+  who: string[],
+  which: 'onLand' | 'onPass' = 'onLand',
+  hide = false,
+  picked?: string[],
+): string {
   const { round, bs } = boardNow(game, session);
   const list = space[which] ?? [];
   if (!round || !bs || !list.length) return `${space.name} has no actions`;
@@ -157,11 +184,27 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
   const decides = list.find(decidingAction);
   const run = decides ? [decides] : list;
   let said: string[] = [];
-  const ctx = { game, session, live, board: round, bs, hide, selected: picked ?? who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session, at) };
+  const ctx = {
+    game,
+    session,
+    live,
+    board: round,
+    bs,
+    hide,
+    selected: picked ?? who,
+    chosen: who,
+    teams: buzzerOn(game.settings) && teamsOn(game.settings),
+    offerCard: offerIn(session, at),
+  };
   const on = which === 'onPass' ? 'pass' : 'land';
   // (Its step says it both ways: one window shows the quiet one, whichever window ran it. Neither that nor what one
   // window tells the host says a 📝 note of a secret space not revealed yet: see actsShown.)
-  const [text, quiet] = [false, true].map((h) => `${spaceSaid(bs, space, h)}: ${actsShown(bs, space, run, h).map((a) => describeAction(game, a, on, ctx.teams, h ? bs : undefined)).join(', ')}`);
+  const [text, quiet] = [false, true].map(
+    (h) =>
+      `${spaceSaid(bs, space, h)}: ${actsShown(bs, space, run, h)
+        .map((a) => describeAction(game, a, on, ctx.teams, h ? bs : undefined))
+        .join(', ')}`,
+  );
   const go = () =>
     logged(
       session,

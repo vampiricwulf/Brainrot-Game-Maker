@@ -9,13 +9,7 @@
   import type { Game, Session } from '../../lib/model';
   import { balance, formatPrice, itemDef, shopPrice, stockLeft } from '../../lib/toolset';
 
-  let {
-    game,
-    session,
-    shopId,
-    buyer,
-    onbuy,
-  }: { game: Game; session: Session; shopId: string; buyer?: string; onbuy?: (itemId: string) => void } = $props();
+  let { game, session, shopId, buyer, onbuy }: { game: Game; session: Session; shopId: string; buyer?: string; onbuy?: (itemId: string) => void } = $props();
   const shop = $derived(game.shops?.find((s) => s.id === shopId));
   const who = $derived(session.players.find((p) => p.id === buyer));
 </script>
@@ -74,7 +68,10 @@
   }
   h1 {
     margin: 0;
-    font: 90px 'Anton', 'Oswald', sans-serif;
+    font:
+      90px 'Anton',
+      'Oswald',
+      sans-serif;
     color: #ffcc00;
     text-align: center;
   }
@@ -111,7 +108,10 @@
   }
   .who {
     text-align: center;
-    font: 40px 'Anton', 'Oswald', sans-serif;
+    font:
+      40px 'Anton',
+      'Oswald',
+      sans-serif;
     margin-top: -12px;
   }
   .nm-chip {
@@ -130,7 +130,10 @@
     line-height: 140px;
   }
   .nm {
-    font: 44px 'Anton', 'Oswald', sans-serif;
+    font:
+      44px 'Anton',
+      'Oswald',
+      sans-serif;
   }
   .desc {
     font-size: 24px;

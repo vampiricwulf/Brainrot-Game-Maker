@@ -1,8 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, newId, newTextEl, type BoardRound, type FinalRound, type Game, type Session, type Shop } from './model';
 import {
-  applyScore, backToBoard, ddShowQuestion, finalJudge, finalNext, finalSetWager, finalTakeNewcomers, finalWagersOk, goToRound, wagerFromPhone, wagerSentBy, newSession, openClue, redo, removePlayer,
-  restorePlayer, score, setScore, stepOf, toggleEvent, toggleStep, toggleUsed, undo,
+  applyScore,
+  backToBoard,
+  ddShowQuestion,
+  finalJudge,
+  finalNext,
+  finalSetWager,
+  finalTakeNewcomers,
+  finalWagersOk,
+  goToRound,
+  wagerFromPhone,
+  wagerSentBy,
+  newSession,
+  openClue,
+  redo,
+  removePlayer,
+  restorePlayer,
+  score,
+  setScore,
+  stepOf,
+  toggleEvent,
+  toggleStep,
+  toggleUsed,
+  undo,
 } from './session';
 import { jeopardyGame } from './testgame';
 import { addScreenBeside, newWorld } from './rpg';
@@ -118,7 +139,11 @@ describe('inventory', () => {
     // Taking a sword takes one not being worn.
     inventory(session, 'a').filter((e) => e.item === 'sword')[1].equipped = true;
     expect(takeItem(session, 'a', 'sword', 1)).toBe(1);
-    expect(inventory(session, 'a').filter((e) => e.item === 'sword').map((e) => !!e.equipped)).toEqual([true]);
+    expect(
+      inventory(session, 'a')
+        .filter((e) => e.item === 'sword')
+        .map((e) => !!e.equipped),
+    ).toEqual([true]);
     giveItem(game, session, 'a', 'sword', 1);
     inventory(session, 'a').splice(1, 0, inventory(session, 'a').pop()!);
     expect(takeItem(session, 'a', 'potion', 5)).toBe(3);
@@ -131,15 +156,32 @@ describe('inventory', () => {
     giveItem(game, session, 'a', 'potion', 1);
     giveItem(game, session, 'b', 'potion', 1);
     transferEntry(session, 'a', 'b', inventory(session, 'a').find((e) => e.item === 'potion')!.id, undefined, game);
-    expect(inventory(session, 'b').filter((e) => e.item === 'potion').map((e) => e.qty)).toEqual([2]);
+    expect(
+      inventory(session, 'b')
+        .filter((e) => e.item === 'potion')
+        .map((e) => e.qty),
+    ).toEqual([2]);
     giveItem(game, session, 'b', 'sword', 1);
     transferEntry(session, 'a', 'b', inventory(session, 'a').find((e) => e.item === 'sword')!.id, undefined, game);
-    expect(inventory(session, 'b').filter((e) => e.item === 'sword').map((e) => e.qty)).toEqual([1, 1]);
+    expect(
+      inventory(session, 'b')
+        .filter((e) => e.item === 'sword')
+        .map((e) => e.qty),
+    ).toEqual([1, 1]);
   });
 });
 
 describe('shops', () => {
-  const shop = (id: string, pool?: string): Shop => ({ id, name: id, currency: 'gold', pool, stock: [{ item: 'sword', qty: 1 }, { item: 'potion', price: 3, qty: null }] });
+  const shop = (id: string, pool?: string): Shop => ({
+    id,
+    name: id,
+    currency: 'gold',
+    pool,
+    stock: [
+      { item: 'sword', qty: 1 },
+      { item: 'potion', price: 3, qty: null },
+    ],
+  });
 
   it('charges the currency, hands over the item and lowers the stock', () => {
     const { game, session } = setup();
@@ -235,7 +277,12 @@ describe('action log', () => {
     const game = jeopardyGame();
     const session = newSession(game);
     openClue(session, { round: 0, cat: 0, row: 0 }, game);
-    const remote = { code: 'ABCD', hostToken: 't', base: 'https://buzz.test', buzz: { phase: 'armed' as const, armId: 1, answering: null, lockedOut: ['a'], passAt: 100, clue: '0.0.0', floor: 0 } };
+    const remote = {
+      code: 'ABCD',
+      hostToken: 't',
+      base: 'https://buzz.test',
+      buzz: { phase: 'armed' as const, armId: 1, answering: null, lockedOut: ['a'], passAt: 100, clue: '0.0.0', floor: 0 },
+    };
     session.remote = remote;
     logged(session, '↺ Reset buzzers', () => {
       remote.buzz = { phase: 'armed', armId: 2, answering: null, lockedOut: [], passAt: 200, clue: '0.0.0', floor: 0 };
@@ -330,7 +377,15 @@ describe('action log', () => {
       { id: 'p1', name: 'Party 1', members: ['a'] },
       { id: 'p2', name: 'Party 2', members: ['b'] },
     ];
-    const st = { positions: { a: { map: 'm', screen: 's1', x: 0, y: 0 }, b: { map: 'm', screen: 's1', x: 0, y: 0 } }, parties, active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false };
+    const st = {
+      positions: { a: { map: 'm', screen: 's1', x: 0, y: 0 }, b: { map: 'm', screen: 's1', x: 0, y: 0 } },
+      parties,
+      active: 'p1',
+      knowledge: {},
+      objects: {},
+      added: {},
+      mapShown: false,
+    };
     const bs = { positions: {}, order: ['a', 'b'], turn: 0 };
     session.worlds = { w: st };
     session.boardgames = { r: bs };
@@ -352,10 +407,15 @@ describe('action log', () => {
     const { game, session } = setup();
     const pos = (screen: string) => ({ map: 'm', screen, x: 0, y: 0 });
     const party = { id: 'p1', name: 'Party', members: ['a', 'b'] };
-    session.worlds = { w: { positions: { a: pos('s1'), b: pos('s1') }, parties: [party], active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false } };
+    session.worlds = {
+      w: { positions: { a: pos('s1'), b: pos('s1') }, parties: [party], active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false },
+    };
     const w = () => session.worlds!.w;
     logged(session, 'Split off Bob', () => {
-      w().parties = [{ ...party, members: ['a'] }, { id: 'p2', name: 'Party 2', members: ['b'] }];
+      w().parties = [
+        { ...party, members: ['a'] },
+        { id: 'p2', name: 'Party 2', members: ['b'] },
+      ];
       w().active = 'p2';
     });
     logged(session, 'Party east', () => (w().positions.b.screen = 's2'));
@@ -372,7 +432,9 @@ describe('action log', () => {
     const pos = (screen: string) => ({ map: 'm', screen, x: 0, y: 0 });
     const p1 = { id: 'p1', name: 'Party 1', members: ['a'] };
     const p2 = { id: 'p2', name: 'Party 2', members: ['b'] };
-    session.worlds = { w: { positions: { a: pos('s1'), b: pos('s2') }, parties: [p1, p2], active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false, split: true } };
+    session.worlds = {
+      w: { positions: { a: pos('s1'), b: pos('s2') }, parties: [p1, p2], active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false, split: true },
+    };
     const w = () => session.worlds!.w;
     logged(session, 'Regroup', () => {
       w().parties = [{ ...p1, members: ['a', 'b'] }];
@@ -389,7 +451,18 @@ describe('action log', () => {
     const pos = (screen: string) => ({ map: 'm', screen, x: 0, y: 0 });
     const p1 = { id: 'p1', name: 'Party 1', members: ['a'] };
     const p2 = { id: 'p2', name: 'Party 2', members: ['b', 'c'] };
-    session.worlds = { w: { positions: { a: pos('s1'), b: pos('s2'), c: pos('s2') }, parties: [p1, p2], active: 'p1', knowledge: {}, objects: {}, added: {}, mapShown: false, split: false } };
+    session.worlds = {
+      w: {
+        positions: { a: pos('s1'), b: pos('s2'), c: pos('s2') },
+        parties: [p1, p2],
+        active: 'p1',
+        knowledge: {},
+        objects: {},
+        added: {},
+        mapShown: false,
+        split: false,
+      },
+    };
     const w = () => session.worlds!.w;
     logged(session, 'Split off Cat', () => (w().parties = [p1, { ...p2, members: ['b'] }, { id: 'p3', name: 'Party 3', members: ['c'] }]));
     // Between steps the host turns split view on, and after Redo off again.
@@ -650,10 +723,17 @@ describe('the host’s own choices', () => {
     // Ctrl+Z on the wager screen: Cat is back in the game; the round's catch-up after it adds nobody to the Final.
     undoAction(session, game);
     finalTakeNewcomers(session, game, round, []);
-    expect([session.players.map((p) => p.id), f.players]).toEqual([['a', 'b', 'c'], ['a', 'b']]);
+    expect([session.players.map((p) => p.id), f.players]).toEqual([
+      ['a', 'b', 'c'],
+      ['a', 'b'],
+    ]);
     // Ctrl+Shift+Z: out again, and the Final waits on nobody's wager but its players'.
     redoAction(session, game);
-    expect([session.players.map((p) => p.id), f.players, f.order]).toEqual([['a', 'b'], ['a', 'b'], ['a', 'b']]);
+    expect([session.players.map((p) => p.id), f.players, f.order]).toEqual([
+      ['a', 'b'],
+      ['a', 'b'],
+      ['a', 'b'],
+    ]);
     expect(finalWagersOk(session, game)).toBe(true);
     // One added on the wager screen comes in with the step that adds them: its Undo takes them out of both, its Redo back.
     logged(session, 'Added Dee', () => {
@@ -662,9 +742,16 @@ describe('the host’s own choices', () => {
     });
     expect([f.players, f.wagers.d]).toEqual([['a', 'b', 'd'], 0]);
     undoAction(session, game);
-    expect([session.players.map((p) => p.id), session.final!.players, session.final!.order]).toEqual([['a', 'b'], ['a', 'b'], ['a', 'b']]);
+    expect([session.players.map((p) => p.id), session.final!.players, session.final!.order]).toEqual([
+      ['a', 'b'],
+      ['a', 'b'],
+      ['a', 'b'],
+    ]);
     redoAction(session, game);
-    expect([session.players.map((p) => p.id), session.final!.players]).toEqual([['a', 'b', 'd'], ['a', 'b', 'd']]);
+    expect([session.players.map((p) => p.id), session.final!.players]).toEqual([
+      ['a', 'b', 'd'],
+      ['a', 'b', 'd'],
+    ]);
   });
 
   it('puts back the players: a rename, a new player, one removed and restored', () => {
@@ -780,7 +867,12 @@ describe('limits the editor and the host can trip over', () => {
     expect(countItem(session, 'a', 'sword')).toBe(MAX_UNSTACKED);
     giveItem(game, session, 'a', 'potion', 20000);
     expect(countItem(session, 'a', 'potion')).toBe(20000);
-    expect([itemQty(game, 'sword', 500), itemQty(game, 'sword', 2.4), itemQty(game, 'potion', 500), itemQty(game, 'potion', 0)]).toEqual([MAX_UNSTACKED, 2, 500, 1]);
+    expect([itemQty(game, 'sword', 500), itemQty(game, 'sword', 2.4), itemQty(game, 'potion', 500), itemQty(game, 'potion', 0)]).toEqual([
+      MAX_UNSTACKED,
+      2,
+      500,
+      1,
+    ]);
   });
 
   it('knows how much a stat can still go up (converting score to a currency only converts that much)', () => {
@@ -823,7 +915,9 @@ describe('limits the editor and the host can trip over', () => {
     game.statFields = [...(game.statFields ?? []), gold];
     game.shops![0].currency = 'coins';
     expect(shopCurrencyGone(game, game.shops![0])).toBe(true);
-    expect(statsProblems(game).map((p) => p.text)).toContain('Shop “Village” charged “Coins”, which isn\'t a number now (it charges points now): pick what it charges');
+    expect(statsProblems(game).map((p) => p.text)).toContain(
+      "Shop “Village” charged “Coins”, which isn't a number now (it charges points now): pick what it charges",
+    );
     shop.currency = SCORE_CURRENCY;
     expect(shopCurrencyGone(game, shop)).toBe(false);
   });

@@ -52,7 +52,14 @@
   const outcome = $derived.by(() => {
     if (ties.length) return `Tie for first: ${nameList(ties.map((p) => p.name))}`;
     if (coWinnersHold(session) && level.length) return `Co-winners: ${nameList(level.map((p) => p.name))}`;
-    if (!session.tiebreakClue && tiebreakHolds(session, level.map((p) => p.id))) return '';
+    if (
+      !session.tiebreakClue &&
+      tiebreakHolds(
+        session,
+        level.map((p) => p.id),
+      )
+    )
+      return '';
     const top = standings(session)[0];
     return top ? `${top.player.name} wins` : '';
   });
@@ -86,9 +93,17 @@
   offerMenu('end', () => {
     const out: StageItem[] = [];
     if (ties.length) {
-      out.push(tbReady ? stepItem(step(VERBS.tiebreakerClue, ontiebreaker), 'tbclue') : { id: 'tbclue', label: VERBS.tiebreakerClue.label, disabled: true, onclick: () => {} });
+      out.push(
+        tbReady
+          ? stepItem(step(VERBS.tiebreakerClue, ontiebreaker), 'tbclue')
+          : { id: 'tbclue', label: VERBS.tiebreakerClue.label, disabled: true, onclick: () => {} },
+      );
       if (onrolloff) out.push(stepItem(step(VERBS.rollOff, rollOff), 'rolloff'));
-      out.push({ id: 'cowinners', label: VERBS.coWinners.label, onclick: () => (logged(session, 'Co-winners declared', () => (session.coWinners = ties.map((p) => p.id))), oncowinners?.()) });
+      out.push({
+        id: 'cowinners',
+        label: VERBS.coWinners.label,
+        onclick: () => (logged(session, 'Co-winners declared', () => (session.coWinners = ties.map((p) => p.id))), oncowinners?.()),
+      });
     }
     if (last) out.push({ label: isFinal(last) ? '◀ Back to final reveals' : `◀ Back to ${roundName(last, lastIndex)}`, onclick: onback });
     out.push({ label: '📋 Copy standings', onclick: copyStandings });
@@ -109,9 +124,13 @@
         {#if tbReady}
           <button onclick={ontiebreaker} title="The tiebreaker clue: its question on screen, then pick who won">{VERBS.tiebreakerClue.label}</button>
         {:else}
-          <button disabled title={app.playerOnly ? 'This game has no tiebreaker clue' : "Write one on the editor's Tiebreaker tab"}>{VERBS.tiebreakerClue.label}</button>
+          <button disabled title={app.playerOnly ? 'This game has no tiebreaker clue' : "Write one on the editor's Tiebreaker tab"}
+            >{VERBS.tiebreakerClue.label}</button
+          >
         {/if}
-        {#if onrolloff}<button onclick={rollOff} title="{VERBS.rollOff.key}: the tied players roll for first">{VERBS.rollOff.label} <kbd aria-hidden="true">{VERBS.rollOff.key}</kbd></button>{/if}
+        {#if onrolloff}<button onclick={rollOff} title="{VERBS.rollOff.key}: the tied players roll for first"
+            >{VERBS.rollOff.label} <kbd aria-hidden="true">{VERBS.rollOff.key}</kbd></button
+          >{/if}
         <button
           onclick={() => {
             // (Who they are: a different tie later, after a score is fixed, is still to settle.)
@@ -121,7 +140,7 @@
         >
       </div>
     </div>
-  {:else if tiebreakHolds(session, level.map((p) => p.id))}
+  {:else if tiebreakHolds( session, level.map((p) => p.id) )}
     <!-- Both are steps: ↶ Undo (Ctrl+Z) takes them back. -->
     <div class="muted">
       {session.tiebreakClue ? '❓' : '🎲'}
@@ -139,13 +158,17 @@
     <button onclick={copyStandings} title="Copy the standings as one line of text">📋 Copy standings</button>
     <!-- (Not after ▶ Test this round: nothing of a test is kept, and 🚪 Exit goes back to the tested round.) -->
     {#if nextGame && !asking && !app.test}
-      <button onclick={nextGame} title="Open the stream's next game (Open… / Recent games). The buzzer room, its players and the audience window stay up; these results stay viewable from the editor.">
+      <button
+        onclick={nextGame}
+        title="Open the stream's next game (Open… / Recent games). The buzzer room, its players and the audience window stay up; these results stay viewable from the editor."
+      >
         ▶ Next game…
       </button>
     {/if}
     <!-- (While it asks, the strip's own 🔁 Rematch answers.) -->
     <!-- (Not after ▶ Test this round either: a rematch would keep the throwaway test as the game to resume.) -->
-    {#if !asking && !app.test}<button class="apart" onclick={askRematch} title="Same players, scores back to 0, fresh board (it asks first)">🔁 Rematch</button>{/if}
+    {#if !asking && !app.test}<button class="apart" onclick={askRematch} title="Same players, scores back to 0, fresh board (it asks first)">🔁 Rematch</button
+      >{/if}
   </div>
 </div>
 

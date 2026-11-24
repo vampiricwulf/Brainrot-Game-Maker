@@ -5,7 +5,11 @@ import { newBoardGameRound, moverDiceUnknown } from './boardgame';
 
 function withWorld() {
   const game = newGame();
-  const world = { id: 'w', name: 'W', maps: [{ id: 'm', name: 'M', cols: 2, rows: 2, screens: [{ id: 's', name: 'Cave', col: 0, row: 0, slide: { background: {}, elements: [] } }] }] } as unknown as World;
+  const world = {
+    id: 'w',
+    name: 'W',
+    maps: [{ id: 'm', name: 'M', cols: 2, rows: 2, screens: [{ id: 's', name: 'Cave', col: 0, row: 0, slide: { background: {}, elements: [] } }] }],
+  } as unknown as World;
   game.worlds = [world];
   return { game, world };
 }

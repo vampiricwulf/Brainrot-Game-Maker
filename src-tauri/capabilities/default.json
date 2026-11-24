@@ -2,13 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Host window and the windows it opens (audience, media popups)",
-  "windows": [
-    "main",
-    "popup-*"
-  ],
-  "permissions": [
-    "core:default",
-    "core:window:allow-set-fullscreen",
-    "core:webview:allow-create-webview-window"
-  ]
+  "windows": ["main", "popup-*"],
+  "permissions": ["core:default", "core:window:allow-set-fullscreen", "core:webview:allow-create-webview-window"]
 }

@@ -71,7 +71,8 @@ function check() {
     // The small shared steps too, so a fix to one (what a failure prints, how Chromium starts) reaches every file.
     if (/^\s*(?:async\s+)?function (assert|assertEq|sleep|section)\b|^\s*const (assert|assertEq|sleep|section) = /m.test(src))
       bad.push(`${f}.mjs has its own ${RegExp.$1 || RegExp.$2}(): use the one in helpers.mjs`);
-    if (/^\s*(?:async\s+)?function until\b|^\s*const until = async\b/m.test(src)) bad.push(`${f}.mjs has its own until() loop: use until() or untilWith() from helpers.mjs`);
+    if (/^\s*(?:async\s+)?function until\b|^\s*const until = async\b/m.test(src))
+      bad.push(`${f}.mjs has its own until() loop: use until() or untilWith() from helpers.mjs`);
     if (/CHROMIUM_PATH|chromium\.launch\(/.test(src)) bad.push(`${f}.mjs launches Chromium itself: use launchChromium()`);
     if (/node_modules\/\.bin\/wrangler/.test(src)) bad.push(`${f}.mjs starts the buzzer server itself: use startBuzzer()`);
     // (Not checked, on purpose: a raw class such as '.panel .status' where a hook helper such as statusLineIn() would
@@ -159,7 +160,9 @@ async function run(files, name, { jobs, quiet }) {
     const head = `### E2E shard ${name}: ${failed.length ? `${failed.length} of ${results.length} failed` : `all ${results.length} passed`} (${total}s)`;
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, [head, '', '| File | Result | Seconds |', '| --- | --- | ---: |', ...rows, ''].join('\n') + '\n');
     for (const r of failed)
-      console.log(`::error file=tests/e2e/${r.f}.mjs,title=e2e ${r.f}.mjs failed::${r.f}.mjs failed in e2e shard ${name}: see its log, and the e2e-debug-${name} artifact for any screenshot or trace it saved`);
+      console.log(
+        `::error file=tests/e2e/${r.f}.mjs,title=e2e ${r.f}.mjs failed::${r.f}.mjs failed in e2e shard ${name}: see its log, and the e2e-debug-${name} artifact for any screenshot or trace it saved`,
+      );
   }
   process.exit(failed.length ? 1 : 0);
 }

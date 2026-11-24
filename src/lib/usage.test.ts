@@ -121,7 +121,13 @@ describe('every 🤫 card in the game (allCardSlides)', () => {
     const rpg = newRpgRound(game, 'Quest');
     const screen = game.worlds![0].maps[0].screens[0];
     screen.slide.elements.push({ ...newImageEl('door'), id: 'door', role: { class: 'npc', actions: [send('rpg')] } });
-    screen.variants = [{ id: 'night', name: 'Night', slide: { background: {}, elements: [{ ...newImageEl('door'), id: 'door2', role: { class: 'npc', actions: [send('look')] } }] } }];
+    screen.variants = [
+      {
+        id: 'night',
+        name: 'Night',
+        slide: { background: {}, elements: [{ ...newImageEl('door'), id: 'door2', role: { class: 'npc', actions: [send('look')] } }] },
+      },
+    ];
     const bg = newBoardGameRound('Race');
     const space = newBoardSpace(0, 0, 'Bonus');
     space.onLand = [send('space')];
@@ -140,7 +146,15 @@ describe('every 🤫 card in the game (allCardSlides)', () => {
     if (!isBoard(board)) throw new Error('not a board');
     board.categories[0].clues[0].questionSlide.elements.push({ ...newVideoEl('clip'), startAt: 50 });
     game.cards = [
-      { id: 'a', name: 'A', background: {}, elements: [{ ...newVideoEl('clip'), startAt: 12, endAt: 20 }, { ...newVideoEl('other'), startAt: 1 }] },
+      {
+        id: 'a',
+        name: 'A',
+        background: {},
+        elements: [
+          { ...newVideoEl('clip'), startAt: 12, endAt: 20 },
+          { ...newVideoEl('other'), startAt: 1 },
+        ],
+      },
       { id: 'b', name: 'B', background: {}, elements: [newVideoEl('clip')] },
     ];
     expect(cardUses(game, 'clip')).toEqual([{ start: 12, end: 20 }, {}]);

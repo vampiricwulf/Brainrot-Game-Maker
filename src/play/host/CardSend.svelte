@@ -28,8 +28,27 @@
   import { tileToolUp } from '../../lib/live';
   import { ACCEPT, addMediaFile, identicalMedia, mediaKind } from '../../lib/media.svelte';
   import {
-    boardRounds, cardSlides, categoryLabel, clueCardName, clueValue, finalName, formatPoints, getClue, isFinal, isRpg, roundName, savedCardName,
-    type CardTo, type Game, type Id, type MediaRef, type SentCard, type Session, type Slide, type SlideElement, type TeamMember,
+    boardRounds,
+    cardSlides,
+    categoryLabel,
+    clueCardName,
+    clueValue,
+    finalName,
+    formatPoints,
+    getClue,
+    isFinal,
+    isRpg,
+    roundName,
+    savedCardName,
+    type CardTo,
+    type Game,
+    type Id,
+    type MediaRef,
+    type SentCard,
+    type Session,
+    type Slide,
+    type SlideElement,
+    type TeamMember,
   } from '../../lib/model';
   import { cardSummary, copyWordsText, toKey } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard, type CardItem } from '../../lib/phonecard';
@@ -144,7 +163,12 @@
         c.clues.forEach((cl, row) => {
           if (cl.empty || (!dual && !session.used[cl.id] && cl.id !== openId)) return;
           cardSlides(cl).forEach((card, i) =>
-            out.push({ key: `${cl.id}/${card.id}`, clue: cl.id, card: card.id, label: `${prefix}${categoryLabel(c)} ${formatPoints(clueValue(r, row, cl), sym)} · ${clueCardName(card, i)} · ${cardSummary(game, card)}` }),
+            out.push({
+              key: `${cl.id}/${card.id}`,
+              clue: cl.id,
+              card: card.id,
+              label: `${prefix}${categoryLabel(c)} ${formatPoints(clueValue(r, row, cl), sym)} · ${clueCardName(card, i)} · ${cardSummary(game, card)}`,
+            }),
           );
         });
     }
@@ -159,13 +183,26 @@
     game.rounds.flatMap((r) =>
       !isFinal(r) || (!dual && !finalReached(session, r.id))
         ? []
-        : cardSlides(r).map((card, i) => ({ key: `${r.id}/${card.id}`, clue: r.id, card: card.id, label: `${finalName(r)} · ${clueCardName(card, i)} · ${cardSummary(game, card)}` })),
+        : cardSlides(r).map((card, i) => ({
+            key: `${r.id}/${card.id}`,
+            clue: r.id,
+            card: card.id,
+            label: `${finalName(r)} · ${clueCardName(card, i)} · ${cardSummary(game, card)}`,
+          })),
     ),
   );
   /** Every card made in the editor that can go now: the 🤫 Cards first, then the tiles', then the Finals'. */
   const fromEditor = $derived([...mine, ...tiles, ...finals]);
   /** The kinds with any card, as the list's headings (only shown with two or more). */
-  const groups = $derived(([['🤫 Cards', mine], ['On tiles', tiles], ['In Finals', finals]] as const).filter(([, l]) => l.length));
+  const groups = $derived(
+    (
+      [
+        ['🤫 Cards', mine],
+        ['On tiles', tiles],
+        ['In Finals', finals],
+      ] as const
+    ).filter(([, l]) => l.length),
+  );
 
   /**
    * Only what viewers see of a slide as it comes up: never a secret item, a hotspot, a see-through item, nor one that
@@ -180,7 +217,8 @@
     if (session.intro?.stage === 'title') return undefined;
     if (session.phase === 'clue') {
       const info = currentClueInfo(session, game);
-      if (!info || session.dd?.stage === 'splash' || session.partner?.stage === 'pick' || (tileToolUp(app.live, info.clue) && !session.revealed)) return undefined;
+      if (!info || session.dd?.stage === 'splash' || session.partner?.stage === 'pick' || (tileToolUp(app.live, info.clue) && !session.revealed))
+        return undefined;
       return viewed(session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue));
     }
     if (session.phase === 'slides') {
@@ -189,9 +227,16 @@
     }
     if (session.phase === 'final') {
       const f = currentFinal(session, game);
-      return !f ? undefined : session.finalStep === 'question' ? viewed(shownQuestionSlide(session, f)) : session.finalStep === 'answer' ? viewed(f.answerSlide) : undefined;
+      return !f
+        ? undefined
+        : session.finalStep === 'question'
+          ? viewed(shownQuestionSlide(session, f))
+          : session.finalStep === 'answer'
+            ? viewed(f.answerSlide)
+            : undefined;
     }
-    if (session.phase === 'tiebreaker' && game.tiebreaker) return viewed(session.tiebreakerRevealed ? game.tiebreaker.answerSlide : shownQuestionSlide(session, game.tiebreaker));
+    if (session.phase === 'tiebreaker' && game.tiebreaker)
+      return viewed(session.tiebreakerRevealed ? game.tiebreaker.answerSlide : shownQuestionSlide(session, game.tiebreaker));
     if (session.phase === 'rpg') {
       const r = game.rounds[session.currentRound];
       const world = isRpg(r) ? worldById(game, r.world) : undefined;
@@ -372,18 +417,31 @@
   const canSend = $derived(sendTo.length > 0 && hasSomething && !full && !already);
   /** Why 📤 Send (or 🪟 Show) can't go, or ''. */
   const cant = $derived(
-    full ? cardsFullText(game, session) : !to.length ? 'Choose who gets it first' : !hasSomething ? (kind === 'stage' ? 'Nothing on screen to send now' : 'Put something on the card first') : alreadyText,
+    full
+      ? cardsFullText(game, session)
+      : !to.length
+        ? 'Choose who gets it first'
+        : !hasSomething
+          ? kind === 'stage'
+            ? 'Nothing on screen to send now'
+            : 'Put something on the card first'
+          : alreadyText,
   );
 
   function send(): void {
     if (full) return toast(cardsFullText(game, session), 4000);
     if (!canSend || !slide) return;
-    const content: SentCard['content'] = !preset && kind === 'saved' && chosen ? (chosen.saved ? { saved: chosen.saved } : { clue: chosen.clue!, card: chosen.card! }) : { slide };
+    const content: SentCard['content'] =
+      !preset && kind === 'saved' && chosen ? (chosen.saved ? { saved: chosen.saved } : { clue: chosen.clue!, card: chosen.card! }) : { slide };
     const c = sendCard(game, session, { to: sendTo, content, until }, Date.now(), cardsOn && roomCardsFull(game, session));
     if (!c) return toast('That card can’t be sent now');
     // (Those it didn't reach, to copy it to: with phones, one with no phone here; without, all but the card window's.)
     const missed = (cardsOn ? noPhone : [...new Set(to.map((t) => t.seat))]).filter((id) => !windowTo.some((t) => t.seat === id)).map(nameOf);
-    const copy = !missed.length ? '' : cardsOn ? ` · 📵 ${missed.join(', ')} ${missed.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋)` : ` · copy it to ${missed.join(', ')} (📋)`;
+    const copy = !missed.length
+      ? ''
+      : cardsOn
+        ? ` · 📵 ${missed.join(', ')} ${missed.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋)`
+        : ` · copy it to ${missed.join(', ')} (📋)`;
     said = `${c.label} sent to ${sentToText(session, c.to, teams)}${copy}`;
     sentCopy = missed.length ? { card: c, names: missed } : null;
     announce(said);
@@ -466,7 +524,8 @@
     aria-label="{p?.name}{nophone ? ' (no phone here)' : ''}"
     title={teams ? `Every phone on ${p?.name} gets it` : undefined}
     data-player-id={id}
-    onclick={() => toggleSeat(id)}>{p?.name}{#if on}&nbsp;✓{/if}{#if nophone}<span class="part" aria-hidden="true">📵</span>{/if}</button
+    onclick={() => toggleSeat(id)}
+    >{p?.name}{#if on}&nbsp;✓{/if}{#if nophone}<span class="part" aria-hidden="true">📵</span>{/if}</button
   >
 {/snippet}
 
@@ -486,30 +545,43 @@
           aria-label="{m.name} on {p.name}"
           title="Only {m.name}’s phone gets it"
           data-player-id={p.id}
-          onclick={() => toggleMember(p.id, m)}>{m.name}{#if on}&nbsp;✓{/if}</button
+          onclick={() => toggleMember(p.id, m)}
+          >{m.name}{#if on}&nbsp;✓{/if}</button
         >
       {/each}
     {/each}
   </div>
   <div class="row wrap">
     <button class="chip ghost" aria-pressed={everyoneOn} onclick={everyone}>Everyone</button>
-    <button class="chip ghost" onclick={flip} disabled={!to.length || everyoneOn} title="Everyone you haven’t chosen, instead of those you have (send the next card to the rest)">⇄ Everyone else</button>
+    <button
+      class="chip ghost"
+      onclick={flip}
+      disabled={!to.length || everyoneOn}
+      title="Everyone you haven’t chosen, instead of those you have (send the next card to the rest)">⇄ Everyone else</button
+    >
   </div>
 
   <div class="head">Card</div>
   {#if preset}
     <!-- (Fixed: the action's. Counted, never shown: in one window viewers see this.) -->
-    <div class="small" data-offer-card>{cardSummary(game, preset.slide) || 'Nothing on it'} <span class="muted">{app.playerOnly ? '(what’s on it is never shown here)' : '(what’s on it is in the editor, never shown here)'}</span></div>
+    <div class="small" data-offer-card
+      >{cardSummary(game, preset.slide) || 'Nothing on it'}
+      <span class="muted">{app.playerOnly ? '(what’s on it is never shown here)' : '(what’s on it is in the editor, never shown here)'}</span></div
+    >
   {:else}
     <div class="row wrap" role="radiogroup" aria-label="Which card">
       <label
         class="check small"
-        title={app.playerOnly ? 'A card from this game’s 🤫 Cards, or a tile’s or a Final’s 🤫 card' : 'A card from the editor’s 🤫 Cards tab, or a tile’s or a Final’s 🤫 card'}
+        title={app.playerOnly
+          ? 'A card from this game’s 🤫 Cards, or a tile’s or a Final’s 🤫 card'
+          : 'A card from the editor’s 🤫 Cards tab, or a tile’s or a Final’s 🤫 card'}
         ><input type="radio" name="card-kind-{uid}" value="saved" bind:group={kind} disabled={!fromEditor.length} />
         {app.playerOnly ? 'One made for this game' : 'One made in the editor'}</label
       >
       <label class="check small"><input type="radio" name="card-kind-{uid}" value="quick" bind:group={kind} /> A quick card</label>
-      <label class="check small" title={onStageSomething ? 'What viewers see on screen now, as a card (nothing hidden from them goes)' : 'Nothing is on screen to send now'}
+      <label
+        class="check small"
+        title={onStageSomething ? 'What viewers see on screen now, as a card (nothing hidden from them goes)' : 'Nothing is on screen to send now'}
         ><input type="radio" name="card-kind-{uid}" value="stage" bind:group={kind} disabled={!onStageSomething} /> The slide on screen</label
       >
     </div>
@@ -523,7 +595,9 @@
         <select class="small" aria-label="The card to send" value={chosen?.key ?? ''} onchange={(e) => (pick = e.currentTarget.value)}>
           {#if groups.length > 1}
             {#each groups as [label, list] (label)}
-              <optgroup {label}>{#each list as s (s.key)}<option value={s.key}>{s.label}</option>{/each}</optgroup>
+              <optgroup {label}
+                >{#each list as s (s.key)}<option value={s.key}>{s.label}</option>{/each}</optgroup
+              >
             {/each}
           {:else}
             {#each fromEditor as s (s.key)}<option value={s.key}>{s.label}</option>{/each}
@@ -551,7 +625,10 @@
       {/if}
     {:else if kind === 'stage'}
       <div class="small" data-stage-card>
-        {#if onStage && onStageSomething}{cardSummary(game, onStage) || 'The slide'} <span class="muted">(what viewers see now; it stays as it is if the screen moves on)</span>{:else}<span class="muted">Nothing is on screen to send now.</span>{/if}
+        {#if onStage && onStageSomething}{cardSummary(game, onStage) || 'The slide'}
+          <span class="muted">(what viewers see now; it stays as it is if the screen moves on)</span>{:else}<span class="muted"
+            >Nothing is on screen to send now.</span
+          >{/if}
       </div>
     {:else}
       <div class="row">
@@ -562,26 +639,43 @@
           onpaste={paste}
           placeholder="What they’ll see… (paste a picture here too)"
           aria-label="The card’s words"
-          style:-webkit-text-security={masked ? 'disc' : undefined}
-        ></textarea>
+          style:-webkit-text-security={masked ? 'disc' : undefined}></textarea>
         {#if !dual}
-          <button class="ghost tiny" aria-pressed={reveal} onclick={() => (reveal = !reveal)} title={reveal ? 'Hide what you type again' : 'Shows what you type here (viewers see it too)'}>{reveal ? '🙈 Hide' : '👁 Show'}</button>
+          <button
+            class="ghost tiny"
+            aria-pressed={reveal}
+            onclick={() => (reveal = !reveal)}
+            title={reveal ? 'Hide what you type again' : 'Shows what you type here (viewers see it too)'}>{reveal ? '🙈 Hide' : '👁 Show'}</button
+          >
         {/if}
       </div>
       <div class="row wrap">
-        <button class="small" onclick={() => fileInput?.click()} title="A picture, GIF, video or sound from this computer (it goes into the game’s 🖼 Media)">🖼 Add a file…</button>
-        <input bind:this={fileInput} type="file" accept={ACCEPT.any} hidden onchange={(e) => {
-          const f = e.currentTarget.files?.[0];
-          e.currentTarget.value = '';
-          if (f) void addFile(f);
-        }} />
+        <button class="small" onclick={() => fileInput?.click()} title="A picture, GIF, video or sound from this computer (it goes into the game’s 🖼 Media)"
+          >🖼 Add a file…</button
+        >
+        <input
+          bind:this={fileInput}
+          type="file"
+          accept={ACCEPT.any}
+          hidden
+          onchange={(e) => {
+            const f = e.currentTarget.files?.[0];
+            e.currentTarget.value = '';
+            if (f) void addFile(f);
+          }}
+        />
         {#if dual && mediaFiles.length}
           <!-- (Names files: only with the audience window open, so never on stream.) -->
-          <select class="small media" aria-label="A file from the game’s 🖼 Media" value="" onchange={(e) => {
-            const ref = mediaFiles.find((m) => m.id === e.currentTarget.value);
-            e.currentTarget.value = '';
-            if (ref) addRef(ref);
-          }}>
+          <select
+            class="small media"
+            aria-label="A file from the game’s 🖼 Media"
+            value=""
+            onchange={(e) => {
+              const ref = mediaFiles.find((m) => m.id === e.currentTarget.value);
+              e.currentTarget.value = '';
+              if (ref) addRef(ref);
+            }}
+          >
             <option value="">🖼 From Media…</option>
             {#each mediaFiles as m (m.id)}<option value={m.id}>{FILE_ICON[m.kind]} {m.name}</option>{/each}
           </select>
@@ -601,7 +695,13 @@
       {#if itemKinds.length}
         <div class="row wrap" aria-label="On the card">
           {#each itemKinds as it (it.el)}
-            <span class="item small">{ICON[it.kind]}<button class="ghost tiny danger" aria-label="Take the {ICON[it.kind].split(' ')[1]} off the card" onclick={() => (items = items.filter((x) => x.id !== it.el))}>🗑</button></span>
+            <span class="item small"
+              >{ICON[it.kind]}<button
+                class="ghost tiny danger"
+                aria-label="Take the {ICON[it.kind].split(' ')[1]} off the card"
+                onclick={() => (items = items.filter((x) => x.id !== it.el))}>🗑</button
+              ></span
+            >
           {/each}
         </div>
       {/if}
@@ -611,8 +711,12 @@
   {#if roundOn}
     <div class="row wrap" role="radiogroup" aria-label="How long it lasts">
       <span class="muted small">Lasts</span>
-      <label class="check small"><input type="radio" name="card-lasts-{uid}" value="round" bind:group={lasts} onchange={() => (ownLasts = 'round')} /> until the round ends</label>
-      <label class="check small"><input type="radio" name="card-lasts-{uid}" value="host" bind:group={lasts} onchange={() => (ownLasts = 'host')} /> until I take it back</label>
+      <label class="check small"
+        ><input type="radio" name="card-lasts-{uid}" value="round" bind:group={lasts} onchange={() => (ownLasts = 'round')} /> until the round ends</label
+      >
+      <label class="check small"
+        ><input type="radio" name="card-lasts-{uid}" value="host" bind:group={lasts} onchange={() => (ownLasts = 'host')} /> until I take it back</label
+      >
     </div>
   {/if}
 
@@ -621,8 +725,13 @@
   {#if slow}<div class="small muted"><span data-card-slow>{slow}</span><ShrinkButton {game} items={phone?.items ?? []} which="slow" /></div>{/if}
   {#if noPhone.length && hasSomething}
     <div class="small warn">
-      📵 {noPhone.map(nameOf).join(', ')} {noPhone.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋), or
-      {#if cardWindow.open && noPhone.includes(cardWindow.seat ?? '')}it shows in the 🪟 card window once sent{:else}<button class="ghost tiny" onclick={() => openWin(noPhone[0])} title="Opens a window with only {nameOf(noPhone[0])}’s cards, to share with them alone">show it in the 🪟 card window</button>{/if}
+      📵 {noPhone.map(nameOf).join(', ')}
+      {noPhone.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋), or
+      {#if cardWindow.open && noPhone.includes(cardWindow.seat ?? '')}it shows in the 🪟 card window once sent{:else}<button
+          class="ghost tiny"
+          onclick={() => openWin(noPhone[0])}
+          title="Opens a window with only {nameOf(noPhone[0])}’s cards, to share with them alone">show it in the 🪟 card window</button
+        >{/if}
     </div>
   {/if}
   {#if full}<div class="small warn" data-cards-full>{cardsFullText(game, session)}</div>{/if}
@@ -630,21 +739,37 @@
     {#if cardsOn}
       <button class="primary small" onclick={send} disabled={!canSend} title={cant || `Sends it to ${names.join(', ')} now`}>📤 Send</button>
     {:else if windowName}
-      <button class="primary small" onclick={send} disabled={!canSend} title={(cant && cant !== 'Choose who gets it first' ? cant : '') || `Shows it in the 🪟 card window, to ${windowName} alone, until you take it back or it’s over`}>🪟 Show {windowName}</button>
+      <button
+        class="primary small"
+        onclick={send}
+        disabled={!canSend}
+        title={(cant && cant !== 'Choose who gets it first' ? cant : '') ||
+          `Shows it in the 🪟 card window, to ${windowName} alone, until you take it back or it’s over`}>🪟 Show {windowName}</button
+      >
     {/if}
     <!-- (Not a greyed one for a quick card that went, its words gone: the line under it copies that one.) -->
     {#if (!cardsOn || noPhone.length) && (hasSomething || !sentCopy)}
-      <button class="small" onclick={copyWords} disabled={!to.length || !slide || (!cardWords(slide) && !cardLinks(game, slide).length)} title="Copies “For … only” with the card’s words and links, to paste in a DM">📋 Copy words</button>
+      <button
+        class="small"
+        onclick={copyWords}
+        disabled={!to.length || !slide || (!cardWords(slide) && !cardLinks(game, slide).length)}
+        title="Copies “For … only” with the card’s words and links, to paste in a DM">📋 Copy words</button
+      >
       {#if slide && hasPicture(game, slide) && canCopyPicture}
-        <button class="small" onclick={() => copyCardPicture(game, slide, 'The card', names.join(', ') || 'them')} disabled={!to.length}>📋 Copy picture</button>
+        <button class="small" onclick={() => copyCardPicture(game, slide, 'The card', names.join(', ') || 'them')} disabled={!to.length}>📋 Copy picture</button
+        >
       {/if}
     {/if}
   </div>
   {#if alreadyText}<div class="small muted" data-card-already>{alreadyText}</div>{/if}
   {#if !cardsOn}
     <div class="muted small">
-      {room ? 'This buzzer server doesn’t put cards on phones: copy it to them (📋)' : 'No phone buzzers in this game: copy it to them (📋)'}{#if cardWindow.open}, or show it in the 🪟 card window.{:else if firstSeat}, or
-        <button class="ghost tiny" onclick={() => openWin(firstSeat)} title="Opens a window with only {nameOf(firstSeat)}’s cards, to share with them alone">open a 🪟 card window for {nameOf(firstSeat)}</button>{:else}, or open a 🪟 card window for one of them.{/if}
+      {room
+        ? 'This buzzer server doesn’t put cards on phones: copy it to them (📋)'
+        : 'No phone buzzers in this game: copy it to them (📋)'}{#if cardWindow.open}, or show it in the 🪟 card window.{:else if firstSeat}, or
+        <button class="ghost tiny" onclick={() => openWin(firstSeat)} title="Opens a window with only {nameOf(firstSeat)}’s cards, to share with them alone"
+          >open a 🪟 card window for {nameOf(firstSeat)}</button
+        >{:else}, or open a 🪟 card window for one of them.{/if}
     </div>
   {/if}
   {#if said}<div class="small" role="status" tabindex="-1" data-card-said bind:this={saidRow}>✓ {said}</div>{/if}
@@ -655,7 +780,12 @@
     <!-- (The card that went, for those with no phone here: a quick card's words are gone from the form above.) -->
     <div class="row wrap" data-card-said-copy bind:this={copyRow}>
       {#if cardWords(sl) || cardLinks(game, sl).length}
-        <button class="small" onclick={copySent} aria-label="Copy {label}’s words for {whom}" title="Copies “For {whom} only” with {label}’s words and links, to paste in a DM">📋 Copy words</button>
+        <button
+          class="small"
+          onclick={copySent}
+          aria-label="Copy {label}’s words for {whom}"
+          title="Copies “For {whom} only” with {label}’s words and links, to paste in a DM">📋 Copy words</button
+        >
       {/if}
       {#if hasPicture(game, sl) && canCopyPicture}
         <button class="small" onclick={() => copyCardPicture(game, sl, label, whom)} aria-label="Copy {label}’s picture for {whom}">📋 Copy picture</button>

@@ -11,7 +11,30 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, confirmStrip, flowButton, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer, failureShots, assert, sleep, launchChromium, until, hostPanelIn, stageBoxIn, toolsRowIn } from './helpers.mjs';
+import {
+  appFile,
+  confirmStrip,
+  flowButton,
+  flowIs,
+  mainButton,
+  openGameFile,
+  packGame,
+  png,
+  recordSeen,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  stepButton,
+  leaveAnswer,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  until,
+  hostPanelIn,
+  stageBoxIn,
+  toolsRowIn,
+} from './helpers.mjs';
 import { wav } from './mediafixtures.mjs';
 
 const file = appFile();
@@ -27,7 +50,23 @@ const SECRETS = ['wqzpk', 'jhxvb'];
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
-const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 40) => ({
+  ...box(y),
+  kind: 'text',
+  text: t,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
 const slide = (...elements) => ({ background: {}, elements });
 
@@ -47,28 +86,77 @@ try {
   const files = { pic: png(40, 200, 90, 300, 200) };
   const media = [{ id: 'pic', name: 'jhxvb-map.png', mime: 'image/png', size: files.pic.length, kind: 'image' }];
   const spy = {
-    ...box(300), x: 900, w: 200, h: 200, id: 'el_spy', name: 'Spy master', kind: 'shape', shape: 'rect', fill: '#aa5500', stroke: '#000', strokeWidth: 0, radius: 0,
+    ...box(300),
+    x: 900,
+    w: 200,
+    h: 200,
+    id: 'el_spy',
+    name: 'Spy master',
+    kind: 'shape',
+    shape: 'rect',
+    fill: '#aa5500',
+    stroke: '#000',
+    strokeWidth: 0,
+    radius: 0,
     role: { class: 'npc', actions: [{ id: 'a_mission', do: 'card', slide: slide(text(MISSION), image('pic', 400)), to: 'trigger' }] },
   };
   const game = {
-    id: 'g_card_action', version: 2, title: 'Cards from actions',
+    id: 'g_card_action',
+    version: 2,
+    title: 'Cards from actions',
     settings: {
-      allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, buzzer: true,
+      allowNegativeScores: true,
+      deductOnWrong: false,
+      defaultTimerSeconds: 30,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: false,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+      maxPlayers: 8,
+      buzzer: true,
     },
     players: ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i] })),
     rounds: [{ id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' }],
-    worlds: [{
-      id: 'w1', name: 'World',
-      maps: [{ id: 'm1', name: 'Map', cols: 1, rows: 1, visibility: 'full', showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut',
-        screens: [{ id: 's1', name: 'Village', col: 0, row: 0, slide: { background: { color: '#234' }, elements: [spy] } }] }],
-    }],
+    worlds: [
+      {
+        id: 'w1',
+        name: 'World',
+        maps: [
+          {
+            id: 'm1',
+            name: 'Map',
+            cols: 1,
+            rows: 1,
+            visibility: 'full',
+            showExits: true,
+            revealNeighbors: true,
+            diagonals: true,
+            wrap: false,
+            transition: 'cut',
+            screens: [{ id: 's1', name: 'Village', col: 0, row: 0, slide: { background: { color: '#234' }, elements: [spy] } }],
+          },
+        ],
+      },
+    ],
     items: [{ id: 'i_scroll', name: 'Secret scroll', stackable: false }],
     statFields: [],
-    wheels: [{ id: 'w_whisper', name: 'Whisper wheel', spinDurationMs: 300, removeAfterLanding: false, segments: [
-      { id: 'sw', label: 'Whisper', color: '#e6194b', weight: 1, actions: [{ id: 'a_whisper', do: 'card', slide: slide(text(WHISPER)), to: 'others' }] },
-    ] }],
-    media, audio: {}, dice: [], theme: {},
+    wheels: [
+      {
+        id: 'w_whisper',
+        name: 'Whisper wheel',
+        spinDurationMs: 300,
+        removeAfterLanding: false,
+        segments: [
+          { id: 'sw', label: 'Whisper', color: '#e6194b', weight: 1, actions: [{ id: 'a_whisper', do: 'card', slide: slide(text(WHISPER)), to: 'others' }] },
+        ],
+      },
+    ],
+    media,
+    audio: {},
+    dice: [],
+    theme: {},
   };
   const packPath = resolve('test-results/card-action.brainrot');
   writeFileSync(packPath, await packGame(game, files));
@@ -102,7 +190,10 @@ try {
 
   // ---------- In the editor: an item's 🤫 Send a card button ----------
   await host.getByRole('button', { name: '📊 Stats & Items' }).click();
-  await host.locator('.item-row', { has: host.getByRole('button', { name: 'Delete Secret scroll' }) }).getByRole('button', { name: /^▸ More/ }).click();
+  await host
+    .locator('.item-row', { has: host.getByRole('button', { name: 'Delete Secret scroll' }) })
+    .getByRole('button', { name: /^▸ More/ })
+    .click();
   await host.getByRole('button', { name: '＋ Add button' }).last().click();
   await host.getByRole('menuitem', { name: '🤫 Send a card' }).click();
   const words = host.getByLabel('Card words').last();
@@ -155,8 +246,14 @@ try {
   const offer = hostPanelIn(host).locator('[data-card-offer]');
   await offer.waitFor();
   const chip = (o, name) => o.getByRole('button', { name: new RegExp(`^${name}( \\(no phone here\\))?$`) });
-  assert((await offer.evaluate((o) => o.previousElementSibling?.getAttribute('aria-label'))) === 'Object: Spy master', 'it shows right under the object’s card, where its button was pressed');
-  assert((await offer.locator('[data-offer-card]').innerText()).includes('1 line of words, 1 picture') && !(await offer.innerText()).includes('wqzpk'), 'it counts what’s on the card, never says it');
+  assert(
+    (await offer.evaluate((o) => o.previousElementSibling?.getAttribute('aria-label'))) === 'Object: Spy master',
+    'it shows right under the object’s card, where its button was pressed',
+  );
+  assert(
+    (await offer.locator('[data-offer-card]').innerText()).includes('1 line of words, 1 picture') && !(await offer.innerText()).includes('wqzpk'),
+    'it counts what’s on the card, never says it',
+  );
   await offer.getByRole('button', { name: '📤 Send' }).click();
   await until(() => !!cards()[0]?.media?.[0]?.file);
   assert(!JSON.stringify(states).includes('jhxvb'), 'no file name goes to the room');
@@ -179,7 +276,9 @@ try {
   await slice.click();
   await offer.waitFor();
   assert(
-    (await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Cat').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Bob').getAttribute('aria-pressed')) === 'false',
+    (await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'true' &&
+      (await chip(offer, 'Cat').getAttribute('aria-pressed')) === 'true' &&
+      (await chip(offer, 'Bob').getAttribute('aria-pressed')) === 'false',
     'a slice’s card for everyone else starts with everyone but the player the spin was for',
   );
   assert((await tc.locator('[data-card-offer]').count()) === 1, 'it shows in the wheel’s box, under what it landed on');
@@ -189,7 +288,10 @@ try {
   await slice.click();
   await offer.getByRole('button', { name: '📤 Send' }).click();
   assert(await until(() => cards().length === 2), 'pressed again and sent: two cards out');
-  assert(JSON.stringify(cards()[1].to) === JSON.stringify([{ seat: seat.Ann }, { seat: seat.Cat }]) && cards()[1].text === WHISPER, 'Card 2 goes to Ann’s and Cat’s seats');
+  assert(
+    JSON.stringify(cards()[1].to) === JSON.stringify([{ seat: seat.Ann }, { seat: seat.Cat }]) && cards()[1].text === WHISPER,
+    'Card 2 goes to Ann’s and Cat’s seats',
+  );
   await ann.getByRole('button', { name: 'Tap to see' }).waitFor();
   assert(!heard.bob.join('').includes('Whisper-'), 'Bob’s phone gets nothing of it');
   await host.keyboard.press('Escape');
@@ -211,13 +313,29 @@ try {
   await host.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: 'Card window for Bob' }).click();
   await win.getByText('For Bob only').waitFor();
   await win.getByText(MISSION).waitFor();
-  assert(await until(() => win.locator('img').evaluate((i) => i.complete && i.naturalWidth > 0 && i.src.startsWith('blob:')).catch(() => false)), 'its picture shows, from this computer’s file');
+  assert(
+    await until(() =>
+      win
+        .locator('img')
+        .evaluate((i) => i.complete && i.naturalWidth > 0 && i.src.startsWith('blob:'))
+        .catch(() => false),
+    ),
+    'its picture shows, from this computer’s file',
+  );
   assert(!(await win.getByText(WHISPER).count()), 'and not Cat’s card');
   // ↩ Take back: the window drops it.
   await tools.locator('[data-cards-out-count]').click();
   await host.getByRole('dialog', { name: 'Cards out' }).getByRole('button', { name: 'Take Card 1 back' }).click();
   await win.getByText('Nothing private right now').waitFor();
-  assert(await until(() => win.locator('img').count().then((n) => n === 0)), 'taken back: “Nothing private right now”, its picture gone');
+  assert(
+    await until(() =>
+      win
+        .locator('img')
+        .count()
+        .then((n) => n === 0),
+    ),
+    'taken back: “Nothing private right now”, its picture gone',
+  );
   assert(await until(async () => !(await bob.locator('.card').count())), 'Bob’s phone drops it too');
   await host.keyboard.press('Escape');
 
@@ -228,20 +346,36 @@ try {
   await tools.getByRole('button', { name: /🪟 Cards: Bob/ }).click();
   await host.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: '✕ Close the card window' }).click();
   assert(await until(() => win.isClosed()), 'Close the card window closes it');
-  assert(!(await tools.locator('[data-card-window-warn]').count()) && !(await tools.getByRole('button', { name: /🪟/ }).count()), 'and the ⚠ line and its button go');
+  assert(
+    !(await tools.locator('[data-card-window-warn]').count()) && !(await tools.getByRole('button', { name: /🪟/ }).count()),
+    'and the ⚠ line and its button go',
+  );
 
   // ---------- No phone buzzers: 🪟 Show puts an offered card in the card window ----------
   const plain = (id, q, a, extra = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(text(q)), answerSlide: slide(text(a)), ...extra });
   const board = {
-    id: 'r_board', name: 'Round 2', mode: 'board', values: [200, 400], dailyDoubleCount: 0,
+    id: 'r_board',
+    name: 'Round 2',
+    mode: 'board',
+    values: [200, 400],
+    dailyDoubleCount: 0,
     categories: [
       {
-        id: 'cat0', title: 'Movies',
+        id: 'cat0',
+        title: 'Movies',
         clues: [
           plain('q_tip', 'A plain question', 'Plain answer', { cards: [{ id: 't1', to: 'picker', ...slide(text(TIP)) }] }),
           plain('q_partner', 'Describe it', 'Shrek', {
-            type: 'partner', timerSeconds: 60,
-            partner: { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' },
+            type: 'partner',
+            timerSeconds: 60,
+            partner: {
+              game: 'describe',
+              giver: 'partner',
+              got: { giver: 100, guesser: 50 },
+              missed: { giver: 0, guesser: -50 },
+              partnerSafe: true,
+              points: 'game',
+            },
             cards: [{ id: 'p1', to: 'giver', ...slide(text(DESCRIBE)) }],
           }),
         ],
@@ -252,11 +386,24 @@ try {
   // (Here the Spy master's card has a sound too, of which it plays 1 s to 3 s: the card window keeps to that part.)
   const offlineWorlds = structuredClone(game.worlds);
   offlineWorlds[0].maps[0].screens[0].slide.elements[0].role.actions[0].slide.elements.push({
-    ...box(600), kind: 'audio', media: 'part', startAt: 1, endAt: 3, autoplay: false, loop: false, muted: false, volume: 1, visible: true,
+    ...box(600),
+    kind: 'audio',
+    media: 'part',
+    startAt: 1,
+    endAt: 3,
+    autoplay: false,
+    loop: false,
+    muted: false,
+    volume: 1,
+    visible: true,
   });
   const part = wav(4, { rate: 8000, channels: 1 });
   const offline = {
-    ...game, id: 'g_card_action_offline', settings: { ...game.settings, buzzer: false }, rounds: [...game.rounds, board], worlds: offlineWorlds,
+    ...game,
+    id: 'g_card_action_offline',
+    settings: { ...game.settings, buzzer: false },
+    rounds: [...game.rounds, board],
+    worlds: offlineWorlds,
     media: [...media, { id: 'part', name: 'part.wav', mime: 'audio/wav', size: part.length, kind: 'audio' }],
   };
   const offlinePath = resolve('test-results/card-action-offline.brainrot');
@@ -288,24 +435,56 @@ try {
   await spyCard.getByRole('button', { name: '🤫 Card for whoever set it off' }).click();
   const offer2 = hostPanelIn(solo).locator('[data-card-offer]');
   await offer2.waitFor();
-  assert(!(await offer2.getByRole('button', { name: '📤 Send' }).count()) && (await offer2.getByRole('button', { name: '📋 Copy words' }).count()) === 1, 'no phones: the offer has no 📤 Send, and copies the card (📋)');
+  assert(
+    !(await offer2.getByRole('button', { name: '📤 Send' }).count()) && (await offer2.getByRole('button', { name: '📋 Copy words' }).count()) === 1,
+    'no phones: the offer has no 📤 Send, and copies the card (📋)',
+  );
   await offer2.getByRole('button', { name: '🪟 Show Cat' }).click();
   await win2.getByText(MISSION).waitFor();
-  assert(await until(() => win2.locator('img').evaluate((i) => i.complete && i.naturalWidth > 0).catch(() => false)), 'with the card window open for Cat, 🪟 Show puts the card there, its picture included');
+  assert(
+    await until(() =>
+      win2
+        .locator('img')
+        .evaluate((i) => i.complete && i.naturalWidth > 0)
+        .catch(() => false),
+    ),
+    'with the card window open for Cat, 🪟 Show puts the card there, its picture included',
+  );
   // Its sound plays its part only: from 1 s, and at 3 s it stops and goes back to 1 s, as on a phone.
   const partSound = win2.locator('audio');
-  const waits = await win2.waitForFunction(() => { const a = document.querySelector('audio'); return !!a && a.readyState >= 1 && Math.abs(a.currentTime - 1) < 0.05; }).then(() => true, () => false);
+  const waits = await win2
+    .waitForFunction(() => {
+      const a = document.querySelector('audio');
+      return !!a && a.readyState >= 1 && Math.abs(a.currentTime - 1) < 0.05;
+    })
+    .then(
+      () => true,
+      () => false,
+    );
   assert(waits, 'its sound waits at its Start at (1 s)');
   // (A click there first, as Cat's: the window may play sound.)
   await win2.locator('.head').click();
   await partSound.evaluate((a) => a.play());
   await win2.waitForFunction(() => document.querySelector('audio').currentTime > 1.5);
   const partEnd = await win2
-    .waitForFunction(() => { const a = document.querySelector('audio'); return a.paused && a.currentTime < 1.2; }, null, { timeout: 8000 })
-    .then(() => true, () => false);
+    .waitForFunction(
+      () => {
+        const a = document.querySelector('audio');
+        return a.paused && a.currentTime < 1.2;
+      },
+      null,
+      { timeout: 8000 },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
   const partAt = await partSound.evaluate((a) => ({ t: +a.currentTime.toFixed(2), paused: a.paused }));
   assert(partEnd, `played, it stops at its Stop at (3 s) and goes back to 1 s, as on a phone (${JSON.stringify(partAt)})`);
-  assert((await tools2.locator('[data-cards-out-count]').innerText()).trim() === '🤫 1 card out' && sockets === 0, 'it is in the cards out (to take back), and nothing went anywhere else');
+  assert(
+    (await tools2.locator('[data-cards-out-count]').innerText()).trim() === '🤫 1 card out' && sockets === 0,
+    'it is in the cards out (to take back), and nothing went anywhere else',
+  );
 
   // ---------- No phone buzzers, a board round: 🪟 Show a standard tile's card, then a partner clue's ----------
   await solo.keyboard.press('Escape');
@@ -330,7 +509,10 @@ try {
     await fillSend.locator('[data-card-said]').getByText(`Card ${i} sent to Cat`).waitFor();
   }
   await win2.getByText('Extra card 9').waitFor();
-  assert(!(await fillSend.locator('[data-cards-full]').count()) && (await tools2.locator('[data-cards-out-count]').innerText()).trim() === '🤫 9 cards out', 'all nine are in the card window, and nothing says the phones are full');
+  assert(
+    !(await fillSend.locator('[data-cards-full]').count()) && (await tools2.locator('[data-cards-out-count]').innerText()).trim() === '🤫 9 cards out',
+    'all nine are in the card window, and nothing says the phones are full',
+  );
   // A quick card for Ann and Cat: 🪟 Show shows it to Cat alone, and the line under it copies it to Ann (its words are
   // gone from the form once it went).
   await fillSend.getByRole('button', { name: 'Ann', exact: true }).click();
@@ -340,11 +522,20 @@ try {
   const fillSaid = fillSend.locator('[data-card-said]');
   await fillSaid.getByText('Card 10 sent to Cat').waitFor();
   await win2.getByText(FOR_BOTH).waitFor();
-  assert((await fillSaid.innerText()) === '✓ Card 10 sent to Cat · copy it to Ann (📋)', `shown to Cat: the line under it says to copy it to Ann (${await fillSaid.innerText()})`);
-  assert(!(await fillSend.getByRole('button', { name: '📋 Copy words', exact: true }).count()), 'and the form’s 📋 Copy words, with nothing on the card now, is gone');
+  assert(
+    (await fillSaid.innerText()) === '✓ Card 10 sent to Cat · copy it to Ann (📋)',
+    `shown to Cat: the line under it says to copy it to Ann (${await fillSaid.innerText()})`,
+  );
+  assert(
+    !(await fillSend.getByRole('button', { name: '📋 Copy words', exact: true }).count()),
+    'and the form’s 📋 Copy words, with nothing on the card now, is gone',
+  );
   await fillSend.getByRole('button', { name: 'Copy Card 10’s words for Ann' }).click();
   const forAnn = `🤫 For Ann only (Card 10): ${FOR_BOTH}`;
-  assert(await until(async () => (await solo.evaluate(() => navigator.clipboard.readText())) === forAnn, 5000), `its 📋 Copy words copies what went, for Ann (“${forAnn}”)`);
+  assert(
+    await until(async () => (await solo.evaluate(() => navigator.clipboard.readText())) === forAnn, 5000),
+    `its 📋 Copy words copies what went, for Ann (“${forAnn}”)`,
+  );
   await solo.keyboard.press('Escape');
   await fillSend.waitFor({ state: 'detached' });
   await solo.keyboard.press('p');
@@ -355,9 +546,18 @@ try {
   assert(!(await soloTile.getByRole('button', { name: 'Send card 1' }).count()), 'no phones: a tile’s card has no 📤 Send');
   await soloTile.getByRole('button', { name: 'Show card 1 to Cat' }).click();
   await win2.getByText(TIP).waitFor();
-  assert((await soloTile.innerText()).includes('in the 🪟 card window'), 'with the card window open for Cat (who picked it), 🪟 Show puts the tile’s card there, and its row says so');
+  assert(
+    (await soloTile.innerText()).includes('in the 🪟 card window'),
+    'with the card window open for Cat (who picked it), 🪟 Show puts the tile’s card there, and its row says so',
+  );
   const soloBadge = stageBoxIn(solo).locator('[data-private-badge]');
-  assert(await until(async () => (await soloBadge.count()) === 1 && (await soloBadge.innerText()).includes('Cat') && (await soloBadge.innerText()).includes('has a private question')), 'the stream says Cat has a private question');
+  assert(
+    await until(
+      async () =>
+        (await soloBadge.count()) === 1 && (await soloBadge.innerText()).includes('Cat') && (await soloBadge.innerText()).includes('has a private question'),
+    ),
+    'the stream says Cat has a private question',
+  );
   assert(!(await shownOf(solo, SECRETS)).length, 'one window: the host page holds none of the card’s words');
   // 🤫 Send a card… with that card, to Cat, to last the round: it can go (the one out lasts only until the tile closes),
   // once. With no phones there's no ↻ Send again in the cards out, so the dialog never sends the host there.
@@ -376,7 +576,10 @@ try {
   assert(!!label && said.includes('sent to Cat'), `it goes (${said})`);
   assert(await until(() => showCat.isDisabled()), 'and then 🪟 Show Cat is off: it’s out to her for as long');
   const already = await tileSend.locator('[data-card-already]').innerText();
-  assert(already.includes(`${label} is out to them already`) && already.includes('↩ Take it back') && !already.includes('↻'), `it says to ↩ take it back first, never ↻ Send again, which isn’t there (${already})`);
+  assert(
+    already.includes(`${label} is out to them already`) && already.includes('↩ Take it back') && !already.includes('↻'),
+    `it says to ↩ take it back first, never ↻ Send again, which isn’t there (${already})`,
+  );
   await solo.keyboard.press('Escape');
   await tileSend.waitFor({ state: 'detached' });
   await tools2.locator('[data-cards-out-count]').click();
@@ -413,10 +616,16 @@ try {
   await mainButton(solo).click();
   const pRow = soloPartner.locator('[data-card="1"]');
   await pRow.waitFor();
-  assert((await pRow.getByRole('button', { name: 'Card 1 to Cat', exact: true }).getAttribute('aria-pressed')) === 'true', 'the partner clue’s card goes to Cat, the describer');
+  assert(
+    (await pRow.getByRole('button', { name: 'Card 1 to Cat', exact: true }).getAttribute('aria-pressed')) === 'true',
+    'the partner clue’s card goes to Cat, the describer',
+  );
   await pRow.getByRole('button', { name: 'Show card 1 to Cat' }).click();
   await win2.getByText(DESCRIBE).waitFor();
-  assert((await pRow.innerText()).includes('in the 🪟 card window'), 'from the 📤 Hand out the cards row, 🪟 Show puts it in Cat’s card window, and the row says so');
+  assert(
+    (await pRow.innerText()).includes('in the 🪟 card window'),
+    'from the 📤 Hand out the cards row, 🪟 Show puts it in Cat’s card window, and the row says so',
+  );
   assert(!(await shownOf(solo, SECRETS)).length && sockets === 0, 'the host page holds none of its words, and nothing went anywhere else');
   await win2.getByText('You’re the Describer').waitFor();
   assert(await win2.getByText('Describe it to Ann: don’t say what’s on it!').isVisible(), 'the card window says Cat’s part and what to do, as a phone does');
@@ -424,7 +633,10 @@ try {
   await solo.keyboard.press('Shift+Escape');
   const keepAsk = confirmStrip(solo);
   await keepAsk.waitFor();
-  assert(/went to Cat\. Put the tile back anyway\?/.test(await keepAsk.innerText()) && !(await solo.getByRole('alertdialog').count()), `Shift+Esc asks first, in the panel (${(await keepAsk.innerText()).replace(/\s+/g, ' ')})`);
+  assert(
+    /went to Cat\. Put the tile back anyway\?/.test(await keepAsk.innerText()) && !(await solo.getByRole('alertdialog').count()),
+    `Shift+Esc asks first, in the panel (${(await keepAsk.innerText()).replace(/\s+/g, ' ')})`,
+  );
   await keepAsk.getByRole('button', { name: 'Keep playing' }).click();
   await keepAsk.waitFor({ state: 'detached' });
   assert((await soloPartner.count()) === 1 && (await win2.getByText(DESCRIBE).count()) === 1, 'Keep playing: the tile stays open, its card in the card window');

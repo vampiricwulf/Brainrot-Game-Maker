@@ -150,10 +150,18 @@ describe('slides round', () => {
   it('is a kind of round a file can have, and its slides are walked (media, find, history)', () => {
     const { game, intro } = withIntro();
     expect(gameProblem(migrateGame(clone(game)))).toBeNull();
-    expect(allSlides(game).filter((r) => r.where.startsWith('Introduction')).map((r) => r.where)).toEqual(['Introduction (slide 1)', 'Introduction (slide 2)', 'Introduction (slide 3)']);
+    expect(
+      allSlides(game)
+        .filter((r) => r.where.startsWith('Introduction'))
+        .map((r) => r.where),
+    ).toEqual(['Introduction (slide 1)', 'Introduction (slide 2)', 'Introduction (slide 3)']);
     const hit = findAll(game, 'Rules').find((h) => h.icon === '🖼');
     expect(hit?.place).toEqual({ tab: 'round', round: intro.id, part: { kind: 'slides', slide: intro.extraSlides![0].id } });
-    expect(placeAt(game, ['rounds', intro.id, 'extraSlides', intro.extraSlides![1].id]).place).toEqual({ tab: 'round', round: intro.id, part: { kind: 'slides', slide: intro.extraSlides![1].id } });
+    expect(placeAt(game, ['rounds', intro.id, 'extraSlides', intro.extraSlides![1].id]).place).toEqual({
+      tab: 'round',
+      round: intro.id,
+      part: { kind: 'slides', slide: intro.extraSlides![1].id },
+    });
   });
 
   it('the checklist names an empty slide (and nothing else about it)', () => {

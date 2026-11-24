@@ -390,7 +390,10 @@
     if (watch) commit();
     const { playGame, session } = app;
     const playing = app.screen === 'play' && !app.pregame && !app.test && playGame && session && playWatch && playWatched === playGame;
-    await Promise.all([editing && saveEditorNow(), playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover, keptOverlay(), keptTile())]);
+    await Promise.all([
+      editing && saveEditorNow(),
+      playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover, keptOverlay(), keptTile()),
+    ]);
     editing = false;
     playsHere = false;
     paused = true;
@@ -509,7 +512,8 @@
   // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft), a second at most
   // after the first (phones sending wagers one after another don't put it off).
   const savePlaySoon = debounce(
-    (session: Session, cover?: boolean, overlay?: Overlay, toolTile?: string) => playWatch && mayPlay() && savePlay(playWatch.value(), session, cover, overlay, toolTile),
+    (session: Session, cover?: boolean, overlay?: Overlay, toolTile?: string) =>
+      playWatch && mayPlay() && savePlay(playWatch.value(), session, cover, overlay, toolTile),
     300,
     1000,
   );
@@ -545,7 +549,10 @@
     const lim = fileLimitsNow();
     const filesOff = (!!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles()) || lim.off;
     const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id] && shrinksFurther(game, m, lim.limits.fileBytes);
-    checklist = checklistLines(game, validate(game, { filesOff, fileBytes: lim.limits.fileBytes, stored: (id) => id in mediaUrls, gifs: lim.gifs, canShrink, plays: knownVerdict }));
+    checklist = checklistLines(
+      game,
+      validate(game, { filesOff, fileBytes: lim.limits.fileBytes, stored: (id) => id in mediaUrls, gifs: lim.gifs, canShrink, plays: knownVerdict }),
+    );
   };
   const checkSoon = debounce(() => watch && check(watch.value()), 300);
   $effect(() => {
@@ -715,7 +722,8 @@
     const toolTile = keptTile();
     // Nothing is written during pre-game, so an older saved game stays intact until "Start game".
     // (A ▶ Test this round is never written: the game kept to resume stays as it is.)
-    if (loaded && !app.pregame && !app.test && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session, cover, overlay, toolTile);
+    if (loaded && !app.pregame && !app.test && session && untrack(() => playWatched && playWatched === app.playGame))
+      savePlaySoon(session, cover, overlay, toolTile);
   });
 
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
@@ -779,7 +787,12 @@
     const players = n ? ` and its ${n} ${teams ? 'team' : 'player'}${n === 1 ? '' : 's'}` : '';
     const close = await ask(
       `The phones stay joined for “${app.game.title.trim() || 'this game'}” and Buzzer mode stays on, so nobody has to join again. Closing it tells the phones the game is over (Start the room makes a new code).`,
-      { title: `Keep buzzer room ${code}${players}?`, cancel: n ? (teams ? 'Keep room & teams' : 'Keep room & players') : 'Keep the room', ok: 'Close it, start fresh', danger: true },
+      {
+        title: `Keep buzzer room ${code}${players}?`,
+        cancel: n ? (teams ? 'Keep room & teams' : 'Keep room & players') : 'Keep the room',
+        ok: 'Close it, start fresh',
+        danger: true,
+      },
     );
     return !close && kept.room === room;
   }
@@ -794,7 +807,10 @@
     const g = app.game;
     const teams = roomTeams(room, g.settings);
     const had = $state.snapshot(g.players);
-    const rows = room.gameId !== g.id && Array.isArray(room.players) ? room.players.map(({ id, name, color, avatar }) => ({ id, name, color, ...(avatar ? { avatar } : {}) })) : [];
+    const rows =
+      room.gameId !== g.id && Array.isArray(room.players)
+        ? room.players.map(({ id, name, color, avatar }) => ({ id, name, color, ...(avatar ? { avatar } : {}) }))
+        : [];
     const players = rows.length ? keptRoster(had, rows) : null;
     const brings = !!players && JSON.stringify(players) !== JSON.stringify(had);
     const on = [...(g.settings.buzzer ? [] : ['Buzzer mode on']), ...(!!g.settings.buzzTeams === !!teams ? [] : [teams ? 'Teams on' : 'Teams off'])];
@@ -1009,7 +1025,11 @@
 
   async function discardResume(): Promise<void> {
     const saved = app.resumable;
-    if (saved && saved.session.phase !== 'end' && !(await ask(`Discard the saved game "${saved.game.title}"? Its scores and used tiles are deleted.`, { ok: 'Discard', cancel: 'Keep', danger: true })))
+    if (
+      saved &&
+      saved.session.phase !== 'end' &&
+      !(await ask(`Discard the saved game "${saved.game.title}"? Its scores and used tiles are deleted.`, { ok: 'Discard', cancel: 'Keep', danger: true }))
+    )
       return;
     // Its own room goes with it (the phones are told the game is over), as with Exit › Discard & leave. A room kept open
     // in the editor belongs to the stream and stays (its bar has ⏹ Close the room…).
@@ -1110,7 +1130,12 @@
     if (app.screen !== 'editor' || !audience.open || !mayPlay()) return;
     const r = kept.room?.remote;
     pushGame(watch && watching === app.game ? watch.value() : $state.snapshot(app.game));
-    pushLive({ ...newLive(), pregame: true, ...(onBreak ? { cover: true } : {}), room: r?.code && r.base ? { code: r.code, link: joinUrl(r.base, r.code) } : null });
+    pushLive({
+      ...newLive(),
+      pregame: true,
+      ...(onBreak ? { cover: true } : {}),
+      room: r?.code && r.base ? { code: r.code, link: joinUrl(r.base, r.code) } : null,
+    });
   }
   const soonCardLater = debounce(soonCard, 400);
   $effect(() => {
@@ -1127,8 +1152,7 @@
       closeAudienceWindow();
   }
   async function reopenAudience(): Promise<void> {
-    if (!(await openAudienceWindow(audienceTitle(app.game))))
-      toast(inTauri() ? "Couldn't open the audience window." : popupBlocked(), 5000);
+    if (!(await openAudienceWindow(audienceTitle(app.game)))) toast(inTauri() ? "Couldn't open the audience window." : popupBlocked(), 5000);
   }
 
   /**
@@ -1144,7 +1168,11 @@
     e.preventDefault();
     if (e.repeat) return;
     // Ctrl+O, as in the editor: never the browser's own Open (a file picked there would take this tab, show and all).
-    if (k === 'o') return void toast(playerOnly ? 'This file plays its own game: open others in Brainrot Games Maker' : 'Open… is in the editor, not on the game screen', 5000);
+    if (k === 'o')
+      return void toast(
+        playerOnly ? 'This file plays its own game: open others in Brainrot Games Maker' : 'Open… is in the editor, not on the game screen',
+        5000,
+      );
     if (playerOnly)
       toast(
         !app.storageOk
@@ -1154,7 +1182,11 @@
             : 'This game keeps its progress in this browser by itself',
         5000,
       );
-    else toast(app.storageOk ? 'The game saves itself as you play (💾 Save is in the editor)' : "Autosave isn't working right now (💾 Save is in the editor)", 5000);
+    else
+      toast(
+        app.storageOk ? 'The game saves itself as you play (💾 Save is in the editor)' : "Autosave isn't working right now (💾 Save is in the editor)",
+        5000,
+      );
   }
 
   /** Focus the remembered display's card, so Enter resumes in it. */
@@ -1235,7 +1267,13 @@
   <div class="player-screen">
     {@render statusBar(false)}
     <div class="player-slot">
-      <PlayerHome onplay={() => void startPlay()} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
+      <PlayerHome
+        onplay={() => void startPlay()}
+        resumable={app.resumable}
+        onresume={() => askResume()}
+        ondiscard={discardResume}
+        ask={resuming ? modeAsk : undefined}
+      />
     </div>
   </div>
 {:else if app.screen === 'editor' && bootCover && app.resumable}
@@ -1278,7 +1316,15 @@
   </div>
 {:else}
   {#key playKey}
-    <Play onexit={exitPlay} oncancel={cancelPlay} onresume={(withEdits, room) => void resume(withEdits, room)} onnextgame={nextGame} gameRev={playRev} gameCopy={playCopy} {editsDiffer} />
+    <Play
+      onexit={exitPlay}
+      oncancel={cancelPlay}
+      onresume={(withEdits, room) => void resume(withEdits, room)}
+      onnextgame={nextGame}
+      gameRev={playRev}
+      gameCopy={playCopy}
+      {editsDiffer}
+    />
   {/key}
 {/if}
 
@@ -1315,10 +1361,19 @@
              room goes back into it with Resume game: ▶ Play would start it again, the phones at 0. Its line hidden
              (✕), ▶ Play offers to resume it.) -->
         {@const keptHere = !!saved && saved.session.phase !== 'end' && saved.game.id === room.gameId}
-        {@const via = playerOnly && app.resumable ? (app.resumable.session.phase === 'end' ? 'New game, then ▶ Play,' : 'Resume game') : keptHere ? 'Resume game' : '▶ Play'}
+        {@const via =
+          playerOnly && app.resumable
+            ? app.resumable.session.phase === 'end'
+              ? 'New game, then ▶ Play,'
+              : 'Resume game'
+            : keptHere
+              ? 'Resume game'
+              : '▶ Play'}
         <span class="item room-bar" role="status">
           <span class="what" title="Phones in the room are told you're setting up">
-            📱 Buzzer room <b>{room.remote.code}</b> is still open{n ? ` (${n} ${roomTeams(room, app.game.settings) ? 'team' : 'player'}${n === 1 ? '' : 's'})` : ''}.
+            📱 Buzzer room <b>{room.remote.code}</b> is still open{n
+              ? ` (${n} ${roomTeams(room, app.game.settings) ? 'team' : 'player'}${n === 1 ? '' : 's'})`
+              : ''}.
             <span class="muted small">{other ? '▶ Play asks to keep it for this game.' : `${via} goes back into it.`}</span>
           </span>
           {#if !(closingRoom && seated)}
@@ -1328,7 +1383,9 @@
         {#if closingRoom && seated}
           <!-- Phones are in it: asked first, as on the 📱 card, the safe answer first. -->
           <span class="item ask" role="alertdialog" aria-label="Close the room?">
-            <span class="what">{seated} {seated === 1 ? 'phone is' : 'phones are'} in the room: closing it sends them out, and they’d join again with a new code.</span>
+            <span class="what"
+              >{seated} {seated === 1 ? 'phone is' : 'phones are'} in the room: closing it sends them out, and they’d join again with a new code.</span
+            >
             <!-- svelte-ignore a11y_autofocus -->
             <button class="small" autofocus onclick={() => (closingRoom = false)}>Keep it open</button>
             <button class="small danger" onclick={() => ((closingRoom = false), void closeKeptRoom())}>Close the room</button>
@@ -1344,12 +1401,22 @@
           {#if !resuming}
             <button class="small primary" use:oneShot onclick={() => askResume()}>{ended ? 'View results' : 'Resume game'}</button>
             {#if !ended && saved.game.id === app.game.id && editsDiffer}
-              <button class="small" use:oneShot onclick={() => askResume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+              <button
+                class="small"
+                use:oneShot
+                onclick={() => askResume(true)}
+                title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept."
+              >
                 Resume with my edits
               </button>
             {/if}
             <button class="small ghost danger" onclick={discardResume} title="Throws the kept game away (asks first)">Discard</button>
-            <button class="small ghost x" onclick={() => (resumeHidden = true)} aria-label="Hide this line" title="Hide this line (the game stays kept: ▶ Play offers to resume it)">✕</button>
+            <button
+              class="small ghost x"
+              onclick={() => (resumeHidden = true)}
+              aria-label="Hide this line"
+              title="Hide this line (the game stays kept: ▶ Play offers to resume it)">✕</button
+            >
           {/if}
         </span>
       {/if}
@@ -1357,11 +1424,20 @@
         {#if audience.open}
           <span class="item audience-item" data-audience-open>
             {#if onBreak}
-              <span class="what" title="Viewers see the cover card until you resume the game">📺 Audience window: <span class="muted">“{app.game.settings.stream?.coverText?.trim() || 'Be right back'}”</span></span>
+              <span class="what" title="Viewers see the cover card until you resume the game"
+                >📺 Audience window: <span class="muted">“{app.game.settings.stream?.coverText?.trim() || 'Be right back'}”</span></span
+              >
             {:else}
-              <span class="what" title="Viewers see the “Starting soon” card until the next game starts">📺 Audience window: <span class="muted">“Starting soon”</span></span>
+              <span class="what" title="Viewers see the “Starting soon” card until the next game starts"
+                >📺 Audience window: <span class="muted">“Starting soon”</span></span
+              >
             {/if}
-            <button class="small ghost" onclick={closeAudience} aria-label="Close the audience window" title="Close the audience window (your stream capture goes black)">✕</button>
+            <button
+              class="small ghost"
+              onclick={closeAudience}
+              aria-label="Close the audience window"
+              title="Close the audience window (your stream capture goes black)">✕</button
+            >
           </span>
         {:else}
           <span class="item audience-item lost" role="alert" data-audience-lost>
@@ -1523,7 +1599,10 @@
     gap: 0.4em;
     max-width: 90%;
     /* (The ⏸ Cover card's size on the stage: 120px of its 1920.) */
-    font: 6.25cqw 'Anton', 'Oswald', sans-serif;
+    font:
+      6.25cqw 'Anton',
+      'Oswald',
+      sans-serif;
     overflow-wrap: anywhere;
     color: #fff;
     text-align: center;

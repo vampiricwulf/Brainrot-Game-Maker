@@ -158,7 +158,19 @@
       </div>
       <div class="body">
         <div class="grid" {@attach (grid) => void showHere(grid, mapId)}>
-          <MapView {world} {st} players={session.players} audience={false} focus={here} only={mapId} big {picked} onpick={pick} onmenu={menu} onmove={moveDots} />
+          <MapView
+            {world}
+            {st}
+            players={session.players}
+            audience={false}
+            focus={here}
+            only={mapId}
+            big
+            {picked}
+            onpick={pick}
+            onmenu={menu}
+            onmove={moveDots}
+          />
         </div>
         <aside class="side">
           {#if found && picked}
@@ -169,7 +181,11 @@
             </div>
             <b>{found.map.name} · {found.screen.name}</b>
             <span class="muted small">
-              {st.knowledge[found.screen.id] === 'visited' ? 'Visited' : st.knowledge[found.screen.id] === 'discovered' ? 'Discovered, not visited' : 'Not discovered yet'}
+              {st.knowledge[found.screen.id] === 'visited'
+                ? 'Visited'
+                : st.knowledge[found.screen.id] === 'discovered'
+                  ? 'Discovered, not visited'
+                  : 'Not discovered yet'}
               {#if there.length}· here: {nameList(there.map((p) => p.name))}{/if}
             </span>
             {#if found.screen.hostNotes}<span class="notes">📝 {found.screen.hostNotes}</span>{/if}
@@ -184,13 +200,19 @@
                 <button onclick={() => go(pt.members, pt.name)}>Move {pt.name} here</button>
               {/each}
               {#if st.parties.length > 1}
-                <button onclick={() => go(session.players.map((p) => p.id), 'Everyone')}>Everyone here</button>
+                <button
+                  onclick={() =>
+                    go(
+                      session.players.map((p) => p.id),
+                      'Everyone',
+                    )}>Everyone here</button
+                >
               {/if}
             {/if}
           {:else}
             <p class="muted small">
-              Pick a screen on the map{send ? ` to send ${send.label} there` : ''}. The yellow outline is where {party?.name ?? 'the party'} is now; faded screens aren’t
-              discovered yet.
+              Pick a screen on the map{send ? ` to send ${send.label} there` : ''}. The yellow outline is where {party?.name ?? 'the party'} is now; faded screens
+              aren’t discovered yet.
             </p>
           {/if}
         </aside>

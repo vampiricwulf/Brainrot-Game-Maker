@@ -14,7 +14,24 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored, failureShots, assert, sleep, launchChromium, untilWith, section, hostPanelIn, stageBoxIn } from './helpers.mjs';
+import {
+  appFile,
+  openGameFile,
+  openRules,
+  recordSeen,
+  shownOf,
+  startBuzzer,
+  startRoomOn,
+  stored,
+  failureShots,
+  assert,
+  sleep,
+  launchChromium,
+  untilWith,
+  section,
+  hostPanelIn,
+  stageBoxIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
@@ -23,7 +40,30 @@ const until = untilWith({ timeout: 20_000, every: 100 });
 
 // ---------- The game: Movies, Songs, Games at $200 and $400 ----------
 let n = 0;
-const text = (t, y = 90) => ({ id: `t${n++}`, kind: 'text', text: t, x: 120, y, w: 1680, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (t, y = 90) => ({
+  id: `t${n++}`,
+  kind: 'text',
+  text: t,
+  x: 120,
+  y,
+  w: 1680,
+  h: 400,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  font: 'Arial',
+  size: 90,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#ffffff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (...els) => ({ background: {}, elements: els });
 const values = [200, 400];
 // Each tile's answer carries "Ans-kq<c><r>": a placed partner clue's card is a copy of it, never on the host page before Reveal.
@@ -35,7 +75,15 @@ const clue = (c, r) => {
     return {
       ...base,
       type: 'partner',
-      partner: { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game', steal: false },
+      partner: {
+        game: 'describe',
+        giver: 'partner',
+        got: { giver: 100, guesser: 50 },
+        missed: { giver: 0, guesser: -50 },
+        partnerSafe: true,
+        points: 'game',
+        steal: false,
+      },
       timerSeconds: 45,
       cards: [{ id: 'card1', to: 'giver', ...slide(text('Shrek-kq')) }],
     };
@@ -45,16 +93,41 @@ const clue = (c, r) => {
   return base;
 };
 const game = {
-  id: 'g_partner_random', version: 2, title: 'Partner clues at random',
+  id: 'g_partner_random',
+  version: 2,
+  title: 'Partner clues at random',
   settings: {
-    allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+    allowNegativeScores: true,
+    deductOnWrong: false,
+    defaultTimerSeconds: 30,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+    maxPlayers: 8,
+    stream: { clueCaption: true },
+    buzzer: true,
     // (The buzzers open when the host presses U: a steal opens them at once all the same, the question already read.)
     buzzArm: 'host',
   },
   players: ['Ann', 'Bob', 'Cat', 'Dan'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
-  rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values, dailyDoubleCount: 1, categories: ['Movies', 'Songs', 'Games'].map((title, c) => ({ id: `cat${c}`, title, clues: values.map((_, r) => clue(c, r)) })) }],
-  media: [], audio: {}, wheels: [], dice: [], theme: {},
+  rounds: [
+    {
+      id: 'r1',
+      name: 'Round 1',
+      mode: 'board',
+      values,
+      dailyDoubleCount: 1,
+      categories: ['Movies', 'Songs', 'Games'].map((title, c) => ({ id: `cat${c}`, title, clues: values.map((_, r) => clue(c, r)) })),
+    },
+  ],
+  media: [],
+  audio: {},
+  wheels: [],
+  dice: [],
+  theme: {},
 };
 const gameFile = resolve('test-results/partner-random.json');
 writeFileSync(gameFile, JSON.stringify(game));
@@ -103,12 +176,23 @@ try {
   section('Editor');
   /** The board's partner clues, by "category,row". */
   const partnerTiles = () =>
-    host.locator('[data-tile]').evaluateAll((els) => els.filter((e) => e.querySelector('[title^="Partner clue: played by"]')).map((e) => e.dataset.tile).sort());
+    host.locator('[data-tile]').evaluateAll((els) =>
+      els
+        .filter((e) => e.querySelector('[title^="Partner clue: played by"]'))
+        .map((e) => e.dataset.tile)
+        .sort(),
+    );
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const clueDialog = host.getByRole('dialog', { name: 'Edit clue' });
   /** Undo and Redo show where the step was: a step that changed one tile opens its editor, closed here. */
   const shut = async () => {
-    if (!(await clueDialog.waitFor({ timeout: 1500 }).then(() => true, () => false))) return;
+    if (
+      !(await clueDialog.waitFor({ timeout: 1500 }).then(
+        () => true,
+        () => false,
+      ))
+    )
+      return;
     await host.keyboard.press('Escape');
     await clueDialog.waitFor({ state: 'detached' });
   };
@@ -121,7 +205,10 @@ try {
   await group.getByRole('button', { name: 'Randomize partner clues' }).click();
   assert(await toast('Placed 2 partner clues at random'), '🔀 Randomize places 2');
   const placed = await partnerTiles();
-  assert(placed.length === 2 && placed.every((t) => ['0,0', '0,1', '1,0', '2,0'].includes(t)), `on written tiles, never the ✍ tile or the one with no answer (${placed.join(' and ')})`);
+  assert(
+    placed.length === 2 && placed.every((t) => ['0,0', '0,1', '1,0', '2,0'].includes(t)),
+    `on written tiles, never the ✍ tile or the one with no answer (${placed.join(' and ')})`,
+  );
   await host.keyboard.press('Control+z');
   assert(await until(async () => same(await partnerTiles(), ['0,0'])), 'Ctrl+Z: the one made by hand is back where it was, alone');
   await shut();
@@ -171,18 +258,32 @@ try {
   const savedGame = async () => (await stored(host))?.game ?? null;
   /** @type {any} */
   let board = null;
-  assert(await until(async () => (board = (await savedGame())?.rounds?.[0])?.categories?.flatMap((c) => c.clues).filter((cl) => cl.type === 'partner').length === 2), 'the game in progress has 2 partner clues');
+  assert(
+    await until(async () => (board = (await savedGame())?.rounds?.[0])?.categories?.flatMap((c) => c.clues).filter((cl) => cl.type === 'partner').length === 2),
+    'the game in progress has 2 partner clues',
+  );
   const all = board.categories.flatMap((c, ci) => c.clues.map((cl, r) => ({ ...cl, at: `${ci},${r}`, ci, r })));
   const extra = all.find((cl) => cl.type === 'partner' && cl.id !== 'q0_0');
   const dd = all.filter((cl) => cl.type === 'dailyDouble');
   assert(['0,1', '1,0', '2,0'].includes(extra.at), `the new one is on a written tile (${extra.at})`);
   assert(dd.length === 1 && dd[0].id !== extra.id && dd[0].id !== 'q0_0', `the Daily Double is on a tile of its own (${dd[0]?.at})`);
   const cardWords = extra.cards?.[0]?.elements?.map((e) => e.text).join(' ') ?? '';
-  assert(extra.partner?.game === 'describe' && extra.partner.steal === undefined && cardWords === answer(extra.ci, extra.r), `it plays Describe it, follows the game’s rule on steals, and its card is a copy of its answer (${cardWords})`);
+  assert(
+    extra.partner?.game === 'describe' && extra.partner.steal === undefined && cardWords === answer(extra.ci, extra.r),
+    `it plays Describe it, follows the game’s rule on steals, and its card is a copy of its answer (${cardWords})`,
+  );
   const value = values[extra.r];
 
-  const big = (who) => phones[who].locator('#buzz-big').innerText().catch(() => '');
-  const small = (who) => phones[who].locator('#buzz-small').innerText().catch(() => '');
+  const big = (who) =>
+    phones[who]
+      .locator('#buzz-big')
+      .innerText()
+      .catch(() => '');
+  const small = (who) =>
+    phones[who]
+      .locator('#buzz-small')
+      .innerText()
+      .catch(() => '');
   const IDS = { Ann: 'p1', Bob: 'p2', Cat: 'p3', Dan: 'p4' };
   const scoreOf = async (name) => (await hostPanelIn(host).locator(`.players [data-player-id="${IDS[name]}"] .score`).innerText()).trim();
   const panel = hostPanelIn(host).locator('[data-partner-panel]');
@@ -226,7 +327,10 @@ try {
   await play(extra.id);
   await phones.Bob.getByRole('button', { name: 'Tap to see' }).tap();
   await phones.Bob.locator('.card', { hasText: ANSWER }).waitFor();
-  assert(['Ann', 'Cat', 'Dan'].every((s) => !heard[s].join('\n').includes(ANSWER)), 'the copy of its answer goes to Bob’s phone only (Ann guesses)');
+  assert(
+    ['Ann', 'Cat', 'Dan'].every((s) => !heard[s].join('\n').includes(ANSWER)),
+    'the copy of its answer goes to Bob’s phone only (Ann guesses)',
+  );
   assert(!(await shownOf(host, [ANSWER])).length, 'one window: the host page never shows it');
 
   // ---------- Ann misses: the buzzers open for Cat and Dan ----------
@@ -238,10 +342,19 @@ try {
   });
   assert(stealSeen, 'the steal’s row takes the 🤝 box’s foot, in sight');
   assert(await until(async () => (await scoreOf('Ann')) === money(-100 - value / 2)), `✘ Missed: Ann −$${value / 2} more, ${money(-100 - value / 2)}`);
-  assert((await stealRow.innerText()).includes('🔔 Steal!') && (await stealRow.innerText()).includes(`Enter: right +$${value}`), `the steal row: 🔔 Steal!, a right steal worth the tile’s $${value} (the game’s rule)`);
-  assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2'), 'the buzzers open at once for the others (no U needed): Ann and Bob locked out');
+  assert(
+    (await stealRow.innerText()).includes('🔔 Steal!') && (await stealRow.innerText()).includes(`Enter: right +$${value}`),
+    `the steal row: 🔔 Steal!, a right steal worth the tile’s $${value} (the game’s rule)`,
+  );
+  assert(
+    await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2'),
+    'the buzzers open at once for the others (no U needed): Ann and Bob locked out',
+  );
   await phones.Cat.locator('#buzz-big', { hasText: 'BUZZ!' }).waitFor();
-  assert(['Cat', 'Dan'].every((s) => !heard[s].join('\n').includes(ANSWER)), 'the stealers never get the card');
+  assert(
+    ['Cat', 'Dan'].every((s) => !heard[s].join('\n').includes(ANSWER)),
+    'the stealers never get the card',
+  );
 
   // ---------- Cat buzzes in and misses; Dan, alone, steals it ----------
   await phones.Cat.locator('#buzz').dispatchEvent('pointerdown');
@@ -249,7 +362,10 @@ try {
   await host.keyboard.press('Shift+Enter');
   assert(await until(async () => (await scoreOf('Cat')) === money(-value)), `Shift+Enter: Cat misses, ${money(-value)}`);
   assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2,p3'), 'the buzzers open for Dan alone');
-  assert(await until(async () => (await big('Dan')) === 'BUZZ!' && (await small('Cat')).includes('had your go')), 'Dan’s phone lights up, Cat’s says she’s had her go');
+  assert(
+    await until(async () => (await big('Dan')) === 'BUZZ!' && (await small('Cat')).includes('had your go')),
+    'Dan’s phone lights up, Cat’s says she’s had her go',
+  );
   await phones.Dan.locator('#buzz').dispatchEvent('pointerdown');
   assert(await until(() => last()?.phase === 'answering' && last().answering === 'p4'), 'Dan buzzes in');
   await host.keyboard.press('Enter');
@@ -263,14 +379,26 @@ try {
   const scores = async () => Promise.all(['Ann', 'Bob', 'Cat', 'Dan'].map(scoreOf)).then((s) => s.join(' '));
   const after = await scores();
   await host.keyboard.press('Control+z');
-  assert(await until(async () => (await scoreOf('Dan')) === '$0' && last()?.phase === 'answering' && last().answering === 'p4'), 'Ctrl+Z: Dan’s steal goes, Dan answering again');
+  assert(
+    await until(async () => (await scoreOf('Dan')) === '$0' && last()?.phase === 'answering' && last().answering === 'p4'),
+    'Ctrl+Z: Dan’s steal goes, Dan answering again',
+  );
   assert((await stealRow.innerText()).includes('🔔 Steal!'), 'the steal is open again');
   await host.keyboard.press('Control+z');
-  assert(await until(async () => (await scoreOf('Cat')) === '$0' && last()?.phase === 'answering' && last().answering === 'p3'), 'Ctrl+Z: Cat’s miss goes, Cat answering again');
+  assert(
+    await until(async () => (await scoreOf('Cat')) === '$0' && last()?.phase === 'answering' && last().answering === 'p3'),
+    'Ctrl+Z: Cat’s miss goes, Cat answering again',
+  );
   await host.keyboard.press('Control+z');
-  assert(await until(async () => (await scoreOf('Ann')) === '−$100' && !(await stealRow.count())), 'Ctrl+Z: Ann’s miss goes (her −$100 from the first clue stays), and the steal closes');
+  assert(
+    await until(async () => (await scoreOf('Ann')) === '−$100' && !(await stealRow.count())),
+    'Ctrl+Z: Ann’s miss goes (her −$100 from the first clue stays), and the steal closes',
+  );
   await host.keyboard.press('Control+y');
-  assert(await until(async () => (await scoreOf('Ann')) === money(-100 - value / 2) && (await stealRow.count()) === 1), 'Ctrl+Y: Ann’s miss again, and the steal opens');
+  assert(
+    await until(async () => (await scoreOf('Ann')) === money(-100 - value / 2) && (await stealRow.count()) === 1),
+    'Ctrl+Y: Ann’s miss again, and the steal opens',
+  );
   assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2'), 'the buzzers open for Cat and Dan again');
   await host.keyboard.press('Control+y');
   assert(await until(async () => (await scoreOf('Cat')) === money(-value)), 'Ctrl+Y: Cat’s miss again');

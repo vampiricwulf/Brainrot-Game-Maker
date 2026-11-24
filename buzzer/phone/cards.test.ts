@@ -65,7 +65,12 @@ describe('the phone’s players for a card’s embeds', () => {
   it('every frame it makes is on the page’s content policy, which limits only pictures, media and frames', () => {
     const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
     const policy = html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1] ?? '';
-    const rules = Object.fromEntries(policy.split(';').map((r) => r.trim().split(/\s+/)).map(([k, ...v]) => [k, v]));
+    const rules = Object.fromEntries(
+      policy
+        .split(';')
+        .map((r) => r.trim().split(/\s+/))
+        .map(([k, ...v]) => [k, v]),
+    );
     expect(Object.keys(rules).sort()).toEqual(['frame-src', 'img-src', 'media-src']);
     expect(rules['frame-src'].sort()).toEqual([...FRAME_ORIGINS].sort());
     // (data: for the page's own icon; blob: for card files.)
@@ -92,7 +97,16 @@ describe('a card’s lines', () => {
   });
 
   it('draws a card again only when its words or cover change, and knows it back under a new id', () => {
-    const c: PhoneCard = { id: 'pc:c1:1:1', open: true, role: 'Describer', hint: 'Describe it to Ann', title: 'SHREK', text: 'An ogre', shared: true, media: [{ kind: 'image', url: 'https://a.test/x.png' }] };
+    const c: PhoneCard = {
+      id: 'pc:c1:1:1',
+      open: true,
+      role: 'Describer',
+      hint: 'Describe it to Ann',
+      title: 'SHREK',
+      text: 'An ogre',
+      shared: true,
+      media: [{ kind: 'image', url: 'https://a.test/x.png' }],
+    };
     // Who can see it, its part, its hint, its pictures, the answer going up: changed in place (a player isn't reset).
     for (const d of [{ shared: false }, { team: true }, { role: 'Guesser' }, { hint: 'Describe it to Annie' }, { media: [] }, { open: false }])
       expect(cardBuild({ ...c, ...d })).toBe(cardBuild(c));
@@ -101,7 +115,13 @@ describe('a card’s lines', () => {
     expect(cardSame({ ...c, id: 'pc:c1:1:2' })).toBe(cardSame(c));
     expect(cardSame({ ...c, open: false })).toBe(cardSame(c));
     // Anything it shows that's different (a picture swapped too): a card of its own.
-    for (const d of [{ shared: false }, { role: 'Guesser' }, { hint: 'Describe it to Annie' }, { title: 'FIONA' }, { media: [{ kind: 'image', url: 'https://a.test/y.png' }] }] as Partial<PhoneCard>[])
+    for (const d of [
+      { shared: false },
+      { role: 'Guesser' },
+      { hint: 'Describe it to Annie' },
+      { title: 'FIONA' },
+      { media: [{ kind: 'image', url: 'https://a.test/y.png' }] },
+    ] as Partial<PhoneCard>[])
       expect(cardSame({ ...c, ...d })).not.toBe(cardSame(c));
   });
 
@@ -179,8 +199,15 @@ describe('card files on the phone', () => {
     const other = 'b'.repeat(64);
     expect([
       ...filesIn([
-        card('1', [{ kind: 'image', file: FILE, mime: 'image/png' }, { kind: 'image', pending: true }, { kind: 'video', url: 'https://a.test/v.mp4' }]),
-        card('2', [{ kind: 'image', file: FILE, mime: 'image/png' }, { kind: 'audio', file: other, mime: 'audio/mpeg' }]),
+        card('1', [
+          { kind: 'image', file: FILE, mime: 'image/png' },
+          { kind: 'image', pending: true },
+          { kind: 'video', url: 'https://a.test/v.mp4' },
+        ]),
+        card('2', [
+          { kind: 'image', file: FILE, mime: 'image/png' },
+          { kind: 'audio', file: other, mime: 'audio/mpeg' },
+        ]),
         { id: '3', open: true },
         // (Not a file id: never fetched.)
         card('4', [{ kind: 'image', file: '../../x', mime: 'image/png' }]),

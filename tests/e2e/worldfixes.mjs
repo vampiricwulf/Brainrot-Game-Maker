@@ -62,9 +62,14 @@ const stageAt = (page) =>
     return [r.left, r.top, r.width, r.height, document.querySelector('main.play').scrollTop, scrollY].map(Math.round).join();
   });
 /** The round's box: its top and bottom on screen. */
-const boxOf = (page) => page.locator('.mode-host:not(.tools)').evaluate((e) => ({ top: e.getBoundingClientRect().top, bottom: e.getBoundingClientRect().bottom }));
+const boxOf = (page) =>
+  page.locator('.mode-host:not(.tools)').evaluate((e) => ({ top: e.getBoundingClientRect().top, bottom: e.getBoundingClientRect().bottom }));
 /** Steps until `cond` holds in the page (false if it never does). */
-const until = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 5000 }).then(() => true, () => false);
+const until = (page, fn, arg) =>
+  page.waitForFunction(fn, arg, { timeout: 5000 }).then(
+    () => true,
+    () => false,
+  );
 
 try {
   {
@@ -72,7 +77,12 @@ try {
     const { ctx, page } = await host('Race to the finish', false);
     const box = page.locator('.mode-host.bgame');
     const info = () =>
-      box.evaluate((e) => ({ more: e.hasAttribute('data-more'), over: e.scrollHeight > e.clientHeight + 1, fade: getComputedStyle(e, '::after').content !== 'none', side: !!e.closest('.panel.side') }));
+      box.evaluate((e) => ({
+        more: e.hasAttribute('data-more'),
+        over: e.scrollHeight > e.clientHeight + 1,
+        fade: getComputedStyle(e, '::after').content !== 'none',
+        side: !!e.closest('.panel.side'),
+      }));
     const stage = await stageAt(page);
     const first = await info();
     assert(!first.side && first.over, `the board game's box is under the stage and has more than fits (${JSON.stringify(first)})`);
@@ -104,7 +114,10 @@ try {
         return new Set([...r.getClientRects()].map((x) => Math.round(x.bottom))).size;
       })(),
     }));
-    assert(line.side && line.text.endsWith('then Next turn ▶ (N).') && !line.cut && line.lines === 2, `beside the stage, the turn box's long first line wraps to two lines, whole (${JSON.stringify(line)})`);
+    assert(
+      line.side && line.text.endsWith('then Next turn ▶ (N).') && !line.cut && line.lines === 2,
+      `beside the stage, the turn box's long first line wraps to two lines, whole (${JSON.stringify(line)})`,
+    );
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-turnline-side.png` });
     await page.evaluate(() => document.activeElement?.blur?.());
     await page.keyboard.press('n');
@@ -115,7 +128,10 @@ try {
       const c = g.getBoundingClientRect();
       return { side: g.classList.contains('side'), card: [Math.round(c.left), Math.round(c.right)], button: [Math.round(b.left), Math.round(b.right)] };
     });
-    assert(fit.side && fit.button[1] <= fit.card[1] && fit.button[0] >= fit.card[0], `beside the stage, the go-on card's “… anyway” button is inside the card (${JSON.stringify(fit)})`);
+    assert(
+      fit.side && fit.button[1] <= fit.card[1] && fit.button[0] >= fit.card[0],
+      `beside the stage, the go-on card's “… anyway” button is inside the card (${JSON.stringify(fit)})`,
+    );
     assert((await anyway.locator('kbd').evaluate((k) => k.getClientRects().length)) === 1, 'its key stays on one line');
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-goon-side.png` });
     await ctx.close();
@@ -125,7 +141,10 @@ try {
     const { ctx, page } = await host('Mini quest', two);
     await page.keyboard.press('n');
     const rh = page.locator('.rh');
-    await rh.getByRole('button', { name: /Shopkeeper/ }).first().click();
+    await rh
+      .getByRole('button', { name: /Shopkeeper/ })
+      .first()
+      .click();
     // The card comes into sight with the box scrolled to a row's edge: the top row (where, the parties, 🗺 Map on
     // stream) all out of sight or all in it, never cut in half under the selection line.
     await rh.getByRole('button', { name: '🛒 Shop' }).waitFor();
@@ -135,7 +154,10 @@ try {
       const row = r.querySelector('.row.top').getBoundingClientRect();
       return { box: Math.round(box.top), row: [Math.round(row.top), Math.round(row.bottom)], scrolled: r.closest('.mode-host').scrollTop };
     });
-    assert(top.row[1] <= top.box + 1 || top.row[0] >= top.box - 1, `the Shopkeeper's card open, the top row isn't cut at the box's top (${JSON.stringify(top)})`);
+    assert(
+      top.row[1] <= top.box + 1 || top.row[0] >= top.box - 1,
+      `the Shopkeeper's card open, the top row isn't cut at the box's top (${JSON.stringify(top)})`,
+    );
     await rh.getByRole('button', { name: '🛒 Shop' }).click();
     await page.getByRole('button', { name: /^Potion · / }).click();
     await toastsIn(page, { hasText: 'Potion' }).waitFor();
@@ -156,7 +178,10 @@ try {
       },
       undefined,
     );
-    assert(inSight, `short of gold, the question's answers come into sight in the round's box (Sell anyway ${JSON.stringify(await sell.boundingBox())}, box ${JSON.stringify(await boxOf(page))})`);
+    assert(
+      inSight,
+      `short of gold, the question's answers come into sight in the round's box (Sell anyway ${JSON.stringify(await sell.boundingBox())}, box ${JSON.stringify(await boxOf(page))})`,
+    );
     const focused = await page.evaluate(() => document.activeElement?.textContent?.trim());
     assert(focused === 'Cancel', `the keys are on Cancel, not on the item clicked (${focused})`);
     assert((await stageAt(page)) === stage, 'the stage keeps its place and size');
@@ -170,7 +195,10 @@ try {
     await ask.getByRole('button', { name: 'Sell anyway' }).waitFor();
     await page.waitForTimeout(300);
     const again = await page.evaluate(() => ({ text: document.activeElement?.textContent?.trim(), inAsk: !!document.activeElement?.closest('[data-ask]') }));
-    assert(again.text === 'Cancel' && again.inAsk && (await ask.count()) === 1, `still short at a typed price: asked again, the keys on its Cancel (${JSON.stringify(again)})`);
+    assert(
+      again.text === 'Cancel' && again.inAsk && (await ask.count()) === 1,
+      `still short at a typed price: asked again, the keys on its Cancel (${JSON.stringify(again)})`,
+    );
     await ask.getByRole('button', { name: 'Cancel' }).click();
     await ask.waitFor({ state: 'detached' });
     await page.keyboard.press('Escape');
@@ -191,7 +219,11 @@ try {
     });
     const at = await page.evaluate(() => {
       const r = (q) => document.querySelector(q).getBoundingClientRect();
-      return { box: [...document.querySelectorAll('.mode-host')].at(-1).getBoundingClientRect().toJSON(), sheet: r('.rh .cards > *').toJSON(), toggle: r('.rh .row.who [aria-expanded]').toJSON() };
+      return {
+        box: [...document.querySelectorAll('.mode-host')].at(-1).getBoundingClientRect().toJSON(),
+        sheet: r('.rh .cards > *').toJSON(),
+        toggle: r('.rh .row.who [aria-expanded]').toJSON(),
+      };
     });
     assert(seen, `opened, the first player's sheet comes into sight in the box, the toggle still in sight (${JSON.stringify(at)})`);
     assert((await stageAt(page)) === stage, 'and the stage keeps its place and size');
@@ -240,10 +272,22 @@ try {
       const action = host.closest('.action').getBoundingClientRect();
       const nav = r.querySelector('.nav.pinned').getBoundingClientRect();
       const card = r.querySelector('.main .side').getBoundingClientRect();
-      return { over: host.scrollHeight > host.clientHeight, act: Math.round(act.bottom), action: Math.round(action.bottom), nav: Math.round(nav.bottom), card: Math.round(card.top) };
+      return {
+        over: host.scrollHeight > host.clientHeight,
+        act: Math.round(act.bottom),
+        action: Math.round(action.bottom),
+        nav: Math.round(nav.bottom),
+        card: Math.round(card.top),
+      };
     });
-    assert(at.action === at.act, `beside the stage with no main button, the round's part reaches the column's foot (no empty row under it) (${JSON.stringify(at)})`);
-    assert(at.over && at.card >= at.nav - 1, `a card taller than the box opens with its top row under the pinned pad and map, not cut by them (${JSON.stringify(at)})`);
+    assert(
+      at.action === at.act,
+      `beside the stage with no main button, the round's part reaches the column's foot (no empty row under it) (${JSON.stringify(at)})`,
+    );
+    assert(
+      at.over && at.card >= at.nav - 1,
+      `a card taller than the box opens with its top row under the pinned pad and map, not cut by them (${JSON.stringify(at)})`,
+    );
     assert((await stageAt(page)) === stage, 'the stage keeps its place and size');
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-bosscard.png` });
     await ctx.close();
@@ -262,19 +306,35 @@ try {
         const slot = document.querySelector('.rh [data-screen-notes]');
         return {
           where: document.querySelector('.rh .where').textContent.trim(),
-          places: { party: at(document.querySelector('.rh .party')), map: at(btn('Map on stream')), pad: at(document.querySelector('.rh .pad')), minimap: at(document.querySelector('.rh .mapbox')) },
-          note: slot && { text: slot.textContent.trim(), title: slot.title, cut: slot.scrollWidth > slot.clientWidth + 1 || slot.scrollHeight > slot.clientHeight + 1, lines: slot.getClientRects().length },
+          places: {
+            party: at(document.querySelector('.rh .party')),
+            map: at(btn('Map on stream')),
+            pad: at(document.querySelector('.rh .pad')),
+            minimap: at(document.querySelector('.rh .mapbox')),
+          },
+          note: slot && {
+            text: slot.textContent.trim(),
+            title: slot.title,
+            cut: slot.scrollWidth > slot.clientWidth + 1 || slot.scrollHeight > slot.clientHeight + 1,
+            lines: slot.getClientRects().length,
+          },
         };
       });
     const village = await layout();
-    assert(village.where.endsWith('Village') && village.note?.text.startsWith('📝 Everyone starts with 10 gold'), `in the Village the screen's note shows in its slot (${JSON.stringify(village)})`);
+    assert(
+      village.where.endsWith('Village') && village.note?.text.startsWith('📝 Everyone starts with 10 gold'),
+      `in the Village the screen's note shows in its slot (${JSON.stringify(village)})`,
+    );
     assert(village.note.title.includes('Then walk east.'), `its whole text is in its tooltip (${village.note.title})`);
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-note-village.png` });
     await page.keyboard.press('ArrowRight');
     await page.waitForFunction(() => document.querySelector('.rh .where')?.textContent.includes('Forest'));
     const forest = await layout();
     assert(forest.note && forest.note.text === '', `in the Forest (no note) the slot is there, empty (${JSON.stringify(forest.note)})`);
-    assert(JSON.stringify(forest.places) === JSON.stringify(village.places), `the parties, 🗺 Map on stream, the pad and the minimap stay put (${JSON.stringify(village.places)} → ${JSON.stringify(forest.places)})`);
+    assert(
+      JSON.stringify(forest.places) === JSON.stringify(village.places),
+      `the parties, 🗺 Map on stream, the pad and the minimap stay put (${JSON.stringify(village.places)} → ${JSON.stringify(forest.places)})`,
+    );
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-note-forest.png` });
     await ctx.close();
   }
@@ -294,21 +354,40 @@ try {
     };
     /** Everything the slide editor says (its text, tooltips and labels, its Tips folded or not). */
     const says = () =>
-      page.locator('.se').evaluate((se) => [se.textContent, ...[...se.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? ''])].join('\n'));
+      page
+        .locator('.se')
+        .evaluate((se) =>
+          [
+            se.textContent,
+            ...[...se.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? '']),
+          ].join('\n'),
+        );
     // (Entrance animations “Slide from left” are a way in, 📦 Item ▾ adds a catalog item and an object's Class can be
     // 📦 Item: not its nouns.)
-    const strays = (t) => t.replace(/Slide from \w+/g, '').replace(/📦 Item( ▾)?|an item from the catalog/g, '').match(/[^\n.]*\b(items?|slides?|slide['’]s)\b[^\n.]*/gi) ?? [];
+    const strays = (t) =>
+      t
+        .replace(/Slide from \w+/g, '')
+        .replace(/📦 Item( ▾)?|an item from the catalog/g, '')
+        .match(/[^\n.]*\b(items?|slides?|slide['’]s)\b[^\n.]*/gi) ?? [];
     // An RPG screen: objects on a screen.
     await addRound(/Mini quest/);
     await page.getByRole('button', { name: 'Screen Forest' }).focus();
     await page.keyboard.press('Enter');
     await page.getByRole('button', { name: '◀ Back to the map' }).waitFor();
     let t = await says();
-    assert(t.includes('Click an object to edit it') && t.includes('copy objects between screens') && t.includes('More for this screen'), 'the RPG screen editor says objects and screens');
+    assert(
+      t.includes('Click an object to edit it') && t.includes('copy objects between screens') && t.includes('More for this screen'),
+      'the RPG screen editor says objects and screens',
+    );
     await page.locator('.layers-box .row').filter({ hasText: 'Gold coins' }).locator('.name').click();
     t = await says();
     assert(t.includes("Move to the screen's left edge"), 'an object goes to the screen’s edges');
-    await page.locator('.layers-box .row').filter({ hasNotText: 'Gold coins' }).first().locator('.name').click({ modifiers: ['Shift'] });
+    await page
+      .locator('.layers-box .row')
+      .filter({ hasNotText: 'Gold coins' })
+      .first()
+      .locator('.name')
+      .click({ modifiers: ['Shift'] });
     t = await says();
     assert(t.includes('2 objects selected') && t.includes('Line up the selected objects'), 'two of them are “2 objects”');
     assert(!strays(t).length, `nothing in it says item or slide (${strays(t).join(' | ')})`);
@@ -337,12 +416,18 @@ try {
     await addRound(/Race to the finish/);
     await page.getByRole('button', { name: /Board backdrop/ }).click();
     t = await says();
-    assert(t.includes('Click a picture to edit it') && t.includes('More for this board') && !strays(t).length, `the board backdrop says pictures and the board (${strays(t).join(' | ')})`);
+    assert(
+      t.includes('Click a picture to edit it') && t.includes('More for this board') && !strays(t).length,
+      `the board backdrop says pictures and the board (${strays(t).join(' | ')})`,
+    );
     // A slides round keeps items on slides.
     await addRound(/Slides/);
     await page.locator('.se').waitFor();
     t = await says();
-    assert(t.includes('Click an item to edit it') && t.includes('copy items between slides') && t.includes('More for this slide'), 'a slides round still says items and slides');
+    assert(
+      t.includes('Click an item to edit it') && t.includes('copy items between slides') && t.includes('More for this slide'),
+      'a slides round still says items and slides',
+    );
     if (shots) await page.screenshot({ path: `${shots}/worldfixes-nouns.png` });
     await ctx.close();
   }
@@ -361,30 +446,46 @@ try {
     const path = page.locator('.se [data-backdrop-path]');
     const toggle = page.locator('[data-path-toggle]');
     await path.waitFor();
-    const look = await path.evaluate((p) => ({ spaces: p.querySelectorAll('[data-space]').length, links: p.querySelectorAll('line.link').length, opacity: Number(getComputedStyle(p).opacity) }));
-    assert(look.spaces === n && look.links > 0 && look.opacity < 0.6 && (await toggle.getAttribute('aria-pressed')) === 'true', `the board's ${n} spaces and their links show faint over the backdrop, ⬤ Spaces over it on (${JSON.stringify(look)})`);
+    const look = await path.evaluate((p) => ({
+      spaces: p.querySelectorAll('[data-space]').length,
+      links: p.querySelectorAll('line.link').length,
+      opacity: Number(getComputedStyle(p).opacity),
+    }));
+    assert(
+      look.spaces === n && look.links > 0 && look.opacity < 0.6 && (await toggle.getAttribute('aria-pressed')) === 'true',
+      `the board's ${n} spaces and their links show faint over the backdrop, ⬤ Spaces over it on (${JSON.stringify(look)})`,
+    );
     // A picture over the whole board: pressed where a space is drawn, it's the picture that's dragged.
     await page.getByRole('button', { name: '◼ Shape ▾' }).click();
     await page.getByRole('button', { name: '▭ Rectangle' }).click();
     const pos = inspectorIn(page);
-    for (const [k, v] of [['X', 0], ['Y', 0], ['W', 1920], ['H', 1080]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+    for (const [k, v] of [
+      ['X', 0],
+      ['Y', 0],
+      ['W', 1920],
+      ['H', 1080],
+    ])
+      await pos.getByLabel(k, { exact: true }).fill(String(v));
     await pos.getByLabel('X', { exact: true }).press('Tab');
     const c = await path.locator('[data-space]').nth(2).boundingBox();
     const [x, y] = [c.x + c.width / 2, c.y + c.height / 2];
     const through = await page.evaluate(([x, y]) => !document.elementFromPoint(x, y)?.closest('[data-backdrop-path]'), [x, y]);
     // (Drawn over the picture, not under it: were it to take the pointer, it's what would be found there.)
-    const over = await page.evaluate(([x, y]) => {
-      const g = document.querySelector('.se .guide');
-      g.inert = false;
-      g.style.pointerEvents = 'auto';
-      const all = document.elementsFromPoint(x, y);
-      const path = all.findIndex((e) => e.closest('[data-backdrop-path]'));
-      const pic = all.findIndex((e) => e.closest('.canvas .slide .el'));
-      const top = path >= 0 && pic >= 0 && path < pic;
-      g.inert = true;
-      g.style.pointerEvents = '';
-      return top;
-    }, [x, y]);
+    const over = await page.evaluate(
+      ([x, y]) => {
+        const g = document.querySelector('.se .guide');
+        g.inert = false;
+        g.style.pointerEvents = 'auto';
+        const all = document.elementsFromPoint(x, y);
+        const path = all.findIndex((e) => e.closest('[data-backdrop-path]'));
+        const pic = all.findIndex((e) => e.closest('.canvas .slide .el'));
+        const top = path >= 0 && pic >= 0 && path < pic;
+        g.inert = true;
+        g.style.pointerEvents = '';
+        return top;
+      },
+      [x, y],
+    );
     assert(over, 'the path is drawn over the backdrop’s pictures, not hidden under them');
     await page.mouse.move(x, y);
     await page.mouse.down();
@@ -397,7 +498,10 @@ try {
     assert((await path.count()) === 0 && (await toggle.getAttribute('aria-pressed')) === 'false', '⬤ Spaces over it again hides them');
     assert((await page.locator('.layers-box .row').count()) === 1, 'the backdrop holds only its own picture (the path is never part of it)');
     // Remembered on this computer: the next board's backdrop opens with them hidden too.
-    await page.getByRole('button', { name: /⬤ Spaces/ }).first().click();
+    await page
+      .getByRole('button', { name: /⬤ Spaces/ })
+      .first()
+      .click();
     await page.getByRole('button', { name: /Board backdrop/ }).click();
     assert((await path.count()) === 0 && (await toggle.getAttribute('aria-pressed')) === 'false', 'and stays so when the backdrop is opened again');
     await ctx.close();

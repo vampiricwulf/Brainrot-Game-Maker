@@ -133,8 +133,7 @@ export function deleteLiveSpace(
   const bridged = closeUpOver(round, s);
   round.spaces = round.spaces.filter((x) => x.id !== id);
   if (round.start === id) round.start = undefined;
-  for (const x of round.spaces)
-    for (const a of [...(x.onPass ?? []), ...(x.onLand ?? [])]) if (a.do === 'goto' && a.space === id) a.space = undefined;
+  for (const x of round.spaces) for (const a of [...(x.onPass ?? []), ...(x.onLand ?? [])]) if (a.do === 'goto' && a.space === id) a.space = undefined;
   if (bs) rehome(round, bs);
   const who = (pid: Id) => session.players.find((p) => p.id === pid)?.name ?? '?';
   // (A player taken out keeps their place, moved too, for if they come back; the log names only those still playing.)

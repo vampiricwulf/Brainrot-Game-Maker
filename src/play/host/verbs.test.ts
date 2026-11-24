@@ -47,8 +47,15 @@ describe('the host screen’s words for each step', () => {
     expect([VERBS.move(3).label, VERBS.move(-2).label, VERBS.stepTo('Bonus').label]).toEqual(['▶ Move 3', '◀ Back 2', '→ Bonus']);
     expect(VERBS.goToRound('Double Jeopardy!').label).toBe('Go to Double Jeopardy! ▶');
     // (A box's button says only its own key: N is the blue button's.)
-    expect(all().filter(([, v]) => /\bor N\b/.test(v.title ?? '')).map(([name]) => name)).toEqual([]);
-    expect([VERBS.partnerSpin.title, VERBS.sendAndStart.title]).toEqual(['W: the wheel spins over the other players', 'Enter: the cards not sent yet go to their phones, and the countdown starts']);
+    expect(
+      all()
+        .filter(([, v]) => /\bor N\b/.test(v.title ?? ''))
+        .map(([name]) => name),
+    ).toEqual([]);
+    expect([VERBS.partnerSpin.title, VERBS.sendAndStart.title]).toEqual([
+      'W: the wheel spins over the other players',
+      'Enter: the cards not sent yet go to their phones, and the countdown starts',
+    ]);
   });
 
   it('gives each step its own words, and a key cap a few signs long', () => {
@@ -63,7 +70,14 @@ describe('the host screen’s words for each step', () => {
   });
 
   it('the blue button’s words (FLOW) are a Next, a Reveal or the next screen, never a box’s action', () => {
-    const fill: Record<string, unknown[]> = { revealCategory: [2, 5], nextSlide: [1, 3], toRound: ['Final Jeopardy!'], startReveals: ['player'], nextPlayer: ['team'], nextNamed: ['Double Jeopardy!'] };
+    const fill: Record<string, unknown[]> = {
+      revealCategory: [2, 5],
+      nextSlide: [1, 3],
+      toRound: ['Final Jeopardy!'],
+      startReveals: ['player'],
+      nextPlayer: ['team'],
+      nextNamed: ['Double Jeopardy!'],
+    };
     const flow = Object.entries(FLOW).map(([name, v]) => (typeof v === 'function' ? (v as (...a: unknown[]) => Verb)(...fill[name]) : v).label);
     expect(flow).toEqual([
       'Next ▶',

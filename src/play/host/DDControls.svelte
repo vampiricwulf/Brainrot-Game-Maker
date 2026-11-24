@@ -123,7 +123,14 @@
   offerPlayerVerbs('dd', (id) => {
     const i = session.players.findIndex((p) => p.id === id);
     if (i < 0) return [];
-    return [{ label: `⭐ ${session.players[i].name} found it`, disabled: playerId === id, keys: !playerId && i < 9 ? String(i + 1) : undefined, onclick: () => pick(id) }];
+    return [
+      {
+        label: `⭐ ${session.players[i].name} found it`,
+        disabled: playerId === id,
+        keys: !playerId && i < 9 ? String(i + 1) : undefined,
+        onclick: () => pick(id),
+      },
+    ];
   });
 
   // The keys in the Wager box, the box at its top: the heading and the names stay in view (focus would scroll it down to
@@ -135,7 +142,12 @@
   <!-- (The heading leads the names' row, so the names and the Wager row are in view with it: in one window the panel keeps
        the board's height while this is up, and the rest scrolls. See HostPanel's ddHold.) -->
   <div class="row" data-dd-names>
-    <span><b>Daily Double!</b> <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{:else}{' '}Click another to change.{/if}</span></span>
+    <span
+      ><b>Daily Double!</b>
+      <span class="muted"
+        >Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{:else}{' '}Click another to change.{/if}</span
+      ></span
+    >
     {#each session.players as p, i (p.id)}
       <button
         class="chip"
@@ -147,7 +159,8 @@
         onclick={() => pick(p.id)}
         title={i < 9 ? (playerId ? 'Click to change who found it (number keys pick only while nobody is picked)' : `Key ${i + 1}`) : undefined}
       >
-        {#if i < 9}<span class="key" class:gone={!!playerId}>{i + 1}</span>{/if}{p.name} <span class="score small">{formatPoints(score(session, p.id), sym)}</span>
+        {#if i < 9}<span class="key" class:gone={!!playerId}>{i + 1}</span>{/if}{p.name}
+        <span class="score small">{formatPoints(score(session, p.id), sym)}</span>
       </button>
     {/each}
   </div>
@@ -179,8 +192,11 @@
     <label class="check small">
       <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && enter(e)} /> Ignore the limit
     </label>
-    <button class="small ghost" disabled={!playerId} onclick={() => ((wager = cap), typed(cap), wagerBox?.focus())} title={playerId ? undefined : 'Pick who found it first'}
-      >True Daily Double{playerId ? ` (${formatPoints(cap, sym)})` : ''}</button
+    <button
+      class="small ghost"
+      disabled={!playerId}
+      onclick={() => ((wager = cap), typed(cap), wagerBox?.focus())}
+      title={playerId ? undefined : 'Pick who found it first'}>True Daily Double{playerId ? ` (${formatPoints(cap, sym)})` : ''}</button
     >
     {#if playerId}
       {@const rule = `their score, or ${formatPoints(wagerFloor(game.settings), sym)} if they have less`}
@@ -195,12 +211,14 @@
         <span class="phone" title="Sent from their phone. You can still type over it." data-dd-phone
           >📱 from phone{session.dd?.draftBy ? ` · sent by ${session.dd.draftBy}` : ''}</span
         >
-        <span class="muted">{dual ? '· you can still type over it (only you see it).' : '· its amount stays hidden (viewers see this window) · you can type over it.'}</span>
+        <span class="muted"
+          >{dual ? '· you can still type over it (only you see it).' : '· its amount stays hidden (viewers see this window) · you can type over it.'}</span
+        >
       {:else if hasPhone}
         <span class="muted"
-          >{#if wager === null}<span data-dd-phone>📱 waiting…</span>{' '}{/if}{noun === 'team' ? 'A phone on the team can send its wager' : 'Their phone can send the wager'}: {dual
-            ? 'it fills in here (only you see it).'
-            : 'it comes in hidden (viewers see this window).'}</span
+          >{#if wager === null}<span data-dd-phone>📱 waiting…</span>{' '}{/if}{noun === 'team'
+            ? 'A phone on the team can send its wager'
+            : 'Their phone can send the wager'}: {dual ? 'it fills in here (only you see it).' : 'it comes in hidden (viewers see this window).'}</span
         >
       {:else if playerId}
         <span class="muted">📱 No phone for this {noun}: type their wager.</span>

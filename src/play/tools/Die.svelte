@@ -20,7 +20,9 @@
     /** A die with its own faces: square (a word doesn't fit a d4's triangle), and no "d4" under the word. */
     custom?: boolean;
   } = $props();
-  const shape = $derived(custom ? 'sq' : sides === 4 ? 'tri' : sides === 6 ? 'sq' : sides === 8 || sides === 10 ? 'dia' : sides === 12 ? 'pent' : sides === 20 ? 'hex' : 'sq');
+  const shape = $derived(
+    custom ? 'sq' : sides === 4 ? 'tri' : sides === 6 ? 'sq' : sides === 8 || sides === 10 ? 'dia' : sides === 12 ? 'pent' : sides === 20 ? 'hex' : 'sq',
+  );
 </script>
 
 <div
@@ -46,7 +48,9 @@
     font-family: var(--value-font);
     font-weight: 900;
     border-radius: 18%;
-    box-shadow: inset 0 -12px 0 rgba(0, 0, 0, 0.25), 0 16px 30px rgba(0, 0, 0, 0.5);
+    box-shadow:
+      inset 0 -12px 0 rgba(0, 0, 0, 0.25),
+      0 16px 30px rgba(0, 0, 0, 0.5);
     border: 5px solid rgba(0, 0, 0, 0.6);
   }
   .die span {

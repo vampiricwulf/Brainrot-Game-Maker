@@ -12,14 +12,54 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appFile, editorReady, openGameFile, startBuzzer, startRoomOn, failureShots, assert, sleep, until, launchChromium, section, boardIn, hostPanelIn, stageBoxIn, statusLineIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  editorReady,
+  openGameFile,
+  startBuzzer,
+  startRoomOn,
+  failureShots,
+  assert,
+  sleep,
+  until,
+  launchChromium,
+  section,
+  boardIn,
+  hostPanelIn,
+  stageBoxIn,
+  statusLineIn,
+  toastsIn,
+} from './helpers.mjs';
 
 const file = appFile();
 mkdirSync('test-results', { recursive: true });
 const shots = process.env.PASS_SHOTS ? resolve(process.env.PASS_SHOTS) : null;
 if (shots) mkdirSync(shots, { recursive: true });
 
-const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
+const text = (id, t) => ({
+  id,
+  kind: 'text',
+  text: t,
+  x: 160,
+  y: 340,
+  w: 1600,
+  h: 400,
+  rotation: 0,
+  opacity: 1,
+  zIndex: 1,
+  font: 'Arial',
+  size: 72,
+  weight: 700,
+  italic: false,
+  underline: false,
+  uppercase: false,
+  color: '#fff',
+  align: 'center',
+  vAlign: 'middle',
+  lineHeight: 1.2,
+  letterSpacing: 0,
+  autoFit: true,
+});
 const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t)] });
 const cats = ['Memes', 'Rizz', 'Lore'];
 /** Lore's first tile is a ✍ clue (everyone answers on their phone). */
@@ -28,21 +68,53 @@ const game = (teams = false) => ({
   version: 2,
   title: teams ? 'Pass Teams' : 'Pass Night',
   settings: {
-    allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, buzzer: true, ...(teams ? { buzzTeams: true } : {}),
+    allowNegativeScores: true,
+    deductOnWrong: true,
+    defaultTimerSeconds: 15,
+    finalTimerSeconds: 30,
+    currencySymbol: '$',
+    rollOffDie: 20,
+    pickerFollowsAward: true,
+    timerAutoStart: false,
+    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' },
+    maxPlayers: 8,
+    buzzer: true,
+    ...(teams ? { buzzTeams: true } : {}),
   },
-  players: (teams ? ['Red', 'Blue'] : ['Ann', 'Bob', 'Cat']).map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i], startScore: 0 })),
+  players: (teams ? ['Red', 'Blue'] : ['Ann', 'Bob', 'Cat']).map((name, i) => ({
+    id: `p${i + 1}`,
+    name,
+    color: ['#e6194b', '#3cb44b', '#4363d8'][i],
+    startScore: 0,
+  })),
   rounds: [
     {
-      id: 'r_board', name: 'Jeopardy!', mode: 'board', values: [200, 400], dailyDoubleCount: 0,
+      id: 'r_board',
+      name: 'Jeopardy!',
+      mode: 'board',
+      values: [200, 400],
+      dailyDoubleCount: 0,
       categories: cats.map((c, ci) => ({
         id: `cat${ci}`,
         title: c,
-        clues: [0, 1].map((ri) => ({ id: `c${ci}_${ri}`, value: null, type: 'standard', questionSlide: slide(`q${ci}_${ri}`, `${c} question ${ri}`), answerSlide: slide(`a${ci}_${ri}`, `Answer ${ci}.${ri}`), ...(ci === 2 && !ri ? { everyone: true } : {}) })),
+        clues: [0, 1].map((ri) => ({
+          id: `c${ci}_${ri}`,
+          value: null,
+          type: 'standard',
+          questionSlide: slide(`q${ci}_${ri}`, `${c} question ${ri}`),
+          answerSlide: slide(`a${ci}_${ri}`, `Answer ${ci}.${ri}`),
+          ...(ci === 2 && !ri ? { everyone: true } : {}),
+        })),
       })),
     },
   ],
-  media: [], audio: {}, theme: {}, wheels: [], dice: [], statFields: [], items: [],
+  media: [],
+  audio: {},
+  theme: {},
+  wheels: [],
+  dice: [],
+  statFields: [],
+  items: [],
 });
 const gameFile = resolve('test-results/pass.json');
 writeFileSync(gameFile, JSON.stringify(game()));
@@ -101,10 +173,12 @@ const row = (page) => hostPanelIn(page).locator('[data-buzzrow]');
 const main = (page) => hostPanelIn(page).locator('[data-next]');
 const ringed = (page) => main(page).evaluate((b) => b.classList.contains('ring'));
 const stageSize = (page) =>
-  stageBoxIn(page).locator('.stage').evaluate((s) => {
-    const r = s.getBoundingClientRect();
-    return `${Math.round(r.width)}x${Math.round(r.height)}`;
-  });
+  stageBoxIn(page)
+    .locator('.stage')
+    .evaluate((s) => {
+      const r = s.getBoundingClientRect();
+      return `${Math.round(r.width)}x${Math.round(r.height)}`;
+    });
 /** The stage's size once it has stopped changing. */
 async function settledStageSize(page) {
   let was = '';
@@ -159,17 +233,26 @@ try {
     // On the board: the tile ticked wears 🚫 (and says no Pass to a screen reader); the ✍ one, where it's fixed on, doesn't.
     const tileAt = (id) => page.locator(`.tile[data-place="clue:${id}"]`);
     const badge = (id) => tileAt(id).locator('.dd', { hasText: '🚫' });
-    assert((await badge('c1_0').count()) === 1 && (await tileAt('c1_0').getAttribute('aria-label')).includes(', no Pass'), 'a tile ticked 🚫 No Pass wears its badge on the board');
+    assert(
+      (await badge('c1_0').count()) === 1 && (await tileAt('c1_0').getAttribute('aria-label')).includes(', no Pass'),
+      'a tile ticked 🚫 No Pass wears its badge on the board',
+    );
     assert((await badge('c2_0').count()) === 0 && (await badge('c0_0').count()) === 0, 'a ✍ tile (fixed on) and an ordinary one wear none');
     // The tile's right-click menu: 🚫 No Pass after ✍ Everyone answers, one step, undone by Ctrl+Z; ticked and greyed on a ✍ tile.
     const menu = page.getByRole('menu');
     await tileAt('c0_0').click({ button: 'right' });
     const items = (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
     const at = (x) => items.indexOf(x);
-    assert(at('✍ Everyone answers') >= 0 && at('🚫 No Pass') === at('✍ Everyone answers') + 1 && at('⬚ Empty tile') === at('🚫 No Pass') + 1, `the tile menu has 🚫 No Pass between ✍ Everyone answers and ⬚ Empty tile (${items.join(' | ')})`);
+    assert(
+      at('✍ Everyone answers') >= 0 && at('🚫 No Pass') === at('✍ Everyone answers') + 1 && at('⬚ Empty tile') === at('🚫 No Pass') + 1,
+      `the tile menu has 🚫 No Pass between ✍ Everyone answers and ⬚ Empty tile (${items.join(' | ')})`,
+    );
     await menu.getByRole('menuitem', { name: '🚫 No Pass' }).click();
     const undoTitle = () => page.getByRole('button', { name: 'Undo (Ctrl+Z)' }).first().getAttribute('title');
-    assert((await badge('c0_0').count()) === 1 && (await undoTitle()).includes('Set 🚫 No Pass on Memes $200'), `🚫 No Pass from the menu: the badge, one named step (${await undoTitle()})`);
+    assert(
+      (await badge('c0_0').count()) === 1 && (await undoTitle()).includes('Set 🚫 No Pass on Memes $200'),
+      `🚫 No Pass from the menu: the badge, one named step (${await undoTitle()})`,
+    );
     await page.keyboard.press('Control+z');
     assert((await badge('c0_0').count()) === 0, 'Ctrl+Z takes it off again');
     await tileAt('c2_0').click({ button: 'right' });
@@ -190,17 +273,23 @@ try {
   await openTile(page, 'c0_0');
   await ann.locator('#buzz.armed').waitFor();
   assert(
-    (await passSays(ann, 'Pass: I won’t buzz on this one')) && (await passSays(bob, 'Pass: I won’t buzz on this one')) && (await passSays(cat, 'Pass: I won’t buzz on this one')),
+    (await passSays(ann, 'Pass: I won’t buzz on this one')) &&
+      (await passSays(bob, 'Pass: I won’t buzz on this one')) &&
+      (await passSays(cat, 'Pass: I won’t buzz on this one')),
     'an ordinary clue: every phone has Pass under BUZZ!, "I won’t buzz on this one"',
   );
-  assert((await cat.locator('#keys').innerText()) === 'Press Space to buzz · P to pass', `a desktop phone page says its key: P (${await cat.locator('#keys').innerText()})`);
+  assert(
+    (await cat.locator('#keys').innerText()) === 'Press Space to buzz · P to pass',
+    `a desktop phone page says its key: P (${await cat.locator('#keys').innerText()})`,
+  );
   // (Its layout box, without the armed pulse's scale: the button grows and shrinks while it waits for a buzz;
   // taken once the page has settled, the same twice 200ms apart.)
-  const layoutBox = (loc) => loc.evaluate((el) => {
-    let y = 0;
-    for (let e = el; e; e = e.offsetParent) y += e.offsetTop;
-    return { y, height: el.offsetHeight };
-  });
+  const layoutBox = (loc) =>
+    loc.evaluate((el) => {
+      let y = 0;
+      for (let e = el; e; e = e.offsetParent) y += e.offsetTop;
+      return { y, height: el.offsetHeight };
+    });
   const settledBox = async (loc) => {
     let last = await layoutBox(loc);
     for (let i = 0; i < 25; i++) {
@@ -224,12 +313,17 @@ try {
   await passBtn(ann).dblclick();
   await ann.locator('#pass.passed').waitFor();
   await sleep(800);
-  assert((await big(ann)) === 'You passed' && (await passBtn(ann).innerText()) === 'Take back my pass', 'Ann passes (a double tap passes once): her buzzer says You passed, Pass says Take back my pass');
+  assert(
+    (await big(ann)) === 'You passed' && (await passBtn(ann).innerText()) === 'Take back my pass',
+    'Ann passes (a double tap passes once): her buzzer says You passed, Pass says Take back my pass',
+  );
   const at2 = await settledBox(ann.locator('#buzz'));
   assert(at && at2 && Math.abs(at.y - at2.y) < 1 && Math.abs(at.height - at2.height) < 1, `and BUZZ! stays where it was (${JSON.stringify([at, at2])})`);
   await row(page).getByText('Passed 1 of 3: Ann').waitFor();
   assert(
-    (await row(page).getByText(/Buzzers open/).count()) === 0,
+    (await row(page)
+      .getByText(/Buzzers open/)
+      .count()) === 0,
     'the host sees "Passed 1 of 3: Ann" in the buzzers’ row, the count first (the 🔔 Buzzers open hint gives it its room)',
   );
   await shot(ann, 'ann-390-passed');
@@ -243,11 +337,16 @@ try {
   // Her buzz does nothing now.
   await ann.locator('#buzz').click({ force: true });
   await sleep(600);
-  assert((await big(ann)) === 'You passed' && (await hostPanelIn(page).locator('.buzz-queue').count()) === 0, 'a press on her buzzer does nothing while she has passed');
+  assert(
+    (await big(ann)) === 'You passed' && (await hostPanelIn(page).locator('.buzz-queue').count()) === 0,
+    'a press on her buzzer does nothing while she has passed',
+  );
   // Taken back: she can buzz again.
   await passBtn(ann).click();
   await ann.locator('#buzz.armed').waitFor();
-  await row(page).getByText(/^Passed \d/).waitFor({ state: 'detached' });
+  await row(page)
+    .getByText(/^Passed \d/)
+    .waitFor({ state: 'detached' });
   assert((await passBtn(ann).innerText()) === 'Pass: I won’t buzz on this one', 'Take back my pass: BUZZ! again, and the host’s row no longer names her');
 
   // Everyone passes: Ann, Bob, and Cat with P.
@@ -258,9 +357,14 @@ try {
   // Who passed shows on the players' chips too: faded, "passed" in the mark's place (the chip keeps its width).
   const chip = (name) => hostPanelIn(page).locator('.players .p', { has: page.locator('.who', { hasText: name }) });
   /** @type {(name: string) => Promise<[string | false, string]>} */
-  const fade = async (name) => [await chip(name).evaluate((e) => e.classList.contains('passed') && getComputedStyle(e).opacity), (await chip(name).locator('.mark').innerText()).trim()];
+  const fade = async (name) => [
+    await chip(name).evaluate((e) => e.classList.contains('passed') && getComputedStyle(e).opacity),
+    (await chip(name).locator('.mark').innerText()).trim(),
+  ];
   assert(
-    JSON.stringify(await fade('Ann')) === JSON.stringify(['0.55', 'passed']) && JSON.stringify(await fade('Bob')) === JSON.stringify(['0.55', 'passed']) && (await fade('Cat'))[0] === false,
+    JSON.stringify(await fade('Ann')) === JSON.stringify(['0.55', 'passed']) &&
+      JSON.stringify(await fade('Bob')) === JSON.stringify(['0.55', 'passed']) &&
+      (await fade('Cat'))[0] === false,
     `Ann's and Bob's chips fade, with "passed" on them; Cat's doesn't (${JSON.stringify([await fade('Ann'), await fade('Cat')])})`,
   );
   // The countdown going as the last one passes: it stops (no "Time's up" for nobody on stream); Ctrl+Z brings it back.
@@ -268,7 +372,11 @@ try {
   await stageBoxIn(page).locator('.timer').waitFor();
   const size1 = await settledStageSize(page);
   if (shots)
-    for (const [w, h] of [[1366, 768], [1920, 1080], [1280, 720]]) {
+    for (const [w, h] of [
+      [1366, 768],
+      [1920, 1080],
+      [1280, 720],
+    ]) {
       await page.setViewportSize({ width: w, height: h });
       await settledStageSize(page);
       await shot(page, `host-${w}-passed-two`);
@@ -282,7 +390,10 @@ try {
   // Cat's phone hears of the undo through the room, a moment after the host's stage shows it.
   const undone = async () => [+(await stageBoxIn(page).locator('.timer .num').innerText()), await big(cat)];
   assert(
-    await until(async () => { const [n, b] = await undone(); return n > 0 && b === 'You passed'; }, 5_000),
+    await until(async () => {
+      const [n, b] = await undone();
+      return n > 0 && b === 'You passed';
+    }, 5_000),
     `Ctrl+Z brings the countdown back, with the passes as they were (${JSON.stringify(await undone())})`,
   );
   await page.keyboard.press('Control+y');
@@ -298,7 +409,9 @@ try {
   await ann.locator('#buzz-small', { hasText: 'Everyone passed' }).waitFor();
   await bob.locator('#buzz-small', { hasText: 'Everyone passed' }).waitFor();
   assert(
-    (await ann.locator('#buzz-small').innerText()) === 'Everyone passed · take the pass back to buzz' && (await passBtn(ann).innerText()) === 'Take back my pass' && !/answer|next/i.test(await bob.locator('#buzz-small').innerText()),
+    (await ann.locator('#buzz-small').innerText()) === 'Everyone passed · take the pass back to buzz' &&
+      (await passBtn(ann).innerText()) === 'Take back my pass' &&
+      !/answer|next/i.test(await bob.locator('#buzz-small').innerText()),
     'every phone says Everyone passed (and the pass can still be taken back), never what comes next',
   );
   await shot(bob, 'bob-360-everyone-passed');
@@ -309,7 +422,10 @@ try {
   // Enter with nobody selected: nobody is left to award, so it says N reveals the answer (not “Select a player first”).
   await page.keyboard.press('Enter');
   await toastsIn(page, { hasText: 'Everyone passed: N reveals the answer' }).waitFor();
-  assert((await toastsIn(page, { hasText: 'Select a player first' }).count()) === 0, 'Enter after everyone passed: the hint names N, not “Select a player first”');
+  assert(
+    (await toastsIn(page, { hasText: 'Select a player first' }).count()) === 0,
+    'Enter after everyone passed: the hint names N, not “Select a player first”',
+  );
   const size2 = await settledStageSize(page);
   assert(size0 === size1 && size1 === size2, `one window: the stage keeps its size as players pass and everyone has (${size0}, ${size1}, ${size2})`);
   await shot(cat, 'cat-desk-passed');
@@ -321,7 +437,10 @@ try {
 
   // Cat buzzes and is wrong: out of the clue; with Ann and Bob passed, everyone left passed.
   await cat.keyboard.press(' ');
-  await statusLineIn(page, { hasText: /Cat/ }).first().waitFor().catch(() => {});
+  await statusLineIn(page, { hasText: /Cat/ })
+    .first()
+    .waitFor()
+    .catch(() => {});
   await cat.locator('#buzz.first').waitFor();
   assert(await passBtn(cat).evaluate((b) => getComputedStyle(b).visibility === 'hidden' && !b.hidden), 'Cat answering: Pass keeps its place, out of sight');
   await page.keyboard.press('Shift+Enter');
@@ -346,17 +465,29 @@ try {
   await page.keyboard.press('0');
   await ann.locator('#buzz.armed').waitFor();
   await bob.locator('#buzz.armed').waitFor();
-  assert((await passSays(ann, 'Pass: I won’t buzz on this one')) && !(await ringed(page)) && (await row(page).getByText(/Passed/).count()) === 0, '↺ Reset buzzers (0): nobody has passed any more, BUZZ! on every phone');
+  assert(
+    (await passSays(ann, 'Pass: I won’t buzz on this one')) &&
+      !(await ringed(page)) &&
+      (await row(page)
+        .getByText(/Passed/)
+        .count()) === 0,
+    '↺ Reset buzzers (0): nobody has passed any more, BUZZ! on every phone',
+  );
   assert(!/Everyone/.test(await ann.locator('#buzz-small').innerText()), 'and the phones no longer say Everyone passed');
   // A slip of 0: Ctrl+Z puts the buzzers back, with the passes and Cat's miss.
   await page.keyboard.press('Control+z');
   await row(page).getByText('Everyone passed: reveal the answer').waitFor();
   await ann.locator('#pass.passed').waitFor();
   await toastsIn(page, { hasText: 'Undid ↺ Reset buzzers' }).waitFor();
-  assert((await big(ann)) === 'You passed' && (await big(bob)) === 'You passed' && (await chip('Cat').locator('.mark').innerText()).includes('✘'), 'Ctrl+Z of ↺ Reset buzzers: Ann and Bob passed again, Cat still out, everyone passed');
+  assert(
+    (await big(ann)) === 'You passed' && (await big(bob)) === 'You passed' && (await chip('Cat').locator('.mark').innerText()).includes('✘'),
+    'Ctrl+Z of ↺ Reset buzzers: Ann and Bob passed again, Cat still out, everyone passed',
+  );
   await page.keyboard.press('Control+y');
   await ann.locator('#buzz.armed').waitFor();
-  await row(page).getByText(/Passed/).waitFor({ state: 'detached' });
+  await row(page)
+    .getByText(/Passed/)
+    .waitFor({ state: 'detached' });
   assert(await passSays(ann, 'Pass: I won’t buzz on this one'), 'and Ctrl+Y resets them again');
   // A hint, the clock started again, then a slip noticed: Ctrl+Z of the Reset brings the passes back a round trip later,
   // and that's the Undo's (not a new "Countdown stopped" step that would lose the Redo).
@@ -369,7 +500,9 @@ try {
   assert(/↺ Reset buzzers/.test(redoTitle ?? ''), `a clock started after ↺ Reset, then Ctrl+Z: the Redo still names the Reset (${redoTitle})`);
   await page.keyboard.press('Control+y');
   await ann.locator('#buzz.armed').waitFor();
-  await row(page).getByText(/Passed/).waitFor({ state: 'detached' });
+  await row(page)
+    .getByText(/Passed/)
+    .waitFor({ state: 'detached' });
   assert(true, 'and Ctrl+Y resets the passes again');
   await passBtn(bob).click();
   await row(page).getByText('Passed 1 of 3: Bob').waitFor();
@@ -415,7 +548,10 @@ try {
   await al.locator('#pass.passed').waitFor();
   await zoe.locator('#pass.passed').waitFor();
   const [alSays, zoeSays] = [await big(al), await big(zoe)];
-  assert(alSays === 'Zoe passed for your team' && zoeSays === 'Your team passed', `Zoe passes: the whole team passed (Al’s phone says Zoe passed for it: ${alSays}; ${zoeSays})`);
+  assert(
+    alSays === 'Zoe passed for your team' && zoeSays === 'Your team passed',
+    `Zoe passes: the whole team passed (Al’s phone says Zoe passed for it: ${alSays}; ${zoeSays})`,
+  );
   await row(t.page).getByText('Passed 1 of 2: Zoe (Red)').waitFor();
   assert(true, 'the host sees "Passed 1 of 2: Zoe (Red)"');
   await shot(al, 'al-360-team-passed');

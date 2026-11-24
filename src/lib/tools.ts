@@ -1,7 +1,18 @@
 // Dice, wheel and roll-off logic (spec §5.6, §6.6). Pure functions; the UI animates the precomputed results.
 import {
-  formatPoints, newId, PLAYER_WHEEL, type Clue, type DicePreset, type Game, type Id, type Outcome, type RollEvent, type ScoreAction,
-  type Session, type WheelPreset, type WheelSegment,
+  formatPoints,
+  newId,
+  PLAYER_WHEEL,
+  type Clue,
+  type DicePreset,
+  type Game,
+  type Id,
+  type Outcome,
+  type RollEvent,
+  type ScoreAction,
+  type Session,
+  type WheelPreset,
+  type WheelSegment,
 } from './model';
 import { applyScore, score } from './session';
 import { numberFieldValue } from './numfield';
@@ -144,7 +155,10 @@ export const QUICK_DICE: { label: string; sides: number; count: number }[] = [
 
 /** Parse "2d6", "d20", "3d37". */
 export function parseDice(text: string): { sides: number; count: number } | null {
-  const m = text.trim().toLowerCase().match(/^(\d*)\s*d\s*(\d+)$/);
+  const m = text
+    .trim()
+    .toLowerCase()
+    .match(/^(\d*)\s*d\s*(\d+)$/);
   if (!m) return null;
   const count = m[1] ? +m[1] : 1;
   const sides = +m[2];
@@ -323,13 +337,7 @@ export function needsSource(a: ScoreAction): boolean {
  * Preview the score changes an action would make: playerId → delta.
  * `targets` are the players it's for; `source` is the victim for steal/swap; `rollTotal` feeds addRollTimes.
  */
-export function actionDeltas(
-  session: Session,
-  a: ScoreAction,
-  targets: Id[],
-  source: Id | undefined,
-  rollTotal = 0,
-): Record<Id, number> {
+export function actionDeltas(session: Session, a: ScoreAction, targets: Id[], source: Id | undefined, rollTotal = 0): Record<Id, number> {
   const d: Record<Id, number> = {};
   const add = (id: Id, n: number) => n && (d[id] = (d[id] ?? 0) + n);
   switch (a.kind) {
@@ -375,15 +383,7 @@ export function actionDeltas(
 }
 
 /** Returns the score step it made (its batchId): undone, the score log says so. */
-export function applyAction(
-  session: Session,
-  game: Game,
-  a: ScoreAction,
-  targets: Id[],
-  source: Id | undefined,
-  reason: string,
-  rollTotal = 0,
-): string {
+export function applyAction(session: Session, game: Game, a: ScoreAction, targets: Id[], source: Id | undefined, reason: string, rollTotal = 0): string {
   const deltas = actionDeltas(session, a, targets, source, rollTotal);
   // One undo step for the whole effect (a swap or steal changes two scores).
   const batchId = newId();
@@ -440,7 +440,13 @@ export function initials(name: string): string {
   if (words.length < 2) return Array.from(name).length > 5 ? Array.from(name).slice(0, 5).join('') + '…' : name;
   const last = words.at(-1)!;
   const num = /\d/.test(last) ? last : '';
-  return words.slice(0, num ? -1 : undefined).slice(0, 3).map((w) => Array.from(w)[0].toUpperCase()).join('') + num;
+  return (
+    words
+      .slice(0, num ? -1 : undefined)
+      .slice(0, 3)
+      .map((w) => Array.from(w)[0].toUpperCase())
+      .join('') + num
+  );
 }
 
 /** Labels made unique where they'd read the same ("BT", "BT" → "BT", "BT 2"); different ones are left alone. */

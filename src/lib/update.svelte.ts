@@ -96,7 +96,12 @@ function lastHeard(): { at: number; release: Release | null } | null {
 
 /** A kept release, in GitHub's shape again (so it's checked the same way as a fresh answer). */
 function toApi(r: Release): unknown {
-  return { tag_name: typeof r?.version === 'string' ? r.version : undefined, html_url: r?.page, body: r?.notes, assets: Object.entries(r?.files ?? {}).map(([name, url]) => ({ name, browser_download_url: url })) };
+  return {
+    tag_name: typeof r?.version === 'string' ? r.version : undefined,
+    html_url: r?.page,
+    body: r?.notes,
+    assets: Object.entries(r?.files ?? {}).map(([name, url]) => ({ name, browser_download_url: url })),
+  };
 }
 
 /**

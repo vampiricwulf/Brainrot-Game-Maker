@@ -289,7 +289,7 @@ export interface GameSettings {
   maxPlayers: number;
   /** Start a clue's countdown automatically when it opens (if it has a timer). */
   timerAutoStart: boolean;
-    roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
+  roundIntro: { titleCard: boolean; tileFill: boolean; categoryReveal: 'click' | 'auto' | 'off' };
   /**
    * What viewers see around the game (set on the pre-game screen): the cards' words and the captions. hideJoinCode:
    * the phone buzzers' join code isn't shown in a corner of the stream during the game (it is by default).
@@ -469,12 +469,78 @@ export interface PartnerGameInfo {
  * costs the partner.
  */
 export const PARTNER_GAMES: Record<PartnerGame, PartnerGameInfo> = {
-  describe: { label: 'Describe it', icon: '🗣️', giver: 'Describer', guesser: 'Guesser', verb: 'describes', guessVerb: 'guesses', task: 'describe', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
-  draw: { label: 'Draw it', icon: '✏️', giver: 'Drawer', guesser: 'Guesser', verb: 'draws', guessVerb: 'guesses', task: 'draw', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
-  act: { label: 'Act it out', icon: '🎭', giver: 'Actor', guesser: 'Guesser', verb: 'acts it out', guessVerb: 'guesses', task: 'act out', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
-  help: { label: 'Help a friend', icon: '🙋', giver: 'Helper', guesser: 'Answerer', verb: 'helps', guessVerb: 'answers', task: 'give as a hint', got: { giver: 50, guesser: 100 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
-  split: { label: 'Split clue', icon: '🧩', giver: 'Half A', guesser: 'Half B', verb: 'has half A', guessVerb: 'has half B', task: 'share', got: { giver: 100, guesser: 100 }, missed: { giver: 0, guesser: -50 }, cards: ['giver', 'guesser'] },
-  custom: { label: 'Custom', icon: '⚙', giver: 'Giver', guesser: 'Guesser', verb: 'gives the clues', guessVerb: 'answers', task: 'give', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: [] },
+  describe: {
+    label: 'Describe it',
+    icon: '🗣️',
+    giver: 'Describer',
+    guesser: 'Guesser',
+    verb: 'describes',
+    guessVerb: 'guesses',
+    task: 'describe',
+    got: { giver: 100, guesser: 50 },
+    missed: { giver: 0, guesser: -50 },
+    cards: ['giver'],
+  },
+  draw: {
+    label: 'Draw it',
+    icon: '✏️',
+    giver: 'Drawer',
+    guesser: 'Guesser',
+    verb: 'draws',
+    guessVerb: 'guesses',
+    task: 'draw',
+    got: { giver: 100, guesser: 50 },
+    missed: { giver: 0, guesser: -50 },
+    cards: ['giver'],
+  },
+  act: {
+    label: 'Act it out',
+    icon: '🎭',
+    giver: 'Actor',
+    guesser: 'Guesser',
+    verb: 'acts it out',
+    guessVerb: 'guesses',
+    task: 'act out',
+    got: { giver: 100, guesser: 50 },
+    missed: { giver: 0, guesser: -50 },
+    cards: ['giver'],
+  },
+  help: {
+    label: 'Help a friend',
+    icon: '🙋',
+    giver: 'Helper',
+    guesser: 'Answerer',
+    verb: 'helps',
+    guessVerb: 'answers',
+    task: 'give as a hint',
+    got: { giver: 50, guesser: 100 },
+    missed: { giver: 0, guesser: -50 },
+    cards: ['giver'],
+  },
+  split: {
+    label: 'Split clue',
+    icon: '🧩',
+    giver: 'Half A',
+    guesser: 'Half B',
+    verb: 'has half A',
+    guessVerb: 'has half B',
+    task: 'share',
+    got: { giver: 100, guesser: 100 },
+    missed: { giver: 0, guesser: -50 },
+    cards: ['giver', 'guesser'],
+  },
+  custom: {
+    label: 'Custom',
+    icon: '⚙',
+    giver: 'Giver',
+    guesser: 'Guesser',
+    verb: 'gives the clues',
+    guessVerb: 'answers',
+    task: 'give',
+    got: { giver: 100, guesser: 50 },
+    missed: { giver: 0, guesser: -50 },
+    cards: [],
+  },
 };
 
 /** A game's own rules, as a fresh copy: the partner gives, its points, and the partner never loses points. */
@@ -1800,7 +1866,8 @@ function migrateV1(data: GameV1): Game {
   const { final, ...rest } = data;
   const rounds: Round[] = objects<Omit<BoardRound, 'mode'>>(data.rounds).map((r) => ({ ...r, mode: 'board' }) as BoardRound);
   const off = !!final && final.enabled === false;
-  const written = !!final && ((typeof final.category === 'string' && !!final.category.trim()) || slideWritten(final.questionSlide) || slideWritten(final.answerSlide));
+  const written =
+    !!final && ((typeof final.category === 'string' && !!final.category.trim()) || slideWritten(final.questionSlide) || slideWritten(final.answerSlide));
   if (final && (!off || written)) {
     rounds.push({
       ...newFinalRound(),
@@ -1962,7 +2029,7 @@ function objects<T>(v: unknown): T[] {
   if (!Array.isArray(v)) return [];
   return (v.every(isObj) ? v : v.filter(isObj)) as T[];
 }
-const fixId = (o: { id: Id }) => typeof o.id === 'string' && o.id ? o.id : (o.id = newId());
+const fixId = (o: { id: Id }) => (typeof o.id === 'string' && o.id ? o.id : (o.id = newId()));
 /**
  * fixId, and a new id for one already `seen`: a round or category pasted twice, "q1" in every category. (A repeat
  * would play, or show, as the first: playing one tile would use up the other.)
@@ -2108,7 +2175,20 @@ function repairPartnerTiles(r: BoardRound): void {
 }
 
 /** What a text item needs to be drawn: one that's missing (or not of its kind) is a new text box's. */
-const TEXT_STYLE = ['font', 'size', 'weight', 'italic', 'underline', 'uppercase', 'color', 'align', 'vAlign', 'lineHeight', 'letterSpacing', 'autoFit'] as const;
+const TEXT_STYLE = [
+  'font',
+  'size',
+  'weight',
+  'italic',
+  'underline',
+  'uppercase',
+  'color',
+  'align',
+  'vAlign',
+  'lineHeight',
+  'letterSpacing',
+  'autoFit',
+] as const;
 const BOX = ['x', 'y', 'w', 'h', 'rotation', 'opacity', 'zIndex'] as const;
 
 function repairSlide(s: unknown): Slide {
@@ -2135,10 +2215,27 @@ function repairSlide(s: unknown): Slide {
 
 /** Number settings an older version saved as null (an Inspector field left empty) go back to their defaults. */
 const NUMBER_DEFAULTS: [path: string, fallback: number][] = [
-  ['x', 0], ['y', 0], ['w', 100], ['h', 100], ['rotation', 0], ['opacity', 1], ['zIndex', 0],
-  ['size', 110], ['lineHeight', 1.2], ['letterSpacing', 0], ['strokeWidth', 0], ['radius', 0],
-  ['stroke.width', 6], ['shadow.x', 0], ['shadow.y', 0], ['shadow.blur', 0], ['glow.blur', 20],
-  ['background.padding', 24], ['background.radius', 16], ['entrance.delay', 0], ['entrance.duration', 0.6],
+  ['x', 0],
+  ['y', 0],
+  ['w', 100],
+  ['h', 100],
+  ['rotation', 0],
+  ['opacity', 1],
+  ['zIndex', 0],
+  ['size', 110],
+  ['lineHeight', 1.2],
+  ['letterSpacing', 0],
+  ['strokeWidth', 0],
+  ['radius', 0],
+  ['stroke.width', 6],
+  ['shadow.x', 0],
+  ['shadow.y', 0],
+  ['shadow.blur', 0],
+  ['glow.blur', 20],
+  ['background.padding', 24],
+  ['background.radius', 16],
+  ['entrance.delay', 0],
+  ['entrance.duration', 0.6],
 ];
 function repairNumbers(el: SlideElement): void {
   for (const [path, fallback] of NUMBER_DEFAULTS) {
@@ -2495,4 +2592,3 @@ export interface BoardGameState {
   /** The turn ◀ Previous turn left, with its move, for a Next turn ▶ straight after (nothing else changed the turn). */
   after?: { turn: number; turns?: number; last?: BoardGameState['last'] };
 }
-

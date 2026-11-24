@@ -47,7 +47,8 @@ export function showPlace(at: string): () => void {
 }
 
 /** Where an offer shows: under its place while that's on screen ('placed'), else with the rest ('top'). */
-export const offerShownAt = (o: Pick<OpenOffer, 'at'>, places: Record<string, number> = offerPlaces): 'placed' | 'top' => (o.at && (places[o.at] ?? 0) > 0 ? 'placed' : 'top');
+export const offerShownAt = (o: Pick<OpenOffer, 'at'>, places: Record<string, number> = offerPlaces): 'placed' | 'top' =>
+  o.at && (places[o.at] ?? 0) > 0 ? 'placed' : 'top';
 
 /** Offers that have come into view once (a new one takes the keys; one moving to another place doesn't). */
 export const arrived = new Set<number>();

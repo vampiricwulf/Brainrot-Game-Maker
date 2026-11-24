@@ -15,14 +15,46 @@ describe('what moved in this version', () => {
 
   it('says where things went in plain lines, the renames from the keys filter’s list', () => {
     const game = WHAT_MOVED.game.join('\n');
-    for (const w of ['↩ Put back (keep tile)', '🔊 Sound', 'Shift+click', '🎲 Roll for it (O)', '▸ Buzzer options', '✅ Before you start', '⏱ Start the countdown', '⋯ Tools']) expect(game).toContain(w);
+    for (const w of [
+      '↩ Put back (keep tile)',
+      '🔊 Sound',
+      'Shift+click',
+      '🎲 Roll for it (O)',
+      '▸ Buzzer options',
+      '✅ Before you start',
+      '⏱ Start the countdown',
+      '⋯ Tools',
+    ])
+      expect(game).toContain(w);
     for (const l of WHAT_MOVED.game) expect(l.trim(), l).toBe(l);
     expect(renames()).toHaveLength(RENAMED.length);
     expect(renames()).toContain('📊 Scores → 📊 Scoreboard');
     expect(renames([['↻ Spin again', 'Spin again']])).toEqual(['Spin again → ↻ Spin again']);
     // The editor's part: its menus' one order, the lists' ⋯, and its new names.
     const editor = WHAT_MOVED.editor.join('\n');
-    for (const w of ['one order', 'Row 2 · $400', '⋯', '🏁 Make it the start', '↺ Built-in', '📋 Paste over this slide', '✓ Done cropping', 'Replace everywhere…', 'Plays from', '🔊 Sound', '⧉ Same as the answer', '▸ More rules', '＋ Add tiebreaker', '＋ Add space', 'Ways out', 'ℹ See where', '💾 Save •', 'Ctrl+O', '▸ Share or bring in a theme', '📥 Import rounds…', 'Start new anyway'])
+    for (const w of [
+      'one order',
+      'Row 2 · $400',
+      '⋯',
+      '🏁 Make it the start',
+      '↺ Built-in',
+      '📋 Paste over this slide',
+      '✓ Done cropping',
+      'Replace everywhere…',
+      'Plays from',
+      '🔊 Sound',
+      '⧉ Same as the answer',
+      '▸ More rules',
+      '＋ Add tiebreaker',
+      '＋ Add space',
+      'Ways out',
+      'ℹ See where',
+      '💾 Save •',
+      'Ctrl+O',
+      '▸ Share or bring in a theme',
+      '📥 Import rounds…',
+      'Start new anyway',
+    ])
       expect(editor).toContain(w);
     expect(movedNew('editor', null)).toBe(true);
   });
@@ -34,7 +66,12 @@ describe('what moved in this version', () => {
     expect(noSettings(store('other.site', 'jb.prefs'))).toBe(false);
     expect(noSettings(null)).toBe(false);
     // A browser refusing site data throws on reading it: not a first run, and never a crash.
-    const refused = { get length(): number { throw new DOMException('denied', 'SecurityError'); }, key: () => null };
+    const refused = {
+      get length(): number {
+        throw new DOMException('denied', 'SecurityError');
+      },
+      key: () => null,
+    };
     expect(noSettings(refused)).toBe(false);
     // A fresh start: nothing shown yet on this computer.
     vi.resetModules();
@@ -47,4 +84,3 @@ describe('what moved in this version', () => {
     expect([fresh.movedNew('game'), fresh.movedNew('editor')]).toEqual([false, false]);
   });
 });
-

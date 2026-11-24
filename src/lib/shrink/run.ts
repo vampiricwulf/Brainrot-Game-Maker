@@ -97,7 +97,8 @@ export function discardReason(d: Pick<DiscardedTrack, 'reason'>): RunReason | nu
 
 /** A plan's picture and sound options as mediabunny's (its bitrates as a Quality). */
 function options(mb: typeof import('./mb'), plan: RunPlan): { video?: ConversionVideoOptions; audio?: ConversionAudioOptions } {
-  const quality = (bps?: number, bitrateMode?: 'constant' | 'variable') => (bps ? { quality: new mb.Quality({ bitrate: bps, ...(bitrateMode ? { bitrateMode } : {}) }) } : {});
+  const quality = (bps?: number, bitrateMode?: 'constant' | 'variable') =>
+    bps ? { quality: new mb.Quality({ bitrate: bps, ...(bitrateMode ? { bitrateMode } : {}) }) } : {};
   const { bitrate: vbps, bitrateMode, ...video } = plan.video ?? {};
   const { bitrate: abps, ...audio } = plan.audio ?? {};
   return {
