@@ -106,6 +106,8 @@ try {
   assert((await flat(dialog.locator('[data-deal-counts]'))) === 'Dealt to 5: Captain ×1', '“Dealt to 5: Captain ×1”: everyone dealt in, one part');
   const handOut = dialog.locator('[data-deal-send]');
   assert((await handOut.innerText()).trim() === '✔ Hand them out' && (await clickable(handOut)), 'no phones: ✔ Hand them out, in view');
+  const where = () => host.evaluate(() => JSON.stringify([document.querySelector('.stage-box').getBoundingClientRect(), document.scrollingElement.scrollTop, document.querySelector('.play')?.scrollTop]));
+  const stageBefore = await where();
   await handOut.click();
   await dialog.locator('.hands').waitFor();
   // (The next step, the first 📋 Copy, sits at the box's foot, under its fold at 1280×720: it comes into view, the keys on it.)
@@ -114,6 +116,7 @@ try {
     await until(async () => (await clickable(firstCopy)) && (await firstCopy.evaluate((b) => b === document.activeElement)), 3000),
     `handed out: the first 📋 Copy is in view and has the keys (focus: ${await host.evaluate(() => document.activeElement?.textContent?.trim())})`,
   );
+  assert((await where()) === stageBefore, `bringing it into view moves only the box: the stage keeps its place and size (${await where()} vs ${stageBefore})`);
   const rows = await dialog.locator('.hands .row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
   assert(JSON.stringify(rows) === JSON.stringify(NAMES.map((n) => `${n} 📋 Copy 🪟`)), `the list names all five dealt in, each with 📋 Copy and 🪟 (${rows.join(' | ')})`);
   let d = null;

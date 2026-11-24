@@ -56,9 +56,9 @@
   const uid = $props.id();
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   const room = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
-  /** Its phones get the cards the host sends (else the host copies them: 📋, or the 🪟 card window). */
   /** The box itself. */
   let box = $state<HTMLElement>();
+  /** Its phones get the cards the host sends (else the host copies them: 📋, or the 🪟 card window). */
   const cardsOn = $derived(room && roomHasCards());
   const filesOn = $derived(cardsOn && roomHasFiles());
   /** What the phones can get (with files off, none from this computer). */

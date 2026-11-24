@@ -803,9 +803,12 @@ try {
   const lastD = async () => ((await dp.locator('.bh .last').count()) ? last(dp) : '');
   const lastBefore = await lastD();
   // (Clicked, ✎ Edit board keeps the focus, at the box's foot.)
+  const where = () => dp.evaluate(() => JSON.stringify([document.querySelector('.stage-box').getBoundingClientRect(), document.scrollingElement.scrollTop, document.querySelector('.play')?.scrollTop]));
+  const stageBefore = await where();
   await dp.locator('.bh').getByRole('button', { name: /Edit board/ }).click();
   await dp.locator('[data-board-editing]').waitFor();
   await dp.waitForTimeout(400);
+  assert((await where()) === stageBefore, `bringing the edit box into view moves only the panel's box: the stage keeps its place and size (${await where()} vs ${stageBefore})`);
   const doneInView = await dp
     .locator('[data-board-editing]')
     .getByRole('button', { name: '✓ Done editing' })
