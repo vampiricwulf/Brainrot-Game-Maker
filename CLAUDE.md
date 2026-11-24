@@ -26,10 +26,10 @@ Chromium you have.
 - One e2e file: `node tests/e2e/<name>.mjs`, 5 s to about 2½ min. `npm run test:quick` builds and runs `smoke.mjs`,
   about 100 s; the release waits only for this.
 - Code is formatted with Prettier: run `npm run format` before committing (`npm run format:check`, 25 s, is in CI and
-  the gate; Markdown is left alone).
-- `npm run gate`: the checks in order (version check, format check, svelte-check, unit tests, buzzer check, shard check, build, then
-  every e2e file, 3 at a time with quiet output), ending with a summary of what failed. It takes over 10 minutes: run
-  it in the background.
+  the gate; Markdown is left alone). Now and then a long call chain needs a second `npm run format`.
+- `npm run gate`: the checks in order (version check, format check, svelte-check, unit tests, buzzer check, shard
+  check, build, then every e2e file, 3 at a time with quiet output), ending with a summary of what failed. It takes
+  over 10 minutes: run it in the background.
 - More e2e at once: `node scripts/e2e-shard.mjs <1–5|rest|buzzer|all> --jobs N --quiet`. A CI shard is 6–8 min; the
   whole suite is about 35 min one file after another. Never run all of it in the foreground.
 - Fonts are handled: `helpers.mjs` points Chromium at `tests/e2e/fonts.conf` (CI's fonts, no Inter) unless

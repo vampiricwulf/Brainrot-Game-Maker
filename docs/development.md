@@ -169,7 +169,9 @@ Unit tests sit next to the code they test (`*.test.ts`).
 
 Code is formatted with [Prettier](https://prettier.io/) (and prettier-plugin-svelte for the components): run
 `npm run format` before you commit, and `npm run format:check` says whether anything is left (CI and `npm run gate`
-run it). `.prettierrc` holds the settings, matched to the code as it was: single quotes, 160 columns (comments are
+run it). Prettier now and then lays out a long call chain (`a.locator(…).evaluateAll(…)`) differently on a second
+run, so if `npm run format:check` still finds a file after `npm run format`, run `npm run format` once more.
+`.prettierrc` holds the settings, matched to the code as it was: single quotes, 160 columns (comments are
 still wrapped by hand at about 120), and `htmlWhitespaceSensitivity: "strict"`, so Prettier never adds or takes away a
 space between elements, which would change the text on screen. `.prettierignore` leaves out Markdown, lockfiles, build
 output and the two pages whose markup is used as written (`index.html` and `buzzer/phone/index.html`). `.editorconfig`
