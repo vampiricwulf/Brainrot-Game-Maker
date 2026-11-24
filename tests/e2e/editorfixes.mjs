@@ -527,6 +527,17 @@ try {
   );
   const gold = await importItems('prices.csv', 'Name,Price\nShield,$12\nHelmet,8 gold\n', 'Imported 2 items: 2 new, 0 updated ·');
   assert(gold.includes('Imported 2 items') && gold.includes('1 price couldn’t be read (“8 gold”)'), `a price it can’t read is said, “$12” is read (${gold})`);
+  {
+    // ＋ Add item, 📥 Import CSV… and ⬇ Export CSV line up top and bottom; an item's ⋯ 🗑 end its row, as a stat's and a
+    // shop's do (not straight after ▸ More).
+    const edges = await Promise.all(['＋ Add item', '📥 Import CSV…', '⬇ Export CSV'].map(async (name) => {
+      const b = await page.getByRole('button', { name, exact: true }).boundingBox();
+      return `${Math.round(b.y)}-${Math.round(b.y + b.height)}`;
+    }));
+    assert(new Set(edges).size === 1, `the Items buttons line up (${edges.join(', ')})`);
+    const gaps = await page.locator('.item-row').evaluateAll((rows) => rows.map((r) => Math.round(r.getBoundingClientRect().right - r.querySelector('.row-tools').getBoundingClientRect().right)));
+    assert(gaps.length > 1 && gaps.every((g) => g <= 1), `each item’s ⋯ 🗑 are at its row’s right end (${gaps.join(', ')} px short)`);
+  }
 
   // ---------- Pre-game: 📋 Game rules ----------
   await page.getByRole('button', { name: '▶ Play' }).click();

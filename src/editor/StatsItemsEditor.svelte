@@ -476,7 +476,7 @@
 
 <section>
   <h3>Items</h3>
-  <div class="row">
+  <div class="row actions">
     <button onclick={addItem}>＋ Add item</button>
     <button class="ghost" onclick={importCsv} title="Columns: name, price, stackable, wearable, description">📥 Import CSV…</button>
     <button class="ghost" onclick={exportCsv} disabled={!game.items?.length}>⬇ Export CSV</button>
@@ -727,6 +727,10 @@
     flex-wrap: wrap;
     align-items: flex-end;
   }
+  /* (Buttons only: the same height, whatever their emoji.) */
+  .row.actions {
+    align-items: stretch;
+  }
   .field-row,
   .item-row {
     display: flex;
@@ -779,6 +783,10 @@
   .item-row select {
     flex: 0 1 auto;
     min-width: 0;
+  }
+  /* ⋯ 🗑 at the row's end, as a stat's and a shop's are. */
+  .item-row > :global(.row-tools) {
+    margin-left: auto;
   }
   .n {
     width: 64px;
