@@ -74,6 +74,8 @@ function check() {
     if (/^\s*(?:async\s+)?function until\b|^\s*const until = async\b/m.test(src)) bad.push(`${f}.mjs has its own until() loop: use until() or untilWith() from helpers.mjs`);
     if (/CHROMIUM_PATH|chromium\.launch\(/.test(src)) bad.push(`${f}.mjs launches Chromium itself: use launchChromium()`);
     if (/node_modules\/\.bin\/wrangler/.test(src)) bad.push(`${f}.mjs starts the buzzer server itself: use startBuzzer()`);
+    // (Not checked, on purpose: a raw class such as '.panel .status' where a hook helper such as statusLineIn() would
+    // do. Tests move onto the helpers as they're touched; see "Writing an e2e file" in docs/development.md.)
   }
   if (bad.length) {
     console.error(bad.join('\n'));

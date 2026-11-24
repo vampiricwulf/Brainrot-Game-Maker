@@ -40,6 +40,7 @@ Chromium you have.
   fake (see `tests/e2e/update.mjs`). An e2e file uses `helpers.mjs`'s `appFile()`, `failureShots()`, `launchChromium()`,
   `assert()`/`assertEq()`, `until()`, `sleep()` and `section()`, never copies of its own (the shard check enforces it;
   "Writing an e2e file" in `docs/development.md`).
+- E2E: find big parts (stage, host panel, board, toasts…) with `helpers.mjs`'s hook helpers, not classes (not enforced).
 - One window (no audience window, so the panel is on stream): the host panel never shows secrets, such as card words,
   file names, typed answers, picks, wagers and secret names (`docs/SPEC.md` §6.2, "Single window" and "The host
   panel's rules").

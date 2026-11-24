@@ -81,6 +81,35 @@ Start from a file like it and keep to `tests/e2e/helpers.mjs` for the common ste
 - `section(title)` to print a section's heading (`---------- title ----------`).
 - `startBuzzer(prefix, { vars })` for a buzzer server (its `base` and `port`, `stop()`, `restart()`).
 
+Finding the app's big parts: the most-used structural parts carry a valueless `data-*` hook beside their class, and
+`helpers.mjs` has a helper for each that finds it by the hook, so a restyle that renames a class doesn't break the
+tests. Each takes where to look (a page, a locator or a frame) and `locator()`'s options, and they nest:
+`boardTilesIn(boardIn(stageBoxIn(page)))`, `statusLineIn(host, { hasText: 'Answer hidden' })`,
+`playerRowsIn(page).nth(2).locator('.sel')`.
+
+| Helper | Hook | Was |
+|---|---|---|
+| `stageBoxIn` | `data-stage-box` | `.stage-box` |
+| `hostPanelIn` | `data-host-panel` | `.panel` |
+| `statusLineIn` | `data-host-status` | `.panel .status` |
+| `playerRowsIn` | `data-player-row` | `.panel .p` |
+| `awardRowIn` | `data-award-row` | `.panel .award` |
+| `toolsRowIn` | `data-tools-row` | `.panel .toolsrow` |
+| `confirmStrip` | `data-confirm-strip` | `.panel .confirm` |
+| `boardIn` | `data-board` | `.board` |
+| `boardTilesIn` | `data-board-tile` | `.board .tile` |
+| `toastsIn` | `data-toast` | `.toast` |
+| `finalControlsIn` | `data-final-controls` | `.fj` |
+| `roundNavIn` | `data-round-nav` | `.rn` |
+| `roundTabsIn` | `data-round-tab` | `nav > button.round-tab` (the editor's) |
+| `statusBarIn` | `data-status-bar` | `.status-bar` |
+| `inspectorIn` | `data-inspector` | `.insp` |
+
+New code uses the helpers; older selectors move over as they're touched (the shard check doesn't enforce it). A hook
+goes on every element that has its class, so the two find the same things, and it never carries a value: no card
+words, answers, picks or names. The classes stay for the CSS. A new hook is worth it only for a part many tests find;
+for the rest, a role, label or text (`getByRole`, `getByText`) is better than a class.
+
 Type-checking: `npm run check:e2e` checks every e2e file that starts with `// @ts-check` against `helpers.mjs`'s
 JSDoc types and Playwright's (not strict; `tests/e2e/window.d.ts` allows the tests' own `window.__…` hooks). Inside a
 `page.evaluate()` callback an element is a plain `Element`, so a property of one kind of element needs a JSDoc cast,
