@@ -223,7 +223,7 @@ try {
     await ctx.close();
   }
   {
-    console.log('Mini quest, two windows: the Boss’s card');
+    section('Mini quest, two windows: the Boss’s card');
     const { ctx, page } = await host('Mini quest', true);
     await page.keyboard.press('n');
     const rh = page.locator('.rh');
@@ -249,7 +249,7 @@ try {
     await ctx.close();
   }
   {
-    console.log('Mini quest, one window: the top row from screen to screen');
+    section('Mini quest, one window: the top row from screen to screen');
     const { ctx, page } = await host('Mini quest', false);
     await page.keyboard.press('n');
     const rh = page.locator('.rh');
@@ -280,7 +280,7 @@ try {
   }
 
   {
-    console.log('The slide editor in its host’s words');
+    section('The slide editor in its host’s words');
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     await ctx.route('https://api.github.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
     const page = await ctx.newPage();
@@ -347,7 +347,7 @@ try {
     await ctx.close();
   }
   {
-    console.log('Race to the finish, 🖼 Board backdrop: the path faint over it');
+    section('Race to the finish, 🖼 Board backdrop: the path faint over it');
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     await ctx.route('https://api.github.com/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
     const page = await ctx.newPage();
