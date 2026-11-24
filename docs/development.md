@@ -123,7 +123,7 @@ which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machin
 | `src/lib/slide/`, `src/lib/rpg/`, `src/lib/boardgame/` | Components the editor and play share (media players, avatars, board spaces) |
 | `src/editor/` | The editor: `slide/` the slide editor, `tools/` the wheel, dice and deal editors, `rpg/` and `boardgame/` those rounds' editors |
 | `src/play/` | Hosting: `Play.svelte` (play state and keys), `HostPanel.svelte` (the panel's layout), the stage and the audience view |
-| `src/play/host/` | The host panel's boxes, `goon.ts` (the blue button and the check before going on), `verbs.ts` (every host button's words and keys) |
+| `src/play/host/` | The host panel's boxes, `goon.ts` (the blue button and the check before going on), `verbs.ts` (every host button's words and keys), and parts of `Play.svelte`'s script, each made by a `create…()` that Play calls once with its own state as getters and setters: `phones.svelte.ts` (phone buzzers), `pregame.svelte.ts` (the pre-game screen), `partner.svelte.ts` (partner clues), `midgame.svelte.ts` (players mid-game, a board game's moves) |
 | `src/play/tools/`, `src/play/rpg/`, `src/play/boardgame/` | The wheel, dice and roll-off on screen; RPG and board game play |
 | `src/audience/` | The audience and scores windows, and the 🪟 card window |
 | `src/test/` | Vitest's environment for `*.svelte.test.ts` files |

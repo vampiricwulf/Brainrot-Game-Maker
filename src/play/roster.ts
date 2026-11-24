@@ -1,4 +1,4 @@
-// The game's players as the pre-game screen keeps them (Play.svelte's keepRoster): the list there, with what only the
+// The game's players as the pre-game screen keeps them (keepRoster, in host/pregame.svelte.ts): the list there, with what only the
 // game's own copy has (stats) kept. Pure: unit-tested in roster.test.ts.
 import type { PlayerTemplate } from '../lib/model';
 

@@ -657,7 +657,7 @@ describe('🤫 Cards (the editor’s tab)', () => {
       ],
       ['info', '🤫 Card “Tip” has a GIF of 20.0 MB: phones on mobile data may wait a while for it (WiFi is fine)', undefined],
     ]);
-    // The pre-game screen keeps the warnings only (Play.svelte's gameChecks): the one too big.
+    // The pre-game screen keeps the warnings only (gameChecks, in src/play/host/pregame.svelte.ts): the one too big.
     expect(lines.filter((p) => p.level === 'warn').map((p) => p.text)).toEqual([
       '🤫 Card “Tip” has a video too big to send to phones (25.0 MB; this buzzer server takes files up to 24.0 MB): add it from a link instead',
     ]);
