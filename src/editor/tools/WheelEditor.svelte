@@ -282,6 +282,10 @@
   .seg .drag-grip {
     padding-top: 7px;
   }
+  /* ⋯ and 🗑 on the middle of the 30px label box (the row lines up at the top for ▸ More's line). */
+  .seg > :global(.row-tools) {
+    margin-top: 5px;
+  }
   .preview :global([data-slice]) {
     cursor: pointer;
   }
@@ -298,7 +302,7 @@
     width: 36px;
     text-align: right;
     font-size: 12px;
-    padding-top: 6px;
+    padding-top: 8px;
   }
   p {
     margin: 0;
