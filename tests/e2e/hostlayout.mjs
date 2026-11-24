@@ -37,8 +37,9 @@
 // Finish now… at the left of their box's foot, and the tools row folds behind ⋯ Tools (out while 📊 Scoreboard is on),
 // giving three rows or more their ✔ Right and ✘ Wrong in sight; at 1920×1080, where the rows fit, it stays out. From
 // 360 to 1920px wide (big scores, ½ Halve and 0 Nullify, typed answers or none, one window or two) no control in a reveal
-// row is drawn over another or past its row, the stage its size, and a panel scrolled down stays so as a row changes. An RPG and a board-game round's box keeps one width
-// from its title card to play, clear of the main button's cell. On a phone (430 to 320px wide), in one window and with
+// row is drawn over another or past its row, the stage its size, and a panel scrolled down stays so as a row changes.
+// An RPG and a board-game round's box keeps one width from its title card to play, clear of the main button's cell.
+// On a phone (430 to 320px wide), in one window and with
 // an audience window, the leave-round question's "Go to <a long round name> ▶" is cut short (its ▶ kept, named in full
 // and in its tooltip), nothing in it past the window's edge and no sideways scroll; in one window the stage keeps its
 // size.
