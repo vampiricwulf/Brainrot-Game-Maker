@@ -24,13 +24,14 @@ The desktop app also needs Rust and the [Tauri prerequisites](https://tauri.app/
 Run these from the repo root. The times are rough.
 
 ```sh
-npm run gate           # everything CI checks before a release, stopping at the first failure, then every
-                       # end-to-end file three at a time (--quiet); prints each step's time.
+npm run gate           # CI's checks in one command (all but the desktop app's builds and Rust tests): the build
+                       # job's checks, stopping at the first failure, then every end-to-end file three at a time
+                       # (--quiet); prints each step's time.
                        # npm run gate -- --jobs 4, or --e2e 3 (one shard) / --e2e none (no end-to-end files)
                        # The steps before the end-to-end files take about a minute.
 npm run dev            # dev server
 npm run build          # → dist/index.html (one self-contained file), about 8 s
-npm run check          # type-check (svelte-check; a warning fails it too), about 30 s
+npm run check          # type-check (svelte-check; a warning fails it too), about 25 s
 npm test               # unit tests (Vitest: src/ and buzzer/), about 30 s
 (cd buzzer && npm run check)   # type-check the buzzer Worker and phone page (CI runs it; the root check doesn't)
 npm run test:quick     # the quick end-to-end test (tests/e2e/smoke.mjs), about 100 s; CI waits for it before releasing
@@ -60,7 +61,7 @@ server locally under `wrangler dev` for the phone tests. No test may reach the r
 Files can run side by side (`--jobs N` on `scripts/e2e-shard.mjs`): a server a test starts later gets its port from
 `freePort()` in `tests/e2e/helpers.mjs`, which claims it for that test's process (a file in the temp folder,
 `brainrot-e2e-ports/`), so two tests never get the same one; anything else a test keeps goes in a temp folder of its own.
-With `--jobs` above 1 each file's output is held back and printed whole when it ends.
+With `--jobs` above 1, or `--quiet`, each file's output is held back and printed when it ends.
 
 Fonts: some layout checks measure rows and buttons, and assume CI's fonts, which have no Inter. `tests/e2e/helpers.mjs`,
 which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machine's fonts minus Inter) unless

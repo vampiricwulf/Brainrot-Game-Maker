@@ -1,4 +1,5 @@
-// Everything CI checks before a release, in one command (npm run gate):
+// CI's checks in one command (npm run gate): what the build job checks before a release, then the end-to-end files the
+// e2e job runs. Not run here: the desktop app's builds and its Rust tests (cargo test in src-tauri, needs Rust).
 //
 //   node scripts/gate.mjs                 every step below, then every end-to-end file, three at a time
 //   node scripts/gate.mjs --jobs 4        the end-to-end files four at a time
@@ -21,17 +22,18 @@ const opt = (name, fallback) => {
 };
 const jobs = opt('--jobs', '3');
 const e2e = opt('--e2e', 'all');
-if (args.length || !/^[1-9]\d*$/.test(jobs) || !e2e) {
+// The e2e target is checked now, not after the minute of steps before it.
+if (args.length || !/^[1-9]\d*$/.test(jobs) || !/^([1-5]|rest|buzzer|all|none)$/.test(e2e ?? '')) {
   console.error('Usage: node scripts/gate.mjs [--jobs N] [--e2e <1–5 | rest | buzzer | all | none>]');
   process.exit(2);
 }
 
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const steps = [
   ['Version numbers match', 'node', ['scripts/version.mjs', 'check']],
-  ['Type check (svelte-check, warnings fail it)', npx, ['svelte-check', '--tsconfig', './tsconfig.json', '--fail-on-warnings']],
-  ['Unit tests (Vitest)', npx, ['vitest', 'run']],
+  // The npm scripts CI runs, so the gate can't drift from them.
+  ['Type check (npm run check: svelte-check, warnings fail it)', npm, ['run', 'check']],
+  ['Unit tests (npm test: Vitest, src/ and buzzer/)', npm, ['test']],
   ['Buzzer room type check (buzzer/)', npm, ['--prefix', 'buzzer', 'run', 'check']],
   ['Every e2e file is in one shard', 'node', ['scripts/e2e-shard.mjs', '--check']],
   ['Build (dist/index.html)', npm, ['run', 'build']],
