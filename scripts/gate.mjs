@@ -1,4 +1,4 @@
-// Everything CI checks before a release, in one command (npm run gate), to run before pushing:
+// Everything CI checks before a release, in one command (npm run gate):
 //
 //   node scripts/gate.mjs                 every step below, then every end-to-end file, three at a time
 //   node scripts/gate.mjs --jobs 4        the end-to-end files four at a time

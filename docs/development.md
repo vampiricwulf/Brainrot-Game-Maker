@@ -25,7 +25,7 @@ Run these from the repo root. The times are rough.
 
 ```sh
 npm run gate           # everything CI checks before a release, stopping at the first failure, then every
-                       # end-to-end file three at a time (--quiet); prints each step's time. Run it before pushing.
+                       # end-to-end file three at a time (--quiet); prints each step's time.
                        # npm run gate -- --jobs 4, or --e2e 3 (one shard) / --e2e none (no end-to-end files)
                        # The steps before the end-to-end files take about a minute.
 npm run dev            # dev server
@@ -75,6 +75,7 @@ which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machin
 | `SCREENSHOTS` | e2e tests | A folder for the pictures some files take as they go (`smoke.mjs`: one per step). CI sets it to `test-results/screenshots`; a failing run leaves its pictures and traces in `test-results/`, which CI keeps. |
 | `SHOTS`, `PASS_SHOTS` | other e2e files | The same, for the files that read these names instead (`PASS_SHOTS`: `pass.mjs`). |
 | `FONTCONFIG_FILE` | Chromium | The fonts the tests use; unset, `tests/e2e/fonts.conf`. |
+| `E2E_QUIET` | `scripts/e2e-shard.mjs` | `1`: as `--quiet` (a passing file prints one line; a failing one, its last 80 lines). |
 | `VITE_BUZZER_URL` | `npm run build` | The buzzer server built in for phone buzzers (blank: none built in). For a local one, `http://localhost:8787` from `cd buzzer && npx wrangler dev`. CI builds the release with the `BUZZER_URL` repository variable. |
 | `BRAINROT_RELEASE` | `npm run build` | `1`: a published release, which checks for newer versions when it starts. Only CI's release build sets it. |
 | `GITHUB_SHA` | `npm run build` | The commit shown in ℹ About (unset: the checkout's own). |
