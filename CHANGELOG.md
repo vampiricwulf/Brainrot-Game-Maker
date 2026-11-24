@@ -56,6 +56,7 @@ under the day's heading (Pacific time), and commit that with the hashes as `Chan
 
 ### Fixed
 
+- The 🚫 No Pass end-to-end test waits for Ctrl+Z to reach the phone before checking it, so it no longer fails now and then on CI. (bc00661)
 - CI: the Pages site no longer fails to deploy with "No artifacts named github-pages were found": it is uploaded in one job and deployed in the next. (5b32160)
 - The reload-cover end-to-end test waits for the resume question's focus before pressing Enter, so it no longer fails now and then on CI. (1e2e629)
 - Hosting from a phone, the 📱 Phone buzzers card no longer sticks out sideways: on a narrow phone (under about 395px wide) Free seat and Kick show as just 📱 and ⛔, each player stays on one line, and Start game ▶ can be tapped. The in-game 📱 list keeps their words. (9b21391, 680b77c)
