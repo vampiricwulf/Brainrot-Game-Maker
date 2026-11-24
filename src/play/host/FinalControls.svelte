@@ -254,6 +254,47 @@
   const rows = new DragOrder();
 
   /**
+   * The reveal rows don't fit in straight columns (the panel too narrow for what the rows hold: typed answers, a wager box
+   * with its max, ½ Halve and 0 Nullify): they wrap instead, as on a narrow window, so no cell is drawn over the next.
+   * How much room the columns need depends on the rows' words, so it's measured, in columns, each time the list's width
+   * or what's in it changes.
+   */
+  let wrapRows = $state(false);
+  /** Whether the rows fit in their columns (checked with the columns on, before the browser paints). */
+  function rowsFit(el: HTMLElement): boolean {
+    const was = el.classList.contains('wrap');
+    el.classList.remove('wrap');
+    let fits = true;
+    // (No columns here: a narrow window, or a browser without subgrid. The rows wrap anyway.)
+    if (getComputedStyle(el).display === 'grid') {
+      fits = el.scrollWidth <= el.clientWidth + 1;
+      for (const c of el.querySelectorAll<HTMLElement>('.pl > .cell')) if (fits && c.scrollWidth > c.clientWidth + 1) fits = false;
+    }
+    el.classList.toggle('wrap', was);
+    return fits;
+  }
+  $effect(() => {
+    const el = orderEl;
+    if (!el) return;
+    const fit = () => (wrapRows = !rowsFit(el));
+    let width = -1;
+    const resized = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      fit();
+    });
+    resized.observe(el);
+    // (A wager shown, ½ Halve coming or going, a typed answer in: the rows' words change, so does the room they need.)
+    const changed = new MutationObserver(fit);
+    changed.observe(el, { childList: true, subtree: true, characterData: true });
+    void document.fonts?.ready.then(() => orderEl === el && fit());
+    return () => {
+      resized.disconnect();
+      changed.disconnect();
+    };
+  });
+
+  /**
    * ▲▼ or Alt+↑/↓: one place up or down. Moving a row drops keyboard focus, so it goes back to the moved row's
    * `refocus` button (its name if that one is now disabled), letting them repeat.
    */
@@ -627,7 +668,7 @@
       <!-- One row per player, in straight columns that keep their places from row to row whatever a row holds (its own
            Show answer or Show wager empty, a wager still to type or shown): the player, their typed answer, Show answer,
            the score and wager, Show wager, then ✔ Right and ✘ Wrong at the right end. -->
-      <div class="order" class:typedcol={!!f.answers} role="list" aria-label="Reveal order" bind:this={orderEl}>
+      <div class="order" class:typedcol={!!f.answers} class:wrap={wrapRows} role="list" aria-label="Reveal order" bind:this={orderEl}>
         {#each f.order as id, i (id)}
           {@const p = byId[id]}
           {@const res = f.results[id]}
@@ -1060,8 +1101,16 @@
     gap: 6px;
     min-width: 0;
   }
+  /* (On a phone the score, the wager box with its max and ½ Halve / 0 Nullify are wider than the row: they go onto a
+     second line rather than past its edge. In columns the cell is as wide as all of it, so it never wraps there.) */
+  .cell.sw {
+    flex-wrap: wrap;
+    row-gap: 3px;
+  }
+  /* (Its max on two lines first, before ½ Halve / 0 Nullify go onto a line of their own.) */
   .cell.sw > label {
     gap: 6px;
+    flex: 1 0 min-content;
   }
   /* ✔ Right and ✘ Wrong, where the rows wrap (a narrow window, a tablet): together at the row's right end, so they're at
      one place in every row whatever wraps before them (the spotlit row's Show wager, kept empty, too). */
@@ -1070,34 +1119,41 @@
   }
   /* The reveal rows in straight columns: each row a subgrid of the list, so a column is as wide as its widest cell and
      keeps its place in every row whatever that row holds. The typed answer (with none, the name) takes the room left,
-     so the score and wager, Show wager and the verdicts stay at the right end. On a narrow window, or where subgrid
-     isn't known, the rows wrap as before. */
+     so the score and wager, Show wager and the verdicts stay at the right end. On a narrow window, where subgrid isn't
+     known, or where the columns don't fit the panel (.wrap, measured: rowsFit), the rows wrap as before. */
   @supports (grid-template-columns: subgrid) {
     @media (min-width: 900px) {
-      .order {
+      /* (The name's column: at least its grip, ▲▼, key and a name cut to 3em.) */
+      .order:not(.wrap) {
         display: grid;
-        grid-template-columns: minmax(7em, 1fr) repeat(4, auto);
+        grid-template-columns: minmax(11em, 1fr) repeat(4, auto);
         column-gap: 6px;
       }
       /* With typed answers, the answer the host judges from gets the room first: at least 12em, a long name cut
          shorter (9em, whole in its tooltip). */
-      .order.typedcol {
-        grid-template-columns: minmax(7em, max-content) minmax(12em, 1fr) repeat(5, auto);
+      .order.typedcol:not(.wrap) {
+        grid-template-columns: minmax(11em, max-content) minmax(12em, 1fr) repeat(5, auto);
       }
-      .order.typedcol .name {
+      .order.typedcol:not(.wrap) .name {
         max-width: 9em;
       }
-      .pl {
+      .order:not(.wrap) .pl {
         grid-column: 1 / -1;
         display: grid;
         grid-template-columns: subgrid;
       }
-      .typed {
+      .order:not(.wrap) .typed {
         max-width: none;
       }
       /* (Each its own column here.) */
-      .verdicts {
+      .order:not(.wrap) .verdicts {
         display: contents;
+      }
+      /* Only the name and the typed answer give way (cut short with …): every other column is at least as wide as what
+         it holds, so where the columns don't fit they overflow, and the rows wrap instead (never one cell over the next). */
+      .order:not(.wrap) .cell:not(.who, .ans),
+      .order:not(.wrap) .verdicts > button {
+        min-width: max-content;
       }
     }
   }

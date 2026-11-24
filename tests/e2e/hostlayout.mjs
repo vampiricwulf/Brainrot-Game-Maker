@@ -35,7 +35,9 @@
 // question ▶ within 96 px of its Spin! (↩ Put back in sight, as on PARTNER UP! and a Daily Double's splash, where it
 // leads the Wager row). At 1280×720 with long team names, the Final's reveal rows keep straight columns, one line each,
 // Finish now… at the left of their box's foot, and the tools row folds behind ⋯ Tools (out while 📊 Scoreboard is on),
-// giving three rows or more their ✔ Right and ✘ Wrong in sight; at 1920×1080, where the rows fit, it stays out. An RPG and a board-game round's box keeps one width
+// giving three rows or more their ✔ Right and ✘ Wrong in sight; at 1920×1080, where the rows fit, it stays out. From
+// 360 to 1920px wide (big scores, ½ Halve and 0 Nullify, typed answers or none, one window or two) no control in a reveal
+// row is drawn over another or past its row, the stage its size. An RPG and a board-game round's box keeps one width
 // from its title card to play, clear of the main button's cell.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -51,6 +53,7 @@ import {
   noSelection,
   notYet,
   openGameFile,
+  openStartScores,
   packGame,
   quickInSight,
   selectedWords,
@@ -71,6 +74,8 @@ import {
   roundNavIn,
   stageBoxIn,
   statusLineIn,
+  stored,
+  until,
   toastsIn,
   toolsRowIn,
 } from './helpers.mjs';
@@ -2181,6 +2186,130 @@ try {
         box[0] <= box[1] + 1 &&
         (await stageAt()) === before,
       `1920×1080, the Final's reveals in one window: the four rows fit (${box.join(' of ')}px), so the tools row stays out, no ⋯ Tools, the stage its size`,
+    );
+    await ctx.close();
+  }
+
+  // The reveal rows at every width from 360 to 1920px, at their fullest (big scores and their max, a wager box with ½
+  // Halve and 0 Nullify, the spotlit row's wager shown and its Show wager's place kept empty), without typed answers in
+  // one window and with them in two: no control is drawn over another or past its row (the columns where they fit,
+  // else the rows wrap), and the stage keeps its size whatever the rows do.
+  section('The Final’s reveal rows at every width');
+  const fullFile = resolve('test-results/hostlayout-full.json');
+  writeFileSync(
+    fullFile,
+    JSON.stringify({
+      ...game,
+      id: 'g_layout_full',
+      players: longNames.map((name, i) => ({ id: `l${i + 1}`, name, color: crowdColors[i], startScore: 0 })),
+      rounds: [{ ...game.rounds[3], extraSlides: [], cards: [] }],
+    }),
+  );
+  /** Every control in each reveal row drawn over another, or past its row; the list's own overflow. */
+  const rowClashes = (pg) =>
+    finalControlsIn(pg)
+      .locator('.order')
+      .evaluate((order) => {
+        const bad = [];
+        if (order.scrollWidth > order.clientWidth + 1) bad.push(`the list ${order.scrollWidth}px in ${order.clientWidth}`);
+        const sel = 'button, input, .typed, .pscore, .pick-right, .pick-wrong, .cell.sw > span, label > .muted';
+        for (const r of order.querySelectorAll('.pl')) {
+          const row = r.getBoundingClientRect();
+          // (The spotlit row's Show wager or Show answer, kept empty, counts: its place mustn't be under another.)
+          const els = [...r.querySelectorAll(sel)].filter((e) => e.getClientRects().length);
+          const say = (e) => `${r.dataset.row}:${(e.getAttribute('aria-label') ?? e.textContent).trim().slice(0, 16)}`;
+          for (const e of els) {
+            const b = e.getBoundingClientRect();
+            if (b.left < row.left - 1 || b.right > row.right + 1) bad.push(`${say(e)} past its row`);
+          }
+          for (let i = 0; i < els.length; i++)
+            for (let j = i + 1; j < els.length; j++) {
+              if (els[i].contains(els[j]) || els[j].contains(els[i])) continue;
+              const [a, b] = [els[i].getBoundingClientRect(), els[j].getBoundingClientRect()];
+              const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+              const y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+              if (x > 0.5 && y > 0.5) bad.push(`${say(els[i])} × ${say(els[j])} (${Math.round(x)}px)`);
+            }
+        }
+        return bad;
+      });
+  const sweep = [...Array.from({ length: 40 }, (_, i) => 360 + i * 40), 390, 960, 1000, 1050, 1100, 1280].sort((a, b) => a - b);
+  /** Each width's stage in one window with the wagers in. */
+  const stageOf = new Map();
+  for (const typedRun of [false, true]) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    let pf = await ctx.newPage();
+    pf.on('pageerror', (e) => errors.push(e.message));
+    await pf.goto(pathToFileURL(file).href);
+    await openGameFile(pf, fullFile);
+    await pf.getByText(/^Opened “/).waitFor();
+    await pf.getByRole('button', { name: '▶ Play' }).click();
+    await openStartScores(pf);
+    const starts = pf.locator('.pregame .player input.score');
+    for (let i = 0; i < (await starts.count()); i++) await starts.nth(i).fill(String(12000 + 1111 * i));
+    await pf.getByRole('button', { name: 'Start game ▶' }).click();
+    await finalControlsIn(pf).locator('.wagers').waitFor();
+    const boxes = finalControlsIn(pf).locator('.wagers input[data-wager]');
+    for (let i = 0; i < (await boxes.count()); i++) await boxes.nth(i).fill('10000');
+    // (The stage at each width with the wagers in, before the reveals.)
+    if (!typedRun)
+      for (const w of sweep) {
+        await pf.setViewportSize({ width: w, height: 720 });
+        await pf.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+        const s = await stageBoxIn(pf).boundingBox();
+        stageOf.set(w, `${Math.round(s.width)}×${Math.round(s.height)}`);
+      }
+    await pf.setViewportSize({ width: 1280, height: 720 });
+    for (const step of ['Question on screen', 'Answer on screen', 'Player reveals']) {
+      await pf.keyboard.press(step === 'Answer on screen' ? 'r' : 'n');
+      await statusLineIn(pf, { hasText: step }).waitFor();
+    }
+    await pf.keyboard.press('n');
+    await finalControlsIn(pf).locator('.pl.cur', { hasText: 'wager $10,000' }).waitFor();
+    if (typedRun) {
+      // Typed answers come from phones (a room): here the saved game is given some and resumed, in two windows.
+      await until(async () => (await stored(pf))?.session?.final?.shown?.l1 === true);
+      const saved = await stored(pf);
+      saved.session.final.answers = { l1: { text: 'What is the answer that goes on and on', n: 1 }, l2: { text: 'Paris', n: 1 }, l3: { text: 'Rome', n: 2 } };
+      saved.savedAt = Date.now() + 60_000;
+      await pf.close();
+      pf = await ctx.newPage();
+      pf.on('pageerror', (e) => errors.push(e.message));
+      await pf.goto(pathToFileURL(file).href);
+      await pf.evaluate(
+        (saved) =>
+          new Promise((ok) => {
+            const r = indexedDB.open('keyval-store');
+            r.onsuccess = () => {
+              const tx = r.result.transaction('keyval', 'readwrite');
+              tx.objectStore('keyval').put(saved, 'playSession');
+              tx.oncomplete = () => (r.result.close(), ok());
+            };
+          }),
+        saved,
+      );
+      await pf.reload();
+      await pf.getByRole('button', { name: 'Resume game' }).click();
+      const [aud] = await Promise.all([pf.waitForEvent('popup'), pf.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+      aud.on('pageerror', (e) => errors.push(e.message));
+      await finalControlsIn(pf).locator('.order.typedcol').waitFor();
+    }
+    const clashes = [];
+    const moved = [];
+    for (const w of sweep) {
+      await pf.setViewportSize({ width: w, height: 720 });
+      await pf.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+      const bad = await rowClashes(pf);
+      if (bad.length) clashes.push(`${w}px: ${bad.slice(0, 4).join(', ')}`);
+      if (!typedRun) {
+        const s = await stageBoxIn(pf).boundingBox();
+        if (`${Math.round(s.width)}×${Math.round(s.height)}` !== stageOf.get(w))
+          moved.push(`${w}px: the stage ${stageOf.get(w)}, then ${Math.round(s.width)}×${Math.round(s.height)}`);
+      }
+    }
+    assert(
+      clashes.length === 0 && moved.length === 0,
+      `${typedRun ? 'typed answers, two windows' : 'one window'}, 360–1920px wide: no control in a reveal row over another or past its row${typedRun ? '' : ', the stage its size'}${clashes.length || moved.length ? ` (not: ${[...clashes, ...moved].join(' | ')})` : ''}`,
     );
     await ctx.close();
   }
