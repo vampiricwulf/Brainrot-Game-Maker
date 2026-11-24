@@ -304,7 +304,8 @@
   }
   /* Narrow (a phone hosting, the in-game 📱 list): 📱 Free seat goes without its "(new phone)", and a long name gives
      way, so each player's row stays on one line. Narrower still, 📱 Free seat and ⛔ Kick go down to their icons (their
-     words stay in their names and tooltips). */
+     words stay in their names and tooltips): a phone's ▶ Play card (316px at 390 wide), never the in-game list, 338px, or
+     323px beside a scrollbar that takes room (a computer's, with many players). */
   @container (max-width: 380px) {
     .free .why {
       display: none;
@@ -317,7 +318,7 @@
       white-space: nowrap;
     }
   }
-  @container (max-width: 330px) {
+  @container (max-width: 320px) {
     .free .word,
     .kick .word {
       display: none;
