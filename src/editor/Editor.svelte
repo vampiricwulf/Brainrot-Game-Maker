@@ -1472,7 +1472,7 @@
         title={statsUsed ? 'Player stats, items and shops (RPG and board game rounds)' : 'Optional: player stats, items and shops, for RPG and board game rounds'}
         >📊 Stats & Items{#if !statsUsed}{' '}<span class="opt">(optional)</span>{/if}</button
       >
-      <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => openTab('media')}>🖼 Media ({libraryMedia(game).length})</button>
+      <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => openTab('media')}>🖼️ Media ({libraryMedia(game).length})</button>
       <button class:active={tab === 'history'} aria-current={tab === 'history' ? 'page' : undefined} onclick={() => openTab('history')} title="Every change to this game: go back to any point">
         🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
       </button>

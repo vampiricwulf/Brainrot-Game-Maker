@@ -309,14 +309,14 @@ try {
   assert((await page.locator('.cell.screen').count()) === screens, 'and none of those keys touched the screens');
 
   // ---------- Removed and replaced files ----------
-  await page.getByRole('button', { name: /🖼 Media/ }).click();
+  await page.getByRole('button', { name: /🖼️ Media/ }).click();
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await chooser.setFiles([{ name: 'tiny.png', mimeType: 'image/png', buffer: png(255, 0, 0) }]);
   await page.locator('.card img').waitFor();
   await page.locator('nav button.round-tab').first().click();
   await page.locator('.cat').first().getByTitle(/Use an image/).click();
   await page.getByRole('button', { name: /tiny\.png/ }).first().click();
-  await page.getByRole('button', { name: /🖼 Media/ }).click();
+  await page.getByRole('button', { name: /🖼️ Media/ }).click();
   await page.locator('.card').getByRole('button', { name: /^Delete / }).click();
   await page.waitForTimeout(200);
   assert((await page.locator('.card').count()) === 0 && (await notice.innerText()).startsWith('Deleted file “tiny.png” (used 1×)'), 'removing a used file is done at once, with a note');
@@ -339,7 +339,7 @@ try {
   await page.getByRole('combobox', { name: 'Clue text font' }).selectOption({ label: 'Oswald (board)' });
   await page.locator('.preset', { hasText: 'Dark' }).click();
   await page.locator('.preset.on', { hasText: 'Dark' }).waitFor();
-  await page.getByRole('button', { name: /🖼 Media/ }).click();
+  await page.getByRole('button', { name: /🖼️ Media/ }).click();
   await page.locator('.card').getByRole('button', { name: /^Delete / }).click();
   const steps = await historyTab.innerText();
   await reload();
@@ -348,7 +348,7 @@ try {
   assert((await rows.first().innerText()).includes('Deleted file “wide.png”'), 'the History tab lists them');
   await reload();
   await key('Control+z');
-  await page.getByRole('button', { name: /🖼 Media/ }).click();
+  await page.getByRole('button', { name: /🖼️ Media/ }).click();
   await page.waitForTimeout(300);
   assert((await imageWidth()) === 80, 'Ctrl+Z after two reloads brings the removed file back, showing');
   // And New, then ↶ Reopen previous game (the game kept in Recent games), right after another preset over the font.
@@ -421,7 +421,7 @@ try {
   await key('Control+z');
   // (The first category shows the picture it had before: wide.png.)
   const images = await page.locator('.cat .cat-img img').count();
-  await page.getByRole('button', { name: /🖼 Media/ }).click();
+  await page.getByRole('button', { name: /🖼️ Media/ }).click();
   const names = await page.locator('.card .nm').allInnerTexts();
   assert(images === 1 && !names.some((n) => /red|blue/.test(n)), `and one Ctrl+Z takes the images and their files back (${names})`);
 

@@ -57,7 +57,7 @@ try {
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // ---------- 🖼 Media offers 🗑 Delete unused only while something is unused ----------
-  await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).click();
+  await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).click();
   const unusedBtn = page.getByRole('main').getByRole('button', { name: /^🗑 Delete unused/ });
   await page.getByRole('button', { name: '＋ Add files…' }).waitFor();
   assert((await unusedBtn.count()) === 0, 'an empty 🖼 Media has no 🗑 Delete unused (0)');
@@ -93,6 +93,9 @@ try {
   const deals = await menuIcons();
   await page.keyboard.press('Escape');
   assert(deals.some((t) => t.startsWith(`🕵${VS} Odd one out`)), '📋 Ready-made deal…: 🕵 Odd one out too');
+  // (The sidebar lists 🖼 Media under the rounds, beside 🖼 Slides ones.)
+  const mediaTab = (await page.locator('nav > button', { hasText: 'Media (' }).innerText()).trim();
+  assert(mediaTab.startsWith(`🖼${VS} Media (`), `the sidebar: 🖼 Media too (${mediaTab})`);
 
   // ---------- ⚙ Settings › Undo says what it did: snapped into range, and the changes it forgot ----------
   await page.locator('nav > button.round-tab').first().click();

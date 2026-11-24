@@ -137,7 +137,7 @@ try {
   await page.evaluate(() => (window.__full = true));
   await page.locator('.cat textarea').first().fill('While full');
   await page.locator('.cat textarea').nth(1).click();
-  await page.getByRole('button', { name: /🖼 Media/ }).click();
+  await page.getByRole('button', { name: /🖼️ Media/ }).click();
   const [add] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await add.setFiles([{ name: 'red.png', mimeType: 'image/png', buffer: png(255, 0, 0) }]);
   await page.locator('.card img').waitFor();
@@ -169,7 +169,7 @@ try {
   await page.waitForTimeout(600);
   // (The round, its rename and the file, made while it was full, and the change after.)
   assert((await historyCount()) === 4, `the steps made while storage was full are kept (${await historyCount()} steps)`);
-  await page.getByRole('button', { name: /🖼 Media \(1\)/ }).click();
+  await page.getByRole('button', { name: /🖼️ Media \(1\)/ }).click();
   assert((await mediaWidth()) === 40, 'and the file added while it was full is there after a reload');
 
   // ---------- ℹ About says whether the browser keeps the storage ----------
@@ -459,7 +459,7 @@ try {
   await told.getByRole('button', { name: 'OK' }).click();
 
   // ---------- Exported player files never touch the builder's files ----------
-  await page.getByRole('button', { name: /🖼 Media/ }).click();
+  await page.getByRole('button', { name: /🖼️ Media/ }).click();
   const html = await exportHtml(page);
   const exported = resolve('test-results/datasafety-export.html');
   await html.saveAs(exported);
@@ -480,7 +480,7 @@ try {
   if (process.env.SHOTS) await player.screenshot({ path: `${process.env.SHOTS}/datasafety-player.png` });
   await player.close();
   await page.reload();
-  await page.getByRole('button', { name: /🖼 Media/ }).click();
+  await page.getByRole('button', { name: /🖼️ Media/ }).click();
   assert((await mediaWidth()) === 80, 'opening an older export leaves the builder’s replaced file alone');
   const html1 = readFileSync(exported, 'utf8');
   assert(html1.includes('Loading the game…') && /data-size="\d+"/.test(html1), 'an exported file says it is loading while it is read, and how long its pack is');

@@ -307,7 +307,7 @@ try {
   assert((await leaderTab.getAttribute('aria-selected')) === 'true', 'Enter opens it, its Card name box in focus');
 
   // 🖼 Media: a file used only on a Final's card is used, there.
-  await host.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await host.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const usedBtn = host.locator('[data-place="media:hint"] [data-used]');
   await usedBtn.waitFor();
   assert((await main.getByRole('button', { name: /^🗑 Delete unused/ }).count()) === 0, '🖼 Media: no 🗑 Delete unused, as nothing is unused');

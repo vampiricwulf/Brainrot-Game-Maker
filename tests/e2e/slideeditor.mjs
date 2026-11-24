@@ -106,7 +106,7 @@ async function dropAt(dt, x, y) {
   await canvas.dispatchEvent('drop', { dataTransfer: dt, clientX: p.x, clientY: p.y });
   await page.waitForTimeout(400);
 }
-const mediaCount = async () => Number((await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).innerText()).match(/\d+/)[0]);
+const mediaCount = async () => Number((await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).innerText()).match(/\d+/)[0]);
 
 try {
   await page.goto(pathToFileURL(file).href);
@@ -553,7 +553,7 @@ try {
   await clue.getByRole('button', { name: 'Close' }).click();
 
   // ---------- 🖼 Media › Replace everywhere… redoes the edited picture's edits on the new file ----------
-  await page.getByRole('button', { name: /^🖼 Media/ }).click();
+  await page.getByRole('button', { name: /^🖼️ Media/ }).click();
   const card = page.locator('.card', { hasText: 'big.png' }).first();
   const chooser = page.waitForEvent('filechooser');
   await card.getByRole('button', { name: 'Replace everywhere…' }).click();
@@ -904,7 +904,7 @@ try {
   );
   // 🖼 Media › Replace everywhere… with another moving GIF: its frames are turned too.
   await clue.getByRole('button', { name: 'Close' }).click();
-  await page.getByRole('button', { name: /^🖼 Media/ }).click();
+  await page.getByRole('button', { name: /^🖼️ Media/ }).click();
   const gifChooser = page.waitForEvent('filechooser');
   await page.locator('.card', { hasText: 'moving.gif' }).first().getByRole('button', { name: 'Replace everywhere…' }).click();
   await (await gifChooser).setFiles({ name: 'moving2.gif', mimeType: 'image/gif', buffer: gif(40, 30, [1, 2].map((i) => ({ px: new Uint8Array(40 * 30).fill(i), delay: 50 }))) });

@@ -182,7 +182,7 @@ try {
   await page.waitForFunction(() => !document.querySelector('nav .problems.below'));
   assert(!(await fades()), '…and none once it’s scrolled to the end');
   await page.locator('nav').evaluate((n) => (n.scrollTop = 0));
-  await page.locator('nav > button', { hasText: '🖼 Media' }).focus();
+  await page.locator('nav > button', { hasText: '🖼️ Media' }).focus();
   await page.keyboard.press('Tab');
   const hist = await page.evaluate(() => { const a = document.activeElement; return { text: a?.textContent.trim(), bottom: Math.round(a.getBoundingClientRect().bottom), check: Math.round(document.querySelector('nav .problems').getBoundingClientRect().top) }; });
   assert(hist.text.startsWith('🕘 History') && hist.bottom <= hist.check, `Tab to 🕘 History scrolls it into view above the pinned checklist (${JSON.stringify(hist)})`);

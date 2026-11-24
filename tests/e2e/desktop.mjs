@@ -637,7 +637,7 @@ try {
   await answerReplace(d, 'Discard');
   await d.waitForFunction(() => document.querySelector('input.title')?.value === 'Copies');
   await editorReady(d);
-  await d.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await d.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const shrink = d.getByRole('dialog', { name: '🗜 Make a smaller copy for phones' });
   const progress = shrink.locator('[data-shrink-progress]');
   // (The page's work slowed down 4 times: the long one is still being made after the clicks below.)

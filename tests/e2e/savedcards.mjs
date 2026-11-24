@@ -324,7 +324,7 @@ try {
   assert((await row('Wild card').getAttribute('aria-current')) === 'true', 'Enter opens it, its words box in focus');
 
   // ---------- 🖼 Media: a file used only on a card is used ----------
-  await host.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await host.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const unusedBtn = host.getByRole('main').getByRole('button', { name: /^🗑 Delete unused/ });
   const tipFile = host.locator('[data-place="media:tip"]');
   await tipFile.waitFor();

@@ -47,7 +47,7 @@ async function drop(locator, list) {
   await locator.dispatchEvent('drop', { dataTransfer: dt });
   await page.waitForTimeout(250);
 }
-const mediaCount = async () => Number((await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).innerText()).match(/\d+/)[0]);
+const mediaCount = async () => Number((await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).innerText()).match(/\d+/)[0]);
 const toast = page.locator('.toast');
 const notice = page.locator('.history-notice');
 
@@ -89,7 +89,7 @@ try {
   );
   // ＋ Add files… with several: one toast says what each that wasn't simply added did (none hides another's), in the
   // editor's words.
-  await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).click();
+  await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).click();
   const pngNamed = (name) => Buffer.concat([Buffer.from(PNG, 'base64'), Buffer.from(name)]);
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await chooser.setFiles([
@@ -128,7 +128,7 @@ try {
   assert((await picker.count()) === 0 && (await mediaCount()) === 3, 'Ctrl+V of a copied picture file in an open picker picks it');
 
   // ---------- Media page: rename, drop to replace, select several to remove ----------
-  await page.getByRole('button', { name: /^🖼 Media/ }).click();
+  await page.getByRole('button', { name: /^🖼️ Media/ }).click();
   const cards = page.locator('.card');
   const names = () => cards.locator('.nm').allInnerTexts();
   await cards.nth(1).locator('button.nm').dblclick();
@@ -186,7 +186,7 @@ try {
   await page.getByRole('menuitem', { name: 'Theme › background picture' }).click();
   await page.locator('[data-place="theme:boardImage"].flash').waitFor();
   assert(true, 'a place in the list opens 🎨 Theme and flashes the background picture there');
-  await page.getByRole('button', { name: /^🖼 Media/ }).click();
+  await page.getByRole('button', { name: /^🖼️ Media/ }).click();
   // A card's menu (a right-click on it, or Shift+F10 on its name): its foot's buttons, ✎ Rename, where it's used, and 🗑
   // Delete file last. It selects the card.
   await cards.nth(0).locator('.thumb').click({ button: 'right' });
@@ -445,7 +445,7 @@ try {
   assert((await sheet.count()) === 0, 'and ? closes it again');
 
   // ---------- Files only the undo history holds survive New, ↶ Reopen previous game and 🗑 Delete in Open… ----------
-  const media = page.getByRole('button', { name: /^🖼 Media/ });
+  const media = page.getByRole('button', { name: /^🖼️ Media/ });
   const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   const card = (name) => page.locator('.library .card', { hasText: name });
   /** Add a picture on the Media page, then Remove it: only the step can bring it back. */
@@ -521,11 +521,11 @@ try {
       .waitForFunction(() => ![...document.querySelectorAll('.problems .problem')].some((p) => p.textContent.includes('missing')), null, { timeout: 5000 })
       .then(() => true, () => false);
     assert(
-      (await b.getByRole('button', { name: '🖼 Media (1)' }).count()) === 1 && nothingMissing,
+      (await b.getByRole('button', { name: '🖼️ Media (1)' }).count()) === 1 && nothingMissing,
       '🔗 Find file… on a missing sound’s row puts that file back (same name, no second copy) and the checklist stops saying a file is missing',
     );
     // 🗑 Deleted in 🖼 Media: its row says so, and how to bring it back (it has no file left to find).
-    await b.getByRole('button', { name: '🖼 Media (1)' }).click();
+    await b.getByRole('button', { name: '🖼️ Media (1)' }).click();
     await b.locator('.card', { hasText: 'intro-music.wav' }).getByRole('button', { name: /^Delete / }).click();
     await b.getByRole('button', { name: '🔊 Sounds' }).click();
     await row.getByText('⚠ Its file was deleted: plays the built-in sound (Undo in 🕘 History, or Change…)').waitFor();

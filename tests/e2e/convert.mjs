@@ -53,7 +53,7 @@ try {
   await page.goto(pathToFileURL(file).href);
   await editorReady(page);
 
-  await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
   await chooser.setFiles(files);
   const card = (name) => page.locator('.card', { has: page.locator('button.nm', { hasText: name }) });
@@ -116,7 +116,7 @@ try {
   assert(((await stored(page, 'editorDraft'))?.media?.length ?? 0) === 4, 'the four files are stored');
   await page.reload();
   await editorReady(page);
-  await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const again = await Promise.all(['clip.mkv', 'talk.mkv', 'ac3.mka', 'fake.mov'].map(async (n) => (await checked(n)).verdict));
   assert(again.join() === 'plays,silent,fails,unknown', `after a reload, each is checked again: ${again.join(', ')}`);
   // (Toasts only: the card's own line for fake.mov says it again, where it stays.)
@@ -164,7 +164,7 @@ try {
     await page.locator('nav > button', { hasText: '🕘 History' }).click();
     await page.locator('main .list .hr').first().waitFor();
     const rows = (await page.locator('main').innerText()).split('\n').map((t) => t.trim());
-    await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+    await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
     return rows;
   };
   const lineOf = (text) => page.locator('nav .problem', { hasText: text });
@@ -259,7 +259,7 @@ try {
   const silentGame = await draftWhen((g) => !!refNamed(g, 'talk.webm'), 'talk.webm');
   const webm = refNamed(silentGame, 'talk.webm');
   assert(webm.mime === 'video/webm' && webm.id !== talkId && itemMedia(silentGame) === webm.id, `the item is on the new file, talk.webm, video/webm (${JSON.stringify(webm)})`);
-  await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const webmBytes = await card('talk.webm').locator('video').evaluate(async (v) => {
     const b = new Uint8Array(await (await fetch(v.src)).arrayBuffer());
     let bin = '';
@@ -278,7 +278,7 @@ try {
   await clueEditor.waitFor();
   await page.keyboard.press('Escape');
   await clueEditor.waitFor({ state: 'detached' });
-  await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
 
   // 3. ac3.mka (an AC-3 sound alone): nothing can fix it here, so only OK, and no 🔄 on its card.
   await dropOnMedia([{ name: 'ac3.mka', type: 'audio/x-matroska', buffer: files.find((f) => f.name === 'ac3.mka').buffer }]);
@@ -405,7 +405,7 @@ try {
 
   // 5c. dvd.mts: an MPEG-2 picture (a DVD's, a TV recording's) beside an MP3, in MPEG-TS. The app can't read that
   // picture, so 🔄 isn't offered: its sound alone in an MP4 swapped the video for one with no picture, "nothing lost".
-  await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
   await dropOnMedia([{ name: 'dvd.mts', type: 'video/mp2t', buffer: dvd }]);
   const dvdSays = await checked('dvd.mts');
   const dvdWhy = 'Its video is MPEG-2, which this browser can’t play or convert. Convert it to MP4 (H.264) with a video app first (HandBrake is free).';

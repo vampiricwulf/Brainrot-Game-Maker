@@ -241,7 +241,7 @@ try {
   await playersSel.selectOption('3');
   assert((await modal.locator('.canvas .bar > *').count()) === 3, 'another number of players can be picked for the preview');
   // A file that isn't a picture is refused before it's stored.
-  const mediaBefore = await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).innerText();
+  const mediaBefore = await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).innerText();
   const sound = await page.evaluateHandle(() => {
     const d = new DataTransfer();
     d.items.add(new File(['RIFF....WAVEfmt '], 'boing.wav', { type: 'audio/wav' }));
@@ -249,7 +249,7 @@ try {
   });
   await modal.locator('.canvas').dispatchEvent('drop', { dataTransfer: sound });
   await page.locator('.toast', { hasText: '“boing.wav” isn’t a picture file. Board images can be pictures or GIFs.' }).waitFor();
-  assert((await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).innerText()) === mediaBefore, 'a sound dropped on the board images is refused and not added to 🖼 Media');
+  assert((await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).innerText()) === mediaBefore, 'a sound dropped on the board images is refused and not added to 🖼 Media');
 
   await modal.getByRole('button', { name: /Copy all to other rounds/ }).click();
   await modal.getByRole('button', { name: 'Done' }).click();
@@ -268,7 +268,7 @@ try {
   assert(boardTop === '170px', `the board moves down under the banner (${boardTop})`);
 
   // Nothing new is "unused".
-  await page.getByRole('button', { name: '🖼 Media' }).click();
+  await page.getByRole('button', { name: '🖼️ Media' }).click();
   await page.locator('[data-place^="media:"]').first().waitFor();
   assert((await page.getByRole('button', { name: /Delete unused/ }).count()) === 0, 'category, tile, board and banner images all count as used (no 🗑 Delete unused)');
 

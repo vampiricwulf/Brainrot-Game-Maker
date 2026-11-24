@@ -142,7 +142,7 @@ try {
 
   // ---------- In the editor: 🗜 Again on a copy that came out too big ----------
   console.log('A copy that came out too big:');
-  await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+  await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const again = async (id) => {
     await page.locator(`[data-place="media:${id}"] [data-phone-copy]`).getByRole('button', { name: '🗜 Again' }).click();
     await dialog.waitFor();

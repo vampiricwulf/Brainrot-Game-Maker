@@ -147,7 +147,7 @@ try {
   const copyLine = (id) => card(id).locator('[data-phone-copy]');
   const historyCount = async () => Number((await page.locator('nav > button', { hasText: '🕘 History' }).innerText()).match(/\((\d+)\)/)?.[1] ?? 0);
   const media = async () => {
-    await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+    await page.locator('nav > button', { hasText: '🖼️ Media' }).click();
     await card('dance').waitFor();
   };
   /** 🗜 on a file's card, its dialog open, once it says what it will make. */

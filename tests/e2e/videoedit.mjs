@@ -129,7 +129,7 @@ try {
   await page.getByText(/^Opened “/).waitFor();
   await editorReady(page);
 
-  const media = () => page.locator('nav > button', { hasText: '🖼 Media' }).click();
+  const media = () => page.locator('nav > button', { hasText: '🖼️ Media' }).click();
   const card = (name) => page.locator('.card', { has: page.locator('button.nm', { hasText: new RegExp(`^${name.replace(/[.()]/g, '\\$&')}$`) }) });
   const dialog = page.locator('[data-media-edit]');
   const clueEditor = page.getByRole('dialog', { name: 'Edit clue' });
