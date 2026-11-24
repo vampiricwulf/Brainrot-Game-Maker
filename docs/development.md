@@ -38,7 +38,7 @@ npm run test:buzzer    # only the phone-buzzer end-to-end files (they start a lo
 npm run screenshots    # regenerate docs/screenshots (build first)
 npm run desktop:dev    # the desktop app around the dev server (it starts npm run dev; needs Rust + Tauri prerequisites)
 npm run desktop:build  # Windows app (needs Rust + Tauri prerequisites)
-(cd src-tauri && cargo test)   # the desktop app's Rust tests (CI runs them too; on Linux needs libwebkit2gtk-4.1-dev)
+(cd src-tauri && cargo test)   # the desktop app's Rust tests; no build needed (CI runs them too; needs Rust + Tauri prerequisites)
 ```
 
 ### End-to-end tests
