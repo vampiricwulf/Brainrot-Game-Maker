@@ -398,6 +398,11 @@ try {
   const toolsTab = page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' });
   assert(await toolsTab.evaluate((b) => b.scrollWidth <= b.clientWidth && !!b.title), 'the 🎡 Wheels, Dice & Deals tab shows its whole name (on two lines where it must), with a tooltip');
   await toolsTab.click();
+  {
+    // (Its empty page's words: no "…." where a sentence ends on a button's name.)
+    const empty = await page.locator('main p.muted', { hasText: 'Ready-made deal' }).innerText();
+    assert(!empty.includes('….'), `the empty page doesn’t end a sentence in “….” (${empty})`);
+  }
   for (const menu of ['📋 Ready-made wheel…', '📋 Ready-made deal…']) {
     await page.getByRole('button', { name: menu }).click();
     const items = page.locator('.cm [role="menuitem"]');
@@ -413,6 +418,22 @@ try {
     await spin.fill(typed);
     await spin.press('Tab');
     assert((await spin.inputValue()) === kept, `a spin of ${typed} s is kept as ${kept} s, and the box says so`);
+  }
+  {
+    // A slice's ⋯, 🗑 and its % sit on the middle of its label box, as on the other pages' rows.
+    const mids = await page.locator('.seg').first().evaluate((row) => {
+      const mid = (e) => {
+        const r = e.getBoundingClientRect();
+        return Math.round(r.top + r.height / 2);
+      };
+      const text = (e) => {
+        const range = document.createRange();
+        range.selectNodeContents(e);
+        return mid(range);
+      };
+      return { label: mid(row.querySelector('input.label')), more: mid(row.querySelector('.row-tools button')), del: mid(row.querySelector('.row-tools .del')), pct: text(row.querySelector('.pct')) };
+    });
+    assert(Math.max(...Object.values(mids)) - Math.min(...Object.values(mids)) <= 1, `a slice’s ⋯, 🗑 and % line up with its label box (${JSON.stringify(mids)})`);
   }
   await page.locator('.seg input.label').first().fill('');
   assert((await page.getByText('No label on slice 1: it lands as “Slice 1”.').count()) === 1, 'a slice left without a label is pointed out');
