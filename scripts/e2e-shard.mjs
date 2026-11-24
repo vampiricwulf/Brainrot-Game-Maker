@@ -6,7 +6,8 @@
 //   node scripts/e2e-shard.mjs --check   prove the layout below is sound (the build job runs it)
 //
 //   --jobs N   run up to N files at once (default 1, one after another). Each file's output is then held back and
-//              printed whole when it ends, so files never mix their lines; the results still come in the list's order.
+//              printed whole when it ends (with --quiet too), so files never mix their lines; the results still come in
+//              the list's order.
 //              Files can run side by side: each takes its own ports (freePort() in helpers.mjs) and temp folders.
 //   --quiet    (or E2E_QUIET=1) a file that passes prints one line with its time; one that fails prints its last 80
 //              lines (stdout and stderr together, each cut at 400 characters), where its failure is.
@@ -77,11 +78,12 @@ function check() {
 // One file in its own Node: its result, its time, and (when `held`) everything it printed, stdout and stderr together
 // in the order it printed them. Held output goes to a file, not a pipe: a test that ends with process.exit() right after
 // printing its failure would lose the end of what it wrote down a pipe.
-function runFile(f, held, children) {
+function runFile(f, held, children, logs) {
   return new Promise((done) => {
     const t0 = Date.now();
     if (!held) console.log(`\n▶ ${f}.mjs`);
     const log = held && join(mkdtempSync(join(tmpdir(), 'e2e-out-')), `${f}.log`);
+    if (held) logs.add(dirname(log));
     const fd = held && openSync(log, 'w');
     const child = spawn(process.execPath, [`tests/e2e/${f}.mjs`], { cwd: root, stdio: held ? ['ignore', fd, fd] : 'inherit' });
     if (held) closeSync(fd);
@@ -94,6 +96,7 @@ function runFile(f, held, children) {
       if (held) {
         out = readFileSync(log, 'utf8') + failed;
         rmSync(dirname(log), { recursive: true, force: true });
+        logs.delete(dirname(log));
       }
       done({ f, ok: code === 0, s: Math.round((Date.now() - t0) / 1000), out });
     });
@@ -116,11 +119,13 @@ async function run(files, name, { jobs, quiet }) {
   }
   const held = jobs > 1 || quiet;
   const children = new Set();
+  const logs = new Set();
   // Stopped (Ctrl+C, or a kill): the files running now are stopped too, so none is left behind with its browser or
-  // buzzer server.
+  // buzzer server, and their held output is deleted.
   for (const sig of ['SIGINT', 'SIGTERM'])
     process.on(sig, () => {
       for (const c of children) c.kill(sig);
+      for (const d of logs) rmSync(d, { recursive: true, force: true });
       process.exit(1);
     });
   const results = new Array(files.length);
@@ -128,7 +133,7 @@ async function run(files, name, { jobs, quiet }) {
   const worker = async () => {
     while (next < files.length) {
       const i = next++;
-      const r = await runFile(files[i], held, children);
+      const r = await runFile(files[i], held, children, logs);
       results[i] = r;
       if (quiet) process.stdout.write(`${r.ok ? 'ok  ' : 'FAIL'} ${r.f}.mjs ${r.s}s\n${r.ok ? '' : tail(r.out)}`);
       else if (held) process.stdout.write(`\n▶ ${r.f}.mjs (${r.ok ? 'ok' : 'FAIL'}, ${r.s}s)\n${r.out}`);

@@ -1,3 +1,5 @@
 node_modules/
 dist/
 .wrangler/
+# build.mjs writes the phone page here before moving it into dist/ (left only if it is stopped midway)
+.phone-page-*.part
