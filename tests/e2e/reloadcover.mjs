@@ -86,6 +86,8 @@ try {
   await page.locator('.mode-ask .mode').first().waitFor();
   const [box, host] = [await rect(cover.locator('.cover-stage')), await rect(cover.locator('.cover-host'))];
   assert(same(box, stageAt[1280]) && host.top >= box.bottom && host.bottom <= 720, `Resume game's question stays under the box, the box where it was (${JSON.stringify({ box, host })})`);
+  // The question focuses the picked mode a frame after it shows; Enter before that would go nowhere.
+  await page.waitForFunction(() => document.activeElement?.matches('.mode-ask .mode.on'));
   await page.keyboard.press('Enter');
   await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
   assert(true, 'and Enter goes back into the game');
