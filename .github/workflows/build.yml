@@ -262,12 +262,31 @@ jobs:
             out/*.exe
             out/*.sig
 
-  pages:
+  site:
     # Every push to main: the release file is also the GitHub Pages site (https://vampiricwulf.github.io/Brainrot-Game-Maker/),
     # so the app runs in a browser with nothing to download. It waits only for the build, so the site is up before the
     # release is. Pages must be on in the repository's Settings, Pages, with Source "GitHub Actions".
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: brainrot-game-maker
+          path: site
+      - name: The single-file app is the site's page
+        run: mv site/brainrot-game-maker.html site/index.html && ls -la site
+      # The Pages artifact keeps its default name ("github-pages"): the release job takes every brainrot-game-maker* one.
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  pages:
+    # Deploys what the site job uploaded. A job of its own (as GitHub's own Pages workflow does): deploying in the same
+    # job as the upload twice failed with "No artifacts named github-pages were found", the new artifact not yet listed.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: site
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -277,17 +296,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/download-artifact@v7
-        with:
-          name: brainrot-game-maker
-          path: site
-      - name: The single-file app is the site's page
-        run: mv site/brainrot-game-maker.html site/index.html && ls -la site
       - uses: actions/configure-pages@v6
-      # The Pages artifact keeps its default name ("github-pages"): the release job takes every brainrot-game-maker* one.
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: site
       - id: deploy
         uses: actions/deploy-pages@v5
 

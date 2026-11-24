@@ -132,7 +132,7 @@ A push that adds no changelog lines is still released, as a patch whose notes sa
 a missing line means the wrong version and empty release notes.
 
 The release notes are the changelog lines added since the last release. The same push also puts the release file up as the GitHub Pages site
-(https://vampiricwulf.github.io/Brainrot-Game-Maker/, the `pages` job); Pages must be on in the repository's
+(https://vampiricwulf.github.io/Brainrot-Game-Maker/, the `site` job uploads it and the `pages` job deploys it); Pages must be on in the repository's
 Settings, Pages, with Source "GitHub Actions".
 
 - `package.json`'s version is a floor. To make a deliberate jump, set it by hand: `node scripts/version.mjs set 2.0.0`.
