@@ -17,6 +17,7 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { foldLines } from '../../lib/buzzproto';
+  import { keyNote } from '../../lib/touch.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
@@ -775,11 +776,11 @@
       if (pickStepIs === 'nobody') return { text: nobodyText, warn: true };
       if (pickStepIs === 'describer') return { text: `Next: ${VERBS.describerSpin.label}, or choose one` };
       // (The pair set: the next step is the show's, the blue button's.)
-      if (pickStepIs === 'show') return { text: `Pair set: ${FLOW.showQuestion.label} (the blue button, or N) puts the question up` };
+      if (pickStepIs === 'show') return { text: `Pair set: ${FLOW.showQuestion.label} (the blue button${keyNote('N', ', or ')}) puts the question up` };
       return { text: `Next: ${VERBS.partnerSpin.label}, or choose one` };
     }
     if (steal && !steal.by && stealLeft.length && !session.revealed) return { text: 'Next: who steals it?' };
-    if (verdict.judged || steal) return { text: `Next: ${session.revealed ? VERBS.done.label : VERBS.reveal.label} (the blue button, or N)` };
+    if (verdict.judged || steal) return { text: `Next: ${session.revealed ? VERBS.done.label : VERBS.reveal.label} (the blue button${keyNote('N', ', or ')})` };
     if (handStep) {
       if (unsentToGo.length && clockRuns)
         return {

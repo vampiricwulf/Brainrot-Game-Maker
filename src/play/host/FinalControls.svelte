@@ -8,6 +8,7 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from 'svelte';
   import { announce } from '../../lib/announce';
+  import { touchScreen } from '../../lib/touch.svelte';
   import { toast } from '../../lib/app.svelte';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
@@ -920,10 +921,12 @@
           <button class="ghost" data-flow="pager" onclick={() => onslide?.(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
           {#if moreSlides}<button data-flow="reveal" onclick={onreveal} title="R">👁 Reveal answer</button>{/if}
         {/if}
-        <span class="muted small">Tip: click the screen to continue</span>
+        <span class="muted small">Tip: {touchScreen.on ? 'tap' : 'click'} the screen to continue</span>
       {:else if session.finalStep === 'reveal'}
         {#if armed}
-          <span class="armed">Everyone is judged: press N again (or the button) to {after ? 'go on' : 'finish'}.</span>
+          <span class="armed"
+            >Everyone is judged: {touchScreen.on ? 'press the button again' : 'press N again (or the button)'} to {after ? 'go on' : 'finish'}.</span
+          >
         {:else if unjudged}
           {#if finishEarly}
             <!-- Finishing early, at the left away from the verdicts, asks first (not while the blue button is Finish game ▶

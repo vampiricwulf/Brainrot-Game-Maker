@@ -40,6 +40,7 @@
     toName,
   } from '../lib/partner';
   import { cardsOut, sentCardId, sentState, sentToText } from '../lib/sentcards';
+  import { touchScreen } from '../lib/touch.svelte';
   import { cardWords, phoneCard, sendsOf, type CardItem, type PhoneItem } from '../lib/phonecard';
   import { buzzerOn, remote, roomHasCards } from '../lib/remote.svelte';
   import { phoneCan, uploads } from '../lib/cardfiles.svelte';
@@ -413,7 +414,9 @@
       <div class="meta"><span class="cat">{game.rounds[session.currentRound]?.name ?? ''}</span></div>
       {#if session.phase === 'board'}
         <div class="label">Picking next</div>
-        <div class="q">{picker ? picker.name : 'Nobody set (press P then a number, or click a name plate)'}</div>
+        <div class="q"
+          >{picker ? picker.name : touchScreen.on ? 'Nobody set (tap a name plate)' : 'Nobody set (press P then a number, or click a name plate)'}</div
+        >
       {:else if session.phase === 'slides'}
         {@const sr = slidesRound(session, game)}
         {#if sr}

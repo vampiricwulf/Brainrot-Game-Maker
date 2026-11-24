@@ -76,56 +76,80 @@ async function toastOverWindow(page, what) {
   await dlg.waitFor({ state: 'detached' });
 }
 
-/** A board game moved by a d6, for two: opened from a file and started (`.bh`, its turn box, up). */
-const sp = (id, name, x, y, next) => ({ id, name, x, y, color: '#4363d8', next });
-const boardGame = {
-  id: 'g_touch_board',
-  version: 2,
-  title: 'Touch board',
-  settings: {
-    allowNegativeScores: true,
-    deductOnWrong: true,
-    defaultTimerSeconds: null,
-    finalTimerSeconds: 30,
-    currencySymbol: '$',
-    rollOffDie: 20,
-    pickerFollowsAward: true,
-    timerAutoStart: true,
-    roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
-    maxPlayers: 8,
-  },
-  players: [
-    { id: 'p1', name: 'Ann', color: '#e6194b' },
-    { id: 'p2', name: 'Bob', color: '#3cb44b' },
-  ],
-  rounds: [
-    {
-      id: 'r_bg',
-      name: 'Board game',
-      mode: 'boardgame',
-      slide: { background: { color: '#1d5e3a' }, elements: [] },
-      spaces: ['Start', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Finish'].map((n, i, all) =>
-        sp(`b${i}`, n, 200 + (i % 4) * 450, i < 4 ? 300 : 700, i + 1 < all.length ? [`b${i + 1}`] : []),
-      ),
-      mover: { kind: 'dice', dice: 'd6' },
-      zones: [],
+/** A board game for two moved by `mover` (a d6, a movement wheel, or a space at a time), as a game file. */
+function boardFile(/** @type {'dice' | 'wheel' | 'step'} */ kind) {
+  const sp = (/** @type {number} */ i, /** @type {string} */ name, /** @type {boolean} */ end) => ({
+    id: `b${i}`,
+    name,
+    x: 200 + (i % 4) * 450,
+    y: i < 4 ? 300 : 700,
+    color: '#4363d8',
+    next: end ? [] : [`b${i + 1}`],
+  });
+  const names = ['Start', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Finish'];
+  const game = {
+    id: `g_touch_board_${kind}`,
+    version: 2,
+    title: 'Touch board',
+    settings: {
+      allowNegativeScores: true,
+      deductOnWrong: true,
+      defaultTimerSeconds: null,
+      finalTimerSeconds: 30,
+      currencySymbol: '$',
+      rollOffDie: 20,
+      pickerFollowsAward: true,
+      timerAutoStart: true,
+      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' },
+      maxPlayers: 8,
     },
-  ],
-  media: [],
-  audio: {},
-  dice: [],
-  theme: {},
-  wheels: [],
-};
-mkdirSync(resolve('test-results'), { recursive: true });
-const boardFile = resolve('test-results/touch-board.json');
-writeFileSync(boardFile, JSON.stringify(boardGame));
+    players: [
+      { id: 'p1', name: 'Ann', color: '#e6194b' },
+      { id: 'p2', name: 'Bob', color: '#3cb44b' },
+    ],
+    rounds: [
+      {
+        id: 'r_bg',
+        name: 'Board game',
+        mode: 'boardgame',
+        slide: { background: { color: '#1d5e3a' }, elements: [] },
+        spaces: names.map((n, i) => sp(i, n, i === names.length - 1)),
+        mover: kind === 'dice' ? { kind, dice: 'd6' } : kind === 'wheel' ? { kind, wheel: 'w_move' } : { kind },
+        zones: [],
+      },
+    ],
+    media: [],
+    audio: {},
+    dice: [],
+    theme: {},
+    wheels: [
+      {
+        id: 'w_move',
+        name: 'Move wheel',
+        segments: ['1', '2', '3'].map((label, i) => ({ id: `s${i}`, label, color: ['#f00', '#0f0', '#00f'][i], weight: 1 })),
+        spinDurationMs: 800,
+        removeAfterLanding: false,
+      },
+    ],
+  };
+  mkdirSync(resolve('test-results'), { recursive: true });
+  const f = resolve(`test-results/touch-board-${kind}.json`);
+  writeFileSync(f, JSON.stringify(game));
+  return f;
+}
 /** Keys a touch screen's words must not name: D, Enter, Shift+N, (N), a click. */
 const KEYS = /Shift|Enter|Ctrl|\((N|D|W|Enter)\)|\bD rolls|\bclick/;
-/** The board game's status line and turn box, in `opts`'s window: what they say before a roll and once moved. */
-async function boardWords(opts) {
+/**
+ * A board game's status line and turn box in `opts`'s window, moved by `kind`: what they say before the first move,
+ * and with `play` (a d6), once 🎲 Roll then ▶ Move have played the turn.
+ */
+async function boardWords(
+  /** @type {import('playwright-core').BrowserContextOptions} */ opts,
+  /** @type {'dice' | 'wheel' | 'step'} */ kind = 'dice',
+  play = false,
+) {
   const { ctx, page } = await open(opts);
-  await openGameFile(page, boardFile);
+  await openGameFile(page, boardFile(kind));
   await page.getByText(/^Opened “/).waitFor();
   await page.getByRole('button', { name: '▶ Play' }).click();
   const fresh = page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' });
@@ -138,26 +162,30 @@ async function boardWords(opts) {
   await page.locator('.bh').waitFor();
   const how = statusLineIn(page).locator('.hint').first();
   const first = page.locator('.bh [data-turn-next]');
+  /** @type {{ touch: boolean, how: string, first: string, firstTitle: string | null, sw: number, iw: number, played?: string, playedTitle?: string | null }} */
   const out = {
     touch: await page.evaluate(() => matchMedia('(hover: none)').matches),
     how: (await how.innerText()).trim(),
-    howTitle: await how.getAttribute('title'),
     first: (await first.innerText()).trim(),
+    firstTitle: await first.getAttribute('title'),
     sw: await page.evaluate(() => document.documentElement.scrollWidth),
     iw: await page.evaluate(() => innerWidth),
   };
-  // 🎲 Roll, then ▶ Move: the turn is played. (Pressed in the page: on a phone the panel's pinned rows sit over the turn
-  // box as a pointer would reach it; this checks the words, not the reach.)
-  /** @param {import('playwright-core').Locator} b */
-  const press = (b) => b.evaluate((e) => /** @type {HTMLElement} */ (e).click());
-  await press(stepButton(page).first());
-  const move = stepButton(page).filter({ hasText: '▶ Move' });
-  await move.waitFor({ timeout: 8000 });
-  await page.waitForFunction(() => !document.querySelector('.bh [data-step]')?.hasAttribute('disabled'));
-  await press(move);
-  await first.filter({ hasText: 'turn is played' }).waitFor({ timeout: 10000 });
-  out.played = (await first.innerText()).trim();
-  out.playedTitle = await first.getAttribute('title');
+  if (play) {
+    // 🎲 Roll, then ▶ Move: the turn is played. (A tap, or a click with a mouse. On a phone the panel's pinned rows
+    // cover the turn box where a finger would reach it, so there it's pressed in the page: this checks the words.)
+    const phone = (opts.viewport?.width ?? 0) < 600;
+    /** @param {import('playwright-core').Locator} b */
+    const press = (b) => (phone ? b.evaluate((e) => /** @type {HTMLElement} */ (e).click()) : opts.hasTouch ? b.tap() : b.click());
+    await press(stepButton(page).first());
+    const move = stepButton(page).filter({ hasText: '▶ Move' });
+    await move.waitFor({ timeout: 8000 });
+    await page.waitForFunction(() => !document.querySelector('.bh [data-step]')?.hasAttribute('disabled'));
+    await press(move);
+    await first.filter({ hasText: 'turn is played' }).waitFor({ timeout: 10000 });
+    out.played = (await first.innerText()).trim();
+    out.playedTitle = await first.getAttribute('title');
+  }
   await ctx.close();
   return out;
 }
@@ -165,29 +193,33 @@ async function boardWords(opts) {
 try {
   // ---------- A board game hosted on a touch screen, and with a mouse ----------
   section('A board game: buttons on a touch screen, keys with a mouse');
+  const tail = ' · tap a token to select them, drag it to send them';
   for (const [what, opts] of /** @type {[string, import('playwright-core').BrowserContextOptions][]} */ ([
     ['a phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }],
     ['a tablet', { viewport: { width: 1280, height: 720 }, hasTouch: true, isMobile: true }],
   ])) {
-    const w = await boardWords(opts);
+    const w = await boardWords(opts, 'dice', true);
     assert(w.touch, `${what} is a touch screen with no mouse (hover: none)`);
-    assertEq(
-      w.how,
-      '🎲 Roll, then ▶ Move · ◀ Previous turn to go back · tap a token to select them, drag it to send them',
-      `${what}: the board game's status line names its buttons`,
-    );
+    assertEq(w.how, `🎲 Roll, then ▶ Move · ◀ Previous turn to go back${tail}`, `${what}: the board game's status line names its buttons`);
     assert(!KEYS.test(w.how), `${what}: and no keys (${w.how})`);
     assertEq(w.first, 'Ann’s turn: 🎲 Roll, then ▶ Move (or tap the dice).', `${what}: the turn box's first line says tap`);
     assertEq(w.played, 'Ann’s turn is played: Next turn ▶.', `${what}: once moved, Next turn ▶ with no (N)`);
-    assert(![w.first, w.played, w.playedTitle].some((t) => KEYS.test(t ?? '')), `${what}: the turn box names no keys, nor does its tooltip`);
+    assert(![w.first, w.firstTitle, w.played, w.playedTitle].some((t) => KEYS.test(t ?? '')), `${what}: the turn box names no keys, nor does its tooltip`);
     assert(w.sw === w.iw, `${what}: nothing scrolls sideways (${w.sw} wide in ${w.iw})`);
   }
+  const tablet = { viewport: { width: 1280, height: 720 }, hasTouch: true, isMobile: true };
+  const wheel = await boardWords(tablet, 'wheel');
+  assertEq(wheel.how, `🎡 Spin, then ▶ Move · ◀ Previous turn to go back${tail}`, 'a tablet, a movement wheel: 🎡 Spin, then ▶ Move');
+  assertEq(wheel.first, 'Ann’s turn: 🎡 Spin, then ▶ Move (or tap the wheel).', 'and its turn box says tap the wheel');
+  const step = await boardWords(tablet, 'step');
+  assertEq(step.how, `Pick the way (→ buttons, or tap the space) · ◀ Previous turn to go back${tail}`, 'a tablet, a space at a time: no Enter');
+  assertEq(step.first, 'Ann’s turn: → the way on (or tap the space on the stage).', 'and its turn box says tap the space');
   for (const viewport of [
     { width: 1280, height: 720 },
     { width: 1920, height: 1080 },
   ]) {
     const what = `a computer at ${viewport.width}×${viewport.height}`;
-    const w = await boardWords({ viewport });
+    const w = await boardWords({ viewport }, 'dice', true);
     assert(!w.touch, `${what} has a mouse (hover: hover)`);
     assertEq(
       w.how,
@@ -197,6 +229,15 @@ try {
     assertEq(w.first, 'Ann’s turn: 🎲 Roll, then ▶ Move (or click the dice).', `${what}: the turn box's first line says click`);
     assertEq(w.played, 'Ann’s turn is played: Next turn ▶ (N).', `${what}: once moved, Next turn ▶ (N)`);
   }
+  const mouse = { viewport: { width: 1280, height: 720 } };
+  assertEq((await boardWords(mouse, 'wheel')).first, 'Ann’s turn: 🎡 Spin, then ▶ Move (or click the wheel).', 'with a mouse, a wheel: click');
+  const mouseStep = await boardWords(mouse, 'step');
+  assertEq(
+    mouseStep.how,
+    'Pick the way (→ buttons, the space, or Enter when there’s one) · Shift+N turn back · click a token to select them, drag it to send them',
+    'with a mouse, a space at a time: its keys as before',
+  );
+  assertEq(mouseStep.first, 'Ann’s turn: → the way on (Enter, or click the space on the stage).', 'and its turn box says Enter');
 
   // ---------- A phone ----------
   {

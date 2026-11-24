@@ -2,7 +2,7 @@
   import { focusRescue, rescuing } from '../lib/focusrescue';
   import { modal, takeFocus } from '../lib/modal';
   import { scrollMore } from '../lib/scrollmore';
-  import { keyNote } from '../lib/touch.svelte';
+  import { keyNote, touchScreen } from '../lib/touch.svelte';
   import { app, hint, sceneFrom, toast, toastMs } from '../lib/app.svelte';
   import { clockNow } from '../lib/clocknow.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
@@ -1207,8 +1207,12 @@
    */
   function award(sign: 1 | -1, ids = selected, amt = amount, picker = true, verdict = false): void {
     // (The tiebreaker: its Who won? row says who to pick.)
-    if (!ids.length && session.phase === 'tiebreaker' && !amt) return hint('Who won? Click their 🏆, or press their number then Enter');
-    if (!ids.length) return hint(`Select a ${pregameTeams ? 'team' : 'player'} first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
+    if (!ids.length && session.phase === 'tiebreaker' && !amt)
+      return hint(touchScreen.on ? 'Who won? Tap their 🏆' : 'Who won? Click their 🏆, or press their number then Enter');
+    if (!ids.length)
+      return hint(
+        `Select a ${pregameTeams ? 'team' : 'player'} first (${touchScreen.on ? 'tap a name' : `press 1–${Math.min(9, session.players.length) || 9} or click a name`})`,
+      );
     // The tiebreaker settles the tie, with or without points (its Amount starts at 0).
     if (!amt && session.phase === 'tiebreaker') return tiebreakWin(sign, ids);
     // A Daily Double wagered at 0, a partner clue's 0, or a clue worth 0 (not a wheel or dice tile with nothing to judge),

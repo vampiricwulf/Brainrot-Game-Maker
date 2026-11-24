@@ -8,6 +8,7 @@
 <script lang="ts">
   import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
+  import { keyNote } from '../../lib/touch.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, startTimer, tileToolUp } from '../../lib/live';
   import type { Game, Outcome, ScoreEvent, Session } from '../../lib/model';
@@ -376,7 +377,7 @@
           <option value={PLAYER_WHEEL}>🎯 Pick a {teams ? 'team' : 'player'}</option>
         </select>
         {#if spent && !busy}<span class="warn small" role="status">Every slice has landed: Restore to spin again</span>
-        {:else if again && landed}<span class="small" role="status">↻ It landed on {outcomeName}: spin again (W)</span>{/if}
+        {:else if again && landed}<span class="small" role="status">↻ It landed on {outcomeName}: spin again{keyNote('W')}</span>{/if}
         {#if removed}
           <button
             class="ghost small"

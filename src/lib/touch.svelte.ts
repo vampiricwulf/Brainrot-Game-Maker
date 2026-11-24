@@ -14,8 +14,11 @@ export const touchScreen = {
   },
 };
 
-/** A key after a button's name, " (N)", with a keyboard; nothing on a touch screen (the button is there to tap). */
-export const keyNote = (key: string): string => (on ? '' : ` (${key})`);
+/**
+ * A key after a button's name, " (N)", with a keyboard; nothing on a touch screen (the button is there to tap). `or`:
+ * inside words already in brackets, ", or N" ("the blue button, or N").
+ */
+export const keyNote = (key: string, or?: string): string => (on ? '' : or !== undefined ? `${or}${key}` : ` (${key})`);
 
-/** "click" with a mouse, "tap" on a touch screen (`Click`, capitalised, at a line's start). */
-export const clickWord = (capital = false): string => (on ? (capital ? 'Tap' : 'tap') : capital ? 'Click' : 'click');
+/** "click" with a mouse, "tap" on a touch screen. */
+export const clickWord = (): string => (on ? 'tap' : 'click');
