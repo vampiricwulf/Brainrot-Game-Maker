@@ -473,8 +473,9 @@
     }
   }
 
+  // (How to get the old file back is said once, in the foot, beside the buttons that change it.)
   const reach = $derived(
-    `${uses ? `Changes the file everywhere it’s used (${uses} place${uses === 1 ? '' : 's'}), on stream too.` : 'Changes the file.'} Ctrl+Z puts the old one back.${was.size > 500 * 1024 * 1024 ? ' The old file stays in this browser’s storage while Undo can bring it back.' : ''}`,
+    `${uses ? `Changes the file everywhere it’s used (${uses} place${uses === 1 ? '' : 's'}), on stream too.` : 'Changes the file.'}${was.size > 500 * 1024 * 1024 ? ' The old file stays in this browser’s storage while Undo can bring it back.' : ''}`,
   );
   const hint = $derived(
     [was.name, ...(length ? [lengthText(length)] : []), ...(picture ? [`${W}×${H}`] : []), formatBytes(was.size)].join(' · '),

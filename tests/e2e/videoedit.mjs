@@ -246,9 +246,11 @@ try {
   const hint = await dialog.locator('[data-edit-hint]').innerText();
   assert(/^clip\.mp4 · 4 s · 320×180 · \d+ KB$/.test(hint), `its header names the file, its length, size and bytes (${hint})`);
   assert(
-    (await dialog.locator('[data-edit-reach]').innerText()) === 'Changes the file everywhere it’s used (2 places), on stream too. Ctrl+Z puts the old one back.',
+    (await dialog.locator('[data-edit-reach]').innerText()) === 'Changes the file everywhere it’s used (2 places), on stream too.',
     'and says it changes the file everywhere (2 places)',
   );
+  const footSays = await dialog.locator('.foot-hint').innerText();
+  assert(/^Ctrl\+Z \(or 🕘 History\) puts the old file back\./.test(footSays), `how to get the old file back is said once, in the foot (${footSays})`);
   assert(await foot().getByRole('button', { name: 'Apply', exact: true }).isDisabled(), 'Apply waits for a change');
   await trimTo(1.2, 3);
   await dialog.locator('[data-edit-estimate]', { hasText: 'quick: nothing is re-encoded' }).waitFor();
