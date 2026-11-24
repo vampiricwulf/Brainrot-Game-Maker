@@ -253,7 +253,7 @@
     return words.length ? files.filter((m) => words.every((w) => `${m.name} ${m.kind} ${KIND_WORD[m.kind] ?? ''}`.toLowerCase().includes(w))) : files;
   });
   const icon = { image: '🖼️', video: '🎬', audio: '🔊', font: '🔤' } as const;
-  const EMBED_ICON: Record<string, string> = { youtube: '▶️', drive: '🎞', streamable: '🎞' };
+  const EMBED_ICON: Record<string, string> = { youtube: '▶️', drive: '🎞️', streamable: '🎞️' };
 
   /** 🌐 Check it still loads: the results by media id. */
   let checks = $state<Record<string, 'checking' | 'ok' | 'failed'>>({});

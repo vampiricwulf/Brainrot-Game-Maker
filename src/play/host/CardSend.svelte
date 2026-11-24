@@ -272,7 +272,7 @@
   const masked = $derived(!dual && !reveal);
   /** The game's pictures, videos and sounds (by name: offered only with the audience window open). */
   const mediaFiles = $derived(libraryMedia(game).filter((m) => m.kind === 'image' || m.kind === 'video' || m.kind === 'audio'));
-  const FILE_ICON: Partial<Record<MediaRef['kind'], string>> = { image: '🖼️', video: '🎞', audio: '🔊' };
+  const FILE_ICON: Partial<Record<MediaRef['kind'], string>> = { image: '🖼️', video: '🎞️', audio: '🔊' };
   /**
    * The card as it would go: an action's, a 🤫 Card, a tile's or a Final's (as the editor has it), the slide on screen, or
    * the quick one.
@@ -293,7 +293,7 @@
   const hasSomething = $derived(!!slide && slide.elements.some((e) => e.kind !== 'text' || !!e.text.trim()));
   /** The quick card's items, in order, by kind (never named: in one window viewers see this). */
   const itemKinds = $derived(cardItems(game, quickSlide('', items)));
-  const ICON: Record<CardItem['kind'], string> = { picture: '🖼️ picture', gif: '🖼️ GIF', video: '🎞 video', sound: '🔊 sound', embed: '▶ online video' };
+  const ICON: Record<CardItem['kind'], string> = { picture: '🖼️ picture', gif: '🖼️ GIF', video: '🎞️ video', sound: '🔊 sound', embed: '▶ online video' };
 
   /**
    * A picture, GIF, video or sound from this computer (or pasted): into the game's 🖼️ Media, onto the card. A new file

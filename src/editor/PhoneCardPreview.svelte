@@ -87,13 +87,13 @@
   });
   /** A card set to both or everyone else goes to more than one phone: theirs says it isn't theirs alone (as a phone does). */
   const shared = $derived(!!clue && (card.to === 'both' || card.to === 'others'));
-  const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼️', gif: '🖼️', video: '🎞', sound: '🔊', embed: '▶' };
+  const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼️', gif: '🖼️', video: '🎞️', sound: '🔊', embed: '▶' };
   const KIND: Record<PhoneItem['kind'], string> = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' };
 
   /** The size of what goes up for an item (its 🗜 copy, when that's what goes), as people read it ("148.2 MB"). */
   const sizeOf = (it: PhoneItem): string => formatBytes(game.media.find((m) => m.id === sendsOf(it))?.size ?? 0);
   const refOf = (it: PhoneItem) => (it.media ? game.media.find((m) => m.id === it.media) : undefined);
-  /** "🎞 movie.mp4 is 148.2 MB", or when its 🗜 copy is what goes: "🎞 movie.mp4’s smaller copy for phones is 120 MB". */
+  /** "🎞️ movie.mp4 is 148.2 MB", or when its 🗜 copy is what goes: "🎞️ movie.mp4’s smaller copy for phones is 120 MB". */
   const isSize = (it: PhoneItem): string => {
     const ref = refOf(it);
     return sizeWords(`${ICON[it.kind]} ${it.name}`, it, sizeOf(it), !!ref && !phonesTake(ref));

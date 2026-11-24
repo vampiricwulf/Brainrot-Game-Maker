@@ -178,8 +178,8 @@ export function copyNote(kind: PhoneItem['kind'], o: { gifs: boolean; fixes: boo
 }
 
 /**
- * How big what goes up for an item is, in the 📱 preview's words (`what`: "🎞 movie.mp4"): "🎞 movie.mp4 is 148.2 MB",
- * or when that's its file's 🗜 copy, "🎞 movie.mp4’s smaller copy for phones is 120 MB" (`fixes`: a copy of a file
+ * How big what goes up for an item is, in the 📱 preview's words (`what`: "🎞️ movie.mp4"): "🎞️ movie.mp4 is 148.2 MB",
+ * or when that's its file's 🗜 copy, "🎞️ movie.mp4’s smaller copy for phones is 120 MB" (`fixes`: a copy of a file
  * phones can't play, "…’s copy phones can play is…").
  */
 export function sizeWords(what: string, it: Pick<PhoneItem, 'media' | 'sends'>, size: string, fixes: boolean): string {

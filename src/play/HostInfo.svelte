@@ -75,7 +75,7 @@
   const ITEM: Record<CardItem['kind'], [string, string]> = {
     picture: ['🖼️', 'picture'],
     gif: ['🖼️', 'GIF'],
-    video: ['🎞', 'video'],
+    video: ['🎞️', 'video'],
     sound: ['🔊', 'sound'],
     embed: ['🌐', 'online video'],
   };

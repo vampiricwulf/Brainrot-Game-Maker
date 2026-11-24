@@ -5,7 +5,7 @@
  * - Pictures, GIFs, videos and sounds from a link load from that link (a picture with no referrer); the host's own
  *   files are fetched from the room (two at a time) with this phone's token in a header (never in an address), and
  *   shown from blob: addresses that are revoked once no card uses that file. A file on its way shows "🖼️ Picture
- *   coming…" (a big one how much has come: "🎞 Video coming… 40%") and fills in; one whose download broke off is tried
+ *   coming…" (a big one how much has come: "🎞️ Video coming… 40%") and fills in; one whose download broke off is tried
  *   again.
  * - A YouTube, Drive or Streamable player is framed only when its play button is tapped, and taken down on Hide.
  * - Video plays muted and inline once the card is open ("🔊 Tap for sound"); sound waits for a tap. A GIF sent as a

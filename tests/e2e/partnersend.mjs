@@ -533,8 +533,8 @@ try {
   await bob.getByText(WORDS1).waitFor();
   const bobCard = bob.locator('.card');
   assert(
-    (await bobCard.innerText()).includes('🖼️ Picture coming…') && (await bobCard.innerText()).includes('🎞 Video coming…'),
-    'tapped: its words, “🖼️ Picture coming…” and “🎞 Video coming…”',
+    (await bobCard.innerText()).includes('🖼️ Picture coming…') && (await bobCard.innerText()).includes('🎞️ Video coming…'),
+    'tapped: its words, “🖼️ Picture coming…” and “🎞️ Video coming…”',
   );
   assert(await until(async () => (await textOf(row(1).locator('[data-card-state]'))).includes('✓ seen')), 'the host’s row says ✓ seen');
   await cat.getByRole('button', { name: 'Tap to see' }).waitFor();

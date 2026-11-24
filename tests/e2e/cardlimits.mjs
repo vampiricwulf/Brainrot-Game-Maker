@@ -197,7 +197,7 @@ async function preview(page, id) {
 }
 // (A video stored in the game: 🗜 can make a smaller copy of it here, so the note says so, with its button.)
 const bigNote = (name, size, max, older = false) =>
-  `🎞 ${name} is ${size}: this buzzer server${older ? ' (an older one)' : ''} takes files up to ${max}. 🗜 Make a smaller copy for phones, or add it from a link (YouTube, Drive…) instead. 🗜 Make a smaller copy for phones`;
+  `🎞️ ${name} is ${size}: this buzzer server${older ? ' (an older one)' : ''} takes files up to ${max}. 🗜 Make a smaller copy for phones, or add it from a link (YouTube, Drive…) instead. 🗜 Make a smaller copy for phones`;
 /** Waits until the preview's warnings are just these. */
 async function notesAre(page, notes, want, what) {
   await page
@@ -255,7 +255,7 @@ try {
       ['mid-zfnqj.mp4', '20.0 MB'],
     ])
       await slow
-        .filter({ hasText: `🎞 ${name} is ${size}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it` })
+        .filter({ hasText: `🎞️ ${name} is ${size}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it` })
         .waitFor();
     await notesAre(page, notes, [], 'nothing heard from the server: the 📱 preview goes by the defaults (90 MB), so both videos go, each with its note');
     await page.getByRole('button', { name: '▶ Play' }).click();
@@ -318,7 +318,7 @@ try {
   {
     const { ctx, page } = await open(base);
     const slowNote =
-      '🎞 slow-zfnqj.mp4 is 17.0 MB: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).';
+      '🎞️ slow-zfnqj.mp4 is 17.0 MB: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).';
     const notes = await preview(page, 'sc_slow');
     await page.locator('.phone-preview .notes li.slow', { hasText: slowNote }).waitFor();
     await notesAre(page, notes, [], 'the 📱 preview: a note that phones on mobile data may wait for it, and no warning');
@@ -432,7 +432,7 @@ try {
       await until(async () => (await sawUpload()) >= 3, 30_000),
       `its upload says how far it got (“uploading 1 of 1 (…%)…”, ${await sawUpload()} percents)`,
     );
-    // Bob opens it while it comes: "🎞 Video coming…", then how much has come.
+    // Bob opens it while it comes: "🎞️ Video coming…", then how much has come.
     await bob.getByRole('button', { name: 'Tap to see' }).tap();
     assert(await until(() => cards()[0]?.media?.[0]?.file === fileId(files.slow), 60_000), 'it goes up, and the card names the room’s file');
     const coming = () =>
@@ -441,7 +441,7 @@ try {
         .textContent({ timeout: 1000 })
         .catch(() => '');
     assert(
-      await until(async () => /^🎞 Video coming… [1-9]\d*%$/.test((await coming()) ?? ''), 30_000),
+      await until(async () => /^🎞️ Video coming… [1-9]\d*%$/.test((await coming()) ?? ''), 30_000),
       `Bob’s phone says how much of it has come (“${await coming()}”)`,
     );
     const upAfterOne = posts.length;

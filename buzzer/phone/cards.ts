@@ -55,7 +55,7 @@ export function isGif(m: CardMedia): boolean {
 
 /** What a picture, video or sound is called on the card ("Picture"; an embed is a video). */
 export const mediaWord = (kind: CardMedia['kind']): string => (kind === 'image' ? 'picture' : kind === 'audio' ? 'sound' : 'video');
-const icon = (kind: CardMedia['kind']) => (kind === 'image' ? '🖼️' : kind === 'audio' ? '🔊' : '🎞');
+const icon = (kind: CardMedia['kind']) => (kind === 'image' ? '🖼️' : kind === 'audio' ? '🔊' : '🎞️');
 const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** A text alternative: the slide item's own name, else "Picture" (or "Video", "Sound"). */
@@ -69,7 +69,7 @@ export const comingLine = (kind: CardMedia['kind']): string => `${icon(kind)} ${
 export const SHOW_PCT_BYTES = 4 * 1024 * 1024;
 /** How much of a big file has come, in whole percents (null: not one that says it). */
 export const pctOf = (got: number, total: number): number | null => (total > SHOW_PCT_BYTES ? Math.min(100, Math.floor((got / total) * 100)) : null);
-/** A file on its way, and for a big one how much has come: "🎞 Video coming… 40%". */
+/** A file on its way, and for a big one how much has come: "🎞️ Video coming… 40%". */
 export function waitLine(kind: CardMedia['kind'], got = 0, total = 0): string {
   const pct = pctOf(got, total);
   return pct === null ? comingLine(kind) : `${comingLine(kind)} ${pct}%`;

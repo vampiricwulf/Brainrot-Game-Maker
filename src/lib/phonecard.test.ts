@@ -389,10 +389,10 @@ describe('the 📱 preview’s words on a 🗜 copy', () => {
     expect(copyNote('sound', { ...o, fixes: true, shape: 'OGG' })).toBe('📱 Phones get a copy they can play instead (1.2 MB, OGG).');
   });
   it('says how big what goes is, and when that’s the copy, that it is', () => {
-    expect(sizeWords('🎞 movie.mp4', { media: 'movie' }, '148.2 MB', false)).toBe('🎞 movie.mp4 is 148.2 MB');
-    expect(sizeWords('🎞 movie.mp4', { media: 'movie', sends: 'movie' }, '148.2 MB', false)).toBe('🎞 movie.mp4 is 148.2 MB');
-    expect(sizeWords('🎞 movie.mp4', { media: 'movie', sends: 'copy' }, '120 MB', false)).toBe('🎞 movie.mp4’s smaller copy for phones is 120 MB');
-    expect(sizeWords('🎞 clip.mov', { media: 'mov', sends: 'copy' }, '20 MB', true)).toBe('🎞 clip.mov’s copy phones can play is 20 MB');
+    expect(sizeWords('🎞️ movie.mp4', { media: 'movie' }, '148.2 MB', false)).toBe('🎞️ movie.mp4 is 148.2 MB');
+    expect(sizeWords('🎞️ movie.mp4', { media: 'movie', sends: 'movie' }, '148.2 MB', false)).toBe('🎞️ movie.mp4 is 148.2 MB');
+    expect(sizeWords('🎞️ movie.mp4', { media: 'movie', sends: 'copy' }, '120 MB', false)).toBe('🎞️ movie.mp4’s smaller copy for phones is 120 MB');
+    expect(sizeWords('🎞️ clip.mov', { media: 'mov', sends: 'copy' }, '20 MB', true)).toBe('🎞️ clip.mov’s copy phones can play is 20 MB');
   });
   it('a GIF’s with an older room open: an ordinary video, said so', () => {
     expect(copyNote('gif', { ...o, gifs: false })).toBe(
