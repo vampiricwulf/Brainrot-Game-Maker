@@ -546,11 +546,55 @@ export const leaveAsks = (page) =>
     return e.defaultPrevented;
   });
 
+// Stable hooks: the app's big structural parts carry a valueless data-* attribute beside their class, and these find them
+// by it, so a restyle that renames a class doesn't break the tests. Each takes where to look (a page, a locator or a
+// frame) and, like locator(), optional { hasText, has, … }. A hook never carries a value: no card words, answers, picks
+// or names. New tests use these rather than the classes; older ones move over as they're touched (see
+// docs/development.md).
+
+/** @typedef {Page | Locator | import('playwright-core').FrameLocator} Where */
+/** @typedef {Parameters<Locator['locator']>[1]} LocatorOptions */
+
+/**
+ * @param {string} attr
+ * @returns {(where: Where, opts?: LocatorOptions) => Locator}
+ */
+const hook = (attr) => (where, opts) => where.locator(`[${attr}]`, opts);
+
+/** The stage box on the host screen, what viewers see (`.stage-box`). */
+export const stageBoxIn = hook('data-stage-box');
+/** The host panel, under or beside the stage (`.panel`). */
+export const hostPanelIn = hook('data-host-panel');
+/** The host panel's status line, what's going on (`.panel .status`). */
+export const statusLineIn = hook('data-host-status');
+/** The host panel's player rows, one per player or team (`.panel .p`). */
+export const playerRowsIn = hook('data-player-row');
+/** The host panel's award row: the verdict buttons and their options (`.panel .award`). */
+export const awardRowIn = hook('data-award-row');
+/** The host panel's tools row (`.panel .toolsrow`). */
+export const toolsRowIn = hook('data-tools-row');
+/** The Jeopardy board (`.board`), on the host's stage or the stream window. */
+export const boardIn = hook('data-board');
+/** The board's tiles, the category headings left out (`.board .tile`). */
+export const boardTilesIn = hook('data-board-tile');
+/** The toasts: the app's own, and the host screen's notes while its controls are hidden (`.toast`). */
+export const toastsIn = hook('data-toast');
+/** A Final's controls in the host panel: wagers, answers, the reveal (`.fj`). */
+export const finalControlsIn = hook('data-final-controls');
+/** The host panel's round navigation (`.rn`). */
+export const roundNavIn = hook('data-round-nav');
+/** The editor's round tabs, one per round, in the side nav (`nav > button.round-tab`). */
+export const roundTabsIn = hook('data-round-tab');
+/** The app's status bar at the bottom: the phone room, the saved game, the stream window (`.status-bar`). */
+export const statusBarIn = hook('data-status-bar');
+/** The slide editor's inspector, beside the canvas (`.insp`). */
+export const inspectorIn = hook('data-inspector');
+
 /**
  * @param {Page} page
  * @param {{ ready?: boolean }} [opts]
  */
-export const goOnCheck = (page, { ready = false } = {}) => page.locator(ready ? '.panel [data-goon][data-ready]' : '.panel [data-goon]');
+export const goOnCheck = (page, { ready = false } = {}) => hostPanelIn(page).locator(ready ? '[data-goon][data-ready]' : '[data-goon]');
 /**
  * One thing left in it, by its id: 'picked', 'dd', 'buzzers', 'tie', 'answers', 'judge', 'card:<card id>'.
  * @param {Page} page
@@ -643,11 +687,8 @@ export async function longPress(target, ms = 800) {
   }, ms);
 }
 
-/**
- * The confirmation strip above the fixed bar (Leave this game?, End the game now? 7 clues are left.…).
- * @param {Page} page
- */
-export const confirmStrip = (page) => page.locator('.panel .confirm');
+/** The confirmation strip above the fixed bar (Leave this game?, End the game now? 7 clues are left.…) (`.panel .confirm`). */
+export const confirmStrip = hook('data-confirm-strip');
 
 /**
  * Press an answer of a question asked in the panel (Replace, Sell anyway…), once its question takes clicks: in its first
