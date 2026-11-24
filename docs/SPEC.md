@@ -1,6 +1,6 @@
 # Brainrot Games Maker: Product & Technical Spec (Jeopardy modes)
 
-Status: **v1.5 (M1–M7 implemented)** · Last updated: 2026-10-02
+Status: **v1.5 (M1–M8 implemented)** · Last updated: 2026-11-24
 
 A tool for building and hosting custom Jeopardy-style games that are livestreamed to friends.
 Players answer by voice on the stream, or buzz in and answer on their phones (phone buzzers, optional: §6). The host

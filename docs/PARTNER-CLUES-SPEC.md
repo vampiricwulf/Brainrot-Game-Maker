@@ -1,14 +1,23 @@
 # Partner clues and private cards: specification
 
-Status: draft 3 (2026-10-13), revised after the owner answered draft 2's open questions. Phones and the buzzer server
+Status: built. Milestones P1–P5 (§21) have shipped: 🤝 partner clues, 🤫 cards on phones with every kind of media,
+🤫 Send a card… and the 🪟 card window, 🎭 Deal, steal on a miss, 🔀 Randomize for partner tiles, and cards made in the
+editor. Not built: a Partner Double (§21, P4, "if wanted"). The open questions in §23 are left as they were asked; the
+app shows how each was settled. Where this spec and [`SPEC.md`](SPEC.md) differ, SPEC.md and the app are current; this
+doc stays the reference for how partner clues and cards work and why.
+
+It was written as draft 3 (2026-10-13), after the owner answered draft 2's open questions. Phones and the buzzer server
 get only what the host hands out. The partner describes and the picker guesses by default. After the question shows,
 the host hands out the cards in a new 📤 Distribute step. Points are set per clue: by default a miss costs the guesser
 and never the partner. The guesser picks next. The first phone release carries pictures, GIFs and video, the host's own
-files included. Nothing here is built yet. This extends [`SPEC.md`](SPEC.md) (the Jeopardy modes) and
+files included. This extends [`SPEC.md`](SPEC.md) (the Jeopardy modes) and
 [`GAMES-MAKER-SPEC.md`](GAMES-MAKER-SPEC.md), and adds to the phone buzzer room described in
-[`buzzer/README.md`](../buzzer/README.md). File and line references are to commit `fdcd08c`. Nothing that exists is
-removed: Daily Doubles, wheel and dice tiles, ✍ Everyone answers, phone buzzers, wagers and the audience window keep
-working as they do today.
+[`buzzer/README.md`](../buzzer/README.md). Nothing that exists is removed: Daily Doubles, wheel and dice tiles,
+✍ Everyone answers, phone buzzers, wagers and the audience window keep working as they do today.
+
+File and line references (`session.ts:644`, say) are to commit `fdcd08c`, before any of it was built, and have moved
+since: grep for the function or name they mention instead. Its plans ("new", "will") describe that commit; "As built:"
+notes say where the app came out differently.
 
 Its names for buttons and steps are the ones it was written with, and some have changed since: the 📤 Distribute step's
 button is **📤 Hand out the cards**, change ▾ and change partner ▾ are **Someone else picked it ▾** and **Another partner

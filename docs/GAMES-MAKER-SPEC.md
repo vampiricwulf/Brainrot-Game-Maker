@@ -1,7 +1,9 @@
 # Brainrot Games Maker: specification
 
-Status: draft 2 (2026-09-30), with every draft-1 question answered. This extends [`SPEC.md`](SPEC.md), which stays the reference for everything the
-Jeopardy modes do today. Nothing is removed: the Jeopardy board, Final Jeopardy, slides, media, wheels, dice, timers,
+Status: built. Milestones M1–M9 (§12) have shipped, the RPG and board-game round modes included; written as draft 2
+(2026-09-30), with every draft-1 question answered, and kept as the reference for how round modes work and why. Where
+it and the app differ, the app is current. This extends [`SPEC.md`](SPEC.md), which stays the reference for everything
+the Jeopardy modes do today. Nothing is removed: the Jeopardy board, Final Jeopardy, slides, media, wheels, dice, timers,
 sounds, the audience window, the desktop app and every file format keep working.
 
 ## Contents
