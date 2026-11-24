@@ -1240,9 +1240,14 @@
   </div>
 {:else if app.screen === 'editor' && bootCover && app.resumable}
   <!-- The page reloaded mid-game in one window, the window on stream: the game's cover card, and the editor (every clue
-       still to play) kept out until the host picks it. Nothing here is secret. -->
+       still to play) kept out until the host picks it. Nothing here is secret. The card is laid out where the stage is in
+       the game (a capture of just the stage shows all of it), the host's choice under it, where the host panel is. -->
   <div class="boot-cover" role="region" aria-label="Game paused">
-    <div class="cover-card"><span class="pause" aria-hidden="true"></span>{app.resumable.game.settings.stream?.coverText?.trim() || 'Be right back'}</div>
+    <div class="cover-area">
+      <div class="cover-stage">
+        <div class="cover-card"><span class="pause" aria-hidden="true"></span>{app.resumable.game.settings.stream?.coverText?.trim() || 'Be right back'}</div>
+      </div>
+    </div>
     <div class="cover-host">
       {#if resuming}
         {@render modeAsk()}
@@ -1483,22 +1488,43 @@
   .mode-ask :global(.modes) {
     align-self: stretch;
   }
-  /* The cover after a reload mid-game in one window: as viewers see ⏸ Cover, the host's choice small under it. */
+  /* The cover after a reload mid-game in one window: as viewers see ⏸ Cover, the host's choice small under it. Laid out
+     as the game is in one window (Play's .stage-area and HostPanel's .panel:not(.dual)): a 16:9 box the stage's size
+     and place, letterboxed in black, over the host panel's height, so a capture of just the stage (an OBS crop) shows
+     the whole card and none of the host's buttons. */
   .boot-cover {
     height: 100%;
     display: flex;
     flex-direction: column;
+    background: #000;
+  }
+  .boot-cover .cover-area {
+    flex: 1;
+    min-height: 38vh;
+    container-type: size;
+    display: flex;
     align-items: center;
     justify-content: center;
-    gap: 40px;
-    padding: 16px;
+  }
+  .boot-cover .cover-stage {
+    width: min(100cqw, 100cqh * 16 / 9);
+    aspect-ratio: 16 / 9;
+    /* (Its words are sized to it.) */
+    container-type: inline-size;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
     background: radial-gradient(circle, #2a3a8a, #000);
   }
   .boot-cover .cover-card {
     display: flex;
     align-items: center;
     gap: 0.4em;
-    font: clamp(40px, 9vw, 120px) 'Anton', 'Oswald', sans-serif;
+    max-width: 90%;
+    /* (The ⏸ Cover card's size on the stage: 120px of its 1920.) */
+    font: 6.25cqw 'Anton', 'Oswald', sans-serif;
+    overflow-wrap: anywhere;
     color: #fff;
     text-align: center;
     /* In em, so it stays a shadow on a phone, where the words are a third the size (6px at 120px). */
@@ -1512,14 +1538,19 @@
     background: linear-gradient(to right, currentColor 0 34%, transparent 34% 66%, currentColor 66%);
     filter: drop-shadow(0.05em 0.05em 0 #000);
   }
+  /* Where the host panel is in the game (its height: HostPanel's .panel:not(.dual)); Resume game's question scrolls in it. */
   .cover-host {
+    flex: none;
+    height: min(clamp(280px, 44vh, 440px), 62vh);
+    overflow: auto;
     display: flex;
     flex-wrap: wrap;
     gap: 8px 12px;
     align-items: center;
+    /* (Safe: Resume game's question, taller than this, scrolls from its top.) */
+    align-content: safe center;
     justify-content: center;
     padding: 8px 14px;
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--panel);
   }
 </style>

@@ -55,6 +55,10 @@ Until you press **Start game**, viewers see a "Starting soon…" card.
 A game you left with **Exit › Keep & leave**, or one interrupted by a reload or crash, shows at the top of the
 pre-game screen with **▶ Resume it**. **Start game** asks before discarding it.
 
+A reload in the middle of a game in one window (the window on stream) opens on the game's cover card, not the editor.
+The card sits where the stage is in the game, at its size, so a capture of just the stage shows all of it; **Resume
+game** and **Go to the editor** are under it, where the host panel is.
+
 **🔁 Rematch** on the results screen starts again with the same players, colors and pictures.
 
 ## The host panel
