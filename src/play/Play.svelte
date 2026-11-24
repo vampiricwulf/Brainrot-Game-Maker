@@ -11,9 +11,9 @@
   import {
     applyScore, awardOpen, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep, finalAdvance,
     finalBack, finalJudge, finalRevealNow, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext,
-    nameList, newSession, openClue, playerName, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
-    blankSlide, toolOnlyClue, stepSlide, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown,
-    finalTakeNewcomers, forViewers, coWinnersHold, ownPlayers, clueMarks, partnerSteal, stealersLeft, slidePosition, switchNet, switchVerdict,
+    nameList, newSession, openClue, playerName, redo, restorePlayer, answerShowing, score, skipIntro, startIntro, toggleUsed, undo, blankSlide, toolOnlyClue,
+    stepSlide, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown, finalTakeNewcomers, forViewers,
+    coWinnersHold, ownPlayers, clueMarks, partnerSteal, stealersLeft, slidePosition, switchNet, switchVerdict,
   } from '../lib/session';
   import {
     cardRecipients, cardSlides, partnerCandidates, partnerPlayers, partnerRules, partnerShares, sendCards, sharesText, stealOn, wasCopied,
@@ -29,7 +29,7 @@
     anywayLabel, answerRow, asked, ddWaits, doneSay, doneStep, escBounce, finalWaits, goOnDecision, inside, leftNow, mainStep, everyonePassed, mergeItems, ringNow, swallowSay, todo, type Check, type GoActs, type GoCtx,
     type FinalNow, type GoPanel, type PartnerNow, type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
   } from './host/goon';
-  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type Overlay, type StageAction, type TimerState } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzReset, buzzTake, cardsFullText, newBuzz, roomCardsFull, teamsOn, whoBuzzed, type BuzzState,
   } from '../lib/buzz';
@@ -78,21 +78,21 @@
   import { cueHere, playCue } from './cues';
   import { BUILTIN } from '../lib/sounds';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { finalNextStep, logged, playStep, redoAction, redoFrom, revealStep, setPicker, startStep, stepText, undoAction, whoWasWhoStep, type Undone } from '../lib/toolset';
+  import { finalNextStep, logged, playStep, redoAction, redoFrom, revealStep, setPicker, stepText, undoAction, whoWasWhoStep, type Undone } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
-    addLive, bigObject, droppedFile, dropEntry, everythingOn, giveEntry, joinPartyNow, moveGroup, moveObject, objectAt, objectMenu, objectName, pickUp, regroupAll, removeObject, rpgNow, selectionWords,
-    sendPlayers, START_FIRST, staysWords, stepParty, toggleMap,
-    type AvatarDrop, type BandPick, type RpgAsk, type StagePoint,
+    addLive, bigObject, droppedFile, dropEntry, everythingOn, giveEntry, joinPartyNow, moveGroup, moveObject, objectAt, objectMenu, objectName, pickUp,
+    removeObject, rpgNow, selectionWords, sendPlayers, START_FIRST, staysWords, stepParty, toggleMap, type AvatarDrop, type BandPick, type RpgAsk,
+    type StagePoint,
   } from './rpg/hostops';
   import { isMenuKey, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { browserMenuFits } from '../lib/nomenu';
   import { longPress } from '../lib/longpress';
-  import { currentPlayer, ensureBoard, HOP_MS, spaceSaid, waysNow, waysOn } from '../lib/boardgame';
+  import { currentPlayer, ensureBoard, HOP_MS, spaceSaid, waysNow } from '../lib/boardgame';
   import { ensureWorld, focusRef, refindPositions } from '../lib/rpg';
-  import { boardNow, isMover, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, revealSpace, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
-  import { boardEdit, editDeleteAll, editDisconnect, editIdle, editPicked, setEditing } from './boardgame/boardedit.svelte';
+  import { boardNow, isMover, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, rollMover, revealSpace, runSpace, sendNow, setTurn } from './boardgame/bgops';
+  import { boardEdit, setEditing } from './boardgame/boardedit.svelte';
   import { partnerUpVerbs, playerMenu, revealVerbs, type SeatPhone } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
   import { editScreen } from './rpg/screenedit.svelte';
@@ -102,7 +102,7 @@
   import { stockAsk } from './host/shopask.svelte';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import { clone } from '../lib/ops';
-  import type { ActionEvent, Clue, ClueCard, Dir8, FinalRound, Game, Player, ScoreEvent, Session } from '../lib/model';
+  import type { ActionEvent, Clue, ClueCard, Dir8, FinalRound, Game, ScoreEvent, Session } from '../lib/model';
   import type { Pop } from '../lib/live';
   import { CLICK, CLICK_AGAIN_MS, stageClick, type Click, type ClickAct, type ClickNow } from '../lib/stageclick';
   import {
@@ -133,6 +133,7 @@
   import { createPhones } from './host/phones.svelte';
   import { createPregame } from './host/pregame.svelte';
   import { createPartner } from './host/partner.svelte';
+  import { createMidgame } from './host/midgame.svelte';
   import ShrinkDialog from '../editor/ShrinkDialog.svelte';
   import { openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
   import { jobFor, progressText, stopAll } from '../lib/shrink/jobs.svelte';
@@ -3216,7 +3217,7 @@
         openCard: (who) => ((hideControls = false), (playerCards.open = true), (playerCards.flash = who)),
         verbs: (who) => momentVerbs(who, at),
         phone: seatPhone,
-        remove: (who) => ((hideControls = false), openPlayers(), (removing = who)),
+        remove: (who) => ((hideControls = false), openPlayers(), (midgame.removing = who)),
       },
       id,
     );
@@ -3889,277 +3890,35 @@
     rename, resumeKept, showAsks, setStream, startAnyway, startClicked, startRoomHere, streamFold, teamMembers, tipsShown, titleFocus, toChecks,
   } = pregame;
 
-  // ---------- Players mid-game ----------
+  // ---------- Players mid-game, and a board game's moves (host/midgame.svelte.ts) ----------
 
-  /** Player whose ✕ was pressed in the Players dialog: it asks inline (a browser dialog would show on stream). */
-  let removing = $state<string | null>(null);
-  const removingPlayer = $derived(session.players.find((p) => p.id === removing));
-  /** The Players dialog (for the keys after a removal, a Keep or a Restore). */
-  let playersBox = $state<HTMLElement>();
-
-  // A question from a card's action ("worth 100"): its value goes in the Amount box, as a tile's does when it opens.
-  let popupNonce = '';
-  /** The board-game turn the question came up on (Enter judges it on that turn only: see boardEnter). */
-  let popupTurn = '';
-  /** A board game: the question worth points that came up this turn (a space's, a slice's), for the check before Next turn ▶. */
-  let bgQuestion = $state<{ value: number; at: number; turn: string } | null>(null);
-  $effect(() => {
-    const o = app.live.overlay;
-    if (o?.kind !== 'popup' || o.nonce === popupNonce) return;
-    popupNonce = o.nonce;
-    popupTurn = untrack(() => bgAmountKey);
-    if (typeof o.value === 'number') untrack(() => (amount = o.value!));
-    if (session.phase === 'boardgame' && typeof o.value === 'number' && o.value > 0 && o.answer) bgQuestion = { value: o.value, at: o.at ?? Date.now(), turn: popupTurn };
+  const midgame = createMidgame({
+    get game() { return game; },
+    get session() { return session; },
+    get partner() { return partner; },
+    get dual() { return dual; },
+    get pregameTeams() { return pregameTeams; },
+    get showLog() { return showLog; },
+    get bgAmountKey() { return bgAmountKey; },
+    get bgNoNumber() { return bgNoNumber; },
+    get selected() { return selected; },
+    set selected(ids: string[]) { selected = ids; },
+    get amount() { return amount; },
+    set amount(n: number | null) { amount = n; },
+    get bgSteps() { return bgSteps; },
+    set bgSteps(n: number | null) { bgSteps = n; },
+    get showPlayers() { return showPlayers; },
+    set showPlayers(on: boolean) { showPlayers = on; },
+    get hideControls() { return hideControls; },
+    set hideControls(on: boolean) { hideControls = on; },
+    catchUp, stopPairClock, dropPartnerWheel,
   });
-
-  /** G / Numpad 5: everyone back together (with one party there's nothing to do: it says so). */
-  function regroupKey(): void {
-    if ((rpgNow(game, session).st?.parties.length ?? 0) < 2) return void toast('Everyone is already together');
-    regroupAll(game, session);
-  }
-
-  function removeFromGame(id: string): void {
-    removing = null;
-    const at = session.players.findIndex((p) => p.id === id);
-    // (A running game keeps at least one: its turns, parties and scoreboard need someone. 👥 Players and the player's
-    // menu grey it; this is for any other way here.)
-    if (at >= 0 && session.players.length <= 1) return void toast(`The game needs at least one ${pregameTeams ? 'team' : 'player'}: add another first`);
-    // Their sheet on stage: it goes too (viewers were left with a dimmed, empty stage). Under the scores too: S or Esc
-    // would bring it back empty.
-    const o = app.live.overlay;
-    if (o?.kind === 'sheet' && o.playerId === id) app.live.overlay = null;
-    else if (o?.kind === 'scoreboard' && o.under?.kind === 'sheet' && o.under.playerId === id) o.under = undefined;
-    // The partner clue's picker or partner: it goes back to choosing (PARTNER UP! on stream again, its countdown gone).
-    const pt = partner && (partner.pickerId === id || partner.partnerId === id) ? { picker: partner.pickerId === id, name: playerName(session, id), stage: partner.stage } : null;
-    if (pt) dropPartnerWheel();
-    removePlayer(session, id);
-    selected = selected.filter((x) => x !== id);
-    if (pt) {
-      if (pt.stage !== 'pick') stopPairClock();
-      const now = session.partner;
-      toast(
-        pt.picker
-          ? `${pt.name} left: who picked it? (press their number)`
-          : now?.partnerId
-            ? `${pt.name} left: ${playerName(session, now.partnerId)} is the only partner now`
-            : `${pt.name} left: choose another partner`,
-        5000,
-      );
-    }
-    // The keys go on from the next row's − (or ＋ Add player: the last one left can't be removed), as a removal before the
-    // game does, not from the page.
-    void tick().then(() => {
-      const dels = playersBox?.querySelectorAll<HTMLButtonElement>('.rows button.del:not(:disabled)');
-      (dels?.[Math.min(at, dels.length - 1)] ?? playersBox?.querySelector<HTMLButtonElement>('button.add'))?.focus();
-    });
-  }
-
-  /** Keep (or Esc) on "Remove …?": the keys go back to that player's −, where they were. */
-  function keepPlayer(): void {
-    const id = removing;
-    removing = null;
-    void tick().then(() => playersBox?.querySelector<HTMLElement>(`[data-place="player:${id}"] button.del`)?.focus());
-  }
-
-  // Each change in the Players dialog (a name or a color set, a player moved, added, removed or restored) is one
-  // undoable step: the step under way ends with the click or the change that made it, and the next one begins.
-  let rosterStep: ((text: string) => void) | null = null;
-  let rosterBefore: { players: Player[]; removed: Player[] } = { players: [], removed: [] };
-
-  function beginRoster(): void {
-    rosterBefore = { players: $state.snapshot(session.players), removed: $state.snapshot(session.removedPlayers ?? []) };
-    rosterStep = startStep(session);
-  }
-
-  /** `clicked`: what was clicked, when a click ends the step (see fillNames). */
-  function commitRoster(clicked?: EventTarget | null): void {
-    if (!rosterStep) return;
-    // (A click in a name box cleared to retype it: the step goes on until the box is left.)
-    if (!fillNames(clicked)) return;
-    // The round's party or turn order takes the change in with it, so its Undo puts them back too (a Final: the players
-    // added or restored by this change).
-    const had = new Set(rosterBefore.players.map((p) => p.id));
-    catchUp(session.players.filter((p) => !had.has(p.id)).map((p) => p.id));
-    rosterStep(rosterChange(rosterBefore, { players: session.players, removed: session.removedPlayers }));
-    beginRoster();
-  }
-
-  /**
-   * A name left blank goes back to the one it had (a new row: "Player N", as at Start game), so viewers never see a
-   * nameless player. Not the box clicked in: it's being retyped (leaving it, Done or Esc fills it). False while that one
-   * is still blank.
-   */
-  function fillNames(clicked?: EventTarget | null): boolean {
-    const typing = clicked instanceof HTMLInputElement && clicked.matches('input.name') ? clicked.closest('[data-place]')?.getAttribute('data-place') : null;
-    const had = new Map([...rosterBefore.players, ...rosterBefore.removed].map((p) => [p.id, p.name]));
-    let filled = true;
-    session.players.forEach((p, i) => {
-      if (!blankName(p.name)) return;
-      if (typing === `player:${p.id}`) return void (filled = false);
-      const was = had.get(p.id);
-      p.name = was && !blankName(was) ? was : `${pregameTeams ? 'Team' : 'Player'} ${i + 1}`;
-    });
-    return filled;
-  }
-
-  function openPlayers(): void {
-    removing = null;
-    showPlayers = true;
-    beginRoster();
-  }
-
-  function closePlayers(): void {
-    commitRoster();
-    rosterStep = null;
-    showPlayers = false;
-  }
-
-  /** Esc in the Players dialog: out of a name box first, then away from the "Remove?" question, then the dialog closes. */
-  function playersEsc(e: KeyboardEvent): void {
-    e.preventDefault();
-    if (e.target instanceof HTMLElement && e.target.matches('input, select')) e.target.blur();
-    else if (removing) keepPlayer();
-    else closePlayers();
-  }
-
-  /**
-   * Enter in a board-game round with nobody selected (or no amount typed): move the steps in the host panel's box, or on
-   * a board that moves one space at a time, take the only way on. At a fork it says to pick the way. False when there's
-   * nothing to move (Enter then awards, as anywhere else).
-   */
-  function boardEnter(): boolean {
-    const { round, bs } = boardNow(game, session);
-    if (!round || !bs) return false;
-    // A space's question up (worth points, or with an answer): Enter judges whoever answered, as on a clue. (Not one
-    // left up from an earlier turn: Enter moves the next player, as the main button says.)
-    const q = toolOverlay(app.live);
-    if (q?.kind === 'popup' && (typeof q.value === 'number' || !!q.answer) && popupTurn === bgAmountKey) return false;
-    if (bs.fork) {
-      hint(`${playerName(session, bs.fork.playerId)} is at a fork: pick the way first (on the stage, or in the host panel)`);
-      return true;
-    }
-    // D then Enter at once: the dice (or the wheel) are still going on screen, and the move would end them early (the
-    // count isn't in the Steps box until they've landed). Under the scores too.
-    const o = toolOverlay(app.live);
-    if (round.mover.kind !== 'step' && (o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) {
-      toast(`Still ${o.kind === 'dice' ? 'rolling' : 'spinning'}: Enter again once it lands`);
-      return true;
-    }
-    let steps = bgSteps;
-    let way: string | undefined;
-    if (round.mover.kind === 'step') {
-      const id = currentPlayer(bs);
-      // One space a turn: once they've moved, Enter doesn't move them on (the panel's → buttons still can, on purpose).
-      if (id && bs.last?.playerId === id && (bs.last.turn ?? 0) === (bs.turns ?? 0)) {
-        // (A player picked: Enter is their award.)
-        if (selected.length) return false;
-        hint('Moved this turn: N for the next turn');
-        return true;
-      }
-      const at = id ? bs.positions[id]?.space : undefined;
-      const ways = id && at ? waysOn(round, at, bs.prev?.[id]) : [];
-      if (ways.length !== 1) {
-        // (A player picked: Enter is their award.)
-        if (selected.length) return false;
-        hint(ways.length ? stepWaysHint(round, bs, ways, dual) : at ? 'No way on from here: N for the next turn' : `${playerName(session, id ?? '')} isn’t on the board: N for the next turn`);
-        return true;
-      }
-      [steps, way] = [1, ways[0]];
-    }
-    if (!steps) {
-      // (A player picked: Enter is their award.)
-      if (selected.length) return false;
-      // Nothing to move (it used to fall through to the award, which asked for a player).
-      const id = currentPlayer(bs);
-      const moved = !!id && bs.last?.playerId === id && (bs.last.turn ?? 0) === (bs.turns ?? 0);
-      hint(
-        moved
-          ? 'Moved this turn: N for the next turn'
-          : bgNoNumber !== null
-            ? `No number on “${bgNoNumber}”: N for the next turn, or type the steps`
-            : `${round.mover.kind === 'wheel' ? 'Spin' : 'Roll'} first (D), or type the steps`,
-      );
-      return true;
-    }
-    // Not on a space (in a zone): the roll stays on screen and in the Steps box (for the zone's escape, say).
-    const who = currentPlayer(bs);
-    const off = who ? offBoard(session, round, bs, who) : null;
-    if (off) {
-      hint(off);
-      return true;
-    }
-    toast(moveNow(game, session, steps, way, undefined, !dual), 3000);
-    app.live.overlay = null;
-    bgSteps = null;
-    return true;
-  }
-
-  /** The round's own dice or movement wheel (on stream, over the board). */
-  function boardMover(o: Overlay | null): boolean {
-    const { round } = boardNow(game, session);
-    return !!round && isMover(round, o);
-  }
-
-  /** Next turn ▶ (◀ Previous turn: -1): a skip or a Roll again is said, it isn't simply the next player's turn. */
-  function boardTurn(delta: 1 | -1): void {
-    const t = turnNow(game, session, delta);
-    if (t) toast(t, 4000);
-  }
-
-  /** The check's ▶ Move (or a way): whoever's turn it is (the one at a fork) `steps` spaces, the way `way` first. */
-  function boardMoveBy(steps: number, way?: string): void {
-    const { round, bs } = boardNow(game, session);
-    if (!round || !bs) return;
-    // (As Enter: the dice still going on screen, and a player in a zone, wait.)
-    const o = toolOverlay(app.live);
-    if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return hint(`Still ${o.kind === 'dice' ? 'rolling' : 'spinning'}: wait for it to land`);
-    const who = bs.fork?.playerId ?? currentPlayer(bs);
-    const off = who ? offBoard(session, round, bs, who) : null;
-    if (off) return hint(off);
-    toast(moveNow(game, session, steps, way, undefined, !dual), 3000);
-    app.live.overlay = null;
-    bgSteps = null;
-  }
-
-  /**
-   * The check's ▶ Run (or ▶ Start): the turn's landing actions, for whoever landed, as the space's ▶ Run all does; an
-   * action for the players picked goes to those picked, as the landing box's own button does (the check waits for a pick).
-   */
-  function boardLanding(): void {
-    const { round, bs } = boardNow(game, session);
-    const last = bs?.last;
-    const sp = round && last?.landed ? round.spaces.find((x) => x.id === last.landed) : undefined;
-    if (sp && last) toast(runSpace(game, session, app.live, sp, [last.playerId], 'onLand', !dual, selected), 3000);
-  }
-
-  /**
-   * ✎ Edit board's keys: E starts (and ends) it; while editing, Esc lets go of what's picked (then ends it), Delete
-   * deletes the picked space or link, F2 renames, and the round's moves (D, Enter, N) wait. True when the key was used.
-   */
-  function boardEditKey(e: KeyboardEvent, k: string): boolean {
-    if (!boardEdit.on) {
-      hideControls = false;
-      setEditing(true);
-      return true;
-    }
-    if (k === 'e' && !e.shiftKey) setEditing(false);
-    // Esc closes the 📜 Log or a dice/wheel overlay first, as anywhere (the board stays in edit mode).
-    else if (k === 'escape' && (showLog || app.live.overlay)) return false;
-    else if (k === 'escape') {
-      if (boardEdit.sel || boardEdit.link || boardEdit.adding || boardEdit.connecting) {
-        if (boardEdit.adding || boardEdit.connecting) [boardEdit.adding, boardEdit.connecting] = [false, false];
-        else editIdle();
-      } else setEditing(false);
-    } else if (k === 'delete' || k === 'backspace') {
-      if (boardEdit.sel) editDeleteAll(game, session, editPicked(), !dual);
-      else if (boardEdit.link) editDisconnect(game, session, boardEdit.link);
-    } else if (k === 'f2') {
-      hideControls = false;
-      void tick().then(() => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select());
-    } else if (k === 'd' || k === 'enter' || k === 'n') toast('Editing the board: press Esc (or ✓ Done editing) to play on');
-    else return false;
-    return true;
-  }
+  const removingPlayer = $derived(midgame.removingPlayer);
+  const bgQuestion = $derived(midgame.bgQuestion);
+  const {
+    regroupKey, removeFromGame, keepPlayer, commitRoster, openPlayers, closePlayers, playersEsc,
+    boardEnter, boardMover, boardTurn, boardMoveBy, boardLanding, boardEditKey,
+  } = midgame;
 
   // What the keyboard moved the focus to: with Tab (or Shift+Tab), or the app after a key (a window closed, ▲▼, a
   // strip's Cancel), never the main button, one clicked with the mouse, nor one the app gave the keys to after a step
@@ -5341,7 +5100,7 @@
       ondrop={() => commitRoster()}
     >
       <!-- Phone buzzer teams: each row is a team, as before the game (a new one is "Team 4", not "Player 4"). -->
-      <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal use:scrollMore bind:this={playersBox}>
+      <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal use:scrollMore bind:this={midgame.playersBox}>
         <div class="row" data-head><h2 class="modal-title">{pregameTeams ? '👥 Teams' : '👥 Players'}</h2><span class="spacer"></span><button class="ghost modal-x" onclick={closePlayers} aria-label="Close" title="Close (Esc)">✕</button></div>
         <p class="muted">Add, remove, rename or recolor {pregameTeams ? 'teams' : 'players'}. To change a score, click it in the host panel.</p>
         <PlayerList
@@ -5350,7 +5109,7 @@
           inGame
           teams={pregameTeams}
           members={pregameTeams && session.remote ? teamMembers : undefined}
-          onremove={(id) => (removing = id)}
+          onremove={(id) => (midgame.removing = id)}
           onraise={game.settings.maxPlayers < MAX_PLAYERS ? raiseMost : undefined}
         />
         {#if removingPlayer}
@@ -5379,7 +5138,7 @@
                   onclick={() => {
                     restorePlayer(session, p.id);
                     // (This button goes with it: the keys go to their row's −.)
-                    void tick().then(() => playersBox?.querySelector<HTMLElement>(`[data-place="player:${p.id}"] button.del`)?.focus());
+                    void tick().then(() => midgame.playersBox?.querySelector<HTMLElement>(`[data-place="player:${p.id}"] button.del`)?.focus());
                   }}>↩ Restore</button>
               </span>
             {/each}
