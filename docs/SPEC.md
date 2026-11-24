@@ -426,8 +426,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   for phones goes (it can be made again at once). Save as a new file keeps both; Only this item (from a slide item
   whose file is used elsewhere) gives that item an edited copy of its own. Toasts and History name no file. Nothing is
   edited in play.
-- A media library panel (🖼 Media) lists everything in the game with its size and usage count. "🗑 Delete unused" is
-  available; files used only on 🤫 cards count as used, and its tooltip says an older copy of the app (which doesn't
+- A media library panel (🖼 Media) lists everything in the game with its size and usage count. "🗑 Delete unused (N)" is
+  there while some file is unused (an empty library, or one where everything is used, doesn't show it); files used only on 🤫 cards count as used, and its tooltip says an older copy of the app (which doesn't
   know about cards) would delete them. The checklist has no line for this: there's nothing to fix. Each card keeps its buttons in fixed places: the name row (☐ Select, the name, ⋯ for its menu, then 🗑
   apart at the right end), and the foot (✎ Edit video… or ✎ Edit sound…, as the slide's item bar names it · **Replace everywhere…** · the one fix that
   applies: 🔄 Convert…, else ↻ Make it a…, else 🗜 Make smaller…, offered only for a file on a 🤫 card, the only place

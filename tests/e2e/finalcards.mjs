@@ -308,10 +308,9 @@ try {
 
   // 🖼 Media: a file used only on a Final's card is used, there.
   await host.locator('nav > button', { hasText: '🖼 Media' }).click();
-  const unusedBtn = main.getByRole('button', { name: /^🗑 Delete unused/ });
-  await unusedBtn.waitFor();
-  assert((await unusedBtn.innerText()).trim() === '🗑 Delete unused (0)' && (await unusedBtn.isDisabled()), '🖼 Media: 🗑 Delete unused (0), off');
   const usedBtn = host.locator('[data-place="media:hint"] [data-used]');
+  await usedBtn.waitFor();
+  assert((await main.getByRole('button', { name: /^🗑 Delete unused/ }).count()) === 0, '🖼 Media: no 🗑 Delete unused, as nothing is unused');
   await usedBtn.click();
   const usedAt = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert((await usedBtn.innerText()).trim() === 'used 1× ▾' && usedAt.some((t) => t.startsWith('Final Jeopardy! › Leader hint')), `zfnqj-hint.png is used 1×, on the Final’s card (${usedAt.join(' | ')})`);

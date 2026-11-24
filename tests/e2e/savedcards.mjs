@@ -326,17 +326,17 @@ try {
   // ---------- 🖼 Media: a file used only on a card is used ----------
   await host.locator('nav > button', { hasText: '🖼 Media' }).click();
   const unusedBtn = host.getByRole('main').getByRole('button', { name: /^🗑 Delete unused/ });
-  await unusedBtn.waitFor();
-  assert((await unusedBtn.innerText()).trim() === '🗑 Delete unused (0)' && (await unusedBtn.isDisabled()), '🖼 Media: 🗑 Delete unused (0), off');
   const tipFile = host.locator('[data-place="media:tip"]');
+  await tipFile.waitFor();
+  assert((await unusedBtn.count()) === 0, '🖼 Media: no 🗑 Delete unused, as nothing is unused');
   const usedBtn = tipFile.locator('[data-used]');
   await usedBtn.click();
   const usedAt = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert((await usedBtn.innerText()).trim() === 'used 1× ▾' && usedAt.some((t) => t.startsWith('Cards › Tip A')), `zfnqj-tip.png is used 1×, on the 🤫 card Tip A (${usedAt.join(' | ')})`);
   await host.keyboard.press('Escape');
   assert(
-    (await host.locator('nav .problem', { hasText: /only on 🤫 cards|Older copies/ }).count()) === 0 && (await unusedBtn.getAttribute('title')).includes('Files used only on 🤫 cards count as used here'),
-    'the checklist has no line about it: 🗑 Delete unused’s tooltip says files only on 🤫 cards count as used (an older copy would delete them)',
+    (await host.locator('nav .problem', { hasText: /only on 🤫 cards|Older copies/ }).count()) === 0,
+    'the checklist has no line about it',
   );
 
   // ---------- Renamed in the list, then something else clicked: the keys stay there ----------

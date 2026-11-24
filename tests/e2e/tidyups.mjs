@@ -1,6 +1,7 @@
-// Small editor and host tidy-ups at 1280×720: a tall window keeps its title and ✕ in sight as it scrolls.
+// Small editor and host tidy-ups at 1280×720: a tall window keeps its title and ✕ in sight as it scrolls, and 🖼 Media
+// offers 🗑 Delete unused only while some file is unused.
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, appFile, failureShots, launchChromium } from './helpers.mjs';
+import { addClassicRounds, appFile, failureShots, launchChromium, png } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -52,6 +53,20 @@ try {
   assert(await onTop(settings, 'input[aria-label="Undo steps to remember"]'), 'a box Tab goes to higher up comes into view below the head');
   await settings.getByRole('button', { name: 'Done' }).click();
   await page.setViewportSize({ width: 1280, height: 720 });
+
+  // ---------- 🖼 Media offers 🗑 Delete unused only while something is unused ----------
+  await page.getByRole('button', { name: /^🖼 Media \(\d+\)$/ }).click();
+  const unusedBtn = page.getByRole('main').getByRole('button', { name: /^🗑 Delete unused/ });
+  await page.getByRole('button', { name: '＋ Add files…' }).waitFor();
+  assert((await unusedBtn.count()) === 0, 'an empty 🖼 Media has no 🗑 Delete unused (0)');
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
+  await chooser.setFiles([{ name: 'spare.png', mimeType: 'image/png', buffer: png(200, 40, 40) }]);
+  await page.locator('[data-place^="media:"]').first().waitFor();
+  assert((await unusedBtn.innerText()).trim() === '🗑 Delete unused (1)', 'a file nothing uses brings 🗑 Delete unused (1)');
+  await unusedBtn.click();
+  await page.locator('[data-place^="media:"]').waitFor({ state: 'detached' });
+  assert((await unusedBtn.count()) === 0, 'and once it is deleted, the button goes again');
+  assert(await page.evaluate(() => document.activeElement !== document.body), 'the keys stay on the page, not lost with the button');
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('tidyups: all passed');
