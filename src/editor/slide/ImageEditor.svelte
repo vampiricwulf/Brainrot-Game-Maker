@@ -760,6 +760,10 @@
     height: min(900px, 100%);
     overflow: visible;
   }
+  /* (It never scrolls, and its shadow, which hides what scrolls under a window's head, would show outside it.) */
+  .image-modal > header {
+    box-shadow: none;
+  }
   .crop-size {
     color: var(--accent);
   }

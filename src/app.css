@@ -352,8 +352,9 @@ body:has(.in-panel [aria-modal='true']) .toast {
   }
 }
 /* A window taller than the screen scrolls between its head and its foot: the title and ✕ (and a big editor's main
-   button beside them) stay in sight at the top, as Done does at the bottom. (Its shadows, the window's own colour,
-   hide the rows in the 18px above it and a little below it as they go under.) Whatever the window scrolls into view stops below the head
+   button beside them) stay in sight at the top, as Done does at the bottom. (Its shadow, the window's own colour,
+   hides the rows in the 18px above it as they go under; a window that lets things out over its edge, ✎ Edit image,
+   turns it off.) Whatever the window scrolls into view stops below the head
    and above the foot (scroll-padding). */
 :where(.modal-backdrop) > :where(.modal) {
   scroll-padding: 64px 0 72px;
@@ -363,9 +364,7 @@ body:has(.in-panel [aria-modal='true']) .toast {
   top: 0;
   z-index: 2;
   background: inherit;
-  box-shadow:
-    0 -18px 0 18px var(--panel),
-    0 8px 0 var(--panel);
+  box-shadow: 0 -18px 0 18px var(--panel);
 }
 /* A window taller than the screen scrolls under its foot: Done and the rest stay in sight, whole. */
 :where(.modal) > .modal-foot {
