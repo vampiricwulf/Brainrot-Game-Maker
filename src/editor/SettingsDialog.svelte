@@ -44,6 +44,11 @@
   /** What the Undo box's last change did, under it: snapped into range, steps forgotten (nothing: as typed). */
   let undoSaid = $state('');
   /**
+   * The box's change came with the press that closes the window (its click or key comes after the box loses the keys):
+   * then its note is said again as the window goes. Any later press or key means it was on screen to be read.
+   */
+  let undoFresh = false;
+  /**
    * Keeps the Undo setting (in range) and forgets the steps past it at once: says what happened, or ''. Lowering it
    * can't be taken back (the forgotten steps are gone), so it's always said.
    */
@@ -83,8 +88,9 @@
   /** Esc closes it with a box still focused (no change event then), so whatever was typed is kept here too. */
   function close(): void {
     prefs.buzzerServer = server;
-    // (Done, ✕ or a click outside straight after typing: the box's change came first, so its words are under it.)
-    const said = keepUndo() || undoSaid;
+    // (Done, ✕ or a click outside straight after typing: the box's change came first, so its words are under it, as
+    // the window goes. A note from an earlier change was read then, and is never said again.)
+    const said = keepUndo() || (undoFresh ? undoSaid : '');
     onclose();
     // (The window's gone: what the Undo box did is said in a toast.)
     if (said) toast(`Undo: ${said[0].toLowerCase()}${said.slice(1)}`);
@@ -92,7 +98,11 @@
 </script>
 
 <!-- (Esc while Back to the defaults asks is Cancel: the window stays.) -->
-<svelte:window onkeydown={(e) => e.key === 'Escape' && (resetting ? askDone() : close())} />
+<svelte:window
+  onkeydown={(e) => e.key === 'Escape' && (resetting ? askDone() : close())}
+  onpointerdowncapture={() => (undoFresh = false)}
+  onkeydowncapture={() => (undoFresh = false)}
+/>
 
 <div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && close()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Settings" use:modal data-undo="off">
@@ -153,7 +163,7 @@
         class="n"
         bind:value={prefs.undoSteps}
         oninput={(e) => (undoTyped = e.currentTarget.value)}
-        onchange={() => (undoSaid = keepUndo())}
+        onchange={() => ((undoSaid = keepUndo()), (undoFresh = true))}
         aria-label="Undo steps to remember"
       />
       changes ({UNDO_STEPS.min}–{UNDO_STEPS.max})

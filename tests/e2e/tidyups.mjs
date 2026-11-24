@@ -151,6 +151,25 @@ try {
   await toast.waitFor();
   assert((await toast.innerText()) === 'Undo: set to 20, the lowest it goes. Forgot the 3 oldest changes in 🕘 History.', `closed with Esc, a toast says it (“${await toast.innerText()}”)`);
   assert((await steps()) === 20, '🕘 History keeps 20');
+  // A note read under the box is never said again as the window goes: not after another number and Esc, nor on Done.
+  const stale = page.locator('.toast').filter({ hasText: /^Undo: set to 20, the lowest it goes\.$/ });
+  settings = await openSettings();
+  await undoBox.fill('5');
+  await undoBox.press('Tab');
+  await said.waitFor();
+  await undoBox.fill('300');
+  await page.keyboard.press('Escape');
+  await settings.waitFor({ state: 'detached' });
+  await page.waitForTimeout(300);
+  assert(!(await stale.count()), '5, Tab, then 300 and Esc: no toast with the old note (300 needs no word)');
+  settings = await openSettings();
+  await undoBox.fill('5');
+  await undoBox.press('Tab');
+  await said.waitFor();
+  await settings.getByRole('button', { name: 'Done' }).click();
+  await settings.waitFor({ state: 'detached' });
+  await page.waitForTimeout(300);
+  assert(!(await stale.count()), '5, Tab (its note shows), then Done: the note isn’t said again in a toast');
 
   // ---------- A wheel tile's Which wheel offers the ready-made wheels, and picking one adds it to the game ----------
   await page.locator('nav > button.round-tab').first().click();
