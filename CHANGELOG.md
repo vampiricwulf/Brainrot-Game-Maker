@@ -11,6 +11,13 @@ in Added / Changed / Fixed / Removed, in plain words for the people who make and
 are known, add them to the line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unreleased lines
 under the day's heading (Pacific time), and commit that with the hashes as `Changelog: …`.
 
+## Unreleased
+
+### Changed
+
+- The end-to-end tests find the stage, the host panel and its status line, player rows, award and tools rows and confirmation strip, the board and its tiles, toasts, the Final's controls, the round navigation, the editor's round tabs, the status bar and the slide inspector by a fixed data-* hook (with a helper each in tests/e2e/helpers.mjs) instead of by their CSS classes, so a restyle doesn't break them. The parts carry the hook beside their class, and it never holds a value. (97094b8, 7d6241f, 911bb7f, 6801000)
+- docs/development.md explains the hook helpers, which parts carry a hook and which selectors stay as classes; CLAUDE.md points to it. (b51bf59, f2e4e65)
+
 ## 2026-11-24
 
 ### Added
