@@ -828,6 +828,24 @@ try {
   );
   await ctxD.close();
 
+  // ---------- A phone (390×844): the check's lines and its “Don't ask” tick get the card's whole width ----------
+  console.log('The check on a phone:');
+  const ctxP = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const pp = await ctxP.newPage();
+  pp.on('pageerror', (e) => errors.push(`[phone] ${e.message}`));
+  await start(pp);
+  await mainButton(pp, 'Next turn ▶').click();
+  await checkItem(pp, 'roll').waitFor();
+  await pp.waitForTimeout(300);
+  const fit = await goOnCheck(pp).evaluate((card) => {
+    const sc = card.querySelector('.scroll').getBoundingClientRect();
+    const tick = card.querySelector('.tick-row')?.getBoundingClientRect();
+    const text = card.querySelector('.text').getBoundingClientRect();
+    return { tick: !!tick, inside: !!tick && tick.bottom <= sc.bottom + 1 && tick.right <= sc.right + 1, wide: Math.round(text.right - sc.left), w: Math.round(sc.width), spot: !!card.querySelector('.spot') };
+  });
+  assert(fit.tick && fit.inside && !fit.spot, `a phone: the check's “Don't ask” tick is whole in its card, nothing kept beside it for the blue button (${JSON.stringify(fit)})`);
+  await ctxP.close();
+
   // ---------- The check's ▶ Run, for a landing whose action is for the players picked ----------
   // (Thief takes $100 from the players picked, as the landing box's own −$100 button does: the check waits for a pick,
   // then gives it to them, not to whoever landed.)
