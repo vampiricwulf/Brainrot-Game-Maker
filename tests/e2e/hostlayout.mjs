@@ -2192,8 +2192,9 @@ try {
 
   // The reveal rows at every width from 360 to 1920px, at their fullest (big scores and their max, a wager box with ½
   // Halve and 0 Nullify, the spotlit row's wager shown and its Show wager's place kept empty), without typed answers in
-  // one window and with them in two: no control is drawn over another or past its row (the columns where they fit,
-  // else the rows wrap), and the stage keeps its size whatever the rows do.
+  // one window, and with them in one window (the spotlit one's on screen, the rest ✍ hidden) then two: no control is
+  // drawn over another or past its row (the columns where they fit, else the rows wrap), and the stage keeps its size
+  // whatever the rows do.
   section('The Final’s reveal rows at every width');
   const fullFile = resolve('test-results/hostlayout-full.json');
   writeFileSync(
@@ -2274,6 +2275,8 @@ try {
       await until(async () => (await stored(pf))?.session?.final?.shown?.l1 === true);
       const saved = await stored(pf);
       saved.session.final.answers = { l1: { text: 'What is the answer that goes on and on', n: 1 }, l2: { text: 'Paris', n: 1 }, l3: { text: 'Rome', n: 2 } };
+      // (In one window the spotlit one's is on screen, so in words here; the rest stay ✍ hidden.)
+      saved.session.final.answerShown = { l1: true };
       saved.savedAt = Date.now() + 60_000;
       await pf.close();
       pf = await ctx.newPage();
@@ -2293,27 +2296,40 @@ try {
       );
       await pf.reload();
       await pf.getByRole('button', { name: 'Resume game' }).click();
-      const [aud] = await Promise.all([pf.waitForEvent('popup'), pf.locator('.mode', { hasText: 'Separate audience window' }).click()]);
-      aud.on('pageerror', (e) => errors.push(e.message));
+      await pf.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
       await finalControlsIn(pf).locator('.order.typedcol').waitFor();
     }
-    const clashes = [];
-    const moved = [];
-    for (const w of sweep) {
-      await pf.setViewportSize({ width: w, height: 720 });
-      await pf.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
-      const bad = await rowClashes(pf);
-      if (bad.length) clashes.push(`${w}px: ${bad.slice(0, 4).join(', ')}`);
-      if (!typedRun) {
-        const s = await stageBoxIn(pf).boundingBox();
-        if (`${Math.round(s.width)}×${Math.round(s.height)}` !== stageOf.get(w))
-          moved.push(`${w}px: the stage ${stageOf.get(w)}, then ${Math.round(s.width)}×${Math.round(s.height)}`);
+    /** Every width of the sweep: what's drawn over what (and, without typed answers, whether the stage moved). */
+    const sweepRows = async (label) => {
+      const clashes = [];
+      const moved = [];
+      for (const w of sweep) {
+        await pf.setViewportSize({ width: w, height: 720 });
+        await pf.evaluate(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+        const bad = await rowClashes(pf);
+        if (bad.length) clashes.push(`${w}px: ${bad.slice(0, 4).join(', ')}`);
+        if (!typedRun) {
+          const s = await stageBoxIn(pf).boundingBox();
+          if (`${Math.round(s.width)}×${Math.round(s.height)}` !== stageOf.get(w))
+            moved.push(`${w}px: the stage ${stageOf.get(w)}, then ${Math.round(s.width)}×${Math.round(s.height)}`);
+        }
       }
+      assert(
+        clashes.length === 0 && moved.length === 0,
+        `${label}, 360–1920px wide: no control in a reveal row over another or past its row${typedRun ? '' : ', the stage its size'}${clashes.length || moved.length ? ` (not: ${[...clashes, ...moved].join(' | ')})` : ''}`,
+      );
+    };
+    await sweepRows(typedRun ? 'typed answers, one window (one shown, the rest ✍ hidden)' : 'one window');
+    if (typedRun) {
+      // (Two windows: every typed answer in words.)
+      await pf.setViewportSize({ width: 1280, height: 720 });
+      // (A, from the panel, not a wager box: the audience window.)
+      await statusLineIn(pf).click();
+      const [aud] = await Promise.all([pf.waitForEvent('popup'), pf.keyboard.press('a')]);
+      aud.on('pageerror', (e) => errors.push(e.message));
+      await finalControlsIn(pf).locator('[data-typed="l2"]', { hasText: 'Paris' }).waitFor();
+      await sweepRows('typed answers, two windows');
     }
-    assert(
-      clashes.length === 0 && moved.length === 0,
-      `${typedRun ? 'typed answers, two windows' : 'one window'}, 360–1920px wide: no control in a reveal row over another or past its row${typedRun ? '' : ', the stage its size'}${clashes.length || moved.length ? ` (not: ${[...clashes, ...moved].join(' | ')})` : ''}`,
-    );
     if (!typedRun) {
       // At one width the rows' words change (0 Nullify takes ½ Halve and itself away; Ctrl+Z brings them back): the
       // rows go back to columns where they now fit, and wrap again where they don't.
