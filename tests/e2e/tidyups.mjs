@@ -125,6 +125,19 @@ try {
   await undoBox.fill('20');
   await undoBox.press('Tab');
   assert(!(await said.count()), '20 with only 20 kept: nothing to say');
+  await undoBox.fill('0');
+  await undoBox.press('Tab');
+  assert((await undoBox.inputValue()) === '300' && (await said.innerText()) === 'Set to 300, the default (20 is the lowest it goes).', `0 is the default, said so (“${await said.innerText()}”)`);
+  // Typed, then Done straight away: the window goes, and a toast says what the box did.
+  await undoBox.fill('20');
+  await undoBox.press('Tab');
+  await undoBox.fill('2500');
+  await settings.getByRole('button', { name: 'Done' }).click();
+  await settings.waitFor({ state: 'detached' });
+  const doneToast = page.locator('.toast', { hasText: 'Undo:' });
+  await doneToast.waitFor();
+  assert((await doneToast.innerText()) === 'Undo: set to 2000, the highest it goes.', `typed, then Done: a toast says it (“${await doneToast.innerText()}”)`);
+  settings = await openSettings();
   await undoBox.fill('300');
   await undoBox.press('Tab');
   // Esc with the box still focused (no change yet): the window goes, and a toast says what was forgotten.

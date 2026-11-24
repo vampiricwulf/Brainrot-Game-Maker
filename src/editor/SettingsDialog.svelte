@@ -52,7 +52,9 @@
     undoTyped = null;
     savePrefs();
     const n = prefs.undoSteps;
-    const snapped = Number.isFinite(typed) && Math.round(typed) !== n ? `Set to ${n}, the ${typed < n ? 'lowest' : 'highest'} it goes.` : '';
+    // (0 is taken as "the default", as it always was.)
+    const end = n === UNDO_STEPS.min ? ', the lowest it goes' : n === UNDO_STEPS.max ? ', the highest it goes' : `, the default (${UNDO_STEPS.min} is the lowest it goes)`;
+    const snapped = Number.isFinite(typed) && Math.round(typed) !== n ? `Set to ${n}${end}.` : '';
     const gone = keepLimits();
     const forgot = gone ? (gone === 1 ? 'Forgot the oldest change in 🕘 History.' : `Forgot the ${gone} oldest changes in 🕘 History.`) : '';
     return [snapped, forgot].filter(Boolean).join(' ');
@@ -81,7 +83,8 @@
   /** Esc closes it with a box still focused (no change event then), so whatever was typed is kept here too. */
   function close(): void {
     prefs.buzzerServer = server;
-    const said = keepUndo();
+    // (Done, ✕ or a click outside straight after typing: the box's change came first, so its words are under it.)
+    const said = keepUndo() || undoSaid;
     onclose();
     // (The window's gone: what the Undo box did is said in a toast.)
     if (said) toast(`Undo: ${said[0].toLowerCase()}${said.slice(1)}`);
