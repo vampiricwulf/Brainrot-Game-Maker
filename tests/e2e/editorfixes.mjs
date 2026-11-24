@@ -511,6 +511,23 @@ try {
   const shop = await typingIn();
   assert(shop.label === 'Shop name' && shop.value === 'Shop 1' && shop.all, `＋ Add shop too (${JSON.stringify(shop)})`);
 
+  // ---------- 📥 Import CSV…: a semicolon file (Excel in much of Europe), and a price it can't read said ----------
+  const importItems = async (name, text, until) => {
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import CSV…' }).click()]);
+    await chooser.setFiles({ name, mimeType: 'text/csv', buffer: Buffer.from(text) });
+    await page.locator('.toast', { hasText: until }).waitFor();
+    return toastText();
+  };
+  const itemNames = () => page.getByLabel('Item name').evaluateAll((els) => els.map((e) => e.value));
+  const semi = await importItems('items.csv', 'name;price;stackable;wearable;description\r\nSword;10;no;hand;A sharp blade\r\nPotion;5;yes;;Heals 3 HP\r\n', 'Imported');
+  const afterSemi = await itemNames();
+  assert(
+    semi.includes('Imported 2 items: 2 new') && afterSemi.includes('Sword') && afterSemi.includes('Potion') && !afterSemi.some((n) => n.includes(';')),
+    `a semicolon CSV is read as columns, its header not an item (${semi}; ${afterSemi.join(' | ')})`,
+  );
+  const gold = await importItems('prices.csv', 'Name,Price\nShield,$12\nHelmet,8 gold\n', 'Imported 2 items: 2 new, 0 updated ·');
+  assert(gold.includes('Imported 2 items') && gold.includes('1 price couldn’t be read (“8 gold”)'), `a price it can’t read is said, “$12” is read (${gold})`);
+
   // ---------- Pre-game: 📋 Game rules ----------
   await page.getByRole('button', { name: '▶ Play' }).click();
   const rules = await openRules(page);

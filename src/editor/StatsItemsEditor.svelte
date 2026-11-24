@@ -16,6 +16,7 @@
   import RowTools from './RowTools.svelte';
   import { isTextField } from '../lib/undokeys';
   import { pickFile, readTextFile, safeFilename, saveFile, savedWhere } from '../lib/fileio';
+  import { readItemsCsv } from '../lib/itemcsv';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
   import { allWorldsAsOne } from '../lib/rpg';
   import { allActions, worldObjects } from '../lib/refs';
@@ -230,64 +231,31 @@
     }
   }
 
-  /** Split CSV text into rows (quoted fields may hold commas, quotes and line breaks). */
-  function parseCsv(text: string): string[][] {
-    const rows: string[][] = [];
-    let row: string[] = [];
-    let cell = '';
-    let quoted = false;
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
-      if (quoted) {
-        if (ch === '"' && text[i + 1] === '"') (cell += '"'), i++;
-        else if (ch === '"') quoted = false;
-        else cell += ch;
-      } else if (ch === '"') quoted = true;
-      else if (ch === ',') row.push(cell), (cell = '');
-      else if (ch === '\n' || ch === '\r') {
-        if (ch === '\r' && text[i + 1] === '\n') i++;
-        row.push(cell);
-        rows.push(row);
-        row = [];
-        cell = '';
-      } else cell += ch;
-    }
-    if (cell || row.length) rows.push([...row, cell]);
-    return rows.filter((r) => r.some((c) => c.trim()));
-  }
-
   async function importCsv(): Promise<void> {
     const file = await pickFile('.csv,text/csv');
     if (!file) return;
-    const rows = parseCsv(await readTextFile(file));
-    const head = rows[0]?.map((h) => h.trim().toLowerCase()) ?? [];
-    const col = (name: string) => head.indexOf(name);
-    // A header row is any first row naming a column the file can have (not only "name").
-    const start = ['name', 'price', 'stackable', 'wearable', 'description'].some((k) => col(k) >= 0) ? 1 : 0;
-    const n = col('name') >= 0 ? col('name') : 0;
+    const { items, badPrices } = readItemsCsv(await readTextFile(file));
     let added = 0;
-    let read = 0;
     step(`Imported items from “${file.name}”`, () => {
-      for (const r of rows.slice(start)) {
-        const name = r[n]?.trim();
-        if (!name) continue;
-        read++;
-        const price = Number(r[col('price')] ?? '');
-        const slot = r[col('wearable')]?.trim().toLowerCase();
-        const existing = game.items?.find((i) => i.name.toLowerCase() === name.toLowerCase());
-        const it: ItemDef = existing ?? { id: newId(), name, stackable: true };
-        if (!isNaN(price) && r[col('price')] !== undefined && r[col('price')] !== '') it.price = price;
-        if (col('stackable') >= 0) it.stackable = !/^(no|false|0)$/i.test(r[col('stackable')]?.trim() ?? '');
+      for (const row of items) {
+        const existing = game.items?.find((i) => i.name.toLowerCase() === row.name.toLowerCase());
+        const it: ItemDef = existing ?? { id: newId(), name: row.name, stackable: true };
+        if (row.price !== undefined) it.price = row.price;
+        if (row.stackable !== undefined) it.stackable = row.stackable;
         // (Its worn look, picture and place on the avatar, stays: only the slot is the file's.)
-        if (slot === 'head' || slot === 'hand' || slot === 'body' || slot === 'badge') it.wearable = { ...it.wearable, slot };
-        if (col('description') >= 0 && r[col('description')]) it.description = r[col('description')];
+        if (row.slot) it.wearable = { ...it.wearable, slot: row.slot };
+        if (row.description) it.description = row.description;
         if (!existing) {
           game.items = [...(game.items ?? []), it];
           added++;
         }
       }
     });
-    toast(read ? `Imported ${read} item${read === 1 ? '' : 's'}: ${added} new, ${read - added} updated` : `No items in “${file.name}” (a column of names, with price, stackable, wearable and description if you like)`);
+    const read = items.length;
+    // (A price that isn't a number, "8 gold", is left out: said here, so it isn't missed.)
+    const shown = badPrices.slice(0, 3).map((p) => `“${p}”`).join(', ') + (badPrices.length > 3 ? '…' : '');
+    const bad = badPrices.length ? ` · ${badPrices.length} price${badPrices.length === 1 ? '' : 's'} couldn’t be read (${shown}): a number, like 12` : '';
+    toast(read ? `Imported ${read} item${read === 1 ? '' : 's'}: ${added} new, ${read - added} updated${bad}` : `No items in “${file.name}” (a column of names, with price, stackable, wearable and description if you like)`);
   }
 
   /**
