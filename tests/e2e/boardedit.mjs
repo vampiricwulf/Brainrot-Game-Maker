@@ -956,6 +956,8 @@ try {
   const noteT = await editT.locator('.row.note').innerText();
   assert(noteT.includes('↶ Undo takes it back') && !noteT.includes('Ctrl+Z'), `its note says ↶ Undo takes an edit back, not Ctrl+Z (${noteT.replace(/\s+/g, ' ')})`);
   // Done editing turns it off: the next ✎ Edit board starts with it off.
+  await severalT.tap();
+  assert((await severalT.getAttribute('aria-pressed')) === 'true', '☑ Select several on again before ✓ Done editing');
   await editT.getByRole('button', { name: /Done editing/ }).tap();
   await editT.waitFor({ state: 'detached' });
   await tt.getByRole('button', { name: /^✎ Edit board/ }).tap();
