@@ -182,8 +182,8 @@ try {
   await clueBox.waitFor();
   const which = clueBox.getByLabel('Which wheel');
   const groups = await which.evaluate((sel) => [...sel.querySelectorAll('optgroup')].map((g) => `${g.label}: ${[...g.children].map((o) => o.textContent).join(', ')}`));
-  const readyGroup = groups.find((g) => g.startsWith('Ready-made: ')) ?? '';
-  assert(readyGroup.includes('🎰 Point wheel') && readyGroup.includes('💰 Double or nothing'), `Which wheel has a Ready-made group (${readyGroup.slice(0, 80)}…)`);
+  const readyGroup = groups.find((g) => g.startsWith('Ready-made (adds a copy to the game): ')) ?? '';
+  assert(readyGroup.includes('🎰 Point wheel') && readyGroup.includes('💰 Double or nothing'), `Which wheel has a “Ready-made (adds a copy to the game)” group (${readyGroup.slice(0, 80)}…)`);
   await which.selectOption({ label: '🎰 Point wheel' });
   const pickedWheel = () => which.evaluate((sel) => sel.selectedOptions[0]?.textContent ?? '');
   for (let i = 0; i < 50 && (await pickedWheel()) !== 'Point wheel'; i++) await page.waitForTimeout(100);

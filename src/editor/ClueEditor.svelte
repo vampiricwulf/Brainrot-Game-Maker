@@ -592,7 +592,7 @@
               </optgroup>
             {/if}
             <!-- (Picked, one is added to the game: as 🎡 Wheels, Dice & Deals › 📋 Ready-made wheel… does.) -->
-            <optgroup label="Ready-made">
+            <optgroup label="Ready-made (adds a copy to the game)">
               {#each WHEEL_TEMPLATES as t (t.key)}<option value="{TPL}{t.key}">{t.icon} {t.name}</option>{/each}
             </optgroup>
             <option value={NEW}>＋ Add wheel…</option>

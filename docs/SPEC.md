@@ -263,7 +263,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   clue · 🎡 Wheel tile… · 🎲 Dice tile…, then ✍ Everyone answers (standard tiles; on or off), 🚫 No Pass (on or off, one
   step; ticked and greyed where it's always on, its tooltip saying why) and ⬚ Empty tile. A wheel or dice tile opens
   the clue editor with the keys in its Which wheel / Which dice box. Which wheel lists 🎯 Pick a player, the game's own
-  wheels, a **Ready-made** group (the wheels of 🎡 › 📋 Ready-made wheel…: picked, one is added to the game and the tile
+  wheels, a **Ready-made (adds a copy to the game)** group (the wheels of 🎡 › 📋 Ready-made wheel…: picked, one is added to the game and the tile
   uses it, one undo step) and ＋ Add wheel…. In play, a wheel or dice tile with nothing to ask says so in the host
   panel's status line as what to do: "🎡 Wheel tile · spin it (W)" / "🎲 Dice tile · roll it (D)", then "· spun" /
   "· rolled".
