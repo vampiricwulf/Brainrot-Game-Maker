@@ -15,6 +15,7 @@
     cancel = 'Cancel',
     danger = false,
     focusCancel = false,
+    fit = false,
     alt,
     onalt,
     altDanger = false,
@@ -42,6 +43,11 @@
      * Enter = Award), and Esc there cancels.
      */
     focusCancel?: boolean;
+    /**
+     * Its answers may be cut short (…) where what it's in is narrow (the panel's confirmation strip on a phone): each
+     * one is named in full in its tooltip, and an answer's ▶ stays ("Go to <a long round name> ▶").
+     */
+    fit?: boolean;
     /** A second answer, between Cancel and the answer button (Leave: "Discard & leave" beside "Keep & leave"). */
     alt?: string;
     onalt?: () => void;
@@ -103,6 +109,9 @@
     return () => clearTimeout(t);
   });
 
+  /** The answer's words apart from its ▶, so a long name can be cut short, never its ▶ (the words read the same). */
+  const okWords = $derived(ok.endsWith(' ▶') ? ok.slice(0, -2) : null);
+
   function answer(): void {
     if (!blank) onok(typed.trim());
   }
@@ -147,6 +156,7 @@
   <button
     class="small ghost"
     bind:this={cancelBtn}
+    title={fit ? cancel : undefined}
     onclick={cancelled}
     onkeydown={(e) => {
       // The keys stay here: Enter or Space presses Cancel (never reaching the host's shortcuts). Esc: the group's.
@@ -154,12 +164,14 @@
     }}>{cancel}</button
   >
   {#if alt && onalt}
-    <button class="small ghost" class:danger={altDanger} class:apart={altDanger} onclick={() => ready && onalt()}>{alt}</button>
+    <button class="small ghost" class:danger={altDanger} class:apart={altDanger} title={fit ? alt : undefined} onclick={() => ready && onalt()}>{alt}</button>
   {/if}
   {#each alts as a (a.label)}
-    <button class="small {a.strong ? 'primary' : 'ghost'}" onclick={() => ready && a.onclick()}>{a.label}</button>
+    <button class="small {a.strong ? 'primary' : 'ghost'}" title={fit ? a.label : undefined} onclick={() => ready && a.onclick()}>{a.label}</button>
   {/each}
-  <button class="small {danger ? 'bad' : plain ? '' : 'primary'}" disabled={blank} onclick={() => ready && answer()}>{ok}</button>
+  <button class="small {danger ? 'bad' : plain ? '' : 'primary'}" disabled={blank} title={fit ? ok : undefined} onclick={() => ready && answer()}
+    >{#if okWords !== null}<span class="words">{`${okWords} `}</span>▶{:else}{ok}{/if}</button
+  >
 </div>
 
 <style>

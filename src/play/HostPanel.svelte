@@ -1950,6 +1950,7 @@
             onalt={ask.onalt}
             altDanger={ask.altDanger}
             focusCancel
+            fit
             onok={ask.onok}
             oncancel={ask.oncancel}
           />
@@ -2398,6 +2399,27 @@
   .panel:not(.side) > .askslot > .confirm :global(.ia > button) {
     font-size: 14px;
     padding: 6px 12px;
+  }
+  /* An answer never runs off the panel's edge (on a phone, "Go to <a long round name> ▶"): too long for the strip, its
+     words are cut short (…), its ▶ kept, the whole answer in its tooltip and read out in full. One line, so the strip
+     keeps its height (with an audience window it's under the stage, which would give up that room). Where it fits, it
+     looks as before. */
+  .confirm :global(.ia > button) {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .confirm :global(.ia > button:has(> .words)) {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+  }
+  .confirm :global(.ia > button > .words) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* (The space before ▶, kept at the words' end.) */
+    white-space: pre;
   }
   /* Single window: the strip takes no room of its own (its slot is no height, and the panel's gap before it is taken
      back), lying over the tools row from its foot up, so the panel, and the stage above it, keep their size. */

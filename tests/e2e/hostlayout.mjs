@@ -38,7 +38,10 @@
 // giving three rows or more their ✔ Right and ✘ Wrong in sight; at 1920×1080, where the rows fit, it stays out. From
 // 360 to 1920px wide (big scores, ½ Halve and 0 Nullify, typed answers or none, one window or two) no control in a reveal
 // row is drawn over another or past its row, the stage its size, and a panel scrolled down stays so as a row changes. An RPG and a board-game round's box keeps one width
-// from its title card to play, clear of the main button's cell.
+// from its title card to play, clear of the main button's cell. On a phone (430 to 320px wide), in one window and with
+// an audience window, the leave-round question's "Go to <a long round name> ▶" is cut short (its ▶ kept, named in full
+// and in its tooltip), nothing in it past the window's edge and no sideways scroll; in one window the stage keeps its
+// size.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -2631,6 +2634,93 @@ try {
         await pm.waitForTimeout(450);
         await leaveAnswer(pm).click();
       }
+    }
+    await ctx.close();
+  }
+
+  // On a phone, the leave-round question with a long round name: its answers stay inside the window ("Go to <the long
+  // name> ▶" cut short, its ▶ kept, named in full and in its tooltip), the page never scrolls sideways, and in one
+  // window the stage keeps its size; in one window and with an audience window, at 430, 390, 360 and 320px wide.
+  section('The leave-round question on a phone, a long round name');
+  const longName = 'The Extraordinarily Long Second Round of Brainrot Trivia';
+  const phoneBoard = (id, name) => ({
+    id,
+    name,
+    mode: 'board',
+    values: [200, 400],
+    dailyDoubleCount: 0,
+    categories: ['Memes', 'Rizz'].map((c, ci) => ({ id: `${id}_${ci}`, title: c, clues: [0, 1].map((ri) => clue(`${c} ${ri}`, `Answer ${ri}`)) })),
+  });
+  const phoneGame = {
+    ...game,
+    id: 'g_phone_leave',
+    settings: { ...game.settings, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'all' } },
+    rounds: [phoneBoard('r_p1', 'Jeopardy!'), phoneBoard('r_p2', longName)],
+  };
+  const phoneFile = resolve('test-results/hostlayout-phone.json');
+  writeFileSync(phoneFile, JSON.stringify(phoneGame));
+  const goLong = `Go to ${longName} ▶`;
+  for (const dual of [false, true]) {
+    const where = dual ? 'with an audience window' : 'in one window';
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 844 } });
+    const pp = await ctx.newPage();
+    pp.on('pageerror', (e) => errors.push(e.message));
+    await pp.goto(pathToFileURL(file).href);
+    await openGameFile(pp, phoneFile);
+    await pp.getByText(/^Opened “/).waitFor();
+    await pp.getByRole('button', { name: '▶ Play' }).click();
+    if (dual) await Promise.all([pp.waitForEvent('popup'), pp.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+    await pp.getByRole('button', { name: 'Start game ▶' }).click();
+    await hostPanelIn(pp).waitFor();
+    if (await pp.getByRole('button', { name: 'Skip intro' }).count()) await pp.getByRole('button', { name: 'Skip intro' }).click();
+    await pp.waitForTimeout(450);
+    // (Asked on a wide window, then narrowed: the focus on Keep playing keeps it up.)
+    await roundNavIn(pp).locator('button', { hasText: '▶' }).click();
+    await confirmStrip(pp).getByRole('button', { name: goLong, exact: true }).waitFor();
+    for (const width of [430, 390, 360, 320]) {
+      await pp.setViewportSize({ width, height: 844 });
+      await pp.waitForTimeout(150);
+      const fit = await pp.evaluate(async () => {
+        await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+        const strip = document.querySelector('[data-confirm-strip]');
+        const out = [strip, ...strip.querySelectorAll('*')]
+          .filter((e) => {
+            const r = e.getBoundingClientRect();
+            return r.left < -0.5 || r.right > innerWidth + 0.5;
+          })
+          .map((e) => `${e.tagName.toLowerCase()} “${e.textContent.trim().slice(0, 24)}” to ${Math.round(e.getBoundingClientRect().right)}`);
+        const go = [...strip.querySelectorAll('button')].at(-1);
+        const words = go.querySelector('.words');
+        return {
+          out,
+          sideways: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
+          cut: !!words && words.scrollWidth > words.clientWidth,
+          arrow: go.getBoundingClientRect().right - (words?.getBoundingClientRect().right ?? 0) > 8,
+          title: go.title,
+        };
+      });
+      assert(
+        fit.out.length === 0 && fit.sideways <= 0,
+        `${width}px wide ${where}: the leave-round question stays inside the window, nothing scrolls sideways${fit.out.length ? ` (past its edge: ${fit.out.join(', ')})` : ''}${fit.sideways > 0 ? ` (the page scrolls ${fit.sideways}px sideways)` : ''}`,
+      );
+      assert(
+        fit.cut && fit.arrow && fit.title === goLong && (await confirmStrip(pp).getByRole('button', { name: goLong, exact: true }).count()) === 1,
+        `${width}px wide ${where}: “${goLong}” is cut short, its ▶ kept, named in full and in its tooltip (${JSON.stringify({ cut: fit.cut, arrow: fit.arrow, title: fit.title })})`,
+      );
+    }
+    if (!dual) {
+      // In one window the strip lies over the tools row: the stage keeps its size at 390px wide.
+      await confirmStrip(pp).getByRole('button', { name: 'Keep playing', exact: true }).click();
+      await confirmStrip(pp).waitFor({ state: 'detached' });
+      await pp.setViewportSize({ width: 390, height: 844 });
+      await pp.waitForTimeout(450);
+      const stageAt = async () => JSON.stringify(await pp.locator('.stage-area').boundingBox());
+      const before = await stageAt();
+      await roundNavIn(pp).locator('button', { hasText: '▶' }).click();
+      await confirmStrip(pp).waitFor();
+      await pp.waitForTimeout(300);
+      const asking = await stageAt();
+      assert(before === asking, `390px wide in one window: the stage keeps its size while the question is up (${before} → ${asking})`);
     }
     await ctx.close();
   }
