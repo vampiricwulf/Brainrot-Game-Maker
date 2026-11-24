@@ -215,8 +215,9 @@ export function parseThemeFile(text: string): SharedTheme {
   try {
     data = JSON.parse(text);
   } catch {
-    // (A theme file is JSON: one that starts as JSON was cut off or damaged; anything else isn't a theme file.)
-    throw new ThemeError(/^\s*\{/.test(text) ? 'This file can’t be read as a theme: it may be cut off or damaged.' : 'This isn’t a Brainrot theme file (.brainrot-theme).');
+    // (A theme file is JSON: one that starts as JSON was cut off or damaged; anything else isn't a theme file. The
+    // window says first that the file "can’t be used as a theme", so this doesn't say it again.)
+    throw new ThemeError(/^\s*\{/.test(text) ? 'It may be cut off or damaged.' : 'This isn’t a Brainrot theme file (.brainrot-theme).');
   }
   return sharedTheme(data, 'file');
 }

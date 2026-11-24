@@ -139,7 +139,7 @@ describe('theme files', () => {
   });
 
   it('refuse what isn’t a theme, with a clear message', () => {
-    expect(() => parseThemeFile('{oops')).toThrow(/cut off or damaged/);
+    expect(() => parseThemeFile('{oops')).toThrow(/^It may be cut off or damaged\.$/);
     // (A game pack, an exported game or any other file: not "damaged".)
     expect(() => parseThemeFile('PK\u0003\u0004\u0014\u0000game.json')).toThrow(/This is a game, not a theme/);
     expect(() => parseThemeFile('<!doctype html>\n<html lang="en">')).toThrow(/This is a game, not a theme/);
