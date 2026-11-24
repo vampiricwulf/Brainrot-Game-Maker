@@ -500,7 +500,8 @@ mod tests {
 
     #[test]
     fn a_save_whose_backups_never_moved_along_gets_its_bak() {
-        let dir = temp("held");
+        // Its own folder: tests run side by side, and a_held_save_is_aged_by_the_time_in_its_name uses "held".
+        let dir = temp("never-moved");
         let read = |name: &str| fs::read_to_string(dir.join(name)).ok();
         for v in ["1", "2"] {
             write_save(&dir, "Game.brainrot", v.as_bytes(), BACKUPS).unwrap();
