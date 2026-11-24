@@ -146,6 +146,8 @@ input, select, textarea {
   padding: 6px 8px;
 }
 input[type='color'] { padding: 0; width: 36px; height: 30px; cursor: pointer; }
+/* (A slider isn't a text box: padding or a border would end its track short of the thumb at its maximum.) */
+input[type='range'] { padding: 0; border: 0; background: none; }
 input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--accent); }
 input[type='radio'] { accent-color: var(--accent); }
 

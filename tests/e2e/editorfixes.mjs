@@ -658,6 +658,13 @@ try {
     // A page picked in the sidebar opens at its top, not as far down as the last one was scrolled.
     const mainEl = sp.locator('main');
     await sp.getByRole('button', { name: '🔊 Sounds' }).click();
+    {
+      // A slider has no text box's padding or border round it, so at 100% its thumb is at the end of its track.
+      const boxed = await sp.locator('main input[type="range"]').evaluateAll((rs) =>
+        rs.map((r) => getComputedStyle(r)).filter((c) => c.paddingLeft !== '0px' || c.paddingRight !== '0px' || c.borderLeftWidth !== '0px').map((c) => `${c.padding} / ${c.borderLeftWidth}`),
+      );
+      assert(boxed.length === 0, `🔊 Sounds’ volume sliders have no padding or border in their track’s way (${boxed.slice(0, 2).join(', ')})`);
+    }
     await mainEl.evaluate((m) => (m.scrollTop = m.scrollHeight));
     const scrolled = await mainEl.evaluate((m) => m.scrollTop);
     await sp.getByRole('button', { name: '🎨 Theme' }).click();
