@@ -589,9 +589,10 @@
     text-align: left;
   }
   /* A touch screen (no mouse): the menus' own buttons and boxes (🎲 Dice's d4…2d6, its Roll and saved dice, 🎡 Wheel's
-     and 🏁 Who goes first's) at least 32px to tap, and the dice a little further apart. */
+     and 🏁 Who goes first's) at least 32px to tap, and the dice a little further apart. (A tick box's row, its label,
+     not the box itself, which would only stretch.) */
   @media (hover: none) {
-    .menu :is(button, input, select) {
+    .menu :is(button, input:not([type='checkbox']), select, label.check) {
       min-height: 32px;
     }
     .grid {
