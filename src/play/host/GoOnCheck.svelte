@@ -98,6 +98,10 @@
     const cardBottom = foot - 4;
     // (Narrow under the stage, a phone: no room kept for the blue button's spot. Beside it, the card's lines would be
     // squeezed to half its width and cut; its guard still keeps a fast second tap there from pressing what's under it.)
+    // (The blue button, read afresh each time: the window may have been resized since it opened. It stays laid out under
+    // the card; where it's gone or hidden, its last place is kept.)
+    const now = panel.querySelector<HTMLElement>('[data-next]')?.getBoundingClientRect();
+    if (now && now.width > 0) mainAt = now;
     const main = mainAt;
     const keep = !!main && (side || width >= 460);
     const spot =
@@ -114,14 +118,12 @@
       pad: main && keep ? (side ? cardBottom - main.top + 8 : cardRight - main.left + 8) : 0,
     };
   }
-  /** The blue button's rectangle as the check opened (it may be gone under the card since). */
+  /** The blue button's rectangle when last measured (as the check opened, or the window was last resized). */
   let mainAt: DOMRect | null = null;
   /** Its guard is over: keys and clicks on it count (data-ready, for screen tests to wait on). */
   let ready = $state(false);
   onMount(() => {
     const t = setTimeout(() => (ready = true), Math.max(0, check.at + CHECK_GUARD_MS - Date.now()));
-    const main = el?.closest('.panel')?.querySelector<HTMLElement>('[data-next]');
-    mainAt = main ? main.getBoundingClientRect() : null;
     measure();
     // The keys go to the check itself (not one of its buttons): screen readers read its heading and what's left.
     void tick().then(() => el?.focus({ preventScroll: true }));
