@@ -2964,6 +2964,15 @@
     border-left: 0;
     border-right: 0;
   }
+  /* A touch screen (no mouse): ⋯ Tools at least 32px to tap, as the tools row's buttons are. It grows into the line's
+     gaps (4px above and below, half the 8px between its lines), not the line: the status line keeps its height, so
+     the moment's box under it keeps its room. (TimerControls' buttons do the same.) */
+  @media (hover: none) {
+    .toolsfold {
+      min-height: 32px;
+      margin-block: -4px;
+    }
+  }
   .clicknote {
     position: absolute;
     left: 0;

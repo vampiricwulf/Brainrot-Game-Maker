@@ -12,7 +12,9 @@
 // kept out (📊 Scoreboard on, at 320×568) the moment's box still has room and the panel scrolls. A phone on its side, a
 // tablet, a laptop (1280×720, 1920×1080) and a phone with an audience window keep the panel's height as it was, and so
 // does a window held upright that's too short for the stage and more (320×454, 360×380, 600×600): its panel ends at the
-// window's foot, the fixed bar in reach.
+// window's foot, the fixed bar in reach. On these phones ⋯ Tools, the clock's buttons and the 🎲 Dice menu's are at
+// least 32px to tap, a clue's player chips are one line each (a 320px phone too), and the panel's words name taps,
+// never a click or keys (a clue, the RPG, the board game, game over).
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -191,6 +193,22 @@ async function noKeys(page, where, moment) {
 }
 
 /**
+ * Every one of `loc`'s buttons and boxes in sight is at least 32px tall to tap (a touch screen's floor, as the tools
+ * row's): ⋯ Tools, the clock's, the 🎲 Dice menu's.
+ * @param {Locator} loc
+ * @param {string} what
+ */
+async function tappable(loc, what) {
+  const sizes = await loc.evaluateAll((els) =>
+    els
+      .filter((e) => e.getClientRects().length)
+      .map((e) => ({ name: (e.textContent || e.getAttribute('aria-label') || '').trim(), h: Math.round(e.getBoundingClientRect().height) })),
+  );
+  const small = sizes.filter((x) => x.h < 32);
+  assert(sizes.length > 0 && small.length === 0, `${what}: at least 32px tall to tap (${JSON.stringify(small.length ? small : sizes.slice(0, 3))})`);
+}
+
+/**
  * @param {Page} page
  * @param {string | RegExp} text
  */
@@ -259,6 +277,9 @@ try {
     await statusSays(page, 'Answer hidden');
     await roomy(page, where, 'a clue', stage0);
     await noKeys(page, where, 'a clue');
+    // ⏱️ Start and its seconds box, and (on a small phone) ⋯ Tools, at least 32px to tap.
+    await tappable(statusLineIn(page).locator('.tc :is(button, input)'), `${where}, a clue: the clock's Start and seconds box`);
+    if (tiny) await tappable(hostPanelIn(page).getByRole('button', { name: '⋯ Tools' }), `${where}: ⋯ Tools`);
     // The players' chips on one line each, the sample's short names and scores (a 320px phone too): not folded in two,
     // twice as tall, with only the first chip in reach. The first two chips' ✔ take a tap where they are, and ✔ / ✘
     // keep their size.
@@ -302,6 +323,7 @@ try {
       .first()
       .tap();
     const dice = page.getByRole('dialog', { name: 'Dice' });
+    await tappable(dice.locator(':is(button, input)'), `${where}: the 🎲 Dice menu's d4…2d6, its box and Roll`);
     await dice.getByRole('button').first().tap();
     await hostPanelIn(page).locator('.mode-host.tools').waitFor();
     await sleep(2000);
@@ -354,6 +376,11 @@ try {
         return false;
       }, `the Final's ${step}`);
       await sleep(500);
+      // The Final's clock running on its question: ⏸, −10, +10, ↺ and ✕ at least 32px to tap.
+      if (step === 'Question on screen') {
+        await statusLineIn(page).getByRole('button', { name: 'Hide timer' }).waitFor();
+        await tappable(statusLineIn(page).locator('.tc :is(button, input)'), `${where}, the Final's question: the clock's buttons`);
+      }
     }
     await roomy(page, where, "the Final's reveals", stage0);
     await tapIt(hostPanelIn(page).getByRole('button', { name: 'Finish now…' }), `${where}: the Final's Finish now…`);

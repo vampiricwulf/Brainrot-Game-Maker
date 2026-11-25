@@ -588,6 +588,16 @@
   .item {
     text-align: left;
   }
+  /* A touch screen (no mouse): the menus' own buttons and boxes (🎲 Dice's d4…2d6, its Roll and saved dice, 🎡 Wheel's
+     and 🏁 Who goes first's) at least 32px to tap, and the dice a little further apart. */
+  @media (hover: none) {
+    .menu :is(button, input, select) {
+      min-height: 32px;
+    }
+    .grid {
+      gap: 6px;
+    }
+  }
   .wl {
     display: flex;
     gap: 4px;

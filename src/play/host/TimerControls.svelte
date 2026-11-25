@@ -99,4 +99,19 @@
     width: 64px;
     padding: 3px 6px;
   }
+  /* A touch screen (no mouse): ▶ / ⏸, −10, +10, ↺, ✕, Start and the seconds box at least 32px to tap. They grow into
+     the status line's gaps (about half the 8px between its lines, above and below), not the line, so it keeps its
+     height and the moment's box under it its room (and HostPanel's .clockroom, the clock's room while it's away, stays
+     as it was). */
+  @media (hover: none) {
+    .small {
+      min-width: 32px;
+      min-height: 32px;
+      margin-block: -5px;
+    }
+    input {
+      min-height: 32px;
+      margin-block: -4px;
+    }
+  }
 </style>
