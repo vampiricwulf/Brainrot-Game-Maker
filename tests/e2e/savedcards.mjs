@@ -3,7 +3,7 @@
 // the show, then sent in play against the real buzzer room (buzzer/ under `wrangler dev`, local), with three phones on
 // the real phone page.
 // In the editor, 🤫 Cards (2) sits right after 🎡 Wheels, Dice & Deals: ＋ Add card opens a new one with its words box in
-// focus, the checklist's line about an empty card goes to it (it flashes), typing and renaming are named undo steps, a
+// focus, the checklist's line about an empty card goes to it (it flashes, its words box taking the keys), typing and renaming are named undo steps, a
 // name that repeats what's on the card says so, and the list's right-click ⧉ Duplicate, Alt+↓, F2 and Delete (with ↶ Undo)
 // work as they do for wheels (a rename there ended by a click elsewhere leaves the keys where the click put them). 📱 On their phone shows a card as a phone gets it, 🔍 Find finds one by its words, and 🖼️ Media
 // counts a file used only on a card as used.
@@ -15,6 +15,7 @@
 // audience window. A card changed in the editor (▶ Resume with my edits) comes off the phones until ↻ Send again. With
 // no phones (the room closed), one shown in the 🪟 card window comes out of it, and its row says to ↩ Take it back and
 // show it again: there's no ↻ Send again.
+// And the checklist's lines about a wheel or an item put the keys on its row, out of the checklist.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -782,6 +783,55 @@ try {
   await tools.locator('[data-cards-out-count="0"]').waitFor();
   assert(true, '↩ Take back: no card out');
   await offStream(host, 'the host page in one window', 'no phones, the end');
+
+  // =====================================================================================================================
+  // F. The checklist's lines about a wheel and an item (as its 🤫 card lines): the keys go to the row, out of it
+  // =====================================================================================================================
+  section('The checklist’s wheel and item lines');
+  const toolsGame = {
+    ...game,
+    id: 'g_saved_cards_tools',
+    cards: [],
+    wheels: [
+      {
+        id: 'w_spin',
+        name: 'Spinny',
+        segments: [
+          { id: 's1', label: 'A', weight: 1, color: '#e6194b', actions: [{ do: 'stat', field: 'gone', by: 1 }] },
+          { id: 's2', label: 'B', weight: 1, color: '#3cb44b' },
+        ],
+        spinDurationMs: 3000,
+        removeAfterLanding: false,
+      },
+    ],
+    items: [{ id: 'i_potion', name: 'Potion', stackable: true, onUse: [{ do: 'shop', shop: 'gone' }] }],
+  };
+  const toolsPath = resultsPath('saved-cards-tools.brainrot');
+  writeFileSync(toolsPath, await packGame(toolsGame, files));
+  const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const ed = watch(await ctx2.newPage(), 'tools');
+  await ed.goto(pathToFileURL(file).href);
+  await openGameFile(ed, toolsPath);
+  await ed.getByText(/^Opened “/).waitFor();
+  await editorReady(ed);
+  const fold = ed.locator('nav .problems .fold');
+  if ((await fold.getAttribute('aria-expanded')) === 'false') await fold.click();
+  for (const [says, key] of [
+    ['Wheel “Spinny”: a slice', 'wheel:w_spin'],
+    ['Item “Potion”: a Use button', 'item:i_potion'],
+  ]) {
+    await ed.locator('nav .problem', { hasText: says }).click();
+    const there = await until(
+      () =>
+        ed.evaluate(
+          (key) => !document.activeElement?.closest('nav') && document.activeElement?.closest('[data-place]')?.getAttribute('data-place') === key,
+          key,
+        ),
+      3000,
+    );
+    assert(there, `the checklist’s “${says}…” line puts the keys on its row (${await ed.evaluate(() => document.activeElement?.outerHTML.slice(0, 80))})`);
+  }
+  await ctx2.close();
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Saved card tests passed');
