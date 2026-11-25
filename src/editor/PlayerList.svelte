@@ -617,4 +617,15 @@
     border-radius: 50%;
     line-height: 0;
   }
+  /* On ▶ Play's page before the game, on a touch screen: ▲ ▼ 🗑 are 32px squares to tap (Play.svelte), 🗑 further apart
+     from ▼ so a tap meant for one doesn't land on the other. The headings row keeps their room. */
+  @media (hover: none) {
+    :global(.pregame) .moves .del,
+    :global(.pregame) .moves .btn:last-child {
+      margin-left: 16px;
+    }
+    :global(.pregame) .cols .btn {
+      min-width: 32px;
+    }
+  }
 </style>

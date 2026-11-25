@@ -77,6 +77,50 @@ async function toastOverWindow(page, what) {
   await dlg.waitFor({ state: 'detached' });
 }
 
+/**
+ * ▶ Play's page before the game in `page`: what its buttons and the ⚖ Game rules / 📺 On stream headings measure, a
+ * player row's ▲ ▼ 🗑 (on one line, 🗑 apart from ▼), the start score heading over its boxes, and whether it scrolls
+ * sideways. With ± Start scores shown and the headings' folds open, as a host checking them would have them.
+ */
+async function pregameTargets(/** @type {import('playwright-core').Page} */ page) {
+  const scores = page.locator('main.pregame [data-start-scores]');
+  if (!(await page.locator('main.pregame input.score').count())) await scores.evaluate((b) => /** @type {HTMLElement} */ (b).click());
+  await page.locator('main.pregame input.score').first().waitFor();
+  await page.evaluate(() => document.querySelectorAll('main.pregame details').forEach((d) => d.setAttribute('open', '')));
+  await page.waitForTimeout(150);
+  const out = await page.evaluate(() => {
+    const name = (/** @type {Element} */ e) => (e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 30);
+    const small = [...document.querySelectorAll('main.pregame :is(button, details > summary)')]
+      .filter((e) => e.getClientRects().length && !e.closest('[inert]'))
+      .map((e) => ({ e, r: e.getBoundingClientRect() }))
+      .filter(({ r }) => r.width < 31.5 || r.height < 31.5)
+      .map(({ e, r }) => `${name(e)} ${Math.round(r.width)}×${Math.round(r.height)}`);
+    const rows = [...document.querySelectorAll('main.pregame .rows .moves')].map((m) => {
+      const [up, down, del] = [...m.querySelectorAll('button')].map((b) => b.getBoundingClientRect());
+      return { line: Math.abs(up.top - del.top) < 1 && Math.abs(down.top - del.top) < 1, gap: Math.round(del.left - down.right) };
+    });
+    const head = document.querySelector('main.pregame .players > .cols .score')?.getBoundingClientRect();
+    const box = document.querySelector('main.pregame .players > .rows input.score')?.getBoundingClientRect();
+    const [hm, rm] = ['.cols', '.rows'].map((s) => document.querySelector(`main.pregame .players > ${s} .moves`)?.getBoundingClientRect());
+    return {
+      small,
+      rows,
+      tiny: Math.round(document.querySelector('main.pregame .rows button.tiny')?.getBoundingClientRect().height ?? 0),
+      // (The heading starts or ends with the boxes, as the row wraps or not; the headings' ▲ ▼ 🗑 are as wide as the rows'.)
+      aligned:
+        !!head &&
+        !!box &&
+        !!hm &&
+        !!rm &&
+        (Math.abs(head.left - box.left) < 1.5 || Math.abs(head.right - box.right) < 1.5) &&
+        Math.abs(hm.width - rm.width) < 1,
+      sw: document.documentElement.scrollWidth,
+      iw: innerWidth,
+    };
+  });
+  await scores.evaluate((b) => /** @type {HTMLElement} */ (b).click());
+  return out;
+}
 /** A board game for two moved by `mover` (a d6, a movement wheel, or a space at a time), as a game file. */
 function boardFile(/** @type {'dice' | 'wheel' | 'step'} */ kind) {
   const sp = (/** @type {number} */ i, /** @type {string} */ name, /** @type {boolean} */ end) => ({
@@ -334,6 +378,17 @@ try {
     await addPlayers(page, 2);
     const startKey = page.locator('kbd.start-key');
     assert((await startKey.count()) === 1 && !(await shows(startKey)), 'Start game ▶ shows no Ctrl+⏎ on a touch screen');
+    // Its buttons, small ones and a player row's ▲ ▼ 🗑 too, and its headings, are at least 32px to tap; the rows' ▲ ▼ 🗑
+    // stay on one line, 🗑 apart, and nothing scrolls sideways (390 wide, and 360).
+    for (const w of [390, 360]) {
+      await page.setViewportSize({ width: w, height: 844 });
+      const t = await pregameTargets(page);
+      assert(
+        !t.small.length && t.rows.length >= 2 && t.rows.every((r) => r.line && r.gap >= 20) && t.aligned && t.sw === w && t.iw === w,
+        `a phone ${w} wide, before the game: every button and heading at least 32px, ▲ ▼ 🗑 on one line with 🗑 apart, the start score heading over its boxes, nothing sideways (${JSON.stringify(t)})`,
+      );
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
     await ctx.close();
   }
 
@@ -386,6 +441,11 @@ try {
       fit.sw === 390 && fit.iw === 390 && fit.wide.length === 0 && fit.rows.every((h) => h < 40),
       `a phone hosting, two phones in: the 📱 card's rows fit the screen, one line each, nothing scrolls sideways (${JSON.stringify(fit)})`,
     );
+    const roomT = await pregameTargets(page);
+    assert(
+      !roomT.small.length && roomT.sw === 390,
+      `and with the room up, its buttons (⛔, 📱) are at least 32px to tap too, nothing sideways (${JSON.stringify(roomT)})`,
+    );
     const kick = card.getByRole('button', { name: /^Kick .*: take their seat back from their phone$/ }).first();
     const free = card.getByRole('button', { name: /^Free seat: .*’s \(moved phone\)$/ }).first();
     assert(
@@ -424,6 +484,14 @@ try {
       (await words.evaluate((w) => w.scrollWidth <= w.clientWidth)) && (await page.locator('.first-round .what').innerText()).includes('Nothing to install.'),
       'a tablet shows the whole line saying what the app is, not cut short',
     );
+    await page.getByRole('button', { name: /Try a sample game/ }).click();
+    await page.getByRole('button', { name: '▶ Play' }).click();
+    await page.getByRole('button', { name: /Start game ▶/ }).waitFor();
+    const t = await pregameTargets(page);
+    assert(
+      !t.small.length && t.rows.every((r) => r.line && r.gap >= 20) && t.aligned && t.sw === 820,
+      `a tablet, before the game: every button and heading at least 32px to tap, ▲ ▼ 🗑 on one line with 🗑 apart (${JSON.stringify(t)})`,
+    );
     await ctx.close();
   }
 
@@ -453,6 +521,15 @@ try {
     await page.locator('.hint.drop').waitFor({ state: 'detached' });
     await page.getByRole('button', { name: /^Help:/ }).click();
     assert(await shows(page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).locator('kbd')), 'and its menus show their keys');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /Try a sample game/ }).click();
+    await page.getByRole('button', { name: '▶ Play' }).click();
+    await page.getByRole('button', { name: /Start game ▶/ }).waitFor();
+    const t = await pregameTargets(page);
+    assert(
+      t.tiny > 0 && t.tiny < 24 && t.rows.every((r) => r.line && r.gap < 20) && t.aligned,
+      `with a mouse, the page before the game keeps its small buttons (▲ ▼ 🗑 ${t.tiny}px tall, 🗑 ${t.rows[0]?.gap}px from ▼)`,
+    );
     await ctx.close();
   }
 
