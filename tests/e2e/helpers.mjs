@@ -158,9 +158,9 @@ export const untilWith =
   (cond, opts = {}) =>
     until(cond, { ...defaults, ...(typeof opts === 'number' ? { timeout: opts } : typeof opts === 'string' ? { what: opts } : opts) });
 
-/** Where a failing test leaves its pictures: SCREENSHOTS (CI uploads it), else SHOTS, else test-results/. */
+/** Where a failing test leaves its pictures: SCREENSHOTS (CI uploads it), else SHOTS, else the repo's test-results/. */
 export function failureDir() {
-  const dir = process.env.SCREENSHOTS || process.env.SHOTS || 'test-results';
+  const dir = process.env.SCREENSHOTS || process.env.SHOTS || join(repo, 'test-results');
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -928,8 +928,8 @@ export async function freePort() {
 export async function startBuzzer(prefix, { vars = {} } = {}) {
   const { spawn } = await import('node:child_process');
   const { mkdtempSync } = await import('node:fs');
-  const dir = resolve('buzzer');
-  if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
+  const dir = join(repo, 'buzzer');
+  if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error(`Run \`npm ci\` in ${dir} first (no wrangler at node_modules/.bin/wrangler)`);
   const port = await freePort();
   const inspector = await freePort();
   const persist = mkdtempSync(join(tmpdir(), prefix));
