@@ -7,7 +7,7 @@
 // sidebar at 1280×720, pages opening at their top, and a round's name on a tablet; its round pages at 1920 (one header
 // width; the slide of a slides round, a Final and the tiebreaker filling it, and the clue editor the window), the slide's
 // buttons all one size, and the board's two count lines level. And a reload mid-edit coming back on the page, round and
-// clue it left.
+// clue it left. And on a phone, 🔊 Sounds, 📊 Stats & Items, the board game and the slide tabs not scrolling sideways.
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -22,6 +22,7 @@ import {
   inspectorIn,
   roundTabsIn,
   toastsIn,
+  until,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -1066,6 +1067,125 @@ try {
     const laptop = await page();
     assert(laptop.canvas >= 700, `at 1280×720 the Final's slide keeps the size it has at the readable width (${JSON.stringify(laptop)})`);
     await wp.context().close();
+  }
+
+  // ---------- On a phone (390×844), the sample's pages don't scroll sideways ----------
+  // 🔊 Sounds' rows wrap, a 📊 stat's row goes on more lines (⋯ 🗑 on its first), the board game's three views wrap, and
+  // "Answer slide (hidden until revealed)" gives way (cut short with …) so both slide tabs show, in a round and a clue.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    const pp = await ctx.newPage();
+    pp.on('pageerror', (e) => errors.push(e.message));
+    await pp.goto(pathToFileURL(file).href);
+    await pp.getByRole('button', { name: /Try a sample game/ }).click();
+    await roundTabsIn(pp).first().waitFor();
+    const roundTab = (name) => roundTabsIn(pp).filter({ hasText: name }).first();
+    const pageButton = (name) => pp.locator('nav > button', { hasText: name }).first();
+    /** <main>'s scroll width and width: the same when nothing sticks out sideways. */
+    const sideways = () =>
+      pp.evaluate(() => {
+        const m = document.querySelector('main');
+        return { scroll: m.scrollWidth, width: m.clientWidth };
+      });
+    const fits = async (what) => {
+      const s = await until(async () => {
+        const v = await sideways();
+        return v.scroll <= v.width && v;
+      });
+      assert(s, `at 390 wide, ${what} doesn't scroll the page sideways (${JSON.stringify(s || (await sideways()))})`);
+    };
+    const box = (loc) => loc.evaluate((e) => e.getBoundingClientRect().toJSON());
+
+    await pageButton(/Sounds/).click();
+    await pp.locator('.sound').first().waitFor();
+    await fits('🔊 Sounds');
+    // (And a row with a file chosen, the widest: its name, ⌫ Clear file and Change….)
+    await pp.getByRole('button', { name: 'Choose file for Partner clue' }).click();
+    const [chosen] = await Promise.all([
+      pp.waitForEvent('filechooser'),
+      pp
+        .locator('.picker')
+        .getByRole('button', { name: /Upload sound file/ })
+        .click(),
+    ]);
+    await chosen.setFiles([{ name: 'a-rather-long-name-for-a-partner-sound.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(3000, 1) }]);
+    await pp.getByRole('button', { name: 'Change file for Partner clue' }).waitFor();
+    await fits('🔊 Sounds with a file chosen');
+    const outside = await pp.locator('.sound').evaluateAll((rows) =>
+      rows.flatMap((r) => {
+        const right = r.getBoundingClientRect().right;
+        return [...r.querySelectorAll('button')].filter((b) => b.getBoundingClientRect().right > right + 0.5).map((b) => b.textContent.trim());
+      }),
+    );
+    assert(!outside.length, `and every sound's buttons are inside its row (${outside.join(', ')})`);
+
+    await pageButton(/Stats & Items/).click();
+    const gold = pp.locator('.field-row').first();
+    await gold.waitFor();
+    await fits('📊 Stats & Items');
+    const [who, color, tools, name] = await Promise.all([
+      box(gold.locator('.who')),
+      box(gold.locator('input[type="color"]')),
+      box(gold.locator('.row-tools')),
+      box(gold.locator('.name')),
+    ]);
+    const over = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    assert(
+      !over(who, color) && !over(who, tools) && !over(color, tools) && Math.abs(tools.top - name.top) < name.height,
+      `a stat's Who sees it, color and ⋯ 🗑 don't overlap, ⋯ 🗑 on its name's line (${JSON.stringify([who, color, tools].map((b) => [b.left, b.top, b.right, b.bottom].map(Math.round)))})`,
+    );
+
+    await roundTab(/Board game/).click();
+    const views = pp.locator('div.tabs[aria-label="Edit"]');
+    await views.waitFor();
+    for (const view of [/Spaces/, /Board backdrop/, /Off-board zones/]) {
+      await views.getByRole('button', { name: view }).first().click();
+      await fits(`the board game's ${view.source} view`);
+    }
+
+    await roundTab(/Final/).click();
+    const answer = pp.locator('main [role="tab"]', { hasText: /^Answer slide \(hidden until revealed\)$/ });
+    await answer.waitFor();
+    await fits("the Final's page");
+    const finalTabs = await answer.evaluate((t) => {
+      const l = t.closest('[role="tablist"]');
+      return { tab: t.getBoundingClientRect().right, list: l.getBoundingClientRect().right, scrolls: l.scrollWidth > l.clientWidth };
+    });
+    assert(
+      finalTabs.tab <= finalTabs.list + 0.5 && finalTabs.tab <= 390 && !finalTabs.scrolls,
+      `the Final's Answer slide tab is inside its tab list, which doesn't scroll (${JSON.stringify(finalTabs)})`,
+    );
+
+    await roundTab(/^\W*Jeopardy!$/).click();
+    await pp.locator('.grid .tile').first().click();
+    const clue = pp.getByRole('dialog', { name: 'Edit clue' });
+    await clue.waitFor();
+    const clueTabs = await clue.getByRole('tab', { name: 'Answer slide (hidden until revealed)' }).evaluate((t) => {
+      const l = t.closest('[role="tablist"]');
+      const q = l.querySelector('[role="tab"]').getBoundingClientRect();
+      return {
+        tab: t.getBoundingClientRect().right,
+        list: l.getBoundingClientRect().right,
+        scrolls: l.scrollWidth > l.clientWidth,
+        question: q.left >= l.getBoundingClientRect().left - 0.5,
+      };
+    });
+    assert(
+      clueTabs.tab <= clueTabs.list + 0.5 && !clueTabs.scrolls && clueTabs.question,
+      `in a clue's window both slide tabs show in their list, which doesn't scroll (${JSON.stringify(clueTabs)})`,
+    );
+    await pp.keyboard.press('Escape');
+    await clue.waitFor({ state: 'detached' });
+    // On a laptop a stat's row is still one line: name, kind, who sees it, color, ⋯ 🗑.
+    await pp.setViewportSize({ width: 1280, height: 720 });
+    await pageButton(/Stats & Items/).click();
+    await gold.waitFor();
+    const wide = await Promise.all([box(gold.locator('.name')), box(gold.locator('.who')), box(gold.locator('input[type="color"]'))]);
+    assert(
+      wide.every((b) => b.bottom > wide[1].top && b.top < wide[1].bottom),
+      `at 1280 a stat's name, who sees it and color are on one line (${wide.map((b) => Math.round(b.top)).join(', ')})`,
+    );
+    await ctx.close();
   }
 
   // ---------- A reload mid-edit comes back where it was ----------
