@@ -1217,7 +1217,7 @@
       {:else if done}
         <span class="done">Round complete!</span>
       {:else}
-        <span class="muted" title={touchScreen.on ? undefined : 'Pick a tile on the board. (arrows + Enter)'}
+        <span class="muted how" title={touchScreen.on ? 'Pick a tile on the board.' : 'Pick a tile on the board. (arrows + Enter)'}
           >Pick a tile on the board.{#if !touchScreen.on}{' '}<span class="hint">(arrows + Enter)</span>{/if}</span
         >
       {/if}
@@ -2160,11 +2160,11 @@
       min-height: min(clamp(280px, 44vh, 440px), 62vh);
     }
   }
-  /* A short phone held upright (700px tall or less), one window: the status line's how-to keeps to one line, cut short
-     (…), its whole text in its tooltip; it takes the line's room left, so it never pushes the line onto two. (The tools
-     row folds behind ⋯ Tools there too: see phoneFold.) */
+  /* A short phone held upright (700px tall or less), one window: the status line's how-to (or a board round's "Pick a
+     tile on the board.") keeps to one line, cut short (…), its whole text in its tooltip; it takes the line's room
+     left, so it never pushes the line onto two. (The tools row folds behind ⋯ Tools there too: see phoneFold.) */
   @media (orientation: portrait) and (max-width: 600px) and (max-height: 700px) {
-    .panel:not(.dual):not(.side) > .status > :is(.hint, .muted:has(> .hint)) {
+    .panel:not(.dual):not(.side) > .status > :is(.hint, .how, .muted:has(> .hint)) {
       flex: 1 1 0;
       min-width: 0;
       white-space: nowrap;

@@ -85,7 +85,7 @@ const layout = (page) =>
     const stage = /** @type {Element} */ (document.querySelector('[data-stage-box] .stage'));
     const fixed = /** @type {Element} */ (panel.querySelector(':scope > .fixed'));
     // The status line's how-to, wherever it's cut short (…): its tooltip has it whole.
-    const untitled = [...panel.querySelectorAll(':scope > .status > :is(.hint, .muted:has(> .hint))')]
+    const untitled = [...panel.querySelectorAll(':scope > .status > :is(.hint, .how, .muted:has(> .hint))')]
       .filter((e) => e.scrollWidth > e.clientWidth + 1 && !(e.getAttribute('title') ?? '').trim())
       .map((e) => (e.textContent ?? '').trim());
     return {
