@@ -73,6 +73,12 @@ try {
   await chooser.setFiles([{ name: 'spare.png', mimeType: 'image/png', buffer: png(200, 40, 40) }]);
   await page.locator('[data-place^="media:"]').first().waitFor();
   assert((await unusedBtn.innerText()).trim() === '🗑 Delete unused (1)', 'a file nothing uses brings 🗑 Delete unused (1)');
+  // 🗑 last, a little apart from the button before it (the link box's ＋ Add), as 🗑 sits on every page.
+  const apart = await unusedBtn.evaluate((b) => {
+    const prev = b.previousElementSibling?.getBoundingClientRect();
+    return prev ? Math.round(b.getBoundingClientRect().left - prev.right) : null;
+  });
+  assert(apart !== null && apart >= 16, `🗑 Delete unused sits a little apart from the button before it (${apart}px)`);
   await unusedBtn.click();
   await page.locator('[data-place^="media:"]').waitFor({ state: 'detached' });
   assert((await unusedBtn.count()) === 0, 'and once it is deleted, the button goes again');

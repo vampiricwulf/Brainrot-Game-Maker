@@ -557,7 +557,7 @@
     <!-- (Only while some file is unused: an empty library, or one where everything is used, offers nothing to delete.) -->
     {#if unused.length}
       <button
-        class="ghost danger"
+        class="ghost danger del"
         onclick={() =>
           remove(
             unused.map((m) => m.id),
