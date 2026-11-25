@@ -1147,6 +1147,47 @@ try {
   );
   hostState({ cards: null, answers: null });
   await ann.locator('.card').waitFor({ state: 'detached' });
+  // A three-line question under what's on ("Science · $800") with no Pass row, on a 320×568 phone: BUZZ! (armed) and
+  // "Answers locked" both fit, with nothing to scroll (the line over the question counts in the circle's room).
+  await ann.setViewportSize({ width: 320, height: 568 });
+  const moons = 'This planet has the most moons in our solar system, with over 140 confirmed.';
+  const noScroll = async (what) => {
+    await until(
+      () =>
+        ann
+          .locator('#clue')
+          .textContent()
+          .then((t) => t === moons),
+      'the three-line question',
+    );
+    await ann.locator('#buzz-big').getByText(what).waitFor();
+    return ann.evaluate(
+      () =>
+        new Promise((ok) =>
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              const c = document.getElementById('clue');
+              ok({
+                lines: Math.round(c.getBoundingClientRect().height / parseFloat(getComputedStyle(c).lineHeight)),
+                cap: !document.getElementById('clue-cap').hidden,
+                pass: !document.getElementById('pass').hidden,
+                height: document.documentElement.scrollHeight,
+                inner: innerHeight,
+              });
+            }),
+          ),
+        ),
+    );
+  };
+  hostState({ phase: 'armed', armId: 41, clue: { text: moons, caption: 'Science · $800' }, answers: null });
+  const armed3 = await noScroll('BUZZ!');
+  hostState({ phase: 'lobby', answers: { id: 'moons', open: false, seats: [{ id: 'a' }] } });
+  const locked3 = await noScroll('Answers locked');
+  assert(
+    [armed3, locked3].every((m) => m.lines === 3 && m.cap && !m.pass && m.height <= m.inner),
+    `a three-line question with what's on over it and no Pass, on a 320×568 phone: armed and locked, nothing to scroll (${JSON.stringify([armed3, locked3])})`,
+  );
+  hostState({ phase: 'lobby', clue: null, answers: null });
   // A shorter question on a bigger phone, with a long link and "A) … B) …" lines: whole, left-aligned, the lines kept.
   await ann.setViewportSize({ width: 390, height: 844 });
   const quiz =

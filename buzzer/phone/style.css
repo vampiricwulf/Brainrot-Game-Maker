@@ -749,6 +749,13 @@ textarea:focus {
 #s-buzz:has(#pass:not([hidden])) {
   --pass-room: 90px;
 }
+/*
+ * No Pass, but the line over the question (what's on: "Science · $800"): its room alone (the 32px of the 90 above), so
+ * a three-line question, BUZZ! and the name fit a 320×568 phone with nothing to scroll.
+ */
+#s-buzz:has(#clue-cap:not([hidden])):not(:has(#pass:not([hidden]))) {
+  --pass-room: 32px;
+}
 /* The buzz screen never pulls to refresh or bounces under a mashing thumb. */
 html:has(#s-buzz:not([hidden])) {
   overscroll-behavior: none;
