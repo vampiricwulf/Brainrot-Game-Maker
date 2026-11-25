@@ -118,7 +118,7 @@ try {
 
   // A clue with a video and a sound (with its speaker icon on), both started by hand.
   await page.locator('.tile').first().click();
-  await page.getByRole('button', { name: '🎬 Video' }).click();
+  await page.getByRole('button', { name: '🎞️ Video' }).click();
   let [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
   await fc.setFiles({ name: 'clip.webm', mimeType: 'video/webm', buffer: clip });
   await inspectorIn(page).getByLabel('Autoplay when the slide appears').uncheck();
@@ -154,7 +154,7 @@ try {
   await page.getByRole('button', { name: 'Done' }).click();
   // A third clue with a video and a YouTube video that play by themselves, coming in 3 s after the slide.
   await page.locator('.tile').nth(2).click();
-  await page.getByRole('button', { name: '🎬 Video' }).click();
+  await page.getByRole('button', { name: '🎞️ Video' }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
   await fc.setFiles({ name: 'later.webm', mimeType: 'video/webm', buffer: clip });
   const comesIn = async () => {
@@ -174,7 +174,7 @@ try {
   await page.getByRole('button', { name: 'Done' }).click();
   // A fourth clue with a looping, muted video (as a GIF becomes) under a sound that's started by hand and cut at 1.5 s.
   await page.locator('.tile').nth(3).click();
-  await page.getByRole('button', { name: '🎬 Video' }).click();
+  await page.getByRole('button', { name: '🎞️ Video' }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
   await fc.setFiles({ name: 'gif.webm', mimeType: 'video/webm', buffer: clip });
   await inspectorIn(page).getByLabel('Loop', { exact: true }).check();
@@ -672,7 +672,7 @@ try {
     await lp.goto(pathToFileURL(file).href);
     await addClassicRounds(lp);
     const upload = async (what, name, mimeType, buffer) => {
-      await lp.getByRole('button', { name: what === 'video' ? '🎬 Video' : '🔊 Sound', exact: true }).click();
+      await lp.getByRole('button', { name: what === 'video' ? '🎞️ Video' : '🔊 Sound', exact: true }).click();
       const [chooser] = await Promise.all([
         lp.waitForEvent('filechooser'),
         lp.getByRole('button', { name: `⬆ Upload ${what === 'video' ? 'video' : 'sound'} file…` }).click(),
@@ -799,7 +799,7 @@ try {
     await lp.screenshot({ path: resultsPath('stagemedia-missing.png') });
     const missing = (await rows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
     assert(
-      missing.join(' | ') === '🎬 This video’s file is missing from this computer. | 🔊 This sound’s file is missing from this computer.',
+      missing.join(' | ') === '🎞️ This video’s file is missing from this computer. | 🔊 This sound’s file is missing from this computer.',
       `missing files: a row each says so, naming no file (${missing.join(' | ')})`,
     );
     assert((await stageBoxIn(lp).locator('.full .missing').count()) === 0, 'and the stage (what the stream shows) has no box for them');
@@ -857,7 +857,7 @@ try {
     await wp.keyboard.press('w');
     const prize = '.stage-box .reveal video';
     await waitPaused(wp, prize, false);
-    await wp.locator('.mc .item', { has: wp.locator('.ic', { hasText: '🎬' }) }).waitFor();
+    await wp.locator('.mc .item', { has: wp.locator('.ic', { hasText: '🎞️' }) }).waitFor();
     assert(true, "a wheel slice's video plays as it lands, with a media row");
     await wp.evaluate(() => document.activeElement?.blur());
     await wp.keyboard.press(' ');

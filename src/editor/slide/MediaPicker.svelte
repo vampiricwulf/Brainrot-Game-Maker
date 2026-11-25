@@ -103,7 +103,7 @@
           {#if kind === 'image' && mediaUrls[m.id]}
             <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} draggable="false" />
           {:else}
-            <span class="ic">{kind === 'video' ? '🎬' : kind === 'audio' ? '🔊' : '🔤'}</span>
+            <span class="ic">{kind === 'video' ? '🎞️' : kind === 'audio' ? '🔊' : '🔤'}</span>
           {/if}
           <span class="nm">{m.name}</span>
           <span class="muted small" title={m.url ? 'Plays from the internet' : undefined}>{m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)}</span>

@@ -87,7 +87,7 @@
   });
   /** A card set to both or everyone else goes to more than one phone: theirs says it isn't theirs alone (as a phone does). */
   const shared = $derived(!!clue && (card.to === 'both' || card.to === 'others'));
-  const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼️', gif: '🖼️', video: '🎞️', sound: '🔊', embed: '▶' };
+  const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼️', gif: '🖼️', video: '🎞️', sound: '🔊', embed: '▶️' };
   const KIND: Record<PhoneItem['kind'], string> = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' };
 
   /** The size of what goes up for an item (its 🗜 copy, when that's what goes), as people read it ("148.2 MB"). */

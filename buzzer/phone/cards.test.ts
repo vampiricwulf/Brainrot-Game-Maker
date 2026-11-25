@@ -142,7 +142,7 @@ describe('a card’s lines', () => {
     expect(comingLine('video')).toBe('🎞️ Video coming…');
     expect(missingLine('image')).toBe('🖼️ The host will show you this picture');
     expect(missingLine('audio')).toBe('🔊 The host will show you this sound');
-    expect(brokenLine('embed')).toBe('🎞️ This video didn’t load. Ask the host to show you.');
+    expect(brokenLine('embed')).toBe('▶️ This video didn’t load. Ask the host to show you.');
     expect(arrivedLine('image')).toBe('Your picture is here');
   });
 

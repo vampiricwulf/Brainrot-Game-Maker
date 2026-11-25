@@ -99,7 +99,7 @@ export interface Described {
   undoPlace: Place | null;
 }
 
-const MEDIA_ICON: Record<MediaKind, string> = { image: '🖼️', video: '🎬', audio: '🔊', font: '🔤' };
+const MEDIA_ICON: Record<MediaKind, string> = { image: '🖼️', video: '🎞️', audio: '🔊', font: '🔤' };
 const SIDE_NAME = { q: 'Question', a: 'Answer' } as const;
 
 type Obj = Record<string, unknown>;

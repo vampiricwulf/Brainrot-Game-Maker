@@ -363,7 +363,7 @@ describe('step labels', () => {
     expect(describeStep(diff(withFont, pixel), withFont, pixel).label).toBe('Theme: value font Pixel Party (uploaded)');
     expect(step((g) => (g.theme.scoreBar = 'top')).label).toBe('Theme: score bar top');
     const file = step((g) => g.media.push({ id: 'm2', name: 'clip.mp4', mime: 'video/mp4', size: 1, kind: 'video' }));
-    expect(file).toMatchObject({ label: 'Added file “clip.mp4”', icon: '🎬', place: { tab: 'media', media: 'm2' } });
+    expect(file).toMatchObject({ label: 'Added file “clip.mp4”', icon: '🎞️', place: { tab: 'media', media: 'm2' } });
     expect(step((g) => g.media.pop()).label).toBe('Removed file “a.png”');
     const slice = step((g) => g.wheels[0].segments.push({ ...g.wheels[0].segments[0], id: 's-new', label: 'Sing a song' }));
     expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels, Dice & Deals › Punishments', icon: '🎡' });

@@ -366,7 +366,7 @@
   // ---------- Adding elements ----------
   /**
    * `also`: more changes in the same undo step (moving the question's text out of a new picture's way). `keys`: the
-   * keyboard goes on from the slide even when a button has it (a file picked from 🖼️ Image, 🎬 Video, 🔊 Sound or 🌐 Link,
+   * keyboard goes on from the slide even when a button has it (a file picked from 🖼️ Image, 🎞️ Video, 🔊 Sound or 🌐 Link,
    * whose button takes the focus back as its picker closes, or a file dropped or pasted), so Delete, the arrows and
    * Enter work on the new item.
    */
@@ -1300,7 +1300,7 @@
         {#if picker === 'image' && !replacing}<MediaPicker kind="image" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">
-        <button onclick={() => (picker = 'video')} title="Add a video: upload one, link to one online, or reuse one from this game">🎬 Video</button>
+        <button onclick={() => (picker = 'video')} title="Add a video: upload one, link to one online, or reuse one from this game">🎞️ Video</button>
         {#if picker === 'video' && !replacing}<MediaPicker kind="video" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">

@@ -293,7 +293,7 @@
   const hasSomething = $derived(!!slide && slide.elements.some((e) => e.kind !== 'text' || !!e.text.trim()));
   /** The quick card's items, in order, by kind (never named: in one window viewers see this). */
   const itemKinds = $derived(cardItems(game, quickSlide('', items)));
-  const ICON: Record<CardItem['kind'], string> = { picture: '🖼️ picture', gif: '🖼️ GIF', video: '🎞️ video', sound: '🔊 sound', embed: '▶ online video' };
+  const ICON: Record<CardItem['kind'], string> = { picture: '🖼️ picture', gif: '🖼️ GIF', video: '🎞️ video', sound: '🔊 sound', embed: '▶️ online video' };
 
   /**
    * A picture, GIF, video or sound from this computer (or pasted): into the game's 🖼️ Media, onto the card. A new file

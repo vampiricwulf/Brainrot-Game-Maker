@@ -628,7 +628,7 @@ assert(
   'a picker opens with its link field ready for a paste',
 );
 await page.locator('.picker .item', { hasText: 'beep.wav' }).click();
-await page.getByRole('button', { name: '🎬 Video' }).click();
+await page.getByRole('button', { name: '🎞️ Video' }).click();
 [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
 await fc.setFiles({ name: 'clip.webm', mimeType: 'video/webm', buffer: await webm() });
 await page.locator('.canvas video').waitFor();

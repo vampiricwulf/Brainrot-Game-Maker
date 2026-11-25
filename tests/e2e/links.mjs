@@ -248,7 +248,7 @@ assert(true, 'a Discord link without its signature asks for the whole link');
 await linkInput.fill(`https://drive.google.com/file/d/${DRIVE_VID}/view?usp=sharing`);
 await linkInput.press('Enter');
 await box.getByText('Is this Google Drive file a picture, or a video or sound?').waitFor();
-await box.getByRole('button', { name: '🎬 Video or sound' }).click();
+await box.getByRole('button', { name: '▶️ Video or sound' }).click();
 await shot('links-0-drive-choice');
 assert((await box.getByText('In Google Drive: Share → General access → Anyone with the link → Copy link.').count()) === 1, 'Drive shows how to share the file');
 await box.getByRole('button', { name: "▶ Use Google Drive's player" }).click();
@@ -460,7 +460,7 @@ await inspectorIn(page).getByText('🌐 Plays from files.catbox.moe during the s
 await page.getByRole('button', { name: '🌐 Link' }).click();
 await page.locator('.linkbox').getByLabel('Paste a link').fill(`https://drive.google.com/file/d/${DRIVE_VID}/view`);
 await page.locator('.linkbox').getByLabel('Paste a link').press('Enter');
-await page.locator('.linkbox').getByRole('button', { name: '🎬 Video or sound' }).click();
+await page.locator('.linkbox').getByRole('button', { name: '▶️ Video or sound' }).click();
 await page.locator('.linkbox').getByRole('button', { name: "▶ Use Google Drive's player" }).click();
 await inspectorIn(page).getByLabel('Link', { exact: true }).fill('https://example.test/not-a-drive-file');
 await page.locator('.canvas .card', { hasText: 'Not a valid link for the Google Drive player' }).waitFor();

@@ -112,7 +112,7 @@ try {
   // ---------- The game: a video clue, a Daily Double ----------
   const clip = await webm();
   await page.locator('.tile').first().click();
-  await page.getByRole('button', { name: '🎬 Video' }).click();
+  await page.getByRole('button', { name: '🎞️ Video' }).click();
   const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
   await fc.setFiles({ name: 'clip.webm', mimeType: 'video/webm', buffer: clip });
   await page.getByRole('tab', { name: /Answer/ }).click();

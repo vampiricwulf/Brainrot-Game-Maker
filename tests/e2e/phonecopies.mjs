@@ -471,7 +471,7 @@ try {
   const listed = (await several.locator('[data-shrink-row]').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
   assert(
     listed.length === 2 &&
-      /^🎬 movie-zfnqj\.webm · 4\.0 MB → about [\d.]+ (KB|MB) \(1280×720, 0:01–0:03 only\)$/.test(listed[0]) &&
+      /^🎞️ movie-zfnqj\.webm · 4\.0 MB → about [\d.]+ (KB|MB) \(1280×720, 0:01–0:03 only\)$/.test(listed[0]) &&
       /^🔊 song-zfnqj\.wav · 3\.4 MB → about \d+ KB \((OGG|M4A)\)$/.test(listed[1]),
     `a row each, with the copy it gets: the video only the part its card plays (${listed.join(' | ')})`,
   );

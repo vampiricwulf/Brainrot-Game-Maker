@@ -55,7 +55,8 @@ export function isGif(m: CardMedia): boolean {
 
 /** What a picture, video or sound is called on the card ("Picture"; an embed is a video). */
 export const mediaWord = (kind: CardMedia['kind']): string => (kind === 'image' ? 'picture' : kind === 'audio' ? 'sound' : 'video');
-const icon = (kind: CardMedia['kind']) => (kind === 'image' ? '🖼️' : kind === 'audio' ? '🔊' : '🎞️');
+/** A file's icon; an online video (an embed: YouTube, Drive, Streamable) is ▶️, as it is in the app. */
+const icon = (kind: CardMedia['kind']) => (kind === 'image' ? '🖼️' : kind === 'audio' ? '🔊' : kind === 'embed' ? '▶️' : '🎞️');
 const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** A text alternative: the slide item's own name, else "Picture" (or "Video", "Sound"). */

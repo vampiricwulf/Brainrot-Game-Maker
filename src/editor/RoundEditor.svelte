@@ -1296,7 +1296,7 @@
           {#if !clue.empty}
             <span class="q" class:missing={!tool && !q && !kinds.length}>{q || (kinds.length || tool ? '' : 'No question yet')}</span>
             {#if kinds.length}
-              <span class="kinds">{kinds.map((k) => ({ image: '🖼️', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐', text: '' })[k]).join(' ')}</span>
+              <span class="kinds">{kinds.map((k) => ({ image: '🖼️', video: '🎞️', audio: '🔊', shape: '◼', embed: '🌐', text: '' })[k]).join(' ')}</span>
             {/if}
             {#if !a && !tool}<span class="missing small">No answer</span>{/if}
             {#if cardTodo}<span class="missing small">{cardTodo === 'none' ? 'No card' : `Card ${cardTodo} empty`}</span>{/if}

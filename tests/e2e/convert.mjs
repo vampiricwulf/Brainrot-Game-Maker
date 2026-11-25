@@ -366,7 +366,7 @@ try {
       rowTexts.every((t) =>
         t.includes('This browser can’t open MPEG-TS files, but its sound (MP3) is fine: it can be repackaged as an MP4 in seconds, with nothing lost.'),
       ) &&
-      /^🎬 two-a\.mts · 2 s · \d+ KB/.test(rowTexts[0]),
+      /^🎞️ two-a\.mts · 2 s · \d+ KB/.test(rowTexts[0]),
     `a row each: ${rowTexts.join(' | ')}`,
   );
   await win.getByRole('button', { name: 'Repackage 2 files' }).click();

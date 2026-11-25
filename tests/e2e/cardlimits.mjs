@@ -418,7 +418,7 @@ try {
       .waitFor();
     const shrinkRow = (await shrink.locator('[data-shrink-row="slow"]').innerText()).replace(/\s+/g, ' ');
     assert(
-      shrinkRow === '🎬 a video · 17.0 MB The app can’t read this file, so it can’t make a copy of it.',
+      shrinkRow === '🎞️ a video · 17.0 MB The app can’t read this file, so it can’t make a copy of it.',
       `its 🗜 Make smaller opens a window naming no file (${shrinkRow})`,
     );
     assert(!(await shownOf(page, NAMES)).length, 'nothing on the page names it');

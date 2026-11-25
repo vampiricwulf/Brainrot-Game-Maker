@@ -38,3 +38,14 @@ describe('text-by-default signs have U+FE0F', () => {
     expect(Object.entries(sources).flatMap(([p, s]) => bareSigns(p, s))).toEqual([]);
   });
 });
+
+describe('a video file has one icon', () => {
+  // The clapper board (U+1F3AC) was the editor's video-file icon while hosting, the audience window and phones showed
+  // the film frames (U+1F39E): a file is the film frames everywhere now, and an online video (YouTube, Drive,
+  // Streamable) is ▶️, so the film frames never mean a link.
+  const CLAPPER = String.fromCodePoint(0x1f3ac);
+  it('no source uses the clapper board', () => {
+    const found = Object.entries(sources).flatMap(([p, s]) => s.split('\n').flatMap((line, i) => (line.includes(CLAPPER) ? [`${p}:${i + 1}`] : [])));
+    expect(found).toEqual([]);
+  });
+});

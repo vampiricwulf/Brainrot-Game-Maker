@@ -71,7 +71,7 @@
   const quick = $derived(picked.length > 0 && picked.every((r) => isLossless(planOf(r)!.fix)));
   const one = untrack(() => rows.length === 1);
   const title = untrack(() => (one ? `🔄 Convert a ${rows[0].was.kind === 'audio' ? 'sound' : 'video'}` : `🔄 Convert ${rows.length} files`));
-  const ICON = { image: '🖼️', video: '🎬', audio: '🔊', font: '🔤' } as const;
+  const ICON = { image: '🖼️', video: '🎞️', audio: '🔊', font: '🔤' } as const;
 
   // Their ends are said here while it's open, else in toasts (several together: one toast for them all).
   $effect(() => watchJobs(rowJobs));

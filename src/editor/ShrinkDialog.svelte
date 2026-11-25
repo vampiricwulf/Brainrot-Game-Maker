@@ -221,7 +221,7 @@
     const next = smallerLeft(game, ref) ? '🗜 again makes a smaller one, or add it from a link' : 'Add it from a link instead';
     return `${sizes}: still too big for this buzzer server, which takes files up to ${formatBytes(fileBytes)}. ${next} (Ctrl+Z takes it back).`;
   });
-  const ICON = { image: '🖼️', video: '🎬', audio: '🔊', font: '🔤' } as const;
+  const ICON = { image: '🖼️', video: '🎞️', audio: '🔊', font: '🔤' } as const;
   /** Where it shows how far it got once this window is closed: the editor's header, or in play the 🗜 button. */
   const goesOn = play ? 'its 🗜 button shows how far it got' : 'the header shows how far it got';
 

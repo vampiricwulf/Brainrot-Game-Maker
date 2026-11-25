@@ -104,7 +104,7 @@
               onclick={() => (picking = k)}
               use:mediaDrop={{ kind: ['image', 'video', 'audio'], onpick: (id) => (outcome.media = id) }}
               title="Add {what} (or drop one here)"
-              aria-label="Add {what}">{k === 'image' ? '🖼️' : k === 'video' ? '🎬' : '🔊'}</button
+              aria-label="Add {what}">{k === 'image' ? '🖼️' : k === 'video' ? '🎞️' : '🔊'}</button
             >
             {#if picking === k}
               <MediaPicker kind={k} onpick={(id) => ((outcome.media = id), (picking = null))} onclose={() => (picking = null)} />

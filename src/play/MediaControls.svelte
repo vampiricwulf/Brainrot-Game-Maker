@@ -9,7 +9,7 @@
   // In dual mode the audience window's copies are the real (audible) ones.
   const items = $derived<[string, MediaState][]>(dual ? Object.entries(remoteMedia) : Object.entries(localMedia).filter(([, s]) => s.role !== 'mirror'));
 
-  const icon = { video: '🎬', audio: '🔊', youtube: '▶️', remote: '🌐', external: '🎞️' } as const;
+  const icon = { video: '🎞️', audio: '🔊', youtube: '▶️', remote: '🌐', external: '▶️' } as const;
   /** The row the keys reach (Space, ← →, M, Y): only its tooltips name them. */
   const keyed = $derived(keyTarget(items)?.[0]);
   /** A key's name in the tooltip of row `id`'s button ("Mute (M)"), on the row the keys reach. */

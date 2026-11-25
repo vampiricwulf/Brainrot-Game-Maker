@@ -78,7 +78,7 @@
     gif: ['🖼️', 'GIF'],
     video: ['🎞️', 'video'],
     sound: ['🔊', 'sound'],
-    embed: ['🌐', 'online video'],
+    embed: ['▶️', 'online video'],
   };
   /** The cards go to phones (a buzzer room that takes them), not only by 📋 copying. */
   const phones = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards());

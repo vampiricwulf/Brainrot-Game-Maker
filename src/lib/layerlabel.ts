@@ -41,7 +41,7 @@ export function lockedNote(n: number, noun = 'item'): string {
   return `🔒 Skipped ${n} locked ${noun}${n === 1 ? '' : 's'}: unlock ${n === 1 ? 'it' : 'them'} first.`;
 }
 
-export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼️', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐' };
+export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼️', video: '🎞️', audio: '🔊', shape: '◼', embed: '🌐' };
 /** A layer's icon: what an RPG object is (🧙 a character, 📦 an item…), else what kind of item it is. */
 export function layerIcon(el: SlideElement): string {
   return classIcon(el.role?.class) ?? LAYER_ICON[el.kind];
