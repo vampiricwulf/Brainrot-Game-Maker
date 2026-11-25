@@ -794,9 +794,27 @@ try {
   await p2.locator('main [data-field="a"]').fill('');
   await p2.getByRole('button', { name: '🎨 Theme' }).click();
   await p2.getByRole('button', { name: '▶ Play', exact: true }).click();
-  // The bar's one pointer brings the card's checks into sight, the keys on them.
+  // The bar's one pointer brings the card's checks into sight, the keys on them: at once with the computer set to reduce
+  // motion (a behavior given to scrollIntoView beats app.css's scroll-behavior), smoothly otherwise.
+  await p2.evaluate(() => {
+    const was = Element.prototype.scrollIntoView;
+    window.__scrolls = [];
+    Element.prototype.scrollIntoView = function (o) {
+      window.__scrolls.push(typeof o === 'object' ? (o.behavior ?? 'auto') : 'auto');
+      return was.call(this, o);
+    };
+  });
+  await p2.emulateMedia({ reducedMotion: 'reduce' });
   await p2.getByRole('button', { name: '⚠ 1 to check' }).click();
   await p2.waitForFunction(() => document.activeElement?.matches('[data-checks]'));
+  const reducedScroll = await p2.evaluate(() => window.__scrolls.join());
+  await p2.emulateMedia({ reducedMotion: null });
+  await p2.getByRole('button', { name: '⚠ 1 to check' }).click();
+  const scrolls = await p2.evaluate(() => window.__scrolls.join());
+  assert(
+    reducedScroll === 'auto' && scrolls === 'auto,smooth',
+    `⚠ 1 to check jumps at once with the computer set to reduce motion, smoothly otherwise (${scrolls})`,
+  );
   // Each line has its own Fix › (not the 🎲 Place now notes), and ◀ Fix in editor stays.
   const finalLine = p2.locator('[data-checks] li', { hasText: 'Final Jeopardy!' });
   assert(

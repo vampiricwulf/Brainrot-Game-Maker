@@ -26,6 +26,11 @@ const osReduce = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers
 /** No motion here: the stream's is calmed, or this isn't what viewers see and the computer asks for less. (Svelte asks
  * once the node is in the page, so closest() finds its stage.) */
 const calm = (node: Element) => calmStream() || (!node.closest('[data-stage]') && osReduce());
+/** How the host's jump buttons scroll (scrollIntoView's behavior, which beats app.css's scroll-behavior): at once when
+ * the computer asks for less motion. */
+export function scrollBehavior(): ScrollBehavior {
+  return osReduce() ? 'auto' : 'smooth';
+}
 
 export function fade(node: Element, params?: FadeParams): TransitionConfig {
   return calm(node) ? still : svelteFade(node, params);

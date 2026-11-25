@@ -15,6 +15,7 @@ import { randomizeDailyDoubles } from '../../lib/session';
 import { askServerFiles, fileLimitsNow } from '../../lib/serverlimits.svelte';
 import { soonLeft as soonLeftAt } from '../../lib/live';
 import { teamsOn } from '../../lib/buzz';
+import { scrollBehavior } from '../../lib/motion.svelte';
 import { buzzerBase, buzzerOn, closeRoom, inRoom, remote, roomHasCards, roomHasFiles, roomStillOpen } from '../../lib/remote.svelte';
 import { clearRoom, debounce, type SavedRoom } from '../../lib/persist';
 import { dailyDoublesShort, partnerTilesShort, phoneUses, phoneUsesLine, validate, type Problem } from '../../lib/validate';
@@ -151,7 +152,7 @@ export function createPregame(host: PregameHost) {
   /** The bar's Show ↓: the 📱 card's list of who's asking, in sight with the keys on it. */
   function showAsks(): void {
     const list = document.querySelector<HTMLElement>('[data-place="play:buzzers"] [data-join-asks]');
-    list?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    list?.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
     list?.focus({ preventScroll: true });
   }
   /** The game kept to resume (Exit › Keep & leave, or a reload mid-game), not a finished one: Start replaces it. */
@@ -215,7 +216,7 @@ export function createPregame(host: PregameHost) {
     startAsk = null;
     await startPhoneRoom();
     await tick();
-    document.querySelector('[data-place="play:buzzers"]')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    document.querySelector('[data-place="play:buzzers"]')?.scrollIntoView({ block: 'start', behavior: scrollBehavior() });
   }
 
   /** ✎ Rename on the pre-game screen: the game's title (on stream), kept in the editor too (undoable there). */
@@ -305,7 +306,7 @@ export function createPregame(host: PregameHost) {
   let checksReady = $state(false);
   /** The bar's ⚠ 2 to check: the card's checks, in sight, with the keys on them. */
   function toChecks(): void {
-    checksEl?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    checksEl?.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
     checksEl?.focus({ preventScroll: true });
   }
   /** Of the checks, the warnings (the rest are notes Start takes care of, such as Daily Doubles not placed yet). */
