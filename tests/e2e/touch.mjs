@@ -211,6 +211,14 @@ try {
   const wheel = await boardWords(tablet, 'wheel');
   assertEq(wheel.how, `🎡 Spin to move, then ▶ Move · ◀ Previous turn to go back${tail}`, 'a tablet, a movement wheel: 🎡 Spin to move, then ▶ Move');
   assertEq(wheel.first, 'Ann’s turn: 🎡 Spin to move, then ▶ Move (or tap the wheel).', 'and its turn box says tap the wheel');
+  // On a phone the longer wheel line is cut short in its row, never pushing the page wider; its tooltip keeps it whole.
+  const phoneWheel = await boardWords({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }, 'wheel');
+  assertEq(
+    phoneWheel.firstTitle,
+    'Ann’s turn: 🎡 Spin to move, then ▶ Move (or tap the wheel).',
+    'a phone, a movement wheel: the turn box line whole in its tooltip',
+  );
+  assert(phoneWheel.sw === phoneWheel.iw, `a phone, a movement wheel: nothing scrolls sideways (${phoneWheel.sw} wide in ${phoneWheel.iw})`);
   const step = await boardWords(tablet, 'step');
   assertEq(step.how, `Pick the way (→ buttons, or tap the space) · ◀ Previous turn to go back${tail}`, 'a tablet, a space at a time: no Enter');
   assertEq(step.first, 'Ann’s turn: → the way on (or tap the space on the stage).', 'and its turn box says tap the space');
