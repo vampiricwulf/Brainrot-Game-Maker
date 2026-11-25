@@ -253,9 +253,9 @@ try {
   assert(true, '🙈 Hide says “Press H to bring the controls back” the first time, and H does');
   // ❔ Help at the bar's end: the keys window, on During the game, its foot with the guide and 💡 Show all tips again
   // (🙈 Hide's note shows again: its once-only mark is gone, and set again by the next 🙈 Hide).
-  // (Its dot: what moved in this version, not shown on this computer yet. The keys window opens on it, and it goes.)
+  // (Its dot: what moved lately, not shown on this computer yet. The keys window opens on it, and it goes.)
   const movedDot = hostPanelIn(page).locator('.fixed [data-moved-dot]');
-  assert((await movedDot.count()) === 1, '❔ Help has a dot while what moved in this version is new here');
+  assert((await movedDot.count()) === 1, '❔ Help has a dot while what moved lately is new here');
   await hostPanelIn(page).locator('.fixed').getByRole('button', { name: '❔ Help' }).click();
   const help = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await help.waitFor();
@@ -270,7 +270,7 @@ try {
       (await moved.innerText()).includes('↩ Put back (keep tile)') &&
       (await moved.innerText()).includes('📊 Scores → 📊 Scoreboard') &&
       (await movedDot.count()) === 0,
-    '“What moved in this version” is open at the top (↩ Put back, the renames), and ❔ Help’s dot is gone',
+    '“What moved lately” is open at the top (↩ Put back, the renames), and ❔ Help’s dot is gone',
   );
   // (Its blue button's group says N and the check's keys; nothing is turned off yet, so no "Not asked about" list.)
   assert(

@@ -1330,8 +1330,8 @@ export function stored(page, key = 'playSession') {
 }
 
 /**
- * The context's pages are a host's who used the app before (a setting is kept): a first run counts “What moved in this
- * version” as seen (no ❔ Help dot), so a test of the dot and the open list starts as a returning host.
+ * The context's pages are a host's who used the app before (a setting is kept): a first run counts “What moved
+ * lately” as seen (no ❔ Help dot), so a test of the dot and the open list starts as a returning host.
  * @param {import('playwright-core').BrowserContext} context
  */
 export const returningHost = (context) =>

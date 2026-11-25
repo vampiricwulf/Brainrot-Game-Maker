@@ -2114,11 +2114,11 @@
     <span class="spacer"></span>
     <!-- ❔ Help beside 🚪 Exit, at the far end. -->
     <span class="group g-exit">
-      <!-- (A dot while what moved in this version hasn't been shown on this computer: the keys window opens on it.) -->
+      <!-- (A dot while what moved lately hasn't been shown on this computer: the keys window opens on it.) -->
       {#if onkeys}<button
           class="ghost help"
           onclick={onkeys}
-          title={`Every key for this round (?), 📖 How to host and 💡 the tips${movedNew('game') ? ' · 🆕 What moved in this version' : ''}`}
+          title={`Every key for this round (?), 📖 How to host and 💡 the tips${movedNew('game') ? ' · 🆕 What moved lately' : ''}`}
           >❔ <span class="txt">Help</span>{#if movedNew('game')}<span class="newdot" data-moved-dot aria-hidden="true"></span>{/if}</button
         >{/if}
       <button class="ghost exit" onclick={() => (askExit = true)}>🚪 Exit</button>
@@ -3212,7 +3212,7 @@
     flex: none;
     margin-left: auto;
   }
-  /* ❔ Help's dot: what moved in this version, not shown yet (on its corner, taking no room). */
+  /* ❔ Help's dot: what moved lately, not shown yet (on its corner, taking no room). */
   .help {
     position: relative;
   }

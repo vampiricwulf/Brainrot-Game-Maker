@@ -1,13 +1,10 @@
-// "What moved in this version", for a host who knows the old places: what changed place or name, in the ⌨ Keyboard
-// shortcuts window's words, at the top of its part (During the game; the editor's once something moves there), with
-// the renames (keylist's RENAMED). ❔ Help on the game screen shows a dot until its part's list was shown on this
-// computer. Each change that moves something adds its line here, for the version it goes out in.
+// "What moved lately", for a host who knows the old places: what changed place or name, in the ⌨ Keyboard shortcuts
+// window's words, at the top of its part (During the game; the editor's once something moves there), with the renames
+// (keylist's RENAMED). ❔ Help shows a dot until its part's list, as it is now, was shown on this computer. Each change
+// that moves something adds its line here: that alone brings the dot back (the list's stamp changes), nothing to bump.
 import { RENAMED } from '../lib/keylist';
 
 export type MovedPart = 'game' | 'editor';
-
-/** The version these lines are since: a new list (a later version's) shows the dot again. */
-export const MOVED_SINCE = '2.38.0';
 
 /** What moved, by the keys window's part, one line each. */
 export const WHAT_MOVED: Record<MovedPart, readonly string[]> = {
@@ -38,6 +35,7 @@ export const WHAT_MOVED: Record<MovedPart, readonly string[]> = {
     'The status line’s ⏱️ Start and its seconds box are there only where a clock fits: a clue, the Final’s wagers and question, the tiebreaker and a board game’s turns (not a round’s title card, the board, a slides or RPG round, or Game over). T, or ⏱️ Start the countdown in the stage’s right-click menu, starts one anywhere, and its ⏱️ shows while it’s up.',
     'Go to round: ↓ and ↑ only move the list now (it asked at once and took the keys): Enter asks to go to the round it shows, Esc puts it back. The rounds’ names come first, their signs after, so typing a first letter goes to one.',
     'The Final’s reveals in one window: when the rows don’t all fit, the tools row (🎲 Dice … 📊 Scoreboard) folds away so more of them do; ⋯ Tools in the status line brings it back.',
+    'On a phone held upright that’s 700 px tall or less, the tools row (🎲 Dice … 📊 Scoreboard, with the round’s ◀ / ▶) folds behind ⋯ Tools in the status line at every moment, and the status line’s tip keeps to one line (whole in its tooltip). In one window a slide whose clips’ rows would push the bar out of sight (three at 1280×720) folds it the same way.',
     '🚪 Exit: Discard & leave is red and set apart from Keep & leave. ✖ is gone: a 🤫 card’s ✖ Take back reads ↩ Take back, and the card window’s ✖ Close the card window reads ✕ Close the card window. In the 🎡 box, a wheel spun along with another comes off it with 🗑 (it was ✕), as a slice does in ✎ Edit wheel (it was −).',
   ],
   editor: [
@@ -102,19 +100,35 @@ export function noSettings(given?: Pick<Storage, 'length' | 'key'> | null): bool
 }
 const firstVisit = noSettings();
 
-/** The list each part was last shown on this computer (its MOVED_SINCE), null for never. */
+/**
+ * A part's list as a short stamp (an FNV-1a hash of its lines, and of the renames in the game part, which shows them):
+ * a line added or reworded makes a new one, so ❔ Help's dot comes back. (Never "2.38.0", what was kept before.)
+ */
+export function movedStamp(lines: readonly string[], renamed: readonly [string, string][] = []): string {
+  const text = [...lines, ...renamed.map(([now, was]) => `${was} → ${now}`)].join('\n');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return `m${(h >>> 0).toString(36)}`;
+}
+const STAMP: Record<MovedPart, string> = { game: movedStamp(WHAT_MOVED.game, RENAMED), editor: movedStamp(WHAT_MOVED.editor) };
+
+/** The list each part was last shown on this computer (its stamp), null for never. */
 const movedSeen = $state<Record<MovedPart, string | null>>({ game: read('game'), editor: read('editor') });
 
 /** This part has lines not shown on this computer yet (❔ Help's dot, and the list open at first). */
-export const movedNew = (part: MovedPart, seen: string | null = movedSeen[part], lines: readonly string[] = WHAT_MOVED[part], since = MOVED_SINCE): boolean =>
-  lines.length > 0 && seen !== since;
+export const movedNew = (
+  part: MovedPart,
+  seen: string | null = movedSeen[part],
+  lines: readonly string[] = WHAT_MOVED[part],
+  stamp = lines === WHAT_MOVED[part] ? STAMP[part] : movedStamp(lines, part === 'game' ? RENAMED : []),
+): boolean => lines.length > 0 && seen !== stamp;
 
 /** The part's list was shown (the keys window opened on it). */
 export function markMovedSeen(part: MovedPart): void {
-  if (movedSeen[part] === MOVED_SINCE) return;
-  movedSeen[part] = MOVED_SINCE;
+  if (movedSeen[part] === STAMP[part]) return;
+  movedSeen[part] = STAMP[part];
   try {
-    localStorage.setItem(key(part), MOVED_SINCE);
+    localStorage.setItem(key(part), STAMP[part]);
   } catch {
     // Storage is off (private mode): the dot shows again next time.
   }

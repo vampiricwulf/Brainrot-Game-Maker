@@ -38,7 +38,7 @@ const toast = () => toastsIn(page).last().innerText();
 try {
   // ---------- A first run: nothing moved for a new user ----------
   {
-    // No ❔ Help dot, in the editor or the game, and the keys window keeps “What moved in this version” folded.
+    // No ❔ Help dot, in the editor or the game, and the keys window keeps “What moved lately” folded.
     const fresh = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const fp = await fresh.newPage();
     fp.on('pageerror', (e) => errors.push(e.message));
@@ -53,7 +53,7 @@ try {
     await fp.keyboard.press('?');
     const moved = fp.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).locator('[data-what-moved]');
     await moved.waitFor();
-    assert((await moved.getAttribute('open')) === null, 'and its keys window keeps “What moved in this version” folded, there to open');
+    assert((await moved.getAttribute('open')) === null, 'and its keys window keeps “What moved lately” folded, there to open');
     await fp.keyboard.press('Escape');
     // The sample opens on its slides round with the whole slide in the window, at 1280×720 and 1366×768: how the round
     // plays is said in the header's line, and the slide's Text box sits under the slide tabs that pick it.

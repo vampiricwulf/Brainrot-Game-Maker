@@ -2,8 +2,8 @@
   ⌨ Keyboard shortcuts: one window for the editor's keys and the host's during the game (spec §6.8), a switch at its
   top between the two, and a filter for both (it also finds a renamed button by its old name). The editor's ? opens it
   on Editor; ? and ❔ Help on the game screen open it on During the game, the round's keys first (in a single window,
-  over the host panel: viewers see that window, so the stage stays clear). Each part starts with what moved in this
-  version (open while it's new on this computer, folded after: see whatmoved.svelte.ts). There, what the check before
+  over the host panel: viewers see that window, so the stage stays clear). Each part starts with what moved lately
+  (open while it's new on this computer, folded after: see whatmoved.svelte.ts). There, what the check before
   going on was told not to ask about this game is listed first, each with Ask again. Its foot has the hosting guide and
   💡 Show all tips again.
 -->
@@ -65,7 +65,7 @@
   /** Filtering: how many rows match in the other part (a key looked up in the wrong one is a click away). */
   const elsewhere = $derived(filter.trim() ? rowCount(lists[other]) : 0);
 
-  /** What moved in this version, in the part shown: open while it's new on this computer (as the window opened). */
+  /** What moved lately, in the part shown: open while it's new on this computer (as the window opened). */
   const moved = $derived(WHAT_MOVED[part]);
   const movedOpen = $state<Record<MovedPart, boolean>>(untrack(() => ({ game: movedNew('game'), editor: movedNew('editor') })));
   // (Shown: ❔ Help's dot goes.)
@@ -136,7 +136,7 @@
     {#if moved.length && !filter.trim()}
       <!-- For a host who knows the old places: where things went, and the new names (the filter finds the old ones). -->
       <details class="moved" data-what-moved bind:open={movedOpen[part]}>
-        <summary>🆕 What moved in this version <span class="muted">· {moved.length} changes, and new names</span></summary>
+        <summary>🆕 What moved lately <span class="muted">· {moved.length} changes, and new names</span></summary>
         <ul>
           {#each moved as line (line)}<li>{line}</li>{/each}
         </ul>
@@ -190,7 +190,7 @@
 </div>
 
 <style>
-  /* What moved in this version: a quiet fold above the keys. */
+  /* What moved lately: a quiet fold above the keys. */
   .moved {
     margin: 4px 0 8px;
     padding: 6px 10px;

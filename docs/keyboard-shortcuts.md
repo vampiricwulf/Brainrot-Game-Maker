@@ -4,7 +4,7 @@
 
 These are the main keys while hosting. For all of them, press `?` or **❔ Help** at the end of the host panel's bar,
 before or during the game. That window starts with the keys for the screen you're on, has a filter, and can show the
-editor's keys too. After an update it also lists **🆕 What moved in this version**, and the filter finds a renamed
+editor's keys too. After an update it also lists **🆕 What moved lately**, and the filter finds a renamed
 button by its old name. On a touch screen with no mouse the keys aren't shown on buttons and in menus (there's no
 keyboard to press them with), but that window still lists them.
 

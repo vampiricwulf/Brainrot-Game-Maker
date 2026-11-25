@@ -1248,7 +1248,7 @@
     dropMenu(e, [
       {
         label: '⌨ Keyboard shortcuts',
-        hint: `The editor's keys and mouse moves, with a filter${movedNew('editor') ? ' · 🆕 What moved in this version' : ''}`,
+        hint: `The editor's keys and mouse moves, with a filter${movedNew('editor') ? ' · 🆕 What moved lately' : ''}`,
         keys: '?',
         onclick: () => (shortcuts = 'editor'),
       },
@@ -1877,7 +1877,7 @@
 </div>
 
 <style>
-  /* ❔ Help's dot: what moved in this version, until its list was shown on this computer (as on the game screen). */
+  /* ❔ Help's dot: what moved lately, until its list was shown on this computer (as on the game screen). */
   .help {
     position: relative;
   }

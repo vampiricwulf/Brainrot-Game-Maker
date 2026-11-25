@@ -1,16 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RENAMED } from '../lib/keylist';
-import { markMovedSeen, MOVED_SINCE, movedNew, noSettings, renames, WHAT_MOVED } from './whatmoved.svelte';
+import { markMovedSeen, movedNew, movedStamp, noSettings, renames, WHAT_MOVED } from './whatmoved.svelte';
 
-describe('what moved in this version', () => {
+describe('what moved lately', () => {
   it('is new until its part’s list was shown, and again for a later list', () => {
     expect(movedNew('game', null)).toBe(true);
-    expect(movedNew('game', MOVED_SINCE)).toBe(false);
-    expect(movedNew('game', '2.37.0')).toBe(true);
+    expect(movedNew('game', movedStamp(WHAT_MOVED.game, RENAMED))).toBe(false);
+    // (What was kept before the stamps, a version: the lines added since are new to that host.)
+    expect(movedNew('game', '2.38.0')).toBe(true);
     // (A part with nothing moved shows no dot.)
     expect(movedNew('editor', null, [])).toBe(false);
     markMovedSeen('game');
     expect(movedNew('game')).toBe(false);
+    // A line added after the list was shown, or one reworded, or a new name: new again, nothing to bump by hand.
+    expect(movedNew('game', undefined, [...WHAT_MOVED.game, 'Something moved since.'])).toBe(true);
+    expect(movedNew('game', undefined, [...WHAT_MOVED.game.slice(0, -1), WHAT_MOVED.game.at(-1) + ' And more.'])).toBe(true);
+    expect(movedStamp(WHAT_MOVED.game, [...RENAMED, ['New', 'Old']])).not.toBe(movedStamp(WHAT_MOVED.game, RENAMED));
+    expect(movedStamp(WHAT_MOVED.editor)).toMatch(/^m[0-9a-z]+$/);
   });
 
   it('says where things went in plain lines, the renames from the keys filter’s list', () => {
@@ -24,6 +30,7 @@ describe('what moved in this version', () => {
       '✅ Before you start',
       '⏱️ Start the countdown',
       '⋯ Tools',
+      '700 px tall',
     ])
       expect(game).toContain(w);
     for (const l of WHAT_MOVED.game) expect(l.trim(), l).toBe(l);

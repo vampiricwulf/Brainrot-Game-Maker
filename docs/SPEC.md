@@ -1307,10 +1307,11 @@ old name too, for a release or two: `RENAMED` in `src/lib/keylist.ts`). `?` in t
 ❔ Help on the game screen on During the game, the round being played's keys first (on the pre-game screen its own keys
 first), over the host panel in a single window. In its filter `?` types; `Esc` clears the filter, then closes it. Its
 foot has 📖 How to host ↗ and 💡 Show all tips again (the editor's 💡 Tips open again the next time, and the game
-screen's first-time notes show again). Each part starts with **🆕 What moved in this version** (`src/play/whatmoved.svelte.ts`:
-`WHAT_MOVED` by part, one line per change that moved something, since `MOVED_SINCE`, then the renames from `RENAMED`),
-a fold open while it's new on this computer (`jb.whatMovedSeen.<part>`), folded after; it's hidden while the filter has
-words. ❔ Help on the game screen has a dot while the During the game part's list is new. A first run (no `jb.` setting
+screen's first-time notes show again). Each part starts with **🆕 What moved lately** (`src/play/whatmoved.svelte.ts`:
+`WHAT_MOVED` by part, one line per change that moved something, then the renames from `RENAMED`), a fold open while
+it's new on this computer (`jb.whatMovedSeen.<part>` keeps a stamp of the list last shown, so a line added or reworded
+makes it new again), folded after; it's hidden while the filter has words. ❔ Help (on the game screen and in the
+editor) has a dot while its part's list is new. A first run (no `jb.` setting
 kept and no game from before: `firstRunSeen`) counts both lists as seen, so someone new gets no dot. Each change that
 moves something adds its line there. The main keys:
 
