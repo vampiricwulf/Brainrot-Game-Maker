@@ -398,7 +398,7 @@ try {
   await page.getByLabel('Move by').selectOption('new-wheel');
   const wheelPop = page.getByRole('dialog', { name: 'Wheel' });
   await wheelPop.waitFor();
-  const slices = await wheelPop.getByLabel('Slice label').evaluateAll((els) => els.map((e) => e.value));
+  const slices = await wheelPop.getByLabel(/^Slice \d+ label$/).evaluateAll((els) => els.map((e) => e.value));
   assert(slices.join() === '1,2,3,4,5,6', `Move by › ＋ Add wheel… makes a wheel of 1 to 6 (${slices.join(', ')})`);
   await wheelPop.getByRole('button', { name: 'Close' }).click();
   // Move by › ＋ Add dice…: the box says Dice (not "＋ Add dice…"), and the dice stay linked when renamed.

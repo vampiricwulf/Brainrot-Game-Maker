@@ -320,7 +320,7 @@
         >
         <b class="small">{LABEL[a.do]}</b>
         <span class="spacer"></span>
-        <RowTools menu={() => rowItems(a, i)} name={LABEL[a.do]} remove={() => remove(a)} deleteLabel="Delete button" size="tiny" />
+        <RowTools menu={() => rowItems(a, i)} name={LABEL[a.do]} remove={() => remove(a)} deleteLabel="Delete button {i + 1}: {LABEL[a.do]}" size="tiny" />
       </div>
       <div class="fields">
         {#if a.do === 'stat'}

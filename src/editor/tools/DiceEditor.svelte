@@ -160,7 +160,14 @@
         {#if d.customFaces}
           <div class="faces">
             {#each d.customFaces as face, fi}
-              <div class="face"><span class="muted n0">{fi + 1}</span><OutcomeEditor outcome={face} placeholder="Face {fi + 1}" dice /></div>
+              <div class="face"
+                ><span class="muted n0">{fi + 1}</span><OutcomeEditor
+                  outcome={face}
+                  placeholder="Face {fi + 1}"
+                  name="face {fi + 1}{preset.dice.length > 1 ? ` of die ${i + 1}` : ''}"
+                  dice
+                /></div
+              >
             {/each}
           </div>
           {@const lines = faceLines(pasted[d.id] ?? '')}
@@ -214,7 +221,13 @@
           aria-label="To"
           onchange={(e) => (t.min > t.max && ([t.min, t.max] = [t.max, t.min]), shown(e, t.max))}
         />
-        <OutcomeEditor outcome={t.outcome} placeholder="What happens" dice />
+        <OutcomeEditor
+          outcome={t.outcome}
+          placeholder="What happens"
+          name={rangeName(t).toLowerCase()}
+          labelName="What happens on {rangeName(t).toLowerCase()}"
+          dice
+        />
         <RowTools menu={() => totalItems(t, i)} name={rangeName(t)} remove={() => removeTotal(t, i)} deleteLabel="Delete range {i + 1}" />
       </div>
     {/each}

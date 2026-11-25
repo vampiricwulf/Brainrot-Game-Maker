@@ -97,6 +97,12 @@ try {
     .getByRole('menuitem', { name: /⧉ Duplicate/ })
     .click();
   assert((await heads()).join() === '💯 Change the score,💯 Change the score,📝 Host note', 'its ⋯ → ⧉ Duplicate duplicates a button');
+  // Screen readers tell the rows apart: each 🗑 names its button, the two alike by their number.
+  const actDeletes = await use.locator('.act .del').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  assert(
+    actDeletes.join() === 'Delete button 1: 💯 Change the score,Delete button 2: 💯 Change the score,Delete button 3: 📝 Host note',
+    `each button's 🗑 names it (${actDeletes.join(' / ')})`,
+  );
   await dragBy(page, use.locator('.act .drag-grip').nth(2), use.locator('.act').first().locator('.head b'));
   assert((await heads())[0] === '📝 Host note', 'dragging a button’s ⋮⋮ reorders it');
   await use.getByRole('button', { name: '📋 Copy buttons' }).click();
@@ -264,6 +270,28 @@ try {
   assert((await values(labels)).join() === 'Dance,Option 1,Option 2,Option 3,Option 4', `a double-click on 🗑 deletes one slice (${await values(labels)})`);
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   assert((await labels.count()) === 6, 'and Undo brings it back');
+  // Screen readers tell the slices apart (two are both “Dance”): each slice's label box, ▸ More and 🗑 say which it is.
+  const sliceNames = await page
+    .locator('.seg')
+    .evaluateAll((rows) =>
+      rows.map((r) => [
+        r.querySelector('input.label')?.getAttribute('aria-label'),
+        r.querySelector('.oe .row > button.small:last-child')?.textContent?.replace(/\s+/g, ' ').trim(),
+        r.querySelector('.del')?.getAttribute('aria-label'),
+      ]),
+    );
+  assert(
+    sliceNames.length === 6 &&
+      sliceNames.every(
+        ([label, more, del], k) =>
+          label === `Slice ${k + 1} label` &&
+          more === `▸ More details for slice ${k + 1}` &&
+          del === `Delete slice ${k + 1}: ${['Dance', 'Dance', 'Option 1', 'Option 2', 'Option 3', 'Option 4'][k]}`,
+      ),
+    `each slice's label box, ▸ More and 🗑 name it (${JSON.stringify(sliceNames)})`,
+  );
+  const more1 = page.locator('.seg').first().getByRole('button', { name: '▸ More details for slice 1', exact: true });
+  assert((await more1.getAttribute('aria-expanded')) === 'false', '▸ More says whether it is open');
   await page.locator('.seg .pct').nth(2).click({ button: 'right' });
   await page.getByRole('menuitem', { name: '▲ Move up' }).click();
   assert((await values(labels)).slice(0, 3).join() === 'Dance,Option 1,Dance', `a slice's right-click menu moves it (${await values(labels)})`);
@@ -353,6 +381,12 @@ try {
   await page.getByRole('button', { name: '＋ Add range' }).click();
   const range = page.getByRole('group', { name: 'Total 1' });
   const rangeDel = range.getByRole('button', { name: 'Delete range 1' });
+  // Its label box and ▸ More say which range they're for (every range has them).
+  assert(
+    (await range.getByRole('textbox', { name: 'What happens on total 1', exact: true }).count()) === 1 &&
+      (await range.getByRole('button', { name: /^▸ More details for total 1/ }).count()) === 1,
+    "a range's label box and ▸ More name it",
+  );
   await range.getByRole('button', { name: 'More for Total 1' }).click();
   const rangeMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
   await page.keyboard.press('Escape');

@@ -195,6 +195,8 @@
           <OutcomeEditor
             outcome={seg}
             placeholder="Slice label"
+            name="slice {i + 1}"
+            labelName="Slice {i + 1} label"
             labelkey={(e) => labelKey(e, i)}
             respin={{ on: isRespin(seg), toggle: () => toggleRespin(seg), note: wheel.removeAfterLanding ? ' (it never gets used up)' : undefined }}
           />
@@ -221,7 +223,7 @@
             menu={() => rowItems(i)}
             name="slice {name(seg)}"
             remove={() => remove(i)}
-            deleteLabel="Delete slice"
+            deleteLabel="Delete slice {i + 1}{seg.label.trim() ? `: ${seg.label.trim()}` : ''}"
             off={wheel.segments.length <= 2 ? 'A wheel needs two slices' : undefined}
           />
         </div>

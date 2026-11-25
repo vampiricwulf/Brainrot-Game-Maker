@@ -597,7 +597,12 @@
           </label>
         {:else}<span></span>{/if}
         <label class="check" data-k="tileGradient" data-name="Tile gradient" data-color>
-          <input type="checkbox" checked={!!t.tileGradient} onchange={(e) => switchColor('tileGradient', e.currentTarget.checked, near(t.tile), undefined)} />
+          <input
+            type="checkbox"
+            aria-label="Tile gradient"
+            checked={!!t.tileGradient}
+            onchange={(e) => switchColor('tileGradient', e.currentTarget.checked, near(t.tile), undefined)}
+          />
           Gradient
           {#if t.tileGradient}<ColorBox
               value={hex(t.tileGradient, '#000000')}
@@ -708,6 +713,7 @@
         <label class="check" data-k="headerGradient" data-name="Category gradient" data-color>
           <input
             type="checkbox"
+            aria-label="Category gradient"
             checked={!!t.headerGradient}
             onchange={(e) => switchColor('headerGradient', e.currentTarget.checked, near(t.headerBg ?? t.tile), undefined)}
           />

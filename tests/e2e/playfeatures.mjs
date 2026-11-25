@@ -104,6 +104,9 @@ try {
 
   // ---------- Theme: a chroma-key stage background ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
+  // Its two Gradient boxes say which: the tiles' and the categories'.
+  for (const name of ['Tile gradient', 'Category gradient'])
+    assert((await page.getByRole('checkbox', { name, exact: true, includeHidden: true }).count()) === 1, `the theme's ${name} box is named so`);
   await page.getByLabel('Stage background (OBS)').selectOption('green');
   const bg = await page.locator('.preview .board-bg').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(bg === 'rgb(0, 255, 0)', `the board's background is chroma green (${bg})`);

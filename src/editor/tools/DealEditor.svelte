@@ -198,7 +198,8 @@
           <button
             class="small"
             onclick={() => (editing = part)}
-            title="Pictures, videos, sounds, links: on their phones under the words. 📱 On their phone shows the card as they get it">Edit card…</button
+            title="Pictures, videos, sounds, links: on their phones under the words. 📱 On their phone shows the card as they get it"
+            >Edit card…<span class="sr-only">{` for ${partName(part, i)}`}</span></button
           >
           <label class="inline"
             >Their card also shows<select

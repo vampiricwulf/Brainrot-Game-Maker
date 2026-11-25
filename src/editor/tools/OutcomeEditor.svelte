@@ -15,9 +15,15 @@
     labelkey,
     dice = false,
     respin,
+    name,
+    labelName,
   }: {
     outcome: Outcome;
     placeholder?: string;
+    /** Which row it is, for screen readers ("slice 2"): ▸ More says whose details it opens. */
+    name?: string;
+    /** The label box's name for screen readers (the placeholder, unless the row names it: "Slice 2 label"). */
+    labelName?: string;
     /** Keys in the label box (a wheel's Enter for the next slice). */
     labelkey?: (e: KeyboardEvent) => void;
     /** A die face or a dice total: "+ dice total × N" means something (a wheel has no roll). */
@@ -59,7 +65,7 @@
 
 <div class="oe">
   <div class="row">
-    <input class="label" bind:value={outcome.label} {placeholder} aria-label={placeholder} onkeydown={labelkey} />
+    <input class="label" bind:value={outcome.label} {placeholder} aria-label={labelName ?? placeholder} onkeydown={labelkey} />
     {#if respin?.on}
       <button
         class="ghost tiny again"
@@ -68,8 +74,9 @@
         title="Landing here spins the wheel again{respin.note ?? ''}: a click stops that">↻ again</button
       >
     {/if}
-    <button class="ghost small" class:has={extras} onclick={() => (open = !open)} title="Details, media, timer, score effect">
-      {open ? '▾' : '▸'} More{extras ? ' •' : ''}
+    <!-- (Every row has one: its name for screen readers says whose it is, after the words in sight.) -->
+    <button class="ghost small" class:has={extras} onclick={() => (open = !open)} aria-expanded={open} title="Details, media, timer, score effect">
+      {open ? '▾' : '▸'} More{#if name}<span class="sr-only">{` details for ${name}`}</span>{/if}{extras ? ' •' : ''}
     </button>
   </div>
   {#if open}

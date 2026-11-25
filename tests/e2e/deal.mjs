@@ -208,7 +208,8 @@ try {
     'the Villagers are the rest, and share a slice of the wheel',
   );
   // Edit card… opens it as the 🤫 Cards are laid out, 📱 On their phone beside it: its part, its words, a sample slice.
-  await editor.locator('[data-part]').nth(1).getByRole('button', { name: 'Edit card…' }).click();
+  // (Screen readers hear whose card each one edits: Edit card… for Villager.)
+  await editor.getByRole('button', { name: 'Edit card… for Villager', exact: true }).click();
   const cardWin = host.getByRole('dialog', { name: '🎭 Villager’s card (only its players see it)' });
   await cardWin.waitFor();
   const onPhone = cardWin.locator('.phone-preview');
