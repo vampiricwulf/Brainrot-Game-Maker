@@ -636,15 +636,15 @@
    * Not while a tile's own 🎡 / 🎲 is up. A window with room for all folds nothing.
    */
   const mediaFold = $derived(mayFoldForMedia && mediaRows >= 2 && mediaCrowded);
-  /** A small phone held upright (568px tall or less: an iPhone SE's screen). */
-  const smallPhone = new MediaQuery('(orientation: portrait) and (max-width: 600px) and (max-height: 568px)');
+  /** A short phone held upright (700px tall or less: an iPhone SE, or a bigger phone with its browser's bars showing). */
+  const smallPhone = new MediaQuery('(orientation: portrait) and (max-width: 600px) and (max-height: 700px)');
   /**
-   * One window on a small phone held upright: the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools at every
+   * One window on a short phone held upright: the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools at every
    * moment, so the moment's own controls (a slide's ◀ Slide, a roll's box, Skip intro, a board game's 🎲 Roll) have its
    * room under the stage. What's on in it keeps it out, as in the Final's reveals.
    */
   const phoneFold = $derived(!dual && !side && smallPhone.current);
-  /** ⋯ Tools pressed: the row is out again, for these reveals (or this slide's clips, or this moment on a small phone). */
+  /** ⋯ Tools pressed: the row is out again, for these reveals (or this slide's clips, or this moment on a short phone). */
   let toolsOut = $state(false);
   $effect(() => {
     // (Not while the reveals measure their room: ⋯ Tools pressed stays pressed.)
@@ -652,7 +652,7 @@
   });
   /** The tool on the stage (a roll, a spin…), if one is up: its box opens in the action part. */
   const overlayKind = $derived(app.live.overlay?.kind ?? null);
-  // On a small phone, the row folds again when the moment changes (a new round, a tile opened or closed, a roll's or a
+  // On a short phone, the row folds again when the moment changes (a new round, a tile opened or closed, a roll's or a
   // spin's box opened from it): it was out for what the host did then, and the box needs its room.
   $effect(() => {
     void session.phase;
@@ -2161,16 +2161,23 @@
       min-height: min(clamp(280px, 44vh, 440px), 62vh);
     }
   }
-  /* A small phone held upright (568px tall or less), one window: the status line's how-to keeps to one line, cut short
+  /* A short phone held upright (700px tall or less), one window: the status line's how-to keeps to one line, cut short
      (…), its whole text in its tooltip; it takes the line's room left, so it never pushes the line onto two. (The tools
      row folds behind ⋯ Tools there too: see phoneFold.) */
-  @media (orientation: portrait) and (max-width: 600px) and (max-height: 568px) {
+  @media (orientation: portrait) and (max-width: 600px) and (max-height: 700px) {
     .panel:not(.dual):not(.side) > .status > :is(.hint, .muted:has(> .hint)) {
       flex: 1 1 0;
       min-width: 0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    /* The tools row kept out there (something in it on, 📊 Scoreboard, 🔇 Stop sounds, a deal, or ⋯ Tools pressed):
+       the moment's part keeps a few rows in sight, and the panel scrolls instead (the fixed bar's below). */
+    .panel:not(.dual):not(.side):not(.foldtools) > .act,
+    .panel.foldtools:not(.dual):not(.side):has(> .toolsrow :global(:is([aria-pressed='true'], [aria-expanded='true'], .on, .warn, .stop, .cardsout, .winwarn)))
+      > .act {
+      min-height: min(150px, 34vh);
     }
   }
   .panel:not(.dual) > .act {

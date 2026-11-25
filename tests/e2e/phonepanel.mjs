@@ -1,13 +1,15 @@
 // @ts-check
-// A phone held upright, hosting the sample game in one window (320×568, 360×740 and 390×844, a touch screen): the stage
-// is the screen's width, 16:9, one size and place all game, and the host panel under it takes the rest of the screen
-// (no black above and under the stage), its fixed bar (↶ Undo … 🚪 Exit) on screen. Each moment's own box has room:
-// at least 60px (or all of it, when it's shorter), on a slide, a clue, a clue with a player picked, a Daily Double's
-// wager, after a 🎲 roll from the tools row, the RPG and board-game rounds, the Final's title card and the end's tie.
-// The buttons a phone needs take a real tap there: Skip intro on a board round's title card and while its categories
-// come up, and on the Final's title card; ↩ Put back on a clue and a Daily Double; the roll's own button; 🎲 Roll then
-// ▶ Move in a board game. On 568px tall the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools, out again with a
-// tap, and the status line's how-to keeps to one line. A phone on its side, a tablet, a laptop (1280×720, 1920×1080)
+// A phone held upright, hosting the sample game in one window (320×568, 360×640, 390×667, 360×740 and 390×844, a touch
+// screen): the stage is the screen's width, 16:9, one size and place all game, and the host panel under it takes the
+// rest of the screen (no black above and under the stage), its fixed bar (↶ Undo … 🚪 Exit) on screen. Each moment's
+// own box has room: at least 60px (or all of it, when it's shorter), on a slide, a board round's title card and its
+// categories coming up, a clue, a clue with a player picked, a Daily Double's wager, after a 🎲 roll from the tools
+// row, the RPG and board-game rounds, the Final's title card, wagers and reveals, and the end's tie. The buttons a
+// phone needs are in sight and take a real tap: Skip intro (a board round's title card and categories, the Final's
+// title card), ↩ Put back on a clue and a Daily Double, the roll's own button, 🎲 Roll then ▶ Move in a board game,
+// Finish now… and its Finish. Up to 700px tall the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools, out again
+// with a tap, and the status line's how-to keeps to one line; with the row kept out (📊 Scoreboard on, at 320×568) the
+// moment's box still has room and the panel scrolls. A phone on its side, a tablet, a laptop (1280×720, 1920×1080)
 // and a phone with an audience window keep the panel's height as it was.
 import { pathToFileURL } from 'node:url';
 import {
@@ -100,26 +102,30 @@ const layout = (page) =>
  * @param {string} where
  * @param {string} moment
  * @param {{ x: number, y: number, w: number, h: number } | null} stage0
+ * @param {boolean} [scrolls] the panel may scroll (the tools row kept out on a small phone): the fixed bar below
  */
-async function roomy(page, where, moment, stage0) {
+async function roomy(page, where, moment, stage0, scrolls = false) {
   const l = await layout(page);
   const tight = l.boxes.filter((b) => b.need > 0 && b.h < Math.min(60, b.need) - 1);
   assert(tight.length === 0, `${where}, ${moment}: each box has room (${l.boxes.map((b) => `${b.what} ${b.h} of ${b.need}`).join(', ') || 'none'})`);
-  assert(
-    l.fixedFoot <= l.ih + 1 && l.sideways <= 0,
-    `${where}, ${moment}: the fixed bar is on screen (its foot at ${l.fixedFoot} of ${l.ih}), nothing sideways`,
-  );
+  if (scrolls) assert(l.sideways <= 0, `${where}, ${moment}: nothing scrolls sideways`);
+  else
+    assert(
+      l.fixedFoot <= l.ih + 1 && l.sideways <= 0,
+      `${where}, ${moment}: the fixed bar is on screen (its foot at ${l.fixedFoot} of ${l.ih}), nothing sideways`,
+    );
   if (stage0)
     assert(JSON.stringify(l.stage) === JSON.stringify(stage0), `${where}, ${moment}: the stage keeps its size and place (${JSON.stringify(l.stage)})`);
   return l;
 }
 
 /**
- * The button is in sight where a finger would tap it (what's at its middle is it), then takes a real tap.
+ * The button is in sight where a finger would tap it (what's at its middle is it), then takes a real tap (unless `tap`
+ * is false).
  * @param {Locator} b
  * @param {string} what
  */
-async function tapIt(b, what) {
+async function tapIt(b, what, tap = true) {
   await b.waitFor();
   await b.scrollIntoViewIfNeeded();
   const hit = await b.evaluate((el) => {
@@ -128,7 +134,7 @@ async function tapIt(b, what) {
     return { ok: !!at && el.contains(at), at: at ? `${at.tagName.toLowerCase()}.${[...at.classList].join('.')}` : 'nothing', h: Math.round(r.height) };
   });
   assert(hit.ok, `${what} is in sight, where a tap reaches it (${hit.ok ? `${hit.h}px tall` : `${hit.at} is there`})`);
-  await b.tap();
+  if (tap) await b.tap();
 }
 
 /**
@@ -137,7 +143,7 @@ async function tapIt(b, what) {
  */
 async function toolsOut(page) {
   const fold = hostPanelIn(page).getByRole('button', { name: '⋯ Tools' });
-  if ((await fold.count()) && (await fold.getAttribute('aria-expanded')) !== 'true') {
+  if ((await fold.isVisible()) && (await fold.getAttribute('aria-expanded')) !== 'true') {
     await fold.tap();
     await toolsRowIn(page).waitFor();
   }
@@ -166,13 +172,15 @@ const statusSays = (page, text) => statusLineIn(page).filter({ hasText: text }).
 try {
   for (const [w, h] of [
     [320, 568],
+    [360, 640],
+    [390, 667],
     [360, 740],
     [390, 844],
   ]) {
     const where = `${w}×${h}, one window`;
     section(`A phone upright, ${where}`);
     const { ctx, page } = await sample({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
-    const tiny = h <= 568;
+    const tiny = h <= 700;
 
     // The slides: the stage the screen's width, 16:9, right at the top; the panel the rest of the screen.
     const first = await roomy(page, where, 'a slide', null);
@@ -211,6 +219,7 @@ try {
     await statusSays(page, 'Round intro');
     await roomy(page, where, "the board's title card", stage0);
     const skip = page.getByRole('button', { name: 'Skip intro' });
+    await tapIt(skip, `${where}: Skip intro, on the board's title card,`, false);
     await stageBoxIn(page).tap();
     await statusSays(page, 'Revealing the categories');
     await roomy(page, where, 'the categories coming up', stage0);
@@ -301,6 +310,27 @@ try {
     await statusSays(page, 'Game over');
     await sleep(400);
     await roomy(page, where, "the end's tie", stage0);
+    await ctx.close();
+  }
+
+  // The tools row kept out on a small phone (📊 Scoreboard on: no ⋯ Tools to fold it): each moment's box still has
+  // room, the panel scrolling if it must.
+  section('A small phone, 320×568, with 📊 Scoreboard on');
+  {
+    const where = '320×568 with 📊 Scoreboard on';
+    const { ctx, page } = await sample({ viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true });
+    const stage0 = (await layout(page)).stage;
+    await toolsOut(page);
+    await toolsRowIn(page).getByRole('button', { name: /📊/ }).tap();
+    await toolsRowIn(page).locator('[aria-pressed="true"]').filter({ hasText: '📊' }).waitFor();
+    await sleep(400);
+    assert(!(await hostPanelIn(page).getByRole('button', { name: '⋯ Tools' }).isVisible()), `${where}: the tools row stays out, no ⋯ Tools`);
+    await roomy(page, where, 'a slide', stage0, true);
+    await nextRound(page);
+    await statusSays(page, 'Round intro');
+    await roomy(page, where, "the board's title card", stage0, true);
+    const skip = page.getByRole('button', { name: 'Skip intro' });
+    await tapIt(skip, `${where}: Skip intro`);
     await ctx.close();
   }
 
