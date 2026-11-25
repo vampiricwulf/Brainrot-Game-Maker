@@ -423,7 +423,8 @@
     {/if}
     <span class="muted">
       {players.length}/{max}
-      {lower}s · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
+      <!-- (The keys' range as ⚖ Game rules › Most players says it: 1 to the most, 1–9 for the first 9 past nine.) -->
+      {lower}s · each color must be unique{inGame ? ` · reordering changes the number keys (${max > 9 ? '1–9, the first 9 only' : `1–${max}`})` : ''}
     </span>
     {#if players.length >= max && onraise}
       <button class="small" onclick={onraise} title="⚖ Game rules › Most {lower}s">Raise Most {lower}s to {max + 1}</button>

@@ -793,6 +793,8 @@ try {
   const boardH = await stageH();
   const panelBox = await page.locator('.play > .panel').boundingBox();
   const inPanel = [];
+  /** The number keys' range, as ⚖ Rules and 👥 Players each say it. */
+  const keysRange = {};
   for (const [what, open, box] of [
     ['?', () => page.keyboard.press('?'), page.getByRole('dialog', { name: 'Keyboard shortcuts' })],
     ['📜 Log', () => page.keyboard.press('l'), page.locator('aside[aria-label="Log"]')],
@@ -809,7 +811,13 @@ try {
       (await stageH()) === boardH && r.y >= panelBox.y - 1 && r.y + r.height <= 720 + 1,
       `one window, ${what} open: the stage keeps its size (${boardH}px) and the window is in the panel (${inPanel.at(-1)}, the panel from ${Math.round(panelBox.y)})`,
     );
-    if (what === '👥 Players') break;
+    if (what === '⚖ Rules') keysRange.rules = /the number keys (1–\d+)/.exec(await box.innerText())?.[1];
+    if (what === '👥 Players') {
+      // (One game, one range: the Players note on reordering says the keys ⚖ Rules › Most players says.)
+      keysRange.players = /reordering changes the number keys \((1–\d+)/.exec(await box.innerText())?.[1];
+      assert(keysRange.rules && keysRange.players === keysRange.rules, `👥 Players and ⚖ Rules give the same number keys (${JSON.stringify(keysRange)})`);
+      break;
+    }
     await page.keyboard.press('Escape');
     await box.waitFor({ state: 'detached' });
     await page.waitForFunction((h) => Math.round(document.querySelector('.stage-box').getBoundingClientRect().height) === h, boardH);
