@@ -395,7 +395,7 @@
         <b>🎲 {o.name}</b>
         {#if spinPlace}<StepButton step={spinPlace} {ring} />{/if}
       {:else if o.kind === 'rolloff'}
-        <b>{o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first'}</b>
+        <b>{o.purpose === 'tiebreak' ? VERBS.rollOff.label : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first'}</b>
         {#if !busy && o.purpose === 'buzz'}
           <span>Answering order: {o.ranking.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(' → ')}</span>
         {:else if !busy}

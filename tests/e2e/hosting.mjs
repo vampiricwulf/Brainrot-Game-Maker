@@ -20,6 +20,7 @@ import {
   leaveAnswer,
   failureShots,
   assert,
+  assertEq,
   launchChromium,
   awardRowIn,
   finalControlsIn,
@@ -961,6 +962,9 @@ try {
   await page.keyboard.press('o');
   await stage('.wrap .title').waitFor();
   assert((await stage('.wrap .title').innerText()).includes('Tiebreaker roll-off'), 'O on a tie for first rolls off the tied leaders (not "Who goes first?")');
+  // Its box and the stage's menu are headed as its button is, 🎲 (🏆 is the Final's).
+  const rollHeads = [await hostPanelIn(page).locator('[data-tool-controls] b').first().innerText(), (await stageMenu())[0]];
+  assertEq(rollHeads, ['🎲 Tiebreaker roll-off', '# 🎲 Tiebreaker roll-off'], 'the roll-off’s box and menu are headed 🎲 Tiebreaker roll-off, as its button');
   await hostPanelIn(page).locator('.muted', { hasText: 'won the tiebreaker roll-off' }).waitFor({ timeout: 15000 });
   assert(
     /🏆 Player \d wins · the show is over: 📋 Copy standings for chat, or 🚪 Exit/.test(await status()),

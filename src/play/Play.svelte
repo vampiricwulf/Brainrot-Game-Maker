@@ -3844,8 +3844,7 @@
     } else if (o.kind === 'popup') {
       heading = `🖼️ ${o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}`;
       if (o.answer) steps.push({ id: 'reveal', label: o.revealed ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: revealToggle });
-    } else if (o.kind === 'rolloff')
-      heading = o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first';
+    } else if (o.kind === 'rolloff') heading = o.purpose === 'tiebreak' ? VERBS.rollOff.label : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first';
     else if (o.kind === 'scoreboard') heading = '📊 Scoreboard on screen';
     else if (o.kind === 'sheet') heading = `📺 ${playerName(session, o.playerId)}’s sheet`;
     else if (o.kind === 'shop') heading = `🛒 ${game.shops?.find((s) => s.id === o.shopId)?.name ?? 'Shop'}`;
