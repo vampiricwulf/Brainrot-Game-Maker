@@ -58,7 +58,8 @@
     /** A 🎭 deal's cards were taken back (↩ Take the cards back, or a new deal). */
     ondealgone: (cards: SentCard[]) => void;
   } = $props();
-  let menu = $state<'dice' | 'wheel' | 'rolloff' | 'card' | 'deal' | 'out' | 'win' | null>(null);
+  type Menu = 'dice' | 'wheel' | 'rolloff' | 'card' | 'deal' | 'out' | 'win';
+  let menu = $state<Menu | null>(null);
   /** Whose cards the 🪟 card window shows (names only). */
   const winName = $derived(cardWindow.open ? session.players.find((p) => p.id === cardWindow.seat)?.name : undefined);
   /** 📊 Scoreboard is on screen. */
@@ -127,9 +128,21 @@
   let opener: HTMLElement | null = null;
 
   /** Open (or close) a menu from its button. */
-  function toggle(m: 'dice' | 'wheel' | 'rolloff' | 'card' | 'deal' | 'out' | 'win', e: MouseEvent): void {
+  function toggle(m: Menu, e: MouseEvent): void {
     menu = menu === m ? null : m;
     opener = e.currentTarget as HTMLElement;
+  }
+  /**
+   * Tab (or Shift+Tab) out of an open menu and its button closes it, as a click outside does: it's a pop-up of its
+   * button, not a window left over the panel without the keys. The focus stays where it went (the next tool). Not when
+   * nothing has the focus next (another window, a file picker, the 🪟 card window opening, a click on the stage), or
+   * while a window opened from it is over it (🗜 Make smaller, a question), or it went to a toast or over a window.
+   */
+  function leave(e: FocusEvent, m: Menu): void {
+    const to = e.relatedTarget;
+    if (menu !== m || !(to instanceof Element) || (e.currentTarget as HTMLElement).contains(to)) return;
+    if (modalOpen() || to.closest('[data-over-modal], .toasts')) return;
+    menu = null;
   }
   /**
    * Where a menu goes (see anchored.ts): up from its button, whole in the window and over everything else; in a single
@@ -213,7 +226,7 @@
 {/snippet}
 
 <div class="tl" class:open={!!menu}>
-  <div class="pop">
+  <div class="pop" onfocusout={(e) => leave(e, 'dice')}>
     <button
       onclick={(e) => toggle('dice', e)}
       title={session.phase === 'boardgame' ? 'D rolls the round’s own dice (or spins its wheel)' : 'D rolls the last dice again'}
@@ -244,7 +257,7 @@
       </div>
     {/if}
   </div>
-  <div class="pop">
+  <div class="pop" onfocusout={(e) => leave(e, 'wheel')}>
     <button onclick={(e) => toggle('wheel', e)} aria-haspopup="dialog" aria-expanded={menu === 'wheel'}>🎡 Wheel</button>
     {#if menu === 'wheel'}
       <div class="menu" role="dialog" aria-label="Wheels" use:anchored={at}>
@@ -324,7 +337,7 @@
       </div>
     {/if}
   </div>
-  <div class="pop">
+  <div class="pop" onfocusout={(e) => leave(e, 'rolloff')}>
     <button onclick={(e) => toggle('rolloff', e)} title="O rolls for everyone" aria-haspopup="dialog" aria-expanded={menu === 'rolloff'}
       >🏁 Who goes first</button
     >
@@ -355,7 +368,7 @@
       </div>
     {/if}
   </div>
-  <div class="pop">
+  <div class="pop" onfocusout={(e) => leave(e, 'card')}>
     <button
       onclick={(e) => toggle('card', e)}
       aria-haspopup="dialog"
@@ -370,7 +383,7 @@
       </div>
     {/if}
   </div>
-  <div class="pop">
+  <div class="pop" onfocusout={(e) => leave(e, 'deal')}>
     <!-- (Its name is cut short to keep the row's room: the tooltip says it whole. The words go on a narrow window, as
          the cards out's do: then the outline, orange when a phone missed it, says there's a deal.) -->
     <button
@@ -395,7 +408,7 @@
     {/if}
   </div>
   {#if out || menu === 'out'}
-    <div class="pop">
+    <div class="pop" onfocusout={(e) => leave(e, 'out')}>
       <button
         class="cardsout"
         class:warn={outWarn}
@@ -415,7 +428,7 @@
   {/if}
   <!-- (Its own button only while it's open, saying whose cards it shows: it's opened from 🤫 Send a card….) -->
   {#if winName || menu === 'win'}
-    <div class="pop">
+    <div class="pop" onfocusout={(e) => leave(e, 'win')}>
       <button
         onclick={(e) => toggle('win', e)}
         aria-haspopup="dialog"

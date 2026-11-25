@@ -22,6 +22,7 @@ import {
   stageBoxIn,
   toastsIn,
   resultsPath,
+  toolsRowIn,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -719,6 +720,37 @@ try {
   assert(/ · Time's up\.$/.test(await said()), `“Time's up” comes after a “·” in what's said (“${await said()}”)`);
   await page.keyboard.press('Escape');
   await boardIn(page).waitFor();
+  // The tools row's pop-ups close when Tab leaves them and their button, as a click outside does: 🎲 Dice's items, its
+  // Roll, then on to 🎡 Wheel with Dice closed. Shift+Tab from a pop-up's first item goes back to its own button, open.
+  const tools = toolsRowIn(page);
+  const diceDlg = page.getByRole('dialog', { name: 'Dice' });
+  await tools.getByRole('button', { name: '🎲 Dice', exact: true }).click();
+  await diceDlg.waitFor();
+  const inDice = () => page.evaluate(() => !!document.activeElement?.closest('[role="dialog"][aria-label="Dice"], .pop'));
+  let tabs = 0;
+  for (; tabs < 30 && (await inDice()) && (await focused()) !== '🎡 Wheel'; tabs++) await page.keyboard.press('Tab');
+  assert(
+    (await focused()) === '🎡 Wheel' && (await diceDlg.count()) === 0 && tabs > 3,
+    `Tab through 🎲 Dice's pop-up (${tabs} presses) and on: it closes, the focus on 🎡 Wheel (${await focused()})`,
+  );
+  const wheelDlg = page.getByRole('dialog', { name: 'Wheels' });
+  await page.keyboard.press('Space');
+  await wheelDlg.waitFor();
+  await page.keyboard.press('Tab');
+  assert(await wheelDlg.evaluate((d) => d.contains(document.activeElement)), `and Space opens 🎡 Wheel, Tab going into it (${await focused()})`);
+  await page.keyboard.press('Shift+Tab');
+  assert(
+    (await focused()) === '🎡 Wheel' && (await wheelDlg.isVisible()),
+    `Shift+Tab from its first item goes back to 🎡 Wheel, its pop-up still open (${await focused()})`,
+  );
+  await page.keyboard.press('Shift+Tab');
+  assert((await wheelDlg.count()) === 0, `and Shift+Tab on out of the button closes it (${await focused()})`);
+  // (A click on what takes no focus, here the pop-up's own edge, keeps it open.)
+  await tools.getByRole('button', { name: '🎲 Dice', exact: true }).click();
+  await diceDlg.click({ position: { x: 3, y: 3 } });
+  assert(await diceDlg.isVisible(), 'a click inside a pop-up, not on a button, keeps it open');
+  await page.keyboard.press('Escape');
+  await diceDlg.waitFor({ state: 'detached' });
   // One window: ?, 📜 Log, ⚖ Rules, 🔊 Sound and 👥 Players open in the host panel's own box, scrolling there, and the
   // stage viewers see keeps its size (the panel doesn't grow for them; playcopies.mjs checks 🗜 Make smaller).
   const stageH = () => stageBoxIn(page).evaluate((e) => Math.round(e.getBoundingClientRect().height));

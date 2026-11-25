@@ -424,6 +424,8 @@ try {
     assert(!(await shownOf(page, NAMES)).length, 'nothing on the page names it');
     await page.keyboard.press('Escape');
     await shrink.waitFor({ state: 'detached' });
+    // (The window over it took the focus: the list it was opened from stays open, under it and after it.)
+    assert(await list.isVisible(), 'Esc closes only that window: the cards out list it was opened from stays open');
     // (Its row's words as they went by, since `from`: the percent changes faster than a look at it.)
     const sawUpload = (from = 0) =>
       page.evaluate((from) => new Set((window.__seen ?? []).slice(from).flatMap((t) => t.match(/uploading 1 of 1 \((\d+)%\)…/)?.[1] ?? [])).size, from);
