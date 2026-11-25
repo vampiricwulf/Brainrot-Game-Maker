@@ -1531,6 +1531,19 @@ describe('resume with edits', () => {
     moved.rounds = [moved.rounds[2], moved.rounds[0], moved.rounds[1]];
     rebaseSession(other.s, other.g, moved);
     expect([other.s.currentRound, other.s.scoreLog[0].round, other.s.actionLog?.[0].round]).toEqual([2, 2, 2]);
+    // A step's points, and a step undone (waiting for Redo), move too.
+    const third = three();
+    logged(third.s, 'Ann pays', () => applyScore(third.s, third.g, ['a'], -100, 'Paid'), third.g);
+    setPicker(third.s, undefined);
+    undoAction(third.s, third.g);
+    const thirdMoved = clone(third.g);
+    thirdMoved.rounds = [thirdMoved.rounds[2], thirdMoved.rounds[0], thirdMoved.rounds[1]];
+    rebaseSession(third.s, third.g, thirdMoved);
+    expect(third.s.actionLog!.map((a) => [a.round, a.score?.[0].round])).toEqual([
+      [2, undefined],
+      [2, 2],
+    ]);
+    expect(third.s.actionRedo!.map((a) => a.round)).toEqual([2]);
     // The round it was in deleted: it has none any more.
     const gone = clone(other.g);
     gone.rounds.splice(1, 1);
