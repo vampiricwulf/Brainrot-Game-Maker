@@ -975,6 +975,28 @@
   const scoreBox = (p: string) =>
     scoreRoom(score(session, p) - (marks[p]?.delta ?? 0)) ?? `max(70px, ${formatPoints(score(session, p), sym).length + 1}ch + 16px)`;
 
+  /**
+   * A chip folded in two (too wide for the panel: a 320px phone, a long name), and the chips' box under the stage held
+   * as tall as it: its ✔ / ✘ in sight without scrolling the box, not cut off at the box's usual one row (48px). 0 while
+   * no chip folds. (Where it folds is set for the round, so this doesn't change as marks come and go.)
+   */
+  let playersEl = $state<HTMLElement>();
+  let foldedH = $state(0);
+  $effect(() => {
+    const box = playersEl;
+    void session.players.length;
+    if (!box) return;
+    const measureChips = () => {
+      const tallest = Math.max(0, ...[...box.children].map((c) => (c as HTMLElement).offsetHeight));
+      // (A chip on one line is 38–44px tall. The box's own 2px padding, above and below: room for a selected chip's ring.)
+      foldedH = tallest > 56 ? tallest + 4 : 0;
+    };
+    measureChips();
+    const ro = new ResizeObserver(measureChips);
+    for (const c of box.children) ro.observe(c);
+    return () => ro.disconnect();
+  });
+
   // ---------- The NEXT cell: one main button ----------
   /**
    * Buzzer mode: the buzzers are closed, nobody answering or picked. (Not while a wheel or dice tile's own tool is up:
@@ -1343,7 +1365,7 @@
   <MediaControls {dual} />
 
   {#if showPlayers}
-    <div class="players" class:marking={chipSlots}>
+    <div class="players" class:marking={chipSlots} bind:this={playersEl} style:min-height={foldedH ? `${foldedH}px` : undefined}>
       {#each session.players as p, i (p.id)}
         {@const on = selected.includes(p.id)}
         <div
@@ -1413,57 +1435,61 @@
           {/if}
           <!-- On the board and during a clue, the mark's place is kept (empty until they're marked), and ✔ / ✘'s where they
                aren't offered (the board, a wheel tile, another player's Daily Double): the chips keep one width, so
-               opening a clue never wraps the row and shrinks the stage, and ✔ / ✘ never move under the host's cursor. -->
-          {#if chipSlots}
-            {@const m = marks[p.id]}
-            {@const gone = !m && passedIds.includes(p.id)}
-            <!-- (Passed from their phone: "passed" in the mark's own place, so the chip keeps its width.) -->
-            <span class="mark" class:right={m?.right} class:wrong={m && !m.right} class:gone class:empty={!m && !gone} style:min-width="{markCh}ch">
-              {#if m}{m.right ? '✔' : '✘'}{m.delta ? ` ${m.delta > 0 ? '+' : ''}${formatPoints(m.delta, sym)}` : ''}{:else if gone}passed{/if}
-            </span>
-          {/if}
-          {#if quickFor(p.id)}
-            <!-- Pressed once on this clue, the same one is off (＋ Award / − Deduct still give or take more on purpose); the
+               opening a clue never wraps the row and shrinks the stage, and ✔ / ✘ never move under the host's cursor. The
+               mark and ✔ / ✘ are one group: on a window too narrow for the whole chip (a 320px phone) they fold under the
+               name and score together, inside the panel, never split or past its edge. -->
+          {#if chipSlots || quickFor(p.id)}<span class="judge">
+              {#if chipSlots}
+                {@const m = marks[p.id]}
+                {@const gone = !m && passedIds.includes(p.id)}
+                <!-- (Passed from their phone: "passed" in the mark's own place, so the chip keeps its width.) -->
+                <span class="mark" class:right={m?.right} class:wrong={m && !m.right} class:gone class:empty={!m && !gone} style:min-width="{markCh}ch">
+                  {#if m}{m.right ? '✔' : '✘'}{m.delta ? ` ${m.delta > 0 ? '+' : ''}${formatPoints(m.delta, sym)}` : ''}{:else if gone}passed{/if}
+                </span>
+              {/if}
+              {#if quickFor(p.id)}
+                <!-- Pressed once on this clue, the same one is off (＋ Award / − Deduct still give or take more on purpose); the
                  other one switches the verdict, a slip fixed (the mark taken back, the new one given: Play's award). -->
-            {@const was = marks[p.id]?.right}
-            <!-- (A partner clue: each of the two's own share, a ✘ often 0 for the partner.) -->
-            {@const gets = quickShare(p.id, true) ?? (ddHidden ? '+ the wager' : `+${formatPoints(quickValue, sym)}`)}
-            {@const loses = quickShare(p.id, false) ?? (ddHidden ? '− the wager' : `−${formatPoints(quickValue, sym)}`)}
-            <button
-              class="small quick right"
-              onclick={() => (onright(p.id), judged())}
-              disabled={was === true}
-              aria-label="Right: {p.name} {gets}"
-              title={was === true
-                ? `${p.name} is marked right on this clue (＋ Award gives more)`
-                : was === false
-                  ? `Change to right: ${p.name} ${gets} (the ✘ taken back)`
-                  : partner && !steal
-                    ? `Got it: ${p.name} only, ${gets} (their share)`
-                    : steal
-                      ? `Stole it: ${p.name} ${gets}`
-                      : `Right: ${p.name} ${gets}`}>✔</button
-            >
-            <button
-              class="small quick wrong"
-              onclick={() => (onwrong(p.id), judged())}
-              disabled={was === false}
-              aria-label="Wrong: {p.name} {loses}"
-              title={was === false
-                ? `${p.name} is marked wrong on this clue (− Deduct takes more)`
-                : was === true
-                  ? `Change to wrong: ${p.name} ${loses} (the ✔ taken back)`
-                  : partner && !steal
-                    ? `Missed: ${p.name} only, ${loses} (their share)`
-                    : `Wrong: ${p.name} ${loses}`}>✘</button
-            >
-          {:else if chipSlots && game.settings.deductOnWrong}
-            <!-- (Hidden copies with the same classes: exactly as wide as the real ones.) -->
-            <span class="quick-slot" aria-hidden="true" inert>
-              <button class="small quick" tabindex="-1" disabled aria-label="Right">✔</button>
-              <button class="small quick" tabindex="-1" disabled aria-label="Wrong">✘</button>
-            </span>
-          {/if}
+                {@const was = marks[p.id]?.right}
+                <!-- (A partner clue: each of the two's own share, a ✘ often 0 for the partner.) -->
+                {@const gets = quickShare(p.id, true) ?? (ddHidden ? '+ the wager' : `+${formatPoints(quickValue, sym)}`)}
+                {@const loses = quickShare(p.id, false) ?? (ddHidden ? '− the wager' : `−${formatPoints(quickValue, sym)}`)}
+                <button
+                  class="small quick right"
+                  onclick={() => (onright(p.id), judged())}
+                  disabled={was === true}
+                  aria-label="Right: {p.name} {gets}"
+                  title={was === true
+                    ? `${p.name} is marked right on this clue (＋ Award gives more)`
+                    : was === false
+                      ? `Change to right: ${p.name} ${gets} (the ✘ taken back)`
+                      : partner && !steal
+                        ? `Got it: ${p.name} only, ${gets} (their share)`
+                        : steal
+                          ? `Stole it: ${p.name} ${gets}`
+                          : `Right: ${p.name} ${gets}`}>✔</button
+                >
+                <button
+                  class="small quick wrong"
+                  onclick={() => (onwrong(p.id), judged())}
+                  disabled={was === false}
+                  aria-label="Wrong: {p.name} {loses}"
+                  title={was === false
+                    ? `${p.name} is marked wrong on this clue (− Deduct takes more)`
+                    : was === true
+                      ? `Change to wrong: ${p.name} ${loses} (the ✔ taken back)`
+                      : partner && !steal
+                        ? `Missed: ${p.name} only, ${loses} (their share)`
+                        : `Wrong: ${p.name} ${loses}`}>✘</button
+                >
+              {:else if chipSlots && game.settings.deductOnWrong}
+                <!-- (Hidden copies with the same classes: exactly as wide as the real ones.) -->
+                <span class="quick-slot" aria-hidden="true" inert>
+                  <button class="small quick" tabindex="-1" disabled aria-label="Right">✔</button>
+                  <button class="small quick" tabindex="-1" disabled aria-label="Wrong">✘</button>
+                </span>
+              {/if}
+            </span>{/if}
         </div>
       {/each}
     </div>
@@ -2957,8 +2983,13 @@
   .panel.partnerclue:not(.dual) > .act {
     min-height: 80px;
   }
+  /* (Never wider than the panel: a chip too wide for it, on a 320px phone, folds its mark and ✔ / ✘ under its name and
+     score. Their room is kept either way, so where it folds is set for the round: no ✔ / ✘ refolds it.) */
   .p {
     display: flex;
+    flex-wrap: wrap;
+    max-width: 100%;
+    min-width: 0;
     align-items: center;
     gap: 4px;
     border: 2px solid var(--c);
@@ -3046,6 +3077,13 @@
   .players.marking > .p {
     padding-block: 1px;
     min-height: 38px;
+  }
+  /* The mark and ✔ / ✘, one group: folded, they go to the chip's second line together, at its right. */
+  .judge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
   }
   /* ✔ / ✘'s place where they aren't offered: unseen, but as wide (the chip's gap still applies). */
   .quick-slot {
