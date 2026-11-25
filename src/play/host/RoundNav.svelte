@@ -229,10 +229,13 @@
 </div>
 
 <style>
+  /* (Never wider than the row it's in: on a 320px phone the round picker gets narrower, so ▶ stays whole and in sight.) */
   .rn {
     display: flex;
     gap: 6px;
     align-items: center;
+    min-width: 0;
+    max-width: 100%;
   }
   .test {
     font-size: 12px;
@@ -244,6 +247,8 @@
   }
   .pick {
     max-width: 180px;
+    min-width: 0;
+    flex: 0 1 auto;
     font-size: 12px;
   }
   /* (As wide as the button it keeps the place of.) */
