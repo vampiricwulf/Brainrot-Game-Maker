@@ -1854,16 +1854,22 @@ function drawClock(): void {
     el.classList.toggle('up', c.up);
   }
   if (t && box && 'endsAt' in t && t.endsAt > serverNow()) clockTick = window.setTimeout(drawClock, 250);
-  // Time's up with words typed in the box and not sent: they go, marked (the box stays open: the host may still take
-  // a late one, and Send answer sends them as the player's own). Once per countdown.
+  sendAtTimeUp();
+}
+
+/**
+ * Time's up with words typed in the answer box and not sent: they go, marked (the box stays open: the host may still
+ * take a late one, and Send answer sends them as the player's own). Once per countdown, and only once the box holds
+ * this round's words (renderAnswer: a box first drawn with time up, after a reconnect, still holds the last round's).
+ */
+function sendAtTimeUp(): void {
+  const t = view?.timer;
   const a = view?.answer;
-  if (box === 'answer' && a?.open && clockUp(t, serverNow())) {
-    const key = `${a.id} ${t && 'endsAt' in t ? t.endsAt : 'left'}`;
-    if (key !== autoTimeFor) {
-      autoTimeFor = key;
-      sendUnsent(a, 'time');
-    }
-  }
+  if ($('answer-form').hidden || !a?.open || !clockUp(t, serverNow()) || !answerFor.startsWith(`${a.id} `)) return;
+  const key = `${a.id} ${t && 'endsAt' in t ? t.endsAt : 'left'}`;
+  if (key === autoTimeFor) return;
+  autoTimeFor = key;
+  sendUnsent(a, 'time');
 }
 
 /**
@@ -2293,7 +2299,8 @@ function sendAnswer(m: { t: 'answer'; id: string; text?: string; pick?: string; 
  * they aren't what's in already. `why`: 'time' (the clock ran out) or 'lock'.
  */
 function sendUnsent(a: NonNullable<PhoneView['answer']>, why: AutoSent): void {
-  if (!a.mine || !a.autoSend || a.choices?.length || a.hidden || (a.text && !a.auto)) return;
+  // (Only this round's words: the box was drawn for it.)
+  if (!a.mine || !a.autoSend || a.choices?.length || a.hidden || (a.text && !a.auto) || !answerFor.startsWith(`${a.id} `)) return;
   const text = cleanAnswer($<HTMLTextAreaElement>('answer-in').value);
   if (!text.trim() || (a.text && sameAnswer(text, a.text))) return;
   sendAnswer({ t: 'answer', id: a.id, text, auto: why }, 'auto');
@@ -2476,6 +2483,8 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
     answerFor = key;
   }
   growAnswer();
+  // (The box holds this round's words now: time may be up already, a box first drawn after a reconnect.)
+  sendAtTimeUp();
   const state = answerState(a, team);
   drawState('answer-state', state, answerSending);
   // Green for what's in and shown; plain for "not shown here".

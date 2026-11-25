@@ -102,8 +102,13 @@ try {
   /** R shows the answer: with answers still to come in, the check asks first, and R again shows it anyway. */
   const reveal = async () => {
     await host.keyboard.press('r');
-    await sleep(300);
-    if (await goOnCheck(host).count()) {
+    const locked = async () =>
+      (await p1
+        .locator('#buzz-big')
+        .innerText()
+        .catch(() => '')) === 'Answers locked';
+    await until(async () => (await goOnCheck(host).count()) > 0 || (await locked()), { timeout: 5_000 });
+    if (!(await locked())) {
       await goOnCheck(host, { ready: true }).waitFor();
       await host.keyboard.press('r');
     }
@@ -158,15 +163,34 @@ try {
 
   // ---------- A ✍ clue whose countdown runs out ----------
   section('A ✍ clue: the countdown runs out with words typed and not sent');
+  // (Player 1's phone loses its network while this clue opens and its countdown runs out: back, the box comes up with
+  // time up. The last clue's words, still in its box out of sight, never go as this one's.)
+  await p1.context().setOffline(true);
   await boardIn(stageBoxIn(host)).locator('.tile[data-row="0"][data-cat="1"]').click();
-  for (const p of [p1, p2]) await p.getByLabel(/Your answer/).waitFor();
+  await p2.getByLabel(/Your answer/).waitFor();
+  const secs = host.getByLabel('Timer seconds');
+  await secs.fill('1');
+  await secs.press('Enter');
+  await p2.locator('#answer-clock').getByText('Time’s up').waitFor({ timeout: 10_000 });
+  await p1.context().setOffline(false);
+  await p1.getByLabel(/Your answer/).waitFor();
+  await p1.locator('#answer-clock').getByText('Time’s up').waitFor();
+  await sleep(1000);
+  assert(
+    (await p1.getByLabel(/Your answer/).inputValue()) === '' &&
+      (await answersBox.locator('[data-answer-in]', { hasText: 'Player 1' }).innerText()).trim().endsWith('…') &&
+      !(await p1.locator('#answer-state').innerText()).includes('Sent automatically'),
+    'back online with time up: the box is empty, and the last clue’s words don’t go as this one’s answer',
+  );
   await p2.getByLabel(/Your answer/).fill('Bulldog');
   await p2.getByRole('button', { name: 'Send answer' }).click();
   await p2.locator('#answer-state').getByText('✔ Sent').waitFor();
   // (Edited and not sent: the answer sent on purpose stays.)
   await p2.getByLabel(/Your answer/).fill('Bulldog mix');
   await p1.getByLabel(/Your answer/).fill('Siam');
-  const secs = host.getByLabel('Timer seconds');
+  // (A new countdown: the one run out put away first.)
+  await host.getByRole('button', { name: 'Hide timer' }).click();
+  await p1.locator('#answer-clock').waitFor({ state: 'hidden' });
   await secs.fill('3');
   await secs.press('Enter');
   await p1.locator('#answer-clock').getByText('Time’s up').waitFor({ timeout: 10_000 });
@@ -187,6 +211,7 @@ try {
     !panel.includes('Siam') && !panel.includes('Bulldog') && !((await chip.getAttribute('title')) ?? '').includes('Siam'),
     'in one window the host panel shows ✔ ⏱️ (in, by itself), never the words',
   );
+  assertEq(await stageH(), before, 'the stage keeps its size with the ⏱️ in the row');
   // Typed on after time's up, not sent: those go as the answers lock.
   await p1.getByLabel(/Your answer/).fill('Siamese');
   await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
@@ -248,6 +273,7 @@ try {
   const inChip = answersBox.locator('[data-answer-in]', { hasText: 'Player 1' });
   await inChip.filter({ hasText: '⏱️' }).waitFor();
   assert(!(await hostPanelIn(host).innerText()).includes('Tralaler'), 'one window: the host panel marks it ⏱️, never the words');
+  assertEq(await stageH(), before, 'the stage keeps its size');
   await mainButton(host, 'Start player reveals ▶').click();
   const typed = finalControlsIn(host).locator('[data-typed]');
   await typed.first().waitFor();
@@ -260,6 +286,7 @@ try {
       !((await typed.filter({ has: host.locator('[data-auto-sent]') }).getAttribute('title')) ?? '').includes('Tralaler'),
     'the reveal rows: Player 1’s marked ⏱️ (its title says it may be unfinished), its words hidden until revealed; Player 2’s unmarked',
   );
+  assertEq(await stageH(), before, 'the stage keeps its size with the reveal rows');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Answers sent by themselves E2E passed.');
