@@ -104,6 +104,22 @@ try {
       const warn = await p.locator('header > .autosave.warn').evaluate(lineOf);
       assert(warn.lines === 1, `at ${width} px wide the header's “⚠ Autosave unavailable” stays one line (${JSON.stringify(warn)})`);
     }
+    // On a phone or a half-screen window the header's other notes are hidden, but not this one: it's the only lasting
+    // sign that nothing is kept once a round is in (the first screen's line goes) or the storage-full toast has gone.
+    await p.getByRole('button', { name: '＋ Add round' }).first().click();
+    await p.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+    for (const width of [700, 390]) {
+      await p.setViewportSize({ width, height: 844 });
+      const warn = p.locator('header > .autosave.warn');
+      const shown = await warn.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { visible: r.width > 0 && r.height > 0, cut: el.scrollWidth > el.clientWidth + 1, right: r.right };
+      });
+      assert(
+        shown.visible && !shown.cut && shown.right <= width,
+        `at ${width} px wide the header still says “⚠ Autosave unavailable here: use Save”, in full (${JSON.stringify(shown)})`,
+      );
+    }
     await blocked.close();
   }
 

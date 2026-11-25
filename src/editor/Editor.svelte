@@ -2352,5 +2352,13 @@
     .autosave.busy {
       display: block;
     }
+    /* (Nor the warning that nothing is being autosaved: the only lasting sign of it once its toast has gone. On a line
+       of its own, in full.) */
+    header > .autosave.warn {
+      display: block;
+      flex: 1 1 100%;
+      white-space: normal;
+      text-align: left;
+    }
   }
 </style>
