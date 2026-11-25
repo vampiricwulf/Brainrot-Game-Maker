@@ -2509,15 +2509,20 @@
     padding-top: 8px;
     border-top: 1px solid var(--border);
   }
-  /* The intro's category just revealed: a long name is cut short (less room in a narrower window), so the status line
-     wraps no sooner than it did without the name. */
+  /* The intro's category just revealed: a long name is cut short (shorter in a window under 900px wide), so the status
+     line wraps no sooner than it did without the name. */
   .catname {
     display: inline-block;
-    max-width: min(18em, 9vw);
+    max-width: 18em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     vertical-align: bottom;
+  }
+  @media (max-width: 899px) {
+    .catname {
+      max-width: 9vw;
+    }
   }
   /* Only the action part gives up height (it scrolls): the status, the tools and the fixed bar keep theirs. */
   .panel > :is(.status, .toolsrow, .askslot, .fixed) {
