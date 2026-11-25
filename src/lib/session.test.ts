@@ -560,6 +560,49 @@ describe('players mid-game', () => {
     expect(f.results[first]).toBe('right');
   });
 
+  it('takes a player removed in another round off a Final left during its reveals, which can still finish', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b, c], 400, 'x');
+    goToRound(session, game, 1);
+    for (const id of [a, b, c]) finalSetWager(session, id, 50);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    expect(session.finalStep).toBe('reveal');
+    finalJudge(session, game, a, true);
+    goToRound(session, game, 0);
+    removePlayer(session, b);
+    goToRound(session, game, 1);
+    expect(session.finalStep).toBe('reveal');
+    const f = session.final!;
+    expect(f.players).toEqual([a, c]);
+    expect(f.order).not.toContain(b);
+    expect(f.wagers[b]).toBe(50);
+    finalJudge(session, game, c, false);
+    expect(finalUnjudged(session)).toEqual([]);
+    // Judging someone who's out gives nothing and logs nothing.
+    const logged = session.scoreLog.length;
+    expect(finalJudge(session, game, b, true)).toBe(false);
+    expect(session.scoreLog.length).toBe(logged);
+    expect(f.results[b]).toBeUndefined();
+  });
+
+  it('puts a player removed during the reveals and restored in another round back in them, wager and all', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b, c], 400, 'x');
+    goToRound(session, game, 1);
+    for (const id of [a, b, c]) finalSetWager(session, id, 50);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    removePlayer(session, b);
+    goToRound(session, game, 0);
+    restorePlayer(session, b);
+    goToRound(session, game, 1);
+    const f = session.final!;
+    expect(session.finalStep).toBe('reveal');
+    expect(f.players).toContain(b);
+    expect(f.order.at(-1)).toBe(b);
+    expect(f.wagers[b]).toBe(50);
+    expect(finalUnjudged(session)).toContain(b);
+  });
+
   it('leaves the final round alone when restoring a player who was never in it', () => {
     const { game, session, a, b, c } = setup();
     applyScore(session, game, [a, b], 400, 'x');

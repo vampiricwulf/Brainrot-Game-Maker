@@ -1022,6 +1022,19 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
     session.final = prev;
     // Back at the reveals, not the wagers (whose caps now count this Final's results).
     session.finalStep = 'reveal';
+    // Players taken out or put back in another round meanwhile, as removePlayer and restorePlayer do here.
+    const f = prev;
+    const inGame = new Set(session.players.map((p) => p.id));
+    // Taken out: off the reveals (their wager and result stay, so a restore brings them back).
+    f.players = f.players.filter((id) => inGame.has(id));
+    f.order = f.order.filter((id) => inGame.has(id));
+    // Put back: in at the end, if they played this Final (a wager or a result, and not ticked out of it).
+    for (const id of inGame)
+      if (!f.players.includes(id) && f.chosen?.[id] !== false && (hasWager(f, id) || f.results[id])) {
+        f.players = [...f.players, id];
+        f.order = [...f.order, id];
+      }
+    if (f.current && !f.order.includes(f.current)) f.current = f.order.find((id) => !f.results[id]);
     return;
   }
   // Players the host ticked in or sat out stay that way; the others play if their score lets them (newcomers too).
@@ -1356,7 +1369,8 @@ export function hasWager(f: FinalState | null | undefined, playerId: string): bo
 export function finalJudge(session: Session, game: Game, playerId: string, right: boolean): boolean {
   const f = session.final;
   const round = currentFinal(session, game);
-  if (!f || !round || !hasWager(f, playerId)) return false;
+  // (Not someone taken out of the game: no points would go to them, only a 0 in the log.)
+  if (!f || !round || !hasWager(f, playerId) || !session.players.some((p) => p.id === playerId)) return false;
   const tag = finalTag(round.id);
   // Undo the earlier judgment's score change (Undo brings it back).
   const earlier = f.results[playerId] ? [...session.scoreLog].reverse().find((x) => x.playerId === playerId && x.clueId === tag && !x.undone) : undefined;
@@ -1382,7 +1396,7 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
  */
 export function finalAdjustWager(session: Session, game: Game, playerId: string, how: 'half' | 'zero'): boolean {
   const f = session.final;
-  if (!f || session.finalStep !== 'reveal' || !hasWager(f, playerId)) return false;
+  if (!f || session.finalStep !== 'reveal' || !hasWager(f, playerId) || !session.players.some((p) => p.id === playerId)) return false;
   const was = f.wagers[playerId]!;
   const now = how === 'half' ? Math.floor(was / 2) : 0;
   if (now === was) return false;
