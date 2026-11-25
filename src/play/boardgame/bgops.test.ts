@@ -363,6 +363,29 @@ describe('board game: the host’s moves on the stage', () => {
     expect([bs().order[bs().turn], bs().last]).toEqual(['c', undefined]);
   });
 
+  it('◀ Previous turn then Next turn ▶ keeps the 🔁 Roll again the turn left had earned, and says so only when it’s used', () => {
+    const { game, session, bs } = playing();
+    turnNow(game, session);
+    // Bob lands on 🔁 Roll again.
+    bs().again = 'b';
+    turnNow(game, session, -1);
+    // Ann's turn: Bob's Roll again isn't hers to use.
+    expect([bs().order[bs().turn], bs().again]).toEqual(['a', undefined]);
+    // Back on to Bob: just his turn, as it was (not “again”).
+    expect(turnNow(game, session)).toBeNull();
+    expect([bs().order[bs().turn], bs().again, session.actionLog?.at(-1)?.text]).toEqual(['b', 'b', 'Bob’s turn']);
+    // Undo and Redo of that ▶ keep it too.
+    undoAction(session, game);
+    expect([bs().order[bs().turn], bs().again]).toEqual(['a', undefined]);
+    redoAction(session, game);
+    expect([bs().order[bs().turn], bs().again]).toEqual(['b', 'b']);
+    // Now he rolls again, then it's Cat's turn.
+    expect(turnNow(game, session)).toBe('Bob’s turn again');
+    expect(bs().order[bs().turn]).toBe('b');
+    expect(turnNow(game, session)).toBeNull();
+    expect(bs().order[bs().turn]).toBe('c');
+  });
+
   it('Start (or Run all) on a space with a roll in it runs just the roll: the host presses the outcome', () => {
     const { game, session, round } = playing();
     const sp = round.spaces[2];
