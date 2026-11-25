@@ -1089,8 +1089,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      and as a partner clue's typed guess; `AnswerAsk.autoSend`, which a host from before leaves out, so its room takes
      none): as the countdown runs out (the box stays open: the phone says "Sent automatically when time ran out:
      unfinished: “…”", and Send answer sends them as the player's own), and as the answers lock, whether the clock ran
-     out or the host showed the answer first (the words as they are then; "Sent automatically when answers locked:
-     unfinished" when the clock hadn't run out, over "Yours: “…”" in the locked line). The phone keeps the words until
+     out or the host showed the answer first (the words as they are then, if not what went at 0: "Sent automatically
+     when answers locked: unfinished", even after the clock ran out, since they weren't in at 0; over "Yours: “…”" in
+     the locked line). The phone keeps the words until
      then (nothing typed reaches the room before); the room takes one sent as the lock reaches the phone up to 3 s after
      it saw the lock, never over an answer sent on purpose (a teammate's half-typed words don't replace the team's), nor
      for a seat already judged (a partner guess judged before the answer shows too). The host's row has ⏱ sent at

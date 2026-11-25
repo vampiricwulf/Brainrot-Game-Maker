@@ -5,7 +5,8 @@
 // unfinished" over them and the host's row has them with ⏱️ sent at lock; Player 2, who typed nothing, has "None sent".
 // A second ✍ clue with a countdown: as it runs out, Player 1's words go ("Sent automatically when time ran out:
 // unfinished", the box still open), the host panel shows ✔ ⏱️ and never the words; edited and not sent, they go again at
-// the lock. Player 2's answer sent on purpose stays, over an edit not sent. Then the Final: words typed and not sent go
+// the lock ("when answers locked": they weren't in at 0). Player 2's went at 0 too, then Send answer sends them as
+// their own (the ⏱️ goes), and that answer stays over an edit not sent. Then the Final: words typed and not sent go
 // as its answer shows, and the reveal rows mark them ⏱️ without the words until each is revealed.
 // Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
@@ -183,10 +184,6 @@ try {
     'back online with time up: the box is empty, and the last clue’s words don’t go as this one’s answer',
   );
   await p2.getByLabel(/Your answer/).fill('Bulldog');
-  await p2.getByRole('button', { name: 'Send answer' }).click();
-  await p2.locator('#answer-state').getByText('✔ Sent').waitFor();
-  // (Edited and not sent: the answer sent on purpose stays.)
-  await p2.getByLabel(/Your answer/).fill('Bulldog mix');
   await p1.getByLabel(/Your answer/).fill('Siam');
   // (A new countdown: the one run out put away first.)
   await host.getByRole('button', { name: 'Hide timer' }).click();
@@ -206,12 +203,21 @@ try {
   // One window: the host panel says it's in and that it went by itself, never the words.
   const chip = answersBox.locator('[data-answer-in]', { hasText: 'Player 1' });
   await chip.filter({ hasText: '✔ ⏱️' }).waitFor();
+  const chip2 = answersBox.locator('[data-answer-in]', { hasText: 'Player 2' });
+  await chip2.filter({ hasText: '✔ ⏱️' }).waitFor();
   const panel = await hostPanelIn(host).innerText();
   assert(
     !panel.includes('Siam') && !panel.includes('Bulldog') && !((await chip.getAttribute('title')) ?? '').includes('Siam'),
     'in one window the host panel shows ✔ ⏱️ (in, by itself), never the words',
   );
   assertEq(await stageH(), before, 'the stage keeps its size with the ⏱️ in the row');
+  // Send answer after it went by itself: the player's own now, the ⏱️ gone (the room's view and the host's chip).
+  await p2.getByRole('button', { name: 'Send answer' }).click();
+  await p2.locator('#answer-state').getByText('✔ Sent').waitFor();
+  await until(async () => !(await chip2.innerText()).includes('⏱') && (await chip2.innerText()).includes('✔'), { timeout: 5_000 });
+  assert(!/⏱|sent by itself|unfinished/.test((await chip2.getAttribute('title')) ?? ''), 'sent as their own: no ⏱️ on the host’s chip or its title');
+  // (Edited and not sent: the answer sent on purpose stays.)
+  await p2.getByLabel(/Your answer/).fill('Bulldog mix');
   // Typed on after time's up, not sent: those go as the answers lock.
   await p1.getByLabel(/Your answer/).fill('Siamese');
   await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
@@ -224,12 +230,12 @@ try {
   await until(async () => (await small(p1)).includes('Siamese'), { timeout: 5_000 });
   assertEq(
     await small(p1),
-    'Sent automatically when time ran out: unfinished · Yours: “Siamese”',
-    'at the lock the words as they are go, after the clock ran out: “when time ran out”',
+    'Sent automatically when answers locked: unfinished · Yours: “Siamese”',
+    'at the lock the words as they are go: “when answers locked”, the clock having run out before (they weren’t in at 0)',
   );
   assertEq(await small(p2), 'Yours: “Bulldog”', 'an answer sent on purpose stays over an edit not sent (no mark)');
   await row('Player 1').getByText('“Siamese”').waitFor();
-  assertEq(await row('Player 1').locator('[data-auto-sent]').innerText(), '⏱️ sent at time’s up', 'the host’s row: ⏱️ sent at time’s up');
+  assertEq(await row('Player 1').locator('[data-auto-sent]').innerText(), '⏱️ sent at lock', 'the host’s row: ⏱️ sent at lock');
   assert(
     (await row('Player 2').getByText('“Bulldog”').count()) === 1 && (await row('Player 2').locator('[data-auto-sent]').count()) === 0,
     'Player 2’s row has the answer sent, unmarked',

@@ -544,7 +544,6 @@ function onMessage(m: RoomToPhone): void {
       break;
     case 'view': {
       const was = view?.answer;
-      const clock = view?.timer;
       view = m.view;
       if (view.status !== STARTS_SOON && view.status !== SETTING_UP) gameSeen = true;
       if (answerTapTaken) answerTap = '';
@@ -556,11 +555,11 @@ function onMessage(m: RoomToPhone): void {
       if (lostArm >= 0 && view.armId !== lostArm) lostArm = -1;
       resendHeld(view);
       // The answers just locked over words typed and not sent: they go now, marked (the room takes them a moment after
-      // the lock). Not once the host has judged this seat: it keeps what it was judged on. (The answer going up stops
-      // the clock: whether it had run out is the view before's.)
+      // the lock). Not once the host has judged this seat: it keeps what it was judged on. Marked 'lock' even after the
+      // clock ran out: what went at time's up is 'time', and these are the words as they are now (typed on since, or
+      // never sent then), so "when time ran out" would say they were in at 0 when they weren't.
       const now = view.answer;
-      if (was?.open && was.mine && now && now.id === was.id && !now.open && !now.verdict)
-        sendUnsent(now, clockUp(clock, serverNow()) || clockUp(view.timer, serverNow()) ? 'time' : 'lock');
+      if (was?.open && was.mine && now && now.id === was.id && !now.open && !now.verdict) sendUnsent(now, 'lock');
       break;
     }
     case 'waiting':

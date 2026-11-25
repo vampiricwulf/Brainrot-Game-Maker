@@ -414,8 +414,9 @@ export interface AnswerAsk {
 }
 
 /**
- * Why a phone sent its words by itself (PhoneMsg 'answer' `auto`): 'time', its countdown ran out (the host's clock at
- * 0, at the lock too); 'lock', the answers locked before that (the host showed the answer, or judged with no clock).
+ * Why a phone sent its words by itself (PhoneMsg 'answer' `auto`): 'time', as its countdown ran out (the host's clock
+ * at 0, the box still open); 'lock', as it heard the answers lock (the host showed the answer, or judged), whether the
+ * clock had run out before or not: those are the words as they are then.
  */
 export type AutoSent = 'time' | 'lock';
 /** How long after the answers lock the room still takes a phone's words sent by itself (`auto`: it hears of the lock late). */
