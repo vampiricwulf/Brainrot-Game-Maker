@@ -272,10 +272,12 @@
     text-align: right;
     color: var(--muted);
   }
-  /* (A long name is cut short before the row wraps.) */
+  /* (A long name is cut short before the row wraps. Its box may grow with the row, so a short name sits at its right,
+     beside its volume, as the rest do.) */
   .file {
     flex: 1 1 120px;
     max-width: 220px;
+    text-align: right;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

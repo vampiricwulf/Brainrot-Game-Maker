@@ -1110,6 +1110,17 @@ try {
     ]);
     await chosen.setFiles([{ name: 'a-rather-long-name-for-a-partner-sound.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(3000, 1) }]);
     await pp.getByRole('button', { name: 'Change file for Partner clue' }).waitFor();
+    // (And one with a short name, for the laptop's check below.)
+    await pp.getByRole('button', { name: 'Choose file for Round intro' }).click();
+    const [short] = await Promise.all([
+      pp.waitForEvent('filechooser'),
+      pp
+        .locator('.picker')
+        .getByRole('button', { name: /Upload sound file/ })
+        .click(),
+    ]);
+    await short.setFiles([{ name: 'a.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(3000, 2) }]);
+    await pp.getByRole('button', { name: 'Change file for Round intro' }).waitFor();
     await fits('🔊 Sounds with a file chosen');
     const outside = await pp.locator('.sound').evaluateAll((rows) =>
       rows.flatMap((r) => {
@@ -1185,6 +1196,16 @@ try {
       wide.every((b) => b.bottom > wide[1].top && b.top < wide[1].bottom),
       `at 1280 a stat's name, who sees it and color are on one line (${wide.map((b) => Math.round(b.top)).join(', ')})`,
     );
+    // And a sound's short file name still sits beside its volume (its box grows with the row, its name at its right).
+    await pageButton(/Sounds/).click();
+    const shortRow = pp.locator('.sound', { has: pp.getByRole('button', { name: 'Change file for Round intro' }) });
+    await shortRow.waitFor();
+    const gap = await shortRow.evaluate((row) => {
+      const r = document.createRange();
+      r.selectNodeContents(row.querySelector('.file'));
+      return Math.round(row.querySelector('.vol').getBoundingClientRect().left - r.getBoundingClientRect().right);
+    });
+    assert(gap >= 0 && gap <= 16, `at 1280 a sound's short file name sits beside its volume (${gap}px between them)`);
     await ctx.close();
   }
 
