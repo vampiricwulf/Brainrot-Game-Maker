@@ -602,6 +602,7 @@ try {
   hold = null;
   release();
   // (Past the 5 s a cut-off upload waits before it goes again: there's no state to wait for, as nothing should go.)
+  // (A real wait, not page.clock: a fake one would also run the room's pings and the uploads' times to the server.)
   await sleep(6000);
   assert(
     uploads === n0 + 2,

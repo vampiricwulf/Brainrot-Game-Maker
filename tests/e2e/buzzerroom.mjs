@@ -1159,6 +1159,7 @@ try {
     idle.push(x);
     await new Promise((ok) => w.addEventListener('open', ok, { once: true }));
   }
+  // (A real wait, not page.clock: it's the local buzzer server's idle time, which a page's fake clock can't reach.)
   await sleep(10_500);
   setState({ seats: [...hs.seats, { id: 'f', name: 'Fay', color: '#aa00aa' }, { id: 'g', name: 'Gus', color: '#00aaaa' }] });
   const fay = await phone('fay');

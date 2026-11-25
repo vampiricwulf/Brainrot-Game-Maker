@@ -243,6 +243,9 @@ try {
   );
   await page.getByRole('button', { name: 'Skip intro' }).click();
   // 🙈 Hide in one window: the first time, a note says how to get the controls back.
+  // (A fake clock from here, which still runs as time goes, so the note's 3.5 s, set by this click, can be run past at
+  // once below instead of waited out.)
+  await page.clock.install();
   await page.getByRole('button', { name: '🙈 Hide', exact: true }).click();
   await toastsIn(page, { hasText: 'Press H to bring the controls back' }).waitFor();
   await page.keyboard.press('h');
@@ -280,7 +283,7 @@ try {
   await help.getByRole('button', { name: 'Done' }).click();
   await help.waitFor({ state: 'detached' });
   // (Past the first note's 3.5 seconds, so a note now is the new one.)
-  await page.waitForTimeout(3600);
+  await page.clock.runFor(3600);
   await page.getByRole('button', { name: '🙈 Hide', exact: true }).click();
   assert(
     await toastsIn(page, { hasText: 'Press H to bring the controls back' })

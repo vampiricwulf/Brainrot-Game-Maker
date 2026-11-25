@@ -682,6 +682,9 @@ try {
   await nextBtn.focus();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
+  // (A fake clock from here, which still runs as time goes, so the question's 4 s timer, set by the Enter below, can
+  // be run past at once instead of waited out.)
+  await page.clock.install();
   await page.keyboard.press('Enter');
   // It asks in the strip above the fixed bar, its answers saying what they do, the focus on Keep playing (Go to … ▶ is
   // to its right).
@@ -693,15 +696,17 @@ try {
       (await page.evaluate(() => document.activeElement?.textContent)) === 'Keep playing',
     `Next round with clues left asks in the confirmation strip, naming its answers (${asked})`,
   );
-  await page.waitForTimeout(4400);
+  await page.clock.runFor(4400);
   assert(await goOn.isVisible(), 'the question stays up while the keyboard focus is in it');
   // The focus out of it, the pointer on it: it stays (someone reading it); the pointer gone, it goes.
   await page.evaluate(() => document.activeElement?.blur());
   await goOn.locator('.ask').hover();
-  await page.waitForTimeout(4400);
+  await page.clock.runFor(4400);
   assert(await goOn.isVisible(), 'and while the pointer is on it');
   await page.mouse.move(5, 5);
-  await goOn.waitFor({ state: 'detached', timeout: 6000 });
+  // (Its next 4 s, run on the fake clock too: so the clock is what the waits above ran past.)
+  await page.clock.runFor(4400);
+  await goOn.waitFor({ state: 'detached', timeout: 1000 });
   await page.waitForTimeout(450);
   await page.locator('.rn > button').last().click();
   await page.waitForTimeout(450);

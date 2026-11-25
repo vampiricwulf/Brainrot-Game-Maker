@@ -550,6 +550,9 @@ try {
   await clickAway();
   await key('Control+z');
   await clue.waitFor();
+  // (A fake clock from here, which still runs as time goes, so the note's 8 s timer, set by the change below, can be
+  // run past at once further down instead of waited out.)
+  await page.clock.install();
   await page.getByPlaceholder('Type the question…').fill('Who is Doge?');
   await notice.filter({ hasText: 'Dropped 1 undone step' }).waitFor({ timeout: 3000 });
   // A toast meanwhile goes under the note, not over its ↶ Undo (a toast's place, as the app's own CSS puts it).
@@ -571,8 +574,8 @@ try {
     tabs++;
   }
   assert(await onBringBack(), `with the clue editor open, Shift+Tab from the question reaches the note's ↶ Undo (${tabs} presses)`);
-  // (It stays while the keys are on it, past its own few seconds.)
-  await page.waitForTimeout(9000);
+  // (It stays while the keys are on it, past its own 8 seconds.)
+  await page.clock.runFor(9000);
   assert(await onBringBack(), 'the note stays while the focus is on it');
   await page.keyboard.press('Shift+Tab');
   assert(await clue.evaluate((c) => c.contains(document.activeElement)), 'Shift+Tab past the note goes back into the window');

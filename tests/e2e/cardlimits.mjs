@@ -461,6 +461,7 @@ try {
     const keys = async () => (await roomKeys(persist)).filter((k) => k.startsWith('p:')).length;
     assert(await until(async () => (await keys()) === 17), `the room keeps only the 17 MB file’s pieces (${await keys()} pieces)`);
     // (Past the 5 s a stopped upload would wait before it went again: there's no state to wait for, as nothing should go.)
+    // (A real wait, not page.clock: a fake one would also run the room's pings and the uploads' times to the server.)
     await sleep(6000);
     assert(
       posts.length === upAfterOne + 1 && !listed.flat().includes(fileId(files.mid)),
