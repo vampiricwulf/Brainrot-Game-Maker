@@ -259,6 +259,28 @@ try {
     await statusSays(page, 'Answer hidden');
     await roomy(page, where, 'a clue', stage0);
     await noKeys(page, where, 'a clue');
+    // The players' chips on one line each, the sample's short names and scores (a 320px phone too): not folded in two,
+    // twice as tall, with only the first chip in reach. The first two chips' ✔ take a tap where they are, and ✔ / ✘
+    // keep their size.
+    const chips = await hostPanelIn(page).evaluate((panel) => {
+      const rows = [...panel.querySelectorAll('[data-player-row]')];
+      return {
+        tall: rows.map((r) => Math.round(r.getBoundingClientRect().height)),
+        reach: rows.slice(0, 2).map((r) => {
+          const b = /** @type {Element} */ (r.querySelector('.quick')).getBoundingClientRect();
+          const at = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+          return !!at && r.contains(at) && !!at.closest('.quick');
+        }),
+        small: [...panel.querySelectorAll('[data-player-row] .quick')].filter((q) => {
+          const b = q.getBoundingClientRect();
+          return b.width < 36 || b.height < 32;
+        }).length,
+      };
+    });
+    assert(
+      chips.tall.length === 3 && chips.tall.every((t) => t < 50) && chips.reach.every(Boolean) && chips.small === 0,
+      `${where}, a clue: each player's chip is one line, the first two's ✔ in reach, ✔ / ✘ at least 36×32 (${JSON.stringify(chips)})`,
+    );
     await page.keyboard.press('1');
     await sleep(300);
     await roomy(page, where, 'a clue with a player picked', stage0);

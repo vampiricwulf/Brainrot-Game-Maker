@@ -1415,7 +1415,9 @@
               aria-pressed={on}
               title="Toggle (key {i + 1})"
             >
-              <span class="key" class:gone={amountKeys}>{i + 1}</span>
+              <!-- (Its number key: none on a touch screen, and the chip's room is better spent there, a 320px phone's
+                   chips on one line.) -->
+              <span class="key not-touch" class:gone={amountKeys}>{i + 1}</span>
               <span class="who" dir="auto" title={p.name}>{p.name}</span>{@render away(p.id, p.name)}
             </button>
           {:else}
@@ -3068,6 +3070,12 @@
     border: 2px solid var(--c);
     border-radius: 8px;
     padding: 3px;
+  }
+  /* (A 320px window: the chip's parts a little closer, so a short name's chip stays one line. ✔ / ✘ stay as far apart.) */
+  @media (max-width: 340px) {
+    .p {
+      gap: 2px;
+    }
   }
   .p.on {
     box-shadow: 0 0 0 2px var(--c);
