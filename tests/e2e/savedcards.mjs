@@ -255,6 +255,24 @@ try {
     (await cardsTab.getAttribute('aria-current')) === 'page' && (await row('Private card 3').getAttribute('aria-current')) === 'true',
     'the checklist’s “is empty” line opens 🤫 Cards at that card, flashing it',
   );
+  const wordsFocused = (id) =>
+    until(
+      () =>
+        host.evaluate(
+          (id) =>
+            document.activeElement?.matches('main [data-field="card"]') &&
+            document.querySelector(`[data-saved-card="${id}"]`)?.getAttribute('aria-current') === 'true' &&
+            /** @type {HTMLTextAreaElement} */ (document.activeElement).value === '',
+          id,
+        ),
+      3000,
+    );
+  assert(await wordsFocused(newId), '…with its words box in focus, ready to type (not the keys left in the checklist)');
+  // With another card open in 🤫 Cards, the keys go to that card's words box, not the open one's.
+  await row('Wild card').click();
+  await host.waitForFunction(() => document.querySelector('[data-saved-card="sc_wild"]')?.getAttribute('aria-current') === 'true');
+  await empty.click();
+  assert(await wordsFocused(newId), '…and from another card open in 🤫 Cards, the words box is that empty card’s');
 
   // ---------- Typing, renaming, and a name that gives the card away ----------
   const wordsBox = host.locator('main [data-field="card"]');
@@ -265,6 +283,10 @@ try {
   await host.locator('[data-name-repeats]').waitFor();
   await host.locator('nav .problem', { hasText: '🤫 Card “Spoon run”: its name repeats' }).waitFor();
   assert(true, 'a name that repeats what’s on the card says so, and the checklist notes it');
+  // That line (the card isn't empty) puts the keys on the card's row in the list, out of the checklist.
+  await host.locator('nav .problem', { hasText: '🤫 Card “Spoon run”: its name repeats' }).click();
+  const onRow = await until(() => host.evaluate((id) => document.activeElement?.matches(`main [data-saved-card="${id}"]`), newId), 3000);
+  assert(onRow, `its checklist line puts the keys on the card's row (${await host.evaluate(() => document.activeElement?.outerHTML.slice(0, 80))})`);
   await undoSays('Undo: Renamed card “Spoon run”');
   // (From the list: Ctrl+Z in a box just typed in would be that box's own.)
   await row('Spoon run').focus();

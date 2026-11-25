@@ -67,6 +67,7 @@
   import { registerGameFonts } from '../lib/fonts';
   import { validate } from '../lib/validate';
   import { answerCardAt, boardPlace, type ChecklistLine } from '../lib/checklist';
+  import { slideHasContent } from '../lib/usage';
   import { followClueText } from '../lib/cluetext';
   import {
     arriving,
@@ -88,7 +89,7 @@
   } from '../lib/history.svelte';
   import { whileWriting } from '../lib/desktop.svelte';
   import { isCancel } from '../lib/fileio';
-  import { goTo, take, type Place } from '../lib/nav.svelte';
+  import { focusPlace, goTo, placeKey, take, type Place } from '../lib/nav.svelte';
   import { rememberPage, takeEditorAt } from '../lib/editorplace';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { itemIdsIn } from '../lib/historyops';
@@ -623,7 +624,8 @@
 
   /**
    * A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile, an RPG's screen, a
-   * board game's space, a Final's question or answer, a Slides round's empty slide has the focus).
+   * board game's space, a Final's question or answer, a Slides round's empty slide, an empty 🤫 card's words, a stat's,
+   * item's, shop's, wheel's or dice's row has the focus).
    */
   function goFix(line: ChecklistLine, exact?: Place): void {
     // The game's name: its box at the top, selected to type over.
@@ -641,8 +643,14 @@
     const round = line.round ? game.rounds[at] : undefined;
     const place = exact ?? ((round && isBoard(round) && boardPlace(game, round)) || line.place);
     // A stat, an item or a shop in 📊 Stats & Items, a wheel or dice in 🎡 Wheels, Dice & Deals, a card in 🤫 Cards: it
-    // flashes there.
-    if (place?.tab === 'stats' || place?.tab === 'tools' || place?.tab === 'cards') return void goTo(place);
+    // flashes there, and the keys go to it (out of the checklist). An empty 🤫 card: its words box, ready to type (as
+    // ＋ Add card does).
+    if (place?.tab === 'stats' || place?.tab === 'tools' || place?.tab === 'cards') {
+      const from = document.activeElement?.closest('nav') ?? null;
+      goTo(place);
+      const card = place.tab === 'cards' && !place.element ? game.cards?.find((c) => c.id === place.card) : undefined;
+      return card && !slideHasContent(card) ? focusCardWords(card.id, from) : focusPlace(placeKey(place), from);
+    }
     if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world' && place.tab !== 'tiebreaker')) return;
     goTo(place);
     const part = place.tab === 'round' ? place.part : undefined;
@@ -676,6 +684,20 @@
         const el = document.querySelector<HTMLElement>(`[data-place="${key}"]`);
         (el?.matches('button, [tabindex]') ? el : el?.querySelector<HTMLElement>('textarea'))?.focus();
       });
+  }
+
+  /**
+   * 🤫 Cards' words box, once the card `id` is the one open there (it opens a moment after the tab does; the box of the
+   * card open before mustn't take the keys). Only while the keys are lost, or still in `from` (the checklist).
+   */
+  function focusCardWords(id: string, from: Element | null, frames = 0): void {
+    requestAnimationFrame(() => {
+      const at = document.activeElement;
+      if (at && at !== document.body && at.isConnected && !from?.contains(at)) return;
+      if (document.querySelector(`[data-saved-card="${CSS.escape(id)}"][aria-current="true"]`))
+        document.querySelector<HTMLElement>('main [data-field="card"]')?.focus();
+      else if (frames < 30) focusCardWords(id, from, frames + 1);
+    });
   }
 
   // ◀ Fix in editor on the ▶ Play screen: on to the first thing to fix on the tab it opened, as its checklist line goes
