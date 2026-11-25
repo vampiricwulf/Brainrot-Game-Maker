@@ -19,16 +19,19 @@ Chromium you have.
 
 - `npm run build`, 8 s. Every e2e file drives `dist/index.html` and refuses to run if it's older than `src/`, so
   rebuild after any change there (or set `APP_FILE` to test another file).
-- `npm run check`, 25 s (svelte-check over `src/`). `npm test`, 30 s (Vitest: unit, runes and `buzzer/` rules).
+- `npm run check`, 25 s (svelte-check over `src/`). `npm test`, 30 s (Vitest: unit, runes, `buzzer/` rules and `scripts/`).
   `(cd buzzer && npm run check)`, 3 s.
-- `node scripts/e2e-shard.mjs --check`, `node scripts/version.mjs check`: a second each. `npm run check:e2e`, 10 s:
-  type-checks the e2e files marked `// @ts-check` (not in CI or the gate yet; keep it clean).
-- One e2e file: `node tests/e2e/<name>.mjs`, 5 s to about 2½ min. `npm run test:quick` builds and runs `smoke.mjs`,
-  about 100 s; the release waits only for this.
-- Code is formatted with Prettier: run `npm run format` before committing (`npm run format:check`, 25 s, is in CI and
-  the gate; Markdown is left alone). Now and then a long call chain needs a second `npm run format`.
-- `npm run gate`: the checks in order (version check, format check, svelte-check, unit tests, buzzer check, shard
-  check, build, then every e2e file, 3 at a time with quiet output), ending with a summary of what failed. It takes
+- `node scripts/e2e-shard.mjs --check`, `node scripts/version.mjs check`: a second each. `npm run check:e2e`, 6 s:
+  type-checks the e2e files marked `// @ts-check` (in CI and the gate; keep it clean).
+- One e2e file or a few: `node scripts/e2e-shard.mjs <name> [<name>…] --quiet` (one line for a pass, the last 80
+  lines for a fail), or `node tests/e2e/<name>.mjs` for every check's line; 5 s to about 3 min each (hostlayout is the
+  slowest): give it a 5-minute command timeout, or run it in the background. `npm run test:quick` builds and runs
+  `smoke.mjs`, about 100 s; the release waits only for this.
+- Code is formatted with Prettier: run `npm run format` before committing (`npm run format:check` is in CI and the
+  gate: 25–55 s the first time, about 3 s after, as it keeps Prettier's cache; CI checks without one; Markdown is left
+  alone). Now and then a long call chain needs a second `npm run format`.
+- `npm run gate`: the checks in order (version check, format check, svelte-check, e2e type check, unit tests, buzzer
+  check, shard check, build, then every e2e file, 3 at a time with quiet output), ending with a summary of what failed. It takes
   over 10 minutes: run it in the background.
 - More e2e at once: `node scripts/e2e-shard.mjs <1–5|rest|buzzer|all> --jobs N --quiet`. A CI shard is 6–8 min; the
   whole suite is about 35 min one file after another. Never run all of it in the foreground.
