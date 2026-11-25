@@ -7,8 +7,9 @@ Bring `CHANGELOG.md` up to date for what's committed but not pushed. $ARGUMENTS
 The rule is in `CLAUDE.md` ("Commits and CHANGELOG.md"); these are its steps.
 
 1. **Lines.** `git log --format='%h %s' origin/main..HEAD` lists the commits not pushed yet. For each change that
-   people who make or host games would notice, make sure there's a line under **Unreleased** at the top of
-   `CHANGELOG.md`, in **Added**, **Changed**, **Fixed** or **Removed** (only Fixed lines make a patch release; a line
+   people who make or host games would notice, make sure there's a line at the top of `CHANGELOG.md` under a heading
+   written exactly `## Unreleased` (add it if missing: the stamp removes it), then `### Fixed` (or Added / Changed /
+   Removed): in **Added**, **Changed**, **Fixed** or **Removed** (only Fixed lines make a patch release; a line
    marked **Breaking** makes a major one). Write it in plain words for them, as the lines around it are written: what
    they see or do now, and what was wrong before for a fix. A change only people working on the app notice (a script,
    the tests, CI, the docs) gets a line too, in plain words for them, as the ones already there are; a change nobody

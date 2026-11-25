@@ -13,8 +13,7 @@
 // 5. the check before going on (the Final's clock running), opened at 1280×720 then the window made 1920×1080, in one
 //    window and with an audience window: its lines keep their room and its buttons in sight (scrolled to), nothing past the window's
 //    edge, and the blue button's spot follows the blue button.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -34,6 +33,7 @@ import {
   boardIn,
   boardTilesIn,
   stageBoxIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -139,8 +139,7 @@ const game = {
   worlds: [],
   dice: [{ id: 'dp1', name: 'Move die', dice: [{ id: 'd1', sides: 6, count: 1 }], showTotal: true }],
 };
-mkdirSync(resolve('test-results'), { recursive: true });
-const gamePath = resolve('test-results/hostnarrow.json');
+const gamePath = resultsPath('hostnarrow.json');
 writeFileSync(gamePath, JSON.stringify(game));
 
 /**
