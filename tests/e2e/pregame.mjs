@@ -1,6 +1,7 @@
-// The ▶ Play screen before the game (players, ⚖ Game rules, 📺 On stream's options at the rules' size, the sticky Start
-// bar, Ctrl+Z / Ctrl+Y there, History's Go there), the rules mid-game, a rematch keeping the players' pictures, and
-// phone buzzers in a copy without a buzzer server (an old game with Buzzer mode on, an exported player-only file).
+// The ▶ Play screen before the game (players, ⚖ Game rules, 📺 On stream's options at the rules' size, and its line
+// under Reduce motion on stream while the computer asks for less motion, the sticky Start bar, Ctrl+Z / Ctrl+Y there,
+// History's Go there), the rules mid-game, a rematch keeping the players' pictures, and phone buzzers in a copy without
+// a buzzer server (an old game with Buzzer mode on, an exported player-only file).
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
