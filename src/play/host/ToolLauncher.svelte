@@ -132,15 +132,17 @@
     menu = menu === m ? null : m;
     opener = e.currentTarget as HTMLElement;
   }
+  /** A Tab (or Shift+Tab) press is moving the focus now (until the next task), while a menu is open. */
+  let tabbing = false;
   /**
    * Tab (or Shift+Tab) out of an open menu and its button closes it, as a click outside does: it's a pop-up of its
-   * button, not a window left over the panel without the keys. The focus stays where it went (the next tool). Not when
-   * nothing has the focus next (another window, a file picker, the 🪟 card window opening, a click on the stage), or
-   * while a window opened from it is over it (🗜 Make smaller, a question), or it went to a toast or over a window.
+   * button, not a window left over the panel without the keys. The focus stays where it went (the next tool). Only for
+   * Tab: the app moving the focus by itself (a check or an offer coming up, a step's main button) leaves it open, with
+   * what's typed in it, and so does Tab into a window over it, a toast, or what's over a window.
    */
   function leave(e: FocusEvent, m: Menu): void {
     const to = e.relatedTarget;
-    if (menu !== m || !(to instanceof Element) || (e.currentTarget as HTMLElement).contains(to)) return;
+    if (!tabbing || menu !== m || !(to instanceof Element) || (e.currentTarget as HTMLElement).contains(to)) return;
     if (modalOpen() || to.closest('[data-over-modal], .toasts')) return;
     menu = null;
   }
@@ -196,9 +198,14 @@
 </script>
 
 <!-- Esc closes an open menu (even from its text boxes) and does nothing else: no overlay closed, no clue left. (Not
-     while a window opened from it is over it, 🗜 Make smaller's: Esc closes that one.) -->
+     while a window opened from it is over it, 🗜 Make smaller's: Esc closes that one.) Tab is noted: Tab out of a menu
+     closes it (leave). -->
 <svelte:window
   onkeydowncapture={(e) => {
+    if (menu && e.key === 'Tab') {
+      tabbing = true;
+      setTimeout(() => (tabbing = false));
+    }
     if (menu && e.key === 'Escape' && !modalOpen()) {
       e.stopImmediatePropagation();
       menu = null;

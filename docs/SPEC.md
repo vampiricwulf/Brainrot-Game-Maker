@@ -682,9 +682,11 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     never see the stage zoom down and up. Each moment's rows scroll in the panel: the status line at its top, the
     tools row and the fixed bar at its foot; an open 🎲 / 🎡 / 🏁 menu or the 📱 phones list stays inside it too,
     scrolling. A tools-row pop-up (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal…, the cards out, 🪟)
-    closes when the focus leaves it and its button (Tab or Shift+Tab on out, the focus staying where it went), as a
-    click outside does; Esc closes it and gives its button the keys back. A window opened from it (🗜 Make smaller, a
-    question), a toast, another window or the 🪟 card window opening keep it open. Each score chip keeps room for the mark and the score a clue of the round can give it, counted from its
+    closes when Tab or Shift+Tab takes the focus out of it and its button (the focus staying where it went), as a
+    click outside does; Esc closes it and gives its button the keys back. The app moving the focus by itself (a check
+    or an offer coming up), a window opened from it (🗜 Make smaller, a question), a toast, another window or the 🪟 card
+    window opening keep it open, with what's typed in it.
+    Each score chip keeps room for the mark and the score a clue of the round can give it, counted from its
     score before the clue's marks (the ★ of who picks next takes none), so the chips don't reflow. What scrolls in
     there comes into view as it comes (a board-game move's landing row, a tool's outcome), and at the end and in the
     tiebreaker clue the score chips stay whole while the part under them scrolls.

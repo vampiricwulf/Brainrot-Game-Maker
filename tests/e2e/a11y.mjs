@@ -1,6 +1,7 @@
 // Accessibility and consistency: windows keep the focus (Tab stays inside, the rest is inert, the focus goes back on
-// close), the app asks in its own windows, the header fits at 150% zoom, readable colors, reduced motion, names, and
-// with forced colors what's chosen still shows (the color picker's Hex or RGB too).
+// close), the tools row's pop-ups close when Tab leaves them, the app asks in its own windows, the header fits at 150%
+// zoom, readable colors, reduced motion (and Settings' line when the computer asks for less), names, and with forced
+// colors what's chosen still shows (the color picker's Hex or RGB too).
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -745,6 +746,23 @@ try {
   );
   await page.keyboard.press('Shift+Tab');
   assert((await wheelDlg.count()) === 0, `and Shift+Tab on out of the button closes it (${await focused()})`);
+  // Only Tab does: the app moving the focus by itself (a check or an offer coming up, a step's main button) leaves
+  // 🤫 Send a card… open, with what's typed in it.
+  const sendDlg = page.getByRole('dialog', { name: 'Send a card' });
+  await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
+  await sendDlg.waitFor();
+  const typedBox = sendDlg.locator('textarea, input[type="text"], input:not([type])').first();
+  await typedBox.fill('Half a card');
+  await boardTilesIn(page)
+    .first()
+    .evaluate((t) => /** @type {HTMLElement} */ (t).focus());
+  await page.waitForTimeout(100);
+  assert(
+    (await sendDlg.isVisible()) && (await typedBox.inputValue()) === 'Half a card',
+    'the app moving the focus out of 🤫 Send a card… leaves it open, with what was typed',
+  );
+  await page.keyboard.press('Escape');
+  await sendDlg.waitFor({ state: 'detached' });
   // (A click on what takes no focus, here the pop-up's own edge, keeps it open.)
   await tools.getByRole('button', { name: '🎲 Dice', exact: true }).click();
   await diceDlg.click({ position: { x: 3, y: 3 } });
