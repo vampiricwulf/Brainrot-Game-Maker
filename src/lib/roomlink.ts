@@ -249,6 +249,11 @@ export function browserDeps(): LinkDeps {
   };
 }
 
+/** create()'s own reasons, in this app's words (anything else thrown there is shown as one of the two below). */
+class RoomError extends Error {}
+const UNREACHABLE = 'Couldn’t reach the buzzer server: check that this computer is online, then ▶ Start the room again';
+const NOT_UNDERSTOOD = 'The buzzer server gave an answer this app doesn’t understand';
+
 export class RoomLink {
   status: RoomStatus = 'off';
   code: string | null = null;
@@ -305,15 +310,20 @@ export class RoomLink {
     try {
       const res = await this.deps.fetch(`${this.base}/api/rooms`, { method: 'POST' });
       // The server says why in plain words (too many new rooms, busy today): show that.
-      if (!res.ok) throw new Error((await res.json().then(errorText, () => '')) || `The buzzer server said no (${res.status})`);
-      const room = parseNewRoom(await res.json());
-      if (!room) throw new Error('The buzzer server gave an answer this app doesn’t understand');
-      if (this.stopped) throw new Error('Stopped');
+      if (!res.ok)
+        throw new RoomError(
+          (await res.json().then(errorText, () => '')) || `The buzzer server couldn’t make a room right now (error ${res.status}): try again in a minute`,
+        );
+      const room = parseNewRoom(await res.json().catch(() => null));
+      if (!room) throw new RoomError(NOT_UNDERSTOOD);
+      if (this.stopped) throw new RoomError('Stopped');
       this.connect(room);
       return room;
     } catch (err) {
       if (!this.stopped) {
-        this.error = err instanceof Error && err.message !== 'Failed to fetch' ? err.message : 'Couldn’t reach the buzzer server';
+        // Only this app's own words are shown: fetch's failures (offline, blocked) are TypeErrors, worded differently in
+        // each browser ('Failed to fetch', Safari's and the Mac app's 'Load failed', Firefox's 'NetworkError when…').
+        this.error = err instanceof RoomError ? err.message : err instanceof TypeError ? UNREACHABLE : NOT_UNDERSTOOD;
         this.set('error');
       }
       throw err;

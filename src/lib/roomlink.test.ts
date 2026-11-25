@@ -708,7 +708,7 @@ describe('RoomLink', () => {
     const link = new RoomLink('https://buzz.test', {}, bad.deps);
     await expect(link.create()).rejects.toThrow();
     expect(link.status).toBe('error');
-    expect(link.error).toMatch(/said no/);
+    expect(link.error).toBe('The buzzer server couldn’t make a room right now (error 500): try again in a minute');
     // A limit the server explains: its words, as they are.
     const busy = new RoomLink('https://buzz.test', {}, fakeDeps({ error: 'Too many new rooms — wait a minute' }, false).deps);
     await expect(busy.create()).rejects.toThrow();
@@ -720,5 +720,24 @@ describe('RoomLink', () => {
     sockets.at(-1)!.say({ ...welcome, protocol: BUZZ_PROTOCOL + 1 });
     expect(l2.status).toBe('error');
     expect(l2.error).toMatch(/version/);
+  });
+
+  it('a server out of reach says so in the same words in every browser, with what to do; never the browser’s own', async () => {
+    const reach = 'Couldn’t reach the buzzer server: check that this computer is online, then ▶ Start the room again';
+    // Chromium's, Safari's (and the Mac app's), Firefox's.
+    for (const said of ['Failed to fetch', 'Load failed', 'NetworkError when attempting to fetch resource.']) {
+      const t = fakeDeps();
+      t.deps.fetch = () => Promise.reject(new TypeError(said));
+      const link = new RoomLink('https://buzz.test', {}, t.deps);
+      await expect(link.create()).rejects.toThrow();
+      expect(link.status).toBe('error');
+      expect(link.error).toBe(reach);
+    }
+    // An answer that isn't JSON (a proxy's page): not the parser's 'Unexpected token <…'.
+    const t = fakeDeps();
+    t.deps.fetch = async () => ({ ok: true, status: 200, json: () => Promise.reject(new SyntaxError('Unexpected token < in JSON at position 0')) });
+    const link = new RoomLink('https://buzz.test', {}, t.deps);
+    await expect(link.create()).rejects.toThrow();
+    expect(link.error).toBe('The buzzer server gave an answer this app doesn’t understand');
   });
 });
