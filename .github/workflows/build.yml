@@ -121,8 +121,10 @@ jobs:
     # runs; rest takes any file the others don't list, and the build job's --check proves every file runs once).
     # About six minutes of tests per shard. It doesn't hold up the release (which only waits for the quick test): a
     # failure here marks the run red, so it's still heard about, and gets fixed in the next push.
+    # It starts at once, beside the build job (like the rust job), since each shard installs, builds and tests its own
+    # copy and uses nothing the build job makes. So a push that fails the format or type checks still runs it: read the
+    # build job's failure first.
     name: e2e (${{ matrix.shard }})
-    needs: build
     strategy:
       fail-fast: false
       matrix:
