@@ -1545,6 +1545,21 @@ function rebase(session: Session, from: Game, to: Game): void {
     const j = to.rounds.findIndex((r) => r.id === from.rounds[i]?.id);
     return j >= 0 ? j : null;
   };
+  // The score log's and the steps' rounds follow too (🕘 History's headings, "Last:", Undo's "in …", and the rounds a
+  // reload counts as introduced). One whose round was deleted loses it.
+  const moved = new Set<{ round?: number }>();
+  const remap = (e: { round?: number }) => {
+    if (e.round === undefined || moved.has(e)) return;
+    moved.add(e);
+    const j = roundAt(e.round);
+    if (j === null) delete e.round;
+    else e.round = j;
+  };
+  for (const e of session.scoreLog ?? []) remap(e);
+  for (const a of [...(session.actionLog ?? []), ...(session.actionRedo ?? [])]) {
+    remap(a);
+    for (const e of a.score ?? []) remap(e);
+  }
   const found = ref?.round ?? roundAt(session.currentRound);
   session.currentRound = found ?? Math.min(session.currentRound, Math.max(0, to.rounds.length - 1));
   if (session.introducedRounds) session.introducedRounds = session.introducedRounds.map(roundAt).filter((i): i is number => i !== null);

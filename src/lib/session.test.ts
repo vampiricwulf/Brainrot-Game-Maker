@@ -90,7 +90,8 @@ import {
   switchChain,
   logZero,
 } from './session';
-import { finalNextStep, logged, redoAction, revealStep, undoAction } from './toolset';
+import { finalNextStep, lastAction, logged, redoAction, revealStep, setPicker, undoAction } from './toolset';
+import { timelineRows } from './timeline';
 import { newRpgRound } from './rpg';
 import { applyAction } from './tools';
 
@@ -1494,6 +1495,47 @@ describe('resume with edits', () => {
     reordered.rounds.reverse();
     rebaseSession(session, edited, reordered);
     expect(reordered.rounds[session.currentRound].name).toBe('Double');
+  });
+
+  it('moves the score log and the steps with their rounds, so History, "Last:" and the intros stay right', () => {
+    const three = () => {
+      const g = newGame();
+      g.rounds = [newRound('Round A'), newRound('Round B'), newRound('Round C')];
+      g.players.push({ id: 'a', name: 'Ann', color: '#111111' });
+      const s = newSession(g);
+      goToRound(s, g, 0);
+      goToRound(s, g, 1);
+      s.intro = null;
+      applyScore(s, g, ['a'], 200, 'Ann scored in B');
+      setPicker(s, 'a');
+      return { g, s };
+    };
+    // Round A deleted: Round B is now round 0.
+    const { g, s } = three();
+    expect([s.scoreLog[0].round, s.actionLog?.[0].round]).toEqual([1, 1]);
+    const edited = clone(g);
+    edited.rounds.splice(0, 1);
+    rebaseSession(s, g, edited);
+    expect([s.currentRound, s.scoreLog[0].round, s.actionLog?.[0].round]).toEqual([0, 0, 0]);
+    expect(lastAction(s, s.currentRound)).toBeDefined();
+    const row = timelineRows(s, edited, '$').find((r) => r.kind === 'score')!;
+    expect(edited.rounds[row.round!].name).toBe('Round B');
+    // A reload doesn't count Round C (now round 1) as introduced: entering it plays its title card.
+    const reloaded = migrateSession(JSON.parse(JSON.stringify(s)), edited);
+    expect(reloaded.introducedRounds).toEqual([0]);
+    goToRound(reloaded, edited, 1);
+    expect(reloaded.intro).toEqual({ stage: 'title', revealed: 0 });
+    // Round C dragged to the front: Round B is now round 2.
+    const other = three();
+    const moved = clone(other.g);
+    moved.rounds = [moved.rounds[2], moved.rounds[0], moved.rounds[1]];
+    rebaseSession(other.s, other.g, moved);
+    expect([other.s.currentRound, other.s.scoreLog[0].round, other.s.actionLog?.[0].round]).toEqual([2, 2, 2]);
+    // The round it was in deleted: it has none any more.
+    const gone = clone(other.g);
+    gone.rounds.splice(1, 1);
+    rebaseSession(other.s, moved, gone);
+    expect([other.s.scoreLog[0].round, other.s.actionLog?.[0].round]).toEqual([undefined, undefined]);
   });
 });
 
