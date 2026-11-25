@@ -90,8 +90,12 @@ const layout = (page) =>
     const untitled = [...panel.querySelectorAll(':scope > .status > :is(.hint, .how, .muted:has(> .hint))')]
       .filter((e) => e.scrollWidth > e.clientWidth + 1 && !(e.getAttribute('title') ?? '').trim())
       .map((e) => (e.textContent ?? '').trim());
+    // ...and it, not the line's empty spacer, has the line's room.
+    const cut = [...panel.querySelectorAll(':scope > .status > :is(.hint, .how, .muted:has(> .hint))')].some((e) => e.scrollWidth > e.clientWidth + 1);
+    const spacer = panel.querySelector(':scope > .status > .spacer');
     return {
       untitled,
+      spacerW: cut && spacer ? spacer.getBoundingClientRect().width : 0,
       stage: r(stage),
       panel: r(panel),
       fixedFoot: Math.round(fixed.getBoundingClientRect().bottom),
@@ -116,6 +120,7 @@ async function roomy(page, where, moment, stage0, scrolls = false) {
   const tight = l.boxes.filter((b) => b.need > 0 && b.h < Math.min(60, b.need) - 1);
   assert(tight.length === 0, `${where}, ${moment}: each box has room (${l.boxes.map((b) => `${b.what} ${b.h} of ${b.need}`).join(', ') || 'none'})`);
   assert(l.untitled.length === 0, `${where}, ${moment}: the status line's how-to, cut short, is whole in its tooltip (${l.untitled.join(' | ')})`);
+  assert(l.spacerW <= 1, `${where}, ${moment}: the how-to, cut short, has the line's room, not its spacer (${l.spacerW}px)`);
   if (scrolls) assert(l.sideways <= 0, `${where}, ${moment}: nothing scrolls sideways`);
   else
     assert(

@@ -2171,6 +2171,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    /* (It, not the line's spacer, takes that room: what's after it, ⋯ Tools, still ends the line at its right.) */
+    .panel:not(.dual):not(.side) > .status:has(> :is(.hint, .how), > .muted > .hint) > .spacer {
+      flex-grow: 0;
+    }
     /* The tools row kept out there (something in it on, 📊 Scoreboard, 🔇 Stop sounds, a deal, or ⋯ Tools pressed):
        the moment's part keeps a few rows in sight, and the panel scrolls instead (the fixed bar's below). */
     .panel:not(.dual):not(.side):not(.foldtools) > .act,
