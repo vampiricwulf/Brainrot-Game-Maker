@@ -342,7 +342,13 @@ textarea:focus {
   gap: 14px;
   padding-bottom: 20px;
 }
+/*
+ * (Over the button's layer: a lit BUZZ!'s pulse makes it a layer of its own, and its glow would tint the words just
+ * above or below it. They have no background, so the glow still shows around them.)
+ */
 #s-buzz .side {
+  position: relative;
+  z-index: 1;
   width: 100%;
   display: flex;
   flex-direction: column;

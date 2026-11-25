@@ -272,6 +272,27 @@ try {
 
   await openTile(page, 'c0_0');
   await ann.locator('#buzz.armed').waitFor();
+  // The lit BUZZ!'s glow (its seat's color) stays behind the question just above it: the words keep their white, not
+  // tinted. (Its pulse makes it a layer of its own, which painted over the words.) The most colored of the words' bright
+  // pixels: white text is about 7 apart from its lowest channel to its highest.
+  const clueBox = await ann.locator('#clue').boundingBox();
+  const clueShot = (await ann.screenshot({ clip: clueBox })).toString('base64');
+  const tint = await ann.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height });
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let most = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const [r, gr, bl] = [d[i], d[i + 1], d[i + 2]];
+      if (0.2126 * r + 0.7152 * gr + 0.0722 * bl > 200) most = Math.max(most, Math.max(r, gr, bl) - Math.min(r, gr, bl));
+    }
+    return most;
+  }, clueShot);
+  assert(tint <= 16, `the lit BUZZ!'s glow stays behind the question's words, not over them (its brightest pixels' tint ${tint}, 14px above the button)`);
   assert(
     (await passSays(ann, 'Pass: I won’t buzz on this one')) &&
       (await passSays(bob, 'Pass: I won’t buzz on this one')) &&
