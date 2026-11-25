@@ -14,13 +14,34 @@ line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unrele
 
 ## Unreleased
 
+### Added
+
+- When your computer asks for less motion but Reduce motion on stream is off, ⚙ Settings and the 📺 On stream section before the game say that the stage viewers see still moves until you tick it. (c1fec58, 33d6b46)
+- `node scripts/e2e-shard.mjs` runs the e2e files you name (`node scripts/e2e-shard.mjs hostlayout smoke --quiet`), with --quiet and --jobs as for a shard. (b5e630a, 020cd65)
+
 ### Changed
 
+- A ✍ answer typed on a phone but not sent is now sent automatically when time runs out or the answers lock. The phone says "Sent automatically when time ran out: unfinished" (or "when answers locked"), and the host sees ⏱️ beside it, without the words in one window. The same goes for the Final's typed answers and a partner clue's typed guess, whose locked line on the phone says "Sent automatically, unfinished: “…”". A buzzer server you run yourself needs deploying again for this. (5f784de, 11f87c4, d44a7a9, 78eb877, 0940d19, 55b4f90, 877e4de)
+- On a Daily Double, the phones show the category with "Daily Double" over the wager, then the question once it's on screen, as on any clue. A buzzer server you run yourself needs deploying again for this. (35f7a64, a8e5082)
+- On a phone held upright that's 700px tall or less, the tools row (with the round buttons) folds behind ⋯ Tools, and the status line's tip (or "Pick a tile on the board.") keeps to one line, whole in its tooltip, so the moment's controls have room. (d4cc9c9, be6cf9f, 8e06474, c8ca444, 11f6774, c349a15, 33c3f2b)
+- A video file has one icon everywhere, 🎞️ (it was 🎬 in the editor and the stage controls), and an online video (YouTube, Drive, Streamable) is ▶️, so 🎞️ never means a link. (7d2ce19, ad236b4, dcc3f81)
+- The sound window is titled 🔊 Test the sound, as its button says (it was 🔊 Streaming the sound, and the keys list called it 🔊 Sound help). (fa32a91, bc7367c, f012ea7, 0bb4871)
+- The tools row's pop-ups (🎲 Dice, 🎡 Wheel, 🤫 Send a card…, 🎭 Deal… and the rest) close when Tab or Shift+Tab leaves them, as a click outside does; the app moving the focus by itself leaves them open, with what's typed in them. (66bd89f, 6aeea20, e0230dd)
+- On a touch screen, the ▶ Play page before the game has bigger buttons and headings to tap: every button is at least 32px, small ones too (▲ ▼ 🗑, ✎ Rename, ± Start scores, 🔊 Test the sound…), and so are the ⚖ Game rules and 📺 On stream headings, with 🗑 further from ▼. (e88d4d7, a803b58)
+- CI: the e2e shards start with the build job instead of after it, so a run's result comes about 3½ minutes sooner. (b754812)
+- CI and `npm run gate` type-check the e2e files marked // @ts-check (`npm run check:e2e`). (cb2671a, 020cd65)
+- `npm run format:check` keeps Prettier's cache, so a repeat check takes about 3 s. The cache starts over when Prettier, its Svelte plugin or .prettierrc change, and CI checks without it. (8ed7576, 13dd847, 020cd65)
+- Before it runs an e2e file, `scripts/e2e-shard.mjs` deletes that file's old failure pictures and trace, so the ones in test-results/ are from its latest run. (af93acc, 020cd65)
+- Three e2e checks run past the app's timers on a fake clock instead of waiting them out, about 21 s less. (6cfcc2d, 9c97e81)
 - CI's release build builds the app once before its quick test, and its Chromium install gets the same time limit and retry as the e2e jobs. (1b01542)
 - The e2e jobs on CI finish closer together: two slow test files moved out of the longest one. (6f518b4)
 
 ### Fixed
 
+- On a phone held upright, the host controls use the black space around the stage, so Skip intro, a board game's 🎲 Roll and ▶ Move, a roll's buttons and every other moment's buttons can be seen and tapped. The stage keeps its size. On a window too short for both (a small phone with its browser's bars showing), the stage gives way as before, so ↶ Undo … 🚪 Exit stay on screen. (3307a3c, 9c3b44f, 8ea8b84)
+- A picture, video or sound whose file you deleted in 🖼️ Media is marked ⚠ on its slide (and in 🖼️ Board images), in Layers and in its panel, since it isn't saved with the game. Undo in 🕘 History brings it back, or 🔁 Use another picture… replaces it. (346982e, e026592, 7c823cf, 98e1d90)
+- 🕘 History marks ▶ Played when a game starts (Start game ▶ or ▶ Resume), not when ▶ Play opens the pre-game screen and you go back. (7662cf6)
+- On a phone on its side, a covered 🤫 card beside BUZZ! or a box shows whole, instead of being cut off mid-cover. It's full size where there's room and a little smaller on short screens. (b789830, 95561db, ea024c3)
 - On a 320px-wide phone, the pre-game bar fits the screen: ◀ Back to editor reads "◀ Back" and Start game ▶ drops its Ctrl+⏎ hint. (88d6bca)
 - On a 320px-wide screen, the round buttons' last button (e.g. Final Jeopardy! ▶) no longer runs off the edge; the round picker gets narrower instead. (c355b92)
 - The check before going on lays itself out again when the window is resized, so its words, its buttons and the blue button's spot stay in place. (5986c4b)
@@ -35,7 +56,7 @@ line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unrele
 - The theme editor's Score bar › Hidden points to 📊 Scoreboard (S), the button's name now (it said "📊 Scores overlay"). (4ea6bfe)
 - The tiebreaker roll-off's box and the stage's menu are headed 🎲 Tiebreaker roll-off, like its button (they showed 🏆). (9ca0f75)
 - A board game with a movement wheel names its button 🎡 Spin to move, as the button says: in the turn box's first line, on the touch status line and in the stage's menu (they said 🎡 Spin). (63c1136, a94c3dd)
-- The keys list names the tile menu's ▶ Open as the menu does (it said "▶ Open it"), and calls the 🔊 Sound window by the button that opens it (it said "🔊 Sound help"). (fa32a91, bc7367c)
+- The keys list names the tile menu's ▶ Open as the menu does (it said "▶ Open it"). (fa32a91)
 - 📜 Log's History reads as a proper list for screen readers: no empty list while nothing has happened yet, and its round names and ● Now line are items like the rest. (ff6f0ac)
 - Screen readers name the 🎲 Dice tool's custom-roll box ("Custom dice, like 3d37"), not just by its "e.g. 3d37" hint. (45a96a3)
 - Grey help words inside a button stay readable while the mouse is over it. (794b243)
