@@ -749,6 +749,9 @@ try {
     (await focused()) === '🎡 Wheel' && (await diceDlg.count()) === 0 && tabs > 3,
     `Tab through 🎲 Dice's pop-up (${tabs} presses) and on: it closes, the focus on 🎡 Wheel (${await focused()})`,
   );
+  // (Its tooltip says its key, as 🎲 Dice's says D.)
+  const wheelTitle = await tools.getByRole('button', { name: '🎡 Wheel', exact: true }).getAttribute('title');
+  assert(/^W spins the wheel on screen/.test(wheelTitle ?? ''), `🎡 Wheel's tooltip says W spins it (“${wheelTitle}”)`);
   const wheelDlg = page.getByRole('dialog', { name: 'Wheels' });
   await page.keyboard.press('Space');
   await wheelDlg.waitFor();

@@ -266,7 +266,15 @@
     {/if}
   </div>
   <div class="pop" onfocusout={(e) => leave(e, 'wheel')}>
-    <button onclick={(e) => toggle('wheel', e)} aria-haspopup="dialog" aria-expanded={menu === 'wheel'}>🎡 Wheel</button>
+    <!-- (What W does, as 🎲 Dice's says D: wKey() in Play.svelte.) -->
+    <button
+      onclick={(e) => toggle('wheel', e)}
+      title={game.wheels.length
+        ? 'W spins the wheel on screen, or opens your first saved wheel'
+        : 'W spins the wheel on screen (no saved wheels to open: pick a ready-made or quick one here)'}
+      aria-haspopup="dialog"
+      aria-expanded={menu === 'wheel'}>🎡 Wheel</button
+    >
     {#if menu === 'wheel'}
       <div class="menu" role="dialog" aria-label="Wheels" use:anchored={at}>
         <div class="wl">
