@@ -626,6 +626,29 @@ try {
     return { h: cards.clientHeight, label: (c.top + c.bottom) / 2 < r.bottom - 10 };
   });
   assert(tall.h >= 132 && tall.label, `on its side under a long clue, the card keeps room for its Tap to see (${JSON.stringify(tall)})`);
+  // And all of it: the covered card is whole in its box, dashed edge and all (no inner scroll that cuts it mid-cover),
+  // its cover as big as fits, its Tap to see in it.
+  const covers = [];
+  for (const height of [340, 360, 400, 440, 480, 540]) {
+    await ann.setViewportSize({ width: 740, height });
+    await until(() => ann.evaluate(() => getComputedStyle(document.getElementById('s-buzz')).display === 'grid'), 'side by side');
+    const m = await ann.evaluate(() => {
+      const [cards, cover] = [document.getElementById('cards'), document.querySelector('.card-cover')];
+      const [r, c, k] = [cards.getBoundingClientRect(), cover.getBoundingClientRect(), cover.closest('.card').getBoundingClientRect()];
+      return {
+        cover: Math.round(c.height),
+        cut: Math.round(Math.max(c.bottom, k.bottom) - r.bottom),
+        scrolls: cards.scrollHeight > cards.clientHeight + 1,
+        label: cover.scrollHeight <= cover.clientHeight + 1,
+      };
+    });
+    covers.push({ height, ...m });
+  }
+  assert(
+    covers.every((m) => m.cut <= 1 && !m.scrolls && m.label && m.cover >= 70),
+    `on its side beside BUZZ!, a covered card shows whole, cover and all, at 340 to 540px tall (${JSON.stringify(covers)})`,
+  );
+  await ann.setViewportSize({ width: 740, height: 340 });
   // (BUZZ! where it is with no card: the middle of the screen under the header, not of the rows beside it, which run on.)
   await ann.evaluate(() => scrollTo(0, 0));
   const off = await ann.evaluate(() => {

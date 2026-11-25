@@ -1435,13 +1435,17 @@ html:has(#s-buzz:not([hidden])) {
   font-size: 20px;
 }
 @media (min-aspect-ratio: 4/3) and (max-height: 600px), (min-aspect-ratio: 4/3) and (max-height: 900px) and (hover: hover) and (pointer: fine) {
-  /* (Side by side, the cards have their own row: a covered one at its full size.) */
+  /*
+   * (Side by side, the cards have their own row: a covered one as big as fits whole in the room that row always has,
+   * min(150px, 40dvh) below, less the card's edges, padding, gap and heading, about 55px. Beside a box or BUZZ! alike.)
+   */
   #s-buzz.cards-aside:not(.cards-under) .card {
     padding: 14px;
     gap: 8px;
   }
+  #s-buzz.cards-aside .card-cover,
   #s-buzz.cards-aside:not(.cards-under) .card-cover {
-    min-height: 132px;
+    min-height: calc(min(150px, 40dvh) - 60px);
     font-size: 26px;
   }
   /* Side by side: the cards take the right side, top to bottom, and scroll there; the name and score stay on the left. */
@@ -1473,7 +1477,7 @@ html:has(#s-buzz:not([hidden])) {
    * As tall as the screen: an open card scrolls in the room left, not the page (that would push the box or clue off).
    * Never too short to show a covered card's Tap to see, though (a long clue gets less room, and past that the page
    * scrolls a little); and the clue and cards together are as tall as a box beside them, so the box stays put as a
-   * card opens, and a covered one shows down to its Tap to see.
+   * card opens, and a covered one shows whole (its cover sized to fit, above).
    */
   #s-buzz.cards-aside {
     min-height: 0;
