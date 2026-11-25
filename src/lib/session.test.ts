@@ -578,6 +578,7 @@ describe('players mid-game', () => {
     expect(f.wagers[b]).toBe(50);
     finalJudge(session, game, c, false);
     expect(finalUnjudged(session)).toEqual([]);
+    expect(finalRevealNow(session).at).toBe('done');
     // Judging someone who's out gives nothing and logs nothing.
     const logged = session.scoreLog.length;
     expect(finalJudge(session, game, b, true)).toBe(false);
@@ -600,6 +601,23 @@ describe('players mid-game', () => {
     expect(f.players).toContain(b);
     expect(f.order.at(-1)).toBe(b);
     expect(f.wagers[b]).toBe(50);
+    expect(finalUnjudged(session)).toContain(b);
+  });
+
+  it('puts a player removed in another round back in the reveals when restored there', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b, c], 400, 'x');
+    goToRound(session, game, 1);
+    for (const id of [a, b, c]) finalSetWager(session, id, 50);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    goToRound(session, game, 0);
+    removePlayer(session, b);
+    goToRound(session, game, 1);
+    expect(session.final!.players).toEqual([a, c]);
+    restorePlayer(session, b);
+    const f = session.final!;
+    expect(f.players).toContain(b);
+    expect(f.order.at(-1)).toBe(b);
     expect(finalUnjudged(session)).toContain(b);
   });
 

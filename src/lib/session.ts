@@ -354,7 +354,7 @@ export function toggleStep(session: Session, step: string): void {
 export function removePlayer(session: Session, playerId: string): void {
   const p = session.players.find((x) => x.id === playerId);
   if (!p) return;
-  // (Only the Final being played: one played earlier in the game keeps its reveals as they were.)
+  // (Only the Final being played: one left at its reveals catches up when the host goes back to it, see startFinal.)
   const f = session.phase === 'final' ? session.final : null;
   const inFinal = !!f?.players.includes(playerId);
   session.players = session.players.filter((x) => x.id !== playerId);
@@ -402,6 +402,8 @@ export function restorePlayer(session: Session, playerId: string): void {
     const order = [...f.order, playerId];
     f.order = session.finalStep === 'reveal' ? order : order.sort((x, y) => score(session, x) - score(session, y));
   }
+  // Taken out in another round, then put back here at the reveals (it took them off on the way back): back in too.
+  if (f && session.finalStep === 'reveal') revealsFollowRoster(session, f);
 }
 
 /**
@@ -1006,6 +1008,23 @@ export function currentFinal(session: Session, game: Game): FinalRound | undefin
 }
 
 /**
+ * A Final at its reveals follows the players in the game: one taken out leaves the reveals (their wager and result stay,
+ * so a restore brings them back), and one put back who played it (a wager or a result, and not ticked out of it) is
+ * back in at the end. For a Final left during its reveals while players came and went in another round.
+ */
+function revealsFollowRoster(session: Session, f: FinalState): void {
+  const inGame = new Set(session.players.map((p) => p.id));
+  f.players = f.players.filter((id) => inGame.has(id));
+  f.order = f.order.filter((id) => inGame.has(id));
+  for (const id of inGame)
+    if (!f.players.includes(id) && f.chosen?.[id] !== false && (hasWager(f, id) || f.results[id])) {
+      f.players = [...f.players, id];
+      f.order = [...f.order, id];
+    }
+  if (f.current && !f.order.includes(f.current)) f.current = f.order.find((id) => !f.results[id]);
+}
+
+/**
  * Enter a Final round: its category goes on screen and the wagers are taken at once (the host picks who plays on the
  * same screen). Coming back to one (after a trip elsewhere) picks up its wagers and results; eligibility is checked
  * again because scores may have changed, keeping what was entered for players who are still in.
@@ -1022,19 +1041,8 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
     session.final = prev;
     // Back at the reveals, not the wagers (whose caps now count this Final's results).
     session.finalStep = 'reveal';
-    // Players taken out or put back in another round meanwhile, as removePlayer and restorePlayer do here.
-    const f = prev;
-    const inGame = new Set(session.players.map((p) => p.id));
-    // Taken out: off the reveals (their wager and result stay, so a restore brings them back).
-    f.players = f.players.filter((id) => inGame.has(id));
-    f.order = f.order.filter((id) => inGame.has(id));
-    // Put back: in at the end, if they played this Final (a wager or a result, and not ticked out of it).
-    for (const id of inGame)
-      if (!f.players.includes(id) && f.chosen?.[id] !== false && (hasWager(f, id) || f.results[id])) {
-        f.players = [...f.players, id];
-        f.order = [...f.order, id];
-      }
-    if (f.current && !f.order.includes(f.current)) f.current = f.order.find((id) => !f.results[id]);
+    // Players taken out or put back in another round meanwhile.
+    revealsFollowRoster(session, prev);
     return;
   }
   // Players the host ticked in or sat out stay that way; the others play if their score lets them (newcomers too).
