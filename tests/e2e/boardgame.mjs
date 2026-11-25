@@ -1105,6 +1105,53 @@ try {
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/boardgame-crowd-zone.png` });
   await ctx2.close();
 
+  // Six players, long names beside short ones: each card gets an even share, no wider than it needs, so the short names
+  // stay whole and only the long ones are cut (each card used to shrink in proportion to its width: "Ann" down to "A").
+  section('Six long and short names on the stats strip');
+  const six = { ...crowd, id: 'g_board_six', title: 'Board six' };
+  six.players = ['Ann', 'Bartholomew Fitzgerald-Worthington III', 'Xx_NoScope_Gamer_xX', 'Zoë', 'Christopher', 'Siobhán Ní Bhriain'].map((name, i) => ({
+    id: `p${i + 1}`,
+    name,
+    color: ['#e6194b', '#56b4e9', '#f0e442', '#1f3a93', '#d55e00', '#009e73'][i],
+  }));
+  const sixFile = resultsPath('boardgame-six.json');
+  writeFileSync(sixFile, JSON.stringify(six));
+  const ctx6 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const host6 = await ctx6.newPage();
+  host6.on('pageerror', (e) => errors.push(`[six] ${e.message}`));
+  await host6.goto(pathToFileURL(file).href);
+  await openGameFile(host6, sixFile);
+  await host6.getByText(/^Opened “/).waitFor();
+  await host6.getByRole('button', { name: '▶ Play' }).click();
+  await host6.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  const [aud6] = await Promise.all([host6.waitForEvent('popup'), host6.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  aud6.on('pageerror', (e) => errors.push(`[six audience] ${e.message}`));
+  await aud6.setViewportSize({ width: 1280, height: 720 });
+  await host6.getByRole('button', { name: 'Start game ▶' }).click();
+  await host6.locator('.bh').waitFor();
+  if (await aud6.locator('.title-card').count())
+    await stageBoxIn(host6)
+      .locator('.title-card')
+      .click()
+      .catch(() => {});
+  await aud6.locator('.strip .card').nth(5).waitFor();
+  await aud6.waitForTimeout(400);
+  const names6 = await aud6
+    .locator('.strip .card .name')
+    .evaluateAll((els) => Object.fromEntries(els.map((e) => [e.textContent.trim(), e.scrollWidth > e.clientWidth + 1 ? 'cut' : 'whole'])));
+  assert(
+    ['Ann', 'Zoë', 'Christopher'].every((n) => names6[n] === 'whole') && names6['Bartholomew Fitzgerald-Worthington III'] === 'cut',
+    `six on the strip: the short names whole, the longest cut (${JSON.stringify(names6)})`,
+  );
+  const row6 = await aud6.locator('.bg > .strip').evaluate((s) => {
+    const r = s.getBoundingClientRect();
+    const cs = [...s.querySelectorAll('.card')].map((c) => c.getBoundingClientRect());
+    return { tops: new Set(cs.map((c) => Math.round(c.top))).size, inside: cs.every((c) => c.left >= r.left - 1 && c.right <= r.right + 1) };
+  });
+  assert(row6.tops === 1 && row6.inside, `and the six cards are one row inside the strip (${JSON.stringify(row6)})`);
+  if (process.env.SHOTS) await aud6.screenshot({ path: `${process.env.SHOTS}/boardgame-six.png` });
+  await ctx6.close();
+
   // Twelve long names in one window at 1280×720 (beside the stage): the turn order, opened, wraps onto many rows, and a
   // move that stops at the fork has its "which way?" row in view (the turn's part is at the column's foot; the stage
   // doesn't move). (A second board after it, for the Steps box going into another round.)

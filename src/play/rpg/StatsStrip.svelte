@@ -118,9 +118,15 @@
     min-width: 40px;
   }
   /* Big enough to read once the stream is scaled down (720p, a phone): about 1.5× the old size. */
+  /*
+   * An even share of the width each, but no wider than the card needs: a short name keeps its whole card and what it
+   * doesn't need goes to the long ones (otherwise each card shrank in proportion to its width, "Ann" down to "A").
+   */
   .card {
     display: flex;
     align-items: center;
+    flex: 1 1 0;
+    max-width: max-content;
     min-width: 0;
     gap: 12px;
     padding: 8px 18px 8px 8px;
