@@ -1,5 +1,8 @@
 // Builds the phone page into one file: phone/index.html with phone/style.css and the bundled phone/main.ts inlined,
 // written to dist/index.html (wrangler serves dist/). Run by wrangler before dev and deploy.
+// Every file in the bundle is compiled with phone/tsconfig.json, the ../../src/lib files it imports too: left to itself
+// esbuild would use the repo's root tsconfig.json for those, which extends a package only the root install has, and the
+// deploy job installs only buzzer/'s packages.
 import { build } from 'esbuild';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -14,6 +17,7 @@ const out = await build({
   format: 'iife',
   target: 'es2020',
   logLevel: 'warning',
+  tsconfig: join(here, 'phone/tsconfig.json'),
 });
 const js = out.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
 const css = readFileSync(join(here, 'phone/style.css'), 'utf8');
