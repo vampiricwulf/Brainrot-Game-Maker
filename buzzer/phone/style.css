@@ -1137,6 +1137,12 @@ html:has(#s-buzz:not([hidden])) {
   color: var(--muted);
   font-weight: 400;
 }
+/* "Sending…": grey, not the green of what's in (it may not get there). */
+#answer-state.sending,
+#wager-state.sending {
+  color: var(--muted);
+  font-weight: 400;
+}
 /* An edit not sent yet ("Not sent yet: tap Change answer…"): amber, as it isn't in. */
 #answer-state.unsent,
 #wager-state.unsent {

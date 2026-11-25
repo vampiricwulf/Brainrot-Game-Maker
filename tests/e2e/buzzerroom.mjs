@@ -1068,6 +1068,37 @@ try {
   const kept = await host.wait((m) => m.t === 'buzz' && m.armId === 8 && m.rank === 1, 'the press made while checking', 15_000);
   assert(kept.seatId === 'c' && catTap2.routes.length > routes, 'a press while "Checking connection…" on a dead socket still counts, sent once reconnected');
   setState({ phase: 'lobby', clue: null });
+  // An answer, then a wager, sent into a dead socket: "Sending…" (not the green of "✔ Sent"), and within seconds, not the
+  // half a minute the pings take, "The connection dropped…": the phone checks, and starts again.
+  const deadSend = async (form, fill, value) => {
+    const state = cat.locator(`#${form}-state`);
+    await cat.locator(`#${form}-in`).waitFor();
+    routes = catTap2.routes.length;
+    catTap2.stall();
+    await cat.locator(`#${form}-in`).fill(value);
+    await cat.locator(`#${form}-send`).click();
+    await state.getByText('Sending…').waitFor();
+    const colour = await state.evaluate((e) => getComputedStyle(e).color);
+    const at = Date.now();
+    await cat.locator(`#${form}-err`).getByText('The connection dropped.').waitFor({ timeout: 12_000 });
+    const took = Date.now() - at;
+    await until(() => catTap2.routes.length !== routes, { timeout: 10_000, every: 250 });
+    await big(cat)
+      .getByText('Cat')
+      .or(cat.locator(`#${form}-in`))
+      .first()
+      .waitFor();
+    assert(
+      colour !== 'rgb(111, 220, 140)' && took < 10_000 && (await cat.locator(`#${form}-err`).innerText()).startsWith('The connection dropped.'),
+      `${fill} sent into a dead socket: “Sending…” in grey, not the green of “✔ Sent”, then “The connection dropped…” in seconds, kept once back (${colour}, ${took} ms)`,
+    );
+  };
+  setState({ clue: { text: 'Q9' }, answers: { id: 'c9', open: true, seats: [{ id: 'c' }] } });
+  await deadSend('answer', 'an answer', 'Saturn');
+  setState({ clue: null, answers: null, wager: { id: 'c9w', kind: 'final', open: true, seats: [{ id: 'c', max: 1000 }] } });
+  await deadSend('wager', 'a wager', '300');
+  setState({ wager: null });
+  await big(cat).getByText('Cat').waitFor();
 
   // The browser says the phone went offline (out of Wi-Fi range): "Reconnecting…" covers the buzzer at once, not after
   // half a minute of unanswered pings; online again, it's back in its seat.

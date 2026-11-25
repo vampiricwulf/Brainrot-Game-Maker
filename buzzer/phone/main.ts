@@ -64,7 +64,10 @@ interface Notice {
 
 /** No pong this long after a ping sent to check the connection: it's dead, start again. */
 const PROBE_MS = 2500;
-/** No answer to a buzz this long: the connection is dead (the buzz is lost), start again. */
+/**
+ * No answer to a buzz this long: the connection is dead (the buzz is lost), start again. A wager or an answer with no
+ * reply this long: check the connection (probe).
+ */
 const BUZZ_ANSWER_MS = 3000;
 /** Buzzes sent this close together at most. */
 const BUZZ_GAP_MS = 150;
@@ -131,6 +134,8 @@ let litAt = 0;
 /** The arm of a buzz sent that the room hasn't answered yet (-1: none). */
 let sendingArm = -1;
 let sendingTimer = 0;
+/** Checks the connection if a wager or an answer sent gets no reply (awaitReply). */
+let replyTimer = 0;
 /** When the last press buzzed (performance.now()), so a click right after a pointerdown doesn't buzz twice. */
 let lastPress = -1000;
 /** When the last buzz went to the room (performance.now()). */
@@ -427,6 +432,7 @@ function dropped(s: WebSocket, wait?: number, closeCode?: number): void {
   clearInterval(pingTimer);
   clearTimeout(probeTimer);
   probeTimer = 0;
+  clearTimeout(replyTimer);
   stopSending();
   // A wager on its way may not have got there: say so, rather than "Sending…" for good.
   if (wagerSending) {
@@ -844,6 +850,19 @@ function awaitAnswer(armId: number): void {
     }
   }, BUZZ_ANSWER_MS);
   render();
+}
+
+/**
+ * A wager or an answer just sent: the room always replies ("wagered", "answered"), so none soon means the connection may
+ * be dead though open (no pong for 25 s takes half a minute to notice). Check it, and start again if no pong comes:
+ * "The connection dropped…" in seconds, not "Sending…" for half a minute. (A slow room that's there still pongs.)
+ */
+function awaitReply(): void {
+  const s = ws;
+  clearTimeout(replyTimer);
+  replyTimer = window.setTimeout(() => {
+    if (ws === s && (wagerSending || answerSending)) probe();
+  }, BUZZ_ANSWER_MS);
 }
 
 /**
@@ -2322,9 +2341,10 @@ function sendUnsent(a: NonNullable<PhoneView['answer']>, why: AutoSent): void {
 /** Held to a max the amount is over. */
 const overMax = (w: PhoneWager, amount: number): boolean => !!w.limit && w.max !== undefined && amount > w.max;
 
-/** A box's state line: "Sending…", what's in (green), or an edit not sent yet (amber: it isn't in). */
+/** A box's state line: "Sending…" (grey: not in yet), what's in (green), or an edit not sent yet (amber: it isn't in). */
 function drawState(id: 'answer-state' | 'wager-state', state: string, sending: boolean): void {
   $(id).textContent = sending ? 'Sending…' : state;
+  $(id).classList.toggle('sending', sending);
   $(id).classList.toggle('unsent', !sending && /^(Not sent yet|Type .* or less|Sent automatically)/.test(state));
 }
 
@@ -2950,6 +2970,7 @@ $('wager-form').addEventListener('submit', (e) => {
   wagerSending = connected;
   if (!connected) wagerErr = 'Not connected: try again in a moment.';
   send({ t: 'wager', id: w.id, amount });
+  if (connected) awaitReply();
   render();
 });
 $('answer-form').addEventListener('submit', (e) => {
@@ -2965,6 +2986,7 @@ $('answer-form').addEventListener('submit', (e) => {
   answerSending = connected;
   if (!connected) answerErr = 'Not connected: try again in a moment.';
   sendAnswer({ t: 'answer', id: a.id, text }, 'own');
+  if (connected) awaitReply();
   render();
 });
 // Multiple choice: a tap sends that choice at once (it can be changed until the host shows the answer).
@@ -2981,6 +3003,7 @@ $('answer-choices').addEventListener('click', (e) => {
   answerSending = connected;
   if (!connected) ((answerErr = 'Not connected: try again in a moment.'), (answerTap = ''));
   sendAnswer({ t: 'answer', id: a.id, pick }, 'own');
+  if (connected) awaitReply();
   render();
 });
 // With a keyboard Enter sends (Shift+Enter: a new line). On a phone its keyboard's Enter is a new line, and Send answer
