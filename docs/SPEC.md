@@ -678,14 +678,16 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     size as before) right at the top, and the host panel takes the rest of the screen, the black that was above and
     under the stage, so each moment's box (a slide's ◀ Slide, Skip intro, a clue's row, a Daily Double's wager, a roll's
     box, the RPG and board-game rounds with 🎲 Roll and ▶ Move, the Final, the end's tie) has room and takes a tap. Still
-    one height the whole game (the window's less the stage's, never less than the rule above). On a short phone (700px
-    tall or less: an iPhone SE, or a bigger phone with its browser's bars showing) the tools row, with the round's
-    ◀ / ▶, also folds behind **⋯ Tools** in the status line at every moment (out while something in it is on, as in the
-    Final's reveals; folded again when the moment changes or a roll's or spin's box opens), and the status line's how-to
-    (and a board round's "Pick a tile on the board.") keeps to one line, cut short, whole in its tooltip. While the row
-    is out there (something in it on, or ⋯ Tools pressed) the moment's part keeps `min(150px, 34vh)` and the panel
-    scrolls instead (the fixed bar below; its keys still work). A phone on its side, a tablet, a computer and an
-    audience window keep the rule above (`tests/e2e/phonepanel.mjs`).
+    one height the whole game (the window's less the stage's, never less than the rule above; on a window too short for
+    both, such as a small phone with its browser's bars showing, the stage gives way as it did, so the panel ends at the
+    window's foot). On a short phone (700px tall or less: an iPhone SE, or a bigger phone with its browser's bars
+    showing) the tools row, with the round's ◀ / ▶, also folds behind **⋯ Tools** in the status line at every moment
+    (out while something in it is on, as in the Final's reveals; folded again when the moment changes or a roll's or
+    spin's box opens), and the status line's how-to (and a board round's "Pick a tile on the board.") keeps to one line,
+    cut short, whole in its tooltip, with the line's room up to ⋯ Tools. While the row is out there (something in it on,
+    or ⋯ Tools pressed) the moment's part keeps `min(150px, 34vh)` and the panel scrolls instead (the fixed bar below;
+    its keys still work). A phone on its side, a tablet, a computer and an audience window keep the rule above
+    (`tests/e2e/phonepanel.mjs`).
 - **The host panel's rules** (everything below follows them):
   1. **Each action has one place: its situation's box**, beside the manual choices it's an alternative to (🤝 a partner
      clue, ⭐ a Daily Double, 🎡 / 🎲 a wheel or dice, the Final's wagers and reveals, a tie at the end, the buzzers' row,
