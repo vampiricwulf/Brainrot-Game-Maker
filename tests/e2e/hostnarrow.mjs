@@ -7,7 +7,7 @@
 //    button in it in sight and hit at its centre, the chips' box never scrolling sideways, and a chip one width before
 //    and after ✔ (a long name, Bartholomew, too);
 // 3. the round nav's last button ("Final Jeopardy! ▶") at 320px stays inside the panel, its ▶ whole (the round picker
-//    gets narrower), nothing scrolling sideways, in both window modes;
+//    gets narrower), nothing scrolling sideways, in both window modes (in one window out from behind ⋯ Tools);
 // 4. a tap's note on a wrapped status line (390px, the Final's wagers not typed) covers the line's first line only:
 //    ⏱️ Start and the seconds box under it are still hit at their centres;
 // 5. the check before going on (the Final's clock running), opened at 1280×720 then the window made 1920×1080, in one
@@ -287,6 +287,9 @@ try {
     const { ctx, page } = await pregame({ width: 320, height: 568 }, { touch: true, dual });
     await start(page);
     await nextRound(page);
+    // (In one window a phone this short folds the tools row, with the round nav, behind ⋯ Tools: out with a tap.)
+    const fold = hostPanelIn(page).getByRole('button', { name: '⋯ Tools' });
+    if (await fold.isVisible()) await fold.tap();
     await roundNavIn(page).locator('button', { hasText: 'Final Jeopardy!' }).waitFor();
     const nav = await page.evaluate(() => {
       const panel = /** @type {HTMLElement} */ (document.querySelector('[data-host-panel]'));
