@@ -345,13 +345,32 @@
     onclipped?: (text: string) => void;
   } = $props();
 
-  /** The status line, and how much of it a click's note covers: its start, up to the spacer before its chips. */
+  /**
+   * The status line, and how much of it a click's note covers: its start, up to the spacer before its chips; and on its
+   * first line only, where the line wraps (a phone, a narrow window), so ⏱️ Start and the seconds box on the next line
+   * stay in sight and clickable. Measured again as the line's layout changes while the note is up.
+   */
   let statusEl = $state<HTMLElement>();
   let noteW = $state(0);
+  let noteH = $state(0);
+  function measureNote(line: HTMLElement): void {
+    // (The line's items in order; a wrapped line starts where an item lies left of the one before it.)
+    const items = [...line.children].filter((c): c is HTMLElement => c instanceof HTMLElement && !c.matches('.clicknote') && c.getClientRects().length > 0);
+    let n = 1;
+    while (n < items.length && items[n].offsetLeft > items[n - 1].offsetLeft) n++;
+    const first = items.slice(0, n);
+    const sp = first.find((c) => c.matches('.spacer'));
+    const wraps = n < items.length;
+    noteW = sp ? Math.max(0, sp.offsetLeft + sp.offsetWidth) : wraps ? line.clientWidth : 0;
+    noteH = wraps ? Math.max(0, ...first.map((c) => c.offsetTop + c.offsetHeight)) : 0;
+  }
   $effect(() => {
-    if (!clicknote || !statusEl) return;
-    const sp = statusEl.querySelector<HTMLElement>(':scope > .spacer');
-    noteW = sp ? Math.max(0, sp.offsetLeft + sp.offsetWidth) : 0;
+    const line = statusEl;
+    if (!clicknote || !line) return;
+    measureNote(line);
+    const ro = new ResizeObserver(() => measureNote(line));
+    ro.observe(line);
+    return () => ro.disconnect();
   });
   /** The note's words, measured once it's laid out at its width: cut off, they're said in full too (what to do next,
    *  such as "or untick them to sit out", is often at their end). Once per note. */
@@ -1120,7 +1139,14 @@
     {#if clicknote}
       <!-- Over the line's start, up to its chips and buttons, so nothing in the line moves and the one-window stage keeps
            its size. (Read out by Play when it's said.) -->
-      <span class="clicknote" data-click-note data-quiet style:width={noteW ? `${noteW}px` : undefined} title={clicknote.text}
+      <span
+        class="clicknote"
+        data-click-note
+        data-quiet
+        style:width={noteW ? `${noteW}px` : undefined}
+        style:bottom={noteH ? 'auto' : undefined}
+        style:height={noteH ? `${noteH}px` : undefined}
+        title={clicknote.text}
         ><span class="nt" bind:this={noteEl}>{clicknote.text}</span>{#if clicknote.undo}<button
             class="small ghost"
             onclick={clicknote.undo}
