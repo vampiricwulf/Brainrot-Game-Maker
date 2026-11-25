@@ -191,6 +191,8 @@ describe('an item whose file is missing', () => {
     // The original missing but its edited copy here: it shows.
     expect(itemFileMissing(game, { ...pic, editedMedia: 'here' })).toBe(false);
     expect(itemFileMissing(game, { ...pic, editedMedia: 'noedit' })).toBe(true);
+    // Its edited copy deleted from 🖼️ Media, the original missing: the slide says "Missing image", and so does this.
+    expect(itemFileMissing(game, { ...pic, editedMedia: 'gone' })).toBe(true);
     expect(itemFileMissing(game, newImageEl('here'))).toBe(false);
     expect(itemFileMissing(game, newImageEl('web'))).toBe(false);
     // Deleted from 🖼️ Media (not in the game's list): that's itemFileDeleted's to say.

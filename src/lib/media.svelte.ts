@@ -718,10 +718,11 @@ export function fileMissing(game: Pick<Game, 'media'>, id: string | undefined): 
 /**
  * A picture, video or sound that shows nothing because its file isn't here (opened from a .json, or a damaged pack):
  * 🔗 Find missing files… in 🖼️ Media puts it back. A picture whose edited copy alone is missing still shows its
- * original, as the slide does. (A file deleted from 🖼️ Media is itemFileDeleted, said its own way.)
+ * original, and one whose original alone is missing its edited copy, as the slide does. (A file deleted from 🖼️ Media
+ * is itemFileDeleted, said its own way.)
  */
 export function itemFileMissing(game: Pick<Game, 'media'>, el: SlideElement): boolean {
-  if (el.kind === 'image') return fileMissing(game, el.media) && (!el.editedMedia || fileMissing(game, el.editedMedia));
+  if (el.kind === 'image') return fileMissing(game, el.media) && !(el.editedMedia && mediaUrls[el.editedMedia]);
   return (el.kind === 'video' || el.kind === 'audio') && fileMissing(game, el.media);
 }
 
