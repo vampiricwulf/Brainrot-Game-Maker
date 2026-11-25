@@ -1068,15 +1068,20 @@ try {
   const kept = await host.wait((m) => m.t === 'buzz' && m.armId === 8 && m.rank === 1, 'the press made while checking', 15_000);
   assert(kept.seatId === 'c' && catTap2.routes.length > routes, 'a press while "Checking connection…" on a dead socket still counts, sent once reconnected');
   setState({ phase: 'lobby', clue: null });
-  // An answer, then a wager, sent into a dead socket: "Sending…" (not the green of "✔ Sent"), and within seconds, not the
-  // half a minute the pings take, "The connection dropped…": the phone checks, and starts again.
+  // An answer, a choice tapped, then a wager, sent into a dead socket: "Sending…" (not the green of "✔ Sent"), and within
+  // seconds, not the half a minute the pings take, "The connection dropped…": the phone checks, and starts again.
   const deadSend = async (form, fill, value) => {
     const state = cat.locator(`#${form}-state`);
-    await cat.locator(`#${form}-in`).waitFor();
+    // (A multiple-choice answer: `value` is the choice tapped, which sends it.)
+    const choice = fill === 'a choice' ? cat.locator('#answer-choices .choice', { hasText: value }) : null;
+    await (choice ?? cat.locator(`#${form}-in`)).waitFor();
     routes = catTap2.routes.length;
     catTap2.stall();
-    await cat.locator(`#${form}-in`).fill(value);
-    await cat.locator(`#${form}-send`).click();
+    if (choice) await choice.click();
+    else {
+      await cat.locator(`#${form}-in`).fill(value);
+      await cat.locator(`#${form}-send`).click();
+    }
     await state.getByText('Sending…').waitFor();
     const colour = await state.evaluate((e) => getComputedStyle(e).color);
     const at = Date.now();
@@ -1085,7 +1090,7 @@ try {
     await until(() => catTap2.routes.length !== routes, { timeout: 10_000, every: 250 });
     await big(cat)
       .getByText('Cat')
-      .or(cat.locator(`#${form}-in`))
+      .or(choice ?? cat.locator(`#${form}-in`))
       .first()
       .waitFor();
     assert(
@@ -1095,6 +1100,9 @@ try {
   };
   setState({ clue: { text: 'Q9' }, answers: { id: 'c9', open: true, seats: [{ id: 'c' }] } });
   await deadSend('answer', 'an answer', 'Saturn');
+  const moons = ['Saturn', 'Jupiter', 'Uranus'].map((text, i) => ({ id: `m${i}`, text }));
+  setState({ answers: { id: 'c9c', open: true, seats: [{ id: 'c' }], choices: moons } });
+  await deadSend('answer', 'a choice', 'Jupiter');
   setState({ clue: null, answers: null, wager: { id: 'c9w', kind: 'final', open: true, seats: [{ id: 'c', max: 1000 }] } });
   await deadSend('wager', 'a wager', '300');
   setState({ wager: null });
