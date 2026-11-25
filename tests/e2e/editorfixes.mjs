@@ -1222,7 +1222,10 @@ try {
     np.on('pageerror', (e) => errors.push(e.message));
     await np.goto(pathToFileURL(file).href);
     await np.getByRole('button', { name: /Try a sample game/ }).click();
-    await roundTabsIn(np).filter({ hasText: /^\W*Jeopardy!$/ }).first().click();
+    await roundTabsIn(np)
+      .filter({ hasText: /^\W*Jeopardy!$/ })
+      .first()
+      .click();
     await np.locator('.grid .tile').first().click();
     const clue = np.getByRole('dialog', { name: 'Edit clue' });
     await clue.waitFor();
@@ -1234,7 +1237,10 @@ try {
       const add = await top(clue.getByRole('button', { name: /Add slide/ }));
       const del = await top(clue.getByRole('button', { name: /Delete slide/ }));
       // (The buttons sit a few px below the tabs' top: the tabs are taller.)
-      assert(add >= tab && Math.abs(add - del) <= 1, `at ${width} the slide's buttons are on one line, never above the tabs (tab ${tab}, ＋ Add slide ${add}, 🗑 Delete slide ${del})`);
+      assert(
+        add >= tab && Math.abs(add - del) <= 1,
+        `at ${width} the slide's buttons are on one line, never above the tabs (tab ${tab}, ＋ Add slide ${add}, 🗑 Delete slide ${del})`,
+      );
       if (width >= 1280) assert(add - tab < 20, `at ${width} the slide's buttons stay on the tabs' line (tab ${tab}, ＋ Add slide ${add})`);
     }
     await np.keyboard.press('Escape');
@@ -1243,13 +1249,55 @@ try {
     for (const width of [1024, 1100, 1180, 1366]) {
       await np.setViewportSize({ width, height: 768 });
       await np.waitForTimeout(150);
-      const imp = await np.locator('main').getByRole('button', { name: /Import clues/ }).boundingBox();
-      const img = await np.locator('main').getByRole('button', { name: /Board images/ }).boundingBox();
+      const imp = await np
+        .locator('main')
+        .getByRole('button', { name: /Import clues/ })
+        .boundingBox();
+      const img = await np
+        .locator('main')
+        .getByRole('button', { name: /Board images/ })
+        .boundingBox();
       const name = await np.locator('main [data-round-name]').boundingBox();
       assert(
         Math.abs(imp.y - img.y) <= 1 && img.x > imp.x + imp.width - 1 && imp.x > name.x + name.width,
         `at ${width} 📥 Import clues… and 🖼️ Board images… sit side by side, right of Round name (${[imp, img].map((b) => `${Math.round(b.x)},${Math.round(b.y)}`).join(' and ')})`,
       );
+    }
+    // 🖼️ Board images and the clue window: however their headers wrap, ✕ stays in the right-hand corner, with Done
+    // just before it and ↶ Undo / ↷ Redo (◀ Prev / Next ▶) together.
+    const decor = np.getByRole('dialog', { name: 'Board images' });
+    for (const width of [390, 800, 1024]) {
+      await np.setViewportSize({ width, height: 844 });
+      for (const [dialog, open, pair] of [
+        [
+          decor,
+          () =>
+            np
+              .locator('main')
+              .getByRole('button', { name: /Board images/ })
+              .click(),
+          [/Undo/, /Redo/],
+        ],
+        [clue, () => np.locator('.grid .tile').first().click(), [/^◀ Prev$/, /^Next ▶$/]],
+      ]) {
+        await open();
+        await dialog.waitFor();
+        await np.waitForTimeout(150);
+        const box = await dialog.boundingBox();
+        const x = await dialog.getByRole('button', { name: 'Close' }).boundingBox();
+        const done = await dialog.getByRole('button', { name: /^Done/ }).boundingBox();
+        const [a, b] = await Promise.all(pair.map((name) => dialog.getByRole('button', { name }).boundingBox()));
+        const fromRight = Math.round(box.x + box.width - x.x - x.width);
+        const what = (await dialog.getAttribute('aria-label')) ?? '';
+        assert(fromRight <= 24, `at ${width} the ${what} window's ✕ is at its right edge (${fromRight}px from it)`);
+        const mid = (r) => Math.round(r.y + r.height / 2);
+        assert(
+          Math.abs(mid(done) - mid(x)) <= 1 && done.x < x.x && Math.abs(mid(a) - mid(b)) <= 1,
+          `at ${width} the ${what} window's Done sits just before ✕, its two step buttons on one line (middles: Done ${mid(done)}, ✕ ${mid(x)}; ${mid(a)} and ${mid(b)})`,
+        );
+        await np.keyboard.press('Escape');
+        await dialog.waitFor({ state: 'detached' });
+      }
     }
     await ctx.close();
   }

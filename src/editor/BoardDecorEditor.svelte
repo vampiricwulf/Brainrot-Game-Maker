@@ -521,11 +521,13 @@
       >
         Copy {selected.length ? 'selected' : 'all'} to other rounds
       </button>
-      <span class="spacer"></span>
-      <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} aria-label="Undo (Ctrl+Z)" title={history.undoTitle}>↶ Undo</button>
-      <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} aria-label="Redo (Ctrl+Y)" title={history.redoTitle}>↷ Redo</button>
-      <button class="primary" onclick={onclose}>Done</button>
-      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
+      <!-- (↶ ↷, Done and ✕ wrap to the next line together, at the right: ✕ stays in its corner.) -->
+      <span class="head-end">
+        <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} aria-label="Undo (Ctrl+Z)" title={history.undoTitle}>↶ Undo</button>
+        <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} aria-label="Redo (Ctrl+Y)" title={history.redoTitle}>↷ Redo</button>
+        <button class="primary" onclick={onclose}>Done</button>
+        <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
+      </span>
     </header>
 
     <div class="body">
@@ -687,6 +689,12 @@
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
+  }
+  .head-end {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
   }
   h4 {
     margin: 0 0 6px;
