@@ -5429,7 +5429,10 @@
 
     <!-- Always in view at the foot of the window, however long the page above gets. -->
     <div class="actions">
-      <button class="ghost" onclick={() => backToEditor()}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
+      <!-- (On a phone, "◀ Back": " to editor" is left for screen readers, so the bar fits a 320px screen.) -->
+      <button class="ghost" onclick={() => backToEditor()}
+        >◀ Back{#if !app.playerOnly}<span class="to-editor">{' '}to editor</span>{/if}</button
+      >
       <!-- The notes wrap in their own room: Start stays at the right end of the bar, on its line. -->
       <span class="notes">
         {#if pregame.startAsk}
@@ -6326,6 +6329,21 @@
   }
   .actions > button {
     flex: none;
+  }
+  /* A phone (or a window as narrow): ◀ Back and Start game ▶ without Ctrl+⏎ (its key still in Start's tooltip), so the
+     bar fits a 320px screen, never wider than the window. */
+  @media (max-width: 420px) {
+    .start-key {
+      display: none;
+    }
+    .to-editor {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   /* Between ◀ Back and Start: the notes, right against Start, wrapping onto lines of their own when they're long. */
   .actions .notes {
