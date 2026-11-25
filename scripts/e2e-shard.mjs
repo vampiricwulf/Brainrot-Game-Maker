@@ -3,6 +3,8 @@
 //   node scripts/e2e-shard.mjs <shard>   run the shard's files one after another (1–5, or rest)
 //   node scripts/e2e-shard.mjs all       run every file (npm run test:e2e)
 //   node scripts/e2e-shard.mjs buzzer    run the files that start a local buzzer server (npm run test:buzzer)
+//   node scripts/e2e-shard.mjs hostlayout smoke   run the files named (hostlayout, hostlayout.mjs or
+//                                        tests/e2e/hostlayout.mjs), with --quiet and --jobs as for a shard
 //   node scripts/e2e-shard.mjs --check   prove the layout below is sound (the build job runs it)
 //
 //   --jobs N   run up to N files at once (default 1, one after another). Each file's output is then held back and
@@ -29,6 +31,7 @@ import { appendFileSync, closeSync, mkdtempSync, openSync, readdirSync, readFile
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { appFile } from '../tests/e2e/helpers.mjs';
+import { parseTargets } from './e2e-targets.mjs';
 
 const SHARDS = {
   1: 'phonecopies cardrounds partnerplay cardsend history playfeatures buzzerlive convert slidesround dealcaptain rpg',
@@ -159,11 +162,11 @@ async function run(files, name, { jobs, quiet }) {
   if (process.env.GITHUB_STEP_SUMMARY) {
     const total = results.reduce((n, r) => n + r.s, 0);
     const rows = results.map((r) => `| ${r.f}.mjs | ${r.ok ? 'ok' : '**FAIL**'} | ${r.s} |`);
-    const head = `### E2E shard ${name}: ${failed.length ? `${failed.length} of ${results.length} failed` : `all ${results.length} passed`} (${total}s)`;
+    const head = `### E2E ${name}: ${failed.length ? `${failed.length} of ${results.length} failed` : `all ${results.length} passed`} (${total}s)`;
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, [head, '', '| File | Result | Seconds |', '| --- | --- | ---: |', ...rows, ''].join('\n') + '\n');
     for (const r of failed)
       console.log(
-        `::error file=tests/e2e/${r.f}.mjs,title=e2e ${r.f}.mjs failed::${r.f}.mjs failed in e2e shard ${name}: see its log, and the e2e-debug-${name} artifact for any screenshot or trace it saved`,
+        `::error file=tests/e2e/${r.f}.mjs,title=e2e ${r.f}.mjs failed::${r.f}.mjs failed in e2e ${name}: see its log, and the ${name.startsWith('shard ') ? `e2e-debug-${name.slice(6)}` : 'e2e-debug'} artifact for any screenshot or trace it saved`,
       );
   }
   process.exit(failed.length ? 1 : 0);
@@ -183,12 +186,14 @@ if (jobsAt >= 0) {
 const quietAt = args.indexOf('--quiet');
 if (quietAt >= 0) args.splice(quietAt, 1);
 const quiet = quietAt >= 0 || process.env.E2E_QUIET === '1';
-const arg = args.length === 1 ? args[0] : undefined;
-if (arg === '--check') check();
-else if (arg === 'all') run(all, 'all', { jobs, quiet });
-else if (arg === 'buzzer') run(buzzerFiles(), 'buzzer', { jobs, quiet });
-else if (arg === 'rest' || named[arg]) run(shardFiles(arg), arg, { jobs, quiet });
-else {
-  console.error('Usage: node scripts/e2e-shard.mjs <1–5 | rest | all | buzzer | --check> [--jobs N] [--quiet]');
+const want = parseTargets(args, { all, shards: Object.keys(SHARDS), notTests: NOT_TESTS });
+if ('check' in want) check();
+else if ('files' in want) run(want.files, want.files.join(', '), { jobs, quiet });
+else if ('target' in want) {
+  const t = want.target;
+  run(t === 'all' ? all : t === 'buzzer' ? buzzerFiles() : shardFiles(t), `shard ${t}`, { jobs, quiet });
+} else {
+  if (want.error) console.error(want.error);
+  console.error('Usage: node scripts/e2e-shard.mjs <1–5 | rest | all | buzzer | file… | --check> [--jobs N] [--quiet]');
   process.exit(2);
 }

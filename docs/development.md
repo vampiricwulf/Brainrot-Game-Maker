@@ -37,7 +37,10 @@ npm run format         # format the code with Prettier (npm run format:check onl
 npm test               # unit tests (Vitest: src/ and buzzer/), about 30 s
 (cd buzzer && npm run check)   # type-check the buzzer Worker and phone page (CI runs it; the root check doesn't)
 npm run test:quick     # the quick end-to-end test (tests/e2e/smoke.mjs), about 100 s; CI waits for it before releasing
-node tests/e2e/goon.mjs        # one end-to-end file (build first)
+node tests/e2e/goon.mjs        # one end-to-end file (build first), every check's line: 5 s to about 3 min (hostlayout
+                               # is the slowest; give it a 5-minute command timeout, or run it in the background)
+node scripts/e2e-shard.mjs goon hostlayout --quiet   # the files named (goon, goon.mjs or tests/e2e/goon.mjs), with
+                               # --quiet (a line for a pass, the last 80 lines for a fail) and --jobs as for a shard
 node scripts/e2e-shard.mjs 3   # one CI shard (1–5 or rest; scripts/e2e-shard.mjs lists them), 6–8 min each
 npm run test:e2e       # the whole end-to-end suite, one file after another, going on past a failure: about 35 min
                        # (CI runs it in six shards alongside the release)
