@@ -377,6 +377,11 @@ try {
   await page.getByRole('button', { name: 'Fill and make it a d4' }).click();
   const faces = page.locator('.face input.label');
   assert((await values(faces)).join() === 'Sip,Dare,Sing,Dance', 'the pasted lines fill the faces, and the die gets as many sides');
+  // Each face's ▸ More says which face it's for (one die: no "of die 1").
+  const faceMores = await page
+    .locator('.face .oe .row > button.small:last-child')
+    .evaluateAll((els) => els.map((e) => e.textContent?.replace(/\s+/g, ' ').trim()));
+  assert(faceMores.join() === [1, 2, 3, 4].map((k) => `▸ More details for face ${k}`).join(), `each face's ▸ More names it (${faceMores.join(' / ')})`);
   // A range of totals has one name: “range” on its 🗑 as in its menu (🗑 Delete range).
   await page.getByRole('button', { name: '＋ Add range' }).click();
   const range = page.getByRole('group', { name: 'Total 1' });
