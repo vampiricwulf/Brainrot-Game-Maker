@@ -137,7 +137,6 @@
         {#if builtin}<label for="cue-{key}"><b>{label}</b></label>{:else}<b>{label}</b>{/if}
         <div class="muted small">{hint}</div>
       </div>
-      <span class="spacer"></span>
       {#if off}
         <span class="muted small"
           >Off{#if v}{' '}<span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span
@@ -223,14 +222,29 @@
     flex-direction: column;
     gap: 6px;
   }
+  /* On a narrow window (a phone) a row wraps, what's on its second line at the right, rather than make the page scroll
+     sideways. */
   .sound {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
-    gap: 8px;
+    gap: 4px 8px;
     padding: 6px 10px;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 8px;
+  }
+  /* The name takes the room the rest leaves (so they sit at the right), squeezed to no less than 10em before the row
+     wraps. On a phone the box and the name have the first line to themselves. */
+  .what {
+    flex: 1 1 10em;
+    min-width: 0;
+  }
+  @media (max-width: 560px) {
+    .what {
+      flex-basis: calc(100% - 32px);
+    }
   }
   .nobox {
     width: 16px;
@@ -258,7 +272,9 @@
     text-align: right;
     color: var(--muted);
   }
+  /* (A long name is cut short before the row wraps.) */
   .file {
+    flex: 1 1 120px;
     max-width: 220px;
     overflow: hidden;
     text-overflow: ellipsis;
