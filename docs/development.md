@@ -163,7 +163,7 @@ which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machin
 | `src-tauri/` | The desktop app |
 | `buzzer/` | The buzzer server: a Cloudflare Worker (`src/`) and the phone page (`phone/`), with its own packages. [`buzzer/README.md`](../buzzer/README.md#local-development) says how to run one locally |
 | `tests/e2e/` | Browser tests (`helpers.mjs`: the shared steps) |
-| `scripts/` | The e2e shard list and runner, the screenshot script and the version script |
+| `scripts/` | The gate (`gate.mjs`, `npm run gate`), the e2e shard list and runner (`e2e-shard.mjs`), the version and changelog script (`version.mjs`), the build's version, commit and date shown in ℹ About (`build-info.mjs`, read by `vite.config.ts`) and the screenshot script (`screenshots.mjs`) |
 
 Unit tests sit next to the code they test (`*.test.ts`).
 
