@@ -5,7 +5,8 @@
 // A phone hosting with the buzzer room up (local, under wrangler dev): the 📱 card's rows fit the screen (📱 and ⛔
 // only, their words for screen readers and in their tooltips), nothing scrolls sideways, and Start game ▶ takes a tap.
 // A board game hosted on a touch screen: its status line and its turn box name the buttons (🎲 Roll, ▶ Move, ◀ Previous
-// turn), never a key (D, Enter, Shift+N, N); with a mouse they keep their keys.
+// turn), never a key (D, Enter, Shift+N, N); with a mouse they keep their keys. On a phone held upright (390×844,
+// 360×740, 320×568) 🎲 Roll and ▶ Move are in sight and take a real tap.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -171,11 +172,18 @@ async function boardWords(
     iw: await page.evaluate(() => innerWidth),
   };
   if (play) {
-    // 🎲 Roll, then ▶ Move: the turn is played. (A tap, or a click with a mouse. On a phone the panel's pinned rows
-    // cover the turn box where a finger would reach it, so there it's pressed in the page: this checks the words.)
-    const phone = (opts.viewport?.width ?? 0) < 600;
+    // 🎲 Roll, then ▶ Move: the turn is played, by a real tap (a click with a mouse), on a phone too: the button is in
+    // sight where a finger reaches it (what's at its middle is it).
     /** @param {import('playwright-core').Locator} b */
-    const press = (b) => (phone ? b.evaluate((e) => /** @type {HTMLElement} */ (e).click()) : opts.hasTouch ? b.tap() : b.click());
+    const press = async (b) => {
+      const hit = await b.evaluate((e) => {
+        const r = e.getBoundingClientRect();
+        const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return !!at && e.contains(at);
+      });
+      assert(hit, `${opts.viewport?.width}×${opts.viewport?.height}: “${(await b.innerText()).trim()}” is in sight, where a tap reaches it`);
+      await (opts.hasTouch ? b.tap() : b.click());
+    };
     await press(stepButton(page).first());
     const move = stepButton(page).filter({ hasText: '▶ Move' });
     await move.waitFor({ timeout: 8000 });
@@ -195,6 +203,8 @@ try {
   const tail = ' · tap a token to select them, drag it to send them';
   for (const [what, opts] of /** @type {[string, import('playwright-core').BrowserContextOptions][]} */ ([
     ['a phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }],
+    ['a smaller phone', { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true }],
+    ['a small phone', { viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true }],
     ['a tablet', { viewport: { width: 1280, height: 720 }, hasTouch: true, isMobile: true }],
   ])) {
     const w = await boardWords(opts, 'dice', true);
