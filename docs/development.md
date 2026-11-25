@@ -32,7 +32,7 @@ npm run gate           # CI's checks in one command (all but the desktop app's b
 npm run dev            # dev server
 npm run build          # → dist/index.html (one self-contained file), about 8 s
 npm run check          # type-check (svelte-check; a warning fails it too), about 25 s
-npm run check:e2e      # type-check the e2e files marked // @ts-check (tests/e2e/tsconfig.json), about 10 s; not in CI
+npm run check:e2e      # type-check the e2e files marked // @ts-check (tests/e2e/tsconfig.json), about 6 s; CI and the gate run it
 npm run format         # format the code with Prettier (npm run format:check only checks it, as CI does), about 25 s
 npm test               # unit tests (Vitest: src/ and buzzer/), about 30 s
 (cd buzzer && npm run check)   # type-check the buzzer Worker and phone page (CI runs it; the root check doesn't)
@@ -120,7 +120,7 @@ selectors inside `page.evaluate()` stay as classes, though inside one the hook w
 hook is worth it only for a part many tests find; for the rest, a role, label or text (`getByRole`, `getByText`) is
 better than a class.
 
-Type-checking: `npm run check:e2e` checks every e2e file that starts with `// @ts-check` against `helpers.mjs`'s
+Type-checking: `npm run check:e2e` (CI and `npm run gate` run it) checks every e2e file that starts with `// @ts-check` against `helpers.mjs`'s
 JSDoc types and Playwright's (not strict; `tests/e2e/window.d.ts` allows the tests' own `window.__…` hooks). Inside a
 `page.evaluate()` callback an element is a plain `Element`, so a property of one kind of element needs a JSDoc cast,
 e.g. `/** @type {HTMLInputElement} */ (el).value` (a cast is only a comment and brackets, so the callback still runs

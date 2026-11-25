@@ -67,6 +67,8 @@ jobs:
       - name: Stamp the version (${{ needs.version.outputs.version }})
         run: node scripts/version.mjs set "${{ needs.version.outputs.version }}"
       - run: npm run check
+      # Type-checks the e2e files marked // @ts-check (tests/e2e/tsconfig.json).
+      - run: npm run check:e2e
       # npm test also runs the buzzer room's unit tests (buzzer/src/*.test.ts).
       - run: npm test
       - name: Buzzer room (buzzer/) dependencies and type check
