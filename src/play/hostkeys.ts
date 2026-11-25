@@ -2,7 +2,7 @@
 // D): the keys window's During the game part (spec §6.8; the editor's are in editor/editorkeys.ts).
 import type { KeyGroup } from '../lib/keylist';
 import type { Session } from '../lib/model';
-import { CHECK } from './host/verbs';
+import { CHECK, VERBS } from './host/verbs';
 
 /** The pre-game screen's group: listed only there, first. */
 export const BEFORE = 'Before the game';
@@ -87,7 +87,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['F', 'Full-screen'],
       [
         '?',
-        'This list (❔ Help at the bar’s end opens it too). Esc, ? or Enter closes it, and Enter closes 🔊 Sound help and ⚖ Rules too (not from a box or a button in them)',
+        'This list (❔ Help at the bar’s end opens it too). Esc, ? or Enter closes it, and Enter closes the 🔊 Sound and ⚖ Rules windows too (not from a box or a button in them)',
       ],
     ],
   },
@@ -193,7 +193,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ],
       ['Esc on a partner clue before the question', 'Back to the board: the tile stays playable'],
       ['1–9, then Enter, in a partner clue’s steal', 'After ✘ Missed with steals on: who steals it, then right (Shift+Enter: wrong), as on any clue'],
-      ['Right-click a tile', '▶ Open it, ✓ Mark as played (skip it) without opening it, or ↶ Reopen this tile once it’s used'],
+      ['Right-click a tile', `${VERBS.tileOpen.label}, ${VERBS.tileSkip.label} without opening it, or ${VERBS.tileReopen.label} once it’s used`],
     ],
   },
   {

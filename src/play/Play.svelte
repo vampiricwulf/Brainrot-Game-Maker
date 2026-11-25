@@ -3031,8 +3031,8 @@
     if (!session.used[clue.id])
       return showMenu(e, [
         { heading: clueName(game, ref) },
-        { label: '▶ Open', keys: 'Enter', onclick: () => pick(ref) },
-        { label: '✓ Mark as played (skip it)', onclick: () => toggleTile(clue.id) },
+        { label: VERBS.tileOpen.label, keys: 'Enter', onclick: () => pick(ref) },
+        { label: VERBS.tileSkip.label, onclick: () => toggleTile(clue.id) },
         { sep: true },
         cover,
       ]);
@@ -3044,7 +3044,7 @@
           ? scored.map((x) => `${playerName(session, x.playerId)} ${x.delta < 0 ? '' : '+'}${formatPoints(x.delta, sym)}`).join(', ')
           : 'No points given',
       },
-      { label: '↶ Reopen this tile', onclick: () => toggleTile(clue.id) },
+      { label: VERBS.tileReopen.label, onclick: () => toggleTile(clue.id) },
       { sep: true },
       cover,
     ]);

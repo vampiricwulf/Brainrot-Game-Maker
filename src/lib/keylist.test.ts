@@ -102,6 +102,15 @@ describe('the game’s keys: the blue button and the check', () => {
     expect(row('Enter in the check')).toContain('never “… anyway”');
   });
 
+  it('name the tile menu’s items as the menu does (▶ Open, not "Open it")', () => {
+    expect(row('Right-click a tile')).toBe('Right-click a tile: ▶ Open, ✓ Mark as played (skip it) without opening it, or ↶ Reopen this tile once it’s used');
+  });
+
+  it('name the windows Enter closes by the buttons that open them', () => {
+    // (The 🔊 Sound window is opened by 🔊 Sound; nothing on screen says "Sound help".)
+    expect(row('?')).toContain('Enter closes the 🔊 Sound and ⚖ Rules windows too');
+  });
+
   it('what the check doesn’t ask about this game: each kind once, in its tick’s words, with Ask again', () => {
     expect(silencedRows(undefined)).toEqual([]);
     expect(silencedRows(['roll', 'landing', 'roll'])).toEqual([

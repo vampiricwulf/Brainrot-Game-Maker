@@ -154,6 +154,11 @@ export const VERBS = {
   right: (who: string): Verb => ({ label: '✔ Right', key: 'C', title: `C: ${who} is right` }),
   wrong: (who: string): Verb => ({ label: '✘ Wrong', key: 'X', title: `X: ${who} is wrong` }),
 
+  // ---------- A board tile's right-click menu (the keys list names them too) ----------
+  tileOpen: { label: '▶ Open' },
+  tileSkip: { label: '✓ Mark as played (skip it)' },
+  tileReopen: { label: '↶ Reopen this tile' },
+
   // ---------- A tie at the end (its box; 🏁 Back to results from the tiebreaker is FLOW's) ----------
   tiebreakerClue: { label: '❓ Tiebreaker clue' },
   rollOff: { label: '🎲 Tiebreaker roll-off', key: 'O' },
