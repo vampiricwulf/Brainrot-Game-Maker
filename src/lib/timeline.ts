@@ -1,7 +1,7 @@
 // The play history (the 📜 Log's 🕘 History tab): score changes, steps (RPG and board-game moves, items, tiles marked
 // played, the picker, Players and Final changes) and rolls in one list, newest first, and the order Undo goes through
 // them. Pure functions over the session, like session.ts.
-import { describeStep, findClueRef, stepOf } from './session';
+import { describeStep, findClueRef, inSteps, stepOf } from './session';
 import { stepText } from './toolset';
 import type { Game, ScoreEvent, Session } from './model';
 
@@ -27,12 +27,16 @@ export interface UndoStep {
   ts: number;
 }
 
-/** The newest score change Undo can take back: a present player's, not undone (removed players' changes stay). */
+/**
+ * The newest score change Undo can take back: a present player's, not undone (removed players' changes stay), and not
+ * part of a step (its own Undo takes those).
+ */
 function lastScore(session: Session): ScoreEvent | undefined {
   const here = new Set(session.players.map((p) => p.id));
+  const folded = inSteps(session);
   for (let i = session.scoreLog.length - 1; i >= 0; i--) {
     const e = session.scoreLog[i];
-    if (!e.undone && here.has(e.playerId)) return e;
+    if (!e.undone && here.has(e.playerId) && !folded.has(e.id)) return e;
   }
   return undefined;
 }
@@ -43,11 +47,6 @@ export function nextUndo(session: Session): UndoStep | null {
   const s = lastScore(session);
   if (a && (!s || a.ts >= s.ts)) return { log: 'action', id: a.id, ts: a.ts };
   return s ? { log: 'score', id: stepOf(s), ts: s.ts } : null;
-}
-
-/** Points spent or earned inside a step (a shop that charges points): its Undo takes them back, never one of their own. */
-function inSteps(session: Session): Set<string> {
-  return new Set((session.actionLog ?? []).flatMap((a) => a.score?.map((e) => e.id) ?? []));
 }
 
 /** Every Undo there is, in the order pressing Ctrl+Z again and again would take them (newest first). */

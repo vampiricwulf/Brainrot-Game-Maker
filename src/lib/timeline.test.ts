@@ -1,7 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newRound, type Game, type Session, type Shop } from './model';
-import { applyScore, finalJudge, goToRound, newSession, redo, removePlayer, toggleStep, undo } from './session';
+import { newFinalRound, newGame, newRound, type Game, type Session, type Shop } from './model';
+import {
+  applyScore,
+  finalAdjustWager,
+  finalJudge,
+  finalNext,
+  finalSetWager,
+  goToRound,
+  newSession,
+  redo,
+  removePlayer,
+  score,
+  toggleStep,
+  undo,
+} from './session';
 import { addStat, buy, logged, newStatField, redoAction, redoFrom, SCORE_CURRENCY, undoAction, type Undone } from './toolset';
 import { nextUndo, stillUndone, timelineRows, undoOrder } from './timeline';
 
@@ -147,5 +160,70 @@ describe('the play history', () => {
     const { session: s2 } = play();
     removePlayer(s2, 'a');
     expect(undoOrder(s2).map((u) => u.log)).toEqual(['action', 'action', 'score', 'score']);
+  });
+});
+
+describe('Undo after Undo and Redo', () => {
+  /** Ctrl+Z twice, Ctrl+Shift+Z twice: the next Ctrl+Z is the one History lists first, the newest change. */
+  function backAndForth(session: Session, game: Game): void {
+    const undone: Undone[] = [];
+    undoOnce(session, game, undone);
+    undoOnce(session, game, undone);
+    redoOnce(session, game, undone);
+    redoOnce(session, game, undone);
+    // The step's points went back where they were, not after the newer score.
+    const ts = session.scoreLog.map((e) => e.ts);
+    expect(ts).toEqual([...ts].sort((x, y) => x - y));
+    const next = nextUndo(session);
+    expect(next?.log).toBe('score');
+    expect(next).toEqual(undoOrder(session)[0]);
+  }
+
+  it('takes back a score given after a Final wager halved before the halving', () => {
+    const game = newGame();
+    game.rounds = [newRound('Round'), newFinalRound()];
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#e6194b' },
+      { id: 'b', name: 'Bob', color: '#3cb44b' },
+    ];
+    const session = newSession(game);
+    applyScore(session, game, ['a'], 1000, 'Start');
+    applyScore(session, game, ['b'], 1000, 'Start');
+    goToRound(session, game, 1);
+    session.intro = null;
+    finalSetWager(session, 'a', 800);
+    finalSetWager(session, 'b', 600);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    later();
+    finalJudge(session, game, 'a', true);
+    later();
+    // As the Final's ½ Halve does it (FinalControls): a step with Ann's judgment given again inside it.
+    logged(session, 'Ann’s wager halved', () => void finalAdjustWager(session, game, 'a', 'half'), game);
+    later();
+    finalJudge(session, game, 'b', true);
+    expect([score(session, 'a'), score(session, 'b')]).toEqual([1400, 1600]);
+    backAndForth(session, game);
+    expect([score(session, 'a'), score(session, 'b')]).toEqual([1400, 1600]);
+    undoOnce(session, game);
+    // Bob's ✔ is taken back; Ann's wager stays halved.
+    expect([score(session, 'a'), score(session, 'b')]).toEqual([1400, 1000]);
+    expect(session.final!.wagers.a).toBe(400);
+    expect(session.final!.results.b).toBeUndefined();
+  });
+
+  it('takes back a score given after a purchase paid in points before the purchase', () => {
+    const { game, session } = setup();
+    applyScore(session, game, ['a'], 500, 'Start');
+    later();
+    logged(session, 'Ann buys a Sword', () => buy(game, session, shop, 'a', 'sword'));
+    later();
+    applyScore(session, game, ['b'], 200, 'Bob right');
+    backAndForth(session, game);
+    undoOnce(session, game);
+    expect([score(session, 'a'), score(session, 'b')]).toEqual([200, 0]);
+    // A score Undo never takes the purchase's points apart from it: it takes Ann's $500 instead.
+    undo(session);
+    expect(score(session, 'a')).toBe(-300);
+    expect(session.actionLog).toHaveLength(1);
   });
 });

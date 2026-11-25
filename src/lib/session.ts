@@ -133,19 +133,27 @@ export function setScore(session: Session, playerId: string, value: number): voi
 /** One undo step: every event of a multi-player award shares it. */
 export const stepOf = (e: ScoreEvent): string => e.batchId ?? e.id;
 
+/** Points spent or earned inside a step (a shop that charges points): its Undo takes them back, never one of their own. */
+export function inSteps(session: Session): Set<string> {
+  return new Set((session.actionLog ?? []).flatMap((a) => a.score?.map((e) => e.id) ?? []));
+}
+
 /**
  * Undo the latest score change as one step: a multi-player award is reverted for everyone it touched.
- * Events of removed players are skipped. Returns the events undone (empty if there was nothing to undo).
+ * Events of removed players are skipped, and so are those inside a step (inSteps: the step's own Undo takes them).
+ * Returns the events undone (empty if there was nothing to undo).
  */
 export function undo(session: Session): ScoreEvent[] {
   const here = new Set(session.players.map((p) => p.id));
+  const folded = inSteps(session);
+  const can = (e: ScoreEvent) => !e.undone && here.has(e.playerId) && !folded.has(e.id);
   let step: string | undefined;
   for (let i = session.scoreLog.length - 1; i >= 0 && step === undefined; i--) {
     const e = session.scoreLog[i];
-    if (!e.undone && here.has(e.playerId)) step = stepOf(e);
+    if (can(e)) step = stepOf(e);
   }
   if (step === undefined) return [];
-  const events = session.scoreLog.filter((e) => !e.undone && here.has(e.playerId) && stepOf(e) === step);
+  const events = session.scoreLog.filter((e) => can(e) && stepOf(e) === step);
   for (const e of events) {
     e.undone = true;
     session.redoStack.push(e.id);

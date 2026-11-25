@@ -722,7 +722,13 @@ export function redoAction(session: Session, game?: Game): ActionEvent | null {
   if (e.score?.length) {
     // (What they replaced stops counting again.)
     for (const x of e.score) if (x.replaces) for (const y of session.scoreLog) if (y.id === x.replaces) y.undone = true;
-    session.scoreLog.push(...e.score.map((x) => ({ ...x })));
+    // Each back where its time puts it (where the Undo took it from), not at the end: Ctrl+Z then still takes back the
+    // newest change first, a score given after the step before the step itself.
+    for (const x of e.score) {
+      let at = session.scoreLog.length;
+      while (at > 0 && session.scoreLog[at - 1].ts > x.ts) at--;
+      session.scoreLog.splice(at, 0, { ...x });
+    }
   }
   session.actionLog ??= [];
   session.actionLog.push({ ...e, before, after: undefined });
