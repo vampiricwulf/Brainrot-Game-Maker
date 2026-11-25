@@ -11,6 +11,7 @@
   import { oneShot, restOfPress } from '../lib/oneshot';
   import {
     blankName,
+    categoryLabel,
     clueCardWords,
     finalName,
     formatPoints,
@@ -139,8 +140,8 @@
   } from './host/goon';
   import {
     addTime,
-    newLive,
     clockWords,
+    newLive,
     overlayDoneAt,
     startTimer,
     tileToolUp,
@@ -3187,8 +3188,16 @@
     app.pregame = true;
   }
 
+  /**
+   * The intro's next step. The last category's reveal ends it, and the status line goes straight to "Pick a tile", so
+   * screen readers hear that one's name here (the others are named in the status line as they come up).
+   */
   function intro(): void {
+    const i = session.intro;
+    const r = game.rounds[session.currentRound];
+    const last = i?.stage === 'categories' && r?.mode === 'board' ? r.categories[i.revealed] : undefined;
     introNext(session, game);
+    if (last && !session.intro) announce(`${categoryLabel(last)} revealed`);
   }
 
   // Auto-advance through category reveals when set to 'auto'. (Not under the cover: it goes on, from where it was, after.)
@@ -3199,7 +3208,7 @@
     const delay = i.stage === 'title' ? 0 : i.stage === 'fill' ? 1900 : mode === 'auto' ? 1300 : 0;
     if (!delay || (i.stage === 'categories' && mode !== 'auto')) return;
     void i.revealed;
-    const t = setTimeout(() => introNext(session, game), delay);
+    const t = setTimeout(intro, delay);
     return () => clearTimeout(t);
   });
 

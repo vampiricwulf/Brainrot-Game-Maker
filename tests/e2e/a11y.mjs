@@ -570,7 +570,31 @@ try {
   await page.keyboard.press('Enter');
   await saidHas(/Untitled Game resumed/);
   assert((await focused()) !== 'BODY', `Resume game says so too, and puts the keys on the panel (${await focused()})`);
-  await page.getByRole('button', { name: 'Skip intro' }).click();
+  // The round's intro is said as it goes: the board coming up, then each category by its name once it's on stage (the
+  // last one too, though the status line goes straight on to Pick a tile), and never the next one before it is.
+  await page.keyboard.press('n');
+  await saidHas(/Round intro: the board comes up/);
+  assert(true, 'N on the title card: the board coming up is said');
+  await saidHas(/Revealing the categories: 0 of \d+/);
+  const cats = Number((await said()).match(/0 of (\d+)/)[1]);
+  const catHeads = boardIn(page).locator('.header .title');
+  const named = [];
+  for (let k = 1; k <= cats; k++) {
+    await page.keyboard.press('n');
+    if (k < cats) {
+      await saidHas(new RegExp(`Revealing the categories: ${k} of ${cats}, `));
+      named.push((await said()).match(new RegExp(`${k} of ${cats}, (.+?)\\.`))[1]);
+    } else {
+      await saidHas(/ revealed\./);
+      named.push((await said()).match(/(?:^|\. )([^.]+) revealed\./)[1]);
+    }
+  }
+  // (Soft hyphens aside: the stage's long words may break.)
+  const onStage = await catHeads.evaluateAll((els) => els.map((e) => e.textContent.replace(/\u00ad/g, '').trim()));
+  assert(
+    cats > 1 && named.join('|') === onStage.join('|'),
+    `each category is named as it's revealed, the last one too (${named.join(', ')}; on stage: ${onStage.join(', ')})`,
+  );
   // 📜 Log with nothing in it yet: its note, and no empty list (a screen reader's "list, 0 items" with words in it).
   await page.keyboard.press('l');
   const emptyLog = page.locator('aside[aria-label="Log"]');

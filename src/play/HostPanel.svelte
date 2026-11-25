@@ -1215,10 +1215,17 @@
             game.settings.roundIntro.categoryReveal === 'auto'
               ? 'they come up on their own'
               : `${clickWord()} the screen${touchScreen.on ? '' : ' (or N)'} for the next`}
-          <span class="muted" title="Revealing the categories: {Math.min(intro.revealed, cats)} of {cats} · {how}"
-            >Revealing the categories: {Math.min(intro.revealed, cats)} of {cats}
+          <!-- (The one just revealed is named: it's on stage. The next one never is: in one window this is on stream.) -->
+          {@const k = Math.min(intro.revealed, cats)}
+          {@const shown = k && round?.mode === 'board' ? categoryLabel(round.categories[k - 1]) : ''}
+          <!-- (A long name is cut short, whole in the tooltip and for screen readers: the line stays one line.) -->
+          <span class="muted" title="Revealing the categories: {k} of {cats}{shown ? `, ${shown}` : ''} · {how}"
+            >Revealing the categories: {k} of {cats}{#if shown},{' '}<span class="catname">{shown}</span>{/if}
             <span class="hint">· {how}</span></span
           >
+        {:else if intro.stage === 'fill'}
+          <!-- (Its own words: the title card gave way to the board, and screen readers hear that.) -->
+          <span class="muted" title="Round intro: the board comes up · {goOnSay}">Round intro: the board comes up <span class="hint">· {goOnSay}</span></span>
         {:else}
           <span class="muted" title="Round intro · {goOnSay}">Round intro <span class="hint">· {goOnSay}</span></span>
         {/if}
@@ -2503,6 +2510,14 @@
     border-top: 1px solid var(--border);
   }
   /* Only the action part gives up height (it scrolls): the status, the tools and the fixed bar keep theirs. */
+  .catname {
+    display: inline-block;
+    max-width: 18em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
   .panel > :is(.status, .toolsrow, .askslot, .fixed) {
     flex-shrink: 0;
   }
