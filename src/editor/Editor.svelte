@@ -1493,7 +1493,7 @@
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
     <div class="body" use:inertWhile={replacing || !!opening} use:focusRescue>
-      <nav aria-label="Editor" class:more={navMore} style:scroll-padding-bottom="{checkH}px" bind:this={navEl} onscroll={measureNav}>
+      <nav aria-label="Editor" class:more-below={navMore} style:scroll-padding-bottom="{checkH}px" bind:this={navEl} onscroll={measureNav}>
         <div class="navlabel muted">Rounds</div>
         {#each game.rounds as round, i (round.id)}
           {#if renamingRound === round.id}
@@ -2318,7 +2318,7 @@
       max-height: 30vh;
     }
     /* (The checklist, whose top fades to say "more below" on a computer, is hidden here: the list's foot fades instead.) */
-    nav.more {
+    nav.more-below {
       mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
     }
     .navlabel,

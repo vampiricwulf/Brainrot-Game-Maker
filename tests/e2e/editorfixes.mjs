@@ -251,9 +251,15 @@ try {
   await page.locator('nav').evaluate((n) => (n.scrollTop = 0));
   await page.waitForFunction(() => document.querySelector('nav .problems.below'));
   assert(await fades(), 'with more of the sidebar below, a fade over its foot says it scrolls');
+  // (Its "more below" state is the nav's own class: the header's ⋯ button's bold `.more` doesn't reach the sidebar.)
+  const navWeight = async () =>
+    [await page.locator('nav').evaluate((n) => getComputedStyle(n).fontWeight), await tabs.first().evaluate((t) => getComputedStyle(t).fontWeight)].join(' ');
+  const weightTop = await navWeight();
+  assert(weightTop === '400 400', `…and the sidebar's text keeps its weight while it has more below (${weightTop})`);
   await page.locator('nav').evaluate((n) => (n.scrollTop = 9999));
   await page.waitForFunction(() => !document.querySelector('nav .problems.below'));
   assert(!(await fades()), '…and none once it’s scrolled to the end');
+  assert((await navWeight()) === weightTop, `…and the same weight there (${await navWeight()})`);
   await page.locator('nav').evaluate((n) => (n.scrollTop = 0));
   await page.locator('nav > button', { hasText: '🖼️ Media' }).focus();
   await page.keyboard.press('Tab');
