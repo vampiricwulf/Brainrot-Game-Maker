@@ -756,7 +756,9 @@
     const room = kept.room;
     kept.room = null;
     if (room) keepRoomSetup(room);
-    mark('played', 'Played');
+    // The editor's last step ends here (a change on the pre-game screen is a step of its own, never merged into it). 🕘
+    // History's ▶ Played is marked when the game starts, Start game ▶ or ▶ Resume: going back from here leaves none.
+    savePoint();
     saveEditorSoon.flush();
     // (From the editor watcher's plain copy: copying the game through its proxies took most of ▶ Play in a big game.)
     app.playGame = clone(watch && watching === app.game ? watch.value() : app.game);
@@ -999,6 +1001,8 @@
     }
     app.test = null;
     await loadGameMedia(game);
+    // 🕘 History's ▶ Played (not for a finished game's results: nothing is played).
+    if (saved.session.phase !== 'end') mark('played', 'Played');
     app.playGame = game;
     app.session = saved.session;
     app.live = newLive();

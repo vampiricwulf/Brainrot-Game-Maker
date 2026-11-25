@@ -9,12 +9,15 @@ import {
   appFile,
   failureShots,
   addClassicRounds,
+  answerAsk,
   answerReplace,
   dragBy,
   openGameFile,
   assert,
   launchChromium,
+  playWithPlayers,
   roundTabsIn,
+  startNewGame,
   toastsIn,
   resultsPath,
 } from './helpers.mjs';
@@ -447,10 +450,36 @@ try {
     (await played.innerText()).includes('Placed 1 Daily Double in Round of memes') && (await played.locator('.play').count()) === 1,
     'Daily Doubles placed before a game are a step, with a ▶',
   );
-  assert((await page.locator('.hist .mark').first().innerText()).includes('Played'), 'and pressing ▶ Play is marked');
+  const playedMarks = page.locator('.hist .mark', { hasText: 'Played' });
+  assert((await playedMarks.count()) === 0, '◀ Back to editor from the pre-game screen leaves no ▶ Played mark (no game was started)');
   await key('Control+z');
   await roundTabsIn(page).first().click();
   assert(!(await page.locator('.tile .dd').count()), 'Ctrl+Z takes the Daily Double back off the board');
+  // Start game ▶ is what's marked: after the Daily Double it placed (the game played has it).
+  await playWithPlayers(page, 1);
+  await startNewGame(page);
+  // (Kept, to resume.)
+  await page.getByRole('button', { name: '🚪 Exit' }).click();
+  await answerAsk(page.getByRole('button', { name: 'Keep & leave', exact: true }));
+  await page.locator('.editor').waitFor();
+  await historyTab.click();
+  assert(
+    (await playedMarks.count()) === 1 &&
+      (await page.locator('.hist .mark').first().innerText()).includes('Played') &&
+      (await page
+        .locator('.hist .mark')
+        .first()
+        .evaluate((m) => !!m.nextElementSibling?.textContent?.includes('Placed 1 Daily Double'))),
+    'Start game ▶ is marked ▶ Played, above the Daily Double it placed',
+  );
+  // ▶ Resume it is a game played too.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.locator('.resume-card').getByRole('button', { name: '▶ Resume it' }).click();
+  await page.getByRole('button', { name: '🚪 Exit' }).click();
+  await answerAsk(page.getByRole('button', { name: 'Discard & leave', exact: true }));
+  await page.locator('.editor').waitFor();
+  await historyTab.click();
+  assert((await playedMarks.count()) === 2, `▶ Resume it is marked ▶ Played too (${await playedMarks.count()})`);
 
   // ---------- A game opened starts afresh ----------
   const [json] = await Promise.all([

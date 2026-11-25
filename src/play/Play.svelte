@@ -209,6 +209,7 @@
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort } from '../lib/validate';
   import type { Place } from '../lib/historylabel';
+  import { mark } from '../lib/history.svelte';
   import { obsKeyed } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { keyedRoundColors, keyedThemeColors, otherStageKey, roundStageColors, STAGE_KEYS } from '../lib/theme';
@@ -4315,6 +4316,9 @@
       n ? `⭐ Placed ${n} Daily Double${n === 1 ? '' : 's'} at random in ${where(placed)} (${n === 1 ? 'it wasn’t' : 'they weren’t'} on the board yet)` : '',
     ].filter(Boolean);
     if (said.length) toast(said.join(' · '), 5000);
+    // 🕘 History's ▶ Played: once the game really starts (◀ Back to editor from here leaves none), after the steps made on
+    // this screen (🎲 Place now, the Daily Doubles just placed), as the game played has them.
+    if (!app.test) mark('played', 'Played');
     // (The players are kept with the game as they're changed here: see keepRoster, in host/pregame.svelte.ts.)
     // A picture chosen for a player here was stored in the editor's game: the game being played gets it too.
     for (const p of session.players) {
