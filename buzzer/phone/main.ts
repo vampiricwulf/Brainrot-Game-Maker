@@ -1221,13 +1221,14 @@ function render(): void {
   $('overlay').hidden = !away;
   // Long gone: say what's wrong, and offer a try now (it keeps trying on its own too). The phone's own network is up:
   // it's the buzzer server, which the host's screen shows too (a whole room checking their Wi-Fi would be no help).
-  // Only a phone the browser says is offline is told to check its Wi-Fi.
+  // Only a phone the browser says is offline is told to check its Wi-Fi (at once, before a single try: so not "Still
+  // trying").
   const long = away && (attempts > 3 || !navigator.onLine);
   $('overlay-text').textContent = !long
     ? 'Reconnecting…'
     : navigator.onLine
       ? 'Can’t reach the game’s buzzer server right now: the host has been told. Keep this page open.'
-      : `Still trying to reconnect… check your ${fine.matches ? 'internet connection' : 'Wi-Fi or mobile data'}`;
+      : `No internet on this ${fine.matches ? 'device' : 'phone'}: check your ${fine.matches ? 'internet connection' : 'Wi-Fi or mobile data'}. This page reconnects by itself.`;
   $('overlay-retry').hidden = !long;
   // The page behind the overlay can't be reached (a screen reader or Tab would land on a buzzer that does nothing).
   // That drops focus, so a half-typed answer gets it back (and the phone keyboard) once reconnected.

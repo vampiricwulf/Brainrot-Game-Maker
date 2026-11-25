@@ -1123,7 +1123,10 @@ try {
     window.dispatchEvent(new Event('offline'));
   });
   const offLine = await awayLine();
-  assert(offLine === 'Still trying to reconnect… check your Wi-Fi or mobile data', `and offline, it says to check the Wi-Fi or mobile data (${offLine})`);
+  assert(
+    offLine === 'No internet on this phone: check your Wi-Fi or mobile data. This page reconnects by itself.',
+    `and offline, it says to check the Wi-Fi or mobile data, not "Still trying" (it may not have tried yet) (${offLine})`,
+  );
   await ann.evaluate(() => {
     delete navigator.onLine;
     window.dispatchEvent(new Event('online'));
