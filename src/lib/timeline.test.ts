@@ -15,7 +15,7 @@ import {
   toggleStep,
   undo,
 } from './session';
-import { addStat, buy, logged, newStatField, redoAction, redoFrom, SCORE_CURRENCY, undoAction, type Undone } from './toolset';
+import { addStat, buy, logged, newStatField, redoAction, redoFrom, SCORE_CURRENCY, startStep, undoAction, type Undone } from './toolset';
 import { nextUndo, stillUndone, timelineRows, undoOrder } from './timeline';
 
 function setup(): { game: Game; session: Session } {
@@ -225,5 +225,26 @@ describe('Undo after Undo and Redo', () => {
     undo(session);
     expect(score(session, 'a')).toBe(-300);
     expect(session.actionLog).toHaveLength(1);
+  });
+
+  it('keeps a step under way (an editor open) from taking in an older score when a step is redone meanwhile', () => {
+    const { game, session } = setup();
+    applyScore(session, game, ['a'], 500, 'Start');
+    later();
+    logged(session, 'Ann buys a Sword', () => buy(game, session, shop, 'a', 'sword'));
+    later();
+    applyScore(session, game, ['b'], 200, 'Bob right');
+    const undone: Undone[] = [];
+    undoOnce(session, game, undone);
+    undoOnce(session, game, undone);
+    const done = startStep(session, game);
+    redoOnce(session, game, undone);
+    done('Players changed');
+    // The step under way takes in neither Bob's score (waiting for Redo, last but one once the purchase is back) nor the
+    // purchase's points (its own step's). (It does see the Sword come back: a step's before is taken when it begins.)
+    expect(session.actionLog!.at(-1)!.text).toBe('Players changed');
+    expect(session.actionLog!.at(-1)!.score).toBeUndefined();
+    redoOnce(session, game, undone);
+    expect([score(session, 'a'), score(session, 'b')]).toEqual([200, 200]);
   });
 });

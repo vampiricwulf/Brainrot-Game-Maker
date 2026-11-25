@@ -1,6 +1,6 @@
 // The shared toolset every game mode can use (games-maker spec §5.1): player stats, inventories, shops and the
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
-import { answerShowing, applyScore, finalNext, score, stepOf, toggleReveal } from './session';
+import { answerShowing, applyScore, finalNext, inSteps, score, stepOf, toggleReveal } from './session';
 import {
   formatPoints,
   newId,
@@ -647,7 +647,8 @@ const openSteps = new WeakMap<Session, Set<Record<string, string>>>();
  */
 export function startStep(session: Session, game?: Game): (text: string, quiet?: string) => void {
   const before = capture(session, game);
-  const scored = session.scoreLog.length;
+  // (By id, not by place: a step redone meanwhile puts its points back where their time puts them, not at the end.)
+  const scored = new Set(session.scoreLog.map((e) => e.id));
   const open = openSteps.get(session) ?? openSteps.set(session, new Set()).get(session)!;
   open.add(before);
   return (text, quiet) => {
@@ -657,8 +658,10 @@ export function startStep(session: Session, game?: Game): (text: string, quiet?:
     // Steps still under way (the Players dialog's, the live screen editor's) start from this one's result for what it
     // changed: undoing one of them later never takes this one back with it (a phone wager that came in meanwhile).
     for (const b of open) for (const k of keys) b[k] = now[k];
-    // Points spent or earned inside the step (a purchase in a shop that charges points) undo with it.
-    const score = session.scoreLog.slice(scored).map((e) => ({ ...e }));
+    // Points spent or earned inside the step (a purchase in a shop that charges points) undo with it. Not those of
+    // another step (one redone meanwhile, or taken inside this one): that step's Undo takes them.
+    const folded = inSteps(session);
+    const score = session.scoreLog.filter((e) => !scored.has(e.id) && !folded.has(e.id)).map((e) => ({ ...e }));
     if (!keys.length && !score.length) return;
     session.actionLog ??= [];
     session.actionLog.push({
