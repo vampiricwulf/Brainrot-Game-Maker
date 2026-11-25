@@ -205,12 +205,13 @@
       Newest first. <b>↶ Back to here</b> undoes everything after a step, <b>↷ Redo to here</b> brings undone steps back. Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) go one
       at a time.
     </p>
-    <div class="list tl" role="list">
+    <!-- (A list only with something in it: its rows, round names and ● Now are all its items.) -->
+    <div class="list tl" role={items.length ? 'list' : undefined}>
       {#each items as it, i (it.kind === 'row' ? `${it.row.kind}:${it.row.id}` : `${it.kind}:${i}`)}
         {#if it.kind === 'now'}
-          <div class="now" role="separator"><span>● Now</span></div>
+          <div class="now" role="listitem"><span><span aria-hidden="true">●</span> Now</span></div>
         {:else if it.kind === 'round'}
-          <div class="round">{it.text}</div>
+          <div class="round" role="listitem">{it.text}</div>
         {:else}
           {@const row = it.row}
           {@const back = !undone(row) && row.steps > 0}

@@ -173,6 +173,17 @@ try {
     `the history lists steps and score changes newest first (${rows.join(' | ')})`,
   );
   assert((await page.locator('aside .now').count()) === 1, 'with nothing undone, ● Now is at the top');
+  // A list of items only, for a screen reader: the rows, the round names and ● Now are each one.
+  const logKids = await page
+    .locator('aside[aria-label="Log"] [role="list"] > *')
+    .evaluateAll((els) => els.map((e) => `${e.className.split(' ')[0]}:${e.getAttribute('role')}`));
+  assert(
+    logKids.length > 0 &&
+      logKids.some((k) => k.startsWith('round:')) &&
+      logKids.some((k) => k.startsWith('now:')) &&
+      logKids.every((k) => k.endsWith(':listitem')),
+    `everything in 🕘 History's list is a list item, its round names and ● Now too (${logKids.join(', ')})`,
+  );
   // Each row's time on one line, as the editor's 🕘 History writes it ("5:34 PM", not "05:34" over "PM").
   const times = await page.locator('aside .item .time').evaluateAll((els) =>
     els.map((e) => {

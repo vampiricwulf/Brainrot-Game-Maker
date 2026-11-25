@@ -547,6 +547,16 @@ try {
   await saidHas(/Untitled Game resumed/);
   assert((await focused()) !== 'BODY', `Resume game says so too, and puts the keys on the panel (${await focused()})`);
   await page.getByRole('button', { name: 'Skip intro' }).click();
+  // 📜 Log with nothing in it yet: its note, and no empty list (a screen reader's "list, 0 items" with words in it).
+  await page.keyboard.press('l');
+  const emptyLog = page.locator('aside[aria-label="Log"]');
+  await emptyLog.getByText('Nothing yet. Scores, moves, items and rolls show up here').waitFor();
+  assert(
+    (await emptyLog.locator('[role="list"]').count()) === 0 && (await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0,
+    '📜 Log with nothing yet says so, and has no empty list',
+  );
+  await page.keyboard.press('l');
+  await emptyLog.waitFor({ state: 'detached' });
   // P then a player's number, and S, are said.
   await page.keyboard.press('p');
   await page.keyboard.press('1');
