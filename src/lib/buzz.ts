@@ -919,7 +919,10 @@ export function hostState(
     timer?: PhoneTimer | null;
   } = {},
 ): HostState {
-  const info = (b.phase !== 'lobby' || extra.answers) && session.phase === 'clue' ? currentClueInfo(session, game) : null;
+  // A Daily Double keeps the buzzers out, but while its wager is asked for (or locked, the question up) the phones get
+  // what's on screen too: its category over the wager box, then its question.
+  const dd = session.phase === 'clue' && session.dd && extra.wager?.kind === 'dd' ? session.dd : null;
+  const info = (b.phase !== 'lobby' || extra.answers || dd) && session.phase === 'clue' ? currentClueInfo(session, game) : null;
   // The Final's question goes along with its answers (never on the wager screen: there are none asked then).
   const fin = session.phase === 'final' && extra.answers ? currentFinal(session, game) : undefined;
   const seats = session.players.map((p) => ({ id: p.id, name: clip(p.name.trim(), SEAT_NAME_MAX), color: p.color }));
@@ -933,8 +936,10 @@ export function hostState(
     armId: b.armId,
     clue: info
       ? {
-          text: questionText(shownQuestionSlide(session, info.clue)),
-          caption: `${categoryLabel(info.category)} · ${formatPoints(info.value, game.settings.currencySymbol)}`,
+          // (A Daily Double's wager screen: no question yet. Its caption says Daily Double, not the tile's value: the
+          // wager is what's at stake.)
+          text: dd?.stage === 'splash' ? '' : questionText(shownQuestionSlide(session, info.clue)),
+          caption: `${categoryLabel(info.category)} · ${dd ? 'Daily Double' : formatPoints(info.value, game.settings.currencySymbol)}`,
         }
       : fin
         ? { text: questionText(shownQuestionSlide(session, fin)), caption: [finalName(fin), fin.category.trim()].filter(Boolean).join(' · ') }

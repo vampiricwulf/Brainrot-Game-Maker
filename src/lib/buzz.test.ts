@@ -257,6 +257,35 @@ describe('hostState (what the buzzer room is told)', () => {
     expect(JSON.stringify(s)).not.toContain('Shiba');
   });
 
+  it('a Daily Double: the phones get its category over the wager, then its question once it shows (never its answer)', () => {
+    const { game, session } = setup();
+    (game.rounds[0] as BoardRound).categories[0].clues[0].type = 'dailyDouble';
+    applyScore(session, game, ['b'], 500, 'x');
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    const ask = () => wagerAsk(game, session, false);
+    // Nobody picked yet: no wager asked, nothing to say over it.
+    session.dd!.playerId = undefined;
+    expect(hostState(game, session, newBuzz(), 0, { wager: ask() }).clue).toBeNull();
+    // Bo's wager box: the category and "Daily Double", no question yet.
+    session.dd!.playerId = 'b';
+    const splash = hostState(game, session, newBuzz(), 0, { wager: ask() });
+    expect(splash.phase).toBe('lobby');
+    expect(splash.clue).toEqual({ text: '', caption: 'Memes · Daily Double' });
+    expect(JSON.stringify(splash)).not.toContain('doge');
+    for (const seat of ['a', 'b']) expect(phoneView(splash, seat).clue).toEqual({ text: '', caption: 'Memes · Daily Double' });
+    // The question up: every phone has it, under the same caption (not the tile's $200: the wager is what's at stake).
+    ddShowQuestion(session, 'b', 300);
+    const q = hostState(game, session, newBuzz(), 0, { wager: ask() });
+    expect(q.clue).toEqual({ text: 'This dog says doge', caption: 'Memes · Daily Double' });
+    expect(JSON.stringify(q)).not.toContain('Shiba');
+    expect(JSON.stringify(q)).not.toContain('SECRET');
+    for (const seat of ['a', 'b']) expect(phoneView(q, seat).clue).toEqual({ text: 'This dog says doge', caption: 'Memes · Daily Double' });
+    // An older host (no clue sent on a Daily Double): as before.
+    expect(phoneView({ ...q, clue: null }, 'b').clue).toBeNull();
+    // A clue in the lobby with no Daily Double's wager (nor answers) still doesn't reach the phones.
+    expect(phoneView({ ...q, wager: undefined }, 'b').clue).toBeNull();
+  });
+
   it('lets players pick their colour unless it is turned off or there are teams', () => {
     const { game, session } = setup();
     expect(hostState(game, session, newBuzz(), 0).colorPick).toBe(true);

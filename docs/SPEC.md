@@ -1033,7 +1033,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      over the max, it keeps the keys in the Wager box and says what to do (“Type a wager (Ann can wager up to $2,000), or
      True Daily Double”; “Waiting on Ann's phone: type their wager here if it doesn't come”). It opens at its top, the
      keys in the Wager box: in one window on a laptop the heading, the players and the Wager row are in view while the
-     panel keeps the board's height.
+     panel keeps the board's height. With phone buzzers, once a player is picked every phone shows the category over
+     its line (“Science · Daily Double”, never the tile's value: the wager is what's at stake), over the player's wager
+     box on theirs, and the question too once it shows, as on an ordinary clue (none of it before the pick, nor once the
+     player is judged).
    - *Partner clue* (🤝, PARTNER-CLUES-SPEC.md §6): a PARTNER UP! splash with the picker, a wheel of the other players
      (`W`) or the host's choice (`1–9`) for their partner, then the question with who describes and who guesses, the
      📤 list of who gets each 🤫 card (copied to them with 📋), ⏱ Start the clock, and ✔ Got it / ✘ Missed, which

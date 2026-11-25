@@ -134,6 +134,9 @@ try {
   const host = await newHost();
   await host.locator('.tile').nth(3).click();
   await host.getByRole('combobox', { name: /^Type/ }).selectOption('dailyDouble');
+  // Its question, for the phones once it shows.
+  await host.getByRole('button', { name: /Text/ }).first().click();
+  await host.keyboard.type('Which meme dog says doge?');
   await host.getByRole('button', { name: 'Done' }).click();
   await playWithPlayers(host, 3);
   const code = await startRoom(host);
@@ -195,6 +198,18 @@ try {
   );
   await big(bo).getByText('Player 1 is wagering…').waitFor();
   assert(true, 'the other phones see "Player 1 is wagering…"');
+  // What's on screen over it: the category and "Daily Double" (not the tile's value), no question yet.
+  const caption = async (p) => ((await p.locator('#clue-cap').isVisible()) ? await p.locator('#clue-cap').innerText() : '');
+  const clueWords = (p) => p.locator('#clue').innerText();
+  for (const [p, who] of [
+    [ann, 'her phone'],
+    [bo, 'the others'],
+  ])
+    assert(
+      /^\S.* · Daily Double$/.test(await caption(p)) && !(await caption(p)).includes('$') && !(await clueWords(p)).includes('doge'),
+      `the Daily Double’s wager, on ${who}: its category and “Daily Double” over it, no question yet (“${await caption(p)}”, “${await clueWords(p)}”)`,
+    );
+  assert((await clueWords(ann)) === 'Daily Double — you’re up!', `her wager box still says “Daily Double — you’re up!” (${await clueWords(ann)})`);
   await dd.getByText('📱 waiting…').waitFor();
   assert(true, 'the host sees the phone can send it ("📱 waiting…")');
   // Show question ▶ with the wager still to come: the keys stay in the Wager box, and the status line says whose phone.
@@ -307,6 +322,21 @@ try {
     (await small(ann).innerText()) === 'Your wager: $700 · say your answer' && (await ann.locator('#buzz').getAttribute('class')) === 'first',
     `Show question locks it: she's on the spot, so her phone says “You're answering!” in her colour, her wager under it (${await small(ann).innerText()})`,
   );
+  // The question is on screen now: on every phone too, under its category, as on any clue.
+  for (const [p, who] of [
+    [ann, 'her phone'],
+    [bo, 'the others'],
+  ]) {
+    await p.locator('#clue', { hasText: 'Which meme dog says doge?' }).waitFor();
+    assert(/ · Daily Double$/.test(await caption(p)), `the question shows on ${who}, under “… · Daily Double” (${await caption(p)})`);
+  }
+  const clueOverBuzz = await ann.evaluate(() => {
+    const c = document.getElementById('clue').getBoundingClientRect();
+    const b = document.getElementById('buzz').getBoundingClientRect();
+    return c.height > 0 && c.bottom <= b.top + 1 && b.bottom <= innerHeight + 1;
+  });
+  assert(clueOverBuzz, 'her phone: the question over “You’re answering!”, all of it on the screen');
+  await shot('pw-2b-dd-question-phone', ann);
   // The host fixes it in the Amount box (the question is up): the phone has the host's amount, not the one it sent.
   const amountBox = awardRowIn(host).getByLabel('Amount');
   await amountBox.fill('500');

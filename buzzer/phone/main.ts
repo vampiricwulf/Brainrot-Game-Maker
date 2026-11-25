@@ -1487,10 +1487,11 @@ function renderBuzz(v: PhoneView): void {
   const wager = v.phase === 'lobby' && v.wager ? v.wager : null;
   const boxUp = !!wager?.mine && wager.open;
   // The question while its clue is on (or answers are asked for it), what's on over it ("Science · $800"); above the
-  // wager box, what's on screen ("Final Jeopardy! · US Presidents", "Daily Double — you're up!"). Written only when
-  // they change, so a player keeps their place in a long question.
-  const q = v.clue && (v.phase !== 'lobby' || v.answer) ? v.clue : null;
-  const words = q?.text ?? (boxUp ? (v.status ?? '') : '');
+  // wager box, what's on screen ("Final Jeopardy! · US Presidents", "Daily Double — you're up!"; a Daily Double's
+  // category over it, "Science · Daily Double", and its question once it shows). Written only when they change, so a
+  // player keeps their place in a long question.
+  const q = v.clue && (v.phase !== 'lobby' || v.answer || wager?.kind === 'dd') ? v.clue : null;
+  const words = q?.text || (boxUp ? (v.status ?? '') : '');
   if ($('clue').textContent !== words) $('clue').textContent = words;
   const cap = $('clue-cap');
   if (cap.textContent !== (q?.caption ?? '')) cap.textContent = q?.caption ?? '';
@@ -2152,10 +2153,12 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   $('wager-err').textContent = wagerErr;
   drawWagerSend(w);
   const hostGone = renderFoot(v, sym);
-  // (What it's for first: "Final Jeopardy! · US Presidents". The error has its own alert, so it isn't said twice.)
+  // (What it's for first: "Final Jeopardy! · US Presidents", a Daily Double's category. The error has its own alert, so
+  // it isn't said twice.)
   say(
     sentences([
       connected ? '' : awayText(),
+      $('clue-cap').hidden ? '' : ($('clue-cap').textContent ?? ''),
       $('clue').textContent ?? '',
       $('wager-label').textContent ?? '',
       $('wager-info').textContent ?? '',

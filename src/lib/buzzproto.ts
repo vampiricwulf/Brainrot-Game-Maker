@@ -221,7 +221,10 @@ export interface HostState {
    * race the room already decided keeps that winner ('answering'), since the host just hadn't seen the buzz yet.
    */
   armId: number;
-  /** While closed/armed/answering: what phones show of the clue. Question text only, never the answer. */
+  /**
+   * While closed/armed/answering (and with answers asked for, or a Daily Double's wager, its text empty until the
+   * question shows): what phones show of the clue. Question text only, never the answer.
+   */
   clue?: { text: string; caption?: string } | null;
   /** The seat answering (phase 'answering'). */
   answering?: string | null;
@@ -616,7 +619,13 @@ export function phoneView(
     title: s.title,
     phase: s.phase,
     armId: s.armId,
-    clue: s.phase === 'lobby' && !s.answers ? null : s.clue ? { text: s.clue.text, ...(s.clue.caption ? { caption: s.clue.caption } : {}) } : null,
+    // (In the lobby only with answers asked for, or a Daily Double's wager: its category, then its question.)
+    clue:
+      s.phase === 'lobby' && !s.answers && s.wager?.kind !== 'dd'
+        ? null
+        : s.clue
+          ? { text: s.clue.text, ...(s.clue.caption ? { caption: s.clue.caption } : {}) }
+          : null,
     answering: a ? { name: a.name, color: a.color, you: a.id === seatId, ...(s.teams && by ? { by: by.name, byYou: !!me && me.id === by.id } : {}) } : null,
     you: seat
       ? {
