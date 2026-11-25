@@ -7,7 +7,8 @@
 // unfinished", the box still open), the host panel shows ✔ ⏱️ and never the words; edited and not sent, they go again at
 // the lock ("when answers locked": they weren't in at 0). Player 2's went at 0 too, then Send answer sends them as
 // their own (the ⏱️ goes), and that answer stays over an edit not sent; Player 3's went at 0 and were left as they
-// were: "when time ran out" and ⏱️ sent at time's up after the lock too. Then the Final: words typed and not sent go
+// were: "when time ran out" and ⏱️ sent at time's up after the lock too (with a slow network, words typed between its
+// own 0 and the host's clock running out reaching it don't go as "when time ran out"). Then the Final: words typed and not sent go
 // as its answer shows, and the reveal rows mark them ⏱️ without the words until each is revealed.
 // Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
@@ -32,6 +33,7 @@ import {
   stageBoxIn,
   startBuzzer,
   startRoomOn,
+  tap,
   until,
 } from './helpers.mjs';
 
@@ -81,10 +83,14 @@ try {
   const card = host.getByRole('region', { name: 'Phone buzzers' });
   await card.getByLabel(/Buzzer mode/).check();
   const code = await startRoomOn(card);
-  /** @param {string} name */
-  const phone = async (name) => {
+  /**
+   * @param {string} name
+   * @param {(p: import('playwright-core').Page) => Promise<unknown>} [before] what to do with the page before it opens
+   */
+  const phone = async (name, before) => {
     const ctx = await browser.newContext({ viewport: { width: 360, height: 640 }, hasTouch: true });
     const p = watch(await ctx.newPage(), name);
+    await before?.(p);
     await p.goto(`${base}/${code}`);
     await p.getByRole('button', { name }).click();
     await p.locator('#me').getByText(name).waitFor();
@@ -92,7 +98,10 @@ try {
   };
   const p1 = await phone('Player 1');
   const p2 = await phone('Player 2');
-  const p3 = await phone('Player 3');
+  // (Player 3's connection can be made slow: tap.)
+  /** @type {any} */
+  let net3;
+  const p3 = await phone('Player 3', async (p) => (net3 = await tap(p)));
   await card.getByText('3 of 3 players joined').waitFor();
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
@@ -192,8 +201,24 @@ try {
   // (A new countdown: the one run out put away first.)
   await host.getByRole('button', { name: 'Hide timer' }).click();
   await p1.locator('#answer-clock').waitFor({ state: 'hidden' });
+  // (Player 3's network slow: the host's clock running out reaches the phone a while after its own countdown did.)
+  net3.delay = 1500;
   await secs.fill('3');
   await secs.press('Enter');
+  await p3.locator('#answer-clock').getByText('Time’s up').waitFor({ timeout: 10_000 });
+  // Typed on in that while: words after 0, which don't go as "when time ran out" when it reaches the phone. (Put back
+  // as they were after, so they aren't sent at the lock either.)
+  await p3.getByLabel(/Your answer/).fill('Persian cat');
+  // (Long enough for the host's clock run out to reach it, and an answer it sent then to come back: 1.5 s each way.)
+  await sleep(6500);
+  assert(
+    /^Not sent yet: (tap|click) Send answer to send it\. What the host has \(sent automatically when time ran out: unfinished\): “Persian”$/.test(
+      await p3.locator('#answer-state').innerText(),
+    ),
+    `typed on just after 0, the host’s clock running out after that sends nothing more (${await p3.locator('#answer-state').innerText()})`,
+  );
+  await p3.getByLabel(/Your answer/).fill('Persian');
+  net3.delay = 0;
   await p1.locator('#answer-clock').getByText('Time’s up').waitFor({ timeout: 10_000 });
   await p1.locator('#answer-state').getByText('Sent automatically when time ran out: unfinished').waitFor();
   assert(

@@ -164,7 +164,12 @@ let answerTapTaken = false;
  * on the page (a refusal of one says nothing), the room's next view shows whether it went.
  */
 let answerSends: ('own' | 'auto')[] = [];
-/** The countdown this phone already sent the box's words for as it ran out (answer id and when it ends), once each. */
+/**
+ * The answer round whose countdown this phone already sent the box's words for as it ran out: once per countdown, till
+ * a clock with time left is seen again (one started anew). Not by the clock's value, which changes after 0 by itself:
+ * its end as it runs, then "0 left" once the host's clock has run out, a moment later; words typed in that moment went
+ * after 0, and go at the lock as such.
+ */
 let autoTimeFor = '';
 /**
  * A choice tapped here whose "✔ Sent" line hasn't been shown yet: once it says so (or why not), it's scrolled into
@@ -1864,10 +1869,13 @@ function drawClock(): void {
 function sendAtTimeUp(): void {
   const t = view?.timer;
   const a = view?.answer;
-  if ($('answer-form').hidden || !a?.open || !clockUp(t, serverNow()) || !answerFor.startsWith(`${a.id} `)) return;
-  const key = `${a.id} ${t && 'endsAt' in t ? t.endsAt : 'left'}`;
-  if (key === autoTimeFor) return;
-  autoTimeFor = key;
+  if (!a || !t) return;
+  if (!clockUp(t, serverNow())) {
+    if (autoTimeFor === a.id) autoTimeFor = '';
+    return;
+  }
+  if (autoTimeFor === a.id || $('answer-form').hidden || !a.open || !answerFor.startsWith(`${a.id} `)) return;
+  autoTimeFor = a.id;
   sendUnsent(a, 'time');
 }
 
