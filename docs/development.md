@@ -218,7 +218,8 @@ Settings, Pages, with Source "GitHub Actions".
   `Cargo.toml` and `Cargo.lock` agree.
 - `node scripts/version.mjs stamp` moves the lines under **Unreleased** in `CHANGELOG.md` under today's heading in
   Pacific time (it works the date out, whatever the computer's clock zone is), merging them into that day's sections if
-  it has a heading already. It does nothing when Unreleased is empty. `stamp 2026-11-22` uses that date instead.
+  it has a heading already. It does nothing when Unreleased is empty or missing, and stops with an error on a heading
+  that's nearly it (`## [Unreleased]`, `### Unreleased`…). `stamp 2026-11-22` uses that date instead.
 
 ### Writing changelog lines
 
@@ -230,7 +231,17 @@ Every change people who make or host games would notice gets a line in `CHANGELO
 
 In practice that takes three steps:
 
-1. Commit the change (or the merge that brings it in) with its line under **Unreleased** at the top.
+1. Commit the change (or the merge that brings it in) with its line under **Unreleased** at the top. That's a heading
+   written exactly `## Unreleased` above the newest day's heading (add it if it isn't there: the stamp removes it), then
+   the section, then the line:
+
+   ```markdown
+   ## Unreleased
+
+   ### Fixed
+
+   - The line, in plain words
+   ```
 2. A commit can't hold its own hash, so once the hashes are known, add them to the line, e.g. `(abc1234)`.
 3. When you push, first run `node scripts/version.mjs stamp`. It moves the Unreleased lines under today's Pacific date,
    merging them into that day's sections if it has a heading already. Commit the hashes and the move together as

@@ -79,7 +79,8 @@ export interface Stamped {
 /**
  * Moves the lines under "## Unreleased" under "## <date>": into that day's heading if it has one (each section's moved
  * lines above the ones it already had, newest first as in the rest of the file), or else under a new heading where
- * Unreleased was. The Unreleased heading goes. Null when there's nothing under Unreleased (or no Unreleased heading).
+ * Unreleased was. The Unreleased heading goes. Null when there's nothing under Unreleased (or no Unreleased heading);
+ * throws on a heading that's nearly "## Unreleased" but not quite.
  * Keeps the file's line ends (\r\n on a Windows checkout).
  */
 export function stampChangelog(text: string, date: string): Stamped | null {
@@ -90,7 +91,13 @@ export function stampChangelog(text: string, date: string): Stamped | null {
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   const lines = text.split(/\r?\n/);
   const at = lines.findIndex((l) => /^## Unreleased\s*$/i.test(l));
-  if (at < 0) return null;
+  if (at < 0) {
+    // A heading that's nearly it (## [Unreleased], ### Unreleased, **Unreleased**…) would leave its lines unstamped
+    // while the run says there's nothing to do: say what it must be. Unreleased in a sentence is no heading.
+    const near = lines.find((l) => /^\s*(#{1,6}\s*\[?\s*unreleased\b|\*\*\s*\[?\s*unreleased\s*\]?\s*:?\s*\*\*\s*:?\s*$)/i.test(l));
+    if (near !== undefined) throw new Error(`Found "${near.trim()}": the heading must be exactly "## Unreleased"`);
+    return null;
+  }
   const unreleased = readBlock(lines, at);
   const moved = [...unreleased.sections.values()].flat().filter((l) => l.startsWith('- ')).length;
   if (!unreleased.sections.size) return null;

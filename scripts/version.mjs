@@ -131,7 +131,7 @@ if (cmd === 'next') {
     process.exit(1);
   }
   if (!stamped) {
-    console.log('Nothing under Unreleased in CHANGELOG.md: nothing to stamp.');
+    console.log('No `## Unreleased` heading in CHANGELOG.md, or nothing under it: nothing to stamp.');
   } else {
     write('CHANGELOG.md', stamped.text);
     const lines = `${stamped.moved} line${stamped.moved === 1 ? '' : 's'}`;

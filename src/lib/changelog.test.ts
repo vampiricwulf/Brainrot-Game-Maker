@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { pacificDate, stampChangelog } from './changelog';
 
@@ -90,6 +91,21 @@ describe('stamping the changelog', () => {
     expect(() => stampChangelog(file(unreleased, older), '22/11/2026')).toThrow(/Not a date/);
     expect(() => stampChangelog(file(unreleased, older), '2026-11-31')).toThrow(/Not a date/);
     expect(() => stampChangelog(file(unreleased, older), '2026-22-11')).toThrow(/Not a date/);
+  });
+
+  it('refuses a heading that is nearly "## Unreleased", rather than say there is nothing to stamp', () => {
+    for (const heading of ['## [Unreleased]', '### Unreleased', '**Unreleased**', '## Unreleased changes', '# unreleased'])
+      expect(() => stampChangelog(file([heading, '', '### Fixed', '', '- A fix (aaa1111)', ''], older), '2026-11-22'), heading).toThrow(
+        /must be exactly "## Unreleased"/,
+      );
+    // Unreleased in words (the intro's **Unreleased**, an entry that mentions it) is no heading: still nothing to stamp.
+    const words = ['How to add: under **Unreleased** at the top.', '', '- **Unreleased** lines now move (ccc3333)', ''];
+    expect(stampChangelog(file(words, older), '2026-11-22')).toBeNull();
+  });
+
+  it('finds nothing to stamp in the real CHANGELOG.md when it has no Unreleased heading', () => {
+    const real = readFileSync(new URL('../../CHANGELOG.md', import.meta.url), 'utf8');
+    if (!/^## Unreleased\s*$/im.test(real)) expect(stampChangelog(real, '2026-11-22')).toBeNull();
   });
 
   it('never takes the Notes on the history table for a day', () => {
