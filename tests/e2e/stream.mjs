@@ -73,7 +73,7 @@ const nextRound = async () => {
 
 /**
  * A light theme (Pastel) in one window at 1280×720: a clue zooms in over the board's own background (no black flash),
- * the tools' titles on their dark pills in white as the Scores overlay's, a short wheel title on one line, a long cover
+ * the tools' titles on their dark pills in white as the Scoreboard's, a short wheel title on one line, a long cover
  * text kept off the stage's edges, and no tile lit under a still, hidden cursor with the controls hidden.
  */
 async function pastelStage() {

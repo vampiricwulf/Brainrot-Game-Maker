@@ -1,4 +1,4 @@
-// The standings as one line of text, for chat or Discord (📋 Copy standings, at the end and in 📊 Scores).
+// The standings as one line of text, for chat or Discord (📋 Copy standings, at the end and in 📊 Scoreboard).
 import { toast } from '../lib/app.svelte';
 import { formatPoints, type Game, type Session } from '../lib/model';
 import { coWinnersHold, places, tiedLeaders } from '../lib/session';

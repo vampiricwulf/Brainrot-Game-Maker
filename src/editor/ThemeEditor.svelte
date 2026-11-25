@@ -505,7 +505,7 @@
           <select bind:value={t.scoreBar}>
             <option value="bottom">Bottom</option>
             <option value="top">Top</option>
-            <option value="hidden">Hidden (use the 📊 Scores overlay)</option>
+            <option value="hidden">Hidden (show it with 📊 Scoreboard, S)</option>
           </select>
         </label>
         <label

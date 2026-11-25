@@ -879,6 +879,9 @@ assert((await page.getByRole('button', { name: 'Add tiebreaker (optional)' }).co
 await page.getByRole('button', { name: '🎨 Theme' }).click();
 await page.getByRole('button', { name: 'Brainrot Neon', exact: true }).click();
 await page.getByRole('combobox', { name: 'Score bar' }).selectOption('top');
+// (Hidden names the host's button as it is now: 📊 Scoreboard, S.)
+const barHidden = await page.getByRole('combobox', { name: 'Score bar' }).locator('option[value=hidden]').innerText();
+assert(barHidden === 'Hidden (show it with 📊 Scoreboard, S)', `the score bar's Hidden points to 📊 Scoreboard (${barHidden})`);
 // The preview starts on the round last open (the Final), and shows any round.
 const previewing = await page.getByLabel('Preview', { exact: true }).evaluate((e) => e.selectedOptions[0].text);
 assert(previewing.includes('Final'), `the theme preview starts on the round last open (${previewing})`);
