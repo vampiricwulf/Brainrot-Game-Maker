@@ -1945,7 +1945,8 @@
             <button class="ghost" onclick={() => (adjust = false)} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
           {:else if !toolOnly && !buzzing}
             <!-- (In the tiebreaker this row is for points: its 🏆 row settles the tie.) -->
-            <!-- (On a touch screen no keys: the chips above to tap. Up to 1000px wide not even that: it would be cut to "T…".) -->
+            <!-- (On a touch screen no keys: who to tap (a clue's chips, the RPG's or board game's players on the stage). Up to
+                 1000px wide not even that: it would be cut to "T…".) -->
             {@const pickHint = touchScreen.on
               ? `Tap who ${session.phase === 'tiebreaker' ? 'gets them' : pickWho}`
               : session.phase === 'tiebreaker'
@@ -2755,8 +2756,9 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  /* A touch screen up to 1000px wide (a phone, a tablet upright or a phone on its side): no hint at all, its chips are
-     just above, and the row has no room for it there (it would be cut to "T…"). */
+  /* A touch screen up to 1000px wide (a phone, a tablet upright or a phone on its side): no hint at all, the row has no
+     room for it there (it would be cut to "T…"); who to tap is in sight (a clue's chips just above, the RPG's and the
+     board game's players on the stage). */
   @media (hover: none) and (max-width: 1000px) {
     .award .pick-hint {
       display: none;
