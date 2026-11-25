@@ -12,6 +12,42 @@ How to add to it: commit the line with the change (or the merge that brings it i
 line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unreleased lines under the day's heading
 (Pacific time), and commit that with the hashes as `Changelog: …`.
 
+## Unreleased
+
+### Changed
+
+- CI's release build builds the app once before its quick test, and its Chromium install gets the same time limit and retry as the e2e jobs. (1b01542)
+- The e2e jobs on CI finish closer together: two slow test files moved out of the longest one. (6f518b4)
+
+### Fixed
+
+- On a 320px-wide phone, the pre-game bar fits the screen: ◀ Back to editor reads "◀ Back" and Start game ▶ drops its Ctrl+⏎ hint. (88d6bca)
+- On a 320px-wide screen, the round buttons' last button (e.g. Final Jeopardy! ▶) no longer runs off the edge; the round picker gets narrower instead. (c355b92)
+- The check before going on lays itself out again when the window is resized, so its words, its buttons and the blue button's spot stay in place. (5986c4b)
+- On a wrapped status line (a phone), a tap's note no longer covers ⏱️ Start and the seconds box. (43b99c7)
+- On a 320px-wide phone (or with a long name), a player's chip no longer runs past the screen: its ✔ / ✘ fold under the name and score. (400ecc1)
+- 💾 Save keeps the keyboard focus: after a save (after naming the game first too, or after a message about missing files) the next Tab goes on from Save instead of starting at the top of the page. (2c79a04)
+- On a phone, the board game editor's ⬤ Spaces / 🖼️ Board backdrop / 🌀 Off-board zones buttons wrap onto two lines instead of making the page scroll sideways. (e92c0dc, ec4c65d)
+- 🔊 Sounds: on a narrow window a sound's row wraps onto a second line, controls at the right, instead of squeezing its name or making the page scroll sideways; a long file name is cut short first. (07ed558, 8f928bb, ec4c65d)
+- 📊 Stats & Items: on a narrow window a stat's row goes on more lines (⋯ 🗑 beside its name, Who sees it and its colour under it) instead of drawing the colour over Who sees it and scrolling the page sideways. (24b8245, ec4c65d)
+- "Answer slide (hidden until revealed)" is cut short with … where there isn't room for it (on a phone, or in a clue's window on a smaller laptop), so the Question and Answer tabs both show. (43f7783, ec4c65d)
+- A quick card's 🗑 on an online video is read out as "Take the online video off the card" (it said "Take the online off the card"). (234ffdf)
+- The theme editor's Score bar › Hidden points to 📊 Scoreboard (S), the button's name now (it said "📊 Scores overlay"). (4ea6bfe)
+- The tiebreaker roll-off's box and the stage's menu are headed 🎲 Tiebreaker roll-off, like its button (they showed 🏆). (9ca0f75)
+- A board game with a movement wheel names its button 🎡 Spin to move, as the button says: in the turn box's first line, on the touch status line and in the stage's menu (they said 🎡 Spin). (63c1136, a94c3dd)
+- The keys list names the tile menu's ▶ Open as the menu does (it said "▶ Open it"), and calls the 🔊 Sound window by the button that opens it (it said "🔊 Sound help"). (fa32a91, bc7367c)
+- 📜 Log's History reads as a proper list for screen readers: no empty list while nothing has happened yet, and its round names and ● Now line are items like the rest. (ff6f0ac)
+- Screen readers name the 🎲 Dice tool's custom-roll box ("Custom dice, like 3d37"), not just by its "e.g. 3d37" hint. (45a96a3)
+- Grey help words inside a button stay readable while the mouse is over it. (794b243)
+- With the computer set to reduce motion, the pre-game screen's jump buttons move the page at once instead of scrolling smoothly. (73f9895)
+- Phones: going offline no longer says "Still trying to reconnect…" before it has tried; it says there's no internet and that the page reconnects by itself. (262946f)
+- Phones: a lit BUZZ!'s glow no longer tints the last line of the question just above it. (04d0324)
+- After Resume with my edits, 🕘 History files each change under the round it was made in, "Last:" and Undo's round name stay right, and a reload no longer skips a round's intro. (01a1859, df5d147)
+- After Undo, Undo, Redo, Redo, Ctrl+Z (and History's "Undo to here") takes back the newest change first, as 🕘 History lists it. Before, a halved Final wager or a purchase paid in points was taken back ahead of a newer score. (5b4ff14, da10366)
+- Board game: ◀ Previous turn then ▶ Next turn no longer loses a 🔁 Roll again the player had earned, and the turn gone back to no longer says "again" by mistake. (74b134b, 4cd2103)
+- Final: a Final left during its reveals no longer gets stuck on a player removed in another round. A player put back, in another round or at the reveals, is back in them with their wager, and Undo or Redo of either change keeps the reveals right. (9a09396, a1a09d7, 2f41b00)
+- `node scripts/version.mjs stamp` stops with an error on a heading that is nearly `## Unreleased` (such as `## [Unreleased]`) instead of saying there's nothing to stamp. (ce98e3e, 6de0cbf)
+
 ## 2026-11-24
 
 ### Added
