@@ -1010,9 +1010,10 @@ export function currentFinal(session: Session, game: Game): FinalRound | undefin
 /**
  * A Final at its reveals follows the players in the game: one taken out leaves the reveals (their wager and result stay,
  * so a restore brings them back), and one put back who played it (a wager or a result, and not ticked out of it) is
- * back in at the end. For a Final left during its reveals while players came and went in another round.
+ * back in at the end. For a Final left during its reveals while players came and went in another round (and for an
+ * Undo or Redo of such a change, made back at the reveals).
  */
-function revealsFollowRoster(session: Session, f: FinalState): void {
+export function revealsFollowRoster(session: Session, f: FinalState): void {
   const inGame = new Set(session.players.map((p) => p.id));
   f.players = f.players.filter((id) => inGame.has(id));
   f.order = f.order.filter((id) => inGame.has(id));

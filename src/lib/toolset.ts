@@ -1,6 +1,6 @@
 // The shared toolset every game mode can use (games-maker spec §5.1): player stats, inventories, shops and the
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
-import { answerShowing, applyScore, finalNext, inSteps, score, stepOf, toggleReveal } from './session';
+import { answerShowing, applyScore, finalNext, inSteps, revealsFollowRoster, score, stepOf, toggleReveal } from './session';
 import {
   formatPoints,
   newId,
@@ -518,6 +518,9 @@ function restore(session: Session, json: string, game?: Game): void {
     if (!ownsFollow && st.parties.some((p) => p.id === followed[id])) st.active = followed[id];
     if (st.parties.length < 2) st.split = false;
   }
+  // Back at a Final's reveals, a player taken out or put back in another round leaves them or comes back to them (the
+  // step, from another round, didn't touch the Final).
+  if (session.phase === 'final' && session.finalStep === 'reveal' && session.final) revealsFollowRoster(session, session.final);
 }
 
 /** Mark a tile played again, or put it back on the board. */

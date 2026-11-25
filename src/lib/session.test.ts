@@ -604,6 +604,53 @@ describe('players mid-game', () => {
     expect(finalUnjudged(session)).toContain(b);
   });
 
+  it('Undo and Redo, back at the reveals, of a player removed or restored in another round keep the reveals in step', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b, c], 400, 'x');
+    goToRound(session, game, 1);
+    for (const id of [a, b, c]) finalSetWager(session, id, 50);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    goToRound(session, game, 0);
+    logged(session, 'Removed', () => removePlayer(session, b), game);
+    goToRound(session, game, 1);
+    expect(session.final!.players).toEqual([a, c]);
+    // Undo the removal: back in the reveals.
+    undoAction(session, game);
+    let f = session.final!;
+    expect(session.players.map((p) => p.id)).toContain(b);
+    expect([f.players.includes(b), f.order.includes(b), finalUnjudged(session).includes(b)]).toEqual([true, true, true]);
+    // Redo it: off them again.
+    redoAction(session, game);
+    f = session.final!;
+    expect(session.players.map((p) => p.id)).not.toContain(b);
+    expect([f.players.includes(b), f.order.includes(b)]).toEqual([false, false]);
+    // Undo once more: judging them counts, and the reveal finishes with them.
+    undoAction(session, game);
+    expect(finalJudge(session, game, b, true)).toBe(true);
+    expect(score(session, b)).toBe(450);
+    for (const id of [a, c]) finalJudge(session, game, id, true);
+    expect(finalRevealNow(session).at).toBe('done');
+  });
+
+  it('Undo, back at the reveals, of a player restored in another round takes them off the reveals again', () => {
+    const { game, session, a, b, c } = setup();
+    applyScore(session, game, [a, b, c], 400, 'x');
+    goToRound(session, game, 1);
+    for (const id of [a, b, c]) finalSetWager(session, id, 50);
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    removePlayer(session, b);
+    goToRound(session, game, 0);
+    logged(session, 'Restored', () => restorePlayer(session, b), game);
+    goToRound(session, game, 1);
+    expect(session.final!.players).toContain(b);
+    undoAction(session, game);
+    const f = session.final!;
+    expect(session.players.map((p) => p.id)).not.toContain(b);
+    expect([f.players.includes(b), f.order.includes(b), finalUnjudged(session).includes(b)]).toEqual([false, false, false]);
+    for (const id of [a, c]) finalJudge(session, game, id, true);
+    expect(finalRevealNow(session).at).toBe('done');
+  });
+
   it('puts a player removed in another round back in the reveals when restored there', () => {
     const { game, session, a, b, c } = setup();
     applyScore(session, game, [a, b, c], 400, 'x');
