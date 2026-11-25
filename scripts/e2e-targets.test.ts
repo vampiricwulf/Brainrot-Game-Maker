@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTargets } from './e2e-targets.mjs';
+import { leftoversOf, parseTargets } from './e2e-targets.mjs';
 
 const known = { all: ['deal', 'dealcopy', 'hostlayout', 'smoke'], shards: ['1', '2', '3', '4', '5'], notTests: new Set(['helpers', 'mediafixtures']) };
 
@@ -21,5 +21,23 @@ describe('parseTargets', () => {
     expect(parseTargets(['smoke', '3'], known)).toEqual({ error: 'not an e2e file: 3' });
     expect(parseTargets(['--check', 'smoke'], known)).toEqual({ error: 'not an e2e file: --check' });
     expect(parseTargets([], known)).toEqual({ error: '' });
+  });
+});
+
+describe('leftoversOf', () => {
+  const names = [
+    'deal-failure.png',
+    'deal-host-failure.png',
+    'deal-trace.zip',
+    'dealcopy-failure.png',
+    'deal-export.json',
+    'deal.png',
+    'smoke-failure.png',
+    'screenshots',
+  ];
+  it("takes only that file's own failure pictures and trace", () => {
+    expect(leftoversOf('deal', names)).toEqual(['deal-failure.png', 'deal-host-failure.png', 'deal-trace.zip']);
+    expect(leftoversOf('dealcopy', names)).toEqual(['dealcopy-failure.png']);
+    expect(leftoversOf('hostlayout', names)).toEqual([]);
   });
 });

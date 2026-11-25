@@ -24,14 +24,17 @@
 // these shards, and every file uses appFile() and failureShots() from helpers.mjs, and helpers.mjs's assert, sleep,
 // until, section, launchChromium(), startBuzzer() and resultsPath() rather than a copy of its own.
 //
-// Before a run it checks that dist/index.html is newer than the source (unless APP_FILE is set). Each file's Chromium
+// Before a run it checks that dist/index.html is newer than the source (unless APP_FILE is set). Just before each file
+// runs, its own failure pictures and trace from an earlier run (<name>-failure.png, <name>-<page>-failure.png,
+// <name>-trace.zip in failureDir()) are deleted, so a picture there is always from the latest run of its file; exports
+// and other files' pictures are left. Each file's Chromium
 // gets tests/e2e/fonts.conf (CI's fonts, no Inter) unless FONTCONFIG_FILE is set: helpers.mjs sets it.
 import { spawn } from 'node:child_process';
 import { appendFileSync, closeSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { appFile } from '../tests/e2e/helpers.mjs';
-import { parseTargets } from './e2e-targets.mjs';
+import { appFile, failureDir } from '../tests/e2e/helpers.mjs';
+import { leftoversOf, parseTargets } from './e2e-targets.mjs';
 
 const SHARDS = {
   1: 'phonecopies cardrounds partnerplay cardsend history playfeatures buzzerlive convert slidesround dealcaptain rpg',
@@ -64,6 +67,8 @@ function check() {
   const got = m ? m[1].split(',').map((s) => s.trim()) : [];
   if (got.join() !== want.join()) bad.push(`build.yml's e2e matrix is [${got}], not [${want}]`);
   if (!shardFiles('rest').length) bad.push('rest is empty');
+  // A run deletes `<name>-…-failure.png` before it runs <name>.mjs: a hyphen in a name could take another file's.
+  for (const f of all) if (f.includes('-')) bad.push(`${f}.mjs has a hyphen in its name: a run of it could delete another file's failure pictures`);
   // Every file opens the app through appFile() (which refuses a stale build) and leaves failure pictures through
   // failureShots() (where CI uploads them), so a file copied from an old one can't bring the old ways back.
   for (const f of all) {
@@ -97,6 +102,8 @@ function runFile(f, held, children, logs) {
   return new Promise((done) => {
     const t0 = Date.now();
     if (!held) console.log(`\n▶ ${f}.mjs`);
+    const shots = failureDir();
+    for (const n of leftoversOf(f, readdirSync(shots))) rmSync(join(shots, n), { force: true });
     const log = held && join(mkdtempSync(join(tmpdir(), 'e2e-out-')), `${f}.log`);
     if (held) logs.add(dirname(log));
     const fd = held && openSync(log, 'w');

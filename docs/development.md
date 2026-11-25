@@ -141,7 +141,7 @@ which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machin
 |---|---|---|
 | `CHROMIUM_PATH` | e2e tests, `scripts/screenshots.mjs` | The browser to run. Unset: `/opt/pw-browsers/chromium` if it exists, else the one `npx playwright-core install` put in place. |
 | `APP_FILE` | e2e tests | The app file to test, instead of `dist/index.html`. |
-| `SCREENSHOTS` | e2e tests | A folder for the pictures some files take as they go (`smoke.mjs`: one per step). CI sets it to `test-results/screenshots`; a failing run leaves its pictures and traces in `test-results/`, which CI keeps. |
+| `SCREENSHOTS` | e2e tests | A folder for the pictures some files take as they go (`smoke.mjs`: one per step). CI sets it to `test-results/screenshots`; a failing run leaves its pictures and traces in `test-results/`, which CI keeps. `scripts/e2e-shard.mjs` deletes a file's own failure pictures and trace (`<name>-failure.png`, `<name>-<page>-failure.png`, `<name>-trace.zip`) just before it runs that file, so the ones there are from its latest run; exports and other files' pictures stay. |
 | `SHOTS`, `PASS_SHOTS` | other e2e files | The same, for the files that read these names instead (`PASS_SHOTS`: `pass.mjs`). |
 | `FONTCONFIG_FILE` | Chromium | The fonts the tests use; unset, `tests/e2e/fonts.conf`. |
 | `E2E_QUIET` | `scripts/e2e-shard.mjs` | `1`: as `--quiet` (a passing file prints one line; a failing one, its last 80 lines). |

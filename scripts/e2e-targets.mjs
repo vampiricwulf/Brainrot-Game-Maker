@@ -28,3 +28,15 @@ export function parseTargets(args, { all, shards, notTests }) {
   }
   return { files };
 }
+
+/**
+ * The failure pictures and trace that an earlier run of e2e file `f` may have left among `names` (a folder's
+ * listing): `f-failure.png`, `f-<label>-failure.png` (one per page) and `f-trace.zip`, as failureShots() in
+ * tests/e2e/helpers.mjs and smoke.mjs name them. No e2e file's name has a hyphen, so `f-` can't take another file's.
+ * Exports and anything else are left.
+ * @param {string} f
+ * @param {string[]} names
+ */
+export function leftoversOf(f, names) {
+  return names.filter((n) => n === `${f}-failure.png` || n === `${f}-trace.zip` || (n.startsWith(`${f}-`) && n.endsWith('-failure.png')));
+}

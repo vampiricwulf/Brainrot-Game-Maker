@@ -33,7 +33,7 @@ export default defineConfig({
       },
       // The remote buzzer room (buzzer/, a Cloudflare Worker): its rules are plain TS.
       { extends: true, test: { name: 'buzzer', include: ['buzzer/**/*.test.ts'], exclude: ['buzzer/node_modules/**'] } },
-      // The dev scripts' pure parts (scripts/e2e-targets.mjs: what e2e-shard.mjs is asked to run).
+      // The dev scripts' pure parts (scripts/e2e-targets.mjs: what e2e-shard.mjs runs and what it clears first).
       { extends: true, test: { name: 'scripts', include: ['scripts/**/*.test.ts'] } },
     ],
   },
