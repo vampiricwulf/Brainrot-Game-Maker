@@ -12,7 +12,7 @@ How to add to it: commit the line with the change (or the merge that brings it i
 line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unreleased lines under the day's heading
 (Pacific time), and commit that with the hashes as `Changelog: …`.
 
-## Unreleased
+## 2026-11-25
 
 ### Added
 
@@ -24,7 +24,7 @@ line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unrele
 - A ✍ answer typed on a phone but not sent is now sent automatically when time runs out or the answers lock. The phone says "Sent automatically when time ran out: unfinished" (or "when answers locked"), and the host sees ⏱️ beside it, without the words in one window. The same goes for the Final's typed answers and a partner clue's typed guess, whose locked line on the phone says "Sent automatically, unfinished: “…”". A buzzer server you run yourself needs deploying again for this. (5f784de, 11f87c4, d44a7a9, 78eb877, 0940d19, 55b4f90, 877e4de)
 - On a Daily Double, the phones show the category with "Daily Double" over the wager, then the question once it's on screen, as on any clue. A buzzer server you run yourself needs deploying again for this. (35f7a64, a8e5082)
 - On a phone held upright that's 700px tall or less, the tools row (with the round buttons) folds behind ⋯ Tools, and the status line's tip (or "Pick a tile on the board.") keeps to one line, whole in its tooltip, so the moment's controls have room. (d4cc9c9, be6cf9f, 8e06474, c8ca444, 11f6774, c349a15, 33c3f2b)
-- A video file has one icon everywhere, 🎞️ (it was 🎬 in the editor and the stage controls), and an online video (YouTube, Drive, Streamable) is ▶️, so 🎞️ never means a link. (7d2ce19, ad236b4, dcc3f81)
+- A video file has one icon everywhere, 🎞️ (it was 🎬 in the editor and the stage controls), and an online video (YouTube, Drive, Streamable) is ▶️, so 🎞️ never means a link. (7d2ce19, ad236b4, dcc3f81, 65ee121)
 - The sound window is titled 🔊 Test the sound, as its button says (it was 🔊 Streaming the sound, and the keys list called it 🔊 Sound help). (fa32a91, bc7367c, f012ea7, 0bb4871)
 - The tools row's pop-ups (🎲 Dice, 🎡 Wheel, 🤫 Send a card…, 🎭 Deal… and the rest) close when Tab or Shift+Tab leaves them, as a click outside does; the app moving the focus by itself leaves them open, with what's typed in them. (66bd89f, 6aeea20, e0230dd)
 - On a touch screen, the ▶ Play page before the game has bigger buttons and headings to tap: every button is at least 32px, small ones too (▲ ▼ 🗑, ✎ Rename, ± Start scores, 🔊 Test the sound…), and so are the ⚖ Game rules and 📺 On stream headings, with 🗑 further from ▼. (e88d4d7, a803b58)
