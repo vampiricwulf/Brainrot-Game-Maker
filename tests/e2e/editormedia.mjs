@@ -826,6 +826,80 @@ try {
     await fresh.close();
   }
 
+  // ---------- A picture whose file is missing (a .json export has none) is marked ⚠ in Layers and its panel ----------
+  {
+    const first = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const a = await first.newPage();
+    a.on('pageerror', (e) => errors.push(`[export] ${e.message}`));
+    await a.goto(pathToFileURL(file).href);
+    await addClassicRounds(a);
+    await a.locator('.grid .tile').first().click();
+    await a.getByRole('button', { name: '🖼️ Image' }).click();
+    const [fc] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: '⬆ Upload image file…' }).click()]);
+    await fc.setFiles({ name: 'lost.png', mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') });
+    await a.locator('.layers-box .row', { hasText: 'lost.png' }).waitFor();
+    // (A small box: the slide's "Missing image" has to fit in it.)
+    const size = inspectorIn(a).locator('section', { hasText: 'Position' });
+    await size.getByLabel('W', { exact: true }).fill('120');
+    await size.getByLabel('W', { exact: true }).press('Tab');
+    await a.getByRole('button', { name: 'Done' }).click();
+    const [json] = await Promise.all([
+      a.waitForEvent('download'),
+      a
+        .getByRole('button', { name: /^More:/ })
+        .click()
+        .then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click()),
+    ]);
+    const fresh = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const b = await fresh.newPage();
+    b.on('pageerror', (e) => errors.push(`[fresh] ${e.message}`));
+    await b.goto(pathToFileURL(file).href);
+    const jsonPath = resultsPath('editormedia-picture.json');
+    await json.saveAs(jsonPath);
+    await first.close();
+    await openGameFile(b, jsonPath);
+    const openClue = async () => {
+      await roundTabsIn(b).first().click();
+      await b.locator('.grid .tile').first().click();
+      await b.getByRole('dialog', { name: 'Edit clue' }).waitFor();
+    };
+    await openClue();
+    const row = b.locator('.layers-box .row', { hasText: 'lost.png' });
+    await row.waitFor();
+    const mark = row.locator('.gone');
+    assert(
+      (await mark.count()) === 1 && (await mark.getAttribute('title')) === 'Its file is missing (🔗 Find missing files… in 🖼️ Media)',
+      'a picture whose file is missing (opened from a .json) has a ⚠ on its layer row, saying where to find it again',
+    );
+    const placeholder = b.locator('.canvas .missing').first();
+    const fits = await placeholder.evaluate((box) => {
+      const r = box.getBoundingClientRect();
+      const t = box.querySelector('span').getBoundingClientRect();
+      return { text: box.innerText, inside: t.left >= r.left - 1 && t.right <= r.right + 1 && t.top >= r.top - 1 && t.bottom <= r.bottom + 1, box: r.width };
+    });
+    assert(fits.text === 'Missing image' && fits.inside, `on the slide, its "Missing image" fits inside its small box (${JSON.stringify(fits)})`);
+    await row.locator('.name').click();
+    const note = inspectorIn(b).locator('p.missing');
+    assert(
+      (await note.innerText()) === '⚠ Its file is missing: 🔗 Find missing files… in 🖼️ Media, or 🔁 Use another picture…',
+      `selected, its panel says its file is missing and where to find it (${await note.innerText()})`,
+    );
+    // 🖼️ Media in it goes there, to its file; 🔗 Find missing files… puts it back and both marks go.
+    await note.getByRole('button', { name: '🖼️ Media' }).click();
+    const [pick] = await Promise.all([b.waitForEvent('filechooser'), b.getByRole('button', { name: '🔗 Find missing files…' }).click()]);
+    await pick.setFiles({ name: 'lost.png', mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') });
+    await b.getByText(/Reconnected 1 file/).waitFor();
+    await openClue();
+    await row.waitFor();
+    assert(
+      (await row.locator('.gone').count()) === 0 && (await b.locator('.canvas .missing').count()) === 0,
+      'once 🔗 Find missing files… has put it back, its layer row has no ⚠ and the slide shows the picture',
+    );
+    await row.locator('.name').click();
+    assert((await inspectorIn(b).locator('p.missing').count()) === 0, 'and its panel has no note');
+    await fresh.close();
+  }
+
   assert(!errors.length, `no page errors (${errors.join(' | ')})`);
   console.log('\nEditor media E2E passed.');
 } catch (e) {

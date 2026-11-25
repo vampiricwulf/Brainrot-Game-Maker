@@ -103,12 +103,12 @@
         {@const src = mediaUrls[el.editedMedia ?? el.media] ?? mediaUrls[el.media]}
         {#if src && broken[src]}
           <!-- Viewers (and OBS) see an empty spot; only the host is told why. -->
-          {#if hostView}<div class="missing">Couldn't load the picture from {linkHost(src)}</div>{/if}
+          {#if hostView}<div class="missing"><span>Couldn't load the picture from {linkHost(src)}</span></div>{/if}
         {:else if src}
           <img {src} alt="" style:object-fit={el.fit} style:border-radius="{el.radius ?? 0}px" draggable="false" onerror={(e) => imgError(e, src)} />
         {:else}
           <!-- A file missing from this computer: only the host is told (viewers see an empty spot). -->
-          {#if hostView}<div class="missing">Missing image</div>{/if}
+          {#if hostView}<div class="missing"><span>Missing image</span></div>{/if}
         {/if}
       {:else if el.kind === 'shape'}
         <ShapeView {el} />
@@ -117,7 +117,7 @@
         {#if src || mode === 'edit'}
           <MediaPlayer {el} {src} {mode} {role} label={label(el)} />
         {:else}
-          {#if hostView}<div class="missing">Missing {el.kind}</div>{/if}
+          {#if hostView}<div class="missing"><span>Missing {el.kind}</span></div>{/if}
           <MissingMedia id={el.id} kind={el.kind} {role} label={label(el)} />
         {/if}
       {:else if el.kind === 'embed'}
@@ -167,9 +167,20 @@
     height: 100%;
     display: grid;
     place-items: center;
+    /* (Smaller in a small box, rather than spilling onto the slide.) */
+    box-sizing: border-box;
+    overflow: hidden;
+    container-type: size;
+    padding: 4px;
+    text-align: center;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
     font-size: 36px;
     color: #fff;
     background: repeating-linear-gradient(45deg, #333, #333 20px, #444 20px, #444 40px);
+  }
+  .missing > span {
+    font-size: min(36px, 14cqw, 30cqh);
   }
 
   /* Entrance animations (spec §5.3) */

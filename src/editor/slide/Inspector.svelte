@@ -4,7 +4,8 @@
   import type { FitResult } from '../../lib/autofit';
   import { fontChoices } from '../../lib/fonts';
   import { playRange, playsAt, playsStep, playsText } from '../../lib/editing';
-  import { mediaUrls } from '../../lib/media.svelte';
+  import { itemFileMissing, mediaUrls } from '../../lib/media.svelte';
+  import { goTo } from '../../lib/nav.svelte';
   import type { AudioEl, EmbedEl, EntranceType, Fit, Game, SlideElement, SoundShows, TextEl, VideoEl } from '../../lib/model';
   import { SOUND_SHOWS, soundShows } from '../../lib/soundonly';
   import { DRIVE_SHARE_HINT, embedName, formatWhen, linkHost } from '../../lib/links';
@@ -190,6 +191,14 @@
 {#snippet goneNote(another: string)}
   {#if itemFileDeleted(game, el)}
     <p class="missing">⚠ Its file was deleted: not saved with the game (Undo in 🕘 History, or 🔁 Use another {another}…)</p>
+  {:else if itemFileMissing(game, el)}
+    <!-- (Its file isn't here: opened from a .json, or a damaged pack. The slide shows "Missing image".) -->
+    <p class="missing">
+      ⚠ Its file is missing: 🔗 Find missing files… in {#if app.editGame}🖼️ Media{:else}<button
+          class="link"
+          onclick={() => void goTo({ tab: 'media', media: 'media' in el ? el.media : undefined })}>🖼️ Media</button
+        >{/if}, or 🔁 Use another {another}…
+    </p>
   {/if}
 {/snippet}
 
@@ -726,6 +735,14 @@
     margin: 0;
     font-size: 12px;
     color: var(--warn);
+  }
+  .missing .link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font-size: inherit;
+    text-decoration: underline;
   }
   h5 {
     margin: 4px 0 0;

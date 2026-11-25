@@ -4,7 +4,7 @@
 // Media added from an online link is downloaded into the same store when the site allows it; when it
 // doesn't, the MediaRef keeps the link (`url`) and plays straight from the internet.
 import { del, delMany, get, getMany, keys, set } from 'idb-keyval';
-import { newId, type Game, type MediaKind, type MediaRef } from './model';
+import { newId, type Game, type MediaKind, type MediaRef, type SlideElement } from './model';
 import { uniqueMediaName } from './medianame';
 import { uploadedFamily } from './fonts';
 import { clipboard } from './clipboard.svelte';
@@ -704,7 +704,25 @@ export async function replaceMediaFile(game: Game, id: string, file: File, keepN
 
 /** Game files with nothing to show: not stored in this browser and not a link (never a 🗜 copy: phones get its file). */
 export function missingMedia(game: Game): MediaRef[] {
-  return game.media.filter((m) => !m.url && !m.phoneCopy && !mediaUrls[m.id]);
+  return game.media.filter(isMissing);
+}
+
+const isMissing = (m: MediaRef) => !m.url && !m.phoneCopy && !mediaUrls[m.id];
+
+/** Is this one of the game's files with nothing to show here (as missingMedia lists)? */
+export function fileMissing(game: Pick<Game, 'media'>, id: string | undefined): boolean {
+  const ref = id ? game.media.find((m) => m.id === id) : undefined;
+  return !!ref && isMissing(ref);
+}
+
+/**
+ * A picture, video or sound that shows nothing because its file isn't here (opened from a .json, or a damaged pack):
+ * 🔗 Find missing files… in 🖼️ Media puts it back. A picture whose edited copy alone is missing still shows its
+ * original, as the slide does. (A file deleted from 🖼️ Media is itemFileDeleted, said its own way.)
+ */
+export function itemFileMissing(game: Pick<Game, 'media'>, el: SlideElement): boolean {
+  if (el.kind === 'image') return fileMissing(game, el.media) && (!el.editedMedia || fileMissing(game, el.editedMedia));
+  return (el.kind === 'video' || el.kind === 'audio') && fileMissing(game, el.media);
 }
 
 /**

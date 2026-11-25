@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { tick } from 'svelte';
-  import { mediaUrls } from '../../lib/media.svelte';
+  import { itemFileMissing, mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
   import { itemsNamed, layerIcon, layerLabel } from '../../lib/layerlabel';
   import { itemFileDeleted } from '../../lib/usage';
@@ -255,6 +255,9 @@
           <!-- Its file was deleted in 🖼️ Media (it still shows here, but isn't saved with the game), as 🔊 Sounds marks it. -->
           {#if itemFileDeleted(game, el)}<span class="gone" title="Its file was deleted (Undo in 🕘 History)"
               >⚠<span class="sr-only">{' '}Its file was deleted:</span></span
+            >{:else if itemFileMissing(game, el)}<!-- (Its file isn't here: opened from a .json, or a damaged pack.) --><span
+              class="gone"
+              title="Its file is missing (🔗 Find missing files… in 🖼️ Media)">⚠<span class="sr-only">{' '}Its file is missing:</span></span
             >{/if}
           <span class="txt">{layerLabel(el, game, card)}</span>
           <!-- (Nowhere on the slide: this list is the only way to find it.) -->

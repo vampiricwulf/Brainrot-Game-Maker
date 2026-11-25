@@ -4,6 +4,7 @@ import {
   dropPhoneCopies,
   getBlob,
   identicalMedia,
+  itemFileMissing,
   keepLinkCopy,
   mediaUrls,
   missingMedia,
@@ -173,6 +174,33 @@ describe('missing files found again, and copies of links saved', () => {
     expect(game.media[0]).toEqual({ id: 'web', name: 'cat.png', mime: 'image/png', size: 3, kind: 'image' });
     expect(getBlob('web')).toBe(blob);
     expect(await keepLinkCopy(game, 'web', { blob, mime: 'image/png' })).toBe(false);
+  });
+});
+
+describe('an item whose file is missing', () => {
+  it('is one whose picture, video or sound has nothing to show here; a deleted one or one whose edited copy alone is missing isn’t', () => {
+    const game = newGame();
+    const ref = (id: string, kind: 'image' | 'video' | 'audio') => ({ id, name: `${id}.bin`, mime: '', size: 1, kind });
+    game.media.push(ref('nopic', 'image'), ref('noedit', 'image'), ref('here', 'image'), ref('novid', 'video'), ref('nosnd', 'audio'));
+    game.media.push({ ...ref('web', 'image'), url: 'https://example.com/a.png' });
+    registerBlob('here', new Blob(['png']));
+    const pic = newImageEl('nopic');
+    expect(itemFileMissing(game, pic)).toBe(true);
+    // Its edited copy missing, the original here: the slide shows the original.
+    expect(itemFileMissing(game, { ...newImageEl('here'), editedMedia: 'noedit' })).toBe(false);
+    // The original missing but its edited copy here: it shows.
+    expect(itemFileMissing(game, { ...pic, editedMedia: 'here' })).toBe(false);
+    expect(itemFileMissing(game, { ...pic, editedMedia: 'noedit' })).toBe(true);
+    expect(itemFileMissing(game, newImageEl('here'))).toBe(false);
+    expect(itemFileMissing(game, newImageEl('web'))).toBe(false);
+    // Deleted from 🖼️ Media (not in the game's list): that's itemFileDeleted's to say.
+    expect(itemFileMissing(game, newImageEl('gone'))).toBe(false);
+    const { kind: _k, media: _m, fit: _f, ...box } = pic;
+    expect(itemFileMissing(game, { ...box, kind: 'video', media: 'novid' } as never)).toBe(true);
+    expect(itemFileMissing(game, { ...box, kind: 'audio', media: 'nosnd' } as never)).toBe(true);
+    // Found again (🔗 Find missing files…): the mark goes by itself.
+    registerBlob('nopic', new Blob(['png']));
+    expect(itemFileMissing(game, pic)).toBe(false);
   });
 });
 
