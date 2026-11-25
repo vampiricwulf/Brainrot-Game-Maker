@@ -5980,16 +5980,19 @@
       <h3 id="pregame-game">The game</h3>
       {#if checks.length}
         <ul>
-          {#each checks as c}
+          {#each checks as c, i}
             <li class:warn-line={c.level === 'warn'}>
-              <!-- (Its tooltip: what a grouped line stands for, in the words viewers may see.) -->
-              <span title={(!wantAudience && c.quietDetails ? c.quietDetails : c.details)?.join('\n')}
+              <!-- (Its tooltip: what a grouped line stands for, in the words viewers may see. Its words describe the
+                   line's buttons, so Fix › and 🎲 Place now say which check they're for: only the words shown, never
+                   the tooltip's, as in one window this screen is on stream.) -->
+              <span id="pregame-check-{i}" title={(!wantAudience && c.quietDetails ? c.quietDetails : c.details)?.join('\n')}
                 >{c.level === 'warn' ? '' : 'ℹ '}{!wantAudience && c.quiet ? c.quiet : c.text}</span
               >
               {#if c.ddRound !== undefined}
                 {@const ri = c.ddRound}
                 <button
                   class="small"
+                  aria-describedby="pregame-check-{i}"
                   onclick={() => {
                     placeDailyDoubles(ri);
                     recheckNow();
@@ -6000,6 +6003,7 @@
                 {@const ri = c.ptRound}
                 <button
                   class="small"
+                  aria-describedby="pregame-check-{i}"
                   onclick={() => {
                     placePartnerTiles(ri);
                     recheckNow();
@@ -6011,13 +6015,24 @@
                 {@const job = jobFor(id)}
                 {@const pct = job ? progressText(job) : ''}
                 <!-- (Names no file: in one window this screen is on stream. While its copy is made, how far it got.) -->
-                <button class="small" data-checklist-shrink onclick={() => openShrinkDialog(id)} title="Make smaller copies of these files for phones"
+                <button
+                  class="small"
+                  data-checklist-shrink
+                  aria-describedby="pregame-check-{i}"
+                  onclick={() => openShrinkDialog(id)}
+                  title="Make smaller copies of these files for phones"
                   >{#if job}🗜 Making smaller…{#if pct}{' '}<span aria-hidden="true">{pct}</span>{/if}{:else}🗜 Make smaller{/if}</button
                 >
               {/if}
               {#if c.fix && !app.playerOnly && c.ddRound === undefined && c.ptRound === undefined}
                 <!-- Its own place in the editor (◀ Fix in editor, below, goes to the first one). -->
-                <button class="small ghost fix" data-check-fix onclick={() => backToEditor(c.fix, c.place)} title="Fix it in the editor">Fix ›</button>
+                <button
+                  class="small ghost fix"
+                  data-check-fix
+                  aria-describedby="pregame-check-{i}"
+                  onclick={() => backToEditor(c.fix, c.place)}
+                  title="Fix it in the editor">Fix ›</button
+                >
               {/if}
             </li>
           {/each}

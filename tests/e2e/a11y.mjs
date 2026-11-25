@@ -520,6 +520,21 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Hide the On stream tips');
   assert(true, 'hiding the On stream tips puts the keys on Show them, and showing them on their ✕ (not the page)');
+  // ✅ Before you start: each check's Fix › is described by its own line's words (they're all named “Fix ›”), so Tab
+  // and a screen reader tell them apart.
+  const fixes = await page.locator('[data-checks] [data-check-fix]').evaluateAll((els) =>
+    els.map((b) => {
+      const said = (b.getAttribute('aria-describedby') ?? '')
+        .split(' ')
+        .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+        .join(' ');
+      return { said, own: b.closest('li')?.querySelector('span')?.textContent?.trim() ?? '?' };
+    }),
+  );
+  assert(
+    fixes.length >= 2 && fixes.every((f) => f.said && f.said === f.own) && new Set(fixes.map((f) => f.said)).size === fixes.length,
+    `each Fix › is described by its own check's line (${fixes.map((f) => `“${f.said}”`).join(', ')})`,
+  );
   // Small text (✅ Before you start's 🔊 Test the sound…), and Start game's key chip, read at 4.5:1.
   const testSound = await inkOn(page.getByRole('button', { name: '🔊 Test the sound…' }));
   const startKey = await inkOn(page.locator('.start-key'));
