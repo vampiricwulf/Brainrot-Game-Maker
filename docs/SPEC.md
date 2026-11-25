@@ -445,8 +445,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   (F2) · 🔍 Show where it's used ▸ · 🌐 Check it still loads (links) · 🗑 Delete file (Delete); with several selected, 🗜
   Phone copies for N… and 🗑 Delete N files. A file in use is deleted with no question (↶ Undo brings it back). Until
   then the slide editor (and 🖼️ Board images) marks each picture, video or sound still using it (`itemFileDeleted` in
-  usage.ts, drawn by GoneLayer): a dashed ⚠ frame over it (the picture dimmed under it) with a badge of its own size
-  at its corner saying "Deleted file: not saved with the game. Undo in 🕘
+  usage.ts, drawn by GoneLayer): a dashed ⚠ frame over it (the picture dimmed under it) with an upright badge of its own
+  size at its top-left (moved in to stay wholly on the slide) saying "Deleted file: not saved with the game. Undo in 🕘
   History, or 🔁 Use another picture…", a ⚠ on its Layers row and in its menu's list, and at the top of its panel "⚠ Its
   file was deleted: not saved with the game (Undo in 🕘 History, or 🔁 Use another picture…)", as 🔊 Sounds says it on
   a cue's row; ✎ Edit image… isn't offered (on a slide, double-click or Enter goes to 🔁 Use another picture…). A background
