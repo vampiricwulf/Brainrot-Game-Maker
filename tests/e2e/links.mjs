@@ -18,6 +18,7 @@ import {
   exportHtml,
   openGameFile,
   assert,
+  assertEq,
   launchChromium,
   boardIn,
   boardTilesIn,
@@ -316,6 +317,9 @@ assert(
   (await page.getByText(/Files stored with this game: 1 ·/).count()) === 1 && (await page.getByText(/3 more play from the internet/).count()) === 1,
   'the total counts stored files only',
 );
+// The Drive player on a slide is an online video: ▶️, as YouTube's is (🎞️ is a video file, never a link).
+const driveRow = page.locator('.library table tr', { hasText: 'Google Drive player' });
+assertEq(await driveRow.locator('td').first().innerText(), '▶️', 'the online players list shows the Drive player as ▶️');
 // A link to a file the game already has (the same bytes) adds nothing, and says which file it reused.
 await page.locator('.library .link').getByLabel('Paste a link').fill('https://litter.catbox.moe/frog2.png');
 await page.locator('.library .link').getByLabel('Paste a link').press('Enter');
@@ -544,6 +548,11 @@ await page.locator('.mc').getByText('click ▶ inside it in the audience window'
 assert(
   (await page.locator('.mc').getByText("It can't be paused or sought from here.").count()) === 1,
   'the host controls say it cannot be controlled remotely',
+);
+assertEq(
+  await page.locator('.mc .item', { hasText: 'click ▶ inside it' }).locator('.ic').innerText(),
+  '▶️',
+  "the host controls' row is ▶️, an online video (🎞️ is a video file)",
 );
 await page.locator('.mc').getByRole('button', { name: '■ Stop' }).click();
 await frame.waitFor({ state: 'detached' });
