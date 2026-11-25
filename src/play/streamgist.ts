@@ -7,12 +7,12 @@ const short = (t: string, most = 24) => (t.length > most ? `${t.slice(0, most - 
 
 /**
  * Each part of the On stream options as it's set: the two cards (their own words when typed), a countdown running, the
- * captions, the join code hidden (with phone buzzers on), Reduce motion. Only what isn't the default is named beyond
- * the two cards.
+ * captions, the join code hidden (with phone buzzers on), Reduce motion (or, off, that the stage still moves while the
+ * computer asks for less motion: `osMotion`). Only what isn't the default is named beyond the two cards.
  */
 export function streamGist(
   stream: NonNullable<GameSettings['stream']>,
-  o: { countdown?: string; phones?: boolean; rpg?: boolean; reduceMotion?: boolean } = {},
+  o: { countdown?: string; phones?: boolean; rpg?: boolean; reduceMotion?: boolean; osMotion?: boolean } = {},
 ): string {
   const soon = stream.soonText?.trim();
   const cover = stream.coverText?.trim();
@@ -22,6 +22,6 @@ export function streamGist(
     cover ? `cover “${short(cover)}”` : 'cover card',
     ...(stream.clueCaption || (o.rpg && stream.placeCaption) ? ['captions on'] : []),
     ...(o.phones && stream.hideJoinCode ? ['join code hidden'] : []),
-    ...(o.reduceMotion ? ['reduce motion'] : []),
+    ...(o.reduceMotion ? ['reduce motion'] : o.osMotion ? ['full motion, though your computer asks for less'] : []),
   ].join(' · ');
 }

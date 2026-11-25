@@ -66,7 +66,7 @@ Add files on the **🖼 Media** page: drop them there, or use **＋ Add files…
 | **Save replaces the game's last save** | Keeps the two saves before it as `.bak` / `.bak2`. Off makes `Game (2)`, `Game (3)`… instead. Desktop app; on by default. |
 | **Autosave** | Saves every few minutes. Default: every 5 minutes, keeping the last 3. Desktop app. |
 | **Undo** | How many changes `Ctrl+Z` and the 🕘 History tab remember (300 by default, 20 to 2000). Lowering it forgets the oldest ones at once, and says how many. |
-| **Reduce motion on stream** | Viewers get no pop-ins, fly-ins or confetti: things just appear. |
+| **Reduce motion on stream** | Viewers get no pop-ins, fly-ins or confetti: things just appear. Off by default, even when your computer asks for less motion (the stage is what viewers see): then a line under it, and under the same box in ▶ Play's 📺 On stream, says the stage still moves until you tick it. |
 | **Check for a newer version when the app starts, and every hour while it's open** | See [Updating](#updating). |
 | **Buzzer server** | Where phone buzzer rooms are made. Press **Test** to check it. See [Set up your own buzzer server](buzzer-server.md). |
 

@@ -4,6 +4,7 @@
   import { inTauri } from '../lib/platform';
   import { keepLimits } from '../lib/history.svelte';
   import { DEFAULT_PREFS, prefs, prefsUnkept, savePrefs, UNDO_STEPS } from '../lib/prefs.svelte';
+  import { STREAM_MOVES_HINT, streamMovesThoughAsked } from '../lib/motion.svelte';
   import { DEFAULT_BUZZER_URL, testServer } from '../lib/remote.svelte';
   import { BUZZER_GUIDE, externalLink } from '../lib/sitelinks';
   import { toast } from '../lib/app.svelte';
@@ -179,6 +180,7 @@
       <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
       Reduce motion on stream
     </label>
+    {#if streamMovesThoughAsked()}<p class="hint" data-os-motion>{STREAM_MOVES_HINT}</p>{/if}
     <p class="hint">
       Viewers get no pop-ins, fly-ins, board fill-in or falling confetti: things just appear. The wheel and the dice still spin. The editor and the host’s
       controls follow your computer’s “reduce motion” setting.

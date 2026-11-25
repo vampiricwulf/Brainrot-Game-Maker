@@ -8,6 +8,7 @@
 import { takeFocus } from '../../lib/modal';
 import { app, toast } from '../../lib/app.svelte';
 import { prefs, savePrefs } from '../../lib/prefs.svelte';
+import { streamMovesThoughAsked } from '../../lib/motion.svelte';
 import { commit, history, redo as redoStep, step, undo as undoStep } from '../../lib/history.svelte';
 import { createFieldTracker, isTextField, undoKeyOf } from '../../lib/undokeys';
 import { isBoard, isRpg, MAX_PLAYERS, newId, type BoardRound } from '../../lib/model';
@@ -609,6 +610,7 @@ export function createPregame(host: PregameHost) {
       phones: phonesOn,
       rpg: game.rounds.some(isRpg),
       reduceMotion: prefs.reduceMotion,
+      osMotion: streamMovesThoughAsked(),
     }),
   );
   $effect(() => {

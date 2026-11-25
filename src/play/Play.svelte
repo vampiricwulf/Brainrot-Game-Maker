@@ -6,6 +6,7 @@
   import { app, hint, sceneFrom, toast, toastMs } from '../lib/app.svelte';
   import { clockNow } from '../lib/clocknow.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
+  import { STREAM_MOVES_HINT, streamMovesThoughAsked } from '../lib/motion.svelte';
   import { isTextField } from '../lib/undokeys';
   import { oneShot, restOfPress } from '../lib/oneshot';
   import {
@@ -5422,6 +5423,7 @@
                 <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
                 Reduce motion on stream (no pop-ins, fly-ins or confetti)
               </label>
+              {#if streamMovesThoughAsked()}<p class="muted small" data-os-motion>{STREAM_MOVES_HINT}</p>{/if}
             </div>
           </details>
         </section>

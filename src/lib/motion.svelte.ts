@@ -11,6 +11,7 @@ import {
   type ScaleParams,
   type TransitionConfig,
 } from 'svelte/transition';
+import { MediaQuery } from 'svelte/reactivity';
 import { prefs } from './prefs.svelte';
 
 const KEY = 'jb.prefs';
@@ -21,6 +22,19 @@ export function calmStream(): boolean {
 }
 
 const still: TransitionConfig = { duration: 0 };
+
+// (Not where there's no matchMedia: the unit tests.)
+const osQuery = typeof matchMedia !== 'undefined' ? new MediaQuery('(prefers-reduced-motion: reduce)') : null;
+/**
+ * The computer asks for less motion while the stream's isn't reduced: the stage viewers see (the host's too, in one
+ * window) still moves, so ⚙ Settings and ▶ Play's 📺 On stream say so beside Reduce motion on stream. Only a hint: the
+ * stream's motion stays the host's own choice. (Reactive: it follows either setting as it changes.)
+ */
+export function streamMovesThoughAsked(): boolean {
+  return !!osQuery?.current && !calmStream();
+}
+/** Its words, under the Reduce motion on stream box. */
+export const STREAM_MOVES_HINT = 'Your computer asks for less motion, but the stage (what viewers see) still moves until you tick this.';
 
 const osReduce = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 /** No motion here: the stream's is calmed, or this isn't what viewers see and the computer asks for less. (Svelte asks

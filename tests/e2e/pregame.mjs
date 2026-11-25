@@ -187,6 +187,30 @@ try {
     sizes.every((x) => x === sizes[0]),
     `📺 On stream's options are the size of the rules' (${sizes.join(' / ')})`,
   );
+  // The computer asks for less motion: Reduce motion on stream stays off (the stream's motion is the host's choice),
+  // but a line under it, and the fold's own line, say the stage still moves. Ticked, or the computer's setting gone,
+  // they don't.
+  const osHint = page.locator('[data-stream-fold] [data-os-motion]');
+  const reduceBox = page.getByLabel(/Reduce motion on stream/);
+  const foldLine = () => streamFold.locator('summary').innerText();
+  assert((await osHint.count()) === 0 && !(await foldLine()).includes('full motion'), 'no motion hint while the computer asks for nothing');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await osHint.waitFor();
+  assert(
+    !(await reduceBox.isChecked()) &&
+      !(await page.evaluate(() => document.documentElement.classList.contains('reduce-stream'))) &&
+      (await osHint.innerText()) === 'Your computer asks for less motion, but the stage (what viewers see) still moves until you tick this.' &&
+      (await foldLine()).endsWith('· full motion, though your computer asks for less'),
+    `the computer asks for less motion: the box stays off, the stream unchanged, and a line under it and the fold's say the stage still moves (${await foldLine()})`,
+  );
+  await reduceBox.check();
+  await osHint.waitFor({ state: 'detached' });
+  assert((await foldLine()).endsWith('· reduce motion'), `ticked, the line goes and the fold says reduce motion (${await foldLine()})`);
+  await reduceBox.uncheck();
+  await osHint.waitFor();
+  await page.emulateMedia({ reducedMotion: null });
+  await osHint.waitFor({ state: 'detached' });
+  assert(!(await foldLine()).includes('full motion'), 'and with the computer no longer asking, it goes too');
 
   // ---------- Rules: whole-second countdown ----------
   const countdown = rules.getByLabel(/Default clue countdown/);

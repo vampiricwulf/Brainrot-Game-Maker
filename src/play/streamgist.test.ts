@@ -16,6 +16,11 @@ describe('▶ Play’s 📺 On stream fold, closed', () => {
     expect(streamGist({ hideJoinCode: true, placeCaption: true }, { rpg: true })).toBe('“Starting soon” card · cover card · captions on');
   });
 
+  it('says the stage still moves while the computer asks for less motion, until Reduce motion is ticked', () => {
+    expect(streamGist({}, { osMotion: true })).toBe('“Starting soon” card · cover card · full motion, though your computer asks for less');
+    expect(streamGist({}, { osMotion: true, reduceMotion: true })).toBe('“Starting soon” card · cover card · reduce motion');
+  });
+
   it('long words typed for a card are cut short', () => {
     expect(streamGist({ soonText: 'We are starting very soon, grab a snack and a drink' })).toBe('“We are starting very so…” · cover card');
   });

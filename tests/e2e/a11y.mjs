@@ -840,7 +840,20 @@ try {
   // ---------- Reduce motion on stream ----------
   await more.click();
   await page.getByRole('menuitem', { name: '⚙ Settings' }).click();
+  // (The computer asking for less motion ticks nothing: a line under the box says the stage still moves.)
+  const osMotion = page.getByRole('dialog', { name: 'Settings' }).locator('[data-os-motion]');
+  assert((await osMotion.count()) === 0, 'Settings: no motion line while the computer asks for nothing');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await osMotion.waitFor();
+  assert(
+    !(await page.getByRole('dialog', { name: 'Settings' }).getByLabel('Reduce motion on stream').isChecked()) &&
+      !(await page.evaluate(() => document.documentElement.classList.contains('reduce-stream'))) &&
+      (await osMotion.innerText()).startsWith('Your computer asks for less motion, but the stage'),
+    `the computer asking for less motion leaves Reduce motion on stream off, a line under it saying so (${await osMotion.innerText()})`,
+  );
   await page.getByRole('dialog', { name: 'Settings' }).getByText('Reduce motion on stream').click();
+  await osMotion.waitFor({ state: 'detached' });
+  await page.emulateMedia({ reducedMotion: null });
   assert(await page.evaluate(() => document.documentElement.classList.contains('reduce-stream')), '“Reduce motion on stream” calms the stage');
   await page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Done' }).click();
   const motion = await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).reduceMotion);
