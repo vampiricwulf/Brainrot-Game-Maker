@@ -16,6 +16,7 @@ import {
   type Game,
   type Outcome,
   type Slide,
+  type SlideElement,
 } from './model';
 
 export interface SlideRef {
@@ -178,6 +179,18 @@ export function slideMediaIds(slide: Slide): string[] {
     else if (el.kind === 'video' || el.kind === 'audio') ids.push(el.media);
   }
   return ids.filter((id): id is string => !!id);
+}
+
+/**
+ * A file deleted from 🖼️ Media that something still uses: its picture still shows in the editor (its bytes stay until
+ * the delete can't be undone), but it isn't saved with the game. The same test as the checklist's "deleted file" line.
+ */
+export const fileDeleted = (game: Pick<Game, 'media'>, id: string | undefined): boolean => !!id && !game.media.some((m) => m.id === id);
+
+/** A picture's (or its edited copy's), video's or sound's file was deleted from 🖼️ Media: see fileDeleted. */
+export function itemFileDeleted(game: Pick<Game, 'media'>, el: SlideElement): boolean {
+  if (el.kind === 'image') return fileDeleted(game, el.media) || fileDeleted(game, el.editedMedia);
+  return (el.kind === 'video' || el.kind === 'audio') && fileDeleted(game, el.media);
 }
 
 /** How many times each media id is used anywhere in the game (a 🗜 copy for phones: as often as its file). */

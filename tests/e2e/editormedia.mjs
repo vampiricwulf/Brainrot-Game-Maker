@@ -486,6 +486,105 @@ try {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
+  // ---------- A picture whose file is deleted in 🖼️ Media is marked ⚠ on its slide (it isn't saved with the game) ----------
+  {
+    const openClue = async () => {
+      await roundTabsIn(page).first().click();
+      await page.locator('.grid .tile').first().click();
+      await page.getByRole('dialog', { name: 'Edit clue' }).waitFor();
+    };
+    await openClue();
+    await page.getByRole('button', { name: '🖼️ Image' }).click();
+    await drop(page.getByRole('dialog', { name: 'Choose image' }), [['gone.png', 'image/png']]);
+    await layers.filter({ hasText: 'gone.png' }).waitFor();
+    // (And as the slide's background picture.)
+    await page.getByRole('button', { name: 'Background ▾' }).click();
+    await page.getByRole('button', { name: '🖼️ Add a picture…' }).click();
+    await page.locator('button.item[title="gone.png"]').click();
+    await page.getByRole('button', { name: 'Done' }).click();
+    await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).click();
+    await page
+      .locator('.card', { hasText: 'gone.png' })
+      .getByRole('button', { name: /^Delete / })
+      .click();
+    await page.locator('.card', { hasText: 'gone.png' }).waitFor({ state: 'detached' });
+    await openClue();
+    const goneRow = layers.filter({ has: page.locator('.gone') });
+    const frame = canvas.locator('.gone[data-gone]');
+    const strip = canvas.locator('[data-gone="background"]');
+    const note = inspectorIn(page).getByText('⚠ Its file was deleted: not saved with the game (Undo in 🕘 History, or 🔁 Use another picture…)');
+    assert(
+      (await goneRow.count()) === 1 && (await goneRow.locator('.gone').getAttribute('title')) === 'Its file was deleted (Undo in 🕘 History)',
+      'a picture whose file was deleted in 🖼️ Media has a ⚠ on its layer row',
+    );
+    assert(
+      (await frame.count()) === 1 &&
+        (await frame.innerText()).includes('⚠ Deleted file: not saved with the game. Undo in 🕘 History, or 🔁 Use another picture…'),
+      `and a dashed ⚠ frame over it on the slide, saying what to do (${await frame.allInnerTexts()})`,
+    );
+    // (A 4×4 picture's box is tiny: the label keeps its own size, readable, inside the slide.)
+    const said = await frame.locator('.say').boundingBox();
+    const slideBox = await canvas.locator('.stage').boundingBox();
+    assert(
+      !!said &&
+        !!slideBox &&
+        said.width > 150 &&
+        said.height > 20 &&
+        said.x >= slideBox.x &&
+        said.x + said.width <= slideBox.x + slideBox.width + 1 &&
+        said.y + said.height <= slideBox.y + slideBox.height + 1,
+      `its label is readable whatever the picture's size, inside the slide (${JSON.stringify(said)} in ${JSON.stringify(slideBox)})`,
+    );
+    assert(
+      (await strip.innerText()).includes('background picture was deleted: not saved with the game') &&
+        (await page
+          .getByRole('button', { name: 'Background ▾' })
+          .click()
+          .then(() => page.locator('.bg-gone').innerText())) === '⚠ Its file was deleted',
+      'a background picture’s file deleted: a strip along the slide’s foot says so, and Background ▾ beside its thumbnail',
+    );
+    await page.keyboard.press('Escape');
+    await goneRow.locator('.name').click();
+    assert(
+      (await note.count()) === 1 && (await page.getByRole('button', { name: '✎ Edit image…' }).count()) === 0,
+      'selected, its panel says its file was deleted, with no ✎ Edit image… (there is nothing to edit)',
+    );
+    // (Shift+F10: the item's menu, with no ✎ Edit image… either.)
+    await goneRow.locator('.name').focus();
+    await page.keyboard.press('Shift+F10');
+    assert((await menu.getByRole('menuitem', { name: /Edit image/ }).count()) === 0, 'nor in its menu');
+    await page.keyboard.press('Escape');
+    // A double-click on it (as Enter) goes to 🔁 Use another picture… instead of ✎ Edit image….
+    await frame.dblclick({ force: true });
+    await page.waitForFunction(() => document.activeElement?.matches('.insp [data-replace]'));
+    assert((await page.getByRole('dialog', { name: 'Edit image' }).count()) === 0, 'a double-click on it goes to 🔁 Use another picture… (no image editor)');
+    await shot('em-deleted-file');
+    // ↶ Undo of the delete brings the file back: the marks go.
+    await page.getByRole('button', { name: 'Done' }).click();
+    await page.keyboard.press('Control+z');
+    await openClue();
+    await layers.filter({ hasText: 'gone.png' }).waitFor();
+    await layers.filter({ hasText: 'gone.png' }).locator('.name').click();
+    assert(
+      (await goneRow.count()) === 0 &&
+        (await frame.count()) === 0 &&
+        (await strip.count()) === 0 &&
+        (await note.count()) === 0 &&
+        (await page.getByRole('button', { name: '✎ Edit image…' }).count()) === 1,
+      'Undo of the delete takes every ⚠ away (and ✎ Edit image… is back)',
+    );
+    // (The background's and the picture's own steps undone too: the slide is as it was. An undo goes to where its step
+    // was: the clue opens again.)
+    const clue = page.getByRole('dialog', { name: 'Edit clue' });
+    for (let i = 0; i < 2; i++) {
+      await clue.getByRole('button', { name: 'Done' }).click();
+      await page.keyboard.press('Control+z');
+      await clue.waitFor();
+    }
+    assert((await layers.filter({ hasText: 'gone.png' }).count()) === 0, '(both undone)');
+    await clue.getByRole('button', { name: 'Done' }).click();
+  }
+
   // ---------- Board game: a picture dropped on a space is its icon, on the empty board its background ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Board game/ }).click();

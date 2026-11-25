@@ -443,7 +443,15 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   theme's picture row, a slide item, out of any fold it's in). A right-click on a card (Shift+F10 in it, a long press,
   its ⋯) selects it and gives its menu in the editors' one order: ✎ Edit video… / sound… · Replace everywhere… · the fix · ✎ Rename
   (F2) · 🔍 Show where it's used ▸ · 🌐 Check it still loads (links) · 🗑 Delete file (Delete); with several selected, 🗜
-  Phone copies for N… and 🗑 Delete N files.
+  Phone copies for N… and 🗑 Delete N files. A file in use is deleted with no question (↶ Undo brings it back). Until
+  then the slide editor (and 🖼️ Board images) marks each picture, video or sound still using it (`itemFileDeleted` in
+  usage.ts, drawn by GoneLayer): a dashed ⚠ frame over it (the picture dimmed under it) with a badge of its own size
+  at its corner saying "Deleted file: not saved with the game. Undo in 🕘
+  History, or 🔁 Use another picture…", a ⚠ on its Layers row and in its menu's list, and at the top of its panel "⚠ Its
+  file was deleted: not saved with the game (Undo in 🕘 History, or 🔁 Use another picture…)", as 🔊 Sounds says it on
+  a cue's row; ✎ Edit image… isn't offered (on a slide, double-click or Enter goes to 🔁 Use another picture…). A background
+  picture's gets a strip along the slide's foot and a note by its thumbnail in Background ▾. Editor only: the stage
+  and the slides in play are as they were (and the checklist's "deleted file still used" line stays).
 - Per-element playback settings (a video's, a sound's, an online video's or sound's, a YouTube player's): the part
   it plays, **Plays from [0:00.0] to [the end]** (seconds or clock time: 83, 1:23, 1:23.5; empty is the start or the
   end; ↑ / ↓ step 0.1 s, Shift 1 s; kept in seconds as `startAt` / `endAt`, a "to" not after "from" left out with a note),

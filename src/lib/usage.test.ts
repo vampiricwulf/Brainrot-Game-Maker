@@ -3,7 +3,7 @@ import { uploadedFamily } from './fonts';
 import { defaultEdits } from './imageedit';
 import { isBoard, isFinal, newImageEl, newVideoEl, textSlide, type Action, type MediaRef, type Slide } from './model';
 import { jeopardyGame } from './testgame';
-import { allCardSlides, allSlides, mediaPath, mediaPaths, mediaUsage } from './usage';
+import { allCardSlides, allSlides, fileDeleted, itemFileDeleted, mediaPath, mediaPaths, mediaUsage } from './usage';
 import { cardUses } from './phonecopies';
 import { newBoardGameRound, newBoardSpace } from './boardgame';
 import { newDeal } from './deals';
@@ -196,5 +196,25 @@ describe('where a file is used (🖼️ Media’s “used 3× ▾”)', () => {
     game.media.push(font('face0001'));
     game.theme.clueFont = css('face0001');
     expect(mediaPaths(game, 'face0001').map((p) => p.join('/'))).toEqual(['theme/clueFont']);
+  });
+});
+
+describe('fileDeleted', () => {
+  const ref = (id: string): MediaRef => ({ id, name: `${id}.png`, mime: 'image/png', size: 1, kind: 'image' });
+  it('is a file something uses that 🖼️ Media no longer has', () => {
+    const game = { media: [ref('kept')] };
+    expect(fileDeleted(game, 'kept')).toBe(false);
+    expect(fileDeleted(game, 'gone')).toBe(true);
+    expect(fileDeleted(game, undefined)).toBe(false);
+  });
+  it('marks a picture whose file or edited copy is gone, and a video or sound whose file is', () => {
+    const game = { media: [ref('a'), ref('b')] };
+    const img = newImageEl('a', 10, 10);
+    expect(itemFileDeleted(game, img)).toBe(false);
+    expect(itemFileDeleted(game, { ...img, editedMedia: 'gone' })).toBe(true);
+    expect(itemFileDeleted(game, newImageEl('gone', 10, 10))).toBe(true);
+    expect(itemFileDeleted(game, newVideoEl('b'))).toBe(false);
+    expect(itemFileDeleted(game, newVideoEl('gone'))).toBe(true);
+    expect(itemFileDeleted(game, textSlide('Hi').elements[0])).toBe(false);
   });
 });

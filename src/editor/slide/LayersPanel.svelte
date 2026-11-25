@@ -9,6 +9,7 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
   import { itemsNamed, layerIcon, layerLabel } from '../../lib/layerlabel';
+  import { itemFileDeleted } from '../../lib/usage';
   import { offStage } from '../../lib/layers';
   import { announce } from '../../lib/announce';
   import { isMenuKey } from '../../lib/menustate.svelte';
@@ -251,6 +252,10 @@
           title="Click to select (Shift/Ctrl adds). Double-click or F2 to rename. Drag to restack; Alt+↑/↓ moves it up or down. Right-click or Shift+F10: its menu."
         >
           {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
+          <!-- Its file was deleted in 🖼️ Media (it still shows here, but isn't saved with the game), as 🔊 Sounds marks it. -->
+          {#if itemFileDeleted(game, el)}<span class="gone" title="Its file was deleted (Undo in 🕘 History)"
+              >⚠<span class="sr-only">{' '}Its file was deleted:</span></span
+            >{/if}
           <span class="txt">{layerLabel(el, game, card)}</span>
           <!-- (Nowhere on the slide: this list is the only way to find it.) -->
           {#if offStage(el)}<span class="off-slide" title="Off the {say.page}: players won't see it. Move it back with the X and Y fields."
@@ -381,6 +386,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .gone {
+    flex: none;
+    color: var(--warn);
   }
   .off-slide {
     flex: none;

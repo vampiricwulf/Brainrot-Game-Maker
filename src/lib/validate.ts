@@ -465,7 +465,8 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   // A file's uses other than as a 🔊 Sounds cue (on slides, tiles, wheels…): those lines say where; the cue's says 🔊 Sounds.
   const cueUses = (id: string) => Object.values(game.audio ?? {}).filter((x) => x === id).length;
   const otherUses = (id: string) => (usage.get(id) ?? 0) - cueUses(id);
-  // Deleted from 🖼️ Media but still on slides: they show nothing (and aren't saved with the game).
+  // Deleted from 🖼️ Media but still on slides: not saved with the game, so they show nothing once it's saved and opened
+  // again (the editor still shows them, marked ⚠, until the delete is undone or they're replaced: see fileDeleted).
   const deleted = [...usage.keys()].filter((id) => !known.has(id) && otherUses(id) > 0);
   if (deleted.length) {
     // Where the first is still used ("Introduction › Slide 1 › Image"): named, and the line goes there.

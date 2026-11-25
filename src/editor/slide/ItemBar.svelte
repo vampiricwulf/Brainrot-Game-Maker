@@ -8,6 +8,7 @@
 <script lang="ts">
   import type { Game, SlideElement } from '../../lib/model';
   import { editWords, layerIcon, layerLabel } from '../../lib/layerlabel';
+  import { itemFileDeleted } from '../../lib/usage';
   import { embedOpenUrl } from '../../lib/links';
   import { openMediaPopup } from '../../lib/mediactl.svelte';
   import { editOffer } from '../../lib/shrink/apply';
@@ -59,6 +60,9 @@
   const edit = $derived.by(() => {
     const words = one && editFor(one, offer);
     if (!one || !words) return null;
+    // (A picture whose file was deleted in 🖼️ Media: nothing to edit, it's put back with Undo or replaced. The bar
+    // keeps its height: see longest.)
+    if (one.kind === 'image' && itemFileDeleted(game, one)) return null;
     if (one.kind === 'embed') return { words, run: () => openMediaPopup(embedOpenUrl(one.embedKind, one.url, one.startAt)) };
     return { words, run: () => onedit(one) };
   });

@@ -19,6 +19,7 @@
   import { jobFor } from '../../lib/shrink/jobs.svelte';
   import { shortWhy } from '../../lib/shrink/words';
   import { slideNouns } from './nouns';
+  import { itemFileDeleted } from '../../lib/usage';
 
   let {
     el,
@@ -186,6 +187,13 @@
 </script>
 
 <!-- A file that plays from its link: say so, and offer to save a copy. -->
+<!-- Its file was deleted in 🖼️ Media: it still shows here, but isn't saved with the game (🔊 Sounds says it the same way). -->
+{#snippet goneNote(another: string)}
+  {#if itemFileDeleted(game, el)}
+    <p class="missing">⚠ Its file was deleted: not saved with the game (Undo in 🕘 History, or 🔁 Use another {another}…)</p>
+  {/if}
+{/snippet}
+
 {#snippet liveNote()}
   {#if liveRef}
     <p class="hint">
@@ -394,6 +402,7 @@
   {:else if el.kind === 'image'}
     <section>
       <h4>Image</h4>
+      {@render goneNote('picture')}
       <label class="field">
         Fit
         <select bind:value={el.fit}>
@@ -524,6 +533,7 @@
           <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
         {/if}
       {:else}
+        {@render goneNote(el.kind === 'video' ? 'video' : 'sound')}
         {#if el.kind === 'video'}
           <label class="field">
             Fit
@@ -711,6 +721,11 @@
     margin: 0;
     font-size: 12px;
     color: var(--muted);
+  }
+  .missing {
+    margin: 0;
+    font-size: 12px;
+    color: var(--warn);
   }
   h5 {
     margin: 4px 0 0;

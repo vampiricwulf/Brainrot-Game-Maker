@@ -83,6 +83,8 @@
   import ColorBox from '../../lib/ColorBox.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import EditLayer from './EditLayer.svelte';
+  import GoneLayer from './GoneLayer.svelte';
+  import { fileDeleted, itemFileDeleted } from '../../lib/usage';
   import DrawLayer from './DrawLayer.svelte';
   import DrawPad from './DrawPad.svelte';
   import Inspector from './Inspector.svelte';
@@ -415,11 +417,13 @@
    */
   function openEditor(el: SlideElement): void {
     if (el.kind === 'text') return focusText(false);
-    if (el.kind === 'image') return void (editingImage = el.id);
+    // (A picture whose file was deleted in 🖼️ Media has nothing to edit: its panel says so, with 🔁 Use another picture….)
+    if (el.kind === 'image' && !itemFileDeleted(game, el)) return void (editingImage = el.id);
     if ((el.kind === 'video' || el.kind === 'audio') && editOffer(game.media.find((m) => m.id === el.media)) === 'on')
       return openMediaDialog({ mode: 'edit', id: el.media, item: el });
     selected = [el.id];
-    void tick().then(() => root?.querySelector<HTMLElement>('.insp [data-opens]')?.focus());
+    const box = el.kind === 'image' ? '[data-replace]' : '[data-opens]';
+    void tick().then(() => root?.querySelector<HTMLElement>(`.insp ${box}`)?.focus());
   }
 
   /** The Layers row being renamed (F2 on an item that isn't a text box, as in the Layers list). */
@@ -1237,6 +1241,9 @@
         <div class="bg-row">
           {#if slide.background.image}
             <img class="bg-thumb" src={mediaUrls[slide.background.image]} alt="The {nouns.page}’s background" draggable="false" />
+            {#if fileDeleted(game, slide.background.image)}<span class="bg-gone" title="Not saved with the game (Undo in 🕘 History, or Change…)"
+                >⚠ Its file was deleted</span
+              >{/if}
             <button
               class="small"
               onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))}
@@ -1457,6 +1464,8 @@
           {:else}
             <SlideView slide={editView} mode="edit" {placeholder} {fallbackBg} card={onCard} onfit={(id, r) => (fits[id] = r)} />
             <!-- (Under the edit layer: the selection's frames and handles go over the badge.) -->
+            <!-- (Files deleted in 🖼️ Media that this slide still uses: marked ⚠ here, in the editor only.) -->
+            <GoneLayer slide={editView} {game} />
             {#if badge && !drawing}<StageRibbon text={badge} dim={selected.length > 0} />{/if}
             {#if overlay}<div class="guide" inert aria-hidden="true">{@render overlay()}</div>{/if}
             <EditLayer
@@ -1775,6 +1784,10 @@
     display: flex;
     gap: 6px;
     align-items: center;
+  }
+  .bg-gone {
+    font-size: 12px;
+    color: var(--warn);
   }
   .bg-thumb {
     width: 48px;

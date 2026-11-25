@@ -36,6 +36,8 @@
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
   import EditLayer from './slide/EditLayer.svelte';
+  import GoneLayer from './slide/GoneLayer.svelte';
+  import { itemFileDeleted } from '../lib/usage';
   import Inspector from './slide/Inspector.svelte';
   import LayersPanel from './slide/LayersPanel.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -426,7 +428,8 @@
       !e.altKey &&
       !e.shiftKey &&
       selected.length === 1 &&
-      decor.find((d) => d.id === selected[0])?.kind === 'image'
+      decor.find((d) => d.id === selected[0])?.kind === 'image' &&
+      !itemFileDeleted(game, decor.find((d) => d.id === selected[0]) as ImageEl)
     ) {
       // Enter on a picture: ✎ Edit image, as a double-click.
       editingImage = selected[0];
@@ -541,6 +544,8 @@
       >
         <Stage hostOnly>
           <AudienceView game={preview} {session} {live} role="mirror" demo />
+          <!-- (Pictures whose file was deleted in 🖼️ Media: marked ⚠, as on a slide.) -->
+          <GoneLayer slide={{ background: {}, elements: decor.filter((d) => !hidden.includes(d.id)) }} {game} />
           <EditLayer
             slide={pseudo}
             bind:selected
@@ -555,7 +560,7 @@
               endDrag?.();
               endDrag = null;
             }}
-            ondblclick={(el) => el.kind === 'image' && (editingImage = el.id)}
+            ondblclick={(el) => el.kind === 'image' && !itemFileDeleted(game, el) && (editingImage = el.id)}
           />
         </Stage>
         {#if notice && notice.at === history.top && !history.pending}

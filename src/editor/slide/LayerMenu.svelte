@@ -9,6 +9,7 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
   import { LAYER_ICON, editWords, layerLabel, type Align, type LayerAction } from '../../lib/layerlabel';
+  import { itemFileDeleted } from '../../lib/usage';
   import { dropdown, menuKeys } from '../../lib/menustate.svelte';
   import { editOffer } from '../../lib/shrink/apply';
   import { aThing, countOf, Page, slideNouns } from './nouns';
@@ -80,7 +81,8 @@
   const editing = $derived.by((): { words: string; action: LayerAction } | null => {
     const words = one ? editWords(one, offer) : null;
     if (!one || !words) return null;
-    if (one.kind === 'image') return { words, action: 'edit-image' };
+    // (A picture whose file was deleted in 🖼️ Media: nothing to edit, it's put back with Undo or replaced.)
+    if (one.kind === 'image') return itemFileDeleted(game, one) ? null : { words, action: 'edit-image' };
     if (offer) return { words, action: 'edit-media' };
     return slideExtras ? { words, action: 'edit' } : null;
   });
@@ -148,6 +150,9 @@
         onpointerleave={() => hovered === el.id && (hovered = null)}
       >
         {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
+        {#if itemFileDeleted(game, el)}<span class="gone" title="Its file was deleted (Undo in 🕘 History)"
+            >⚠<span class="sr-only">{' '}Its file was deleted:</span></span
+          >{/if}
         <span class="txt">{layerLabel(el, game)}</span>
         {#if el.locked}<span class="muted">🔒</span>{/if}
       </button>
@@ -337,6 +342,10 @@
     width: 28px;
     text-align: center;
     flex: none;
+  }
+  .gone {
+    flex: none;
+    color: var(--warn);
   }
   .txt {
     overflow: hidden;
