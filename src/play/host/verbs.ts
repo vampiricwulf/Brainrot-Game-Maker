@@ -166,7 +166,7 @@ export const VERBS = {
 
   // ---------- A board game's turn (its box's: Next turn ▶ is the blue button's, FLOW) ----------
   boardRoll: { label: '🎲 Roll', key: 'D' },
-  boardSpin: { label: '🎡 Spin', key: 'D' },
+  boardSpin: { label: '🎡 Spin to move', key: 'D' },
   move: (steps: number): Verb => ({ label: `${steps < 0 ? '◀ Back' : '▶ Move'} ${Math.abs(steps)}`, key: '⏎' }),
   /** One space a turn: the one way on. */
   stepTo: (space: string): Verb => ({ label: `→ ${space}`, key: '⏎' }),

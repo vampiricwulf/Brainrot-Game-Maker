@@ -144,7 +144,7 @@
     const o = toolOverlay(app.live);
     return !!round && !!o && isMover(round, o) && Date.now() < overlayDoneAt(o);
   });
-  const rollWords = $derived(round?.mover.kind === 'wheel' ? '🎡 Spin to move' : `🎲 Roll ${round ? moverDiceName(game, round) : ''}`);
+  const rollWords = $derived(round?.mover.kind === 'wheel' ? VERBS.boardSpin.label : `${VERBS.boardRoll.label} ${round ? moverDiceName(game, round) : ''}`);
   /**
    * The turn box's one slot: 🎲 Roll (D), then ▶ Move (Enter) once there's a count, in the same place; greyed while the
    * dice roll and at a fork (the way first). A one-space board has its ways instead.
@@ -183,7 +183,7 @@
         ? `${turnName}’s turn: → the way on (${touchScreen.on ? 'or tap' : 'Enter, or click'} the space on the stage).`
         : `${turnName}’s turn: no way on from here.`;
     return round.mover.kind === 'wheel'
-      ? `${turnName}’s turn: 🎡 Spin, then ▶ Move (or ${clickWord()} the wheel).`
+      ? `${turnName}’s turn: ${VERBS.boardSpin.label}, then ▶ Move (or ${clickWord()} the wheel).`
       : `${turnName}’s turn: 🎲 Roll, then ▶ Move (or ${clickWord()} the dice).`;
   });
   // The stage's menu: the turn box's own actions (its slot, or the one way on), then ✎ Edit board and 🔀 Shuffle. (Next

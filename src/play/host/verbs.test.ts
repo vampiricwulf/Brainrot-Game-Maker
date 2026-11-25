@@ -39,6 +39,7 @@ describe('the host screen’s words for each step', () => {
       keepPlaying: 'Keep playing',
       endGame: 'End game ▶',
       boardRoll: '🎲 Roll [D]',
+      boardSpin: '🎡 Spin to move [D]',
       nextTurn: 'Next turn ▶ [N]',
     });
     expect(VERBS.revealCategory(2, 5).label).toBe('Reveal category 2 of 5 ▶');

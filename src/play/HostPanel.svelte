@@ -447,7 +447,7 @@
   const goOnSay = $derived(touchScreen.on ? 'tap the screen to go on' : 'click the screen (or N) to go on');
   /**
    * A board game's how-to on the status line: its keys, or on a touch screen (no keys) its buttons: the turn box's
-   * 🎲 Roll / 🎡 Spin then ▶ Move, and ◀ Previous turn beside Next turn ▶.
+   * 🎲 Roll / 🎡 Spin to move, then ▶ Move, and ◀ Previous turn beside Next turn ▶.
    */
   const boardHow = $derived.by((): string => {
     const step = round?.mode === 'boardgame' && round.mover.kind === 'step';

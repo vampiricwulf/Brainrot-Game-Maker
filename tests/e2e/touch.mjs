@@ -209,8 +209,8 @@ try {
   }
   const tablet = { viewport: { width: 1280, height: 720 }, hasTouch: true, isMobile: true };
   const wheel = await boardWords(tablet, 'wheel');
-  assertEq(wheel.how, `🎡 Spin, then ▶ Move · ◀ Previous turn to go back${tail}`, 'a tablet, a movement wheel: 🎡 Spin, then ▶ Move');
-  assertEq(wheel.first, 'Ann’s turn: 🎡 Spin, then ▶ Move (or tap the wheel).', 'and its turn box says tap the wheel');
+  assertEq(wheel.how, `🎡 Spin to move, then ▶ Move · ◀ Previous turn to go back${tail}`, 'a tablet, a movement wheel: 🎡 Spin to move, then ▶ Move');
+  assertEq(wheel.first, 'Ann’s turn: 🎡 Spin to move, then ▶ Move (or tap the wheel).', 'and its turn box says tap the wheel');
   const step = await boardWords(tablet, 'step');
   assertEq(step.how, `Pick the way (→ buttons, or tap the space) · ◀ Previous turn to go back${tail}`, 'a tablet, a space at a time: no Enter');
   assertEq(step.first, 'Ann’s turn: → the way on (or tap the space on the stage).', 'and its turn box says tap the space');
@@ -230,7 +230,7 @@ try {
     assertEq(w.played, 'Ann’s turn is played: Next turn ▶ (N).', `${what}: once moved, Next turn ▶ (N)`);
   }
   const mouse = { viewport: { width: 1280, height: 720 } };
-  assertEq((await boardWords(mouse, 'wheel')).first, 'Ann’s turn: 🎡 Spin, then ▶ Move (or click the wheel).', 'with a mouse, a wheel: click');
+  assertEq((await boardWords(mouse, 'wheel')).first, 'Ann’s turn: 🎡 Spin to move, then ▶ Move (or click the wheel).', 'with a mouse, a wheel: click');
   const mouseStep = await boardWords(mouse, 'step');
   assertEq(
     mouseStep.how,

@@ -1716,7 +1716,7 @@ function turnItems(c: GoCtx): LeftItem[] {
       ];
     }
     const rollQ = (why?: string): Quick => ({
-      label: t.wheel ? '🎡 Spin to move' : `🎲 Roll ${moverDiceName(c.game, round) ?? ''}`.trim(),
+      label: t.wheel ? VERBS.boardSpin.label : `${VERBS.boardRoll.label} ${moverDiceName(c.game, round) ?? ''}`.trim(),
       key: 'D',
       enter: true,
       then: 'keep',
