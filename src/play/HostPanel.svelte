@@ -85,6 +85,7 @@
   import { scoresWindow } from '../lib/sync.svelte';
   import { tileToolUp, timerRemaining, toolOverlay } from '../lib/live';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
+  import { MediaQuery } from 'svelte/reactivity';
 
   let {
     game,
@@ -635,11 +636,30 @@
    * Not while a tile's own 🎡 / 🎲 is up. A window with room for all folds nothing.
    */
   const mediaFold = $derived(mayFoldForMedia && mediaRows >= 2 && mediaCrowded);
-  /** ⋯ Tools pressed: the row is out again, for these reveals (or this slide's clips). */
+  /** A small phone held upright (568px tall or less: an iPhone SE's screen). */
+  const smallPhone = new MediaQuery('(orientation: portrait) and (max-width: 600px) and (max-height: 568px)');
+  /**
+   * One window on a small phone held upright: the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools at every
+   * moment, so the moment's own controls (a slide's ◀ Slide, a roll's box, Skip intro, a board game's 🎲 Roll) have its
+   * room under the stage. What's on in it keeps it out, as in the Final's reveals.
+   */
+  const phoneFold = $derived(!dual && !side && smallPhone.current);
+  /** ⋯ Tools pressed: the row is out again, for these reveals (or this slide's clips, or this moment on a small phone). */
   let toolsOut = $state(false);
   $effect(() => {
     // (Not while the reveals measure their room: ⋯ Tools pressed stays pressed.)
-    if (!revealsHere && !mediaFold) toolsOut = false;
+    if (!revealsHere && !mediaFold && !phoneFold) toolsOut = false;
+  });
+  /** The tool on the stage (a roll, a spin…), if one is up: its box opens in the action part. */
+  const overlayKind = $derived(app.live.overlay?.kind ?? null);
+  // On a small phone, the row folds again when the moment changes (a new round, a tile opened or closed, a roll's or a
+  // spin's box opened from it): it was out for what the host did then, and the box needs its room.
+  $effect(() => {
+    void session.phase;
+    void session.currentRound;
+    void session.currentClue;
+    void overlayKind;
+    if (untrack(() => phoneFold)) toolsOut = false;
   });
   /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
   const slidePos = $derived(setup ? null : slidePosition(session, game));
@@ -1152,7 +1172,7 @@
   class:held
   class:keepchips={held && (session.phase === 'end' || session.phase === 'tiebreaker')}
   class:quiettools={quietTools}
-  class:foldtools={revealFold && !toolsOut && !ask}
+  class:foldtools={(revealFold || phoneFold) && !toolsOut && !ask}
   class:mediafold={mediaFold && !toolsOut && !ask}
   onpointerdowncapture={(e) => goon?.check && e.target instanceof Element && !e.target.closest('[data-goon], .cover-toggle') && goon.away()}
 >
@@ -1183,16 +1203,16 @@
         {@const intro = session.intro}
         {@const cats = round?.mode === 'board' ? round.categories.length : 0}
         {#if intro.stage === 'categories' && cats}
-          <span class="muted"
+          {@const how =
+            game.settings.roundIntro.categoryReveal === 'auto'
+              ? 'they come up on their own'
+              : `${clickWord()} the screen${touchScreen.on ? '' : ' (or N)'} for the next`}
+          <span class="muted" title="Revealing the categories: {Math.min(intro.revealed, cats)} of {cats} · {how}"
             >Revealing the categories: {Math.min(intro.revealed, cats)} of {cats}
-            <span class="hint"
-              >· {game.settings.roundIntro.categoryReveal === 'auto'
-                ? 'they come up on their own'
-                : `${clickWord()} the screen${touchScreen.on ? '' : ' (or N)'} for the next`}</span
-            ></span
+            <span class="hint">· {how}</span></span
           >
         {:else}
-          <span class="muted">Round intro <span class="hint">· {goOnSay}</span></span>
+          <span class="muted" title="Round intro · {goOnSay}">Round intro <span class="hint">· {goOnSay}</span></span>
         {/if}
       {:else if done}
         <span class="done">Round complete!</span>
@@ -1265,7 +1285,7 @@
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
       {#if session.intro?.stage === 'title'}
         <!-- Its title card is up: viewers don't see the category yet. -->
-        <span class="muted">Title card <span class="hint">· {goOnSay}</span></span>
+        <span class="muted" title="Title card · {goOnSay}">Title card <span class="hint">· {goOnSay}</span></span>
       {:else}
         <!-- (Cut short on a narrow window, with the Final's own 🤫 cards' ⚠ chip: its tooltip has it whole.) -->
         <span class="muted say" title={finalStepText[session.finalStep ?? 'wagers']}>{finalStepText[session.finalStep ?? 'wagers']}</span>
@@ -1277,7 +1297,7 @@
         >{/if}
     {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
       <b>{round?.name}</b>
-      <span class="muted">Title card <span class="hint">· {goOnSay}</span></span>
+      <span class="muted" title="Title card · {goOnSay}">Title card <span class="hint">· {goOnSay}</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
       <span class="muted hint"
@@ -1287,11 +1307,11 @@
       >
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
-      <span class="muted hint">{boardHow}</span>
+      <span class="muted hint" title={boardHow}>{boardHow}</span>
     {:else if session.phase === 'slides'}
       <b>{round?.name}</b>
       {#if slidePos}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
-      <span class="muted hint">{slidesHow}</span>
+      <span class="muted hint" title={slidesHow}>{slidesHow}</span>
       {#if round?.mode === 'slides' && round.hostNotes?.trim() && !dual}<span
           class="notes"
           title="Host notes (viewers can see them in this window): {round.hostNotes}">📝 {round.hostNotes}</span
@@ -1327,16 +1347,16 @@
     {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}
     <span class="spacer"></span>
     {@render phoneChip?.()}
-    {#if revealFold || mediaFold}
-      {@const rows = revealFold ? 'reveal' : 'media'}
+    {#if revealFold || mediaFold || phoneFold}
+      {@const rows = revealFold ? 'the reveal rows' : mediaFold ? 'the media rows' : "this moment's controls"}
       <button
         class="small ghost toolsfold"
         aria-expanded={toolsOut}
         aria-controls="host-tools"
         onclick={() => (toolsOut = !toolsOut)}
         title={toolsOut
-          ? `Fold the tools row away: the ${rows} rows get its room`
-          : `The tools row (🎲 Dice, 🎡 Wheel, 📊 Scoreboard…), folded away so the ${rows} rows have its room`}>⋯ Tools</button
+          ? `Fold the tools row away: ${rows} get its room`
+          : `The tools row (🎲 Dice, 🎡 Wheel, 📊 Scoreboard…${phoneFold ? ', ◀ / ▶ rounds' : ''}), folded away so ${rows} have its room`}>⋯ Tools</button
       >
     {/if}
     {#if clockFits}
@@ -2129,6 +2149,29 @@
   .panel:not(.dual) {
     flex: none;
     height: min(clamp(280px, 44vh, 440px), 62vh);
+  }
+  /* A phone held upright, one window: the stage is as wide as the screen (16:9, the stage area exactly its height: see
+     Play's .stage-area), and the panel takes all the rest, the black that was above and under the stage. Still one
+     height the whole game (the window's, less the stage's), never less than it was. Nobody streams a phone's screen,
+     and the stage keeps its size and place. */
+  @media (orientation: portrait) and (max-width: 600px) {
+    .panel:not(.dual):not(.side) {
+      flex: 1 1 0;
+      height: auto;
+      min-height: min(clamp(280px, 44vh, 440px), 62vh);
+    }
+  }
+  /* A small phone held upright (568px tall or less), one window: the status line's how-to keeps to one line, cut short
+     (…), its whole text in its tooltip; it takes the line's room left, so it never pushes the line onto two. (The tools
+     row folds behind ⋯ Tools there too: see phoneFold.) */
+  @media (orientation: portrait) and (max-width: 600px) and (max-height: 568px) {
+    .panel:not(.dual):not(.side) > .status > :is(.hint, .muted:has(> .hint)) {
+      flex: 1 1 0;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   }
   .panel:not(.dual) > .act {
     margin-bottom: auto;

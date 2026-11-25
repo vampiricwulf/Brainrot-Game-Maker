@@ -674,6 +674,15 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     score before the clue's marks (the ★ of who picks next takes none), so the chips don't reflow. What scrolls in
     there comes into view as it comes (a board-game move's landing row, a tool's outcome), and at the end and in the
     tiebreaker clue the score chips stay whole while the part under them scrolls.
+  - **A phone held upright** (portrait, up to 600px wide), one window: the stage is the screen's width (16:9, the same
+    size as before) right at the top, and the host panel takes the rest of the screen, the black that was above and
+    under the stage, so each moment's box (a slide's ◀ Slide, Skip intro, a clue's row, a Daily Double's wager, a roll's
+    box, the RPG and board-game rounds with 🎲 Roll and ▶ Move, the Final, the end's tie) has room and takes a tap.
+    Still one height the whole game (the window's less the stage's, never less than the rule above). On a small phone
+    (568px tall or less) the tools row, with the round's ◀ / ▶, also folds behind **⋯ Tools** in the status line at
+    every moment (out while something in it is on, as in the Final's reveals; folded again when the moment changes or a
+    roll's or spin's box opens), and the status line's how-to keeps to one line, cut short, whole in its tooltip. A phone
+    on its side, a tablet, a computer and an audience window keep the rule above (`tests/e2e/phonepanel.mjs`).
 - **The host panel's rules** (everything below follows them):
   1. **Each action has one place: its situation's box**, beside the manual choices it's an alternative to (🤝 a partner
      clue, ⭐ a Daily Double, 🎡 / 🎲 a wheel or dice, the Final's wagers and reveals, a tie at the end, the buzzers' row,
