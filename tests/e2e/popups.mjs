@@ -272,11 +272,13 @@ const closePhones = async (page) => {
   await phones(page).waitFor({ state: 'detached' });
 };
 
-/** The open 🎲 Dice menu's Roll is as tall as the "e.g. 3d37" box beside it. */
+/** The open 🎲 Dice menu's Roll is as tall as the "e.g. 3d37" box beside it (named for a screen reader, not by its hint). */
 async function rollAsTall(page, what) {
   const menu = page.getByRole('dialog', { name: 'Dice' });
   const [field, roll] = await Promise.all(
-    [menu.getByPlaceholder('e.g. 3d37'), menu.getByRole('button', { name: 'Roll', exact: true })].map(async (l) => Math.round((await l.boundingBox()).height)),
+    [menu.getByRole('textbox', { name: 'Custom dice, like 3d37', exact: true }), menu.getByRole('button', { name: 'Roll', exact: true })].map(async (l) =>
+      Math.round((await l.boundingBox()).height),
+    ),
   );
   assert(field === roll, `${what}: the 🎲 Dice menu's Roll button is as tall as the field beside it (${roll} / ${field}px)`);
 }

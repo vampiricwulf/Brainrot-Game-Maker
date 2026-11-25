@@ -226,7 +226,13 @@
           {#each QUICK_DICE as q}<button class="small" onclick={() => dice(q.sides, q.count, q.label)}>{q.label}</button>{/each}
         </div>
         <div class="row custom">
-          <input placeholder="e.g. 3d37" bind:value={custom} onkeydown={(e) => e.key === 'Enter' && rollCustom()} />
+          <input
+            placeholder="e.g. 3d37"
+            aria-label="Custom dice, like 3d37"
+            title="How many dice and how many sides, like 2d6 or d20 (up to 20 dice of 2 to 1000 sides)"
+            bind:value={custom}
+            onkeydown={(e) => e.key === 'Enter' && rollCustom()}
+          />
           <button onclick={rollCustom}>Roll</button>
         </div>
         {#if game.dice.length}
