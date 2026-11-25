@@ -1361,6 +1361,56 @@ try {
     finalLocked.small === 'Your wager: 300 · Yours: “Neil Armstrong”' && finalLocked.keys === 'cover',
     `the Final’s answer up: over the card “Answers locked” with the wager and the answer, the keys on its Click to see (${JSON.stringify(finalLocked)})`,
   );
+  // A Daily Double's question up (the buzzers stay out): over Ann's “You're answering!” and over the card in Cat's
+  // buzzer's place, as on any clue; a long one fits on a small phone, a big one and one on its side, nothing sideways.
+  const ddQuestion = 'This meme dog, a Shiba Inu with a sideways look, became a coin, a hundred stickers and a word. '.repeat(3) + 'Name it.';
+  hostState({
+    answers: null,
+    timer: undefined,
+    status: { text: 'Daily Double: Ann', seats: ['a'], seatsText: 'Daily Double — you’re up!' },
+    clue: { text: ddQuestion, caption: 'Science · Daily Double' },
+    cards: [{ id: 'pc:dd:1', to: [{ seat: 'c' }], open: true, title: 'Dd-card-qz', text: 'Psst' }],
+    wager: { id: 'dd:x:a', kind: 'dd', open: false, seats: [{ id: 'a', max: 1000, amount: 300, fromHost: true }] },
+  });
+  await big(ann).getByText("You're answering!").waitFor();
+  await cat.locator('#card-status-big').getByText('Ann is answering').waitFor();
+  const ddFits = [];
+  for (const [width, height] of [
+    [320, 568],
+    [430, 932],
+    [740, 360],
+  ]) {
+    for (const p of [ann, cat]) await p.setViewportSize({ width, height });
+    await sleep(300);
+    for (const [p, who] of [
+      [ann, 'Ann'],
+      [cat, 'Cat'],
+    ]) {
+      await p.evaluate(() => scrollTo(0, 0));
+      const m = await p.evaluate(() => {
+        const r = (id) => document.getElementById(id).getBoundingClientRect();
+        const shown = (id) => !document.getElementById(id).closest('[hidden]') && r(id).height > 0;
+        const main = shown('buzz') ? 'buzz' : 'cards';
+        return {
+          cap: document.getElementById('clue-cap').textContent,
+          clue: shown('clue') && r('clue').top >= 0 && document.getElementById('clue').textContent.startsWith('This meme dog'),
+          main,
+          // (BUZZ! on the screen; the card's Tap to see at least begun on it, the page scrolling to the rest.)
+          onScreen: main === 'buzz' ? r('buzz').bottom <= innerHeight + 1 && r('buzz').top >= 0 : r('cards').top < innerHeight - 40,
+          sideways: document.documentElement.scrollWidth > innerWidth,
+        };
+      });
+      ddFits.push({ who, width, height, ...m });
+    }
+    await shot(ann, `dd-question-ann-${width}x${height}`);
+    await shot(cat, `dd-question-cat-${width}x${height}`);
+  }
+  assert(
+    ddFits.every((m) => m.cap === 'Science · Daily Double' && m.clue && m.onScreen && !m.sideways && m.main === (m.who === 'Ann' ? 'buzz' : 'cards')),
+    `a Daily Double’s question on Ann’s phone over “You're answering!” and on Cat’s (a laptop's) over her card, at 320 to 430 wide and on its side (${JSON.stringify(ddFits)})`,
+  );
+  await ann.setViewportSize({ width: 390, height: 760 });
+  await cat.setViewportSize({ width: 1280, height: 800 });
   // The end: where you came is said as one sentence.
   hostState({ over: true, wager: null, answers: null, clue: null, cards: null, status: undefined });
   await big(ann).getByText('You came 1st').waitFor();
