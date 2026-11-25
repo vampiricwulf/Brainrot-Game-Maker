@@ -32,8 +32,10 @@ if (args.length || !/^[1-9]\d*$/.test(jobs) || !/^([1-5]|rest|buzzer|all|none)$/
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const steps = [
   ['Version numbers match', 'node', ['scripts/version.mjs', 'check']],
-  // The npm scripts CI runs, so the gate can't drift from them.
-  ['Formatting (npm run format:check: Prettier; npm run format fixes it)', npm, ['run', 'format:check']],
+  // The npm scripts CI runs, so the gate can't drift from them. (CI checks the formatting with npx prettier --check .,
+  // no cache; format:check keeps one, which scripts/format.mjs starts again when Prettier, its Svelte plugin or the
+  // options change.)
+  ['Formatting (npm run format:check: Prettier, cached; npm run format fixes it)', npm, ['run', 'format:check']],
   ['Type check (npm run check: svelte-check, warnings fail it)', npm, ['run', 'check']],
   ['E2E type check (npm run check:e2e: tsc over the // @ts-check e2e files)', npm, ['run', 'check:e2e']],
   ['Unit tests (npm test: Vitest, src/ and buzzer/)', npm, ['test']],

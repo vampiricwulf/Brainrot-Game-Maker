@@ -33,7 +33,9 @@ npm run dev            # dev server
 npm run build          # → dist/index.html (one self-contained file), about 8 s
 npm run check          # type-check (svelte-check; a warning fails it too), about 25 s
 npm run check:e2e      # type-check the e2e files marked // @ts-check (tests/e2e/tsconfig.json), about 6 s; CI and the gate run it
-npm run format         # format the code with Prettier (npm run format:check only checks it, as CI does), about 25 s
+npm run format         # format the code with Prettier, about 25 s
+npm run format:check   # only check it, about 25 s the first time, then about 3 s: it keeps Prettier's cache (a new one
+                       # when Prettier, its Svelte plugin or .prettierrc change; scripts/format.mjs). CI checks without it
 npm test               # unit tests (Vitest: src/ and buzzer/), about 30 s
 (cd buzzer && npm run check)   # type-check the buzzer Worker and phone page (CI runs it; the root check doesn't)
 npm run test:quick     # the quick end-to-end test (tests/e2e/smoke.mjs), about 100 s; CI waits for it before releasing
@@ -174,8 +176,8 @@ which every file imports, points Chromium at `tests/e2e/fonts.conf` (this machin
 Unit tests sit next to the code they test (`*.test.ts`).
 
 Code is formatted with [Prettier](https://prettier.io/) (and prettier-plugin-svelte for the components): run
-`npm run format` before you commit, and `npm run format:check` says whether anything is left (CI and `npm run gate`
-run it). Prettier now and then lays out a long call chain (`a.locator(…).evaluateAll(…)`) differently on a second
+`npm run format` before you commit, and `npm run format:check` says whether anything is left (`npm run gate` runs it;
+CI runs the same check without its cache). Prettier now and then lays out a long call chain (`a.locator(…).evaluateAll(…)`) differently on a second
 run, so if `npm run format:check` still finds a file after `npm run format`, run `npm run format` once more.
 `.prettierrc` holds the settings, matched to the code as it was: single quotes, 160 columns (comments are
 still wrapped by hand at about 120), and `htmlWhitespaceSensitivity: "strict"`, so Prettier never adds or takes away a
