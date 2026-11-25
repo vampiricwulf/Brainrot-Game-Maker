@@ -31,11 +31,11 @@ import { dirname, join } from 'node:path';
 import { appFile } from '../tests/e2e/helpers.mjs';
 
 const SHARDS = {
-  1: 'phonecopies cardrounds partnerplay cardsend history playfeatures buzzerlive convert slidesround dealcaptain',
+  1: 'phonecopies cardrounds partnerplay cardsend history playfeatures buzzerlive convert slidesround dealcaptain rpg',
   2: 'hostlayout boardgame remotebuzz partnersend boardedit partnerteams partnerrandom deal editorfixes multislide',
   3: 'smoke audio save videoedit buzzerfiles themes goon editormedia lists everyone links',
   4: 'stream editorfeatures hosting partnerjudge pregame board finalcards datasafety dealwheel playcopies update boardimages',
-  5: 'buzzerroom desktop fullshow layers cardlimits phonewager phonecards savedcards partnerphones channel rounds',
+  5: 'buzzerroom desktop fullshow layers cardlimits phonewager phonecards savedcards partnerphones channel rounds pass',
 };
 const NOT_TESTS = new Set(['helpers', 'mediafixtures']);
 
