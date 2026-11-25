@@ -8,9 +8,9 @@
 // phone needs are in sight and take a real tap: Skip intro (a board round's title card and categories, the Final's
 // title card), ↩ Put back on a clue and a Daily Double, the roll's own button, 🎲 Roll then ▶ Move in a board game,
 // Finish now… and its Finish. Up to 700px tall the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools, out again
-// with a tap, and the status line's how-to keeps to one line; with the row kept out (📊 Scoreboard on, at 320×568) the
-// moment's box still has room and the panel scrolls. A phone on its side, a tablet, a laptop (1280×720, 1920×1080)
-// and a phone with an audience window keep the panel's height as it was.
+// with a tap, and the status line's how-to keeps to one line (whole in its tooltip, at every moment); with the row
+// kept out (📊 Scoreboard on, at 320×568) the moment's box still has room and the panel scrolls. A phone on its side, a
+// tablet, a laptop (1280×720, 1920×1080) and a phone with an audience window keep the panel's height as it was.
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -84,7 +84,12 @@ const layout = (page) =>
       }));
     const stage = /** @type {Element} */ (document.querySelector('[data-stage-box] .stage'));
     const fixed = /** @type {Element} */ (panel.querySelector(':scope > .fixed'));
+    // The status line's how-to, wherever it's cut short (…): its tooltip has it whole.
+    const untitled = [...panel.querySelectorAll(':scope > .status > :is(.hint, .muted:has(> .hint))')]
+      .filter((e) => e.scrollWidth > e.clientWidth + 1 && !(e.getAttribute('title') ?? '').trim())
+      .map((e) => (e.textContent ?? '').trim());
     return {
+      untitled,
       stage: r(stage),
       panel: r(panel),
       fixedFoot: Math.round(fixed.getBoundingClientRect().bottom),
@@ -108,6 +113,7 @@ async function roomy(page, where, moment, stage0, scrolls = false) {
   const l = await layout(page);
   const tight = l.boxes.filter((b) => b.need > 0 && b.h < Math.min(60, b.need) - 1);
   assert(tight.length === 0, `${where}, ${moment}: each box has room (${l.boxes.map((b) => `${b.what} ${b.h} of ${b.need}`).join(', ') || 'none'})`);
+  assert(l.untitled.length === 0, `${where}, ${moment}: the status line's how-to, cut short, is whole in its tooltip (${l.untitled.join(' | ')})`);
   if (scrolls) assert(l.sideways <= 0, `${where}, ${moment}: nothing scrolls sideways`);
   else
     assert(

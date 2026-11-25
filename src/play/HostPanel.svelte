@@ -1217,7 +1217,7 @@
       {:else if done}
         <span class="done">Round complete!</span>
       {:else}
-        <span class="muted"
+        <span class="muted" title={touchScreen.on ? undefined : 'Pick a tile on the board. (arrows + Enter)'}
           >Pick a tile on the board.{#if !touchScreen.on}{' '}<span class="hint">(arrows + Enter)</span>{/if}</span
         >
       {/if}
@@ -1300,11 +1300,10 @@
       <span class="muted" title="Title card · {goOnSay}">Title card <span class="hint">· {goOnSay}</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
-      <span class="muted hint"
-        >{touchScreen.on
-          ? 'Move with the pad · tap objects on the stage · drag avatars · drag a box to select several'
-          : 'Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars · drag a box to select several'}</span
-      >
+      {@const rpgHow = touchScreen.on
+        ? 'Move with the pad · tap objects on the stage · drag avatars · drag a box to select several'
+        : 'Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars · drag a box to select several'}
+      <span class="muted hint" title={rpgHow}>{rpgHow}</span>
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
       <span class="muted hint" title={boardHow}>{boardHow}</span>
@@ -1330,7 +1329,7 @@
       {@const said = endLine(session)}
       <b>Game over</b>
       <span class="muted say" title={said}>{said}</span>
-      <span class="muted hint">· click a score to fix it</span>
+      <span class="muted hint" title="Click a score to fix it">· click a score to fix it</span>
     {/if}
     {#if viewersSee.length}
       <!-- One window: the boxes open say viewers can read them (a card's name, never what's on it; the wager as it's
