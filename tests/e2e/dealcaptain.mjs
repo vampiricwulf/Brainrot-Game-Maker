@@ -8,8 +8,7 @@
 // taken out, the list still names the other four and the status reads as before. 🎭 Who was who goes on the stage; a
 // click on it takes it off (Ctrl+Z puts it back), and so does Esc; a tile opened with the keyboard under it takes it off
 // (it would cover the question); and the board under it takes clicks again.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -25,10 +24,10 @@ import {
   stageBoxIn,
   statusLineIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 /** Waits (up to `ms`) until pred() holds. */
 const until = untilWith({ every: 100 });
 
@@ -97,7 +96,7 @@ const game = {
   dice: [],
   theme: {},
 };
-const gameFile = resolve('test-results/dealcaptain.json');
+const gameFile = resultsPath('dealcaptain.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 const ATTRS = ['aria-label', 'title', 'alt', 'aria-description', 'placeholder', 'data-said', 'value'];

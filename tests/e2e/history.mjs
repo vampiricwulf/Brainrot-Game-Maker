@@ -3,10 +3,21 @@
 // drops undone steps says so (its ↶ Undo brings them back, kept over a reload), removed and
 // replaced files come back, the history survives a reload, a game opened starts afresh, and changes made while
 // hosting are steps too.
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
-import { appFile, failureShots, addClassicRounds, answerReplace, dragBy, openGameFile, assert, launchChromium, roundTabsIn, toastsIn } from './helpers.mjs';
+import {
+  appFile,
+  failureShots,
+  addClassicRounds,
+  answerReplace,
+  dragBy,
+  openGameFile,
+  assert,
+  launchChromium,
+  roundTabsIn,
+  toastsIn,
+  resultsPath,
+} from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
@@ -449,7 +460,7 @@ try {
       .click()
       .then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click()),
   ]);
-  const saved = resolve('test-results/history-save.json');
+  const saved = resultsPath('history-save.json');
   await json.saveAs(saved);
   await openGameFile(page, saved);
   await answerReplace(page, 'Discard');

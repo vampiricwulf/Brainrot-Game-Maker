@@ -3,10 +3,9 @@
 // box the stage's size and place in the game (16:9, the host panel's height under it), its words sized to that box, and
 // Resume game / Go to the editor go under it, where the host panel is: a capture of just the stage (an OBS crop) shows
 // the whole card and none of the host's buttons, at 1280×720, 1366×768 and 1920×1080.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { appFile, failureShots, launchChromium, openGameFile, assert, boardIn, stageBoxIn, statusLineIn } from './helpers.mjs';
+import { appFile, failureShots, launchChromium, openGameFile, assert, boardIn, stageBoxIn, statusLineIn, resultsPath } from './helpers.mjs';
 
 const url = pathToFileURL(appFile()).href;
 const browser = await launchChromium();
@@ -77,8 +76,7 @@ const game = {
   theme: {},
   wheels: [],
 };
-mkdirSync(resolve('test-results'), { recursive: true });
-const gameFile = resolve('test-results/reloadcover.json');
+const gameFile = resultsPath('reloadcover.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 const SIZES = [

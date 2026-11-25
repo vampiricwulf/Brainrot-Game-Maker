@@ -6,7 +6,6 @@
 // color picker (by a click, Enter or its label; never Chromium's): Hex first and RGB beside it (kept after a reload),
 // the box changing live, a hex typed then Enter as one undo step, a bad one turned down, and Esc leaving no step.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -24,6 +23,7 @@ import {
   boardTilesIn,
   roundTabsIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -328,7 +328,7 @@ try {
   await fontChooser.setFiles({
     name: 'Channel Font.woff2',
     mimeType: 'font/woff2',
-    buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')),
+    buffer: readFileSync(new URL('../../node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2', import.meta.url)),
   });
   await fontPicker.waitFor({ state: 'detached' });
   await page.waitForFunction(() => /^'jb-\w+', sans-serif$/.test(document.querySelector('label[data-k="boardFont"] select').value));
@@ -657,8 +657,7 @@ try {
     download.suggestedFilename() === 'Checkers.brainrot-theme',
     `Export theme writes a .brainrot-theme file named after the theme (${download.suggestedFilename()})`,
   );
-  const themePath = resolve('test-results/themes-checkers.brainrot-theme');
-  mkdirSync(resolve('test-results'), { recursive: true });
+  const themePath = resultsPath('themes-checkers.brainrot-theme');
   await download.saveAs(themePath);
   const data = JSON.parse(readFileSync(themePath, 'utf8'));
   assert(
@@ -789,7 +788,7 @@ try {
   const withBanner = { ...JSON.parse(themeText), name: 'Banner show' };
   withBanner.media = [{ id: 'm_banner1', name: 'banner.png', mime: 'image/png', kind: 'image', data: png(255, 140, 0, 160, 16).toString('base64') }];
   withBanner.theme = { ...withBanner.theme, banner: 'm_banner1' };
-  const bannerPath = resolve('test-results/themes-banner.brainrot-theme');
+  const bannerPath = resultsPath('themes-banner.brainrot-theme');
   writeFileSync(bannerPath, JSON.stringify(withBanner));
   const [bannerChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📥 Import theme…' }).click()]);
   await bannerChooser.setFiles(bannerPath);
@@ -813,12 +812,12 @@ try {
   await valueChooser.setFiles({
     name: 'Score Font.woff2',
     mimeType: 'font/woff2',
-    buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')),
+    buffer: readFileSync(new URL('../../node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2', import.meta.url)),
   });
   await valuePicker.waitFor({ state: 'detached' });
   await page.waitForFunction(() => /^'jb-\w+', sans-serif$/.test(document.querySelector('label[data-k="valueFont"] select').value));
   const html = await exportHtml(page, 'Theme test');
-  const saved = resolve('test-results/themes-export.html');
+  const saved = resultsPath('themes-export.html');
   await html.saveAs(saved);
   const player = await context.newPage();
   player.on('pageerror', (e) => errors.push(`[player] ${e.message}`));

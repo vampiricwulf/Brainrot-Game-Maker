@@ -16,8 +16,7 @@
 // windows: the column beside the stage shows what's on them, the cards out say which Final and card each one is, never
 // on the audience window. They stay out through the question (a phone's answer box under them) and the answer, and go
 // when the Final ends; Ctrl+Z back into its reveals doesn't bring them back.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -54,10 +53,10 @@ import {
   stageBoxIn,
   statusLineIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 
 // ---------- The game ----------
 
@@ -173,7 +172,7 @@ try {
     dice: [],
     theme: {},
   };
-  const packPath = resolve('test-results/final-cards.brainrot');
+  const packPath = resultsPath('final-cards.brainrot');
   writeFileSync(packPath, await packGame(game, files));
 
   // ---------- The host ----------

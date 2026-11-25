@@ -8,7 +8,6 @@
 // on the screen in it, one undo step, and Esc there changes nothing; a player's color another player has is turned
 // down. Also in a browser: Open… takes an exported .html.
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -25,6 +24,7 @@ import {
   inspectorIn,
   roundTabsIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 import { gif, noise } from './mediafixtures.mjs';
 
@@ -242,7 +242,7 @@ try {
   await addClassicRounds(w);
   await w.locator('input.title').fill('Exported Quiz');
   const [download] = await Promise.all([w.waitForEvent('download'), clickExportHtml(w)]);
-  const htmlPath = resolve('test-results/desktop-export.html');
+  const htmlPath = resultsPath('desktop-export.html');
   await download.saveAs(htmlPath);
   // (An export isn't a Save: New asks first.)
   await w.getByRole('button', { name: 'New', exact: true }).click();
@@ -363,7 +363,7 @@ try {
     listed.includes('Exported Quiz.html') && !listed.some((n) => n.endsWith('.bak')),
     `Open… lists the exported game, not the backups (${listed.join(', ')})`,
   );
-  await d.screenshot({ path: 'test-results/desktop-open.png' });
+  await d.screenshot({ path: resultsPath('desktop-open.png') });
   // Each save's date and size stay inside its row (they go under a long name instead), the date as Recent games says it.
   const rowHints = await list.locator('button.save').evaluateAll((bs) =>
     bs.map((b) => {

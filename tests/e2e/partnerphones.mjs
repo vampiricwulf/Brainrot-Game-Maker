@@ -25,6 +25,7 @@ import {
   stageBoxIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -109,7 +110,7 @@ try {
   await dialog.getByRole('button', { name: '📱 On their phone' }).click();
   const preview = dialog.getByRole('complementary', { name: 'Card on their phone' });
   const previewText = await preview.innerText();
-  await host.screenshot({ path: 'test-results/partner-phone-preview.png' });
+  await host.screenshot({ path: resultsPath('partner-phone-preview.png') });
   assert(
     previewText.includes('Card-only-zz words') && (await preview.locator('img').count()) === 1,
     'the card tab’s 📱 preview shows the card as a phone gets it: its words, then its picture',
@@ -187,7 +188,7 @@ try {
     f.says === '🤫 1 card · 📵 Player 3 has no phone here: you’ll copy theirs',
     `Player 3 the partner, with no phone here: it opens by itself and says so (${f.says})`,
   );
-  await host.screenshot({ path: 'test-results/partner-phones-up.png' });
+  await host.screenshot({ path: resultsPath('partner-phones-up.png') });
   nothingSent('the tile open');
   await host.keyboard.press('2');
   assert(
@@ -292,7 +293,7 @@ try {
   );
   assert(!JSON.stringify(heard.ann).includes('Card-only-zz'), 'the guesser’s phone never gets it');
   assert((await panel.locator('[data-card="1"] [data-card-state]').innerText()).includes('sent'), 'its row says it’s sent');
-  await host.screenshot({ path: 'test-results/partner-phones-sent.png' });
+  await host.screenshot({ path: resultsPath('partner-phones-sent.png') });
   // On the describer's phone: in the button's place, behind Tap to see.
   const cover = bob.getByRole('button', { name: 'Tap to see' });
   await cover.waitFor();
@@ -311,7 +312,7 @@ try {
     (await pic.getAttribute('alt')) === 'Picture' && !(await bob.locator('body').innerText()).includes(PIC),
     'tapped: its words and its picture, fetched from the room (never its file name)',
   );
-  await bob.screenshot({ path: 'test-results/partner-phones-card.png' });
+  await bob.screenshot({ path: resultsPath('partner-phones-card.png') });
   assert(await until(async () => (await panel.locator('[data-card="1"] [data-card-state]').innerText()).includes('✓ seen')), 'the host’s row says ✓ seen');
   assert(
     !(await ann.locator('.card').count()) && (await ann.getByLabel(/Your answer/).isVisible()),

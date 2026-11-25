@@ -6,8 +6,7 @@
 // only, their words for screen readers and in their tooltips), nothing scrolls sideways, and Start game ▶ takes a tap.
 // A board game hosted on a touch screen: its status line and its turn box name the buttons (🎲 Roll, ▶ Move, ◀ Previous
 // turn), never a key (D, Enter, Shift+N, N); with a mouse they keep their keys.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -24,6 +23,7 @@ import {
   statusLineIn,
   stepButton,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -132,8 +132,7 @@ function boardFile(/** @type {'dice' | 'wheel' | 'step'} */ kind) {
       },
     ],
   };
-  mkdirSync(resolve('test-results'), { recursive: true });
-  const f = resolve(`test-results/touch-board-${kind}.json`);
+  const f = resultsPath(`touch-board-${kind}.json`);
   writeFileSync(f, JSON.stringify(game));
   return f;
 }

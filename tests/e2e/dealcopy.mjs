@@ -6,8 +6,7 @@
 // 📥 Import rounds… lists the other game's deal as a row to tick, and brings it with the wheel it draws from (one step);
 // brought again, nothing comes in. Leaving the round doesn't say the copied cards go with it.
 // Needs no buzzer room.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -26,10 +25,10 @@ import {
   stageBoxIn,
   toastsIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 /** Waits (up to `ms`) until pred() holds. */
 const until = untilWith({ every: 100 });
 
@@ -116,7 +115,7 @@ const game = {
     },
   ],
 };
-const gameFile = resolve('test-results/dealcopy.json');
+const gameFile = resultsPath('dealcopy.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 // Another game, to 📥 Import rounds… from: a round, and its own deal drawn from its own wheel (a wheel no round uses).
@@ -152,7 +151,7 @@ const other = {
     },
   ],
 };
-const otherFile = resolve('test-results/dealcopy-other.json');
+const otherFile = resultsPath('dealcopy-other.json');
 writeFileSync(otherFile, JSON.stringify(other));
 
 let browser;

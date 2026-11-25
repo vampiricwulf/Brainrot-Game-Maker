@@ -1,7 +1,6 @@
 // Round modes: a game is a list of rounds and each picks a mode. Final Jeopardy is a round like any other (it can
 // go in the middle), rounds can be reordered, duplicated and deleted, and games saved before modes still open.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -29,6 +28,7 @@ import {
   statusLineIn,
   toastsIn,
   inspectorIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -575,10 +575,9 @@ try {
     ],
     final: { enabled: true, name: 'Old Final', category: 'History', questionSlide: text('FQ'), answerSlide: text('FA'), timerSeconds: 40 },
   };
-  mkdirSync('test-results', { recursive: true });
-  writeFileSync('test-results/v1-game.json', JSON.stringify(v1));
+  writeFileSync(resultsPath('v1-game.json'), JSON.stringify(v1));
   await p2.goto(pathToFileURL(file).href);
-  await openGameFile(p2, resolve('test-results/v1-game.json'));
+  await openGameFile(p2, resultsPath('v1-game.json'));
   await p2
     .waitForFunction(() => document.querySelector('input.title')?.value === 'Old Game', null, { timeout: 5000 })
     .catch(() => {

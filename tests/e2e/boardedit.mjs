@@ -5,8 +5,7 @@
 // and a step taken on it with the audience window open says “? (secret)” once that window closes); the audience window
 // follows; 💾 Keep in game writes the board back into the game in the editor, and without it the editor's game
 // stays as it was.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -28,6 +27,7 @@ import {
   roundTabsIn,
   stageBoxIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -120,8 +120,7 @@ const game = {
   theme: {},
   wheels: [],
 };
-mkdirSync(resolve('test-results'), { recursive: true });
-const gameFile = resolve('test-results/boardedit.json');
+const gameFile = resultsPath('boardedit.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 /** Open the game (`from`: another file) and play it (with an audience window when `dual`). */
@@ -845,7 +844,7 @@ try {
   // An exported file has no 💾 Keep in game: ✎ Edit board and a space's ⚙ Buttons… say the changes last for this game
   // only, and send no one looking for it.
   const boardHtml = await exportHtml(page);
-  const boardFile = resolve('test-results/boardedit-export.html');
+  const boardFile = resultsPath('boardedit-export.html');
   await boardHtml.saveAs(boardFile);
   const filePage = await ctx.newPage();
   filePage.on('pageerror', (e) => errors.push(`[file] ${e.message}`));
@@ -1213,7 +1212,7 @@ try {
       },
     ],
   };
-  const thiefFile = resolve('test-results/boardedit-thief.json');
+  const thiefFile = resultsPath('boardedit-thief.json');
   writeFileSync(thiefFile, JSON.stringify(thief));
   const ctx3 = await browser.newContext({ viewport: { width: 1400, height: 1000 } });
   const tp = await ctx3.newPage();

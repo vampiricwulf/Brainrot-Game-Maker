@@ -9,8 +9,7 @@
 // greyed again), Ctrl+Y opens it again, Dan (chosen by the host) answers it through a host reload, misses, and the
 // buzzers open for Cat alone; Cat misses too, and the panel, the status line and Enter say nobody is left to steal it
 // (👁 Reveal answer); a click on the stage shows the answer then, and that ends it. Needs `npm ci` in buzzer/.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -28,10 +27,10 @@ import {
   stageBoxIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 /** Waits (up to `ms`) until pred() holds. */
 const until = untilWith({ timeout: 10_000 });
 
@@ -110,7 +109,7 @@ const game = {
   dice: [],
   theme: {},
 };
-const gameFile = resolve('test-results/partner-steal.json');
+const gameFile = resultsPath('partner-steal.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 const buzzer = await startBuzzer('buzzer-steal-');
@@ -195,7 +194,7 @@ try {
   );
   await group.getByRole('button', { name: 'Randomize partner clues' }).click();
   assert(await until(async () => (await badges()) === 3), 'the board shows 3 partner clues');
-  await host.screenshot({ path: 'test-results/partner-steal-board.png' });
+  await host.screenshot({ path: resultsPath('partner-steal-board.png') });
   await host.keyboard.press('Control+z');
   assert(
     await until(async () => (await badges()) === 1 && (await isPartner(0, 1))),
@@ -287,7 +286,7 @@ try {
     (await small('Ann')).includes('had your go') && (await small('Bob')).includes('had your go'),
     'Ann’s and Bob’s phones say they’ve had their go on this one',
   );
-  await host.screenshot({ path: 'test-results/partner-steal-open.png' });
+  await host.screenshot({ path: resultsPath('partner-steal-open.png') });
   // A click on the stage while the steal is on leaves the answer hidden (and the steal open): it says how it goes on, in
   // the status line.
   const answerUp = stageBoxIn(host).locator('[data-slide="answer"]');

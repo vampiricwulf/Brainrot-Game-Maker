@@ -22,8 +22,7 @@
 //     editor under it stays inert, the focus is on Close, and Esc closes the window only.
 // Then: no toast, History row or pill names a file. 5. ▶ Play (and New) while an edit is saved asks first: Keep working
 // stays, Stop it and play starts the game with the file unchanged.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -38,11 +37,11 @@ import {
   launchChromium,
   section,
   until,
+  resultsPath,
 } from './helpers.mjs';
 import { clip, fixturePage, hueAt, readBack, wav } from './mediafixtures.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 const near = (a, b, d) => typeof a === 'number' && Math.abs(a - b) <= d;
 
 let browser;
@@ -169,7 +168,7 @@ try {
     theme: {},
     cards: [{ id: 'sc_tip', name: 'Tip', background: {}, elements: [text('Look'), items.card, items.p2] }],
   };
-  const packPath = resolve('test-results/video-edit.brainrot');
+  const packPath = resultsPath('video-edit.brainrot');
   writeFileSync(packPath, await packGame(game, files));
 
   await ctx.addInitScript(recordSeen);

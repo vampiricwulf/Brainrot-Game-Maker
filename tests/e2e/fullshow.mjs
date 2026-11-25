@@ -13,7 +13,6 @@
 // SCREENSHOTS set to a folder, it saves the host's window as each part starts. Needs `npm ci` in
 // buzzer/.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -42,10 +41,10 @@ import {
   stageBoxIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 /** A folder for a screenshot of the host's window as each part of the show starts (left out: none). */
 const shots = process.env.SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
@@ -217,7 +216,7 @@ const game = {
   ],
   tiebreaker: { questionSlide: slide('The tiebreaker question'), answerSlide: slide('The tiebreaker answer') },
 };
-const gameFile = resolve('test-results/fullshow.json');
+const gameFile = resultsPath('fullshow.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 const { base, stop } = await startBuzzer('buzzer-fullshow-');

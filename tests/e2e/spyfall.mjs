@@ -18,8 +18,7 @@
 // who got which part, nor shows a card's words or the location, until Who was who. The audience window, opened at the
 // end with Who was who up, shows it, and puts who got which in the host's column; closing it takes that away again.
 // Needs `npm ci` in buzzer/.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -41,10 +40,10 @@ import {
   stageBoxIn,
   toolsRowIn,
   hostPanelIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 /** Waits (up to `ms`) until pred() holds. */
 const until = untilWith({ timeout: 20_000, every: 100 });
 
@@ -111,7 +110,7 @@ const game = {
   dice: [],
   theme: {},
 };
-const gameFile = resolve('test-results/spyfall.json');
+const gameFile = resultsPath('spyfall.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 // The ready-made deal's words, and the ready-made wheel's places (src/lib/deals.ts, src/lib/wheeltemplates.ts).

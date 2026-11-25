@@ -8,8 +8,7 @@
 // messages, nor a card's words. With no phone buzzers, 🪟 Show puts an offered card in the card window, and so it does a
 // standard tile's card (the stream then says "Cat has a private question") and a partner clue's, until the tile closes,
 // with more cards out than the phones' 8 (that limit is the buzzer room's).
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -34,11 +33,11 @@ import {
   hostPanelIn,
   stageBoxIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 import { wav } from './mediafixtures.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 
 // Every card's words carry "wqzpk", its picture's file name "jhxvb": never on stream, and no file name leaves this computer.
 const MISSION = 'Mission-wqzpk words';
@@ -158,7 +157,7 @@ try {
     dice: [],
     theme: {},
   };
-  const packPath = resolve('test-results/card-action.brainrot');
+  const packPath = resultsPath('card-action.brainrot');
   writeFileSync(packPath, await packGame(game, files));
 
   // ---------- The host ----------
@@ -406,7 +405,7 @@ try {
     worlds: offlineWorlds,
     media: [...media, { id: 'part', name: 'part.wav', mime: 'audio/wav', size: part.length, kind: 'audio' }],
   };
-  const offlinePath = resolve('test-results/card-action-offline.brainrot');
+  const offlinePath = resultsPath('card-action-offline.brainrot');
   writeFileSync(offlinePath, await packGame(offline, { ...files, part }));
   const ctx2 = await browser.newContext({ viewport: { width: 1400, height: 950 } });
   await ctx2.grantPermissions(['clipboard-read', 'clipboard-write']);

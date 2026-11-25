@@ -13,8 +13,7 @@
 // A card's picture whose upload is cut off goes again by itself, unless its card was taken back meanwhile; one the server
 // turns down is said in the list of cards out (and the tools row's cards out turns orange), and ↻ Send again puts it up.
 // Cat's phone gone, a quick card to everyone says after 📤 Send that Cat has none, and copies it for her from there.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -41,10 +40,10 @@ import {
   stageBoxIn,
   toastsIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 
 // ---------- The game ----------
 
@@ -162,7 +161,7 @@ try {
     dice: [],
     theme: {},
   };
-  const packPath = resolve('test-results/card-send.brainrot');
+  const packPath = resultsPath('card-send.brainrot');
   writeFileSync(packPath, await packGame(game, files));
 
   // ---------- The host ----------

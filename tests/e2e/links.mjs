@@ -7,7 +7,6 @@
 // - files.catbox.moe/flaky* goes down during the show, to prove viewers never see the host's error messages.
 // Usage: npm run build && node tests/e2e/links.mjs   (SCREENSHOTS=dir to save screenshots)
 import { mkdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import JSZip from 'jszip';
@@ -25,6 +24,7 @@ import {
   inspectorIn,
   stageBoxIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -613,8 +613,7 @@ assert(
 
 // ---------- The exported HTML plays live links too ----------
 const html = await exportHtml(page);
-mkdirSync('test-results', { recursive: true });
-const exported = resolve('test-results/links-exported.html');
+const exported = resultsPath('links-exported.html');
 await html.saveAs(exported);
 const player = await context.newPage();
 player.on('pageerror', (e) => errors.push('[exported] ' + e.message));

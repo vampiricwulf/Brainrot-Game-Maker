@@ -9,8 +9,7 @@
 // a time typed (and Enter), steps 0.1 s with ↑ / ↓, and offers ▶ Try it. At 1280×720, two videos and a sound on a
 // slide: the videos' rows say 1 and 2, only the row the keys reach names them, and the tools row folds so 🚪 Exit stays
 // in sight with the stage its size; files missing from this computer get a row each saying so.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -27,6 +26,7 @@ import {
   roundTabsIn,
   stageBoxIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -751,7 +751,7 @@ try {
       const tools = document.querySelector('.toolsrow');
       return { exitBottom: Math.round(r.bottom), tools: tools ? getComputedStyle(tools).display : 'none', fold: !!document.querySelector('.toolsfold') };
     });
-    await lp.screenshot({ path: 'test-results/stagemedia-laptop.png' });
+    await lp.screenshot({ path: resultsPath('stagemedia-laptop.png') });
     assert(
       fit.exitBottom <= 720 && fit.tools === 'none' && fit.fold,
       `at 1280×720 the tools row folds behind ⋯ Tools, and 🚪 Exit is in sight (${JSON.stringify(fit)})`,
@@ -796,7 +796,7 @@ try {
 
     await boardTilesIn(boardIn(lp)).nth(1).click();
     await rows.nth(1).waitFor();
-    await lp.screenshot({ path: 'test-results/stagemedia-missing.png' });
+    await lp.screenshot({ path: resultsPath('stagemedia-missing.png') });
     const missing = (await rows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
     assert(
       missing.join(' | ') === '🎬 This video’s file is missing from this computer. | 🔊 This sound’s file is missing from this computer.',
@@ -845,8 +845,7 @@ try {
         },
       ],
     };
-    mkdirSync(resolve('test-results'), { recursive: true });
-    const wheelPack = resolve('test-results/stagemedia-wheel.brainrot');
+    const wheelPack = resultsPath('stagemedia-wheel.brainrot');
     writeFileSync(wheelPack, await packGame(wheelGame, { m_clip: clip }));
     await wp.goto(pathToFileURL(file).href);
     await openGameFile(wp, wheelPack);

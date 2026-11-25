@@ -15,8 +15,7 @@
 // Phone buzzers, against a fake room (as in remotebuzz.mjs): nobody buzzes on a partner clue (a plain clue still opens
 // them), the room hears who plays which part and how it went, and never a card. With teams, the wheel spins over the
 // other teams and each team scores its share.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -44,12 +43,12 @@ import {
   stageBoxIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
 const errors = [];
-mkdirSync(resolve('test-results'), { recursive: true });
 
 // Words and a file name that are only on the second clue's card (Movies $600), and words only on the first clue's
 // second card: none of them may ever be on stream.
@@ -236,7 +235,7 @@ async function roomGame(names, teams) {
     dice: [],
     theme: {},
   };
-  const gameFile = resolve(`test-results/partner-room-${teams ? 'teams' : 'players'}.json`);
+  const gameFile = resultsPath(`partner-room-${teams ? 'teams' : 'players'}.json`);
   writeFileSync(gameFile, JSON.stringify(g));
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   await ctx.addInitScript(fakeRoom);
@@ -486,7 +485,7 @@ try {
     'a game chosen keeps the cards the clue has',
   );
   await settings.getByRole('combobox', { name: /^Game/ }).selectOption('describe');
-  await page.screenshot({ path: 'test-results/partner-editor.png' });
+  await page.screenshot({ path: resultsPath('partner-editor.png') });
   // ▸ More rules folded: the one line keeps the game, who describes and the points in money, and the fold says what it
   // holds that isn't the usual.
   await settings.getByRole('checkbox', { name: 'The picker can be on the wheel' }).check();
@@ -818,7 +817,7 @@ try {
   await mainButton(page).click();
   await boardIn(aud).waitFor();
   await never(viewers, [ONIONS, PIC2, 'zorbu', ...CARD_ONLY], 'back on the board');
-  await page.screenshot({ path: 'test-results/partner-two-windows.png' });
+  await page.screenshot({ path: resultsPath('partner-two-windows.png') });
 
   // Back to one window: the scores window, then the audience window (it asks first).
   await Promise.all([sc.waitForEvent('close'), hostPanelIn(page).locator('button[aria-label="Close the scores window"]').click()]);
@@ -932,7 +931,7 @@ try {
     heard.includes('Card 1’s words copied: paste them to Bob.') && (await toastsIn(page, { hasText: 'words copied' }).count()) === 0,
     'the check above heard every toast and announcement, gone since',
   );
-  await page.screenshot({ path: 'test-results/partner-one-window.png' });
+  await page.screenshot({ path: resultsPath('partner-one-window.png') });
 
   // ---------- Phone buzzers, against a fake room: nobody buzzes, and the room never gets a card ----------
   section('Phone buzzers (a fake room)');

@@ -8,8 +8,7 @@
 // 🏁 Back to results, which warns first with a tied player picked and no winner given), points given there settle the
 // tie (the panel says so), and Ctrl+Z takes back that award there, then goes back to the Final's reveals for its last
 // judgment (not out of sight), from the outro too.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -35,6 +34,7 @@ import {
   statusLineIn,
   toastsIn,
   boardIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -351,8 +351,7 @@ try {
     items: [],
     tiebreaker: { questionSlide: slide('tq', 'How many toilets?'), answerSlide: slide('ta', 'Forty-two'), hostNotes: 'Closest without going over wins' },
   };
-  mkdirSync(resolve('test-results'), { recursive: true });
-  const gameFile = resolve('test-results/slidesround-outro.json');
+  const gameFile = resultsPath('slidesround-outro.json');
   writeFileSync(gameFile, JSON.stringify(game));
   const p2 = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
   p2.on('pageerror', (e) => errors.push(e.message));

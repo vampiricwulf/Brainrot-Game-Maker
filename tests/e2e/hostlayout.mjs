@@ -43,8 +43,7 @@
 // an audience window, the leave-round question's "Go to <a long round name> ▶" is cut short (its ▶ kept, named in full
 // and in its tooltip), nothing in it past the window's edge and no sideways scroll; in one window the stage keeps its
 // size.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -82,6 +81,7 @@ import {
   until,
   toastsIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -217,8 +217,7 @@ const game = {
     },
   ],
 };
-mkdirSync(resolve('test-results'), { recursive: true });
-const gameFile = resolve('test-results/hostlayout.json');
+const gameFile = resultsPath('hostlayout.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 try {
@@ -1096,7 +1095,7 @@ try {
     for (let i = 0; i < 8000; i++) w[44 + i] = 128 + Math.round(40 * Math.sin((i / 8000) * 2 * Math.PI * 440));
     return w;
   };
-  const crowdFile = resolve('test-results/hostlayout-crowd.brainrot');
+  const crowdFile = resultsPath('hostlayout-crowd.brainrot');
   const crowd = ['Annabelle', 'Bobby Tables', 'Cyrus', 'Deedee', 'Eleanor', 'Frankie'];
   const crowdColors = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4'];
   // (Its Memes $400 is a partner clue, with a card for each part.)
@@ -1539,7 +1538,7 @@ try {
   // The 4 have short names and no − Deduct on their scores (one row of them), the 8 long names.
   section('The 🤝 box on a laptop, 4 and 8 players');
   for (const count of [4, 8]) {
-    const boxFile = resolve(`test-results/hostlayout-box${count}.json`);
+    const boxFile = resultsPath(`hostlayout-box${count}.json`);
     const names = count === 4 ? ['Ann', 'Bob', 'Cat', 'Dan'] : [...crowd, 'Gwendolyn', 'Hal'];
     // (Its Memes and Skibidi Lore $400 are partner clues, a card for each part.)
     const boxClue = (q, k) => ({
@@ -1953,7 +1952,7 @@ try {
   // Seven players tied at the end (one window, 1024×768): the results and the tiebreaker clue keep the Final's panel
   // height, and every chip's score stays in sight there (the part under them gives up its room first).
   section('Seven tied at the end');
-  const tieFile = resolve('test-results/hostlayout-tie.json');
+  const tieFile = resultsPath('hostlayout-tie.json');
   const seven = ['Annabelle', 'Bob', 'Cyrus', 'Deedee', 'Eleanor', 'Fay', 'Gus'];
   const tieBoard = {
     ...board,
@@ -2017,7 +2016,7 @@ try {
   // wager at one place on every row, its wager shown or still in a box), each row one line, a long name cut short (whole
   // in its tooltip), and Finish now… at the left of the box's foot, beside how many are still to judge.
   section('The Final’s reveal rows, long names');
-  const longFile = resolve('test-results/hostlayout-long.json');
+  const longFile = resultsPath('hostlayout-long.json');
   const longNames = ['The Unbelievably Long-Named Team of Champions', 'Bo', 'Cyrus Who Never Stops Talking About Speedruns', 'Dee'];
   writeFileSync(
     longFile,
@@ -2200,7 +2199,7 @@ try {
   // drawn over another or past its row (the columns where they fit, else the rows wrap), and the stage keeps its size
   // whatever the rows do.
   section('The Final’s reveal rows at every width');
-  const fullFile = resolve('test-results/hostlayout-full.json');
+  const fullFile = resultsPath('hostlayout-full.json');
   writeFileSync(
     fullFile,
     JSON.stringify({
@@ -2437,7 +2436,7 @@ try {
     dailyDoubleCount: 0,
     categories: cats.map((c, ci) => ({ id: `cat2${ci}`, title: c, clues: [0, 1, 2, 3, 4].map((ri) => clue(`${c} again ${ri}`, `Answer 2.${ci}.${ri}`)) })),
   };
-  const introFile = resolve('test-results/hostlayout-intro.brainrot');
+  const introFile = resultsPath('hostlayout-intro.brainrot');
   writeFileSync(
     introFile,
     await packGame(
@@ -2579,7 +2578,7 @@ try {
   // Next turn ▶), its right edge never under the main button's cell, which keeps its place at the right.
   section('RPG and board-game rounds, title card to play');
   {
-    const modesFile = resolve('test-results/hostlayout-modes.json');
+    const modesFile = resultsPath('hostlayout-modes.json');
     writeFileSync(
       modesFile,
       JSON.stringify({
@@ -2658,7 +2657,7 @@ try {
     settings: { ...game.settings, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'all' } },
     rounds: [phoneBoard('r_p1', 'Jeopardy!'), phoneBoard('r_p2', longName)],
   };
-  const phoneFile = resolve('test-results/hostlayout-phone.json');
+  const phoneFile = resultsPath('hostlayout-phone.json');
   writeFileSync(phoneFile, JSON.stringify(phoneGame));
   const goLong = `Go to ${longName} ▶`;
   for (const dual of [false, true]) {

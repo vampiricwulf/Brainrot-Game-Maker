@@ -6,8 +6,7 @@
 // height all along (its rows scroll), and the RPG and board-game rounds keep it under the stage too. 👥 Players,
 // ⚖ Rules and the keys (?) open in that panel: their title and Done stay in sight as the middle scrolls, and the rows
 // fade over Done while there's more below (gone at the foot).
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -28,6 +27,7 @@ import {
   roundNavIn,
   stageBoxIn,
   statusLineIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -156,8 +156,7 @@ const game = {
     },
   ],
 };
-mkdirSync(resolve('test-results'), { recursive: true });
-const gameFile = resolve('test-results/onestage.json');
+const gameFile = resultsPath('onestage.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 /** The 16:9 stage on screen (what a capture crops), rounded. */

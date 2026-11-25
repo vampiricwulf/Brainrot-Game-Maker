@@ -13,8 +13,7 @@
 // holds already isn't uploaded again. Needs `npm ci` in buzzer/.
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -35,10 +34,10 @@ import {
   section,
   stageBoxIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 const MB = 1024 * 1024;
 /** Waits (up to `ms`: a slow machine takes its time) until pred() holds. */
 const until = untilWith({ timeout: 20_000 });
@@ -145,7 +144,7 @@ const game = {
     { id: 'sc_gif', name: 'Gif', background: {}, elements: [text('Dance'), image('pic', 300)] },
   ],
 };
-const packPath = resolve('test-results/card-limits.brainrot');
+const packPath = resultsPath('card-limits.brainrot');
 writeFileSync(packPath, await packGame(game, files));
 
 const buzzer = await startBuzzer('buzzer-cardlimits-', { vars: { FILE_MB: 24, ROOM_FILES_MB: 60, FILES_MB_PER_DAY: 400 } });

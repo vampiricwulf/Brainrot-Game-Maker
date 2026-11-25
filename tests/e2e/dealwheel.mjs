@@ -10,8 +10,7 @@
 // slice's longer words. ↩ Take the cards back lets go of the pictures, 📤 Send puts the same prompts out again. A deal drawn from
 // the ready-made 🗺️ Locations wheel replaces it (asked first, its cards out), and neither changes the game: its deal
 // and wheels stay as saved. Needs `npm ci` in buzzer/.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -32,10 +31,10 @@ import {
   boardIn,
   stageBoxIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 /** Waits (up to `ms`) until pred() holds. */
 const until = untilWith({ timeout: 20_000, every: 100 });
 
@@ -143,7 +142,7 @@ try {
       { id: 'deal_p', name: 'Own prompts', wheel: 'w_p', parts: [{ id: 'pl', name: 'Player', count: 'rest', draw: 'own', card: slide(text(CARD_WORDS)) }] },
     ],
   };
-  const packPath = resolve('test-results/deal-wheel.brainrot');
+  const packPath = resultsPath('deal-wheel.brainrot');
   writeFileSync(packPath, await packGame(game, files));
 
   // ---------- The host ----------

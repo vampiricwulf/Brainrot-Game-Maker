@@ -7,7 +7,6 @@
 // another game keeping the room and its players, its Final with a room too old for answers (then back with them after
 // the question: no answers block), and ⏹ Close the room….
 import { mkdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -40,6 +39,7 @@ import {
   statusBarIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -218,8 +218,7 @@ try {
   // ---------- Export HTML takes the buzzer server along (another computer has no Settings for it) ----------
   {
     const download = await exportHtml(page, 'Buzz Night');
-    mkdirSync('test-results', { recursive: true });
-    const saved = resolve('test-results/buzz-export.html');
+    const saved = resultsPath('buzz-export.html');
     await download.saveAs(saved);
     const html = readFileSync(saved, 'utf8');
     assert(/id="jb-pack"[^>]*data-buzzer="https:\/\/buzz\.test"/.test(html), 'the exported file carries the buzzer server');

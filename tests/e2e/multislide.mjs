@@ -3,8 +3,7 @@
 // and deleting slides, each one an undo step), saves it, opens the pack again, then plays it: the main button goes
 // Next slide ▶ (N) through the slides, ◀ Slide goes back, the audience window shows the slide the host is on, and then
 // 👁 Reveal answer as before. A game made before clues had more slides still opens and plays as it did.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import {
@@ -25,13 +24,13 @@ import {
   hostPanelIn,
   stageBoxIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
 const url = pathToFileURL(file).href;
 const browser = await launchChromium();
 const errors = [];
-mkdirSync(resolve('test-results'), { recursive: true });
 
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
 const page = await context.newPage();
@@ -129,7 +128,7 @@ try {
     'the Question field says Slide 3 of 3',
   );
 
-  await page.screenshot({ path: 'test-results/multislide-editor.png' });
+  await page.screenshot({ path: resultsPath('multislide-editor.png') });
   // The first slide still has its own text.
   await tabs.getByRole('tab', { name: 'Question 1' }).click();
   assert((await q.inputValue()) === 'This started as a lead-in', 'Question 1 keeps its text');
@@ -307,7 +306,7 @@ try {
       .click()
       .then(() => nameGame(page, 'Slides Night')),
   ]);
-  const packPath = resolve('test-results/multislide.brainrot');
+  const packPath = resultsPath('multislide.brainrot');
   await download.saveAs(packPath);
   const zip = await JSZip.loadAsync(await import('node:fs').then((fs) => fs.readFileSync(packPath)));
   const saved = JSON.parse(await zip.file('game.json').async('string'));
@@ -361,7 +360,7 @@ try {
   assert(await audSays(2, 'It is a YouTube series'), 'Next slide ▶ moves the audience window to slide 2');
   assert((await hostPanelIn(page).locator('[data-slidepos]').innerText()) === 'Slide 2 of 3', 'the host sees “Slide 2 of 3”');
   assert((await aud.getByText('Skibidi Toilet').count()) === 0, 'the answer is still hidden');
-  await page.screenshot({ path: 'test-results/multislide-host.png' });
+  await page.screenshot({ path: resultsPath('multislide-host.png') });
 
   // A player buzzes in (picked by hand) mid-way: the slides go on, nobody's pick is reset.
   await page.keyboard.press('1');
@@ -469,7 +468,7 @@ try {
     wheels: [],
     dice: [],
   };
-  const oldFile = resolve('test-results/multislide-old.json');
+  const oldFile = resultsPath('multislide-old.json');
   writeFileSync(oldFile, JSON.stringify(old));
   await page.getByRole('button', { name: 'Exit' }).click();
   await page.waitForTimeout(450);

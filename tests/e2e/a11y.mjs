@@ -1,8 +1,7 @@
 // Accessibility and consistency: windows keep the focus (Tab stays inside, the rest is inert, the focus goes back on
 // close), the app asks in its own windows, the header fits at 150% zoom, readable colors, reduced motion, names, and
 // with forced colors what's chosen still shows (the color picker's Hex or RGB too).
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -22,6 +21,7 @@ import {
   roundTabsIn,
   stageBoxIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -1002,8 +1002,7 @@ try {
       statFields: [],
       items: [],
     };
-    mkdirSync(resolve('test-results'), { recursive: true });
-    const saidFile = resolve('test-results/a11y-said.json');
+    const saidFile = resultsPath('a11y-said.json');
     writeFileSync(saidFile, JSON.stringify(said));
     const sc = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     await returningHost(sc);

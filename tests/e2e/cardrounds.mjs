@@ -13,8 +13,7 @@
 // too), so a phone seated meanwhile is late for them on Resume; discarding the kept game takes them off the phones. A
 // host reload with cards out resumes with the same card ids (nothing sent again, an offer left waiting not sent), the
 // card window lets go of its cards when the host page goes, and comes back (the same window) on 🪟.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -42,10 +41,10 @@ import {
   stageBoxIn,
   statusBarIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 
 // ---------- The game ----------
 
@@ -232,7 +231,7 @@ try {
     dice: [],
     theme: {},
   };
-  const packPath = resolve('test-results/card-rounds.brainrot');
+  const packPath = resultsPath('card-rounds.brainrot');
   writeFileSync(packPath, await packGame(game, files));
 
   // ---------- The host ----------

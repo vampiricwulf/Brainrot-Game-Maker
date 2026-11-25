@@ -13,8 +13,7 @@
 // reveal card one width from a short name to a long one.
 // On Pastel, one window: a clue zooming in over the board's background, white tool titles, a long cover text, and no
 // lit tile under a still, hidden cursor.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -47,6 +46,7 @@ import {
   statusBarIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -164,8 +164,7 @@ async function pastelStage() {
       scoreBarBg: '#fce4ef',
     },
   };
-  mkdirSync(resolve('test-results'), { recursive: true });
-  const gameFile = resolve('test-results/stream-pastel.json');
+  const gameFile = resultsPath('stream-pastel.json');
   writeFileSync(gameFile, JSON.stringify(game));
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const host = await ctx.newPage();
@@ -438,8 +437,7 @@ async function crowd() {
     dice: [],
     theme: {},
   };
-  mkdirSync(resolve('test-results'), { recursive: true });
-  const gameFile = resolve('test-results/stream-crowd.json');
+  const gameFile = resultsPath('stream-crowd.json');
   writeFileSync(gameFile, JSON.stringify(game));
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const host = await ctx.newPage();
@@ -823,7 +821,7 @@ async function viewers() {
     // (🎨 Theme → Clue text: Anton.)
     theme: { clueFont: "'Anton', Impact, sans-serif" },
   };
-  const gameFile = resolve('test-results/stream-viewers.json');
+  const gameFile = resultsPath('stream-viewers.json');
   writeFileSync(gameFile, JSON.stringify(game));
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   // What came in how (the stage's entrances are element.animate calls): each element's first, with its first frame.
@@ -1189,7 +1187,7 @@ async function reloadMidGame() {
     theme: {},
     wheels: [],
   };
-  const gameFile = resolve('test-results/stream-reload.json');
+  const gameFile = resultsPath('stream-reload.json');
   writeFileSync(gameFile, JSON.stringify(game));
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   // (Whether the editor was ever on the page since it loaded: a cover shown after a moment of editor would be too late.)
@@ -1416,7 +1414,7 @@ async function tileTools() {
       },
     ],
   };
-  const gameFile = resolve('test-results/stream-tools.json');
+  const gameFile = resultsPath('stream-tools.json');
   writeFileSync(gameFile, JSON.stringify(game));
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   // A fake buzzer room (as in remotebuzz.mjs): room BCDF, keeping every state the host sends it.
@@ -1995,8 +1993,7 @@ async function finalBar() {
       dice: [],
       theme: { scoreBar },
     };
-    mkdirSync(resolve('test-results'), { recursive: true });
-    const gameFile = resolve(`test-results/stream-bar-${scoreBar}.json`);
+    const gameFile = resultsPath(`stream-bar-${scoreBar}.json`);
     writeFileSync(gameFile, JSON.stringify(game));
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const host = await ctx.newPage();

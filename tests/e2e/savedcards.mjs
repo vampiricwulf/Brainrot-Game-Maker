@@ -15,8 +15,7 @@
 // audience window. A card changed in the editor (▶ Resume with my edits) comes off the phones until ↻ Send again. With
 // no phones (the room closed), one shown in the 🪟 card window comes out of it, and its row says to ↩ Take it back and
 // show it again: there's no ↻ Send again.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -41,10 +40,10 @@ import {
   statusBarIn,
   toolsRowIn,
   hostPanelIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 
 // ---------- The game ----------
 
@@ -147,7 +146,7 @@ try {
       { id: 'sc_tip', name: 'Tip A', ...slide(text(TIP), image('tip', 400)) },
     ],
   };
-  const packPath = resolve('test-results/saved-cards.brainrot');
+  const packPath = resultsPath('saved-cards.brainrot');
   writeFileSync(packPath, await packGame(game, files));
 
   // ---------- The host ----------

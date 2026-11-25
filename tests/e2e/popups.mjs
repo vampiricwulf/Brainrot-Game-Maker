@@ -6,7 +6,6 @@
 // 🖼️ Image pop-ups by the window's right edge; and the pre-game screen's player picture picker. In a single window the
 // phones list stays off the stage viewers see.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -23,6 +22,7 @@ import {
   roundNavIn,
   stageBoxIn,
   statusLineIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -134,8 +134,7 @@ const game = {
     },
   ],
 };
-mkdirSync(resolve('test-results'), { recursive: true });
-const gameFile = resolve('test-results/popups.json');
+const gameFile = resultsPath('popups.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 // A fake buzzer room (as in remotebuzz.mjs): Start the room works, and the test can say which phones joined.

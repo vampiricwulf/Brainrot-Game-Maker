@@ -11,8 +11,7 @@
 // Reveal), Ann misses, the buzzers open at once for Cat and Dan, Cat buzzes and misses, the buzzers open for Dan alone,
 // Dan steals it. Ctrl+Z three times takes back Dan's steal, Cat's miss and Ann's miss (the steal closes, the phones grey
 // out); Ctrl+Y three times brings them all back. Needs `npm ci` in buzzer/.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -31,10 +30,10 @@ import {
   section,
   hostPanelIn,
   stageBoxIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 /** Waits (up to `ms`) until pred() holds. */
 const until = untilWith({ timeout: 20_000, every: 100 });
 
@@ -129,7 +128,7 @@ const game = {
   dice: [],
   theme: {},
 };
-const gameFile = resolve('test-results/partner-random.json');
+const gameFile = resultsPath('partner-random.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 const buzzer = await startBuzzer('buzzer-partnerrandom-');
@@ -372,7 +371,7 @@ try {
   assert(await until(async () => (await scoreOf('Dan')) === money(value)), `Enter: Dan steals it, ${money(value)}`);
   assert(await until(async () => (await stealRow.innerText()).includes('🔔 Dan stole it')), 'the panel: “🔔 Dan stole it”');
   assert(await until(() => last()?.phase === 'closed' && last().done?.by === 'p4'), 'the buzzers close');
-  await host.screenshot({ path: 'test-results/partner-random-steal.png' });
+  await host.screenshot({ path: resultsPath('partner-random-steal.png') });
 
   // ---------- Ctrl+Z three times: Dan's steal, Cat's miss, Ann's miss ----------
   section('Undo, redo');

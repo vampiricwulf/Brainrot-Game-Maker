@@ -1,8 +1,6 @@
 // The ▶ Play screen before the game (players, ⚖ Game rules, 📺 On stream's options at the rules' size, the sticky Start
 // bar, Ctrl+Z / Ctrl+Y there, History's Go there), the rules mid-game, a rematch keeping the players' pictures, and
 // phone buzzers in a copy without a buzzer server (an old game with Buzzer mode on, an exported player-only file).
-import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -29,6 +27,7 @@ import {
   stageBoxIn,
   statusBarIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -413,7 +412,7 @@ try {
     'a double-click on the game’s title, or F2 with the keys on it, renames it',
   );
   await titleBox.press('Escape');
-  await page.screenshot({ path: 'test-results/pregame-golive.png' });
+  await page.screenshot({ path: resultsPath('pregame-golive.png') });
 
   // ---------- ✅ Before you start: its On stream tips (✕ folds them, and only them), then the game's checks ----------
   const beforeCard = page.locator('section.before-start');
@@ -702,8 +701,7 @@ try {
 
   // ---------- An exported player-only file: no pointer to the editor's settings ----------
   const html = await exportHtml(page);
-  mkdirSync('test-results', { recursive: true });
-  const exported = resolve('test-results/pregame-player.html');
+  const exported = resultsPath('pregame-player.html');
   await html.saveAs(exported);
   const player = await context.newPage();
   player.on('pageerror', (e) => errors.push('[exported] ' + e.message));

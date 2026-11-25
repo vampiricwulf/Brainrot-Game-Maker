@@ -11,8 +11,7 @@
 // location. With four cards out, the deal's panel warns that its 📤 Send fills the phones; then, with the 8 they hold
 // out, a tile's card and a partner clue's say in their panels why they can't go: the partner clue's by what's off now
 // (📤 Send and start, then, the clock running, a card's 📤 Send or 📤 Send changes), never by what isn't.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -36,10 +35,10 @@ import {
   hostPanelIn,
   stageBoxIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 
 // ---------- The game ----------
 
@@ -163,7 +162,7 @@ try {
       },
     ],
   };
-  const packPath = resolve('test-results/deal.brainrot');
+  const packPath = resultsPath('deal.brainrot');
   writeFileSync(packPath, await packGame(game, {}));
 
   // ---------- The host ----------

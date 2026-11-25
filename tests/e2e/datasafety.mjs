@@ -1,7 +1,6 @@
 // Keeping games safe in the browser: a full storage that recovers, New / Open… keeping the game they replace, the
 // first Save asking for a name, hand-edited games, and exported player files that never touch the builder's files.
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -21,6 +20,7 @@ import {
   hostPanelIn,
   roundTabsIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -41,7 +41,6 @@ const dialogs = [];
 page.on('pageerror', (e) => errors.push(e.message));
 // (The step that closes the tab answers its beforeunload itself.)
 page.on('dialog', (d) => d.type() !== 'beforeunload' && (dialogs.push(`${d.type()}: ${d.message()}`), d.accept()));
-mkdirSync('test-results', { recursive: true });
 const shot = async (name) => process.env.SHOTS && (await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` }));
 
 const header = page.locator('header');
@@ -223,7 +222,7 @@ try {
     pack.suggestedFilename() === 'Safe-Game.brainrot' && (await page.locator('input.title').inputValue()) === 'Safe Game',
     'the first Save of an untitled game asks for its name, and names the file after it',
   );
-  const packPath = resolve('test-results/datasafety.brainrot');
+  const packPath = resultsPath('datasafety.brainrot');
   await pack.saveAs(packPath);
   await page.waitForFunction(() => !document.querySelector('header button.save-file[data-changed]'));
   assert(
@@ -496,9 +495,9 @@ try {
   // (A category pasted twice keeps its id; a text written as plainly as can be.)
   game.rounds[0].categories[1].id = game.rounds[0].categories[0].id;
   game.rounds[0].categories[2].clues[0].questionSlide = { background: {}, elements: [{ kind: 'text', text: 'Who painted the Mona Lisa?' }] };
-  writeFileSync(resolve('test-results/datasafety-hand.json'), JSON.stringify(game));
+  writeFileSync(resultsPath('datasafety-hand.json'), JSON.stringify(game));
   // (The game open was saved with Save first, as its history remembers: nothing to ask.)
-  await openGameFile(page, resolve('test-results/datasafety-hand.json'));
+  await openGameFile(page, resultsPath('datasafety-hand.json'));
   await page.getByText(/^Opened “/).waitFor();
   await roundTabsIn(page).first().click();
   assert(
@@ -517,15 +516,15 @@ try {
   game.rounds[0].categories[0].clues = game.rounds[0].categories[0].clues.slice(0, 2);
   game.rounds[0].categories[1].clues = null;
   game.title = 'Short clues';
-  writeFileSync(resolve('test-results/datasafety-short.json'), JSON.stringify(game));
-  await openGameFile(page, resolve('test-results/datasafety-short.json'));
+  writeFileSync(resultsPath('datasafety-short.json'), JSON.stringify(game));
+  await openGameFile(page, resultsPath('datasafety-short.json'));
   await page.getByText('Opened “Short clues”').waitFor();
   await roundTabsIn(page).first().click();
   assert((await page.locator('.tile').count()) === 30 && !errors.length, 'a category short of clues opens with empty tiles in their place');
   game.rounds[0].mode = 'quiz';
-  writeFileSync(resolve('test-results/datasafety-bad.json'), JSON.stringify(game));
+  writeFileSync(resultsPath('datasafety-bad.json'), JSON.stringify(game));
   dialogs.length = 0;
-  await openGameFile(page, resolve('test-results/datasafety-bad.json'));
+  await openGameFile(page, resultsPath('datasafety-bad.json'));
   // Said in the app's own message window (not a browser alert).
   const told = page.getByRole('alertdialog');
   await told.waitFor();
@@ -536,7 +535,7 @@ try {
   // ---------- Exported player files never touch the builder's files ----------
   await page.getByRole('button', { name: /🖼️ Media/ }).click();
   const html = await exportHtml(page);
-  const exported = resolve('test-results/datasafety-export.html');
+  const exported = resultsPath('datasafety-export.html');
   await html.saveAs(exported);
   const cardId = () => page.locator('.card [data-media-name]').getAttribute('data-media-name');
   const red = await cardId();
@@ -571,20 +570,20 @@ try {
   // Cut off halfway (an unfinished download): it says so.
   const packAt = html1.indexOf('id="jb-pack"');
   const packEnd = html1.indexOf('</script>', packAt);
-  writeFileSync(resolve('test-results/datasafety-cut.html'), html1.slice(0, Math.floor((packAt + packEnd) / 2)));
+  writeFileSync(resultsPath('datasafety-cut.html'), html1.slice(0, Math.floor((packAt + packEnd) / 2)));
   const cut = await context.newPage();
-  await cut.goto(pathToFileURL(resolve('test-results/datasafety-cut.html')).href);
+  await cut.goto(pathToFileURL(resultsPath('datasafety-cut.html')).href);
   await cut.getByText('This file is incomplete').waitFor();
   assert(true, 'a cut-off exported file says it is incomplete');
   await cut.close();
   // A pack too big for the browser to read out of the page (it reads as empty): never the editor.
   writeFileSync(
-    resolve('test-results/datasafety-toobig.html'),
+    resultsPath('datasafety-toobig.html'),
     html1.slice(0, html1.indexOf('>', packAt) + 1).replace(/data-size="\d+"/, 'data-size="600000000"') + html1.slice(packEnd),
   );
   const big = await context.newPage();
   big.on('pageerror', (e) => errors.push(`[too big] ${e.message}`));
-  await big.goto(pathToFileURL(resolve('test-results/datasafety-toobig.html')).href);
+  await big.goto(pathToFileURL(resultsPath('datasafety-toobig.html')).href);
   await big.getByText('This game is too big for this browser to open').waitFor();
   assert(
     (await big.getByRole('button', { name: 'Open…' }).count()) === 0,

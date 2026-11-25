@@ -1,8 +1,7 @@
 // Board game rounds: build a board (a loop with a fork, a Start bonus, an off-board zone), then play it: roll, move,
 // pick the way at the fork, pass Start, take turns, send someone to the Shadow Realm, undo; a reload keeps a roll. The
 // editor shows a backdrop or zone with its background reset in the color viewers see.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -30,6 +29,7 @@ import {
   roundTabsIn,
   stageBoxIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -890,7 +890,7 @@ try {
       .click()
       .then(() => page.getByRole('menuitem', { name: /Export JSON/ }).click()),
   ]);
-  const saved = resolve('test-results/boardgame-save.json');
+  const saved = resultsPath('boardgame-save.json');
   await json.saveAs(saved);
   await space('Space 5').click();
   await page.keyboard.press('Delete');
@@ -963,8 +963,7 @@ try {
       removeAfterLanding: false,
     })),
   };
-  mkdirSync(resolve('test-results'), { recursive: true });
-  const boardFile = resolve('test-results/boardgame-check.json');
+  const boardFile = resultsPath('boardgame-check.json');
   writeFileSync(boardFile, JSON.stringify(g));
   await openGameFile(page, boardFile);
   const replace = page.getByRole('dialog', { name: /^(Start a new game|Open|Reopen)/ });
@@ -1054,7 +1053,7 @@ try {
   }));
   // (With a zone to send them all to.)
   crowd.rounds = [{ ...board, zones: [{ id: 'z_shadow', name: 'Shadow Realm', slide: { background: { color: '#2a0845' }, elements: [] } }] }];
-  const crowdFile = resolve('test-results/boardgame-crowd.json');
+  const crowdFile = resultsPath('boardgame-crowd.json');
   writeFileSync(crowdFile, JSON.stringify(crowd));
   const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const host = await ctx2.newPage();
@@ -1135,7 +1134,7 @@ try {
       { ...crowd.rounds[0], id: 'r_bg2', name: 'Board two', mover: { kind: 'wheel', wheel: 'w_words' } },
     ],
   };
-  const longFile = resolve('test-results/boardgame-long.json');
+  const longFile = resultsPath('boardgame-long.json');
   writeFileSync(longFile, JSON.stringify(long));
   const ctx3 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const one = await ctx3.newPage();

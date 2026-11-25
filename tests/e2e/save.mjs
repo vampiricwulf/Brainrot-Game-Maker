@@ -1,7 +1,6 @@
 // Saving: Save / Export HTML keep working and keep every file, and a second copy of the app (another
 // tab or window, which shares the browser's storage) never overwrites this copy's game or deletes its media.
 import { statSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
@@ -25,6 +24,7 @@ import {
   statusBarIn,
   toastsIn,
   until,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -143,7 +143,7 @@ try {
   const player = await context.newPage();
   player.on('pageerror', (e) => errors.push(`[player] ${e.message}`));
   // Downloads are stored without an extension; the browser needs .html to open it as a page.
-  const saved = resolve('test-results/save-export.html');
+  const saved = resultsPath('save-export.html');
   await html.saveAs(saved);
   await player.goto(pathToFileURL(saved).href);
   await player.getByRole('button', { name: '▶ Play' }).waitFor({ timeout: 20000 });
@@ -248,7 +248,7 @@ try {
   // waiting on another tab that isn't there.
   const sandboxed = await context.newPage();
   sandboxed.on('pageerror', (e) => errors.push(`[sandboxed] ${e.message}`));
-  const frameHost = resolve('test-results/save-sandboxed.html');
+  const frameHost = resultsPath('save-sandboxed.html');
   const inFrame = async (src) => {
     writeFileSync(
       frameHost,
@@ -363,7 +363,7 @@ try {
       .click()
       .then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click()),
   ]);
-  const jsonPath = resolve('test-results/save-export.json');
+  const jsonPath = resultsPath('save-export.json');
   await json.saveAs(jsonPath);
   const fresh = await browser.newContext({ viewport: { width: 1400, height: 900 } });
   const c = await fresh.newPage();
@@ -431,7 +431,7 @@ try {
     `exported with a file missing: one message says where it went and which file it plays without (${exportSaid.replace(/\s+/g, ' ')})`,
   );
   await exportTold.getByRole('button', { name: 'OK' }).click();
-  const missingCopy = resolve('test-results/save-missing.html');
+  const missingCopy = resultsPath('save-missing.html');
   await missingHtml.saveAs(missingCopy);
   const short = await fresh.newPage();
   short.on('pageerror', (e) => errors.push(`[short copy] ${e.message}`));

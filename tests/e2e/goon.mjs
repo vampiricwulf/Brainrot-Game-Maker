@@ -20,8 +20,7 @@
 // 5. the check's place at 1280×720 in one window: inside the panel, off the stage and the fixed bar, none of its buttons
 //    where the blue button is, the tools row covered whole (no tool cut off beside it), the stage its size.
 // Each step waits for what it should do, never a timer. Needs `npm ci` in buzzer/ (the buzzers never opened, flow 4).
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -50,6 +49,7 @@ import {
   stageBoxIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -155,13 +155,12 @@ const finalGame = {
     },
   ],
 };
-mkdirSync(resolve('test-results'), { recursive: true });
-const gameFile = resolve('test-results/goon.json');
+const gameFile = resultsPath('goon.json');
 writeFileSync(gameFile, JSON.stringify(game));
-const finalFile = resolve('test-results/goon-final.json');
+const finalFile = resultsPath('goon-final.json');
 writeFileSync(finalFile, JSON.stringify(finalGame));
 /** The same Final with a 3-second clock: it runs out (flow 3b). */
-const shortFinalFile = resolve('test-results/goon-final-short.json');
+const shortFinalFile = resultsPath('goon-final-short.json');
 writeFileSync(shortFinalFile, JSON.stringify({ ...finalGame, id: 'g_goon_final_short', rounds: [{ ...finalGame.rounds[0], timerSeconds: 3 }] }));
 
 const buzzer = await startBuzzer('buzzer-goon-');

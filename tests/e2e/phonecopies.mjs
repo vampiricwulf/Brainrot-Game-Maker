@@ -11,8 +11,7 @@
 // copy, the phone shows it looping, silent and without controls (with reduced motion, or on a phone that won't start
 // it by itself, still with "▶ Play"), and the audience window's copy of the game never lists it. Needs `npm ci` in
 // buzzer/.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -32,11 +31,11 @@ import {
   stageBoxIn,
   toastsIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 import { clip, fixturePage, flac, gif, noise, wav } from './mediafixtures.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 /** Waits (up to `ms`: a slow machine takes its time) until pred() holds. */
 const until = untilWith({ timeout: 20_000 });
 
@@ -157,7 +156,7 @@ const gameWith = (movie, mov) => ({
     { id: 'sc_tone', name: 'Tone', background: {}, elements: [text('Sing'), soundEl('tone', 300)] },
   ],
 });
-const packPath = resolve('test-results/phone-copies.brainrot');
+const packPath = resultsPath('phone-copies.brainrot');
 const MB = (n) => `${(n / 1024 ** 2).toFixed(1)} MB`;
 
 // (3 MB a file: the 4 MB video and the 3.5 MB sound are big for it, the GIFs aren't.)

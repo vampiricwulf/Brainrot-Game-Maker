@@ -1,7 +1,6 @@
 // End-to-end smoke test of the built single-file app, opened from disk (file://) like a user would.
 // Usage: npm run test:quick   (builds first; SCREENSHOTS=dir to save screenshots)
 import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const file = appFile();
@@ -126,6 +125,7 @@ import {
   stageBoxIn,
   toastsIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
@@ -1960,8 +1960,7 @@ assert(playFocused, 'and the keys go on from ▶ Play');
 // Standalone player-only HTML export: opens straight into a Play screen with everything embedded.
 const html = await exportHtml(page);
 assert(html.suggestedFilename().endsWith('.html'), 'Export HTML downloads a .html file');
-mkdirSync('test-results', { recursive: true });
-const exported = resolve('test-results/exported-game.html');
+const exported = resultsPath('exported-game.html');
 await html.saveAs(exported);
 {
   // Not the maker's link preview, nor its no-JavaScript line (the file's own loading line says what to do).

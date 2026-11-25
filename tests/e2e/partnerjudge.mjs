@@ -6,8 +6,7 @@
 // bringing it again, a player scored by hand first left as they are, ✘ Missed with negative scores off still marking
 // both, the quick ✔/✘ chips worth each one's share, ↩ Cancel with the partner wheel up, and a reload mid-spin, while
 // handing out the cards, while playing and once judged, then two windows (Enter held down in the audience window too).
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -28,12 +27,12 @@ import {
   statusLineIn,
   toastsIn,
   stageBoxIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
 const errors = [];
-mkdirSync(resolve('test-results'), { recursive: true });
 
 // ---------- The game: Movies, Songs and Games, every tile but $200 a Describe it partner clue ----------
 let n = 0;
@@ -112,7 +111,7 @@ const game = {
   dice: [],
   theme: {},
 };
-const gameFile = resolve('test-results/partner-judge.json');
+const gameFile = resultsPath('partner-judge.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -200,7 +199,7 @@ try {
   await page.keyboard.press('Enter');
   assert(await toast('The clock just started: press Enter again to give ✔ Got it'), 'a second Enter right after the clock starts gives nothing, and says why');
   assert(Object.values(await scores()).every((s) => s === '$0') && (await stage('.timer').count()) === 1, 'no score, and the countdown runs on');
-  await page.screenshot({ path: 'test-results/partner-judge-live.png' });
+  await page.screenshot({ path: resultsPath('partner-judge-live.png') });
   await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
   assert(
     (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$400 · Bob +$200' && (await flat(judgeRow.locator('[data-judge-missed]'))) === 'no points',
@@ -223,7 +222,7 @@ try {
     'the 📤 list closes to one line a card',
   );
   assert((await mainLabel(page)) === '👁 Reveal answer', 'the answer is next');
-  await page.screenshot({ path: 'test-results/partner-judge-judged.png' });
+  await page.screenshot({ path: resultsPath('partner-judge-judged.png') });
   await page.keyboard.press('Enter');
   assert(await toast('Judged: Ann ✔ +$400 · Bob ✔ +$200 (Ctrl+Z takes it back)'), 'Enter again says it’s judged');
   await page.keyboard.press('l');

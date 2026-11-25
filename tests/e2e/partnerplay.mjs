@@ -13,8 +13,7 @@
 // it never spins or judges. In one window the host page never
 // holds a card's words or its picture's name; in two windows the audience window never does, and the host column lists
 // the cards as text.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -42,12 +41,12 @@ import {
   statusLineIn,
   toastsIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
 const browser = await launchChromium();
 const errors = [];
-mkdirSync(resolve('test-results'), { recursive: true });
 
 // ---------- The game: Movies $400, $600 and $800 are partner clues ----------
 // Words and a file name that are only on cards: they must never be on stream.
@@ -138,7 +137,7 @@ const game = {
   dice: [],
   theme: { stageText: '#ffe066' },
 };
-const gameFile = resolve('test-results/partner-play.json');
+const gameFile = resultsPath('partner-play.json');
 writeFileSync(gameFile, JSON.stringify(game));
 
 const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
@@ -343,7 +342,7 @@ try {
     'and the status line’s ⚠ Viewers see this chip says viewers can see it (its sentence for screen readers), not a line in the box',
   );
   await noCards(page, 'paired');
-  await page.screenshot({ path: 'test-results/partner-play-paired.png' });
+  await page.screenshot({ path: resultsPath('partner-play-paired.png') });
   // A right-click on the stage: the moment's menu, the blue button's Show question ▶ first (N, once only), then the 🤝
   // box's actions, each with its key (the partner there greyed, not left out), then the box's own, the way out, ↶ Undo
   // and ⏸ Cover. Names only: no card's words.
@@ -449,7 +448,7 @@ try {
     'a card with a picture offers 📋 Copy picture in its row (its words at the foot)',
   );
   await noCards(page, 'handing out the cards');
-  await page.screenshot({ path: 'test-results/partner-play-distribute.png' });
+  await page.screenshot({ path: resultsPath('partner-play-distribute.png') });
   await stage('[data-slide="1"]').click({ button: 'right' });
   const handMenu = await menuLines(page);
   assert(

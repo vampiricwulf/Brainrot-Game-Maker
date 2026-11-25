@@ -2,7 +2,6 @@
 // Hosting extras: who's answering on stream, the built-in sound cues (and switching one off in 🔊 Sounds), the chroma-key
 // stage background, the scores-only window for OBS and the ? list closed from the audience window. (Buzzer mode is phone buzzers: remotebuzz.mjs, buzzerlive.mjs.)
 import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -22,6 +21,7 @@ import {
   stageBoxIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -431,8 +431,7 @@ try {
   // Exported, the file has no 🎨 Theme or ⚙ Settings: the note and Reduce motion's tooltip don't send the host there.
   await slidesPage.getByRole('button', { name: '◀ Back to editor' }).click();
   const slidesHtml = await exportHtml(slidesPage);
-  mkdirSync(resolve('test-results'), { recursive: true });
-  const slidesFile = resolve('test-results/playfeatures-slides.html');
+  const slidesFile = resultsPath('playfeatures-slides.html');
   await slidesHtml.saveAs(slidesFile);
   const slidesPlayer = watch(await slidesContext.newPage(), 'slides game file');
   await slidesPlayer.goto(pathToFileURL(slidesFile).href);

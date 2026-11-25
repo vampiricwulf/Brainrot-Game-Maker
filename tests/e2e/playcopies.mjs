@@ -10,8 +10,7 @@
 // whose copies came out too big for the server: 🗜 Again offers one of only the part its card plays (none of all of
 // it), or, for one whose card plays all of it, says there's none smaller to make; the checklist offers 🗜 for the first
 // only. Needs `npm ci` in buzzer/.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -32,11 +31,11 @@ import {
   section,
   hostPanelIn,
   stageBoxIn,
+  resultsPath,
 } from './helpers.mjs';
 import { gif, noise, wav } from './mediafixtures.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 /** Waits (up to `ms`: a slow machine takes its time) until pred() holds. */
 const until = untilWith({ timeout: 20_000 });
 
@@ -145,7 +144,7 @@ const game = {
     { id: 'sc_drone', name: 'Drone', ...slide(text('Drone'), sound('drone')) },
   ],
 };
-const packPath = resolve('test-results/play-copies.brainrot');
+const packPath = resultsPath('play-copies.brainrot');
 writeFileSync(packPath, await packGame(game, { dance, twirl, hum, humc: tooBig, drone, dronec: tooBig }));
 
 const buzzer = await startBuzzer('buzzer-playcopies-', { vars: { FILE_MB: 1, ROOM_FILES_MB: 8, FILES_MB_PER_DAY: 40 } });

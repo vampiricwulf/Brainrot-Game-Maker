@@ -3,7 +3,6 @@
 // card, "used 1× ▾" listing where and going there, a card's menu by a right-click and by Shift+F10), the slide's
 // right-click menus, renaming layers, board images on the slides' clipboard, and the ⌨ Shortcuts sheet.
 import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -17,6 +16,7 @@ import {
   inspectorIn,
   roundTabsIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -603,7 +603,7 @@ try {
     await b.goto(pathToFileURL(file).href);
     // (Kept apart from the window that downloaded it: closing that window deletes its downloads, maybe before this one
     // has read the file.)
-    const jsonPath = resolve('test-results/editormedia-sounds.json');
+    const jsonPath = resultsPath('editormedia-sounds.json');
     await json.saveAs(jsonPath);
     await first.close();
     await openGameFile(b, jsonPath);

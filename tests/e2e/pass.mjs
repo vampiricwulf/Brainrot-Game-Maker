@@ -29,10 +29,10 @@ import {
   stageBoxIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 const shots = process.env.PASS_SHOTS ? resolve(process.env.PASS_SHOTS) : null;
 if (shots) mkdirSync(shots, { recursive: true });
 
@@ -116,9 +116,9 @@ const game = (teams = false) => ({
   statFields: [],
   items: [],
 });
-const gameFile = resolve('test-results/pass.json');
+const gameFile = resultsPath('pass.json');
 writeFileSync(gameFile, JSON.stringify(game()));
-const teamsFile = resolve('test-results/pass-teams.json');
+const teamsFile = resultsPath('pass-teams.json');
 writeFileSync(teamsFile, JSON.stringify(game(true)));
 
 const buzzer = await startBuzzer('buzzer-pass-');

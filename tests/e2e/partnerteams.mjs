@@ -8,8 +8,7 @@
 // box's 🎡 Spin for the describer, in front of them, then ↻ Spin again in its place), the card
 // to the describer only and a line for the rest of the team, one award to the team. All through, the host page holds no
 // card's words and no file name: not in its text, labels, titles or announcements.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -35,10 +34,10 @@ import {
   stageBoxIn,
   statusLineIn,
   toolsRowIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 
 // Every card's words carry "qkzvt", its picture's file name "zfnqt": neither may ever be on the host page (on stream).
 const WORDS1 = 'Kelp-qkzvt words';
@@ -179,7 +178,7 @@ try {
     ],
   };
   game.rounds.push({ id: 'r2', name: 'Quest', mode: 'rpg', world: 'w1' });
-  const packPath = resolve('test-results/partner-teams.brainrot');
+  const packPath = resultsPath('partner-teams.brainrot');
   writeFileSync(packPath, await packGame(game, { kelp }));
 
   // ---------- The host, in one window ----------

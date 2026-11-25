@@ -166,6 +166,17 @@ export function failureDir() {
 }
 
 /**
+ * A path in the repo's test-results/ (made if missing), wherever the file is run from: for what a test saves to look at
+ * afterwards or to open again (exported games, saved files, screenshots). Temporary state goes in a temp folder instead.
+ * @param {...string} parts
+ */
+export function resultsPath(...parts) {
+  const dir = join(repo, 'test-results');
+  mkdirSync(dir, { recursive: true });
+  return join(dir, ...parts);
+}
+
+/**
  * On a failure: a full-page screenshot of each page in failureDir(), as `<name>-failure.png` for one page or
  * `<name>-<label>-failure.png` for several, each logged with its address. `pages` is a page, a list of pages or
  * [label, page] pairs, or a browser (all its open pages). Closed pages, and a browser that never started, are skipped.

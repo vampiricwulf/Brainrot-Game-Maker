@@ -62,7 +62,10 @@ server locally under `wrangler dev` for the phone tests. No test may reach the r
 
 Files can run side by side (`--jobs N` on `scripts/e2e-shard.mjs`): a server a test starts later gets its port from
 `freePort()` in `tests/e2e/helpers.mjs`, which claims it for that test's process (a file in the temp folder,
-`brainrot-e2e-ports/`), so two tests never get the same one; anything else a test keeps goes in a temp folder of its own.
+`brainrot-e2e-ports/`), so two tests never get the same one. Temporary state goes in a temp folder of the test's own;
+what a test saves to look at afterwards or to open again (exported games, saved files, screenshots) goes in the repo's
+`test-results/` through `resultsPath()` in `helpers.mjs`, which finds it wherever the file is run from (the shard check
+refuses a `'test-results/…'` path written out, which would be relative to the current folder).
 With `--jobs` above 1, or `--quiet`, each file's output is held back and printed when it ends.
 
 #### Writing an e2e file

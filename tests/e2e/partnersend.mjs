@@ -13,8 +13,7 @@
 // the upload the room turns down, and one too big for the buzzer server, are said in plain words and offered 📋 Copy
 // picture.
 // The audience window, and the host page in one window, never hold a card's words, its file names or its link.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -43,10 +42,10 @@ import {
   stageBoxIn,
   statusLineIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 
 /**
  * A GIF of `w`×`h` random pixels (seeded), its picture data stored uncompressed (a clear code every 250 pixels keeps
@@ -252,7 +251,7 @@ try {
     dice: [],
     theme: {},
   };
-  const packPath = resolve('test-results/partner-send.brainrot');
+  const packPath = resultsPath('partner-send.brainrot');
   writeFileSync(packPath, await packGame(game, files));
 
   // ---------- The host ----------
@@ -626,7 +625,7 @@ try {
     'the YouTube clip plays in YouTube’s player once tapped',
   );
   assert(!(await bob.locator('body').innerText()).includes('zfnqj'), 'and no file name on the phone');
-  await bob.screenshot({ path: 'test-results/partnersend-card.png' });
+  await bob.screenshot({ path: resultsPath('partnersend-card.png') });
   assert((await shownOf(host, SECRETS)).length === 0, 'the host page in one window holds no card’s words, file names or link');
 
   // ---------- ↻ Send again reaches the late phone ----------

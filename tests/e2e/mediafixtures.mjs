@@ -4,8 +4,8 @@
 import { rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const { GifWriter } = createRequire(import.meta.url)('omggif');
 
@@ -16,7 +16,7 @@ export async function fixturePage(ctx) {
   process.once('exit', () => rmSync(html, { force: true }));
   const page = await ctx.newPage();
   await page.goto(pathToFileURL(html).href);
-  await page.addScriptTag({ path: resolve('node_modules/mediabunny/dist/bundles/mediabunny.min.cjs') });
+  await page.addScriptTag({ path: fileURLToPath(new URL('../../node_modules/mediabunny/dist/bundles/mediabunny.min.cjs', import.meta.url)) });
   return page;
 }
 

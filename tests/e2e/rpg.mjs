@@ -2,8 +2,7 @@
 // the item up, change a stat, undo and redo, show the map, and check viewers never see secret objects. The editor
 // shows a screen with its background reset in the color viewers see. A box drawn on the stage selects players and
 // the things that move in play, in two windows, one, and on a touch screen.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -27,6 +26,7 @@ import {
   roundTabsIn,
   stageBoxIn,
   toastsIn,
+  resultsPath,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -173,8 +173,7 @@ async function bigWorld() {
       },
     ],
   };
-  mkdirSync(resolve('test-results'), { recursive: true });
-  const gameFile = resolve('test-results/rpg-big-world.json');
+  const gameFile = resultsPath('rpg-big-world.json');
   writeFileSync(gameFile, JSON.stringify(game));
 
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -194,7 +193,7 @@ async function bigWorld() {
   await host.getByText(/^Opened “/).waitFor();
   // Exported, ✎ Edit screen says its changes last for this game only (the file has no 💾 Keep in game).
   const fileHtml = await exportHtml(host);
-  const fileCopy = resolve('test-results/rpg-big-world.html');
+  const fileCopy = resultsPath('rpg-big-world.html');
   await fileHtml.saveAs(fileCopy);
   const filePage = await ctx.newPage();
   filePage.on('pageerror', (e) => errors.push(`[big world file] ${e.message}`));
@@ -695,8 +694,7 @@ async function boxSelect() {
       },
     ],
   };
-  mkdirSync(resolve('test-results'), { recursive: true });
-  const gameFile = resolve('test-results/rpg-box-select.json');
+  const gameFile = resultsPath('rpg-box-select.json');
   writeFileSync(gameFile, JSON.stringify(game));
 
   /** A game screen on the round, from the file (`aud`: with the audience window open). */

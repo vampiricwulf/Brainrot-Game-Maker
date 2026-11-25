@@ -12,13 +12,11 @@
 // 📱 preview; an .mts with an MPEG-2 picture (which the app can't read) gets no 🔄, only why and Replace everywhere….
 // No toast, History row or pill names a file. (H.264, AAC, HEVC and AC-3 don't play in the test Chromium,
 // so what plays in Chrome or Edge on Windows or Mac, and converting to MP4 (H.264) or M4A (AAC), are checked by hand.)
-import { mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { appFile, addClassicRounds, editorReady, recordSeen, stored, failureShots, assert, launchChromium, section, until, inspectorIn } from './helpers.mjs';
 import { clip, fixturePage, noise, readBack, ts, withMpeg2Picture } from './mediafixtures.mjs';
 
 const file = appFile();
-mkdirSync('test-results', { recursive: true });
 
 let browser;
 const errors = [];

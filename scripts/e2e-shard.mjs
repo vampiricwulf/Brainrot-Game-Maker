@@ -20,7 +20,7 @@
 // buzzer/'s wrangler), so it never needs a list. When a shard grows past about eight minutes, move a file to another one here.
 // --check fails unless every named file exists, no file is in two shards, build.yml's e2e matrix runs exactly
 // these shards, and every file uses appFile() and failureShots() from helpers.mjs, and helpers.mjs's assert, sleep,
-// until, section, launchChromium() and startBuzzer() rather than a copy of its own.
+// until, section, launchChromium(), startBuzzer() and resultsPath() rather than a copy of its own.
 //
 // Before a run it checks that dist/index.html is newer than the source (unless APP_FILE is set). Each file's Chromium
 // gets tests/e2e/fonts.conf (CI's fonts, no Inter) unless FONTCONFIG_FILE is set: helpers.mjs sets it.
@@ -75,6 +75,8 @@ function check() {
       bad.push(`${f}.mjs has its own until() loop: use until() or untilWith() from helpers.mjs`);
     if (/CHROMIUM_PATH|chromium\.launch\(/.test(src)) bad.push(`${f}.mjs launches Chromium itself: use launchChromium()`);
     if (/node_modules\/\.bin\/wrangler/.test(src)) bad.push(`${f}.mjs starts the buzzer server itself: use startBuzzer()`);
+    // A path like 'test-results/x.json' is relative to wherever the file is run from: resultsPath() is the repo's.
+    if (/['"`]test-results\b/.test(src)) bad.push(`${f}.mjs names test-results/ itself: use resultsPath() from helpers.mjs`);
     // (Not checked, on purpose: a raw class such as '.panel .status' where a hook helper such as statusLineIn() would
     // do. Tests move onto the helpers as they're touched; see "Writing an e2e file" in docs/development.md.)
   }

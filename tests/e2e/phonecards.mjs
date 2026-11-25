@@ -17,8 +17,7 @@
 // the buzzer's place has what's locked in over it (said too), and the keys go into a box from a covered card or the
 // wager box; an edit not sent yet says so in amber; the end says where you came as one sentence. Needs `npm ci` in
 // buzzer/.
-import { mkdirSync } from 'node:fs';
-import { failureShots, png, assert, sleep, launchChromium, startBuzzer, untilWith } from './helpers.mjs';
+import { failureShots, png, assert, sleep, launchChromium, startBuzzer, untilWith, resultsPath } from './helpers.mjs';
 
 // (Its own limits, so the sizes below hold whatever wrangler.jsonc says.)
 const buzzer = await startBuzzer('buzzer-cards-', { vars: { FILE_MB: 16, ROOM_FILES_MB: 64 } });
@@ -46,9 +45,8 @@ const PLAYER = '<!doctype html><title>player</title><p>a player</p>';
 let browser;
 const errors = [];
 const pages = [];
-mkdirSync('test-results', { recursive: true });
 // (Not full page: in Chromium that drops a phone's touch emulation, and the page turns into a laptop's.)
-const shot = (p, name) => p.screenshot({ path: `test-results/phonecards-${name}.png`, animations: 'disabled' });
+const shot = (p, name) => p.screenshot({ path: resultsPath(`phonecards-${name}.png`), animations: 'disabled' });
 try {
   const room = await (await fetch(`${base}/api/rooms`, { method: 'POST', headers: { 'CF-Connecting-IP': '198.51.100.40' } })).json();
   const h = await connectHost(room.code, room.hostToken);

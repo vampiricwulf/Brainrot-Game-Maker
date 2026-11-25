@@ -14,7 +14,6 @@
 // tool keys (C, D, T, S, M; ✂ Crop pressed reads ✓ Done cropping), and the Drawpad's Keep drawing and Ctrl+Enter.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -994,7 +993,7 @@ try {
   await fontChooser.setFiles({
     name: 'Channel Font.woff2',
     mimeType: 'font/woff2',
-    buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')),
+    buffer: readFileSync(new URL('../../node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2', import.meta.url)),
   });
   const fontSaid = toast.filter({ hasText: /^Font added/ });
   await fontSaid.waitFor();
