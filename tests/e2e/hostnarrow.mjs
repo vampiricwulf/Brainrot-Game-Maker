@@ -12,7 +12,8 @@
 //    ⏱️ Start and the seconds box under it are still hit at their centres;
 // 5. the check before going on (the Final's clock running), opened at 1280×720 then the window made 1920×1080, in one
 //    window and with an audience window: its lines keep their room and its buttons in sight (scrolled to), nothing past the window's
-//    edge, and the blue button's spot follows the blue button.
+//    edge, and the blue button's spot follows the blue button;
+// 6. a round's intro at 640 to 1280px wide: the status line naming a long category just revealed stays one line.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -141,18 +142,27 @@ const game = {
 };
 const gamePath = resultsPath('hostnarrow.json');
 writeFileSync(gamePath, JSON.stringify(game));
+// (The same, with the categories revealed one by one, the first one a long name.)
+const longCat = 'Supercalifragilisticexpialidocious memes of the ancient internet and beyond';
+const introGame = {
+  ...game,
+  settings: { ...game.settings, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' } },
+  rounds: game.rounds.map((r, i) => (i === 0 ? { ...r, categories: r.categories.map((c, ci) => (ci === 0 ? { ...c, title: longCat } : c)) } : r)),
+};
+const introPath = resultsPath('hostnarrow-intro.json');
+writeFileSync(introPath, JSON.stringify(introGame));
 
 /**
  * A new page on the game's pre-game screen.
  * @param {{ width: number, height: number }} viewport
- * @param {{ touch?: boolean, dual?: boolean }} [opts]
+ * @param {{ touch?: boolean, dual?: boolean, path?: string }} [opts]
  */
-async function pregame(viewport, { touch = false, dual = false } = {}) {
+async function pregame(viewport, { touch = false, dual = false, path = gamePath } = {}) {
   const ctx = await browser.newContext({ viewport, ...(touch ? { hasTouch: true, isMobile: true } : {}) });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(pathToFileURL(file).href);
-  await openGameFile(page, gamePath);
+  await openGameFile(page, path);
   await page.getByText(/^Opened “/).waitFor();
   await page.getByRole('button', { name: '▶ Play' }).click();
   if (dual) await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
@@ -398,6 +408,28 @@ try {
     assert(
       probe.sideways <= 0 && probe.scrollOut <= 0 && probe.pad < probe.card / 4 && probe.spotOnNext && probe.hidden.length === 0,
       `1280×720 → 1920×1080 ${where}: the check's lines keep their room, its buttons in sight (scrolled to), nothing past the window's edge, its spot on the blue button (${JSON.stringify(probe)})`,
+    );
+    await ctx.close();
+  }
+
+  section('A round’s intro naming a long category, 640 to 1280px');
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 900, height: 1000 },
+    { width: 640, height: 900 },
+  ]) {
+    const { ctx, page } = await pregame(viewport, { path: introPath });
+    await start(page);
+    const line = statusLineIn(page);
+    await line.getByText(/Revealing the categories: 0 of 5/).waitFor();
+    const before = (await line.boundingBox())?.height;
+    await page.keyboard.press('n');
+    await line.getByText(/Revealing the categories: 1 of 5, Supercali/).waitFor();
+    await sleep(200);
+    const after = (await line.boundingBox())?.height;
+    assert(
+      !!before && before === after,
+      `${viewport.width}×${viewport.height}: the status line naming the long category just revealed stays one line (${before} → ${after})`,
     );
     await ctx.close();
   }
