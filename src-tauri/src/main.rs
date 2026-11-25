@@ -1030,7 +1030,7 @@ fn fix_off_from_second_launch(app: &AppHandle) {
         return;
     }
     let restart = ACTIVE_ARGS.get().is_some();
-    // So the page's Sound help and warnings match the saved setting.
+    // So the page's 🔊 Test the sound and warnings match the saved setting.
     if let Err(err) = app.emit_to("main", FIX_OFF_EVENT, restart) {
         eprintln!("couldn't tell the page the Discord audio fix is off: {err}");
     }

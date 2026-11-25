@@ -8,7 +8,7 @@ export interface ModalOptions {
   /** Esc closes the window (leave it out when the window handles Esc itself). */
   esc?: () => void;
   /**
-   * A window only for reading (ℹ About, the keys, Sound help, the rules in play): Enter on the window or its words
+   * A window only for reading (ℹ About, the keys, 🔊 Test the sound, the rules in play): Enter on the window or its words
    * closes it, as its Done does. Enter in a field, a list or on a button keeps its own meaning.
    */
   enter?: () => void;

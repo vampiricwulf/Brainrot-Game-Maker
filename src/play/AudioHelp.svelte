@@ -141,9 +141,9 @@
   role="presentation"
   onclick={(e) => e.target === e.currentTarget && onclose()}
 >
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Streaming the sound" use:modal={{ enter: onclose }}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Test the sound" use:modal={{ enter: onclose }}>
     <div class="row">
-      <h2 class="modal-title">🔊 Streaming the sound</h2>
+      <h2 class="modal-title">🔊 Test the sound</h2>
       <span class="spacer"></span>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
@@ -243,6 +243,8 @@
       </section>
     {/if}
 
+    <!-- The window is 🔊 Test the sound, as its buttons say; the steps to stream it follow under their own line. -->
+    <p><b>Streaming it (Discord, OBS)</b></p>
     <details open>
       <summary>Discord on Windows</summary>
       <!-- (Single window: viewers see this window, so it's the one to share; there's no audience window to open.) -->

@@ -87,7 +87,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['F', 'Full-screen'],
       [
         '?',
-        'This list (❔ Help at the bar’s end opens it too). Esc, ? or Enter closes it, and Enter closes the 🔊 Sound and ⚖ Rules windows too (not from a box or a button in them)',
+        'This list (❔ Help at the bar’s end opens it too). Esc, ? or Enter closes it, and Enter closes 🔊 Test the sound and ⚖ Rules too (not from a box or a button in them)',
       ],
     ],
   },

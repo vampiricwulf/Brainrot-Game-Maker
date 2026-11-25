@@ -1,5 +1,5 @@
 // @ts-check
-// Streaming the sound: the 🔊 Sound help, Test sound in single and dual mode, blocked sounds reported to the
+// Streaming the sound: the 🔊 Test the sound window, Test sound in single and dual mode, blocked sounds reported to the
 // host (an RPG round's music too, which starts on the click), the Game audio output picker, and the desktop app's
 // settings (with a stand-in for its native side).
 // Headless Chromium has no speakers, and it's launched with autoplay allowed (as after a click in each
@@ -17,6 +17,7 @@ import {
   confirmStrip,
   failureShots,
   assert,
+  assertEq,
   launchChromium,
   awardRowIn,
   boardIn,
@@ -95,7 +96,7 @@ async function toPregame(page, url, { introSound = false, introSeconds = 2 } = {
   await playWithPlayers(page, 2);
 }
 
-const dialog = (page) => page.getByRole('dialog', { name: 'Streaming the sound' });
+const dialog = (page) => page.getByRole('dialog', { name: 'Test the sound' });
 const result = (page) => dialog(page).locator('.result');
 async function testSound(page, expected) {
   await dialog(page).getByRole('button', { name: '▶ Test sound' }).click();
@@ -120,7 +121,12 @@ try {
 
     await page.getByRole('button', { name: '🔊 Test the sound…' }).click();
     await dialog(page).waitFor();
-    assert(true, 'the sound help opens from the pre-game display settings');
+    // One name: the button before the game, the window's title and its name to a screen reader say the same.
+    assertEq(await dialog(page).locator('h2').innerText(), '🔊 Test the sound', '🔊 Test the sound… opens the window titled 🔊 Test the sound');
+    assert(
+      (await dialog(page).getByText('Streaming it (Discord, OBS)', { exact: true }).count()) === 1,
+      'its streaming steps come under “Streaming it (Discord, OBS)”',
+    );
     const sections = await dialog(page).locator('summary').allInnerTexts();
     assert(
       ['Discord on Windows', 'OBS', 'Mac', 'Linux'].every((s) => sections.includes(s)),
@@ -165,7 +171,7 @@ try {
     await boardTilesIn(boardIn(page)).first().waitFor();
     await hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click();
     await dialog(page).waitFor();
-    assert(true, 'the sound help opens from the host panel');
+    assertEq(await dialog(page).locator('h2').innerText(), '🔊 Test the sound', 'the host panel’s 🔊 Sound opens the same 🔊 Test the sound');
     assert((await dialog(page).getByText('plays in this window').count()) === 1, 'it says the sound plays in this window');
     await page.keyboard.press('1');
     await page.waitForTimeout(150);
@@ -660,14 +666,14 @@ try {
     await page.getByRole('button', { name: 'Skip intro' }).click();
     const warning = fixWarning(hostPanelIn(page), FAILED_WARNING);
     await warning.waitFor();
-    assert((await dialog(page).count()) === 0, 'the host panel warns too, without opening the Sound help');
+    assert((await dialog(page).count()) === 0, 'the host panel warns too, without opening 🔊 Test the sound');
     assert((await warning.getByText('Restart Brainrot Games Maker to try again').count()) === 1, 'the warning says a restart should bring it back');
     const created = await createdAudience(page, /^📺 Audience$/);
     assert(!('additionalBrowserArgs' in created), 'running without the switches: the fallback audience window keeps the defaults');
     await warning.getByRole('button', { name: '🔊 Help' }).click();
     const help = dialog(page);
     await help.waitFor();
-    assert(true, "the warning's Help button opens the Sound help");
+    assert(true, "the warning's Help button opens 🔊 Test the sound");
     const fix = help.getByRole('checkbox', { name: /Discord audio fix/ });
     assert(await fix.isChecked(), 'the fix still shows as switched on');
     assert(
@@ -729,7 +735,7 @@ try {
 
   {
     // Opened again with --no-audio-fix while this run is without the fix (here: after a crash). The native side saved it
-    // as off and needs no restart: the page's warnings and Sound help follow the saved setting.
+    // as off and needs no restart: the page's warnings and 🔊 Test the sound follow the saved setting.
     const context = await desktopContext({ fix: true, crashed: true });
     const page = watch(await context.newPage(), 'desktop (switched off from outside)');
     await toPregame(page, httpUrl);

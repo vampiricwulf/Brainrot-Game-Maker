@@ -1435,7 +1435,7 @@ try {
     }
     if (w === 1366) {
       await hostPanelIn(p4).getByRole('button', { name: '🔊 Sound' }).click();
-      const help = p4.getByRole('dialog', { name: 'Streaming the sound' });
+      const help = p4.getByRole('dialog', { name: 'Test the sound' });
       await help.waitFor();
       const hb = await help.boundingBox();
       const sb = await stageBoxIn(p4).boundingBox();

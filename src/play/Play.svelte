@@ -410,7 +410,7 @@
   let showKeys = $state(false);
   /** The keys window opens on the keys of what's being played (the pre-game screen's own there). */
   const keysFirst = $derived(app.pregame ? BEFORE : KEYS_FIRST[session.phase]);
-  /** The streaming-sound help (Test sound, output device, Discord/OBS steps). */
+  /** 🔊 Test the sound: Test sound, output device, Discord/OBS steps. */
   let showSound = $state(false);
   /** P was pressed: the next 1–9 sets the picker. */
   let pickerPending = $state(false);

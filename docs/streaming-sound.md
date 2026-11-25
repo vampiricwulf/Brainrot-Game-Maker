@@ -4,7 +4,8 @@
 
 With an audience window open, the game's sound plays from the **audience window**, so that's the window to share.
 
-To check it, open **🔊 Sound** in the host panel (or **🔊 Test the sound…** in ✅ Before you start). It has:
+To check it, open **🔊 Test the sound…** in ✅ Before you start (or **🔊 Sound** in the host panel during the game). The
+window, **🔊 Test the sound**, has:
 
 - a **▶ Test sound** button,
 - a speaker picker (for example, a virtual cable into OBS),
@@ -20,7 +21,7 @@ To check it, open **🔊 Sound** in the host panel (or **🔊 Test the sound…*
 ## Desktop app
 
 - Don't run the app as administrator or with compatibility settings. Discord and OBS can't hear it then.
-- The **Discord audio fix** is on by default. You can switch it off in the 🔊 Sound window.
+- The **Discord audio fix** is on by default. You can switch it off in **🔊 Test the sound**.
 - If the window stays blank, turn the fix off in one of these ways, then reopen the app:
   - Start the app with `--no-audio-fix`.
   - Create an empty file named `discord-audio-fix-off` in `%APPDATA%\com.brainrotgames.maker\`:

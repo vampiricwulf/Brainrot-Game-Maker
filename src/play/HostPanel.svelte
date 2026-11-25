@@ -304,7 +304,7 @@
     onaudience: () => void;
     /** Open or close the scores-only window (a lower third for OBS). */
     onscores: () => void;
-    /** Open the streaming-sound help (Test sound, output device). */
+    /** Open 🔊 Test the sound (Test sound, output device, how to stream it). */
     onsound: () => void;
     /** ❔ Help: the keys window, on the game's keys. */
     onkeys?: () => void;
@@ -2074,7 +2074,9 @@
     <!-- What goes to the stream: its sound, the audience window and the scores-only window (a lower third for OBS).
          Closing the audience window blacks out the stream capture, so it asks first. -->
     <span class="group g-windows">
-      <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 <span class="txt">Sound</span></button>
+      <button onclick={onsound} title="Test the sound: hear it, pick where it plays, and see how to stream it (Discord, OBS)"
+        >🔊 <span class="txt">Sound</span></button
+      >
       <button
         onclick={() => (dual ? (askCloseAudience = true) : onaudience())}
         class:on={dual}

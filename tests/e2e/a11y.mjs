@@ -729,7 +729,7 @@ try {
     ['?', () => page.keyboard.press('?'), page.getByRole('dialog', { name: 'Keyboard shortcuts' })],
     ['📜 Log', () => page.keyboard.press('l'), page.locator('aside[aria-label="Log"]')],
     ['⚖ Rules', () => rulesBtn.click(), rulesDlg],
-    ['🔊 Sound', () => hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click(), page.getByRole('dialog', { name: 'Streaming the sound' })],
+    ['🔊 Sound', () => hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click(), page.getByRole('dialog', { name: 'Test the sound' })],
     ['👥 Players', () => page.getByRole('button', { name: '👥 Players' }).click(), page.getByRole('dialog', { name: 'Players' })],
   ]) {
     await open();
