@@ -628,26 +628,35 @@ try {
   assert(tall.h >= 132 && tall.label, `on its side under a long clue, the card keeps room for its Tap to see (${JSON.stringify(tall)})`);
   // And all of it: the covered card is whole in its box, dashed edge and all (no inner scroll that cuts it mid-cover),
   // its cover as big as fits, its Tap to see in it (full size from 480px tall).
-  const covers = [];
-  for (const height of [340, 360, 400, 440, 480, 540]) {
-    await ann.setViewportSize({ width: 740, height });
-    await until(() => ann.evaluate(() => getComputedStyle(document.getElementById('s-buzz')).display === 'grid'), 'side by side');
-    const m = await ann.evaluate(() => {
-      const [cards, cover] = [document.getElementById('cards'), document.querySelector('.card-cover')];
-      const [r, c, k] = [cards.getBoundingClientRect(), cover.getBoundingClientRect(), cover.closest('.card').getBoundingClientRect()];
-      return {
-        cover: Math.round(c.height),
-        cut: Math.round(Math.max(c.bottom, k.bottom) - r.bottom),
-        scrolls: cards.scrollHeight > cards.clientHeight + 1,
-        label: cover.scrollHeight <= cover.clientHeight + 1,
-      };
-    });
-    covers.push({ height, ...m });
-  }
-  assert(
-    covers.every((m) => m.cut <= 1 && !m.scrolls && m.label && m.cover >= 70 && (m.height < 480 || m.cover >= 132)),
-    `on its side beside BUZZ!, a covered card shows whole, cover and all, at 340 to 540px tall (${JSON.stringify(covers)})`,
-  );
+  const coversWhole = async () => {
+    const covers = [];
+    for (const height of [340, 360, 400, 440, 480, 540]) {
+      await ann.setViewportSize({ width: 740, height });
+      await until(() => ann.evaluate(() => getComputedStyle(document.getElementById('s-buzz')).display === 'grid'), 'side by side');
+      const m = await ann.evaluate(() => {
+        const [cards, cover] = [document.getElementById('cards'), document.querySelector('.card-cover')];
+        const [r, c, k] = [cards.getBoundingClientRect(), cover.getBoundingClientRect(), cover.closest('.card').getBoundingClientRect()];
+        return {
+          cover: Math.round(c.height),
+          cut: Math.round(Math.max(c.bottom, k.bottom) - r.bottom),
+          scrolls: cards.scrollHeight > cards.clientHeight + 1,
+          label: cover.scrollHeight <= cover.clientHeight + 1,
+        };
+      });
+      covers.push({ height, ...m });
+    }
+    return covers;
+  };
+  const coverWhole = (covers) => covers.every((m) => m.cut <= 1 && !m.scrolls && m.label && m.cover >= 70 && (m.height < 480 || m.cover >= 132));
+  const besideBuzz = await coversWhole();
+  assert(coverWhole(besideBuzz), `on its side beside BUZZ!, a covered card shows whole, cover and all, at 340 to 540px tall (${JSON.stringify(besideBuzz)})`);
+  // Beside a box (an answer asked for): the same, not the small cover of one above a box on a phone held upright.
+  hostState({ answers: { id: 'c-side', open: true, seats: [{ id: 'a' }] } });
+  await ann.getByLabel(/Your answer/).waitFor();
+  const besideBox = await coversWhole();
+  assert(coverWhole(besideBox), `on its side beside a box, a covered card shows whole, cover and all, at 340 to 540px tall (${JSON.stringify(besideBox)})`);
+  hostState({ answers: null });
+  await ann.locator('#buzz').waitFor();
   await ann.setViewportSize({ width: 740, height: 340 });
   // (BUZZ! where it is with no card: the middle of the screen under the header, not of the rows beside it, which run on.)
   await ann.evaluate(() => scrollTo(0, 0));
