@@ -19,6 +19,8 @@
   const bgGone = $derived(fileDeleted(game, slide.background.image));
   /** The label's width on screen (px): it keeps its size whatever the stage's scale or the item's, never clipped by it. */
   const LABEL = 240;
+  /** Its height on screen, at most (three lines): near the slide's foot it goes up from the item's bottom instead. */
+  const LABEL_H = 64;
   const another = (kind: string) => (kind === 'video' ? 'video' : kind === 'audio' ? 'sound' : 'picture');
 </script>
 
@@ -34,7 +36,10 @@
         style:height="{el.h}px"
         style:transform="rotate({el.rotation}deg)"
       >
-        <span class="say" class:right={el.x + LABEL * inv > 1920 && el.x + el.w > LABEL * inv}
+        <span
+          class="say"
+          class:right={el.x + LABEL * inv > 1920 && el.x + el.w > LABEL * inv}
+          class:up={el.y + LABEL_H * inv > 1080 && el.y + el.h > LABEL_H * inv}
           >⚠ Deleted file: not saved with the game. Undo in 🕘 History, or 🔁 Use another {another(el.kind)}…</span
         >
       </div>
@@ -63,8 +68,8 @@
     /* The picture still shows, dimmed (about a third of its strength). */
     background: rgb(0 0 0 / 0.65);
   }
-  /* A badge at the item's top-left (top-right near the slide's right edge), as the editor's ribbon is: its screen size
-     whatever the item's, so a small picture's still reads. */
+  /* A badge at the item's top-left (its right near the slide's right edge, its bottom near the slide's foot), as the
+     editor's ribbon is: its screen size whatever the item's, so a small picture's still reads. */
   .say {
     position: absolute;
     top: 0;
@@ -82,6 +87,10 @@
   .say.right {
     left: auto;
     right: 0;
+  }
+  .say.up {
+    top: auto;
+    bottom: 0;
   }
   .gone-bg {
     position: absolute;

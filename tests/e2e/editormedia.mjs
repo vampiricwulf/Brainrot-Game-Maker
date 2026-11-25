@@ -17,6 +17,7 @@ import {
   roundTabsIn,
   toastsIn,
   resultsPath,
+  until,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -559,9 +560,32 @@ try {
     await page.waitForFunction(() => document.activeElement?.matches('.insp [data-replace]'));
     assert((await page.getByRole('dialog', { name: 'Edit image' }).count()) === 0, 'a double-click on it goes to 🔁 Use another picture… (no image editor)');
     await shot('em-deleted-file');
-    // ↶ Undo of the delete brings the file back: the marks go.
+    // (In the slide's bottom-right corner, as a logo is: the label turns to stay inside the slide.)
+    const pos = inspectorIn(page).locator('section:has(h4:text("Position"))');
+    await pos.getByLabel('X', { exact: true }).fill('1910');
+    await pos.getByLabel('Y', { exact: true }).fill('1070');
+    await pos.getByLabel('Y', { exact: true }).press('Tab');
+    await page.waitForFunction(() => document.querySelector('.gone[data-gone] .say.right.up'));
+    const corner = await frame.locator('.say').boundingBox();
+    assert(
+      !!corner &&
+        !!slideBox &&
+        corner.x >= slideBox.x - 1 &&
+        corner.x + corner.width <= slideBox.x + slideBox.width + 1 &&
+        corner.y >= slideBox.y - 1 &&
+        corner.y + corner.height <= slideBox.y + slideBox.height + 1,
+      `in the slide's bottom-right corner, its label stays inside the slide (${JSON.stringify(corner)} in ${JSON.stringify(slideBox)})`,
+    );
+    // ↶ Undo of the move (it opens the clue again, where its step was), then of the delete (made in 🖼️ Media, it opens
+    // nothing): the file is back and the marks go.
     await page.getByRole('button', { name: 'Done' }).click();
-    await page.keyboard.press('Control+z');
+    const editClue = page.getByRole('dialog', { name: 'Edit clue' });
+    for (let i = 0; ; i++) {
+      await page.keyboard.press('Control+z');
+      if (!(await until(() => editClue.count(), { timeout: 1500 }))) break;
+      assert(i < 2, 'the move is undone in at most two steps');
+      await editClue.getByRole('button', { name: 'Done' }).click();
+    }
     await openClue();
     await layers.filter({ hasText: 'gone.png' }).waitFor();
     await layers.filter({ hasText: 'gone.png' }).locator('.name').click();
