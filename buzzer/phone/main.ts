@@ -181,6 +181,11 @@ let autoTimeFor = '';
  * sight (with 5 or 6 choices it can be under the bottom of a short phone, and the tap would look unanswered).
  */
 let pickToShow = '';
+/**
+ * The answer box's red line last drawn: one just come is scrolled into sight with Send under it, side by side (where no
+ * room is kept for it, so it moves Send down, off a phone on its side).
+ */
+let answerErrShown = '';
 /** The choices drawn (their ids and words), so they're drawn again only when they change (the keys stay put). */
 let choicesKey = '';
 let wasAnsUp = false;
@@ -2523,6 +2528,8 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   // Green for what's in and shown; plain for "not shown here".
   $('answer-state').classList.toggle('plain-note', !!a.hidden && !a.text);
   $('answer-err').textContent = answerErr;
+  const errCome = !!answerErr && answerErr !== answerErrShown;
+  answerErrShown = answerErr;
   drawAnswerSend(a);
   const hostGone = renderFoot(v, sym);
   // The question (and what's on), said once as it comes: not again before each "Sending…" or "✔ Sent" (it can be 1,000
@@ -2543,6 +2550,9 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
         : ['Everyone answers'];
   say(sentences([connected ? '' : awayText(), ...what, state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
+  // (Once laid out: a red line just come, side by side. Multiple choice has no Send: the line itself.)
+  if (errCome && getComputedStyle($('s-buzz')).display === 'grid')
+    $(rectOf($('answer-send')) ? 'answer-send' : 'answer-err').scrollIntoView({ block: 'nearest' });
   // (Once laid out. Only for this phone's own tap, once: never a teammate's pick, nor every redraw.)
   if (pickToShow && !answerSending && (a.pick === pickToShow || answerErr)) {
     pickToShow = '';

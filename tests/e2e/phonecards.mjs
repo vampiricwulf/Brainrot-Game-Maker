@@ -764,6 +764,17 @@ try {
     open.inside && open.head === shut.head && open.send <= 340,
     `open, her card scrolls in its own place beside the box, which stays put with Send answer on screen (${JSON.stringify(open)})`,
   );
+  // Send answer with nothing typed: the red line comes right under the box (no room is kept for it here), and both it and
+  // Send answer are in sight.
+  await ann.locator('#answer-send').click();
+  await ann.locator('#answer-err').getByText('Type an answer first.').waitFor();
+  const told = await ann.evaluate(() => {
+    const r = (id) => document.getElementById(id).getBoundingClientRect();
+    return { header: document.querySelector('header').getBoundingClientRect().bottom, err: r('answer-err').top, send: r('answer-send').bottom };
+  });
+  assert(told.err >= told.header && told.send <= 340, `on its side, “Type an answer first.” and Send answer both in sight (${JSON.stringify(told)})`);
+  await ann.locator('#answer-in').fill('x');
+  await ann.locator('#answer-in').fill('');
   await ann.setViewportSize({ width: 390, height: 760 });
   hostState({ clue: null, answers: null, status: parts, cards: [{ ...card, id: 'pc:c1:1:5' }] });
   await ann.locator('.card').waitFor({ state: 'detached' });
