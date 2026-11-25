@@ -72,6 +72,42 @@ describe('board game: moving', () => {
     expect(currentPlayer(bs)).toBe('b');
   });
 
+  it('◀ Previous turn then ▶ Next turn keeps a 🔁 Roll again the turn left had earned', () => {
+    const { game, round } = setup();
+    game.players.push({ id: 'c', name: 'Cy', color: '#4363d8' });
+    const bs = ensureBoard(newSession(game), game, round);
+    expect(bs.order).toEqual(['a', 'b', 'c']);
+    nextTurn(bs);
+    bs.again = 'b'; // Bob lands on 🔁 Roll again.
+    nextTurn(bs, -1);
+    expect(currentPlayer(bs)).toBe('a');
+    expect(bs.again).toBeUndefined();
+    nextTurn(bs);
+    expect(currentPlayer(bs)).toBe('b');
+    expect(bs.again).toBe('b');
+    nextTurn(bs);
+    expect(currentPlayer(bs)).toBe('b');
+    nextTurn(bs);
+    expect(currentPlayer(bs)).toBe('c');
+  });
+
+  it('◀ Previous turn gives back a 🔁 Roll again the turn before used up', () => {
+    const { game, round } = setup();
+    game.players.push({ id: 'c', name: 'Cy', color: '#4363d8' });
+    const bs = ensureBoard(newSession(game), game, round);
+    bs.again = 'a'; // Ann rolls again.
+    nextTurn(bs);
+    expect(currentPlayer(bs)).toBe('a');
+    nextTurn(bs, -1);
+    expect(currentPlayer(bs)).toBe('a');
+    expect(bs.again).toBe('a');
+    nextTurn(bs);
+    expect(currentPlayer(bs)).toBe('a');
+    expect(bs.again).toBeUndefined();
+    nextTurn(bs);
+    expect(currentPlayer(bs)).toBe('b');
+  });
+
   it("counts a move for its turn only: a lone player's next turn (or 🔁 Roll again) has its move to make", () => {
     const { game, round } = setup();
     const bs = ensureBoard(newSession(game), game, round);

@@ -242,7 +242,7 @@ export function currentPlayer(bs: BoardGameState): Id | undefined {
  * Pass the turn on (`delta` -1: back to the one before). Going on, a player who rolls again keeps it, and players who
  * skip a turn are passed over (one fewer to skip each time). Returns the players passed over. The new turn's move is
  * still to make, except back to the turn before (its move comes back), and on again straight after that (the turn left
- * comes back as it was, its move made).
+ * comes back as it was, its move made and any 🔁 Roll again it earned still to come).
  */
 export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   const n = bs.order.length;
@@ -253,7 +253,13 @@ export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   // nothing changed the order since. Otherwise just the player before.
   if (delta < 0 && before && before.turn < n) {
     // (The turn left, with its move: Next turn ▶ straight after comes back to it.)
-    bs.after = { turn: bs.turn, turns: bs.turns, ...(bs.last ? { last: JSON.parse(JSON.stringify(bs.last)) } : {}) };
+    // (Its 🔁 Roll again too, if it earned one: kept for the turn left, not live during the turn before.)
+    bs.after = {
+      turn: bs.turn,
+      turns: bs.turns,
+      ...(bs.again ? { again: bs.again } : {}),
+      ...(bs.last ? { last: JSON.parse(JSON.stringify(bs.last)) } : {}),
+    };
     bs.turn = before.turn;
     bs.turns = before.turns;
     // The skips it used up are owed again (any added since stay too).
@@ -263,6 +269,7 @@ export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
       bs.skips = skips;
     }
     if (before.again) bs.again = before.again;
+    else delete bs.again;
     bs.last = before.last;
     for (const k of ['turns', 'last'] as const) if (bs[k] === undefined) delete bs[k];
     delete bs.before;
@@ -281,7 +288,10 @@ export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   }
   /** On to the turn just gone back from (the same skips and Roll again used up): its move comes back too. */
   const done = (skipped: Id[]) => {
-    if (after?.last && bs.turn === after.turn && bs.turns === after.turns) bs.last = after.last;
+    if (after && bs.turn === after.turn && bs.turns === after.turns) {
+      if (after.last) bs.last = after.last;
+      if (after.again) bs.again = after.again;
+    }
     return skipped;
   };
   const again = bs.again;
