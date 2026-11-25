@@ -86,11 +86,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: e2e-debug-quick
-          # Everything the tests save in test-results/ (SCREENSHOTS included), and the failure screenshots a few files
-          # (a11y, editorfixes, lists, pregame) still save in the repository's top folder as <name>-failure.png.
-          path: |
-            test-results/
-            *-failure.png
+          # Everything the tests save in test-results/: SCREENSHOTS (test-results/screenshots, where failureShots() puts
+          # each failing page) and the smoke trace.
+          path: test-results/
           if-no-files-found: ignore
       - name: Build the release file with the buzzer server
         run: npm run build
@@ -155,11 +153,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: e2e-debug-${{ matrix.shard }}
-          # Everything the tests save in test-results/ (SCREENSHOTS included), and the failure screenshots a few files
-          # (a11y, editorfixes, lists, pregame) still save in the repository's top folder as <name>-failure.png.
-          path: |
-            test-results/
-            *-failure.png
+          # Everything the tests save in test-results/: SCREENSHOTS (test-results/screenshots, where failureShots() puts
+          # each failing page) and the smoke trace.
+          path: test-results/
           if-no-files-found: ignore
 
   buzzer:

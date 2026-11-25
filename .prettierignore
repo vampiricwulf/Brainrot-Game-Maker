@@ -5,7 +5,6 @@ node_modules/
 dist/
 test-results/
 /.tauri/
-*-failure.png
 buzzer/.wrangler/
 buzzer/.phone-page-*.part
 src-tauri/target/
