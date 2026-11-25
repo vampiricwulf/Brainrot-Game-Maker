@@ -6579,15 +6579,17 @@
   /* A touch screen (no mouse): the page's buttons, its small ones (✎ Rename, ± Start scores, 🔊 Test the sound…, the
      tips' ✕) and a player row's ▲ ▼ 🗑 too, and the ⚖ Game rules and 📺 On stream headings, are at least 32px to tap.
      (Only here, before the game: the host panel's buttons are about that size already, and the editor stays dense.)
-     The headings grow into their card's padding, so the cards keep their size. */
+     The headings grow into their card's padding above, and into the room under them only as far as nothing to tap
+     is there (open: over the padding of what they fold), on top of it. */
   @media (hover: none) {
     .pregame :global(button) {
       min-width: 32px;
       min-height: 32px;
     }
     .pregame :global(:is(details.rules, details.fold) > summary) {
+      position: relative;
       padding-block: 7px;
-      margin-block: -7px;
+      margin-block: -7px -3px;
     }
   }
 </style>

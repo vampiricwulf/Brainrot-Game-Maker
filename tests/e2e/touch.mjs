@@ -7,6 +7,8 @@
 // A board game hosted on a touch screen: its status line and its turn box name the buttons (🎲 Roll, ▶ Move, ◀ Previous
 // turn), never a key (D, Enter, Shift+N, N); with a mouse they keep their keys. On a phone held upright (390×844,
 // 360×740, 320×568) 🎲 Roll and ▶ Move are in sight and take a real tap.
+// ▶ Play's page before the game on a touch screen (a phone 390 and 360 wide, the room up, a tablet): every button and
+// the ⚖ Game rules / 📺 On stream headings at least 32px to tap, ▲ ▼ 🗑 on one line with 🗑 apart; with a mouse, small.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -102,8 +104,18 @@ async function pregameTargets(/** @type {import('playwright-core').Page} */ page
     const head = document.querySelector('main.pregame .players > .cols .score')?.getBoundingClientRect();
     const box = document.querySelector('main.pregame .players > .rows input.score')?.getBoundingClientRect();
     const [hm, rm] = ['.cols', '.rows'].map((s) => document.querySelector(`main.pregame .players > ${s} .moves`)?.getBoundingClientRect());
+    // The headings take a tap all over, open too (what they fold isn't over their foot): 2px in from top and bottom.
+    const untappable = [...document.querySelectorAll('main.pregame details > summary')].flatMap((s) => {
+      s.scrollIntoView({ block: 'center' });
+      const r = s.getBoundingClientRect();
+      return [r.top + 2, r.bottom - 2]
+        .filter((y) => !s.contains(document.elementFromPoint(r.left + 40, y)))
+        .map((y) => `${name(s)} at ${Math.round(y - r.top)}px`);
+    });
+    scrollTo(0, 0);
     return {
       small,
+      untappable,
       rows,
       tiny: Math.round(document.querySelector('main.pregame .rows button.tiny')?.getBoundingClientRect().height ?? 0),
       // (The heading starts or ends with the boxes, as the row wraps or not; the headings' ▲ ▼ 🗑 are as wide as the rows'.)
@@ -384,7 +396,7 @@ try {
       await page.setViewportSize({ width: w, height: 844 });
       const t = await pregameTargets(page);
       assert(
-        !t.small.length && t.rows.length >= 2 && t.rows.every((r) => r.line && r.gap >= 20) && t.aligned && t.sw === w && t.iw === w,
+        !t.small.length && !t.untappable.length && t.rows.length >= 2 && t.rows.every((r) => r.line && r.gap >= 20) && t.aligned && t.sw === w && t.iw === w,
         `a phone ${w} wide, before the game: every button and heading at least 32px, ▲ ▼ 🗑 on one line with 🗑 apart, the start score heading over its boxes, nothing sideways (${JSON.stringify(t)})`,
       );
     }
@@ -489,7 +501,7 @@ try {
     await page.getByRole('button', { name: /Start game ▶/ }).waitFor();
     const t = await pregameTargets(page);
     assert(
-      !t.small.length && t.rows.every((r) => r.line && r.gap >= 20) && t.aligned && t.sw === 820,
+      !t.small.length && !t.untappable.length && t.rows.every((r) => r.line && r.gap >= 20) && t.aligned && t.sw === 820,
       `a tablet, before the game: every button and heading at least 32px to tap, ▲ ▼ 🗑 on one line with 🗑 apart (${JSON.stringify(t)})`,
     );
     await ctx.close();
