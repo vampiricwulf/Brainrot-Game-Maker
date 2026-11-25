@@ -38,7 +38,7 @@ const steps = [
   ['Formatting (npm run format:check: Prettier, cached; npm run format fixes it)', npm, ['run', 'format:check']],
   ['Type check (npm run check: svelte-check, warnings fail it)', npm, ['run', 'check']],
   ['E2E type check (npm run check:e2e: tsc over the // @ts-check e2e files)', npm, ['run', 'check:e2e']],
-  ['Unit tests (npm test: Vitest, src/ and buzzer/)', npm, ['test']],
+  ['Unit tests (npm test: Vitest, src/, buzzer/ and scripts/)', npm, ['test']],
   ['Buzzer room type check (buzzer/)', npm, ['--prefix', 'buzzer', 'run', 'check']],
   ['Every e2e file is in one shard', 'node', ['scripts/e2e-shard.mjs', '--check']],
   ['Build (dist/index.html)', npm, ['run', 'build']],

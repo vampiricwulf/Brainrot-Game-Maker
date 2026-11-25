@@ -34,9 +34,9 @@ npm run build          # → dist/index.html (one self-contained file), about 8 
 npm run check          # type-check (svelte-check; a warning fails it too), about 25 s
 npm run check:e2e      # type-check the e2e files marked // @ts-check (tests/e2e/tsconfig.json), about 6 s; CI and the gate run it
 npm run format         # format the code with Prettier, about 25 s
-npm run format:check   # only check it, about 25 s the first time, then about 3 s: it keeps Prettier's cache (a new one
+npm run format:check   # only check it, 25 to 55 s the first time, then about 3 s: it keeps Prettier's cache (a new one
                        # when Prettier, its Svelte plugin or .prettierrc change; scripts/format.mjs). CI checks without it
-npm test               # unit tests (Vitest: src/ and buzzer/), about 30 s
+npm test               # unit tests (Vitest: src/, buzzer/ and scripts/), about 30 s
 (cd buzzer && npm run check)   # type-check the buzzer Worker and phone page (CI runs it; the root check doesn't)
 npm run test:quick     # the quick end-to-end test (tests/e2e/smoke.mjs), about 100 s; CI waits for it before releasing
 node tests/e2e/goon.mjs        # one end-to-end file (build first), every check's line: 5 s to about 3 min (hostlayout

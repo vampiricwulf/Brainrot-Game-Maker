@@ -1,6 +1,6 @@
 // npm run format / npm run format:check: Prettier over the repository (`--write` or `--check`, and any other
 // arguments passed on). A check uses Prettier's cache, so one after an earlier one only looks at the files that changed
-// (about 3 s instead of 25). A --write doesn't: Prettier marks each file it writes as done, so a file it lays out
+// (about 3 s instead of 25 or more). A --write doesn't: Prettier marks each file it writes as done, so a file it lays out
 // differently on a second pass (a long call chain, now and then) would then pass a cached check and fail CI's. Without
 // the cache the check after a --write looks at every file it wrote, and says when one needs a second npm run format.
 //
