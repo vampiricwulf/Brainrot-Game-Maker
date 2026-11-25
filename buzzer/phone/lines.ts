@@ -87,7 +87,10 @@ export function clockUp(t: ClockNow | null | undefined, now: number): boolean {
 /**
  * Words typed and not sent that the phone sent by itself (PhoneAnswer.auto): as time ran out (the box still open), or
  * as the answers locked (with no clock, before it ran out, or words typed on after it did). The host sees them marked ⏱️.
+ * `short`: without when, in place of "Yours" before the words, where the locked line's 3 lines have less room (the
+ * Final's, its wager first; a partner guess's, under the status): the words must still show.
  */
-export function autoSentLine(why: 'time' | 'lock'): string {
+export function autoSentLine(why: 'time' | 'lock', short = false): string {
+  if (short) return 'Sent automatically, unfinished';
   return why === 'time' ? 'Sent automatically when time ran out: unfinished' : 'Sent automatically when answers locked: unfinished';
 }

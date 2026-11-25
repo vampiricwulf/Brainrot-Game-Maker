@@ -8,8 +8,10 @@
 // the lock ("when answers locked": they weren't in at 0). Player 2's went at 0 too, then Send answer sends them as
 // their own (the ⏱️ goes), and that answer stays over an edit not sent; Player 3's went at 0 and were left as they
 // were: "when time ran out" and ⏱️ sent at time's up after the lock too (with a slow network, words typed between its
-// own 0 and the host's clock running out reaching it don't go as "when time ran out"). Then the Final: words typed and not sent go
-// as its answer shows, and the reveal rows mark them ⏱️ without the words until each is revealed.
+// own 0 and the host's clock running out reaching it don't go as "when time ran out"). A partner clue whose guesser
+// types: the guess typed and not sent goes as the answer shows ("Sent automatically, unfinished: “…”" under the status;
+// the host's guess line ⏱️ sent at lock). Then the Final: words typed and not sent go
+// as its answer shows ("Sent automatically, unfinished: “…”" after the wager), and the reveal rows mark them ⏱️ without the words until each is revealed.
 // Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
 import {
@@ -78,6 +80,15 @@ try {
     await editor.getByLabel(/Everyone answers/).check();
     await editor.getByRole('button', { name: /Done/ }).click();
   }
+
+  // A partner clue (Category 3 $200) whose guesser types their guess.
+  await host.locator('[data-tile="2,0"]').click();
+  await editor.locator('select').first().selectOption('partner');
+  await editor.locator('[data-field="q"]').fill('Describe this movie');
+  await editor.locator('[data-field="a"]').fill('Shrek');
+  await editor.locator('[data-more-rules]').click();
+  await editor.getByLabel('The guesser types their guess on their phone').check();
+  await editor.getByRole('button', { name: /Done/ }).click();
 
   await playWithPlayers(host, 3);
   const card = host.getByRole('region', { name: 'Phone buzzers' });
@@ -279,6 +290,43 @@ try {
   await host.keyboard.press('Escape');
   await boardIn(stageBoxIn(host)).waitFor();
 
+  // ---------- A partner clue ----------
+  section('A partner clue: the guess typed and not sent goes as the answer shows');
+  // (Player 1 picks, and guesses with Player 2.)
+  await host.keyboard.press('p');
+  await host.keyboard.press('1');
+  await stageBoxIn(host).locator('.tile[aria-label^="Category 3 for $200"]').click();
+  await stageBoxIn(host).locator('[data-partner-up]').waitFor();
+  await host.keyboard.press('2');
+  await sleep(300);
+  await host.keyboard.press('Enter');
+  await stageBoxIn(host).locator('[data-partner-badge]').waitFor();
+  await p1.getByLabel(/Your answer/).waitFor();
+  await p1.getByLabel(/Your answer/).fill('Shrek-ish');
+  await sleep(500);
+  const guessLine = host.locator('[data-partner-guess]');
+  assertEq(await guessLine.count(), 0, 'typed and not sent: the host has no guess yet');
+  await host.keyboard.press('r');
+  await sleep(300);
+  if (await goOnCheck(host).count()) {
+    await goOnCheck(host, { ready: true }).waitFor();
+    await host.keyboard.press('r');
+  }
+  await until(async () => (await small(p1)).includes('Shrek-ish'), { timeout: 5_000 });
+  assertEq(
+    await small(p1),
+    'Sent automatically, unfinished: “Shrek-ish”',
+    'the answer up: the guess typed and not sent goes, and the phone says so, short (under the status line)',
+  );
+  await guessLine.locator('[data-auto-sent]').waitFor();
+  assert(
+    (await guessLine.innerText()).includes('“Shrek-ish”') && (await guessLine.locator('[data-auto-sent]').innerText()) === '⏱️ sent at lock',
+    `the host’s guess line: the words (the answer is up) and ⏱️ sent at lock (${await guessLine.innerText()})`,
+  );
+  assertEq(await stageH(), before, 'the stage keeps its size');
+  await host.keyboard.press('Escape');
+  await boardIn(stageBoxIn(host)).waitFor();
+
   // ---------- The Final ----------
   section('The Final: words typed and not sent go as its answer shows');
   const go = host.locator('.rn > button.next', { hasText: 'Final' });
@@ -309,8 +357,8 @@ try {
   await until(async () => (await small(p1)).includes('Tralaler'), { timeout: 5_000 });
   assertEq(
     await small(p1),
-    'Your wager: $0 · Sent automatically when answers locked: unfinished · Yours: “Tralaler”',
-    'the Final’s answer shows over words typed and not sent (its clock still running): they go, “when answers locked”',
+    'Your wager: $0 · Sent automatically, unfinished: “Tralaler”',
+    'the Final’s answer shows over words typed and not sent (its clock still running): they go, said short after the wager (its words in sight)',
   );
   const inChip = answersBox.locator('[data-answer-in]', { hasText: 'Player 1' });
   await inChip.filter({ hasText: '⏱️' }).waitFor();

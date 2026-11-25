@@ -1636,7 +1636,12 @@ function renderBuzz(v: PhoneView): void {
   if (ans && !ans.open && v.statusOff && v.status) {
     // A partner clue's guess, locked (judged, or the answer is up): how it went, over what this seat sent.
     greyed = v.phase === 'lobby';
-    [cls, big, small] = ['off', v.status, ans.text ? `${team ? 'Your team’s guess' : 'Your guess'}: “${foldLines(ans.text)}”` : (v.statusSub ?? '')];
+    // (A guess typed and not sent that went by itself says so, short: under the status, the words still show.)
+    [cls, big, small] = [
+      'off',
+      v.status,
+      ans.text ? `${ans.auto ? autoSentLine(ans.auto, true) : team ? 'Your team’s guess' : 'Your guess'}: “${foldLines(ans.text)}”` : (v.statusSub ?? ''),
+    ];
   } else if (ans && !ans.open) {
     // A ✍ clue whose answer is on screen: what this seat sent stays in sight (or that one is in, as for wagers). In the
     // Final, the wager locked in first: the line shows 3 lines at most, so a long answer is what gets cut (its own
@@ -1650,10 +1655,11 @@ function renderBuzz(v: PhoneView): void {
       ans.verdict ? (ans.verdict.right ? 'right' : 'wrong') : 'off',
       ans.verdict ? verdictLine(ans.verdict, sym) : 'Answers locked',
       staked +
-        // (Words typed and not sent that went by themselves: said first, so a long answer is what gets cut.)
-        (ans.auto && ans.text ? `${autoSentLine(ans.auto)} · ` : '') +
+        // (Words typed and not sent that went by themselves: said first, so a long answer is what gets cut. After the
+        // Final's wager, short: else a team's words, or a phone held sideways's, didn't show at all.)
+        (ans.auto && ans.text && !staked ? `${autoSentLine(ans.auto)} · ` : '') +
         (ans.text
-          ? `${team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${foldLines(ans.text)}”`}`
+          ? `${ans.auto && staked ? autoSentLine(ans.auto, true) : team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${foldLines(ans.text)}”`}`
           : ans.hidden
             ? 'The host has it (not shown on this phone)'
             : 'None sent'),

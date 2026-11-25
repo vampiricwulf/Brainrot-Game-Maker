@@ -1091,7 +1091,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      unfinished: “…”", and Send answer sends them as the player's own), and as the answers lock, whether the clock ran
      out or the host showed the answer first (the words as they are then, if not what went at 0: "Sent automatically
      when answers locked: unfinished", even after the clock ran out, since they weren't in at 0; over "Yours: “…”" in
-     the locked line). The phone keeps the words until
+     the locked line; in the Final's, after the wager, and a partner guess's, under its status, "Sent automatically,
+     unfinished: “…”" in place of "Yours", so the words still show in its 3 lines). The phone keeps the words until
      then (nothing typed reaches the room before); the room takes one sent as the lock reaches the phone up to 3 s after
      it saw the lock, never over an answer sent on purpose (a teammate's half-typed words don't replace the team's), nor
      for a seat already judged (a partner guess judged before the answer shows too). The host's row has ⏱ sent at

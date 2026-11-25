@@ -103,5 +103,8 @@ describe('words typed and not sent, sent by the phone itself (clockUp, autoSentL
   it('says when they went, and that they may be unfinished: "time ran out" only when it did', () => {
     expect(autoSentLine('time')).toBe('Sent automatically when time ran out: unfinished');
     expect(autoSentLine('lock')).toBe('Sent automatically when answers locked: unfinished');
+    // (Short, in place of "Yours" where the locked line has less room: its words still show in its 3 lines.)
+    expect(autoSentLine('time', true)).toBe('Sent automatically, unfinished');
+    expect(autoSentLine('lock', true)).toBe('Sent automatically, unfinished');
   });
 });
