@@ -186,6 +186,12 @@ export async function saveGameJson(game: Game): Promise<string> {
   return savedWhere(await saveFile(name, new Blob([JSON.stringify(game, null, 2)], { type: 'application/json' }), game.id), name);
 }
 
+/** How Open…'s messages start: the file's name in quotes, when known. */
+export const fileNamed = (name?: string, otherwise = 'This file') => (name ? `“${name}”` : otherwise);
+
+/** Said of a game or theme made with a newer version of the app than this one: where to get the newest. */
+const GET_NEWEST = 'Get the newest from ⋯ › ℹ About (the desktop app updates itself)';
+
 /**
  * What Open… says of a file that isn't a game (`name`: the file's, when known), in plain words: the reason it gives up
  * goes to the console only.
@@ -193,7 +199,7 @@ export async function saveGameJson(game: Game): Promise<string> {
 export function notAGame(name?: string, why?: string): Error {
   if (why) console.warn(`Not a game${name ? ` (${name})` : ''}: ${why}`);
   return new Error(
-    `${name ? `“${name}”` : 'This file'} isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json).`,
+    `${fileNamed(name)} isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json).`,
   );
 }
 
@@ -202,7 +208,7 @@ export function parseGame(text: string, name?: string): Game {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("This file isn't a readable game (.json). It may be cut off or damaged.");
+    throw new Error(`${fileNamed(name)} can’t be read as a game: it may be cut off or damaged. Ask for it again.`);
   }
   // (Import rounds… and the like take game files only.)
   if (data?.format === 'brainrot-theme') throw new Error('This is a theme file, not a game: use it with 📥 Import theme… on 🎨 Theme.');
@@ -214,7 +220,8 @@ export function parseGame(text: string, name?: string): Game {
   if (!Array.isArray(data.players)) data.players = [];
   data.version ??= GAME_VERSION;
   if (typeof data.version !== 'number') throw no('its "version" isn’t a number');
-  if (data.version > GAME_VERSION) throw new Error('This game was made with a newer version of Brainrot Games Maker: update the app to open it.');
+  if (data.version > GAME_VERSION)
+    throw new Error(`${fileNamed(name, 'This game')} was made with a newer version of Brainrot Games Maker. ${GET_NEWEST}, then open it again.`);
   if (data.version < 1) throw no(`version ${data.version}`);
   return data as Game;
 }

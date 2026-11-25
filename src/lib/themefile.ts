@@ -191,7 +191,10 @@ function sharedTheme(data: unknown, from: 'file' | 'code'): SharedTheme {
     throw new ThemeError(from === 'file' ? 'This file isn’t a Brainrot theme.' : 'That code isn’t a Brainrot theme code.');
   }
   const version = typeof data.version === 'number' ? data.version : 1;
-  if (version > THEME_VERSION) throw new ThemeError('This theme was made with a newer version of Brainrot Games Maker: update the app to use it.');
+  if (version > THEME_VERSION)
+    throw new ThemeError(
+      'This theme was made with a newer version of Brainrot Games Maker. Get the newest from ⋯ › ℹ About (the desktop app updates itself), then use it again.',
+    );
   const theme = sanitizeTheme(data.theme);
   if (!theme) throw new ThemeError(`This theme has no colors in it: the ${from} may be damaged.`);
   const media: ThemeMediaFile[] = [];

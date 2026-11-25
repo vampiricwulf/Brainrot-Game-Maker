@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { extOf, getBlob, loadGameMedia, mimeFor, putMedia, registerLinks, storedBlob } from './media.svelte';
 import { settleFiles } from './roundcopy';
 import { migrateGame, type Game } from './model';
-import { notAGame, parseGame, safeFilename, saveFile, savedName, savedWhere } from './fileio';
+import { fileNamed, notAGame, parseGame, safeFilename, saveFile, savedName, savedWhere } from './fileio';
 import { buildZip, crc32, type ZipEntry } from './zipwrite';
 import { looksLikeHtml } from './sniff';
 import { MAX_HTML_CHARS, packInHtml, TOO_BIG_TO_OPEN, unpackEmbedded } from './export';
@@ -101,7 +101,10 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
       const inner = zip.file(/(^|\/)[^/]+\.(brainrot|jbr|html?|json)$/i).filter(real);
       if (inner.length === 1) return openGameFile(new File([await inner[0].async('blob')], inner[0].name.split('/').pop()!), put);
       // (A .brainrot with no game.json is a damaged pack: only a .zip gets told to unzip.)
-      if (!(file instanceof File && /\.zip$/i.test(file.name))) throw new Error('This pack has no game.json inside.');
+      if (!(file instanceof File && /\.zip$/i.test(file.name)))
+        throw new Error(
+          `${fileNamed(file instanceof File ? file.name : undefined)} is damaged: the game inside it is missing. Ask for it again, or open an older copy (Open… › Recent games, or a backup).`,
+        );
       throw new Error(
         "This .zip doesn't hold a Brainrot game. If someone zipped the game, unzip it and open the .brainrot (or .html) inside. Pictures and sounds in a zip need unzipping before you add them on 🖼️ Media.",
       );
@@ -180,7 +183,10 @@ export async function openGameFile(file: File, put: PutMedia = putMedia): Promis
     const inside = packInHtml(html);
     // This app's page, cut off before its game (the game comes last): it didn't arrive whole.
     if (!inside && cutAppPage(html)) throw new Error(CUT_OFF);
-    if (!inside) throw new Error('This page has no game inside (only games exported from Brainrot Games Maker do).');
+    if (!inside)
+      throw new Error(
+        `${fileNamed(file.name, 'This page')} has no game inside: only pages made with ⬇ Export as a web page do. Open the game’s .brainrot (made with 💾 Save) or that page instead.`,
+      );
     return openPack(await unpackEmbedded(inside.pack, inside.cut), undefined, put);
   }
   if (kind === 'json' || (!kind && (/\.json$/i.test(name) || file.type === 'application/json'))) {

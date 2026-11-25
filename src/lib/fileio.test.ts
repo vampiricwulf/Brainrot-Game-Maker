@@ -75,8 +75,15 @@ describe('Save in the desktop app (replacing the last save)', () => {
 
 describe('opening game files', () => {
   it('explains a damaged .json instead of showing the parser’s error', () => {
-    expect(() => parseGame('{"version": 2, "title": "Cut o')).toThrow("This file isn't a readable game (.json)");
-    expect(() => parseGame('PK not json at all')).toThrow("This file isn't a readable game (.json)");
+    // (Naming the file when known, and saying what to do.)
+    expect(() => parseGame('{"version": 2, "title": "Cut o', 'Quiz.json')).toThrow(
+      '“Quiz.json” can’t be read as a game: it may be cut off or damaged. Ask for it again.',
+    );
+    expect(() => parseGame('PK not json at all')).toThrow('This file can’t be read as a game: it may be cut off or damaged. Ask for it again.');
+    // A newer version's game: where to get the newest (the web page has no update button of its own).
+    expect(() => parseGame(JSON.stringify({ version: 1e6, rounds: [] }), 'New.json')).toThrow(
+      '“New.json” was made with a newer version of Brainrot Games Maker. Get the newest from ⋯ › ℹ About (the desktop app updates itself), then open it again.',
+    );
     const words =
       ' isn’t a game this app can open. Game files are made with 💾 Save (.brainrot, or .jbr from Jeopardy Builder), ⬇ Export as a web page (.html) or { } Export JSON (.json).';
     // (In plain words, naming the file when known; the reason goes to the console.)
@@ -111,7 +118,9 @@ describe('opening game files', () => {
     await expect(openGameFile(memes)).rejects.toThrow("This .zip doesn't hold a Brainrot game");
     // (A damaged .brainrot isn't told to unzip.)
     const broken = new File([await pics.generateAsync({ type: 'arraybuffer' })], 'Quiz.brainrot');
-    await expect(openGameFile(broken)).rejects.toThrow('This pack has no game.json inside.');
+    await expect(openGameFile(broken)).rejects.toThrow(
+      '“Quiz.brainrot” is damaged: the game inside it is missing. Ask for it again, or open an older copy (Open… › Recent games, or a backup).',
+    );
   });
 
   it('opens a pack that was unzipped and its folder zipped again, with its files', async () => {
@@ -139,7 +148,9 @@ describe('opening game files', () => {
     // The app's own code mentions the pack's element too; the pack itself comes last.
     const html = `<!doctype html><html><body><script>const id = 'jb-pack'; x.innerHTML = '<script id="jb-pack">';</script><div id="app"></div><script type="application/octet-stream" id="jb-pack">${b64}</script>\n</body></html>`;
     expect((await openGameFile(new File([html], 'Exported.html', { type: 'text/html' }))).title).toBe('Exported');
-    await expect(openGameFile(new File(['<!doctype html><p>hi</p>'], 'Page.html'))).rejects.toThrow('This page has no game inside');
+    await expect(openGameFile(new File(['<!doctype html><p>hi</p>'], 'Page.html'))).rejects.toThrow(
+      '“Page.html” has no game inside: only pages made with ⬇ Export as a web page do. Open the game’s .brainrot (made with 💾 Save) or that page instead.',
+    );
   });
 
   it('opens an export that says its pack size and date, and refuses one cut off', async () => {
