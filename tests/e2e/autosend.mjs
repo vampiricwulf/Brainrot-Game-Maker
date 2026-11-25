@@ -6,7 +6,8 @@
 // A second ✍ clue with a countdown: as it runs out, Player 1's words go ("Sent automatically when time ran out:
 // unfinished", the box still open), the host panel shows ✔ ⏱️ and never the words; edited and not sent, they go again at
 // the lock ("when answers locked": they weren't in at 0). Player 2's went at 0 too, then Send answer sends them as
-// their own (the ⏱️ goes), and that answer stays over an edit not sent. Then the Final: words typed and not sent go
+// their own (the ⏱️ goes), and that answer stays over an edit not sent; Player 3's went at 0 and were left as they
+// were: "when time ran out" and ⏱️ sent at time's up after the lock too. Then the Final: words typed and not sent go
 // as its answer shows, and the reveal rows mark them ⏱️ without the words until each is revealed.
 // Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
@@ -76,7 +77,7 @@ try {
     await editor.getByRole('button', { name: /Done/ }).click();
   }
 
-  await playWithPlayers(host, 2);
+  await playWithPlayers(host, 3);
   const card = host.getByRole('region', { name: 'Phone buzzers' });
   await card.getByLabel(/Buzzer mode/).check();
   const code = await startRoomOn(card);
@@ -91,7 +92,8 @@ try {
   };
   const p1 = await phone('Player 1');
   const p2 = await phone('Player 2');
-  await card.getByText('2 of 2 players joined').waitFor();
+  const p3 = await phone('Player 3');
+  await card.getByText('3 of 3 players joined').waitFor();
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
 
@@ -168,7 +170,7 @@ try {
   // time up. The last clue's words, still in its box out of sight, never go as this one's.)
   await p1.context().setOffline(true);
   await boardIn(stageBoxIn(host)).locator('.tile[data-row="0"][data-cat="1"]').click();
-  await p2.getByLabel(/Your answer/).waitFor();
+  for (const p of [p2, p3]) await p.getByLabel(/Your answer/).waitFor();
   const secs = host.getByLabel('Timer seconds');
   await secs.fill('1');
   await secs.press('Enter');
@@ -185,6 +187,8 @@ try {
   );
   await p2.getByLabel(/Your answer/).fill('Bulldog');
   await p1.getByLabel(/Your answer/).fill('Siam');
+  // (Player 3's words go at 0 and are left as they are.)
+  await p3.getByLabel(/Your answer/).fill('Persian');
   // (A new countdown: the one run out put away first.)
   await host.getByRole('button', { name: 'Hide timer' }).click();
   await p1.locator('#answer-clock').waitFor({ state: 'hidden' });
@@ -207,7 +211,7 @@ try {
   await chip2.filter({ hasText: '✔ ⏱️' }).waitFor();
   const panel = await hostPanelIn(host).innerText();
   assert(
-    !panel.includes('Siam') && !panel.includes('Bulldog') && !((await chip.getAttribute('title')) ?? '').includes('Siam'),
+    !panel.includes('Siam') && !panel.includes('Bulldog') && !panel.includes('Persian') && !((await chip.getAttribute('title')) ?? '').includes('Siam'),
     'in one window the host panel shows ✔ ⏱️ (in, by itself), never the words',
   );
   assertEq(await stageH(), before, 'the stage keeps its size with the ⏱️ in the row');
@@ -234,6 +238,13 @@ try {
     'at the lock the words as they are go: “when answers locked”, the clock having run out before (they weren’t in at 0)',
   );
   assertEq(await small(p2), 'Yours: “Bulldog”', 'an answer sent on purpose stays over an edit not sent (no mark)');
+  assertEq(
+    await small(p3),
+    'Sent automatically when time ran out: unfinished · Yours: “Persian”',
+    'words that went at 0, left as they were: “when time ran out” at the lock too (not sent again)',
+  );
+  await row('Player 3').getByText('“Persian”').waitFor();
+  assertEq(await row('Player 3').locator('[data-auto-sent]').innerText(), '⏱️ sent at time’s up', 'the host’s row: ⏱️ sent at time’s up');
   await row('Player 1').getByText('“Siamese”').waitFor();
   assertEq(await row('Player 1').locator('[data-auto-sent]').innerText(), '⏱️ sent at lock', 'the host’s row: ⏱️ sent at lock');
   assert(
