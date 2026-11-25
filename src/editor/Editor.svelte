@@ -1335,11 +1335,12 @@
     <button onclick={open} disabled={!!opening} bind:this={openBtn} title="Recent games{inTauri() ? ', your saves' : ''} or a game file · Ctrl+O"
       ><span aria-hidden="true">📂</span> Open…</button
     >
-    <!-- (Its name stays Save; the dot and its words say how the file stands, as its tooltip does.) -->
+    <!-- (Its name stays Save; the dot and its words say how the file stands, as its tooltip does. While it writes it's
+         aria-disabled, not disabled, so the keyboard focus stays on it, and goes back to it after a message.) -->
     <button
       class="save-file"
-      onclick={save}
-      disabled={saving}
+      onclick={() => !saving && save()}
+      aria-disabled={saving || undefined}
       data-changed={fileState.changed || undefined}
       title={`${fileState.said ? `${fileState.said} · Ctrl+S\n` : ''}${inTauri() ? 'Save a .brainrot game pack (the game and all its media) into BrainrotSaves' : 'Download a .brainrot game pack (the game and all its media)'}${fileState.said ? '' : ' · Ctrl+S'}`}
     >
@@ -2103,6 +2104,12 @@
     .title {
       min-width: 100px;
     }
+  }
+  /* Saving…: looks as a disabled button does. */
+  .editor .save-file[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: default;
+    background: var(--panel-2);
   }
   /* 💾 Save •: changed since its last save as a file. Its words only where the header has room. */
   .save-file .dot {

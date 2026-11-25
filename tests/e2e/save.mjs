@@ -23,6 +23,7 @@ import {
   roundTabsIn,
   statusBarIn,
   toastsIn,
+  until,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -400,6 +401,19 @@ try {
     (await c.locator('.card', { hasText: 'song.mp3' }).count()) === 1,
     'reconnecting is one step "Reconnected 1 file" that Undo takes back (the file keeps its name)',
   );
+  // 💾 Save from the keyboard with a file missing: the message about it takes the focus, and OK gives it back to Save.
+  const missingSave = c.getByRole('button', { name: 'Save', exact: true });
+  await missingSave.focus();
+  await c.keyboard.press('Enter');
+  const saveTold = c.getByRole('alertdialog');
+  await saveTold.waitFor();
+  assert(/missing and weren't included:\s*pic\.png/.test(await saveTold.innerText()), 'saved with a file missing, a message says which');
+  await c.keyboard.press('Enter');
+  await saveTold.waitFor({ state: 'detached' });
+  assert(
+    await until(() => missingSave.evaluate((b) => document.activeElement === b)),
+    `and its OK gives the focus back to 💾 Save (${await c.evaluate(() => document.activeElement?.tagName + ' ' + document.activeElement?.textContent?.trim().slice(0, 20))})`,
+  );
   // ⬇ Export as a web page with a file still missing: one message says where the file went and what it plays without
   // (a toast under the missing files' window was cut to one line).
   // (A file to play needs a round.)
@@ -442,6 +456,33 @@ try {
     'after Replace file… nothing is missing and the picture shows',
   );
   await fresh.close();
+
+  // 💾 Save from the keyboard keeps the focus on it (it's disabled while it writes, which used to drop the focus to the
+  // page, so the next Tab started at the top), after naming the game first and on a later save.
+  const keyed = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
+  const k = await open('keyboard save', true, keyed);
+  await editorReady(k);
+  const saveBtn = k.getByRole('button', { name: 'Save', exact: true });
+  const focusedIsSave = () => saveBtn.evaluate((b) => document.activeElement === b);
+  const focusedName = () => k.evaluate(() => `${document.activeElement?.tagName} ${document.activeElement?.textContent?.trim().slice(0, 20)}`);
+  await saveBtn.focus();
+  const firstKeyed = k.waitForEvent('download');
+  await k.keyboard.press('Enter');
+  const keyedName = k.getByRole('dialog', { name: 'Name your game' });
+  await keyedName.waitFor();
+  await keyedName.getByRole('textbox').fill('Keyed');
+  await k.keyboard.press('Enter');
+  await firstKeyed;
+  await until(() => saveBtn.isEnabled(), 'Save is back');
+  await k.waitForTimeout(200);
+  assert(await focusedIsSave(), `💾 Save's first save (Name your game, then Enter) gives the focus back to Save (${await focusedName()})`);
+  const secondKeyed = k.waitForEvent('download');
+  await k.keyboard.press('Enter');
+  await secondKeyed;
+  await until(() => saveBtn.isEnabled(), 'Save is back');
+  await k.waitForTimeout(200);
+  assert(await focusedIsSave(), `and a later save (no window) keeps it on Save too (${await focusedName()})`);
+  await keyed.close();
 
   // A game being played in a tab that another tab takes over: it's saved and left there (only one tab plays and saves
   // it), and Resume in the other tab carries on from where it was.
