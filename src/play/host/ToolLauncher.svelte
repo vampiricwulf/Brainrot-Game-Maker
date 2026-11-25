@@ -138,12 +138,13 @@
    * Tab (or Shift+Tab) out of an open menu and its button closes it, as a click outside does: it's a pop-up of its
    * button, not a window left over the panel without the keys. The focus stays where it went (the next tool). Only for
    * Tab: the app moving the focus by itself (a check or an offer coming up, a step's main button) leaves it open, with
-   * what's typed in it, and so does Tab into a window over it, a toast, or what's over a window.
+   * what's typed in it, and so does Tab into a window over it or into what sits over the windows ([data-over-modal]: a
+   * toast, the Undo note, a picker).
    */
   function leave(e: FocusEvent, m: Menu): void {
     const to = e.relatedTarget;
     if (!tabbing || menu !== m || !(to instanceof Element) || (e.currentTarget as HTMLElement).contains(to)) return;
-    if (modalOpen() || to.closest('[data-over-modal], .toasts')) return;
+    if (modalOpen() || to.closest('[data-over-modal]')) return;
     menu = null;
   }
   /**
