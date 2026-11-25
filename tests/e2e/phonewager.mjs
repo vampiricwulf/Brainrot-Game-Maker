@@ -522,6 +522,14 @@ try {
   // Nothing typed: refused, and the red line goes once there's an answer in the box.
   await ann.locator('#answer-send').click();
   await ann.locator('#answer-err').getByText('Type an answer first.').waitFor();
+  const errAt = await ann.evaluate(() => {
+    const y = (id) => document.getElementById(id).getBoundingClientRect();
+    return { box: y('answer-in').bottom, top: y('answer-err').top, bottom: y('answer-err').bottom, send: y('answer-send').top };
+  });
+  assert(
+    errAt.box <= errAt.top && errAt.top - errAt.box < 20 && errAt.bottom <= errAt.send,
+    `the answer's red line sits right under its box, above Send answer, as a wager's does (${JSON.stringify(errAt)})`,
+  );
   await ann.locator('#answer-in').fill('Fleming');
   assert((await ann.locator('#answer-err').innerText()) === '', 'the red “Type an answer first.” goes once something is typed');
   await ann.locator('#answer-in').dblclick();

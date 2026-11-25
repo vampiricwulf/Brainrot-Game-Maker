@@ -128,11 +128,12 @@
           <div id="answer-choices" role="group" hidden></div>
           <!-- (Lines: a phone keyboard's Enter key starts one, Send answer sends; with a keyboard Enter sends: main.ts drawDesk.) -->
           <textarea id="answer-in" rows="2" maxlength="200" autocomplete="off" enterkeyhint="enter" dir="auto"></textarea>
+          <!-- (What's wrong, right under the box or the choices, as a wager's: not under Send answer and the sent line.) -->
+          <p id="answer-err" class="err" role="alert"></p>
           <button type="submit" class="primary" id="answer-send">Send answer</button>
           <!-- Desktop only (the hints with the "desk" class): the keys. -->
           <p id="answer-keys" class="note desk">Enter sends · Shift+Enter for a new line</p>
           <p id="answer-state" class="note"></p>
-          <p id="answer-err" class="err" role="alert"></p>
         </form>
         <button id="buzz" type="button"><span id="buzz-big"></span><span id="buzz-small"></span></button>
         <!-- An ordinary buzz-in clue: pass on it ("I won't buzz on this one"), or take the pass back (main.ts renderPass). -->

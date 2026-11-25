@@ -1149,6 +1149,10 @@ html:has(#s-buzz:not([hidden])) {
     width: min(420px, 56vw);
     gap: 6px;
   }
+  /* (No room kept between the answer box and Send for a red line not there: Send stays on a phone on its side.) */
+  #answer-err:empty {
+    display: none;
+  }
   /* (Cards under the question: the box beside the question and the cards, as before.) */
   #s-buzz.cards-aside :is(#wager-form, #answer-form) {
     grid-row: 1 / span 2;

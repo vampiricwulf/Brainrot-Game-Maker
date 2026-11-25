@@ -1016,7 +1016,7 @@ function keyboardUp(): boolean {
 /** Where an element is on screen; null when it isn't drawn. */
 const rectOf = (el: Element): DOMRect | null => (el.getClientRects().length ? el.getBoundingClientRect() : null);
 
-/** The answer box's last line: Send, or "✔ Sent: …" / "Type an answer first." under it. */
+/** The answer box's last line: Send, or "✔ Sent: …" under it ("Type an answer first." is over Send). */
 const answerLast = (): HTMLElement =>
   ['answer-state', 'answer-err']
     .map((id) => $(id))
