@@ -13,6 +13,8 @@
   import type { Session } from '../../lib/model';
   import { choiceCounts, countsLine, judgeAllPlan, letter, matchChoice, pickLabel, rightChoice, type UsableChoice } from '../../lib/choices';
   import { judgedOn, phoneAnswers } from './goon';
+  import { autoSentMark } from '../../lib/buzz';
+  import type { AutoSent } from '../../lib/buzzproto';
   import { offerExposed } from './slots.svelte';
 
   let {
@@ -37,8 +39,11 @@
     session: Session;
     /** Who answers (ids), in the players' order. */
     players: string[];
-    /** What their phones sent, by player (teams: `by`, who on it sent it; `pick`: the choice picked). */
-    answers: Record<string, { text: string; by?: string; pick?: string }>;
+    /**
+     * What their phones sent, by player (teams: `by`, who on it sent it; `pick`: the choice picked; `auto`: typed and
+     * not sent, the phone sent it by itself: marked ⏱️, in one window too, never with its words there).
+     */
+    answers: Record<string, { text: string; by?: string; pick?: string; auto?: AutoSent }>;
     title?: string;
     /** A ✍ clue: its judgments are in the score log under it. */
     clueId?: string;
@@ -117,8 +122,15 @@
   });
   const capH = $derived(keepRoom && words && rowsH > 0 ? rowsH : 0);
   /** Where the words aren't shown: whether this player's is in (and once locked, that none came). */
-  const inTitle = (id: string) => (answers[id] ? 'Answer in' : !phones.includes(id) ? 'No phone connected' : open ? 'Waiting…' : 'No answer');
-  const inMark = (id: string) => (answers[id] ? '✔' : open ? '…' : '—');
+  const inTitle = (id: string) =>
+    answers[id]
+      ? `Answer in${answers[id].auto ? ` (${autoSentMark(answers[id].auto)!.title})` : ''}`
+      : !phones.includes(id)
+        ? 'No phone connected'
+        : open
+          ? 'Waiting…'
+          : 'No answer';
+  const inMark = (id: string) => (answers[id] ? `✔${answers[id].auto ? ' ⏱️' : ''}` : open ? '…' : '—');
 </script>
 
 <section class="answers" aria-label="Answers from phones">
@@ -175,9 +187,11 @@
             <span class="text" class:muted={!a || (!!a.pick && !picked)} class:selectable={dual}
               >{#if a}{#if picked}<b><bdi>{picked}</bdi></b>{:else}“<bdi>{a.text}</bdi>”{#if named}{' '}<span class="muted"
                       >= {letter(choices.findIndex((c) => c.id === named))}</span
-                    >{/if}{/if}{#if a.by}{' '}<span class="muted small">· {a.by}</span>{/if}{:else if phones.includes(p.id)}{open
-                  ? 'waiting…'
-                  : 'no answer'}{:else}no phone connected{/if}</span
+                    >{/if}{/if}{#if a.by}{' '}<span class="muted small">· {a.by}</span>{/if}{#if a.auto}{@const m = autoSentMark(a.auto)!}{' '}<span
+                    class="auto small"
+                    data-auto-sent={p.id}
+                    title={m.title}>{m.text}</span
+                  >{/if}{:else if phones.includes(p.id)}{open ? 'waiting…' : 'no answer'}{:else}no phone connected{/if}</span
             >
             {#if j}
               <span class="mark" class:right={j > 0} class:wrong={j < 0}>{j > 0 ? '✔ Right' : '✘ Wrong'}</span>
@@ -301,6 +315,12 @@
   }
   .mark {
     font-weight: 700;
+  }
+  /* Sent by the phone itself (typed, not sent): amber, as the phone's "Not sent yet". */
+  .auto {
+    color: var(--warn, var(--muted));
+    font-weight: 600;
+    white-space: nowrap;
   }
   .note,
   .counts,

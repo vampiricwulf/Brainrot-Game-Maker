@@ -178,6 +178,7 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
             n: m.n as number,
             ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}),
             ...(isStr(m.pick, CHOICE_ID_MAX) && m.pick ? { pick: m.pick } : {}),
+            ...(m.auto === 'time' || m.auto === 'lock' ? { auto: m.auto } : {}),
           }
         : null;
     case 'cardSeen':

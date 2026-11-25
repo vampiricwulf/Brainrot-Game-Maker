@@ -38,7 +38,7 @@ import { leftoversOf, parseTargets } from './e2e-targets.mjs';
 
 const SHARDS = {
   1: 'phonecopies cardrounds partnerplay cardsend history playfeatures buzzerlive convert slidesround dealcaptain rpg',
-  2: 'hostlayout boardgame remotebuzz partnersend boardedit partnerteams partnerrandom deal editorfixes multislide',
+  2: 'hostlayout boardgame remotebuzz partnersend boardedit partnerteams partnerrandom deal editorfixes multislide autosend',
   3: 'smoke audio save videoedit buzzerfiles themes goon editormedia lists everyone links phonepanel',
   4: 'stream editorfeatures hosting partnerjudge pregame board finalcards datasafety dealwheel playcopies update boardimages',
   5: 'buzzerroom desktop fullshow layers cardlimits phonewager phonecards savedcards partnerphones channel rounds pass',

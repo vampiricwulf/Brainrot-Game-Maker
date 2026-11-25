@@ -164,6 +164,26 @@ describe('parseRoomMsg', () => {
       });
   });
 
+  it('takes why a phone sent words typed and not sent by itself (auto, added later); anything else is dropped', () => {
+    for (const auto of ['time', 'lock'] as const)
+      expect(parseRoomMsg(JSON.stringify({ t: 'answer', id: 'c1', seatId: 'a', text: 'Os', n: 2, auto }))).toEqual({
+        t: 'answer',
+        id: 'c1',
+        seatId: 'a',
+        text: 'Os',
+        n: 2,
+        auto,
+      });
+    for (const auto of [true, 'soon', '', 1])
+      expect(parseRoomMsg(JSON.stringify({ t: 'answer', id: 'c1', seatId: 'a', text: 'Os', n: 2, auto }))).toEqual({
+        t: 'answer',
+        id: 'c1',
+        seatId: 'a',
+        text: 'Os',
+        n: 2,
+      });
+  });
+
   it("takes who passed (added later, 'pass'): the whole list, teams' who on it; a bad one is dropped", () => {
     expect(parseRoomMsg('{"t":"passes","id":"c1@5","seats":[{"seatId":"a"},{"seatId":"b","by":"Bea"},{"seatId":"c","by":""}]}')).toEqual({
       t: 'passes',

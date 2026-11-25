@@ -6,7 +6,7 @@ import { nextFreeColor } from './colors';
 import { dedupeMediaNames } from './medianame';
 import { isThemeColor, isThemeFont, PRESETS, presetTheme, type Theme } from './theme';
 import { OPTIONAL_THEME_COLORS, THEME_COLORS } from './themefile';
-import { CHOICE_MAX, CHOICES_MAX } from './buzzproto';
+import { CHOICE_MAX, CHOICES_MAX, type AutoSent } from './buzzproto';
 import type { BuzzState } from './buzz';
 
 export type Id = string;
@@ -966,6 +966,8 @@ export interface FinalAnswer {
   by?: string;
   /** The choice picked (FinalRound.choices), its words in `text`. */
   pick?: Id;
+  /** Typed and not sent: the phone sent it by itself when time ran out or the answers locked (unfinished). */
+  auto?: AutoSent;
 }
 
 export interface Player {
@@ -1323,8 +1325,8 @@ export interface Session {
     locked?: boolean;
     buzz?: BuzzState & { clue: string; floor: number };
     wagerGot?: { id: string; seats: Record<Id, number>; amounts?: Record<Id, number> };
-    /** A ✍ clue's answers from phones (`pick`: the choice picked, its id, on a multiple-choice clue). */
-    answers?: { id: string; seats: Record<Id, { text: string; n: number; by?: string; pick?: Id }>; locked?: boolean };
+    /** A ✍ clue's answers from phones (`pick`: the choice picked, its id, on a multiple-choice clue; `auto`: typed and not sent, the phone sent it by itself). */
+    answers?: { id: string; seats: Record<Id, { text: string; n: number; by?: string; pick?: Id; auto?: AutoSent }>; locked?: boolean };
     /**
      * 🤫 Card files put in room `code` for phones: a picture's (or its edited copy's), video's or sound's media id → the
      * room's id for it. So a reload doesn't upload them again (the room's 'files' list says which it still holds).

@@ -555,7 +555,7 @@ describe('the guesser types their guess (spec §5.4)', () => {
     expect(st.answers).toBeUndefined();
     expect(st.clue).toBeNull();
     s.stage = 'distribute';
-    expect(partnerAnswerAsk(g, session)).toEqual({ id: `${clue.id}@${s.at}`, open: true, seats: [{ id: 'a' }] });
+    expect(partnerAnswerAsk(g, session)).toEqual({ id: `${clue.id}@${s.at}`, open: true, seats: [{ id: 'a' }], autoSend: true });
     expect(partnerAnswerAsk(g, session, { a: { n: 2 } })!.seats).toEqual([{ id: 'a', got: 2 }]);
     swapParts(s);
     expect(partnerAnswerAsk(g, session)!.seats).toEqual([{ id: 'b' }]);
@@ -563,6 +563,8 @@ describe('the guesser types their guess (spec §5.4)', () => {
     s.stage = 'live';
     judgePartner(session, g, true, 400);
     expect(partnerAnswerAsk(g, session)!.open).toBe(false);
+    // (Judged: the guesser's seat is closed, so words typed and not sent don't come in after the verdict.)
+    expect(partnerAnswerAsk(g, session)!.seats).toEqual([{ id: 'a', closed: true }]);
   });
 
   it('one round of guesses per play of the tile: put back and played again, it starts with none', () => {

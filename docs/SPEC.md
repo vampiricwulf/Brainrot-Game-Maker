@@ -1085,7 +1085,17 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      that mark back; while the host's countdown runs, here and in the Final, the phones show it over the answer or wager
      box, `HostState.timer`: when it ends on the room's clock, the host's clock put right by the room's welcome and
      pongs, or the time left while paused; "⏱ 12 s left", amber from 5 s, then "Time's up: the host may still take a
-     late answer", locking nothing); only the host sees them (in one window, not until the answer is up: till then each player's row says whether
+     late answer", locking nothing); words typed and not sent go by themselves, marked unfinished (here, in the Final
+     and as a partner clue's typed guess; `AnswerAsk.autoSend`, which a host from before leaves out, so its room takes
+     none): as the countdown runs out (the box stays open: the phone says "Sent automatically when time ran out:
+     unfinished: “…”", and Send answer sends them as the player's own), and as the answers lock, whether the clock ran
+     out or the host showed the answer first (the words as they are then; "Sent automatically when answers locked:
+     unfinished" when the clock hadn't run out, over "Yours: “…”" in the locked line). The phone keeps the words until
+     then (nothing typed reaches the room before); the room takes one sent as the lock reaches the phone up to 3 s after
+     it saw the lock, never over an answer sent on purpose (a teammate's half-typed words don't replace the team's), nor
+     for a seat already judged (a partner guess judged before the answer shows too). The host's row has ⏱ sent at
+     time's up / ⏱ sent at lock beside the words (amber, its tooltip saying it may be unfinished); in one window, where
+     the words wait, ✔ ⏱ and the tooltip without them. A phone that typed nothing still says "None sent". Only the host sees the answers (in one window, not until the answer is up: till then each player's row says whether
      theirs is in, in the room the words then take, long ones scrolling in it, so the stage keeps its size); the stream shows ✍ and who has answered
      while answers are open; the host marks each ✔ / ✘ for the tile's value. With **multiple choice** (2–6 choices
      under ✍ in the editor, one marked right: its **Mark right** reads ✔ Right once pressed; **＋ Multiple choice** starts A to D, A being the answer, marked right, when the answer is one line of up to 80 characters), players tap one instead, and ✔ Judge all marks everyone by the right
@@ -1139,7 +1149,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 2. Question slide + timer (default 30 s) + optional music file. With phone buzzers (and ✍ Players type their answers on
    their phones, on unless the host unticks it in the round's editor), each player in it types their answer on their
    phone (a team: anyone on it) from the question until the answer shows; only the host sees them (in one window, not
-   until each is revealed), and the stream shows ✍ and who has answered, never what. The host's ✍ box and the check at
+   until each is revealed), and the stream shows ✍ and who has answered, never what. Words typed and not sent go by
+   themselves as the clock runs out and as the answer shows, marked unfinished, as a ✍ clue's do (the reveal rows put
+   ⏱ before the answer, or before ✍ hidden in one window, never the words before they're revealed). The host's ✍ box and the check at
    👁 Reveal answer count them one way (phoneAnswers, as a ✍ clue's do): those with a phone here, the rest answering out
    loud, “1 of 2 phones answered · Player 3 answers out loud” (teams: “teams”). With multiple choice (under the
    switch in its editor, as a ✍ clue's) they tap one instead, the choices show on stream under the question (the right

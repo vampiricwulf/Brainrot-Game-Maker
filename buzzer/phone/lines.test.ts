@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clockLine, hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine as line } from './lines';
+import { autoSentLine, clockLine, clockUp, hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine as line } from './lines';
 
 describe('money', () => {
   it('puts $ or an emoji in front, a word after, and a minus sign before', () => {
@@ -87,5 +87,21 @@ describe('clockLine: the host’s countdown over an answer or wager box', () => 
   it('at 0: time’s up, and the host may still take a late one (nothing locks)', () => {
     expect(clockLine({ endsAt: 20_000 }, 20_000, 'answer')).toEqual({ text: 'Time’s up: the host may still take a late answer', soon: false, up: true });
     expect(clockLine({ left: 0 }, 0, 'wager').text).toBe('Time’s up: the host may still take a late wager');
+  });
+});
+
+describe('words typed and not sent, sent by the phone itself (clockUp, autoSentLine)', () => {
+  it('time is up at 0 while it runs, and paused or ended with none left; not without a clock', () => {
+    expect(clockUp({ endsAt: 5000 }, 4999)).toBe(false);
+    expect(clockUp({ endsAt: 5000 }, 5000)).toBe(true);
+    expect(clockUp({ left: 1200 }, 99_999)).toBe(false);
+    expect(clockUp({ left: 0 }, 0)).toBe(true);
+    expect(clockUp(null, 0)).toBe(false);
+    expect(clockUp(undefined, 0)).toBe(false);
+  });
+
+  it('says when they went, and that they may be unfinished: "time ran out" only when it did', () => {
+    expect(autoSentLine('time')).toBe('Sent automatically when time ran out: unfinished');
+    expect(autoSentLine('lock')).toBe('Sent automatically when answers locked: unfinished');
   });
 });

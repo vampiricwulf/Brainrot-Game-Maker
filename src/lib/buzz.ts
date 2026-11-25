@@ -19,6 +19,7 @@ import {
   type WagerAsk,
   type AnswerAsk,
   type AnswerVerdict,
+  type AutoSent,
   type PassAsk,
   type PhoneTimer,
 } from './buzzproto';
@@ -718,6 +719,7 @@ export function everyoneAnswerAsk(game: Game, session: Session, opts: { choices?
       ...(marks[p.id] ? { closed: true as const, verdict: marks[p.id] } : {}),
     })),
     ...(choices.length ? { choices } : {}),
+    autoSend: true,
   };
 }
 
@@ -752,6 +754,20 @@ export function finalAnswerAsk(game: Game, session: Session, opts: { choices?: b
     open: step === 'question' && !f.answersLocked,
     seats: f.players.filter((id) => session.players.some((p) => p.id === id)).map((id) => ({ id, ...(got[id] ? { got: got[id].n } : {}), ...verdict(id) })),
     ...(choices.length ? { choices } : {}),
+    autoSend: true,
+  };
+}
+
+/**
+ * The host's mark on an answer a phone sent by itself (AnswerAsk.autoSend): typed and not sent, so maybe unfinished,
+ * when time ran out or as the answers locked. Never the words: it shows in one window too, where they may not.
+ */
+export function autoSentMark(auto: AutoSent | undefined): { text: string; title: string } | null {
+  if (!auto) return null;
+  const when = auto === 'time' ? 'when time ran out' : 'as the answers locked';
+  return {
+    text: auto === 'time' ? '⏱️ sent at time’s up' : '⏱️ sent at lock',
+    title: `Typed but not sent: their phone sent it by itself ${when}, so it may be unfinished`,
   };
 }
 
@@ -773,7 +789,13 @@ export function partnerAnswerAsk(game: Game, session: Session, got: Record<Id, {
   const { guesser } = partnerRoles(s);
   if (!guesser || !session.players.some((p) => p.id === guesser)) return null;
   const judged = partnerVerdict(s, clueMarks(session, s.clue, s.at ?? 0)).judged;
-  return { id: partnerAnswerId(s), open: !session.revealed && !judged, seats: [{ id: guesser, ...(got[guesser] ? { got: got[guesser].n } : {}) }] };
+  // (Judged: closed, so words typed and not sent don't come in after the verdict.)
+  return {
+    id: partnerAnswerId(s),
+    open: !session.revealed && !judged,
+    seats: [{ id: guesser, ...(got[guesser] ? { got: got[guesser].n } : {}), ...(judged ? { closed: true as const } : {}) }],
+    autoSend: true,
+  };
 }
 
 /**

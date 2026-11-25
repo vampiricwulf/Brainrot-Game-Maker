@@ -78,3 +78,16 @@ export function clockLine(t: ClockNow, now: number, what: 'answer' | 'wager'): {
   const left = s < 60 ? `${s} s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   return { text: `⏱️ ${left} left${paused ? ' · paused' : ''}`, soon: s <= CLOCK_SOON_S, up: false };
 }
+
+/** The countdown has run out (`now` on the room's clock): at 0 while it runs, or paused (or ended) with none left. */
+export function clockUp(t: ClockNow | null | undefined, now: number): boolean {
+  return !!t && ('left' in t ? t.left <= 0 : t.endsAt <= now);
+}
+
+/**
+ * Words typed and not sent that the phone sent by itself (PhoneAnswer.auto): when time ran out, or as the answers
+ * locked (the host showed the answer before the clock ran out, or with no clock). The host sees them marked ⏱️.
+ */
+export function autoSentLine(why: 'time' | 'lock'): string {
+  return why === 'time' ? 'Sent automatically when time ran out: unfinished' : 'Sent automatically when answers locked: unfinished';
+}

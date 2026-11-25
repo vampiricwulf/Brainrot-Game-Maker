@@ -81,7 +81,7 @@
   import { clueName, nameList, partnerSteal, stealersLeft } from '../../lib/session';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { cardFileCounts, filesCounted, phoneCan, retryFiles, unputGone } from '../../lib/cardfiles.svelte';
-  import { cardsFullText, partnerAnswerId, roomCardsFull, sendOf, teamsOn } from '../../lib/buzz';
+  import { autoSentMark, cardsFullText, partnerAnswerId, roomCardsFull, sendOf, teamsOn } from '../../lib/buzz';
   import { cardWindow } from '../../lib/cardwindow.svelte';
   import { cardsOut, sendCard } from '../../lib/sentcards';
   import { dropMenu } from '../../lib/menustate.svelte';
@@ -640,7 +640,7 @@
     const seat = roles.guesser;
     if (!rules.typeGuess || s.stage === 'pick' || !seat || a?.id !== partnerAnswerId(s)) return null;
     const g = a.seats[seat];
-    return g && typeof g.text === 'string' ? { seat, text: g.text, by: g.by } : null;
+    return g && typeof g.text === 'string' ? { seat, text: g.text, by: g.by, auto: autoSentMark(g.auto) } : null;
   });
 
   /** 📋 Copy words: the card's words and links, named for who they're for. Nothing of it shows on screen. */
@@ -1265,6 +1265,7 @@
         ✍ {name(guess.seat)}{guess.by ? ` (${guess.by})` : ''}
         {#if dual || session.revealed}guessed: <b dir="auto" class:selectable={dual}>“{foldLines(guess.text)}”</b>{:else}sent a guess (viewers can see this
           window: it shows here once the answer is up){/if}
+        {#if guess.auto}<span class="auto" data-auto-sent={guess.seat} title={guess.auto.title}>{guess.auto.text}</span>{/if}
       </div>
     {/if}
     <!-- The box's foot, in view as the rows above scroll: ✔ Got it / ✘ Missed, quiet until the clock runs, with what each
@@ -1367,6 +1368,11 @@
 </div>
 
 <style>
+  /* (A guess typed and not sent, sent by the phone itself: amber, as the phone's "Not sent yet".) */
+  .auto {
+    color: var(--warn, var(--muted));
+    font-weight: 600;
+  }
   .partner {
     display: flex;
     flex-direction: column;

@@ -405,7 +405,21 @@ export interface AnswerAsk {
   seats: { id: string; got?: number; closed?: true; verdict?: AnswerVerdict }[];
   /** Added later ('choices'): 2 to CHOICES_MAX choices to pick from instead of typing (never which one is right). */
   choices?: { id: string; text: string }[];
+  /**
+   * Added later: this host takes words typed and not sent, marked as sent automatically (unfinished): a phone sends
+   * them when its countdown runs out, and as the answers lock (PhoneMsg 'answer' with `auto`, taken AUTO_GRACE_MS after
+   * the lock). Left out (a host from before): the room takes none, and a phone sends none.
+   */
+  autoSend?: true;
 }
+
+/**
+ * Why a phone sent its words by itself (PhoneMsg 'answer' `auto`): 'time', its countdown ran out (the host's clock at
+ * 0, at the lock too); 'lock', the answers locked before that (the host showed the answer, or judged with no clock).
+ */
+export type AutoSent = 'time' | 'lock';
+/** How long after the answers lock the room still takes a phone's words sent by itself (`auto`: it hears of the lock late). */
+export const AUTO_GRACE_MS = 3000;
 
 /** How a seat's answer was judged, as its phones are told once the stream shows it: right or not, and the points. */
 export interface AnswerVerdict {
@@ -425,6 +439,8 @@ export interface SentAnswer {
   at?: number;
   /** Added later ('choices'): the choice picked (its id; `text` is its words). */
   pick?: string;
+  /** Added later: the words were typed and not sent; the phone sent them by itself (AnswerAsk.autoSend), and why. */
+  auto?: AutoSent;
 }
 
 /** Answers, as one phone sees them: its own seat's only. */
@@ -447,6 +463,10 @@ export interface PhoneAnswer {
   pick?: string;
   /** Added later: this seat's verdict, once the stream shows it (AnswerAsk's seats). */
   verdict?: AnswerVerdict;
+  /** Added later: the host takes words typed and not sent (AnswerAsk.autoSend): send them when time runs out, and at the lock. */
+  autoSend?: true;
+  /** Added later: what this seat has was sent by a phone by itself, unfinished (SentAnswer.auto), and why. */
+  auto?: AutoSent;
 }
 
 /** HostState.wager: who is wagering, and on what. */
@@ -667,9 +687,15 @@ function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | n
       open: a.open && !seat?.closed,
       mine,
       ...(mine && sent
-        ? { text: sent.text, ...(sent.pick ? { pick: sent.pick } : {}), ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}) }
+        ? {
+            text: sent.text,
+            ...(sent.pick ? { pick: sent.pick } : {}),
+            ...(sent.auto ? { auto: sent.auto } : {}),
+            ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}),
+          }
         : {}),
       ...(mine && !sent && hidden ? { hidden: true } : {}),
+      ...(mine && a.autoSend ? { autoSend: true as const } : {}),
       ...(mine && a.choices?.length ? { choices: a.choices } : {}),
       ...(seat?.verdict ? { verdict: seat.verdict } : {}),
     },
@@ -917,9 +943,10 @@ export type RoomToHost =
   | { t: 'color'; seatId: string; color: string }
   /**
    * Added later ('answers'): a phone sent seatId's answer for the answer round `id` (n counts up per seat). pick (added
-   * later, 'choices'): the choice it picked (its id; `text` is its words).
+   * later, 'choices'): the choice it picked (its id; `text` is its words). auto (added later, AnswerAsk.autoSend): the
+   * words were typed and not sent; the phone sent them by itself when time ran out or the answers locked (unfinished).
    */
-  | { t: 'answer'; id: string; seatId: string; text: string; n: number; by?: string; pick?: string }
+  | { t: 'answer'; id: string; seatId: string; text: string; n: number; by?: string; pick?: string; auto?: AutoSent }
   /**
    * Added later ('cards'): card `id` was seen on a phone of seatId (teams: member, called by). Sent again for the
    * current cards when the host comes back.
@@ -971,8 +998,12 @@ export type PhoneMsg =
   | { t: 'wager'; id: string; amount: number }
   /** Added later ('color'): this phone's player wants this colour (#rrggbb); the host takes it if it's free. */
   | { t: 'color'; color: string }
-  /** Added later ('answers'): this phone's seat's answer for the answer round `id`: words, or ('choices') a choice's id. */
-  | { t: 'answer'; id: string; text?: string; pick?: string }
+  /**
+   * Added later ('answers'): this phone's seat's answer for the answer round `id`: words, or ('choices') a choice's id.
+   * auto (added later, AnswerAsk.autoSend): words typed and not sent, sent by the phone itself as its countdown ran out
+   * or the answers locked: never over one sent on purpose, and up to AUTO_GRACE_MS after the lock.
+   */
+  | { t: 'answer'; id: string; text?: string; pick?: string; auto?: AutoSent }
   /** Added later ('cards'): this phone showed card `id` (its player tapped to see it). */
   | { t: 'cardSeen'; id: string }
   /** Added later ('pass'): this phone's seat passes on the clue (on), or takes its pass back, in the round of passes `id`. */

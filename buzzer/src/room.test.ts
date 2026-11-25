@@ -3,6 +3,7 @@ import type { HostCard, HostState, RoomToHost, RoomToPhone } from '../../src/lib
 import {
   ANSWER_LINES,
   ANSWER_MAX,
+  AUTO_GRACE_MS,
   CARDS_BYTES,
   CARDS_MAX,
   cleanAnswer,
@@ -2215,6 +2216,164 @@ describe('answers (everyone answers on their phone)', () => {
     g.t.now += 1000;
     ann.send({ t: 'answer', id: 'clue2', text: 'Grant' });
     expect(spy.last('view')!.view.answer).toMatchObject({ id: 'clue2', text: 'Grant', by: 'Ann' });
+  });
+
+  describe('words typed and not sent, sent by the phone itself (auto, AnswerAsk.autoSend)', () => {
+    const on = (x: Partial<NonNullable<HostState['answers']>> = {}) => ask({ autoSend: true, ...x });
+
+    it('the room passes autoSend on to the round’s phones; a host from before (none) gets no auto answer', () => {
+      const g = game();
+      g.send({ t: 'state', state: state({ answers: on() }) });
+      expect(g.pa.last('view')!.view.answer).toEqual({ id: 'clue1', open: true, mine: true, autoSend: true });
+      // (Not to a phone not in it.)
+      expect(g.pc.last('view')!.view.answer).toEqual({ id: 'clue1', open: true, mine: false });
+      g.send({ t: 'state', state: state({ answers: ask() }) });
+      expect(g.pa.last('view')!.view.answer!.autoSend).toBeUndefined();
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'half typ', auto: 'time' });
+      expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'bad' });
+      expect(g.hostAll('answer')).toHaveLength(0);
+    });
+
+    it('as time runs out (still open): taken, marked, and the host and the seat’s phone hear why', () => {
+      const g = game();
+      g.send({ t: 'state', state: state({ answers: on() }) });
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'What is a Shi', auto: 'time' });
+      expect(g.pa.last('answered')).toEqual({ t: 'answered', id: 'clue1', ok: true });
+      expect(g.hostLast('answer')).toEqual({ t: 'answer', id: 'clue1', seatId: 'a', text: 'What is a Shi', n: 1, auto: 'time' });
+      expect(g.pa.last('view')!.view.answer).toMatchObject({ text: 'What is a Shi', auto: 'time' });
+      // Sent on purpose after: the mark goes.
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'What is a Shiba Inu?' });
+      expect(g.hostLast('answer')).toEqual({ t: 'answer', id: 'clue1', seatId: 'a', text: 'What is a Shiba Inu?', n: 2 });
+      expect(g.pa.last('view')!.view.answer!.auto).toBeUndefined();
+      // A bad reason, or a pick with it, is refused.
+      for (const m of [
+        { t: 'answer', id: 'clue1', text: 'x', auto: 'soon' },
+        { t: 'answer', id: 'clue1', text: 'x', auto: true },
+      ]) {
+        g.pb.send(m);
+        expect(g.pb.last('answered')).toMatchObject({ ok: false, reason: 'bad' });
+      }
+    });
+
+    it('as the answers lock: taken up to AUTO_GRACE_MS after the room saw the lock, never after; one not flagged is still refused', () => {
+      const g = game();
+      g.send({ t: 'state', state: state({ answers: on() }) });
+      g.t.now += 5000;
+      g.send({ t: 'state', state: state({ answers: on({ open: false }) }) });
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'late, on purpose' });
+      expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+      g.t.now += AUTO_GRACE_MS - 500;
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'line one\nline two', auto: 'lock' });
+      expect(g.pa.last('answered')).toMatchObject({ ok: true });
+      expect(g.hostLast('answer')).toEqual({ t: 'answer', id: 'clue1', seatId: 'a', text: 'line one\nline two', n: 1, auto: 'lock' });
+      expect(g.pa.last('view')!.view.answer).toMatchObject({ open: false, text: 'line one\nline two', auto: 'lock' });
+      // (A state again, still locked, doesn't start the window again.)
+      g.send({ t: 'state', state: state({ answers: on({ open: false, seats: [{ id: 'a', got: 1 }, { id: 'b' }] }) }) });
+      g.t.now += 600;
+      g.pb.send({ t: 'answer', id: 'clue1', text: 'too late', auto: 'time' });
+      expect(g.pb.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+      expect(g.hostAll('answer')).toHaveLength(1);
+      // Opened again (an Undo) and locked again: a new window.
+      g.send({ t: 'state', state: state({ answers: on({ seats: [{ id: 'a', got: 1 }, { id: 'b' }] }) }) });
+      g.send({ t: 'state', state: state({ answers: on({ open: false, seats: [{ id: 'a', got: 1 }, { id: 'b' }] }) }) });
+      g.pb.send({ t: 'answer', id: 'clue1', text: 'Corg', auto: 'lock' });
+      expect(g.pb.last('answered')).toMatchObject({ ok: true });
+    });
+
+    it('a round first heard of locked has no window (the room never saw it open)', () => {
+      const g = game();
+      g.send({ t: 'state', state: state({ answers: on({ open: false }) }) });
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'x', auto: 'lock' });
+      expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+      // Nor a new round that comes locked straight after an open one.
+      const h = game();
+      h.send({ t: 'state', state: state({ answers: on() }) });
+      h.send({ t: 'state', state: state({ answers: on({ id: 'clue2', open: false }) }) });
+      h.pa.send({ t: 'answer', id: 'clue2', text: 'x', auto: 'lock' });
+      expect(h.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+    });
+
+    it('never over an answer sent on purpose, nor for a seat the host has judged; one sent by itself can be replaced', () => {
+      const g = game();
+      g.send({ t: 'state', state: state({ answers: on() }) });
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'Paris' });
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'Paris, Fr', auto: 'time' });
+      expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+      g.pb.send({ t: 'answer', id: 'clue1', text: 'Ber', auto: 'time' });
+      g.send({
+        t: 'state',
+        state: state({
+          answers: on({
+            open: false,
+            seats: [
+              { id: 'a', got: 1 },
+              { id: 'b', got: 1 },
+            ],
+          }),
+        }),
+      });
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'Paris, France', auto: 'lock' });
+      expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+      g.pb.send({ t: 'answer', id: 'clue1', text: 'Bern', auto: 'lock' });
+      expect(g.pb.last('answered')).toMatchObject({ ok: true });
+      expect(g.hostAll('answer').map((m) => [m.seatId, m.text, m.auto])).toEqual([
+        ['a', 'Paris', undefined],
+        ['b', 'Ber', 'time'],
+        ['b', 'Bern', 'lock'],
+      ]);
+      // Judged (closed) before the lock: what it was judged on stays.
+      const h = game();
+      h.send({ t: 'state', state: state({ answers: on() }) });
+      h.send({ t: 'state', state: state({ answers: on({ seats: [{ id: 'a', closed: true }, { id: 'b' }] }) }) });
+      h.send({ t: 'state', state: state({ answers: on({ open: false, seats: [{ id: 'a', closed: true }, { id: 'b' }] }) }) });
+      h.pa.send({ t: 'answer', id: 'clue1', text: 'x', auto: 'lock' });
+      expect(h.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+    });
+
+    it('one sent by itself while the host was away reaches it, still marked', () => {
+      const g = game();
+      g.send({ t: 'state', state: state({ answers: on() }) });
+      g.room.hostClose();
+      g.pa.send({ t: 'answer', id: 'clue1', text: 'Half', auto: 'time' });
+      g.room.hostOpen();
+      expect(g.hostLast('answer')).toEqual({ t: 'answer', id: 'clue1', seatId: 'a', text: 'Half', n: 1, auto: 'time' });
+    });
+
+    it('teams: a teammate’s words never replace the answer the team sent; the team sees what went by itself', () => {
+      const g = setup();
+      g.room.hostOpen();
+      const st = (x: Partial<HostState> = {}) =>
+        state({
+          teams: true,
+          seats: [
+            { id: 'a', name: 'Red', color: '#ff0000' },
+            { id: 'b', name: 'Blue', color: '#0000ff' },
+          ],
+          ...x,
+        });
+      g.send({ t: 'state', state: st() });
+      const join = (conn: string, seatId: string, name: string) => {
+        const p = g.phone(conn);
+        p.send({ t: 'join', seatId, name });
+        return p;
+      };
+      const ann = join('ann', 'a', 'Ann');
+      const al = join('al', 'a', 'Al');
+      const bea = join('bea', 'b', 'Bea');
+      const bo = join('bo', 'b', 'Bo');
+      g.send({ t: 'state', state: st({ answers: on() }) });
+      ann.send({ t: 'answer', id: 'clue1', text: 'Washington' });
+      g.send({ t: 'state', state: st({ answers: on({ open: false }) }) });
+      al.send({ t: 'answer', id: 'clue1', text: 'Linc', auto: 'lock' });
+      expect(al.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+      bea.send({ t: 'answer', id: 'clue1', text: 'Adam', auto: 'lock' });
+      expect(bea.last('answered')).toMatchObject({ ok: true });
+      expect(bo.last('view')!.view.answer).toMatchObject({ text: 'Adam', by: 'Bea', auto: 'lock' });
+      expect(g.hostAll('answer').map((m) => [m.seatId, m.text, m.by, m.auto])).toEqual([
+        ['a', 'Washington', 'Ann', undefined],
+        ['b', 'Adam', 'Bea', 'lock'],
+      ]);
+    });
   });
 
   describe('multiple choice', () => {

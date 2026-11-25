@@ -97,6 +97,7 @@ import {
   ROOM_FILES_MAX,
   WAGER_MAX,
   ANSWER_MAX,
+  AUTO_GRACE_MS,
   CHOICE_ID_MAX,
   CHOICE_MAX,
   CHOICES_MAX,
@@ -110,6 +111,7 @@ import {
   CLUE_TEXT_MAX,
   KICK_BLOCK_MS,
   type AnswerAsk,
+  type AutoSent,
   type AnswerVerdict,
   type BuzzPhase,
   type CardMedia,
@@ -266,8 +268,12 @@ export interface RoomSaved {
   clueLeft?: Record<string, string>;
   /** The wagers phones sent for the host's wager round `id` (HostState.wager), per seat; at: when the round began. */
   wagers?: { id: string; seats: Record<string, SentWager>; at?: number };
-  /** The answers phones sent for the host's answer round `id` (HostState.answers), per seat; at: when the round began. */
-  answers?: { id: string; seats: Record<string, SentAnswer>; at?: number };
+  /**
+   * The answers phones sent for the host's answer round `id` (HostState.answers), per seat; at: when the round began.
+   * lockedAt (added later): when the room saw this round lock (open, then not), for words a phone sends by itself as it
+   * hears of the lock (AUTO_GRACE_MS); gone if it opens again.
+   */
+  answers?: { id: string; seats: Record<string, SentAnswer>; at?: number; lockedAt?: number };
   /**
    * Added later ('pass'): the seats that passed in the host's round of passes `id` (HostState.pass); teams: the member
    * who passed for it (id, not a credential) and their name.
@@ -549,7 +555,17 @@ export class Room {
   }
 
   private tellAnswer(id: string, seatId: string, a: SentAnswer): void {
-    if (this.hostHere) this.deps.toHost({ t: 'answer', id, seatId, text: a.text, n: a.n, ...(a.by ? { by: a.by } : {}), ...(a.pick ? { pick: a.pick } : {}) });
+    if (this.hostHere)
+      this.deps.toHost({
+        t: 'answer',
+        id,
+        seatId,
+        text: a.text,
+        n: a.n,
+        ...(a.by ? { by: a.by } : {}),
+        ...(a.pick ? { pick: a.pick } : {}),
+        ...(a.auto ? { auto: a.auto } : {}),
+      });
   }
 
   private tellWager(id: string, seatId: string, w: SentWager): void {
@@ -675,6 +691,11 @@ export class Room {
       /* kept */
     } else if (this.s.answers?.id !== ans.id) this.s.answers = { id: ans.id, seats: {}, at: now };
     else for (const id of Object.keys(this.s.answers.seats)) if (!ans.seats.some((x) => x.id === id)) delete this.s.answers.seats[id];
+    // (The moment it locks, seen here: open before, the same round shut now. A round first heard of shut has none.)
+    if (ans && this.s.answers?.id === ans.id) {
+      if (ans.open) delete this.s.answers.lockedAt;
+      else if (prev?.answers?.id === ans.id && prev.answers.open) this.s.answers.lockedAt = now;
+    }
     // Passes: a new round of passes starts with nobody (the one before is kept a while: an Undo of ↺ Reset goes back to
     // it), none forgets them all; a seat gone from the game, answering or out of the clue has no pass any more (the host
     // picked them by hand, say).
@@ -1342,7 +1363,7 @@ export class Room {
         if (typeof m.color === 'string') this.color(p, m.color);
         break;
       case 'answer':
-        if (typeof m.id === 'string') this.answer(p, m.id, m.text, m.pick);
+        if (typeof m.id === 'string') this.answer(p, m.id, m.text, m.pick, m.auto);
         break;
       case 'cardSeen':
         if (typeof m.id === 'string') this.cardSeen(p, m.id);
@@ -1748,22 +1769,31 @@ export class Room {
    * A phone sends its seat's answer for the host's answer round `id`: kept for the seat (teams: whoever on it sent it
    * last), told to the host only, and every phone of the seat sees it. The phone hears either way. `pick` ('choices'):
    * one of the round's choices (its id), whose words are the answer; without one (an older phone page), the words typed.
+   * `auto` ('time' or 'lock'; AnswerAsk.autoSend): words typed and not sent, sent by the phone itself as its countdown
+   * ran out or as it heard the answers lock: taken while the round is open, or up to AUTO_GRACE_MS after it locked (seen
+   * here), and never over an answer this seat sent on purpose (a teammate's half-typed words don't replace it).
    */
-  private answer(p: Phone, id: string, text: unknown, pick?: unknown): void {
+  private answer(p: Phone, id: string, text: unknown, pick?: unknown, auto?: unknown): void {
     const st = this.s.state;
     const ask = st?.answers;
     const no = (reason: 'closed' | 'bad' | 'slow') => this.deps.toPhone(p.conn, { t: 'answered', id: clip(id, 100), ok: false, reason });
     const seat = p.seatId ? ask?.seats.find((x) => x.id === p.seatId) : undefined;
+    const now = this.deps.now();
+    const by: AutoSent | undefined = auto === 'time' || auto === 'lock' ? auto : undefined;
+    if (auto !== undefined && (!by || !ask?.autoSend || pick !== undefined)) return no('bad');
+    const kept = this.s.answers?.id === id ? this.s.answers : undefined;
+    // (Its words as it heard of the lock: just after it, from a lock this room saw.)
+    const grace = !!by && !!kept?.lockedAt && now - kept.lockedAt <= AUTO_GRACE_MS;
     // (A seat the host has judged keeps the answer it was judged on.)
-    if (!st || !ask || !ask.open || ask.id !== id || !seat || !p.seatId || seat.closed) return no('closed');
+    if (!st || !ask || !(ask.open || grace) || ask.id !== id || !seat || !p.seatId || seat.closed) return no('closed');
+    if (by && kept?.seats[p.seatId] && !kept.seats[p.seatId].auto) return no('closed');
     if (!this.allow((p.answerRate ??= { start: 0, count: 0 }), ANSWER_RATE, ANSWER_WINDOW_MS)) return no('slow');
     const choice = pick === undefined ? undefined : ask.choices?.find((c) => c.id === pick);
     if (pick !== undefined && !choice) return no('bad');
     // (Its line breaks stay, a few lines at most: cleanAnswer. A host from before shows them as spaces.)
     const words = choice ? choice.text : typeof text === 'string' ? cleanAnswer(text, ANSWER_MAX) : '';
     if (!words) return no('bad');
-    const now = this.deps.now();
-    const sent = this.s.answers?.id === id ? this.s.answers : (this.s.answers = { id, seats: {}, at: now });
+    const sent = kept ?? (this.s.answers = { id, seats: {}, at: now });
     const member = st.teams && p.member ? this.s.members?.[p.member] : undefined;
     const a: SentAnswer = {
       text: words,
@@ -1771,6 +1801,7 @@ export class Room {
       at: now,
       ...(member && p.member ? { member: p.member, by: member.name } : {}),
       ...(choice ? { pick: choice.id } : {}),
+      ...(by ? { auto: by } : {}),
     };
     sent.seats[p.seatId] = a;
     this.deps.toPhone(p.conn, { t: 'answered', id, ok: true });
@@ -2195,7 +2226,13 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
       aseats.push({ id: a.id, ...(got ? { got } : {}), ...(a.closed === true ? { closed: true as const } : {}), ...(verdict ? { verdict } : {}) });
     }
     const choices = cleanChoices(x.answers.choices);
-    extra.answers = { id: x.answers.id, open: x.answers.open === true, seats: aseats, ...(choices ? { choices } : {}) };
+    extra.answers = {
+      id: x.answers.id,
+      open: x.answers.open === true,
+      seats: aseats,
+      ...(choices ? { choices } : {}),
+      ...(x.answers.autoSend === true ? { autoSend: true as const } : {}),
+    };
   }
   if (Array.isArray(x.cards)) {
     const cards = cleanCards(x.cards, ids, files);

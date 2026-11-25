@@ -32,6 +32,7 @@ import {
   ROOM_ALPHABET,
   SETTING_UP,
   STARTS_SOON,
+  type AutoSent,
   type DenyReason,
   type PhoneView,
   type PhoneWager,
@@ -42,7 +43,7 @@ import { barAt, fromBar, fromSquare, hexToHsv, hsvToHex, nudge, squareAt, type H
 import { anyVerdict, colorWords, hueText, squareText, typedHex } from './anycolor';
 import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
-import { clockLine, HOST_AWAY_SAY_MS, hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine } from './lines';
+import { autoSentLine, clockLine, clockUp, HOST_AWAY_SAY_MS, hadGoLine, hostAwayLine, money, passButton, passedLines, verdictLine } from './lines';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -157,6 +158,14 @@ let answerFor = '';
 let answerTap = '';
 /** The room took it ('answered'): the next view has it. */
 let answerTapTaken = false;
+/**
+ * What each answer sent and not answered yet was, in order ('answered' comes back in the same order): 'own', sent by the
+ * player, or 'auto', words typed and not sent that this phone sent by itself (sendUnsent): its answer changes nothing
+ * on the page (a refusal of one says nothing), the room's next view shows whether it went.
+ */
+let answerSends: ('own' | 'auto')[] = [];
+/** The countdown this phone already sent the box's words for as it ran out (answer id and when it ends), once each. */
+let autoTimeFor = '';
 /**
  * A choice tapped here whose "✔ Sent" line hasn't been shown yet: once it says so (or why not), it's scrolled into
  * sight (with 5 or 6 choices it can be under the bottom of a short phone, and the tap would look unanswered).
@@ -347,6 +356,8 @@ function connect(): void {
     if (ws !== s) return;
     connected = everConnected = true;
     lastPong = Date.now();
+    // (A new socket: no answer of the old one's is coming back.)
+    answerSends = [];
     // (A card file that wouldn't come while the connection was down is tried again.)
     retryCardFiles();
     const saved = seatMoved ? null : loadSeat();
@@ -531,7 +542,9 @@ function onMessage(m: RoomToPhone): void {
       notice = null;
       fullTries = 0;
       break;
-    case 'view':
+    case 'view': {
+      const was = view?.answer;
+      const clock = view?.timer;
       view = m.view;
       if (view.status !== STARTS_SOON && view.status !== SETTING_UP) gameSeen = true;
       if (answerTapTaken) answerTap = '';
@@ -542,7 +555,14 @@ function onMessage(m: RoomToPhone): void {
       if (sendingArm >= 0 && (view.armId !== sendingArm || view.phase === 'lobby')) stopSending();
       if (lostArm >= 0 && view.armId !== lostArm) lostArm = -1;
       resendHeld(view);
+      // The answers just locked over words typed and not sent: they go now, marked (the room takes them a moment after
+      // the lock). Not once the host has judged this seat: it keeps what it was judged on. (The answer going up stops
+      // the clock: whether it had run out is the view before's.)
+      const now = view.answer;
+      if (was?.open && was.mine && now && now.id === was.id && !now.open && !now.verdict)
+        sendUnsent(now, clockUp(clock, serverNow()) || clockUp(view.timer, serverNow()) ? 'time' : 'lock');
       break;
+    }
     case 'waiting':
       newForm = false;
       break;
@@ -575,6 +595,8 @@ function onMessage(m: RoomToPhone): void {
       break;
     }
     case 'answered': {
+      // (Words this phone sent by itself: quiet either way. The view says if they went.)
+      if (answerSends.shift() === 'auto') break;
       answerSending = false;
       const picked = !!answerTap;
       if (m.ok) answerTapTaken = picked;
@@ -1624,6 +1646,8 @@ function renderBuzz(v: PhoneView): void {
       ans.verdict ? (ans.verdict.right ? 'right' : 'wrong') : 'off',
       ans.verdict ? verdictLine(ans.verdict, sym) : 'Answers locked',
       staked +
+        // (Words typed and not sent that went by themselves: said first, so a long answer is what gets cut.)
+        (ans.auto && ans.text ? `${autoSentLine(ans.auto)} · ` : '') +
         (ans.text
           ? `${team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${foldLines(ans.text)}”`}`
           : ans.hidden
@@ -1830,6 +1854,16 @@ function drawClock(): void {
     el.classList.toggle('up', c.up);
   }
   if (t && box && 'endsAt' in t && t.endsAt > serverNow()) clockTick = window.setTimeout(drawClock, 250);
+  // Time's up with words typed in the box and not sent: they go, marked (the box stays open: the host may still take
+  // a late one, and Send answer sends them as the player's own). Once per countdown.
+  const a = view?.answer;
+  if (box === 'answer' && a?.open && clockUp(t, serverNow())) {
+    const key = `${a.id} ${t && 'endsAt' in t ? t.endsAt : 'left'}`;
+    if (key !== autoTimeFor) {
+      autoTimeFor = key;
+      sendUnsent(a, 'time');
+    }
+  }
 }
 
 /**
@@ -2237,10 +2271,33 @@ function wagerIn(w: PhoneWager): boolean {
 
 const drawWagerSend = (w: PhoneWager): void => drawSend('wager-send', w.amount !== undefined && !w.host ? 'Change wager' : 'Send wager', wagerIn(w));
 
-/** The answer box holds what's in (typed: multiple choice has no box). */
-const answerIn = (a: NonNullable<PhoneView['answer']>): boolean => !!a.text && sameAnswer($<HTMLTextAreaElement>('answer-in').value, a.text);
+/**
+ * The answer box holds what's in (typed: multiple choice has no box). Not what the phone sent by itself as time ran out:
+ * Send answer sends those words as the player's own.
+ */
+const answerIn = (a: NonNullable<PhoneView['answer']>): boolean => !!a.text && !a.auto && sameAnswer($<HTMLTextAreaElement>('answer-in').value, a.text);
 
-const drawAnswerSend = (a: NonNullable<PhoneView['answer']>): void => drawSend('answer-send', a.text ? 'Change answer' : 'Send answer', answerIn(a));
+const drawAnswerSend = (a: NonNullable<PhoneView['answer']>): void => drawSend('answer-send', a.text && !a.auto ? 'Change answer' : 'Send answer', answerIn(a));
+
+/** An answer to the room, noted so its 'answered' is read as the player's or as one this phone sent by itself. */
+function sendAnswer(m: { t: 'answer'; id: string; text?: string; pick?: string; auto?: AutoSent }, kind: 'own' | 'auto'): void {
+  if (ws?.readyState !== WebSocket.OPEN) return;
+  answerSends.push(kind);
+  send(m);
+}
+
+/**
+ * Words typed in the box and not sent go by themselves, marked (AnswerAsk.autoSend: a host that takes them): as the
+ * countdown runs out, and as the answers lock. Only typed words (a pick goes as it's tapped), only over nothing or over
+ * words that went by themselves (never over an answer sent on purpose, nor one this phone isn't shown), and only when
+ * they aren't what's in already. `why`: 'time' (the clock ran out) or 'lock'.
+ */
+function sendUnsent(a: NonNullable<PhoneView['answer']>, why: AutoSent): void {
+  if (!a.mine || !a.autoSend || a.choices?.length || a.hidden || (a.text && !a.auto)) return;
+  const text = cleanAnswer($<HTMLTextAreaElement>('answer-in').value);
+  if (!text.trim() || (a.text && sameAnswer(text, a.text))) return;
+  sendAnswer({ t: 'answer', id: a.id, text, auto: why }, 'auto');
+}
 
 /** Held to a max the amount is over. */
 const overMax = (w: PhoneWager, amount: number): boolean => !!w.limit && w.max !== undefined && amount > w.max;
@@ -2248,7 +2305,7 @@ const overMax = (w: PhoneWager, amount: number): boolean => !!w.limit && w.max !
 /** A box's state line: "Sending…", what's in (green), or an edit not sent yet (amber: it isn't in). */
 function drawState(id: 'answer-state' | 'wager-state', state: string, sending: boolean): void {
   $(id).textContent = sending ? 'Sending…' : state;
-  $(id).classList.toggle('unsent', !sending && /^(Not sent yet|Type .* or less)/.test(state));
+  $(id).classList.toggle('unsent', !sending && /^(Not sent yet|Type .* or less|Sent automatically)/.test(state));
 }
 
 /** A refusal of what was typed (not of the connection): it goes once the box changes. */
@@ -2293,6 +2350,16 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
       ? `${team ? 'Your team’s' : 'Your'} answer is in with the host (not shown on a phone that joined after the answers began). ${choices ? tap('Tapping one replaces it.') : 'Sending one replaces it.'}`
       : '';
     return [unsent, hidden].filter(Boolean).join(' ');
+  }
+  // Sent by this phone itself as time ran out (or a teammate's did): it may be unfinished, and Send answer sends what's
+  // in the box as the player's own (it can be changed until the host shows the answer, as ever).
+  if (a.auto && !choices) {
+    const has = `${a.auto === 'time' ? 'when time ran out' : 'as answers locked'}${team && a.by ? `, from ${a.byYou ? 'your phone' : `${a.by}’s phone`}` : ''}`;
+    if (typed && !sameAnswer(box, a.text))
+      return typedErr(answerErr)
+        ? `What the host has (sent automatically ${has}: unfinished): ${quoted(a.text)}`
+        : `${tap('Not sent yet: tap Send answer to send it.')} What the host has (sent automatically ${has}: unfinished): ${quoted(a.text)}`;
+    return `${autoSentLine(a.auto)}${team && a.by ? ` (${a.byYou ? 'your phone' : `${a.by}’s phone`})` : ''}: ${quoted(a.text)}. ${tap('Tap Send answer to send it as it is.')}`;
   }
   if (!choices && typed && !sameAnswer(box, a.text))
     return typedErr(answerErr)
@@ -2875,7 +2942,7 @@ $('answer-form').addEventListener('submit', (e) => {
   answerErr = '';
   answerSending = connected;
   if (!connected) answerErr = 'Not connected: try again in a moment.';
-  send({ t: 'answer', id: a.id, text });
+  sendAnswer({ t: 'answer', id: a.id, text }, 'own');
   render();
 });
 // Multiple choice: a tap sends that choice at once (it can be changed until the host shows the answer).
@@ -2891,7 +2958,7 @@ $('answer-choices').addEventListener('click', (e) => {
   answerTapTaken = false;
   answerSending = connected;
   if (!connected) ((answerErr = 'Not connected: try again in a moment.'), (answerTap = ''));
-  send({ t: 'answer', id: a.id, pick });
+  sendAnswer({ t: 'answer', id: a.id, pick }, 'own');
   render();
 });
 // With a keyboard Enter sends (Shift+Enter: a new line). On a phone its keyboard's Enter is a new line, and Send answer

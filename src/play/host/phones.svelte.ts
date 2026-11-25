@@ -347,13 +347,19 @@ export function createPhones(host: PhonesHost) {
     const f = session.final;
     const list = finalTyped && f ? finalRound?.choices : info?.clue.choices;
     const pick = a.pick && usableChoices(list).some((c) => c.id === a.pick) ? { pick: a.pick } : {};
+    // (Typed and not sent: the phone sent it by itself as time ran out or the answers locked, marked so for the host.)
+    const auto = a.auto ? { auto: a.auto } : {};
     // The Final's: kept with the Final (no toast, no step, nothing in the 📜 Log: only the host panel shows it).
     if (finalTyped && f) {
-      f.answers = { ...f.answers, [a.seatId]: { text: a.text, n: a.n, ...by, ...pick } };
+      f.answers = { ...f.answers, [a.seatId]: { text: a.text, n: a.n, ...by, ...pick, ...auto } };
       return;
     }
     const was = r.answers?.id === ask.id ? r.answers : undefined;
-    r.answers = { id: ask.id, seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...by, ...pick } }, ...(was?.locked ? { locked: true } : {}) };
+    r.answers = {
+      id: ask.id,
+      seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...by, ...pick, ...auto } },
+      ...(was?.locked ? { locked: true } : {}),
+    };
     // (A ✔ / ✘ on their answer that Ctrl+Z took back isn't brought back by ↷ Redo beside this one.)
     if (everyone && info) forgetRedo(session, info.clue.id, a.seatId);
   }

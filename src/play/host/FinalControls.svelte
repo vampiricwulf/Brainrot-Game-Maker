@@ -10,7 +10,7 @@
   import { announce } from '../../lib/announce';
   import { touchScreen } from '../../lib/touch.svelte';
   import { toast } from '../../lib/app.svelte';
-  import { teamsOn } from '../../lib/buzz';
+  import { autoSentMark, teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
@@ -739,6 +739,8 @@
               <!-- What they typed on their phone: in one window (viewers see this panel) only once it's on screen. -->
               {@const a = typedAnswer(f, id)}
               {@const shownA = !!f.answerShown?.[id]}
+              <!-- (Typed and not sent, sent by the phone itself: ⏱️ first, never cut off; its words only where they show.) -->
+              {@const auto = autoSentMark(a?.auto)}
               <span class="cell ans">
                 {#if !a}
                   <span class="muted small typed">no typed answer</span>
@@ -752,18 +754,20 @@
                     class:muted={!!a.pick && !picked}
                     class:selectable={dual}
                     dir="auto"
-                    title="{picked ?? a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}"
+                    title="{picked ?? a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}{auto ? ` · ${auto.title}` : ''}"
                     data-typed={id}
-                    >{#if picked}<b>{picked}</b>{:else}“{foldLines(a.text)}”{#if named}{' '}<span class="muted"
-                          >= {letter(choices.findIndex((c) => c.id === named))}</span
-                        >{/if}{/if}</span
+                    >{#if auto}<span class="auto" data-auto-sent={id}>⏱️</span>{' '}{/if}{#if picked}<b>{picked}</b>{:else}“{foldLines(
+                        a.text,
+                      )}”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}</span
                   >
                   {#if rightOne && named}
                     {#if named === rightOne.id}<span class="small pick-right" data-pick-hint={id}>✔ right choice</span>
                     {:else}<span class="muted small pick-wrong" data-pick-hint={id}>✘ not {letter(choices.indexOf(rightOne))}</span>{/if}
                   {/if}
                 {:else}
-                  <span class="muted small typed" title="Shown here once you put it on screen" data-typed={id}>✍ hidden</span>
+                  <span class="muted small typed" title="Shown here once you put it on screen{auto ? ` · ${auto.title}` : ''}" data-typed={id}
+                    >{#if auto}<span class="auto" data-auto-sent={id}>⏱️</span>{' '}{/if}✍ hidden</span
+                  >
                 {/if}
               </span>
               <span class="cell">
@@ -983,6 +987,10 @@
     visibility: hidden;
   }
   /* A typed answer: one line, cut with … (all of it in its tooltip). */
+  /* (Typed and not sent, sent by the phone itself: amber, as the phone's "Not sent yet".) */
+  .auto {
+    color: var(--warn, var(--muted));
+  }
   .typed {
     max-width: 260px;
     min-width: 0;

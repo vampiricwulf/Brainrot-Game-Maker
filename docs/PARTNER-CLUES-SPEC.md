@@ -577,7 +577,8 @@ double-Enter guard (§6.5, §6.6). A key repeat (`e.repeat`) never shows the que
     two plates and the category.
 - **Picker's phone (the guesser):** "🎯 You're guessing!" · "Bob is describing: say it out loud", or the ✍ answer box
   for Ann's seat only when "types their guess" is on. That ask starts here, at Show question, never during PARTNER UP!
-  (§5.4).
+  (§5.4) A guess typed and not sent goes by itself, marked unfinished, as the clock runs out
+  or as the answer shows (SPEC.md, ✍ Everyone answers); judged first, it doesn't (the seat is closed).
 - **Partner's phone (the describer), other phones:** "🤝 Bob describes → Ann guesses" · "Nobody buzzes on this one".
 - **No phone:** the host will copy their card (§6.5).
 

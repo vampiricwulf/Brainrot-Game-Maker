@@ -32,6 +32,7 @@ import {
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
   answerRoundId,
+  autoSentMark,
   buzzArm,
   buzzClueOpened,
   buzzDone,
@@ -786,12 +787,12 @@ describe('each game’s answer rounds are its own (answerRoundId, everyoneAnswer
     expect(everyoneAnswerAsk(game, session)).toBeNull();
     clue.everyone = true;
     const id = `${clue.id}@k1234567`;
-    expect(everyoneAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b' }] });
+    expect(everyoneAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b' }], autoSend: true });
     // The last game's answers to the same clue (a rematch in the same room) don't count as taken.
     session.remote = { code: 'ABCD', hostToken: 't', base: 'https://x', answers: { id: clue.id, seats: { a: { text: 'Doge', n: 3 } } } };
     expect(everyoneAnswerAsk(game, session)?.seats).toEqual([{ id: 'a' }, { id: 'b' }]);
     session.remote.answers = { id, seats: { b: { text: 'Shiba', n: 2 } } };
-    expect(everyoneAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b', got: 2 }] });
+    expect(everyoneAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b', got: 2 }], autoSend: true });
     session.remote.answers.locked = true;
     expect(everyoneAnswerAsk(game, session)?.open).toBe(false);
     delete session.remote.answers.locked;
@@ -960,9 +961,9 @@ describe('the Final’s typed answers (finalAnswerAsk, and its question in hostS
     const { game, session, round, id } = setup();
     expect(finalAnswerAsk(game, session)).toBeNull();
     finalNext(session, game);
-    expect(finalAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b' }] });
+    expect(finalAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b' }], autoSend: true });
     session.final!.answers = { b: { text: 'Washington', n: 2 } };
-    expect(finalAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b', got: 2 }] });
+    expect(finalAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b', got: 2 }], autoSend: true });
     expect(JSON.stringify(finalAnswerAsk(game, session))).not.toContain('Washington');
     round.phoneAnswersOff = true;
     expect(finalAnswerAsk(game, session)).toBeNull();
@@ -1001,7 +1002,7 @@ describe('the Final’s typed answers (finalAnswerAsk, and its question in hostS
     finalNext(session, game);
     expect(finalAnswerAsk(game, session)).toBeNull();
     session.final!.answers = { a: { text: 'Adams', n: 1 } };
-    expect(finalAnswerAsk(game, session)).toEqual({ id, open: false, seats: [{ id: 'a', got: 1 }, { id: 'b' }] });
+    expect(finalAnswerAsk(game, session)).toEqual({ id, open: false, seats: [{ id: 'a', got: 1 }, { id: 'b' }], autoSend: true });
     session.finalStep = 'answer';
     expect(finalAnswerAsk(game, session)?.open).toBe(false);
     // Locked once the answer was up, even back on the question (an Undo).
@@ -1315,5 +1316,19 @@ describe('the countdown on phones (phoneTimer, hostState, phoneView)', () => {
     expect(st.timer).toEqual(timer);
     expect(phoneView(st, 'a').timer).toEqual(timer);
     expect(phoneView(st, null).timer).toBeUndefined();
+  });
+});
+
+describe('the host’s mark on words a phone sent by itself (autoSentMark)', () => {
+  it('says when they went and that they may be unfinished, never anything of the words', () => {
+    expect(autoSentMark(undefined)).toBeNull();
+    expect(autoSentMark('time')).toEqual({
+      text: '⏱️ sent at time’s up',
+      title: 'Typed but not sent: their phone sent it by itself when time ran out, so it may be unfinished',
+    });
+    expect(autoSentMark('lock')).toEqual({
+      text: '⏱️ sent at lock',
+      title: 'Typed but not sent: their phone sent it by itself as the answers locked, so it may be unfinished',
+    });
   });
 });
