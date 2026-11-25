@@ -336,6 +336,17 @@ export function addTime(live: Live, seconds: number): void {
   t.total += Math.max(seconds, -timerRemaining(t));
 }
 
+/**
+ * What screen readers hear after the host changes the countdown (T, Shift+T, the status line's ⏱️ buttons, Enter in its
+ * seconds box): the running seconds are quiet, so this says them once. `more` / `less`: 10 s added or taken off.
+ */
+export function clockWords(t: TimerState, how: 'start' | 'more' | 'less', now = Date.now()): string {
+  const left = Math.ceil(timerRemaining(t, now));
+  if (how === 'more') return `+10 s: ${left} s left`;
+  if (how === 'less') return `−10 s: ${left} s left`;
+  return t.startedAt === null ? `Countdown paused at ${left} s` : `Countdown: ${left} s`;
+}
+
 /** Play a short sound cue (see Live.blip). */
 export function blip(live: Live, key: CueKey): void {
   live.blip = { key, nonce: newId(), at: Date.now() };

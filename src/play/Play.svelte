@@ -140,6 +140,7 @@
   import {
     addTime,
     newLive,
+    clockWords,
     overlayDoneAt,
     startTimer,
     tileToolUp,
@@ -4998,9 +4999,7 @@
     // (A partner clue handing out its cards with none waiting for a phone goes live with it.)
     if (!added) partnerTimerStarted();
     // (Said once here: the running countdown stays quiet.)
-    const tm = app.live.timer;
-    const left = tm ? Math.ceil(timerRemaining(tm)) : 0;
-    if (tm) announce(added ? `+10 s: ${left} s left` : tm.startedAt === null ? `Countdown paused at ${left} s` : `Countdown: ${left} s`);
+    if (app.live.timer) announce(clockWords(app.live.timer, added ? 'more' : 'start'), 'clock');
   }
 
   /** N (and the stage's menu), Shift+N (`back`): the moment's next step, or the other way. */

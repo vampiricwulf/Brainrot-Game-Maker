@@ -3,7 +3,8 @@
   import { tick } from 'svelte';
   import { app } from '../../lib/app.svelte';
   import { clockNow } from '../../lib/clocknow.svelte';
-  import { addTime, startTimer, timerRemaining, toggleTimer } from '../../lib/live';
+  import { announce } from '../../lib/announce';
+  import { addTime, clockWords, startTimer, timerRemaining, toggleTimer } from '../../lib/live';
 
   /**
    * custom: the seconds typed in the box (bound, so T uses them too). onstart: a countdown was started or went on from
@@ -23,15 +24,26 @@
   const t = $derived(app.live.timer);
   const left = $derived(t ? Math.ceil(timerRemaining(t, now)) : 0);
 
+  /** Screen readers hear the time once, as with T and Shift+T (the running seconds are quiet). */
+  function say(how: 'start' | 'more' | 'less'): void {
+    if (app.live.timer) announce(clockWords(app.live.timer, how), 'clock');
+  }
   /** Start (or restart) the countdown here, as T does. */
   function start(seconds: number): void {
     startTimer(app.live, seconds);
     onstart();
+    say('start');
   }
   /** ▶ / ⏸: a countdown going on again counts as started. */
   function toggle(): void {
     toggleTimer(app.live);
     if (app.live.timer && app.live.timer.startedAt !== null) onstart();
+    say('start');
+  }
+  /** −10 / +10: change the time left without starting over. */
+  function more(seconds: number): void {
+    addTime(app.live, seconds);
+    say(seconds > 0 ? 'more' : 'less');
   }
 
   let box = $state<HTMLElement>();
@@ -57,8 +69,8 @@
       >{t.startedAt === null ? '▶' : '⏸'}</button
     >
     <!-- Change the time left without starting over. -->
-    <button class="small ghost" onclick={() => addTime(app.live, -10)} disabled={t.expired} title="10 seconds less" aria-label="10 seconds less">−10</button>
-    <button class="small ghost" onclick={() => addTime(app.live, 10)} title="10 seconds more (Shift+T)" aria-label="10 seconds more">+10</button>
+    <button class="small ghost" onclick={() => more(-10)} disabled={t.expired} title="10 seconds less" aria-label="10 seconds less">−10</button>
+    <button class="small ghost" onclick={() => more(10)} title="10 seconds more (Shift+T)" aria-label="10 seconds more">+10</button>
     <button class="small ghost" onclick={() => start(t.start ?? t.total)} title="Restart" aria-label="Restart timer">↺</button>
     <!-- (The timer box's corner ✕, as a notice's: no word, so the status line never wraps and shrinks the stage.) -->
     <button class="small ghost" onclick={hide} title="Hide timer" aria-label="Hide timer">✕</button>

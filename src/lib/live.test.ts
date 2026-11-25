@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { addTime, newLive, soonLeft, SOON_NOW_MS, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, type Overlay } from './live';
+import { addTime, clockWords, newLive, soonLeft, SOON_NOW_MS, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, type Overlay } from './live';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -28,6 +28,19 @@ describe('the countdown', () => {
     // Never below nothing left.
     addTime(live, -60);
     expect(timerRemaining(live.timer!)).toBe(0);
+  });
+
+  it('says the time left once, for screen readers, after each change', () => {
+    const live = newLive();
+    startTimer(live, 30);
+    expect(clockWords(live.timer!, 'start')).toBe('Countdown: 30 s');
+    vi.advanceTimersByTime(1500);
+    toggleTimer(live);
+    expect(clockWords(live.timer!, 'start')).toBe('Countdown paused at 29 s');
+    addTime(live, 10);
+    expect(clockWords(live.timer!, 'more')).toBe('+10 s: 39 s left');
+    addTime(live, -10);
+    expect(clockWords(live.timer!, 'less')).toBe('−10 s: 29 s left');
   });
 
   it('runs again when time is added after it ran out', () => {
