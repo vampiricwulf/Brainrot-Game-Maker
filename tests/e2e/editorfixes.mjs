@@ -1215,6 +1215,31 @@ try {
     await ctx.close();
   }
 
+  // ---------- Narrower windows: the clue window's slide row ----------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+    const np = await ctx.newPage();
+    np.on('pageerror', (e) => errors.push(e.message));
+    await np.goto(pathToFileURL(file).href);
+    await np.getByRole('button', { name: /Try a sample game/ }).click();
+    await roundTabsIn(np).filter({ hasText: /^\W*Jeopardy!$/ }).first().click();
+    await np.locator('.grid .tile').first().click();
+    const clue = np.getByRole('dialog', { name: 'Edit clue' });
+    await clue.waitFor();
+    const top = async (loc) => Math.round((await loc.boundingBox()).y);
+    for (const width of [1024, 1100, 1180, 1280, 1366]) {
+      await np.setViewportSize({ width, height: 768 });
+      await np.waitForTimeout(150);
+      const tab = await top(clue.getByRole('tab', { name: 'Question slide' }));
+      const add = await top(clue.getByRole('button', { name: /Add slide/ }));
+      const del = await top(clue.getByRole('button', { name: /Delete slide/ }));
+      // (The buttons sit a few px below the tabs' top: the tabs are taller.)
+      assert(add >= tab && Math.abs(add - del) <= 1, `at ${width} the slide's buttons are on one line, never above the tabs (tab ${tab}, ＋ Add slide ${add}, 🗑 Delete slide ${del})`);
+      if (width >= 1280) assert(add - tab < 20, `at ${width} the slide's buttons stay on the tabs' line (tab ${tab}, ＋ Add slide ${add})`);
+    }
+    await ctx.close();
+  }
+
   // ---------- A reload mid-edit comes back where it was ----------
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });

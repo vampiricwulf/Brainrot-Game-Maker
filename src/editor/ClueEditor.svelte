@@ -1069,15 +1069,21 @@
     min-height: calc(2lh + 14px);
     max-height: calc(4lh + 14px);
   }
-  /* One line however many slides and cards from a laptop up (short names past four; the tabs scroll if they must). */
+  /* The tabs and the slide's buttons on one line where they fit (short names past four; the tabs scroll if they must);
+     where the buttons can't sit whole beside 320px of tabs (a laptop beside the sidebar), they drop under them together,
+     never splitting or rising above the tabs. The same rule as a round's slides (SlideTabs). */
   .tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     align-items: flex-end;
     border-bottom: 1px solid var(--border);
   }
+  /* (Its whole width decides whether the buttons drop under it; on a line narrower than that, a phone, the answer's tab
+     gives way.) */
   .tablist {
-    flex: 0 1 auto;
+    flex: 1000 1 320px;
+    max-width: max-content;
     display: flex;
     gap: 4px;
     min-width: 0;
@@ -1117,9 +1123,6 @@
     line-height: 1.25;
   }
   @media (max-width: 900px) {
-    .tabs {
-      flex-wrap: wrap;
-    }
     .quick,
     .quick.four {
       grid-template-columns: 1fr;
