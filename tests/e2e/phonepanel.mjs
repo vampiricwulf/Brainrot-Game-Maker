@@ -10,7 +10,9 @@
 // Finish now… and its Finish. Up to 700px tall the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools, out again
 // with a tap, and the status line's how-to keeps to one line (whole in its tooltip, at every moment); with the row
 // kept out (📊 Scoreboard on, at 320×568) the moment's box still has room and the panel scrolls. A phone on its side, a
-// tablet, a laptop (1280×720, 1920×1080) and a phone with an audience window keep the panel's height as it was.
+// tablet, a laptop (1280×720, 1920×1080) and a phone with an audience window keep the panel's height as it was, and so
+// does a window held upright that's too short for the stage and more (320×454, 360×380, 600×600): its panel ends at the
+// window's foot, the fixed bar in reach.
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -337,6 +339,28 @@ try {
     await roomy(page, where, "the board's title card", stage0, true);
     const skip = page.getByRole('button', { name: 'Skip intro' });
     await tapIt(skip, `${where}: Skip intro`);
+    await ctx.close();
+  }
+
+  // A window held upright but too short for the whole stage and the panel (a small phone with its browser's bars
+  // showing, a small square window): the stage gives way as before, and the panel ends at the window's foot, its fixed
+  // bar in reach (never pushed out of the window, where no scrolling reaches it).
+  section('Upright but short: the panel inside the window');
+  for (const [w, h, touch] of /** @type {[number, number, boolean][]} */ ([
+    [320, 454, true],
+    [360, 380, true],
+    [600, 600, false],
+  ])) {
+    const where = `${w}×${h}`;
+    const { ctx, page } = await sample({ viewport: { width: w, height: h }, ...(touch ? { hasTouch: true, isMobile: true } : {}) });
+    const l = await layout(page);
+    const was = Math.min(Math.max(280, Math.min(0.44 * h, 440)), 0.62 * h);
+    assert(
+      l.panel.y + l.panel.h <= h + 1 && Math.abs(l.panel.h - was) <= 1 && l.stage.y + l.stage.h <= l.panel.y + 1,
+      `${where}: the panel is ${Math.round(was)}px tall as before, under the stage and inside the window (${JSON.stringify({ stage: l.stage, panel: l.panel })})`,
+    );
+    const exit = hostPanelIn(page).locator(':scope > .fixed button').last();
+    await tapIt(exit, `${where}: the fixed bar's last button (${(await exit.innerText()).trim()})`, false);
     await ctx.close();
   }
 

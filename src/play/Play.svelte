@@ -6385,12 +6385,13 @@
   }
   /* A phone held upright, one window, the controls shown: the stage area is the stage's own height (the screen's width,
      16:9, and a pixel over so its rounding never makes it a hair narrower), and the host panel under it gets the rest
-     (see HostPanel's .panel:not(.dual)), not black above and under the stage. */
+     (see HostPanel's .panel:not(.dual)), not black above and under the stage. On a window too short for both (a phone
+     with its browser's bars showing, a small square window) the stage area gives way first, down to what it had before
+     (38vh), so the panel is never pushed past the window's foot. */
   @media (orientation: portrait) and (max-width: 600px) {
     .play:not(.dual):not(.side):not(.hidden) > .stage-area {
-      flex: none;
-      min-height: 0;
-      height: calc(100vw * 9 / 16 + 1px);
+      flex: 0 1 calc(100vw * 9 / 16 + 1px);
+      min-height: min(38vh, calc(100vw * 9 / 16 + 1px));
     }
   }
   .stage-box {
