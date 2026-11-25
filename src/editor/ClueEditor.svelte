@@ -873,6 +873,7 @@
               tabindex={shown === 'a' ? 0 : -1}
               onclick={() => (side = 'a')}
               oncontextmenu={(e) => rightClick(e, qslides.length + cards.length)}
+              class:long-answer={!(qslides.length > 1 || cards.length)}
               title={slideTabTitle('Answer', slideText(clue.answerSlide), 'Hidden until revealed. Right-click: its menu')}
               >{qslides.length > 1 || cards.length ? 'Answer' : 'Answer slide (hidden until revealed)'}</button
             >
@@ -1085,6 +1086,15 @@
   }
   .tablist button {
     flex: none;
+  }
+  /* "Answer slide (hidden until revealed)" is cut short with … where there isn't room for it (its tooltip says it), so
+     both tabs still show. */
+  .tablist button.long-answer {
+    flex: 0 1 auto;
+    min-width: 9ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   /* A long card name is cut on its tab (the tab's tooltip and the card's bar have it whole). */
   .card-tab {

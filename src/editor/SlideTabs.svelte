@@ -345,6 +345,7 @@
         tabindex={on ? 0 : -1}
         onclick={() => ((onCard = false), (side = 'a'))}
         oncontextmenu={(e) => rightClick(e, qslides.length + list.length)}
+        class:long-answer={longAnswer}
         title={slideTabTitle('Answer', holder.answerSlide ? slideText(holder.answerSlide) : '', 'Hidden until revealed. Right-click: its menu')}
         >{longAnswer ? 'Answer slide (hidden until revealed)' : 'Answer'}</button
       >
@@ -405,11 +406,22 @@
     overflow-x: auto;
     scrollbar-width: thin;
   }
+  /* (Its whole width decides whether the group drops under it; on a line narrower than that, a phone, the answer's tab
+     gives way.) */
   .tablist.whole {
-    min-width: max-content;
+    flex-basis: max-content;
   }
   .tablist button {
     flex: none;
+  }
+  /* "Answer slide (hidden until revealed)" is cut short with … where there isn't room for it (its tooltip says it), so
+     both tabs still show. */
+  .tablist button.long-answer {
+    flex: 0 1 auto;
+    min-width: 9ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   /* A long card name is cut on its tab (the tab's tooltip and the card's bar have it whole). */
   .card-tab {
