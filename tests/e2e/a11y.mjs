@@ -522,6 +522,13 @@ try {
   const testSound = await inkOn(page.getByRole('button', { name: '🔊 Test the sound…' }));
   const startKey = await inkOn(page.locator('.start-key'));
   assert(testSound >= 4.5 && startKey >= 4.5, `“🔊 Test the sound…” reads at ${testSound.toFixed(2)}:1, and Start game’s Ctrl+⏎ at ${startKey.toFixed(2)}:1`);
+  // Grey words inside a button stay readable under the mouse too (📺 Separate audience window's, not picked, on --hover).
+  const audienceCard = page.locator('.mode[aria-pressed="false"]', { hasText: 'Separate audience window' });
+  await audienceCard.hover();
+  await page.waitForFunction(() => document.querySelector('.mode[aria-pressed="false"]')?.matches(':hover'));
+  const hoveredMuted = await inkOn(audienceCard.locator('.muted'));
+  assert(hoveredMuted >= 4.5, `under the mouse, 📺 Separate audience window’s grey words read at ${hoveredMuted.toFixed(2)}:1`);
+  await page.mouse.move(0, 0);
 
   const startedAt = await page.evaluate(() => Date.now());
   await page.getByRole('button', { name: 'Start game ▶' }).click();

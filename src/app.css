@@ -203,6 +203,11 @@ button.danger {
 :where(button):is([aria-pressed='true'], [aria-selected='true'], [aria-current]:where(:not([aria-current='false']))) :is(.muted, .hint) {
   color: var(--sel-muted);
 }
+/* …and under the mouse (--hover), where --muted reads at only 4.4:1. (No heavier than the rule above: a component's own
+   color for them still wins.) */
+:where(button:not(:disabled)):hover :is(.muted, .hint) {
+  color: var(--sel-muted);
+}
 /* Sizes: normal for a page's or window's actions, .small in dense rows, .tiny for the icons in a row. */
 button.small {
   padding: 2px 8px;
