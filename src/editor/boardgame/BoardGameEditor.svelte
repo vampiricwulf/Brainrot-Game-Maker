@@ -1268,8 +1268,10 @@
   .n {
     width: 80px;
   }
+  /* (On a phone they wrap rather than make the page scroll sideways; Spaces over it stays at the end of the last line.) */
   .tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     border-bottom: 1px solid var(--border);
   }
