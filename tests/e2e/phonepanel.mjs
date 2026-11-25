@@ -176,6 +176,20 @@ async function nextRound(page) {
   await sleep(600);
 }
 
+/** What a touch screen's panel never says: a click, or keys (1–N, number keys, a key to press, Esc). */
+const KEYS = /\bclick|\(1–\d|number keys|press \d|\bEsc\b/i;
+/**
+ * The host panel's words, as shown (tooltips aside), name taps, not a click or keys: a touch screen has neither.
+ * @param {Page} page
+ * @param {string} where
+ * @param {string} moment
+ */
+async function noKeys(page, where, moment) {
+  // (Not the 📝 host notes: the game's author wrote them.)
+  const lines = (await hostPanelIn(page).innerText()).split('\n').filter((l) => KEYS.test(l) && !l.trim().startsWith('📝'));
+  assert(lines.length === 0, `${where}, ${moment}: the panel's words name no click and no keys (${lines.join(' | ')})`);
+}
+
 /**
  * @param {Page} page
  * @param {string | RegExp} text
@@ -244,6 +258,7 @@ try {
     await tiles.nth(0).tap();
     await statusSays(page, 'Answer hidden');
     await roomy(page, where, 'a clue', stage0);
+    await noKeys(page, where, 'a clue');
     await page.keyboard.press('1');
     await sleep(300);
     await roomy(page, where, 'a clue with a player picked', stage0);
@@ -278,6 +293,7 @@ try {
     await hostPanelIn(page).locator('.mode-host').first().waitFor();
     await sleep(400);
     await roomy(page, where, 'the RPG round', stage0);
+    await noKeys(page, where, 'the RPG round');
 
     // The board game: 🎲 Roll, then ▶ Move, tapped.
     await nextRound(page);
@@ -285,6 +301,7 @@ try {
     await page.locator('.bh').waitFor();
     await sleep(400);
     await roomy(page, where, 'the board game', stage0);
+    await noKeys(page, where, 'the board game');
     await tapIt(stepButton(page).first(), `${where}: 🎲 Roll`);
     const move = stepButton(page).filter({ hasText: '▶ Move' });
     await move.waitFor({ timeout: 8000 });
@@ -323,6 +340,7 @@ try {
     await statusSays(page, 'Game over');
     await sleep(400);
     await roomy(page, where, "the end's tie", stage0);
+    await noKeys(page, where, 'game over');
     await ctx.close();
   }
 

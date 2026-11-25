@@ -714,7 +714,10 @@
   /** Who the Amount row's points are for: in a clue, who answered; elsewhere (an RPG or board-game round, the
    * tiebreaker's extra points) there's no question to answer, so who gets them. */
   const pickWho = $derived(session.phase === 'clue' ? 'answered' : 'gets them');
-  const awardWhyNot = $derived(selected.length ? 'Type an amount first' : `Pick who ${pickWho} first (1–${pickN})`);
+  /** (On a touch screen: the chips to tap, no number keys.) */
+  const awardWhyNot = $derived(
+    selected.length ? 'Type an amount first' : touchScreen.on ? `Tap who ${pickWho} first` : `Pick who ${pickWho} first (1–${pickN})`,
+  );
   /** The one player picked, if one is (＋ Award and − Deduct name them). */
   const pickedName = $derived(selected.length === 1 ? (session.players.find((x) => x.id === selected[0])?.name ?? '') : '');
   /**
@@ -1334,7 +1337,7 @@
       {@const said = endLine(session)}
       <b>Game over</b>
       <span class="muted say" title={said}>{said}</span>
-      <span class="muted hint" title="Click a score to fix it">· click a score to fix it</span>
+      <span class="muted hint" title={touchScreen.on ? 'Tap a score to fix it' : 'Click a score to fix it'}>· {clickWord()} a score to fix it</span>
     {/if}
     {#if viewersSee.length}
       <!-- One window: the boxes open say viewers can read them (a card's name, never what's on it; the wager as it's
@@ -1833,7 +1836,7 @@
                   >{VERBS.rollForIt.label} <kbd aria-hidden="true">{VERBS.rollForIt.key}</kbd></button
                 >
               {/if}
-              <span class="muted hint">or pick one (1–{Math.min(9, session.players.length) || 9})</span>
+              <span class="muted hint">{touchScreen.on ? 'or tap one' : `or pick one (1–${pickN})`}</span>
             {:else if answerUp && !selected.length}
               <span class="muted hint">Answer on screen: the buzzers stay closed (🙈 Hide answer to open them again)</span>
             {:else if allPassed}
@@ -1841,7 +1844,7 @@
             {:else if buzz?.phase === 'armed' && !selected.length}
               <!-- (Once anyone has passed, their names get this hint's room.) -->
               {#if !phonesDown && !passNames}
-                <span class="muted hint">🔔 Buzzers open: the fastest phone answers (1–{Math.min(9, session.players.length) || 9} picks by hand)</span>
+                <span class="muted hint">🔔 Buzzers open: the fastest phone answers ({touchScreen.on ? 'or tap a player' : `1–${pickN} picks by hand`})</span>
               {/if}
             {:else if buzzClosed && gotIt}
               <span class="muted hint">✔ Answered: reveal the answer, or 🔔 open the buzzers again</span>
@@ -1853,7 +1856,7 @@
                 >{toolOnly ? `Nothing to buzz on: this tile is just its ${toolName}` : `The buzzers wait for the question (after the ${toolName})`}</span
               >
             {:else if buzzClosed}
-              <span class="muted hint">Buzzers closed (number keys still pick)</span>
+              <span class="muted hint">{touchScreen.on ? 'Buzzers closed (tap a player to pick them)' : 'Buzzers closed (number keys still pick)'}</span>
             {/if}
             {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
             {#if passNames && !allPassed}
@@ -1897,7 +1900,9 @@
                   // The points typed first (± Adjust score): who gets them next.
                   if (!selected.length && amount && !ddHidden)
                     hint(
-                      `Now pick who ${e.shiftKey ? 'loses' : 'gets'} ${e.shiftKey ? '−' : '+'}${formatPoints(Math.abs(amount), sym)} (1–${Math.min(9, session.players.length) || 9}), then ${e.shiftKey ? 'Shift+Enter' : 'Enter'}`,
+                      touchScreen.on
+                        ? `Now tap who ${e.shiftKey ? 'loses' : 'gets'} ${e.shiftKey ? '−' : '+'}${formatPoints(Math.abs(amount), sym)}, then ${e.shiftKey ? '− Deduct' : '＋ Award'}`
+                        : `Now pick who ${e.shiftKey ? 'loses' : 'gets'} ${e.shiftKey ? '−' : '+'}${formatPoints(Math.abs(amount), sym)} (1–${pickN}), then ${e.shiftKey ? 'Shift+Enter' : 'Enter'}`,
                     );
                   else onaward(e.shiftKey ? -1 : 1);
                   amountDone(e.currentTarget);
@@ -1938,7 +1943,12 @@
             <button class="ghost" onclick={() => (adjust = false)} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
           {:else if !toolOnly && !buzzing}
             <!-- (In the tiebreaker this row is for points: its 🏆 row settles the tie.) -->
-            {@const pickHint = session.phase === 'tiebreaker' ? `Pick who gets them (1–${pickN})` : `Pick who ${pickWho} (1–${pickN}, 0 for everyone)`}
+            <!-- (On a touch screen no keys: the chips above to tap. On a phone not even that, as it would be cut to "T…".) -->
+            {@const pickHint = touchScreen.on
+              ? `Tap who ${session.phase === 'tiebreaker' ? 'gets them' : pickWho}`
+              : session.phase === 'tiebreaker'
+                ? `Pick who gets them (1–${pickN})`
+                : `Pick who ${pickWho} (1–${pickN}, 0 for everyone)`}
             <span class="muted hint pick-hint" title={pickHint}>{pickHint}</span>
           {/if}
           <span class="spacer"></span>
@@ -2742,6 +2752,12 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  /* A phone (a touch screen, narrow): no hint at all, its chips are just above, and it would be cut to "T…". */
+  @media (hover: none) and (max-width: 700px) {
+    .award .pick-hint {
+      display: none;
+    }
   }
   /* Up to 1100px wide under the stage, a clue with several question slides (◀ Slide on its row): the hint goes, so the
      row stays one line and the stage keeps its size (the flow row's own buttons shrink to their signs by themselves:

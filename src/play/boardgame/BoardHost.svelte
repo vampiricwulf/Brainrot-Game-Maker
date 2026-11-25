@@ -609,7 +609,7 @@
       {#if fork && forkSpace}
         <div class="row fork" role="alert" bind:this={forkEl}>
           <b>{playerName(session, fork.playerId)} is at {shown(forkSpace.id)}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
-          <span class="muted small">(or click the space on the stage)</span>
+          <span class="muted small">(or {clickWord()} the space on the stage)</span>
           {#each forkWays as n (n)}
             <button class="good" onclick={() => move(fork.stepsLeft, n)}>→ {shown(n)}</button>
           {/each}

@@ -9,6 +9,7 @@
   import { menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
+  import { clickWord, touchScreen } from '../../lib/touch.svelte';
   import { step } from '../../lib/history.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
@@ -539,12 +540,12 @@
     <div class="row sel" data-rpg-sel bind:this={selEl}>
       {#if again}<button class="link again" onclick={again} title="Bring back what was selected">↩ Select them again</button>{/if}
       {#if selWords}
-        <span class="words" title="{selWords} · drag one on the stage to move them all · Esc clears"
-          ><b>Selected:</b> {selWords} <span class="muted">— drag one on the stage to move them all · Esc clears</span></span
-        >
+        {@const how = `drag one on the stage to move them all${touchScreen.on ? '' : ' · Esc clears'}`}
+        <span class="words" title="{selWords} · {how}"><b>Selected:</b> {selWords} <span class="muted">— {how}</span></span>
         <button class="ghost small x" onclick={() => onclear?.()} title="Esc">Clear selection</button>
       {:else if !again}
-        <span class="muted words">Nothing selected · click players, or drag a box on the stage to select several</span>
+        {@const none = `Nothing selected · ${clickWord()} players, or drag a box on the stage to select several`}
+        <span class="muted words" title={none}>{none}</span>
       {/if}
     </div>
 
@@ -663,7 +664,7 @@
             </div>
           {/key}
         {:else}
-          <div class="muted small">Objects here (or click one on the stage):</div>
+          <div class="muted small">Objects here (or {clickWord()} one on the stage):</div>
           <div class="objs">
             {#each objects as el (el.id)}
               {@const on = selectedObjects.includes(el.id)}
