@@ -186,7 +186,6 @@
   let applyScope = $state(stylescope ?? (stylecategory ? 'cat-q' : 'round-q'));
 </script>
 
-<!-- A file that plays from its link: say so, and offer to save a copy. -->
 <!-- Its file was deleted in 🖼️ Media: it still shows here, but isn't saved with the game (🔊 Sounds says it the same way). -->
 {#snippet goneNote(another: string)}
   {#if itemFileDeleted(game, el)}
@@ -194,6 +193,7 @@
   {/if}
 {/snippet}
 
+<!-- A file that plays from its link: say so, and offer to save a copy. -->
 {#snippet liveNote()}
   {#if liveRef}
     <p class="hint">

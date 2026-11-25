@@ -15,6 +15,7 @@ import {
   launchChromium,
   inspectorIn,
   roundTabsIn,
+  sleep,
   toastsIn,
   resultsPath,
   until,
@@ -487,6 +488,51 @@ try {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
+  // ---------- A board image whose file is deleted in 🖼️ Media is marked ⚠ too, with no ✎ Edit image… ----------
+  {
+    const left = await mediaCount();
+    await page.getByRole('button', { name: /^🖼️ Media \(\d+\)$/ }).click();
+    await page
+      .locator('.card', { hasText: 'sticker.png' })
+      .getByRole('button', { name: /^Delete / })
+      .click();
+    await page.locator('.card', { hasText: 'sticker.png' }).waitFor({ state: 'detached' });
+    await roundTabsIn(page).first().click();
+    await page.getByRole('button', { name: /Board images/ }).click();
+    await decor.waitFor();
+    const row = decor.locator('.layers .row');
+    const gone = decor.locator('.canvas .gone[data-gone]');
+    assert(
+      (await row.locator('.gone').count()) === 1 &&
+        (await gone.count()) === 1 &&
+        (await gone.innerText()).includes('⚠ Deleted file: not saved with the game. Undo in 🕘 History, or 🔁 Use another picture…'),
+      'a board image whose file was deleted in 🖼️ Media: a ⚠ on its layer row and a ⚠ frame on the board',
+    );
+    await row.locator('button.name').click();
+    assert(
+      (await inspectorIn(decor).getByText('⚠ Its file was deleted: not saved with the game').count()) === 1 &&
+        (await decor.getByRole('button', { name: '✎ Edit image…' }).count()) === 0,
+      'selected, its panel says its file was deleted, with no ✎ Edit image…',
+    );
+    await decor.locator('.canvas').focus();
+    await page.keyboard.press('Enter');
+    await gone.locator('.frame').dblclick({ force: true });
+    await sleep(300);
+    assert((await page.getByRole('dialog', { name: 'Edit image' }).count()) === 0, 'and neither Enter nor a double-click opens the image editor');
+    // ↶ Undo of the delete: the marks go.
+    await decor.getByRole('button', { name: 'Done' }).click();
+    await decor.waitFor({ state: 'detached' });
+    await page.keyboard.press('Control+z');
+    await until(async () => (await mediaCount()) > left - 1, 'the delete undone');
+    // (The undo goes to 🖼️ Media, where its step was.)
+    await roundTabsIn(page).first().click();
+    await page.getByRole('button', { name: /Board images/ }).click();
+    await decor.waitFor();
+    assert((await row.locator('.gone').count()) === 0 && (await gone.count()) === 0, 'Undo of the delete takes the board’s ⚠ marks away');
+    await decor.getByRole('button', { name: 'Done' }).click();
+    await decor.waitFor({ state: 'detached' });
+  }
+
   // ---------- A picture whose file is deleted in 🖼️ Media is marked ⚠ on its slide (it isn't saved with the game) ----------
   {
     const openClue = async () => {
@@ -556,36 +602,54 @@ try {
     assert((await menu.getByRole('menuitem', { name: /Edit image/ }).count()) === 0, 'nor in its menu');
     await page.keyboard.press('Escape');
     // A double-click on it (as Enter) goes to 🔁 Use another picture… instead of ✎ Edit image….
-    await frame.dblclick({ force: true });
+    await frame.locator('.frame').dblclick({ force: true });
     await page.waitForFunction(() => document.activeElement?.matches('.insp [data-replace]'));
     assert((await page.getByRole('dialog', { name: 'Edit image' }).count()) === 0, 'a double-click on it goes to 🔁 Use another picture… (no image editor)');
     await shot('em-deleted-file');
-    // (In the slide's bottom-right corner, as a logo is: the label turns to stay inside the slide.)
+    // The label stays upright and wholly on the slide wherever the picture is: turned, in the bottom-right corner (as a
+    // logo is), or partly off the slide's top-left (as a picture bleeding off the edge is).
     const pos = inspectorIn(page).locator('section:has(h4:text("Position"))');
-    await pos.getByLabel('X', { exact: true }).fill('1910');
-    await pos.getByLabel('Y', { exact: true }).fill('1070');
-    await pos.getByLabel('Y', { exact: true }).press('Tab');
-    await page.waitForFunction(() => document.querySelector('.gone[data-gone] .say.right.up'));
-    const corner = await frame.locator('.say').boundingBox();
-    assert(
-      !!corner &&
+    const set = async (/** @type {Record<string, string>} */ fields) => {
+      for (const [name, v] of Object.entries(fields)) {
+        await pos.getByLabel(name, { exact: true }).fill(v);
+        await pos.getByLabel(name, { exact: true }).press('Tab');
+      }
+    };
+    const onSlide = async () => {
+      const b = await frame.locator('.say').boundingBox();
+      const ok =
+        !!b &&
         !!slideBox &&
-        corner.x >= slideBox.x - 1 &&
-        corner.x + corner.width <= slideBox.x + slideBox.width + 1 &&
-        corner.y >= slideBox.y - 1 &&
-        corner.y + corner.height <= slideBox.y + slideBox.height + 1,
-      `in the slide's bottom-right corner, its label stays inside the slide (${JSON.stringify(corner)} in ${JSON.stringify(slideBox)})`,
-    );
-    // ↶ Undo of the move (it opens the clue again, where its step was), then of the delete (made in 🖼️ Media, it opens
-    // nothing): the file is back and the marks go.
+        b.height < 80 &&
+        b.x >= slideBox.x - 1 &&
+        b.x + b.width <= slideBox.x + slideBox.width + 1 &&
+        b.y >= slideBox.y - 1 &&
+        b.y + b.height <= slideBox.y + slideBox.height + 1;
+      return ok ? true : JSON.stringify(b);
+    };
+    for (const [fields, where] of /** @type {const} */ ([
+      [{ 'Rotation°': '30' }, 'turned 30°'],
+      [{ X: '1910', Y: '1070' }, 'in the bottom-right corner'],
+      [{ X: '-300', Y: '-100' }, 'partly off the top-left'],
+    ])) {
+      await set(fields);
+      await until(async () => (await onSlide()) === true, 3000);
+      assert((await onSlide()) === true, `${where}, its label is upright and inside the slide (${await onSlide()} in ${JSON.stringify(slideBox)})`);
+    }
+    assert((await pos.getByLabel('X', { exact: true }).inputValue()) === '-300', '(moved)');
+    // ↶ Undo of those steps (each opens the clue again, where its step was), then of the delete (made in 🖼️ Media): the
+    // file is back and the marks go.
     await page.getByRole('button', { name: 'Done' }).click();
     const editClue = page.getByRole('dialog', { name: 'Edit clue' });
-    for (let i = 0; ; i++) {
+    const left = await mediaCount();
+    for (let i = 0; (await mediaCount()) === left; i++) {
+      assert(i < 8, 'the moves and the delete are undone in a few steps');
+      if (await editClue.count()) await editClue.getByRole('button', { name: 'Done' }).click();
+      await editClue.waitFor({ state: 'detached' });
       await page.keyboard.press('Control+z');
-      if (!(await until(() => editClue.count(), { timeout: 1500 }))) break;
-      assert(i < 2, 'the move is undone in at most two steps');
-      await editClue.getByRole('button', { name: 'Done' }).click();
+      await until(async () => (await editClue.count()) > 0 || (await mediaCount()) > left, 'an undo opens the clue or brings the file back');
     }
+    if (await editClue.count()) await editClue.getByRole('button', { name: 'Done' }).click();
     await openClue();
     await layers.filter({ hasText: 'gone.png' }).waitFor();
     await layers.filter({ hasText: 'gone.png' }).locator('.name').click();
