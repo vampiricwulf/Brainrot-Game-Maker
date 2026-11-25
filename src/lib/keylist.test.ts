@@ -107,8 +107,9 @@ describe('the game’s keys: the blue button and the check', () => {
   });
 
   it('name the windows Enter closes by the buttons that open them', () => {
-    // (The 🔊 Sound window is opened by 🔊 Sound; nothing on screen says "Sound help".)
-    expect(row('?')).toContain('Enter closes the 🔊 Sound and ⚖ Rules windows too');
+    // (The window is titled 🔊 Test the sound; nothing on screen says "Sound help".)
+    expect(row('?')).toContain('Enter closes 🔊 Test the sound and ⚖ Rules too');
+    expect(row('?')).not.toContain('Sound help');
   });
 
   it('what the check doesn’t ask about this game: each kind once, in its tick’s words, with Ask again', () => {
