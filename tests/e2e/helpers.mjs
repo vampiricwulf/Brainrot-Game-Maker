@@ -266,6 +266,7 @@ export async function exportHtml(page, name = '') {
   )
     throw new Error(`Export HTML: a window is still open over the editor: “${(await over.innerText()).replace(/\s+/g, ' ').slice(0, 200)}”`);
   const download = page.waitForEvent('download');
+  download.catch(() => {}); // (as in openGameFile: a failed click mustn't leave this wait unhandled)
   // (A click that can't land fails here, saying why, well before the download's wait runs out.)
   await clickExportHtml(page, { timeout: 10000 });
   const naming = page.getByRole('dialog', { name: 'Name your game' });
@@ -337,8 +338,12 @@ export async function openThemeShare(page) {
  */
 export async function openGameFile(page, files) {
   const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Open…' }).click();
-  await page.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: 'Browse for a game file…' }).click();
+  // A click that fails first mustn't leave this wait to reject unhandled later: that ends the run before the test's catch
+  // (and its failure screenshots) can run. Awaited below, it still fails as ever when no chooser opens.
+  chooser.catch(() => {});
+  // (A click that can't land fails here, saying why, well before the chooser's wait runs out, as in exportHtml.)
+  await page.getByRole('button', { name: 'Open…' }).click({ timeout: 10000 });
+  await page.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: 'Browse for a game file…' }).click({ timeout: 10000 });
   await (await chooser).setFiles(files);
 }
 

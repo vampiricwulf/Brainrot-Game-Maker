@@ -16,6 +16,7 @@ import {
   png,
   failureShots,
   assert,
+  sleep,
   launchChromium,
   boardIn,
   hostPanelIn,
@@ -623,6 +624,21 @@ try {
     'and after the next ordinary reload the history is still whole',
   );
   await quick.close();
+
+  // openGameFile() where Open… can't be clicked fails on that click, saying so, well before the file chooser's own wait
+  // runs out, and leaves no unhandled rejection behind (that would end the run before its catch and failure screenshots).
+  const bare = await context.newPage();
+  await bare.setContent('<p>No Open… button here</p>');
+  const t0 = Date.now();
+  const failed = await openGameFile(bare, []).then(
+    () => null,
+    (e) => /** @type {Error} */ (e),
+  );
+  const took = Date.now() - t0;
+  assert(failed && /Open…/.test(failed.message) && !/filechooser/.test(failed.message), `openGameFile names the button it couldn't click: ${failed?.message}`);
+  assert(took < 20000, `and says so within 20 s (${took} ms)`);
+  await bare.close(); // (its chooser wait ends now too, handled)
+  await sleep(200);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSave E2E passed.');
