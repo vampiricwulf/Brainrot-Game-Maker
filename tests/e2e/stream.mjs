@@ -49,6 +49,34 @@ import {
   resultsPath,
 } from './helpers.mjs';
 
+/**
+ * A row of the end screen or the Scoreboard given a very long name and a negative score (its text set in place, as a
+ * wide theme font would make it): the score stays on one line, the name is cut with "…", and the row is as tall as the
+ * others. (The score used to wrap, its "−" above "$300", in a row taller than the rest.)
+ */
+async function scoresStayOneLine(rows, what) {
+  const got = await rows.evaluateAll((els) => {
+    const row = els.at(-1);
+    row.querySelector('.nm').textContent = 'Bartholomew Fitzgerald-Worthington III of House Featherstonehaugh';
+    row.querySelector('.sc').textContent = '−$300';
+    const lines = (el) => {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size;
+    };
+    const nm = row.querySelector('.nm');
+    return {
+      lines: Math.max(...els.map((e) => lines(e.querySelector('.sc')))),
+      cut: nm.scrollWidth > nm.clientWidth,
+      heights: [...new Set(els.map((e) => e.offsetHeight))],
+    };
+  });
+  assert(
+    got.lines === 1 && got.cut && Math.max(...got.heights) - Math.min(...got.heights) <= 2,
+    `${what}: a negative score beside a very long name stays on one line, the name cut, the rows one height (${JSON.stringify(got)})`,
+  );
+}
+
 const file = appFile();
 const browser = await launchChromium();
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -1097,6 +1125,7 @@ async function viewers() {
     .evaluate((e) => ({ over: e.scrollHeight > e.parentElement.clientHeight + 1, size: parseFloat(getComputedStyle(e.parentElement).fontSize) }));
   assert(!h1.over && h1.size >= 28, `and the heading fits its room (${h1.size} stage px)`);
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/stream-viewers-end.png` });
+  await scoresStayOneLine(aud.locator('.end li'), 'the end screen');
   await ctx.close();
 }
 
@@ -2282,6 +2311,9 @@ try {
 
   // 📊 Scoreboard: copy the standings.
   await page.getByRole('button', { name: '📊 Scoreboard' }).click();
+  await stageBoxIn(page).locator('.sb .line').first().waitFor();
+  await page.waitForTimeout(600);
+  await scoresStayOneLine(stageBoxIn(page).locator('.sb .line'), 'the Scoreboard');
   await page.getByRole('button', { name: '📋 Copy standings' }).click();
   await page.waitForTimeout(200);
   const clip = await page.evaluate(() => navigator.clipboard.readText());

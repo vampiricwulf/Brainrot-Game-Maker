@@ -127,12 +127,19 @@
     width: 60px;
     color: var(--value-on-dark, var(--value));
   }
+  /* A long name is cut with "…"; the score stays whole on one line. */
   .nm {
     padding: 0 20px;
     border-radius: 10px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .sc {
     margin-left: auto;
+    flex: none;
+    white-space: nowrap;
     font-family: var(--value-font);
   }
 </style>

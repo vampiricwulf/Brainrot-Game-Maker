@@ -1987,8 +1987,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* The score never wraps (a "−" above "$300"): the name gives way first. */
   .sc {
     margin-left: auto;
+    flex: none;
+    white-space: nowrap;
     font-family: var(--value-font);
   }
   .pops {
