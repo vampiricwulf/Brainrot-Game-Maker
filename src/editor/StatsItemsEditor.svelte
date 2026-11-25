@@ -332,7 +332,7 @@
     <button class="small" onclick={() => addField(newStatField(`Stat ${(game.statFields?.length ?? 0) + 1}`))}>＋ Add custom stat</button>
   </div>
   <!-- A list only with rows in it (one that's empty, or holds only "No items yet", misleads a screen reader). -->
-  <div class="list" role={game.statFields?.length ? 'list' : undefined} aria-label={game.statFields?.length ? 'Stats' : undefined}>
+  <div class="list stat-list" role={game.statFields?.length ? 'list' : undefined} aria-label={game.statFields?.length ? 'Stats' : undefined}>
     {#each game.statFields ?? [] as f, i (f.id)}
       {@const line = drags.stat.lineAt(f.id)}
       <div
@@ -355,7 +355,7 @@
       >
         {@render grip('stat', f.id, 'stats')}
         <input class="name" bind:value={f.name} aria-label="Stat name" />
-        <label class="field"
+        <label class="field kind"
           >Kind<select bind:value={() => f.type, (v) => setStatType(f, v)} aria-label="{f.name} kind">
             <option value="number">Number</option>
             <option value="text">Text</option>
@@ -859,6 +859,46 @@
   }
   .field-row > .who {
     justify-self: start;
+  }
+  /* Where that first line doesn't fit (a phone), the name gives way and ⋯ 🗑 stay on its line, as an item's do; who sees
+     it and the color go on a line of their own under it, then what the kind needs. */
+  .stat-list {
+    container-type: inline-size;
+  }
+  @container (max-width: 640px) {
+    .field-row {
+      grid-template-columns: auto minmax(0, 170px) auto minmax(0, 1fr) auto;
+    }
+    .field-row > :global(.drag-grip) {
+      grid-area: 1 / 1;
+    }
+    .field-row > .name {
+      grid-area: 1 / 2;
+      width: auto;
+      min-width: 0;
+    }
+    .field-row > .kind {
+      grid-area: 1 / 3;
+    }
+    .field-row > :global(.row-tools) {
+      grid-area: 1 / 5;
+    }
+    .field-row > .who {
+      grid-area: 2 / 2 / 3 / 4;
+      min-width: 0;
+      max-width: 100%;
+    }
+    .field-row > .who select {
+      max-width: 100%;
+    }
+    .field-row > :global(input[type='color']) {
+      grid-area: 2 / 4 / 3 / -1;
+      justify-self: start;
+      align-self: end;
+    }
+    .field-row > .by-type {
+      grid-area: 3 / 2 / 4 / -1;
+    }
   }
   .list {
     display: flex;
