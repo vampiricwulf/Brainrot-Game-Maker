@@ -709,7 +709,12 @@
   );
   const canAward = $derived(!!selected.length && (!!amount || zeroOk));
   /** Why ＋ Award and − Deduct are off (their tooltip). */
-  const awardWhyNot = $derived(selected.length ? 'Type an amount first' : `Pick who answered first (1–${Math.min(9, session.players.length) || 9})`);
+  /** How many number keys pick a player (1–N). */
+  const pickN = $derived(Math.min(9, session.players.length) || 9);
+  /** Who the Amount row's points are for: in a clue, who answered; elsewhere (an RPG or board-game round, the
+   * tiebreaker's extra points) there's no question to answer, so who gets them. */
+  const pickWho = $derived(session.phase === 'clue' ? 'answered' : 'gets them');
+  const awardWhyNot = $derived(selected.length ? 'Type an amount first' : `Pick who ${pickWho} first (1–${pickN})`);
   /** The one player picked, if one is (＋ Award and − Deduct name them). */
   const pickedName = $derived(selected.length === 1 ? (session.players.find((x) => x.id === selected[0])?.name ?? '') : '');
   /**
@@ -1933,10 +1938,7 @@
             <button class="ghost" onclick={() => (adjust = false)} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
           {:else if !toolOnly && !buzzing}
             <!-- (In the tiebreaker this row is for points: its 🏆 row settles the tie.) -->
-            {@const pickHint =
-              session.phase === 'tiebreaker'
-                ? `Pick who gets them (1–${Math.min(9, session.players.length) || 9})`
-                : `Pick who answered (1–${Math.min(9, session.players.length) || 9}, 0 for everyone)`}
+            {@const pickHint = session.phase === 'tiebreaker' ? `Pick who gets them (1–${pickN})` : `Pick who ${pickWho} (1–${pickN}, 0 for everyone)`}
             <span class="muted hint pick-hint" title={pickHint}>{pickHint}</span>
           {/if}
           <span class="spacer"></span>

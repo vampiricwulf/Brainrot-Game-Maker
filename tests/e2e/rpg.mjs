@@ -219,6 +219,15 @@ async function bigWorld() {
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.locator('.rh').waitFor();
   await host.waitForTimeout(500);
+  // No question in an RPG round: the Amount row's hint, and ＋ Award's tooltip while nobody's picked, say who gets the
+  // points, not who answered.
+  const award = hostPanelIn(host).locator('[data-award-row]');
+  const pickHint = await award.locator('.pick-hint').innerText();
+  const awardWhy = await award.getByRole('button', { name: /Award/ }).getAttribute('title');
+  assert(
+    /^Pick who gets them \(1–\d, 0 for everyone\)$/.test(pickHint) && /^Pick who gets them first/.test(awardWhy ?? ''),
+    `an RPG round's Amount row says “Pick who gets them”, not “who answered” (${pickHint} | ${awardWhy})`,
+  );
   // The stats strip never covers the screen: the screen is scaled into the room above it.
   const strip = await aud.locator('.rpg > .strip').boundingBox();
   const area = await aud.locator('.rpg .play-area').boundingBox();
