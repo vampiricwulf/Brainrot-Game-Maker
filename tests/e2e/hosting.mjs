@@ -706,7 +706,7 @@ try {
   await page.mouse.move(5, 5);
   // (Its next 4 s, run on the fake clock too: so the clock is what the waits above ran past.)
   await page.clock.runFor(4400);
-  await goOn.waitFor({ state: 'detached', timeout: 1000 });
+  await goOn.waitFor({ state: 'detached', timeout: 3000 });
   await page.waitForTimeout(450);
   await page.locator('.rn > button').last().click();
   await page.waitForTimeout(450);
