@@ -32,6 +32,7 @@ import {
   leaveAnswer,
   failureShots,
   assert,
+  assertEq,
   sleep,
   launchChromium,
   until,
@@ -437,6 +438,15 @@ try {
     'one window: an SVG already in the game goes on a quick card with no toast naming it',
   );
   await offStream(host, 'the host page in one window', 'an SVG already in the game put on a quick card');
+  // Each item's 🗑 is named by what it is, an online video in full.
+  await dialog.getByPlaceholder('or a link (YouTube, a picture…)').fill('https://youtu.be/dQw4w9WgXcQ');
+  await dialog.getByRole('button', { name: '＋ Link' }).click();
+  const onCard = dialog.locator('[aria-label="On the card"]');
+  await onCard.getByText('▶ online video').waitFor();
+  const binNames = await onCard.getByRole('button').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')));
+  assertEq(binNames, ['Take the picture off the card', 'Take the online video off the card'], 'a quick card’s 🗑 buttons name their items');
+  await onCard.getByRole('button', { name: 'Take the online video off the card' }).click();
+  assert(await until(async () => !(await onCard.getByText('▶ online video').count())), '🗑 takes the online video off the card');
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
 

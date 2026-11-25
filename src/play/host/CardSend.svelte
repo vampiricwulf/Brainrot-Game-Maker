@@ -50,7 +50,7 @@
     type SlideElement,
     type TeamMember,
   } from '../../lib/model';
-  import { cardSummary, copyWordsText, toKey } from '../../lib/partner';
+  import { cardSummary, copyWordsText, itemWord, toKey } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard, type CardItem } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { findIn, focusRef, screenElements, screenSlide, worldById } from '../../lib/rpg';
@@ -698,7 +698,7 @@
             <span class="item small"
               >{ICON[it.kind]}<button
                 class="ghost tiny danger"
-                aria-label="Take the {ICON[it.kind].split(' ')[1]} off the card"
+                aria-label="Take the {itemWord(it.kind)} off the card"
                 onclick={() => (items = items.filter((x) => x.id !== it.el))}>🗑</button
               ></span
             >

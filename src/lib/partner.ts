@@ -695,6 +695,11 @@ const ITEM_WORDS: Record<CardItem['kind'], [string, string]> = {
   embed: ['online video', 'online videos'],
 };
 
+/** What one item of this kind is called: "picture", "GIF", "online video"… */
+export function itemWord(kind: CardItem['kind']): string {
+  return ITEM_WORDS[kind][0];
+}
+
 /** Items counted by kind, never named: "1 picture", "2 pictures and 1 video", "1 picture, 1 GIF and 1 sound". */
 export function countItems(kinds: CardItem['kind'][]): string {
   const out = (Object.keys(ITEM_WORDS) as CardItem['kind'][]).flatMap((kind) => {
