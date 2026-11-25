@@ -1024,7 +1024,7 @@ function clueRoom(sec: HTMLElement, kbd: boolean): number {
     // (A card under the question keeps room for its Tap to see, as the CSS does; the note about missed cards, its own.)
     const cards = $('cards');
     const under =
-      sec.classList.contains('cards-aside') && rectOf(cards) ? gap + (cards.querySelector('.card') ? Math.min(150, 0.4 * innerHeight) : cards.scrollHeight) : 0;
+      sec.classList.contains('cards-aside') && rectOf(cards) ? gap + (cards.querySelector('.card') ? Math.min(190, 0.4 * innerHeight) : cards.scrollHeight) : 0;
     // (Pass has a row of its own over the name, and its gap, whether it's up or not.)
     const pass = gap + (rectOf($('pass'))?.height ?? 0);
     return free - (side.height - c.height) - gap - foot - under - pass;

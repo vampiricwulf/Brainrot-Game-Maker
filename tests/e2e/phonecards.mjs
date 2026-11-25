@@ -627,7 +627,7 @@ try {
   });
   assert(tall.h >= 132 && tall.label, `on its side under a long clue, the card keeps room for its Tap to see (${JSON.stringify(tall)})`);
   // And all of it: the covered card is whole in its box, dashed edge and all (no inner scroll that cuts it mid-cover),
-  // its cover as big as fits, its Tap to see in it.
+  // its cover as big as fits, its Tap to see in it (full size from 480px tall).
   const covers = [];
   for (const height of [340, 360, 400, 440, 480, 540]) {
     await ann.setViewportSize({ width: 740, height });
@@ -645,7 +645,7 @@ try {
     covers.push({ height, ...m });
   }
   assert(
-    covers.every((m) => m.cut <= 1 && !m.scrolls && m.label && m.cover >= 70),
+    covers.every((m) => m.cut <= 1 && !m.scrolls && m.label && m.cover >= 70 && (m.height < 480 || m.cover >= 132)),
     `on its side beside BUZZ!, a covered card shows whole, cover and all, at 340 to 540px tall (${JSON.stringify(covers)})`,
   );
   await ann.setViewportSize({ width: 740, height: 340 });
