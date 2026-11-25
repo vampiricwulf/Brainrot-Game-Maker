@@ -2,7 +2,7 @@
 // worked out from its ops (historyops.ts), and the place in the editor that shows it. Pure: unit-tested in
 // historylabel.test.ts.
 import { opPath, type Json, type Op, type Seg } from './historyops';
-import { LAYER_ICON, layerLabel, short } from './layerlabel';
+import { kindIcon, layerLabel, short } from './layerlabel';
 import {
   categoryLabel,
   clueCardName,
@@ -134,7 +134,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     if (!s || path[i] !== 'elements') return;
     const el = byId<SlideElement>(s.elements, path[i + 1]);
     if (!el) return;
-    reached(i + 2, elementNoun(el), layerLabel(el, game) ?? '', LAYER_ICON[el.kind]);
+    reached(i + 2, elementNoun(el), layerLabel(el, game) ?? '', kindIcon(el));
     go(placeFor(el.id));
     if (main && el === s.elements.find((x) => x.kind === 'text')) at.main = main === 'q' ? 'question' : main === 'a' ? 'answer' : main;
     if (path[i + 2] !== 'role' || !el.role) return;
@@ -175,7 +175,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         part({ kind: 'decor' });
         const el = byId<SlideElement>(r.decor, path[3]);
         if (!el) return;
-        reached(4, 'board image', layerLabel(el, game) ?? '', LAYER_ICON[el.kind]);
+        reached(4, 'board image', layerLabel(el, game) ?? '', kindIcon(el));
         part({ kind: 'decor', element: el.id });
       } else if (path[2] === 'categories') {
         const cat = byId<(typeof r.categories)[number]>(r.categories, path[3]);

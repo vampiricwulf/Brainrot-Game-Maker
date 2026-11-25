@@ -264,6 +264,16 @@ describe('step labels', () => {
     q(base).elements[6] = { ...(q(base).elements[6] as EmbedEl), soundOnly: true };
     expect(label((e) => delete (e[6] as EmbedEl).soundOnly)).toBe('Turned Sound only off for link “YouTube”');
     expect(label((e) => ((e[6] as EmbedEl).soundShows = 'time'))).toBe('Changed what players see of link “YouTube (sound only)”');
+    // Its icon: a video file is 🎞️, an online video in its site's player ▶️, a file kept as a link 🌐.
+    const icon = (edit: (els: SlideElement[]) => void) => {
+      const after = structuredClone(base);
+      edit(q(after).elements);
+      return describeStep(diff(base, after), base, after).icon;
+    };
+    expect(icon((e) => ((e[3] as VideoEl).endAt = 4))).toBe('🎞️');
+    expect(icon((e) => ((e[6] as EmbedEl).soundShows = 'speaker'))).toBe('▶️');
+    q(base).elements.push(newEmbedEl('https://files.example/a/clip.mp4', 'remoteVideo'));
+    expect(icon((e) => ((e[7] as EmbedEl).x += 5))).toBe('🌐');
   });
 
   it('names moves, resizes and restacks of slide items', () => {

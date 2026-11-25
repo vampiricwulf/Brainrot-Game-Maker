@@ -42,9 +42,17 @@ export function lockedNote(n: number, noun = 'item'): string {
 }
 
 export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', image: '🖼️', video: '🎞️', audio: '🔊', shape: '◼', embed: '🌐' };
+const ONLINE_PLAYER = new Set(['youtube', 'drive', 'streamable']);
+/**
+ * What kind of item it is, as an icon: an online video in its site's player (YouTube, Drive, Streamable) is ▶️, as
+ * everywhere else, and a file kept as a link (it plays from the internet) is 🌐.
+ */
+export function kindIcon(el: SlideElement): string {
+  return el.kind === 'embed' && ONLINE_PLAYER.has(el.embedKind) ? '▶️' : LAYER_ICON[el.kind];
+}
 /** A layer's icon: what an RPG object is (🧙 a character, 📦 an item…), else what kind of item it is. */
 export function layerIcon(el: SlideElement): string {
-  return classIcon(el.role?.class) ?? LAYER_ICON[el.kind];
+  return classIcon(el.role?.class) ?? kindIcon(el);
 }
 const SHAPES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow' };
 

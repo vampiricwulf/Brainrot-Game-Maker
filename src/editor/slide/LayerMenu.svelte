@@ -8,7 +8,7 @@
 <script lang="ts">
   import { mediaUrls } from '../../lib/media.svelte';
   import type { Game, SlideElement } from '../../lib/model';
-  import { LAYER_ICON, editWords, layerLabel, type Align, type LayerAction } from '../../lib/layerlabel';
+  import { kindIcon, editWords, layerLabel, type Align, type LayerAction } from '../../lib/layerlabel';
   import { itemFileDeleted } from '../../lib/usage';
   import { dropdown, menuKeys } from '../../lib/menustate.svelte';
   import { editOffer } from '../../lib/shrink/apply';
@@ -149,7 +149,7 @@
         onpointerenter={() => (hovered = el.id)}
         onpointerleave={() => hovered === el.id && (hovered = null)}
       >
-        {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
+        {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{kindIcon(el)}</span>{/if}
         {#if itemFileDeleted(game, el)}<span class="gone" title="Its file was deleted (Undo in 🕘 History)"
             >⚠<span class="sr-only">{' '}Its file was deleted:</span></span
           >{/if}

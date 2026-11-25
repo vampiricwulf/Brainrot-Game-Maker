@@ -4,6 +4,7 @@
   import { dropMenu, isMenuKey, keyMenu, menuItem, menuOf, showMenu, typingIn, type MenuEntry, type MenuLine } from '../lib/menustate.svelte';
   import { take, type Place } from '../lib/nav.svelte';
   import { rememberClue, takeClue } from '../lib/editorplace';
+  import { kindIcon } from '../lib/layerlabel';
   import { app } from '../lib/app.svelte';
   import { announce } from '../lib/announce';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
@@ -1296,7 +1297,7 @@
           {#if !clue.empty}
             <span class="q" class:missing={!tool && !q && !kinds.length}>{q || (kinds.length || tool ? '' : 'No question yet')}</span>
             {#if kinds.length}
-              <span class="kinds">{kinds.map((k) => ({ image: '🖼️', video: '🎞️', audio: '🔊', shape: '◼', embed: '🌐', text: '' })[k]).join(' ')}</span>
+              <span class="kinds">{[...new Set(clue.questionSlide.elements.filter((e) => e.kind !== 'text').map(kindIcon))].join(' ')}</span>
             {/if}
             {#if !a && !tool}<span class="missing small">No answer</span>{/if}
             {#if cardTodo}<span class="missing small">{cardTodo === 'none' ? 'No card' : `Card ${cardTodo} empty`}</span>{/if}

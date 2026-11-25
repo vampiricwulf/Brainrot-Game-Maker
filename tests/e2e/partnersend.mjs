@@ -442,6 +442,15 @@ try {
     'Ann, the guesser: “🎯 You’re guessing!” · “Bob is describing: say it out loud”',
   );
   assert((await chip('Card 2 to Ann').getAttribute('aria-pressed')) === 'true', 'Card 2 starts with Ann (the guesser)');
+  // The two-window host column lists card 1's items: its video file 🎞️, its YouTube video ▶️ (one icon each, as everywhere).
+  const cardsInfo = host.locator('.info [data-partner-cards-info]');
+  assert(
+    await until(async () => {
+      const t = await textOf(cardsInfo);
+      return /🎞️ [^\n]* · video · /.test(t) && /▶️ [^\n]* · online video · /.test(t);
+    }),
+    `the host column: a video file is 🎞️ and an online video ▶️ (“${(await textOf(cardsInfo)).replace(/\n/g, ' | ')}”)`,
+  );
   await chip('Card 2 to Cat').click();
   await chip('Card 2 to Ann').click();
   await row(2).getByText('(changed)').waitFor();

@@ -140,7 +140,7 @@
                 sandbox="allow-scripts allow-same-origin allow-presentation"
               ></iframe>
             {:else}
-              <div class="box">🎞️ The host will show you this video</div>
+              <div class="box">▶️ The host will show you this video</div>
             {/if}
           {:else if 'missing' in m}
             <div class="box">{ICON[m.kind]} The host will show you this {WORD[m.kind]}</div>

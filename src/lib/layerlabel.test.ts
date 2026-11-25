@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { editWords, itemsNamed, layerLabel } from './layerlabel';
+import { editWords, itemsNamed, kindIcon, layerIcon, layerLabel } from './layerlabel';
 import { newAudioEl, newEmbedEl, newGame, newImageEl, newShapeEl, newTextEl, newVideoEl, type ShapeEl } from './model';
 
 describe('itemsNamed', () => {
@@ -39,6 +39,14 @@ describe('a YouTube video set to Sound only', () => {
     expect(layerLabel({ ...yt, soundOnly: true }, game)).toBe('YouTube (sound only)');
     // On a 🤫 card it isn't used (a phone plays it in YouTube's own player), so it doesn't say so there.
     expect(layerLabel({ ...yt, soundOnly: true }, game, true)).toBe('YouTube');
+  });
+});
+
+describe('a layer’s icon', () => {
+  it('is 🎞️ for a video file, ▶️ for an online video and 🌐 for a file kept as a link', () => {
+    expect(layerIcon(newVideoEl('v1'))).toBe('🎞️');
+    for (const site of ['youtube', 'drive', 'streamable'] as const) expect(layerIcon(newEmbedEl('https://example.test/x', site))).toBe('▶️');
+    for (const file of ['remoteVideo', 'remoteAudio', 'remoteImage'] as const) expect(kindIcon(newEmbedEl('https://example.test/x', file))).toBe('🌐');
   });
 });
 
