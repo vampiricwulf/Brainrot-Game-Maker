@@ -2330,6 +2330,33 @@ describe('answers (everyone answers on their phone)', () => {
       expect(h.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
     });
 
+    it('a room woken from hibernation keeps the window it saw the lock open', () => {
+      const g = game();
+      g.send({ t: 'state', state: state({ answers: on() }) });
+      g.send({ t: 'state', state: state({ answers: on({ open: false }) }) });
+      const h = setup(structuredClone(g.room.saved), [...g.phoneSaves.values()]);
+      h.room.hostOpen();
+      h.t.now = g.t.now + AUTO_GRACE_MS - 100;
+      h.phoneOf('pa').send({ t: 'answer', id: 'clue1', text: 'Corg', auto: 'lock' });
+      expect(h.phoneOf('pa').last('answered')).toMatchObject({ ok: true });
+      expect(h.hostLast('answer')).toMatchObject({ seatId: 'a', text: 'Corg', auto: 'lock' });
+      h.t.now += 200;
+      h.phoneOf('pb').send({ t: 'answer', id: 'clue1', text: 'Pug', auto: 'lock' });
+      expect(h.phoneOf('pb').last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+    });
+
+    it('never a multiple choice’s pick (a tap goes as it’s tapped)', () => {
+      const g = game();
+      const choices = [
+        { id: 'A1', text: 'Oslo' },
+        { id: 'B2', text: 'Stockholm' },
+      ];
+      g.send({ t: 'state', state: state({ answers: on({ choices }) }) });
+      g.pa.send({ t: 'answer', id: 'clue1', pick: 'B2', auto: 'time' });
+      expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'bad' });
+      expect(g.hostAll('answer')).toHaveLength(0);
+    });
+
     it('one sent by itself while the host was away reaches it, still marked', () => {
       const g = game();
       g.send({ t: 'state', state: state({ answers: on() }) });
