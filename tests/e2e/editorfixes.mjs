@@ -1237,6 +1237,20 @@ try {
       assert(add >= tab && Math.abs(add - del) <= 1, `at ${width} the slide's buttons are on one line, never above the tabs (tab ${tab}, ＋ Add slide ${add}, 🗑 Delete slide ${del})`);
       if (width >= 1280) assert(add - tab < 20, `at ${width} the slide's buttons stay on the tabs' line (tab ${tab}, ＋ Add slide ${add})`);
     }
+    await np.keyboard.press('Escape');
+    await clue.waitFor({ state: 'detached' });
+    // The round's 📥 Import clues… and 🖼️ Board images… stay together at the right when they wrap under Round name.
+    for (const width of [1024, 1100, 1180, 1366]) {
+      await np.setViewportSize({ width, height: 768 });
+      await np.waitForTimeout(150);
+      const imp = await np.locator('main').getByRole('button', { name: /Import clues/ }).boundingBox();
+      const img = await np.locator('main').getByRole('button', { name: /Board images/ }).boundingBox();
+      const name = await np.locator('main [data-round-name]').boundingBox();
+      assert(
+        Math.abs(imp.y - img.y) <= 1 && img.x > imp.x + imp.width - 1 && imp.x > name.x + name.width,
+        `at ${width} 📥 Import clues… and 🖼️ Board images… sit side by side, right of Round name (${[imp, img].map((b) => `${Math.round(b.x)},${Math.round(b.y)}`).join(' and ')})`,
+      );
+    }
     await ctx.close();
   }
 

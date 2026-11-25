@@ -967,11 +967,13 @@
       }}
     />
   </label>
-  <span class="spacer"></span>
-  <button onclick={() => (importing = true)} title="Paste clues from Google Sheets or Excel, or open a CSV / TSV file">📥 Import clues…</button>
-  <button onclick={() => (decorOpen = true)} title="Logos, stickers and GIFs placed anywhere on this round's board">
-    🖼️ Board images{round.decor?.length ? ` (${round.decor.length})` : '…'}
-  </button>
+  <!-- (The two round-wide buttons wrap to the next line together, at the right.) -->
+  <span class="round-tools">
+    <button onclick={() => (importing = true)} title="Paste clues from Google Sheets or Excel, or open a CSV / TSV file">📥 Import clues…</button>
+    <button onclick={() => (decorOpen = true)} title="Logos, stickers and GIFs placed anywhere on this round's board">
+      🖼️ Board images{round.decor?.length ? ` (${round.decor.length})` : '…'}
+    </button>
+  </span>
 </div>
 
 <div class="values" data-place="values:{round.id}">
@@ -1435,6 +1437,13 @@
     display: inline-flex;
     gap: inherit;
     white-space: nowrap;
+  }
+  .round-tools {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: inherit;
+    margin-left: auto;
   }
   .cat-tools {
     display: flex;
