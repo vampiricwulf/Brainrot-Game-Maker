@@ -409,6 +409,11 @@ try {
   await stageBoxIn(page).locator('.ov').waitFor();
   await page.evaluate(() => document.activeElement?.blur?.());
   assert((await amountBox.inputValue()) === '100', 'Ask the question: its 100 is in the Amount box');
+  // (One window: emptied to type other points, the row stays while the keys are in its box; not folded under them.)
+  await amountBox.fill('');
+  assert((await awardRowIn(page).count()) === 1, 'the question’s 100 emptied in the box: the Amount row stays open under the keys');
+  await amountBox.fill('100');
+  await page.evaluate(() => document.activeElement?.blur?.());
   await page.keyboard.press('Enter');
   assert((await toast()).startsWith('Select a player first'), `Enter with nobody picked asks who answered, not "Moved this turn" (${await toast()})`);
   await page.keyboard.press('1');

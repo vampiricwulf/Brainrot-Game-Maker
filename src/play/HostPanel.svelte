@@ -884,7 +884,8 @@
   }
   /**
    * One window, an RPG or board-game round: the Amount row stays folded (± Adjust score, in the tools row) until it's
-   * opened, by it or a player's number key, or points wait in it (a space's or an object's question put them there).
+   * opened, by it or a player's number key, or points wait in it (a space's or an object's question put them there),
+   * or the keys are in its box (emptied to type other points, it stays till they leave).
    * Picking players there moves and splits the party (or picks who moves), so a pick doesn't open it, and the pad and
    * the minimap keep the room.
    */
@@ -975,7 +976,7 @@
       (session.phase === 'board'
         ? !!selected.length || adjust
         : roundFold
-          ? adjust || amount != null
+          ? adjust || amount != null || amountKeys
           : partnerFold
             ? otherPoints || !!selected.length || handGiven
             : session.phase === 'tiebreaker'

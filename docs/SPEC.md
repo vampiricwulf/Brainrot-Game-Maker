@@ -1069,7 +1069,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   row of its own: the pad's 9 buttons and the minimap's first row stay in sight at 1280×720): a pick on the stage or in
   the box (which moves and splits the party, or picks who moves) leaves it folded; ± Adjust score, the stage's menu or
   a player's number key (`1–9`) opens it, as do points waiting in it (a space's or an object's question put them
-  there), and its **✕ Close** folds it again (letting such points go), players picked or not. With an audience
+  there; emptied to type others, it stays open while the keys are in its box), and its **✕ Close** folds it again (letting such points go), players picked or not. With an audience
   window it stays open, as before. In one
   window it counts a secret object ("1 hidden object"), Objects here numbers them ("🙈 Hidden object 1": its card keeps
   the name and buttons behind 👁 Show; what the host added during the show keeps its name), and steps that move or
