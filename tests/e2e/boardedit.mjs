@@ -25,6 +25,7 @@ import {
   awardRowIn,
   hostPanelIn,
   toolsRowIn,
+  until,
   roundTabsIn,
   stageBoxIn,
   toastsIn,
@@ -399,8 +400,11 @@ try {
     !(await card('Ann')).includes('$200') && (await last(page)).includes('Ann moves 1'),
     `Ann picked, Enter moves her 1 (not the last turn's $200: ${await last(page)})`,
   );
-  // The question on Space 5: its 100 goes in the Amount box, and Enter judges it (who answered is picked first).
+  // The question on Space 5: its 100 goes in the Amount box, and Enter judges it (who answered is picked first). (One
+  // window: the row folded first with ✕ Close; the question's points open it by themselves.)
   await page.keyboard.press('Escape');
+  await awardRowIn(page).getByRole('button', { name: '✕ Close' }).click();
+  assert(await until(async () => (await awardRowIn(page).count()) === 0), '✕ Close folds the Amount row');
   await page.locator('.acts').getByRole('button', { name: 'Ask the question' }).click();
   await stageBoxIn(page).locator('.ov').waitFor();
   await page.evaluate(() => document.activeElement?.blur?.());

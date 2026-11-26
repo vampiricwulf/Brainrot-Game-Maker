@@ -28,6 +28,7 @@ import {
   launchChromium,
   leaveAnswer,
   mainButton,
+  mainLabel,
   openGameFile,
   playerRowsIn,
   resultsPath,
@@ -381,6 +382,31 @@ try {
       await sleep(300);
       assertEq(await mainY(page), plain, `the Final, ${step}: the blue button in the same place`);
     }
+    // The reveals fold the tools row away (⋯ Tools): the blue button goes down onto the fixed bar once, then keeps that
+    // place through Show wager, each ✘, Next player and Finish game.
+    await page.keyboard.press('n');
+    await statusLineIn(page, { hasText: 'Player reveals' }).waitFor();
+    await sleep(300);
+    const reveals = await mainY(page);
+    /** @type {string[]} */
+    const moved = [];
+    /** @type {string[]} */
+    const seen = [];
+    for (let i = 0; i < 12 && !seen.includes('Finish game ▶'); i++) {
+      for (const key of ['x', 'n']) {
+        if (key === 'n' && seen.at(-1) === 'Finish game ▶') break;
+        await page.keyboard.press(key);
+        await sleep(400);
+        const label = await mainLabel(page);
+        seen.push(label);
+        const y = await mainY(page);
+        if (y !== reveals) moved.push(`${label} at ${y}`);
+      }
+    }
+    assert(
+      seen.includes('Show wager ▶') && seen.includes('Next player ▶') && seen.includes('Finish game ▶') && moved.length === 0,
+      `the Final's reveals: the blue button keeps one place (${reveals}; ${moved.join(', ') || 'none moved'}) through ${[...new Set(seen)].join(', ')}`,
+    );
     await ctx.close();
   }
 
@@ -424,6 +450,9 @@ try {
   section('An RPG round and a board game fold the Amount row, 1280×720');
   {
     const { ctx, page } = await startAt(1280, 720);
+    // (Points left in the board's Amount box don't come along into the round: it starts folded.)
+    await hostPanelIn(page).getByRole('button', { name: '± Adjust score' }).click();
+    await awardRowIn(page).getByLabel('Amount').fill('100');
     const opts = await roundNavIn(page).locator('option').allInnerTexts();
     await roundNavIn(page)
       .locator('select')

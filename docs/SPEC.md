@@ -725,7 +725,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     tools row and the fixed bar at its foot, and the action part (the flow row and the blue button) right on the tools
     row, any room to spare above it, so the blue button keeps one place from a plain clue to a wheel, dice or 🤫 cards
     tile, a board-game turn and the Final's steps (it moves once, down, as the Final's reveals fold the tools row away;
-    on a phone held upright the action part stays under the chips instead, the room to spare under it). While the
+    on a window 600px wide or less, a phone held upright, the action part stays under the chips instead, the room to
+    spare under it: the check before going on keeps no spot for the blue button there, and its "… anyway" would lie
+    where that button was). While the
     action part's rows go on under its sticky foot (the flow row, or a 🤝 partner clue's ✔ Got it row), they fade out
     just above it and a **▾ more** tab sits on its top edge at its right end (`data-more`, scrollmore.ts; the fade alone
     on a window under 500px tall); it takes no room and no click, and goes at the end. An open 🎲 / 🎡 / 🏁 menu or the 📱 phones list stays inside it too,
@@ -1025,8 +1027,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   🤝 Regroup, ▦ Split view, 🛒 Shop…, 🗺 Map on stream; in one window the screen's and round's 📝 notes have a slot of
   their own there on every screen, note or none, one line cut short with the whole of it in its tooltip, so the
   buttons, the pad and the minimap keep their places from screen to screen), the selection line (in one window on the
-  top row, in the room between the notes' slot and the party buttons, cut short as it must, the row pinned at the box's
-  top: the pad and the minimap get the room a line of its own took), a party's rename
+  top row, in the room between the notes' slot and the party buttons, cut short as it must, Clear selection just ✕
+  where it's short, the row pinned at the box's top and a card's pad and map pinned under it, however many lines it
+  takes: the pad and the minimap get the room a line of its own took), a party's rename
   question, then the pad and the minimap beside the `tools` snippet (HostPanel's ToolsControls: in an RPG round a
   tool's box goes here, never at the panel's top) and the object's card or Objects here, then **✎ Improvise** (a RememberedFold, `jb.improviseOpen`,
   open until first folded; its questions show under it either way), then the players. An object's card, once open,
@@ -1158,8 +1161,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      Enter sends the 2 cards", and Enter sends them (a card goes to a phone only by Enter on that step or a 📤 press).
      While the cards are handed out with some to copy, the first line is short, so it reads whole on a laptop ("Next:
      📋 Copy, then ⏱️ Start", "Next: 📋 Copy, then 📤 Send", "Next: ⏱️ Start the clock" once they're copied, "Clock
-     running: 📋 Copy, then 📤 Send"), its whole sentence in its tooltip; who plays which part, beside it, is cut short
-     instead (whole in its tooltip, the names on the chips).
+     running: 📋 Copy, then 📤 Send"), its whole sentence in its tooltip; on a laptop who plays which part, beside it,
+     is cut short instead (whole in its tooltip, the names on the chips; on a phone the row wraps as before).
      Under the box the Amount row folds behind **± Other points…** (✔ Got it / ✘ Missed give the points): it opens by
      itself once a player is picked (`1–9`, then Enter awards them as on any clue) or points were given by hand on the
      clue, and stays open for it; a steal's row is the Amount row, open. Nobody buzzes. With **steal on a miss**
