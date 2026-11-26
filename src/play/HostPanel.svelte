@@ -2351,6 +2351,11 @@
   .panel.side:not(.dual) > .fixed {
     display: flex;
   }
+  /* (Its buttons wrap one by one, not group by group: with a touch screen's 32px buttons, groups wrapping whole took
+     a 300px column's bar to three rows, out of the players' chips' room.) */
+  .panel.side:not(.dual) > .fixed > .group {
+    display: contents;
+  }
   .panel.side:not(.dual) > .fixed :is(.word, .txt) {
     position: absolute;
     width: 1px;
@@ -3307,12 +3312,16 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-  /* A phone (under 395px wide; nobody streams its screen): the chip is just ⚠, its sentence still in its tooltip and for
-     screen readers, so the moment's own words have the line's room. */
+  /* A phone (under 395px wide, or on its side, the panel a column beside the stage; nobody streams its screen): the chip
+     is just ⚠, its sentence still in its tooltip and for screen readers, so the moment's own words have the line's
+     room. */
   @media (max-width: 395px) {
     .viewers .vw {
       display: none;
     }
+  }
+  .panel.side:not(.dual) .viewers .vw {
+    display: none;
   }
   .covered,
   .unsaved {
@@ -3413,11 +3422,15 @@
     border-radius: 8px;
     padding: 3px;
   }
-  /* (A 320px window: the chip's parts a little closer, so a short name's chip stays one line. ✔ / ✘ stay as far apart.) */
+  /* (A 320px window: the chip's parts a little closer, so a short name's chip stays one line. ✔ / ✘ stay as far apart.
+     The same in a phone on its side's column, 300px wide at its narrowest.) */
   @media (max-width: 340px) {
     .p {
       gap: 2px;
     }
+  }
+  .panel.side:not(.dual) .p {
+    gap: 2px;
   }
   .p.on {
     box-shadow: 0 0 0 2px var(--c);

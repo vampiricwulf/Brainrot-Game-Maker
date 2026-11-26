@@ -767,9 +767,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     stage takes the rest of the width (16:9: about 506×285 at 844×390, twice as wide as under the panel), one size and
     place all game. The column is the same stack as beside the stage with an audience window: the status line at its
     top (the how-to on one line under the round's name, cut short, whole in its tooltip), the moment's part in the
-    middle (the score chips scroll in their own box), the fixed bar at its foot as one wrapping row of signs (still
-    named for screen readers, their tooltips say what they do), so 🚪 Exit, the RPG's pad and the board game's 🎲 Roll
-    are in sight with nothing scrolled. The tools row folds behind **⋯ Tools** there as on a short phone, and the
+    middle (the score chips scroll in their own box, their parts 2px apart so a short name's chip keeps one line), the
+    fixed bar at its foot as one row of signs wrapping button by button (two rows at 300px; still named for screen
+    readers, their tooltips say what they do), so 🚪 Exit, the RPG's pad and the board game's 🎲 Roll are in sight with
+    nothing scrolled; the ⚠ Viewers see this chip is just ⚠, as on an upright phone. The tools row folds behind **⋯ Tools** there as on a short phone, and the
     Amount row keeps to one line (the word Amount as its box's placeholder). If its rows still can't all fit, the
     column scrolls (on the smallest, 568×320, a roll's box with the tools row out is a few rows and scrolls). Its
     messages show over the column, never the stage; with the controls hidden (🙈 Hide) there is no column, and the
@@ -832,7 +833,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   1100 px wide (one line, its buttons a little smaller up to 1340 px), under that as their signs, 4 px apart (one line
   from about 760 px wide, 780 with ▶ Uncover), on a phone held upright wrapping button by button, its rows 2 px apart
   (three rows from 320 to 390 px wide, as tall as its two or three were, so the moment's box keeps its room), and on
-  a phone on its side (up to 500 px tall, the panel too short for a second line) all signs, on one line;
+  a phone on its side (up to 500 px tall) all signs: under the stage on one line, in the column beside it (above)
+  wrapping button by button;
   likewise the tools row's 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard keep their words on a touch screen (as signs
   only with a mouse up to 1240 and 1040 px), the row wrapping in the panel where it must, except on a phone held
   upright up to 800 px tall (360×740), a tablet on its side shorter than 768 px up to 1240 px wide (1024×700, the panel

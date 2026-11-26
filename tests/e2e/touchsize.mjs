@@ -6,11 +6,13 @@
 // 28px. A touch screen shows no tooltips, so the bar keeps the words a sign can't say (▭ Scores window, 📺 Audience,
 // 🙈 Hide), and all of its words where they fit on one line (1100px wide and up); on an upright phone its buttons wrap
 // one by one (three rows from 320 to 390px wide, no more than one more than before), on a tablet held upright (768,
-// 820) it's one line; on a phone on its side (740×360) the panel is too short for a second line: signs, one line. The
+// 820) it's one line; on a phone on its side (740×360) the panel is a column beside the stage: signs, wrapping, the
+// tools row behind ⋯ Tools. The
 // tools row keeps 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard in words, but on an upright phone up to 800px tall
 // (360×740), a tablet on its side shorter than 768px (1024×700, 1024×600: there the row stays one line) and a phone on
 // its side. Each moment's box keeps its room (60px, or all it needs: the RPG's and the board game's at 1024×600 too),
-// the stage is the same size as with a mouse, and the fixed bar on screen. With a mouse, nothing changes: the bar's words go to signs at 940–1340px as before, and the
+// the stage is the same size as with a mouse (on a tablet held upright, at the top, the screen's width, as on a phone),
+// and the fixed bar on screen. With a mouse, nothing changes: the bar's words go to signs at 940–1340px as before, and the
 // tools row's at 1040–1240px.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -146,6 +148,9 @@ try {
     const t = touch(w, h);
     const { ctx, page } = await sample(t);
     const b = await bar(page);
+    // (A phone on its side, one window: the host panel is a column beside the stage, its bar a wrapping row of signs and
+    // its tools row folded behind ⋯ Tools.)
+    const column = w > h && h <= 500;
     const small = b.buttons.filter((x) => x.w < 32 || x.h < 32);
     assert(
       small.length === 0,
@@ -165,12 +170,12 @@ try {
     }
     assert(b.foot <= h, `${say(t)}: the fixed bar on screen (its foot at ${b.foot} of ${h})`);
     const three = [/^Scores window/, /^📺/, /^🙈/].map((re) => wordOf(b, re));
-    // (A phone on its side: the panel's too short for a second line of the bar, so there they're signs too.)
+    // (A phone on its side: the column's too narrow for the words, so there they're signs too.)
     if (h > 500) assert(three.every(Boolean), `${say(t)}: ▭ Scores window, 📺 Audience and 🙈 Hide keep their words (${three})`);
     else
       assert(
         three.every((x) => x === false),
-        `${say(t)}: on its side, ▭ 📺 🙈 as their signs, the bar on one line (${three})`,
+        `${say(t)}: on its side, ▭ 📺 🙈 as their signs (${three})`,
       );
     const rest = [/^↶/, /^↷/, /^📜/, /^👥/, /^⚖/, /^🔊/, /^❔/].map((re) => wordOf(b, re));
     if (w >= 1100) assert(rest.every(Boolean) && b.rows === 1, `${say(t)}: every word shows, on one line (${b.rows} rows)`);
@@ -182,7 +187,7 @@ try {
     if (w in before) {
       const was = before[/** @type {320 | 360 | 390} */ (w)];
       assert(b.rows <= was + 1 && b.rows <= 3, `${say(t)}: the bar takes ${b.rows} rows, at most one more than its ${was}`);
-    } else assert(b.rows === 1, `${say(t)}: the bar on one line (${b.rows} rows)`);
+    } else if (!column) assert(b.rows === 1, `${say(t)}: the bar on one line (${b.rows} rows)`);
     // (On a phone up to 700px tall the row is folded behind ⋯ Tools. On a phone up to 800px tall, a tablet on its side
     // shorter than 768px (1024×700, its panel at its shortest) or a phone on its side, the words would take it a line
     // more, out of the moment's room: signs there, and on a tablet so the row stays one line.)
@@ -196,16 +201,38 @@ try {
           `${say(t)}: the tools row's 🤫 🎭 📊 as their signs, a line less (${tw})`,
         );
       if (w > 560 && h > 500 && h < 768) assert(b.toolRows === 1, `${say(t)}: a short tablet's tools row on one line (${b.toolRows} rows)`);
-    } else assert(w < 600 && h <= 700, `${say(t)}: the tools row out (not folded) but on a small phone`);
+    } else
+      assert(
+        (w < 600 && h <= 700) || (column && !!b.fold && b.fold.w >= 32 && b.fold.h >= 32),
+        `${say(t)}: the tools row out (not folded) but on a small phone, or in a phone on its side's column behind a ⋯ Tools at least 32×32 (${b.fold ? `${b.fold.w}×${b.fold.h}` : 'none'})`,
+      );
     const tight = await roomless(page);
     assert(tight.length === 0, `${say(t)}: the moment's box has room (60px, or all it needs)${tight.length ? ` (not: ${tight.join(', ')})` : ''}`);
-    // The stage as with a mouse at the same size: the bigger buttons and the words come out of the panel.
+    // The stage as with a mouse at the same size: the bigger buttons and the words come out of the panel. A touch
+    // tablet held upright is laid out as a phone is instead (the stage at the top, the screen's width, the panel in the
+    // black that was around it): there it's the screen's width at 16:9, at the top. A phone on its side: the stage on
+    // the left, the panel a column on its right, the window's height.
     const stage = await stageOf(page);
+    const panel = await hostPanelIn(page).boundingBox();
     await ctx.close();
-    const m = await sample(mouse(w, h));
-    const mStage = await stageOf(m.page);
-    assert(stage === mStage, `${say(t)}: the stage as with a mouse (${stage}, ${mStage})`);
-    await m.ctx.close();
+    if (column) {
+      const [x, , sw] = stage.split(/[ ,×]/).map(Number);
+      assert(
+        x === 0 && !!panel && panel.x >= sw - 1 && panel.height >= h - 1,
+        `${say(t)}: on its side, the panel a column beside the stage (${stage}, panel ${JSON.stringify(panel)})`,
+      );
+    } else if (h > w && w > 600) {
+      const [x, y, sw, sh] = stage.split(/[ ,×]/).map(Number);
+      assert(
+        x === 0 && y === 0 && sw === w && Math.abs(sh - (w * 9) / 16) <= 1,
+        `${say(t)}: a tablet held upright: the stage at the top, the screen's width at 16:9 (${stage})`,
+      );
+    } else {
+      const m = await sample(mouse(w, h));
+      const mStage = await stageOf(m.page);
+      assert(stage === mStage, `${say(t)}: the stage as with a mouse (${stage}, ${mStage})`);
+      await m.ctx.close();
+    }
   }
 
   section('With a mouse the bar and the tools row are as they were');

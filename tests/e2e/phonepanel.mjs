@@ -248,12 +248,14 @@ async function tappable(loc, what) {
 /**
  * The status line's words at a moment, on a phone: one line, and no span cut to a sliver (under 3 characters of it,
  * a stray letter or a "·" with nothing after it): such a span is hidden, with the "·" before it. Under 395px wide the
- * ⚠ Viewers see this chip is just ⚠ (its sentence still for screen readers), giving the moment's words its room.
+ * ⚠ Viewers see this chip is just ⚠ (its sentence still for screen readers), giving the moment's words its room, and
+ * so it is in a phone on its side's column.
  * @param {Page} page
  * @param {string} where
  * @param {string} moment
  * @param {number} w the window's width
- * @param {boolean} [one] its words on one line (false: a slide's how-to may wrap on a phone over 700px tall)
+ * @param {boolean} [one] its words on one line (false: a slide's how-to may wrap on a phone over 700px tall; on a phone
+ * on its side, the how-to is a line of its own under the rest, itself one line)
  */
 async function tidyStatus(page, where, moment, w, one = true) {
   /** @type {any} */
@@ -268,8 +270,13 @@ async function tidyStatus(page, where, moment, w, one = true) {
       const threeCh = (/** @type {HTMLElement} */ e) => 1.8 * parseFloat(getComputedStyle(e).fontSize);
       const kids = /** @type {HTMLElement[]} */ ([...s.children]).filter((e) => !e.matches('[data-click-note], .clockroom') && shown(e));
       // (Its words and chips: a clue's ⏱ countdown controls may have a row of their own under it.)
+      // (A phone on its side, the panel a column beside the stage: the how-to has a line of its own under the round's
+      // name, kept to one line itself.)
+      const howTo = '.hint, .how, .muted:has(> .hint)';
+      const column = !!s.closest('[data-host-panel].side:not(.dual)');
+      const own = column ? kids.filter((e) => e.matches(howTo)) : [];
       const mids = kids
-        .filter((e) => e.matches('b, span:not(.spacer)'))
+        .filter((e) => e.matches('b, span:not(.spacer)') && !own.includes(e))
         .map((e) => {
           const r = e.getBoundingClientRect();
           return r.top + r.height / 2;
@@ -282,7 +289,8 @@ async function tidyStatus(page, where, moment, w, one = true) {
       const sr = /** @type {HTMLElement | null} */ (s.querySelector(':scope > [data-viewers] .sr-only'));
       const chip = /** @type {HTMLElement | null} */ (s.querySelector(':scope > [data-viewers]'));
       return {
-        oneLine: Math.max(...mids) - Math.min(...mids) < 8,
+        oneLine: Math.max(...mids) - Math.min(...mids) < 8 && own.every((e) => e.getBoundingClientRect().height < 2 * parseFloat(getComputedStyle(e).fontSize)),
+        column,
         slivers,
         seps,
         say: say ? { hidden: !shown(say), w: say.clientWidth } : null,
@@ -299,11 +307,11 @@ async function tidyStatus(page, where, moment, w, one = true) {
     (g.oneLine || !one) &&
     !g.slivers.length &&
     !g.seps &&
-    (!g.chip || ((w < 395 ? g.chip.text === '⚠' : g.chip.text === '⚠ Viewers see this') && g.sr?.startsWith('⚠ Viewers can see this')));
+    (!g.chip || ((w < 395 || g.column ? g.chip.text === '⚠' : g.chip.text === '⚠ Viewers see this') && g.sr?.startsWith('⚠ Viewers can see this')));
   await until(async () => ok((got = await look())), 3000);
   assert(
     ok(got),
-    `${where}, ${moment}: the status line's words are ${one ? 'one line, ' : ''}no stray sliver of a word nor a "·" left over${w < 395 ? ', the ⚠ chip just ⚠ (its sentence for screen readers)' : ''} (${JSON.stringify(got)})`,
+    `${where}, ${moment}: the status line's words are ${one ? 'one line, ' : ''}no stray sliver of a word nor a "·" left over${w < 395 || got?.column ? ', the ⚠ chip just ⚠ (its sentence for screen readers)' : ''} (${JSON.stringify(got)})`,
   );
   return got;
 }
@@ -547,7 +555,7 @@ try {
       await sleep(500);
       // The Final's clock running on its question: ⏸, −10, +10, ↺ and ✕ at least 32px to tap.
       if (step === 'Question on screen') {
-        await statusLineIn(page).getByRole('button', { name: 'Hide timer' }).waitFor();
+        await statusLineIn(page).getByRole('button', { name: 'Hide countdown' }).waitFor();
         await tappable(statusLineIn(page).locator('.tc :is(button, input)'), `${where}, the Final's question: the clock's buttons`);
       }
     }
