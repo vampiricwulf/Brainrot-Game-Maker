@@ -12,6 +12,78 @@ How to add to it: commit the line with the change (or the merge that brings it i
 line. When pushing, run `node scripts/version.mjs stamp`, which moves the Unreleased lines under the day's heading
 (Pacific time), and commit that with the hashes as `Changelog: …`.
 
+## 2026-11-26
+
+### Added
+
+- 🕘 History in the editor: right-click an undone step › ↷ Redo just this (or R) brings back only that step, and the steps undone before it stay undone. Right-click a done step › ↶ Undo just this (or U) takes back only that step and keeps the ones after it. When a step depends on another, its item is greyed out and says which step, pointing to ↷ Redo to here (or ↶ Undo to here). (ff68578, 42d3fa4, 0f73175, 91c62a5)
+- 📜 Log › 🕘 History in the game: ↷ Redo just this on an undone score brings back only that score, greyed out with the step it depends on when it can't. It replaces ↷ Restore there; a score turned off in the Scores tab keeps ↷ Restore. (514d31c, 91c62a5)
+
+### Changed
+
+- 🕘 History in the editor and 📜 Log › 🕘 History in the game both say ↶ Undo to here / ↷ Redo to here, and the editor asks "Undo N steps, back to …?" before a long jump. (229afd5)
+- In one window, the blue button stays in one place under the stage, whatever the moment. It no longer jumps between a plain clue and a wheel, dice or card tile, a board-game turn or the Final's steps (on windows wider than 600px). (0f260d4, 4953368, 12d5038)
+- On a tablet held upright, the host controls also use the black space around the stage, so a board game's and an RPG's boxes have room; the stage keeps its size. (b61a6ed)
+- On a phone held sideways, the host controls are a column beside the stage for the whole game. The stage is much wider (about twice as wide on a big phone), and ↶ Undo … 🚪 Exit, the RPG's movement pad and the board game's 🎲 Roll are in sight without scrolling. A short window too narrow for the column keeps the controls under the stage. (48f8cf5, 5093ed6, 63deac9, ec906fc, 4fa378f)
+- On a touch screen, the host panel's bottom bar (↶ Undo … 🚪 Exit), ⋯ Tools and the Final's reveal buttons are bigger to tap, and ✔ Right / ✘ Wrong sit further from ½ Halve / 0 Nullify. The RPG's and board game's menus (＋ Screen…, 📍 Send to…, 🗂 Spaces…) are bigger too. (9640d27)
+- On a touch screen, the host's bar keeps its words where it has room (▭ Scores window, 📺 Audience and 🙈 Hide always, except on a phone on its side), and the tools row keeps 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard, since a tap shows no tooltip. (8bf2d84, b521b77, 779fc0d)
+- In the Final's wagers, pressing Show question ▶ with a wager missing (or not a whole number, or over the limit) no longer repeats the names already in the line under it: the status line says only what to do. (59f5bb4, c07b2df)
+- In one window, ⚖ Rules, 🔊 Test the sound and 🎭 Deal… use the panel's width, so more of them shows without scrolling, and Deal… shows a ready-made deal's whole name and two parts side by side. (cac05bb, 8a01f35)
+- 🕘 History's 🗑 Clear history… asks its question in the button's place, with Cancel ready for Enter or Esc, instead of at the far left under the filter. (2a6690c, af85918)
+- The countdown no longer shrinks the question slide when nothing on the slide is under it. (e58405a, a4b3af2)
+- Dice on stream are bigger, and the "d6" under a die only shows when the roll mixes kinds of dice. (18641bd, e37df30, c46b60b)
+- A category that's one long word is hyphenated at a readable size in every theme, instead of shrinking to a thin line in Classic. (f69f5d9, b78d25e)
+- Phones: words sent by themselves read the same on every line, with ⏱️ as on the host's row ("⏱️ Sent when time ran out, unfinished: “…”"), and the open box ends "Finished? Tap Send answer to mark it done." (4987792, 529bd81)
+- Phones: when it's your pick, "Your pick!" is the big line on the buzz button, with "Tell the host which clue" under it, instead of your name. (aae99c5)
+- ⬛ is Cover's own sign now, in the stage's menu, the tools row and the status line. ⏸ only ever means pause, and the countdown's pause buttons draw as a clear pause sign. (9574b38, 11c9402, 12d5038)
+- The ⏱️ countdown is called that everywhere (it was also "the clock" or "a timer"): the Final's and the partner clue's checks, the 🤝 box, the keys list, ⚖ Game rules, the status line's buttons and the editor, with seconds written "30 s". (e46f2d0, 4eaa0ab, 82b5f45, 12d5038)
+- Slides rounds have their own icon, 📽️, so 🖼️ only means pictures and 🖼️ Media. (ddc0f0b)
+- The slide editor's 🖼️ Image button is now 🖼️ Picture, and a selected picture's panel is headed Picture. (71332e2)
+- ▶ Play: ✅ Before you start's tips are headed "Going live", so "📺 On stream" names only its own card. (5f0227d)
+- The editor's sidebar says 🎡 Wheels, dice & deals and 📊 Stats & items, in the same case as the rest of the app. (f305521)
+- On a phone, the editor's first screen shows ✨ Try a sample game and the kinds of round before the sidebar's list. (5b99ffe)
+- ❔ Help's "🆕 What moved in this version" is now "🆕 What moved lately", and its dot comes back whenever it has new lines (it had stayed off since 2.38). (57be5f3)
+- The 🎡 Wheel button has a tooltip saying that W spins it, like the other tool buttons. (61602d5)
+
+### Fixed
+
+- 🕘 Log › History lists the undone steps in the order ↷ Redo brings them back, with the right counts, even after a score is restored and undone again. (2a0154a)
+- In one window on a laptop (1280×720 or taller), a 🤫 cards, wheel or dice tile no longer hides the last row of players' chips: they stay whole with their ✔ / ✘, and the tile's box scrolls instead, with "▾ more" while there's more below. On a shorter window the chips keep one whole row and fade at their foot. (bfd9a5b, 7a42124, 98a7d92, c0d0ab6)
+- A partner clue's hand-out in one window on a laptop: the Next line reads whole ("Next: 📋 Copy, then ⏱️ Start"), and "▾ more" on ✔ Got it says the card rows go on below. (87cd78d, d421a77, 22d33f7)
+- In one window, an RPG round's move pad and minimap are in sight on a laptop: the Amount row folds behind ± Adjust score in the tools row in RPG and board-game rounds, opening with that button, a player's number key or points waiting in it. On a tablet held upright the selection line shows who's picked and Clear selection in words. (2644c72, 631e9c3, 05ac80a, 2f67dfd, fe6f0ed, ae0a37a, 8b7ed45, da14cea)
+- On a short window (a laptop at 200% zoom), the players' chips under the stage fade at their foot when more players are below. (06159bf, ec7024c)
+- On a phone, the host panel's status line no longer shows a stray letter or a hanging "·" when its words are squeezed out, and under 395px wide ⚠ Viewers see this shows as just ⚠. (29001d2, 1cd98c2)
+- RPG and board-game rounds: the Amount row and ＋ Award's tooltip say "Pick who gets them", not "Pick who answered". (aaebf01)
+- On a touch screen, the host panel's hints say tap instead of click and name no number keys, and the cut-off "Pick who answered" hint is gone on phones and narrow tablets. (9f21771, f4cae1d, 29e50a1)
+- On a 320px phone, the players' chips stay on one line in a clue, so two players' ✔ / ✘ are in reach. (4554d64)
+- On a touch screen, ⋯ Tools, the countdown's buttons and the 🎲 Dice, 🎡 Wheel and 🏁 Who goes first menus are at least 32px to tap. (0db539b, c9ffa49)
+- The editor's sidebar no longer turns bold while it has more to scroll. (62e56c5)
+- 🖼️ Media's 🗑 Delete unused sits a little apart from the button before it, as 🗑 does on every page. (3f2b9b7)
+- The checklist's line about an empty 🤫 card puts the keys in its words box, and a line about a card, stat, item, shop, wheel or dice puts them on its row. (dce5324, 47bc0cc)
+- Clue window on a laptop: the slide's buttons no longer float above the Question/Answer tabs; they drop under the tabs together. (c198a89)
+- Jeopardy round page: 📥 Import clues… and 🖼️ Board images… stay together at the right when the window is narrow. (a3367b6)
+- Board images and the clue window: ✕ stays in the top corner when the window is narrow. (490e8b3)
+- Leaving ▶ Test this round puts the keys back on ▶ Test this round (or the round's tab, if its menu started the test), not on ▶ Play. (60b01f1)
+- The slide editor's ▶ Preview no longer drops onto a line of its own on a laptop (🤫 Cards at 1280, any slide at 1024). While previewing, its place shows ↻ Replay and ■ Stop. (9829e09)
+- A picture file that can't be shown (damaged, or not really a picture) is refused with a message when you add it, and one already in a game says "Couldn't show this picture" on its slide in the editor. (6e65cac)
+- End screen and Scoreboard: a negative score stays on one line beside a long name. (5805df3)
+- RPG and board-game stats strip (6 players or fewer): short names stay whole beside long ones. (bdb26e6)
+- A wheel slice's long label goes onto two lines at a readable size, instead of one tiny line. (2f006fc, 19c638a)
+- With many players, a score pop on the board stays on its player's plate and no longer covers the next players' names. (9b1fad5)
+- Phones: a typed answer's red line shows right under its box, above Send answer, as a wager's does. (c122a86, f5882fe)
+- Phones: a three-line question no longer makes a 320×568 phone scroll a little. (7a0023c)
+- Phones: an answer, a tapped choice or a wager sent as the connection silently dies says "The connection dropped… send it again" within seconds, and "Sending…" is grey, not the green of "✔ Sent". (85246a9, 143025f)
+- Phones: on a small phone, a long typed-answer question shows more of itself before ▼ More (and "Type an answer first." still never moves Send answer), and on a small phone on its side Send answer and the note under it fit on screen. (ba9e355, 8eb2458, b9b0779, 0e354ac, 735ee1b, 77b4e4f, a24032f)
+- On a phone or a narrow window, the editor's header keeps saying ⚠ Autosave unavailable here when storage is blocked or full. (cb1eff6)
+- ▶ Start the room says it couldn't reach the buzzer server and to check that this computer is online, instead of the browser's own words ("Load failed"). (b0b0033)
+- Open… names the file and says what to do when a .brainrot has no game inside, a .json can't be read, a web page has no game, or a game was made with a newer version. (f16442a)
+- A picture, video or sound whose file is missing is marked ⚠ in Layers and in its panel, pointing to 🔗 Find missing files… in 🖼️ Media. (c076b84, 6c80cb4)
+- ✅ Before you start: each check's Fix ›, 🎲 Place now and 🗜 Make smaller now tell a screen reader which check they're for. (8cc0f15)
+- 👥 Players: the note on the number keys gives the same range as ⚖ Game rules. (a290429)
+- Screen readers say the countdown's time when you use the status line's ⏱️ buttons, as they do for T and Shift+T. (dc44583)
+- During a round's intro, the status line says when the board comes up and names each category as it's revealed, for screen readers too. (93d7234, 4cc4bd8, a97f357, fe761ad)
+- In the editor, screen readers can tell rows apart: each wheel slice's, dice range's and face's ▸ More and 🗑, and other repeated buttons, say which row they're for. (51190b1, 6668346)
+
 ## 2026-11-25
 
 ### Added
