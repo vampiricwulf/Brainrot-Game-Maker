@@ -13,6 +13,7 @@ import {
   redoStep,
   removePlayer,
   score,
+  switchVerdict,
   toggleEvent,
   toggleStep,
   undo,
@@ -424,6 +425,26 @@ describe('↷ Redo just this (an undone score)', () => {
     for (let i = 0; i < 2; i++) undoOnce(session, game, undone);
     expect(session.currentPickerId).toBe('x');
     expect(redoStepBlocker(session, bob.batchId!, undone, '$')).toBe('It depends on “+$100 (Ann) · Ann right”, undone before it: use ↷ Redo to here');
+  });
+
+  it('refuses a switched verdict while the mark it switched is undone before it (so the switch is never lost from Redo)', () => {
+    const { game, session } = setup();
+    const undone: Undone[] = [];
+    later();
+    applyScore(session, game, ['a'], -100, 'Ann wrong', 'clue1');
+    later();
+    const flip = switchVerdict(session, game, 'a', 'clue1', 0, true, 100, 'Ann right')!;
+    expect(flip[0].switched).toHaveLength(1);
+    expect(score(session, 'a')).toBe(100);
+    for (let i = 0; i < 2; i++) undoOnce(session, game, undone);
+    expect(score(session, 'a')).toBe(0);
+    expect(redoStepBlocker(session, flip[0].batchId!, undone, '$')).toBe('It depends on “−$100 (Ann) · Ann wrong”, undone before it: use ↷ Redo to here');
+    // Ctrl+Y twice still brings both back, the switch on top.
+    for (let i = 0; i < 2; i++) {
+      expect(redoFrom(session, undone)).toBe('score');
+      redo(session);
+    }
+    expect(score(session, 'a')).toBe(100);
   });
 
   it('names the step it depends on as the list does: in one window, by its quiet text', () => {

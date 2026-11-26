@@ -679,12 +679,36 @@ describe('undo history: redo or undo just one step', () => {
     Object.assign(x, { blobs: [{ id: 'f1', before: null, after: null }] });
     Object.assign(z, { blobs: [{ id: 'f1', before: null, after: null }] });
     expect(redoJustBlocker(z.id)).toMatch(/^It depends on “Added a category”/);
-    // A change being made: refused without making it a step (that would drop every undone step).
+    // A change being made: refused without making it a step (that would drop every undone step), either way.
+    delete x.blobs;
+    delete z.blobs;
+    jumpTo(1);
     g.rounds[0].name = 'Typing';
     await seen();
     expect(redoJustBlocker(z.id)).toBe('Finish your change first');
     expect(redoJust(z.id)).toBe('busy');
+    expect(undoJustBlocker(x.id)).toBe('Finish your change first');
+    expect(undoJust(x.id)).toBe('busy');
     expect(history.entries).toHaveLength(4);
+    expect(history.index).toBe(1);
+  });
+
+  it('refuses a step the game no longer has as it was recorded on (changed some other way), and changes nothing', () => {
+    const before = () => JSON.stringify([history.entries.map((e) => e.id), history.index, $state.snapshot(g)]);
+    const [a, , c] = three();
+    // (What the step's value was before it, changed under it without a step.)
+    jumpTo(0);
+    Object.assign(history.entries[2].ops[0], { b: 'Not what it was' });
+    expect(redoJustBlocker(c)).toBeNull();
+    let now = before();
+    expect(redoJust(c)).toBe('clash');
+    expect(before()).toBe(now);
+    jumpTo(3);
+    Object.assign(history.entries[0].ops[0], { a: 'Not what it was' });
+    expect(undoJustBlocker(a)).toBeNull();
+    now = before();
+    expect(undoJust(a)).toBe('clash');
+    expect(before()).toBe(now);
   });
 
   it('↶ Undo just this keeps the marks that still stand for a game on the line', () => {
