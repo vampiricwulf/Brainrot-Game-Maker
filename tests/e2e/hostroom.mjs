@@ -18,7 +18,9 @@
 // 7. a phone held upright (390×844): a 🤫 cards tile's rows fade under the flow row with no "▾ more" tab over ＋ Award;
 //    an RPG round's selection line keeps a row of its own, Clear selection in words;
 // 8. a tablet held upright (768×1024): the RPG selection line on the top row keeps room for who's picked and Clear
-//    selection in words (the party buttons go on to the row's second line), the pad whole.
+//    selection in words (the party buttons go on to the row's second line), the pad whole;
+// 9. a laptop's browser window (1280×600), too short for two rows of chips over a tile's box: no chip cut to a strip
+//    there (one whole row, the box saying there are more).
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -628,9 +630,44 @@ try {
     await ctx.close();
   }
 
+  section('A laptop’s browser window (1280×600): no strip of a chip under a tile’s box');
+  {
+    // (Too short for a second row of chips over the tile's box's first line: the chips give way down to one whole row,
+    // and their box says there are more, rather than show a strip of Dmitri's chip with its ✔ out of reach.)
+    const { ctx, page } = await startAt(1280, 600);
+    const chips = hostPanelIn(page).locator('[data-host-players]');
+    /** The chips cut by the box's foot (partly in sight), '' for none. */
+    const strips = () =>
+      chips.evaluate((box) => {
+        const b = box.getBoundingClientRect();
+        return [...box.querySelectorAll('[data-player-row]')]
+          .filter((row) => {
+            const r = row.getBoundingClientRect();
+            return r.top < b.bottom - 1 && r.bottom > b.bottom + 1;
+          })
+          .map((row) => row.getAttribute('aria-label'))
+          .join(', ');
+      });
+    for (const [name, what] of [
+      ['Skibidi Lore for $400', 'a 🤫 cards tile'],
+      ['Memes for $600', 'a wheel tile'],
+    ]) {
+      await tile(page, name).click();
+      await mainButton(page).waitFor();
+      await sleep(400);
+      assertEq(await strips(), '', `1280×600, ${what}: no chip cut to a strip at the chips’ foot`);
+      assert(await chips.evaluate((e) => e.hasAttribute('data-more')), `1280×600, ${what}: the chips’ box says there are more below`);
+      await hostPanelIn(page)
+        .getByRole('button', { name: /Put back/ })
+        .click();
+      await sleep(300);
+    }
+    await ctx.close();
+  }
+
   section('A phone on its side: a wheel or dice tile keeps its room, the chips give way');
   {
-    // (Under 500px tall the chips give way first, as on any clue: the tool's box keeps the room over the flow row it
+    // (Under 680px tall the chips give way first, as on any clue: the tool's box keeps the room over the flow row it
     // had (its first line peeks out above it, the rest scrolls), and the chips' box says there are more.)
     const { ctx, page } = await startAt(844, 390);
     for (const [name, label] of [

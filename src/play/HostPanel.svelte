@@ -430,7 +430,7 @@
   );
   /**
    * A clue whose tile has a box of its own up in the action part (its 🤫 cards, or a wheel or dice tile's tool), single
-   * window: the players' chips are kept whole first, as in a partner clue (.tilebox, on a window 500px tall or more), so
+   * window: the players' chips are kept whole first, as in a partner clue (.tilebox, on a window 680px tall or more), so
    * every chip's ✔ / ✘ stays in sight and the box scrolls instead.
    */
   const tilebox = $derived(
@@ -2794,7 +2794,7 @@
   /* In the column: the action part takes the height left and scrolls; the tools and the fixed bar stay at its foot. */
   /* In a single window (the panel one height: see .panel:not(.dual)), a 🤝 partner clue's box scrolls, its foot kept in
      sight (📤 Send and start and ✔ Got it / ✘ Missed; the steal's row); a wheel or dice tile's tool keeps its height at
-     the top, what's under it scrolls (on a window 500px tall or more the action part gives way before the players'
+     the top, what's under it scrolls (on a window 680px tall or more the action part gives way before the players'
      chips, .tilebox, so there on a short laptop window the tool itself scrolls under the flow row). */
   .panel.held:not(.dual) > .act > .action > .tools {
     flex-shrink: 0;
@@ -3385,12 +3385,13 @@
     min-height: 80px;
   }
   /* And in a clue whose tile has a box of its own (its 🤫 cards, a wheel or dice tile's tool: .tilebox), on a window
-     500px tall or more: that box scrolls in the action part (the flow row at its foot), keeping its first line in sight
-     above the flow row (the row's 32px, the gap and a line of buttons), and every chip's ✔ / ✘ stays in reach. (On a
-     shorter one, a phone on its side or 200% zoom on a laptop, the chips give way first as on any clue: the tool's
-     box keeps the room it had over the flow row, not all of it under that row, and the chips' box says there are
-     more below.) */
-  @media (min-height: 500px) {
+     680px tall or more: that box scrolls in the action part (the flow row at its foot), keeping its first line in sight
+     above the flow row (the row's 32px, the gap and a line of buttons), and the chips get the room first (a laptop's
+     1280×720: two rows of chips whole, every ✔ / ✘ in reach). (On a shorter one, a laptop's browser window, a phone on
+     its side or 200% zoom, there isn't room for a second row of chips over that line: given the room first they'd show
+     a strip of it, its ✔ / ✘ out of reach. The chips give way first there as on any clue, down to one whole row, and
+     their box says there are more below; the tool's box keeps the room it had over the flow row.) */
+  @media (min-height: 680px) {
     .panel.tilebox:not(.dual) > .players {
       flex-shrink: 1;
     }
