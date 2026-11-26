@@ -2,7 +2,7 @@
 // played, the picker, Players and Final changes) and rolls in one list, newest first, and the order Undo goes through
 // them. Pure functions over the session, like session.ts.
 import { describeStep, findClueRef, inSteps, stepOf } from './session';
-import { stepText } from './toolset';
+import { redoOrder, stepText, type Undone } from './toolset';
 import type { Game, ScoreEvent, Session } from './model';
 
 /** done: counts now · redo: undone, Redo brings it back · off: undone in the Scores tab (only its Restore brings it back). */
@@ -85,9 +85,11 @@ function roundOf(game: Game, e: ScoreEvent): number | undefined {
 /**
  * Every score step, step and roll, newest first, with the steps that were undone (and can be redone) on top: Undo
  * always takes the newest, so they are the newest there are. `sym` is the game's currency symbol. `hide`: a single
- * window, where the steps say their quiet text (a secret board-game space not revealed yet as “? (secret)”).
+ * window, where the steps say their quiet text (a secret board-game space not revealed yet as “? (secret)”). `undone`:
+ * play's Undos, newest last (see redoFrom): the undone steps are listed in the order ↷ Redo brings them back, the next
+ * one at the bottom, just over "● Now".
  */
-export function timelineRows(session: Session, game: Game, sym: string, hide = false): TimelineRow[] {
+export function timelineRows(session: Session, game: Game, sym: string, hide = false, undone: readonly Undone[] = []): TimelineRow[] {
   const folded = inSteps(session);
   const redoIds = new Set(session.redoStack);
   const byStep = new Map<string, ScoreEvent[]>();
@@ -115,7 +117,10 @@ export function timelineRows(session: Session, game: Game, sym: string, hide = f
   for (const a of session.actionLog ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: stepText(a, hide), round: a.round, state: 'done' });
   for (const a of session.actionRedo ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: stepText(a, hide), round: a.round, state: 'redo' });
   for (const r of session.rollLog ?? []) rows.push({ kind: 'roll', id: r.id, ts: r.ts, text: `${r.name}: ${r.result}`, source: r.source });
-  const redo = rows.filter((r) => r.kind !== 'roll' && r.state === 'redo').sort((a, b) => b.ts - a.ts);
+  // (One Redo can't reach (none should be): on top, by time.)
+  const redoAt = new Map(redoOrder(session, undone).map((u, i) => [`${u.log}:${u.id}`, i]));
+  const pos = (r: Row) => redoAt.get(`${r.kind}:${r.id}`) ?? Infinity;
+  const redo = rows.filter((r) => r.kind !== 'roll' && r.state === 'redo').sort((a, b) => pos(b) - pos(a) || b.ts - a.ts);
   const rest = rows.filter((r) => !redo.includes(r)).sort((a, b) => b.ts - a.ts);
   // Undo to here: every Undo newer than the row (a roll, or a change undone in the Scores tab, marks a moment).
   const order = undoOrder(session);

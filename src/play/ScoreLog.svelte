@@ -7,6 +7,7 @@
   import { ROUND_MODES } from '../lib/modes';
   import { nameList, reasonText, stepAmount, stepOf, switchChain, toggleEvent, toggleStep } from '../lib/session';
   import { timelineRows, type TimelineRow } from '../lib/timeline';
+  import type { Undone } from '../lib/toolset';
   import InlineAsk from './host/InlineAsk.svelte';
   import { onMount } from 'svelte';
   import { announce } from '../lib/announce';
@@ -26,6 +27,7 @@
     beside = null,
     spinning = [],
     hide = false,
+    undos = [],
   }: {
     game: Game;
     session: Session;
@@ -49,6 +51,8 @@
     spinning?: string[];
     /** Single window (this log is on stream): steps say their quiet text, a secret board-game space as “? (secret)”. */
     hide?: boolean;
+    /** Play's Undos, newest last: the undone rows go in the order ↷ Redo brings them back. */
+    undos?: readonly Undone[];
   } = $props();
   const byId = $derived(Object.fromEntries([...(session.removedPlayers ?? []), ...session.players].map((p) => [p.id, p])));
   const removed = $derived(new Set((session.removedPlayers ?? []).map((p) => p.id)));
@@ -86,7 +90,7 @@
 
   // ---------- 🕘 History ----------
 
-  const rows = $derived(timelineRows(session, game, sym, hide));
+  const rows = $derived(timelineRows(session, game, sym, hide, undos));
   const undone = (r: TimelineRow) => r.kind !== 'roll' && r.state === 'redo';
   /** The list as shown: the undone steps, "● Now", then the rest, with a heading where the round changes. */
   const items = $derived.by(() => {

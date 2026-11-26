@@ -15,7 +15,7 @@ import {
   toggleStep,
   undo,
 } from './session';
-import { addStat, buy, logged, newStatField, redoAction, redoFrom, SCORE_CURRENCY, startStep, undoAction, type Undone } from './toolset';
+import { addStat, buy, logged, newStatField, redoAction, redoFrom, redoOrder, SCORE_CURRENCY, startStep, undoAction, type Undone } from './toolset';
 import { nextUndo, stillUndone, timelineRows, undoOrder } from './timeline';
 
 function setup(): { game: Game; session: Session } {
@@ -248,3 +248,64 @@ describe('Undo after Undo and Redo', () => {
     expect([score(session, 'a'), score(session, 'b')]).toEqual([200, 200]);
   });
 });
+
+describe('the undone rows', () => {
+  /** Three score changes a second apart: A, B, C. */
+  function three() {
+    const { game, session } = setup();
+    for (const [who, d] of [
+      ['a', 100],
+      ['b', 200],
+      ['a', 300],
+    ] as const) {
+      later();
+      applyScore(session, game, [who], d, `+${d}`);
+    }
+    return { game, session };
+  }
+  const redoRows = (session: Session, game: Game, undone: Undone[]) =>
+    timelineRows(session, game, '$', false, undone)
+      .filter((r) => r.kind !== 'roll' && r.state === 'redo')
+      .map((r) => [r.text, r.steps]);
+
+  it('list the steps in the order ↷ Redo brings them back, the next one at the bottom, with its count', () => {
+    const { game, session } = three();
+    const undone: Undone[] = [];
+    undoOnce(session, game, undone); // C
+    undoOnce(session, game, undone); // B
+    // C restored in Scores, then undone again: Ctrl+Y brings back C first, then B.
+    toggleStep(session, session.scoreLog[2].batchId!);
+    undoOnce(session, game, undone);
+    expect(redoRows(session, game, undone)).toEqual([
+      ['+$200 (Bob) · +200', 2],
+      ['+$300 (Ann) · +300', 1],
+    ]);
+    // …as Ctrl+Y does.
+    redoOnce(session, game, undone);
+    expect(score(session, 'a')).toBe(400);
+    expect(redoRows(session, game, undone)).toEqual([['+$200 (Bob) · +200', 1]]);
+  });
+
+  it('a step and score changes: redoOrder is what Ctrl+Y does again and again, and leaves what it reads as it was', () => {
+    const { game, session } = play();
+    const undone: Undone[] = [];
+    for (let i = 0; i < 4; i++) undoOnce(session, game, undone);
+    const copy = JSON.stringify([undone, session.redoStack, session.actionRedo]);
+    const order = redoOrder(session, undone);
+    expect(JSON.stringify([undone, session.redoStack, session.actionRedo])).toBe(copy);
+    const taken: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const from = redoFrom(session, [...undone]);
+      if (!from) break;
+      taken.push(from === 'action' ? session.actionRedo!.at(-1)!.id : stepOfTop(session));
+      redoOnce(session, game, undone);
+    }
+    expect(order.map((u) => u.id)).toEqual(taken);
+    expect(order).toHaveLength(4);
+  });
+});
+
+const stepOfTop = (session: Session) => {
+  const e = session.scoreLog.find((x) => x.id === session.redoStack.at(-1))!;
+  return e.batchId ?? e.id;
+};

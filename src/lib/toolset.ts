@@ -11,6 +11,7 @@ import {
   type InventoryEntry,
   type ItemDef,
   type PartnerState,
+  type ScoreEvent,
   type Screen,
   type Session,
   type Shop,
@@ -19,6 +20,7 @@ import {
   type Wearable,
   type WorldMap,
 } from './model';
+import type { UndoStep } from './timeline';
 import type { Problem } from './validate';
 
 // ---------- Stats ----------
@@ -753,11 +755,50 @@ export interface Undone {
  * Restore). With nothing to go by (after a reload), the action log goes first.
  */
 export function redoFrom(session: Session, undone: Undone[]): 'score' | 'action' | undefined {
-  const top = session.scoreLog.find((x) => x.id === session.redoStack.at(-1));
+  return redoLog(session.scoreLog, session.redoStack, session.actionRedo ?? [], undone);
+}
+
+/** redoFrom over the stacks given (redoOrder goes through copies of them). */
+function redoLog(
+  scoreLog: readonly ScoreEvent[],
+  redoStack: readonly string[],
+  actionRedo: readonly { id: string }[],
+  undone: Undone[],
+): 'score' | 'action' | undefined {
+  const top = scoreLog.find((x) => x.id === redoStack.at(-1));
   for (let u = undone.pop(); u; u = undone.pop()) {
-    if (u.log === 'action' ? session.actionRedo?.at(-1)?.id === u.id : !!top && stepOf(top) === u.id) return u.log;
+    if (u.log === 'action' ? actionRedo.at(-1)?.id === u.id : !!top && stepOf(top) === u.id) return u.log;
   }
-  return session.actionRedo?.length ? 'action' : session.redoStack.length ? 'score' : undefined;
+  return actionRedo.length ? 'action' : redoStack.length ? 'score' : undefined;
+}
+
+/**
+ * Every Redo there is, in the order pressing Ctrl+Y again and again would bring them back (the next one first): redoFrom
+ * and the score log's redo gone through on copies, so nothing it reads changes. (A score step undone, restored in 📜 Log
+ * and undone again is the next Redo, whatever its time.)
+ */
+export function redoOrder(session: Session, undone: readonly Undone[]): UndoStep[] {
+  const u = [...undone];
+  const stack = [...session.redoStack];
+  const actions = [...(session.actionRedo ?? [])];
+  const out: UndoStep[] = [];
+  while (stack.length || actions.length) {
+    if (redoLog(session.scoreLog, stack, actions, u) === 'action') {
+      const a = actions.pop()!;
+      out.push({ log: 'action', id: a.id, ts: a.ts });
+      continue;
+    }
+    // As redo() goes: the ids on top, until one from another step.
+    let first: ScoreEvent | undefined;
+    while (stack.length) {
+      const e = session.scoreLog.find((x) => x.id === stack.at(-1));
+      if (e && first && stepOf(e) !== stepOf(first)) break;
+      stack.pop();
+      if (e && !first) first = e;
+    }
+    if (first && !out.some((x) => x.log === 'score' && x.id === stepOf(first!))) out.push({ log: 'score', id: stepOf(first), ts: first.ts });
+  }
+  return out;
 }
 
 /** What going on from each of the Final's steps is called in the history (the steps that are undoable). */

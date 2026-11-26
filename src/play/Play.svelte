@@ -5798,6 +5798,7 @@
       area={panelBox}
       beside={dual ? logBeside : null}
       spinning={spinningIds}
+      undos={undone}
       onreopen={toggleTile}
       onback={undoBackTo}
       onredoto={redoUpTo}

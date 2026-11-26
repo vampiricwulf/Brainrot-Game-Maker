@@ -1211,7 +1211,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **Score log**: chronological list of every change (player, delta, reason/clue, time). Each entry can be **undone** or redone.
   Global **Undo (Ctrl+Z)** reverts the last score change.
 - **📜 Log › 🕘 History**: score changes, steps (moves, items, tiles, the picker, Players and Final changes) and rolls
-  in one list, newest first, with the undone steps (↷) on top above "● Now". **↶ Undo to here** on a row undoes every
+  in one list, newest first, with the undone steps (↷) on top above "● Now", in the order ↷ Redo (Ctrl+Y) brings them
+  back: the next one at the bottom, each with how many Redos it is away (Ctrl+Y always brings back what the last Ctrl+Z
+  took, even a step restored and undone again). **↶ Undo to here** on a row undoes every
   step after it; **↷ Redo to here** on an undone row redoes up to it (asking first for more than one step), the same
   words as the editor's 🕘 History (§5.9).
 - Session state (scores, used tiles, round, log) is autosaved to IndexedDB after every change for **crash recovery**.
