@@ -611,7 +611,8 @@ async function crowd() {
   });
   assert(!covered.length, `a countdown on the board covers no category, tile or plate (${covered.join(' | ')})`);
 
-  // A long clue with the countdown up: the slide moves down under it, so the countdown never covers its first line.
+  // A long clue with the countdown up: the countdown never covers its first line (the slide moves down under it if its
+  // words reach the countdown's corner; else the countdown goes over the empty corner).
   await boardTilesIn(boardIn(stageBoxIn(host)))
     .first()
     .click();
@@ -886,7 +887,8 @@ async function viewers() {
         name: 'Final Round',
         mode: 'final',
         category: 'Famous Brainrot',
-        questionSlide: slide('The final clue'),
+        // (Its words along the top, into the countdown's corner: it moves down under the clock.)
+        questionSlide: { ...slide('The final clue'), elements: slide('The final clue').elements.map((e) => ({ ...e, vAlign: 'top' })) },
         answerSlide: slide('The final answer'),
         timerSeconds: 30,
         allowNonPositive: true,
@@ -1116,10 +1118,14 @@ async function viewers() {
   );
   assert(overName === 0, 'and of its name: each ✔ sits wholly above the plate');
   // The question with its countdown, and the answer that stops it, each come as one picture: the slide is drawn at its
-  // size from the start (its words in the middle: full size, the countdown over its empty corner; not shrinking under
-  // the clock a moment later, nor growing into the answer).
+  // size from the start (its words along the top: moved down under the clock, not shrinking into it a moment later as
+  // its words are measured; nor growing into the answer). Its scale ends where it should, never eased there.
   await aud.evaluate(() => {
     window.__scales = [];
+    window.__eased = 0;
+    document.addEventListener('transitionrun', (e) => {
+      if (e.propertyName === 'scale' && e.target.classList.contains('slide-area')) window.__eased++;
+    });
     const note = (el) => window.__scales.push(el.style.scale || '1');
     new MutationObserver((list) => {
       for (const m of list) {
@@ -1133,15 +1139,17 @@ async function viewers() {
   await mainButton(host, 'Show question ▶').click();
   await aud.locator('.slide-area').waitFor();
   await aud.locator('.timer').waitFor();
-  const asked = await sizes();
+  await aud.waitForTimeout(500);
+  const asked = (await sizes()).split(' → ').pop();
+  const eased = await aud.evaluate(() => window.__eased);
   await mainButton(host, '👁 Reveal answer').click();
   // (Its think clock still running: it asks first.)
   await revealAnyway(host);
   await aud.locator('.timer').waitFor({ state: 'detached' });
   const answered = await sizes();
   assert(
-    asked === '1' && answered === '1',
-    `the Final's question (its words in the middle, clear of the countdown's corner) comes in at full size and stays so, its answer too (${asked} | ${answered})`,
+    Math.abs(parseFloat(asked) - 0.824) < 0.01 && !eased && answered === '1',
+    `the Final's question (its words in the countdown's corner) comes in at its size under the clock, not easing into it; its answer at full size (${asked}, eased ${eased} | ${answered})`,
   );
   await mainButton(host, 'Start player reveals ▶').click();
   const wrongs = await host.getByRole('button', { name: '✘ Wrong' }).count();
@@ -2110,6 +2118,24 @@ async function finalBar() {
       assert(
         bar.top < 1 && pop.top >= bar.top && pop.bottom <= bar.bottom + 0.5 && pop.bottom <= row.top,
         `the pop stays in the top bar's band, off the tiles (pop ${Math.round(pop.top)}–${Math.round(pop.bottom)}, bar to ${Math.round(bar.bottom)}, tiles from ${Math.round(row.top)})`,
+      );
+      // Its long name gives way ("…") so it's no wider than its plate (and a little): the points show whole.
+      const onPlate = await host.evaluate(() => {
+        const k = document.querySelector('.stage-box .stage').getBoundingClientRect().width / 1920;
+        const p = document.querySelector('.stage-box .pop.anchored');
+        const r = p.getBoundingClientRect();
+        const plate = document.querySelectorAll('.stage-box .plate')[1].getBoundingClientRect();
+        const who = p.querySelector('.who');
+        const amt = p.querySelector('.amt');
+        return {
+          over: Math.round(Math.max(plate.left - r.left, r.right - plate.right) / k),
+          cut: who.offsetWidth > 0 && who.scrollWidth > who.clientWidth,
+          whole: amt.scrollWidth <= amt.clientWidth + 1 && amt.getBoundingClientRect().right <= r.right + 0.5,
+        };
+      });
+      assert(
+        onPlate.over <= 10 && onPlate.cut && onPlate.whole,
+        `a pop over Bartholomew Montgomery's plate cuts the name with "…" to stay on the plate, its points whole (${JSON.stringify(onPlate)})`,
       );
     } else assert(!(await st('.board-screen .score-area').count()), 'no score bar on the board');
 

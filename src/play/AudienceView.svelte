@@ -456,7 +456,16 @@
     };
     // Re-measured when autofit or fonts change a box's height; a new slide's boxes (question -> answer) are watched too.
     const ro = new ResizeObserver(measure);
+    // A new slide's words are measured just before it's first drawn, which can move it down under the countdown (its
+    // corner taken): it's drawn at that size from the start, not shrinking into it (the scale's easing is held a moment).
+    let held = 0;
+    const hold = () => {
+      area.style.transition = 'none';
+      cancelAnimationFrame(held);
+      held = requestAnimationFrame(() => (held = requestAnimationFrame(() => (area.style.transition = ''))));
+    };
     const watch = () => {
+      hold();
       ro.disconnect();
       area.querySelectorAll('.text > .inner').forEach((n) => ro.observe(n));
     };
@@ -465,6 +474,7 @@
     watch();
     return {
       destroy: () => {
+        cancelAnimationFrame(held);
         ro.disconnect();
         mo.disconnect();
       },
