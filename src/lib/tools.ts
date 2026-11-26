@@ -70,15 +70,16 @@ export function spinSeconds(text: string, last: number): number {
 
 /**
  * A die's size on the stage (px) for a roll of `count` dice: 400 for one or two, 340 for three, 240 up to six (one row
- * of DiceView's 1700px), then 170, or smaller where that many rows wouldn't fit 700px high (with 50px gaps).
+ * of DiceView's 1700px), then 170, or smaller where that many rows wouldn't fit `high` px (with 50px gaps): between the
+ * set's name along the top and the total under them (less, 400, where the set keeps room along the foot for a card).
  */
-export function diceSize(count: number): number {
+export function diceSize(count: number, high = 700): number {
   if (count <= 2) return 400;
   if (count === 3) return 340;
   if (count <= 6) return 240;
   for (let s = 170; s > 40; s -= 10) {
     const rows = Math.ceil(count / Math.max(1, Math.floor((1700 + 50) / (s + 50))));
-    if (rows * s + (rows - 1) * 50 <= 700) return s;
+    if (rows * s + (rows - 1) * 50 <= high) return s;
   }
   return 40;
 }

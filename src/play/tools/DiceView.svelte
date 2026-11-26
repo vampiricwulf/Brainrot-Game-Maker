@@ -21,10 +21,16 @@
   const rolling = $derived(!!o.roll && now < o.startedAt + o.duration);
   const count = $derived(o.roll?.dice.length ?? pending.length);
   /**
-   * Big enough to watch on a stream (the wheel the same kind of tile gets is about 880 tall): 400 for one or two dice,
-   * 340 for three, 240 up to six (one row), and 170 or smaller for more, so every row fits above the total.
+   * The set can come to a card along the foot (outcomes for totals, faces of its own): the dice and the total sit higher
+   * from the start, so a card of two lines comes in under them, not over the total (and the dice don't jump up for it).
    */
-  const size = $derived(diceSize(count));
+  const cardRoom = $derived(!!o.preset.totalOutcomes?.length || o.preset.dice.some((d) => d.customFaces?.length));
+  /**
+   * Big enough to watch on a stream (the wheel the same kind of tile gets is about 880 tall): 400 for one or two dice,
+   * 340 for three, 240 up to six (one row), and 170 or smaller for more, so every row fits between the name and the
+   * total (and above a card's room).
+   */
+  const size = $derived(diceSize(count, cardRoom ? 400 : undefined));
   /** The dice differ (a d6 and a d20): each says what it is, under its number. One kind of dice needs no "d6". */
   const mixed = $derived(new Set(shown.filter((d) => !d.custom).map((d) => d.sides)).size > 1);
   const face = (i: number) => {
@@ -40,11 +46,6 @@
   };
   // (The same one the host's card acts on.)
   const outcome = $derived(o.roll ? rollOutcome(o.roll).main : undefined);
-  /**
-   * The set can come to a card along the foot (outcomes for totals, faces of its own): the dice and the total sit higher
-   * from the start, so a card of two lines comes in under them, not over the total (and the dice don't jump up for it).
-   */
-  const cardRoom = $derived(!!o.preset.totalOutcomes?.length || o.preset.dice.some((d) => d.customFaces?.length));
   /** A card with a picture or words under its label: the whole stage, as a wheel's (under the dice it ran off the bottom). */
   const big = $derived(!!outcome && !!(outcome.media || outcome.details));
   // It covers the dice: it comes a moment after they settle, so viewers see the faces and the total first.

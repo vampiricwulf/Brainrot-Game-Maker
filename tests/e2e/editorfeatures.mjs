@@ -618,6 +618,18 @@ try {
       twenty.inside && twenty.labels.length === 0 && twenty.size >= 150,
       `20 dice of one kind: all on the stage, no “d2” under them (${JSON.stringify(twenty)})`,
     );
+    // 28 of them (several kinds of dice can be added): smaller, every row under the set's name.
+    await page.getByRole('button', { name: '＋ Add another die' }).click();
+    await page.getByLabel('How many', { exact: true }).last().fill('8');
+    await page.getByLabel('How many', { exact: true }).last().press('Tab');
+    await until(async () => (await dice.count()) === 28, 'the preview shows 28 dice');
+    const many = await page.locator('.preview').evaluate((p) => ({
+      name: Math.round(p.querySelector('.title').getBoundingClientRect().bottom),
+      dice: Math.round(p.querySelector('.dice').getBoundingClientRect().top),
+    }));
+    assert(many.name <= many.dice, `28 dice: every row under the set's name (${JSON.stringify(many)})`);
+    await page.getByRole('button', { name: 'Delete die 2' }).click();
+    await until(async () => (await dice.count()) === 20, 'the 20 dice again');
     await count.fill('1');
     await count.press('Tab');
     await until(async () => (await dice.count()) === 1, 'the preview shows one die');
@@ -644,6 +656,28 @@ try {
       total.y + total.height <= cardBox.y,
       `a two-line outcome card comes in under the dice's total (${Math.round(total.y + total.height)} / ${Math.round(cardBox.y)})`,
     );
+    // Many dice in a set with outcomes: smaller, so every row sits under the set's name and the total over the card.
+    await page.getByLabel('How many', { exact: true }).first().fill('20');
+    await page.getByLabel('How many', { exact: true }).first().press('Tab');
+    await until(async () => (await dice.count()) === 21, 'the preview shows 21 dice');
+    await page.getByRole('button', { name: '🎲 Test roll' }).click();
+    await card.waitFor();
+    await page.waitForTimeout(600);
+    const crowd = await page.locator('.preview').evaluate((p) => {
+      const b = (s) => p.querySelector(s).getBoundingClientRect();
+      return {
+        name: Math.round(b('.title').bottom),
+        dice: Math.round(b('.dice').top),
+        total: Math.round(b('.total').bottom),
+        card: Math.round(b('.reveal .card').top),
+      };
+    });
+    assert(
+      crowd.name <= crowd.dice && crowd.total <= crowd.card,
+      `21 dice and an outcome card: the dice under the set's name, the total over the card (${JSON.stringify(crowd)})`,
+    );
+    await page.getByLabel('How many', { exact: true }).first().fill('1');
+    await page.getByLabel('How many', { exact: true }).first().press('Tab');
     await page.keyboard.press('Control+z');
   }
   {

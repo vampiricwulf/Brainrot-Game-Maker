@@ -309,12 +309,15 @@ describe('what a roll comes to', () => {
 
 describe('dice on the stage', () => {
   it('are big for a few dice and every row fits for many', () => {
-    expect([1, 2, 3, 4, 6, 7, 20].map(diceSize)).toEqual([400, 400, 340, 240, 240, 170, 170]);
-    for (const n of [7, 20, 40, 100]) {
-      const s = diceSize(n);
-      const rows = Math.ceil(n / Math.floor(1750 / (s + 50)));
-      expect(rows * s + (rows - 1) * 50).toBeLessThanOrEqual(700);
-    }
+    expect([1, 2, 3, 4, 6, 7, 20].map((n) => diceSize(n))).toEqual([400, 400, 340, 240, 240, 170, 170]);
+    for (const high of [700, 400])
+      for (const n of high === 700 ? [7, 20, 21, 40, 100] : [7, 20, 21, 40, 60]) {
+        const s = diceSize(n, high);
+        const rows = Math.ceil(n / Math.floor(1750 / (s + 50)));
+        expect(rows * s + (rows - 1) * 50).toBeLessThanOrEqual(high);
+      }
+    // With room kept along the foot for a card: 20 dice on two rows, smaller.
+    expect(diceSize(20, 400)).toBe(120);
   });
 });
 
