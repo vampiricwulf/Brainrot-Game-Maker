@@ -101,8 +101,8 @@ function* fitting({ size, enabled, min = 12, hyphenate, noBreak, floor, breakFir
     s = yield* largest(floor, lo, 'hyphen');
     if (!(yield { size: s, wrap: 'hyphen' })) return { size: s, overflow: false };
   } else if (hyphenate) {
-    // Smaller still with whole words (down to `floor`) before any word is broken: "UNIVERSE" whole at 24px reads better
-    // than "UNIVE-RSE" at 30.
+    // Smaller still with whole words (down to `floor`) before any word is broken: in a name of several words, "SPEEDRUN
+    // FACTS" whole at 26px reads better than "SPEED-RUN FACTS" at 30. (One long word: breakFirst, above.)
     if (floor !== undefined && floor < lo) {
       s = yield* largest(floor, lo, 'normal');
       if (!(yield { size: s, wrap: 'normal' })) return { size: s, overflow: false };
