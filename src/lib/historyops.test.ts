@@ -443,6 +443,12 @@ describe('clashes and replaysCleanly (undo or redo just one step)', () => {
         ops((g) => (cats(g)[0].name = 'Uno')),
       ),
     ).toBe(false);
+    // Nor is reordering what's inside one of them, either way round.
+    const nested = base();
+    (cats(nested)[0] as Obj).items = [{ id: 'i1' }, { id: 'i2' }];
+    const outer = ops((g) => cats(g).reverse(), nested);
+    const inner = ops((g) => ((cats(g)[0] as Obj).items as Obj[]).reverse(), nested);
+    expect([clashes(outer, inner), clashes(inner, outer)]).toEqual([false, false]);
     // Something that refers to a file another step added (by its id) isn't.
     expect(
       clashes(

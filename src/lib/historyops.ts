@@ -255,6 +255,8 @@ const inList = (t: Op['t']) => t !== 'set';
 function opsClash(x: Op, y: Op): boolean {
   // Elements added, removed or moved in the same id-array: positions (an insert's index) depend on each other.
   if (inList(x.t) && inList(y.t) && JSON.stringify(x.p) === JSON.stringify(y.p)) return true;
+  // Reorders of different arrays (one inside an element of the other) move objects without changing them.
+  if (x.t === 'ord' && y.t === 'ord') return false;
   const px = opPath(x);
   const py = opPath(y);
   // A reorder moves the same objects: only what replaces the array (or what holds it) clashes with it, not a change inside
