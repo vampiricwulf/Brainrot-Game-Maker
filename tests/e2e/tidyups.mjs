@@ -120,6 +120,26 @@ try {
       ready.some((t) => t.startsWith(`${icon}${VS} ${name}`)),
       `📋 Ready-made wheel…: ${icon} ${name} too`,
     );
+  // A long slice label (the Punishments wheel's 8 slices) goes onto two lines at a readable size, not one tiny line.
+  await page.getByRole('button', { name: '📋 Ready-made wheel…' }).click();
+  await page.getByRole('menuitem', { name: /Punishments/ }).click();
+  const story = page.locator('.wheel text', { hasText: 'embarrassing' });
+  await story.waitFor();
+  const storyLines = await story.evaluate((t) => ({
+    lines: [...t.querySelectorAll('tspan')].map((s) => s.textContent),
+    size: Number(t.getAttribute('font-size')),
+  }));
+  assert(
+    storyLines.lines.join('|') === 'Tell an|embarrassing story' && storyLines.size >= 28,
+    `a wheel slice's long label goes onto two lines at a readable size (${JSON.stringify(storyLines)})`,
+  );
+  const shortLines = await page.locator('.wheel text', { hasText: 'push-ups' }).evaluate((t) => t.querySelectorAll('tspan').length);
+  assert(shortLines === 1, `a short one stays on one line (${shortLines})`);
+  if (process.env.SHOTS)
+    await page
+      .locator('.wheel')
+      .first()
+      .screenshot({ path: `${process.env.SHOTS}/wheel-two-lines.png` });
   await page.getByRole('button', { name: '📋 Ready-made deal…' }).click();
   const deals = await menuIcons();
   await page.keyboard.press('Escape');

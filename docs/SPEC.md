@@ -516,6 +516,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 ### 5.6 Wheel & dice preset editor
 - **Wheel**: segments with label, color, and **weight** (the slice size and landing probability are proportional
   to the weight). A live preview shows the percentages. Optional image per segment. Spin duration. "Remove segment after it lands" option.
+  A slice's label is as big as the slice allows; a long one that would be smaller than 28 stage px on one line goes onto
+  two lines (split at the space that keeps the longer line shortest) on a slice of 30° or more, when that makes it
+  bigger. A player's name on the Pick a player wheel stays on one line and gives way to initials instead.
 - **Dice**: any number of dice with any number of sides (d2–d1000). Faces show plain numbers by default,
   or custom face labels (e.g. `["Truth","Dare","Drink","Skip","Pick someone","Roll again"]`).
   Optional mapping of total ranges to outcomes. Default quick presets: d4, d6, d8, d10, d12, d20, d100, 2d6.

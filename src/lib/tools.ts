@@ -458,3 +458,39 @@ export function uniqueLabels(labels: string[]): string[] {
     return n === 1 ? l : `${l} ${n}`;
   });
 }
+
+/** A wheel's radius (WheelDisc's viewBox units), and where a slice's label runs: from just past the hub to just inside the rim. */
+const WHEEL_R = 440;
+const WHEEL_HUB = 76;
+export const WHEEL_LABEL_LEN = WHEEL_R * 0.93 - WHEEL_HUB;
+/** Roughly how wide the bold board font is, per character, for its size. */
+export const WHEEL_CHAR = 0.6;
+/** The smallest slice label that reads once the stream is scaled down (480p). */
+export const WHEEL_READABLE = 28;
+
+/** A label on one line: as big as the slice's width allows, and small enough to fit between the hub and the rim. */
+export function wheelLabelSize(span: number, label: string): number {
+  return Math.max(14, Math.min(56, span * 1.6, WHEEL_LABEL_LEN / (WHEEL_CHAR * Math.max(4, label.length))));
+}
+
+/**
+ * A slice's label: its lines and their size. One line as a rule; a long label that would be smaller than
+ * WHEEL_READABLE on one line, on a slice wide enough for two (30° or more), goes onto two lines, split at the space that
+ * keeps the longer line shortest, when that makes it bigger. `wrap` false: always one line (a player's name).
+ */
+export function wheelLabelLayout(span: number, label: string, wrap = true): { lines: string[]; size: number } {
+  const one = wheelLabelSize(span, label);
+  if (!wrap || one >= WHEEL_READABLE || span < 30) return { lines: [label], size: one };
+  let best: { lines: string[]; size: number } = { lines: [label], size: one };
+  let longest = Infinity;
+  for (const m of label.matchAll(/ +/g)) {
+    const a = label.slice(0, m.index).trim();
+    const b = label.slice(m.index + m[0].length).trim();
+    const longer = Math.max(a.length, b.length);
+    if (!a || !b || longer >= longest) continue;
+    longest = longer;
+    const size = Math.max(14, Math.min(56, (span * 1.6) / 2.2, WHEEL_LABEL_LEN / (WHEEL_CHAR * Math.max(4, longer))));
+    best = size > one ? { lines: [a, b], size } : { lines: [label], size: one };
+  }
+  return best;
+}

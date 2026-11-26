@@ -26,6 +26,9 @@ import {
   isRespin,
   MIN_WEIGHT,
   sliceWeight,
+  wheelLabelLayout,
+  wheelLabelSize,
+  WHEEL_READABLE,
 } from './tools';
 
 function seeded(seed = 42) {
@@ -300,5 +303,26 @@ describe('what a roll comes to', () => {
     };
     expect(rollOutcome(r)).toEqual({ main: truth, others: [{ i: 2, face: minus }] });
     expect(rollOutcome({ ...r, totalOutcome: plain })).toEqual({ main: plain, others: [] });
+  });
+});
+
+describe('a wheel slice’s label', () => {
+  it('goes onto two lines at a readable size when it would be tiny on one', () => {
+    // The ready-made Punishments wheel: 8 slices of 45°.
+    const r = wheelLabelLayout(45, 'Tell an embarrassing story');
+    expect(r.lines).toEqual(['Tell an', 'embarrassing story']);
+    expect(r.size).toBeGreaterThanOrEqual(WHEEL_READABLE);
+    expect(wheelLabelSize(45, 'Tell an embarrassing story')).toBeLessThan(WHEEL_READABLE);
+    // Split where the longer line is shortest.
+    expect(wheelLabelLayout(60, 'A very long segment label here').lines).toEqual(['A very long', 'segment label here']);
+    expect(wheelLabelLayout(60, 'A very long segment label here').size).toBeGreaterThan(30);
+  });
+
+  it('stays on one line when it reads already, has no space, the slice is narrow, or it’s a player’s name', () => {
+    expect(wheelLabelLayout(45, 'Do 10 push-ups')).toEqual({ lines: ['Do 10 push-ups'], size: wheelLabelSize(45, 'Do 10 push-ups') });
+    expect(wheelLabelLayout(60, 'Bankrupt')).toEqual({ lines: ['Bankrupt'], size: 56 });
+    expect(wheelLabelLayout(45, 'Supercalifragilisticexpialidocious').lines).toHaveLength(1);
+    expect(wheelLabelLayout(20, 'Tell an embarrassing story').lines).toHaveLength(1);
+    expect(wheelLabelLayout(45, 'Tell an embarrassing story', false).lines).toHaveLength(1);
   });
 });
