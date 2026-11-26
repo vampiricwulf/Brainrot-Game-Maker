@@ -1161,8 +1161,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      are then, if not what went at 0: "⏱️ Sent as answers locked, unfinished: “…”", even after the clock ran out, since
      they weren't in at 0; in place of "Yours: “…”" in the locked line; in the Final's, after the wager, "⏱️ Yours,
      unfinished: “…”" (or "Your team’s"), and a partner guess's, under its status, "⏱️ Sent, unfinished: “…”", short,
-     so the words still show in its 3 lines). One pattern on every line, ⏱️ as the host's row has it; a teammate's
-     phone is named ", from Ann’s phone" before "unfinished". The phone keeps the words until
+     so the words still show in its 3 lines). One pattern on every line, ⏱️ as the host's row has it; in the open box a
+     teammate's phone is named ", from Ann’s phone" before "unfinished" (not in the locked line's 3 lines). The phone keeps the words until
      then (nothing typed reaches the room before); the room takes one sent as the lock reaches the phone up to 3 s after
      it saw the lock, never over an answer sent on purpose (a teammate's half-typed words don't replace the team's), nor
      for a seat already judged (a partner guess judged before the answer shows too). The host's row has ⏱ sent at

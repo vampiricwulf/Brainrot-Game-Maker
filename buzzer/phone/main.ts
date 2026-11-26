@@ -1699,15 +1699,11 @@ function renderBuzz(v: PhoneView): void {
     const staked =
       wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
     const picked = pickLine(ans);
-    // (Words typed and not sent that went by themselves: "⏱️ Sent as answers locked, unfinished" in place of "Yours",
-    // with a teammate's phone named. After the Final's wager, short, whose they are kept: else a team's words, or a
-    // phone held sideways's, didn't show at all.)
+    // (Words typed and not sent that went by themselves: "⏱️ Sent as answers locked, unfinished" in place of "Yours".
+    // Not whose phone sent them, as the open box says: the line has 3 lines, and the words must show. After the Final's
+    // wager, short, whose they are kept: else a team's words, or a phone held sideways's, didn't show at all.)
     const whose = team ? 'Your team’s' : 'Yours';
-    const owner = !ans.auto
-      ? whose
-      : staked
-        ? autoSentLine(ans.auto, { short: whose })
-        : autoSentLine(ans.auto, { by: team && ans.by ? (ans.byYou ? 'your phone' : `${ans.by}’s phone`) : undefined });
+    const owner = !ans.auto ? whose : staked ? autoSentLine(ans.auto, { short: whose }) : autoSentLine(ans.auto);
     // Judged (a ✍ clue once the host judges it, the Final in its reveals): how it went over it ("✔ Right! +$1,200"),
     // green or red.
     [cls, big, small] = [
