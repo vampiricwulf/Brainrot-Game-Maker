@@ -307,15 +307,20 @@ try {
       const stage = document.querySelector('.stage-box').getBoundingClientRect();
       const r = d.getBoundingClientRect();
       const parts = [...d.querySelectorAll('[data-deal-part]')].map((p) => Math.round(p.getBoundingClientRect().top));
+      // (Each part's card words, "Card: 1 line of words": one line, never squeezed beside its wheel's choice.)
+      const cards = [...d.querySelectorAll('[data-deal-part] .cardrow > span')].map((e) =>
+        Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).fontSize)),
+      );
       return {
         w: Math.round(r.width),
         inPanel: r.left >= panel.left - 1 && r.right <= panel.right + 1 && r.top >= stage.bottom - 1,
         sideBySide: parts.length >= 2 && parts[0] === parts[1],
+        cards,
       };
     });
     assert(
-      dealBox.w >= 590 && dealBox.inPanel && dealBox.sideBySide,
-      `${w}×${h}: 🎭 Deal… is 600px wide in the panel, off the stage, two parts side by side (${JSON.stringify(dealBox)})`,
+      dealBox.w >= 590 && dealBox.inPanel && dealBox.sideBySide && dealBox.cards.length >= 2 && dealBox.cards.every((n) => n < 2),
+      `${w}×${h}: 🎭 Deal… is 600px wide in the panel, off the stage, two parts side by side, each one's card words on one line (${JSON.stringify(dealBox)})`,
     );
     await page.keyboard.press('Escape');
     await deal.waitFor({ state: 'detached' });

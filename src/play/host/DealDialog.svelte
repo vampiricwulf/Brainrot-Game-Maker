@@ -488,7 +488,8 @@
                 disabled={work.parts.length < 2}>🗑</button
               >
             </div>
-            <div class="row">
+            <!-- (Its wheel's choice goes under the card's words where the part is narrow: two side by side.) -->
+            <div class="row cardrow">
               {#if dual}
                 <!-- (Two windows: viewers don't see this one.) -->
                 <input
@@ -780,6 +781,11 @@
   .grow {
     flex: 1;
     min-width: 0;
+  }
+  /* The card's words and its wheel's choice: side by side while the words keep about 90px, else the choice goes under
+     them (the row wraps), rather than the words squeezed to a word a line (two parts side by side). */
+  .cardrow > span.grow {
+    flex: 1 1 90px;
   }
   .pname {
     flex: 1;
