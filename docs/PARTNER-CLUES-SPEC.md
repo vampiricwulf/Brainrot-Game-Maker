@@ -601,7 +601,8 @@ its right end the step (📤 Send and start, or ⏱ Start the countdown when no 
 after a 📋 for each card the host copies by hand (📋 Copy words, or 📋 Card 1, 📋 Card 2… for several), so the card to
 copy is in view even when its row has scrolled under the foot. When the step goes, nothing moves into its place: a click
 there again never judges. The first line says what's next ("Next: 📋 copy each card to its player, then ⏱ Start the
-clock" when the host copies them), on one line, cut short (…) when the row is full, the whole of it in its tooltip. A
+clock" when the host copies them; on screen it's short while the cards are handed out, "Next: 📋 Copy, then ⏱️
+Start", see SPEC.md), on one line, cut short (…) when the row is full, the whole of it in its tooltip. A
 click on 📤 Send and start (or ⏱ Start the countdown), in the box or in the check, within a second of the question going up
 sends nothing and says why, as Enter does; the rest of a double-click on Show question ▶, landing on what took its
 place, is dropped. The blue button, 👁 Reveal answer, asks first while the cards are out or the clock hasn't started
@@ -1468,7 +1469,7 @@ Each card's row in the Distribute list offers, for a recipient without a phone, 
 - **Copied ✓:** each 📋 press is noted with who the card was for then (`PartnerState.copied`, saved with the game), and
   its 📋 shows ✓ (in the row, at the box's foot and in the check) while it still goes to them; given to someone else
   since, it's to copy again. Once each card to copy is copied, the first line reads "Next: ⏱ Start the countdown (the cards
-  are copied)", and a click on the stage starts the clock (§6.6).
+  are copied)" (on screen "Next: ⏱️ Start the countdown", the whole sentence in its tooltip), and a click on the stage starts the countdown (§6.6).
 - **🪟 Card window** (P3): a window like the scores window that shows only the live card, full size, local files
   included. The host can share just that window with one player (a Discord DM call), turn a laptop round, or put it on a
   second screen for in-person play. It shows "Nothing private right now" between cards.
