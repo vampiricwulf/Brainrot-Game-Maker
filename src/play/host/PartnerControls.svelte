@@ -10,7 +10,7 @@
   The box holds every action of it, once, beside the choices it's an alternative to: its first line says what's next,
   🎡 Spin for a partner comes in front of the players to choose from by hand (↻ Spin again in its place after), and its
   bottom row, always in view, has ✔ Got it / ✘ Missed, then at its right end, while the cards are handed out, 📋 for the
-  cards copied by hand and 📤 Send and start or ⏱️ Start the clock, where nothing takes its place when it goes. The blue
+  cards copied by hand and 📤 Send and start or ⏱️ Start the countdown, where nothing takes its place when it goes. The blue
   button is the show's next step only (Show question ▶, Next ▶ with the wheel up, 👁 Reveal answer…: goon.ts); pressed
   with something left here, the check offers it, and the action due now wears the ring.
 -->
@@ -1271,9 +1271,9 @@
       </div>
     {/if}
     <!-- The box's foot, in view as the rows above scroll: ✔ Got it / ✘ Missed, quiet until the clock runs, with what each
-         gives (a click judges while handing out the cards too; the keys wait for the clock), and while the cards are
+         gives (a click judges while handing out the cards too; the keys wait for the countdown), and while the cards are
          handed out, the next step at its right end (📋 for the cards to copy by hand, then 📤 Send and start or ⏱️ Start
-         the clock): when it goes, nothing moves into its place, so a second click there never judges. Judged, the line
+         the countdown): when it goes, nothing moves into its place, so a second click there never judges. Judged, the line
          reads the marks; an Undo brings the buttons back. (Clicked, they go off: partnerJudge, in partner.svelte.ts, gives the keys to the
          main button.) A steal's row takes its place, its marks first: the players list above keeps its room, the
          stealers' quick buttons in view. -->

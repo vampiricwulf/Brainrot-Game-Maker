@@ -165,11 +165,11 @@ try {
   );
   await openMenu(page).getByRole('menuitem', { name: '⏱️ Start the countdown' }).click();
   await stage('.timer').waitFor();
-  // The countdown running: ⏸ Pause the countdown (T) and ⬛ Cover the screen (K) beside it, no two items one sign.
+  // The countdown running: ⏸️ Pause the countdown (T) and ⬛ Cover the screen (K) beside it, no two items one sign.
   const runningMenu = (await stageMenu()).filter((l) => l !== '—' && !l.startsWith('#'));
   const signs = runningMenu.map((l) => l.split(' ')[0]);
   assert(
-    runningMenu.includes('⏸ Pause the countdown · T') && runningMenu.includes('⬛ Cover the screen · K') && new Set(signs).size === signs.length,
+    runningMenu.includes('⏸️ Pause the countdown · T') && runningMenu.includes('⬛ Cover the screen · K') && new Set(signs).size === signs.length,
     `the countdown running, no two items in the stage’s menu share a sign (${runningMenu.join(' | ')})`,
   );
   // Its pause button in the status line: two bars, drawn (the ⏸ character is a thin sliver in the app's fonts).

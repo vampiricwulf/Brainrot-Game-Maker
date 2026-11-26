@@ -1283,12 +1283,12 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect(leftNow(c, st)).toEqual([]);
   });
 
-  it('the clock still running at 👁 Reveal answer: ⏱️ Let it run (⏎), ⏸ Pause the countdown (T) or 👁 Reveal anyway (R); stopped or run out, none', () => {
+  it('the clock still running at 👁 Reveal answer: ⏱️ Let it run (⏎), ⏸️ Pause the countdown (T) or 👁 Reveal anyway (R); stopped or run out, none', () => {
     const { g, s } = final('question');
     const c = (clock: FinalNow['clock'], over: Partial<GoCtx> = {}) => ctx(g, s, { final: { ...FIN, clock }, ...over });
     const st = mainStep(c(null))!;
     const items = leftNow(c({ left: 27, running: true }), st);
-    expect(lines(items)).toEqual([['first: The countdown is still running (27 s left).', '⏱️ Let it run ⏎ · close', '⏸ Pause the countdown [T] · close']]);
+    expect(lines(items)).toEqual([['first: The countdown is still running (27 s left).', '⏱️ Let it run ⏎ · close', '⏸️ Pause the countdown [T] · close']]);
     const ck = open(st, items);
     expect([
       anywayLabel(ck),
@@ -1317,7 +1317,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     // Its T pauses the clock, as in the clock's own check (⇧T is its 10 more seconds): N then shows the answer.
     const coming = leftNow(c({ left: 27, running: true }, phones), st);
     expect(lines(coming)).toEqual([
-      ['first: 1 of 2 phones answered (Bob hasn’t yet) · Cat answers out loud.', '⏱️ 10 more seconds [⇧T] ⏎ · close', '⏸ Pause the countdown [T] · close'],
+      ['first: 1 of 2 phones answered (Bob hasn’t yet) · Cat answers out loud.', '⏱️ 10 more seconds [⇧T] ⏎ · close', '⏸️ Pause the countdown [T] · close'],
     ]);
     const ack = open(st, coming);
     expect([inside({ key: 't' }, ack, after), inside({ key: 'T', shift: true }, ack, after)]).toEqual([

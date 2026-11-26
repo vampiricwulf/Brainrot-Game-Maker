@@ -215,7 +215,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   default, ⚖ Game rules › Most players), name, unique color, a picture (an RPG round's avatar and player sheet). The
   color picker prevents duplicates and suggests a distinct palette. The score bar shows name plates in each player's
   color.
-- Toggles: Final Jeopardy on/off, negative scores, deduct-on-wrong, default timer.
+- Toggles: Final Jeopardy on/off, negative scores, deduct-on-wrong, default countdown.
 - **A round's menu** is the same from a right-click (or Shift+F10) on its tab, ⋯ at the end of its page's top bar, and a
   right-click on that bar: ▶ Test this round · ✎ Rename (F2) · ⧉ Duplicate (Ctrl+D) · 📋 Copy round (Ctrl+C) · 📋 Paste
   round after it (Ctrl+V) · ▲ Move up (Alt+↑) · ▼ Move down (Alt+↓) · 🗑 Delete round (Delete). The keys work on its tab;
@@ -799,7 +799,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   and so does an RPG shop: short of money, “Short by 🪙1 for Potion.” Cancel · Give it free · Other price… · **Sell
   anyway** (the buyer goes below zero); Other price… asks the price (Cancel · Sell), and 📦 the stock left (Cancel ·
   Set; blank is unlimited).
-- **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips; ⏱ Start and its
+- **The host panel** has one layout in every round: the status line (📱 phones and ⏱ countdown chips; ⏱ Start and its
   seconds box only where a countdown fits, a clue, the Final's wagers and question, the tiebreaker and a board game's turns,
   and while a countdown is up: `T` and the stage menu's ⏱ Start the countdown start one anywhere), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
@@ -864,9 +864,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   tile's 🤫 card not sent; a 🤝 partner clue's who picked it, the partner, who describes or nobody to partner with on
   PARTNER UP!, all musts with no “anyway”, then at the reveal its cards not handed out or the countdown not started, the pair
   still playing, a steal open; a wheel or dice tile's own tool not spun or rolled, or landed on “Spin again”; the
-  Final's own 🤫 card not sent at Show question ▶, its typed answers still coming at 👁 Reveal answer (⏱ 10 more seconds `Shift+T`, and with the countdown running ⏸ Pause the
+  Final's own 🤫 card not sent at Show question ▶, its typed answers still coming at 👁 Reveal answer (⏱ 10 more seconds `Shift+T`, and with the countdown running ⏸️ Pause the
   countdown `T`; the last one in while it's open, its line says “All phones answered”, teams “All teams answered”), else its
-  countdown still running there (“The countdown is still running (27 s left).”: ⏱ Let it run, the `Enter` one, ⏸ Pause the
+  countdown still running there (“The countdown is still running (27 s left).”: ⏱ Let it run, the `Enter` one, ⏸️ Pause the
   countdown, `T` as outside, and 👁 Reveal anyway; paused or run out, it goes on at once), and the spotlit
   player not judged yet at Next player ▶ or Finish game ▶, a must whose ✔ Right `C` / ✘ Wrong `X` close the check, so
   the verdict lands on stream before `N` goes on, with no `Enter` and the likely one ringed; a board game's turn at Next
@@ -1526,7 +1526,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   there's one) · Clear selection (Esc) · 🗑 Delete N things", and menus say Clear selection. The signs: 🗑 removes a
   thing (from the game, or Remove: off something, kept in the game); ⌫ empties a slot (⌫ Clear, the picture staying
   in 🖼 Media); ✕ only closes (✕ Close); ✘ is Wrong; − is only for numbers; ↩ takes back (↩ Take back, ↩ Put back);
-  ⛔ kicks a phone. Every ✕, ✘ and ⌫ button carries its word, but for a window's, a notice's or the timer box's corner ✕, the
+  ⛔ kicks a phone. Every ✕, ✘ and ⌫ button carries its word, but for a window's, a notice's or the countdown box's corner ✕, the
   green and red ✔ / ✘ pair on a player's chip and an answer's row, ⌫ on a player's picture corner, and the award row's
   Clear selection, which shrinks to ✕ where the row is narrow (under the stage up to 1280px, or 1500px on a clue with
   several question slides).

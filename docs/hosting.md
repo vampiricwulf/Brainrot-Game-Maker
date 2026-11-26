@@ -165,9 +165,9 @@ player ▶** (there's no Show wager ▶ step).
 the reveals; **⋯ Tools** in the status line brings it back.
 
 Show question ▶ starts the countdown. While it's still running, 👁 Reveal answer (the blue button, `N`, a click on the
-screen or its menu) asks first: **⏱ Let it run** (`Enter`, or `Esc`) keeps it going, **⏸ Pause the countdown** (`T`)
+screen or its menu) asks first: **⏱ Let it run** (`Enter`, or `Esc`) keeps it going, **⏸️ Pause the countdown** (`T`)
 pauses it, **👁 Reveal anyway** (`R`) shows the answer. With typed answers still coming from phones it asks about them
-first: **⏱ 10 more seconds** (`Shift+T`) or **⏸ Pause the countdown** (`T`). Once the countdown has run out or is paused,
+first: **⏱ 10 more seconds** (`Shift+T`) or **⏸️ Pause the countdown** (`T`). Once the countdown has run out or is paused,
 👁 Reveal answer shows the answer at once, even with a phone's typed answer still missing (the answers lock). `R` always
 shows it at once.
 

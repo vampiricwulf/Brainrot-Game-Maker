@@ -72,6 +72,11 @@ describe('the keys filter', () => {
       .flatMap((g) => g.rows)
       .find((r) => r.keys === 'S');
     expect(s).toMatchObject({ words: '📊 Scoreboard on screen, or off it again', was: '📊 Scores' });
+    // The countdown was "the clock" in places: "clock" finds T, saying it was ⏸ Pause the clock.
+    const t = filterKeys(hostKeys(false), 'clock')
+      .flatMap((g) => g.rows)
+      .find((r) => r.keys === 'T');
+    expect(t?.was).toContain('⏸ Pause the clock');
   });
 });
 

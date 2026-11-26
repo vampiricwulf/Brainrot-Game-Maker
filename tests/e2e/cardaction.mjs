@@ -148,7 +148,14 @@ try {
         spinDurationMs: 300,
         removeAfterLanding: false,
         segments: [
-          { id: 'sw', label: 'Whisper', color: '#e6194b', weight: 1, actions: [{ id: 'a_whisper', do: 'card', slide: slide(text(WHISPER)), to: 'others' }] },
+          {
+            id: 'sw',
+            label: 'Whisper',
+            color: '#e6194b',
+            weight: 1,
+            timerSeconds: 20,
+            actions: [{ id: 'a_whisper', do: 'card', slide: slide(text(WHISPER)), to: 'others' }],
+          },
         ],
       },
     ],
@@ -270,6 +277,8 @@ try {
   assert(await flowIs(host, 'Next ▶'), 'a wheel from the tools row: the blue button is Next ▶');
   await stepButton(tc, '🎡 Spin!').click();
   await tc.getByText('Who was it for?').waitFor({ timeout: 10000 });
+  // Its slice's countdown: ⏱️ Start 20 s, seconds written as everywhere but the status line's own compact Start.
+  assert((await tc.getByRole('button', { name: '⏱️ Start 20 s', exact: true }).count()) === 1, 'the slice’s countdown button says ⏱️ Start 20 s');
   await tc.getByRole('button', { name: 'Bob', exact: true }).click();
   const slice = tc.getByRole('button', { name: '🤫 Card for everyone else' });
   await slice.click();

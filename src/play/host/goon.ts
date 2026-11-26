@@ -776,13 +776,13 @@ function finalAnswersItems(c: GoCtx): LeftItem[] {
   if (!f || !ans || f.answersLocked || c.session.finalStep !== 'question') return [];
   if (t === 'out' || (t && (!t.running || t.left <= 0))) return [];
   const items = comingItems(c, (id) => !!ans[id], f.players, FLOW.reveal.label);
-  // (The clock running: ⏸ Pause the clock (T), as in the clock's own check. Its ⏱️ 10 more seconds is ⇧T then.)
+  // (The countdown running: ⏸️ Pause the countdown (T), as in the countdown's own check. Its ⏱️ 10 more seconds is ⇧T then.)
   return t && c.clockUp ? items.map((i) => ({ ...i, quick: [...i.quick, pauseQuick(c)] })) : items;
 }
 
-/** ⏸ Pause the clock (T) in the Final's checks at 👁 Reveal answer: paused, the next 👁 Reveal answer goes on at once. */
+/** ⏸️ Pause the countdown (T) in the Final's checks at 👁 Reveal answer: paused, the next 👁 Reveal answer goes on at once. */
 const pauseQuick = (c: GoCtx): Quick => ({
-  label: '⏸ Pause the countdown',
+  label: '⏸️ Pause the countdown',
   key: 'T',
   then: 'close',
   run: () => c.act.clock(false),
@@ -791,7 +791,7 @@ const pauseQuick = (c: GoCtx): Quick => ({
 
 /**
  * The Final's think clock still running, at 👁 Reveal answer: the answer would cut it short. ⏱️ Let it run (⏎) closes the
- * check, the clock going on; ⏸ Pause the clock (T, as outside) closes it with the clock paused, so the next 👁 Reveal
+ * check, the countdown going on; ⏸️ Pause the countdown (T, as outside) closes it with the countdown paused, so the next 👁 Reveal
  * answer goes on at once; 👁 Reveal anyway (R) shows it. Stopped or run out: it goes on at once.
  */
 function finalClockItems(c: GoCtx): LeftItem[] {

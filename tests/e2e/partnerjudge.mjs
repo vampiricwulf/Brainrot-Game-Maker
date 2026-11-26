@@ -197,7 +197,10 @@ try {
     'once the clock runs, ✔ Got it is Enter and ✘ Missed is Shift+Enter',
   );
   await page.keyboard.press('Enter');
-  assert(await toast('The countdown just started: press Enter again to give ✔ Got it'), 'a second Enter right after the clock starts gives nothing, and says why');
+  assert(
+    await toast('The countdown just started: press Enter again to give ✔ Got it'),
+    'a second Enter right after the clock starts gives nothing, and says why',
+  );
   assert(Object.values(await scores()).every((s) => s === '$0') && (await stage('.timer').count()) === 1, 'no score, and the countdown runs on');
   await page.screenshot({ path: resultsPath('partner-judge-live.png') });
   await panel.getByRole('button', { name: '⇄ Swap' }).first().click();

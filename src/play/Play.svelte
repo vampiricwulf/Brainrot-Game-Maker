@@ -3804,7 +3804,7 @@
   /** The countdown, as T does it: start it, or pause or go on with the one up. */
   function clockItem(): StageItem {
     const t = app.live.timer;
-    const label = t && !t.expired ? (t.startedAt === null ? '▶ Go on with the countdown' : '⏸ Pause the countdown') : '⏱️ Start the countdown';
+    const label = t && !t.expired ? (t.startedAt === null ? '▶ Go on with the countdown' : '⏸️ Pause the countdown') : '⏱️ Start the countdown';
     return { id: 'clock', label, keys: 'T', onclick: () => clockKey(false) };
   }
 

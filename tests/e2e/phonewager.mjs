@@ -648,7 +648,10 @@ try {
   await hostPanelIn(host).locator('.tc button[aria-label="Pause countdown"]').waitFor();
   await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
   await checkItem(host, 'answers').waitFor();
-  assert((await quick(host, '⏸ Pause the countdown').innerText()).includes('T'), 'the countdown on, the answers check offers ⏸ Pause the countdown, its key T');
+  assert(
+    (await quick(host, '⏸️ Pause the countdown').innerText()).includes('T'),
+    'the countdown on, the answers check offers ⏸️ Pause the countdown, its key T',
+  );
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('t');
   await goOnCheck(host).waitFor({ state: 'detached', timeout: 3000 });

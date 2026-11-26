@@ -119,7 +119,7 @@
           </div>
         {/each}
         <label class="check small">
-          ⏱️ Timer
+          ⏱️ Countdown
           <input
             type="number"
             min="0"
