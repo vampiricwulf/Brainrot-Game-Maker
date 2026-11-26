@@ -2937,6 +2937,26 @@
       white-space: nowrap;
     }
   }
+  /* A touch screen (no mouse): the fixed bar's buttons and ⋯ Tools at least 32px to tap (they're 26-28px otherwise).
+     ⋯ Tools grows into the panel's padding above it and the gap under the status line, never making the line taller:
+     on a short phone the moment's box under it keeps its room. */
+  @media (hover: none) {
+    .panel > .fixed :global(button),
+    .panel .toolsfold {
+      min-width: 32px;
+      min-height: 32px;
+    }
+    .panel .toolsfold {
+      margin-block: -6px;
+    }
+  }
+  /* (On a phone held upright the bar's rows 2px apart and 2px under its line: as tall as it was with smaller buttons.) */
+  @media (hover: none) and (max-width: 560px) {
+    .panel:not(.side) > .fixed {
+      row-gap: 2px;
+      padding-top: 2px;
+    }
+  }
   /* Beside the stage, a board game's box takes the column's height: its turn part sits at the foot, by the blue button. */
   .side .mode-host.bgame {
     flex: 1 1 0;

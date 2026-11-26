@@ -824,6 +824,12 @@
   select.small {
     padding: 2px 6px;
   }
+  /* (A touch screen, no mouse: 📍 Send to…, 🗂 Spaces… and the other menus at least 28px to tap, not 22px.) */
+  @media (hover: none) {
+    select.small {
+      min-height: 28px;
+    }
+  }
   .small {
     font-size: 12px;
   }

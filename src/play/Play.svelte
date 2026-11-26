@@ -6648,9 +6648,9 @@
   }
   /* A touch screen (no mouse): the page's buttons, its small ones (✎ Rename, ± Start scores, 🔊 Test the sound…, the
      tips' ✕) and a player row's ▲ ▼ 🗑 too, and the ⚖ Game rules and 📺 On stream headings, are at least 32px to tap.
-     (Before the game. In the game the host panel's buttons are about that size already, and its small ones (⋯ Tools,
-     the clock's, the tools' menus) have their own rules: HostPanel, TimerControls and ToolLauncher. The editor stays
-     dense.)
+     (Here, before the game. In the game the host panel's buttons are 26-28px: its fixed bar, ⋯ Tools and the Final's
+     reveal rows get the same floor in HostPanel and FinalControls, the clock's and the tools' menus have their own
+     rules in TimerControls and ToolLauncher; the editor stays dense.)
      The headings grow into their card's padding above, and into the room under them only as far as nothing to tap
      is there (open: over the padding of what they fold), on top of it. */
   @media (hover: none) {

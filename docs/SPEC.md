@@ -28,7 +28,11 @@ runs the board, decides who gets points, and controls media.
   buttons and in menus, nor "or drop it here"; the keys window still lists them. On ▶ Play's page before the game, a
   touch screen with no mouse makes every button at least 32 px to tap (the small ones too: ✎ Rename, a player row's ▲
   ▼ 🗑, ± Start scores, 🔊 Test the sound…), and the ⚖ Game rules and 📺 On stream headings too, with 🗑 further
-  from ▼; the editor keeps its dense rows, and the host panel's buttons are about that size already.
+  from ▼; the editor keeps its dense rows. In the game, a touch screen with no mouse makes the host panel's fixed
+  bar (↶ Undo … 🚪 Exit), ⋯ Tools and every button in the Final's reveal rows (▲ ▼, the name, Show answer, ½ Halve,
+  0 Nullify, Show wager, ✔ Right, ✘ Wrong) at least 32 px to tap, a wrapped reveal row's lines 10 px apart (✔ Right and
+  ✘ Wrong clear of ½ Halve and 0 Nullify), and the RPG's and board game's menus (＋ Screen…, 📍 Send to…, 🗂 Spaces…)
+  at least 28 px; the rest of the panel keeps its sizes.
 
 ---
 

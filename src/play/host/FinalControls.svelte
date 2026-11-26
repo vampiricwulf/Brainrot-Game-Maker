@@ -1173,6 +1173,19 @@
       }
     }
   }
+  /* A touch screen (no mouse): every button in a reveal row (▲ ▼, the name, Show answer, ½ Halve, 0 Nullify, Show
+     wager, ✔ Right, ✘ Wrong) at least 32px to tap, and where a row wraps its lines further apart, so ✔ Right and
+     ✘ Wrong aren't a slip away from ½ Halve and 0 Nullify. */
+  @media (hover: none) {
+    .pl button {
+      min-width: 32px;
+      min-height: 32px;
+    }
+    .pl,
+    .cell.sw {
+      row-gap: 10px;
+    }
+  }
   .key {
     font-size: 12px;
     opacity: 0.7;

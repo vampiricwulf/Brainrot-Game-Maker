@@ -961,6 +961,12 @@
   .improv select {
     padding: 2px 6px;
   }
+  /* (A touch screen, no mouse: ＋ Screen… and the other menus at least 28px to tap, not 22px.) */
+  @media (hover: none) {
+    select {
+      min-height: 28px;
+    }
+  }
   /* In a narrow host panel (beside the stage), the objects go under the pad and the map. */
   .main {
     display: flex;
