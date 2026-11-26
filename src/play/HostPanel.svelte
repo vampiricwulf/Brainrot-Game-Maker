@@ -274,7 +274,7 @@
     onbackfromend: () => void;
     onrematch: () => void;
     onskipintro: () => void;
-    /** A 🤝 partner clue: 🎡 Spin for a partner, 📤 Send and start or ⏱️ Start the clock (Show question ▶ is the blue button's). */
+    /** A 🤝 partner clue: 🎡 Spin for a partner, 📤 Send and start or ⏱️ Start the countdown (Show question ▶ is the blue button's). */
     onpartnerspin?: () => void;
     onpartnerclock?: () => void;
     /** ↩ Take back a 🤫 card from every phone it was sent to. */
@@ -541,7 +541,7 @@
   /** The countdown is running. */
   const clockRuns = $derived(!!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired);
   /**
-   * What a partner clue's ⏱️ Start the clock counts down from: a paused countdown's time left, else the seconds typed in
+   * What a partner clue's ⏱️ Start the countdown counts down from: a paused countdown's time left, else the seconds typed in
    * the ⏱️ box (as T takes them), else the clue's or the game's.
    */
   const clockSecs = $derived.by(() => {
@@ -3058,7 +3058,7 @@
     }
   }
   /* A touch screen shows no tooltips, so under the stage the bar keeps the words a sign can't say at every width:
-     ▭ Scores window, 📺 Audience and 🙈 Hide (beside ⏸ Cover). The others (↶ ↷ 📜 👥 ⚖ 🔊 ❔) keep theirs where all
+     ▭ Scores window, 📺 Audience and 🙈 Hide (beside ⬛ Cover). The others (↶ ↷ 📜 👥 ⚖ 🔊 ❔) keep theirs where all
      of it fits on one line (from 1100px wide, a tablet on its side, with its buttons a little smaller up to 1340px
      as at 1180px with a mouse); narrower, they go to their signs. On a phone held upright the bar wraps anyway: its
      rows come out of the panel, never the stage. */
@@ -3113,7 +3113,7 @@
     }
   }
   /* A phone on its side (a touch screen up to 500px tall): the panel under the stage is so short that a second line of
-     the bar would push it off the screen, so there it's signs only, as with a mouse up to 940px (🚪 Exit and ⏸ Cover
+     the bar would push it off the screen, so there it's signs only, as with a mouse up to 940px (🚪 Exit and ⬛ Cover
      in words), on one line, 2px under its line. */
   @media (hover: none) and (max-height: 500px) {
     .panel:not(.side) > .fixed :is(.word, .txt) {

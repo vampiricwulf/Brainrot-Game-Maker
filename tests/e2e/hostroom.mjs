@@ -441,7 +441,7 @@ try {
     await next.filter({ hasText: 'Copy' }).waitFor();
     const line = await next.evaluate((e) => ({ text: e.textContent, title: e.getAttribute('title'), cut: e.scrollWidth > e.clientWidth }));
     assert(
-      line.text === 'Next: 📋 Copy, then ⏱️ Start' && line.title === 'Next: 📋 copy each card to its player, then ⏱️ Start the clock' && !line.cut,
+      line.text === 'Next: 📋 Copy, then ⏱️ Start' && line.title === 'Next: 📋 copy each card to its player, then ⏱️ Start the countdown' && !line.cut,
       `${where}: the first line reads whole, the whole sentence in its tooltip (${JSON.stringify(line)})`,
     );
     const foot = box.locator('[data-partner-foot]');

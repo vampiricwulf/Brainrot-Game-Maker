@@ -510,7 +510,9 @@ try {
   // Card 2 copied at the box's foot: the first line says the clock is next, and a click on the stage starts it, the
   // status line saying so with ↶ Undo, which takes it back.
   await panel.locator('[data-partner-foot]').getByRole('button', { name: 'Copy Card 2’s words' }).click();
-  await panel.locator('[data-partner-next][title="Next: ⏱️ Start the countdown (the cards are copied)"]', { hasText: 'Next: ⏱️ Start the countdown' }).waitFor();
+  await panel
+    .locator('[data-partner-next][title="Next: ⏱️ Start the countdown (the cards are copied)"]', { hasText: 'Next: ⏱️ Start the countdown' })
+    .waitFor();
   // (Past the stage's double-click guard: a click on it under half a second after the last one is that one's rest.)
   await page.waitForTimeout(Math.max(0, 500 - (Date.now() - clickedAt)));
   await stage('[data-slide="1"]').click();

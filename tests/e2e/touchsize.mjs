@@ -130,7 +130,7 @@ const toolWord = (b, re) => b.tools.find((x) => re.test(x.name))?.word;
 
 try {
   section('The fixed bar and ⋯ Tools on a touch screen: 32px to tap, the words a sign can’t say');
-  /** Rows the bar took before (all signs but ⏸ Cover and 🚪 Exit), at most one more now. */
+  /** Rows the bar took before (all signs but ⬛ Cover and 🚪 Exit), at most one more now. */
   const before = { 320: 3, 360: 2, 390: 2 };
   for (const [w, h] of [
     [320, 568],

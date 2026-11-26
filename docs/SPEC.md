@@ -1165,7 +1165,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      the countdown only, the 🤝 box's foot reads **📤 Send the cards (countdown running)** and the status line "Countdown running:
      Enter sends the 2 cards", and Enter sends them (a card goes to a phone only by Enter on that step or a 📤 press).
      While the cards are handed out with some to copy, the first line is short, so it reads whole on a laptop ("Next:
-     📋 Copy, then ⏱️ Start", "Next: 📋 Copy, then 📤 Send", "Next: ⏱️ Start the clock" once they're copied, "Clock
+     📋 Copy, then ⏱️ Start", "Next: 📋 Copy, then 📤 Send", "Next: ⏱️ Start the countdown" once they're copied, "Countdown
      running: 📋 Copy, then 📤 Send"), its whole sentence in its tooltip; on a laptop who plays which part, beside it,
      is cut short instead (whole in its tooltip, the names on the chips; on a phone the row wraps as before).
      Under the box the Amount row folds behind **± Other points…** (✔ Got it / ✘ Missed give the points): it opens by
