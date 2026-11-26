@@ -284,8 +284,8 @@ try {
     `time's up: the words go by themselves, the box stays open, and Send answer would send them as the player's own (${await p1.locator('#answer-state').innerText()})`,
   );
   assert(await p1.locator('#answer-state.unsent').isVisible(), 'the line saying they went unfinished is amber, as an edit not sent is');
-  // A small phone on its side: Send answer and that line on screen, nothing to scroll (667x375); Send answer, at least,
-  // on the smallest (568x320).
+  // A small phone on its side: Send answer and that line on screen, nothing to scroll (667x375); on the smallest
+  // (568x320) Send answer and that line on screen, the page scrolling a little under them.
   await p1.setViewportSize({ width: 667, height: 375 });
   let sideways = await sidewaysBox(p1);
   assert(
@@ -294,7 +294,10 @@ try {
   );
   await p1.setViewportSize({ width: 568, height: 320 });
   sideways = await sidewaysBox(p1);
-  assert(sideways.send <= sideways.h, `568x320, time's up: Send answer on screen (${JSON.stringify(sideways)})`);
+  assert(
+    sideways.send <= sideways.h && sideways.state <= sideways.h,
+    `568x320, time's up: Send answer and the line under it on screen (${JSON.stringify(sideways)})`,
+  );
   await p1.setViewportSize({ width: 360, height: 640 });
   // One window: the host panel says it's in and that it went by itself, never the words.
   const chip = answersBox.locator('[data-answer-in]', { hasText: 'Player 1' });

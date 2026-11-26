@@ -1208,8 +1208,8 @@ html:has(#s-buzz:not([hidden])) {
 }
 /*
  * A small phone on its side (667x375, 568x320): the box's lines tighter and smaller, so Send answer and the line under
- * it ("⏱️ Sent when time ran out…") are on screen with nothing to scroll. The Final's "Your wager: $600 (locked)" and
- * the clock share a row where they fit.
+ * it ("⏱️ Sent when time ran out…") are on screen (with nothing to scroll at 667x375). The Final's "Your wager: $600
+ * (locked)" and the clock share a row where they fit.
  */
 @media (min-aspect-ratio: 4/3) and (max-height: 420px) {
   #wager-form,
