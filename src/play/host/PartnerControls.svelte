@@ -1456,18 +1456,20 @@
     flex: 1 1 auto;
     white-space: normal;
   }
-  /* While the cards are handed out it's short, and kept whole: who plays which part gives way instead, cut short (the
-     names are on the chips, and the whole line in its tooltip). */
+  /* While the cards are handed out it's short, and kept whole: on a laptop who plays which part gives way instead, cut
+     short (the names are on the chips, and the whole line in its tooltip). (On a phone the row wraps: it keeps a line.) */
   .next-line.short {
     flex: none;
   }
-  .row:has(> .next-line.short) > .parts {
-    flex: 1 1 0;
-    max-width: max-content;
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+  @media (min-width: 601px) {
+    .row:has(> .next-line.short) > .parts {
+      flex: 1 1 0;
+      max-width: max-content;
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
   }
   /* The foot's next step, at its right end: when it goes, nothing takes its place. */
   .end {
